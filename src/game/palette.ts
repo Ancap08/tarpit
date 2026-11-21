@@ -95,6 +95,12 @@ export const COLORS = {
   menuBg: 0x1b1f24,
   menuEdge: 0xd9b77e,
 
+  // Boss bar (milestone 23): dark trough, red fill, 1 px cream border, dark name pill.
+  bossBarBg: 0x15171a,
+  bossBarFill: 0xd0392e,
+  bossBarEdge: 0xf2e6c9,
+  bossNamePill: 0x14161a,
+
   // End screens: dark veil over the map, centred panel
   endVeil: 0x0b0d10,
   endPanel: 0x1b1f24,
@@ -116,6 +122,9 @@ export const TEXT = {
   victory: '#f2c94c',
   defeat: '#d26a5c',
   endLine: '#f2e6c9',
+  // Boss bar: name and hp text.
+  bossName: '#f2e6c9',
+  bossHp: '#fff4dc',
   // Tower labels: light text on a small dark pill.
   towerLabel: '#f2e6c9',
   towerLabelBg: 'rgba(20, 22, 26, 0.78)',

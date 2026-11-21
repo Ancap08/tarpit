@@ -2395,3 +2395,232 @@ below was observed on branch `m22-harpy-shieldbearer` at commit 001d592.
   names v4. The DEVLOG table and numbers match what was observed.
 - **Verdict: PASS.** Verifier commits: the frame-pin fix, the probes, and
   these notes.
+
+## 2026-11-21: milestone 23, Grumblefoot
+
+Roles: implementer Claude Opus, verifier Claude Fable 5.1, coordinator
+Claude Fable 5.1.
+
+### Implementer notes
+
+- **Simulation.** `EnemyType` gains `boss`: 4000 hp, 25 px/s, 150 gold,
+  walking, no shield. `EnemyStats` gains `livesCost` (1 for the other five,
+  5 for him; the exit step subtracts it) and an optional `slowCap` (0.3 on
+  him only). `combat.ts` `applySlow` caps the strength first and returns
+  the strength applied (or null), so the Tar Pit's 40% and 60% both land
+  as 30% for the full 2 s and the `slowed` event carries 0.3. Burn is
+  unchanged (doubled under tar as usual). New events: `bossSpawn` after
+  his `spawn`, `bossDown` (cause `shot`, `burn` or `exit`) after his `kill`
+  or `exit`. Wave clear and win rules are untouched.
+- **Spawn timing.** Wave 10's other groups end with the 12th Troll at
+  11 x 2 = 22 s (Wolves 7.5 s, Harpies 9.2 s, Shieldbearers 8 s), so the
+  boss group is `g('boss', 1, 0, 26)`: waveTick 1560, the last spawn of the
+  wave.
+- **Boss hp: 4000, as in SCOPE-v4.** No lowering was needed: the combo
+  build kills him with its existing plan and no re-plan.
+- **Archetypes** (`npm run sim`), milestone 22 -> 23:
+
+  | Archetype | Milestone 22 | Milestone 23 | Target |
+  |---|---|---|---|
+  | noTowers | lost wave 2 | lost wave 2 | lost by 3 |
+  | lazyBuild | lost wave 7 | lost wave 7 (never meets him) | lost on 6 to 8 |
+  | greedyMusket | lost wave 7 | lost wave 7 | none |
+  | soundBuild | lost wave 7 | lost wave 7 | none |
+  | soundBuildNoTar | lost wave 6 | lost wave 6 | none |
+  | longbowSpam | lost wave 9 | lost wave 9 (never meets him) | lost on 7 to 9 |
+  | comboBuild | won, 12 lives, 347 gold | won, 12 lives, 497 gold, 145 after wave 9; kills him (shot) at waveTick 4639 | won, 5 to 15 lives, under 150 after wave 9 |
+  | comboBuildNoFire | won, 2 lives, 475 gold | won, 2 lives, 625 gold; kills him at waveTick 5150 | strictly worse than combo |
+  | noAntiAir | lost wave 7 | lost wave 7 | lost by 8 |
+  | bossRush | (new) | won, 12 lives, 427 gold; kills him (burn) at waveTick 4562 | informational |
+
+  `bossRush()` plays the combo build and, before wave 10, spends what is
+  left on Longbow upgrades. The combo build has upgraded all five of its
+  Longbows by then, so it builds a Longbow and upgrades it while 70 gold
+  allows: one pair at (2,5), the first trail cell (115 gold after the
+  combo's wave 10 upgrade, 45 left over). He dies 77 ticks sooner.
+- **Sheet layouts** (Pillow bounding boxes plus a 4x zoom read by eye).
+  DemonCyclop `Walk.png`, 300 x 50: one row of six 50 x 50 frames, every
+  one a front view facing the viewer (no side or back views; frames 4 and
+  5 lean a little). So all four facings use frames 0 to 5, mirrored for
+  left only (the path never runs left, so the mirror never shows). Feet at
+  rows 42 to 43 of 50. `Hit.png`, 150 x 50: three 50 x 50 frames, 0 a
+  bright orange flash, 1 and 2 a hurt pose (mouth open). Frame 0 is the
+  hit flash, drawn as a second sprite over him while the flash lasts
+  (instead of the white tint fill, which Canvas cannot draw), so test mode
+  shows it too. Both PNGs are unchanged copies (`assets/sprites/boss.png`,
+  `boss-hit.png`); both are under Vite's 4 kB inline limit, so `dist/`
+  stays at 4 files.
+- **Renderer.** 2x, in a layer between the walkers and the shot effects:
+  above every walker, below shots, hp bars, labels and Harpies. Drawn 30
+  px above his path position so his feet stand 6 px below the path point;
+  ground shadow 72 x 20 at 15% over 52 x 14 at 20%, 4 px below the point;
+  tar and burn rings (radius 41 and 44) centred on his body. Walk at 8 fps
+  in play (checked: the frame index advanced 1 per about 130 ms), frozen
+  on frame 0 in test mode. No small hp bar.
+- **HUD boss bar** (`src/game/ui/bossBar.ts`): 300 x 14 centred, dark
+  trough, red fill, 1 px cream border, "2374 / 4000" in 11 px right-aligned
+  inside (hp rounded up so a live boss never reads 0), name from
+  `BOSS_NAME` in 14 px on a dark rounded pill above the left end.
+  `hudText().boss` is "Grumblefoot 4000 / 4000" while shown, else null.
+- **Wave 10 preview**: "Next: 8 Wolf, 12 Troll, 5 Harpy, 4 Shieldbearer +
+  Grumblefoot" (`ENEMY_NAMES` for the groups, `BOSS_NAME` for him).
+- **Test hooks.** `runScript(name, untilWave?)` stops in setup before
+  `untilWave` with that wave's actions applied; `animState` reports
+  texture 'boss'.
+- **Frames.** New `boss.png`: combo build, wave 10, step 3562; he is
+  alone, tarred and burning at (420,241) on the downhill run, bar at 2374
+  of 4000, a Mortar splash on him 2 ticks into its fade, and no hit on
+  that tick (walk frame, not the flash). `won.png` now shows 497 gold.
+  `new-towers.png` changes in the HUD only (its wave 6 preview now wraps;
+  see below). Other ticks unchanged.
+
+### What went wrong
+
+- **The bar could not sit at y 12 with the name above it.** The brief put
+  the bar at y 12 and the 14 px name above-left of it; an 18 px pill does
+  not fit in 12 px. The bar is at y 24 and the pill at y 4 to 22.
+  Coordinator to confirm.
+- **The wave preview ran under the Start Wave button.** The HUD gives the
+  preview 350 px (x 366 to 716). At 16 px Courier New (9.6 px a
+  character) the milestone 22 previews for waves 6, 8 and 10 were already
+  wider (wave 10: 451 px), and "+ Grumblefoot" made wave 10's 586 px, so
+  the boss name was hidden under the button. A preview longer than one
+  line now drops to 13 px and wraps to two lines (`previewSize` in
+  `hud.ts`). This changes the HUD text in `new-towers.png` (wave 6
+  preview) on the next CI baseline run.
+- **"Step 300 more, the bar shows lower hp" did not hold.** Every tower
+  aims at the enemy furthest along the path, and he is the slowest enemy
+  of the wave, so nothing shoots him until the Fire Pot at (10,4) hits
+  him about 977 ticks after his spawn. `e2e/boss.spec.ts` steps in chunks
+  of 300 until the hp drops and pins the count (4 chunks).
+- **The lose path as briefed (lives 5, then wave 10 with no towers) loses
+  to the wave's other 29 enemies first.** The spec sets 34 lives, so 5 are
+  left when he is alone, and asserts that before he exits.
+- **"All remaining gold on Longbow upgrades" had no Longbow left to
+  upgrade** in the combo build; `bossRush` builds and upgrades pairs.
+- **Tests outside this milestone that changed:** the milestone 22
+  verifier's wave-table test now ignores the boss group; the
+  `ENEMY_STATS` pins gained `livesCost: 1`; five test hp tables gained the
+  boss; the combo build's final gold moved from 347 to 497 in
+  `balance.test.ts`, `endText.test.ts`, `end-screens.spec.ts`,
+  `end-screens-verifier.spec.ts` and `visual.spec.ts`.
+- My first `boss.png` assertion counted the Mortar hit one tick late (the
+  splash on screen at step 3562 is from step 3560, not 3561).
+
+### Verifier notes
+
+- **Clean run, exit 0.** `npm ci`, lint, typecheck, 32 test files / 339
+  tests, build (49 modules, 4 files in `dist/`), `check:assets` (12 rows),
+  `check:size` 1269753 bytes, 100 Playwright tests, and `npm run sim` with
+  the summary line for line as in the table above. `boss.spec.ts` and
+  `end-screens.spec.ts` with `--repeat-each=5`: 30 of 30.
+- **Spec and scope hold.** `git diff origin/main -- src/sim/towers.ts
+  src/sim/enemies.ts src/sim/waves.ts`: towers.ts untouched; enemies.ts
+  adds the boss row, `livesCost: 1` on the other five, `isBoss` and
+  `cappedSlow`; waves.ts adds only `g('boss', 1, 0, 26)`. No other number
+  changed. Wave 10 from the table: Wolves 4 + 7 x 0.5 = 7.5 s, Trolls
+  0 + 11 x 2 = 22 s, Harpies 6 + 4 x 0.8 = 9.2 s, Shieldbearers
+  2 + 3 x 2 = 8 s, so the last other spawn is the 12th Troll at 22 s
+  (tick 1320) and he comes at 26 s (tick 1560), the last spawn.
+- **Independent probes** (`src/sim/boss-verifier.test.ts`, 15 tests, cell
+  B = (2,5) at 64 px from path distance 80): under an upgraded Tar Pit he
+  moves 120 x 25 x 0.7 / 60 = 35 px in the 120 ticks after the first shot
+  (50 unslowed; a Troll in the same spot 28 px at the full 60%) and every
+  `slowed` event on him carries 0.3; an exit with 20 lives leaves 15, with
+  5 leaves 0 and `lost`, one `exit` and one `bossDown {cause: 'exit'}`; a
+  burn kill pays 150 once with `kill` and `bossDown {cause: 'burn'}`; a
+  fully spawned wave 10 with him alone stays in phase `wave` for 60 ticks
+  and wins on the next tick without him; a Cannon targets him past a Harpy
+  and does the full 25, a Longbow does 4 (2 on a Shieldbearer); the combo
+  build's `bossDown` is `shot` at waveTick 4639 with 12 lives and 497
+  gold, `comboBuildNoFire` at 5150 (511 ticks later) with 2 lives.
+- **Renderer probes** (`e2e/boss-verifier.spec.ts`, 4 tests, 12 of 12 over
+  three repeats): his Layer sits after the walkers' Layer and before the
+  shot effects, hp bars, labels' Layer and air Layer; at tick 4921 of a
+  towerless wave 10 he is alone at distance 3360 x 25 / 60 = 1400, i.e.
+  (776,192), and the canvas under his feet reads path x 0.85 x 0.8 at 9 px
+  below the point and path x 0.85 at 12 px (inner ellipse ended, outer
+  still 21.6 px wide), plain path 60 px to either side; the first hit on
+  him (Fire Pot) shows the `boss-hit` frame 0 sprite over him at (0,0)
+  offset in his Layer and `animState().flags.hit`, hidden again on the next
+  tick without a hit; `hudText().boss` is null on tick 1560, the label at
+  1561, null again after `bossDown`; at tick 3562 the red run along the
+  bar's middle row is within 2 px of round(300 x hp / 4000) = 178; the
+  wave 10 preview object is at 13 px and `getWrappedText()` gives two
+  lines, the second ending with `BOSS_NAME`; the wave 1 preview is one
+  16 px line.
+- **Frame pin added:** `src/sim/boss-frame.test.ts` pins tick 3562 of the
+  `boss.png` setup in the simulation (alone at (420,241), tarred at 0.3,
+  burning, bar 2374, Mortar hit on him on tick 3560, no hit on 3562, 12
+  lives). The 497 gold and 12 lives agree across `balance.test.ts`,
+  `endText.test.ts`, `end-screens.spec.ts`, `end-screens-verifier.spec.ts`
+  and `visual.spec.ts`.
+- **Names rule:** "Grumblefoot" outside `names.ts` in `src/game` appears
+  only in comments (hud.ts, testGlobal.d.ts, enemySprites.ts, sheets.ts),
+  never in a string. Rename proof: `BOSS_NAME = 'Bogwart'`, `npm test` 34
+  files / 354 tests green, `boss.spec.ts` and `boss-verifier.spec.ts` 6 of
+  6 green, reverted. Note for the next renamer: Playwright serves the built
+  `dist/` (`vite preview`), so a rename needs `npm run build` before
+  `test:e2e`, or the browser still shows the old name.
+- **Sheets:** `assets/sprites/boss.png` and `boss-hit.png` are byte-identical
+  to the pack's `Actor/Boss/DemonCyclop/Walk.png` and `Hit.png` (sha256
+  match). Pillow: Walk 300 x 50, six 50 x 50 frames, frame bounding boxes
+  all front views (frames 4 and 5 shifted right, the lean); Hit 150 x 50,
+  three frames. Lowest opaque row in every walk frame is 42 (row 43 is
+  transparent), so "feet at rows 42 to 43" is one row generous; lift 30
+  still puts the last opaque row 6 px below the path point as described.
+- **Frames looked at** (m23-boss, bar crop, sprite 2x, hud preview,
+  play-webgl, sheet zoom): bar legible, name pill whole, he draws over the
+  path with the rings on his body and the shadow at his feet, the preview
+  wraps clear of Start Wave, nothing under the HUD. Nothing off.
+- **Open for the coordinator:** the bar at y 24 with the pill at y 4 to 22
+  (the brief said y 12) is as DESIGN now describes; accept or move.
+
+### CI failure after the fact
+
+- **What failed.** On GitHub's Ubuntu runner (run 44956904244),
+  `e2e/live.spec.ts` "live loop ticks, spawns enemies, and 2x runs faster"
+  failed on both attempts: 48, then 60 ticks after 1500 ms at 1x, against
+  `toBeGreaterThan(60)`. It passes locally. It had passed on the previous
+  two PRs by timing luck.
+- **Cause.** Since milestone 16, play uses WebGL. Headless Chromium on CI
+  has no GPU and renders WebGL in software (SwiftShader), so the frame rate
+  falls and the real-time loop falls behind 60 ticks/s. The brief's model
+  was about 4 fps at 8 ticks a frame (`MAX_TICKS_PER_FRAME`), 48 ticks.
+  Reading Phaser's `TimeStep.smoothDelta` while fixing this found a second
+  limit that fits the numbers at least as well: for the first 120 frames
+  after the loop starts (`panicMax`), Phaser cuts every delta to 16.67 ms,
+  so 1x runs one tick per frame, and the test's 1x window falls inside
+  those frames. Then 48 and 60 ticks mean about 32 and 40 fps (60 is not a
+  multiple of 8). Phaser also replaces any delta over 200 ms (`minFps` 5)
+  with an earlier one. The CI log does not show the frame rate, so which
+  limit applied is not proven.
+- **Fix 1, the cap.** `MAX_TICKS_PER_FRAME` goes from 8 to 20 (a third of
+  a second of catch-up), so a device at 4 to 5 fps keeps real time at 1x
+  once Phaser's warm-up is over.
+- **Fix 2, the test.** `?renderer=canvas` (`src/main.ts`, README) forces
+  the Canvas renderer in play with live time and animation.
+  `live.spec.ts` loads it and checks rates, not counts: at least 45 ticks
+  in the 1.5 s 1x window (30 ticks/s), a 2x rate at least 1.5 times the 1x
+  rate (each over the measured elapsed time), and at least one enemy. It
+  records the counts as a test annotation and in the console. The WebGL
+  and walk-cycle test moved to `e2e/renderer.spec.ts`, which loads `/`
+  without the flag and also checks that the tick advances, with no rate.
+- **Fix 3, the automatic check.** The accumulator moved out of
+  `GameScene.update()` into a pure `ticksDue(accMs, speed, cap)` in
+  `src/game/loop.ts`, with `loop.test.ts`: 250 ms frames give 15 ticks at
+  1x and 20 (capped from 30) at 2x, a 60 fps frame gives 1, two 25 ms
+  frames give 1 then 2, and 40 slow frames sum to 600 ticks. Writing the
+  test found a floating-point slip: `250 / (1000 / 60)` is
+  14.999999999999998, so the old `Math.floor` gave 14 ticks for a 250 ms
+  frame and carried a whole step over. `ticksDue` adds a 1e-9 tolerance.
+- **Open.** Phaser's warm-up and 200 ms clamps (above) still slow a slow
+  device at the start and below 5 fps. Changing the game config
+  (`fps.panicMax`, `fps.minFps`) would be a further loop change, not made
+  here.
+- **Port collision.** While this was fixed, two worktrees ran e2e at the
+  same time on port 4173, and with `reuseExistingServer` on locally one
+  run could test the other checkout's build. `playwright.config.ts` now
+  reads the port from `PW_PORT` (default 4173) for the server and
+  `baseURL`, and never reuses a server, so a busy port fails loudly;
+  `npm run demo` honours `PW_PORT` too (default 4179).

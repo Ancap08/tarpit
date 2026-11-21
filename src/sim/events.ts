@@ -22,8 +22,12 @@ export type GameEvent =
   /** A slow was applied (an ignored weaker slow emits nothing). */
   | { kind: 'slowed'; enemyId: number; slow: number; ticks: number }
   | { kind: 'kill'; enemyId: number; enemyType: EnemyType; bounty: number; cause: 'shot' | 'burn' }
-  /** The enemy reached the exit and cost a life. */
+  /** The enemy reached the exit and cost its livesCost (1, or 5 for the boss). */
   | { kind: 'exit'; enemyId: number }
+  /** The boss spawned (milestone 23); follows its 'spawn' event. */
+  | { kind: 'bossSpawn'; enemyId: number }
+  /** The boss is gone (milestone 23); follows its 'kill' or 'exit' event. */
+  | { kind: 'bossDown'; enemyId: number; cause: 'shot' | 'burn' | 'exit' }
   | { kind: 'build'; cell: Cell; tower: TowerType }
   | { kind: 'upgrade'; cell: Cell; tower: TowerType }
   | { kind: 'sell'; cell: Cell; tower: TowerType; refund: number }

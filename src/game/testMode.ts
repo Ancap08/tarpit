@@ -24,8 +24,10 @@ const MAX_TICKS_PER_WAVE = 60 * 600;
  * build UI and Start Wave button call), wave by wave: that wave's actions,
  * Start Wave, then single ticks until the wave ends or the game is over.
  * Throws if the sim refuses an action, so a drifting script fails loudly.
+ * With `untilWave` (milestone 23), stops in setup before that wave: its
+ * actions are applied but it is not started.
  */
-function runScript(scene: GameScene, script: WaveScript): Phase {
+function runScript(scene: GameScene, script: WaveScript, untilWave?: number): Phase {
   const apply = (a: BuildAction) => {
     const r = a.type === 'build' ? scene.build(a.cell, a.tower) : a.type === 'upgrade' ? scene.upgrade(a.cell) : scene.sell(a.cell);
     if (!r.ok) throw new Error(`runScript: ${a.type} at cell (${a.cell.col},${a.cell.row}) refused: ${r.reason}`);
@@ -35,6 +37,7 @@ function runScript(scene: GameScene, script: WaveScript): Phase {
   const phase = (): Phase => scene.state.phase;
   while (phase() === 'setup' && scene.state.wave < WAVES.length) {
     for (const action of script[scene.state.wave] ?? []) apply(action);
+    if (untilWave !== undefined && scene.state.wave + 1 >= untilWave) break;
     const started = scene.startWave();
     if (!started.ok) throw new Error(`runScript: startWave refused: ${started.reason}`);
     for (let t = 0; phase() === 'wave' && t < MAX_TICKS_PER_WAVE; t++) scene.advance(1, false);
@@ -110,7 +113,7 @@ export function installGlobal(game: Phaser.Game): void {
     hudText: () => scene().hudStrings(),
     endScreen: () => scene().endScreenKind(),
     events: () => scene().simEvents(),
-    runScript: (name) => runScript(scene(), SCRIPTS[name]()),
+    runScript: (name, untilWave) => runScript(scene(), SCRIPTS[name](), untilWave),
   };
   window.__tarpit = api;
 }

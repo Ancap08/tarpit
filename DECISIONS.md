@@ -430,3 +430,39 @@ can change it; "Kyle" means Kyle decided.
   limit.** Milestone 28 widens the margin.
 - **Display-strings rule covers names and end-screen words; HUD prefixes
   ("Gold", "Lives", "Wave", "Next") stay literal.** Fable.
+
+## 2026-11-21, milestone 23 (Grumblefoot)
+
+- **Boss as in SCOPE-v4: hp 4000, speed 25, bounty 150, 5 lives on exit,
+  slows capped at 30%; spawns 26 s into wave 10, 4 s after the last Troll.
+  The combo build kills him with its existing plan (shot at wave tick
+  4639), so his hp was not lowered.** Default (Opus, verified with exact
+  arithmetic).
+- **Every enemy has a `livesCost` (1, boss 5); `bossSpawn` and `bossDown`
+  events exist for the renderer.** Default (Opus).
+- **Boss bar at y 24 with the name pill above it (y 4 to 22), not y 12:
+  the pill does not fit above y 12.** Opus, accepted by Fable.
+- **Long wave previews wrap to two 13 px lines so they never run under the
+  Start Wave button.** Opus, found while adding "+ Grumblefoot".
+- **Rename rule caveat: Playwright serves the built `dist/`, so a rename in
+  `names.ts` needs `npm run build` before `test:e2e`.** Fable.
+
+## 2026-11-21, CI failure on the boss PR and what it changed
+
+- **The live-loop browser test no longer depends on a GPU or on frame
+  rate.** It loads `/?renderer=canvas`, needs only 20 ticks in 1.5 s at 1x
+  and a 2x rate at least 1.5 times the 1x rate. The WebGL check moved to its
+  own test with no timing. Fable (design), Opus (implementation).
+- **The coordinator's first diagnosis was wrong.** Fable blamed the 8 tick
+  per frame catch-up cap; the implementer read Phaser's frame-timing code and
+  showed that for its first 120 frames Phaser clamps every frame to 16.67
+  ms, so a slow runner simply runs slow regardless of our cap. The cap was
+  raised to 20 anyway and the accumulator became a tested pure function
+  (`src/game/loop.ts`), which also fixed a 14-instead-of-15 rounding bug.
+- **Playwright's port comes from `PW_PORT` (default 4173) and never reuses
+  an existing server.** Fable. Two worktrees ran browser tests on the same
+  port at once and could have tested each other's builds; one agent killed
+  the other's preview server. A busy port now fails loudly. Parallel
+  checkouts set their own port.
+- **Process rule: when two agents work in parallel worktrees, each gets its
+  own `PW_PORT` in its brief.** Fable.

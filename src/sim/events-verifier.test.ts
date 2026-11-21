@@ -11,7 +11,7 @@ import type { Enemy, EnemyType, GameState, TowerType } from './types';
 const P: Cell = { col: 6, row: 7 }; // right of path segment y = 240; enemy at distance d <= 160 is at (d,240)
 
 function enemy(id: number, distance: number, over: Partial<Enemy> = {}, type: EnemyType = 'goblin'): Enemy {
-  const hp = ({ goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120 } as const)[type];
+  const hp = ({ goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000 } as const)[type];
   return { id, type, hp, distance, slow: 0, slowTicksLeft: 0, burnDps: 0, burnTicksLeft: 0, ...over };
 }
 

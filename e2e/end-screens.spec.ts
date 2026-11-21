@@ -4,8 +4,9 @@ import type { TarpitTestApi } from '../src/game/testGlobal';
 // Win and lose screens reached through the real simulation, and [Play again]
 // through a real click. Time is frozen (?test=1) and driven by step().
 // Numbers come from the verified simulation: with no towers the game is lost
-// on wave 2 with 0 lives; the combo build wins with 12 lives and 347 gold
-// (milestone 22; 11 lives and 177 gold before the Harpy and Shieldbearer
+// on wave 2 with 0 lives; the combo build wins with 12 lives and 497 gold
+// (milestone 23: the milestone 22 347 plus Grumblefoot's 150 bounty;
+// 11 lives and 177 gold before the Harpy and Shieldbearer
 // waves; until milestone 12 the sound build, v1 towers only, won with 13
 // lives and 269 gold, and it no longer wins).
 
@@ -111,9 +112,9 @@ test('win with the combo build through the scene actions, then play again', asyn
   const phase = await page.evaluate(() => (window.__tarpit as TarpitTestApi).runScript('comboBuild'));
   expect(phase).toBe('won');
   expect(await endScreen(page)).toBe('won');
-  expect(await state(page)).toMatchObject({ phase: 'won', wave: 10, lives: 12, gold: 347 });
+  expect(await state(page)).toMatchObject({ phase: 'won', wave: 10, lives: 12, gold: 497 });
   expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).hudText())).toMatchObject({
-    gold: 'Gold 347',
+    gold: 'Gold 497',
     lives: 'Lives 12',
     wave: 'Wave 10/10',
   });

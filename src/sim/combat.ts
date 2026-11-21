@@ -4,11 +4,12 @@
 // not stick to them; shielded enemies (Shieldbearer) take half damage from
 // shots of SHIELD_THRESHOLD base damage or less (enemies.ts). Each shot is also recorded in state.shots for
 // the renderer, and hit, slowed, burn and kill events go to state.events
-// (events.ts). Also the burn status step. game.ts calls burnEnemies then
+// (events.ts). Milestone 23: the boss's slowCap caps slows (applySlow) and
+// his kill also emits bossDown. Also the burn status step. game.ts calls burnEnemies then
 // fireTowers once per wave tick, after movement and exit removal, before
 // spawns.
 
-import { ENEMY_STATS, isFlying, shotDamage } from './enemies';
+import { cappedSlow, ENEMY_STATS, isBoss, isFlying, shotDamage } from './enemies';
 import { cellCenter } from './grid';
 import { MAP, positionAlongPath } from './map';
 import { secondsToTicks, TICKS_PER_SECOND } from './time';
@@ -72,16 +73,18 @@ export function findTarget(state: GameState, tower: Tower): Enemy | undefined {
 }
 
 /**
- * Apply a slow. Slows do not stack: a slow of equal or greater strength than
- * the active one replaces it and refreshes the duration; a weaker one does
- * nothing. Returns whether it applied.
+ * Apply a slow. The strength is first capped by the enemy's slowCap (the
+ * boss: 30%, milestone 23). Slows do not stack: a slow of equal or greater
+ * strength than the active one replaces it and refreshes the duration; a
+ * weaker one does nothing. Returns the strength applied, or null if ignored.
  */
-export function applySlow(enemy: Enemy, slow: number, ticks: number): boolean {
+export function applySlow(enemy: Enemy, slow: number, ticks: number): number | null {
+  const strength = cappedSlow(enemy, slow);
   const active = enemy.slowTicksLeft > 0 ? enemy.slow : 0;
-  if (slow < active) return false;
-  enemy.slow = slow;
+  if (strength < active) return null;
+  enemy.slow = strength;
   enemy.slowTicksLeft = ticks;
-  return true;
+  return strength;
 }
 
 /**
@@ -125,6 +128,7 @@ function removeDead(state: GameState, cause: 'shot' | 'burn'): void {
       const bounty = ENEMY_STATS[enemy.type].bounty;
       state.gold += bounty;
       state.events.push({ kind: 'kill', enemyId: enemy.id, enemyType: enemy.type, bounty, cause });
+      if (isBoss(enemy)) state.events.push({ kind: 'bossDown', enemyId: enemy.id, cause });
     } else alive.push(enemy);
   }
   state.enemies = alive;
@@ -162,9 +166,8 @@ function towerStep(state: GameState, tower: Tower): void {
   }
   if (stats.slow > 0 && !isDead(target)) {
     const ticks = secondsToTicks(stats.slowDuration);
-    if (applySlow(target, stats.slow, ticks)) {
-      state.events.push({ kind: 'slowed', enemyId: target.id, slow: stats.slow, ticks });
-    }
+    const applied = applySlow(target, stats.slow, ticks);
+    if (applied !== null) state.events.push({ kind: 'slowed', enemyId: target.id, slow: applied, ticks });
   }
   // A burn does not stick to a flying enemy: no surface to burn.
   if (stats.burnDps > 0 && !isDead(target) && !isFlying(target)) {

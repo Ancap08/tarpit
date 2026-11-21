@@ -15,7 +15,8 @@
 // counters, clear check):
 //   1. Move live enemies by speed / 60 (times (1 - slow) while a slow is
 //      active), then count down slow timers.
-//   2. Remove enemies at or past the exit; each costs 1 life.
+//   2. Remove enemies at or past the exit; each costs its livesCost (1, or
+//      5 for the boss, milestone 23).
 //      Lives <= 0 -> phase 'lost' at once, nothing else happens this tick.
 //   3. Burn (combat.ts burnEnemies): each burning enemy takes burnDps / 60,
 //      doubled if slowTicksLeft > 0 after step 1, then its burn timer counts
@@ -43,7 +44,7 @@
 // distance speed/60 * n after the tick with waveTick k + n.
 
 import { burnEnemies, fireTowers } from './combat';
-import { ENEMY_STATS } from './enemies';
+import { ENEMY_STATS, isBoss } from './enemies';
 import { MAP, pathLength } from './map';
 import { secondsToTicks, TICKS_PER_SECOND } from './time';
 import type { GameState, GroupDef } from './types';
@@ -129,9 +130,16 @@ function moveEnemies(state: GameState): void {
 
 function removeExitedEnemies(state: GameState): void {
   const exit = pathLength(MAP);
-  const remaining = state.enemies.filter((e) => e.distance < exit);
-  for (const e of state.enemies) if (e.distance >= exit) state.events.push({ kind: 'exit', enemyId: e.id });
-  state.lives -= state.enemies.length - remaining.length;
+  const remaining: GameState['enemies'] = [];
+  for (const e of state.enemies) {
+    if (e.distance < exit) {
+      remaining.push(e);
+      continue;
+    }
+    state.lives -= ENEMY_STATS[e.type].livesCost;
+    state.events.push({ kind: 'exit', enemyId: e.id });
+    if (isBoss(e)) state.events.push({ kind: 'bossDown', enemyId: e.id, cause: 'exit' });
+  }
   state.enemies = remaining;
 }
 
@@ -151,6 +159,7 @@ function spawnDueEnemies(state: GameState): void {
         burnTicksLeft: 0,
       });
       state.events.push({ kind: 'spawn', enemyId: state.nextEnemyId, enemyType: group.type });
+      if (isBoss(group)) state.events.push({ kind: 'bossSpawn', enemyId: state.nextEnemyId });
       state.nextEnemyId += 1;
       state.spawnedPerGroup[gi] = index + 1;
     }

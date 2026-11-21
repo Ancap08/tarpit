@@ -219,10 +219,12 @@ describe('(g) wave spawns by type', () => {
       [g('wolf', 8, 0.5, 4), g('troll', 12, 2)],
     ];
     const isNew = (t: EnemyType) => t === 'harpy' || t === 'shieldbearer';
-    WAVES.forEach((w, i) => {
-      expect(w.groups.slice(0, before[i].length), `wave ${i + 1}`).toEqual(before[i]);
-      expect(w.groups.slice(before[i].length).every((x) => isNew(x.type)), `wave ${i + 1}`).toBe(true);
+    // Milestone 23 appends the boss group to wave 10 after these (boss.test.ts).
+    const m22 = WAVES.map((w) => w.groups.filter((x) => x.type !== 'boss'));
+    m22.forEach((groups, i) => {
+      expect(groups.slice(0, before[i].length), `wave ${i + 1}`).toEqual(before[i]);
+      expect(groups.slice(before[i].length).every((x) => isNew(x.type)), `wave ${i + 1}`).toBe(true);
     });
-    expect(WAVES.map((w) => w.groups.filter((x) => isNew(x.type)).length)).toEqual([0, 0, 0, 1, 1, 1, 1, 2, 0, 2]);
+    expect(m22.map((groups) => groups.filter((x) => isNew(x.type)).length)).toEqual([0, 0, 0, 1, 1, 1, 1, 2, 0, 2]);
   });
 });

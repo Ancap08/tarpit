@@ -16,6 +16,15 @@
 // only the hit flash. A Shieldbearer carries a small grey shield mark on its
 // left, drawn just in front of its sprite; a halved shot shows only the
 // usual hit flash.
+//
+// Milestone 23: the boss (Grumblefoot) has a third Layer between the
+// walkers and the shot effects, so he draws above every walker and below
+// shots, hp bars, labels and Harpies. He is drawn `lift` px up so his feet
+// stand on the path, walks at 8 fps in play (frozen in test mode), and his
+// hit flash is a frame of his own Hit sheet shown over him (a second
+// sprite) instead of the white tint fill, so it shows in Canvas too. His
+// ground shadow and rings are drawn in draw/enemies.ts; his hp is the HUD
+// boss bar (ui/bossBar.ts), not a small bar.
 
 import Phaser from 'phaser';
 import { ENEMY_STATS, enemyPosition, type Enemy, type EnemyType, type GameEvent, type GameState } from '../../sim';
@@ -51,6 +60,8 @@ interface View {
   sprite: Phaser.GameObjects.Sprite;
   /** The Shieldbearer's shield mark, drawn in front of the sprite; null for other types. */
   shield: Phaser.GameObjects.Graphics | null;
+  /** The boss's hit-flash frame (sheets.ts hitFlash), shown over the sprite while hit; null for other types. */
+  flash: Phaser.GameObjects.Sprite | null;
   type: EnemyType;
   flying: boolean;
   facing: Facing;
@@ -69,6 +80,10 @@ export function loadEnemySheets(scene: Phaser.Scene): void {
     if (!scene.textures.exists(sheet.key)) {
       scene.load.spritesheet(sheet.key, sheet.url, { frameWidth: sheet.frameWidth, frameHeight: sheet.frameHeight });
     }
+    const hf = sheet.hitFlash;
+    if (hf && !scene.textures.exists(hf.key)) {
+      scene.load.spritesheet(hf.key, hf.url, { frameWidth: hf.frameWidth, frameHeight: hf.frameHeight });
+    }
   }
 }
 
@@ -81,7 +96,7 @@ function ensureAnims(scene: Phaser.Scene): void {
       scene.anims.create({
         key,
         frames: scene.anims.generateFrameNumbers(sheet.key, { frames: [...sheet.walk[facing].frames] }),
-        frameRate: WALK_FPS,
+        frameRate: sheet.fps ?? WALK_FPS,
         repeat: -1,
       });
     }
@@ -91,6 +106,8 @@ function ensureAnims(scene: Phaser.Scene): void {
 export class EnemySprites {
   private readonly views = new Map<number, View>();
   private readonly layer: Phaser.GameObjects.Layer;
+  /** The boss's layer: above the walkers, below everything added after this class. */
+  private readonly bossLayer: Phaser.GameObjects.Layer;
   /** Flyers' layer, above the labels (setAirLayer); the walkers' layer until set. */
   private airLayer: Phaser.GameObjects.Layer;
   private readonly particles: Particles | null;
@@ -101,6 +118,7 @@ export class EnemySprites {
   ) {
     ensureAnims(scene);
     this.layer = scene.add.layer();
+    this.bossLayer = scene.add.layer();
     this.airLayer = this.layer;
     this.particles = frozen ? null : new Particles(scene);
   }
@@ -148,6 +166,7 @@ export class EnemySprites {
     if (dead !== undefined) v.sprite.setFrame(dead);
     v.sprite.clearTint();
     v.shield?.setVisible(false);
+    v.flash?.setVisible(false);
     this.particles?.puff(v.sprite.x, v.sprite.y);
     this.scene.tweens.add({
       targets: v.sprite,
@@ -164,6 +183,7 @@ export class EnemySprites {
     this.scene.tweens.killTweensOf(v.sprite);
     v.sprite.destroy();
     v.shield?.destroy();
+    v.flash?.destroy();
     this.views.delete(id);
   }
 
@@ -182,7 +202,13 @@ export class EnemySprites {
     const sheet = SHEETS[enemy.type];
     const stats = ENEMY_STATS[enemy.type];
     const sprite = this.scene.add.sprite(0, 0, sheet.key, sheet.walk.right.frames[0]).setScale(sheet.scale);
-    (stats.flying ? this.airLayer : this.layer).add(sprite);
+    const layer = stats.flying ? this.airLayer : enemy.type === 'boss' ? this.bossLayer : this.layer;
+    layer.add(sprite);
+    let flash: Phaser.GameObjects.Sprite | null = null;
+    if (sheet.hitFlash) {
+      flash = this.scene.add.sprite(0, 0, sheet.hitFlash.key, sheet.hitFlash.frame).setScale(sheet.scale).setVisible(false);
+      layer.add(flash);
+    }
     let shield: Phaser.GameObjects.Graphics | null = null;
     if (stats.shield) {
       const h = SHIELD_SIZE / 2;
@@ -196,6 +222,7 @@ export class EnemySprites {
     const view: View = {
       sprite,
       shield,
+      flash,
       type: enemy.type,
       flying: stats.flying,
       facing: 'right',
@@ -222,6 +249,7 @@ export class EnemySprites {
     v.facing = facing;
     const cycle = SHEETS[v.type].walk[facing];
     v.sprite.setFlipX(cycle.flipX);
+    v.flash?.setFlipX(cycle.flipX);
     if (this.frozen) v.sprite.setFrame(cycle.frames[0]);
     else v.sprite.anims.play(walkAnimKey(v.type, facing), true);
   }
@@ -243,7 +271,11 @@ export class EnemySprites {
     v.slowed = enemy.slowTicksLeft > 0;
     v.redraws += 1;
 
-    if (this.isHit(v)) {
+    const hit = this.isHit(v);
+    if (v.flash) {
+      v.flash.setPosition(x, y - lift).setDepth(y + 0.1).setVisible(hit);
+    }
+    if (hit && !v.flash) {
       v.sprite.setTintFill(TINT.flash);
     } else if (v.flying) {
       v.sprite.clearTint(); // flyers are never tarred or burned
@@ -253,7 +285,7 @@ export class EnemySprites {
       else v.sprite.setTint(tint);
     }
     if (v.burning && !v.flying && this.particles && v.redraws % FLAME_EVERY === 0) {
-      this.particles.flicker(x + Phaser.Math.Between(-6, 6), y - 6);
+      this.particles.flicker(x + Phaser.Math.Between(-6, 6), y - lift - 6);
     }
   }
 

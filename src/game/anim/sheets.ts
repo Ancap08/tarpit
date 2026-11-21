@@ -7,6 +7,8 @@
 // 4 kB inline limit become data URIs) and assets/MANIFEST.md does not.
 
 import type { EnemyType } from '../../sim';
+import bossHitUrl from '../../../assets/sprites/boss-hit.png?url';
+import bossUrl from '../../../assets/sprites/boss.png?url';
 import goblinUrl from '../../../assets/sprites/goblin.png?url';
 import harpyUrl from '../../../assets/sprites/harpy.png?url';
 import shieldbearerUrl from '../../../assets/sprites/shieldbearer.png?url';
@@ -40,10 +42,19 @@ export interface SheetLayout {
   /** A lying-down frame for the death effect, if the sheet has one. */
   deadFrame?: number;
   /**
-   * Flying types only: pixels the sprite's centre is drawn above its path
-   * position (where its ground shadow sits). 0 or absent for walkers.
+   * Pixels the sprite's centre is drawn above its path position (where its
+   * ground shadow sits): flyers, and the boss so his feet stand on the path.
+   * 0 or absent for the other walkers.
    */
   lift?: number;
+  /** Walk frame rate in play, if not WALK_FPS (the boss: 8). */
+  fps?: number;
+  /**
+   * A separate hit-flash image (the boss): this frame of this texture is
+   * shown over the walk frame while the hit flash lasts, instead of the
+   * white tint fill. Works in Canvas (test mode) too.
+   */
+  hitFlash?: { key: string; url: string; frameWidth: number; frameHeight: number; frame: number };
 }
 
 /**
@@ -100,9 +111,33 @@ export const SHEETS: Readonly<Record<EnemyType, SheetLayout>> = {
     sideOnly: false,
     deadFrame: 24,
   },
+  // DemonCyclop (milestone 23, Grumblefoot): Walk.png is 300x50, one row of
+  // six 50x50 frames, all facing the viewer (no side or back views; frames
+  // 4 and 5 lean slightly). So every facing uses the same six frames,
+  // mirrored for left only (the path never runs left). Hit.png is 150x50,
+  // three 50x50 frames: 0 a bright orange flash, 1 and 2 a hurt pose; frame
+  // 0 is the hit flash. Feet at row 42-43 of 50, so at 2x they sit 36 px
+  // below the frame centre: lift 30 puts them 6 px below the path point.
+  boss: {
+    key: 'boss',
+    url: bossUrl,
+    frameWidth: 50,
+    frameHeight: 50,
+    scale: 2,
+    walk: {
+      left: { frames: [0, 1, 2, 3, 4, 5], flipX: true },
+      right: { frames: [0, 1, 2, 3, 4, 5], flipX: false },
+      up: { frames: [0, 1, 2, 3, 4, 5], flipX: false },
+      down: { frames: [0, 1, 2, 3, 4, 5], flipX: false },
+    },
+    sideOnly: true,
+    lift: 30,
+    fps: 8,
+    hitFlash: { key: 'boss-hit', url: bossHitUrl, frameWidth: 50, frameHeight: 50, frame: 0 },
+  },
 };
 
-/** Walk animation frame rate in play (test mode freezes frame 0). */
+/** Walk animation frame rate in play unless a sheet sets `fps` (test mode freezes frame 0). */
 export const WALK_FPS = 10;
 
 /** Phaser animation key for a type's walk cycle in one facing. */

@@ -3,12 +3,15 @@
 // and a 1x/2x speed toggle, buttons at y 484..526. Row 2: the build bar,
 // buttons at y 533..575. Buttons are 42 px tall (milestone 14) so they are
 // at least 44 px on an iPad in landscape (scale 1024 / 960).
+// Milestone 23: the boss bar (ui/bossBar.ts) at the top of the map while
+// the boss lives, and the wave 10 preview ends with "+ Grumblefoot".
 
 import Phaser from 'phaser';
 import { nextWavePreview, WAVES, type GameState, type TowerType } from '../sim';
 import type { Rect } from './input';
-import { ENEMY_NAMES } from './names';
+import { BOSS_NAME, ENEMY_NAMES } from './names';
 import { COLORS, FONT, TEXT } from './palette';
+import { BossBar } from './ui/bossBar';
 import { BuildBar } from './ui/buildBar';
 import { Button } from './ui/button';
 
@@ -35,13 +38,38 @@ export interface HudStrings {
   next: string;
   startWave: string;
   speed: string;
+  /** The boss bar's label ("Grumblefoot 4000 / 4000") while it shows, else null. */
+  boss: string | null;
 }
 
-/** "Next: 8 Goblin", "Next: 8 Goblin, 5 Wolf" (names from ENEMY_NAMES), or "Next: none" after the last wave. */
+/**
+ * "Next: 8 Goblin", "Next: 8 Goblin, 5 Wolf" (names from ENEMY_NAMES), or
+ * "Next: none" after the last wave. A wave with the boss lists its other
+ * groups, then " + Grumblefoot" (BOSS_NAME), with no count.
+ */
 export function previewText(state: GameState): string {
   const groups = nextWavePreview(state);
   if (groups.length === 0) return 'Next: none';
-  return `Next: ${groups.map((g) => `${g.count} ${ENEMY_NAMES[g.type]}`).join(', ')}`;
+  const plain = groups.filter((g) => g.type !== 'boss');
+  const boss = plain.length < groups.length ? ` + ${BOSS_NAME}` : '';
+  return `Next: ${plain.map((g) => `${g.count} ${ENEMY_NAMES[g.type]}`).join(', ')}${boss}`;
+}
+
+/** The preview's room: from x 366 to 10 px before the Start Wave button at x 726. */
+export const PREVIEW_X = 366;
+export const PREVIEW_WIDTH = 350;
+export const PREVIEW_SIZE = 16;
+export const PREVIEW_SIZE_LONG = 13;
+
+/**
+ * The preview's font size: 16 px when the text fits PREVIEW_WIDTH on one
+ * line, else 13 px wrapped to two lines (milestone 23; the wave 10 preview
+ * with "+ Grumblefoot" is 61 characters, and the longer milestone 22
+ * previews already ran under the Start Wave button). Courier New advances
+ * 0.6 em per character, so this needs no text measuring.
+ */
+export function previewSize(text: string): number {
+  return text.length * 0.6 * PREVIEW_SIZE <= PREVIEW_WIDTH ? PREVIEW_SIZE : PREVIEW_SIZE_LONG;
 }
 
 /** Start Wave does something only in setup with waves left. */
@@ -64,6 +92,7 @@ export class Hud {
   private readonly startButton: Button;
   private readonly speedButton: Button;
   private readonly bar: BuildBar;
+  private readonly bossBar: BossBar;
 
   constructor(scene: Phaser.Scene, handlers: HudHandlers) {
     scene.add.rectangle(0, HUD_TOP, 960, HUD_HEIGHT, COLORS.hudBar).setOrigin(0, 0);
@@ -74,11 +103,12 @@ export class Hud {
     this.gold = stat(14);
     this.lives = stat(126);
     this.wave = stat(238);
-    this.next = stat(366, '16px', TEXT.hudDim);
+    this.next = stat(PREVIEW_X, `${PREVIEW_SIZE}px`, TEXT.hudDim).setWordWrapWidth(PREVIEW_WIDTH, true);
 
     this.startButton = new Button(scene, { x: 726, y: ROW1_BUTTON_Y, width: 138, height: BUTTON_H }, 'Start Wave', handlers.onStartWave);
     this.speedButton = new Button(scene, { x: 876, y: ROW1_BUTTON_Y, width: 70, height: BUTTON_H }, '1x', handlers.onToggleSpeed);
     this.bar = new BuildBar(scene, ROW2_BUTTON_Y, handlers.onPick);
+    this.bossBar = new BossBar(scene);
   }
 
   update(state: GameState, speed: 1 | 2, pick: TowerType | null): void {
@@ -89,11 +119,13 @@ export class Hud {
     set(this.lives, `Lives ${state.lives}`);
     set(this.wave, `Wave ${state.wave}/${WAVES.length}`);
     // After a loss there is no next wave to play, so the preview goes blank.
-    set(this.next, state.phase === 'lost' ? '' : previewText(state));
+    const preview = state.phase === 'lost' ? '' : previewText(state);
+    if (this.next.text !== preview) this.next.setFontSize(previewSize(preview)).setText(preview);
     this.startButton.set('Start Wave', canStartWave(state));
     // Once the game is over the speed toggle is inert (greyed, ignores clicks).
     this.speedButton.set(`${speed}x`, state.phase !== 'won' && state.phase !== 'lost');
     this.bar.update(state, pick);
+    this.bossBar.update(state);
   }
 
   strings(): HudStrings {
@@ -104,6 +136,7 @@ export class Hud {
       next: this.next.text,
       startWave: this.startButton.text,
       speed: this.speedButton.text,
+      boss: this.bossBar.label(),
     };
   }
 

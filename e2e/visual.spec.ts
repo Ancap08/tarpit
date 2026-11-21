@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { BOSS_NAME } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 
 // Screenshot checks on frozen frames (?test=1: no time passes unless the
@@ -288,6 +289,54 @@ test('wave 4 Harpies: a Cannon splash ignores one, a Musketeer shoots one', asyn
   await expect(page.locator('canvas')).toHaveScreenshot('harpies.png');
 });
 
+// Milestone 23: Grumblefoot in wave 10 with the combo build (runScript up
+// to wave 10, then Start Wave). A headless scan of every wave 10 tick for
+// the boss burning, his bar between 30% and 90%, and a Mortar splash on him
+// 1 to 4 ticks old found pairs of Mortar volleys every 180 ticks from step
+// 3021 on; he is alone on the map by then (the rest of the wave is dead).
+// Step 3562: he is on the downhill run at (420,241), tarred and burning,
+// 2374 of 4000 hp on the bar, a Mortar splash on him 2 ticks into its
+// fade (fired on step 3560) and no shot hit him on this tick, so his walk frame shows,
+// not the hit flash.
+const BOSS_STEPS = 3562;
+
+test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splash', async ({ page }) => {
+  await open(page);
+  const r = await page.evaluate(async (steps) => {
+    const t = window.__tarpit as TarpitTestApi;
+    await t.startGame();
+    t.runScript('comboBuild', 10);
+    t.startWave();
+    t.step(steps - 2);
+    const mortarHitOnBoss = t.events().filter((e) => e.kind === 'hit' && e.tower === 'mortar').length;
+    t.step(2);
+    const e = t.state().enemies;
+    const boss = e.find((x) => x.type === 'boss');
+    return {
+      wave: t.state().wave,
+      enemies: e.length,
+      burning: (boss?.burnTicksLeft ?? 0) > 0,
+      slowed: (boss?.slowTicksLeft ?? 0) > 0,
+      hitNow: t.events().some((x) => x.kind === 'hit' && x.enemyId === boss?.id),
+      mortarHitOnBoss,
+      bar: t.hudText().boss,
+      texture: boss ? t.animState(boss.id)?.texture : null,
+    };
+  }, BOSS_STEPS);
+  expect(r).toEqual({
+    wave: 10,
+    enemies: 1,
+    burning: true,
+    slowed: true,
+    hitNow: false,
+    mortarHitOnBoss: 1,
+    bar: `${BOSS_NAME} 2374 / 4000`,
+    texture: 'boss',
+  });
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('boss.png');
+});
+
 // End screens: the HUD under the veil shows the final numbers.
 test('win screen after the combo build', async ({ page }) => {
   await open(page);
@@ -297,7 +346,7 @@ test('win screen after the combo build', async ({ page }) => {
     const phase = t.runScript('comboBuild');
     return { phase, screen: t.endScreen(), lives: t.state().lives, gold: t.state().gold };
   });
-  expect(end).toEqual({ phase: 'won', screen: 'won', lives: 12, gold: 347 }); // milestone 22 waves
+  expect(end).toEqual({ phase: 'won', screen: 'won', lives: 12, gold: 497 }); // milestone 23: plus the 150 boss bounty
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('won.png');
 });
