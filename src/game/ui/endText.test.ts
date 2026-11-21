@@ -15,7 +15,7 @@ describe('end screen text', () => {
     expect(endKind(s)).toBe('won');
     expect(endScreenText('won', s)).toEqual({
       title: 'Victory!',
-      lines: ['The village stands. Lives left: 10', 'Gold left: 118'],
+      lines: ['The village stands. Lives left: 11', 'Gold left: 253'],
     });
   });
 

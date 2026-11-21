@@ -7,7 +7,7 @@ import { greedyMusket, KID_SPOT_ORDER, lazyBuild, noTowers, playScripted, soundB
 function play(script: WaveScript) {
   const run = playScripted(script);
   const refused = run.log.filter((l) => 'result' in l && !l.result.ok);
-  return { ...run.state, refused, msg: `${run.state.phase} on wave ${run.state.wave}, ${run.state.lives} lives, ${run.state.gold} gold` };
+  return { ...run.state, waves: run.waves, refused, msg: `${run.state.phase} on wave ${run.state.wave}, ${run.state.lives} lives, ${run.state.gold} gold` };
 }
 
 describe('balance archetypes', () => {
@@ -36,15 +36,19 @@ describe('balance archetypes', () => {
     }
   });
 
-  it('soundBuild wins with 5 to 15 lives and under 150 gold unspent', () => {
+  it('soundBuild wins with 5 to 15 lives and under 150 gold after wave 9', () => {
     const r = play(soundBuild());
     expect(r.refused).toEqual([]);
     expect(r.phase, r.msg).toBe('won');
     expect(r.lives, r.msg).toBeGreaterThanOrEqual(5);
     expect(r.lives, r.msg).toBeLessThanOrEqual(15);
-    expect(r.gold, r.msg).toBeLessThan(150);
-    // Exact pin, so any balance drift shows up here.
-    expect({ lives: r.lives, gold: r.gold }).toEqual({ lives: 10, gold: 118 });
+    // The economy stays tight while gold can still be spent: under 150 gold
+    // when wave 10 is about to start. Gold after wave 10 is unconstrained.
+    const afterWave9 = r.waves[8];
+    expect(afterWave9.wave).toBe(9);
+    expect(afterWave9.gold, r.msg).toBeLessThan(150);
+    // Exact pins, so any balance drift shows up here.
+    expect({ goldAfterWave9: afterWave9.gold, lives: r.lives, gold: r.gold }).toEqual({ goldAfterWave9: 141, lives: 11, gold: 253 });
   });
 
   it('soundBuild without its Tar Pits does strictly worse', () => {

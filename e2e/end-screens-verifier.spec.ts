@@ -104,8 +104,8 @@ test('(d) win screen HUD text', async ({ page }) => {
   await api(page, (a) => a.runScript('soundBuild'));
   expect(await endScreen(page)).toBe('won');
   expect(await api(page, (a) => a.hudText())).toMatchObject({
-    gold: 'Gold 118',
-    lives: 'Lives 10',
+    gold: 'Gold 253',
+    lives: 'Lives 11',
     wave: 'Wave 10/10',
     next: 'Next: none',
   });

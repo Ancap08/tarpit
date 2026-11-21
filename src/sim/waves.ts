@@ -14,7 +14,7 @@ export const WAVES: readonly WaveDef[] = [
   { groups: [g('goblin', 18, 0.5), g('wolf', 14, 0.5, 5)] },
   { groups: [g('wolf', 10, 0.5), g('troll', 7, 2.5, 1)] },
   { groups: [g('goblin', 20, 0.5), g('wolf', 10, 0.6, 6), g('troll', 4, 3, 3)] },
-  { groups: [g('wolf', 12, 0.5), g('troll', 8, 2)] },
+  { groups: [g('wolf', 12, 0.5), g('troll', 4, 2)] },
   { groups: [g('wolf', 8, 0.5, 4), g('troll', 12, 2)] },
 ];
 

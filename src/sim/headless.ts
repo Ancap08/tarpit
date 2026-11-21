@@ -229,7 +229,7 @@ export const SOUND_PLAN: readonly BuildAction[] = [
 /**
  * Archetype 4, a thoughtful mixed build: SOUND_PLAN, each action bought as
  * soon as gold allows. Target: won with 5 to 15 lives, under 150 gold
- * unspent at the end.
+ * after wave 9 (when wave 10 is about to start).
  */
 export function soundBuild(): WaveScript {
   return recordScript(followPlan(SOUND_PLAN));

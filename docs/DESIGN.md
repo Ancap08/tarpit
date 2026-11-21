@@ -49,7 +49,7 @@ on the path by construction.
 |---|---|---|---|---|
 | Goblin | 30 | 60 | 4 | normal |
 | Wolf | 28 | 120 | 5 | fast |
-| Troll | 500 | 35 | 4 | tanky |
+| Troll | 500 | 35 | 11 | tanky |
 
 A slow effect multiplies speed by `(1 - slow)` for its duration. Slows do not
 stack: the strongest slow applies, and a new slow of equal or greater strength
@@ -96,7 +96,7 @@ Groups in a wave run concurrently from the wave start.
 | 6 | 18 Goblin every 0.5 s; 14 Wolf every 0.5 s, delay 5 s |
 | 7 | 10 Wolf every 0.5 s; 7 Troll every 2.5 s, delay 1 s |
 | 8 | 20 Goblin every 0.5 s; 10 Wolf every 0.6 s, delay 6 s; 4 Troll every 3 s, delay 3 s |
-| 9 | 12 Wolf every 0.5 s; 8 Troll every 2 s |
+| 9 | 12 Wolf every 0.5 s; 4 Troll every 2 s |
 | 10 | 8 Wolf every 0.5 s, delay 4 s; 12 Troll every 2 s |
 
 Wave flow: the player presses Start Wave. The wave is active until every

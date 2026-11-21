@@ -103,7 +103,7 @@ test('win screen after the sound build', async ({ page }) => {
     const phase = t.runScript('soundBuild');
     return { phase, screen: t.endScreen(), lives: t.state().lives, gold: t.state().gold };
   });
-  expect(end).toEqual({ phase: 'won', screen: 'won', lives: 10, gold: 118 });
+  expect(end).toEqual({ phase: 'won', screen: 'won', lives: 11, gold: 253 });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('won.png');
 });
