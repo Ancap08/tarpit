@@ -1297,3 +1297,45 @@ Counts: 187 unit tests in 21 files, 48 e2e tests in 9 files.
   `longbowSpam` wins with all 20 lives, against a v2 target of losing on
   wave 7 to 9, and the combo build wins with 20 lives and 441 gold against
   a target of 5 to 15 lives.
+
+### Verifier notes
+
+The verifier (Claude Sonnet) re-checked milestone 10 from a clean tree
+(`rm -rf dist && npm ci`, then lint, typecheck, unit, build, e2e and
+`npm run sim`, all exit 0: 187 unit tests in 21 files before the verifier
+file, 48 e2e tests).
+
+- Every number for the three new towers (cost, range, minimum range,
+  damage, splash, fire rate, cooldown ticks 24, 180 and 75, burn 5/s for 180
+  ticks and 8/s for 240, upgrade costs, upgraded values, sell refunds 49,
+  133 and 84) matches `docs/SCOPE-v2.md`, `docs/DESIGN.md` and `towers.ts`.
+  The v1 towers' values are identical to `origin/main` (compared field by
+  field with a scratch test). The diff of `towers.ts` is not additions only:
+  the v1 entries were rewritten to spread a `PLAIN` defaults object, with the
+  same values.
+- No existing test file changed; only two new test files were added. The v1
+  archetypes are identical to milestone 9 in `npm run sim`.
+- `KILL_EPSILON` argument: without burn, every hp is an integer (enemy hp
+  30, 28, 500; every damage figure is an integer) and doubles hold
+  integers exactly. An integer is either <= 0 or >= 1, so `hp <= 1e-9` and
+  `hp <= 0` give the same answer for all of them. Only a burn creates a
+  fractional hp, and there the epsilon is the intended change.
+- `src/sim/newTowers-verifier.test.ts` adds independent probes through the
+  public `tick()`: Mortar at exactly 70 and 69 px; splash on enemies inside
+  the minimum range; a lone Fire Pot kills a 30 hp Goblin on tick 217 (216
+  after the first hit) and 133 under permanent tar (132 after); burn
+  replacement both ways; an impact kill sets no burn and pays once; a burn
+  death in the status step pays once and no tower shoots it. The hand
+  arithmetic is in the file's comments. The brief's "30 px from the tower"
+  cannot occur on the path (buildable cells are at least 36 px from it), so
+  the splash probe uses enemies 48 to 68 px away.
+- The DEVLOG's combo build shot counts (Longbow 1199, Tar Pit 207, Mortar
+  76, Fire Pot 66) and 3616 tarred burning enemy-ticks reproduce. The DEVLOG
+  has the three new builds as a one-line table, not per-wave tables; the
+  lines match `npm run sim`.
+- Caveats for milestone 12: `comboBuildNoFire` replays the combo script
+  minus Fire Pot actions, so the gold it does not spend stays unspent (519
+  at the end); it is a fair "without the Fire Pot" comparison but not a
+  re-planned build. `DECISIONS.md` has no milestone 10 section yet (the
+  epsilon, the optional burn fields and the placeholder visuals are only in
+  this log).
