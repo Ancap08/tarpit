@@ -1022,3 +1022,57 @@ Counts: 139 unit tests in 18 files (was 123 in 16), 40 e2e tests in 8 files
 - At tick 1200 the enemies frame's closest pair fell to 10 px, below the
   14 px the frame was picked for, so the tick moved to 1350 (closest pair
   21 px).
+
+### Verifier notes
+
+Verifier: Claude Sonnet. Independent of the implementer; clean run at
+`43f2ef3` plus the new verifier tests.
+
+- Clean run (`rm -rf dist && npm ci && lint && typecheck && test && build &&
+  test:e2e && sim`): every step exits 0. Before the verifier tests: 139 unit
+  tests in 18 files, 40 e2e tests. `npm run sim`: noTowers lost wave 2,
+  lazyBuild lost wave 3, greedyMusket lost wave 3, soundBuild won on wave 10
+  with 13 lives and 269 gold (157 after wave 9), soundBuildNoTar lost wave 7.
+  All match the implementer notes.
+- `scripts/record-demo.ts` typechecks (`scripts` is in tsconfig). It builds at
+  spots 2, 3 and 4 through `spot:<id>` rects, which are cells (7,5), (7,7)
+  and (10,5): real, buildable, and distinct. `npm run demo` was not run.
+- `src/sim/grid-verifier.test.ts` recomputes the buildable mask with separate
+  distance code: equal to `buildableCells(MAP)` for all 450 cells, 346
+  buildable (the DEVLOG count is right). The 36 px edge is inclusive: a
+  synthetic path 36 px from a cell centre is buildable, 35.9 is not. No real
+  cell sits at exactly 36 px, so the edge is tested on synthetic maps. No
+  buildable cell's 26 px body (corners and edge midpoints) comes within 20 px
+  of the path. `buildTower` returns `not-buildable` for a path cell, cells
+  outside the grid, and a non-integer or NaN cell, and `cell-occupied` for a
+  second build on one cell. Towers fire in cellKey order: with the higher key
+  built first, the lower-key tower kills the enemy and the other records no
+  shot.
+- `src/game/legacy-verifier.test.ts` recomputes the ten spot-to-cell mapping
+  with its own distance code (1e-9 tolerance for ties): no mismatch with
+  `LEGACY_SPOT_CELLS`.
+- Lazy archetype: an independent recomputation of `KID_CELL_ORDER` (96 cells)
+  matches. First six: (0,5), (0,9), (1,5), (1,9), (2,5), (2,9). `lazyBuild`
+  buys only three Musketeers in the whole game, (0,5), (0,9) and (1,5), so
+  its towers sit at x = 16 and 48, at the map's left edge. Column 0 loses
+  about half its range circle off the map. Note for milestone 12, not a
+  defect.
+- Boundary: `src/sim` imports nothing from `src/game`, Phaser or the DOM. A
+  temporary `import Phaser` in `src/sim` fails lint with the restricted
+  import error (reverted). A first draft of one verifier test also imported
+  `src/game` from `src/sim` and lint rejected it, so that test lives in
+  `src/game`. The `src/game` diff adds no build-anywhere or bar UI;
+  `uiRects()` still lists `spot:<id>`; `buildAt(col, row, type)` is in the
+  test hook with one e2e test.
+- Pins: `src/sim/midwave-frame.test.ts` is new. With the Musketeer at (7,5),
+  Cannon at (15,9) and Tar Pit at (18,9), the Cannon's first shot is at tick
+  845, and tick 848 has 5 enemies, 4 hurt. `enemies-frame.test.ts` already
+  pins tick 1350 with {10 Goblins, 3 Wolves, 4 Trolls, 3 hurt, 4 slowed}
+  and passes. I did not re-derive the old 855 and 1200 values.
+- Docs: README layout lists files that exist. `docs/DESIGN.md` no longer
+  lists spots and states the grid rule, 346 of 450, and firing order. The
+  DEVLOG claims I checked are accurate.
+- Not checked: screenshot baselines (none are committed in this branch, so
+  the local e2e pass says nothing about pixels), and the 21 px closest-pair
+  figure for tick 1350.
+
