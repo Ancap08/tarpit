@@ -49,18 +49,22 @@ export interface TarpitTestApi {
    * touch mode, the selected tower's cell, and whether the panel is open.
    */
   ui(): UiState;
+  /** HUD strings; `boss` is the boss bar label ("Grumblefoot 4000 / 4000") or null when hidden. */
   hudText(): HudStrings;
   /** The end screen showing ('won' or 'lost'), or null. */
   endScreen(): 'won' | 'lost' | null;
   /**
    * Play a headless script from src/sim (soundBuild, lazyBuild or comboBuild) through the
    * scene's actions, wave by wave, then redraw. Returns the final phase.
+   * With `untilWave`, stops in setup before that wave (its build actions
+   * applied, the wave not started).
    */
-  runScript(name: 'soundBuild' | 'lazyBuild' | 'comboBuild'): Phase;
+  runScript(name: 'soundBuild' | 'lazyBuild' | 'comboBuild', untilWave?: number): Phase;
   /**
    * An enemy sprite's animation state, or null if that enemy has no sprite
    * (never spawned, gone, or before GameScene runs). `frame` is the position
    * in the walk cycle and is always 0 in test mode. Also outside test mode.
+   * The boss reports texture 'boss'.
    */
   animState(enemyId: number): AnimState | null;
   /** The simulation's current event list (state.events, see src/sim/events.ts). */

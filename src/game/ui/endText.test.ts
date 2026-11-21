@@ -16,7 +16,7 @@ describe('end screen text', () => {
     expect(endKind(s)).toBe('won');
     expect(endScreenText('won', s)).toEqual({
       title: END_TEXT.wonTitle,
-      lines: [`${END_TEXT.wonLives} 12`, `${END_TEXT.wonGold} 347`],
+      lines: [`${END_TEXT.wonLives} 12`, `${END_TEXT.wonGold} 497`],
     });
   });
 

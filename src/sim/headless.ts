@@ -372,6 +372,38 @@ export function comboBuildNoBows(): WaveScript {
   return withoutTowerType(withoutTowerType(comboBuild(), 'musketeer'), 'longbow');
 }
 
+/**
+ * Informational (milestone 23): the combo build, then in setup before wave
+ * 10, after the combo's own wave 10 actions, every remaining gold piece goes
+ * to Longbow upgrades. The combo build has upgraded all its Longbows by
+ * then, so each upgrade needs a new Longbow first: while gold allows a
+ * Longbow and its upgrade (40 + 30), build one on the next free cell in
+ * TRAIL_CELL_ORDER and upgrade it. No target: it shows how much faster a
+ * richer bow line kills the boss.
+ */
+export function bossRush(): WaveScript {
+  const combo = comboBuild();
+  const last = WAVES.length - 1;
+  const state = createGame();
+  for (let i = 0; i < last && state.phase === 'setup'; i++) {
+    for (const action of combo[i] ?? []) applyAction(state, action);
+    applyAction(state, { type: 'startWave' });
+    applyAction(state, { type: 'runUntilWaveEnds', maxTicks: 60 * 600 });
+  }
+  const extra: BuildAction[] = [];
+  if (state.phase === 'setup') {
+    for (const action of combo[last] ?? []) applyAction(state, action);
+    const pair = TOWER_DEFS.longbow.cost + TOWER_DEFS.longbow.upgradeCost;
+    for (let cell = nextFreeKidCell(state); cell && state.gold >= pair; cell = nextFreeKidCell(state)) {
+      for (const action of [lb(cell.col, cell.row), up(cell.col, cell.row)]) {
+        applyAction(state, action);
+        extra.push(action);
+      }
+    }
+  }
+  return combo.map((wave, i) => (i === last ? [...wave, ...extra] : wave));
+}
+
 /** Every archetype, in report order. */
 export const ARCHETYPES: Readonly<Record<string, () => WaveScript>> = {
   noTowers,
@@ -383,4 +415,5 @@ export const ARCHETYPES: Readonly<Record<string, () => WaveScript>> = {
   comboBuild,
   comboBuildNoFire,
   noAntiAir,
+  bossRush,
 };

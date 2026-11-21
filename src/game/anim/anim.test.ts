@@ -48,6 +48,19 @@ describe('sheets', () => {
   });
 });
 
+describe('boss sheet (milestone 23)', () => {
+  it('DemonCyclop: six 50 x 50 front-view frames at 2x and 8 fps, mirrored for left only, lifted 30 px, with a Hit flash frame', () => {
+    const boss = SHEETS.boss;
+    expect(boss).toMatchObject({ key: 'boss', frameWidth: 50, frameHeight: 50, scale: 2, sideOnly: true, lift: 30, fps: 8 });
+    const cycle = [0, 1, 2, 3, 4, 5];
+    expect(boss.walk.left).toEqual({ frames: cycle, flipX: true });
+    for (const f of ['right', 'up', 'down'] as const) expect(boss.walk[f]).toEqual({ frames: cycle, flipX: false });
+    expect(walkAnimKey('boss', 'up')).toBe('boss-walk');
+    expect(boss.hitFlash).toMatchObject({ key: 'boss-hit', frameWidth: 50, frameHeight: 50, frame: 0 });
+    expect(boss.deadFrame).toBeUndefined();
+  });
+});
+
 describe('harpy bob', () => {
   it('stays within BOB_PX of the lifted position and is not the same for every id', () => {
     const offsets = Array.from({ length: 60 }, (_, i) => bobOffset(i * 37, 3));

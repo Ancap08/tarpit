@@ -1,7 +1,8 @@
 // Balance targets for v2 (milestone 12, docs/SCOPE-v2.md "Balance targets
 // for v2"), proven by headless archetype runs on the grid with all six
 // towers, rechecked with the milestone 22 Harpy and Shieldbearer waves, plus
-// the milestone 22 anti-air target (noAntiAir). `npm run sim` prints the same runs wave by wave. The informational
+// the milestone 22 anti-air target (noAntiAir), plus the milestone 23 boss
+// targets (the combo build kills Grumblefoot; the weak builds never meet him). `npm run sim` prints the same runs wave by wave. The informational
 // archetypes (greedyMusket, soundBuild, soundBuildNoTar) have no target here;
 // they only have to run deterministically with every action accepted.
 import { describe, expect, it } from 'vitest';
@@ -10,6 +11,7 @@ import { buildableCells, cellCenter, cellKey } from './grid';
 import {
   applyAction,
   ARCHETYPES,
+  bossRush,
   comboBuild,
   comboBuildNoBows,
   comboBuildNoFire,
@@ -80,9 +82,9 @@ describe('v2 balance targets (milestone 12)', () => {
     expect(afterWave9.gold).toBeLessThan(150);
   });
 
-  it('4. comboBuild pinned exactly: 12 lives and 347 gold at the end, 145 gold after wave 9 (milestone 22)', () => {
+  it('4. comboBuild pinned exactly: 12 lives and 497 gold at the end (347 before the boss bounty), 145 gold after wave 9 (milestone 23)', () => {
     const r = play(comboBuild());
-    expect({ lives: r.lives, gold: r.gold, goldAfterWave9: r.waves[8].gold }).toEqual({ lives: 12, gold: 347, goldAfterWave9: 145 });
+    expect({ lives: r.lives, gold: r.gold, goldAfterWave9: r.waves[8].gold }).toEqual({ lives: 12, gold: 497, goldAfterWave9: 145 });
   });
 
   it('5. comboBuildNoFire does strictly worse than comboBuild: lost, or won with fewer lives', () => {
@@ -94,7 +96,7 @@ describe('v2 balance targets (milestone 12)', () => {
   });
 });
 
-describe('milestone 22 pins: where each archetype ends', () => {
+describe('milestone 22 pins (milestone 23 for the combo builds, which now also earn the 150 boss bounty): where each archetype ends', () => {
   const ends: Record<string, string> = {
     noTowers: 'lost on wave 2, 0 lives, 125 gold',
     lazyBuild: 'lost on wave 7, 0 lives, 113 gold',
@@ -102,9 +104,10 @@ describe('milestone 22 pins: where each archetype ends', () => {
     soundBuild: 'lost on wave 7, 0 lives, 102 gold',
     soundBuildNoTar: 'lost on wave 6, 0 lives, 248 gold',
     longbowSpam: 'lost on wave 9, 0 lives, 464 gold',
-    comboBuild: 'won on wave 10, 12 lives, 347 gold',
-    comboBuildNoFire: 'won on wave 10, 2 lives, 475 gold',
+    comboBuild: 'won on wave 10, 12 lives, 497 gold',
+    comboBuildNoFire: 'won on wave 10, 2 lives, 625 gold',
     noAntiAir: 'lost on wave 7, 0 lives, 226 gold',
+    bossRush: 'won on wave 10, 12 lives, 427 gold',
   };
   it('every archetype is pinned', () => {
     expect(Object.keys(ends)).toEqual(Object.keys(ARCHETYPES));
@@ -218,5 +221,59 @@ describe('archetype rules', () => {
       if (i % 2 === 0) expect(a).toEqual({ type: 'build', cell: TRAIL_CELL_ORDER[i / 2], tower: 'musketeer' });
       else expect(a).toEqual({ type: 'upgrade', cell: TRAIL_CELL_ORDER[(i - 1) / 2] });
     });
+  });
+});
+
+describe('boss targets (milestone 23)', () => {
+  /** Play `script`; every boss event and the tick (in wave 10) it came on. */
+  function bossEvents(script: WaveScript) {
+    const s = createGame();
+    const events: { waveTick: number; kind: string; cause?: string }[] = [];
+    const running = () => s.phase === 'wave';
+    for (let i = 0; i < 10 && s.phase === 'setup'; i++) {
+      for (const a of script[i] ?? []) expect(applyAction(s, a)).toMatchObject({ result: { ok: true } });
+      startWave(s);
+      while (running()) {
+        const waveTick = s.waveTick;
+        tick(s);
+        for (const e of s.events) {
+          if (e.kind === 'bossSpawn') events.push({ waveTick, kind: e.kind });
+          if (e.kind === 'bossDown') events.push({ waveTick, kind: e.kind, cause: e.cause });
+        }
+      }
+    }
+    return { state: s, events };
+  }
+
+  it('comboBuild kills the boss (shot) at waveTick 4639 of wave 10 and wins with 12 lives', () => {
+    const r = bossEvents(comboBuild());
+    expect(r.events).toEqual([
+      { waveTick: 1560, kind: 'bossSpawn' },
+      { waveTick: 4639, kind: 'bossDown', cause: 'shot' },
+    ]);
+    expect(['shot', 'burn']).toContain(r.events[1].cause);
+    expect(r.state).toMatchObject({ phase: 'won', wave: 10, lives: 12 });
+  });
+
+  it('lazyBuild and longbowSpam are lost before wave 10 and never meet the boss', () => {
+    for (const script of [lazyBuild(), longbowSpam()]) {
+      const r = bossEvents(script);
+      expect(r.state.phase).toBe('lost');
+      expect(r.state.wave).toBeLessThan(10);
+      expect(r.events).toEqual([]);
+    }
+  });
+
+  it('bossRush (informational): one more upgraded Longbow (all the 115 gold left allows) kills him sooner, at waveTick 4562', () => {
+    const extra = bossRush()[9].slice(comboBuild()[9].length);
+    expect(extra).toEqual([
+      { type: 'build', cell: { col: 2, row: 5 }, tower: 'longbow' },
+      { type: 'upgrade', cell: { col: 2, row: 5 } },
+    ]);
+    const r = bossEvents(bossRush());
+    expect(r.events).toEqual([
+      { waveTick: 1560, kind: 'bossSpawn' },
+      { waveTick: 4562, kind: 'bossDown', cause: 'burn' },
+    ]);
   });
 });

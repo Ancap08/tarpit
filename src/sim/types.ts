@@ -28,7 +28,7 @@ export interface MapDef {
   landmarks?: readonly Rect[];
 }
 
-export type EnemyType = 'goblin' | 'wolf' | 'troll' | 'harpy' | 'shieldbearer';
+export type EnemyType = 'goblin' | 'wolf' | 'troll' | 'harpy' | 'shieldbearer' | 'boss';
 
 export interface EnemyStats {
   hp: number;
@@ -46,6 +46,14 @@ export interface EnemyStats {
    * SHIELD_THRESHOLD or less does half damage. Burn is never halved.
    */
   shield: boolean;
+  /** Lives lost when this enemy reaches the exit: 1, or 5 for the boss (milestone 23). */
+  livesCost: number;
+  /**
+   * Strongest slow this enemy takes (milestone 23, the boss: 0.3): a
+   * stronger slow is applied at this strength, for its full duration.
+   * Absent means no cap.
+   */
+  slowCap?: number;
 }
 
 export interface Enemy {

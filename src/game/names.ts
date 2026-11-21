@@ -5,6 +5,9 @@
 
 import type { EnemyType, TowerType } from '../sim';
 
+/** The wave 10 boss (docs/SCOPE-v4.md, milestone 23): the HUD boss bar and the wave 10 preview. */
+export const BOSS_NAME = 'Grumblefoot';
+
 /** Enemy names, as in the HUD's next-wave preview ("Next: 8 Goblin"). */
 export const ENEMY_NAMES: Readonly<Record<EnemyType, string>> = {
   goblin: 'Goblin',
@@ -12,6 +15,7 @@ export const ENEMY_NAMES: Readonly<Record<EnemyType, string>> = {
   troll: 'Troll',
   harpy: 'Harpy',
   shieldbearer: 'Shieldbearer',
+  boss: BOSS_NAME,
 };
 
 /** Tower names, as on the build bar ("Musketeer  50"). */
@@ -33,9 +37,6 @@ export const TOWER_SHORT_LABELS: Readonly<Record<TowerType, string>> = {
   mortar: 'Mortar',
   firepot: 'Fire',
 };
-
-/** The wave 10 boss (docs/SCOPE-v4.md, milestone 23). Placeholder until then. */
-export const BOSS_NAME = 'Grumblefoot';
 
 /** The end screens' words (endText.ts). */
 export const END_TEXT = {
