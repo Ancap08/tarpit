@@ -877,3 +877,33 @@ and 7.
   milestones do not need a side PR.
 - Get the human playtest earlier. Milestone 6 lists Kyle's play notes as
   evidence, and they were still pending when milestone 7 started.
+
+### Verifier notes
+
+Verifier: Claude Sonnet, on branch `m7-ship`.
+
+- Clean run (`rm -rf dist && npm ci && lint && typecheck && test && build &&
+  test:e2e`): all exit 0. 123 unit tests in 16 files, 39 e2e tests in 8 files.
+- README "By the numbers" recomputed from `origin/main` with `git` and `gh`:
+  every figure matches (68 commits, 59 non-merge and 9 merges; trailers Opus
+  29, Fable 5.1 13, Sonnet 12; 6 `github-actions` commits; 9 merged PRs, 8
+  milestone PRs plus PR 4; 8 baselines; first commit 06:11 UTC to PR 9 merge
+  08:15 UTC, 2 h 4 min). PR merge times in the timeline match `gh`.
+- Links: relative files exist; the badge, workflow page and Pages URL return
+  200; the badge URL names this repo. The live site serves
+  `index-y29E9S48.js`, the same hash as a local build.
+- Demo: GIF 640x360, 22.0 s, 2.5 MB; PNG 960x540. Frames show building through
+  the menus, a Tar Pit placed in the last seconds, and waves 1 and 2 with the
+  HUD. The frames at 10 s and 20 s fall between waves (wave 1 just cleared;
+  wave 2 cleared with the Tar Pit menu about to open), not mid-wave; 3 s is
+  mid-wave.
+- `package.json` diff is only the `demo` script line; vitest excludes
+  `scripts/**`.
+- Findings, not fixed: (1) "Kyle merged PR 1 himself" and "the coordinator
+  merged the rest" cannot be checked from GitHub, since every PR shows the
+  same merger login. (2) "Kyle's involvement was three messages" and the
+  workflow-dispatch (PR 4) and baseline `all` input bullets in "What went
+  wrong" have no earlier DEVLOG or DECISIONS entry; the workflow history and
+  PR list support the last two, nothing in the repo supports the first. (3)
+  README says the verifier checked every PR; PR 4 has no verifier record in
+  the DEVLOG.
