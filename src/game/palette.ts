@@ -92,6 +92,10 @@ export const COLORS = {
   range: 0xfff2a8,
   // The Mortar's dashed minimum-range circle: muted red, distinct from the range edge.
   minRange: 0xc4605a,
+  // Planning phase (milestone 25a): the dashed outline round an unlocked tower's cell.
+  unlockedOutline: 0xfff8d8,
+  // Drag (milestone 25a): the thin line from a finger to the lifted ghost.
+  dragLine: 0xfff8d8,
   menuBg: 0x1b1f24,
   menuEdge: 0xd9b77e,
 

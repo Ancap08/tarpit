@@ -4,7 +4,8 @@
 // Lifetime: `tick` empties `state.events` (a fresh array) at its start, like
 // `state.shots`, and appends to it as things happen, in order. Won and lost
 // ticks do nothing, so the list keeps the last tick's events.
-// Actions between ticks (startWave, build, upgrade, sell, targeting) append
+// Actions between ticks (startWave, build, upgrade, sell, targeting, move,
+// undoUpgrade) append
 // their own event to the same list; it stays there until the next tick clears it. So
 // the renderer reads the new entries after every action and after every
 // tick (GameScene does both, see EventCursor in src/game/anim/effects.ts).
@@ -30,7 +31,12 @@ export type GameEvent =
   | { kind: 'bossDown'; enemyId: number; cause: 'shot' | 'burn' | 'exit' }
   | { kind: 'build'; cell: Cell; tower: TowerType }
   | { kind: 'upgrade'; cell: Cell; tower: TowerType }
-  | { kind: 'sell'; cell: Cell; tower: TowerType; refund: number }
+  /** A tower was sold; `full` when it was unlocked and refunded everything (milestone 25a). */
+  | { kind: 'sell'; cell: Cell; tower: TowerType; refund: number; full: boolean }
+  /** An unlocked tower was moved in setup (milestone 25a). */
+  | { kind: 'move'; from: Cell; to: Cell; tower: TowerType }
+  /** An upgrade bought this setup phase was undone and refunded in full (milestone 25a). */
+  | { kind: 'undoUpgrade'; cell: Cell; tower: TowerType; refund: number }
   /** A tower's targeting mode was set (milestone 24). */
   | { kind: 'targeting'; cell: Cell; mode: TargetingMode }
   | { kind: 'waveStart'; wave: number }

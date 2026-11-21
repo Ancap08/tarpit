@@ -88,6 +88,13 @@ export class Button {
     }
   }
 
+  /** Change the label size (both labels), e.g. for a longer label in the same slot. */
+  setFontSize(size: string): void {
+    for (const t of [this.label, this.rightLabel]) {
+      if (t && t.style.fontSize !== size) t.setFontSize(size);
+    }
+  }
+
   get isPicked(): boolean {
     return this.picked;
   }

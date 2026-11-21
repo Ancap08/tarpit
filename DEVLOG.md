@@ -2970,3 +2970,259 @@ Verifier: Claude Fable 5.2.
   and Hard is lost by wave 3 for the best plan; both are milestone 28's,
   as the implementer says. (4) The README says "Enter also works"; Space
   does too.
+
+## 2026-11-21: milestone 25a, drag placement and the planning phase
+
+Roles: implementer Claude Opus, verifier Claude Fable 5.2, coordinator
+Claude Fable 5.2.
+
+### Implementer notes
+
+- **Rules as built** (`docs/DESIGN.md` "Planning phase"). Towers carry
+  `locked`, `unlockedSpend` and `upgradedThisPhase`. Built in setup:
+  unlocked, `unlockedSpend` = cost. Built mid-wave: locked, 0. An upgrade
+  in setup adds its cost to `unlockedSpend` and sets `upgradedThisPhase`,
+  on a locked tower too; mid-wave it adds nothing. `startWave` locks every
+  tower and clears both. `sellTower` refunds all of `spent` for an
+  unlocked tower and `sellRefund(spent)` (70%) for a locked one; the `sell`
+  event gains `full`. New `moveTower(state, from, to)` (setup, unlocked,
+  free, keeps everything, towers re-sorted; reasons `game-over`,
+  `not-in-setup`, `no-tower`, `locked`, `not-buildable`, `cell-occupied`
+  in that order; onto itself is a no-op success with no event) and
+  `undoUpgrade(state, cell)` (setup, upgrade bought this phase; full
+  upgrade cost back; reasons `game-over`, `not-in-setup`, `no-tower`,
+  `nothing-to-undo`). Events `move` and `undoUpgrade`.
+- **Headless.** Script actions `{type:'move', from, to}` and
+  `{type:'undoUpgrade', cell}` live in a new `PlanningAction` type in
+  `HeadlessAction`, not in `BuildAction`, so the archetype WaveScripts
+  (whose entries all carry `cell`) and `balance.test.ts` stay unchanged.
+  `noAntiAir` sells bows built before waves 1 to 3, all locked by then, so
+  they still refund 70%. Every archetype pin passed unmodified, and
+  `npm run sim` output is byte-identical to milestone 25's (diffed against
+  a worktree of `ae9fc34`).
+- **Renderer.** A pointerdown on an affordable bar button, or in setup on
+  an unlocked tower, is remembered as a press; past 8 px it becomes a drag
+  (`input.ts`: `DRAG_THRESHOLD`, `DRAG_LIFT` = 48, `dragTargetCell`). A bar
+  drag sets the pick at drag start, so the pick stays after any release.
+  Release is read from the scene's `pointerup` (and `pointerupoutside`,
+  which cancels). Button click handlers run before the scene's
+  `pointerup`, so `togglePick` ignores the click that ends an active drag
+  back on its own bar button. A tower drag closes the panel, dims the
+  tower at its origin (alpha 0.3) and draws a ghost with the tower's own
+  level and range. On touch a 1.5 px pale line runs from the fingertip to
+  the ghost's cell centre. Unlocked towers get a 2 px pale dashed outline
+  (4 px dashes) inside their cell. Over a red cell the drag shows the red
+  tint only, as click placement does.
+- **Panel.** Button words moved into `names.ts` `PANEL_TEXT`. Unlocked:
+  "Remove  +<spent>". Upgrade bought this setup phase: "Undo upgrade
+  +<cost>" in 14 px, because 16 px Courier does not fit "Undo upgrade
+  +80" in the 156 px button (about 164 px). `uiRects()` names are
+  unchanged; `ui()` gains `upgradeLabel`, `sellLabel` and `dragging`.
+- **Tests.** `src/sim/planning.test.ts` (17): every refund case with exact
+  gold, undo, move reasons, sorting, firing from the moved cell, events and
+  headless actions. Three drag geometry cases in `input.test.ts`.
+  `e2e/drag.spec.ts` (5, mouse) and `e2e/touch-drag.spec.ts` (5, tablet,
+  CDP `Input.dispatchTouchEvent`; added to `TABLET_SPECS`). Unit tests 470,
+  e2e 142, and the drag, touch and build-ui specs passed 150 of 150 with
+  `--repeat-each=5`.
+- **Baselines.** New: `planning.png`. Changes: `tower-selected.png` only
+  (its Musketeer is built and upgraded in setup, so it gains the dashed
+  outline and the panel reads "Undo upgrade  +35" and "Remove  +85"; same
+  setup). Every other frame shows no unlocked tower: the mid-wave frames
+  lock their towers at Start Wave, `placing.png` and `placing-invalid.png`
+  have none, and `won.png` is after wave 10.
+
+### What went wrong
+
+- **The rule change broke 18 older tests that sold in setup and expected
+  70%** (13 unit, 5 e2e). Their intent is the 70% rule, so each now
+  presses Start Wave before the sale (the tower locks) instead of changing
+  the expected gold.
+- **First try put `move` and `undoUpgrade` into `BuildAction`.** Every
+  `a.cell` on a WaveScript entry stopped compiling, `balance.test.ts`
+  included, which must stay unmodified. Moved to `PlanningAction`.
+- **Two slips in the touch spec**: a sanity check put the finger on row 6
+  (it is row 7: 176 + 48 = 224), and a `toBeCloseTo(51.2, 3)` on the
+  page-pixel lift failed on 51.1991 because Phaser rounds the letterbox
+  offset; precision 2 now.
+- **The first local "move" frame aimed at a path cell**, so only the red
+  cell showed and the ghost looked missing; recaptured over grass. Open
+  question for Kyle on the iPad: whether a faint ghost should also show
+  over red cells during a drag.
+
+### Verifier notes
+
+Verifier: Claude Fable 5.2, on `m25a-placement` at `e482824`. Verdict:
+pass, with three points for the coordinator at the end.
+
+- **Clean run.** `rm -rf dist && npm ci`, lint, typecheck, `npm test`,
+  build, `check:assets`, `check:size`, `test:e2e`, `npm run sim`: exit 0.
+  Unit 470 in 40 files, e2e 142, as the implementer wrote; 492 and 162
+  with the probes below. `drag`, `touch-drag`, `touch` and `build-ui`
+  specs with `--repeat-each=8`: 240 of 240. The probes with
+  `--repeat-each=5`: 100 of 100.
+- **Balance untouched.** `npm run sim` is byte-identical to the output of
+  `origin/main` (`cmp` against a throwaway worktree). `balance.test.ts`,
+  towers, waves and scripts have no diff.
+- **The 18 changed tests.** Putting the eight old test files back from
+  `origin/main` fails exactly 13 unit and 5 e2e tests. Seventeen sold in
+  setup and now press Start Wave first; every expected gold figure is the
+  same as before. The eighteenth (`actions.test.ts`, "builds a musketeer")
+  never sold: it compares the whole tower object and gained the three new
+  fields. `verifier2` "sell then rebuild" now rebuilds mid-wave, so its
+  expected tower reads `locked: true`; the gold (5) is unchanged. No test
+  changed its intent.
+- **Exploit hunt** (`src/sim/planning-verifier.test.ts`, 22 tests). No
+  sequence of build, upgrade, undo, move and sell gains gold or duplicates
+  a tower. Five seeded walks of 200 actions before wave 1: gold plus
+  refundable spend equals the start gold after every action, gold never
+  exceeds it, a refused action changes nothing, and selling everything
+  returns the start gold exactly. Five more walks in a later setup with
+  locked towers: the most the player could get by liquidating never rises.
+- **A locked tower with an upgrade bought this setup, sold directly, pays
+  70% of everything** (Musketeer: 59), not the upgrade in full plus 70% of
+  the rest (35 + 35 = 70). That matches DESIGN ("selling a locked tower
+  refunds 70% of spent, in any phase") and SCOPE (the upgrade is
+  refundable "on its own" through Undo). It costs the player who presses
+  Sell before Undo 11 gold; the panel shows both figures side by side
+  ("Undo upgrade  +35", "Sell  +59"). Not an exploit; it loses gold.
+- **Rules.** Move onto its own cell is a no-op success with no event;
+  occupied, path, cottage, off-grid and fractional cells fail with the
+  documented reason and change nothing; `locked` is checked before the
+  own-cell case; move in a wave is `not-in-setup`. A moved tower keeps
+  mode, upgrade and spend and its first hit event carries the new cell.
+  Twenty random moves keep `towers` in cell-key order and shots within a
+  tick follow it. Undo twice, undo after sell, undo of an older or
+  mid-wave upgrade all fail as documented. A tower built mid-wave is
+  locked and pays 70% in the next setup. `startWave` clears the three
+  fields on all six types. The planning phase before wave 1 and before
+  wave 2 give identical results for the same action list.
+- **Drag** (`e2e/drag-verifier.spec.ts`, 15, mouse;
+  `e2e/drag-verifier-touch.spec.ts`, 5, CDP touch). 5 px and exactly 8 px
+  are a click, 12 px is a drag. Mouse: the ghost cell is the cell under
+  the pointer. Touch: the cell under the point 48 canvas px above the
+  finger at seven positions, two of them where the lift crosses a cell
+  edge. Onto another tower, the path or the cottage: nothing moves.
+  Released below the canvas (wider viewport) or off the window's left
+  edge: cancelled, `dragging` null, the next click and the next drag work.
+  Gold cut mid-drag: nothing built, gold not negative. Mid-wave: a bar
+  drag builds a locked tower, towers do not drag. Click and two-tap
+  placement still work.
+- **Finger over the HUD, lifted point over a buildable cell: cancelled.**
+  `dragTargetCell` returns null whenever the finger itself is off the map.
+  That is what SCOPE says ("release over the HUD cancels").
+- **Panel.** For all six types: "Remove" shows everything spent, "Undo
+  upgrade" the upgrade cost, and after Start Wave "Sell" shows 70%; the
+  two labels of each button fit with at least 6 px between them.
+- **Names.** No "Remove", "Undo", "Sell" or "Upgrade" literal in
+  `src/game` outside `names.ts` (comments only). Rename proof: "Remove" to
+  "Take back", rebuilt, 492 unit tests and the drag, verifier and visual
+  specs passed; reverted and rebuilt.
+- **Frames.** The dashed outline measures (241,238,203) on grass
+  (95,127,74): contrast 3.9 to 1, and 3.2 to 1 on the tinted grass inside
+  a range circle; readable at 1x. On the path colour it would be 2.0 to 1,
+  but towers cannot stand there. The touch ghost sits a full cell and a
+  half above the finger dot with the line between them. The dimmed origin
+  is clearly fainter than its neighbours; its name label stays at full
+  strength, which reads fine.
+
+What the verifier got wrong: three probe setups (a mid-wave Cannon with
+50 gold, a row of cells that crossed the path clearance, a parking row
+that random moves had already used), and two touch probes placed exactly
+on a cell edge, where the page mapping is off by a fraction of a pixel.
+All were test mistakes; no product code changed.
+
+For the coordinator:
+
+1. **Touch drag cannot reach the bottom map row.** The finger must stay
+   on the map and the drag aims 48 px above it, so with the finger on the
+   last map pixel the ghost is on row 13; row 14 (and the lower half of
+   row 13 for a comfortable finger) is out of reach by drag. Two-tap
+   placement still reaches it. This follows from the two SCOPE rules
+   together (lift, and HUD cancels); changing it is a design decision.
+2. **A mouse drag whose mouseup never reaches the page stays live** (for
+   example the window loses focus mid-drag): the ghost follows the mouse
+   with no button held until the next press, which cancels it without
+   moving or building. Checked with a CDP probe, not kept as a test. A
+   release outside the canvas or the window is handled. Cosmetic; a guard
+   on the pointer's button state in `pointermove` would close it.
+3. **Baselines are not on the branch yet.** `planning.png` does not exist
+   and `tower-selected.png` is the old frame; local runs skip pixel
+   comparison. `update-snapshots.yml` has to run on this branch before CI
+   can pass, and the milestone row's "baseline with an unlocked tower" is
+   unproven until then.
+
+### Follow-ups after verification (implementer, Claude Opus)
+
+Four changes from the coordinator after the verifier's PASS, on top of
+`b92428e`:
+
+- **Touch drags reach the bottom row.** `dragTargetCell` on touch now
+  depends only on the aim point 48 px above the finger: valid whenever it
+  is on the map, even with the finger over the HUD, null once it is off
+  the map. Before, a finger over the HUD always cancelled, so row 14 (aim
+  y 448..479, finger y 496..527) could never be reached by touch. Mouse
+  unchanged. The verifier's touch probe (c) now builds on (2,14) with the
+  finger on HUD row 1 and cancels with the finger on the build bar; a new
+  touch test moves a tower onto (2,14).
+- **Selling a locked tower upgraded this setup** pays the upgrade in full
+  plus 70% of the rest (`towerSellValue` in `src/sim/towers.ts`, used by
+  `sellTower` and the panel): 35 + 35 = 70, no longer 59, the same as Undo
+  then Sell. One `sell` event, `full: false`. The verifier's pin in
+  `planning-verifier.test.ts` moved from 59 to 70, and its "liquidation
+  worth never rises" walk is now pinned at zero drops (it allowed up to 4,
+  all from this case). Its panel probe in `drag-verifier.spec.ts` moved
+  from "Sell  +59" to "Sell  +70". No archetype sells such a tower, so
+  `npm run sim` is still byte-identical.
+- **Stuck mouse drag.** A mouse pointermove with no button down
+  (`input.ts` `mouseDragLost`: `!isDown || buttons === 0`) drops the
+  press. Reproduced in Playwright with CDP (`mousePressed`, moves with
+  buttons 1, then a `mouseMoved` with buttons 0 and no release): before
+  the guard the drag stayed live; now it cancels, nothing is built and the
+  pick stays. Unit-tested too.
+- **Faint red ghost.** During a drag over a blocked cell the ghost draws
+  at 0.35 opacity under a 0.3 red wash, without range. Only during drags,
+  so `placing-invalid.png` and every other baseline (and `planning.png`)
+  are unchanged.
+
+### Verifier notes on the follow-ups
+
+Verifier: Claude Fable 5.2, on `e6199ac`. Verdict: pass.
+
+- **Scope of the two commits.** `git diff b92428e..HEAD` holds the four
+  changes and nothing else: `towerSellValue` (sim and panel), the touch
+  branch of `dragTargetCell`, the `mouseDragLost` guard in `pointermove`,
+  and the faint red ghost, drawn only when a drag is live. Lint,
+  typecheck, unit (496), build, e2e (164) and `npm run sim` exit 0; sim
+  output is still byte-identical to `origin/main` (`ae9fc34`). With the
+  probes below: 502 unit, 167 e2e. The five drag and touch specs plus the
+  new one with `--repeat-each=5`: 215 of 215.
+- **The new sell rule cannot be exploited.** A sale of a locked tower now
+  pays exactly its liquidation worth, so the implementer's tightening of
+  my walk from "at most 4 drops" to 0 is right: the 4 were all this case.
+  I tightened the other bound as well: after every one of the 200 actions
+  in each of five seeded walks, gold plus refundable spend equals the
+  phase-start gold plus only the 70% part of locked sales (it was "at
+  most"), and the walks are checked to include such sales. For all six
+  types one Sell pays the same as Undo then Sell, a sell, rebuild,
+  upgrade, remove cycle adds nothing, and after Start Wave the tower is
+  back to 70% of everything. The edits to my 59 pin, the panel label and
+  touch probe (c) follow the rule changes and keep each test's intent.
+- **Finger over the HUD** (`e2e/drag-verifier2-touch.spec.ts`, 3). A bar
+  drag released with the finger on the Start Wave button builds on the
+  row 13 or 14 cell under the aim point and does not start the wave; over
+  the speed button the speed stays 1x; a tower drag released there moves
+  the tower and does not start the wave. No fix was needed: a button
+  clicks only when the press went down on it. A plain tap on Start Wave
+  still works. With the finger on the build bar the aim point is off the
+  map and both kinds of drag cancel, without changing the pick.
+- **Lost-button guard.** With the guard switched off locally the
+  implementer's CDP probe fails, and passes again with it restored. It is
+  conditioned on a mouse press and a mouse move, and a 31-move touch drag
+  stays live at every step and builds.
+- **Red ghost.** The frame shows a faint red-washed Cannon on a path
+  cell with the red outline and no range; readable. No baseline test
+  performs a drag, so no baseline changes because of it.
+- Still open from the first notes: the baselines (`planning.png` new,
+  `tower-selected.png` changed) are not on the branch until
+  `update-snapshots.yml` runs.

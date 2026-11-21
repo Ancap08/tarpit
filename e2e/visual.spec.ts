@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { BOSS_NAME } from '../src/game/names';
+import { BOSS_NAME, PANEL_TEXT } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { TitleUiState } from '../src/game/TitleScene';
 
@@ -155,7 +155,9 @@ test('placing a Cannon over the path: red cell, no ghost', async ({ page }) => {
 });
 
 // Milestone 24: the panel has a third button, "Target: First", so this
-// baseline changed; the setup is the same.
+// baseline changed; the setup is the same. Milestone 25a: the tower was
+// built and upgraded in setup, so it is unlocked (dashed outline) and the
+// panel reads "Undo upgrade  +35" and "Remove  +85"; same setup again.
 test('upgraded Musketeer selected with its panel and range', async ({ page }) => {
   await open(page);
   await page.evaluate(() => (window.__tarpit as TarpitTestApi).startGame());
@@ -175,6 +177,40 @@ test('upgraded Musketeer selected with its panel and range', async ({ page }) =>
   expect(s.gold).toBe(15);
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('tower-selected.png');
+});
+
+// Milestone 25a: the planning phase before wave 2. A Musketeer at (7,5)
+// built before wave 1 is locked (no outline); a Cannon at (10,5) just placed
+// in this setup is unlocked (pale dashed outline) and selected with a real
+// click, so its panel reads "Remove  +80", the full refund. Wave 1 with one
+// Musketeer ends with 83 gold (build-ui.spec.ts), enough for the Cannon.
+test('planning phase: a locked Musketeer and an unlocked Cannon selected', async ({ page }) => {
+  await open(page);
+  const s = await page.evaluate(async () => {
+    const t = window.__tarpit as TarpitTestApi;
+    await t.startGame();
+    t.buildAt(7, 5, 'musketeer');
+    t.startWave();
+    for (let i = 0; i < 100 && t.state().phase === 'wave'; i++) t.step(60);
+    t.buildAt(10, 5, 'cannon');
+    const st = t.state();
+    return { phase: st.phase, wave: st.wave, gold: st.gold, towers: st.towers.map((x) => ({ type: x.type, locked: x.locked })) };
+  });
+  expect(s).toEqual({
+    phase: 'setup',
+    wave: 1,
+    gold: 3,
+    towers: [
+      { type: 'musketeer', locked: true },
+      { type: 'cannon', locked: false },
+    ],
+  });
+  await page.mouse.click(10 * 32 + 16, 5 * 32 + 16); // select the Cannon
+  await page.mouse.move(900, 440); // empty grass: no hover tint
+  const u = await ui(page);
+  expect(u).toMatchObject({ pick: null, selectedCell: { col: 10, row: 5 }, panelOpen: true, sellLabel: `${PANEL_TEXT.remove}  +80` });
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('planning.png');
 });
 
 // The three v2 towers, all upgraded, with a Tar Pit: Longbow (6,5), Mortar

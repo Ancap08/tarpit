@@ -47,7 +47,70 @@ Towers fire in cellKey order (row by row, left to right).
 - Lives at 0 or below: lose, immediately.
 - Clearing wave 10 with lives above 0: win.
 - Sell returns 70% of the total spent on that tower (build plus upgrade),
-  rounded down.
+  rounded down, for a locked tower, plus in full any upgrade bought on it
+  during the current setup phase. An unlocked tower (built during the
+  current setup phase) is removed for everything spent on it. See Planning
+  phase.
+
+## Planning phase
+
+Milestone 25a, from `docs/SCOPE-v4.md`. Each tower carries `locked`,
+`unlockedSpend` (gold spent on it this setup phase and refundable in full)
+and `upgradedThisPhase`.
+
+- **Lock.** A tower built during setup is unlocked, with `unlockedSpend` =
+  its cost. A tower built during a wave is locked at once (`unlockedSpend`
+  0). Start Wave locks every tower and zeroes `unlockedSpend` and
+  `upgradedThisPhase`. Unlocked towers show a pale dashed outline round
+  their cell; it goes when the wave starts.
+- **Refund.** Selling an unlocked tower refunds all of `spent` (build plus
+  any upgrade bought this phase); the panel's Sell reads "Remove  +50".
+  Selling a locked tower refunds its `unlockedSpend` (an upgrade bought
+  this setup phase) in full plus 70% of the rest, rounded down, in any
+  phase (`towerSellValue`): a Musketeer built earlier for 50 and upgraded
+  this setup for 35 sells for 35 + 35 = 70, the same as Undo upgrade then
+  Sell; after Start Wave it sells for 70% of 85 = 59. One `sell` event
+  with the total; `full` is true only for an unlocked tower.
+- **Move.** In setup an unlocked tower can be dragged to any buildable
+  cell (same rule as a build) for free; it keeps its type, upgrade,
+  targeting mode and spend, and the towers stay in cellKey order.
+  `moveTower(state, from, to)` refuses with `game-over`, `not-in-setup`,
+  `no-tower`, `locked`, `not-buildable`, `cell-occupied`, checked in that
+  order; moving onto its own cell succeeds and changes nothing. Event
+  `move {from, to, tower}`.
+- **Undo upgrade.** An upgrade bought in setup, on an unlocked or a locked
+  tower, adds its cost to `unlockedSpend` and can be undone until Start
+  Wave: `undoUpgrade(state, cell)` refunds the full upgrade cost, reverts
+  the tower to base and reduces `spent` and `unlockedSpend`; a locked tower
+  stays locked. Refused with `game-over`, `not-in-setup`, `no-tower`,
+  `nothing-to-undo`. The panel's Upgrade slot reads "Undo upgrade  +35"
+  (14 px) while this is possible. Event `undoUpgrade {cell, tower,
+  refund}`. An upgrade bought mid-wave adds nothing to `unlockedSpend` and
+  cannot be undone.
+- **Drag to place.** Press a build bar button the player can afford and
+  drag onto the map; a press becomes a drag past 8 px. The ghost snaps to
+  the cell aimed at, with its range and the green or red cell as for
+  placement; over a red cell the drag also shows the ghost at 0.35 opacity
+  under a red wash, without range (click and two-tap placement show the
+  red cell only). On touch the drag aims at the point 48 px above the
+  finger and a thin line joins finger and ghost; the drag is valid
+  whenever that aim point is on the map, even with the finger over the
+  HUD, so the bottom row is reachable, and aims at nothing once the aim
+  point is off the map. The mouse aims at itself, and nothing while it is
+  over the HUD. Release on a buildable cell builds there; release on
+  another cell, with nothing aimed at, or outside the canvas cancels. A
+  mouse move that reports no button down (a release the page never saw)
+  also cancels the drag. Either way the pick stays selected, as after a bar
+  click. A press and release without a drag is a bar click (toggle the
+  pick). Works mid-wave too (the new tower is locked).
+- **Drag to move.** In setup, press an unlocked tower and drag past 8 px:
+  the tower dims at its origin and a ghost follows (same 48 px lift on
+  touch); release on a buildable cell moves it, anywhere else cancels. A
+  press without a drag selects the tower as before. Locked towers do not
+  drag.
+- Click and two-tap placement are unchanged. The archetypes never sell an
+  unlocked tower (`noAntiAir` sells bows built in earlier phases, which are
+  locked), so every archetype result is unchanged.
 
 ## Difficulty
 
@@ -232,6 +295,7 @@ and the next wave can be started. Start Wave is unavailable while a wave is
 active. The next-wave preview lists each group's type and count.
 
 Players can build, upgrade and sell at any time, including mid-wave.
+Moving a tower and undoing an upgrade are setup-only (Planning phase).
 
 ## Tick order
 
@@ -250,5 +314,5 @@ Plain TypeScript in `src/sim`, no Phaser, no DOM. One `GameState` object,
 pure data. Functions take the state and return a new state or a result;
 either mutation or immutability is fine as long as it is consistent and
 tested. Required operations: create game, tick, start wave, build tower,
-upgrade tower, sell tower, next-wave preview, and a headless runner that
+upgrade tower, sell tower, move tower and undo upgrade (milestone 25a), next-wave preview, and a headless runner that
 plays a scripted set of actions for tests and balance work.

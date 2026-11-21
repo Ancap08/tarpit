@@ -56,6 +56,17 @@ export function sellRefund(spent: number): number {
   return Math.floor((spent * 7) / 10);
 }
 
+/**
+ * What selling `tower` pays now (milestone 25a). Unlocked (built this setup
+ * phase): everything spent. Locked: the gold spent on it this setup phase
+ * (an upgrade bought this phase) in full, plus sellRefund of the rest; so
+ * the same as undoing that upgrade and then selling.
+ */
+export function towerSellValue(tower: Pick<Tower, 'locked' | 'spent' | 'unlockedSpend'>): number {
+  if (!tower.locked) return tower.spent;
+  return tower.unlockedSpend + sellRefund(tower.spent - tower.unlockedSpend);
+}
+
 /** The stats that apply to a tower at its current level. */
 export function towerStats(tower: Pick<Tower, 'type' | 'upgraded'>): TowerLevelStats {
   const def = TOWER_DEFS[tower.type];

@@ -18,12 +18,13 @@ build anywhere off the path, three enemies, simple shapes with labels.
 ## How to play
 
 1. On the title menu pick a difficulty, Easy, Normal or Hard (enemy hp, starting gold and lives; Normal is the standard game), then press Play (Enter also works). Play again keeps the level; Menu goes back to pick another.
-2. Pick a tower on the build bar under the map: Musketeer (single target), Cannon (splash), Tar Pit (slow), Longbow (cheap, long range), Mortar (long-range splash) or Fire Pot (burns). Move over the map: a green cell with a ghost and its range shows where the tower can go; red means it cannot. Click any green cell to build, and keep clicking to place more; click the button again or press Escape to stop. Click a tower to upgrade or sell it.
+2. Pick a tower on the build bar under the map: Musketeer (single target), Cannon (splash), Tar Pit (slow), Longbow (cheap, long range), Mortar (long-range splash) or Fire Pot (burns). Move over the map: a green cell with a ghost and its range shows where the tower can go; red means it cannot. Click any green cell to build, and keep clicking to place more; click the button again or press Escape to stop. Click a tower to upgrade or sell it. You can also drag a tower from the bar straight onto the map: on touch the ghost floats a little above your finger so you can see where it lands; let go anywhere red, or over the bar, to cancel.
 3. The Mortar cannot hit enemies inside its dashed inner circle (70 px), so put it back from the path it guards.
 4. Tar + fire: a Fire Pot's burn does double damage to an enemy slowed by a Tar Pit, so build the two side by side.
-5. Press Start Wave. Enemies walk from the cave to the cottage; each one that gets through costs a life. Kills and cleared waves pay gold. Survive all 10 waves to win. The 1x/2x button sets the speed.
-6. A tower's panel has a Target button; click it to cycle which enemy the tower shoots: First (furthest along the path), Last (closest to the cave) or Strongest (most hp).
-7. Runs on an iPad (landscape; portrait shows a "turn your device" card). On touch, tap a cell once to aim (ghost and range), tap it again to build; tap the × to close a tower's panel.
+5. Until you press Start Wave, everything you bought this round is free to change: drag a tower (dashed outline) to another spot, Remove it for all its gold back, or Undo an upgrade for its full price. Once the wave starts, towers are locked in place and sell for 70%.
+6. Press Start Wave. Enemies walk from the cave to the cottage; each one that gets through costs a life. Kills and cleared waves pay gold. Survive all 10 waves to win. The 1x/2x button sets the speed.
+7. A tower's panel has a Target button; click it to cycle which enemy the tower shoots: First (furthest along the path), Last (closest to the cave) or Strongest (most hp).
+8. Runs on an iPad (landscape; portrait shows a "turn your device" card). On touch, tap a cell once to aim (ghost and range), tap it again to build; tap the × to close a tower's panel.
 
 ## How it was built
 

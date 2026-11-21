@@ -85,11 +85,14 @@ describe('verifier 2: economy', () => {
   it('sell then rebuild on the same cell works', () => {
     const g = createGame();
     buildTower(g, S3, 'musketeer');
+    startWave(g); // locks it (milestone 25a): 70%
     expect(sellTower(g, S3)).toEqual({ ok: true, refund: 35, gold: 85 });
     const r = buildTower(g, S3, 'cannon');
     expect(r.ok).toBe(true);
     expect(g.gold).toBe(5);
-    expect(g.towers).toEqual([{ cell: { col: 7, row: 7 }, type: 'cannon', upgraded: false, targeting: 'first', cooldownTicks: 0, spent: 80 }]);
+    expect(g.towers).toEqual([
+      { cell: { col: 7, row: 7 }, type: 'cannon', upgraded: false, targeting: 'first', cooldownTicks: 0, spent: 80, locked: true, unlockedSpend: 0, upgradedThisPhase: false },
+    ]);
   });
 
   it.each([
@@ -118,6 +121,7 @@ describe('verifier 2: economy', () => {
     g.gold = 1000;
     buildTower(g, S1, type);
     upgradeTower(g, S1);
+    startWave(g); // locks it (milestone 25a): 70%
     const before = g.gold;
     const r = sellTower(g, S1);
     expect(r).toMatchObject({ ok: true, refund });

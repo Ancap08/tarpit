@@ -27,6 +27,18 @@
 // the pick disarms. Taps on towers, empty map without a pick, and the HUD
 // behave as clicks do. The tower panel has a close button for touch.
 //
+// Drag (milestone 25a): a press on an affordable build bar button, or in
+// setup on an unlocked tower, becomes a drag once the pointer moves more than
+// 8 px (input.ts DRAG_THRESHOLD). A bar drag picks that type (the pick stays
+// after the release, as after a bar click) and a ghost follows the pointer,
+// snapped to the cell it aims at, green or red as for placement; release on
+// a buildable cell builds there, anywhere else cancels. A tower drag dims the
+// tower at its origin and releases into moveTower. On touch the drag aims 48
+// px above the finger (DRAG_LIFT) and a thin line joins finger and ghost. A
+// press without a drag is a click or tap as before: a bar click toggles the
+// pick, a tower press selects it. Drags from the bar work mid-wave too
+// (building then makes a locked tower); tower drags only in setup.
+//
 // Portrait: while the "turn your device" card shows (portrait.ts), update()
 // runs no ticks and drops the time it would have accumulated.
 //
@@ -57,6 +69,7 @@ import {
   createGame,
   DEFAULT_DIFFICULTY,
   isBuildable,
+  moveTower,
   sellTower,
   setTargeting,
   startWave,
@@ -64,6 +77,7 @@ import {
   TOWER_DEFS,
   towerAt,
   towerStats,
+  undoUpgrade,
   upgradeTower,
 } from '../sim';
 import type {
@@ -72,12 +86,14 @@ import type {
   Difficulty,
   GameEvent,
   GameState,
+  MoveResult,
   SellResult,
   StartWaveResult,
   TargetingMode,
   TargetingResult,
   TowerLevelStats,
   TowerType,
+  UndoUpgradeResult,
   UpgradeResult,
 } from '../sim';
 import { EventCursor } from './anim/effects';
@@ -88,13 +104,13 @@ import { drawMap } from './draw/map';
 import { ShotEffects } from './draw/shots';
 import { Aim, drawTowerShape, drawTowers } from './draw/towers';
 import { Hud } from './hud';
-import { cellAt, cellRect, classifyClick, contains, type Rect } from './input';
+import { cellAt, cellRect, classifyClick, contains, dragTargetCell, mouseDragLost, pastDragThreshold, type Rect } from './input';
 import { COLORS } from './palette';
 import { portraitCardVisible } from './portrait';
 import { isTestMode } from './testMode';
 import type { GameStartData } from './TitleScene';
 import { ticksDue } from './loop';
-import { canPick } from './ui/buildBar';
+import { BAR_TYPES, canPick } from './ui/buildBar';
 import { EndScreen } from './ui/endScreen';
 import { endKind, type EndKind } from './ui/endText';
 import { TowerPanel } from './ui/towerPanel';
@@ -125,13 +141,45 @@ export interface UiState {
   selectedTargeting: TargetingMode | null;
   /** The panel's targeting button label ("Target: First"), or null while closed. */
   targetLabel: string | null;
+  /** The panel's Upgrade and Sell slot labels ("Undo upgrade  +35", "Remove  +50"), or null while closed. */
+  upgradeLabel: string | null;
+  sellLabel: string | null;
+  /**
+   * A drag in progress (milestone 25a), or null: placing a tower from the
+   * bar or moving the tower from `from`; `cell` is the cell it aims at
+   * (48 px above a finger), or null over the HUD or off the map.
+   */
+  dragging: null | { kind: 'place' | 'move'; tower: TowerType; from?: Cell; cell: Cell | null };
+}
+
+/** A press that may become a drag (milestone 25a). */
+interface Press {
+  kind: 'place' | 'move';
+  tower: TowerType;
+  /** The tower's cell, for a move. */
+  from: Cell | null;
+  touch: boolean;
+  /** Where the press went down, and where the pointer is now (canvas px). */
+  x0: number;
+  y0: number;
+  x: number;
+  y: number;
+  /** True once the pointer has moved past the drag threshold. */
+  active: boolean;
+  /** The cell the drag aims at, or null. */
+  cell: Cell | null;
 }
 
 /** Placement ghost opacity. */
 const GHOST_ALPHA = 0.6;
+/** A drag's ghost over a blocked cell (milestone 25a follow-up): faint, under a red wash of this opacity. */
+const BLOCKED_GHOST_ALPHA = 0.35;
+const BLOCKED_GHOST_TINT = 0.3;
 /** Placement cell highlight: fill opacity and outline width. */
 const CELL_FILL_ALPHA = 0.25;
 const CELL_LINE = 2;
+/** The touch drag's finger-to-ghost line width (milestone 25a). */
+const DRAG_LINE = 1.5;
 /** Dashes in the Mortar's minimum-range circle (each dash half of its slot). */
 const MIN_RANGE_DASHES = 24;
 
@@ -166,6 +214,8 @@ export class GameScene extends Phaser.Scene {
   /** On touch with a pick: the buildable cell the next tap on builds, or null. */
   private armed: Cell | null = null;
   private cursor = 'default';
+  /** A press on a bar button or an unlocked tower that may become a drag (milestone 25a), or null. */
+  private press: Press | null = null;
   private shots = new ShotEffects();
   private aim = new Aim();
   private readonly autoTick = !isTestMode();
@@ -192,6 +242,7 @@ export class GameScene extends Phaser.Scene {
     this.touch = false;
     this.tapCell = null;
     this.armed = null;
+    this.press = null;
     this.cursor = 'default';
 
     // Draw order: map, overlay (cell highlight, range circles, ghost), towers,
@@ -217,6 +268,9 @@ export class GameScene extends Phaser.Scene {
       onUpgrade: () => {
         if (this.panel.cell !== null) this.upgrade(this.panel.cell);
       },
+      onUndoUpgrade: () => {
+        if (this.panel.cell !== null) this.undoUpgrade(this.panel.cell);
+      },
       onClose: () => {
         this.panel.close();
         this.redraw();
@@ -238,14 +292,30 @@ export class GameScene extends Phaser.Scene {
     );
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      this.press = null;
       if (p.wasTouch) this.onTap(p.x, p.y);
       else this.onPointerDown(p.x, p.y);
+      this.beginPress(p.x, p.y, p.wasTouch);
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
-      // A finger has no hover: touch moves change nothing.
+      // A mouse press whose button was released unseen (mouseup outside the
+      // page) cancels, so the drag does not stick to the pointer.
+      if (this.press !== null && !this.press.touch && !p.wasTouch && mouseDragLost(p.isDown, p.buttons)) {
+        this.press = null;
+      }
+      if (this.press !== null && this.press.touch === p.wasTouch) {
+        this.dragMove(p.x, p.y);
+        if (p.wasTouch) return;
+      }
+      // A finger has no hover: touch moves change nothing else.
       if (!p.wasTouch) this.onPointerMove({ x: p.x, y: p.y });
     });
-    this.input.on('gameout', () => this.onPointerMove(null));
+    this.input.on('pointerup', (p: Phaser.Input.Pointer) => this.endPress(p.x, p.y, true));
+    this.input.on('pointerupoutside', () => this.endPress(0, 0, false));
+    this.input.on('gameout', () => {
+      if (this.press?.active) this.press.cell = null;
+      this.onPointerMove(null);
+    });
     this.input.keyboard?.on('keydown-ESC', () => this.closeUi());
     this.redraw();
   }
@@ -338,6 +408,8 @@ export class GameScene extends Phaser.Scene {
   /** A build bar click: pick that type, or clear the pick if it is already active. */
   private togglePick(type: TowerType): void {
     if (this.endScreen.kind) return;
+    // The release of a drag that ended back on its bar button is not a click.
+    if (this.press?.active) return;
     this.tapCell = null;
     this.armed = null;
     if (this.pick === type) this.pick = null;
@@ -348,8 +420,66 @@ export class GameScene extends Phaser.Scene {
     this.redraw();
   }
 
+  /**
+   * After a pointerdown: remember a press on an affordable bar button, or in
+   * setup on an unlocked tower, so that moving past the threshold drags it.
+   */
+  private beginPress(x: number, y: number, touch: boolean): void {
+    if (this.endScreen.kind) return;
+    const rects = this.hud.rects();
+    const barType = BAR_TYPES.find((type) => contains(rects[`bar:${type}`], x, y));
+    const base = { touch, x0: x, y0: y, x, y, active: false, cell: null };
+    if (barType !== undefined) {
+      if (canPick(this.state, barType)) this.press = { ...base, kind: 'place', tower: barType, from: null };
+      return;
+    }
+    if (this.panel.rect !== null && contains(this.panel.rect, x, y)) return;
+    const cell = cellAt(x, y);
+    const tower = cell === null ? undefined : towerAt(this.state, cell);
+    if (tower && !tower.locked && this.state.phase === 'setup') {
+      this.press = { ...base, kind: 'move', tower: tower.type, from: { ...tower.cell } };
+    }
+  }
+
+  /** Pointer moved during a press: start the drag past the threshold, then follow. */
+  private dragMove(x: number, y: number): void {
+    const d = this.press;
+    if (d === null) return;
+    d.x = x;
+    d.y = y;
+    if (!d.active) {
+      if (!pastDragThreshold(d.x0, d.y0, x, y)) return;
+      d.active = true;
+      this.panel.close();
+      this.tapCell = null;
+      this.armed = null;
+      // A bar drag picks the type, so the pick stays after the release.
+      this.pick = d.kind === 'place' ? d.tower : null;
+    }
+    d.cell = dragTargetCell(x, y, d.touch);
+    this.redraw();
+  }
+
+  /**
+   * Pointer released. An active drag builds or moves on the cell it aims at
+   * (the sim refuses a cell that is not buildable) and otherwise cancels;
+   * `inside` is false for a release outside the canvas, which cancels.
+   */
+  private endPress(x: number, y: number, inside: boolean): void {
+    const d = this.press;
+    this.press = null;
+    if (d === null || !d.active) return;
+    const cell = inside ? dragTargetCell(x, y, d.touch) : null;
+    if (cell !== null && this.endScreen.kind === null) {
+      if (d.kind === 'place' && isBuildable(this.state, cell)) this.build(cell, d.tower);
+      else if (d.kind === 'move' && d.from !== null) this.move(d.from, cell);
+    }
+    this.redraw();
+  }
+
   /** Escape: clear the pick and the selection. */
   closeUi(): void {
+    this.press = null;
     this.pick = null;
     this.panel.close();
     this.redraw();
@@ -365,6 +495,17 @@ export class GameScene extends Phaser.Scene {
       panelOpen: this.panel.cell !== null,
       selectedTargeting: this.panel.cell === null ? null : (towerAt(this.state, this.panel.cell)?.targeting ?? null),
       targetLabel: this.panel.targetText,
+      upgradeLabel: this.panel.upgradeText,
+      sellLabel: this.panel.sellText,
+      dragging:
+        this.press === null || !this.press.active
+          ? null
+          : {
+              kind: this.press.kind,
+              tower: this.press.tower,
+              ...(this.press.from !== null ? { from: { ...this.press.from } } : {}),
+              cell: this.press.cell === null ? null : { ...this.press.cell },
+            },
     };
   }
 
@@ -463,6 +604,22 @@ export class GameScene extends Phaser.Scene {
     return result;
   }
 
+  /** Move an unlocked tower in setup (milestone 25a). */
+  move(from: Cell, to: Cell): MoveResult {
+    const result = moveTower(this.state, from, to);
+    this.takeEvents();
+    this.redraw();
+    return result;
+  }
+
+  /** Undo an upgrade bought this setup phase (milestone 25a). */
+  undoUpgrade(cell: Cell): UndoUpgradeResult {
+    const result = undoUpgrade(this.state, cell);
+    this.takeEvents();
+    this.redraw();
+    return result;
+  }
+
   setTargeting(cell: Cell, mode: TargetingMode): TargetingResult {
     const result = setTargeting(this.state, cell, mode);
     this.takeEvents();
@@ -479,7 +636,8 @@ export class GameScene extends Phaser.Scene {
     this.aim.prune(this.state);
     const g = this.dynamic;
     g.clear();
-    drawTowers(g, this.state, this.aim);
+    const moving = this.press?.active && this.press.kind === 'move' ? this.press.from : null;
+    drawTowers(g, this.state, this.aim, moving);
     drawStatusRings(g, this.state);
     drawShadows(g, this.state);
     this.enemySprites.sync(this.state, this.speed);
@@ -499,6 +657,7 @@ export class GameScene extends Phaser.Scene {
     if (kind === null || this.endScreen.kind !== null) return;
     this.panel.close();
     this.pick = null;
+    this.press = null;
     this.endScreen.show(kind, this.state);
   }
 
@@ -508,6 +667,14 @@ export class GameScene extends Phaser.Scene {
     if (this.panel.cell !== null && !towerAt(this.state, this.panel.cell)) this.panel.close();
     if (this.pick !== null && !canPick(this.state, this.pick)) this.pick = null;
     this.panel.update(this.state);
+    // A drag whose source went away (gold spent elsewhere, the tower sold or
+    // locked by a test hook) ends without acting.
+    const d = this.press;
+    if (d !== null) {
+      const source = d.from === null ? undefined : towerAt(this.state, d.from);
+      if (d.kind === 'place' ? !canPick(this.state, d.tower) : !source || source.locked || this.state.phase !== 'setup') this.press = null;
+    }
+    const drag = this.press?.active ? this.press : null;
 
     // Touch: nothing is armed or highlighted without a pick, and an armed
     // cell that stopped being buildable (a test hook built there) disarms.
@@ -523,12 +690,16 @@ export class GameScene extends Phaser.Scene {
     const panelRect = this.panel.rect;
     const p = this.pointer;
     if (this.endScreen.kind !== null) this.hoverCell = null;
+    else if (drag !== null) this.hoverCell = drag.cell;
     else if (this.touch) this.hoverCell = this.tapCell;
     else this.hoverCell = p === null || (panelRect !== null && contains(panelRect, p.x, p.y)) ? null : cellAt(p.x, p.y);
     const hover = this.hoverCell;
     const hoverTower = hover !== null && towerAt(this.state, hover) !== undefined;
-    const hoverBuildable = hover !== null && isBuildable(this.state, hover);
-    this.setCursor(hoverTower || (this.pick !== null && hoverBuildable) ? 'pointer' : 'default');
+    // A moved tower may be dropped back on its own cell (a no-op).
+    const backHome = drag?.kind === 'move' && drag.from !== null && hover !== null && sameCell(drag.from, hover);
+    const hoverBuildable = hover !== null && (isBuildable(this.state, hover) || backHome);
+    if (drag !== null) this.setCursor('grabbing');
+    else this.setCursor(hoverTower || (this.pick !== null && hoverBuildable) ? 'pointer' : 'default');
 
     const g = this.overlay;
     g.clear();
@@ -541,7 +712,10 @@ export class GameScene extends Phaser.Scene {
       g.strokeCircle(s.x, s.y, 22);
     }
 
-    if (this.pick !== null && hover !== null) {
+    // What a ghost would show: the pick, or the tower being moved (its level).
+    const moved = drag?.kind === 'move' && drag.from !== null ? towerAt(this.state, drag.from) : undefined;
+    const ghostType = moved ? moved.type : this.pick;
+    if (ghostType !== null && hover !== null) {
       // Inset by half the outline so the 2 px edge stays inside the cell.
       const r = cellRect(hover);
       const color = hoverBuildable ? COLORS.cellOk : COLORS.cellBad;
@@ -549,11 +723,28 @@ export class GameScene extends Phaser.Scene {
       g.fillRect(r.x, r.y, CELL, CELL);
       g.lineStyle(CELL_LINE, color, 1);
       g.strokeRect(r.x + CELL_LINE / 2, r.y + CELL_LINE / 2, CELL - CELL_LINE, CELL - CELL_LINE);
-      // A blocked cell shows only the red tint: no ghost, no range.
+      const upgraded = moved?.upgraded ?? false;
+      const angle = this.aim.angle(moved ? moved.cell : hover);
       if (hoverBuildable) {
-        this.rangeCircles(hover, TOWER_DEFS[this.pick].base);
-        drawTowerShape(g, this.pick, cellCenter(hover), this.aim.angle(hover), false, GHOST_ALPHA);
+        this.rangeCircles(hover, moved ? towerStats(moved) : TOWER_DEFS[ghostType].base);
+        drawTowerShape(g, ghostType, cellCenter(hover), angle, upgraded, GHOST_ALPHA);
+      } else if (drag !== null) {
+        // During a drag a blocked cell also shows a faint red-tinted ghost,
+        // so the player sees where it would land. Click and two-tap
+        // placement keep the red cell only (no ghost, no range).
+        const c = cellCenter(hover);
+        drawTowerShape(g, ghostType, c, angle, upgraded, BLOCKED_GHOST_ALPHA);
+        g.fillStyle(COLORS.cellBad, BLOCKED_GHOST_TINT);
+        g.fillCircle(c.x, c.y, 15);
       }
+    }
+    // On touch, a thin line from the fingertip to the lifted ghost's cell.
+    if (drag !== null && drag.touch && hover !== null) {
+      const c = cellCenter(hover);
+      g.lineStyle(DRAG_LINE, COLORS.dragLine, 0.85);
+      g.lineBetween(drag.x, drag.y, c.x, c.y);
+      g.fillStyle(COLORS.dragLine, 0.85);
+      g.fillCircle(drag.x, drag.y, 3);
     }
   }
 

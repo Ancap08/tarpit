@@ -135,3 +135,36 @@ export function placeBeside(centre: Point, width: number, height: number): Point
   }
   return best ?? candidates[0];
 }
+
+/**
+ * Drag to place and move (milestone 25a): a press becomes a drag once the
+ * pointer is more than DRAG_THRESHOLD px from where it went down.
+ */
+export const DRAG_THRESHOLD = 8;
+/** On touch the drag's target is this many px above the finger, so the finger does not hide the ghost. */
+export const DRAG_LIFT = 48;
+
+/** True once (x, y) is more than DRAG_THRESHOLD px from the press at (x0, y0). */
+export function pastDragThreshold(x0: number, y0: number, x: number, y: number): boolean {
+  return Math.hypot(x - x0, y - y0) > DRAG_THRESHOLD;
+}
+
+/**
+ * The cell a drag at pointer (x, y) aims at. Touch: the cell under the aim
+ * point DRAG_LIFT px above the finger, valid whenever that point is on the
+ * map, even with the finger over the HUD (so the bottom row is reachable);
+ * null once the aim point is off the map. Mouse: the cell under the
+ * pointer, null over the HUD or off the map. A release on null cancels.
+ */
+export function dragTargetCell(x: number, y: number, touch: boolean): Cell | null {
+  return cellAt(x, touch ? y - DRAG_LIFT : y);
+}
+
+/**
+ * True when a mouse drag has lost its button (milestone 25a follow-up): the
+ * mouseup happened where the page never saw it (another window, a system
+ * dialog), so the pointer moves with no button down. The drag then cancels.
+ */
+export function mouseDragLost(isDown: boolean, buttons: number): boolean {
+  return !isDown || buttons === 0;
+}

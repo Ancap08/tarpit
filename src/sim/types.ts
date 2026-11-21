@@ -142,8 +142,22 @@ export interface Tower {
   targeting: TargetingMode;
   /** Ticks until the tower may fire again; 0 means ready. */
   cooldownTicks: number;
-  /** Gold spent on this tower (build plus upgrade); sell refunds 70%. */
+  /** Gold spent on this tower (build plus upgrade); a locked tower sells for 70%. */
   spent: number;
+  /**
+   * Planning phase (milestone 25a): false while the tower was built during
+   * the current setup phase; it may then be moved for free and removed for
+   * a full refund. Built during a wave, or once Start Wave is pressed, true.
+   */
+  locked: boolean;
+  /**
+   * Gold spent on this tower during the current setup phase and still
+   * refundable in full: the build (unlocked towers) plus an upgrade bought
+   * this phase. Zeroed by startWave; building or upgrading mid-wave adds 0.
+   */
+  unlockedSpend: number;
+  /** The upgrade was bought during the current setup phase (undoable); cleared by startWave. */
+  upgradedThisPhase: boolean;
 }
 
 /**
