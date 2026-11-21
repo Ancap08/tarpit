@@ -338,7 +338,7 @@ for (const type of TYPES) {
   });
 }
 
-test('panel: a locked tower upgraded in the next setup shows Undo upgrade +35 beside Sell +59', async ({ page }) => {
+test('panel: a locked tower upgraded in the next setup shows Undo upgrade +35 beside Sell +70', async ({ page }) => {
   await startGame(page);
   await api(page, (a) => a.buildAt(7, 5, 'musketeer'));
   const phase = await page.evaluate(() => {
@@ -353,8 +353,8 @@ test('panel: a locked tower upgraded in the next setup shows Undo upgrade +35 be
   expect(await ui(page)).toMatchObject({ upgradeLabel: `${PANEL_TEXT.upgrade}  35`, sellLabel: `${PANEL_TEXT.sell}  +35` });
   await clickRect(page, 'panel:upgrade');
   expect((await state(page)).gold).toBe(65);
-  // Sell here would pay 59 (70% of 85); Undo then Sell pays 35 + 35.
-  expect(await ui(page)).toMatchObject({ upgradeLabel: `${PANEL_TEXT.undoUpgrade}  +35`, sellLabel: `${PANEL_TEXT.sell}  +59` });
+  // Sell here pays 35 + 35 = 70 (coordinator follow-up), the same as Undo then Sell.
+  expect(await ui(page)).toMatchObject({ upgradeLabel: `${PANEL_TEXT.undoUpgrade}  +35`, sellLabel: `${PANEL_TEXT.sell}  +70` });
   await clickRect(page, 'panel:upgrade');
   expect((await state(page)).gold).toBe(100);
   expect((await state(page)).towers).toEqual([expect.objectContaining({ cell: C75, locked: true, upgraded: false, spent: 50 })]);

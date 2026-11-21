@@ -38,16 +38,17 @@ const BUILDABLE: Cell[] = [];
 for (let row = 0; row < GRID_ROWS; row++) for (let col = 0; col < GRID_COLS; col++) if (isBuildableTerrain(cell(col, row))) BUILDABLE.push(cell(col, row));
 
 describe('(a) exploit hunt', () => {
-  it('a locked tower with an upgrade bought this setup sells for 70% of everything: 59, not 35 + 35', () => {
+  // Coordinator follow-up: the fresh upgrade comes back in full, the rest at 70%.
+  it('a locked tower with an upgrade bought this setup sells for 35 + 35 = 70, the same as undo then sell', () => {
     const s = createGame();
     buildTower(s, A, 'musketeer');
     clearWave(s);
     expect(s.phase).toBe('setup');
     s.gold = 100;
     expect(upgradeTower(s, A)).toMatchObject({ ok: true, gold: 65, tower: { locked: true, spent: 85, unlockedSpend: 35, upgradedThisPhase: true } });
-    // Sell now: floor(0.7 * 85) = 59. The better line (undo +35, sell +35 = 70) is the player's to find.
-    expect(sellTower(s, A)).toEqual({ ok: true, refund: 59, gold: 124 });
-    expect(s.events.at(-1)).toMatchObject({ kind: 'sell', refund: 59, full: false });
+    // Sell now: 35 + floor(0.7 * 50) = 70, the same as undo (+35) then sell (+35).
+    expect(sellTower(s, A)).toEqual({ ok: true, refund: 70, gold: 135 });
+    expect(s.events.at(-1)).toMatchObject({ kind: 'sell', refund: 70, full: false });
 
     const t = createGame();
     buildTower(t, A, 'musketeer');
@@ -158,8 +159,8 @@ describe('(a) exploit hunt', () => {
         const keys = s.towers.map((t) => cellKey(t.cell));
         expect(new Set(keys).size).toBe(keys.length);
       }
-      // The only way worth drops: selling a locked tower while its fresh upgrade is still undoable.
-      expect(losses).toBeLessThanOrEqual(4);
+      // A sale pays exactly the liquidation worth, so worth never drops.
+      expect(losses).toBe(0);
     }
   });
 });

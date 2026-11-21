@@ -9,7 +9,7 @@
 // clears the list.
 
 import { cellKey, isBuildableTerrain, sameCell, type Cell } from './grid';
-import { sellRefund, TOWER_DEFS } from './towers';
+import { TOWER_DEFS, towerSellValue } from './towers';
 import type { GameState, TargetingMode, Tower, TowerType } from './types';
 
 export type BuildResult =
@@ -91,17 +91,18 @@ export function upgradeTower(state: GameState, cell: Cell): UpgradeResult {
 }
 
 /**
- * Sell the tower on `cell`. An unlocked tower (built this setup phase)
- * refunds everything spent on it; a locked one refunds sellRefund(spent),
- * 70% rounded down, in any phase. An upgrade bought this phase on a locked
- * tower is not refunded in full by a sell: undo it first (undoUpgrade).
+ * Sell the tower on `cell` for towerSellValue: an unlocked tower (built this
+ * setup phase) refunds everything spent on it; a locked one refunds an
+ * upgrade bought this setup phase in full plus sellRefund (70%, rounded
+ * down) of the rest, in any phase. One `sell` event, `full` only when the
+ * tower was unlocked.
  */
 export function sellTower(state: GameState, cell: Cell): SellResult {
   if (isOver(state)) return { ok: false, reason: 'game-over' };
   const tower = towerAt(state, cell);
   if (!tower) return { ok: false, reason: 'no-tower' };
   const full = !tower.locked;
-  const refund = full ? tower.spent : sellRefund(tower.spent);
+  const refund = towerSellValue(tower);
   state.gold += refund;
   state.towers = state.towers.filter((t) => t !== tower);
   state.events.push({ kind: 'sell', cell: { col: tower.cell.col, row: tower.cell.row }, tower: tower.type, refund, full });

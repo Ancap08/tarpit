@@ -1,6 +1,7 @@
 // Tower panel: opens beside a selected tower with "Upgrade  40", "Sell  +35"
 // and "Target: First". Upgrade reads "Upgraded" and is greyed once used, and
-// is greyed when unaffordable. Sell shows the refund, floor(spent * 7 / 10).
+// is greyed when unaffordable. Sell shows the refund, towerSellValue: 70% of
+// spent rounded down, plus in full any upgrade bought this setup phase.
 // The targeting button (milestone 24) shows the tower's mode and cycles it
 // first -> last -> strongest -> first; its label is 13 px and centred so
 // "Target: Strongest" (17 Courier characters, about 133 px) fits the 156 px
@@ -13,7 +14,7 @@
 // would not fit the 156 px button) and undoes it. Words from names.ts.
 
 import type Phaser from 'phaser';
-import { cellCenter, sellRefund, TARGETING_MODES, TOWER_DEFS, towerAt, type Cell, type GameState, type TargetingMode } from '../../sim';
+import { cellCenter, TARGETING_MODES, TOWER_DEFS, towerAt, towerSellValue, type Cell, type GameState, type TargetingMode } from '../../sim';
 import { placeBeside, type Rect } from '../input';
 import { PANEL_TEXT, targetingButtonText } from '../names';
 import { ButtonStack } from './button';
@@ -81,8 +82,7 @@ export class TowerPanel {
     } else {
       upgrade.set(PANEL_TEXT.upgrade, state.gold >= cost, String(cost));
     }
-    if (tower.locked) sell.set(PANEL_TEXT.sell, true, `+${sellRefund(tower.spent)}`);
-    else sell.set(PANEL_TEXT.remove, true, `+${tower.spent}`);
+    sell.set(tower.locked ? PANEL_TEXT.sell : PANEL_TEXT.remove, true, `+${towerSellValue(tower)}`);
     this.mode = tower.targeting;
     target.set(targetingButtonText(tower.targeting), true);
   }

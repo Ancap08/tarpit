@@ -71,6 +71,34 @@ describe('lock and refund', () => {
   });
 });
 
+describe('selling a locked tower upgraded this setup', () => {
+  it('pays the upgrade in full plus 70% of the rest: 35 + floor(50 * 0.7) = 70, the same as undo then sell', () => {
+    const s = createGame();
+    buildTower(s, A, 'musketeer');
+    clearWave(s);
+    s.gold = 100;
+    upgradeTower(s, A);
+    expect(s.gold).toBe(65);
+    s.events = [];
+    expect(sellTower(s, A)).toEqual({ ok: true, refund: 70, gold: 135 });
+    expect(s.events).toEqual([{ kind: 'sell', cell: A, tower: 'musketeer', refund: 70, full: false }]);
+  });
+
+  it('a locked mortar upgraded this setup: 80 + floor(110 * 0.7) = 157; after Start Wave only 70% of 190 = 133', () => {
+    const s = createGame();
+    s.gold = 1000;
+    buildTower(s, A, 'mortar');
+    clearWave(s);
+    upgradeTower(s, A);
+    const t = structuredClone(s);
+    const before = s.gold;
+    expect(sellTower(s, A)).toMatchObject({ ok: true, refund: 157 });
+    expect(s.gold - before).toBe(157);
+    startWave(t);
+    expect(sellTower(t, A)).toMatchObject({ ok: true, refund: 133 });
+  });
+});
+
 describe('undoUpgrade', () => {
   it('on a locked tower upgraded this setup: full upgrade cost back, tower base again and still locked', () => {
     const s = createGame();
