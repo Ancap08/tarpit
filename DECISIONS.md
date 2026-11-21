@@ -124,3 +124,18 @@ can change it; "Kyle" means Kyle decided.
 - **Milestone 6 polish candidates from the verifier: the spot 2 menu covers
   the path while open; the white range preview is faint; the greyed
   "Upgraded" label is low contrast.** Observations only.
+
+## 2026-11-21, milestone 5
+
+- **Play again restarts the Phaser scene (`scene.restart()`), which rebuilds
+  everything from a fresh `createGame()`.** Default (Opus, accepted by Fable).
+  Phaser's shutdown removes listeners and objects, so nothing needs manual
+  reset; tests prove a third game behaves like the first.
+- **The end-screen veil is plain drawing, not an interactive object; the
+  scene ignores map clicks while an end screen shows.** Default (Opus). An
+  interactive veil raced the Play again button on the first frame and failed
+  a third of runs.
+- **Speed toggle greys out on end screens.** Default (Opus). Its label would
+  otherwise still flip between 1x and 2x.
+- **Milestone 6 polish candidates from the verifier: a more transparent end
+  panel, and hiding the "Next:" line on the lose screen.** Observations only.
