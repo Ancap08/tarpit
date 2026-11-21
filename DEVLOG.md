@@ -2878,3 +2878,95 @@ Claude Fable 5.2.
   `{ difficulty }` explicitly, Play again included.
 - **My first `loseQuickly` helper assumed a wave was running**; after Play
   again the game is in setup, so it now starts a wave first.
+
+### Verifier notes
+
+Verifier: Claude Fable 5.2.
+
+- **Clean run** (`rm -rf dist`, `npm ci`, lint, typecheck, test, build,
+  check:assets, check:size, test:e2e on `PW_PORT=4173`, sim): exit 0. As
+  delivered: 38 unit files, 427 tests; 122 Playwright tests; `dist/`
+  1273572 bytes in 4 files. With the verifier probes: 39 files, 450
+  tests; 131 Playwright tests. `difficulty`, `end-screens`, `live` and
+  `renderer` specs with `--repeat-each=5`: 50 passed. `difficulty`,
+  `touch` and `play-wave` with `--repeat-each=40`: 760 passed. The Easy
+  and Hard tables printed by `npm run sim` equal the two tables above
+  line for line.
+- **Normal untouched.** `npm run sim` on an export of `origin/main` and
+  the Normal part of the branch's report are identical line for line
+  (comboBuild won, 12 lives, 497 gold, 145 after wave 9; bossRush won, 12
+  lives, 427; comboStrongest lost on wave 5). `towers.ts`, `waves.ts` and
+  `enemies.ts` have no diff. No sim test file that existed before was
+  changed; the only changed `*.test.ts` is `src/game/ui/bossBar.test.ts`
+  (one added case for the level's full hp).
+- **Rounding.** `Math.round`, which takes a half up. The only half case
+  is the Easy Goblin: 30 x 0.75 = 22.5 -> 23. Wolf on Hard is 28 x 1.3 =
+  36.4 -> 36. Everything else is whole (700 x 1.3 is 910.0000000000001 in
+  floating point and rounds to 910). `src/sim/difficulty-verifier.test.ts`
+  (23 tests) checks the hand table against every enemy the 10 waves spawn
+  on each level; bounty, speed, exit cost and the boss slow cap per level;
+  a Musketeer shot taking 12 on every level (Hard Goblin 39 -> 27); the
+  shield keyed on shot base damage (Shieldbearer takes 12, 2, 4.5 and 22
+  from 90, 120 or 156 hp alike); a fresh enemy's hp equal to
+  `enemyMaxHp`, which is what the hp bar and boss bar compare with, so it
+  is not drawn as hurt; `createGame()` deeply equal to Normal; two
+  identical comboBuild runs per level; and both SCOPE targets (lazyBuild
+  on Easy: lives 25, 25, 25, 25, 23, 23, 17, 17, 14, then ten exits and
+  the boss, 14 - 10 - 5 = -1; comboBuild on Hard: 15, 9, 0, lost on wave
+  3). Both are pinned with a `milestone 28 target` comment.
+- **Defect fixed: the HUD showed "Lives -1".** The sim lets lives go
+  below 0 when the boss exits (`boss.test.ts` pins `lives - 5`, so the
+  sim stays as it is) and the HUD printed the raw number. This has been
+  there since milestone 23; the Easy lazy run makes it easy to reach. The
+  HUD now shows `max(0, lives)`. The lose screen shows no lives and the
+  win screen needs lives above 0, so the HUD was the only place. Probe
+  (h) in `e2e/difficulty-verifier.spec.ts`: lazyBuild on Easy ends with
+  `state.lives` -1 and "Lives 0"; a boss exit with 3 lives left gives
+  -2 and "Lives 0", phase lost. It failed before the fix.
+- **Menu probes** (`e2e/difficulty-verifier.spec.ts`, 8 tests, and one
+  tablet test in `touch-verifier.spec.ts`), all with real input. A level
+  click, clicks on eight empty spots and Left/Right start nothing; Play,
+  Enter and Space each start. Left and Right stop at the ends (no wrap;
+  the notes above do not say so, the code comment and the implementer's
+  spec do). [Menu] from a win on Easy returns to the title with Easy
+  selected and Play gives tick 0, wave 0, no towers, 150 gold. Play again
+  on Hard keeps Hard twice (80 gold, 15 lives, Goblin 39 hp). The tag is
+  absent on Normal; on Easy and Hard its bounds do not meet the wave
+  counter, the lives or the preview at waves 0, 9 and 10 (Hard, wave 10:
+  counter x 238 to 347, y 489.2 to 506.8; tag x 238 to 267, y 510.1 to
+  521.9; preview from x 366). Tablet: tap Hard, tap Play, 80 gold; the
+  four title buttons are 44.8 px tall on screen.
+- **The key-repeat explanation holds.** With the `WeakSet` guard turned
+  off locally, Left then a state read then Enter started Easy from Hard
+  on the first or second try in 5 of 5 runs, the implementer's first test
+  failed 5 of 5, and Right then Space after [Menu] skipped a level 5 of
+  5. With the guard: no failure in any run above. Left and Enter sent
+  with no gap at all did not fail even without the guard, so the repeat
+  needs the first key's keyup before the second keydown. Guard restored.
+- **A test-only race I hit, not a game bug.** A click in the same frame
+  the title scene starts is ignored (2 of 25 on fast reloads inside one
+  page): Phaser puts new interactive objects on a pending list until the
+  scene's next update. No person clicks within 16 ms of the menu
+  appearing. My specs wait two frames after the title starts. The
+  implementer's specs click straight after `scene() === 'title'` and did
+  not fail in 760 runs, but they have the same exposure in principle.
+- **Names.** No "Easy", "Normal", "Hard", "Play", "Menu" or "Difficulty"
+  string in `src/game` outside `names.ts` (one test title mentions Easy
+  and Hard). With `hard: 'Brutal'` in the table: build, 450 unit tests,
+  and `difficulty.spec.ts` plus `difficulty-verifier.spec.ts` (12) all
+  passed; reverted and rebuilt.
+- **Frames** (`m25-title`, `m25-title-hard`, the two HUD crops,
+  `m25-lost-with-menu`): the menu is centred, the selected level has the
+  brighter fill and pale edge and reads at a glance, the 12 px tag is
+  small but legible, and the end screen's buttons sit clear of the text
+  lines. Nothing off.
+- **For the coordinator.** (1) `DECISIONS.md` has no milestone 25
+  section; the rounding rule, stop-at-the-ends, the tag under the
+  counter, and "the sim keeps negative lives, the HUD shows 0" belong
+  there. (2) Baselines are not committed: `title.png`, `won.png` and
+  `lost.png` are stale and `title-hard.png` is missing, so CI fails on
+  the visual spec until `update-snapshots.yml` runs on this branch.
+  (3) SCOPE's "Easy must let the lazy build win" misses by one boss exit
+  and Hard is lost by wave 3 for the best plan; both are milestone 28's,
+  as the implementer says. (4) The README says "Enter also works"; Space
+  does too.
