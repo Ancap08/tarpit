@@ -192,3 +192,40 @@ Balance observations for milestone 6 (numbers unchanged, as instructed):
 - Every build spot except 0 sits exactly 80 px from the path, which equals
   the base Tar Pit range. A base Tar Pit there touches the path at only one
   or two points, so it is nearly useless until upgraded (range 95).
+
+### Verifier notes
+
+The verifier (Claude Sonnet) ran `rm -rf dist && npm ci && npm run lint &&
+npm run typecheck && npm test && npm run build && npm run test:e2e &&
+npm run sim` from a clean state: every step passed (73 unit tests in 7
+files before my additions, 1 e2e test). The sim tables match the
+implementer's numbers: `soundBuild` wins on wave 10 with 20 lives and 910
+gold; `lazyBuild` loses on wave 3.
+
+I checked tower stats, upgrades, targeting (furthest along path, lower id on
+ties, inclusive range), cannon splash, slow rules, the integer sell refund,
+bounty on kill, refusal in won/lost and `round(60 / fireRate)` cooldowns line
+by line against `docs/DESIGN.md`; all match. I added 11 test cases in
+`src/sim/verifier2.test.ts` (84 total); all pass, no code defect found, no
+code changed. `package.json` gains only the `sim` script (no dependency).
+`src/sim` has no phaser, window or document references.
+
+Hand check of spot 2 (240,176) with a base Musketeer (range 110): the
+perpendicular distance to the y=96 segment is 80, so it covers
+2 x sqrt(110^2 - 80^2) = 2 x sqrt(5700) = 150.99 px of that segment. The
+tower also reaches the x=160 climb and a little of the y=240 run, so the
+whole covered stretch is 299.95 px (path distance 150.5 to 459.5). A goblin
+at 1 px/tick is shot at path distances 151, 211 and 271 (every 60 ticks) and
+dies on the third 12-damage hit, so one Musketeer at spot 2 kills a lone
+goblin. A test asserts this. With only that tower, wave 1 gives 2 kills and 6
+leaks (14 lives, 85 gold): goblins arrive 60 ticks apart and each needs 3
+shots, so one tower kills about one goblin in three.
+
+Finding, not fixed: the implementer note "every build spot except 0 sits
+exactly 80 px from the path" is wrong for spot 3 (240,304), which is 102.45
+px from its nearest segment (the y=240 run), and spot 0 is 64 px, not 80. The
+other eight spots (1, 2, 4 to 9) are exactly 80. So a base Tar Pit (range 80)
+cannot reach the path from spot 3 at all, and from the other eight it touches
+only a single point of a straight segment. The upgraded Tar Pit (95) fixes
+both. This matters for milestone 6 tuning. Also noted: `lazyBuild` loses on
+wave 3 against a target of about wave 7.
