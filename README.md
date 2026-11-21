@@ -38,7 +38,14 @@ src/main.ts              boots Phaser, exposes the game as window.__tarpit
 src/game/                rendering and input (Phaser scenes)
   TitleScene.ts          title screen
 src/sim/                 game logic, plain TypeScript, no Phaser or DOM
-  index.ts, *.test.ts    simulation code and its unit tests
+  index.ts               public barrel; src/game imports from here
+  types.ts               GameState, Enemy, WaveDef and other data shapes
+  map.ts                 path, build spots, pathLength, positionAlongPath
+  enemies.ts             enemy stat table
+  waves.ts               10-wave table and nextWavePreview
+  game.ts                createGame, startWave, tick (60 ticks/s)
+  headless.ts            scripted headless runner, playAllWavesNoTowers
+  *.test.ts              unit tests next to each module
 e2e/                     Playwright browser tests
 .github/workflows/       ci.yml (checks) and deploy.yml (GitHub Pages)
 docs/SCOPE.md            v1 scope and milestones

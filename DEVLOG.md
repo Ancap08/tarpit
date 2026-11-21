@@ -69,3 +69,42 @@ Coordinator notes (Fable 5.1): the verifier's one finding, the unused
 implementer's idea. It came out before the PR. Repo settings (Pages source set
 to GitHub Actions, `main` protected so changes need a PR with the `ci` check
 passing) were done by the coordinator with `gh api`, not by the agents.
+
+## 2026-11-21: milestone 1, core simulation
+
+Roles: implementer Claude Opus, verifier Claude Sonnet, coordinator Claude
+Fable 5.1.
+
+### Implementer notes
+
+The implementer (Claude Opus) added `types.ts`, `map.ts`, `enemies.ts`,
+`waves.ts`, `game.ts` and `headless.ts` under `src/sim`, with a test file
+for each of map, waves, game and headless (28 tests). The placeholder
+`clamp` and its test are gone; nothing used them. All five checks passed on
+the first run, and the tests passed first time too, so there is no failure
+story here. That is worth a second look from the verifier rather than
+comfort: the expected values in the tests are hand-derived (path length
+1584, spawn ticks, 2005 ticks to clear wave 1), so a shared wrong reading of
+the spec would pass both code and tests.
+
+Choices the spec left open, each the simplest reading:
+
+- State is mutated in place; `tick` returns nothing and `startWave` returns
+  a typed result (`not-in-setup` or `no-more-waves`).
+- Order inside a tick: move, remove exits and lose lives, spawn, advance,
+  check clear. The first enemy of a wave spawns on the first `tick()` after
+  `startWave` (waveTick 0) and does not move on its spawn tick. If lives hit
+  0, the phase becomes `lost` and the rest of that tick is skipped.
+- Spawn tick for enemy `i` of a group is
+  `Math.round((delay + i * interval) * 60)`. Every value in the wave table
+  lands on a whole tick, so rounding only absorbs float error.
+- Movement uses `speed * (1 - slow) / 60` rather than `speed * (1/60)`, so a
+  Goblin moves exactly 1.0 px and a Wolf 2.0 px per tick with no float drift.
+  Slow duration is stored in ticks (`slowTicksLeft`).
+- In `setup` a tick only advances the tick counter; in `won` or `lost` a
+  tick does nothing.
+- `playAllWavesNoTowers(maxTicksPerWave)` caps each wave, not the whole
+  run, because the script step is per wave.
+
+Result: the no-tower run loses on wave 2. Wave 1 leaks all 8 goblins (20 to
+12 lives); the 12th goblin of wave 2 takes lives to 0.
