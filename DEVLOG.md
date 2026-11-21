@@ -2121,3 +2121,53 @@ What went wrong:
 - Screenshot baselines that show enemies (mid-wave, enemies, new-towers,
   won, lost) and the tablet frame need regenerating on CI; the frame ticks
   and count assertions are unchanged.
+
+### Verifier notes
+
+Independent check, with a different model from the implementer.
+
+- **Clean run** (`rm -rf dist && npm ci && lint && typecheck && test && build
+  && check:assets && check:size && test:e2e`): exit 0. 244 unit tests (223
+  existing, unmodified, plus 21 new), 85 e2e. `check:size` 1251326 bytes in 3
+  files, matching the implementer. After the verifier added 6 sim probes, 3
+  e2e probes and the Wolf fix: 250 unit tests, 88 e2e, all pass.
+  `anim.spec`, `live.spec` and the new probes ran with `--repeat-each=5`: no
+  flake.
+- **No gameplay change.** `git diff 7d5cdde -- src/sim` (excluding tests) is
+  event emission only, the events module and `applySlow` returning a boolean.
+  `npm run sim` summary is identical to the merge base (combo won, 11 lives,
+  177 gold). Existing `*.test.ts` files are untouched (additions only).
+  `tick` clears `events` at its start; build, upgrade, sell and `waveStart`
+  events survive until the next tick. Note: the list also persists through
+  setup after a wave's last tick, so a reader that logs `state.events` after
+  every action without a cursor double-counts. `EventCursor` handles this;
+  the verifier's own first harness hit exactly this.
+- **Event probes** (`src/sim/events-verifier.test.ts`, 6 tests): Cannon splash
+  on 3 enemies gives 3 hits with one cell and damage; burn kill has cause
+  burn; over a full 10-wave game kills == spawns - exits with each id once;
+  `waveClear` carries 25 and `won` appears once, right after wave 10's clear;
+  a weaker slow on a stronger one emits nothing; wave 3 spawns 8 Goblin and 6
+  Wolf; setup ticks are empty.
+- **Assets.** The three PNGs are byte-identical to the pack files. Manifest
+  rows cite the pack URL, authors and CC0; removing the wolf row made
+  `check:assets` fail (reverted). Sheet layouts for GreenPig (4 x 7, facing
+  columns down, up, left, right, dead frame at row 6 col 0) and Cyclope (4 x
+  4) match Pillow and the eye.
+- **Defect found and fixed: the Wolf walked backwards.** The Hyena frames face
+  RIGHT (snout, eye and tail read pixel by pixel; the shipped m16 frames show
+  a wolf on the last leg with its snout pointing left while moving right).
+  The implementer's correction of the brief ("frames face left, so mirror
+  for right") was wrong; the brief was right. `sheets.ts` now mirrors for
+  left only, up and down are unmirrored, unit and e2e tests pin it, and
+  INVENTORY.md is corrected. Wolf screenshot baselines on CI must be
+  regenerated anyway.
+- **Renderer.** `src/main.ts` uses Canvas in test mode and AUTO otherwise,
+  with `pixelArt` and `roundPixels`; tweens and particles are off when
+  frozen (`enemySprites.ts`, `Particles` only created when not frozen);
+  frame is 0 in test mode. The jagged-text risk of `pixelArt` is stated in
+  the DEVLOG.
+- **Probes** (`e2e/anim-verifier.spec.ts`): goblin frame 0 and facing match
+  movement across the first corner; Wolf `flipX` false while moving right;
+  depth rises with screen y (read through `game.scene.getScene('game')`).
+- **Not verified:** pixel baselines (CI only), real iPad text rendering with
+  `pixelArt`, WebGL frames beyond the implementer's screenshots.
