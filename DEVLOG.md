@@ -1457,3 +1457,162 @@ The verifier (Claude Sonnet) checked milestone 11 on branch
   hidden by the rule (the higher cell key), which leaves a tower unlabelled.
 - Not checked: pixel baselines. `new-towers.png` is not in the repo; CI
   generates baselines, and local runs skip pixel comparison.
+
+## 2026-11-21: milestone 12, balance pass v2
+
+Roles: implementer Claude Opus, verifier Claude Sonnet, coordinator Claude
+Fable 5.1.
+
+### Implementer notes
+
+The implementer (Claude Opus) retuned the numbers so the v2 targets in
+`docs/SCOPE-v2.md` hold with six towers on the grid. Only numbers, the kid
+placement rule in `src/sim/headless.ts` and the combo plan changed. Start
+gold, lives, waves, tower and enemy count, upgrades, sell, path, grid, tick
+rate, targeting, tick order and burn rules are unchanged. The only game
+code change is `comboBuild` added to the e2e `runScript` names
+(`src/game/testMode.ts`, and its type in `src/game/testGlobal.d.ts`).
+
+**Placement rule for the kid archetypes (replaces the milestone 8 kid
+band).** Lazy, greedy and longbowSpam take cells from `TRAIL_CELL_ORDER`:
+walk the path from the spawn in steps of 96 px (`TRAIL_STEP`), starting at
+path distance 96. At each step point take the nearest buildable cell whose
+centre is within 72 px (`TRAIL_REACH`) of the point and not yet in the
+list (ties go to the lower cell key); skip the point if there is none. The
+path is 1584 px, so there are 16 step points and every one finds a cell:
+(2,5) (6,6) (3,3) (7,1) (10,1) (14,3) (14,6) (14,9) (13,13) (16,10)
+(19,10) (22,10) (22,7) (22,4) (25,4) (28,7). Only the first cell has its
+centre left of x 96, so the left-edge problem is gone.
+`balance.test.ts` pins the first six cells and the rule;
+`grid-verifier.test.ts` recomputes the whole list with its own path walk.
+Side effect: a kid build holds at most 16 towers, so late gold piles up
+unspent (longbowSpam has 322 gold when it loses).
+
+Targets and results:
+
+| # | Archetype | Target | Before (milestone 11) | Before (new placement, old numbers) | After |
+|---|---|---|---|---|---|
+| 1 | noTowers | lost by wave 3 | lost wave 2 | lost wave 2 | lost wave 2 |
+| 2 | lazyBuild | lost on wave 6 to 8 | lost wave 3 | lost wave 9 | lost wave 7 |
+| 3 | longbowSpam | lost on wave 7 to 9 | won, 20 lives, 211 gold | won, 20 lives, 691 gold | lost wave 9 |
+| 4 | comboBuild | won, 5 to 15 lives, under 150 gold after wave 9 | won, 20 lives, 441 gold (244 after wave 9) | won, 20 lives, 441 gold (244 after wave 9) | won, 11 lives, 177 gold (136 after wave 9) |
+| 5 | comboBuildNoFire | strictly worse than combo | won, 14 lives | won, 14 lives | won, 2 lives |
+| - | greedyMusket | none | lost wave 3 | won, 1 life | lost wave 7 |
+| - | soundBuild (v1 towers) | none | won, 13 lives, 269 gold | won, 13 lives, 269 gold | lost wave 9 |
+| - | soundBuildNoTar | none | lost wave 7 | lost wave 7 | lost wave 7 |
+
+All five targets are met. The "Before (milestone 11)" combo column is the
+old plan on the old numbers; "After" is the new plan on the new numbers.
+
+Every number changed, with the reason. "Reverting it" puts back that one
+number with every other final value in place:
+
+| Number | Before | After | Why |
+|---|---|---|---|
+| Longbow base damage | 6 | 4 | 15 dps for 40 gold with a 150 px range outclassed every other tower; 16 base Longbows held all ten waves without losing a life. At 4 the base Longbow is cheap chip damage and its upgrade (9) is the big step. Reverting it: longbowSpam wins with 6 lives. |
+| Troll hp | 500 | 700 | Trolls are what leak through a wall of base towers, and each leak costs a life whatever the hp; splash, burn and upgrades handle them better than more base towers. Reverting it: longbowSpam wins with 4 lives. |
+| Troll bounty | 11 | 8 | Wave 9 alone paid 12 x 5 + 6 x 11 + 25 = 151 gold, so the combo could not be under 150 after wave 9 whatever it spent. At 8 wave 9 pays 133. Reverting it: combo has 190 gold after wave 9. |
+| Wave 7 Trolls | 7 | 10 | The first Troll wall a kid's board cannot hold. Reverting it: longbowSpam survives to wave 10. |
+| Wave 8 Trolls | 4 | 8 | Keeps the pressure on after wave 7. Reverting it: longbowSpam survives to wave 10 and combo has 180 gold after wave 9. |
+| Wave 9 Trolls | 4 | 6 | Finishes longbowSpam on wave 9. Reverting it: longbowSpam survives to wave 10. |
+
+Unchanged: every tower cost, range, minimum range, fire rate, splash, slow,
+burn, upgrade cost and upgraded value; every other base stat; Goblin and
+Wolf stats; Troll speed; waves 1 to 6 and 10; the Wolf and Goblin groups
+of waves 7 to 9; all intervals and delays; the 25 gold clear bonus.
+
+Per wave, lives / gold after each wave (`npm run sim`):
+
+| Wave | noTowers | lazyBuild | greedyMusket | soundBuild | soundBuildNoTar | longbowSpam | comboBuild | comboBuildNoFire |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 12 / 125 | 19 / 53 | 17 / 60 | 20 / 57 | 20 / 57 | 20 / 77 | 20 / 77 | 20 / 77 |
+| 2 | lost, 0 / 125 | 19 / 76 | 17 / 83 | 20 / 95 | 20 / 95 | 20 / 110 | 20 / 90 | 20 / 90 |
+| 3 | | 16 / 98 | 14 / 120 | 20 / 87 | 17 / 133 | 20 / 117 | 20 / 107 | 16 / 159 |
+| 4 | | 16 / 123 | 14 / 110 | 20 / 82 | 16 / 123 | 20 / 112 | 19 / 177 | 11 / 209 |
+| 5 | | 14 / 96 | 12 / 98 | 18 / 105 | 14 / 196 | 18 / 105 | 18 / 98 | 10 / 130 |
+| 6 | | 9 / 188 | 7 / 158 | 18 / 212 | 6 / 265 | 18 / 192 | 18 / 175 | 10 / 257 |
+| 7 | | lost, 0 / 96 | lost, 0 / 81 | 9 / 105 | lost, 0 / 125 | 10 / 123 | 13 / 150 | 5 / 232 |
+| 8 | | | | 1 / 175 | | 3 / 246 | 11 / 203 | 2 / 277 |
+| 9 | | | | lost, 0 / 81 | | lost, 0 / 322 | 11 / 136 | 2 / 210 |
+| 10 | | | | | | | won, 11 / 177 | won, 2 / 321 |
+
+**Combo plan** (`COMBO_PLAN`, re-planned on the final numbers, each action
+bought as soon as gold allows; all 19 are bought by wave 10): Longbows at
+(9,5) and (9,4) inside the first U, where a 150 px range reaches the climb,
+the top run and the downhill run; a Tar Pit (14,10) and a Fire Pot (14,9)
+inside the bottom-left corner of the second U, both reaching the end of the
+downhill run and the start of the bottom run; a Mortar (17,6) in the middle
+of the second U; upgrades to the Tar Pit, Fire Pot, Mortar and both
+Longbows; a second Mortar (9,7) in the first U; Longbows (17,9) and (17,10)
+at the bottom of the second U, upgraded; then a second Tar Pit and Fire Pot
+pair at (11,4) and (10,4) on the top run and the Tar Pit upgrade. Cells
+were picked from a scan of path coverage per cell (path length within each
+tower's range). Purchases per wave: 2, 1, 1, 0, 2, 2, 3, 2, 4, 2.
+`comboBuildNoFire` drops both Fire Pots and their upgrades.
+
+Margins: lazyBuild loses mid-range (wave 7); longbowSpam at the edge of
+its range (wave 9, with 3 lives entering it); combo mid-range at 11 lives, 14 gold under the wave 9 limit; noFire 9
+lives worse.
+
+Method and iterations: a scratch harness (outside the repo) patched the
+stat tables in memory and replayed every archetype. About 15 hand-picked
+configurations first (Longbow cost and damage, bounty cuts, Troll hp, wave
+7 to 9 Troll counts, denser Goblin and Wolf swarms), then scripted sweeps
+of about 550 configurations in all: Longbow cost, range and damage alone
+(36), Troll hp, Longbow numbers and wave 7 to 9 Troll counts (about 280), Troll hp, bounty and wave
+counts around the chosen point with a fixed combo plan (216), then the
+revert pass above. No change was reverted: each of the six alone breaks a
+target.
+
+Tests: `balance.test.ts` pins the five targets as ranges, pins combo
+exactly (11 lives, 177 gold, 136 gold after wave 9), checks noFire is
+strictly worse, determinism of every archetype, the trail rule and its
+first six cells, and that lazy and greedy follow it. Other pins that moved,
+each recomputed headlessly:
+
+- Longbow unit test: 4 damage kills a static Goblin on the 8th hit at step
+  168 (was 6 damage, 5th hit, step 96).
+- `enemies-frame.test.ts` and the e2e `enemies.png` frame, tick 1350 of
+  wave 8: 7 Trolls (was 4); 10 Goblins, 3 Wolves, 3 hurt Trolls and 4
+  slowed are unchanged, as are 7 red-bar Goblins and the 21 px minimum gap.
+  The e2e hurt-Troll filter now compares with 700.
+- `new-towers.png` frame: tick 1754 and its counts are unchanged (2
+  enemies, both slowed and burning, Mortar fired at 1752); Troll 3 is at
+  201 of 700 hp instead of 1 of 500, and the scan now also finds a third
+  window at 1932..1943 with one enemy slowed and burning. Comment updated.
+- soundBuild no longer wins, so the win tests use comboBuild: e2e win
+  screen, end-screens win and verifier HUD text, `endText.test.ts` and the
+  headless "a scripted build wins" test: 11 lives, 177 gold (was 13 and
+  269).
+- e2e lazy build: loses on wave 7 (was 3).
+- `balance-verifier.test.ts` probe (d) uses the Troll's hp from
+  `ENEMY_STATS` instead of a literal 500.
+- Unchanged: wave 1 pins (lives 14, gold 83 for one Musketeer at (7,5);
+  no towers 12 / 125), mid-wave tick 848, the new-towers e2e tick 687.
+  Test arenas in `combat.test.ts` and `newTowers*.test.ts` still build
+  500 hp Trolls by hand; their mechanics do not depend on the Troll's max
+  hp, so they were left as they are.
+
+Visual baselines that will change on CI: `enemies.png` (more Trolls),
+`new-towers.png` (Troll hp bars), `won.png` (combo build board and
+numbers). No PNGs committed.
+
+What went wrong:
+
+- The new placement alone made lazy too strong (wave 9) and did nothing to
+  Longbow spam, which already won with 20 lives.
+- Raising the Longbow's cost (50, 60) or cutting its range (120, 135) on
+  the old waves either left Longbow spam winning or, combined with damage
+  3 or 4, made it lose on wave 3 to 6 because the early waves broke first.
+  Damage 4 at the old cost and range, with heavier Troll waves, was the
+  combination that kept the early game and broke the late one.
+- Denser Goblin and Wolf swarms in waves 8 and 9 did nothing: 16 Longbows
+  with 150 px of range shred them, and the extra bounty only made every
+  build richer. Lives are lost by leaks, and Trolls are what leak, so the
+  late waves got more Trolls instead.
+- Wave 9's income alone was over the 150 gold target with Troll bounty 11,
+  so the bounty had to drop; a 700 hp Troll now pays 8 (it paid 11 at 500
+  hp).
+- soundBuild (v1 towers only) now loses on wave 9. It has no v2 target,
+  but it means a player who ignores the new towers will lose; Kyle's play
+  notes decide whether that is right.
