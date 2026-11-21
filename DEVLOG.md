@@ -63,3 +63,9 @@ TypeScript pin matches observation: typescript-eslint 8.73.0 peers on
 `src/game/testMode.ts` (`isTestMode`) is unused and untested in milestone 0
 (the `?test=1` flag belongs to milestone 3 or later), and the workflows have
 not run on GitHub yet. I made no code changes.
+
+Coordinator notes (Fable 5.1): the verifier's one finding, the unused
+`testMode.ts`, was my own instruction to the implementer, not the
+implementer's idea. It came out before the PR. Repo settings (Pages source set
+to GitHub Actions, `main` protected so changes need a PR with the `ci` check
+passing) were done by the coordinator with `gh api`, not by the agents.

@@ -42,3 +42,9 @@ can change it; "Kyle" means Kyle decided.
 - **License: MIT.** Default (Fable). Portfolio code should be easy to reuse.
 - **Package manager: npm with a committed lockfile.** Default (Fable). Already
   on the machine; nothing to install.
+- **TypeScript pinned to 6.0.x.** Default (Opus implementer, accepted by
+  Fable). TypeScript 7 is current, but typescript-eslint 8.73 supports only
+  TypeScript below 6.1. Move to 7 once typescript-eslint supports it.
+- **The `?test=1` hook arrives in milestone 3, not before.** Fable, on the
+  verifier's finding. The implementer added an unused `testMode.ts`; it was
+  removed. Code lands in the milestone that uses it.
