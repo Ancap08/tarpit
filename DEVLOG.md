@@ -1830,3 +1830,65 @@ no fixes were needed.
   DECISIONS and DEVLOG. The "Kyle merged PR 1 himself" claim rests on the
   coordinator's record (DECISIONS 190), not on GitHub, which shows one merger
   login for all PRs. No hype words found.
+
+## 2026-11-21: milestone 14, tablet and touch
+
+Roles: implementer Claude Opus, verifier Claude Sonnet, coordinator Claude
+Fable 5.1.
+
+### Implementer notes
+
+The implementer (Claude Opus) made the game fit any screen and play by
+touch. No change in `src/sim`; no gameplay change.
+
+- Fit: Phaser `Scale.FIT` with `CENTER_BOTH` on the 960 x 580 canvas, in a
+  `#game` parent that fills the viewport (`index.html`: html and body 100%,
+  no margin, no scroll, background `#111418` as the title; viewport meta
+  `width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no,
+  viewport-fit=cover`; `touch-action: none` on the canvas). At 1024 x 768
+  the canvas is 1024 x 619 at scale 1.067 with 74 px bars above and below.
+  `uiRects()` stays in canvas space; `window.__tarpit.canvasToPage(x, y)`
+  maps a canvas point to the page through the scale manager's bounds and
+  display scale, in test and non-test mode.
+- HUD numbers (canvas px): every HUD, bar, panel and Play again button is
+  42 px tall (44.8 px on an iPad in landscape). HUD still y 480..580. Row 1
+  buttons y 484..526 (Start Wave x 726, 138 wide; speed x 876, 70 wide),
+  stats centred on y 505. Bar buttons y 533..575, 148 wide, 8 apart from
+  x 16. Gaps: 4 px under the HUD's top edge, 7 px between rows, 5 px at the
+  bottom. Labels unchanged (bar 16 px).
+- Tower panel: Upgrade and Sell 156 x 42 stacked, plus a 42 x 42 close
+  button ("×") to their right at the top; the panel is 214 x 100 (was
+  168 x 76). Escape still closes it. `uiRects()` lists `panel:close`.
+- Touch rules: a pointerdown with `pointer.wasTouch` is a tap; mouse input
+  (a click or a move) switches back. With a pick, the first tap on a
+  buildable cell arms it (`ui().hoverCell` and `ui().armedCell` are that
+  cell; ghost and range show), a second tap on it builds, the pick stays and
+  the arm clears; a tap on another buildable cell moves the ghost; a tap on
+  a blocked cell shows the red cell and arms nothing. Changing or clearing
+  the pick disarms. Taps on towers, on empty map without a pick (closes the
+  panel) and on the HUD act as clicks. Touch moves are ignored (no hover).
+  `ui()` also reports `isTouch`.
+- Portrait: a DOM card (`#rotate-card` in `index.html`, CSS phone and
+  arrow, "Turn your device sideways") shows while the window is taller than
+  wide, on load, resize and orientation change (`src/game/portrait.ts`).
+  GameScene runs no ticks while it shows and drops the time it would have
+  accumulated. `portraitCardVisible()` is on `window.__tarpit`.
+- Title: "Tap or click to start".
+- Playwright: a `tablet` project (1024 x 768, `hasTouch`, `isMobile`,
+  scale factor 1) runs only `e2e/touch.spec.ts` and
+  `e2e/visual-tablet.spec.ts`; the desktop project ignores them. The
+  snapshot settings are top level, so they apply to both. The baseline
+  workflow now updates both visual specs.
+- What went wrong: three desktop specs pinned the old geometry (bar
+  buttons 36 tall at y 537, and the exact non-test `window.__tarpit` key
+  list) and were updated. In the first touch spec run the centring check
+  failed by 0.67 px because Phaser rounds the letterbox margin to whole
+  pixels (74, not 74.67), and the Play again check called `runScript` on a
+  game that had already spent gold; both were test mistakes, fixed.
+  The first rotate icon drew the phone already on its side, which read as
+  "done" rather than "turn me"; it is now upright with an arrow.
+- Not verified: real iOS Safari. Chromium touch emulation does not model
+  Safari's toolbars (100% height), iOS ignoring `user-scalable=no` for
+  pinch, or double-tap zoom outside the canvas. Kyle's iPad play covers it.
+  Every existing desktop screenshot baseline changes (HUD heights, title
+  text) and the tablet baseline is new: both need the CI baseline workflow.

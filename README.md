@@ -21,6 +21,7 @@ build anywhere off the path, three enemies, simple shapes with labels.
 2. The Mortar cannot hit enemies inside its dashed inner circle (70 px), so put it back from the path it guards.
 3. Tar + fire: a Fire Pot's burn does double damage to an enemy slowed by a Tar Pit, so build the two side by side.
 4. Press Start Wave. Enemies walk from the cave to the cottage; each one that gets through costs a life. Kills and cleared waves pay gold. Survive all 10 waves to win. The 1x/2x button sets the speed.
+5. Runs on an iPad (landscape; portrait shows a "turn your device" card). On touch, tap a cell once to aim (ghost and range), tap it again to build; tap the × to close a tower's panel.
 
 ## How it was built
 
@@ -69,10 +70,13 @@ src/sim/          game logic in plain TypeScript, no Phaser or DOM (lint-enforce
 src/sim/grid.ts   the build grid: cells, cell centres, the buildable rule
 src/game/         Phaser rendering, input, HUD, tower panel and the ?test=1 test hooks
 src/game/ui/buildBar.ts  the HUD build bar: pick a tower, then click a cell
+src/game/portrait.ts     the "turn your device" card (markup in index.html), pauses ticking
 src/game/draw/labels.ts  tower labels and the crowding rule (smaller, then hidden)
 scripts/          npm run sim (balance report) and npm run demo (GIF recorder)
 e2e/              Playwright tests and CI screenshot baselines
 e2e/new-towers.spec.ts  Longbow, Mortar and Fire Pot built through the bar
+e2e/touch.spec.ts       iPad-size touch tests (two-tap placement, 44 px targets, portrait card)
+e2e/visual-tablet.spec.ts  the 1024 x 768 letterboxed baseline (tablet project)
 .github/workflows CI checks, Pages deploy, screenshot baseline update
 ```
 
