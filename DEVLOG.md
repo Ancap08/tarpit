@@ -402,3 +402,101 @@ Verifier: Claude Sonnet. Checked on branch `m4-build-ui` against
   it is open. The white Cannon range preview is faint on the light path and
   grass. The greyed "Upgraded" text is dim grey on dark grey, legible but low
   contrast. Observations only; art is a milestone 6 matter.
+
+## 2026-11-21: milestone 5, win, lose, restart
+
+Roles: implementer Claude Opus, verifier Claude Sonnet, coordinator Claude
+Fable 5.1.
+
+### Implementer notes
+
+The implementer (Claude Opus) added the win and lose screens and Play again.
+No changes in `src/sim`: the sim already computed 'won' and 'lost', and its
+exported `soundBuild()` and `lazyBuild()` scripts were enough for the test
+hook, so no new sim helper was needed.
+
+- Modules: `ui/endScreen.ts` draws a translucent veil over the 960 x 480 map
+  (the HUD stays visible with the final numbers) and a centred panel with
+  the title, the lines and a Play again button. The words live in
+  `ui/endText.ts` with 3 unit tests (102 unit tests total). New palette
+  entries: `endVeil`, `endPanel`, `endPanelEdge`, and text colours
+  `victory` (gold), `defeat` (muted red) and `endLine`.
+- End detection: every `redraw()` checks the phase and shows the screen
+  once. The game loop, `step()`, `runScript()` and every action redraw, so
+  this covers both the frame loop and the test hooks. While it shows, popups
+  are closed, map clicks and hover are ignored, Start Wave is greyed (as
+  before) and the speed toggle is greyed too, so clicking it changes nothing.
+- Restart: Play again calls `this.scene.restart()`. Phaser shuts the scene
+  down, which destroys every game object and removes the scene's input and
+  keyboard listeners, then runs `create()` again, which already made a fresh
+  `createGame()` and reset speed to 1x. This is the smallest change and
+  leaves no state to reset by hand. The e2e test checks it: after Play
+  again the pointerdown, pointermove and Escape listener counts and the
+  number of scene objects match a first game, and wave 1 replays to lives
+  12 and gold 125. Phaser runs the restart on its next frame, so tests wait
+  for the fresh state after the click.
+- `runScript(name)` plays the script wave by wave through the scene's own
+  `build`, `upgrade`, `sell`, `startWave` and `advance`, ticking one at a
+  time until the wave ends, and throws if the sim refuses an action. The
+  sound build ends exactly as headless: won, lives 20, gold 910.
+- What went wrong: the first version made the veil interactive to swallow
+  clicks. About one run in three, a click on Play again right after the
+  screen appeared went to the veil instead. Phaser orders overlapping
+  interactive objects by the camera's render list from the last frame;
+  when the click came before any frame had drawn the end screen, neither
+  object was in that list and the veil won the tie. Found with
+  `--repeat-each=10`. The veil is now plain drawing, and the scene's own
+  pointer guard ignores map clicks, so the button is the only interactive
+  object there. 40 of 40 repeated runs then passed.
+- Spec gaps resolved: the speed toggle is greyed on the end screens rather
+  than left clickable. The HUD's "Next:" line still shows the next wave's
+  contents on the lose screen (for example "Next: 8 Goblin, 5 Wolf"); it is
+  accurate and left as is. On the win screen the last cannon splash stays
+  drawn, faded, under the veil, because time is frozen in that frame.
+- Tests: `e2e/end-screens.spec.ts` (4 tests): lose with no towers through
+  real Start Wave clicks (wave 2, lives 0), a click on spot 2 under the veil
+  opens nothing, Play again gives a fresh game (gold 100, lives 20, wave 0,
+  tick 0, no towers, speed 1x) and wave 1 replays exactly; win with
+  `runScript('soundBuild')` then Play again; `runScript('lazyBuild')` loses on
+  wave 3; speed 2x before losing is 1x after Play again. `visual.spec.ts`
+  adds `won.png` and `lost.png`; baselines come from the CI workflow. Local
+  frames were checked by eye: text is readable and nothing overlaps.
+
+### Verifier notes
+
+Verifier: Claude Sonnet. Checked on branch `m5-win-lose` against
+`origin/main`.
+
+- Clean run (`rm -rf dist && npm ci && lint && typecheck && test && build &&
+  test:e2e`): exit 0; 102 unit tests, 31 e2e tests (37 with the verifier
+  spec). `end-screens.spec.ts --repeat-each=5`: 20 of 20; `--repeat-each=10`:
+  40 of 40, so the implementer's claim holds. The verifier spec at
+  `--repeat-each=5`: 30 of 30.
+- `git diff origin/main --stat -- src/sim docs DECISIONS.md` is empty. No
+  `src/game` code assigns gold, lives, hp, towers or phase; the scene calls
+  only exported actions.
+- Scope: win screen, lose screen, Play again, greyed speed toggle (disclosed
+  by the implementer) and the `endScreen()` and `runScript()` test hooks.
+  No score, title return or sound.
+- Veil bug: the code matches the DEVLOG account. The veil is a plain
+  rectangle (not interactive), and `onPointerDown`, `onPointerMove` and
+  `openSpot` return early while an end screen shows.
+- New probes in `e2e/end-screens-verifier.spec.ts` (6, all pass): (a) a third
+  game after two lose and restart cycles plays wave 1 to lives 14, gold 85
+  with a Musketeer built through the real menu; (b) no `playAgain` rect and
+  no end screen after restart; (c) on the lose screen the Start Wave and
+  speed clicks change nothing, and clicks on all spots outside the button
+  open nothing, including spots 4, 5 and 7 that lie under the panel but
+  outside the button; (d) win HUD text is "Gold 910", "Lives 20", "Wave
+  10/10", "Next: none"; (e) Escape keeps the end screen; (f) a tower panel
+  open when the game is lost is closed.
+- Note from writing probe (c): spot 6 (500, 304) lies under the Play again
+  button, so a click there is a click on Play again. Correct behaviour, but
+  worth knowing when a test clicks spots on an end screen.
+- Readability from the two local frames: all text is legible. The panel is
+  nearly opaque, so it hides the path and spots 4 to 7 behind it. The lose
+  screen's HUD still says "Next: 8 Goblin, 5 Wolf" (disclosed). On the win
+  frame the faded cannon splash shows below the panel. Observations only.
+- README file layout matches the files; the seven-frame count and the hook
+  list match the code. Baselines for `won.png` and `lost.png` are CI-only and
+  not checked locally.

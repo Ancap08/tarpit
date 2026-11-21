@@ -61,6 +61,11 @@ export const COLORS = {
   menuBg: 0x1b1f24,
   menuEdge: 0xd9b77e,
 
+  // End screens: dark veil over the map, centred panel
+  endVeil: 0x0b0d10,
+  endPanel: 0x1b1f24,
+  endPanelEdge: 0xd9b77e,
+
   // Title
   titleBg: '#111418',
 } as const;
@@ -73,4 +78,7 @@ export const TEXT = {
   title: '#f2e6c9',
   subtitle: '#a89f8a',
   prompt: '#e8c37a',
+  victory: '#f2c94c',
+  defeat: '#d26a5c',
+  endLine: '#f2e6c9',
 } as const;

@@ -2,7 +2,7 @@
 // ?test=1 every hook below is present (see testMode.ts).
 
 import type Phaser from 'phaser';
-import type { BuildResult, GameState, SellResult, StartWaveResult, TowerType, UpgradeResult } from '../sim';
+import type { BuildResult, GameState, Phase, SellResult, StartWaveResult, TowerType, UpgradeResult } from '../sim';
 import type { UiState } from './GameScene';
 import type { HudStrings, Rect } from './hud';
 
@@ -25,13 +25,21 @@ export interface TarpitTestApi {
   /**
    * Canvas-space rectangles of everything clickable, by name: `startWave`,
    * `speed`, `spot:<id>` for every build spot, and while open `menu:musketeer`,
-   * `menu:cannon`, `menu:tarpit`, `panel:upgrade`, `panel:sell`. At the
+   * `menu:cannon`, `menu:tarpit`, `panel:upgrade`, `panel:sell`, and
+   * `playAgain` while an end screen shows. At the
    * 960x540 test viewport, canvas space equals page space.
    */
   uiRects(): { startWave: Rect; speed: Rect } & Record<string, Rect>;
   /** Build UI state: the menu's spot, the selected tower's spot, and which popup is open. */
   ui(): UiState;
   hudText(): HudStrings;
+  /** The end screen showing ('won' or 'lost'), or null. */
+  endScreen(): 'won' | 'lost' | null;
+  /**
+   * Play a headless script from src/sim (soundBuild or lazyBuild) through the
+   * scene's actions, wave by wave, then redraw. Returns the final phase.
+   */
+  runScript(name: 'soundBuild' | 'lazyBuild'): Phase;
 }
 
 export type TarpitGlobal = Pick<TarpitTestApi, 'game'> & Partial<TarpitTestApi>;

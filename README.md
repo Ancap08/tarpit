@@ -2,7 +2,7 @@
 
 A small browser tower defense game, built by AI agents under human direction.
 
-Status: milestone 4 (build UI). Click a build spot to build a tower, click a tower to upgrade or sell it; unaffordable choices are greyed. Win, lose and restart arrive at milestone 5. Live at https://ancap08.github.io/tarpit/ once merged and deployed.
+Status: milestone 5 (win, lose, restart). All 10 waves play through; clearing wave 10 shows a victory screen, losing every life shows a defeat screen, and Play again starts a new game. Balance and polish come at milestone 6. Live at https://ancap08.github.io/tarpit/ once merged and deployed.
 
 This repo is a portfolio piece. The point is the process: a human sets the
 design and approves every pull request; a coordinator agent plans and never
@@ -50,6 +50,8 @@ src/game/                rendering and input (Phaser), imports src/sim only
   ui/button.ts           shared button (HUD, menu, panel) and the stacked popup
   ui/buildMenu.ts        build menu: Musketeer, Cannon, Tar Pit with costs
   ui/towerPanel.ts       selected-tower panel: Upgrade and Sell
+  ui/endScreen.ts        win and lose screens: veil, panel, Play again
+  ui/endText.ts          end-screen words (pure, unit tested)
   palette.ts             every colour and the font stack
   draw/map.ts            grass, path, spawn cave, exit cottage, build spots
   draw/enemies.ts        enemy circles, hp bars, tar rings
@@ -75,6 +77,7 @@ e2e/                     Playwright browser tests (960x540 viewport)
   smoke.spec.ts          Phaser boots
   play-wave.spec.ts      plays wave 1 through the real buttons
   build-ui.spec.ts       builds, upgrades and sells through real clicks
+  end-screens.spec.ts    reaches win and lose through the sim, Play again restarts
   live.spec.ts           non-test mode: the real loop ticks, 2x runs faster
   visual.spec.ts         screenshot checks on frozen frames
   __screenshots__/       baselines, generated on CI only
@@ -91,13 +94,14 @@ Open the game with `?test=1` (for example
 `http://localhost:4173/?test=1`) and time stops: nothing moves unless a test
 calls `window.__tarpit.step(n)`. `window.__tarpit` then also has `state()`,
 `startGame()`, `startWave()`, `build()`, `upgrade()`, `sell()`, `setSpeed()`,
-`speed()`, `uiRects()`, `ui()` and `hudText()`; see `src/game/testGlobal.d.ts`.
+`speed()`, `uiRects()`, `ui()`, `hudText()`, `endScreen()` and
+`runScript('soundBuild' | 'lazyBuild')`; see `src/game/testGlobal.d.ts`.
 Without `?test=1`, `window.__tarpit` holds only `game`.
 
 ## Screenshot baselines
 
-`e2e/visual.spec.ts` compares five frozen frames (title, map at wave 0,
-mid wave 1, build menu, selected tower) with PNG baselines in `e2e/__screenshots__/`. Text renders
+`e2e/visual.spec.ts` compares seven frozen frames (title, map at wave 0,
+mid wave 1, build menu, selected tower, win screen, lose screen) with PNG baselines in `e2e/__screenshots__/`. Text renders
 differently on macOS and Linux, so:
 
 - Baselines are generated on CI (Linux) only. Local `npm run test:e2e` skips
