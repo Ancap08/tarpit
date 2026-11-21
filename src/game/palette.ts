@@ -53,6 +53,14 @@ export const COLORS = {
   buttonEdge: 0xd9b77e,
   buttonEdgeDisabled: 0x5a5e66,
 
+  // Build UI: spot highlights, range circles, menu and panel backing
+  spotHover: 0xffffff,
+  spotActive: 0xfff2a8,
+  range: 0xfff2a8,
+  rangePreview: 0xffffff,
+  menuBg: 0x1b1f24,
+  menuEdge: 0xd9b77e,
+
   // Title
   titleBg: '#111418',
 } as const;

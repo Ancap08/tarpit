@@ -3,6 +3,7 @@
 
 import type Phaser from 'phaser';
 import type { BuildResult, GameState, SellResult, StartWaveResult, TowerType, UpgradeResult } from '../sim';
+import type { UiState } from './GameScene';
 import type { HudStrings, Rect } from './hud';
 
 export interface TarpitTestApi {
@@ -21,8 +22,15 @@ export interface TarpitTestApi {
   sell(spotId: number): SellResult;
   setSpeed(speed: 1 | 2): void;
   speed(): 1 | 2;
-  /** Canvas-space button rectangles. At the 960x540 test viewport, canvas space equals page space. */
-  uiRects(): { startWave: Rect; speed: Rect };
+  /**
+   * Canvas-space rectangles of everything clickable, by name: `startWave`,
+   * `speed`, `spot:<id>` for every build spot, and while open `menu:musketeer`,
+   * `menu:cannon`, `menu:tarpit`, `panel:upgrade`, `panel:sell`. At the
+   * 960x540 test viewport, canvas space equals page space.
+   */
+  uiRects(): { startWave: Rect; speed: Rect } & Record<string, Rect>;
+  /** Build UI state: the menu's spot, the selected tower's spot, and which popup is open. */
+  ui(): UiState;
   hudText(): HudStrings;
 }
 

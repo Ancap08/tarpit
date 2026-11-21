@@ -3,18 +3,15 @@
 
 import Phaser from 'phaser';
 import { nextWavePreview, WAVES, type EnemyType, type GameState } from '../sim';
+import type { Rect } from './input';
 import { COLORS, FONT, TEXT } from './palette';
+import { Button } from './ui/button';
+
+export type { Rect };
 
 export const HUD_TOP = 480;
 export const HUD_HEIGHT = 60;
 const MID = HUD_TOP + HUD_HEIGHT / 2;
-
-export interface Rect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
 
 export interface HudStrings {
   gold: string;
@@ -37,73 +34,6 @@ export function previewText(state: GameState): string {
 /** Start Wave does something only in setup with waves left. */
 export function canStartWave(state: GameState): boolean {
   return state.phase === 'setup' && state.wave < WAVES.length;
-}
-
-class Button {
-  readonly rect: Rect;
-  private readonly box: Phaser.GameObjects.Rectangle;
-  private readonly label: Phaser.GameObjects.Text;
-  private enabled = true;
-  private hover = false;
-  private pressed = false;
-
-  constructor(scene: Phaser.Scene, rect: Rect, text: string, onClick: () => void) {
-    this.rect = rect;
-    this.box = scene.add
-      .rectangle(rect.x, rect.y, rect.width, rect.height, COLORS.button)
-      .setOrigin(0, 0)
-      .setStrokeStyle(2, COLORS.buttonEdge);
-    this.label = scene.add
-      .text(rect.x + rect.width / 2, rect.y + rect.height / 2, text, {
-        fontFamily: FONT,
-        fontSize: '18px',
-        fontStyle: 'bold',
-        color: TEXT.button,
-      })
-      .setOrigin(0.5);
-    this.box.setInteractive({ useHandCursor: true });
-    this.box.on('pointerover', () => {
-      this.hover = true;
-      this.refresh();
-    });
-    this.box.on('pointerout', () => {
-      this.hover = false;
-      this.pressed = false;
-      this.refresh();
-    });
-    this.box.on('pointerdown', () => {
-      this.pressed = true;
-      this.refresh();
-    });
-    this.box.on('pointerup', () => {
-      const wasPressed = this.pressed;
-      this.pressed = false;
-      this.refresh();
-      if (wasPressed && this.enabled) onClick();
-    });
-  }
-
-  get text(): string {
-    return this.label.text;
-  }
-
-  set(text: string, enabled: boolean): void {
-    if (this.label.text !== text) this.label.setText(text);
-    if (this.enabled !== enabled) {
-      this.enabled = enabled;
-      this.refresh();
-    }
-  }
-
-  private refresh(): void {
-    let fill: number = COLORS.button;
-    if (!this.enabled) fill = COLORS.buttonDisabled;
-    else if (this.pressed) fill = COLORS.buttonPressed;
-    else if (this.hover) fill = COLORS.buttonHover;
-    this.box.setFillStyle(fill);
-    this.box.setStrokeStyle(2, this.enabled ? COLORS.buttonEdge : COLORS.buttonEdgeDisabled);
-    this.label.setColor(this.enabled ? TEXT.button : TEXT.buttonDisabled);
-  }
 }
 
 export interface HudHandlers {
