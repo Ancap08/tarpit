@@ -131,6 +131,9 @@ tick-rate checks do not depend on the machine's GPU (headless Chromium
 without one renders WebGL in software at a few frames a second).
 `e2e/renderer.spec.ts` loads the game without the flag and checks WebGL.
 
+The e2e tests serve the build on port 4173 and never reuse a running server;
+run a second checkout with `PW_PORT=4174 npm run test:e2e`.
+
 ## Status and what is out of scope
 
 v4 (gameplay lock, [docs/SCOPE-v4.md](docs/SCOPE-v4.md)) is in progress:

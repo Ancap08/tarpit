@@ -2618,3 +2618,9 @@ Claude Fable 5.1.
   device at the start and below 5 fps. Changing the game config
   (`fps.panicMax`, `fps.minFps`) would be a further loop change, not made
   here.
+- **Port collision.** While this was fixed, two worktrees ran e2e at the
+  same time on port 4173, and with `reuseExistingServer` on locally one
+  run could test the other checkout's build. `playwright.config.ts` now
+  reads the port from `PW_PORT` (default 4173) for the server and
+  `baseURL`, and never reuses a server, so a busy port fails loudly;
+  `npm run demo` honours `PW_PORT` too (default 4179).
