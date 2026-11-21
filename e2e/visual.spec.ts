@@ -155,6 +155,61 @@ test('upgraded Musketeer selected with its panel and range', async ({ page }) =>
   await expect(page.locator('canvas')).toHaveScreenshot('tower-selected.png');
 });
 
+// The three v2 towers, all upgraded, with a Tar Pit: Longbow (6,5), Mortar
+// (17,6), Fire Pot (14,8), Tar Pit (14,6), in wave 5 (state.wave = 4, then
+// Start Wave). The Mortar is selected with a real click so its 220 range and
+// dashed 70 minimum-range circles show. A headless scan of every tick found
+// a Mortar effect on screen together with a slowed and burning enemy only at
+// ticks 1572..1583 and 1752..1763 (the Goblins die before reaching the
+// Mortar's ring; only the two Trolls are left). Tick 1754: the Mortar fired
+// at tick 1752 (splash 2 ticks into its 12-tick fade), both Trolls carry the
+// tar and burn rings and are 11 px apart on the downhill run (at 1572 they
+// overlap exactly), and Troll 3 is at 1 hp (red bar).
+const MORTAR_FIRE_TICK = 1752;
+const NEW_TOWERS_STEPS = 1754;
+
+test('new towers upgraded, Mortar selected, splash and burning tarred Trolls', async ({ page }) => {
+  await open(page);
+  const counts = await page.evaluate(
+    async ({ fire, steps }) => {
+      const t = window.__tarpit as TarpitTestApi;
+      await t.startGame();
+      const s = t.state();
+      s.gold = 5000; // test setup: afford four towers and their upgrades
+      s.wave = 4; // test setup: the next Start Wave plays wave 5
+      const cells = [
+        [6, 5, 'longbow'],
+        [17, 6, 'mortar'],
+        [14, 8, 'firepot'],
+        [14, 6, 'tarpit'],
+      ] as const;
+      for (const [col, row, type] of cells) {
+        t.buildAt(col, row, type);
+        t.upgradeAt(col, row);
+      }
+      t.startWave();
+      t.step(fire);
+      const mortarShots = t.state().shots.filter((x) => x.tower === 'mortar').length;
+      t.step(steps - fire);
+      const e = t.state().enemies;
+      return {
+        wave: t.state().wave,
+        upgraded: t.state().towers.filter((x) => x.upgraded).length,
+        mortarShots,
+        enemies: e.length,
+        slowedAndBurning: e.filter((x) => x.slowTicksLeft > 0 && (x.burnTicksLeft ?? 0) > 0).length,
+      };
+    },
+    { fire: MORTAR_FIRE_TICK, steps: NEW_TOWERS_STEPS },
+  );
+  expect(counts).toEqual({ wave: 5, upgraded: 4, mortarShots: 1, enemies: 2, slowedAndBurning: 2 });
+  await page.mouse.click(17 * 32 + 16, 6 * 32 + 16); // select the Mortar
+  await page.mouse.move(900, 440); // empty grass: no hover tint
+  expect(await ui(page)).toMatchObject({ pick: null, selectedCell: { col: 17, row: 6 }, panelOpen: true });
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('new-towers.png');
+});
+
 // End screens: the HUD under the veil shows the final numbers.
 test('win screen after the sound build', async ({ page }) => {
   await open(page);
