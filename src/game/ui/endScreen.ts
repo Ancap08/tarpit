@@ -22,7 +22,8 @@ export type { EndKind };
 const PANEL_W = 460;
 const PANEL_H = 230;
 const BUTTON_W = 180;
-const BUTTON_H = 40;
+/** 42 px: at least 44 px on screen at iPad landscape scale (milestone 14). */
+const BUTTON_H = 42;
 
 export class EndScreen {
   private readonly veil: Phaser.GameObjects.Rectangle;

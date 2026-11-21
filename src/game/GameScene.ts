@@ -17,6 +17,18 @@
 // setup and mid-wave. The scene changes the simulation only through its
 // exported actions.
 //
+// Touch (milestone 14): a pointerdown from a touch sets touch mode, a mouse
+// pointerdown or move clears it. On touch there is no hover, so with a pick
+// active the first tap on a buildable cell arms it (ghost and range show
+// there), a second tap on the armed cell builds and disarms it (the pick
+// stays), a tap on another buildable cell moves the ghost there, and a tap
+// on a blocked cell shows the red cell and arms nothing. Changing or clearing
+// the pick disarms. Taps on towers, empty map without a pick, and the HUD
+// behave as clicks do. The tower panel has a close button for touch.
+//
+// Portrait: while the "turn your device" card shows (portrait.ts), update()
+// runs no ticks and drops the time it would have accumulated.
+//
 // End of game: every redraw checks the sim's phase; once it is 'won' or
 // 'lost' the end screen shows (once), the pick and panel clear, the bar greys
 // and map input is ignored.
@@ -49,11 +61,14 @@ import { Aim, drawTowerShape, drawTowers } from './draw/towers';
 import { Hud } from './hud';
 import { cellAt, cellRect, classifyClick, contains, type Rect } from './input';
 import { COLORS } from './palette';
+import { portraitCardVisible } from './portrait';
 import { isTestMode } from './testMode';
 import { canPick } from './ui/buildBar';
 import { EndScreen } from './ui/endScreen';
 import { endKind, type EndKind } from './ui/endText';
 import { TowerPanel } from './ui/towerPanel';
+
+const sameCell = (a: Cell, b: Cell): boolean => a.col === b.col && a.row === b.row;
 
 const STEP_MS = 1000 / TICKS_PER_SECOND;
 const MAX_TICKS_PER_FRAME = 8;
@@ -64,8 +79,16 @@ export type Speed = 1 | 2;
 export interface UiState {
   /** The build bar's active pick, or null. */
   pick: TowerType | null;
-  /** The map cell under the pointer (not under the panel), or null. */
+  /**
+   * The cell the placement highlight is on, or null: under the mouse (not
+   * under the panel), or on touch the last tapped map cell while a pick is
+   * active.
+   */
   hoverCell: Cell | null;
+  /** On touch, the buildable cell a second tap builds on, or null. */
+  armedCell: Cell | null;
+  /** True when the last pointer input was a touch. */
+  isTouch: boolean;
   /** The selected tower's cell (its panel is open), or null. */
   selectedCell: Cell | null;
   panelOpen: boolean;
@@ -95,6 +118,12 @@ export class GameScene extends Phaser.Scene {
   private pointer: { x: number; y: number } | null = null;
   /** The map cell under the pointer (recomputed on every redraw), or null. */
   private hoverCell: Cell | null = null;
+  /** True when the last pointerdown was a touch (cleared by any mouse input). */
+  private touch = false;
+  /** On touch with a pick: the last tapped map cell (green or red highlight), or null. */
+  private tapCell: Cell | null = null;
+  /** On touch with a pick: the buildable cell the next tap on builds, or null. */
+  private armed: Cell | null = null;
   private cursor = 'default';
   private shots = new ShotEffects();
   private aim = new Aim();
@@ -114,6 +143,9 @@ export class GameScene extends Phaser.Scene {
     this.pick = null;
     this.pointer = null;
     this.hoverCell = null;
+    this.touch = false;
+    this.tapCell = null;
+    this.armed = null;
     this.cursor = 'default';
 
     // Draw order: map, overlay (cell highlight, range circles, ghost), towers
@@ -132,6 +164,10 @@ export class GameScene extends Phaser.Scene {
       onUpgrade: () => {
         if (this.panel.cell !== null) this.upgrade(this.panel.cell);
       },
+      onClose: () => {
+        this.panel.close();
+        this.redraw();
+      },
       onSell: () => {
         const cell = this.panel.cell;
         if (cell === null) return;
@@ -141,14 +177,21 @@ export class GameScene extends Phaser.Scene {
     });
     this.endScreen = new EndScreen(this, () => this.playAgain());
 
-    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.onPointerDown(p.x, p.y));
-    this.input.on('pointermove', (p: Phaser.Input.Pointer) => this.onPointerMove({ x: p.x, y: p.y }));
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      if (p.wasTouch) this.onTap(p.x, p.y);
+      else this.onPointerDown(p.x, p.y);
+    });
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      // A finger has no hover: touch moves change nothing.
+      if (!p.wasTouch) this.onPointerMove({ x: p.x, y: p.y });
+    });
     this.input.on('gameout', () => this.onPointerMove(null));
     this.input.keyboard?.on('keydown-ESC', () => this.closeUi());
     this.redraw();
   }
 
   private onPointerDown(x: number, y: number): void {
+    this.setTouch(false);
     this.pointer = { x, y };
     if (this.endScreen.kind) return; // the veil swallows map clicks
     const target = classifyClick(x, y, this.panel.rect, this.state);
@@ -175,8 +218,59 @@ export class GameScene extends Phaser.Scene {
     this.redraw();
   }
 
+  /**
+   * A touch tap: as a click, except that with a pick a buildable cell is
+   * armed by the first tap and built on by a second tap on the same cell.
+   */
+  private onTap(x: number, y: number): void {
+    this.setTouch(true);
+    if (this.endScreen.kind) return;
+    const target = classifyClick(x, y, this.panel.rect, this.state);
+    switch (target.kind) {
+      case 'ui':
+        return;
+      case 'tower':
+        this.pick = null;
+        this.panel.open(target.cell, this.state);
+        break;
+      case 'buildable':
+        if (!this.pick) {
+          this.panel.close();
+        } else if (this.armed !== null && sameCell(this.armed, target.cell)) {
+          this.build(target.cell, this.pick);
+          this.armed = null;
+          this.tapCell = null;
+        } else {
+          this.armed = target.cell;
+          this.tapCell = target.cell;
+        }
+        break;
+      case 'blocked':
+        if (!this.pick) this.panel.close();
+        else {
+          this.armed = null;
+          this.tapCell = target.cell;
+        }
+        break;
+      case 'outside':
+        this.panel.close();
+        break;
+    }
+    this.redraw();
+  }
+
+  /** Switch between touch and mouse mode; each mode starts with no hover or armed cell. */
+  private setTouch(touch: boolean): void {
+    if (this.touch === touch) return;
+    this.touch = touch;
+    this.pointer = null;
+    this.tapCell = null;
+    this.armed = null;
+  }
+
   /** Track the pointer (null once it leaves the canvas); the hover cell follows on redraw. */
   private onPointerMove(p: { x: number; y: number } | null): void {
+    if (p !== null) this.setTouch(false);
     this.pointer = p;
     this.redraw();
   }
@@ -184,6 +278,8 @@ export class GameScene extends Phaser.Scene {
   /** A build bar click: pick that type, or clear the pick if it is already active. */
   private togglePick(type: TowerType): void {
     if (this.endScreen.kind) return;
+    this.tapCell = null;
+    this.armed = null;
     if (this.pick === type) this.pick = null;
     else if (canPick(this.state, type)) {
       this.pick = type;
@@ -203,6 +299,8 @@ export class GameScene extends Phaser.Scene {
     return {
       pick: this.pick,
       hoverCell: this.hoverCell,
+      armedCell: this.armed,
+      isTouch: this.touch,
       selectedCell: this.panel.cell,
       panelOpen: this.panel.cell !== null,
     };
@@ -224,7 +322,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
-    if (this.autoTick) {
+    if (this.autoTick && portraitCardVisible()) {
+      this.accMs = 0;
+    } else if (this.autoTick) {
       this.accMs += delta;
       const due = Math.floor(this.accMs / STEP_MS);
       this.accMs -= due * STEP_MS;
@@ -308,10 +408,22 @@ export class GameScene extends Phaser.Scene {
     if (this.pick !== null && !canPick(this.state, this.pick)) this.pick = null;
     this.panel.update(this.state);
 
+    // Touch: nothing is armed or highlighted without a pick, and an armed
+    // cell that stopped being buildable (a test hook built there) disarms.
+    if (this.pick === null) {
+      this.tapCell = null;
+      this.armed = null;
+    }
+    if (this.armed !== null && !isBuildable(this.state, this.armed)) {
+      this.armed = null;
+      this.tapCell = null;
+    }
+
     const panelRect = this.panel.rect;
     const p = this.pointer;
-    this.hoverCell =
-      p === null || this.endScreen.kind !== null || (panelRect !== null && contains(panelRect, p.x, p.y)) ? null : cellAt(p.x, p.y);
+    if (this.endScreen.kind !== null) this.hoverCell = null;
+    else if (this.touch) this.hoverCell = this.tapCell;
+    else this.hoverCell = p === null || (panelRect !== null && contains(panelRect, p.x, p.y)) ? null : cellAt(p.x, p.y);
     const hover = this.hoverCell;
     const hoverTower = hover !== null && towerAt(this.state, hover) !== undefined;
     const hoverBuildable = hover !== null && isBuildable(this.state, hover);

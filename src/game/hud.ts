@@ -1,6 +1,8 @@
 // HUD: a dark bar across the bottom 100 px of the 960 x 580 canvas, in two
-// rows. Row 1 (y 480..530): gold, lives, wave, the next-wave preview, a Start
-// Wave button and a 1x/2x speed toggle. Row 2 (y 530..580): the build bar.
+// rows. Row 1: gold, lives, wave, the next-wave preview, a Start Wave button
+// and a 1x/2x speed toggle, buttons at y 484..526. Row 2: the build bar,
+// buttons at y 533..575. Buttons are 42 px tall (milestone 14) so they are
+// at least 44 px on an iPad in landscape (scale 1024 / 960).
 
 import Phaser from 'phaser';
 import { nextWavePreview, WAVES, type EnemyType, type GameState, type TowerType } from '../sim';
@@ -13,14 +15,17 @@ export type { Rect };
 
 export const HUD_TOP = 480;
 export const HUD_HEIGHT = 100;
-/** Height of each HUD row. */
-export const HUD_ROW = 50;
+/**
+ * Every HUD button is 42 px tall: 44.8 px on screen at iPad landscape scale
+ * (1024 / 960), over the 44 px touch target. The 100 px HUD keeps a 4 px gap
+ * under its top edge, 7 px between the rows and 5 px at the bottom.
+ */
+export const HUD_BUTTON_H = 42;
+export const ROW1_BUTTON_Y = HUD_TOP + 4;
+export const ROW2_BUTTON_Y = ROW1_BUTTON_Y + HUD_BUTTON_H + 7;
 /** Vertical centre of row 1 (the stats and the HUD buttons). */
-const MID = HUD_TOP + HUD_ROW / 2;
-/** Buttons are 36 px tall, centred in their row. */
-const BUTTON_H = 36;
-const ROW1_BUTTON_Y = MID - BUTTON_H / 2;
-const ROW2_BUTTON_Y = HUD_TOP + HUD_ROW + (HUD_ROW - BUTTON_H) / 2;
+const MID = ROW1_BUTTON_Y + HUD_BUTTON_H / 2;
+const BUTTON_H = HUD_BUTTON_H;
 
 export interface HudStrings {
   gold: string;
