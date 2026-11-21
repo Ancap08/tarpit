@@ -143,6 +143,8 @@ test('placing a Cannon over the path: red cell, no ghost', async ({ page }) => {
   await expect(page.locator('canvas')).toHaveScreenshot('placing-invalid.png');
 });
 
+// Milestone 24: the panel has a third button, "Target: First", so this
+// baseline changed; the setup is the same.
 test('upgraded Musketeer selected with its panel and range', async ({ page }) => {
   await open(page);
   await page.evaluate(() => (window.__tarpit as TarpitTestApi).startGame());

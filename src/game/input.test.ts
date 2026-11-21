@@ -79,25 +79,37 @@ describe('placeBeside', () => {
 
   const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
-  it('for every buildable cell: inside the map, off the HUD, and never over its own tower or label', () => {
-    buildableCells().forEach((ok, key) => {
-      if (!ok) return;
-      const c = cellFromKey(key);
-      expect(isBuildableTerrain(c)).toBe(true);
-      const p = at(c.col, c.row);
-      const where = `cell (${c.col},${c.row})`;
-      expect(p.x, where).toBeGreaterThanOrEqual(0);
-      expect(p.x + PANEL.w, where).toBeLessThanOrEqual(960);
-      expect(p.y, where).toBeGreaterThanOrEqual(0);
-      expect(p.y + PANEL.h, where).toBeLessThanOrEqual(480);
-      const box = { x: p.x, y: p.y, width: PANEL.w, height: PANEL.h };
-      expect(overlaps(box, cellRect(c)), where).toBe(false);
-      // The widest label, "Cannon+": 7 bold 12 px Courier characters (7.2 px) plus 3 px padding a side.
-      const centre = cellCenter(c);
-      const w = 7 * 7.2 + 6;
-      const lx = Math.min(960 - w / 2, Math.max(w / 2, centre.x)); // shifted inside the map at the edges
-      const top = labelAbove(centre.y) ? centre.y - LABEL_OFFSET_Y - LABEL_HEIGHT : centre.y + LABEL_OFFSET_Y;
-      expect(overlaps(box, { x: lx - w / 2, y: top, width: w, height: LABEL_HEIGHT }), `${where} label`).toBe(false);
-    });
+  // The real tower panel (ui/button.ts ButtonStack): 156 px buttons plus 6 px
+  // padding a side, a 4 px gap and the 42 px close column, so 214 wide; three
+  // 42 px buttons (Upgrade, Sell, Target, milestone 24) with 4 px gaps and 6 px
+  // padding, so 146 tall. The 168 x 76 pins above test the side choice only.
+  const REAL = { w: 156 + 2 * 6 + 4 + 42, h: 2 * 6 + 3 * 42 + 2 * 4 };
+
+  it('the real panel is 214 x 146', () => {
+    expect(REAL).toEqual({ w: 214, h: 146 });
   });
+
+  for (const PANEL of [{ w: 168, h: 76 }, REAL]) {
+    it(`for every buildable cell, a ${PANEL.w} x ${PANEL.h} panel: inside the map, off the HUD, never over its own tower or label`, () => {
+      buildableCells().forEach((ok, key) => {
+        if (!ok) return;
+        const c = cellFromKey(key);
+        expect(isBuildableTerrain(c)).toBe(true);
+        const p = placeBeside(cellCenter(c), PANEL.w, PANEL.h);
+        const where = `cell (${c.col},${c.row})`;
+        expect(p.x, where).toBeGreaterThanOrEqual(0);
+        expect(p.x + PANEL.w, where).toBeLessThanOrEqual(960);
+        expect(p.y, where).toBeGreaterThanOrEqual(0);
+        expect(p.y + PANEL.h, where).toBeLessThanOrEqual(480);
+        const box = { x: p.x, y: p.y, width: PANEL.w, height: PANEL.h };
+        expect(overlaps(box, cellRect(c)), where).toBe(false);
+        // The widest label, "Cannon+": 7 bold 12 px Courier characters (7.2 px) plus 3 px padding a side.
+        const centre = cellCenter(c);
+        const w = 7 * 7.2 + 6;
+        const lx = Math.min(960 - w / 2, Math.max(w / 2, centre.x)); // shifted inside the map at the edges
+        const top = labelAbove(centre.y) ? centre.y - LABEL_OFFSET_Y - LABEL_HEIGHT : centre.y + LABEL_OFFSET_Y;
+        expect(overlaps(box, { x: lx - w / 2, y: top, width: w, height: LABEL_HEIGHT }), `${where} label`).toBe(false);
+      });
+    });
+  }
 });
