@@ -1,18 +1,23 @@
 // Demo recording: `npm run demo`. Run by hand, not in CI.
 //
 // Builds the game, serves dist/ with `vite preview`, and plays it in real time
-// (not test mode) in headless Chromium with Playwright's video recording on:
-// title click, a Musketeer on cell (7,5) through the build bar (pick, glide
-// over the map so the ghost and range follow, click the cell), Start Wave,
-// 2x, wave 1, a Cannon on (7,7), wave 2, then a Tar Pit on (10,5). The game
-// starts with 100 gold, so the three towers cannot all be bought before
-// wave 1; this order is the one (found with the headless sim) that leaves
-// enough gold for the Tar Pit after wave 2 (12 lives, 68 gold). Every click
-// goes through the real UI: bar and HUD buttons at the rectangles
-// window.__tarpit.uiRects() reports, cells at their centres. Then
-// the system ffmpeg turns the video into docs/media/tarpit.gif (640 px wide,
-// 12 fps, two-pass palette, sped up to fit about 22 s) and a mid-wave still
-// docs/media/tarpit.png (960x580).
+// (not test mode) in headless Chromium with Playwright's video recording on.
+// The play shows v2: title click; Longbow picked on the build bar and placed
+// on (9,5) and (9,4) inside the first U (the pick stays active for the second
+// one, then clears itself at 20 gold); Start Wave, 2x, wave 1; a Tar Pit on
+// (14,10); wave 2; a Fire Pot on (14,9) beside it, so tarred enemies burn at
+// double rate on that stretch; wave 3; then wave 4 until a Mortar is
+// affordable, and a Mortar on (17,6) with its ghost, range and dashed minimum
+// range shown on the way in. These are the combo build's first five
+// purchases (COMBO_PLAN in src/sim/headless.ts). The game starts with 100
+// gold, so the timing comes from a headless run: 77 gold after wave 1 (Tar
+// Pit), 90 after wave 2 (Fire Pot), 107 after wave 3, and 110 for the Mortar
+// about 180 ticks into wave 4. Every click goes through the real UI: bar and
+// HUD buttons at the rectangles window.__tarpit.uiRects() reports, cells at
+// their centres. Then the system ffmpeg turns the video into
+// docs/media/tarpit.gif (640 px wide, 12 fps, two-pass palette, sped up to
+// fit about TARGET_SECONDS) and a wave 3 still docs/media/tarpit.png
+// (960x580) with the Tar Pit and Fire Pot both on a tarred, burning enemy.
 //
 // Needs ffmpeg on PATH or in FFMPEG (default /opt/homebrew/bin/ffmpeg) and
 // the Playwright Chromium (`npx playwright install chromium`).
@@ -33,7 +38,7 @@ const PORT = 4179;
 const URL_BASE = `http://localhost:${PORT}/`;
 const VIEW = { width: 960, height: 580 };
 /** Target length of the GIF in seconds; the video is sped up to fit. */
-const TARGET_SECONDS = 22;
+const TARGET_SECONDS = 25;
 
 interface Rect {
   x: number;
@@ -97,28 +102,69 @@ async function clickRect(page: Page, key: string, hoverMs = 0): Promise<void> {
   await page.mouse.click(x, y);
 }
 
+type TowerType = 'musketeer' | 'cannon' | 'tarpit' | 'longbow' | 'mortar' | 'firepot';
+
 /**
  * Pick the tower on the bar, glide over the map so the ghost and its range
- * follow the pointer, click the cell, and clear the pick if it is still
- * active (it clears by itself when the gold left is below the cost).
+ * follow the pointer, and click each cell in turn (the pick stays active
+ * between them). Then clear the pick if it is still active (it clears by
+ * itself when the gold left is below the cost). `ghostMs` is how long the
+ * ghost rests on the first cell before the click.
  */
-async function buildAt(page: Page, col: number, row: number, tower: 'musketeer' | 'cannon' | 'tarpit'): Promise<void> {
-  const before = await snapshot(page);
+async function buildAt(page: Page, tower: TowerType, cells: [number, number][], ghostMs = 700): Promise<void> {
   await clickRect(page, `bar:${tower}`, 300);
   await page.waitForTimeout(300);
-  const x = col * 32 + 16;
-  const y = row * 32 + 16;
-  await page.mouse.move(x + 96, y + 64, { steps: 10 });
-  await page.waitForTimeout(250);
-  await page.mouse.move(x, y, { steps: 14 });
-  await page.waitForTimeout(700);
-  await page.mouse.click(x, y);
-  const after = await snapshot(page);
-  if (after.gold >= before.gold) throw new Error(`build ${tower} at (${col},${row}) did not happen (gold ${before.gold})`);
-  log(`built ${tower} at (${col},${row}): gold ${before.gold} -> ${after.gold}`);
-  await page.waitForTimeout(400);
+  for (const [i, [col, row]] of cells.entries()) {
+    const before = await snapshot(page);
+    const x = col * 32 + 16;
+    const y = row * 32 + 16;
+    if (i === 0) {
+      await page.mouse.move(x + 96, y + 64, { steps: 10 });
+      await page.waitForTimeout(250);
+    }
+    await page.mouse.move(x, y, { steps: 14 });
+    await page.waitForTimeout(i === 0 ? ghostMs : 500);
+    await page.mouse.click(x, y);
+    const after = await snapshot(page);
+    if (after.gold >= before.gold) throw new Error(`build ${tower} at (${col},${row}) did not happen (gold ${before.gold})`);
+    log(`built ${tower} at (${col},${row}): gold ${before.gold} -> ${after.gold}`);
+    await page.waitForTimeout(400);
+  }
   if ((await pick(page)) !== null) await clickRect(page, `bar:${tower}`, 200);
   await page.waitForTimeout(300);
+}
+
+/**
+ * True on the frame where an enemy is both tarred and burning and the Fire
+ * Pot has just fired (its cooldown jumped back up within the last few
+ * ticks), so the Fire Pot's shot, the Tar Pit and the enemy's two rings are
+ * on screen together. state.shots holds only the latest tick's shots, so
+ * this watches the cooldown instead.
+ */
+function comboFrame(page: Page, timeoutMs: number): Promise<boolean> {
+  return page
+    .waitForFunction(
+      () => {
+        const s = (window.__tarpit!.game.scene.getScene('game') as unknown as {
+          state: {
+            enemies: { slowTicksLeft: number; burnTicksLeft?: number }[];
+            towers: { type: string; cooldownTicks: number }[];
+          };
+        }).state;
+        const w = window as unknown as { demoMaxCooldown?: number };
+        const pot = s.towers.find((t) => t.type === 'firepot');
+        if (!pot) return false;
+        w.demoMaxCooldown = Math.max(w.demoMaxCooldown ?? 0, pot.cooldownTicks);
+        const combo = s.enemies.some((e) => e.slowTicksLeft > 0 && (e.burnTicksLeft ?? 0) > 0);
+        return combo && pot.cooldownTicks >= w.demoMaxCooldown - 6;
+      },
+      undefined,
+      { polling: 'raf', timeout: timeoutMs },
+    )
+    .then(
+      () => true,
+      () => false,
+    );
 }
 
 async function waitFor(page: Page, what: string, ok: (s: Snapshot) => boolean, timeoutMs = 60000): Promise<Snapshot> {
@@ -157,7 +203,10 @@ async function main(): Promise<void> {
     await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game'));
     await page.waitForTimeout(600);
 
-    await buildAt(page, 7, 5, 'musketeer');
+    await buildAt(page, 'longbow', [
+      [9, 5],
+      [9, 4],
+    ]);
     await clickRect(page, 'startWave', 300);
     await page.waitForTimeout(800);
     await clickRect(page, 'speed', 300);
@@ -165,32 +214,35 @@ async function main(): Promise<void> {
     log(`wave 1 done: lives ${s.lives}, gold ${s.gold}`);
     await page.waitForTimeout(500);
 
-    await buildAt(page, 7, 7, 'cannon');
+    await buildAt(page, 'tarpit', [[14, 10]]);
     await clickRect(page, 'startWave', 300);
-    // The still: a frame with five or more enemies out just after the Cannon
-    // fired, so its splash is on screen. state.shots holds only the latest
-    // tick's shots, so this watches the Cannon's cooldown jump back up.
-    await page.waitForFunction(
-      () => {
-        const s = (window.__tarpit!.game.scene.getScene('game') as unknown as {
-          state: { enemies: unknown[]; towers: { type: string; cooldownTicks: number }[] };
-        }).state;
-        const w = window as unknown as { demoMaxCooldown?: number };
-        const cannon = s.towers.find((t) => t.type === 'cannon');
-        if (!cannon) return false;
-        w.demoMaxCooldown = Math.max(w.demoMaxCooldown ?? 0, cannon.cooldownTicks);
-        return s.enemies.length >= 5 && cannon.cooldownTicks >= w.demoMaxCooldown - 4;
-      },
-      undefined,
-      { polling: 'raf', timeout: 60000 },
-    );
-    await page.screenshot({ path: PNG });
-    log('still saved');
     s = await waitFor(page, 'wave 2 to end', (x) => x.phase !== 'wave');
     log(`wave 2 done: lives ${s.lives}, gold ${s.gold}`);
-    await page.waitForTimeout(400);
-    if (s.gold >= 60) await buildAt(page, 10, 5, 'tarpit');
-    else log(`skipped the Tar Pit: only ${s.gold} gold`);
+    await page.waitForTimeout(500);
+
+    await buildAt(page, 'firepot', [[14, 9]]);
+    await clickRect(page, 'startWave', 300);
+    // The still: the Tar Pit and the Fire Pot both on a tarred, burning
+    // enemy. The headless run has the first one at wave 3 tick 3164.
+    if (await comboFrame(page, 60000)) {
+      await page.screenshot({ path: PNG });
+      log('still saved');
+    } else {
+      throw new Error('no frame with a tarred, burning enemy in wave 3');
+    }
+    s = await waitFor(page, 'wave 3 to end', (x) => x.phase !== 'wave');
+    log(`wave 3 done: lives ${s.lives}, gold ${s.gold}`);
+    await page.waitForTimeout(500);
+
+    if (s.gold >= 110) {
+      await buildAt(page, 'mortar', [[17, 6]], 1200);
+    } else {
+      // Not affordable between waves 3 and 4: start wave 4 and build the
+      // Mortar mid-wave once the bounties reach 110.
+      await clickRect(page, 'startWave', 300);
+      await waitFor(page, '110 gold for the Mortar', (x) => x.gold >= 110 || x.phase !== 'wave');
+      await buildAt(page, 'mortar', [[17, 6]], 1200);
+    }
     await page.waitForTimeout(2500);
     const end = at();
 

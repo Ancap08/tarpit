@@ -6,46 +6,52 @@
 
 A small browser tower defense game, built by AI agents under human direction.
 
-![Tarpit: building a Musketeer, a Cannon and a Tar Pit through the menus and playing waves 1 and 2 at 2x (GIF sped up about 2x)](docs/media/tarpit.gif)
+![Tarpit: placing two Longbows, a Tar Pit, a Fire Pot and a Mortar through the build bar and playing waves 1 to 4 at 2x (GIF sped up about 2x)](docs/media/tarpit.gif)
 
 ## What this is
 
 A portfolio project. The point is how a human steered AI agents to build a
 real game from an empty folder; the playable game is the proof. It was made
-for Kyle and his nieces and nephews: one map, ten waves, three towers, three
-enemies, simple shapes with labels.
+for Kyle and his nieces and nephews: one map, ten waves, six towers you can
+build anywhere off the path, three enemies, simple shapes with labels.
 
 ## How to play
 
-1. Pick a tower on the build bar under the map: Musketeer (single target), Cannon (splash), Tar Pit (slow), Longbow (cheap, long range), Mortar (long-range splash, cannot hit close) or Fire Pot (burns, double on tarred enemies). Move over the map: a green square and a ghost with its range show where it can go; red means it cannot. Click to build, and keep clicking to place more; click the button again or press Escape to stop. Click a tower to upgrade or sell it.
-2. Press Start Wave. Enemies walk from the cave to the cottage; each one that gets through costs a life.
-3. Kills and cleared waves pay gold. Survive all 10 waves to win. The 1x/2x button sets the speed.
+1. Pick a tower on the build bar under the map: Musketeer (single target), Cannon (splash), Tar Pit (slow), Longbow (cheap, long range), Mortar (long-range splash) or Fire Pot (burns). Move over the map: a green cell with a ghost and its range shows where the tower can go; red means it cannot. Click any green cell to build, and keep clicking to place more; click the button again or press Escape to stop. Click a tower to upgrade or sell it.
+2. The Mortar cannot hit enemies inside its dashed inner circle (70 px), so put it back from the path it guards.
+3. Tar + fire: a Fire Pot's burn does double damage to an enemy slowed by a Tar Pit, so build the two side by side.
+4. Press Start Wave. Enemies walk from the cave to the cottage; each one that gets through costs a life. Kills and cleared waves pay gold. Survive all 10 waves to win. The 1x/2x button sets the speed.
 
 ## How it was built
 
 - **Kyle** set the design, approved the plan and scope, and merged PR 1 himself. He then had the coordinator merge each PR once checks and the verifier passed, with screenshots and play feel left to his review.
 - **Coordinator: Claude Fable 5.1.** Wrote the scope, design spec and briefs, ran the repo settings, and never wrote game code.
 - **Implementers: Claude Opus at medium effort.** Wrote each milestone's code, tests and notes.
-- **Verifier: Claude Sonnet**, a different model, checked every milestone PR before merge from a clean install (the one non-milestone PR, the baseline workflow, was reviewed as part of milestone 3), re-derived numbers by hand and added its own tests.
+- **Verifier: Claude Sonnet**, a different model, checked every milestone PR before merge from a clean install (of the two non-milestone PRs, the baseline workflow was reviewed as part of milestone 3 and the v2 scope draft was approved by Kyle), re-derived numbers by hand and added its own tests.
 - **One PR per milestone.** Every PR runs lint, typecheck, Vitest, build, and Playwright smoke and play-through tests. Screenshot baselines are generated on CI (Linux) and committed to the PR for Kyle's review.
+
+v2 (build anywhere and three new towers) followed the same process in milestones 8 to 13.
 
 Every design call and who made it is in [DECISIONS.md](DECISIONS.md). What
 happened, including what went wrong, is in [DEVLOG.md](DEVLOG.md).
 
 ## By the numbers
 
-Counts at the merge of milestone 6b (PR 9), from `git` and `gh`:
+Counts at the merge of milestone 12 (PR 16), from `git` and `gh`:
 
 | | |
 |---|---|
-| Pull requests merged | 9 (eight milestone PRs and one CI workflow PR) |
-| Commits on `main` | 68: 59 changes and 9 merges |
-| Commit co-authors | Claude Opus 29, Claude Fable 5.1 13, Claude Sonnet 12; 6 baseline commits by `github-actions[bot]` |
-| Unit tests (Vitest) | 123 in 16 files |
-| Browser tests (Playwright) | 39 in 8 files |
-| Screenshot baselines | 8 |
+| Pull requests merged | 16: 14 milestone PRs, the CI baseline workflow (PR 4) and the v2 scope (PR 11) |
+| Commits on `main` | 118: 102 changes and 16 merges |
+| Commit co-author trailers | Claude Opus 54, Claude Fable 5.1 21, Claude Sonnet 18 |
+| Screenshot baseline commits | 10 by `github-actions[bot]` |
+| Unit tests (Vitest) | 211 in 24 files |
+| Browser tests (Playwright) | 61 in 10 files |
+| Screenshot baselines | 10 |
 | Models involved | 3 (Fable 5.1, Opus, Sonnet) |
-| Time from first commit to milestone 6b merged | about 2 hours, 2026-11-21 |
+| v1 shipped (PR 10 merged) | 2026-11-21 08:30 UTC |
+| v2 complete (PR 16 merged) | 2026-11-21 10:16 UTC |
+| Time from first commit (06:11 UTC) to PR 16 merged | about 4 hours, 2026-11-21 |
 
 ## Repo map
 
@@ -105,25 +111,18 @@ pixel comparison because macOS renders text differently.
 
 ## Status and what is out of scope
 
-v1 is complete: milestones 0 to 6 are merged and the build is live. Milestone
-7's evidence is Kyle finishing a game from the public link.
+v2 is done ([docs/SCOPE-v2.md](docs/SCOPE-v2.md)): towers go on any free
+cell of a 30 x 15 grid off the path, through a build bar; the Longbow,
+Mortar and Fire Pot joined the v1 three; and the balance pass retuned the
+numbers so Longbow spam loses and a Tar Pit and Fire Pot build wins with
+lives to spare. Milestone 13's evidence is Kyle finishing a game with the
+new towers from the public link.
 
-v2 is in progress ([docs/SCOPE-v2.md](docs/SCOPE-v2.md)). Milestone 8 moved
-tower placement in the simulation to a 30 x 15 grid of 32 px cells.
-Milestone 9 replaced the ten v1 build spots with build-anywhere: a build bar
-in the HUD, a ghost tower with its range, and a 960 x 580 canvas. The README
-GIF still shows the v1 build menu until milestone 13 records a new one.
-Milestone 10 added the Longbow, Mortar (minimum range) and Fire Pot (burn,
-doubled on tarred enemies) to the simulation, with headless builds that use
-them. Milestone 11 put all six towers on the build bar with their own
-shapes, shots and a burning-enemy ring, and shrinks or hides crowded labels.
-Milestone 12 retuned the numbers for six towers on the grid: Longbow spam
-and a kid's Musketeer build now lose, and a build that pairs a Tar Pit with
-a Fire Pot, Longbows and a Mortar wins with lives to spare.
+Out of scope for v2: new maps, new enemies, a second upgrade tier, hotkeys,
+art packs, sound, saves, mobile layout.
 
-Out of scope for v1: multiple maps, saves, sound, menus beyond start and
-restart, mobile layout, multiplayer, custom art. A Kenney CC0 art pack is a
-possible next step.
+Next candidates: the Kenney CC0 art pack, a second map, and a second
+upgrade tier.
 
 Further reading: [docs/SCOPE.md](docs/SCOPE.md),
 [docs/DESIGN.md](docs/DESIGN.md), [DECISIONS.md](DECISIONS.md),

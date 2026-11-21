@@ -309,3 +309,15 @@ can change it; "Kyle" means Kyle decided.
   Default (Opus). Only game-code change in this milestone.
 - **`docs/SCOPE-v2.md`'s tower table keeps its starting numbers; `docs/DESIGN.md`
   is the spec.** Fable. SCOPE-v2 says the balance pass retunes them.
+
+## 2026-11-21, milestone 13 (ship v2) and close of v2
+
+- **v2 is complete at milestone 13.** Fable. Remaining evidence, Kyle's to
+  give: finishing a game with the new towers from the public link, and play
+  notes on the milestone 12 balance (including that a v1-towers-only build
+  now loses on wave 9).
+- **Demo order:** two Longbows before wave 1, Tar Pit before wave 2, Fire
+  Pot before wave 3, Mortar mid-wave 4, because that is what 100 starting
+  gold plus bounties affords. Default (Opus), planned headlessly first.
+- **Next candidates, none started:** Kenney CC0 art, a second map, a second
+  upgrade tier. Kyle decides.
