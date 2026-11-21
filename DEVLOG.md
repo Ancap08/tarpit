@@ -2970,3 +2970,82 @@ Verifier: Claude Fable 5.2.
   and Hard is lost by wave 3 for the best plan; both are milestone 28's,
   as the implementer says. (4) The README says "Enter also works"; Space
   does too.
+
+## 2026-11-21: milestone 25a, drag placement and the planning phase
+
+Roles: implementer Claude Opus, verifier Claude Fable 5.2, coordinator
+Claude Fable 5.2.
+
+### Implementer notes
+
+- **Rules as built** (`docs/DESIGN.md` "Planning phase"). Towers carry
+  `locked`, `unlockedSpend` and `upgradedThisPhase`. Built in setup:
+  unlocked, `unlockedSpend` = cost. Built mid-wave: locked, 0. An upgrade
+  in setup adds its cost to `unlockedSpend` and sets `upgradedThisPhase`,
+  on a locked tower too; mid-wave it adds nothing. `startWave` locks every
+  tower and clears both. `sellTower` refunds all of `spent` for an
+  unlocked tower and `sellRefund(spent)` (70%) for a locked one; the `sell`
+  event gains `full`. New `moveTower(state, from, to)` (setup, unlocked,
+  free, keeps everything, towers re-sorted; reasons `game-over`,
+  `not-in-setup`, `no-tower`, `locked`, `not-buildable`, `cell-occupied`
+  in that order; onto itself is a no-op success with no event) and
+  `undoUpgrade(state, cell)` (setup, upgrade bought this phase; full
+  upgrade cost back; reasons `game-over`, `not-in-setup`, `no-tower`,
+  `nothing-to-undo`). Events `move` and `undoUpgrade`.
+- **Headless.** Script actions `{type:'move', from, to}` and
+  `{type:'undoUpgrade', cell}` live in a new `PlanningAction` type in
+  `HeadlessAction`, not in `BuildAction`, so the archetype WaveScripts
+  (whose entries all carry `cell`) and `balance.test.ts` stay unchanged.
+  `noAntiAir` sells bows built before waves 1 to 3, all locked by then, so
+  they still refund 70%. Every archetype pin passed unmodified, and
+  `npm run sim` output is byte-identical to milestone 25's (diffed against
+  a worktree of `ae9fc34`).
+- **Renderer.** A pointerdown on an affordable bar button, or in setup on
+  an unlocked tower, is remembered as a press; past 8 px it becomes a drag
+  (`input.ts`: `DRAG_THRESHOLD`, `DRAG_LIFT` = 48, `dragTargetCell`). A bar
+  drag sets the pick at drag start, so the pick stays after any release.
+  Release is read from the scene's `pointerup` (and `pointerupoutside`,
+  which cancels). Button click handlers run before the scene's
+  `pointerup`, so `togglePick` ignores the click that ends an active drag
+  back on its own bar button. A tower drag closes the panel, dims the
+  tower at its origin (alpha 0.3) and draws a ghost with the tower's own
+  level and range. On touch a 1.5 px pale line runs from the fingertip to
+  the ghost's cell centre. Unlocked towers get a 2 px pale dashed outline
+  (4 px dashes) inside their cell. Over a red cell the drag shows the red
+  tint only, as click placement does.
+- **Panel.** Button words moved into `names.ts` `PANEL_TEXT`. Unlocked:
+  "Remove  +<spent>". Upgrade bought this setup phase: "Undo upgrade
+  +<cost>" in 14 px, because 16 px Courier does not fit "Undo upgrade
+  +80" in the 156 px button (about 164 px). `uiRects()` names are
+  unchanged; `ui()` gains `upgradeLabel`, `sellLabel` and `dragging`.
+- **Tests.** `src/sim/planning.test.ts` (17): every refund case with exact
+  gold, undo, move reasons, sorting, firing from the moved cell, events and
+  headless actions. Three drag geometry cases in `input.test.ts`.
+  `e2e/drag.spec.ts` (5, mouse) and `e2e/touch-drag.spec.ts` (5, tablet,
+  CDP `Input.dispatchTouchEvent`; added to `TABLET_SPECS`). Unit tests 470,
+  e2e 142, and the drag, touch and build-ui specs passed 150 of 150 with
+  `--repeat-each=5`.
+- **Baselines.** New: `planning.png`. Changes: `tower-selected.png` only
+  (its Musketeer is built and upgraded in setup, so it gains the dashed
+  outline and the panel reads "Undo upgrade  +35" and "Remove  +85"; same
+  setup). Every other frame shows no unlocked tower: the mid-wave frames
+  lock their towers at Start Wave, `placing.png` and `placing-invalid.png`
+  have none, and `won.png` is after wave 10.
+
+### What went wrong
+
+- **The rule change broke 18 older tests that sold in setup and expected
+  70%** (13 unit, 5 e2e). Their intent is the 70% rule, so each now
+  presses Start Wave before the sale (the tower locks) instead of changing
+  the expected gold.
+- **First try put `move` and `undoUpgrade` into `BuildAction`.** Every
+  `a.cell` on a WaveScript entry stopped compiling, `balance.test.ts`
+  included, which must stay unmodified. Moved to `PlanningAction`.
+- **Two slips in the touch spec**: a sanity check put the finger on row 6
+  (it is row 7: 176 + 48 = 224), and a `toBeCloseTo(51.2, 3)` on the
+  page-pixel lift failed on 51.1991 because Phaser rounds the letterbox
+  offset; precision 2 now.
+- **The first local "move" frame aimed at a path cell**, so only the red
+  cell showed and the ghost looked missing; recaptured over grass. Open
+  question for Kyle on the iPad: whether a faint ghost should also show
+  over red cells during a drag.
