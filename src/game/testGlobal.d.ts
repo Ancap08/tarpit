@@ -1,10 +1,11 @@
 // Shape of window.__tarpit. Outside test mode only `game` and the read-only
-// `uiRects()`, `canvasToPage()` and `portraitCardVisible()` are set
+// `uiRects()`, `canvasToPage()`, `portraitCardVisible()` and `animState()` are set
 // (uiRects() is empty until GameScene runs); with ?test=1 every hook below is
 // present (see testMode.ts).
 
 import type Phaser from 'phaser';
-import type { BuildResult, GameState, Phase, SellResult, StartWaveResult, TowerType, UpgradeResult } from '../sim';
+import type { BuildResult, GameEvent, GameState, Phase, SellResult, StartWaveResult, TowerType, UpgradeResult } from '../sim';
+import type { AnimState } from './anim/enemySprites';
 import type { UiState } from './GameScene';
 import type { HudStrings, Rect } from './hud';
 
@@ -56,9 +57,17 @@ export interface TarpitTestApi {
    * scene's actions, wave by wave, then redraw. Returns the final phase.
    */
   runScript(name: 'soundBuild' | 'lazyBuild' | 'comboBuild'): Phase;
+  /**
+   * An enemy sprite's animation state, or null if that enemy has no sprite
+   * (never spawned, gone, or before GameScene runs). `frame` is the position
+   * in the walk cycle and is always 0 in test mode. Also outside test mode.
+   */
+  animState(enemyId: number): AnimState | null;
+  /** The simulation's current event list (state.events, see src/sim/events.ts). */
+  events(): GameEvent[];
 }
 
-export type TarpitGlobal = Pick<TarpitTestApi, 'game' | 'uiRects' | 'canvasToPage' | 'portraitCardVisible'> & Partial<TarpitTestApi>;
+export type TarpitGlobal = Pick<TarpitTestApi, 'game' | 'uiRects' | 'canvasToPage' | 'portraitCardVisible' | 'animState'> & Partial<TarpitTestApi>;
 
 declare global {
   interface Window {
