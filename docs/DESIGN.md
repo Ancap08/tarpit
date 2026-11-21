@@ -6,8 +6,9 @@ Anything not in this file or `docs/SCOPE.md` is out of scope.
 
 ## Space and time
 
-- Canvas 960 x 540. The map uses the top 960 x 480; the HUD uses the bottom
-  60 px.
+- Canvas 960 x 580 (v2, milestone 9; v1 was 960 x 540). The map uses the
+  top 960 x 480; the HUD uses the bottom 100 px in two rows: stats and the
+  wave and speed buttons, then the build bar.
 - Positions are in pixels. Speeds are pixels per second.
 - The simulation runs at a fixed 60 ticks per second (`dt = 1/60 s`). It has
   no randomness in v1, so a given sequence of actions always produces the

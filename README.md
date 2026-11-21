@@ -17,7 +17,7 @@ enemies, simple shapes with labels.
 
 ## How to play
 
-1. Click a grey circle to build a Musketeer (single target), Cannon (splash) or Tar Pit (slow); click a tower to upgrade or sell it.
+1. Pick a tower on the build bar under the map: Musketeer (single target), Cannon (splash) or Tar Pit (slow). Move over the map: a green square and a ghost with its range show where it can go; red means it cannot. Click to build, and keep clicking to place more; click the button again or press Escape to stop. Click a tower to upgrade or sell it.
 2. Press Start Wave. Enemies walk from the cave to the cottage; each one that gets through costs a life.
 3. Kills and cleared waves pay gold. Survive all 10 waves to win. The 1x/2x button sets the speed.
 
@@ -61,8 +61,8 @@ docs/DESIGN.md    the game spec: map, economy, enemies, towers, waves
 docs/media/       README GIF and still
 src/sim/          game logic in plain TypeScript, no Phaser or DOM (lint-enforced)
 src/sim/grid.ts   the build grid: cells, cell centres, the buildable rule
-src/game/         Phaser rendering, input, HUD, menus and the ?test=1 test hooks
-src/game/legacySpots.ts  the ten v1 spots as cells (until milestone 9)
+src/game/         Phaser rendering, input, HUD, tower panel and the ?test=1 test hooks
+src/game/ui/buildBar.ts  the HUD build bar: pick a tower, then click a cell
 scripts/          npm run sim (balance report) and npm run demo (GIF recorder)
 e2e/              Playwright tests and CI screenshot baselines
 .github/workflows CI checks, Pages deploy, screenshot baseline update
@@ -107,9 +107,10 @@ v1 is complete: milestones 0 to 6 are merged and the build is live. Milestone
 7's evidence is Kyle finishing a game from the public link.
 
 v2 is in progress ([docs/SCOPE-v2.md](docs/SCOPE-v2.md)). Milestone 8 moved
-tower placement in the simulation to a 30 x 15 grid of 32 px cells; the game
-still shows the ten v1 build spots, now as ten fixed cells, until milestone 9
-adds the build bar and build-anywhere.
+tower placement in the simulation to a 30 x 15 grid of 32 px cells.
+Milestone 9 replaced the ten v1 build spots with build-anywhere: a build bar
+in the HUD, a ghost tower with its range, and a 960 x 580 canvas. The README
+GIF still shows the v1 build menu until milestone 13 records a new one.
 
 Out of scope for v1: multiple maps, saves, sound, menus beyond start and
 restart, mobile layout, multiplayer, custom art. A Kenney CC0 art pack is a
