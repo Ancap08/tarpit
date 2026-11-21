@@ -1,7 +1,8 @@
 // The playing field: renders the simulation and runs it on a fixed step.
 //
 // Time: update() accumulates real time and runs one simulation tick per
-// 1/60 s, times the speed (1x or 2x), at most MAX_TICKS_PER_FRAME per frame.
+// 1/60 s, times the speed (1x or 2x), at most MAX_TICKS_PER_FRAME per frame
+// (the accumulator and the cap live in loop.ts, ticksDue()).
 // In test mode (?test=1) update() runs no ticks; tests drive time with
 // advance() through window.__tarpit.step().
 //
@@ -54,7 +55,6 @@ import {
   setTargeting,
   startWave,
   tick,
-  TICKS_PER_SECOND,
   TOWER_DEFS,
   towerAt,
   towerStats,
@@ -85,6 +85,7 @@ import { cellAt, cellRect, classifyClick, contains, type Rect } from './input';
 import { COLORS } from './palette';
 import { portraitCardVisible } from './portrait';
 import { isTestMode } from './testMode';
+import { ticksDue } from './loop';
 import { canPick } from './ui/buildBar';
 import { EndScreen } from './ui/endScreen';
 import { endKind, type EndKind } from './ui/endText';
@@ -92,8 +93,6 @@ import { TowerPanel } from './ui/towerPanel';
 
 const sameCell = (a: Cell, b: Cell): boolean => a.col === b.col && a.row === b.row;
 
-const STEP_MS = 1000 / TICKS_PER_SECOND;
-const MAX_TICKS_PER_FRAME = 8;
 
 export type Speed = 1 | 2;
 
@@ -370,12 +369,10 @@ export class GameScene extends Phaser.Scene {
     if (this.autoTick && portraitCardVisible()) {
       this.accMs = 0;
     } else if (this.autoTick) {
-      this.accMs += delta;
-      const due = Math.floor(this.accMs / STEP_MS);
-      this.accMs -= due * STEP_MS;
-      // Dropping ticks beyond the cap (after a stall or a hidden tab) keeps
-      // the game from spiralling; it simply runs slower for that frame.
-      this.advance(Math.min(due * this.speed, MAX_TICKS_PER_FRAME), false);
+      // Ticks beyond the cap are dropped (see loop.ts for why).
+      const { ticks, accMs } = ticksDue(this.accMs + delta, this.speed);
+      this.accMs = accMs;
+      this.advance(ticks, false);
     }
     this.redraw();
   }

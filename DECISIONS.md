@@ -446,3 +446,23 @@ can change it; "Kyle" means Kyle decided.
   Start Wave button.** Opus, found while adding "+ Grumblefoot".
 - **Rename rule caveat: Playwright serves the built `dist/`, so a rename in
   `names.ts` needs `npm run build` before `test:e2e`.** Fable.
+
+## 2026-11-21, CI failure on the boss PR and what it changed
+
+- **The live-loop browser test no longer depends on a GPU or on frame
+  rate.** It loads `/?renderer=canvas`, needs only 20 ticks in 1.5 s at 1x
+  and a 2x rate at least 1.5 times the 1x rate. The WebGL check moved to its
+  own test with no timing. Fable (design), Opus (implementation).
+- **The coordinator's first diagnosis was wrong.** Fable blamed the 8 tick
+  per frame catch-up cap; the implementer read Phaser's frame-timing code and
+  showed that for its first 120 frames Phaser clamps every frame to 16.67
+  ms, so a slow runner simply runs slow regardless of our cap. The cap was
+  raised to 20 anyway and the accumulator became a tested pure function
+  (`src/game/loop.ts`), which also fixed a 14-instead-of-15 rounding bug.
+- **Playwright's port comes from `PW_PORT` (default 4173) and never reuses
+  an existing server.** Fable. Two worktrees ran browser tests on the same
+  port at once and could have tested each other's builds; one agent killed
+  the other's preview server. A busy port now fails loudly. Parallel
+  checkouts set their own port.
+- **Process rule: when two agents work in parallel worktrees, each gets its
+  own `PW_PORT` in its brief.** Fable.

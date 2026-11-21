@@ -2576,6 +2576,55 @@ Claude Fable 5.1.
 - **Open for the coordinator:** the bar at y 24 with the pill at y 4 to 22
   (the brief said y 12) is as DESIGN now describes; accept or move.
 
+### CI failure after the fact
+
+- **What failed.** On GitHub's Ubuntu runner (run 44956904244),
+  `e2e/live.spec.ts` "live loop ticks, spawns enemies, and 2x runs faster"
+  failed on both attempts: 48, then 60 ticks after 1500 ms at 1x, against
+  `toBeGreaterThan(60)`. It passes locally. It had passed on the previous
+  two PRs by timing luck.
+- **Cause.** Since milestone 16, play uses WebGL. Headless Chromium on CI
+  has no GPU and renders WebGL in software (SwiftShader), so the frame rate
+  falls and the real-time loop falls behind 60 ticks/s. The brief's model
+  was about 4 fps at 8 ticks a frame (`MAX_TICKS_PER_FRAME`), 48 ticks.
+  Reading Phaser's `TimeStep.smoothDelta` while fixing this found a second
+  limit that fits the numbers at least as well: for the first 120 frames
+  after the loop starts (`panicMax`), Phaser cuts every delta to 16.67 ms,
+  so 1x runs one tick per frame, and the test's 1x window falls inside
+  those frames. Then 48 and 60 ticks mean about 32 and 40 fps (60 is not a
+  multiple of 8). Phaser also replaces any delta over 200 ms (`minFps` 5)
+  with an earlier one. The CI log does not show the frame rate, so which
+  limit applied is not proven.
+- **Fix 1, the cap.** `MAX_TICKS_PER_FRAME` goes from 8 to 20 (a third of
+  a second of catch-up), so a device at 4 to 5 fps keeps real time at 1x
+  once Phaser's warm-up is over.
+- **Fix 2, the test.** `?renderer=canvas` (`src/main.ts`, README) forces
+  the Canvas renderer in play with live time and animation.
+  `live.spec.ts` loads it and checks rates, not counts: at least 45 ticks
+  in the 1.5 s 1x window (30 ticks/s), a 2x rate at least 1.5 times the 1x
+  rate (each over the measured elapsed time), and at least one enemy. It
+  records the counts as a test annotation and in the console. The WebGL
+  and walk-cycle test moved to `e2e/renderer.spec.ts`, which loads `/`
+  without the flag and also checks that the tick advances, with no rate.
+- **Fix 3, the automatic check.** The accumulator moved out of
+  `GameScene.update()` into a pure `ticksDue(accMs, speed, cap)` in
+  `src/game/loop.ts`, with `loop.test.ts`: 250 ms frames give 15 ticks at
+  1x and 20 (capped from 30) at 2x, a 60 fps frame gives 1, two 25 ms
+  frames give 1 then 2, and 40 slow frames sum to 600 ticks. Writing the
+  test found a floating-point slip: `250 / (1000 / 60)` is
+  14.999999999999998, so the old `Math.floor` gave 14 ticks for a 250 ms
+  frame and carried a whole step over. `ticksDue` adds a 1e-9 tolerance.
+- **Open.** Phaser's warm-up and 200 ms clamps (above) still slow a slow
+  device at the start and below 5 fps. Changing the game config
+  (`fps.panicMax`, `fps.minFps`) would be a further loop change, not made
+  here.
+- **Port collision.** While this was fixed, two worktrees ran e2e at the
+  same time on port 4173, and with `reuseExistingServer` on locally one
+  run could test the other checkout's build. `playwright.config.ts` now
+  reads the port from `PW_PORT` (default 4173) for the server and
+  `baseURL`, and never reuses a server, so a busy port fails loudly;
+  `npm run demo` honours `PW_PORT` too (default 4179).
+
 ## 2026-11-21: milestone 24, targeting modes
 
 Roles: implementer Claude Opus, verifier Claude Fable 5.1, coordinator

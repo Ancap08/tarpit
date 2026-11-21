@@ -1,5 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
 
+/**
+ * Preview server port. A second checkout runs with PW_PORT=4174 so two
+ * worktrees never share a server (reuseExistingServer is off below).
+ */
+const PORT = Number(process.env.PW_PORT ?? 4173);
+
 /** Specs that run only in the tablet project (and never on the desktop one). */
 const TABLET_SPECS = [/touch\.spec\.ts$/, /touch-verifier\.spec\.ts$/, /visual-tablet\.spec\.ts$/];
 
@@ -19,7 +25,7 @@ export default defineConfig({
   updateSnapshots: process.env.CI ? 'none' : 'missing',
   expect: { toHaveScreenshot: { maxDiffPixels: 100 } },
   use: {
-    baseURL: 'http://localhost:4173',
+    baseURL: `http://localhost:${PORT}`,
     trace: 'on-first-retry',
   },
   // ignoreSnapshots and updateSnapshots above apply to both projects.
@@ -49,8 +55,10 @@ export default defineConfig({
   ],
   // Serve the production build so e2e tests what ships. Run `npm run build` first.
   webServer: {
-    command: 'npm run preview -- --port 4173 --strictPort',
-    url: 'http://localhost:4173',
-    reuseExistingServer: !process.env.CI,
+    command: `npm run preview -- --port ${PORT} --strictPort`,
+    url: `http://localhost:${PORT}`,
+    // Never reuse: a server already on the port may be another checkout's
+    // build. With --strictPort a busy port fails the run loudly.
+    reuseExistingServer: false,
   },
 });

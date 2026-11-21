@@ -34,7 +34,9 @@ const MEDIA = join(ROOT, 'docs', 'media');
 const GIF = join(MEDIA, 'tarpit.gif');
 const PNG = join(MEDIA, 'tarpit.png');
 const FFMPEG = process.env.FFMPEG ?? (existsSync('/opt/homebrew/bin/ffmpeg') ? '/opt/homebrew/bin/ffmpeg' : 'ffmpeg');
-const PORT = 4179;
+// PW_PORT, as for the e2e tests (playwright.config.ts); its own default
+// keeps a demo off the e2e server's port 4173.
+const PORT = Number(process.env.PW_PORT ?? 4179);
 const URL_BASE = `http://localhost:${PORT}/`;
 const VIEW = { width: 960, height: 580 };
 /** Target length of the GIF in seconds; the video is sped up to fit. */
