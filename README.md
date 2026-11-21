@@ -2,7 +2,7 @@
 
 A small browser tower defense game, built by AI agents under human direction.
 
-Status: milestone 0 (scaffold) in progress. Play link arrives when milestone 0 merges.
+Status: milestone 1 (core simulation). Title screen is live at https://ancap08.github.io/tarpit/; the game itself arrives at milestone 3.
 
 This repo is a portfolio piece. The point is the process: a human sets the
 design and approves every pull request; a coordinator agent plans and never
