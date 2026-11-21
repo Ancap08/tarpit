@@ -1,6 +1,7 @@
 // End screen: shown once the simulation's phase is 'won' or 'lost'. A
 // translucent veil covers the map area (the HUD below stays visible with the
-// final numbers) and a centred panel holds a title, one or two lines and a
+// final numbers) and a centred panel, translucent enough that the map shows
+// through faintly, holds a title, one or two lines and a
 // [Play again] button. The scene ignores map clicks and hover while it shows.
 //
 // The veil is deliberately not interactive. Phaser orders overlapping
@@ -40,7 +41,7 @@ export class EndScreen {
       .rectangle(MAP_AREA.x, MAP_AREA.y, MAP_AREA.width, MAP_AREA.height, COLORS.endVeil, 0.62)
       .setOrigin(0, 0);
     this.panel = scene.add
-      .rectangle(cx, cy, PANEL_W, PANEL_H, COLORS.endPanel, 0.96)
+      .rectangle(cx, cy, PANEL_W, PANEL_H, COLORS.endPanel, 0.85)
       .setStrokeStyle(2, COLORS.endPanelEdge, 0.9);
     this.title = scene.add
       .text(cx, top + 44, '', { fontFamily: FONT, fontSize: '40px', fontStyle: 'bold', color: TEXT.victory })

@@ -33,6 +33,11 @@ function spawnMarker(g: Phaser.GameObjects.Graphics): void {
   g.fillCircle(s.x, s.y, 30);
   g.fillStyle(COLORS.spawn, 1);
   g.fillCircle(s.x, s.y, 23);
+  // A lighter inner arc on the visible half: the cave's back wall, for depth.
+  g.lineStyle(3, COLORS.caveInner, 1);
+  g.beginPath();
+  g.arc(s.x, s.y, 14, -Math.PI * 0.4, Math.PI * 0.4);
+  g.strokePath();
 }
 
 function exitCottage(g: Phaser.GameObjects.Graphics): void {
@@ -42,6 +47,9 @@ function exitCottage(g: Phaser.GameObjects.Graphics): void {
   const base = end.y - PATH_WIDTH / 2 - 4;
   const w = 28;
   const h = 20;
+  // Chimney first, so the roof covers its foot.
+  g.fillStyle(COLORS.cottageChimney, 1);
+  g.fillRect(cx + 5, base - h - 17, 5, 11);
   g.fillStyle(COLORS.cottageWall, 1);
   g.fillRect(cx - w / 2, base - h, w, h);
   g.fillStyle(COLORS.cottageRoof, 1);
