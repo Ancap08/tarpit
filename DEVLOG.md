@@ -1892,3 +1892,38 @@ touch. No change in `src/sim`; no gameplay change.
   pinch, or double-tap zoom outside the canvas. Kyle's iPad play covers it.
   Every existing desktop screenshot baseline changes (HUD heights, title
   text) and the tablet baseline is new: both need the CI baseline workflow.
+
+### Verifier notes
+
+The verifier (Claude Sonnet) checked milestone 14 on branch `m14-touch`.
+
+- Clean run: `rm -rf dist && npm ci`, lint, typecheck, `npm test` (24 files,
+  211 tests), build and `npm run test:e2e` all exit 0. e2e: 70 passed
+  (chromium 62, tablet 8). `--project=tablet --repeat-each=5` passed 40 of
+  40, no flakes. With the verifier specs added: 78 passed (chromium 63,
+  tablet 15).
+- No diff in `src/sim` or `docs/DESIGN.md`, no `*.test.ts` changed, and
+  `npm run sim` prints the same summary as milestone 12 (comboBuild won with
+  11 lives and 177 gold).
+- Observed numbers match this section: Start Wave 726,484 138x42, speed
+  876,484 70x42, bar buttons y 533 and 42 tall, panel 214x100 with a 42x42
+  close, HUD text "Gold 100 / Lives 20 / Wave 0/10 / Next: 8 Goblin". Every
+  rect in `uiRects()` is at least 44.8 px tall on the 1024x768 page.
+- Probes in `e2e/touch-verifier.spec.ts` (tablet project, real
+  `page.touchscreen.tap`) and `e2e/mouse-verifier.spec.ts` (desktop): path
+  tap arms nothing; clearing the pick by the bar button disarms; a tap on a
+  second cell moves the arm; the second tap on it builds there only; two-tap
+  works mid-wave; 1366x1024 works; portrait at 768x1024 in non-test mode shows
+  the card and ticks stop for 600 ms, landscape resumes ticking; one mouse
+  click still builds.
+- Config change: `playwright.config.ts` `TABLET_SPECS` now also matches
+  `touch-verifier.spec.ts`; otherwise that file would have run in the desktop
+  project too.
+- Brief correction: at 1366x1024 the scale is limited by width (1.423), so
+  the bars are above and below, not at the sides, and the canvas x offset is
+  0. The probe asserts both offsets with the formula.
+- Limits, not defects: portrait is detected as window height over width, so a
+  narrow desktop window shows the card; phones in landscape fit at about
+  0.67 scale, which makes buttons about 28 px (best effort in the scope); the
+  tablet baseline PNG does not exist yet (CI workflow makes it); real iPad
+  and Safari are untested, as the implementer notes say.

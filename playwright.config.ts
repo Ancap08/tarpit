@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /** Specs that run only in the tablet project (and never on the desktop one). */
-const TABLET_SPECS = [/touch\.spec\.ts$/, /visual-tablet\.spec\.ts$/];
+const TABLET_SPECS = [/touch\.spec\.ts$/, /touch-verifier\.spec\.ts$/, /visual-tablet\.spec\.ts$/];
 
 export default defineConfig({
   testDir: './e2e',
