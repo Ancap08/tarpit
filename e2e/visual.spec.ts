@@ -57,6 +57,47 @@ test('mid wave 1 with three towers', async ({ page }) => {
   await expect(page.locator('canvas')).toHaveScreenshot('mid-wave.png');
 });
 
+// All three enemy types with their hp bars, for Wolf and Troll coverage.
+// Wave 8 is the only wave with Goblins, Wolves and Trolls together, so the
+// test jumps there (state.wave = 7, then Start Wave) with 1000 gold and a
+// Musketeer at spot 2, Cannon at 4, Tar Pit at 7 and Musketeer at 9. Tick
+// 1200 was picked from a headless scan of every 30th tick: 8 Goblins, 5
+// Wolves and 4 Trolls are out, 2 Trolls are hurt (green bars), 5 enemies are
+// under 25% (red bars), 2 Wolves carry the tar ring, and no two enemies are
+// closer than 14 px, so each shape and bar reads on its own. Earlier ticks
+// bunch everyone near the cave; later ones lose the Wolves.
+const ENEMIES_STEPS = 1200;
+
+test('wave 8 with all three enemy types', async ({ page }) => {
+  await open(page);
+  const counts = await page.evaluate(async (steps) => {
+    const t = window.__tarpit as TarpitTestApi;
+    await t.startGame();
+    const s = t.state();
+    s.gold = 1000; // test setup: afford four towers
+    s.wave = 7; // test setup: the next Start Wave plays wave 8
+    t.build(2, 'musketeer');
+    t.build(4, 'cannon');
+    t.build(7, 'tarpit');
+    t.build(9, 'musketeer');
+    t.startWave();
+    t.step(steps);
+    const e = t.state().enemies;
+    const of = (type: string) => e.filter((x) => x.type === type);
+    return {
+      wave: t.state().wave,
+      goblins: of('goblin').length,
+      wolves: of('wolf').length,
+      trolls: of('troll').length,
+      hurtTrolls: of('troll').filter((x) => x.hp < 500).length, // Troll max hp is 500
+      slowed: e.filter((x) => x.slowTicksLeft > 0).length,
+    };
+  }, ENEMIES_STEPS);
+  expect(counts).toEqual({ wave: 8, goblins: 8, wolves: 5, trolls: 4, hurtTrolls: 2, slowed: 2 });
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('enemies.png');
+});
+
 /** Click the centre of a named rectangle from uiRects(). */
 async function click(page: Page, name: string): Promise<void> {
   const r = await page.evaluate((n) => (window.__tarpit as TarpitTestApi).uiRects()[n], name);
