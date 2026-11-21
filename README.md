@@ -37,7 +37,6 @@ index.html               page shell, title "Tarpit"
 src/main.ts              boots Phaser, exposes the game as window.__tarpit
 src/game/                rendering and input (Phaser scenes)
   TitleScene.ts          title screen
-  testMode.ts            isTestMode(): true when the URL has ?test=1
 src/sim/                 game logic, plain TypeScript, no Phaser or DOM
   index.ts, *.test.ts    simulation code and its unit tests
 e2e/                     Playwright browser tests
