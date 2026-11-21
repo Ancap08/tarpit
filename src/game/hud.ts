@@ -135,7 +135,8 @@ export class Hud {
       if (t.text !== s) t.setText(s);
     };
     set(this.gold, `Gold ${state.gold}`);
-    set(this.lives, `Lives ${state.lives}`);
+    // The sim lets lives go below 0 (the boss's exit costs 5); the HUD shows 0.
+    set(this.lives, `Lives ${Math.max(0, state.lives)}`);
     set(this.wave, `Wave ${state.wave}/${WAVES.length}`);
     const tag = difficultyTag(state.difficulty);
     set(this.tag, tag);
