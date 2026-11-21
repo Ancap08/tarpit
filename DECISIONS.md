@@ -370,3 +370,17 @@ can change it; "Kyle" means Kyle decided.
   blur unless nearest-neighbour filtering, Hyena has side frames only.
 - **Open: Kyle's choice of style.** Nothing from the packs is copied into
   the repo until it is made.
+
+## 2026-11-21, reorder after the art spike
+
+- **Art choice: pixel placeholders now, "stop-motion tabletop" quality
+  later.** Kyle. Milestone 16 builds the animation engine with Ninja
+  Adventure sprites as stand-ins (names stay Goblin, Wolf, Troll). The
+  eventual art is pre-rendered from 3D clay-style models (Blender, scripted
+  by agents, rendered on Kyle's VPS), which needs the roster frozen first.
+- **Order from here:** milestone 16 (engine only), then v4 (gameplay lock:
+  new enemies, boss, targeting modes, difficulty, endless, maps), then v5
+  (the tabletop art pipeline plus the art, sound, juice and world passes
+  moved from v3 milestones 17 to 20). Kyle.
+- **Troll placeholder may render at 3x so it reads bigger than the Goblin;
+  everything else at 2x with nearest-neighbour filtering.** Fable.
