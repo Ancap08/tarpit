@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { targetingButtonText } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 
 // Milestone 24: the tower panel's targeting button cycles first -> last ->
@@ -87,9 +88,9 @@ test('cycling the panel button changes which goblin the Musketeer shoots', async
 
   // Select the tower and click the targeting button once: Last.
   await clickCell(page, C75);
-  expect(await ui(page)).toMatchObject({ selectedCell: C75, panelOpen: true, selectedTargeting: 'first', targetLabel: 'Target: First' });
+  expect(await ui(page)).toMatchObject({ selectedCell: C75, panelOpen: true, selectedTargeting: 'first', targetLabel: targetingButtonText('first') });
   await click(page, 'panel:target');
-  expect(await ui(page)).toMatchObject({ selectedTargeting: 'last', targetLabel: 'Target: Last' });
+  expect(await ui(page)).toMatchObject({ selectedTargeting: 'last', targetLabel: targetingButtonText('last') });
   expect(await api(page, (a) => a.events().at(-1))).toEqual({ kind: 'targeting', cell: C75, mode: 'last' });
   const last = await nextHit(page);
   expect(last).toMatchObject({ tick: 332, enemyId: 3 });
@@ -100,7 +101,7 @@ test('cycling the panel button changes which goblin the Musketeer shoots', async
 
   // Click again: Strongest. With every goblin at equal hp the pick equals 'first'.
   await click(page, 'panel:target');
-  expect(await ui(page)).toMatchObject({ selectedTargeting: 'strongest', targetLabel: 'Target: Strongest' });
+  expect(await ui(page)).toMatchObject({ selectedTargeting: 'strongest', targetLabel: targetingButtonText('strongest') });
   await setHp(page, 30);
   const equal = await nextHit(page);
   expect(equal).toMatchObject({ tick: 392, enemyId: 1 });
@@ -113,7 +114,7 @@ test('cycling the panel button changes which goblin the Musketeer shoots', async
 
   // A third click wraps back to First.
   await click(page, 'panel:target');
-  expect(await ui(page)).toMatchObject({ selectedTargeting: 'first', targetLabel: 'Target: First' });
+  expect(await ui(page)).toMatchObject({ selectedTargeting: 'first', targetLabel: targetingButtonText('first') });
 
   // Sell and rebuild: the new tower is 'first'.
   await click(page, 'panel:target'); // Last again, so the reset is visible
@@ -122,7 +123,7 @@ test('cycling the panel button changes which goblin the Musketeer shoots', async
   expect(await ui(page)).toMatchObject({ panelOpen: false, selectedTargeting: null });
   expect(await api(page, (a) => a.buildAt(7, 5, 'musketeer').ok)).toBe(true);
   await clickCell(page, C75);
-  expect(await ui(page)).toMatchObject({ selectedCell: C75, selectedTargeting: 'first', targetLabel: 'Target: First' });
+  expect(await ui(page)).toMatchObject({ selectedCell: C75, selectedTargeting: 'first', targetLabel: targetingButtonText('first') });
 });
 
 test('setTargetingAt sets the mode; refused on an empty cell', async ({ page }) => {
@@ -131,7 +132,7 @@ test('setTargetingAt sets the mode; refused on an empty cell', async ({ page }) 
   await api(page, (a) => a.buildAt(7, 5, 'musketeer'));
   expect(await api(page, (a) => a.setTargetingAt(7, 5, 'strongest'))).toEqual({ ok: true });
   await clickCell(page, C75);
-  expect(await ui(page)).toMatchObject({ selectedTargeting: 'strongest', targetLabel: 'Target: Strongest' });
+  expect(await ui(page)).toMatchObject({ selectedTargeting: 'strongest', targetLabel: targetingButtonText('strongest') });
 });
 
 test('the three-button panel stays on the map and off the HUD for a tower at (29,14)', async ({ page }) => {
