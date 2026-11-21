@@ -11,6 +11,11 @@ on:
         description: Branch to regenerate baselines on and push back to
         required: true
         type: string
+      all:
+        description: Rewrite every baseline, not only those that differ beyond the pixel threshold
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -30,7 +35,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run build
-      - run: npx playwright test e2e/visual.spec.ts --update-snapshots
+      - run: npx playwright test e2e/visual.spec.ts --update-snapshots=${{ inputs.all && 'all' || 'changed' }}
         env:
           CI: '1'
       - name: Commit changed baselines
