@@ -384,3 +384,28 @@ can change it; "Kyle" means Kyle decided.
   moved from v3 milestones 17 to 20). Kyle.
 - **Troll placeholder may render at 3x so it reads bigger than the Goblin;
   everything else at 2x with nearest-neighbour filtering.** Fable.
+
+## 2026-11-21, milestone 16 (animation engine)
+
+- **The simulation emits `state.events` each tick (spawn, hit, burn,
+  slowed, kill with cause, exit, build, upgrade, sell, waveStart, waveClear,
+  won, lost); the renderer animates from them.** From `docs/SCOPE-v3.md`.
+  Action events survive until the next tick; readers use a cursor.
+- **Play renders with WebGL, test mode with Canvas; `pixelArt` and
+  `roundPixels` on; tweens and particles off in test mode and killed
+  sprites removed at once, so screenshots stay exact.** Default (Opus).
+- **Placeholder sprites: GreenPig as Goblin at 2x, Hyena as Wolf at 2x,
+  Cyclope as Troll at 3x, imported with Vite `?url` so only used files
+  ship.** Default (Opus). Tar and burn show as rings in both renderers and
+  additionally as tints in WebGL (Canvas cannot tint).
+- **Verifier finding, fixed: the Hyena frames face right, so the Wolf is
+  mirrored for left only.** The implementer had it backwards and its devlog
+  note said the opposite; the verifier's probe caught it. Sonnet.
+- **Display names live in one table (`src/game/names.ts`) from milestone
+  22 on; internal ids never change, and no test pins a display string
+  except through that table.** Kyle wants to be able to rename everything
+  later; this makes a rename a one-file edit plus a baseline regeneration.
+- **Known: `pixelArt` scales the whole canvas with nearest-neighbour, so
+  HUD text may look jagged on the iPad.** Kyle checks; if it bothers him,
+  the fix is to render text at the device scale or revert to smooth
+  scaling for the canvas and keep nearest for sprites.
