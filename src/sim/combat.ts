@@ -1,6 +1,7 @@
 // Tower fire: targeting (with the Mortar's minimum range), damage, splash,
 // slow, burn, kills and bounty. Each shot is also recorded in state.shots for
-// the renderer. Also the burn status step. game.ts calls burnEnemies then
+// the renderer, and hit, slowed, burn and kill events go to state.events
+// (events.ts). Also the burn status step. game.ts calls burnEnemies then
 // fireTowers once per wave tick, after movement and exit removal, before
 // spawns.
 
@@ -61,13 +62,14 @@ export function findTarget(state: GameState, tower: Tower): Enemy | undefined {
 /**
  * Apply a slow. Slows do not stack: a slow of equal or greater strength than
  * the active one replaces it and refreshes the duration; a weaker one does
- * nothing.
+ * nothing. Returns whether it applied.
  */
-export function applySlow(enemy: Enemy, slow: number, ticks: number): void {
+export function applySlow(enemy: Enemy, slow: number, ticks: number): boolean {
   const active = enemy.slowTicksLeft > 0 ? enemy.slow : 0;
-  if (slow < active) return;
+  if (slow < active) return false;
   enemy.slow = slow;
   enemy.slowTicksLeft = ticks;
+  return true;
 }
 
 /**
@@ -93,20 +95,25 @@ export function burnEnemies(state: GameState): void {
     const left = enemy.burnTicksLeft ?? 0;
     if (left <= 0) continue;
     const dps = enemy.burnDps ?? 0;
-    enemy.hp -= (dps / TICKS_PER_SECOND) * (enemy.slowTicksLeft > 0 ? 2 : 1);
+    const damage = (dps / TICKS_PER_SECOND) * (enemy.slowTicksLeft > 0 ? 2 : 1);
+    enemy.hp -= damage;
+    state.events.push({ kind: 'burn', enemyId: enemy.id, damage });
     enemy.burnTicksLeft = left - 1;
     if (enemy.burnTicksLeft === 0) enemy.burnDps = 0;
     burned = true;
   }
-  if (burned) removeDead(state);
+  if (burned) removeDead(state, 'burn');
 }
 
-/** Remove dead enemies (isDead) and pay their bounty. */
-function removeDead(state: GameState): void {
+/** Remove dead enemies (isDead), pay their bounty and record each kill. */
+function removeDead(state: GameState, cause: 'shot' | 'burn'): void {
   const alive: Enemy[] = [];
   for (const enemy of state.enemies) {
-    if (isDead(enemy)) state.gold += ENEMY_STATS[enemy.type].bounty;
-    else alive.push(enemy);
+    if (isDead(enemy)) {
+      const bounty = ENEMY_STATS[enemy.type].bounty;
+      state.gold += bounty;
+      state.events.push({ kind: 'kill', enemyId: enemy.id, enemyType: enemy.type, bounty, cause });
+    } else alive.push(enemy);
   }
   state.enemies = alive;
 }
@@ -127,22 +134,29 @@ function towerStep(state: GameState, tower: Tower): void {
   };
   if (stats.splashRadius > 0) shot.splashRadius = stats.splashRadius;
   state.shots.push(shot);
+  const hit = (enemy: Enemy) => {
+    enemy.hp -= stats.damage;
+    state.events.push({ kind: 'hit', enemyId: enemy.id, cell: { ...shot.cell }, tower: tower.type, damage: stats.damage });
+  };
   if (stats.splashRadius > 0) {
     const center = enemyPosition(target);
     for (const enemy of state.enemies) {
-      if (dist(center, enemyPosition(enemy)) <= stats.splashRadius) enemy.hp -= stats.damage;
+      if (dist(center, enemyPosition(enemy)) <= stats.splashRadius) hit(enemy);
     }
   } else {
-    target.hp -= stats.damage;
+    hit(target);
   }
   if (stats.slow > 0 && !isDead(target)) {
-    applySlow(target, stats.slow, secondsToTicks(stats.slowDuration));
+    const ticks = secondsToTicks(stats.slowDuration);
+    if (applySlow(target, stats.slow, ticks)) {
+      state.events.push({ kind: 'slowed', enemyId: target.id, slow: stats.slow, ticks });
+    }
   }
   if (stats.burnDps > 0 && !isDead(target)) {
     applyBurn(target, stats.burnDps, secondsToTicks(stats.burnDuration));
   }
   tower.cooldownTicks = shotCooldown(stats);
-  removeDead(state);
+  removeDead(state, 'shot');
 }
 
 /** Every tower takes its step, in cellKey order; kills resolve between towers. */
