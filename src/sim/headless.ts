@@ -201,9 +201,25 @@ export function greedyMusket(): WaveScript {
   });
 }
 
+/**
+ * Cheap spam (milestone 10): before each wave, buy base Longbows while
+ * affordable, on cells in KID_CELL_ORDER. Never upgrades, never sells.
+ * v2 target (milestone 12): lost on wave 7 to 9.
+ */
+export function longbowSpam(): WaveScript {
+  return recordScript((state) => {
+    const cell = nextFreeKidCell(state);
+    if (cell === undefined || state.gold < TOWER_DEFS.longbow.cost) return undefined;
+    return { type: 'build', cell, tower: 'longbow' };
+  });
+}
+
 const m = (col: number, row: number): BuildAction => ({ type: 'build', cell: { col, row }, tower: 'musketeer' });
 const c = (col: number, row: number): BuildAction => ({ type: 'build', cell: { col, row }, tower: 'cannon' });
 const t = (col: number, row: number): BuildAction => ({ type: 'build', cell: { col, row }, tower: 'tarpit' });
+const lb = (col: number, row: number): BuildAction => ({ type: 'build', cell: { col, row }, tower: 'longbow' });
+const mo = (col: number, row: number): BuildAction => ({ type: 'build', cell: { col, row }, tower: 'mortar' });
+const fp = (col: number, row: number): BuildAction => ({ type: 'build', cell: { col, row }, tower: 'firepot' });
 const up = (col: number, row: number): BuildAction => ({ type: 'upgrade', cell: { col, row } });
 
 /** Gold the action costs in this state (0 if the sim would refuse it anyway). */
@@ -259,6 +275,45 @@ export function soundBuildNoTar(): WaveScript {
   return script.map((wave) => wave.filter((a) => !tarCells.has(cellKey(a.cell))));
 }
 
+/** The script without the actions on cells where `script` builds a `type` tower. */
+function withoutTowerType(script: WaveScript, type: TowerType): WaveScript {
+  const cells = new Set(script.flat().filter((a) => a.type === 'build' && a.tower === type).map((a) => cellKey(a.cell)));
+  return script.map((wave) => wave.filter((a) => !cells.has(cellKey(a.cell))));
+}
+
+/**
+ * The combo build's plan (milestone 10), in purchase order (cells as col,
+ * row). Two Longbows by the first corner for the early Goblins and the
+ * Wolves. Then a Tar Pit (14,6) and a Fire Pot (14,8) side by side right of
+ * the long downhill run (x = 420): their ranges overlap on y 182..287 of
+ * that run, so tarred enemies burn at double rate. A Mortar (17,6) in the
+ * middle of the map reaches the downhill, bottom and uphill runs for the
+ * Trolls; upgrades to the combo next, a third Longbow, then upgrades, a
+ * second Mortar (17,9) and a fourth Longbow (19,7). Found in two runs of
+ * `npm run sim` (DEVLOG, milestone 10).
+ */
+export const COMBO_PLAN: readonly BuildAction[] = [
+  lb(6, 5), lb(2, 5), t(14, 6), fp(14, 8), mo(17, 6), up(14, 6), up(14, 8), lb(11, 4), up(17, 6),
+  up(6, 5), up(2, 5), mo(17, 9), up(17, 9), lb(19, 7), up(11, 4), up(19, 7),
+];
+
+/**
+ * Combo build (milestone 10): COMBO_PLAN, each action bought as soon as gold
+ * allows. Must win all 10 waves.
+ */
+export function comboBuild(): WaveScript {
+  return recordScript(followPlan(COMBO_PLAN));
+}
+
+/**
+ * comboBuild with every Fire Pot action removed: no Fire Pot builds and no
+ * upgrades on the cells where comboBuild builds them. Must do worse than
+ * comboBuild: lost, or won with fewer lives.
+ */
+export function comboBuildNoFire(): WaveScript {
+  return withoutTowerType(comboBuild(), 'firepot');
+}
+
 /** Every archetype, in report order. */
 export const ARCHETYPES: Readonly<Record<string, () => WaveScript>> = {
   noTowers,
@@ -266,4 +321,7 @@ export const ARCHETYPES: Readonly<Record<string, () => WaveScript>> = {
   greedyMusket,
   soundBuild,
   soundBuildNoTar,
+  longbowSpam,
+  comboBuild,
+  comboBuildNoFire,
 };
