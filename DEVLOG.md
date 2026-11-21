@@ -1990,3 +1990,34 @@ and size tooling. No change under `src/`; no game code change.
   the explosion covered the Tar Pit, C's insets covered the Tar label
   (moved to the top-right grass), and a close-up strip ran into the next
   column.
+
+### Verifier notes
+
+The verifier (Claude Sonnet) checked milestone 15 on branch `m15-art-spike`.
+
+- Clean run (`rm -rf dist && npm ci` then lint, typecheck, test, build,
+  check:assets, check:size, test:e2e): all exit 0; 25 test files and 223
+  tests passed, 78 Playwright tests passed; dist/ 1.18 MB in 2 files.
+  `git diff origin/main --stat -- src` is empty.
+- Checkers, each seen failing and then reverted: a stray `docs/art/zz.png`
+  (named in the message, exit 1); an MIT row (exit 1); a CC-BY row fails
+  without a `Credit:` note and passes with one; a 21 MB file in dist/
+  (exit 1). CI order is lint, check:assets, typecheck, test, build,
+  check:size. A throwaway failing `scripts/zz.test.ts` was not picked up;
+  `vitest list` shows only `scripts/check-asset-manifest.test.ts`.
+- Inventory spot-checks against the pack files matched: GreenPig 64x112,
+  Hyena 28x13, Cyclope 64x64, Field 80x240, TilesetTowers 384x96,
+  DemonCyclop Walk 300x50, Explosion 360x40, 0x72 goblin 16x16 and ogre
+  32x36, 370 frames, and the Explosion, Launch, Hit, Coin and Alert sound
+  files exist. Minor: `Hit & Impact` has Hit1 to Hit9 minus Hit4. Ninja
+  Adventure `LICENSE.txt` starts "CC0 1.0 Universal"; the 0x72 zip has no
+  license file and the row cites the itch.io page.
+- Mockups: in the 2x mockup the Goblin outline is 32 px tall and in the 3x
+  mockup 48 px; pixel runs are multiples of the scale (nearest-neighbour).
+  Labels match the content. The Cyclope "Troll" is 16 px art, so it is the
+  same size as the Goblin at 2x, as the recommendation says.
+- Not covered by the implementer's risk list: cannon and mortar read as
+  people (a knight and a bomb ninja) rather than weapons, which matters for
+  gameplay readability more than for looks; Retina blur if the canvas is not
+  kept pixel-perfect (needs `pixelArt`/nearest filtering and integer
+  scale); the Hyena slides when walking up or down.
