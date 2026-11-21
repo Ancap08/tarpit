@@ -3049,3 +3049,105 @@ Claude Fable 5.2.
   cell showed and the ghost looked missing; recaptured over grass. Open
   question for Kyle on the iPad: whether a faint ghost should also show
   over red cells during a drag.
+
+### Verifier notes
+
+Verifier: Claude Fable 5.2, on `m25a-placement` at `e482824`. Verdict:
+pass, with three points for the coordinator at the end.
+
+- **Clean run.** `rm -rf dist && npm ci`, lint, typecheck, `npm test`,
+  build, `check:assets`, `check:size`, `test:e2e`, `npm run sim`: exit 0.
+  Unit 470 in 40 files, e2e 142, as the implementer wrote; 492 and 162
+  with the probes below. `drag`, `touch-drag`, `touch` and `build-ui`
+  specs with `--repeat-each=8`: 240 of 240. The probes with
+  `--repeat-each=5`: 100 of 100.
+- **Balance untouched.** `npm run sim` is byte-identical to the output of
+  `origin/main` (`cmp` against a throwaway worktree). `balance.test.ts`,
+  towers, waves and scripts have no diff.
+- **The 18 changed tests.** Putting the eight old test files back from
+  `origin/main` fails exactly 13 unit and 5 e2e tests. Seventeen sold in
+  setup and now press Start Wave first; every expected gold figure is the
+  same as before. The eighteenth (`actions.test.ts`, "builds a musketeer")
+  never sold: it compares the whole tower object and gained the three new
+  fields. `verifier2` "sell then rebuild" now rebuilds mid-wave, so its
+  expected tower reads `locked: true`; the gold (5) is unchanged. No test
+  changed its intent.
+- **Exploit hunt** (`src/sim/planning-verifier.test.ts`, 22 tests). No
+  sequence of build, upgrade, undo, move and sell gains gold or duplicates
+  a tower. Five seeded walks of 200 actions before wave 1: gold plus
+  refundable spend equals the start gold after every action, gold never
+  exceeds it, a refused action changes nothing, and selling everything
+  returns the start gold exactly. Five more walks in a later setup with
+  locked towers: the most the player could get by liquidating never rises.
+- **A locked tower with an upgrade bought this setup, sold directly, pays
+  70% of everything** (Musketeer: 59), not the upgrade in full plus 70% of
+  the rest (35 + 35 = 70). That matches DESIGN ("selling a locked tower
+  refunds 70% of spent, in any phase") and SCOPE (the upgrade is
+  refundable "on its own" through Undo). It costs the player who presses
+  Sell before Undo 11 gold; the panel shows both figures side by side
+  ("Undo upgrade  +35", "Sell  +59"). Not an exploit; it loses gold.
+- **Rules.** Move onto its own cell is a no-op success with no event;
+  occupied, path, cottage, off-grid and fractional cells fail with the
+  documented reason and change nothing; `locked` is checked before the
+  own-cell case; move in a wave is `not-in-setup`. A moved tower keeps
+  mode, upgrade and spend and its first hit event carries the new cell.
+  Twenty random moves keep `towers` in cell-key order and shots within a
+  tick follow it. Undo twice, undo after sell, undo of an older or
+  mid-wave upgrade all fail as documented. A tower built mid-wave is
+  locked and pays 70% in the next setup. `startWave` clears the three
+  fields on all six types. The planning phase before wave 1 and before
+  wave 2 give identical results for the same action list.
+- **Drag** (`e2e/drag-verifier.spec.ts`, 15, mouse;
+  `e2e/drag-verifier-touch.spec.ts`, 5, CDP touch). 5 px and exactly 8 px
+  are a click, 12 px is a drag. Mouse: the ghost cell is the cell under
+  the pointer. Touch: the cell under the point 48 canvas px above the
+  finger at seven positions, two of them where the lift crosses a cell
+  edge. Onto another tower, the path or the cottage: nothing moves.
+  Released below the canvas (wider viewport) or off the window's left
+  edge: cancelled, `dragging` null, the next click and the next drag work.
+  Gold cut mid-drag: nothing built, gold not negative. Mid-wave: a bar
+  drag builds a locked tower, towers do not drag. Click and two-tap
+  placement still work.
+- **Finger over the HUD, lifted point over a buildable cell: cancelled.**
+  `dragTargetCell` returns null whenever the finger itself is off the map.
+  That is what SCOPE says ("release over the HUD cancels").
+- **Panel.** For all six types: "Remove" shows everything spent, "Undo
+  upgrade" the upgrade cost, and after Start Wave "Sell" shows 70%; the
+  two labels of each button fit with at least 6 px between them.
+- **Names.** No "Remove", "Undo", "Sell" or "Upgrade" literal in
+  `src/game` outside `names.ts` (comments only). Rename proof: "Remove" to
+  "Take back", rebuilt, 492 unit tests and the drag, verifier and visual
+  specs passed; reverted and rebuilt.
+- **Frames.** The dashed outline measures (241,238,203) on grass
+  (95,127,74): contrast 3.9 to 1, and 3.2 to 1 on the tinted grass inside
+  a range circle; readable at 1x. On the path colour it would be 2.0 to 1,
+  but towers cannot stand there. The touch ghost sits a full cell and a
+  half above the finger dot with the line between them. The dimmed origin
+  is clearly fainter than its neighbours; its name label stays at full
+  strength, which reads fine.
+
+What the verifier got wrong: three probe setups (a mid-wave Cannon with
+50 gold, a row of cells that crossed the path clearance, a parking row
+that random moves had already used), and two touch probes placed exactly
+on a cell edge, where the page mapping is off by a fraction of a pixel.
+All were test mistakes; no product code changed.
+
+For the coordinator:
+
+1. **Touch drag cannot reach the bottom map row.** The finger must stay
+   on the map and the drag aims 48 px above it, so with the finger on the
+   last map pixel the ghost is on row 13; row 14 (and the lower half of
+   row 13 for a comfortable finger) is out of reach by drag. Two-tap
+   placement still reaches it. This follows from the two SCOPE rules
+   together (lift, and HUD cancels); changing it is a design decision.
+2. **A mouse drag whose mouseup never reaches the page stays live** (for
+   example the window loses focus mid-drag): the ghost follows the mouse
+   with no button held until the next press, which cancels it without
+   moving or building. Checked with a CDP probe, not kept as a test. A
+   release outside the canvas or the window is handled. Cosmetic; a guard
+   on the pointer's button state in `pointermove` would close it.
+3. **Baselines are not on the branch yet.** `planning.png` does not exist
+   and `tower-selected.png` is the old frame; local runs skip pixel
+   comparison. `update-snapshots.yml` has to run on this branch before CI
+   can pass, and the milestone row's "baseline with an unlocked tower" is
+   unproven until then.
