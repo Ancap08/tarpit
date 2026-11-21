@@ -14,7 +14,9 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "sim": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/simulate.ts",
-    "demo": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/record-demo.ts"
+    "demo": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/record-demo.ts",
+    "check:assets": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-asset-manifest.ts",
+    "check:size": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-size-budget.ts"
   },
   "dependencies": {
     "phaser": "^3.90.0"
