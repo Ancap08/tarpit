@@ -4,6 +4,7 @@ export * from './events';
 export * from './map';
 export * from './grid';
 export * from './enemies';
+export * from './difficulty';
 export * from './waves';
 export * from './game';
 export * from './headless';

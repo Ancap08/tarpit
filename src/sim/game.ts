@@ -31,7 +31,7 @@
 //      targets an enemy killed this tick. A new slow first affects movement
 //      on the next tick.
 //   5. Spawn enemies whose spawn tick equals the current waveTick, at
-//      distance 0. A new enemy does not move or get shot on its spawn tick.
+//      distance 0, with the level's hp (difficulty.ts enemyMaxHp). A new enemy does not move or get shot on its spawn tick.
 //   6. Advance waveTick and tick.
 //   7. If every enemy of the wave has spawned and none are alive, pay the
 //      clear bonus and go to 'setup' (or 'won' after the last wave).
@@ -44,6 +44,7 @@
 // distance speed/60 * n after the tick with waveTick k + n.
 
 import { burnEnemies, fireTowers } from './combat';
+import { DEFAULT_DIFFICULTY, DIFFICULTY_DEFS, enemyMaxHp, type Difficulty } from './difficulty';
 import { ENEMY_STATS, isBoss } from './enemies';
 import { MAP, pathLength } from './map';
 import { secondsToTicks, TICKS_PER_SECOND } from './time';
@@ -51,15 +52,24 @@ import type { GameState, GroupDef } from './types';
 import { WAVES } from './waves';
 
 export { secondsToTicks, TICKS_PER_SECOND };
-export const START_GOLD = 100;
-export const START_LIVES = 20;
+/** Normal's starting gold and lives (difficulty.ts has every level's). */
+export const START_GOLD = DIFFICULTY_DEFS.normal.startGold;
+export const START_LIVES = DIFFICULTY_DEFS.normal.startLives;
 export const WAVE_CLEAR_BONUS = 25;
 
-export function createGame(): GameState {
+export interface CreateGameOptions {
+  /** Difficulty level (milestone 25); Normal when left out. */
+  difficulty?: Difficulty;
+}
+
+export function createGame(options: CreateGameOptions = {}): GameState {
+  const difficulty = options.difficulty ?? DEFAULT_DIFFICULTY;
+  const def = DIFFICULTY_DEFS[difficulty];
   return {
+    difficulty,
     phase: 'setup',
-    gold: START_GOLD,
-    lives: START_LIVES,
+    gold: def.startGold,
+    lives: def.startLives,
     wave: 0,
     tick: 0,
     waveTick: 0,
@@ -151,7 +161,7 @@ function spawnDueEnemies(state: GameState): void {
       state.enemies.push({
         id: state.nextEnemyId,
         type: group.type,
-        hp: ENEMY_STATS[group.type].hp,
+        hp: enemyMaxHp(group.type, state.difficulty),
         distance: 0,
         slow: 0,
         slowTicksLeft: 0,

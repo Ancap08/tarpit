@@ -15,6 +15,7 @@ import {
   type TargetingResult,
   type UpgradeResult,
 } from './actions';
+import type { Difficulty } from './difficulty';
 import { createGame, startWave, tick, type StartWaveResult } from './game';
 import type { GameState, TargetingMode, TowerType } from './types';
 import { buildableCells, cellCenter, cellFromKey, cellKey, type Cell } from './grid';
@@ -73,8 +74,8 @@ export function applyAction(state: GameState, action: HeadlessAction): HeadlessS
   }
 }
 
-export function runHeadless(script: readonly HeadlessAction[]): HeadlessRun {
-  const state = createGame();
+export function runHeadless(script: readonly HeadlessAction[], difficulty?: Difficulty): HeadlessRun {
+  const state = createGame({ difficulty });
   const log = script.map((action) => applyAction(state, action));
   return { state, log };
 }
@@ -101,9 +102,10 @@ export interface ScriptedRun extends HeadlessRun {
 /**
  * Play all 10 waves: before each wave apply that wave's actions, then start
  * it and run until it ends or `maxTicksPerWave` pass. Stops once lost.
+ * `difficulty` (milestone 25) defaults to Normal.
  */
-export function playScripted(script: WaveScript, maxTicksPerWave = 60 * 600): ScriptedRun {
-  const state = createGame();
+export function playScripted(script: WaveScript, maxTicksPerWave = 60 * 600, difficulty?: Difficulty): ScriptedRun {
+  const state = createGame({ difficulty });
   const log: HeadlessStepResult[] = [];
   const waves: WaveReport[] = [];
   for (let i = 0; i < WAVES.length && state.phase === 'setup'; i++) {
@@ -139,9 +141,12 @@ export function playAllWavesNoTowers(maxTicksPerWave = 60 * 600): GameState {
 /** Decide the next action before a wave, or undefined to start the wave. */
 type Decide = (state: GameState) => BuildAction | undefined;
 
-/** Play all waves, asking `decide` for actions before each one; return what it did. */
-function recordScript(decide: Decide): WaveScript {
-  const state = createGame();
+/**
+ * Play all waves on `difficulty` (Normal when left out), asking `decide`
+ * for actions before each one; return what it did.
+ */
+function recordScript(decide: Decide, difficulty?: Difficulty): WaveScript {
+  const state = createGame({ difficulty });
   const script: BuildAction[][] = [];
   for (let i = 0; i < WAVES.length && state.phase === 'setup'; i++) {
     const actions: BuildAction[] = [];
@@ -196,7 +201,7 @@ function nextFreeKidCell(state: GameState): Cell | undefined {
   return TRAIL_CELL_ORDER.find((cell) => !towerAt(state, cell));
 }
 
-/** Archetype 1: build nothing. Target: lost by wave 3. */
+/** Archetype 1: build nothing (on any level). Target: lost by wave 3. */
 export function noTowers(): WaveScript {
   return [];
 }
@@ -206,12 +211,12 @@ export function noTowers(): WaveScript {
  * affordable, on cells in TRAIL_CELL_ORDER. Never upgrades, never sells.
  * v2 target (milestone 12): lost on wave 6, 7 or 8.
  */
-export function lazyBuild(): WaveScript {
+export function lazyBuild(difficulty?: Difficulty): WaveScript {
   return recordScript((state) => {
     const cell = nextFreeKidCell(state);
     if (cell === undefined || state.gold < TOWER_DEFS.musketeer.cost) return undefined;
     return { type: 'build', cell, tower: 'musketeer' };
-  });
+  }, difficulty);
 }
 
 /**
@@ -219,7 +224,7 @@ export function lazyBuild(): WaveScript {
  * (when affordable) before another is bought, so purchases alternate buy,
  * upgrade, buy. Informational since milestone 12: no target.
  */
-export function greedyMusket(): WaveScript {
+export function greedyMusket(difficulty?: Difficulty): WaveScript {
   return recordScript((state) => {
     const plain = state.towers.find((tw) => tw.type === 'musketeer' && !tw.upgraded);
     if (plain) {
@@ -228,7 +233,7 @@ export function greedyMusket(): WaveScript {
     const cell = nextFreeKidCell(state);
     if (cell === undefined || state.gold < TOWER_DEFS.musketeer.cost) return undefined;
     return { type: 'build', cell, tower: 'musketeer' };
-  });
+  }, difficulty);
 }
 
 /**
@@ -236,12 +241,12 @@ export function greedyMusket(): WaveScript {
  * affordable, on cells in TRAIL_CELL_ORDER. Never upgrades, never sells.
  * v2 target (milestone 12): lost on wave 7 to 9.
  */
-export function longbowSpam(): WaveScript {
+export function longbowSpam(difficulty?: Difficulty): WaveScript {
   return recordScript((state) => {
     const cell = nextFreeKidCell(state);
     if (cell === undefined || state.gold < TOWER_DEFS.longbow.cost) return undefined;
     return { type: 'build', cell, tower: 'longbow' };
-  });
+  }, difficulty);
 }
 
 const m = (col: number, row: number): BuildAction => ({ type: 'build', cell: { col, row }, tower: 'musketeer' });
@@ -290,8 +295,8 @@ export const SOUND_PLAN: readonly BuildAction[] = [
  * soon as gold allows. v1 towers only. Informational since milestone 12: no
  * target (the combo build carries the v2 targets).
  */
-export function soundBuild(): WaveScript {
-  return recordScript(followPlan(SOUND_PLAN));
+export function soundBuild(difficulty?: Difficulty): WaveScript {
+  return recordScript(followPlan(SOUND_PLAN), difficulty);
 }
 
 /**
@@ -299,8 +304,8 @@ export function soundBuild(): WaveScript {
  * upgrades on the cells where soundBuild builds them. Informational since
  * milestone 12: no target.
  */
-export function soundBuildNoTar(): WaveScript {
-  const script = soundBuild();
+export function soundBuildNoTar(difficulty?: Difficulty): WaveScript {
+  const script = soundBuild(difficulty);
   const tarCells = new Set(script.flat().filter((a) => a.type === 'build' && a.tower === 'tarpit').map((a) => cellKey(a.cell)));
   return script.map((wave) => wave.filter((a) => !tarCells.has(cellKey(a.cell))));
 }
@@ -338,8 +343,8 @@ export const COMBO_PLAN: readonly BuildAction[] = [
  * allows. v2 target (milestone 12): won with 5 to 15 lives and under 150
  * gold after wave 9.
  */
-export function comboBuild(): WaveScript {
-  return recordScript(followPlan(COMBO_PLAN));
+export function comboBuild(difficulty?: Difficulty): WaveScript {
+  return recordScript(followPlan(COMBO_PLAN), difficulty);
 }
 
 /**
@@ -347,8 +352,8 @@ export function comboBuild(): WaveScript {
  * upgrades on the cells where comboBuild builds them. v2 target (milestone
  * 12): strictly worse than comboBuild (lost, or won with fewer lives).
  */
-export function comboBuildNoFire(): WaveScript {
-  return withoutTowerType(comboBuild(), 'firepot');
+export function comboBuildNoFire(difficulty?: Difficulty): WaveScript {
+  return withoutTowerType(comboBuild(difficulty), 'firepot');
 }
 
 /** The first wave with Harpies (WAVES). */
@@ -365,8 +370,8 @@ export const FIRST_HARPY_WAVE = 4;
  * variant is pinned in balance.test.ts as the reason for the sells.
  * Target: every Harpy of wave 4 exits, and the game is lost by wave 8.
  */
-export function noAntiAir(): WaveScript {
-  const script = comboBuild();
+export function noAntiAir(difficulty?: Difficulty): WaveScript {
+  const script = comboBuild(difficulty);
   const before = FIRST_HARPY_WAVE - 1;
   const antiAir = (a: BuildAction) => a.type === 'build' && (a.tower === 'musketeer' || a.tower === 'longbow');
   const cells = new Set(script.flat().filter(antiAir).map((a) => cellKey(a.cell)));
@@ -383,8 +388,8 @@ export function noAntiAir(): WaveScript {
  * (like withoutTowerType). Not an archetype: it loses on wave 2, before any
  * Harpy, which is why noAntiAir sells its bows before wave 4 instead.
  */
-export function comboBuildNoBows(): WaveScript {
-  return withoutTowerType(withoutTowerType(comboBuild(), 'musketeer'), 'longbow');
+export function comboBuildNoBows(difficulty?: Difficulty): WaveScript {
+  return withoutTowerType(withoutTowerType(comboBuild(difficulty), 'musketeer'), 'longbow');
 }
 
 /**
@@ -396,10 +401,10 @@ export function comboBuildNoBows(): WaveScript {
  * TRAIL_CELL_ORDER and upgrade it. No target: it shows how much faster a
  * richer bow line kills the boss.
  */
-export function bossRush(): WaveScript {
-  const combo = comboBuild();
+export function bossRush(difficulty?: Difficulty): WaveScript {
+  const combo = comboBuild(difficulty);
   const last = WAVES.length - 1;
-  const state = createGame();
+  const state = createGame({ difficulty });
   for (let i = 0; i < last && state.phase === 'setup'; i++) {
     for (const action of combo[i] ?? []) applyAction(state, action);
     applyAction(state, { type: 'startWave' });
@@ -427,7 +432,7 @@ export function bossRush(): WaveScript {
  * comboBuild script, because the mode changes kills and so the gold. No
  * target: `npm run sim` reports it beside comboBuild.
  */
-export function comboStrongest(): WaveScript {
+export function comboStrongest(difficulty?: Difficulty): WaveScript {
   const plan = followPlan(COMBO_PLAN);
   let pending: BuildAction | undefined;
   return recordScript((state) => {
@@ -439,19 +444,26 @@ export function comboStrongest(): WaveScript {
     const action = plan(state);
     if (action?.type === 'build') pending = { type: 'target', cell: action.cell, mode: 'strongest' };
     return action;
-  });
+  }, difficulty);
 }
 
 /**
  * Informational scripts that `npm run sim` prints after ARCHETYPES. Kept out
  * of ARCHETYPES so the archetype pins stay as they are.
  */
-export const INFORMATIONAL: Readonly<Record<string, () => WaveScript>> = {
+/**
+ * A balance archetype: records its script by playing on `difficulty`
+ * (Normal when left out; milestone 25). Replay it with playScripted on the
+ * same level, since gold and kills differ between levels.
+ */
+export type Archetype = (difficulty?: Difficulty) => WaveScript;
+
+export const INFORMATIONAL: Readonly<Record<string, Archetype>> = {
   comboStrongest,
 };
 
 /** Every archetype, in report order. */
-export const ARCHETYPES: Readonly<Record<string, () => WaveScript>> = {
+export const ARCHETYPES: Readonly<Record<string, Archetype>> = {
   noTowers,
   lazyBuild,
   greedyMusket,

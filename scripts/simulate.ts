@@ -1,6 +1,7 @@
 // Headless balance report: `npm run sim`. Plays every balance archetype from
-// src/sim/headless.ts and prints lives, gold and ticks after each wave, then
-// a one-line summary per archetype. Loads src/sim through Vite's module
+// src/sim/headless.ts on Normal and prints lives, gold and ticks after each
+// wave, then a one-line summary per archetype, then (milestone 25) a compact
+// table of every archetype on Easy and on Hard. Loads src/sim through Vite's module
 // runner, so it needs no extra dependency.
 import { fileURLToPath } from 'node:url';
 import { runnerImport } from 'vite';
@@ -36,3 +37,19 @@ for (const [name, script] of Object.entries(sim.INFORMATIONAL)) report(name, scr
 
 console.log('\nSummary');
 for (const line of summaries) console.log(line);
+
+// Milestone 25: every archetype recorded and played on Easy and on Hard.
+const all = { ...sim.ARCHETYPES, ...sim.INFORMATIONAL };
+const width = Math.max(...Object.keys(all).map((n) => n.length));
+for (const level of ['easy', 'hard'] as const) {
+  console.log(`\n${level[0].toUpperCase()}${level.slice(1)}`);
+  console.log(`${'archetype'.padEnd(width)}  result  wave  lives  gold`);
+  for (const [name, archetype] of Object.entries(all)) {
+    const run = sim.playScripted(archetype(level), undefined, level);
+    const s = run.state;
+    const refused = run.log.filter((step) => 'result' in step && !step.result.ok).length;
+    console.log(
+      `${name.padEnd(width)}  ${s.phase.padEnd(6)}  ${String(s.wave).padStart(4)}  ${String(s.lives).padStart(5)}  ${String(s.gold).padStart(4)}${refused ? `  (${refused} refused)` : ''}`,
+    );
+  }
+}
