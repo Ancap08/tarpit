@@ -521,3 +521,23 @@ can change it; "Kyle" means Kyle decided.
 - **Both SCOPE difficulty targets miss with the starting numbers and are
   pinned as they are until milestone 25c retunes them:** the lazy build on
   Easy dies to the boss on wave 10; on Hard the best plan dies on wave 3.
+
+## 2026-11-21, milestone 25a (drag placement and the planning phase)
+
+- **Planning phase: anything built or upgraded in setup is refundable in
+  full and movable for free until Start Wave; then everything locks and
+  sell is 70%. Towers built mid-wave lock at once.** Kyle (play notes);
+  rules by Fable, built by Opus.
+- **Selling a locked tower with a fresh setup upgrade pays that upgrade in
+  full plus 70% of the rest.** Fable, after the verifier showed the first
+  version cost an inattentive player 11 gold versus pressing Undo first.
+  Proven not exploitable: seeded 200-action walks conserve gold exactly.
+- **Drag from the bar to place; drag an unlocked tower to move it. On touch
+  the ghost aims 48 px above the finger with a line to it; the drag is
+  valid whenever the aim point is on the map, even with the finger over
+  the HUD, so the bottom row is reachable. Releasing over a HUD button
+  never presses it.** Fable, after the verifier found the first rule left
+  the bottom row unreachable by drag.
+- **A faint red ghost shows over blocked cells during drags; a mouse drag
+  cancels if a move arrives with no button down.** Fable and Opus.
+- **Unlocked towers have a dashed outline (3.9:1 against grass).** Opus.
