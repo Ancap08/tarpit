@@ -2761,3 +2761,120 @@ Verifier: Claude Fable 5.2 (the roles line above says 5.1).
   free mid-wave changes are not in the scope text), and the
   `tower-selected.png` baseline on the branch is the old two-button panel
   until the snapshot workflow runs.
+
+## 2026-11-21: milestone 25, difficulty levels
+
+Roles: implementer Claude Opus, verifier Claude Fable 5.2, coordinator
+Claude Fable 5.2.
+
+### Implementer notes
+
+- **Simulation.** `src/sim/difficulty.ts`: `Difficulty = 'easy' | 'normal'
+  | 'hard'`, `DIFFICULTY_DEFS` from SCOPE-v4 (hp 0.75 / 1 / 1.3, gold
+  150 / 100 / 80, lives 25 / 20 / 15) and `enemyMaxHp(type, level) =
+  Math.round(base x multiplier)`. `createGame({ difficulty })` defaults to
+  Normal and records `state.difficulty`; enemies spawn with
+  `enemyMaxHp`. No `maxHp` is stored on the enemy: the hp bars and the
+  boss bar call `enemyMaxHp(type, state.difficulty)` (the boss reads
+  "5200 / 5200" on Hard). Bounties, speeds, towers and waves are
+  untouched. Hp per level: Goblin 23 / 30 / 39, Wolf 21 / 28 / 36, Troll
+  525 / 700 / 910, Harpy 30 / 40 / 52, Shieldbearer 90 / 120 / 156,
+  Grumblefoot 3000 / 4000 / 5200.
+- **Headless.** `playScripted(script, maxTicks?, difficulty?)`,
+  `runHeadless(script, difficulty?)` and every archetype take a level
+  (type `Archetype`). The rule-based and plan-following archetypes record
+  their script by playing on that level, so Easy buys more and earlier.
+  `npm run sim` prints the Normal report as before, then the two tables
+  below. Every Normal pin passed unchanged.
+- **Easy** (`npm run sim`):
+
+  | archetype | result | wave | lives | gold |
+  |---|---|---|---|---|
+  | noTowers | lost | 3 | 0 | 200 |
+  | lazyBuild | lost | 10 | -1 | 603 |
+  | greedyMusket | won | 10 | 19 | 423 |
+  | soundBuild | won | 10 | 5 | 493 |
+  | soundBuildNoTar | lost | 10 | 0 | 452 |
+  | longbowSpam | lost | 10 | 0 | 715 |
+  | comboBuild | won | 10 | 25 | 606 |
+  | comboBuildNoFire | won | 10 | 23 | 780 |
+  | noAntiAir | lost | 10 | 0 | 452 |
+  | bossRush | won | 10 | 25 | 396 |
+  | comboStrongest | won | 10 | 16 | 548 |
+
+- **Hard**:
+
+  | archetype | result | wave | lives | gold |
+  |---|---|---|---|---|
+  | noTowers | lost | 2 | 0 | 105 |
+  | lazyBuild | lost | 2 | 0 | 21 |
+  | greedyMusket | lost | 2 | 0 | 40 |
+  | soundBuild | lost | 2 | 0 | 21 |
+  | soundBuildNoTar | lost | 2 | 0 | 21 |
+  | longbowSpam | lost | 6 | 0 | 143 |
+  | comboBuild | lost | 3 | 0 | 68 |
+  | comboBuildNoFire | lost | 3 | 0 | 68 |
+  | noAntiAir | lost | 3 | 0 | 68 |
+  | bossRush | lost | 3 | 0 | 68 |
+  | comboStrongest | lost | 3 | 0 | 26 |
+
+- **SCOPE-v4 targets with the SCOPE numbers.** (a) *lazyBuild wins on
+  Easy*: **misses.** It reaches wave 10 with 14 lives (lives after waves 1
+  to 9: 25, 25, 25, 25, 23, 23, 17, 17, 14) and loses wave 10 at -1
+  (Grumblefoot's exit costs 5). Pinned as it is in
+  `src/sim/difficulty.test.ts` with a `milestone 28 target` comment.
+  (b) *comboBuild on Hard loses at least 5 more lives than on Normal*:
+  **holds**, because it loses the game: lives 15, 9, 0, lost on wave 3
+  (Normal: won with 12). Also pinned. No numbers were changed. Note for
+  milestone 28: Hard is far harsher than "5 more lives"; every archetype
+  is lost by wave 6 and the best plan by wave 3, so a Hard win (milestone
+  29's evidence) needs tuning.
+- **Title menu.** Title y 110, subtitle y 172, "Difficulty" caption y
+  224, three 132 x 42 level buttons at y 244 with 16 px gaps (x 266 to
+  694, centred on 480), an empty band y 302 to 430 for the milestone 27
+  map row and the milestone 26 high-score line (a comment marks it), a
+  200 x 42 [Play] at (380, 446), and the prompt "Pick a difficulty, then
+  press Play" at y 522. The selection is a `Button` "picked" highlight,
+  kept on the TitleScene object, so it survives [Menu] but not a reload.
+  Words come from `DIFFICULTY_LABELS` and `TITLE_TEXT` in `names.ts`.
+- **HUD tag.** The 128 px between the wave counter (x 238) and the
+  preview (x 366) cannot hold "Wave 10/10" and a tag on one line, so on
+  Easy and Hard the tag (12 px, `hudDim`) sits under the counter and the
+  counter moves up 7 px. On Normal the tag is empty and the counter does
+  not move, so Normal frames are unchanged.
+- **End screens.** [Play again] (180 wide) and [Menu] (100 x 42) side by
+  side, 16 px apart, centred on the panel. Play again restarts on the
+  same level; Menu starts the title scene.
+- **Test API.** `startGame(difficulty?)` (Normal when left out, whatever
+  the menu shows), `difficulty()`, `ui()` on the title returns `{ scene:
+  'title', difficulty }` (typed as `ui<TitleUiState>()`), `uiRects()` on
+  the title lists `title:easy`, `title:normal`, `title:hard`,
+  `title:play` (also outside test mode, so live specs and the demo
+  recorder click Play), and the end screens add `menu`. `runScript`
+  records the archetype on the running game's level.
+- **Specs changed** because only Play starts the game now: `live`,
+  `renderer`, `play-wave` (now also checks a click off Play does
+  nothing), `touch` (two tests), `touch-verifier` (g), and
+  `scripts/record-demo.ts`. `end-screens-verifier` (c) clicked cell
+  (18,9), which is now under [Menu]; it skips that cell like (15,9).
+- **Baselines.** `title.png`, `won.png` and `lost.png` change (menu; the
+  Menu button); `title-hard.png` is new. Every other frame is Normal with
+  no tag and should not change; the tablet baseline is the map frame.
+  Not committed: CI regenerates them.
+
+### What went wrong
+
+- **Phaser re-emits a keydown when two key events land in one frame.**
+  The keyboard manager pushes every DOM key event onto a queue, reruns the
+  whole queue on each event, and clears it once per frame; its duplicate
+  check only compares with the previous event. So Left (down, up) then
+  Enter inside one frame emitted Left a second time: the Playwright test
+  pressed Left from Hard, read Normal, pressed Enter and got an Easy game.
+  The title's key handlers now ignore a DOM event they have already seen
+  (a `WeakSet`). GameScene's Escape has the same exposure but is harmless
+  (closing twice is closing once).
+- **Phaser keeps a scene's last start data** (`settings.data` is only
+  replaced when new data is passed), so every start of GameScene passes
+  `{ difficulty }` explicitly, Play again included.
+- **My first `loseQuickly` helper assumed a wave was running**; after Play
+  again the game is in setup, so it now starts a wave first.

@@ -41,13 +41,50 @@ Towers fire in cellKey order (row by row, left to right).
 
 ## Economy and lives
 
-- Start with 100 gold and 20 lives.
+- Start with 100 gold and 20 lives on Normal (see Difficulty).
 - Each kill pays the enemy's bounty. Clearing a wave pays a 25 gold bonus.
 - An enemy reaching the exit costs 1 life (the boss: 5) and is removed.
 - Lives at 0 or below: lose, immediately.
 - Clearing wave 10 with lives above 0: win.
 - Sell returns 70% of the total spent on that tower (build plus upgrade),
   rounded down.
+
+## Difficulty
+
+Milestone 25, from `docs/SCOPE-v4.md`. Picked on the title menu before
+each game (Normal preselected); `createGame({ difficulty })` defaults to
+Normal and the level is recorded in `state.difficulty`.
+
+| | Easy | Normal | Hard |
+|---|---|---|---|
+| Enemy hp | 0.75x | 1x | 1.3x |
+| Start gold | 150 | 100 | 80 |
+| Lives | 25 | 20 | 15 |
+
+An enemy spawns with `round(base hp x multiplier)`, a whole number, which
+is also its full hp for the hp bar and the boss bar. Bounties, speeds,
+towers, upgrades and waves are the same on every level. Normal is the game
+as it was before milestone 25, so every Normal number in this file holds.
+
+| Enemy | Easy | Normal | Hard |
+|---|---|---|---|
+| Goblin | 23 | 30 | 39 |
+| Wolf | 21 | 28 | 36 |
+| Troll | 525 | 700 | 910 |
+| Harpy | 30 | 40 | 52 |
+| Shieldbearer | 90 | 120 | 156 |
+| Grumblefoot (boss) | 3000 | 4000 | 5200 |
+
+Title menu: the title and subtitle, a "Difficulty" caption and a row of
+three 132 x 42 buttons (Easy, Normal, Hard; the selection highlighted like
+the build bar's active pick) at y 244, an empty band (y 302 to 430) kept
+for the map row and the high-score line of later milestones, a 200 x 42
+[Play] at y 446, and a prompt line. Clicking a level only selects it; Play
+(or Enter or Space) starts the game; Left and Right move the selection.
+The selection is kept for the page session. On Easy and Hard the HUD shows
+the level's name in small muted text under the wave counter (which moves
+up 7 px); on Normal there is no tag. The end screens have [Play again]
+(same level) and a 100 x 42 [Menu] beside it that returns to the title.
 
 ## Enemies
 
