@@ -125,6 +125,12 @@ generated only on CI: run the **Update screenshot baselines** workflow
 (`gh workflow run update-snapshots.yml -f ref=<branch>`); local runs skip the
 pixel comparison because macOS renders text differently.
 
+Open the game with `?renderer=canvas` to play on the Canvas renderer instead
+of WebGL; time and animations stay live. `e2e/live.spec.ts` uses it so its
+tick-rate checks do not depend on the machine's GPU (headless Chromium
+without one renders WebGL in software at a few frames a second).
+`e2e/renderer.spec.ts` loads the game without the flag and checks WebGL.
+
 ## Status and what is out of scope
 
 v4 (gameplay lock, [docs/SCOPE-v4.md](docs/SCOPE-v4.md)) is in progress:
