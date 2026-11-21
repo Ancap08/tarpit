@@ -29,11 +29,14 @@ test('map at wave 0', async ({ page }) => {
   await expect(page.locator('canvas')).toHaveScreenshot('map-wave0.png');
 });
 
-// 395 ticks into wave 1 the Musketeer at spot 2 fired 3 ticks ago (at tick
-// 392), so its tracer is mid-fade; six goblins are out and one is hurt. With
-// these spots the Cannon first fires at tick 852 and the base Tar Pit at
-// tick 1453, so no single frame shows all three shot types.
-const MID_WAVE_STEPS = 395;
+// 855 ticks into wave 1 the Cannon at spot 6 fired 3 ticks ago (its first
+// shot, at tick 852), so its tracer and splash circle are mid-fade; five
+// goblins are out and four are hurt. With these spots no single frame shows
+// two shot types: the Musketeer at spot 2 fires every 60 ticks (392, 452,
+// ...) with a 6-tick tracer, and the base Tar Pit first fires at tick 1453.
+// Tick 855 was chosen by the coordinator over 395 (Musketeer tracer only)
+// because the splash and hp bars cover more of the renderer.
+const MID_WAVE_STEPS = 855;
 
 test('mid wave 1 with three towers', async ({ page }) => {
   await open(page);
@@ -49,7 +52,7 @@ test('mid wave 1 with three towers', async ({ page }) => {
     const s = t.state();
     return { enemies: s.enemies.length, hurt: s.enemies.filter((e) => e.hp < 30).length };
   }, MID_WAVE_STEPS);
-  expect(counts).toEqual({ enemies: 6, hurt: 1 });
+  expect(counts).toEqual({ enemies: 5, hurt: 4 });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('mid-wave.png');
 });
