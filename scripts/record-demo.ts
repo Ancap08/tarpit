@@ -2,15 +2,17 @@
 //
 // Builds the game, serves dist/ with `vite preview`, and plays it in real time
 // (not test mode) in headless Chromium with Playwright's video recording on:
-// title click, a Musketeer at spot 2 through the build menu, Start Wave, 2x,
-// wave 1, a Cannon at spot 3, wave 2, then a Tar Pit at spot 4. The game
+// title click, a Musketeer on cell (7,5) through the build bar (pick, glide
+// over the map so the ghost and range follow, click the cell), Start Wave,
+// 2x, wave 1, a Cannon on (7,7), wave 2, then a Tar Pit on (10,5). The game
 // starts with 100 gold, so the three towers cannot all be bought before
 // wave 1; this order is the one (found with the headless sim) that leaves
 // enough gold for the Tar Pit after wave 2 (12 lives, 68 gold). Every click
-// goes through the real UI at the rectangles the running scene reports. Then
+// goes through the real UI: bar and HUD buttons at the rectangles
+// window.__tarpit.uiRects() reports, cells at their centres. Then
 // the system ffmpeg turns the video into docs/media/tarpit.gif (640 px wide,
 // 12 fps, two-pass palette, sped up to fit about 22 s) and a mid-wave still
-// docs/media/tarpit.png (960x540).
+// docs/media/tarpit.png (960x580).
 //
 // Needs ffmpeg on PATH or in FFMPEG (default /opt/homebrew/bin/ffmpeg) and
 // the Playwright Chromium (`npx playwright install chromium`).
@@ -29,7 +31,7 @@ const PNG = join(MEDIA, 'tarpit.png');
 const FFMPEG = process.env.FFMPEG ?? (existsSync('/opt/homebrew/bin/ffmpeg') ? '/opt/homebrew/bin/ffmpeg' : 'ffmpeg');
 const PORT = 4179;
 const URL_BASE = `http://localhost:${PORT}/`;
-const VIEW = { width: 960, height: 540 };
+const VIEW = { width: 960, height: 580 };
 /** Target length of the GIF in seconds; the video is sped up to fit. */
 const TARGET_SECONDS = 22;
 
@@ -73,9 +75,15 @@ function snapshot(page: Page): Promise<Snapshot> {
   });
 }
 
+// uiRects() is on window.__tarpit outside test mode too (read-only).
 function rects(page: Page): Promise<Record<string, Rect>> {
+  return page.evaluate(() => window.__tarpit!.uiRects() as Record<string, Rect>);
+}
+
+/** Ui state from the running scene: the bar's pick. */
+function pick(page: Page): Promise<string | null> {
   return page.evaluate(
-    () => (window.__tarpit!.game.scene.getScene('game') as unknown as { uiRects(): Record<string, Rect> }).uiRects(),
+    () => (window.__tarpit!.game.scene.getScene('game') as unknown as { uiState(): { pick: string | null } }).uiState().pick,
   );
 }
 
@@ -89,16 +97,28 @@ async function clickRect(page: Page, key: string, hoverMs = 0): Promise<void> {
   await page.mouse.click(x, y);
 }
 
-/** Open the build menu at a spot, hover the tower (range preview), click it. */
-async function buildAt(page: Page, spotId: number, tower: 'musketeer' | 'cannon' | 'tarpit'): Promise<void> {
+/**
+ * Pick the tower on the bar, glide over the map so the ghost and its range
+ * follow the pointer, click the cell, and clear the pick if it is still
+ * active (it clears by itself when the gold left is below the cost).
+ */
+async function buildAt(page: Page, col: number, row: number, tower: 'musketeer' | 'cannon' | 'tarpit'): Promise<void> {
   const before = await snapshot(page);
-  await clickRect(page, `spot:${spotId}`, 300);
-  await page.waitForTimeout(400);
-  await clickRect(page, `menu:${tower}`, 700);
+  await clickRect(page, `bar:${tower}`, 300);
+  await page.waitForTimeout(300);
+  const x = col * 32 + 16;
+  const y = row * 32 + 16;
+  await page.mouse.move(x + 96, y + 64, { steps: 10 });
+  await page.waitForTimeout(250);
+  await page.mouse.move(x, y, { steps: 14 });
+  await page.waitForTimeout(700);
+  await page.mouse.click(x, y);
   const after = await snapshot(page);
-  if (after.gold >= before.gold) throw new Error(`build ${tower} at spot ${spotId} did not happen (gold ${before.gold})`);
-  log(`built ${tower} at spot ${spotId}: gold ${before.gold} -> ${after.gold}`);
-  await page.waitForTimeout(500);
+  if (after.gold >= before.gold) throw new Error(`build ${tower} at (${col},${row}) did not happen (gold ${before.gold})`);
+  log(`built ${tower} at (${col},${row}): gold ${before.gold} -> ${after.gold}`);
+  await page.waitForTimeout(400);
+  if ((await pick(page)) !== null) await clickRect(page, `bar:${tower}`, 200);
+  await page.waitForTimeout(300);
 }
 
 async function waitFor(page: Page, what: string, ok: (s: Snapshot) => boolean, timeoutMs = 60000): Promise<Snapshot> {
@@ -137,7 +157,7 @@ async function main(): Promise<void> {
     await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game'));
     await page.waitForTimeout(600);
 
-    await buildAt(page, 2, 'musketeer');
+    await buildAt(page, 7, 5, 'musketeer');
     await clickRect(page, 'startWave', 300);
     await page.waitForTimeout(800);
     await clickRect(page, 'speed', 300);
@@ -145,7 +165,7 @@ async function main(): Promise<void> {
     log(`wave 1 done: lives ${s.lives}, gold ${s.gold}`);
     await page.waitForTimeout(500);
 
-    await buildAt(page, 3, 'cannon');
+    await buildAt(page, 7, 7, 'cannon');
     await clickRect(page, 'startWave', 300);
     // The still: a frame with five or more enemies out just after the Cannon
     // fired, so its splash is on screen. state.shots holds only the latest
@@ -169,7 +189,7 @@ async function main(): Promise<void> {
     s = await waitFor(page, 'wave 2 to end', (x) => x.phase !== 'wave');
     log(`wave 2 done: lives ${s.lives}, gold ${s.gold}`);
     await page.waitForTimeout(400);
-    if (s.gold >= 60) await buildAt(page, 4, 'tarpit');
+    if (s.gold >= 60) await buildAt(page, 10, 5, 'tarpit');
     else log(`skipped the Tar Pit: only ${s.gold} gold`);
     await page.waitForTimeout(2500);
     const end = at();

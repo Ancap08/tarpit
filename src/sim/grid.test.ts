@@ -85,9 +85,9 @@ describe('distanceToPath', () => {
 });
 
 describe('buildable rule', () => {
-  it('a cell is buildable when its centre is at least 36 px from the path centreline, inclusive', () => {
+  it('a cell is buildable when its centre is at least 36 px from the path centreline, inclusive (no landmarks)', () => {
     expect(MIN_PATH_CLEARANCE).toBe(36);
-    const mask = buildableCells();
+    const mask = buildableCells({ width: MAP.width, height: MAP.height, path: MAP.path });
     for (let k = 0; k < GRID_COLS * GRID_ROWS; k++) {
       expect(mask[k], `cell ${k}`).toBe(distanceToPath(cellCenter(cellFromKey(k))) >= 36);
     }
@@ -117,8 +117,22 @@ describe('buildable rule', () => {
     expect(buildableCells(at(51.9))[0]).toBe(false); // 35.9 px
   });
 
-  it('346 of the 450 cells are buildable on the v1 map', () => {
-    expect(buildableCells().filter(Boolean)).toHaveLength(346);
+  it('cells under the exit cottage are not buildable; their neighbours off it are', () => {
+    // COTTAGE spans x 908..944, y 131..168: it overlaps cells (28,4) and (29,4),
+    // whose centres are 36+ px from the path. (28,5) and (29,5) are path cells anyway.
+    expect(isBuildableTerrain({ col: 28, row: 4 })).toBe(false);
+    expect(isBuildableTerrain({ col: 29, row: 4 })).toBe(false);
+    expect(isBuildableTerrain({ col: 27, row: 4 })).toBe(true);
+    expect(isBuildableTerrain({ col: 29, row: 3 })).toBe(true);
+    // Without the landmark the same cells pass the path rule.
+    const bare: MapDef = { width: MAP.width, height: MAP.height, path: MAP.path };
+    expect(isBuildableTerrain({ col: 28, row: 4 }, bare)).toBe(true);
+    expect(isBuildableTerrain({ col: 29, row: 4 }, bare)).toBe(true);
+    expect(buildableCells(bare).filter(Boolean)).toHaveLength(346);
+  });
+
+  it('344 of the 450 cells are buildable on the v1 map', () => {
+    expect(buildableCells().filter(Boolean)).toHaveLength(344);
     expect(buildableCells()).toHaveLength(450);
   });
 

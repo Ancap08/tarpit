@@ -1076,3 +1076,132 @@ Verifier: Claude Sonnet. Independent of the implementer; clean run at
   the local e2e pass says nothing about pixels), and the 21 px closest-pair
   figure for tick 1350.
 
+
+## 2026-11-21: milestone 9, placement UI
+
+Roles: implementer Claude Opus, verifier Claude Sonnet, coordinator Claude
+Fable 5.1.
+
+### Implementer notes
+
+The implementer (Claude Opus) replaced the ten legacy spots and their popup
+build menu with build-anywhere through a HUD build bar.
+
+- Canvas 960 x 580 (`src/main.ts`, Playwright viewport, demo recorder). The
+  map is unchanged at 960 x 480. The HUD is 100 px in two 50 px rows:
+  - Row 1 (y 480..530, text centred at y 505): Gold at x 14, Lives at 126,
+    Wave at 238, Next at 366; Start Wave x 726..864 and 1x/2x x 876..946,
+    both y 487..523.
+  - Row 2 (y 530..580): the build bar, three 150 x 36 buttons at y 537..573,
+    x 14, 174 and 334 (10 px gaps; six fit in 960 px for milestone 11),
+    16 px bold labels "Musketeer  50", "Cannon  80", "Tar Pit  60", cost
+    right-aligned.
+- `src/game/ui/buildBar.ts`: the bar. A button is greyed and ignores clicks
+  when the gold is below its cost or the game is over; the greying follows
+  the gold on every redraw. `Button.setPicked` (brighter fill, 3 px
+  pale-yellow edge) marks the active pick.
+- `GameScene`: one pick at a time; a second click on its button or Escape
+  clears it, and it clears by itself when gold drops below its cost. With a
+  pick, the hovered cell gets a 0.25-alpha fill and a 2 px outline, green if
+  buildable and red if not; a buildable cell also shows the tower at 0.6
+  alpha and its range circle. A red cell shows no ghost and no range.
+  Clicking a buildable cell builds and keeps the pick; a path cell does
+  nothing; a tower clears the pick and selects it. Without a pick, a tower
+  click selects it (range circle, selection ring, Upgrade/Sell panel) and an
+  empty-map click or Escape deselects. HUD clicks keep the pick and close the
+  panel. The cursor is a pointer over towers and, with a pick, over
+  buildable cells.
+- `src/game/input.ts`: `cellAt`, `cellRect`, `classifyClick` (ui, tower,
+  buildable, blocked, outside) and `placeBeside`, which no longer avoids
+  other towers: right, left, below, above, least path cover wins, skipping a
+  side the clamp pushed over the tower's own cell or label. A unit test
+  checks every one of the 344 buildable cells: the panel stays in the map,
+  off the HUD, and off its own tower and label.
+- No grid lines and no spot circles. `legacySpots.ts`, its two tests and
+  `ui/buildMenu.ts` are deleted.
+- Draw order keeps the HUD over anything on the map: range circles and the
+  ghost are drawn before the HUD, which covers the part of a range below
+  y 480, and tower labels now live in a layer made at scene start, so a
+  label created later no longer draws over the HUD, panel or end screen.
+- Test API: `buildAt`, `upgradeAt`, `sellAt` by (col, row) replace the
+  spot-id `build`, `upgrade`, `sell`. `ui()` is `{ pick, hoverCell,
+  selectedCell, panelOpen }`. `uiRects()` lists `startWave`, `speed`,
+  `bar:<type>`, the panel buttons and `playAgain`; it is also on
+  `window.__tarpit` outside test mode (read-only), and `live.spec.ts` and the
+  demo recorder use it instead of hard-coded positions.
+- e2e: `build-ui.spec.ts` and the milestone 4 verifier spec are merged into
+  one bar spec that keeps the verifier's probes (a) to (f). The other specs
+  use `buildAt` on the former legacy cells (7,5), (15,9), (18,9), (10,5),
+  (23,8); the mid-wave (848 ticks, 5 enemies, 4 hurt) and enemies (1350
+  ticks) counts hold unchanged. Visual frames: `build-menu.png` is replaced
+  by `placing.png` (Cannon picked, pointer on cell (14,8) beside the long
+  vertical run) and `placing-invalid.png` (same pick on path cell (13,8)).
+  Every baseline changes with the taller canvas; CI regenerates them.
+- `npm run demo` runs the bar flow (pick, glide, click the cell) and
+  produced a good GIF and still; the media is not committed (milestone 13).
+
+- Landmarks (coordinator's decision, after the cottage finding below):
+  `MapDef.landmarks` lists drawn features off the path; `MAP` has one, the
+  exit cottage's box `COTTAGE` (x 908..944, y 131..168, chimney and roof
+  included), and `draw/map.ts` draws the cottage from it. A cell whose 32 px
+  square overlaps a landmark is not buildable. This removes (28,4) and
+  (29,4): 344 of 450 cells are buildable (346 before). The pins in
+  `grid.test.ts` and `grid-verifier.test.ts` move to 344. The implementer
+  updated the verifier's own mask rule in `grid-verifier.test.ts` to match
+  (its own overlap code, not grid.ts). `npm run sim` is unchanged: no
+  archetype uses those two cells. The e2e edge check moved from (29,4) to
+  (29,7) and asserts that a build at (29,4) is refused.
+
+Counts: 145 unit tests in 19 files, 40 e2e tests in 7 files.
+
+### What went wrong
+
+- The first tower-selected frame had the panel below the Musketeer at
+  (7,5) covering its own "Musket+" label: the v1 offset (28 px) was chosen
+  when the spot rule usually pushed panels elsewhere. Panels above or below
+  now sit 40 px from the centre, left or right 30 px, and a clamped side
+  that lands on the tower or its label is skipped.
+- Build-anywhere exposed two label problems milestone 8 created but no
+  frame showed: a bottom-row tower's label ran into the HUD, and labels
+  created after the HUD drew on top of it (and of the panel and the end
+  veil). Bottom-row labels now go above the tower, edge labels shift inside
+  the map, and labels live in their own layer.
+- The brief asked that clicking (7,5) again with the pick active do
+  "nothing (occupied)" and also that clicking a tower with a pick active
+  select it. The test asserts both: no second build, and the tower is
+  selected with the pick cleared.
+- Cell (29,4) was buildable and overlapped the exit cottage drawing,
+  because the milestone 8 rule only measures distance to the path. The
+  coordinator's first fix, excluding cells within 40 px of the path's end
+  waypoints, removed no cell at all (every buildable cell is over 50 px from
+  both; (29,4) is 50.6 px from (960,192), and (28,4), also under the roof,
+  is 67.9 px). The coordinator chose a landmark rule instead (below).
+
+### Verifier notes (Claude Sonnet)
+
+- Clean run on `m9-placement-ui` at 80a0d4e: `npm ci`, lint, typecheck, build
+  exit 0; 145 unit tests in 19 files; 40 e2e tests passed before this spec was
+  added; `--repeat-each=5` of `build-ui.spec.ts` and `live.spec.ts`: 60 of 60.
+  `npm run sim` is unchanged from milestone 8 (noTowers wave 2, lazy wave 3,
+  greedy wave 3, sound won with 13 lives and 269 gold, noTar lost on wave 7).
+- `git diff origin/main -- src/sim` holds the `Rect` type, `COTTAGE`, the
+  landmark overlap exclusion in `grid.ts`, and tests. Recomputed with separate
+  code (own path copy, own overlap test): 346 cells by the path rule, 344 with
+  the cottage; the two removed cells are exactly (28,4) and (29,4).
+- `e2e/placement-verifier.spec.ts` (7 tests, 3 repeats passed): three
+  placements with the pick kept, the fourth clears it at 0 gold and greys the
+  button; a pick clears at 49 gold; Start Wave with a pick keeps the pick and a
+  placement works mid-wave; Cannon pickable at 80 and not at 79; Escape clears
+  panel and selection; a path cell with a pick builds nothing, and `hoverCell`
+  is that cell; bottom-row hover leaves `uiRects()` unchanged, and the panel for
+  a tower at (29,14) lies inside x 0..960, y 0..480. Towers are listed in
+  row-major order, not click order (my first draft assumed click order).
+- The implementer's frames in the scratchpad were taken at 04:21, before the
+  landmark commit at 04:26: they show a Tar Pit on (29,4) over the cottage.
+  That cell is now refused. A fresh frame of towers at (28,3) and (29,3) shows
+  their labels ("Musket", "Tar") overlapping each other and the cottage roof
+  and chimney. Adjacent towers always overlap labels (56 px labels on 32 px
+  cells); this is cosmetic and was not fixed here.
+- DEVLOG numbers checked: HUD button rectangles, 344, the 50.6 and 67.9 px
+  figures, 145 unit tests, 40 e2e tests in 7 files, and the panel test that
+  loops over every buildable cell (it does not assert the count 344 itself).

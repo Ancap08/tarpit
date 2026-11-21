@@ -1,73 +1,66 @@
-// Pointer geometry for the build UI: which build spot is under the pointer,
-// what a click means, and where a menu goes next to a spot. Pure functions
-// with no Phaser, so they are unit tested in input.test.ts.
-//
-// Milestone 8: the spots are the ten legacy cells (legacySpots.ts); a spot id
-// is only an index into LEGACY_SPOT_CELLS, and every position is a cell centre.
+// Pointer geometry for the build UI: which grid cell is under the pointer,
+// what a click means, and where the tower panel goes next to a tower. Pure
+// functions with no Phaser, so they are unit tested in input.test.ts.
 
-import { distanceToPath, MAP, type Point } from '../sim';
+import { CELL, distanceToPath, GRID_COLS, GRID_ROWS, isBuildable, MAP, towerAt, type Cell, type GameState, type Point, type Rect } from '../sim';
+import { labelAbove, LABEL_HEIGHT, LABEL_OFFSET_Y, labelX } from './draw/labels';
 import { PATH_WIDTH } from './draw/map';
-import { LEGACY_SPOT_CELLS, spotCenter } from './legacySpots';
 
-export interface Rect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
+export type { Rect };
 
-/** A pointer within this many pixels of a spot's centre is on that spot. */
-export const SPOT_HIT_RADIUS = 18;
-
-/** The map area. Menus and panels stay inside it, never over the HUD. */
+/** The map area. Panels and ghosts stay inside it, never over the HUD. */
 export const MAP_AREA: Rect = { x: 0, y: 0, width: MAP.width, height: MAP.height };
 
-/** Gap between a spot's centre and the near edge of a menu beside it. */
-const MENU_OFFSET = 28;
-/** Keep menus this far from the map edges. */
-const MENU_MARGIN = 4;
+/** Gap between a tower's centre and the near edge of a panel to its right or left: clears a 56 px label. */
+const PANEL_OFFSET = 30;
+/**
+ * Gap for a panel below or above: clears the tower's label (22 px from the
+ * centre plus 16 px tall, below the tower or, on the bottom row, above it).
+ */
+const PANEL_OFFSET_Y = 40;
+/** Keep panels this far from the map edges. */
+const PANEL_MARGIN = 4;
 
 export function contains(r: Rect, x: number, y: number): boolean {
   return x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height;
 }
 
-/** Id of the build spot under (x, y), or null. Spots are 50+ px apart, so at most one matches. */
-export function spotAt(x: number, y: number): number | null {
-  for (let id = 0; id < LEGACY_SPOT_CELLS.length; id++) {
-    const s = spotCenter(id);
-    if (Math.hypot(x - s.x, y - s.y) <= SPOT_HIT_RADIUS) return id;
-  }
-  return null;
+/**
+ * The grid cell under (x, y), or null outside the map (the HUD included).
+ * A point on a shared edge belongs to the cell to its right or below.
+ */
+export function cellAt(x: number, y: number): Cell | null {
+  if (!(x >= 0 && x < MAP.width && y >= 0 && y < MAP.height)) return null;
+  const col = Math.floor(x / CELL);
+  const row = Math.floor(y / CELL);
+  return col < GRID_COLS && row < GRID_ROWS ? { col, row } : null;
 }
 
-/** Bounding box of a spot's clickable circle. */
-export function spotRect(id: number): Rect {
-  const s = spotCenter(id);
-  return { x: s.x - SPOT_HIT_RADIUS, y: s.y - SPOT_HIT_RADIUS, width: 2 * SPOT_HIT_RADIUS, height: 2 * SPOT_HIT_RADIUS };
+/** The 32 px square of a cell. */
+export function cellRect(cell: Cell): Rect {
+  return { x: cell.col * CELL, y: cell.row * CELL, width: CELL, height: CELL };
 }
 
 /**
- * What a pointerdown at (x, y) means. `ui` is the open menu or panel's box,
- * if any: clicks inside it belong to its buttons (a greyed button swallows
- * the click). Anything else is a spot or "elsewhere", which closes the UI.
- * HUD clicks are "elsewhere" too; the HUD buttons still act on their own.
+ * What a pointerdown at (x, y) means. `ui` is the open panel's box, if any:
+ * clicks inside it belong to its buttons (a greyed button swallows the
+ * click). On the map a click hits a tower, a buildable cell or a blocked
+ * cell (path, or off-grid). Outside the map (the HUD) it is `outside`; the
+ * HUD buttons act on their own.
  */
-export type ClickTarget = { kind: 'ui' } | { kind: 'spot'; spotId: number } | { kind: 'elsewhere' };
+export type ClickTarget =
+  | { kind: 'ui' }
+  | { kind: 'tower'; cell: Cell }
+  | { kind: 'buildable'; cell: Cell }
+  | { kind: 'blocked'; cell: Cell }
+  | { kind: 'outside' };
 
-export function classifyClick(x: number, y: number, ui: Rect | null): ClickTarget {
+export function classifyClick(x: number, y: number, ui: Rect | null, state: GameState): ClickTarget {
   if (ui && contains(ui, x, y)) return { kind: 'ui' };
-  const spotId = spotAt(x, y);
-  return spotId === null ? { kind: 'elsewhere' } : { kind: 'spot', spotId };
-}
-
-/** True if the box overlaps any build spot's clickable circle. */
-function coversSpot(x: number, y: number, width: number, height: number): boolean {
-  return LEGACY_SPOT_CELLS.some((_, id) => {
-    const s = spotCenter(id);
-    const cx = Math.min(Math.max(s.x, x), x + width);
-    const cy = Math.min(Math.max(s.y, y), y + height);
-    return Math.hypot(cx - s.x, cy - s.y) <= SPOT_HIT_RADIUS;
-  });
+  const cell = cellAt(x, y);
+  if (cell === null) return { kind: 'outside' };
+  if (towerAt(state, cell)) return { kind: 'tower', cell };
+  return isBuildable(state, cell) ? { kind: 'buildable', cell } : { kind: 'blocked', cell };
 }
 
 /** True if (x, y) lies on the drawn path strip (PATH_WIDTH wide, round joins). */
@@ -94,29 +87,46 @@ export function pathCover(x: number, y: number, width: number, height: number): 
   return hits / (COVER_SAMPLES * COVER_SAMPLES);
 }
 
+function overlaps(a: Rect, b: Rect): boolean {
+  return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+}
+
+/** Width allowed for a tower label: "Cannon+" is 7 x 7.2 px plus 3 px padding a side, rounded up. */
+const LABEL_WIDTH = 58;
+
+/** The widest label's box under (or, on the bottom row, above) the tower at `centre`, kept inside the map. */
+export function labelRect(centre: Point): Rect {
+  const top = labelAbove(centre.y) ? centre.y - LABEL_OFFSET_Y - LABEL_HEIGHT : centre.y + LABEL_OFFSET_Y;
+  return { x: labelX(centre.x, LABEL_WIDTH) - LABEL_WIDTH / 2, y: top, width: LABEL_WIDTH, height: LABEL_HEIGHT };
+}
+
 /**
- * Top-left corner for a `width` x `height` box beside `spot`, clamped inside
- * the map area. The candidates are right, left, below and above. Among those
- * that cover no build spot (its own included, so every other spot stays
- * clickable), the one over the least path wins, so the player can still see
- * the enemies; ties keep that order. If every side covers a spot, it goes to
- * the right.
+ * Top-left corner for a `width` x `height` panel beside the tower at
+ * `centre`, clamped inside the map area (never over the HUD). The candidates
+ * are right, left, below and above. A candidate over the tower's own cell or
+ * label (the clamp can push one there) is skipped, so the tower stays
+ * visible and clickable; among the rest, the one over the least path wins,
+ * so the player can still see the enemies. Ties keep that order. Panels may
+ * cover other towers.
  */
-export function placeBeside(spot: Point, width: number, height: number): Point {
+export function placeBeside(centre: Point, width: number, height: number): Point {
   const clamp = (x: number, y: number): Point => ({
-    x: Math.min(MAP_AREA.x + MAP_AREA.width - MENU_MARGIN - width, Math.max(MAP_AREA.x + MENU_MARGIN, x)),
-    y: Math.min(MAP_AREA.y + MAP_AREA.height - MENU_MARGIN - height, Math.max(MAP_AREA.y + MENU_MARGIN, y)),
+    x: Math.min(MAP_AREA.x + MAP_AREA.width - PANEL_MARGIN - width, Math.max(MAP_AREA.x + PANEL_MARGIN, x)),
+    y: Math.min(MAP_AREA.y + MAP_AREA.height - PANEL_MARGIN - height, Math.max(MAP_AREA.y + PANEL_MARGIN, y)),
   });
+  const own: Rect = { x: centre.x - CELL / 2, y: centre.y - CELL / 2, width: CELL, height: CELL };
+  const label = labelRect(centre);
   const candidates = [
-    clamp(spot.x + MENU_OFFSET, spot.y - height / 2),
-    clamp(spot.x - MENU_OFFSET - width, spot.y - height / 2),
-    clamp(spot.x - width / 2, spot.y + MENU_OFFSET),
-    clamp(spot.x - width / 2, spot.y - MENU_OFFSET - height),
+    clamp(centre.x + PANEL_OFFSET, centre.y - height / 2),
+    clamp(centre.x - PANEL_OFFSET - width, centre.y - height / 2),
+    clamp(centre.x - width / 2, centre.y + PANEL_OFFSET_Y),
+    clamp(centre.x - width / 2, centre.y - PANEL_OFFSET_Y - height),
   ];
   let best: Point | null = null;
   let bestCover = Infinity;
   for (const p of candidates) {
-    if (coversSpot(p.x, p.y, width, height)) continue;
+    const box = { x: p.x, y: p.y, width, height };
+    if (overlaps(box, own) || overlaps(box, label)) continue;
     const cover = pathCover(p.x, p.y, width, height);
     if (cover < bestCover) {
       best = p;

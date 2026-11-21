@@ -1,17 +1,26 @@
-// HUD: a dark bar across the bottom 60 px with gold, lives, wave, the
-// next-wave preview, a Start Wave button and a 1x/2x speed toggle.
+// HUD: a dark bar across the bottom 100 px of the 960 x 580 canvas, in two
+// rows. Row 1 (y 480..530): gold, lives, wave, the next-wave preview, a Start
+// Wave button and a 1x/2x speed toggle. Row 2 (y 530..580): the build bar.
 
 import Phaser from 'phaser';
-import { nextWavePreview, WAVES, type EnemyType, type GameState } from '../sim';
+import { nextWavePreview, WAVES, type EnemyType, type GameState, type TowerType } from '../sim';
 import type { Rect } from './input';
 import { COLORS, FONT, TEXT } from './palette';
+import { BuildBar } from './ui/buildBar';
 import { Button } from './ui/button';
 
 export type { Rect };
 
 export const HUD_TOP = 480;
-export const HUD_HEIGHT = 60;
-const MID = HUD_TOP + HUD_HEIGHT / 2;
+export const HUD_HEIGHT = 100;
+/** Height of each HUD row. */
+export const HUD_ROW = 50;
+/** Vertical centre of row 1 (the stats and the HUD buttons). */
+const MID = HUD_TOP + HUD_ROW / 2;
+/** Buttons are 36 px tall, centred in their row. */
+const BUTTON_H = 36;
+const ROW1_BUTTON_Y = MID - BUTTON_H / 2;
+const ROW2_BUTTON_Y = HUD_TOP + HUD_ROW + (HUD_ROW - BUTTON_H) / 2;
 
 export interface HudStrings {
   gold: string;
@@ -39,6 +48,8 @@ export function canStartWave(state: GameState): boolean {
 export interface HudHandlers {
   onStartWave: () => void;
   onToggleSpeed: () => void;
+  /** A build bar button was clicked (only when pickable). */
+  onPick: (type: TowerType) => void;
 }
 
 export class Hud {
@@ -48,6 +59,7 @@ export class Hud {
   private readonly next: Phaser.GameObjects.Text;
   private readonly startButton: Button;
   private readonly speedButton: Button;
+  private readonly bar: BuildBar;
 
   constructor(scene: Phaser.Scene, handlers: HudHandlers) {
     scene.add.rectangle(0, HUD_TOP, 960, HUD_HEIGHT, COLORS.hudBar).setOrigin(0, 0);
@@ -60,11 +72,12 @@ export class Hud {
     this.wave = stat(238);
     this.next = stat(366, '16px', TEXT.hudDim);
 
-    this.startButton = new Button(scene, { x: 726, y: HUD_TOP + 12, width: 138, height: 36 }, 'Start Wave', handlers.onStartWave);
-    this.speedButton = new Button(scene, { x: 876, y: HUD_TOP + 12, width: 70, height: 36 }, '1x', handlers.onToggleSpeed);
+    this.startButton = new Button(scene, { x: 726, y: ROW1_BUTTON_Y, width: 138, height: BUTTON_H }, 'Start Wave', handlers.onStartWave);
+    this.speedButton = new Button(scene, { x: 876, y: ROW1_BUTTON_Y, width: 70, height: BUTTON_H }, '1x', handlers.onToggleSpeed);
+    this.bar = new BuildBar(scene, ROW2_BUTTON_Y, handlers.onPick);
   }
 
-  update(state: GameState, speed: 1 | 2): void {
+  update(state: GameState, speed: 1 | 2, pick: TowerType | null): void {
     const set = (t: Phaser.GameObjects.Text, s: string) => {
       if (t.text !== s) t.setText(s);
     };
@@ -76,6 +89,7 @@ export class Hud {
     this.startButton.set('Start Wave', canStartWave(state));
     // Once the game is over the speed toggle is inert (greyed, ignores clicks).
     this.speedButton.set(`${speed}x`, state.phase !== 'won' && state.phase !== 'lost');
+    this.bar.update(state, pick);
   }
 
   strings(): HudStrings {
@@ -89,7 +103,8 @@ export class Hud {
     };
   }
 
-  rects(): { startWave: Rect; speed: Rect } {
-    return { startWave: { ...this.startButton.rect }, speed: { ...this.speedButton.rect } };
+  /** `startWave`, `speed` and `bar:<type>` for each build bar button. */
+  rects(): { startWave: Rect; speed: Rect } & Record<string, Rect> {
+    return { startWave: { ...this.startButton.rect }, speed: { ...this.speedButton.rect }, ...this.bar.rects() };
   }
 }

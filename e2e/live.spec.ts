@@ -1,18 +1,22 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 // Non-test mode: the real game loop runs on real time. window.__tarpit holds
-// only `game` here (no uiRects), so button positions come from the HUD layout
-// in src/game/hud.ts: Start Wave is x 726..864, speed is x 876..946, both
-// y 492..528 (canvas == page at the 960x540 test viewport).
-const START_WAVE = { x: 795, y: 510 };
-const SPEED = { x: 911, y: 510 };
+// `game` and the read-only uiRects() here, so the clicks go where the HUD
+// buttons are drawn (canvas == page at the 960x580 test viewport).
 
 type LiveState = { tick: number; enemies: unknown[]; phase: string };
+type Rect = { x: number; y: number; width: number; height: number };
+
+async function clickButton(page: Page, name: 'startWave' | 'speed'): Promise<void> {
+  const r = await page.evaluate((n) => window.__tarpit?.uiRects()[n] as Rect | undefined, name);
+  expect(r, `uiRects()['${name}']`).toBeTruthy();
+  await page.mouse.click(r!.x + r!.width / 2, r!.y + r!.height / 2);
+}
 
 test('live loop ticks, spawns enemies, and 2x runs faster', async ({ page }) => {
   await page.goto('/');
   await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('title'));
-  await page.mouse.click(480, 270);
+  await page.mouse.click(480, 290);
   await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game'));
 
   const read = () =>
@@ -22,7 +26,9 @@ test('live loop ticks, spawns enemies, and 2x runs faster', async ({ page }) => 
     });
 
   expect(await read()).toMatchObject({ phase: 'setup' });
-  await page.mouse.click(START_WAVE.x, START_WAVE.y);
+  // Test mode is off, so uiRects() is the only hook besides `game`.
+  expect(await page.evaluate(() => Object.keys(window.__tarpit ?? {}).sort())).toEqual(['game', 'uiRects']);
+  await clickButton(page, 'startWave');
   const t0 = await read();
   expect(t0.phase).toBe('wave');
   await page.waitForTimeout(1500);
@@ -30,7 +36,7 @@ test('live loop ticks, spawns enemies, and 2x runs faster', async ({ page }) => 
   expect(t1.tick).toBeGreaterThan(60);
   expect(t1.enemies).toBeGreaterThanOrEqual(1);
 
-  await page.mouse.click(SPEED.x, SPEED.y);
+  await clickButton(page, 'speed');
   const a = await read();
   await page.waitForTimeout(1000);
   const b = await read();

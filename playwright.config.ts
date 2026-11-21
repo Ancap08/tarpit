@@ -22,10 +22,10 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      // A 960x540 viewport makes the Scale.FIT canvas exactly 960x540 at
+      // A 960x580 viewport makes the Scale.FIT canvas exactly 960x580 at
       // (0,0), so canvas coordinates from window.__tarpit.uiRects() are page
       // coordinates for page.mouse.click.
-      use: { ...devices['Desktop Chrome'], viewport: { width: 960, height: 540 }, deviceScaleFactor: 1 },
+      use: { ...devices['Desktop Chrome'], viewport: { width: 960, height: 580 }, deviceScaleFactor: 1 },
     },
   ],
   // Serve the production build so e2e tests what ships. Run `npm run build` first.

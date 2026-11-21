@@ -34,9 +34,9 @@ test('wave 1 with no towers: 8 goblins, 8 leaks, clear bonus paid', async ({ pag
   expect(await hud(page)).toMatchObject({ gold: 'Gold 125', lives: 'Lives 12', wave: 'Wave 1/10', next: 'Next: 12 Goblin' });
 });
 
-test('one musketeer at spot 2 kills 2 goblins in wave 1', async ({ page }) => {
+test('one musketeer at cell (7,5) kills 2 goblins in wave 1', async ({ page }) => {
   await startGame(page);
-  const built = await page.evaluate(() => (window.__tarpit as TarpitTestApi).build(2, 'musketeer'));
+  const built = await page.evaluate(() => (window.__tarpit as TarpitTestApi).buildAt(7, 5, 'musketeer'));
   expect(built.ok).toBe(true);
   await clickButton(page, 'startWave');
   await step(page, 2005);
@@ -69,7 +69,7 @@ test('Start Wave does nothing while a wave is active', async ({ page }) => {
 test('title screen starts the game on click', async ({ page }) => {
   await page.goto('/?test=1');
   await page.waitForFunction(() => window.__tarpit?.scene?.() === 'title');
-  await page.mouse.click(480, 270);
+  await page.mouse.click(480, 290);
   await page.waitForFunction(() => window.__tarpit?.scene?.() === 'game');
 });
 

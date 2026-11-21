@@ -7,11 +7,24 @@ export interface Point {
   y: number;
 }
 
+/** An axis-aligned box in pixels: top-left corner and size. */
+export interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface MapDef {
   width: number;
   height: number;
   /** Polyline from spawn (first point) to exit (last point). */
   path: readonly Point[];
+  /**
+   * Drawn map features off the path (the exit cottage). No cell whose 32 px
+   * square overlaps one is buildable. Optional: test maps leave it out.
+   */
+  landmarks?: readonly Rect[];
 }
 
 export type EnemyType = 'goblin' | 'wolf' | 'troll';

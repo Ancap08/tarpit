@@ -229,3 +229,24 @@ can change it; "Kyle" means Kyle decided.
 - **Legacy spots map to their nearest buildable cell** (table in the
   DEVLOG), so the v1 UI, pins and demo keep working until milestone 9.
   Default (Opus); verified.
+
+## 2026-11-21, milestone 9 (placement UI)
+
+- **HUD is two 50 px rows: status and wave controls above, the build bar
+  below. Canvas 960 x 580.** From `docs/SCOPE-v2.md`; row numbers in the
+  DEVLOG.
+- **A red (unbuildable) cell shows no ghost and no range circle.** Default
+  (Opus). Less noise than a red ghost.
+- **Clicking a tower while a pick is active selects the tower and clears the
+  pick. HUD clicks (Start Wave, speed) keep the pick.** Default (Opus,
+  accepted by Fable); clearing on HUD clicks would break re-clicking the bar.
+- **Cells under the exit cottage are unbuildable.** Fable. The cottage box
+  is map data in `src/sim` (`landmarks`); 344 of 450 cells are buildable. A
+  radius rule around the end waypoints was tried first and removed either no
+  cells or the lazy archetype's first cell.
+- **Panels keep clear of their own tower's label; labels draw on their own
+  layer and stay inside the map.** Opus, found from its own frames.
+- **Accepted for now: labels of towers on adjacent cells overlap.** Fable.
+  Labels are about 56 px wide on 32 px cells. Milestone 11 (new tower
+  visuals) decides between smaller labels, hiding labels when crowded, or
+  leaving it.

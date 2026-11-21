@@ -1,5 +1,6 @@
-// Shape of window.__tarpit. Outside test mode only `game` is set; with
-// ?test=1 every hook below is present (see testMode.ts).
+// Shape of window.__tarpit. Outside test mode only `game` and the read-only
+// `uiRects()` are set (uiRects() is empty until GameScene runs); with ?test=1
+// every hook below is present (see testMode.ts).
 
 import type Phaser from 'phaser';
 import type { BuildResult, GameState, Phase, SellResult, StartWaveResult, TowerType, UpgradeResult } from '../sim';
@@ -17,23 +18,22 @@ export interface TarpitTestApi {
   /** Leave the title screen; resolves once GameScene has been created. */
   startGame(): Promise<void>;
   startWave(): StartWaveResult;
-  /** Build on legacy spot `spotId`'s cell (src/game/legacySpots.ts). */
-  build(spotId: number, type: TowerType): BuildResult;
-  upgrade(spotId: number): UpgradeResult;
-  sell(spotId: number): SellResult;
-  /** Build on any grid cell (milestone 8; for milestone 9's tests). */
+  /** Build on grid cell (col, row) through the scene's action (no clicks). */
   buildAt(col: number, row: number, type: TowerType): BuildResult;
+  upgradeAt(col: number, row: number): UpgradeResult;
+  sellAt(col: number, row: number): SellResult;
   setSpeed(speed: 1 | 2): void;
   speed(): 1 | 2;
   /**
    * Canvas-space rectangles of everything clickable, by name: `startWave`,
-   * `speed`, `spot:<id>` for every build spot, and while open `menu:musketeer`,
-   * `menu:cannon`, `menu:tarpit`, `panel:upgrade`, `panel:sell`, and
-   * `playAgain` while an end screen shows. At the
-   * 960x540 test viewport, canvas space equals page space.
+   * `speed`, `bar:musketeer`, `bar:cannon`, `bar:tarpit`, while the tower
+   * panel is open `panel:upgrade` and `panel:sell`, and `playAgain` while an
+   * end screen shows. Map cells are not listed: cell (col, row) is clicked at
+   * (col * 32 + 16, row * 32 + 16). At the 960x580 test viewport, canvas
+   * space equals page space.
    */
   uiRects(): { startWave: Rect; speed: Rect } & Record<string, Rect>;
-  /** Build UI state: the menu's legacy spot id, the selected tower's legacy spot id, and which popup is open. */
+  /** Build UI state: the bar's pick, the hovered cell, the selected tower's cell, and whether the panel is open. */
   ui(): UiState;
   hudText(): HudStrings;
   /** The end screen showing ('won' or 'lost'), or null. */
@@ -45,7 +45,7 @@ export interface TarpitTestApi {
   runScript(name: 'soundBuild' | 'lazyBuild'): Phase;
 }
 
-export type TarpitGlobal = Pick<TarpitTestApi, 'game'> & Partial<TarpitTestApi>;
+export type TarpitGlobal = Pick<TarpitTestApi, 'game' | 'uiRects'> & Partial<TarpitTestApi>;
 
 declare global {
   interface Window {

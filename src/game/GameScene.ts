@@ -5,15 +5,21 @@
 // In test mode (?test=1) update() runs no ticks; tests drive time with
 // advance() through window.__tarpit.step().
 //
-// Build UI: clicking an empty spot opens the build menu beside it; clicking a
-// tower selects it and opens the tower panel. Milestone 8: the spots are the
-// ten legacy cells (legacySpots.ts); the menu, panel and actions work on
-// cells, and a spot id is only the index used for hit-testing and names. Clicking anywhere else or
-// pressing Escape closes either. Both work in setup and mid-wave. The scene
-// changes the simulation only through its exported actions.
+// Build UI (milestone 9): the HUD's build bar picks a tower type. With a
+// pick active, the hovered map cell is tinted green (buildable) or red (not),
+// and a buildable cell shows a ghost of the tower with its range circle.
+// Clicking a buildable cell builds there and keeps the pick, so the player
+// can keep placing; the pick clears when the same bar button is clicked
+// again, on Escape, when gold drops below its cost, or when a tower is
+// clicked (which selects that tower instead). Without a pick, clicking a
+// tower selects it and opens the tower panel; clicking empty map or pressing
+// Escape deselects. A pick and a selection never coexist. Everything works in
+// setup and mid-wave. The scene changes the simulation only through its
+// exported actions.
 //
 // End of game: every redraw checks the sim's phase; once it is 'won' or
-// 'lost' the end screen shows (once), popups close and map input is ignored.
+// 'lost' the end screen shows (once), the pick and panel clear, the bar greys
+// and map input is ignored.
 // [Play again] restarts this scene: Phaser shuts it down (destroying every
 // game object and the input and keyboard listeners) and runs create() again,
 // which makes a fresh createGame() and resets speed to 1x.
@@ -21,9 +27,10 @@
 import Phaser from 'phaser';
 import {
   buildTower,
+  CELL,
   cellCenter,
-  cellKey,
   createGame,
+  isBuildable,
   sellTower,
   startWave,
   tick,
@@ -38,13 +45,12 @@ import { drawEnemies } from './draw/enemies';
 import { TowerLabels } from './draw/labels';
 import { drawMap } from './draw/map';
 import { ShotEffects } from './draw/shots';
-import { Aim, drawTowers } from './draw/towers';
+import { Aim, drawTowerShape, drawTowers } from './draw/towers';
 import { Hud } from './hud';
-import { classifyClick, contains, spotAt, spotRect, SPOT_HIT_RADIUS, type Rect } from './input';
+import { cellAt, cellRect, classifyClick, contains, type Rect } from './input';
 import { COLORS } from './palette';
-import { LEGACY_SPOT_CELLS, spotCenter, spotIdOf } from './legacySpots';
 import { isTestMode } from './testMode';
-import { BuildMenu } from './ui/buildMenu';
+import { canPick } from './ui/buildBar';
 import { EndScreen } from './ui/endScreen';
 import { endKind, type EndKind } from './ui/endText';
 import { TowerPanel } from './ui/towerPanel';
@@ -54,13 +60,22 @@ const MAX_TICKS_PER_FRAME = 8;
 
 export type Speed = 1 | 2;
 
-/** Build UI state. Spot ids are legacy spot indexes (null if the cell is not one of the ten). */
+/** Build UI state, as the test hook ui() reports it. */
 export interface UiState {
-  activeSpot: number | null;
-  selectedSpot: number | null;
-  menuOpen: boolean;
+  /** The build bar's active pick, or null. */
+  pick: TowerType | null;
+  /** The map cell under the pointer (not under the panel), or null. */
+  hoverCell: Cell | null;
+  /** The selected tower's cell (its panel is open), or null. */
+  selectedCell: Cell | null;
   panelOpen: boolean;
 }
+
+/** Placement ghost opacity. */
+const GHOST_ALPHA = 0.6;
+/** Placement cell highlight: fill opacity and outline width. */
+const CELL_FILL_ALPHA = 0.25;
+const CELL_LINE = 2;
 
 export class GameScene extends Phaser.Scene {
   state: GameState = createGame();
@@ -70,13 +85,15 @@ export class GameScene extends Phaser.Scene {
   private labels!: TowerLabels;
   private overlay!: Phaser.GameObjects.Graphics;
   private hud!: Hud;
-  private menu!: BuildMenu;
   private panel!: TowerPanel;
   private endScreen!: EndScreen;
-  /** Spot under the pointer (for the hover highlight), or null. */
-  private hoverSpot: number | null = null;
-  /** Tower type whose build-menu button is hovered (for the range preview), or null. */
-  private preview: TowerType | null = null;
+  /** The build bar's active pick, or null. */
+  private pick: TowerType | null = null;
+  /** Last pointer position over the canvas, or null once it leaves. */
+  private pointer: { x: number; y: number } | null = null;
+  /** The map cell under the pointer (recomputed on every redraw), or null. */
+  private hoverCell: Cell | null = null;
+  private cursor = 'default';
   private shots = new ShotEffects();
   private aim = new Aim();
   private readonly autoTick = !isTestMode();
@@ -92,11 +109,14 @@ export class GameScene extends Phaser.Scene {
     this.shots = new ShotEffects();
     this.aim = new Aim();
 
-    this.hoverSpot = null;
-    this.preview = null;
+    this.pick = null;
+    this.pointer = null;
+    this.hoverCell = null;
+    this.cursor = 'default';
 
-    // Draw order: map, overlay (spot highlights, range circles), towers and
-    // enemies, tower labels, HUD, then the menu and panel on top.
+    // Draw order: map, overlay (cell highlight, range circles, ghost), towers
+    // and enemies, tower labels, HUD (which covers any range circle reaching
+    // below the map), then the panel and the end screen on top.
     drawMap(this.add.graphics());
     this.overlay = this.add.graphics();
     this.dynamic = this.add.graphics();
@@ -104,13 +124,7 @@ export class GameScene extends Phaser.Scene {
     this.hud = new Hud(this, {
       onStartWave: () => this.startWave(),
       onToggleSpeed: () => this.setSpeed(this.speed === 1 ? 2 : 1),
-    });
-    this.menu = new BuildMenu(this, {
-      onBuild: (type) => this.buildFromMenu(type),
-      onPreview: (type) => {
-        this.preview = type;
-        this.redraw();
-      },
+      onPick: (type) => this.togglePick(type),
     });
     this.panel = new TowerPanel(this, {
       onUpgrade: () => {
@@ -119,80 +133,82 @@ export class GameScene extends Phaser.Scene {
       onSell: () => {
         const cell = this.panel.cell;
         if (cell === null) return;
-        this.closeUi();
+        this.panel.close();
         this.sell(cell);
       },
     });
     this.endScreen = new EndScreen(this, () => this.playAgain());
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.onPointerDown(p.x, p.y));
-    this.input.on('pointermove', (p: Phaser.Input.Pointer) => this.onPointerMove(p.x, p.y));
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => this.onPointerMove({ x: p.x, y: p.y }));
+    this.input.on('gameout', () => this.onPointerMove(null));
     this.input.keyboard?.on('keydown-ESC', () => this.closeUi());
     this.redraw();
   }
 
-  /** The open menu's or panel's box, if any. */
-  private openUiRect(): Rect | null {
-    return this.menu.rect ?? this.panel.rect;
-  }
-
   private onPointerDown(x: number, y: number): void {
+    this.pointer = { x, y };
     if (this.endScreen.kind) return; // the veil swallows map clicks
-    const target = classifyClick(x, y, this.openUiRect());
-    if (target.kind === 'ui') return; // the menu or panel buttons handle it
-    if (target.kind === 'spot') this.openSpot(target.spotId);
-    else this.closeUi();
-  }
-
-  private onPointerMove(x: number, y: number): void {
-    if (this.endScreen.kind) return;
-    const ui = this.openUiRect();
-    const spot = ui && contains(ui, x, y) ? null : spotAt(x, y);
-    if (spot === this.hoverSpot) return;
-    this.hoverSpot = spot;
-    this.input.setDefaultCursor(spot === null ? 'default' : 'pointer');
+    const target = classifyClick(x, y, this.panel.rect, this.state);
+    switch (target.kind) {
+      case 'ui':
+        return; // the panel buttons handle it
+      case 'tower':
+        this.pick = null;
+        this.panel.open(target.cell, this.state);
+        break;
+      case 'buildable':
+        if (this.pick) this.build(target.cell, this.pick);
+        else this.panel.close();
+        break;
+      case 'blocked':
+        if (!this.pick) this.panel.close();
+        break;
+      case 'outside':
+        // The HUD: its buttons act on their own; the pick stays (the bar
+        // toggles it), and a selection closes as on any other click away.
+        this.panel.close();
+        break;
+    }
     this.redraw();
   }
 
-  /** Open the build menu at an empty spot, or select the tower on it. */
-  openSpot(spotId: number): void {
-    if (this.endScreen.kind) return;
-    this.closeUi();
-    const cell = LEGACY_SPOT_CELLS[spotId];
-    if (towerAt(this.state, cell)) this.panel.open(cell, this.state);
-    else this.menu.open(cell, this.state);
+  /** Track the pointer (null once it leaves the canvas); the hover cell follows on redraw. */
+  private onPointerMove(p: { x: number; y: number } | null): void {
+    this.pointer = p;
     this.redraw();
   }
 
+  /** A build bar click: pick that type, or clear the pick if it is already active. */
+  private togglePick(type: TowerType): void {
+    if (this.endScreen.kind) return;
+    if (this.pick === type) this.pick = null;
+    else if (canPick(this.state, type)) {
+      this.pick = type;
+      this.panel.close();
+    }
+    this.redraw();
+  }
+
+  /** Escape: clear the pick and the selection. */
   closeUi(): void {
-    this.menu.close();
+    this.pick = null;
     this.panel.close();
-    this.preview = null;
     this.redraw();
-  }
-
-  private buildFromMenu(type: TowerType): void {
-    const cell = this.menu.cell;
-    if (cell === null) return;
-    if (this.build(cell, type).ok) this.closeUi();
   }
 
   uiState(): UiState {
-    const menu = this.menu.cell;
-    const panel = this.panel.cell;
     return {
-      activeSpot: menu === null ? null : spotIdOf(menu),
-      selectedSpot: panel === null ? null : spotIdOf(panel),
-      menuOpen: menu !== null,
-      panelOpen: panel !== null,
+      pick: this.pick,
+      hoverCell: this.hoverCell,
+      selectedCell: this.panel.cell,
+      panelOpen: this.panel.cell !== null,
     };
   }
 
-  /** Every clickable rectangle by name: HUD buttons, `spot:<id>`, open menu or panel buttons, and `playAgain`. */
+  /** Every clickable rectangle by name: HUD and bar buttons, the open panel's buttons, and `playAgain`. */
   uiRects(): Record<string, Rect> {
-    const rects: Record<string, Rect> = { ...this.hud.rects() };
-    LEGACY_SPOT_CELLS.forEach((_, id) => (rects[`spot:${id}`] = spotRect(id)));
-    return { ...rects, ...this.menu.rects(), ...this.panel.rects(), ...this.endScreen.rects() };
+    return { ...this.hud.rects(), ...this.panel.rects(), ...this.endScreen.rects() };
   }
 
   /** The end screen showing, or null. */
@@ -269,53 +285,67 @@ export class GameScene extends Phaser.Scene {
     drawEnemies(g, this.state);
     this.shots.draw(g);
     this.labels.update(this.state);
-    this.hud.update(this.state, this.speed);
     this.syncEndScreen();
     this.redrawUi();
+    this.hud.update(this.state, this.speed, this.pick);
   }
 
   /** Show the end screen once the game is won or lost. Idempotent. */
   private syncEndScreen(): void {
     const kind = endKind(this.state);
     if (kind === null || this.endScreen.kind !== null) return;
-    this.menu.close();
     this.panel.close();
-    this.preview = null;
-    this.hoverSpot = null;
-    this.input.setDefaultCursor('default');
+    this.pick = null;
     this.endScreen.show(kind, this.state);
   }
 
   private redrawUi(): void {
-    // Keep the UI consistent if the state changed under it (for example a
-    // test hook built on the active cell).
-    if (this.menu.cell !== null && towerAt(this.state, this.menu.cell)) this.menu.close();
+    // Keep the UI consistent if the state changed under it (a sale, a test
+    // hook, or gold spent below the pick's cost).
     if (this.panel.cell !== null && !towerAt(this.state, this.panel.cell)) this.panel.close();
-    if (this.menu.cell === null) this.preview = null;
-    this.menu.update(this.state);
+    if (this.pick !== null && !canPick(this.state, this.pick)) this.pick = null;
     this.panel.update(this.state);
+
+    const panelRect = this.panel.rect;
+    const p = this.pointer;
+    this.hoverCell =
+      p === null || this.endScreen.kind !== null || (panelRect !== null && contains(panelRect, p.x, p.y)) ? null : cellAt(p.x, p.y);
+    const hover = this.hoverCell;
+    const hoverTower = hover !== null && towerAt(this.state, hover) !== undefined;
+    const hoverBuildable = hover !== null && isBuildable(this.state, hover);
+    this.setCursor(hoverTower || (this.pick !== null && hoverBuildable) ? 'pointer' : 'default');
 
     const g = this.overlay;
     g.clear();
-    const active = this.menu.cell ?? this.panel.cell;
-
-    if (this.hoverSpot !== null && (active === null || cellKey(active) !== cellKey(LEGACY_SPOT_CELLS[this.hoverSpot]))) {
-      const s = spotCenter(this.hoverSpot);
-      g.lineStyle(2, COLORS.spotHover, 0.9);
-      g.strokeCircle(s.x, s.y, SPOT_HIT_RADIUS);
-    }
 
     const selected = this.panel.cell === null ? undefined : towerAt(this.state, this.panel.cell);
-    if (selected) this.rangeCircle(selected.cell, towerStats(selected).range);
-    if (this.menu.cell !== null && this.preview) {
-      this.rangeCircle(this.menu.cell, TOWER_DEFS[this.preview].base.range);
+    if (selected) {
+      this.rangeCircle(selected.cell, towerStats(selected).range);
+      const s = cellCenter(selected.cell);
+      g.lineStyle(3, COLORS.selectRing, 1);
+      g.strokeCircle(s.x, s.y, 22);
     }
 
-    if (active !== null) {
-      const s = cellCenter(active);
-      g.lineStyle(3, COLORS.spotActive, 1);
-      g.strokeCircle(s.x, s.y, selected ? SPOT_HIT_RADIUS + 4 : SPOT_HIT_RADIUS);
+    if (this.pick !== null && hover !== null) {
+      // Inset by half the outline so the 2 px edge stays inside the cell.
+      const r = cellRect(hover);
+      const color = hoverBuildable ? COLORS.cellOk : COLORS.cellBad;
+      g.fillStyle(color, CELL_FILL_ALPHA);
+      g.fillRect(r.x, r.y, CELL, CELL);
+      g.lineStyle(CELL_LINE, color, 1);
+      g.strokeRect(r.x + CELL_LINE / 2, r.y + CELL_LINE / 2, CELL - CELL_LINE, CELL - CELL_LINE);
+      // A blocked cell shows only the red tint: no ghost, no range.
+      if (hoverBuildable) {
+        this.rangeCircle(hover, TOWER_DEFS[this.pick].base.range);
+        drawTowerShape(g, this.pick, cellCenter(hover), this.aim.angle(hover), false, GHOST_ALPHA);
+      }
     }
+  }
+
+  private setCursor(cursor: string): void {
+    if (cursor === this.cursor) return;
+    this.cursor = cursor;
+    this.input.setDefaultCursor(cursor);
   }
 
   /** A tower's reach: faint fill, strong pale-yellow edge that reads on grass and path. */

@@ -1,4 +1,11 @@
-import type { MapDef, Point } from './types';
+import type { MapDef, Point, Rect } from './types';
+
+/**
+ * The exit cottage's bounding box, chimney and roof eaves included: walls
+ * x 912..940, roof x 908..944, chimney top y 131, base y 168 (4 px above
+ * the path strip's edge). draw/map.ts draws the cottage inside it.
+ */
+export const COTTAGE: Rect = { x: 908, y: 131, width: 36, height: 37 };
 
 /** The one v1 map, from docs/DESIGN.md. */
 export const MAP: MapDef = {
@@ -14,6 +21,8 @@ export const MAP: MapDef = {
     { x: 680, y: 192 },
     { x: 960, y: 192 },
   ],
+  // The spawn cave sits on the path's cells already; only the cottage is a landmark.
+  landmarks: [COTTAGE],
 };
 
 function segmentLength(a: Point, b: Point): number {

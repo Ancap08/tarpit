@@ -6,8 +6,9 @@ Anything not in this file or `docs/SCOPE.md` is out of scope.
 
 ## Space and time
 
-- Canvas 960 x 540. The map uses the top 960 x 480; the HUD uses the bottom
-  60 px.
+- Canvas 960 x 580 (v2, milestone 9; v1 was 960 x 540). The map uses the
+  top 960 x 480; the HUD uses the bottom 100 px in two rows: stats and the
+  wave and speed buttons, then the build bar.
 - Positions are in pixels. Speeds are pixels per second.
 - The simulation runs at a fixed 60 ticks per second (`dt = 1/60 s`). It has
   no randomness in v1, so a given sequence of actions always produces the
@@ -28,8 +29,11 @@ Build grid (v2, milestone 8): the 960 x 480 map is a 30 x 15 grid of 32 px
 cells. A cell `{ col, row }` has its centre at (col * 32 + 16, row * 32 + 16)
 and the integer key `row * 30 + col`. A cell is buildable when it is inside
 the grid, its centre is at least 36 px (inclusive) from the path centreline,
-and no tower stands on it. On this map 346 of the 450 cells pass the path
-rule. Each cell holds at most one tower. Building on a cell outside the grid,
+its 32 px square does not overlap a landmark, and no tower stands on it. The
+one landmark is the exit cottage's box, x 908..944, y 131..168 (milestone
+9), which removes cells (28,4) and (29,4); the spawn cave sits on path
+cells already. On this map 344 of the 450 cells pass the path and landmark
+rules (346 by the path rule alone). Each cell holds at most one tower. Building on a cell outside the grid,
 on the path strip or with a non-integer column or row is refused
 (`not-buildable`); building on an occupied cell is refused (`cell-occupied`).
 Towers fire in cellKey order (row by row, left to right).

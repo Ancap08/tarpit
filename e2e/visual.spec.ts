@@ -29,10 +29,10 @@ test('map at wave 0', async ({ page }) => {
   await expect(page.locator('canvas')).toHaveScreenshot('map-wave0.png');
 });
 
-// 848 ticks into wave 1 the Cannon at spot 6 fired 3 ticks ago (its first
-// shot, at tick 845), so its tracer and splash circle are mid-fade; five
+// 848 ticks into wave 1 the Cannon at cell (15,9) (legacy spot 6) fired 3
+// ticks ago (its first shot, at tick 845), so its tracer and splash circle are mid-fade; five
 // goblins are out and four are hurt. With these spots no single frame shows
-// two shot types: the Musketeer at spot 2 fires every 60 ticks (392, 452,
+// two shot types: the Musketeer at (7,5) fires every 60 ticks (392, 452,
 // ...) with a 6-tick tracer, and the base Tar Pit first fires at tick 1404.
 // Tick 855 was chosen by the coordinator over 395 (Musketeer tracer only)
 // because the splash and hp bars cover more of the renderer; milestone 8
@@ -46,9 +46,9 @@ test('mid wave 1 with three towers', async ({ page }) => {
     const t = window.__tarpit as TarpitTestApi;
     await t.startGame();
     t.state().gold = 1000; // test setup: afford all three towers
-    t.build(2, 'musketeer');
-    t.build(6, 'cannon');
-    t.build(7, 'tarpit');
+    t.buildAt(7, 5, 'musketeer'); // legacy spot 2
+    t.buildAt(15, 9, 'cannon'); // legacy spot 6
+    t.buildAt(18, 9, 'tarpit'); // legacy spot 7
     t.startWave();
     t.step(steps);
     const s = t.state();
@@ -62,9 +62,9 @@ test('mid wave 1 with three towers', async ({ page }) => {
 // All three enemy types with their hp bars, for Wolf and Troll coverage.
 // Wave 8 is the only wave with Goblins, Wolves and Trolls together, so the
 // test jumps there (state.wave = 7, then Start Wave) with 1000 gold and a
-// Musketeer at spot 2, Cannon at 4, Tar Pit at 7 and Musketeer at 9 (legacy
-// cells since milestone 8). Tick 1350 was picked from a headless scan of
-// every 30th tick (milestone 8; it was 1200 with the v1 spots): 10 Goblins,
+// Musketeer at cell (7,5), Cannon at (10,5), Tar Pit at (18,9) and Musketeer
+// at (23,8) (the former legacy spots 2, 4, 7 and 9). Tick 1350 was picked
+// from a headless scan of every 30th tick (milestone 8; it was 1200 with the v1 spots): 10 Goblins,
 // 3 Wolves and 4 Trolls are out, 3 Trolls are hurt (green bars), 7 Goblins
 // are under 25% (red bars), 4 enemies carry the tar ring, and no two enemies
 // are closer than 21 px, so each shape and bar reads on its own. At 1200 two
@@ -80,10 +80,10 @@ test('wave 8 with all three enemy types', async ({ page }) => {
     const s = t.state();
     s.gold = 1000; // test setup: afford four towers
     s.wave = 7; // test setup: the next Start Wave plays wave 8
-    t.build(2, 'musketeer');
-    t.build(4, 'cannon');
-    t.build(7, 'tarpit');
-    t.build(9, 'musketeer');
+    t.buildAt(7, 5, 'musketeer'); // legacy spot 2
+    t.buildAt(10, 5, 'cannon'); // legacy spot 4
+    t.buildAt(18, 9, 'tarpit'); // legacy spot 7
+    t.buildAt(23, 8, 'musketeer'); // legacy spot 9
     t.startWave();
     t.step(steps);
     const e = t.state().enemies;
@@ -108,23 +108,39 @@ async function click(page: Page, name: string): Promise<void> {
   await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
 }
 
-test('build menu with the Cannon range preview', async ({ page }) => {
+const ui = (page: Page) => page.evaluate(() => (window.__tarpit as TarpitTestApi).ui());
+
+// Placing a Cannon: cell (14,8), centre (464,272), is 44 px right of the long
+// vertical run at x 420, so the green cell, the ghost and its 90 px range
+// circle reaching over the path all show.
+test('placing a Cannon: green cell, ghost and range', async ({ page }) => {
   await open(page);
   await page.evaluate(() => (window.__tarpit as TarpitTestApi).startGame());
-  await click(page, 'spot:2');
-  const r = await page.evaluate(() => (window.__tarpit as TarpitTestApi).uiRects()['menu:cannon']);
-  await page.mouse.move(r.x + r.width / 2, r.y + r.height / 2);
-  expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).ui())).toMatchObject({ activeSpot: 2, menuOpen: true });
+  await click(page, 'bar:cannon');
+  await page.mouse.move(464, 272);
+  expect(await ui(page)).toMatchObject({ pick: 'cannon', hoverCell: { col: 14, row: 8 }, panelOpen: false });
   await settle(page);
-  await expect(page.locator('canvas')).toHaveScreenshot('build-menu.png');
+  await expect(page.locator('canvas')).toHaveScreenshot('placing.png');
+});
+
+// The same pick over path cell (13,8): a red cell and no ghost or range.
+test('placing a Cannon over the path: red cell, no ghost', async ({ page }) => {
+  await open(page);
+  await page.evaluate(() => (window.__tarpit as TarpitTestApi).startGame());
+  await click(page, 'bar:cannon');
+  await page.mouse.move(432, 272);
+  expect(await ui(page)).toMatchObject({ pick: 'cannon', hoverCell: { col: 13, row: 8 }, panelOpen: false });
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('placing-invalid.png');
 });
 
 test('upgraded Musketeer selected with its panel and range', async ({ page }) => {
   await open(page);
   await page.evaluate(() => (window.__tarpit as TarpitTestApi).startGame());
-  await click(page, 'spot:2');
-  await click(page, 'menu:musketeer');
-  await click(page, 'spot:2');
+  await click(page, 'bar:musketeer');
+  await page.mouse.click(240, 176); // cell (7,5)
+  await page.keyboard.press('Escape');
+  await page.mouse.click(240, 176);
   await click(page, 'panel:upgrade');
   // Park the pointer on empty grass so no hover tint shows.
   await page.mouse.move(900, 440);
@@ -132,7 +148,7 @@ test('upgraded Musketeer selected with its panel and range', async ({ page }) =>
     const t = window.__tarpit as TarpitTestApi;
     return { ui: t.ui(), towers: t.state().towers, gold: t.state().gold };
   });
-  expect(s.ui).toMatchObject({ selectedSpot: 2, panelOpen: true });
+  expect(s.ui).toMatchObject({ pick: null, selectedCell: { col: 7, row: 5 }, panelOpen: true });
   expect(s.towers).toEqual([expect.objectContaining({ cell: { col: 7, row: 5 }, type: 'musketeer', upgraded: true })]);
   expect(s.gold).toBe(15);
   await settle(page);
