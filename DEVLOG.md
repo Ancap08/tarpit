@@ -3184,3 +3184,45 @@ Four changes from the coordinator after the verifier's PASS, on top of
   at 0.35 opacity under a 0.3 red wash, without range. Only during drags,
   so `placing-invalid.png` and every other baseline (and `planning.png`)
   are unchanged.
+
+### Verifier notes on the follow-ups
+
+Verifier: Claude Fable 5.2, on `e6199ac`. Verdict: pass.
+
+- **Scope of the two commits.** `git diff b92428e..HEAD` holds the four
+  changes and nothing else: `towerSellValue` (sim and panel), the touch
+  branch of `dragTargetCell`, the `mouseDragLost` guard in `pointermove`,
+  and the faint red ghost, drawn only when a drag is live. Lint,
+  typecheck, unit (496), build, e2e (164) and `npm run sim` exit 0; sim
+  output is still byte-identical to `origin/main` (`ae9fc34`). With the
+  probes below: 502 unit, 167 e2e. The five drag and touch specs plus the
+  new one with `--repeat-each=5`: 215 of 215.
+- **The new sell rule cannot be exploited.** A sale of a locked tower now
+  pays exactly its liquidation worth, so the implementer's tightening of
+  my walk from "at most 4 drops" to 0 is right: the 4 were all this case.
+  I tightened the other bound as well: after every one of the 200 actions
+  in each of five seeded walks, gold plus refundable spend equals the
+  phase-start gold plus only the 70% part of locked sales (it was "at
+  most"), and the walks are checked to include such sales. For all six
+  types one Sell pays the same as Undo then Sell, a sell, rebuild,
+  upgrade, remove cycle adds nothing, and after Start Wave the tower is
+  back to 70% of everything. The edits to my 59 pin, the panel label and
+  touch probe (c) follow the rule changes and keep each test's intent.
+- **Finger over the HUD** (`e2e/drag-verifier2-touch.spec.ts`, 3). A bar
+  drag released with the finger on the Start Wave button builds on the
+  row 13 or 14 cell under the aim point and does not start the wave; over
+  the speed button the speed stays 1x; a tower drag released there moves
+  the tower and does not start the wave. No fix was needed: a button
+  clicks only when the press went down on it. A plain tap on Start Wave
+  still works. With the finger on the build bar the aim point is off the
+  map and both kinds of drag cancel, without changing the pick.
+- **Lost-button guard.** With the guard switched off locally the
+  implementer's CDP probe fails, and passes again with it restored. It is
+  conditioned on a mouse press and a mouse move, and a 31-move touch drag
+  stays live at every step and builds.
+- **Red ghost.** The frame shows a faint red-washed Cannon on a path
+  cell with the red outline and no range; readable. No baseline test
+  performs a drag, so no baseline changes because of it.
+- Still open from the first notes: the baselines (`planning.png` new,
+  `tower-selected.png` changed) are not on the branch until
+  `update-snapshots.yml` runs.

@@ -115,6 +115,7 @@ describe('(a) exploit hunt', () => {
   });
 
   it('200 pseudo-random actions in a later setup with locked towers: liquidation worth never rises', () => {
+    let total = 0;
     for (const seed of [11, 12, 13, 14, 15]) {
       const rnd = lcg(seed);
       const s = createGame();
@@ -130,6 +131,7 @@ describe('(a) exploit hunt', () => {
       const start = s.gold;
       let w = worth(s);
       let lockedSales = 0;
+      let lockedUpgradedSales = 0;
       let losses = 0;
       for (let i = 0; i < 200; i++) {
         const before = snapshot(s);
@@ -144,8 +146,13 @@ describe('(a) exploit hunt', () => {
         else if (pick === 3) r = moveTower(s, at, to);
         else {
           const wasLocked = any?.locked ?? false;
+          const pending = any?.unlockedSpend ?? 0;
           const sold = sellTower(s, at);
-          if (sold.ok && wasLocked) lockedSales += sold.refund;
+          // Only the 70% part of a locked sale is new gold; a fresh upgrade just comes back.
+          if (sold.ok && wasLocked) {
+            lockedSales += sold.refund - pending;
+            if (pending > 0) lockedUpgradedSales++;
+          }
           r = sold;
         }
         if (!r.ok) expect(snapshot(s)).toBe(before);
@@ -154,14 +161,50 @@ describe('(a) exploit hunt', () => {
         if (now < w) losses++;
         w = now;
         // Gold only ever exceeds the phase start by what 70% sales of locked towers paid.
-        expect(s.gold + refundable(s)).toBeLessThanOrEqual(start + lockedSales);
+        expect(s.gold + refundable(s)).toBe(start + lockedSales);
         expect(s.gold).toBeGreaterThanOrEqual(0);
         const keys = s.towers.map((t) => cellKey(t.cell));
         expect(new Set(keys).size).toBe(keys.length);
       }
       // A sale pays exactly the liquidation worth, so worth never drops.
       expect(losses).toBe(0);
+      total += lockedUpgradedSales;
     }
+    expect(total).toBeGreaterThanOrEqual(5); // the walks did sell locked towers with a fresh upgrade
+  });
+});
+
+describe('(a) follow-up: selling a locked tower with a fresh upgrade', () => {
+  it.each(TYPES)('%s: one sell pays exactly what undo then sell pays, and never more than was spent this phase plus 70%% of the rest', (type) => {
+    const { cost, upgradeCost } = TOWER_DEFS[type];
+    const make = () => {
+      const s = createGame();
+      s.gold = cost;
+      buildTower(s, A, type);
+      clearWave(s);
+      s.gold = 500;
+      expect(upgradeTower(s, A)).toMatchObject({ ok: true, gold: 500 - upgradeCost });
+      return s;
+    };
+    const one = make();
+    expect(sellTower(one, A)).toEqual({ ok: true, refund: upgradeCost + sellRefund(cost), gold: 500 + sellRefund(cost) });
+    const two = make();
+    undoUpgrade(two, A);
+    sellTower(two, A);
+    expect(two.gold).toBe(one.gold);
+    // Selling, rebuilding (unlocked now), upgrading and removing again adds nothing more.
+    const loop = make();
+    sellTower(loop, A);
+    const after = loop.gold;
+    buildTower(loop, A, type);
+    upgradeTower(loop, A);
+    expect(sellTower(loop, A)).toMatchObject({ ok: true, refund: cost + upgradeCost });
+    expect(loop.gold).toBe(after);
+    expect(after).toBe(500 + sellRefund(cost));
+    // After Start Wave the same tower is back to 70% of everything.
+    const late = make();
+    startWave(late);
+    expect(sellTower(late, A)).toMatchObject({ ok: true, refund: sellRefund(cost + upgradeCost) });
   });
 });
 
