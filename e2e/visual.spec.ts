@@ -65,7 +65,8 @@ test('mid wave 1 with three towers', async ({ page }) => {
 // Musketeer at cell (7,5), Cannon at (10,5), Tar Pit at (18,9) and Musketeer
 // at (23,8) (the former legacy spots 2, 4, 7 and 9). Tick 1350 was picked
 // from a headless scan of every 30th tick (milestone 8; it was 1200 with the v1 spots): 10 Goblins,
-// 3 Wolves and 4 Trolls are out, 3 Trolls are hurt (green bars), 7 Goblins
+// 3 Wolves and 7 Trolls are out (4 before milestone 12 made wave 8 heavier;
+// rechecked in milestone 12), 3 Trolls are hurt (green bars), 7 Goblins
 // are under 25% (red bars), 4 enemies carry the tar ring, and no two enemies
 // are closer than 21 px, so each shape and bar reads on its own. At 1200 two
 // enemies were 10 px apart; from 1230 to 1320 some overlap; later ticks lose
@@ -93,11 +94,11 @@ test('wave 8 with all three enemy types', async ({ page }) => {
       goblins: of('goblin').length,
       wolves: of('wolf').length,
       trolls: of('troll').length,
-      hurtTrolls: of('troll').filter((x) => x.hp < 500).length, // Troll max hp is 500
+      hurtTrolls: of('troll').filter((x) => x.hp < 700).length, // Troll max hp is 700
       slowed: e.filter((x) => x.slowTicksLeft > 0).length,
     };
   }, ENEMIES_STEPS);
-  expect(counts).toEqual({ wave: 8, goblins: 10, wolves: 3, trolls: 4, hurtTrolls: 3, slowed: 4 });
+  expect(counts).toEqual({ wave: 8, goblins: 10, wolves: 3, trolls: 7, hurtTrolls: 3, slowed: 4 });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('enemies.png');
 });
@@ -160,11 +161,13 @@ test('upgraded Musketeer selected with its panel and range', async ({ page }) =>
 // Start Wave). The Mortar is selected with a real click so its 220 range and
 // dashed 70 minimum-range circles show. A headless scan of every tick found
 // a Mortar effect on screen together with a slowed and burning enemy only at
-// ticks 1572..1583 and 1752..1763 (the Goblins die before reaching the
-// Mortar's ring; only the two Trolls are left). Tick 1754: the Mortar fired
-// at tick 1752 (splash 2 ticks into its 12-tick fade), both Trolls carry the
-// tar and burn rings and are 11 px apart on the downhill run (at 1572 they
-// overlap exactly), and Troll 3 is at 1 hp (red bar).
+// ticks 1572..1583, 1752..1763 and 1932..1943 (the Goblins die before
+// reaching the Mortar's ring; only the two Trolls are left), and both
+// Trolls slowed and burning only in the first two. Tick 1754: the Mortar
+// fired at tick 1752 (splash 2 ticks into its 12-tick fade), both Trolls
+// carry the tar and burn rings and are 11 px apart on the downhill run (at
+// 1572 they overlap exactly), and Troll 3 is at 201 of 700 hp (milestone
+// 12; it was at 1 of 500 hp before).
 const MORTAR_FIRE_TICK = 1752;
 const NEW_TOWERS_STEPS = 1754;
 
@@ -211,15 +214,15 @@ test('new towers upgraded, Mortar selected, splash and burning tarred Trolls', a
 });
 
 // End screens: the HUD under the veil shows the final numbers.
-test('win screen after the sound build', async ({ page }) => {
+test('win screen after the combo build', async ({ page }) => {
   await open(page);
   const end = await page.evaluate(async () => {
     const t = window.__tarpit as TarpitTestApi;
     await t.startGame();
-    const phase = t.runScript('soundBuild');
+    const phase = t.runScript('comboBuild');
     return { phase, screen: t.endScreen(), lives: t.state().lives, gold: t.state().gold };
   });
-  expect(end).toEqual({ phase: 'won', screen: 'won', lives: 13, gold: 269 });
+  expect(end).toEqual({ phase: 'won', screen: 'won', lives: 11, gold: 177 });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('won.png');
 });

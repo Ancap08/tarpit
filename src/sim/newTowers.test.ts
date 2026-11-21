@@ -92,19 +92,19 @@ describe('stat tables', () => {
 });
 
 describe('longbow', () => {
-  it('6 damage every 24 ticks: a goblin dies on the 5th hit, at step 96, for 4 gold', () => {
+  it('4 damage every 24 ticks: a goblin dies on the 8th hit, at step 168, for 4 gold', () => {
     const s = arena([enemy(0, 138)], [[P, 'longbow']]);
     step(s);
-    expect(hp(s)).toEqual({ 0: 24 });
+    expect(hp(s)).toEqual({ 0: 26 });
     expect(s.towers[0].cooldownTicks).toBe(24);
     expect(s.shots).toEqual([{ cell: P, tower: 'longbow', targetId: 0, from: { x: 208, y: 240 }, to: { x: 138, y: 240 } }]);
     for (let i = 1; i < 24; i++) step(s);
-    expect(hp(s)).toEqual({ 0: 24 });
+    expect(hp(s)).toEqual({ 0: 26 });
     step(s); // step 24
-    expect(hp(s)).toEqual({ 0: 18 });
-    for (let i = 25; i < 96; i++) step(s);
-    expect(hp(s)).toEqual({ 0: 6 });
-    step(s); // step 96: fifth hit
+    expect(hp(s)).toEqual({ 0: 22 });
+    for (let i = 25; i < 168; i++) step(s);
+    expect(hp(s)).toEqual({ 0: 2 });
+    step(s); // step 168: eighth hit
     expect(s.enemies).toEqual([]);
     expect(s.gold).toBe(4);
   });

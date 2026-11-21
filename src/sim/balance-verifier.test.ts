@@ -11,6 +11,7 @@ import { createGame, TICKS_PER_SECOND, WAVE_CLEAR_BONUS } from './game';
 import { enemyPosition } from './combat';
 import { cellCenter, type Cell } from './grid';
 import { TOWER_DEFS } from './towers';
+import { ENEMY_STATS } from './enemies';
 import type { Enemy } from './types';
 
 describe('balance verifier probes', () => {
@@ -30,7 +31,7 @@ describe('balance verifier probes', () => {
     s.spawnedPerGroup = [8]; // wave 1 has nothing left to spawn
     expect(buildTower(s, cell, 'musketeer').ok).toBe(true);
     s.gold = 0;
-    const troll: Enemy = { id: 0, type: 'troll', hp: 500, distance: 0, slow: 0, slowTicksLeft: 0 };
+    const troll: Enemy = { id: 0, type: 'troll', hp: ENEMY_STATS.troll.hp, distance: 0, slow: 0, slowTicksLeft: 0 };
     s.enemies = [troll];
     s.nextEnemyId = 100;
 
@@ -43,7 +44,7 @@ describe('balance verifier probes', () => {
       if (Math.hypot(p.x - at.x, p.y - at.y) <= range) inRangeTicks += 1;
     }
     const maxShots = Math.ceil(inRangeTicks / TICKS_PER_SECOND) + 1;
-    expect(maxShots * TOWER_DEFS.musketeer.base.damage).toBeLessThan(500);
+    expect(maxShots * TOWER_DEFS.musketeer.base.damage).toBeLessThan(ENEMY_STATS.troll.hp);
 
     for (let i = 0; i < 60 * 600 && s.enemies.length > 0; i++) {
       // tick via the headless runner's own loop would end the wave; call directly

@@ -31,7 +31,7 @@ export const TOWER_DEFS: Readonly<Record<TowerType, TowerDef>> = {
   longbow: {
     cost: 40,
     upgradeCost: 30,
-    base: { ...PLAIN, range: 150, damage: 6, fireRate: 2.5 },
+    base: { ...PLAIN, range: 150, damage: 4, fireRate: 2.5 },
     upgraded: { ...PLAIN, range: 170, damage: 9, fireRate: 2.5 },
   },
   mortar: {

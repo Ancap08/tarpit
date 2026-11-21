@@ -106,11 +106,11 @@ test('(c) lose screen: Start Wave, speed and the bar do nothing; no cell builds 
 
 test('(d) win screen HUD text', async ({ page }) => {
   await startGame(page);
-  await api(page, (a) => a.runScript('soundBuild'));
+  await api(page, (a) => a.runScript('comboBuild'));
   expect(await endScreen(page)).toBe('won');
   expect(await api(page, (a) => a.hudText())).toMatchObject({
-    gold: 'Gold 269',
-    lives: 'Lives 13',
+    gold: 'Gold 177',
+    lives: 'Lives 11',
     wave: 'Wave 10/10',
     next: 'Next: none',
   });

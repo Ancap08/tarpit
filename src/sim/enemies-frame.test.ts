@@ -11,7 +11,7 @@ import { ENEMY_STATS } from './enemies';
 import { createGame, startWave, tick } from './game';
 
 describe('enemies.png frame content', () => {
-  it('has 10 Goblins, 3 Wolves, 4 Trolls, 3 hurt Trolls and 4 slowed enemies at tick 1350 of wave 8', () => {
+  it('has 10 Goblins, 3 Wolves, 7 Trolls, 3 hurt Trolls and 4 slowed enemies at tick 1350 of wave 8', () => {
     const s = createGame();
     s.gold = 1000;
     s.wave = 7;
@@ -29,6 +29,6 @@ describe('enemies.png frame content', () => {
       trolls: of('troll').length,
       hurtTrolls: of('troll').filter((e) => e.hp < ENEMY_STATS.troll.hp).length,
       slowed: s.enemies.filter((e) => e.slowTicksLeft > 0).length,
-    }).toEqual({ wave: 8, goblins: 10, wolves: 3, trolls: 4, hurtTrolls: 3, slowed: 4 });
+    }).toEqual({ wave: 8, goblins: 10, wolves: 3, trolls: 7, hurtTrolls: 3, slowed: 4 });
   });
 });

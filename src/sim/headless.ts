@@ -7,7 +7,8 @@
 import { buildTower, sellTower, towerAt, upgradeTower, type BuildResult, type SellResult, type UpgradeResult } from './actions';
 import { createGame, startWave, tick, type StartWaveResult } from './game';
 import type { GameState, TowerType } from './types';
-import { buildableCells, cellCenter, cellFromKey, cellKey, CELL, MIN_PATH_CLEARANCE, nearestPathPoint, type Cell } from './grid';
+import { buildableCells, cellCenter, cellFromKey, cellKey, type Cell } from './grid';
+import { MAP, pathLength, positionAlongPath } from './map';
 import { TOWER_DEFS } from './towers';
 import { WAVES } from './waves';
 
@@ -141,28 +142,43 @@ function recordScript(decide: Decide): WaveScript {
   return script;
 }
 
-/**
- * Cells a kid builds on hug the path: buildable cells in the first ring
- * beside the path strip, whose centre is less than one cell further out than
- * the minimum clearance (36 + 32 = 68 px from the centreline).
- */
-export const KID_BAND = MIN_PATH_CLEARANCE + CELL;
+/** Spacing of the trail walk's step points along the path, in pixels (three cells). */
+export const TRAIL_STEP = 96;
+/** A step point takes the nearest free buildable cell whose centre is within this many pixels. */
+export const TRAIL_REACH = 72;
 
 /**
- * The order a kid fills cells, hugging the path from the entrance: buildable
- * cells in KID_BAND, sorted by how far along the path their nearest path
- * point lies (spawn first), then by distance to the path, then by cellKey.
+ * The order a kid fills cells (milestone 12), spread along the trail: walk
+ * the path from the spawn in steps of TRAIL_STEP px, starting at path
+ * distance TRAIL_STEP. At each step point take the nearest buildable cell
+ * whose centre is within TRAIL_REACH px of the point and not already in the
+ * list (ties by cellKey); skip the point if there is none. So towers spread
+ * along the whole path instead of stacking at the map's left edge.
  */
-export const KID_CELL_ORDER: readonly Cell[] = buildableCells()
-  .map((ok, key) => ({ ok, key, cell: cellFromKey(key) }))
-  .filter((c) => c.ok)
-  .map((c) => ({ ...c, near: nearestPathPoint(cellCenter(c.cell)) }))
-  .filter((c) => c.near.distance < KID_BAND)
-  .sort((a, b) => a.near.along - b.near.along || a.near.distance - b.near.distance || a.key - b.key)
-  .map((c) => c.cell);
+export const TRAIL_CELL_ORDER: readonly Cell[] = ((): Cell[] => {
+  const mask = buildableCells();
+  const used = new Set<number>();
+  const order: Cell[] = [];
+  const total = pathLength(MAP);
+  for (let d = TRAIL_STEP; d <= total; d += TRAIL_STEP) {
+    const p = positionAlongPath(MAP, d);
+    let best: { key: number; dist: number } | undefined;
+    mask.forEach((ok, key) => {
+      if (!ok || used.has(key)) return;
+      const ctr = cellCenter(cellFromKey(key));
+      const dist = Math.hypot(ctr.x - p.x, ctr.y - p.y);
+      if (dist <= TRAIL_REACH && (!best || dist < best.dist)) best = { key, dist };
+    });
+    if (best) {
+      used.add(best.key);
+      order.push(cellFromKey(best.key));
+    }
+  }
+  return order;
+})();
 
 function nextFreeKidCell(state: GameState): Cell | undefined {
-  return KID_CELL_ORDER.find((cell) => !towerAt(state, cell));
+  return TRAIL_CELL_ORDER.find((cell) => !towerAt(state, cell));
 }
 
 /** Archetype 1: build nothing. Target: lost by wave 3. */
@@ -172,8 +188,8 @@ export function noTowers(): WaveScript {
 
 /**
  * Archetype 2, a kid's build: before each wave, buy base Musketeers while
- * affordable, on cells in KID_CELL_ORDER. Never upgrades, never sells.
- * v1 target (suspended until milestone 12): lost on wave 6, 7 or 8.
+ * affordable, on cells in TRAIL_CELL_ORDER. Never upgrades, never sells.
+ * v2 target (milestone 12): lost on wave 6, 7 or 8.
  */
 export function lazyBuild(): WaveScript {
   return recordScript((state) => {
@@ -186,8 +202,7 @@ export function lazyBuild(): WaveScript {
 /**
  * Archetype 3: like lazyBuild, but an unupgraded Musketeer is upgraded
  * (when affordable) before another is bought, so purchases alternate buy,
- * upgrade, buy. v1 target (suspended until milestone 12): lost on wave 8 to
- * 10, or won with at most 5 lives.
+ * upgrade, buy. Informational since milestone 12: no target.
  */
 export function greedyMusket(): WaveScript {
   return recordScript((state) => {
@@ -203,7 +218,7 @@ export function greedyMusket(): WaveScript {
 
 /**
  * Cheap spam (milestone 10): before each wave, buy base Longbows while
- * affordable, on cells in KID_CELL_ORDER. Never upgrades, never sells.
+ * affordable, on cells in TRAIL_CELL_ORDER. Never upgrades, never sells.
  * v2 target (milestone 12): lost on wave 7 to 9.
  */
 export function longbowSpam(): WaveScript {
@@ -257,8 +272,8 @@ export const SOUND_PLAN: readonly BuildAction[] = [
 
 /**
  * Archetype 4, a thoughtful mixed build: SOUND_PLAN, each action bought as
- * soon as gold allows. Must win (milestone 8); the v1 targets of 5 to 15
- * lives and under 150 gold after wave 9 return in milestone 12.
+ * soon as gold allows. v1 towers only. Informational since milestone 12: no
+ * target (the combo build carries the v2 targets).
  */
 export function soundBuild(): WaveScript {
   return recordScript(followPlan(SOUND_PLAN));
@@ -266,8 +281,8 @@ export function soundBuild(): WaveScript {
 
 /**
  * soundBuild with every Tar Pit action removed: no Tar Pit builds and no
- * upgrades on the cells where soundBuild builds them. Must not do better
- * than soundBuild (milestone 8); strictly worse returns in milestone 12.
+ * upgrades on the cells where soundBuild builds them. Informational since
+ * milestone 12: no target.
  */
 export function soundBuildNoTar(): WaveScript {
   const script = soundBuild();
@@ -282,24 +297,28 @@ function withoutTowerType(script: WaveScript, type: TowerType): WaveScript {
 }
 
 /**
- * The combo build's plan (milestone 10), in purchase order (cells as col,
- * row). Two Longbows by the first corner for the early Goblins and the
- * Wolves. Then a Tar Pit (14,6) and a Fire Pot (14,8) side by side right of
- * the long downhill run (x = 420): their ranges overlap on y 182..287 of
- * that run, so tarred enemies burn at double rate. A Mortar (17,6) in the
- * middle of the map reaches the downhill, bottom and uphill runs for the
- * Trolls; upgrades to the combo next, a third Longbow, then upgrades, a
- * second Mortar (17,9) and a fourth Longbow (19,7). Found in two runs of
- * `npm run sim` (DEVLOG, milestone 10).
+ * The combo build's plan (re-planned in milestone 12), in purchase order
+ * (cells as col, row). Two Longbows at (9,5) and (9,4) inside the first U,
+ * where a 150 px range reaches the climb, the top run and the downhill run.
+ * Then a Tar Pit (14,10) and a Fire Pot (14,9) inside the bottom-left corner
+ * of the second U: both reach the end of the downhill run and the start of
+ * the bottom run, so tarred enemies burn at double rate there. A Mortar
+ * (17,6) in the middle of the second U reaches the downhill, bottom and
+ * uphill runs for the Trolls. Then upgrades to the combo, the Mortar and the
+ * first Longbows as gold allows, a second Mortar (9,7) in the first U,
+ * Longbows (17,9) and (17,10) on the bottom of the second U, and a second
+ * Tar Pit and Fire Pot pair at (11,4) and (10,4) on the top run. Every
+ * action is bought by wave 10.
  */
 export const COMBO_PLAN: readonly BuildAction[] = [
-  lb(6, 5), lb(2, 5), t(14, 6), fp(14, 8), mo(17, 6), up(14, 6), up(14, 8), lb(11, 4), up(17, 6),
-  up(6, 5), up(2, 5), mo(17, 9), up(17, 9), lb(19, 7), up(11, 4), up(19, 7),
+  lb(9, 5), lb(9, 4), t(14, 10), fp(14, 9), mo(17, 6), up(14, 10), up(14, 9), lb(17, 9), up(17, 6), up(9, 5),
+  up(9, 4), mo(9, 7), lb(17, 10), up(17, 9), up(9, 7), up(17, 10), t(11, 4), fp(10, 4), up(11, 4),
 ];
 
 /**
  * Combo build (milestone 10): COMBO_PLAN, each action bought as soon as gold
- * allows. Must win all 10 waves.
+ * allows. v2 target (milestone 12): won with 5 to 15 lives and under 150
+ * gold after wave 9.
  */
 export function comboBuild(): WaveScript {
   return recordScript(followPlan(COMBO_PLAN));
@@ -307,8 +326,8 @@ export function comboBuild(): WaveScript {
 
 /**
  * comboBuild with every Fire Pot action removed: no Fire Pot builds and no
- * upgrades on the cells where comboBuild builds them. Must do worse than
- * comboBuild: lost, or won with fewer lives.
+ * upgrades on the cells where comboBuild builds them. v2 target (milestone
+ * 12): strictly worse than comboBuild (lost, or won with fewer lives).
  */
 export function comboBuildNoFire(): WaveScript {
   return withoutTowerType(comboBuild(), 'firepot');

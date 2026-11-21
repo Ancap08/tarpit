@@ -4,7 +4,7 @@
 // HUD where it is drawn.
 
 import type Phaser from 'phaser';
-import { lazyBuild, soundBuild, WAVES, type BuildAction, type Phase, type WaveScript } from '../sim';
+import { comboBuild, lazyBuild, soundBuild, WAVES, type BuildAction, type Phase, type WaveScript } from '../sim';
 import type { GameScene } from './GameScene';
 import type { TarpitTestApi } from './testGlobal';
 
@@ -12,7 +12,7 @@ export function isTestMode(): boolean {
   return new URLSearchParams(window.location.search).get('test') === '1';
 }
 
-const SCRIPTS: Record<'soundBuild' | 'lazyBuild', () => WaveScript> = { soundBuild, lazyBuild };
+const SCRIPTS: Record<'soundBuild' | 'lazyBuild' | 'comboBuild', () => WaveScript> = { soundBuild, lazyBuild, comboBuild };
 
 /** Same cap per wave as the headless runner (src/sim/headless.ts). */
 const MAX_TICKS_PER_WAVE = 60 * 600;

@@ -4,8 +4,9 @@ import type { TarpitTestApi } from '../src/game/testGlobal';
 // Win and lose screens reached through the real simulation, and [Play again]
 // through a real click. Time is frozen (?test=1) and driven by step().
 // Numbers come from the verified simulation: with no towers the game is lost
-// on wave 2 with 0 lives; the sound build wins with 13 lives and 269 gold
-// (milestone 8 grid plan; v1 was 11 lives and 253 gold).
+// on wave 2 with 0 lives; the combo build wins with 11 lives and 177 gold
+// (milestone 12; until then the sound build, v1 towers only, won with 13
+// lives and 269 gold, and it no longer wins).
 
 async function startGame(page: Page): Promise<void> {
   await page.goto('/?test=1');
@@ -104,15 +105,15 @@ test('lose with no towers, map clicks do nothing, play again starts a clean game
   expect((await state(page)).towers).toEqual([expect.objectContaining({ cell: { col: 7, row: 5 }, type: 'musketeer' })]);
 });
 
-test('win with the sound build through the scene actions, then play again', async ({ page }) => {
+test('win with the combo build through the scene actions, then play again', async ({ page }) => {
   await startGame(page);
-  const phase = await page.evaluate(() => (window.__tarpit as TarpitTestApi).runScript('soundBuild'));
+  const phase = await page.evaluate(() => (window.__tarpit as TarpitTestApi).runScript('comboBuild'));
   expect(phase).toBe('won');
   expect(await endScreen(page)).toBe('won');
-  expect(await state(page)).toMatchObject({ phase: 'won', wave: 10, lives: 13, gold: 269 });
+  expect(await state(page)).toMatchObject({ phase: 'won', wave: 10, lives: 11, gold: 177 });
   expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).hudText())).toMatchObject({
-    gold: 'Gold 269',
-    lives: 'Lives 13',
+    gold: 'Gold 177',
+    lives: 'Lives 11',
     wave: 'Wave 10/10',
   });
 
@@ -126,13 +127,13 @@ test('win with the sound build through the scene actions, then play again', asyn
   await expectFreshGame(page);
 });
 
-// Milestone 8: the grid lazy build loses on wave 3 (v1 spots: wave 8); the v1
-// wave target returns in milestone 12.
-test('lazy build loses on wave 3', async ({ page }) => {
+// Milestone 12: the lazy build, spread along the trail, loses on wave 7
+// (target 6 to 8; milestone 8 kid band: wave 3; v1 spots: wave 8).
+test('lazy build loses on wave 7', async ({ page }) => {
   await startGame(page);
   expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).runScript('lazyBuild'))).toBe('lost');
   expect(await endScreen(page)).toBe('lost');
-  expect(await state(page)).toMatchObject({ wave: 3, lives: 0 });
+  expect(await state(page)).toMatchObject({ wave: 7, lives: 0 });
 });
 
 test('speed resets to 1x after play again', async ({ page }) => {

@@ -1,9 +1,11 @@
 // Milestone 10 headless builds: longbowSpam, comboBuild and comboBuildNoFire.
-// No balance targets yet (milestone 12); this pins what the milestone needs:
-// the combo build wins and dropping its Fire Pot makes it worse.
+// The structural checks live here: longbowSpam's rule, the combo build's
+// shape (a Tar Pit and a Fire Pot sharing a stretch, Longbows, a Mortar) and
+// how comboBuildNoFire is derived. The milestone 12 balance targets for all
+// three are in balance.test.ts.
 import { describe, expect, it } from 'vitest';
 import { cellCenter, cellKey } from './grid';
-import { COMBO_PLAN, comboBuild, comboBuildNoFire, KID_CELL_ORDER, longbowSpam, playScripted, type BuildAction, type WaveScript } from './headless';
+import { COMBO_PLAN, comboBuild, comboBuildNoFire, TRAIL_CELL_ORDER, longbowSpam, playScripted, type BuildAction, type WaveScript } from './headless';
 import { MAP, pathLength, positionAlongPath } from './map';
 import { TOWER_DEFS } from './towers';
 import type { Point, TowerType } from './types';
@@ -18,11 +20,11 @@ const builds = (script: WaveScript, type: TowerType): BuildAction[] =>
   script.flat().filter((a) => a.type === 'build' && a.tower === type);
 
 describe('longbowSpam', () => {
-  it('only builds base Longbows, in kid cell order, every action accepted', () => {
+  it('only builds base Longbows, in trail order, every action accepted', () => {
     const actions = longbowSpam().flat();
     expect(actions.length).toBeGreaterThan(0);
     expect(actions.every((a) => a.type === 'build' && a.tower === 'longbow')).toBe(true);
-    expect(actions.map((a) => a.cell)).toEqual(KID_CELL_ORDER.slice(0, actions.length));
+    expect(actions.map((a) => a.cell)).toEqual(TRAIL_CELL_ORDER.slice(0, actions.length));
     expect(play(longbowSpam()).refused).toEqual([]);
   });
 });
