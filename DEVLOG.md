@@ -1339,3 +1339,84 @@ file, 48 e2e tests).
   re-planned build. `DECISIONS.md` has no milestone 10 section yet (the
   epsilon, the optional burn fields and the placeholder visuals are only in
   this log).
+
+## 2026-11-21: milestone 11, new towers in the UI
+
+Roles: implementer Claude Opus, verifier Claude Sonnet, coordinator Claude
+Fable 5.1.
+
+### Implementer notes
+
+The implementer (Claude Opus) put the Longbow, Mortar and Fire Pot on the
+build bar with their own shapes, shots and labels. No simulation change.
+
+- Build bar: six buttons in row 2, Musketeer 50, Cannon 80, Tar Pit 60,
+  Longbow 40, Mortar 110, Fire Pot 70. Each is 148 x 36 at y 537..573,
+  8 px apart from x 16: x 16, 172, 328, 484, 640, 796, ending at 944
+  (6 * 148 + 5 * 8 = 928, 16 px margin each side). The label font stays
+  16 px bold; the widest pair, "Musketeer" and "50", uses about 106 of the
+  128 px inside the 10 px padding. `uiRects()` gains `bar:longbow`,
+  `bar:mortar` and `bar:firepot`.
+- Shapes (colours in `palette.ts`): Longbow a 10 x 26 green post with a
+  3 px wood-coloured bow arc (radius 12, 100 degrees) and a pale string on
+  the side facing its last target. Mortar a 26 x 14 grey tube with round
+  ends and a dark mouth; it turns to point at its last target, as the
+  Musketeer and Cannon barrels do, so the mouth is the end facing the
+  target. Fire Pot an orange-red r = 13 circle with a yellow triangle flame
+  whose tip rises 3 px above the rim. Upgraded: the same r = 19 gold ring.
+  Labels "Longbow", "Mortar", "Fire", with "+" when upgraded. Ghosts are
+  the same shapes at 0.6 alpha.
+- The Mortar's ghost and its selected range show the 220 px range circle
+  and a dashed muted-red 70 px minimum-range circle (24 dashes).
+- Shots: Longbow a 1.5 px pale tracer for 4 ticks. Mortar a 6 px dark
+  flash 14 px out of the tube mouth plus a splash circle at the target
+  (the splash radius, 60 or 70 px, so larger than the Cannon's 40 or 55,
+  in a darker orange), 12 ticks. Fire Pot a 2.5 px orange line to the
+  target and an orange burst with a yellow core, 8 ticks.
+- Burning enemy: an orange ring at body radius + 3 while
+  `burnTicksLeft > 0`. Tarred and burning: the tar ring at + 3 and the
+  orange ring outside it at + 6 (`statusRings` in `draw/enemies.ts`,
+  unit-tested).
+- Label crowding, replacing the overlap accepted in milestone 9
+  (`layoutLabels` in `draw/labels.ts`): a tower gets a 10 px label instead
+  of 12 px when another tower is horizontally adjacent (same row, columns
+  1 apart) or their 12 px label boxes meet. Then, in cell-key order, a
+  label whose box meets an already shown label is hidden; a hidden label
+  hides nothing. So three towers in a row show the outer two labels, and a
+  2x2 block shows the left-hand label of each row. Boxes are estimated
+  from Courier New's 0.6 em advance (6 px per character at 10 px), so the
+  rule is the same in Vitest and the browser. Unit tests: three adjacent
+  cells in a row, a 2x2 block, a vertical pair (keeps 12 px) and towers two
+  columns apart (keep 12 px).
+- Playwright: `e2e/new-towers.spec.ts` replaces the placeholder spec. It
+  checks the six-button geometry; picks, places, upgrades and sells each
+  new tower through real clicks (gold pins: Longbow 40 + 30, refund 49;
+  Mortar 110 + 80, refund 133; Fire Pot 70 + 50, refund 84); Mortar is not
+  pickable at 109 gold and is at 110; and a Tar Pit (14,6) with a Fire Pot
+  (14,8) leaves Goblin 0 slowed and burning first at wave 1 tick 687
+  (slow 92, burn 180 ticks left), found by a capped step loop.
+- `visual.spec.ts` adds `new-towers.png`: Longbow (6,5), Mortar (17,6),
+  Fire Pot (14,8), Tar Pit (14,6), all upgraded, wave 5, Mortar selected.
+  Tick 1754: the Mortar fired at tick 1752, and both Trolls are tarred and
+  burning, 11 px apart. A headless scan of every tick found a Mortar
+  effect together with a tarred, burning enemy only at ticks 1572..1583
+  (the two Trolls exactly on top of each other) and 1752..1763; the
+  Goblins die before they reach the Mortar's ring. Every baseline changes
+  because the bar is in every frame; the coordinator regenerates them on
+  CI.
+
+Counts: 201 unit tests in 22 files, 54 e2e tests in 9 files.
+
+### What went wrong
+
+- The first Longbow bow was dark brown at 2.5 px; on the green grass it
+  nearly vanished in the 2x crop. It is now a lighter wood colour at 3 px.
+- The new-towers frame is thinner than hoped: with the specified cells the
+  only ticks that show a Mortar effect and a burning tarred enemy are late
+  in wave 5 with just the two Trolls left, and they overlap. The selected
+  Mortar's panel (placed by the milestone 9 rule, which only keeps clear
+  of its own tower's label) also covers part of the Fire Pot's "Fire+"
+  label in that frame.
+- The first commit of this milestone swept in the staged deletion of the
+  placeholder spec; the three local commits were redone with explicit
+  paths before anything was pushed.

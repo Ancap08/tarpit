@@ -80,9 +80,9 @@ inclusive; its splash still hits enemies inside the minimum range.
 | Mortar | 110 | 220, minimum 70 | 45 | 1/3 per s | splash: all enemies within 60 px of the target take full damage |
 | Fire Pot | 70 | 100 | 4 | 0.8/s | target burns 5/s for 3 s (see Burn) |
 
-The Longbow, Mortar and Fire Pot (v2, milestone 10) exist in the simulation;
-they join the build bar in milestone 11. Cooldowns are round(60 / fire
-rate) ticks: Longbow 24, Mortar 180, Fire Pot 75.
+The Longbow, Mortar and Fire Pot (v2, milestone 10) joined the build bar
+in milestone 11. Cooldowns are round(60 / fire rate) ticks: Longbow 24,
+Mortar 180, Fire Pot 75.
 
 One upgrade per tower:
 
