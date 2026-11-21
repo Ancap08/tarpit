@@ -15,7 +15,7 @@
 //      active), then count down slow timers.
 //   2. Remove enemies at or past the exit; each costs 1 life.
 //      Lives <= 0 -> phase 'lost' at once, nothing else happens this tick.
-//   3. Towers fire (combat.ts), in spotId order. Each tower counts its
+//   3. Towers fire (combat.ts), in cellKey order. Each tower counts its
 //      cooldown down by 1 if above 0; at 0 with a target in range it fires
 //      and its cooldown becomes round(60 / fireRate). Enemies at hp <= 0 are
 //      removed and pay their bounty before the next tower acts, so a later

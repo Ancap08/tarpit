@@ -1,14 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { buildTower } from './actions';
 import { createGame, startWave, tick } from './game';
+import type { Cell } from './grid';
 import type { Enemy, GameState, TowerType } from './types';
+
+const A: Cell = { col: 2, row: 5 }; // centre (80,176)
+const B: Cell = { col: 7, row: 5 }; // centre (240,176)
+const U: Cell = { col: 2, row: 4 }; // centre (80,144), 125 px from the spawn
 
 function goblin(id: number, distance: number): Enemy {
   return { id, type: 'goblin', hp: 30, distance, slow: 0, slowTicksLeft: 0 };
 }
 
 /** Mid-wave-1 state with every wave enemy already spawned, so ticks spawn nothing. */
-function arena(enemies: Enemy[], towers: [number, TowerType][]): GameState {
+function arena(enemies: Enemy[], towers: [Cell, TowerType][]): GameState {
   const s = createGame();
   s.gold = 10_000;
   s.phase = 'wave';
@@ -16,7 +21,7 @@ function arena(enemies: Enemy[], towers: [number, TowerType][]): GameState {
   s.spawnedPerGroup = [8];
   s.enemies = enemies;
   s.nextEnemyId = 100;
-  for (const [spotId, type] of towers) buildTower(s, spotId, type);
+  for (const [cell, type] of towers) buildTower(s, cell, type);
   return s;
 }
 
@@ -26,24 +31,24 @@ describe('state.shots', () => {
     expect(s.shots).toEqual([]);
     tick(s); // setup tick
     expect(s.shots).toEqual([]);
-    buildTower(s, 0, 'musketeer');
+    buildTower(s, U, 'musketeer');
     startWave(s);
-    tick(s); // first goblin spawns at distance 0, out of range of spot 0
+    tick(s); // first goblin spawns at distance 0, out of U's base range (125 px)
     expect(s.shots).toEqual([]);
   });
 
-  it('records one musketeer shot with tower spot and target position', () => {
+  it('records one musketeer shot with the tower cell, its centre and the target position', () => {
     // The goblin moves 1 px to distance 200 = (160,200) before the tower fires.
-    const s = arena([goblin(7, 199)], [[0, 'musketeer']]);
+    const s = arena([goblin(7, 199)], [[A, 'musketeer']]);
     tick(s);
     expect(s.shots).toEqual([
-      { spotId: 0, tower: 'musketeer', targetId: 7, from: { x: 96, y: 160 }, to: { x: 160, y: 200 } },
+      { cell: { col: 2, row: 5 }, tower: 'musketeer', targetId: 7, from: { x: 80, y: 176 }, to: { x: 160, y: 200 } },
     ]);
     expect(s.shots[0]).not.toHaveProperty('splashRadius');
   });
 
   it('clears shots at the start of the next tick', () => {
-    const s = arena([goblin(7, 199)], [[0, 'musketeer']]);
+    const s = arena([goblin(7, 199)], [[A, 'musketeer']]);
     tick(s);
     expect(s.shots).toHaveLength(1);
     tick(s); // musketeer is on cooldown
@@ -51,25 +56,25 @@ describe('state.shots', () => {
   });
 
   it('a cannon shot carries its splash radius', () => {
-    const s = arena([goblin(3, 199)], [[0, 'cannon']]);
+    const s = arena([goblin(3, 199)], [[A, 'cannon']]);
     tick(s);
     expect(s.shots).toEqual([
       {
-        spotId: 0,
+        cell: { col: 2, row: 5 },
         tower: 'cannon',
         targetId: 3,
-        from: { x: 96, y: 160 },
+        from: { x: 80, y: 176 },
         to: { x: 160, y: 200 },
         splashRadius: 40,
       },
     ]);
   });
 
-  it('records shots in firing (spotId) order, including a killing shot', () => {
-    const s = arena([goblin(1, 199)], [[0, 'musketeer'], [2, 'musketeer']]);
-    s.enemies[0].hp = 12; // spot 0 kills it; spot 2 then has no target
+  it('records shots in firing (cellKey) order, including a killing shot', () => {
+    const s = arena([goblin(1, 199)], [[B, 'musketeer'], [A, 'musketeer']]);
+    s.enemies[0].hp = 12; // A (key 152) kills it; B (key 157) then has no target
     tick(s);
-    expect(s.shots.map((x) => [x.spotId, x.targetId])).toEqual([[0, 1]]);
+    expect(s.shots.map((x) => [x.cell, x.targetId])).toEqual([[A, 1]]);
     expect(s.enemies).toEqual([]);
   });
 });

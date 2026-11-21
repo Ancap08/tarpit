@@ -4,7 +4,12 @@ import type { TarpitTestApi } from '../src/game/testGlobal';
 // Build, upgrade and sell through real mouse clicks at the rectangles
 // window.__tarpit.uiRects() reports. Time is frozen (?test=1) and driven by
 // step(). Wave numbers come from the verified simulation: one Musketeer at
-// spot 2 in wave 1 ends with 14 lives and 83 gold.
+// spot 2 in wave 1 ends with 14 lives and 83 gold. Since milestone 8 the spots
+// are legacy cells (src/game/legacySpots.ts); spot 2 is cell (7,5), whose
+// centre (240,176) is exactly the v1 spot, so these numbers did not change.
+
+const SPOT0 = { col: 2, row: 5 };
+const SPOT2 = { col: 7, row: 5 };
 
 async function startGame(page: Page): Promise<void> {
   await page.goto('/?test=1');
@@ -31,7 +36,7 @@ test('build a Musketeer at spot 2 through the menu, then clear wave 1', async ({
 
   await click(page, 'menu:musketeer');
   const s = await state(page);
-  expect(s.towers).toEqual([expect.objectContaining({ spotId: 2, type: 'musketeer', upgraded: false })]);
+  expect(s.towers).toEqual([expect.objectContaining({ cell: SPOT2, type: 'musketeer', upgraded: false })]);
   expect(s.gold).toBe(50);
   expect(await ui(page)).toMatchObject({ activeSpot: null, menuOpen: false });
   const rects = await page.evaluate(() => (window.__tarpit as TarpitTestApi).uiRects());
@@ -46,7 +51,7 @@ test('build a Musketeer at spot 2 through the menu, then clear wave 1', async ({
   await click(page, 'spot:2');
   expect(await ui(page)).toEqual({ activeSpot: null, selectedSpot: 2, menuOpen: false, panelOpen: true });
   await click(page, 'panel:upgrade');
-  expect((await state(page)).towers).toEqual([expect.objectContaining({ spotId: 2, upgraded: true, spent: 85 })]);
+  expect((await state(page)).towers).toEqual([expect.objectContaining({ cell: SPOT2, upgraded: true, spent: 85 })]);
   expect((await state(page)).gold).toBe(48);
   expect(await ui(page)).toMatchObject({ selectedSpot: 2, panelOpen: true });
 
@@ -79,7 +84,7 @@ test('an unaffordable button is greyed and does nothing; clicking the map closes
   await click(page, 'spot:4');
   expect(await ui(page)).toMatchObject({ activeSpot: 4, menuOpen: true, panelOpen: false });
   await click(page, 'menu:cannon');
-  expect((await state(page)).towers.map((t) => t.spotId)).toEqual([2]);
+  expect((await state(page)).towers.map((t) => t.cell)).toEqual([SPOT2]);
   expect((await state(page)).gold).toBe(45);
   expect(await ui(page)).toMatchObject({ activeSpot: 4, menuOpen: true });
 
@@ -126,7 +131,7 @@ test('build during a wave', async ({ page }) => {
   await click(page, 'spot:0');
   await click(page, 'menu:musketeer');
   const s = await state(page);
-  expect(s.towers).toEqual([expect.objectContaining({ spotId: 0, type: 'musketeer' })]);
+  expect(s.towers).toEqual([expect.objectContaining({ cell: SPOT0, type: 'musketeer' })]);
   expect(s).toMatchObject({ phase: 'wave', wave: 1, gold: 50 });
 });
 
@@ -152,13 +157,25 @@ test('the panel for a tower at spot 7 does not cover that tower\'s label', async
     bottom: Math.max(up.y + up.height, sell.y + sell.height) + pad,
   };
   // The label is not exposed, so compute its box from its known placement:
-  // top 22 px below the spot centre (600, 304), 12 px bold monospace
+  // top 22 px below the spot's cell centre (592, 304), 12 px bold monospace
   // (about 7.2 px a character, 3 px padding each side), about 16 px tall.
   const width = 'Cannon+'.length * 7.2 + 6;
-  const label = { left: 600 - width / 2, right: 600 + width / 2, top: 304 + 22, bottom: 304 + 22 + 16 };
+  const label = { left: 592 - width / 2, right: 592 + width / 2, top: 304 + 22, bottom: 304 + 22 + 16 };
   const overlap = panel.left < label.right && label.left < panel.right && panel.top < label.bottom && label.top < panel.bottom;
   expect(overlap, `panel ${JSON.stringify(panel)} vs label ${JSON.stringify(label)}`).toBe(false);
   // And the panel stays inside the map area, clear of the HUD.
   expect(panel.top).toBeGreaterThanOrEqual(0);
   expect(panel.bottom).toBeLessThanOrEqual(480);
+});
+
+test('buildAt builds on any buildable cell and refuses the path (milestone 8 hook)', async ({ page }) => {
+  await startGame(page);
+  const results = await page.evaluate(() => {
+    const t = window.__tarpit as TarpitTestApi;
+    return [t.buildAt(0, 0, 'musketeer'), t.buildAt(0, 7, 'musketeer'), t.buildAt(0, 0, 'tarpit')];
+  });
+  expect(results.map((r) => (r.ok ? 'ok' : r.reason))).toEqual(['ok', 'not-buildable', 'cell-occupied']);
+  const s = await state(page);
+  expect(s.towers).toEqual([expect.objectContaining({ cell: { col: 0, row: 0 }, type: 'musketeer' })]);
+  expect(s.gold).toBe(50);
 });

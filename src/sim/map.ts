@@ -14,18 +14,6 @@ export const MAP: MapDef = {
     { x: 680, y: 192 },
     { x: 960, y: 192 },
   ],
-  buildSpots: [
-    { x: 96, y: 160 },
-    { x: 96, y: 320 },
-    { x: 240, y: 176 },
-    { x: 240, y: 240 },
-    { x: 340, y: 176 },
-    { x: 500, y: 160 },
-    { x: 500, y: 304 },
-    { x: 600, y: 304 },
-    { x: 760, y: 112 },
-    { x: 760, y: 272 },
-  ],
 };
 
 function segmentLength(a: Point, b: Point): number {

@@ -201,3 +201,31 @@ can change it; "Kyle" means Kyle decided.
 - **Demo order:** the README GIF builds Musketeer, Cannon, then Tar Pit
   across waves 1 and 2 because 100 starting gold cannot buy all three before
   wave 1. Default (Opus).
+
+## 2026-11-21, v2 approved
+
+- **v2 scope approved with all defaults** (`docs/SCOPE-v2.md`): 32 px grid
+  placement anywhere off the path, a HUD build bar with the pick staying
+  active, canvas 960 x 580, towers named Longbow, Mortar and Fire Pot. Kyle.
+- **Milestone 8 keeps the game playable:** the simulation moves to cells, and
+  the renderer keeps the ten v1 spots as a temporary list of cells until
+  milestone 9 replaces the UI. Fable. One PR per milestone, CI green on each.
+- **v1 balance pins are suspended, not deleted, during milestones 8 to 11:**
+  archetypes keep running and stay deterministic, but the wave targets return
+  in milestone 12 once placement and towers are final. Fable.
+
+## 2026-11-21, milestone 8 (grid in the simulation)
+
+- **Buildable cell: centre at least 36 px from the path centreline, inside
+  the 30 x 15 grid, unoccupied. 346 of 450 cells qualify.** From
+  `docs/SCOPE-v2.md`; verified cell by cell with independent code.
+- **Towers fire in cell-key order (row-major).** Default (Opus). Replaces
+  spot-id order; deterministic and tested.
+- **The lazy and greedy archetypes buy from a "kid band" of buildable cells
+  within 68 px of the path, ordered from the spawn along the path.** Default
+  (Opus, accepted by Fable). The literal sort filled whole map columns.
+  Their first towers sit at the map's left edge with half their range off
+  the map, which is why both now die on wave 3; that is a milestone 12 input.
+- **Legacy spots map to their nearest buildable cell** (table in the
+  DEVLOG), so the v1 UI, pins and demo keep working until milestone 9.
+  Default (Opus); verified.

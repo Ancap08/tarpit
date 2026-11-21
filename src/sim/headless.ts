@@ -7,14 +7,14 @@
 import { buildTower, sellTower, towerAt, upgradeTower, type BuildResult, type SellResult, type UpgradeResult } from './actions';
 import { createGame, startWave, tick, type StartWaveResult } from './game';
 import type { GameState, TowerType } from './types';
-import { MAP } from './map';
+import { buildableCells, cellCenter, cellFromKey, cellKey, CELL, MIN_PATH_CLEARANCE, nearestPathPoint, type Cell } from './grid';
 import { TOWER_DEFS } from './towers';
 import { WAVES } from './waves';
 
 export type BuildAction =
-  | { type: 'build'; spotId: number; tower: TowerType }
-  | { type: 'upgrade'; spotId: number }
-  | { type: 'sell'; spotId: number };
+  | { type: 'build'; cell: Cell; tower: TowerType }
+  | { type: 'upgrade'; cell: Cell }
+  | { type: 'sell'; cell: Cell };
 
 export type HeadlessAction =
   | { type: 'startWave' }
@@ -25,9 +25,9 @@ export type HeadlessAction =
 export type HeadlessStepResult =
   | { action: 'startWave'; result: StartWaveResult }
   | { action: 'runUntilWaveEnds'; ticks: number }
-  | { action: 'build'; spotId: number; result: BuildResult }
-  | { action: 'upgrade'; spotId: number; result: UpgradeResult }
-  | { action: 'sell'; spotId: number; result: SellResult };
+  | { action: 'build'; cell: Cell; result: BuildResult }
+  | { action: 'upgrade'; cell: Cell; result: UpgradeResult }
+  | { action: 'sell'; cell: Cell; result: SellResult };
 
 export interface HeadlessRun {
   state: GameState;
@@ -49,11 +49,11 @@ export function applyAction(state: GameState, action: HeadlessAction): HeadlessS
       return { action: 'runUntilWaveEnds', ticks };
     }
     case 'build':
-      return { action: 'build', spotId: action.spotId, result: buildTower(state, action.spotId, action.tower) };
+      return { action: 'build', cell: action.cell, result: buildTower(state, action.cell, action.tower) };
     case 'upgrade':
-      return { action: 'upgrade', spotId: action.spotId, result: upgradeTower(state, action.spotId) };
+      return { action: 'upgrade', cell: action.cell, result: upgradeTower(state, action.cell) };
     case 'sell':
-      return { action: 'sell', spotId: action.spotId, result: sellTower(state, action.spotId) };
+      return { action: 'sell', cell: action.cell, result: sellTower(state, action.cell) };
   }
 }
 
@@ -142,16 +142,27 @@ function recordScript(decide: Decide): WaveScript {
 }
 
 /**
- * The order a kid fills spots: nearest the path entrance (the spawn) first,
- * by straight-line distance; ties go to the lower spot id.
+ * Cells a kid builds on hug the path: buildable cells in the first ring
+ * beside the path strip, whose centre is less than one cell further out than
+ * the minimum clearance (36 + 32 = 68 px from the centreline).
  */
-export const KID_SPOT_ORDER: readonly number[] = MAP.buildSpots
-  .map((spot, id) => ({ id, d: Math.hypot(spot.x - MAP.path[0].x, spot.y - MAP.path[0].y) }))
-  .sort((a, b) => a.d - b.d || a.id - b.id)
-  .map((s) => s.id);
+export const KID_BAND = MIN_PATH_CLEARANCE + CELL;
 
-function nextFreeKidSpot(state: GameState): number | undefined {
-  return KID_SPOT_ORDER.find((id) => !towerAt(state, id));
+/**
+ * The order a kid fills cells, hugging the path from the entrance: buildable
+ * cells in KID_BAND, sorted by how far along the path their nearest path
+ * point lies (spawn first), then by distance to the path, then by cellKey.
+ */
+export const KID_CELL_ORDER: readonly Cell[] = buildableCells()
+  .map((ok, key) => ({ ok, key, cell: cellFromKey(key) }))
+  .filter((c) => c.ok)
+  .map((c) => ({ ...c, near: nearestPathPoint(cellCenter(c.cell)) }))
+  .filter((c) => c.near.distance < KID_BAND)
+  .sort((a, b) => a.near.along - b.near.along || a.near.distance - b.near.distance || a.key - b.key)
+  .map((c) => c.cell);
+
+function nextFreeKidCell(state: GameState): Cell | undefined {
+  return KID_CELL_ORDER.find((cell) => !towerAt(state, cell));
 }
 
 /** Archetype 1: build nothing. Target: lost by wave 3. */
@@ -161,44 +172,45 @@ export function noTowers(): WaveScript {
 
 /**
  * Archetype 2, a kid's build: before each wave, buy base Musketeers while
- * affordable, on spots in KID_SPOT_ORDER. Never upgrades, never sells.
- * Target: lost on wave 6, 7 or 8.
+ * affordable, on cells in KID_CELL_ORDER. Never upgrades, never sells.
+ * v1 target (suspended until milestone 12): lost on wave 6, 7 or 8.
  */
 export function lazyBuild(): WaveScript {
   return recordScript((state) => {
-    const spotId = nextFreeKidSpot(state);
-    if (spotId === undefined || state.gold < TOWER_DEFS.musketeer.cost) return undefined;
-    return { type: 'build', spotId, tower: 'musketeer' };
+    const cell = nextFreeKidCell(state);
+    if (cell === undefined || state.gold < TOWER_DEFS.musketeer.cost) return undefined;
+    return { type: 'build', cell, tower: 'musketeer' };
   });
 }
 
 /**
  * Archetype 3: like lazyBuild, but an unupgraded Musketeer is upgraded
  * (when affordable) before another is bought, so purchases alternate buy,
- * upgrade, buy. Target: lost on wave 8 to 10, or won with at most 5 lives.
+ * upgrade, buy. v1 target (suspended until milestone 12): lost on wave 8 to
+ * 10, or won with at most 5 lives.
  */
 export function greedyMusket(): WaveScript {
   return recordScript((state) => {
     const plain = state.towers.find((tw) => tw.type === 'musketeer' && !tw.upgraded);
     if (plain) {
-      return state.gold >= TOWER_DEFS.musketeer.upgradeCost ? { type: 'upgrade', spotId: plain.spotId } : undefined;
+      return state.gold >= TOWER_DEFS.musketeer.upgradeCost ? { type: 'upgrade', cell: plain.cell } : undefined;
     }
-    const spotId = nextFreeKidSpot(state);
-    if (spotId === undefined || state.gold < TOWER_DEFS.musketeer.cost) return undefined;
-    return { type: 'build', spotId, tower: 'musketeer' };
+    const cell = nextFreeKidCell(state);
+    if (cell === undefined || state.gold < TOWER_DEFS.musketeer.cost) return undefined;
+    return { type: 'build', cell, tower: 'musketeer' };
   });
 }
 
-const m = (spotId: number): BuildAction => ({ type: 'build', spotId, tower: 'musketeer' });
-const c = (spotId: number): BuildAction => ({ type: 'build', spotId, tower: 'cannon' });
-const t = (spotId: number): BuildAction => ({ type: 'build', spotId, tower: 'tarpit' });
-const up = (spotId: number): BuildAction => ({ type: 'upgrade', spotId });
+const m = (col: number, row: number): BuildAction => ({ type: 'build', cell: { col, row }, tower: 'musketeer' });
+const c = (col: number, row: number): BuildAction => ({ type: 'build', cell: { col, row }, tower: 'cannon' });
+const t = (col: number, row: number): BuildAction => ({ type: 'build', cell: { col, row }, tower: 'tarpit' });
+const up = (col: number, row: number): BuildAction => ({ type: 'upgrade', cell: { col, row } });
 
 /** Gold the action costs in this state (0 if the sim would refuse it anyway). */
 function actionCost(state: GameState, action: BuildAction): number {
   if (action.type === 'build') return TOWER_DEFS[action.tower].cost;
   if (action.type === 'upgrade') {
-    const tower = towerAt(state, action.spotId);
+    const tower = towerAt(state, action.cell);
     return tower ? TOWER_DEFS[tower.type].upgradeCost : 0;
   }
   return 0;
@@ -216,20 +228,21 @@ function followPlan(plan: readonly BuildAction[]): Decide {
 }
 
 /**
- * The sound build's plan, in purchase order. Musketeers on the first
- * corners (spots 0, 2), upgraded early. Then a Tar Pit at spot 4, where the
- * top run turns into the long middle run, with Cannons behind it at spots 5
- * and 6 on that run: slowed enemies bunch up inside the splash. Then more
- * Musketeers further on, each upgraded as soon as gold allows.
+ * The sound build's plan, in purchase order (cells as col, row). Musketeers
+ * by the first corners, upgraded early. Then a Tar Pit where the top run
+ * turns into the long middle run, with Cannons behind it on that run:
+ * slowed enemies bunch up inside the splash. Then more Musketeers along the
+ * bottom and final runs, each upgraded as soon as gold allows.
  */
 export const SOUND_PLAN: readonly BuildAction[] = [
-  m(0), m(2), up(0), up(2), t(4), c(5), up(4), up(5), c(6), up(6), m(7), up(7), m(9), up(9), m(3), up(3), m(1), up(1), m(8), up(8),
+  m(2, 5), m(7, 5), up(2, 5), up(7, 5), t(10, 5), c(15, 4), up(10, 5), up(15, 4), c(15, 9), up(15, 9),
+  m(18, 9), up(18, 9), m(23, 8), up(23, 8), m(7, 7), up(7, 7), m(2, 9), up(2, 9), m(23, 3), up(23, 3),
 ];
 
 /**
  * Archetype 4, a thoughtful mixed build: SOUND_PLAN, each action bought as
- * soon as gold allows. Target: won with 5 to 15 lives, under 150 gold
- * after wave 9 (when wave 10 is about to start).
+ * soon as gold allows. Must win (milestone 8); the v1 targets of 5 to 15
+ * lives and under 150 gold after wave 9 return in milestone 12.
  */
 export function soundBuild(): WaveScript {
   return recordScript(followPlan(SOUND_PLAN));
@@ -237,13 +250,13 @@ export function soundBuild(): WaveScript {
 
 /**
  * soundBuild with every Tar Pit action removed: no Tar Pit builds and no
- * upgrades on the spots where soundBuild builds them. Must do strictly worse
- * than soundBuild, which shows Tar Pits matter.
+ * upgrades on the cells where soundBuild builds them. Must not do better
+ * than soundBuild (milestone 8); strictly worse returns in milestone 12.
  */
 export function soundBuildNoTar(): WaveScript {
   const script = soundBuild();
-  const tarSpots = new Set(script.flat().filter((a) => a.type === 'build' && a.tower === 'tarpit').map((a) => a.spotId));
-  return script.map((wave) => wave.filter((a) => !tarSpots.has(a.spotId)));
+  const tarCells = new Set(script.flat().filter((a) => a.type === 'build' && a.tower === 'tarpit').map((a) => cellKey(a.cell)));
+  return script.map((wave) => wave.filter((a) => !tarCells.has(cellKey(a.cell))));
 }
 
 /** Every archetype, in report order. */

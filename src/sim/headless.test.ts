@@ -34,18 +34,20 @@ describe('headless runner', () => {
 
   it('logs build, upgrade and sell results', () => {
     const run = runHeadless([
-      { type: 'build', spotId: 0, tower: 'musketeer' },
-      { type: 'upgrade', spotId: 0 },
-      { type: 'build', spotId: 0, tower: 'cannon' },
-      { type: 'sell', spotId: 0 },
-      { type: 'sell', spotId: 0 },
+      { type: 'build', cell: { col: 2, row: 5 }, tower: 'musketeer' },
+      { type: 'upgrade', cell: { col: 2, row: 5 } },
+      { type: 'build', cell: { col: 2, row: 5 }, tower: 'cannon' },
+      { type: 'sell', cell: { col: 2, row: 5 } },
+      { type: 'sell', cell: { col: 2, row: 5 } },
+      { type: 'build', cell: { col: 0, row: 7 }, tower: 'musketeer' },
     ]);
     expect(run.log.map((l) => ('result' in l ? [l.action, l.result.ok ? 'ok' : l.result.reason] : l.action))).toEqual([
       ['build', 'ok'],
       ['upgrade', 'ok'],
-      ['build', 'spot-occupied'],
+      ['build', 'cell-occupied'],
       ['sell', 'ok'],
       ['sell', 'no-tower'],
+      ['build', 'not-buildable'],
     ]);
     expect(run.state.gold).toBe(74); // 100 - 50 - 35 + 59
   });

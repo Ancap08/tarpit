@@ -29,14 +29,16 @@ test('map at wave 0', async ({ page }) => {
   await expect(page.locator('canvas')).toHaveScreenshot('map-wave0.png');
 });
 
-// 855 ticks into wave 1 the Cannon at spot 6 fired 3 ticks ago (its first
-// shot, at tick 852), so its tracer and splash circle are mid-fade; five
+// 848 ticks into wave 1 the Cannon at spot 6 fired 3 ticks ago (its first
+// shot, at tick 845), so its tracer and splash circle are mid-fade; five
 // goblins are out and four are hurt. With these spots no single frame shows
 // two shot types: the Musketeer at spot 2 fires every 60 ticks (392, 452,
-// ...) with a 6-tick tracer, and the base Tar Pit first fires at tick 1412.
+// ...) with a 6-tick tracer, and the base Tar Pit first fires at tick 1404.
 // Tick 855 was chosen by the coordinator over 395 (Musketeer tracer only)
-// because the splash and hp bars cover more of the renderer.
-const MID_WAVE_STEPS = 855;
+// because the splash and hp bars cover more of the renderer; milestone 8
+// moved spot 6 to the centre of cell (15,9), so the Cannon's first shot came
+// 7 ticks earlier and the same frame is now tick 848 (headless run).
+const MID_WAVE_STEPS = 848;
 
 test('mid wave 1 with three towers', async ({ page }) => {
   await open(page);
@@ -60,13 +62,15 @@ test('mid wave 1 with three towers', async ({ page }) => {
 // All three enemy types with their hp bars, for Wolf and Troll coverage.
 // Wave 8 is the only wave with Goblins, Wolves and Trolls together, so the
 // test jumps there (state.wave = 7, then Start Wave) with 1000 gold and a
-// Musketeer at spot 2, Cannon at 4, Tar Pit at 7 and Musketeer at 9. Tick
-// 1200 was picked from a headless scan of every 30th tick: 8 Goblins, 5
-// Wolves and 4 Trolls are out, 2 Trolls are hurt (green bars), 5 enemies are
-// under 25% (red bars), 2 Wolves carry the tar ring, and no two enemies are
-// closer than 14 px, so each shape and bar reads on its own. Earlier ticks
-// bunch everyone near the cave; later ones lose the Wolves.
-const ENEMIES_STEPS = 1200;
+// Musketeer at spot 2, Cannon at 4, Tar Pit at 7 and Musketeer at 9 (legacy
+// cells since milestone 8). Tick 1350 was picked from a headless scan of
+// every 30th tick (milestone 8; it was 1200 with the v1 spots): 10 Goblins,
+// 3 Wolves and 4 Trolls are out, 3 Trolls are hurt (green bars), 7 Goblins
+// are under 25% (red bars), 4 enemies carry the tar ring, and no two enemies
+// are closer than 21 px, so each shape and bar reads on its own. At 1200 two
+// enemies were 10 px apart; from 1230 to 1320 some overlap; later ticks lose
+// the Wolves.
+const ENEMIES_STEPS = 1350;
 
 test('wave 8 with all three enemy types', async ({ page }) => {
   await open(page);
@@ -93,7 +97,7 @@ test('wave 8 with all three enemy types', async ({ page }) => {
       slowed: e.filter((x) => x.slowTicksLeft > 0).length,
     };
   }, ENEMIES_STEPS);
-  expect(counts).toEqual({ wave: 8, goblins: 8, wolves: 5, trolls: 4, hurtTrolls: 2, slowed: 2 });
+  expect(counts).toEqual({ wave: 8, goblins: 10, wolves: 3, trolls: 4, hurtTrolls: 3, slowed: 4 });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('enemies.png');
 });
@@ -129,7 +133,7 @@ test('upgraded Musketeer selected with its panel and range', async ({ page }) =>
     return { ui: t.ui(), towers: t.state().towers, gold: t.state().gold };
   });
   expect(s.ui).toMatchObject({ selectedSpot: 2, panelOpen: true });
-  expect(s.towers).toEqual([expect.objectContaining({ spotId: 2, type: 'musketeer', upgraded: true })]);
+  expect(s.towers).toEqual([expect.objectContaining({ cell: { col: 7, row: 5 }, type: 'musketeer', upgraded: true })]);
   expect(s.gold).toBe(15);
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('tower-selected.png');
@@ -144,7 +148,7 @@ test('win screen after the sound build', async ({ page }) => {
     const phase = t.runScript('soundBuild');
     return { phase, screen: t.endScreen(), lives: t.state().lives, gold: t.state().gold };
   });
-  expect(end).toEqual({ phase: 'won', screen: 'won', lives: 11, gold: 253 });
+  expect(end).toEqual({ phase: 'won', screen: 'won', lives: 13, gold: 269 });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('won.png');
 });

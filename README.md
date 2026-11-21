@@ -56,10 +56,13 @@ CLAUDE.md         rules for agents working in this repo
 DECISIONS.md      every design and process decision, who made it and why
 DEVLOG.md         how it was built, milestone by milestone, including what went wrong
 docs/SCOPE.md     v1 scope and the milestone table
+docs/SCOPE-v2.md  v2 scope and milestones 8 to 13
 docs/DESIGN.md    the game spec: map, economy, enemies, towers, waves
 docs/media/       README GIF and still
 src/sim/          game logic in plain TypeScript, no Phaser or DOM (lint-enforced)
+src/sim/grid.ts   the build grid: cells, cell centres, the buildable rule
 src/game/         Phaser rendering, input, HUD, menus and the ?test=1 test hooks
+src/game/legacySpots.ts  the ten v1 spots as cells (until milestone 9)
 scripts/          npm run sim (balance report) and npm run demo (GIF recorder)
 e2e/              Playwright tests and CI screenshot baselines
 .github/workflows CI checks, Pages deploy, screenshot baseline update
@@ -102,6 +105,11 @@ pixel comparison because macOS renders text differently.
 
 v1 is complete: milestones 0 to 6 are merged and the build is live. Milestone
 7's evidence is Kyle finishing a game from the public link.
+
+v2 is in progress ([docs/SCOPE-v2.md](docs/SCOPE-v2.md)). Milestone 8 moved
+tower placement in the simulation to a 30 x 15 grid of 32 px cells; the game
+still shows the ten v1 build spots, now as ten fixed cells, until milestone 9
+adds the build bar and build-anywhere.
 
 Out of scope for v1: multiple maps, saves, sound, menus beyond start and
 restart, mobile layout, multiplayer, custom art. A Kenney CC0 art pack is a

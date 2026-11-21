@@ -17,21 +17,22 @@ Anything not in this file or `docs/SCOPE.md` is out of scope.
 
 ## Map
 
-One map, one path, ten build spots. The path is a polyline of waypoints from
+One map, one path, and a build grid. The path is a polyline of waypoints from
 the spawn (left edge) to the exit (right edge); enemies move along it by
-distance travelled. Build spots are fixed points off the path, each holding at
-most one tower.
+distance travelled.
 
 Path (pixels): (0,240) (160,240) (160,96) (420,96) (420,384) (680,384)
 (680,192) (960,192).
 
-Build spots, ids 0 to 9: (96,160) (96,320) (240,176) (240,240) (340,176)
-(500,160) (500,304) (600,304) (760,112) (760,272). Spot 0 is 64 px from the
-path; every other spot is exactly 80 px from its nearest path segment, and
-every spot is at least 50 px from every other.
-
-A spot is invalid for building if it is already occupied; spots are never
-on the path by construction.
+Build grid (v2, milestone 8): the 960 x 480 map is a 30 x 15 grid of 32 px
+cells. A cell `{ col, row }` has its centre at (col * 32 + 16, row * 32 + 16)
+and the integer key `row * 30 + col`. A cell is buildable when it is inside
+the grid, its centre is at least 36 px (inclusive) from the path centreline,
+and no tower stands on it. On this map 346 of the 450 cells pass the path
+rule. Each cell holds at most one tower. Building on a cell outside the grid,
+on the path strip or with a non-integer column or row is refused
+(`not-buildable`); building on an occupied cell is refused (`cell-occupied`).
+Towers fire in cellKey order (row by row, left to right).
 
 ## Economy and lives
 
@@ -78,7 +79,7 @@ One upgrade per tower:
 | Cannon | 60 | damage 40, splash radius 55 |
 | Tar Pit | 50 | slow 60%, range 105 |
 
-Range is measured from the tower's spot to the enemy's position.
+Range is measured from the tower's cell centre to the enemy's position.
 
 ## Waves
 

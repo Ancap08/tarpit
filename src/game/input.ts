@@ -1,9 +1,13 @@
 // Pointer geometry for the build UI: which build spot is under the pointer,
 // what a click means, and where a menu goes next to a spot. Pure functions
 // with no Phaser, so they are unit tested in input.test.ts.
+//
+// Milestone 8: the spots are the ten legacy cells (legacySpots.ts); a spot id
+// is only an index into LEGACY_SPOT_CELLS, and every position is a cell centre.
 
-import { MAP, type Point } from '../sim';
+import { distanceToPath, MAP, type Point } from '../sim';
 import { PATH_WIDTH } from './draw/map';
+import { LEGACY_SPOT_CELLS, spotCenter } from './legacySpots';
 
 export interface Rect {
   x: number;
@@ -27,10 +31,10 @@ export function contains(r: Rect, x: number, y: number): boolean {
   return x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height;
 }
 
-/** Id of the build spot under (x, y), or null. Spots are 96+ px apart, so at most one matches. */
+/** Id of the build spot under (x, y), or null. Spots are 50+ px apart, so at most one matches. */
 export function spotAt(x: number, y: number): number | null {
-  for (let id = 0; id < MAP.buildSpots.length; id++) {
-    const s = MAP.buildSpots[id];
+  for (let id = 0; id < LEGACY_SPOT_CELLS.length; id++) {
+    const s = spotCenter(id);
     if (Math.hypot(x - s.x, y - s.y) <= SPOT_HIT_RADIUS) return id;
   }
   return null;
@@ -38,7 +42,7 @@ export function spotAt(x: number, y: number): number | null {
 
 /** Bounding box of a spot's clickable circle. */
 export function spotRect(id: number): Rect {
-  const s = MAP.buildSpots[id];
+  const s = spotCenter(id);
   return { x: s.x - SPOT_HIT_RADIUS, y: s.y - SPOT_HIT_RADIUS, width: 2 * SPOT_HIT_RADIUS, height: 2 * SPOT_HIT_RADIUS };
 }
 
@@ -58,7 +62,8 @@ export function classifyClick(x: number, y: number, ui: Rect | null): ClickTarge
 
 /** True if the box overlaps any build spot's clickable circle. */
 function coversSpot(x: number, y: number, width: number, height: number): boolean {
-  return MAP.buildSpots.some((s) => {
+  return LEGACY_SPOT_CELLS.some((_, id) => {
+    const s = spotCenter(id);
     const cx = Math.min(Math.max(s.x, x), x + width);
     const cy = Math.min(Math.max(s.y, y), y + height);
     return Math.hypot(cx - s.x, cy - s.y) <= SPOT_HIT_RADIUS;
@@ -67,17 +72,7 @@ function coversSpot(x: number, y: number, width: number, height: number): boolea
 
 /** True if (x, y) lies on the drawn path strip (PATH_WIDTH wide, round joins). */
 export function onPath(x: number, y: number): boolean {
-  const half = PATH_WIDTH / 2;
-  for (let i = 1; i < MAP.path.length; i++) {
-    const a = MAP.path[i - 1];
-    const b = MAP.path[i];
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const len2 = dx * dx + dy * dy;
-    const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / len2));
-    if (Math.hypot(a.x + dx * t - x, a.y + dy * t - y) <= half) return true;
-  }
-  return false;
+  return distanceToPath({ x, y }) <= PATH_WIDTH / 2;
 }
 
 /** Samples per side for pathCover: a 9 x 9 grid that includes the corners and the centre. */
