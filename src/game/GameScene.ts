@@ -9,6 +9,12 @@
 // tower selects it and opens the tower panel. Clicking anywhere else or
 // pressing Escape closes either. Both work in setup and mid-wave. The scene
 // changes the simulation only through its exported actions.
+//
+// End of game: every redraw checks the sim's phase; once it is 'won' or
+// 'lost' the end screen shows (once), popups close and map input is ignored.
+// [Play again] restarts this scene: Phaser shuts it down (destroying every
+// game object and the input and keyboard listeners) and runs create() again,
+// which makes a fresh createGame() and resets speed to 1x.
 
 import Phaser from 'phaser';
 import {
@@ -34,6 +40,8 @@ import { classifyClick, contains, spotAt, spotRect, SPOT_HIT_RADIUS, type Rect }
 import { COLORS } from './palette';
 import { isTestMode } from './testMode';
 import { BuildMenu } from './ui/buildMenu';
+import { EndScreen } from './ui/endScreen';
+import { endKind, type EndKind } from './ui/endText';
 import { TowerPanel } from './ui/towerPanel';
 
 const STEP_MS = 1000 / TICKS_PER_SECOND;
@@ -57,6 +65,7 @@ export class GameScene extends Phaser.Scene {
   private hud!: Hud;
   private menu!: BuildMenu;
   private panel!: TowerPanel;
+  private endScreen!: EndScreen;
   /** Spot under the pointer (for the hover highlight), or null. */
   private hoverSpot: number | null = null;
   /** Tower type whose build-menu button is hovered (for the range preview), or null. */
@@ -106,6 +115,7 @@ export class GameScene extends Phaser.Scene {
         this.sell(spot);
       },
     });
+    this.endScreen = new EndScreen(this, () => this.playAgain());
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.onPointerDown(p.x, p.y));
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => this.onPointerMove(p.x, p.y));
@@ -119,6 +129,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private onPointerDown(x: number, y: number): void {
+    if (this.endScreen.kind) return; // the veil swallows map clicks
     const target = classifyClick(x, y, this.openUiRect());
     if (target.kind === 'ui') return; // the menu or panel buttons handle it
     if (target.kind === 'spot') this.openSpot(target.spotId);
@@ -126,6 +137,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private onPointerMove(x: number, y: number): void {
+    if (this.endScreen.kind) return;
     const ui = this.openUiRect();
     const spot = ui && contains(ui, x, y) ? null : spotAt(x, y);
     if (spot === this.hoverSpot) return;
@@ -136,6 +148,7 @@ export class GameScene extends Phaser.Scene {
 
   /** Open the build menu at an empty spot, or select the tower on it. */
   openSpot(spotId: number): void {
+    if (this.endScreen.kind) return;
     this.closeUi();
     if (towerAt(this.state, spotId)) this.panel.open(spotId, this.state);
     else this.menu.open(spotId, this.state);
@@ -164,11 +177,21 @@ export class GameScene extends Phaser.Scene {
     };
   }
 
-  /** Every clickable rectangle by name: HUD buttons, `spot:<id>`, and open menu or panel buttons. */
+  /** Every clickable rectangle by name: HUD buttons, `spot:<id>`, open menu or panel buttons, and `playAgain`. */
   uiRects(): Record<string, Rect> {
     const rects: Record<string, Rect> = { ...this.hud.rects() };
     MAP.buildSpots.forEach((_, id) => (rects[`spot:${id}`] = spotRect(id)));
-    return { ...rects, ...this.menu.rects(), ...this.panel.rects() };
+    return { ...rects, ...this.menu.rects(), ...this.panel.rects(), ...this.endScreen.rects() };
+  }
+
+  /** The end screen showing, or null. */
+  endScreenKind(): EndKind | null {
+    return this.endScreen?.kind ?? null;
+  }
+
+  /** Start a brand-new game in a fresh scene. */
+  playAgain(): void {
+    this.scene.restart();
   }
 
   update(_time: number, delta: number): void {
@@ -235,7 +258,20 @@ export class GameScene extends Phaser.Scene {
     drawEnemies(g, this.state);
     this.shots.draw(g);
     this.hud.update(this.state, this.speed);
+    this.syncEndScreen();
     this.redrawUi();
+  }
+
+  /** Show the end screen once the game is won or lost. Idempotent. */
+  private syncEndScreen(): void {
+    const kind = endKind(this.state);
+    if (kind === null || this.endScreen.kind !== null) return;
+    this.menu.close();
+    this.panel.close();
+    this.preview = null;
+    this.hoverSpot = null;
+    this.input.setDefaultCursor('default');
+    this.endScreen.show(kind, this.state);
   }
 
   private redrawUi(): void {

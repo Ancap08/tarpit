@@ -2,11 +2,41 @@
 // Playwright. Outside test mode window.__tarpit holds only the Phaser game.
 
 import type Phaser from 'phaser';
+import { lazyBuild, soundBuild, WAVES, type BuildAction, type Phase, type WaveScript } from '../sim';
 import type { GameScene } from './GameScene';
 import type { TarpitTestApi } from './testGlobal';
 
 export function isTestMode(): boolean {
   return new URLSearchParams(window.location.search).get('test') === '1';
+}
+
+const SCRIPTS: Record<'soundBuild' | 'lazyBuild', () => WaveScript> = { soundBuild, lazyBuild };
+
+/** Same cap per wave as the headless runner (src/sim/headless.ts). */
+const MAX_TICKS_PER_WAVE = 60 * 600;
+
+/**
+ * Play a headless wave script through the scene's own actions (the ones the
+ * build UI and Start Wave button call), wave by wave: that wave's actions,
+ * Start Wave, then single ticks until the wave ends or the game is over.
+ * Throws if the sim refuses an action, so a drifting script fails loudly.
+ */
+function runScript(scene: GameScene, script: WaveScript): Phase {
+  const apply = (a: BuildAction) => {
+    const r = a.type === 'build' ? scene.build(a.spotId, a.tower) : a.type === 'upgrade' ? scene.upgrade(a.spotId) : scene.sell(a.spotId);
+    if (!r.ok) throw new Error(`runScript: ${a.type} at spot ${a.spotId} refused: ${r.reason}`);
+  };
+  // A function, not a property read, so TypeScript does not narrow the phase
+  // across the calls that change it.
+  const phase = (): Phase => scene.state.phase;
+  while (phase() === 'setup' && scene.state.wave < WAVES.length) {
+    for (const action of script[scene.state.wave] ?? []) apply(action);
+    const started = scene.startWave();
+    if (!started.ok) throw new Error(`runScript: startWave refused: ${started.reason}`);
+    for (let t = 0; phase() === 'wave' && t < MAX_TICKS_PER_WAVE; t++) scene.advance(1, false);
+  }
+  scene.redraw();
+  return phase();
 }
 
 export function installGlobal(game: Phaser.Game): void {
@@ -44,6 +74,8 @@ export function installGlobal(game: Phaser.Game): void {
     uiRects: () => scene().uiRects() as ReturnType<TarpitTestApi['uiRects']>,
     ui: () => scene().uiState(),
     hudText: () => scene().hudStrings(),
+    endScreen: () => scene().endScreenKind(),
+    runScript: (name) => runScript(scene(), SCRIPTS[name]()),
   };
   window.__tarpit = api;
 }

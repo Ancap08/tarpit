@@ -73,7 +73,8 @@ export class Hud {
     set(this.wave, `Wave ${state.wave}/${WAVES.length}`);
     set(this.next, previewText(state));
     this.startButton.set('Start Wave', canStartWave(state));
-    this.speedButton.set(`${speed}x`, true);
+    // Once the game is over the speed toggle is inert (greyed, ignores clicks).
+    this.speedButton.set(`${speed}x`, state.phase !== 'won' && state.phase !== 'lost');
   }
 
   strings(): HudStrings {
