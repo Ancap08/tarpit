@@ -4,7 +4,7 @@ Read `docs/SCOPE.md` and `DECISIONS.md` before changing anything.
 
 - Game logic lives in `src/sim` and imports nothing from Phaser or the DOM.
   Rendering and input live in `src/game`. ESLint enforces the boundary.
-- The simulation is deterministic: fixed-step ticks, seeded random numbers.
+- The simulation is deterministic: fixed-step ticks and no randomness in v1.
   Tests assert exact values.
 - Never add a feature that is not in `docs/SCOPE.md`. If something seems
   missing, say so in the PR and stop.

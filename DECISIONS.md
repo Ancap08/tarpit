@@ -48,3 +48,25 @@ can change it; "Kyle" means Kyle decided.
 - **The `?test=1` hook arrives in milestone 3, not before.** Fable, on the
   verifier's finding. The implementer added an unused `testMode.ts`; it was
   removed. Code lands in the milestone that uses it.
+
+## 2026-11-21, after milestone 0
+
+- **During this build run, the coordinator merges each milestone PR once the
+  `ci` check and the verifier pass. Kyle reviews screenshots and play feel at
+  the milestone 5 checkpoint and can reopen anything.** Kyle ("you're good to
+  continue on, continue building past step 5 or until you need me").
+- **Implementers run on Claude Opus at medium effort; verifiers stay on a
+  different model (Claude Sonnet).** Kyle chose Opus medium; the different
+  model rule is from the brief.
+- **No randomness in the v1 simulation.** Fable. The design needs none, and
+  exact-value tests are stronger than seeded ones. CLAUDE.md corrected; it
+  had said "seeded random numbers".
+- **Tick order: move, exit and life loss, spawn, counters, wave-clear check.
+  An enemy spawns at distance 0 on the first tick after Start Wave and does
+  not move on its spawn tick. Spawn ticks are `round(seconds * 60)`.**
+  Default (Opus implementer, accepted by Fable after Sonnet re-derived the
+  numbers by hand). Written in the header of `src/sim/game.ts`.
+- **The 25 gold wave-clear bonus is paid on wave 10 too.** Default. Harmless
+  and simpler than a special case.
+- **Game state is mutated in place; `tick` returns nothing.** Default (Opus).
+  Fine for a small game; the renderer reads the one state object.

@@ -2,7 +2,7 @@
 
 A small browser tower defense game, built by AI agents under human direction.
 
-Status: milestone 0 (scaffold) in progress. Play link arrives when milestone 0 merges.
+Status: milestone 1 (core simulation). Title screen is live at https://ancap08.github.io/tarpit/; the game itself arrives at milestone 3.
 
 This repo is a portfolio piece. The point is the process: a human sets the
 design and approves every pull request; a coordinator agent plans and never
@@ -38,7 +38,14 @@ src/main.ts              boots Phaser, exposes the game as window.__tarpit
 src/game/                rendering and input (Phaser scenes)
   TitleScene.ts          title screen
 src/sim/                 game logic, plain TypeScript, no Phaser or DOM
-  index.ts, *.test.ts    simulation code and its unit tests
+  index.ts               public barrel; src/game imports from here
+  types.ts               GameState, Enemy, WaveDef and other data shapes
+  map.ts                 path, build spots, pathLength, positionAlongPath
+  enemies.ts             enemy stat table
+  waves.ts               10-wave table and nextWavePreview
+  game.ts                createGame, startWave, tick (60 ticks/s)
+  headless.ts            scripted headless runner, playAllWavesNoTowers
+  *.test.ts              unit tests next to each module
 e2e/                     Playwright browser tests
 .github/workflows/       ci.yml (checks) and deploy.yml (GitHub Pages)
 docs/SCOPE.md            v1 scope and milestones
