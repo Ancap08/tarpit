@@ -26,7 +26,8 @@ export interface TarpitTestApi {
   speed(): 1 | 2;
   /**
    * Canvas-space rectangles of everything clickable, by name: `startWave`,
-   * `speed`, `bar:musketeer`, `bar:cannon`, `bar:tarpit`, while the tower
+   * `speed`, `bar:musketeer`, `bar:cannon`, `bar:tarpit`, `bar:longbow`,
+   * `bar:mortar`, `bar:firepot`, while the tower
    * panel is open `panel:upgrade` and `panel:sell`, and `playAgain` while an
    * end screen shows. Map cells are not listed: cell (col, row) is clicked at
    * (col * 32 + 16, row * 32 + 16). At the 960x580 test viewport, canvas

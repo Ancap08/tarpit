@@ -30,6 +30,8 @@ export const COLORS = {
   hpLow: 0xe0473a,
   // Tar: the Tar Pit body, its splats and the slowed-enemy ring are one substance.
   tarRing: 0x2e2118,
+  // Burn: an orange ring outside the tar ring when both apply.
+  burnRing: 0xff7a1a,
 
   // Towers
   musketeer: 0x3a6fc4,
@@ -41,16 +43,29 @@ export const COLORS = {
   tarpit: 0x2e2118,
   tarpitHighlight: 0xd8d0c4,
   upgradeRing: 0xf2c94c,
-  // Milestone 11 placeholder: plain grey body and tracer for Longbow, Mortar
-  // and Fire Pot until their real shapes and shots land.
-  placeholderTower: 0x8c8c8c,
-  placeholderTracer: 0xb0b0b0,
+  longbow: 0x4f9a3c,
+  longbowEdge: 0x2b5a20,
+  longbowBow: 0xc08a48,
+  longbowString: 0xe8e0c8,
+  mortar: 0x8a8d92,
+  mortarEdge: 0x45484d,
+  mortarMouth: 0x18191b,
+  firepot: 0xd9482b,
+  firepotEdge: 0x7a2214,
+  firepotFlame: 0xffd23a,
 
   // Shots
   musketTracer: 0xfff2a8,
   cannonTracer: 0x2a2a2a,
   cannonSplash: 0xf28c28,
   tarSplat: 0x2e2118,
+  arrowTracer: 0xf4ecd0,
+  mortarFlash: 0x202124,
+  // Darker than the Cannon's splash orange.
+  mortarSplash: 0xc0581c,
+  fireFlash: 0xff8c1a,
+  fireBurst: 0xff7a1a,
+  fireBurstCore: 0xffd23a,
 
   // HUD
   hudBar: 0x1b1f24,
@@ -71,6 +86,8 @@ export const COLORS = {
   selectRing: 0xfff2a8,
   // Range circles (selected tower and hover preview): pale yellow, reads on grass and path.
   range: 0xfff2a8,
+  // The Mortar's dashed minimum-range circle: muted red, distinct from the range edge.
+  minRange: 0xc4605a,
   menuBg: 0x1b1f24,
   menuEdge: 0xd9b77e,
 

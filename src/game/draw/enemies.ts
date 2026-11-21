@@ -1,8 +1,9 @@
-// Enemies: a coloured circle per type, an hp bar when hurt, a tar ring when slowed.
+// Enemies: a coloured circle per type, an hp bar when hurt, a tar ring when
+// slowed, an orange ring when burning (outside the tar ring when both apply).
 // Bodies and rings first, then every hp bar, so bars stay on top of the crowd.
 
 import type Phaser from 'phaser';
-import { ENEMY_STATS, enemyPosition, type EnemyType, type GameState } from '../../sim';
+import { ENEMY_STATS, enemyPosition, type Enemy, type EnemyType, type GameState } from '../../sim';
 import { COLORS } from '../palette';
 
 const LOOK: Record<EnemyType, { radius: number; fill: number; edge: number }> = {
@@ -23,14 +24,27 @@ export function hpColor(fraction: number): number {
   return COLORS.hpFill;
 }
 
+/**
+ * Status rings around an enemy, as offsets from its body radius: tar at +3
+ * when slowed, burn at +3 alone or +6 (outside the tar ring) when both.
+ */
+export function statusRings(enemy: Pick<Enemy, 'slowTicksLeft' | 'burnTicksLeft'>): { color: number; offset: number }[] {
+  const tarred = enemy.slowTicksLeft > 0;
+  const burning = (enemy.burnTicksLeft ?? 0) > 0;
+  const rings: { color: number; offset: number }[] = [];
+  if (tarred) rings.push({ color: COLORS.tarRing, offset: 3 });
+  if (burning) rings.push({ color: COLORS.burnRing, offset: tarred ? 6 : 3 });
+  return rings;
+}
+
 export function drawEnemies(g: Phaser.GameObjects.Graphics, state: GameState): void {
   for (const enemy of state.enemies) {
     const { x, y } = enemyPosition(enemy);
     const look = LOOK[enemy.type];
 
-    if (enemy.slowTicksLeft > 0) {
-      g.lineStyle(3, COLORS.tarRing, 1);
-      g.strokeCircle(x, y, look.radius + 3);
+    for (const ring of statusRings(enemy)) {
+      g.lineStyle(3, ring.color, 1);
+      g.strokeCircle(x, y, look.radius + ring.offset);
     }
 
     g.fillStyle(look.fill, 1);

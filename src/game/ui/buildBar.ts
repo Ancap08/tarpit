@@ -8,9 +8,8 @@ import { TOWER_DEFS, type GameState, type TowerType } from '../../sim';
 import type { Rect } from '../input';
 import { Button } from './button';
 
-// Milestone 10: the bar keeps the three v1 towers. Longbow, Mortar and Fire
-// Pot exist in the simulation and join the bar in milestone 11.
-export const BAR_TYPES: readonly TowerType[] = ['musketeer', 'cannon', 'tarpit'];
+// All six towers (milestone 11): the three v1 towers, then the v2 three.
+export const BAR_TYPES: readonly TowerType[] = ['musketeer', 'cannon', 'tarpit', 'longbow', 'mortar', 'firepot'];
 
 export const TOWER_NAME: Record<TowerType, string> = {
   musketeer: 'Musketeer',
@@ -21,11 +20,16 @@ export const TOWER_NAME: Record<TowerType, string> = {
   firepot: 'Fire Pot',
 };
 
-/** Bar button geometry: 150 x 36, 10 px apart from x 14 (room for six in 960 px). */
-export const BAR_BUTTON_WIDTH = 150;
+/**
+ * Bar button geometry (milestone 11): six 148 x 36 buttons, 8 px apart from
+ * x 16, so 6 * 148 + 5 * 8 = 928 px and 16 px margins on each side of the
+ * 960 px canvas. The 16 px label stays: "Musketeer" plus "50" uses about
+ * 106 of the 128 px inside the padding.
+ */
+export const BAR_BUTTON_WIDTH = 148;
 export const BAR_BUTTON_HEIGHT = 36;
-export const BAR_LEFT = 14;
-export const BAR_GAP = 10;
+export const BAR_LEFT = 16;
+export const BAR_GAP = 8;
 
 /** True when the player can pick `type` now: enough gold and the game is not over. */
 export function canPick(state: GameState, type: TowerType): boolean {

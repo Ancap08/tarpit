@@ -17,7 +17,7 @@ enemies, simple shapes with labels.
 
 ## How to play
 
-1. Pick a tower on the build bar under the map: Musketeer (single target), Cannon (splash) or Tar Pit (slow). Move over the map: a green square and a ghost with its range show where it can go; red means it cannot. Click to build, and keep clicking to place more; click the button again or press Escape to stop. Click a tower to upgrade or sell it.
+1. Pick a tower on the build bar under the map: Musketeer (single target), Cannon (splash), Tar Pit (slow), Longbow (cheap, long range), Mortar (long-range splash, cannot hit close) or Fire Pot (burns, double on tarred enemies). Move over the map: a green square and a ghost with its range show where it can go; red means it cannot. Click to build, and keep clicking to place more; click the button again or press Escape to stop. Click a tower to upgrade or sell it.
 2. Press Start Wave. Enemies walk from the cave to the cottage; each one that gets through costs a life.
 3. Kills and cleared waves pay gold. Survive all 10 waves to win. The 1x/2x button sets the speed.
 
@@ -63,8 +63,10 @@ src/sim/          game logic in plain TypeScript, no Phaser or DOM (lint-enforce
 src/sim/grid.ts   the build grid: cells, cell centres, the buildable rule
 src/game/         Phaser rendering, input, HUD, tower panel and the ?test=1 test hooks
 src/game/ui/buildBar.ts  the HUD build bar: pick a tower, then click a cell
+src/game/draw/labels.ts  tower labels and the crowding rule (smaller, then hidden)
 scripts/          npm run sim (balance report) and npm run demo (GIF recorder)
 e2e/              Playwright tests and CI screenshot baselines
+e2e/new-towers.spec.ts  Longbow, Mortar and Fire Pot built through the bar
 .github/workflows CI checks, Pages deploy, screenshot baseline update
 ```
 
@@ -113,7 +115,8 @@ in the HUD, a ghost tower with its range, and a 960 x 580 canvas. The README
 GIF still shows the v1 build menu until milestone 13 records a new one.
 Milestone 10 added the Longbow, Mortar (minimum range) and Fire Pot (burn,
 doubled on tarred enemies) to the simulation, with headless builds that use
-them; they reach the build bar in milestone 11.
+them. Milestone 11 put all six towers on the build bar with their own
+shapes, shots and a burning-enemy ring, and shrinks or hides crowded labels.
 
 Out of scope for v1: multiple maps, saves, sound, menus beyond start and
 restart, mobile layout, multiplayer, custom art. A Kenney CC0 art pack is a

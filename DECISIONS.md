@@ -269,3 +269,21 @@ can change it; "Kyle" means Kyle decided.
 - **Balance inputs for milestone 12:** Longbow spam wins with 20 lives;
   the combo build wins with 20 lives and 441 gold. Both far outside the
   v2 targets. Numbers untouched until milestone 12.
+
+## 2026-11-21, milestone 11 (new towers in the UI)
+
+- **Build bar: six 148 x 36 buttons, 8 px gaps, from x 16 to 944; label
+  font stays 16 px.** Default (Opus). Numbers checked by the verifier from
+  code and from the live game.
+- **Mortar's ghost and selection show both circles: range and a dashed red
+  minimum range. Its tube rotates toward the last target like the other
+  barrels.** Default (Opus, accepted by Fable).
+- **Crowded labels: a label that touches another's, or has a horizontal
+  neighbour, drops to 10 px; if it still touches an already-shown label, the
+  higher cell key hides.** Default (Opus). Closes the milestone 9 overlap
+  item. Side effect, accepted: a tower next to a clash can end up with no
+  label; a label still covers the top of the tower directly below it.
+- **A tower panel avoids only its own tower's label; it may cover a
+  neighbour's.** Accepted (Fable). Panels are transient.
+- **A one-sentence tense fix in docs/DESIGN.md ("joined the bar") is kept.**
+  Fable.
