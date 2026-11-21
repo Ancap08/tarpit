@@ -271,13 +271,52 @@ Playwright tests, screenshot checks and a CI workflow that makes baselines.
   committed.
 - What went wrong: the brief's mid-wave frame at 400 ticks shows no shot. The
   Musketeer at spot 2 fires every 60 ticks (392, 452, ...) and a tracer lasts
-  6 ticks, so 400 is between shots; the frame uses 395. With spots 2, 6 and
-  7, no tick has two shot types visible at once: the Cannon at spot 6 first
-  fires at tick 852 and the base Tar Pit at spot 7 at tick 1453 (its range,
-  80, only touches the path there; see the milestone 2 notes). So the
-  baseline covers the Musketeer tracer and hp bars but not the splash, tar
-  splat or tar ring. Tick 855 would show the Cannon tracer and splash with
-  five hurt goblins instead.
+  6 ticks, so 400 is between shots. With spots 2, 6 and 7, no tick has two
+  shot types visible at once: the Cannon at spot 6 first fires at tick 852 and
+  the base Tar Pit at spot 7 at tick 1453 (its range, 80, only touches the
+  path there; see the milestone 2 notes). The implementer first used tick 395
+  (Musketeer tracer only, no splash, tar splat or tar ring). The coordinator
+  chose tick 855 instead: Cannon tracer and splash, five goblins out, four
+  with hp bars. The baseline frame uses 855.
 - A first look at the local screenshots showed the Musketeer barrel hidden
   under the square and the tracer. The barrel is now longer and thicker, and
   tracers start at the muzzle.
+
+### Verifier notes
+
+Verifier: Claude Sonnet. Checked on branch `m3-rendering` against
+`origin/main`.
+
+- Clean run (`rm -rf dist && npm ci`, lint, typecheck, test, build,
+  test:e2e): all green. 89 unit tests (84 existing plus 5 in
+  `shots.test.ts`); 9 e2e tests as delivered.
+- Sim diff: adds `Shot`, `state.shots`, the recording in `combat.ts` and the
+  per-tick clear in `game.ts`. No existing `*.test.ts` changed; only
+  `shots.test.ts` is new. `src/sim` imports nothing from Phaser, `src/game`
+  or the DOM. The one behaviour-adjacent point: `tick` clears `shots` on
+  setup ticks too, which is intended and tested.
+- Boundary: `src/game` reads the sim and changes it only through `tick`,
+  `startWave`, `buildTower`, `upgradeTower`, `sellTower`. The only direct
+  write anywhere is `state().gold = 1000` in `e2e/visual.spec.ts` (accepted
+  test setup). No milestone 4 or 5 work found: no click-to-build, no tower
+  selection, no win or lose screens.
+- Added tests: test mode runs no ticks (500 ms wait, tick 0, setup, wave 0);
+  Start Wave is clickable again after `step(2005)` and starts wave 2; and
+  `e2e/live.spec.ts`, which loads `/` without `?test=1`, clicks through the
+  title and Start Wave, and checks the real loop (tick > 60 after 1.5 s, an
+  enemy spawned, 2x gains at least 1.5x the 1x tick rate). `uiRects()` is
+  not exposed outside test mode, so the live test uses hard-coded button
+  centres taken from `hud.ts` (a layout change in `hud.ts` must update
+  them). Ran the new tests five times in parallel with no failures.
+- Workflow and config: `update-snapshots.yml` and `playwright.config.ts`
+  match the checklist. Note that on CI a missing baseline fails (by design),
+  and `retries: 1` only repeats that failure. The PR's `ci` check will be red
+  on the three visual tests until the workflow has produced baselines.
+- Screenshots (title, map at wave 0, mid wave): HUD shows gold, lives, wave
+  and next-wave preview; shapes are distinct. Weak points, not changed: hp
+  bars are about 20 x 3 px and hard to read; towers carry no text labels
+  although DECISIONS says "shapes with labels"; the Tar Pit is a near-black
+  blob.
+- Correction by the verifier: the implementer note about the mid-wave tick
+  said 395; the coordinator chose 855 (four hp bars, Cannon splash). I
+  rewrote that line.
