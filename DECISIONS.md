@@ -321,3 +321,15 @@ can change it; "Kyle" means Kyle decided.
   gold plus bounties affords. Default (Opus), planned headlessly first.
 - **Next candidates, none started:** Kenney CC0 art, a second map, a second
   upgrade tier. Kyle decides.
+
+## 2026-11-21, v3 approved
+
+- **v3 scope approved with all defaults** (`docs/SCOPE-v3.md`): tablet
+  play, an event-driven animation engine, CC0 pixel art chosen from mockups
+  at milestone 15 (Ninja Adventure the default candidate), music with a
+  mute button, iPad landscape first, a 20 MB size budget. Kyle.
+- **Tiny Swords excluded.** Fable, from the license page: the free pack
+  forbids redistribution and its monsters are a paid add-on, so it cannot be
+  committed to a public repo.
+- **Only CC0 or credited CC-BY assets are committed; a manifest check
+  enforces it from milestone 15.** Fable.
