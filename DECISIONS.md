@@ -111,3 +111,16 @@ can change it; "Kyle" means Kyle decided.
 - **Milestone 6 polish candidates, from the verifier's look at the frames:
   tower labels, larger hp bars, a less black Tar Pit, and baseline coverage
   of Wolf and Troll.** Observations only; Kyle decides at the checkpoint.
+
+## 2026-11-21, milestone 4
+
+- **Build menus and tower panels open on the first side of the spot (right,
+  left, below, above) that covers no other build spot, and never over the
+  HUD.** Default (Opus, accepted by Fable). A unit test checks all ten spots.
+  Found because a menu placed to the right of spot 2 covered spot 4.
+- **Selecting a tower shows its range circle; hovering a build option shows a
+  range preview.** Default (Opus). Part of the tower panel and build menu, not
+  new features.
+- **Milestone 6 polish candidates from the verifier: the spot 2 menu covers
+  the path while open; the white range preview is faint; the greyed
+  "Upgraded" label is low contrast.** Observations only.
