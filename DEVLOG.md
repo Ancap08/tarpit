@@ -907,3 +907,118 @@ Verifier: Claude Sonnet, on branch `m7-ship`.
   PR list support the last two, nothing in the repo supports the first. (3)
   README says the verifier checked every PR; PR 4 has no verifier record in
   the DEVLOG.
+
+## 2026-11-21: milestone 8, grid placement in the simulation
+
+Roles: implementer Claude Opus, verifier Claude Sonnet, coordinator Claude
+Fable 5.1.
+
+### Implementer notes
+
+The implementer (Claude Opus) moved tower placement in `src/sim` from ten
+fixed spots to grid cells, and kept the v1 build UI working on ten fixed
+cells until milestone 9.
+
+- `src/sim/grid.ts`: `GRID_COLS = 30`, `GRID_ROWS = 15`, `CELL = 32`,
+  `cellCenter`, `cellKey` (row * 30 + col), `cellFromKey`, `isInsideGrid`,
+  `distanceToPath` (moved out of `map.test.ts` and `input.ts`),
+  `nearestPathPoint` (distance and along-path position of the nearest path
+  point), `buildableCells(map)` (memoised per map) and `isBuildable(state,
+  cell)`. 346 of the 450 cells are buildable on the v1 map.
+- `Tower.cell` and `Shot.cell` replace `spotId`; towers stay sorted by
+  cellKey, which is the firing order. `buildTower`, `upgradeTower` and
+  `sellTower` take a cell. Refusals: `game-over`, `not-buildable`,
+  `cell-occupied`, `not-enough-gold`, `no-tower`, `already-upgraded`.
+  `MAP.buildSpots` is gone.
+- Unit tests that used spots now use cells. Where the geometry mattered,
+  the tests use cell (7,5), whose centre is exactly v1 spot 2, cell (2,5)
+  (legacy spot 0, 64 px above the first segment) and cell (2,4), exactly
+  125 px from the spawn, for the upgraded Musketeer range. New
+  `grid.test.ts` checks the buildable rule at the path edge (32 px refused,
+  48 px allowed, exactly 36 px allowed on a test map).
+- Archetypes: `lazyBuild` and `greedyMusket` fill `KID_CELL_ORDER`;
+  `soundBuild` uses the v1 plan on the legacy cells (it wins);
+  `soundBuildNoTar` drops the Tar Pit cell's actions.
+- Renderer: `src/game/legacySpots.ts` lists the ten cells. Spot circles,
+  menus, panels, labels, aim and range circles use cell centres. Labels are
+  now created per cell on first use (a scripted build can place towers on
+  any cell). Test hooks `build`, `upgrade` and `sell` keep their spot-id
+  signatures; `buildAt(col, row, type)` is new, with one e2e test.
+
+Legacy spot cells: each v1 spot goes to the nearest buildable cell centre;
+ties (spots 0, 1 and 5 sit on cell corners or edges) go to the cell whose
+path distance is closest to the spot's own, then to the lower cellKey.
+`legacySpots.test.ts` recomputes the list from that rule.
+
+| Spot | v1 position | Cell (col,row) | Cell centre | Moved |
+|---|---|---|---|---|
+| 0 | (96,160) | (2,5) | (80,176) | 22.6 px |
+| 1 | (96,320) | (2,9) | (80,304) | 22.6 px |
+| 2 | (240,176) | (7,5) | (240,176) | 0 |
+| 3 | (240,240) | (7,7) | (240,240) | 0 |
+| 4 | (340,176) | (10,5) | (336,176) | 4 px |
+| 5 | (500,160) | (15,4) | (496,144) | 16.5 px |
+| 6 | (500,304) | (15,9) | (496,304) | 4 px |
+| 7 | (600,304) | (18,9) | (592,304) | 8 px |
+| 8 | (760,112) | (23,3) | (752,112) | 8 px |
+| 9 | (760,272) | (23,8) | (752,272) | 8 px |
+
+`npm run sim` after this milestone (v1 wave targets suspended until
+milestone 12, DECISIONS.md "v2 approved"):
+
+| Archetype | v1 result | Milestone 8 |
+|---|---|---|
+| noTowers | lost wave 2 | lost wave 2, 0 lives |
+| lazyBuild | lost wave 8 | lost wave 3, 0 lives |
+| greedyMusket | won, 2 lives, 340 gold | lost wave 3, 0 lives |
+| soundBuild | won, 11 lives, 253 gold | won, 13 lives, 269 gold (157 after wave 9) |
+| soundBuildNoTar | lost wave 7 | lost wave 7, 0 lives |
+
+Pins that changed (old -> new), each recomputed with a headless run:
+
+- Sound build end state (`visual.spec.ts`, `end-screens*.spec.ts`,
+  `endText.test.ts`): 11 lives, 253 gold -> 13 lives, 269 gold.
+- Lazy build e2e loss: wave 8 -> wave 3.
+- Mid-wave frame (`visual.spec.ts`): tick 855 -> 848. Spot 6's Cannon
+  moved 4 px, so its first shot came at tick 845 instead of 852; 848 keeps
+  the frame's intent (that shot 3 ticks old, mid-fade). Counts unchanged:
+  5 enemies, 4 hurt.
+- Enemies frame (`visual.spec.ts`, `enemies-frame.test.ts`): tick 1200 ->
+  1350; counts {8 Goblins, 5 Wolves, 4 Trolls, 2 hurt Trolls, 2 slowed} ->
+  {10, 3, 4, 3, 4}.
+- Unchanged because spot 2 is exactly its v1 position: one Musketeer at
+  spot 2 in wave 1 still ends with 14 lives and 83 gold.
+- `balance.test.ts` and `balance-verifier.test.ts`: the v1 target ranges
+  and exact pins are deleted (cannon-only, tarpit-only and waves 7 and 8
+  probes included); they now assert completion, determinism, noTowers lost
+  by wave 3, soundBuild won, and soundBuildNoTar no better. The Troll
+  probe (d) stays, on cell (7,5).
+- Unit input geometry (`input.test.ts`): spot rects and menu positions
+  moved with the spot centres (for example spot 5's menu (528,105) ->
+  (524,89)); every menu kept the same side.
+- Screenshot baselines will change; none are committed here.
+
+Counts: 139 unit tests in 18 files (was 123 in 16), 40 e2e tests in 8 files
+(was 39).
+
+### What went wrong
+
+- The brief's kid order, taken literally (along-path position of the
+  nearest path point first, then distance to the path), fills whole map
+  columns: every cell in column 0 has its nearest path point 16 px from the
+  spawn, so the fifth Musketeer would go 128 px from the path, out of
+  range. The implementer kept the brief's sort but limited it to the first
+  ring of buildable cells beside the path (less than 36 + 32 = 68 px from
+  the centreline, `KID_BAND`), which is what "hugging the path" describes.
+  The coordinator should confirm or replace this.
+- Even hugging the path, the kid order starts at the map edge, where half
+  of each tower's range is off the map. Lazy and greedy now lose on wave 3
+  (v1: wave 8, and a 2-life win). Not a target in this milestone; it is
+  input for the milestone 12 balance pass.
+- The mid-wave frame at tick 855 would have shown no Cannon effect at all:
+  the shot moved to tick 845, and a Cannon effect lives 10 ticks. The count
+  check (5 enemies, 4 hurt) still passed at 855, so only the shot timing
+  revealed it.
+- At tick 1200 the enemies frame's closest pair fell to 10 px, below the
+  14 px the frame was picked for, so the tick moved to 1350 (closest pair
+  21 px).
