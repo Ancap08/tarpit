@@ -48,8 +48,8 @@ test('(a) third game behaves like the first', async ({ page }) => {
     expect(await endScreen(page)).toBe('lost');
     await playAgain(page);
   }
-  await click(page, 'spot:2');
-  await click(page, 'menu:musketeer');
+  await click(page, 'bar:musketeer');
+  await page.mouse.click(240, 176); // cell (7,5)
   await click(page, 'startWave');
   await api(page, (a) => a.step(2005));
   expect(await state(page)).toMatchObject({ phase: 'setup', wave: 1, lives: 14, gold: 83 });
@@ -64,7 +64,7 @@ test('(b) after Play again no playAgain rect and no end screen', async ({ page }
   expect(await endScreen(page)).toBeNull();
 });
 
-test('(c) lose screen: Start Wave and speed clicks do nothing; no spot opens a menu, including under the panel', async ({ page }) => {
+test('(c) lose screen: Start Wave, speed and the bar do nothing; no cell builds or selects, including under the panel', async ({ page }) => {
   await startGame(page);
   await loseGame(page);
   const before = await state(page);
@@ -76,27 +76,32 @@ test('(c) lose screen: Start Wave and speed clicks do nothing; no spot opens a m
   expect(after.phase).toBe('lost');
   expect(after.wave).toBe(before.wave);
   expect(after.tick).toBe(before.tick);
+  // Even with gold the bar stays greyed on an end screen.
+  await api(page, (a) => (a.state().gold = 500));
+  await click(page, 'bar:musketeer');
+  expect((await ui(page)).pick).toBeNull();
   const r = await rects(page);
   const pa = r.playAgain;
-  // Every spot whose centre is outside the Play again button: nothing opens.
-  // (Spot 6 lies under the button; clicking it is a click on Play again.)
-  const underButton = (id: number) => {
-    const s = r[`spot:${id}`];
-    const cx = s.x + s.width / 2, cy = s.y + s.height / 2;
+  // The former legacy cells, whose centres are outside the Play again button.
+  // (15,9) lies under the button; clicking it is a click on Play again.
+  const cells = [[2, 5], [2, 9], [7, 5], [7, 7], [10, 5], [15, 4], [15, 9], [18, 9], [23, 3], [23, 8]];
+  const underButton = ([col, row]: number[]) => {
+    const cx = col * 32 + 16, cy = row * 32 + 16;
     return cx >= pa.x && cx <= pa.x + pa.width && cy >= pa.y && cy <= pa.y + pa.height;
   };
-  const clicked: number[] = [];
-  for (let id = 0; id < 10; id++) {
-    if (underButton(id)) continue;
-    await click(page, `spot:${id}`);
-    clicked.push(id);
-    expect(await ui(page), `spot ${id}`).toMatchObject({ menuOpen: false, panelOpen: false });
+  const clicked: string[] = [];
+  for (const c of cells) {
+    if (underButton(c)) continue;
+    await page.mouse.click(c[0] * 32 + 16, c[1] * 32 + 16);
+    clicked.push(c.join(','));
+    expect(await ui(page), `cell ${c}`).toMatchObject({ pick: null, selectedCell: null, panelOpen: false });
   }
   expect(clicked.length).toBe(9);
-  expect(underButton(6)).toBe(true);
-  // Spots 4, 5, 7 sit inside the panel box (x 250..710, y 125..355) but outside the button.
+  expect(underButton([15, 9])).toBe(true);
+  // (10,5), (15,4) and (18,9) sit inside the panel box (x 250..710, y 125..355) but outside the button.
   expect(await endScreen(page)).toBe('lost');
   expect((await state(page)).phase).toBe('lost');
+  expect((await state(page)).towers).toEqual([]);
 });
 
 test('(d) win screen HUD text', async ({ page }) => {
@@ -123,9 +128,9 @@ test('(e) Escape on an end screen keeps it', async ({ page }) => {
 
 test('(f) a tower panel open when the game is lost is closed', async ({ page }) => {
   await startGame(page);
-  await click(page, 'spot:2');
-  await click(page, 'menu:musketeer');
-  await click(page, 'spot:2');
+  await click(page, 'bar:musketeer');
+  await page.mouse.click(240, 176); // cell (7,5): builds
+  await page.mouse.click(240, 176); // the tower: selects it, clears the pick
   expect((await ui(page)).panelOpen).toBe(true);
   for (let ticks = 0; ticks < 120_000; ticks += 100) {
     if ((await state(page)).phase === 'lost') break;
@@ -135,5 +140,14 @@ test('(f) a tower panel open when the game is lost is closed', async ({ page }) 
   expect((await state(page)).phase).toBe('lost');
   expect(await endScreen(page)).toBe('lost');
   expect((await ui(page)).panelOpen).toBe(false);
-  expect((await ui(page)).selectedSpot).toBeNull();
+  expect((await ui(page)).selectedCell).toBeNull();
+});
+
+test('(g) a pick active when the game is lost is cleared', async ({ page }) => {
+  await startGame(page);
+  await click(page, 'bar:musketeer');
+  expect((await ui(page)).pick).toBe('musketeer');
+  await loseGame(page);
+  expect(await endScreen(page)).toBe('lost');
+  expect(await ui(page)).toMatchObject({ pick: null, hoverCell: null });
 });

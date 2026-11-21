@@ -62,7 +62,7 @@ async function expectFreshGame(page: Page): Promise<void> {
   expect(await state(page)).toMatchObject({ gold: 100, lives: 20, wave: 0, phase: 'setup', tick: 0, towers: [], enemies: [] });
   expect(await endScreen(page)).toBeNull();
   expect(await speed(page)).toBe(1);
-  expect(await ui(page)).toEqual({ activeSpot: null, selectedSpot: null, menuOpen: false, panelOpen: false });
+  expect(await ui(page)).toMatchObject({ pick: null, selectedCell: null, panelOpen: false });
   expect((await page.evaluate(() => (window.__tarpit as TarpitTestApi).uiRects())).playAgain).toBeUndefined();
 }
 
@@ -80,9 +80,11 @@ test('lose with no towers, map clicks do nothing, play again starts a clean game
     next: '', // no next wave after a loss
   });
 
-  // A build spot under the veil opens nothing.
-  await click(page, 'spot:2');
-  expect(await ui(page)).toMatchObject({ menuOpen: false, panelOpen: false });
+  // The bar is greyed and a cell under the veil does nothing.
+  await click(page, 'bar:musketeer');
+  await page.mouse.click(240, 176); // cell (7,5)
+  expect(await ui(page)).toMatchObject({ pick: null, hoverCell: null, panelOpen: false });
+  expect((await state(page)).towers).toEqual([]);
   // Stepping more changes nothing and the screen stays.
   await step(page, 100);
   expect(await endScreen(page)).toBe('lost');
@@ -95,9 +97,11 @@ test('lose with no towers, map clicks do nothing, play again starts a clean game
   await click(page, 'startWave');
   await step(page, 2005);
   expect(await state(page)).toMatchObject({ phase: 'setup', wave: 1, lives: 12, gold: 125 });
-  // And the build UI works in the new game.
-  await click(page, 'spot:2');
-  expect(await ui(page)).toMatchObject({ activeSpot: 2, menuOpen: true });
+  // And the build bar works in the new game.
+  await click(page, 'bar:musketeer');
+  expect(await ui(page)).toMatchObject({ pick: 'musketeer' });
+  await page.mouse.click(240, 176); // cell (7,5)
+  expect((await state(page)).towers).toEqual([expect.objectContaining({ cell: { col: 7, row: 5 }, type: 'musketeer' })]);
 });
 
 test('win with the sound build through the scene actions, then play again', async ({ page }) => {
@@ -112,9 +116,11 @@ test('win with the sound build through the scene actions, then play again', asyn
     wave: 'Wave 10/10',
   });
 
-  // A tower under the veil does not select.
-  await click(page, 'spot:0');
-  expect(await ui(page)).toMatchObject({ menuOpen: false, panelOpen: false });
+  // A tower under the veil does not select, and the bar is greyed even with gold.
+  const tower = (await state(page)).towers[0].cell;
+  await page.mouse.click(tower.col * 32 + 16, tower.row * 32 + 16);
+  await click(page, 'bar:musketeer');
+  expect(await ui(page)).toMatchObject({ pick: null, selectedCell: null, panelOpen: false });
 
   await playAgain(page);
   await expectFreshGame(page);
