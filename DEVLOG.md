@@ -1785,3 +1785,48 @@ public link) are still open.
 - Check briefs against the sim before sending them, as v1's retrospective
   already said: the 40 px cottage radius and this milestone's demo order
   each cost a round trip.
+
+### Verifier notes
+
+Verifier: Claude Sonnet. Facts check of the README, `docs/SCOPE-v2.md`, this
+section and the demo media on branch `m13-ship-v2`. No game code changed and
+no fixes were needed.
+
+- Clean run (`rm -rf dist && npm ci && npm run lint && npm run typecheck &&
+  npm test && npm run build && npm run test:e2e`): exit 0. Vitest 211 tests
+  in 24 files, Playwright 61 passed in 10 spec files.
+- README "By the numbers", recomputed at 957739c (PR 16 merge, equal to
+  `origin/main`): 118 commits, 16 merges, 102 non-merge; trailers Opus 54,
+  Fable 5.1 21, Sonnet 18; 10 `github-actions` commits; 10 baseline files in
+  `e2e/__screenshots__/visual.spec.ts`; 16 merged PRs (14 milestone PRs plus
+  PRs 4 and 11); PR 10 merged 08:30:25Z, PR 16 merged 10:16:30Z; first commit
+  06:11:42Z (01:11:42-05:00). All match.
+- Links: every relative link and every repo-map path exists; the Pages URL,
+  the CI workflow URL and the badge return 200. The live site serves
+  `assets/index-CCpIOwxF.js`, the same hash as the local build.
+- SCOPE-v2 Done column: PRs 12 to 16 for milestones 8 to 12, all dated
+  2026-11-21, match `gh pr list`. Timeline merge times for PRs 10 to 16
+  match `gh`. PRs 11 to 16 all show the `ci` check as SUCCESS.
+- "What went wrong in v2" bullets all trace: milestone 8 band (DEVLOG
+  1012 to 1016, DECISIONS 224 and 303); (29,4) cottage cell and the 50.6 px
+  radius miss (DEVLOG 1144 to 1178, DECISIONS 244); label and panel clashes
+  (DEVLOG 1165 to 1167); Longbow spam and combo wins (DEVLOG 1277 to 1298,
+  DECISIONS 269 to 270); 1e-9 kill epsilon (DEVLOG 1238, 1288 to 1291,
+  DECISIONS 262); staged deletion (DEVLOG 1420 to 1421); SCOPE-v2 numbers
+  (DEVLOG 1664, DECISIONS 310); the DESIGN.md "(v1)" title is only in commit
+  719585d, as the bullet says. The 322 gold figure is at DEVLOG 1489.
+- Wording, not wrong: "Every v2 verifier added tests ... (8), (9), (10),
+  (11)" uses milestone numbers in brackets, which can read as test counts.
+- Demo: `tarpit.gif` 2,712,518 bytes (2.6 MB), 640 x 387, 12 fps, 25.0 s;
+  `tarpit.png` 960 x 580. Frames at 2, 8, 14 and 22 s show the six-button bar,
+  a Longbow placement ghost, waves 1 to 4 running, the Tar Pit, Fire Pot and
+  a tarred-and-burning enemy. The Mortar ghost with its solid range circle
+  and dashed minimum-range circle appears at about 23 s (after the 22 s
+  frame). `package.json` and the lockfile are unchanged against
+  `origin/main`, so no new dependency.
+- README prose: "How to play" matches the UI (six-button bar, click a green
+  cell, button again or Escape clears the pick, Mortar minimum 70 px, burn
+  doubled on a tarred enemy). "How it was built" and "Status" match
+  DECISIONS and DEVLOG. The "Kyle merged PR 1 himself" claim rests on the
+  coordinator's record (DECISIONS 190), not on GitHub, which shows one merger
+  login for all PRs. No hype words found.
