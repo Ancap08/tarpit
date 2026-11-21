@@ -2,8 +2,9 @@
 // Playwright. Outside test mode window.__tarpit holds only the Phaser game.
 
 import type Phaser from 'phaser';
-import { lazyBuild, soundBuild, WAVES, type BuildAction, type Phase, type WaveScript } from '../sim';
+import { lazyBuild, soundBuild, WAVES, type BuildAction, type Cell, type Phase, type WaveScript } from '../sim';
 import type { GameScene } from './GameScene';
+import { LEGACY_SPOT_CELLS } from './legacySpots';
 import type { TarpitTestApi } from './testGlobal';
 
 export function isTestMode(): boolean {
@@ -23,8 +24,8 @@ const MAX_TICKS_PER_WAVE = 60 * 600;
  */
 function runScript(scene: GameScene, script: WaveScript): Phase {
   const apply = (a: BuildAction) => {
-    const r = a.type === 'build' ? scene.build(a.spotId, a.tower) : a.type === 'upgrade' ? scene.upgrade(a.spotId) : scene.sell(a.spotId);
-    if (!r.ok) throw new Error(`runScript: ${a.type} at spot ${a.spotId} refused: ${r.reason}`);
+    const r = a.type === 'build' ? scene.build(a.cell, a.tower) : a.type === 'upgrade' ? scene.upgrade(a.cell) : scene.sell(a.cell);
+    if (!r.ok) throw new Error(`runScript: ${a.type} at cell (${a.cell.col},${a.cell.row}) refused: ${r.reason}`);
   };
   // A function, not a property read, so TypeScript does not narrow the phase
   // across the calls that change it.
@@ -37,6 +38,11 @@ function runScript(scene: GameScene, script: WaveScript): Phase {
   }
   scene.redraw();
   return phase();
+}
+
+/** The cell for a legacy spot id, or an off-grid cell for an unknown id. */
+function legacyCell(spotId: number): Cell {
+  return LEGACY_SPOT_CELLS[spotId] ?? { col: -1, row: -1 };
 }
 
 export function installGlobal(game: Phaser.Game): void {
@@ -66,9 +72,12 @@ export function installGlobal(game: Phaser.Game): void {
         game.scene.getScene('title').scene.start('game');
       }),
     startWave: () => scene().startWave(),
-    build: (spotId, type) => scene().build(spotId, type),
-    upgrade: (spotId) => scene().upgrade(spotId),
-    sell: (spotId) => scene().sell(spotId),
+    // Legacy spot ids translate to their cells (legacySpots.ts); an id with
+    // no cell gives a cell outside the grid, which the sim refuses.
+    build: (spotId, type) => scene().build(legacyCell(spotId), type),
+    upgrade: (spotId) => scene().upgrade(legacyCell(spotId)),
+    sell: (spotId) => scene().sell(legacyCell(spotId)),
+    buildAt: (col, row, type) => scene().build({ col, row }, type),
     setSpeed: (speed) => scene().setSpeed(speed),
     speed: () => scene().speed,
     uiRects: () => scene().uiRects() as ReturnType<TarpitTestApi['uiRects']>,

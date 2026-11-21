@@ -3,7 +3,7 @@
 // greyed when unaffordable. Sell shows the refund, floor(spent * 7 / 10).
 
 import type Phaser from 'phaser';
-import { MAP, sellRefund, TOWER_DEFS, towerAt, type GameState } from '../../sim';
+import { cellCenter, sellRefund, TOWER_DEFS, towerAt, type Cell, type GameState } from '../../sim';
 import { placeBeside, type Rect } from '../input';
 import { ButtonStack } from './button';
 
@@ -14,7 +14,7 @@ export interface TowerPanelHandlers {
 
 export class TowerPanel {
   private readonly stack: ButtonStack;
-  private spot: number | null = null;
+  private at: Cell | null = null;
 
   constructor(scene: Phaser.Scene, handlers: TowerPanelHandlers) {
     this.stack = new ButtonStack(scene, [
@@ -23,31 +23,31 @@ export class TowerPanel {
     ]);
   }
 
-  /** The spot of the selected tower, or null when closed. */
-  get spotId(): number | null {
-    return this.spot;
+  /** The cell of the selected tower, or null when closed. */
+  get cell(): Cell | null {
+    return this.at;
   }
 
   get rect(): Rect | null {
     return this.stack.rect;
   }
 
-  open(spotId: number, state: GameState): void {
-    this.spot = spotId;
-    const { x, y } = placeBeside(MAP.buildSpots[spotId], this.stack.width, this.stack.height);
+  open(cell: Cell, state: GameState): void {
+    this.at = cell;
+    const { x, y } = placeBeside(cellCenter(cell), this.stack.width, this.stack.height);
     this.update(state);
     this.stack.show(x, y);
   }
 
   close(): void {
-    this.spot = null;
+    this.at = null;
     this.stack.hide();
   }
 
   /** Refresh labels and affordability. Call on every redraw. */
   update(state: GameState): void {
-    if (this.spot === null) return;
-    const tower = towerAt(state, this.spot);
+    if (this.at === null) return;
+    const tower = towerAt(state, this.at);
     if (!tower) return;
     const [upgrade, sell] = this.stack.buttons;
     if (tower.upgraded) {

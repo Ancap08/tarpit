@@ -17,9 +17,12 @@ export interface TarpitTestApi {
   /** Leave the title screen; resolves once GameScene has been created. */
   startGame(): Promise<void>;
   startWave(): StartWaveResult;
+  /** Build on legacy spot `spotId`'s cell (src/game/legacySpots.ts). */
   build(spotId: number, type: TowerType): BuildResult;
   upgrade(spotId: number): UpgradeResult;
   sell(spotId: number): SellResult;
+  /** Build on any grid cell (milestone 8; for milestone 9's tests). */
+  buildAt(col: number, row: number, type: TowerType): BuildResult;
   setSpeed(speed: 1 | 2): void;
   speed(): 1 | 2;
   /**
@@ -30,7 +33,7 @@ export interface TarpitTestApi {
    * 960x540 test viewport, canvas space equals page space.
    */
   uiRects(): { startWave: Rect; speed: Rect } & Record<string, Rect>;
-  /** Build UI state: the menu's spot, the selected tower's spot, and which popup is open. */
+  /** Build UI state: the menu's legacy spot id, the selected tower's legacy spot id, and which popup is open. */
   ui(): UiState;
   hudText(): HudStrings;
   /** The end screen showing ('won' or 'lost'), or null. */

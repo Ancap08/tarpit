@@ -1,10 +1,10 @@
-// Build menu: opens beside an empty build spot with one button per tower
-// type ("Musketeer  50"). A button the player cannot afford is greyed and
+// Build menu: opens beside an empty build spot (a cell) with one button per
+// tower type ("Musketeer  50"). A button the player cannot afford is greyed and
 // ignores clicks. Hovering a button reports its type so the scene can draw
 // that tower's range preview.
 
 import type Phaser from 'phaser';
-import { MAP, TOWER_DEFS, type GameState, type TowerType } from '../../sim';
+import { cellCenter, TOWER_DEFS, type Cell, type GameState, type TowerType } from '../../sim';
 import { placeBeside, type Rect } from '../input';
 import { ButtonStack } from './button';
 
@@ -20,7 +20,7 @@ export interface BuildMenuHandlers {
 
 export class BuildMenu {
   private readonly stack: ButtonStack;
-  private spot: number | null = null;
+  private at: Cell | null = null;
 
   constructor(scene: Phaser.Scene, handlers: BuildMenuHandlers) {
     this.stack = new ButtonStack(
@@ -34,24 +34,24 @@ export class BuildMenu {
     );
   }
 
-  /** The spot the menu is open at, or null when closed. */
-  get spotId(): number | null {
-    return this.spot;
+  /** The cell the menu is open at, or null when closed. */
+  get cell(): Cell | null {
+    return this.at;
   }
 
   get rect(): Rect | null {
     return this.stack.rect;
   }
 
-  open(spotId: number, state: GameState): void {
-    this.spot = spotId;
-    const { x, y } = placeBeside(MAP.buildSpots[spotId], this.stack.width, this.stack.height);
+  open(cell: Cell, state: GameState): void {
+    this.at = cell;
+    const { x, y } = placeBeside(cellCenter(cell), this.stack.width, this.stack.height);
     this.update(state);
     this.stack.show(x, y);
   }
 
   close(): void {
-    this.spot = null;
+    this.at = null;
     this.stack.hide();
   }
 

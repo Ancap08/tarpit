@@ -6,7 +6,9 @@
 // advance() through window.__tarpit.step().
 //
 // Build UI: clicking an empty spot opens the build menu beside it; clicking a
-// tower selects it and opens the tower panel. Clicking anywhere else or
+// tower selects it and opens the tower panel. Milestone 8: the spots are the
+// ten legacy cells (legacySpots.ts); the menu, panel and actions work on
+// cells, and a spot id is only the index used for hit-testing and names. Clicking anywhere else or
 // pressing Escape closes either. Both work in setup and mid-wave. The scene
 // changes the simulation only through its exported actions.
 //
@@ -19,8 +21,9 @@
 import Phaser from 'phaser';
 import {
   buildTower,
+  cellCenter,
+  cellKey,
   createGame,
-  MAP,
   sellTower,
   startWave,
   tick,
@@ -30,7 +33,7 @@ import {
   towerStats,
   upgradeTower,
 } from '../sim';
-import type { BuildResult, GameState, SellResult, StartWaveResult, TowerType, UpgradeResult } from '../sim';
+import type { BuildResult, Cell, GameState, SellResult, StartWaveResult, TowerType, UpgradeResult } from '../sim';
 import { drawEnemies } from './draw/enemies';
 import { TowerLabels } from './draw/labels';
 import { drawMap } from './draw/map';
@@ -39,6 +42,7 @@ import { Aim, drawTowers } from './draw/towers';
 import { Hud } from './hud';
 import { classifyClick, contains, spotAt, spotRect, SPOT_HIT_RADIUS, type Rect } from './input';
 import { COLORS } from './palette';
+import { LEGACY_SPOT_CELLS, spotCenter, spotIdOf } from './legacySpots';
 import { isTestMode } from './testMode';
 import { BuildMenu } from './ui/buildMenu';
 import { EndScreen } from './ui/endScreen';
@@ -50,6 +54,7 @@ const MAX_TICKS_PER_FRAME = 8;
 
 export type Speed = 1 | 2;
 
+/** Build UI state. Spot ids are legacy spot indexes (null if the cell is not one of the ten). */
 export interface UiState {
   activeSpot: number | null;
   selectedSpot: number | null;
@@ -109,13 +114,13 @@ export class GameScene extends Phaser.Scene {
     });
     this.panel = new TowerPanel(this, {
       onUpgrade: () => {
-        if (this.panel.spotId !== null) this.upgrade(this.panel.spotId);
+        if (this.panel.cell !== null) this.upgrade(this.panel.cell);
       },
       onSell: () => {
-        const spot = this.panel.spotId;
-        if (spot === null) return;
+        const cell = this.panel.cell;
+        if (cell === null) return;
         this.closeUi();
-        this.sell(spot);
+        this.sell(cell);
       },
     });
     this.endScreen = new EndScreen(this, () => this.playAgain());
@@ -153,8 +158,9 @@ export class GameScene extends Phaser.Scene {
   openSpot(spotId: number): void {
     if (this.endScreen.kind) return;
     this.closeUi();
-    if (towerAt(this.state, spotId)) this.panel.open(spotId, this.state);
-    else this.menu.open(spotId, this.state);
+    const cell = LEGACY_SPOT_CELLS[spotId];
+    if (towerAt(this.state, cell)) this.panel.open(cell, this.state);
+    else this.menu.open(cell, this.state);
     this.redraw();
   }
 
@@ -166,24 +172,26 @@ export class GameScene extends Phaser.Scene {
   }
 
   private buildFromMenu(type: TowerType): void {
-    const spot = this.menu.spotId;
-    if (spot === null) return;
-    if (this.build(spot, type).ok) this.closeUi();
+    const cell = this.menu.cell;
+    if (cell === null) return;
+    if (this.build(cell, type).ok) this.closeUi();
   }
 
   uiState(): UiState {
+    const menu = this.menu.cell;
+    const panel = this.panel.cell;
     return {
-      activeSpot: this.menu.spotId,
-      selectedSpot: this.panel.spotId,
-      menuOpen: this.menu.spotId !== null,
-      panelOpen: this.panel.spotId !== null,
+      activeSpot: menu === null ? null : spotIdOf(menu),
+      selectedSpot: panel === null ? null : spotIdOf(panel),
+      menuOpen: menu !== null,
+      panelOpen: panel !== null,
     };
   }
 
   /** Every clickable rectangle by name: HUD buttons, `spot:<id>`, open menu or panel buttons, and `playAgain`. */
   uiRects(): Record<string, Rect> {
     const rects: Record<string, Rect> = { ...this.hud.rects() };
-    MAP.buildSpots.forEach((_, id) => (rects[`spot:${id}`] = spotRect(id)));
+    LEGACY_SPOT_CELLS.forEach((_, id) => (rects[`spot:${id}`] = spotRect(id)));
     return { ...rects, ...this.menu.rects(), ...this.panel.rects(), ...this.endScreen.rects() };
   }
 
@@ -213,7 +221,7 @@ export class GameScene extends Phaser.Scene {
   advance(n: number, redraw = true): void {
     for (let i = 0; i < n; i++) {
       tick(this.state);
-      for (const shot of this.state.shots) this.aim.pointAt(shot.spotId, shot.to);
+      for (const shot of this.state.shots) this.aim.pointAt(shot.cell, shot.to);
       this.shots.afterTick(this.state.shots);
     }
     if (redraw) this.redraw();
@@ -230,20 +238,20 @@ export class GameScene extends Phaser.Scene {
     this.redraw();
   }
 
-  build(spotId: number, type: TowerType): BuildResult {
-    const result = buildTower(this.state, spotId, type);
+  build(cell: Cell, type: TowerType): BuildResult {
+    const result = buildTower(this.state, cell, type);
     this.redraw();
     return result;
   }
 
-  upgrade(spotId: number): UpgradeResult {
-    const result = upgradeTower(this.state, spotId);
+  upgrade(cell: Cell): UpgradeResult {
+    const result = upgradeTower(this.state, cell);
     this.redraw();
     return result;
   }
 
-  sell(spotId: number): SellResult {
-    const result = sellTower(this.state, spotId);
+  sell(cell: Cell): SellResult {
+    const result = sellTower(this.state, cell);
     this.redraw();
     return result;
   }
@@ -280,39 +288,39 @@ export class GameScene extends Phaser.Scene {
 
   private redrawUi(): void {
     // Keep the UI consistent if the state changed under it (for example a
-    // test hook built on the active spot).
-    if (this.menu.spotId !== null && towerAt(this.state, this.menu.spotId)) this.menu.close();
-    if (this.panel.spotId !== null && !towerAt(this.state, this.panel.spotId)) this.panel.close();
-    if (this.menu.spotId === null) this.preview = null;
+    // test hook built on the active cell).
+    if (this.menu.cell !== null && towerAt(this.state, this.menu.cell)) this.menu.close();
+    if (this.panel.cell !== null && !towerAt(this.state, this.panel.cell)) this.panel.close();
+    if (this.menu.cell === null) this.preview = null;
     this.menu.update(this.state);
     this.panel.update(this.state);
 
     const g = this.overlay;
     g.clear();
-    const active = this.menu.spotId ?? this.panel.spotId;
+    const active = this.menu.cell ?? this.panel.cell;
 
-    if (this.hoverSpot !== null && this.hoverSpot !== active) {
-      const s = MAP.buildSpots[this.hoverSpot];
+    if (this.hoverSpot !== null && (active === null || cellKey(active) !== cellKey(LEGACY_SPOT_CELLS[this.hoverSpot]))) {
+      const s = spotCenter(this.hoverSpot);
       g.lineStyle(2, COLORS.spotHover, 0.9);
       g.strokeCircle(s.x, s.y, SPOT_HIT_RADIUS);
     }
 
-    const selected = this.panel.spotId === null ? undefined : towerAt(this.state, this.panel.spotId);
-    if (selected) this.rangeCircle(selected.spotId, towerStats(selected).range);
-    if (this.menu.spotId !== null && this.preview) {
-      this.rangeCircle(this.menu.spotId, TOWER_DEFS[this.preview].base.range);
+    const selected = this.panel.cell === null ? undefined : towerAt(this.state, this.panel.cell);
+    if (selected) this.rangeCircle(selected.cell, towerStats(selected).range);
+    if (this.menu.cell !== null && this.preview) {
+      this.rangeCircle(this.menu.cell, TOWER_DEFS[this.preview].base.range);
     }
 
     if (active !== null) {
-      const s = MAP.buildSpots[active];
+      const s = cellCenter(active);
       g.lineStyle(3, COLORS.spotActive, 1);
       g.strokeCircle(s.x, s.y, selected ? SPOT_HIT_RADIUS + 4 : SPOT_HIT_RADIUS);
     }
   }
 
   /** A tower's reach: faint fill, strong pale-yellow edge that reads on grass and path. */
-  private rangeCircle(spotId: number, range: number): void {
-    const s = MAP.buildSpots[spotId];
+  private rangeCircle(cell: Cell, range: number): void {
+    const s = cellCenter(cell);
     this.overlay.fillStyle(COLORS.range, 0.12);
     this.overlay.fillCircle(s.x, s.y, range);
     this.overlay.lineStyle(2, COLORS.range, 0.9);

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { MAP } from '../sim';
 import { classifyClick, onPath, pathCover, placeBeside, spotAt, spotRect } from './input';
+import { LEGACY_SPOT_CELLS, spotCenter } from './legacySpots';
+
+/** Spot centres: the legacy cells' centres (milestone 8). */
+const SPOTS = LEGACY_SPOT_CELLS.map((_, id) => spotCenter(id));
 
 describe('spotAt', () => {
   it('hits a spot within 18 px of its centre, inclusive', () => {
@@ -12,13 +15,13 @@ describe('spotAt', () => {
   });
 
   it('finds every spot at its centre and nothing on the path', () => {
-    MAP.buildSpots.forEach((s, id) => expect(spotAt(s.x, s.y)).toBe(id));
+    SPOTS.forEach((s, id) => expect(spotAt(s.x, s.y)).toBe(id));
     expect(spotAt(160, 240)).toBeNull();
     expect(spotAt(480, 510)).toBeNull(); // HUD
   });
 
   it('spotRect is the 36 px box around the spot', () => {
-    expect(spotRect(0)).toEqual({ x: 78, y: 142, width: 36, height: 36 });
+    expect(spotRect(0)).toEqual({ x: 62, y: 158, width: 36, height: 36 }); // centre (80,176)
   });
 });
 
@@ -27,7 +30,7 @@ describe('classifyClick', () => {
 
   it('a click inside the open menu belongs to the menu, even over a spot', () => {
     expect(classifyClick(300, 150, ui)).toEqual({ kind: 'ui' });
-    expect(classifyClick(340, 176, ui)).toEqual({ kind: 'ui' }); // spot 4 under the menu
+    expect(classifyClick(336, 176, ui)).toEqual({ kind: 'ui' }); // spot 4 (336,176) under the menu
   });
 
   it('a spot outside the menu is a spot; anything else is elsewhere', () => {
@@ -43,15 +46,15 @@ describe('placeBeside', () => {
   const PANEL = { w: 168, h: 76 };
 
   it('prefers the right side, vertically centred, when it covers no spot', () => {
-    expect(placeBeside(MAP.buildSpots[5], MENU.w, MENU.h)).toEqual({ x: 528, y: 105 });
+    expect(placeBeside(SPOTS[5], MENU.w, MENU.h)).toEqual({ x: 524, y: 89 }); // centre (496,144)
   });
 
   it('moves off a side that would cover another spot', () => {
     // Spot 2's right side would cover spot 4, its left side spot 0 and below
     // it spot 3: above is the only clear side, even though it covers path.
-    expect(placeBeside(MAP.buildSpots[2], MENU.w, MENU.h)).toEqual({ x: 156, y: 38 });
+    expect(placeBeside(SPOTS[2], MENU.w, MENU.h)).toEqual({ x: 156, y: 38 });
     // Spot 6's right side would cover spot 7, below and above cover more path: left.
-    expect(placeBeside(MAP.buildSpots[6], MENU.w, MENU.h)).toEqual({ x: 304, y: 249 });
+    expect(placeBeside(SPOTS[6], MENU.w, MENU.h)).toEqual({ x: 300, y: 249 }); // centre (496,304)
   });
 
   it('among clear sides, takes the one over the least path', () => {
@@ -60,9 +63,9 @@ describe('placeBeside', () => {
     const below = { x: 156, y: 268 };
     expect(pathCover(left.x, left.y, MENU.w, MENU.h)).toBeGreaterThan(0.2);
     expect(pathCover(below.x, below.y, MENU.w, MENU.h)).toBe(0);
-    expect(placeBeside(MAP.buildSpots[3], MENU.w, MENU.h)).toEqual(below);
+    expect(placeBeside(SPOTS[3], MENU.w, MENU.h)).toEqual(below);
     // Spot 7's panel: right and left cover spots; above covers less path than below.
-    expect(placeBeside(MAP.buildSpots[7], PANEL.w, PANEL.h)).toEqual({ x: 516, y: 200 });
+    expect(placeBeside(SPOTS[7], PANEL.w, PANEL.h)).toEqual({ x: 508, y: 200 }); // centre (592,304)
   });
 
   it('pathCover is 0 on open grass, 1 inside the path strip', () => {
@@ -79,13 +82,13 @@ describe('placeBeside', () => {
 
   for (const [name, size] of [['menu', MENU], ['panel', PANEL]] as const) {
     it(`no ${name} covers a spot or leaves the map area`, () => {
-      MAP.buildSpots.forEach((s) => {
+      SPOTS.forEach((s) => {
         const p = placeBeside(s, size.w, size.h);
         expect(p.x).toBeGreaterThanOrEqual(0);
         expect(p.x + size.w).toBeLessThanOrEqual(960);
         expect(p.y).toBeGreaterThanOrEqual(0);
         expect(p.y + size.h).toBeLessThanOrEqual(480);
-        for (const other of MAP.buildSpots) {
+        for (const other of SPOTS) {
           const cx = Math.min(Math.max(other.x, p.x), p.x + size.w);
           const cy = Math.min(Math.max(other.y, p.y), p.y + size.h);
           expect(Math.hypot(cx - other.x, cy - other.y)).toBeGreaterThan(18);

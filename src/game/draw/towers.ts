@@ -3,54 +3,33 @@
 // towers get a gold ring. Labels are Text objects (labels.ts).
 
 import type Phaser from 'phaser';
-import { MAP, type GameState, type Point } from '../../sim';
+import { cellCenter, cellKey, MAP, nearestPathPoint, positionAlongPath, type Cell, type GameState, type Point } from '../../sim';
 import { COLORS } from '../palette';
 
 /** Barrel length from the tower centre; shot tracers start at the muzzle. */
 export const BARREL_LENGTH = 22;
 
-/** Closest point on the path to `p`; used as a barrel's resting direction. */
-function nearestPathPoint(p: Point): Point {
-  let best: Point = MAP.path[0];
-  let bestD = Infinity;
-  for (let i = 1; i < MAP.path.length; i++) {
-    const a = MAP.path[i - 1];
-    const b = MAP.path[i];
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const len2 = dx * dx + dy * dy;
-    const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2));
-    const q = { x: a.x + dx * t, y: a.y + dy * t };
-    const d = Math.hypot(q.x - p.x, q.y - p.y);
-    if (d < bestD) {
-      bestD = d;
-      best = q;
-    }
-  }
-  return best;
-}
-
-/** Barrel angle per spot, in radians. Starts aimed at the path; follows each shot. */
+/** Barrel angle per tower cell (keyed by cellKey), in radians. Starts aimed at the path; follows each shot. */
 export class Aim {
   private readonly angles = new Map<number, number>();
 
-  angle(spotId: number): number {
-    const known = this.angles.get(spotId);
+  angle(cell: Cell): number {
+    const known = this.angles.get(cellKey(cell));
     if (known !== undefined) return known;
-    const spot = MAP.buildSpots[spotId];
-    const q = nearestPathPoint(spot);
-    return Math.atan2(q.y - spot.y, q.x - spot.x);
+    const p = cellCenter(cell);
+    const q = positionAlongPath(MAP, nearestPathPoint(p).along);
+    return Math.atan2(q.y - p.y, q.x - p.x);
   }
 
-  pointAt(spotId: number, target: Point): void {
-    const spot = MAP.buildSpots[spotId];
-    this.angles.set(spotId, Math.atan2(target.y - spot.y, target.x - spot.x));
+  pointAt(cell: Cell, target: Point): void {
+    const p = cellCenter(cell);
+    this.angles.set(cellKey(cell), Math.atan2(target.y - p.y, target.x - p.x));
   }
 
-  /** Forget spots that no longer hold a tower, so a new tower starts fresh. */
+  /** Forget cells that no longer hold a tower, so a new tower starts fresh. */
   prune(state: GameState): void {
-    for (const id of this.angles.keys()) {
-      if (!state.towers.some((t) => t.spotId === id)) this.angles.delete(id);
+    for (const key of this.angles.keys()) {
+      if (!state.towers.some((t) => cellKey(t.cell) === key)) this.angles.delete(key);
     }
   }
 }
@@ -62,8 +41,8 @@ function barrel(g: Phaser.GameObjects.Graphics, p: Point, angle: number, len: nu
 
 export function drawTowers(g: Phaser.GameObjects.Graphics, state: GameState, aim: Aim): void {
   for (const tower of state.towers) {
-    const p = MAP.buildSpots[tower.spotId];
-    const angle = aim.angle(tower.spotId);
+    const p = cellCenter(tower.cell);
+    const angle = aim.angle(tower.cell);
 
     if (tower.upgraded) {
       g.lineStyle(2, COLORS.upgradeRing, 1);

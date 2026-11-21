@@ -3,6 +3,7 @@
 
 import type Phaser from 'phaser';
 import { MAP } from '../../sim';
+import { LEGACY_SPOT_CELLS, spotCenter } from '../legacySpots';
 import { COLORS } from '../palette';
 
 export const PATH_WIDTH = 40;
@@ -68,5 +69,8 @@ export function drawMap(g: Phaser.GameObjects.Graphics): void {
   exitCottage(g);
 
   g.lineStyle(1.5, COLORS.spotOutline, 0.55);
-  for (const spot of MAP.buildSpots) g.strokeCircle(spot.x, spot.y, SPOT_RADIUS);
+  LEGACY_SPOT_CELLS.forEach((_, id) => {
+    const spot = spotCenter(id);
+    g.strokeCircle(spot.x, spot.y, SPOT_RADIUS);
+  });
 }
