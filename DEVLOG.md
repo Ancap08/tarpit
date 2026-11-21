@@ -1616,3 +1616,50 @@ What went wrong:
 - soundBuild (v1 towers only) now loses on wave 9. It has no v2 target,
   but it means a player who ignores the new towers will lose; Kyle's play
   notes decide whether that is right.
+
+### Verifier notes
+
+The verifier (Claude Sonnet) checked milestone 12 on branch `m12-balance-v2`
+against origin/main (8ee0cc5).
+
+- Clean run (`rm -rf dist && npm ci`, lint, typecheck, test, build, e2e,
+  sim): exit 0; 22 test files and 205 tests passed before the verifier's
+  additions, 61 e2e passed. With the verifier's two new files: 24 files, 211
+  tests.
+- Spec: every number in the DESIGN.md enemy, tower, upgrade, sell-refund and
+  wave tables matches `enemies.ts`, `towers.ts` and `waves.ts`. The diff of
+  those three files holds exactly the six documented changes and nothing
+  else. `game.ts`, `combat.ts`, `grid.ts`, `map.ts` and `actions.ts` are
+  untouched.
+- Targets (from `npm run sim`): noTowers lost wave 2; lazyBuild lost wave 7;
+  longbowSpam lost wave 9; comboBuild won, 11 lives, 177 gold, 136 after
+  wave 9; comboBuildNoFire won with 2 lives. All five met.
+- Revert matrix (one number put back in a scratch copy, run through the
+  sim). Every row breaks a target and matches the implementer's table:
+
+  | Revert | Breaks | Result |
+  |---|---|---|
+  | Longbow damage 6 | longbowSpam | won, 6 lives |
+  | Troll hp 500 | longbowSpam, combo | spam won, 4 lives; combo 17 lives and 184 gold after wave 9 (over 150) |
+  | Troll bounty 11 | combo gold | 190 gold after wave 9 |
+  | Wave 7 Trolls 7 | longbowSpam | lost on wave 10, not 7 to 9 |
+  | Wave 8 Trolls 4 | longbowSpam, combo gold | lost on wave 10; combo 180 after wave 9 |
+  | Wave 9 Trolls 4 | longbowSpam | lost on wave 10 |
+
+  The wave 7 to 9 rows say "survives to wave 10" in the implementer's table:
+  it survives to wave 10 and loses there, which is still outside 7 to 9.
+- Placement: `trail-verifier.test.ts` recomputes `TRAIL_CELL_ORDER` with its
+  own path walk and buildable rule. Equal to the sim's list; 16 step points,
+  16 cells; first six (2,5) (6,6) (3,3) (7,1) (10,1) (14,3); no cell in
+  column 0 or 1.
+- Combo geometry: the Tar Pit (14,10) and Fire Pot (14,9) both reach path
+  distance 725.5 to 956 px (base Tar Pit range 90), or 708.75 to 956 with the
+  upgraded Tar Pit: the end of the downhill run (564 to 852) and the first
+  104 px of the bottom run (852 to 1112).
+- Pins: `enemies-frame.test.ts` asserts 7 Trolls at tick 1350. The 1754 frame
+  is pinned only in Playwright; `frame-verifier.test.ts` checks it from the
+  sim (2 Trolls, both slowed and burning, one at 201 hp).
+- Gaps: DECISIONS.md has no milestone 12 section, and its milestone 8 entry
+  about the kid band is now superseded without a note. SCOPE-v2's new-tower
+  table still says Longbow damage 6; it is labelled "default starting
+  numbers; the balance pass retunes", so it is stale by design.
