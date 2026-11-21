@@ -43,7 +43,7 @@ Towers fire in cellKey order (row by row, left to right).
 
 - Start with 100 gold and 20 lives.
 - Each kill pays the enemy's bounty. Clearing a wave pays a 25 gold bonus.
-- An enemy reaching the exit costs 1 life and is removed.
+- An enemy reaching the exit costs 1 life (the boss: 5) and is removed.
 - Lives at 0 or below: lose, immediately.
 - Clearing wave 10 with lives above 0: win.
 - Sell returns 70% of the total spent on that tower (build plus upgrade),
@@ -58,6 +58,7 @@ Towers fire in cellKey order (row by row, left to right).
 | Troll | 700 | 35 | 8 | tanky |
 | Harpy | 40 | 90 | 7 | flying (milestone 22) |
 | Shieldbearer | 120 | 45 | 9 | shield (milestone 22) |
+| Grumblefoot, the Troll King | 4000 | 25 | 150 | boss: 5 lives on exit, slows capped at 30% (milestone 23) |
 
 **Flying and shields** (milestone 22, from `docs/SCOPE-v4.md`). A Harpy
 flies over the path. Tar Pit, Cannon and Mortar never target it, and a
@@ -72,6 +73,28 @@ applies. A `hit` event carries the damage actually dealt. On screen a Harpy
 flies 16 px above its path position with a soft ground shadow, above every
 other enemy and the tower labels, never tinted or ringed for tar or burn;
 a Shieldbearer carries a small grey shield mark on its left.
+
+**Boss** (milestone 23, from `docs/SCOPE-v4.md`). Grumblefoot, the Troll
+King, is one unit at the end of wave 10: wave 10's last group, 26 s after
+the wave starts (waveTick 1560), 4 s after the last spawn of the other
+groups (the 12th Troll at 22 s). He walks (every tower can target him and
+splash and burn work on him, including the doubled burn under tar) and has
+no shield. Slows cap at 30% on him: a stronger slow is applied at 30% for
+its full duration (the Tar Pit's 40% and 60% both become 30%, so he walks
+25 x 0.7 = 17.5 px/s while tarred), and the `slowed` event carries the
+applied 0.3. If he exits he costs 5 lives (at 5 or fewer the game is lost
+at once); a kill pays 150. Wave 10 clears only when he is dead or gone (the
+usual rule), so a win needs him killed, or exited with lives to spare.
+The simulation emits `bossSpawn` after his `spawn` event and `bossDown`
+(cause `shot`, `burn` or `exit`) after his `kill` or `exit` event. On
+screen he is a 2x sprite (100 px frame) above the walkers and below shots,
+hp bars, labels and Harpies, with a wide ground shadow; instead of a small
+hp bar, a HUD boss bar shows while he lives: 300 x 14 px centred at the
+top of the map (y 24), dark trough, red fill proportional to his hp, 1 px
+cream border, "hp / 4000" right-aligned inside, and his name in 14 px on a
+dark pill above its left end (y 4 to 22). The wave 10 preview reads
+"Next: 8 Wolf, 12 Troll, 5 Harpy, 4 Shieldbearer + Grumblefoot"; a preview
+too long for one 16 px line (350 px) wraps to two 13 px lines.
 
 A slow effect multiplies speed by `(1 - slow)` for its duration. Slows do not
 stack: the strongest slow applies, and a new slow of equal or greater strength
@@ -146,10 +169,11 @@ Groups in a wave run concurrently from the wave start.
 | 7 | 10 Wolf every 0.5 s; 10 Troll every 2.5 s, delay 1 s; 4 Harpy every 1.0 s, delay 8 s |
 | 8 | 20 Goblin every 0.5 s; 10 Wolf every 0.6 s, delay 6 s; 8 Troll every 3 s, delay 3 s; 3 Shieldbearer every 2.5 s, delay 4 s; 4 Harpy every 1.0 s, delay 10 s |
 | 9 | 12 Wolf every 0.5 s; 6 Troll every 2 s |
-| 10 | 8 Wolf every 0.5 s, delay 4 s; 12 Troll every 2 s; 5 Harpy every 0.8 s, delay 6 s; 4 Shieldbearer every 2.0 s, delay 2 s |
+| 10 | 8 Wolf every 0.5 s, delay 4 s; 12 Troll every 2 s; 5 Harpy every 0.8 s, delay 6 s; 4 Shieldbearer every 2.0 s, delay 2 s; 1 Grumblefoot (boss), delay 26 s |
 
 Milestone 22 added the Harpy and Shieldbearer groups (each wave's last
-groups); every older group is unchanged. Wave 9 has none, which keeps the
+groups); every older group is unchanged. Milestone 23 added the boss as
+wave 10's last group. Wave 9 has none, which keeps the
 combo build under 150 gold after wave 9.
 
 Wave flow: the player presses Start Wave. The wave is active until every
@@ -162,7 +186,7 @@ Players can build, upgrade and sell at any time, including mid-wave.
 ## Tick order
 
 Inside one wave tick: (1) enemies move, then slow timers count down; (2)
-enemies at the exit are removed and cost lives (at 0 lives the game is lost
+enemies at the exit are removed and cost lives (1 each, 5 for the boss; at 0 lives the game is lost
 at once); (3) burns tick and burn deaths pay out; (4) towers fire in cell
 order, and each kill is removed before the next tower acts; (5) due enemies
 spawn, and do not move or get shot that tick; (6) the tick counters

@@ -2395,3 +2395,114 @@ below was observed on branch `m22-harpy-shieldbearer` at commit 001d592.
   names v4. The DEVLOG table and numbers match what was observed.
 - **Verdict: PASS.** Verifier commits: the frame-pin fix, the probes, and
   these notes.
+
+## 2026-11-21: milestone 23, Grumblefoot
+
+Roles: implementer Claude Opus, verifier Claude Fable 5.1, coordinator
+Claude Fable 5.1.
+
+### Implementer notes
+
+- **Simulation.** `EnemyType` gains `boss`: 4000 hp, 25 px/s, 150 gold,
+  walking, no shield. `EnemyStats` gains `livesCost` (1 for the other five,
+  5 for him; the exit step subtracts it) and an optional `slowCap` (0.3 on
+  him only). `combat.ts` `applySlow` caps the strength first and returns
+  the strength applied (or null), so the Tar Pit's 40% and 60% both land
+  as 30% for the full 2 s and the `slowed` event carries 0.3. Burn is
+  unchanged (doubled under tar as usual). New events: `bossSpawn` after
+  his `spawn`, `bossDown` (cause `shot`, `burn` or `exit`) after his `kill`
+  or `exit`. Wave clear and win rules are untouched.
+- **Spawn timing.** Wave 10's other groups end with the 12th Troll at
+  11 x 2 = 22 s (Wolves 7.5 s, Harpies 9.2 s, Shieldbearers 8 s), so the
+  boss group is `g('boss', 1, 0, 26)`: waveTick 1560, the last spawn of the
+  wave.
+- **Boss hp: 4000, as in SCOPE-v4.** No lowering was needed: the combo
+  build kills him with its existing plan and no re-plan.
+- **Archetypes** (`npm run sim`), milestone 22 -> 23:
+
+  | Archetype | Milestone 22 | Milestone 23 | Target |
+  |---|---|---|---|
+  | noTowers | lost wave 2 | lost wave 2 | lost by 3 |
+  | lazyBuild | lost wave 7 | lost wave 7 (never meets him) | lost on 6 to 8 |
+  | greedyMusket | lost wave 7 | lost wave 7 | none |
+  | soundBuild | lost wave 7 | lost wave 7 | none |
+  | soundBuildNoTar | lost wave 6 | lost wave 6 | none |
+  | longbowSpam | lost wave 9 | lost wave 9 (never meets him) | lost on 7 to 9 |
+  | comboBuild | won, 12 lives, 347 gold | won, 12 lives, 497 gold, 145 after wave 9; kills him (shot) at waveTick 4639 | won, 5 to 15 lives, under 150 after wave 9 |
+  | comboBuildNoFire | won, 2 lives, 475 gold | won, 2 lives, 625 gold; kills him at waveTick 5150 | strictly worse than combo |
+  | noAntiAir | lost wave 7 | lost wave 7 | lost by 8 |
+  | bossRush | (new) | won, 12 lives, 427 gold; kills him (burn) at waveTick 4562 | informational |
+
+  `bossRush()` plays the combo build and, before wave 10, spends what is
+  left on Longbow upgrades. The combo build has upgraded all five of its
+  Longbows by then, so it builds a Longbow and upgrades it while 70 gold
+  allows: one pair at (2,5), the first trail cell (115 gold after the
+  combo's wave 10 upgrade, 45 left over). He dies 77 ticks sooner.
+- **Sheet layouts** (Pillow bounding boxes plus a 4x zoom read by eye).
+  DemonCyclop `Walk.png`, 300 x 50: one row of six 50 x 50 frames, every
+  one a front view facing the viewer (no side or back views; frames 4 and
+  5 lean a little). So all four facings use frames 0 to 5, mirrored for
+  left only (the path never runs left, so the mirror never shows). Feet at
+  rows 42 to 43 of 50. `Hit.png`, 150 x 50: three 50 x 50 frames, 0 a
+  bright orange flash, 1 and 2 a hurt pose (mouth open). Frame 0 is the
+  hit flash, drawn as a second sprite over him while the flash lasts
+  (instead of the white tint fill, which Canvas cannot draw), so test mode
+  shows it too. Both PNGs are unchanged copies (`assets/sprites/boss.png`,
+  `boss-hit.png`); both are under Vite's 4 kB inline limit, so `dist/`
+  stays at 4 files.
+- **Renderer.** 2x, in a layer between the walkers and the shot effects:
+  above every walker, below shots, hp bars, labels and Harpies. Drawn 30
+  px above his path position so his feet stand 6 px below the path point;
+  ground shadow 72 x 20 at 15% over 52 x 14 at 20%, 4 px below the point;
+  tar and burn rings (radius 41 and 44) centred on his body. Walk at 8 fps
+  in play (checked: the frame index advanced 1 per about 130 ms), frozen
+  on frame 0 in test mode. No small hp bar.
+- **HUD boss bar** (`src/game/ui/bossBar.ts`): 300 x 14 centred, dark
+  trough, red fill, 1 px cream border, "2374 / 4000" in 11 px right-aligned
+  inside (hp rounded up so a live boss never reads 0), name from
+  `BOSS_NAME` in 14 px on a dark rounded pill above the left end.
+  `hudText().boss` is "Grumblefoot 4000 / 4000" while shown, else null.
+- **Wave 10 preview**: "Next: 8 Wolf, 12 Troll, 5 Harpy, 4 Shieldbearer +
+  Grumblefoot" (`ENEMY_NAMES` for the groups, `BOSS_NAME` for him).
+- **Test hooks.** `runScript(name, untilWave?)` stops in setup before
+  `untilWave` with that wave's actions applied; `animState` reports
+  texture 'boss'.
+- **Frames.** New `boss.png`: combo build, wave 10, step 3562; he is
+  alone, tarred and burning at (420,241) on the downhill run, bar at 2374
+  of 4000, a Mortar splash on him 2 ticks into its fade, and no hit on
+  that tick (walk frame, not the flash). `won.png` now shows 497 gold.
+  `new-towers.png` changes in the HUD only (its wave 6 preview now wraps;
+  see below). Other ticks unchanged.
+
+### What went wrong
+
+- **The bar could not sit at y 12 with the name above it.** The brief put
+  the bar at y 12 and the 14 px name above-left of it; an 18 px pill does
+  not fit in 12 px. The bar is at y 24 and the pill at y 4 to 22.
+  Coordinator to confirm.
+- **The wave preview ran under the Start Wave button.** The HUD gives the
+  preview 350 px (x 366 to 716). At 16 px Courier New (9.6 px a
+  character) the milestone 22 previews for waves 6, 8 and 10 were already
+  wider (wave 10: 451 px), and "+ Grumblefoot" made wave 10's 586 px, so
+  the boss name was hidden under the button. A preview longer than one
+  line now drops to 13 px and wraps to two lines (`previewSize` in
+  `hud.ts`). This changes the HUD text in `new-towers.png` (wave 6
+  preview) on the next CI baseline run.
+- **"Step 300 more, the bar shows lower hp" did not hold.** Every tower
+  aims at the enemy furthest along the path, and he is the slowest enemy
+  of the wave, so nothing shoots him until the Fire Pot at (10,4) hits
+  him about 977 ticks after his spawn. `e2e/boss.spec.ts` steps in chunks
+  of 300 until the hp drops and pins the count (4 chunks).
+- **The lose path as briefed (lives 5, then wave 10 with no towers) loses
+  to the wave's other 29 enemies first.** The spec sets 34 lives, so 5 are
+  left when he is alone, and asserts that before he exits.
+- **"All remaining gold on Longbow upgrades" had no Longbow left to
+  upgrade** in the combo build; `bossRush` builds and upgrades pairs.
+- **Tests outside this milestone that changed:** the milestone 22
+  verifier's wave-table test now ignores the boss group; the
+  `ENEMY_STATS` pins gained `livesCost: 1`; five test hp tables gained the
+  boss; the combo build's final gold moved from 347 to 497 in
+  `balance.test.ts`, `endText.test.ts`, `end-screens.spec.ts`,
+  `end-screens-verifier.spec.ts` and `visual.spec.ts`.
+- My first `boss.png` assertion counted the Mortar hit one tick late (the
+  splash on screen at step 3562 is from step 3560, not 3561).

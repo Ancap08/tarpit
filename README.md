@@ -69,12 +69,13 @@ docs/media/       README GIF and still
 docs/art/         art source spike (milestone 15): INVENTORY.md (packs, roster mapping, recommendation)
 docs/art/mockups/ style mockups A (Ninja Adventure, 3x and 2x), B (0x72), C (shapes animated), closeups
 assets/           game art and sound; MANIFEST.md lists every file's source and license
-assets/sprites/   enemy sprite sheets (placeholders from Ninja Adventure until v5: goblin, wolf, troll, harpy, shieldbearer), imported by src/game/anim/sheets.ts
+assets/sprites/   enemy sprite sheets (placeholders from Ninja Adventure until v5: goblin, wolf, troll, harpy, shieldbearer, boss and boss-hit), imported by src/game/anim/sheets.ts
 src/sim/          game logic in plain TypeScript, no Phaser or DOM (lint-enforced)
 src/sim/grid.ts   the build grid: cells, cell centres, the buildable rule
 src/game/         Phaser rendering, input, HUD, tower panel and the ?test=1 test hooks
 src/game/names.ts every display name (enemies, towers, tower labels, boss, end screens), keyed by internal id
 src/game/ui/buildBar.ts  the HUD build bar: pick a tower, then click a cell
+src/game/ui/bossBar.ts   the HUD boss bar (name, hp) shown while Grumblefoot lives
 src/game/portrait.ts     the "turn your device" card (markup in index.html), pauses ticking
 src/game/draw/labels.ts  tower labels and the crowding rule (smaller, then hidden)
 src/game/anim/    animation engine: sheet layouts, one sprite per enemy, reactions to simulation events (state.events)
@@ -84,6 +85,7 @@ scripts/check-asset-manifest.ts  npm run check:assets: every file in assets/ and
 scripts/check-size-budget.ts     npm run check:size (after build): dist/ stays under 20 MB, prints the 10 largest files
 e2e/              Playwright tests and CI screenshot baselines
 e2e/new-towers.spec.ts  Longbow, Mortar and Fire Pot built through the bar
+e2e/boss.spec.ts        Grumblefoot in wave 10: boss bar, kill and win, exit and loss
 e2e/anim.spec.ts        enemy sprite states (texture, facing, hit, kill, burning and tarred) through animState()
 e2e/touch.spec.ts       iPad-size touch tests (two-tap placement, 44 px targets, portrait card)
 e2e/visual-tablet.spec.ts  the 1024 x 768 letterboxed baseline (tablet project)
@@ -129,7 +131,9 @@ v4 (gameplay lock, [docs/SCOPE-v4.md](docs/SCOPE-v4.md)) is in progress:
 milestone 22 added two enemies, the flying Harpy (Tar Pit, Cannon and
 Mortar cannot touch it) and the shielded Shieldbearer (small shots do half
 damage), to the waves from wave 4 and wave 6, and one table of display
-names (`src/game/names.ts`). Before that, v3's tablet play (milestone 14),
+names (`src/game/names.ts`). Milestone 23 added the boss, Grumblefoot the
+Troll King (4000 hp, 5 lives if he exits, slows capped at 30%), at the end
+of wave 10, with a HUD boss bar while he lives. Before that, v3's tablet play (milestone 14),
 art spike (15) and animation engine (16) were built. The simulation emits events (`state.events`) and the
 renderer animates enemies as pixel sprites from them, in WebGL in play and
 frozen in Canvas under `?test=1`. The sprites are placeholders; towers,
