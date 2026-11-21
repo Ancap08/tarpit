@@ -1,6 +1,8 @@
 // Tower panel: opens beside a selected tower with "Upgrade  40" and
 // "Sell  +35". Upgrade reads "Upgraded" and is greyed once used, and is
 // greyed when unaffordable. Sell shows the refund, floor(spent * 7 / 10).
+// A 42 x 42 close button ("×") sits in the top-right corner (milestone 14),
+// for touch players with no Escape key.
 
 import type Phaser from 'phaser';
 import { cellCenter, sellRefund, TOWER_DEFS, towerAt, type Cell, type GameState } from '../../sim';
@@ -10,6 +12,7 @@ import { ButtonStack } from './button';
 export interface TowerPanelHandlers {
   onUpgrade: () => void;
   onSell: () => void;
+  onClose: () => void;
 }
 
 export class TowerPanel {
@@ -20,7 +23,7 @@ export class TowerPanel {
     this.stack = new ButtonStack(scene, [
       { text: 'Upgrade', right: '', onClick: handlers.onUpgrade },
       { text: 'Sell', right: '', onClick: handlers.onSell },
-    ]);
+    ], handlers.onClose);
   }
 
   /** The cell of the selected tower, or null when closed. */
@@ -59,10 +62,11 @@ export class TowerPanel {
     sell.set('Sell', true, `+${sellRefund(tower.spent)}`);
   }
 
-  /** Button rectangles keyed `panel:upgrade` and `panel:sell`, only while open. */
+  /** Button rectangles keyed `panel:upgrade`, `panel:sell` and `panel:close`, only while open. */
   rects(): Record<string, Rect> {
     if (!this.stack.isOpen) return {};
     const [upgrade, sell] = this.stack.buttons;
-    return { 'panel:upgrade': upgrade.rect, 'panel:sell': sell.rect };
+    const close = this.stack.close as NonNullable<ButtonStack['close']>;
+    return { 'panel:upgrade': upgrade.rect, 'panel:sell': sell.rect, 'panel:close': close.rect };
   }
 }

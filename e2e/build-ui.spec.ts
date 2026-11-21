@@ -312,3 +312,14 @@ test('(f) the ghost and its range never draw over the HUD', async ({ page }) => 
   await settle(page);
   expect((await page.screenshot({ clip: above })).equals(plain)).toBe(false);
 });
+
+test('the panel close button closes the panel on a mouse click too (milestone 14)', async ({ page }) => {
+  await startGame(page);
+  await page.evaluate(() => (window.__tarpit as TarpitTestApi).buildAt(7, 5, 'musketeer'));
+  await clickCell(page, C75);
+  expect(await ui(page)).toMatchObject({ selectedCell: C75, panelOpen: true, isTouch: false, armedCell: null });
+  const r = await rects(page);
+  expect(r['panel:close']).toMatchObject({ width: 42, height: 42 });
+  await click(page, 'panel:close');
+  expect(await ui(page)).toMatchObject({ selectedCell: null, panelOpen: false });
+});

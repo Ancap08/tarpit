@@ -1,6 +1,6 @@
 # Tarpit: v3 scope and milestones
 
-Draft for Kyle's approval, 2026-11-21. "Default" marks the coordinator's
+Approved by Kyle on 2026-11-21 (PR 18). "Default" marks the coordinator's
 pick; Kyle can change any of it. v1 and v2 are shipped (`SCOPE.md`,
 `SCOPE-v2.md`). v3 is presentation: it changes how the game looks, sounds
 and feels, and where it can be played. It changes no gameplay numbers.

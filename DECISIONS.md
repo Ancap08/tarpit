@@ -321,3 +321,34 @@ can change it; "Kyle" means Kyle decided.
   gold plus bounties affords. Default (Opus), planned headlessly first.
 - **Next candidates, none started:** Kenney CC0 art, a second map, a second
   upgrade tier. Kyle decides.
+
+## 2026-11-21, v3 approved
+
+- **v3 scope approved with all defaults** (`docs/SCOPE-v3.md`): tablet
+  play, an event-driven animation engine, CC0 pixel art chosen from mockups
+  at milestone 15 (Ninja Adventure the default candidate), music with a
+  mute button, iPad landscape first, a 20 MB size budget. Kyle.
+- **Tiny Swords excluded.** Fable, from the license page: the free pack
+  forbids redistribution and its monsters are a paid add-on, so it cannot be
+  committed to a public repo.
+- **Only CC0 or credited CC-BY assets are committed; a manifest check
+  enforces it from milestone 15.** Fable.
+
+## 2026-11-21, milestone 14 (tablet and touch)
+
+- **Canvas stays 960 x 580 and scales to fit with letterboxing; every
+  button is 42 canvas px tall (44.8 px on an iPad at 1024 wide); the HUD
+  stays 100 px by trimming paddings.** From `docs/SCOPE-v3.md`; numbers in
+  the DEVLOG.
+- **Touch: first tap arms a cell (ghost and range), second tap on the same
+  cell builds, tapping elsewhere moves the arm; changing or clearing the
+  pick disarms; after a touch build the pick stays and the arm clears; any
+  mouse input switches back to mouse mode; touch moves are ignored.**
+  Default (Opus, accepted by Fable).
+- **Portrait shows a DOM "turn your device" card and pauses ticking; any
+  window taller than wide counts.** Default (Opus); narrow desktop windows
+  get the card too, accepted.
+- **Phones in landscape run at about 0.67 scale (28 px buttons): best
+  effort, as scoped.** Fable.
+- **Not verified on a real iPad or Safari;** Chromium touch emulation only.
+  Kyle's wave on the iPad is the remaining evidence.

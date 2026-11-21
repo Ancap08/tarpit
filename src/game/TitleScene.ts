@@ -28,7 +28,7 @@ export class TitleScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.add
-      .text(width / 2, height / 2 + 100, 'Click to start', {
+      .text(width / 2, height / 2 + 100, 'Tap or click to start', {
         fontFamily: FONT,
         fontSize: '22px',
         fontStyle: 'bold',

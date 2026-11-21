@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 // Non-test mode: the real game loop runs on real time. window.__tarpit holds
-// `game` and the read-only uiRects() here, so the clicks go where the HUD
+// `game` and the read-only uiRects(), canvasToPage() and portraitCardVisible() here, so the clicks go where the HUD
 // buttons are drawn (canvas == page at the 960x580 test viewport).
 
 type LiveState = { tick: number; enemies: unknown[]; phase: string };
@@ -26,8 +26,13 @@ test('live loop ticks, spawns enemies, and 2x runs faster', async ({ page }) => 
     });
 
   expect(await read()).toMatchObject({ phase: 'setup' });
-  // Test mode is off, so uiRects() is the only hook besides `game`.
-  expect(await page.evaluate(() => Object.keys(window.__tarpit ?? {}).sort())).toEqual(['game', 'uiRects']);
+  // Test mode is off, so only the read-only hooks are there besides `game`.
+  expect(await page.evaluate(() => Object.keys(window.__tarpit ?? {}).sort())).toEqual([
+    'canvasToPage',
+    'game',
+    'portraitCardVisible',
+    'uiRects',
+  ]);
   await clickButton(page, 'startWave');
   const t0 = await read();
   expect(t0.phase).toBe('wave');

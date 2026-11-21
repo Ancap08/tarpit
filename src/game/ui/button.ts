@@ -148,7 +148,10 @@ export class Button {
 }
 
 export const STACK_BUTTON_WIDTH = 156;
-export const STACK_BUTTON_HEIGHT = 30;
+/** 42 px: at least 44 px on screen at iPad landscape scale (milestone 14). */
+export const STACK_BUTTON_HEIGHT = 42;
+/** The square close button in the stack's top-right corner. */
+export const STACK_CLOSE_SIZE = 42;
 const STACK_GAP = 4;
 const STACK_PAD = 6;
 
@@ -161,17 +164,20 @@ export interface StackItem {
 
 /**
  * A small popup: buttons stacked vertically on a dark backing, opened beside
- * a point. Used by the tower panel.
+ * a point, with an optional square close button ("×") in a column to the
+ * right of the stack, at the top. Used by the tower panel.
  */
 export class ButtonStack {
   readonly buttons: Button[];
+  /** The close button, when the stack was made with `onClose`. */
+  readonly close: Button | null;
   private readonly backing: Phaser.GameObjects.Rectangle;
   private open = false;
   readonly width: number;
   readonly height: number;
 
-  constructor(scene: Phaser.Scene, items: StackItem[]) {
-    this.width = STACK_BUTTON_WIDTH + 2 * STACK_PAD;
+  constructor(scene: Phaser.Scene, items: StackItem[], onClose?: () => void) {
+    this.width = STACK_BUTTON_WIDTH + 2 * STACK_PAD + (onClose ? STACK_GAP + STACK_CLOSE_SIZE : 0);
     this.height = 2 * STACK_PAD + items.length * STACK_BUTTON_HEIGHT + (items.length - 1) * STACK_GAP;
     this.backing = scene.add
       .rectangle(0, 0, this.width, this.height, COLORS.menuBg, 0.92)
@@ -185,7 +191,14 @@ export class ButtonStack {
         onHover: item.onHover,
       }),
     );
-    for (const b of this.buttons) b.setShown(false);
+    this.close = onClose
+      ? new Button(scene, { x: 0, y: 0, width: STACK_CLOSE_SIZE, height: STACK_CLOSE_SIZE }, '\u00d7', onClose, { fontSize: '24px' })
+      : null;
+    for (const b of this.all()) b.setShown(false);
+  }
+
+  private all(): Button[] {
+    return this.close ? [...this.buttons, this.close] : this.buttons;
   }
 
   get isOpen(): boolean {
@@ -202,14 +215,15 @@ export class ButtonStack {
     this.backing.setPosition(x, y).setVisible(true);
     this.buttons.forEach((b, i) => {
       b.moveTo(x + STACK_PAD, y + STACK_PAD + i * (STACK_BUTTON_HEIGHT + STACK_GAP));
-      b.setShown(true);
     });
+    this.close?.moveTo(x + this.width - STACK_PAD - STACK_CLOSE_SIZE, y + STACK_PAD);
+    for (const b of this.all()) b.setShown(true);
     this.open = true;
   }
 
   hide(): void {
     this.backing.setVisible(false);
-    for (const b of this.buttons) b.setShown(false);
+    for (const b of this.all()) b.setShown(false);
     this.open = false;
   }
 }

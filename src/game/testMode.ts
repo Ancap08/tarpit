@@ -1,11 +1,13 @@
 // Test mode (?test=1): time is frozen and window.__tarpit exposes hooks for
 // Playwright. Outside test mode window.__tarpit holds the Phaser game and the
-// read-only uiRects(), so real-time tests and the demo recorder click the
-// HUD where it is drawn.
+// read-only uiRects(), canvasToPage() and portraitCardVisible(), so real-time
+// tests and the demo recorder click the HUD where it is drawn at any
+// viewport size.
 
 import type Phaser from 'phaser';
 import { comboBuild, lazyBuild, soundBuild, WAVES, type BuildAction, type Phase, type WaveScript } from '../sim';
 import type { GameScene } from './GameScene';
+import { portraitCardVisible } from './portrait';
 import type { TarpitTestApi } from './testGlobal';
 
 export function isTestMode(): boolean {
@@ -47,9 +49,29 @@ function uiRectsOf(game: Phaser.Game): ReturnType<TarpitTestApi['uiRects']> {
   return (game.scene.getScene('game') as GameScene).uiRects() as ReturnType<TarpitTestApi['uiRects']>;
 }
 
+/**
+ * A canvas-space point in page (CSS pixel) coordinates, through the scale
+ * manager's fit: the canvas's on-page bounds and its display scale.
+ */
+function canvasToPage(game: Phaser.Game, x: number, y: number): { x: number; y: number } {
+  const scale = game.scale;
+  scale.updateBounds();
+  const b = scale.canvasBounds;
+  return {
+    x: b.left + window.scrollX + x / scale.displayScale.x,
+    y: b.top + window.scrollY + y / scale.displayScale.y,
+  };
+}
+
 export function installGlobal(game: Phaser.Game): void {
+  const always = {
+    game,
+    uiRects: () => uiRectsOf(game),
+    canvasToPage: (x: number, y: number) => canvasToPage(game, x, y),
+    portraitCardVisible,
+  };
   if (!isTestMode()) {
-    window.__tarpit = { game, uiRects: () => uiRectsOf(game) };
+    window.__tarpit = always;
     return;
   }
 
@@ -60,7 +82,7 @@ export function installGlobal(game: Phaser.Game): void {
   };
 
   const api: TarpitTestApi = {
-    game,
+    ...always,
     scene: () => game.scene.getScenes(true)[0]?.scene.key ?? '',
     state: () => scene().state,
     step: (n) => scene().advance(n),

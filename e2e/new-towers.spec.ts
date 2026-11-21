@@ -48,7 +48,7 @@ test('the bar has six buttons, 148 px wide and 8 px apart from x 16', async ({ p
   const r = await rects(page);
   const order = ['musketeer', 'cannon', 'tarpit', 'longbow', 'mortar', 'firepot'];
   expect(Object.keys(r).filter((k) => k.startsWith('bar:'))).toEqual(order.map((t) => `bar:${t}`));
-  order.forEach((t, i) => expect(r[`bar:${t}`]).toEqual({ x: 16 + i * 156, y: 537, width: 148, height: 36 }));
+  order.forEach((t, i) => expect(r[`bar:${t}`]).toEqual({ x: 16 + i * 156, y: 533, width: 148, height: 42 }));
 });
 
 for (const c of CASES) {
