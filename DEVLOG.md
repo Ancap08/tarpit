@@ -1115,7 +1115,7 @@ build menu with build-anywhere through a HUD build bar.
   buildable, blocked, outside) and `placeBeside`, which no longer avoids
   other towers: right, left, below, above, least path cover wins, skipping a
   side the clamp pushed over the tower's own cell or label. A unit test
-  checks every one of the 346 buildable cells: the panel stays in the map,
+  checks every one of the 344 buildable cells: the panel stays in the map,
   off the HUD, and off its own tower and label.
 - No grid lines and no spot circles. `legacySpots.ts`, its two tests and
   `ui/buildMenu.ts` are deleted.
@@ -1140,7 +1140,19 @@ build menu with build-anywhere through a HUD build bar.
 - `npm run demo` runs the bar flow (pick, glide, click the cell) and
   produced a good GIF and still; the media is not committed (milestone 13).
 
-Counts: 144 unit tests in 19 files, 40 e2e tests in 7 files.
+- Landmarks (coordinator's decision, after the cottage finding below):
+  `MapDef.landmarks` lists drawn features off the path; `MAP` has one, the
+  exit cottage's box `COTTAGE` (x 908..944, y 131..168, chimney and roof
+  included), and `draw/map.ts` draws the cottage from it. A cell whose 32 px
+  square overlaps a landmark is not buildable. This removes (28,4) and
+  (29,4): 344 of 450 cells are buildable (346 before). The pins in
+  `grid.test.ts` and `grid-verifier.test.ts` move to 344. The implementer
+  updated the verifier's own mask rule in `grid-verifier.test.ts` to match
+  (its own overlap code, not grid.ts). `npm run sim` is unchanged: no
+  archetype uses those two cells. The e2e edge check moved from (29,4) to
+  (29,7) and asserts that a build at (29,4) is refused.
+
+Counts: 145 unit tests in 19 files, 40 e2e tests in 7 files.
 
 ### What went wrong
 
@@ -1158,6 +1170,9 @@ Counts: 144 unit tests in 19 files, 40 e2e tests in 7 files.
   "nothing (occupied)" and also that clicking a tower with a pick active
   select it. The test asserts both: no second build, and the tower is
   selected with the pick cleared.
-- Not fixed, for the coordinator: cell (29,4) is buildable and overlaps the
-  exit cottage drawing, because the buildable rule only measures distance
-  to the path. That is the simulation's rule from milestone 8.
+- Cell (29,4) was buildable and overlapped the exit cottage drawing,
+  because the milestone 8 rule only measures distance to the path. The
+  coordinator's first fix, excluding cells within 40 px of the path's end
+  waypoints, removed no cell at all (every buildable cell is over 50 px from
+  both; (29,4) is 50.6 px from (960,192), and (28,4), also under the roof,
+  is 67.9 px). The coordinator chose a landmark rule instead (below).

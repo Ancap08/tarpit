@@ -3,7 +3,7 @@
 // shots are measured from the cell centre.
 
 import { MAP } from './map';
-import type { GameState, MapDef, Point } from './types';
+import type { GameState, MapDef, Point, Rect } from './types';
 
 export const GRID_COLS = 30;
 export const GRID_ROWS = 15;
@@ -86,9 +86,17 @@ export function distanceToPath(point: Point, map: MapDef = MAP): number {
 
 const buildableCache = new WeakMap<MapDef, readonly boolean[]>();
 
+/** True when the cell's 32 px square overlaps the box (touching edges do not count). */
+function cellOverlaps(cell: Cell, r: Rect): boolean {
+  const x = cell.col * CELL;
+  const y = cell.row * CELL;
+  return x < r.x + r.width && r.x < x + CELL && y < r.y + r.height && r.y < y + CELL;
+}
+
 /**
  * Buildable mask indexed by cellKey: true when the cell centre is at least
- * MIN_PATH_CLEARANCE px from the path centreline. Computed once per map.
+ * MIN_PATH_CLEARANCE px from the path centreline and the cell's square
+ * overlaps none of the map's landmarks. Computed once per map.
  */
 export function buildableCells(map: MapDef = MAP): readonly boolean[] {
   let mask = buildableCache.get(map);
@@ -96,7 +104,9 @@ export function buildableCells(map: MapDef = MAP): readonly boolean[] {
     const cells: boolean[] = [];
     for (let row = 0; row < GRID_ROWS; row++) {
       for (let col = 0; col < GRID_COLS; col++) {
-        cells[cellKey({ col, row })] = distanceToPath(cellCenter({ col, row }), map) >= MIN_PATH_CLEARANCE;
+        const cell = { col, row };
+        cells[cellKey(cell)] =
+          distanceToPath(cellCenter(cell), map) >= MIN_PATH_CLEARANCE && !(map.landmarks ?? []).some((r) => cellOverlaps(cell, r));
       }
     }
     mask = cells;
@@ -105,12 +115,12 @@ export function buildableCells(map: MapDef = MAP): readonly boolean[] {
   return mask;
 }
 
-/** True when the cell is inside the grid and off the path strip (ignores towers). */
+/** True when the cell is inside the grid, off the path strip and off the landmarks (ignores towers). */
 export function isBuildableTerrain(cell: Cell, map: MapDef = MAP): boolean {
   return isInsideGrid(cell) && buildableCells(map)[cellKey(cell)];
 }
 
-/** True when a tower may be built on `cell` now: inside the grid, off the path, and free. */
+/** True when a tower may be built on `cell` now: inside the grid, off the path and landmarks, and free. */
 export function isBuildable(state: GameState, cell: Cell): boolean {
   return isBuildableTerrain(cell) && !state.towers.some((t) => sameCell(t.cell, cell));
 }

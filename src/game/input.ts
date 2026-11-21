@@ -2,16 +2,11 @@
 // what a click means, and where the tower panel goes next to a tower. Pure
 // functions with no Phaser, so they are unit tested in input.test.ts.
 
-import { CELL, distanceToPath, GRID_COLS, GRID_ROWS, isBuildable, MAP, towerAt, type Cell, type GameState, type Point } from '../sim';
+import { CELL, distanceToPath, GRID_COLS, GRID_ROWS, isBuildable, MAP, towerAt, type Cell, type GameState, type Point, type Rect } from '../sim';
 import { labelAbove, LABEL_HEIGHT, LABEL_OFFSET_Y, labelX } from './draw/labels';
 import { PATH_WIDTH } from './draw/map';
 
-export interface Rect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
+export type { Rect };
 
 /** The map area. Panels and ghosts stay inside it, never over the HUD. */
 export const MAP_AREA: Rect = { x: 0, y: 0, width: MAP.width, height: MAP.height };

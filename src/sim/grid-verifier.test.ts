@@ -29,22 +29,30 @@ function distToPolyline(p: Point, path: readonly Point[]): number {
   return best;
 }
 
+// Milestone 9: the implementer updated this rule to match the landmark
+// exclusion (a cell whose 32 px square overlaps a landmark box is not
+// buildable); the overlap test below is written separately from grid.ts.
 function ownMask(map: MapDef): boolean[] {
   const out: boolean[] = [];
   for (let key = 0; key < GRID_COLS * GRID_ROWS; key++) {
-    const centre = { x: (key % GRID_COLS) * 32 + 16, y: Math.floor(key / GRID_COLS) * 32 + 16 };
-    out.push(distToPolyline(centre, map.path) >= 36);
+    const left = (key % GRID_COLS) * 32;
+    const top = Math.floor(key / GRID_COLS) * 32;
+    const centre = { x: left + 16, y: top + 16 };
+    const onLandmark = (map.landmarks ?? []).some(
+      (r) => !(left + 32 <= r.x || r.x + r.width <= left || top + 32 <= r.y || r.y + r.height <= top),
+    );
+    out.push(distToPolyline(centre, map.path) >= 36 && !onLandmark);
   }
   return out;
 }
 
 describe('buildable mask, recomputed independently', () => {
-  it('equals buildableCells(MAP) cell for cell, with 346 of 450 buildable', () => {
+  it('equals buildableCells(MAP) cell for cell, with 344 of 450 buildable', () => {
     const mine = ownMask(MAP);
     const theirs = buildableCells(MAP);
     expect(theirs.length).toBe(450);
     for (let key = 0; key < 450; key++) expect(theirs[key], `key ${key}`).toBe(mine[key]);
-    expect(mine.filter(Boolean).length).toBe(346);
+    expect(mine.filter(Boolean).length).toBe(344);
   });
 
   it('the 36 px boundary is inclusive: 36 buildable, 35.9 not (synthetic straight paths)', () => {

@@ -3,7 +3,7 @@
 // Drawn once into its own Graphics object.
 
 import type Phaser from 'phaser';
-import { MAP } from '../../sim';
+import { COTTAGE, MAP } from '../../sim';
 import { COLORS } from '../palette';
 
 export const PATH_WIDTH = 40;
@@ -41,10 +41,10 @@ function spawnMarker(g: Phaser.GameObjects.Graphics): void {
 }
 
 function exitCottage(g: Phaser.GameObjects.Graphics): void {
-  const end = MAP.path[MAP.path.length - 1];
-  // A small cottage just above the path's last stretch, near the right edge.
-  const cx = end.x - 34;
-  const base = end.y - PATH_WIDTH / 2 - 4;
+  // A small cottage just above the path's last stretch, near the right edge,
+  // drawn inside the sim's COTTAGE box (no cell overlapping it is buildable).
+  const cx = COTTAGE.x + COTTAGE.width / 2;
+  const base = COTTAGE.y + COTTAGE.height;
   const w = 28;
   const h = 20;
   // Chimney first, so the roof covers its foot.

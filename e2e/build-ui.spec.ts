@@ -251,12 +251,13 @@ test('hover: the hovered cell and the cursor follow the pointer; the HUD has no 
   expect((await ui(page)).hoverCell).toBeNull();
 });
 
-// Edge cells: (0,5) left edge, (29,4) right edge (the nearest buildable cell
-// to (29,5), which is on the path's last run), (7,0) top edge, (15,14) bottom
-// row, right above the HUD.
+// Edge cells: (0,5) left edge, (29,7) right edge ((29,5) is on the path's
+// last run; of the two nearest buildable cells, (29,3) and (29,7), the one
+// below the path; (29,4) is under the exit cottage), (7,0) top edge, (15,14)
+// bottom row, right above the HUD.
 const EDGE_CELLS: Cell[] = [
   { col: 0, row: 5 },
-  { col: 29, row: 4 },
+  { col: 29, row: 7 },
   { col: 7, row: 0 },
   { col: 15, row: 14 },
 ];
@@ -264,6 +265,8 @@ const EDGE_CELLS: Cell[] = [
 test('(f) no panel leaves the map or overlaps the HUD, for towers at the edges', async ({ page }) => {
   await startGame(page);
   await setGold(page, 9999);
+  const cottage = await page.evaluate(() => (window.__tarpit as TarpitTestApi).buildAt(29, 4, 'musketeer'));
+  expect(cottage).toEqual({ ok: false, reason: 'not-buildable' });
   for (const c of EDGE_CELLS) {
     const built = await page.evaluate(([col, row]) => (window.__tarpit as TarpitTestApi).buildAt(col, row, 'musketeer'), [c.col, c.row]);
     expect(built.ok, `build at (${c.col},${c.row})`).toBe(true);
