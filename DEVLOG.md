@@ -229,3 +229,55 @@ cannot reach the path from spot 3 at all, and from the other eight it touches
 only a single point of a straight segment. The upgraded Tar Pit (95) fixes
 both. This matters for milestone 6 tuning. Also noted: `lazyBuild` loses on
 wave 3 against a target of about wave 7.
+
+## 2026-11-21: milestone 3, rendering
+
+Roles: implementer Claude Opus, verifier Claude Sonnet, coordinator Claude
+Fable 5.1.
+
+### Implementer notes
+
+The implementer (Claude Opus) added the first visual milestone: a
+`GameScene` that renders the simulation, a HUD, a `?test=1` test mode, wave 1
+Playwright tests, screenshot checks and a CI workflow that makes baselines.
+
+- Small sim change: `state.shots` lists the shots fired in the most recent
+  tick (`tick` clears it, `combat` appends). The renderer needs it because
+  hits are instant. Won and lost ticks still change nothing, so the existing
+  "a finished game is frozen" tests pass unchanged. Five new unit tests in
+  `src/sim/shots.test.ts` (89 total).
+- Renderer is `Phaser.CANVAS`, not `AUTO`, so headless screenshots do not
+  depend on WebGL. One Graphics object is cleared and redrawn each frame for
+  towers, enemies and shots; the map is drawn once. Shot effects live in the
+  renderer and count down in simulation ticks, so test-mode frames are
+  deterministic and 2x fades twice as fast.
+- The path is drawn as one rectangle per segment plus a disc at each corner.
+  Phaser's canvas Graphics has no line-join setting, and the path is
+  axis-aligned, so this gives round joins with no extra code.
+- The Playwright viewport is 960x540, so the Scale.FIT canvas sits at (0,0)
+  at scale 1 and `uiRects()` coordinates are page coordinates.
+- Spec gaps resolved: the smoke test read `window.__tarpit.scene`, which
+  assumed `__tarpit` was the Phaser game; it now reads
+  `window.__tarpit.game.scene`. The test API also has `startWave()`, so the
+  visual test can start a wave without a mouse hover tint in the frame (the
+  play-wave tests still click the real button). The mid-wave visual test sets
+  `state().gold = 1000` because Musketeer, Cannon and Tar Pit cost 190
+  together and the game starts with 100.
+- Playwright's default writes a missing baseline and fails; with CI retries
+  the retry would then pass against the image it just wrote. On CI,
+  `updateSnapshots` is now `'none'`, so a missing baseline fails the check.
+  Checked locally with `CI=1`: missing baseline fails; generated baselines
+  compared equal over three repeats. Those local PNGs were deleted, not
+  committed.
+- What went wrong: the brief's mid-wave frame at 400 ticks shows no shot. The
+  Musketeer at spot 2 fires every 60 ticks (392, 452, ...) and a tracer lasts
+  6 ticks, so 400 is between shots; the frame uses 395. With spots 2, 6 and
+  7, no tick has two shot types visible at once: the Cannon at spot 6 first
+  fires at tick 852 and the base Tar Pit at spot 7 at tick 1453 (its range,
+  80, only touches the path there; see the milestone 2 notes). So the
+  baseline covers the Musketeer tracer and hp bars but not the splash, tar
+  splat or tar ring. Tick 855 would show the Cannon tracer and splash with
+  five hurt goblins instead.
+- A first look at the local screenshots showed the Musketeer barrel hidden
+  under the square and the tracer. The barrel is now longer and thicker, and
+  tracers start at the muzzle.
