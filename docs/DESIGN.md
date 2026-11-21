@@ -1,7 +1,8 @@
 # Tarpit: game design spec (v1)
 
-Numbers here are starting values. Milestone 6 tunes them. Anything not in
-this file or `docs/SCOPE.md` is out of scope.
+Numbers here are the values tuned in the milestone 6a balance pass (see
+DEVLOG.md for before and after, and `npm run sim` for the evidence).
+Anything not in this file or `docs/SCOPE.md` is out of scope.
 
 ## Space and time
 
@@ -24,8 +25,10 @@ most one tower.
 Path (pixels): (0,240) (160,240) (160,96) (420,96) (420,384) (680,384)
 (680,192) (960,192).
 
-Build spots, ids 0 to 9: (96,160) (96,320) (240,176) (240,304) (340,176)
-(500,160) (500,304) (600,304) (760,112) (760,272).
+Build spots, ids 0 to 9: (96,160) (96,320) (240,176) (240,240) (340,176)
+(500,160) (500,304) (600,304) (760,112) (760,272). Spot 0 is 64 px from the
+path; every other spot is exactly 80 px from its nearest path segment, and
+every spot is at least 50 px from every other.
 
 A spot is invalid for building if it is already occupied; spots are never
 on the path by construction.
@@ -44,9 +47,9 @@ on the path by construction.
 
 | Type | HP | Speed | Bounty | Notes |
 |---|---|---|---|---|
-| Goblin | 30 | 60 | 5 | normal |
-| Wolf | 20 | 120 | 6 | fast |
-| Troll | 150 | 35 | 15 | tanky |
+| Goblin | 30 | 60 | 4 | normal |
+| Wolf | 28 | 120 | 5 | fast |
+| Troll | 500 | 35 | 4 | tanky |
 
 A slow effect multiplies speed by `(1 - slow)` for its duration. Slows do not
 stack: the strongest slow applies, and a new slow of equal or greater strength
@@ -65,15 +68,15 @@ exit). Ties go to the lower enemy id.
 |---|---|---|---|---|---|
 | Musketeer | 50 | 110 | 12 | 1.0/s | single target |
 | Cannon | 80 | 90 | 25 | 0.5/s | splash: all enemies within 40 px of the target take full damage |
-| Tar Pit | 60 | 80 | 3 | 1.0/s | target slowed 40% for 2 s |
+| Tar Pit | 60 | 90 | 3 | 2.0/s | target slowed 40% for 2 s |
 
 One upgrade per tower:
 
 | Tower | Upgrade cost | Changes |
 |---|---|---|
-| Musketeer | 40 | damage 20, range 125 |
-| Cannon | 60 | damage 40, splash radius 50 |
-| Tar Pit | 50 | slow 55%, range 95 |
+| Musketeer | 35 | damage 22, range 125 |
+| Cannon | 60 | damage 40, splash radius 55 |
+| Tar Pit | 50 | slow 60%, range 105 |
 
 Range is measured from the tower's spot to the enemy's position.
 
@@ -87,14 +90,14 @@ Groups in a wave run concurrently from the wave start.
 |---|---|
 | 1 | 8 Goblin, every 1.0 s |
 | 2 | 12 Goblin, every 0.8 s |
-| 3 | 8 Goblin every 1.0 s; 5 Wolf every 0.6 s, delay 4 s |
+| 3 | 8 Goblin every 1.0 s; 6 Wolf every 0.6 s, delay 4 s |
 | 4 | 10 Wolf every 0.6 s |
-| 5 | 10 Goblin every 0.8 s; 2 Troll every 3 s, delay 2 s |
-| 6 | 15 Goblin every 0.6 s; 8 Wolf every 0.6 s, delay 5 s |
-| 7 | 10 Wolf every 0.5 s; 4 Troll every 2.5 s, delay 1 s |
-| 8 | 20 Goblin every 0.5 s; 10 Wolf every 0.6 s, delay 6 s; 3 Troll every 3 s, delay 3 s |
+| 5 | 12 Goblin every 0.7 s; 2 Troll every 3 s, delay 2 s |
+| 6 | 18 Goblin every 0.5 s; 14 Wolf every 0.5 s, delay 5 s |
+| 7 | 10 Wolf every 0.5 s; 7 Troll every 2.5 s, delay 1 s |
+| 8 | 20 Goblin every 0.5 s; 10 Wolf every 0.6 s, delay 6 s; 4 Troll every 3 s, delay 3 s |
 | 9 | 12 Wolf every 0.5 s; 8 Troll every 2 s |
-| 10 | 30 Goblin every 0.4 s; 15 Wolf every 0.5 s, delay 5 s; 8 Troll every 2 s, delay 2 s |
+| 10 | 8 Wolf every 0.5 s, delay 4 s; 12 Troll every 2 s |
 
 Wave flow: the player presses Start Wave. The wave is active until every
 enemy in it has spawned and none remain alive. Then the clear bonus is paid
