@@ -430,3 +430,19 @@ can change it; "Kyle" means Kyle decided.
   limit.** Milestone 28 widens the margin.
 - **Display-strings rule covers names and end-screen words; HUD prefixes
   ("Gold", "Lives", "Wave", "Next") stay literal.** Fable.
+
+## 2026-11-21, milestone 23 (Grumblefoot)
+
+- **Boss as in SCOPE-v4: hp 4000, speed 25, bounty 150, 5 lives on exit,
+  slows capped at 30%; spawns 26 s into wave 10, 4 s after the last Troll.
+  The combo build kills him with its existing plan (shot at wave tick
+  4639), so his hp was not lowered.** Default (Opus, verified with exact
+  arithmetic).
+- **Every enemy has a `livesCost` (1, boss 5); `bossSpawn` and `bossDown`
+  events exist for the renderer.** Default (Opus).
+- **Boss bar at y 24 with the name pill above it (y 4 to 22), not y 12:
+  the pill does not fit above y 12.** Opus, accepted by Fable.
+- **Long wave previews wrap to two 13 px lines so they never run under the
+  Start Wave button.** Opus, found while adding "+ Grumblefoot".
+- **Rename rule caveat: Playwright serves the built `dist/`, so a rename in
+  `names.ts` needs `npm run build` before `test:e2e`.** Fable.
