@@ -70,6 +70,7 @@ scripts/simulate.ts      npm run sim: per-wave headless report
 e2e/                     Playwright browser tests (960x540 viewport)
   smoke.spec.ts          Phaser boots
   play-wave.spec.ts      plays wave 1 through the real buttons
+  live.spec.ts           non-test mode: the real loop ticks, 2x runs faster
   visual.spec.ts         screenshot checks on frozen frames
   __screenshots__/       baselines, generated on CI only
 .github/workflows/       ci.yml (checks), deploy.yml (GitHub Pages),
