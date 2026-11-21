@@ -4,9 +4,19 @@
 // A script is an ordered list of actions. Time only passes inside run
 // actions; every other action happens on the current tick.
 
-import { buildTower, sellTower, towerAt, upgradeTower, type BuildResult, type SellResult, type UpgradeResult } from './actions';
+import {
+  buildTower,
+  sellTower,
+  setTargeting,
+  towerAt,
+  upgradeTower,
+  type BuildResult,
+  type SellResult,
+  type TargetingResult,
+  type UpgradeResult,
+} from './actions';
 import { createGame, startWave, tick, type StartWaveResult } from './game';
-import type { GameState, TowerType } from './types';
+import type { GameState, TargetingMode, TowerType } from './types';
 import { buildableCells, cellCenter, cellFromKey, cellKey, type Cell } from './grid';
 import { MAP, pathLength, positionAlongPath } from './map';
 import { TOWER_DEFS } from './towers';
@@ -15,7 +25,9 @@ import { WAVES } from './waves';
 export type BuildAction =
   | { type: 'build'; cell: Cell; tower: TowerType }
   | { type: 'upgrade'; cell: Cell }
-  | { type: 'sell'; cell: Cell };
+  | { type: 'sell'; cell: Cell }
+  /** Set a tower's targeting mode (milestone 24); costs nothing. */
+  | { type: 'target'; cell: Cell; mode: TargetingMode };
 
 export type HeadlessAction =
   | { type: 'startWave' }
@@ -28,7 +40,8 @@ export type HeadlessStepResult =
   | { action: 'runUntilWaveEnds'; ticks: number }
   | { action: 'build'; cell: Cell; result: BuildResult }
   | { action: 'upgrade'; cell: Cell; result: UpgradeResult }
-  | { action: 'sell'; cell: Cell; result: SellResult };
+  | { action: 'sell'; cell: Cell; result: SellResult }
+  | { action: 'target'; cell: Cell; result: TargetingResult };
 
 export interface HeadlessRun {
   state: GameState;
@@ -55,6 +68,8 @@ export function applyAction(state: GameState, action: HeadlessAction): HeadlessS
       return { action: 'upgrade', cell: action.cell, result: upgradeTower(state, action.cell) };
     case 'sell':
       return { action: 'sell', cell: action.cell, result: sellTower(state, action.cell) };
+    case 'target':
+      return { action: 'target', cell: action.cell, result: setTargeting(state, action.cell, action.mode) };
   }
 }
 
@@ -403,6 +418,37 @@ export function bossRush(): WaveScript {
   }
   return combo.map((wave, i) => (i === last ? [...wave, ...extra] : wave));
 }
+
+/**
+ * Informational (milestone 24): the combo build played with every tower set
+ * to 'strongest' right after it is built. COMBO_PLAN is followed as in
+ * comboBuild (each action as soon as gold allows) and a 'target' action
+ * follows every build. It is recorded by playing, not by editing the
+ * comboBuild script, because the mode changes kills and so the gold. No
+ * target: `npm run sim` reports it beside comboBuild.
+ */
+export function comboStrongest(): WaveScript {
+  const plan = followPlan(COMBO_PLAN);
+  let pending: BuildAction | undefined;
+  return recordScript((state) => {
+    if (pending) {
+      const next = pending;
+      pending = undefined;
+      return next;
+    }
+    const action = plan(state);
+    if (action?.type === 'build') pending = { type: 'target', cell: action.cell, mode: 'strongest' };
+    return action;
+  });
+}
+
+/**
+ * Informational scripts that `npm run sim` prints after ARCHETYPES. Kept out
+ * of ARCHETYPES so the archetype pins stay as they are.
+ */
+export const INFORMATIONAL: Readonly<Record<string, () => WaveScript>> = {
+  comboStrongest,
+};
 
 /** Every archetype, in report order. */
 export const ARCHETYPES: Readonly<Record<string, () => WaveScript>> = {

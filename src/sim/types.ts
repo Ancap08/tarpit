@@ -120,11 +120,25 @@ export interface TowerDef {
   upgraded: TowerLevelStats;
 }
 
+/**
+ * How a tower picks among the enemies it can shoot (milestone 24): 'first'
+ * is furthest along the path, 'last' closest to the spawn (lowest path
+ * distance), 'strongest' the highest current hp. Ties: 'first' and 'last'
+ * to the lower id; 'strongest' to the furthest along the path, then the
+ * lower id.
+ */
+export type TargetingMode = 'first' | 'last' | 'strongest';
+
+/** Every mode in the tower panel's cycle order (first, last, strongest). */
+export const TARGETING_MODES: readonly TargetingMode[] = ['first', 'last', 'strongest'];
+
 export interface Tower {
   /** Grid cell the tower stands on. One tower per cell. */
   cell: Cell;
   type: TowerType;
   upgraded: boolean;
+  /** Targeting mode (milestone 24); 'first' at build, so a sell and rebuild resets it. */
+  targeting: TargetingMode;
   /** Ticks until the tower may fire again; 0 means ready. */
   cooldownTicks: number;
   /** Gold spent on this tower (build plus upgrade); sell refunds 70%. */

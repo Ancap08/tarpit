@@ -89,7 +89,7 @@ describe('verifier 2: economy', () => {
     const r = buildTower(g, S3, 'cannon');
     expect(r.ok).toBe(true);
     expect(g.gold).toBe(5);
-    expect(g.towers).toEqual([{ cell: { col: 7, row: 7 }, type: 'cannon', upgraded: false, cooldownTicks: 0, spent: 80 }]);
+    expect(g.towers).toEqual([{ cell: { col: 7, row: 7 }, type: 'cannon', upgraded: false, targeting: 'first', cooldownTicks: 0, spent: 80 }]);
   });
 
   it.each([

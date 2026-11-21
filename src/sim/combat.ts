@@ -5,7 +5,8 @@
 // shots of SHIELD_THRESHOLD base damage or less (enemies.ts). Each shot is also recorded in state.shots for
 // the renderer, and hit, slowed, burn and kill events go to state.events
 // (events.ts). Milestone 23: the boss's slowCap caps slows (applySlow) and
-// his kill also emits bossDown. Also the burn status step. game.ts calls burnEnemies then
+// his kill also emits bossDown. Milestone 24: findTarget honours the tower's
+// targeting mode; splash, slow and burn follow the chosen target. Also the burn status step. game.ts calls burnEnemies then
 // fireTowers once per wave tick, after movement and exit removal, before
 // spawns.
 
@@ -14,7 +15,7 @@ import { cellCenter } from './grid';
 import { MAP, positionAlongPath } from './map';
 import { secondsToTicks, TICKS_PER_SECOND } from './time';
 import { shotCooldown, towerStats } from './towers';
-import type { Enemy, GameState, Point, Shot, Tower, TowerType } from './types';
+import type { Enemy, GameState, Point, Shot, TargetingMode, Tower, TowerType } from './types';
 
 /**
  * An enemy is dead at hp <= KILL_EPSILON rather than hp <= 0. Burn ticks
@@ -52,22 +53,34 @@ export function canTarget(tower: TowerType, enemy: Enemy): boolean {
 }
 
 /**
+ * Whether `a` beats `b` as a target under `mode` (milestone 24).
+ * first: further along the path; last: less far along the path; strongest:
+ * more current hp, then further along the path. Remaining ties go to the
+ * lower id in every mode.
+ */
+function preferred(mode: TargetingMode, a: Enemy, b: Enemy): boolean {
+  if (mode === 'strongest' && a.hp !== b.hp) return a.hp > b.hp;
+  if (a.distance !== b.distance) return mode === 'last' ? a.distance < b.distance : a.distance > b.distance;
+  return a.id < b.id;
+}
+
+/**
  * The enemy this tower would shoot now: one it can target (canTarget), at a
  * distance in [minRange, range] (both inclusive; minRange is 0 except for
- * the Mortar) and furthest along the path; ties go to the lower id.
- * Undefined if none qualifies.
+ * the Mortar), then the best by the tower's targeting mode (preferred):
+ * 'first' (furthest along the path), 'last' (closest to the spawn) or
+ * 'strongest' (most hp). Undefined if none qualifies.
  */
 export function findTarget(state: GameState, tower: Tower): Enemy | undefined {
   const from = towerPosition(tower);
   const { range, minRange } = towerStats(tower);
+  const mode = tower.targeting ?? 'first';
   let best: Enemy | undefined;
   for (const enemy of state.enemies) {
     if (isDead(enemy) || !canTarget(tower.type, enemy)) continue;
     const d = dist(from, enemyPosition(enemy));
     if (d > range || d < minRange) continue;
-    if (!best || enemy.distance > best.distance || (enemy.distance === best.distance && enemy.id < best.id)) {
-      best = enemy;
-    }
+    if (!best || preferred(mode, enemy, best)) best = enemy;
   }
   return best;
 }
