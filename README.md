@@ -68,18 +68,22 @@ docs/DESIGN.md    the game spec: map, economy, enemies, towers, waves
 docs/media/       README GIF and still
 docs/art/         art source spike (milestone 15): INVENTORY.md (packs, roster mapping, recommendation)
 docs/art/mockups/ style mockups A (Ninja Adventure, 3x and 2x), B (0x72), C (shapes animated), closeups
-assets/           game art and sound (from milestone 16); MANIFEST.md lists every file's source and license
+assets/           game art and sound; MANIFEST.md lists every file's source and license
+assets/sprites/   enemy sprite sheets (placeholders from Ninja Adventure until v5), imported by src/game/anim/sheets.ts
 src/sim/          game logic in plain TypeScript, no Phaser or DOM (lint-enforced)
 src/sim/grid.ts   the build grid: cells, cell centres, the buildable rule
 src/game/         Phaser rendering, input, HUD, tower panel and the ?test=1 test hooks
 src/game/ui/buildBar.ts  the HUD build bar: pick a tower, then click a cell
 src/game/portrait.ts     the "turn your device" card (markup in index.html), pauses ticking
 src/game/draw/labels.ts  tower labels and the crowding rule (smaller, then hidden)
+src/game/anim/    animation engine: sheet layouts, one sprite per enemy, reactions to simulation events (state.events)
+src/sim/events.ts the simulation's event list for the renderer: spawn, hit, burn, slowed, kill, exit, build, ...
 scripts/          npm run sim (balance report) and npm run demo (GIF recorder)
 scripts/check-asset-manifest.ts  npm run check:assets: every file in assets/ and docs/art/ is in assets/MANIFEST.md as CC0 or credited CC-BY
 scripts/check-size-budget.ts     npm run check:size (after build): dist/ stays under 20 MB, prints the 10 largest files
 e2e/              Playwright tests and CI screenshot baselines
 e2e/new-towers.spec.ts  Longbow, Mortar and Fire Pot built through the bar
+e2e/anim.spec.ts        enemy sprite states (texture, facing, hit, kill, burning and tarred) through animState()
 e2e/touch.spec.ts       iPad-size touch tests (two-tap placement, 44 px targets, portrait card)
 e2e/visual-tablet.spec.ts  the 1024 x 768 letterboxed baseline (tablet project)
 .github/workflows CI checks, Pages deploy, screenshot baseline update
@@ -120,6 +124,13 @@ pixel comparison because macOS renders text differently.
 
 ## Status and what is out of scope
 
+v3 (presentation, [docs/SCOPE-v3.md](docs/SCOPE-v3.md)) is in progress:
+tablet play (milestone 14), the art spike (15) and the animation engine
+(16) are built. The simulation now emits events (`state.events`) and the
+renderer animates enemies as pixel sprites from them, in WebGL in play and
+frozen in Canvas under `?test=1`. The sprites are placeholders; towers,
+map and HUD keep their shapes until the v5 art pass, after v4 (gameplay).
+
 v2 is done ([docs/SCOPE-v2.md](docs/SCOPE-v2.md)): towers go on any free
 cell of a 30 x 15 grid off the path, through a build bar; the Longbow,
 Mortar and Fire Pot joined the v1 three; and the balance pass retuned the
@@ -132,6 +143,12 @@ art packs, sound, saves, mobile layout.
 
 Next candidates: the Kenney CC0 art pack, a second map, and a second
 upgrade tier.
+
+## Credits
+
+Placeholder enemy sprites: [Ninja Adventure](https://pixel-boy.itch.io/ninja-adventure-asset-pack)
+by Pixel-boy and AAA, CC0 (attribution appreciated, not required). Every
+asset file and its license is listed in [assets/MANIFEST.md](assets/MANIFEST.md).
 
 Further reading: [docs/SCOPE.md](docs/SCOPE.md),
 [docs/DESIGN.md](docs/DESIGN.md), [DECISIONS.md](DECISIONS.md),

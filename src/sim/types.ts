@@ -1,5 +1,6 @@
 // Data shapes for the simulation. Pure data: no classes, no methods.
 
+import type { GameEvent } from './events';
 import type { Cell } from './grid';
 
 export interface Point {
@@ -152,6 +153,12 @@ export interface GameState {
    * Read-only output for the renderer; no game rule depends on it.
    */
   shots: Shot[];
+  /**
+   * What happened during the most recent tick, in order, plus any actions
+   * since (events.ts). Cleared at the start of every tick like `shots`.
+   * Read-only output for the renderer; no game rule depends on it.
+   */
+  events: GameEvent[];
 }
 
 export interface WavePreviewEntry {

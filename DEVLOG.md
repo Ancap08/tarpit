@@ -2021,3 +2021,153 @@ The verifier (Claude Sonnet) checked milestone 15 on branch `m15-art-spike`.
   gameplay readability more than for looks; Retina blur if the canvas is not
   kept pixel-perfect (needs `pixelArt`/nearest filtering and integer
   scale); the Hyena slides when walking up or down.
+
+## 2026-11-21: milestone 16, animation engine
+
+Roles: implementer Claude Opus, verifier Claude Sonnet, coordinator Claude
+Fable 5.1.
+
+### Implementer notes
+
+The implementer (Claude Opus) built the engine only, as the reorder after
+milestone 15 set: simulation events, enemy sprites driven by them, WebGL in
+play and frozen Canvas in test mode. Towers, map, HUD and title keep their
+shapes. No gameplay number changed; every balance pin passes unchanged.
+
+- **Events.** `src/sim/events.ts` defines `GameEvent` (spawn, hit, burn,
+  slowed, kill with cause shot or burn, exit, build, upgrade, sell,
+  waveStart, waveClear, won, lost). `tick` starts each tick with a fresh
+  `state.events` array; startWave, build, upgrade and sell append their
+  event between ticks, and it stays until the next tick. `hit` is one per
+  enemy a shot damages (splash included), `slowed` only when the slow
+  applies (`applySlow` now returns whether it did), `burn` carries the
+  damage after the tar doubling. `state.shots` stays; tower barrels and
+  tracers still read it. 16 tests in `src/sim/events.test.ts`.
+- **Reading events once.** `EventCursor` (`src/game/anim/effects.ts`)
+  hands each event to the renderer once: a new array means a new tick, and
+  entries appended by actions are taken after each action. GameScene calls
+  it after every tick in `advance` and after every action.
+- **Sheet layouts** (Pillow plus an 8x zoom, recorded in
+  `src/game/anim/sheets.ts`):
+  - GreenPig (Goblin): 64 x 112, 16 x 16 cells, 4 columns x 7 rows.
+    Columns are facings: down, up, left, right. Rows 0 to 3 are the walk
+    cycle, row 4 attack, row 5 jump, row 6 dead (column 0, pixel-identical
+    to `SeparateAnim/Dead.png`), item, two specials. Walk for column c is
+    frames c, c + 4, c + 8, c + 12; dead is frame 24, shown while the
+    death tween runs.
+  - Cyclope (Troll): 64 x 64, same 4 facing columns x 4 walk rows, no dead
+    frame.
+  - Hyena (Wolf): 28 x 13, two 14 x 13 side frames facing left. Mirrored
+    for right, and up and down use the right-facing mirror: the path never
+    runs left, so a wolf going up or down always came from a rightward run.
+- **Scale and look.** Goblin and Wolf at 2x, Troll at 3x (Fable's decision
+  at the reorder). Facing comes from the last tick's movement along the
+  path (`anim/facing.ts`, dominant axis). Walk at 10 fps in play, scaled by
+  the 1x/2x speed; frame 0 of the cycle in test mode. Sprites sit in one
+  Layer above the path, towers and status rings and below shot effects, hp
+  bars, labels and HUD, sorted by y.
+- **Effects.** Hit: an 80 ms white tint fill. Kill: the sprite stops,
+  shrinks to 0 and fades over 250 ms, with a 6-particle dust burst. Burn:
+  an orange tint pulse and a small flame particle every 6 redraws. Slowed:
+  a dark tar tint. Exit: removed at once. In test mode there are no tweens
+  or particles: a killed sprite goes at once, tints are fixed, and the hit
+  flag lasts until the next tick.
+- **Rings kept.** Phaser tints are WebGL-only (`Tint` is `@webglOnly`), so
+  in test mode (Canvas) they change nothing on screen. The tar and burn
+  rings stay, as a halo under the sprite (radius 14, 12 and 21 px plus the
+  old offsets), so baselines still show status; in play both show. Hp bars
+  keep their 30 x 4 size and colours and now sit above the sprite's top
+  (half the scaled frame height).
+- **Asset serving.** `src/game/anim/sheets.ts` imports each PNG from
+  `assets/sprites/` with Vite's `?url`. Only imported files reach `dist/`,
+  so `assets/MANIFEST.md` never ships, and `check:assets` keeps covering
+  the files because they stay under `assets/`. `publicDir: 'assets'` would
+  ship the manifest; a `public/` symlink is one more thing to explain on
+  Windows checkouts. Vite inlines files under its 4 kB limit as data URIs:
+  `troll.png` (3.8 kB) and `wolf.png` (0.4 kB) are inside the JS bundle,
+  `goblin.png` (5.9 kB) is a hashed file. dist/ is 1.19 MB.
+- **Renderer.** `type: isTestMode() ? Phaser.CANVAS : Phaser.AUTO`,
+  `pixelArt: true`, `roundPixels: true`. pixelArt turns antialias off:
+  textures use NEAREST in WebGL, and Phaser's Canvas renderer draws with
+  `imageSmoothingEnabled = false` for NEAREST textures (checked in
+  `CanvasRenderer.batchSprite`). Headless Chromium on this Mac gave WebGL
+  (renderer type 2) in play.
+- **Test hooks.** `animState(enemyId)` (also outside test mode, read-only)
+  returns texture, anim key, walk-cycle frame, facing, flipX, scale and the
+  hit, burning, slowed and dying flags, or null when the enemy has no
+  sprite. `events()` returns `state.events` (test mode only).
+  `e2e/anim.spec.ts` has 6 tests; `e2e/live.spec.ts` gains a WebGL and
+  walk-cycle test.
+
+What went wrong:
+
+- The scene's `events()` test method clashed with Phaser's `Scene.events`
+  emitter (typecheck caught it); the scene method is `simEvents()` and the
+  hook keeps the name `events()`.
+- I took the Musketeer's first wave 1 shot to be tick 392 from a comment
+  in `e2e/visual.spec.ts`; it is tick 152 (392 is its fifth). The anim spec
+  now pins 152, found by stepping.
+- The brief placed the tar-and-burn check at cells (14,10) and (14,9);
+  milestone 11 verified tick 687 with a Tar Pit at (14,6) and a Fire Pot
+  at (14,8), so the spec uses those cells.
+- The brief said "flip horizontally for left" for the Wolf; the Hyena
+  frames face left, so the mirror is for right.
+- Side effect to know about: `pixelArt` also sets `image-rendering:
+  pixelated` on the canvas, so when Scale.FIT stretches it (the iPad at
+  1024 wide) the whole canvas, text included, scales nearest-neighbour.
+  The tablet baseline is expected to change for that reason (not verified
+  locally: pixel comparisons run on CI only), not because of sprites.
+  Kyle should look at text on the iPad.
+- Screenshot baselines that show enemies (mid-wave, enemies, new-towers,
+  won, lost) and the tablet frame need regenerating on CI; the frame ticks
+  and count assertions are unchanged.
+
+### Verifier notes
+
+Independent check, with a different model from the implementer.
+
+- **Clean run** (`rm -rf dist && npm ci && lint && typecheck && test && build
+  && check:assets && check:size && test:e2e`): exit 0. 244 unit tests (223
+  existing, unmodified, plus 21 new), 85 e2e. `check:size` 1251326 bytes in 3
+  files, matching the implementer. After the verifier added 6 sim probes, 3
+  e2e probes and the Wolf fix: 250 unit tests, 88 e2e, all pass.
+  `anim.spec`, `live.spec` and the new probes ran with `--repeat-each=5`: no
+  flake.
+- **No gameplay change.** `git diff 7d5cdde -- src/sim` (excluding tests) is
+  event emission only, the events module and `applySlow` returning a boolean.
+  `npm run sim` summary is identical to the merge base (combo won, 11 lives,
+  177 gold). Existing `*.test.ts` files are untouched (additions only).
+  `tick` clears `events` at its start; build, upgrade, sell and `waveStart`
+  events survive until the next tick. Note: the list also persists through
+  setup after a wave's last tick, so a reader that logs `state.events` after
+  every action without a cursor double-counts. `EventCursor` handles this;
+  the verifier's own first harness hit exactly this.
+- **Event probes** (`src/sim/events-verifier.test.ts`, 6 tests): Cannon splash
+  on 3 enemies gives 3 hits with one cell and damage; burn kill has cause
+  burn; over a full 10-wave game kills == spawns - exits with each id once;
+  `waveClear` carries 25 and `won` appears once, right after wave 10's clear;
+  a weaker slow on a stronger one emits nothing; wave 3 spawns 8 Goblin and 6
+  Wolf; setup ticks are empty.
+- **Assets.** The three PNGs are byte-identical to the pack files. Manifest
+  rows cite the pack URL, authors and CC0; removing the wolf row made
+  `check:assets` fail (reverted). Sheet layouts for GreenPig (4 x 7, facing
+  columns down, up, left, right, dead frame at row 6 col 0) and Cyclope (4 x
+  4) match Pillow and the eye.
+- **Defect found and fixed: the Wolf walked backwards.** The Hyena frames face
+  RIGHT (snout, eye and tail read pixel by pixel; the shipped m16 frames show
+  a wolf on the last leg with its snout pointing left while moving right).
+  The implementer's correction of the brief ("frames face left, so mirror
+  for right") was wrong; the brief was right. `sheets.ts` now mirrors for
+  left only, up and down are unmirrored, unit and e2e tests pin it, and
+  INVENTORY.md is corrected. Wolf screenshot baselines on CI must be
+  regenerated anyway.
+- **Renderer.** `src/main.ts` uses Canvas in test mode and AUTO otherwise,
+  with `pixelArt` and `roundPixels`; tweens and particles are off when
+  frozen (`enemySprites.ts`, `Particles` only created when not frozen);
+  frame is 0 in test mode. The jagged-text risk of `pixelArt` is stated in
+  the DEVLOG.
+- **Probes** (`e2e/anim-verifier.spec.ts`): goblin frame 0 and facing match
+  movement across the first corner; Wolf `flipX` false while moving right;
+  depth rises with screen y (read through `game.scene.getScene('game')`).
+- **Not verified:** pixel baselines (CI only), real iPad text rendering with
+  `pixelArt`, WebGL frames beyond the implementer's screenshots.

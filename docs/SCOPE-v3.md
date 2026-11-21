@@ -61,6 +61,10 @@ frames in each candidate style before anything is wired in.
 
 ## Milestones
 
+Update 2026-11-21: after milestone 15 Kyle chose to lock gameplay before
+the art pass. Milestone 16 ships as the engine only; milestones 17 to 20
+move to v5 unchanged, after v4 (gameplay). See `DECISIONS.md`.
+
 One PR each, same roles: coordinator plans and writes no code, Opus
 implements at medium effort, Sonnet verifies, Kyle reviews frames and plays
 on the iPad.

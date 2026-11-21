@@ -1,6 +1,6 @@
 // Test mode (?test=1): time is frozen and window.__tarpit exposes hooks for
 // Playwright. Outside test mode window.__tarpit holds the Phaser game and the
-// read-only uiRects(), canvasToPage() and portraitCardVisible(), so real-time
+// read-only uiRects(), canvasToPage(), portraitCardVisible() and animState(), so real-time
 // tests and the demo recorder click the HUD where it is drawn at any
 // viewport size.
 
@@ -67,6 +67,7 @@ export function installGlobal(game: Phaser.Game): void {
   const always = {
     game,
     uiRects: () => uiRectsOf(game),
+    animState: (enemyId: number) => (game.scene.isActive('game') ? (game.scene.getScene('game') as GameScene).animState(enemyId) : null),
     canvasToPage: (x: number, y: number) => canvasToPage(game, x, y),
     portraitCardVisible,
   };
@@ -108,6 +109,7 @@ export function installGlobal(game: Phaser.Game): void {
     ui: () => scene().uiState(),
     hudText: () => scene().hudStrings(),
     endScreen: () => scene().endScreenKind(),
+    events: () => scene().simEvents(),
     runScript: (name) => runScript(scene(), SCRIPTS[name]()),
   };
   window.__tarpit = api;

@@ -1,9 +1,15 @@
 import Phaser from 'phaser';
+import { loadEnemySheets } from './anim/enemySprites';
 import { COLORS, FONT, TEXT } from './palette';
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
     super('title');
+  }
+
+  /** Enemy sprite sheets load once at boot, so GameScene (and its restarts) start with them. */
+  preload(): void {
+    loadEnemySheets(this);
   }
 
   create(): void {

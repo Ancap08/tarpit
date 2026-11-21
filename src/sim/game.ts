@@ -7,8 +7,9 @@
 //
 // Determinism: no Math.random, no Date. One tick is exactly 1/60 s.
 //
-// Every tick that runs (setup or wave) first clears `state.shots`; combat
-// appends one entry per tower that fires. Won and lost ticks change nothing.
+// Every tick that runs (setup or wave) first clears `state.shots` and
+// `state.events`; combat appends one shot per tower that fires, and each step
+// appends its events (events.ts). Won and lost ticks change nothing.
 //
 // Order of work inside one wave tick (move, exit, burn, combat, spawn,
 // counters, clear check):
@@ -66,6 +67,7 @@ export function createGame(): GameState {
     nextEnemyId: 0,
     towers: [],
     shots: [],
+    events: [],
   };
 }
 
@@ -85,6 +87,7 @@ export function startWave(state: GameState): StartWaveResult {
   state.phase = 'wave';
   state.waveTick = 0;
   state.spawnedPerGroup = WAVES[state.wave - 1].groups.map(() => 0);
+  state.events.push({ kind: 'waveStart', wave: state.wave });
   return { ok: true, wave: state.wave };
 }
 
@@ -92,6 +95,7 @@ export function startWave(state: GameState): StartWaveResult {
 export function tick(state: GameState): void {
   if (state.phase === 'won' || state.phase === 'lost') return;
   state.shots = [];
+  state.events = [];
   if (state.phase === 'setup') {
     state.tick += 1;
     return;
@@ -101,6 +105,7 @@ export function tick(state: GameState): void {
   removeExitedEnemies(state);
   if (state.lives <= 0) {
     state.phase = 'lost';
+    state.events.push({ kind: 'lost' });
     return;
   }
   burnEnemies(state);
@@ -125,6 +130,7 @@ function moveEnemies(state: GameState): void {
 function removeExitedEnemies(state: GameState): void {
   const exit = pathLength(MAP);
   const remaining = state.enemies.filter((e) => e.distance < exit);
+  for (const e of state.enemies) if (e.distance >= exit) state.events.push({ kind: 'exit', enemyId: e.id });
   state.lives -= state.enemies.length - remaining.length;
   state.enemies = remaining;
 }
@@ -144,6 +150,7 @@ function spawnDueEnemies(state: GameState): void {
         burnDps: 0,
         burnTicksLeft: 0,
       });
+      state.events.push({ kind: 'spawn', enemyId: state.nextEnemyId, enemyType: group.type });
       state.nextEnemyId += 1;
       state.spawnedPerGroup[gi] = index + 1;
     }
@@ -155,5 +162,7 @@ function checkWaveClear(state: GameState): void {
   const allSpawned = groups.every((grp, gi) => state.spawnedPerGroup[gi] >= grp.count);
   if (!allSpawned || state.enemies.length > 0) return;
   state.gold += WAVE_CLEAR_BONUS;
+  state.events.push({ kind: 'waveClear', wave: state.wave, bonus: WAVE_CLEAR_BONUS });
   state.phase = state.wave >= WAVES.length && state.lives > 0 ? 'won' : 'setup';
+  if (state.phase === 'won') state.events.push({ kind: 'won' });
 }

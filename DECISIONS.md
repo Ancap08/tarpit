@@ -370,3 +370,42 @@ can change it; "Kyle" means Kyle decided.
   blur unless nearest-neighbour filtering, Hyena has side frames only.
 - **Open: Kyle's choice of style.** Nothing from the packs is copied into
   the repo until it is made.
+
+## 2026-11-21, reorder after the art spike
+
+- **Art choice: pixel placeholders now, "stop-motion tabletop" quality
+  later.** Kyle. Milestone 16 builds the animation engine with Ninja
+  Adventure sprites as stand-ins (names stay Goblin, Wolf, Troll). The
+  eventual art is pre-rendered from 3D clay-style models (Blender, scripted
+  by agents, rendered on Kyle's VPS), which needs the roster frozen first.
+- **Order from here:** milestone 16 (engine only), then v4 (gameplay lock:
+  new enemies, boss, targeting modes, difficulty, endless, maps), then v5
+  (the tabletop art pipeline plus the art, sound, juice and world passes
+  moved from v3 milestones 17 to 20). Kyle.
+- **Troll placeholder may render at 3x so it reads bigger than the Goblin;
+  everything else at 2x with nearest-neighbour filtering.** Fable.
+
+## 2026-11-21, milestone 16 (animation engine)
+
+- **The simulation emits `state.events` each tick (spawn, hit, burn,
+  slowed, kill with cause, exit, build, upgrade, sell, waveStart, waveClear,
+  won, lost); the renderer animates from them.** From `docs/SCOPE-v3.md`.
+  Action events survive until the next tick; readers use a cursor.
+- **Play renders with WebGL, test mode with Canvas; `pixelArt` and
+  `roundPixels` on; tweens and particles off in test mode and killed
+  sprites removed at once, so screenshots stay exact.** Default (Opus).
+- **Placeholder sprites: GreenPig as Goblin at 2x, Hyena as Wolf at 2x,
+  Cyclope as Troll at 3x, imported with Vite `?url` so only used files
+  ship.** Default (Opus). Tar and burn show as rings in both renderers and
+  additionally as tints in WebGL (Canvas cannot tint).
+- **Verifier finding, fixed: the Hyena frames face right, so the Wolf is
+  mirrored for left only.** The implementer had it backwards and its devlog
+  note said the opposite; the verifier's probe caught it. Sonnet.
+- **Display names live in one table (`src/game/names.ts`) from milestone
+  22 on; internal ids never change, and no test pins a display string
+  except through that table.** Kyle wants to be able to rename everything
+  later; this makes a rename a one-file edit plus a baseline regeneration.
+- **Known: `pixelArt` scales the whole canvas with nearest-neighbour, so
+  HUD text may look jagged on the iPad.** Kyle checks; if it bothers him,
+  the fix is to render text at the device scale or revert to smooth
+  scaling for the canvas and keep nearest for sprites.

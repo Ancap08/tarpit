@@ -1,6 +1,8 @@
 // Player actions: build, upgrade, sell. Allowed in 'setup' and 'wave'
 // (DESIGN.md: "at any time, including mid-wave"), refused once the game is
 // won or lost. Each mutates the state in place and returns a typed result.
+// A successful action appends its event (build, upgrade, sell) to
+// state.events, where it stays until the next tick clears the list.
 
 import { cellKey, isBuildableTerrain, sameCell, type Cell } from './grid';
 import { sellRefund, TOWER_DEFS } from './towers';
@@ -41,6 +43,7 @@ export function buildTower(state: GameState, cell: Cell, type: TowerType): Build
   const tower: Tower = { cell: { col: cell.col, row: cell.row }, type, upgraded: false, cooldownTicks: 0, spent: cost };
   state.towers.push(tower);
   state.towers.sort((a, b) => cellKey(a.cell) - cellKey(b.cell));
+  state.events.push({ kind: 'build', cell: { col: cell.col, row: cell.row }, tower: type });
   return { ok: true, tower, gold: state.gold };
 }
 
@@ -54,6 +57,7 @@ export function upgradeTower(state: GameState, cell: Cell): UpgradeResult {
   state.gold -= cost;
   tower.upgraded = true;
   tower.spent += cost;
+  state.events.push({ kind: 'upgrade', cell: { col: tower.cell.col, row: tower.cell.row }, tower: tower.type });
   return { ok: true, tower, gold: state.gold };
 }
 
@@ -64,5 +68,6 @@ export function sellTower(state: GameState, cell: Cell): SellResult {
   const refund = sellRefund(tower.spent);
   state.gold += refund;
   state.towers = state.towers.filter((t) => t !== tower);
+  state.events.push({ kind: 'sell', cell: { col: tower.cell.col, row: tower.cell.row }, tower: tower.type, refund });
   return { ok: true, refund, gold: state.gold };
 }
