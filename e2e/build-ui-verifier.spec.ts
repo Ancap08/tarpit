@@ -82,7 +82,7 @@ test('(e) building with exactly the cost in gold succeeds and leaves 0', async (
   await api(page, (a) => (a.state().gold = 50));
   await click(page, 'menu:musketeer');
   const s = await state(page);
-  expect(s.towers.map((t) => t.spotId)).toEqual([1]);
+  expect(s.towers.map((t) => t.cell)).toEqual([{ col: 2, row: 9 }]); // legacy spot 1
   expect(s.gold).toBe(0);
 });
 
