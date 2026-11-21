@@ -104,7 +104,7 @@ import { drawMap } from './draw/map';
 import { ShotEffects } from './draw/shots';
 import { Aim, drawTowerShape, drawTowers } from './draw/towers';
 import { Hud } from './hud';
-import { cellAt, cellRect, classifyClick, contains, dragTargetCell, pastDragThreshold, type Rect } from './input';
+import { cellAt, cellRect, classifyClick, contains, dragTargetCell, mouseDragLost, pastDragThreshold, type Rect } from './input';
 import { COLORS } from './palette';
 import { portraitCardVisible } from './portrait';
 import { isTestMode } from './testMode';
@@ -172,6 +172,9 @@ interface Press {
 
 /** Placement ghost opacity. */
 const GHOST_ALPHA = 0.6;
+/** A drag's ghost over a blocked cell (milestone 25a follow-up): faint, under a red wash of this opacity. */
+const BLOCKED_GHOST_ALPHA = 0.35;
+const BLOCKED_GHOST_TINT = 0.3;
 /** Placement cell highlight: fill opacity and outline width. */
 const CELL_FILL_ALPHA = 0.25;
 const CELL_LINE = 2;
@@ -295,6 +298,11 @@ export class GameScene extends Phaser.Scene {
       this.beginPress(p.x, p.y, p.wasTouch);
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      // A mouse press whose button was released unseen (mouseup outside the
+      // page) cancels, so the drag does not stick to the pointer.
+      if (this.press !== null && !this.press.touch && !p.wasTouch && mouseDragLost(p.isDown, p.buttons)) {
+        this.press = null;
+      }
       if (this.press !== null && this.press.touch === p.wasTouch) {
         this.dragMove(p.x, p.y);
         if (p.wasTouch) return;
@@ -715,11 +723,19 @@ export class GameScene extends Phaser.Scene {
       g.fillRect(r.x, r.y, CELL, CELL);
       g.lineStyle(CELL_LINE, color, 1);
       g.strokeRect(r.x + CELL_LINE / 2, r.y + CELL_LINE / 2, CELL - CELL_LINE, CELL - CELL_LINE);
-      // A blocked cell shows only the red tint: no ghost, no range.
+      const upgraded = moved?.upgraded ?? false;
+      const angle = this.aim.angle(moved ? moved.cell : hover);
       if (hoverBuildable) {
-        const upgraded = moved?.upgraded ?? false;
         this.rangeCircles(hover, moved ? towerStats(moved) : TOWER_DEFS[ghostType].base);
-        drawTowerShape(g, ghostType, cellCenter(hover), this.aim.angle(moved ? moved.cell : hover), upgraded, GHOST_ALPHA);
+        drawTowerShape(g, ghostType, cellCenter(hover), angle, upgraded, GHOST_ALPHA);
+      } else if (drag !== null) {
+        // During a drag a blocked cell also shows a faint red-tinted ghost,
+        // so the player sees where it would land. Click and two-tap
+        // placement keep the red cell only (no ghost, no range).
+        const c = cellCenter(hover);
+        drawTowerShape(g, ghostType, c, angle, upgraded, BLOCKED_GHOST_ALPHA);
+        g.fillStyle(COLORS.cellBad, BLOCKED_GHOST_TINT);
+        g.fillCircle(c.x, c.y, 15);
       }
     }
     // On touch, a thin line from the fingertip to the lifted ghost's cell.

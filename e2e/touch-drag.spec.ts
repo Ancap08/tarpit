@@ -101,10 +101,25 @@ test('touch drag moves an unlocked tower; a locked one stays', async ({ page }) 
   expect(s.towers).toEqual([expect.objectContaining({ cell: C95, locked: true })]);
 });
 
-test('touch drag released with the finger over the HUD builds nothing', async ({ page }) => {
+test('touch drag moves a tower onto a buildable cell in the bottom row (finger over the HUD)', async ({ page }) => {
   await startGame(page);
   const client = await page.context().newCDPSession(page);
-  await touchDrag(page, client, await rectCentre(page, 'bar:cannon'), { x: 480, y: 505 }, async () => {
+  const BOTTOM: Cell = { col: 2, row: 14 };
+  await api(page, (a) => a.buildAt(7, 5, 'musketeer'));
+  const finger = fingerFor(BOTTOM);
+  expect(finger.y).toBeGreaterThan(480); // the finger itself is over the HUD
+  await touchDrag(page, client, centre(C75), finger, async () => {
+    expect((await ui(page)).dragging).toEqual({ kind: 'move', tower: 'musketeer', from: C75, cell: BOTTOM });
+  });
+  const s = await state(page);
+  expect(s.towers).toEqual([expect.objectContaining({ cell: BOTTOM, locked: false })]);
+  expect(s.gold).toBe(50);
+});
+
+test('touch drag released with the finger on the build bar (aim off the map) builds nothing', async ({ page }) => {
+  await startGame(page);
+  const client = await page.context().newCDPSession(page);
+  await touchDrag(page, client, await rectCentre(page, 'bar:cannon'), { x: 480, y: 554 }, async () => {
     expect((await ui(page)).dragging).toEqual({ kind: 'place', tower: 'cannon', cell: null });
   });
   const s = await state(page);

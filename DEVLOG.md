@@ -3151,3 +3151,36 @@ For the coordinator:
    comparison. `update-snapshots.yml` has to run on this branch before CI
    can pass, and the milestone row's "baseline with an unlocked tower" is
    unproven until then.
+
+### Follow-ups after verification (implementer, Claude Opus)
+
+Four changes from the coordinator after the verifier's PASS, on top of
+`b92428e`:
+
+- **Touch drags reach the bottom row.** `dragTargetCell` on touch now
+  depends only on the aim point 48 px above the finger: valid whenever it
+  is on the map, even with the finger over the HUD, null once it is off
+  the map. Before, a finger over the HUD always cancelled, so row 14 (aim
+  y 448..479, finger y 496..527) could never be reached by touch. Mouse
+  unchanged. The verifier's touch probe (c) now builds on (2,14) with the
+  finger on HUD row 1 and cancels with the finger on the build bar; a new
+  touch test moves a tower onto (2,14).
+- **Selling a locked tower upgraded this setup** pays the upgrade in full
+  plus 70% of the rest (`towerSellValue` in `src/sim/towers.ts`, used by
+  `sellTower` and the panel): 35 + 35 = 70, no longer 59, the same as Undo
+  then Sell. One `sell` event, `full: false`. The verifier's pin in
+  `planning-verifier.test.ts` moved from 59 to 70, and its "liquidation
+  worth never rises" walk is now pinned at zero drops (it allowed up to 4,
+  all from this case). Its panel probe in `drag-verifier.spec.ts` moved
+  from "Sell  +59" to "Sell  +70". No archetype sells such a tower, so
+  `npm run sim` is still byte-identical.
+- **Stuck mouse drag.** A mouse pointermove with no button down
+  (`input.ts` `mouseDragLost`: `!isDown || buttons === 0`) drops the
+  press. Reproduced in Playwright with CDP (`mousePressed`, moves with
+  buttons 1, then a `mouseMoved` with buttons 0 and no release): before
+  the guard the drag stayed live; now it cancels, nothing is built and the
+  pick stays. Unit-tested too.
+- **Faint red ghost.** During a drag over a blocked cell the ghost draws
+  at 0.35 opacity under a 0.3 red wash, without range. Only during drags,
+  so `placing-invalid.png` and every other baseline (and `planning.png`)
+  are unchanged.

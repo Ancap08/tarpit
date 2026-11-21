@@ -47,7 +47,8 @@ Towers fire in cellKey order (row by row, left to right).
 - Lives at 0 or below: lose, immediately.
 - Clearing wave 10 with lives above 0: win.
 - Sell returns 70% of the total spent on that tower (build plus upgrade),
-  rounded down, for a locked tower. An unlocked tower (built during the
+  rounded down, for a locked tower, plus in full any upgrade bought on it
+  during the current setup phase. An unlocked tower (built during the
   current setup phase) is removed for everything spent on it. See Planning
   phase.
 
@@ -64,8 +65,12 @@ and `upgradedThisPhase`.
   their cell; it goes when the wave starts.
 - **Refund.** Selling an unlocked tower refunds all of `spent` (build plus
   any upgrade bought this phase); the panel's Sell reads "Remove  +50".
-  Selling a locked tower refunds 70% of `spent`, rounded down, in any
-  phase. The `sell` event carries `full`.
+  Selling a locked tower refunds its `unlockedSpend` (an upgrade bought
+  this setup phase) in full plus 70% of the rest, rounded down, in any
+  phase (`towerSellValue`): a Musketeer built earlier for 50 and upgraded
+  this setup for 35 sells for 35 + 35 = 70, the same as Undo upgrade then
+  Sell; after Start Wave it sells for 70% of 85 = 59. One `sell` event
+  with the total; `full` is true only for an unlocked tower.
 - **Move.** In setup an unlocked tower can be dragged to any buildable
   cell (same rule as a build) for free; it keeps its type, upgrade,
   targeting mode and spend, and the towers stay in cellKey order.
@@ -85,10 +90,17 @@ and `upgradedThisPhase`.
 - **Drag to place.** Press a build bar button the player can afford and
   drag onto the map; a press becomes a drag past 8 px. The ghost snaps to
   the cell aimed at, with its range and the green or red cell as for
-  placement. On touch the drag aims 48 px above the finger and a thin line
-  joins finger and ghost; the mouse aims at itself. Release on a buildable
-  cell builds there; release on another cell, over the HUD or outside the
-  canvas cancels. Either way the pick stays selected, as after a bar
+  placement; over a red cell the drag also shows the ghost at 0.35 opacity
+  under a red wash, without range (click and two-tap placement show the
+  red cell only). On touch the drag aims at the point 48 px above the
+  finger and a thin line joins finger and ghost; the drag is valid
+  whenever that aim point is on the map, even with the finger over the
+  HUD, so the bottom row is reachable, and aims at nothing once the aim
+  point is off the map. The mouse aims at itself, and nothing while it is
+  over the HUD. Release on a buildable cell builds there; release on
+  another cell, with nothing aimed at, or outside the canvas cancels. A
+  mouse move that reports no button down (a release the page never saw)
+  also cancels the drag. Either way the pick stays selected, as after a bar
   click. A press and release without a drag is a bar click (toggle the
   pick). Works mid-wave too (the new tower is locked).
 - **Drag to move.** In setup, press an unlocked tower and drag past 8 px:

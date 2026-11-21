@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildableCells, buildTower, cellCenter, cellFromKey, createGame, isBuildableTerrain } from '../sim';
 import { labelAbove, LABEL_HEIGHT, LABEL_OFFSET_Y } from './draw/labels';
-import { cellAt, cellRect, classifyClick, dragTargetCell, onPath, pastDragThreshold, pathCover, placeBeside, type Rect } from './input';
+import { cellAt, cellRect, classifyClick, dragTargetCell, mouseDragLost, onPath, pastDragThreshold, pathCover, placeBeside, type Rect } from './input';
 
 describe('cellAt', () => {
   it('maps a point to its 32 px cell; edges belong to the cell right of or below them', () => {
@@ -127,9 +127,22 @@ describe('drag geometry (milestone 25a)', () => {
     expect(dragTargetCell(240, 40, true)).toBeNull(); // the lifted point is above the map
   });
 
-  it('nothing while the pointer itself is over the HUD or off the canvas', () => {
-    expect(dragTargetCell(240, 500, true)).toBeNull();
+  it('mouse: nothing while the pointer is over the HUD or off the canvas', () => {
     expect(dragTargetCell(240, 500, false)).toBeNull();
     expect(dragTargetCell(-5, 100, false)).toBeNull();
+  });
+
+  it('touch: the aim point decides, so a finger over the HUD reaches the bottom row', () => {
+    expect(dragTargetCell(80, 512, true)).toEqual({ col: 2, row: 14 }); // finger on HUD row 1, aim y 464
+    expect(dragTargetCell(80, 527, true)).toEqual({ col: 2, row: 14 }); // aim y 479
+    expect(dragTargetCell(80, 528, true)).toBeNull(); // aim y 480: off the map
+    expect(dragTargetCell(80, 554, true)).toBeNull(); // finger on the build bar
+    expect(dragTargetCell(-5, 300, true)).toBeNull();
+  });
+
+  it('a mouse drag with no button down is lost', () => {
+    expect(mouseDragLost(true, 1)).toBe(false);
+    expect(mouseDragLost(true, 0)).toBe(true);
+    expect(mouseDragLost(false, 1)).toBe(true);
   });
 });

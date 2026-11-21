@@ -162,3 +162,27 @@ test('drag to place mid-wave builds a locked tower', async ({ page }) => {
   expect(s.towers).toEqual([expect.objectContaining({ cell: C75, locked: true, unlockedSpend: 0 })]);
   expect(s.gold).toBe(50);
 });
+
+// Coordinator follow-up: a mouseup the page never sees (released outside the
+// window) must not leave a drag stuck to the pointer. CDP sends a press and
+// moves with the button held, then a move with buttons 0 and no release.
+test('a mouse drag whose button was released unseen cancels on the next move', async ({ page }) => {
+  await startGame(page);
+  const client = await page.context().newCDPSession(page);
+  const bar = await rectCentre(page, 'bar:musketeer');
+  const mouse = (type: 'mousePressed' | 'mouseMoved', x: number, y: number, buttons: number, button: 'none' | 'left' = 'none') =>
+    client.send('Input.dispatchMouseEvent', { type, x, y, buttons, button, clickCount: type === 'mousePressed' ? 1 : 0 });
+  await mouse('mouseMoved', bar.x, bar.y, 0);
+  await mouse('mousePressed', bar.x, bar.y, 1, 'left');
+  for (let i = 1; i <= 8; i++) await mouse('mouseMoved', bar.x + ((240 - bar.x) * i) / 8, bar.y + ((176 - bar.y) * i) / 8, 1, 'left');
+  expect((await ui(page)).dragging).toEqual({ kind: 'place', tower: 'musketeer', cell: C75 });
+  // The button comes up somewhere the page cannot see; the next move reports no button.
+  await mouse('mouseMoved', 304, 176, 0);
+  expect((await ui(page)).dragging).toBeNull();
+  // Nothing was built, and later moves and clicks behave normally (the pick stays).
+  await mouse('mouseMoved', 272, 176, 0);
+  const s = await state(page);
+  expect(s.towers).toEqual([]);
+  expect(s.gold).toBe(100);
+  expect(await ui(page)).toMatchObject({ pick: 'musketeer', dragging: null, hoverCell: { col: 8, row: 5 } });
+});

@@ -92,23 +92,35 @@ test('(b) touch drag: the ghost cell is the cell under the point 48 canvas px ab
   expect(s.gold).toBe(50);
 });
 
-test('(c) finger released over the HUD while the lifted point is over a buildable cell: cancelled', async ({ page }) => {
+// Coordinator follow-up: on touch the aim point decides. A finger over HUD
+// row 1 whose aim point is on a buildable row-14 cell builds there; a finger
+// on the build bar row, whose aim point is off the map, cancels.
+test('(c) finger over the HUD with the aim on a buildable row-14 cell builds; aim off the map cancels', async ({ page }) => {
   await startGame(page);
   const f = await finger(page);
-  // Finger at y 490 (the HUD starts at 480); 48 px above is y 442, cell (2,13), buildable grass.
-  const hud = { x: 80, y: 490 };
-  expect(await api(page, (a) => a.buildAt(2, 13, 'longbow').ok)).toBe(true);
-  expect(await api(page, (a) => a.sellAt(2, 13))).toMatchObject({ ok: true, refund: 40 });
+  // Finger at y 512 (HUD row 1, 484..526); 48 px above is y 464, cell (2,14), buildable grass.
+  const hud = { x: 80, y: 512 };
+  expect(await api(page, (a) => a.buildAt(2, 14, 'longbow').ok)).toBe(true);
+  expect(await api(page, (a) => a.sellAt(2, 14))).toMatchObject({ ok: true, refund: 40 });
   await f.down(await barCentre(page, 'musketeer'));
-  await f.move({ x: 80, y: 470 });
-  expect((await ui(page)).dragging).toEqual({ kind: 'place', tower: 'musketeer', cell: { col: 2, row: 13 } });
-  await f.move(hud, 4);
-  expect((await ui(page)).dragging).toEqual({ kind: 'place', tower: 'musketeer', cell: null });
+  await f.move(hud);
+  expect((await ui(page)).dragging).toEqual({ kind: 'place', tower: 'musketeer', cell: { col: 2, row: 14 } });
   await f.up();
-  const s = await state(page);
-  expect(s.towers).toEqual([]);
-  expect(s.gold).toBe(100);
-  expect(await ui(page)).toMatchObject({ dragging: null, pick: 'musketeer' });
+  let s = await state(page);
+  expect(s.towers).toEqual([expect.objectContaining({ cell: { col: 2, row: 14 }, type: 'musketeer', locked: false })]);
+  expect(s.gold).toBe(50);
+
+  // Finger on the build bar row (y 554): aim y 506, off the map: cancelled.
+  await f.down(await barCentre(page, 'longbow'));
+  await f.move({ x: 400, y: 470 });
+  expect((await ui(page)).dragging).toEqual({ kind: 'place', tower: 'longbow', cell: { col: 12, row: 13 } });
+  await f.move({ x: 400, y: 554 }, 4);
+  expect((await ui(page)).dragging).toEqual({ kind: 'place', tower: 'longbow', cell: null });
+  await f.up();
+  s = await state(page);
+  expect(s.towers).toHaveLength(1);
+  expect(s.gold).toBe(50);
+  expect(await ui(page)).toMatchObject({ dragging: null, pick: 'longbow' });
 });
 
 test('(d) touch: an unlocked tower dragged onto another tower stays; a short slide is a tap that selects it', async ({ page }) => {
