@@ -118,7 +118,7 @@ test('facing turns up at the first corner (x 160)', async ({ page }) => {
   expect(r.anim).toMatchObject({ texture: 'goblin', anim: 'goblin-walk-up', facing: 'up', frame: 0 });
 });
 
-test('a Wolf is mirrored to face right along the path', async ({ page }) => {
+test('a Wolf is not mirrored while moving right (the Hyena frames face right)', async ({ page }) => {
   await startGame(page);
   const a = await page.evaluate(() => {
     const t = window.__tarpit as TarpitTestApi;
@@ -127,5 +127,5 @@ test('a Wolf is mirrored to face right along the path', async ({ page }) => {
     t.step(30);
     return t.animState(0);
   });
-  expect(a).toMatchObject({ texture: 'wolf', anim: 'wolf-walk', facing: 'right', flipX: true, frame: 0, scale: 2 });
+  expect(a).toMatchObject({ texture: 'wolf', anim: 'wolf-walk', facing: 'right', flipX: false, frame: 0, scale: 2 });
 });

@@ -30,7 +30,7 @@ export interface SheetLayout {
   scale: number;
   /**
    * Walk cycle per facing. A side-view-only sheet (`sideOnly`) reuses its
-   * side frames for up and down, mirrored to face right: the path runs up,
+   * side frames for up and down, facing right: the path runs up,
    * down and right but never left, so up and down always follow a right.
    */
   walk: Readonly<Record<Facing, WalkCycle>>;
@@ -54,7 +54,8 @@ export const SHEETS: Readonly<Record<EnemyType, SheetLayout>> = {
   // jump (1 frame per facing each); row 6: dead (col 0, identical to
   // SeparateAnim/Dead.png), item, special 1, special 2.
   goblin: { key: 'goblin', url: goblinUrl, frameWidth: 16, frameHeight: 16, scale: 2, walk: fourWay(), sideOnly: false, deadFrame: 24 },
-  // Hyena: 28x13, two 14x13 side-view frames facing LEFT; mirrored for right.
+  // Hyena: 28x13, two 14x13 side-view frames facing RIGHT (snout and eye on the
+  // right, checked pixel by pixel); mirrored for left. The path never runs left.
   wolf: {
     key: 'wolf',
     url: wolfUrl,
@@ -62,10 +63,10 @@ export const SHEETS: Readonly<Record<EnemyType, SheetLayout>> = {
     frameHeight: 13,
     scale: 2,
     walk: {
-      left: { frames: [0, 1], flipX: false },
-      right: { frames: [0, 1], flipX: true },
-      up: { frames: [0, 1], flipX: true },
-      down: { frames: [0, 1], flipX: true },
+      left: { frames: [0, 1], flipX: true },
+      right: { frames: [0, 1], flipX: false },
+      up: { frames: [0, 1], flipX: false },
+      down: { frames: [0, 1], flipX: false },
     },
     sideOnly: true,
   },

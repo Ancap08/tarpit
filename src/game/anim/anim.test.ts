@@ -24,11 +24,11 @@ describe('facing', () => {
 });
 
 describe('sheets', () => {
-  it('four-way sheets walk down one column; the wolf mirrors its left-facing frames for right', () => {
+  it('four-way sheets walk down one column; the wolf frames face right and are mirrored only for left', () => {
     expect(SHEETS.goblin.walk.up.frames).toEqual([1, 5, 9, 13]);
     expect(SHEETS.troll.walk.right).toEqual({ frames: [3, 7, 11, 15], flipX: false });
-    expect(SHEETS.wolf.walk.left).toEqual({ frames: [0, 1], flipX: false });
-    expect(SHEETS.wolf.walk.right.flipX).toBe(true);
+    expect(SHEETS.wolf.walk.left).toEqual({ frames: [0, 1], flipX: true });
+    expect(SHEETS.wolf.walk.right.flipX).toBe(false);
     expect(walkAnimKey('wolf', 'up')).toBe('wolf-walk');
     expect(walkAnimKey('goblin', 'up')).toBe('goblin-walk-up');
     expect([SHEETS.goblin.scale, SHEETS.wolf.scale, SHEETS.troll.scale]).toEqual([2, 2, 3]);
