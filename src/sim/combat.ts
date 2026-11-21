@@ -1,16 +1,19 @@
 // Tower fire: targeting (with the Mortar's minimum range), damage, splash,
-// slow, burn, kills and bounty. Each shot is also recorded in state.shots for
+// slow, burn, kills and bounty. Milestone 22: flying enemies (Harpy) are
+// never targeted by Tar Pit, Cannon or Mortar, splash skips them and burns do
+// not stick to them; shielded enemies (Shieldbearer) take half damage from
+// shots of SHIELD_THRESHOLD base damage or less (enemies.ts). Each shot is also recorded in state.shots for
 // the renderer, and hit, slowed, burn and kill events go to state.events
 // (events.ts). Also the burn status step. game.ts calls burnEnemies then
 // fireTowers once per wave tick, after movement and exit removal, before
 // spawns.
 
-import { ENEMY_STATS } from './enemies';
+import { ENEMY_STATS, isFlying, shotDamage } from './enemies';
 import { cellCenter } from './grid';
 import { MAP, positionAlongPath } from './map';
 import { secondsToTicks, TICKS_PER_SECOND } from './time';
 import { shotCooldown, towerStats } from './towers';
-import type { Enemy, GameState, Point, Shot, Tower } from './types';
+import type { Enemy, GameState, Point, Shot, Tower, TowerType } from './types';
 
 /**
  * An enemy is dead at hp <= KILL_EPSILON rather than hp <= 0. Burn ticks
@@ -39,17 +42,26 @@ export function enemyPosition(enemy: Enemy): Point {
   return positionAlongPath(MAP, enemy.distance);
 }
 
+/** Towers that work on the ground and so never target a flying enemy (milestone 22). */
+const GROUND_ONLY: ReadonlySet<TowerType> = new Set<TowerType>(['tarpit', 'cannon', 'mortar']);
+
+/** Whether this tower type may select this enemy as its target. */
+export function canTarget(tower: TowerType, enemy: Enemy): boolean {
+  return !(isFlying(enemy) && GROUND_ONLY.has(tower));
+}
+
 /**
- * The enemy this tower would shoot now: at a distance in [minRange, range]
- * (both inclusive; minRange is 0 except for the Mortar) and furthest along
- * the path; ties go to the lower id. Undefined if none qualifies.
+ * The enemy this tower would shoot now: one it can target (canTarget), at a
+ * distance in [minRange, range] (both inclusive; minRange is 0 except for
+ * the Mortar) and furthest along the path; ties go to the lower id.
+ * Undefined if none qualifies.
  */
 export function findTarget(state: GameState, tower: Tower): Enemy | undefined {
   const from = towerPosition(tower);
   const { range, minRange } = towerStats(tower);
   let best: Enemy | undefined;
   for (const enemy of state.enemies) {
-    if (isDead(enemy)) continue;
+    if (isDead(enemy) || !canTarget(tower.type, enemy)) continue;
     const d = dist(from, enemyPosition(enemy));
     if (d > range || d < minRange) continue;
     if (!best || enemy.distance > best.distance || (enemy.distance === best.distance && enemy.id < best.id)) {
@@ -135,13 +147,15 @@ function towerStep(state: GameState, tower: Tower): void {
   if (stats.splashRadius > 0) shot.splashRadius = stats.splashRadius;
   state.shots.push(shot);
   const hit = (enemy: Enemy) => {
-    enemy.hp -= stats.damage;
-    state.events.push({ kind: 'hit', enemyId: enemy.id, cell: { ...shot.cell }, tower: tower.type, damage: stats.damage });
+    const damage = shotDamage(enemy, stats.damage);
+    enemy.hp -= damage;
+    state.events.push({ kind: 'hit', enemyId: enemy.id, cell: { ...shot.cell }, tower: tower.type, damage });
   };
   if (stats.splashRadius > 0) {
+    // Splash stays on the ground: flying enemies inside the radius are skipped.
     const center = enemyPosition(target);
     for (const enemy of state.enemies) {
-      if (dist(center, enemyPosition(enemy)) <= stats.splashRadius) hit(enemy);
+      if (!isFlying(enemy) && dist(center, enemyPosition(enemy)) <= stats.splashRadius) hit(enemy);
     }
   } else {
     hit(target);
@@ -152,7 +166,8 @@ function towerStep(state: GameState, tower: Tower): void {
       state.events.push({ kind: 'slowed', enemyId: target.id, slow: stats.slow, ticks });
     }
   }
-  if (stats.burnDps > 0 && !isDead(target)) {
+  // A burn does not stick to a flying enemy: no surface to burn.
+  if (stats.burnDps > 0 && !isDead(target) && !isFlying(target)) {
     applyBurn(target, stats.burnDps, secondsToTicks(stats.burnDuration));
   }
   tower.cooldownTicks = shotCooldown(stats);

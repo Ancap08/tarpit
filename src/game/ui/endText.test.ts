@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { comboBuild, createGame, playAllWavesNoTowers, playScripted } from '../../sim';
+import { END_TEXT } from '../names';
 import { endKind, endScreenText } from './endText';
 
 describe('end screen text', () => {
@@ -14,14 +15,14 @@ describe('end screen text', () => {
     const s = playScripted(comboBuild()).state;
     expect(endKind(s)).toBe('won');
     expect(endScreenText('won', s)).toEqual({
-      title: 'Victory!',
-      lines: ['The village stands. Lives left: 11', 'Gold left: 177'],
+      title: END_TEXT.wonTitle,
+      lines: [`${END_TEXT.wonLives} 12`, `${END_TEXT.wonGold} 347`],
     });
   });
 
   it('lose: the wave reached', () => {
     const s = playAllWavesNoTowers();
     expect(endKind(s)).toBe('lost');
-    expect(endScreenText('lost', s)).toEqual({ title: 'The village fell', lines: ['Reached wave 2 of 10'] });
+    expect(endScreenText('lost', s)).toEqual({ title: END_TEXT.lostTitle, lines: [`${END_TEXT.lostWave} 2 of 10`] });
   });
 });

@@ -307,12 +307,15 @@ function withoutTowerType(script: WaveScript, type: TowerType): WaveScript {
  * uphill runs for the Trolls. Then upgrades to the combo, the Mortar and the
  * first Longbows as gold allows, a second Mortar (9,7) in the first U,
  * Longbows (17,9) and (17,10) on the bottom of the second U, and a second
- * Tar Pit and Fire Pot pair at (11,4) and (10,4) on the top run. Every
- * action is bought by wave 10.
+ * Tar Pit and Fire Pot pair at (11,4) and (10,4) on the top run. Milestone
+ * 22 adds anti-air: a third Longbow (17,8) before the Mortar, bought before
+ * wave 4 so the first Harpies meet three bows, and its upgrade as the last
+ * action. Every action is bought by wave 10.
  */
 export const COMBO_PLAN: readonly BuildAction[] = [
-  lb(9, 5), lb(9, 4), t(14, 10), fp(14, 9), mo(17, 6), up(14, 10), up(14, 9), lb(17, 9), up(17, 6), up(9, 5),
-  up(9, 4), mo(9, 7), lb(17, 10), up(17, 9), up(9, 7), up(17, 10), t(11, 4), fp(10, 4), up(11, 4),
+  lb(9, 5), lb(9, 4), t(14, 10), fp(14, 9), lb(17, 8), mo(17, 6), up(14, 10), up(14, 9), lb(17, 9), up(17, 6),
+  up(9, 5), up(9, 4), mo(9, 7), lb(17, 10), up(17, 9), up(9, 7), up(17, 10), t(11, 4), fp(10, 4), up(11, 4),
+  up(17, 8),
 ];
 
 /**
@@ -333,6 +336,42 @@ export function comboBuildNoFire(): WaveScript {
   return withoutTowerType(comboBuild(), 'firepot');
 }
 
+/** The first wave with Harpies (WAVES). */
+export const FIRST_HARPY_WAVE = 4;
+
+/**
+ * comboBuild without anti-air from the first Harpy wave on (milestone 22):
+ * in setup before wave FIRST_HARPY_WAVE, sell every Musketeer and Longbow
+ * built so far, and drop every later action on the cells where comboBuild
+ * builds one (builds and upgrades). The refunds and the gold those actions
+ * would have cost are spent on nothing; the other actions keep their waves.
+ * Removing the actions from wave 1 instead (no sells) loses on wave 2,
+ * before any Harpy, because the combo build opens with Longbows; that
+ * variant is pinned in balance.test.ts as the reason for the sells.
+ * Target: every Harpy of wave 4 exits, and the game is lost by wave 8.
+ */
+export function noAntiAir(): WaveScript {
+  const script = comboBuild();
+  const before = FIRST_HARPY_WAVE - 1;
+  const antiAir = (a: BuildAction) => a.type === 'build' && (a.tower === 'musketeer' || a.tower === 'longbow');
+  const cells = new Set(script.flat().filter(antiAir).map((a) => cellKey(a.cell)));
+  const owned = script.slice(0, before).flat().filter(antiAir).map((a) => a.cell);
+  return script.map((wave, i) => {
+    if (i < before) return wave;
+    const kept = wave.filter((a) => !cells.has(cellKey(a.cell)));
+    return i === before ? [...owned.map((cell): BuildAction => ({ type: 'sell', cell })), ...kept] : kept;
+  });
+}
+
+/**
+ * comboBuild with every Musketeer and Longbow action removed from wave 1
+ * (like withoutTowerType). Not an archetype: it loses on wave 2, before any
+ * Harpy, which is why noAntiAir sells its bows before wave 4 instead.
+ */
+export function comboBuildNoBows(): WaveScript {
+  return withoutTowerType(withoutTowerType(comboBuild(), 'musketeer'), 'longbow');
+}
+
 /** Every archetype, in report order. */
 export const ARCHETYPES: Readonly<Record<string, () => WaveScript>> = {
   noTowers,
@@ -343,4 +382,5 @@ export const ARCHETYPES: Readonly<Record<string, () => WaveScript>> = {
   longbowSpam,
   comboBuild,
   comboBuildNoFire,
+  noAntiAir,
 };

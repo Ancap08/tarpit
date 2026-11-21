@@ -28,13 +28,24 @@ export interface MapDef {
   landmarks?: readonly Rect[];
 }
 
-export type EnemyType = 'goblin' | 'wolf' | 'troll';
+export type EnemyType = 'goblin' | 'wolf' | 'troll' | 'harpy' | 'shieldbearer';
 
 export interface EnemyStats {
   hp: number;
   /** Pixels per second. */
   speed: number;
   bounty: number;
+  /**
+   * Flies over the path (Harpy, milestone 22): Tar Pit, Cannon and Mortar
+   * never target it and splash skips it; a Fire Pot impact hits it but its
+   * burn does not stick.
+   */
+  flying: boolean;
+  /**
+   * Shielded (Shieldbearer, milestone 22): a shot whose base damage is
+   * SHIELD_THRESHOLD or less does half damage. Burn is never halved.
+   */
+  shield: boolean;
 }
 
 export interface Enemy {

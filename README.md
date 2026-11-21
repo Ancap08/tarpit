@@ -69,10 +69,11 @@ docs/media/       README GIF and still
 docs/art/         art source spike (milestone 15): INVENTORY.md (packs, roster mapping, recommendation)
 docs/art/mockups/ style mockups A (Ninja Adventure, 3x and 2x), B (0x72), C (shapes animated), closeups
 assets/           game art and sound; MANIFEST.md lists every file's source and license
-assets/sprites/   enemy sprite sheets (placeholders from Ninja Adventure until v5), imported by src/game/anim/sheets.ts
+assets/sprites/   enemy sprite sheets (placeholders from Ninja Adventure until v5: goblin, wolf, troll, harpy, shieldbearer), imported by src/game/anim/sheets.ts
 src/sim/          game logic in plain TypeScript, no Phaser or DOM (lint-enforced)
 src/sim/grid.ts   the build grid: cells, cell centres, the buildable rule
 src/game/         Phaser rendering, input, HUD, tower panel and the ?test=1 test hooks
+src/game/names.ts every display name (enemies, towers, tower labels, boss, end screens), keyed by internal id
 src/game/ui/buildBar.ts  the HUD build bar: pick a tower, then click a cell
 src/game/portrait.ts     the "turn your device" card (markup in index.html), pauses ticking
 src/game/draw/labels.ts  tower labels and the crowding rule (smaller, then hidden)
@@ -124,9 +125,12 @@ pixel comparison because macOS renders text differently.
 
 ## Status and what is out of scope
 
-v3 (presentation, [docs/SCOPE-v3.md](docs/SCOPE-v3.md)) is in progress:
-tablet play (milestone 14), the art spike (15) and the animation engine
-(16) are built. The simulation now emits events (`state.events`) and the
+v4 (gameplay lock, [docs/SCOPE-v4.md](docs/SCOPE-v4.md)) is in progress:
+milestone 22 added two enemies, the flying Harpy (Tar Pit, Cannon and
+Mortar cannot touch it) and the shielded Shieldbearer (small shots do half
+damage), to the waves from wave 4 and wave 6, and one table of display
+names (`src/game/names.ts`). Before that, v3's tablet play (milestone 14),
+art spike (15) and animation engine (16) were built. The simulation emits events (`state.events`) and the
 renderer animates enemies as pixel sprites from them, in WebGL in play and
 frozen in Canvas under `?test=1`. The sprites are placeholders; towers,
 map and HUD keep their shapes until the v5 art pass, after v4 (gameplay).

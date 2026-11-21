@@ -5,8 +5,9 @@
 // at least 44 px on an iPad in landscape (scale 1024 / 960).
 
 import Phaser from 'phaser';
-import { nextWavePreview, WAVES, type EnemyType, type GameState, type TowerType } from '../sim';
+import { nextWavePreview, WAVES, type GameState, type TowerType } from '../sim';
 import type { Rect } from './input';
+import { ENEMY_NAMES } from './names';
 import { COLORS, FONT, TEXT } from './palette';
 import { BuildBar } from './ui/buildBar';
 import { Button } from './ui/button';
@@ -36,13 +37,11 @@ export interface HudStrings {
   speed: string;
 }
 
-const TYPE_NAME: Record<EnemyType, string> = { goblin: 'Goblin', wolf: 'Wolf', troll: 'Troll' };
-
-/** "Next: 8 Goblin", "Next: 8 Goblin, 5 Wolf", or "Next: none" after the last wave. */
+/** "Next: 8 Goblin", "Next: 8 Goblin, 5 Wolf" (names from ENEMY_NAMES), or "Next: none" after the last wave. */
 export function previewText(state: GameState): string {
   const groups = nextWavePreview(state);
   if (groups.length === 0) return 'Next: none';
-  return `Next: ${groups.map((g) => `${g.count} ${TYPE_NAME[g.type]}`).join(', ')}`;
+  return `Next: ${groups.map((g) => `${g.count} ${ENEMY_NAMES[g.type]}`).join(', ')}`;
 }
 
 /** Start Wave does something only in setup with waves left. */

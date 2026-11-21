@@ -56,6 +56,22 @@ Towers fire in cellKey order (row by row, left to right).
 | Goblin | 30 | 60 | 4 | normal |
 | Wolf | 28 | 120 | 5 | fast |
 | Troll | 700 | 35 | 8 | tanky |
+| Harpy | 40 | 90 | 7 | flying (milestone 22) |
+| Shieldbearer | 120 | 45 | 9 | shield (milestone 22) |
+
+**Flying and shields** (milestone 22, from `docs/SCOPE-v4.md`). A Harpy
+flies over the path. Tar Pit, Cannon and Mortar never target it, and a
+Cannon or Mortar splash skips it even when it is inside the radius. A Fire
+Pot targets it and its impact hits (4 damage), but the burn does not stick:
+no surface to burn. Musketeer and Longbow hit it normally. A Shieldbearer
+takes half damage from any shot whose base damage is 10 or less: base
+Longbow 4 -> 2, upgraded Longbow 9 -> 4.5, Fire Pot impact 4 -> 2, Tar Pit
+3 -> 1.5. Shots over 10 (Musketeer 12 and 22, Cannon, Mortar) and burn
+damage are full. Hp can be fractional; the 1e-9 death threshold (see Burn)
+applies. A `hit` event carries the damage actually dealt. On screen a Harpy
+flies 16 px above its path position with a soft ground shadow, above every
+other enemy and the tower labels, never tinted or ringed for tar or burn;
+a Shieldbearer carries a small grey shield mark on its left.
 
 A slow effect multiplies speed by `(1 - slow)` for its duration. Slows do not
 stack: the strongest slow applies, and a new slow of equal or greater strength
@@ -124,13 +140,17 @@ Groups in a wave run concurrently from the wave start.
 | 1 | 8 Goblin, every 1.0 s |
 | 2 | 12 Goblin, every 0.8 s |
 | 3 | 8 Goblin every 1.0 s; 6 Wolf every 0.6 s, delay 4 s |
-| 4 | 10 Wolf every 0.6 s |
-| 5 | 12 Goblin every 0.7 s; 2 Troll every 3 s, delay 2 s |
-| 6 | 18 Goblin every 0.5 s; 14 Wolf every 0.5 s, delay 5 s |
-| 7 | 10 Wolf every 0.5 s; 10 Troll every 2.5 s, delay 1 s |
-| 8 | 20 Goblin every 0.5 s; 10 Wolf every 0.6 s, delay 6 s; 8 Troll every 3 s, delay 3 s |
+| 4 | 10 Wolf every 0.6 s; 4 Harpy every 1.2 s, delay 2 s |
+| 5 | 12 Goblin every 0.7 s; 2 Troll every 3 s, delay 2 s; 3 Harpy every 1.0 s, delay 6 s |
+| 6 | 18 Goblin every 0.5 s; 14 Wolf every 0.5 s, delay 5 s; 3 Shieldbearer every 2.0 s, delay 3 s |
+| 7 | 10 Wolf every 0.5 s; 10 Troll every 2.5 s, delay 1 s; 4 Harpy every 1.0 s, delay 8 s |
+| 8 | 20 Goblin every 0.5 s; 10 Wolf every 0.6 s, delay 6 s; 8 Troll every 3 s, delay 3 s; 3 Shieldbearer every 2.5 s, delay 4 s; 4 Harpy every 1.0 s, delay 10 s |
 | 9 | 12 Wolf every 0.5 s; 6 Troll every 2 s |
-| 10 | 8 Wolf every 0.5 s, delay 4 s; 12 Troll every 2 s |
+| 10 | 8 Wolf every 0.5 s, delay 4 s; 12 Troll every 2 s; 5 Harpy every 0.8 s, delay 6 s; 4 Shieldbearer every 2.0 s, delay 2 s |
+
+Milestone 22 added the Harpy and Shieldbearer groups (each wave's last
+groups); every older group is unchanged. Wave 9 has none, which keeps the
+combo build under 150 gold after wave 9.
 
 Wave flow: the player presses Start Wave. The wave is active until every
 enemy in it has spawned and none remain alive. Then the clear bonus is paid

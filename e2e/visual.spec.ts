@@ -59,8 +59,9 @@ test('mid wave 1 with three towers', async ({ page }) => {
   await expect(page.locator('canvas')).toHaveScreenshot('mid-wave.png');
 });
 
-// All three enemy types with their hp bars, for Wolf and Troll coverage.
-// Wave 8 is the only wave with Goblins, Wolves and Trolls together, so the
+// Every enemy type with their hp bars, for Wolf, Troll and (milestone 22)
+// Shieldbearer and Harpy coverage. Wave 8 is the only wave with Goblins,
+// Wolves and Trolls together (and has both new types), so the
 // test jumps there (state.wave = 7, then Start Wave) with 1000 gold and a
 // Musketeer at cell (7,5), Cannon at (10,5), Tar Pit at (18,9) and Musketeer
 // at (23,8) (the former legacy spots 2, 4, 7 and 9). Tick 1350 was picked
@@ -70,10 +71,14 @@ test('mid wave 1 with three towers', async ({ page }) => {
 // are under 25% (red bars), 4 enemies carry the tar ring, and no two enemies
 // are closer than 21 px, so each shape and bar reads on its own. At 1200 two
 // enemies were 10 px apart; from 1230 to 1320 some overlap; later ticks lose
-// the Wolves.
+// the Wolves. Milestone 22 added a Shieldbearer group and a Harpy group to
+// wave 8; the tick stays, the old counts are unchanged, and the frame now
+// also has 3 Shieldbearers and 4 Harpies (rechecked headlessly). The closest
+// pair is now 7 px apart; the Harpies fly 16 px above the path, over the
+// walkers, so each sprite still reads.
 const ENEMIES_STEPS = 1350;
 
-test('wave 8 with all three enemy types', async ({ page }) => {
+test('wave 8 with all five enemy types', async ({ page }) => {
   await open(page);
   const counts = await page.evaluate(async (steps) => {
     const t = window.__tarpit as TarpitTestApi;
@@ -96,9 +101,11 @@ test('wave 8 with all three enemy types', async ({ page }) => {
       trolls: of('troll').length,
       hurtTrolls: of('troll').filter((x) => x.hp < 700).length, // Troll max hp is 700
       slowed: e.filter((x) => x.slowTicksLeft > 0).length,
+      shieldbearers: of('shieldbearer').length,
+      harpies: of('harpy').length,
     };
   }, ENEMIES_STEPS);
-  expect(counts).toEqual({ wave: 8, goblins: 10, wolves: 3, trolls: 7, hurtTrolls: 3, slowed: 4 });
+  expect(counts).toEqual({ wave: 8, goblins: 10, wolves: 3, trolls: 7, hurtTrolls: 3, slowed: 4, shieldbearers: 3, harpies: 4 });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('enemies.png');
 });
@@ -168,8 +175,16 @@ test('upgraded Musketeer selected with its panel and range', async ({ page }) =>
 // carry the tar and burn rings and are 11 px apart on the downhill run (at
 // 1572 they overlap exactly), and Troll 3 is at 201 of 700 hp (milestone
 // 12; it was at 1 of 500 hp before).
-const MORTAR_FIRE_TICK = 1752;
-const NEW_TOWERS_STEPS = 1754;
+// Milestone 22: wave 5's three Harpies take the Longbow's shots, the Goblins
+// live longer and the Mortar now fires at 1488, 1668, 1848 (none at 1752),
+// so tick 1754 lost its splash. A new scan for the same picture (a Mortar
+// effect on screen with both Trolls slowed and burning) found 1488..1499 and
+// 1668..1673; at 1668 the Trolls overlap exactly. Tick 1490: the Mortar fired
+// at 1488 (2 ticks into its fade, as before), both Trolls carry the tar and
+// burn rings, 10 px apart (Troll 3 at 417 of 700 hp), and Harpy 16, hurt,
+// flies near the cottage.
+const MORTAR_FIRE_TICK = 1488;
+const NEW_TOWERS_STEPS = 1490;
 
 test('new towers upgraded, Mortar selected, splash and burning tarred Trolls', async ({ page }) => {
   await open(page);
@@ -201,16 +216,76 @@ test('new towers upgraded, Mortar selected, splash and burning tarred Trolls', a
         mortarShots,
         enemies: e.length,
         slowedAndBurning: e.filter((x) => x.slowTicksLeft > 0 && (x.burnTicksLeft ?? 0) > 0).length,
+        harpies: e.filter((x) => x.type === 'harpy').length,
       };
     },
     { fire: MORTAR_FIRE_TICK, steps: NEW_TOWERS_STEPS },
   );
-  expect(counts).toEqual({ wave: 5, upgraded: 4, mortarShots: 1, enemies: 2, slowedAndBurning: 2 });
+  expect(counts).toEqual({ wave: 5, upgraded: 4, mortarShots: 1, enemies: 3, slowedAndBurning: 2, harpies: 1 });
   await page.mouse.click(17 * 32 + 16, 6 * 32 + 16); // select the Mortar
   await page.mouse.move(900, 440); // empty grass: no hover tint
   expect(await ui(page)).toMatchObject({ pick: null, selectedCell: { col: 17, row: 6 }, panelOpen: true });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('new-towers.png');
+});
+
+// Milestone 22: Harpies over the path in wave 4 (state.wave = 3, then Start
+// Wave) with a Cannon at (7,4) and a Musketeer at (2,3). Picked by a
+// headless scan of every Musketeer cell against the 8 Cannon cells that
+// cover at least 200 px of the first 700 px of path, for a tick where the
+// Musketeer's tracer on a Harpy (1 to 3 ticks old) and the Cannon's splash
+// (1 to 4 ticks old) are both on screen, a Harpy is inside the Cannon's
+// range, and no two drawn sprites (Harpies 16 px up) are closer than 18 px.
+// The first scan, with the Cannon at (7,7) as in new-enemies.spec.ts,
+// only matched at ticks where a Harpy hid the Cannon's target. Tick 471: the
+// Musketeer shot Harpy 10 at tick 468 (tracer 3 ticks into its 6); the
+// Cannon shot Wolf 9 at tick 469 (splash 2 ticks into its 10), and Harpy 7,
+// 19 px from Wolf 9 inside the splash, keeps its 28 hp. Harpies 7 and 10
+// are inside the Cannon's 90 px range. 4 Harpies and 7 Wolves are out.
+const HARPIES_STEPS = 471;
+
+test('wave 4 Harpies: a Cannon splash ignores one, a Musketeer shoots one', async ({ page }) => {
+  await open(page);
+  const r = await page.evaluate(async (steps) => {
+    const t = window.__tarpit as TarpitTestApi;
+    await t.startGame();
+    const s = t.state();
+    s.gold = 1000; // test setup: afford both towers
+    s.wave = 3; // test setup: the next Start Wave plays wave 4
+    t.buildAt(7, 4, 'cannon');
+    t.buildAt(2, 3, 'musketeer');
+    t.startWave();
+    const typeOf = new Map<number, string>();
+    const shots: string[] = [];
+    for (let i = 1; i <= steps; i++) {
+      t.step(1);
+      for (const e of t.events()) if (e.kind === 'spawn') typeOf.set(e.enemyId, e.enemyType);
+      for (const x of t.state().shots) if (i >= 468) shots.push(`${i} ${x.tower} ${typeOf.get(x.targetId)} ${x.targetId}`);
+    }
+    const e = t.state().enemies;
+    const harpies = e.filter((x) => x.type === 'harpy');
+    return {
+      wave: t.state().wave,
+      shots,
+      harpies: harpies.map((x) => ({ id: x.id, hp: x.hp })),
+      wolves: e.filter((x) => x.type === 'wolf').length,
+      textures: harpies.map((x) => t.animState(x.id)?.texture),
+    };
+  }, HARPIES_STEPS);
+  expect(r).toEqual({
+    wave: 4,
+    shots: ['468 musketeer harpy 10', '469 cannon wolf 9'],
+    harpies: [
+      { id: 4, hp: 40 },
+      { id: 7, hp: 28 },
+      { id: 10, hp: 28 },
+      { id: 13, hp: 40 },
+    ],
+    wolves: 7,
+    textures: ['harpy', 'harpy', 'harpy', 'harpy'],
+  });
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('harpies.png');
 });
 
 // End screens: the HUD under the veil shows the final numbers.
@@ -222,7 +297,7 @@ test('win screen after the combo build', async ({ page }) => {
     const phase = t.runScript('comboBuild');
     return { phase, screen: t.endScreen(), lives: t.state().lives, gold: t.state().gold };
   });
-  expect(end).toEqual({ phase: 'won', screen: 'won', lives: 11, gold: 177 });
+  expect(end).toEqual({ phase: 'won', screen: 'won', lives: 12, gold: 347 }); // milestone 22 waves
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('won.png');
 });

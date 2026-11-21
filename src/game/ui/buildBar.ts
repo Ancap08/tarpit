@@ -1,24 +1,16 @@
-// Build bar: the HUD's second row, one button per tower type ("Musketeer  50",
-// cost right-aligned). A button the player cannot afford is greyed and ignores
+// Build bar: the HUD's second row, one button per tower type (name from
+// names.ts TOWER_NAMES, cost right-aligned: "Musketeer  50"). A button the player cannot afford is greyed and ignores
 // clicks; the greying follows the gold on every redraw. The active pick is
 // highlighted. The bar only reports clicks; GameScene owns the pick.
 
 import type Phaser from 'phaser';
 import { TOWER_DEFS, type GameState, type TowerType } from '../../sim';
 import type { Rect } from '../input';
+import { TOWER_NAMES } from '../names';
 import { Button } from './button';
 
 // All six towers (milestone 11): the three v1 towers, then the v2 three.
 export const BAR_TYPES: readonly TowerType[] = ['musketeer', 'cannon', 'tarpit', 'longbow', 'mortar', 'firepot'];
-
-export const TOWER_NAME: Record<TowerType, string> = {
-  musketeer: 'Musketeer',
-  cannon: 'Cannon',
-  tarpit: 'Tar Pit',
-  longbow: 'Longbow',
-  mortar: 'Mortar',
-  firepot: 'Fire Pot',
-};
 
 /**
  * Bar button geometry (milestone 11, 42 px tall from milestone 14): six 148 x 42 buttons, 8 px apart from
@@ -45,7 +37,7 @@ export class BuildBar {
         new Button(
           scene,
           { x: BAR_LEFT + i * (BAR_BUTTON_WIDTH + BAR_GAP), y: top, width: BAR_BUTTON_WIDTH, height: BAR_BUTTON_HEIGHT },
-          TOWER_NAME[type],
+          TOWER_NAMES[type],
           () => onClick(type),
           { fontSize: '16px', right: String(TOWER_DEFS[type].cost) },
         ),
@@ -56,7 +48,7 @@ export class BuildBar {
   update(state: GameState, pick: TowerType | null): void {
     BAR_TYPES.forEach((type, i) => {
       const b = this.buttons[i];
-      b.set(TOWER_NAME[type], canPick(state, type));
+      b.set(TOWER_NAMES[type], canPick(state, type));
       b.setPicked(pick === type);
     });
   }

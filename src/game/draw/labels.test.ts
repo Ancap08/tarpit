@@ -1,17 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { cellKey, type TowerType } from '../../sim';
+import { TOWER_SHORT_LABELS as SHORT } from '../names';
 import { labelAbove, labelBox, labelText, labelX, layoutLabels } from './labels';
 
 describe('tower labels', () => {
-  it('names each tower type and marks upgrades with "+"', () => {
-    expect(labelText({ type: 'musketeer', upgraded: false })).toBe('Musket');
-    expect(labelText({ type: 'cannon', upgraded: false })).toBe('Cannon');
-    expect(labelText({ type: 'tarpit', upgraded: false })).toBe('Tar');
-    expect(labelText({ type: 'musketeer', upgraded: true })).toBe('Musket+');
-    expect(labelText({ type: 'tarpit', upgraded: true })).toBe('Tar+');
-    expect(labelText({ type: 'longbow', upgraded: false })).toBe('Longbow');
-    expect(labelText({ type: 'mortar', upgraded: true })).toBe('Mortar+');
-    expect(labelText({ type: 'firepot', upgraded: false })).toBe('Fire');
+  it('names each tower type from TOWER_SHORT_LABELS and marks upgrades with "+"', () => {
+    for (const type of Object.keys(SHORT) as TowerType[]) {
+      expect(labelText({ type, upgraded: false })).toBe(SHORT[type]);
+      expect(labelText({ type, upgraded: true })).toBe(`${SHORT[type]}+`);
+    }
   });
 });
 
@@ -44,12 +41,16 @@ const layout = (towers: ReturnType<typeof tower>[]) => {
 };
 
 describe('label crowding', () => {
-  it('estimates boxes from the monospace advance: "Musket" is 49.2 px at 12 px and 42 px at 10 px', () => {
+  it('estimates boxes from the monospace advance: 0.6 em per character plus 3 px a side (the Musketeer label, centred at x 240)', () => {
+    const n = SHORT.musketeer.length;
     const big = labelBox(tower(7, 5), 12);
-    expect(big.width).toBeCloseTo(49.2, 9);
-    expect(big.x).toBeCloseTo(215.4, 9);
+    expect(big.width).toBeCloseTo(n * 7.2 + 6, 9);
+    expect(big.x).toBeCloseTo(240 - (n * 7.2 + 6) / 2, 9);
     expect(big).toMatchObject({ y: 198, height: 16 });
-    expect(labelBox(tower(7, 5), 10)).toEqual({ x: 219, y: 198, width: 42, height: 14 });
+    const small = labelBox(tower(7, 5), 10);
+    expect(small).toMatchObject({ y: 198, height: 14 });
+    expect(small.width).toBeCloseTo(n * 6 + 6, 9);
+    expect(small.x).toBeCloseTo(240 - (n * 6 + 6) / 2, 9);
   });
 
   it('keeps 12 px labels for a lone tower and for towers two columns apart', () => {

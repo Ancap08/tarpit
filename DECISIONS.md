@@ -409,3 +409,24 @@ can change it; "Kyle" means Kyle decided.
   HUD text may look jagged on the iPad.** Kyle checks; if it bothers him,
   the fix is to render text at the device scale or revert to smooth
   scaling for the canvas and keep nearest for sprites.
+
+## 2026-11-21, milestone 22 (Harpy and Shieldbearer)
+
+- **Delegation defaults from here: implementers on Claude Opus at medium
+  effort; verifiers on Claude Fable at medium effort (a different model
+  from the implementer, as the brief requires).** Kyle (Opus medium for
+  delegation); Fable (verifier model switch from Sonnet).
+- **Harpy and Shieldbearer rules as in SCOPE-v4; wave groups added to
+  waves 4 to 8 and 10 only; all milestone 12 targets hold.** Default
+  (Opus, verified line by line).
+- **`noAntiAir()` plays the combo build through wave 3, then sells its
+  Longbows before wave 4.** Default (Opus, accepted by Fable). A build with
+  no bows at all dies on wave 2, before any Harpy, so that version proves
+  nothing; it is kept as `comboBuildNoBows` and pinned. The sell version
+  leaks all four wave 4 Harpies and loses on wave 7.
+- **The `new-towers.png` frame moved from tick 1754 to 1490** because the
+  wave 5 Harpies shifted the Mortar's shots. Accepted.
+- **Fragile: the combo build has 145 gold after wave 9 against the 150
+  limit.** Milestone 28 widens the margin.
+- **Display-strings rule covers names and end-screen words; HUD prefixes
+  ("Gold", "Lives", "Wave", "Next") stay literal.** Fable.

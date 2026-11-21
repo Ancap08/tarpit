@@ -12,7 +12,7 @@ const B: Cell = { col: 7, row: 5 }; // centre (240,176)
 const U: Cell = { col: 2, row: 4 }; // centre (80,144)
 
 function enemy(id: number, distance: number, type: EnemyType = 'goblin', hp?: number): Enemy {
-  const fullHp = { goblin: 30, wolf: 28, troll: 500 }[type];
+  const fullHp = ({ goblin: 30, wolf: 28, troll: 500, harpy: 40, shieldbearer: 120 } as const)[type];
   return { id, type, hp: hp ?? fullHp, distance, slow: 0, slowTicksLeft: 0 };
 }
 

@@ -11,7 +11,7 @@ import type { Enemy, EnemyType, GameState, TowerType } from './types';
 const P: Cell = { col: 6, row: 7 }; // right of path segment y = 240; enemy at distance d <= 160 is at (d,240)
 
 function enemy(id: number, distance: number, over: Partial<Enemy> = {}, type: EnemyType = 'goblin'): Enemy {
-  const hp = { goblin: 30, wolf: 28, troll: 700 }[type];
+  const hp = ({ goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120 } as const)[type];
   return { id, type, hp, distance, slow: 0, slowTicksLeft: 0, burnDps: 0, burnTicksLeft: 0, ...over };
 }
 
@@ -61,6 +61,8 @@ function playLogged(towers: [number, number, TowerType][], upto = 10): { log: Ga
 const DEFENCE: [number, number, TowerType][] = [
   [6, 5, 'longbow'], [17, 6, 'mortar'], [14, 8, 'firepot'], [14, 6, 'tarpit'], [6, 7, 'cannon'], [7, 5, 'musketeer'],
   [10, 8, 'firepot'], [10, 6, 'cannon'], [12, 8, 'musketeer'],
+  // Milestone 22: anti-air for the Harpy waves, so the defence still wins.
+  [9, 5, 'longbow'], [17, 8, 'longbow'],
 ];
 
 describe('events verifier', () => {

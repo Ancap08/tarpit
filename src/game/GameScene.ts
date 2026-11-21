@@ -62,7 +62,7 @@ import {
 import type { BuildResult, Cell, GameEvent, GameState, SellResult, StartWaveResult, TowerLevelStats, TowerType, UpgradeResult } from '../sim';
 import { EventCursor } from './anim/effects';
 import { EnemySprites, type AnimState } from './anim/enemySprites';
-import { drawHpBars, drawStatusRings } from './draw/enemies';
+import { drawHpBars, drawShadows, drawStatusRings } from './draw/enemies';
 import { TowerLabels } from './draw/labels';
 import { drawMap } from './draw/map';
 import { ShotEffects } from './draw/shots';
@@ -164,9 +164,10 @@ export class GameScene extends Phaser.Scene {
     this.armed = null;
     this.cursor = 'default';
 
-    // Draw order: map, overlay (cell highlight, range circles, ghost), towers
-    // and status rings, enemy sprites (sorted by y) and their particles, shot
-    // effects, hp bars, tower labels, HUD (which covers any range circle
+    // Draw order: map, overlay (cell highlight, range circles, ghost), towers,
+    // status rings and flyer shadows, walking enemy sprites (sorted by y) and
+    // their particles, shot effects, hp bars, tower labels, flying enemy
+    // sprites (milestone 22), HUD (which covers any range circle
     // reaching below the map), then the panel and the end screen on top.
     drawMap(this.add.graphics());
     this.overlay = this.add.graphics();
@@ -175,6 +176,8 @@ export class GameScene extends Phaser.Scene {
     this.shotFx = this.add.graphics();
     this.bars = this.add.graphics();
     this.labels = new TowerLabels(this);
+    // Flyers (Harpies) draw above every walker and label, below the HUD.
+    this.enemySprites.setAirLayer(this.add.layer());
     this.hud = new Hud(this, {
       onStartWave: () => this.startWave(),
       onToggleSpeed: () => this.setSpeed(this.speed === 1 ? 2 : 1),
@@ -428,6 +431,7 @@ export class GameScene extends Phaser.Scene {
     g.clear();
     drawTowers(g, this.state, this.aim);
     drawStatusRings(g, this.state);
+    drawShadows(g, this.state);
     this.enemySprites.sync(this.state, this.speed);
     this.shotFx.clear();
     this.shots.draw(this.shotFx);
