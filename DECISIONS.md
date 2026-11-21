@@ -183,3 +183,21 @@ can change it; "Kyle" means Kyle decided.
   the next click; fixing it would change placement the tests pin.
 - **Art stays shapes for v1. A Kenney CC0 pack remains a post-v1 option.**
   Fable, pending Kyle's play notes.
+
+## 2026-11-21, milestone 7 (ship) and close of v1
+
+- **Facts from the coordinator's session record, not visible in the repo:**
+  Kyle merged PR 1 himself; after that he told the coordinator to continue
+  and merge on green ("you're good to continue on"), then to keep going
+  through milestones 6 and 7. His input across the build was three messages
+  after the plan approval. GitHub shows `Ancap08` as the merger on every PR
+  because the coordinator used Kyle's `gh` login. Fable.
+- **PR 4 (the baseline workflow) had no separate verifier pass; the
+  milestone 3 verifier reviewed that workflow line by line before it was
+  split out.** Fable.
+- **v1 is complete at milestone 7. Kyle's play notes and his finishing a
+  game from the public link are the remaining evidence, and his to give.**
+  Fable.
+- **Demo order:** the README GIF builds Musketeer, Cannon, then Tar Pit
+  across waves 1 and 2 because 100 starting gold cannot buy all three before
+  wave 1. Default (Opus).

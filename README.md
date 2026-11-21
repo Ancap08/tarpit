@@ -26,7 +26,7 @@ enemies, simple shapes with labels.
 - **Kyle** set the design, approved the plan and scope, and merged PR 1 himself. He then had the coordinator merge each PR once checks and the verifier passed, with screenshots and play feel left to his review.
 - **Coordinator: Claude Fable 5.1.** Wrote the scope, design spec and briefs, ran the repo settings, and never wrote game code.
 - **Implementers: Claude Opus at medium effort.** Wrote each milestone's code, tests and notes.
-- **Verifier: Claude Sonnet**, a different model, checked every PR before merge from a clean install, re-derived numbers by hand and added its own tests.
+- **Verifier: Claude Sonnet**, a different model, checked every milestone PR before merge from a clean install (the one non-milestone PR, the baseline workflow, was reviewed as part of milestone 3), re-derived numbers by hand and added its own tests.
 - **One PR per milestone.** Every PR runs lint, typecheck, Vitest, build, and Playwright smoke and play-through tests. Screenshot baselines are generated on CI (Linux) and committed to the PR for Kyle's review.
 
 Every design call and who made it is in [DECISIONS.md](DECISIONS.md). What
