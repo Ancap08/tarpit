@@ -6,11 +6,28 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
+  // Baselines have no platform suffix: they are generated on CI (Linux) by
+  // .github/workflows/update-snapshots.yml. Local runs skip pixel comparisons
+  // because macOS renders text differently from CI Linux.
+  snapshotPathTemplate: '{testDir}/__screenshots__/{testFileName}/{arg}{ext}',
+  ignoreSnapshots: !process.env.CI,
+  // On CI a missing baseline is a failure, not a silent write that the retry
+  // then passes against. --update-snapshots on the command line overrides this.
+  updateSnapshots: process.env.CI ? 'none' : 'missing',
+  expect: { toHaveScreenshot: { maxDiffPixels: 100 } },
   use: {
     baseURL: 'http://localhost:4173',
     trace: 'on-first-retry',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    {
+      name: 'chromium',
+      // A 960x540 viewport makes the Scale.FIT canvas exactly 960x540 at
+      // (0,0), so canvas coordinates from window.__tarpit.uiRects() are page
+      // coordinates for page.mouse.click.
+      use: { ...devices['Desktop Chrome'], viewport: { width: 960, height: 540 }, deviceScaleFactor: 1 },
+    },
+  ],
   // Serve the production build so e2e tests what ships. Run `npm run build` first.
   webServer: {
     command: 'npm run preview -- --port 4173 --strictPort',

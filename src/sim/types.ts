@@ -84,6 +84,21 @@ export interface Tower {
   spent: number;
 }
 
+/**
+ * One tower firing, recorded for the renderer. The simulation is hitscan, so
+ * this is the whole shot: from the tower's spot to the target's position at
+ * the moment it fired.
+ */
+export interface Shot {
+  spotId: number;
+  tower: TowerType;
+  targetId: number;
+  from: Point;
+  to: Point;
+  /** Present only for splash shots (Cannon). */
+  splashRadius?: number;
+}
+
 export type Phase = 'setup' | 'wave' | 'won' | 'lost';
 
 export interface GameState {
@@ -104,6 +119,12 @@ export interface GameState {
   nextEnemyId: number;
   /** Built towers, kept sorted by spotId (the order they fire in). */
   towers: Tower[];
+  /**
+   * Shots fired during the most recent tick, in firing order. Cleared at the
+   * start of every tick (except once won or lost, when tick does nothing).
+   * Read-only output for the renderer; no game rule depends on it.
+   */
+  shots: Shot[];
 }
 
 export interface WavePreviewEntry {

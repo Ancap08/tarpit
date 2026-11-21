@@ -1,14 +1,19 @@
-// Tower fire: targeting, damage, splash, slow, kills and bounty. Called once
-// per wave tick from game.ts, after movement and exit removal, before spawns.
+// Tower fire: targeting, damage, splash, slow, kills and bounty. Each shot is
+// also recorded in state.shots for the renderer. Called once per wave tick
+// from game.ts, after movement and exit removal, before spawns.
 
 import { ENEMY_STATS } from './enemies';
 import { MAP, positionAlongPath } from './map';
 import { secondsToTicks, TICKS_PER_SECOND } from './time';
 import { towerStats } from './towers';
-import type { Enemy, GameState, Point, Tower } from './types';
+import type { Enemy, GameState, Point, Shot, Tower } from './types';
 
 function dist(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function spot(tower: Tower): Point {
+  return MAP.buildSpots[tower.spotId];
 }
 
 /** Enemy position on the map. */
@@ -62,6 +67,15 @@ function towerStep(state: GameState, tower: Tower): void {
   const target = findTarget(state, tower);
   if (!target) return;
   const stats = towerStats(tower);
+  const shot: Shot = {
+    spotId: tower.spotId,
+    tower: tower.type,
+    targetId: target.id,
+    from: { x: spot(tower).x, y: spot(tower).y },
+    to: enemyPosition(target),
+  };
+  if (stats.splashRadius > 0) shot.splashRadius = stats.splashRadius;
+  state.shots.push(shot);
   if (stats.splashRadius > 0) {
     const center = enemyPosition(target);
     for (const enemy of state.enemies) {
