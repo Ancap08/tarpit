@@ -1176,3 +1176,32 @@ Counts: 145 unit tests in 19 files, 40 e2e tests in 7 files.
   waypoints, removed no cell at all (every buildable cell is over 50 px from
   both; (29,4) is 50.6 px from (960,192), and (28,4), also under the roof,
   is 67.9 px). The coordinator chose a landmark rule instead (below).
+
+### Verifier notes (Claude Sonnet)
+
+- Clean run on `m9-placement-ui` at 80a0d4e: `npm ci`, lint, typecheck, build
+  exit 0; 145 unit tests in 19 files; 40 e2e tests passed before this spec was
+  added; `--repeat-each=5` of `build-ui.spec.ts` and `live.spec.ts`: 60 of 60.
+  `npm run sim` is unchanged from milestone 8 (noTowers wave 2, lazy wave 3,
+  greedy wave 3, sound won with 13 lives and 269 gold, noTar lost on wave 7).
+- `git diff origin/main -- src/sim` holds the `Rect` type, `COTTAGE`, the
+  landmark overlap exclusion in `grid.ts`, and tests. Recomputed with separate
+  code (own path copy, own overlap test): 346 cells by the path rule, 344 with
+  the cottage; the two removed cells are exactly (28,4) and (29,4).
+- `e2e/placement-verifier.spec.ts` (7 tests, 3 repeats passed): three
+  placements with the pick kept, the fourth clears it at 0 gold and greys the
+  button; a pick clears at 49 gold; Start Wave with a pick keeps the pick and a
+  placement works mid-wave; Cannon pickable at 80 and not at 79; Escape clears
+  panel and selection; a path cell with a pick builds nothing, and `hoverCell`
+  is that cell; bottom-row hover leaves `uiRects()` unchanged, and the panel for
+  a tower at (29,14) lies inside x 0..960, y 0..480. Towers are listed in
+  row-major order, not click order (my first draft assumed click order).
+- The implementer's frames in the scratchpad were taken at 04:21, before the
+  landmark commit at 04:26: they show a Tar Pit on (29,4) over the cottage.
+  That cell is now refused. A fresh frame of towers at (28,3) and (29,3) shows
+  their labels ("Musket", "Tar") overlapping each other and the cottage roof
+  and chimney. Adjacent towers always overlap labels (56 px labels on 32 px
+  cells); this is cosmetic and was not fixed here.
+- DEVLOG numbers checked: HUD button rectangles, 344, the 50.6 and 67.9 px
+  figures, 145 unit tests, 40 e2e tests in 7 files, and the panel test that
+  loops over every buildable cell (it does not assert the count 344 itself).
