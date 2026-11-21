@@ -1,7 +1,8 @@
-# Tarpit: game design spec (v1)
+# Tarpit: game design spec
 
-Numbers here are the values tuned in the milestone 6a balance pass (see
-DEVLOG.md for before and after, and `npm run sim` for the evidence).
+Numbers here are the values tuned in the milestone 6a balance pass and the
+milestone 12 balance pass v2 (see DEVLOG.md for before and after, and
+`npm run sim` for the evidence).
 Anything not in this file or `docs/SCOPE.md` is out of scope.
 
 ## Space and time
@@ -54,7 +55,7 @@ Towers fire in cellKey order (row by row, left to right).
 |---|---|---|---|---|
 | Goblin | 30 | 60 | 4 | normal |
 | Wolf | 28 | 120 | 5 | fast |
-| Troll | 500 | 35 | 11 | tanky |
+| Troll | 700 | 35 | 8 | tanky |
 
 A slow effect multiplies speed by `(1 - slow)` for its duration. Slows do not
 stack: the strongest slow applies, and a new slow of equal or greater strength
@@ -76,7 +77,7 @@ inclusive; its splash still hits enemies inside the minimum range.
 | Musketeer | 50 | 110 | 12 | 1.0/s | single target |
 | Cannon | 80 | 90 | 25 | 0.5/s | splash: all enemies within 40 px of the target take full damage |
 | Tar Pit | 60 | 90 | 3 | 2.0/s | target slowed 40% for 2 s |
-| Longbow | 40 | 150 | 6 | 2.5/s | single target |
+| Longbow | 40 | 150 | 4 | 2.5/s | single target |
 | Mortar | 110 | 220, minimum 70 | 45 | 1/3 per s | splash: all enemies within 60 px of the target take full damage |
 | Fire Pot | 70 | 100 | 4 | 0.8/s | target burns 5/s for 3 s (see Burn) |
 
@@ -126,9 +127,9 @@ Groups in a wave run concurrently from the wave start.
 | 4 | 10 Wolf every 0.6 s |
 | 5 | 12 Goblin every 0.7 s; 2 Troll every 3 s, delay 2 s |
 | 6 | 18 Goblin every 0.5 s; 14 Wolf every 0.5 s, delay 5 s |
-| 7 | 10 Wolf every 0.5 s; 7 Troll every 2.5 s, delay 1 s |
-| 8 | 20 Goblin every 0.5 s; 10 Wolf every 0.6 s, delay 6 s; 4 Troll every 3 s, delay 3 s |
-| 9 | 12 Wolf every 0.5 s; 4 Troll every 2 s |
+| 7 | 10 Wolf every 0.5 s; 10 Troll every 2.5 s, delay 1 s |
+| 8 | 20 Goblin every 0.5 s; 10 Wolf every 0.6 s, delay 6 s; 8 Troll every 3 s, delay 3 s |
+| 9 | 12 Wolf every 0.5 s; 6 Troll every 2 s |
 | 10 | 8 Wolf every 0.5 s, delay 4 s; 12 Troll every 2 s |
 
 Wave flow: the player presses Start Wave. The wave is active until every

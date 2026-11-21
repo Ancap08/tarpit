@@ -40,10 +40,10 @@ export interface TarpitTestApi {
   /** The end screen showing ('won' or 'lost'), or null. */
   endScreen(): 'won' | 'lost' | null;
   /**
-   * Play a headless script from src/sim (soundBuild or lazyBuild) through the
+   * Play a headless script from src/sim (soundBuild, lazyBuild or comboBuild) through the
    * scene's actions, wave by wave, then redraw. Returns the final phase.
    */
-  runScript(name: 'soundBuild' | 'lazyBuild'): Phase;
+  runScript(name: 'soundBuild' | 'lazyBuild' | 'comboBuild'): Phase;
 }
 
 export type TarpitGlobal = Pick<TarpitTestApi, 'game' | 'uiRects'> & Partial<TarpitTestApi>;

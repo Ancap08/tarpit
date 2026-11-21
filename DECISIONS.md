@@ -287,3 +287,25 @@ can change it; "Kyle" means Kyle decided.
   neighbour's.** Accepted (Fable). Panels are transient.
 - **A one-sentence tense fix in docs/DESIGN.md ("joined the bar") is kept.**
   Fable.
+
+## 2026-11-21, milestone 12 (balance pass v2)
+
+- **v2 balance targets met with six number changes, each proven necessary
+  by a one-at-a-time revert matrix (implementer, repeated by the verifier):**
+  Longbow damage 6 to 4; Troll hp 500 to 700 and bounty 11 to 8; Trolls in
+  waves 7, 8, 9 from 7, 4, 4 to 10, 8, 6. Nothing else moved. Results: no
+  towers wave 2; lazy wave 7; Longbow spam wave 9; combo won with 11 lives
+  and 136 gold entering wave 10; combo without Fire Pots won with 2 lives.
+  Default (Opus, accepted by Fable).
+- **Kid archetypes now "spread along the trail": walk the path in 96 px
+  steps from distance 96 and take the nearest unused buildable cell within
+  72 px.** Fable (rule), Opus (implementation), verified with an independent
+  walk. Supersedes the milestone 8 "kid band", whose first towers sat at the
+  map edge. Side effect: a kid build caps at 16 towers.
+- **A v1-towers-only build (`soundBuild`) now loses on wave 9.** Accepted
+  (Fable): ignoring three of six towers should cost the game. Kyle's play
+  notes decide.
+- **The browser win tests replay `comboBuild`, so `runScript` accepts it.**
+  Default (Opus). Only game-code change in this milestone.
+- **`docs/SCOPE-v2.md`'s tower table keeps its starting numbers; `docs/DESIGN.md`
+  is the spec.** Fable. SCOPE-v2 says the balance pass retunes them.

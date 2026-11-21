@@ -5,7 +5,7 @@ import { buildTower } from './actions';
 import { fireTowers } from './combat';
 import { createGame } from './game';
 import { buildableCells, cellCenter, cellKey, GRID_COLS, GRID_ROWS, MIN_PATH_CLEARANCE } from './grid';
-import { KID_CELL_ORDER, lazyBuild } from './headless';
+import { lazyBuild, TRAIL_CELL_ORDER } from './headless';
 import { MAP } from './map';
 import type { MapDef, Point } from './types';
 
@@ -153,42 +153,50 @@ describe('firing order', () => {
 });
 
 describe('lazy archetype order', () => {
-  it('KID_CELL_ORDER matches an independent recomputation, and lazyBuild buys its prefix', () => {
+  it('TRAIL_CELL_ORDER matches an independent recomputation, and lazyBuild buys its prefix', () => {
     const mask = buildableCells(MAP);
-    // Own along-path distance of the nearest path point (first segment wins ties).
-    const along = (p: Point): { d: number; along: number } => {
-      let best = { d: Infinity, along: 0 };
-      let start = 0;
+    // Own walk along the path: the point at distance d, by segment lengths.
+    const pointAt = (d: number): Point => {
+      let left = d;
       for (let i = 0; i + 1 < MAP.path.length; i++) {
         const a = MAP.path[i];
         const b = MAP.path[i + 1];
         const len = Math.hypot(b.x - a.x, b.y - a.y);
-        const t = Math.max(0, Math.min(1, ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / (len * len)));
-        const d = Math.hypot(p.x - (a.x + t * (b.x - a.x)), p.y - (a.y + t * (b.y - a.y)));
-        if (d < best.d) best = { d, along: start + t * len };
-        start += len;
+        if (left <= len) return { x: a.x + ((b.x - a.x) * left) / len, y: a.y + ((b.y - a.y) * left) / len };
+        left -= len;
       }
-      return best;
+      return MAP.path[MAP.path.length - 1];
     };
-    const mine = [...Array(450).keys()]
-      .filter((k) => mask[k])
-      .map((k) => ({ k, ...along({ x: (k % 30) * 32 + 16, y: Math.floor(k / 30) * 32 + 16 }) }))
-      .filter((c) => c.d < 68)
-      .sort((a, b) => a.along - b.along || a.d - b.d || a.k - b.k)
-      .map((c) => c.k);
-    expect(KID_CELL_ORDER.map(cellKey)).toEqual(mine);
-    const first6 = KID_CELL_ORDER.slice(0, 6);
+    let total = 0;
+    for (let i = 0; i + 1 < MAP.path.length; i++) total += Math.hypot(MAP.path[i + 1].x - MAP.path[i].x, MAP.path[i + 1].y - MAP.path[i].y);
+    const used = new Set<number>();
+    const mine: number[] = [];
+    for (let d = 96; d <= total; d += 96) {
+      const p = pointAt(d);
+      const pick = [...Array(450).keys()]
+        .filter((k) => mask[k] && !used.has(k))
+        .map((k) => ({ k, dist: Math.hypot((k % 30) * 32 + 16 - p.x, Math.floor(k / 30) * 32 + 16 - p.y) }))
+        .filter((c) => c.dist <= 72)
+        .sort((a, b) => a.dist - b.dist || a.k - b.k)[0];
+      if (pick) {
+        used.add(pick.k);
+        mine.push(pick.k);
+      }
+    }
+    expect(TRAIL_CELL_ORDER.map(cellKey)).toEqual(mine);
+    const first6 = TRAIL_CELL_ORDER.slice(0, 6);
     expect(first6).toEqual([
-      { col: 0, row: 5 },
-      { col: 0, row: 9 },
-      { col: 1, row: 5 },
-      { col: 1, row: 9 },
       { col: 2, row: 5 },
-      { col: 2, row: 9 },
+      { col: 6, row: 6 },
+      { col: 3, row: 3 },
+      { col: 7, row: 1 },
+      { col: 10, row: 1 },
+      { col: 14, row: 3 },
     ]);
     const bought = lazyBuild().flat().filter((a) => a.type === 'build').map((a) => a.cell);
     expect(bought.length).toBeGreaterThan(0);
-    expect(bought).toEqual(first6.slice(0, bought.length));
-    // Note for milestone 12: every one of the first six sits at x < 96 and the first two at x < 32.
+    expect(bought).toEqual(TRAIL_CELL_ORDER.slice(0, bought.length));
+    // Milestone 12 fixed the milestone 8 left-edge problem: only the first cell sits at x < 96.
+    expect(bought.filter((c) => c.col * 32 + 16 < 96)).toHaveLength(1);
   });
 });

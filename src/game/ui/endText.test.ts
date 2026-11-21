@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createGame, playAllWavesNoTowers, playScripted, soundBuild } from '../../sim';
+import { comboBuild, createGame, playAllWavesNoTowers, playScripted } from '../../sim';
 import { endKind, endScreenText } from './endText';
 
 describe('end screen text', () => {
@@ -11,11 +11,11 @@ describe('end screen text', () => {
   });
 
   it('win: lives and gold left', () => {
-    const s = playScripted(soundBuild()).state;
+    const s = playScripted(comboBuild()).state;
     expect(endKind(s)).toBe('won');
     expect(endScreenText('won', s)).toEqual({
       title: 'Victory!',
-      lines: ['The village stands. Lives left: 13', 'Gold left: 269'],
+      lines: ['The village stands. Lives left: 11', 'Gold left: 177'],
     });
   });
 

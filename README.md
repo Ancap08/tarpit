@@ -117,6 +117,9 @@ Milestone 10 added the Longbow, Mortar (minimum range) and Fire Pot (burn,
 doubled on tarred enemies) to the simulation, with headless builds that use
 them. Milestone 11 put all six towers on the build bar with their own
 shapes, shots and a burning-enemy ring, and shrinks or hides crowded labels.
+Milestone 12 retuned the numbers for six towers on the grid: Longbow spam
+and a kid's Musketeer build now lose, and a build that pairs a Tar Pit with
+a Fire Pot, Longbows and a Mortar wins with lives to spare.
 
 Out of scope for v1: multiple maps, saves, sound, menus beyond start and
 restart, mobile layout, multiplayer, custom art. A Kenney CC0 art pack is a

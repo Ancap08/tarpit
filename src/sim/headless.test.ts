@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lazyBuild, noTowers, playAllWavesNoTowers, playScripted, runHeadless, soundBuild } from './headless';
+import { comboBuild, lazyBuild, noTowers, playAllWavesNoTowers, playScripted, runHeadless } from './headless';
 
 describe('headless runner', () => {
   it('runs a script and logs each action', () => {
@@ -54,8 +54,8 @@ describe('headless runner', () => {
 });
 
 describe('scripted builds', () => {
-  it('soundBuild wins all 10 waves with every action accepted', () => {
-    const run = playScripted(soundBuild());
+  it('comboBuild wins all 10 waves with every action accepted', () => {
+    const run = playScripted(comboBuild());
     const refused = run.log.filter((l) => 'result' in l && !l.result.ok);
     expect(refused).toEqual([]);
     expect(run.state.phase).toBe('won');
