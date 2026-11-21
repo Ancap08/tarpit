@@ -4,9 +4,11 @@
 // A script is an ordered list of actions. Time only passes inside run
 // actions; every other action happens on the current tick.
 
-import { buildTower, sellTower, upgradeTower, type BuildResult, type SellResult, type UpgradeResult } from './actions';
+import { buildTower, sellTower, towerAt, upgradeTower, type BuildResult, type SellResult, type UpgradeResult } from './actions';
 import { createGame, startWave, tick, type StartWaveResult } from './game';
 import type { GameState, TowerType } from './types';
+import { MAP } from './map';
+import { TOWER_DEFS } from './towers';
 import { WAVES } from './waves';
 
 export type BuildAction =
@@ -111,9 +113,80 @@ export function playAllWavesNoTowers(maxTicksPerWave = 60 * 600): GameState {
   return runHeadless(script).state;
 }
 
-/** One Musketeer on spot 0 and nothing else. Expected to lose. */
+// ---------------------------------------------------------------------------
+// Balance archetypes (milestone 6a). Each returns a WaveScript, so the e2e
+// runScript hook and playScripted replay them unchanged. The rule-based
+// archetypes (lazy, greedy) decide by playing the game: before each wave they
+// look at the gold they have and record what they buy. The sim is
+// deterministic, so replaying the recorded script gives the same game.
+
+/** Decide the next action before a wave, or undefined to start the wave. */
+type Decide = (state: GameState) => BuildAction | undefined;
+
+/** Play all waves, asking `decide` for actions before each one; return what it did. */
+function recordScript(decide: Decide): WaveScript {
+  const state = createGame();
+  const script: BuildAction[][] = [];
+  for (let i = 0; i < WAVES.length && state.phase === 'setup'; i++) {
+    const actions: BuildAction[] = [];
+    for (let action = decide(state); action; action = decide(state)) {
+      const step = applyAction(state, action);
+      if ('result' in step && !step.result.ok) throw new Error(`recordScript: ${JSON.stringify(step)}`);
+      actions.push(action);
+    }
+    script.push(actions);
+    applyAction(state, { type: 'startWave' });
+    applyAction(state, { type: 'runUntilWaveEnds', maxTicks: 60 * 600 });
+  }
+  return script;
+}
+
+/**
+ * The order a kid fills spots: nearest the path entrance (the spawn) first,
+ * by straight-line distance; ties go to the lower spot id.
+ */
+export const KID_SPOT_ORDER: readonly number[] = MAP.buildSpots
+  .map((spot, id) => ({ id, d: Math.hypot(spot.x - MAP.path[0].x, spot.y - MAP.path[0].y) }))
+  .sort((a, b) => a.d - b.d || a.id - b.id)
+  .map((s) => s.id);
+
+function nextFreeKidSpot(state: GameState): number | undefined {
+  return KID_SPOT_ORDER.find((id) => !towerAt(state, id));
+}
+
+/** Archetype 1: build nothing. Target: lost by wave 3. */
+export function noTowers(): WaveScript {
+  return [];
+}
+
+/**
+ * Archetype 2, a kid's build: before each wave, buy base Musketeers while
+ * affordable, on spots in KID_SPOT_ORDER. Never upgrades, never sells.
+ * Target: lost on wave 6, 7 or 8.
+ */
 export function lazyBuild(): WaveScript {
-  return [[{ type: 'build', spotId: 0, tower: 'musketeer' }]];
+  return recordScript((state) => {
+    const spotId = nextFreeKidSpot(state);
+    if (spotId === undefined || state.gold < TOWER_DEFS.musketeer.cost) return undefined;
+    return { type: 'build', spotId, tower: 'musketeer' };
+  });
+}
+
+/**
+ * Archetype 3: like lazyBuild, but an unupgraded Musketeer is upgraded
+ * (when affordable) before another is bought, so purchases alternate buy,
+ * upgrade, buy. Target: lost on wave 8 to 10, or won with at most 5 lives.
+ */
+export function greedyMusket(): WaveScript {
+  return recordScript((state) => {
+    const plain = state.towers.find((tw) => tw.type === 'musketeer' && !tw.upgraded);
+    if (plain) {
+      return state.gold >= TOWER_DEFS.musketeer.upgradeCost ? { type: 'upgrade', spotId: plain.spotId } : undefined;
+    }
+    const spotId = nextFreeKidSpot(state);
+    if (spotId === undefined || state.gold < TOWER_DEFS.musketeer.cost) return undefined;
+    return { type: 'build', spotId, tower: 'musketeer' };
+  });
 }
 
 const m = (spotId: number): BuildAction => ({ type: 'build', spotId, tower: 'musketeer' });
@@ -121,22 +194,63 @@ const c = (spotId: number): BuildAction => ({ type: 'build', spotId, tower: 'can
 const t = (spotId: number): BuildAction => ({ type: 'build', spotId, tower: 'tarpit' });
 const up = (spotId: number): BuildAction => ({ type: 'upgrade', spotId });
 
+/** Gold the action costs in this state (0 if the sim would refuse it anyway). */
+function actionCost(state: GameState, action: BuildAction): number {
+  if (action.type === 'build') return TOWER_DEFS[action.tower].cost;
+  if (action.type === 'upgrade') {
+    const tower = towerAt(state, action.spotId);
+    return tower ? TOWER_DEFS[tower.type].upgradeCost : 0;
+  }
+  return 0;
+}
+
+/** Take the plan's actions in order, each as soon as it is affordable. */
+function followPlan(plan: readonly BuildAction[]): Decide {
+  let next = 0;
+  return (state) => {
+    const action = plan[next];
+    if (!action || state.gold < actionCost(state, action)) return undefined;
+    next += 1;
+    return action;
+  };
+}
+
 /**
- * A sensible build that wins all 10 waves. Musketeers on the first corners
- * (spots 0, 2, 4), an upgraded Tar Pit at spot 6 ahead of Cannons at 7 and 9
- * on the long middle and late segments, then upgrades as gold allows. The
- * Tar Pit is upgraded at once: its base range (80) only grazes the path
- * from spot 6. Every action is affordable when it runs.
+ * The sound build's plan, in purchase order. Musketeers on the first
+ * corners (spots 0, 2), upgraded early. Then a Tar Pit at spot 4, where the
+ * top run turns into the long middle run, with Cannons behind it at spots 5
+ * and 6 on that run: slowed enemies bunch up inside the splash. Then more
+ * Musketeers further on, each upgraded as soon as gold allows.
+ */
+export const SOUND_PLAN: readonly BuildAction[] = [
+  m(0), m(2), up(0), up(2), t(4), c(5), up(4), up(5), c(6), up(6), m(7), up(7), m(9), up(9), m(3), up(3), m(1), up(1), m(8), up(8),
+];
+
+/**
+ * Archetype 4, a thoughtful mixed build: SOUND_PLAN, each action bought as
+ * soon as gold allows. Target: won with 5 to 15 lives, under 150 gold
+ * after wave 9 (when wave 10 is about to start).
  */
 export function soundBuild(): WaveScript {
-  return [
-    [m(0), m(2)], // before wave 1: 100 gold
-    [up(0)],
-    [up(2), m(4)],
-    [t(6), up(6)],
-    [c(7)],
-    [up(4)],
-    [c(9), up(7), m(5)],
-    [up(9), up(5)],
-  ];
+  return recordScript(followPlan(SOUND_PLAN));
 }
+
+/**
+ * soundBuild with every Tar Pit action removed: no Tar Pit builds and no
+ * upgrades on the spots where soundBuild builds them. Must do strictly worse
+ * than soundBuild, which shows Tar Pits matter.
+ */
+export function soundBuildNoTar(): WaveScript {
+  const script = soundBuild();
+  const tarSpots = new Set(script.flat().filter((a) => a.type === 'build' && a.tower === 'tarpit').map((a) => a.spotId));
+  return script.map((wave) => wave.filter((a) => !tarSpots.has(a.spotId)));
+}
+
+/** Every archetype, in report order. */
+export const ARCHETYPES: Readonly<Record<string, () => WaveScript>> = {
+  noTowers,
+  lazyBuild,
+  greedyMusket,
+  soundBuild,
+  soundBuildNoTar,
+};

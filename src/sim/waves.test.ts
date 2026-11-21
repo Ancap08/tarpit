@@ -16,7 +16,7 @@ describe('waves', () => {
     const state = { ...createGame(), wave: 2 };
     expect(nextWavePreview(state)).toEqual([
       { type: 'goblin', count: 8 },
-      { type: 'wolf', count: 5 },
+      { type: 'wolf', count: 6 },
     ]);
   });
 

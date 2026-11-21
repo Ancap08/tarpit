@@ -61,12 +61,12 @@ describe('buildTower', () => {
 });
 
 describe('upgradeTower', () => {
-  it('upgrades a musketeer for 40: gold 10, spent 90', () => {
+  it('upgrades a musketeer for 35: gold 15, spent 85', () => {
     const s = createGame();
     buildTower(s, 0, 'musketeer');
     const r = upgradeTower(s, 0);
-    expect(r).toMatchObject({ ok: true, gold: 10, tower: { upgraded: true, spent: 90 } });
-    expect(s.gold).toBe(10);
+    expect(r).toMatchObject({ ok: true, gold: 15, tower: { upgraded: true, spent: 85 } });
+    expect(s.gold).toBe(15);
   });
 
   it('charges 60 for a cannon and 50 for a tar pit', () => {
@@ -83,12 +83,12 @@ describe('upgradeTower', () => {
     expect(upgradeTower(s, 0)).toEqual({ ok: false, reason: 'no-tower' });
     expect(upgradeTower(s, 42)).toEqual({ ok: false, reason: 'no-tower' });
     buildTower(s, 0, 'musketeer'); // 50 left
-    s.gold = 39;
+    s.gold = 34;
     expect(upgradeTower(s, 0)).toEqual({ ok: false, reason: 'not-enough-gold' });
     s.gold = 100;
     upgradeTower(s, 0);
     expect(upgradeTower(s, 0)).toEqual({ ok: false, reason: 'already-upgraded' });
-    expect(s.gold).toBe(60);
+    expect(s.gold).toBe(65);
   });
 });
 
@@ -101,12 +101,17 @@ describe('sellTower', () => {
     expect(buildTower(s, 0, 'tarpit')).toMatchObject({ ok: true });
   });
 
-  it('a 50 + 40 musketeer refunds 63 (not 62 from 90 * 0.7 in floating point)', () => {
+  it('a 50 + 35 musketeer refunds 59', () => {
     const s = createGame();
     buildTower(s, 0, 'musketeer');
     upgradeTower(s, 0);
-    expect(s.gold).toBe(10);
-    expect(sellTower(s, 0)).toEqual({ ok: true, refund: 63, gold: 73 });
+    expect(s.gold).toBe(15);
+    expect(sellTower(s, 0)).toEqual({ ok: true, refund: 59, gold: 74 });
+  });
+
+  it('uses integer math: 90 refunds 63, not 62 from 90 * 0.7 in floating point', () => {
+    expect(Math.floor(90 * 0.7)).toBe(62);
+    expect(sellRefund(90)).toBe(63);
   });
 
   it('rounds down: cannon 80 -> 56, 140 -> 98; tar pit 60 -> 42, 110 -> 77', () => {

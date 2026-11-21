@@ -500,3 +500,186 @@ Verifier: Claude Sonnet. Checked on branch `m5-win-lose` against
 - README file layout matches the files; the seven-frame count and the hook
   list match the code. Baselines for `won.png` and `lost.png` are CI-only and
   not checked locally.
+
+## 2026-11-21: milestone 6a, balance pass
+
+Roles: implementer Claude Opus, verifier Claude Sonnet, coordinator Claude
+Fable 5.1.
+
+### Implementer notes
+
+The implementer (Claude Opus) tuned the numbers so the game is a fair
+challenge, without changing its shape: still 100 gold, 20 lives, 10 waves,
+three towers, three enemies, one upgrade, 70% sell, the same path and tick
+rules. Only numbers, wave lists and the position of spot 3 changed.
+
+- Archetypes (`src/sim/headless.ts`), each a function returning a
+  `WaveScript`, so `playScripted` and the e2e `runScript` hook replay them
+  unchanged (no `src/game` code changed):
+  - `noTowers()`: builds nothing. Target: lost by wave 3.
+  - `lazyBuild()`: a kid's build. Before each wave it buys base Musketeers
+    while it can afford them, on spots nearest the spawn first
+    (`KID_SPOT_ORDER`: 0, 1, 3, 2, 4, 6, 5, 7, 9, 8). Never upgrades or
+    sells. Target: lost on wave 6, 7 or 8.
+  - `greedyMusket()`: the same, but it upgrades an unupgraded Musketeer
+    before it buys another (buy, upgrade, buy, ...). Target: lost on wave 8
+    to 10, or won with at most 5 lives.
+  - `soundBuild()`: `SOUND_PLAN` taken in order, each action as soon as gold
+    allows: Musketeers at 0 and 2, both upgraded; a Tar Pit at spot 4 where
+    the top run turns into the long middle run, Cannons behind it at 5 and
+    6; then more Musketeers, each upgraded. Target: won with 5 to 15 lives
+    and under 150 gold after wave 9 (see the revision below; the first
+    version of this target was under 150 gold at the end).
+  - `soundBuildNoTar()`: `soundBuild()` with every Tar Pit build and every
+    upgrade on a Tar Pit spot removed. Must do strictly worse.
+  The rule-based archetypes decide by playing: before each wave they look at
+  their gold and record what they buy. The sim is deterministic, so the
+  recorded script replays to the same game.
+- `npm run sim` prints all five per wave (wave, lives, gold, ticks) and a
+  summary. `src/sim/balance.test.ts` (8 tests) asserts every target as a
+  range, pins soundBuild exactly (141 gold after wave 9; 11 lives and 253
+  gold at the end), checks soundBuildNoTar
+  is strictly worse, and checks the archetype rules (kid order, lazy builds
+  only base Musketeers, greedy alternates).
+
+Results, before (old numbers, new archetypes) and after:
+
+| Archetype | Target | Before | After |
+|---|---|---|---|
+| noTowers | lost by wave 3 | lost wave 2 | lost wave 2 |
+| lazyBuild | lost on wave 6 to 8 | won, 18 lives, 1150 gold | lost wave 8 |
+| greedyMusket | lost on wave 8 to 10, or won with 5 or fewer lives | won, 17 lives, 745 gold | won, 2 lives, 340 gold |
+| soundBuild | won, 5 to 15 lives, under 150 gold after wave 9 | won, 20 lives, 910 gold (525 after wave 9) | won, 11 lives, 253 gold (141 after wave 9) |
+| soundBuildNoTar | strictly worse than soundBuild | won, 20 lives, 1020 gold | lost wave 7 |
+
+Every number changed, with the reason. "Reverting it" means putting back
+that one number with every other final value in place (checked against the
+final tables):
+
+| Number | Before | After | Why |
+|---|---|---|---|
+| Spot 3 position | (240,304) | (240,240) | Was 102 px from the path, so a base Tar Pit there reached nothing. Now exactly 80 px from the first vertical segment, 64 px from spot 2. |
+| Goblin bounty | 5 | 4 | Gold piled up: the old sound build ended with 910 unspent. Reverting it alone: lazyBuild survives to wave 9, soundBuild ends with 217 gold. |
+| Wolf hp | 20 | 28 | An upgraded Musketeer (22) no longer one-shots a Wolf; a base Musketeer needs 3 shots, an upgraded one 2, so upgrades pay off. Reverting it: lazyBuild survives to wave 9, greedyMusket wins with 9 lives. |
+| Wolf bounty | 6 | 5 | Less gold piling up. Reverting it: lazyBuild survives to wave 9, soundBuild ends with 195 gold. |
+| Troll hp | 150 | 500 | Make the Troll actually tanky; Trolls are the late-wave threat. Reverting it: lazyBuild wins. |
+| Troll bounty | 15 | 11 | A kill worth chasing. First tuned to 4 (see the revision below). |
+| Musketeer upgrade cost | 40 | 35 | Make an upgrade better value than a new base Musketeer, so greedyMusket outlasts lazyBuild. The sound build upgrades its Musketeers too: reverting it leaves soundBuild 1 life. |
+| Musketeer upgraded damage | 20 | 22 | Same reason; 2 shots kill a Goblin or a Wolf. Reverting it alone still meets every target, but soundBuild drops to 6 lives; kept for margin. |
+| Cannon upgraded splash radius | 50 | 55 | Catches more of a slowed, bunched group. Reverting it alone still meets every target, but soundBuild drops to 6 lives; kept for margin. |
+| Tar Pit range | 80 | 90 | 80 equalled the distance from nine spots to the path, so a base Tar Pit barely reached. 90 reaches from every spot. Reverting it: soundBuild wins with 2 lives. |
+| Tar Pit fire rate | 1.0/s | 2.0/s | It slows only its target, so at 1/s it held about two enemies slowed. 2/s keeps a group slowed. Reverting it: soundBuild wins with 2 lives. |
+| Tar Pit upgraded range | 95 | 105 | Keeps the upgrade a real range gain over the new base 90. Reverting it: soundBuild loses on wave 10. |
+| Tar Pit upgraded fire rate | 1.0/s | 2.0/s | Same as base; an upgrade should not fire slower. Reverting it: soundBuild loses on wave 10. |
+| Tar Pit upgraded slow | 55% | 60% | A stronger upgrade for the tower the sound build leans on. Reverting it: soundBuild wins with 3 lives. |
+| Wave 3 wolves | 5 | 6 | Reverting it: lazyBuild survives to wave 9. |
+| Wave 5 goblins | 10 every 0.8 s | 12 every 0.7 s | Mid-game pressure. Reverting it alone still meets every target, but soundBuild ends with 145 gold, 5 under the limit; kept for margin. |
+| Wave 6 goblins | 15 every 0.6 s | 18 every 0.5 s | A dense swarm: splash and slow handle it, base Musketeers leak. Reverting it: lazyBuild survives to wave 9. |
+| Wave 6 wolves | 8 every 0.6 s | 14 every 0.5 s | Same. Reverting it: lazyBuild survives to wave 9. |
+| Wave 7 trolls | 4 | 7 | The wall a full board of base Musketeers cannot hold. Reverting it: lazyBuild survives to wave 9. |
+| Wave 8 trolls | 3 | 4 | Reverting it: lazyBuild survives to wave 9. |
+| Wave 9 trolls | 8 | 4 | Keeps the sound build under 150 gold when wave 10 starts, now that a Troll pays 11. Added in the revision. |
+| Wave 10 | 30 Goblin every 0.4 s; 15 Wolf every 0.5 s, delay 5 s; 8 Troll every 2 s, delay 2 s | 8 Wolf every 0.5 s, delay 4 s; 12 Troll every 2 s | A Troll march finale. Fewer small enemies than before: under the first gold target the old wave 10 alone paid 385 gold. |
+
+Unchanged: Goblin hp and speed, Wolf and Troll speed, every tower cost,
+Musketeer base stats and upgraded range, Cannon base stats and upgraded
+damage and range, Tar Pit damage, base slow and slow duration, upgrade costs
+of Cannon and Tar Pit, waves 1, 2 and 4, the wave 9 wolves, the clear bonus
+(25), all intervals and delays not listed above.
+
+The "Reverting it" results above were measured before the revision, with
+Troll bounty 4 and 8 Trolls in wave 9.
+
+Revision (coordinator, same day): a 500 hp Troll that pays 4 gold would
+feel wrong to a player. The gold target was there to keep the economy tight
+while gold can still be spent, and gold earned in wave 10 never can be. So
+the target became "under 150 gold after wave 9, when wave 10 is about to
+start", with no limit on final gold, and the Troll bounty went up to a
+rewarding whole number. At Troll bounty 10 to 15 with no other change, every
+other target still held, but soundBuild had 172 to 237 gold after wave 9:
+wave 9 alone paid 60 + 8 x bounty + 25. The cheapest fix was one wave
+number: wave 9 Trolls 8 to 4. Bounty 11 with 4 Trolls gives 141 gold after
+wave 9; bounty 12 would also need fewer wave 9 Wolves. Results moved:
+greedyMusket now wins with 2 lives instead of losing on wave 9 (still in its
+target), soundBuild wins with 11 lives and 253 gold, lazyBuild still loses
+on wave 8 and soundBuildNoTar on wave 7.
+
+Iterations: about 14 hand-tuned configurations, plus scripted grid sweeps
+(about 1,100 configurations in all) with a scratch harness that patched the
+stat tables in memory and scored each run against the targets, then a
+one-at-a-time revert pass that put back every changed number whose original
+value scored as well. That pass reverted the Cannon base buffs (range 100,
+damage 30, splash 45), the Cannon upgraded buffs (range 110, damage 50), the
+base Tar Pit slow (50%), the upgraded Tar Pit duration (3 s) and four wave
+changes (more wolves in waves 4, 7 and 9, more goblins in wave 8): none of
+them mattered once the rest was in place.
+
+What went wrong:
+
+- The first economy cut (bounties 3/3/10, clear bonus 15) made the game
+  lost or nearly lost in waves 1 to 3 for every build, and trivial after
+  that: every build lost lives early, then all ten spots filled and late
+  gold piled up. Income was not the lever on its own; the late waves had to
+  get harder too.
+- The old sound build (two Musketeers, one Tar Pit at spot 6, two Cannons)
+  ran out of plan after wave 8 and then banked gold, and did worse than
+  greedyMusket. Cannons and Tar Pits only beat Musketeers once the Tar Pit
+  sat ahead of the Cannons on the long middle run, so the plan became a
+  list taken as gold allows rather than fixed per-wave purchases.
+- "Under 150 gold at the end" cannot be met by spending alone: gold earned
+  in wave 10 arrives after the last chance to spend it. The first fix was to
+  make wave 10 pay little (Troll bounty 4, fewer small enemies). The
+  revision replaced that target instead (see above).
+- The results are sensitive to damage breakpoints. For example, in one
+  trial base Musketeer damage 10 instead of 12 cost the sound build 4 lives
+  in wave 2 and the game by wave 8, because an upgraded 18 plus a base 10
+  no longer killed a 30 hp Goblin in two hits. Margins at the final values: lazyBuild loses on wave
+  8, the edge of its range (it had 4 lives entering wave 8); greedyMusket
+  sits at the edge too (won with 2 lives, limit 5); soundBuild sits
+  mid-range.
+
+Other notes:
+
+- Spot 3's build menu now opens to its left (spot 4 blocks the right), over
+  the start of the path, like the spot 2 menu noted at milestone 4. Spot 1's
+  menu now opens to its right, because spot 3 no longer sits there.
+- Tests updated to the new values with the same intent (113 unit tests,
+  37 e2e). The floating point sell test now checks `sellRefund(90)` directly,
+  because no tower totals 90 any more. The inclusive-range test uses a path
+  distance that is exactly 90.000 px from spot 0 in floating point.
+- e2e expectations changed: one Musketeer at spot 2 after wave 1 is lives 14,
+  gold 83 (was 85); upgrade there leaves 48 and sell refunds 59 (was 45 and
+  63); build plus upgrade from 100 leaves 15 (was 10); the sound build wins
+  with 11 lives and 253 gold (was 20 and 910); the lazy build loses on wave
+  8 (was 3); spot 3's menu opens to its left at y 240. Unchanged: no towers
+  gives lives 12, gold 125 after wave 1 and loses on wave 2.
+- Visual baselines change for the mid-wave, won and lost frames and for any
+  frame that shows spot 3. No PNGs are committed; the coordinator
+  regenerates them on CI.
+
+### Verifier notes
+
+Verifier: Claude Sonnet. Checked on branch `m6a-balance` against
+`origin/main`.
+
+- Clean run (`rm -rf dist && npm ci`, lint, typecheck, test, build, e2e,
+  sim): all exit 0. 118 unit tests in 13 files (113 plus my 5), 37 e2e
+  tests. Sim summary: noTowers lost wave 2; lazyBuild lost wave 8, 310 gold;
+  greedyMusket won, 2 lives, 340 gold; soundBuild won, 11 lives, 253 gold
+  (141 after wave 9); soundBuildNoTar lost wave 7.
+- Every number in the DESIGN.md enemy, tower, upgrade, wave and spot tables
+  matches `enemies.ts`, `towers.ts`, `waves.ts` and `map.ts`. The DEVLOG
+  before/after table matches `git diff origin/main` for those files: no
+  undocumented change and no documented change that did not happen.
+- Forbidden knobs are unchanged. `src/game` changed only in two test files.
+- Archetypes do what the DEVLOG says. `soundBuildNoTar()` is derived from
+  `soundBuild()` by filtering out the Tar Pit spot's actions. Spot 3
+  (240,240) is exactly 80.000 px from the nearest path segment (not on the
+  40 px strip), 64 px from spots 2 and 3's nearest neighbour, so at least 50
+  px from every spot. Spot 0 stays at 64 px, as DESIGN.md says.
+- `src/sim/balance-verifier.test.ts` (5 probes, all pass): sound build is
+  deterministic; Cannon-only build does worse than the sound build; Tar
+  Pit-only build loses; one Troll passes one base Musketeer at spot 2 and
+  exits (lives 19, no bounty); sound build loses lives in waves 7 and 8.
+- Observation: `DECISIONS.md` has no milestone 6a entry; the decisions
+  (number changes, gold target revision) live only in this section.

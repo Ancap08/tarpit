@@ -31,8 +31,8 @@ describe('classifyClick', () => {
   });
 
   it('a spot outside the menu is a spot; anything else is elsewhere', () => {
-    expect(classifyClick(240, 304, ui)).toEqual({ kind: 'spot', spotId: 3 });
-    expect(classifyClick(240, 304, null)).toEqual({ kind: 'spot', spotId: 3 });
+    expect(classifyClick(240, 240, ui)).toEqual({ kind: 'spot', spotId: 3 });
+    expect(classifyClick(240, 240, null)).toEqual({ kind: 'spot', spotId: 3 });
     expect(classifyClick(20, 20, ui)).toEqual({ kind: 'elsewhere' });
     expect(classifyClick(795, 510, ui)).toEqual({ kind: 'elsewhere' }); // HUD
   });
@@ -43,7 +43,7 @@ describe('placeBeside', () => {
   const PANEL = { w: 168, h: 76 };
 
   it('prefers the right side, vertically centred, when it covers no spot', () => {
-    expect(placeBeside(MAP.buildSpots[3], MENU.w, MENU.h)).toEqual({ x: 268, y: 249 });
+    expect(placeBeside(MAP.buildSpots[5], MENU.w, MENU.h)).toEqual({ x: 528, y: 105 });
   });
 
   it('moves off a side that would cover another spot', () => {
@@ -51,6 +51,8 @@ describe('placeBeside', () => {
     expect(placeBeside(MAP.buildSpots[2], MENU.w, MENU.h)).toEqual({ x: 156, y: 38 });
     // Spot 6's right side would cover spot 7: left.
     expect(placeBeside(MAP.buildSpots[6], MENU.w, MENU.h)).toEqual({ x: 304, y: 249 });
+    // Spot 3's right side would cover spot 4: left.
+    expect(placeBeside(MAP.buildSpots[3], MENU.w, MENU.h)).toEqual({ x: 44, y: 185 });
   });
 
   it('clamps inside the map area, never over the HUD', () => {

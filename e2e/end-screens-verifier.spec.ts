@@ -52,7 +52,7 @@ test('(a) third game behaves like the first', async ({ page }) => {
   await click(page, 'menu:musketeer');
   await click(page, 'startWave');
   await api(page, (a) => a.step(2005));
-  expect(await state(page)).toMatchObject({ phase: 'setup', wave: 1, lives: 14, gold: 85 });
+  expect(await state(page)).toMatchObject({ phase: 'setup', wave: 1, lives: 14, gold: 83 });
 });
 
 test('(b) after Play again no playAgain rect and no end screen', async ({ page }) => {
@@ -104,8 +104,8 @@ test('(d) win screen HUD text', async ({ page }) => {
   await api(page, (a) => a.runScript('soundBuild'));
   expect(await endScreen(page)).toBe('won');
   expect(await api(page, (a) => a.hudText())).toMatchObject({
-    gold: 'Gold 910',
-    lives: 'Lives 20',
+    gold: 'Gold 253',
+    lives: 'Lives 11',
     wave: 'Wave 10/10',
     next: 'Next: none',
   });

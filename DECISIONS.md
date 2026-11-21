@@ -139,3 +139,28 @@ can change it; "Kyle" means Kyle decided.
   otherwise still flip between 1x and 2x.
 - **Milestone 6 polish candidates from the verifier: a more transparent end
   panel, and hiding the "Next:" line on the lose screen.** Observations only.
+
+## 2026-11-21, milestone 6a (balance)
+
+- **Balance targets, proven by headless archetype runs and pinned by tests.**
+  Fable. No towers loses by wave 3; a kid's lazy build (base Musketeers only)
+  loses on wave 6 to 8; a greedy Musketeer-and-upgrade build loses on wave 8
+  to 10 or wins with at most 5 lives; a thoughtful mixed build wins with 5 to
+  15 lives and has under 150 gold when wave 10 starts; the same build with
+  its Tar Pits removed does strictly worse. Results: wave 2, wave 8, won with
+  2 lives, won with 11 lives (141 gold after wave 9), lost on wave 7.
+- **The numbers that changed** are tabled in `docs/DESIGN.md` (now the spec)
+  and, with one line of reasoning each, in the DEVLOG. Headlines: Tar Pit
+  range 80 to 90 and fire rate 1 to 2 per second so it reaches from every
+  spot and matters; Troll hp 150 to 500 so it is actually tanky; Wolf hp 20
+  to 28; later waves heavier; wave 10 is Wolves and Trolls only. Default
+  (Opus, accepted by Fable).
+- **Troll bounty is 11, not 4.** Fable. The first pass set it to 4 to hit a
+  "gold unspent at the end" target, but gold earned in wave 10 can never be
+  spent, so that target measured nothing. Replaced by "gold entering wave
+  10", which let the Troll pay like a big enemy should. Wave 9 dropped from
+  8 Trolls to 4 to keep that target.
+- **Build spot 3 moved from (240,304) to (240,240)** so it is 80 px from the
+  path like the others. Default (Opus).
+- **Known thin margins:** lazy at the edge of its range, greedy at 2 lives
+  against a limit of 5. Kyle's play notes decide whether that is right.
