@@ -1,4 +1,4 @@
-# Tarpit: game design spec (v1)
+# Tarpit: game design spec
 
 Numbers here are the values tuned in the milestone 6a balance pass and the
 milestone 12 balance pass v2 (see DEVLOG.md for before and after, and
