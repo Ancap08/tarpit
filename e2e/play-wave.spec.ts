@@ -67,11 +67,16 @@ test('Start Wave does nothing while a wave is active', async ({ page }) => {
   expect(await state(page)).toMatchObject({ phase: 'wave', wave: 1, waveTick: 30 });
 });
 
-test('title screen starts the game on click', async ({ page }) => {
+test('the title menu starts the game on a click on Play (milestone 25), not on a click elsewhere', async ({ page }) => {
   await page.goto('/?test=1');
   await page.waitForFunction(() => window.__tarpit?.scene?.() === 'title');
-  await page.mouse.click(480, 290);
+  await page.mouse.click(480, 360); // the empty band under the level buttons
+  await page.waitForTimeout(100);
+  expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).scene())).toBe('title');
+  const r = await page.evaluate(() => (window.__tarpit as TarpitTestApi).uiRects()['title:play']);
+  await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
   await page.waitForFunction(() => window.__tarpit?.scene?.() === 'game');
+  expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).difficulty())).toBe('normal');
 });
 
 test('test mode runs no ticks on its own', async ({ page }) => {

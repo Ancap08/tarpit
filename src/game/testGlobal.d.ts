@@ -6,6 +6,7 @@
 import type Phaser from 'phaser';
 import type {
   BuildResult,
+  Difficulty,
   GameEvent,
   GameState,
   Phase,
@@ -19,6 +20,7 @@ import type {
 import type { AnimState } from './anim/enemySprites';
 import type { UiState } from './GameScene';
 import type { HudStrings, Rect } from './hud';
+import type { TitleUiState } from './TitleScene';
 
 export interface TarpitTestApi {
   game: Phaser.Game;
@@ -28,8 +30,14 @@ export interface TarpitTestApi {
   state(): GameState;
   /** Run n simulation ticks, then redraw. */
   step(n: number): void;
-  /** Leave the title screen; resolves once GameScene has been created. */
-  startGame(): Promise<void>;
+  /**
+   * Leave the title menu as [Play] does, on `difficulty` (Normal when left
+   * out, whatever the menu shows; milestone 25); resolves once GameScene
+   * has been created. Does nothing if GameScene is already running.
+   */
+  startGame(difficulty?: Difficulty): Promise<void>;
+  /** The running game's level (milestone 25). */
+  difficulty(): Difficulty;
   startWave(): StartWaveResult;
   /** Build on grid cell (col, row) through the scene's action (no clicks). */
   buildAt(col: number, row: number, type: TowerType): BuildResult;
@@ -43,8 +51,9 @@ export interface TarpitTestApi {
    * Canvas-space rectangles of everything clickable, by name: `startWave`,
    * `speed`, `bar:musketeer`, `bar:cannon`, `bar:tarpit`, `bar:longbow`,
    * `bar:mortar`, `bar:firepot`, while the tower
-   * panel is open `panel:upgrade`, `panel:sell` and `panel:target`, and `playAgain` while an
-   * end screen shows. Map cells are not listed: cell (col, row) is clicked at
+   * panel is open `panel:upgrade`, `panel:sell` and `panel:target`, and `playAgain` and
+   * `menu` while an end screen shows. On the title menu (milestone 25):
+   * `title:easy`, `title:normal`, `title:hard` and `title:play` only. Map cells are not listed: cell (col, row) is clicked at
    * (col * 32 + 16, row * 32 + 16). At the 960x580 test viewport, canvas
    * space equals page space; at other sizes use canvasToPage(). The open
    * panel also lists `panel:close`.
@@ -61,8 +70,10 @@ export interface TarpitTestApi {
    * Build UI state: the bar's pick, the highlighted cell, the armed cell and
    * touch mode, the selected tower's cell, whether the panel is open, the
    * selected tower's targeting mode and the targeting button's label.
+   * On the title menu (milestone 25) it is `{ scene: 'title', difficulty }`
+   * with the selected level: call it as `ui<TitleUiState>()` there.
    */
-  ui(): UiState;
+  ui<T extends UiState | TitleUiState = UiState>(): T;
   /** HUD strings; `boss` is the boss bar label ("Grumblefoot 4000 / 4000") or null when hidden. */
   hudText(): HudStrings;
   /** The end screen showing ('won' or 'lost'), or null. */

@@ -25,6 +25,11 @@ describe('boss bar (milestone 23)', () => {
     expect(bossBarInfo({ ...createGame(), enemies: [boss(2999.5)] })?.hpText).toBe('3000 / 4000');
   });
 
+  it('measures against the level\'s full hp (milestone 25): 3000 on Easy, 5200 on Hard', () => {
+    expect(bossBarInfo({ ...createGame({ difficulty: 'easy' }), enemies: [boss(3000)] })).toEqual({ name: BOSS_NAME, hpText: '3000 / 3000', fraction: 1 });
+    expect(bossBarInfo({ ...createGame({ difficulty: 'hard' }), enemies: [boss(1300)] })).toEqual({ name: BOSS_NAME, hpText: '1300 / 5200', fraction: 0.25 });
+  });
+
   it('is 300 x 14, centred on the 960 px map, with the name pill above it inside the canvas', () => {
     expect(BOSS_BAR.width).toBe(300);
     expect(BOSS_BAR.height).toBe(14);

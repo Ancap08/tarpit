@@ -16,12 +16,19 @@ async function clickButton(page: Page, name: 'startWave' | 'speed'): Promise<voi
   await page.mouse.click(r!.x + r!.width / 2, r!.y + r!.height / 2);
 }
 
+/** The title menu's [Play] (milestone 25: only Play starts the game). */
+async function clickTitlePlay(page: Page): Promise<void> {
+  const r = await page.evaluate(() => window.__tarpit?.uiRects()['title:play'] as Rect | undefined);
+  expect(r, "uiRects()['title:play']").toBeTruthy();
+  await page.mouse.click(r!.x + r!.width / 2, r!.y + r!.height / 2);
+}
+
 test('live loop ticks, spawns enemies, and 2x runs faster', async ({ page }) => {
   await page.goto('/?renderer=canvas');
   await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('title'));
   // Phaser.CANVAS is 1.
   expect(await page.evaluate(() => window.__tarpit?.game.renderer.type)).toBe(1);
-  await page.mouse.click(480, 290);
+  await clickTitlePlay(page);
   await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game'));
 
   // Tick, enemy count and phase, with the page's clock so rates use the real

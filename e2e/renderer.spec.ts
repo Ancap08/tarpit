@@ -27,7 +27,10 @@ test('live play uses WebGL when available, ticks, and the walk cycle advances', 
   // Phaser.CANVAS is 1, Phaser.WEBGL is 2.
   expect(info.renderer).toBe(info.webgl ? 2 : 1);
 
-  await page.mouse.click(480, 290);
+  // The title menu's [Play] (milestone 25: only Play starts the game).
+  const play = await page.evaluate(() => window.__tarpit?.uiRects()['title:play'] as Rect | undefined);
+  expect(play, "uiRects()['title:play']").toBeTruthy();
+  await page.mouse.click(play!.x + play!.width / 2, play!.y + play!.height / 2);
   await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game'));
   await clickButton(page, 'startWave');
   await page.waitForFunction(() => window.__tarpit?.animState(0) != null);

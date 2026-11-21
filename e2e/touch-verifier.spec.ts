@@ -123,7 +123,7 @@ test.describe('(f) 1366x1024', () => {
 test('(g) portrait without test mode: card visible and no ticks; landscape: hidden and ticks', async ({ page }) => {
   await page.goto('/');
   await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('title'));
-  await tapAt(page, 480, 290);
+  await tap(page, 'title:play'); // milestone 25: only Play starts the game
   await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game'));
   const tick = () => page.evaluate(() => (window.__tarpit!.game.scene.getScene('game') as unknown as { state: { tick: number } }).state.tick);
   await tap(page, 'startWave'); // a wave is running, so ticks have something to do

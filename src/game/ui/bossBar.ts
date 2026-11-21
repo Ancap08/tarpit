@@ -7,7 +7,7 @@
 // it (y 4 to 22) inside the canvas.
 
 import type Phaser from 'phaser';
-import { ENEMY_STATS, isBoss, type GameState } from '../../sim';
+import { enemyMaxHp, isBoss, type GameState } from '../../sim';
 import { BOSS_NAME } from '../names';
 import { COLORS, FONT, TEXT } from '../palette';
 
@@ -29,7 +29,7 @@ export interface BossBarInfo {
 export function bossBarInfo(state: GameState): BossBarInfo | null {
   const boss = state.enemies.find(isBoss);
   if (!boss) return null;
-  const max = ENEMY_STATS[boss.type].hp;
+  const max = enemyMaxHp(boss.type, state.difficulty); // 4000 on Normal, scaled by the level (milestone 25)
   const hp = Math.max(0, boss.hp);
   return { name: BOSS_NAME, hpText: `${Math.ceil(hp)} / ${max}`, fraction: Math.min(1, hp / max) };
 }

@@ -12,7 +12,7 @@
 // small hp bar (the HUD boss bar shows his hp).
 
 import type Phaser from 'phaser';
-import { ENEMY_STATS, enemyPosition, type Enemy, type EnemyType, type GameState } from '../../sim';
+import { ENEMY_STATS, enemyMaxHp, enemyPosition, type Enemy, type EnemyType, type GameState } from '../../sim';
 import { SHEETS } from '../anim/sheets';
 import { COLORS } from '../palette';
 
@@ -106,7 +106,8 @@ export function drawStatusRings(g: Phaser.GameObjects.Graphics, state: GameState
 /** Hp bars for hurt enemies, drawn over the sprites. Not for the boss: the HUD boss bar shows his. */
 export function drawHpBars(g: Phaser.GameObjects.Graphics, state: GameState): void {
   for (const enemy of state.enemies) {
-    const maxHp = ENEMY_STATS[enemy.type].hp;
+    // Full hp on this level (milestone 25): Easy and Hard scale it.
+    const maxHp = enemyMaxHp(enemy.type, state.difficulty);
     if (enemy.hp < maxHp && enemy.type !== 'boss') {
       const { x, y } = enemyPosition(enemy);
       const fraction = Math.max(0, enemy.hp) / maxHp;

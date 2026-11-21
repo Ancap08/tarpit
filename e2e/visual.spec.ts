@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { BOSS_NAME } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
+import type { TitleUiState } from '../src/game/TitleScene';
 
 // Screenshot checks on frozen frames (?test=1: no time passes unless the
 // test steps it). Baselines are generated on CI; local runs ignore them
@@ -21,6 +22,16 @@ test('title', async ({ page }) => {
   await open(page);
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('title.png');
+});
+
+// Milestone 25: the title menu with Hard selected (Right once from Normal's
+// default, by keyboard so no button shows a hover tint).
+test('title with Hard selected', async ({ page }) => {
+  await open(page);
+  await page.keyboard.press('ArrowRight');
+  expect((await page.evaluate(() => (window.__tarpit as TarpitTestApi).ui<TitleUiState>())).difficulty).toBe('hard');
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('title-hard.png');
 });
 
 test('map at wave 0', async ({ page }) => {
