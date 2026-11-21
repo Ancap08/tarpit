@@ -1205,3 +1205,95 @@ Counts: 145 unit tests in 19 files, 40 e2e tests in 7 files.
 - DEVLOG numbers checked: HUD button rectangles, 344, the 50.6 and 67.9 px
   figures, 145 unit tests, 40 e2e tests in 7 files, and the panel test that
   loops over every buildable cell (it does not assert the count 344 itself).
+
+## 2026-11-21: milestone 10, new towers in the simulation
+
+Roles: implementer Claude Opus, verifier Claude Sonnet, coordinator Claude
+Fable 5.1.
+
+### Implementer notes
+
+The implementer (Claude Opus) added the Longbow, Mortar and Fire Pot to
+`src/sim` with the numbers from `docs/SCOPE-v2.md`, now tabled in
+`docs/DESIGN.md`.
+
+- `TowerType` gains `longbow`, `mortar`, `firepot`. `TowerLevelStats` gains
+  `minRange`, `burnDps` and `burnDuration` (0 for the v1 towers). Cooldowns
+  are round(60 / fireRate): Longbow 24, Mortar 180 (fire rate 1/3), Fire
+  Pot 75.
+- Mortar: `findTarget` skips enemies closer than `minRange` (70), so the
+  target is the furthest-along enemy at a distance in [70, 220]. The splash
+  (60, upgraded 70) hits every enemy near the target, including ones inside
+  the minimum range.
+- Fire Pot: 4 impact damage; if the target lives, `applyBurn` sets 5/s for
+  180 ticks (upgraded 8/s for 240). Equal or stronger replaces, weaker is
+  ignored. A new status step, `burnEnemies`, runs after exit removal and
+  before combat: dps / 60 per tick, doubled while `slowTicksLeft > 0`, and
+  burn deaths pay their bounty. Tick order is now move, exit, burn, combat,
+  spawn, counters, clear check (header of `src/sim/game.ts`).
+- `Enemy.burnDps` and `Enemy.burnTicksLeft` are optional (absent means 0)
+  and every spawned enemy gets 0. Required fields would have broken the
+  existing tests, which build enemy literals without them, and the brief
+  said those tests stay unchanged.
+- Enemies now die at hp <= 1e-9 (`KILL_EPSILON` in `combat.ts`), not
+  hp <= 0. See "What went wrong".
+- Renderer: Longbow, Mortar and Fire Pot draw as a plain grey circle and
+  shoot a thin grey tracer, commented as milestone 11 placeholders; labels
+  read "Longbow", "Mortar", "Fire". The build bar keeps the three v1 towers.
+  A new e2e spec builds all three through the test hooks, plays 1200 ticks
+  and asserts each fires, nothing throws, and the bar is unchanged.
+- Headless: `longbowSpam` (base Longbows on the kid cell order, no
+  upgrades), `comboBuild` and `comboBuildNoFire` join `ARCHETYPES`, so
+  `npm run sim` prints them and `balance.test.ts` runs them twice for
+  determinism.
+
+The combo build's plan (`COMBO_PLAN`, each action bought as soon as gold
+allows):
+
+1. Before wave 1: Longbow (6,5) and Longbow (2,5), by the first corner.
+2. Wave 2: Tar Pit (14,6). Wave 3: Fire Pot (14,8). The two sit right of
+   the long downhill run (x = 420); their base ranges overlap on y 182..287
+   of it, so tarred enemies burn at double rate.
+3. Wave 5: Mortar (17,6) in the middle of the map, for the Trolls; upgrade
+   the Tar Pit. Wave 6: upgrade the Fire Pot, Longbow (11,4).
+4. Wave 7: upgrade the Mortar and both first Longbows. Wave 8: Mortar
+   (17,9), upgraded. Wave 9: Longbow (19,7), upgrade (11,4) and (19,7).
+
+It took two `npm run sim` runs. The first plan stopped after the Mortar and
+lost on wave 10 with 740 gold unspent; adding upgrades, a second Mortar and
+two more Longbows won with 20 lives. Over the game the Longbows fire 1199
+shots, Tar Pit 207, Mortars 76 and the Fire Pot 66; enemies spend 3616
+enemy-ticks burning while tarred.
+
+`npm run sim` (no balance targets until milestone 12):
+
+| Build | Result |
+|---|---|
+| noTowers | lost on wave 2, 0 lives, 125 gold |
+| lazyBuild | lost on wave 3, 0 lives, 50 gold |
+| greedyMusket | lost on wave 3, 0 lives, 61 gold |
+| soundBuild | won, 13 lives, 269 gold |
+| soundBuildNoTar | lost on wave 7, 0 lives, 136 gold |
+| longbowSpam | won, 20 lives, 211 gold |
+| comboBuild | won, 20 lives, 441 gold |
+| comboBuildNoFire | won, 14 lives, 519 gold |
+
+The v1 archetypes are unchanged from milestone 9.
+
+Counts: 187 unit tests in 21 files, 48 e2e tests in 9 files.
+
+### What went wrong
+
+- The first Fire Pot kill test died one tick late. A goblin with 18 hp left
+  after three impacts should die on the 216th burn tick (216 x 5/60 = 18),
+  but 5/60 is not exact in floating point and the hp after 216 ticks was a
+  tiny positive number, so the kill came on tick 217. Enemies now count as
+  dead at hp <= 1e-9. Integer hp (every v1 rule) never falls in that gap,
+  and every existing pin held.
+- The first placeholder e2e put the Fire Pot behind an upgraded Longbow,
+  which killed every Goblin before the Fire Pot could fire. The Fire Pot
+  moved to the spawn.
+- Not wrong, but for milestone 12: base Longbows are very strong.
+  `longbowSpam` wins with all 20 lives, against a v2 target of losing on
+  wave 7 to 9, and the combo build wins with 20 lives and 441 gold against
+  a target of 5 to 15 lives.
