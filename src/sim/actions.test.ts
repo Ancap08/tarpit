@@ -17,7 +17,17 @@ describe('buildTower', () => {
     expect(r).toEqual({
       ok: true,
       gold: 50,
-      tower: { cell: { col: 2, row: 5 }, type: 'musketeer', upgraded: false, targeting: 'first', cooldownTicks: 0, spent: 50 },
+      tower: {
+        cell: { col: 2, row: 5 },
+        type: 'musketeer',
+        upgraded: false,
+        targeting: 'first',
+        cooldownTicks: 0,
+        spent: 50,
+        locked: false,
+        unlockedSpend: 50,
+        upgradedThisPhase: false,
+      },
     });
     expect(s.gold).toBe(50);
     expect(s.towers).toHaveLength(1);
@@ -125,9 +135,11 @@ describe('upgradeTower', () => {
 });
 
 describe('sellTower', () => {
+  // A tower locked by Start Wave (milestone 25a) sells for 70%.
   it('refunds floor(70%) of spent and frees the cell', () => {
     const s = createGame();
     buildTower(s, A, 'musketeer');
+    startWave(s);
     expect(sellTower(s, A)).toEqual({ ok: true, refund: 35, gold: 85 });
     expect(s.towers).toEqual([]);
     expect(buildTower(s, A, 'tarpit')).toMatchObject({ ok: true });
@@ -138,6 +150,7 @@ describe('sellTower', () => {
     buildTower(s, A, 'musketeer');
     upgradeTower(s, A);
     expect(s.gold).toBe(15);
+    startWave(s);
     expect(sellTower(s, A)).toEqual({ ok: true, refund: 59, gold: 74 });
   });
 

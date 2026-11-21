@@ -6,11 +6,15 @@
 
 import {
   buildTower,
+  moveTower,
   sellTower,
   setTargeting,
   towerAt,
+  undoUpgrade,
   upgradeTower,
   type BuildResult,
+  type MoveResult,
+  type UndoUpgradeResult,
   type SellResult,
   type TargetingResult,
   type UpgradeResult,
@@ -30,11 +34,22 @@ export type BuildAction =
   /** Set a tower's targeting mode (milestone 24); costs nothing. */
   | { type: 'target'; cell: Cell; mode: TargetingMode };
 
+/**
+ * Planning-phase actions (milestone 25a), setup only. Kept out of
+ * BuildAction (the archetypes' WaveScript entries, which all carry a cell).
+ */
+export type PlanningAction =
+  /** Move an unlocked tower; free. */
+  | { type: 'move'; from: Cell; to: Cell }
+  /** Undo an upgrade bought this setup phase; full refund. */
+  | { type: 'undoUpgrade'; cell: Cell };
+
 export type HeadlessAction =
   | { type: 'startWave' }
   /** Tick until the current wave ends (phase leaves 'wave') or `maxTicks` pass. */
   | { type: 'runUntilWaveEnds'; maxTicks: number }
-  | BuildAction;
+  | BuildAction
+  | PlanningAction;
 
 export type HeadlessStepResult =
   | { action: 'startWave'; result: StartWaveResult }
@@ -42,7 +57,9 @@ export type HeadlessStepResult =
   | { action: 'build'; cell: Cell; result: BuildResult }
   | { action: 'upgrade'; cell: Cell; result: UpgradeResult }
   | { action: 'sell'; cell: Cell; result: SellResult }
-  | { action: 'target'; cell: Cell; result: TargetingResult };
+  | { action: 'target'; cell: Cell; result: TargetingResult }
+  | { action: 'move'; from: Cell; to: Cell; result: MoveResult }
+  | { action: 'undoUpgrade'; cell: Cell; result: UndoUpgradeResult };
 
 export interface HeadlessRun {
   state: GameState;
@@ -71,6 +88,10 @@ export function applyAction(state: GameState, action: HeadlessAction): HeadlessS
       return { action: 'sell', cell: action.cell, result: sellTower(state, action.cell) };
     case 'target':
       return { action: 'target', cell: action.cell, result: setTargeting(state, action.cell, action.mode) };
+    case 'move':
+      return { action: 'move', from: action.from, to: action.to, result: moveTower(state, action.from, action.to) };
+    case 'undoUpgrade':
+      return { action: 'undoUpgrade', cell: action.cell, result: undoUpgrade(state, action.cell) };
   }
 }
 

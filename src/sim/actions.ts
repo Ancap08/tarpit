@@ -1,9 +1,12 @@
 // Player actions: build, upgrade, sell, and setTargeting (milestone 24).
 // Allowed in 'setup' and 'wave' (DESIGN.md: "at any time, including
 // mid-wave"), refused once the game is
-// won or lost. Each mutates the state in place and returns a typed result.
-// A successful action appends its event (build, upgrade, sell, targeting) to
-// state.events, where it stays until the next tick clears the list.
+// won or lost. Milestone 25a adds the planning phase: moveTower and
+// undoUpgrade work only in 'setup' (see DESIGN.md "Planning phase"). Each
+// mutates the state in place and returns a typed result.
+// A successful action appends its event (build, upgrade, sell, targeting,
+// move, undoUpgrade) to state.events, where it stays until the next tick
+// clears the list.
 
 import { cellKey, isBuildableTerrain, sameCell, type Cell } from './grid';
 import { sellRefund, TOWER_DEFS } from './towers';
@@ -22,6 +25,14 @@ export type SellResult =
   | { ok: false; reason: 'game-over' | 'no-tower' };
 
 export type TargetingResult = { ok: true } | { ok: false; reason: 'game-over' | 'no-tower' };
+
+export type MoveResult =
+  | { ok: true; tower: Tower }
+  | { ok: false; reason: 'game-over' | 'not-in-setup' | 'no-tower' | 'locked' | 'not-buildable' | 'cell-occupied' };
+
+export type UndoUpgradeResult =
+  | { ok: true; tower: Tower; refund: number; gold: number }
+  | { ok: false; reason: 'game-over' | 'not-in-setup' | 'no-tower' | 'nothing-to-undo' };
 
 function isOver(state: GameState): boolean {
   return state.phase === 'won' || state.phase === 'lost';
@@ -43,7 +54,18 @@ export function buildTower(state: GameState, cell: Cell, type: TowerType): Build
   const cost = TOWER_DEFS[type].cost;
   if (state.gold < cost) return { ok: false, reason: 'not-enough-gold' };
   state.gold -= cost;
-  const tower: Tower = { cell: { col: cell.col, row: cell.row }, type, upgraded: false, targeting: 'first', cooldownTicks: 0, spent: cost };
+  const setup = state.phase === 'setup';
+  const tower: Tower = {
+    cell: { col: cell.col, row: cell.row },
+    type,
+    upgraded: false,
+    targeting: 'first',
+    cooldownTicks: 0,
+    spent: cost,
+    locked: !setup,
+    unlockedSpend: setup ? cost : 0,
+    upgradedThisPhase: false,
+  };
   state.towers.push(tower);
   state.towers.sort((a, b) => cellKey(a.cell) - cellKey(b.cell));
   state.events.push({ kind: 'build', cell: { col: cell.col, row: cell.row }, tower: type });
@@ -60,19 +82,74 @@ export function upgradeTower(state: GameState, cell: Cell): UpgradeResult {
   state.gold -= cost;
   tower.upgraded = true;
   tower.spent += cost;
+  if (state.phase === 'setup') {
+    tower.unlockedSpend += cost;
+    tower.upgradedThisPhase = true;
+  }
   state.events.push({ kind: 'upgrade', cell: { col: tower.cell.col, row: tower.cell.row }, tower: tower.type });
   return { ok: true, tower, gold: state.gold };
 }
 
+/**
+ * Sell the tower on `cell`. An unlocked tower (built this setup phase)
+ * refunds everything spent on it; a locked one refunds sellRefund(spent),
+ * 70% rounded down, in any phase. An upgrade bought this phase on a locked
+ * tower is not refunded in full by a sell: undo it first (undoUpgrade).
+ */
 export function sellTower(state: GameState, cell: Cell): SellResult {
   if (isOver(state)) return { ok: false, reason: 'game-over' };
   const tower = towerAt(state, cell);
   if (!tower) return { ok: false, reason: 'no-tower' };
-  const refund = sellRefund(tower.spent);
+  const full = !tower.locked;
+  const refund = full ? tower.spent : sellRefund(tower.spent);
   state.gold += refund;
   state.towers = state.towers.filter((t) => t !== tower);
-  state.events.push({ kind: 'sell', cell: { col: tower.cell.col, row: tower.cell.row }, tower: tower.type, refund });
+  state.events.push({ kind: 'sell', cell: { col: tower.cell.col, row: tower.cell.row }, tower: tower.type, refund, full });
   return { ok: true, refund, gold: state.gold };
+}
+
+/**
+ * Move an unlocked tower to another buildable cell, in setup only
+ * (milestone 25a). Free; keeps type, upgrade, targeting and spend. Checked
+ * in order: game over, not in setup, no tower on `from`, locked, then `to`
+ * as for a build (not buildable, occupied). Moving onto itself succeeds and
+ * changes nothing.
+ */
+export function moveTower(state: GameState, from: Cell, to: Cell): MoveResult {
+  if (isOver(state)) return { ok: false, reason: 'game-over' };
+  if (state.phase !== 'setup') return { ok: false, reason: 'not-in-setup' };
+  const tower = towerAt(state, from);
+  if (!tower) return { ok: false, reason: 'no-tower' };
+  if (tower.locked) return { ok: false, reason: 'locked' };
+  if (sameCell(from, to)) return { ok: true, tower };
+  if (!isBuildableTerrain(to)) return { ok: false, reason: 'not-buildable' };
+  if (towerAt(state, to)) return { ok: false, reason: 'cell-occupied' };
+  const old = { col: tower.cell.col, row: tower.cell.row };
+  tower.cell = { col: to.col, row: to.row };
+  state.towers.sort((a, b) => cellKey(a.cell) - cellKey(b.cell));
+  state.events.push({ kind: 'move', from: old, to: { col: to.col, row: to.row }, tower: tower.type });
+  return { ok: true, tower };
+}
+
+/**
+ * Undo an upgrade bought during the current setup phase (milestone 25a):
+ * refunds the full upgrade cost and reverts the tower to base. Works on a
+ * locked tower too (the tower stays locked).
+ */
+export function undoUpgrade(state: GameState, cell: Cell): UndoUpgradeResult {
+  if (isOver(state)) return { ok: false, reason: 'game-over' };
+  if (state.phase !== 'setup') return { ok: false, reason: 'not-in-setup' };
+  const tower = towerAt(state, cell);
+  if (!tower) return { ok: false, reason: 'no-tower' };
+  if (!tower.upgraded || !tower.upgradedThisPhase) return { ok: false, reason: 'nothing-to-undo' };
+  const refund = TOWER_DEFS[tower.type].upgradeCost;
+  state.gold += refund;
+  tower.upgraded = false;
+  tower.upgradedThisPhase = false;
+  tower.spent -= refund;
+  tower.unlockedSpend -= refund;
+  state.events.push({ kind: 'undoUpgrade', cell: { col: tower.cell.col, row: tower.cell.row }, tower: tower.type, refund });
+  return { ok: true, tower, refund, gold: state.gold };
 }
 
 /**

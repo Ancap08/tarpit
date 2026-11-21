@@ -37,6 +37,7 @@ describe('headless runner', () => {
       { type: 'build', cell: { col: 2, row: 5 }, tower: 'musketeer' },
       { type: 'upgrade', cell: { col: 2, row: 5 } },
       { type: 'build', cell: { col: 2, row: 5 }, tower: 'cannon' },
+      { type: 'startWave' }, // locks the tower (milestone 25a): the sell pays 70%
       { type: 'sell', cell: { col: 2, row: 5 } },
       { type: 'sell', cell: { col: 2, row: 5 } },
       { type: 'build', cell: { col: 0, row: 7 }, tower: 'musketeer' },
@@ -45,6 +46,7 @@ describe('headless runner', () => {
       ['build', 'ok'],
       ['upgrade', 'ok'],
       ['build', 'cell-occupied'],
+      ['startWave', 'ok'],
       ['sell', 'ok'],
       ['sell', 'no-tower'],
       ['build', 'not-buildable'],

@@ -98,6 +98,12 @@ export function startWave(state: GameState): StartWaveResult {
   state.phase = 'wave';
   state.waveTick = 0;
   state.spawnedPerGroup = WAVES[state.wave - 1].groups.map(() => 0);
+  // Planning phase ends (milestone 25a): everything bought so far locks.
+  for (const tower of state.towers) {
+    tower.locked = true;
+    tower.unlockedSpend = 0;
+    tower.upgradedThisPhase = false;
+  }
   state.events.push({ kind: 'waveStart', wave: state.wave });
   return { ok: true, wave: state.wave };
 }

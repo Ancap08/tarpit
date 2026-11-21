@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildTower, sellTower, upgradeTower } from './actions';
 import { applyBurn, burnEnemies, enemyPosition, findTarget, fireTowers } from './combat';
-import { createGame, tick } from './game';
+import { createGame, startWave, tick } from './game';
 import { cellCenter, type Cell } from './grid';
 import { TOWER_DEFS, towerStats } from './towers';
 import type { Enemy, EnemyType, GameState, TowerType } from './types';
@@ -372,6 +372,7 @@ describe('build, upgrade and sell', () => {
       s.gold = upgradeCost;
       expect(upgradeTower(s, P)).toMatchObject({ ok: true, gold: 0, tower: { type, upgraded: true, spent: cost + upgradeCost } });
       expect(upgradeTower(s, P)).toEqual({ ok: false, reason: 'already-upgraded' });
+      startWave(s); // locks it (milestone 25a): 70%
       expect(sellTower(s, P)).toEqual({ ok: true, refund, gold: refund });
       expect(s.towers).toEqual([]);
     });
@@ -382,6 +383,7 @@ describe('build, upgrade and sell', () => {
       const s = createGame();
       s.gold = 1000;
       buildTower(s, P, type);
+      startWave(s); // locks it (milestone 25a): 70%
       return (sellTower(s, P) as { refund: number }).refund;
     });
     expect(refunds).toEqual([28, 77, 49]);
