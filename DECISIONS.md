@@ -93,3 +93,21 @@ can change it; "Kyle" means Kyle decided.
   the ten spots to the path, so it barely reaches, and spot 3 is 102 px from
   the path so a base Tar Pit there reaches nothing. Numbers stay as specified
   until the milestone 6 balance pass.
+
+## 2026-11-21, milestone 3
+
+- **Phaser uses the Canvas renderer, not WebGL.** Default (Opus, accepted by
+  Fable). Shapes-only art does not need WebGL, and Canvas renders the same in
+  headless Chromium, which keeps screenshot baselines stable.
+- **Screenshot baselines are generated on CI's Linux runner by a manual
+  workflow (`update-snapshots.yml`), committed to the PR branch by the
+  Actions bot, and reviewed as PNGs in the PR.** Fable. Local macOS rendering
+  differs from CI, and the Playwright Docker image was not an option on this
+  machine (daemon off, 14 GB free). Local runs skip pixel comparison; CI
+  enforces it and fails on a missing baseline rather than silently creating
+  one.
+- **Playwright viewport is exactly 960 x 540 so canvas and page coordinates
+  match.** Default (Opus). Lets tests click the real buttons.
+- **Milestone 6 polish candidates, from the verifier's look at the frames:
+  tower labels, larger hp bars, a less black Tar Pit, and baseline coverage
+  of Wolf and Troll.** Observations only; Kyle decides at the checkpoint.
