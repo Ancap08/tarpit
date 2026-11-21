@@ -99,12 +99,14 @@ describe('wave spawning', () => {
     const seen = spawnTicks(s, 600);
     const wolves = seen.filter((e) => e.type === 'wolf').map((e) => e.waveTick);
     const goblins = seen.filter((e) => e.type === 'goblin').map((e) => e.waveTick);
-    expect(wolves).toEqual([240, 276, 312, 348, 384]);
+    expect(wolves).toEqual([240, 276, 312, 348, 384, 420]);
     expect(goblins).toEqual([0, 60, 120, 180, 240, 300, 360, 420]);
     // At waveTick 240 both groups spawn; group order breaks the tie.
     const at240 = seen.filter((e) => e.waveTick === 240);
     expect(at240.map((e) => e.type)).toEqual(['goblin', 'wolf']);
     expect(at240[1].id).toBe(at240[0].id + 1);
+    // And again at waveTick 420 (goblin 8 and wolf 6).
+    expect(seen.filter((e) => e.waveTick === 420).map((e) => e.type)).toEqual(['goblin', 'wolf']);
   });
 
   it('enemy ids keep counting across waves', () => {

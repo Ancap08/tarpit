@@ -40,8 +40,8 @@ test('one musketeer at spot 2 kills 2 goblins in wave 1', async ({ page }) => {
   expect(built.ok).toBe(true);
   await clickButton(page, 'startWave');
   await step(page, 2005);
-  expect(await state(page)).toMatchObject({ phase: 'setup', wave: 1, lives: 14, gold: 85 });
-  expect(await hud(page)).toMatchObject({ gold: 'Gold 85', lives: 'Lives 14' });
+  expect(await state(page)).toMatchObject({ phase: 'setup', wave: 1, lives: 14, gold: 83 });
+  expect(await hud(page)).toMatchObject({ gold: 'Gold 83', lives: 'Lives 14' });
 });
 
 test('speed button toggles 1x and 2x', async ({ page }) => {

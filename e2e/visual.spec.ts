@@ -33,7 +33,7 @@ test('map at wave 0', async ({ page }) => {
 // shot, at tick 852), so its tracer and splash circle are mid-fade; five
 // goblins are out and four are hurt. With these spots no single frame shows
 // two shot types: the Musketeer at spot 2 fires every 60 ticks (392, 452,
-// ...) with a 6-tick tracer, and the base Tar Pit first fires at tick 1453.
+// ...) with a 6-tick tracer, and the base Tar Pit first fires at tick 1412.
 // Tick 855 was chosen by the coordinator over 395 (Musketeer tracer only)
 // because the splash and hp bars cover more of the renderer.
 const MID_WAVE_STEPS = 855;
@@ -89,7 +89,7 @@ test('upgraded Musketeer selected with its panel and range', async ({ page }) =>
   });
   expect(s.ui).toMatchObject({ selectedSpot: 2, panelOpen: true });
   expect(s.towers).toEqual([expect.objectContaining({ spotId: 2, type: 'musketeer', upgraded: true })]);
-  expect(s.gold).toBe(10);
+  expect(s.gold).toBe(15);
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('tower-selected.png');
 });
@@ -103,7 +103,7 @@ test('win screen after the sound build', async ({ page }) => {
     const phase = t.runScript('soundBuild');
     return { phase, screen: t.endScreen(), lives: t.state().lives, gold: t.state().gold };
   });
-  expect(end).toEqual({ phase: 'won', screen: 'won', lives: 20, gold: 910 });
+  expect(end).toEqual({ phase: 'won', screen: 'won', lives: 10, gold: 118 });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('won.png');
 });

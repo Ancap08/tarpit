@@ -5,7 +5,7 @@ import { createGame, startWave, tick } from './game';
 import type { Enemy, EnemyType, GameState, TowerType } from './types';
 
 function enemy(id: number, distance: number, type: EnemyType = 'goblin', hp?: number): Enemy {
-  const fullHp = { goblin: 30, wolf: 20, troll: 150 }[type];
+  const fullHp = { goblin: 30, wolf: 28, troll: 500 }[type];
   return { id, type, hp: hp ?? fullHp, distance, slow: 0, slowTicksLeft: 0 };
 }
 
@@ -60,10 +60,15 @@ describe('targeting', () => {
     expect(s.towers[0].cooldownTicks).toBe(0);
   });
 
-  it('range is inclusive: a tar pit (80) at spot 0 hits distance 288 (exactly 80 px) but not 289', () => {
-    const s = arena([enemy(0, 288), enemy(1, 289)], [[0, 'tarpit']]);
+  it('range is inclusive: a tar pit (90) at spot 0 hits an enemy exactly 90 px away but not one 90.004 px away', () => {
+    // On the first segment, (x,240) is 80 px below spot 0, so 90 px needs
+    // 96 - x = sqrt(1700). This distance gives exactly 90 in floating point.
+    const exact = 54.76894374382339;
+    const p = enemyPosition(enemy(0, exact));
+    expect(Math.hypot(p.x - 96, p.y - 160)).toBe(90);
+    const s = arena([enemy(0, exact), enemy(1, 54.76)], [[0, 'tarpit']]);
     expect(findTarget(s, s.towers[0])?.id).toBe(0);
-    const t = arena([enemy(1, 289), enemy(2, 95)], [[0, 'tarpit']]);
+    const t = arena([enemy(1, 54.76), enemy(2, 400)], [[0, 'tarpit']]);
     expect(findTarget(t, t.towers[0])).toBeUndefined();
   });
 
@@ -76,13 +81,13 @@ describe('targeting', () => {
     ]);
     fireTowers(s);
     expect(hp(s)).toEqual({ 1: 18 });
-    expect(s.gold).toBe(5);
+    expect(s.gold).toBe(4);
     expect(s.towers.map((t) => t.cooldownTicks)).toEqual([60, 60]);
   });
 });
 
 describe('musketeer', () => {
-  it('fires once, waits 60 ticks, and kills a goblin on the third 12-damage hit for 5 gold', () => {
+  it('fires once, waits 60 ticks, and kills a goblin on the third 12-damage hit for 4 gold', () => {
     const s = createGame();
     buildTower(s, 0, 'musketeer'); // gold 50
     startWave(s);
@@ -103,14 +108,14 @@ describe('musketeer', () => {
     expect(s.enemies[0]).toMatchObject({ id: 0, hp: 6 });
     tick(s); // waveTick 141: third hit
     expect(s.enemies.map((e) => e.id)).toEqual([1, 2]);
-    expect(s.gold).toBe(55);
+    expect(s.gold).toBe(54);
   });
 
-  it('upgraded: 20 damage and range 125', () => {
+  it('upgraded: 22 damage and range 125', () => {
     // Distance 0 is (0,240), 124.9 px from spot 0: out of base range, in upgraded range.
     const s = arena([enemy(0, 0)], [[0, 'musketeer', true]]);
     fireTowers(s);
-    expect(hp(s)).toEqual({ 0: 10 });
+    expect(hp(s)).toEqual({ 0: 8 });
     const base = arena([enemy(0, 0)], [[0, 'musketeer']]);
     expect(findTarget(base, base.towers[0])).toBeUndefined();
   });
@@ -129,16 +134,17 @@ describe('cannon splash', () => {
   });
 
   it('kills every enemy the splash drops to 0 and pays each bounty', () => {
-    const s = arena([enemy(0, 370, 'wolf'), enemy(1, 400, 'goblin', 25), enemy(2, 440, 'troll')], [[2, 'cannon']]);
+    const s = arena([enemy(0, 370, 'wolf', 25), enemy(1, 400, 'goblin', 25), enemy(2, 440, 'troll')], [[2, 'cannon']]);
     fireTowers(s);
-    expect(hp(s)).toEqual({ 2: 125 });
-    expect(s.gold).toBe(11);
+    expect(hp(s)).toEqual({ 2: 475 });
+    expect(s.gold).toBe(9); // wolf 5 + goblin 4
   });
 
-  it('upgraded: 40 damage and splash radius 50', () => {
-    const s = arena([enemy(0, 341), enemy(2, 400, 'troll'), enemy(4, 350, 'troll')], [[2, 'cannon', true]]);
+  it('upgraded: 40 damage and splash radius 55', () => {
+    // Distance 345 = (201,96) is exactly 55 px from the target; 344 is 56 px.
+    const s = arena([enemy(0, 344), enemy(2, 400, 'troll'), enemy(4, 345, 'troll')], [[2, 'cannon', true]]);
     fireTowers(s);
-    expect(hp(s)).toEqual({ 0: 30, 2: 110, 4: 110 });
+    expect(hp(s)).toEqual({ 0: 30, 2: 460, 4: 460 });
   });
 });
 
@@ -152,11 +158,13 @@ describe('tar pit slow', () => {
     expect(s.enemies[0].slowTicksLeft).toBe(119);
   });
 
-  it('upgraded: 55% slow and range 95', () => {
-    // Distance 300 = (160,100): 64 px across, 60 up -> 87.7 px, beyond 80.
-    const s = arena([enemy(0, 300)], [[0, 'tarpit', true]]);
+  it('upgraded: 60% slow and range 105', () => {
+    // Distance 165 = (160,235): 64 px across, 75 down -> 98.6 px, beyond 90.
+    const base = arena([enemy(0, 165)], [[0, 'tarpit']]);
+    expect(findTarget(base, base.towers[0])).toBeUndefined();
+    const s = arena([enemy(0, 165)], [[0, 'tarpit', true]]);
     fireTowers(s);
-    expect(s.enemies[0]).toMatchObject({ hp: 27, slow: 0.55, slowTicksLeft: 120 });
+    expect(s.enemies[0]).toMatchObject({ hp: 27, slow: 0.6, slowTicksLeft: 120 });
   });
 
   it('a stronger slow replaces a weaker one', () => {
@@ -184,15 +192,15 @@ describe('tar pit slow', () => {
   });
 
   it('a base tar pit does not weaken an upgraded tar pit slow on the same enemy', () => {
-    // Spot 0 (upgraded, 55%) acts before spot 2 (base, range 80). Distance
-    // 224 = (160,176) is exactly 80 px from spot 2 and 66 px from spot 0.
+    // Spot 0 (upgraded, 60%) acts before spot 2 (base, 40%, range 90).
+    // Distance 224 = (160,176) is 80 px from spot 2 and 66 px from spot 0.
     expect(enemyPosition(enemy(0, 224))).toEqual({ x: 160, y: 176 });
     const s = arena([enemy(0, 224, 'troll')], [
       [0, 'tarpit', true],
       [2, 'tarpit'],
     ]);
     fireTowers(s);
-    expect(s.enemies[0]).toMatchObject({ hp: 144, slow: 0.55, slowTicksLeft: 120 });
+    expect(s.enemies[0]).toMatchObject({ hp: 494, slow: 0.6, slowTicksLeft: 120 });
   });
 });
 
@@ -201,8 +209,8 @@ describe('kills', () => {
     const s = arena([enemy(0, 99, 'goblin', 12)], [[0, 'musketeer']]);
     tick(s);
     expect(s.enemies).toEqual([]);
-    // 5 bounty, then the wave is clear (all spawned, none alive): 25 bonus.
-    expect(s).toMatchObject({ phase: 'setup', gold: 30, lives: 20 });
+    // 4 bounty, then the wave is clear (all spawned, none alive): 25 bonus.
+    expect(s).toMatchObject({ phase: 'setup', gold: 29, lives: 20 });
   });
 
   it('a newly spawned enemy is not shot on its spawn tick', () => {
@@ -214,6 +222,6 @@ describe('kills', () => {
     tick(s);
     expect(s.enemies[0]).toMatchObject({ id: 0, hp: 30, distance: 0 });
     tick(s);
-    expect(s.enemies[0]).toMatchObject({ id: 0, hp: 10, distance: 1 });
+    expect(s.enemies[0]).toMatchObject({ id: 0, hp: 8, distance: 1 });
   });
 });

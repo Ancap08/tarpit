@@ -4,7 +4,7 @@ import type { TarpitTestApi } from '../src/game/testGlobal';
 // Win and lose screens reached through the real simulation, and [Play again]
 // through a real click. Time is frozen (?test=1) and driven by step().
 // Numbers come from the verified simulation: with no towers the game is lost
-// on wave 2 with 0 lives; the sound build wins with 20 lives and 910 gold.
+// on wave 2 with 0 lives; the sound build wins with 10 lives and 118 gold.
 
 async function startGame(page: Page): Promise<void> {
   await page.goto('/?test=1');
@@ -103,10 +103,10 @@ test('win with the sound build through the scene actions, then play again', asyn
   const phase = await page.evaluate(() => (window.__tarpit as TarpitTestApi).runScript('soundBuild'));
   expect(phase).toBe('won');
   expect(await endScreen(page)).toBe('won');
-  expect(await state(page)).toMatchObject({ phase: 'won', wave: 10, lives: 20, gold: 910 });
+  expect(await state(page)).toMatchObject({ phase: 'won', wave: 10, lives: 10, gold: 118 });
   expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).hudText())).toMatchObject({
-    gold: 'Gold 910',
-    lives: 'Lives 20',
+    gold: 'Gold 118',
+    lives: 'Lives 10',
     wave: 'Wave 10/10',
   });
 
@@ -118,11 +118,11 @@ test('win with the sound build through the scene actions, then play again', asyn
   await expectFreshGame(page);
 });
 
-test('lazy build loses on wave 3', async ({ page }) => {
+test('lazy build loses on wave 8', async ({ page }) => {
   await startGame(page);
   expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).runScript('lazyBuild'))).toBe('lost');
   expect(await endScreen(page)).toBe('lost');
-  expect(await state(page)).toMatchObject({ wave: 3 });
+  expect(await state(page)).toMatchObject({ wave: 8, lives: 0 });
 });
 
 test('speed resets to 1x after play again', async ({ page }) => {

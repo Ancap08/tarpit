@@ -4,21 +4,21 @@ import type { Tower, TowerDef, TowerLevelStats, TowerType } from './types';
 export const TOWER_DEFS: Readonly<Record<TowerType, TowerDef>> = {
   musketeer: {
     cost: 50,
-    upgradeCost: 40,
+    upgradeCost: 35,
     base: { range: 110, damage: 12, fireRate: 1.0, splashRadius: 0, slow: 0, slowDuration: 0 },
-    upgraded: { range: 125, damage: 20, fireRate: 1.0, splashRadius: 0, slow: 0, slowDuration: 0 },
+    upgraded: { range: 125, damage: 22, fireRate: 1.0, splashRadius: 0, slow: 0, slowDuration: 0 },
   },
   cannon: {
     cost: 80,
     upgradeCost: 60,
     base: { range: 90, damage: 25, fireRate: 0.5, splashRadius: 40, slow: 0, slowDuration: 0 },
-    upgraded: { range: 90, damage: 40, fireRate: 0.5, splashRadius: 50, slow: 0, slowDuration: 0 },
+    upgraded: { range: 90, damage: 40, fireRate: 0.5, splashRadius: 55, slow: 0, slowDuration: 0 },
   },
   tarpit: {
     cost: 60,
     upgradeCost: 50,
-    base: { range: 80, damage: 3, fireRate: 1.0, splashRadius: 0, slow: 0.4, slowDuration: 2 },
-    upgraded: { range: 95, damage: 3, fireRate: 1.0, splashRadius: 0, slow: 0.55, slowDuration: 2 },
+    base: { range: 90, damage: 3, fireRate: 2.0, splashRadius: 0, slow: 0.4, slowDuration: 2 },
+    upgraded: { range: 105, damage: 3, fireRate: 2.0, splashRadius: 0, slow: 0.6, slowDuration: 2 },
   },
 };
 

@@ -29,7 +29,7 @@ describe('verifier 2: combat', () => {
     const s = arena([goblin(0, 400), goblin(1, 434, 12)], [[2, 'musketeer'], [4, 'musketeer']]);
     fireTowers(s);
     expect(s.enemies.map((e) => [e.id, e.hp])).toEqual([[0, 30]]);
-    expect(s.gold).toBe(5);
+    expect(s.gold).toBe(4);
     expect(s.towers[0].cooldownTicks).toBe(60);
     // Spot 4 found no live target, so it did not fire and is still ready.
     expect(s.towers[1].cooldownTicks).toBe(0);
@@ -41,11 +41,11 @@ describe('verifier 2: combat', () => {
     const s = arena([goblin(0, 370), goblin(1, 400, 25), goblin(2, 420, 25)], [[2, 'cannon']]);
     fireTowers(s);
     expect(s.enemies.map((e) => [e.id, e.hp])).toEqual([[0, 30]]);
-    expect(s.gold).toBe(10);
+    expect(s.gold).toBe(8);
     // Goblin 0 (30 hp) is now the only target: 25 leaves 5, the next shot kills it.
     for (let i = 0; i < 240; i++) fireTowers(s);
     expect(s.enemies).toEqual([]);
-    expect(s.gold).toBe(15); // 3 kills x 5, each paid exactly once
+    expect(s.gold).toBe(12); // 3 kills x 4, each paid exactly once
   });
 
   it('a lone goblin crossing spot 2 musketeer coverage dies on the 3rd shot; wave 1 leaks 6 of 8', () => {
@@ -62,7 +62,7 @@ describe('verifier 2: combat', () => {
     }
     expect(shotsAt).toEqual([151, 211, 271]);
     expect(s.enemies).toEqual([]);
-    expect(s.gold).toBe(5);
+    expect(s.gold).toBe(4);
 
     // Whole of wave 1 with only this tower: observed 2 kills, 6 leaks.
     const g = createGame();
@@ -70,7 +70,7 @@ describe('verifier 2: combat', () => {
     startWave(g);
     while (g.phase === 'wave') tick(g);
     expect(g.lives).toBe(14);
-    expect(g.gold).toBe(100 - 50 + 2 * 5 + 25);
+    expect(g.gold).toBe(100 - 50 + 2 * 4 + 25);
   });
 });
 
@@ -86,7 +86,7 @@ describe('verifier 2: economy', () => {
   });
 
   it.each([
-    ['musketeer', 40],
+    ['musketeer', 35],
     ['cannon', 60],
     ['tarpit', 50],
   ] as const)('%s upgrade succeeds with exactly %i gold and fails with one less', (type, cost) => {
@@ -103,7 +103,7 @@ describe('verifier 2: economy', () => {
   });
 
   it.each([
-    ['musketeer', 63],
+    ['musketeer', 59],
     ['cannon', 98],
     ['tarpit', 77],
   ] as const)('selling an upgraded %s refunds %i', (type, refund) => {
