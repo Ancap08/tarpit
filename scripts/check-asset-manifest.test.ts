@@ -1,0 +1,105 @@
+import { describe, expect, it } from 'vitest';
+import { checkManifest, licenseKind, parseManifest, type ManifestRow } from './check-asset-manifest';
+
+const row = (path: string, license = 'CC0 1.0', notes = ''): ManifestRow => ({
+  path,
+  source: 'https://example.invalid/pack',
+  author: 'someone',
+  license,
+  notes,
+});
+
+describe('licenseKind', () => {
+  it('accepts CC0 and CC-BY spellings', () => {
+    expect(licenseKind('CC0')).toBe('cc0');
+    expect(licenseKind('CC0 1.0')).toBe('cc0');
+    expect(licenseKind('cc0 1.0 (derived)')).toBe('cc0');
+    expect(licenseKind('CC-BY')).toBe('cc-by');
+    expect(licenseKind('CC-BY 4.0')).toBe('cc-by');
+  });
+  it('rejects everything else', () => {
+    for (const l of ['CC-BY-SA 4.0', 'CC-BY-NC 4.0', 'MIT', 'proprietary', '', 'CC0-ish', 'GPL']) {
+      expect(licenseKind(l), l).toBeNull();
+    }
+  });
+});
+
+describe('checkManifest', () => {
+  it('passes when every checked file is listed with an allowed license', () => {
+    const files = ['assets/a.png', 'docs/art/mockups/b.png', 'src/main.ts'];
+    expect(checkManifest(files, [row('assets/a.png'), row('docs/art/mockups/b.png')])).toEqual([]);
+  });
+
+  it('ignores files outside assets/ and docs/art/, Markdown and .DS_Store', () => {
+    const files = ['src/x.png', 'docs/media/tarpit.gif', 'assets/MANIFEST.md', 'docs/art/INVENTORY.md', 'docs/art/.DS_Store'];
+    expect(checkManifest(files, [])).toEqual([]);
+  });
+
+  it('fails an unlisted file, naming it', () => {
+    const problems = checkManifest(['assets/a.png', 'assets/sprites/goblin.png'], [row('assets/a.png')]);
+    expect(problems).toEqual([expect.stringMatching(/^assets\/sprites\/goblin\.png: not listed/)]);
+  });
+
+  it('matches paths exactly (no prefix or case matching)', () => {
+    expect(checkManifest(['assets/a.png'], [row('assets/A.png')])).toHaveLength(2);
+    expect(checkManifest(['assets/a.png.bak'], [row('assets/a.png')])).toHaveLength(2);
+  });
+
+  it('fails a disallowed license', () => {
+    expect(checkManifest(['assets/a.png'], [row('assets/a.png', 'CC-BY-SA 4.0')])).toEqual([
+      expect.stringMatching(/license "CC-BY-SA 4\.0" is not allowed/),
+    ]);
+  });
+
+  it('requires a credit line for CC-BY', () => {
+    expect(checkManifest(['assets/a.png'], [row('assets/a.png', 'CC-BY 4.0', 'from pack X')])).toEqual([
+      expect.stringMatching(/CC-BY needs a credit line/),
+    ]);
+    expect(checkManifest(['assets/a.png'], [row('assets/a.png', 'CC-BY 4.0', 'Credit: Jane Doe, opengameart.org')])).toEqual([]);
+  });
+
+  it('flags rows for missing files and duplicate rows', () => {
+    expect(checkManifest([], [row('assets/gone.png')])).toEqual([expect.stringMatching(/no such file/)]);
+    expect(checkManifest(['assets/a.png'], [row('assets/a.png'), row('assets/a.png')])).toEqual([
+      expect.stringMatching(/listed twice/),
+    ]);
+  });
+});
+
+describe('parseManifest', () => {
+  const md = [
+    '# Asset manifest',
+    '',
+    'Some text.',
+    '',
+    '| Path | Source | Author | License | Notes |',
+    '|---|---|---|---|---|',
+    '| `docs/art/mockups/A.png` | https://pixel-boy.itch.io/ninja-adventure-asset-pack | Pixel-boy | CC0 1.0 | derived |',
+    '| assets/b.png | src | me | CC-BY 4.0 | Credit: me |',
+    '',
+    'Trailing text.',
+  ].join('\n');
+
+  it('reads the rows of the manifest table and strips backticks', () => {
+    const rows = parseManifest(md);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toEqual({
+      path: 'docs/art/mockups/A.png',
+      source: 'https://pixel-boy.itch.io/ninja-adventure-asset-pack',
+      author: 'Pixel-boy',
+      license: 'CC0 1.0',
+      notes: 'derived',
+    });
+    expect(rows[1].notes).toBe('Credit: me');
+  });
+
+  it('throws without the expected header, so a reformatted manifest fails loudly', () => {
+    expect(() => parseManifest('| File | License |\n|---|---|\n| a | CC0 |')).toThrow(/no manifest table/);
+  });
+
+  it('throws on a row with the wrong number of cells', () => {
+    expect(() => parseManifest('| Path | Source | Author | License | Notes |\n|---|---|---|---|---|\n| a | CC0 |')).toThrow(
+      /does not have 5 cells/,
+    );
+  });
+});
