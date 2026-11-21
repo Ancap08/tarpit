@@ -72,3 +72,18 @@ test('title screen starts the game on click', async ({ page }) => {
   await page.mouse.click(480, 270);
   await page.waitForFunction(() => window.__tarpit?.scene?.() === 'game');
 });
+
+test('test mode runs no ticks on its own', async ({ page }) => {
+  await startGame(page);
+  await page.waitForTimeout(500);
+  expect(await state(page)).toMatchObject({ tick: 0, phase: 'setup', wave: 0 });
+});
+
+test('Start Wave is clickable again after wave 1 clears and starts wave 2', async ({ page }) => {
+  await startGame(page);
+  await clickButton(page, 'startWave');
+  await step(page, 2005);
+  expect(await state(page)).toMatchObject({ phase: 'setup', wave: 1 });
+  await clickButton(page, 'startWave');
+  expect(await state(page)).toMatchObject({ phase: 'wave', wave: 2 });
+});
