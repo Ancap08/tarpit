@@ -5,11 +5,16 @@
 // at least 44 px on an iPad in landscape (scale 1024 / 960).
 // Milestone 23: the boss bar (ui/bossBar.ts) at the top of the map while
 // the boss lives, and the wave 10 preview ends with "+ Grumblefoot".
+// Milestone 25: on Easy or Hard a small muted level tag ("Easy", "Hard")
+// sits under the wave counter, which moves up 7 px to make room; on Normal
+// there is no tag and the counter stays centred, so Normal frames are as
+// before. (The 128 px between the wave counter and the preview cannot hold
+// "Wave 10/10" and a tag on one line.)
 
 import Phaser from 'phaser';
-import { nextWavePreview, WAVES, type GameState, type TowerType } from '../sim';
+import { nextWavePreview, WAVES, type Difficulty, type GameState, type TowerType } from '../sim';
 import type { Rect } from './input';
-import { BOSS_NAME, ENEMY_NAMES } from './names';
+import { BOSS_NAME, DIFFICULTY_LABELS, ENEMY_NAMES } from './names';
 import { COLORS, FONT, TEXT } from './palette';
 import { BossBar } from './ui/bossBar';
 import { BuildBar } from './ui/buildBar';
@@ -40,7 +45,19 @@ export interface HudStrings {
   speed: string;
   /** The boss bar's label ("Grumblefoot 4000 / 4000") while it shows, else null. */
   boss: string | null;
+  /** The level tag under the wave counter ("Easy", "Hard"), or '' on Normal (milestone 25). */
+  difficulty: string;
 }
+
+/** The HUD's level tag: the level's name, or '' on Normal (no tag). */
+export function difficultyTag(difficulty: Difficulty): string {
+  return difficulty === 'normal' ? '' : DIFFICULTY_LABELS[difficulty];
+}
+
+/** The wave counter's y shift and the tag's y offset from row 1's centre when a tag shows. */
+export const WAVE_TAG_SHIFT = -7;
+export const TAG_OFFSET = 11;
+export const TAG_SIZE = 12;
 
 /**
  * "Next: 8 Goblin", "Next: 8 Goblin, 5 Wolf" (names from ENEMY_NAMES), or
@@ -89,6 +106,7 @@ export class Hud {
   private readonly lives: Phaser.GameObjects.Text;
   private readonly wave: Phaser.GameObjects.Text;
   private readonly next: Phaser.GameObjects.Text;
+  private readonly tag: Phaser.GameObjects.Text;
   private readonly startButton: Button;
   private readonly speedButton: Button;
   private readonly bar: BuildBar;
@@ -103,6 +121,7 @@ export class Hud {
     this.gold = stat(14);
     this.lives = stat(126);
     this.wave = stat(238);
+    this.tag = stat(238, `${TAG_SIZE}px`, TEXT.hudDim).setY(MID + TAG_OFFSET);
     this.next = stat(PREVIEW_X, `${PREVIEW_SIZE}px`, TEXT.hudDim).setWordWrapWidth(PREVIEW_WIDTH, true);
 
     this.startButton = new Button(scene, { x: 726, y: ROW1_BUTTON_Y, width: 138, height: BUTTON_H }, 'Start Wave', handlers.onStartWave);
@@ -116,8 +135,12 @@ export class Hud {
       if (t.text !== s) t.setText(s);
     };
     set(this.gold, `Gold ${state.gold}`);
-    set(this.lives, `Lives ${state.lives}`);
+    // The sim lets lives go below 0 (the boss's exit costs 5); the HUD shows 0.
+    set(this.lives, `Lives ${Math.max(0, state.lives)}`);
     set(this.wave, `Wave ${state.wave}/${WAVES.length}`);
+    const tag = difficultyTag(state.difficulty);
+    set(this.tag, tag);
+    this.wave.setY(tag ? MID + WAVE_TAG_SHIFT : MID);
     // After a loss there is no next wave to play, so the preview goes blank.
     const preview = state.phase === 'lost' ? '' : previewText(state);
     if (this.next.text !== preview) this.next.setFontSize(previewSize(preview)).setText(preview);
@@ -137,6 +160,7 @@ export class Hud {
       startWave: this.startButton.text,
       speed: this.speedButton.text,
       boss: this.bossBar.label(),
+      difficulty: this.tag.text,
     };
   }
 

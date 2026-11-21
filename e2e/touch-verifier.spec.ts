@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { TarpitTestApi } from '../src/game/testGlobal';
+import type { TitleUiState } from '../src/game/TitleScene';
 
 // Milestone 14 verifier probes (tablet project only, see playwright.config.ts).
 // Every input is a real tap at the page point canvasToPage() gives.
@@ -123,7 +124,7 @@ test.describe('(f) 1366x1024', () => {
 test('(g) portrait without test mode: card visible and no ticks; landscape: hidden and ticks', async ({ page }) => {
   await page.goto('/');
   await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('title'));
-  await tapAt(page, 480, 290);
+  await tap(page, 'title:play'); // milestone 25: only Play starts the game
   await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game'));
   const tick = () => page.evaluate(() => (window.__tarpit!.game.scene.getScene('game') as unknown as { state: { tick: number } }).state.tick);
   await tap(page, 'startWave'); // a wave is running, so ticks have something to do
@@ -137,4 +138,31 @@ test('(g) portrait without test mode: card visible and no ticks; landscape: hidd
   const t1 = await tick();
   await page.waitForTimeout(600);
   expect(await tick()).toBeGreaterThan(t1);
+});
+
+// Milestone 25 verifier probe (g): the title menu by touch on the tablet.
+test('(m25 g) tap Hard, tap Play: 80 gold, 15 lives; all four title buttons are at least 44 px tall on screen', async ({ page }) => {
+  await page.goto('/?test=1');
+  await page.waitForFunction(() => window.__tarpit?.scene?.() === 'title');
+  // One frame, so the menu's buttons are in Phaser's input list before the first tap.
+  await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
+  const r = await rects(page);
+  expect(Object.keys(r).sort()).toEqual(['title:easy', 'title:hard', 'title:normal', 'title:play']);
+  for (const [name, rect] of Object.entries(r)) {
+    const top = await toPage(page, rect.x, rect.y);
+    const bottom = await toPage(page, rect.x + rect.width, rect.y + rect.height);
+    // 42 canvas px x 1024 / 960 = 44.8 px on screen.
+    expect(bottom.y - top.y, name).toBeCloseTo(44.8, 1);
+    expect(bottom.y - top.y, name).toBeGreaterThanOrEqual(44);
+    expect(bottom.x - top.x, name).toBeGreaterThanOrEqual(44);
+  }
+  await tap(page, 'title:hard');
+  expect(await api(page, (a) => a.scene())).toBe('title'); // a tap on a level only selects it
+  expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).ui<TitleUiState>())).toEqual({ scene: 'title', difficulty: 'hard' });
+  // A tap on empty title space starts nothing.
+  await tapAt(page, 480, 366);
+  expect(await api(page, (a) => a.scene())).toBe('title');
+  await tap(page, 'title:play');
+  await page.waitForFunction(() => window.__tarpit?.scene?.() === 'game');
+  expect(await state(page)).toMatchObject({ difficulty: 'hard', gold: 80, lives: 15, wave: 0, tick: 0, towers: [] });
 });

@@ -2,7 +2,7 @@
 //
 // Builds the game, serves dist/ with `vite preview`, and plays it in real time
 // (not test mode) in headless Chromium with Playwright's video recording on.
-// The play shows v2: title click; Longbow picked on the build bar and placed
+// The play shows v2: [Play] on the title menu (Normal); Longbow picked on the build bar and placed
 // on (9,5) and (9,4) inside the first U (the pick stays active for the second
 // one, then clears itself at 20 gold); Start Wave, 2x, wave 1; a Tar Pit on
 // (14,10); wave 2; a Fire Pot on (14,9) beside it, so tarred enemies burn at
@@ -201,7 +201,7 @@ async function main(): Promise<void> {
     await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('title'));
     await page.waitForTimeout(1500);
     const start = Math.max(0, at() - 1);
-    await page.mouse.click(VIEW.width / 2, VIEW.height / 2);
+    await clickRect(page, 'title:play', 300);
     await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game'));
     await page.waitForTimeout(600);
 

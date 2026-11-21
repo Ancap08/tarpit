@@ -1,20 +1,22 @@
 // End screen: shown once the simulation's phase is 'won' or 'lost'. A
 // translucent veil covers the map area (the HUD below stays visible with the
 // final numbers) and a centred panel, translucent enough that the map shows
-// through faintly, holds a title, one or two lines and a
-// [Play again] button. The scene ignores map clicks and hover while it shows.
+// through faintly, holds a title, one or two lines, a [Play again] button
+// (same level) and, beside it, a smaller [Menu] button back to the title
+// menu (milestone 25). The scene ignores map clicks and hover while it shows.
 //
 // The veil is deliberately not interactive. Phaser orders overlapping
 // interactive objects by the camera's last render list; a click that lands
 // before the first frame showing the end screen would find neither the veil
-// nor the button in that list and could hand the click to the veil. With the
-// button the only interactive object there, a click always reaches it.
+// nor the buttons in that list and could hand the click to the veil. With the
+// buttons the only interactive objects there, a click always reaches one.
 
 import type Phaser from 'phaser';
 import type { GameState } from '../../sim';
 import { MAP_AREA, type Rect } from '../input';
 import { COLORS, FONT, TEXT } from '../palette';
 import { Button } from './button';
+import { END_TEXT } from '../names';
 import { endScreenText, type EndKind } from './endText';
 
 export type { EndKind };
@@ -24,6 +26,9 @@ const PANEL_H = 230;
 const BUTTON_W = 180;
 /** 42 px: at least 44 px on screen at iPad landscape scale (milestone 14). */
 const BUTTON_H = 42;
+/** [Menu] (milestone 25): smaller, to the right of [Play again]. */
+const MENU_W = 100;
+const BUTTON_GAP = 16;
 
 export class EndScreen {
   private readonly veil: Phaser.GameObjects.Rectangle;
@@ -31,9 +36,10 @@ export class EndScreen {
   private readonly title: Phaser.GameObjects.Text;
   private readonly lines: Phaser.GameObjects.Text;
   private readonly button: Button;
+  private readonly menu: Button;
   private shown: EndKind | null = null;
 
-  constructor(scene: Phaser.Scene, onPlayAgain: () => void) {
+  constructor(scene: Phaser.Scene, onPlayAgain: () => void, onMenu: () => void) {
     const cx = MAP_AREA.x + MAP_AREA.width / 2;
     const cy = MAP_AREA.y + MAP_AREA.height / 2;
     const top = cy - PANEL_H / 2;
@@ -57,12 +63,18 @@ export class EndScreen {
         lineSpacing: 8,
       })
       .setOrigin(0.5);
-    this.button = new Button(
+    // The pair is centred on the panel: [Play again] then [Menu].
+    const left = cx - (BUTTON_W + BUTTON_GAP + MENU_W) / 2;
+    const y = top + PANEL_H - BUTTON_H - 22;
+    this.button = new Button(scene, { x: left, y, width: BUTTON_W, height: BUTTON_H }, END_TEXT.playAgain, onPlayAgain, {
+      fontSize: '20px',
+    });
+    this.menu = new Button(
       scene,
-      { x: cx - BUTTON_W / 2, y: top + PANEL_H - BUTTON_H - 22, width: BUTTON_W, height: BUTTON_H },
-      'Play again',
-      onPlayAgain,
-      { fontSize: '20px' },
+      { x: left + BUTTON_W + BUTTON_GAP, y, width: MENU_W, height: BUTTON_H },
+      END_TEXT.menu,
+      onMenu,
+      { fontSize: '18px' },
     );
     this.setVisible(false);
   }
@@ -82,13 +94,14 @@ export class EndScreen {
     this.setVisible(true);
   }
 
-  /** `playAgain` while shown, else nothing. */
+  /** `playAgain` and `menu` while shown, else nothing. */
   rects(): Record<string, Rect> {
-    return this.shown === null ? {} : { playAgain: this.button.rect };
+    return this.shown === null ? {} : { playAgain: this.button.rect, menu: this.menu.rect };
   }
 
   private setVisible(visible: boolean): void {
     for (const o of [this.veil, this.panel, this.title, this.lines]) o.setVisible(visible);
     this.button.setShown(visible);
+    this.menu.setShown(visible);
   }
 }

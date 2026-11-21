@@ -3,7 +3,7 @@
 // is an edit here (plus regenerated screenshot baselines). Tests that check a
 // display string build it from these tables, so a rename changes no test.
 
-import type { EnemyType, TargetingMode, TowerType } from '../sim';
+import type { Difficulty, EnemyType, TargetingMode, TowerType } from '../sim';
 
 /** The wave 10 boss (docs/SCOPE-v4.md, milestone 23): the HUD boss bar and the wave 10 preview. */
 export const BOSS_NAME = 'Grumblefoot';
@@ -50,8 +50,26 @@ export function targetingButtonText(mode: TargetingMode): string {
   return `Target: ${TARGETING_LABELS[mode]}`;
 }
 
-/** The end screens' words (endText.ts). */
+/** Difficulty level names (milestone 25): the title menu's buttons and the HUD tag. */
+export const DIFFICULTY_LABELS: Readonly<Record<Difficulty, string>> = {
+  easy: 'Easy',
+  normal: 'Normal',
+  hard: 'Hard',
+};
+
+/** The title menu's words (TitleScene.ts, milestone 25). */
+export const TITLE_TEXT = {
+  title: 'Tarpit',
+  subtitle: 'a tower defense game',
+  difficulty: 'Difficulty',
+  play: 'Play',
+  prompt: 'Pick a difficulty, then press Play',
+} as const;
+
+/** The end screens' words (endText.ts and the end screen's buttons). */
 export const END_TEXT = {
+  playAgain: 'Play again',
+  menu: 'Menu',
   wonTitle: 'Victory!',
   wonLives: 'The village stands. Lives left:',
   wonGold: 'Gold left:',

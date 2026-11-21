@@ -151,18 +151,30 @@ test('every button is at least 44 px tall on the page; no portrait card in lands
   expect(await page.evaluate(() => window.__tarpit!.portraitCardVisible())).toBe(false);
 });
 
-test('title starts on a tap', async ({ page }) => {
+test('the title menu starts on a tap on Play (milestone 25)', async ({ page }) => {
   await page.goto('/?test=1');
   await page.waitForFunction(() => window.__tarpit?.scene?.() === 'title');
-  await tapAt(page, 480, 290);
+  await tap(page, 'title:play');
   await page.waitForFunction(() => window.__tarpit?.scene?.() === 'game');
+});
+
+test('the title menu: tap Hard, then Play, starts a Hard game (milestone 25)', async ({ page }) => {
+  await page.goto('/?test=1');
+  await page.waitForFunction(() => window.__tarpit?.scene?.() === 'title');
+  await tap(page, 'title:hard');
+  expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).scene())).toBe('title');
+  await tap(page, 'title:play');
+  await page.waitForFunction(() => window.__tarpit?.scene?.() === 'game');
+  expect(await state(page)).toMatchObject({ difficulty: 'hard', gold: 80, lives: 15 });
+  const r = await rects(page);
+  expect(r).not.toHaveProperty('title:play');
 });
 
 // Non-test mode: the real loop runs, so the pause is observable.
 test('portrait shows the turn-your-device card and stops ticking; landscape hides it', async ({ page }) => {
   await page.goto('/');
   await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('title'));
-  await tapAt(page, 480, 290);
+  await tap(page, 'title:play');
   await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game'));
   const tick = () =>
     page.evaluate(() => (window.__tarpit!.game.scene.getScene('game') as unknown as { state: { tick: number } }).state.tick);

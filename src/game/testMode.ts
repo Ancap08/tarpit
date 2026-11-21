@@ -1,20 +1,21 @@
 // Test mode (?test=1): time is frozen and window.__tarpit exposes hooks for
 // Playwright. Outside test mode window.__tarpit holds the Phaser game and the
 // read-only uiRects(), canvasToPage(), portraitCardVisible() and animState(), so real-time
-// tests and the demo recorder click the HUD where it is drawn at any
-// viewport size.
+// tests and the demo recorder click the HUD (and, from milestone 25, the
+// title menu) where it is drawn at any viewport size.
 
 import type Phaser from 'phaser';
-import { comboBuild, lazyBuild, soundBuild, WAVES, type BuildAction, type Phase, type WaveScript } from '../sim';
+import { comboBuild, DEFAULT_DIFFICULTY, lazyBuild, soundBuild, WAVES, type Archetype, type BuildAction, type Phase, type WaveScript } from '../sim';
 import type { GameScene } from './GameScene';
 import { portraitCardVisible } from './portrait';
 import type { TarpitTestApi } from './testGlobal';
+import type { TitleScene } from './TitleScene';
 
 export function isTestMode(): boolean {
   return new URLSearchParams(window.location.search).get('test') === '1';
 }
 
-const SCRIPTS: Record<'soundBuild' | 'lazyBuild' | 'comboBuild', () => WaveScript> = { soundBuild, lazyBuild, comboBuild };
+const SCRIPTS: Record<'soundBuild' | 'lazyBuild' | 'comboBuild', Archetype> = { soundBuild, lazyBuild, comboBuild };
 
 /** Same cap per wave as the headless runner (src/sim/headless.ts). */
 const MAX_TICKS_PER_WAVE = 60 * 600;
@@ -53,10 +54,18 @@ function runScript(scene: GameScene, script: WaveScript, untilWave?: number): Ph
   return phase();
 }
 
-/** The GameScene's clickable rectangles, or none while it is not running (the title screen). */
+const titleScene = (game: Phaser.Game): TitleScene => game.scene.getScene('title') as TitleScene;
+
+/**
+ * The clickable rectangles of the running scene: the title menu's
+ * (`title:easy`, `title:normal`, `title:hard`, `title:play`) or the
+ * GameScene's; none between scenes.
+ */
 function uiRectsOf(game: Phaser.Game): ReturnType<TarpitTestApi['uiRects']> {
-  if (!game.scene.isActive('game')) return {} as ReturnType<TarpitTestApi['uiRects']>;
-  return (game.scene.getScene('game') as GameScene).uiRects() as ReturnType<TarpitTestApi['uiRects']>;
+  type Rects = ReturnType<TarpitTestApi['uiRects']>;
+  if (game.scene.isActive('title')) return titleScene(game).rects() as Rects;
+  if (!game.scene.isActive('game')) return {} as Rects;
+  return (game.scene.getScene('game') as GameScene).uiRects() as Rects;
 }
 
 /**
@@ -97,15 +106,16 @@ export function installGlobal(game: Phaser.Game): void {
     scene: () => game.scene.getScenes(true)[0]?.scene.key ?? '',
     state: () => scene().state,
     step: (n) => scene().advance(n),
-    startGame: () =>
+    startGame: (difficulty = DEFAULT_DIFFICULTY) =>
       new Promise<void>((resolve) => {
         if (game.scene.isActive('game')) {
           resolve();
           return;
         }
         game.scene.getScene('game').events.once('create', () => resolve());
-        game.scene.getScene('title').scene.start('game');
+        titleScene(game).play(difficulty);
       }),
+    difficulty: () => scene().state.difficulty,
     startWave: () => scene().startWave(),
     buildAt: (col, row, type) => scene().build({ col, row }, type),
     upgradeAt: (col, row) => scene().upgrade({ col, row }),
@@ -114,14 +124,15 @@ export function installGlobal(game: Phaser.Game): void {
     setSpeed: (speed) => scene().setSpeed(speed),
     speed: () => scene().speed,
     uiRects: () => {
-      scene(); // throws before startGame(), as the other hooks do
+      if (!game.scene.isActive('title')) scene(); // throws between scenes, as the other hooks do
       return uiRectsOf(game);
     },
-    ui: () => scene().uiState(),
+    ui: (() => (game.scene.isActive('title') ? titleScene(game).uiState() : scene().uiState())) as TarpitTestApi['ui'],
     hudText: () => scene().hudStrings(),
     endScreen: () => scene().endScreenKind(),
     events: () => scene().simEvents(),
-    runScript: (name, untilWave) => runScript(scene(), SCRIPTS[name](), untilWave),
+    // The archetype records its script on the running game's level (milestone 25).
+    runScript: (name, untilWave) => runScript(scene(), SCRIPTS[name](scene().state.difficulty), untilWave),
   };
   window.__tarpit = api;
 }

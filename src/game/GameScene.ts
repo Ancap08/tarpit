@@ -43,6 +43,11 @@
 // [Play again] restarts this scene: Phaser shuts it down (destroying every
 // game object and the input and keyboard listeners) and runs create() again,
 // which makes a fresh createGame() and resets speed to 1x.
+// Difficulty (milestone 25): the scene is always started with a
+// GameStartData ({ difficulty }) from the title menu, the test hook or
+// [Play again] (which passes the level just played). Phaser keeps a scene's
+// last start data, so every start passes it explicitly. [Menu] goes back to
+// the title menu.
 
 import Phaser from 'phaser';
 import {
@@ -50,6 +55,7 @@ import {
   CELL,
   cellCenter,
   createGame,
+  DEFAULT_DIFFICULTY,
   isBuildable,
   sellTower,
   setTargeting,
@@ -63,6 +69,7 @@ import {
 import type {
   BuildResult,
   Cell,
+  Difficulty,
   GameEvent,
   GameState,
   SellResult,
@@ -85,6 +92,7 @@ import { cellAt, cellRect, classifyClick, contains, type Rect } from './input';
 import { COLORS } from './palette';
 import { portraitCardVisible } from './portrait';
 import { isTestMode } from './testMode';
+import type { GameStartData } from './TitleScene';
 import { ticksDue } from './loop';
 import { canPick } from './ui/buildBar';
 import { EndScreen } from './ui/endScreen';
@@ -130,6 +138,8 @@ const MIN_RANGE_DASHES = 24;
 export class GameScene extends Phaser.Scene {
   state: GameState = createGame();
   speed: Speed = 1;
+  /** The level this game runs on (set in init from the start data). */
+  private difficulty: Difficulty = DEFAULT_DIFFICULTY;
   private accMs = 0;
   private dynamic!: Phaser.GameObjects.Graphics;
   private enemySprites!: EnemySprites;
@@ -164,8 +174,12 @@ export class GameScene extends Phaser.Scene {
     super('game');
   }
 
+  init(data?: Partial<GameStartData>): void {
+    this.difficulty = data?.difficulty ?? DEFAULT_DIFFICULTY;
+  }
+
   create(): void {
-    this.state = createGame();
+    this.state = createGame({ difficulty: this.difficulty });
     this.speed = 1;
     this.accMs = 0;
     this.shots = new ShotEffects();
@@ -217,7 +231,11 @@ export class GameScene extends Phaser.Scene {
         if (this.panel.cell !== null) this.setTargeting(this.panel.cell, next);
       },
     });
-    this.endScreen = new EndScreen(this, () => this.playAgain());
+    this.endScreen = new EndScreen(
+      this,
+      () => this.playAgain(),
+      () => this.toMenu(),
+    );
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (p.wasTouch) this.onTap(p.x, p.y);
@@ -350,7 +368,7 @@ export class GameScene extends Phaser.Scene {
     };
   }
 
-  /** Every clickable rectangle by name: HUD and bar buttons, the open panel's buttons, and `playAgain`. */
+  /** Every clickable rectangle by name: HUD and bar buttons, the open panel's buttons, and `playAgain` and `menu`. */
   uiRects(): Record<string, Rect> {
     return { ...this.hud.rects(), ...this.panel.rects(), ...this.endScreen.rects() };
   }
@@ -360,9 +378,15 @@ export class GameScene extends Phaser.Scene {
     return this.endScreen?.kind ?? null;
   }
 
-  /** Start a brand-new game in a fresh scene. */
+  /** Start a brand-new game in a fresh scene, on the same level. */
   playAgain(): void {
-    this.scene.restart();
+    const data: GameStartData = { difficulty: this.state.difficulty };
+    this.scene.restart(data);
+  }
+
+  /** Back to the title menu (milestone 25), which still shows the level just played. */
+  toMenu(): void {
+    this.scene.start('title');
   }
 
   update(_time: number, delta: number): void {

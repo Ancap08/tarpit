@@ -1,5 +1,6 @@
 // Data shapes for the simulation. Pure data: no classes, no methods.
 
+import type { Difficulty } from './difficulty';
 import type { GameEvent } from './events';
 import type { Cell } from './grid';
 
@@ -163,6 +164,11 @@ export interface Shot {
 export type Phase = 'setup' | 'wave' | 'won' | 'lost';
 
 export interface GameState {
+  /**
+   * Difficulty level (milestone 25), fixed at createGame: it set the
+   * starting gold and lives and scales every enemy's hp at spawn.
+   */
+  difficulty: Difficulty;
   phase: Phase;
   gold: number;
   lives: number;
