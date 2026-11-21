@@ -49,7 +49,7 @@ function playLogged(towers: [number, number, TowerType][], upto = 10): { log: Ga
   for (let w = 1; w <= upto && s.phase === 'setup'; w++) {
     startWave(s);
     take();
-    for (let i = 0; i < 60 * 600 && s.phase === 'wave'; i++) {
+    for (let i = 0; i < 60 * 600 && (s.phase as string) === 'wave'; i++) {
       tick(s);
       take();
     }
