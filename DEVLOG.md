@@ -656,3 +656,30 @@ Other notes:
 - Visual baselines change for the mid-wave, won and lost frames and for any
   frame that shows spot 3. No PNGs are committed; the coordinator
   regenerates them on CI.
+
+### Verifier notes
+
+Verifier: Claude Sonnet. Checked on branch `m6a-balance` against
+`origin/main`.
+
+- Clean run (`rm -rf dist && npm ci`, lint, typecheck, test, build, e2e,
+  sim): all exit 0. 118 unit tests in 13 files (113 plus my 5), 37 e2e
+  tests. Sim summary: noTowers lost wave 2; lazyBuild lost wave 8, 310 gold;
+  greedyMusket won, 2 lives, 340 gold; soundBuild won, 11 lives, 253 gold
+  (141 after wave 9); soundBuildNoTar lost wave 7.
+- Every number in the DESIGN.md enemy, tower, upgrade, wave and spot tables
+  matches `enemies.ts`, `towers.ts`, `waves.ts` and `map.ts`. The DEVLOG
+  before/after table matches `git diff origin/main` for those files: no
+  undocumented change and no documented change that did not happen.
+- Forbidden knobs are unchanged. `src/game` changed only in two test files.
+- Archetypes do what the DEVLOG says. `soundBuildNoTar()` is derived from
+  `soundBuild()` by filtering out the Tar Pit spot's actions. Spot 3
+  (240,240) is exactly 80.000 px from the nearest path segment (not on the
+  40 px strip), 64 px from spots 2 and 3's nearest neighbour, so at least 50
+  px from every spot. Spot 0 stays at 64 px, as DESIGN.md says.
+- `src/sim/balance-verifier.test.ts` (5 probes, all pass): sound build is
+  deterministic; Cannon-only build does worse than the sound build; Tar
+  Pit-only build loses; one Troll passes one base Musketeer at spot 2 and
+  exits (lives 19, no bounty); sound build loses lives in waves 7 and 8.
+- Observation: `DECISIONS.md` has no milestone 6a entry; the decisions
+  (number changes, gold target revision) live only in this section.
