@@ -10,7 +10,16 @@ import type Phaser from 'phaser';
 import { cellCenter, cellKey, type GameState, type Tower, type TowerType } from '../../sim';
 import { FONT, TEXT } from '../palette';
 
-export const LABEL_NAME: Record<TowerType, string> = { musketeer: 'Musket', cannon: 'Cannon', tarpit: 'Tar' };
+// Longbow, Mortar and Fire Pot labels are milestone 11 placeholders; that
+// milestone settles label size and crowding.
+export const LABEL_NAME: Record<TowerType, string> = {
+  musketeer: 'Musket',
+  cannon: 'Cannon',
+  tarpit: 'Tar',
+  longbow: 'Longbow',
+  mortar: 'Mortar',
+  firepot: 'Fire',
+};
 
 /** Top of a label, below the tower's centre: clears the 19 px upgrade ring and the Tar Pit blobs. */
 export const LABEL_OFFSET_Y = 22;

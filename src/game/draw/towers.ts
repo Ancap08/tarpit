@@ -79,6 +79,14 @@ export function drawTowerShape(
       g.fillStyle(COLORS.tarpitHighlight, 0.85 * alpha);
       g.fillCircle(p.x - 5, p.y - 5, 3);
       break;
+    case 'longbow':
+    case 'mortar':
+    case 'firepot':
+      // Milestone 11 placeholder: a plain grey circle until the real
+      // Longbow, Mortar and Fire Pot shapes land.
+      g.fillStyle(COLORS.placeholderTower, alpha);
+      g.fillCircle(p.x, p.y, 12);
+      break;
   }
 }
 

@@ -8,9 +8,18 @@ import { TOWER_DEFS, type GameState, type TowerType } from '../../sim';
 import type { Rect } from '../input';
 import { Button } from './button';
 
+// Milestone 10: the bar keeps the three v1 towers. Longbow, Mortar and Fire
+// Pot exist in the simulation and join the bar in milestone 11.
 export const BAR_TYPES: readonly TowerType[] = ['musketeer', 'cannon', 'tarpit'];
 
-export const TOWER_NAME: Record<TowerType, string> = { musketeer: 'Musketeer', cannon: 'Cannon', tarpit: 'Tar Pit' };
+export const TOWER_NAME: Record<TowerType, string> = {
+  musketeer: 'Musketeer',
+  cannon: 'Cannon',
+  tarpit: 'Tar Pit',
+  longbow: 'Longbow',
+  mortar: 'Mortar',
+  firepot: 'Fire Pot',
+};
 
 /** Bar button geometry: 150 x 36, 10 px apart from x 14 (room for six in 960 px). */
 export const BAR_BUTTON_WIDTH = 150;
