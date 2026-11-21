@@ -683,3 +683,59 @@ Verifier: Claude Sonnet. Checked on branch `m6a-balance` against
   exits (lives 19, no bounty); sound build loses lives in waves 7 and 8.
 - Observation: `DECISIONS.md` has no milestone 6a entry; the decisions
   (number changes, gold target revision) live only in this section.
+
+## 2026-11-21: milestone 6b, visual polish
+
+Roles: implementer Claude Opus, verifier Claude Sonnet, coordinator Claude
+Fable 5.1.
+
+### Implementer notes
+
+Polish only: no change to `src/sim`, balance, HUD positions, the test API
+or fonts. Every new colour is in `src/game/palette.ts`.
+
+- Tower labels: "Musket", "Cannon", "Tar" in 12 px bold monospace, light
+  text on a small dark pill, 22 px below the tower centre (clear of the
+  19 px upgrade ring and the Tar Pit blobs). Upgraded towers read
+  "Musket+" and so on. One Text object per spot (`draw/labels.ts`).
+- Hp bars: 30 x 4 fill inside a 1 px dark border, green at 50% or more,
+  orange below 50%, red below 25%. Still only when hurt. Drawn in a second
+  pass after every body, so a following enemy never hides a bar.
+- Tar: the Tar Pit body, its splats and the slowed-enemy ring are one dark
+  brown (`0x2e2118`); the glossy highlight stays.
+- Range circles: the selected tower's range and the hover preview both use
+  a pale yellow (`0xfff2a8`) 2 px edge at 0.9 alpha over a 0.12 fill. The
+  separate white preview colour is gone.
+- Greyed buttons: label `#a8adb5` on `0x3a3d42` is 4.83:1 (was `#8a8f97`,
+  3.35:1). Enabled labels are 9.98:1 on the same grey and 7.28:1 on the
+  brown button, so greyed still reads as greyed.
+- Menu and panel placement: among the sides that cover no build spot, the
+  one with the least path under it wins (a 9 x 9 grid of sample points over
+  the box, corners and centre included, against the 40 px path strip).
+  Spot 3's menu and panel now open below it on grass (were left, over the
+  first bend, and right); spot 7's panel opens above (was below, over the
+  bottom run). Spot 2 is unchanged: right covers spot 4, left spot 0,
+  below spot 3, so above is its only clear side and it still covers part of
+  the top run (about 41% of the menu box).
+- End screens: the panel is 0.85 alpha, so the map shows through faintly.
+  On the lose screen the HUD "Next:" text is blank.
+- Map: the cottage got a chimney (it already had a door); the cave mouth
+  got a lighter inner arc.
+- Visual tests: a new `enemies.png` frame plays wave 8 (the only wave with
+  all three enemy types) to tick 1200 and asserts 8 Goblins, 5 Wolves,
+  4 Trolls, 2 hurt Trolls and 2 slowed enemies. `mid-wave.png` stays as it
+  was (it is the frame that shows a Cannon shot).
+
+### What went wrong
+
+- The brief expected spot 2's menu to move off the path. With the four
+  sides the placement tries, spot 2 has one clear side and it is over the
+  path, so the scoring cannot move it. Moving it would need new candidate
+  positions (for example below and to the right, which still covers part of
+  the middle run), which is a bigger change than this milestone asked for.
+- The first enemies frames (tick 480 to 820, Tar Pit near the spawn)
+  bunched 20 or more enemies around the cave, with bars on top of each
+  other. A headless scan for ticks where no two enemies are closer than
+  14 px found tick 1200 with a different build.
+- A new baseline (`enemies.png`) means CI fails the visual job until the
+  baseline workflow writes it, like every frame these changes touch.
