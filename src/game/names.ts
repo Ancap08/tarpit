@@ -76,3 +76,16 @@ export const END_TEXT = {
   lostTitle: 'The village fell',
   lostWave: 'Reached wave',
 } as const;
+
+/**
+ * The tower panel's button words (milestone 25a moved them here). In setup an
+ * unlocked tower's Sell reads `remove` (full refund) and an upgrade bought
+ * this setup phase turns the Upgrade slot into `undoUpgrade`.
+ */
+export const PANEL_TEXT = {
+  upgrade: 'Upgrade',
+  upgraded: 'Upgraded',
+  undoUpgrade: 'Undo upgrade',
+  sell: 'Sell',
+  remove: 'Remove',
+} as const;

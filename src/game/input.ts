@@ -135,3 +135,27 @@ export function placeBeside(centre: Point, width: number, height: number): Point
   }
   return best ?? candidates[0];
 }
+
+/**
+ * Drag to place and move (milestone 25a): a press becomes a drag once the
+ * pointer is more than DRAG_THRESHOLD px from where it went down.
+ */
+export const DRAG_THRESHOLD = 8;
+/** On touch the drag's target is this many px above the finger, so the finger does not hide the ghost. */
+export const DRAG_LIFT = 48;
+
+/** True once (x, y) is more than DRAG_THRESHOLD px from the press at (x0, y0). */
+export function pastDragThreshold(x0: number, y0: number, x: number, y: number): boolean {
+  return Math.hypot(x - x0, y - y0) > DRAG_THRESHOLD;
+}
+
+/**
+ * The cell a drag at pointer (x, y) aims at: the cell under the point
+ * DRAG_LIFT px above a finger, or under the mouse itself. Null while the
+ * pointer itself is off the map (over the HUD or outside the canvas), so a
+ * release there cancels, and null when the lifted point is above the map.
+ */
+export function dragTargetCell(x: number, y: number, touch: boolean): Cell | null {
+  if (cellAt(x, y) === null) return null;
+  return cellAt(x, touch ? y - DRAG_LIFT : y);
+}

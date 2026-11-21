@@ -9,12 +9,14 @@ import type {
   Difficulty,
   GameEvent,
   GameState,
+  MoveResult,
   Phase,
   SellResult,
   StartWaveResult,
   TargetingMode,
   TargetingResult,
   TowerType,
+  UndoUpgradeResult,
   UpgradeResult,
 } from '../sim';
 import type { AnimState } from './anim/enemySprites';
@@ -43,6 +45,10 @@ export interface TarpitTestApi {
   buildAt(col: number, row: number, type: TowerType): BuildResult;
   upgradeAt(col: number, row: number): UpgradeResult;
   sellAt(col: number, row: number): SellResult;
+  /** Move the unlocked tower on (fromCol, fromRow) to (toCol, toRow), in setup (milestone 25a). */
+  moveAt(fromCol: number, fromRow: number, toCol: number, toRow: number): MoveResult;
+  /** Undo the upgrade bought this setup phase on (col, row) (milestone 25a). */
+  undoUpgradeAt(col: number, row: number): UndoUpgradeResult;
   /** Set the targeting mode of the tower on (col, row) through the scene's action (milestone 24). */
   setTargetingAt(col: number, row: number, mode: TargetingMode): TargetingResult;
   setSpeed(speed: 1 | 2): void;
@@ -56,7 +62,8 @@ export interface TarpitTestApi {
    * `title:easy`, `title:normal`, `title:hard` and `title:play` only. Map cells are not listed: cell (col, row) is clicked at
    * (col * 32 + 16, row * 32 + 16). At the 960x580 test viewport, canvas
    * space equals page space; at other sizes use canvasToPage(). The open
-   * panel also lists `panel:close`.
+   * panel also lists `panel:close`. `panel:upgrade` and `panel:sell` keep
+   * their names when they read "Undo upgrade" and "Remove" (milestone 25a).
    */
   uiRects(): { startWave: Rect; speed: Rect } & Record<string, Rect>;
   /**
@@ -69,7 +76,10 @@ export interface TarpitTestApi {
   /**
    * Build UI state: the bar's pick, the highlighted cell, the armed cell and
    * touch mode, the selected tower's cell, whether the panel is open, the
-   * selected tower's targeting mode and the targeting button's label.
+   * selected tower's targeting mode, the targeting, upgrade and sell
+   * buttons' labels, and the drag in progress (milestone 25a; `cell` is
+   * 48 px above a finger). Towers in state() carry `locked` (no dashed
+   * outline), `unlockedSpend` and `upgradedThisPhase`.
    * On the title menu (milestone 25) it is `{ scene: 'title', difficulty }`
    * with the selected level: call it as `ui<TitleUiState>()` there.
    */

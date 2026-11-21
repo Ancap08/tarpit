@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildableCells, buildTower, cellCenter, cellFromKey, createGame, isBuildableTerrain } from '../sim';
 import { labelAbove, LABEL_HEIGHT, LABEL_OFFSET_Y } from './draw/labels';
-import { cellAt, cellRect, classifyClick, onPath, pathCover, placeBeside, type Rect } from './input';
+import { cellAt, cellRect, classifyClick, dragTargetCell, onPath, pastDragThreshold, pathCover, placeBeside, type Rect } from './input';
 
 describe('cellAt', () => {
   it('maps a point to its 32 px cell; edges belong to the cell right of or below them', () => {
@@ -112,4 +112,24 @@ describe('placeBeside', () => {
       });
     });
   }
+});
+
+describe('drag geometry (milestone 25a)', () => {
+  it('a press becomes a drag only past 8 px', () => {
+    expect(pastDragThreshold(100, 100, 108, 100)).toBe(false);
+    expect(pastDragThreshold(100, 100, 100, 108.01)).toBe(true);
+    expect(pastDragThreshold(100, 100, 106, 106)).toBe(true); // 8.49 px
+  });
+
+  it('the mouse aims at the cell under it; a finger at the cell 48 px above it', () => {
+    expect(dragTargetCell(240, 176, false)).toEqual({ col: 7, row: 5 });
+    expect(dragTargetCell(240, 176 + 48, true)).toEqual({ col: 7, row: 5 });
+    expect(dragTargetCell(240, 40, true)).toBeNull(); // the lifted point is above the map
+  });
+
+  it('nothing while the pointer itself is over the HUD or off the canvas', () => {
+    expect(dragTargetCell(240, 500, true)).toBeNull();
+    expect(dragTargetCell(240, 500, false)).toBeNull();
+    expect(dragTargetCell(-5, 100, false)).toBeNull();
+  });
 });

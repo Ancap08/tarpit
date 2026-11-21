@@ -120,6 +120,8 @@ export function installGlobal(game: Phaser.Game): void {
     buildAt: (col, row, type) => scene().build({ col, row }, type),
     upgradeAt: (col, row) => scene().upgrade({ col, row }),
     sellAt: (col, row) => scene().sell({ col, row }),
+    moveAt: (fromCol, fromRow, toCol, toRow) => scene().move({ col: fromCol, row: fromRow }, { col: toCol, row: toRow }),
+    undoUpgradeAt: (col, row) => scene().undoUpgrade({ col, row }),
     setTargetingAt: (col, row, mode) => scene().setTargeting({ col, row }, mode),
     setSpeed: (speed) => scene().setSpeed(speed),
     speed: () => scene().speed,

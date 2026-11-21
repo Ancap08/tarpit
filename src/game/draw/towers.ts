@@ -3,10 +3,11 @@
 // thin green post with a bow arc on the side facing its target, Mortar a
 // short wide grey tube pointing at its target with a dark mouth, Fire Pot an
 // orange-red pot with a yellow flame. Upgraded towers get a gold ring.
-// Labels are Text objects (labels.ts).
+// Unlocked towers (built this setup phase, milestone 25a) get a pale dashed
+// outline round their cell. Labels are Text objects (labels.ts).
 
 import type Phaser from 'phaser';
-import { cellCenter, cellKey, MAP, nearestPathPoint, positionAlongPath, type Cell, type GameState, type Point, type TowerType } from '../../sim';
+import { CELL, cellCenter, cellKey, MAP, nearestPathPoint, positionAlongPath, type Cell, type GameState, type Point, type TowerType } from '../../sim';
 import { COLORS } from '../palette';
 
 /** Barrel length from the tower centre; shot tracers start at the muzzle. */
@@ -147,8 +148,34 @@ export function drawTowerShape(
   }
 }
 
-export function drawTowers(g: Phaser.GameObjects.Graphics, state: GameState, aim: Aim): void {
+/** The unlocked outline: 2 px pale dashes, DASH long with DASH gaps, inset 1 px so it stays inside the cell. */
+const OUTLINE_WIDTH = 2;
+const DASH = 4;
+/** Opacity of a tower being dragged to a new cell, at its origin. */
+export const DRAG_ORIGIN_ALPHA = 0.3;
+
+/** A dashed square round `cell` (milestone 25a): this tower is still free to move or remove. */
+export function drawUnlockedOutline(g: Phaser.GameObjects.Graphics, cell: Cell, alpha = 0.9): void {
+  const inset = OUTLINE_WIDTH / 2;
+  const x0 = cell.col * CELL + inset;
+  const y0 = cell.row * CELL + inset;
+  const len = CELL - OUTLINE_WIDTH;
+  g.lineStyle(OUTLINE_WIDTH, COLORS.unlockedOutline, alpha);
+  // Each side: dashes from the corner, so the four corners are drawn.
+  for (let d = 0; d < len; d += 2 * DASH) {
+    const e = Math.min(d + DASH, len);
+    g.lineBetween(x0 + d, y0, x0 + e, y0);
+    g.lineBetween(x0 + d, y0 + len, x0 + e, y0 + len);
+    g.lineBetween(x0, y0 + d, x0, y0 + e);
+    g.lineBetween(x0 + len, y0 + d, x0 + len, y0 + e);
+  }
+}
+
+/** Every tower; the one on `dimmed` (a tower being moved, milestone 25a) is drawn faint. */
+export function drawTowers(g: Phaser.GameObjects.Graphics, state: GameState, aim: Aim, dimmed: Cell | null = null): void {
   for (const tower of state.towers) {
-    drawTowerShape(g, tower.type, cellCenter(tower.cell), aim.angle(tower.cell), tower.upgraded);
+    const dim = dimmed !== null && dimmed.col === tower.cell.col && dimmed.row === tower.cell.row;
+    if (!tower.locked) drawUnlockedOutline(g, tower.cell, dim ? DRAG_ORIGIN_ALPHA : 0.9);
+    drawTowerShape(g, tower.type, cellCenter(tower.cell), aim.angle(tower.cell), tower.upgraded, dim ? DRAG_ORIGIN_ALPHA : 1);
   }
 }
