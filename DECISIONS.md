@@ -70,3 +70,26 @@ can change it; "Kyle" means Kyle decided.
   and simpler than a special case.
 - **Game state is mutated in place; `tick` returns nothing.** Default (Opus).
   Fine for a small game; the renderer reads the one state object.
+
+## 2026-11-21, milestone 2
+
+- **Sell refund uses integer math: `floor(spent * 7 / 10)`.** Default (Opus).
+  `90 * 0.7` in floating point is 62.999..., which would refund 62; the spec
+  example says 63.
+- **Combat step runs after movement and exit removal, before spawning.**
+  Default (Opus). A newly spawned enemy at distance 0 is not shot on its
+  spawn tick. Dead enemies are removed between towers, so one tower's kill is
+  not another's target in the same tick.
+- **Tower cooldowns freeze between waves and carry over.** Default (Opus).
+  Simplest reading; cosmetic in practice.
+- **Cannon splash can hit enemies outside the cannon's own range if they are
+  within the splash radius of the target.** Default (Opus). Matches the spec
+  text literally.
+- **A Tar Pit shot that kills applies no slow.** Default (Opus).
+- **Balance observations for milestone 6, not acted on yet** (Fable, from the
+  implementer's and verifier's reports): the sound build wins with 20 of 20
+  lives and 910 gold unspent; the lazy build loses on wave 3 against a target
+  of about wave 7; base Tar Pit range (80) equals the distance from eight of
+  the ten spots to the path, so it barely reaches, and spot 3 is 102 px from
+  the path so a base Tar Pit there reaches nothing. Numbers stay as specified
+  until the milestone 6 balance pass.
