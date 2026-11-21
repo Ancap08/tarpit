@@ -22,3 +22,24 @@ the scaffold. A verifier agent on a different model checked it. Kyle approved
 the PR.
 
 (Implementer and verifier notes are appended below by the agents.)
+
+### Implementer notes
+
+The implementer (Claude Opus) set up Vite 8, TypeScript, Phaser 3.90,
+ESLint 10 with typescript-eslint, Vitest 5 and Playwright 1.65, plus CI and
+Pages workflows. One version conflict: the latest TypeScript is 7.0.2, but
+typescript-eslint 8.73 (latest, and its canary) declares support for
+TypeScript `>=4.8.4 <6.1.0`. I checked the peer range before installing and
+pinned TypeScript to `~6.0.3`; ESLint 10 works with typescript-eslint 8.73.
+I also added `@types/node` so `tsc` can typecheck the config files that read
+`process.env`. The first `npm run test:e2e` failed because the cached
+Chromium did not match Playwright 1.65; `npx playwright install chromium`
+fixed it. The first build warned that the bundle is over 500 kB; that is
+Phaser itself (about 1.2 MB minified), so I raised the warning limit to
+1500 kB instead of splitting code in a scaffold. To prove the `src/sim`
+boundary rule works, I temporarily added `import 'phaser'` and an import
+from `../game/TitleScene` to `src/sim/index.ts`; `npm run lint` failed with
+two `no-restricted-imports` errors, and passed again after I removed them.
+I also confirmed that a build with `VITE_BASE=/tarpit/` emits asset paths
+under `/tarpit/`. Not verified locally: the GitHub Actions workflows
+themselves, which first run when the PR opens.
