@@ -320,3 +320,85 @@ Verifier: Claude Sonnet. Checked on branch `m3-rendering` against
 - Correction by the verifier: the implementer note about the mid-wave tick
   said 395; the coordinator chose 855 (four hp bars, Cannon splash). I
   rewrote that line.
+
+## 2026-11-21: milestone 4, build UI
+
+Roles: implementer Claude Opus, verifier Claude Sonnet, coordinator Claude
+Fable 5.1.
+
+### Implementer notes
+
+The implementer (Claude Opus) added the build UI: click an empty spot to get
+a build menu, click a tower to get an upgrade and sell panel. No sim changes;
+the scene calls `buildTower`, `upgradeTower` and `sellTower` only.
+
+- Modules: `src/game/input.ts` holds the pure geometry (spot hit radius 18,
+  what a click means, where a popup goes) with 9 unit tests in
+  `input.test.ts` (99 unit tests total). `ui/button.ts` is the HUD's old
+  `Button` class moved out, plus an optional right-aligned cost label, a
+  hover callback and show/hide, and a `ButtonStack` popup used by
+  `ui/buildMenu.ts` and `ui/towerPanel.ts`. The HUD refactor was a move, not
+  a rewrite; its buttons look and behave as before (the three existing
+  baselines should not change).
+- Click handling is geometric: a scene-level pointerdown asks
+  `classifyClick` whether the point is inside the open popup (its buttons
+  handle it, and a greyed button swallows it), on a spot (open the menu or
+  select the tower), or elsewhere (close). HUD clicks count as elsewhere, so
+  they close the popup and the HUD button still acts.
+- What went wrong: the first version always put the popup to the right of
+  the spot. Spot 2's panel then covered spot 4, so the brief's affordability
+  test (click spot 4 right after upgrading at spot 2) hit the panel instead.
+  Placement now tries right, left, below, above and takes the first side that
+  covers no build spot; a unit test checks that no menu or panel for any of
+  the ten spots covers a spot or leaves the map area. Spot 2's menu therefore
+  opens above it and its panel below it.
+- Spec gaps resolved: clicking the spot whose menu is already open keeps it
+  open. The range preview shows on hover even for a greyed button, so a
+  player can see what they are saving for. A tower being selected draws a
+  larger outline (radius 22) outside the gold upgrade ring. The cursor turns
+  into a pointer over spots. If the state changes under the UI (a test hook
+  builds on the active spot, or the selected tower is gone), the popup
+  closes on the next redraw.
+- Tests: `e2e/build-ui.spec.ts` (5 tests) builds a Musketeer at spot 2
+  through the menu and clears wave 1 (lives 14, gold 85, as with the API
+  build), upgrades (gold 45) and sells (gold 108) through the panel, checks
+  that a greyed Cannon does nothing, that Escape and clicks elsewhere close
+  the popup, that clicking spot 3 moves the menu, that a HUD click closes it
+  and still toggles speed, and that building works mid-wave. The
+  affordability test sets `state().gold = 45` after building and upgrading
+  (gold 10 at that point), as the brief allowed.
+- Visual frames: `build-menu.png` (spot 2 menu open, pointer on Cannon, its
+  90 px range preview) and `tower-selected.png` (upgraded Musketeer at spot
+  2, 125 px range, panel with greyed "Upgraded" and "Sell +63"). Local
+  screenshots were checked by eye; baselines come from the CI workflow.
+
+### Verifier notes
+
+Verifier: Claude Sonnet. Checked on branch `m4-build-ui` against
+`origin/main`.
+
+- Clean run (`rm -rf dist && npm ci && lint && typecheck && test && build &&
+  test:e2e`): exit 0; 99 unit tests, 19 e2e tests. `--repeat-each=3` over
+  `build-ui.spec.ts` plus the verifier spec: 33 of 33 passed, no flakes.
+- `git diff origin/main --stat -- src/sim` is empty. No `src/game` code
+  writes gold, lives, hp, towers or phase; the scene calls only
+  `buildTower`, `upgradeTower` and `sellTower`.
+- Scope: nothing from milestone 5. Only the listed features are present
+  (menu, panel, greying, hover range preview, spot hover, Escape, pointer
+  cursor). One small addition inside the panel feature: selecting a tower also
+  draws its range circle and a larger outline.
+- New probes in `e2e/build-ui-verifier.spec.ts` (6, all pass): greyed Upgrade
+  changes nothing even with 500 gold; Sell mid-wave removes the tower and the
+  wave keeps ticking; selling then clicking the same spot opens the build
+  menu; Start Wave works with a menu open and closes it; building with
+  exactly the cost leaves gold 0; for all ten spots every menu and panel
+  rectangle stays inside 0..960 and above y = 480.
+- Correction: the implementer note says 9 tests in `input.test.ts`; there are
+  10 (89 before plus 10 is the 99 total).
+- The statement that the three existing baselines do not change cannot be
+  checked locally (baselines are CI-only); CI must confirm it.
+- Readability, from the two local frames: the menu at spot 2 sits over the
+  path and covers part of it, so enemies passing there would be hidden while
+  it is open. The white Cannon range preview is faint on the light path and
+  grass. The greyed "Upgraded" text is dim grey on dark grey, legible but low
+  contrast. Observations only; art is a milestone 6 matter.

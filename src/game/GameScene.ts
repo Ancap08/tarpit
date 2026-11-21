@@ -4,28 +4,63 @@
 // 1/60 s, times the speed (1x or 2x), at most MAX_TICKS_PER_FRAME per frame.
 // In test mode (?test=1) update() runs no ticks; tests drive time with
 // advance() through window.__tarpit.step().
+//
+// Build UI: clicking an empty spot opens the build menu beside it; clicking a
+// tower selects it and opens the tower panel. Clicking anywhere else or
+// pressing Escape closes either. Both work in setup and mid-wave. The scene
+// changes the simulation only through its exported actions.
 
 import Phaser from 'phaser';
-import { buildTower, createGame, sellTower, startWave, tick, TICKS_PER_SECOND, upgradeTower } from '../sim';
+import {
+  buildTower,
+  createGame,
+  MAP,
+  sellTower,
+  startWave,
+  tick,
+  TICKS_PER_SECOND,
+  TOWER_DEFS,
+  towerAt,
+  towerStats,
+  upgradeTower,
+} from '../sim';
 import type { BuildResult, GameState, SellResult, StartWaveResult, TowerType, UpgradeResult } from '../sim';
 import { drawEnemies } from './draw/enemies';
 import { drawMap } from './draw/map';
 import { ShotEffects } from './draw/shots';
 import { Aim, drawTowers } from './draw/towers';
 import { Hud } from './hud';
+import { classifyClick, contains, spotAt, spotRect, SPOT_HIT_RADIUS, type Rect } from './input';
+import { COLORS } from './palette';
 import { isTestMode } from './testMode';
+import { BuildMenu } from './ui/buildMenu';
+import { TowerPanel } from './ui/towerPanel';
 
 const STEP_MS = 1000 / TICKS_PER_SECOND;
 const MAX_TICKS_PER_FRAME = 8;
 
 export type Speed = 1 | 2;
 
+export interface UiState {
+  activeSpot: number | null;
+  selectedSpot: number | null;
+  menuOpen: boolean;
+  panelOpen: boolean;
+}
+
 export class GameScene extends Phaser.Scene {
   state: GameState = createGame();
   speed: Speed = 1;
   private accMs = 0;
   private dynamic!: Phaser.GameObjects.Graphics;
+  private overlay!: Phaser.GameObjects.Graphics;
   private hud!: Hud;
+  private menu!: BuildMenu;
+  private panel!: TowerPanel;
+  /** Spot under the pointer (for the hover highlight), or null. */
+  private hoverSpot: number | null = null;
+  /** Tower type whose build-menu button is hovered (for the range preview), or null. */
+  private preview: TowerType | null = null;
   private shots = new ShotEffects();
   private aim = new Aim();
   private readonly autoTick = !isTestMode();
@@ -41,13 +76,99 @@ export class GameScene extends Phaser.Scene {
     this.shots = new ShotEffects();
     this.aim = new Aim();
 
+    this.hoverSpot = null;
+    this.preview = null;
+
+    // Draw order: map, overlay (spot highlights, range circles), towers and
+    // enemies, HUD, then the menu and panel on top.
     drawMap(this.add.graphics());
+    this.overlay = this.add.graphics();
     this.dynamic = this.add.graphics();
     this.hud = new Hud(this, {
       onStartWave: () => this.startWave(),
       onToggleSpeed: () => this.setSpeed(this.speed === 1 ? 2 : 1),
     });
+    this.menu = new BuildMenu(this, {
+      onBuild: (type) => this.buildFromMenu(type),
+      onPreview: (type) => {
+        this.preview = type;
+        this.redraw();
+      },
+    });
+    this.panel = new TowerPanel(this, {
+      onUpgrade: () => {
+        if (this.panel.spotId !== null) this.upgrade(this.panel.spotId);
+      },
+      onSell: () => {
+        const spot = this.panel.spotId;
+        if (spot === null) return;
+        this.closeUi();
+        this.sell(spot);
+      },
+    });
+
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.onPointerDown(p.x, p.y));
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => this.onPointerMove(p.x, p.y));
+    this.input.keyboard?.on('keydown-ESC', () => this.closeUi());
     this.redraw();
+  }
+
+  /** The open menu's or panel's box, if any. */
+  private openUiRect(): Rect | null {
+    return this.menu.rect ?? this.panel.rect;
+  }
+
+  private onPointerDown(x: number, y: number): void {
+    const target = classifyClick(x, y, this.openUiRect());
+    if (target.kind === 'ui') return; // the menu or panel buttons handle it
+    if (target.kind === 'spot') this.openSpot(target.spotId);
+    else this.closeUi();
+  }
+
+  private onPointerMove(x: number, y: number): void {
+    const ui = this.openUiRect();
+    const spot = ui && contains(ui, x, y) ? null : spotAt(x, y);
+    if (spot === this.hoverSpot) return;
+    this.hoverSpot = spot;
+    this.input.setDefaultCursor(spot === null ? 'default' : 'pointer');
+    this.redraw();
+  }
+
+  /** Open the build menu at an empty spot, or select the tower on it. */
+  openSpot(spotId: number): void {
+    this.closeUi();
+    if (towerAt(this.state, spotId)) this.panel.open(spotId, this.state);
+    else this.menu.open(spotId, this.state);
+    this.redraw();
+  }
+
+  closeUi(): void {
+    this.menu.close();
+    this.panel.close();
+    this.preview = null;
+    this.redraw();
+  }
+
+  private buildFromMenu(type: TowerType): void {
+    const spot = this.menu.spotId;
+    if (spot === null) return;
+    if (this.build(spot, type).ok) this.closeUi();
+  }
+
+  uiState(): UiState {
+    return {
+      activeSpot: this.menu.spotId,
+      selectedSpot: this.panel.spotId,
+      menuOpen: this.menu.spotId !== null,
+      panelOpen: this.panel.spotId !== null,
+    };
+  }
+
+  /** Every clickable rectangle by name: HUD buttons, `spot:<id>`, and open menu or panel buttons. */
+  uiRects(): Record<string, Rect> {
+    const rects: Record<string, Rect> = { ...this.hud.rects() };
+    MAP.buildSpots.forEach((_, id) => (rects[`spot:${id}`] = spotRect(id)));
+    return { ...rects, ...this.menu.rects(), ...this.panel.rects() };
   }
 
   update(_time: number, delta: number): void {
@@ -105,10 +226,6 @@ export class GameScene extends Phaser.Scene {
     return this.hud.strings();
   }
 
-  hudRects() {
-    return this.hud.rects();
-  }
-
   redraw(): void {
     if (!this.dynamic) return;
     this.aim.prune(this.state);
@@ -118,5 +235,46 @@ export class GameScene extends Phaser.Scene {
     drawEnemies(g, this.state);
     this.shots.draw(g);
     this.hud.update(this.state, this.speed);
+    this.redrawUi();
+  }
+
+  private redrawUi(): void {
+    // Keep the UI consistent if the state changed under it (for example a
+    // test hook built on the active spot).
+    if (this.menu.spotId !== null && towerAt(this.state, this.menu.spotId)) this.menu.close();
+    if (this.panel.spotId !== null && !towerAt(this.state, this.panel.spotId)) this.panel.close();
+    if (this.menu.spotId === null) this.preview = null;
+    this.menu.update(this.state);
+    this.panel.update(this.state);
+
+    const g = this.overlay;
+    g.clear();
+    const active = this.menu.spotId ?? this.panel.spotId;
+
+    if (this.hoverSpot !== null && this.hoverSpot !== active) {
+      const s = MAP.buildSpots[this.hoverSpot];
+      g.lineStyle(2, COLORS.spotHover, 0.9);
+      g.strokeCircle(s.x, s.y, SPOT_HIT_RADIUS);
+    }
+
+    const selected = this.panel.spotId === null ? undefined : towerAt(this.state, this.panel.spotId);
+    if (selected) this.rangeCircle(selected.spotId, towerStats(selected).range, COLORS.range);
+    if (this.menu.spotId !== null && this.preview) {
+      this.rangeCircle(this.menu.spotId, TOWER_DEFS[this.preview].base.range, COLORS.rangePreview);
+    }
+
+    if (active !== null) {
+      const s = MAP.buildSpots[active];
+      g.lineStyle(3, COLORS.spotActive, 1);
+      g.strokeCircle(s.x, s.y, selected ? SPOT_HIT_RADIUS + 4 : SPOT_HIT_RADIUS);
+    }
+  }
+
+  private rangeCircle(spotId: number, range: number, color: number): void {
+    const s = MAP.buildSpots[spotId];
+    this.overlay.fillStyle(color, 0.14);
+    this.overlay.fillCircle(s.x, s.y, range);
+    this.overlay.lineStyle(2, color, 0.7);
+    this.overlay.strokeCircle(s.x, s.y, range);
   }
 }

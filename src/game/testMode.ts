@@ -41,7 +41,8 @@ export function installGlobal(game: Phaser.Game): void {
     sell: (spotId) => scene().sell(spotId),
     setSpeed: (speed) => scene().setSpeed(speed),
     speed: () => scene().speed,
-    uiRects: () => scene().hudRects(),
+    uiRects: () => scene().uiRects() as ReturnType<TarpitTestApi['uiRects']>,
+    ui: () => scene().uiState(),
     hudText: () => scene().hudStrings(),
   };
   window.__tarpit = api;

@@ -1,0 +1,199 @@
+// Shared button: a filled box with a label, hover and pressed tints, and a
+// greyed disabled state that ignores clicks. Used by the HUD, the build menu
+// and the tower panel.
+//
+// A click is a pointerdown and pointerup on the same button. Pass `right` for
+// a two-part label (`text` on the left, `right` on the right, as in
+// "Musketeer      50"); otherwise `text` is centred.
+
+import Phaser from 'phaser';
+import type { Rect } from '../input';
+import { COLORS, FONT, TEXT } from '../palette';
+
+export interface ButtonOptions {
+  fontSize?: string;
+  /** Right-aligned second label; makes the main label left-aligned. */
+  right?: string;
+  /** Called with true when the pointer enters and false when it leaves (or the button hides). */
+  onHover?: (over: boolean) => void;
+}
+
+const PAD_X = 10;
+
+export class Button {
+  private readonly box: Phaser.GameObjects.Rectangle;
+  private readonly label: Phaser.GameObjects.Text;
+  private readonly rightLabel: Phaser.GameObjects.Text | null;
+  private readonly onHover?: (over: boolean) => void;
+  private r: Rect;
+  private enabled = true;
+  private hover = false;
+  private pressed = false;
+  private shown = true;
+
+  constructor(scene: Phaser.Scene, rect: Rect, text: string, onClick: () => void, options: ButtonOptions = {}) {
+    this.r = { ...rect };
+    this.onHover = options.onHover;
+    const style = { fontFamily: FONT, fontSize: options.fontSize ?? '18px', fontStyle: 'bold', color: TEXT.button };
+    this.box = scene.add.rectangle(0, 0, rect.width, rect.height, COLORS.button).setOrigin(0, 0);
+    if (options.right === undefined) {
+      this.label = scene.add.text(0, 0, text, style).setOrigin(0.5);
+      this.rightLabel = null;
+    } else {
+      this.label = scene.add.text(0, 0, text, style).setOrigin(0, 0.5);
+      this.rightLabel = scene.add.text(0, 0, options.right, style).setOrigin(1, 0.5);
+    }
+    this.moveTo(rect.x, rect.y);
+    this.refresh();
+
+    this.box.setInteractive({ useHandCursor: true });
+    this.box.on('pointerover', () => this.setHover(true));
+    this.box.on('pointerout', () => {
+      this.pressed = false;
+      this.setHover(false);
+    });
+    this.box.on('pointerdown', () => {
+      this.pressed = true;
+      this.refresh();
+    });
+    this.box.on('pointerup', () => {
+      const wasPressed = this.pressed;
+      this.pressed = false;
+      this.refresh();
+      if (wasPressed && this.enabled && this.shown) onClick();
+    });
+  }
+
+  get rect(): Rect {
+    return { ...this.r };
+  }
+
+  get text(): string {
+    return this.rightLabel?.text ? `${this.label.text}  ${this.rightLabel.text}` : this.label.text;
+  }
+
+  get isEnabled(): boolean {
+    return this.enabled;
+  }
+
+  /** Update the label(s) and whether the button responds to clicks. */
+  set(text: string, enabled: boolean, right?: string): void {
+    if (this.label.text !== text) this.label.setText(text);
+    if (this.rightLabel && right !== undefined && this.rightLabel.text !== right) this.rightLabel.setText(right);
+    if (this.enabled !== enabled) {
+      this.enabled = enabled;
+      this.refresh();
+    }
+  }
+
+  moveTo(x: number, y: number): void {
+    this.r.x = x;
+    this.r.y = y;
+    this.box.setPosition(x, y);
+    const mid = y + this.r.height / 2;
+    if (this.rightLabel) {
+      this.label.setPosition(x + PAD_X, mid);
+      this.rightLabel.setPosition(x + this.r.width - PAD_X, mid);
+    } else {
+      this.label.setPosition(x + this.r.width / 2, mid);
+    }
+  }
+
+  setShown(shown: boolean): void {
+    if (this.shown === shown) return;
+    this.shown = shown;
+    for (const o of [this.box, this.label, this.rightLabel]) o?.setVisible(shown);
+    if (this.box.input) this.box.input.enabled = shown;
+    if (!shown) {
+      // A hidden button gets no pointerout, so clear hover and press here.
+      this.pressed = false;
+      this.setHover(false);
+    }
+  }
+
+  private setHover(over: boolean): void {
+    const changed = this.hover !== over;
+    this.hover = over;
+    this.refresh();
+    if (changed) this.onHover?.(over);
+  }
+
+  private refresh(): void {
+    let fill: number = COLORS.button;
+    if (!this.enabled) fill = COLORS.buttonDisabled;
+    else if (this.pressed) fill = COLORS.buttonPressed;
+    else if (this.hover) fill = COLORS.buttonHover;
+    this.box.setFillStyle(fill);
+    this.box.setStrokeStyle(2, this.enabled ? COLORS.buttonEdge : COLORS.buttonEdgeDisabled);
+    const color = this.enabled ? TEXT.button : TEXT.buttonDisabled;
+    this.label.setColor(color);
+    this.rightLabel?.setColor(color);
+  }
+}
+
+export const STACK_BUTTON_WIDTH = 156;
+export const STACK_BUTTON_HEIGHT = 30;
+const STACK_GAP = 4;
+const STACK_PAD = 6;
+
+export interface StackItem {
+  text: string;
+  right: string;
+  onClick: () => void;
+  onHover?: (over: boolean) => void;
+}
+
+/**
+ * A small popup: buttons stacked vertically on a dark backing, opened beside
+ * a point. Used by the build menu and the tower panel.
+ */
+export class ButtonStack {
+  readonly buttons: Button[];
+  private readonly backing: Phaser.GameObjects.Rectangle;
+  private open = false;
+  readonly width: number;
+  readonly height: number;
+
+  constructor(scene: Phaser.Scene, items: StackItem[]) {
+    this.width = STACK_BUTTON_WIDTH + 2 * STACK_PAD;
+    this.height = 2 * STACK_PAD + items.length * STACK_BUTTON_HEIGHT + (items.length - 1) * STACK_GAP;
+    this.backing = scene.add
+      .rectangle(0, 0, this.width, this.height, COLORS.menuBg, 0.92)
+      .setOrigin(0, 0)
+      .setStrokeStyle(1.5, COLORS.menuEdge, 0.8)
+      .setVisible(false);
+    this.buttons = items.map((item) =>
+      new Button(scene, { x: 0, y: 0, width: STACK_BUTTON_WIDTH, height: STACK_BUTTON_HEIGHT }, item.text, item.onClick, {
+        fontSize: '16px',
+        right: item.right,
+        onHover: item.onHover,
+      }),
+    );
+    for (const b of this.buttons) b.setShown(false);
+  }
+
+  get isOpen(): boolean {
+    return this.open;
+  }
+
+  /** The backing's box while open, else null. Clicks inside it belong to the stack. */
+  get rect(): Rect | null {
+    return this.open ? { x: this.backing.x, y: this.backing.y, width: this.width, height: this.height } : null;
+  }
+
+  /** Show with the backing's top-left corner at (x, y). */
+  show(x: number, y: number): void {
+    this.backing.setPosition(x, y).setVisible(true);
+    this.buttons.forEach((b, i) => {
+      b.moveTo(x + STACK_PAD, y + STACK_PAD + i * (STACK_BUTTON_HEIGHT + STACK_GAP));
+      b.setShown(true);
+    });
+    this.open = true;
+  }
+
+  hide(): void {
+    this.backing.setVisible(false);
+    for (const b of this.buttons) b.setShown(false);
+    this.open = false;
+  }
+}
