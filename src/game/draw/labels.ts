@@ -1,5 +1,5 @@
-// Tower labels: a short name on a small dark pill under each tower
-// ("Musket", "Cannon", "Tar"), with "+" once upgraded. One Text object per
+// Tower labels: a short name (names.ts TOWER_SHORT_LABELS) on a small dark
+// pill under each tower, with "+" once upgraded. One Text object per
 // cell that has held a tower, created on first use and shown or hidden on
 // each redraw. Labels live in a layer made when TowerLabels is constructed,
 // so a label created later still draws under the HUD, panel and end screen.
@@ -12,17 +12,9 @@
 // shown label is hidden. So a row of towers shows every other label.
 
 import type Phaser from 'phaser';
-import { cellCenter, cellKey, type GameState, type Tower, type TowerType } from '../../sim';
+import { cellCenter, cellKey, type GameState, type Tower } from '../../sim';
+import { TOWER_SHORT_LABELS } from '../names';
 import { FONT, TEXT } from '../palette';
-
-export const LABEL_NAME: Record<TowerType, string> = {
-  musketeer: 'Musket',
-  cannon: 'Cannon',
-  tarpit: 'Tar',
-  longbow: 'Longbow',
-  mortar: 'Mortar',
-  firepot: 'Fire',
-};
 
 /** Top of a label, below the tower's centre: clears the 19 px upgrade ring and the Tar Pit blobs. */
 export const LABEL_OFFSET_Y = 22;
@@ -47,7 +39,7 @@ export function labelAbove(cy: number): boolean {
 }
 
 export function labelText(tower: Pick<Tower, 'type' | 'upgraded'>): string {
-  return LABEL_NAME[tower.type] + (tower.upgraded ? '+' : '');
+  return TOWER_SHORT_LABELS[tower.type] + (tower.upgraded ? '+' : '');
 }
 
 export interface LabelBox {
