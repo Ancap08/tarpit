@@ -108,3 +108,34 @@ Choices the spec left open, each the simplest reading:
 
 Result: the no-tower run loses on wave 2. Wave 1 leaks all 8 goblins (20 to
 12 lives); the 12th goblin of wave 2 takes lives to 0.
+
+### Verifier notes
+
+The verifier (Claude Sonnet) ran `rm -rf dist && npm ci && npm run lint &&
+npm run typecheck && npm test && npm run build && npm run test:e2e` from a
+clean state: exit 0, 28 unit tests in 4 files, 1 e2e test. I re-derived the
+numbers from `docs/DESIGN.md` without using the code:
+
+- Path length: 160 + 144 + 260 + 288 + 260 + 192 + 280 = 1584 px.
+- Full-path ticks: Goblin 60 px/s is 1 px/tick, so 1584 ticks. Wolf 120 px/s
+  is 2 px/tick, so 792. Troll 35 px/s is 35/60 px/tick, so
+  1584 x 60 / 35 = 2715.4, which rounds up to 2716 ticks.
+- Wave 1: the last (8th) goblin spawns on wave tick 7 x 60 = 420, does not
+  move that tick, and reaches 1584 px on wave tick 420 + 1584 = 2004. That
+  is the 2005th tick, so the wave clears after 2005 ticks. This matches the
+  test (2005; the headless test splits it as 100 + 1905).
+- No-tower run: wave 1 leaks 8 goblins, 20 to 12 lives. Wave 2's 12th goblin
+  spawns on wave tick 11 x 48 = 528 and exits on 528 + 1584 = 2112, taking
+  lives 12 - 12 = 0, so the phase is `lost` on wave 2 exactly then.
+
+I added 7 tests in `src/sim/verifier.test.ts` (same-tick group id order on
+wave 9, exact-distance and overshoot exit removal, `startWave` in `lost`,
+slow 0.5 giving 0.5 px/tick and a stale slow being ignored, win on clearing
+wave 10 and not on wave 9, and a wave-10 last-enemy exit at 1 life being a
+loss with no bonus). All pass; no code defects found, no code changed. The
+boundary rule fires: `import 'phaser'` in `src/sim/map.ts` failed lint with
+`no-restricted-imports`; reverted, tree clean. `src/sim` has no imports from
+phaser or `src/game`. Implementer notes match what I saw. Findings, not
+fixed: the README status line still says milestone 0 is in progress; and the
+spec does not say whether the wave-clear bonus is paid on the winning wave
+(the code pays it, and I assert that).
