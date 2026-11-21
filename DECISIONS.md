@@ -466,3 +466,21 @@ can change it; "Kyle" means Kyle decided.
   checkouts set their own port.
 - **Process rule: when two agents work in parallel worktrees, each gets its
   own `PW_PORT` in its brief.** Fable.
+
+## 2026-11-21, milestone 24 (targeting modes)
+
+- **Modes: first (default), last, strongest. Ties: first and last go to
+  the lower id; strongest goes to the enemy further along, then the lower
+  id. Eligibility (range, Mortar minimum range, flying) applies before the
+  mode. Changing the mode is free and allowed mid-wave; sell and rebuild
+  resets it; an upgrade keeps it.** From SCOPE-v4, tie details by Opus,
+  verified with independent geometry.
+- **"Strongest" is a situational tool, not a blanket setting.** Fable, on
+  the verifier's diagnosis: with every tower on strongest the combo build
+  loses on wave 5, because a hit enemy stops being the strongest and each
+  tower moves to a fresh one, so wounded enemies walk out (18 exits in
+  waves 1 to 4 against 3). Not a bug. The default stays first. Whether the
+  panel should hint at this is a v5 polish question.
+- **Panel is 214 x 146 with a third 13 px "Target: ..." button; labels
+  come from the names table.** Opus. The verifier's rename proof caught one
+  spec that hard-coded the labels; fixed.
