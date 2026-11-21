@@ -3,7 +3,7 @@
 // towers get a gold ring. Labels are Text objects (labels.ts).
 
 import type Phaser from 'phaser';
-import { cellCenter, cellKey, MAP, nearestPathPoint, positionAlongPath, type Cell, type GameState, type Point } from '../../sim';
+import { cellCenter, cellKey, MAP, nearestPathPoint, positionAlongPath, type Cell, type GameState, type Point, type TowerType } from '../../sim';
 import { COLORS } from '../palette';
 
 /** Barrel length from the tower centre; shot tracers start at the muzzle. */
@@ -34,44 +34,56 @@ export class Aim {
   }
 }
 
-function barrel(g: Phaser.GameObjects.Graphics, p: Point, angle: number, len: number, width: number, color: number): void {
-  g.lineStyle(width, color, 1);
+function barrel(g: Phaser.GameObjects.Graphics, p: Point, angle: number, len: number, width: number, color: number, alpha: number): void {
+  g.lineStyle(width, color, alpha);
   g.lineBetween(p.x, p.y, p.x + Math.cos(angle) * len, p.y + Math.sin(angle) * len);
+}
+
+/**
+ * One tower's shape at `p`, its barrel at `angle`. `alpha` scales every fill
+ * and line (1 for a placed tower, lower for the placement ghost).
+ */
+export function drawTowerShape(
+  g: Phaser.GameObjects.Graphics,
+  type: TowerType,
+  p: Point,
+  angle: number,
+  upgraded: boolean,
+  alpha = 1,
+): void {
+  if (upgraded) {
+    g.lineStyle(2, COLORS.upgradeRing, alpha);
+    g.strokeCircle(p.x, p.y, 19);
+  }
+
+  switch (type) {
+    case 'musketeer':
+      g.fillStyle(COLORS.musketeer, alpha);
+      g.fillRect(p.x - 13, p.y - 13, 26, 26);
+      g.lineStyle(2, COLORS.musketeerEdge, alpha);
+      g.strokeRect(p.x - 13, p.y - 13, 26, 26);
+      barrel(g, p, angle, BARREL_LENGTH, 4, COLORS.musketeerBarrel, alpha);
+      break;
+    case 'cannon':
+      g.fillStyle(COLORS.cannon, alpha);
+      g.fillCircle(p.x, p.y, 14);
+      g.lineStyle(2, COLORS.cannonEdge, alpha);
+      g.strokeCircle(p.x, p.y, 14);
+      barrel(g, p, angle, BARREL_LENGTH, 7, COLORS.cannonBarrel, alpha);
+      break;
+    case 'tarpit':
+      g.fillStyle(COLORS.tarpit, alpha);
+      g.fillCircle(p.x, p.y, 14);
+      g.fillCircle(p.x - 8, p.y + 6, 7);
+      g.fillCircle(p.x + 9, p.y + 5, 6);
+      g.fillStyle(COLORS.tarpitHighlight, 0.85 * alpha);
+      g.fillCircle(p.x - 5, p.y - 5, 3);
+      break;
+  }
 }
 
 export function drawTowers(g: Phaser.GameObjects.Graphics, state: GameState, aim: Aim): void {
   for (const tower of state.towers) {
-    const p = cellCenter(tower.cell);
-    const angle = aim.angle(tower.cell);
-
-    if (tower.upgraded) {
-      g.lineStyle(2, COLORS.upgradeRing, 1);
-      g.strokeCircle(p.x, p.y, 19);
-    }
-
-    switch (tower.type) {
-      case 'musketeer':
-        g.fillStyle(COLORS.musketeer, 1);
-        g.fillRect(p.x - 13, p.y - 13, 26, 26);
-        g.lineStyle(2, COLORS.musketeerEdge, 1);
-        g.strokeRect(p.x - 13, p.y - 13, 26, 26);
-        barrel(g, p, angle, BARREL_LENGTH, 4, COLORS.musketeerBarrel);
-        break;
-      case 'cannon':
-        g.fillStyle(COLORS.cannon, 1);
-        g.fillCircle(p.x, p.y, 14);
-        g.lineStyle(2, COLORS.cannonEdge, 1);
-        g.strokeCircle(p.x, p.y, 14);
-        barrel(g, p, angle, BARREL_LENGTH, 7, COLORS.cannonBarrel);
-        break;
-      case 'tarpit':
-        g.fillStyle(COLORS.tarpit, 1);
-        g.fillCircle(p.x, p.y, 14);
-        g.fillCircle(p.x - 8, p.y + 6, 7);
-        g.fillCircle(p.x + 9, p.y + 5, 6);
-        g.fillStyle(COLORS.tarpitHighlight, 0.85);
-        g.fillCircle(p.x - 5, p.y - 5, 3);
-        break;
-    }
+    drawTowerShape(g, tower.type, cellCenter(tower.cell), aim.angle(tower.cell), tower.upgraded);
   }
 }

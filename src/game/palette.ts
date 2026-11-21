@@ -8,7 +8,6 @@ export const COLORS = {
   grass: 0x5f7f4a,
   path: 0xc2a476,
   pathEdge: 0x9c7f55,
-  spotOutline: 0xe8efd8,
   spawn: 0x2b2420,
   spawnRim: 0x4a3e35,
   cottageWall: 0xe0cfa8,
@@ -58,10 +57,14 @@ export const COLORS = {
   buttonDisabled: 0x3a3d42,
   buttonEdge: 0xd9b77e,
   buttonEdgeDisabled: 0x5a5e66,
+  // The build bar's active pick: brighter fill, pale-yellow edge.
+  buttonPicked: 0xa0743f,
+  buttonEdgePicked: 0xfff2a8,
 
-  // Build UI: spot highlights, range circles, menu and panel backing
-  spotHover: 0xffffff,
-  spotActive: 0xfff2a8,
+  // Build UI: placement cell highlight, selection ring, range circles, panel backing
+  cellOk: 0x5fd35f,
+  cellBad: 0xe0473a,
+  selectRing: 0xfff2a8,
   // Range circles (selected tower and hover preview): pale yellow, reads on grass and path.
   range: 0xfff2a8,
   menuBg: 0x1b1f24,

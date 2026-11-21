@@ -1,6 +1,7 @@
 // Shared button: a filled box with a label, hover and pressed tints, and a
-// greyed disabled state that ignores clicks. Used by the HUD, the build menu
-// and the tower panel.
+// greyed disabled state that ignores clicks, and a "picked" state (brighter
+// fill, pale-yellow edge) for the build bar's active tower. Used by the HUD,
+// the build bar and the tower panel.
 //
 // A click is a pointerdown and pointerup on the same button. Pass `right` for
 // a two-part label (`text` on the left, `right` on the right, as in
@@ -30,6 +31,7 @@ export class Button {
   private hover = false;
   private pressed = false;
   private shown = true;
+  private picked = false;
 
   constructor(scene: Phaser.Scene, rect: Rect, text: string, onClick: () => void, options: ButtonOptions = {}) {
     this.r = { ...rect };
@@ -86,6 +88,17 @@ export class Button {
     }
   }
 
+  get isPicked(): boolean {
+    return this.picked;
+  }
+
+  /** Show the button as the active pick (highlighted) or not. */
+  setPicked(picked: boolean): void {
+    if (this.picked === picked) return;
+    this.picked = picked;
+    this.refresh();
+  }
+
   moveTo(x: number, y: number): void {
     this.r.x = x;
     this.r.y = y;
@@ -122,9 +135,12 @@ export class Button {
     let fill: number = COLORS.button;
     if (!this.enabled) fill = COLORS.buttonDisabled;
     else if (this.pressed) fill = COLORS.buttonPressed;
+    else if (this.picked) fill = COLORS.buttonPicked;
     else if (this.hover) fill = COLORS.buttonHover;
     this.box.setFillStyle(fill);
-    this.box.setStrokeStyle(2, this.enabled ? COLORS.buttonEdge : COLORS.buttonEdgeDisabled);
+    if (!this.enabled) this.box.setStrokeStyle(2, COLORS.buttonEdgeDisabled);
+    else if (this.picked) this.box.setStrokeStyle(3, COLORS.buttonEdgePicked);
+    else this.box.setStrokeStyle(2, COLORS.buttonEdge);
     const color = this.enabled ? TEXT.button : TEXT.buttonDisabled;
     this.label.setColor(color);
     this.rightLabel?.setColor(color);
@@ -145,7 +161,7 @@ export interface StackItem {
 
 /**
  * A small popup: buttons stacked vertically on a dark backing, opened beside
- * a point. Used by the build menu and the tower panel.
+ * a point. Used by the tower panel.
  */
 export class ButtonStack {
   readonly buttons: Button[];

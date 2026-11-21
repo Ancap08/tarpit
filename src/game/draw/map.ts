@@ -1,13 +1,12 @@
-// Static map: grass, the dirt path, spawn and exit markers, build spots.
+// Static map: grass, the dirt path, spawn and exit markers. No grid lines:
+// the build grid shows only through the placement highlight.
 // Drawn once into its own Graphics object.
 
 import type Phaser from 'phaser';
 import { MAP } from '../../sim';
-import { LEGACY_SPOT_CELLS, spotCenter } from '../legacySpots';
 import { COLORS } from '../palette';
 
 export const PATH_WIDTH = 40;
-export const SPOT_RADIUS = 18;
 
 /** Fill a thick polyline with round joins: a rectangle per segment plus a disc per waypoint. */
 function thickPath(g: Phaser.GameObjects.Graphics, width: number, color: number): void {
@@ -67,10 +66,4 @@ export function drawMap(g: Phaser.GameObjects.Graphics): void {
   thickPath(g, PATH_WIDTH, COLORS.path);
   spawnMarker(g);
   exitCottage(g);
-
-  g.lineStyle(1.5, COLORS.spotOutline, 0.55);
-  LEGACY_SPOT_CELLS.forEach((_, id) => {
-    const spot = spotCenter(id);
-    g.strokeCircle(spot.x, spot.y, SPOT_RADIUS);
-  });
 }

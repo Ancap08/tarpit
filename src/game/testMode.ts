@@ -1,10 +1,11 @@
 // Test mode (?test=1): time is frozen and window.__tarpit exposes hooks for
-// Playwright. Outside test mode window.__tarpit holds only the Phaser game.
+// Playwright. Outside test mode window.__tarpit holds the Phaser game and the
+// read-only uiRects(), so real-time tests and the demo recorder click the
+// HUD where it is drawn.
 
 import type Phaser from 'phaser';
-import { lazyBuild, soundBuild, WAVES, type BuildAction, type Cell, type Phase, type WaveScript } from '../sim';
+import { lazyBuild, soundBuild, WAVES, type BuildAction, type Phase, type WaveScript } from '../sim';
 import type { GameScene } from './GameScene';
-import { LEGACY_SPOT_CELLS } from './legacySpots';
 import type { TarpitTestApi } from './testGlobal';
 
 export function isTestMode(): boolean {
@@ -40,14 +41,15 @@ function runScript(scene: GameScene, script: WaveScript): Phase {
   return phase();
 }
 
-/** The cell for a legacy spot id, or an off-grid cell for an unknown id. */
-function legacyCell(spotId: number): Cell {
-  return LEGACY_SPOT_CELLS[spotId] ?? { col: -1, row: -1 };
+/** The GameScene's clickable rectangles, or none while it is not running (the title screen). */
+function uiRectsOf(game: Phaser.Game): ReturnType<TarpitTestApi['uiRects']> {
+  if (!game.scene.isActive('game')) return {} as ReturnType<TarpitTestApi['uiRects']>;
+  return (game.scene.getScene('game') as GameScene).uiRects() as ReturnType<TarpitTestApi['uiRects']>;
 }
 
 export function installGlobal(game: Phaser.Game): void {
   if (!isTestMode()) {
-    window.__tarpit = { game };
+    window.__tarpit = { game, uiRects: () => uiRectsOf(game) };
     return;
   }
 
@@ -72,15 +74,15 @@ export function installGlobal(game: Phaser.Game): void {
         game.scene.getScene('title').scene.start('game');
       }),
     startWave: () => scene().startWave(),
-    // Legacy spot ids translate to their cells (legacySpots.ts); an id with
-    // no cell gives a cell outside the grid, which the sim refuses.
-    build: (spotId, type) => scene().build(legacyCell(spotId), type),
-    upgrade: (spotId) => scene().upgrade(legacyCell(spotId)),
-    sell: (spotId) => scene().sell(legacyCell(spotId)),
     buildAt: (col, row, type) => scene().build({ col, row }, type),
+    upgradeAt: (col, row) => scene().upgrade({ col, row }),
+    sellAt: (col, row) => scene().sell({ col, row }),
     setSpeed: (speed) => scene().setSpeed(speed),
     speed: () => scene().speed,
-    uiRects: () => scene().uiRects() as ReturnType<TarpitTestApi['uiRects']>,
+    uiRects: () => {
+      scene(); // throws before startGame(), as the other hooks do
+      return uiRectsOf(game);
+    },
     ui: () => scene().uiState(),
     hudText: () => scene().hudStrings(),
     endScreen: () => scene().endScreenKind(),
