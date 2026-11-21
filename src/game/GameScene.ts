@@ -40,7 +40,7 @@ import {
   towerStats,
   upgradeTower,
 } from '../sim';
-import type { BuildResult, Cell, GameState, SellResult, StartWaveResult, TowerType, UpgradeResult } from '../sim';
+import type { BuildResult, Cell, GameState, SellResult, StartWaveResult, TowerLevelStats, TowerType, UpgradeResult } from '../sim';
 import { drawEnemies } from './draw/enemies';
 import { TowerLabels } from './draw/labels';
 import { drawMap } from './draw/map';
@@ -76,6 +76,8 @@ const GHOST_ALPHA = 0.6;
 /** Placement cell highlight: fill opacity and outline width. */
 const CELL_FILL_ALPHA = 0.25;
 const CELL_LINE = 2;
+/** Dashes in the Mortar's minimum-range circle (each dash half of its slot). */
+const MIN_RANGE_DASHES = 24;
 
 export class GameScene extends Phaser.Scene {
   state: GameState = createGame();
@@ -320,7 +322,7 @@ export class GameScene extends Phaser.Scene {
 
     const selected = this.panel.cell === null ? undefined : towerAt(this.state, this.panel.cell);
     if (selected) {
-      this.rangeCircle(selected.cell, towerStats(selected).range);
+      this.rangeCircles(selected.cell, towerStats(selected));
       const s = cellCenter(selected.cell);
       g.lineStyle(3, COLORS.selectRing, 1);
       g.strokeCircle(s.x, s.y, 22);
@@ -336,7 +338,7 @@ export class GameScene extends Phaser.Scene {
       g.strokeRect(r.x + CELL_LINE / 2, r.y + CELL_LINE / 2, CELL - CELL_LINE, CELL - CELL_LINE);
       // A blocked cell shows only the red tint: no ghost, no range.
       if (hoverBuildable) {
-        this.rangeCircle(hover, TOWER_DEFS[this.pick].base.range);
+        this.rangeCircles(hover, TOWER_DEFS[this.pick].base);
         drawTowerShape(g, this.pick, cellCenter(hover), this.aim.angle(hover), false, GHOST_ALPHA);
       }
     }
@@ -348,12 +350,26 @@ export class GameScene extends Phaser.Scene {
     this.input.setDefaultCursor(cursor);
   }
 
-  /** A tower's reach: faint fill, strong pale-yellow edge that reads on grass and path. */
-  private rangeCircle(cell: Cell, range: number): void {
+  /**
+   * A tower's reach: faint fill, strong pale-yellow edge that reads on grass
+   * and path. A tower with a minimum range (the Mortar) also gets a dashed
+   * muted-red circle at that minimum.
+   */
+  private rangeCircles(cell: Cell, stats: TowerLevelStats): void {
     const s = cellCenter(cell);
-    this.overlay.fillStyle(COLORS.range, 0.12);
-    this.overlay.fillCircle(s.x, s.y, range);
-    this.overlay.lineStyle(2, COLORS.range, 0.9);
-    this.overlay.strokeCircle(s.x, s.y, range);
+    const g = this.overlay;
+    g.fillStyle(COLORS.range, 0.12);
+    g.fillCircle(s.x, s.y, stats.range);
+    g.lineStyle(2, COLORS.range, 0.9);
+    g.strokeCircle(s.x, s.y, stats.range);
+    if (stats.minRange > 0) {
+      g.lineStyle(2, COLORS.minRange, 1);
+      for (let i = 0; i < MIN_RANGE_DASHES; i++) {
+        const a = (i * 2 * Math.PI) / MIN_RANGE_DASHES;
+        g.beginPath();
+        g.arc(s.x, s.y, stats.minRange, a, a + Math.PI / MIN_RANGE_DASHES);
+        g.strokePath();
+      }
+    }
   }
 }

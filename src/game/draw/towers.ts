@@ -1,6 +1,9 @@
 // Towers: Musketeer blue square with a barrel, Cannon grey circle with a thick
-// barrel, Tar Pit dark brown tar blob with a glossy highlight. Upgraded
-// towers get a gold ring. Labels are Text objects (labels.ts).
+// barrel, Tar Pit dark brown tar blob with a glossy highlight, Longbow a tall
+// thin green post with a bow arc on the side facing its target, Mortar a
+// short wide grey tube pointing at its target with a dark mouth, Fire Pot an
+// orange-red pot with a yellow flame. Upgraded towers get a gold ring.
+// Labels are Text objects (labels.ts).
 
 import type Phaser from 'phaser';
 import { cellCenter, cellKey, MAP, nearestPathPoint, positionAlongPath, type Cell, type GameState, type Point, type TowerType } from '../../sim';
@@ -8,6 +11,20 @@ import { COLORS } from '../palette';
 
 /** Barrel length from the tower centre; shot tracers start at the muzzle. */
 export const BARREL_LENGTH = 22;
+
+/** Where each tower's shot starts, in px from its centre towards the target. */
+export const MUZZLE: Record<TowerType, number> = {
+  musketeer: BARREL_LENGTH,
+  cannon: BARREL_LENGTH,
+  tarpit: BARREL_LENGTH,
+  longbow: 12, // the bow arc
+  mortar: 13, // the tube mouth
+  firepot: 0, // the flame (straight up), so the flash starts at the pot
+};
+
+/** Mortar tube: 26 x 14, a capsule along the aim (centre line 12 px, round 7 px ends). */
+const TUBE_HALF = 6;
+const TUBE_R = 7;
 
 /** Barrel angle per tower cell (keyed by cellKey), in radians. Starts aimed at the path; follows each shot. */
 export class Aim {
@@ -79,13 +96,53 @@ export function drawTowerShape(
       g.fillStyle(COLORS.tarpitHighlight, 0.85 * alpha);
       g.fillCircle(p.x - 5, p.y - 5, 3);
       break;
-    case 'longbow':
-    case 'mortar':
+    case 'longbow': {
+      g.fillStyle(COLORS.longbow, alpha);
+      g.fillRect(p.x - 5, p.y - 13, 10, 26);
+      g.lineStyle(1.5, COLORS.longbowEdge, alpha);
+      g.strokeRect(p.x - 5, p.y - 13, 10, 26);
+      // Bow: an arc of radius 12 centred on the tower, 100 degrees wide,
+      // bulging towards the target, with a pale string across its ends.
+      const half = (50 * Math.PI) / 180;
+      const end = (a: number) => ({ x: p.x + Math.cos(a) * 12, y: p.y + Math.sin(a) * 12 });
+      const a0 = end(angle - half);
+      const a1 = end(angle + half);
+      g.lineStyle(1, COLORS.longbowString, 0.9 * alpha);
+      g.lineBetween(a0.x, a0.y, a1.x, a1.y);
+      g.lineStyle(3, COLORS.longbowBow, alpha);
+      g.beginPath();
+      g.arc(p.x, p.y, 12, angle - half, angle + half);
+      g.strokePath();
+      break;
+    }
+    case 'mortar': {
+      const dx = Math.cos(angle);
+      const dy = Math.sin(angle);
+      const back = { x: p.x - dx * TUBE_HALF, y: p.y - dy * TUBE_HALF };
+      const front = { x: p.x + dx * TUBE_HALF, y: p.y + dy * TUBE_HALF };
+      // Edge first (1.5 px wider all round), then the body on top.
+      for (const [color, r] of [
+        [COLORS.mortarEdge, TUBE_R + 1.5],
+        [COLORS.mortar, TUBE_R],
+      ] as const) {
+        g.fillStyle(color, alpha);
+        g.fillCircle(back.x, back.y, r);
+        g.fillCircle(front.x, front.y, r);
+        g.lineStyle(r * 2, color, alpha);
+        g.lineBetween(back.x, back.y, front.x, front.y);
+      }
+      g.fillStyle(COLORS.mortarMouth, alpha);
+      g.fillCircle(front.x, front.y, 4.5);
+      break;
+    }
     case 'firepot':
-      // Milestone 11 placeholder: a plain grey circle until the real
-      // Longbow, Mortar and Fire Pot shapes land.
-      g.fillStyle(COLORS.placeholderTower, alpha);
-      g.fillCircle(p.x, p.y, 12);
+      g.fillStyle(COLORS.firepot, alpha);
+      g.fillCircle(p.x, p.y, 13);
+      g.lineStyle(2, COLORS.firepotEdge, alpha);
+      g.strokeCircle(p.x, p.y, 13);
+      // Flame: a yellow triangle standing on the pot's centre, its tip just above the rim.
+      g.fillStyle(COLORS.firepotFlame, alpha);
+      g.fillTriangle(p.x - 6, p.y + 1, p.x + 6, p.y + 1, p.x, p.y - 16);
       break;
   }
 }
