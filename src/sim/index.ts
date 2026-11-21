@@ -5,3 +5,6 @@ export * from './enemies';
 export * from './waves';
 export * from './game';
 export * from './headless';
+export * from './towers';
+export * from './combat';
+export * from './actions';

@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "sim": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/simulate.ts"
   },
   "dependencies": {
     "phaser": "^3.90.0"

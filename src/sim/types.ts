@@ -49,6 +49,41 @@ export interface WaveDef {
   groups: readonly GroupDef[];
 }
 
+export type TowerType = 'musketeer' | 'cannon' | 'tarpit';
+
+/** Stats for one level (base or upgraded) of a tower type. */
+export interface TowerLevelStats {
+  /** Pixels, measured from the build spot to the enemy position, inclusive. */
+  range: number;
+  damage: number;
+  /** Shots per second. */
+  fireRate: number;
+  /** Pixels around the target that also take full damage; 0 for no splash. */
+  splashRadius: number;
+  /** Slow strength in [0, 1); 0 for no slow. */
+  slow: number;
+  /** Slow duration in seconds; 0 for no slow. */
+  slowDuration: number;
+}
+
+export interface TowerDef {
+  cost: number;
+  upgradeCost: number;
+  base: TowerLevelStats;
+  upgraded: TowerLevelStats;
+}
+
+export interface Tower {
+  /** Build spot id (index into MAP.buildSpots). One tower per spot. */
+  spotId: number;
+  type: TowerType;
+  upgraded: boolean;
+  /** Ticks until the tower may fire again; 0 means ready. */
+  cooldownTicks: number;
+  /** Gold spent on this tower (build plus upgrade); sell refunds 70%. */
+  spent: number;
+}
+
 export type Phase = 'setup' | 'wave' | 'won' | 'lost';
 
 export interface GameState {
@@ -67,6 +102,8 @@ export interface GameState {
   enemies: Enemy[];
   /** Id for the next enemy spawned. */
   nextEnemyId: number;
+  /** Built towers, kept sorted by spotId (the order they fire in). */
+  towers: Tower[];
 }
 
 export interface WavePreviewEntry {

@@ -12,22 +12,33 @@
 //      active), then count down slow timers.
 //   2. Remove enemies at or past the exit; each costs 1 life.
 //      Lives <= 0 -> phase 'lost' at once, nothing else happens this tick.
-//   3. Spawn enemies whose spawn tick equals the current waveTick, at
-//      distance 0. A new enemy does not move on the tick it spawns.
-//   4. Advance waveTick and tick.
-//   5. If every enemy of the wave has spawned and none are alive, pay the
+//   3. Towers fire (combat.ts), in spotId order. Each tower counts its
+//      cooldown down by 1 if above 0; at 0 with a target in range it fires
+//      and its cooldown becomes round(60 / fireRate). Enemies at hp <= 0 are
+//      removed and pay their bounty before the next tower acts, so a later
+//      tower never targets an enemy killed this tick. A new slow first
+//      affects movement on the next tick.
+//   4. Spawn enemies whose spawn tick equals the current waveTick, at
+//      distance 0. A new enemy does not move or get shot on its spawn tick.
+//   5. Advance waveTick and tick.
+//   6. If every enemy of the wave has spawned and none are alive, pay the
 //      clear bonus and go to 'setup' (or 'won' after the last wave).
+//
+// Towers only act during wave ticks; in 'setup' cooldowns stay where they
+// are. Build, upgrade and sell (actions.ts) happen between ticks.
 //
 // So the first enemy of a group with delay 0 spawns during the first tick()
 // after startWave (waveTick 0), and an enemy spawned at waveTick k is at
 // distance speed/60 * n after the tick with waveTick k + n.
 
+import { fireTowers } from './combat';
 import { ENEMY_STATS } from './enemies';
 import { MAP, pathLength } from './map';
+import { secondsToTicks, TICKS_PER_SECOND } from './time';
 import type { GameState, GroupDef } from './types';
 import { WAVES } from './waves';
 
-export const TICKS_PER_SECOND = 60;
+export { secondsToTicks, TICKS_PER_SECOND };
 export const START_GOLD = 100;
 export const START_LIVES = 20;
 export const WAVE_CLEAR_BONUS = 25;
@@ -43,12 +54,8 @@ export function createGame(): GameState {
     spawnedPerGroup: [],
     enemies: [],
     nextEnemyId: 0,
+    towers: [],
   };
-}
-
-/** Seconds to the nearest whole tick. */
-export function secondsToTicks(seconds: number): number {
-  return Math.round(seconds * TICKS_PER_SECOND);
 }
 
 /** waveTick on which enemy `index` (0-based) of `group` spawns. */
@@ -84,6 +91,7 @@ export function tick(state: GameState): void {
     state.phase = 'lost';
     return;
   }
+  fireTowers(state);
   spawnDueEnemies(state);
   state.waveTick += 1;
   state.tick += 1;
