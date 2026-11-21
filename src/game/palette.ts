@@ -23,6 +23,10 @@ export const COLORS = {
   wolfEdge: 0x5c5c5c,
   troll: 0x7a5232,
   trollEdge: 0x4a311c,
+  // Harpy ground shadow (drawn at low alpha) and the Shieldbearer's shield mark.
+  shadow: 0x000000,
+  shieldMark: 0xa7adb4,
+  shieldMarkEdge: 0x3a3e44,
   // Hp bar: dark border, then green above 50%, orange above 25%, red below.
   hpBorder: 0x15171a,
   hpFill: 0x5fd35f,

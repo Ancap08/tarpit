@@ -1,17 +1,38 @@
 // One Phaser Sprite per live enemy (milestone 16), driven by the simulation
 // state on every redraw and by its events after every tick (effects.ts).
 //
-// Texture by type (sheets.ts), scale 2 (Goblin, Wolf) or 3 (Troll), facing
-// from the last tick's movement (facing.ts), walk animation at 10 fps in
-// play and frozen on the cycle's first frame in test mode. Sprites live in
-// one Layer above the path and towers and below the shot effects, hp bars,
-// labels and HUD; inside it they sort by y, so lower enemies draw in front.
+// Texture by type (sheets.ts), scale 2 (Goblin, Wolf, Harpy, Shieldbearer)
+// or 3 (Troll), facing from the last tick's movement (facing.ts), walk
+// animation at 10 fps in play and frozen on the cycle's first frame in test
+// mode. Walkers live in one Layer above the path and towers and below the
+// shot effects, hp bars, labels and HUD; inside it they sort by y, so lower
+// enemies draw in front.
+//
+// Milestone 22: flyers (Harpy) live in a second, air Layer that GameScene
+// adds after the tower labels (setAirLayer), so they draw above every walker
+// and every label. A flyer is drawn `lift` px above its path position with a
+// gentle bob in play (frozen in test mode); its ground shadow is drawn with
+// the status rings (draw/enemies.ts). Flyers never take a tar or burn tint,
+// only the hit flash. A Shieldbearer carries a small grey shield mark on its
+// left, drawn just in front of its sprite; a halved shot shows only the
+// usual hit flash.
 
 import Phaser from 'phaser';
 import { ENEMY_STATS, enemyPosition, type Enemy, type EnemyType, type GameEvent, type GameState } from '../../sim';
-import { DEATH_MS, burnPulse, FLAME_EVERY, HIT_FLASH_MS, Particles, statusTint, TINT } from './effects';
+import { bobOffset, DEATH_MS, burnPulse, FLAME_EVERY, HIT_FLASH_MS, Particles, statusTint, TINT } from './effects';
 import { facingAt } from './facing';
+import { COLORS } from '../palette';
 import { FACINGS, SHEETS, walkAnimKey, WALK_FPS, type Facing } from './sheets';
+
+/**
+ * Shield mark (Shieldbearer): a 6 x 6 rounded rect, radius 2, with a 1 px
+ * dark edge, centred SHIELD_DX px left of and SHIELD_DY px below the sprite
+ * centre, over the edge of the body.
+ */
+export const SHIELD_SIZE = 6;
+export const SHIELD_DX = -11;
+export const SHIELD_DY = 3;
+
 
 /** What the test hook animState(enemyId) reports. */
 export interface AnimState {
@@ -28,7 +49,10 @@ export interface AnimState {
 
 interface View {
   sprite: Phaser.GameObjects.Sprite;
+  /** The Shieldbearer's shield mark, drawn in front of the sprite; null for other types. */
+  shield: Phaser.GameObjects.Graphics | null;
   type: EnemyType;
+  flying: boolean;
   facing: Facing;
   /** Play: hit flash ends at this scene time. Test: set by a hit, cleared on the next tick. */
   hitUntil: number;
@@ -67,6 +91,8 @@ function ensureAnims(scene: Phaser.Scene): void {
 export class EnemySprites {
   private readonly views = new Map<number, View>();
   private readonly layer: Phaser.GameObjects.Layer;
+  /** Flyers' layer, above the labels (setAirLayer); the walkers' layer until set. */
+  private airLayer: Phaser.GameObjects.Layer;
   private readonly particles: Particles | null;
 
   constructor(
@@ -75,7 +101,17 @@ export class EnemySprites {
   ) {
     ensureAnims(scene);
     this.layer = scene.add.layer();
+    this.airLayer = this.layer;
     this.particles = frozen ? null : new Particles(scene);
+  }
+
+  /**
+   * Give flyers their own layer. GameScene calls this right after creating
+   * the tower labels, with a layer added then, so flyers draw above every
+   * walker and label but below the HUD, panel and end screen.
+   */
+  setAirLayer(layer: Phaser.GameObjects.Layer): void {
+    this.airLayer = layer;
   }
 
   /** Call when a new tick's events arrive: per-tick test flags reset. */
@@ -111,6 +147,7 @@ export class EnemySprites {
     const dead = SHEETS[v.type].deadFrame;
     if (dead !== undefined) v.sprite.setFrame(dead);
     v.sprite.clearTint();
+    v.shield?.setVisible(false);
     this.particles?.puff(v.sprite.x, v.sprite.y);
     this.scene.tweens.add({
       targets: v.sprite,
@@ -126,6 +163,7 @@ export class EnemySprites {
     if (!v) return;
     this.scene.tweens.killTweensOf(v.sprite);
     v.sprite.destroy();
+    v.shield?.destroy();
     this.views.delete(id);
   }
 
@@ -142,11 +180,24 @@ export class EnemySprites {
 
   private create(enemy: Enemy): View {
     const sheet = SHEETS[enemy.type];
+    const stats = ENEMY_STATS[enemy.type];
     const sprite = this.scene.add.sprite(0, 0, sheet.key, sheet.walk.right.frames[0]).setScale(sheet.scale);
-    this.layer.add(sprite);
+    (stats.flying ? this.airLayer : this.layer).add(sprite);
+    let shield: Phaser.GameObjects.Graphics | null = null;
+    if (stats.shield) {
+      const h = SHIELD_SIZE / 2;
+      shield = this.scene.add.graphics();
+      shield.fillStyle(COLORS.shieldMarkEdge, 1);
+      shield.fillRoundedRect(-h - 1, -h - 1, SHIELD_SIZE + 2, SHIELD_SIZE + 2, 3);
+      shield.fillStyle(COLORS.shieldMark, 1);
+      shield.fillRoundedRect(-h, -h, SHIELD_SIZE, SHIELD_SIZE, 2);
+      this.layer.add(shield);
+    }
     const view: View = {
       sprite,
+      shield,
       type: enemy.type,
+      flying: stats.flying,
       facing: 'right',
       hitUntil: -1,
       hitThisTick: false,
@@ -177,8 +228,15 @@ export class EnemySprites {
 
   private update(v: View, enemy: Enemy, timeScale: number): void {
     const { x, y } = enemyPosition(enemy);
-    v.sprite.setPosition(x, y);
+    const lift = SHEETS[v.type].lift ?? 0;
+    const bob = v.flying && !this.frozen ? bobOffset(this.scene.time.now, enemy.id) : 0;
+    v.sprite.setPosition(x, y - lift + bob);
     v.sprite.setDepth(y);
+    if (v.shield) {
+      v.shield.setPosition(x + SHIELD_DX, y + SHIELD_DY);
+      // Just in front of its own sprite, behind any walker lower on screen.
+      v.shield.setDepth(y + 0.5);
+    }
     this.setFacing(v, facingAt(enemy.distance, this.step(enemy)));
     v.sprite.anims.timeScale = timeScale;
     v.burning = (enemy.burnTicksLeft ?? 0) > 0;
@@ -187,12 +245,14 @@ export class EnemySprites {
 
     if (this.isHit(v)) {
       v.sprite.setTintFill(TINT.flash);
+    } else if (v.flying) {
+      v.sprite.clearTint(); // flyers are never tarred or burned
     } else {
       const tint = statusTint(v.burning, v.slowed, this.frozen ? 1 : burnPulse(this.scene.time.now));
       if (tint === null) v.sprite.clearTint();
       else v.sprite.setTint(tint);
     }
-    if (v.burning && this.particles && v.redraws % FLAME_EVERY === 0) {
+    if (v.burning && !v.flying && this.particles && v.redraws % FLAME_EVERY === 0) {
       this.particles.flicker(x + Phaser.Math.Between(-6, 6), y - 6);
     }
   }

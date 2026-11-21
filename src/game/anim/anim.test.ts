@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createGame, buildTower, startWave, tick } from '../../sim';
-import { EventCursor, statusTint, TINT } from './effects';
+import { BOB_PX, bobOffset, EventCursor, statusTint, TINT } from './effects';
 import { facingAt, facingOf } from './facing';
 import { SHEETS, walkAnimKey } from './sheets';
 
@@ -32,6 +32,28 @@ describe('sheets', () => {
     expect(walkAnimKey('wolf', 'up')).toBe('wolf-walk');
     expect(walkAnimKey('goblin', 'up')).toBe('goblin-walk-up');
     expect([SHEETS.goblin.scale, SHEETS.wolf.scale, SHEETS.troll.scale]).toEqual([2, 2, 3]);
+  });
+
+  it('milestone 22: Harpy (BlueBat) and Shieldbearer (Knight) are four-way 16 x 16 sheets at 2x; only the Harpy is lifted', () => {
+    for (const type of ['harpy', 'shieldbearer'] as const) {
+      expect(SHEETS[type]).toMatchObject({ key: type, frameWidth: 16, frameHeight: 16, scale: 2, sideOnly: false });
+      expect(SHEETS[type].walk.left).toEqual({ frames: [2, 6, 10, 14], flipX: false });
+      expect(SHEETS[type].walk.right).toEqual({ frames: [3, 7, 11, 15], flipX: false });
+      expect(walkAnimKey(type, 'down')).toBe(`${type}-walk-down`);
+    }
+    expect(SHEETS.harpy.lift).toBe(16);
+    expect(SHEETS.harpy.deadFrame).toBeUndefined();
+    expect(SHEETS.shieldbearer.lift ?? 0).toBe(0);
+    expect(SHEETS.shieldbearer.deadFrame).toBe(24);
+  });
+});
+
+describe('harpy bob', () => {
+  it('stays within BOB_PX of the lifted position and is not the same for every id', () => {
+    const offsets = Array.from({ length: 60 }, (_, i) => bobOffset(i * 37, 3));
+    expect(Math.max(...offsets.map(Math.abs))).toBe(BOB_PX);
+    expect(offsets.every(Number.isInteger)).toBe(true);
+    expect(bobOffset(0, 0)).not.toBe(bobOffset(0, 1));
   });
 });
 

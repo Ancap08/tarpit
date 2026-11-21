@@ -67,6 +67,15 @@ export function statusTint(burning: boolean, slowed: boolean, pulse: number): nu
   return slowed ? base : null;
 }
 
+/** Harpy bob in play (milestone 22): amplitude in px and period in ms. Test mode has no bob. */
+export const BOB_PX = 2;
+export const BOB_MS = 900;
+
+/** Vertical bob offset at scene time `ms` for the enemy with this id (ids desync the bobs). */
+export function bobOffset(ms: number, id: number): number {
+  return Math.round(BOB_PX * Math.sin(((ms + id * 157) / BOB_MS) * 2 * Math.PI));
+}
+
 /** Burn pulse at time `ms`: 0..1 and back, about three times a second. */
 export function burnPulse(ms: number): number {
   return 0.5 + 0.5 * Math.sin((ms / 1000) * 2 * Math.PI * 3);

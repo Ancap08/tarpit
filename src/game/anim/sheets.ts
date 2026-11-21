@@ -8,6 +8,8 @@
 
 import type { EnemyType } from '../../sim';
 import goblinUrl from '../../../assets/sprites/goblin.png?url';
+import harpyUrl from '../../../assets/sprites/harpy.png?url';
+import shieldbearerUrl from '../../../assets/sprites/shieldbearer.png?url';
 import trollUrl from '../../../assets/sprites/troll.png?url';
 import wolfUrl from '../../../assets/sprites/wolf.png?url';
 
@@ -37,6 +39,11 @@ export interface SheetLayout {
   sideOnly: boolean;
   /** A lying-down frame for the death effect, if the sheet has one. */
   deadFrame?: number;
+  /**
+   * Flying types only: pixels the sprite's centre is drawn above its path
+   * position (where its ground shadow sits). 0 or absent for walkers.
+   */
+  lift?: number;
 }
 
 /**
@@ -73,6 +80,26 @@ export const SHEETS: Readonly<Record<EnemyType, SheetLayout>> = {
   // Cyclope: 64x64, 4 rows x 4 columns of 16x16, walk only. 3x so the Troll
   // reads bigger than the Goblin (DECISIONS.md, reorder after the art spike).
   troll: { key: 'troll', url: trollUrl, frameWidth: 16, frameHeight: 16, scale: 3, walk: fourWay(), sideOnly: false },
+  // BlueBat (milestone 22): 64x64, 4 rows x 4 columns of 16x16, the same
+  // column order (down, up, left, right: the eyes show in column 0, not in
+  // column 1; the side views have the eye left of centre in column 2 and
+  // right of centre in column 3). Rows 0 and 3 wings up, rows 1 and 2 wings
+  // folded, so the walk cycle is a flap. No dead frame. Drawn 16 px above
+  // its path position, over a ground shadow.
+  harpy: { key: 'harpy', url: harpyUrl, frameWidth: 16, frameHeight: 16, scale: 2, walk: fourWay(), sideOnly: false, lift: 16 },
+  // Knight (milestone 22): 64x112, the GreenPig layout (rows 0-3 walk; row 6
+  // col 0 dead, identical to SeparateAnim/Dead.png). The visor notch is on
+  // the left in column 2 and on the right in column 3.
+  shieldbearer: {
+    key: 'shieldbearer',
+    url: shieldbearerUrl,
+    frameWidth: 16,
+    frameHeight: 16,
+    scale: 2,
+    walk: fourWay(),
+    sideOnly: false,
+    deadFrame: 24,
+  },
 };
 
 /** Walk animation frame rate in play (test mode freezes frame 0). */
