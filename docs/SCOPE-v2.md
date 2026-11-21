@@ -42,6 +42,8 @@ with labels.
 | Mortar | 110 | 220, minimum 70 | 45, splash 60 px | 0.33/s | cannot hit enemies closer than 70 px |
 | Fire Pot | 70 | 100 | 4 on hit, then burns 5/s for 3 s | 0.8/s | burn does double damage to a tarred enemy; burns do not stack, a new one refreshes |
 
+These were starting values; `docs/DESIGN.md` holds the tuned ones.
+
 Upgrades (one level, as in v1):
 
 | Tower | Upgrade cost | Changes |
@@ -76,14 +78,14 @@ One PR each, same roles: coordinator plans and writes no code, Opus
 implements at medium effort, Sonnet verifies, Kyle reviews screenshots and
 play feel.
 
-| # | Milestone | Evidence that proves it |
-|---|---|---|
-| 8 | Grid placement in the simulation: cells, buildable rule, build/upgrade/sell by cell, spots removed, archetypes ported to the grid | Unit tests for the buildable rule at the path edge; headless grid archetypes run |
-| 9 | Placement UI: build bar, ghost and range, valid/invalid colouring, 960 x 580 canvas, panel on click | Playwright places towers on cells through real clicks and clears a wave; baselines regenerated |
-| 10 | Three new towers in the simulation: Longbow, Mortar with minimum range, Fire Pot with burn and the tar combo | Unit tests per mechanic (minimum range refuses close targets, burn ticks, tar doubles burn); a build using the new towers wins headlessly |
-| 11 | New towers in the UI: bar buttons, shapes, labels, shot and burn visuals | Playwright builds each new tower through the bar; new baselines |
-| 12 | Balance pass v2: grid archetypes with six towers, targets above | Sim report pinned by tests; Kyle's play notes |
-| 13 | Ship v2: README, GIF, devlog retrospective, Pages verified | Kyle finishes a game with the new towers from the public link |
+| # | Milestone | Evidence that proves it | Done |
+|---|---|---|---|
+| 8 | Grid placement in the simulation: cells, buildable rule, build/upgrade/sell by cell, spots removed, archetypes ported to the grid | Unit tests for the buildable rule at the path edge; headless grid archetypes run | PR 12, 2026-11-21 |
+| 9 | Placement UI: build bar, ghost and range, valid/invalid colouring, 960 x 580 canvas, panel on click | Playwright places towers on cells through real clicks and clears a wave; baselines regenerated | PR 13, 2026-11-21 |
+| 10 | Three new towers in the simulation: Longbow, Mortar with minimum range, Fire Pot with burn and the tar combo | Unit tests per mechanic (minimum range refuses close targets, burn ticks, tar doubles burn); a build using the new towers wins headlessly | PR 14, 2026-11-21 |
+| 11 | New towers in the UI: bar buttons, shapes, labels, shot and burn visuals | Playwright builds each new tower through the bar; new baselines | PR 15, 2026-11-21 |
+| 12 | Balance pass v2: grid archetypes with six towers, targets above | Sim report pinned by tests; Kyle's play notes | PR 16, 2026-11-21 |
+| 13 | Ship v2: README, GIF, devlog retrospective, Pages verified | Kyle finishes a game with the new towers from the public link | this PR, 2026-11-21 |
 
 ## Open questions for Kyle (before milestone 8)
 
