@@ -2575,3 +2575,78 @@ Claude Fable 5.1.
   wraps clear of Start Wave, nothing under the HUD. Nothing off.
 - **Open for the coordinator:** the bar at y 24 with the pill at y 4 to 22
   (the brief said y 12) is as DESIGN now describes; accept or move.
+
+## 2026-11-21: milestone 24, targeting modes
+
+Roles: implementer Claude Opus, verifier Claude Fable 5.1, coordinator
+Claude Fable 5.1.
+
+### Implementer notes
+
+- **Simulation.** `TargetingMode = 'first' | 'last' | 'strongest'` and
+  `TARGETING_MODES` (the cycle order) in `types.ts`; `Tower.targeting` is
+  `'first'` at build, so a sell and rebuild resets it. `setTargeting(state,
+  cell, mode)` in `actions.ts` returns `{ok:true}` or `{ok:false, reason:
+  'no-tower' | 'game-over'}`, works in setup and wave, and emits
+  `targeting {cell, mode}`. `findTarget` keeps every eligibility rule
+  (range, the Mortar's minimum range, flying) and then compares with
+  `preferred(mode, a, b)`: first by higher path distance, last by lower,
+  strongest by higher hp then higher path distance; the lower id breaks
+  any remaining tie in every mode. Splash, slow and burn follow the chosen
+  target unchanged.
+- **Headless.** `BuildAction` gains `{type:'target', cell, mode}` (no gold
+  cost), so a `WaveScript` can carry it and `runScript` in test mode plays
+  it through the scene. Every archetype pin passed unmodified (the default
+  is first).
+- **`comboStrongest()` (informational): lost on wave 5, 0 lives, 105
+  gold** (comboBuild: won, 12 lives, 497 gold). Lives after waves 1 to 5:
+  18, 14, 5, 2, 0 (comboBuild: 20, 20, 20, 17, 16). It follows COMBO_PLAN
+  like comboBuild with a `target strongest` after each build. Not verified
+  why it is so much worse; the likely reason is that every tower spreads
+  its shots over fresh full-hp enemies instead of finishing the wounded
+  front ones, so the wounded ones walk out. It lives in a new
+  `INFORMATIONAL` table that `npm run sim` prints after `ARCHETYPES`, so
+  the "every archetype is pinned" test stays as it was; its result is
+  pinned in `targeting.test.ts` so a change shows.
+- **Panel geometry.** Three stacked 156 x 42 buttons (Upgrade, Sell,
+  Target) with 4 px gaps, 6 px padding and the 42 x 42 close button in a
+  column to the right: the panel is 214 x 146 (was 214 x 100). The
+  targeting label is `Target: <name>` from `TARGETING_LABELS` in
+  `names.ts`, centred at 13 px: "Target: Strongest" is 17 Courier
+  characters (about 133 px), so 16 px (163 px) would overflow the 156 px
+  button and 14 px left about 6 px a side, which looked cramped in the
+  frame. The placement candidate offsets did not change: the all-cells
+  test in `input.test.ts` now also runs with the real 214 x 146 size
+  (before, it used an old 168 x 76 box only) and passes for every
+  buildable cell. For (7,5) the panel is at (133,216), below the tower;
+  for (14,14) on the bottom row it is at (220,330), left and up; for (29,14) its
+  buttons are inside the map and end above y 480 (Playwright).
+- **Test API.** `setTargetingAt(col,row,mode)`; `uiRects()` gains
+  `panel:target`; `ui()` gains `selectedTargeting` (null with no tower
+  selected) and `targetLabel` (the button text, null while closed).
+- **Playwright (`e2e/targeting.spec.ts`).** Musketeer at (7,5), wave 1,
+  ticks found headlessly: tick 212 is the first with two goblins in range
+  (ids 0 and 1 at path distance 211 and 151); first hits id 0 at tick 272;
+  after one click (Last) the shot at tick 332 hits id 3 (the furthest,
+  which first would take, is id 1); after a second click (Strongest) with
+  every hp set to 30 the shot at tick 392 hits id 1, as first would; with
+  id 1 set to 10 hp the shot at tick 452 hits id 2. A third click wraps to
+  First; sell and rebuild shows `selectedTargeting: 'first'`.
+- **Baseline.** `tower-selected.png` changes (third button); the setup is
+  the same. Not committed: CI regenerates it.
+
+### What went wrong
+
+- **comboStrongest first replayed the recorded comboBuild script** with a
+  target action inserted after each build. Strongest changes which enemies
+  die and so the gold, and the replay refused a build it could no longer
+  afford (`refused: target at (14,9), no-tower`). It is now recorded by
+  playing COMBO_PLAN, like comboBuild.
+- **Two exact tower-shape tests** (`actions.test.ts`, `verifier2.test.ts`)
+  compare a whole `Tower` object; they gained `targeting: 'first'`.
+- **A second checkout (`tarpit-m23fix`) ran Playwright at the same time**
+  on the same port 4173. With `reuseExistingServer` locally, one checkout's
+  tests can run against the other's build. My frame script first hit their
+  server (`setTargetingAt is not a function`), and a `pkill -f "vite
+  preview"` I ran to clean up may have stopped their server mid-run. Frames
+  moved to port 4183 and the e2e runs waited for 4173 to be free.

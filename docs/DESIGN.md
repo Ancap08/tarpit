@@ -106,10 +106,23 @@ Hits are instant in the simulation (the renderer draws the shot). A tower
 fires when its cooldown is zero and a target is in range, then its cooldown
 resets to `1 / fireRate` seconds.
 
-Targeting: the enemy in range that is furthest along the path (closest to the
-exit). Ties go to the lower enemy id. A tower with a minimum range (the
-Mortar) only targets enemies whose distance is in [minimum, range], both
-inclusive; its splash still hits enemies inside the minimum range.
+Targeting: a tower first takes the enemies it may shoot: in range, outside
+a minimum range (the Mortar only targets enemies whose distance is in
+[minimum, range], both inclusive; its splash still hits enemies inside the
+minimum range), and not flying for Tar Pit, Cannon and Mortar. Among those
+it picks by its targeting mode (milestone 24), shown and cycled on the tower
+panel's "Target" button (first, last, strongest, first again):
+
+- **First** (the default): furthest along the path (closest to the exit).
+  Ties go to the lower enemy id.
+- **Last**: closest to the spawn (lowest path distance). Ties go to the
+  lower enemy id.
+- **Strongest**: highest current hp. Ties go to the furthest along the
+  path, then the lower enemy id.
+
+Every tower is built in First; the mode is part of the tower, so selling
+and rebuilding resets it. Changing the mode is free and allowed in setup and
+during a wave. Splash, slow and burn follow the chosen target.
 
 | Tower | Cost | Range | Damage | Fire rate | Effect |
 |---|---|---|---|---|---|
