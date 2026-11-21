@@ -201,3 +201,15 @@ can change it; "Kyle" means Kyle decided.
 - **Demo order:** the README GIF builds Musketeer, Cannon, then Tar Pit
   across waves 1 and 2 because 100 starting gold cannot buy all three before
   wave 1. Default (Opus).
+
+## 2026-11-21, v2 approved
+
+- **v2 scope approved with all defaults** (`docs/SCOPE-v2.md`): 32 px grid
+  placement anywhere off the path, a HUD build bar with the pick staying
+  active, canvas 960 x 580, towers named Longbow, Mortar and Fire Pot. Kyle.
+- **Milestone 8 keeps the game playable:** the simulation moves to cells, and
+  the renderer keeps the ten v1 spots as a temporary list of cells until
+  milestone 9 replaces the UI. Fable. One PR per milestone, CI green on each.
+- **v1 balance pins are suspended, not deleted, during milestones 8 to 11:**
+  archetypes keep running and stay deterministic, but the wave targets return
+  in milestone 12 once placement and towers are final. Fable.
