@@ -7,6 +7,9 @@
 //
 // Determinism: no Math.random, no Date. One tick is exactly 1/60 s.
 //
+// Every tick that runs (setup or wave) first clears `state.shots`; combat
+// appends one entry per tower that fires. Won and lost ticks change nothing.
+//
 // Order of work inside one wave tick:
 //   1. Move live enemies by speed / 60 (times (1 - slow) while a slow is
 //      active), then count down slow timers.
@@ -55,6 +58,7 @@ export function createGame(): GameState {
     enemies: [],
     nextEnemyId: 0,
     towers: [],
+    shots: [],
   };
 }
 
@@ -80,6 +84,7 @@ export function startWave(state: GameState): StartWaveResult {
 /** Advance the game by exactly one 1/60 s step. Does nothing once won or lost. */
 export function tick(state: GameState): void {
   if (state.phase === 'won' || state.phase === 'lost') return;
+  state.shots = [];
   if (state.phase === 'setup') {
     state.tick += 1;
     return;
