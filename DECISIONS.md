@@ -504,3 +504,20 @@ can change it; "Kyle" means Kyle decided.
 - **Not reported as problems on the iPad:** two-tap placement worked but
   felt clumsy (hence 25a); text sharpness and Safari's toolbar were not
   raised.
+
+## 2026-11-21, milestone 25 (difficulty levels)
+
+- **Easy / Normal / Hard: enemy hp x0.75 / 1 / 1.3 (rounded half up),
+  start gold 150 / 100 / 80, lives 25 / 20 / 15. Nothing else scales.
+  Normal is byte-identical to before.** From SCOPE-v4; verified against
+  every spawn of all ten waves on each level.
+- **Title is a menu: three difficulty buttons, Play; Left and Right stop at
+  the ends; the choice is remembered for the session, not across reloads;
+  end screens gain a Menu button.** Default (Opus).
+- **The difficulty tag sits under the wave counter and only when not
+  Normal.** Default (Opus), so Normal screenshots do not change.
+- **The simulation may take lives below 0 (the boss costs 5); the HUD shows
+  0.** Fable verifier found "Lives -1" on screen and fixed the display.
+- **Both SCOPE difficulty targets miss with the starting numbers and are
+  pinned as they are until milestone 25c retunes them:** the lazy build on
+  Easy dies to the boss on wave 10; on Hard the best plan dies on wave 3.
