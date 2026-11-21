@@ -93,3 +93,33 @@ test('upgraded Musketeer selected with its panel and range', async ({ page }) =>
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('tower-selected.png');
 });
+
+// End screens: the HUD under the veil shows the final numbers.
+test('win screen after the sound build', async ({ page }) => {
+  await open(page);
+  const end = await page.evaluate(async () => {
+    const t = window.__tarpit as TarpitTestApi;
+    await t.startGame();
+    const phase = t.runScript('soundBuild');
+    return { phase, screen: t.endScreen(), lives: t.state().lives, gold: t.state().gold };
+  });
+  expect(end).toEqual({ phase: 'won', screen: 'won', lives: 20, gold: 910 });
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('won.png');
+});
+
+test('lose screen with no towers', async ({ page }) => {
+  await open(page);
+  const end = await page.evaluate(async () => {
+    const t = window.__tarpit as TarpitTestApi;
+    await t.startGame();
+    for (let i = 0; i < 120 && t.state().phase !== 'lost'; i++) {
+      if (t.state().phase === 'setup') t.startWave();
+      t.step(500);
+    }
+    return { screen: t.endScreen(), wave: t.state().wave, lives: t.state().lives };
+  });
+  expect(end).toEqual({ screen: 'lost', wave: 2, lives: 0 });
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('lost.png');
+});
