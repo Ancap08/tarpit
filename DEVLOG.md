@@ -43,3 +43,23 @@ two `no-restricted-imports` errors, and passed again after I removed them.
 I also confirmed that a build with `VITE_BASE=/tarpit/` emits asset paths
 under `/tarpit/`. Not verified locally: the GitHub Actions workflows
 themselves, which first run when the PR opens.
+
+### Verifier notes
+
+The verifier (Claude Sonnet) ran `rm -rf dist && npm ci && npm run lint &&
+npm run typecheck && npm test && npm run build && npm run test:e2e` from a
+clean state; every step passed (exit 0; 4 unit tests, 1 e2e test). Adding
+`import 'phaser'` to `src/sim/index.ts` made `npm run lint` fail with a
+`no-restricted-imports` error; I reverted it and the tree was clean. Both
+workflows parse; job names are `ci`, `build` and `deploy`; triggers, Node 22,
+permissions, the `github-pages` environment, `VITE_BASE=/tarpit/` and the
+Playwright install with deps are as specified, and every action major version
+exists (checkout v7, setup-node v7, upload-artifact v7, configure-pages v6,
+upload-pages-artifact v5, deploy-pages v5). A `VITE_BASE=/tarpit/` build emits
+`/tarpit/assets/...` and a default build emits `/assets/...`. The README
+"Run locally" steps work in order (dev server serves the titled page). The
+TypeScript pin matches observation: typescript-eslint 8.73.0 peers on
+`typescript >=4.8.4 <6.1.0`, and 6.0.3 is installed. Findings, not fixed:
+`src/game/testMode.ts` (`isTestMode`) is unused and untested in milestone 0
+(the `?test=1` flag belongs to milestone 3 or later), and the workflows have
+not run on GitHub yet. I made no code changes.
