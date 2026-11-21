@@ -371,3 +371,34 @@ the scene calls `buildTower`, `upgradeTower` and `sellTower` only.
   90 px range preview) and `tower-selected.png` (upgraded Musketeer at spot
   2, 125 px range, panel with greyed "Upgraded" and "Sell +63"). Local
   screenshots were checked by eye; baselines come from the CI workflow.
+
+### Verifier notes
+
+Verifier: Claude Sonnet. Checked on branch `m4-build-ui` against
+`origin/main`.
+
+- Clean run (`rm -rf dist && npm ci && lint && typecheck && test && build &&
+  test:e2e`): exit 0; 99 unit tests, 19 e2e tests. `--repeat-each=3` over
+  `build-ui.spec.ts` plus the verifier spec: 33 of 33 passed, no flakes.
+- `git diff origin/main --stat -- src/sim` is empty. No `src/game` code
+  writes gold, lives, hp, towers or phase; the scene calls only
+  `buildTower`, `upgradeTower` and `sellTower`.
+- Scope: nothing from milestone 5. Only the listed features are present
+  (menu, panel, greying, hover range preview, spot hover, Escape, pointer
+  cursor). One small addition inside the panel feature: selecting a tower also
+  draws its range circle and a larger outline.
+- New probes in `e2e/build-ui-verifier.spec.ts` (6, all pass): greyed Upgrade
+  changes nothing even with 500 gold; Sell mid-wave removes the tower and the
+  wave keeps ticking; selling then clicking the same spot opens the build
+  menu; Start Wave works with a menu open and closes it; building with
+  exactly the cost leaves gold 0; for all ten spots every menu and panel
+  rectangle stays inside 0..960 and above y = 480.
+- Correction: the implementer note says 9 tests in `input.test.ts`; there are
+  10 (89 before plus 10 is the 99 total).
+- The statement that the three existing baselines do not change cannot be
+  checked locally (baselines are CI-only); CI must confirm it.
+- Readability, from the two local frames: the menu at spot 2 sits over the
+  path and covers part of it, so enemies passing there would be hidden while
+  it is open. The white Cannon range preview is faint on the light path and
+  grass. The greyed "Upgraded" text is dim grey on dark grey, legible but low
+  contrast. Observations only; art is a milestone 6 matter.
