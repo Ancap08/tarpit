@@ -29,6 +29,13 @@
 // Portrait: while the "turn your device" card shows (portrait.ts), update()
 // runs no ticks and drops the time it would have accumulated.
 //
+// Animation (milestone 16): enemies are sprites (anim/enemySprites.ts). The
+// scene hands the simulation's events (state.events) to them through an
+// EventCursor after every tick (advance) and after every action (startWave,
+// build, upgrade, sell), so each event is seen once. Tower recoil and
+// tracers still read state.shots. In test mode the sprites are frozen: no
+// walk cycle, tweens or particles.
+//
 // End of game: every redraw checks the sim's phase; once it is 'won' or
 // 'lost' the end screen shows (once), the pick and panel clear, the bar greys
 // and map input is ignored.
@@ -52,8 +59,10 @@ import {
   towerStats,
   upgradeTower,
 } from '../sim';
-import type { BuildResult, Cell, GameState, SellResult, StartWaveResult, TowerLevelStats, TowerType, UpgradeResult } from '../sim';
-import { drawEnemies } from './draw/enemies';
+import type { BuildResult, Cell, GameEvent, GameState, SellResult, StartWaveResult, TowerLevelStats, TowerType, UpgradeResult } from '../sim';
+import { EventCursor } from './anim/effects';
+import { EnemySprites, type AnimState } from './anim/enemySprites';
+import { drawHpBars, drawStatusRings } from './draw/enemies';
 import { TowerLabels } from './draw/labels';
 import { drawMap } from './draw/map';
 import { ShotEffects } from './draw/shots';
@@ -107,6 +116,12 @@ export class GameScene extends Phaser.Scene {
   speed: Speed = 1;
   private accMs = 0;
   private dynamic!: Phaser.GameObjects.Graphics;
+  private enemySprites!: EnemySprites;
+  /** Shot effects, over the enemy sprites. */
+  private shotFx!: Phaser.GameObjects.Graphics;
+  /** Hp bars, over the sprites and shot effects. */
+  private bars!: Phaser.GameObjects.Graphics;
+  private eventCursor = new EventCursor();
   private labels!: TowerLabels;
   private overlay!: Phaser.GameObjects.Graphics;
   private hud!: Hud;
@@ -139,6 +154,7 @@ export class GameScene extends Phaser.Scene {
     this.accMs = 0;
     this.shots = new ShotEffects();
     this.aim = new Aim();
+    this.eventCursor = new EventCursor();
 
     this.pick = null;
     this.pointer = null;
@@ -149,11 +165,15 @@ export class GameScene extends Phaser.Scene {
     this.cursor = 'default';
 
     // Draw order: map, overlay (cell highlight, range circles, ghost), towers
-    // and enemies, tower labels, HUD (which covers any range circle reaching
-    // below the map), then the panel and the end screen on top.
+    // and status rings, enemy sprites (sorted by y) and their particles, shot
+    // effects, hp bars, tower labels, HUD (which covers any range circle
+    // reaching below the map), then the panel and the end screen on top.
     drawMap(this.add.graphics());
     this.overlay = this.add.graphics();
     this.dynamic = this.add.graphics();
+    this.enemySprites = new EnemySprites(this, isTestMode());
+    this.shotFx = this.add.graphics();
+    this.bars = this.add.graphics();
     this.labels = new TowerLabels(this);
     this.hud = new Hud(this, {
       onStartWave: () => this.startWave(),
@@ -335,18 +355,38 @@ export class GameScene extends Phaser.Scene {
     this.redraw();
   }
 
-  /** Run `n` simulation ticks, feeding each tick's shots to the effects. */
+  /** Run `n` simulation ticks, feeding each tick's shots and events to the effects. */
   advance(n: number, redraw = true): void {
     for (let i = 0; i < n; i++) {
       tick(this.state);
       for (const shot of this.state.shots) this.aim.pointAt(shot.cell, shot.to);
       this.shots.afterTick(this.state.shots);
+      this.takeEvents();
     }
     if (redraw) this.redraw();
   }
 
+  /** Hand the events not yet seen to the sprites (after every tick and action). */
+  private takeEvents(): void {
+    if (!this.enemySprites) return;
+    const { events, newTick } = this.eventCursor.take(this.state);
+    if (newTick) this.enemySprites.newTick();
+    this.enemySprites.onEvents(events);
+  }
+
+  /** Test hook: the current simulation events. */
+  simEvents(): GameEvent[] {
+    return this.state.events;
+  }
+
+  /** Test hook: an enemy sprite's animation state, or null if it has none. */
+  animState(enemyId: number): AnimState | null {
+    return this.enemySprites?.animState(enemyId) ?? null;
+  }
+
   startWave(): StartWaveResult {
     const result = startWave(this.state);
+    this.takeEvents();
     this.redraw();
     return result;
   }
@@ -358,18 +398,21 @@ export class GameScene extends Phaser.Scene {
 
   build(cell: Cell, type: TowerType): BuildResult {
     const result = buildTower(this.state, cell, type);
+    this.takeEvents();
     this.redraw();
     return result;
   }
 
   upgrade(cell: Cell): UpgradeResult {
     const result = upgradeTower(this.state, cell);
+    this.takeEvents();
     this.redraw();
     return result;
   }
 
   sell(cell: Cell): SellResult {
     const result = sellTower(this.state, cell);
+    this.takeEvents();
     this.redraw();
     return result;
   }
@@ -384,8 +427,12 @@ export class GameScene extends Phaser.Scene {
     const g = this.dynamic;
     g.clear();
     drawTowers(g, this.state, this.aim);
-    drawEnemies(g, this.state);
-    this.shots.draw(g);
+    drawStatusRings(g, this.state);
+    this.enemySprites.sync(this.state, this.speed);
+    this.shotFx.clear();
+    this.shots.draw(this.shotFx);
+    this.bars.clear();
+    drawHpBars(this.bars, this.state);
     this.labels.update(this.state);
     this.syncEndScreen();
     this.redrawUi();
