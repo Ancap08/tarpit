@@ -1663,3 +1663,125 @@ against origin/main (8ee0cc5).
   about the kid band is now superseded without a note. SCOPE-v2's new-tower
   table still says Longbow damage 6; it is labelled "default starting
   numbers; the balance pass retunes", so it is stale by design.
+
+## 2026-11-21: milestone 13, ship v2, and retrospective
+
+Roles: implementer Claude Opus, verifier Claude Sonnet, coordinator Claude
+Fable 5.1.
+
+### Implementer notes
+
+The implementer (Claude Opus) recorded the v2 demo, updated the README,
+closed the milestone table in `docs/SCOPE-v2.md` and wrote this section. No
+game code changed.
+
+- `npm run demo` now plays v2 in real time, not test mode, through the real
+  bar and cells: Longbows on (9,5) and (9,4) (the pick stays active for the
+  second, then clears itself at 20 gold), Start Wave, 2x, wave 1; a Tar Pit
+  on (14,10); wave 2; a Fire Pot on (14,9); wave 3; then wave 4 until 110
+  gold and a Mortar on (17,6), whose ghost rests 1.2 s with its range and
+  dashed minimum-range circle. These are the combo build's first five
+  purchases. The GIF is 640 x 387, 12 fps, 25.0 s (52 s of play sped up
+  2.08x), 2.6 MB. The still (960 x 580) is the first wave 3 frame where an
+  enemy is tarred and burning and the Fire Pot has just fired at it.
+- What went wrong: the brief asked for a Tar Pit and a Fire Pot between
+  waves 1 and 2. Together they cost 130 and wave 1 leaves 77 gold, and the
+  Mortar (110) is not affordable before wave 4 (107 gold after wave 3). A
+  headless run of the plan predicted 77, 90 and 107 gold after waves 1 to
+  3 and the first tarred, burning enemy at tick 3164; the real-time
+  recording logged the same 77, 90 and 107. So the Tar Pit goes in after
+  wave 1, the Fire Pot after wave 2, and the Mortar mid-wave 4.
+- Frames checked with a contact sheet: the six-button bar, the Longbow
+  ghost with its range on a green cell, the second Longbow placed with the
+  pick kept, the Fire Pot's shot on an enemy with the tar ring and the
+  orange ring, the Mortar ghost with both circles, and the built Mortar.
+- README numbers were recomputed at PR 16's merge commit (957739c) with
+  `git` and `gh`. Unit and browser test counts come from this branch,
+  whose code is identical to that commit.
+- The live site serves `assets/index-CCpIOwxF.js`, the same hash as a
+  local build of this branch (Pages deployed from the PR 16 merge).
+
+### Timeline
+
+All in the same session as v1, on 2026-11-21 (UTC):
+
+- 08:30 PR 10 merged (milestone 7): v1 shipped.
+- 08:52 PR 11 merged: the v2 scope, approved by Kyle.
+- PR 12 (milestone 8) at 09:11, PR 13 (milestone 9) at 09:32, PR 14
+  (milestone 10) at 09:46, PR 15 (milestone 11) at 09:57, PR 16
+  (milestone 12) at 10:16.
+
+Kyle's involvement in v2, from the coordinator's record: play notes on v1
+asking for build-anywhere and more weapons, and one approval of the v2
+scope with all defaults. Nothing else. His play notes for milestone 12 and
+the milestone 13 evidence (finishing a game with the new towers from the
+public link) are still open.
+
+### What went wrong in v2
+
+- Milestone 8: the kid archetypes' "band" started at the map edge, where
+  half of each tower's range is off the map, so lazy and greedy lost on
+  wave 3. Milestone 12 replaced it with the trail rule. DEVLOG milestone 8
+  (What went wrong, verifier notes); DECISIONS milestones 8 and 12.
+- Milestone 9: cell (29,4) was buildable under the exit cottage, because
+  the buildable rule only measured distance to the path. DEVLOG milestone
+  9; DECISIONS milestone 9 (landmark rule).
+- Milestone 9: the first fix, a 40 px radius around the path's end
+  waypoints, removed no cell at all ((29,4) is 50.6 px away). DEVLOG and
+  DECISIONS milestone 9.
+- Milestone 9: a tower panel covered its own tower's label, a bottom-row
+  label ran into the HUD, and labels drew over the HUD, panel and end
+  veil. DEVLOG milestone 9; DECISIONS milestone 9.
+- Milestone 10: before the balance pass, Longbow spam won with all 20
+  lives (target: lose on wave 7 to 9) and the combo won with 20 lives and
+  441 gold. DEVLOG milestone 10; DECISIONS milestone 10.
+- Milestone 10: 216 burn ticks of 5/60 left a tiny positive hp, so a kill
+  came a tick late; enemies now die at hp <= 1e-9. DEVLOG milestone 10
+  (What went wrong, verifier argument); DECISIONS milestone 10.
+- Milestone 11: the first commit swept in a staged deletion of the
+  placeholder spec; the three local commits were redone with explicit
+  paths before anything was pushed. DEVLOG milestone 11.
+- Milestone 12: `docs/SCOPE-v2.md` still showed the starting tower numbers
+  (Longbow damage 6) after the balance pass. DEVLOG milestone 12 verifier
+  notes; DECISIONS milestone 12. This PR adds a note under the table.
+- Milestone 12: `docs/DESIGN.md` was still titled "(v1)" while holding v2
+  numbers. Fixed by the coordinator in commit 719585d; recorded only in
+  that commit message.
+- Milestone 13: the demo brief's purchase order did not fit the gold (see
+  the implementer notes), the same kind of miss as v1's milestone 7 brief.
+
+### What the process proved in v2
+
+- Balance changes were proven necessary, not just sufficient: each of the
+  six milestone 12 number changes was reverted alone and broke a target,
+  first by the implementer and then again by the verifier in a scratch
+  copy, with matching results (DEVLOG milestone 12).
+- Verifiers recomputed rules with their own code instead of reading the
+  implementer's: the 344-cell buildable mask, the trail cell order
+  (`trail-verifier.test.ts`, its own path walk) and the combo geometry.
+- Every v2 verifier added tests: `grid-verifier.test.ts` (8),
+  `placement-verifier.spec.ts` (9), `newTowers-verifier.test.ts` (10),
+  `new-towers-verifier.spec.ts` (11), `trail-verifier.test.ts` and
+  `frame-verifier.test.ts` (12).
+- CI was green on every v2 PR: PRs 11 to 16 all show the `ci` check as
+  success.
+- The sim-first split held: the new towers went into `src/sim` with unit
+  tests a milestone before the UI, the balance pass changed six numbers and
+  one placement rule with no game code, and the real-time demo ended each
+  wave on exactly the gold the headless run predicted.
+
+### What I'd change next time
+
+- The trail rule caps a kid archetype at 16 towers, so late gold piles up
+  unspent (Longbow spam has 322 gold when it loses). The archetypes model a
+  player who stops building, which flatters the balance targets.
+- Screenshot baselines need a CI round trip: every UI change waited for
+  the baseline workflow and a bot commit (10 so far), and local runs skip
+  the pixel check, so nobody sees a pixel diff before CI.
+- The label crowding rule trades one problem for others: a tower next to a
+  clash can lose its label, a label covers the top of the tower below, and
+  a panel may cover a neighbour's label. A label rule that sees the whole
+  board, or no labels on adjacent cells, is worth a look with the art pack.
+- Check briefs against the sim before sending them, as v1's retrospective
+  already said: the 40 px cottage radius and this milestone's demo order
+  each cost a round trip.
