@@ -7,7 +7,8 @@ import type { Shot, TowerType } from '../../sim';
 import { COLORS } from '../palette';
 import { BARREL_LENGTH } from './towers';
 
-const LIFETIME: Record<TowerType, number> = { musketeer: 6, cannon: 10, tarpit: 10 };
+// Longbow, Mortar and Fire Pot lifetimes are milestone 11 placeholders.
+const LIFETIME: Record<TowerType, number> = { musketeer: 6, cannon: 10, tarpit: 10, longbow: 6, mortar: 6, firepot: 6 };
 
 interface ShotFx {
   shot: Shot;
@@ -62,6 +63,14 @@ export class ShotEffects {
           g.fillCircle(to.x - 6, to.y + 4, 4);
           g.fillCircle(to.x + 6, to.y - 3, 3);
           g.fillCircle(to.x + 3, to.y + 6, 3);
+          break;
+        case 'longbow':
+        case 'mortar':
+        case 'firepot':
+          // Milestone 11 placeholder: a thin grey tracer until the real
+          // Longbow, Mortar and Fire Pot shots (and the burn ring) land.
+          g.lineStyle(1.5, COLORS.placeholderTracer, a);
+          g.lineBetween(from.x, from.y, to.x, to.y);
           break;
       }
     }

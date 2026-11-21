@@ -41,6 +41,10 @@ export const COLORS = {
   tarpit: 0x2e2118,
   tarpitHighlight: 0xd8d0c4,
   upgradeRing: 0xf2c94c,
+  // Milestone 11 placeholder: plain grey body and tracer for Longbow, Mortar
+  // and Fire Pot until their real shapes and shots land.
+  placeholderTower: 0x8c8c8c,
+  placeholderTracer: 0xb0b0b0,
 
   // Shots
   musketTracer: 0xfff2a8,

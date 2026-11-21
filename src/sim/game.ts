@@ -10,21 +10,28 @@
 // Every tick that runs (setup or wave) first clears `state.shots`; combat
 // appends one entry per tower that fires. Won and lost ticks change nothing.
 //
-// Order of work inside one wave tick:
+// Order of work inside one wave tick (move, exit, burn, combat, spawn,
+// counters, clear check):
 //   1. Move live enemies by speed / 60 (times (1 - slow) while a slow is
 //      active), then count down slow timers.
 //   2. Remove enemies at or past the exit; each costs 1 life.
 //      Lives <= 0 -> phase 'lost' at once, nothing else happens this tick.
-//   3. Towers fire (combat.ts), in cellKey order. Each tower counts its
-//      cooldown down by 1 if above 0; at 0 with a target in range it fires
-//      and its cooldown becomes round(60 / fireRate). Enemies at hp <= 0 are
-//      removed and pay their bounty before the next tower acts, so a later
-//      tower never targets an enemy killed this tick. A new slow first
-//      affects movement on the next tick.
-//   4. Spawn enemies whose spawn tick equals the current waveTick, at
+//   3. Burn (combat.ts burnEnemies): each burning enemy takes burnDps / 60,
+//      doubled if slowTicksLeft > 0 after step 1, then its burn timer counts
+//      down. Dead enemies (hp <= KILL_EPSILON, 1e-9) are removed and pay
+//      their bounty. A burn applied in step 4 first does damage on the next
+//      tick.
+//   4. Towers fire (combat.ts fireTowers), in cellKey order. Each tower
+//      counts its cooldown down by 1 if above 0; at 0 with a target in range
+//      (and not inside a Mortar's minimum range) it fires and its cooldown
+//      becomes round(60 / fireRate). Dead enemies are removed and pay
+//      their bounty before the next tower acts, so a later tower never
+//      targets an enemy killed this tick. A new slow first affects movement
+//      on the next tick.
+//   5. Spawn enemies whose spawn tick equals the current waveTick, at
 //      distance 0. A new enemy does not move or get shot on its spawn tick.
-//   5. Advance waveTick and tick.
-//   6. If every enemy of the wave has spawned and none are alive, pay the
+//   6. Advance waveTick and tick.
+//   7. If every enemy of the wave has spawned and none are alive, pay the
 //      clear bonus and go to 'setup' (or 'won' after the last wave).
 //
 // Towers only act during wave ticks; in 'setup' cooldowns stay where they
@@ -34,7 +41,7 @@
 // after startWave (waveTick 0), and an enemy spawned at waveTick k is at
 // distance speed/60 * n after the tick with waveTick k + n.
 
-import { fireTowers } from './combat';
+import { burnEnemies, fireTowers } from './combat';
 import { ENEMY_STATS } from './enemies';
 import { MAP, pathLength } from './map';
 import { secondsToTicks, TICKS_PER_SECOND } from './time';
@@ -96,6 +103,7 @@ export function tick(state: GameState): void {
     state.phase = 'lost';
     return;
   }
+  burnEnemies(state);
   fireTowers(state);
   spawnDueEnemies(state);
   state.waveTick += 1;
@@ -133,6 +141,8 @@ function spawnDueEnemies(state: GameState): void {
         distance: 0,
         slow: 0,
         slowTicksLeft: 0,
+        burnDps: 0,
+        burnTicksLeft: 0,
       });
       state.nextEnemyId += 1;
       state.spawnedPerGroup[gi] = index + 1;

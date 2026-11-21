@@ -67,13 +67,22 @@ fires when its cooldown is zero and a target is in range, then its cooldown
 resets to `1 / fireRate` seconds.
 
 Targeting: the enemy in range that is furthest along the path (closest to the
-exit). Ties go to the lower enemy id.
+exit). Ties go to the lower enemy id. A tower with a minimum range (the
+Mortar) only targets enemies whose distance is in [minimum, range], both
+inclusive; its splash still hits enemies inside the minimum range.
 
 | Tower | Cost | Range | Damage | Fire rate | Effect |
 |---|---|---|---|---|---|
 | Musketeer | 50 | 110 | 12 | 1.0/s | single target |
 | Cannon | 80 | 90 | 25 | 0.5/s | splash: all enemies within 40 px of the target take full damage |
 | Tar Pit | 60 | 90 | 3 | 2.0/s | target slowed 40% for 2 s |
+| Longbow | 40 | 150 | 6 | 2.5/s | single target |
+| Mortar | 110 | 220, minimum 70 | 45 | 1/3 per s | splash: all enemies within 60 px of the target take full damage |
+| Fire Pot | 70 | 100 | 4 | 0.8/s | target burns 5/s for 3 s (see Burn) |
+
+The Longbow, Mortar and Fire Pot (v2, milestone 10) exist in the simulation;
+they join the build bar in milestone 11. Cooldowns are round(60 / fire
+rate) ticks: Longbow 24, Mortar 180, Fire Pot 75.
 
 One upgrade per tower:
 
@@ -82,6 +91,24 @@ One upgrade per tower:
 | Musketeer | 35 | damage 22, range 125 |
 | Cannon | 60 | damage 40, splash radius 55 |
 | Tar Pit | 50 | slow 60%, range 105 |
+| Longbow | 30 | damage 9, range 170 |
+| Mortar | 80 | damage 70, splash radius 70 |
+| Fire Pot | 50 | burn 8/s for 4 s |
+
+Sell refunds after an upgrade: Longbow 49, Mortar 133, Fire Pot 84.
+
+**Burn.** A Fire Pot hit that leaves its target alive sets a burn on it: 5
+damage per second for 3 s (180 ticks), or 8/s for 4 s (240 ticks)
+upgraded. An impact kill sets no burn. Burns do not stack: a new burn with
+dps equal to or greater than the active one replaces it (strength and
+duration); a weaker one is ignored. Each tick a burning enemy takes
+dps / 60 damage, doubled if it is slowed by tar at that moment
+(`slowTicksLeft > 0`), then its burn timer counts down. So hp can be
+fractional; an enemy counts as dead at hp <= 1e-9, which absorbs floating
+point error so burn kills land on the tick exact arithmetic gives (a lone
+Fire Pot kills a static 30 hp Goblin 216 ticks after its first hit, or 132
+under tar). Burn
+deaths pay the bounty like any kill.
 
 Range is measured from the tower's cell centre to the enemy's position.
 
@@ -110,6 +137,17 @@ and the next wave can be started. Start Wave is unavailable while a wave is
 active. The next-wave preview lists each group's type and count.
 
 Players can build, upgrade and sell at any time, including mid-wave.
+
+## Tick order
+
+Inside one wave tick: (1) enemies move, then slow timers count down; (2)
+enemies at the exit are removed and cost lives (at 0 lives the game is lost
+at once); (3) burns tick and burn deaths pay out; (4) towers fire in cell
+order, and each kill is removed before the next tower acts; (5) due enemies
+spawn, and do not move or get shot that tick; (6) the tick counters
+advance; (7) if the wave has fully spawned and no enemy is alive, the clear
+bonus is paid. A slow or burn set in step 4 first acts on the next tick.
+The authoritative comment is at the top of `src/sim/game.ts`.
 
 ## Simulation API shape
 

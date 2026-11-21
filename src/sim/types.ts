@@ -47,6 +47,14 @@ export interface Enemy {
   slow: number;
   /** Ticks left on the current slow; 0 means no slow applies. */
   slowTicksLeft: number;
+  /**
+   * Burn damage per second from a Fire Pot (milestone 10); 0 or absent means
+   * no burn. Optional so enemies written before burns existed stay valid;
+   * the sim spawns every enemy with 0 and treats absent as 0.
+   */
+  burnDps?: number;
+  /** Ticks left on the current burn; 0 or absent means no burn applies. */
+  burnTicksLeft?: number;
 }
 
 export interface GroupDef {
@@ -62,12 +70,14 @@ export interface WaveDef {
   groups: readonly GroupDef[];
 }
 
-export type TowerType = 'musketeer' | 'cannon' | 'tarpit';
+export type TowerType = 'musketeer' | 'cannon' | 'tarpit' | 'longbow' | 'mortar' | 'firepot';
 
 /** Stats for one level (base or upgraded) of a tower type. */
 export interface TowerLevelStats {
   /** Pixels, measured from the tower's cell centre to the enemy position, inclusive. */
   range: number;
+  /** Pixels; enemies closer than this cannot be targeted (Mortar). 0 for none. */
+  minRange: number;
   damage: number;
   /** Shots per second. */
   fireRate: number;
@@ -77,6 +87,10 @@ export interface TowerLevelStats {
   slow: number;
   /** Slow duration in seconds; 0 for no slow. */
   slowDuration: number;
+  /** Burn damage per second applied to the target (Fire Pot); 0 for no burn. */
+  burnDps: number;
+  /** Burn duration in seconds; 0 for no burn. */
+  burnDuration: number;
 }
 
 export interface TowerDef {
@@ -108,7 +122,7 @@ export interface Shot {
   targetId: number;
   from: Point;
   to: Point;
-  /** Present only for splash shots (Cannon). */
+  /** Present only for splash shots (Cannon, Mortar). */
   splashRadius?: number;
 }
 

@@ -111,6 +111,9 @@ tower placement in the simulation to a 30 x 15 grid of 32 px cells.
 Milestone 9 replaced the ten v1 build spots with build-anywhere: a build bar
 in the HUD, a ghost tower with its range, and a 960 x 580 canvas. The README
 GIF still shows the v1 build menu until milestone 13 records a new one.
+Milestone 10 added the Longbow, Mortar (minimum range) and Fire Pot (burn,
+doubled on tarred enemies) to the simulation, with headless builds that use
+them; they reach the build bar in milestone 11.
 
 Out of scope for v1: multiple maps, saves, sound, menus beyond start and
 restart, mobile layout, multiplayer, custom art. A Kenney CC0 art pack is a
