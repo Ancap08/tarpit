@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { TOWER_SHORT_LABELS } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 
 // Milestone 11 verifier probes (Claude Sonnet), independent of new-towers.spec.ts.
@@ -136,9 +137,9 @@ test('(e) three adjacent Musketeers: they exist, nothing throws, label sizes and
       .map(([, l]) => ({ text: l.text, visible: l.visible, size: l.style.fontSize }));
   });
   expect(labels).toEqual([
-    { text: 'Musket', visible: true, size: '10px' },
-    { text: 'Musket', visible: false, size: '10px' },
-    { text: 'Musket', visible: true, size: '10px' },
+    { text: TOWER_SHORT_LABELS.musketeer, visible: true, size: '10px' },
+    { text: TOWER_SHORT_LABELS.musketeer, visible: false, size: '10px' },
+    { text: TOWER_SHORT_LABELS.musketeer, visible: true, size: '10px' },
   ]);
   expect(errors).toEqual([]);
 });

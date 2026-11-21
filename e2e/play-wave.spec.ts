@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { ENEMY_NAMES } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 
 // Plays wave 1 through the real Start Wave and speed buttons, with time
@@ -23,7 +24,7 @@ async function clickButton(page: Page, which: 'startWave' | 'speed'): Promise<vo
 
 test('wave 1 with no towers: 8 goblins, 8 leaks, clear bonus paid', async ({ page }) => {
   await startGame(page);
-  expect(await hud(page)).toMatchObject({ gold: 'Gold 100', lives: 'Lives 20', wave: 'Wave 0/10', next: 'Next: 8 Goblin' });
+  expect(await hud(page)).toMatchObject({ gold: 'Gold 100', lives: 'Lives 20', wave: 'Wave 0/10', next: `Next: 8 ${ENEMY_NAMES.goblin}` });
   expect(await state(page)).toMatchObject({ gold: 100, lives: 20, wave: 0, phase: 'setup' });
 
   await clickButton(page, 'startWave');
@@ -31,7 +32,7 @@ test('wave 1 with no towers: 8 goblins, 8 leaks, clear bonus paid', async ({ pag
 
   await step(page, 2005);
   expect(await state(page)).toMatchObject({ phase: 'setup', wave: 1, lives: 12, gold: 125, enemies: [] });
-  expect(await hud(page)).toMatchObject({ gold: 'Gold 125', lives: 'Lives 12', wave: 'Wave 1/10', next: 'Next: 12 Goblin' });
+  expect(await hud(page)).toMatchObject({ gold: 'Gold 125', lives: 'Lives 12', wave: 'Wave 1/10', next: `Next: 12 ${ENEMY_NAMES.goblin}` });
 });
 
 test('one musketeer at cell (7,5) kills 2 goblins in wave 1', async ({ page }) => {
