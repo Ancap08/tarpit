@@ -739,3 +739,40 @@ or fonts. Every new colour is in `src/game/palette.ts`.
   14 px found tick 1200 with a different build.
 - A new baseline (`enemies.png`) means CI fails the visual job until the
   baseline workflow writes it, like every frame these changes touch.
+
+### Verifier notes
+
+Verifier: Claude Sonnet, on branch `m6b-polish`.
+
+- Clean run (`rm -rf dist && npm ci`, lint, typecheck, test, build,
+  test:e2e): all exit 0. 122 unit tests before my additions (123 after),
+  38 e2e tests (39 after). `visual.spec.ts` and `build-ui.spec.ts` with
+  `--repeat-each=3`: 39 passed. Local runs skip pixel comparisons
+  (`ignoreSnapshots` off CI), so the new `enemies.png` baseline is not
+  checked until the baseline workflow runs.
+- Forbidden paths: no diff in `src/sim`, `docs/DESIGN.md`, `testMode.ts` or
+  `testGlobal.d.ts`. The `hud.ts` diff is one line (blank Next on loss); no
+  layout numbers changed. `live.spec.ts` passes with its hard-coded centres.
+- Contrast recomputed: `#a8adb5` on `0x3a3d42` 4.83:1 (old `#8a8f97`
+  3.35:1); `#fff4dc` on `0x3a3d42` 9.98:1, on `0x6b4a2b` 7.28:1. All match
+  the claims; `palette.ts` values are the ones `button.ts` uses.
+- Placement, recomputed with a 1 px sampling grid: spot 2 menu right covers
+  spot 4, left spot 0, below spot 3; above covers no spot and 40.5% path
+  (claim "about 41%": true). Panel above covers 58.6% path. The
+  "cannot avoid the path" claim holds. The milestone 4 probe (f) (no menu
+  or panel over the HUD or off canvas, every spot) passes.
+- Enemies frame: added `src/sim/enemies-frame.test.ts`; the headless setup
+  gives exactly `{wave 8, goblins 8, wolves 5, trolls 4, hurtTrolls 2,
+  slowed 2}`, matching the browser test.
+- Frames: readable. Findings, all minor and not fixed:
+  1. Panels and menus can sit on labels. A panel that opens below its tower
+     (spot 3) covers that tower's own label, because the panel starts 28 px
+     below the centre and the label spans 22 to about 38 px. Menus at spot 1
+     (opens right) and spot 7 (opens below) overlap the label of spot 3 and
+     spot 6 respectively when those hold towers, by a few pixels.
+  2. On the win screen, tower labels show faintly through the 0.85 panel
+     (for example "Cannon" just under "Victory!").
+  Added e2e test: the spot 7 panel (opens above) does not touch the spot 7
+  label (label box computed from the known offset 22 and 12 px font).
+- DEVLOG matches what I saw. README layout omitted `draw/labels.ts`; fixed
+  in its own commit.
