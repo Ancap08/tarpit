@@ -1,14 +1,12 @@
 import Phaser from 'phaser';
+import { GameScene } from './game/GameScene';
+import { installGlobal } from './game/testMode';
 import { TitleScene } from './game/TitleScene';
 
-declare global {
-  interface Window {
-    __tarpit?: Phaser.Game;
-  }
-}
-
 const game = new Phaser.Game({
-  type: Phaser.AUTO,
+  // CANVAS, not AUTO: the canvas renderer draws the same pixels in headless
+  // Chromium on every run, which keeps screenshot baselines stable.
+  type: Phaser.CANVAS,
   parent: 'game',
   width: 960,
   height: 540,
@@ -17,7 +15,7 @@ const game = new Phaser.Game({
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [TitleScene],
+  scene: [TitleScene, GameScene],
 });
 
-window.__tarpit = game;
+installGlobal(game);

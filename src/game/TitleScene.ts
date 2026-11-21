@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { COLORS, FONT, TEXT } from './palette';
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -7,22 +8,37 @@ export class TitleScene extends Phaser.Scene {
 
   create(): void {
     const { width, height } = this.scale;
-    this.cameras.main.setBackgroundColor('#111418');
+    this.cameras.main.setBackgroundColor(COLORS.titleBg);
 
     this.add
-      .text(width / 2, height / 2 - 30, 'Tarpit', {
-        fontFamily: 'Georgia, serif',
+      .text(width / 2, height / 2 - 50, 'Tarpit', {
+        fontFamily: FONT,
         fontSize: '72px',
-        color: '#f2e6c9',
+        fontStyle: 'bold',
+        color: TEXT.title,
       })
       .setOrigin(0.5);
 
     this.add
-      .text(width / 2, height / 2 + 40, 'a tower defense game', {
-        fontFamily: 'Georgia, serif',
+      .text(width / 2, height / 2 + 20, 'a tower defense game', {
+        fontFamily: FONT,
         fontSize: '24px',
-        color: '#a89f8a',
+        color: TEXT.subtitle,
       })
       .setOrigin(0.5);
+
+    this.add
+      .text(width / 2, height / 2 + 100, 'Click to start', {
+        fontFamily: FONT,
+        fontSize: '22px',
+        fontStyle: 'bold',
+        color: TEXT.prompt,
+      })
+      .setOrigin(0.5);
+
+    const start = () => this.scene.start('game');
+    this.input.once('pointerdown', start);
+    this.input.keyboard?.once('keydown-SPACE', start);
+    this.input.keyboard?.once('keydown-ENTER', start);
   }
 }
