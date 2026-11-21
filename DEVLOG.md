@@ -2506,3 +2506,72 @@ Claude Fable 5.1.
   `end-screens-verifier.spec.ts` and `visual.spec.ts`.
 - My first `boss.png` assertion counted the Mortar hit one tick late (the
   splash on screen at step 3562 is from step 3560, not 3561).
+
+### Verifier notes
+
+- **Clean run, exit 0.** `npm ci`, lint, typecheck, 32 test files / 339
+  tests, build (49 modules, 4 files in `dist/`), `check:assets` (12 rows),
+  `check:size` 1269753 bytes, 100 Playwright tests, and `npm run sim` with
+  the summary line for line as in the table above. `boss.spec.ts` and
+  `end-screens.spec.ts` with `--repeat-each=5`: 30 of 30.
+- **Spec and scope hold.** `git diff origin/main -- src/sim/towers.ts
+  src/sim/enemies.ts src/sim/waves.ts`: towers.ts untouched; enemies.ts
+  adds the boss row, `livesCost: 1` on the other five, `isBoss` and
+  `cappedSlow`; waves.ts adds only `g('boss', 1, 0, 26)`. No other number
+  changed. Wave 10 from the table: Wolves 4 + 7 x 0.5 = 7.5 s, Trolls
+  0 + 11 x 2 = 22 s, Harpies 6 + 4 x 0.8 = 9.2 s, Shieldbearers
+  2 + 3 x 2 = 8 s, so the last other spawn is the 12th Troll at 22 s
+  (tick 1320) and he comes at 26 s (tick 1560), the last spawn.
+- **Independent probes** (`src/sim/boss-verifier.test.ts`, 15 tests, cell
+  B = (2,5) at 64 px from path distance 80): under an upgraded Tar Pit he
+  moves 120 x 25 x 0.7 / 60 = 35 px in the 120 ticks after the first shot
+  (50 unslowed; a Troll in the same spot 28 px at the full 60%) and every
+  `slowed` event on him carries 0.3; an exit with 20 lives leaves 15, with
+  5 leaves 0 and `lost`, one `exit` and one `bossDown {cause: 'exit'}`; a
+  burn kill pays 150 once with `kill` and `bossDown {cause: 'burn'}`; a
+  fully spawned wave 10 with him alone stays in phase `wave` for 60 ticks
+  and wins on the next tick without him; a Cannon targets him past a Harpy
+  and does the full 25, a Longbow does 4 (2 on a Shieldbearer); the combo
+  build's `bossDown` is `shot` at waveTick 4639 with 12 lives and 497
+  gold, `comboBuildNoFire` at 5150 (511 ticks later) with 2 lives.
+- **Renderer probes** (`e2e/boss-verifier.spec.ts`, 4 tests, 12 of 12 over
+  three repeats): his Layer sits after the walkers' Layer and before the
+  shot effects, hp bars, labels' Layer and air Layer; at tick 4921 of a
+  towerless wave 10 he is alone at distance 3360 x 25 / 60 = 1400, i.e.
+  (776,192), and the canvas under his feet reads path x 0.85 x 0.8 at 9 px
+  below the point and path x 0.85 at 12 px (inner ellipse ended, outer
+  still 21.6 px wide), plain path 60 px to either side; the first hit on
+  him (Fire Pot) shows the `boss-hit` frame 0 sprite over him at (0,0)
+  offset in his Layer and `animState().flags.hit`, hidden again on the next
+  tick without a hit; `hudText().boss` is null on tick 1560, the label at
+  1561, null again after `bossDown`; at tick 3562 the red run along the
+  bar's middle row is within 2 px of round(300 x hp / 4000) = 178; the
+  wave 10 preview object is at 13 px and `getWrappedText()` gives two
+  lines, the second ending with `BOSS_NAME`; the wave 1 preview is one
+  16 px line.
+- **Frame pin added:** `src/sim/boss-frame.test.ts` pins tick 3562 of the
+  `boss.png` setup in the simulation (alone at (420,241), tarred at 0.3,
+  burning, bar 2374, Mortar hit on him on tick 3560, no hit on 3562, 12
+  lives). The 497 gold and 12 lives agree across `balance.test.ts`,
+  `endText.test.ts`, `end-screens.spec.ts`, `end-screens-verifier.spec.ts`
+  and `visual.spec.ts`.
+- **Names rule:** "Grumblefoot" outside `names.ts` in `src/game` appears
+  only in comments (hud.ts, testGlobal.d.ts, enemySprites.ts, sheets.ts),
+  never in a string. Rename proof: `BOSS_NAME = 'Bogwart'`, `npm test` 34
+  files / 354 tests green, `boss.spec.ts` and `boss-verifier.spec.ts` 6 of
+  6 green, reverted. Note for the next renamer: Playwright serves the built
+  `dist/` (`vite preview`), so a rename needs `npm run build` before
+  `test:e2e`, or the browser still shows the old name.
+- **Sheets:** `assets/sprites/boss.png` and `boss-hit.png` are byte-identical
+  to the pack's `Actor/Boss/DemonCyclop/Walk.png` and `Hit.png` (sha256
+  match). Pillow: Walk 300 x 50, six 50 x 50 frames, frame bounding boxes
+  all front views (frames 4 and 5 shifted right, the lean); Hit 150 x 50,
+  three frames. Lowest opaque row in every walk frame is 42 (row 43 is
+  transparent), so "feet at rows 42 to 43" is one row generous; lift 30
+  still puts the last opaque row 6 px below the path point as described.
+- **Frames looked at** (m23-boss, bar crop, sprite 2x, hud preview,
+  play-webgl, sheet zoom): bar legible, name pill whole, he draws over the
+  path with the rings on his body and the shadow at his feet, the preview
+  wraps clear of Start Wave, nothing under the HUD. Nothing off.
+- **Open for the coordinator:** the bar at y 24 with the pill at y 4 to 22
+  (the brief said y 12) is as DESIGN now describes; accept or move.
