@@ -190,6 +190,11 @@ export interface GameState {
   wave: number;
   /** Ticks since the game was created. */
   tick: number;
+  /**
+   * Special attack charges (milestone 25b): 0 or 1. startWave sets 1; a
+   * wave clear sets 0 (unused charges do not carry over); useSpecial spends it.
+   */
+  specialCharges: number;
   /** Ticks since the current wave started; the first tick of a wave is 0. */
   waveTick: number;
   /** Enemies spawned so far in the current wave, per group index. */

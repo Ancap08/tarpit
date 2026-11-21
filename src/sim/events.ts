@@ -5,13 +5,17 @@
 // `state.shots`, and appends to it as things happen, in order. Won and lost
 // ticks do nothing, so the list keeps the last tick's events.
 // Actions between ticks (startWave, build, upgrade, sell, targeting, move,
-// undoUpgrade) append
+// undoUpgrade, useSpecial) append
 // their own event to the same list; it stays there until the next tick clears it. So
 // the renderer reads the new entries after every action and after every
 // tick (GameScene does both, see EventCursor in src/game/anim/effects.ts).
 
 import type { Cell } from './grid';
+import type { SpecialType } from './specials';
 import type { EnemyType, TargetingMode, TowerType } from './types';
+
+/** What killed an enemy: a tower shot, a burn tick, or a special attack (milestone 25b). */
+export type KillCause = 'shot' | 'burn' | 'special';
 
 export type GameEvent =
   /** An enemy entered the map at distance 0. */
@@ -22,13 +26,13 @@ export type GameEvent =
   | { kind: 'burn'; enemyId: number; damage: number }
   /** A slow was applied (an ignored weaker slow emits nothing). */
   | { kind: 'slowed'; enemyId: number; slow: number; ticks: number }
-  | { kind: 'kill'; enemyId: number; enemyType: EnemyType; bounty: number; cause: 'shot' | 'burn' }
+  | { kind: 'kill'; enemyId: number; enemyType: EnemyType; bounty: number; cause: KillCause }
   /** The enemy reached the exit and cost its livesCost (1, or 5 for the boss). */
   | { kind: 'exit'; enemyId: number }
   /** The boss spawned (milestone 23); follows its 'spawn' event. */
   | { kind: 'bossSpawn'; enemyId: number }
   /** The boss is gone (milestone 23); follows its 'kill' or 'exit' event. */
-  | { kind: 'bossDown'; enemyId: number; cause: 'shot' | 'burn' | 'exit' }
+  | { kind: 'bossDown'; enemyId: number; cause: KillCause | 'exit' }
   | { kind: 'build'; cell: Cell; tower: TowerType }
   | { kind: 'upgrade'; cell: Cell; tower: TowerType }
   /** A tower was sold; `full` when it was unlocked and refunded everything (milestone 25a). */
@@ -37,6 +41,12 @@ export type GameEvent =
   | { kind: 'move'; from: Cell; to: Cell; tower: TowerType }
   /** An upgrade bought this setup phase was undone and refunded in full (milestone 25a). */
   | { kind: 'undoUpgrade'; cell: Cell; tower: TowerType; refund: number }
+  /**
+   * A special attack was used (milestone 25b): aimed at (x, y) with this
+   * radius; `hits` enemies were inside it. Its kills follow as 'kill'
+   * events with cause 'special'.
+   */
+  | { kind: 'special'; type: SpecialType; x: number; y: number; radius: number; hits: number }
   /** A tower's targeting mode was set (milestone 24). */
   | { kind: 'targeting'; cell: Cell; mode: TargetingMode }
   | { kind: 'waveStart'; wave: number }

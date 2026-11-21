@@ -3,6 +3,12 @@
 //
 // A script is an ordered list of actions. Time only passes inside run
 // actions; every other action happens on the current tick.
+//
+// Milestone 25b: a special attack is an action with a wave tick and a
+// position ({ type: 'special', special, x, y, atWaveTick }). A WaveScript
+// may carry `timed`, per wave, a list of them next to the pre-wave
+// actions; playScripted fires each when the wave's tick counter reaches its
+// atWaveTick. Scripts without `timed` play exactly as before.
 
 import {
   buildTower,
@@ -12,8 +18,10 @@ import {
   towerAt,
   undoUpgrade,
   upgradeTower,
+  useSpecial,
   type BuildResult,
   type MoveResult,
+  type SpecialResult,
   type UndoUpgradeResult,
   type SellResult,
   type TargetingResult,
@@ -21,6 +29,7 @@ import {
 } from './actions';
 import type { Difficulty } from './difficulty';
 import { createGame, startWave, tick, type StartWaveResult } from './game';
+import type { SpecialType } from './specials';
 import type { GameState, TargetingMode, TowerType } from './types';
 import { buildableCells, cellCenter, cellFromKey, cellKey, type Cell } from './grid';
 import { MAP, pathLength, positionAlongPath } from './map';
@@ -44,12 +53,27 @@ export type PlanningAction =
   /** Undo an upgrade bought this setup phase; full refund. */
   | { type: 'undoUpgrade'; cell: Cell };
 
+/**
+ * A special attack (milestone 25b) aimed at (x, y). In a WaveScript's
+ * `timed` list it fires when the wave tick counter (state.waveTick) reaches
+ * atWaveTick, that is after atWaveTick ticks of the wave; applied directly
+ * (applyAction, runHeadless) it fires at once and atWaveTick is not read.
+ */
+export interface SpecialAction {
+  type: 'special';
+  special: SpecialType;
+  x: number;
+  y: number;
+  atWaveTick: number;
+}
+
 export type HeadlessAction =
   | { type: 'startWave' }
   /** Tick until the current wave ends (phase leaves 'wave') or `maxTicks` pass. */
   | { type: 'runUntilWaveEnds'; maxTicks: number }
   | BuildAction
-  | PlanningAction;
+  | PlanningAction
+  | SpecialAction;
 
 export type HeadlessStepResult =
   | { action: 'startWave'; result: StartWaveResult }
@@ -59,7 +83,8 @@ export type HeadlessStepResult =
   | { action: 'sell'; cell: Cell; result: SellResult }
   | { action: 'target'; cell: Cell; result: TargetingResult }
   | { action: 'move'; from: Cell; to: Cell; result: MoveResult }
-  | { action: 'undoUpgrade'; cell: Cell; result: UndoUpgradeResult };
+  | { action: 'undoUpgrade'; cell: Cell; result: UndoUpgradeResult }
+  | { action: 'special'; special: SpecialType; x: number; y: number; waveTick: number; result: SpecialResult };
 
 export interface HeadlessRun {
   state: GameState;
@@ -92,6 +117,10 @@ export function applyAction(state: GameState, action: HeadlessAction): HeadlessS
       return { action: 'move', from: action.from, to: action.to, result: moveTower(state, action.from, action.to) };
     case 'undoUpgrade':
       return { action: 'undoUpgrade', cell: action.cell, result: undoUpgrade(state, action.cell) };
+    case 'special': {
+      const { special, x, y } = action;
+      return { action: 'special', special, x, y, waveTick: state.waveTick, result: useSpecial(state, special, { x, y }) };
+    }
   }
 }
 
@@ -101,11 +130,16 @@ export function runHeadless(script: readonly HeadlessAction[], difficulty?: Diff
   return { state, log };
 }
 
+/** Per wave (entry i for wave i + 1), the special attacks fired during it (milestone 25b). */
+export type TimedScript = readonly (readonly SpecialAction[])[];
+
 /**
  * A scripted game: entry i lists the build, upgrade and sell actions taken
  * in setup before wave i + 1. Missing entries mean no actions that wave.
+ * `timed` (milestone 25b, optional) lists, per wave, the special attacks
+ * fired during it; no existing archetype has it.
  */
-export type WaveScript = readonly (readonly BuildAction[])[];
+export type WaveScript = readonly (readonly BuildAction[])[] & { readonly timed?: TimedScript };
 
 export interface WaveReport {
   wave: number;
@@ -132,12 +166,36 @@ export function playScripted(script: WaveScript, maxTicksPerWave = 60 * 600, dif
   for (let i = 0; i < WAVES.length && state.phase === 'setup'; i++) {
     for (const action of script[i] ?? []) log.push(applyAction(state, action));
     log.push(applyAction(state, { type: 'startWave' }));
-    const run = applyAction(state, { type: 'runUntilWaveEnds', maxTicks: maxTicksPerWave });
-    log.push(run);
-    const ticks = run.action === 'runUntilWaveEnds' ? run.ticks : 0;
+    const timed = script.timed?.[i] ?? [];
+    let ticks: number;
+    if (timed.length === 0) {
+      const run = applyAction(state, { type: 'runUntilWaveEnds', maxTicks: maxTicksPerWave });
+      log.push(run);
+      ticks = run.action === 'runUntilWaveEnds' ? run.ticks : 0;
+    } else {
+      ticks = runWaveWithTimed(state, timed, maxTicksPerWave, log);
+    }
     waves.push({ wave: state.wave, lives: state.lives, gold: state.gold, ticks, phase: state.phase });
   }
   return { state, log, waves };
+}
+
+/**
+ * Run the current wave like runUntilWaveEnds, firing each timed action
+ * (in list order) before the tick on which state.waveTick equals its
+ * atWaveTick. Timed actions whose tick never comes (the wave ended first)
+ * are not fired. Logs each fired action, then one runUntilWaveEnds entry
+ * with the wave's tick count; returns that count.
+ */
+function runWaveWithTimed(state: GameState, timed: readonly SpecialAction[], maxTicks: number, log: HeadlessStepResult[]): number {
+  let ticks = 0;
+  while (state.phase === 'wave' && ticks < maxTicks) {
+    for (const action of timed) if (action.atWaveTick === state.waveTick) log.push(applyAction(state, action));
+    tick(state);
+    ticks += 1;
+  }
+  log.push({ action: 'runUntilWaveEnds', ticks });
+  return ticks;
 }
 
 /**
@@ -479,8 +537,43 @@ export function comboStrongest(difficulty?: Difficulty): WaveScript {
  */
 export type Archetype = (difficulty?: Difficulty) => WaveScript;
 
+/** comboWithKegs aims every Powder Keg at the path point this far from the spawn (the long downhill run). */
+export const KEG_POLICY_DISTANCE = 700;
+/** comboWithKegs fires its Powder Keg when the wave tick counter reaches this (10 s into the wave). */
+export const KEG_POLICY_WAVE_TICK = 600;
+
+/**
+ * Informational (milestone 25b): the combo build plus one Powder Keg per
+ * wave at a fixed policy: at wave tick KEG_POLICY_WAVE_TICK (600), aimed at
+ * the path point KEG_POLICY_DISTANCE (700) px from the spawn, (420, 232) in
+ * the middle of the long downhill run. COMBO_PLAN is followed as in
+ * comboBuild, recorded by playing (the keg kills change the gold), so the
+ * pre-wave actions can differ from comboBuild's. No target.
+ */
+export function comboWithKegs(difficulty?: Difficulty): WaveScript {
+  const at = positionAlongPath(MAP, KEG_POLICY_DISTANCE);
+  const keg: SpecialAction = { type: 'special', special: 'keg', x: at.x, y: at.y, atWaveTick: KEG_POLICY_WAVE_TICK };
+  const decide = followPlan(COMBO_PLAN);
+  const state = createGame({ difficulty });
+  const script: BuildAction[][] = [];
+  const timed: SpecialAction[][] = [];
+  for (let i = 0; i < WAVES.length && state.phase === 'setup'; i++) {
+    const actions: BuildAction[] = [];
+    for (let action = decide(state); action; action = decide(state)) {
+      applyAction(state, action);
+      actions.push(action);
+    }
+    script.push(actions);
+    timed.push([keg]);
+    applyAction(state, { type: 'startWave' });
+    runWaveWithTimed(state, [keg], 60 * 600, []);
+  }
+  return Object.assign(script, { timed });
+}
+
 export const INFORMATIONAL: Readonly<Record<string, Archetype>> = {
   comboStrongest,
+  comboWithKegs,
 };
 
 /** Every archetype, in report order. */
