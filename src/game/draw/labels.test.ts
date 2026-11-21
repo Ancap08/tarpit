@@ -88,4 +88,16 @@ describe('label crowding', () => {
       [7, 6, 12, true],
     ]);
   });
+  it('verifier: a vertical stack of three (rows 4, 5, 6) keeps 12 px and all labels; they sit 32 px apart and never meet each other', () => {
+    expect(layout([tower(7, 6), tower(7, 4), tower(7, 5)])).toEqual([
+      [7, 4, 12, true],
+      [7, 5, 12, true],
+      [7, 6, 12, true],
+    ]);
+    // The 12 px label of row 5 spans y 198..214; row 6's tower is centred
+    // at y 208 with a body about 13 px in radius (top near 195), so the label
+    // covers the top of the tower below. Accepted; the layout is deterministic.
+    const a = labelBox(tower(7, 5), 12);
+    expect(a.y + a.height).toBeGreaterThan(6 * 32 + 16 - 13);
+  });
 });

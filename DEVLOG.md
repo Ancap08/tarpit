@@ -1420,3 +1420,40 @@ Counts: 201 unit tests in 22 files, 54 e2e tests in 9 files.
 - The first commit of this milestone swept in the staged deletion of the
   placeholder spec; the three local commits were redone with explicit
   paths before anything was pushed.
+
+### Verifier notes
+
+The verifier (Claude Sonnet) checked milestone 11 on branch
+`m11-new-towers-ui`. Verdict: pass.
+
+- Clean run (`rm -rf dist && npm ci`, lint, typecheck, test, build,
+  test:e2e): exit 0, 201 unit tests in 22 files, 54 e2e tests. With the
+  verifier's additions: 202 unit tests and 61 e2e tests. `--repeat-each=5`
+  over both new-towers specs: 65 of 65 passed.
+- `git diff origin/main --stat -- src/sim` is empty. `docs/DESIGN.md`
+  changes by one sentence (3 lines: the Longbow, Mortar and Fire Pot "join
+  the build bar in milestone 11" now says they joined). No numbers changed.
+  `npm run sim` output is identical to origin/main.
+- Bar geometry confirmed from code and from `uiRects()`: x 16, 172, 328,
+  484, 640, 796; 148 x 36; 8 px gaps; right edge 944; no overlap between
+  buttons, nor with Start Wave or the speed button.
+- Probes in `e2e/new-towers-verifier.spec.ts` (real clicks): one of each
+  of the six towers placed through the bar leaves 590 gold; Mortar pick
+  and hover report `pick` and `hoverCell` (the dashed circle is pixels
+  only and is not asserted); Fire Pot is not pickable at 69, pickable at
+  70; an upgraded Longbow sells for 49; at tick 686 no enemy is both
+  slowed and burning and at 687 Goblin 0 is. Three adjacent Musketeers
+  give labels 10 px, shown, hidden, shown, read from the scene's private
+  label map (the test API has no label hook).
+- Vertical stack (rows 4, 5, 6 in one column): not "horizontal
+  neighbours" and the boxes are 32 px apart, so all three keep 12 px and
+  all stay visible. A label starts 22 px below its tower's centre, so it
+  covers the top of the tower below. Deterministic and now tested.
+- Frames: bar labels and costs are legible at 1x; the Longbow (green
+  post), Mortar (grey tube) and Fire Pot (orange circle) are distinct from
+  each other and from Cannon. In the new-towers frame the Mortar's panel
+  covers part of the "Fire+" label, as the implementer said. In a
+  Musketeer, Musketeer, Musketeer, Longbow row the Longbow's label is
+  hidden by the rule (the higher cell key), which leaves a tower unlabelled.
+- Not checked: pixel baselines. `new-towers.png` is not in the repo; CI
+  generates baselines, and local runs skip pixel comparison.
