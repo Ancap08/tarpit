@@ -56,3 +56,40 @@ test('mid wave 1 with three towers', async ({ page }) => {
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('mid-wave.png');
 });
+
+/** Click the centre of a named rectangle from uiRects(). */
+async function click(page: Page, name: string): Promise<void> {
+  const r = await page.evaluate((n) => (window.__tarpit as TarpitTestApi).uiRects()[n], name);
+  await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+}
+
+test('build menu with the Cannon range preview', async ({ page }) => {
+  await open(page);
+  await page.evaluate(() => (window.__tarpit as TarpitTestApi).startGame());
+  await click(page, 'spot:2');
+  const r = await page.evaluate(() => (window.__tarpit as TarpitTestApi).uiRects()['menu:cannon']);
+  await page.mouse.move(r.x + r.width / 2, r.y + r.height / 2);
+  expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).ui())).toMatchObject({ activeSpot: 2, menuOpen: true });
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('build-menu.png');
+});
+
+test('upgraded Musketeer selected with its panel and range', async ({ page }) => {
+  await open(page);
+  await page.evaluate(() => (window.__tarpit as TarpitTestApi).startGame());
+  await click(page, 'spot:2');
+  await click(page, 'menu:musketeer');
+  await click(page, 'spot:2');
+  await click(page, 'panel:upgrade');
+  // Park the pointer on empty grass so no hover tint shows.
+  await page.mouse.move(900, 440);
+  const s = await page.evaluate(() => {
+    const t = window.__tarpit as TarpitTestApi;
+    return { ui: t.ui(), towers: t.state().towers, gold: t.state().gold };
+  });
+  expect(s.ui).toMatchObject({ selectedSpot: 2, panelOpen: true });
+  expect(s.towers).toEqual([expect.objectContaining({ spotId: 2, type: 'musketeer', upgraded: true })]);
+  expect(s.gold).toBe(10);
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('tower-selected.png');
+});
