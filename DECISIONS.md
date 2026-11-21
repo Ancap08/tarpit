@@ -250,3 +250,22 @@ can change it; "Kyle" means Kyle decided.
   Labels are about 56 px wide on 32 px cells. Milestone 11 (new tower
   visuals) decides between smaller labels, hiding labels when crowded, or
   leaving it.
+
+## 2026-11-21, milestone 10 (new towers in the simulation)
+
+- **Longbow, Mortar and Fire Pot exist in the simulation with the SCOPE-v2
+  numbers; the build bar still shows only the v1 three until milestone 11.**
+  Fable. Placeholder grey shapes keep the renderer type-complete.
+- **Tick order gains a burn step: move, exit, burn, combat, spawn, counters,
+  clear check.** Default (Opus). Burn deaths pay bounty and are removed
+  before towers pick targets.
+- **An enemy dies at hp <= 1e-9, not hp <= 0.** Default (Opus, accepted by
+  Fable after the verifier's argument). Burn makes hp fractional and 216
+  ticks of 5/60 left a positive dust; integer-hp outcomes cannot change.
+- **Burn fields on Enemy are optional with 0 meaning none; burns do not
+  stack, an equal-or-stronger burn replaces, weaker is ignored; a killing
+  impact applies no burn; tar doubles the burn only while the slow is still
+  active after that tick's movement.** Default (Opus). All pinned by tests.
+- **Balance inputs for milestone 12:** Longbow spam wins with 20 lives;
+  the combo build wins with 20 lives and 441 gold. Both far outside the
+  v2 targets. Numbers untouched until milestone 12.
