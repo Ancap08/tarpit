@@ -1,17 +1,23 @@
 // Balance targets for v2 (milestone 12, docs/SCOPE-v2.md "Balance targets
 // for v2"), proven by headless archetype runs on the grid with all six
-// towers. `npm run sim` prints the same runs wave by wave. The informational
+// towers, rechecked with the milestone 22 Harpy and Shieldbearer waves, plus
+// the milestone 22 anti-air target (noAntiAir). `npm run sim` prints the same runs wave by wave. The informational
 // archetypes (greedyMusket, soundBuild, soundBuildNoTar) have no target here;
 // they only have to run deterministically with every action accepted.
 import { describe, expect, it } from 'vitest';
+import { createGame, startWave, tick } from './game';
 import { buildableCells, cellCenter, cellKey } from './grid';
 import {
+  applyAction,
   ARCHETYPES,
   comboBuild,
+  comboBuildNoBows,
   comboBuildNoFire,
+  FIRST_HARPY_WAVE,
   greedyMusket,
   lazyBuild,
   longbowSpam,
+  noAntiAir,
   noTowers,
   playScripted,
   TRAIL_CELL_ORDER,
@@ -74,9 +80,9 @@ describe('v2 balance targets (milestone 12)', () => {
     expect(afterWave9.gold).toBeLessThan(150);
   });
 
-  it('4. comboBuild pinned exactly: 11 lives and 177 gold at the end, 136 gold after wave 9', () => {
+  it('4. comboBuild pinned exactly: 12 lives and 347 gold at the end, 145 gold after wave 9 (milestone 22)', () => {
     const r = play(comboBuild());
-    expect({ lives: r.lives, gold: r.gold, goldAfterWave9: r.waves[8].gold }).toEqual({ lives: 11, gold: 177, goldAfterWave9: 136 });
+    expect({ lives: r.lives, gold: r.gold, goldAfterWave9: r.waves[8].gold }).toEqual({ lives: 12, gold: 347, goldAfterWave9: 145 });
   });
 
   it('5. comboBuildNoFire does strictly worse than comboBuild: lost, or won with fewer lives', () => {
@@ -85,6 +91,91 @@ describe('v2 balance targets (milestone 12)', () => {
     expect(noFire.refused).toEqual([]);
     const worse = noFire.phase === 'lost' || noFire.lives < combo.lives;
     expect(worse, `with fire: ${combo.msg}; without: ${noFire.msg}`).toBe(true);
+  });
+});
+
+describe('milestone 22 pins: where each archetype ends', () => {
+  const ends: Record<string, string> = {
+    noTowers: 'lost on wave 2, 0 lives, 125 gold',
+    lazyBuild: 'lost on wave 7, 0 lives, 113 gold',
+    greedyMusket: 'lost on wave 7, 0 lives, 120 gold',
+    soundBuild: 'lost on wave 7, 0 lives, 102 gold',
+    soundBuildNoTar: 'lost on wave 6, 0 lives, 248 gold',
+    longbowSpam: 'lost on wave 9, 0 lives, 464 gold',
+    comboBuild: 'won on wave 10, 12 lives, 347 gold',
+    comboBuildNoFire: 'won on wave 10, 2 lives, 475 gold',
+    noAntiAir: 'lost on wave 7, 0 lives, 226 gold',
+  };
+  it('every archetype is pinned', () => {
+    expect(Object.keys(ends)).toEqual(Object.keys(ARCHETYPES));
+  });
+  for (const [name, end] of Object.entries(ends)) {
+    it(`${name}: ${end}`, () => {
+      expect(play(ARCHETYPES[name]()).msg).toBe(end);
+    });
+  }
+});
+
+describe('anti-air target (milestone 22)', () => {
+  /** Play `script` up to and including wave `wave`; return the Harpies spawned and exited in that wave. */
+  function harpiesInWave(script: WaveScript, wave: number) {
+    const s = createGame();
+    const harpies = new Set<number>();
+    let exits = 0;
+    const running = () => s.phase === 'wave';
+    for (let i = 0; i < wave && s.phase === 'setup'; i++) {
+      for (const a of script[i] ?? []) expect(applyAction(s, a)).toMatchObject({ result: { ok: true } });
+      startWave(s);
+      while (running()) {
+        tick(s);
+        if (s.wave !== wave) continue;
+        for (const e of s.events) {
+          if (e.kind === 'spawn' && e.enemyType === 'harpy') harpies.add(e.enemyId);
+          if (e.kind === 'exit' && harpies.has(e.enemyId)) exits += 1;
+        }
+      }
+    }
+    return { reached: s.wave, spawned: harpies.size, exits };
+  }
+
+  it('Harpies first come in wave 4', () => {
+    expect(FIRST_HARPY_WAVE).toBe(4);
+  });
+
+  it('noAntiAir sells its Longbows before wave 4 and builds no Musketeer or Longbow after', () => {
+    const script = noAntiAir();
+    expect(script[3].filter((a) => a.type === 'sell').map((a) => a.cell)).toEqual([
+      { col: 9, row: 5 },
+      { col: 9, row: 4 },
+    ]);
+    for (const wave of script.slice(3)) {
+      expect(wave.some((a) => a.type === 'build' && (a.tower === 'musketeer' || a.tower === 'longbow'))).toBe(false);
+    }
+  });
+
+  it('noAntiAir leaks every Harpy of wave 4', () => {
+    const r = harpiesInWave(noAntiAir(), 4);
+    expect(r.reached).toBe(4);
+    expect(r.spawned).toBe(4);
+    expect(r.exits).toBe(r.spawned);
+  });
+
+  it('noAntiAir loses by wave 8', () => {
+    const r = play(noAntiAir());
+    expect(r.refused).toEqual([]);
+    expect(r.phase, r.msg).toBe('lost');
+    expect(r.wave, r.msg).toBeLessThanOrEqual(8);
+  });
+
+  it('comboBuild with the same cells keeps some wave 4 Harpies from exiting (the bows matter)', () => {
+    const r = harpiesInWave(comboBuild(), 4);
+    expect(r.spawned).toBe(4);
+    expect(r.exits).toBeLessThan(r.spawned);
+  });
+
+  it('why noAntiAir sells instead: dropping the bows from wave 1 loses on wave 2, before any Harpy', () => {
+    const r = play(comboBuildNoBows());
+    expect(r.msg).toBe('lost on wave 2, 0 lives, 65 gold');
   });
 });
 
