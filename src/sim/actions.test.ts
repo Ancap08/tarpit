@@ -17,7 +17,7 @@ describe('buildTower', () => {
     expect(r).toEqual({
       ok: true,
       gold: 50,
-      tower: { cell: { col: 2, row: 5 }, type: 'musketeer', upgraded: false, cooldownTicks: 0, spent: 50 },
+      tower: { cell: { col: 2, row: 5 }, type: 'musketeer', upgraded: false, targeting: 'first', cooldownTicks: 0, spent: 50 },
     });
     expect(s.gold).toBe(50);
     expect(s.towers).toHaveLength(1);

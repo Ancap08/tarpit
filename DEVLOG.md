@@ -2624,3 +2624,140 @@ Claude Fable 5.1.
   reads the port from `PW_PORT` (default 4173) for the server and
   `baseURL`, and never reuses a server, so a busy port fails loudly;
   `npm run demo` honours `PW_PORT` too (default 4179).
+
+## 2026-11-21: milestone 24, targeting modes
+
+Roles: implementer Claude Opus, verifier Claude Fable 5.1, coordinator
+Claude Fable 5.1.
+
+### Implementer notes
+
+- **Simulation.** `TargetingMode = 'first' | 'last' | 'strongest'` and
+  `TARGETING_MODES` (the cycle order) in `types.ts`; `Tower.targeting` is
+  `'first'` at build, so a sell and rebuild resets it. `setTargeting(state,
+  cell, mode)` in `actions.ts` returns `{ok:true}` or `{ok:false, reason:
+  'no-tower' | 'game-over'}`, works in setup and wave, and emits
+  `targeting {cell, mode}`. `findTarget` keeps every eligibility rule
+  (range, the Mortar's minimum range, flying) and then compares with
+  `preferred(mode, a, b)`: first by higher path distance, last by lower,
+  strongest by higher hp then higher path distance; the lower id breaks
+  any remaining tie in every mode. Splash, slow and burn follow the chosen
+  target unchanged.
+- **Headless.** `BuildAction` gains `{type:'target', cell, mode}` (no gold
+  cost), so a `WaveScript` can carry it and `runScript` in test mode plays
+  it through the scene. Every archetype pin passed unmodified (the default
+  is first).
+- **`comboStrongest()` (informational): lost on wave 5, 0 lives, 105
+  gold** (comboBuild: won, 12 lives, 497 gold). Lives after waves 1 to 5:
+  18, 14, 5, 2, 0 (comboBuild: 20, 20, 20, 17, 16). It follows COMBO_PLAN
+  like comboBuild with a `target strongest` after each build. Not verified
+  why it is so much worse; the likely reason is that every tower spreads
+  its shots over fresh full-hp enemies instead of finishing the wounded
+  front ones, so the wounded ones walk out. It lives in a new
+  `INFORMATIONAL` table that `npm run sim` prints after `ARCHETYPES`, so
+  the "every archetype is pinned" test stays as it was; its result is
+  pinned in `targeting.test.ts` so a change shows.
+- **Panel geometry.** Three stacked 156 x 42 buttons (Upgrade, Sell,
+  Target) with 4 px gaps, 6 px padding and the 42 x 42 close button in a
+  column to the right: the panel is 214 x 146 (was 214 x 100). The
+  targeting label is `Target: <name>` from `TARGETING_LABELS` in
+  `names.ts`, centred at 13 px: "Target: Strongest" is 17 Courier
+  characters (about 133 px), so 16 px (163 px) would overflow the 156 px
+  button and 14 px left about 6 px a side, which looked cramped in the
+  frame. The placement candidate offsets did not change: the all-cells
+  test in `input.test.ts` now also runs with the real 214 x 146 size
+  (before, it used an old 168 x 76 box only) and passes for every
+  buildable cell. For (7,5) the panel is at (133,216), below the tower;
+  for (14,14) on the bottom row it is at (220,330), left and up; for (29,14) its
+  buttons are inside the map and end above y 480 (Playwright).
+- **Test API.** `setTargetingAt(col,row,mode)`; `uiRects()` gains
+  `panel:target`; `ui()` gains `selectedTargeting` (null with no tower
+  selected) and `targetLabel` (the button text, null while closed).
+- **Playwright (`e2e/targeting.spec.ts`).** Musketeer at (7,5), wave 1,
+  ticks found headlessly: tick 212 is the first with two goblins in range
+  (ids 0 and 1 at path distance 211 and 151); first hits id 0 at tick 272;
+  after one click (Last) the shot at tick 332 hits id 3 (the furthest,
+  which first would take, is id 1); after a second click (Strongest) with
+  every hp set to 30 the shot at tick 392 hits id 1, as first would; with
+  id 1 set to 10 hp the shot at tick 452 hits id 2. A third click wraps to
+  First; sell and rebuild shows `selectedTargeting: 'first'`.
+- **Baseline.** `tower-selected.png` changes (third button); the setup is
+  the same. Not committed: CI regenerates it.
+
+### What went wrong
+
+- **comboStrongest first replayed the recorded comboBuild script** with a
+  target action inserted after each build. Strongest changes which enemies
+  die and so the gold, and the replay refused a build it could no longer
+  afford (`refused: target at (14,9), no-tower`). It is now recorded by
+  playing COMBO_PLAN, like comboBuild.
+- **Two exact tower-shape tests** (`actions.test.ts`, `verifier2.test.ts`)
+  compare a whole `Tower` object; they gained `targeting: 'first'`.
+- **A second checkout (`tarpit-m23fix`) ran Playwright at the same time**
+  on the same port 4173. With `reuseExistingServer` locally, one checkout's
+  tests can run against the other's build. My frame script first hit their
+  server (`setTargetingAt is not a function`), and a `pkill -f "vite
+  preview"` I ran to clean up may have stopped their server mid-run. Frames
+  moved to port 4183 and the e2e runs waited for 4173 to be free.
+
+### Verifier notes
+
+Verifier: Claude Fable 5.2 (the roles line above says 5.1).
+
+- **Clean run** (`rm -rf dist`, `npm ci`, lint, typecheck, test, build,
+  check:assets, check:size, test:e2e on `PW_PORT=4173`, sim): exit 0. As
+  delivered: 36 unit files, 387 tests; 107 Playwright tests. With the
+  verifier probes: 37 files, 406 tests; 116 Playwright tests.
+  `targeting.spec.ts` and `build-ui.spec.ts` with `--repeat-each=5`: 75
+  passed.
+- **Default unchanged.** All ten archetype results equal milestone 23
+  (comboBuild won, 12 lives, 497 gold, 145 after wave 9; bossRush won, 12
+  lives, 427). `towers.ts`, `enemies.ts` and `waves.ts` have no diff
+  against main. `actions.test.ts` and `verifier2.test.ts` changed only by
+  `targeting: 'first'`. `input.test.ts` changed more than that: the
+  all-cells placement test now runs for 168 x 76 and the real 214 x 146
+  (the implementer notes say so); nothing was loosened.
+- **Simulation probes** (`targeting-verifier.test.ts`, 19 tests, all
+  passed first run): tower on cell (9,4), centre (304,144); enemies on the
+  y 96 leg at path distance D stand at (D - 144, 96), hypot(D - 448, 48)
+  px away. Covers each mode with out-of-range decoys, the four tie rules in
+  both array orders, strongest reading current hp (30 -> 18, the next shot
+  moves to the 28 hp enemy), Mortar on last and the minimum range, Cannon
+  on strongest against a Harpy, Tar Pit on last, Fire Pot on strongest
+  against the boss, the refusals, sell and rebuild, and upgrade.
+- **comboStrongest loses because the rule spreads damage; it is not a
+  targeting bug.** Wave 1, the same two Longbows in both runs: first fires
+  64 shots for 256 damage and 8 kills; strongest fires 61 shots for 244
+  damage (95%) and 6 kills, and the 2 Goblins that exit have 13% hp on
+  average. Over waves 1 to 4, strongest lets 18 enemies out, 12 of them
+  under 25% hp (first: 3 out, 2 under 25%). Shots at a target within one
+  second of leaving the tower's range: 10 against 8 in wave 1, so it is not
+  shooting at leavers. Fewer kills then means less gold: before wave 3
+  strongest has 3 towers and first has 4, and wave 3 costs 9 lives. With
+  the gold forced equal to comboBuild's at every wave start (same towers,
+  same time), strongest still loses, on wave 6 (lives 18, 14, 11, 8, 5, 0);
+  every tower on last loses on wave 5. A hit enemy is no longer the
+  strongest, so each tower moves on to a full-hp one.
+- **Panel probes** (`targeting-verifier.spec.ts`, 8 tests;
+  `targeting-touch-verifier.spec.ts`, 1 test in the tablet project, matched
+  by the existing `touch-verifier` pattern, so the config did not change).
+  The extreme buildable cells are the four corners; the panel is at (4,56),
+  (742,56), (4,278) and (742,278), inside 960 x 480 and off its tower each
+  time. Rendered label widths at 13 px: 102, 94 and 133 px in the 156 px
+  button. Two of my probes failed first for my own reasons (cell (20,9) is
+  not buildable; `isTouch` is false until the first tap).
+- **Fixed: `targeting.spec.ts` hard-coded the three labels.** Renaming
+  Strongest to Toughest in `names.ts` failed two of its tests. It now uses
+  `targetingButtonText`; with the rename, unit tests and the three
+  targeting specs pass (12). Reverted and rebuilt after. No display name is
+  a literal in `src/game` outside `names.ts`.
+- **Frames.** `m24-panel.png` and `m24-panel-bottom.png`: the label is
+  legible, nothing overlaps, the panel ends above the HUD. The Target label
+  is centred while Upgrade and Sell are left-aligned.
+- **Records.** The DEVLOG ticks and ids (212, 272, 332, 392, 452) are what
+  the spec asserts and it passes; (7,5) at (133,216) and (14,14) at
+  (220,330) are right. DESIGN states the tie rules as coded. Open:
+  `DECISIONS.md` has no milestone 24 entry (the lower-id tie for last and
+  free mid-wave changes are not in the scope text), and the
+  `tower-selected.png` baseline on the branch is the old two-button panel
+  until the snapshot workflow runs.

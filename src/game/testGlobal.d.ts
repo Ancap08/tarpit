@@ -4,7 +4,18 @@
 // present (see testMode.ts).
 
 import type Phaser from 'phaser';
-import type { BuildResult, GameEvent, GameState, Phase, SellResult, StartWaveResult, TowerType, UpgradeResult } from '../sim';
+import type {
+  BuildResult,
+  GameEvent,
+  GameState,
+  Phase,
+  SellResult,
+  StartWaveResult,
+  TargetingMode,
+  TargetingResult,
+  TowerType,
+  UpgradeResult,
+} from '../sim';
 import type { AnimState } from './anim/enemySprites';
 import type { UiState } from './GameScene';
 import type { HudStrings, Rect } from './hud';
@@ -24,13 +35,15 @@ export interface TarpitTestApi {
   buildAt(col: number, row: number, type: TowerType): BuildResult;
   upgradeAt(col: number, row: number): UpgradeResult;
   sellAt(col: number, row: number): SellResult;
+  /** Set the targeting mode of the tower on (col, row) through the scene's action (milestone 24). */
+  setTargetingAt(col: number, row: number, mode: TargetingMode): TargetingResult;
   setSpeed(speed: 1 | 2): void;
   speed(): 1 | 2;
   /**
    * Canvas-space rectangles of everything clickable, by name: `startWave`,
    * `speed`, `bar:musketeer`, `bar:cannon`, `bar:tarpit`, `bar:longbow`,
    * `bar:mortar`, `bar:firepot`, while the tower
-   * panel is open `panel:upgrade` and `panel:sell`, and `playAgain` while an
+   * panel is open `panel:upgrade`, `panel:sell` and `panel:target`, and `playAgain` while an
    * end screen shows. Map cells are not listed: cell (col, row) is clicked at
    * (col * 32 + 16, row * 32 + 16). At the 960x580 test viewport, canvas
    * space equals page space; at other sizes use canvasToPage(). The open
@@ -46,7 +59,8 @@ export interface TarpitTestApi {
   portraitCardVisible(): boolean;
   /**
    * Build UI state: the bar's pick, the highlighted cell, the armed cell and
-   * touch mode, the selected tower's cell, and whether the panel is open.
+   * touch mode, the selected tower's cell, whether the panel is open, the
+   * selected tower's targeting mode and the targeting button's label.
    */
   ui(): UiState;
   /** HUD strings; `boss` is the boss bar label ("Grumblefoot 4000 / 4000") or null when hidden. */

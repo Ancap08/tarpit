@@ -157,7 +157,10 @@ const STACK_PAD = 6;
 
 export interface StackItem {
   text: string;
-  right: string;
+  /** Right-aligned second label; leave it out for one centred label. */
+  right?: string;
+  /** Label size; 16px when left out. */
+  fontSize?: string;
   onClick: () => void;
   onHover?: (over: boolean) => void;
 }
@@ -186,7 +189,7 @@ export class ButtonStack {
       .setVisible(false);
     this.buttons = items.map((item) =>
       new Button(scene, { x: 0, y: 0, width: STACK_BUTTON_WIDTH, height: STACK_BUTTON_HEIGHT }, item.text, item.onClick, {
-        fontSize: '16px',
+        fontSize: item.fontSize ?? '16px',
         right: item.right,
         onHover: item.onHover,
       }),

@@ -31,6 +31,8 @@ function report(name: string, script: Sim.WaveScript): void {
 }
 
 for (const [name, archetype] of Object.entries(sim.ARCHETYPES)) report(name, archetype());
+// Informational scripts (milestone 24: comboStrongest), no balance target.
+for (const [name, script] of Object.entries(sim.INFORMATIONAL)) report(name, script());
 
 console.log('\nSummary');
 for (const line of summaries) console.log(line);

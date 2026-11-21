@@ -3,7 +3,7 @@
 // is an edit here (plus regenerated screenshot baselines). Tests that check a
 // display string build it from these tables, so a rename changes no test.
 
-import type { EnemyType, TowerType } from '../sim';
+import type { EnemyType, TargetingMode, TowerType } from '../sim';
 
 /** The wave 10 boss (docs/SCOPE-v4.md, milestone 23): the HUD boss bar and the wave 10 preview. */
 export const BOSS_NAME = 'Grumblefoot';
@@ -37,6 +37,18 @@ export const TOWER_SHORT_LABELS: Readonly<Record<TowerType, string>> = {
   mortar: 'Mortar',
   firepot: 'Fire',
 };
+
+/** Targeting mode names, as on the tower panel's cycle button ("Target: First"). */
+export const TARGETING_LABELS: Readonly<Record<TargetingMode, string>> = {
+  first: 'First',
+  last: 'Last',
+  strongest: 'Strongest',
+};
+
+/** The tower panel's targeting button text for `mode` ("Target: First"). */
+export function targetingButtonText(mode: TargetingMode): string {
+  return `Target: ${TARGETING_LABELS[mode]}`;
+}
 
 /** The end screens' words (endText.ts). */
 export const END_TEXT = {

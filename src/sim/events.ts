@@ -4,13 +4,13 @@
 // Lifetime: `tick` empties `state.events` (a fresh array) at its start, like
 // `state.shots`, and appends to it as things happen, in order. Won and lost
 // ticks do nothing, so the list keeps the last tick's events.
-// Actions between ticks (startWave, build, upgrade, sell) append their own
-// event to the same list; it stays there until the next tick clears it. So
+// Actions between ticks (startWave, build, upgrade, sell, targeting) append
+// their own event to the same list; it stays there until the next tick clears it. So
 // the renderer reads the new entries after every action and after every
 // tick (GameScene does both, see EventCursor in src/game/anim/effects.ts).
 
 import type { Cell } from './grid';
-import type { EnemyType, TowerType } from './types';
+import type { EnemyType, TargetingMode, TowerType } from './types';
 
 export type GameEvent =
   /** An enemy entered the map at distance 0. */
@@ -31,6 +31,8 @@ export type GameEvent =
   | { kind: 'build'; cell: Cell; tower: TowerType }
   | { kind: 'upgrade'; cell: Cell; tower: TowerType }
   | { kind: 'sell'; cell: Cell; tower: TowerType; refund: number }
+  /** A tower's targeting mode was set (milestone 24). */
+  | { kind: 'targeting'; cell: Cell; mode: TargetingMode }
   | { kind: 'waveStart'; wave: number }
   | { kind: 'waveClear'; wave: number; bonus: number }
   | { kind: 'won' }

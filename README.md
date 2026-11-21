@@ -21,7 +21,8 @@ build anywhere off the path, three enemies, simple shapes with labels.
 2. The Mortar cannot hit enemies inside its dashed inner circle (70 px), so put it back from the path it guards.
 3. Tar + fire: a Fire Pot's burn does double damage to an enemy slowed by a Tar Pit, so build the two side by side.
 4. Press Start Wave. Enemies walk from the cave to the cottage; each one that gets through costs a life. Kills and cleared waves pay gold. Survive all 10 waves to win. The 1x/2x button sets the speed.
-5. Runs on an iPad (landscape; portrait shows a "turn your device" card). On touch, tap a cell once to aim (ghost and range), tap it again to build; tap the × to close a tower's panel.
+5. A tower's panel has a Target button; click it to cycle which enemy the tower shoots: First (furthest along the path), Last (closest to the cave) or Strongest (most hp).
+6. Runs on an iPad (landscape; portrait shows a "turn your device" card). On touch, tap a cell once to aim (ghost and range), tap it again to build; tap the × to close a tower's panel.
 
 ## How it was built
 

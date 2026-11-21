@@ -29,7 +29,14 @@ const MAX_TICKS_PER_WAVE = 60 * 600;
  */
 function runScript(scene: GameScene, script: WaveScript, untilWave?: number): Phase {
   const apply = (a: BuildAction) => {
-    const r = a.type === 'build' ? scene.build(a.cell, a.tower) : a.type === 'upgrade' ? scene.upgrade(a.cell) : scene.sell(a.cell);
+    const r =
+      a.type === 'build'
+        ? scene.build(a.cell, a.tower)
+        : a.type === 'upgrade'
+          ? scene.upgrade(a.cell)
+          : a.type === 'target'
+            ? scene.setTargeting(a.cell, a.mode)
+            : scene.sell(a.cell);
     if (!r.ok) throw new Error(`runScript: ${a.type} at cell (${a.cell.col},${a.cell.row}) refused: ${r.reason}`);
   };
   // A function, not a property read, so TypeScript does not narrow the phase
@@ -103,6 +110,7 @@ export function installGlobal(game: Phaser.Game): void {
     buildAt: (col, row, type) => scene().build({ col, row }, type),
     upgradeAt: (col, row) => scene().upgrade({ col, row }),
     sellAt: (col, row) => scene().sell({ col, row }),
+    setTargetingAt: (col, row, mode) => scene().setTargeting({ col, row }, mode),
     setSpeed: (speed) => scene().setSpeed(speed),
     speed: () => scene().speed,
     uiRects: () => {

@@ -52,6 +52,7 @@ import {
   createGame,
   isBuildable,
   sellTower,
+  setTargeting,
   startWave,
   tick,
   TOWER_DEFS,
@@ -59,7 +60,19 @@ import {
   towerStats,
   upgradeTower,
 } from '../sim';
-import type { BuildResult, Cell, GameEvent, GameState, SellResult, StartWaveResult, TowerLevelStats, TowerType, UpgradeResult } from '../sim';
+import type {
+  BuildResult,
+  Cell,
+  GameEvent,
+  GameState,
+  SellResult,
+  StartWaveResult,
+  TargetingMode,
+  TargetingResult,
+  TowerLevelStats,
+  TowerType,
+  UpgradeResult,
+} from '../sim';
 import { EventCursor } from './anim/effects';
 import { EnemySprites, type AnimState } from './anim/enemySprites';
 import { drawHpBars, drawShadows, drawStatusRings } from './draw/enemies';
@@ -100,6 +113,10 @@ export interface UiState {
   /** The selected tower's cell (its panel is open), or null. */
   selectedCell: Cell | null;
   panelOpen: boolean;
+  /** The selected tower's targeting mode (milestone 24), or null with no tower selected. */
+  selectedTargeting: TargetingMode | null;
+  /** The panel's targeting button label ("Target: First"), or null while closed. */
+  targetLabel: string | null;
 }
 
 /** Placement ghost opacity. */
@@ -195,6 +212,9 @@ export class GameScene extends Phaser.Scene {
         if (cell === null) return;
         this.panel.close();
         this.sell(cell);
+      },
+      onTarget: (next) => {
+        if (this.panel.cell !== null) this.setTargeting(this.panel.cell, next);
       },
     });
     this.endScreen = new EndScreen(this, () => this.playAgain());
@@ -325,6 +345,8 @@ export class GameScene extends Phaser.Scene {
       isTouch: this.touch,
       selectedCell: this.panel.cell,
       panelOpen: this.panel.cell !== null,
+      selectedTargeting: this.panel.cell === null ? null : (towerAt(this.state, this.panel.cell)?.targeting ?? null),
+      targetLabel: this.panel.targetText,
     };
   }
 
@@ -412,6 +434,13 @@ export class GameScene extends Phaser.Scene {
 
   sell(cell: Cell): SellResult {
     const result = sellTower(this.state, cell);
+    this.takeEvents();
+    this.redraw();
+    return result;
+  }
+
+  setTargeting(cell: Cell, mode: TargetingMode): TargetingResult {
+    const result = setTargeting(this.state, cell, mode);
     this.takeEvents();
     this.redraw();
     return result;
