@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MAP } from '../sim';
-import { classifyClick, placeBeside, spotAt, spotRect } from './input';
+import { classifyClick, onPath, pathCover, placeBeside, spotAt, spotRect } from './input';
 
 describe('spotAt', () => {
   it('hits a spot within 18 px of its centre, inclusive', () => {
@@ -47,12 +47,29 @@ describe('placeBeside', () => {
   });
 
   it('moves off a side that would cover another spot', () => {
-    // Spot 2's right side would cover spot 4 and its left side spot 0: above it is.
+    // Spot 2's right side would cover spot 4, its left side spot 0 and below
+    // it spot 3: above is the only clear side, even though it covers path.
     expect(placeBeside(MAP.buildSpots[2], MENU.w, MENU.h)).toEqual({ x: 156, y: 38 });
-    // Spot 6's right side would cover spot 7: left.
+    // Spot 6's right side would cover spot 7, below and above cover more path: left.
     expect(placeBeside(MAP.buildSpots[6], MENU.w, MENU.h)).toEqual({ x: 304, y: 249 });
-    // Spot 3's right side would cover spot 4: left.
-    expect(placeBeside(MAP.buildSpots[3], MENU.w, MENU.h)).toEqual({ x: 44, y: 185 });
+  });
+
+  it('among clear sides, takes the one over the least path', () => {
+    // Spot 3: the left side is clear but covers the path's first bend; below is all grass.
+    const left = { x: 44, y: 185 };
+    const below = { x: 156, y: 268 };
+    expect(pathCover(left.x, left.y, MENU.w, MENU.h)).toBeGreaterThan(0.2);
+    expect(pathCover(below.x, below.y, MENU.w, MENU.h)).toBe(0);
+    expect(placeBeside(MAP.buildSpots[3], MENU.w, MENU.h)).toEqual(below);
+    // Spot 7's panel: right and left cover spots; above covers less path than below.
+    expect(placeBeside(MAP.buildSpots[7], PANEL.w, PANEL.h)).toEqual({ x: 516, y: 200 });
+  });
+
+  it('pathCover is 0 on open grass, 1 inside the path strip', () => {
+    expect(onPath(160, 240)).toBe(true);
+    expect(onPath(240, 176)).toBe(false);
+    expect(pathCover(800, 300, 100, 100)).toBe(0);
+    expect(pathCover(430, 100, 10, 200)).toBe(1); // inside the x 400..440 vertical strip
   });
 
   it('clamps inside the map area, never over the HUD', () => {

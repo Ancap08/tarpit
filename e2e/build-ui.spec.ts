@@ -99,10 +99,10 @@ test('Escape closes the menu and the panel; another spot moves the menu', async 
   await click(page, 'spot:3');
   expect(await ui(page)).toMatchObject({ activeSpot: 3, menuOpen: true });
   const rects = await page.evaluate(() => (window.__tarpit as TarpitTestApi).uiRects());
-  // Spot 3 is at (240, 240); spot 4 blocks its right side, so the menu sits
-  // to its left, centred on it.
-  expect(rects['menu:cannon'].x + rects['menu:cannon'].width).toBeLessThan(240);
-  expect(rects['menu:cannon'].y + rects['menu:cannon'].height / 2).toBe(240);
+  // Spot 3 is at (240, 240); spot 4 blocks its right side and the left side
+  // covers path, so the menu sits below it (on grass), centred on it.
+  expect(rects['menu:cannon'].x + rects['menu:cannon'].width / 2).toBe(240);
+  expect(rects['menu:musketeer'].y).toBeGreaterThan(240 + 18);
 
   await click(page, 'menu:musketeer');
   await click(page, 'spot:3');
