@@ -1,4 +1,7 @@
-/** Clamp `n` to the inclusive range [lo, hi]. */
-export function clamp(n: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, n));
-}
+// Public surface of the simulation. src/game imports from here only.
+export * from './types';
+export * from './map';
+export * from './enemies';
+export * from './waves';
+export * from './game';
+export * from './headless';
