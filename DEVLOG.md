@@ -776,3 +776,134 @@ Verifier: Claude Sonnet, on branch `m6b-polish`.
   label (label box computed from the known offset 22 and 12 px font).
 - DEVLOG matches what I saw. README layout omitted `draw/labels.ts`; fixed
   in its own commit.
+
+## 2026-11-21: milestone 7, ship, and retrospective
+
+Roles: implementer Claude Opus, verifier Claude Sonnet, coordinator Claude
+Fable 5.1.
+
+### Implementer notes
+
+The implementer (Claude Opus) wrote the README, the demo media and this
+section. No game code changed.
+
+- `npm run demo` (`scripts/record-demo.ts`) builds `dist/`, serves it with
+  `vite preview` and plays in real time, not test mode, with Playwright's
+  `recordVideo`. Every click goes through the real menus; the rectangles
+  come from the running scene's `uiRects()`, which is callable through
+  `window.__tarpit.game` outside test mode too. ffmpeg makes a 640 px,
+  12 fps, two-pass palette GIF (22 s, 2.5 MB, sped up about 2x) and the
+  script saves a 960x540 still when the Cannon has just fired into a group.
+- What went wrong: the brief asked for a Musketeer, a Tar Pit and a Cannon
+  before wave 1. They cost 190 together and the game starts with 100 gold.
+  The first two recordings (Cannon at spot 5, then Tar Pit at spot 4 after
+  wave 1) could not afford the third tower after wave 2. A headless search
+  over two-tower openings found one that can: Musketeer at spot 2, Cannon
+  at spot 3 after wave 1, Tar Pit at spot 4 after wave 2. The real-time
+  recording ended wave 2 with 12 lives and 68 gold, exactly what the
+  headless sim predicted.
+- The live site serves `/tarpit/assets/index-y29E9S48.js`, the same hash as
+  a local build of this branch, and its title screen renders.
+
+### Timeline
+
+All in one session on 2026-11-21 (UTC):
+
+- 06:11 first commit (scope, decisions, devlog, agent rules).
+- 06:29 PR 1 merged (milestone 0). Then PR 2 at 06:40, PR 3 at 06:54,
+  PR 4 (baseline workflow) at 07:07, PR 5 at 07:09, PR 6 at 07:20, PR 7
+  at 07:32.
+- 08:04 PR 8 merged (milestone 6a, balance); 08:15 PR 9 merged
+  (milestone 6b, polish).
+
+Kyle's involvement during the build was three messages: approving the plan,
+merging PR 1 and saying continue, and saying continue through milestones 6
+and 7.
+
+### What went wrong
+
+- Milestone 0: TypeScript 7 was current, but typescript-eslint supported
+  only below 6.1, so TypeScript is pinned to 6.0.x.
+- Milestone 0: the coordinator's brief asked for a `?test=1` hook three
+  milestones early; the verifier flagged the unused `testMode.ts` and it was
+  removed until milestone 3.
+- Milestone 2: the implementer's notes said nine spots sit exactly 80 px
+  from the path; the verifier measured spot 3 at 102 px and spot 0 at 64 px.
+  That finding is why spot 3 moved in milestone 6a.
+- Milestone 3: the brief's mid-wave frame (tick 400) fell between shots.
+  The implementer used tick 395 (one Musketeer tracer); the coordinator
+  chose 855 (Cannon tracer and splash). The DEVLOG still said 395 until the
+  verifier corrected it.
+- Milestone 3: a `workflow_dispatch` workflow must exist on the default
+  branch before it can run, so the baseline workflow went in as its own PR
+  (PR 4) ahead of milestone 3.
+- Stale notes were corrected by verifiers more than once: the README status
+  line (milestone 1), the spot distances (milestone 2), the 395 tick
+  (milestone 3), the unit test count in `input.test.ts` (milestone 4: 10,
+  not 9) and a missing file in the README layout (milestone 6b).
+- Milestone 4: the first build menu always opened to the right, so spot 2's
+  menu covered spot 4 and the next click hit the menu. Placement now checks
+  every side and a unit test covers all ten spots.
+- Milestone 5: an interactive end-screen veil raced the Play again button
+  on the first frame and stole about one click in three; found with
+  `--repeat-each=10`.
+- Milestone 6a: the Troll bounty was first tuned down to 4 to meet a target
+  ("under 150 gold at the end") that measured gold nobody can spend. The
+  coordinator replaced the target and the bounty became 11.
+- Milestone 6a: small visual changes fell under Playwright's pixel colour
+  threshold, so the baseline workflow left stale PNGs in place. It gained an
+  `all` input that rewrites every baseline.
+- Milestone 7: the demo brief assumed 190 gold at the start (see above).
+
+### What the process proved
+
+- Every verifier found at least one inaccuracy or improvement, and several
+  were in notes or tests the implementer's own checks had passed.
+- No PR merged red: all nine merged PRs show the `ci` check as success, and
+  branch protection on `main` requires it.
+- Keeping the simulation in plain TypeScript made balance a numbers job:
+  about 1,100 configurations were scored headlessly in milestone 6a, and the
+  browser replays the same scripts to the same result (sound build: 11
+  lives, 253 gold in both).
+- Determinism held outside test mode too: the real-time demo recording
+  ended wave 2 exactly where the headless run said it would.
+
+### What I'd change next time
+
+- Check briefs against the sim before sending them. Two briefs carried
+  numbers that did not fit the game (the tick 400 frame, three towers on
+  100 gold), and each cost a round trip.
+- Land CI plumbing such as the baseline workflow in milestone 0, so later
+  milestones do not need a side PR.
+- Get the human playtest earlier. Milestone 6 lists Kyle's play notes as
+  evidence, and they were still pending when milestone 7 started.
+
+### Verifier notes
+
+Verifier: Claude Sonnet, on branch `m7-ship`.
+
+- Clean run (`rm -rf dist && npm ci && lint && typecheck && test && build &&
+  test:e2e`): all exit 0. 123 unit tests in 16 files, 39 e2e tests in 8 files.
+- README "By the numbers" recomputed from `origin/main` with `git` and `gh`:
+  every figure matches (68 commits, 59 non-merge and 9 merges; trailers Opus
+  29, Fable 5.1 13, Sonnet 12; 6 `github-actions` commits; 9 merged PRs, 8
+  milestone PRs plus PR 4; 8 baselines; first commit 06:11 UTC to PR 9 merge
+  08:15 UTC, 2 h 4 min). PR merge times in the timeline match `gh`.
+- Links: relative files exist; the badge, workflow page and Pages URL return
+  200; the badge URL names this repo. The live site serves
+  `index-y29E9S48.js`, the same hash as a local build.
+- Demo: GIF 640x360, 22.0 s, 2.5 MB; PNG 960x540. Frames show building through
+  the menus, a Tar Pit placed in the last seconds, and waves 1 and 2 with the
+  HUD. The frames at 10 s and 20 s fall between waves (wave 1 just cleared;
+  wave 2 cleared with the Tar Pit menu about to open), not mid-wave; 3 s is
+  mid-wave.
+- `package.json` diff is only the `demo` script line; vitest excludes
+  `scripts/**`.
+- Findings, not fixed: (1) "Kyle merged PR 1 himself" and "the coordinator
+  merged the rest" cannot be checked from GitHub, since every PR shows the
+  same merger login. (2) "Kyle's involvement was three messages" and the
+  workflow-dispatch (PR 4) and baseline `all` input bullets in "What went
+  wrong" have no earlier DEVLOG or DECISIONS entry; the workflow history and
+  PR list support the last two, nothing in the repo supports the first. (3)
+  README says the verifier checked every PR; PR 4 has no verifier record in
+  the DEVLOG.

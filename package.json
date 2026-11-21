@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "sim": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/simulate.ts"
+    "sim": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/simulate.ts",
+    "demo": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/record-demo.ts"
   },
   "dependencies": {
     "phaser": "^3.90.0"

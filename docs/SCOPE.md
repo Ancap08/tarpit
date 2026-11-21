@@ -30,16 +30,16 @@ multiplayer, custom art.
 
 One pull request each. Each PR body lists the evidence below and links to it.
 
-| # | Milestone | Evidence that proves it |
-|---|---|---|
-| 0 | Repo scaffold: Vite, TypeScript, Phaser, ESLint, Vitest, Playwright, CI, Pages deploy, docs | CI green on the PR; Pages link renders a titled canvas |
-| 1 | Core simulation: path, fixed-step tick, enemy movement, wave spawning, life loss | Unit tests; headless 10-wave run with no towers loses |
-| 2 | Combat and economy: 3 towers, targeting, splash, slow, gold, build, upgrade, sell | Unit tests; headless scripted build wins |
-| 3 | Rendering: map, enemies, towers, projectiles, HUD, start-wave button, speed toggle, wave preview | Playwright plays wave 1; first screenshot baselines |
-| 4 | Build UI: click spot, pick tower, select tower, upgrade, sell, affordability | Playwright places a tower and clears a wave; screenshots Kyle approves |
-| 5 | Win, lose, restart, full 10-wave content | Playwright forces win and lose via test hooks; screenshots |
-| 6 | Balance pass and visual polish | Headless sim report (no towers loses early, lazy build loses around wave 7, sound build wins); Kyle's play notes |
-| 7 | Ship: DEVLOG complete, README with play link and GIF, Pages verified | Kyle finishes a game from the public link |
+| # | Milestone | Evidence that proves it | Done |
+|---|---|---|---|
+| 0 | Repo scaffold: Vite, TypeScript, Phaser, ESLint, Vitest, Playwright, CI, Pages deploy, docs | CI green on the PR; Pages link renders a titled canvas | PR 1, 2026-11-21 |
+| 1 | Core simulation: path, fixed-step tick, enemy movement, wave spawning, life loss | Unit tests; headless 10-wave run with no towers loses | PR 2, 2026-11-21 |
+| 2 | Combat and economy: 3 towers, targeting, splash, slow, gold, build, upgrade, sell | Unit tests; headless scripted build wins | PR 3, 2026-11-21 |
+| 3 | Rendering: map, enemies, towers, projectiles, HUD, start-wave button, speed toggle, wave preview | Playwright plays wave 1; first screenshot baselines | PR 5, 2026-11-21 (PR 4, the baseline workflow, was split out ahead of it) |
+| 4 | Build UI: click spot, pick tower, select tower, upgrade, sell, affordability | Playwright places a tower and clears a wave; screenshots Kyle approves | PR 6, 2026-11-21 |
+| 5 | Win, lose, restart, full 10-wave content | Playwright forces win and lose via test hooks; screenshots | PR 7, 2026-11-21 |
+| 6 | Balance pass and visual polish | Headless sim report (no towers loses early, lazy build loses around wave 7, sound build wins); Kyle's play notes | PRs 8 and 9, 2026-11-21 |
+| 7 | Ship: DEVLOG complete, README with play link and GIF, Pages verified | Kyle finishes a game from the public link | this PR, 2026-11-21 |
 
 Milestones 1 and 2 are plain TypeScript with no Phaser. That is what makes the
 tests honest and the balance pass possible.
