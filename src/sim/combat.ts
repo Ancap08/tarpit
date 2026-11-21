@@ -3,6 +3,7 @@
 // from game.ts, after movement and exit removal, before spawns.
 
 import { ENEMY_STATS } from './enemies';
+import { cellCenter } from './grid';
 import { MAP, positionAlongPath } from './map';
 import { secondsToTicks, TICKS_PER_SECOND } from './time';
 import { towerStats } from './towers';
@@ -12,8 +13,9 @@ function dist(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-function spot(tower: Tower): Point {
-  return MAP.buildSpots[tower.spotId];
+/** Where a tower stands: its cell centre. Range and shots are measured from here. */
+export function towerPosition(tower: Tower): Point {
+  return cellCenter(tower.cell);
 }
 
 /** Enemy position on the map. */
@@ -26,11 +28,11 @@ export function enemyPosition(enemy: Enemy): Point {
  * along the path; ties go to the lower id. Undefined if none is in range.
  */
 export function findTarget(state: GameState, tower: Tower): Enemy | undefined {
-  const spot = MAP.buildSpots[tower.spotId];
+  const from = towerPosition(tower);
   const range = towerStats(tower).range;
   let best: Enemy | undefined;
   for (const enemy of state.enemies) {
-    if (enemy.hp <= 0 || dist(spot, enemyPosition(enemy)) > range) continue;
+    if (enemy.hp <= 0 || dist(from, enemyPosition(enemy)) > range) continue;
     if (!best || enemy.distance > best.distance || (enemy.distance === best.distance && enemy.id < best.id)) {
       best = enemy;
     }
@@ -68,10 +70,10 @@ function towerStep(state: GameState, tower: Tower): void {
   if (!target) return;
   const stats = towerStats(tower);
   const shot: Shot = {
-    spotId: tower.spotId,
+    cell: { col: tower.cell.col, row: tower.cell.row },
     tower: tower.type,
     targetId: target.id,
-    from: { x: spot(tower).x, y: spot(tower).y },
+    from: towerPosition(tower),
     to: enemyPosition(target),
   };
   if (stats.splashRadius > 0) shot.splashRadius = stats.splashRadius;
@@ -91,7 +93,7 @@ function towerStep(state: GameState, tower: Tower): void {
   removeDead(state);
 }
 
-/** Every tower takes its step, in spotId order; kills resolve between towers. */
+/** Every tower takes its step, in cellKey order; kills resolve between towers. */
 export function fireTowers(state: GameState): void {
   for (const tower of state.towers) towerStep(state, tower);
 }

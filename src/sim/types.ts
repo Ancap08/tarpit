@@ -1,5 +1,7 @@
 // Data shapes for the simulation. Pure data: no classes, no methods.
 
+import type { Cell } from './grid';
+
 export interface Point {
   x: number;
   y: number;
@@ -10,8 +12,6 @@ export interface MapDef {
   height: number;
   /** Polyline from spawn (first point) to exit (last point). */
   path: readonly Point[];
-  /** Build spots; the array index is the spot id. */
-  buildSpots: readonly Point[];
 }
 
 export type EnemyType = 'goblin' | 'wolf' | 'troll';
@@ -53,7 +53,7 @@ export type TowerType = 'musketeer' | 'cannon' | 'tarpit';
 
 /** Stats for one level (base or upgraded) of a tower type. */
 export interface TowerLevelStats {
-  /** Pixels, measured from the build spot to the enemy position, inclusive. */
+  /** Pixels, measured from the tower's cell centre to the enemy position, inclusive. */
   range: number;
   damage: number;
   /** Shots per second. */
@@ -74,8 +74,8 @@ export interface TowerDef {
 }
 
 export interface Tower {
-  /** Build spot id (index into MAP.buildSpots). One tower per spot. */
-  spotId: number;
+  /** Grid cell the tower stands on. One tower per cell. */
+  cell: Cell;
   type: TowerType;
   upgraded: boolean;
   /** Ticks until the tower may fire again; 0 means ready. */
@@ -86,11 +86,11 @@ export interface Tower {
 
 /**
  * One tower firing, recorded for the renderer. The simulation is hitscan, so
- * this is the whole shot: from the tower's spot to the target's position at
- * the moment it fired.
+ * this is the whole shot: from the tower's cell centre to the target's
+ * position at the moment it fired.
  */
 export interface Shot {
-  spotId: number;
+  cell: Cell;
   tower: TowerType;
   targetId: number;
   from: Point;
@@ -117,7 +117,7 @@ export interface GameState {
   enemies: Enemy[];
   /** Id for the next enemy spawned. */
   nextEnemyId: number;
-  /** Built towers, kept sorted by spotId (the order they fire in). */
+  /** Built towers, kept sorted by cellKey (the order they fire in). */
   towers: Tower[];
   /**
    * Shots fired during the most recent tick, in firing order. Cleared at the

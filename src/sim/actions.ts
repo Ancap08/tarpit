@@ -2,13 +2,13 @@
 // (DESIGN.md: "at any time, including mid-wave"), refused once the game is
 // won or lost. Each mutates the state in place and returns a typed result.
 
-import { MAP } from './map';
+import { cellKey, isBuildableTerrain, sameCell, type Cell } from './grid';
 import { sellRefund, TOWER_DEFS } from './towers';
 import type { GameState, Tower, TowerType } from './types';
 
 export type BuildResult =
   | { ok: true; tower: Tower; gold: number }
-  | { ok: false; reason: 'game-over' | 'unknown-spot' | 'spot-occupied' | 'not-enough-gold' };
+  | { ok: false; reason: 'game-over' | 'not-buildable' | 'cell-occupied' | 'not-enough-gold' };
 
 export type UpgradeResult =
   | { ok: true; tower: Tower; gold: number }
@@ -22,28 +22,31 @@ function isOver(state: GameState): boolean {
   return state.phase === 'won' || state.phase === 'lost';
 }
 
-export function towerAt(state: GameState, spotId: number): Tower | undefined {
-  return state.towers.find((t) => t.spotId === spotId);
+export function towerAt(state: GameState, cell: Cell): Tower | undefined {
+  return state.towers.find((t) => sameCell(t.cell, cell));
 }
 
-export function buildTower(state: GameState, spotId: number, type: TowerType): BuildResult {
+/**
+ * Build on `cell`. Refused when the game is over, the cell is outside the
+ * grid, on the path strip or not an integer cell ('not-buildable'), already
+ * holds a tower, or gold is short, checked in that order.
+ */
+export function buildTower(state: GameState, cell: Cell, type: TowerType): BuildResult {
   if (isOver(state)) return { ok: false, reason: 'game-over' };
-  if (!Number.isInteger(spotId) || spotId < 0 || spotId >= MAP.buildSpots.length) {
-    return { ok: false, reason: 'unknown-spot' };
-  }
-  if (towerAt(state, spotId)) return { ok: false, reason: 'spot-occupied' };
+  if (!isBuildableTerrain(cell)) return { ok: false, reason: 'not-buildable' };
+  if (towerAt(state, cell)) return { ok: false, reason: 'cell-occupied' };
   const cost = TOWER_DEFS[type].cost;
   if (state.gold < cost) return { ok: false, reason: 'not-enough-gold' };
   state.gold -= cost;
-  const tower: Tower = { spotId, type, upgraded: false, cooldownTicks: 0, spent: cost };
+  const tower: Tower = { cell: { col: cell.col, row: cell.row }, type, upgraded: false, cooldownTicks: 0, spent: cost };
   state.towers.push(tower);
-  state.towers.sort((a, b) => a.spotId - b.spotId);
+  state.towers.sort((a, b) => cellKey(a.cell) - cellKey(b.cell));
   return { ok: true, tower, gold: state.gold };
 }
 
-export function upgradeTower(state: GameState, spotId: number): UpgradeResult {
+export function upgradeTower(state: GameState, cell: Cell): UpgradeResult {
   if (isOver(state)) return { ok: false, reason: 'game-over' };
-  const tower = towerAt(state, spotId);
+  const tower = towerAt(state, cell);
   if (!tower) return { ok: false, reason: 'no-tower' };
   if (tower.upgraded) return { ok: false, reason: 'already-upgraded' };
   const cost = TOWER_DEFS[tower.type].upgradeCost;
@@ -54,9 +57,9 @@ export function upgradeTower(state: GameState, spotId: number): UpgradeResult {
   return { ok: true, tower, gold: state.gold };
 }
 
-export function sellTower(state: GameState, spotId: number): SellResult {
+export function sellTower(state: GameState, cell: Cell): SellResult {
   if (isOver(state)) return { ok: false, reason: 'game-over' };
-  const tower = towerAt(state, spotId);
+  const tower = towerAt(state, cell);
   if (!tower) return { ok: false, reason: 'no-tower' };
   const refund = sellRefund(tower.spent);
   state.gold += refund;

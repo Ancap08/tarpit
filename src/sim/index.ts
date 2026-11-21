@@ -1,6 +1,7 @@
 // Public surface of the simulation. src/game imports from here only.
 export * from './types';
 export * from './map';
+export * from './grid';
 export * from './enemies';
 export * from './waves';
 export * from './game';
