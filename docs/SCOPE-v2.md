@@ -1,6 +1,6 @@
 # Tarpit: v2 scope and milestones
 
-Draft for Kyle's approval, 2026-11-21. Anything marked "default" is the
+Approved by Kyle on 2026-11-21 (PR 11). Anything marked "default" was the
 coordinator's pick and can be changed. v1 is shipped (see `SCOPE.md`); v2
 builds on it with the same roles, checks and one-PR-per-milestone process.
 
