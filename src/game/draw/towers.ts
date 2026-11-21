@@ -1,5 +1,6 @@
 // Towers: Musketeer blue square with a barrel, Cannon grey circle with a thick
-// barrel, Tar Pit black blob. Upgraded towers get a gold ring.
+// barrel, Tar Pit dark brown tar blob with a glossy highlight. Upgraded
+// towers get a gold ring. Labels are Text objects (labels.ts).
 
 import type Phaser from 'phaser';
 import { MAP, type GameState, type Point } from '../../sim';

@@ -76,6 +76,7 @@ test('lose with no towers, map clicks do nothing, play again starts a clean game
   expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).hudText())).toMatchObject({
     lives: 'Lives 0',
     wave: 'Wave 2/10',
+    next: '', // no next wave after a loss
   });
 
   // A build spot under the veil opens nothing.

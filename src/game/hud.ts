@@ -71,7 +71,8 @@ export class Hud {
     set(this.gold, `Gold ${state.gold}`);
     set(this.lives, `Lives ${state.lives}`);
     set(this.wave, `Wave ${state.wave}/${WAVES.length}`);
-    set(this.next, previewText(state));
+    // After a loss there is no next wave to play, so the preview goes blank.
+    set(this.next, state.phase === 'lost' ? '' : previewText(state));
     this.startButton.set('Start Wave', canStartWave(state));
     // Once the game is over the speed toggle is inert (greyed, ignores clicks).
     this.speedButton.set(`${speed}x`, state.phase !== 'won' && state.phase !== 'lost');

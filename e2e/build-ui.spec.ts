@@ -99,10 +99,10 @@ test('Escape closes the menu and the panel; another spot moves the menu', async 
   await click(page, 'spot:3');
   expect(await ui(page)).toMatchObject({ activeSpot: 3, menuOpen: true });
   const rects = await page.evaluate(() => (window.__tarpit as TarpitTestApi).uiRects());
-  // Spot 3 is at (240, 240); spot 4 blocks its right side, so the menu sits
-  // to its left, centred on it.
-  expect(rects['menu:cannon'].x + rects['menu:cannon'].width).toBeLessThan(240);
-  expect(rects['menu:cannon'].y + rects['menu:cannon'].height / 2).toBe(240);
+  // Spot 3 is at (240, 240); spot 4 blocks its right side and the left side
+  // covers path, so the menu sits below it (on grass), centred on it.
+  expect(rects['menu:cannon'].x + rects['menu:cannon'].width / 2).toBe(240);
+  expect(rects['menu:musketeer'].y).toBeGreaterThan(240 + 18);
 
   await click(page, 'menu:musketeer');
   await click(page, 'spot:3');
@@ -128,4 +128,37 @@ test('build during a wave', async ({ page }) => {
   const s = await state(page);
   expect(s.towers).toEqual([expect.objectContaining({ spotId: 0, type: 'musketeer' })]);
   expect(s).toMatchObject({ phase: 'wave', wave: 1, gold: 50 });
+});
+
+test('the panel for a tower at spot 7 does not cover that tower\'s label', async ({ page }) => {
+  await startGame(page);
+  await page.evaluate(() => {
+    const t = window.__tarpit as TarpitTestApi;
+    t.state().gold = 1000; // test setup: afford a Cannon and its upgrade
+    t.build(7, 'cannon');
+    t.upgrade(7); // label reads "Cannon+", the widest of the six
+  });
+  await click(page, 'spot:7');
+  expect(await ui(page)).toMatchObject({ selectedSpot: 7, panelOpen: true });
+  const rects = await page.evaluate(() => (window.__tarpit as TarpitTestApi).uiRects());
+  const up = rects['panel:upgrade'];
+  const sell = rects['panel:sell'];
+  // The panel backing is the two buttons plus a few px of padding (6 is generous).
+  const pad = 6;
+  const panel = {
+    left: Math.min(up.x, sell.x) - pad,
+    right: Math.max(up.x + up.width, sell.x + sell.width) + pad,
+    top: Math.min(up.y, sell.y) - pad,
+    bottom: Math.max(up.y + up.height, sell.y + sell.height) + pad,
+  };
+  // The label is not exposed, so compute its box from its known placement:
+  // top 22 px below the spot centre (600, 304), 12 px bold monospace
+  // (about 7.2 px a character, 3 px padding each side), about 16 px tall.
+  const width = 'Cannon+'.length * 7.2 + 6;
+  const label = { left: 600 - width / 2, right: 600 + width / 2, top: 304 + 22, bottom: 304 + 22 + 16 };
+  const overlap = panel.left < label.right && label.left < panel.right && panel.top < label.bottom && label.top < panel.bottom;
+  expect(overlap, `panel ${JSON.stringify(panel)} vs label ${JSON.stringify(label)}`).toBe(false);
+  // And the panel stays inside the map area, clear of the HUD.
+  expect(panel.top).toBeGreaterThanOrEqual(0);
+  expect(panel.bottom).toBeLessThanOrEqual(480);
 });

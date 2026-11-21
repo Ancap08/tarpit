@@ -3,6 +3,7 @@
 // with no Phaser, so they are unit tested in input.test.ts.
 
 import { MAP, type Point } from '../sim';
+import { PATH_WIDTH } from './draw/map';
 
 export interface Rect {
   x: number;
@@ -64,11 +65,47 @@ function coversSpot(x: number, y: number, width: number, height: number): boolea
   });
 }
 
+/** True if (x, y) lies on the drawn path strip (PATH_WIDTH wide, round joins). */
+export function onPath(x: number, y: number): boolean {
+  const half = PATH_WIDTH / 2;
+  for (let i = 1; i < MAP.path.length; i++) {
+    const a = MAP.path[i - 1];
+    const b = MAP.path[i];
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len2 = dx * dx + dy * dy;
+    const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / len2));
+    if (Math.hypot(a.x + dx * t - x, a.y + dy * t - y) <= half) return true;
+  }
+  return false;
+}
+
+/** Samples per side for pathCover: a 9 x 9 grid that includes the corners and the centre. */
+const COVER_SAMPLES = 9;
+
+/**
+ * Approximate share (0 to 1) of a box that lies over the path, from a grid
+ * of sample points. Used only to rank candidate sides, so coarse is fine.
+ */
+export function pathCover(x: number, y: number, width: number, height: number): number {
+  let hits = 0;
+  for (let i = 0; i < COVER_SAMPLES; i++) {
+    for (let j = 0; j < COVER_SAMPLES; j++) {
+      const px = x + (width * i) / (COVER_SAMPLES - 1);
+      const py = y + (height * j) / (COVER_SAMPLES - 1);
+      if (onPath(px, py)) hits++;
+    }
+  }
+  return hits / (COVER_SAMPLES * COVER_SAMPLES);
+}
+
 /**
  * Top-left corner for a `width` x `height` box beside `spot`, clamped inside
- * the map area. Tries right, left, below, then above, and takes the first
- * that covers no build spot (its own included), so every other spot stays
- * clickable while a menu is open. If none is clear, it goes to the right.
+ * the map area. The candidates are right, left, below and above. Among those
+ * that cover no build spot (its own included, so every other spot stays
+ * clickable), the one over the least path wins, so the player can still see
+ * the enemies; ties keep that order. If every side covers a spot, it goes to
+ * the right.
  */
 export function placeBeside(spot: Point, width: number, height: number): Point {
   const clamp = (x: number, y: number): Point => ({
@@ -81,5 +118,15 @@ export function placeBeside(spot: Point, width: number, height: number): Point {
     clamp(spot.x - width / 2, spot.y + MENU_OFFSET),
     clamp(spot.x - width / 2, spot.y - MENU_OFFSET - height),
   ];
-  return candidates.find((p) => !coversSpot(p.x, p.y, width, height)) ?? candidates[0];
+  let best: Point | null = null;
+  let bestCover = Infinity;
+  for (const p of candidates) {
+    if (coversSpot(p.x, p.y, width, height)) continue;
+    const cover = pathCover(p.x, p.y, width, height);
+    if (cover < bestCover) {
+      best = p;
+      bestCover = cover;
+    }
+  }
+  return best ?? candidates[0];
 }

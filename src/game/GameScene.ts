@@ -32,6 +32,7 @@ import {
 } from '../sim';
 import type { BuildResult, GameState, SellResult, StartWaveResult, TowerType, UpgradeResult } from '../sim';
 import { drawEnemies } from './draw/enemies';
+import { TowerLabels } from './draw/labels';
 import { drawMap } from './draw/map';
 import { ShotEffects } from './draw/shots';
 import { Aim, drawTowers } from './draw/towers';
@@ -61,6 +62,7 @@ export class GameScene extends Phaser.Scene {
   speed: Speed = 1;
   private accMs = 0;
   private dynamic!: Phaser.GameObjects.Graphics;
+  private labels!: TowerLabels;
   private overlay!: Phaser.GameObjects.Graphics;
   private hud!: Hud;
   private menu!: BuildMenu;
@@ -89,10 +91,11 @@ export class GameScene extends Phaser.Scene {
     this.preview = null;
 
     // Draw order: map, overlay (spot highlights, range circles), towers and
-    // enemies, HUD, then the menu and panel on top.
+    // enemies, tower labels, HUD, then the menu and panel on top.
     drawMap(this.add.graphics());
     this.overlay = this.add.graphics();
     this.dynamic = this.add.graphics();
+    this.labels = new TowerLabels(this);
     this.hud = new Hud(this, {
       onStartWave: () => this.startWave(),
       onToggleSpeed: () => this.setSpeed(this.speed === 1 ? 2 : 1),
@@ -257,6 +260,7 @@ export class GameScene extends Phaser.Scene {
     drawTowers(g, this.state, this.aim);
     drawEnemies(g, this.state);
     this.shots.draw(g);
+    this.labels.update(this.state);
     this.hud.update(this.state, this.speed);
     this.syncEndScreen();
     this.redrawUi();
@@ -294,9 +298,9 @@ export class GameScene extends Phaser.Scene {
     }
 
     const selected = this.panel.spotId === null ? undefined : towerAt(this.state, this.panel.spotId);
-    if (selected) this.rangeCircle(selected.spotId, towerStats(selected).range, COLORS.range);
+    if (selected) this.rangeCircle(selected.spotId, towerStats(selected).range);
     if (this.menu.spotId !== null && this.preview) {
-      this.rangeCircle(this.menu.spotId, TOWER_DEFS[this.preview].base.range, COLORS.rangePreview);
+      this.rangeCircle(this.menu.spotId, TOWER_DEFS[this.preview].base.range);
     }
 
     if (active !== null) {
@@ -306,11 +310,12 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private rangeCircle(spotId: number, range: number, color: number): void {
+  /** A tower's reach: faint fill, strong pale-yellow edge that reads on grass and path. */
+  private rangeCircle(spotId: number, range: number): void {
     const s = MAP.buildSpots[spotId];
-    this.overlay.fillStyle(color, 0.14);
+    this.overlay.fillStyle(COLORS.range, 0.12);
     this.overlay.fillCircle(s.x, s.y, range);
-    this.overlay.lineStyle(2, color, 0.7);
+    this.overlay.lineStyle(2, COLORS.range, 0.9);
     this.overlay.strokeCircle(s.x, s.y, range);
   }
 }

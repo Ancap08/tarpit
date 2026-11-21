@@ -2,7 +2,7 @@
 
 A small browser tower defense game, built by AI agents under human direction.
 
-Status: milestone 6 (balance pass and visual polish). The numbers are tuned so the game is a fair challenge: building nothing loses on wave 2, a Musketeers-only build loses around wave 8, and a mixed build with Tar Pits and Cannons wins with lives to spare. `npm run sim` prints the evidence. Visual polish is next. Live at https://ancap08.github.io/tarpit/ once merged and deployed.
+Status: milestone 6 (balance pass and visual polish). The numbers are tuned so the game is a fair challenge: building nothing loses on wave 2, a Musketeers-only build loses around wave 8, and a mixed build with Tar Pits and Cannons wins with lives to spare. `npm run sim` prints the evidence. Visual polish (milestone 6b) makes it easier for a kid to read: tower name labels, bigger colour-coded hp bars, brown tar, clearer range circles and greyed buttons, and menus that avoid the path where they can. Live at https://ancap08.github.io/tarpit/ once merged and deployed.
 
 This repo is a portfolio piece. The point is the process: a human sets the
 design and approves every pull request; a coordinator agent plans and never
@@ -56,6 +56,7 @@ src/game/                rendering and input (Phaser), imports src/sim only
   draw/map.ts            grass, path, spawn cave, exit cottage, build spots
   draw/enemies.ts        enemy circles, hp bars, tar rings
   draw/towers.ts         tower shapes, barrels, upgrade ring
+  draw/labels.ts         tower name labels ("Musket", "Cannon+", "Tar")
   draw/shots.ts          fading tracers, cannon splash, tar splat
   testMode.ts            ?test=1: frozen time and window.__tarpit test hooks
   testGlobal.d.ts        type of window.__tarpit

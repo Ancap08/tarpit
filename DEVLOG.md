@@ -683,3 +683,96 @@ Verifier: Claude Sonnet. Checked on branch `m6a-balance` against
   exits (lives 19, no bounty); sound build loses lives in waves 7 and 8.
 - Observation: `DECISIONS.md` has no milestone 6a entry; the decisions
   (number changes, gold target revision) live only in this section.
+
+## 2026-11-21: milestone 6b, visual polish
+
+Roles: implementer Claude Opus, verifier Claude Sonnet, coordinator Claude
+Fable 5.1.
+
+### Implementer notes
+
+Polish only: no change to `src/sim`, balance, HUD positions, the test API
+or fonts. Every new colour is in `src/game/palette.ts`.
+
+- Tower labels: "Musket", "Cannon", "Tar" in 12 px bold monospace, light
+  text on a small dark pill, 22 px below the tower centre (clear of the
+  19 px upgrade ring and the Tar Pit blobs). Upgraded towers read
+  "Musket+" and so on. One Text object per spot (`draw/labels.ts`).
+- Hp bars: 30 x 4 fill inside a 1 px dark border, green at 50% or more,
+  orange below 50%, red below 25%. Still only when hurt. Drawn in a second
+  pass after every body, so a following enemy never hides a bar.
+- Tar: the Tar Pit body, its splats and the slowed-enemy ring are one dark
+  brown (`0x2e2118`); the glossy highlight stays.
+- Range circles: the selected tower's range and the hover preview both use
+  a pale yellow (`0xfff2a8`) 2 px edge at 0.9 alpha over a 0.12 fill. The
+  separate white preview colour is gone.
+- Greyed buttons: label `#a8adb5` on `0x3a3d42` is 4.83:1 (was `#8a8f97`,
+  3.35:1). Enabled labels are 9.98:1 on the same grey and 7.28:1 on the
+  brown button, so greyed still reads as greyed.
+- Menu and panel placement: among the sides that cover no build spot, the
+  one with the least path under it wins (a 9 x 9 grid of sample points over
+  the box, corners and centre included, against the 40 px path strip).
+  Spot 3's menu and panel now open below it on grass (were left, over the
+  first bend, and right); spot 7's panel opens above (was below, over the
+  bottom run). Spot 2 is unchanged: right covers spot 4, left spot 0,
+  below spot 3, so above is its only clear side and it still covers part of
+  the top run (about 41% of the menu box).
+- End screens: the panel is 0.85 alpha, so the map shows through faintly.
+  On the lose screen the HUD "Next:" text is blank.
+- Map: the cottage got a chimney (it already had a door); the cave mouth
+  got a lighter inner arc.
+- Visual tests: a new `enemies.png` frame plays wave 8 (the only wave with
+  all three enemy types) to tick 1200 and asserts 8 Goblins, 5 Wolves,
+  4 Trolls, 2 hurt Trolls and 2 slowed enemies. `mid-wave.png` stays as it
+  was (it is the frame that shows a Cannon shot).
+
+### What went wrong
+
+- The brief expected spot 2's menu to move off the path. With the four
+  sides the placement tries, spot 2 has one clear side and it is over the
+  path, so the scoring cannot move it. Moving it would need new candidate
+  positions (for example below and to the right, which still covers part of
+  the middle run), which is a bigger change than this milestone asked for.
+- The first enemies frames (tick 480 to 820, Tar Pit near the spawn)
+  bunched 20 or more enemies around the cave, with bars on top of each
+  other. A headless scan for ticks where no two enemies are closer than
+  14 px found tick 1200 with a different build.
+- A new baseline (`enemies.png`) means CI fails the visual job until the
+  baseline workflow writes it, like every frame these changes touch.
+
+### Verifier notes
+
+Verifier: Claude Sonnet, on branch `m6b-polish`.
+
+- Clean run (`rm -rf dist && npm ci`, lint, typecheck, test, build,
+  test:e2e): all exit 0. 122 unit tests before my additions (123 after),
+  38 e2e tests (39 after). `visual.spec.ts` and `build-ui.spec.ts` with
+  `--repeat-each=3`: 39 passed. Local runs skip pixel comparisons
+  (`ignoreSnapshots` off CI), so the new `enemies.png` baseline is not
+  checked until the baseline workflow runs.
+- Forbidden paths: no diff in `src/sim`, `docs/DESIGN.md`, `testMode.ts` or
+  `testGlobal.d.ts`. The `hud.ts` diff is one line (blank Next on loss); no
+  layout numbers changed. `live.spec.ts` passes with its hard-coded centres.
+- Contrast recomputed: `#a8adb5` on `0x3a3d42` 4.83:1 (old `#8a8f97`
+  3.35:1); `#fff4dc` on `0x3a3d42` 9.98:1, on `0x6b4a2b` 7.28:1. All match
+  the claims; `palette.ts` values are the ones `button.ts` uses.
+- Placement, recomputed with a 1 px sampling grid: spot 2 menu right covers
+  spot 4, left spot 0, below spot 3; above covers no spot and 40.5% path
+  (claim "about 41%": true). Panel above covers 58.6% path. The
+  "cannot avoid the path" claim holds. The milestone 4 probe (f) (no menu
+  or panel over the HUD or off canvas, every spot) passes.
+- Enemies frame: added `src/sim/enemies-frame.test.ts`; the headless setup
+  gives exactly `{wave 8, goblins 8, wolves 5, trolls 4, hurtTrolls 2,
+  slowed 2}`, matching the browser test.
+- Frames: readable. Findings, all minor and not fixed:
+  1. Panels and menus can sit on labels. A panel that opens below its tower
+     (spot 3) covers that tower's own label, because the panel starts 28 px
+     below the centre and the label spans 22 to about 38 px. Menus at spot 1
+     (opens right) and spot 7 (opens below) overlap the label of spot 3 and
+     spot 6 respectively when those hold towers, by a few pixels.
+  2. On the win screen, tower labels show faintly through the 0.85 panel
+     (for example "Cannon" just under "Victory!").
+  Added e2e test: the spot 7 panel (opens above) does not touch the spot 7
+  label (label box computed from the known offset 22 and 12 px font).
+- DEVLOG matches what I saw. README layout omitted `draw/labels.ts`; fixed
+  in its own commit.

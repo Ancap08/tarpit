@@ -1,4 +1,5 @@
 // Enemies: a coloured circle per type, an hp bar when hurt, a tar ring when slowed.
+// Bodies and rings first, then every hp bar, so bars stay on top of the crowd.
 
 import type Phaser from 'phaser';
 import { ENEMY_STATS, enemyPosition, type EnemyType, type GameState } from '../../sim';
@@ -10,7 +11,17 @@ const LOOK: Record<EnemyType, { radius: number; fill: number; edge: number }> = 
   troll: { radius: 16, fill: COLORS.troll, edge: COLORS.trollEdge },
 };
 
+// Hp bar: a 30 x 4 fill inside a 1 px dark border, above the enemy, only when hurt.
+const BAR_WIDTH = 30;
 const BAR_HEIGHT = 4;
+const BAR_GAP = 4;
+
+/** Green at half or more, orange below half, red below a quarter. */
+export function hpColor(fraction: number): number {
+  if (fraction < 0.25) return COLORS.hpLow;
+  if (fraction < 0.5) return COLORS.hpMid;
+  return COLORS.hpFill;
+}
 
 export function drawEnemies(g: Phaser.GameObjects.Graphics, state: GameState): void {
   for (const enemy of state.enemies) {
@@ -26,15 +37,21 @@ export function drawEnemies(g: Phaser.GameObjects.Graphics, state: GameState): v
     g.fillCircle(x, y, look.radius);
     g.lineStyle(1.5, look.edge, 1);
     g.strokeCircle(x, y, look.radius);
+  }
 
+  // Bars in a second pass, so a following enemy's body never hides one.
+  for (const enemy of state.enemies) {
     const maxHp = ENEMY_STATS[enemy.type].hp;
     if (enemy.hp < maxHp) {
-      const w = Math.max(16, look.radius * 2);
-      const top = y - look.radius - 8;
-      g.fillStyle(COLORS.hpBack, 1);
-      g.fillRect(x - w / 2, top, w, BAR_HEIGHT);
-      g.fillStyle(COLORS.hpFill, 1);
-      g.fillRect(x - w / 2, top, (w * Math.max(0, enemy.hp)) / maxHp, BAR_HEIGHT);
+      const { x, y } = enemyPosition(enemy);
+      const look = LOOK[enemy.type];
+      const fraction = Math.max(0, enemy.hp) / maxHp;
+      const left = Math.round(x - BAR_WIDTH / 2);
+      const top = Math.round(y - look.radius - BAR_GAP - BAR_HEIGHT - 1);
+      g.fillStyle(COLORS.hpBorder, 1);
+      g.fillRect(left - 1, top - 1, BAR_WIDTH + 2, BAR_HEIGHT + 2);
+      g.fillStyle(hpColor(fraction), 1);
+      g.fillRect(left, top, Math.max(1, Math.round(BAR_WIDTH * fraction)), BAR_HEIGHT);
     }
   }
 }

@@ -164,3 +164,22 @@ can change it; "Kyle" means Kyle decided.
   path like the others. Default (Opus).
 - **Known thin margins:** lazy at the edge of its range, greedy at 2 lives
   against a limit of 5. Kyle's play notes decide whether that is right.
+
+## 2026-11-21, milestone 6b (visual polish)
+
+- **Polish list executed:** tower labels ("Musket", "Cannon", "Tar", plus
+  "+" when upgraded), 30 x 4 hp bars that go orange under 50% and red under
+  25%, dark-brown tar everywhere, pale-yellow range circles, greyed button
+  text at 4.8:1 contrast, end panel at 0.85 alpha, no "Next:" text on the
+  lose screen, chimney on the cottage and an inner arc on the cave, and an
+  `enemies.png` baseline showing all three enemy types in wave 8. Fable
+  (list), Opus (execution), Sonnet (contrast and geometry rechecked).
+- **Menus and panels open on the clear side that covers the least path.**
+  Default (Opus). Spot 2's menu still sits over the path: above is its only
+  side that covers no build spot. Accepted.
+- **Two transient label overlaps accepted:** a panel opening below a tower
+  covers that tower's label (spot 3), and a menu at spot 1 or 7 can clip a
+  neighbour's label by a few pixels. Fable. Panels draw on top and close on
+  the next click; fixing it would change placement the tests pin.
+- **Art stays shapes for v1. A Kenney CC0 pack remains a post-v1 option.**
+  Fable, pending Kyle's play notes.
