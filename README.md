@@ -2,7 +2,7 @@
 
 A small browser tower defense game, built by AI agents under human direction.
 
-Status: milestone 1 (core simulation). Title screen is live at https://ancap08.github.io/tarpit/; the game itself arrives at milestone 3.
+Status: milestone 2 (combat and economy). Title screen is live at https://ancap08.github.io/tarpit/; the game itself arrives at milestone 3.
 
 This repo is a portfolio piece. The point is the process: a human sets the
 design and approves every pull request; a coordinator agent plans and never
@@ -30,6 +30,13 @@ npm run build       # production build into dist/
 npm run test:e2e    # Playwright against the built dist/ (run build first)
 ```
 
+Headless balance report (lives, gold and ticks after each wave for the
+scripted sound and lazy builds):
+
+```sh
+npm run sim
+```
+
 ## Project layout
 
 ```
@@ -43,9 +50,14 @@ src/sim/                 game logic, plain TypeScript, no Phaser or DOM
   map.ts                 path, build spots, pathLength, positionAlongPath
   enemies.ts             enemy stat table
   waves.ts               10-wave table and nextWavePreview
+  towers.ts              tower stat tables (base and upgraded), sellRefund
+  time.ts                TICKS_PER_SECOND and secondsToTicks
+  combat.ts              tower fire: targeting, damage, splash, slow, kills
+  actions.ts             buildTower, upgradeTower, sellTower
   game.ts                createGame, startWave, tick (60 ticks/s)
-  headless.ts            scripted headless runner, playAllWavesNoTowers
+  headless.ts            scripted runner, playScripted, soundBuild, lazyBuild
   *.test.ts              unit tests next to each module
+scripts/simulate.ts      npm run sim: per-wave headless report
 e2e/                     Playwright browser tests
 .github/workflows/       ci.yml (checks) and deploy.yml (GitHub Pages)
 docs/SCOPE.md            v1 scope and milestones

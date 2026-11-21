@@ -139,3 +139,56 @@ phaser or `src/game`. Implementer notes match what I saw. Findings, not
 fixed: the README status line still says milestone 0 is in progress; and the
 spec does not say whether the wave-clear bonus is paid on the winning wave
 (the code pays it, and I assert that).
+
+## 2026-11-21: milestone 2, combat and economy
+
+Roles: implementer Claude Opus, verifier Claude Sonnet, coordinator Claude
+Fable 5.1.
+
+### Implementer notes
+
+The implementer (Claude Opus) added towers, targeting, splash, slow, gold,
+build, upgrade and sell in `src/sim`, per `docs/DESIGN.md`, without changing
+the milestone 1 shape (mutating state, typed results).
+
+- New files: `towers.ts` (stat tables), `combat.ts` (tower fire),
+  `actions.ts` (build, upgrade, sell), `time.ts` (`TICKS_PER_SECOND` and
+  `secondsToTicks` moved out of `game.ts` so `combat.ts` can use them
+  without a circular import; `game.ts` re-exports both).
+- Tick order is now: move, exit and life loss, towers fire, spawn, counters,
+  wave-clear check. Written in the `game.ts` header.
+- `state.towers` is an array kept sorted by spotId, which is the firing
+  order.
+- `npm run sim` needs no new dependency: Node 22 strips the types of
+  `scripts/simulate.ts`, and the script loads `src/sim` through Vite's
+  `runnerImport`, because Node alone cannot resolve the extensionless
+  imports inside `src/sim`.
+
+What went wrong:
+
+- Floating point in the sell refund. `Math.floor(90 * 0.7)` is 62, because
+  `90 * 0.7` is `62.99999999999999`. The spec example (sell a 50 + 40
+  Musketeer for 63) caught it before any test ran; the refund now uses
+  `Math.floor(spent * 7 / 10)`, and a test pins 63.
+- Two of my own combat tests failed on first run because I placed enemies
+  by mental arithmetic and got the geometry wrong (distance 150 is still on
+  the first segment, not the second). Fixed by choosing points with exact
+  integer positions and asserting those positions in a test.
+- A scratch `vitest --root /` call scanned the whole disk and had to be
+  stopped. No repo impact.
+
+The winning script took 2 iterations. Iteration 1 (two Musketeers only)
+lost on wave 5. Iteration 2, the first full hand-written build, won with all
+20 lives. A throwaway random search over build orders (not committed) also
+found 20-life wins within minutes, so the current numbers are easy for a
+sensible build.
+
+Balance observations for milestone 6 (numbers unchanged, as instructed):
+
+- `soundBuild` wins with 20 of 20 lives and 910 gold unspent.
+- `lazyBuild` (one Musketeer) loses on wave 3; the milestone 6 target says
+  "around wave 7".
+- Six base Musketeers (0, 2, 4, 6, 7, 9) lose on wave 10.
+- Every build spot except 0 sits exactly 80 px from the path, which equals
+  the base Tar Pit range. A base Tar Pit there touches the path at only one
+  or two points, so it is nearly useless until upgraded (range 95).
