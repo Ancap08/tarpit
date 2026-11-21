@@ -352,3 +352,21 @@ can change it; "Kyle" means Kyle decided.
   effort, as scoped.** Fable.
 - **Not verified on a real iPad or Safari;** Chromium touch emulation only.
   Kyle's wave on the iPad is the remaining evidence.
+
+## 2026-11-21, milestone 15 (art source spike)
+
+- **Two CC0 packs inventoried: Ninja Adventure (license file CC0 1.0) and
+  0x72 DungeonTileset II (CC0 on its itch.io page; no license file in the
+  zip, so manifest rows cite the page).** Fable and Opus.
+- **Licensing and size checks are in CI:** `check:assets` fails on any
+  file under `assets/` or `docs/art/` that is missing from the manifest or
+  not CC0 / credited CC-BY; `check:size` fails when `dist/` exceeds 20 MB.
+  Both proven to fail on purpose by implementer and verifier. Fable.
+- **Mockups A (Ninja Adventure at 3x and 2x), B (0x72 enemies over our
+  shapes) and C (our shapes, animated in code) are committed under
+  docs/art/mockups for Kyle's choice.** Implementer's recommendation: A at
+  2x with renamed enemies. Risks logged: Troll no bigger than Goblin at 2x,
+  cannon and mortar as people, hit and death animations in code, Retina
+  blur unless nearest-neighbour filtering, Hyena has side frames only.
+- **Open: Kyle's choice of style.** Nothing from the packs is copied into
+  the repo until it is made.
