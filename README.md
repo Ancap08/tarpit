@@ -56,6 +56,7 @@ src/game/                rendering and input (Phaser), imports src/sim only
   draw/map.ts            grass, path, spawn cave, exit cottage, build spots
   draw/enemies.ts        enemy circles, hp bars, tar rings
   draw/towers.ts         tower shapes, barrels, upgrade ring
+  draw/labels.ts         tower name labels ("Musket", "Cannon+", "Tar")
   draw/shots.ts          fading tracers, cannon splash, tar splat
   testMode.ts            ?test=1: frozen time and window.__tarpit test hooks
   testGlobal.d.ts        type of window.__tarpit
