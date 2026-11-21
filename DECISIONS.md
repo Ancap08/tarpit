@@ -484,3 +484,23 @@ can change it; "Kyle" means Kyle decided.
 - **Panel is 214 x 146 with a third 13 px "Target: ..." button; labels
   come from the names table.** Opus. The verifier's rename proof caught one
   spec that hard-coded the labels; fixed.
+
+## 2026-11-21, Kyle's iPad play notes
+
+- **"We got the idea correct"; now make it fun.** Kyle, after playing on
+  the iPad. Three additions approved for v4, built before endless, maps and
+  the balance lock, as milestones 25a to 25c (`docs/SCOPE-v4.md`):
+  drag-to-place with a planning phase (free moves and full refunds until
+  Start Wave, 70% after), special attacks (one charge per wave: Powder Keg,
+  then Tar Barrel, then Fire Arrows), and a horde retune (more, weaker
+  enemies, more gold, same overall challenge) with a call-early bonus and
+  tower kill counts.
+- **Milestones are numbered 25a, 25b, 25c** so earlier references to
+  milestones 26 to 29 stay true. Fable.
+- **HUD and bars are plain on purpose until v5.** Kyle is "not in love"
+  with how the bar looks and expects it to improve as the theme comes in;
+  the HUD skin is part of the v5 art pass. Recorded so v5 treats it as a
+  requirement, not polish.
+- **Not reported as problems on the iPad:** two-tap placement worked but
+  felt clumsy (hence 25a); text sharpness and Safari's toolbar were not
+  raised.

@@ -1,6 +1,6 @@
 # Tarpit: v4 scope and milestones (gameplay lock)
 
-Draft for Kyle's approval, 2026-11-21. "Default" marks the coordinator's
+Approved by Kyle on 2026-11-21 (PR 21); extended the same day from his iPad play notes (milestones 25a to 25c). "Default" marks the coordinator's
 pick; Kyle can change any of it. v4 adds the gameplay depth and replay
 value, then freezes the design so the v5 art pass renders each enemy, tower
 and map exactly once. Everything is simulation-first, tested, and
@@ -75,6 +75,62 @@ Waypoints are chosen in the map milestone; path length 1500 to 1800 px each.
 Each map has its own archetype runs and balance pins; the cottage and cave
 move with the path.
 
+## Additions from Kyle's iPad play notes (2026-11-21)
+
+Kyle played v3/v4-in-progress on the iPad: "we got the idea of it correct",
+now make it fun. Three additions, built before endless, maps and the
+balance lock, as milestones 25a to 25c.
+
+### Placement and the planning phase (25a)
+
+- **Drag to place.** Press a tower on the bar and drag onto the map. The
+  ghost floats 48 px above the touch point so the finger does not hide it
+  (no offset for the mouse), snaps to cells, shows green or red with its
+  range; release on a buildable cell to build; release over the HUD or an
+  unbuildable cell to cancel. Tap-tap (touch) and click (mouse) placement
+  stay.
+- **Planning phase.** Everything bought during a setup phase (builds and
+  upgrades) is "unlocked" until Start Wave is pressed. An unlocked tower can
+  be dragged to another buildable cell for free and removed for a full
+  refund of what was spent on it this phase. Pressing Start Wave locks
+  everything: no moving, and sell returns 70% as today. Towers bought during
+  a wave lock at once. Unlocked towers show a dashed outline.
+- An upgrade bought in setup on a tower locked earlier is refundable on its
+  own ("Undo upgrade") until the wave starts; the tower itself stays locked.
+
+### Special attacks (25b)
+
+- One charge per wave, granted at wave start, unused charges do not carry
+  over. A HUD button opens the unlocked specials; pick one, then tap the
+  map; a circle previews the area; tap again (touch) or click (mouse) to
+  fire. Usable only during a wave.
+- Unlocks by wave reached (default starting numbers; 25c and 28 retune):
+
+| Special | From wave | Effect |
+|---|---|---|
+| Powder Keg | 1 | 80 damage to every enemy within 70 px |
+| Tar Barrel | 4 | 50% slow for 4 s on every enemy within 90 px (boss cap applies) |
+| Fire Arrows | 7 | burn 10 per second for 4 s on every enemy within 80 px, doubled on tarred enemies as with the Fire Pot |
+
+- Specials hit flying enemies too, and shields do not reduce them.
+- Deterministic: a special is a player action with a tick and a position;
+  headless scripts can use them, and the archetypes get a stated policy.
+
+### Horde retune, early call, kill counts (25c)
+
+- **Horde waves.** Roughly two to three times the enemies per wave with
+  less hp each; total bounty per wave rises; the overall challenge stays:
+  every archetype target from milestone 12 and 22 holds on Normal. Easy and
+  Hard are retuned here too (Easy: the lazy build wins; Hard: the combo
+  build loses at least 5 more lives than on Normal but can still win).
+- **Call early.** While a wave is running and all its enemies have spawned,
+  Start Wave becomes "Call next wave" and pays a bonus of 1 gold per
+  remaining second of a fixed 20 s grace, at most 20; the new wave's
+  enemies join the field. Not available before wave 10's boss.
+- **Kill counts.** Each tower counts its kills; the panel shows it.
+- **Performance.** 120 enemies and 25 towers at 60 fps in headless Chromium
+  as a floor; Kyle checks the iPad.
+
 ## Out of scope for v4 (v5 or later)
 
 Art, sound, juice, world effects (moved from v3 to v5), draw-your-own-trail
@@ -92,6 +148,9 @@ implements at medium effort, Sonnet verifies, Kyle plays and approves.
 | 23 | Grumblefoot: boss unit, 5-life exit, slow cap, HUD health bar | Unit tests; headless combo build kills him; Playwright reaches wave 10 with the bar visible; baseline |
 | 24 | Targeting modes in the simulation and the panel | Unit tests for first/last/strongest with ties; Playwright cycles the mode and sees a different target; baseline of the panel |
 | 25 | Difficulty levels and the title menu | Unit tests on multipliers; Playwright starts each level and checks gold, lives and an enemy's hp; baseline of the title menu |
+| 25a | Drag placement and the planning phase: drag from the bar with a lifted ghost, free move and full refund until Start Wave, undo for setup upgrades | Unit tests for lock, move and refund rules; Playwright drags by touch and mouse, moves a tower, undoes, then confirms 70% after the wave starts; baseline with an unlocked tower |
+| 25b | Special attacks: Powder Keg, Tar Barrel, Fire Arrows, one charge per wave, unlock by wave, HUD button and area preview | Unit tests per special (flyers hit, shields ignored, boss slow cap, tar doubling); Playwright fires each by touch and mouse; baseline of the aim preview |
+| 25c | Horde retune with Easy and Hard, call-early bonus, tower kill counts, performance floor | Sim report with every archetype target on Normal plus the Easy and Hard targets; revert notes; a 120-enemy frame-time test; Kyle's play notes |
 | 26 | Endless mode and local high score | Unit tests on wave generation and scaling; Playwright wins, keeps going, loses, sees the score on the title; determinism test |
 | 27 | Two new maps and the map picker | Map data tests (path length, 36 px rule, buildable counts, river region); archetype runs per map; Playwright plays a wave on each; baselines per map |
 | 28 | Balance lock: every archetype on every map and difficulty against the targets; `docs/DESIGN.md` rewritten as the frozen spec | Sim report pinned by tests; revert matrix; Kyle's play notes; a "frozen" banner in DESIGN.md |
