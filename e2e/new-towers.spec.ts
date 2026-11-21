@@ -69,6 +69,7 @@ for (const c of CASES) {
     s = await state(page);
     expect(s.towers).toEqual([expect.objectContaining({ cell: c.cell, type: c.type, upgraded: true, spent: c.cost + c.upgrade })]);
     expect(s.gold).toBe(1000 - c.cost - c.upgrade);
+    await api(page, (a) => a.startWave()); // locks the tower (milestone 25a): Sell pays 70%
     await click(page, 'panel:sell');
     s = await state(page);
     expect(s.towers).toEqual([]);

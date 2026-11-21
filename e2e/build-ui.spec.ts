@@ -153,6 +153,7 @@ test('(a) select the tower at (7,5), upgrade and sell with the real panel', asyn
   expect(s.towers).toEqual([expect.objectContaining({ cell: C75, upgraded: true, spent: 85 })]);
   expect(s.gold).toBe(15);
   expect(await ui(page)).toMatchObject({ selectedCell: C75, panelOpen: true });
+  await api(page, (a) => a.startWave()); // locks the tower (milestone 25a): Sell pays 70%
 
   // (a) A greyed Upgrade (already upgraded) changes nothing, even with gold.
   await setGold(page, 500);

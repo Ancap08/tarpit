@@ -110,6 +110,7 @@ test('(d) selling an upgraded Longbow through the panel refunds 49', async ({ pa
   await clickCell(page, { col: 6, row: 5 });
   await clickBar(page, 'panel:upgrade');
   expect((await state(page)).gold).toBe(100 - 40 - 30);
+  await api(page, (a) => a.startWave()); // locks the tower (milestone 25a): Sell pays 70%
   await clickBar(page, 'panel:sell');
   const s = await state(page);
   expect(s.towers).toEqual([]);
