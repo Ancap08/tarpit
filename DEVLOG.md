@@ -1927,3 +1927,66 @@ The verifier (Claude Sonnet) checked milestone 14 on branch `m14-touch`.
   0.67 scale, which makes buttons about 28 px (best effort in the scope); the
   tablet baseline PNG does not exist yet (CI workflow makes it); real iPad
   and Safari are untested, as the implementer notes say.
+
+## 2026-11-21: milestone 15, art source spike
+
+Roles: implementer Claude Opus, verifier Claude Sonnet, coordinator Claude
+Fable 5.1.
+
+### Implementer notes
+
+The implementer (Claude Opus) inventoried the two CC0 packs the
+coordinator downloaded, rendered the style mockups and added the licensing
+and size tooling. No change under `src/`; no game code change.
+
+- Findings, in full in `docs/art/INVENTORY.md`: Ninja Adventure covers
+  almost every row (enemies, tiles, cave, cottage, HUD skin, effects,
+  sound) but has no cannon, mortar or wolf proper, and its monsters have
+  walk cycles only. 0x72 has a good goblin and ogre and nothing else we
+  need (no wolf, towers, outdoor tiles or sound). Neither pack has enemy
+  death animations, so "die" will be a code effect whatever Kyle picks.
+- Scale: 16 px art at 3x is 48 px, bigger than our 32 px cells and 40 px
+  path, and the cottage becomes 192 x 144. An extra mockup at 2x
+  (`docs/art/mockups/A-ninja-adventure-2x.png`) shows the grid-aligned
+  option. B is rendered at 2x for the same reason (the 32 x 36 ogre would
+  be 96 x 108 at 3x).
+- Mockups: one production-build screenshot at wave 5 with six towers,
+  stepped 1000 ticks, then composited with Pillow (nearest-neighbour). The
+  render script and the raw screenshots stay in the session scratchpad;
+  they read the untrusted pack folders, so they were not committed.
+- Tooling: `npm run check:assets` (`scripts/check-asset-manifest.ts`,
+  pure `checkManifest` and `parseManifest` unit-tested in
+  `scripts/check-asset-manifest.test.ts`, 12 tests) and
+  `npm run check:size` (`scripts/check-size-budget.ts`,
+  `SIZE_BUDGET_BYTES` = 20 MB). CI runs check:assets after lint and
+  check:size after build. dist/ is 1.18 MB today (1,233,127 bytes, two
+  files). Both checks were seen failing on purpose: a stray
+  `docs/art/stray.png`, an MIT row, and a 21 MB file in dist/.
+
+### What went wrong
+
+- The 0x72 zip has no license file at all. The CC0 grant is only on the
+  itch.io page ("Asset license: Creative Commons Zero v1.0 Universal"),
+  checked on 2026-11-21; the manifest rows for 0x72 sprites must cite that
+  page.
+- Wave 5 has no Wolves (2 Trolls and Goblins only), so the brief's "real
+  enemy positions" frame cannot show a Wolf stand-in. A and B got a small
+  roster panel; the close-up sheet shows all three.
+- The first tower layout (around the top of the path) killed the Goblins
+  near the cave, so every enemy sat in one clump; the towers were moved
+  down the path and the tick picked from a scan.
+- `python3 -I` (required for code that reads the downloaded packs) also
+  hides the user site-packages where Pillow lives; the scripts append that
+  path explicitly instead of dropping `-I`.
+- The first Vitest exclude (`scripts/**/!(check-asset-manifest.test.ts)`)
+  still excluded the new test: the run reported the old 24 files and no
+  error. Fixed by dropping `scripts/**` from exclude, since `include`
+  already names only that one script test; a throwaway failing
+  `scripts/zz-probe.test.ts` confirmed other script tests stay out.
+- The first CC0 pattern (`/^CC0\b/`) accepted "CC0-ish"; the unit test
+  caught it.
+- Mockup fixes after looking at each render: 3x flowers were huge (now
+  grass tufts only), the Tar Pit crop included part of the rock above it,
+  the explosion covered the Tar Pit, C's insets covered the Tar label
+  (moved to the top-right grass), and a close-up strip ran into the next
+  column.

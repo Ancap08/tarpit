@@ -66,6 +66,9 @@ docs/SCOPE.md     v1 scope and the milestone table
 docs/SCOPE-v2.md  v2 scope and milestones 8 to 13
 docs/DESIGN.md    the game spec: map, economy, enemies, towers, waves
 docs/media/       README GIF and still
+docs/art/         art source spike (milestone 15): INVENTORY.md (packs, roster mapping, recommendation)
+docs/art/mockups/ style mockups A (Ninja Adventure, 3x and 2x), B (0x72), C (shapes animated), closeups
+assets/           game art and sound (from milestone 16); MANIFEST.md lists every file's source and license
 src/sim/          game logic in plain TypeScript, no Phaser or DOM (lint-enforced)
 src/sim/grid.ts   the build grid: cells, cell centres, the buildable rule
 src/game/         Phaser rendering, input, HUD, tower panel and the ?test=1 test hooks
@@ -73,6 +76,8 @@ src/game/ui/buildBar.ts  the HUD build bar: pick a tower, then click a cell
 src/game/portrait.ts     the "turn your device" card (markup in index.html), pauses ticking
 src/game/draw/labels.ts  tower labels and the crowding rule (smaller, then hidden)
 scripts/          npm run sim (balance report) and npm run demo (GIF recorder)
+scripts/check-asset-manifest.ts  npm run check:assets: every file in assets/ and docs/art/ is in assets/MANIFEST.md as CC0 or credited CC-BY
+scripts/check-size-budget.ts     npm run check:size (after build): dist/ stays under 20 MB, prints the 10 largest files
 e2e/              Playwright tests and CI screenshot baselines
 e2e/new-towers.spec.ts  Longbow, Mortar and Fire Pot built through the bar
 e2e/touch.spec.ts       iPad-size touch tests (two-tap placement, 44 px targets, portrait card)
