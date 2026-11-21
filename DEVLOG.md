@@ -2171,3 +2171,122 @@ Independent check, with a different model from the implementer.
   depth rises with screen y (read through `game.scene.getScene('game')`).
 - **Not verified:** pixel baselines (CI only), real iPad text rendering with
   `pixelArt`, WebGL frames beyond the implementer's screenshots.
+
+## 2026-11-21: milestone 22, Harpy and Shieldbearer
+
+Roles: implementer Claude Opus, verifier Claude Sonnet, coordinator Claude
+Fable 5.1.
+
+### Implementer notes
+
+- **Simulation.** `EnemyType` gains `harpy` (40 hp, 90 px/s, 7 gold) and
+  `shieldbearer` (120 hp, 45 px/s, 9 gold). `EnemyStats` gains `flying`
+  and `shield` (false for the other three); the rules read them from
+  `ENEMY_STATS` by type, so `Enemy` is unchanged. `combat.ts`: Tar Pit,
+  Cannon and Mortar skip flyers in `findTarget` (`canTarget`); splash skips
+  flyers; a Fire Pot impact on a flyer applies no burn. `enemies.ts`
+  `shotDamage` halves a shot of base damage `SHIELD_THRESHOLD` (10) or less
+  on a shielded enemy, so base Longbow 4 -> 2, upgraded 9 -> 4.5, Fire Pot
+  impact 4 -> 2, Tar Pit 3 -> 1.5; burn is never halved. `hit` events carry
+  the halved damage. 23 tests in `src/sim/flyingShield.test.ts`, one or
+  more per rule.
+- **Wave table, before (milestone 12) and after.** New groups are each
+  wave's last groups; older groups are unchanged.
+
+  | Wave | Before | Added in milestone 22 |
+  |---|---|---|
+  | 1 to 3 | unchanged | none |
+  | 4 | 10 Wolf / 0.6 s | 4 Harpy / 1.2 s, delay 2 s |
+  | 5 | 12 Goblin / 0.7 s; 2 Troll / 3 s, delay 2 s | 3 Harpy / 1.0 s, delay 6 s |
+  | 6 | 18 Goblin / 0.5 s; 14 Wolf / 0.5 s, delay 5 s | 3 Shieldbearer / 2.0 s, delay 3 s |
+  | 7 | 10 Wolf / 0.5 s; 10 Troll / 2.5 s, delay 1 s | 4 Harpy / 1.0 s, delay 8 s |
+  | 8 | 20 Goblin / 0.5 s; 10 Wolf / 0.6 s, delay 6 s; 8 Troll / 3 s, delay 3 s | 3 Shieldbearer / 2.5 s, delay 4 s; 4 Harpy / 1.0 s, delay 10 s |
+  | 9 | 12 Wolf / 0.5 s; 6 Troll / 2 s | none |
+  | 10 | 8 Wolf / 0.5 s, delay 4 s; 12 Troll / 2 s | 5 Harpy / 0.8 s, delay 6 s; 4 Shieldbearer / 2.0 s, delay 2 s |
+
+- **Combo plan re-planned for anti-air:** a third Longbow (17,8) after the
+  first Fire Pot (bought before wave 4) and its upgrade as the last
+  action. With the old plan the combo build leaked all 4 wave 4 Harpies
+  and ended with 232 gold after wave 9.
+- **Archetypes, before -> after** (`npm run sim`):
+
+  | Archetype | Milestone 12 | Milestone 22 | Target |
+  |---|---|---|---|
+  | noTowers | lost wave 2 | lost wave 2 | lost by 3 |
+  | lazyBuild | lost wave 7 | lost wave 7 | lost on 6 to 8 |
+  | greedyMusket | lost wave 7 | lost wave 7 | none |
+  | soundBuild | lost wave 9 | lost wave 7 | none |
+  | soundBuildNoTar | lost wave 7 | lost wave 6 | none |
+  | longbowSpam | lost wave 9 | lost wave 9 | lost on 7 to 9 |
+  | comboBuild | won, 11 lives, 177 gold, 136 after wave 9 | won, 12 lives, 347 gold, 145 after wave 9 | won, 5 to 15 lives, under 150 after wave 9 |
+  | comboBuildNoFire | won, 2 lives | won, 2 lives | strictly worse than combo |
+  | noAntiAir | (new) | lost wave 7; all 4 wave 4 Harpies exit | every wave 4 Harpy exits; lost by wave 8 |
+
+  Found with a scratch harness that rewrites the wave table and the combo
+  plan in memory: 8 rounds, 34 runs (19 named configurations plus a sweep
+  of one action over 15 plan positions).
+- **noAntiAir sells instead of dropping (deviation from the brief).** The
+  brief defined it as the combo plan with every Musketeer and Longbow
+  action removed. The combo plan opens with two Longbows and has no ground
+  tower affordable for wave 1 that holds Goblins alone, so that build
+  loses on wave 2, before any Harpy (pinned as `comboBuildNoBows`, lost on
+  wave 2 with 65 gold). No combo opener tried (a Cannon, Tar Pit or Fire
+  Pot at the best corner cells) kept a no-bow build alive to wave 4. So
+  `noAntiAir` plays the combo script unchanged through wave 3, sells its
+  two Longbows in setup before wave 4, and drops every later action on
+  Musketeer and Longbow cells; refunds and freed gold are spent on nothing.
+  Coordinator to confirm.
+- **Display names.** `src/game/names.ts`: `ENEMY_NAMES`, `TOWER_NAMES`,
+  `TOWER_SHORT_LABELS`, `BOSS_NAME` ("Grumblefoot", unused until milestone
+  23) and `END_TEXT` (the end screens' words). The HUD preview, the build
+  bar, the tower labels and the end screens read them. `endText.test.ts`,
+  `labels.test.ts`, `play-wave.spec.ts`, `new-towers-verifier.spec.ts` and
+  `new-enemies.spec.ts` build their expected strings from the tables. The
+  label crowding tests still depend on the current label lengths (a longer
+  label crowds differently, which is behaviour, not a display string).
+- **Sheet layouts** (Pillow plus 8x and 16x zooms):
+  - BlueBat (Harpy): 64 x 64, 4 columns x 4 rows of 16 x 16, the
+    four-way layout. Column 0 shows the eyes (down), column 1 none (up);
+    the side views have the eye left of centre in column 2 (left) and
+    right of centre in column 3 (right). Rows 0 and 3 wings up, rows 1 and
+    2 wings folded, so the walk cycle is a flap. No dead frame.
+  - Knight (Shieldbearer): 64 x 112, the GreenPig layout. Visor notch left
+    in column 2 and right in column 3; row 6 column 0 is pixel-identical to
+    `SeparateAnim/Dead.png` (dead frame 24).
+- **Renderer.** Both at 2x. Harpies go in an air layer GameScene adds right
+  after the tower labels, so they draw above every walker and label and
+  below the HUD; drawn 16 px above the path position, with a gentle bob in
+  play (2 px, 900 ms, desynced by id; none in test mode) and a two-ellipse
+  ground shadow (24 x 9 at 15% under 16 x 6 at 20%, 3 px below the path
+  point) drawn with the status rings. No tar or burn tint or ring on a
+  flyer; the hit flash stays. Hp bars of flyers sit above the lifted
+  sprite. Shieldbearers carry a 6 x 6 grey rounded rect with a 1 px dark
+  edge, 11 px left of and 3 px below the sprite centre, just in front of
+  their own sprite.
+- **Frames.** New `harpies.png` (wave 4, Cannon (7,4), Musketeer (2,3),
+  tick 471). `enemies.png` keeps tick 1350; wave 8 now also has 3
+  Shieldbearers and 4 Harpies there. `new-towers.png` moved from tick 1754
+  to 1490 (see below). `won.png` now shows 12 lives and 347 gold.
+
+### What went wrong
+
+- The brief's `noAntiAir` (bows removed from wave 1) cannot reach wave 4;
+  see the deviation above.
+- The first Harpy frame (Cannon at (7,7), as in `new-enemies.spec.ts`)
+  only matched at ticks where a Harpy, lifted 16 px on the vertical run,
+  sat exactly over the Wolf the Cannon was shooting, so the tracer looked
+  like it hit the Harpy. A wider scan with a minimum sprite distance of
+  18 px found Cannon (7,4) and Musketeer (2,3).
+- `new-towers.png` lost its Mortar splash: wave 5's Harpies take the
+  Longbow's shots, the Goblins live longer and the Mortar's cycle moved
+  (1488, 1668, 1848; none at 1752). The brief said to keep frame ticks; the
+  tick moved anyway, to 1490 (2 ticks after a Mortar shot, as before, both
+  Trolls slowed and burning, 10 px apart), because at 1754 the frame no
+  longer shows what its comment promises. The verifier test
+  `frame-verifier.test.ts` moved with it.
+- Two verifier tests needed changes because the waves changed: the
+  events verifier's fixed defence lost on wave 7 to the Harpies, so it
+  gained two upgraded Longbows; the frame verifier above.
+- The combo build's gold after wave 9 (under 150) left almost no room for
+  new bounties in wave 9, so wave 9 has no new groups. 145 gold leaves a
+  5 gold margin.
