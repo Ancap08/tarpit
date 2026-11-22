@@ -17,6 +17,11 @@
 // computed from the live state when it fires. When a wave is called early,
 // playScripted applies the next wave's pre-wave actions at once (mid-wave,
 // so the towers lock at once) and plays that wave without a startWave.
+//
+// Milestone 26: a WaveScript with `endless: true` presses Keep going
+// (continueEndless) when wave 10 is won and plays on, wave by wave, until
+// the game is lost or ENDLESS_WAVE_CAP waves have been played. Scripts
+// without it play exactly as before.
 
 import {
   buildTower,
@@ -36,14 +41,14 @@ import {
   type UpgradeResult,
 } from './actions';
 import type { Difficulty } from './difficulty';
-import { callNextWave, createGame, startWave, tick, type CallNextWaveResult, type StartWaveResult } from './game';
+import { callNextWave, continueEndless, createGame, startWave, tick, wavesCleared, type CallNextWaveResult, type StartWaveResult } from './game';
 import { enemyPosition } from './combat';
 import { isSpecialUnlocked, type SpecialType } from './specials';
 import type { GameState, TargetingMode, TowerType } from './types';
 import { buildableCells, cellCenter, cellFromKey, cellKey, type Cell } from './grid';
 import { MAP, pathLength, positionAlongPath } from './map';
 import { TOWER_DEFS } from './towers';
-import { WAVES } from './waves';
+import { ENDLESS_BASE_WAVES, LAST_WAVE, WAVES } from './waves';
 
 export type BuildAction =
   | { type: 'build'; cell: Cell; tower: TowerType }
@@ -237,7 +242,27 @@ export type TimedScript = readonly (readonly TimedAction[])[];
  * `timed` (milestone 25b, optional) lists, per wave, the special attacks
  * fired during it; no existing archetype has it.
  */
-export type WaveScript = readonly (readonly BuildAction[])[] & { readonly timed?: TimedScript };
+export type WaveScript = readonly (readonly BuildAction[])[] & {
+  readonly timed?: TimedScript;
+  /**
+   * Milestone 26: press Keep going after the win and play endless waves
+   * (entry i still holds wave i + 1's actions) until lost or
+   * ENDLESS_WAVE_CAP waves have been played.
+   */
+  readonly endless?: boolean;
+};
+
+/**
+ * Safety cap for endless runs (milestone 26): a scripted endless game stops
+ * after this many waves even if it is still alive, so a run cannot loop
+ * forever. `npm run sim` reports a run that hits it.
+ */
+export const ENDLESS_WAVE_CAP = 200;
+
+/** How many waves a script plays at most: 10, or ENDLESS_WAVE_CAP for an endless script. */
+function waveLimit(script: { readonly endless?: boolean } | undefined): number {
+  return script?.endless ? ENDLESS_WAVE_CAP : WAVES.length;
+}
 
 export interface WaveReport {
   wave: number;
@@ -255,14 +280,17 @@ export interface ScriptedRun extends HeadlessRun {
 /**
  * Play all 10 waves: before each wave apply that wave's actions, then start
  * it and run until it ends or `maxTicksPerWave` pass. Stops once lost.
- * `difficulty` (milestone 25) defaults to Normal.
+ * `difficulty` (milestone 25) defaults to Normal. An endless script
+ * (milestone 26) presses Keep going after the win and plays on until lost
+ * or ENDLESS_WAVE_CAP waves.
  */
 export function playScripted(script: WaveScript, maxTicksPerWave = 60 * 600, difficulty?: Difficulty): ScriptedRun {
   const state = createGame({ difficulty });
   const log: HeadlessStepResult[] = [];
   const waves: WaveReport[] = [];
   let called = false;
-  for (let i = 0; i < WAVES.length && (state.phase === 'setup' || called); i++) {
+  const limit = waveLimit(script);
+  for (let i = 0; i < limit && (state.phase === 'setup' || called); i++) {
     for (const action of script[i] ?? []) log.push(applyAction(state, action));
     // A wave called early (milestone 25c) has already started.
     if (!called) log.push(applyAction(state, { type: 'startWave' }));
@@ -277,6 +305,7 @@ export function playScripted(script: WaveScript, maxTicksPerWave = 60 * 600, dif
     }
     called = state.phase === 'wave' && state.wave === i + 2;
     waves.push({ wave: i + 1, lives: state.lives, gold: state.gold, ticks, phase: called ? 'setup' : state.phase });
+    if (script.endless && state.phase === 'won') continueEndless(state);
   }
   return { state, log, waves };
 }
@@ -335,10 +364,11 @@ type Decide = (state: GameState) => BuildAction | undefined;
  * playScripted) and the returned script carries them, so a replay with
  * playScripted is the same game.
  */
-function recordScript(decide: Decide, difficulty?: Difficulty, timed?: TimedScript): WaveScript {
+function recordScript(decide: Decide, difficulty?: Difficulty, timed?: TimedScript, endless = false): WaveScript {
   const state = createGame({ difficulty });
   const script: BuildAction[][] = [];
-  for (let i = 0; i < WAVES.length && state.phase === 'setup'; i++) {
+  const limit = waveLimit({ endless });
+  for (let i = 0; i < limit && state.phase === 'setup'; i++) {
     const actions: BuildAction[] = [];
     for (let action = decide(state); action; action = decide(state)) {
       const step = applyAction(state, action);
@@ -348,8 +378,10 @@ function recordScript(decide: Decide, difficulty?: Difficulty, timed?: TimedScri
     script.push(actions);
     applyAction(state, { type: 'startWave' });
     runWaveWithTimed(state, timed?.[i] ?? [], 60 * 600, []);
+    if (endless && (state.phase as GameState['phase']) === 'won') continueEndless(state);
   }
-  return timed ? Object.assign(script, { timed }) : script;
+  const out = timed ? Object.assign(script, { timed }) : script;
+  return endless ? Object.assign(out, { endless: true }) : out;
 }
 
 /** `script` with each wave's actions filtered by `keep`, keeping its timed actions (milestone 25c). */
@@ -755,6 +787,88 @@ export const HARD_PLAN: readonly BuildAction[] = ((): BuildAction[] => {
 export function hardBuild(difficulty?: Difficulty): WaveScript {
   return recordScript(followPlan(HARD_PLAN), difficulty, CLUSTER_POLICY);
 }
+
+/**
+ * Endless waves' cluster special (milestone 26): each endless wave fires one
+ * clusterSpecial at the CLUSTER_POLICY_TICKS tick of the table wave it
+ * repeats (8, 9 or 10: 1241, 1194, 713). Entry i is for wave i + 1; the
+ * first ten are CLUSTER_POLICY.
+ */
+export const ENDLESS_CLUSTER_POLICY: TimedScript = Array.from({ length: ENDLESS_WAVE_CAP }, (_, i): readonly TimedAction[] => {
+  if (i < LAST_WAVE) return CLUSTER_POLICY[i];
+  const base = ENDLESS_BASE_WAVES[(i - LAST_WAVE) % ENDLESS_BASE_WAVES.length];
+  return [{ type: 'clusterSpecial', atWaveTick: CLUSTER_POLICY_TICKS[base - 1] }];
+});
+
+/**
+ * Informational (milestone 26): comboBuild (COMBO_PLAN as soon as gold
+ * allows, the cluster special policy), then Keep going after the win with
+ * no further purchases, one cluster special per endless wave
+ * (ENDLESS_CLUSTER_POLICY). Target on Normal: loses on wave 11 to 16.
+ */
+export function endlessIdle(difficulty?: Difficulty): WaveScript {
+  const plan = followPlan(COMBO_PLAN);
+  return recordScript((state) => (state.endless ? undefined : plan(state)), difficulty, ENDLESS_CLUSTER_POLICY, true);
+}
+
+/**
+ * Informational (milestone 26): comboBuild, then Keep going after the win,
+ * with one cluster special per endless wave (ENDLESS_CLUSTER_POLICY).
+ * Reinvest rule, in each endless setup phase while gold allows: upgrade
+ * the un-upgraded tower with the cheapest upgrade (ties to the first in
+ * cell order), and wait if it is not yet affordable; with every tower
+ * upgraded, build a Longbow on the next free cell of TRAIL_CELL_ORDER; with
+ * no free trail cell left, buy nothing. Target on Normal: further than
+ * endlessIdle, at least wave 14, and lost by wave 40.
+ */
+export function endlessGreedy(difficulty?: Difficulty): WaveScript {
+  const plan = followPlan(COMBO_PLAN);
+  return recordScript(
+    (state) => {
+      if (!state.endless) return plan(state);
+      // Upgrade the un-upgraded tower with the cheapest upgrade, else build a Longbow on the trail.
+      let cheapest: (typeof state.towers)[number] | undefined;
+      for (const tw of state.towers) {
+        if (!tw.upgraded && (!cheapest || TOWER_DEFS[tw.type].upgradeCost < TOWER_DEFS[cheapest.type].upgradeCost)) cheapest = tw;
+      }
+      if (cheapest) return state.gold >= TOWER_DEFS[cheapest.type].upgradeCost ? { type: 'upgrade', cell: cheapest.cell } : undefined;
+      const cell = nextFreeKidCell(state);
+      if (cell === undefined || state.gold < TOWER_DEFS.longbow.cost) return undefined;
+      return { type: 'build', cell, tower: 'longbow' };
+    },
+    difficulty,
+    ENDLESS_CLUSTER_POLICY,
+    true,
+  );
+}
+
+/** What an endless run reached (milestone 26), for `npm run sim` and tests. */
+export interface EndlessReport {
+  /** 'lost' on `wave`, or 'capped' when it was still alive after ENDLESS_WAVE_CAP waves. */
+  result: 'lost' | 'capped';
+  wave: number;
+  wavesCleared: number;
+  lives: number;
+  gold: number;
+}
+
+/** Play an endless script to its end on `difficulty` and report it (milestone 26). */
+export function endlessReport(script: WaveScript, difficulty?: Difficulty): EndlessReport {
+  const { state } = playScripted(script, undefined, difficulty);
+  return {
+    result: state.phase === 'lost' ? 'lost' : 'capped',
+    wave: state.wave,
+    wavesCleared: wavesCleared(state),
+    lives: state.lives,
+    gold: state.gold,
+  };
+}
+
+/** Endless archetypes (milestone 26), informational; `npm run sim` reports them in their own table. */
+export const ENDLESS_ARCHETYPES: Readonly<Record<string, Archetype>> = {
+  endlessIdle,
+  endlessGreedy,
+};
 
 export const INFORMATIONAL: Readonly<Record<string, Archetype>> = {
   comboStrongest,

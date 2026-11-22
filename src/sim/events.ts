@@ -4,7 +4,7 @@
 // Lifetime: `tick` empties `state.events` (a fresh array) at its start, like
 // `state.shots`, and appends to it as things happen, in order. Won and lost
 // ticks do nothing, so the list keeps the last tick's events.
-// Actions between ticks (startWave, callNextWave, build, upgrade, sell, targeting, move,
+// Actions between ticks (startWave, callNextWave, continueEndless, build, upgrade, sell, targeting, move,
 // undoUpgrade, useSpecial) append
 // their own event to the same list; it stays there until the next tick clears it. So
 // the renderer reads the new entries after every action and after every
@@ -58,6 +58,8 @@ export type GameEvent =
    */
   | { kind: 'earlyCall'; wave: number; bonus: number }
   | { kind: 'won' }
+  /** The player pressed Keep going after the win (milestone 26, game.ts continueEndless). */
+  | { kind: 'endlessStart' }
   | { kind: 'lost' };
 
 export type GameEventKind = GameEvent['kind'];

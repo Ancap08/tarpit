@@ -91,6 +91,11 @@ export interface Enemy {
    * Arrows) and for no burn; cleared if that tower is sold.
    */
   burnOwner?: Cell;
+  /**
+   * Full hp (milestone 26), set only on enemies of endless waves, whose hp
+   * is scaled by the wave; absent means difficulty.ts enemyMaxHp.
+   */
+  maxHp?: number;
 }
 
 export interface GroupDef {
@@ -104,6 +109,11 @@ export interface GroupDef {
 
 export interface WaveDef {
   groups: readonly GroupDef[];
+  /**
+   * Endless waves (milestone 26): enemy hp at spawn is multiplied by this
+   * on top of the level's multiplier. Absent for the ten table waves.
+   */
+  hpMultiplier?: number;
 }
 
 export type TowerType = 'musketeer' | 'cannon' | 'tarpit' | 'longbow' | 'mortar' | 'firepot';
@@ -204,6 +214,12 @@ export interface GameState {
    * starting gold and lives and scales every enemy's hp at spawn.
    */
   difficulty: Difficulty;
+  /**
+   * Endless mode (milestone 26): false until the player presses Keep going
+   * after winning wave 10 (game.ts continueEndless). In an endless game
+   * waves go on past 10 and clearing a wave never wins.
+   */
+  endless: boolean;
   phase: Phase;
   gold: number;
   lives: number;
