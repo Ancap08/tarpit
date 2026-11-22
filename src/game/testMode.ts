@@ -5,7 +5,20 @@
 // title menu) where it is drawn at any viewport size.
 
 import type Phaser from 'phaser';
-import { comboBuild, DEFAULT_DIFFICULTY, lazyBuild, soundBuild, WAVES, type Archetype, type BuildAction, type Phase, type WaveScript } from '../sim';
+import {
+  bestUnlockedSpecial,
+  comboBuild,
+  DEFAULT_DIFFICULTY,
+  densestCluster,
+  lazyBuild,
+  soundBuild,
+  WAVES,
+  type Archetype,
+  type BuildAction,
+  type Phase,
+  type TimedAction,
+  type WaveScript,
+} from '../sim';
 import type { GameScene } from './GameScene';
 import { portraitCardVisible } from './portrait';
 import type { TarpitTestApi } from './testGlobal';
@@ -26,7 +39,11 @@ const MAX_TICKS_PER_WAVE = 60 * 600;
  * Start Wave, then single ticks until the wave ends or the game is over.
  * Throws if the sim refuses an action, so a drifting script fails loudly.
  * With `untilWave` (milestone 23), stops in setup before that wave: its
- * actions are applied but it is not started.
+ * actions are applied but it is not started. Timed actions (milestone 25b
+ * specials; 25c cluster specials and early calls) fire before the tick on
+ * which the wave tick counter reaches their atWaveTick, as in playScripted;
+ * a cluster special aims at densestCluster of the live state, and a wave
+ * called early starts without Start Wave.
  */
 function runScript(scene: GameScene, script: WaveScript, untilWave?: number): Phase {
   const apply = (a: BuildAction) => {
@@ -40,15 +57,42 @@ function runScript(scene: GameScene, script: WaveScript, untilWave?: number): Ph
             : scene.sell(a.cell);
     if (!r.ok) throw new Error(`runScript: ${a.type} at cell (${a.cell.col},${a.cell.row}) refused: ${r.reason}`);
   };
+  const fire = (a: TimedAction) => {
+    if (a.type === 'callEarly') {
+      scene.callNextWave();
+      return;
+    }
+    if (a.type === 'special') {
+      scene.useSpecialAt(a.special, a.x, a.y);
+      return;
+    }
+    const aim = densestCluster(scene.state);
+    const special = bestUnlockedSpecial(scene.state.wave);
+    if (aim && special) scene.useSpecialAt(special, aim.centroid.x, aim.centroid.y);
+  };
   // A function, not a property read, so TypeScript does not narrow the phase
   // across the calls that change it.
   const phase = (): Phase => scene.state.phase;
-  while (phase() === 'setup' && scene.state.wave < WAVES.length) {
-    for (const action of script[scene.state.wave] ?? []) apply(action);
-    if (untilWave !== undefined && scene.state.wave + 1 >= untilWave) break;
-    const started = scene.startWave();
-    if (!started.ok) throw new Error(`runScript: startWave refused: ${started.reason}`);
-    for (let t = 0; phase() === 'wave' && t < MAX_TICKS_PER_WAVE; t++) scene.advance(1, false);
+  let called = false;
+  while ((phase() === 'setup' || called) && scene.state.wave < WAVES.length) {
+    const index = called ? scene.state.wave - 1 : scene.state.wave;
+    for (const action of script[index] ?? []) apply(action);
+    if (!called) {
+      if (untilWave !== undefined && scene.state.wave + 1 >= untilWave) break;
+      const started = scene.startWave();
+      if (!started.ok) throw new Error(`runScript: startWave refused: ${started.reason}`);
+    }
+    called = false;
+    const wave = scene.state.wave;
+    const timed = script.timed?.[wave - 1] ?? [];
+    for (let t = 0; phase() === 'wave' && t < MAX_TICKS_PER_WAVE; t++) {
+      for (const a of timed) if (a.atWaveTick === scene.state.waveTick && scene.state.wave === wave) fire(a);
+      if (scene.state.wave !== wave) {
+        called = true;
+        break;
+      }
+      scene.advance(1, false);
+    }
   }
   scene.redraw();
   return phase();
@@ -117,6 +161,8 @@ export function installGlobal(game: Phaser.Game): void {
       }),
     difficulty: () => scene().state.difficulty,
     startWave: () => scene().startWave(),
+    callNextWave: () => scene().callNextWave(),
+    spawnHorde: (n) => scene().spawnHorde(n),
     buildAt: (col, row, type) => scene().build({ col, row }, type),
     upgradeAt: (col, row) => scene().upgrade({ col, row }),
     sellAt: (col, row) => scene().sell({ col, row }),

@@ -17,11 +17,15 @@
 // charge is unspent) with a bright pip, greyed with an empty pip otherwise;
 // it shows as picked while its popup is open or a special is being aimed.
 // The popup (ui/specialMenu.ts) opens above it.
+// Milestone 25c: while a wave runs and the next wave can be called early
+// (callEarlyStatus), Start Wave reads "Call next  +14" (names.ts, 14 px so
+// it fits the 130 px button) with the current early bonus, and pressing it
+// calls the next wave; otherwise it reads "Start Wave" as before.
 
 import Phaser from 'phaser';
-import { nextWavePreview, unlockedSpecials, WAVES, type Difficulty, type GameState, type SpecialType, type TowerType } from '../sim';
+import { callEarlyStatus, nextWavePreview, unlockedSpecials, WAVES, type Difficulty, type GameState, type SpecialType, type TowerType } from '../sim';
 import type { Rect } from './input';
-import { BOSS_NAME, DIFFICULTY_LABELS, ENEMY_NAMES, SPECIAL_BUTTON_TEXT } from './names';
+import { BOSS_NAME, callEarlyLabel, DIFFICULTY_LABELS, ENEMY_NAMES, SPECIAL_BUTTON_TEXT } from './names';
 import { COLORS, FONT, TEXT } from './palette';
 import { BossBar } from './ui/bossBar';
 import { BuildBar } from './ui/buildBar';
@@ -114,6 +118,16 @@ export function canStartWave(state: GameState): boolean {
   return state.phase === 'setup' && state.wave < WAVES.length;
 }
 
+/** Start Wave's label size: 18 px, or 14 px while it reads the call-early label (milestone 25c). */
+export const START_LABEL_SIZE = '18px';
+export const CALL_LABEL_SIZE = '14px';
+
+/** Call early (milestone 25c): whether the next wave can be called now, and the bonus it would pay. */
+export function callEarlyInfo(state: GameState): { available: boolean; bonus: number } {
+  const status = callEarlyStatus(state);
+  return status.ok ? { available: true, bonus: status.bonus } : { available: false, bonus: 0 };
+}
+
 /** A special can be used now: a wave is running and its charge is unspent (milestone 25b). */
 export function specialReady(state: GameState): boolean {
   return state.phase === 'wave' && state.specialCharges > 0;
@@ -126,6 +140,7 @@ export interface HudSpecial {
 }
 
 export interface HudHandlers {
+  /** Start Wave was pressed: starts the wave in setup, or calls the next one early (milestone 25c). */
   onStartWave: () => void;
   onToggleSpeed: () => void;
   /** A build bar button was clicked (only when pickable). */
@@ -190,7 +205,10 @@ export class Hud {
     // After a loss there is no next wave to play, so the preview goes blank.
     const preview = state.phase === 'lost' ? '' : previewText(state);
     if (this.next.text !== preview) this.next.setFontSize(previewSize(preview)).setText(preview);
-    this.startButton.set('Start Wave', canStartWave(state));
+    const call = callEarlyInfo(state);
+    this.startButton.setFontSize(call.available ? CALL_LABEL_SIZE : START_LABEL_SIZE);
+    if (call.available) this.startButton.set(callEarlyLabel(call.bonus), true);
+    else this.startButton.set('Start Wave', canStartWave(state));
     // Once the game is over the speed toggle is inert (greyed, ignores clicks).
     this.speedButton.set(`${speed}x`, state.phase !== 'won' && state.phase !== 'lost');
     const ready = specialReady(state);

@@ -12,11 +12,14 @@
 // "Remove  +<spent>" (a full refund), and while its upgrade was bought this
 // setup phase the Upgrade slot reads "Undo upgrade  +<cost>" in 14 px (16 px
 // would not fit the 156 px button) and undoes it. Words from names.ts.
+// Milestone 25c: a small 13 px line above the buttons shows the tower's kill
+// count ("Kills 43"); the panel grows by KILLS_LINE_H.
 
 import type Phaser from 'phaser';
 import { cellCenter, TARGETING_MODES, TOWER_DEFS, towerAt, towerSellValue, type Cell, type GameState, type TargetingMode } from '../../sim';
-import { placeBeside, type Rect } from '../input';
-import { PANEL_TEXT, targetingButtonText } from '../names';
+import { KILLS_LINE_H, placeBeside, type Rect } from '../input';
+import { killsLabel, PANEL_TEXT, targetingButtonText } from '../names';
+import { FONT, TEXT } from '../palette';
 import { ButtonStack } from './button';
 
 export interface TowerPanelHandlers {
@@ -32,6 +35,7 @@ export interface TowerPanelHandlers {
 
 export class TowerPanel {
   private readonly stack: ButtonStack;
+  private readonly killsText: Phaser.GameObjects.Text;
   private at: Cell | null = null;
   private mode: TargetingMode = 'first';
   /** The Upgrade slot shows "Undo upgrade" (milestone 25a). */
@@ -42,7 +46,11 @@ export class TowerPanel {
       { text: PANEL_TEXT.upgrade, right: '', onClick: () => (this.undo ? handlers.onUndoUpgrade() : handlers.onUpgrade()) },
       { text: PANEL_TEXT.sell, right: '', onClick: handlers.onSell },
       { text: targetingButtonText('first'), fontSize: '13px', onClick: () => handlers.onTarget(nextMode(this.mode)) },
-    ], handlers.onClose);
+    ], handlers.onClose, KILLS_LINE_H);
+    this.killsText = scene.add
+      .text(0, 0, killsLabel(0), { fontFamily: FONT, fontSize: '13px', fontStyle: 'bold', color: TEXT.hudDim })
+      .setOrigin(0, 0.5)
+      .setVisible(false);
   }
 
   /** The cell of the selected tower, or null when closed. */
@@ -59,11 +67,13 @@ export class TowerPanel {
     const { x, y } = placeBeside(cellCenter(cell), this.stack.width, this.stack.height);
     this.update(state);
     this.stack.show(x, y);
+    this.killsText.setPosition(x + this.stack.pad, y + this.stack.pad + KILLS_LINE_H / 2 - 2).setVisible(true);
   }
 
   close(): void {
     this.at = null;
     this.stack.hide();
+    this.killsText.setVisible(false);
   }
 
   /** Refresh labels and affordability. Call on every redraw. */
@@ -85,6 +95,8 @@ export class TowerPanel {
     sell.set(tower.locked ? PANEL_TEXT.sell : PANEL_TEXT.remove, true, `+${towerSellValue(tower)}`);
     this.mode = tower.targeting;
     target.set(targetingButtonText(tower.targeting), true);
+    const kills = killsLabel(tower.kills ?? 0);
+    if (this.killsText.text !== kills) this.killsText.setText(kills);
   }
 
   /** Button rectangles keyed `panel:upgrade`, `panel:sell`, `panel:target` and `panel:close`, only while open. */
@@ -102,6 +114,11 @@ export class TowerPanel {
 
   get sellText(): string | null {
     return this.stack.isOpen ? this.stack.buttons[1].text : null;
+  }
+
+  /** The kill count line ("Kills 43"), while open (for tests), else null (milestone 25c). */
+  get killsLine(): string | null {
+    return this.stack.isOpen ? this.killsText.text : null;
   }
 
   /** The targeting button's label, while open (for tests), else null. */

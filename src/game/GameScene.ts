@@ -78,10 +78,15 @@
 import Phaser from 'phaser';
 import {
   buildTower,
+  callEarlyStatus,
+  callNextWave,
   CELL,
   cellCenter,
   createGame,
   DEFAULT_DIFFICULTY,
+  enemyMaxHp,
+  MAP,
+  pathLength,
   isBuildable,
   moveTower,
   sellTower,
@@ -99,6 +104,7 @@ import {
 } from '../sim';
 import type {
   BuildResult,
+  CallNextWaveResult,
   Cell,
   Difficulty,
   GameEvent,
@@ -123,7 +129,7 @@ import { drawMap } from './draw/map';
 import { ShotEffects } from './draw/shots';
 import { SpecialEffects } from './draw/specials';
 import { Aim, drawTowerShape, drawTowers } from './draw/towers';
-import { HUD_TOP, Hud, specialReady } from './hud';
+import { callEarlyInfo, HUD_TOP, Hud, specialReady } from './hud';
 import {
   cellAt,
   cellRect,
@@ -188,6 +194,14 @@ export interface UiState {
    * with nowhere to show it, or not aiming).
    */
   special: { charges: number; aiming: SpecialType | null; unlocked: SpecialType[]; menuOpen: boolean; aimPoint: { x: number; y: number } | null };
+  /**
+   * Call early (milestone 25c): whether Start Wave now calls the next wave
+   * (callNextWave would succeed) and the early bonus it would pay (0 when
+   * not available).
+   */
+  callEarly: { available: boolean; bonus: number };
+  /** The panel's kill count line ("Kills 43"), or null while closed (milestone 25c). */
+  killsLabel: string | null;
 }
 
 /** A touch press while aiming a special (milestone 25b): a tap or, past the threshold, a lifted drag. */
@@ -338,7 +352,8 @@ export class GameScene extends Phaser.Scene {
     // Flyers (Harpies) draw above every walker and label, below the HUD.
     this.enemySprites.setAirLayer(this.add.layer());
     this.hud = new Hud(this, {
-      onStartWave: () => this.startWave(),
+      // Milestone 25c: mid-wave, Start Wave reads "Call next  +N" and calls the next wave.
+      onStartWave: () => (callEarlyStatus(this.state).ok ? this.callNextWave() : this.startWave()),
       onToggleSpeed: () => this.setSpeed(this.speed === 1 ? 2 : 1),
       onPick: (type) => this.togglePick(type),
       onSpecial: () => this.onSpecialButton(),
@@ -720,6 +735,8 @@ export class GameScene extends Phaser.Scene {
       targetLabel: this.panel.targetText,
       upgradeLabel: this.panel.upgradeText,
       sellLabel: this.panel.sellText,
+      killsLabel: this.panel.killsLine,
+      callEarly: callEarlyInfo(this.state),
       dragging:
         this.press === null || !this.press.active
           ? null
@@ -807,6 +824,42 @@ export class GameScene extends Phaser.Scene {
 
   startWave(): StartWaveResult {
     const result = startWave(this.state);
+    this.takeEvents();
+    this.redraw();
+    return result;
+  }
+
+  /**
+   * Test only (milestone 25c, e2e/perf.spec.ts): inject `n` Goblins spread
+   * evenly along the path, starting wave 1 first if in setup. Ordinary
+   * enemies with fresh ids and the level's hp; nothing else changes.
+   * Reachable outside test mode through window.__tarpit.game, so the perf
+   * test can run on the live loop.
+   */
+  spawnHorde(n: number): void {
+    if (this.state.phase === 'setup') startWave(this.state);
+    const length = pathLength(MAP);
+    for (let i = 0; i < n; i++) {
+      this.state.enemies.push({
+        id: this.state.nextEnemyId++,
+        type: 'goblin',
+        hp: enemyMaxHp('goblin', this.state.difficulty),
+        distance: ((i + 0.5) * length) / n,
+        slow: 0,
+        slowTicksLeft: 0,
+        specialSlow: 0,
+        specialSlowTicksLeft: 0,
+        burnDps: 0,
+        burnTicksLeft: 0,
+      });
+    }
+    this.takeEvents();
+    this.redraw();
+  }
+
+  /** Call the next wave early (milestone 25c). */
+  callNextWave(): CallNextWaveResult {
+    const result = callNextWave(this.state);
     this.takeEvents();
     this.redraw();
     return result;

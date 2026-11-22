@@ -90,6 +90,24 @@ export const PANEL_TEXT = {
   remove: 'Remove',
 } as const;
 
+/**
+ * Milestone 25c: the Start Wave button's words while the next wave can be
+ * called early ("Call next  +14"), and the tower panel's kill count line
+ * ("Kills 43").
+ */
+export const CALL_EARLY_TEXT = 'Call next';
+export const KILLS_TEXT = 'Kills';
+
+/** The Start Wave button's label while a call is possible: "Call next  +14". */
+export function callEarlyLabel(bonus: number): string {
+  return `${CALL_EARLY_TEXT}  +${bonus}`;
+}
+
+/** The tower panel's kill count line: "Kills 43". */
+export function killsLabel(kills: number): string {
+  return `${KILLS_TEXT} ${kills}`;
+}
+
 /** Special attack names (milestone 25b): the HUD popup's buttons. */
 export const SPECIAL_NAMES: Readonly<Record<SpecialType, string>> = {
   keg: 'Powder Keg',

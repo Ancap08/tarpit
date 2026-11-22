@@ -60,7 +60,7 @@ test('the extreme buildable cells are the four map corners', () => {
 });
 
 for (const cell of EXTREMES) {
-  test(`(a) tower at (${cell.col},${cell.row}): four buttons apart, 42 tall or more, 214 x 146 panel inside the map`, async ({ page }) => {
+  test(`(a) tower at (${cell.col},${cell.row}): four buttons apart, 42 tall or more, 214 x 166 panel inside the map`, async ({ page }) => {
     await startGame(page);
     expect(await build(page, cell)).toBe(true);
     await clickCell(page, cell);
@@ -79,8 +79,10 @@ for (const cell of EXTREMES) {
     expect(r['panel:sell'].y - (r['panel:upgrade'].y + r['panel:upgrade'].height)).toBe(4);
     expect(r['panel:target'].y - (r['panel:sell'].y + r['panel:sell'].height)).toBe(4);
     expect(new Set([r['panel:upgrade'].x, r['panel:sell'].x, r['panel:target'].x]).size).toBe(1);
-    // The whole panel: 6 px padding around the buttons.
-    const panel = { x: r['panel:upgrade'].x - 6, y: r['panel:upgrade'].y - 6, width: 214, height: 146 };
+    // The whole panel: 6 px padding around the buttons, plus the 20 px kill
+    // count line above them (milestone 25c; 146 tall before).
+    const panel = { x: r['panel:upgrade'].x - 6, y: r['panel:upgrade'].y - 6 - 20, width: 214, height: 166 };
+    expect(r['panel:close'].y).toBe(panel.y + 6);
     expect(r['panel:close'].x + r['panel:close'].width + 6).toBe(panel.x + panel.width);
     expect(r['panel:target'].y + r['panel:target'].height + 6).toBe(panel.y + panel.height);
     expect(panel.x).toBeGreaterThanOrEqual(0);
