@@ -24,7 +24,8 @@ build anywhere off the path, three enemies, simple shapes with labels.
 5. Until you press Start Wave, everything you bought this round is free to change: drag a tower (dashed outline) to another spot, Remove it for all its gold back, or Undo an upgrade for its full price. Once the wave starts, towers are locked in place and sell for 70%.
 6. Press Start Wave. Enemies walk from the cave to the cottage; each one that gets through costs a life. Kills and cleared waves pay gold. Survive all 10 waves to win. The 1x/2x button sets the speed.
 7. A tower's panel has a Target button; click it to cycle which enemy the tower shoots: First (furthest along the path), Last (closest to the cave) or Strongest (most hp).
-8. Runs on an iPad (landscape; portrait shows a "turn your device" card). On touch, tap a cell once to aim (ghost and range), tap it again to build; tap the × to close a tower's panel.
+8. Special attacks: once per wave you get one charge. While a wave runs, press Special (left of Start Wave), pick a special if more than one is unlocked, then click on the map where the circle covers the enemies (on touch: tap to place the circle, tap it again to fire, or drag and let go). Powder Keg (from wave 1) blasts everything in the circle, Tar Barrel (from wave 4) slows it, Fire Arrows (from wave 7) set it burning; all three hit flying Harpies too. An unused charge is lost when the wave ends. Escape cancels.
+9. Runs on an iPad (landscape; portrait shows a "turn your device" card). On touch, tap a cell once to aim (ghost and range), tap it again to build; tap the × to close a tower's panel.
 
 ## How it was built
 

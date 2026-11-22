@@ -3226,3 +3226,90 @@ Verifier: Claude Fable 5.2, on `e6199ac`. Verdict: pass.
 - Still open from the first notes: the baselines (`planning.png` new,
   `tower-selected.png` changed) are not on the branch until
   `update-snapshots.yml` runs.
+
+## 2026-11-21: milestone 25b, special attacks
+
+Roles: implementer Claude Opus, verifier Claude Fable 5.2, coordinator
+Claude Fable 5.2.
+
+### Implementer notes
+
+- **Rules as built** (`docs/DESIGN.md` "Special attacks"). New
+  `src/sim/specials.ts` with `SPECIAL_DEFS` (keg wave 1, 80 damage, 70 px;
+  tar barrel wave 4, slow 0.5 for 240 ticks, 90 px; fire arrows wave 7,
+  burn 10/s for 240 ticks, 80 px). `state.specialCharges` is set to 1 by
+  `startWave` and to 0 by the wave clear. `useSpecial(state, type, point)`
+  in `actions.ts` refuses `game-over`, `not-in-wave`, `locked`,
+  `no-charge`, `out-of-bounds` in that order; it uses the existing
+  `applySlow` (boss cap) and `applyBurn` (equal or stronger replaces), so
+  the tar doubling comes from the burn step unchanged. Kills go through
+  `combat.ts` `removeDead`, now exported with cause `special`
+  (`KillCause` in `events.ts`). Event `special {type, x, y, radius,
+  hits}`.
+- **Headless.** `SpecialAction` `{type:'special', special, x, y,
+  atWaveTick}`. `WaveScript` gained an optional `timed` property (per
+  wave, a list of special actions) so every existing script and
+  archetype is unchanged; `playScripted` only takes the new per-tick loop
+  for a wave that has timed actions. `comboWithKegs` is in
+  `INFORMATIONAL`; `targeting.test.ts` pinned that map's contents and now
+  lists both entries. Every archetype pin passed unmodified, and
+  `npm run sim` differs from milestone 25a only by the added
+  `comboWithKegs` lines (diffed against a run on `ebb4fdf`).
+- **`comboWithKegs` result.** Normal: won on wave 10, 16 lives, 524 gold
+  (comboBuild: 12 lives, 497 gold). Easy: won, 25 lives, 606 gold; Hard:
+  lost on wave 3, 68 gold (both the same as comboBuild). The fixed policy
+  mostly misses: at wave tick 600 only wave 4 has enemies within 70 px of
+  (420, 232) (2 Wolves, both killed); the other nine kegs hit nothing,
+  because the Longbows kill the early waves before they get there and the
+  slower waves have not reached it yet. The two Wolf bounties shift the
+  combo's purchase timing, which is where the 4 extra lives come from.
+  The policy is the brief's; a "fire at the biggest cluster" policy would
+  be a 25c or 28 question.
+- **HUD layout.** Row 1, all buttons 42 px tall at y 484: Special x 630,
+  100 wide (16 px label, left-aligned, pip at 14 px from its right edge);
+  Start Wave x 738, 130 wide (was 726, 138); speed x 876, 70 wide
+  (unchanged). The preview moved from x 366 to 356 and narrowed from 350 to
+  264 px; the wave 10 preview still wraps to two 13 px lines that end
+  before the button (frame checked). The popup is a 168 px wide stack of
+  156 x 42 buttons above the Special button (x 630, bottom 4 px above
+  the HUD).
+- **Aiming.** Mouse: the circle follows the pointer over the map; a click
+  fires. Touch: presses are resolved on release; a tap places the circle,
+  a tap within 24 px of it fires, and a drag aims 48 px above the finger
+  with the finger line and fires on release if the aim point is on the
+  map (the finger may be over the HUD; buttons click only when pressed on,
+  so the release presses nothing). A press on the HUD outside the Special
+  button cancels; Escape and the button cancel; aiming and the tower pick
+  or panel clear each other. `ui().special` also reports `menuOpen` and
+  `aimPoint` (the circle's centre) beyond the brief's three fields; the
+  tablet spec needs `aimPoint` to check the 48 px lift.
+- **Effects.** `draw/specials.ts`, tick-based like shot effects, not
+  drawn in test mode. Harpies may now carry tar and burn rings and tints
+  (only a special can put them there); the Harpy ring unit test changed
+  from "never a ring" to the two rings at its lifted body.
+- **Evidence.** 17 unit tests in `src/sim/specials.test.ts`;
+  `e2e/specials.spec.ts` (4, desktop mouse), `e2e/specials-touch.spec.ts`
+  (4, tablet: tap-tap, lifted drag, release over the HUD, HUD cancel);
+  `visual.spec.ts` adds `special-aim.png` and `special-fired.png`. Every
+  in-game baseline changes by the new button and the moved Start Wave and
+  preview; their setups are unchanged. Baselines are not committed.
+  Totals: 519 unit, 177 e2e; the two specials specs with
+  `--repeat-each=5`: 40 of 40.
+
+### What went wrong
+
+- The first e2e expected `unlocked: ['keg']` in setup before wave 1. The
+  sim unlocks by `state.wave`, which is 0 then, so nothing is unlocked;
+  the test now says so (the button is greyed either way).
+- Mouse positions are whole pixels, so an aim at an enemy's fractional
+  position came back rounded and the equality failed; the specs aim at
+  rounded points and compute the radius from them.
+- The keg's flash first lasted 6 ticks, which is the 100 ms after which
+  the live frame was taken, so the frame showed no flash; it now lasts 12
+  ticks (0.2 s) of a 24-tick effect.
+- A scratch Vitest run with `--root /` started scanning the whole disk
+  and had to be stopped; the per-wave keg hits were read with a
+  `runnerImport` script instead.
+- A unit test looped `while (s.phase === 'wave')` and then compared the
+  phase again; TypeScript narrowed it and refused the comparison. The
+  loop is in a closure now.
