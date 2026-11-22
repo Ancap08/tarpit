@@ -3547,9 +3547,10 @@ Easy and Hard, before (milestone 25b) and after:
 | bossRush | won, 25 | won, 30 | lost w3 | won, 3 |
 | hardBuild | (new) | won, 30 | (new) | won, 11 |
 
-**Margins.** lazyBuild loses on wave 8, the top of its range (goblin hp
-13 instead of 12 drops it to wave 6 with no middle option: the one-shot
-line is a cliff). comboNoSpecials is 3 lives worse than comboBuild;
+**Margins.** lazyBuild loses on wave 8, the top of its range (corrected
+after the verifier: goblin hp 13 or 14 instead of 12 moves it to wave 7,
+not wave 6, and breaks nothing on Normal; a sweep sample had shown wave 6
+with other numbers changed too). comboNoSpecials is 3 lives worse than comboBuild;
 without the Fire Arrows raise it would be 1. noAntiAir leaks 8 of 10, 80%
 against 75%. Gold after wave 9 is 37 under the limit. Wave 4 bounty is 80
 against 78 before, wave 9 116 against 108, wave 10 370 against 357.
@@ -3763,3 +3764,258 @@ a literal in `hud.ts`, as before 25c.
 450 px of the trail and they draw as one unbroken band from the cave to
 the top of the first U. No single sprite or hp bar can be picked out;
 only the colour mix says what is in it. The rest of the map is empty.
+
+### Second pass: longer waves
+
+Roles as above. Implementer Claude Opus, on the branch tip after the
+verifier's commits (`e19d886`, `308f6fa`).
+
+**Why a second pass.** The first pass made the waves denser, not longer,
+which misses what Kyle asked for ("make the waves longer and easier to
+kill the enemies"). That was the coordinator's slip, not the
+implementer's: the brief set no wave-length or density target, only "keep
+every wave under 90 s of spawning". The verifier measured it (comboBuild
+on Normal: 381 s of wave time against 405 s before 25c, up to 47 enemies
+alive, wave 8 one unbroken band). The second pass adds three targets
+(A1 spawn rate, A2 length, A3 density), keeps A4 and A5, and changes two
+others (noAntiAir must survive wave 4; Hard lazyBuild must survive wave 1).
+
+**Every number changed** (before 25c -> first pass -> second pass):
+
+| Number | Before 25c | First pass | Second pass | Why |
+|---|---|---|---|---|
+| Goblin hp | 30 | 12 | 19 | spread-out Goblins die too easily at 12; 19 is two Musketeer shots and clear of the Hard rule (Hard 23) |
+| Wolf hp | 28 | 17 | 20 | 17 left comboNoSpecials no worse than the combo; 20 (Hard 24) passes the Hard rule |
+| Troll hp | 700 | 500 | 900 | with at most 2 walkers a second, Trolls are what makes waves 5, 7 and 8 bite |
+| Harpy hp | 40 | 22 | 36 | Harpies 1 to 1.5 s apart; at 22 the combo won with 16 lives (target 15) |
+| Shieldbearer hp | 120 | 70 | 70 | tried 160 in the sweep; the revert pass put 70 back (more margin) |
+| Hard hp multiplier | 1.3 | 1.1 | 1.2 | with the base hp above, 1.2 is the value where no Hard hp is 1 or 2 over a multiple of 12, 4, 25 or 45 and the Hard targets hold |
+| Wave tables | 217 enemies | 500 | 524 | spread out: at most 6 walkers and 4 flyers in any 3 s; see DESIGN.md |
+| Wave 4 | 10 Wolf, 4 Harpy | 10 Harpy, 25 Wolf | 10 Harpy every 1.5 s, then 30 Goblin from 3 s | noAntiAir must survive it; Goblins are slow enough for its Tar Pit and Fire Pot, the bounty stays over 78 |
+| Boss delay | 26 s | 26 s | 65 s | 2 s after wave 10's last Troll (63 s) |
+| CLUSTER_POLICY_TICKS | (new) | 197, 164, 413, 813, 692, 1534, 573, 923, 545, 473 | 164, 109, 291, 398, 749, 651, 668, 1241, 1194, 713 | rescanned the same way on the new waves |
+| HARD_PLAN opening | (new) | combo cells, two Longbow upgrades before the Mortar | upgraded Longbows first: (9,5), (9,4), (17,8), then pairs at (16,8), (9,6), (16,9) with the Tar Pit between, then the Fire Pot | an upgraded Longbow is the most damage per gold against Hard's 1080 hp Trolls; the first-pass opening loses Hard on wave 8 |
+
+Unchanged in the second pass: bounties, speeds, every tower number, the
+specials (Fire Arrows 30/s), the 25 clear bonus, Easy (0.75x, 150 gold, 30
+lives), Normal's 100 gold and 20 lives, Hard's 80 gold and 15 lives, and
+COMBO_PLAN (its comment now says which actions are bought: 28 of 31 on
+Normal, 30 on Easy, 17 on Hard).
+
+**How the Hard hp was chosen.** The rule: no enemy's Hard hp may be 1 or 2
+over a multiple of a tower's base damage, for the Musketeer (12), the
+Longbow and the Fire Pot impact (4), the Cannon (25) and the Mortar (45);
+the Tar Pit's 3 is left out (every whole number is 0, 1 or 2 over a
+multiple of 3). The sweep only drew base hp values whose Hard value (and
+Normal value) passed the rule for the multiplier being tried, so the rule
+was never broken by accident. Result: Hard Goblin 23, Wolf 24, Troll 1080,
+Harpy 43, Shieldbearer 84 (`difficulty.test.ts` checks it). Easy is not
+under the rule: its Goblin (14) and Wolf (15) are 2 and 3 over 12.
+
+**Per wave, comboBuild on Normal, no early calls** (ticks; last spawn is
+the wave tick of the wave's last spawn):
+
+| Wave | Last spawn: before 25c | first pass | second pass | Clear: before 25c | first pass | second pass (x before) | Peak alive: before 25c | first pass | second pass |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | 420 | 912 | 1368 | 951 | 1127 | 1607 (1.69) | 6 | 5 | 4 |
+| 2 | 528 | 1044 | 1674 | 1447 | 1283 | 2093 (1.45) | 9 | 7 | 8 |
+| 3 | 420 | 798 | 1260 | 1162 | 1421 | 1940 (1.67) | 12 | 17 | 15 |
+| 4 | 336 | 900 | 1920 | 1321 | 1513 | 2593 (1.96) | 11 | 22 | 17 |
+| 5 | 480 | 870 | 2340 | 3101 | 2438 | 4565 (1.47) | 14 | 28 | 20 |
+| 6 | 690 | 1320 | 2640 | 1705 | 2089 | 3107 (1.82) | 28 | 47 | 19 |
+| 7 | 1410 | 1542 | 3300 | 4199 | 4331 | 6125 (1.46) | 9 | 19 | 17 |
+| 8 | 1440 | 1620 | 4410 | 3788 | 2965 | 5793 (1.53) | 21 | 41 | 22 |
+| 9 | 600 | 720 | 1740 | 1992 | 1785 | 2750 (1.38) | 8 | 13 | 14 |
+| 10 | 1560 | 1560 | 3900 | 4640 | 3922 | 6293 (1.36) | 17 | 22 | 16 |
+| all | | | | 24306 (405 s) | 22874 (381 s) | 36866 (614 s) | | | |
+
+Every wave clears at least 36% later than before 25c (target 15%), the
+whole game takes 614 s of wave time (target 540 to 800), the most enemies
+alive at once is 22 (target 35, first pass 47). Per wave, before 25c ->
+second pass: enemies 8 -> 20, 12 -> 32, 14 -> 34, 14 -> 40, 17 -> 53, 35
+-> 86, 24 -> 55, 45 -> 108, 18 -> 40, 30 -> 56 (524 in all, 2.41 times
+217); bounty 32 -> 40, 48 -> 64, 62 -> 68, 78 -> 90, 85 -> 134, 169 ->
+190, 158 -> 204, 249 -> 326, 108 -> 140, 357 -> 386 (1642 in all); total
+hp 36900 -> 63733.
+
+**Targets, second pass.** All met; nothing pinned as a miss.
+
+| Target | Result |
+|---|---|
+| A1 spawn rate (6 walkers, 4 flyers per 3 s) | met, every wave (`waves.test.ts`) |
+| A2 every wave 15% later; 540 to 800 s | met, at least 36% later; 614 s |
+| A3 peak alive at most 35 | met, 22 |
+| A4 434 to 651 enemies; every wave more enemies and bounty | met, 524 |
+| A5 within 90 s; boss 2 s after the last other spawn | met, longest 73.5 s; boss at 65 s |
+| noTowers lost by wave 3 | lost on wave 1 |
+| lazyBuild lost on 6 to 8 | lost on wave 8 (edge) |
+| longbowSpam lost on 7 to 9 | lost on wave 8 |
+| comboBuild won, 5 to 15 lives, under 200 gold entering wave 10 | won, 13 lives, 175 gold |
+| comboBuildNoFire strictly worse | won, 9 lives |
+| comboNoSpecials strictly worse, reaches wave 8 | won, 12 lives (1 worse: thin) |
+| noAntiAir leaks 75% of wave 4 Harpies, survives wave 4, loses on 5 to 8 | 10 of 10 leak, survives with 2 lives, lost on wave 5 |
+| Easy: lazyBuild wins; noTowers loses | won, 9 lives; lost on wave 2 |
+| Hard: comboBuild 5 fewer lives, or lost on wave 8 or later | lost on wave 8 (edge) |
+| Hard: lazyBuild survives wave 1, loses on 2 to 5 | lost on wave 5 (edge; 3 lives after wave 1) |
+| Hard: hardBuild wins | won, 9 lives |
+| Hard combo holds with Goblin or Wolf hp one point up or down | holds: lost on wave 8 in all four cases, hardBuild wins in all four (`difficulty.test.ts`) |
+
+`npm run sim`, Normal, lives / gold after each wave:
+
+| Wave | noTowers | lazy | greedy | sound | soundNoTar | spam | combo | noFire | noSpecials | noAntiAir | bossRush | hard |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | lost 0/100 | 20/65 | 20/80 | 20/65 | 20/65 | 20/85 | 20/85 | 20/85 | 20/85 | 20/85 | 20/85 | 20/85 |
+| 2 | | 20/104 | 20/119 | 20/119 | 20/119 | 20/94 | 20/114 | 20/114 | 20/114 | 20/114 | 20/114 | 20/104 |
+| 3 | | 20/97 | 20/127 | 20/117 | 20/177 | 20/107 | 20/97 | 20/167 | 20/97 | 20/97 | 20/97 | 20/97 |
+| 4 | | 20/162 | 20/122 | 20/152 | 20/212 | 20/142 | 20/212 | 20/282 | 20/212 | 2/250 | 20/212 | 20/122 |
+| 5 | | 17/147 | 17/172 | 15/171 | 15/281 | 17/157 | 18/145 | 17/257 | 18/145 | lost 0/70 | 18/145 | 20/171 |
+| 6 | | 17/262 | 17/217 | 15/246 | 15/356 | 17/252 | 18/240 | 17/352 | 18/240 | | 18/240 | 20/236 |
+| 7 | | 5/145 | 8/204 | 3/159 | 2/261 | 5/305 | 13/189 | 10/285 | 12/181 | | 13/189 | 20/265 |
+| 8 | | lost 0/369 | 8/385 | lost 0/257 | lost 0/345 | lost 0/525 | 13/370 | 9/458 | 12/362 | | 13/370 | 20/356 |
+| 9 | | | 2/162 | | | | 13/175 | 9/333 | 12/167 | | 13/175 | 20/231 |
+| 10 | | | lost -3/313 | | | | won 13/476 | won 9/634 | won 12/468 | | won 13/476 | won 20/452 |
+
+Informational: comboStrongest lost on wave 7 (63 gold); comboWithKegs won
+with 12 lives, its fixed keg hitting nothing in ten waves.
+
+Easy and Hard, second pass:
+
+| Archetype | Easy | Hard |
+|---|---|---|
+| noTowers | lost w2 | lost w1 |
+| lazyBuild | won, 9 | lost w5 |
+| greedyMusket | won, 30 | lost w2 |
+| soundBuild | won, 9 | lost w3 |
+| soundBuildNoTar | lost w10, -1 | lost w3 |
+| longbowSpam | won, 2 | lost w7 |
+| comboBuild | won, 29 | lost w8 |
+| comboBuildNoFire | won, 29 | lost w7 |
+| comboNoSpecials | won, 30 | lost w7 |
+| noAntiAir | lost w6 | lost w4 |
+| bossRush | won, 29 | lost w8 |
+| hardBuild | won, 30 | won, 9 |
+| comboStrongest | won, 11 | lost w4 |
+| comboWithKegs | won, 30 | lost w7 |
+
+**Call early at every first chance** (accepted for now, a play note for
+Kyle, not tuned around): the plan's purchases made at each call, the
+cluster special as usual. comboBuild on Normal: won with 18 lives (13
+without calls), 160 gold of early bonus, 464 s of wave time instead of
+614. hardBuild on Hard: won with 12 lives (9 without), 160 bonus, 472 s.
+
+**Method and iterations.** The harness from the first pass gained the new
+targets (A1 to A5 from the tables, per-wave clear ticks and peak alive
+from a comboBuild replay, the Hard hp rule, the plus or minus 1 hp check).
+A first hand design stretched every wave under the spawn-rate rule
+(waves got easy: lazyBuild and longbowSpam won); then about 20 hand
+variants (hp levels, Troll counts per wave, wave 1 count and spacing, wave
+4's walkers, wave 9 Troll walls, Hard plans) and five random sweeps
+(762 configurations in all; the later four drew only hp values that pass
+the Hard rule). Two findings did most of the work: the Hard
+lazyBuild target is decided by wave 1 alone (80 gold buys one Musketeer;
+20 Goblins at 1.2 s leave it 3 lives, while 17 Goblins left it 6 and it
+lasted to wave 7), and the Hard targets need a Hard plan that answers
+1080 hp Trolls, which mass upgraded Longbows do (`HARD_PLAN`).
+
+**Revert pass** (one change put back to its first-pass value, everything
+else final; harness, all targets on all levels):
+
+| Revert | Result | Target broken |
+|---|---|---|
+| Goblin hp 19 -> 12 | Hard Goblin 14 | the Hard hp rule only (every play target holds) |
+| Wolf hp 20 -> 17 | comboNoSpecials ties the combo at 13 | comboNoSpecials worse |
+| Troll hp 900 -> 500 | lazyBuild wins, combo 20 lives, wave 7 clears too early | lazy, spam, combo lives and gold, noSpecials, A2 |
+| Harpy hp 36 -> 22 | combo 16 lives; Hard Harpy 26 | combo lives, the Hard hp rule |
+| Shieldbearer hp 160 -> 70 | Easy lazy 9 lives (6), peak 22 (25) | none: **reverted**, 70 is final |
+| Hard 1.2 -> 1.1 | Hard Goblin 21, Wolf 22, Troll 990, Shieldbearer 176 | the Hard hp rule only |
+| Wave 1 first-pass groups | Hard lazyBuild loses on wave 1 | Hard lazy |
+| Wave 2 first-pass groups | Hard combo loses on wave 6 | Hard combo |
+| Wave 3 first-pass groups | Hard combo loses on wave 7; 11 walkers in 3 s | Hard combo, A1 |
+| Wave 4 first-pass groups | combo and noAntiAir lose on wave 4 to 7 | combo, noAntiAir, Hard combo, A2 |
+| Wave 5 first-pass groups | Hard combo loses on wave 7 | Hard combo, A1, A2 |
+| Wave 6 first-pass groups | 52 alive at once | noSpecials, Hard combo, hardBuild, A1, A3 |
+| Wave 7 first-pass groups | Easy lazy loses on wave 10 | Easy lazy, noSpecials, hardBuild, A1, A2 |
+| Wave 8 first-pass groups | 49 alive at once | Easy lazy, A1, A3 |
+| Wave 9 first-pass groups | wave 9 clears too early | A1, A2 |
+| Wave 10 first-pass groups | Easy lazy loses on wave 10 | Easy lazy, A1, A2 |
+| HARD_PLAN first-pass opening | hardBuild loses on Hard wave 8 | hardBuild |
+| Cluster ticks first-pass | Hard combo loses on wave 7 | Hard combo |
+
+**Performance floor, second pass.** `e2e/perf.spec.ts` now tops the
+horde up every frame and samples after the top-up (so every drawn frame
+has 120 enemies; sampled before the top-up the packed case dropped to 32
+in a first run, with the first pass's 12 hp Goblins), needs at least 270 ticks in the 5 s, and has a second case with
+all 120 packed into the first 120 px of path. This Mac, headless Chromium,
+Canvas, three runs each: spread median 16.7 ms, p95 16.7 to 16.8 ms;
+packed median 16.7 ms, p95 16.7 to 16.8 ms; 301 ticks every run. Still
+vsync-bound: no headroom figure. `spawnHorde` now only works with
+`?test=1` or `?perf=1` (`e2e/test-hooks-gate.spec.ts`); without them
+`window.__tarpit` keeps only its five read-only hooks, as `live.spec.ts`
+and the demo recorder need, so it is not absent.
+
+**Frames, second pass.** mid-wave 874 -> 1160 (the Cannon's first shot,
+3 ticks old, 10 Goblins, 4 hurt: hurt bars and a Cannon effect again);
+enemies 1560 -> 1680; new-towers 1748 -> 2198 (Mortar splash, Troll 13
+slowed and burning, 10 Goblins behind); harpies 291 -> 199 with the
+Cannon at (2,5) and the Musketeer at (3,5) (same cell scan; only two
+Harpies are out); boss 3230 -> 5664 (2429 of 4000); special-aim step 450
+on Goblin 4; special-fired step 810 on enemy 12 (kills 5, Troll 13 left at
+820 of 900); won 13 lives / 476 gold; lost on wave 1. The first-to-be-
+tarred-and-burning tick is back at 687, Goblin 0, as before 25c.
+
+Local frames: `m25c2-wave8-densest.png` (comboBuild, Normal, wave 8 tick
+1576, 22 enemies) and `m25c2-wave6-densest.png` (wave 6 tick 841, 19
+enemies). Single sprites can be told apart along most of the trail in
+both. The crowding left is on the first climb (x 160) and at the top of
+the downhill, where Wolves catch Goblins and a Troll or Shieldbearer
+overlaps a Goblin; in wave 6 right after the Tar Barrel lands, five or six
+slowed sprites touch on the climb.
+
+**Cleanups (B).** B1 perf as above. B2 mid-wave frame as above. B3
+`callNextWave`'s comment says the next wave's clear waits for survivors;
+COMBO_PLAN's comment says which actions are bought and why the unbought
+tail stays (Easy reaches the Cannon; it keeps the gold before wave 9 low).
+B4 the first-pass margin note is corrected above. B5 `spawnHorde` gated.
+B6 "Start Wave" is `START_WAVE_TEXT` in `names.ts`. B7 the verifier's
+probes updated, expected values only: in `src/sim/horde-verifier.test.ts`
+E1 (both tests: 524 spawns, 476 gold), E2 (524 enemies), E3 (last spawn
+2340), E5 (wave 2 is 32 Goblins: 32 exits and lives; the tower case got
+an upgrade so its Longbow still kills old-wave enemies, 9 damage against
+19 hp; the only change to a setup), E9 (32), B (the wave table, enemy hp,
+the Hard multiplier, the last-spawn seconds); in
+`e2e/horde-verifier.spec.ts` the densest wave 8 frame (tick 1576, 22
+enemies). Other verifier files touched for the new numbers:
+`difficulty-verifier.test.ts`, `flyingShield-verifier.test.ts` (wave 4 and
+6 spawns, lives raised so wave 6 fully spawns), `events-verifier.test.ts`
+(three more upgraded Longbows in its winning defence, wave 3 counts),
+`specials-verifier.test.ts` (the fixed keg hits nothing now),
+`boss-verifier.test.ts`, `verifier.test.ts` (wave 9 tie tick),
+`verifier2.test.ts` (one Musketeer leaks 12 of 20 in wave 1), and the e2e
+`boss-verifier`, `new-enemies-verifier`, `new-towers-verifier`,
+`end-screens-verifier` and `difficulty-verifier` specs ((h) lost its old
+natural negative-lives case in the first pass).
+
+### What went wrong (second pass)
+
+- Stretching the waves under the spawn-rate rule made everything easy at
+  first hp: lazyBuild and longbowSpam won. Spread-out enemies favour
+  single-target towers, so the hp had to rise for Goblins, Wolves, Harpies
+  and Trolls together.
+- The Hard targets fought each other: lazyBuild had to die early while
+  the combo reached wave 8 and hardBuild won. Hard start gold 100 lets
+  lazyBuild buy two Musketeers and live to wave 7; 80 with a softer wave 1
+  left it 6 lives and the same wave 7. Wave 1 decides it alone.
+- Every Hard plan lost to wave 7's Trolls until the plan bought upgraded
+  Longbows first; reordering the Mortars and Fire Pots did not help.
+- comboBuild sat at 16 to 17 lives on Normal for many iterations: it lost
+  lives only to Trolls in waves 5 and 7, and its late build ignores a
+  14-Troll wall in wave 9. Lighter wave 3 Wolves (so it does not bleed on
+  Hard) plus one more Troll in wave 7 brought it to 13.
+- One sweep printed the same configuration over and over: the random
+  source cycled on a small space. The later sweeps used larger spaces.
+- The packed perf case first timed out once inside the full parallel e2e
+  run (page load under load); it passed in every run since, alone and in
+  the full suite.
+- Margins that stay thin: lazyBuild on wave 8, Hard combo on wave 8 and
+  Hard lazyBuild on wave 5 are each at the edge of their range;
+  comboNoSpecials is 1 life worse than the combo.

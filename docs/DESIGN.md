@@ -123,12 +123,18 @@ Normal and the level is recorded in `state.difficulty`.
 
 | | Easy | Normal | Hard |
 |---|---|---|---|
-| Enemy hp | 0.75x | 1x | 1.1x |
+| Enemy hp | 0.75x | 1x | 1.2x |
 | Start gold | 150 | 100 | 80 |
 | Lives | 30 | 20 | 15 |
 
 Milestone 25c retuned the table (Easy lives 25 -> 30, Hard hp 1.3x ->
-1.1x) so that the lazy build wins on Easy and the best Hard plan wins.
+1.2x) so that the lazy build wins on Easy and the best Hard plan wins.
+**Hard hp rule** (milestone 25c second pass): no enemy's Hard hp sits 1 or
+2 points above a multiple of a tower's base damage (Musketeer 12, Longbow
+and Fire Pot impact 4, Cannon 25, Mortar 45; the Tar Pit's 3 is left out,
+since every number is 0, 1 or 2 above a multiple of 3), so no Hard enemy
+needs one extra shot by accident. The first pass's 13 hp Hard Goblin (one
+over the Musketeer's 12) made every Musketeer opening lose on wave 1.
 An enemy spawns with `round(base hp x multiplier)`, a whole number (half
 rounds up), which is also its full hp for the hp bar and the boss bar.
 Bounties, speeds, towers, upgrades and waves are the same on every level.
@@ -137,12 +143,12 @@ this file is the base number.
 
 | Enemy | Easy | Normal | Hard |
 |---|---|---|---|
-| Goblin | 9 | 12 | 13 |
-| Wolf | 13 | 17 | 19 |
-| Troll | 375 | 500 | 550 |
-| Harpy | 17 | 22 | 24 |
-| Shieldbearer | 53 | 70 | 77 |
-| Grumblefoot (boss) | 3000 | 4000 | 4400 |
+| Goblin | 14 | 19 | 23 |
+| Wolf | 15 | 20 | 24 |
+| Troll | 675 | 900 | 1080 |
+| Harpy | 27 | 36 | 43 |
+| Shieldbearer | 53 | 70 | 84 |
+| Grumblefoot (boss) | 3000 | 4000 | 4800 |
 
 Title menu: the title and subtitle, a "Difficulty" caption and a row of
 three 132 x 42 buttons (Easy, Normal, Hard; the selection highlighted like
@@ -159,16 +165,19 @@ up 7 px); on Normal there is no tag. The end screens have [Play again]
 
 | Type | HP | Speed | Bounty | Notes |
 |---|---|---|---|---|
-| Goblin | 12 | 60 | 2 | normal; one Musketeer shot |
-| Wolf | 17 | 120 | 2 | fast |
-| Troll | 500 | 35 | 8 | tanky |
-| Harpy | 22 | 90 | 3 | flying (milestone 22) |
+| Goblin | 19 | 60 | 2 | normal; two Musketeer shots |
+| Wolf | 20 | 120 | 2 | fast |
+| Troll | 900 | 35 | 8 | tanky |
+| Harpy | 36 | 90 | 3 | flying (milestone 22) |
 | Shieldbearer | 70 | 45 | 5 | shield (milestone 22) |
 | Grumblefoot, the Troll King | 4000 | 25 | 150 | boss: 5 lives on exit, slows capped at 30% (milestone 23) |
 
-Milestone 25c (horde retune) lowered the hp and bounties (before: Goblin
-30 hp / 4 gold, Wolf 28 / 5, Troll 700 / 8, Harpy 40 / 7, Shieldbearer
-120 / 9) and roughly doubled to tripled the counts; speeds are unchanged.
+Milestone 25c (horde retune) lowered the bounties (before: Goblin 30 hp /
+4 gold, Wolf 28 / 5, Troll 700 / 8, Harpy 40 / 7, Shieldbearer 120 / 9),
+raised the counts about 2.4 times and set the hp above; speeds are
+unchanged. Its first pass (Goblin 12, Wolf 17, Troll 500, Harpy 22) made
+the waves denser, not longer; the second pass spread them out and raised
+the hp (DEVLOG).
 
 **Flying and shields** (milestone 22, from `docs/SCOPE-v4.md`). A Harpy
 flies over the path. Tar Pit, Cannon and Mortar never target it, and a
@@ -187,9 +196,9 @@ rings and tints like a walker; a Shieldbearer carries a small grey shield
 mark on its left.
 
 **Boss** (milestone 23, from `docs/SCOPE-v4.md`). Grumblefoot, the Troll
-King, is one unit at the end of wave 10: wave 10's last group, 26 s after
-the wave starts (waveTick 1560), 2 s after the last spawn of the other
-groups (the 13th Troll at 24 s; milestone 25c). He walks (every tower can target him and
+King, is one unit at the end of wave 10: wave 10's last group, 65 s after
+the wave starts (waveTick 3900), 2 s after the last spawn of the other
+groups (the 15th Troll at 63 s; milestone 25c). He walks (every tower can target him and
 splash and burn work on him, including the doubled burn under tar) and has
 no shield. Slows cap at 30% on him: a stronger slow is applied at 30% for
 its full duration (the Tar Pit's 40% and 60% both become 30%, so he walks
@@ -205,7 +214,7 @@ hp bar, a HUD boss bar shows while he lives: 300 x 14 px centred at the
 top of the map (y 24), dark trough, red fill proportional to his hp, 1 px
 cream border, "hp / 4000" right-aligned inside, and his name in 14 px on a
 dark pill above its left end (y 4 to 22). The wave 10 preview reads
-"Next: 20 Wolf, 13 Troll, 12 Harpy, 8 Shieldbearer + Grumblefoot"; a preview
+"Next: 20 Wolf, 15 Troll, 12 Harpy, 8 Shieldbearer + Grumblefoot"; a preview
 too long for one 16 px line (264 px since milestone 25b, 350 before) wraps
 to two 13 px lines, or, if that takes three lines, to two 11 px lines
 (milestone 25c; only the wave 10 preview needs it).
@@ -359,8 +368,8 @@ channel; milestone 28 retunes (`src/sim/specials.ts` `SPECIAL_DEFS`).
   fire arrows from 7). With no enemy alive nothing fires and the charge
   is kept. The archetypes comboBuild, comboBuildNoFire, noAntiAir,
   bossRush and hardBuild fire one cluster special per wave at
-  `CLUSTER_POLICY_TICKS` = 197, 164, 413, 813, 692, 1534, 573, 923, 545,
-  473 (waves 1 to 10), chosen by a scan of comboBuild on Normal: for each
+  `CLUSTER_POLICY_TICKS` = 164, 109, 291, 398, 749, 651, 668, 1241, 1194,
+  713 (waves 1 to 10), chosen by a scan of comboBuild on Normal: for each
   wave in turn the first tick at which the densest cluster is largest.
   `comboNoSpecials` is the combo plan without them. The informational
   `comboWithKegs` plays the combo build plus one Powder Keg per wave at
@@ -396,24 +405,39 @@ Groups in a wave run concurrently from the wave start.
 
 | Wave | Groups | Enemies | Total hp | Bounty |
 |---|---|---|---|---|
-| 1 | 20 Goblin, every 0.8 s | 20 | 240 | 40 |
-| 2 | 30 Goblin, every 0.6 s | 30 | 360 | 60 |
-| 3 | 20 Goblin every 0.7 s; 15 Wolf every 0.5 s, delay 4 s | 35 | 495 | 70 |
-| 4 | 10 Harpy every 0.8 s; 25 Wolf every 0.5 s, delay 3 s | 35 | 645 | 80 |
-| 5 | 30 Goblin every 0.5 s; 2 Troll every 3 s, delay 2 s; 10 Harpy every 0.6 s, delay 6 s | 42 | 1580 | 106 |
-| 6 | 45 Goblin every 0.5 s; 35 Wolf every 0.5 s, delay 5 s; 6 Shieldbearer every 1.5 s, delay 3 s | 86 | 1555 | 190 |
-| 7 | 25 Wolf every 0.4 s; 14 Troll every 1.9 s, delay 1 s; 16 Harpy every 0.6 s, delay 8 s | 55 | 7777 | 210 |
-| 8 | 50 Goblin every 0.5 s; 25 Wolf every 0.5 s, delay 6 s; 11 Troll every 2.4 s, delay 3 s; 6 Shieldbearer every 1.8 s, delay 4 s; 14 Harpy every 0.6 s, delay 10 s | 106 | 7253 | 310 |
-| 9 | 30 Wolf every 0.35 s; 7 Troll every 2 s | 37 | 4010 | 116 |
-| 10 | 20 Wolf every 0.35 s, delay 4 s; 13 Troll every 2 s; 12 Harpy every 0.6 s, delay 6 s; 8 Shieldbearer every 1.4 s, delay 2 s; 1 Grumblefoot (boss), delay 26 s | 54 | 11664 | 370 |
+| 1 | 20 Goblin, every 1.2 s | 20 | 380 | 40 |
+| 2 | 32 Goblin, every 0.9 s | 32 | 608 | 64 |
+| 3 | 22 Goblin every 1.0 s; 12 Wolf every 1.5 s, delay 4.5 s | 34 | 658 | 68 |
+| 4 | 10 Harpy every 1.5 s; 30 Goblin every 1.0 s, delay 3 s | 40 | 930 | 90 |
+| 5 | 40 Goblin every 1.0 s; 3 Troll every 8 s, delay 10 s; 10 Harpy every 1.2 s, delay 8 s | 53 | 3820 | 134 |
+| 6 | 45 Goblin every 1.0 s; 35 Wolf every 1.0 s, delay 9 s; 6 Shieldbearer every 1.5 s, delay 0.5 s | 86 | 1975 | 190 |
+| 7 | 26 Wolf every 1.5 s; 13 Troll every 4.5 s, delay 1 s; 16 Harpy every 1.0 s, delay 8 s | 55 | 12796 | 204 |
+| 8 | 50 Goblin every 1.5 s; 25 Wolf every 1.5 s, delay 6.75 s; 13 Troll every 5 s, delay 3 s; 6 Shieldbearer every 6 s, delay 4 s; 14 Harpy every 1.2 s, delay 10 s | 108 | 14074 | 326 |
+| 9 | 30 Wolf every 1.0 s; 10 Troll every 2 s, delay 2 s | 40 | 9600 | 140 |
+| 10 | 20 Wolf every 1.5 s, delay 4 s; 15 Troll every 4.5 s; 12 Harpy every 1.5 s, delay 6 s; 8 Shieldbearer every 5 s, delay 2.5 s; 1 Grumblefoot (boss), delay 65 s | 56 | 18892 | 386 |
 
 Total hp and bounty are on Normal, without the 25 clear bonus. Milestone
 22 added the Harpy and Shieldbearer groups; milestone 23 the boss as wave
-10's last group. Milestone 25c (horde retune) changed every group: 500
+10's last group. Milestone 25c (horde retune) changed every group: 524
 enemies over the ten waves (217 before), every wave with more enemies and
 more bounty than before (DEVLOG has the before and after table), wave 4
-sending its Harpies first, and every wave spawning within 27 s (90 s is
-the limit).
+sending its Harpies first, then Goblins.
+
+**Wave rules** (milestone 25c second pass, pinned in `waves.test.ts` and
+`balance.test.ts`):
+
+- **Spawn rate (A1).** In any 3 s (180 ticks) of any wave at most 6
+  walkers and at most 4 flyers spawn.
+- **Length (A2).** comboBuild on Normal, with no early calls, clears every
+  wave at least 15% later than before milestone 25c (before, in ticks:
+  951, 1447, 1162, 1321, 3101, 1705, 4199, 3788, 1992, 4640), and the ten
+  waves take 540 to 800 s of wave time (614 s; 405 s before).
+- **Density (A3).** comboBuild on Normal never has more than 35 enemies
+  alive at once (22 at most).
+- **Counts (A4)** stay between 2 and 3 times the 217 before 25c, with
+  every wave above its old count and bounty; **spawn window (A5)**: every
+  wave's last spawn within 90 s (wave 8 the longest, 73.5 s), the boss 2 s
+  after wave 10's last other spawn.
 
 Wave flow: the player presses Start Wave. The wave is active until every
 enemy in it has spawned and none remain alive. Then the clear bonus is paid
