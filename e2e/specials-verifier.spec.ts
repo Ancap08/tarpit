@@ -97,7 +97,7 @@ test('(c) the special fires once, on the press, at the press point; moving and r
   await page.mouse.move(500, 300);
   await page.mouse.down();
   // Fired already, with the button still down.
-  expect(await specials(page)).toMatchObject([{ type: 'keg', x: 500, y: 300, radius: 70 }]);
+  expect(await specials(page)).toMatchObject([{ type: 'keg', x: 500, y: 300, radius: 90 }]);
   expect((await ui(page)).special).toMatchObject({ charges: 0, aiming: null });
   await page.mouse.move(400, 250, { steps: 5 });
   await page.mouse.move(9 * 32 + 16, 5 * 32 + 16, { steps: 5 });
@@ -185,7 +185,7 @@ for (const [wave, listed] of [
   });
 }
 
-test('(g) the Special button looks greyed in setup, after use and after the game ends; lit only with a usable charge', async ({ page }) => {
+test('(g) the Special button looks greyed in setup and after the game ends, shows its recharge after use, and is lit only with a ready charge', async ({ page }) => {
   await page.goto('/?test=1');
   await page.waitForFunction(() => window.__tarpit?.scene?.() === 'title');
   await page.evaluate(() => (window.__tarpit as TarpitTestApi).startGame());
@@ -207,9 +207,17 @@ test('(g) the Special button looks greyed in setup, after use and after the game
   await click(page, 'special');
   await page.mouse.click(100, 100);
   expect((await state(page)).specialCharges).toBe(0);
-  expect(await shot(page, r)).toBe(setup);
+  // Milestone 30: recharging, greyed with a fill and the seconds left: neither the setup nor the lit look.
+  const recharging = await shot(page, r);
+  expect(recharging).not.toBe(setup);
+  expect(recharging).not.toBe(lit);
   await click(page, 'special');
   expect((await ui(page)).special).toMatchObject({ aiming: null, menuOpen: false });
+  await api(page, (a) => a.step(1200));
+  await page.mouse.move(100, 100);
+  expect(await shot(page, r)).toBe(lit);
+  await click(page, 'special');
+  await page.mouse.click(100, 100);
 
   // Next wave: lit again. Then the game ends mid-wave with the charge unspent.
   await api(page, (a) => {

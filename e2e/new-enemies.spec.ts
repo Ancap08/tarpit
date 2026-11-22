@@ -71,7 +71,7 @@ test('wave 4: a Cannon never hits a Harpy, a Musketeer does; the HUD names the H
   // No Cannon hit on any Harpy over all 500 ticks, though it fires while one is in its range.
   expect(r.ticks.filter((x) => x.cannonHarpy > 0)).toEqual([]);
   const cannonWithHarpyInRange = r.ticks.flatMap((x, i) => (x.cannonShots > 0 && x.harpyDistances.some((d) => inRange(d, CANNON)) ? [tickOf(i)] : []));
-  expect(cannonWithHarpyInRange).toEqual([571, 931]);
+  expect(cannonWithHarpyInRange).toEqual([556, 916]); // milestone 30: Cannon range 105 (571 and 931 at 90)
   const musketOnHarpy = r.ticks.flatMap((x, i) => (x.musketHarpy > 0 ? [tickOf(i)] : []));
   expect(musketOnHarpy.length).toBeGreaterThanOrEqual(1);
   expect(musketOnHarpy[0]).toBe(102);

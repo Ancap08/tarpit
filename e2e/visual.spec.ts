@@ -4,6 +4,7 @@ import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { TowerType } from '../src/sim/types';
 import type { TitleUiState } from '../src/game/TitleScene';
 import { MAPS, positionAlongPath } from '../src/sim/map';
+import { SPECIAL_DEFS } from '../src/sim/specials';
 
 // Milestone 25b frames (see the special tests below).
 // Milestone 25c (second pass): recomputed headlessly on the longer waves.
@@ -13,15 +14,38 @@ const AIM_EXPECT = {
   enemies: 9,
   inside: ['goblin 3', 'goblin 4', 'harpy 5', 'goblin 6', 'harpy 7', 'goblin 8'],
 };
+// Milestone 30: the zone frames on wave 7 at step 900, both aimed at (160,132) on the first climb.
+const TAR_ZONE_EXPECT = {
+  at: { x: 160, y: 132 },
+  hits: 7,
+  zones: ['tarBarrel 420'],
+  slowed: 8,
+  burning: 0,
+  labels: ['7 hit'],
+  rechargeTicks: 1140,
+  hud: 'Special 19s',
+};
+const FIRE_ZONE_EXPECT = {
+  at: { x: 160, y: 132 },
+  hits: 6,
+  zones: ['fireArrows 420'],
+  slowed: 0,
+  burning: 6,
+  labels: ['6 hit'],
+  rechargeTicks: 1140,
+  hud: 'Special 19s',
+};
+// Milestone 30 (keg 30 damage, 90 px): the keg at (160,191) hits 7 and kills the 4 Goblins.
 const FIRED_EXPECT = {
   aim: { x: 160, y: 191 },
   ok: true,
-  hits: 6,
-  kills: 5,
+  hits: 7,
+  kills: 4,
   before: 15,
-  after: 10,
-  hurt: ['goblin 5 11', 'troll 13 870'],
+  after: 11,
+  hurt: ['goblin 5 11', 'troll 13 920', 'harpy 14 6', 'harpy 16 6'],
   charges: 0,
+  labels: ['7 hit'],
 };
 
 // Screenshot checks on frozen frames (?test=1: no time passes unless the
@@ -106,7 +130,7 @@ test('mid wave 2 with three towers', async ({ page }) => {
       shotsThisTick: s.shots.length,
     };
   }, MID_WAVE_STEPS);
-  expect(counts).toEqual({ wave: 2, enemies: 15, hurt: 10, tarred: 2, shotsThisTick: 0 });
+  expect(counts).toEqual({ wave: 2, enemies: 16, hurt: 10, tarred: 2, shotsThisTick: 0 });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('mid-wave.png');
 });
@@ -167,7 +191,7 @@ test('wave 8 with all five enemy types', async ({ page }) => {
       harpies: of('harpy').length,
     };
   }, ENEMIES_STEPS);
-  expect(counts).toEqual({ wave: 8, goblins: 11, wolves: 7, trolls: 5, hurtTrolls: 2, slowed: 3, shieldbearers: 4, harpies: 13 });
+  expect(counts).toEqual({ wave: 8, goblins: 9, wolves: 8, trolls: 5, hurtTrolls: 2, slowed: 2, shieldbearers: 4, harpies: 13 });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('enemies.png');
 });
@@ -364,7 +388,11 @@ test('new towers upgraded, Mortar selected, splash and burning tarred Trolls', a
 // Harpy 1 at 197 (24 of 36 hp, tracer 2 ticks old); the Cannon killed
 // Goblin 3 at 198 with Harpy 2 inside the splash, untouched and inside the
 // Cannon's range. Only the two Harpies are on the map.
-const HARPIES_STEPS = 199;
+// Milestone 30 (Cannon range 105): the Cannon fires earlier, at 182 and
+// 302; step 304 shows its splash on Goblin 4 2 ticks old with Harpy 2
+// whole inside it, and Harpy 1 at 12 of 36 from the Musketeer's shots at
+// 197 and 257.
+const HARPIES_STEPS = 304;
 
 test('wave 4 Harpies: a Cannon splash ignores one, a Musketeer shoots one', async ({ page }) => {
   await open(page);
@@ -396,13 +424,14 @@ test('wave 4 Harpies: a Cannon splash ignores one, a Musketeer shoots one', asyn
   }, HARPIES_STEPS);
   expect(r).toEqual({
     wave: 4,
-    shots: ['197 musketeer harpy 1', '198 cannon goblin 3'],
+    shots: ['197 musketeer harpy 1', '257 musketeer harpy 1', '302 cannon goblin 4'],
     harpies: [
-      { id: 1, hp: 24 },
+      { id: 1, hp: 12 },
       { id: 2, hp: 36 },
+      { id: 5, hp: 36 },
     ],
     wolves: 0,
-    textures: ['harpy', 'harpy'],
+    textures: ['harpy', 'harpy', 'harpy'],
   });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('harpies.png');
@@ -462,7 +491,7 @@ test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splas
     slowed: true,
     hitNow: false,
     mortarHitOnBoss: 1,
-    bar: `${BOSS_NAME} 3339 / 4000`,
+    bar: `${BOSS_NAME} 3331 / 4000`,
     texture: 'boss',
   });
   await settle(page);
@@ -481,6 +510,7 @@ test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splas
 // 11 at (160,162) on the first climb and the circle covers 4 Harpies and 5
 // Wolves of the 14 out. Second pass: step 450, the pointer on Goblin 4 at
 // (160,191); the circle covers 4 Goblins and 2 Harpies of the 9 out.
+// Milestone 30: the 100 px Tar Barrel circle covers the same six.
 const AIM_STEPS = 450;
 const AIM_TARGET_ID = 4;
 
@@ -506,14 +536,16 @@ test('special aim: Tar Barrel circle over a cluster on wave 4', async ({ page })
   const aim = { x: Math.round(at.x), y: Math.round(at.y) };
   const inside = r.enemies.filter((e) => {
     const p = positionAlongPath(MAPS.meadow, e.distance);
-    return Math.hypot(p.x - aim.x, p.y - aim.y) <= 90;
+    return Math.hypot(p.x - aim.x, p.y - aim.y) <= 100; // milestone 30: the Tar Barrel's radius (90 before)
   });
   expect({ wave: r.wave, aim, enemies: r.enemies.length, inside: inside.map((e) => `${e.type} ${e.id}`) }).toEqual(AIM_EXPECT);
   await click(page, 'special');
   await click(page, 'special:tarBarrel');
   await page.mouse.move(aim.x, aim.y);
   const u = await ui(page);
-  expect(u.special).toEqual({ charges: 1, aiming: 'tarBarrel', unlocked: ['keg', 'tarBarrel'], menuOpen: false, aimPoint: aim });
+  expect(u.special).toMatchObject({ charges: 1, aiming: 'tarBarrel', unlocked: ['keg', 'tarBarrel'], menuOpen: false, aimPoint: aim, ready: true });
+  // Milestone 30: the banner says what to do.
+  expect(u.special.banner).toEqual({ main: 'Click the trail to drop the Tar Barrel', hint: 'Esc or Special again cancels.' });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('special-aim.png');
 });
@@ -534,7 +566,10 @@ test('special aim: Tar Barrel circle over a cluster on wave 4', async ({ page })
 const FIRED_STEPS = 810;
 const FIRED_TARGET_ID = 12;
 
-test('special fired: the tick after a Powder Keg (test mode, no flash)', async ({ page }) => {
+// Milestone 30: the keg's landing is drawn in test mode too (the ring, the
+// scorch mark and the "N hit" label, without fading); the frame is the tick
+// after it, so the ring is mid-way out.
+test('special fired: the tick after a Powder Keg', async ({ page }) => {
   await open(page);
   const r = await page.evaluate(
     async ({ steps, id }) => {
@@ -570,12 +605,93 @@ test('special fired: the tick after a Powder Keg (test mode, no flash)', async (
       // Full hp since milestone 28: Troll 950, Harpy 36, Wolf 20, Goblin 23.
       hurt: e.filter((x) => x.hp < ({ troll: 950, harpy: 36, wolf: 20, goblin: 23 } as Record<string, number>)[x.type]).map((x) => `${x.type} ${x.id} ${x.hp}`),
       charges: t.state().specialCharges,
+      labels: t.ui().special.labels.map((l) => l.text),
     };
   }, aim);
   expect({ aim, ...counts }).toEqual(FIRED_EXPECT);
   await page.mouse.move(900, 440); // empty grass: no hover tint
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('special-fired.png');
+});
+
+// Milestone 30: the three new special frames. Wave 7 (state.wave = 6, then
+// Start Wave) with the mid-wave frame's towers; at step ZONE_STEPS the
+// special is fired at the policy's best point for it (the point catching
+// the most enemies, computed here as the tests do: every enemy position,
+// rounded), then 60 ticks run so the zone has worked for a second.
+const ZONE_STEPS = 900;
+
+/** Wave 7 with the three towers at ZONE_STEPS; fire `type` at the enemy position whose circle holds the most, then step `after`. */
+async function fireOnWave7(page: Page, type: 'keg' | 'tarBarrel' | 'fireArrows', after: number) {
+  await open(page);
+  const enemies = await page.evaluate(async (steps) => {
+    const t = window.__tarpit as TarpitTestApi;
+    await t.startGame();
+    const s = t.state();
+    s.gold = 1000;
+    s.wave = 6; // test setup: the next Start Wave plays wave 7
+    t.buildAt(7, 5, 'musketeer');
+    t.buildAt(15, 9, 'cannon');
+    t.buildAt(18, 9, 'tarpit');
+    t.startWave();
+    t.step(steps);
+    return t.state().enemies;
+  }, ZONE_STEPS);
+  const radius = SPECIAL_DEFS[type].radius;
+  let best = { at: { x: 0, y: 0 }, n: -1 };
+  for (const e of enemies) {
+    const p = positionAlongPath(MAPS.meadow, e.distance);
+    const at = { x: Math.round(p.x), y: Math.round(p.y) };
+    const n = enemies.filter((o) => {
+      const q = positionAlongPath(MAPS.meadow, o.distance);
+      return Math.hypot(q.x - at.x, q.y - at.y) <= radius;
+    }).length;
+    if (n > best.n) best = { at, n };
+  }
+  return page.evaluate(
+    ({ type, at, after }) => {
+      const t = window.__tarpit as TarpitTestApi;
+      const res = t.useSpecialAt(type, at.x, at.y);
+      t.step(after);
+      const u = t.ui().special;
+      const e = t.state().enemies;
+      return {
+        at,
+        hits: res.ok ? res.hits : -1,
+        zones: u.zones.map((z) => `${z.type} ${z.ticksLeft}`),
+        slowed: e.filter((x) => (x.specialSlowTicksLeft ?? 0) > 0).length,
+        burning: e.filter((x) => (x.burnTicksLeft ?? 0) > 0).length,
+        labels: u.labels.map((l) => l.text),
+        rechargeTicks: u.rechargeTicks,
+        hud: t.hudText().special,
+      };
+    },
+    { type, at: best.at, after },
+  );
+}
+
+test('special tar zone: a Tar Barrel puddle one second after it lands, slowing the enemies inside', async ({ page }) => {
+  const r = await fireOnWave7(page, 'tarBarrel', 60);
+  expect(r).toEqual(TAR_ZONE_EXPECT);
+  await page.mouse.move(900, 440);
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('special-tar-zone.png');
+});
+
+test('special fire zone: a Fire Arrows patch one second after it lands, burning the enemies inside', async ({ page }) => {
+  const r = await fireOnWave7(page, 'fireArrows', 60);
+  expect(r).toEqual(FIRE_ZONE_EXPECT);
+  await page.mouse.move(900, 440);
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('special-fire-zone.png');
+});
+
+test('special recharging: the Special button 5 s after a keg, filled a quarter with 15 s left', async ({ page }) => {
+  const r = await fireOnWave7(page, 'keg', 300);
+  expect([r.rechargeTicks, r.hud, r.zones, r.labels]).toEqual([900, 'Special 15s', [], []]);
+  await page.mouse.move(900, 440);
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('special-recharging.png');
 });
 
 // End screens: the HUD under the veil shows the final numbers. Milestone
@@ -589,7 +705,7 @@ test('win screen after the combo build', async ({ page }) => {
     const phase = t.runScript('comboBuild');
     return { phase, screen: t.endScreen(), lives: t.state().lives, gold: t.state().gold };
   });
-  expect(end).toEqual({ phase: 'won', screen: 'won', lives: 14, gold: 484 }); // milestone 28: the stored special list
+  expect(end).toEqual({ phase: 'won', screen: 'won', lives: 16, gold: 420 }); // milestone 30: the special policy
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('won.png');
 });

@@ -82,8 +82,11 @@ export interface TarpitTestApi {
    * (milestone 25b; no clicks, no aiming). In test mode no effect is drawn.
    */
   useSpecialAt(type: SpecialType, x: number, y: number): SpecialResult;
-  setSpeed(speed: 1 | 2): void;
-  speed(): 1 | 2;
+  /** 1x, 2x, or (milestone 30) 3x as while the speed button is held. */
+  setSpeed(speed: 1 | 2 | 3): void;
+  speed(): 1 | 2 | 3;
+  /** The gold cheat through the scene, as five quick taps on Gold do (milestone 30). */
+  cheatGold(): { ok: true; gold: number } | { ok: false; reason: 'game-over' };
   /**
    * Canvas-space rectangles of everything clickable, by name: `startWave`,
    * `speed`, `bar:musketeer`, `bar:cannon`, `bar:tarpit`, `bar:longbow`,

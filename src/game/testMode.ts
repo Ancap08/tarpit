@@ -198,6 +198,7 @@ export function installGlobal(game: Phaser.Game): void {
     useSpecialAt: (type, x, y) => scene().useSpecialAt(type, x, y),
     setSpeed: (speed) => scene().setSpeed(speed),
     speed: () => scene().speed,
+    cheatGold: () => scene().cheatGold(),
     uiRects: () => {
       if (!game.scene.isActive('title')) scene(); // throws between scenes, as the other hooks do
       return uiRectsOf(game);

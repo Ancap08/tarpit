@@ -187,6 +187,16 @@ export class EnemySprites {
     this.views.delete(id);
   }
 
+  /**
+   * Milestone 30: create (and place) a sprite for every live enemy that has
+   * none yet. GameScene calls this after each tick of a frame, before the
+   * tick's events, so a hit or kill on an enemy spawned earlier in the same
+   * frame finds its sprite instead of being dropped.
+   */
+  addNew(state: GameState): void {
+    for (const enemy of state.enemies) if (!this.views.has(enemy.id)) this.update(this.create(enemy, state.map), enemy, state.map, 1);
+  }
+
   /** Match the sprites to the live enemies: create, move, face, animate and tint. */
   sync(state: GameState, timeScale: number): void {
     const live = new Set<number>();

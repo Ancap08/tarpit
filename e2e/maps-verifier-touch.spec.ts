@@ -206,10 +206,10 @@ test('Riverbend by touch: tap-tap on the river arms nothing and builds nothing; 
   expect(errors).toEqual([]);
 });
 
-test('Riverbend by touch: a special is aimed over the water by tap-tap and over the bottom row by a lifted drag', async ({ page }) => {
+// Milestone 30: a tap fires at once (no second tap); the bottom row is reached by a tap.
+test('Riverbend by touch: a special tapped over the water and one tapped in the bottom row fire there', async ({ page }) => {
   const errors = watchErrors(page);
   await start(page, 'riverbend');
-  const client = await page.context().newCDPSession(page);
   await page.evaluate(() => {
     const t = window.__tarpit as TarpitTestApi;
     t.state().lives = 1000;
@@ -217,40 +217,28 @@ test('Riverbend by touch: a special is aimed over the water by tap-tap and over 
     t.step(300);
   });
   const special = () => api(page, (a) => a.events().find((e) => e.kind === 'special'));
-  // Tap-tap in the middle of the river.
+  // A tap in the middle of the river fires there.
   await tap(page, 'special');
+  expect((await ui(page)).special.aiming).toBe('keg');
   await tapAt(page, { x: 480, y: 320 });
-  let u = await ui(page);
-  expect(u.special.aiming).toBe('keg');
-  expect(Math.abs(u.special.aimPoint!.x - 480)).toBeLessThanOrEqual(1);
-  expect(Math.abs(u.special.aimPoint!.y - 320)).toBeLessThanOrEqual(1);
-  await tapAt(page, { x: 480, y: 320 });
-  expect(await special()).toMatchObject({ type: 'keg' });
+  let ev = await special();
+  if (ev?.kind !== 'special') throw new Error('no special event');
+  expect(Math.abs(ev.x - 480)).toBeLessThanOrEqual(1);
+  expect(Math.abs(ev.y - 320)).toBeLessThanOrEqual(1);
   expect((await ui(page)).special.charges).toBe(0);
 
-  // A lifted drag: the finger on the HUD (y 520), the aim 48 px above it in the bottom row (y 472), over the river.
-  await page.evaluate(() => {
-    const t = window.__tarpit as TarpitTestApi;
-    t.step(1);
-    t.state().specialCharges = 1;
-    t.step(1);
-  });
+  // The bottom row over the river (y 472), after the recharge.
+  await page.evaluate(() => (window.__tarpit as TarpitTestApi).step(1200));
+  expect((await ui(page)).special.ready).toBe(true);
   await tap(page, 'special');
-  const finger = { x: 500, y: 520 };
-  await touchDrag(page, client, { x: 500, y: 300 }, finger, async () => {
-    u = await ui(page);
-    expect(u.special.aiming).toBe('keg');
-    expect(Math.abs(u.special.aimPoint!.y - (finger.y - DRAG_LIFT))).toBeLessThanOrEqual(1);
-  });
-  const ev = await special();
-  expect(ev).toMatchObject({ type: 'keg' });
+  await tapAt(page, { x: 500, y: 472 });
+  ev = await special();
   if (ev?.kind !== 'special') throw new Error('no special event');
   expect(Math.abs(ev.x - 500)).toBeLessThanOrEqual(1);
   expect(Math.abs(ev.y - 472)).toBeLessThanOrEqual(1);
   const s = await state(page);
   expect(s.phase).toBe('wave');
   expect(s.towers).toEqual([]);
-  expect(await api(page, (a) => a.speed())).toBe(1);
   expect(errors).toEqual([]);
 });
 

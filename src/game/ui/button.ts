@@ -17,6 +17,8 @@ export interface ButtonOptions {
   right?: string;
   /** Called with true when the pointer enters and false when it leaves (or the button hides). */
   onHover?: (over: boolean) => void;
+  /** Called when a press starts on the button (milestone 30: the speed button's hold), enabled or not. */
+  onPress?: () => void;
 }
 
 const PAD_X = 10;
@@ -57,6 +59,7 @@ export class Button {
     this.box.on('pointerdown', () => {
       this.pressed = true;
       this.refresh();
+      if (this.enabled && this.shown) options.onPress?.();
     });
     this.box.on('pointerup', () => {
       const wasPressed = this.pressed;

@@ -149,3 +149,36 @@ export const SPECIAL_NAMES: Readonly<Record<SpecialType, string>> = {
 
 /** The HUD's special button label (milestone 25b). */
 export const SPECIAL_BUTTON_TEXT = 'Special';
+
+/** The verb in the aim banner per special (milestone 30). */
+const SPECIAL_VERBS: Readonly<Record<SpecialType, string>> = { keg: 'throw', tarBarrel: 'drop', fireArrows: 'shoot' };
+
+/**
+ * The aim banner over the map while a special is aimed (milestone 30):
+ * the main line ("Tap the trail to drop the Tar Barrel"), then a smaller
+ * hint saying how to cancel (and, on touch, how to hold and aim).
+ */
+export function aimBannerText(type: SpecialType, touch: boolean): { main: string; hint: string } {
+  return {
+    main: `${touch ? 'Tap' : 'Click'} the trail to ${SPECIAL_VERBS[type]} the ${SPECIAL_NAMES[type]}`,
+    hint: touch ? 'Or hold to aim and lift to let go. Special again cancels.' : 'Esc or Special again cancels.',
+  };
+}
+
+/** The label at a special's spot for about 1.5 s after it lands (milestone 30): "3 hit" or "Missed". */
+export function specialResultText(hits: number): string {
+  return hits > 0 ? `${hits} hit` : 'Missed';
+}
+
+/** The Special button while it recharges (milestone 30): whole seconds left, rounded up ("12s"). */
+export function rechargeText(ticksLeft: number, ticksPerSecond: number): string {
+  return `${Math.ceil(ticksLeft / ticksPerSecond)}s`;
+}
+
+/** The speed button's label while it is held for 3x (milestone 30); 1x and 2x read "1x" and "2x". */
+export function speedLabel(speed: 1 | 2 | 3): string {
+  return `${speed}x`;
+}
+
+/** The small mark under the Gold readout once the gold cheat was used (milestone 30). */
+export const CHEAT_MARK = 'cheat used';

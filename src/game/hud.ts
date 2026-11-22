@@ -24,12 +24,20 @@
 // Milestone 26: in an endless game the wave counter reads "Wave 11" (no
 // "/10") and the preview shows the generated wave; a type that comes in two
 // groups (an endless wave's extra Harpies) is listed once with the sum.
+// Milestone 30: while the special charge recharges the Special button is
+// greyed with a fill growing from its left edge and the seconds left on its
+// right ("12s"); ready, its pip is lit (and pulses in play). The speed
+// button reads "3x" while held. The Gold readout is a tap target
+// (GOLD_RECT, for the gold cheat) and shows CHEAT_MARK under it once the
+// cheat was used.
 
 import Phaser from 'phaser';
 import {
   callEarlyStatus,
   hasNextWave,
   LAST_WAVE,
+  SPECIAL_RECHARGE_TICKS,
+  TICKS_PER_SECOND,
   nextWavePreview,
   unlockedSpecials,
   type Difficulty,
@@ -39,7 +47,18 @@ import {
   type TowerType,
 } from '../sim';
 import type { Rect } from './input';
-import { BOSS_NAME, callEarlyLabel, DIFFICULTY_LABELS, ENEMY_NAMES, SPECIAL_BUTTON_TEXT, START_WAVE_TEXT, waveCounterText } from './names';
+import {
+  BOSS_NAME,
+  callEarlyLabel,
+  CHEAT_MARK,
+  DIFFICULTY_LABELS,
+  ENEMY_NAMES,
+  rechargeText,
+  SPECIAL_BUTTON_TEXT,
+  speedLabel,
+  START_WAVE_TEXT,
+  waveCounterText,
+} from './names';
 import { COLORS, FONT, TEXT } from './palette';
 import { BossBar } from './ui/bossBar';
 import { BuildBar } from './ui/buildBar';
@@ -64,6 +83,10 @@ const BUTTON_H = HUD_BUTTON_H;
 
 export interface HudStrings {
   gold: string;
+  /** Milestone 30: "Special", or "Special 12s" while the charge refills. */
+  special: string;
+  /** Milestone 30: CHEAT_MARK once the gold cheat was used, else ''. */
+  cheat: string;
   lives: string;
   wave: string;
   next: string;
@@ -108,6 +131,11 @@ export const SPEED_BUTTON = { x: 876, width: 70 } as const;
 /** The Special button's charge pip: radius, and its centre's distance from the button's right edge. */
 export const PIP_RADIUS = 5;
 export const PIP_INSET = 14;
+/** The Gold readout's tap area (milestone 30, the gold cheat): row 1 from x 8, 104 wide. */
+export const GOLD_RECT = { x: 8, y: HUD_TOP + 4, width: 104, height: 42 } as const;
+/** Gold taps for the cheat: this many within CHEAT_WINDOW_MS. */
+export const CHEAT_TAPS = 5;
+export const CHEAT_WINDOW_MS = 2000;
 
 /**
  * The preview's room: from x 356 (10 px after "Wave 10/10" at 18 px ends)
@@ -168,9 +196,22 @@ export function callEarlyInfo(state: GameState): { available: boolean; bonus: nu
   return status.ok ? { available: true, bonus: status.bonus } : { available: false, bonus: 0 };
 }
 
-/** A special can be used now: a wave is running and its charge is unspent (milestone 25b). */
+/** A special can be used now: a wave is running and its charge is ready (milestone 25b; 30: it recharges). */
 export function specialReady(state: GameState): boolean {
   return state.phase === 'wave' && state.specialCharges > 0;
+}
+
+/**
+ * The Special button's recharge (milestone 30): while a wave runs and the
+ * charge refills, the share refilled (0 just fired, near 1 almost ready)
+ * and the whole seconds left; null otherwise (ready, or not in a wave).
+ */
+export function specialRecharge(state: GameState): { progress: number; seconds: number } | null {
+  if (state.phase !== 'wave' || state.specialCharges > 0 || state.specialRechargeTicks <= 0) return null;
+  return {
+    progress: 1 - state.specialRechargeTicks / SPECIAL_RECHARGE_TICKS,
+    seconds: Math.ceil(state.specialRechargeTicks / TICKS_PER_SECOND),
+  };
 }
 
 /** What GameScene shows of the specials (milestone 25b): the popup and the special being aimed. */
@@ -183,6 +224,8 @@ export interface HudHandlers {
   /** Start Wave was pressed: starts the wave in setup, or calls the next one early (milestone 25c). */
   onStartWave: () => void;
   onToggleSpeed: () => void;
+  /** A press started on the speed button (milestone 30: held 300 ms it runs 3x). */
+  onSpeedPress?: () => void;
   /** A build bar button was clicked (only when pickable). */
   onPick: (type: TowerType) => void;
   /** The Special button was pressed (only while specialReady). */
@@ -201,8 +244,13 @@ export class Hud {
   private readonly speedButton: Button;
   private readonly specialButton: Button;
   private readonly pip: Phaser.GameObjects.Graphics;
+  /** The recharge fill over the Special button (milestone 30). */
+  private readonly rechargeFill: Phaser.GameObjects.Graphics;
+  private readonly cheatMark: Phaser.GameObjects.Text;
+  /** The seconds left while the charge refills, small in the Special button's lower right corner (milestone 30). */
+  private readonly rechargeText: Phaser.GameObjects.Text;
   private readonly specialMenu: SpecialMenu;
-  private pipLit: boolean | null = null;
+  private pipKey = '';
   private readonly bar: BuildBar;
   private readonly bossBar: BossBar;
 
@@ -223,19 +271,30 @@ export class Hud {
       fontSize: '16px',
       right: '',
     });
+    this.rechargeFill = scene.add.graphics();
     this.pip = scene.add.graphics();
+    this.rechargeText = scene.add
+      .text(SPECIAL_BUTTON.x + SPECIAL_BUTTON.width - 6, MID + 10, '', { fontFamily: FONT, fontSize: '12px', fontStyle: 'bold', color: TEXT.button })
+      .setOrigin(1, 0.5);
+    this.cheatMark = scene.add
+      .text(GOLD_RECT.x + 6, MID + 12, CHEAT_MARK, { fontFamily: FONT, fontSize: '11px', fontStyle: 'bold', color: TEXT.cheatMark })
+      .setOrigin(0, 0.5)
+      .setVisible(false);
     this.startButton = new Button(scene, { ...START_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H }, START_WAVE_TEXT, handlers.onStartWave);
-    this.speedButton = new Button(scene, { ...SPEED_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H }, '1x', handlers.onToggleSpeed);
+    this.speedButton = new Button(scene, { ...SPEED_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H }, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress });
     this.specialMenu = new SpecialMenu(scene, SPECIAL_BUTTON.x, HUD_TOP, handlers.onSpecialPick);
     this.bar = new BuildBar(scene, ROW2_BUTTON_Y, handlers.onPick);
     this.bossBar = new BossBar(scene);
   }
 
-  update(state: GameState, speed: 1 | 2, pick: TowerType | null, special: HudSpecial = { menuOpen: false, aiming: null }): void {
+  /** `nowMs`: the clock in play, for the ready pip's pulse; left out in test mode (no pulse). */
+  update(state: GameState, speed: 1 | 2 | 3, pick: TowerType | null, special: HudSpecial = { menuOpen: false, aiming: null }, nowMs?: number): void {
     const set = (t: Phaser.GameObjects.Text, s: string) => {
       if (t.text !== s) t.setText(s);
     };
     set(this.gold, `Gold ${state.gold}`);
+    this.cheatMark.setVisible(state.cheated);
+    this.gold.setY(state.cheated ? MID - 6 : MID);
     // The sim lets lives go below 0 (the boss's exit costs 5); the HUD shows 0.
     set(this.lives, `Lives ${Math.max(0, state.lives)}`);
     set(this.wave, waveCounterText(state.wave, state.endless, LAST_WAVE));
@@ -250,16 +309,28 @@ export class Hud {
     if (call.available) this.startButton.set(callEarlyLabel(call.bonus), true);
     else this.startButton.set(START_WAVE_TEXT, canStartWave(state));
     // Once the game is over the speed toggle is inert (greyed, ignores clicks).
-    this.speedButton.set(`${speed}x`, state.phase !== 'won' && state.phase !== 'lost');
+    this.speedButton.set(speedLabel(speed), state.phase !== 'won' && state.phase !== 'lost');
     const ready = specialReady(state);
+    const recharge = specialRecharge(state);
     this.specialButton.set(SPECIAL_BUTTON_TEXT, ready);
+    set(this.rechargeText, recharge ? rechargeText(state.specialRechargeTicks, TICKS_PER_SECOND) : '');
     this.specialButton.setPicked(ready && (special.menuOpen || special.aiming !== null));
-    if (this.pipLit !== ready) {
-      this.pipLit = ready;
+    // The fill grows in whole pixels, so it redraws at most once per pixel.
+    const fillWidth = recharge ? Math.round(SPECIAL_BUTTON.width * recharge.progress) : 0;
+    const pulse = ready && nowMs !== undefined ? Math.round(4 * (1 + Math.sin(nowMs / 160))) : 0;
+    const key = `${ready}:${recharge ? fillWidth : -1}:${pulse}`;
+    if (this.pipKey !== key) {
+      this.pipKey = key;
       const cx = SPECIAL_BUTTON.x + SPECIAL_BUTTON.width - PIP_INSET;
       this.pip.clear();
-      if (ready) this.pip.fillStyle(COLORS.specialPip, 1).fillCircle(cx, MID, PIP_RADIUS);
-      else this.pip.lineStyle(1.5, COLORS.specialPipEmpty, 1).strokeCircle(cx, MID, PIP_RADIUS - 0.75);
+      this.rechargeFill.clear();
+      if (ready) {
+        this.pip.fillStyle(COLORS.specialPip, 1).fillCircle(cx, MID, PIP_RADIUS);
+        // The pulse: a ring round the pip, growing and fading (play only).
+        if (pulse > 0) this.pip.lineStyle(2, COLORS.specialPip, 1 - pulse / 9).strokeCircle(cx, MID, PIP_RADIUS + pulse);
+      } else if (recharge) {
+        this.rechargeFill.fillStyle(COLORS.rechargeFill, 0.55).fillRect(SPECIAL_BUTTON.x, ROW1_BUTTON_Y, fillWidth, BUTTON_H);
+      } else this.pip.lineStyle(1.5, COLORS.specialPipEmpty, 1).strokeCircle(cx, MID, PIP_RADIUS - 0.75);
     }
     this.specialMenu.update(special.menuOpen && ready ? unlockedSpecials(state.wave) : []);
     this.bar.update(state, pick);
@@ -278,6 +349,8 @@ export class Hud {
       wave: this.wave.text,
       next: this.next.text,
       startWave: this.startButton.text,
+      special: this.rechargeText.text ? `${SPECIAL_BUTTON_TEXT} ${this.rechargeText.text}` : SPECIAL_BUTTON_TEXT,
+      cheat: this.cheatMark.visible ? CHEAT_MARK : '',
       speed: this.speedButton.text,
       boss: this.bossBar.label(),
       difficulty: this.tag.text,
@@ -285,12 +358,13 @@ export class Hud {
   }
 
   /**
-   * `startWave`, `speed`, `special` (milestone 25b), `bar:<type>` for each
+   * `gold` (milestone 30, the cheat's tap area), `startWave`, `speed`, `special` (milestone 25b), `bar:<type>` for each
    * build bar button, and `special:<type>` for each popup button while the
    * popup is open.
    */
-  rects(): { startWave: Rect; speed: Rect; special: Rect } & Record<string, Rect> {
+  rects(): { startWave: Rect; speed: Rect; special: Rect; gold: Rect } & Record<string, Rect> {
     return {
+      gold: { ...GOLD_RECT },
       startWave: { ...this.startButton.rect },
       speed: { ...this.speedButton.rect },
       special: { ...this.specialButton.rect },

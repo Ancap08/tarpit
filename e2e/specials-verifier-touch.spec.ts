@@ -5,8 +5,8 @@ import type { GameEvent } from '../src/sim';
 // Verifier probes for milestone 25b (Claude Fable 5.2), tablet project (the
 // file name ends in touch.spec.ts). Real touches through CDP
 // Input.dispatchTouchEvent; canvas points are mapped with canvasToPage().
-// The spec's numbers are written out: lift 48 canvas px, second-tap slop
-// 24 px, map 960x480.
+// The spec's numbers are written out: lift 48 canvas px, map 960x480
+// (milestone 30: no second-tap slop any more).
 
 type Point = { x: number; y: number };
 type Rect = { x: number; y: number; width: number; height: number };
@@ -75,42 +75,22 @@ class Fingers {
   }
 }
 
-test('(h) two-tap: a second tap 20 px away fires at the FIRST tap point; one 40 px away re-aims instead', async ({ page }) => {
+// Milestone 30: no second confirming tap. The two-tap probes of 25b are
+// replaced by this one: a tap fires at once at the tap point.
+test('(h) a tap fires at once at the tap point; a second tap does nothing more', async ({ page }) => {
   await inWave(page);
   await tap(page, mid((await rects(page)).special));
   expect((await ui(page)).special).toMatchObject({ aiming: 'keg', aimPoint: null });
-  const first = { x: 500, y: 300 };
-  await tap(page, first);
-  expect(near((await ui(page)).special.aimPoint!, first)).toBe(true);
-  // 40 px away (outside the 24 px slop): the circle moves there, nothing fires.
-  const second = { x: 540, y: 300 };
-  await tap(page, second);
-  let u = await ui(page);
-  expect(u.special.aiming).toBe('keg');
-  expect(near(u.special.aimPoint!, second)).toBe(true);
-  expect(await specials(page)).toEqual([]);
-  expect((await state(page)).specialCharges).toBe(1);
-  // 20 px from the placed circle (12 across, 16 down): fires at the circle, not at the finger.
-  const placed = u.special.aimPoint!;
-  await tap(page, { x: 552, y: 316 });
+  await tap(page, { x: 500, y: 300 });
   const ev = await specials(page);
   expect(ev).toHaveLength(1);
-  expect(ev[0]).toMatchObject({ type: 'keg', x: placed.x, y: placed.y, radius: 70 });
-  u = await ui(page);
-  expect(u.special).toMatchObject({ charges: 0, aiming: null, aimPoint: null });
-  // No tower pick, armed cell or panel came out of those taps.
-  expect(u).toMatchObject({ pick: null, armedCell: null, panelOpen: false });
-});
-
-test('(h) a tap 26 px from the placed circle re-aims (just outside the slop)', async ({ page }) => {
-  await inWave(page);
-  await tap(page, mid((await rects(page)).special));
-  await tap(page, { x: 300, y: 300 });
-  await tap(page, { x: 300, y: 326.5 });
+  expect(ev[0]).toMatchObject({ type: 'keg', radius: 90 });
+  expect(near(ev[0] as unknown as Point, { x: 500, y: 300 })).toBe(true);
+  await tap(page, { x: 520, y: 300 });
+  expect(await specials(page)).toHaveLength(1);
   const u = await ui(page);
-  expect(u.special.aiming).toBe('keg');
-  expect(Math.abs(u.special.aimPoint!.y - 326.5)).toBeLessThanOrEqual(1);
-  expect(await specials(page)).toEqual([]);
+  expect(u.special).toMatchObject({ charges: 0, aiming: null, aimPoint: null });
+  expect(u).toMatchObject({ pick: null, armedCell: null, panelOpen: false });
 });
 
 test('(h) drag: fires on release at the point 48 px above the finger, once', async ({ page }) => {
@@ -129,37 +109,32 @@ test('(h) drag: fires on release at the point 48 px above the finger, once', asy
   expect((await ui(page)).special).toMatchObject({ charges: 0, aiming: null });
 });
 
-test('(h) released with the finger on the speed button: fires on the map 48 px above, the speed stays 1x', async ({ page }) => {
+// Milestone 30: a hold released with the finger over the HUD cancels and spends nothing.
+test('(h) a hold released with the finger on the speed button cancels: nothing fires, the speed stays 1x', async ({ page }) => {
   const client = await inWave(page);
   const f = new Fingers(page, client);
   const r = await rects(page);
   await tap(page, mid(r.special));
-  const finger = mid(r.speed);
   await f.down(0, { x: 700, y: 300 });
-  await f.move(0, finger);
+  await f.move(0, mid(r.speed));
   await f.up(0);
-  const ev = await specials(page);
-  expect(ev).toHaveLength(1);
-  expect(near(ev[0] as unknown as Point, { x: finger.x, y: finger.y - LIFT })).toBe(true);
-  expect((ev[0] as unknown as Point).y).toBeLessThan(480);
+  expect(await specials(page)).toEqual([]);
   expect(await api(page, (a) => a.speed())).toBe(1);
+  expect((await ui(page)).special).toMatchObject({ aiming: null, charges: 1 });
 });
 
-test('(h) released with the finger on a build bar button (aim below the map): nothing fires, nothing is picked, still aiming', async ({ page }) => {
+test('(h) a hold released with the finger on a build bar button cancels: nothing fires, nothing is picked', async ({ page }) => {
   const client = await inWave(page);
   const f = new Fingers(page, client);
   const r = await rects(page);
   await tap(page, mid(r.special));
-  const finger = mid(r['bar:longbow']);
-  expect(finger.y - LIFT).toBeGreaterThan(480);
   await f.down(0, { x: 300, y: 300 });
-  await f.move(0, finger);
-  expect((await ui(page)).special.aimPoint).toBeNull();
+  await f.move(0, mid(r['bar:longbow']));
   await f.up(0);
   expect(await specials(page)).toEqual([]);
   const u = await ui(page);
   expect(u.pick).toBeNull();
-  expect(u.special).toMatchObject({ aiming: 'keg', charges: 1, aimPoint: null });
+  expect(u.special).toMatchObject({ aiming: null, charges: 1, aimPoint: null });
   expect((await state(page)).towers).toEqual([]);
 });
 
@@ -168,7 +143,6 @@ test('(i) a bar drag started while aiming cancels the aim and builds; no special
   const f = new Fingers(page, client);
   const r = await rects(page);
   await tap(page, mid(r.special));
-  await tap(page, { x: 500, y: 300 });
   expect((await ui(page)).special.aiming).toBe('keg');
   await f.down(0, mid(r['bar:longbow']));
   expect((await ui(page)).special.aiming).toBeNull();
