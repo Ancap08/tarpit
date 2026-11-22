@@ -323,7 +323,8 @@ are not listed). While aiming, a circle of the special's radius (2 px
 outline, 0.18 fill; orange-red keg, dark brown tar barrel, orange-yellow
 fire arrows) follows the mouse over the map; on touch the first tap places
 it where tapped and a drag places it 48 px above the finger with the
-finger line. A click, a second tap within 24 px of the placed circle, or
+finger line. A mouse press on the map (it fires on the press, not the
+release), a second tap within 24 px of the placed circle, or
 the release of a touch drag with the circle on the map (even with the
 finger over the HUD) fires at the circle's centre. Escape, the Special
 button again or any other press on the HUD cancels. Aiming and the tower

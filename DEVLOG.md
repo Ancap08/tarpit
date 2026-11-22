@@ -3259,10 +3259,11 @@ Claude Fable 5.2.
   (comboBuild: 12 lives, 497 gold). Easy: won, 25 lives, 606 gold; Hard:
   lost on wave 3, 68 gold (both the same as comboBuild). The fixed policy
   mostly misses: at wave tick 600 only wave 4 has enemies within 70 px of
-  (420, 232) (2 Wolves, both killed); the other nine kegs hit nothing,
-  because the Longbows kill the early waves before they get there and the
-  slower waves have not reached it yet. The two Wolf bounties shift the
-  combo's purchase timing, which is where the 4 extra lives come from.
+  (420, 232) (a Harpy and a Wolf, both killed; corrected by the verifier,
+  this said 2 Wolves); the other nine kegs hit nothing, because the
+  Longbows kill the early waves before they get there and the slower
+  waves have not reached it yet. Wave 4 ends with 20 lives instead of 17
+  and wave 5 loses none instead of 1, which is the 4 extra lives.
   The policy is the brief's; a "fire at the biggest cluster" policy would
   be a 25c or 28 question.
 - **HUD layout.** Row 1, all buttons 42 px tall at y 484: Special x 630,
