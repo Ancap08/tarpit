@@ -434,7 +434,10 @@ waveTick = `lastSpawnTick(wave)`; right after it 0 s have passed (bonus
 20), and each later tick adds 1/60 s, so the bonus is 19 from 60 ticks
 later and 0 from 1200 ticks later (a call is still allowed at 0). Enemies
 still alive stay on the field: they move, exit, cost lives and pay
-bounties as usual, but no wave's clear check waits for them. Then the next
+bounties as usual, and the called wave's clear check waits for them too
+(a wave clears only when all its own enemies have spawned and no enemy at
+all is alive; verifier correction, the first text said no clear check
+waits for them). Then the next
 wave starts its spawn schedule from waveTick 0 (the wave counter goes up),
 the special charge is set to 1 (an unused one does not carry over), event
 `earlyCall {wave, bonus}` (the new wave) and then `waveStart`. Towers are

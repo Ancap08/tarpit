@@ -3628,3 +3628,138 @@ art pass.
   fallback.
 - A revert pass run used Hard start gold 90 before it was reverted; the
   table above is from a rerun on the final numbers.
+
+### Verifier notes
+
+Verifier: Claude Fable 5.2, on `m25c-horde` at 2502e9a. Probes are in
+`src/sim/horde-verifier.test.ts` (38 tests) and
+`e2e/horde-verifier.spec.ts` (5 tests). No sim or renderer code was
+changed. One doc correction and one test timeout, both listed below.
+
+**Checks.** Lint, check:assets, typecheck, build and check:size pass; 600
+unit tests in 48 files and 206 Playwright tests passed before the probes
+were added. Pixel comparisons do not run locally and the committed
+baselines are the milestone 25b ones, so the visual specs were not checked
+and will fail on CI until the update-snapshots workflow runs.
+
+**A flaky unit test, fixed.** `difficulty.test.ts` "Normal by argument
+equals Normal by default for every archetype" plays 48 archetype games.
+On the horde waves it takes 4.1 s alone and 5.0 to 5.2 s inside the full
+run, against vitest's 5 s default: it timed out in one of two full runs
+of the unchanged branch. It now has a 30 s timeout (the only change to
+an existing test).
+
+**Spec against code.** Every 25c number in `docs/DESIGN.md` matches its
+constant: enemy hp and bounty, all ten wave tables with their enemies,
+total hp and bounty columns, Fire Arrows 30/s, Easy 30 lives, Hard 1.1x
+and its per-type hp, the early bonus formula and the refusal order. No
+test pinned every wave group any more (the milestone 22 probe that did
+was reduced to a shape check), so the probes pin the whole table.
+In code but not in DESIGN.md: `COMBO_PLAN` and `HARD_PLAN` (never were),
+and the 200 gold limit after wave 9, which `docs/SCOPE-v2.md` and
+`DECISIONS.md` still give as 150; no decision records the change.
+
+**Targets.** `npm run sim` reproduces every line reported above for
+Normal, Easy and Hard, and the pins assert them as ranges plus exact
+values. Three targets are met with no room to show they bind: noAntiAir
+loses on wave 4 (limit 8), with 8 of 10 Harpies out and the other two
+still flying when the game ends; lazyBuild on Hard loses on wave 1 (limit
+5); comboBuild on Easy takes no damage at all.
+
+**Revert matrix** (one change at a time on the final numbers):
+
+| Revert | What changes | Target broken |
+|---|---|---|
+| Shieldbearer hp 70 -> 120 | Easy lazy 12 -> 9 lives; Hard spam wave 8 -> 7 | none |
+| Shieldbearer bounty 5 -> 9 | combo 14 lives, 189 gold after wave 9 | none (11 under the limit) |
+| Fire Arrows 30 -> 10 | combo 11 lives against noSpecials 10; Hard combo 1 life | none |
+| Easy lives 30 -> 25 | Easy lazy 7 lives; soundBuildNoTar loses | none |
+| Goblin hp 12 -> 30 | every build loses on wave 2 | all |
+| Goblin hp 12 -> 13 or 14 | lazy loses on wave 7, not 8; Hard unchanged | none |
+| Goblin hp 12 -> 11 or 10 | Normal unchanged; Hard lazy loses on wave 7 | Hard lazy by wave 5 |
+| Hard 1.1 -> 1.3 | Hard combo loses on wave 4; hardBuild still wins, 8 lives | Hard combo |
+| Hard 1.1 -> 1.2 | Hard combo loses on wave 7; hardBuild wins, 9 lives | Hard combo |
+| Troll hp 500 -> 700 | combo 7 lives; noFire loses wave 7; Easy lazy loses wave 10; Hard combo loses wave 7 | Easy lazy, Hard combo |
+| Wolf hp 17 -> 28 | combo loses on wave 7 | combo, Hard combo |
+| Wolf hp 17 -> 18 | Normal unchanged; Hard combo loses on wave 7 | Hard combo |
+| Harpy hp 22 -> 40 | combo and noSpecials both win with 1 life | combo lives, noSpecials worse |
+| Goblin bounty 2 -> 4 | combo 20 lives, 217 gold after wave 9 | combo lives and gold |
+
+The four "kept for margin" claims hold. The margins note above is wrong
+on one point: Goblin hp 13 moves lazyBuild to wave 7, not wave 6, and
+breaks nothing on Normal. The thin spots are on Hard: one hp on the Wolf
+or 0.1 on the multiplier turns the combo's 3-life win into a wave 7 loss,
+and Hard's Goblin (13 hp) sits one point over the Musketeer's 12, which
+is why every Musketeer opening loses Hard on wave 1.
+
+**Findings.**
+
+1. Calling early is never a risk for a build that wins. A player who
+   calls at the first allowed tick on waves 1 to 8 collects the full 160
+   and does better: comboBuild on Normal ends with 18 lives instead of 13
+   (20 if it also buys mid-wave), hardBuild on Hard with 15 instead of
+   11. The decay never matters, since the window from last spawn to clear
+   is 3.6 s on wave 1 and at least 10 s from wave 3.
+2. The waves spawn for longer but the game is shorter. See the timing
+   table: ten waves take 381 s of wave time against 405 s before, and
+   247 s when every wave is called early.
+3. hardBuild wins Normal without losing a life, so the 5 to 15 lives
+   target describes comboBuild, not the best play.
+4. DESIGN.md said no clear check waits for old-wave survivors after a
+   call. The code waits for them, which is the only workable rule (setup
+   with live enemies would freeze them). Corrected in DESIGN.md; the same
+   wording is still in the `callNextWave` comment in `game.ts`.
+5. `COMBO_PLAN` has 31 actions and comboBuild buys 28: the third Mortar's
+   upgrade and the Cannon with its upgrade are never bought. The plan's
+   comment in `headless.ts` still says every action is bought by wave 10.
+6. "Kills kept on move" cannot show in play: only a tower built this
+   setup phase can move, and it has 0 kills.
+7. The perf spec does not hold 120 enemies. It tops up every 15 frames
+   and asserts at least 60; the three runs reported at least 75. The
+   enemies are all Goblins spread evenly, with no pile-up, flyers or
+   boss. It does measure real frame intervals and does fail at a 33 ms
+   median, with no skip or softer limit on CI. Three runs: median 16.7
+   ms, p95 16.8, 16.7 and 16.7 ms, 301 ticks each, so it is vsync-bound
+   and shows no headroom figure. The largest natural crowd is 47 (wave 6)
+   and 71 with every wave called early.
+8. Weaker tests after the retune: the mid-wave frame has no hurt bars and
+   no Cannon or Tar Pit shot; the "negative lives" browser probe lost its
+   natural case and keeps the forced boss exit; the wave-group pin
+   mentioned above.
+
+**Probes that passed.** Kills, uncredited kills and exits add up to the
+spawn count at every wave clear, per tower, with no enemy twice; gold is
+conserved through bounties, clear and early bonuses, a mid-wave sell and
+a rebuild; the bonus is 20, 20, 19, 1 and 0 at 0, 59, 60, 1199 and 1200
+ticks after the last spawn; every refusal leaves the state deeply equal;
+`waveClear` fires once per wave in a game that calls eight times; a loss
+in a called wave ends the game; both slow slots through a real Tar Pit
+and a real barrel in both orders, and the boss cap with both; a sold
+Fire Pot's burn kill counts for nobody and a tower rebuilt on the cell
+does not inherit it; byte-equal final state on all three levels. In the
+browser the call label is at most 118 px wide in the 130 px button for
+every bonus from 20 to 0, a click while spawning changes no pixel and
+logs nothing, and "Kills 9999" stays clear of the close button.
+"Call next" and "Kills" appear only in `names.ts`; "Start Wave" is still
+a literal in `hud.ts`, as before 25c.
+
+**Wave timing, comboBuild on Normal** (ticks; before is `origin/main`):
+
+| Wave | Last spawn before | after | Clear before | after | Most alive before | after |
+|---|---|---|---|---|---|---|
+| 1 | 420 | 912 | 951 | 1127 | 6 | 5 |
+| 2 | 528 | 1044 | 1447 | 1283 | 9 | 7 |
+| 3 | 420 | 798 | 1162 | 1421 | 12 | 17 |
+| 4 | 336 | 900 | 1321 | 1513 | 11 | 22 |
+| 5 | 480 | 870 | 3101 | 2438 | 14 | 28 |
+| 6 | 690 | 1320 | 1705 | 2089 | 28 | 47 |
+| 7 | 1410 | 1542 | 4199 | 4331 | 9 | 19 |
+| 8 | 1440 | 1620 | 3788 | 2965 | 21 | 41 |
+| 9 | 600 | 720 | 1992 | 1785 | 8 | 13 |
+| 10 | 1560 | 1560 | 4640 | 3922 | 17 | 22 |
+| all | | | 24306 | 22874 | | |
+
+**The wave 8 frame** (tick 931, 41 enemies): every enemy is on the first
+450 px of the trail and they draw as one unbroken band from the cave to
+the top of the first U. No single sprite or hp bar can be picked out;
+only the colour mix says what is in it. The rest of the map is empty.
