@@ -465,6 +465,16 @@ function nextFreeKidCell(state: GameState): Cell | undefined {
   return trailCellOrder(state.map).find((cell) => !towerAt(state, cell));
 }
 
+/**
+ * Milestone 27 follow-up: the archetypes whose plans are Meadow's alone
+ * (soundBuild, soundBuildNoTar, hardBuild, comboStrongest, comboWithKegs)
+ * throw for any other map instead of returning a Meadow script that would
+ * be played on it. Per-map versions are milestone 28's.
+ */
+function meadowOnly(name: string, map: MapId | undefined): void {
+  if (map !== undefined && map !== 'meadow') throw new Error(`${name} has a script for Meadow only, not for ${map}`);
+}
+
 /** Archetype 1: build nothing (on any level). Target: lost by wave 3. */
 export function noTowers(_difficulty?: Difficulty, map?: MapId): WaveScript {
   return map ? Object.assign([], { mapId: map }) : [];
@@ -559,7 +569,8 @@ export const SOUND_PLAN: readonly BuildAction[] = [
  * soon as gold allows. v1 towers only. Informational since milestone 12: no
  * target (the combo build carries the v2 targets).
  */
-export function soundBuild(difficulty?: Difficulty): WaveScript {
+export function soundBuild(difficulty?: Difficulty, map?: MapId): WaveScript {
+  meadowOnly('soundBuild', map);
   return recordScript(followPlan(SOUND_PLAN), difficulty);
 }
 
@@ -568,7 +579,8 @@ export function soundBuild(difficulty?: Difficulty): WaveScript {
  * upgrades on the cells where soundBuild builds them. Informational since
  * milestone 12: no target.
  */
-export function soundBuildNoTar(difficulty?: Difficulty): WaveScript {
+export function soundBuildNoTar(difficulty?: Difficulty, map?: MapId): WaveScript {
+  meadowOnly('soundBuildNoTar', map);
   const script = soundBuild(difficulty);
   const tarCells = new Set(script.flat().filter((a) => a.type === 'build' && a.tower === 'tarpit').map((a) => cellKey(a.cell)));
   return script.map((wave) => wave.filter((a) => !tarCells.has(cellKey(a.cell))));
@@ -814,7 +826,8 @@ export function bossRush(difficulty?: Difficulty, map?: MapId): WaveScript {
  * comboBuild script, because the mode changes kills and so the gold. No
  * target: `npm run sim` reports it beside comboBuild.
  */
-export function comboStrongest(difficulty?: Difficulty): WaveScript {
+export function comboStrongest(difficulty?: Difficulty, map?: MapId): WaveScript {
+  meadowOnly('comboStrongest', map);
   const plan = followPlan(COMBO_PLAN);
   let pending: BuildAction | undefined;
   return recordScript((state) => {
@@ -853,7 +866,8 @@ export const KEG_POLICY_WAVE_TICK = 600;
  * comboBuild, recorded by playing (the keg kills change the gold), so the
  * pre-wave actions can differ from comboBuild's. No target.
  */
-export function comboWithKegs(difficulty?: Difficulty): WaveScript {
+export function comboWithKegs(difficulty?: Difficulty, map?: MapId): WaveScript {
+  meadowOnly('comboWithKegs', map);
   const at = positionAlongPath(MAPS.meadow, KEG_POLICY_DISTANCE);
   const keg: SpecialAction = { type: 'special', special: 'keg', x: at.x, y: at.y, atWaveTick: KEG_POLICY_WAVE_TICK };
   const decide = followPlan(COMBO_PLAN);
@@ -898,7 +912,8 @@ export const HARD_PLAN: readonly BuildAction[] = ((): BuildAction[] => {
  * allows, plus the cluster special policy (CLUSTER_POLICY). Target: wins on
  * Hard. Played on Normal too (informational).
  */
-export function hardBuild(difficulty?: Difficulty): WaveScript {
+export function hardBuild(difficulty?: Difficulty, map?: MapId): WaveScript {
+  meadowOnly('hardBuild', map);
   return recordScript(followPlan(HARD_PLAN), difficulty, CLUSTER_POLICY);
 }
 

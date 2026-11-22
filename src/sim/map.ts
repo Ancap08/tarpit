@@ -52,8 +52,8 @@ export const MAPS: Readonly<Record<MapId, MapDef>> = {
     { x: 680, y: 192 },
     { x: 960, y: 192 },
   ]),
-  // Three runs joined by U-turns, lanes 96 px apart: one row of cells
-  // between two lanes reaches both. Length 1728 px.
+  // Four lanes 96 px apart, joined by two U-turns and a step down: one row
+  // of cells between two lanes reaches both. Length 1728 px.
   switchback: defineMap('switchback', [
     { x: 0, y: 96 },
     { x: 560, y: 96 },
@@ -64,9 +64,9 @@ export const MAPS: Readonly<Record<MapId, MapDef>> = {
     { x: 560, y: 384 },
     { x: 960, y: 384 },
   ]),
-  // A wide S with a river down the middle of its pocket: columns 13 to 16,
-  // rows 5 to 14 (40 cells), off the bottom edge, a rounded pool at the top
-  // (drawn; the rule uses the rectangle). Length 1536 px.
+  // An arch (up, across, down) with a river down the middle under it:
+  // columns 13 to 16, rows 5 to 14 (40 cells), off the bottom edge, its top
+  // end drawn as a pool with rounded corners. Length 1536 px.
   riverbend: defineMap(
     'riverbend',
     [

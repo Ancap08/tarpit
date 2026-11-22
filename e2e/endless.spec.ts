@@ -95,11 +95,11 @@ test('lose in endless: "Reached wave 15" without "of 10"; Menu shows the best li
   await waitForTitle(page);
   const ui = await titleUi(page);
   expect(ui.bestLine?.text).toBe(bestScoreText('meadow', 'normal', 14));
-  // Centred on y 414, below milestone 27's map row (y 302..400) and above Play (y 446).
+  // Centred on y 422, midway between milestone 27's map row (bottom y 398) and Play (top y 446).
   const r = ui.bestLine!.rect;
   expect(Math.abs(r.x + r.width / 2 - 480)).toBeLessThanOrEqual(1);
-  expect(Math.abs(r.y + r.height / 2 - 414)).toBeLessThanOrEqual(1);
-  expect(r.y).toBeGreaterThan(400);
+  expect(Math.abs(r.y + r.height / 2 - 422)).toBeLessThanOrEqual(1);
+  expect(r.y).toBeGreaterThan(398);
   expect(r.y + r.height).toBeLessThan(446);
   // A level never played shows no line; the line follows the selection.
   await click(page, 'title:easy');

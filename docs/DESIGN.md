@@ -67,10 +67,12 @@ on the right edge. Buildable counts are of 450 cells.
   y 192 and y 288). The y 192 lane runs right to left, the only leftward
   segment on any map. Row 10 lies under the y 288 lane, but the y 384 lane
   starts at x 560, so no row 10 cell reaches two lanes.
-- **Riverbend.** A wide S; the river is the water box x 416..544, y
+- **Riverbend.** An arch: the path runs right, climbs, crosses the top,
+  comes down and runs out right. The river is the water box x 416..544, y
   160..480 (columns 13 to 16, rows 5 to 14, 40 cells). It runs off the
-  bottom edge, ends in a rounded pool at the top (drawn inside the box)
-  and never touches the path.
+  bottom edge and never touches the path. Its top end is drawn as a pool
+  whose corners are rounded by 12 px, so every water cell looks like
+  water.
 - **Water rule.** `MapDef.water` is an optional list of boxes. A cell
   whose 32 px square overlaps one (touching edges do not count) is not
   buildable, the same rule as landmarks. Building or moving onto it is
@@ -83,7 +85,9 @@ on the right edge. Buildable counts are of 450 cells.
   (960,384): x 908, y 323, which removes cells (28,10) and (29,10)). The
   spawn cave is drawn on the path's first cells.
 - **Drawing.** `draw/map.ts` draws any map from its data: grass, the path,
-  water (flat blue, a 3 px darker bank, a few pale ripple strokes), the
+  water (flat blue filling its box, a 3 px darker bank, top corners
+  rounded by 12 px when it runs off the bottom edge, a few pale ripple
+  strokes), the
   cave at the spawn and a cottage in each landmark box. No image assets.
 - **High scores** are kept per map id (see High score).
 
@@ -224,7 +228,7 @@ Title menu: the title and subtitle, a "Difficulty" caption and a row of
 three 132 x 42 buttons (Easy, Normal, Hard; the selection highlighted like
 the build bar's active pick) at y 244, a band (y 302 to 430) for the map
 row of milestone 27 (y 302 to 400) and the high-score line (milestone 26,
-centred on y 414; see Endless mode), a 200 x 42
+centred on y 422; see High score), a 200 x 42
 [Play] at y 446, and a prompt line. Clicking a level only selects it; Play
 (or Enter or Space) starts the game; Left and Right move the selection.
 The selection is kept for the page session. The title reports ready (the
@@ -665,7 +669,8 @@ what was parsed, so unknown levels, unknown top-level keys and a stored
 `v` other than 1 are dropped on the next new best (accepted; pinned in
 `highScore.test.ts`).
 
-Title menu: one 18 px line centred at (480, 414), "Best on Riverbend,
+Title menu: one 18 px line centred at (480, 422), midway between the map
+row's bottom (y 398) and Play's top (y 446), "Best on Riverbend,
 Normal: 12 waves" ("1 wave" for one; milestone 27 added the map name) for
 the selected map and level, changing with either selection; no line when
 that pair has no score. Test hooks

@@ -14,7 +14,7 @@ import { DIFFICULTIES, type Difficulty } from '../sim';
 export const HIGH_SCORE_KEY = 'tarpit.best';
 /** The stored shape's version. */
 export const HIGH_SCORE_VERSION = 1;
-/** Today's only map (milestone 27 adds more). */
+/** The map a score is kept under when none is given: Meadow (milestone 27 added Switchback and Riverbend). */
 export const DEFAULT_MAP_ID = 'meadow';
 
 /** Best waves cleared, by map id, then level. A missing entry means no score. */

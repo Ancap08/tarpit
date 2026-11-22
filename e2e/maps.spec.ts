@@ -228,3 +228,20 @@ test('Play again keeps the map; Menu shows it still selected; the best line name
   await freshGame(page);
   expect((await state(page)).map.id).toBe('riverbend');
 });
+
+// Milestone 27 follow-up: a script with a plan for Meadow only refuses another map, loudly, and builds nothing.
+test('runScript on Riverbend with a Meadow-only script reports the error and places nothing', async ({ page }) => {
+  await openTitle(page);
+  const r = await page.evaluate(async () => {
+    const t = window.__tarpit as TarpitTestApi;
+    await t.startGame('normal', 'riverbend');
+    let error = '';
+    try {
+      t.runScript('soundBuild');
+    } catch (e) {
+      error = (e as Error).message;
+    }
+    return { error, towers: t.state().towers.length, gold: t.state().gold, phase: t.state().phase, wave: t.state().wave };
+  });
+  expect(r).toEqual({ error: 'soundBuild has a script for Meadow only, not for riverbend', towers: 0, gold: 100, phase: 'setup', wave: 0 });
+});

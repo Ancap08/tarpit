@@ -570,7 +570,7 @@ test('win screen after the combo build', async ({ page }) => {
 });
 
 // Milestone 26: the title with a stored best for Normal (the selected
-// level), "Best on Meadow, Normal: 12 waves" centred on y 414.
+// level), "Best on Meadow, Normal: 12 waves" centred on y 422 (milestone 27 follow-up).
 test('title with a best score', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('tarpit.best', '{"v":1,"best":{"meadow":{"normal":12}}}'));
   await open(page);

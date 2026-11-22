@@ -475,16 +475,32 @@ describe('B. archetypes and the map argument', () => {
   });
 
   // Finding (verifier, low): ARCHETYPES and INFORMATIONAL are typed (difficulty, map) => WaveScript, but
-  // soundBuild, soundBuildNoTar, hardBuild, comboStrongest and comboWithKegs drop the map and return a
-  // Meadow script with no mapId, so `ARCHETYPES.hardBuild('hard', 'riverbend')` silently plays Meadow.
-  // The implementer's DEVLOG lists this. Milestone 28 needs per-map versions (or these should refuse a
-  // map other than Meadow) before it reads a Hard target off them. Remove `.fails` once fixed.
-  it.fails('every entry of ARCHETYPES and INFORMATIONAL given a map returns a script for that map', async () => {
+  // soundBuild, soundBuildNoTar, hardBuild, comboStrongest and comboWithKegs dropped the map and returned a
+  // Meadow script with no mapId, so `ARCHETYPES.hardBuild('hard', 'riverbend')` silently played Meadow.
+  // Fixed in the milestone 27 follow-up (implementer): those five now throw for a map other than Meadow
+  // (milestone 28 writes per-map versions). This was an it.fails pin; it now checks that every entry given
+  // a map either returns a script for that map or refuses it loudly, and that exactly those five refuse.
+  it('every entry of ARCHETYPES and INFORMATIONAL given a map returns a script for that map or throws', async () => {
     const { ARCHETYPES, INFORMATIONAL } = await import('./headless');
     const wrong: string[] = [];
+    const refused: string[] = [];
     for (const [name, f] of Object.entries({ ...ARCHETYPES, ...INFORMATIONAL })) {
-      if (f('normal', 'riverbend').mapId !== 'riverbend') wrong.push(name);
+      let script;
+      try {
+        script = f('normal', 'riverbend');
+      } catch (e) {
+        expect((e as Error).message, name).toBe(`${name} has a script for Meadow only, not for riverbend`);
+        refused.push(name);
+        continue;
+      }
+      if (script.mapId !== 'riverbend') wrong.push(name);
     }
     expect(wrong).toEqual([]);
+    expect(refused.sort()).toEqual(['comboStrongest', 'comboWithKegs', 'hardBuild', 'soundBuild', 'soundBuildNoTar']);
+    // Meadow, named or not, still gets its script from each of them.
+    for (const name of refused) {
+      const f = { ...ARCHETYPES, ...INFORMATIONAL }[name];
+      expect(() => f('normal', 'meadow'), name).not.toThrow();
+    }
   }, 60_000);
 });

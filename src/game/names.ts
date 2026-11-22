@@ -72,7 +72,7 @@ export const TITLE_TEXT = {
   /** The map row's caption (milestone 27). */
   map: 'Map',
   play: 'Play',
-  prompt: 'Pick a difficulty, then press Play',
+  prompt: 'Pick a difficulty and a map, then press Play',
 } as const;
 
 /** The end screens' words (endText.ts and the end screen's buttons). */

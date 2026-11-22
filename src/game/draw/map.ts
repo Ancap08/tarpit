@@ -58,28 +58,30 @@ function exitCottage(g: Phaser.GameObjects.Graphics, box: Rect): void {
 }
 
 /**
- * A water box (milestone 27): a flat blue strip inside the box with a darker
- * bank edge. When the box runs off the bottom of the map its top end is a
- * rounded pool (a half disc as wide as the strip), so the drawn water stays
- * inside the box, which is what the build rule uses.
+ * A water box (milestone 27): a flat blue strip filling the box with a
+ * darker bank edge. When the box runs off the bottom of the map its top
+ * end is a pool with corners rounded by POOL_CORNER px (milestone 27
+ * follow-up: a half disc left the top corner cells, which the build rule
+ * refuses as water, mostly grass), so every water cell looks like water and
+ * the drawing stays inside the box the rule uses.
  */
+const POOL_CORNER = 12;
+
 function water(g: Phaser.GameObjects.Graphics, box: Rect, mapHeight: number): void {
   const bank = 3;
   const pool = box.y + box.height >= mapHeight;
-  const r = box.width / 2;
-  const cx = box.x + r;
+  const cx = box.x + box.width / 2;
   const shape = (inset: number, color: number) => {
     g.fillStyle(color, 1);
-    const top = pool ? box.y + r : box.y + inset;
-    g.fillRect(box.x + inset, top, box.width - 2 * inset, box.y + box.height - top);
-    if (pool) g.fillCircle(cx, box.y + r, r - inset);
+    const radius = pool ? POOL_CORNER - inset : 0;
+    g.fillRoundedRect(box.x + inset, box.y + inset, box.width - 2 * inset, box.height - (pool ? inset : 2 * inset), { tl: radius, tr: radius, bl: 0, br: 0 });
   };
   shape(0, COLORS.waterBank);
   shape(bank, COLORS.water);
   // Ripples: short pale strokes scattered down the strip in a fixed pattern.
   const offsets = [-40, 10, -18, 28, -34, 2];
   g.lineStyle(2, COLORS.waterRipple, 0.7);
-  for (let i = 0, y = box.y + (pool ? r * 0.6 : 20); y + 8 < box.y + box.height; i++, y += 38) {
+  for (let i = 0, y = box.y + 38; y + 8 < box.y + box.height; i++, y += 38) {
     const x = cx + offsets[i % offsets.length];
     g.lineBetween(x, y, x + 16, y);
   }
@@ -97,11 +99,9 @@ export function drawMapThumbnail(g: Phaser.GameObjects.Graphics, map: MapDef, x:
   g.fillRect(x, y, map.width * s, map.height * s);
   for (const box of map.water ?? []) {
     const top = px({ x: box.x, y: box.y });
-    const r = (box.width * s) / 2;
-    const pool = box.y + box.height >= map.height;
+    const r = box.y + box.height >= map.height ? POOL_CORNER * s : 0;
     g.fillStyle(COLORS.water, 1);
-    g.fillRect(top.x, pool ? top.y + r : top.y, box.width * s, box.height * s - (pool ? r : 0));
-    if (pool) g.fillCircle(top.x + r, top.y + r, r);
+    g.fillRoundedRect(top.x, top.y, box.width * s, box.height * s, { tl: r, tr: r, bl: 0, br: 0 });
   }
   for (const [width, color] of [
     [(PATH_WIDTH + 4) * s, COLORS.pathEdge],

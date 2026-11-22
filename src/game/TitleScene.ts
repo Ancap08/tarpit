@@ -16,7 +16,7 @@
 // "Map" caption y 312, map thumbnails y 326..398 (132 px wide, 16 px apart,
 // like the level buttons; each a 96 x 48 picture of the map drawn from its
 // data with the name under it), the high-score line (milestone 26) centred
-// on y 414, [Play] y 446..488, prompt y 522.
+// on y 422 (midway between the thumbnails and Play), [Play] y 446..488, prompt y 522.
 //
 // Ready (milestone 26 follow-up): Phaser makes an interactive object
 // hit-testable only at its scene's next update after setInteractive (the
@@ -60,8 +60,11 @@ const THUMB_H = 48;
 const THUMB_TOP = 3;
 /** The map name's centre, from the button's top. */
 const THUMB_NAME_Y = 60;
-/** The high-score line's centre (milestone 26), below milestone 27's map row (y 326..398). */
-export const BEST_LINE_Y = 414;
+/**
+ * The high-score line's centre (milestone 26): y 422, midway between the
+ * map row's bottom (398) and Play's top (446) (milestone 27 follow-up).
+ */
+export const BEST_LINE_Y = (MAP_ROW_Y + MAP_BUTTON_H + PLAY_BUTTON_Y) / 2;
 export const BEST_LINE_SIZE = 18;
 
 /** What the test hook ui() reports while the title menu shows. */
