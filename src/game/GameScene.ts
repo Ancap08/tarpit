@@ -80,6 +80,11 @@
 // tracers still read state.shots. In test mode the sprites are frozen: no
 // walk cycle, tweens or particles.
 //
+// Sound (milestone 33, audio/): Effects plays the sounds of the events it
+// routes; this scene adds a tower select, a refused action (a failed
+// action, or a click or tap on a blocked cell with a pick) and the charge
+// becoming ready. The HUD's mute button and the M key mute (audio/engine.ts).
+//
 // Effects (milestone 31, fx/effects.ts): in play the scene feeds every tick's
 // shots and every event batch to Effects instead of straight to the sprites;
 // it draws projectiles, turns and kicks the towers, delays each hit's flash
@@ -159,6 +164,7 @@ import type {
   UpgradeResult,
 } from '../sim';
 import { EventCursor } from './anim/effects';
+import { sound } from './audio/engine';
 import { Effects, type FxState } from './fx/effects';
 import { EnemySprites, type AnimState } from './anim/enemySprites';
 import { drawHpBars, drawShadows, drawStatusRings } from './draw/enemies';
@@ -625,6 +631,7 @@ export class GameScene extends Phaser.Scene {
       case 'tower':
         this.pick = null;
         this.panel.open(target.cell, this.state);
+        sound.play('select');
         break;
       case 'buildable':
         if (this.pick) this.build(target.cell, this.pick);
@@ -632,6 +639,7 @@ export class GameScene extends Phaser.Scene {
         break;
       case 'blocked':
         if (!this.pick) this.panel.close();
+        else sound.play('refuse');
         break;
       case 'outside':
         // The HUD: its buttons act on their own; the pick stays (the bar
@@ -656,6 +664,7 @@ export class GameScene extends Phaser.Scene {
       case 'tower':
         this.pick = null;
         this.panel.open(target.cell, this.state);
+        sound.play('select');
         break;
       case 'buildable':
         if (!this.pick) {
@@ -674,6 +683,7 @@ export class GameScene extends Phaser.Scene {
         else {
           this.armed = null;
           this.tapCell = target.cell;
+          sound.play('refuse');
         }
         break;
       case 'outside':
@@ -1082,7 +1092,10 @@ export class GameScene extends Phaser.Scene {
     for (let i = 0; i < n; i++) {
       // Milestone 30: once won or lost nothing ticks, so nothing replays after the win.
       if (this.state.phase === 'won' || this.state.phase === 'lost') break;
+      const recharging = this.state.specialRechargeTicks > 0;
       tick(this.state);
+      // Milestone 33: the spent charge became ready again (a wave start's fresh charge has the horn).
+      if (recharging && this.state.specialRechargeTicks === 0 && this.state.specialCharges > 0) sound.play('chargeReady');
       this.fx?.onTick(this.state.shots);
       for (const shot of this.state.shots) this.aim.pointAt(shot.cell, shot.to);
       this.shots.afterTick(this.state.shots);
@@ -1207,6 +1220,7 @@ export class GameScene extends Phaser.Scene {
 
   build(cell: Cell, type: TowerType): BuildResult {
     const result = buildTower(this.state, cell, type);
+    if (!result.ok) sound.play('refuse');
     this.takeEvents();
     this.redraw();
     return result;
@@ -1214,6 +1228,7 @@ export class GameScene extends Phaser.Scene {
 
   upgrade(cell: Cell): UpgradeResult {
     const result = upgradeTower(this.state, cell);
+    if (!result.ok) sound.play('refuse');
     this.takeEvents();
     this.redraw();
     return result;
@@ -1221,6 +1236,7 @@ export class GameScene extends Phaser.Scene {
 
   sell(cell: Cell): SellResult {
     const result = sellTower(this.state, cell);
+    if (!result.ok) sound.play('refuse');
     this.takeEvents();
     this.redraw();
     return result;
@@ -1229,6 +1245,7 @@ export class GameScene extends Phaser.Scene {
   /** Move an unlocked tower in setup (milestone 25a). */
   move(from: Cell, to: Cell): MoveResult {
     const result = moveTower(this.state, from, to);
+    if (!result.ok) sound.play('refuse');
     this.takeEvents();
     this.redraw();
     return result;
@@ -1237,6 +1254,7 @@ export class GameScene extends Phaser.Scene {
   /** Undo an upgrade bought this setup phase (milestone 25a). */
   undoUpgrade(cell: Cell): UndoUpgradeResult {
     const result = undoUpgrade(this.state, cell);
+    if (!result.ok) sound.play('refuse');
     this.takeEvents();
     this.redraw();
     return result;
@@ -1246,6 +1264,7 @@ export class GameScene extends Phaser.Scene {
   useSpecialAt(type: SpecialType, x: number, y: number): SpecialResult {
     const from = this.state.events.length;
     const result = useSpecial(this.state, type, { x, y });
+    if (!result.ok) sound.play('refuse');
     if (result.ok) {
       const landed = this.state.events.slice(from).find((e) => e.kind === 'special');
       if (landed?.kind === 'special') this.specialFx.add(landed);

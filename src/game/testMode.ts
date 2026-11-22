@@ -6,6 +6,8 @@
 // title menu) where it is drawn at any viewport size.
 
 import type Phaser from 'phaser';
+import { sound } from './audio/engine';
+import { audioLab } from './audio/lab';
 import {
   bestUnlockedSpecial,
   comboBuild,
@@ -166,6 +168,10 @@ export function installGlobal(game: Phaser.Game): void {
       return canvasToPage(game, c.x, c.y);
     },
     titleReady: () => game.scene.isActive('title') && titleScene(game).isReady,
+    // Milestone 33: the sound engine's state and the mute setting; offline rendering for tests.
+    audio: () => sound.snapshot(),
+    setMuted: (muted: boolean) => sound.setMuted(muted),
+    audioLab,
     // Milestone 31: the play-mode effects (null in test mode or between scenes).
     fx: () => (game.scene.isActive('game') ? (game.scene.getScene('game') as GameScene).fxState() : null),
     towerAngle: (col: number, row: number) =>

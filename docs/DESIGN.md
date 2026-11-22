@@ -666,6 +666,124 @@ depends on them (`npm run sim` is unchanged). The maths is in
   tracers, barrels snap to each shot, and hits and kills react at once, so
   the screenshot baselines are unchanged.
 
+## Sound
+
+Milestone 33 (with its follow-up). Every sound is made in code with the
+Web Audio API: no audio files, no samples, no music, no volume slider.
+Sounds follow the renderer's events and change no rule, number or outcome
+(`npm run sim` is unchanged). Code: `src/game/audio/`.
+
+- **Recipes** (`recipes.ts`): each sound is data, a list of oscillator or
+  noise layers with an envelope (attack, hold, exponential decay to -80
+  dB, then 0), an optional pitch slide and an optional filter sweep.
+  `synth.ts` schedules a recipe on any `BaseAudioContext`, so the same
+  code plays live and renders offline. Headroom rule: every sound on its
+  own peaks at or below 0.9 before the limiter, measured offline
+  (`e2e/sound-render.spec.ts`).
+- **The list** (stated lengths): Musketeer crack 0.08 s and tick 0.05 s;
+  Longbow twang 0.18 s and thud 0.10 s; Cannon thump 0.22 s and boom
+  0.40 s; Mortar pop with a falling whistle 0.26 s (it ends inside the
+  320 ms flight at 1x) and deep boom 0.56 s; Tar Pit glob 0.13 s and splat
+  0.15 s; Fire Pot whoosh 0.24 s and crackle 0.15 s; hit tick 0.02 s;
+  death pops 0.09 s (Goblin, Harpy), 0.14 s (Wolf, Shieldbearer), 0.30 s
+  (Troll); exit warning 0.45 s; build 0.21 s, upgrade 0.32 s, sell 0.25 s,
+  refused 0.27 s (two round falling notes), button tap 0.03 s, tower select
+  0.13 s; Powder Keg 0.76 s, Tar Barrel 0.35 s, Fire Arrows 0.55 s, charge
+  ready 0.36 s; wave start horn 0.70 s, wave clear chime 0.51 s, Call next
+  0.35 s; the boss's arrival 1.40 s and fall 1.41 s; win 1.76 s and lose
+  1.93 s; the gold cheat's coin 0.42 s (triangles with a low-passed edge).
+- **Small speakers.** Phones and tablets barely play below about 150 Hz,
+  so every low sound (Cannon thump and boom, Mortar boom, Troll death,
+  exit warning, Powder Keg, Tar Barrel, the boss's drone, stomps and fall:
+  `LOW_SOUNDS`) has a mid layer between 200 and 900 Hz: a triangle body an
+  octave or two above the thump and a band-passed noise crack. Through the
+  phone stand-in (a 200 Hz high-pass, 24 dB/octave) each keeps at least
+  half its RMS (0.56 to 0.78; before the mid layers the Cannon boom kept
+  0.19, the Mortar boom 0.16, the Keg 0.30).
+- **Levels.** Each sound's short-term loudness (the RMS of its loudest
+  50 ms, before the master chain) is set to sit in its tier's band
+  (`LEVEL_TIERS`, checked offline). Each tower's impact is louder than
+  its shot.
+
+  | Tier | Sounds | Band | Set to |
+  |---|---|---|---|
+  | Tick | hit | 0.008 to 0.02 | 0.012 |
+  | Shot | the six shots | 0.05 to 0.065 | 0.06 (Musketeer 0.055) |
+  | Impact | the six impacts, the death pops | 0.068 to 0.11 | 0.09 (Musketeer 0.07, Fire Pot 0.08; deaths 0.08, 0.09, 0.10) |
+  | Action | build, upgrade, sell, refused, tap, select, coin | 0.045 to 0.10 | 0.08 (tap 0.05, select 0.07) |
+  | Moment | exit, charge ready, wave clear, Call next, wave horn | 0.11 to 0.17 | 0.12, 0.12, 0.14, 0.14, 0.165 |
+  | Big | specials, boss arrival and fall, win, lose | 0.17 to 0.26 | 0.17 to 0.23 |
+
+  In the 10 s busy wave the mix gets 5.0 dB louder when the wave horn
+  sounds and 5.3 dB when the Powder Keg does (at least 3 dB is tested).
+- **Triggers.** `fx/effects.ts` plays the sounds of the events it routes:
+  a shot when the tower fires; its impact, the hit tick and the death pop
+  when the drawn projectile lands (the effects' own arrival); a kill
+  without a projectile (burn, special) at once; the boss's fall with his
+  burst (no death pop for him). An early call plays Call next instead of
+  the horn; the win or lose jingle replaces the last wave's chime.
+  `GameScene` adds a tower select, a refused action (a failed build,
+  upgrade, sell, move, undo or special, or a click or tap on a blocked
+  cell with a pick) and the charge becoming ready (the recharge reaching
+  0; a wave start's fresh charge has the horn). Every button click taps,
+  except Start Wave (the horn) and the mute button.
+- **Thinning** (`mixer.ts`, real time from `performance.now()`): the same
+  sound started again within 50 ms is dropped; within 120 ms for the
+  smallest sounds (hit tick, Musketeer tick, small death pop) and 400 ms
+  for the exit warning. Each start's level is `max(0.3, 1 / (1 + 0.25 n))`
+  for n starts of that sound in the last 400 ms.
+- **Budget for busy sounds:** hit ticks, shots, impacts and deaths share
+  20 starts in any second. Past it, such a sound still starts if it has
+  not sounded for 500 ms (a beat), so each stays audible at least twice a
+  second when it is asked for. Player actions, moments and big sounds
+  are not limited. In the 120-enemy horde with 25 towers: 21 starts a
+  second at 1x and 24 at 3x (33 and 90 before the budget).
+- **Voice cap:** 16 voices at once. At the cap a new sound pushes out the
+  live voice that ranks lowest (priority, then level, then age) if that
+  voice's priority is not above its own, with a 5 ms fade; otherwise the
+  new sound is dropped. Priorities: hit tick 0, shots 1, impacts and
+  deaths 2, player actions 3, wave moments, exit and charge 4, boss,
+  specials and jingles 5.
+- **Master chain** (`synth.ts`): every voice -> level 0.55 -> limiter
+  (`DynamicsCompressorNode`: threshold -3 dB, knee 0, ratio 20, attack
+  2 ms, release 100 ms) -> mute gain -> output. The limiter is a safety
+  net, not a squeeze: 40 shots, 40 impacts and 40 deaths in half a second
+  peak at 0.51 thinned and 0.92 unthinned, and the limiter's deepest gain
+  reduction is 0.0 dB and 0.8 dB (measured offline against the same mix
+  with the limiter bypassed, lined up for its look-ahead, in 20 ms
+  windows; at most 3 dB is tested), so it does not pump.
+- **Speed:** a sound starts at the context's current time and is never
+  pitched or sped up; at 2x and 3x more shots come per real second and
+  thinning and the budget handle them.
+- **Starting and stopping** (`engine.ts`): no `AudioContext` exists until
+  the player's first pointerdown, pointerup, touchend, click or keydown
+  (capture listeners on `window` create it, or resume it later). A hidden
+  page stops every voice and suspends the context; it resumes when the
+  page shows. Without Web Audio, or if the context fails, the game is
+  silent with no error. Phaser's own sound manager is off
+  (`audio.noAudio`), so it makes no context. Sounds play only while the
+  context runs and the page shows.
+- **Test mode** (`?test=1`): the engine is installed disabled; nothing is
+  created and nothing plays (the mute setting and M still work).
+- **Mute.** A speaker drawn in code (two waves when on, a red cross when
+  muted): landscape, 42 x 42 at the right end of HUD row 2 (x 904, under
+  the speed button; the build bar's buttons went from 148 to 140 px) and
+  in the title's top right corner; portrait, 70 x 70 at the end of
+  controls row 2 (Start Wave 170 and speed 82 wide) and in the title's
+  corner. The M key toggles it anywhere (in the README and
+  `audio().hint`; no hint is drawn on the button, where it was too small
+  to read). Muting sets the mute gain to 0 at once and stops every voice;
+  unmuting plays a tap. Stored in `localStorage` under `tarpit.muted` ("1"
+  muted, anything else sound on; default on) with the best scores' care:
+  blocked or full storage never throws and the choice holds for the
+  session.
+- **Hooks:** `window.__tarpit.audio()` (enabled, muted, label, hint,
+  context state, live voices, counts requested, played, thinned and
+  capped by name), `setMuted()`, and `audioLab` (offline rendering,
+  `lab.ts`). `npm run sounds -- <folder>` writes every sound and a 10 s
+  busy wave into `m33-sounds.wav`, and the same through the phone
+  stand-in into `m33-sounds-phone.wav`, for listening (never committed).
+
 ## Layouts
 
 Milestone 32b. No game rule changes: the simulation, its numbers, the maps
@@ -684,7 +802,8 @@ drawn and where touches land differ.
   the bottom), then the controls: a row of the six tower buttons (75 x 70,
   each the tower's map shape over its cost, because a name at 18 px does
   not fit 75 px) and a row with Special (130 x 70), Start Wave (214 x 70)
-  and speed (114 x 70). The tower buttons are 4 px apart and the second row's 6 px; both rows start 5 px from the edge. Portrait text is 18 px or more.
+  and speed (114 x 70); milestone 33 narrowed Start Wave to 170 and speed
+  to 82 for the 70 x 70 mute button at the row's end ("Sound"). The tower buttons are 4 px apart and the second row's 6 px; both rows start 5 px from the edge. Portrait text is 18 px or more.
   On a 390 x 763 CSS px phone (standalone, inside the safe areas) the
   canvas fits at 0.639: buttons are 44.7 CSS px, text 11.5 CSS px and a
   map cell 20.5 CSS px. With Safari's bars (390 x 664) the scale is 0.556:

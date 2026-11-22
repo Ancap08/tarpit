@@ -44,6 +44,9 @@ test('live loop ticks, spawns enemies, and 2x runs faster', async ({ page }) => 
   // Test mode is off, so only the read-only hooks are there besides `game`.
   expect(await page.evaluate(() => Object.keys(window.__tarpit ?? {}).sort())).toEqual([
     'animState',
+    // Milestone 33: the sound engine's state, the mute setting and offline rendering.
+    'audio',
+    'audioLab',
     'canvasToPage',
     // Milestone 31: the effects' read-only counts and a tower's drawn barrel angle.
     // Milestone 32b: cellToPage, layout (it replaced portraitCardVisible) and worldToPage.
@@ -51,6 +54,7 @@ test('live loop ticks, spawns enemies, and 2x runs faster', async ({ page }) => 
     'fx',
     'game',
     'layout',
+    'setMuted',
     'titleReady',
     'towerAngle',
     'uiRects',

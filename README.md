@@ -87,6 +87,9 @@ kick back, kills drop floating gold, and waves and the boss get banners.
 On Android: open it in Chrome, open the menu, then Install app.
 After the first visit it plays offline; best scores stay on the device.
 
+**Sound.** Every action has a short retro sound, made in code (no audio files); it starts on your first tap or click.
+The speaker button on the title and in the game, or the M key, mutes it; the choice is remembered.
+
 ![Riverbend in wave 7: the river runs down the middle of the arch-shaped path; Longbows, Mortars, a Tar Pit and a Fire Pot stand beside it, and Trolls, Wolves and Harpies come up the left side and over the top](docs/media/tarpit-riverbend.png)
 
 ![Wave 10 on Meadow: Grumblefoot, the Troll King, with his health bar at 3331 of 4000, tarred and burning under a Mortar splash](docs/media/tarpit-boss.png)

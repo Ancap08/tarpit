@@ -30,6 +30,9 @@
 // button reads "3x" while held. The Gold readout is a tap target
 // (GOLD_RECT, for the gold cheat) and shows CHEAT_MARK under it once the
 // cheat was used.
+// Milestone 33: a mute button (ui/muteButton.ts) at row 2's right end,
+// 42 x 42 at x 904 (the build bar narrowed to make room); in portrait it
+// ends controls row 2, 70 x 70 (ui/geometry.ts portraitRow2).
 
 import Phaser from 'phaser';
 import {
@@ -75,6 +78,7 @@ import {
   type Layout,
 } from './layout';
 import { SpecialMenu } from './ui/specialMenu';
+import { MuteButton } from './ui/muteButton';
 
 export type { Rect };
 
@@ -139,6 +143,12 @@ export function previewText(state: GameState): string {
 export const SPECIAL_BUTTON = { x: 630, width: 100 } as const;
 export const START_BUTTON = { x: 738, width: 130 } as const;
 export const SPEED_BUTTON = { x: 876, width: 70 } as const;
+/**
+ * Milestone 33: the mute button at row 2's right end, under the speed
+ * button and right-aligned with it (x 904..946); the build bar's buttons
+ * narrowed from 148 to 140 px to make room (ui/buildBar.ts).
+ */
+export const MUTE_BUTTON = { x: 904, width: 42 } as const;
 /** The Special button's charge pip: radius, and its centre's distance from the button's right edge. */
 export const PIP_RADIUS = 5;
 export const PIP_INSET = 14;
@@ -275,6 +285,8 @@ export interface HudMetrics {
   special: Rect;
   start: Rect;
   speed: Rect;
+  /** Milestone 33: the mute button. */
+  mute: Rect;
   specialFont: string;
   startFont: string;
   callFont: string;
@@ -296,6 +308,7 @@ export const LANDSCAPE_HUD: HudMetrics = {
   special: { ...SPECIAL_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H },
   start: { ...START_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H },
   speed: { ...SPEED_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H },
+  mute: { ...MUTE_BUTTON, y: ROW2_BUTTON_Y, height: BUTTON_H },
   specialFont: '16px',
   startFont: START_LABEL_SIZE,
   callFont: CALL_LABEL_SIZE,
@@ -304,7 +317,7 @@ export const LANDSCAPE_HUD: HudMetrics = {
 };
 
 export const PORTRAIT_HUD: HudMetrics = (() => {
-  const { special, start, speed } = portraitRow2();
+  const { special, start, speed, mute } = portraitRow2();
   const size = `${PORTRAIT_MIN_FONT}px`;
   return {
     portrait: true,
@@ -326,6 +339,7 @@ export const PORTRAIT_HUD: HudMetrics = (() => {
     special,
     start,
     speed,
+    mute,
     specialFont: size,
     startFont: size,
     callFont: size,
@@ -355,6 +369,8 @@ export class Hud {
   private pipKey = '';
   private readonly bar: BuildBar;
   private readonly bossBar: BossBar;
+  /** Milestone 33: the mute button (row 2's right end in landscape, row 2's right end in portrait). */
+  private readonly muteButton: MuteButton;
   private readonly m: HudMetrics;
   /** The Lives readout's left edge now (portrait: after the gold), for the exit shake. */
   private livesX = LIVES_X;
@@ -388,11 +404,13 @@ export class Hud {
       .text(m.cheat.x, m.cheat.y, CHEAT_MARK, { fontFamily: FONT, fontSize: m.cheat.size, fontStyle: 'bold', color: TEXT.cheatMark })
       .setOrigin(m.cheat.originX, 0.5)
       .setVisible(false);
-    this.startButton = new Button(scene, m.start, START_WAVE_TEXT, handlers.onStartWave, m.portrait ? { fontSize: m.startFont } : {});
+    // Milestone 33: Start Wave's own sound is the horn (or Call next's), so its click plays no tap.
+    this.startButton = new Button(scene, m.start, START_WAVE_TEXT, handlers.onStartWave, m.portrait ? { fontSize: m.startFont, sound: null } : { sound: null });
     this.speedButton = new Button(scene, m.speed, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress });
     this.specialMenu = new SpecialMenu(scene, m.menu.left, m.menu.top, handlers.onSpecialPick, m.menu.size, m.menu.font);
     this.bar = new BuildBar(scene, m.barTop, handlers.onPick, layout);
     this.bossBar = new BossBar(scene, layout);
+    this.muteButton = new MuteButton(scene, m.mute);
   }
 
   /**
@@ -494,11 +512,12 @@ export class Hud {
    * build bar button, and `special:<type>` for each popup button while the
    * popup is open.
    */
-  rects(): { startWave: Rect; speed: Rect; special: Rect; gold: Rect } & Record<string, Rect> {
+  rects(): { startWave: Rect; speed: Rect; special: Rect; gold: Rect; mute: Rect } & Record<string, Rect> {
     return {
       gold: { ...this.m.gold },
       startWave: { ...this.startButton.rect },
       speed: { ...this.speedButton.rect },
+      mute: { ...this.muteButton.bounds },
       special: { ...this.specialButton.rect },
       ...this.bar.rects(),
       ...this.specialMenu.rects(),

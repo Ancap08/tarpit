@@ -80,7 +80,7 @@ for (const url of ['/?renderer=canvas', '/?test=1']) {
     // At the first render: ready, every button listed (milestone 27: the map thumbnails too).
     expect(probe.atRender).toEqual({
       ready: true,
-      rects: ['title:easy', 'title:normal', 'title:hard', 'title:map:meadow', 'title:map:switchback', 'title:map:riverbend', 'title:play'],
+      rects: ['title:easy', 'title:normal', 'title:hard', 'title:map:meadow', 'title:map:switchback', 'title:map:riverbend', 'title:play', 'title:mute'],
     });
     // The click at that moment started the game.
     await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game'), undefined, { timeout: 5000 });

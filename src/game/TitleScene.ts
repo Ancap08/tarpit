@@ -37,6 +37,9 @@
 // update; rects() lists the buttons only from then, and the hook
 // titleReady() reports it, so specs wait for it before clicking.
 //
+// Mute (milestone 33): a mute button in the top right corner
+// (titleMuteRect), and M toggles the sound here as in the game.
+//
 // High-score line (milestone 26): "Best on Riverbend, Normal: 12 waves" for
 // the selected map and level (highScore.ts, names.ts bestScoreText),
 // redrawn when either selection changes; no line when that pair has no
@@ -53,6 +56,7 @@ import { COLORS, FONT, TEXT } from './palette';
 import { currentLayout } from './layoutSwitch';
 import { Button } from './ui/button';
 import { PORTRAIT_TITLE, titleRects, type TitleGeometry } from './ui/geometry';
+import { MuteButton } from './ui/muteButton';
 
 /** Menu buttons: 42 px tall like every touch target (44.8 px on an iPad in landscape). */
 export const MENU_BUTTON_H = 42;
@@ -76,6 +80,17 @@ const THUMB_NAME_Y = 60;
  */
 export const BEST_LINE_Y = (MAP_ROW_Y + MAP_BUTTON_H + PLAY_BUTTON_Y) / 2;
 export const BEST_LINE_SIZE = 18;
+
+/**
+ * Milestone 33: the title's mute button, 14 px in from the top right
+ * corner: 42 x 42 in landscape (as the other menu buttons), 70 x 70 in
+ * portrait (as the game's controls). The title text below it is centred
+ * and ends well left of it.
+ */
+export function titleMuteRect(portrait: boolean, canvasWidth: number): Rect {
+  const size = portrait ? 70 : MENU_BUTTON_H;
+  return { x: canvasWidth - 14 - size, y: 14, width: size, height: size };
+}
 
 /** What the test hook ui() reports while the title menu shows. */
 const LANDSCAPE_TITLE: TitleGeometry = {
@@ -130,6 +145,8 @@ export class TitleScene extends Phaser.Scene {
   private selectedMap: MapId = DEFAULT_MAP;
   private mapButtons = new Map<MapId, Button>();
   private playButton: Button | null = null;
+  /** Milestone 33: the mute button in the top right corner. */
+  private muteButton: MuteButton | null = null;
   private bestLine: Phaser.GameObjects.Text | null = null;
   private starting = false;
   /** True from the first render after create(); see "Ready" above. */
@@ -210,6 +227,10 @@ export class TitleScene extends Phaser.Scene {
       () => this.play(),
       { fontSize: geo.playFont },
     );
+
+    // Milestone 33: the mute button, in the top right corner (TITLE_MUTE).
+    const portrait = currentLayout().kind === 'portrait';
+    this.muteButton = new MuteButton(this, titleMuteRect(portrait, width));
 
     const prompt = this.add
       .text(cx, geo.promptY, TITLE_TEXT.prompt, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: TEXT.prompt })
@@ -303,6 +324,7 @@ export class TitleScene extends Phaser.Scene {
     for (const [l, b] of this.levelButtons) out[`title:${l}`] = b.rect;
     for (const [m, b] of this.mapButtons) out[`title:map:${m}`] = b.rect;
     if (this.playButton) out['title:play'] = this.playButton.rect;
+    if (this.muteButton) out['title:mute'] = this.muteButton.bounds;
     return out;
   }
 }
