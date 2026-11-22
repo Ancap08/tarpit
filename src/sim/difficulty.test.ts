@@ -124,11 +124,13 @@ describe('determinism per level', () => {
     });
   }
 
+  // Verifier (milestone 25c): 48 archetype games take about 4 s on the horde
+  // waves and timed out at the default 5 s in a full run; 30 s leaves room on CI.
   it('Normal by argument equals Normal by default for every archetype', () => {
     for (const archetype of Object.values(ARCHETYPES)) {
       expect(playScripted(archetype('normal'), undefined, 'normal').state).toEqual(playScripted(archetype()).state);
     }
-  });
+  }, 30_000);
 });
 
 const end = (difficulty: Difficulty, script: ReturnType<typeof comboBuild>) => {
