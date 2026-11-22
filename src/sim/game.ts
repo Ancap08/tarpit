@@ -42,6 +42,9 @@
 // does useSpecial (milestone 25b): its damage, slow and burn apply at once
 // and its kills are removed and paid before the next tick. startWave grants
 // one special charge; the wave clear in step 7 takes an unused one away.
+// callNextWave (milestone 25c) also acts between ticks: once every enemy of
+// the current wave has spawned it clears that wave at once and starts the
+// next one on top of the survivors.
 //
 // So the first enemy of a group with delay 0 spawns during the first tick()
 // after startWave (waveTick 0), and an enemy spawned at waveTick k is at
@@ -60,6 +63,10 @@ export { secondsToTicks, TICKS_PER_SECOND };
 export const START_GOLD = DIFFICULTY_DEFS.normal.startGold;
 export const START_LIVES = DIFFICULTY_DEFS.normal.startLives;
 export const WAVE_CLEAR_BONUS = 25;
+/** Call early (milestone 25c): the grace window after a wave's last spawn, in seconds. */
+export const EARLY_CALL_GRACE_SECONDS = 20;
+/** Call early: the most the early bonus pays. */
+export const EARLY_CALL_MAX_BONUS = 20;
 
 export interface CreateGameOptions {
   /** Difficulty level (milestone 25); Normal when left out. */
@@ -113,6 +120,68 @@ export function startWave(state: GameState): StartWaveResult {
   }
   state.events.push({ kind: 'waveStart', wave: state.wave });
   return { ok: true, wave: state.wave };
+}
+
+export type CallEarlyRefusal = 'game-over' | 'not-in-wave' | 'last-wave' | 'still-spawning';
+
+export type CallEarlyStatus = { ok: true; bonus: number } | { ok: false; reason: CallEarlyRefusal };
+
+export type CallNextWaveResult = { ok: true; wave: number; bonus: number; gold: number } | { ok: false; reason: CallEarlyRefusal };
+
+/** waveTick on which the last enemy of wave `wave` (1-based) spawns. */
+export function lastSpawnTick(wave: number): number {
+  return Math.max(...WAVES[wave - 1].groups.map((g) => spawnTick(g, g.count - 1)));
+}
+
+/**
+ * Whether callNextWave would succeed now, and the early bonus it would pay
+ * (milestone 25c). Refused, checked in this order: 'game-over' (won or
+ * lost); 'not-in-wave' (setup); 'last-wave' when the current wave is the
+ * last, or when the next wave holds the boss (the boss is never called
+ * early, so wave 9 cannot call wave 10); 'still-spawning' while an enemy
+ * of the current wave has yet to spawn. The bonus is
+ * min(EARLY_CALL_MAX_BONUS, ceil(secondsRemaining)), where secondsRemaining
+ * = max(0, EARLY_CALL_GRACE_SECONDS - seconds since the last spawn). The
+ * last spawn happens during the tick with waveTick = lastSpawnTick; between
+ * ticks right after it, 0 s have passed (bonus 20); each later tick adds
+ * 1/60 s, so the bonus is 19 after 60 more ticks and 0 from 1200 on.
+ */
+export function callEarlyStatus(state: GameState): CallEarlyStatus {
+  if (state.phase === 'won' || state.phase === 'lost') return { ok: false, reason: 'game-over' };
+  if (state.phase !== 'wave') return { ok: false, reason: 'not-in-wave' };
+  const next = WAVES[state.wave];
+  if (!next || next.groups.some((g) => isBoss(g))) return { ok: false, reason: 'last-wave' };
+  const groups = WAVES[state.wave - 1].groups;
+  if (!groups.every((g, gi) => state.spawnedPerGroup[gi] >= g.count)) return { ok: false, reason: 'still-spawning' };
+  const elapsedTicks = state.waveTick - (lastSpawnTick(state.wave) + 1);
+  const remaining = Math.max(0, EARLY_CALL_GRACE_SECONDS - elapsedTicks / TICKS_PER_SECOND);
+  return { ok: true, bonus: Math.min(EARLY_CALL_MAX_BONUS, Math.ceil(remaining)) };
+}
+
+/**
+ * Call the next wave early (milestone 25c), between ticks like startWave.
+ * Allowed when callEarlyStatus says so. The current wave counts as cleared
+ * at once: it pays its WAVE_CLEAR_BONUS plus the early bonus and emits
+ * `waveClear`; enemies still alive stay on the field (they exit, cost lives
+ * and pay bounties as usual) but no longer belong to any wave's clear
+ * check. Then the next wave starts its spawn schedule from waveTick 0 on
+ * top of them: the wave counter goes up, the special charge is set to 1
+ * (an unused one does not carry over), and `earlyCall {wave, bonus}` (the
+ * new wave) and `waveStart` follow. Towers are already locked mid-wave.
+ */
+export function callNextWave(state: GameState): CallNextWaveResult {
+  const status = callEarlyStatus(state);
+  if (!status.ok) return status;
+  const cleared = state.wave;
+  state.gold += WAVE_CLEAR_BONUS + status.bonus;
+  state.events.push({ kind: 'waveClear', wave: cleared, bonus: WAVE_CLEAR_BONUS });
+  state.wave += 1;
+  state.waveTick = 0;
+  state.spawnedPerGroup = WAVES[state.wave - 1].groups.map(() => 0);
+  state.specialCharges = 1;
+  state.events.push({ kind: 'earlyCall', wave: state.wave, bonus: status.bonus });
+  state.events.push({ kind: 'waveStart', wave: state.wave });
+  return { ok: true, wave: state.wave, bonus: status.bonus, gold: state.gold };
 }
 
 /** Advance the game by exactly one 1/60 s step. Does nothing once won or lost. */
