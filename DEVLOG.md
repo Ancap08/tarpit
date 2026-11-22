@@ -4019,3 +4019,96 @@ natural negative-lives case in the first pass).
 - Margins that stay thin: lazyBuild on wave 8, Hard combo on wave 8 and
   Hard lazyBuild on wave 5 are each at the edge of their range;
   comboNoSpecials is 1 life worse than the combo.
+
+### Verifier notes, second pass
+
+Verifier: Claude Fable 5.2, on `m25c-horde` at 80d982b. No code outside
+tests was changed. Five probes were added to
+`src/sim/horde-verifier.test.ts` (S1 spawn rate, S2 tar).
+
+**Checks.** Lint, check:assets, typecheck, build and check:size pass; 647
+unit tests passed twice and 214 Playwright tests once. The perf spec
+passed five times alone (median 16.7 ms, p95 16.7 to 16.8 ms, 300 or 301
+ticks) and once inside the full run; the page-load timeout the
+implementer saw did not come back. Pixel baselines are still the
+milestone 25b ones and were not checked.
+
+**Rules and targets.** A1 to A5 and every Normal, Easy and Hard target
+reproduce from `npm run sim` and from my own replay, and the pins assert
+them as ranges plus exact values. Every second-pass number in
+`docs/DESIGN.md` matches its constant, the ten wave tables and the 65 s
+boss delay included. The A1 test does slide over the merged schedule of
+all groups. It leaves the window's far edge out; with both ends of the
+3 s counted, waves 3, 6 and 8 send 7, 8 and 7 walkers (pinned in S1).
+
+**Revert matrix** (one change at a time on the second-pass numbers):
+
+| Revert | What changes | Target broken |
+|---|---|---|
+| Goblin hp 19 -> 18 | nothing on a target | none |
+| Goblin hp 19 -> 20 | Hard noFire loses on wave 5, not 7 | none |
+| Wolf hp 20 -> 19 | nothing at all | none |
+| Wolf hp 20 -> 21 | noFire 8 lives, not 9 | none |
+| Troll hp 900 -> 800 | lazy loses on wave 9; combo 18 lives, 215 gold after wave 9; noSpecials ties it; Hard combo wins with 3 | lazy, combo lives and gold, noSpecials |
+| Harpy hp 36 -> 30 | noSpecials 13 lives, the same as the combo | noSpecials worse |
+| Hard 1.2 -> 1.3 | Hard lazy loses on wave 1; Hard combo loses on wave 5; hardBuild wins with 3; Hard Goblin 25 | Hard lazy, Hard combo, Hard hp rule |
+| Shieldbearer hp 70 -> 120 | Easy lazy 7 lives, not 9 | none |
+
+Goblin and Wolf hp are no longer on a knife edge. The thin spots are the
+ones named above: lazyBuild on wave 8, Hard combo on wave 8, Hard lazy on
+wave 5, and comboNoSpecials one life behind the combo, which six fewer
+Harpy hp removes.
+
+**Findings.**
+
+1. Three waves now run past 100 s at 1x with no calls: wave 7 (102 s) and
+   wave 10 (105 s) for comboBuild on Normal, and waves 7, 8 and 10 (102,
+   100 and 111 s) for hardBuild on Hard. Whole game: 614 s and 612 s
+   without calls, 464 s and 472 s with every call.
+2. Calling early is still free: comboBuild on Normal goes from 13 to 18
+   lives, hardBuild on Hard from 9 to 12. The most enemies alive with
+   every call is 33 (combo, Normal, wave 6) and 34 (hardBuild, Hard,
+   wave 8), under the 35 that A3 sets for the no-call game only.
+3. The Tar Barrel does nothing measurable on Normal: comboBuild without
+   its three barrels ends with the same lives and gold, and only wave 5
+   clears 3 s later. On Hard it saves comboBuild 2 lives over no special,
+   but a Powder Keg in the same three waves saves 3. The policy prefers
+   the barrel. Fire Arrows carry the "specials matter" target alone.
+4. The Tar Pit still helps, but no balance test says so. soundBuild and
+   soundBuildNoTar both lose on wave 8 on Normal; with tar it lasts 534
+   ticks longer and has 3 lives against 2 after wave 7. On Easy the tar
+   build wins and the other loses. Pinned in S2.
+5. hardBuild on Hard does one life better with no specials at all (10
+   against 9): the cluster policy is not a pure gain.
+6. The perf spec's "at least 100 alive at every sample" cannot fail: it
+   samples right after topping up to 120, so it always reads 120. Sampled
+   before the top-up the count fell to 82 (spread) and 32 (packed), below
+   100 on 2 and 4 of 302 frames. The 270-tick floor and the packed case
+   are real.
+7. `spawnHorde` is unreachable on a plain URL in the production build:
+   through `window.__tarpit`, the scene list and the prototype it returns
+   false and adds nothing, also for `?perf=0`, `?perf=true`, `?PERF=1` and
+   `#perf=1`. `?perf=1` changes only that one method and is written down
+   only in code comments. The gate protects little: `scene.state` is
+   still writable from the console on a plain URL, as before 25c.
+8. One Musketeer on wave 1 now leaks 12 of 20 Goblins on Normal
+   (`verifier2.test.ts`); the lazy build's two leak none.
+9. `comboWithKegs` hits nothing in ten waves and now ends exactly like
+   comboNoSpecials, so its full-game probe no longer exercises a special
+   kill (E1 does).
+10. Stale comments: `difficulty.ts` names only 12 and 4 for the Hard hp
+    rule; `enemies.ts` says the rule holds on any level, but Easy is
+    outside it (Goblin 14, Wolf 15).
+
+**My probes.** Only expected values moved, plus the one E5 setup change
+(an upgraded Longbow). It is honest: the assertion that old-wave enemies
+killed after a call pay their bounty and are counted once is unchanged.
+
+**Frames.** Wave 8 (tick 1576, 22 enemies) and wave 6 (tick 841, 19) both
+read: single sprites and hp bars can be picked out along the trail. Two
+or three Harpy-over-Troll overlaps in wave 8, and a knot of about five
+tarred sprites on the first climb in wave 6. My own frames with every
+wave called early, at the peak: hardBuild on Hard, wave 8, 34 enemies,
+and comboBuild on Normal, wave 6, 33 enemies. Both read: the enemies are
+strung over three stretches of trail with small knots of two or three,
+nothing like the first pass's band.

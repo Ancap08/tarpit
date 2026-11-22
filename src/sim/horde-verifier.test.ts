@@ -729,3 +729,66 @@ describe('B. the DESIGN.md wave table, transcribed by the verifier (no other tes
     expect(secs).toEqual([22.8, 27.9, 21, 32, 39, 44, 55, 73.5, 29, 65]);
   });
 });
+
+// Second pass (longer, sparser waves): the verifier's own checks of the new
+// wave rule and of what tar still does.
+describe('S1. spawn rate (A1), from the merged schedule of all groups of a wave', () => {
+  /** Spawn ticks of every walker (or flyer) of wave index `w`, all groups merged, ascending. */
+  const merged = (w: number, flying: boolean) =>
+    WAVES[w].groups
+      .filter((x) => ENEMY_STATS[x.type].flying === flying)
+      .flatMap((x) => Array.from({ length: x.count }, (_, i) => Math.round((x.delay + i * x.interval) * 60)))
+      .sort((a, b) => a - b);
+  /** The most spawns in any window of `span` ticks starting on a spawn; `closed` also counts a spawn exactly `span` later. */
+  const most = (ticks: number[], span: number, closed: boolean) =>
+    Math.max(0, ...ticks.map((t) => ticks.filter((u) => u >= t && (closed ? u <= t + span : u < t + span)).length));
+
+  it('in any 180 ticks [t, t + 180) at most 6 walkers and 4 flyers spawn; waves 6 and 8 sit on the walker limit', () => {
+    const walkers = WAVES.map((_, w) => most(merged(w, false), 180, false));
+    const flyers = WAVES.map((_, w) => most(merged(w, true), 180, false));
+    expect(walkers).toEqual([3, 4, 5, 3, 4, 6, 3, 6, 5, 4]);
+    expect(flyers).toEqual([0, 0, 0, 2, 3, 0, 3, 3, 0, 2]);
+    for (const n of walkers) expect(n).toBeLessThanOrEqual(6);
+    for (const n of flyers) expect(n).toBeLessThanOrEqual(4);
+  });
+
+  // The rule holds only with the window's far edge left out. Groups on whole
+  // seconds line up, so two spawns exactly 3.0 s apart are common: counting
+  // both ends, waves 3, 6 and 8 send 7, 8 and 7 walkers in 3 s.
+  it('with both ends of the 3 s counted the walker counts are higher: 7, 8 and 7 on waves 3, 6 and 8 (pinned, not a limit)', () => {
+    expect(WAVES.map((_, w) => most(merged(w, false), 180, true))).toEqual([3, 4, 7, 4, 5, 8, 4, 7, 6, 5]);
+    expect(WAVES.map((_, w) => most(merged(w, true), 180, true))).toEqual([0, 0, 0, 3, 3, 0, 4, 3, 0, 3]);
+  });
+});
+
+describe('S2. what tar still does (no balance test pins it)', () => {
+  const run = (name: string, level: 'easy' | 'normal') => playScripted(ARCHETYPES[name](level), undefined, level);
+
+  it('Tar Pit, Normal: soundBuild and soundBuildNoTar both lose on wave 8, but with tar it has one more life after wave 7 and lasts 534 ticks longer', () => {
+    const tar = run('soundBuild', 'normal');
+    const none = run('soundBuildNoTar', 'normal');
+    expect([tar.state.phase, tar.state.wave, none.state.phase, none.state.wave]).toEqual(['lost', 8, 'lost', 8]);
+    expect([tar.waves[6].lives, none.waves[6].lives]).toEqual([3, 2]);
+    expect([tar.waves[7].ticks, none.waves[7].ticks]).toEqual([4031, 3497]);
+    expect(tar.waves[7].ticks).toBeGreaterThan(none.waves[7].ticks);
+  });
+
+  it('Tar Pit, Easy: soundBuild wins with 9 lives and soundBuildNoTar loses on wave 10', () => {
+    const tar = run('soundBuild', 'easy');
+    const none = run('soundBuildNoTar', 'easy');
+    expect([tar.state.phase, tar.state.lives]).toEqual(['won', 9]);
+    expect([none.state.phase, none.state.wave]).toEqual(['lost', 10]);
+  });
+
+  it('Tar Barrel, Normal: comboBuild without its three barrels (waves 4 to 6) ends the same, 13 lives and 476 gold; only wave 5 clears 180 ticks later', () => {
+    const script = comboBuild();
+    const withBarrel = playScripted(script);
+    const timed = script.timed!.map((list, i) => (i >= 3 && i <= 5 ? [] : list));
+    const without = playScripted(Object.assign(script.map((w) => [...w]), { timed }));
+    expect(without.log.filter((l) => 'result' in l && !l.result.ok)).toEqual([]);
+    expect([without.state.phase, without.state.lives, without.state.gold]).toEqual(['won', 13, 476]);
+    expect(without.waves.map((w) => w.lives)).toEqual(withBarrel.waves.map((w) => w.lives));
+    const later = without.waves.map((w, i) => w.ticks - withBarrel.waves[i].ticks);
+    expect(later).toEqual([0, 0, 0, 0, 180, 0, 0, 0, 0, 0]);
+  });
+});
