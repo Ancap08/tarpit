@@ -56,6 +56,7 @@ test('live loop ticks, spawns enemies, and 2x runs faster', async ({ page }) => 
     'fx',
     'game',
     'layout',
+    'pageLock',
     'setMuted',
     'titleReady',
     'towerAngle',

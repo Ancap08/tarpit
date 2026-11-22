@@ -85,6 +85,8 @@ cloud shadows and the odd bird or butterfly, all still under reduced motion.
     finger. Tap the × to close a tower's panel. For a special, tap where it
     should land, or hold to see the circle above your finger and let go to
     fire.
+    On touch a ghost over a blocked cell moves to a free cell beside it on the
+    same side of the trail, and a tap beside a tower selects it.
 
 **Install it.** On iPhone and iPad: open the game in Safari, tap Share, then Add to Home Screen.
 On Android: open it in Chrome, open the menu, then Install app.

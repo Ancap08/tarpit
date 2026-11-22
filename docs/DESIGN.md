@@ -912,6 +912,86 @@ drawn and where touches land differ.
   and is drawn for the window's shape when it runs; a scene drawn for
   another layout than the window's rebuilds on its next frame.
 
+## Touch and phones
+
+Milestone 35 (`src/game/pageLock.ts`, `src/game/touchAssist.ts`). Mouse
+input never goes through any of this: placement and selection with a
+mouse stay exact in every layout.
+
+- **Page lock.** `index.html` fixes `html` and `body` (`position: fixed`,
+  `overflow: hidden`, `overscroll-behavior: none`) so the document has
+  nothing to scroll, and gives `html`, `body`, `#game` and everything in
+  them `touch-action: none`, no text selection, no callout and no tap
+  highlight. iOS Safari ignores `user-scalable=no`, so a pinch or double
+  tap that starts on the letterbox bars beside a portrait canvas (plain
+  `body` before this) zoomed the page. `installPageLock()` also prevents,
+  at the document and non-passive, Safari's `gesturestart`,
+  `gesturechange` and `gestureend`, any `touchmove` with two or more
+  touches, a one-finger `touchmove` that started off the canvas, and
+  `dblclick`. It never prevents `touchstart` or `touchend`, so taps, drags,
+  the five-tap gold cheat and Phaser's own window listeners are unchanged.
+- **Recovery.** On `visualViewport` `resize` and `scroll`, window `scroll`,
+  `resize`, `orientationchange`, `pageshow` and a return to the page, a
+  check runs 150 ms after the last event (`recoveryFor`): a scale more than
+  0.01 from 1 or an offset or scroll of 0.5 CSS px or more is put back.
+  It scrolls to the origin and, for a scale, rewrites the viewport meta
+  content to an equivalent spelling (`initial-scale=1` and
+  `initial-scale=1.0`, alternating), at most once a second. That rewrite is
+  only a first attempt: iOS ignores `maximum-scale` for a pinch, Apple does
+  not promise that a changed meta tag drops the zoom, and `scrollTo` does
+  not move a pinch-zoomed view. So, whatever the browser does, `#game` is
+  placed on what is actually visible (`boxFitFor`): when the visual
+  viewport is zoomed or offset, `#game` takes its rectangle
+  (`offsetLeft`, `offsetTop`, `width`, `height`, in layout-viewport CSS px,
+  less the safe-area insets divided by the scale), so the canvas fits and
+  centres in the visible area even if the page stays zoomed; at scale 1
+  with no offset it returns to `index.html`'s insets (or, while a Safari
+  toolbar is mid-change, the visible size at the origin). The box moves on
+  every viewport event and the canvas refits at once (Phaser re-reads the
+  canvas bounds, so taps map to the right cells), then again after the
+  check, through the layout switch (`layoutSwitch.ts` `refit()`: no switch
+  unless the shape changed, GameScene restarts coalesce). Placing the box
+  fires no viewport event, so nothing loops. The layout is chosen from the
+  visual viewport at scale 1, else the layout viewport, never a zoomed
+  view, so a zoom never flips the layout or restarts the game.
+- **Snap.** On touch (a bar drag, a planning-phase move and tap
+  placement), when the cell under the lifted point cannot take the tower
+  (trail margin, water, the cottage, occupied, the map's edge) the ghost
+  moves to another cell (`snapCell`). The candidates are the cells within
+  1.5 cells, centre to centre, of the cell under the point (its eight
+  neighbours) that can take the tower and that the straight line from the
+  lifted point reaches without crossing the trail's centreline, water or
+  the cottage (leaving a water or cottage box the point starts in is not
+  crossing). The nearest to the lifted point wins, except that a candidate
+  toward the finger (its offset has a positive part toward the bottom of
+  the screen: world +y in landscape, world +x in portrait) loses to any
+  other candidate at most 25% farther. Remaining ties go to the lower cell
+  key (the upper row, then the left column, in world terms). A move may go
+  back home. A ring at the lifted point and a line to the cell show the
+  snap. Red shows only with no candidate, and a release then cancels; a
+  lifted point off the map never snaps. Gold plays no part. A tap on a
+  tower still selects it, even with a pick. Against the first rule (nearest
+  only), 49 points in every unbuildable cell: Meadow 3.1%, Switchback 0.1%
+  and Riverbend 6.6% of the points that snapped now find no candidate
+  (each of those snaps crossed the trail, water or the cottage); none of
+  the remaining snaps crosses one.
+- **Magnifier.** When a 32 px cell is under 28 CSS px on screen (phones,
+  portrait and landscape; not the tablet or desktop), a touch drag, move
+  or special aim hold shows a 200 x 200 canvas px view of the map at 2x,
+  centred on the target cell (or the aim point) and kept inside the map.
+  It is a second Phaser camera on the same scene (no input, the aim banner
+  and its own frame ignored), so it shows the live game, the cell
+  highlight, ghost, range and aim cross; it costs one more pass over the
+  display list while a drag lasts. It sits in a top corner of the map on
+  the side away from the finger, keeps its side until the finger (56 px)
+  or the target (24 px) would touch it, then takes the other top corner,
+  then a bottom corner. It goes when the hold ends, is cancelled or the
+  game ends; a layout switch or Play again destroys it with the scene.
+- **Nearest tower.** With no pick and no aiming, a touch tap on no tower's
+  cell within 0.75 of a cell (24 px) of a tower's centre selects the
+  nearest tower (ties to the lower cell key). Further away it closes the
+  panel as before.
+
 ## Install and offline
 
 Milestone 32a. No game rule changes. `public/manifest.webmanifest` (name,

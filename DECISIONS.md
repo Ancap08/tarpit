@@ -1015,3 +1015,37 @@ can change it; "Kyle" means Kyle decided.
 - **Next, in order:** phone fixes (no page zoom or scroll, snap to the
   nearest valid cell, a magnifier while dragging), then the 20-wave game.
   Fable.
+
+## 2026-11-23, milestone 35 (phone fixes)
+
+- **The whole page ignores zoom and scroll gestures, not only the
+  canvas.** Kyle reported the screen zooming out and being hard to centre
+  again. Likely cause: in portrait the game is letterboxed, and a pinch or
+  double tap that starts on the page's side bars was a page gesture. It
+  cannot be reproduced in emulation. Kyle (report), Fable (diagnosis in
+  the brief), Opus (also found the layout was being chosen from a zoomed
+  size), Sonnet (checked).
+- **Recovery does not depend on Safari resetting the zoom.** If the page
+  is zoomed or shifted anyway, the game fits itself to the visible part of
+  the page and centres there; rewriting the viewport tag is only a first
+  try. Added after the verifier put the odds of the first version at
+  about 65 to 70% (about 80% after). Sonnet (finding), Fable (ask), Opus.
+- **Snap to the nearest valid cell, touch only:** among the eight
+  neighbours of the cell under the lifted ghost, the nearest free
+  buildable one; never across the trail, water or the cottage; a cell on
+  the finger's side loses to one up to 25% farther. Mouse placement stays
+  exact. Fable (rule), Opus, Sonnet (17,640 samples, no crossings).
+- **A magnifier while dragging on small screens** (cells under 28 px on
+  screen): a 2x view of the target in a top corner away from the finger.
+  **A tap near a tower selects it** (within three quarters of a cell).
+  Fable (scope), Opus.
+- **Accepted:** the magnifier can cover a stretch of trail while a drag
+  lasts; a snap can still land near the thumb when the only free cell is
+  on that side; while a zoom persists the lift and the magnifier threshold
+  are off by the zoom factor. Sonnet (findings), Fable.
+- **Only Kyle's iPhone can confirm the zoom fix;** a six-step check is in
+  the DEVLOG verifier notes. Fable.
+- **From here until Kyle's Claude usage resets (Tuesday), Codex is the
+  implementer** for heavy work, run by the coordinator from this session;
+  Claude Sonnet still verifies and Fable still coordinates. Kyle, to save
+  Claude usage. An `AGENTS.md` carrying the repo's rules is added for it.

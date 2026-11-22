@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GameScene } from './game/GameScene';
-import { currentLayout, installLayoutSwitch } from './game/layoutSwitch';
+import { currentLayout, installLayoutSwitch, refit } from './game/layoutSwitch';
+import { installPageLock } from './game/pageLock';
 import { registerServiceWorker } from './sw/register';
 import { installGlobal, isTestMode } from './game/testMode';
 import { TitleScene } from './game/TitleScene';
@@ -43,6 +44,8 @@ const game = new Phaser.Game({
 });
 
 installLayoutSwitch(game);
+// Milestone 35: no zoom, scroll or drift; put the page back and re-centre if the browser does it anyway.
+installPageLock(refit);
 installGlobal(game);
 // Milestone 33: gesture, visibility and M key listeners; silent in test mode.
 sound.install({ enabled: !isTestMode() });

@@ -31,6 +31,7 @@ import type { AudioState } from './audio/engine';
 import type { audioLab } from './audio/lab';
 import type { FxState } from './fx/effects';
 import type { DecorState } from './decor/livingMap';
+import type { PageLockState } from './pageLock';
 import type { UiState } from './GameScene';
 import type { HudStrings, Rect } from './hud';
 import type { ScriptName } from './testMode';
@@ -182,6 +183,8 @@ export interface TarpitTestApi {
   decor(): DecorState | null;
   /** Milestone 31: the drawn barrel angle of the tower on (col, row) in play, or null. */
   towerAngle(col: number, row: number): number | null;
+  /** Milestone 35 (also outside test mode): the page lock's counts (pageLock.ts). */
+  pageLock(): PageLockState;
   /** Milestone 33 (also outside test mode): the sound engine's state (audio/engine.ts). */
   audio(): AudioState;
   /** Milestone 33: mute or unmute, as the mute button does (stored). */
@@ -190,7 +193,7 @@ export interface TarpitTestApi {
   audioLab: typeof audioLab;
 }
 
-export type TarpitGlobal = Pick<TarpitTestApi, 'game' | 'uiRects' | 'canvasToPage' | 'layout' | 'cellToPage' | 'worldToPage' | 'animState' | 'titleReady' | 'fx' | 'decor' | 'towerAngle' | 'audio' | 'setMuted' | 'audioLab'> &
+export type TarpitGlobal = Pick<TarpitTestApi, 'game' | 'uiRects' | 'canvasToPage' | 'layout' | 'cellToPage' | 'worldToPage' | 'animState' | 'titleReady' | 'fx' | 'decor' | 'towerAngle' | 'pageLock' | 'audio' | 'setMuted' | 'audioLab'> &
   Partial<TarpitTestApi>;
 
 declare global {

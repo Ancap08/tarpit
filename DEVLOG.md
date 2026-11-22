@@ -7003,3 +7003,187 @@ with small centres. `DESIGN.md` now says about 85 tufts (the code makes
 85 or 86) and records the verifier's phone finding. Readability against
 main: mean within 0.6%, 10th percentile within 9.6% (unchanged worst
 case); perf spec median 16.7 ms in all three cases.
+
+## 2026-11-23: milestone 35, phone fixes
+
+Kyle's iPhone report: placing was easier but "not that easy to drop
+pieces", and "the screen will zoom out and be hard to get centered again".
+
+**Zoom and drift.** Not reproducible in emulation, so the cause is
+reasoned from the page: in portrait the canvas is letterboxed (about 307
+of 390 CSS px wide on an iPhone in Safari), and only the canvas had
+`touch-action: none`. A pinch or double tap that starts on the side bars
+landed on plain `body`, and iOS Safari ignores `user-scalable=no`, so it
+zoomed the page; a pinch with one finger on each side did the same. The
+layout switch also read `window.innerWidth`/`innerHeight`, which on iOS
+shrink with a pinch zoom, so a zoomed page could pick the wrong layout.
+Now `html`, `body`, `#game` and everything in them have `touch-action:
+none`, html and body are fixed, the document prevents gesture events,
+multi-touch moves, side-bar moves and `dblclick`, and a debounced check
+puts a zoomed or offset visual viewport back (scroll to the origin;
+rewrite the viewport meta content so Safari clamps to `maximum-scale=1`)
+and re-centres the canvas through the layout switch, which now reads the
+visual viewport at scale 1 (`DESIGN.md` "Touch and phones").
+
+**Placing.** Touch ghosts snap to the nearest valid cell within 1.5 cells;
+a tap beside a tower selects it; phones get a magnifier camera while
+dragging or aiming. The magnifier's first zoom (2.25) showed under three
+cells across, mostly plain grass around a target; 2x shows about three
+cells and reads better, still inside the scope's 2 to 2.5.
+
+**Tests changed by the new rule.** Four older touch tests asserted that a
+drag or tap onto the trail, water, the cottage or another tower places
+nothing; on touch these now snap when a free cell is within 1.5 cells, so
+they assert the snap (and refuse only with nothing near):
+`drag-verifier-touch.spec.ts` (d), `maps-verifier-touch.spec.ts` (two),
+`portrait-verifier-phone.spec.ts`. Mouse tests are unchanged. Two hook-list
+tests gained `pageLock`. A first version of those updates aimed at points
+exactly on a cell edge or at a cell centre between two equal neighbours,
+where page rounding flipped the result between runs; the specs now aim a
+fraction of a pixel or a few pixels off.
+
+**Evidence.** Unit: snap (every unbuildable cell with a buildable
+neighbour on all three maps, from five points in the cell), nearest tower,
+magnifier placement over a 16 px grid in both layouts, recovery decision.
+Browser: `phone-fixes-phone.spec.ts` (page lock, recovery with a stubbed
+`visualViewport`, ten resizes, snap per map and per cell kind, magnifier
+sides and every exit route, nearest tower), `phone-fixes-touch.spec.ts`
+(tablet), `phone-fixes.spec.ts` (mouse does not snap or pick near). All
+24 chromium and tablet screenshot frames rendered locally are
+byte-identical to main's; of the phone frames only `phone-placing` and
+`phone-aim` changed (they now show the magnifier), plus the new
+`phone-magnifier` and `phone-snap`.
+
+**Needs a real iPhone.** Whether Safari honours `touch-action: none` on
+the side bars, whether the meta rewrite snaps the zoom back, and how the
+toolbar and home-screen mode behave cannot be emulated.
+
+### Verifier notes (milestone 35, Claude Sonnet)
+
+Checked: no diff under `src/sim`; `npm run sim` output identical to main;
+the 26 chromium (mouse) frames rendered on main and on this branch are
+byte-identical; lint, check:assets, typecheck, 1248 unit tests, build,
+check:size pass; `npm run test:e2e` passed (558 passed, 8 skipped, all
+skips already on main); the 44 phone-fixes specs passed three more times.
+New probes: `e2e/phone-fixes-verifier-phone.spec.ts` and the perf print
+`e2e/phone-fixes-perf-verifier-phone.spec.ts`.
+
+- **Snap.** An independent computation (every unbuildable cell on the three
+  maps, 49 lifted points in each) matches `snapCell` in all 17,640 samples
+  (ties to the upper row, then the left column). Largest jump from the
+  lifted point to the chosen cell's centre: 66.5 world px (about 2 cells);
+  from the cell under the point: 45.3 px (a diagonal). About 5 % of samples
+  (284 of 5,194 on Meadow) pick a cell that has another blocked cell between
+  it and the point, so a snap can hop across a one-cell trail edge or river
+  bank (example Meadow (5,3) to (6,4)). In portrait 66 px is about 47 CSS px,
+  as far as the 48 px lift, so a snap can put the ghost under the thumb; the
+  magnifier then still shows it. Not restricted to one side; the scope allows
+  it. A snapped drop builds on the shown cell and costs the tower's price;
+  mouse drags show no snap.
+- **Recovery.** With a stubbed viewport stuck at scale 1.4 and 50 resize
+  events over 2.8 s: one check, one rescale, layout unchanged, tower kept.
+  At scale 1 nothing runs. With `visualViewport` undefined nothing throws.
+  A zoomed viewport in landscape does not flip the layout.
+- **Limit of the recovery.** `scrollTo(0, 0)` does not move a pinch-zoomed
+  visual viewport; only the meta rewrite (or a scale of 1) does. iOS 10 and
+  later ignore `maximum-scale` and `user-scalable=no` for pinch, and whether
+  a changed meta tag makes Safari drop the zoom is not something the
+  documentation promises. Treat the rewrite as a hope. The prevention
+  (`touch-action: none`, `gesturestart` and two-finger `touchmove`) is the
+  part likely to work. Fallback if a real phone still zooms: size and
+  position `#game` to the visual viewport (`offsetLeft`, `offsetTop`,
+  `width`, `height`) or counter-scale it by `1 / scale`, so the game fills
+  what the player sees while zoomed.
+- **Accessibility.** Pinch zoom is gone for the page. All game text is on
+  the canvas (`index.html` has no other text), so no page text becomes
+  unreadable, but a player who needs zoom has none.
+- **Perf** (headless Chromium, phone project, 5 s of drag with the magnifier
+  up): 304 / 303 / 202 frames at 1x / 6x / 20x CPU throttle on this branch;
+  303 / 303 / 191 and 177 on main. No regression found; a desktop Mac is not
+  a phone.
+- **Look.** The magnifier sits in a top corner and can cover part of the
+  trail where enemies walk; the spawn stays visible in the frames viewed
+  (a drag near the spawn moves it to the bottom right).
+- **The phone check.** The "Needs a real iPhone" paragraph above is not
+  enough to tell whether the zoom report is fixed. Use this, in Safari and
+  again from the home-screen icon, in portrait first, then landscape:
+  1. Pinch with both fingers on the canvas, then both on a side bar, then
+     one on each. Expect: nothing zooms.
+  2. Double-tap the side bar, then a blank map cell, then a button. Expect:
+     no zoom; the button works.
+  3. Drag a finger on a side bar up and down, and from the very top and
+     bottom edges. Expect: the page does not move, the Safari toolbar may
+     collapse, the game stays centred and nothing is cut off.
+  4. Rotate to landscape and back twice in the middle of a game. Expect: the
+     game is centred, the same towers are there.
+  5. If a zoom does happen: note iOS version, Safari or icon, and what you
+     did. Within about a second the game should fill and centre in what you
+     can see (it now fits the visible area even if Safari keeps the zoom).
+     Then note whether the zoom itself went back to normal (the meta
+     rewrite worked) or only the game moved (the fit worked).
+  6. Then placing: drag a tower to the trail edge (the ring and line show the
+     snap, the magnifier appears), drop it, and tap beside a tower.
+
+### Follow-up (coordinator, after the verifier's notes)
+
+- **Recovery no longer rests on the meta rewrite.** The rewrite stays as a
+  first attempt, but the verifier is right that nothing promises it works
+  on iOS. Now, whenever the visual viewport is zoomed (scale not 1) or
+  offset, `#game` is placed on the visible rectangle (`offsetLeft`,
+  `offsetTop`, `width`, `height`, less the safe-area insets divided by the
+  scale), so the canvas fits and is centred in what the player sees even if
+  Safari keeps the zoom; at scale 1 with no offset the normal CSS returns.
+  The box moves on each viewport event and the canvas refits at once, so
+  Phaser has the real bounds and taps map to the right cells; the debounced
+  check refits again. Placing the box fires no viewport event (no loop),
+  and the layout is still chosen from the unzoomed size (no flip, no
+  restart, no lost state). Browser tests stub `visualViewport` at scale 1.4
+  and 0.8 with offsets: the canvas ends inside the visible rectangle,
+  centred, filling one side; a tap selects the right tower and tap-tap
+  builds on the right cell; back at scale 1 the inline style is gone and
+  the canvas is centred in the window.
+- **Snap may not cross a barrier, and avoids the thumb.** Two rules added
+  to `snapCell`: a candidate whose straight line from the lifted point
+  crosses the trail's centreline, water or the cottage is not allowed
+  (leaving a box the point starts in is allowed), and a candidate toward
+  the finger (toward the bottom of the screen; the layout's direction is an
+  input, so the function stays pure) loses to any other allowed candidate
+  at most 25% farther. Over 49 points in every unbuildable cell, against
+  the first rule: snaps that found a cell before and find none now are
+  Meadow 154 of 4,900 (3.1%), Switchback 7 of 5,341 (0.1%), Riverbend 385
+  of 5,831 (6.6%), the same in both layouts; every one of them had crossed
+  the trail, water or the cottage (155, 8 and 386 crossing snaps before,
+  of which those were the only choice; 0 now). Snaps toward the finger fell
+  from 2,239 to 1,310 (portrait Meadow; landscape 2,292 to 1,779). The
+  largest jump is still 66.5 world px (a diagonal from a far corner), and
+  the verifier's wider measure (any blocked cell between the point and the
+  chosen cell) rose, because the finger rule more often picks a diagonal
+  past a trail-margin cell on the same side of the trail; no snap crosses
+  the trail itself.
+- **The verifier's comparison.** The 17,640-sample independent comparison
+  the verifier describes is not in its committed spec
+  (`phone-fixes-verifier-phone.spec.ts` checks one snap case through
+  `snapCases`, which follows the new rule unchanged). So the same check now
+  lives in `src/game/touchAssist.test.ts`: an independent reference (line
+  crossings solved directly, boxes found by sampling the segment, candidates
+  sorted by the rule) is compared with `snapCell` at 49 points in every
+  unbuildable cell on the three maps, in both layouts' finger directions.
+  Changed against the verifier's description: the expected rule (barriers
+  and the finger penalty) and the second finger direction.
+- **Phone check.** The verifier's six-step check above is the one for
+  Kyle. The README lines now say only what the emulated tests show.
+
+Follow-up check (8b0f820, Claude Sonnet): the fit-the-visible-area
+fallback holds with a stubbed `visualViewport` at scales 1.4, 0.8 and 2.5
+with offsets, in portrait and landscape (`phone-fixes-verifier-phone.spec.ts`):
+the canvas lies inside the visible rectangle and is centred in it, taps on up
+to ten cells (corners included) arm the right cells, a lifted drag builds on
+the right cell, `#game` style is written 6 times over 50 events, layout and
+tower state do not change, and normal CSS returns at scale 1. Open points by
+reading, not fixed: while zoomed, `lift` and the magnifier test use canvas px
+per layout CSS px, so on screen the lift is 48 CSS px times the scale and the
+magnifier threshold is off by the same factor. The new snap rule is
+re-derived independently in `src/game/touchAssist-verifier.test.ts` (6 cases,
+three maps in both layouts, 17,640 points each): 0 mismatches, 0 crossings;
+red where the old rule snapped: Meadow 2.4 %, Switchback 0.2 %, Riverbend
+4.5 % of the old snaps.
