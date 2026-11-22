@@ -669,3 +669,39 @@ can change it; "Kyle" means Kyle decided.
 - **For milestone 28:** the growth number; endless hp ignores the Hard hp
   rule; `endlessGreedy` stops buying after wave 14, so it is not a
   ceiling for a good player.
+
+## 2026-11-21, milestone 27 (maps and the map picker)
+
+- **Waypoints.** Switchback `(0,96) (560,96) (560,192) (320,192)
+  (320,288) (560,288) (560,384) (960,384)`, 1728 px. Riverbend `(0,384)
+  (300,384) (300,96) (660,96) (660,384) (960,384)`, 1536 px, with an
+  unbuildable river x 416..544, y 160..480 (40 cells). Meadow unchanged,
+  1584 px. Buildable cells 344, 334, 312. Fable chose them; Opus built.
+- **The brief described the shapes wrongly, three times** (coordinator's
+  slips, Fable). It called Switchback "three U-turns" and said three rows
+  sit between two lanes: it has two U-turns and a step, and rows 4 and 7
+  sit between lanes. It called Riverbend "a wide S": it is an arch. The
+  implementer tested what is true and reported the difference; the paths
+  stay as built and the docs say what they are.
+- **The map travels with the game.** `createGame({ map })`; no global map.
+  Meadow's sim output and game frames are identical to before. Fable
+  (rule), Opus (build), checked by Fable's independent mask.
+- **Water blocks only building** (refusal reason `water`); shots, ranges,
+  specials and flyers ignore it. The river is drawn filling its cells so
+  every refused cell looks like water. Fable.
+- **Title: a Map row of three thumbnails; Up and Down change the map and
+  stop at the ends; the best line names map and difficulty.** Default
+  (Opus). Scores are kept per map.
+- **Archetype scripts without a plan for a map throw** instead of playing
+  Meadow's cells there. Verifier's finding (Fable), fixed by Opus.
+- **Left as is:** a tower in Riverbend's bottom-left cells opens its panel
+  over the spawn lane; no nearby position avoids the lane. For the v5 HUD
+  pass. Tower labels hide stacked towers on Riverbend's banks, as on
+  Meadow. Wolves and the boss have no up or down frames.
+- **For milestone 28 (verifier's gap list):** Switchback is too easy
+  (lazyBuild loses on wave 9, combo wins with 18 lives and 215 gold after
+  wave 9, and the Normal plan beats Hard); on Riverbend specials hurt (8
+  lives with them, 14 without), so its special ticks or plan need a second
+  pass first; noAntiAir on Riverbend has 1 life after wave 4; Hard
+  lazyBuild loses on wave 2 on both new maps; no per-map `hardBuild`
+  exists. Several whole-game unit tests take 4 to 9 s.
