@@ -1,10 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
+import { waitForTitle } from './title';
 
 // Non-test mode: the real game loop runs on real time. The page loads with
 // ?renderer=canvas so the frame rate, and so the tick rate, does not depend
 // on GPU availability (headless Chromium without a GPU renders WebGL in
 // software at about 4 fps). The WebGL check is in renderer.spec.ts. window.__tarpit holds
-// `game` and the read-only uiRects(), canvasToPage(), portraitCardVisible() and animState() here, so the clicks go where the HUD
+// `game` and the read-only uiRects(), canvasToPage(), portraitCardVisible(), animState() and titleReady() here, so the clicks go where the HUD
 // buttons are drawn (canvas == page at the 960x580 test viewport).
 
 type LiveState = { tick: number; enemies: unknown[]; phase: string };
@@ -25,7 +26,7 @@ async function clickTitlePlay(page: Page): Promise<void> {
 
 test('live loop ticks, spawns enemies, and 2x runs faster', async ({ page }) => {
   await page.goto('/?renderer=canvas');
-  await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('title'));
+  await waitForTitle(page);
   // Phaser.CANVAS is 1.
   expect(await page.evaluate(() => window.__tarpit?.game.renderer.type)).toBe(1);
   await clickTitlePlay(page);
@@ -46,6 +47,7 @@ test('live loop ticks, spawns enemies, and 2x runs faster', async ({ page }) => 
     'canvasToPage',
     'game',
     'portraitCardVisible',
+    'titleReady',
     'uiRects',
   ]);
   await clickButton(page, 'startWave');

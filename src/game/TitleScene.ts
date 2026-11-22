@@ -14,6 +14,17 @@
 // (milestone 27, y 302..400) and the high-score line (milestone 26,
 // centred on y 414), [Play] y 446..488, prompt y 522.
 //
+// Ready (milestone 26 follow-up): Phaser makes an interactive object
+// hit-testable only at its scene's next update after setInteractive (the
+// input plugin's pending-insertion list). On a first visit the title's
+// create() runs when the enemy sheets finish loading, between frames, so for
+// up to one frame the scene reports active while a click on Play hits
+// nothing and is lost. Nothing is drawn yet in that window, so a player
+// cannot aim at Play; only a test that clicks as soon as the scene is
+// active can. `ready` turns true at the scene's first render, after that
+// update; rects() lists the buttons only from then, and the hook
+// titleReady() reports it, so specs wait for it before clicking.
+//
 // High-score line (milestone 26): "Best on Normal: 12 waves" for the
 // selected level (highScore.ts, names.ts bestScoreText), redrawn when the
 // selection changes; no line when that level has no score.
@@ -42,6 +53,8 @@ export const BEST_LINE_SIZE = 18;
 export interface TitleUiState {
   scene: 'title';
   difficulty: Difficulty;
+  /** The menu has been drawn once, so its buttons take clicks (milestone 26 follow-up). */
+  ready: boolean;
   /** The high-score line (milestone 26) and its box in canvas px, or null when the level has no score. */
   bestLine: { text: string; rect: Rect } | null;
 }
@@ -58,6 +71,8 @@ export class TitleScene extends Phaser.Scene {
   private playButton: Button | null = null;
   private bestLine: Phaser.GameObjects.Text | null = null;
   private starting = false;
+  /** True from the first render after create(); see "Ready" above. */
+  private ready = false;
 
   constructor() {
     super('title');
@@ -73,6 +88,10 @@ export class TitleScene extends Phaser.Scene {
     const cx = width / 2;
     this.cameras.main.setBackgroundColor(COLORS.titleBg);
     this.starting = false;
+    this.ready = false;
+    this.events.once(Phaser.Scenes.Events.RENDER, () => {
+      this.ready = true;
+    });
 
     this.add
       .text(cx, 110, TITLE_TEXT.title, { fontFamily: FONT, fontSize: '72px', fontStyle: 'bold', color: TEXT.title })
@@ -152,12 +171,18 @@ export class TitleScene extends Phaser.Scene {
       line === null || line.text === ''
         ? null
         : { text: line.text, rect: { x: line.x - line.width / 2, y: line.y - line.height / 2, width: line.width, height: line.height } };
-    return { scene: 'title', difficulty: this.selected, bestLine };
+    return { scene: 'title', difficulty: this.selected, ready: this.ready, bestLine };
   }
 
-  /** `title:easy`, `title:normal`, `title:hard` and `title:play`. */
+  /** Whether the menu has been drawn and its buttons take clicks. */
+  get isReady(): boolean {
+    return this.ready;
+  }
+
+  /** `title:easy`, `title:normal`, `title:hard` and `title:play`, once the menu is ready (none before). */
   rects(): Record<string, Rect> {
     const out: Record<string, Rect> = {};
+    if (!this.ready) return out;
     for (const [l, b] of this.levelButtons) out[`title:${l}`] = b.rect;
     if (this.playButton) out['title:play'] = this.playButton.rect;
     return out;

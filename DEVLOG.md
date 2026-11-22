@@ -4432,3 +4432,74 @@ survives 14 waves untouched and a spender plays 78 minutes. My reading:
 1.45 is the gentlest value that still keeps idle inside 11 to 16 (on the
 edge) and gives a spender 16 waves in 23 minutes. The lose screen says
 "Reached wave 15" where the title then says "14 waves" for the same run.
+
+### Follow-up: Play click flake
+
+**Cause.** On a first visit the title's `create()` runs from the loader's
+completion callback (the enemy sheets finish loading), between frames,
+not inside a game step. Phaser's `setInteractive` puts each button on the
+scene input plugin's `_pendingInsertion` list; it joins the hit-test list
+(`_list`) only at that scene's next `preUpdate`, in the next game step. In
+between, the scene is already `RUNNING`, so `isActive('title')` and
+`scene() === 'title'` are true, but a click on Play hits nothing and is
+dropped: `starting` stays false and no scene starts. `perf.spec.ts` and
+`live.spec.ts` clicked Play right after `isActive('title')`, so under load
+(the verifier's failing runs took 40 s to 1.2 min instead of 25 s) the
+click could land in that gap and the spec then waited for a game scene
+that never came. The milestone 25 verifier had met the same race ("about
+2 in 25" on a fast reload) and worked round it with a two-frame wait in
+`difficulty-verifier.spec.ts` only. The end screen's renderList comment
+is a different Phaser detail (ordering of overlapping objects); it does
+not apply to the title, which has no overlapping interactive objects.
+
+**Evidence.** 16 plain full runs here (6 with a pre-click probe, 10
+without), 6 full runs at 24 workers, perf and live under CDP CPU
+throttling (4x, 10x, 20x) and under 14 busy CPU loops: no natural failure
+on this machine. So I opened the gap on purpose instead. (1) A probe that
+synthesised mousedown and mouseup on Play in the title's `create` event:
+6 of 6 loads (live loop and test mode) recorded "not inside a game step,
+Play box pending, not listed", the click set nothing, and the title was
+still the active scene 1.5 s later. (2) The real harness click: a probe
+paused Phaser's loop (`game.loop.sleep()`) in the title's `create` event,
+then the spec did exactly what perf and live do, `page.mouse.click` on
+Play. 5 of 5: scene active, 0 listed and 4 pending, `starting` false after
+the click, still on the title after the loop resumed; a second click after
+the first frame started the game every time. Both probes were scratch
+files, not committed.
+
+**Player impact: none.** The gap ends before the first render of the
+title, so Play is not on screen yet; a player cannot aim at it. Later
+visits (Menu) create the title inside a game step, with no gap.
+
+**Fix (harness, with a game-side readiness signal).** `TitleScene` sets
+`ready` at its first `render` event (after the `preUpdate` that lists the
+buttons); `rects()` lists the title buttons only from then, `ui()` on the
+title reports `ready`, and a new always-on hook `titleReady()` reports
+it (also outside test mode, for perf and live). `e2e/title.ts`
+`waitForTitle(page)` is the one shared wait; every spec that clicks or
+taps a title button uses it (difficulty, difficulty-verifier,
+endless, endless-verifier, live, perf, play-wave, renderer, touch,
+touch-verifier), replacing their scene-active waits and the
+difficulty-verifier's two-frame wait. `scripts/record-demo.ts` waits for
+`titleReady()` too. `live.spec.ts` and `test-hooks-gate.spec.ts` list the
+new hook among the read-only keys. No retries, no timeouts.
+
+**Regression test.** `e2e/title-ready.spec.ts`, live loop and test mode:
+at the title's `create` the title is not ready, lists no buttons, and
+Phaser has Play pending (the cause, read from Phaser's private lists on
+purpose); at its first render it is ready with all four buttons, and a
+click on Play in that same task starts the game.
+
+**Runs after the fix.** Full suite 10 times in a row with
+`PW_PORT=4173`: 236 passed each time, 0 failed, 0 flaky. `perf.spec.ts`
+and `live.spec.ts` with `--repeat-each=30`: 90 passed, 0 failed. Since the
+flake never reproduced naturally here, these runs show no regression; the
+proof that the cause is gone is the probe evidence plus the regression
+test.
+
+**Also in the follow-up.** DESIGN.md states the high score save rewrite
+(unknown levels, keys and versions dropped on the next new best; pinned in
+`highScore.test.ts`), that `waveDef` throws for n < 1, and that the
+Troll's endless hp passes `Number.MAX_SAFE_INTEGER` on wave 200 (Normal,
+Hard) and 203 (Easy), with no wave cap in the live game. Removed a stray
+blank line in `waves.ts`.

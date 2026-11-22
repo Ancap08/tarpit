@@ -159,7 +159,13 @@ row of milestone 27 (y 302 to 400) and the high-score line (milestone 26,
 centred on y 414; see Endless mode), a 200 x 42
 [Play] at y 446, and a prompt line. Clicking a level only selects it; Play
 (or Enter or Space) starts the game; Left and Right move the selection.
-The selection is kept for the page session. On Easy and Hard the HUD shows
+The selection is kept for the page session. The title reports ready (the
+`titleReady()` hook, and its buttons in `uiRects()`) from its first
+rendered frame: on a first visit Phaser makes the buttons hit-testable
+only from the scene's next update after `create()`, and a click before
+that is lost (milestone 26 follow-up; nothing is drawn yet then, so only
+a test can click that early). Specs wait with `e2e/title.ts`
+`waitForTitle`. On Easy and Hard the HUD shows
 the level's name in small muted text under the wave counter (which moves
 up 7 px); on Normal there is no tag. The end screens have [Play again]
 (same level) and a 100 x 42 [Menu] beside it that returns to the title;

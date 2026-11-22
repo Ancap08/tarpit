@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { END_TEXT, bestScoreText } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { TitleUiState } from '../src/game/TitleScene';
+import { waitForTitle } from './title';
 
 // Milestone 26: endless mode and the local high score. Time is frozen
 // (?test=1) and driven by the scripts and step(); buttons are pressed with
@@ -12,7 +13,7 @@ import type { TitleUiState } from '../src/game/TitleScene';
 
 async function open(page: Page): Promise<void> {
   await page.goto('/?test=1');
-  await page.waitForFunction(() => window.__tarpit?.scene?.() === 'title');
+  await waitForTitle(page);
 }
 
 async function startGame(page: Page, difficulty: 'easy' | 'normal' | 'hard' = 'normal'): Promise<void> {
@@ -91,7 +92,7 @@ test('lose in endless: "Reached wave 15" without "of 10"; Menu shows the best li
   expect(await api(page, (t) => t.bestScore('normal'))).toBe(14);
 
   await click(page, 'menu');
-  await page.waitForFunction(() => window.__tarpit?.scene?.() === 'title');
+  await waitForTitle(page);
   const ui = await titleUi(page);
   expect(ui.bestLine?.text).toBe(bestScoreText('normal', 14));
   // Centred on y 414, below milestone 27's map row (y 302..400) and above Play (y 446).
@@ -119,7 +120,7 @@ test('the score survives a reload; a fresh context shows no line', async ({ page
   expect(await api(page, (t) => t.state().phase)).toBe('setup');
   expect(await api(page, (t) => t.bestScore('hard'))).toBe(1);
   await page.reload();
-  await page.waitForFunction(() => window.__tarpit?.scene?.() === 'title');
+  await waitForTitle(page);
   expect(await api(page, (t) => t.bestScore('hard'))).toBe(1);
   await page.keyboard.press('ArrowRight');
   expect((await titleUi(page)).bestLine?.text).toBe(bestScoreText('hard', 1));
@@ -158,7 +159,7 @@ test('a win without Keep going stores 10', async ({ page }) => {
   expect(await api(page, (t) => t.bestScore('normal'))).toBe(10);
   expect(await page.evaluate(() => localStorage.getItem('tarpit.best'))).toBe('{"v":1,"best":{"meadow":{"normal":10}}}');
   await click(page, 'menu');
-  await page.waitForFunction(() => window.__tarpit?.scene?.() === 'title');
+  await waitForTitle(page);
   expect((await titleUi(page)).bestLine?.text).toBe(bestScoreText('normal', 10));
 });
 

@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { END_TEXT, bestScoreText } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { TitleUiState } from '../src/game/TitleScene';
+import { waitForTitle } from './title';
 
 // Milestone 26 verifier probes (independent of endless.spec.ts): storage
 // that throws, when the score is saved, the win screen's three buttons
@@ -12,12 +13,12 @@ type Rect = { x: number; y: number; width: number; height: number };
 
 async function open(page: Page): Promise<void> {
   await page.goto('/?test=1');
-  await page.waitForFunction(() => window.__tarpit?.scene?.() === 'title');
+  await waitForTitle(page);
 }
 const startGame = (page: Page, d: 'easy' | 'normal' | 'hard' = 'normal') => page.evaluate((x) => (window.__tarpit as TarpitTestApi).startGame(x), d);
 const api = <T>(page: Page, f: (t: TarpitTestApi) => T) => page.evaluate(`(${f.toString()})(window.__tarpit)`) as Promise<T>;
 const titleUi = (page: Page) => page.evaluate(() => (window.__tarpit as TarpitTestApi).ui<TitleUiState>());
-const toTitle = (page: Page) => page.waitForFunction(() => window.__tarpit?.scene?.() === 'title');
+const toTitle = (page: Page) => waitForTitle(page);
 
 async function click(page: Page, name: string): Promise<void> {
   const r = await page.evaluate((n) => (window.__tarpit as TarpitTestApi).uiRects()[n], name);

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { ENEMY_NAMES } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
+import { waitForTitle } from './title';
 
 // Plays wave 1 through the real Start Wave and speed buttons, with time
 // driven by window.__tarpit.step in ?test=1 mode. Numbers come from the
@@ -8,7 +9,7 @@ import type { TarpitTestApi } from '../src/game/testGlobal';
 
 async function startGame(page: Page): Promise<void> {
   await page.goto('/?test=1');
-  await page.waitForFunction(() => window.__tarpit?.scene?.() === 'title');
+  await waitForTitle(page);
   await page.evaluate(() => (window.__tarpit as TarpitTestApi).startGame());
   expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).scene())).toBe('game');
 }
@@ -82,7 +83,7 @@ test('Start Wave does nothing while a wave is active', async ({ page }) => {
 
 test('the title menu starts the game on a click on Play (milestone 25), not on a click elsewhere', async ({ page }) => {
   await page.goto('/?test=1');
-  await page.waitForFunction(() => window.__tarpit?.scene?.() === 'title');
+  await waitForTitle(page);
   await page.mouse.click(480, 360); // the empty band under the level buttons
   await page.waitForTimeout(100);
   expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).scene())).toBe('title');

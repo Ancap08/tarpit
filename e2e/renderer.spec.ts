@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { waitForTitle } from './title';
 
 // Milestone 16: play renders with WebGL (Phaser.AUTO; Canvas only where WebGL
 // is unavailable) and the walk animation runs on real time. Nothing here is
@@ -16,7 +17,7 @@ async function clickButton(page: Page, name: 'startWave'): Promise<void> {
 
 test('live play uses WebGL when available, ticks, and the walk cycle advances', async ({ page }) => {
   await page.goto('/');
-  await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('title'));
+  await waitForTitle(page);
   const info = await page.evaluate(() => ({
     renderer: window.__tarpit?.game.renderer.type,
     webgl: (() => {

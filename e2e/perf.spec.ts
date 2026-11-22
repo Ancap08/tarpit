@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { waitForTitle } from './title';
 
 // Milestone 25c performance floor (docs/SCOPE-v4.md 25c): 120 enemies and 25
 // towers on the live loop (real time, not test mode) must keep the median
@@ -36,7 +37,7 @@ for (const [name, span] of [
   test(`120 enemies (${name}) and 25 towers keep the median frame under 33 ms`, async ({ page }) => {
     test.setTimeout(60_000);
     await page.goto(URL);
-    await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('title'));
+    await waitForTitle(page);
     await clickTitlePlay(page);
     await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game'));
 

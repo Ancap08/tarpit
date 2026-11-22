@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { TarpitTestApi } from '../src/game/testGlobal';
+import { waitForTitle } from './title';
 
 // Tablet project only (playwright.config.ts): a 1024x768 touch viewport, the
 // canvas fitted at 1024 / 960 with letterboxing above and below. Every input
@@ -20,7 +21,7 @@ const toPage = (page: Page, x: number, y: number) =>
 
 async function startGame(page: Page): Promise<void> {
   await page.goto('/?test=1');
-  await page.waitForFunction(() => window.__tarpit?.scene?.() === 'title');
+  await waitForTitle(page);
   await page.evaluate(() => (window.__tarpit as TarpitTestApi).startGame());
   expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).scene())).toBe('game');
 }
@@ -154,14 +155,14 @@ test('every button is at least 44 px tall on the page; no portrait card in lands
 
 test('the title menu starts on a tap on Play (milestone 25)', async ({ page }) => {
   await page.goto('/?test=1');
-  await page.waitForFunction(() => window.__tarpit?.scene?.() === 'title');
+  await waitForTitle(page);
   await tap(page, 'title:play');
   await page.waitForFunction(() => window.__tarpit?.scene?.() === 'game');
 });
 
 test('the title menu: tap Hard, then Play, starts a Hard game (milestone 25)', async ({ page }) => {
   await page.goto('/?test=1');
-  await page.waitForFunction(() => window.__tarpit?.scene?.() === 'title');
+  await waitForTitle(page);
   await tap(page, 'title:hard');
   expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).scene())).toBe('title');
   await tap(page, 'title:play');
@@ -174,7 +175,7 @@ test('the title menu: tap Hard, then Play, starts a Hard game (milestone 25)', a
 // Non-test mode: the real loop runs, so the pause is observable.
 test('portrait shows the turn-your-device card and stops ticking; landscape hides it', async ({ page }) => {
   await page.goto('/');
-  await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('title'));
+  await waitForTitle(page);
   await tap(page, 'title:play');
   await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game'));
   const tick = () =>

@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { DIFFICULTY_LABELS } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { TitleUiState } from '../src/game/TitleScene';
+import { waitForTitle } from './title';
 
 // Milestone 25: the title menu's difficulty row and Play button, through
 // real clicks and keys (?test=1, time driven by step()). Numbers come from
@@ -25,8 +26,6 @@ async function click(page: Page, name: string): Promise<void> {
   expect(r, `uiRects()['${name}']`).toBeTruthy();
   await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
 }
-
-const onScene = (page: Page, key: 'title' | 'game') => page.waitForFunction((k) => window.__tarpit?.scene?.() === k, key);
 
 /** A fresh game (tick 0, setup) is running: after Play or Play again, which restart the scene. */
 const freshGame = (page: Page) =>
@@ -60,7 +59,7 @@ async function loseQuickly(page: Page): Promise<void> {
 
 test('the menu starts each level with its gold, lives and Goblin hp; Menu and Play again keep the level', async ({ page }) => {
   await page.goto('/?test=1');
-  await onScene(page, 'title');
+  await waitForTitle(page);
   expect(await t(page).title()).toMatchObject({ scene: 'title', difficulty: 'normal' });
 
   // Easy: selecting does not start the game; Play does.
@@ -77,7 +76,7 @@ test('the menu starts each level with its gold, lives and Goblin hp; Menu and Pl
   // Lose, then [Menu]: the title again with Easy still selected.
   await loseQuickly(page);
   await click(page, 'menu');
-  await onScene(page, 'title');
+  await waitForTitle(page);
   expect(await t(page).title()).toMatchObject({ scene: 'title', difficulty: 'easy' });
 
   // Hard.
@@ -98,7 +97,7 @@ test('the menu starts each level with its gold, lives and Goblin hp; Menu and Pl
   // Normal by keyboard: back to the menu (Hard selected), Left, Enter.
   await loseQuickly(page);
   await click(page, 'menu');
-  await onScene(page, 'title');
+  await waitForTitle(page);
   expect(await t(page).title()).toMatchObject({ scene: 'title', difficulty: 'hard' });
   await page.keyboard.press('ArrowLeft');
   expect(await t(page).title()).toMatchObject({ scene: 'title', difficulty: 'normal' });
@@ -111,7 +110,7 @@ test('the menu starts each level with its gold, lives and Goblin hp; Menu and Pl
 
 test('Left and Right stop at the ends; Space presses Play; a click away from Play does nothing', async ({ page }) => {
   await page.goto('/?test=1');
-  await onScene(page, 'title');
+  await waitForTitle(page);
   await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('ArrowLeft');
   expect((await t(page).title()).difficulty).toBe('easy');
@@ -127,7 +126,7 @@ test('Left and Right stop at the ends; Space presses Play; a click away from Pla
 
 test('menu geometry: three level buttons and Play, 42 px tall, at least 120 wide, centred', async ({ page }) => {
   await page.goto('/?test=1');
-  await onScene(page, 'title');
+  await waitForTitle(page);
   const r = await page.evaluate(() => (window.__tarpit as TarpitTestApi).uiRects());
   expect(Object.keys(r).sort()).toEqual(['title:easy', 'title:hard', 'title:normal', 'title:play']);
   for (const rect of Object.values(r)) {
@@ -146,7 +145,7 @@ test('menu geometry: three level buttons and Play, 42 px tall, at least 120 wide
 
 test('the end screens list Play again and Menu side by side', async ({ page }) => {
   await page.goto('/?test=1');
-  await onScene(page, 'title');
+  await waitForTitle(page);
   await page.evaluate(() => (window.__tarpit as TarpitTestApi).startGame());
   await loseQuickly(page);
   const r = await page.evaluate(() => (window.__tarpit as TarpitTestApi).uiRects());

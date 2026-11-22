@@ -1,6 +1,7 @@
 // Shape of window.__tarpit. Outside test mode only `game` and the read-only
-// `uiRects()`, `canvasToPage()`, `portraitCardVisible()` and `animState()` are set
-// (uiRects() is empty until GameScene runs); with ?test=1 every hook below is
+// `uiRects()`, `canvasToPage()`, `portraitCardVisible()`, `animState()` and
+// (milestone 26 follow-up) `titleReady()` are set (uiRects() lists the title
+// buttons once the title is ready, and the game's once GameScene runs); with ?test=1 every hook below is
 // present (see testMode.ts).
 
 import type Phaser from 'phaser';
@@ -86,7 +87,8 @@ export interface TarpitTestApi {
    * `bar:mortar`, `bar:firepot`, while the tower
    * panel is open `panel:upgrade`, `panel:sell` and `panel:target`, and `playAgain` and
    * `menu` while an end screen shows. On the title menu (milestone 25):
-   * `title:easy`, `title:normal`, `title:hard` and `title:play` only. Map cells are not listed: cell (col, row) is clicked at
+   * `title:easy`, `title:normal`, `title:hard` and `title:play` only, and
+   * only once titleReady() (none before the menu's first frame). Map cells are not listed: cell (col, row) is clicked at
    * (col * 32 + 16, row * 32 + 16). At the 960x580 test viewport, canvas
    * space equals page space; at other sizes use canvasToPage(). The open
    * panel also lists `panel:close`. `panel:upgrade` and `panel:sell` keep
@@ -104,6 +106,13 @@ export interface TarpitTestApi {
   canvasToPage(x: number, y: number): { x: number; y: number };
   /** True while the "turn your device" card shows (portrait window). */
   portraitCardVisible(): boolean;
+  /**
+   * The title menu is showing and has been drawn, so its buttons take
+   * clicks (milestone 26 follow-up; TitleScene "Ready"). Wait for it
+   * (e2e/title.ts waitForTitle) before clicking or tapping a title button.
+   * Also outside test mode.
+   */
+  titleReady(): boolean;
   /**
    * Build UI state: the bar's pick, the highlighted cell, the armed cell and
    * touch mode, the selected tower's cell, whether the panel is open, the
@@ -142,7 +151,8 @@ export interface TarpitTestApi {
   events(): GameEvent[];
 }
 
-export type TarpitGlobal = Pick<TarpitTestApi, 'game' | 'uiRects' | 'canvasToPage' | 'portraitCardVisible' | 'animState'> & Partial<TarpitTestApi>;
+export type TarpitGlobal = Pick<TarpitTestApi, 'game' | 'uiRects' | 'canvasToPage' | 'portraitCardVisible' | 'animState' | 'titleReady'> &
+  Partial<TarpitTestApi>;
 
 declare global {
   interface Window {

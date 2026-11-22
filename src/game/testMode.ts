@@ -1,6 +1,7 @@
 // Test mode (?test=1): time is frozen and window.__tarpit exposes hooks for
 // Playwright. Outside test mode window.__tarpit holds the Phaser game and the
-// read-only uiRects(), canvasToPage(), portraitCardVisible() and animState(), so real-time
+// read-only uiRects(), canvasToPage(), portraitCardVisible(), animState() and
+// titleReady() (milestone 26 follow-up), so real-time
 // tests and the demo recorder click the HUD (and, from milestone 25, the
 // title menu) where it is drawn at any viewport size.
 
@@ -154,6 +155,7 @@ export function installGlobal(game: Phaser.Game): void {
     animState: (enemyId: number) => (game.scene.isActive('game') ? (game.scene.getScene('game') as GameScene).animState(enemyId) : null),
     canvasToPage: (x: number, y: number) => canvasToPage(game, x, y),
     portraitCardVisible,
+    titleReady: () => game.scene.isActive('title') && titleScene(game).isReady,
   };
   if (!isTestMode()) {
     window.__tarpit = always;

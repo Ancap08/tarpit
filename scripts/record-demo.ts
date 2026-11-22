@@ -198,7 +198,8 @@ async function main(): Promise<void> {
     const at = () => (Date.now() - t0) / 1000;
 
     await page.goto(URL_BASE);
-    await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('title'));
+    // The title is drawn and takes clicks (milestone 26 follow-up; e2e/title.ts).
+    await page.waitForFunction(() => window.__tarpit?.titleReady?.() === true);
     await page.waitForTimeout(1500);
     const start = Math.max(0, at() - 1);
     await clickRect(page, 'title:play', 300);
