@@ -297,3 +297,36 @@ test('the spots the owner will look at: frames of aiming, the button recharging 
   await page.mouse.move(480, 575);
   fs.writeFileSync(`${frames}/recharging-cheat.png`, await page.screenshot());
 });
+
+// Re-verify of commit 819476f (lost 3x release): the new handlers must not end a real hold or drag.
+test('a 3x hold continues when the pointer leaves the canvas with the button down and comes back', async ({ page }) => {
+  await quietWave(page, 1);
+  const r = (await rects(page)).speed;
+  const c = { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+  await page.mouse.move(c.x, c.y);
+  await page.mouse.down();
+  await page.waitForTimeout(450);
+  expect(await api(page, (a) => a.speed())).toBe(3);
+  await page.mouse.move(c.x, 900, { steps: 4 }); // below the window, button still down
+  await page.waitForTimeout(100);
+  expect(await api(page, (a) => a.speed())).toBe(3);
+  await page.mouse.move(c.x - 30, c.y, { steps: 4 });
+  await page.waitForTimeout(100);
+  expect(await api(page, (a) => a.speed())).toBe(3);
+  await page.mouse.up();
+  expect(await api(page, (a) => a.speed())).toBe(1);
+});
+
+test('a tower drag that leaves the canvas and comes back with the button down still places the tower', async ({ page }) => {
+  await page.goto('/?test=1');
+  await page.waitForFunction(() => window.__tarpit?.scene?.() === 'title');
+  await api(page, (a) => a.startGame());
+  const bar = (await rects(page))['bar:musketeer'];
+  await page.mouse.move(bar.x + bar.width / 2, bar.y + bar.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(300, 300, { steps: 5 });
+  await page.mouse.move(300, 900, { steps: 5 }); // out of the window, button down
+  await page.mouse.move(7 * 32 + 16, 5 * 32 + 16, { steps: 8 }); // back onto cell (7,5)
+  await page.mouse.up();
+  expect((await state(page)).towers.map((t) => [t.cell.col, t.cell.row, t.type])).toEqual([[7, 5, 'musketeer']]);
+});
