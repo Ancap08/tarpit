@@ -4906,3 +4906,57 @@ emulation. Pixel baselines: none of the five new frames exists and the
 three title frames are stale, so CI's visual tests will fail until the
 update-snapshots workflow has run on this branch. The demo recorder was
 read, not run.
+
+### Follow-up (implementer)
+
+Six fixes the coordinator asked for after the verifier's pass.
+
+1. **Meadow-only archetypes refuse other maps.** `soundBuild`,
+   `soundBuildNoTar`, `hardBuild`, `comboStrongest` and `comboWithKegs`
+   take the map argument and throw "`<name>` has a script for Meadow
+   only, not for `<map>`" for Switchback or Riverbend (no map or
+   `meadow` plays as before). The `runScript` hook passes the running
+   game's map, so it now throws that error before any action; a new
+   browser test checks the message and that nothing was built. Verifier
+   test changed: `maps-verifier.test.ts` "every entry of ARCHETYPES and
+   INFORMATIONAL given a map..." was `it.fails`; it now passes and checks
+   that every entry given Riverbend either returns a Riverbend script or
+   throws that exact message, that exactly those five throw, and that
+   each of the five still works on Meadow.
+2. **Riverbend's pool corners.** The water fills its whole box; when the
+   box runs off the bottom edge its top corners are rounded by 12 px (9
+   px for the inner fill inside the 3 px bank). Cells (13,5) and (16,5)
+   now look like water. The rule and the 40 cells are unchanged. The
+   thumbnail draws the same shape scaled.
+3. **Prompt.** "Pick a difficulty and a map, then press Play". It fits:
+   on desktop it spans about x 242..719 of 960, on the tablet the same
+   at 1024 / 960 scale (`m27b-title.png`, `m27b-title-tablet.png`).
+4. **Best line.** Centred at y 422 (`BEST_LINE_Y` computed from the map
+   row's bottom, 398, and Play's top, 446). `e2e/endless.spec.ts` pinned
+   414 and now pins 422; the TitleScene comment, the visual spec comment
+   and DESIGN.md follow.
+5. **Wording.** DESIGN.md and `map.ts` call Riverbend an arch (right, up,
+   across, down, right); `map.ts` gives Switchback four lanes, two
+   U-turns and a step; `sheets.ts` no longer says the path never runs
+   left; `highScore.ts` no longer says Meadow is the only map.
+6. **Riverbend bottom-left panel: left as it is.** For a tower at (0,14)
+   the 214 x 166 panel goes above the tower (x 4..218, y 258..424) and
+   covers 22% path: the cave and the first lane. Every side the rule
+   tries covers the lane: below and left clamp onto the tower's own cell,
+   right (x 46..260, y 310..476) covers the lane too, and the 76 px
+   between the lane's lower edge (y 404) and the map's bottom cannot hold
+   a 166 px panel. A spot clear of the path would be at least 160 px
+   away from the tower, a new placement rule rather than a cheap
+   preference, so I did not add it. The same holds for (1,14), (2,14)
+   and (0,13).
+
+**Checks.** Lint, check:assets, typecheck, 871 unit tests (with the
+verifier's probes), build, check:size, `npm run sim` (output identical
+to the first pass, Meadow part identical to main) and 279 Playwright
+tests (3 skipped, the verifier's screenshot-only probes) pass, two full
+runs in a row. Meadow frames: main and this tip, every `visual.spec.ts`
+and `visual-tablet.spec.ts` frame written on this Mac and compared pixel
+by pixel; every game frame is identical, and only `title`, `title-hard`
+and `title-best` differ (inside x 242..719, y 306..530: map row, best
+line and prompt). The new maps' baselines (`map-riverbend-*`,
+`riverbend-placing-invalid`) show the new pool; none is committed yet.
