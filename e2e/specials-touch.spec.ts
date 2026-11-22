@@ -144,15 +144,55 @@ test('hold and slide: the circle follows 48 px above the finger and the release 
   expect((await ui(page)).special).toMatchObject({ charges: 0, aiming: null });
 });
 
-test('a hold released with the finger over the HUD cancels and spends nothing, pressing no button', async ({ page }) => {
+// Follow-up: as for tower drags, the lifted point decides. A finger on the
+// HUD aims at the map's bottom rows and fires there; buttons under the
+// finger are not pressed.
+test('hold and release with the finger on the HUD fires on a bottom-row target 48 px above it', async ({ page }) => {
+  await startWave1(page);
+  const client = await page.context().newCDPSession(page);
+  await tapRect(page, 'special');
+  const target = { x: 500, y: 474 }; // the map's bottom row (y 448..480)
+  const finger = { x: target.x, y: target.y + DRAG_LIFT };
+  expect(finger.y).toBeGreaterThan(480); // the finger is on the HUD
+  await touchDrag(page, client, { x: 500, y: 300 }, finger, async () => {
+    const u = await ui(page);
+    expect(u.special.holding).toBe(true);
+    expect(near(u.special.aimPoint!, target)).toBe(true);
+  });
+  const sp = specialOf(await events(page));
+  if (sp?.kind !== 'special') throw new Error('no special event');
+  expect(near(sp, target)).toBe(true);
+  expect((await ui(page)).special).toMatchObject({ charges: 0, aiming: null });
+});
+
+test('a hold released with the finger on the speed button fires 48 px above it and presses nothing', async ({ page }) => {
   await startWave1(page);
   const client = await page.context().newCDPSession(page);
   await tapRect(page, 'special');
   const speed = (await rects(page)).speed;
-  await touchDrag(page, client, { x: 600, y: 300 }, { x: speed.x + speed.width / 2, y: speed.y + speed.height / 2 });
-  expect(specialOf(await events(page))).toBeUndefined();
+  const finger = { x: speed.x + speed.width / 2, y: speed.y + speed.height / 2 };
+  await touchDrag(page, client, { x: 600, y: 300 }, finger);
+  const sp = specialOf(await events(page));
+  if (sp?.kind !== 'special') throw new Error('no special event');
+  expect(near(sp, { x: finger.x, y: finger.y - DRAG_LIFT })).toBe(true);
   expect(await api(page, (a) => a.speed())).toBe(1);
-  expect((await ui(page)).special).toMatchObject({ aiming: null, charges: 1, ready: true });
+});
+
+test('a hold released with the finger on the Special button, or with the lifted point off the map, cancels and spends nothing', async ({ page }) => {
+  await startWave1(page);
+  const client = await page.context().newCDPSession(page);
+  const r = await rects(page);
+  await tapRect(page, 'special');
+  await touchDrag(page, client, { x: 600, y: 300 }, { x: r.special.x + r.special.width / 2, y: r.special.y + r.special.height / 2 });
+  expect(specialOf(await events(page))).toBeUndefined();
+  expect((await ui(page)).special).toMatchObject({ aiming: null, charges: 1 });
+  await tapRect(page, 'special');
+  const bar = r['bar:longbow'];
+  await touchDrag(page, client, { x: 300, y: 300 }, { x: bar.x + bar.width / 2, y: bar.y + bar.height / 2 });
+  expect(specialOf(await events(page))).toBeUndefined();
+  const u = await ui(page);
+  expect(u.pick).toBeNull();
+  expect(u.special).toMatchObject({ aiming: null, charges: 1 });
 });
 
 test('a tap on the HUD and a tap on Special again cancel touch aiming and keep the charge', async ({ page }) => {

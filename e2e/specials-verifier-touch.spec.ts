@@ -109,21 +109,23 @@ test('(h) drag: fires on release at the point 48 px above the finger, once', asy
   expect((await ui(page)).special).toMatchObject({ charges: 0, aiming: null });
 });
 
-// Milestone 30: a hold released with the finger over the HUD cancels and spends nothing.
-test('(h) a hold released with the finger on the speed button cancels: nothing fires, the speed stays 1x', async ({ page }) => {
+// Milestone 30 follow-up: the lifted point decides, as for tower drags.
+test('(h) released with the finger on the speed button: fires on the map 48 px above, the speed stays 1x', async ({ page }) => {
   const client = await inWave(page);
   const f = new Fingers(page, client);
   const r = await rects(page);
   await tap(page, mid(r.special));
+  const finger = mid(r.speed);
   await f.down(0, { x: 700, y: 300 });
-  await f.move(0, mid(r.speed));
+  await f.move(0, finger);
   await f.up(0);
-  expect(await specials(page)).toEqual([]);
+  const ev = await specials(page);
+  expect(ev).toHaveLength(1);
+  expect(near(ev[0] as unknown as Point, { x: finger.x, y: finger.y - LIFT })).toBe(true);
   expect(await api(page, (a) => a.speed())).toBe(1);
-  expect((await ui(page)).special).toMatchObject({ aiming: null, charges: 1 });
 });
 
-test('(h) a hold released with the finger on a build bar button cancels: nothing fires, nothing is picked', async ({ page }) => {
+test('(h) a hold released with the finger on a build bar button (aim below the map) cancels: nothing fires, nothing is picked', async ({ page }) => {
   const client = await inWave(page);
   const f = new Fingers(page, client);
   const r = await rects(page);

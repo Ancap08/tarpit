@@ -77,6 +77,11 @@ export class Button {
     return this.rightLabel?.text ? `${this.label.text}  ${this.rightLabel.text}` : this.label.text;
   }
 
+  /** The label text objects (milestone 30: the HUD slides the recharge fill under them). */
+  get labelObjects(): Phaser.GameObjects.Text[] {
+    return this.rightLabel ? [this.label, this.rightLabel] : [this.label];
+  }
+
   get isEnabled(): boolean {
     return this.enabled;
   }

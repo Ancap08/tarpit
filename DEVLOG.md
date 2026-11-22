@@ -6055,3 +6055,32 @@ Harpies frame from step 199 to 304. Baselines come from CI.
 - The visual baselines for the five special frames and the moved frames
   (mid-wave, wave 8, harpies, boss, won) need the CI update-snapshots
   workflow before CI's visual check passes.
+
+### Follow-up (coordinator's five items)
+
+1. **T4 is 5 to 19 lives** (coordinator's ruling; no game number changed).
+   The `// milestone 30 miss` pin and the suite's `miss` machinery are
+   removed; `balanceTargets.ts`, DESIGN.md and `npm run sim` now show T4
+   ok on every map (Switchback W 19).
+2. **Touch aim: the lifted point decides**, as for tower drags. A hold
+   released with the finger over the HUD fires at the point 48 px above it
+   when that point is on the map, so the bottom rows are reachable by hold
+   and release; it cancels when the lifted point is off the map or the
+   finger is on the Special button. New tablet tests: a bottom-row target
+   (y 474) by hold and release with the finger on the HUD, a release on
+   the speed button that fires above it and presses nothing, and cancels on
+   the Special button and the build bar. The Riverbend touch test now
+   reaches the bottom row by a hold.
+3. **Recharge readout.** The label is replaced by the countdown while the
+   charge refills ("Wait 15s", the button's 16 px label size, no overlap),
+   and the fill is an opaque dark amber drawn over the box and under the
+   label (it was a 55% wash over the label).
+4. **Tar puddle.** A light rim broken into nine uneven arcs just outside
+   its edge, and two glints inside; unlike the aim circle it has no full
+   ring and no cross.
+5. **Aim centre.** A 9 px light cross with a 6 px dark outline, on its own
+   layer above the sprites.
+
+Tests: 1037 unit tests pass (about 15 s, slowest 4.0 s); 295 browser tests
+pass, 3 skipped (35 s). The `special-aim`, `special-tar-zone` and `special-recharging`
+frames change again; baselines come from CI.

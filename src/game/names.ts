@@ -170,9 +170,9 @@ export function specialResultText(hits: number): string {
   return hits > 0 ? `${hits} hit` : 'Missed';
 }
 
-/** The Special button while it recharges (milestone 30): whole seconds left, rounded up ("12s"). */
+/** The Special button's label while it recharges (milestone 30): whole seconds left, rounded up ("Wait 12s"). */
 export function rechargeText(ticksLeft: number, ticksPerSecond: number): string {
-  return `${Math.ceil(ticksLeft / ticksPerSecond)}s`;
+  return `Wait ${Math.ceil(ticksLeft / ticksPerSecond)}s`;
 }
 
 /** The speed button's label while it is held for 3x (milestone 30); 1x and 2x read "1x" and "2x". */

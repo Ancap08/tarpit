@@ -23,7 +23,7 @@ const TAR_ZONE_EXPECT = {
   burning: 0,
   labels: ['7 hit'],
   rechargeTicks: 1140,
-  hud: 'Special 19s',
+  hud: 'Wait 19s',
 };
 const FIRE_ZONE_EXPECT = {
   at: { x: 160, y: 132 },
@@ -33,7 +33,7 @@ const FIRE_ZONE_EXPECT = {
   burning: 6,
   labels: ['6 hit'],
   rechargeTicks: 1140,
-  hud: 'Special 19s',
+  hud: 'Wait 19s',
 };
 // Milestone 30 (keg 30 damage, 90 px): the keg at (160,191) hits 7 and kills the 4 Goblins.
 const FIRED_EXPECT = {
@@ -686,9 +686,9 @@ test('special fire zone: a Fire Arrows patch one second after it lands, burning 
   await expect(page.locator('canvas')).toHaveScreenshot('special-fire-zone.png');
 });
 
-test('special recharging: the Special button 5 s after a keg, filled a quarter with 15 s left', async ({ page }) => {
+test('special recharging: the Special button 5 s after a keg, filled a quarter, reading "Wait 15s"', async ({ page }) => {
   const r = await fireOnWave7(page, 'keg', 300);
-  expect([r.rechargeTicks, r.hud, r.zones, r.labels]).toEqual([900, 'Special 15s', [], []]);
+  expect([r.rechargeTicks, r.hud, r.zones, r.labels]).toEqual([900, 'Wait 15s', [], []]);
   await page.mouse.move(900, 440);
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('special-recharging.png');

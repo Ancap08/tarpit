@@ -110,11 +110,14 @@ export const COLORS = {
   specialPipEmpty: 0x6a6e76,
   // Milestone 30: the Special button's recharge fill, the aim banner's
   // backing, the keg's scorch mark, and the zones (tar puddle, fire patch).
-  rechargeFill: 0xc9a24e,
+  rechargeFill: 0x7a5a1c,
   aimBanner: 0x14161a,
+  aimCrossDark: 0x14161a,
   scorch: 0x1e1a16,
   tarPuddle: 0x2a1d13,
   tarPuddleEdge: 0x5a4330,
+  // Milestone 30 follow-up: the puddle's wet sheen, so its edge reads on grass and trail.
+  tarSheen: 0xe6d3ae,
   firePatch: 0xd0471c,
   fireFlame: 0xffb43a,
   menuBg: 0x1b1f24,

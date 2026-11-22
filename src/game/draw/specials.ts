@@ -34,6 +34,8 @@ const ARROW_FALL = 60;
 const ZONE_FADE_TICKS = 60;
 /** Flame tongues drawn in a fire patch, and blobs in a tar puddle. */
 const FLAMES = 12;
+/** Light arcs round a tar puddle's edge. */
+const SHEEN_ARCS = 9;
 const BLOBS = 5;
 
 interface Blast {
@@ -160,6 +162,23 @@ export class SpecialEffects {
       }
       g.lineStyle(3, COLORS.tarPuddleEdge, 0.8 * fade);
       g.strokeCircle(z.x, z.y, z.radius);
+      // A wet sheen (milestone 30 follow-up): a light rim broken into uneven
+      // arcs just outside the edge, and two glints inside, so the puddle
+      // reads on grass and trail and does not look like the aim circle.
+      g.lineStyle(2.5, COLORS.tarSheen, 0.85 * fade);
+      for (let i = 0; i < SHEEN_ARCS; i++) {
+        const a0 = ((i + 0.15 * jitter(z.id, i + 30)) * 2 * Math.PI) / SHEEN_ARCS;
+        const a1 = a0 + ((0.45 + 0.3 * jitter(z.id, i + 40)) * 2 * Math.PI) / SHEEN_ARCS;
+        g.beginPath();
+        g.arc(z.x, z.y, z.radius + 2, a0, a1);
+        g.strokePath();
+      }
+      g.lineStyle(3, COLORS.tarSheen, 0.6 * fade);
+      g.beginPath();
+      g.arc(z.x - z.radius * 0.25, z.y - z.radius * 0.3, z.radius * 0.35, Math.PI * 1.05, Math.PI * 1.45);
+      g.strokePath();
+      g.fillStyle(COLORS.tarSheen, 0.55 * fade);
+      g.fillCircle(z.x + z.radius * 0.3, z.y - z.radius * 0.45, 4);
       return;
     }
     g.fillStyle(COLORS.firePatch, 0.3 * fade);

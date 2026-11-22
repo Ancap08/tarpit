@@ -206,8 +206,8 @@ test('Riverbend by touch: tap-tap on the river arms nothing and builds nothing; 
   expect(errors).toEqual([]);
 });
 
-// Milestone 30: a tap fires at once (no second tap); the bottom row is reached by a tap.
-test('Riverbend by touch: a special tapped over the water and one tapped in the bottom row fire there', async ({ page }) => {
+// Milestone 30: a tap fires at once (no second tap); the bottom row is reached by a hold with the finger on the HUD.
+test('Riverbend by touch: a special tapped over the water and one held into the bottom row fire there', async ({ page }) => {
   const errors = watchErrors(page);
   await start(page, 'riverbend');
   await page.evaluate(() => {
@@ -227,11 +227,13 @@ test('Riverbend by touch: a special tapped over the water and one tapped in the 
   expect(Math.abs(ev.y - 320)).toBeLessThanOrEqual(1);
   expect((await ui(page)).special.charges).toBe(0);
 
-  // The bottom row over the river (y 472), after the recharge.
+  // The bottom row over the river (y 472), after the recharge, by a hold
+  // with the finger on the HUD (y 520) and the aim 48 px above it.
   await page.evaluate(() => (window.__tarpit as TarpitTestApi).step(1200));
   expect((await ui(page)).special.ready).toBe(true);
   await tap(page, 'special');
-  await tapAt(page, { x: 500, y: 472 });
+  const client = await page.context().newCDPSession(page);
+  await touchDrag(page, client, { x: 500, y: 300 }, { x: 500, y: 520 });
   ev = await special();
   if (ev?.kind !== 'special') throw new Error('no special event');
   expect(Math.abs(ev.x - 500)).toBeLessThanOrEqual(1);

@@ -393,9 +393,10 @@ and upgrading keep the count. The tower panel (214 x 166) shows it as a
   left of Start Wave (x 738, 130 wide) and the speed button (x 876, 70
   wide); the next-wave preview runs from x 356 to 620. While a wave runs
   and the charge is ready the button is lit with a bright pip that pulses
-  (no pulse in test mode). While the charge refills it is greyed, a fill
-  grows from its left edge as the recharge runs and the whole seconds left
-  show small in its lower right corner ("12s"). In setup and after the game
+  (no pulse in test mode). While the charge refills it is greyed, a dark
+  amber fill grows from its left edge under the label as the recharge runs,
+  and the label is the countdown in whole seconds ("Wait 12s", in place of
+  "Special"). In setup and after the game
   it is greyed with an empty pip. It is highlighted while its popup is open
   or a special is aimed. Pressing it with one special unlocked selects it;
   with more it opens a popup above it listing the unlocked specials.
@@ -403,20 +404,24 @@ and upgrading keep the count. The tower panel (214 x 166) shows it as a
   says what to do ("Click the trail to throw the Powder Keg", "Tap the
   trail to drop the Tar Barrel"; a smaller second line says how to cancel
   and, on touch, how to hold), and a circle of the special's radius (3 px
-  outline over a pale edge, 0.22 fill, a small cross at the centre;
+  outline over a pale edge, 0.22 fill, a light cross with a dark outline
+  at the centre, drawn above the sprites;
   orange-red keg, dark brown tar barrel, orange-yellow fire arrows) shows
   where it lands. With a mouse the circle follows the pointer over the map
   and a click on the map fires there. On touch a tap on the map fires at
   the tap; a press held 300 ms or moved past the drag threshold is a hold:
   the circle shows 48 px above the finger with the finger line, and the
-  release fires at the circle's centre, or cancels when the finger is over
-  the HUD. There is no second confirming tap. Escape, the Special button
+  release fires at the circle's centre. As for tower drags the lifted point
+  decides: the finger may be over the HUD (so a hold reaches the bottom
+  rows), and the release cancels only when the lifted point is off the map
+  or the finger is on the Special button. There is no second confirming tap. Escape, the Special button
   again or any other press on the HUD cancels; a cancel spends nothing.
   Aiming and the tower pick or panel never coexist.
 - **Landing.** The keg: a flash and a ring expanding to the radius
   (0.4 s), a short camera shake (220 ms) and a scorch mark that fades over
   2 s. The Tar Barrel: a splash ring (0.3 s), then a tar puddle drawn from
-  its zone for as long as the zone lasts. Fire Arrows: arrows falling into
+  its zone for as long as the zone lasts, with a light rim broken into
+  uneven arcs and two glints so its edge reads on grass and trail. Fire Arrows: arrows falling into
   the circle (0.4 s), then a burning patch drawn from its zone. Zones fade
   over their last second. A label at the spot for 1.5 s reads "3 hit" (the
   enemies inside when it landed) or "Missed" (`names.ts`). In play effect
@@ -696,7 +701,7 @@ Normal, every map:
 - **T1** noTowers loses by wave 3.
 - **T2** lazyBuild loses on wave 6 to 9.
 - **T3** longbowSpam loses on wave 7 to 9.
-- **T4** comboBuild wins with 5 to 18 lives.
+- **T4** comboBuild wins with 5 to 19 lives.
 - **T5** comboBuildNoFire is strictly worse than comboBuild (fewer lives,
   or lost).
 - **T6** comboBuild has at least 3 more lives than comboNoSpecials, and
@@ -713,10 +718,6 @@ Normal, every map:
 - **S3** (Meadow) in a full comboBuild game the policy fires at least 15
   specials in the ten waves and at least 80% of them catch 3 or more
   enemies.
-
-T4 on Switchback is a known miss, pinned in the suite as failing: there
-comboNoSpecials wins with 16 lives, so T6 needs 19 or more and T4 allows
-at most 18; comboBuild wins with 19.
 
 Easy, every map: **E1** lazyBuild wins with at least 8 lives; **E2**
 noTowers loses; **E3**

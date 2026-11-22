@@ -48,7 +48,9 @@
 // the map fires there. On touch, a tap on the map fires at the tap; a press
 // held AIM_HOLD_MS or moved past the drag threshold shows the circle 48 px
 // above the finger (DRAG_LIFT, with the finger line) and its release fires
-// there, or cancels when the finger is over the HUD. Escape, pressing
+// there when that point is on the map (the finger may be over the HUD, so
+// the bottom rows are reachable), or cancels when the lifted point is off
+// the map or the finger is on the Special button. Escape, pressing
 // Special again, or a press anywhere else on the HUD cancels aiming (and
 // closes the popup); a cancel spends nothing. Aiming, the popup, the tower
 // pick and the tower panel are mutually exclusive: opening one clears the
@@ -297,7 +299,7 @@ const DRAG_LINE = 1.5;
 /** Aim circle (milestone 25b): outline width and fill opacity; milestone 30: half-length of the centre cross. */
 const AIM_LINE = 3;
 const AIM_FILL_ALPHA = 0.22;
-const AIM_CROSS = 7;
+const AIM_CROSS = 9;
 /** The aim banner's box (milestone 30): top edge and height, centred across the map. */
 const BANNER_Y = 8;
 const BANNER_H = 46;
@@ -311,9 +313,14 @@ export const SPECIAL_COLORS: Readonly<Record<SpecialType, number>> = {
   fireArrows: COLORS.specialFire,
 };
 
-/** A touch hold's aim point (milestone 30): DRAG_LIFT px above the finger, kept on the map's top edge. */
-function liftedAim(x: number, y: number): { x: number; y: number } {
-  return { x: Math.min(Math.max(x, MAP_AREA.x), MAP_AREA.x + MAP_AREA.width), y: Math.max(MAP_AREA.y, y - DRAG_LIFT) };
+/**
+ * A touch hold's aim point (milestone 30): DRAG_LIFT px above the finger,
+ * or null when that point is off the map. As for tower drags (milestone
+ * 25a) the lifted point decides, so a finger on the HUD aims at the map's
+ * bottom rows.
+ */
+function liftedAim(x: number, y: number): { x: number; y: number } | null {
+  return onMap(x, y - DRAG_LIFT) ? { x, y: y - DRAG_LIFT } : null;
 }
 
 /** True when (x, y) is on the map (where a special may be aimed): 0..960 x 0..480 inclusive. */
@@ -361,6 +368,8 @@ export class GameScene extends Phaser.Scene {
   private press: Press | null = null;
   private shots = new ShotEffects();
   private specialFx!: SpecialEffects;
+  /** The aim circle's centre cross, above the sprites (milestone 30 follow-up). */
+  private aimCross!: Phaser.GameObjects.Graphics;
   /** Ground layer over the map (milestone 30): zones and scorch marks. */
   private ground!: Phaser.GameObjects.Graphics;
   /** The aim banner (milestone 30): its backing and two lines. */
@@ -434,6 +443,8 @@ export class GameScene extends Phaser.Scene {
     // Flyers (Harpies) draw above every walker and label, below the HUD.
     this.enemySprites.setAirLayer(this.add.layer());
     // The aim banner (milestone 30): over the map's top edge, under the HUD and panels.
+    // The aim circle's centre cross (milestone 30 follow-up), above every sprite.
+    this.aimCross = this.add.graphics();
     this.bannerBg = this.add.graphics().setDepth(4);
     const bannerText = (y: number, size: string, color: string) =>
       this.add.text(480, y, '', { fontFamily: FONT, fontSize: size, fontStyle: 'bold', color }).setOrigin(0.5, 0.5).setDepth(4);
@@ -662,16 +673,22 @@ export class GameScene extends Phaser.Scene {
 
   /**
    * A touch released while aiming (milestone 30). A tap fires at the tap
-   * point. A hold fires at its lifted aim point, or, released with the
-   * finger over the HUD, cancels aiming and spends nothing.
+   * point. A hold fires at its lifted aim point when that point is on the
+   * map (the finger may be over the HUD); it cancels aiming and spends
+   * nothing when the lifted point is off the map or the finger is on the
+   * Special button.
    */
   private endAimPress(x: number, y: number): void {
     const d = this.aimPress;
     this.aimPress = null;
     if (d === null || this.aiming === null) return;
-    if (!d.active) this.fireSpecial(this.aiming, { x: d.x0, y: d.y0 });
-    else if (y >= HUD_TOP) this.cancelSpecial();
-    else this.fireSpecial(this.aiming, liftedAim(x, y));
+    if (!d.active) {
+      this.fireSpecial(this.aiming, { x: d.x0, y: d.y0 });
+    } else {
+      const aimAt = liftedAim(x, y);
+      if (aimAt === null || contains(this.hud.rects().special, x, y)) this.cancelSpecial();
+      else this.fireSpecial(this.aiming, aimAt);
+    }
     this.redraw();
   }
 
@@ -1224,6 +1241,7 @@ export class GameScene extends Phaser.Scene {
 
     const g = this.overlay;
     g.clear();
+    this.aimCross.clear();
 
     const selected = this.panel.cell === null ? undefined : towerAt(this.state, this.panel.cell);
     if (selected) {
@@ -1271,10 +1289,15 @@ export class GameScene extends Phaser.Scene {
       g.strokeCircle(aimAt.x, aimAt.y, r);
       g.lineStyle(AIM_LINE, color, 1);
       g.strokeCircle(aimAt.x, aimAt.y, r);
-      // The landing point: a small cross at the centre.
-      g.lineStyle(2, COLORS.dragLine, 0.95);
-      g.lineBetween(aimAt.x - AIM_CROSS, aimAt.y, aimAt.x + AIM_CROSS, aimAt.y);
-      g.lineBetween(aimAt.x, aimAt.y - AIM_CROSS, aimAt.x, aimAt.y + AIM_CROSS);
+      // The landing point: a light cross with a dark outline at the centre,
+      // drawn on the cross layer above the sprites (milestone 30 follow-up).
+      const c = this.aimCross;
+      c.lineStyle(6, COLORS.aimCrossDark, 0.9);
+      c.lineBetween(aimAt.x - AIM_CROSS - 1, aimAt.y, aimAt.x + AIM_CROSS + 1, aimAt.y);
+      c.lineBetween(aimAt.x, aimAt.y - AIM_CROSS - 1, aimAt.x, aimAt.y + AIM_CROSS + 1);
+      c.lineStyle(2.5, COLORS.dragLine, 1);
+      c.lineBetween(aimAt.x - AIM_CROSS, aimAt.y, aimAt.x + AIM_CROSS, aimAt.y);
+      c.lineBetween(aimAt.x, aimAt.y - AIM_CROSS, aimAt.x, aimAt.y + AIM_CROSS);
       const ap = this.aimPress;
       if (ap?.active) {
         g.lineStyle(DRAG_LINE, COLORS.dragLine, 0.85);

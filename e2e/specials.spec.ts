@@ -80,7 +80,7 @@ test('Powder Keg by mouse: banner, circle under the pointer, a click fires, "N h
   u = await ui(page);
   expect(u.special).toMatchObject({ aiming: null, banner: null, ready: false, rechargeTicks: SPECIAL_RECHARGE_TICKS });
   expect(u.special.labels).toEqual([expect.objectContaining({ text: `${ids.length} hit`, x: at.x })]);
-  expect((await hud(page)).special).toBe('Special 20s');
+  expect((await hud(page)).special).toBe('Wait 20s');
 
   // The label goes after 1.5 s (90 ticks in test mode); the scorch mark after 2 s.
   await api(page, (a) => a.step(89));
@@ -93,7 +93,7 @@ test('Powder Keg by mouse: banner, circle under the pointer, a click fires, "N h
   expect((await ui(page)).special.aiming).toBeNull();
   await api(page, (a) => a.step(1200 - 90 - 1));
   expect((await ui(page)).special).toMatchObject({ ready: false, rechargeTicks: 1 });
-  expect((await hud(page)).special).toBe('Special 1s');
+  expect((await hud(page)).special).toBe('Wait 1s');
   await api(page, (a) => a.step(1));
   expect((await ui(page)).special).toMatchObject({ ready: true, rechargeTicks: 0 });
   expect((await hud(page)).special).toBe('Special');

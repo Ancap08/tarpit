@@ -25,8 +25,8 @@
 // "/10") and the preview shows the generated wave; a type that comes in two
 // groups (an endless wave's extra Harpies) is listed once with the sum.
 // Milestone 30: while the special charge recharges the Special button is
-// greyed with a fill growing from its left edge and the seconds left on its
-// right ("12s"); ready, its pip is lit (and pulses in play). The speed
+// greyed, a fill grows from its left edge under the label, and the label is
+// the countdown ("Wait 12s"); ready, its pip is lit (and pulses in play). The speed
 // button reads "3x" while held. The Gold readout is a tap target
 // (GOLD_RECT, for the gold cheat) and shows CHEAT_MARK under it once the
 // cheat was used.
@@ -83,7 +83,7 @@ const BUTTON_H = HUD_BUTTON_H;
 
 export interface HudStrings {
   gold: string;
-  /** Milestone 30: "Special", or "Special 12s" while the charge refills. */
+  /** Milestone 30: "Special", or the countdown ("Wait 12s") while the charge refills. */
   special: string;
   /** Milestone 30: CHEAT_MARK once the gold cheat was used, else ''. */
   cheat: string;
@@ -247,8 +247,6 @@ export class Hud {
   /** The recharge fill over the Special button (milestone 30). */
   private readonly rechargeFill: Phaser.GameObjects.Graphics;
   private readonly cheatMark: Phaser.GameObjects.Text;
-  /** The seconds left while the charge refills, small in the Special button's lower right corner (milestone 30). */
-  private readonly rechargeText: Phaser.GameObjects.Text;
   private readonly specialMenu: SpecialMenu;
   private pipKey = '';
   private readonly bar: BuildBar;
@@ -271,11 +269,10 @@ export class Hud {
       fontSize: '16px',
       right: '',
     });
+    // The recharge fill sits over the button's box and under its label.
     this.rechargeFill = scene.add.graphics();
+    scene.children.moveBelow(this.rechargeFill, this.specialButton.labelObjects[0]);
     this.pip = scene.add.graphics();
-    this.rechargeText = scene.add
-      .text(SPECIAL_BUTTON.x + SPECIAL_BUTTON.width - 6, MID + 10, '', { fontFamily: FONT, fontSize: '12px', fontStyle: 'bold', color: TEXT.button })
-      .setOrigin(1, 0.5);
     this.cheatMark = scene.add
       .text(GOLD_RECT.x + 6, MID + 12, CHEAT_MARK, { fontFamily: FONT, fontSize: '11px', fontStyle: 'bold', color: TEXT.cheatMark })
       .setOrigin(0, 0.5)
@@ -312,8 +309,8 @@ export class Hud {
     this.speedButton.set(speedLabel(speed), state.phase !== 'won' && state.phase !== 'lost');
     const ready = specialReady(state);
     const recharge = specialRecharge(state);
-    this.specialButton.set(SPECIAL_BUTTON_TEXT, ready);
-    set(this.rechargeText, recharge ? rechargeText(state.specialRechargeTicks, TICKS_PER_SECOND) : '');
+    // Milestone 30 follow-up: while the charge refills the label is the countdown ("Wait 15s").
+    this.specialButton.set(recharge ? rechargeText(state.specialRechargeTicks, TICKS_PER_SECOND) : SPECIAL_BUTTON_TEXT, ready);
     this.specialButton.setPicked(ready && (special.menuOpen || special.aiming !== null));
     // The fill grows in whole pixels, so it redraws at most once per pixel.
     const fillWidth = recharge ? Math.round(SPECIAL_BUTTON.width * recharge.progress) : 0;
@@ -329,7 +326,7 @@ export class Hud {
         // The pulse: a ring round the pip, growing and fading (play only).
         if (pulse > 0) this.pip.lineStyle(2, COLORS.specialPip, 1 - pulse / 9).strokeCircle(cx, MID, PIP_RADIUS + pulse);
       } else if (recharge) {
-        this.rechargeFill.fillStyle(COLORS.rechargeFill, 0.55).fillRect(SPECIAL_BUTTON.x, ROW1_BUTTON_Y, fillWidth, BUTTON_H);
+        this.rechargeFill.fillStyle(COLORS.rechargeFill, 1).fillRect(SPECIAL_BUTTON.x, ROW1_BUTTON_Y, fillWidth, BUTTON_H);
       } else this.pip.lineStyle(1.5, COLORS.specialPipEmpty, 1).strokeCircle(cx, MID, PIP_RADIUS - 0.75);
     }
     this.specialMenu.update(special.menuOpen && ready ? unlockedSpecials(state.wave) : []);
@@ -349,7 +346,7 @@ export class Hud {
       wave: this.wave.text,
       next: this.next.text,
       startWave: this.startButton.text,
-      special: this.rechargeText.text ? `${SPECIAL_BUTTON_TEXT} ${this.rechargeText.text}` : SPECIAL_BUTTON_TEXT,
+      special: this.specialButton.text,
       cheat: this.cheatMark.visible ? CHEAT_MARK : '',
       speed: this.speedButton.text,
       boss: this.bossBar.label(),
