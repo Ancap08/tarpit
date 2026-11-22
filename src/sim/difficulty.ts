@@ -21,15 +21,16 @@ export interface DifficultyDef {
 }
 
 export const DIFFICULTY_DEFS: Readonly<Record<Difficulty, DifficultyDef>> = {
-  easy: { hpMultiplier: 0.75, startGold: 150, startLives: 25 },
+  // Milestone 25c: Easy lives 25 -> 30; Hard hp 1.3 -> 1.1.
+  easy: { hpMultiplier: 0.75, startGold: 150, startLives: 30 },
   normal: { hpMultiplier: 1, startGold: 100, startLives: 20 },
-  hard: { hpMultiplier: 1.3, startGold: 80, startLives: 15 },
+  hard: { hpMultiplier: 1.1, startGold: 80, startLives: 15 },
 };
 
 /**
  * An enemy's hp at spawn (and so its full hp) on this level: the base hp
- * times the level's multiplier, rounded to a whole number (Goblin 30:
- * Easy 23, Normal 30, Hard 39).
+ * times the level's multiplier, rounded to a whole number (Goblin 12:
+ * Easy 9, Normal 12, Hard 13).
  */
 export function enemyMaxHp(type: EnemyType, difficulty: Difficulty = DEFAULT_DIFFICULTY): number {
   return Math.round(ENEMY_STATS[type].hp * DIFFICULTY_DEFS[difficulty].hpMultiplier);

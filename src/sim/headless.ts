@@ -330,9 +330,12 @@ type Decide = (state: GameState) => BuildAction | undefined;
 
 /**
  * Play all waves on `difficulty` (Normal when left out), asking `decide`
- * for actions before each one; return what it did.
+ * for actions before each one; return what it did. With `timed`
+ * (milestone 25c), each wave also plays its timed actions (as in
+ * playScripted) and the returned script carries them, so a replay with
+ * playScripted is the same game.
  */
-function recordScript(decide: Decide, difficulty?: Difficulty): WaveScript {
+function recordScript(decide: Decide, difficulty?: Difficulty, timed?: TimedScript): WaveScript {
   const state = createGame({ difficulty });
   const script: BuildAction[][] = [];
   for (let i = 0; i < WAVES.length && state.phase === 'setup'; i++) {
@@ -344,9 +347,15 @@ function recordScript(decide: Decide, difficulty?: Difficulty): WaveScript {
     }
     script.push(actions);
     applyAction(state, { type: 'startWave' });
-    applyAction(state, { type: 'runUntilWaveEnds', maxTicks: 60 * 600 });
+    runWaveWithTimed(state, timed?.[i] ?? [], 60 * 600, []);
   }
-  return script;
+  return timed ? Object.assign(script, { timed }) : script;
+}
+
+/** `script` with each wave's actions filtered by `keep`, keeping its timed actions (milestone 25c). */
+function filterScript(script: WaveScript, keep: (action: BuildAction, wave: number) => boolean): WaveScript {
+  const out = script.map((wave, i) => wave.filter((a) => keep(a, i)));
+  return script.timed ? Object.assign(out, { timed: script.timed }) : out;
 }
 
 /** Spacing of the trail walk's step points along the path, in pixels (three cells). */
@@ -500,7 +509,7 @@ export function soundBuildNoTar(difficulty?: Difficulty): WaveScript {
 /** The script without the actions on cells where `script` builds a `type` tower. */
 function withoutTowerType(script: WaveScript, type: TowerType): WaveScript {
   const cells = new Set(script.flat().filter((a) => a.type === 'build' && a.tower === type).map((a) => cellKey(a.cell)));
-  return script.map((wave) => wave.filter((a) => !cells.has(cellKey(a.cell))));
+  return filterScript(script, (a) => !cells.has(cellKey(a.cell)));
 }
 
 /**
@@ -523,21 +532,52 @@ export const COMBO_PLAN: readonly BuildAction[] = [
   lb(9, 5), lb(9, 4), t(14, 10), fp(14, 9), lb(17, 8), mo(17, 6), up(14, 10), up(14, 9), lb(17, 9), up(17, 6),
   up(9, 5), up(9, 4), mo(9, 7), lb(17, 10), up(17, 9), up(9, 7), up(17, 10), t(11, 4), fp(10, 4), up(11, 4),
   up(17, 8),
+  // Milestone 25c: the horde pays more, so the plan goes on (bought from
+  // about wave 8): three upgraded Longbows inside the second U and the
+  // first U, then a third Mortar (16,7) and an upgraded Cannon (15,10).
+  // The cheap Longbow pairs come first so the gold left before wave 9 is
+  // always under 70.
+  lb(16, 8), up(16, 8), lb(9, 6), up(9, 6), lb(16, 9), up(16, 9), mo(16, 7), up(16, 7), c(15, 10), up(15, 10),
 ];
 
 /**
+ * The wave tick at which the archetypes' cluster special fires in each wave
+ * (entry i for wave i + 1; milestone 25c). Chosen per wave by a headless
+ * scan of comboBuild on Normal: for each wave in turn (earlier waves
+ * already firing at their ticks), the first wave tick at which the
+ * densest 70 px cluster is largest.
+ */
+export const CLUSTER_POLICY_TICKS: readonly number[] = [197, 164, 413, 813, 692, 1534, 573, 923, 545, 473];
+
+/** One clusterSpecial per wave at CLUSTER_POLICY_TICKS (milestone 25c). */
+export const CLUSTER_POLICY: TimedScript = CLUSTER_POLICY_TICKS.map((atWaveTick): TimedAction[] => [{ type: 'clusterSpecial', atWaveTick }]);
+
+/**
  * Combo build (milestone 10): COMBO_PLAN, each action bought as soon as gold
- * allows. v2 target (milestone 12): won with 5 to 15 lives and under 150
- * gold after wave 9.
+ * allows. Milestone 25c: plus the cluster special policy (CLUSTER_POLICY:
+ * once per wave, at that wave's CLUSTER_POLICY_TICKS tick, the best
+ * unlocked special at the densest 70 px cluster). v4 target (milestone
+ * 25c): won with 5 to 15 lives and under 200 gold after wave 9.
  */
 export function comboBuild(difficulty?: Difficulty): WaveScript {
+  return recordScript(followPlan(COMBO_PLAN), difficulty, CLUSTER_POLICY);
+}
+
+/**
+ * The combo plan without specials (milestone 25c): COMBO_PLAN, each action
+ * as soon as gold allows, and no timed actions; recorded by playing, since
+ * the specials' kills change the gold. Target: strictly worse than
+ * comboBuild (lost, or fewer lives) but reaches wave 8.
+ */
+export function comboNoSpecials(difficulty?: Difficulty): WaveScript {
   return recordScript(followPlan(COMBO_PLAN), difficulty);
 }
 
 /**
  * comboBuild with every Fire Pot action removed: no Fire Pot builds and no
- * upgrades on the cells where comboBuild builds them. v2 target (milestone
- * 12): strictly worse than comboBuild (lost, or won with fewer lives).
+ * upgrades on the cells where comboBuild builds them; its cluster specials
+ * are kept. v2 target (milestone 12): strictly worse than comboBuild (lost,
+ * or won with fewer lives).
  */
 export function comboBuildNoFire(difficulty?: Difficulty): WaveScript {
   return withoutTowerType(comboBuild(difficulty), 'firepot');
@@ -563,11 +603,13 @@ export function noAntiAir(difficulty?: Difficulty): WaveScript {
   const antiAir = (a: BuildAction) => a.type === 'build' && (a.tower === 'musketeer' || a.tower === 'longbow');
   const cells = new Set(script.flat().filter(antiAir).map((a) => cellKey(a.cell)));
   const owned = script.slice(0, before).flat().filter(antiAir).map((a) => a.cell);
-  return script.map((wave, i) => {
+  const out = script.map((wave, i) => {
     if (i < before) return wave;
     const kept = wave.filter((a) => !cells.has(cellKey(a.cell)));
     return i === before ? [...owned.map((cell): BuildAction => ({ type: 'sell', cell })), ...kept] : kept;
   });
+  // Milestone 25c: the combo's cluster specials are kept.
+  return script.timed ? Object.assign(out, { timed: script.timed }) : out;
 }
 
 /**
@@ -595,7 +637,7 @@ export function bossRush(difficulty?: Difficulty): WaveScript {
   for (let i = 0; i < last && state.phase === 'setup'; i++) {
     for (const action of combo[i] ?? []) applyAction(state, action);
     applyAction(state, { type: 'startWave' });
-    applyAction(state, { type: 'runUntilWaveEnds', maxTicks: 60 * 600 });
+    runWaveWithTimed(state, combo.timed?.[i] ?? [], 60 * 600, []);
   }
   const extra: BuildAction[] = [];
   if (state.phase === 'setup') {
@@ -608,7 +650,8 @@ export function bossRush(difficulty?: Difficulty): WaveScript {
       }
     }
   }
-  return combo.map((wave, i) => (i === last ? [...wave, ...extra] : wave));
+  const out = combo.map((wave, i) => (i === last ? [...wave, ...extra] : wave));
+  return combo.timed ? Object.assign(out, { timed: combo.timed }) : out;
 }
 
 /**
@@ -679,6 +722,30 @@ export function comboWithKegs(difficulty?: Difficulty): WaveScript {
   return Object.assign(script, { timed });
 }
 
+/**
+ * The hand-tuned plan for Hard (milestone 25c), in purchase order: the
+ * combo's cells, but the opening reordered for the Hard horde: the two first
+ * Longbows, the Tar Pit, the third Longbow (17,8) before the Fire Pot, and
+ * both first Longbow upgrades before the first Mortar, so wave 4's Harpies
+ * and Wolves meet three bows, two of them upgraded. Then the rest of
+ * COMBO_PLAN in its order.
+ */
+export const HARD_PLAN: readonly BuildAction[] = ((): BuildAction[] => {
+  const head = [lb(9, 5), lb(9, 4), t(14, 10), lb(17, 8), fp(14, 9), up(9, 5), up(9, 4), mo(17, 6)];
+  const key = (a: BuildAction) => `${a.type} ${cellKey(a.cell)}`;
+  const taken = new Set(head.map(key));
+  return [...head, ...COMBO_PLAN.filter((a) => !taken.has(key(a)))];
+})();
+
+/**
+ * Hard build (milestone 25c): HARD_PLAN, each action as soon as gold
+ * allows, plus the cluster special policy (CLUSTER_POLICY). Target: wins on
+ * Hard. Played on Normal too (informational).
+ */
+export function hardBuild(difficulty?: Difficulty): WaveScript {
+  return recordScript(followPlan(HARD_PLAN), difficulty, CLUSTER_POLICY);
+}
+
 export const INFORMATIONAL: Readonly<Record<string, Archetype>> = {
   comboStrongest,
   comboWithKegs,
@@ -694,6 +761,8 @@ export const ARCHETYPES: Readonly<Record<string, Archetype>> = {
   longbowSpam,
   comboBuild,
   comboBuildNoFire,
+  comboNoSpecials,
   noAntiAir,
   bossRush,
+  hardBuild,
 };

@@ -23,11 +23,11 @@ export interface SpecialDef {
   burnTicks: number;
 }
 
-/** Starting numbers from SCOPE-v4; milestones 25c and 28 retune. */
+/** Starting numbers from SCOPE-v4, retuned in milestone 25c (Fire Arrows 10 -> 30 burn per second); milestone 28 retunes. */
 export const SPECIAL_DEFS: Readonly<Record<SpecialType, SpecialDef>> = {
   keg: { unlockWave: 1, radius: 70, damage: 80, slow: 0, slowTicks: 0, burnDps: 0, burnTicks: 0 },
   tarBarrel: { unlockWave: 4, radius: 90, damage: 0, slow: 0.5, slowTicks: 240, burnDps: 0, burnTicks: 0 },
-  fireArrows: { unlockWave: 7, radius: 80, damage: 0, slow: 0, slowTicks: 0, burnDps: 10, burnTicks: 240 },
+  fireArrows: { unlockWave: 7, radius: 80, damage: 0, slow: 0, slowTicks: 0, burnDps: 30, burnTicks: 240 },
 };
 
 /** Every special, in unlock order (the HUD popup lists them in this order). */
