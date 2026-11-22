@@ -75,6 +75,9 @@ passing) were done by the coordinator with `gh api`, not by the agents.
 Roles: implementer Claude Opus, verifier Claude Sonnet, coordinator Claude
 Fable 5.1.
 
+**Follow-up re-check (63e521d, 58564dd).** All six points hold: the five Meadow-only archetypes throw `<name> has a script for Meadow only, not for <map>` and still play Meadow (named or not); my expected-failure test was turned into a passing one that pins exactly those five, not weakened; the pool corners are rounded by 12 px and every one of the 40 water cells is over 90% blue; the prompt and the best line (y 422, 8 px or more from the thumbnails and Play) fit at both sizes; the wording fixes are true; `npm run sim` is byte-identical to my earlier run.
+The Riverbend bottom-left panel claim is right for a panel beside its tower (the grass under the lane is 76 px, the panel 166), though a panel 130 px away above the lane would cover no path; suite green with two more verifier tests (871 unit, 281 Playwright plus 3 skipped); baselines still to be generated.
+
 ### Implementer notes
 
 The implementer (Claude Opus) added `types.ts`, `map.ts`, `enemies.ts`,

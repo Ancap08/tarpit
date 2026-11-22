@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
+import type Phaser from 'phaser';
 import type { AnimState } from '../src/game/anim/enemySprites';
+import { TITLE_TEXT } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { TitleUiState } from '../src/game/TitleScene';
 import { buildableCells, terrainBlock } from '../src/sim/grid';
@@ -541,4 +543,77 @@ test('frame for a person: the Switchback leftward lane with Goblins, Wolves and 
   });
   await page.screenshot({ path: `${shots}/desktop-switchback-leftward-lane.png` });
   await page.screenshot({ path: `${shots}/desktop-switchback-leftward-lane-zoom.png`, clip: { x: 280, y: 60, width: 340, height: 180 } });
+});
+
+// Milestone 27 follow-up (verifier re-check).
+test('follow-up: the prompt names the map and fits; the best line is centred on y 422, clear of the thumbnails and Play', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('tarpit.best', '{"v":1,"best":{"switchback":{"normal":999}}}'));
+  await openTitle(page);
+  await click(page, 'title:map:switchback');
+  const prompt = await page.evaluate(() => {
+    const scene = (window.__tarpit as TarpitTestApi).game.scene.getScene('title');
+    const texts = scene.children.list.filter((o) => o.type === 'Text') as Phaser.GameObjects.Text[];
+    const t = texts.find((o) => o.text.includes('press Play'))!;
+    const b = t.getBounds();
+    return { text: t.text, x: b.x, y: b.y, right: b.right, bottom: b.bottom };
+  });
+  expect(prompt.text).toBe(TITLE_TEXT.prompt);
+  expect(prompt.text).toBe('Pick a difficulty and a map, then press Play');
+  const r = await rects(page);
+  const play = r['title:play'];
+  expect(prompt.x).toBeGreaterThanOrEqual(16);
+  expect(prompt.right).toBeLessThanOrEqual(944);
+  expect(prompt.y).toBeGreaterThanOrEqual(play.y + play.height + 8);
+  expect(prompt.bottom).toBeLessThanOrEqual(572);
+  const u = await titleUi(page);
+  expect(u.bestLine?.text).toBe('Best on Switchback, Normal: 999 waves');
+  const line = u.bestLine!.rect;
+  const rowBottom = r['title:map:meadow'].y + r['title:map:meadow'].height;
+  expect(Math.abs(line.y + line.height / 2 - 422)).toBeLessThanOrEqual(1);
+  expect(Math.abs(line.x + line.width / 2 - 480)).toBeLessThanOrEqual(1);
+  expect(line.y - rowBottom).toBeGreaterThanOrEqual(8);
+  expect(play.y - (line.y + line.height)).toBeGreaterThanOrEqual(8);
+  if (shots) await page.screenshot({ path: `${shots}/followup-title.png` });
+});
+
+test('follow-up: Riverbend water fills its box, corners rounded by at most 12 px, so every water cell is drawn as water', async ({ page }) => {
+  await start(page, 'riverbend');
+  const png = await page.locator('canvas').screenshot();
+  const { blueShare, probes } = await page.evaluate(async (b64) => {
+    const bmp = await createImageBitmap(await (await fetch(`data:image/png;base64,${b64}`)).blob());
+    const c = new OffscreenCanvas(bmp.width, bmp.height);
+    const ctx = c.getContext('2d')!;
+    ctx.drawImage(bmp, 0, 0);
+    const blue = (x: number, y: number) => {
+      const [r, g, b] = ctx.getImageData(x, y, 1, 1).data;
+      return b > r + 20 && b > g; // water, its bank and the pale ripples on it; grass is green-first
+    };
+    // Per water cell (columns 13..16, rows 5..14): the share of its 32 x 32 px that is blue.
+    const blueShare: number[] = [];
+    for (let row = 5; row <= 14; row++) {
+      for (let col = 13; col <= 16; col++) {
+        let n = 0;
+        for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) if (blue(col * 32 + x, row * 32 + y)) n++;
+        blueShare.push(n / 1024);
+      }
+    }
+    return {
+      blueShare,
+      probes: {
+        // 12 px in from each top corner along both edges the box is water; just outside the box it is not.
+        topLeftIn: blue(416 + 13, 161), leftEdgeIn: blue(417, 160 + 13), topRightIn: blue(543 - 13, 161), rightEdgeIn: blue(542, 160 + 13),
+        cornerItself: blue(416, 160), outsideLeft: blue(414, 300), outsideRight: blue(545, 300), aboveTop: blue(480, 158),
+      },
+    };
+  }, png.toString('base64'));
+  expect(blueShare).toHaveLength(40);
+  // A corner rounded by 12 px loses (1 - pi / 4) x 144 = 31 of a cell's 1024 px (3%); ripples are pale, allow 10%.
+  expect(Math.min(...blueShare)).toBeGreaterThan(0.9);
+  expect(probes).toEqual({ topLeftIn: true, leftEdgeIn: true, topRightIn: true, rightEdgeIn: true, cornerItself: false, outsideLeft: false, outsideRight: false, aboveTop: false });
+  // The rule is unchanged: 40 water cells.
+  let water = 0;
+  for (let key = 0; key < 450; key++) if (terrainBlock({ col: key % 30, row: Math.floor(key / 30) }, MAPS.riverbend) === 'water') water++;
+  expect(water).toBe(40);
+  expect(buildableCells(MAPS.riverbend).filter(Boolean)).toHaveLength(312);
+  if (shots) await page.screenshot({ path: `${shots}/followup-riverbend.png` });
 });

@@ -1,4 +1,5 @@
 import { expect, test, type CDPSession, type Page } from '@playwright/test';
+import type Phaser from 'phaser';
 import { DRAG_LIFT } from '../src/game/input';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { TitleUiState } from '../src/game/TitleScene';
@@ -285,6 +286,21 @@ test('title at tablet size: the thumbnails are touch targets, apart, inside the 
   expect(u.bestLine?.text).toBe('Best on Switchback, Normal: 999 waves');
   const play = r['title:play'];
   expect(u.bestLine!.rect.y + u.bestLine!.rect.height).toBeLessThanOrEqual(play.y);
+  // Milestone 27 follow-up: the best line clear of the thumbnails too, and the longer prompt inside the screen.
+  const rowBottom = r['title:map:meadow'].y + r['title:map:meadow'].height;
+  expect(u.bestLine!.rect.y - rowBottom).toBeGreaterThanOrEqual(8);
+  const prompt = await page.evaluate(() => {
+    const scene = (window.__tarpit as TarpitTestApi).game.scene.getScene('title');
+    const t = scene.children.list.find((o) => o.type === 'Text' && (o as Phaser.GameObjects.Text).text.includes('press Play')) as Phaser.GameObjects.Text;
+    const b = t.getBounds();
+    const a = window.__tarpit!.canvasToPage(b.x, b.y);
+    const z = window.__tarpit!.canvasToPage(b.right, b.bottom);
+    return { text: t.text, left: a.x, right: z.x, bottom: z.y };
+  });
+  expect(prompt.text).toBe('Pick a difficulty and a map, then press Play');
+  expect(prompt.left).toBeGreaterThanOrEqual(16);
+  expect(prompt.right).toBeLessThanOrEqual(1008);
+  expect(prompt.bottom).toBeLessThanOrEqual(768);
   if (shots) await page.screenshot({ path: `${shots}/tablet-title.png` });
   expect(errors).toEqual([]);
 });
