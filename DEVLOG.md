@@ -5439,6 +5439,9 @@ Pot after 23.5 s, a Cannon after 36 s, a Mortar only after the clear.
 **Could not check:** pixel baselines; the revert rows without `*` with
 fresh lists; anything about feel beyond the frames.
 
+**Re-verify of the follow-up (`070de79`, `e7e351a`):** all seven checks pass. Easy lives 35 is the only game number that moved and `specialLists.ts` is unchanged; my replay gives all 108 cells, every target holds (E1 at 10, 20, 9), the kill counter now agrees with mine on every cell, and the suite is green (1035 unit, 281 e2e, 51 of 51 in `npm run sim`).
+The mid-wave frame (wave 2, tick 1904) renders as proposed, also showing "Call next +17"; left open: wave 1's length and Kyle's play notes, the unguarded prose bounds, and the CI baselines.
+
 ### Follow-up (implementer)
 
 Six items from the coordinator after the verifier's pass, on top of
