@@ -670,8 +670,8 @@ depends on them (`npm run sim` is unchanged). The maths is in
 
 Milestone 32a. No game rule changes. `public/manifest.webmanifest` (name,
 colours `#111418`, icons 192, 512 and a maskable 512, display standalone,
-no orientation) uses relative `start_url` and `scope` (`./`), so it works
-under `/` and `/tarpit/`; `index.html` links it and carries the iOS tags
+no orientation, no `id`, so the start URL identifies the app) uses relative
+`start_url` and `scope` (`./`), so it works under `/` and `/tarpit/`; `index.html` links it and carries the iOS tags
 (apple-touch-icon 180, web-app capable, `black-translucent` status bar,
 title). The icons are drawn by `scripts/make-icons.ts` (run by hand). The
 game's parent box sits inside `env(safe-area-inset-*)`.
@@ -686,17 +686,33 @@ only and never under `?test=1` or `?perf=1`. Cache rules:
   (past the HTTP cache), then calls `skipWaiting`; activate deletes every
   other `tarpit-` cache, then calls `clients.claim`.
 - The page (navigations, the scope root, `index.html`): network first
-  (`no-cache`, so it revalidates), with this build's cached page when
-  offline. A network page is never written to the cache.
-- `assets/` (content-hashed names): cache first; a miss is fetched and kept.
-- Other files in scope (manifest, icons): network first, cache when offline.
+  (`no-cache`, so it revalidates). A 2xx answer is served, so a new deploy
+  shows on the next open. If the network fails, answers not ok (an outage's
+  404 or 5xx), or has not answered after 3 s (`PAGE_TIMEOUT_MS`), the worker
+  serves the copy of the page that this worker's build cached at install;
+  with no cached copy it waits for the network. A network page is never
+  written to the cache.
+- `assets/` (content-hashed names): cache first. A miss (for example an old
+  tab asking for the previous build's file) goes to the network, and its
+  answer is returned as it is; a 2xx answer is kept.
+- Other files in scope (manifest, icons): as the page, with their own
+  cached copies as the fallback.
 - Anything else (not GET, another origin, outside the scope, `sw.js`) is
   not handled. `localStorage` (best scores) is never touched.
 
 Old and new files cannot mix: a cache holds one build, filled at install and
-never overwritten by a network page, so the offline page and its files are
+never overwritten by a network page, so a fallback page and its files are
 always one build; online, a page names only its own hashed files, and a
 hashed name always means the same bytes.
+
+Recovery. A broken worker is repaired by deploying a fixed `sw.js`: the
+page checks it past the HTTP cache on every online open, and the new worker
+takes over at once. To retire the worker, build with `TARPIT_SW=off`: that
+`sw.js` deletes every `tarpit-` cache, unregisters itself and reloads open
+pages from the network, and the page registers nothing and removes any
+worker it finds. A page that cannot load at all still recovers at the
+browser's own update check of `sw.js`, within about a day. Deleting `sw.js`
+from a deploy does not remove installed workers.
 
 ## Simulation API shape
 

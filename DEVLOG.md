@@ -6429,3 +6429,33 @@ Needs a real phone: Add to Home Screen wording and icon on current iOS
 (Share is under the ellipsis menu in newer Safari), standalone window and
 status bar, real notch and home bar, Android install prompt and maskable
 mask, iOS storage eviction of the cache.
+
+### Follow-up (Claude Opus 5.5, after the verifier's notes)
+
+1. **Page timeout.** `networkFirst` races the network against 3 s
+   (`PAGE_TIMEOUT_MS` in `src/sw/rules.ts`) when a cached copy exists and
+   serves the cached copy on timeout; with no cached copy it waits. The
+   verifier's hanging-page `test.fixme` is now a passing test.
+2. **Error answers fall back.** A not-ok answer (404, 5xx) serves the cached
+   copy when there is one. The fallback is still the page this worker's
+   build cached at install, so the fallback page and its files stay one
+   build; a new deploy that answers 200 still wins (the update test). The
+   verifier's 503 `test.fixme` now passes.
+3. **Kill switch.** `TARPIT_SW=off npm run build` writes a retiring `sw.js`
+   (skipWaiting, delete every `tarpit-` cache, unregister, reload open
+   pages) and builds a page that registers nothing and removes any worker
+   it finds. Two new tests in `e2e/install.spec.ts`: deploying it over an
+   installed worker leaves no registration and no caches after the next
+   online open, and the game plays; and the retiring `sw.js` on its own,
+   fetched by the old page's update check with no reload, cleans up and
+   reloads the page. Recovery is in `docs/DESIGN.md`, "Install and offline".
+4. **Manifest `id` removed;** the manifest test asserts it is absent.
+5. **Old tab after an update.** A hashed file in no worker cache goes to
+   the network and its answer is returned. Tested: a hashed name on no
+   server gives 404 online and a network error at once offline (not a
+   hang). In the verifier's two-tab test the old bundle came back with A's
+   own bytes from the browser's HTTP cache, online and offline; the
+   assertion there now accepts A's exact bytes or 404 / a network error. A
+   2xx miss is kept in the current cache; that is a correct file under its
+   own hashed name, deleted with that cache at the next update.
+
