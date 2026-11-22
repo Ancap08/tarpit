@@ -4728,3 +4728,181 @@ committed; CI must generate them.
   the placement unit test over every buildable cell of every map and by
   the touch first-wave test; there is no separate browser test for the
   panel at the Switchback exit or the Riverbend spawn.
+
+### Verifier notes
+
+Verifier: Claude Fable, independent of the implementer. Nothing in `src/`
+outside test files was changed. Verdict: merge after the baselines are
+generated; no player-facing bug found. Findings are for milestone 28.
+
+**Suite (A).** lint, check:assets, typecheck, build and check:size
+(1.24 MB) pass. `npm test` twice: 844 of 844 both times, 18.2 s and 17.7 s.
+Tests over 3 s: `difficulty.test.ts` "Normal by argument equals Normal by
+default" 7.9 to 8.9 s; `endless.test.ts` endlessGreedy determinism 4.7 to
+5.7 s; `horde-verifier.test.ts` E8 easy 4.1 s and normal 3.2 to 3.9 s;
+`endless-verifier-cap.test.ts` 3.7 to 4.1 s; `endless-verifier.test.ts`
+"twice over" 3.5 s; `difficulty.test.ts` Hard combo hp 3.3 s. The two
+tests given 30 s limits take 3.5 s and (the "goes further" one) under 3 s
+in the suite. `PW_PORT=4273 npm run test:e2e` three times: 251 of 251 each
+time (about 30 s), no flake. With the verifier tests: 870 unit tests plus
+one expected failure, 278 Playwright tests plus 3 skipped frame writers,
+green twice.
+
+**Meadow unchanged (B).** `npm run sim` in a worktree of origin/main
+against this branch: the first 220 lines are identical; only the two map
+tables are appended. No global `MAP` is left. Every default-to-Meadow that
+remains, and whether a game on another map can reach it:
+- `createGame()` with no map, `GameScene.init` with no start data,
+  `startGame()` and `bestScore()` hooks, `HighScoreStore.best/record` with
+  no map id: not reached in play. The title always passes the map, Play
+  again passes it, and the scene records scores with its own map id.
+- `TRAIL_CELL_ORDER`, `COMBO_PLAN`, `CLUSTER_POLICY`,
+  `ENDLESS_CLUSTER_POLICY`: Meadow constants, read only when no map is
+  given; the per-map paths go through `trailCellOrder(state.map)`,
+  `COMBO_PLANS` and `CLUSTER_POLICY_TICKS_BY_MAP`.
+- `soundBuild`, `soundBuildNoTar`, `hardBuild`, `comboStrongest` and
+  `comboWithKegs` are in `ARCHETYPES` or `INFORMATIONAL`, whose type takes
+  a map, but drop it and return a Meadow script. So
+  `ARCHETYPES.hardBuild('hard', 'riverbend')` plays Meadow without a word,
+  and the browser hook `runScript('soundBuild')` on another map would
+  apply Meadow's cells. Low; pinned as an expected failure in
+  `maps-verifier.test.ts` for milestone 28.
+
+**Spec to code (C).** Every number in DESIGN.md "Maps" matches the code
+and the brief's waypoints (lengths, counts, river box, cottage boxes and
+cells, the between-lane rows, title row geometry, Up and Down stopping at
+the ends). Wording only: Riverbend is called "a wide S" in DESIGN.md and
+SCOPE-v4, but these waypoints make an arch (up, across, down), not an S;
+`map.ts` says Switchback has "three runs" (it has four lanes);
+`sheets.ts` still says "the path never runs left" for the Wolf and the
+boss; `highScore.ts` still says "today's only map".
+
+**Map data (D), `src/sim/maps-verifier.test.ts`.** Lengths by Manhattan
+sum 1584, 1728, 1536. A mask built from the waypoints and boxes with my
+own point-to-segment distance equals the game's cell by cell, with the
+block reason, on all three maps: 344, 334, 312. Exactly the 40 river
+cells refuse with `water`, tried over a 32 x 17 sweep that includes cells
+off the grid. Refusal order, now tested: game over, then terrain (path
+before landmark before water, on a test map where they overlap), then
+occupied, then gold; for a move, no tower and locked come first. Cottage
+boxes are inside the map, more than 20 px from the centreline and off the
+water; no buildable cell reaches the 30 px cave disc or the cottage. The
+mask cache was read for all three maps in all six orders on fresh map
+objects, interleaved, and never mixed them.
+
+**Sim probes (E).** Every enemy type, Harpy and boss included, crosses
+each map in `pathLength / speed` seconds within one tick, on the
+centreline, with no jump at a corner. A Longbow in row 4 and one in row 7
+shoot enemies on both lanes. Lanes are 96 px apart, so a 60 px Mortar
+splash does not reach from one lane to the next; it does reach round a
+turn (51.6 px), and a Powder Keg aimed between two lanes hits both. A tar
+slow and a burn carry round the corner. The boss, call early, Keep going
+and endlessIdle work on both maps. The cluster tick scan, rewritten here,
+gives the ticks in the code for all three maps. The DEVLOG's tables
+reproduce exactly.
+
+**Balance (F), not pass or fail.** A Goblin crosses Meadow in 26.4 s,
+Switchback in 28.8 s, Riverbend in 25.6 s. Result, wave, lives:
+
+| Archetype | Level | Meadow | Switchback | Riverbend |
+|---|---|---|---|---|
+| noTowers | Easy | lost 2 | lost 2 | lost 2 |
+| noTowers | Normal | lost 1 | lost 1 | lost 1 |
+| noTowers | Hard | lost 1 | lost 1 | lost 1 |
+| lazyBuild | Easy | won, 9 | won, 16 | won, 9 |
+| lazyBuild | Normal | lost 8 | lost 9 | lost 8 |
+| lazyBuild | Hard | lost 5 | lost 2 | lost 2 |
+| longbowSpam | Easy | won, 2 | won, 20 | won, 2 |
+| longbowSpam | Normal | lost 8 | lost 8 | lost 8 |
+| longbowSpam | Hard | lost 7 | lost 8 | lost 7 |
+| comboBuild | Easy | won, 29 | won, 30 | won, 29 |
+| comboBuild | Normal | won, 13 | won, 18 | won, 8 |
+| comboBuild | Hard | lost 8 | won, 7 | lost 8 |
+| noAntiAir | Easy | lost 6 | lost 7 | lost 7 |
+| noAntiAir | Normal | lost 5 (2 left after 4) | lost 5 (2) | lost 5 (1) |
+| noAntiAir | Hard | lost 4 | lost 4 | lost 4 |
+| comboNoSpecials | Normal | won, 12 | won, 18 | won, 14 |
+| comboNoSpecials | Hard | lost 7 | won, 3 | lost 7 |
+| endlessIdle | Normal | lost 15 | lost 16 | lost 14 |
+| endlessGreedy | Normal | lost 18 | lost 20 | lost 17 |
+
+There is no per-map `hardBuild`. Riverbend's lazyBuild and longbowSpam
+rows equal Meadow's in lives and gold on Easy and Normal; the runs are
+different games (other cells, other wave lengths) that leak the same
+enemies, not a map mix-up.
+
+Gap list against Meadow's targets:
+- Switchback, lazyBuild Normal: lost on wave 9; target 6 to 8.
+- Switchback, comboBuild Normal: 18 lives; target 5 to 15. Gold after
+  wave 9 is 215; target under 200.
+- Switchback, comboBuild Hard: wins with the Normal plan (7 lives). The
+  rule as written is met (11 fewer lives), but Hard is beaten without a
+  Hard plan, which Meadow does not allow.
+- Switchback, specials add nothing on Normal: comboNoSpecials also wins
+  with 18. Meadow's rule is that it is strictly worse. Wave 1's special
+  fires at tick 1 and is wasted.
+- Riverbend, specials hurt on Normal: comboBuild 8 lives, comboNoSpecials
+  14. The scanned ticks are the rule working, but the result breaks
+  "strictly worse without specials". Riverbend's cluster ticks or plan
+  need a second look before its combo number is tuned.
+- Riverbend, noAntiAir Normal: meets the target with 1 life left after
+  wave 4; one more Harpy leak and it fails "survives wave 4".
+- Hard lazyBuild loses on wave 2 on both new maps (wave 5 on Meadow). No
+  target covers it.
+- Met as they stand: noTowers everywhere; longbowSpam Normal on both;
+  Riverbend lazyBuild Normal and comboBuild Normal; noAntiAir on both;
+  Easy lazyBuild wins on both; Riverbend Hard combo (lost on 8).
+
+**Browser (G), `e2e/maps-verifier.spec.ts` and
+`e2e/maps-verifier-touch.spec.ts`.** All pass.
+- Mouse and touch drags place on the four corners, the middle of each
+  side, and cells beside the path and the river on both maps. The touch
+  ghost aims 48 px above the finger; the bottom row is reached with the
+  finger over the HUD and presses no HUD button.
+- Drags and clicks on every path segment and corner, the cave, the
+  cottage, the river (middle, both edges, the bottom, the pool, the grass
+  corner of the pool's box) place nothing and log no error.
+- Cell (2,7) builds on Riverbend and is refused on Meadow; (2,12) the
+  reverse, by mouse.
+- The tower panel's buttons stay inside the map and off the tower for
+  towers at the corners, beside and above the cottage and between lanes;
+  Sell works from each. By touch a bottom-row tower opens its panel.
+- A special aims and fires over the river and in the bottom row, by
+  mouse, by tap-tap and by a lifted touch drag.
+- Facing: every type faces the way each segment of each map runs. Goblin,
+  Troll, Harpy and Shieldbearer use their own left frames; the Wolf and
+  the boss mirror for left only and show right-facing frames on vertical
+  segments. `sheets.ts` is untouched on this branch, so that is as on
+  main. A Wolf walked tick by tick down Switchback never faces against
+  its movement.
+- Title: thumbnails at x 266, 414, 562, y 326, 132 x 72, 16 px apart;
+  76.8 CSS px tall at tablet size. Up and Down stop at the ends. "Best on
+  Switchback, Normal: 999 waves" fits between the row and Play. All nine
+  map and level pairs show their own score or none.
+- Play again restarts the same map twice in a row. Seven map changes
+  through Menu in one page session: each canvas is byte-equal to a fresh
+  page on that map.
+- endlessIdle on Switchback through the scene loses on wave 16; the store
+  holds `{"switchback":{"normal":15}}`, the line shows on Switchback only,
+  and it survives a reload.
+
+**What the frames look like.** Looked at at 1024 x 768.
+- Towers stacked in a column hide each other: a label sits 22 px under
+  its tower and the next tower is 32 px down, so on Riverbend's banks the
+  plan's Longbow, Longbow, Mortar column shows mostly labels. Meadow has
+  this too; Riverbend's banks invite it.
+- Switchback's between-lane towers have their labels on the edge of the
+  next lane (the implementer's note). Readable, but untidy.
+- The river's pool is round and its box is square: cells (13,5) and
+  (16,5) look about two-thirds grass and refuse a tower.
+- A tower in Riverbend's bottom-left corner opens its panel over the
+  cave and the first 230 px of the lane.
+- The title's best line sits about 6 px under the thumbnails, and the
+  prompt still says only "Pick a difficulty".
+- The river is flat blue with a hard edge at the HUD. Plain, not broken.
+
+**Could not check.** No real iPad or finger; touch is Chromium's
+emulation. Pixel baselines: none of the five new frames exists and the
+three title frames are stale, so CI's visual tests will fail until the
+update-snapshots workflow has run on this branch. The demo recorder was
+read, not run.
