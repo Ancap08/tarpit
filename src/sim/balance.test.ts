@@ -22,6 +22,7 @@ import {
   TRAIL_CELL_ORDER,
   TRAIL_REACH,
   TRAIL_STEP,
+  trailCellOrder,
 } from './headless';
 import { MAPS, pathLength, positionAlongPath } from './map';
 
@@ -142,7 +143,9 @@ describe('archetype rules', () => {
   it('oneMusket builds one base Musketeer on the first trail cell, on every map, and nothing else', () => {
     for (const map of ['meadow', 'switchback', 'riverbend'] as const) {
       const script = archetypeScript('oneMusket', map, 'normal');
-      expect(script.flat(), map).toEqual([{ type: 'build', cell: map === 'meadow' ? TRAIL_CELL_ORDER[0] : script[0][0].cell, tower: 'musketeer' }]);
+      // Verifier (milestone 28): the other maps compared the cell with itself; compare with the map's own trail order.
+      expect(script.flat(), map).toEqual([{ type: 'build', cell: trailCellOrder(MAPS[map])[0], tower: 'musketeer' }]);
+      expect(script.mapId, map).toBe(map);
     }
   });
 
@@ -177,5 +180,49 @@ describe('boss (milestone 23)', () => {
     const w10 = playWithStats(combo()).waves[9];
     expect(w10.spawns.boss).toBe(1);
     expect(w10.exits.boss).toBeUndefined();
+  });
+});
+
+// Verifier (milestone 28). Findings and exact measures the matrix does not hold.
+describe('verifier (milestone 28)', () => {
+  const sum = (o: Partial<Record<string, number>>) => Object.values(o).reduce((a: number, b) => a + (b ?? 0), 0);
+
+  // BUG (balanceRuns.ts playWithStats, low): after a timed special it counts
+  // every 'kill' event in state.events, but the events of the previous tick
+  // are still there (tick() clears the list, an action only appends), so a
+  // kill made on the tick before a special is counted twice. hardBuild on
+  // Meadow, Normal wins having met 524 enemies and reports 525 kills.
+  // Nothing reads the wrong number today (T9's "then kills" tie-break is
+  // not reached: 11 lives against 14). Fix: count the special's own kills
+  // from the action's result, or only the events it appended.
+  it.fails('playWithStats: kills plus exits equal the enemies spawned in a won game (hardBuild, Meadow, Normal)', () => {
+    const run = balanceRun('hardBuild', 'meadow', 'normal');
+    expect(run.phase).toBe('won');
+    const spawned = run.waves.reduce((n, w) => n + sum(w.spawns), 0);
+    const exits = run.waves.reduce((n, w) => n + sum(w.exits), 0);
+    expect(spawned).toBe(524);
+    expect(run.kills + exits).toBe(spawned);
+  });
+
+  // The targets assert bands; these are the exact measures behind T7, T8,
+  // E3, H2 and T9, which the matrix cells (result and gold) do not hold.
+  it('exact measures behind the bands: wave 1 leaks, wave 4 Harpies, lives after wave 1 on Hard, gold entering wave 10', () => {
+    const maps = ['meadow', 'switchback', 'riverbend'] as const;
+    const leak1 = (level: 'easy' | 'normal') => maps.map((m) => sum(balanceRun('oneMusket', m, level).waves[0].exits));
+    expect([leak1('easy'), leak1('normal')]).toEqual([
+      [0, 0, 0],
+      [0, 0, 0],
+    ]);
+    expect(maps.map((m) => balanceRun('noAntiAir', m, 'normal').waves[3]).map((w) => [w.exits.harpy, w.spawns.harpy, w.lives])).toEqual([
+      [10, 10, 4],
+      [10, 10, 3],
+      [10, 10, 2],
+    ]);
+    expect(maps.map((m) => balanceRun('lazyBuild', m, 'hard').waves[0].lives)).toEqual([8, 6, 6]);
+    expect(balanceRun('comboBuild', 'meadow', 'normal').waves[9].goldEntering).toBe(183);
+  });
+
+  it('comboNoSpecials has no timed actions on any map', () => {
+    for (const map of ['meadow', 'switchback', 'riverbend'] as const) expect(archetypeScript('comboNoSpecials', map, 'normal').timed, map).toBeUndefined();
   });
 });

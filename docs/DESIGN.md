@@ -480,7 +480,7 @@ it reads "Start Wave". `ui().callEarly` reports `{available, bonus}`.
   groups of table wave 8, 9 or 10 for `k % 3` = 0, 1, 2, without the boss;
   plus one Harpy group of `min(16, 8 + 2 x cycle)` Harpies, one every 0.75
   s, starting 2 s after the base wave's last spawn; hp multiplier `1.6 ^
-  cycle` (`Goblin 28/37/44, 44/59/71, 71/94/113; Troll 1140/1520/1824, 1824/2432/2918, 2918/3891/4669; Harpy 43/58/69, 69/92/111, 111/147/177_GROWTH`). An enemy spawns with `round(base hp x level
+  cycle` (`ENDLESS_HP_GROWTH`). An enemy spawns with `round(base hp x level
   multiplier x wave multiplier)` (one rounding, half up) and carries it as
   `maxHp`, which the hp bar uses. Bounties, speeds and lives costs do not
   change. The 90 s spawn-window rule (R4) does not apply; the spawn-rate

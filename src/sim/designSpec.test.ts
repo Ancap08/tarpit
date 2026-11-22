@@ -14,6 +14,9 @@ import { SPECIAL_DEFS, type SpecialType } from './specials';
 import { TOWER_DEFS } from './towers';
 import type { EnemyType, TowerLevelStats, TowerType } from './types';
 import { ENDLESS_HP_GROWTH, waveDef, WAVES } from './waves';
+import { EXPECTED_MATRIX } from './balance.suite';
+import { MATRIX_ARCHETYPES } from './balanceRuns';
+import { TARGETS } from './balanceTargets';
 
 const md = readFileSync(new URL('../../docs/DESIGN.md', import.meta.url), 'utf8');
 
@@ -187,6 +190,42 @@ describe('docs/DESIGN.md matches the code', () => {
       expect(Number(bounty)).toBe(wave.groups.reduce((a, g) => a + g.count * ENEMY_STATS[g.type].bounty, 0));
       expect(last).toBe(`${lastSpawnTick(Number(n)) / 60} s`);
     }
+  });
+
+  // Verifier (milestone 28): the measured matrix and the target list were not guarded.
+  it('measured matrix: every cell is the result the balance suite pins (EXPECTED_MATRIX)', () => {
+    const lines = section('Measured matrix').split('\n');
+    const head = lines.find((l) => l.startsWith('| Archetype |'))!;
+    const columns = head.slice(1, -1).split('|').map((c) => c.trim().toLowerCase()).slice(1);
+    expect(columns).toEqual(['meadow', 'switchback', 'riverbend'].flatMap((m) => DIFFICULTIES.map((d) => `${m} ${d}`)));
+    const rows = table('Measured matrix', 'Archetype');
+    expect(rows.map((r) => r[0])).toEqual([...MATRIX_ARCHETYPES]);
+    for (const [name, ...cells] of rows) {
+      const want = EXPECTED_MATRIX[name as keyof typeof EXPECTED_MATRIX] as Record<string, string | undefined>;
+      expect(cells, name).toEqual(columns.map((c) => want[c]?.split(',')[0] ?? '-'));
+    }
+  });
+
+  it('balance targets: every T, E, H and R label the suite asserts is in the spec, and no other', () => {
+    const text = section('Balance targets') + section('Waves');
+    const inDoc = new Set([...text.matchAll(/\*\*([TEHR]\d)\b/g)].map((m) => m[1]));
+    expect([...inDoc].sort()).toEqual([...new Set(TARGETS.map((t) => t.id))].sort());
+  });
+
+  it('the endless hp line and the prose numbers the tables do not hold: cooldowns, sell refunds, 524 enemies', () => {
+    const cycles = [1, 2, 3].map((c) => ENDLESS_HP_GROWTH ** c);
+    const hpLine = (['goblin', 'troll', 'harpy'] as const)
+      .map((t) => `${t[0].toUpperCase()}${t.slice(1)} ${cycles.map((m) => DIFFICULTIES.map((d) => enemyMaxHp(t, d, m)).join('/')).join(', ')}`)
+      .join('; ');
+    expect(section('Endless mode').replace(/\s+/g, ' ')).toContain(`(Easy / Normal / Hard): ${hpLine}.`);
+    expect(section('Endless mode')).toContain('(`ENDLESS_HP_GROWTH`)');
+    const names = Object.entries(TOWER_NAMES) as [string, TowerType][];
+    /** A section with every run of white space as one space (prose wraps). */
+    const flat = (heading: string) => section(heading).replace(/\s+/g, ' ');
+    expect(flat('Towers')).toContain(`(${names.map(([n, t]) => `${n} ${Math.round(60 / TOWER_DEFS[t].base.fireRate)}`).join(', ')})`);
+    const refund = (t: TowerType) => Math.floor(((TOWER_DEFS[t].cost + TOWER_DEFS[t].upgradeCost) * 7) / 10);
+    expect(flat('Towers')).toContain(`${names.map(([n, t]) => `${n} ${refund(t)}`).join(', ')}.`);
+    expect(flat('Waves')).toContain(`waves hold ${WAVES.reduce((n, w) => n + w.groups.reduce((a, g) => a + g.count, 0), 0)} enemies.`);
   });
 
   it('the first endless waves: base wave, extra Harpies, enemies, hp multiplier, total hp, bounty, last spawn', () => {
