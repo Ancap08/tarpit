@@ -705,3 +705,8 @@ can change it; "Kyle" means Kyle decided.
   pass first; noAntiAir on Riverbend has 1 life after wave 4; Hard
   lazyBuild loses on wave 2 on both new maps; no per-map `hardBuild`
   exists. Several whole-game unit tests take 4 to 9 s.
+- **One 30 s unit test limit in `vitest.config.ts`; no per-test limits.**
+  A whole-game test timed out at the 5 s default on CI (about 1.7 times
+  slower than the Mac), the third such timeout in three milestones.
+  `npm run test:slow` lists tests over 3 s so the bigger limit does not
+  hide them. Fable (rule), Opus (build).
