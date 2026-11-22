@@ -6781,3 +6781,34 @@ Checks: lint, check:assets, typecheck, 1172 unit tests, build,
 check:size (1.33 MB), 450 Playwright tests (8 skipped) on chromium,
 tablet and phone; perf median 16.7 ms, p95 16.7 to 16.8 ms;
 `npm run sim` byte-identical to main.
+
+
+### Verifier notes
+
+Verifier: Claude Sonnet 5.5 (not the implementer). No `src/` change.
+
+- `src/sim` untouched, `npm run sim` byte-identical to main, no audio file
+  in git or `dist`, no new dependency. Lint, check:assets, typecheck, 1172
+  unit tests, build, check:size and the full Playwright run (450 passed, 8
+  skipped, as before) passed twice; the sound and mute specs passed 5 more
+  times (95 runs, no flake); perf median 16.7 ms on three runs.
+- Added `e2e/audio-verifier*.spec.ts` (suite in `audio-verifier-suite.ts`,
+  run in chromium, tablet and phone): context count 0 before a gesture
+  (title and game) and 1 after Menu, Play, Play again and two layout
+  switches; missing, throwing and resume-rejecting AudioContext, and
+  throwing storage, log nothing; hide and show; one shot request per shot
+  and no impact before its shot at 1x, 2x, 3x; no HUD button overlaps or
+  shrinks. Own checks outside the suite (dev server, not committed): own
+  Butterworth stand-in (nine low sounds keep 0.64 to 0.95 of their RMS),
+  no non-finite sample, no bad AudioParam call, DC under 5e-4, tails under
+  4e-4; worst-case mix peaks 0.51 to 0.62 thinned and 0.75 to 0.92
+  unthinned; forced 16-voice cap lets specials, horn, boss and win through.
+- Notes: DESIGN says 25 starts a second at 3x, the measurement and DEVLOG
+  say 24. The M key has no text-control check: the game has no text
+  controls, so it is not reachable today. A sound requested on the very
+  pointerup after the first pointerdown may be dropped while the new
+  context is still resuming. Beyond the scope list: tower select, refused,
+  charge ready, Call next sounds.
+- Only ears or a real phone settle: how any sound feels, harshness, the
+  tier balance, whether small speakers carry the low sounds, iOS silent
+  switch and first-tap unlock, hardware limiter behaviour.
