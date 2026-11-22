@@ -1,0 +1,200 @@
+// Milestone 34: the map decoration recipe (decor/recipe.ts) and the moving things' maths (decor/motion.ts).
+
+import { describe, expect, it } from 'vitest';
+import { CELL, cellCenter, cellKey, distanceToPath, GRID_COLS, GRID_ROWS, isBuildableTerrain, MAP_IDS, MAPS, terrainBlock, type Rect } from '../../sim';
+import { birdAt, blinking, butterflyAt, cloudAt, glint, ripple, MOTION_COUNTS, smokePuff, STILL_T, sway } from './motion';
+import { AIM_BANNER, aimBannerMaxWidth } from '../names';
+import { BUSH_RANGE, canGrow, DECOR_KEEP_OUT, decorFor, GROWTH_TRAIL_CLEARANCE, hiddenGrowth, TREE_EXTENT, TREE_RANGE, type TreeShape } from './recipe';
+
+const inside = (x: number, y: number, r: Rect) => x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height;
+
+describe('decorFor', () => {
+  for (const id of MAP_IDS) {
+    const map = MAPS[id];
+    describe(id, () => {
+      const d = decorFor(map);
+
+      it('gives the same list for the same map (a fresh copy of the map too)', () => {
+        expect(decorFor(map)).toEqual(d);
+        expect(decorFor({ ...map, path: map.path.map((p) => ({ ...p })) })).toEqual(d);
+      });
+
+      it('has 8 to 14 trees and 8 to 14 bushes', () => {
+        const trees = d.growth.filter((g) => g.kind === 'tree').length;
+        const bushes = d.growth.filter((g) => g.kind === 'bush').length;
+        expect(trees).toBeGreaterThanOrEqual(TREE_RANGE.min);
+        expect(trees).toBeLessThanOrEqual(TREE_RANGE.max);
+        expect(bushes).toBeGreaterThanOrEqual(BUSH_RANGE.min);
+        expect(bushes).toBeLessThanOrEqual(BUSH_RANGE.max);
+      });
+
+      it('grows only on buildable cells inside the map, two cells from the trail, off the water, the cottage and the keep-out boxes', () => {
+        for (const g of d.growth) {
+          expect(g.cell.col).toBeGreaterThanOrEqual(0);
+          expect(g.cell.col).toBeLessThan(GRID_COLS);
+          expect(g.cell.row).toBeGreaterThanOrEqual(0);
+          expect(g.cell.row).toBeLessThan(GRID_ROWS);
+          expect(isBuildableTerrain(g.cell, map)).toBe(true);
+          expect(terrainBlock(g.cell, map)).toBeUndefined();
+          expect(distanceToPath(cellCenter(g.cell), map)).toBeGreaterThanOrEqual(GROWTH_TRAIL_CLEARANCE);
+          // The canopy too: its nearest edge stays clear of the trail strip, and the drawn centre stays in its cell.
+          expect(distanceToPath(g, map) - g.r).toBeGreaterThan(20 + 20);
+          expect(Math.abs(g.x - cellCenter(g.cell).x)).toBeLessThanOrEqual(3);
+          expect(Math.abs(g.y - cellCenter(g.cell).y)).toBeLessThanOrEqual(3);
+          for (const box of [...(map.water ?? []), ...(map.landmarks ?? [])]) {
+            const grown = { x: box.x - CELL, y: box.y - CELL, width: box.width + 2 * CELL, height: box.height + 2 * CELL };
+            expect(inside(g.x, g.y, grown)).toBe(false);
+          }
+          for (const r of DECOR_KEEP_OUT) {
+            const x = g.cell.col * CELL;
+            const y = g.cell.row * CELL;
+            expect(x < r.x + r.width && r.x < x + CELL && y < r.y + r.height && r.y < y + CELL).toBe(false);
+          }
+        }
+      });
+
+      it('spreads over the whole map: growth in every third across and down, the middle included', () => {
+        const thirds = (v: number, size: number) => Math.min(2, Math.floor((v / size) * 3));
+        for (let k = 0; k < 3; k++) {
+          expect(d.growth.some((g) => thirds(g.x, map.width) === k), `column third ${k}`).toBe(true);
+          expect(d.growth.some((g) => thirds(g.y, map.height) === k), `row third ${k}`).toBe(true);
+        }
+        // Off the bottom row and the edges for most of it.
+        const inner = d.growth.filter((g) => g.cell.row > 0 && g.cell.row < 14 && g.cell.col > 0 && g.cell.col < 29);
+        expect(inner.length).toBeGreaterThanOrEqual(d.growth.length / 2);
+      });
+
+      it('records one growth per cell with stable ids', () => {
+        const keys = d.growth.map((g) => cellKey(g.cell));
+        expect(new Set(keys).size).toBe(keys.length);
+        d.growth.forEach((g, i) => expect(g.id).toBe(i));
+      });
+
+      it('hides exactly the growths whose cell holds a tower', () => {
+        const tree = d.growth.find((g) => g.kind === 'tree')!;
+        const bush = d.growth.find((g) => g.kind === 'bush')!;
+        expect(hiddenGrowth(d.growth, [])).toEqual([]);
+        expect(hiddenGrowth(d.growth, [tree.cell, { col: tree.cell.col + 40, row: 0 }])).toEqual([tree.id]);
+        expect(hiddenGrowth(d.growth, [bush.cell, tree.cell]).sort()).toEqual([tree.id, bush.id].sort());
+      });
+
+      it('keeps grass details off the trail strip and the water, and trail details on the strip', () => {
+        for (const p of [...d.flowers, ...d.stones, ...d.tufts, ...d.swayTufts]) {
+          expect(distanceToPath(p, map)).toBeGreaterThan(24);
+          for (const w of map.water ?? []) expect(inside(p.x, p.y, w)).toBe(false);
+        }
+        for (const p of [...d.pebbles, ...d.trailSpots]) expect(distanceToPath(p, map)).toBeLessThanOrEqual(16);
+        for (const r of d.ruts) {
+          expect(distanceToPath(r.a, map)).toBeLessThanOrEqual(10.001);
+          expect(distanceToPath(r.b, map)).toBeLessThanOrEqual(10.001);
+          // Short dashes.
+          expect(Math.hypot(r.b.x - r.a.x, r.b.y - r.a.y)).toBeLessThanOrEqual(22.5);
+        }
+        for (const b of d.flowerBeds) expect(distanceToPath(b, map)).toBeGreaterThanOrEqual(GROWTH_TRAIL_CLEARANCE);
+        expect(d.flowers.length).toBeGreaterThan(20);
+        expect(d.patches.length).toBeGreaterThan(30);
+        expect(d.ruts.length).toBeGreaterThan(15);
+      });
+    });
+  }
+
+  it('keeps clear of the aim banner at its widest, derived from its texts (477 px, as measured in the browser)', () => {
+    const w = aimBannerMaxWidth();
+    expect(w).toBeGreaterThanOrEqual(477);
+    const banner = { x: 480 - w / 2, y: AIM_BANNER.top, width: w, height: AIM_BANNER.height };
+    const box = DECOR_KEEP_OUT[0];
+    expect(box.x).toBeLessThanOrEqual(banner.x);
+    expect(box.x + box.width).toBeGreaterThanOrEqual(banner.x + banner.width);
+    expect(box.y + box.height).toBeGreaterThanOrEqual(banner.y + banner.height);
+    for (const id of MAP_IDS)
+      for (const g of decorFor(MAPS[id]).growth) {
+        const clear = g.x + g.r <= banner.x || g.x - g.r >= banner.x + banner.width || g.y - g.r >= banner.y + banner.height;
+        expect(clear, `${id} ${g.kind} ${g.id}`).toBe(true);
+      }
+  });
+
+  it('gives trees several shapes, sizes and real extents', () => {
+    for (const id of MAP_IDS) {
+      const trees = decorFor(MAPS[id]).growth.filter((g) => g.kind === 'tree');
+      expect(new Set(trees.map((t) => t.shape)).size, id).toBeGreaterThanOrEqual(3);
+      for (const t of trees) expect(t.r).toBe(TREE_EXTENT[t.shape as TreeShape][t.variant]);
+    }
+  });
+
+  it('differs between maps', () => {
+    expect(decorFor(MAPS.meadow).patches).not.toEqual(decorFor(MAPS.switchback).patches);
+  });
+
+  it('never grows on a cell canGrow refuses', () => {
+    for (const id of MAP_IDS) for (const g of decorFor(MAPS[id]).growth) expect(canGrow(g.cell, MAPS[id])).toBe(true);
+  });
+});
+
+describe('motion', () => {
+  const map = MAPS.riverbend;
+  const river = map.water![0];
+
+  it('is still at t = 0 the same way every time: no bird, no butterfly, eyes open', () => {
+    expect(birdAt(map, STILL_T)).toBeNull();
+    expect(butterflyAt(map, decorFor(map).flowerBeds, STILL_T)).toBeNull();
+    expect(blinking(STILL_T)).toBe(false);
+    expect(cloudAt(map, 1, STILL_T)).toEqual(cloudAt(map, 1, STILL_T));
+  });
+
+  it('sways by at most 1.5 px in half-pixel steps', () => {
+    for (let t = 0; t < 8000; t += 37) {
+      const s = sway(t, 1.2);
+      expect(Math.abs(s)).toBeLessThanOrEqual(1.5);
+      expect(s * 2).toBe(Math.round(s * 2));
+    }
+  });
+
+  it('moves clouds slowly and keeps the ripples and glints inside the river', () => {
+    const a = cloudAt(map, 0, 0);
+    const b = cloudAt(map, 0, 1000);
+    expect(b.x - a.x).toBeGreaterThan(0);
+    expect(b.x - a.x).toBeLessThan(10);
+    for (let t = 0; t < 20000; t += 250) {
+      for (let i = 0; i < MOTION_COUNTS.ripples; i++) {
+        const f = ripple(river, i, t);
+        expect(inside(f.x - f.w / 2, f.y - f.bow, river)).toBe(true);
+        expect(inside(f.x + f.w / 2, f.y, river)).toBe(true);
+        // Across the flow: wider than it is tall.
+        expect(f.w).toBeGreaterThan(2 * f.bow);
+      }
+      for (let i = 0; i < MOTION_COUNTS.glints; i++) {
+        const g = glint(map, river, i, t);
+        if (g) expect(inside(g.x, g.y, river)).toBe(true);
+      }
+    }
+    expect(ripple(river, 0, 1000).y).toBeGreaterThan(ripple(river, 0, 0).y);
+    // The still frame shows most ripples (it reads as water).
+    expect(Array.from({ length: MOTION_COUNTS.ripples }, (_, i) => ripple(river, i, 0)).filter((f) => f.alpha > 0.3).length).toBeGreaterThanOrEqual(8);
+  });
+
+  it('shows a bird and a butterfly now and then, the butterfly two cells from the trail', () => {
+    const beds = decorFor(map).flowerBeds;
+    let birds = 0;
+    let flies = 0;
+    for (let t = 0; t < 120000; t += 100) {
+      if (birdAt(map, t)) birds++;
+      const f = butterflyAt(map, beds, t);
+      if (f) {
+        flies++;
+        expect(distanceToPath(f, map)).toBeGreaterThan(GROWTH_TRAIL_CLEARANCE - 20);
+      }
+    }
+    // Rare: each is on screen well under half the time.
+    expect(birds).toBeGreaterThan(0);
+    expect(birds).toBeLessThan(400);
+    expect(flies).toBeGreaterThan(0);
+    expect(flies).toBeLessThan(600);
+  });
+
+  it('puffs smoke that rises and fades', () => {
+    const early = smokePuff(0, 300);
+    const late = smokePuff(0, 4500);
+    expect(late.dy).toBeLessThan(early.dy);
+    expect(late.alpha).toBeLessThan(0.1);
+  });
+});

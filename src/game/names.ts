@@ -165,6 +165,29 @@ export function aimBannerText(type: SpecialType, touch: boolean): { main: string
   };
 }
 
+/**
+ * The aim banner's geometry (milestone 30, shared from milestone 34 so the
+ * map decoration keeps clear of it): its top (px below the map's top
+ * edge), height, the two lines' font sizes and the side padding added to
+ * the wider line.
+ */
+export const AIM_BANNER = { top: 8, height: 46, mainPx: 18, hintPx: 13, padX: 32 } as const;
+
+/** Courier New (FONT, monospace) advances 0.6 of the font size per character. */
+export const MONO_ADVANCE = 0.6;
+
+/** The aim banner's widest possible width in px: its longest main or hint line over every special, click and touch. */
+export function aimBannerMaxWidth(): number {
+  let widest = 0;
+  for (const type of Object.keys(SPECIAL_NAMES) as SpecialType[]) {
+    for (const touch of [false, true]) {
+      const t = aimBannerText(type, touch);
+      widest = Math.max(widest, t.main.length * AIM_BANNER.mainPx * MONO_ADVANCE, t.hint.length * AIM_BANNER.hintPx * MONO_ADVANCE);
+    }
+  }
+  return Math.ceil(widest + AIM_BANNER.padX);
+}
+
 /** The label at a special's spot for about 1.5 s after it lands (milestone 30): "3 hit" or "Missed". */
 export function specialResultText(hits: number): string {
   return hits > 0 ? `${hits} hit` : 'Missed';

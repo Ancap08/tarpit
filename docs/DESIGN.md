@@ -666,6 +666,70 @@ depends on them (`npm run sim` is unchanged). The maths is in
   tracers, barrels snap to each shot, and hits and kills react at once, so
   the screenshot baselines are unchanged.
 
+## Map decoration
+
+Milestone 34. Drawing only: no rule, number or map data changes, no art
+files; `npm run sim` is unchanged. The recipe is in
+`src/game/decor/recipe.ts`, the motion in `src/game/decor/motion.ts`, the
+drawing in `src/game/decor/livingMap.ts` and `src/game/draw/map.ts`.
+
+- **A fixed recipe per map.** Every choice is a hash of the map id and a
+  position or index (no `Math.random`), so a map looks the same on every
+  run and device. The pattern is laid out in world space (the 960 x 480
+  map), so portrait shows the same place turned with the map; the list
+  does not depend on the layout.
+- **Ground.** Lighter and darker grass patches with soft edges, about 85
+  tufts (73 or 74 still, 12 swaying), 130 to 170 small flowers with a
+  small centre in 12 beds of 8 to 12 (cream, yellow, lilac), 12 stones. The trail has a soft darker
+  margin, faint colour spots, two faint worn tracks about 8 px either side
+  of the centreline in short broken dashes (7 to 22 px) that wander up to
+  2 px sideways, and about 75 pebbles; it stays one continuous tan strip.
+  The river has a soft damp bank; its old ripple strokes became moving
+  ripples.
+- **Trees and bushes.** 8 to 14 trees and 8 to 14 bushes per map
+  (Meadow 8 and 8, Switchback 12 and 10, Riverbend 13 and 11), one per
+  cell, on buildable cells only: the cell centre at least two cells (64
+  px) from the trail centreline, at least one cell clear of the river and
+  the cottage, and not under the boss bar or the aim banner in either
+  layout (the aim banner's box comes from its widest text, `names.ts`
+  `aimBannerMaxWidth`, 477 px). They may stand under the wave and boss
+  banners, which show for 1.5 s. Trees come in four flat shapes, lit from
+  the upper left, each in three sizes: a round canopy (about 35%), a
+  taller canopy of overlapping lobes (25%), a conifer of three stacked
+  triangles (25%) and a small light sapling (15%); the clearance rules use
+  each shape's real extent (8 to 17 px). Cells are taken round-robin across 6 x 3 regions of the map (5 x
+  5 cells each), so growth covers the whole map. Building a tower on a
+  tree's or bush's cell hides it (with a small puff in play); selling or
+  moving the tower away brings it back. While a tower is being placed (a
+  pick or a drag) every tree and bush fades to 30%, so the placement
+  highlight reads as it does over grass; a buildable cell never looks
+  blocked.
+- **What moves** (in play): on Riverbend 14 little wave crests (short
+  shallow arches lying across the flow) drifting downstream at 14 px/s,
+  and 3 glints; 4 chimney smoke puffs, each rising 26 px over 4.8 s; tree
+  tops and the swaying tufts move up to 1.5 px on a 3.4 s cycle, each with
+  its own phase; 2 cloud shadows (300 x 180 px, at most about 5% darker)
+  drift at 5 to 7 px/s and wrap round; a bird crosses high once every 23 s
+  (7 s across); a butterfly flutters by a flower bed, two cells or more
+  from the trail, for 7 s every 17 s; a pair of eyes in the cave mouth
+  blinks every few seconds. Everything is pooled: at most 2 clouds, 4
+  smoke puffs, 14 ripples, 3 glints, 1 bird, 1 butterfly and 4 build
+  puffs.
+- **Cost.** The ground is one full-map image drawn every frame. With
+  WebGL (what players get) that costs nothing measurable; on the Canvas
+  fallback on a phone under heavy CPU throttling (20x) it costs about 46%
+  of frames.
+- **Order.** All of it draws under the zones, the placement highlight,
+  towers, enemies, shots, hp bars, banners and the HUD. The static ground
+  is drawn once into one image per map and layout; a layout switch or
+  Play again rebuilds it and releases the old one.
+- **Reduced motion.** With `prefers-reduced-motion: reduce` nothing
+  moves: the clouds, smoke, water, tufts, trees and eyes hold the frame at
+  time 0, and no bird or butterfly comes. Build puffs still show.
+- **Test mode.** `?test=1` shows the same frame at time 0 (clouds and
+  smoke where time 0 puts them, the ripples, eyes open, no bird, no
+  butterfly, no puffs), so every run is identical.
+
 ## Sound
 
 Milestone 33 (with its follow-up). Every sound is made in code with the

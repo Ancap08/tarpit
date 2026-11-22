@@ -15,11 +15,49 @@ export const COLORS = {
   cottageDoor: 0x5a3d28,
   cottageChimney: 0x6e4a3a,
   caveInner: 0x6a5a4c,
-  // Water (milestone 27, Riverbend's river): flat blue, a darker bank edge
-  // and a few pale ripple strokes.
+  // Water (milestone 27, Riverbend's river): flat blue and a darker bank
+  // edge (milestone 34: the pale ripple strokes became moving flow lines).
   water: 0x4f8fc0,
   waterBank: 0x2e5f8a,
-  waterRipple: 0xa9d0ea,
+  // Milestone 34 (a living map): ground texture, kept close to the grass and
+  // trail colours so nothing that matters loses contrast; trees and bushes a
+  // darker, bluer green than the Longbow; the moving things.
+  grassLight: 0x698a51,
+  grassDark: 0x5a7a45,
+  tuftDark: 0x4f6e3d,
+  tuftLight: 0x759558,
+  flowerCream: 0xe4dcbc,
+  flowerYellow: 0xdcbf52,
+  flowerLilac: 0xb49cc8,
+  flowerCentre: 0xf0d870,
+  flowerCentreDark: 0xa8823a,
+  stone: 0x8e8c80,
+  stoneShade: 0x66655c,
+  pathSoft: 0x4f6a3c,
+  pathLight: 0xcbb084,
+  pathDark: 0xb6996b,
+  pathRut: 0xa88c62,
+  pebbleDark: 0x8f7d62,
+  pebbleLight: 0xdccca8,
+  bankSoft: 0x4c6a3e,
+  treeShadow: 0x000000,
+  treeDark: 0x2f5233,
+  treeMid: 0x3b623b,
+  treeLight: 0x55804b,
+  saplingLight: 0x67904f,
+  coniferDark: 0x2b4f3c,
+  coniferLight: 0x3c6a4c,
+  trunk: 0x5a4030,
+  bushDark: 0x34573a,
+  bushLight: 0x47704a,
+  berry: 0xc9b98a,
+  cloudShadow: 0x0a140a,
+  chimneySmoke: 0xd8d4cc,
+  waterFlow: 0xc4e0f2,
+  glint: 0xffffff,
+  caveEyes: 0xe8cf6a,
+  bird: 0x23272b,
+  butterfly: 0xf2e6a0,
 
   // Enemies
   goblin: 0x3fa34d,

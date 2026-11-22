@@ -174,6 +174,8 @@ export function installGlobal(game: Phaser.Game): void {
     audioLab,
     // Milestone 31: the play-mode effects (null in test mode or between scenes).
     fx: () => (game.scene.isActive('game') ? (game.scene.getScene('game') as GameScene).fxState() : null),
+    // Milestone 34: the map decoration (growth, hidden growth, the moving things).
+    decor: () => (game.scene.isActive('game') ? (game.scene.getScene('game') as GameScene).decorState() : null),
     towerAngle: (col: number, row: number) =>
       game.scene.isActive('game') ? (game.scene.getScene('game') as GameScene).towerAngle({ col, row }) : null,
   };

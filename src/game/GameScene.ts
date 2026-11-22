@@ -169,13 +169,13 @@ import { Effects, type FxState } from './fx/effects';
 import { EnemySprites, type AnimState } from './anim/enemySprites';
 import { drawHpBars, drawShadows, drawStatusRings } from './draw/enemies';
 import { TowerLabels } from './draw/labels';
-import { drawMap } from './draw/map';
+import { LivingMap, type DecorState } from './decor/livingMap';
 import { ShotEffects } from './draw/shots';
 import { SpecialEffects } from './draw/specials';
 import { Aim, drawTowerShape, drawTowers } from './draw/towers';
 import { highScores } from './highScore';
 import { callEarlyInfo, CHEAT_TAPS, CHEAT_WINDOW_MS, Hud, specialReady, specialRecharge } from './hud';
-import { aimBannerText } from './names';
+import { AIM_BANNER, aimBannerText } from './names';
 import {
   cellAt,
   cellRect,
@@ -324,8 +324,8 @@ const AIM_LINE = 3;
 const AIM_FILL_ALPHA = 0.22;
 const AIM_CROSS = 9;
 /** The aim banner's box (milestone 30): top edge and height, centred across the map. */
-const BANNER_Y = 8;
-const BANNER_H = 46;
+const BANNER_Y = AIM_BANNER.top;
+const BANNER_H = AIM_BANNER.height;
 /** The aim circle's colour per special. */
 export const SPECIAL_COLORS: Readonly<Record<SpecialType, number>> = {
   keg: COLORS.specialKeg,
@@ -420,6 +420,8 @@ export class GameScene extends Phaser.Scene {
   private readonly autoTick = !isTestMode();
   /** Milestone 31: the play-mode effects; null in test mode. */
   private fx: Effects | null = null;
+  /** Milestone 34: the map's ground, growth and moving things. */
+  private living: LivingMap | null = null;
 
   constructor() {
     super('game');
@@ -482,15 +484,16 @@ export class GameScene extends Phaser.Scene {
     this.press = null;
     this.cursor = 'default';
 
-    // Draw order: map, overlay (cell highlight, range circles, ghost), towers,
+    // Draw order: map (milestone 34: the living map's ground, trees and
+    // bushes, and its moving things), ground zones, overlay (cell highlight, range circles, ghost), towers,
     // status rings and flyer shadows, walking enemy sprites (sorted by y) and
     // their particles, shot effects, hp bars, tower labels, flying enemy
     // sprites (milestone 22), HUD (which covers any range circle
     // reaching below the map), then the panel and the end screen on top.
     // Milestone 32b: world-space layers take the layout's transform (placeWorld); the rest is placed through it.
     const world = () => this.layout.placeWorld(this.add.graphics());
-    const mapLayer = world();
-    drawMap(mapLayer, this.state.map, this.layout, this.layout.turned ? this.add.graphics() : undefined);
+    // Milestone 34: the living map (decor/livingMap.ts): the baked ground, trees and bushes, and the moving things, under everything else.
+    this.living = new LivingMap(this, this.state.map, this.layout, isTestMode());
     this.ground = world();
     this.overlay = world();
     this.dynamic = world();
@@ -511,8 +514,8 @@ export class GameScene extends Phaser.Scene {
     const bannerText = (y: number, size: string, color: string) =>
       this.add.text(this.bannerX, y, '', { fontFamily: FONT, fontSize: size, fontStyle: 'bold', color }).setOrigin(0.5, 0.5).setDepth(4);
     // Portrait (32b follow-up) shows the aim instruction in the status strip instead (Hud).
-    this.bannerMain = bannerText(bannerTop + 14, '18px', TEXT.aimBanner);
-    this.bannerHint = bannerText(bannerTop + 34, '13px', TEXT.aimHint);
+    this.bannerMain = bannerText(bannerTop + 14, `${AIM_BANNER.mainPx}px`, TEXT.aimBanner);
+    this.bannerHint = bannerText(bannerTop + 34, `${AIM_BANNER.hintPx}px`, TEXT.aimHint);
     this.hud = new Hud(this, {
       // Milestone 25c: mid-wave, Start Wave reads "Call next  +N" and calls the next wave.
       onStartWave: () => (callEarlyStatus(this.state).ok ? this.callNextWave() : this.startWave()),
@@ -1154,6 +1157,11 @@ export class GameScene extends Phaser.Scene {
     return this.fx?.snapshot() ?? null;
   }
 
+  /** Test hook (milestone 34, also in test mode): the map decoration's state. */
+  decorState(): DecorState | null {
+    return this.living?.snapshot() ?? null;
+  }
+
   /** Test hook (milestone 31, play only): the drawn barrel angle of the tower on `cell`, or null. */
   towerAngle(cell: Cell): number | null {
     return this.fx?.towerAngle(cell) ?? null;
@@ -1290,6 +1298,8 @@ export class GameScene extends Phaser.Scene {
   redraw(): void {
     if (!this.dynamic) return;
     this.aim.prune(this.state);
+    // Milestone 34: growth on a tower's cell hides; all of it fades while a tower is being placed (a pick or a drag).
+    this.living?.update(this.state, this.pick !== null || this.press?.active === true);
     this.ground.clear();
     this.specialFx.drawGround(this.ground, this.state);
     const g = this.dynamic;
@@ -1338,7 +1348,7 @@ export class GameScene extends Phaser.Scene {
       this.bannerHint.setText(text?.hint ?? '');
       this.bannerBg.clear();
       if (text !== null) {
-        const w = Math.max(this.bannerMain.width, this.bannerHint.width) + 32;
+        const w = Math.max(this.bannerMain.width, this.bannerHint.width) + AIM_BANNER.padX;
         const top = this.layout.map.y + BANNER_Y;
         const h = BANNER_H;
         this.bannerBg.fillStyle(COLORS.aimBanner, 0.82).fillRoundedRect(this.bannerX - w / 2, top, w, h, 8);
