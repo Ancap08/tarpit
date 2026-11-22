@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
-import { writeServiceWorker } from './scripts/sw-build.ts';
+import { swEnabled, writeServiceWorker } from './scripts/sw-build.ts';
 
 /** After a production build, write sw.js for it (milestone 32a, scripts/sw-build.ts). */
 function serviceWorker(): Plugin {
@@ -14,7 +14,7 @@ function serviceWorker(): Plugin {
     async closeBundle(error?: Error) {
       if (error) return;
       const version = await writeServiceWorker(outDir);
-      console.log(`service worker: sw.js, cache tarpit-${version}`);
+      console.log(version === 'off' ? 'service worker: retired (TARPIT_SW=off)' : `service worker: sw.js, cache tarpit-${version}`);
     },
   };
 }
@@ -26,5 +26,7 @@ export default defineConfig({
     // Phaser alone is about 1.2 MB minified; warn only above that.
     chunkSizeWarningLimit: 1500,
   },
+  // TARPIT_SW=off builds a deploy that retires the worker (scripts/sw-build.ts).
+  define: { __TARPIT_SW__: JSON.stringify(swEnabled()) },
   plugins: [serviceWorker()],
 });

@@ -4,8 +4,12 @@
 // to make a second version. The version is a hash of every built file, so
 // any change to the site makes a new cache name, and the precache list is
 // every file except sw.js, with the page as './' (relative to the scope).
+//
+// Kill switch: with TARPIT_SW=off (swEnabled() false) it writes RETIRE_SW
+// instead, a worker that removes itself; the page built with the same switch
+// registers nothing and removes any worker it finds (src/sw/register.ts).
 import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'vite';
@@ -15,6 +19,31 @@ function walk(dir: string): string[] {
     e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)],
   );
 }
+
+/** False when the build is run with TARPIT_SW=off: the deploy retires the worker. */
+export function swEnabled(env: Record<string, string | undefined> = process.env): boolean {
+  return env.TARPIT_SW !== 'off';
+}
+
+/**
+ * The retiring worker: it takes over at once, handles no request (so every
+ * fetch goes to the network), deletes every tarpit- cache, unregisters, and
+ * reloads open pages from the network.
+ */
+export const RETIRE_SW = `// Tarpit service worker, retired (TARPIT_SW=off): see docs/DESIGN.md, "Install and offline".
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    (async () => {
+      const names = await caches.keys();
+      await Promise.all(names.filter((n) => n.startsWith('tarpit-')).map((n) => caches.delete(n)));
+      await self.registration.unregister();
+      const pages = await self.clients.matchAll({ type: 'window' });
+      await Promise.all(pages.map((c) => c.navigate(c.url).catch(() => undefined)));
+    })(),
+  );
+});
+`;
 
 /** The version and precache list for the site in `outDir`. */
 export function swManifest(outDir: string): { version: string; precache: string[] } {
@@ -28,8 +57,15 @@ export function swManifest(outDir: string): { version: string; precache: string[
   return { version: hash.digest('hex').slice(0, 12), precache };
 }
 
-/** Write `<outDir>/sw.js` for the site already built in `outDir`. Returns the version. */
-export async function writeServiceWorker(outDir: string): Promise<string> {
+/**
+ * Write `<outDir>/sw.js` for the site already built in `outDir`. Returns the
+ * version, or 'off' when `enabled` is false (the retiring worker).
+ */
+export async function writeServiceWorker(outDir: string, enabled = swEnabled()): Promise<string> {
+  if (!enabled) {
+    writeFileSync(join(outDir, 'sw.js'), RETIRE_SW);
+    return 'off';
+  }
   const root = fileURLToPath(new URL('..', import.meta.url));
   const { version, precache } = swManifest(outDir);
   await build({
