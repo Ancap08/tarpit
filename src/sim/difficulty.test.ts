@@ -30,7 +30,7 @@ describe('difficulty table (docs/SCOPE-v4.md)', () => {
       wolf: [15, 20, 24],
       troll: [675, 900, 1080],
       harpy: [27, 36, 43],
-      shieldbearer: [120, 160, 192],
+      shieldbearer: [53, 70, 84],
       boss: [3000, 4000, 4800],
     });
     for (const t of Object.keys(ENEMY_STATS) as EnemyType[]) expect(enemyMaxHp(t)).toBe(ENEMY_STATS[t].hp);
@@ -140,8 +140,8 @@ const end = (difficulty: Difficulty, script: ReturnType<typeof comboBuild>) => {
 };
 
 describe('SCOPE-v4 difficulty targets (met in milestone 25c; milestone 28 rechecks them)', () => {
-  it('(a) lazyBuild wins on Easy: won, 6 lives, 940 gold', () => {
-    expect(end('easy', lazyBuild('easy'))).toEqual({ phase: 'won', wave: 10, lives: 6, gold: 940, refused: 0 });
+  it('(a) lazyBuild wins on Easy: won, 9 lives, 964 gold', () => {
+    expect(end('easy', lazyBuild('easy'))).toEqual({ phase: 'won', wave: 10, lives: 9, gold: 964, refused: 0 });
   });
 
   it('(a) noTowers still loses on Easy', () => {

@@ -130,9 +130,9 @@ test('a Harpy is drawn above Goblins and tower labels, with no tar or burn', asy
 // first hits Shieldbearer 7 on tick 850 (70 -> 68). At (7,5) the Musketeer
 // never reaches one (the horde ahead of them keeps it busy), so it stands
 // at (1,5), found by a scan of every buildable cell: Shieldbearer 7 on tick
-// 362, 70 -> 58. Second pass (Shieldbearers 160 hp, first at 0.5 s, id 1):
-// the Longbow at (7,5) first hits Shieldbearer 1 on tick 346 (160 -> 158),
-// the Musketeer at (1,5) on tick 122 (160 -> 148).
+// 362, 70 -> 58. Second pass (Shieldbearers 70 hp, the first at 0.5 s, id 1):
+// the Longbow at (7,5) first hits Shieldbearer 1 on tick 346 (70 -> 68),
+// the Musketeer at (1,5) on tick 122 (70 -> 58).
 for (const [tower, tick, id, dealt, col, row] of [
   ['longbow', 346, 1, 2, 7, 5],
   ['musketeer', 122, 1, 12, 1, 5],
@@ -161,8 +161,8 @@ for (const [tower, tick, id, dealt, col, row] of [
     );
     expect(r.id).toBe(id);
     expect(r.hit).toMatchObject({ kind: 'hit', tower, damage: dealt });
-    expect(r.before).toBe(160);
-    expect(r.after).toBe(160 - dealt);
+    expect(r.before).toBe(70);
+    expect(r.after).toBe(70 - dealt);
     expect(r.texture).toBe('shieldbearer');
   });
 }

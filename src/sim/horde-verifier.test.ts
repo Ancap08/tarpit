@@ -690,11 +690,11 @@ describe('B. the DESIGN.md wave table, transcribed by the verifier (no other tes
     [[g('goblin', 22, 1.0), g('wolf', 12, 1.5, 4.5)], 34, 658, 68],
     [[g('harpy', 10, 1.5), g('goblin', 30, 1.0, 3)], 40, 930, 90],
     [[g('goblin', 40, 1.0), g('troll', 3, 8, 10), g('harpy', 10, 1.2, 8)], 53, 3820, 134],
-    [[g('goblin', 45, 1.0), g('wolf', 35, 1.0, 9), g('shieldbearer', 6, 1.5, 0.5)], 86, 2515, 190],
+    [[g('goblin', 45, 1.0), g('wolf', 35, 1.0, 9), g('shieldbearer', 6, 1.5, 0.5)], 86, 1975, 190],
     [[g('wolf', 26, 1.5), g('troll', 13, 4.5, 1), g('harpy', 16, 1.0, 8)], 55, 12796, 204],
-    [[g('goblin', 50, 1.5), g('wolf', 25, 1.5, 6.75), g('troll', 13, 5, 3), g('shieldbearer', 6, 6, 4), g('harpy', 14, 1.2, 10)], 108, 14614, 326],
+    [[g('goblin', 50, 1.5), g('wolf', 25, 1.5, 6.75), g('troll', 13, 5, 3), g('shieldbearer', 6, 6, 4), g('harpy', 14, 1.2, 10)], 108, 14074, 326],
     [[g('wolf', 30, 1.0), g('troll', 10, 2, 2)], 40, 9600, 140],
-    [[g('wolf', 20, 1.5, 4), g('troll', 15, 4.5), g('harpy', 12, 1.5, 6), g('shieldbearer', 8, 5, 2.5), g('boss', 1, 0, 65)], 56, 19612, 386],
+    [[g('wolf', 20, 1.5, 4), g('troll', 15, 4.5), g('harpy', 12, 1.5, 6), g('shieldbearer', 8, 5, 2.5), g('boss', 1, 0, 65)], 56, 18892, 386],
   ];
 
   it('every group of every wave, and each wave\'s enemies, total hp and bounty', () => {
@@ -714,7 +714,7 @@ describe('B. the DESIGN.md wave table, transcribed by the verifier (no other tes
     expect(stat('wolf')).toEqual([20, 120, 2]);
     expect(stat('troll')).toEqual([900, 35, 8]);
     expect(stat('harpy')).toEqual([36, 90, 3]);
-    expect(stat('shieldbearer')).toEqual([160, 45, 5]);
+    expect(stat('shieldbearer')).toEqual([70, 45, 5]);
     expect(stat('boss')).toEqual([4000, 25, 150]);
     expect(SPECIAL_DEFS.fireArrows).toMatchObject({ unlockWave: 7, radius: 80, burnDps: 30, burnTicks: 240 });
     expect(DIFFICULTY_DEFS).toEqual({

@@ -404,9 +404,9 @@ test('wave 4 Harpies: a Cannon splash ignores one, a Musketeer shoots one', asyn
 // found Mortar hits on him from step 2838; step 3230: alone on the downhill
 // run at (420,152), tarred and burning, 2488 of 4000 hp, Mortar splash
 // fired on step 3228, no hit on this step. Second pass (he comes at 65 s):
-// step 5631, alone on the downhill run at (420,186), tarred and burning,
-// 2564 of 4000 hp, Mortar splash fired on step 5629, no hit on this step.
-const BOSS_STEPS = 5631;
+// step 5664, alone on the downhill run at (420,196), tarred and burning,
+// 2429 of 4000 hp, Mortar splash fired on step 5662, no hit on this step.
+const BOSS_STEPS = 5664;
 
 test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splash', async ({ page }) => {
   await open(page);
@@ -438,7 +438,7 @@ test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splas
     slowed: true,
     hitNow: false,
     mortarHitOnBoss: 1,
-    bar: `${BOSS_NAME} 2564 / 4000`,
+    bar: `${BOSS_NAME} 2429 / 4000`,
     texture: 'boss',
   });
   await settle(page);

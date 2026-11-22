@@ -53,9 +53,9 @@ describe('geometry used by these tests', () => {
 });
 
 describe('enemy stats (docs/SCOPE-v4.md)', () => {
-  it('Harpy 36 hp, 90 px/s, 3 gold, flying; Shieldbearer 160 hp, 45 px/s, 5 gold, shielded (milestone 25c); the others neither', () => {
+  it('Harpy 36 hp, 90 px/s, 3 gold, flying; Shieldbearer 70 hp, 45 px/s, 5 gold, shielded (milestone 25c); the others neither', () => {
     expect(ENEMY_STATS.harpy).toEqual({ hp: 36, speed: 90, bounty: 3, flying: true, shield: false, livesCost: 1 });
-    expect(ENEMY_STATS.shieldbearer).toEqual({ hp: 160, speed: 45, bounty: 5, flying: false, shield: true, livesCost: 1 });
+    expect(ENEMY_STATS.shieldbearer).toEqual({ hp: 70, speed: 45, bounty: 5, flying: false, shield: true, livesCost: 1 });
     for (const type of ['goblin', 'wolf', 'troll'] as const) {
       expect([ENEMY_STATS[type].flying, ENEMY_STATS[type].shield]).toEqual([false, false]);
     }

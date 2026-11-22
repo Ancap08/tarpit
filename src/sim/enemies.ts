@@ -12,7 +12,7 @@ export const ENEMY_STATS: Readonly<Record<EnemyType, EnemyStats>> = {
   wolf: { hp: 20, speed: 120, bounty: 2, flying: false, shield: false, livesCost: 1 },
   troll: { hp: 900, speed: 35, bounty: 8, flying: false, shield: false, livesCost: 1 },
   harpy: { hp: 36, speed: 90, bounty: 3, flying: true, shield: false, livesCost: 1 },
-  shieldbearer: { hp: 160, speed: 45, bounty: 5, flying: false, shield: true, livesCost: 1 },
+  shieldbearer: { hp: 70, speed: 45, bounty: 5, flying: false, shield: true, livesCost: 1 },
   // Grumblefoot, the Troll King (milestone 23, docs/SCOPE-v4.md): one at the
   // end of wave 10; costs 5 lives if he exits; slows cap at 30% on him.
   boss: { hp: 4000, speed: 25, bounty: 150, flying: false, shield: false, livesCost: 5, slowCap: 0.3 },

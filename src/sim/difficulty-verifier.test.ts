@@ -21,19 +21,19 @@ const LEVELS = ['easy', 'normal', 'hard'] as const;
 
 // (a) By hand, base x multiplier, then Math.round (half rounds up, toward
 // +infinity). Milestone 25c second pass numbers (base hp 19 / 20 / 900 /
-// 36 / 160 / 4000; Easy 0.75, Hard 1.2); no half case is left:
+// 36 / 70 / 4000; Easy 0.75, Hard 1.2); one half case, the Easy Shieldbearer:
 //   Goblin        19 x 0.75 = 14.25 -> 14   19 x 1.2 = 22.8 -> 23
 //   Wolf          20 x 0.75 = 15            20 x 1.2 = 24
 //   Troll        900 x 0.75 = 675          900 x 1.2 = 1080
 //   Harpy         36 x 0.75 = 27            36 x 1.2 = 43.2 -> 43
-//   Shieldbearer 160 x 0.75 = 120          160 x 1.2 = 192
+//   Shieldbearer  70 x 0.75 = 52.5 -> 53    70 x 1.2 = 84
 //   Boss        4000 x 0.75 = 3000        4000 x 1.2 = 4800
 const HAND: Record<EnemyType, readonly [number, number, number]> = {
   goblin: [14, 19, 23],
   wolf: [15, 20, 24],
   troll: [675, 900, 1080],
   harpy: [27, 36, 43],
-  shieldbearer: [120, 160, 192],
+  shieldbearer: [53, 70, 84],
   boss: [3000, 4000, 4800],
 };
 
@@ -83,7 +83,8 @@ describe('(a) scaled hp, by hand, against spawned enemies', () => {
     expect(enemyMaxHp('goblin', 'easy')).toBe(14);
     expect(enemyMaxHp('goblin', 'hard')).toBe(23);
     expect(enemyMaxHp('harpy', 'hard')).toBe(43);
-    expect(Math.round(16.5)).toBe(17); // half still rounds up
+    expect(70 * 0.75).toBe(52.5);
+    expect(enemyMaxHp('shieldbearer', 'easy')).toBe(53); // half rounds up
   });
 
   LEVELS.forEach((level, i) => {
@@ -111,7 +112,7 @@ describe('(b) bounty, speed, livesCost and slowCap do not depend on the level', 
       wolf: { hp: 20, speed: 120, bounty: 2, flying: false, shield: false, livesCost: 1 },
       troll: { hp: 900, speed: 35, bounty: 8, flying: false, shield: false, livesCost: 1 },
       harpy: { hp: 36, speed: 90, bounty: 3, flying: true, shield: false, livesCost: 1 },
-      shieldbearer: { hp: 160, speed: 45, bounty: 5, flying: false, shield: true, livesCost: 1 },
+      shieldbearer: { hp: 70, speed: 45, bounty: 5, flying: false, shield: true, livesCost: 1 },
       boss: { hp: 4000, speed: 25, bounty: 150, flying: false, shield: false, livesCost: 5, slowCap: 0.3 },
     });
   });
@@ -222,10 +223,10 @@ describe('(g) determinism per level', () => {
 });
 
 describe('(h) the SCOPE-v4 Easy and Hard targets (met in milestone 25c, second pass)', () => {
-  it('lazyBuild on Easy wins with 6 lives and 940 gold', () => {
+  it('lazyBuild on Easy wins with 9 lives and 964 gold', () => {
     const r = playScripted(lazyBuild('easy'), undefined, 'easy');
-    expect(r.waves.map((w) => w.lives)).toEqual([30, 30, 30, 30, 27, 27, 26, 23, 14, 6]);
-    expect({ phase: r.state.phase, wave: r.state.wave, lives: r.state.lives, gold: r.state.gold }).toEqual({ phase: 'won', wave: 10, lives: 6, gold: 940 });
+    expect(r.waves.map((w) => w.lives)).toEqual([30, 30, 30, 30, 27, 27, 26, 24, 15, 9]);
+    expect({ phase: r.state.phase, wave: r.state.wave, lives: r.state.lives, gold: r.state.gold }).toEqual({ phase: 'won', wave: 10, lives: 9, gold: 964 });
   });
 
   // comboBuild on Hard loses on wave 8 (the target allows a loss from wave 8

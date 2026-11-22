@@ -201,8 +201,8 @@ test('kills and moves: a tower that has kills is locked and cannot be moved; an 
   expect((await ui(page)).killsLabel).toBe(killsLabel(kills));
 });
 
-// Milestone 25c second pass: the densest moment of wave 8 is now wave tick 1756, 23 enemies.
-test('frame: comboBuild, wave 8 at its densest moment (wave tick 1756, 23 enemies on the map)', async ({ page }, testInfo) => {
+// Milestone 25c second pass: the densest moment of wave 8 is now wave tick 1576, 22 enemies.
+test('frame: comboBuild, wave 8 at its densest moment (wave tick 1576, 22 enemies on the map)', async ({ page }, testInfo) => {
   test.setTimeout(60_000);
   const errors = watchErrors(page);
   await page.goto('/?test=1');
@@ -220,10 +220,10 @@ test('frame: comboBuild, wave 8 at its densest moment (wave tick 1756, 23 enemie
   const aim = densestCluster(live)!;
   const special = bestUnlockedSpecial(8)!;
   expect(await page.evaluate(({ s, x, y }) => (window.__tarpit as TarpitTestApi).useSpecialAt(s, x, y).ok, { s: special, x: aim.centroid.x, y: aim.centroid.y })).toBe(true);
-  await step(page, 1756 - CLUSTER_POLICY_TICKS[7]);
+  await step(page, 1576 - CLUSTER_POLICY_TICKS[7]);
   const s = await state(page);
-  expect(s.waveTick).toBe(1756);
-  expect(s.enemies.length).toBe(23);
+  expect(s.waveTick).toBe(1576);
+  expect(s.enemies.length).toBe(22);
   await page.screenshot({ path: testInfo.outputPath('wave8-densest.png') });
   expect(errors).toEqual([]);
 });

@@ -11,8 +11,8 @@ import type { TarpitTestApi } from '../src/game/testGlobal';
 // step 2538, when the Fire Pot at (10,4) first hits him on the top run;
 // the test steps 300 at a time until the bar shows lost hp. The combo
 // build kills him at waveTick 4639 (src/sim/balance.test.ts). Milestone
-// 25c second pass: he spawns at waveTick 3900 (after 3901 steps); the Fire
-// Pot at (10,4) first hits him at step 5043, so still in the fourth chunk;
+// 25c second pass: he spawns at waveTick 3900 (after 3901 steps); the
+// Longbow at (9,4) first hits him at step 5085, so still in the fourth chunk;
 // he dies at waveTick 6292.
 
 const BOSS_SPAWN_STEPS = 3901;

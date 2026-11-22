@@ -162,19 +162,19 @@ describe('wave length and density (milestone 25c second pass), comboBuild on Nor
   const tm = timing();
 
   it('A2: every wave clears at least 15% later than before 25c; pinned', () => {
-    expect(tm.map((x) => x.clear)).toEqual([1607, 2093, 1940, 2593, 4565, 3227, 6125, 5865, 2750, 6293]);
+    expect(tm.map((x) => x.clear)).toEqual([1607, 2093, 1940, 2593, 4565, 3107, 6125, 5793, 2750, 6293]);
     tm.forEach((x, i) => expect(x.clear, `wave ${i + 1}`).toBeGreaterThanOrEqual(1.15 * BEFORE_CLEAR[i]));
   });
 
-  it('A2: the ten waves take 540 to 800 s of wave time (618 s)', () => {
+  it('A2: the ten waves take 540 to 800 s of wave time (614 s)', () => {
     const total = tm.reduce((n, x) => n + x.clear, 0) / 60;
     expect(total).toBeGreaterThanOrEqual(540);
     expect(total).toBeLessThanOrEqual(800);
-    expect(Math.round(total)).toBe(618);
+    expect(Math.round(total)).toBe(614);
   });
 
   it('A3: at most 35 enemies alive at once on every wave; pinned', () => {
-    expect(tm.map((x) => x.peak)).toEqual([4, 8, 15, 17, 20, 25, 17, 23, 14, 16]);
+    expect(tm.map((x) => x.peak)).toEqual([4, 8, 15, 17, 20, 19, 17, 22, 14, 16]);
     for (const x of tm) expect(x.peak).toBeLessThanOrEqual(35);
   });
 });
@@ -216,13 +216,13 @@ describe('horde shape (milestone 25c) against the milestone 25b waves', () => {
 describe('milestone 25c pins: where each archetype ends on Normal', () => {
   const ends: Record<string, string> = {
     noTowers: 'lost on wave 1, 0 lives, 100 gold',
-    lazyBuild: 'lost on wave 8, 0 lives, 355 gold',
-    greedyMusket: 'lost on wave 9, 0 lives, 121 gold',
-    soundBuild: 'lost on wave 8, 0 lives, 267 gold',
-    soundBuildNoTar: 'lost on wave 7, 0 lives, 226 gold',
-    longbowSpam: 'lost on wave 8, 0 lives, 461 gold',
+    lazyBuild: 'lost on wave 8, 0 lives, 369 gold',
+    greedyMusket: 'lost on wave 10, -3 lives, 313 gold',
+    soundBuild: 'lost on wave 8, 0 lives, 257 gold',
+    soundBuildNoTar: 'lost on wave 8, 0 lives, 345 gold',
+    longbowSpam: 'lost on wave 8, 0 lives, 525 gold',
     comboBuild: 'won on wave 10, 13 lives, 476 gold',
-    comboBuildNoFire: 'won on wave 10, 8 lives, 626 gold',
+    comboBuildNoFire: 'won on wave 10, 9 lives, 634 gold',
     comboNoSpecials: 'won on wave 10, 12 lives, 468 gold',
     noAntiAir: 'lost on wave 5, 0 lives, 70 gold',
     bossRush: 'won on wave 10, 13 lives, 476 gold',

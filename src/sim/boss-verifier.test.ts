@@ -219,13 +219,13 @@ describe('(g) the combo builds against him', () => {
     expect(s).toMatchObject({ phase: 'won', wave: 10, lives: 13, gold: 476 });
   });
 
-  it('comboBuildNoFire kills him later, at 6438 (146 ticks after the combo build), won with 8 lives', () => {
+  it('comboBuildNoFire kills him later, at 6438 (146 ticks after the combo build), won with 9 lives', () => {
     const combo = run(comboBuild()).boss[1].waveTick;
     const { s, boss } = run(comboBuildNoFire());
     expect(boss[1]).toMatchObject({ kind: 'bossDown', waveTick: 6438 });
     expect(['shot', 'burn']).toContain(boss[1].cause);
     expect(boss[1].waveTick - combo).toBe(6438 - 6292);
-    expect(s).toMatchObject({ phase: 'won', lives: 8 });
+    expect(s).toMatchObject({ phase: 'won', lives: 9 });
   });
 });
 
