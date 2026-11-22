@@ -15,7 +15,8 @@ real game from an empty folder; the playable game is the proof. It was made
 for Kyle and his nieces and nephews.
 
 The game today (v4): three maps, ten waves and then endless waves, six
-towers you can build on any free cell off the path, five enemy types (one of
+towers you can build on any free grass cell (not on the path, the river or
+the cottage), five enemy types (one of
 them flies, one carries a shield) and a boss, three difficulty levels, three
 special attacks, and play on a tablet. The enemies are placeholder pixel
 sprites; towers, maps and the HUD are simple shapes with labels until the
@@ -30,12 +31,13 @@ art pass (see Status).
 2. **Build.** Drag a tower from the build bar under the map onto a green
    cell: a ghost shows the tower and its range, and red means it cannot go
    there. You can also click a tower on the bar and then click cells; the
-   pick stays until you click the button again or press Escape. The six
+   pick stays until you click the button again, press Escape, click a
+   tower, or can no longer afford it. The six
    towers: Musketeer (single target), Cannon (splash), Tar Pit (slows),
    Longbow (cheap, long range), Mortar (long-range splash) and Fire Pot
    (burns).
-3. **Plan.** Until you press Start Wave, everything you bought since the
-   last wave is free to change: drag a tower (dashed outline) to another
+3. **Plan.** Until you press Start Wave, everything you bought between
+   waves is free to change (a tower bought while a wave runs locks at once): drag a tower (dashed outline) to another
    cell, Remove it for all its gold back, or Undo an upgrade for its full
    price. Once the wave starts, towers are locked in place and sell for 70%.
 4. **Upgrade, sell, target.** Click a tower to open its panel: Upgrade (one
@@ -47,14 +49,16 @@ art pass (see Status).
 6. **Mortar.** It cannot hit enemies inside its dashed inner circle (70 px),
    so put it back from the path it guards.
 7. **Enemies.** Goblins, fast Wolves, tough Trolls, flying Harpies (the Tar
-   Pit, Cannon and Mortar cannot hit them) and Shieldbearers (small shots do
+   Pit, Cannon and Mortar cannot hit them, and a Fire Pot's burn does not
+   stick to them) and Shieldbearers (small shots do
    half damage). Each one that reaches the cottage costs a life.
 8. **Specials.** Each wave gives one charge. While a wave runs, press Special
    (left of Start Wave), pick a special if more than one is unlocked, and
    click where the circle covers the enemies. Powder Keg (from wave 1) blasts
    them, Tar Barrel (from wave 4) slows them, Fire Arrows (from wave 7) set
    them burning. An unused charge is lost when the wave ends.
-9. **Call next.** Once every enemy of a wave is out, Start Wave reads "Call
+9. **Call next.** Once every enemy of a wave has come out of the cave
+   (some may still be walking), Start Wave reads "Call
    next +N". Press it to send the next wave now: you get the wave's clear
    bonus at once plus up to 20 gold. Wave 9 cannot call the boss wave.
 10. **The boss.** Grumblefoot, the Troll King, comes at the end of wave 10
@@ -94,20 +98,25 @@ art pass (see Status).
   code, tests and notes.
 - **Verifiers: a different model from the implementer, every milestone.**
   Claude Sonnet through milestone 16 (v1 to v3), Claude Fable from
-  milestone 22 (DECISIONS, "milestone 22"). Verifiers re-ran the checks,
+  milestone 22 to 28 (DECISIONS, "milestone 22"), Claude Sonnet again for
+  milestone 29. In milestones 22 to 28 the coordinator and the verifier
+  were both Claude Fable, in separate sessions, so the Fable trailer counts
+  below mix the two roles. The CI baseline workflow (PR 4) had no separate
+  verifier pass. Verifiers re-ran the checks,
   re-derived numbers with their own code, added their own tests and made
   two small game fixes themselves (the Wolf's facing in
   milestone 16, "Lives 0" instead of "Lives -1" in milestone 25).
-- **One PR per milestone.** Every PR runs lint, the asset license check,
-  typecheck, Vitest, build, the size budget and Playwright (smoke, play,
-  touch and screenshot tests). Screenshot baselines are generated on CI
+- **One PR per milestone.** Every PR runs lint, typecheck, Vitest, build
+  and Playwright (smoke, play, touch and screenshot tests); from milestone
+  15 on, also the asset license check and the size budget. Screenshot baselines are generated on CI
   (Linux) by a workflow and committed to the PR by `github-actions[bot]`.
   `main` requires the `ci` check; every merged PR shows it green.
 - An automated Codex review, set up on the GitHub repo, also commented on
   every PR; it reported findings on PRs 5, 12, 22 and 23. The records below
   do not discuss it.
 
-Every design call and who made it is in [DECISIONS.md](DECISIONS.md). What
+Design calls and who made them are in [DECISIONS.md](DECISIONS.md) (two
+gaps found at the v4 review are recorded there after the fact). What
 happened, including what went wrong, is in [DEVLOG.md](DEVLOG.md).
 
 ### What the process caught

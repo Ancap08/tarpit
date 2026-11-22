@@ -5887,3 +5887,23 @@ fixes beyond the two named; the Riverbend still's Wolf sprites (small, hard to
 tell from the Harpies); `npm run sim:specials` and `npm run demo` (not run; the
 scripts exist and their documented flags `PW_PORT` and `FFMPEG` match the
 code); the iPad paragraph on a real device.
+
+### Coordinator corrections after the fact-check (Fable)
+
+- Missing above: milestone 22 shipped HUD wave previews that ran under the
+  Start Wave button on waves 6, 8 and 10, and its verifier did not report
+  it. The milestone 23 implementer found and fixed it; the automated Codex
+  review had flagged it on PR 23.
+- "The names table held ... and the tests still passed" is too strong: in
+  milestone 24 a rename made two `targeting.spec.ts` tests fail (a
+  hard-coded label, fixed before merge).
+- The Codex review comments on all 33 PRs were never read during v1 to
+  v4. The milestone 29 verifier read them: four findings, two fixed long
+  ago, two cosmetic and still present (the last tracer or splash replays
+  after the win tick; hit and kill effects are dropped for an enemy spawned
+  in the same frame). Both go into the next milestone, and the coordinator
+  reads the review on every PR from now on.
+- README wording corrected by the coordinator after the fact-check: where
+  towers can go, when the bar pick clears, what locks mid-wave, Harpies
+  and fire, what "Call next" waits for, which roles the Fable trailers
+  cover, and which CI checks existed from when.
