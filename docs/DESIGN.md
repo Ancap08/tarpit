@@ -666,6 +666,38 @@ depends on them (`npm run sim` is unchanged). The maths is in
   tracers, barrels snap to each shot, and hits and kills react at once, so
   the screenshot baselines are unchanged.
 
+## Install and offline
+
+Milestone 32a. No game rule changes. `public/manifest.webmanifest` (name,
+colours `#111418`, icons 192, 512 and a maskable 512, display standalone,
+no orientation) uses relative `start_url` and `scope` (`./`), so it works
+under `/` and `/tarpit/`; `index.html` links it and carries the iOS tags
+(apple-touch-icon 180, web-app capable, `black-translucent` status bar,
+title). The icons are drawn by `scripts/make-icons.ts` (run by hand). The
+game's parent box sits inside `env(safe-area-inset-*)`.
+
+The service worker (`src/sw/sw.ts`, rules in `src/sw/rules.ts`) is written
+to `<base>sw.js` after each production build by `scripts/sw-build.ts`. The
+page registers it after `load`, then calls `update()`, in production builds
+only and never under `?test=1` or `?perf=1`. Cache rules:
+
+- One cache per build, `tarpit-<hash>`: the hash covers every built file, so
+  any change makes a new cache. Install fills it with every file of the build
+  (past the HTTP cache), then calls `skipWaiting`; activate deletes every
+  other `tarpit-` cache, then calls `clients.claim`.
+- The page (navigations, the scope root, `index.html`): network first
+  (`no-cache`, so it revalidates), with this build's cached page when
+  offline. A network page is never written to the cache.
+- `assets/` (content-hashed names): cache first; a miss is fetched and kept.
+- Other files in scope (manifest, icons): network first, cache when offline.
+- Anything else (not GET, another origin, outside the scope, `sw.js`) is
+  not handled. `localStorage` (best scores) is never touched.
+
+Old and new files cannot mix: a cache holds one build, filled at install and
+never overwritten by a network page, so the offline page and its files are
+always one build; online, a page names only its own hashed files, and a
+hashed name always means the same bytes.
+
 ## Simulation API shape
 
 Plain TypeScript in `src/sim`, no Phaser, no DOM. One `GameState` object,

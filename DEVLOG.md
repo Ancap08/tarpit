@@ -6306,3 +6306,77 @@ Verdict: merge. Checks and evidence:
 - One low finding, `test.fixme`: a click in the very frame a shake starts is dropped (60 ms later it works). A person cannot click that fast, so it does not block the merge.
 - Perf (Canvas, vsync-bound): `perf.spec.ts` three times, median 16.7 ms, p95 16.7 to 16.8 ms, 301 ticks. Under 20x CPU throttling, 5 s, frames on main against this branch: spread 203 and 215 against 171 and 175, packed 214 and 218 against 179 and 183, spread at 3x 156 and 160 against 132 and 133 (ticks 600 against 456 to 477). So effects cost about 17 to 20% at 20x throttle (more than the 13% in the notes above); at 6x throttle both are 16.7 ms.
 - Look: every projectile type reads at 960x580 and 1024x768; mortar shadows, rings and gold labels read well. In a packed horde the rings and labels overlap and it is busy; a "Wave N" banner can cover a tower for 1.5 s; the boss death's "+150" sits over the burst. Hp bars, the trail and tower labels stay visible. Not checked: a hidden tab in a real browser, a real touch device.
+
+## 2026-11-22: milestone 32a, install and offline
+
+Implementer: Claude Opus 5.5. Scope: `docs/SCOPE-v5.md`, "Milestone 32a:
+install to the home screen". No game rule or drawing changes.
+
+### What I built
+
+- **Manifest** (`public/manifest.webmanifest`): name and short name
+  Tarpit, `display: standalone`, colours `#111418`, icons 192, 512 and a
+  maskable 512, no orientation. `start_url`, `scope` and `id` are `./`,
+  which resolve against the manifest's own address, so one static file is
+  right under `/` and `/tarpit/`.
+- **iOS tags** in `index.html`: apple-touch-icon 180,
+  `apple-mobile-web-app-capable` and `mobile-web-app-capable`,
+  `black-translucent` status bar, title, theme colour. Vite prefixes the
+  base on the manifest and icon links.
+- **Icon** (`scripts/make-icons.ts`, run by hand): a stone tower with a red
+  pennant and a dark tar pool on the path, on the green field, 4 x 4
+  samples per pixel and a 60-line PNG encoder on `node:zlib`. Files in
+  `public/icons/`, listed in `assets/MANIFEST.md` as MIT (own work);
+  `check:assets` now covers `public/icons/` and allows MIT only for rows
+  whose source is a repo script.
+- **Safe area**: `#game` is fixed to the `env(safe-area-inset-*)` box, so
+  Phaser's FIT scale sizes the canvas inside it; the rotate card pads by the
+  insets; `overscroll-behavior: none` stops the bounce.
+- **Service worker** (`src/sw/sw.ts`, rules in `src/sw/rules.ts`, built by
+  `scripts/sw-build.ts` from a `closeBundle` hook in `vite.config.ts`). One
+  cache per build named for a hash of every built file; install precaches
+  the whole build past the HTTP cache, then `skipWaiting`; activate deletes
+  the other `tarpit-` caches, then `clients.claim`. The page is network
+  first and never written to the cache; `assets/` is cache first. The page
+  registers it after `load` and calls `update()`, in production only, never
+  under `?test=1` or `?perf=1`. Rules in `docs/DESIGN.md`, "Install and
+  offline".
+
+### Evidence
+
+- `e2e/install.spec.ts` (6 tests): manifest linked, valid, every icon
+  served at its stated size, iOS tags; the canvas inside emulated notch and
+  home-bar insets (Chromium `Emulation.setSafeAreaInsetsOverride`) at
+  844 x 390 and 390 x 844, nothing scrolls; the worker registers on the
+  preview build and not under `?test=1` or `?perf=1`; offline play and
+  update: build A is a copy of `dist`, build B is A with one meta tag added
+  to `index.html` and its `sw.js` rebuilt by `scripts/sw-build.ts`; served
+  from an in-test static server, B shows on the next online load, the cache
+  list becomes B's only, then with the server stopped and the context
+  offline the reload is B and Play works; best scores are unchanged. The
+  `/tarpit/` test builds with `VITE_BASE=/tarpit/` into a temp folder,
+  serves it under `/tarpit/` and repeats the manifest, scope and offline
+  checks.
+- Unit: 1087 tests (rules, icon encoder and committed icon sizes, the
+  MIT rule in the asset checker).
+- Full e2e three times: 351 passed, 7 skipped, no failures each run.
+- Screenshot baselines: generated macOS baselines for the 27 visual frames
+  on main in a temporary worktree, ran this branch against them with
+  comparison on: 27 of 27 match. Restored the CI baselines after.
+- `npm run sim` byte-identical to main. Built size 1.30 MB (1,358,852
+  bytes, main 1,334,232).
+
+### What went wrong
+
+- The first update test failed offline: build B's page was missing. Two
+  causes. `page.waitForFunction` with an `async` predicate returns a
+  Promise, which is truthy, so the wait for B's cache passed at once; and
+  Chrome did not re-check `sw.js` on that navigation, so B's worker had not
+  installed. The page now calls `registration.update()` after every load,
+  and the spec polls with `expect.poll`.
+
+### Not tested here
+
+A real iPhone, iPad or Android device: Add to Home Screen, the standalone
+window, the real notch and home bar, iOS Safari's service worker and its
+storage limits.
