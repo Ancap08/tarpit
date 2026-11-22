@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:slow": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/slow-tests.ts",
     "test:e2e": "playwright test",
     "sim": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/simulate.ts",
     "demo": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/record-demo.ts",

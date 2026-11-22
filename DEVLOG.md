@@ -4963,3 +4963,43 @@ by pixel; every game frame is identical, and only `title`, `title-hard`
 and `title-best` differ (inside x 242..719, y 306..530: map row, best
 line and prompt). The new maps' baselines (`map-riverbend-*`,
 `riverbend-placing-invalid`) show the new pool; none is committed yet.
+
+### Follow-up: one test timeout (implementer)
+
+CI timed out `maps-verifier.test.ts` "the archetypes that take a map
+record it and play on it" at vitest's 5 s default (6.7 s on the runner),
+the third whole-game test to hit it (after `difficulty.test.ts` in 25c and
+`endless.test.ts` in 26). `vitest.config.ts` now sets `testTimeout:
+30_000` for every test, and all 15 per-test limits are gone (30 s in
+`difficulty.test.ts`, `endless.test.ts`, `endless-verifier.test.ts`,
+`endless-verifier-cap.test.ts`; 20 s in `maps.test.ts`; 60 s in
+`maps-verifier.test.ts` and `horde-verifier.test.ts`; 120 s in
+`difficulty.test.ts`). None needs more than 30 s: the slowest takes 8.1 s
+here, about 14 s at CI's 1.7 times. So the limit is one number in one
+place.
+
+`npm run test:slow` (`scripts/slow-tests.ts`, no new dependency) runs the
+unit suite with vitest's JSON reporter and prints every test over 3 s
+(or the ms given as its argument), slowest first. It is not in CI and
+fails nothing.
+
+Unit tests over 3 s on this Mac (`npm run test:slow`, full parallel run;
+multiply by about 1.7 for CI), for milestone 28 to trim:
+
+| Time | Test |
+|---|---|
+| 8.1 s | `difficulty.test.ts` determinism per level: Normal by argument equals Normal by default for every archetype |
+| 5.8 s | `maps-verifier.test.ts` E: the DEVLOG's Normal table, replayed; each run is deterministic and refuses nothing |
+| 4.4 s | `endless-verifier-cap.test.ts` an endless script that never loses stops after ENDLESS_WAVE_CAP waves |
+| 4.4 s | `endless.test.ts` determinism: two endlessGreedy runs to the end give deep-equal final states |
+| 3.6 s | `horde-verifier.test.ts` E8 easy: comboBuild, lazyBuild, noAntiAir and hardBuild, recorded and played twice |
+| 3.4 s | `horde-verifier.test.ts` E8 normal: the same four, twice |
+| 3.2 s | `difficulty.test.ts` the Hard combo target holds with Goblin or Wolf hp one point up or down |
+| 3.1 s | `maps-verifier.test.ts` E: the cluster tick scan, rerun, gives the ticks in the code on all three maps |
+| 3.0 s | `endless-verifier.test.ts` a whole endlessGreedy run, twice over |
+
+The test that failed on CI takes under 3 s here in a full run; under
+load on the runner it reached 6.7 s. Runs: `npm test` three times, 871
+passed each time (about 18 s); lint, typecheck and build pass; 281
+Playwright tests passed and 3 skipped (the verifier's screenshot-only
+probes), one run with `PW_PORT=4173`.

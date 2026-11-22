@@ -397,7 +397,7 @@ describe('E. sim probes on every map', () => {
       }
       expect(ticks, id).toEqual(CLUSTER_POLICY_TICKS_BY_MAP[id]);
     }
-  }, 60_000);
+  });
 
   it("the DEVLOG's Normal table, replayed; each run is deterministic and refuses nothing", () => {
     const want: Record<(typeof NEW_MAPS)[number], Record<string, [string, number, number, number]>> = {
@@ -415,7 +415,7 @@ describe('E. sim probes on every map', () => {
         expect([a.state.phase, a.state.wave, a.state.lives, a.state.gold], `${id} ${name}`).toEqual(want[id][name]);
       }
     }
-  }, 60_000);
+  });
 
   for (const id of NEW_MAPS) {
     it(`${id}: the boss walks the whole path and costs 5 lives; call early and endless work`, () => {
@@ -461,7 +461,7 @@ describe('E. sim probes on every map', () => {
       expect(run.state.endless).toBe(true);
       expect(run.state.phase).toBe('lost');
       expect(run.state.wave).toBe(id === 'switchback' ? 16 : 14);
-    }, 60_000);
+    });
   }
 });
 
@@ -502,5 +502,5 @@ describe('B. archetypes and the map argument', () => {
       const f = { ...ARCHETYPES, ...INFORMATIONAL }[name];
       expect(() => f('normal', 'meadow'), name).not.toThrow();
     }
-  }, 60_000);
+  });
 });

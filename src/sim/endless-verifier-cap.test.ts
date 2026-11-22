@@ -22,4 +22,4 @@ it('an endless script that never loses stops after ENDLESS_WAVE_CAP waves and re
   expect(run.waves.filter((w) => w.phase === 'won')).toHaveLength(1);
   expect(endlessReport(script)).toMatchObject({ result: 'capped', wave: 200, wavesCleared: 200 });
   expect(Number.isInteger(run.state.lives)).toBe(true);
-}, 30_000);
+});

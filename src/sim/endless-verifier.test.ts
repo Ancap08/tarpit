@@ -351,7 +351,7 @@ describe('verifier: a whole endlessGreedy run', () => {
         take('continue');
       }
     }
-  }, 30_000);
+  });
 
   it('gold is conserved on every tick and action from wave 1 to the loss', () => {
     expect(problems).toEqual([]);
@@ -387,7 +387,7 @@ describe('verifier: a whole endlessGreedy run', () => {
     expect(a.state).toEqual(b.state);
     expect(a.log).toEqual(b.log);
     expect({ ...a.state, events: [] }).toEqual(state);
-  }, 30_000);
+  });
 });
 
 describe('verifier: far waves', () => {

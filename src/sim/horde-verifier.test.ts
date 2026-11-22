@@ -646,7 +646,7 @@ describe('E8. determinism: byte-equal final state', () => {
         expect(JSON.stringify(b.state), name).toBe(JSON.stringify(a.state));
         expect(JSON.stringify(b.waves), name).toBe(JSON.stringify(a.waves));
       }
-    }, 60_000);
+    });
   }
 
   it('the path is 1584 px (the exit distance the probes above rely on)', () => {

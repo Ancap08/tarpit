@@ -288,7 +288,7 @@ describe('Meadow is unchanged (milestone 27)', () => {
     const { map, ...rest } = state;
     expect(map).toBe(MAPS.meadow);
     expect(rest).toEqual(MEADOW_COMBO_NORMAL_M26);
-  }, 20_000);
+  });
 
   it("the trail order, plan and cluster ticks for Meadow are milestone 26's", () => {
     expect(trailCellOrder(MAPS.meadow)).toBe(TRAIL_CELL_ORDER);
@@ -319,14 +319,14 @@ describe('the new maps in headless play (milestone 27)', () => {
       for (let i = 0; i < 600; i++) tick(s);
       expect(s.phase).toBe('wave');
       expect(s.enemies.length).toBeGreaterThan(0);
-    }, 20_000);
+    });
 
     it(`${id}: noTowers loses on Normal and lazyBuild does not win`, () => {
       expect(playScripted(noTowers('normal', id)).state.phase).toBe('lost');
       const lazy = lazyBuild('normal', id);
       expect(lazy.mapId).toBe(id);
       expect(playScripted(lazy).state.phase).toBe('lost');
-    }, 20_000);
+    });
 
     it(`${id}: the trail order is that map's, on buildable cells`, () => {
       const order = trailCellOrder(MAPS[id]);
