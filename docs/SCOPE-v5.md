@@ -140,11 +140,37 @@ Today a tall window shows a "turn your device" card.
   ghost and the highlighted cell as today. If placing feels fiddly on
   Kyle's phone, a magnifier while dragging is the follow-up.
 
+## Milestone 33: sound
+
+Kyle chose sounds made in code over a downloaded pack (2026-11-22): no
+files, no licences, almost no size, a retro sound that suits the
+placeholder look.
+
+- **Every action has a sound,** synthesized with the browser's audio
+  engine: one per tower's shot and its impact; hits and deaths (lower for
+  bigger enemies); an enemy getting through; build, upgrade, sell and
+  button taps; the three specials; a horn at wave start and a chime at
+  wave clear; the boss's arrival and fall; win and lose jingles; the gold
+  cheat.
+- **A mute button** on the title and in the game, in both layouts,
+  remembered between visits. Sound starts on the player's first tap, as
+  phones require.
+- **It stays pleasant in a horde.** Repeats of the same sound are thinned
+  and quietened, the number of sounds at once is capped, and a limiter
+  keeps the mix from distorting, at 1x, 2x and 3x.
+- **Drawing and rules do not change.** Sounds follow the same events the
+  effects use, and an impact sounds when its projectile lands. Test mode
+  is silent.
+- **No music** in this milestone, and no sound files.
+
+Sound cannot be judged by a screenshot or by the agents: Kyle is the
+judge. The implementer renders every sound into one audio file for him to
+hear before merge.
+
 ## Later milestones (order agreed, detail to come)
 
 | # | Milestone | Idea |
 |---|---|---|
-| 33 | Sound | Shots, hits, tar, fire, a wave horn, win and lose jingles, a mute button; CC0 or credited assets only |
 | 34 | A living map | Moving water, chimney smoke, trees, varied grass: rich to look at, simple to build |
 | 35 | Towers with personality | Upgrades that change the look |
 | 36 | Tabletop-art spike | One tower, one enemy and one patch of map in the stop-motion tabletop style, rendered off the Mac, for Kyle to judge before any full art pass |
