@@ -18,6 +18,14 @@
 // data with the name under it), the high-score line (milestone 26) centred
 // on y 422 (midway between the thumbnails and Play), [Play] y 446..488, prompt y 522.
 //
+// Portrait (milestone 32b; canvas 480 x 1194, centred on x 240): title y
+// 200, subtitle y 270, "Difficulty" y 390, level buttons 144 x 70 (12 px
+// apart) at y 410, "Map" y 530, map buttons 144 x 116 at y 550 (a 120 x 60
+// thumbnail, 18 px name), the best line y 720, [Play] 260 x 80 at y 770,
+// the prompt wrapped to two lines (310 px) round y 930. Every button is at least as
+// large as the game's 70 px controls, and all text is 18 px or more. When
+// the window changes shape, relayout() rebuilds the menu with its picks.
+//
 // Ready (milestone 26 follow-up): Phaser makes an interactive object
 // hit-testable only at its scene's next update after setInteractive (the
 // input plugin's pending-insertion list). On a first visit the title's
@@ -42,6 +50,7 @@ import type { Rect } from './input';
 import { highScores } from './highScore';
 import { bestScoreText, DIFFICULTY_LABELS, MAP_NAMES, TITLE_TEXT } from './names';
 import { COLORS, FONT, TEXT } from './palette';
+import { currentLayout } from './layoutSwitch';
 import { Button } from './ui/button';
 
 /** Menu buttons: 42 px tall like every touch target (44.8 px on an iPad in landscape). */
@@ -68,6 +77,86 @@ export const BEST_LINE_Y = (MAP_ROW_Y + MAP_BUTTON_H + PLAY_BUTTON_Y) / 2;
 export const BEST_LINE_SIZE = 18;
 
 /** What the test hook ui() reports while the title menu shows. */
+/** Where the title menu's parts go (milestone 32b: landscape as above, or portrait). */
+interface TitleGeometry {
+  titleY: number;
+  subtitleY: number;
+  levelCaptionY: number;
+  levelY: number;
+  levelW: number;
+  levelH: number;
+  gap: number;
+  mapCaptionY: number;
+  mapY: number;
+  mapH: number;
+  thumbW: number;
+  thumbH: number;
+  thumbTop: number;
+  thumbNameY: number;
+  mapNameSize: string;
+  levelFont: string;
+  bestY: number;
+  playW: number;
+  playH: number;
+  playY: number;
+  playFont: string;
+  promptY: number;
+  /** Wrap width for the prompt, or 0 for one line. */
+  promptWrap: number;
+}
+
+const LANDSCAPE_TITLE: TitleGeometry = {
+  titleY: 110,
+  subtitleY: 172,
+  levelCaptionY: LEVEL_ROW_Y - 20,
+  levelY: LEVEL_ROW_Y,
+  levelW: LEVEL_BUTTON_W,
+  levelH: MENU_BUTTON_H,
+  gap: LEVEL_GAP,
+  mapCaptionY: MAP_ROW_Y - 14,
+  mapY: MAP_ROW_Y,
+  mapH: MAP_BUTTON_H,
+  thumbW: THUMB_W,
+  thumbH: THUMB_H,
+  thumbTop: THUMB_TOP,
+  thumbNameY: THUMB_NAME_Y,
+  mapNameSize: '15px',
+  levelFont: '18px',
+  bestY: BEST_LINE_Y,
+  playW: PLAY_BUTTON_W,
+  playH: MENU_BUTTON_H,
+  playY: PLAY_BUTTON_Y,
+  playFont: '22px',
+  promptY: 522,
+  promptWrap: 0,
+};
+
+const PORTRAIT_TITLE: TitleGeometry = {
+  titleY: 200,
+  subtitleY: 270,
+  levelCaptionY: 390,
+  levelY: 410,
+  levelW: 144,
+  levelH: 70,
+  gap: 12,
+  mapCaptionY: 530,
+  mapY: 550,
+  mapH: 116,
+  thumbW: 120,
+  thumbH: 60,
+  thumbTop: 8,
+  thumbNameY: 92,
+  mapNameSize: '18px',
+  levelFont: '22px',
+  bestY: 720,
+  playW: 260,
+  playH: 80,
+  playY: 770,
+  playFont: '26px',
+  promptY: 930,
+  promptWrap: 310,
+};
+
 export interface TitleUiState {
   scene: 'title';
   difficulty: Difficulty;
@@ -108,9 +197,16 @@ export class TitleScene extends Phaser.Scene {
     loadEnemySheets(this);
   }
 
+  /** Milestone 32b: rebuild the menu for the window's new layout, keeping the picks (layoutSwitch.ts). */
+  relayout(): void {
+    if (this.starting) return;
+    this.scene.restart();
+  }
+
   create(): void {
     const { width } = this.scale;
     const cx = width / 2;
+    const geo = currentLayout().kind === 'portrait' ? PORTRAIT_TITLE : LANDSCAPE_TITLE;
     this.cameras.main.setBackgroundColor(COLORS.titleBg);
     this.starting = false;
     this.ready = false;
@@ -119,54 +215,55 @@ export class TitleScene extends Phaser.Scene {
     });
 
     this.add
-      .text(cx, 110, TITLE_TEXT.title, { fontFamily: FONT, fontSize: '72px', fontStyle: 'bold', color: TEXT.title })
+      .text(cx, geo.titleY, TITLE_TEXT.title, { fontFamily: FONT, fontSize: '72px', fontStyle: 'bold', color: TEXT.title })
       .setOrigin(0.5);
-    this.add.text(cx, 172, TITLE_TEXT.subtitle, { fontFamily: FONT, fontSize: '24px', color: TEXT.subtitle }).setOrigin(0.5);
+    this.add.text(cx, geo.subtitleY, TITLE_TEXT.subtitle, { fontFamily: FONT, fontSize: '24px', color: TEXT.subtitle }).setOrigin(0.5);
 
     this.add
-      .text(cx, LEVEL_ROW_Y - 20, TITLE_TEXT.difficulty, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: TEXT.subtitle })
+      .text(cx, geo.levelCaptionY, TITLE_TEXT.difficulty, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: TEXT.subtitle })
       .setOrigin(0.5);
-    const rowWidth = DIFFICULTIES.length * LEVEL_BUTTON_W + (DIFFICULTIES.length - 1) * LEVEL_GAP;
+    const rowWidth = DIFFICULTIES.length * geo.levelW + (DIFFICULTIES.length - 1) * geo.gap;
     this.levelButtons = new Map();
     DIFFICULTIES.forEach((level, i) => {
-      const rect = { x: cx - rowWidth / 2 + i * (LEVEL_BUTTON_W + LEVEL_GAP), y: LEVEL_ROW_Y, width: LEVEL_BUTTON_W, height: MENU_BUTTON_H };
-      this.levelButtons.set(level, new Button(this, rect, DIFFICULTY_LABELS[level], () => this.select(level)));
+      const rect = { x: cx - rowWidth / 2 + i * (geo.levelW + geo.gap), y: geo.levelY, width: geo.levelW, height: geo.levelH };
+      this.levelButtons.set(level, new Button(this, rect, DIFFICULTY_LABELS[level], () => this.select(level), { fontSize: geo.levelFont }));
     });
 
     // The map row (milestone 27): a caption, then a thumbnail button per map.
     this.add
-      .text(cx, MAP_ROW_Y - 14, TITLE_TEXT.map, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: TEXT.subtitle })
+      .text(cx, geo.mapCaptionY, TITLE_TEXT.map, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: TEXT.subtitle })
       .setOrigin(0.5);
-    const mapRowWidth = MAP_IDS.length * LEVEL_BUTTON_W + (MAP_IDS.length - 1) * LEVEL_GAP;
+    const mapRowWidth = MAP_IDS.length * geo.levelW + (MAP_IDS.length - 1) * geo.gap;
     this.mapButtons = new Map();
     MAP_IDS.forEach((map, i) => {
-      const rect = { x: cx - mapRowWidth / 2 + i * (LEVEL_BUTTON_W + LEVEL_GAP), y: MAP_ROW_Y, width: LEVEL_BUTTON_W, height: MAP_BUTTON_H };
+      const rect = { x: cx - mapRowWidth / 2 + i * (geo.levelW + geo.gap), y: geo.mapY, width: geo.levelW, height: geo.mapH };
       this.mapButtons.set(map, new Button(this, rect, '', () => this.selectMap(map)));
       // Drawn after the button, so over its box; neither the picture nor the name takes input.
       const g = this.add.graphics();
-      drawMapThumbnail(g, MAPS[map], rect.x + (rect.width - THUMB_W) / 2, rect.y + THUMB_TOP, THUMB_W, THUMB_H);
+      drawMapThumbnail(g, MAPS[map], rect.x + (rect.width - geo.thumbW) / 2, rect.y + geo.thumbTop, geo.thumbW, geo.thumbH);
       g.lineStyle(1, COLORS.buttonEdge, 0.6);
-      g.strokeRect(rect.x + (rect.width - THUMB_W) / 2, rect.y + THUMB_TOP, THUMB_W, THUMB_H);
+      g.strokeRect(rect.x + (rect.width - geo.thumbW) / 2, rect.y + geo.thumbTop, geo.thumbW, geo.thumbH);
       this.add
-        .text(rect.x + rect.width / 2, rect.y + THUMB_NAME_Y, MAP_NAMES[map], { fontFamily: FONT, fontSize: '15px', fontStyle: 'bold', color: TEXT.button })
+        .text(rect.x + rect.width / 2, rect.y + geo.thumbNameY, MAP_NAMES[map], { fontFamily: FONT, fontSize: geo.mapNameSize, fontStyle: 'bold', color: TEXT.button })
         .setOrigin(0.5);
     });
 
     this.bestLine = this.add
-      .text(cx, BEST_LINE_Y, '', { fontFamily: FONT, fontSize: `${BEST_LINE_SIZE}px`, fontStyle: 'bold', color: TEXT.subtitle })
+      .text(cx, geo.bestY, '', { fontFamily: FONT, fontSize: `${BEST_LINE_SIZE}px`, fontStyle: 'bold', color: TEXT.subtitle })
       .setOrigin(0.5);
 
     this.playButton = new Button(
       this,
-      { x: cx - PLAY_BUTTON_W / 2, y: PLAY_BUTTON_Y, width: PLAY_BUTTON_W, height: MENU_BUTTON_H },
+      { x: cx - geo.playW / 2, y: geo.playY, width: geo.playW, height: geo.playH },
       TITLE_TEXT.play,
       () => this.play(),
-      { fontSize: '22px' },
+      { fontSize: geo.playFont },
     );
 
-    this.add
-      .text(cx, 522, TITLE_TEXT.prompt, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: TEXT.prompt })
+    const prompt = this.add
+      .text(cx, geo.promptY, TITLE_TEXT.prompt, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: TEXT.prompt })
       .setOrigin(0.5);
+    if (geo.promptWrap > 0) prompt.setAlign('center').setWordWrapWidth(geo.promptWrap, true);
 
     this.selectMap(this.selectedMap);
     this.select(this.selected);
