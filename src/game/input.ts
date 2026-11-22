@@ -2,14 +2,15 @@
 // what a click means, and where the tower panel goes next to a tower. Pure
 // functions with no Phaser, so they are unit tested in input.test.ts.
 
-import { CELL, distanceToPath, GRID_COLS, GRID_ROWS, isBuildable, MAP_HEIGHT, MAP_WIDTH, towerAt, type Cell, type GameState, type MapDef, type Point, type Rect } from '../sim';
+import { CELL, distanceToPath, isBuildable, towerAt, type Cell, type GameState, type MapDef, type Point, type Rect } from '../sim';
 import { labelAbove, LABEL_HEIGHT, LABEL_OFFSET_Y, labelX } from './draw/labels';
 import { PATH_WIDTH } from './draw/map';
+import { LANDSCAPE, type Layout } from './layout';
 
 export type { Rect };
 
-/** The map area. Panels and ghosts stay inside it, never over the HUD. */
-export const MAP_AREA: Rect = { x: 0, y: 0, width: MAP_WIDTH, height: MAP_HEIGHT };
+/** The landscape map area. Panels and ghosts stay inside the layout's map box, never over the HUD. */
+export const MAP_AREA: Rect = LANDSCAPE.map;
 
 /** Gap between a tower's centre and the near edge of a panel to its right or left: clears a 56 px label. */
 const PANEL_OFFSET = 30;
@@ -26,17 +27,15 @@ export function contains(r: Rect, x: number, y: number): boolean {
 }
 
 /**
- * The grid cell under (x, y), or null outside the map (the HUD included).
- * A point on a shared edge belongs to the cell to its right or below.
+ * The grid cell under canvas point (x, y), or null outside the map (the HUD
+ * included), through `layout` (milestone 32b). A point on a shared edge
+ * belongs to the cell to its right or below.
  */
-export function cellAt(x: number, y: number): Cell | null {
-  if (!(x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT)) return null;
-  const col = Math.floor(x / CELL);
-  const row = Math.floor(y / CELL);
-  return col < GRID_COLS && row < GRID_ROWS ? { col, row } : null;
+export function cellAt(x: number, y: number, layout: Layout = LANDSCAPE): Cell | null {
+  return layout.cellAt(x, y);
 }
 
-/** The 32 px square of a cell. */
+/** The 32 px square of a cell in world coordinates (for world-space Graphics). */
 export function cellRect(cell: Cell): Rect {
   return { x: cell.col * CELL, y: cell.row * CELL, width: CELL, height: CELL };
 }
@@ -55,9 +54,9 @@ export type ClickTarget =
   | { kind: 'blocked'; cell: Cell }
   | { kind: 'outside' };
 
-export function classifyClick(x: number, y: number, ui: Rect | null, state: GameState): ClickTarget {
+export function classifyClick(x: number, y: number, ui: Rect | null, state: GameState, layout: Layout = LANDSCAPE): ClickTarget {
   if (ui && contains(ui, x, y)) return { kind: 'ui' };
-  const cell = cellAt(x, y);
+  const cell = layout.cellAt(x, y);
   if (cell === null) return { kind: 'outside' };
   if (towerAt(state, cell)) return { kind: 'tower', cell };
   return isBuildable(state, cell) ? { kind: 'buildable', cell } : { kind: 'blocked', cell };
@@ -72,16 +71,16 @@ export function onPath(x: number, y: number, map: MapDef): boolean {
 const COVER_SAMPLES = 9;
 
 /**
- * Approximate share (0 to 1) of a box that lies over the path, from a grid
- * of sample points. Used only to rank candidate sides, so coarse is fine.
+ * Approximate share (0 to 1) of a canvas box that lies over the path, from a
+ * grid of sample points (turned into world points by `layout`). Used only to
+ * rank candidate sides, so coarse is fine.
  */
-export function pathCover(x: number, y: number, width: number, height: number, map: MapDef): number {
+export function pathCover(x: number, y: number, width: number, height: number, map: MapDef, layout: Layout = LANDSCAPE): number {
   let hits = 0;
   for (let i = 0; i < COVER_SAMPLES; i++) {
     for (let j = 0; j < COVER_SAMPLES; j++) {
-      const px = x + (width * i) / (COVER_SAMPLES - 1);
-      const py = y + (height * j) / (COVER_SAMPLES - 1);
-      if (onPath(px, py, map)) hits++;
+      const w = layout.toWorld({ x: x + (width * i) / (COVER_SAMPLES - 1), y: y + (height * j) / (COVER_SAMPLES - 1) });
+      if (onPath(w.x, w.y, map)) hits++;
     }
   }
   return hits / (COVER_SAMPLES * COVER_SAMPLES);
@@ -112,13 +111,15 @@ export const KILLS_LINE_H = 20;
  * (of `map`, the game's map) so the player can still see the enemies. Ties keep that order. Panels may
  * cover other towers.
  */
-export function placeBeside(centre: Point, width: number, height: number, map: MapDef): Point {
+export function placeBeside(centre: Point, width: number, height: number, map: MapDef, layout: Layout = LANDSCAPE): Point {
+  const area = layout.map;
   const clamp = (x: number, y: number): Point => ({
-    x: Math.min(MAP_AREA.x + MAP_AREA.width - PANEL_MARGIN - width, Math.max(MAP_AREA.x + PANEL_MARGIN, x)),
-    y: Math.min(MAP_AREA.y + MAP_AREA.height - PANEL_MARGIN - height, Math.max(MAP_AREA.y + PANEL_MARGIN, y)),
+    x: Math.min(area.x + area.width - PANEL_MARGIN - width, Math.max(area.x + PANEL_MARGIN, x)),
+    y: Math.min(area.y + area.height - PANEL_MARGIN - height, Math.max(area.y + PANEL_MARGIN, y)),
   });
   const own: Rect = { x: centre.x - CELL / 2, y: centre.y - CELL / 2, width: CELL, height: CELL };
-  const label = labelRect(centre);
+  // Portrait shows no tower labels (milestone 32b), so only the tower's own cell is kept clear there.
+  const label = layout.kind === 'landscape' ? labelRect(centre) : own;
   const candidates = [
     clamp(centre.x + PANEL_OFFSET, centre.y - height / 2),
     clamp(centre.x - PANEL_OFFSET - width, centre.y - height / 2),
@@ -130,7 +131,7 @@ export function placeBeside(centre: Point, width: number, height: number, map: M
   for (const p of candidates) {
     const box = { x: p.x, y: p.y, width, height };
     if (overlaps(box, own) || overlaps(box, label)) continue;
-    const cover = pathCover(p.x, p.y, width, height, map);
+    const cover = pathCover(p.x, p.y, width, height, map, layout);
     if (cover < bestCover) {
       best = p;
       bestCover = cover;
@@ -159,8 +160,9 @@ export function pastDragThreshold(x0: number, y0: number, x: number, y: number):
  * null once the aim point is off the map. Mouse: the cell under the
  * pointer, null over the HUD or off the map. A release on null cancels.
  */
-export function dragTargetCell(x: number, y: number, touch: boolean): Cell | null {
-  return cellAt(x, touch ? y - DRAG_LIFT : y);
+export function dragTargetCell(x: number, y: number, touch: boolean, layout: Layout = LANDSCAPE): Cell | null {
+  // The lift is always toward the top of the screen, whatever the layout.
+  return layout.cellAt(x, touch ? y - DRAG_LIFT : y);
 }
 
 /**

@@ -36,6 +36,7 @@ import {
 import type { EnemySprites } from '../anim/enemySprites';
 import { STEP_MS } from '../loop';
 import { BOSS_BANNER_SUB, BOSS_NAME, bonusGoldText, goldGainText, waveClearBanner, waveStartBanner } from '../names';
+import { LANDSCAPE, type Layout } from '../layout';
 import { COLORS, FONT, TEXT } from '../palette';
 import { Aim, drawTowerScaled, MUZZLE, type TowerPose } from '../draw/towers';
 import {
@@ -75,9 +76,6 @@ const IMPACT_MS: Readonly<Record<ImpactKind, number>> = {
 };
 /** The boss's death flash over the whole map (real ms; off under reduced motion). */
 const BOSS_FLASH_MS = 220;
-/** Map area (the HUD starts at y 480). */
-const MAP_W = 960;
-const MAP_H = 480;
 
 type ImpactKind = 'splash' | 'tar' | 'fire' | 'muzzle' | 'bossRing';
 
@@ -192,7 +190,9 @@ export class Effects {
   private shakeMs = 0;
   private shakePx = 0;
   /** While a shake runs: the HUD's own still camera, so only the map shakes. */
-  private hudCam: Phaser.Cameras.Scene2D.Camera | null = null;
+  private hudCams: Phaser.Cameras.Scene2D.Camera[] = [];
+  /** The map camera's scroll while a shake runs (its viewport's top-left corner, milestone 32b). */
+  private mapScroll = { x: 0, y: 0 };
   private savedBg = '';
 
   constructor(
@@ -200,6 +200,8 @@ export class Effects {
     private readonly sprites: EnemySprites,
     private readonly map: MapDef,
     private readonly livesFx: LivesFx,
+    /** Milestone 32b: world-space drawing goes on Graphics the scene placed with it; particles and text are placed through it. */
+    private readonly layout: Layout = LANDSCAPE,
   ) {
     this.projectiles = new Array<Projectile | null>(CAPS.projectiles).fill(null);
     this.impacts = new Array<Impact | null>(CAPS.impacts).fill(null);
@@ -259,13 +261,24 @@ export class Effects {
     }
     this.bannerBg = this.scene.add.graphics();
     this.bannerText = this.scene.add
-      .text(MAP_W / 2, 0, '', { fontFamily: FONT, fontSize: '30px', fontStyle: 'bold', color: TEXT.waveBanner, stroke: TEXT.fxStroke, strokeThickness: 5 })
+      .text(this.bannerX, 0, '', { fontFamily: FONT, fontSize: '30px', fontStyle: 'bold', color: TEXT.waveBanner, stroke: TEXT.fxStroke, strokeThickness: 5 })
       .setOrigin(0.5, 0.5)
       .setVisible(false);
     this.bannerSub = this.scene.add
-      .text(MAP_W / 2, 0, '', { fontFamily: FONT, fontSize: '17px', fontStyle: 'bold', color: TEXT.waveBannerSub, stroke: TEXT.fxStroke, strokeThickness: 4 })
+      .text(this.bannerX, 0, '', { fontFamily: FONT, fontSize: '17px', fontStyle: 'bold', color: TEXT.waveBannerSub, stroke: TEXT.fxStroke, strokeThickness: 4 })
       .setOrigin(0.5, 0.5)
       .setVisible(false);
+  }
+
+  /** The banners' centre line: the middle of the map on the screen. */
+  private get bannerX(): number {
+    return this.layout.map.x + this.layout.map.width / 2;
+  }
+
+  /** A particle burst of `n` at world point `p`, moved (dx, dy) on the screen. */
+  private burst(e: Phaser.GameObjects.Particles.ParticleEmitter, n: number, p: Point, dx = 0, dy = 0): void {
+    const s = this.layout.toScreen(p);
+    e.explode(n, s.x + dx, s.y + dy);
   }
 
   get reducedMotion(): boolean {
@@ -307,7 +320,7 @@ export class Effects {
     const m = muzzlePoint(shot);
     if (shot.tower === 'musketeer' || shot.tower === 'cannon' || shot.tower === 'mortar') {
       this.addImpact('muzzle', m.x, m.y, shot.tower === 'musketeer' ? 8 : 12, pose.targetAngle, COLORS.muzzleFlash);
-      this.smoke.explode(shot.tower === 'musketeer' ? 2 : 4, m.x, m.y);
+      this.burst(this.smoke, shot.tower === 'musketeer' ? 2 : 4, m);
     }
   }
 
@@ -366,16 +379,14 @@ export class Effects {
         case 'upgrade':
           this.pop(e.cell, e.tower, 'upgrade');
           {
-            const c = cellCenter(e.cell);
-            this.sparks.explode(14, c.x, c.y);
+            this.burst(this.sparks, 14, cellCenter(e.cell));
           }
           break;
         case 'sell': {
           const old = this.poses.get(cellKey(e.cell));
           this.sells.push({ cell: e.cell, type: e.tower, upgraded: old?.upgraded ?? false, angle: old?.angle ?? 0, atMs: this.realMs });
           this.poses.delete(cellKey(e.cell));
-          const c = cellCenter(e.cell);
-          this.dust.explode(8, c.x, c.y + 8);
+          this.burst(this.dust, 8, cellCenter(e.cell), 0, 8);
           break;
         }
         case 'move': {
@@ -397,8 +408,7 @@ export class Effects {
     pose.type = type;
     pose.popKind = kind;
     pose.popMs = this.realMs;
-    const c = cellCenter(cell);
-    this.dust.explode(kind === 'build' ? 8 : 4, c.x, c.y + 10);
+    this.burst(this.dust, kind === 'build' ? 8 : 4, cellCenter(cell), 0, 10);
   }
 
   private pose(cell: Cell, type: TowerType): Pose {
@@ -440,13 +450,16 @@ export class Effects {
   private bossDeath(id: number): void {
     this.counts.bossDeaths += 1;
     const spot = this.sprites.spot(id);
-    const p = spot ?? { x: MAP_W / 2, y: MAP_H / 2 };
+    // `spot` is on the screen (milestone 32b); the rings are world-space, so their centre goes back through the layout.
+    const m = this.layout.map;
+    const p = spot ?? { x: m.x + m.width / 2, y: m.y + m.height / 2 };
+    const ring = this.layout.toWorld({ x: p.x, y: p.y - 20 });
     // The biggest effect in the game: three rings one after another, a
     // large spark, dust and smoke burst, held about a second.
     this.sparks.explode(110, p.x, p.y - 20);
     this.dust.explode(40, p.x, p.y - 10);
     this.smoke.explode(24, p.x, p.y - 20);
-    BOSS_RING_DELAYS.forEach((delay, i) => this.addImpact('bossRing', p.x, p.y - 20, BOSS_RING_RADII[i], 0, COLORS.bossBurstRing, delay));
+    BOSS_RING_DELAYS.forEach((delay, i) => this.addImpact('bossRing', ring.x, ring.y, BOSS_RING_RADII[i], 0, COLORS.bossBurstRing, delay));
     if (this.reducedMotion) return;
     this.flashAt = this.realMs;
     this.counts.screenFlashes += 1;
@@ -471,26 +484,37 @@ export class Effects {
     this.shakeAt = this.realMs;
     this.shakeMs = s.ms;
     this.shakePx = s.px;
-    if (this.hudCam !== null) return;
+    if (this.hudCams.length > 0) return;
     const cam = this.scene.cameras.main;
     this.savedBg = cam.backgroundColor.rgba;
-    cam.setViewport(0, 0, MAP_W, MAP_H).setBackgroundColor(COLORS.grass);
-    const h = this.scene.scale.gameSize.height - MAP_H;
-    this.hudCam = this.scene.cameras.add(0, MAP_H, MAP_W, h).setScroll(0, MAP_H);
+    // Milestone 32b: the map's box shakes; each HUD band beside it (below in
+    // landscape, above and below in portrait) gets its own still camera.
+    const m = this.layout.map;
+    const W = this.scene.scale.gameSize.width;
+    const H = this.scene.scale.gameSize.height;
+    cam.setViewport(m.x, m.y, m.width, m.height).setScroll(m.x, m.y).setBackgroundColor(COLORS.grass);
+    this.mapScroll = { x: m.x, y: m.y };
+    for (const band of [
+      { y: 0, h: m.y },
+      { y: m.y + m.height, h: H - m.y - m.height },
+    ]) {
+      if (band.h > 0) this.hudCams.push(this.scene.cameras.add(0, band.y, W, band.h).setScroll(0, band.y));
+    }
   }
 
   private applyShake(): void {
-    if (this.hudCam === null) return;
+    if (this.hudCams.length === 0) return;
     const ms = this.realMs - this.shakeAt;
     const cam = this.scene.cameras.main;
     if (ms >= this.shakeMs) {
-      this.scene.cameras.remove(this.hudCam);
-      this.hudCam = null;
-      cam.setViewport(0, 0, MAP_W, this.scene.scale.gameSize.height).setScroll(0, 0).setBackgroundColor(this.savedBg);
+      for (const c of this.hudCams) this.scene.cameras.remove(c);
+      this.hudCams = [];
+      this.mapScroll = { x: 0, y: 0 };
+      cam.setViewport(0, 0, this.scene.scale.gameSize.width, this.scene.scale.gameSize.height).setScroll(0, 0).setBackgroundColor(this.savedBg);
       return;
     }
     const o = shakeOffset(ms, this.shakeMs, this.shakePx);
-    cam.setScroll(o.x, o.y);
+    cam.setScroll(this.mapScroll.x + o.x, this.mapScroll.y + o.y);
   }
 
   /** An impact; `delayMs` (game ms) holds it back, as the boss's later rings. */
@@ -505,14 +529,14 @@ export class Effects {
     switch (shot.tower) {
       case 'cannon':
         this.addImpact('splash', x, y, shot.splashRadius ?? 0, 0, COLORS.cannonSplash);
-        this.dust.explode(10, x, y);
-        this.sparks.explode(6, x, y);
+        this.burst(this.dust, 10, shot.to);
+        this.burst(this.sparks, 6, shot.to);
         break;
       case 'mortar':
         this.addImpact('splash', x, y, shot.splashRadius ?? 0, 0, COLORS.mortarSplash);
-        this.dust.explode(16, x, y);
-        this.sparks.explode(8, x, y);
-        this.smoke.explode(3, x, y);
+        this.burst(this.dust, 16, shot.to);
+        this.burst(this.sparks, 8, shot.to);
+        this.burst(this.smoke, 3, shot.to);
         break;
       case 'tarpit':
         this.addImpact('tar', x, y, 9, 0, COLORS.tarSplat);
@@ -521,7 +545,7 @@ export class Effects {
         this.addImpact('fire', x, y, 13, 0, COLORS.fireBurst);
         break;
       default:
-        this.dust.explode(4, x, y);
+        this.burst(this.dust, 4, shot.to);
         break;
     }
   }
@@ -618,7 +642,7 @@ export class Effects {
       drawTowerScaled(g, s.type, cellCenter(s.cell), { angle: s.angle, recoil: 0, scale: Math.max(0.01, popScale('sell', this.realMs - s.atMs)) }, s.upgraded);
     }
     for (const f of this.impacts) if (f && now >= f.bornMs) drawImpact(g, f, (now - f.bornMs) / IMPACT_MS[f.kind]);
-    for (const p of this.projectiles) if (p) drawProjectile(g, p, (now - p.bornMs) / p.travelMs);
+    for (const p of this.projectiles) if (p) drawProjectile(g, p, (now - p.bornMs) / p.travelMs, this.layout);
     const exit = flashFade(this.realMs - this.exitAt, EXIT_FLASH_MS);
     if (exit > 0) {
       g.fillStyle(COLORS.exitGlow, 0.5 * exit);
@@ -633,9 +657,10 @@ export class Effects {
     const v = this.veil;
     v.clear();
     const dark = darkenAlpha(this.realMs - this.darkenAt);
-    if (dark > 0) v.fillStyle(COLORS.darken, dark).fillRect(0, 0, MAP_W, MAP_H);
+    const m = this.layout.map;
+    if (dark > 0) v.fillStyle(COLORS.darken, dark).fillRect(m.x, m.y, m.width, m.height);
     const flash = flashFade(this.realMs - this.flashAt, BOSS_FLASH_MS);
-    if (flash > 0) v.fillStyle(0xffffff, 0.5 * flash).fillRect(0, 0, MAP_W, MAP_H);
+    if (flash > 0) v.fillStyle(0xffffff, 0.5 * flash).fillRect(m.x, m.y, m.width, m.height);
 
     const ended = state.phase === 'won' || state.phase === 'lost';
     if (ended) this.banners.clear();
@@ -649,7 +674,7 @@ export class Effects {
         this.bannerSub.setVisible(false);
       } else {
         const b = cur.banner;
-        const y = b.big ? 200 : 150;
+        const y = this.layout.map.y + (b.big ? 200 : 150);
         this.bannerText
           .setText(b.text)
           .setFontSize(b.big ? 44 : 30)
@@ -659,7 +684,7 @@ export class Effects {
         this.bannerSub.setText(b.sub).setY(y + (b.big ? 36 : 28)).setVisible(b.sub !== '');
         const w = Math.max(this.bannerText.width, this.bannerSub.width) + 48;
         const h = b.sub === '' ? 52 : b.big ? 100 : 84;
-        this.bannerBg.fillStyle(COLORS.aimBanner, 0.7).fillRoundedRect(MAP_W / 2 - w / 2, y - 30, w, h, 10);
+        this.bannerBg.fillStyle(COLORS.aimBanner, 0.7).fillRoundedRect(this.bannerX - w / 2, y - 30, w, h, 10);
       }
     }
     if (cur !== null) {
@@ -700,7 +725,7 @@ export class Effects {
       livesFlashing: flashFade(this.realMs - this.exitAt, EXIT_FLASH_MS) > 0,
       pendingKills: this.due.filter((d) => d.kind === 'kill').length,
       gameMs: this.gameMs,
-      camera: { x: this.scene.cameras.main.scrollX, y: this.scene.cameras.main.scrollY, split: this.hudCam !== null },
+      camera: { x: this.scene.cameras.main.scrollX - this.mapScroll.x, y: this.scene.cameras.main.scrollY - this.mapScroll.y, split: this.hudCams.length > 0 },
     };
   }
 }
@@ -715,13 +740,20 @@ function muzzlePoint(shot: Shot): Point {
   return { x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k };
 }
 
-function drawProjectile(g: Phaser.GameObjects.Graphics, p: Projectile, t: number): void {
-  const a = arcPosition(p.from, p.to, t, p.height);
+function drawProjectile(g: Phaser.GameObjects.Graphics, p: Projectile, t: number, layout: Layout): void {
+  // World-space drawing (milestone 32b): arcs rise up the screen, and shadows sit below them, flat on the screen.
+  const up = layout.up;
+  const a = arcPosition(p.from, p.to, t, p.height, up);
+  const shadow = (w: number, h: number, alpha: number) => {
+    const at = layout.offset({ x: a.groundX, y: a.groundY }, 0, 3);
+    const size = layout.ellipse(w, h);
+    g.fillStyle(COLORS.shellShadow, alpha).fillEllipse(at.x, at.y, size.w, size.h);
+  };
   const dx = Math.cos(a.angle);
   const dy = Math.sin(a.angle);
   // A short bright trail behind fast shots: from where it was a little earlier.
   const trail = (len: number, width: number, color: number, alpha: number) => {
-    const b = arcPosition(p.from, p.to, Math.max(0, t - len), p.height);
+    const b = arcPosition(p.from, p.to, Math.max(0, t - len), p.height, up);
     g.lineStyle(width, color, alpha).lineBetween(b.x, b.y, a.x, a.y);
   };
   switch (p.tower) {
@@ -741,17 +773,17 @@ function drawProjectile(g: Phaser.GameObjects.Graphics, p: Projectile, t: number
       g.fillStyle(COLORS.arrowHead, 1).fillTriangle(a.x + dx * 6, a.y + dy * 6, a.x - dy * 4, a.y + dx * 4, a.x + dy * 4, a.y - dx * 4);
       break;
     case 'cannon':
-      g.fillStyle(COLORS.shellShadow, 0.35).fillEllipse(a.groundX, a.groundY + 3, 16, 7);
+      shadow(16, 7, 0.35);
       trail(0.25, 6, COLORS.smoke, 0.4);
       g.fillStyle(COLORS.arrowHead, 0.9).fillCircle(a.x, a.y, 9);
       g.fillStyle(COLORS.cannonBall, 1).fillCircle(a.x, a.y, 8);
       g.fillStyle(COLORS.arrowHead, 0.7).fillCircle(a.x - 3, a.y - 3, 2.5);
       break;
     case 'mortar': {
-      const lift = a.groundY - a.y;
+      const lift = Math.hypot(a.x - a.groundX, a.y - a.groundY);
       const high = p.height > 0 ? lift / p.height : 0;
       // A clear shadow on the ground, smaller and fainter the higher the shell.
-      g.fillStyle(COLORS.shellShadow, 0.5 - 0.15 * high).fillEllipse(a.groundX, a.groundY + 3, 22 - 8 * high, 10 - 3 * high);
+      shadow(22 - 8 * high, 10 - 3 * high, 0.5 - 0.15 * high);
       trail(0.15, 7, COLORS.smoke, 0.45);
       const r = 10 + 2 * high;
       g.fillStyle(COLORS.arrowHead, 0.9).fillCircle(a.x, a.y, r + 1.5);
@@ -761,7 +793,7 @@ function drawProjectile(g: Phaser.GameObjects.Graphics, p: Projectile, t: number
       break;
     }
     case 'tarpit':
-      g.fillStyle(COLORS.shellShadow, 0.3).fillEllipse(a.groundX, a.groundY + 3, 12, 5);
+      shadow(12, 5, 0.3);
       g.fillStyle(COLORS.tarSplat, 0.7).fillCircle(a.x - dx * 9, a.y - dy * 9, 4);
       g.fillStyle(COLORS.tarpitHighlight, 0.9).fillCircle(a.x, a.y, 9);
       g.fillStyle(COLORS.tarSplat, 1).fillCircle(a.x, a.y, 8);
@@ -771,7 +803,7 @@ function drawProjectile(g: Phaser.GameObjects.Graphics, p: Projectile, t: number
       // A gout: blobs from the pot to the head, growing toward the head.
       for (let i = 5; i >= 0; i--) {
         const u = Math.max(0, t - i * 0.1);
-        const b = arcPosition(p.from, p.to, u, 0);
+        const b = arcPosition(p.from, p.to, u, 0, up);
         const r = 10 - i * 1.3;
         g.fillStyle(i % 2 === 0 ? COLORS.fireBurst : COLORS.fireBurstCore, 0.95 - i * 0.1).fillCircle(b.x, b.y, r);
       }

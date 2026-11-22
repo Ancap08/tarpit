@@ -163,7 +163,7 @@ import { ShotEffects } from './draw/shots';
 import { SpecialEffects } from './draw/specials';
 import { Aim, drawTowerShape, drawTowers } from './draw/towers';
 import { highScores } from './highScore';
-import { callEarlyInfo, CHEAT_TAPS, CHEAT_WINDOW_MS, GOLD_RECT, HUD_TOP, Hud, specialReady, specialRecharge } from './hud';
+import { callEarlyInfo, CHEAT_TAPS, CHEAT_WINDOW_MS, GOLD_RECT, Hud, specialReady, specialRecharge } from './hud';
 import { aimBannerText } from './names';
 import {
   cellAt,
@@ -172,11 +172,11 @@ import {
   contains,
   DRAG_LIFT,
   dragTargetCell,
-  MAP_AREA,
   mouseDragLost,
   pastDragThreshold,
   type Rect,
 } from './input';
+import { LANDSCAPE, type Layout } from './layout';
 import { COLORS, FONT, TEXT } from './palette';
 import { portraitCardVisible } from './portrait';
 import { isPerfMode, isTestMode } from './testMode';
@@ -319,18 +319,14 @@ export const SPECIAL_COLORS: Readonly<Record<SpecialType, number>> = {
 };
 
 /**
- * A touch hold's aim point (milestone 30): DRAG_LIFT px above the finger,
- * or null when that point is off the map. As for tower drags (milestone
- * 25a) the lifted point decides, so a finger on the HUD aims at the map's
- * bottom rows.
+ * A touch hold's aim point (milestone 30), in canvas px: DRAG_LIFT px
+ * above the finger (milestone 32b: always up the screen), or null when that
+ * point is off `layout`'s map (edges included). As for tower drags
+ * (milestone 25a) the lifted point decides, so a finger on the HUD aims at
+ * the map's bottom rows.
  */
-function liftedAim(x: number, y: number): { x: number; y: number } | null {
-  return onMap(x, y - DRAG_LIFT) ? { x, y: y - DRAG_LIFT } : null;
-}
-
-/** True when (x, y) is on the map (where a special may be aimed): 0..960 x 0..480 inclusive. */
-function onMap(x: number, y: number): boolean {
-  return x >= MAP_AREA.x && x <= MAP_AREA.x + MAP_AREA.width && y >= MAP_AREA.y && y <= MAP_AREA.y + MAP_AREA.height;
+function liftedAim(x: number, y: number, layout: Layout): { x: number; y: number } | null {
+  return layout.onMap(x, y - DRAG_LIFT) ? { x, y: y - DRAG_LIFT } : null;
 }
 
 /** Dashes in the Mortar's minimum-range circle (each dash half of its slot). */
@@ -339,6 +335,8 @@ const MIN_RANGE_DASHES = 24;
 export class GameScene extends Phaser.Scene {
   state: GameState = createGame();
   speed: Speed = 1;
+  /** Milestone 32b: where the map and controls sit; every map conversion goes through it. */
+  private layout: Layout = LANDSCAPE;
   /** The level this game runs on (set in init from the start data). */
   private difficulty: Difficulty = DEFAULT_DIFFICULTY;
   /** The map this game runs on (milestone 27; set in init from the start data). */
@@ -417,7 +415,7 @@ export class GameScene extends Phaser.Scene {
     this.speed = 1;
     this.accMs = 0;
     this.shots = new ShotEffects();
-    this.specialFx = new SpecialEffects(this, isTestMode());
+    this.specialFx = new SpecialEffects(this, isTestMode(), this.layout);
     this.speedPress = null;
     this.speedHoldLost = false;
     this.goldTaps = [];
@@ -442,27 +440,30 @@ export class GameScene extends Phaser.Scene {
     // their particles, shot effects, hp bars, tower labels, flying enemy
     // sprites (milestone 22), HUD (which covers any range circle
     // reaching below the map), then the panel and the end screen on top.
-    drawMap(this.add.graphics(), this.state.map);
-    this.ground = this.add.graphics();
-    this.overlay = this.add.graphics();
-    this.dynamic = this.add.graphics();
-    this.enemySprites = new EnemySprites(this, isTestMode());
-    this.shotFx = this.add.graphics();
-    this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx)) : null;
+    // Milestone 32b: world-space layers take the layout's transform (placeWorld); the rest is placed through it.
+    const world = () => this.layout.placeWorld(this.add.graphics());
+    drawMap(world(), this.state.map);
+    this.ground = world();
+    this.overlay = world();
+    this.dynamic = world();
+    this.enemySprites = new EnemySprites(this, isTestMode(), this.layout);
+    this.shotFx = world();
+    this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx), this.layout) : null;
     this.bars = this.add.graphics();
-    this.labels = new TowerLabels(this);
+    this.labels = new TowerLabels(this, this.layout);
     // Flyers (Harpies) draw above every walker and label, below the HUD.
     this.enemySprites.setAirLayer(this.add.layer());
     // The aim banner (milestone 30): over the map's top edge, under the HUD and panels.
     // The aim circle's centre cross (milestone 30 follow-up), above every sprite.
     // Milestone 31: the boss veil, gold labels and wave banners, under the HUD.
     this.fx?.createOverlays();
-    this.aimCross = this.add.graphics();
+    this.aimCross = world();
     this.bannerBg = this.add.graphics().setDepth(4);
+    const bannerTop = this.layout.map.y + BANNER_Y;
     const bannerText = (y: number, size: string, color: string) =>
-      this.add.text(480, y, '', { fontFamily: FONT, fontSize: size, fontStyle: 'bold', color }).setOrigin(0.5, 0.5).setDepth(4);
-    this.bannerMain = bannerText(BANNER_Y + 14, '18px', TEXT.aimBanner);
-    this.bannerHint = bannerText(BANNER_Y + 34, '13px', TEXT.aimHint);
+      this.add.text(this.bannerX, y, '', { fontFamily: FONT, fontSize: size, fontStyle: 'bold', color }).setOrigin(0.5, 0.5).setDepth(4);
+    this.bannerMain = bannerText(bannerTop + 14, '18px', TEXT.aimBanner);
+    this.bannerHint = bannerText(bannerTop + 34, '13px', TEXT.aimHint);
     this.hud = new Hud(this, {
       // Milestone 25c: mid-wave, Start Wave reads "Call next  +N" and calls the next wave.
       onStartWave: () => (callEarlyStatus(this.state).ok ? this.callNextWave() : this.startWave()),
@@ -472,7 +473,7 @@ export class GameScene extends Phaser.Scene {
       onSpecial: () => this.onSpecialButton(),
       onSpecialPick: (type) => this.selectSpecial(type),
     });
-    this.panel = new TowerPanel(this, {
+    this.panel = new TowerPanel(this, this.layout, {
       onUpgrade: () => {
         if (this.panel.cell !== null) this.upgrade(this.panel.cell);
       },
@@ -495,6 +496,7 @@ export class GameScene extends Phaser.Scene {
     });
     this.endScreen = new EndScreen(
       this,
+      this.layout,
       () => this.playAgain(),
       () => this.toMenu(),
       () => this.continueEndless(),
@@ -573,7 +575,7 @@ export class GameScene extends Phaser.Scene {
     this.setTouch(false);
     this.pointer = { x, y };
     if (this.endScreen.kind) return; // the veil swallows map clicks
-    const target = classifyClick(x, y, this.panel.rect, this.state);
+    const target = classifyClick(x, y, this.panel.rect, this.state, this.layout);
     switch (target.kind) {
       case 'ui':
         return; // the panel buttons handle it
@@ -604,7 +606,7 @@ export class GameScene extends Phaser.Scene {
   private onTap(x: number, y: number): void {
     this.setTouch(true);
     if (this.endScreen.kind) return;
-    const target = classifyClick(x, y, this.panel.rect, this.state);
+    const target = classifyClick(x, y, this.panel.rect, this.state, this.layout);
     switch (target.kind) {
       case 'ui':
         return;
@@ -668,7 +670,7 @@ export class GameScene extends Phaser.Scene {
     const menu = this.hud.specialMenuRect;
     if (menu !== null && contains(menu, x, y)) return true;
     const onSpecialButton = contains(this.hud.rects().special, x, y);
-    if (!onMap(x, y) || y >= HUD_TOP) {
+    if (!this.layout.inMap(x, y)) {
       if (!onSpecialButton) this.cancelSpecial();
       return false;
     }
@@ -694,7 +696,7 @@ export class GameScene extends Phaser.Scene {
     d.y = y;
     if (!d.active && pastDragThreshold(d.x0, d.y0, x, y)) d.active = true;
     if (d.active) {
-      this.touchAim = liftedAim(x, y);
+      this.touchAim = liftedAim(x, y, this.layout);
       this.redraw();
     }
   }
@@ -704,7 +706,7 @@ export class GameScene extends Phaser.Scene {
     const d = this.aimPress;
     if (d === null || d.active || this.time.now - d.t0 < AIM_HOLD_MS) return;
     d.active = true;
-    this.touchAim = liftedAim(d.x, d.y);
+    this.touchAim = liftedAim(d.x, d.y, this.layout);
   }
 
   /**
@@ -721,19 +723,20 @@ export class GameScene extends Phaser.Scene {
     if (!d.active) {
       this.fireSpecial(this.aiming, { x: d.x0, y: d.y0 });
     } else {
-      const aimAt = liftedAim(x, y);
+      const aimAt = liftedAim(x, y, this.layout);
       if (aimAt === null || contains(this.hud.rects().special, x, y)) this.cancelSpecial();
       else this.fireSpecial(this.aiming, aimAt);
     }
     this.redraw();
   }
 
-  /** Fire `type` at `point` through the sim and end aiming (whether or not the sim accepts it). */
+  /** Fire `type` at canvas `point` (its world point, through the layout) and end aiming (whether or not the sim accepts it). */
   private fireSpecial(type: SpecialType, point: { x: number; y: number }): SpecialResult {
     this.aiming = null;
     this.touchAim = null;
     this.aimPress = null;
-    return this.useSpecialAt(type, point.x, point.y);
+    const at = this.layout.toWorld(point);
+    return this.useSpecialAt(type, at.x, at.y);
   }
 
   /** The HUD's Special button: cancel aiming or the popup if either is on, else select the only special or open the popup. */
@@ -786,7 +789,7 @@ export class GameScene extends Phaser.Scene {
     if (this.aiming === null) return null;
     if (this.touch) return this.touchAim;
     const p = this.pointer;
-    return p !== null && onMap(p.x, p.y) && p.y < HUD_TOP ? p : null;
+    return p !== null && this.layout.inMap(p.x, p.y) ? p : null;
   }
 
   /** A press started on the speed button: it may become a 3x hold (milestone 30). */
@@ -879,7 +882,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     if (this.panel.rect !== null && contains(this.panel.rect, x, y)) return;
-    const cell = cellAt(x, y);
+    const cell = cellAt(x, y, this.layout);
     const tower = cell === null ? undefined : towerAt(this.state, cell);
     if (tower && !tower.locked && this.state.phase === 'setup') {
       this.press = { ...base, kind: 'move', tower: tower.type, from: { ...tower.cell } };
@@ -902,7 +905,7 @@ export class GameScene extends Phaser.Scene {
       this.pick = d.kind === 'place' ? d.tower : null;
       this.cancelSpecial();
     }
-    d.cell = dragTargetCell(x, y, d.touch);
+    d.cell = dragTargetCell(x, y, d.touch, this.layout);
     this.redraw();
   }
 
@@ -915,7 +918,7 @@ export class GameScene extends Phaser.Scene {
     const d = this.press;
     this.press = null;
     if (d === null || !d.active) return;
-    const cell = inside ? dragTargetCell(x, y, d.touch) : null;
+    const cell = inside ? dragTargetCell(x, y, d.touch, this.layout) : null;
     if (cell !== null && this.endScreen.kind === null) {
       if (d.kind === 'place' && isBuildable(this.state, cell)) this.build(cell, d.tower);
       else if (d.kind === 'move' && d.from !== null) this.move(d.from, cell);
@@ -1220,20 +1223,25 @@ export class GameScene extends Phaser.Scene {
     const fx = this.fx;
     fx?.update(this.state);
     drawTowers(g, this.state, this.aim, moving, fx ? (cell, type) => fx.towerPose(cell, type) : undefined);
-    drawStatusRings(g, this.state);
-    drawShadows(g, this.state);
+    drawStatusRings(g, this.state, this.layout);
+    drawShadows(g, this.state, this.layout);
     this.enemySprites.sync(this.state, this.speed);
     this.shotFx.clear();
     if (fx) fx.draw(this.shotFx);
     else this.shots.draw(this.shotFx);
     this.specialFx.draw(this.shotFx);
     this.bars.clear();
-    drawHpBars(this.bars, this.state);
+    drawHpBars(this.bars, this.state, this.layout);
     this.labels.update(this.state);
     this.syncEndScreen();
     this.redrawUi();
     this.hud.update(this.state, this.speed, this.pick, { menuOpen: this.specialMenuOpen, aiming: this.aiming }, this.autoTick ? this.time.now : undefined);
     this.drawBanner();
+  }
+
+  /** The aim banner's centre line: the middle of the map on the screen (milestone 32b). */
+  private get bannerX(): number {
+    return this.layout.map.x + this.layout.map.width / 2;
   }
 
   /** The aim banner (milestone 30): shown while aiming, with what to do and how to cancel. */
@@ -1246,8 +1254,9 @@ export class GameScene extends Phaser.Scene {
       this.bannerBg.clear();
       if (text !== null) {
         const w = Math.max(this.bannerMain.width, this.bannerHint.width) + 32;
-        this.bannerBg.fillStyle(COLORS.aimBanner, 0.82).fillRoundedRect(480 - w / 2, BANNER_Y, w, BANNER_H, 8);
-        this.bannerBg.lineStyle(2, SPECIAL_COLORS[this.aiming!], 1).strokeRoundedRect(480 - w / 2, BANNER_Y, w, BANNER_H, 8);
+        const top = this.layout.map.y + BANNER_Y;
+        this.bannerBg.fillStyle(COLORS.aimBanner, 0.82).fillRoundedRect(this.bannerX - w / 2, top, w, BANNER_H, 8);
+        this.bannerBg.lineStyle(2, SPECIAL_COLORS[this.aiming!], 1).strokeRoundedRect(this.bannerX - w / 2, top, w, BANNER_H, 8);
       }
     }
   }
@@ -1296,7 +1305,7 @@ export class GameScene extends Phaser.Scene {
     if (this.endScreen.kind !== null) this.hoverCell = null;
     else if (drag !== null) this.hoverCell = drag.cell;
     else if (this.touch) this.hoverCell = this.tapCell;
-    else this.hoverCell = p === null || (panelRect !== null && contains(panelRect, p.x, p.y)) ? null : cellAt(p.x, p.y);
+    else this.hoverCell = p === null || (panelRect !== null && contains(panelRect, p.x, p.y)) ? null : cellAt(p.x, p.y, this.layout);
     const hover = this.hoverCell;
     const hoverTower = hover !== null && towerAt(this.state, hover) !== undefined;
     // A moved tower may be dropped back on its own cell (a no-op).
@@ -1350,37 +1359,41 @@ export class GameScene extends Phaser.Scene {
     if (this.aiming !== null && aimAt !== null) {
       const color = SPECIAL_COLORS[this.aiming];
       const r = SPECIAL_DEFS[this.aiming].radius;
+      // The overlay and cross layers are world-space (milestone 32b): the canvas aim point and finger go through the layout.
+      const w = this.layout.toWorld(aimAt);
       g.fillStyle(color, AIM_FILL_ALPHA);
-      g.fillCircle(aimAt.x, aimAt.y, r);
+      g.fillCircle(w.x, w.y, r);
       // A pale outer edge under the coloured one, so the dark tar circle reads on the path too.
       g.lineStyle(AIM_LINE + 2, COLORS.dragLine, 0.7);
-      g.strokeCircle(aimAt.x, aimAt.y, r);
+      g.strokeCircle(w.x, w.y, r);
       g.lineStyle(AIM_LINE, color, 1);
-      g.strokeCircle(aimAt.x, aimAt.y, r);
+      g.strokeCircle(w.x, w.y, r);
       // The landing point: a light cross with a dark outline at the centre,
       // drawn on the cross layer above the sprites (milestone 30 follow-up).
       const c = this.aimCross;
       c.lineStyle(6, COLORS.aimCrossDark, 0.9);
-      c.lineBetween(aimAt.x - AIM_CROSS - 1, aimAt.y, aimAt.x + AIM_CROSS + 1, aimAt.y);
-      c.lineBetween(aimAt.x, aimAt.y - AIM_CROSS - 1, aimAt.x, aimAt.y + AIM_CROSS + 1);
+      c.lineBetween(w.x - AIM_CROSS - 1, w.y, w.x + AIM_CROSS + 1, w.y);
+      c.lineBetween(w.x, w.y - AIM_CROSS - 1, w.x, w.y + AIM_CROSS + 1);
       c.lineStyle(2.5, COLORS.dragLine, 1);
-      c.lineBetween(aimAt.x - AIM_CROSS, aimAt.y, aimAt.x + AIM_CROSS, aimAt.y);
-      c.lineBetween(aimAt.x, aimAt.y - AIM_CROSS, aimAt.x, aimAt.y + AIM_CROSS);
+      c.lineBetween(w.x - AIM_CROSS, w.y, w.x + AIM_CROSS, w.y);
+      c.lineBetween(w.x, w.y - AIM_CROSS, w.x, w.y + AIM_CROSS);
       const ap = this.aimPress;
       if (ap?.active) {
+        const f = this.layout.toWorld(ap);
         g.lineStyle(DRAG_LINE, COLORS.dragLine, 0.85);
-        g.lineBetween(ap.x, ap.y, aimAt.x, aimAt.y);
+        g.lineBetween(f.x, f.y, w.x, w.y);
         g.fillStyle(COLORS.dragLine, 0.85);
-        g.fillCircle(ap.x, ap.y, 3);
+        g.fillCircle(f.x, f.y, 3);
       }
     }
     // On touch, a thin line from the fingertip to the lifted ghost's cell.
     if (drag !== null && drag.touch && hover !== null) {
       const c = cellCenter(hover);
+      const f = this.layout.toWorld(drag);
       g.lineStyle(DRAG_LINE, COLORS.dragLine, 0.85);
-      g.lineBetween(drag.x, drag.y, c.x, c.y);
+      g.lineBetween(f.x, f.y, c.x, c.y);
       g.fillStyle(COLORS.dragLine, 0.85);
-      g.fillCircle(drag.x, drag.y, 3);
+      g.fillCircle(f.x, f.y, 3);
     }
   }
 

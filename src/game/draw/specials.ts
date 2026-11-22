@@ -15,6 +15,7 @@
 
 import type Phaser from 'phaser';
 import type { GameEvent, GameState, SpecialType, Zone } from '../../sim';
+import { LANDSCAPE, type Layout } from '../layout';
 import { specialResultText } from '../names';
 import { COLORS, FONT, TEXT } from '../palette';
 
@@ -82,14 +83,17 @@ export class SpecialEffects {
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly frozen: boolean,
+    private readonly layout: Layout = LANDSCAPE,
   ) {}
 
   /** A special landed: its `special` event. */
   add(e: Extract<GameEvent, { kind: 'special' }>): void {
     this.blasts.push({ type: e.type, x: e.x, y: e.y, radius: e.radius, ageMs: 0 });
     if (e.type === 'keg') this.scorches.push({ x: e.x, y: e.y, radius: e.radius * 0.7, ageMs: 0 });
+    // The label is upright text on the screen (milestone 32b): placed through the layout, rising up the screen.
+    const at = this.layout.toScreen({ x: e.x, y: e.y });
     const text = this.scene.add
-      .text(e.x, e.y, specialResultText(e.hits), {
+      .text(at.x, at.y, specialResultText(e.hits), {
         fontFamily: FONT,
         fontSize: '18px',
         fontStyle: 'bold',
@@ -99,8 +103,8 @@ export class SpecialEffects {
       })
       .setOrigin(0.5, 1)
       .setDepth(5);
-    this.labels.push({ text, y0: e.y - 6, ageMs: 0 });
-    text.setY(e.y - 6);
+    this.labels.push({ text, y0: at.y - 6, ageMs: 0 });
+    text.setY(at.y - 6);
   }
 
   /** Let `ms` pass: in play once per frame with the frame time; in test mode 1000/60 per tick. */

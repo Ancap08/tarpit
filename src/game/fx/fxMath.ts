@@ -44,19 +44,25 @@ export interface ArcPoint {
   angle: number;
 }
 
+/** Screen-up in world coordinates for the landscape layout (screen y grows down). */
+const UP: Point = { x: 0, y: -1 };
+
 /**
  * Position at `t` in [0, 1] along a parabola from `from` to `to` that rises
- * `height` px above the straight line at its middle (screen y grows down).
+ * `height` px above the straight line at its middle. It rises along `up`,
+ * the world direction of the top of the screen (milestone 32b: the turned
+ * portrait map passes its own, so an arc still rises up the screen).
  */
-export function arcPosition(from: Point, to: Point, t: number, height: number): ArcPoint {
+export function arcPosition(from: Point, to: Point, t: number, height: number, up: Point = UP): ArcPoint {
   const u = Math.min(1, Math.max(0, t));
   const groundX = from.x + (to.x - from.x) * u;
   const groundY = from.y + (to.y - from.y) * u;
   const lift = 4 * height * u * (1 - u);
-  // d/du of (groundY - lift) = dy - 4h(1 - 2u).
-  const vx = to.x - from.x;
-  const vy = to.y - from.y - 4 * height * (1 - 2 * u);
-  return { x: groundX, y: groundY - lift, groundX, groundY, angle: Math.atan2(vy, vx) };
+  // d/du of (ground + up * lift) = d + up * 4h(1 - 2u).
+  const rise = 4 * height * (1 - 2 * u);
+  const vx = to.x - from.x + up.x * rise;
+  const vy = to.y - from.y + up.y * rise;
+  return { x: groundX + up.x * lift, y: groundY + up.y * lift, groundX, groundY, angle: Math.atan2(vy, vx) };
 }
 
 /** Wrap an angle into (-PI, PI]. */

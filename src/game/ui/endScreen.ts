@@ -17,7 +17,8 @@
 
 import type Phaser from 'phaser';
 import type { GameState } from '../../sim';
-import { MAP_AREA, type Rect } from '../input';
+import type { Rect } from '../input';
+import type { Layout } from '../layout';
 import { COLORS, FONT, TEXT } from '../palette';
 import { Button } from './button';
 import { END_TEXT } from '../names';
@@ -50,7 +51,9 @@ export class EndScreen {
   private readonly cx: number;
   private shown: EndKind | null = null;
 
-  constructor(scene: Phaser.Scene, onPlayAgain: () => void, onMenu: () => void, onKeepGoing: () => void) {
+  /** `layout` (milestone 32b): the veil covers its map box and the panel is centred on it. */
+  constructor(scene: Phaser.Scene, layout: Layout, onPlayAgain: () => void, onMenu: () => void, onKeepGoing: () => void) {
+    const MAP_AREA = layout.map;
     const cx = MAP_AREA.x + MAP_AREA.width / 2;
     const cy = MAP_AREA.y + MAP_AREA.height / 2;
     const top = cy - PANEL_H / 2;

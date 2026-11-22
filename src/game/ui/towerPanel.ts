@@ -16,8 +16,9 @@
 // count ("Kills 43"); the panel grows by KILLS_LINE_H.
 
 import type Phaser from 'phaser';
-import { cellCenter, TARGETING_MODES, TOWER_DEFS, towerAt, towerSellValue, type Cell, type GameState, type TargetingMode } from '../../sim';
+import { TARGETING_MODES, TOWER_DEFS, towerAt, towerSellValue, type Cell, type GameState, type TargetingMode } from '../../sim';
 import { KILLS_LINE_H, placeBeside, type Rect } from '../input';
+import type { Layout } from '../layout';
 import { killsLabel, PANEL_TEXT, targetingButtonText } from '../names';
 import { FONT, TEXT } from '../palette';
 import { ButtonStack } from './button';
@@ -41,7 +42,12 @@ export class TowerPanel {
   /** The Upgrade slot shows "Undo upgrade" (milestone 25a). */
   private undo = false;
 
-  constructor(scene: Phaser.Scene, handlers: TowerPanelHandlers) {
+  /** `layout` (milestone 32b) places the panel beside the tower inside the map's box on the screen. */
+  constructor(
+    scene: Phaser.Scene,
+    private readonly layout: Layout,
+    handlers: TowerPanelHandlers,
+  ) {
     this.stack = new ButtonStack(scene, [
       { text: PANEL_TEXT.upgrade, right: '', onClick: () => (this.undo ? handlers.onUndoUpgrade() : handlers.onUpgrade()) },
       { text: PANEL_TEXT.sell, right: '', onClick: handlers.onSell },
@@ -64,7 +70,7 @@ export class TowerPanel {
 
   open(cell: Cell, state: GameState): void {
     this.at = cell;
-    const { x, y } = placeBeside(cellCenter(cell), this.stack.width, this.stack.height, state.map);
+    const { x, y } = placeBeside(this.layout.cellCenter(cell), this.stack.width, this.stack.height, state.map, this.layout);
     this.update(state);
     this.stack.show(x, y);
     this.killsText.setPosition(x + this.stack.pad, y + this.stack.pad + KILLS_LINE_H / 2 - 2).setVisible(true);
