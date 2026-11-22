@@ -8,6 +8,8 @@
 // "Musketeer      50"); otherwise `text` is centred.
 
 import Phaser from 'phaser';
+import { sound } from '../audio/engine';
+import type { SoundName } from '../audio/recipes';
 import type { Rect } from '../input';
 import { COLORS, FONT, TEXT } from '../palette';
 import { STACK_GAP, STACK_PAD, STACK_SIZE, stackBox, type StackSize } from './geometry';
@@ -22,6 +24,8 @@ export interface ButtonOptions {
   onPress?: () => void;
   /** Milestone 32b: the label's centre, in px from the button's top (default: the middle). */
   labelY?: number;
+  /** Milestone 33: the sound a click plays: 'tap' when left out, none for null (a button whose action has its own sound). */
+  sound?: SoundName | null;
 }
 
 const PAD_X = 10;
@@ -70,7 +74,11 @@ export class Button {
       const wasPressed = this.pressed;
       this.pressed = false;
       this.refresh();
-      if (wasPressed && this.enabled && this.shown) onClick();
+      if (wasPressed && this.enabled && this.shown) {
+        const cue = options.sound === undefined ? 'tap' : options.sound;
+        if (cue !== null) sound.play(cue);
+        onClick();
+      }
     });
   }
 

@@ -1,4 +1,5 @@
-// Shape of window.__tarpit. Outside test mode only `game` and the read-only (milestone 31: also `fx()` and `towerAngle()`)
+// Shape of window.__tarpit. Outside test mode only `game` and the read-only (milestone 31: also `fx()` and `towerAngle()`;
+// milestone 33: `audio()`, `setMuted()` and `audioLab`)
 // `uiRects()`, `canvasToPage()`, (milestone 32b) `layout()`, `cellToPage()`, `worldToPage()`, `animState()` and
 // (milestone 26 follow-up) `titleReady()` are set (uiRects() lists the title
 // buttons once the title is ready, and the game's once GameScene runs); with ?test=1 every hook below is
@@ -26,6 +27,8 @@ import type {
   UpgradeResult,
 } from '../sim';
 import type { AnimState } from './anim/enemySprites';
+import type { AudioState } from './audio/engine';
+import type { audioLab } from './audio/lab';
 import type { FxState } from './fx/effects';
 import type { UiState } from './GameScene';
 import type { HudStrings, Rect } from './hud';
@@ -172,9 +175,15 @@ export interface TarpitTestApi {
   fx(): FxState | null;
   /** Milestone 31: the drawn barrel angle of the tower on (col, row) in play, or null. */
   towerAngle(col: number, row: number): number | null;
+  /** Milestone 33 (also outside test mode): the sound engine's state (audio/engine.ts). */
+  audio(): AudioState;
+  /** Milestone 33: mute or unmute, as the mute button does (stored). */
+  setMuted(muted: boolean): void;
+  /** Milestone 33: offline rendering of the recipes (audio/lab.ts), for tests and scripts/render-sounds.ts. */
+  audioLab: typeof audioLab;
 }
 
-export type TarpitGlobal = Pick<TarpitTestApi, 'game' | 'uiRects' | 'canvasToPage' | 'layout' | 'cellToPage' | 'worldToPage' | 'animState' | 'titleReady' | 'fx' | 'towerAngle'> &
+export type TarpitGlobal = Pick<TarpitTestApi, 'game' | 'uiRects' | 'canvasToPage' | 'layout' | 'cellToPage' | 'worldToPage' | 'animState' | 'titleReady' | 'fx' | 'towerAngle' | 'audio' | 'setMuted' | 'audioLab'> &
   Partial<TarpitTestApi>;
 
 declare global {

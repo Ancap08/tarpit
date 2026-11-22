@@ -15,6 +15,9 @@
 // darkening or full-screen flash, no Lives shake; everything else stays.
 // The maths (arcs, turn rate, recoil, pops, caps, gold grouping, banner
 // queue) lives in fxMath.ts.
+// Milestone 33: the sounds (audio/engine.ts) follow the same moments: a
+// shot when fired, its impact, hit tick and death pop when the projectile
+// lands, and every other event as it is routed here.
 
 import type Phaser from 'phaser';
 import {
@@ -26,6 +29,7 @@ import {
   positionAlongPath,
   type Cell,
   type Enemy,
+  type EnemyType,
   type GameEvent,
   type GameState,
   type MapDef,
@@ -34,6 +38,8 @@ import {
   type TowerType,
 } from '../../sim';
 import type { EnemySprites } from '../anim/enemySprites';
+import { sound } from '../audio/engine';
+import { deathSound } from '../audio/recipes';
 import { STEP_MS } from '../loop';
 import { BOSS_BANNER_SUB, BOSS_NAME, bonusGoldText, goldGainText, waveClearBanner, waveStartBanner } from '../names';
 import { fontPx, LANDSCAPE, PORTRAIT_MIN_FONT, type Layout } from '../layout';
@@ -101,7 +107,7 @@ interface Impact {
 /** Something that happens when a projectile lands (game ms). */
 type Due =
   | { at: number; kind: 'hit'; id: number; from: Point }
-  | { at: number; kind: 'kill'; id: number; bounty: number }
+  | { at: number; kind: 'kill'; id: number; bounty: number; type: EnemyType }
   | { at: number; kind: 'bossDown'; id: number }
   | { at: number; kind: 'impact'; shot: Shot };
 
@@ -319,6 +325,7 @@ export class Effects {
     pose.targetId = shot.targetId;
     pose.targetAngle = Math.atan2(shot.to.y - c.y, shot.to.x - c.x);
     pose.firedMs = this.gameMs;
+    sound.play(`shot.${shot.tower}`);
     const m = muzzlePoint(shot);
     if (shot.tower === 'musketeer' || shot.tower === 'cannon' || shot.tower === 'mortar') {
       this.addImpact('muzzle', m.x, m.y, shot.tower === 'musketeer' ? 8 : 12, pose.targetAngle, COLORS.muzzleFlash);
@@ -329,12 +336,16 @@ export class Effects {
   /** Route a batch of simulation events (after a tick or an action). */
   onEvents(events: readonly GameEvent[], state: GameState): void {
     this.tickHits.clear();
+    // Milestone 33: an early call sounds Call next instead of the wave horn; the end jingles replace the clear chime.
+    const early = events.some((e) => e.kind === 'earlyCall');
+    const ended = events.some((e) => e.kind === 'won' || e.kind === 'lost');
     for (const e of events) {
       switch (e.kind) {
         case 'hit': {
           const s = this.tickShots.get(cellKey(e.cell));
           if (s === undefined) {
             this.sprites.hit(e.enemyId, cellCenter(e.cell));
+            sound.play('hit');
             break;
           }
           // Splash knocks away from the blast, a direct hit away from the tower.
@@ -346,10 +357,10 @@ export class Effects {
         case 'kill': {
           const at = this.tickHits.get(e.enemyId);
           if (at === undefined) {
-            this.killNow(e.enemyId, e.bounty);
+            this.killNow(e.enemyId, e.bounty, e.enemyType);
           } else {
             this.sprites.doom(e.enemyId);
-            this.due.push({ at, kind: 'kill', id: e.enemyId, bounty: e.bounty });
+            this.due.push({ at, kind: 'kill', id: e.enemyId, bounty: e.bounty, type: e.enemyType });
           }
           break;
         }
@@ -357,6 +368,7 @@ export class Effects {
           this.sprites.remove(e.enemyId);
           this.exitAt = this.realMs;
           this.counts.exitFlashes += 1;
+          sound.play('exit');
           break;
         case 'bossSpawn':
           this.bossEntrance();
@@ -371,14 +383,30 @@ export class Effects {
           break;
         case 'waveStart':
           this.banners.push({ text: waveStartBanner(e.wave), sub: '', big: false }, this.realMs);
+          sound.play(early ? 'callNext' : 'waveStart');
           break;
         case 'waveClear':
           this.banners.push({ text: waveClearBanner(e.wave), sub: e.bonus > 0 ? bonusGoldText(e.bonus) : '', big: false }, this.realMs);
+          if (!ended) sound.play('waveClear');
+          break;
+        case 'won':
+          sound.play('win');
+          break;
+        case 'lost':
+          sound.play('lose');
+          break;
+        case 'special':
+          sound.play(`special.${e.type}`);
+          break;
+        case 'cheat':
+          sound.play('coin');
           break;
         case 'build':
           this.pop(e.cell, e.tower, 'build');
+          sound.play('build');
           break;
         case 'upgrade':
+          sound.play('upgrade');
           this.pop(e.cell, e.tower, 'upgrade');
           {
             this.burst(this.sparks, 14, cellCenter(e.cell));
@@ -389,6 +417,7 @@ export class Effects {
           this.sells.push({ cell: e.cell, type: e.tower, upgraded: old?.upgraded ?? false, angle: old?.angle ?? 0, atMs: this.realMs });
           this.poses.delete(cellKey(e.cell));
           this.burst(this.dust, 8, cellCenter(e.cell), 0, 8);
+          sound.play('sell');
           break;
         }
         case 'move': {
@@ -424,7 +453,9 @@ export class Effects {
     return p;
   }
 
-  private killNow(id: number, bounty: number): void {
+  private killNow(id: number, bounty: number, type: EnemyType): void {
+    // Milestone 33: a pop pitched by size; the boss's fall has its own sound (bossDeath).
+    if (type !== 'boss') sound.play(deathSound(type));
     const spot = this.sprites.spot(id);
     this.sprites.kill(id);
     if (spot && bounty > 0) this.addGold(spot.x, spot.y - 10, bounty, spot.type === 'boss');
@@ -442,6 +473,7 @@ export class Effects {
 
   private bossEntrance(): void {
     this.counts.bossEntrances += 1;
+    sound.play('bossArrive');
     this.banners.push({ text: BOSS_NAME, sub: BOSS_BANNER_SUB, big: true }, this.realMs);
     if (this.reducedMotion) return;
     this.darkenAt = this.realMs;
@@ -451,6 +483,7 @@ export class Effects {
 
   private bossDeath(id: number): void {
     this.counts.bossDeaths += 1;
+    sound.play('bossFall');
     const spot = this.sprites.spot(id);
     // `spot` is on the screen (milestone 32b); the rings are world-space, so their centre goes back through the layout.
     const m = this.layout.map;
@@ -530,6 +563,7 @@ export class Effects {
   /** A projectile arrived: its impact. */
   private land(shot: Shot): void {
     const { x, y } = shot.to;
+    sound.play(`impact.${shot.tower}`);
     switch (shot.tower) {
       case 'cannon':
         this.addImpact('splash', x, y, shot.splashRadius ?? 0, 0, COLORS.cannonSplash);
@@ -565,8 +599,10 @@ export class Effects {
           continue;
         }
         if (d.kind === 'impact') this.land(d.shot);
-        else if (d.kind === 'hit') this.sprites.hit(d.id, d.from);
-        else if (d.kind === 'kill') this.killNow(d.id, d.bounty);
+        else if (d.kind === 'hit') {
+          this.sprites.hit(d.id, d.from);
+          sound.play('hit');
+        } else if (d.kind === 'kill') this.killNow(d.id, d.bounty, d.type);
         else this.bossDeath(d.id);
       }
       this.due.length = keep;

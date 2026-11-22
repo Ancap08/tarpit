@@ -4,6 +4,7 @@ import { currentLayout, installLayoutSwitch } from './game/layoutSwitch';
 import { registerServiceWorker } from './sw/register';
 import { installGlobal, isTestMode } from './game/testMode';
 import { TitleScene } from './game/TitleScene';
+import { sound } from './game/audio/engine';
 
 // ?renderer=canvas forces the Canvas renderer in play (time and animations
 // stay live). e2e/live.spec.ts uses it so its tick-rate checks do not depend
@@ -35,8 +36,14 @@ const game = new Phaser.Game({
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   scene: [TitleScene, GameScene],
+  // Milestone 33: sounds are made by src/game/audio, which creates its own
+  // AudioContext on the first gesture; Phaser's sound manager is off so it
+  // makes none at boot.
+  audio: { noAudio: true },
 });
 
 installLayoutSwitch(game);
 installGlobal(game);
+// Milestone 33: gesture, visibility and M key listeners; silent in test mode.
+sound.install({ enabled: !isTestMode() });
 registerServiceWorker();
