@@ -27,16 +27,18 @@ export function swEnabled(env: Record<string, string | undefined> = process.env)
 
 /**
  * The retiring worker: it takes over at once, handles no request (so every
- * fetch goes to the network), deletes every tarpit- cache, unregisters, and
- * reloads open pages from the network.
+ * fetch goes to the network), deletes this copy's caches, unregisters its
+ * own registration, and reloads the pages it controls from the network.
  */
 export const RETIRE_SW = `// Tarpit service worker, retired (TARPIT_SW=off): see docs/DESIGN.md, "Install and offline".
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
+      // Only this copy's caches (src/sw/rules.ts cachePrefix): the origin is shared.
+      const prefix = 'tarpit|' + new URL(self.registration.scope).pathname + '|';
       const names = await caches.keys();
-      await Promise.all(names.filter((n) => n.startsWith('tarpit-')).map((n) => caches.delete(n)));
+      await Promise.all(names.filter((n) => n.startsWith(prefix)).map((n) => caches.delete(n)));
       await self.registration.unregister();
       const pages = await self.clients.matchAll({ type: 'window' });
       await Promise.all(pages.map((c) => c.navigate(c.url).catch(() => undefined)));

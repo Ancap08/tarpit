@@ -14,7 +14,7 @@ function serviceWorker(): Plugin {
     async closeBundle(error?: Error) {
       if (error) return;
       const version = await writeServiceWorker(outDir);
-      console.log(version === 'off' ? 'service worker: retired (TARPIT_SW=off)' : `service worker: sw.js, cache tarpit-${version}`);
+      console.log(version === 'off' ? 'service worker: retired (TARPIT_SW=off)' : `service worker: sw.js, version ${version}`);
     },
   };
 }

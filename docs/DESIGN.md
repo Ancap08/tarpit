@@ -681,10 +681,15 @@ to `<base>sw.js` after each production build by `scripts/sw-build.ts`. The
 page registers it after `load`, then calls `update()`, in production builds
 only and never under `?test=1` or `?perf=1`. Cache rules:
 
-- One cache per build, `tarpit-<hash>`: the hash covers every built file, so
-  any change makes a new cache. Install fills it with every file of the build
+- One cache per build, `tarpit|<scope path>|<hash>` (for example
+  `tarpit|/tarpit/|4a6c930af73c`): the hash covers every built file, so any
+  change makes a new cache. Cache Storage and worker registrations are
+  shared by the whole origin (other project sites on `github.io`, another
+  copy of the game under another path), so the game only ever deletes
+  caches with its own scope's prefix and only unregisters the registration
+  whose scope is exactly its base. Install fills it with every file of the build
   (past the HTTP cache), then calls `skipWaiting`; activate deletes every
-  other `tarpit-` cache, then calls `clients.claim`.
+  other cache with this scope's prefix, then calls `clients.claim`.
 - The page (navigations, the scope root, `index.html`): network first
   (`no-cache`, so it revalidates). A 2xx answer is served, so a new deploy
   shows on the next open. If the network fails, answers not ok (an outage's
@@ -708,7 +713,7 @@ hashed name always means the same bytes.
 Recovery. A broken worker is repaired by deploying a fixed `sw.js`: the
 page checks it past the HTTP cache on every online open, and the new worker
 takes over at once. To retire the worker, build with `TARPIT_SW=off`: that
-`sw.js` deletes every `tarpit-` cache, unregisters itself and reloads open
+`sw.js` deletes this scope's caches, unregisters itself and reloads open
 pages from the network, and the page registers nothing and removes any
 worker it finds. A page that cannot load at all still recovers at the
 browser's own update check of `sw.js`, within about a day. Deleting `sw.js`

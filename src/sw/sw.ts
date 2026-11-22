@@ -3,7 +3,8 @@
 //
 // - Install: cache every file of this build (fetched past the HTTP cache)
 //   into the cache named for this build, then skipWaiting.
-// - Activate: delete the caches of other builds, then clients.claim.
+// - Activate: delete this copy's caches from other builds (never another
+//   site's or another copy's: rules.ts cachePrefix), then clients.claim.
 // - Fetch: the page is network first (a new deploy that answers 200 shows
 //   on the next open) with this build's cached page as the fallback when
 //   the network fails, answers not ok, or takes over PAGE_TIMEOUT_MS;
@@ -41,8 +42,8 @@ interface WorkerScope {
 }
 
 const sw = self as unknown as WorkerScope;
-const CACHE = cacheName(__SW_VERSION__);
 const scope = sw.registration.scope;
+const CACHE = cacheName(scope, __SW_VERSION__);
 
 sw.addEventListener('install', (event) => {
   event.waitUntil(
@@ -57,7 +58,7 @@ sw.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((names) => Promise.all(names.filter((n) => isOldCache(n, CACHE)).map((n) => caches.delete(n))))
+      .then((names) => Promise.all(names.filter((n) => isOldCache(n, scope, CACHE)).map((n) => caches.delete(n))))
       .then(() => sw.clients.claim()),
   );
 });

@@ -6,17 +6,31 @@
 /** How long the page (and manifest, icons) may take before the cached copy is served. */
 export const PAGE_TIMEOUT_MS = 3000;
 
-/** Every cache this game owns starts with this; others on the origin are left alone. */
-export const CACHE_PREFIX = 'tarpit-';
-
-/** The cache for one build. `version` is a hash of the built files (scripts/sw-build.ts). */
-export function cacheName(version: string): string {
-  return `${CACHE_PREFIX}${version}`;
+/**
+ * Cache Storage is shared by the whole origin (on GitHub Pages, every
+ * project site of the account). Each copy of the game owns only the caches
+ * named with its own scope path: `tarpit|<scope path>|<version>`, for
+ * example `tarpit|/tarpit/|4a6c930af73c`. The closing `|` keeps `/tarpit/`
+ * from matching `/tarpit/x/` or `/tarpit-preview/`, and the name of any
+ * other site's cache does not start with this.
+ */
+export function cachePrefix(scope: string): string {
+  return `tarpit|${new URL(scope).pathname}|`;
 }
 
-/** True for a cache from another build of this game, which activate deletes. */
-export function isOldCache(name: string, current: string): boolean {
-  return name.startsWith(CACHE_PREFIX) && name !== current;
+/** The cache for one build of the copy at `scope`. `version` is a hash of the built files (scripts/sw-build.ts). */
+export function cacheName(scope: string, version: string): string {
+  return `${cachePrefix(scope)}${version}`;
+}
+
+/** True for a cache that belongs to the copy at `scope` (any build). */
+export function isOwnCache(name: string, scope: string): boolean {
+  return name.startsWith(cachePrefix(scope));
+}
+
+/** True for a cache from another build of the copy at `scope`, which activate deletes. */
+export function isOldCache(name: string, scope: string, current: string): boolean {
+  return isOwnCache(name, scope) && name !== current;
 }
 
 /**

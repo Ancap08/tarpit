@@ -6467,4 +6467,5 @@ mask, iOS storage eviction of the cache.
    assertion there now accepts A's exact bytes or 404 / a network error. A
    2xx miss is kept in the current cache; that is a correct file under its
    own hashed name, deleted with that cache at the next update.
-
+6. **Shared origin (PR review).** The kill switch unregistered every worker on the origin and every `tarpit-` cache; activate and the retiring `sw.js` also matched any `tarpit-` cache, so two copies of the game on one origin would delete each other's. Now caches are named `tarpit|<scope path>|<version>`, only that prefix is deleted, and only the registration with exactly the game's scope is removed.
+   Tested in `e2e/install.spec.ts` with a sibling site at `/other/` (own worker and cache) and a `/preview/` copy's cache on the same origin: the update to B, the off build and the retiring `sw.js` alone remove only `/tarpit/`'s worker and caches.

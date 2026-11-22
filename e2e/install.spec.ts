@@ -33,10 +33,16 @@ const MIME: Record<string, string> = {
   '.json': 'application/json',
 };
 
-/** A static server for `site.dir` mounted at `mount` ('/' or '/tarpit/'); `site.dir` may change between requests. */
-async function serve(site: { dir: string }, mount: string): Promise<{ origin: string; close: () => Promise<void> }> {
+/** A static server for `site.dir` mounted at `mount` (plus fixed `extra` files by path) ('/' or '/tarpit/'); `site.dir` may change between requests. */
+async function serve(
+  site: { dir: string },
+  mount: string,
+  extra: Record<string, { type: string; body: string }> = {},
+): Promise<{ origin: string; close: () => Promise<void> }> {
   const server: Server = createServer((req, res) => {
     const path = decodeURIComponent(new URL(req.url ?? '/', 'http://x').pathname);
+    const e = extra[path];
+    if (e) return void res.writeHead(200, { 'content-type': e.type }).end(e.body);
     if (!path.startsWith(mount)) return void res.writeHead(404).end();
     let rel = normalize(path.slice(mount.length));
     if (rel === '.' || rel === '' || rel.endsWith('/')) rel = join(rel, 'index.html');
@@ -159,7 +165,7 @@ test.describe('install and offline, base /', () => {
     await page.goto('/');
     const names = await waitForWorker(page);
     expect(names).toHaveLength(1);
-    expect(names[0]).toMatch(/^tarpit-[0-9a-f]{12}$/);
+    expect(names[0]).toMatch(/^tarpit\|\/\|[0-9a-f]{12}$/);
     expect(await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.scope)).toBe(
       new URL('/', page.url()).href,
     );
@@ -190,14 +196,14 @@ test.describe('install and offline, base /', () => {
       await page.goto(`${server.origin}/`);
       await page.evaluate((v) => localStorage.setItem('tarpit.best', v), BEST);
       const [cacheA] = await waitForWorker(page);
-      expect(cacheA).not.toBe(`tarpit-${versionB}`);
+      expect(cacheA).not.toBe(`tarpit|/|${versionB}`);
 
       // Build B is deployed: the next online open shows it (network first)...
       site.dir = b;
       await page.reload();
       await expect(page.locator('meta[name="tarpit-build"]')).toHaveAttribute('content', 'B');
       // ...and its worker takes over and deletes build A's cache.
-      await expect.poll(() => page.evaluate(() => caches.keys())).toEqual([`tarpit-${versionB}`]);
+      await expect.poll(() => page.evaluate(() => caches.keys())).toEqual([`tarpit|/|${versionB}`]);
       await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
 
       // An old tab asking for build A's bundle after the update: it is in no
@@ -231,13 +237,85 @@ test.describe('install and offline, base /tarpit/ (GitHub Pages paths)', () => {
   let tmp = '';
   test.beforeAll(() => {
     tmp = mkdtempSync(join(tmpdir(), 'tarpit-pages-'));
-    execFileSync('npx', ['vite', 'build', '--outDir', join(tmp, 'site'), '--emptyOutDir', '--logLevel', 'warn'], {
-      cwd: ROOT,
-      env: { ...process.env, VITE_BASE: '/tarpit/' },
-      stdio: 'pipe',
-    });
+    for (const [dir, off] of [['site', false], ['off', true]] as const) {
+      execFileSync('npx', ['vite', 'build', '--outDir', join(tmp, dir), '--emptyOutDir', '--logLevel', 'warn'], {
+        cwd: ROOT,
+        env: { ...process.env, VITE_BASE: '/tarpit/', ...(off ? { TARPIT_SW: 'off' } : {}) },
+        stdio: 'pipe',
+      });
+    }
   });
   test.afterAll(() => rmSync(tmp, { recursive: true, force: true }));
+
+  // A sibling site on the same origin (as other project sites share
+  // ancap08.github.io): its own worker at /other/ with its own cache, plus a
+  // cache named as another copy of the game would name it (/preview/).
+  const SIBLING = {
+    '/other/': {
+      type: 'text/html',
+      body: "<!doctype html><title>other</title><script>navigator.serviceWorker.register('/other/sw.js', { scope: '/other/' })</script>",
+    },
+    '/other/sw.js': {
+      type: 'text/javascript',
+      body: `self.addEventListener('install', (e) => e.waitUntil(caches.open('other-v1').then((c) => c.put('/other/x', new Response('x'))).then(() => self.skipWaiting())));
+self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));`,
+    },
+  };
+  const PREVIEW_CACHE = 'tarpit|/preview/|abc123';
+  const originState = (page: Page) =>
+    page.evaluate(async () => ({
+      scopes: (await navigator.serviceWorker.getRegistrations()).map((r) => new URL(r.scope).pathname).sort(),
+      caches: (await caches.keys()).sort(),
+    }));
+  async function installSibling(page: Page, origin: string): Promise<void> {
+    await page.goto(`${origin}/other/`);
+    expect(await waitForWorker(page)).toContain('other-v1');
+    await page.evaluate((n) => caches.open(n).then((c) => c.put('/preview/', new Response('p'))), PREVIEW_CACHE);
+  }
+
+  test('with a sibling site on the origin: the update and the kill switch touch only this game', async ({ page }) => {
+    // Build B: the /tarpit/ build with one changed file and its sw.js rebuilt.
+    const b = join(tmp, 'b');
+    cpSync(join(tmp, 'site'), b, { recursive: true });
+    writeFileSync(join(b, 'index.html'), readFileSync(join(b, 'index.html'), 'utf8').replace('</head>', '<meta name="tarpit-build" content="B" /></head>'));
+    const versionB = await writeServiceWorker(b);
+    const site = { dir: join(tmp, 'site') };
+    const server = await serve(site, '/tarpit/', SIBLING);
+    await installSibling(page, server.origin);
+
+    await page.goto(`${server.origin}/tarpit/`);
+    const [, , cacheA] = (await waitForWorker(page)).sort();
+    expect(cacheA).toMatch(/^tarpit\|\/tarpit\/\|[0-9a-f]{12}$/);
+
+    // Update to B: activate deletes A's cache and nothing else.
+    site.dir = b;
+    await page.reload();
+    await expect
+      .poll(() => originState(page))
+      .toEqual({ scopes: ['/other/', '/tarpit/'], caches: ['other-v1', PREVIEW_CACHE, `tarpit|/tarpit/|${versionB}`].sort() });
+
+    // Kill switch deployed for /tarpit/: the game's worker and caches go, the sibling's stay.
+    site.dir = join(tmp, 'off');
+    await page.reload();
+    await expect.poll(() => originState(page)).toEqual({ scopes: ['/other/'], caches: ['other-v1', PREVIEW_CACHE].sort() });
+    await page.goto(`${server.origin}/other/`);
+    expect(await page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
+    await server.close();
+  });
+
+  test('with a sibling site: the retiring sw.js alone removes only this game', async ({ page }) => {
+    const site = { dir: join(tmp, 'site') };
+    const server = await serve(site, '/tarpit/', SIBLING);
+    await installSibling(page, server.origin);
+    await page.goto(`${server.origin}/tarpit/`);
+    await waitForWorker(page);
+    site.dir = join(tmp, 'off');
+    const reloaded = page.waitForEvent('load');
+    await page.evaluate(() => navigator.serviceWorker.getRegistration().then((r) => r?.update()));
+    await reloaded;
+    await expect.poll(() => originState(page)).toEqual({ scopes: ['/other/'], caches: ['other-v1', PREVIEW_CACHE].sort() });
+    await server.close();
+  });
 
   test('manifest, icons, tags, worker scope and offline play under /tarpit/', async ({ page, context }) => {
     const server = await serve({ dir: join(tmp, 'site') }, '/tarpit/');
@@ -272,7 +350,7 @@ test.describe('kill switch: a TARPIT_SW=off deploy retires the worker', () => {
   const state = (page: Page) =>
     page.evaluate(async () => ({
       regs: (await navigator.serviceWorker.getRegistrations()).length,
-      caches: (await caches.keys()).filter((n) => n.startsWith('tarpit-')),
+      caches: (await caches.keys()).filter((n) => n.startsWith('tarpit|')),
       controlled: navigator.serviceWorker.controller !== null,
     }));
 
