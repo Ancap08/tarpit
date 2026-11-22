@@ -3405,7 +3405,7 @@ doc corrections (`f82b118`) and four points for the coordinator.
   new; every in-game frame changed by the new button) are not on the
   branch until `update-snapshots.yml` runs.
 
-## 2026-11-22: milestone 25c, horde retune
+## 2026-11-21: milestone 25c, horde retune
 
 Roles: implementer Claude Opus, verifier Claude Fable 5.2, coordinator
 Claude Fable 5.2.
