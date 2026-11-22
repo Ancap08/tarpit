@@ -7057,3 +7057,68 @@ byte-identical to main's; of the phone frames only `phone-placing` and
 **Needs a real iPhone.** Whether Safari honours `touch-action: none` on
 the side bars, whether the meta rewrite snaps the zoom back, and how the
 toolbar and home-screen mode behave cannot be emulated.
+
+### Verifier notes (milestone 35, Claude Sonnet)
+
+Checked: no diff under `src/sim`; `npm run sim` output identical to main;
+the 26 chromium (mouse) frames rendered on main and on this branch are
+byte-identical; lint, check:assets, typecheck, 1248 unit tests, build,
+check:size pass; `npm run test:e2e` passed (558 passed, 8 skipped, all
+skips already on main); the 44 phone-fixes specs passed three more times.
+New probes: `e2e/phone-fixes-verifier-phone.spec.ts` and the perf print
+`e2e/phone-fixes-perf-verifier-phone.spec.ts`.
+
+- **Snap.** An independent computation (every unbuildable cell on the three
+  maps, 49 lifted points in each) matches `snapCell` in all 17,640 samples
+  (ties to the upper row, then the left column). Largest jump from the
+  lifted point to the chosen cell's centre: 66.5 world px (about 2 cells);
+  from the cell under the point: 45.3 px (a diagonal). About 5 % of samples
+  (284 of 5,194 on Meadow) pick a cell that has another blocked cell between
+  it and the point, so a snap can hop across a one-cell trail edge or river
+  bank (example Meadow (5,3) to (6,4)). In portrait 66 px is about 47 CSS px,
+  as far as the 48 px lift, so a snap can put the ghost under the thumb; the
+  magnifier then still shows it. Not restricted to one side; the scope allows
+  it. A snapped drop builds on the shown cell and costs the tower's price;
+  mouse drags show no snap.
+- **Recovery.** With a stubbed viewport stuck at scale 1.4 and 50 resize
+  events over 2.8 s: one check, one rescale, layout unchanged, tower kept.
+  At scale 1 nothing runs. With `visualViewport` undefined nothing throws.
+  A zoomed viewport in landscape does not flip the layout.
+- **Limit of the recovery.** `scrollTo(0, 0)` does not move a pinch-zoomed
+  visual viewport; only the meta rewrite (or a scale of 1) does. iOS 10 and
+  later ignore `maximum-scale` and `user-scalable=no` for pinch, and whether
+  a changed meta tag makes Safari drop the zoom is not something the
+  documentation promises. Treat the rewrite as a hope. The prevention
+  (`touch-action: none`, `gesturestart` and two-finger `touchmove`) is the
+  part likely to work. Fallback if a real phone still zooms: size and
+  position `#game` to the visual viewport (`offsetLeft`, `offsetTop`,
+  `width`, `height`) or counter-scale it by `1 / scale`, so the game fills
+  what the player sees while zoomed.
+- **Accessibility.** Pinch zoom is gone for the page. All game text is on
+  the canvas (`index.html` has no other text), so no page text becomes
+  unreadable, but a player who needs zoom has none.
+- **Perf** (headless Chromium, phone project, 5 s of drag with the magnifier
+  up): 304 / 303 / 202 frames at 1x / 6x / 20x CPU throttle on this branch;
+  303 / 303 / 191 and 177 on main. No regression found; a desktop Mac is not
+  a phone.
+- **Look.** The magnifier sits in a top corner and can cover part of the
+  trail where enemies walk; the spawn stays visible in the frames viewed
+  (a drag near the spawn moves it to the bottom right).
+- **The phone check.** The "Needs a real iPhone" paragraph above is not
+  enough to tell whether the zoom report is fixed. Use this, in Safari and
+  again from the home-screen icon, in portrait first, then landscape:
+  1. Pinch with both fingers on the canvas, then both on a side bar, then
+     one on each. Expect: nothing zooms.
+  2. Double-tap the side bar, then a blank map cell, then a button. Expect:
+     no zoom; the button works.
+  3. Drag a finger on a side bar up and down, and from the very top and
+     bottom edges. Expect: the page does not move, the Safari toolbar may
+     collapse, the game stays centred and nothing is cut off.
+  4. Rotate to landscape and back twice in the middle of a game. Expect: the
+     game is centred, the same towers are there.
+  5. If a zoom does happen: note iOS version, Safari or icon, and what you
+     did; check whether it returns to normal within a second without you
+     touching anything. That tells us the meta rewrite works; if not, use
+     the fallback above.
+  6. Then placing: drag a tower to the trail edge (the ring and line show the
+     snap, the magnifier appears), drop it, and tap beside a tower.
