@@ -24,14 +24,17 @@ function wave10AllSpawned(lives: number, enemies: Enemy[]): GameState {
 describe('verifier: edge cases', () => {
   it('two groups on the same tick get ids in group order, and enemies stay in id order', () => {
     const s = createGame();
-    s.wave = 8; // wave 9: 12 wolves every 0.5 s, 8 trolls every 2 s, both delay 0
+    s.wave = 8; // wave 9: 30 wolves every 1 s, 10 trolls every 2 s from 2 s (milestone 25c)
     startWave(s);
-    tick(s);
+    for (let i = 0; i < 121; i++) tick(s);
+    // Wolf index 2 and troll index 0 both spawn on waveTick 120: ids 2 and 3, in group order.
     expect(s.enemies.map((e) => [e.id, e.type])).toEqual([
       [0, 'wolf'],
-      [1, 'troll'],
+      [1, 'wolf'],
+      [2, 'wolf'],
+      [3, 'troll'],
     ]);
-    // Wolf index 4 (tick 120) and troll index 1 (tick 120) coincide again.
+    // Wolf index 4 (tick 240) and troll index 1 (tick 240) coincide again.
     for (let i = 0; i < 120; i++) tick(s);
     const ids = s.enemies.map((e) => e.id);
     expect(ids).toEqual([...ids].sort((a, b) => a - b));

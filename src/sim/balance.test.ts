@@ -98,9 +98,13 @@ describe('v2 balance targets (milestone 12)', () => {
     expect(afterWave9.gold).toBeLessThan(200);
   });
 
-  it('4. comboBuild pinned exactly: 13 lives and 418 gold at the end, 163 gold after wave 9 (milestone 25c)', () => {
+  it('4. comboBuild pinned exactly: 13 lives and 476 gold at the end, 175 gold after wave 9 (milestone 25c second pass)', () => {
     const r = play(comboBuild());
-    expect({ lives: r.lives, gold: r.gold, goldAfterWave9: r.waves[8].gold }).toEqual({ lives: 13, gold: 418, goldAfterWave9: 163 });
+    expect({ lives: r.lives, gold: r.gold, goldAfterWave9: r.waves[8].gold }).toEqual({ lives: 13, gold: 476, goldAfterWave9: 175 });
+  });
+
+  it('4. comboBuild buys 28 of the 31 COMBO_PLAN actions on Normal (the tail is a gold sink)', () => {
+    expect(comboBuild().flat()).toHaveLength(28);
   });
 
   it('4. comboBuild fires one cluster special per wave, at CLUSTER_POLICY_TICKS, every one accepted', () => {
@@ -131,6 +135,50 @@ describe('v2 balance targets (milestone 12)', () => {
   });
 });
 
+describe('wave length and density (milestone 25c second pass), comboBuild on Normal, no early calls', () => {
+  // Clear ticks before milestone 25c (origin/main before 25c), per wave.
+  const BEFORE_CLEAR = [951, 1447, 1162, 1321, 3101, 1705, 4199, 3788, 1992, 4640];
+  /** Per wave: ticks until it cleared, and the most enemies alive at once. */
+  function timing() {
+    const script = comboBuild();
+    const s = createGame();
+    const out: { clear: number; peak: number }[] = [];
+    const running = () => s.phase === 'wave';
+    for (let i = 0; i < 10 && s.phase === 'setup'; i++) {
+      for (const a of script[i] ?? []) applyAction(s, a);
+      startWave(s);
+      let t = 0;
+      let peak = 0;
+      while (running()) {
+        fireTimed(s, script, i);
+        tick(s);
+        t += 1;
+        peak = Math.max(peak, s.enemies.length);
+      }
+      out.push({ clear: t, peak });
+    }
+    return out;
+  }
+  const tm = timing();
+
+  it('A2: every wave clears at least 15% later than before 25c; pinned', () => {
+    expect(tm.map((x) => x.clear)).toEqual([1607, 2093, 1940, 2593, 4565, 3227, 6125, 5865, 2750, 6293]);
+    tm.forEach((x, i) => expect(x.clear, `wave ${i + 1}`).toBeGreaterThanOrEqual(1.15 * BEFORE_CLEAR[i]));
+  });
+
+  it('A2: the ten waves take 540 to 800 s of wave time (618 s)', () => {
+    const total = tm.reduce((n, x) => n + x.clear, 0) / 60;
+    expect(total).toBeGreaterThanOrEqual(540);
+    expect(total).toBeLessThanOrEqual(800);
+    expect(Math.round(total)).toBe(618);
+  });
+
+  it('A3: at most 35 enemies alive at once on every wave; pinned', () => {
+    expect(tm.map((x) => x.peak)).toEqual([4, 8, 15, 17, 20, 25, 17, 23, 14, 16]);
+    for (const x of tm) expect(x.peak).toBeLessThanOrEqual(35);
+  });
+});
+
 describe('horde shape (milestone 25c) against the milestone 25b waves', () => {
   // Per wave before milestone 25c: enemies and total bounty (no clear bonus).
   const BEFORE_COUNTS = [8, 12, 14, 14, 17, 35, 24, 45, 18, 30];
@@ -138,10 +186,10 @@ describe('horde shape (milestone 25c) against the milestone 25b waves', () => {
   const count = WAVES.map((w) => w.groups.reduce((n, g) => n + g.count, 0));
   const bounty = WAVES.map((w) => w.groups.reduce((n, g) => n + g.count * ENEMY_STATS[g.type].bounty, 0));
 
-  it('2 to 3 times the enemies over waves 1 to 10 (500 against 217)', () => {
+  it('2 to 3 times the enemies over waves 1 to 10 (524 against 217)', () => {
     const before = BEFORE_COUNTS.reduce((a, b) => a + b, 0);
     const after = count.reduce((a, b) => a + b, 0);
-    expect([before, after]).toEqual([217, 500]);
+    expect([before, after]).toEqual([217, 524]);
     expect(after / before).toBeGreaterThanOrEqual(2);
     expect(after / before).toBeLessThanOrEqual(3);
   });
@@ -168,17 +216,17 @@ describe('horde shape (milestone 25c) against the milestone 25b waves', () => {
 describe('milestone 25c pins: where each archetype ends on Normal', () => {
   const ends: Record<string, string> = {
     noTowers: 'lost on wave 1, 0 lives, 100 gold',
-    lazyBuild: 'lost on wave 8, 0 lives, 349 gold',
-    greedyMusket: 'lost on wave 10, -4 lives, 227 gold',
-    soundBuild: 'lost on wave 8, 0 lives, 257 gold',
-    soundBuildNoTar: 'lost on wave 7, 0 lives, 236 gold',
-    longbowSpam: 'lost on wave 8, 0 lives, 504 gold',
-    comboBuild: 'won on wave 10, 13 lives, 418 gold',
-    comboBuildNoFire: 'won on wave 10, 4 lives, 572 gold',
-    comboNoSpecials: 'won on wave 10, 10 lives, 395 gold',
-    noAntiAir: 'lost on wave 4, 0 lives, 189 gold',
-    bossRush: 'won on wave 10, 13 lives, 418 gold',
-    hardBuild: 'won on wave 10, 20 lives, 442 gold',
+    lazyBuild: 'lost on wave 8, 0 lives, 355 gold',
+    greedyMusket: 'lost on wave 9, 0 lives, 121 gold',
+    soundBuild: 'lost on wave 8, 0 lives, 267 gold',
+    soundBuildNoTar: 'lost on wave 7, 0 lives, 226 gold',
+    longbowSpam: 'lost on wave 8, 0 lives, 461 gold',
+    comboBuild: 'won on wave 10, 13 lives, 476 gold',
+    comboBuildNoFire: 'won on wave 10, 8 lives, 626 gold',
+    comboNoSpecials: 'won on wave 10, 12 lives, 468 gold',
+    noAntiAir: 'lost on wave 5, 0 lives, 70 gold',
+    bossRush: 'won on wave 10, 13 lives, 476 gold',
+    hardBuild: 'won on wave 10, 20 lives, 452 gold',
   };
   it('every archetype is pinned', () => {
     expect(Object.keys(ends)).toEqual(Object.keys(ARCHETYPES));
@@ -229,19 +277,21 @@ describe('anti-air target (milestone 22)', () => {
     }
   });
 
-  // Milestone 25c: at least 75% of them (8 of 10; the game is lost on wave
-  // 4 with two Harpies still on the field). Before: all 4 of 4.
-  it('noAntiAir leaks at least 75% of the wave 4 Harpies: 8 of 10', () => {
+  // Milestone 25c: at least 75% of them (all 10). Before: all 4 of 4.
+  it('noAntiAir leaks at least 75% of the wave 4 Harpies: 10 of 10', () => {
     const r = harpiesInWave(noAntiAir(), 4);
     expect(r.reached).toBe(4);
-    expect(r).toMatchObject({ spawned: 10, exits: 8 });
+    expect(r).toMatchObject({ spawned: 10, exits: 10 });
     expect(r.exits).toBeGreaterThanOrEqual(0.75 * r.spawned);
   });
 
-  it('noAntiAir loses by wave 8', () => {
+  // Milestone 25c second pass: it survives the lesson wave and loses later.
+  it('noAntiAir survives wave 4 and loses on wave 5 to 8 (wave 5)', () => {
     const r = play(noAntiAir());
     expect(r.refused).toEqual([]);
+    expect(r.waves[3]).toMatchObject({ wave: 4, phase: 'setup' });
     expect(r.phase, r.msg).toBe('lost');
+    expect(r.wave, r.msg).toBeGreaterThanOrEqual(5);
     expect(r.wave, r.msg).toBeLessThanOrEqual(8);
   });
 
@@ -253,7 +303,7 @@ describe('anti-air target (milestone 22)', () => {
 
   it('why noAntiAir sells instead: dropping the bows from wave 1 loses on wave 2, before any Harpy', () => {
     const r = play(comboBuildNoBows());
-    expect(r.msg).toBe('lost on wave 2, 0 lives, 87 gold');
+    expect(r.msg).toBe('lost on wave 2, 0 lives, 77 gold');
   });
 });
 
@@ -321,11 +371,11 @@ describe('boss targets (milestone 23)', () => {
     return { state: s, events };
   }
 
-  it('comboBuild kills the boss (shot) at waveTick 3921 of wave 10 and wins with 13 lives', () => {
+  it('comboBuild kills the boss (shot) at waveTick 6292 of wave 10 and wins with 13 lives', () => {
     const r = bossEvents(comboBuild());
     expect(r.events).toEqual([
-      { waveTick: 1560, kind: 'bossSpawn' },
-      { waveTick: 3921, kind: 'bossDown', cause: 'shot' },
+      { waveTick: 3900, kind: 'bossSpawn' },
+      { waveTick: 6292, kind: 'bossDown', cause: 'shot' },
     ]);
     expect(['shot', 'burn']).toContain(r.events[1].cause);
     expect(r.state).toMatchObject({ phase: 'won', wave: 10, lives: 13 });
@@ -342,13 +392,13 @@ describe('boss targets (milestone 23)', () => {
 
   // Milestone 25c: the longer combo plan spends the gold a bossRush Longbow
   // pair needs (70), so bossRush adds nothing and equals comboBuild.
-  it('bossRush (informational): no gold left for an extra Longbow pair, so the boss dies at the same waveTick 3921', () => {
+  it('bossRush (informational): no gold left for an extra Longbow pair, so the boss dies at the same waveTick 6292', () => {
     const extra = bossRush()[9].slice(comboBuild()[9].length);
     expect(extra).toEqual([]);
     const r = bossEvents(bossRush());
     expect(r.events).toEqual([
-      { waveTick: 1560, kind: 'bossSpawn' },
-      { waveTick: 3921, kind: 'bossDown', cause: 'shot' },
+      { waveTick: 3900, kind: 'bossSpawn' },
+      { waveTick: 6292, kind: 'bossDown', cause: 'shot' },
     ]);
   });
 });

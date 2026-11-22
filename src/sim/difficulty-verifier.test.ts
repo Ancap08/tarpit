@@ -20,23 +20,21 @@ const B: Cell = { col: 2, row: 5 };
 const LEVELS = ['easy', 'normal', 'hard'] as const;
 
 // (a) By hand, base x multiplier, then Math.round (half rounds up, toward
-// +infinity; the half cases are the Easy Harpy and Shieldbearer).
-// Milestone 25c numbers (base hp 12 / 17 / 500 / 22 / 70 / 4000; Easy 0.75,
-// Hard 1.1):
-//   Goblin        12 x 0.75 = 9             12 x 1.1 = 13.2 -> 13
-//   Wolf          17 x 0.75 = 12.75 -> 13   17 x 1.1 = 18.7 -> 19
-//   Troll        500 x 0.75 = 375          500 x 1.1 = 550
-//   Harpy         22 x 0.75 = 16.5 -> 17    22 x 1.1 = 24.2 -> 24
-//   Shieldbearer  70 x 0.75 = 52.5 -> 53    70 x 1.1 = 77
-//   Boss        4000 x 0.75 = 3000        4000 x 1.1 = 4400
-// (4000 x 1.1 is 4400.000000000001 in floating point; round gives 4400.)
+// +infinity). Milestone 25c second pass numbers (base hp 19 / 20 / 900 /
+// 36 / 160 / 4000; Easy 0.75, Hard 1.2); no half case is left:
+//   Goblin        19 x 0.75 = 14.25 -> 14   19 x 1.2 = 22.8 -> 23
+//   Wolf          20 x 0.75 = 15            20 x 1.2 = 24
+//   Troll        900 x 0.75 = 675          900 x 1.2 = 1080
+//   Harpy         36 x 0.75 = 27            36 x 1.2 = 43.2 -> 43
+//   Shieldbearer 160 x 0.75 = 120          160 x 1.2 = 192
+//   Boss        4000 x 0.75 = 3000        4000 x 1.2 = 4800
 const HAND: Record<EnemyType, readonly [number, number, number]> = {
-  goblin: [9, 12, 13],
-  wolf: [13, 17, 19],
-  troll: [375, 500, 550],
-  harpy: [17, 22, 24],
-  shieldbearer: [53, 70, 77],
-  boss: [3000, 4000, 4400],
+  goblin: [14, 19, 23],
+  wolf: [15, 20, 24],
+  troll: [675, 900, 1080],
+  harpy: [27, 36, 43],
+  shieldbearer: [120, 160, 192],
+  boss: [3000, 4000, 4800],
 };
 
 function enemy(id: number, type: EnemyType, distance: number, hp: number): Enemy {
@@ -81,11 +79,11 @@ function spawned(difficulty: Difficulty): { type: EnemyType; hp: number; distanc
 }
 
 describe('(a) scaled hp, by hand, against spawned enemies', () => {
-  it('Math.round takes the half cases up: 22 x 0.75 = 16.5 -> 17, 70 x 0.75 = 52.5 -> 53', () => {
-    expect(22 * 0.75).toBe(16.5);
-    expect(70 * 0.75).toBe(52.5);
-    expect(enemyMaxHp('harpy', 'easy')).toBe(17);
-    expect(enemyMaxHp('shieldbearer', 'easy')).toBe(53);
+  it('Math.round on the fractional cases: 19 x 0.75 = 14.25 -> 14, 19 x 1.2 = 22.8 -> 23, 36 x 1.2 = 43.2 -> 43 (milestone 25c second pass; no half case left)', () => {
+    expect(enemyMaxHp('goblin', 'easy')).toBe(14);
+    expect(enemyMaxHp('goblin', 'hard')).toBe(23);
+    expect(enemyMaxHp('harpy', 'hard')).toBe(43);
+    expect(Math.round(16.5)).toBe(17); // half still rounds up
   });
 
   LEVELS.forEach((level, i) => {
@@ -109,11 +107,11 @@ describe('(a) scaled hp, by hand, against spawned enemies', () => {
 describe('(b) bounty, speed, livesCost and slowCap do not depend on the level', () => {
   it('ENEMY_STATS is one table with no level in it (the Normal numbers)', () => {
     expect(ENEMY_STATS).toEqual({
-      goblin: { hp: 12, speed: 60, bounty: 2, flying: false, shield: false, livesCost: 1 },
-      wolf: { hp: 17, speed: 120, bounty: 2, flying: false, shield: false, livesCost: 1 },
-      troll: { hp: 500, speed: 35, bounty: 8, flying: false, shield: false, livesCost: 1 },
-      harpy: { hp: 22, speed: 90, bounty: 3, flying: true, shield: false, livesCost: 1 },
-      shieldbearer: { hp: 70, speed: 45, bounty: 5, flying: false, shield: true, livesCost: 1 },
+      goblin: { hp: 19, speed: 60, bounty: 2, flying: false, shield: false, livesCost: 1 },
+      wolf: { hp: 20, speed: 120, bounty: 2, flying: false, shield: false, livesCost: 1 },
+      troll: { hp: 900, speed: 35, bounty: 8, flying: false, shield: false, livesCost: 1 },
+      harpy: { hp: 36, speed: 90, bounty: 3, flying: true, shield: false, livesCost: 1 },
+      shieldbearer: { hp: 160, speed: 45, bounty: 5, flying: false, shield: true, livesCost: 1 },
       boss: { hp: 4000, speed: 25, bounty: 150, flying: false, shield: false, livesCost: 5, slowCap: 0.3 },
     });
   });
@@ -223,24 +221,21 @@ describe('(g) determinism per level', () => {
   }
 });
 
-describe('(h) the SCOPE-v4 Easy and Hard targets (met in milestone 25c)', () => {
-  // lazyBuild wins on Easy: it loses 1 life on wave 5, 7 on wave 7, 2 on
-  // wave 8 and 8 on wave 10, and the game is won (Grumblefoot does not exit).
-  it('lazyBuild on Easy wins with 12 lives and 898 gold', () => {
+describe('(h) the SCOPE-v4 Easy and Hard targets (met in milestone 25c, second pass)', () => {
+  it('lazyBuild on Easy wins with 6 lives and 940 gold', () => {
     const r = playScripted(lazyBuild('easy'), undefined, 'easy');
-    expect(r.waves.map((w) => w.lives)).toEqual([30, 30, 30, 30, 29, 29, 22, 20, 20, 12]);
-    expect({ phase: r.state.phase, wave: r.state.wave, lives: r.state.lives, gold: r.state.gold }).toEqual({ phase: 'won', wave: 10, lives: 12, gold: 898 });
+    expect(r.waves.map((w) => w.lives)).toEqual([30, 30, 30, 30, 27, 27, 26, 23, 14, 6]);
+    expect({ phase: r.state.phase, wave: r.state.wave, lives: r.state.lives, gold: r.state.gold }).toEqual({ phase: 'won', wave: 10, lives: 6, gold: 940 });
   });
 
-  // comboBuild on Hard loses at least 5 more lives than on Normal (won, 13
-  // lives): it wins with 3, losing 8 on wave 4 and 4 on wave 7.
-  it('comboBuild on Hard wins with 3 lives, 10 fewer than on Normal (13 lives, 418 gold, 163 after wave 9)', () => {
+  // comboBuild on Hard loses on wave 8 (the target allows a loss from wave 8
+  // on); Normal: won, 13 lives, 476 gold, 175 after wave 9.
+  it('comboBuild on Hard loses on wave 8 (Normal: won with 13 lives, 476 gold, 175 after wave 9)', () => {
     const hard = playScripted(comboBuild('hard'), undefined, 'hard');
-    expect(hard.waves.map((w) => w.lives)).toEqual([15, 15, 15, 7, 7, 7, 3, 3, 3, 3]);
-    expect({ phase: hard.state.phase, wave: hard.state.wave, gold: hard.state.gold }).toEqual({ phase: 'won', wave: 10, gold: 480 });
+    expect(hard.waves.map((w) => w.lives)).toEqual([15, 15, 14, 13, 11, 11, 1, 0]);
+    expect({ phase: hard.state.phase, wave: hard.state.wave, gold: hard.state.gold }).toEqual({ phase: 'lost', wave: 8, gold: 284 });
     const normal = playScripted(comboBuild());
-    expect({ phase: normal.state.phase, lives: normal.state.lives, gold: normal.state.gold }).toEqual({ phase: 'won', lives: 13, gold: 418 });
-    expect(normal.waves[8].gold).toBe(163);
-    expect(normal.state.lives - hard.state.lives).toBeGreaterThanOrEqual(5);
+    expect({ phase: normal.state.phase, lives: normal.state.lives, gold: normal.state.gold }).toEqual({ phase: 'won', lives: 13, gold: 476 });
+    expect(normal.waves[8].gold).toBe(175);
   });
 });

@@ -2,19 +2,20 @@
 // in the simulation, so a sim change that alters the frame fails here with
 // numbers, not only as a pixel diff in the browser. Same setup as the browser
 // test: the combo build's actions for waves 1 to 10 with waves 1 to 9 played
-// out, then Start Wave and 3230 ticks of wave 10 (3562 until milestone 25c).
+// out, then Start Wave and 5631 ticks of wave 10 (3562 until milestone 25c,
+// 3230 in its first pass).
 // Milestone 25c: waves 1 to 9 fire the combo's cluster specials, as the
 // browser's runScript does; wave 10 is stepped by hand, so it has none. The
-// browser test reads the Mortar hit from the events of tick 3228 (the
+// browser test reads the Mortar hit from the events of tick 5629 (the
 // splash is 2 ticks into its fade on the frame) and asserts no hit on him
-// on tick 3230.
+// on tick 5631.
 import { describe, expect, it } from 'vitest';
 import { createGame, startWave, tick } from './game';
 import { applyAction, comboBuild } from './headless';
 import { positionAlongPath, MAP } from './map';
 
 describe('boss.png frame content', () => {
-  it('at tick 3230 of wave 10 he is alone at (420,152), tarred, burning, 2488 hp on the bar, Mortar hit on tick 3228, no hit on 3230', () => {
+  it('at tick 5631 of wave 10 he is alone at (420,186), tarred, burning, 2564 hp on the bar, Mortar hit on tick 5629, no hit on 5631', () => {
     const s = createGame();
     const script = comboBuild();
     for (let w = 0; w < 9; w++) {
@@ -28,9 +29,9 @@ describe('boss.png frame content', () => {
     expect({ phase: s.phase, wave: s.wave }).toEqual({ phase: 'setup', wave: 9 });
     for (const a of script[9] ?? []) expect(applyAction(s, a)).toMatchObject({ result: { ok: true } });
     expect(startWave(s).ok).toBe(true);
-    for (let t = 0; t < 3228; t++) tick(s);
+    for (let t = 0; t < 5629; t++) tick(s);
     const boss = s.enemies.find((e) => e.type === 'boss')!;
-    const mortarHitsAt3228 = s.events.filter((e) => e.kind === 'hit' && e.tower === 'mortar' && e.enemyId === boss.id).length;
+    const mortarHitsAt5629 = s.events.filter((e) => e.kind === 'hit' && e.tower === 'mortar' && e.enemyId === boss.id).length;
     tick(s);
     tick(s);
     const pos = positionAlongPath(MAP, boss.distance);
@@ -44,20 +45,20 @@ describe('boss.png frame content', () => {
       slowed: boss.slowTicksLeft > 0,
       slow: boss.slow,
       hpOnBar: Math.ceil(boss.hp),
-      mortarHitsAt3228,
+      mortarHitsAt5629,
       hitNow: s.events.some((e) => e.kind === 'hit' && e.enemyId === boss.id),
       lives: s.lives,
     }).toEqual({
       wave: 10,
-      waveTick: 3230,
+      waveTick: 5631,
       enemies: 1,
       type: 'boss',
-      pos: { x: 420, y: 152 },
+      pos: { x: 420, y: 186 },
       burning: true,
       slowed: true,
       slow: 0.3,
-      hpOnBar: 2488,
-      mortarHitsAt3228: 1,
+      hpOnBar: 2564,
+      mortarHitsAt5629: 1,
       hitNow: false,
       lives: 13,
     });

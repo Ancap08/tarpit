@@ -88,9 +88,9 @@ test('two-tap placement: pick by tap, arm (7,5), build on the second tap, move t
 
   await tap(page, 'startWave');
   expect(await state(page)).toMatchObject({ phase: 'wave', wave: 1 });
-  await step(page, 2005);
-  // Milestone 25c: the Musketeer kills all 20 wave 1 Goblins: 50 + 20 x 2 + 25.
-  expect(await state(page)).toMatchObject({ phase: 'setup', wave: 1, lives: 20, gold: 115 });
+  await step(page, 3000);
+  // Milestone 25c second pass: 19 hp Goblins take two shots; the Musketeer kills 8 of 20 and 12 leak: 50 + 8 x 2 + 25.
+  expect(await state(page)).toMatchObject({ phase: 'setup', wave: 1, lives: 8, gold: 91 });
 
   // Select the tower by tap (clear the pick first: the bar button toggles it).
   await tap(page, 'bar:musketeer');

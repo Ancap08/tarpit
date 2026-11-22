@@ -196,6 +196,7 @@ describe('(f) Shieldbearer bounty', () => {
 describe('(g) wave spawns by type', () => {
   function spawns(wave: number): Record<string, number> {
     const s = createGame();
+    s.lives = 1000; // milestone 25c: a towerless wave 6 would end a 20-life game before it all spawns
     s.wave = wave - 1;
     expect(startWave(s)).toEqual({ ok: true, wave });
     const counts: Record<string, number> = {};
@@ -207,8 +208,8 @@ describe('(g) wave spawns by type', () => {
   }
 
   // Milestone 25c (horde retune) changed every group's count and timing.
-  it('wave 4 spawns 25 Wolves and exactly 10 Harpies; wave 6 spawns 45 Goblins, 35 Wolves and exactly 6 Shieldbearers (milestone 25c)', () => {
-    expect(spawns(4)).toEqual({ harpy: 10, wolf: 25 });
+  it('wave 4 spawns 30 Goblins and exactly 10 Harpies; wave 6 spawns 45 Goblins, 35 Wolves and exactly 6 Shieldbearers (milestone 25c)', () => {
+    expect(spawns(4)).toEqual({ harpy: 10, goblin: 30 });
     expect(spawns(6)).toEqual({ goblin: 45, wolf: 35, shieldbearer: 6 });
   });
 
@@ -222,6 +223,6 @@ describe('(g) wave spawns by type', () => {
       const firstNew = groups.findIndex((x) => isNew(x.type));
       if (firstNew >= 0) expect(groups.slice(firstNew).every((x) => isNew(x.type)), `wave ${i + 1}`).toBe(true);
     });
-    expect(m22[3].map((x) => x.type)).toEqual(['harpy', 'wolf']);
+    expect(m22[3].map((x) => x.type)).toEqual(['harpy', 'goblin']);
   });
 });

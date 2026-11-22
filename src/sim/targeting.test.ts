@@ -208,8 +208,8 @@ describe('comboStrongest (informational)', () => {
     expect(a.state.towers.every((t) => t.targeting === 'strongest')).toBe(true);
   });
 
-  it("result (no target, pinned so a change shows): lost on wave 5, 0 lives, 58 gold", () => {
+  it("result (no target, pinned so a change shows): lost on wave 6, 0 lives, 162 gold", () => {
     const s = playScripted(comboStrongest()).state;
-    expect(`${s.phase} on wave ${s.wave}, ${s.lives} lives, ${s.gold} gold`).toBe('lost on wave 5, 0 lives, 58 gold');
+    expect(`${s.phase} on wave ${s.wave}, ${s.lives} lives, ${s.gold} gold`).toBe('lost on wave 6, 0 lives, 162 gold');
   });
 });

@@ -6,12 +6,14 @@
 // the Mortar fires at 1386, 1566 and 1746; the frame is tick 1748.
 import { describe, expect, it } from 'vitest';
 import { buildTower, upgradeTower } from './actions';
-import { enemyPosition } from './combat';
 import { createGame, startWave, tick } from './game';
 import { ENEMY_STATS } from './enemies';
 
 describe('new-towers frame, sim side', () => {
-  it('at tick 1748 of wave 5: 2 Trolls, 10 px apart, Troll 12 slowed and burning at 98 of 500 hp, Troll 5 at 61', () => {
+  // Milestone 25c second pass: the Mortar fires at 1836, 2016, 2196; tick
+  // 2198 has its splash on screen, Troll 13 slowed and burning, and the
+  // wave's tail of Goblins behind (some hurt).
+  it('at tick 2198 of wave 5: Troll 13 slowed and burning at 375 of 900 hp, two more Trolls, 10 Goblins', () => {
     const s = createGame();
     s.gold = 5000;
     s.wave = 4;
@@ -21,16 +23,17 @@ describe('new-towers frame, sim side', () => {
     }
     startWave(s);
     const mortarTicks: number[] = [];
-    for (let i = 1; i <= 1748; i++) {
+    for (let i = 1; i <= 2198; i++) {
       tick(s);
       if (s.shots.some((x) => x.tower === 'mortar')) mortarTicks.push(i);
     }
-    expect(mortarTicks.slice(-3)).toEqual([1386, 1566, 1746]);
-    expect(ENEMY_STATS.troll.hp).toBe(500);
-    expect(s.enemies.map((e) => `${e.type} ${e.id} ${Math.round(e.hp)}`)).toEqual(['troll 5 61', 'troll 12 98']);
+    expect(mortarTicks.slice(-3)).toEqual([1836, 2016, 2196]);
+    expect(ENEMY_STATS.troll.hp).toBe(900);
+    expect(s.enemies.map((e) => `${e.type} ${e.id} ${Math.round(e.hp)}`)).toEqual([
+      'troll 13 375', 'troll 29 882', 'goblin 38 1', 'troll 39 900', 'goblin 41 1', 'goblin 42 10',
+      'goblin 43 19', 'goblin 44 19', 'goblin 45 19', 'goblin 46 19', 'goblin 47 19', 'goblin 48 19', 'goblin 49 19',
+    ]);
     const sb = s.enemies.filter((e) => e.slowTicksLeft > 0 && (e.burnTicksLeft ?? 0) > 0);
-    expect(sb.map((e) => e.id)).toEqual([12]);
-    const [a, b] = s.enemies.map((e) => enemyPosition(e));
-    expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeCloseTo(10.2, 1);
+    expect(sb.map((e) => e.id)).toEqual([13]);
   });
 });

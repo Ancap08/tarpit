@@ -11,10 +11,11 @@ import type { TarpitTestApi } from '../src/game/testGlobal';
 // step 2538, when the Fire Pot at (10,4) first hits him on the top run;
 // the test steps 300 at a time until the bar shows lost hp. The combo
 // build kills him at waveTick 4639 (src/sim/balance.test.ts). Milestone
-// 25c: first hit at step 2629 (the Tar Pit at (11,4) and the Longbow at
-// (9,5)), so still in the fourth chunk; he dies at waveTick 3921.
+// 25c second pass: he spawns at waveTick 3900 (after 3901 steps); the Fire
+// Pot at (10,4) first hits him at step 5043, so still in the fourth chunk;
+// he dies at waveTick 6292.
 
-const BOSS_SPAWN_STEPS = 1561;
+const BOSS_SPAWN_STEPS = 3901;
 
 async function startGame(page: Page): Promise<void> {
   await page.goto('/?test=1');
@@ -32,7 +33,7 @@ test('the combo build meets Grumblefoot in wave 10: preview, bar, hp drop, kill,
     return { phase, wave: t.state().wave };
   });
   expect(before).toEqual({ phase: 'setup', wave: 9 });
-  const wave10 = `Next: 20 ${ENEMY_NAMES.wolf}, 13 ${ENEMY_NAMES.troll}, 12 ${ENEMY_NAMES.harpy}, 8 ${ENEMY_NAMES.shieldbearer} + ${BOSS_NAME}`;
+  const wave10 = `Next: 20 ${ENEMY_NAMES.wolf}, 15 ${ENEMY_NAMES.troll}, 12 ${ENEMY_NAMES.harpy}, 8 ${ENEMY_NAMES.shieldbearer} + ${BOSS_NAME}`;
   expect(await hud(page)).toMatchObject({ next: wave10, boss: null });
 
   const spawn = await page.evaluate((steps) => {
@@ -87,13 +88,14 @@ test('the combo build meets Grumblefoot in wave 10: preview, bar, hp drop, kill,
 
 test('Grumblefoot exits with 5 lives left: 0 lives, lost', async ({ page }) => {
   await startGame(page);
-  // No towers. Wave 10's other 53 enemies (milestone 25c; 29 before) cost
-  // 1 life each, so 58 lives leave exactly 5 when he is the last one on the map.
+  // No towers. Wave 10's other 55 enemies (milestone 25c second pass; 29
+  // before 25c) cost 1 life each, so 60 lives leave exactly 5 when he is the
+  // last one on the map.
   const r = await page.evaluate(() => {
     const t = window.__tarpit as TarpitTestApi;
     const s = t.state();
     s.wave = 9; // test setup: the next Start Wave plays wave 10
-    s.lives = 58;
+    s.lives = 60;
     t.startWave();
     let alone = -1;
     let livesAlone = -1;
@@ -101,7 +103,7 @@ test('Grumblefoot exits with 5 lives left: 0 lives, lost', async ({ page }) => {
     for (let i = 0; i < 60_000 && down === null; i++) {
       t.step(1);
       const e = t.state().enemies;
-      if (alone < 0 && e.length === 1 && e[0].type === 'boss' && t.state().waveTick > 1560) {
+      if (alone < 0 && e.length === 1 && e[0].type === 'boss' && t.state().waveTick > 3900) {
         alone = i;
         livesAlone = t.state().lives;
       }

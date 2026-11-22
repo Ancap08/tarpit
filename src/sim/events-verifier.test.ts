@@ -63,6 +63,8 @@ const DEFENCE: [number, number, TowerType][] = [
   [10, 8, 'firepot'], [10, 6, 'cannon'], [12, 8, 'musketeer'],
   // Milestone 22: anti-air for the Harpy waves, so the defence still wins.
   [9, 5, 'longbow'], [17, 8, 'longbow'],
+  // Milestone 25c second pass (900 hp Trolls): three more upgraded Longbows so it still wins.
+  [16, 8, 'longbow'], [9, 6, 'longbow'], [16, 9, 'longbow'],
 ];
 
 describe('events verifier', () => {
@@ -124,7 +126,7 @@ describe('events verifier', () => {
     expect(run(0)).toEqual(['hit', 'slowed']);
   });
 
-  it('(e) wave 3 spawn events: 20 Goblin and 15 Wolf (milestone 25c), ids 0..34 once each', () => {
+  it('(e) wave 3 spawn events: 22 Goblin and 12 Wolf (milestone 25c), ids 0..33 once each', () => {
     const s = createGame();
     s.wave = 2;
     startWave(s);
@@ -134,9 +136,9 @@ describe('events verifier', () => {
       spawns.push(...s.events.filter((e) => e.kind === 'spawn'));
     }
     const count = (t: EnemyType) => spawns.filter((e) => e.kind === 'spawn' && e.enemyType === t).length;
-    expect(count('goblin')).toBe(20);
-    expect(count('wolf')).toBe(15);
-    expect(spawns.map((e) => (e.kind === 'spawn' ? e.enemyId : -1))).toEqual([...Array(35).keys()]);
+    expect(count('goblin')).toBe(22);
+    expect(count('wolf')).toBe(12);
+    expect(spawns.map((e) => (e.kind === 'spawn' ? e.enemyId : -1))).toEqual([...Array(34).keys()]);
   });
 
   it('(f) a setup-phase tick has empty events; action events survive until the next tick only', () => {

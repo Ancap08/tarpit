@@ -13,7 +13,7 @@ import type { TarpitTestApi } from '../src/game/testGlobal';
 // not imported here because those modules import Phaser or ?url PNGs.
 const BAR = { x: 330, y: 24, width: 300, height: 14 };
 const BOSS_SHADOW = { offsetY: 4, outer: { w: 72, h: 20, alpha: 0.15 }, inner: { w: 52, h: 14, alpha: 0.2 } };
-const BOSS_SPAWN_TICK = 1560;
+const BOSS_SPAWN_TICK = 3900; // milestone 25c second pass (1560 before)
 
 async function startGame(page: Page): Promise<void> {
   await page.goto('/?test=1');
@@ -35,11 +35,11 @@ type SceneProbe = {
 const rgb = (c: number) => [(c >> 16) & 255, (c >> 8) & 255, c & 255];
 const near = (got: number[], want: number[], tol = 4) => got.every((c, i) => Math.abs(c - want[i]) <= tol);
 
-// (a) Depth. Wave 10 with no towers at tick 1700: he is on the map with
+// (a) Depth. Wave 10 with no towers at tick 4040 (1700 before milestone 25c's second pass): he is on the map with
 // Trolls and Shieldbearers. His sprite's Layer sits after the walkers' Layer
 // and before the shot effects, the hp bars, the labels' Layer and the air
 // Layer, which in turn sits before the HUD objects.
-test('(a) at tick 1700 of wave 10 his layer is above the walkers and below shots, hp bars, labels and the air layer', async ({ page }) => {
+test('(a) at tick 4040 of wave 10 his layer is above the walkers and below shots, hp bars, labels and the air layer', async ({ page }) => {
   await startGame(page);
   const r = await page.evaluate(() => {
     const t = window.__tarpit as TarpitTestApi;
@@ -47,7 +47,7 @@ test('(a) at tick 1700 of wave 10 his layer is above the walkers and below shots
     s.wave = 9; // test setup: the next Start Wave plays wave 10
     s.lives = 1000;
     t.startWave();
-    t.step(1700);
+    t.step(4040);
     const scene = t.game.scene.getScene('game') as unknown as SceneProbe;
     const list = scene.children.list;
     const rank = (o: Obj) => (o.displayList && o.displayList.type === 'Layer' ? list.indexOf(o.displayList) : list.indexOf(o));
@@ -69,8 +69,8 @@ test('(a) at tick 1700 of wave 10 his layer is above the walkers and below shots
       flashVisible: bossView.flash?.visible ?? null,
     };
   });
-  // Milestone 25c: wave 10's 12 Harpies (spawned until 12.6 s) are still flying at 1700.
-  expect(r.types).toEqual(['boss', 'harpy', 'shieldbearer', 'troll']);
+  // Milestone 25c second pass: the Harpies are gone by 4040; Trolls and Shieldbearers remain.
+  expect(r.types).toEqual(['boss', 'shieldbearer', 'troll']);
   expect(r.bossRanks).toEqual([r.bossLayer]);
   expect(r.walkerRanks).toEqual([r.walkerLayer]);
   expect(r.bossLayer).toBeGreaterThan(r.walkerLayer);
@@ -83,10 +83,11 @@ test('(a) at tick 1700 of wave 10 his layer is above the walkers and below shots
   expect(r.flashVisible).toBe(false); // no hit on this tick (no towers)
 });
 
-// (b) Shadow. Wave 10 with no towers at tick 4921: every other enemy has
-// exited (the last Troll, spawned at 1320, needs 1584 / 35 s = 2716 ticks),
-// and he is at distance 3360 x 25 / 60 = 1400 exactly (spawned on tick 1560,
-// he first moves on tick 1561, so 4921 - 1561 = 3360 moves). The path's
+// (b) Shadow. Wave 10 with no towers at tick 7261 (milestone 25c second
+// pass; 4921 before): every other enemy has exited (the last Troll, spawned
+// at 3780, needs 1584 / 35 s = 2716 ticks), and he is at distance 3360 x 25
+// / 60 = 1400 exactly (spawned on tick 3900, he first moves on tick 3901, so
+// 7261 - 3901 = 3360 moves). The path's
 // cumulative corner distances are 160, 304, 564, 852, 1112, 1304, 1584, so
 // 1400 is 96 px into the last run from (680,192): (776,192). His last opaque sprite row is 6 px below the path point
 // (DEVLOG: feet at row 42 of 50, 2x, lift 30), so 9 px below the point is
@@ -104,7 +105,7 @@ test('(b) he has a two-ellipse ground shadow on the path under his feet', async 
     s.wave = 9; // test setup: the next Start Wave plays wave 10
     s.lives = 1000;
     t.startWave();
-    t.step(4921);
+    t.step(7261);
     return t.state().enemies.map((e) => ({ id: e.id, type: e.type, distance: e.distance }));
   });
   expect(enemies.map((e) => e.type)).toEqual(['boss']);
@@ -141,7 +142,9 @@ test('(b) he has a two-ellipse ground shadow on the path under his feet', async 
 // tick with no hit hides it. At tick 3562 (the boss.png frame) the red run
 // along the bar's middle row is round(300 x hp / 4000) px wide. After his
 // death the label is null again. Milestone 25c: the boss.png frame is tick
-// 3230 (hp 2487.0000000000828, so 187 px), and the first hit on him is the
+// 3230 (hp 2487.0000000000828, so 187 px); in the second pass 5631 (hp
+// 2563.67, 192 px) with the first hit by the Fire Pot at (10,4) at step
+// 5043. Before that, the first hit on him was the
 // Tar Pit at (11,4) at step 2629 (with a Longbow on the same tick; the Tar
 // Pit fires first in cell order).
 test('(c)(d)(e) flash on a hit tick, label null before spawn and after death, fill proportional', async ({ page }) => {
@@ -161,7 +164,7 @@ test('(c)(d)(e) flash on a hit tick, label null before spawn and after death, fi
     let firstHit: { tick: number; tower: string; flash: boolean; texture: string; frame: string | number; flagHit: boolean; dx: number; dy: number } | null = null;
     let afterHit: { tick: number; flash: boolean; flagHit: boolean } | null = null;
     let ticks = spawnTick + 1;
-    while (ticks < 3230 && (firstHit === null || afterHit === null)) {
+    while (ticks < 5631 && (firstHit === null || afterHit === null)) {
       t.step(1);
       ticks += 1;
       const hit = t.events().find((e) => e.kind === 'hit' && e.enemyId === id);
@@ -187,16 +190,16 @@ test('(c)(d)(e) flash on a hit tick, label null before spawn and after death, fi
   expect(r.bossBefore).toBeNull();
   expect(r.bossAtSpawnMinus1).toBeNull();
   expect(r.labelAtSpawn).toBe(`${BOSS_NAME} 4000 / 4000`);
-  expect(r.firstHit).toMatchObject({ tower: 'tarpit', flash: true, texture: 'boss-hit', frame: 0, flagHit: true, dx: 0, dy: 0 });
-  expect(r.firstHit!.tick).toBeGreaterThan(2400);
+  expect(r.firstHit).toMatchObject({ tower: 'firepot', flash: true, texture: 'boss-hit', frame: 0, flagHit: true, dx: 0, dy: 0 });
+  expect(r.firstHit!.tick).toBeGreaterThan(BOSS_SPAWN_TICK + 1000);
   expect(r.afterHit).toMatchObject({ tick: r.firstHit!.tick + 1, flash: false, flagHit: false });
 
   // Fill width at the spawn tick's full bar is read from a fresh game below;
-  // here, read it at tick 3230 (the boss.png frame): hp 2487.0x -> 187 px.
+  // here, read it at tick 5631 (the boss.png frame): hp 2563.67 -> 192 px.
   const fill = await page.evaluate(
     async ({ bar, red, bg, id, now }) => {
       const t = window.__tarpit as TarpitTestApi;
-      t.step(3230 - now);
+      t.step(5631 - now);
       const boss = t.state().enemies.find((e) => e.id === id)!;
       await new Promise((resolve) => requestAnimationFrame(resolve));
       const ctx = t.game.canvas.getContext('2d')!;
@@ -210,10 +213,10 @@ test('(c)(d)(e) flash on a hit tick, label null before spawn and after death, fi
     },
     { bar: BAR, red: rgb(COLORS.bossBarFill), bg: rgb(COLORS.bossBarBg), id: r.id, now: r.ticks },
   );
-  expect(fill.waveTick).toBe(3230);
-  expect(fill.label).toBe(`${BOSS_NAME} 2488 / 4000`);
+  expect(fill.waveTick).toBe(5631);
+  expect(fill.label).toBe(`${BOSS_NAME} 2564 / 4000`);
   const want = Math.round((BAR.width * fill.hp) / 4000);
-  expect(want).toBe(187);
+  expect(want).toBe(192);
   expect(Math.abs(fill.redRun - want), `red run ${fill.redRun}, want ${want}`).toBeLessThanOrEqual(2);
   // The trough continues past the fill until the right-aligned hp text (37 px at the milestone 25c frame; was over 40 at 178 px).
   expect(fill.bgAfter).toBeGreaterThan(20);
@@ -249,7 +252,7 @@ test('(f) the wave 10 preview ends with the boss name and wraps to two 13 px lin
   });
   expect(r.wave1.size).toBe('16px');
   expect(r.wave1.lines).toEqual([`Next: 20 ${ENEMY_NAMES.goblin}`]);
-  expect(r.hud).toBe(`Next: 20 ${ENEMY_NAMES.wolf}, 13 ${ENEMY_NAMES.troll}, 12 ${ENEMY_NAMES.harpy}, 8 ${ENEMY_NAMES.shieldbearer} + ${BOSS_NAME}`);
+  expect(r.hud).toBe(`Next: 20 ${ENEMY_NAMES.wolf}, 15 ${ENEMY_NAMES.troll}, 12 ${ENEMY_NAMES.harpy}, 8 ${ENEMY_NAMES.shieldbearer} + ${BOSS_NAME}`);
   expect(r.wave10.text).toBe(r.hud);
   expect(r.wave10.size).toBe('11px');
   expect(r.wave10.lines).toHaveLength(2);

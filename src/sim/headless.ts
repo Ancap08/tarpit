@@ -526,7 +526,12 @@ function withoutTowerType(script: WaveScript, type: TowerType): WaveScript {
  * Tar Pit and Fire Pot pair at (11,4) and (10,4) on the top run. Milestone
  * 22 adds anti-air: a third Longbow (17,8) before the Mortar, bought before
  * wave 4 so the first Harpies meet three bows, and its upgrade as the last
- * action. Every action is bought by wave 10.
+ * of the milestone 22 actions. Milestone 25c appends a gold sink (below).
+ * Not every action is bought: on Normal comboBuild buys 28 of the 31 (not
+ * the third Mortar's upgrade, the Cannon or its upgrade), on Easy 30 and
+ * on Hard 17 before it loses. The unbought tail stays so the plan never
+ * runs dry before wave 10 on any level (Easy reaches the Cannon), which
+ * keeps the gold left before wave 9 small (balance.test.ts pins the count).
  */
 export const COMBO_PLAN: readonly BuildAction[] = [
   lb(9, 5), lb(9, 4), t(14, 10), fp(14, 9), lb(17, 8), mo(17, 6), up(14, 10), up(14, 9), lb(17, 9), up(17, 6),
@@ -547,7 +552,7 @@ export const COMBO_PLAN: readonly BuildAction[] = [
  * already firing at their ticks), the first wave tick at which the
  * densest 70 px cluster is largest.
  */
-export const CLUSTER_POLICY_TICKS: readonly number[] = [197, 164, 413, 813, 692, 1534, 573, 923, 545, 473];
+export const CLUSTER_POLICY_TICKS: readonly number[] = [164, 109, 291, 398, 749, 651, 668, 1241, 1194, 713];
 
 /** One clusterSpecial per wave at CLUSTER_POLICY_TICKS (milestone 25c). */
 export const CLUSTER_POLICY: TimedScript = CLUSTER_POLICY_TICKS.map((atWaveTick): TimedAction[] => [{ type: 'clusterSpecial', atWaveTick }]);
@@ -595,7 +600,8 @@ export const FIRST_HARPY_WAVE = 4;
  * Removing the actions from wave 1 instead (no sells) loses on wave 2,
  * before any Harpy, because the combo build opens with Longbows; that
  * variant is pinned in balance.test.ts as the reason for the sells.
- * Target: every Harpy of wave 4 exits, and the game is lost by wave 8.
+ * Target (milestone 25c second pass): at least 75% of the wave 4 Harpies
+ * exit, it survives wave 4, and the game is lost on wave 5 to 8.
  */
 export function noAntiAir(difficulty?: Difficulty): WaveScript {
   const script = comboBuild(difficulty);
@@ -723,15 +729,19 @@ export function comboWithKegs(difficulty?: Difficulty): WaveScript {
 }
 
 /**
- * The hand-tuned plan for Hard (milestone 25c), in purchase order: the
- * combo's cells, but the opening reordered for the Hard horde: the two first
- * Longbows, the Tar Pit, the third Longbow (17,8) before the Fire Pot, and
- * both first Longbow upgrades before the first Mortar, so wave 4's Harpies
- * and Wolves meet three bows, two of them upgraded. Then the rest of
- * COMBO_PLAN in its order.
+ * The hand-tuned plan for Hard (milestone 25c, second pass), in purchase
+ * order: upgraded Longbows first, since an upgraded Longbow is the most
+ * damage per gold against Hard's 1080 hp Trolls: the two first Longbows and
+ * (17,8), all three upgraded, then upgraded pairs at (16,8), (9,6) and
+ * (16,9) with the Tar Pit (14,10) between them, then the Fire Pot (14,9)
+ * and the Tar Pit and Fire Pot upgrades, then the rest of COMBO_PLAN in its
+ * order.
  */
 export const HARD_PLAN: readonly BuildAction[] = ((): BuildAction[] => {
-  const head = [lb(9, 5), lb(9, 4), t(14, 10), lb(17, 8), fp(14, 9), up(9, 5), up(9, 4), mo(17, 6)];
+  const head = [
+    lb(9, 5), lb(9, 4), lb(17, 8), up(9, 5), up(9, 4), up(17, 8), lb(16, 8), up(16, 8), t(14, 10), lb(9, 6), up(9, 6),
+    lb(16, 9), up(16, 9), fp(14, 9), up(14, 10), up(14, 9),
+  ];
   const key = (a: BuildAction) => `${a.type} ${cellKey(a.cell)}`;
   const taken = new Set(head.map(key));
   return [...head, ...COMBO_PLAN.filter((a) => !taken.has(key(a)))];

@@ -113,9 +113,9 @@ describe('musketeer', () => {
     // Goblin 0 spawns on waveTick 0 at (0,240), 102.4 px from A: already in
     // range, but a new enemy is not shot on its spawn tick.
     tick(s);
-    expect(s.enemies[0]).toMatchObject({ id: 0, hp: 12, distance: 0 });
-    // Milestone 25c: a Goblin spawns with 12 hp (one shot); give this one
-    // 30 so the cooldown shows across three hits, as before.
+    expect(s.enemies[0]).toMatchObject({ id: 0, hp: 19, distance: 0 });
+    // Milestone 25c: a Goblin spawns with 19 hp; give this one 30 so the
+    // cooldown shows across three hits, as before.
     s.enemies[0].hp = 30;
     tick(s);
     expect(s.enemies[0]).toMatchObject({ id: 0, hp: 18, distance: 1 });
@@ -123,13 +123,13 @@ describe('musketeer', () => {
     for (let i = 0; i < 59; i++) tick(s);
     expect(s.enemies[0].hp).toBe(18);
     expect(s.towers[0].cooldownTicks).toBe(1);
-    tick(s); // waveTick 61; goblin 1 (spawned at 48) is behind goblin 0
+    tick(s); // waveTick 61; goblin 1 (spawned at 72) is not out yet
     expect(s.enemies[0].hp).toBe(6);
     expect(s.gold).toBe(50);
     for (let i = 0; i < 59; i++) tick(s);
     expect(s.enemies[0]).toMatchObject({ id: 0, hp: 6 });
     tick(s); // waveTick 121: third hit at (121,240), 76 px from A
-    expect(s.enemies.map((e) => e.id)).toEqual([1, 2]);
+    expect(s.enemies.map((e) => e.id)).toEqual([1]);
     expect(s.gold).toBe(50 + ENEMY_STATS.goblin.bounty);
   });
 
@@ -242,10 +242,10 @@ describe('kills', () => {
     upgradeTower(s, U);
     startWave(s);
     tick(s);
-    expect(s.enemies[0]).toMatchObject({ id: 0, hp: 12, distance: 0 });
+    expect(s.enemies[0]).toMatchObject({ id: 0, hp: 19, distance: 0 });
     expect(s.shots).toEqual([]);
     tick(s);
-    // The next tick it is shot (22 > 12 since milestone 25c: killed).
+    // The next tick it is shot (22 > 19: killed).
     expect(s.shots.map((x) => x.targetId)).toEqual([0]);
     expect(s.enemies.map((e) => e.id)).toEqual([]);
   });

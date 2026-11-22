@@ -84,8 +84,8 @@ test('a Musketeer hit flags the sprite for that tick; a kill removes it', async 
 // Milestone 11's verified cells and tick (e2e/new-towers.spec.ts): a Tar Pit
 // at (14,6) and a Fire Pot at (14,8) leave Goblin 0 slowed and burning at
 // tick 687 of wave 1, and no enemy at 686. Milestone 25c: Goblin 2 at tick
-// 837, none at 836.
-test('a tarred, burning Goblin shows both flags at tick 837', async ({ page }) => {
+// 837, none at 836, in its first pass; Goblin 0 at 687 again in its second.
+test('a tarred, burning Goblin shows both flags at tick 687', async ({ page }) => {
   await startGame(page);
   const r = await page.evaluate(() => {
     const t = window.__tarpit as TarpitTestApi;
@@ -93,14 +93,14 @@ test('a tarred, burning Goblin shows both flags at tick 837', async ({ page }) =
     t.buildAt(14, 6, 'tarpit');
     t.buildAt(14, 8, 'firepot');
     t.startWave();
-    t.step(836);
+    t.step(686);
     const before = t.state().enemies.map((e) => t.animState(e.id)?.flags);
     t.step(1);
-    return { before, at837: t.animState(2) };
+    return { before, at687: t.animState(0) };
   });
   expect(r.before.some((f) => f?.burning && f?.slowed)).toBe(false);
-  expect(r.at837?.flags).toMatchObject({ burning: true, slowed: true, dying: false });
-  expect(r.at837?.facing).toBe('down'); // on the long downhill run at x 420
+  expect(r.at687?.flags).toMatchObject({ burning: true, slowed: true, dying: false });
+  expect(r.at687?.facing).toBe('down'); // on the long downhill run at x 420
 });
 
 test('facing turns up at the first corner (x 160)', async ({ page }) => {

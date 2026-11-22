@@ -67,9 +67,9 @@ describe('state.events', () => {
       { kind: 'spawn', enemyId: 0, enemyType: 'goblin' },
       { kind: 'spawn', enemyId: 1, enemyType: 'goblin' },
     ]);
-    // Milestone 25c: Goblins every 42 ticks (0 .. 210 are ids 0 to 5), then
-    // the first Wolf at waveTick 240.
-    expect(spawns.find((e) => e.kind === 'spawn' && e.enemyType === 'wolf')).toEqual({ kind: 'spawn', enemyId: 6, enemyType: 'wolf' });
+    // Milestone 25c: Goblins every 60 ticks (0 .. 240 are ids 0 to 4), then
+    // the first Wolf at waveTick 270.
+    expect(spawns.find((e) => e.kind === 'spawn' && e.enemyType === 'wolf')).toEqual({ kind: 'spawn', enemyId: 5, enemyType: 'wolf' });
   });
 
   it('hit: one per shot on a single target, with the tower cell, type and damage', () => {

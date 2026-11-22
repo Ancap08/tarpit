@@ -147,7 +147,7 @@ describe('E1. enemy conservation and kill credit over a full comboBuild game (No
     });
     expect(clears).toBe(10);
     expect(s.phase).toBe('won');
-    expect(ledger.spawned.length).toBe(500);
+    expect(ledger.spawned.length).toBe(524);
     expect(ledger.exited.length).toBe(DIFFICULTY_DEFS.normal.startLives - s.lives);
     // The three kinds of kill all occur, so the check above is not vacuous.
     expect(ledger.kills.some((k) => k.cause === 'shot')).toBe(true);
@@ -160,7 +160,7 @@ describe('E1. enemy conservation and kill credit over a full comboBuild game (No
     expect(ledger.earlyBonuses).toBe(0);
     expect(ledger.clearBonuses).toBe(10 * WAVE_CLEAR_BONUS);
     expect(DIFFICULTY_DEFS.normal.startGold + ledger.bounties + ledger.clearBonuses + ledger.earlyBonuses + ledger.refunds - ledger.spend).toBe(s.gold);
-    expect(s.gold).toBe(418);
+    expect(s.gold).toBe(476);
   });
 });
 
@@ -223,9 +223,9 @@ describe('E2. a game that calls early every time it can', () => {
     expect(ledger.clearBonuses).toBe(10 * WAVE_CLEAR_BONUS);
   });
 
-  it('every one of the 500 enemies was killed or exited exactly once; exits cost exactly their lives', () => {
+  it('every one of the 524 enemies was killed or exited exactly once; exits cost exactly their lives', () => {
     expect(s.enemies).toEqual([]);
-    expect(ledger.spawned.length).toBe(500);
+    expect(ledger.spawned.length).toBe(524);
     expect(soldKills).toBeGreaterThan(0);
     expectEnemiesConserved(s, ledger, 'end', soldKills);
     // No boss exit is possible with lives this high and still be 'won', but count by type anyway.
@@ -259,7 +259,7 @@ describe('E3. call early: the bonus', () => {
     s.wave = 4;
     startWave(s);
     const last = lastSpawnTick(5);
-    expect(last).toBe(870);
+    expect(last).toBe(2340);
     while (s.waveTick < last) tick(s);
     // waveTick === last: the tick that spawns the last enemy has not run yet.
     expect(callEarlyStatus(s)).toEqual({ ok: false, reason: 'still-spawning' });
@@ -389,8 +389,8 @@ describe('E5. call early: the old wave on the field', () => {
     }
     expect(ledger.waveClears).toEqual([1, 2]);
     expect(ledger.waveStarts).toEqual([2]);
-    expect(ledger.exited.length).toBe(alive + 30);
-    expect(s.lives).toBe(1000 - 20 - 30);
+    expect(ledger.exited.length).toBe(alive + 32);
+    expect(s.lives).toBe(1000 - 20 - 32);
     expect(s.gold).toBe(goldBefore + 25 + 20 + 25);
     expect(s.phase).toBe('setup');
     expect(s.specialCharges).toBe(0);
@@ -401,6 +401,8 @@ describe('E5. call early: the old wave on the field', () => {
     const s = createGame();
     s.lives = 1000;
     expect(buildTower(s, { col: 9, row: 5 }, 'longbow').ok).toBe(true);
+    // Milestone 25c second pass: 19 hp Goblins; upgraded (9 damage) so it still kills old-wave enemies after the call.
+    expect(upgradeTower(s, { col: 9, row: 5 }).ok).toBe(true);
     startWave(s);
     while (s.waveTick <= lastSpawnTick(1)) tick(s);
     const oldIds = new Set(s.enemies.map((e) => e.id));
@@ -665,10 +667,10 @@ describe('E9. the next wave\'s clear waits for old-wave survivors (DESIGN.md sai
     while (running(s)) {
       tick(s);
       for (const e of s.events) if (e.kind === 'spawn') wave2Ids.add(e.enemyId);
-      if (s.phase === 'wave' && s.enemies.length === 1 && s.enemies[0].id === straggler.id && wave2Ids.size === 30) aloneTicks += 1;
+      if (s.phase === 'wave' && s.enemies.length === 1 && s.enemies[0].id === straggler.id && wave2Ids.size === 32) aloneTicks += 1;
       if (s.events.some((e) => e.kind === 'waveClear')) clearedAt = s.waveTick;
     }
-    expect(wave2Ids.size).toBe(30);
+    expect(wave2Ids.size).toBe(32);
     // Every wave 2 enemy had spawned and gone for a long time before the wave cleared.
     expect(aloneTicks).toBeGreaterThan(1000);
     expect(s.events).toContainEqual({ kind: 'exit', enemyId: straggler.id });
@@ -682,16 +684,17 @@ describe('B. the DESIGN.md wave table, transcribed by the verifier (no other tes
   const g = (type: EnemyType, count: number, interval: number, delay = 0) => ({ type, count, interval, delay });
   // docs/DESIGN.md "Waves": groups, then enemies, total hp, bounty.
   const TABLE: [ReturnType<typeof g>[], number, number, number][] = [
-    [[g('goblin', 20, 0.8)], 20, 240, 40],
-    [[g('goblin', 30, 0.6)], 30, 360, 60],
-    [[g('goblin', 20, 0.7), g('wolf', 15, 0.5, 4)], 35, 495, 70],
-    [[g('harpy', 10, 0.8), g('wolf', 25, 0.5, 3)], 35, 645, 80],
-    [[g('goblin', 30, 0.5), g('troll', 2, 3, 2), g('harpy', 10, 0.6, 6)], 42, 1580, 106],
-    [[g('goblin', 45, 0.5), g('wolf', 35, 0.5, 5), g('shieldbearer', 6, 1.5, 3)], 86, 1555, 190],
-    [[g('wolf', 25, 0.4), g('troll', 14, 1.9, 1), g('harpy', 16, 0.6, 8)], 55, 7777, 210],
-    [[g('goblin', 50, 0.5), g('wolf', 25, 0.5, 6), g('troll', 11, 2.4, 3), g('shieldbearer', 6, 1.8, 4), g('harpy', 14, 0.6, 10)], 106, 7253, 310],
-    [[g('wolf', 30, 0.35), g('troll', 7, 2)], 37, 4010, 116],
-    [[g('wolf', 20, 0.35, 4), g('troll', 13, 2), g('harpy', 12, 0.6, 6), g('shieldbearer', 8, 1.4, 2), g('boss', 1, 0, 26)], 54, 11664, 370],
+    // Milestone 25c second pass (longer, sparser waves).
+    [[g('goblin', 20, 1.2)], 20, 380, 40],
+    [[g('goblin', 32, 0.9)], 32, 608, 64],
+    [[g('goblin', 22, 1.0), g('wolf', 12, 1.5, 4.5)], 34, 658, 68],
+    [[g('harpy', 10, 1.5), g('goblin', 30, 1.0, 3)], 40, 930, 90],
+    [[g('goblin', 40, 1.0), g('troll', 3, 8, 10), g('harpy', 10, 1.2, 8)], 53, 3820, 134],
+    [[g('goblin', 45, 1.0), g('wolf', 35, 1.0, 9), g('shieldbearer', 6, 1.5, 0.5)], 86, 2515, 190],
+    [[g('wolf', 26, 1.5), g('troll', 13, 4.5, 1), g('harpy', 16, 1.0, 8)], 55, 12796, 204],
+    [[g('goblin', 50, 1.5), g('wolf', 25, 1.5, 6.75), g('troll', 13, 5, 3), g('shieldbearer', 6, 6, 4), g('harpy', 14, 1.2, 10)], 108, 14614, 326],
+    [[g('wolf', 30, 1.0), g('troll', 10, 2, 2)], 40, 9600, 140],
+    [[g('wolf', 20, 1.5, 4), g('troll', 15, 4.5), g('harpy', 12, 1.5, 6), g('shieldbearer', 8, 5, 2.5), g('boss', 1, 0, 65)], 56, 19612, 386],
   ];
 
   it('every group of every wave, and each wave\'s enemies, total hp and bounty', () => {
@@ -702,27 +705,27 @@ describe('B. the DESIGN.md wave table, transcribed by the verifier (no other tes
       expect(w.groups.reduce((n, x) => n + x.count * ENEMY_STATS[x.type].hp, 0), `wave ${i + 1} hp`).toBe(hp);
       expect(w.groups.reduce((n, x) => n + x.count * ENEMY_STATS[x.type].bounty, 0), `wave ${i + 1} bounty`).toBe(bounty);
     });
-    expect(TABLE.reduce((n, row) => n + row[1], 0)).toBe(500);
+    expect(TABLE.reduce((n, row) => n + row[1], 0)).toBe(524);
   });
 
   it('enemy hp and bounty, Fire Arrows, Easy lives and the Hard multiplier as DESIGN.md states them', () => {
     const stat = (t: EnemyType) => [ENEMY_STATS[t].hp, ENEMY_STATS[t].speed, ENEMY_STATS[t].bounty];
-    expect(stat('goblin')).toEqual([12, 60, 2]);
-    expect(stat('wolf')).toEqual([17, 120, 2]);
-    expect(stat('troll')).toEqual([500, 35, 8]);
-    expect(stat('harpy')).toEqual([22, 90, 3]);
-    expect(stat('shieldbearer')).toEqual([70, 45, 5]);
+    expect(stat('goblin')).toEqual([19, 60, 2]);
+    expect(stat('wolf')).toEqual([20, 120, 2]);
+    expect(stat('troll')).toEqual([900, 35, 8]);
+    expect(stat('harpy')).toEqual([36, 90, 3]);
+    expect(stat('shieldbearer')).toEqual([160, 45, 5]);
     expect(stat('boss')).toEqual([4000, 25, 150]);
     expect(SPECIAL_DEFS.fireArrows).toMatchObject({ unlockWave: 7, radius: 80, burnDps: 30, burnTicks: 240 });
     expect(DIFFICULTY_DEFS).toEqual({
       easy: { hpMultiplier: 0.75, startGold: 150, startLives: 30 },
       normal: { hpMultiplier: 1, startGold: 100, startLives: 20 },
-      hard: { hpMultiplier: 1.1, startGold: 80, startLives: 15 },
+      hard: { hpMultiplier: 1.2, startGold: 80, startLives: 15 },
     });
   });
 
-  it('every wave\'s last spawn is within 27 s (wave 8 exactly 27.0 s)', () => {
+  it('every wave\'s last spawn (milestone 25c second pass: within 90 s, wave 8 the longest at 73.5 s)', () => {
     const secs = WAVES.map((_, i) => lastSpawnTick(i + 1) / 60);
-    expect(secs).toEqual([15.2, 17.4, 13.3, 15, 14.5, 22, 25.7, 27, 12, 26]);
+    expect(secs).toEqual([22.8, 27.9, 21, 32, 39, 44, 55, 73.5, 29, 65]);
   });
 });

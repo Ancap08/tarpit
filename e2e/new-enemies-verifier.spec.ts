@@ -36,7 +36,8 @@ type SceneProbe = {
 // walkers; milestone 25c: tick 1560, 14 Harpies among 48 walkers). Every Harpy sprite sits in a display-list entry after every
 // walker's layer, the labels' layer, the hp bars and the shot effects, and
 // before the HUD's objects; walkers sit before the labels.
-test('(a) at tick 1560 of wave 8 every Harpy draws above every walker, the labels, the hp bars and the shots', async ({ page }) => {
+// Milestone 25c second pass: the enemies.png frame is tick 1680, 40 enemies.
+test('(a) at tick 1680 of wave 8 every Harpy draws above every walker, the labels, the hp bars and the shots', async ({ page }) => {
   await startGame(page);
   const r = await page.evaluate(() => {
     const t = window.__tarpit as TarpitTestApi;
@@ -48,7 +49,7 @@ test('(a) at tick 1560 of wave 8 every Harpy draws above every walker, the label
     t.buildAt(18, 9, 'tarpit');
     t.buildAt(23, 8, 'musketeer');
     t.startWave();
-    t.step(1560);
+    t.step(1680);
     const scene = t.game.scene.getScene('game') as unknown as SceneProbe;
     const list = scene.children.list;
     // Rank: the index in the scene's list of the object, or of the Layer holding it.
@@ -66,7 +67,7 @@ test('(a) at tick 1560 of wave 8 every Harpy draws above every walker, the label
       airIsWalkerLayer: scene.enemySprites.airLayer === scene.enemySprites.layer,
     };
   });
-  expect(r.enemies).toBe(62); // 22 Goblins, 10 Wolves, 10 Trolls, 6 Shieldbearers, 14 Harpies (enemies-frame.test.ts)
+  expect(r.enemies).toBe(40); // 11 Goblins, 7 Wolves, 5 Trolls, 4 Shieldbearers, 13 Harpies (enemies-frame.test.ts)
   expect(r.harpyRanks).toHaveLength(1);
   expect(r.walkerRanks).toHaveLength(1);
   expect(r.labelRanks).toHaveLength(1);
@@ -158,7 +159,8 @@ test('(c) over wave 4 with a Tar Pit and a Fire Pot no Harpy is ever slowed, bur
         }
       }
       for (const e of t.state().enemies) {
-        if (e.type === 'wolf' && e.slowTicksLeft > 0) wolfSlowedTicks += 1;
+        // Milestone 25c second pass: wave 4's walkers are Goblins (the counter keeps its name).
+        if (e.type === 'goblin' && e.slowTicksLeft > 0) wolfSlowedTicks += 1;
         if (e.type !== 'harpy') continue;
         harpyTicks += 1;
         const a = t.animState(e.id);
@@ -221,7 +223,7 @@ test('(d) a Shieldbearer faces right, then up at the first corner, and carries i
     const harpyHasShield = [...scene.enemySprites.views.values()].some((v) => v.shield !== null && (v.sprite as unknown as { texture: { key: string } }).texture.key === 'harpy');
     return { id, samples, shield, harpyHasShield };
   });
-  expect(r.id).toBe(7); // spawn delay 3 s: ids go by spawn time, after 6 Goblins and the first Wolf
+  expect(r.id).toBe(1); // milestone 25c second pass: spawn delay 0.5 s, right after Goblin 0 (was 7: delay 3 s)
   const before = r.samples.filter((x) => x.d > 0 && x.d < 160);
   const after = r.samples.filter((x) => x.d > 160 && x.d < 304);
   expect(before.length).toBeGreaterThan(100);

@@ -368,11 +368,11 @@ describe('(j) (l) a full comboWithKegs game', () => {
     const specialKills = events.filter((e) => e.kind === 'kill' && e.cause === 'special');
     expect(specialKills.length).toBeLessThanOrEqual(specials.reduce((n, e) => n + (e.kind === 'special' ? e.hits : 0), 0));
     // The DEVLOG's "the fixed policy mostly misses": on the milestone 25c
-    // waves only wave 4's keg hits anything, one Wolf, killed (25b: a
-    // Harpy and a Wolf). The archetypes use the cluster policy instead.
-    expect(specials.map((e) => (e.kind === 'special' ? e.hits : -1))).toEqual([0, 0, 0, 1, 0, 0, 0, 0, 0, 0]);
-    expect(specialKills.map((e) => (e.kind === 'kill' ? e.enemyType : ''))).toEqual(['wolf']);
-    expect([state.phase, state.wave, state.lives, state.gold]).toEqual(['won', 10, 11, 398]);
+    // second-pass waves no keg hits anything (25b: one keg, a Harpy and a
+    // Wolf). The archetypes use the cluster policy instead.
+    expect(specials.map((e) => (e.kind === 'special' ? e.hits : -1))).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    expect(specialKills).toEqual([]);
+    expect([state.phase, state.wave, state.lives, state.gold]).toEqual(['won', 10, 12, 468]);
   });
 
   it('two runs are identical (state, waves, log)', () => {
