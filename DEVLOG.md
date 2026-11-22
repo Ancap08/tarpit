@@ -6568,3 +6568,51 @@ asks for 44 px on the standalone phone only.
   loop is checked only to within real time.
 - Frames on a real phone: cell size (20 CSS px), the tower icons in the
   bar, and the letterbox (the canvas uses 307 of 390 px of width).
+
+### Verifier notes
+
+Verifier: Claude Sonnet 5.5, different model from the implementer.
+Verdict: merge after fixes (one data-loss bug in switching, one cosmetic).
+
+- **Unchanged things hold.** `src/sim` has no diff; `npm run sim` summary is
+  byte-identical to `origin/main`; no landscape baseline PNG is in the diff.
+  Eight landscape frames (title, each map with towers, each map mid-wave,
+  win) rendered from main and from the tip at 960 x 580 are byte-identical
+  (md5), so the landscape claim is checked locally, not only by CI.
+- **Suite.** lint, check:assets, typecheck, 1110 unit tests, build, check:size
+  green. `test:e2e` (all three projects) twice: 399 passed, 8 skipped (416 passed, 10 skipped with the verifier spec, whose 2 skips are the fixmes), no
+  flake; the phone project alone three more times: 29 passed each. The
+  skips are the known ones (plus the perf spec's phone-project skip).
+- **Probes added**: `e2e/portrait-verifier-phone.spec.ts`. cellToPage matches
+  the documented transform for all 450 cells; on every map 60 buildable cells
+  tapped arm exactly that cell (and its four inner corners); every tower type
+  dragged to the four corners and cells beside trail, water and cottage lands
+  under the lifted ghost, and refused cells (path, water, cottage, occupied)
+  refuse; the tower panel for 45 cells per map stays inside the map, above the
+  controls and off its own tower; sprites on all three maps (ground, flyers,
+  boss waves) sit on the transformed path, never below their ground point, and
+  face their screen direction on straight stretches; controls are at least 44
+  CSS px with 47/34 px insets and none overlap or scroll; title by touch; five
+  turns mid-wave add no listeners, objects or cameras and change no state;
+  switching during a drag, an open panel, aiming, a speed hold, an end screen
+  and the title leaves nothing stuck; a square window is landscape and
+  600 x 601 is portrait (one flip at the boundary, no flapping); an upright
+  iPad (768 x 1024) gets portrait and plays.
+- **Bug 1 (fixme, medium).** Two layout switches before the first restart's
+  `create()` runs (two resizes inside one frame; the test calls `relayout()`
+  twice) restart the scene twice. The second `create()` finds `resume`
+  already taken and builds a new game: gold, towers and wave are lost. One
+  switch, or switches a frame apart, are fine (checked at 16, 40, 100 ms).
+  Needs a guard in `relayout()` (skip when a restart is pending, or keep
+  `resume` until the last create).
+- **Bug 2 (fixme, low).** `shakeOffset` never scrolls down, which hides the
+  controls in landscape, but in portrait the status strip is above the map,
+  so the shake's upward scroll (up to 8 px) pulls the strip's dark bottom
+  edge into the top of the map for 220 to 600 ms (keg, boss entrance, boss
+  death). Seen in a screenshot with the offset held at -6.
+- **Doc fix made.** DESIGN.md said 6 px gaps everywhere; the tower row's gap
+  is 4 px (`PORTRAIT_BAR_GAP`), the second row's 6 px.
+- **Notes, not bugs.** The Gold cheat target is 120 x 30 canvas px (about
+  21 CSS px tall): it is a hidden cheat, not a button. DRAG_LIFT is 48 canvas
+  px, about 27 CSS px at 0.57 scale: that is a small lift for a thumb; judge
+  on a real phone. An upright iPad uses about 54 percent of its width.

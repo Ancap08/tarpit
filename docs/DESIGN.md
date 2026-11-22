@@ -684,7 +684,7 @@ drawn and where touches land differ.
   the bottom), then the controls: a row of the six tower buttons (75 x 70,
   each the tower's map shape over its cost, because a name at 18 px does
   not fit 75 px) and a row with Special (130 x 70), Start Wave (214 x 70)
-  and speed (114 x 70), with 6 px gaps. Portrait text is 18 px or more.
+  and speed (114 x 70). The tower buttons are 4 px apart and the second row's 6 px; both rows start 5 px from the edge. Portrait text is 18 px or more.
   On a 390 x 763 CSS px phone (standalone, inside the safe areas) the
   canvas fits at 0.639: buttons are 44.7 CSS px, text 11.5 CSS px and a
   map cell 20.5 CSS px. With Safari's bars (390 x 664) the scale is 0.556:
