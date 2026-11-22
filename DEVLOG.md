@@ -6651,3 +6651,5 @@ Checks: lint, check:assets, typecheck, 1113 unit tests, build,
 check:size, 421 Playwright tests (8 skipped) on chromium, tablet and
 phone; `npm run sim` byte-identical to main; landscape frames
 byte-identical to main (27 of 27, re-run).
+- **Re-verify of 2bcc13b.** Both earlier fixmes pass unweakened (switch race, shake). New probes pass: a relayout during `create()`, Play again plus relayout in one frame (fresh game, not the old one), the title-to-game transition, a won screen with a switch and Keep going, a burst of 8 switches on the live loop (ticks within real time, no extra tick), the lift (48 CSS px) reaching every map edge by tower drag and special aim at 390 x 844, 390 x 664 and 768 x 1024 with the cancel rules, the aim text in the strip with the preview back after cancel and fire, and 8 landscape frames still byte-identical to main.
+- **Open, low (fixme).** `toMenu()` then `relayout()` in the same frame leaves the title and a restarted game scene both active (`relayout()` does not know the scene is leaving). It needs a turn in the same frame as the Menu tap.

@@ -8,6 +8,8 @@ import {
   api,
   cellPage,
   fingerFor,
+  liftPage,
+  worldPage,
   openTitle,
   pageScale,
   rectPage,
@@ -490,4 +492,206 @@ test('a shake never shows the status strip inside the map', async ({ page }) => 
   );
   expect(minY).toBeGreaterThanOrEqual(0);
   expect(await page.evaluate(() => (window as unknown as { __shookX?: boolean }).__shookX)).toBe(true);
+});
+
+// Re-verify of 2bcc13b: edges of the coalesced layout switch.
+const sceneKeys = (page: Page) => page.evaluate(() => window.__tarpit!.game.scene.getScenes(true).map((s) => s.scene.key));
+
+test('switch edge: a relayout during create() keeps the game and ends on the window layout', async ({ page }) => {
+  await startGame(page);
+  await page.evaluate(() => {
+    (window.__tarpit as TarpitTestApi).state().gold = 4321;
+    const g = window.__tarpit!.game.scene.getScene('game') as unknown as { relayout(): void; events: { once(e: string, f: () => void): void } };
+    g.events.once('create', () => g.relayout());
+    g.relayout();
+  });
+  await page.waitForTimeout(500);
+  expect((await state(page)).gold).toBe(4321);
+  expect(await sceneKeys(page)).toEqual(['game']);
+});
+
+test('switch edge: Play again or Menu followed by a relayout in the same frame never resurrects the old game', async ({ page }) => {
+  await startGame(page);
+  await page.evaluate(() => {
+    (window.__tarpit as TarpitTestApi).state().gold = 4321;
+    const g = window.__tarpit!.game.scene.getScene('game') as unknown as { relayout(): void; playAgain(): void };
+    g.playAgain();
+    g.relayout();
+  });
+  await page.waitForTimeout(500);
+  expect(await sceneKeys(page)).toEqual(['game']);
+  expect((await state(page)).gold, 'Play again then relayout').toBe(100);
+});
+
+// Bug (re-verify, low): toMenu() then relayout() in one frame (a turn in the frame Menu is tapped) leaves the
+// title and a restarted game scene both active: relayout() does not know the scene is leaving.
+test.fixme('switch edge: Menu followed by a relayout in the same frame leaves only the title', async ({ page }) => {
+  await startGame(page);
+  await page.evaluate(() => {
+    const g = window.__tarpit!.game.scene.getScene('game') as unknown as { relayout(): void; toMenu(): void };
+    g.toMenu();
+    g.relayout();
+  });
+  await page.waitForTimeout(500);
+  expect(await sceneKeys(page), 'Menu then relayout').toEqual(['title']);
+});
+
+test('switch edge: the title to game transition, a won screen, Keep going', async ({ page }) => {
+  await openTitle(page);
+  await page.evaluate(() => {
+    const t = window.__tarpit!.game.scene.getScene('title') as unknown as { play(d: string, m: string): void; relayout(): void };
+    t.play('normal', 'meadow');
+    t.relayout();
+  });
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.waitForTimeout(500);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(500);
+  expect(await sceneKeys(page)).toEqual(['game']);
+  expect(await page.evaluate(() => window.__tarpit!.layout())).toBe('portrait');
+  // Won: switch with the screen up, press Keep going, switch again.
+  await api(page, (a) => a.runScript('comboBuild'));
+  expect(await api(page, (a) => a.endScreen())).toBe('won');
+  const before = await state(page);
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.waitForTimeout(400);
+  expect(await api(page, (a) => a.endScreen())).toBe('won');
+  await tap(page, 'keepGoing');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(400);
+  const after = await state(page);
+  expect(after.wave).toBe(before.wave);
+  expect(after.phase).not.toBe('won');
+  expect(await api(page, (a) => a.endScreen())).toBeNull();
+  // Lost.
+  await page.evaluate(() => {
+    (window.__tarpit as TarpitTestApi).state().lives = 0;
+  });
+  await api(page, (a) => a.startWave());
+  await api(page, (a) => a.step(5));
+  const lost = await api(page, (a) => a.endScreen());
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.waitForTimeout(400);
+  expect(await api(page, (a) => a.endScreen())).toBe(lost);
+});
+
+test('switch edge: the live loop never runs extra ticks across a burst of switches', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForFunction(() => window.__tarpit?.titleReady?.() === true);
+  await tap(page, 'title:play');
+  await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game'));
+  await tap(page, 'startWave');
+  const tick = () => page.evaluate(() => (window.__tarpit!.game.scene.getScene('game') as unknown as { state: { tick: number } }).state.tick);
+  const t0 = await tick();
+  const w0 = Date.now();
+  for (let i = 0; i < 8; i++) {
+    await page.setViewportSize({ width: 844, height: 390 });
+    await page.setViewportSize({ width: 390, height: 844 });
+  }
+  await page.waitForTimeout(400);
+  const t1 = await tick();
+  const secs = (Date.now() - w0) / 1000;
+  expect(t1).toBeGreaterThan(t0);
+  expect(t1 - t0).toBeLessThanOrEqual(Math.ceil(secs * 60) + 5);
+  expect(await sceneKeys(page)).toEqual(['game']);
+  expect(await page.evaluate(() => window.__tarpit!.layout())).toBe('portrait');
+});
+
+for (const [w, h] of [[390, 844], [390, 664], [768, 1024]] as const) {
+  test(`lift ${w}x${h}: edge rows and columns reachable by tower drag and special aim; cancel rules`, async ({ browser }) => {
+    const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+    const page = await ctx.newPage();
+    await startGame(page, 'normal', 'meadow');
+    await rich(page);
+    const client = await ctx.newCDPSession(page);
+    const scale = await pageScale(page);
+    const lift = await liftPage(page);
+    expect(lift / scale).toBeGreaterThan(40);
+    expect(lift, `lift in CSS px at ${w}x${h}`).toBeGreaterThan(44);
+    expect(lift).toBeLessThan(52);
+    const edge = (c: Cell) => c.col <= 1 || c.col >= GRID_COLS - 2 || c.row <= 1 || c.row >= GRID_ROWS - 2;
+    const cells = allCells().filter((c) => buildable('meadow', c) && edge(c));
+    // one per edge: top (col<=1), bottom (col>=28), both side columns (row 0, row 14)
+    const pick = (f: (c: Cell) => boolean) => cells.filter(f)[0];
+    const all = [pick((c) => c.col <= 1), pick((c) => c.col >= GRID_COLS - 2), pick((c) => c.row <= 1 && c.col > 3), pick((c) => c.row >= GRID_ROWS - 2 && c.col > 3), nearestBuildable('meadow', 29, 14), nearestBuildable('meadow', 0, 0)];
+    const targets = all.filter((c, k) => all.findIndex((d) => d.col === c.col && d.row === c.row) === k);
+    let i = 0;
+    for (const cell of targets) {
+      const type = TOWERS[i++ % 6];
+      const from = await rectPage(page, `bar:${type}`);
+      await touchDrag(page, client, from, await fingerFor(page, cell), async () => {
+        expect((await ui(page)).dragging, `${w}x${h} ${type}`).toMatchObject({ cell });
+      });
+      expect((await state(page)).towers.some((t) => t.cell.col === cell.col && t.cell.row === cell.row && t.type === type), `${w}x${h} built ${cell.col},${cell.row}`).toBe(true);
+    }
+    // Cancel: release with the lifted point above the map (finger high on the screen), tower count unchanged.
+    const n = (await state(page)).towers.length;
+    const top = await worldPage(page, { x: 2, y: 240 });
+    await touchDrag(page, client, await rectPage(page, 'bar:cannon'), { x: top.x, y: top.y - 30 * scale }, undefined);
+    expect((await state(page)).towers).toHaveLength(n);
+    // Special aim at the edges.
+    await tap(page, 'startWave');
+    await api(page, (a) => a.step(30));
+    const last = () => api(page, (a) => {
+      const e = a.state().events.filter((x) => x.kind === 'special');
+      return e.length ? (e[e.length - 1] as { x: number; y: number }) : null;
+    });
+    for (const wp of [{ x: 12, y: 240 }, { x: 948, y: 240 }, { x: 480, y: 12 }, { x: 480, y: 468 }]) {
+      await page.evaluate(() => {
+        const s = (window.__tarpit as TarpitTestApi).state();
+        s.specialCharges = 1;
+        s.specialRechargeTicks = 0;
+      });
+      await tap(page, 'special');
+      const p = await worldPage(page, wp);
+      await touchDrag(page, client, p, { x: p.x, y: p.y + lift }, async () => {
+        expect((await ui(page)).special.holding).toBe(true);
+      });
+      const e = await last();
+      expect(Math.abs(e!.x - wp.x), `${w}x${h} aim ${wp.x},${wp.y}`).toBeLessThan(3);
+      expect(Math.abs(e!.y - wp.y), `${w}x${h} aim ${wp.x},${wp.y}`).toBeLessThan(3);
+    }
+    // A press that starts on the controls cancels aiming and fires nothing.
+    await page.evaluate(() => {
+      const s = (window.__tarpit as TarpitTestApi).state();
+      s.specialCharges = 1;
+      s.specialRechargeTicks = 0;
+    });
+    await tap(page, 'special');
+    const before = await last();
+    const bar = await rectPage(page, 'bar:cannon');
+    await touchDrag(page, client, bar, { x: bar.x, y: bar.y - 200 * scale });
+    expect(await last()).toEqual(before);
+    expect((await ui(page)).special.aiming).toBeNull();
+    await ctx.close();
+  });
+}
+
+test('aim text goes in the strip in portrait, the preview returns, Special again cancels', async ({ page }) => {
+  await startGame(page);
+  await rich(page);
+  await tap(page, 'startWave');
+  await api(page, (a) => a.step(60));
+  const next = () => api(page, (a) => a.hudText().next);
+  const preview = await next();
+  await tap(page, 'special');
+  const aim = await next();
+  expect(aim).not.toBe(preview);
+  expect(aim).toMatch(/Tap the trail|Powder Keg|hold/i);
+  expect(aim).not.toMatch(/Special again cancels/);
+  // nothing over the map: no banner text objects visible
+  const bannerVisible = await page.evaluate(() => {
+    const g = window.__tarpit!.game.scene.getScene('game') as unknown as { bannerMain: { text: string } };
+    return g.bannerMain.text;
+  });
+  expect(bannerVisible).toBe('');
+  await tap(page, 'special');
+  expect((await ui(page)).special.aiming).toBeNull();
+  expect(await next()).toBe(preview);
+  // and after firing
+  await tap(page, 'special');
+  const at = await worldPage(page, { x: 300, y: 200 });
+  await page.touchscreen.tap(at.x, at.y);
+  expect((await ui(page)).special.aiming).toBeNull();
+  expect(await next()).not.toMatch(/Tap the trail/);
 });
