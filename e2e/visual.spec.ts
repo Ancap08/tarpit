@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { BOSS_NAME, PANEL_TEXT, bestScoreText } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
+import type { TowerType } from '../src/sim/types';
 import type { TitleUiState } from '../src/game/TitleScene';
 import { MAPS, positionAlongPath } from '../src/sim/map';
 
@@ -569,11 +570,11 @@ test('win screen after the combo build', async ({ page }) => {
 });
 
 // Milestone 26: the title with a stored best for Normal (the selected
-// level), "Best on Normal: 12 waves" centred on y 414.
+// level), "Best on Meadow, Normal: 12 waves" centred on y 414.
 test('title with a best score', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('tarpit.best', '{"v":1,"best":{"meadow":{"normal":12}}}'));
   await open(page);
-  expect((await page.evaluate(() => (window.__tarpit as TarpitTestApi).ui<TitleUiState>())).bestLine?.text).toBe(bestScoreText('normal', 12));
+  expect((await page.evaluate(() => (window.__tarpit as TarpitTestApi).ui<TitleUiState>())).bestLine?.text).toBe(bestScoreText('meadow', 'normal', 12));
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('title-best.png');
 });
@@ -614,4 +615,76 @@ test('lose screen with no towers', async ({ page }) => {
   expect(end).toEqual({ screen: 'lost', wave: 1, lives: 0 }); // milestone 25c: wave 1's 20 Goblins take all 20 lives
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('lost.png');
+});
+
+// Milestone 27: the two new maps at wave 0, started on Normal through the
+// test hook (the title's map row is covered by the title frames).
+for (const map of ['switchback', 'riverbend'] as const) {
+  test(`map ${map} at wave 0`, async ({ page }) => {
+    await open(page);
+    await page.evaluate((m) => (window.__tarpit as TarpitTestApi).startGame('normal', m), map);
+    expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).state().map.id)).toBe(map);
+    await settle(page);
+    await expect(page.locator('canvas')).toHaveScreenshot(`map-${map}-wave0.png`);
+  });
+}
+
+// Milestone 27: one mid-wave frame per new map with enemies on at least
+// three path segments. Wave 2 (32 Goblins, 0.9 s apart) with a Musketeer
+// and a Cannon, picked by a headless scan of every 30th tick for the most
+// segments with some hurt Goblins and no two closer than 38 px. Switchback,
+// Musketeer (13,7) between two lanes and Cannon (21,10) on the last lane,
+// tick 1230: 20 Goblins on segments 0 to 4, the leftward y 192 lane (2)
+// included, 4 hurt. Riverbend, Musketeer (17,6) on the right bank and
+// Cannon (22,10), tick 1440: 23 Goblins on segments 0 to 3 (the first run,
+// the climb, the top run over the river, the descent), 3 hurt.
+const MID_WAVE_MAPS = {
+  switchback: { towers: [['musketeer', 13, 7], ['cannon', 21, 10]], steps: 1230, expect: { enemies: 20, hurt: 4, segments: [0, 1, 2, 3, 4] } },
+  riverbend: { towers: [['musketeer', 17, 6], ['cannon', 22, 10]], steps: 1440, expect: { enemies: 23, hurt: 3, segments: [0, 1, 2, 3] } },
+} as const;
+
+for (const map of ['switchback', 'riverbend'] as const) {
+  test(`map ${map} mid wave 2`, async ({ page }) => {
+    await open(page);
+    const setup = MID_WAVE_MAPS[map];
+    const r = await page.evaluate(
+      async ({ m, towers, steps }) => {
+        const t = window.__tarpit as TarpitTestApi;
+        await t.startGame('normal', m);
+        t.state().gold = 1000; // test setup: afford both towers
+        for (const [type, col, row] of towers) t.buildAt(col, row, type);
+        t.state().wave = 1; // test setup: the next Start Wave plays wave 2
+        t.startWave();
+        t.step(steps);
+        const s = t.state();
+        return { distances: s.enemies.map((e) => e.distance), hurt: s.enemies.filter((e) => e.hp < 19).length, path: s.map.path };
+      },
+      { m: map, towers: setup.towers as unknown as [TowerType, number, number][], steps: setup.steps },
+    );
+    // Segment index of each enemy, from the path's own lengths.
+    const ends: number[] = [];
+    let total = 0;
+    for (let i = 1; i < r.path.length; i++) ends.push((total += Math.hypot(r.path[i].x - r.path[i - 1].x, r.path[i].y - r.path[i - 1].y)));
+    const segments = [...new Set(r.distances.map((d) => ends.findIndex((e) => d <= e)))].sort((a, b) => a - b);
+    expect({ enemies: r.distances.length, hurt: r.hurt, segments }).toEqual(setup.expect);
+    if (map === 'switchback') expect(MAPS.switchback.path[3].x).toBeLessThan(MAPS.switchback.path[2].x); // segment 2 runs leftward
+    await settle(page);
+    await expect(page.locator('canvas')).toHaveScreenshot(`map-${map}-midwave.png`);
+  });
+}
+
+// Milestone 27: a Longbow dragged from the bar and held over the river
+// (cell (13,8)): the red cell and the faint red-tinted ghost, nothing built.
+test('riverbend placing invalid: a drag held over the river', async ({ page }) => {
+  await open(page);
+  await page.evaluate(() => (window.__tarpit as TarpitTestApi).startGame('normal', 'riverbend'));
+  const bar = await page.evaluate(() => (window.__tarpit as TarpitTestApi).uiRects()['bar:longbow']);
+  await page.mouse.move(bar.x + bar.width / 2, bar.y + bar.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(13 * 32 + 16, 8 * 32 + 16, { steps: 10 });
+  expect((await ui(page)).dragging).toEqual({ kind: 'place', tower: 'longbow', cell: { col: 13, row: 8 } });
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('riverbend-placing-invalid.png');
+  await page.mouse.up();
+  expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).state().towers)).toEqual([]);
 });
