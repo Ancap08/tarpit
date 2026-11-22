@@ -4520,3 +4520,211 @@ typecheck running beside it): 236 passed each time, against 4 failures in
 8 before the fix. 798 unit tests, lint, typecheck and build pass. Pixel
 baselines still need update-snapshots on CI; DECISIONS.md is the
 coordinator's.
+
+## 2026-11-21: milestone 27, maps
+
+Roles: implementer Claude Opus; verifier and coordinator to follow.
+
+### Implementer notes
+
+Built in four commits: the map-in-state refactor alone (Meadow proven
+unchanged), the two new maps in the simulation, the renderer and title
+row, then the new browser tests and baselines.
+
+**The map travels with the game.** `createGame({ map })` takes a `MapId`
+(`meadow`, `switchback`, `riverbend`; default `meadow`) or a test's own
+`MapDef` and stores the map object in `state.map`. The global `MAP` is
+gone; movement and the exit (`game.ts`), targeting, shots and splash
+(`combat.ts enemyPosition(enemy, map)`), specials and building
+(`actions.ts`), the headless runner, and in the renderer the map drawing,
+enemy positions and facing (`facingAt(map, ...)`), the barrel aim (`new
+Aim(map)`), panel placement (`placeBeside(..., map)`) and `spawnHorde` all
+read the game's map. The grid functions take the map explicitly (no
+default), so nothing can fall back to Meadow by accident. `MapDef` gains
+`id` and an optional `water` list. `grid.ts` computes two masks once per
+`MapDef` object (WeakMap): buildable, and why a cell is blocked
+(`terrainBlock`: `outside`, `path`, `landmark`, `water`). A
+structuredClone of a state carries a copy of the map, which gets its own
+masks on first use; no non-test code clones states.
+
+**The two maps** use the coordinator's waypoints exactly. Lengths: Meadow
+1584, Switchback 1728, Riverbend 1536 px. Buildable cells: Meadow 344
+(unchanged), Switchback 334, Riverbend 312 (352 without the river). Each
+cottage is `cottageFor(exit)`: Meadow's box moved with the exit point
+(x - 52, y - 61, 36 x 37); on both new maps it removes cells (28,10) and
+(29,10). The river `RIVER` is x 416..544, y 160..480: exactly columns 13
+to 16, rows 5 to 14, and no river cell is also a path cell. Build and
+move onto it return `{ ok: false, reason: 'water' }`; path, landmark and
+off-grid cells keep `not-buildable`. Water only blocks building.
+
+**Headless.** `WaveScript` gains `mapId` (not `map`, see below);
+`playScripted` plays on it, Meadow when absent. Archetypes take the map
+after the difficulty and record it. `trailCellOrder(map)` replaces the
+Meadow-only computation (`TRAIL_CELL_ORDER` is now
+`trailCellOrder(MAPS.meadow)`); `COMBO_PLANS` and
+`CLUSTER_POLICY_TICKS_BY_MAP` hold the per-map plan and ticks, and
+`endlessClusterPolicy(map)` builds the endless policy from them.
+`SOUND_PLAN`, `HARD_PLAN`, `comboWithKegs` and `comboStrongest` stay
+Meadow's. Meadow scripts carry no `mapId`, so they are the same objects
+as before.
+
+**How the plan cells were chosen.** Each plan keeps `COMBO_PLAN`'s 31
+actions role for role (two opening Longbows, a Tar Pit and Fire Pot
+pair, the anti-air Longbow, a Mortar, ..., the Cannon) and its order. For
+each build, in order, I ranked the free buildable cells by the path
+length within that tower's range (sampled every 4 px; 70 to 220 px for
+the Mortar) and took the top cell, with these exceptions:
+- Switchback: the first Fire Pot (11,7) stands beside its Tar Pit (12,7)
+  (rank 3); the Mortars stay off the between-lane stretches (row 4,
+  columns 10 to 15; row 7, columns 11 to 17), which go to the short-range
+  towers, and take (14,11), (19,7), (18,7); the Cannon (17,7) is 240
+  against the best 260 and is never bought on Normal.
+- Riverbend: the opening Longbows, the anti-air Longbow and the later
+  Longbows take a bank cell inside the arch within 1% of the best free
+  cell ((12,5) 416 against (6,8) 420), so they reach the climb and the
+  top run; the Fire Pots stand beside their Tar Pits.
+The cluster ticks were rescanned the way milestone 25c scanned Meadow:
+for each wave in turn, with the earlier waves firing at their ticks, the
+first wave tick at which the densest 70 px cluster is largest. The same
+scan run on `COMBO_PLAN` gives Meadow's `CLUSTER_POLICY_TICKS` back
+exactly. Switchback: 1, 109, 291, 461, 749, 741, 1244, 1343, 1194, 541.
+Riverbend: 304, 109, 1491, 461, 749, 767, 1430, 1241, 1490, 1520. All
+three targets passed with the first plan on both maps, so no other plan
+was tried.
+
+**Sim tables** (`npm run sim`, appended after Meadow's unchanged output;
+"lives by wave" is lives after each wave):
+
+Switchback (1728 px, 334 buildable):
+
+| Archetype | Level | Result | Wave | Lives | Gold | Lives by wave |
+|---|---|---|---|---|---|---|
+| noTowers | Normal | lost | 1 | 0 | 100 | 0 |
+| lazyBuild | Normal | lost | 9 | 0 | 448 | 20 20 20 20 17 17 8 3 0 |
+| longbowSpam | Normal | lost | 8 | 0 | 511 | 20 20 20 20 19 19 10 0 |
+| comboBuild | Normal | won | 10 | 18 | 436 | 20 20 20 20 19 19 18 18 18 18 |
+| noAntiAir | Normal | lost | 5 | 0 | 68 | 20 20 20 2 0 |
+| comboBuild | Easy | won | 10 | 30 | 422 | all 30 |
+| comboBuild | Hard | won | 10 | 7 | 448 | 15 15 15 15 13 13 8 7 7 7 |
+| endlessIdle | Normal | lost | 16 | 0 | 2027 | 15 waves cleared |
+
+Riverbend (1536 px, 312 buildable):
+
+| Archetype | Level | Result | Wave | Lives | Gold | Lives by wave |
+|---|---|---|---|---|---|---|
+| noTowers | Normal | lost | 1 | 0 | 100 | 0 |
+| lazyBuild | Normal | lost | 8 | 0 | 369 | 20 20 20 20 17 17 5 0 |
+| longbowSpam | Normal | lost | 8 | 0 | 525 | 20 20 20 20 17 17 5 0 |
+| comboBuild | Normal | won | 10 | 8 | 436 | 20 20 20 20 17 17 10 8 8 8 |
+| noAntiAir | Normal | lost | 5 | 0 | 74 | 20 20 20 1 0 |
+| comboBuild | Easy | won | 10 | 29 | 414 | 30 30 30 30 29 29 29 29 29 29 |
+| comboBuild | Hard | lost | 8 | 0 | 237 | 15 15 15 15 12 12 2 0 |
+| endlessIdle | Normal | lost | 14 | 0 | 1515 | 13 waves cleared |
+
+Milestone 27 targets on Normal: noTowers loses (both, wave 1), lazyBuild
+does not win (lost on 9 and 8), comboBuild wins (18 and 8 lives). Met.
+Meadow for comparison: combo 13 lives, lazyBuild lost on 8.
+
+**Meadow unchanged.** `npm run sim` on main (391bca1) and on each commit
+of this branch: the first 220 lines are byte-identical, the new map
+tables are appended. A scratch harness dumped, for every archetype,
+informational and endless script on Easy, Normal and Hard, the script,
+timed actions, action log, per-wave reports and final state (minus the
+new `map` field), plus `TRAIL_CELL_ORDER` and `playAllWavesNoTowers`:
+byte-identical on main, after the refactor and after the new maps.
+`maps.test.ts` pins Meadow's final comboBuild state on Normal against a
+fixture written from main's dump (`src/sim/fixtures/meadowComboNormal.ts`).
+
+**Renderer.** `draw/map.ts` draws any map from its data; water is a flat
+blue box with a 3 px darker bank, a rounded pool end (a half disc as wide
+as the strip, drawn inside the rule box) and pale ripple strokes; three
+palette colours. Placement hints, the ghost and the red invalid cell
+already went through `isBuildable(state, cell)`, so they follow water.
+Title: the "Map" caption at y 312 and three 132 x 72 thumbnail buttons
+at y 326..398 (16 px gaps), each a `Button` with an empty label, a 96 x
+48 picture drawn from the map data (grass, path, water, cave dot,
+cottage dot) and the name; the pick uses the button's picked state. Up
+and Down move the map, Left and Right the level. The best line reads
+"Best on Riverbend, Normal: 12 waves" and follows both selections.
+GameStartData carries `map`; Play again passes it; Menu returns to a
+title that still has it; scores are recorded under the game's map id.
+Hooks: `startGame(difficulty?, map?)`, `bestScore(difficulty, map?)`,
+`ui().map` on both scenes, `title:map:*` rects; `runScript` records the
+archetype on the running game's map.
+
+**Tests.** Unit: `src/sim/maps.test.ts` (39: the map in the state and a
+test MapDef, map data per map, the 36 px rule, buildable counts, water
+cells, reasons and the unchanged rest, bank cells, a shot across the
+river, Switchback's between-lane rows, walk time per map with the
+leftward lane, Meadow's final state against main, per-map plan
+determinism, wins and Keep going to wave 11, noTowers and lazyBuild per
+map, trail order per map), facing over every segment of every map and
+left-facing frames (`anim.test.ts`, 2), scores per map
+(`highScore.test.ts`, 1), the best-line text (`endlessText.test.ts`),
+panel placement over every buildable cell of every map
+(`input.test.ts`, now 6 cases). 844 unit tests (798 before). Browser:
+`e2e/maps.spec.ts` (7), `e2e/maps-touch.spec.ts` (3, tablet), five new
+visual tests. 251 Playwright tests pass locally, three full runs in a
+row (236 before).
+
+**Baselines.** New: `map-switchback-wave0`, `map-riverbend-wave0`,
+`map-switchback-midwave` (wave 2 tick 1230, 20 Goblins on segments 0 to
+4 including the leftward lane), `map-riverbend-midwave` (wave 2 tick
+1440, 23 Goblins on segments 0 to 3), `riverbend-placing-invalid`.
+Changed: `title`, `title-best` and also `title-hard` (it shows the map
+row too). How I checked that nothing else moved: exported main and this
+branch's tip with `git archive`, built each, and wrote every
+`visual.spec.ts` and `visual-tablet.spec.ts` frame on this Mac with
+`CI=1 --update-snapshots=all`; comparing the PNGs pixel by pixel, every
+Meadow frame is identical and only the three title frames differ, all
+inside x 264..695, y 306..422 (the map row and the best line). No PNG is
+committed; CI must generate them.
+
+### What went wrong
+
+- I first named the script's map property `map`. A WaveScript is an
+  array, so it clashed with `Array.prototype.map`; renamed `mapId`.
+- The full unit suite on main timed out two whole endless runs on this
+  machine under parallel load (`endless-verifier.test.ts` "the run is
+  the one playScripted gives, twice over", `endless.test.ts`
+  "endlessGreedy on Normal goes further..."; 2.6 s alone, 9 s in the
+  suite). Both now have a 30 s limit like their neighbours. The new
+  whole-game tests have 20 s limits.
+- The brief says Switchback has three U-turns and that row 10 sits
+  between two lanes. With the fixed waypoints the turns are two U-turns
+  and a step down, and row 10 lies under the y 288 lane while the y 384
+  lane starts at x 560: no buildable row 10 cell is within 48 px of two
+  lanes. The test checks rows 4 and 7 (columns 10 to 15 and 11 to 17;
+  the turn cells beside them are path) and pins the row 10 fact. Not
+  changed: the waypoints are the coordinator's.
+- My first water test put a Mortar on 100 gold and got
+  `not-enough-gold`; the green-outline pixel check first failed because
+  the ghost's translucent range circle darkens the outline (checked for
+  green ahead of red and blue instead).
+- Three existing browser checks listed the title's buttons exactly, and
+  two clicked x 480, y 366 as "empty title space", now a thumbnail; they
+  now expect the map row and click x 120.
+
+### For the verifier
+
+- Switchback is much easier for the combo build than Meadow (18 lives
+  against 13; Hard wins with 7) and Riverbend harder (8; Hard loses on
+  wave 8). The milestone's only targets are met; the balance pass is
+  milestone 28.
+- Switchback's wave 1 cluster tick is 1: the scan rule picked the first
+  tick because no cluster on that wave is ever bigger than one enemy.
+  That is the rule working, not a bug, but the special is then wasted.
+- The prompt line still says "Pick a difficulty, then press Play". The
+  brief did not list a new prompt, so I left it; a coordinator decision.
+- The Wolf (and the boss) show right-facing frames on up and down
+  segments, as before this milestone; left is mirrored correctly on
+  Switchback's leftward lane (`anim.test.ts` checks every segment).
+- A tower in a between-lane row has its label over the next lane's path
+  edge (the label sits 22 px below the centre; the lane edge is 28 px
+  below). Visible in `m27-switchback-midwave.png`.
+- `comboStrongest`, `comboWithKegs`, `soundBuild`, `soundBuildNoTar` and
+  `hardBuild` ignore a map argument and always play Meadow.
+- The panel, drag lift and end screens near the new edges are covered by
+  the placement unit test over every buildable cell of every map and by
+  the touch first-wave test; there is no separate browser test for the
+  panel at the Switchback exit or the Riverbend spawn.

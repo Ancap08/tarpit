@@ -20,9 +20,10 @@ Anything not in this file or `docs/SCOPE.md` is out of scope.
 
 ## Map
 
-One map, one path, and a build grid. The path is a polyline of waypoints from
-the spawn (left edge) to the exit (right edge); enemies move along it by
-distance travelled.
+Each map (three from milestone 27, see Maps below) has one path and the
+same build grid. The path is a polyline of waypoints from the spawn (left
+edge) to the exit (right edge); enemies move along it by distance
+travelled. Meadow, the v1 map, is described here.
 
 Path (pixels): (0,240) (160,240) (160,96) (420,96) (420,384) (680,384)
 (680,192) (960,192).
@@ -39,6 +40,73 @@ rules (346 by the path rule alone). Each cell holds at most one tower. Building 
 on the path strip or with a non-integer column or row is refused
 (`not-buildable`); building on an occupied cell is refused (`cell-occupied`).
 Towers fire in cellKey order (row by row, left to right).
+
+## Maps
+
+Milestone 27. Three maps, picked on the title screen; every map is 960 x
+480 px with the same 30 x 15 grid, the same 40 px path strip and the same
+build rules. A game is created on a map (`createGame({ map })`, default
+`meadow`) and keeps it in `state.map`; movement, targeting, specials,
+building and the renderer all read the game's map. `src/sim/map.ts` holds
+the `MAPS` registry (`MapId`: `meadow`, `switchback`, `riverbend`).
+
+| Map | Waypoints (px) | Length | Buildable |
+|---|---|---|---|
+| Meadow | (0,240) (160,240) (160,96) (420,96) (420,384) (680,384) (680,192) (960,192) | 1584 | 344 |
+| Switchback | (0,96) (560,96) (560,192) (320,192) (320,288) (560,288) (560,384) (960,384) | 1728 | 334 |
+| Riverbend | (0,384) (300,384) (300,96) (660,96) (660,384) (960,384) | 1536 | 312 |
+
+Every segment is axis-aligned; the spawn is on the left edge and the exit
+on the right edge. Buildable counts are of 450 cells.
+
+- **Switchback.** Four lanes (y 96, 192, 288, 384) 96 px apart, joined by
+  three short drops: two U-turns (x 560, then x 320) and a step down at
+  x 560 into the last lane. One row of cells lies between two lanes and
+  is 48 px from both: row 4, columns
+  10 to 15 (between y 96 and y 192) and row 7, columns 11 to 17 (between
+  y 192 and y 288). The y 192 lane runs right to left, the only leftward
+  segment on any map. Row 10 lies under the y 288 lane, but the y 384 lane
+  starts at x 560, so no row 10 cell reaches two lanes.
+- **Riverbend.** A wide S; the river is the water box x 416..544, y
+  160..480 (columns 13 to 16, rows 5 to 14, 40 cells). It runs off the
+  bottom edge, ends in a rounded pool at the top (drawn inside the box)
+  and never touches the path.
+- **Water rule.** `MapDef.water` is an optional list of boxes. A cell
+  whose 32 px square overlaps one (touching edges do not count) is not
+  buildable, the same rule as landmarks. Building or moving onto it is
+  refused with its own reason, `water` (path, landmark and off-grid cells
+  keep `not-buildable`). Water blocks only building: shots, ranges,
+  specials and flyers ignore it.
+- **Cottage rule.** Each map has one landmark, its exit cottage, at
+  Meadow's offset from the exit point: box x = exit x - 52, y = exit y -
+  61, 36 x 37 (Meadow: x 908, y 131; Switchback and Riverbend, exit
+  (960,384): x 908, y 323, which removes cells (28,10) and (29,10)). The
+  spawn cave is drawn on the path's first cells.
+- **Drawing.** `draw/map.ts` draws any map from its data: grass, the path,
+  water (flat blue, a 3 px darker bank, a few pale ripple strokes), the
+  cave at the spawn and a cottage in each landmark box. No image assets.
+- **High scores** are kept per map id (see High score).
+
+Title menu map row (y 302..400): a "Map" caption centred at (480, 312),
+then three thumbnail buttons at y 326..398, 132 px wide and 16 px apart
+like the level buttons (row centred on x 480), each 72 px tall: a 96 x 48
+picture of the map (scale 0.1, from the map data: grass, path, water, a
+dot for the cave and one for the cottage) 3 px from the top and the map's
+name centred 60 px below the top. Meadow is preselected; the pick is
+highlighted like the selected level. A click or tap only selects; only
+Play starts. Up and Down move the map selection (Up to the left, Down to
+the right, stopping at the ends); Left and Right still move the level;
+Enter or Space plays. The selection lasts the page session like the
+level; Play again keeps the map and Menu returns with it selected.
+
+Headless (`src/sim/headless.ts`): a `WaveScript` may carry `mapId`; the
+archetypes take the map after the difficulty. The trail order
+(`trailCellOrder`), the combo plan (`COMBO_PLANS`) and the cluster special
+ticks (`CLUSTER_POLICY_TICKS_BY_MAP`) are per map; SOUND_PLAN, HARD_PLAN
+and the keg policy are Meadow's only. Test hooks: `startGame(difficulty?,
+map?)`, `bestScore(difficulty, map?)`, `ui().map` on both scenes, and
+`title:map:meadow`, `title:map:switchback`, `title:map:riverbend` in
+`uiRects()` on the title.
 
 ## Economy and lives
 
@@ -579,8 +647,9 @@ Milestone 26. The best waves cleared per map and difficulty, in
 
     { "v": 1, "best": { "meadow": { "easy": 12, "normal": 10 } } }
 
-keyed by map id, then level, so later maps need no migration; today's
-only map id is `meadow`. `src/game/highScore.ts` parses (anything
+keyed by map id, then level, so later maps need no migration; milestone
+27 adds `switchback` and `riverbend`, and a score on one map never shows
+on another. `src/game/highScore.ts` parses (anything
 malformed is ignored part by part: bad JSON, another or no version, a
 map entry that is not an object, an unknown level, a score that is not a
 whole number of at least 1; unknown keys are skipped), merges (keeps the
@@ -596,9 +665,10 @@ what was parsed, so unknown levels, unknown top-level keys and a stored
 `v` other than 1 are dropped on the next new best (accepted; pinned in
 `highScore.test.ts`).
 
-Title menu: one 18 px line centred at (480, 414), "Best on Normal: 12
-waves" ("1 wave" for one) for the selected level, changing with the
-selection; no line when that level has no score. Test hooks
+Title menu: one 18 px line centred at (480, 414), "Best on Riverbend,
+Normal: 12 waves" ("1 wave" for one; milestone 27 added the map name) for
+the selected map and level, changing with either selection; no line when
+that pair has no score. Test hooks
 (`window.__tarpit`, `?test=1`): `continueEndless()`,
 `bestScore(difficulty)`, `ui().bestLine` on the title, `keepGoing` in
 `uiRects()` on the win screen, and `runScript('endlessIdle' |
