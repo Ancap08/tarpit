@@ -6249,3 +6249,49 @@ added to events or shot records: `hit` already carries the tower's cell and
   started, which is what the reduced-motion test checks.
 - The spread-case cost under heavy throttling (13%) is the one perf
   change; the 30 fps floor is far away at real speed.
+
+### Follow-up (coordinator review of the frames)
+
+1. **Shots readable at a glance.** Bodies about twice the size: musket
+   ball 8 px with a pale halo and a two-layer bright trail; arrow 16 px
+   with a dark outline, fletching and a pale trail; cannonball 16 px with
+   a highlight and a smoke trail; mortar shell 20 to 24 px with a halo, a
+   lit fuse and a shadow up to 22 x 10 px at 50% (35% at the top of the
+   arc); tar glob 16 px with a ground shadow; fire gout up to 20 px.
+   Muzzle flashes 8 px (musket) and 12 px (cannon, mortar), two-colour
+   with a white core, 100 ms. Impacts: Cannon and Mortar open with a
+   bright yellow-white flash over half the splash radius, then a 4 px ring
+   with a dark edge out to the radius over 380 ms, with 10 or 16 dust and
+   6 or 8 sparks; tar splat 9 px; fire burst 13 px. Caps and pools are
+   unchanged.
+2. **Boss death.** Three rings (80, 120, 160 px) starting 160 ms apart,
+   each 900 ms; 110 sparks, 40 dust, 24 smoke; the gold label is 34 px
+   and never groups (`GoldGroups.add(..., big)`); white flash 220 ms;
+   shake 8 px for 600 ms. Reduced motion keeps the burst and label, drops
+   flash and shake.
+3. **Shake edge.** Phaser's camera shake moved the whole camera, showing
+   the page background (#111418) at the edges and moving the HUD. Shakes
+   are now my own (`shakeOffset` in fxMath: x within the amplitude, y
+   never positive): while one runs the main camera's viewport is the map
+   rows with a grass background, and a second camera, added for the
+   shake and removed after, draws the HUD rows still. The keg uses the
+   same path. A new e2e test reads the canvas every frame of the boss
+   entrance shake: no page-background pixel in the left, right or top
+   two px, the HUD's top line identical on every frame, and the camera
+   whole again after.
+4. **Mortar freeze.** Travel 400 to 320 ms. A doomed sprite (dead in the
+   sim, its shot in flight) now walks on along the trail at its last speed
+   with its walk cycle running (`EnemySprites.walkOn`: one
+   `positionAlongPath` per doomed sprite per frame, so cheap). New e2e
+   test: the sprite moves more than 3 px and changes walk frame while its
+   kill waits.
+
+Checks after the follow-up: the 27 visual frames are again identical to
+main (same `git archive` method); `npm run sim` byte-identical; 1079 unit
+tests (26 in `fxMath.test.ts`); 13 tests in `e2e/effects.spec.ts`. The
+demo was re-recorded (3.23 MB, every assertion passed). Perf spec:
+16.7 ms median and 16.7 ms p95 in both cases, 302 ticks.
+
+What went wrong: the first boss-death frame was taken 120 ms in, under
+the white flash and before the rings spread; the saved frame is at about
+400 ms.
