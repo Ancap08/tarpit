@@ -51,6 +51,8 @@ test('live loop ticks, spawns enemies, and 2x runs faster', async ({ page }) => 
     // Milestone 31: the effects' read-only counts and a tower's drawn barrel angle.
     // Milestone 32b: cellToPage, layout (it replaced portraitCardVisible) and worldToPage.
     'cellToPage',
+    // Milestone 34: the map decoration's state.
+    'decor',
     'fx',
     'game',
     'layout',

@@ -169,7 +169,7 @@ import { Effects, type FxState } from './fx/effects';
 import { EnemySprites, type AnimState } from './anim/enemySprites';
 import { drawHpBars, drawShadows, drawStatusRings } from './draw/enemies';
 import { TowerLabels } from './draw/labels';
-import { drawMap } from './draw/map';
+import { LivingMap, type DecorState } from './decor/livingMap';
 import { ShotEffects } from './draw/shots';
 import { SpecialEffects } from './draw/specials';
 import { Aim, drawTowerShape, drawTowers } from './draw/towers';
@@ -420,6 +420,8 @@ export class GameScene extends Phaser.Scene {
   private readonly autoTick = !isTestMode();
   /** Milestone 31: the play-mode effects; null in test mode. */
   private fx: Effects | null = null;
+  /** Milestone 34: the map's ground, growth and moving things. */
+  private living: LivingMap | null = null;
 
   constructor() {
     super('game');
@@ -482,15 +484,16 @@ export class GameScene extends Phaser.Scene {
     this.press = null;
     this.cursor = 'default';
 
-    // Draw order: map, overlay (cell highlight, range circles, ghost), towers,
+    // Draw order: map (milestone 34: the living map's ground, trees and
+    // bushes, and its moving things), ground zones, overlay (cell highlight, range circles, ghost), towers,
     // status rings and flyer shadows, walking enemy sprites (sorted by y) and
     // their particles, shot effects, hp bars, tower labels, flying enemy
     // sprites (milestone 22), HUD (which covers any range circle
     // reaching below the map), then the panel and the end screen on top.
     // Milestone 32b: world-space layers take the layout's transform (placeWorld); the rest is placed through it.
     const world = () => this.layout.placeWorld(this.add.graphics());
-    const mapLayer = world();
-    drawMap(mapLayer, this.state.map, this.layout, this.layout.turned ? this.add.graphics() : undefined);
+    // Milestone 34: the living map (decor/livingMap.ts): the baked ground, trees and bushes, and the moving things, under everything else.
+    this.living = new LivingMap(this, this.state.map, this.layout, isTestMode());
     this.ground = world();
     this.overlay = world();
     this.dynamic = world();
@@ -1154,6 +1157,11 @@ export class GameScene extends Phaser.Scene {
     return this.fx?.snapshot() ?? null;
   }
 
+  /** Test hook (milestone 34, also in test mode): the map decoration's state. */
+  decorState(): DecorState | null {
+    return this.living?.snapshot() ?? null;
+  }
+
   /** Test hook (milestone 31, play only): the drawn barrel angle of the tower on `cell`, or null. */
   towerAngle(cell: Cell): number | null {
     return this.fx?.towerAngle(cell) ?? null;
@@ -1290,6 +1298,8 @@ export class GameScene extends Phaser.Scene {
   redraw(): void {
     if (!this.dynamic) return;
     this.aim.prune(this.state);
+    // Milestone 34: growth on a tower's cell hides; all of it fades while a tower is being placed (a pick or a drag).
+    this.living?.update(this.state, this.pick !== null || this.press?.active === true);
     this.ground.clear();
     this.specialFx.drawGround(this.ground, this.state);
     const g = this.dynamic;

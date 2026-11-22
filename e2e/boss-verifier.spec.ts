@@ -95,10 +95,23 @@ test('(a) at tick 4040 of wave 10 his layer is above the walkers and below shots
 // outer 10) the path colour reads x 0.85 x 0.8; 12 px below the point
 // (8 below the centre) the inner ellipse has ended and the outer still
 // covers 36 x sqrt(1 - 0.64) = 21.6 px to either side: x 0.85 at dx 0 and
-// -8; 60 px to either side is plain path (the strip is 40 px tall, y 172 to
+// -8; 60 px to either side is the trail as it was before he came (the strip is 40 px tall, y 172 to
 // 212). A pixel profile of the rows under him (verifier notes) matched this.
 test('(b) he has a two-ellipse ground shadow on the path under his feet', async ({ page }) => {
   await startGame(page);
+  // Milestone 34: the trail has texture, so each probe's ground colour is read before he arrives (test mode: the map is still).
+  const probe = (pos: { x: number; y: number }, dy: number) =>
+    page.evaluate(
+      async ({ pos, dy }) => {
+        const t = window.__tarpit as TarpitTestApi;
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        const ctx = t.game.canvas.getContext('2d')!;
+        const px = (dx: number, ddy: number) => [...ctx.getImageData(pos.x + dx, pos.y + ddy, 1, 1).data].slice(0, 3);
+        return { centre: px(0, dy), outerOnly: px(0, dy + 3), outerOnly2: px(-8, dy + 3), left: px(-60, dy), right: px(60, dy), above: px(0, -60) };
+      },
+      { pos, dy },
+    );
+  const ground = await probe({ x: 776, y: 192 }, BOSS_SHADOW.offsetY + 5);
   const enemies = await page.evaluate(() => {
     const t = window.__tarpit as TarpitTestApi;
     const s = t.state();
@@ -114,23 +127,13 @@ test('(b) he has a two-ellipse ground shadow on the path under his feet', async 
   const pos = { x: Math.round(p.x), y: Math.round(p.y) };
   expect(pos).toEqual({ x: 776, y: 192 });
   const dy = BOSS_SHADOW.offsetY + 5; // 9 px below the path point: below his feet, inside the inner ellipse
-  const r = await page.evaluate(
-    async ({ pos, dy }) => {
-      const t = window.__tarpit as TarpitTestApi;
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-      const ctx = t.game.canvas.getContext('2d')!;
-      const px = (dx: number, ddy: number) => [...ctx.getImageData(pos.x + dx, pos.y + ddy, 1, 1).data].slice(0, 3);
-      return { centre: px(0, dy), outerOnly: px(0, dy + 3), outerOnly2: px(-8, dy + 3), left: px(-60, dy), right: px(60, dy), above: px(0, -60) };
-    },
-    { pos, dy },
-  );
+  const r = await probe(pos, dy);
   const path = rgb(COLORS.path);
-  expect(r.left).toEqual(path);
-  expect(r.right).toEqual(path);
-  expect(near(r.centre, path.map((c) => c * (1 - BOSS_SHADOW.outer.alpha) * (1 - BOSS_SHADOW.inner.alpha))), `centre ${r.centre}`).toBe(true);
-  const outer = path.map((c) => c * (1 - BOSS_SHADOW.outer.alpha));
-  expect(near(r.outerOnly, outer), `outer ${r.outerOnly}`).toBe(true);
-  expect(near(r.outerOnly2, outer), `outer2 ${r.outerOnly2}`).toBe(true);
+  expect(r.left).toEqual(ground.left);
+  expect(r.right).toEqual(ground.right);
+  expect(near(r.centre, ground.centre.map((c) => c * (1 - BOSS_SHADOW.outer.alpha) * (1 - BOSS_SHADOW.inner.alpha))), `centre ${r.centre}`).toBe(true);
+  expect(near(r.outerOnly, ground.outerOnly.map((c) => c * (1 - BOSS_SHADOW.outer.alpha))), `outer ${r.outerOnly}`).toBe(true);
+  expect(near(r.outerOnly2, ground.outerOnly2.map((c) => c * (1 - BOSS_SHADOW.outer.alpha))), `outer2 ${r.outerOnly2}`).toBe(true);
   expect(r.above).not.toEqual(path); // sanity: 60 px up is grass or sprite, not path
 });
 
