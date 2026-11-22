@@ -476,7 +476,7 @@ function nextFreeKidCell(state: GameState): Cell | undefined {
 
 /**
  * Milestone 27 follow-up: the archetypes whose plans are Meadow's alone
- * (soundBuild, soundBuildNoTar, comboStrongest, comboWithKegs; hardBuild
+ * (soundBuild, soundBuildNoTar, comboStrongest; hardBuild
  * has a plan per map from milestone 28) throw for any other map instead of
  * returning a Meadow script that would be played on it.
  */
@@ -504,7 +504,9 @@ export function oneMusket(_difficulty?: Difficulty, map?: MapId): WaveScript {
 /**
  * Archetype 2, a kid's build: before each wave, buy base Musketeers while
  * affordable, on cells in TRAIL_CELL_ORDER. Never upgrades, never sells.
- * v2 target (milestone 12): lost on wave 6, 7 or 8.
+ * Target T2 (milestone 28): lost on wave 6 to 9 on Normal on every map;
+ * E1: wins on Easy with at least 8 lives; H2: survives wave 1 on Hard and
+ * loses by wave 5.
  */
 export function lazyBuild(difficulty?: Difficulty, map?: MapId): WaveScript {
   return recordScript((state) => {
@@ -781,9 +783,9 @@ export function comboNoSpecials(difficulty?: Difficulty, map?: MapId): WaveScrip
 
 /**
  * comboBuild with every Fire Pot action removed: no Fire Pot builds and no
- * upgrades on the cells where comboBuild builds them; its cluster specials
- * are kept. v2 target (milestone 12): strictly worse than comboBuild (lost,
- * or won with fewer lives).
+ * upgrades on the cells where comboBuild builds them; it keeps the combo's
+ * stored special list (searched for the full combo, not for this build).
+ * Target T5: strictly worse than comboBuild (lost, or won with fewer lives).
  */
 export function comboBuildNoFire(difficulty?: Difficulty, map?: MapId): WaveScript {
   return withoutTowerType(comboBuild(difficulty, map), 'firepot');
@@ -815,7 +817,8 @@ export function noAntiAir(difficulty?: Difficulty, map?: MapId): WaveScript {
     const kept = wave.filter((a) => !cells.has(cellKey(a.cell)));
     return i === before ? [...owned.map((cell): BuildAction => ({ type: 'sell', cell })), ...kept] : kept;
   });
-  // Milestone 25c: the combo's cluster specials are kept (and, 27, its map).
+  // The combo's stored special list is kept (searched for the full combo, not
+  // for this build), and its map (milestone 27).
   return withMeta(out, script);
 }
 
@@ -863,40 +866,9 @@ export function comboStrongest(difficulty?: Difficulty, map?: MapId): WaveScript
  */
 export type Archetype = (difficulty?: Difficulty, map?: MapId) => WaveScript;
 
-/** comboWithKegs aims every Powder Keg at the path point this far from the spawn (the long downhill run). */
-export const KEG_POLICY_DISTANCE = 700;
-/** comboWithKegs fires its Powder Keg when the wave tick counter reaches this (10 s into the wave). */
-export const KEG_POLICY_WAVE_TICK = 600;
-
-/**
- * Informational (milestone 25b): the combo build plus one Powder Keg per
- * wave at a fixed policy: at wave tick KEG_POLICY_WAVE_TICK (600), aimed at
- * the path point KEG_POLICY_DISTANCE (700) px from the spawn, (420, 232) in
- * the middle of the long downhill run. COMBO_PLAN is followed as in
- * comboBuild, recorded by playing (the keg kills change the gold), so the
- * pre-wave actions can differ from comboBuild's. No target.
- */
-export function comboWithKegs(difficulty?: Difficulty, map?: MapId): WaveScript {
-  meadowOnly('comboWithKegs', map);
-  const at = positionAlongPath(MAPS.meadow, KEG_POLICY_DISTANCE);
-  const keg: SpecialAction = { type: 'special', special: 'keg', x: at.x, y: at.y, atWaveTick: KEG_POLICY_WAVE_TICK };
-  const decide = followPlan(COMBO_PLAN);
-  const state = createGame({ difficulty });
-  const script: BuildAction[][] = [];
-  const timed: SpecialAction[][] = [];
-  for (let i = 0; i < WAVES.length && state.phase === 'setup'; i++) {
-    const actions: BuildAction[] = [];
-    for (let action = decide(state); action; action = decide(state)) {
-      applyAction(state, action);
-      actions.push(action);
-    }
-    script.push(actions);
-    timed.push([keg]);
-    applyAction(state, { type: 'startWave' });
-    runWaveWithTimed(state, [keg], 60 * 600, []);
-  }
-  return Object.assign(script, { timed });
-}
+// comboWithKegs (milestone 25b, a Powder Keg at a fixed point every wave)
+// was removed in milestone 28: its kegs hit nothing on the horde waves, so
+// it was the comboNoSpecials game.
 
 /**
  * The Hard purchase order (milestone 25c second pass on Meadow; milestone 28
@@ -907,7 +879,7 @@ export function comboWithKegs(difficulty?: Difficulty, map?: MapId): WaveScript 
  * pairs (23 to 26), the first Fire Pot (3), the Tar Pit and Fire Pot
  * upgrades (6, 7). The rest of the combo plan follows in its own order.
  * Upgraded Longbows first, since an upgraded Longbow is the most damage per
- * gold against Hard's 1080 hp Trolls.
+ * gold against Hard's 1140 hp Trolls.
  */
 export const HARD_ORDER: readonly number[] = [0, 1, 4, 10, 11, 20, 21, 22, 2, 23, 24, 25, 26, 3, 6, 7];
 
@@ -973,7 +945,7 @@ export function endlessClusterPolicy(map: MapId, difficulty: Difficulty = DEFAUL
 
 /**
  * Informational (milestone 26): comboBuild (COMBO_PLAN as soon as gold
- * allows, the cluster special policy), then Keep going after the win with
+ * allows, its stored special list), then Keep going after the win with
  * no further purchases, one cluster special per endless wave
  * (ENDLESS_CLUSTER_POLICY). Target on Normal: loses on wave 11 to 16.
  */
@@ -1044,7 +1016,6 @@ export const ENDLESS_ARCHETYPES: Readonly<Record<string, Archetype>> = {
 
 export const INFORMATIONAL: Readonly<Record<string, Archetype>> = {
   comboStrongest,
-  comboWithKegs,
 };
 
 /** Every archetype, in report order. */

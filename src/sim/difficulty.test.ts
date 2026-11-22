@@ -11,9 +11,9 @@ import type { EnemyType } from './types';
 import { WAVES } from './waves';
 
 describe('difficulty table (docs/SCOPE-v4.md)', () => {
-  it('Easy 0.75x hp, 150 gold, 30 lives; Normal 1x, 100, 20; Hard 1.2x, 80, 15 (milestone 25c)', () => {
+  it('Easy 0.75x hp, 150 gold, 35 lives; Normal 1x, 100, 20; Hard 1.2x, 80, 15 (milestone 28)', () => {
     expect(DIFFICULTY_DEFS).toEqual({
-      easy: { hpMultiplier: 0.75, startGold: 150, startLives: 30 },
+      easy: { hpMultiplier: 0.75, startGold: 150, startLives: 35 },
       normal: { hpMultiplier: 1, startGold: 100, startLives: 20 },
       hard: { hpMultiplier: 1.2, startGold: 80, startLives: 15 },
     });
@@ -45,7 +45,7 @@ describe('createGame per level', () => {
   });
 
   it.each([
-    ['easy', 150, 30],
+    ['easy', 150, 35],
     ['normal', 100, 20],
     ['hard', 80, 15],
   ] as const)('%s starts with %i gold and %i lives and records its level', (difficulty, gold, lives) => {

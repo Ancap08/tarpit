@@ -478,8 +478,8 @@ describe('B. archetypes and the map argument', () => {
   // soundBuild, soundBuildNoTar, hardBuild, comboStrongest and comboWithKegs dropped the map and returned a
   // Meadow script with no mapId, so `ARCHETYPES.hardBuild('hard', 'riverbend')` silently played Meadow.
   // Fixed in the milestone 27 follow-up (implementer): those five now throw for a map other than Meadow;
-  // milestone 28 gave hardBuild a plan per map, so four refuse. This was an it.fails pin; it now checks that every entry given
-  // a map either returns a script for that map or refuses it loudly, and that exactly those four refuse.
+  // milestone 28 gave hardBuild a plan per map and removed comboWithKegs, so three refuse. This was an it.fails pin; it now checks that every entry given
+  // a map either returns a script for that map or refuses it loudly, and that exactly those three refuse.
   it('every entry of ARCHETYPES and INFORMATIONAL given a map returns a script for that map or throws', async () => {
     const { ARCHETYPES, INFORMATIONAL } = await import('./headless');
     const wrong: string[] = [];
@@ -496,7 +496,7 @@ describe('B. archetypes and the map argument', () => {
       if (script.mapId !== 'riverbend') wrong.push(name);
     }
     expect(wrong).toEqual([]);
-    expect(refused.sort()).toEqual(['comboStrongest', 'comboWithKegs', 'soundBuild', 'soundBuildNoTar']);
+    expect(refused.sort()).toEqual(['comboStrongest', 'soundBuild', 'soundBuildNoTar']);
     // Meadow, named or not, still gets its script from each of them.
     for (const name of refused) {
       const f = { ...ARCHETYPES, ...INFORMATIONAL }[name];

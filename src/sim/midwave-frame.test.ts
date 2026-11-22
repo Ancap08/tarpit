@@ -1,18 +1,20 @@
 // Milestone 8 verifier: the mid-wave frame pin (e2e/visual.spec.ts, tick 848;
-// milestone 25c second pass: tick 1160; milestone 28: tick 155, see the
-// comment there).
+// milestone 25c second pass: wave 1 tick 1160; milestone 28: wave 1 tick
+// 155; milestone 28 follow-up: wave 2 tick 1904, see the comment there).
 import { describe, expect, it } from 'vitest';
 import { buildTower } from './actions';
 import { createGame, startWave, tick } from './game';
 
 describe('mid-wave frame pin', () => {
-  // Milestone 28: wave 1's Goblins come every 2.5 s and the Musketeer kills
-  // each one before it reaches the Cannon, which never fires in wave 1; at
-  // most 2 Goblins are out at once. Tick 155 shows the Musketeer's tracer 3
-  // ticks into its fade (fired at 152) with 2 Goblins out, 1 hurt.
-  it('tick 155 of wave 1 with Musketeer (7,5), Cannon (15,9), Tar Pit (18,9): 2 enemies, 1 hurt, Musketeer fired 3 ticks ago, the Cannon never', () => {
+  // Milestone 28 follow-up (verifier's proposal): wave 1's Goblins come every
+  // 2.5 s and the Musketeer alone clears them, so the frame plays wave 2
+  // (state.wave = 1, then Start Wave). Tick 1904: 15 Goblins out, 10 hurt,
+  // 2 tarred, the Cannon's splash 3 ticks into its fade (fired at 1901), the
+  // Tar Pit's shot 2 ticks old (1902), no shot on this tick, 20 lives.
+  it('tick 1904 of wave 2 with Musketeer (7,5), Cannon (15,9), Tar Pit (18,9): 15 Goblins, 10 hurt, 2 tarred, Cannon 3 and Tar Pit 2 ticks ago', () => {
     const s = createGame();
     s.gold = 1000;
+    s.wave = 1;
     for (const [cell, type] of [
       [{ col: 7, row: 5 }, 'musketeer'],
       [{ col: 15, row: 9 }, 'cannon'],
@@ -20,20 +22,23 @@ describe('mid-wave frame pin', () => {
     ] as const) {
       expect(buildTower(s, cell, type).ok).toBe(true);
     }
-    expect(startWave(s).ok).toBe(true);
-    const shotTicks: number[] = [];
-    for (let i = 1; i <= 155; i++) {
+    expect(startWave(s)).toEqual({ ok: true, wave: 2 });
+    const cannon: number[] = [];
+    const tar: number[] = [];
+    for (let i = 1; i <= 1904; i++) {
       tick(s);
-      if (s.shots.length > 0) shotTicks.push(i);
+      if (s.shots.some((x) => x.tower === 'cannon')) cannon.push(i);
+      if (s.shots.some((x) => x.tower === 'tarpit')) tar.push(i);
     }
-    expect({ enemies: s.enemies.length, hurt: s.enemies.filter((e) => e.hp < 23).length, shots: s.shots.length }).toEqual({ enemies: 2, hurt: 1, shots: 0 });
-    expect(shotTicks.at(-1)).toBe(152);
-    // The rest of the wave: the Cannon and the Tar Pit never fire.
-    let others = 0;
-    while (s.phase === 'wave') {
-      tick(s);
-      others += s.shots.filter((x) => x.tower !== 'musketeer').length;
-    }
-    expect([others, s.lives]).toEqual([0, 20]);
+    const e = s.enemies;
+    expect({
+      enemies: e.length,
+      goblins: e.filter((x) => x.type === 'goblin').length,
+      hurt: e.filter((x) => x.hp < 23).length,
+      tarred: e.filter((x) => x.slowTicksLeft > 0).length,
+      shots: s.shots.length,
+      lives: s.lives,
+    }).toEqual({ enemies: 15, goblins: 15, hurt: 10, tarred: 2, shots: 0, lives: 20 });
+    expect([cannon.at(-1), tar.at(-1)]).toEqual([1901, 1902]);
   });
 });

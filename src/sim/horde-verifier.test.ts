@@ -718,7 +718,7 @@ describe('B. the DESIGN.md wave table, transcribed by the verifier (no other tes
     expect(stat('boss')).toEqual([4000, 25, 150]);
     expect(SPECIAL_DEFS.fireArrows).toMatchObject({ unlockWave: 7, radius: 80, burnDps: 30, burnTicks: 240 });
     expect(DIFFICULTY_DEFS).toEqual({
-      easy: { hpMultiplier: 0.75, startGold: 150, startLives: 30 },
+      easy: { hpMultiplier: 0.75, startGold: 150, startLives: 35 },
       normal: { hpMultiplier: 1, startGold: 100, startLives: 20 },
       hard: { hpMultiplier: 1.2, startGold: 80, startLives: 15 },
     });
@@ -774,10 +774,10 @@ describe('S2. what tar still does (no balance test pins it)', () => {
     expect(tar.waves[6].ticks).toBeGreaterThan(none.waves[6].ticks);
   });
 
-  it('Tar Pit, Easy: soundBuild wins with 6 lives and soundBuildNoTar loses on wave 10', () => {
+  it('Tar Pit, Easy: soundBuild wins with 11 lives and soundBuildNoTar loses on wave 10', () => {
     const tar = run('soundBuild', 'easy');
     const none = run('soundBuildNoTar', 'easy');
-    expect([tar.state.phase, tar.state.lives]).toEqual(['won', 6]);
+    expect([tar.state.phase, tar.state.lives]).toEqual(['won', 11]);
     expect([none.state.phase, none.state.wave]).toEqual(['lost', 10]);
   });
   // Milestone 28: the Tar Barrel probe ("ends the same without its three

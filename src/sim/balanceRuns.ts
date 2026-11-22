@@ -73,9 +73,12 @@ export function playWithStats(script: WaveScript, difficulty?: Difficulty): Bala
       for (const action of timed) {
         if (action.atWaveTick !== state.waveTick) continue;
         if (action.type === 'callEarly') throw new Error('playWithStats: callEarly is not supported');
+        // Only the events this action appends: state.events still holds the
+        // previous tick's (milestone 28 follow-up: they were counted twice).
+        const from = state.events.length;
         const step = applyAction(state, action);
         if ('result' in step && !step.result.ok) refused += 1;
-        for (const e of state.events) if (e.kind === 'kill') w.kills += 1;
+        for (const e of state.events.slice(from)) if (e.kind === 'kill') w.kills += 1;
       }
       tick(state);
       w.ticks += 1;
@@ -119,7 +122,7 @@ export const ALL_MAP_ARCHETYPES = [
 ] as const;
 
 /** Archetypes with a Meadow plan only. */
-export const MEADOW_ONLY_ARCHETYPES = ['soundBuild', 'soundBuildNoTar', 'comboStrongest', 'comboWithKegs'] as const;
+export const MEADOW_ONLY_ARCHETYPES = ['soundBuild', 'soundBuildNoTar', 'comboStrongest'] as const;
 
 export type MatrixArchetype = (typeof ALL_MAP_ARCHETYPES)[number] | (typeof MEADOW_ONLY_ARCHETYPES)[number];
 

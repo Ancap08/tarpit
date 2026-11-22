@@ -20,7 +20,7 @@ export interface TargetResult {
 }
 
 export interface Target {
-  /** T1 .. T9, E1 .. E3, H1 .. H4, or R1 .. R6 for the 25c wave rules. */
+  /** T1 .. T9, E1 .. E3, H1 .. H4, or R1 .. R5 for the 25c wave rules. */
   id: string;
   /** The map, or undefined for a rule over the tables. */
   map?: MapId;
@@ -106,9 +106,9 @@ function mapTargets(map: MapId): Target[] {
       const x = r('oneMusket');
       return { ok: leaked(x, 1) <= 6, info: `${leaked(x, 1)} of ${spawned(x, 1)} leak` };
     }),
-    t('E1', 'Easy: lazyBuild wins', () => {
+    t('E1', 'Easy: lazyBuild wins with at least 8 lives', () => {
       const x = r('lazyBuild', 'easy');
-      return { ok: x.phase === 'won', info: matrixCell(x) };
+      return { ok: x.phase === 'won' && x.lives >= 8, info: matrixCell(x) };
     }),
     t('E2', 'Easy: noTowers loses', () => {
       const x = r('noTowers', 'easy');
@@ -164,7 +164,12 @@ const meadowExtras: Target[] = [
       const c = balanceRun('comboBuild', 'meadow', 'normal');
       const x = comboNoTarBarrelRun();
       const uses = comboBuild().timed!.flat().filter((a) => a.type === 'special' && a.special === 'tarBarrel').length;
-      const ok = uses > 0 && (worse(x, c) || (x.phase === c.phase && x.lives === c.lives && x.kills < c.kills));
+      // Strictly worse by lives, then kills: lost while the combo won, or
+      // won with fewer lives, or the same lives and fewer kills.
+      const lostWhereWon = x.phase === 'lost' && c.phase === 'won';
+      const fewerLives = x.phase === c.phase && x.lives < c.lives;
+      const sameLivesFewerKills = x.phase === c.phase && x.lives === c.lives && x.kills < c.kills;
+      const ok = uses > 0 && (lostWhereWon || fewerLives || sameLivesFewerKills);
       return { ok, info: `${uses} barrels; without: ${matrixCell(x)}, ${x.kills} kills; with: ${matrixCell(c)}, ${c.kills} kills` };
     },
   },

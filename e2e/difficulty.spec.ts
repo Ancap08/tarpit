@@ -69,7 +69,7 @@ test('the menu starts each level with its gold, lives and Goblin hp; Menu and Pl
   await click(page, 'title:play');
   await freshGame(page);
   expect(await t(page).difficulty()).toBe('easy');
-  expect(await t(page).state()).toMatchObject({ difficulty: 'easy', gold: 150, lives: 30, wave: 0 });
+  expect(await t(page).state()).toMatchObject({ difficulty: 'easy', gold: 150, lives: 35, wave: 0 });
   expect(await firstGoblinHp(page)).toBe(17);
   expect((await t(page).hud()).difficulty).toBe(DIFFICULTY_LABELS.easy);
 

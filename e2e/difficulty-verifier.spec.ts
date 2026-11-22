@@ -169,7 +169,7 @@ test('(d) [Menu] from the win screen: the title with the played level selected; 
   expect(await api(page, (a) => a.runScript('comboBuild'))).toBe('won');
   expect(await api(page, (a) => a.endScreen())).toBe('won');
   const won = await state(page);
-  expect(won).toMatchObject({ difficulty: 'easy', wave: 10, lives: 30, gold: 422 });
+  expect(won).toMatchObject({ difficulty: 'easy', wave: 10, lives: 35, gold: 422 });
   expect(won.towers.length).toBeGreaterThan(0);
   await click(page, 'menu');
   await onTitle(page);
@@ -177,7 +177,7 @@ test('(d) [Menu] from the win screen: the title with the played level selected; 
   expect(Object.keys(await api(page, (a) => a.uiRects())).sort()).toEqual(['title:easy', 'title:hard', 'title:map:meadow', 'title:map:riverbend', 'title:map:switchback', 'title:normal', 'title:play']); // milestone 27 adds the map thumbnails
   await click(page, 'title:play');
   await freshGame(page);
-  expect(await state(page)).toMatchObject({ difficulty: 'easy', tick: 0, wave: 0, gold: 150, lives: 30, towers: [], enemies: [], phase: 'setup' });
+  expect(await state(page)).toMatchObject({ difficulty: 'easy', tick: 0, wave: 0, gold: 150, lives: 35, towers: [], enemies: [], phase: 'setup' });
   expect(await api(page, (a) => a.speed())).toBe(1);
   // And the menu still switches level after a round trip: Menu is not on screen, so lose and go back.
   await api(page, (a) => {

@@ -1,7 +1,9 @@
 // The special-attack search (milestone 28). Offline: `npm run sim:specials`
 // runs it and writes the result to specialLists.ts, which the archetypes
-// read. specialSearch.test.ts reruns it for Meadow's lists and checks the
-// stored data is what it gives.
+// read. A full search takes minutes, so specialSearch.test.ts reruns only
+// waves 1 to 3 of one list (the combo plan on Meadow, Normal) and checks
+// that every stored choice of every list does strictly better on its wave
+// than no special.
 //
 // Wave-by-wave greedy search. The build plan is followed as in the
 // archetypes (each action as soon as gold allows, in setup). For each wave

@@ -9,7 +9,7 @@ import { buildTower, sellTower, setTargeting, towerAt } from './actions';
 import { enemyPosition, findTarget, fireTowers } from './combat';
 import { createGame } from './game';
 import { cellCenter, type Cell } from './grid';
-import { comboBuild, comboStrongest, comboWithKegs, INFORMATIONAL, playScripted } from './headless';
+import { comboBuild, comboStrongest, INFORMATIONAL, playScripted } from './headless';
 import type { Enemy, EnemyType, GameState, TargetingMode, TowerType } from './types';
 import { TARGETING_MODES } from './types';
 
@@ -197,8 +197,8 @@ describe('comboStrongest (informational)', () => {
         if (a.type === 'build') expect(wave[i + 1]).toEqual({ type: 'target', cell: a.cell, mode: 'strongest' });
       });
     }
-    // Milestone 25b added comboWithKegs (specials.test.ts).
-    expect(INFORMATIONAL).toEqual({ comboStrongest, comboWithKegs });
+    // Milestone 25b added comboWithKegs; milestone 28 removed it.
+    expect(INFORMATIONAL).toEqual({ comboStrongest });
   });
 
   it('runs with every action accepted, identically twice', () => {

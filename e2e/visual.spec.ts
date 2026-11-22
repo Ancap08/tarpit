@@ -76,27 +76,35 @@ test('map at wave 0', async ({ page }) => {
 // effect 1 to 3 ticks old with at least 2 hurt Goblins found the Cannon's
 // first shot at 1157; tick 1160 shows its splash 3 ticks into its fade, as
 // the original frame did, with 10 Goblins out and 4 hurt.
-// Milestone 28: wave 1's Goblins come every 2.5 s and the Musketeer kills
-// each before it reaches the Cannon, which never fires in wave 1 (at most 2
-// Goblins are out). Tick 155: the Musketeer's tracer 3 ticks into its fade
-// (fired at 152), 2 Goblins out, 1 hurt (src/sim/midwave-frame.test.ts).
-const MID_WAVE_STEPS = 155;
+// Milestone 28 follow-up: wave 1's Goblins come every 2.5 s and the
+// Musketeer alone clears them, so the frame plays wave 2 (state.wave = 1,
+// then Start Wave; the verifier's proposal). Tick 1904: 15 Goblins out, 10
+// hurt, 2 tarred, the Cannon's splash 3 ticks into its fade, the Tar Pit's
+// shot 2 ticks old, no shot on this tick (src/sim/midwave-frame.test.ts).
+const MID_WAVE_STEPS = 1904;
 
-test('mid wave 1 with three towers', async ({ page }) => {
+test('mid wave 2 with three towers', async ({ page }) => {
   await open(page);
   const counts = await page.evaluate(async (steps) => {
     const t = window.__tarpit as TarpitTestApi;
     await t.startGame();
     t.state().gold = 1000; // test setup: afford all three towers
+    t.state().wave = 1; // test setup: the next Start Wave plays wave 2
     t.buildAt(7, 5, 'musketeer'); // legacy spot 2
     t.buildAt(15, 9, 'cannon'); // legacy spot 6
     t.buildAt(18, 9, 'tarpit'); // legacy spot 7
     t.startWave();
     t.step(steps);
     const s = t.state();
-    return { enemies: s.enemies.length, hurt: s.enemies.filter((e) => e.hp < 23).length, shotsThisTick: s.shots.length };
+    return {
+      wave: s.wave,
+      enemies: s.enemies.length,
+      hurt: s.enemies.filter((e) => e.hp < 23).length,
+      tarred: s.enemies.filter((e) => e.slowTicksLeft > 0).length,
+      shotsThisTick: s.shots.length,
+    };
   }, MID_WAVE_STEPS);
-  expect(counts).toEqual({ enemies: 2, hurt: 1, shotsThisTick: 0 });
+  expect(counts).toEqual({ wave: 2, enemies: 15, hurt: 10, tarred: 2, shotsThisTick: 0 });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('mid-wave.png');
 });

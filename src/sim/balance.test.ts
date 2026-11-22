@@ -9,6 +9,7 @@
 // game is recorded once in this file.
 import { describe, expect, it } from 'vitest';
 import { archetypeScript, balanceRun, MATRIX_ARCHETYPES, playWithStats } from './balanceRuns';
+import { comboNoTarBarrelRun } from './balanceTargets';
 import { ENEMY_STATS } from './enemies';
 import { buildableCells, cellCenter, cellKey } from './grid';
 import {
@@ -187,21 +188,29 @@ describe('boss (milestone 23)', () => {
 describe('verifier (milestone 28)', () => {
   const sum = (o: Partial<Record<string, number>>) => Object.values(o).reduce((a: number, b) => a + (b ?? 0), 0);
 
-  // BUG (balanceRuns.ts playWithStats, low): after a timed special it counts
-  // every 'kill' event in state.events, but the events of the previous tick
-  // are still there (tick() clears the list, an action only appends), so a
-  // kill made on the tick before a special is counted twice. hardBuild on
-  // Meadow, Normal wins having met 524 enemies and reports 525 kills.
-  // Nothing reads the wrong number today (T9's "then kills" tie-break is
-  // not reached: 11 lives against 14). Fix: count the special's own kills
-  // from the action's result, or only the events it appended.
-  it.fails('playWithStats: kills plus exits equal the enemies spawned in a won game (hardBuild, Meadow, Normal)', () => {
+  // Was a BUG (balanceRuns.ts playWithStats): after a timed special it
+  // counted every 'kill' event in state.events, the previous tick's
+  // included, so hardBuild on Meadow, Normal reported 525 kills of 524
+  // enemies. Fixed in the milestone 28 follow-up (only the events the
+  // action appends are counted); this was an it.fails pin.
+  it('playWithStats: kills plus exits equal the enemies spawned in a won game (hardBuild, Meadow, Normal)', () => {
     const run = balanceRun('hardBuild', 'meadow', 'normal');
     expect(run.phase).toBe('won');
     const spawned = run.waves.reduce((n, w) => n + sum(w.spawns), 0);
     const exits = run.waves.reduce((n, w) => n + sum(w.exits), 0);
     expect(spawned).toBe(524);
     expect(run.kills + exits).toBe(spawned);
+  });
+
+  // T9's barrel check is a band (strictly worse by lives, then kills); the
+  // measured values (milestone 28 follow-up): without its two Tar Barrels
+  // the combo on Meadow, Normal wins with 11 lives against 14.
+  it('T9 measured: the combo without its Tar Barrels wins with 11 lives, the combo with them 14', () => {
+    const without = comboNoTarBarrelRun();
+    const combo = balanceRun('comboBuild', 'meadow', 'normal');
+    expect([without.phase, without.lives, combo.phase, combo.lives]).toEqual(['won', 11, 'won', 14]);
+    const spawned = without.waves.reduce((n, w) => n + sum(w.spawns), 0);
+    expect(without.kills + without.waves.reduce((n, w) => n + sum(w.exits), 0)).toBe(spawned);
   });
 
   // The targets assert bands; these are the exact measures behind T7, T8,

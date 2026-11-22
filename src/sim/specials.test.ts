@@ -6,8 +6,8 @@ import { enemyPosition } from './combat';
 import { ENEMY_STATS } from './enemies';
 import type { GameEvent } from './events';
 import { createGame, startWave, tick } from './game';
-import { comboWithKegs, KEG_POLICY_DISTANCE, KEG_POLICY_WAVE_TICK, playScripted } from './headless';
-import { MAPS, positionAlongPath } from './map';
+import { playScripted } from './headless';
+import { MAPS } from './map';
 import { SPECIAL_DEFS, SPECIAL_TYPES, unlockedSpecials, type SpecialType } from './specials';
 import type { Enemy, EnemyType, GameState } from './types';
 import { WAVES } from './waves';
@@ -235,7 +235,7 @@ describe('kills', () => {
   });
 });
 
-describe('headless: timed special actions and comboWithKegs', () => {
+describe('headless: timed special actions', () => {
   it('a timed special fires when the wave tick counter reaches atWaveTick', () => {
     const script = Object.assign([[]], {
       timed: [[{ type: 'special' as const, special: 'keg' as SpecialType, x: 200, y: 200, atWaveTick: 123 }]],
@@ -245,24 +245,6 @@ describe('headless: timed special actions and comboWithKegs', () => {
     expect(fired).toEqual([expect.objectContaining({ action: 'special', special: 'keg', waveTick: 123, result: expect.objectContaining({ ok: true }) })]);
     expect(run.waves[0].wave).toBe(1);
   });
-
-  it('comboWithKegs aims at (420, 232), the path point 700 px from the spawn, at wave tick 600, every action accepted', () => {
-    expect([KEG_POLICY_DISTANCE, KEG_POLICY_WAVE_TICK]).toEqual([700, 600]);
-    expect(positionAlongPath(MAPS.meadow, KEG_POLICY_DISTANCE)).toEqual({ x: 420, y: 232 });
-    const script = comboWithKegs();
-    expect(script.timed).toHaveLength(script.length);
-    const run = playScripted(script);
-    expect(run.log.filter((l) => 'result' in l && !l.result.ok)).toEqual([]);
-    const kegs = run.log.filter((l) => l.action === 'special');
-    expect(kegs).toHaveLength(run.waves.length);
-    for (const k of kegs) expect(k).toMatchObject({ special: 'keg', x: 420, y: 232, waveTick: 600 });
-  });
-
-  it('comboWithKegs is deterministic: two runs give the same state, waves and log', () => {
-    const a = playScripted(comboWithKegs());
-    const b = playScripted(comboWithKegs());
-    expect(b.state).toEqual(a.state);
-    expect(b.waves).toEqual(a.waves);
-    expect(b.log).toEqual(a.log);
-  });
+  // Milestone 28: comboWithKegs (a keg at (420, 232) at wave tick 600 every
+  // wave) is removed; it hit nothing and was the comboNoSpecials game.
 });

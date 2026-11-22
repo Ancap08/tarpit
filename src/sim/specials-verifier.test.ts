@@ -14,7 +14,7 @@ import { enemyPosition, findTarget } from './combat';
 import { ENEMY_STATS } from './enemies';
 import type { GameEvent } from './events';
 import { createGame, startWave, tick } from './game';
-import { applyAction, comboWithKegs, playScripted } from './headless';
+import { applyAction, comboBuild, playScripted } from './headless';
 import { SPECIAL_TYPES } from './specials';
 import type { Enemy, EnemyType, GameState, TowerType } from './types';
 import { WAVES } from './waves';
@@ -329,9 +329,9 @@ describe('(i) a special on empty ground', () => {
   });
 });
 
-/** Replay a comboWithKegs script tick by tick, collecting every event once. */
+/** Replay a comboBuild script tick by tick, collecting every event once. */
 function replay(): { state: GameState; events: GameEvent[] } {
-  const script = comboWithKegs();
+  const script = comboBuild();
   const s = createGame();
   const events: GameEvent[] = [];
   for (let i = 0; i < WAVES.length && phaseOf(s) === 'setup'; i++) {
@@ -351,10 +351,12 @@ function replay(): { state: GameState; events: GameEvent[] } {
   return { state: s, events };
 }
 
-describe('(j) (l) a full comboWithKegs game', () => {
+// Milestone 28: comboWithKegs is gone (its kegs hit nothing); the same
+// checks run on comboBuild, whose stored special list does kill.
+describe('(j) (l) a full comboBuild game with its stored special list', () => {
   it('kills + exits == spawns, each id gone at most once; the replay equals playScripted', () => {
     const { state, events } = replay();
-    const reference = playScripted(comboWithKegs());
+    const reference = playScripted(comboBuild());
     expect(state).toEqual(reference.state);
     const ids = (kind: string) => events.filter((e) => e.kind === kind).map((e) => (e as { enemyId: number }).enemyId);
     const spawns = ids('spawn');
@@ -368,17 +370,15 @@ describe('(j) (l) a full comboWithKegs game', () => {
     expect(specials).toHaveLength(10);
     const specialKills = events.filter((e) => e.kind === 'kill' && e.cause === 'special');
     expect(specialKills.length).toBeLessThanOrEqual(specials.reduce((n, e) => n + (e.kind === 'special' ? e.hits : 0), 0));
-    // The DEVLOG's "the fixed policy mostly misses": on the milestone 25c
-    // second-pass waves no keg hits anything (25b: one keg, a Harpy and a
-    // Wolf). The archetypes use the cluster policy instead.
-    expect(specials.map((e) => (e.kind === 'special' ? e.hits : -1))).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-    expect(specialKills).toEqual([]);
-    expect([state.phase, state.wave, state.lives, state.gold]).toEqual(['won', 10, 11, 460]);
+    // Every stored special hits something, and some of them kill.
+    for (const e of specials) expect(e.kind === 'special' && e.hits).toBeGreaterThan(0);
+    expect(specialKills.length).toBeGreaterThan(0);
+    expect([state.phase, state.wave, state.lives, state.gold]).toEqual(['won', 10, 14, 484]);
   });
 
   it('two runs are identical (state, waves, log)', () => {
-    const a = playScripted(comboWithKegs());
-    const b = playScripted(comboWithKegs());
+    const a = playScripted(comboBuild());
+    const b = playScripted(comboBuild());
     expect(JSON.stringify(b)).toBe(JSON.stringify(a));
   });
 });

@@ -163,7 +163,7 @@ Picked on the title menu before each game (Normal preselected);
 |---|---|---|---|
 | Enemy hp | 0.75x | 1x | 1.2x |
 | Start gold | 150 | 100 | 80 |
-| Lives | 30 | 20 | 15 |
+| Lives | 35 | 20 | 15 |
 
 An enemy spawns with `round(base hp x multiplier)`, a whole number (half
 rounds up), which is also its full hp for the hp bar and the boss bar.
@@ -408,7 +408,10 @@ enemy `i` of a group spawns on waveTick `round((delay + i x interval) x
 | 10 | 20 Wolf every 1.5 s, delay 4 s; 15 Troll every 4.5 s; 12 Harpy every 1.5 s, delay 6 s; 8 Shieldbearer every 5 s, delay 2.5 s; 1 Grumblefoot (boss), delay 65 s | 56 | 19642 | 386 | 65 s |
 
 Total hp and bounty are on Normal, without the 25 clear bonus. The ten
-waves hold 524 enemies.
+waves hold 524 enemies. Wave 1 is deliberately gentle: one
+Goblin every 2.5 s, so a single Musketeer stops all of them on Easy and
+Normal (three shots per Goblin on Hard make it a real wave there). Kyle's
+play notes decide whether it stays this long.
 
 **Wave rules** (`balance.suite.ts` R1 to R5):
 
@@ -603,8 +606,7 @@ its script by playing on a level and map and returns a `WaveScript`
   1241, 1754 and 713).
 - Meadow only (they throw for another map): **soundBuild** (Musketeers, Cannons and a Tar Pit),
   **soundBuildNoTar** (its Tar Pit cells removed), **comboStrongest**
-  (every tower set to Strongest), **comboWithKegs** (a Powder Keg at wave
-  tick 600 aimed at (420, 232) every wave).
+  (every tower set to Strongest).
 - **Cluster special** (`clusterSpecial` timed action): fire the first
   unlocked of Fire Arrows, Tar Barrel, Powder Keg at the centroid of the
   densest cluster of live enemies within 70 px of a live enemy.
@@ -647,7 +649,8 @@ Normal, every map:
   without the Tar Barrel uses in its special list does strictly worse
   (lives, then kills).
 
-Easy, every map: **E1** lazyBuild wins; **E2** noTowers loses; **E3**
+Easy, every map: **E1** lazyBuild wins with at least 8 lives; **E2**
+noTowers loses; **E3**
 oneMusket lets at most 3 of wave 1's enemies exit.
 
 Hard, every map: **H1** hardBuild wins; **H2** lazyBuild survives wave 1
@@ -655,6 +658,18 @@ and loses by wave 5; **H3** comboBuild has at least 5 fewer lives than on
 Normal, or loses on wave 8 or later; **H4** the Hard hp rule.
 
 The wave rules R1 to R5 (Waves) hold too.
+
+Two facts behind these results:
+
+- `comboBuildNoFire` and `noAntiAir` are the combo's script with some
+  actions removed, and they fire the combo's stored special list, which
+  was searched for the full combo, not for them. So T5 and T7 measure
+  those builds with specials aimed for another game.
+- On Hard the winning results depend on the searched special lists. A
+  player who aims worse than a wave-by-wave search does not get them:
+  hardBuild on Hard with no specials wins on Meadow with 2 lives (9 with
+  its list) and loses on Riverbend on wave 8 (wins with its list), and
+  the combo plan with no specials loses on Meadow on wave 3.
 
 ## Measured matrix
 
@@ -664,17 +679,16 @@ lost on wave 8 (endlessIdle: the endless wave it was lost on).
 | Archetype | Meadow easy | Meadow normal | Meadow hard | Switchback easy | Switchback normal | Switchback hard | Riverbend easy | Riverbend normal | Riverbend hard |
 |---|---|---|---|---|---|---|---|---|---|
 | noTowers | L 2 | L 1 | L 1 | L 2 | L 1 | L 1 | L 2 | L 1 | L 1 |
-| oneMusket | L 3 | L 2 | L 2 | L 2 | L 2 | L 2 | L 2 | L 2 | L 2 |
-| lazyBuild | W 5 | L 8 | L 2 | W 15 | L 8 | L 2 | W 4 | L 8 | L 2 |
-| greedyMusket | W 29 | L 8 | L 2 | W 28 | W 1 | L 2 | W 30 | L 8 | L 2 |
-| longbowSpam | L 10 | L 8 | L 7 | W 19 | L 8 | L 8 | L 10 | L 8 | L 7 |
+| oneMusket | L 3 | L 2 | L 2 | L 3 | L 2 | L 2 | L 3 | L 2 | L 2 |
+| lazyBuild | W 10 | L 8 | L 2 | W 20 | L 8 | L 2 | W 9 | L 8 | L 2 |
+| greedyMusket | W 34 | L 8 | L 2 | W 33 | W 1 | L 2 | W 35 | L 8 | L 2 |
+| longbowSpam | W 2 | L 8 | L 7 | W 24 | L 8 | L 8 | W 2 | L 8 | L 7 |
 | noAntiAir | L 7 | L 5 | L 4 | L 7 | L 5 | L 4 | L 7 | L 5 | L 4 |
-| comboBuild | W 30 | W 14 | L 8 | W 30 | W 18 | W 6 | W 30 | W 16 | L 8 |
-| comboBuildNoFire | W 29 | W 4 | L 7 | W 30 | W 13 | L 8 | W 25 | W 5 | L 5 |
-| comboNoSpecials | W 29 | W 11 | L 3 | W 30 | W 16 | W 1 | W 29 | W 7 | L 7 |
-| hardBuild | W 30 | W 20 | W 9 | W 30 | W 20 | W 13 | W 30 | W 19 | W 5 |
-| endlessIdle | L 18 | L 14 | L 8 | L 19 | L 16 | L 14 | L 18 | L 15 | L 8 |
-| soundBuild | W 6 | L 7 | L 2 | - | - | - | - | - | - |
+| comboBuild | W 35 | W 14 | L 8 | W 35 | W 18 | W 6 | W 35 | W 16 | L 8 |
+| comboBuildNoFire | W 34 | W 4 | L 7 | W 35 | W 13 | L 8 | W 30 | W 5 | L 5 |
+| comboNoSpecials | W 34 | W 11 | L 3 | W 35 | W 16 | W 1 | W 34 | W 7 | L 7 |
+| hardBuild | W 35 | W 20 | W 9 | W 35 | W 20 | W 13 | W 35 | W 19 | W 5 |
+| endlessIdle | L 18 | L 14 | L 8 | L 20 | L 16 | L 14 | L 18 | L 15 | L 8 |
+| soundBuild | W 11 | L 7 | L 2 | - | - | - | - | - | - |
 | soundBuildNoTar | L 10 | L 7 | L 2 | - | - | - | - | - | - |
-| comboStrongest | W 4 | L 7 | L 2 | - | - | - | - | - | - |
-| comboWithKegs | W 29 | W 11 | L 3 | - | - | - | - | - | - |
+| comboStrongest | W 9 | L 7 | L 2 | - | - | - | - | - | - |
