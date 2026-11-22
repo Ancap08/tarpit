@@ -5513,3 +5513,397 @@ The DESIGN.md generator in my scratch folder had pasted the endless hp
 line into `ENDLESS_HP_GROWTH` (a placeholder that was a prefix of a real
 name); its placeholders are now delimited, and the regenerated file keeps
 the verifier's fix.
+
+## 2026-11-22: milestone 29, v4 retrospective
+
+Roles: implementer Claude Opus; verifier and coordinator to follow. No game
+code changed in this milestone.
+
+### Implementer notes
+
+The implementer (Claude Opus) rewrote the README for v4, re-recorded the
+demo, added two stills and wrote this section.
+
+- **README.** Every "How to play" step was checked by driving the built game
+  (`?test=1` hooks and real clicks, desktop and tablet size): the title's
+  level and map selection (clicks, Left/Right, Up/Down, Enter), click and
+  drag placement, Escape and a second bar click clearing the pick, a drag
+  move of an unlocked tower, "Remove  +50", "Undo upgrade  +35" and back,
+  Target cycling First, Last, Strongest, First, "Kills 0" in the panel,
+  locking at Start Wave ("Sell  +35"), a locked tower that does not drag,
+  the Special button selecting the Powder Keg directly in wave 1 and Escape
+  cancelling it, "Call next  +20" after wave 1's last spawn, wave 9 refused
+  with `last-wave`, three specials in the wave 9 popup, the wave 10 preview
+  and boss bar, Keep going after a comboBuild win (wave counter "Wave 10",
+  best score 10 on the title after a reload), Easy's 150 gold, 35 lives and
+  tag, tap-tap placement on the tablet and the portrait card. "By the
+  numbers" was recomputed at `e191bf5` (PR 33's merge); the commands are in
+  the README.
+- **Demo plan.** Wave 1 spawns one Goblin every 2.5 s for 47.5 s, so it
+  takes about 26 s of the recording at 2x. A headless run of the plan in the
+  scratchpad chose the rest. A Musketeer opening fails: Musketeer then Tar
+  Pit loses all 20 lives in wave 2. The combo opening (two Longbows) holds,
+  but its Longbows kill almost everything before it reaches the Tar Pit and
+  Fire Pot on (14,10) and (14,9), so almost nothing burns on screen. The plan used: Longbow dropped on (11,7) and
+  moved to (9,5) in the planning phase, Tar Pit on (6,4) by the first climb
+  (100 gold, 0 left), wave 1 (ends with 65 gold, 20 lives), wave 2 with a
+  Powder Keg at wave tick 490 on (172,125) (4 kills at any tick from 485 to
+  510 in the headless run), a Fire Pot on (6,5) beside the Tar Pit once
+  gold reaches 70, "Call next" as soon as it is offered (wave 2's last spawn,
+  tick 1674), then the Longbow's panel for 4 s.
+- **Recording.** 59.0 s of play sped up 2.36x into a 640 x 387, 12 fps,
+  25.0 s GIF of 3,000,132 bytes (the v2 GIF: 640 x 387, 12 fps, 25.0 s,
+  2,712,518 bytes). I kept the speed-up even across the whole recording, so
+  about 11 s of the GIF is wave 1 with one Goblin at a time. Five full runs
+  (the first two before the title hold was lengthened) logged the same
+  actions at the same ticks: keg at wave 2 tick 490 (gold
+  69 to 77, enemies 8 to 4), Fire Pot at tick 744, the still at tick 824,
+  Call next at tick 1676 (+20, gold 41 to 87), Longbow panel "Kills 32";
+  only the closing idle tick differed (680 or 682). The two test-mode stills
+  were byte-identical across runs.
+- **Stills.** `tarpit.png` is made as before: a screenshot of the real-time
+  (WebGL) recording, the first wave 2 frame after the Fire Pot is built
+  where a Goblin is tarred and burning and the Fire Pot has just fired.
+  `tarpit-riverbend.png` and `tarpit-boss.png` are test mode (`?test=1`,
+  Canvas, frozen walk frames, no tints), played by `runScript('comboBuild')`
+  through the scene's actions: Riverbend, wave 7, step 1440 (16 enemies, 9
+  towers, 19 lives), and Meadow, wave 10, step 5361, the frame
+  `boss-frame.test.ts` pins ("Grumblefoot 3339 / 4000"). Reaching wave 7 or
+  10 in real time would add several minutes of live clicking per run. The
+  script asserts both setups before saving.
+- **What the frames show.** Eight frames of the GIF at 1.6, 4.7, 7.8, 10.9,
+  14.1, 17.2, 20.3 and 23.4 s: the title with the Difficulty and Map rows
+  and Meadow and Normal selected; the planning phase, Tar Pit and Longbow
+  with dashed outlines, 0 gold, Start Wave lit; three frames of wave 1 at 2x
+  with one or two Goblins near the Tar Pit; wave 2 with Goblins on the first
+  climb; the Fire Pot beside the Tar Pit with Goblins strung along the climb;
+  wave 3 with the Longbow's panel open ("Kills 32", Upgrade 30, Sell +28,
+  Target: First) and two tarred, burning Goblins on the top run. The keg's
+  circle and flash fall between those eight frames; a 2 fps contact sheet
+  shows the orange-red circle over four Goblins on the first climb, then the
+  flash. Things that look off: the "Tar" label sits over the Fire Pot when
+  the two stand one above the other (the known label crowding); a Goblin in
+  its hit flash is a plain white shape in WebGL; the panel covers part of
+  the top run; on Riverbend the Longbow, Longbow and Mortar on the left bank
+  show mostly labels.
+- `npm run check:assets` passes (12 manifest rows). `docs/media` is outside
+  `dist/`, which stays 1,310,834 bytes in 4 files.
+
+### Timeline
+
+All times UTC, from `gh`.
+
+- 2026-11-21 21:15 PR 21 merged: the v4 scope, approved by Kyle.
+- 21:27 PR 22 merged: milestone 16, the last v3 milestone.
+- PR 23 (milestone 22) at 22:02, PR 24 (23) at 22:42, PR 25 (24) at 22:52,
+  PR 26 (the scope extended from Kyle's iPad play notes) at 23:12, PR 27
+  (25) at 23:17, PR 28 (25a) at 23:49.
+- 2026-11-22: PR 29 (25b) at 00:20, PR 30 (25c) at 02:38, PR 31 (26) at
+  03:57, PR 32 (27) at 05:09, PR 33 (28) at 07:43.
+
+From PR 22's merge to PR 33's merge `main` gained 124 commits (14 merges,
+10 baseline commits by `github-actions[bot]`); co-author trailers: Claude
+Opus 62, Claude Fable 5.2 31, Claude Fable 5.1 7.
+
+Kyle's part in v4, from the records: approving the v4 scope (PR 21), the
+delegation default of Opus at medium effort (DECISIONS milestone 22), his
+iPad play notes and the PR 26 additions (DECISIONS "Kyle's iPad play
+notes"), and the 25c direction quoted in DEVLOG milestone 25c. DEVLOG
+milestone 28 records that he had not play-tested since the horde retune.
+
+### What was built
+
+- Milestone 22 (PR 23): the flying Harpy and the shielded Shieldbearer in
+  the simulation, the renderer and the waves; one table of display names.
+- Milestone 23 (PR 24): Grumblefoot, the wave 10 boss, with a 5-life exit,
+  a 30% slow cap and a HUD boss bar; the live-loop test and the e2e port
+  after a CI failure.
+- Milestone 24 (PR 25): targeting modes First, Last and Strongest, and the
+  panel's Target button.
+- Milestone 25 (PR 27): Easy, Normal and Hard, the title menu and the end
+  screens' Menu button.
+- Milestone 25a (PR 28): drag placement and the planning phase (free move,
+  Remove, Undo upgrade until Start Wave).
+- Milestone 25b (PR 29): the three special attacks, one charge per wave.
+- Milestone 25c (PR 30): horde waves with Easy and Hard retuned, Call next,
+  tower kill counts and a frame-time test.
+- Milestone 26 (PR 31): endless waves after a win and a local best score;
+  the title-ready check.
+- Milestone 27 (PR 32): Switchback and Riverbend and the map picker; one
+  unit test time limit.
+- Milestone 28 (PR 33): the balance lock (a 108-cell matrix of archetype,
+  map and level), the stored special search, and `docs/DESIGN.md` frozen.
+- Milestone 29 (this branch): README, demo GIF, stills and this
+  retrospective.
+
+### What went well
+
+- Every v4 PR merged with the `ci` check green and after it finished. CI
+  failed twice in the whole project, both in v4 and both before merge: the
+  live-loop test on the boss branch (run 44956904244) and a unit test
+  timeout on the maps branch (run 44987490579).
+- Verifiers replayed with their own code rather than the implementer's: the
+  25c and milestone 28 revert matrices, and in milestone 28 the verifier's
+  replay matched every cell of the matrix (DEVLOG milestone 28, B and the
+  re-verify).
+- Changes that should not move the game were proven not to: Normal stayed
+  byte-identical through milestone 25, `npm run sim` stayed byte-identical
+  through 25a, and Meadow's frames stayed identical through milestone 27.
+- The names table held: the verifiers of milestones 22 to 25b each renamed
+  a display name (Grub, Bogwart, Toughest, Brutal, Take back, Boom Barrel)
+  and the tests still passed.
+- Kyle's iPad play notes became three scoped milestones in one PR (26).
+
+### What went wrong
+
+Coordinator slips (Claude Fable), as the records give them:
+
+- Milestone 22: the brief's `noAntiAir` (the combo build with every bow
+  removed) died on wave 2, before any Harpy, so it proved nothing; the
+  implementer replaced it with a build that sells its bows before wave 4.
+  DEVLOG milestone 22.
+- Milestone 23: the brief's boss bar at y 12 had no room for the name above
+  it; its "step 300 more and the bar shows lower hp", its lose path and its
+  "spend the rest on Longbow upgrades" did not hold in the game. DEVLOG
+  milestone 23, What went wrong.
+- Milestone 23: the first diagnosis of the CI failure was wrong (the 8-tick
+  catch-up cap); the implementer found Phaser's frame clamp. Two worktrees
+  had also run browser tests on one port, and one agent stopped the other's
+  server; each parallel brief now names its own `PW_PORT`. DECISIONS "CI
+  failure on the boss PR".
+- Milestone 25: the scope's default difficulty numbers missed both targets
+  (Easy lazyBuild lost to the boss; Hard's best plan died on wave 3); pinned
+  as they were until 25c. DECISIONS milestone 25.
+- Milestone 25a: the first sell rule cost a player who pressed Sell before
+  Undo 11 gold, and the first touch-drag rule left the bottom map row out of
+  reach. Both rules were the coordinator's and both changed in a follow-up.
+  DECISIONS milestone 25a.
+- Milestone 25b: the brief's fixed keg policy hit something in one wave of
+  ten; it was removed in milestone 28. DEVLOG milestone 25b.
+- Milestone 25c: the brief set no target for wave length or crowding, so the
+  first pass made waves denser, not longer (381 s against 405 s, up to 47
+  alive). The whole retune went back for a second pass. PR 30 merged 2 h 17
+  min after PR 29, the longest gap in v4 before milestone 28's 2 h 34 min.
+  The brief also raised the wave 10 gold limit from 150 to 200 without
+  recording it until the verifier asked. DECISIONS milestone 25c.
+- Milestone 26: the scope's endless growth of 1.15 missed the idle target by
+  nine waves; 1.6 replaced it. DECISIONS milestone 26.
+- Milestone 27: the brief described the maps' shapes wrongly three times.
+  DECISIONS milestone 27.
+- Milestone 28: the spec was frozen before Kyle's play notes, which the
+  scope lists as evidence. A recorded choice, not hidden. DECISIONS
+  milestone 28.
+
+Other second passes and misses:
+
+- Milestone 22: the Harpy frame first showed a tracer that looked like it hit
+  a Harpy, and `new-towers.png` lost its Mortar splash; both frames moved.
+  DEVLOG milestone 22.
+- Milestone 24: the implementer's `pkill -f "vite preview"` may have stopped
+  another checkout's server mid-run. The verifier found `targeting.spec.ts`
+  hard-coding the labels. DEVLOG milestone 24.
+- Milestone 25: the verifier found "Lives -1" on screen (since milestone
+  23) and fixed the HUD. DEVLOG milestone 25.
+- Milestone 25c: the first numbers gave the Hard Goblin 13 hp against the
+  Musketeer's 12, so every Musketeer opening lost Hard on wave 1. DECISIONS
+  milestone 25c.
+- Milestone 26: a Play click lost in a one-frame window failed 4 of 8 full
+  runs; a follow-up fixed the harness and added a regression test. DEVLOG
+  milestone 26.
+- Milestone 27: Meadow-only archetypes played Meadow's cells on other maps
+  (verifier's finding); six follow-up fixes, then a CI timeout and a second
+  follow-up. DEVLOG milestone 27.
+- Milestone 28: a special list searched only on Normal made the Hard combo
+  worse; the balance runner counted a kill twice; one new test compared a
+  cell with itself; the implementer's generator corrupted a line of
+  `DESIGN.md`. All fixed before merge. DEVLOG milestone 28.
+- Verifiers' own mistakes: probe setups that could not work (milestone 24:
+  a cell that is not buildable; milestone 25a: three setups and two touch
+  probes on a cell edge). DEVLOG milestones 24 and 25a.
+- Records: the milestone 22 roles line says the verifier was Claude Sonnet
+  and the milestone 24 roles line says Fable 5.1; the verifier notes under
+  each say Fable 5.1 and Fable 5.2. `docs/SCOPE-v4.md` still says "Sonnet
+  verifies" in its milestone section.
+
+### This became an automatic check
+
+- The live-loop test runs on Canvas and checks tick rates, and the frame
+  accumulator is a tested pure function (`src/game/loop.ts`, `loop.test.ts`)
+  (milestone 23 CI failure).
+- Playwright takes its port from `PW_PORT` and never reuses a server, so a
+  busy port fails (milestone 23 port collision).
+- The title's key handlers ignore a DOM event they have already seen, under
+  the difficulty specs (milestone 25, Phaser's repeated keydown).
+- A probe fails if the HUD shows negative lives (milestone 25).
+- The drag guard for a lost mouse button is unit-tested (milestone 25a).
+- R1 to R5 pin wave spawn rate, length and crowding, and the Hard hp rule is
+  a balance target (milestone 25c, both passes).
+- `e2e/title-ready.spec.ts` and the shared `waitForTitle` (milestone 26
+  flake).
+- Archetypes without a plan for a map throw, with a browser test (milestone
+  27 verifier finding).
+- One 30 s unit test limit and `npm run test:slow` (milestone 27 CI
+  timeout).
+- The stored special lists are tested never to do worse than no special
+  (milestone 28, the cluster policy on Riverbend).
+- Every matrix cell checks that kills, and kills plus exits, never exceed
+  the enemies spawned (milestone 28 double count).
+
+### Still open
+
+- Milestone 29's evidence: Kyle finishing a game on Hard, then an endless
+  run, from the public link. Not done at the time of writing.
+- The questions for his play notes (DECISIONS milestone 28): wave 1's
+  length, whether calling early should carry risk, endless growth 1.6
+  against 1.45, three waves over 100 s, and Hard leaning on well-aimed
+  specials. Draw-your-own-trail (SCOPE-v4 question 4) is undecided.
+- Known rough edges: a tower in Riverbend's bottom-left cells opens its
+  panel over the spawn lane; stacked towers hide each other's labels;
+  Wolves and the boss have no up or down frames (DECISIONS milestone 27).
+  The lose screen's "Reached wave 15" against the title's "14 waves"
+  (DECISIONS milestone 26). Phaser's warm-up clamps slow a slow device at
+  the start (DEVLOG milestone 23). The bounds in DESIGN.md's prose are not
+  test-guarded (DEVLOG milestone 28).
+- Placeholder art: enemy sprites from Ninja Adventure, towers, map and HUD
+  as shapes. Kyle is "not in love" with the bar; the HUD skin is a v5
+  requirement (DECISIONS "Kyle's iPad play notes"). The title is plain
+  text and flat buttons (observed in this milestone's frames).
+- Touch is tested only in Chromium's emulation; Kyle's iPad play is the
+  only real-device check.
+- Every PR also carries an automated Codex review comment, with findings on
+  PRs 5, 12, 22 and 23 (`gh`); no record says whether they were read.
+
+### Verifier notes
+
+Verifier: Claude Sonnet (independent of the implementer), on branch `m29-ship`
+at `8f2ee04`, with `git`, `gh` and the built game. Changed only this
+subsection and one README bullet (item 1 below). Judgement calls are left to
+the coordinator.
+
+**Checked and holding.** "By the numbers" recomputed at `e191bf5`: all 13 rows
+match (33 PRs: 28 milestone, 4 scope, 1 CI; 286 commits, 37 merges, 4 branch
+updates; trailers Opus 136, Fable 5.1 36, Fable 5.2 31, Sonnet 25; 22 baseline
+commits; 1035 unit tests in 62 files; 284 browser tests in 48 files with 3
+skipped, confirmed by a full `PW_PORT=4273 npx playwright test` run, 281
+passed; 24 baselines, 23 desktop and 1 tablet; `dist/` 1,310,834 bytes in 4
+files; every timestamp). The retrospective's 124 commits, 14 merges, 10
+baseline commits and trailers 62, 31 and 7 between PR 22 and PR 33 also match,
+as do all eleven merge times and both PR gaps (2 h 17 min, 2 h 34 min). CI
+failed twice in the whole project (runs 44956904244, 44987490579). Lint,
+check:assets, typecheck, `npm test`, build, check:size, `npm run sim` (38 s)
+and `npm run test:slow` ran clean. The deployed Pages build is from
+`e191bf5`. The numbers in "How to play" match `src/sim` (Mortar min range 70,
+sell 70%, undo full price, Call next bonus up to 20 and not for wave 10,
+specials unlock on waves 1, 4 and 7, boss 5 lives, Harpy not hit by Tar Pit,
+Cannon or Mortar, Shieldbearer half damage). The GIF frames, the Riverbend
+still and the boss still match their alt text (the boss still is test mode, so
+"tarred and burning" is pinned by `boss-frame.test.ts`, not visible in the
+image). Media sizes: GIF 3,000,132 bytes, 640 x 387, 12 fps, 25.0 s; three
+PNGs 960 x 580. Media is not in `dist/`. No email address, credential or
+personal detail in the diff. Every relative link resolves. No file, heading or
+new text uses "final". Credits match `assets/MANIFEST.md`.
+
+**1. Corrected in the README (one bullet).** "Whole-game tests timed out on CI
+three milestones in a row" was wrong. Only the milestone 27 timeout was on CI;
+the milestone 25c and 26 timeouts happened in verifier runs on the Mac
+(DEVLOG milestone 25c verifier notes; milestone 26 verifier notes; DEVLOG
+milestone 27 follow-up lists all three). The bullet now says so.
+
+**2. Not changed, for the coordinator (README).**
+
+- "How to play" step 2: "the pick stays until you click the button again or
+  press Escape". `GameScene.ts` lines 14 to 17 also clear it when gold drops
+  below the tower's cost and when a tower is clicked. A new player who spends
+  their last gold will see the pick vanish.
+- Step 3: "everything you bought since the last wave is free to change". A tower
+  bought during a wave is locked at once (DECISIONS milestone 25a; `actions.ts`
+  line 82), so it is not free to move or remove.
+- Step 9: "Once every enemy of a wave is out" means every enemy has spawned, not
+  that the field is clear (`callEarlyStatus`, `game.ts`). The bonus also falls
+  to 0 over 20 s.
+- Step 7 and 5: a Fire Pot's burn does not stick to a Harpy (SCOPE-v4 line 27,
+  `combat.ts`). The text lists only the towers that cannot target it.
+- Intro: "any free cell off the path" is loose: Riverbend's river and the cells
+  near the cave and cottage are not buildable.
+- "How it was built": "Verifiers: a different model ... every milestone" is
+  true, but PR 4 (the baseline workflow) had no separate verifier pass
+  (DECISIONS milestone 7), and in v4 the coordinator and the verifiers are both
+  Claude Fable, so the Fable trailer counts mix the two roles. Milestone 29's
+  own verifier is Claude Sonnet, not Fable. "Every design call and who made it
+  is in DECISIONS" is too strong: the Fable 5.1 to 5.2 switch and the Codex
+  review are in no entry (the README says the first).
+- "Every PR runs lint, the asset license check, ... Playwright" describes CI
+  today. `check:assets` arrived in milestone 15 and `check:size` after PR 1
+  (`git log -- .github/workflows/ci.yml`), so early PRs did not run all of it. `main` requires `ci`, but
+  `enforce_admins` is off.
+- The verifiers "made two small game fixes themselves": the Wolf's facing and
+  "Lives 0" are in the records; I did not find a third in the milestone 22 to
+  28 notes, but did not read every verifier commit.
+- `docs/media/tarpit.png` is in the repo but no longer shown in the README.
+
+**3. Missing from the retrospective (milestones 22 to 28).**
+
+- Milestone 22 shipped HUD wave previews for waves 6, 8 and 10 that ran under
+  the Start Wave button; its verifier did not report it. The milestone 23
+  implementer found it while adding "+ Grumblefoot" and fixed it (DEVLOG
+  milestone 23, "The wave preview ran under the Start Wave button"). The
+  automated Codex review had flagged it on PR 23 (see item 4).
+- "The names table held ... and the tests still passed": in milestone 24 the
+  rename made two `targeting.spec.ts` tests fail; they hard-coded the labels
+  (the retrospective lists this elsewhere, but the claim above it is too
+  clean).
+- The milestone 25c flaky `difficulty.test.ts` test and its 5 s timeout, and
+  "Hard's start gold 90 used in a revert pass" (DEVLOG milestone 25c), are
+  small and left out. Not a defect in the retrospective.
+
+**4. Codex review comments.** All 33 PRs have one Codex summary comment. Four
+have a finding, each with one inline comment, all P2. None of the 29 others has
+a finding. The reviews run on the commit that opened the PR; PRs 24 and 32 were
+later pushed to (their reviewed commit is not the head), so a clean Codex mark
+on those two covers only the first push.
+
+| PR | Finding | Real? | On `origin/main` today? |
+|---|---|---|---|
+| 5 (milestone 3), `GameScene.ts:70` | After the win tick, `tick()` returns early without clearing `state.shots`, so every live update feeds the same shots to the effects again; the winning tracer or splash never fades | Yes, by code reading (not reproduced in a browser). Wins only: a loss clears shots first | Yes. `src/sim/game.ts:229-230` returns before `state.shots = []`; `GameScene.ts:824-829` `advance` calls `shots.afterTick(this.state.shots)` every tick with no phase check. Cosmetic. No record mentions it |
+| 12 (milestone 8), `labels.ts:31` | Tower labels are created after the HUD, panel and end screen, so they draw over the UI; `won.png` shows it | Yes. Fixed one PR later: DEVLOG milestone 9 verifier notes ("labels drew over the HUD, panel and end veil") | No. `GameScene.ts:372` creates the labels before the HUD; `e2e/__screenshots__/visual.spec.ts/won.png` shows labels under the end panel |
+| 22 (milestone 16), `GameScene.ts:366` | With several ticks before a redraw, a new enemy has no sprite until `EnemySprites.sync()`, so its hit and kill events are dropped (at 2x or on catch-up frames) | Yes, by code reading | Yes. `anim/enemySprites.ts:148-163` `hit` and `kill` return when there is no view; views are made only in `sync()` (line 191); `GameScene.ts:824-831` runs `takeEvents` per tick with no sync. Cosmetic: a lost hit flash or death puff. No record mentions it |
+| 23 (milestone 22), `hud.ts:44` | The wave 6, 8 and 10 previews run under the Start Wave button | Yes. Fixed in milestone 23 (DEVLOG milestone 23, item above) | No. `hud.ts` wraps to two lines at 13 px (11 px fallback, lines 120-149); the Riverbend still shows a wrapped preview |
+
+Two of four (PRs 12 and 23) were also found independently by the project's own
+checks one PR later. PRs 5 and 22 were found by nothing in the records and
+still stand. Nothing in the Codex comments on PRs 24 to 33 was missed by the
+implementer's count.
+
+**5. Status section.** Passes. It says the Hard game and the endless run from
+the public link had not happened when written, and it says "built", not
+"shipped". The v5 description matches `docs/SCOPE-v3.md` (milestones 17 to 20:
+art, sound, effects, world with weather and time of day), DECISIONS "reorder
+after the art spike" (tabletop art from clay-style 3D models, HUD skin) and
+SCOPE-v4 question 4 (draw-your-own-trail open).
+
+**Could not check.** Whether each v4 PR merged "after the `ci` check finished"
+(only the final check state is in `gh`); every verifier commit for game-code
+fixes beyond the two named; the Riverbend still's Wolf sprites (small, hard to
+tell from the Harpies); `npm run sim:specials` and `npm run demo` (not run; the
+scripts exist and their documented flags `PW_PORT` and `FFMPEG` match the
+code); the iPad paragraph on a real device.
+
+### Coordinator corrections after the fact-check (Fable)
+
+- Missing above: milestone 22 shipped HUD wave previews that ran under the
+  Start Wave button on waves 6, 8 and 10, and its verifier did not report
+  it. The milestone 23 implementer found and fixed it; the automated Codex
+  review had flagged it on PR 23.
+- "The names table held ... and the tests still passed" is too strong: in
+  milestone 24 a rename made two `targeting.spec.ts` tests fail (a
+  hard-coded label, fixed before merge).
+- The Codex review comments on all 33 PRs were never read during v1 to
+  v4. The milestone 29 verifier read them: four findings, two fixed long
+  ago, two cosmetic and still present (the last tracer or splash replays
+  after the win tick; hit and kill effects are dropped for an enemy spawned
+  in the same frame). Both go into the next milestone, and the coordinator
+  reads the review on every PR from now on.
+- README wording corrected by the coordinator after the fact-check: where
+  towers can go, when the bar pick clears, what locks mid-wave, Harpies
+  and fire, what "Call next" waits for, which roles the Fable trailers
+  cover, and which CI checks existed from when.

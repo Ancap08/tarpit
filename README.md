@@ -6,58 +6,198 @@
 
 A small browser tower defense game, built by AI agents under human direction.
 
-![Tarpit: placing two Longbows, a Tar Pit, a Fire Pot and a Mortar through the build bar and playing waves 1 to 4 at 2x (GIF sped up about 2x)](docs/media/tarpit.gif)
+![Tarpit on Meadow, Normal: the title menu with its map row, a Longbow dragged from the build bar and moved in the planning phase, a Tar Pit, waves 1 and 2 at 2x, a Powder Keg fired on four Goblins, a Fire Pot built beside the Tar Pit, Call next pressed once, and the Longbow's panel showing its kills (GIF sped up about 2.4x)](docs/media/tarpit.gif)
 
 ## What this is
 
 A portfolio project. The point is how a human steered AI agents to build a
 real game from an empty folder; the playable game is the proof. It was made
-for Kyle and his nieces and nephews: one map, ten waves, six towers you can
-build anywhere off the path, three enemies, simple shapes with labels.
+for Kyle and his nieces and nephews.
+
+The game today (v4): three maps, ten waves and then endless waves, six
+towers you can build on any free grass cell (not on the path, the river or
+the cottage), five enemy types (one of
+them flies, one carries a shield) and a boss, three difficulty levels, three
+special attacks, and play on a tablet. The enemies are placeholder pixel
+sprites; towers, maps and the HUD are simple shapes with labels until the
+art pass (see Status).
 
 ## How to play
 
-1. On the title menu pick a difficulty, Easy, Normal or Hard (enemy hp, starting gold and lives; Normal is the standard game), then press Play (Enter also works). Play again keeps the level; Menu goes back to pick another.
-2. Pick a tower on the build bar under the map: Musketeer (single target), Cannon (splash), Tar Pit (slow), Longbow (cheap, long range), Mortar (long-range splash) or Fire Pot (burns). Move over the map: a green cell with a ghost and its range shows where the tower can go; red means it cannot. Click any green cell to build, and keep clicking to place more; click the button again or press Escape to stop. Click a tower to upgrade or sell it. You can also drag a tower from the bar straight onto the map: on touch the ghost floats a little above your finger so you can see where it lands; let go anywhere red, or over the bar, to cancel.
-3. The Mortar cannot hit enemies inside its dashed inner circle (70 px), so put it back from the path it guards.
-4. Tar + fire: a Fire Pot's burn does double damage to an enemy slowed by a Tar Pit, so build the two side by side.
-5. Until you press Start Wave, everything you bought this round is free to change: drag a tower (dashed outline) to another spot, Remove it for all its gold back, or Undo an upgrade for its full price. Once the wave starts, towers are locked in place and sell for 70%.
-6. Press Start Wave. Enemies come in hordes and walk from the cave to the cottage; each one that gets through costs a life. Kills and cleared waves pay gold. Survive all 10 waves to win. The 1x/2x button sets the speed.
-7. A tower's panel has a Target button; click it to cycle which enemy the tower shoots: First (furthest along the path), Last (closest to the cave) or Strongest (most hp). The panel also shows how many enemies the tower has killed.
-8. Call early: once every enemy of a wave is out, Start Wave reads "Call next  +N". Press it to send the next wave at once on top of the stragglers: you get the clear bonus now plus N gold, 1 for each second left of a 20 s grace. Not for the boss wave.
-9. Special attacks: once per wave you get one charge. While a wave runs, press Special (left of Start Wave), pick a special if more than one is unlocked, then click on the map where the circle covers the enemies (on touch: tap to place the circle, tap it again to fire, or drag and let go). Powder Keg (from wave 1) blasts everything in the circle, Tar Barrel (from wave 4) slows it, Fire Arrows (from wave 7) set it burning; all three hit flying Harpies too. An unused charge is lost when the wave ends. Escape cancels.
-10. Runs on an iPad (landscape; portrait shows a "turn your device" card). On touch, tap a cell once to aim (ghost and range), tap it again to build; tap the × to close a tower's panel.
+1. **Title.** Pick a difficulty (Easy, Normal or Hard: enemy hp, starting
+   gold and lives) and a map (Meadow, Switchback or Riverbend), then press
+   Play (Enter or Space also work). The title shows your best score for that
+   map and difficulty once you have one.
+2. **Build.** Drag a tower from the build bar under the map onto a green
+   cell: a ghost shows the tower and its range, and red means it cannot go
+   there. You can also click a tower on the bar and then click cells; the
+   pick stays until you click the button again, press Escape, click a
+   tower, or can no longer afford it. The six
+   towers: Musketeer (single target), Cannon (splash), Tar Pit (slows),
+   Longbow (cheap, long range), Mortar (long-range splash) and Fire Pot
+   (burns).
+3. **Plan.** Until you press Start Wave, everything you bought between
+   waves is free to change (a tower bought while a wave runs locks at once): drag a tower (dashed outline) to another
+   cell, Remove it for all its gold back, or Undo an upgrade for its full
+   price. Once the wave starts, towers are locked in place and sell for 70%.
+4. **Upgrade, sell, target.** Click a tower to open its panel: Upgrade (one
+   level), Sell, and Target, which cycles which enemy it shoots: First
+   (furthest along the path), Last (closest to the cave) or Strongest (most
+   hp). The panel also shows the tower's kills.
+5. **Tar and fire.** A Fire Pot's burn does double damage to an enemy slowed
+   by tar, so build a Tar Pit and a Fire Pot side by side.
+6. **Mortar.** It cannot hit enemies inside its dashed inner circle (70 px),
+   so put it back from the path it guards.
+7. **Enemies.** Goblins, fast Wolves, tough Trolls, flying Harpies (the Tar
+   Pit, Cannon and Mortar cannot hit them, and a Fire Pot's burn does not
+   stick to them) and Shieldbearers (small shots do
+   half damage). Each one that reaches the cottage costs a life.
+8. **Specials.** Each wave gives one charge. While a wave runs, press Special
+   (left of Start Wave), pick a special if more than one is unlocked, and
+   click where the circle covers the enemies. Powder Keg (from wave 1) blasts
+   them, Tar Barrel (from wave 4) slows them, Fire Arrows (from wave 7) set
+   them burning. An unused charge is lost when the wave ends.
+9. **Call next.** Once every enemy of a wave has come out of the cave
+   (some may still be walking), Start Wave reads "Call
+   next +N". Press it to send the next wave now: you get the wave's clear
+   bonus at once plus up to 20 gold. Wave 9 cannot call the boss wave.
+10. **The boss.** Grumblefoot, the Troll King, comes at the end of wave 10
+    with a health bar at the top of the map. He costs 5 lives if he gets
+    through.
+11. **Win, then keep going.** Survive wave 10 to win. The win screen offers
+    Keep going: endless waves that get tougher, until you lose. Your best
+    score (waves cleared) is saved in the browser per map and difficulty.
+    The 1x/2x button sets the speed.
+12. **iPad.** Play in landscape (portrait shows a "turn your device" card).
+    Tap a cell once to aim, tap it again to build; when you drag, the ghost
+    floats above your finger. Tap the × to close a tower's panel. For a
+    special, tap to place the circle and tap it again to fire, or drag and
+    let go.
+
+![Riverbend in wave 7: the river runs down the middle of the arch-shaped path; Longbows, Mortars, a Tar Pit and a Fire Pot stand beside it, and Trolls, Wolves and Harpies come up the left side and over the top](docs/media/tarpit-riverbend.png)
+
+![Wave 10 on Meadow: Grumblefoot, the Troll King, with his health bar at 3339 of 4000, tarred and burning under a Mortar splash](docs/media/tarpit-boss.png)
 
 ## How it was built
 
-- **Kyle** set the design, approved the plan and scope, and merged PR 1 himself. He then had the coordinator merge each PR once checks and the verifier passed, with screenshots and play feel left to his review.
-- **Coordinator: Claude Fable 5.1.** Wrote the scope, design spec and briefs, ran the repo settings, and never wrote game code.
-- **Implementers: Claude Opus at medium effort.** Wrote each milestone's code, tests and notes.
-- **Verifier: Claude Sonnet**, a different model, checked every milestone PR before merge from a clean install (of the two non-milestone PRs, the baseline workflow was reviewed as part of milestone 3 and the v2 scope draft was approved by Kyle), re-derived numbers by hand and added its own tests.
-- **One PR per milestone.** Every PR runs lint, typecheck, Vitest, build, and Playwright smoke and play-through tests. Screenshot baselines are generated on CI (Linux) and committed to the PR for Kyle's review.
+- **Kyle** set the direction, approved each scope (v2, v3, v4, and the v4
+  additions from his iPad play notes) and merged PR 1 himself. For the v1
+  build run he then had the coordinator merge each PR once the `ci` check
+  and the verifier passed (DECISIONS, "after milestone 0"). GitHub shows his
+  account, `Ancap08`, as the merger of every PR because the coordinator used
+  his `gh` login (DECISIONS, "milestone 7"), so GitHub cannot show who
+  pressed merge. His iPad play notes ("we got the idea correct; now make it
+  fun") added drag placement with a planning phase, special attacks and
+  hordes to v4.
+- **Coordinator: Claude Fable.** Wrote the scopes, the design spec and every
+  brief, ran the repo settings, recorded decisions, and wrote no game code.
+  The commit trailers read Fable 5.1 through the milestone 23 verification
+  and Fable 5.2 from commit `0f6a69d` (the record of the milestone 23 CI
+  failure, in PR 24) on; DECISIONS has no entry for the switch.
+- **Implementers: Claude Opus at medium effort.** Wrote each milestone's
+  code, tests and notes.
+- **Verifiers: a different model from the implementer, every milestone.**
+  Claude Sonnet through milestone 16 (v1 to v3), Claude Fable from
+  milestone 22 to 28 (DECISIONS, "milestone 22"), Claude Sonnet again for
+  milestone 29. In milestones 22 to 28 the coordinator and the verifier
+  were both Claude Fable, in separate sessions, so the Fable trailer counts
+  below mix the two roles. The CI baseline workflow (PR 4) had no separate
+  verifier pass. Verifiers re-ran the checks,
+  re-derived numbers with their own code, added their own tests and made
+  two small game fixes themselves (the Wolf's facing in
+  milestone 16, "Lives 0" instead of "Lives -1" in milestone 25).
+- **One PR per milestone.** Every PR runs lint, typecheck, Vitest, build
+  and Playwright (smoke, play, touch and screenshot tests); from milestone
+  15 on, also the asset license check and the size budget. Screenshot baselines are generated on CI
+  (Linux) by a workflow and committed to the PR by `github-actions[bot]`.
+  `main` requires the `ci` check; every merged PR shows it green.
+- An automated Codex review, set up on the GitHub repo, also commented on
+  every PR; it reported findings on PRs 5, 12, 22 and 23. The records below
+  do not discuss it.
 
-v2 (build anywhere and three new towers) followed the same process in milestones 8 to 13.
-
-Every design call and who made it is in [DECISIONS.md](DECISIONS.md). What
+Design calls and who made them are in [DECISIONS.md](DECISIONS.md) (two
+gaps found at the v4 review are recorded there after the fact). What
 happened, including what went wrong, is in [DEVLOG.md](DEVLOG.md).
+
+### What the process caught
+
+- **The first horde pass made waves denser, not longer.** Kyle asked for
+  longer waves; the brief set no length target (the coordinator's slip). The
+  verifier measured 381 s of waves against 405 s before and up to 47 enemies
+  alive, and the milestone went back for a second pass. DECISIONS
+  "milestone 25c"; DEVLOG "milestone 25c, Second pass".
+- **The Hard hp cliff.** The first horde numbers gave the Hard Goblin 13 hp
+  against the Musketeer's 12 damage, so every Musketeer opening lost Hard on
+  wave 1. Now a rule, pinned by a test: no Hard hp sits 1 or 2 above a
+  multiple of a tower's damage. DECISIONS "milestone 25c".
+- **A flaky Play click.** The title scene is active one frame before Phaser
+  makes its buttons clickable; a test clicking in that frame lost the click
+  in 4 of 8 full runs. The title now reports ready at its first drawn frame
+  and every spec waits for it. DECISIONS "milestone 26"; DEVLOG
+  "milestone 26, Follow-up: Play click flake".
+- **A CI failure the Mac never showed.** The live-loop test failed on
+  GitHub's runner, which renders WebGL without a GPU. The coordinator's
+  first diagnosis was wrong; the implementer traced it to Phaser's frame
+  clamp. The test now runs on Canvas and checks rates. DECISIONS "CI failure
+  on the boss PR".
+- **The maps brief described the shapes wrongly three times.** The
+  implementer built the waypoints as given, tested what was true and
+  reported the difference. DECISIONS "milestone 27".
+- **Whole-game tests hit the 5 s unit test limit** in three milestones in a
+  row (the first two on the verifiers' Mac, the third on CI). Now one 30 s
+  limit in `vitest.config.ts` and `npm run test:slow` to list slow tests.
+  DECISIONS "milestone 27".
+- **A scripted special policy made a build worse.** On Riverbend the combo
+  build had 8 lives with its specials and 14 without. The specials now come
+  from a stored per-wave search that never does worse than firing nothing.
+  DECISIONS "milestone 28".
+- **A kill counted twice.** The balance runner reported 525 kills of 524
+  enemies when a special fired on the tick after a kill; the verifier pinned
+  it as a failing test and the implementer fixed it. DEVLOG "milestone 28",
+  verifier finding 3 and follow-up item 2.
 
 ## By the numbers
 
-Counts at the merge of milestone 12 (PR 16), from `git` and `gh`:
+At the merge of milestone 28 (PR 33, commit `e191bf5`), from `git` and `gh`:
 
 | | |
 |---|---|
-| Pull requests merged | 16: 14 milestone PRs, the CI baseline workflow (PR 4) and the v2 scope (PR 11) |
-| Commits on `main` | 118: 102 changes and 16 merges |
-| Commit co-author trailers | Claude Opus 54, Claude Fable 5.1 21, Claude Sonnet 18 |
-| Screenshot baseline commits | 10 by `github-actions[bot]` |
-| Unit tests (Vitest) | 211 in 24 files |
-| Browser tests (Playwright) | 61 in 10 files |
-| Screenshot baselines | 10 |
-| Models involved | 3 (Fable 5.1, Opus, Sonnet) |
+| Pull requests merged | 33: 28 milestone PRs, 4 scope PRs (11, 18, 21, 26) and the CI baseline workflow (PR 4) |
+| Commits on `main` | 286: 37 merges (33 PR merges, 4 updates of a branch from `main`) and 249 others |
+| Commit co-author trailers | Claude Opus 136, Claude Fable 5.1 36, Claude Fable 5.2 31, Claude Sonnet 25 |
+| Screenshot baseline commits | 22 by `github-actions[bot]` |
+| Unit tests (Vitest) | 1035 in 62 files |
+| Browser tests (Playwright) | 284 in 48 files (3 skip locally: screenshot probes that need `VERIFIER_SHOTS`) |
+| Screenshot baselines | 24 (23 desktop, 1 tablet) |
+| Built size (`dist/`) | 1.25 MB in 4 files, against a 20 MB budget |
+| First commit | 2026-11-21 06:11 UTC |
 | v1 shipped (PR 10 merged) | 2026-11-21 08:30 UTC |
-| v2 complete (PR 16 merged) | 2026-11-21 10:16 UTC |
-| Time from first commit (06:11 UTC) to PR 16 merged | about 4 hours, 2026-11-21 |
+| v2 shipped (PR 17 merged) | 2026-11-21 10:24 UTC |
+| v3 last PR (PR 22, milestone 16) | 2026-11-21 21:27 UTC |
+| v4 last PR so far (PR 33, milestone 28) | 2026-11-22 07:43 UTC |
+
+<details>
+<summary>Commands behind the table</summary>
+
+```sh
+B=e191bf5
+gh pr list --state merged --limit 100 --json number,title,mergedAt   # 33 PRs, titles give the kinds
+git rev-list --count $B                       # 286
+git rev-list --count --merges $B              # 37
+git log $B --merges --format=%s | grep -vc '^Merge pull request'   # 4
+git log $B --format='%(trailers:key=Co-Authored-By,valueonly)' | grep . | sed 's/ <.*//' | sort | uniq -c
+git log $B --author='github-actions' --oneline | wc -l             # 22
+npx vitest run                                # 1035 tests, 62 files
+npx playwright test --list | tail -1          # 284 tests in 48 files
+git ls-tree -r --name-only $B e2e/__screenshots__ | wc -l          # 24
+npm run build && npm run check:size           # 1310834 bytes in 4 files
+TZ=UTC git log $B --reverse --format=%ad --date=format-local:'%F %T' | head -1
+gh pr view 10 --json mergedAt                 # and 17, 22, 33
+```
+
+One commit (`1f4e166`) carries two trailers, Opus and Fable 5.1. Every
+commit that is neither a merge nor a baseline commit has a trailer.
+</details>
 
 ## Repo map
 
@@ -67,33 +207,33 @@ LICENSE           MIT
 CLAUDE.md         rules for agents working in this repo
 DECISIONS.md      every design and process decision, who made it and why
 DEVLOG.md         how it was built, milestone by milestone, including what went wrong
-docs/SCOPE.md     v1 scope and the milestone table
+docs/SCOPE.md     v1 scope and milestones 0 to 7
 docs/SCOPE-v2.md  v2 scope and milestones 8 to 13
-docs/DESIGN.md    the game spec: map, economy, enemies, towers, waves
-docs/media/       README GIF and still
-docs/art/         art source spike (milestone 15): INVENTORY.md (packs, roster mapping, recommendation)
-docs/art/mockups/ style mockups A (Ninja Adventure, 3x and 2x), B (0x72), C (shapes animated), closeups
-assets/           game art and sound; MANIFEST.md lists every file's source and license
-assets/sprites/   enemy sprite sheets (placeholders from Ninja Adventure until v5: goblin, wolf, troll, harpy, shieldbearer, boss and boss-hit), imported by src/game/anim/sheets.ts
+docs/SCOPE-v3.md  v3 scope (tablet, art spike, animation engine; its art, sound and effects milestones moved to v5)
+docs/SCOPE-v4.md  v4 scope and milestones 22 to 29
+docs/DESIGN.md    the frozen game spec: maps, economy, enemies, towers, specials, waves, endless, balance targets
+docs/media/       README GIF and stills
+docs/art/         art source spike (milestone 15): INVENTORY.md and the style mockups
+assets/           enemy sprite sheets (placeholders from Ninja Adventure); MANIFEST.md lists every file's source and license
 src/sim/          game logic in plain TypeScript, no Phaser or DOM (lint-enforced)
-src/sim/grid.ts   the build grid: cells, cell centres, the buildable rule
-src/game/         Phaser rendering, input, HUD, tower panel and the ?test=1 test hooks
-src/game/names.ts every display name (enemies, towers, tower labels, boss, end screens), keyed by internal id
-src/game/ui/buildBar.ts  the HUD build bar: pick a tower, then click a cell
-src/game/ui/bossBar.ts   the HUD boss bar (name, hp) shown while Grumblefoot lives
-src/game/portrait.ts     the "turn your device" card (markup in index.html), pauses ticking
-src/game/draw/labels.ts  tower labels and the crowding rule (smaller, then hidden)
-src/game/anim/    animation engine: sheet layouts, one sprite per enemy, reactions to simulation events (state.events)
-src/sim/events.ts the simulation's event list for the renderer: spawn, hit, burn, slowed, kill, exit, build, ...
-scripts/          npm run sim (balance report) and npm run demo (GIF recorder)
-scripts/check-asset-manifest.ts  npm run check:assets: every file in assets/ and docs/art/ is in assets/MANIFEST.md as CC0 or credited CC-BY
-scripts/check-size-budget.ts     npm run check:size (after build): dist/ stays under 20 MB, prints the 10 largest files
-e2e/              Playwright tests and CI screenshot baselines
-e2e/new-towers.spec.ts  Longbow, Mortar and Fire Pot built through the bar
-e2e/boss.spec.ts        Grumblefoot in wave 10: boss bar, kill and win, exit and loss
-e2e/anim.spec.ts        enemy sprite states (texture, facing, hit, kill, burning and tarred) through animState()
-e2e/touch.spec.ts       iPad-size touch tests (two-tap placement, 44 px targets, portrait card)
-e2e/visual-tablet.spec.ts  the 1024 x 768 letterboxed baseline (tablet project)
+  game.ts           state, ticks, waves, call early, endless
+  actions.ts        build, upgrade, sell, move, undo, targeting, specials
+  map.ts, grid.ts   the three maps and the build grid
+  waves.ts, enemies.ts, towers.ts, specials.ts, difficulty.ts   the numbers in docs/DESIGN.md
+  headless.ts       archetype scripts for balance runs
+  balance.suite.ts  every archetype on every map and level, pinned against the targets
+  specialLists.ts   the archetypes' specials, generated by npm run sim:specials
+  designSpec.test.ts  checks DESIGN.md's tables against the code
+src/game/         Phaser rendering, input, HUD and the window.__tarpit hooks
+  TitleScene.ts     title menu: difficulty, map, best score
+  GameScene.ts      play: build bar, drag, panel, specials, call early, end screens
+  names.ts          every display name, keyed by internal id
+  highScore.ts      the best score per map and difficulty in localStorage
+  ui/               build bar, tower panel, special menu, boss bar, end screen
+  anim/             enemy sprite animation from the simulation's events
+  testMode.ts       ?test=1 hooks (typed in testGlobal.d.ts)
+scripts/          npm run sim, sim:specials, test:slow, demo, check:assets, check:size
+e2e/              Playwright tests (desktop and tablet projects) and CI screenshot baselines
 .github/workflows CI checks, Pages deploy, screenshot baseline update
 ```
 
@@ -107,67 +247,64 @@ npx playwright install chromium    # one time, for e2e tests and the demo
 npm run dev                        # dev server at http://localhost:5173
 ```
 
-Checks (CI runs all five):
+Checks (CI runs all of these):
 
 ```sh
-npm run lint        # ESLint, including the src/sim boundary rule
-npm run typecheck   # tsc --noEmit over src/, e2e/, scripts/ and config files
-npm test            # Vitest unit tests
-npm run build       # production build into dist/
-npm run test:e2e    # Playwright against the built dist/ (run build first)
+npm run lint          # ESLint, including the src/sim boundary rule
+npm run check:assets  # every file in assets/ and docs/art/ is in assets/MANIFEST.md as CC0 or credited CC-BY
+npm run typecheck     # tsc --noEmit
+npm test              # Vitest unit tests
+npm run build         # production build into dist/
+npm run check:size    # after build: dist/ stays under 20 MB
+npm run test:e2e      # Playwright against the built dist/ (run build first)
 ```
 
 Other tools:
 
 ```sh
-npm run sim         # headless balance report: each archetype build, wave by wave
-npm run demo        # rebuild, play in real time, write docs/media/tarpit.gif and .png (needs ffmpeg)
+npm run sim           # headless balance report: every archetype on every map and level (about 40 s)
+npm run sim:specials  # rerun the special search and rewrite src/sim/specialLists.ts (several minutes)
+npm run test:slow     # list unit tests slower than 3 s (not in CI)
+npm run demo          # rebuild, play in real time, write the GIF and stills in docs/media (needs ffmpeg)
 ```
 
-Open the game with `?test=1` to freeze time and expose test hooks on
-`window.__tarpit` (see `src/game/testGlobal.d.ts`). Screenshot baselines are
-generated only on CI: run the **Update screenshot baselines** workflow
-(`gh workflow run update-snapshots.yml -f ref=<branch>`); local runs skip the
-pixel comparison because macOS renders text differently.
+The e2e tests serve the build on port 4173 and never reuse a running
+server; a second checkout sets its own port: `PW_PORT=4174 npm run test:e2e`.
+`npm run demo` uses port 4179 unless `PW_PORT` is set.
 
-Open the game with `?renderer=canvas` to play on the Canvas renderer instead
-of WebGL; time and animations stay live. `e2e/live.spec.ts` uses it so its
-tick-rate checks do not depend on the machine's GPU (headless Chromium
-without one renders WebGL in software at a few frames a second).
-`e2e/renderer.spec.ts` loads the game without the flag and checks WebGL.
+URL flags:
 
-Open the game with `?perf=1` to play in real time with the test-only horde
-injector (`GameScene.spawnHorde`) switched on; `e2e/perf.spec.ts` uses it.
+- `?test=1` freezes time and exposes test hooks on `window.__tarpit` (see
+  `src/game/testGlobal.d.ts`); it renders with Canvas so screenshots are
+  exact.
+- `?renderer=canvas` plays on the Canvas renderer instead of WebGL, in real
+  time. `e2e/live.spec.ts` uses it so its tick-rate checks do not depend on a
+  GPU.
+- `?perf=1` plays in real time with the test-only horde injector
+  (`spawnHorde`) switched on; `e2e/perf.spec.ts` uses it.
 
-The e2e tests serve the build on port 4173 and never reuse a running server;
-run a second checkout with `PW_PORT=4174 npm run test:e2e`.
+Screenshot baselines are generated only on CI: run the **Update screenshot
+baselines** workflow (`gh workflow run update-snapshots.yml -f ref=<branch>`).
+Local runs skip the pixel comparison because macOS renders text differently.
 
-## Status and what is out of scope
+## Status
 
-v4 (gameplay lock, [docs/SCOPE-v4.md](docs/SCOPE-v4.md)) is in progress:
-milestone 22 added two enemies, the flying Harpy (Tar Pit, Cannon and
-Mortar cannot touch it) and the shielded Shieldbearer (small shots do half
-damage), to the waves from wave 4 and wave 6, and one table of display
-names (`src/game/names.ts`). Milestone 23 added the boss, Grumblefoot the
-Troll King (4000 hp, 5 lives if he exits, slows capped at 30%), at the end
-of wave 10, with a HUD boss bar while he lives. Before that, v3's tablet play (milestone 14),
-art spike (15) and animation engine (16) were built. The simulation emits events (`state.events`) and the
-renderer animates enemies as pixel sprites from them, in WebGL in play and
-frozen in Canvas under `?test=1`. The sprites are placeholders; towers,
-map and HUD keep their shapes until the v5 art pass, after v4 (gameplay).
+v4 (gameplay lock, [docs/SCOPE-v4.md](docs/SCOPE-v4.md)) is built, and
+[docs/DESIGN.md](docs/DESIGN.md) is frozen on scripted play: every balance
+target is met by headless archetype runs on every map and difficulty.
+Milestone 29's evidence is Kyle finishing a game on Hard and then an
+endless run from the public link. That play test has not happened yet at
+the time of writing. The questions waiting on his play notes (the length of
+wave 1, whether calling early should carry risk, the endless growth rate,
+long late waves, and how much Hard leans on well-aimed specials) are listed
+in [DECISIONS.md](DECISIONS.md), "milestone 28".
 
-v2 is done ([docs/SCOPE-v2.md](docs/SCOPE-v2.md)): towers go on any free
-cell of a 30 x 15 grid off the path, through a build bar; the Longbow,
-Mortar and Fire Pot joined the v1 three; and the balance pass retuned the
-numbers so Longbow spam loses and a Tar Pit and Fire Pot build wins with
-lives to spare. Milestone 13's evidence is Kyle finishing a game with the
-new towers from the public link.
-
-Out of scope for v2: new maps, new enemies, a second upgrade tier, hotkeys,
-art packs, sound, saves, mobile layout.
-
-Next candidates: the Kenney CC0 art pack, a second map, and a second
-upgrade tier.
+v5 is planned as the presentation pass that was moved out of v3: art in a
+stop-motion tabletop style (pre-rendered from clay-style 3D models), sound,
+effects, world effects such as weather and time of day, and a themed HUD.
+Today's enemy sprites, tower and map shapes and the HUD bar are
+placeholders. Whether players can draw their own trail is still an open
+question. No dates are set.
 
 ## Credits
 
@@ -175,6 +312,6 @@ Placeholder enemy sprites: [Ninja Adventure](https://pixel-boy.itch.io/ninja-adv
 by Pixel-boy and AAA, CC0 (attribution appreciated, not required). Every
 asset file and its license is listed in [assets/MANIFEST.md](assets/MANIFEST.md).
 
-Further reading: [docs/SCOPE.md](docs/SCOPE.md),
+Further reading: [docs/SCOPE-v4.md](docs/SCOPE-v4.md),
 [docs/DESIGN.md](docs/DESIGN.md), [DECISIONS.md](DECISIONS.md),
 [DEVLOG.md](DEVLOG.md).

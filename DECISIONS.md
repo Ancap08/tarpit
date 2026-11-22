@@ -756,3 +756,42 @@ can change it; "Kyle" means Kyle decided.
   Hard needs a different plan and good special aim.
 - **Removed:** `bossRush` and `comboWithKegs` (duplicates of other
   archetypes). Opus.
+
+## 2026-11-22, milestone 29 (ship v4) and Kyle's second play notes
+
+- **Kyle played the live build on all three difficulty levels** (not
+  every map) and said the gameplay is solid and on track. He did not
+  report an endless run, so that part of milestone 29's evidence is not
+  claimed. Kyle.
+- **Wave 1's pace is accepted** (he speeds it up when it feels slow).
+  Calling early and the endless growth drew no complaint; they stay as
+  built. Kyle (notes), Fable (reading).
+- **Specials felt useless and hard to use**: he could not tell how to
+  place one or whether it landed. The one part of v4 that felt off. Kyle.
+- **Approved for the next milestone (30):** rework specials (clear aim
+  flow, lasting visible effects, more power: a charge that refills on a
+  timer, tar and fire that stay on the ground, bigger circles); Cannon
+  range 90 to 105; hold the speed button for 3x (Kyle floated a 1 to 2
+  slider; Fable recommended tap for 1x and 2x plus hold for 3x); a gold
+  cheat (tap the Gold number five times for +500; a cheated run saves no
+  best score). Kyle asked for all four; Fable chose the details, and Kyle
+  said to make such calls and he will object if he dislikes one.
+- **Then v5, "cooler", in this order:** hit and death effects, sound, a
+  living map, towers with personality, a tabletop-art spike, a themed
+  HUD. Kyle agreed with the list; the theme stays loose for now.
+- **Subagents default to Opus at medium effort or cheaper; verifiers move
+  from Fable to Sonnet** (still a different model from the implementer).
+  Kyle, to tighten usage. Docs-only work gets a lighter check.
+- **Two records that were missing.** The coordinator's commit trailers
+  changed from Fable 5.1 to Fable 5.2 at `0f6a69d` (PR 24) when Kyle
+  noticed the session had been on 5.1; no entry was made then. And twice
+  the coordinator started a merge before CI had finished (PR 18, refused
+  by branch protection; PR 24, where a background wait printed MERGED
+  while CI had failed and nothing had merged). Since then the wait, the
+  merge and a state check run together and the state is confirmed after.
+  Fable.
+- **The automated Codex review on every PR was never read** until the
+  milestone 29 verifier found it. Two cosmetic findings are still open and
+  go into milestone 30. The coordinator now reads it on every PR. Fable.
+- **README corrected by the coordinator** after the Sonnet fact-check
+  (wording only; every number had matched). Fable.
