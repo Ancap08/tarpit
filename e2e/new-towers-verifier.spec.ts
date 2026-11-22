@@ -32,13 +32,13 @@ const clickCell = (page: Page, c: Cell) => page.mouse.click(c.col * 32 + 16, c.r
 const TYPES = ['musketeer', 'cannon', 'tarpit', 'longbow', 'mortar', 'firepot'] as const;
 const COST = { musketeer: 50, cannon: 80, tarpit: 60, longbow: 40, mortar: 110, firepot: 70 };
 
-test('bar geometry: six 148x42 buttons, 8 px gaps, inside the canvas, no overlaps, clear of row 1', async ({ page }) => {
+test('bar geometry: six 140x42 buttons (148 before milestone 33), 8 px gaps, inside the canvas, no overlaps, clear of row 1', async ({ page }) => {
   await startGame(page);
   const r = await rects(page);
   const bar = TYPES.map((t) => r[`bar:${t}`]);
-  expect(bar.map((b) => b.x)).toEqual([16, 172, 328, 484, 640, 796]);
+  expect(bar.map((b) => b.x)).toEqual([16, 164, 312, 460, 608, 756]);
   for (const b of bar) {
-    expect([b.width, b.height]).toEqual([148, 42]); // 42 tall from milestone 14
+    expect([b.width, b.height]).toEqual([140, 42]); // 42 tall from milestone 14
     expect(b.x + b.width).toBeLessThanOrEqual(960);
     expect(b.y + b.height).toBeLessThanOrEqual(580);
   }

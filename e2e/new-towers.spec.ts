@@ -43,12 +43,12 @@ const CASES: { type: NewTower; cell: Cell; cost: number; upgrade: number; refund
   { type: 'firepot', cell: { col: 14, row: 8 }, cost: 70, upgrade: 50, refund: 84 },
 ];
 
-test('the bar has six buttons, 148 px wide and 8 px apart from x 16', async ({ page }) => {
+test('the bar has six buttons, 140 px wide (148 before milestone 33) and 8 px apart from x 16', async ({ page }) => {
   await startGame(page);
   const r = await rects(page);
   const order = ['musketeer', 'cannon', 'tarpit', 'longbow', 'mortar', 'firepot'];
   expect(Object.keys(r).filter((k) => k.startsWith('bar:'))).toEqual(order.map((t) => `bar:${t}`));
-  order.forEach((t, i) => expect(r[`bar:${t}`]).toEqual({ x: 16 + i * 156, y: 533, width: 148, height: 42 }));
+  order.forEach((t, i) => expect(r[`bar:${t}`]).toEqual({ x: 16 + i * 148, y: 533, width: 140, height: 42 }));
 });
 
 for (const c of CASES) {

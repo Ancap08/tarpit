@@ -149,7 +149,7 @@ test('(m25 g) tap Hard, tap Play: 80 gold, 15 lives; all four title buttons are 
   // One frame, so the menu's buttons are in Phaser's input list before the first tap.
   await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
   const r = await rects(page);
-  expect(Object.keys(r).sort()).toEqual(['title:easy', 'title:hard', 'title:map:meadow', 'title:map:riverbend', 'title:map:switchback', 'title:normal', 'title:play']);
+  expect(Object.keys(r).sort()).toEqual(['title:easy', 'title:hard', 'title:map:meadow', 'title:map:riverbend', 'title:map:switchback', 'title:mute', 'title:normal', 'title:play']);
   for (const [name, rect] of Object.entries(r)) {
     const top = await toPage(page, rect.x, rect.y);
     const bottom = await toPage(page, rect.x + rect.width, rect.y + rect.height);

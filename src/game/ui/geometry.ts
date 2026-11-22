@@ -64,18 +64,25 @@ export function portraitBarRects(): Rect[] {
   }));
 }
 
-/** Portrait row 2: Special, Start Wave and speed, PORTRAIT_GAP apart, from x 5 (475 px in all). */
+/**
+ * Portrait row 2: Special, Start Wave, speed and (milestone 33) mute,
+ * PORTRAIT_GAP apart, from x 5 (475 px in all). Start Wave narrowed from
+ * 214 and speed from 114 to make room for the 70 px mute button; "Call
+ * next  +14" at 18 px is 151 px, inside 170.
+ */
 export const PORTRAIT_SPECIAL_W = 130;
-export const PORTRAIT_START_W = 214;
-export const PORTRAIT_SPEED_W = 114;
+export const PORTRAIT_START_W = 170;
+export const PORTRAIT_SPEED_W = 82;
+export const PORTRAIT_MUTE_W = PORTRAIT_BUTTON_H;
 
-export function portraitRow2(): { special: Rect; start: Rect; speed: Rect } {
+export function portraitRow2(): { special: Rect; start: Rect; speed: Rect; mute: Rect } {
   const y = PORTRAIT_ROW2_Y;
   const h = PORTRAIT_BUTTON_H;
   const special = { x: 5, y, width: PORTRAIT_SPECIAL_W, height: h };
   const start = { x: special.x + special.width + PORTRAIT_GAP, y, width: PORTRAIT_START_W, height: h };
   const speed = { x: start.x + start.width + PORTRAIT_GAP, y, width: PORTRAIT_SPEED_W, height: h };
-  return { special, start, speed };
+  const mute = { x: speed.x + speed.width + PORTRAIT_GAP, y, width: PORTRAIT_MUTE_W, height: h };
+  return { special, start, speed, mute };
 }
 
 /** The title menu's parts (milestone 32b: TitleScene keeps the landscape values; this is portrait). */

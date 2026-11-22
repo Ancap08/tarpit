@@ -16,12 +16,13 @@ import { Button } from './button';
 export const BAR_TYPES: readonly TowerType[] = ['musketeer', 'cannon', 'tarpit', 'longbow', 'mortar', 'firepot'];
 
 /**
- * Bar button geometry (milestone 11, 42 px tall from milestone 14): six 148 x 42 buttons, 8 px apart from
- * x 16, so 6 * 148 + 5 * 8 = 928 px and 16 px margins on each side of the
- * 960 px canvas. The 16 px label stays: "Musketeer" plus "50" uses about
- * 106 of the 128 px inside the padding.
+ * Bar button geometry (milestone 11, 42 px tall from milestone 14): six 140 x 42 buttons, 8 px apart from
+ * x 16, so 6 * 140 + 5 * 8 = 880 px, ending at x 896 (milestone 33: 148
+ * px wide before, narrowed for the mute button at x 904, hud.ts). The 16 px
+ * label stays: "Musketeer" plus "50" uses about 106 of the 120 px inside
+ * the padding.
  */
-export const BAR_BUTTON_WIDTH = 148;
+export const BAR_BUTTON_WIDTH = 140;
 export const BAR_BUTTON_HEIGHT = 42;
 export const BAR_LEFT = 16;
 export const BAR_GAP = 8;
