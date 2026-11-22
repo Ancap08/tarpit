@@ -13,7 +13,8 @@ import { waitForTitle } from './title';
 // Milestone 32a verifier probes (independent of install.spec.ts): update path
 // with a real second build, bad deploys, install failure, hanging network,
 // and pointer mapping with safe-area insets. Findings are in DEVLOG
-// "Verifier notes". Tests marked test.fixme describe behaviour that is wrong.
+// "Verifier notes". The two test.fixme cases (503 page, hanging page) were
+// fixed in the 32a follow-up and now pass.
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const MIME: Record<string, string> = {
@@ -120,12 +121,20 @@ test.describe('update path with a real second build', () => {
     // tab1 is still the A page, now under B's worker. What does an old hashed file give?
     const r = await tab1.evaluate(async (u) => fetch(u).then((x) => x.status).catch(() => 'error'), `/assets/${jsA}`);
     test.info().annotations.push({ type: 'old-hashed-online', description: String(r) });
+    // In no worker cache: the worker passes it to the network, which answers from the browser's HTTP
+    // cache (A's own bytes) or the server (404). Never another file.
+    const body = await tab1.evaluate(async (u) => fetch(u).then(async (x) => (x.ok ? (await x.text()).length : x.status)), `/assets/${jsA}`);
+    expect([readFileSync(join(A, 'assets', jsA), 'utf8').length, 404]).toContain(body);
     // The A page keeps running (its bundle is already loaded).
     expect(await tab1.evaluate(() => window.__tarpit?.game !== undefined)).toBe(true);
 
     await offline(context, srv);
     const rOff = await tab1.evaluate(async (u) => fetch(u).then((x) => x.status).catch(() => 'error'), `/assets/${jsA}`);
     test.info().annotations.push({ type: 'old-hashed-offline', description: String(rOff) });
+    // Offline: A's own bytes (kept in the worker's cache from the online fetch above, or the HTTP
+    // cache) or a network error at once. Never another file and never a hang.
+    const bodyOff = await tab1.evaluate(async (u) => fetch(u).then(async (x) => (x.ok ? (await x.text()).length : x.status), () => 'error'), `/assets/${jsA}`);
+    expect([readFileSync(join(A, 'assets', jsA), 'utf8').length, 'error']).toContain(bodyOff);
     await tab2.reload();
     expect(await build(tab2)).toBe('B');
     await waitForTitle(tab2);
@@ -173,14 +182,14 @@ test.describe('bad deploys', () => {
     }
     const regs = await page.evaluate(() => navigator.serviceWorker.getRegistrations().then((r) => r.length));
     test.info().annotations.push({ type: 'remove-by-404', description: `registrations after 4 reloads=${regs}` });
-    // Observed: there is NO kill switch. Deleting sw.js from a deploy does not remove installed workers.
+    // Observed: deleting sw.js from a deploy does not remove installed workers. The kill switch
+    // (TARPIT_SW=off, follow-up) is tested in install.spec.ts.
     expect(regs).toBe(1);
     await srv.close();
   });
 
-  // BUG (verifier, 32a): networkFirst only falls back to the cache when fetch() throws, so a 5xx/404 from
-  // the origin or CDN replaces the cached game with the error page.
-  test.fixme('origin answers 503 for the page while online: shows the cached game', async ({ page }) => {
+  // Found by the verifier (32a): a 5xx/404 page replaced the cached game. Fixed in the follow-up.
+  test('origin answers 503 for the page while online: shows the cached game', async ({ page }) => {
     const site: Site = { dir: A, hits: [] };
     const srv = await serve(site);
     await page.goto(`${srv.origin}/`);
@@ -258,9 +267,9 @@ test.describe('requests', () => {
     await srv.close();
   });
 
-  // BUG (verifier, 32a): the page fetch has no timeout, so a hanging network (captive portal, lie-fi)
-  // leaves a blank page even though the whole game is cached.
-  test.fixme('hanging network on a page load with a worker installed: how long until the cached game shows', async ({ page }) => {
+  // Found by the verifier (32a): no timeout on the page fetch left a blank page. Fixed in the
+  // follow-up: after PAGE_TIMEOUT_MS (3 s) the cached page shows.
+  test('hanging network on a page load with a worker installed: how long until the cached game shows', async ({ page }) => {
     const site: Site = { dir: A, hits: [] };
     const srv = await serve(site);
     await page.goto(`${srv.origin}/`);

@@ -4,18 +4,21 @@
 // - Install: cache every file of this build (fetched past the HTTP cache)
 //   into the cache named for this build, then skipWaiting.
 // - Activate: delete the caches of other builds, then clients.claim.
-// - Fetch: the page is network first (a new deploy shows on the next open
-//   when online) with this build's cached page as the offline fallback;
+// - Fetch: the page is network first (a new deploy that answers 200 shows
+//   on the next open) with this build's cached page as the fallback when
+//   the network fails, answers not ok, or takes over PAGE_TIMEOUT_MS;
 //   files under assets/ have content-hashed names and are cache first; other
 //   files in scope (manifest, icons) are network first. Anything else
 //   passes through (rules.ts).
 //
 // Why old and new files never mix: each cache holds exactly one build, put
-// there at install and never overwritten by a network page, so the offline
+// there at install and never overwritten by a network page, so the fallback
 // page and the assets it names come from the same build. Online, the page
 // comes from the network and names only its own hashed files; a hashed name
-// always means the same bytes, so a cache hit is never a wrong file.
-import { cacheName, isOldCache, requestKind } from './rules';
+// always means the same bytes, so a cache hit is never a wrong file. A
+// hashed file in no cache (an old tab after an update) goes to the network,
+// and whatever it answers is returned.
+import { cacheName, isOldCache, PAGE_TIMEOUT_MS, requestKind } from './rules';
 
 declare const __SW_VERSION__: string;
 declare const __SW_PRECACHE__: string[];
@@ -59,18 +62,30 @@ sw.addEventListener('activate', (event) => {
   );
 });
 
-async function fromCache(url: string): Promise<Response> {
-  const hit = await (await caches.open(CACHE)).match(url);
-  return hit ?? Response.error();
-}
-
+/**
+ * Network first, with this build's cached copy of `fallbackUrl` when the
+ * network fails, answers not ok (an outage's 404 or 5xx), or takes longer
+ * than PAGE_TIMEOUT_MS (a hanging connection). With no cached copy it waits
+ * for the network whatever it does. The network answer is never cached.
+ */
 async function networkFirst(req: Request, fallbackUrl: string): Promise<Response> {
+  // no-cache revalidates with the server, so a new deploy is never hidden
+  // behind the HTTP cache's max-age.
+  const network = fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' });
+  const cached = await (await caches.open(CACHE)).match(fallbackUrl);
+  if (!cached) return network;
+  network.catch(() => undefined); // a late failure after the fallback is not an error
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<null>((r) => {
+    timer = setTimeout(() => r(null), PAGE_TIMEOUT_MS);
+  });
   try {
-    // no-cache revalidates with the server, so a new deploy is never hidden
-    // behind the HTTP cache's max-age.
-    return await fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' });
+    const res = await Promise.race([network, timeout]);
+    return res && res.ok ? res : cached;
   } catch {
-    return fromCache(fallbackUrl);
+    return cached;
+  } finally {
+    clearTimeout(timer);
   }
 }
 

@@ -74,6 +74,8 @@ async function checkManifestAndTags(page: Page, url: string, base: string): Prom
   const m = JSON.parse(await res.text());
   expect(m).toMatchObject({ name: 'Tarpit', short_name: 'Tarpit', display: 'standalone' });
   expect(m.orientation).toBeUndefined();
+  // No id: the start URL identifies the app, so /tarpit/ never collides with another site on the origin.
+  expect(m.id).toBeUndefined();
   // start_url and scope resolve against the manifest's own address: the site root.
   expect(new URL(m.start_url, manifestUrl).pathname).toBe(base);
   expect(new URL(m.scope, manifestUrl).pathname).toBe(base);
@@ -198,10 +200,23 @@ test.describe('install and offline, base /', () => {
       await expect.poll(() => page.evaluate(() => caches.keys())).toEqual([`tarpit-${versionB}`]);
       await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
 
+      // An old tab asking for build A's bundle after the update: it is in no
+      // cache, so the worker goes to the network and returns its answer (here
+      // a 404, as on Pages after a deploy), never another file and never a hang.
+      const oldJs = 'index-0ldBu1ld.js'; // a hashed name in no cache and not on the server
+      const fetchStatus = (u: string) =>
+        page.evaluate(async (url) => {
+          const t = new Promise<string>((r) => setTimeout(() => r('hung'), 5000));
+          return Promise.race([fetch(url).then((r) => String(r.status), () => 'network error'), t]);
+        }, u);
+      expect(await fetchStatus(`/assets/${oldJs}`)).toBe('404');
+
       // Offline (server stopped and the context offline): the cached build B starts and plays.
       await goOffline(context, server.close);
       await page.reload();
       await expect(page.locator('meta[name="tarpit-build"]')).toHaveAttribute('content', 'B');
+      // Offline, a hashed file in no cache is a network error at once, not a hang.
+      expect(await fetchStatus(`/assets/${oldJs}`)).toBe('network error');
       await playStarts(page);
       expect(await page.evaluate(() => localStorage.getItem('tarpit.best'))).toBe(BEST);
       await context.setOffline(false);
@@ -238,5 +253,56 @@ test.describe('install and offline, base /tarpit/ (GitHub Pages paths)', () => {
     await playStarts(page);
     expect(await page.evaluate(() => localStorage.getItem('tarpit.best'))).toBe(BEST);
     await context.setOffline(false);
+  });
+});
+
+test.describe('kill switch: a TARPIT_SW=off deploy retires the worker', () => {
+  test.describe.configure({ mode: 'serial' });
+  let tmp = '';
+  test.beforeAll(() => {
+    tmp = mkdtempSync(join(tmpdir(), 'tarpit-off-'));
+    execFileSync('npx', ['vite', 'build', '--outDir', join(tmp, 'off'), '--emptyOutDir', '--logLevel', 'warn'], {
+      cwd: ROOT,
+      env: { ...process.env, TARPIT_SW: 'off' },
+      stdio: 'pipe',
+    });
+  });
+  test.afterAll(() => rmSync(tmp, { recursive: true, force: true }));
+
+  const state = (page: Page) =>
+    page.evaluate(async () => ({
+      regs: (await navigator.serviceWorker.getRegistrations()).length,
+      caches: (await caches.keys()).filter((n) => n.startsWith('tarpit-')),
+      controlled: navigator.serviceWorker.controller !== null,
+    }));
+
+  test('the next online open leaves no registration and no caches, and the game plays', async ({ page }) => {
+    expect(readFileSync(join(tmp, 'off', 'sw.js'), 'utf8')).toContain('unregister');
+    const site = { dir: join(ROOT, 'dist') };
+    const server = await serve(site, '/');
+    await page.goto(`${server.origin}/`);
+    expect(await waitForWorker(page)).toHaveLength(1);
+    site.dir = join(tmp, 'off');
+    await page.reload();
+    await expect.poll(() => state(page)).toEqual({ regs: 0, caches: [], controlled: expect.any(Boolean) });
+    await page.reload(); // the open after that is a plain network page
+    expect(await state(page)).toEqual({ regs: 0, caches: [], controlled: false });
+    await playStarts(page);
+    await server.close();
+  });
+
+  test('the retiring sw.js alone removes itself and its caches and reloads open pages', async ({ page }) => {
+    const site = { dir: join(ROOT, 'dist') };
+    const server = await serve(site, '/');
+    await page.goto(`${server.origin}/`);
+    await waitForWorker(page);
+    site.dir = join(tmp, 'off');
+    // No reload: the old page's own update check fetches the retiring sw.js,
+    // which must clean up and send the page back to the network by itself.
+    const reloaded = page.waitForEvent('load');
+    await page.evaluate(() => navigator.serviceWorker.getRegistration().then((r) => r?.update()));
+    await reloaded;
+    await expect.poll(() => state(page)).toEqual({ regs: 0, caches: [], controlled: false });
+    await server.close();
   });
 });

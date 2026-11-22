@@ -3,6 +3,9 @@
 // shouldRegister on the page. No DOM or worker globals here, so they are unit
 // tested in rules.test.ts.
 
+/** How long the page (and manifest, icons) may take before the cached copy is served. */
+export const PAGE_TIMEOUT_MS = 3000;
+
 /** Every cache this game owns starts with this; others on the origin are left alone. */
 export const CACHE_PREFIX = 'tarpit-';
 
