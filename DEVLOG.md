@@ -6654,3 +6654,75 @@ byte-identical to main (27 of 27, re-run).
 - **Re-verify of 2bcc13b.** Both earlier fixmes pass unweakened (switch race, shake). New probes pass: a relayout during `create()`, Play again plus relayout in one frame (fresh game, not the old one), the title-to-game transition, a won screen with a switch and Keep going, a burst of 8 switches on the live loop (ticks within real time, no extra tick), the lift (48 CSS px) reaching every map edge by tower drag and special aim at 390 x 844, 390 x 664 and 768 x 1024 with the cancel rules, the aim text in the strip with the preview back after cancel and fire, and 8 landscape frames still byte-identical to main.
 - **Open, low (fixme).** `toMenu()` then `relayout()` in the same frame leaves the title and a restarted game scene both active (`relayout()` does not know the scene is leaving). It needs a turn in the same frame as the Menu tap.
 - **Fixed (Claude Opus 5.5): a switch in the frame the scene leaves.** Play again and Menu mark the game scene as leaving, and `relayout()` then does nothing (the next scene reads the layout itself); a switch in the same frame as Play, Play again (either order), Menu, Keep going, the losing tick or the winning tick leaves exactly one scene, in the window's layout, with the right game (`portrait-phone.spec.ts`, "switch edge"); the verifier's fixme passes unchanged.
+
+## 2026-11-22: milestone 33, sound
+
+Implementer: Claude Opus 5.5. Scope: `docs/SCOPE-v5.md`, "Milestone 33:
+sound". Kyle chose sounds made in code over a downloaded pack. No
+simulation change: `npm run sim` is byte-identical to main.
+
+### What I built
+
+- **A synth on the Web Audio API** (`src/game/audio/`): 35 sounds as data
+  (`recipes.ts`), one builder for live play and offline rendering
+  (`synth.ts`), a mixer with thinning and a voice cap (`mixer.ts`), a
+  master chain with a limiter, and the engine (`engine.ts`). No audio
+  files and no new dependency. The list, lengths and settings are in
+  `docs/DESIGN.md`, "Sound".
+- **Triggers** follow the effects: a shot when fired; the impact, hit tick
+  and death pop when the drawn projectile lands; every other event as
+  Effects routes it. GameScene adds tower select, refused actions and the
+  charge becoming ready.
+- **A horde stays pleasant:** a repeat within 50 ms is dropped, repeats in
+  400 ms get quieter (down to 0.3), at most 16 voices (lowest priority,
+  then quietest, then oldest goes first), and a limiter. All in real time,
+  so 1x, 2x and 3x behave the same.
+- **Starting:** no AudioContext until the first gesture; a hidden page
+  stops the voices and suspends; test mode creates nothing. Phaser's own
+  sound manager is now off (`audio.noAudio`): it made an AudioContext at
+  boot, which phones block and which nothing used.
+- **Mute button** drawn in code, on the title (top right) and in the HUD:
+  landscape row 2's right end, 42 x 42 at x 904 (the build bar's buttons
+  narrowed from 148 to 140 px); portrait controls row 2's end, 70 x 70
+  (Start Wave 214 -> 170, speed 114 -> 82). M toggles; stored under
+  `tarpit.muted`.
+- **For Kyle to hear:** `npm run sounds -- <folder>` renders every sound
+  in turn and a 10 s busy wave through the master chain into
+  `m33-sounds.wav` (1.7 MB, 22.05 kHz mono) and `m33-sounds.txt` (the
+  order). Not committed.
+
+### Evidence
+
+- Offline renders (`e2e/sound-render.spec.ts`): every sound renders, RMS
+  0.015 to 0.18, peak 0.09 to 0.59 before the limiter (headroom rule 0.9),
+  its stated length (silent after it), last 5 ms under 1.3e-4. Worst case
+  (40 shots, 40 impacts, 40 deaths in 0.5 s) through the master chain:
+  peak 0.77 thinned, 0.82 unthinned.
+- Real mode (`e2e/sound.spec.ts`): no context before the first gesture
+  (counted at the constructor, Phaser included), one after; each event
+  class requests its sound; the impact comes at least the travel time
+  after the shot, never before; muting stops new sounds, survives a
+  reload, M toggles; blocked storage throws nothing; hiding suspends; a
+  120-enemy horde at 3x peaks at 16 voices with about 700 of 930 requests
+  thinned. Mute buttons by mouse (960 x 580), touch on the tablet
+  (1024 x 768) and phone (390 x 844), overlapping no other button.
+- Perf (`e2e/perf.spec.ts`, unchanged, sound on): median 16.7 ms and p95
+  16.7 to 16.8 ms before and after, on all three runs.
+- Screenshot baselines: every game frame changes in HUD row 2 (landscape
+  and tablet) or controls row 2 (portrait), and the title frames in the
+  top right corner. Rendered locally on main and on this branch: no pixel
+  outside those regions changed in any of the 39 frames. CI regenerates
+  the PNGs.
+
+### What went wrong
+
+- Older specs listed the exact hook keys, the title's buttons and the
+  bar's 148 px width; they now include `audio`, `setMuted`, `audioLab`,
+  `title:mute` and 140 px.
+- Phaser's debug banner still says "Web Audio" with `noAudio` set: the
+  banner checks the device before the config. The sound manager is the
+  no-audio one; the constructor count in the test shows no context.
+
+Checks: lint, check:assets, typecheck, 1166 unit tests, build,
+check:size (1.32 MB), 447 Playwright tests (8 skipped) on chromium,
+tablet and phone; `npm run sim` byte-identical to main.
