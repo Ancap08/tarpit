@@ -278,8 +278,17 @@ describe('an endless run (milestone 26)', () => {
     expect(callEarlyStatus(s)).toEqual({ ok: false, reason: 'game-over' });
   });
 
+  // One endlessGreedy run shared by the two tests below (milestone 31 trimmed
+  // the determinism test from two fresh runs to this one plus one fresh run:
+  // still two independent runs compared in full).
+  let greedyRun: ReturnType<typeof playScripted> | undefined;
+  const sharedGreedy = () => (greedyRun ??= playScripted(endlessGreedy()));
+  beforeAll(() => {
+    sharedGreedy();
+  });
+
   it('endlessGreedy on Normal goes further than endlessIdle, reaches wave 14 and loses by wave 40', () => {
-    const greedy = playScripted(endlessGreedy()).state;
+    const greedy = sharedGreedy().state;
     expect(greedy.phase).toBe('lost');
     expect(greedy.wave).toBeGreaterThan(idle.state.wave);
     expect(greedy.wave).toBeGreaterThanOrEqual(14);
@@ -288,8 +297,9 @@ describe('an endless run (milestone 26)', () => {
   });
 
   it('determinism: two endlessGreedy runs to the end give deep-equal final states', () => {
-    const a = playScripted(endlessGreedy());
+    const a = sharedGreedy();
     const b = playScripted(endlessGreedy());
+    expect(b).not.toBe(a);
     expect(a.state).toEqual(b.state);
     expect(a.waves).toEqual(b.waves);
     // Verifier: about 3.8 s locally, too close to vitest's 5 s default for CI (now 30 s for all, vitest.config.ts).
