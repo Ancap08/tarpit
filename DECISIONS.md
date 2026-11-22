@@ -710,3 +710,49 @@ can change it; "Kyle" means Kyle decided.
   slower than the Mac), the third such timeout in three milestones.
   `npm run test:slow` lists tests over 3 s so the bigger limit does not
   hide them. Fable (rule), Opus (build).
+
+## 2026-11-22, milestone 28 (balance lock)
+
+- **Maps may differ in difficulty.** Switchback is the gentlest and
+  Riverbend the hardest, inside shared target bands, with no per-map
+  enemy, tower, gold or lives numbers. Fable.
+- **Targets (every map).** Normal: noTowers loses by wave 3; lazyBuild
+  loses on 6 to 9; longbowSpam loses on 7 to 9; comboBuild wins with 5 to
+  18 lives; no Fire Pot and no specials are each strictly worse;
+  noAntiAir leaks 75% of wave 4's Harpies, survives it, loses on 5 to 8;
+  one Musketeer leaks at most 6 on wave 1. Easy: lazyBuild wins with at
+  least 8 lives; noTowers loses; one Musketeer leaks at most 3 on wave 1.
+  Hard: the map's `hardBuild` wins; lazyBuild survives wave 1 and loses by
+  wave 5; the Normal combo plan has 5 fewer lives or loses on wave 8 or
+  later; the Hard hp rule. Meadow only: under 200 gold entering wave 10,
+  and tar has to matter (Tar Pits and the Tar Barrel each change the
+  result). All met, pinned as a 108-cell matrix. Fable (targets), Opus
+  (numbers), Fable's independent replay matched every cell.
+- **Numbers changed:** wave 1 Goblin interval 1.2 s to 2.5 s; Goblin hp
+  19 to 23; Troll hp 900 to 950; Tar Barrel slow 240 to 210 ticks; Easy
+  lives 30 to 35. Each one alone breaks a target if reverted (verifier's
+  matrix), except Easy lives, which is a margin choice: the simple build
+  won Easy with 4 and 5 lives on two maps, and Easy is for young
+  children. Opus (first four), Fable (Easy lives, on the verifier's scan).
+- **Wave 1 is deliberately gentle, and open.** One Musketeer now stops all
+  of wave 1 on Easy and Normal (it leaked 12 of 20). The cost: one Goblin
+  on screen at a time for 48 s. 2.0 s spacing also leaks nothing, but then
+  the cheapest Hard opening dies on wave 1 again. Kept at 2.5 s (Fable);
+  Kyle decides after playing.
+- **Scripted specials come from a stored per-wave search**
+  (`npm run sim:specials`), so a scripted special never does worse than
+  firing nothing. The old cluster policy made Riverbend's combo worse (8
+  lives against 14 without). Fable (rule), Opus (build).
+- **Hard depends on well-aimed specials.** `hardBuild` with no specials
+  wins Meadow with 2 lives and loses Riverbend on wave 8. Accepted
+  (Fable): Hard is meant to be hard. A play note for Kyle.
+- **`docs/DESIGN.md` is the frozen spec.** One document in the present
+  tense, guarded by `designSpec.test.ts` (tables parsed from the markdown
+  and compared with the code). A change to a number or rule needs an entry
+  here and the pins updated. It is frozen before Kyle's play notes exist,
+  which the scope listed as evidence; his notes can reopen it. Fable.
+- **Open for Kyle's play notes:** wave 1 spacing; calling early is always
+  better; endless growth 1.6 (1.45 is gentler); three waves pass 100 s;
+  Hard needs a different plan and good special aim.
+- **Removed:** `bossRush` and `comboWithKegs` (duplicates of other
+  archetypes). Opus.
