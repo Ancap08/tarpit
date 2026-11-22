@@ -197,7 +197,7 @@ describe('(g) the combo builds against him', () => {
       for (const a of script[w] ?? []) expect(applyAction(s, a)).toMatchObject({ result: { ok: true } });
       expect(startWave(s).ok).toBe(true);
       for (let t = 0; running() && t < 60 * 600; t++) {
-        // Milestone 25c: the combo builds fire their cluster specials.
+        // Milestone 25c: the combo builds fire their specials (28: the stored list).
         for (const a of script.timed?.[w] ?? []) if (a.atWaveTick === s.waveTick) applyAction(s, a);
         const waveTick = s.waveTick;
         tick(s);
@@ -210,21 +210,21 @@ describe('(g) the combo builds against him', () => {
     return { s, boss };
   }
 
-  it('comboBuild: one bossSpawn at 3900, one bossDown by shot or burn at 6292, won with 13 lives and 476 gold (milestone 25c second pass)', () => {
+  it('comboBuild: one bossSpawn at 3900, one bossDown by shot or burn at 6197, won with 15 lives and 412 gold (milestone 28)', () => {
     const { s, boss } = run(comboBuild());
     expect(boss.map((b) => b.kind)).toEqual(['bossSpawn', 'bossDown']);
     expect(boss[0].waveTick).toBe(3900);
     expect(['shot', 'burn']).toContain(boss[1].cause);
-    expect(boss[1]).toEqual({ waveTick: 6292, kind: 'bossDown', cause: 'shot' });
-    expect(s).toMatchObject({ phase: 'won', wave: 10, lives: 13, gold: 476 });
+    expect(boss[1]).toEqual({ waveTick: 6197, kind: 'bossDown', cause: 'shot' });
+    expect(s).toMatchObject({ phase: 'won', wave: 10, lives: 15, gold: 412 });
   });
 
-  it('comboBuildNoFire kills him later, at 6438 (146 ticks after the combo build), won with 9 lives', () => {
+  it('comboBuildNoFire kills him later, at 6265 (68 ticks after the combo build), won with 9 lives', () => {
     const combo = run(comboBuild()).boss[1].waveTick;
     const { s, boss } = run(comboBuildNoFire());
-    expect(boss[1]).toMatchObject({ kind: 'bossDown', waveTick: 6438 });
+    expect(boss[1]).toMatchObject({ kind: 'bossDown', waveTick: 6265 });
     expect(['shot', 'burn']).toContain(boss[1].cause);
-    expect(boss[1].waveTick - combo).toBe(6438 - 6292);
+    expect(boss[1].waveTick - combo).toBe(6265 - 6197);
     expect(s).toMatchObject({ phase: 'won', lives: 9 });
   });
 });

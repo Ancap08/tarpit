@@ -407,7 +407,11 @@ test('wave 4 Harpies: a Cannon splash ignores one, a Musketeer shoots one', asyn
 // fired on step 3228, no hit on this step. Second pass (he comes at 65 s):
 // step 5664, alone on the downhill run at (420,196), tarred and burning,
 // 2429 of 4000 hp, Mortar splash fired on step 5662, no hit on this step.
-const BOSS_STEPS = 5664;
+// Milestone 28 (the stored special list in waves 1 to 9): the first wave 10
+// step that meets the same rules, 5361: alone at the top of the downhill run
+// at (420,104), tarred and burning, 3240 of 4000 hp, Mortar splash fired on
+// step 5359, no hit on this step (src/sim/boss-frame.test.ts pins it).
+const BOSS_STEPS = 5361;
 
 test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splash', async ({ page }) => {
   await open(page);
@@ -439,7 +443,7 @@ test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splas
     slowed: true,
     hitNow: false,
     mortarHitOnBoss: 1,
-    bar: `${BOSS_NAME} 2429 / 4000`,
+    bar: `${BOSS_NAME} 3240 / 4000`,
     texture: 'boss',
   });
   await settle(page);

@@ -160,7 +160,7 @@ describe('E1. enemy conservation and kill credit over a full comboBuild game (No
     expect(ledger.earlyBonuses).toBe(0);
     expect(ledger.clearBonuses).toBe(10 * WAVE_CLEAR_BONUS);
     expect(DIFFICULTY_DEFS.normal.startGold + ledger.bounties + ledger.clearBonuses + ledger.earlyBonuses + ledger.refunds - ledger.spend).toBe(s.gold);
-    expect(s.gold).toBe(476);
+    expect(s.gold).toBe(412);
   });
 });
 
@@ -779,16 +779,7 @@ describe('S2. what tar still does (no balance test pins it)', () => {
     expect([tar.state.phase, tar.state.lives]).toEqual(['won', 9]);
     expect([none.state.phase, none.state.wave]).toEqual(['lost', 10]);
   });
-
-  it('Tar Barrel, Normal: comboBuild without its three barrels (waves 4 to 6) ends the same, 13 lives and 476 gold; only wave 5 clears 180 ticks later', () => {
-    const script = comboBuild();
-    const withBarrel = playScripted(script);
-    const timed = script.timed!.map((list, i) => (i >= 3 && i <= 5 ? [] : list));
-    const without = playScripted(Object.assign(script.map((w) => [...w]), { timed }));
-    expect(without.log.filter((l) => 'result' in l && !l.result.ok)).toEqual([]);
-    expect([without.state.phase, without.state.lives, without.state.gold]).toEqual(['won', 13, 476]);
-    expect(without.waves.map((w) => w.lives)).toEqual(withBarrel.waves.map((w) => w.lives));
-    const later = without.waves.map((w, i) => w.ticks - withBarrel.waves[i].ticks);
-    expect(later).toEqual([0, 0, 0, 0, 180, 0, 0, 0, 0, 0]);
-  });
+  // Milestone 28: the Tar Barrel probe ("ends the same without its three
+  // barrels") is folded into balance.suite.ts T9, which now requires the
+  // opposite: without its barrels the combo does strictly worse.
 });

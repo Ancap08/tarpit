@@ -148,7 +148,7 @@ const won = () => structuredClone(wonState);
 
 describe('continueEndless (milestone 26)', () => {
   it('the combo build wins on Normal (the starting point)', () => {
-    expect(wonState).toMatchObject({ phase: 'won', wave: 10, lives: 13, gold: 476, endless: false });
+    expect(wonState).toMatchObject({ phase: 'won', wave: 10, lives: 15, gold: 412, endless: false });
   });
 
   it('allowed when won: setup, endless, wave 10 cleared, everything kept', () => {

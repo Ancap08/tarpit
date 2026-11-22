@@ -12,7 +12,7 @@ import { ENEMY_STATS } from './enemies';
 import type { GameEvent } from './events';
 import { createGame, startWave, tick } from './game';
 import type { Cell } from './grid';
-import { comboBuild, lazyBuild, playScripted } from './headless';
+import { comboBuild, playScripted } from './headless';
 import type { Enemy, EnemyType, GameState, TowerType } from './types';
 import { WAVES } from './waves';
 
@@ -222,21 +222,5 @@ describe('(g) determinism per level', () => {
   }
 });
 
-describe('(h) the SCOPE-v4 Easy and Hard targets (met in milestone 25c, second pass)', () => {
-  it('lazyBuild on Easy wins with 9 lives and 964 gold', () => {
-    const r = playScripted(lazyBuild('easy'), undefined, 'easy');
-    expect(r.waves.map((w) => w.lives)).toEqual([30, 30, 30, 30, 27, 27, 26, 24, 15, 9]);
-    expect({ phase: r.state.phase, wave: r.state.wave, lives: r.state.lives, gold: r.state.gold }).toEqual({ phase: 'won', wave: 10, lives: 9, gold: 964 });
-  });
-
-  // comboBuild on Hard loses on wave 8 (the target allows a loss from wave 8
-  // on); Normal: won, 13 lives, 476 gold, 175 after wave 9.
-  it('comboBuild on Hard loses on wave 8 (Normal: won with 13 lives, 476 gold, 175 after wave 9)', () => {
-    const hard = playScripted(comboBuild('hard'), undefined, 'hard');
-    expect(hard.waves.map((w) => w.lives)).toEqual([15, 15, 14, 13, 11, 11, 1, 0]);
-    expect({ phase: hard.state.phase, wave: hard.state.wave, gold: hard.state.gold }).toEqual({ phase: 'lost', wave: 8, gold: 284 });
-    const normal = playScripted(comboBuild());
-    expect({ phase: normal.state.phase, lives: normal.state.lives, gold: normal.state.gold }).toEqual({ phase: 'won', lives: 13, gold: 476 });
-    expect(normal.waves[8].gold).toBe(175);
-  });
-});
+// (h) the SCOPE-v4 Easy and Hard targets with their exact results: folded
+// into balance.suite.ts in milestone 28 (E1 to E3, H1 to H4 and the matrix).

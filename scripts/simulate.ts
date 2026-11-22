@@ -2,17 +2,19 @@
 // src/sim/headless.ts on Normal and prints lives, gold and ticks after each
 // wave, then a one-line summary per archetype, then (milestone 25) a compact
 // table of every archetype on Easy and on Hard, then (milestone 26) the endless
-// archetypes on every level. Loads src/sim through Vite's module runner, so it
-// needs no extra dependency.
+// archetypes on every level, then (milestone 27) the other maps, then
+// (milestone 28) every balance target and the matrix of every archetype by
+// map and level. Loads src/sim through Vite's module runner, so it needs no
+// extra dependency.
 import { fileURLToPath } from 'node:url';
 import { runnerImport } from 'vite';
 import type * as Sim from '../src/sim/index';
+import type * as Balance from '../src/sim/balanceRuns';
+import type * as Targets from '../src/sim/balanceTargets';
 
-const { module: sim } = await runnerImport<typeof Sim>('/src/sim/index.ts', {
-  root: fileURLToPath(new URL('..', import.meta.url)),
-  configFile: false,
-  logLevel: 'error',
-});
+const load = async <T>(path: string): Promise<T> =>
+  (await runnerImport<T>(path, { root: fileURLToPath(new URL('..', import.meta.url)), configFile: false, logLevel: 'error' })).module;
+const sim = await load<typeof Sim>('/src/sim/index.ts');
 
 const summaries: string[] = [];
 
@@ -71,27 +73,38 @@ for (const level of ['easy', 'normal', 'hard'] as const) {
 }
 
 // Milestone 27: the other maps, appended so Meadow's report above stays as it
-// was. Per map: the Normal table for the archetypes with map targets, the
-// combo build on Easy and Hard, and endlessIdle on Normal. "lives by wave"
-// is the lives left after each wave played.
-const MAP_ARCHETYPES = ['noTowers', 'lazyBuild', 'longbowSpam', 'comboBuild', 'noAntiAir'] as const;
-const mapWidth = Math.max(...MAP_ARCHETYPES.map((n) => n.length), 'endlessIdle'.length);
+// was. Per map: the Normal table for the archetypes that run on every map
+// (milestone 28), with the lives left after each wave played.
+const balance = await load<typeof Balance>('/src/sim/balanceRuns.ts');
+const targets = await load<typeof Targets>('/src/sim/balanceTargets.ts');
+const mapWidth = Math.max(...balance.ALL_MAP_ARCHETYPES.map((n) => n.length));
 for (const map of sim.MAP_IDS) {
   if (map === 'meadow') continue;
-  console.log(`\nMap: ${map} (path ${sim.pathLength(sim.MAPS[map])} px, ${sim.buildableCells(sim.MAPS[map]).filter(Boolean).length} buildable cells)`);
-  console.log(`${'archetype'.padEnd(mapWidth)}  level   result  wave  lives  gold  lives by wave`);
-  const row = (name: string, level: Sim.Difficulty, script: Sim.WaveScript): void => {
-    const run = sim.playScripted(script, undefined, level);
-    const s = run.state;
-    const refused = run.log.filter((step) => 'result' in step && !step.result.ok).length;
+  console.log(`\nMap: ${map} (path ${sim.pathLength(sim.MAPS[map])} px, ${sim.buildableCells(sim.MAPS[map]).filter(Boolean).length} buildable cells), Normal`);
+  console.log(`${'archetype'.padEnd(mapWidth)}  result  wave  lives  gold  lives by wave`);
+  for (const name of balance.ALL_MAP_ARCHETYPES) {
+    const r = balance.balanceRun(name, map, 'normal');
     console.log(
-      `${name.padEnd(mapWidth)}  ${level.padEnd(6)}  ${s.phase.padEnd(6)}  ${String(s.wave).padStart(4)}  ${String(s.lives).padStart(5)}  ${String(s.gold).padStart(4)}  ${run.waves.map((w) => w.lives).join(' ')}${refused ? `  (${refused} refused)` : ''}`,
+      `${name.padEnd(mapWidth)}  ${r.phase.padEnd(6)}  ${String(r.wave).padStart(4)}  ${String(r.lives).padStart(5)}  ${String(r.gold).padStart(4)}  ${r.waves.map((w) => w.lives).join(' ')}${r.refused ? `  (${r.refused} refused)` : ''}`,
     );
-  };
-  for (const name of MAP_ARCHETYPES) row(name, 'normal', sim.ARCHETYPES[name]('normal', map));
-  for (const level of ['easy', 'hard'] as const) row('comboBuild', level, sim.comboBuild(level, map));
-  const r = sim.endlessReport(sim.endlessIdle('normal', map), 'normal');
-  console.log(
-    `${'endlessIdle'.padEnd(mapWidth)}  normal  ${r.result.padEnd(6)}  ${String(r.wave).padStart(4)}  ${String(r.lives).padStart(5)}  ${String(r.gold).padStart(4)}  (${r.wavesCleared} waves cleared)`,
-  );
+  }
+}
+
+// Milestone 28: every balance target (balanceTargets.ts), then the matrix:
+// rows archetype, columns map by level, "W 13" a win with 13 lives, "L 8" a
+// loss on wave 8 (endlessIdle: the endless wave it was lost on).
+console.log('\nBalance targets (docs/DESIGN.md "Balance targets")');
+for (const t of targets.TARGETS) {
+  const r = t.check();
+  console.log(`${r.ok ? 'ok  ' : 'MISS'}  ${t.id.padEnd(3)} ${(t.map ?? '').padEnd(10)} ${t.label}: ${r.info}`);
+}
+const levels = ['easy', 'normal', 'hard'] as const;
+const columns = sim.MAP_IDS.flatMap((map) => levels.map((level) => ({ map, level })));
+const nameWidth = Math.max(...balance.MATRIX_ARCHETYPES.map((n) => n.length));
+console.log('\nMatrix');
+console.log(`${''.padEnd(nameWidth)}  ${sim.MAP_IDS.map((m) => m.padEnd(levels.length * 7 - 1)).join(' ')}`);
+console.log(`${'archetype'.padEnd(nameWidth)}  ${columns.map((c) => c.level.padStart(6)).join(' ')}`);
+for (const name of balance.MATRIX_ARCHETYPES) {
+  const cells = columns.map(({ map, level }) => (balance.runsOn(name, map) ? balance.matrixCell(balance.balanceRun(name, map, level)) : '-').padStart(6));
+  console.log(`${name.padEnd(nameWidth)}  ${cells.join(' ')}`);
 }
