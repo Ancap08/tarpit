@@ -25,7 +25,7 @@
 import Phaser from 'phaser';
 import { callEarlyStatus, nextWavePreview, unlockedSpecials, WAVES, type Difficulty, type GameState, type SpecialType, type TowerType } from '../sim';
 import type { Rect } from './input';
-import { BOSS_NAME, callEarlyLabel, DIFFICULTY_LABELS, ENEMY_NAMES, SPECIAL_BUTTON_TEXT } from './names';
+import { BOSS_NAME, callEarlyLabel, DIFFICULTY_LABELS, ENEMY_NAMES, SPECIAL_BUTTON_TEXT, START_WAVE_TEXT } from './names';
 import { COLORS, FONT, TEXT } from './palette';
 import { BossBar } from './ui/bossBar';
 import { BuildBar } from './ui/buildBar';
@@ -207,7 +207,7 @@ export class Hud {
       right: '',
     });
     this.pip = scene.add.graphics();
-    this.startButton = new Button(scene, { ...START_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H }, 'Start Wave', handlers.onStartWave);
+    this.startButton = new Button(scene, { ...START_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H }, START_WAVE_TEXT, handlers.onStartWave);
     this.speedButton = new Button(scene, { ...SPEED_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H }, '1x', handlers.onToggleSpeed);
     this.specialMenu = new SpecialMenu(scene, SPECIAL_BUTTON.x, HUD_TOP, handlers.onSpecialPick);
     this.bar = new BuildBar(scene, ROW2_BUTTON_Y, handlers.onPick);
@@ -231,7 +231,7 @@ export class Hud {
     const call = callEarlyInfo(state);
     this.startButton.setFontSize(call.available ? CALL_LABEL_SIZE : START_LABEL_SIZE);
     if (call.available) this.startButton.set(callEarlyLabel(call.bonus), true);
-    else this.startButton.set('Start Wave', canStartWave(state));
+    else this.startButton.set(START_WAVE_TEXT, canStartWave(state));
     // Once the game is over the speed toggle is inert (greyed, ignores clicks).
     this.speedButton.set(`${speed}x`, state.phase !== 'won' && state.phase !== 'lost');
     const ready = specialReady(state);

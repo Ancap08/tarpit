@@ -144,7 +144,7 @@ import {
 } from './input';
 import { COLORS } from './palette';
 import { portraitCardVisible } from './portrait';
-import { isTestMode } from './testMode';
+import { isPerfMode, isTestMode } from './testMode';
 import type { GameStartData } from './TitleScene';
 import { ticksDue } from './loop';
 import { BAR_TYPES, canPick } from './ui/buildBar';
@@ -834,11 +834,15 @@ export class GameScene extends Phaser.Scene {
    * evenly along the path, starting wave 1 first if in setup. Ordinary
    * enemies with fresh ids and the level's hp; nothing else changes.
    * Reachable outside test mode through window.__tarpit.game, so the perf
-   * test can run on the live loop.
+   * test can run on the live loop. Only in test mode (?test=1) or perf mode
+   * (?perf=1); otherwise it does nothing and returns false. With `span`
+   * (px of path from the spawn, default the whole path) the horde is packed
+   * into the first `span` px: the pile-up case.
    */
-  spawnHorde(n: number): void {
+  spawnHorde(n: number, span?: number): boolean {
+    if (!isTestMode() && !isPerfMode()) return false;
     if (this.state.phase === 'setup') startWave(this.state);
-    const length = pathLength(MAP);
+    const length = Math.min(span ?? pathLength(MAP), pathLength(MAP));
     for (let i = 0; i < n; i++) {
       this.state.enemies.push({
         id: this.state.nextEnemyId++,
@@ -855,6 +859,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.takeEvents();
     this.redraw();
+    return true;
   }
 
   /** Call the next wave early (milestone 25c). */

@@ -28,6 +28,15 @@ export function isTestMode(): boolean {
   return new URLSearchParams(window.location.search).get('test') === '1';
 }
 
+/**
+ * Perf mode (?perf=1, milestone 25c): the live loop runs as in play, but the
+ * test-only GameScene.spawnHorde works, for e2e/perf.spec.ts. Without
+ * ?test=1 or ?perf=1, spawnHorde does nothing.
+ */
+export function isPerfMode(): boolean {
+  return new URLSearchParams(window.location.search).get('perf') === '1';
+}
+
 const SCRIPTS: Record<'soundBuild' | 'lazyBuild' | 'comboBuild', Archetype> = { soundBuild, lazyBuild, comboBuild };
 
 /** Same cap per wave as the headless runner (src/sim/headless.ts). */
@@ -162,7 +171,7 @@ export function installGlobal(game: Phaser.Game): void {
     difficulty: () => scene().state.difficulty,
     startWave: () => scene().startWave(),
     callNextWave: () => scene().callNextWave(),
-    spawnHorde: (n) => scene().spawnHorde(n),
+    spawnHorde: (n, span) => scene().spawnHorde(n, span),
     buildAt: (col, row, type) => scene().build({ col, row }, type),
     upgradeAt: (col, row) => scene().upgrade({ col, row }),
     sellAt: (col, row) => scene().sell({ col, row }),

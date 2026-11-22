@@ -90,6 +90,9 @@ export const PANEL_TEXT = {
   remove: 'Remove',
 } as const;
 
+/** The Start Wave button's label (milestone 25c moved it here from hud.ts). */
+export const START_WAVE_TEXT = 'Start Wave';
+
 /**
  * Milestone 25c: the Start Wave button's words while the next wave can be
  * called early ("Call next  +14"), and the tower panel's kill count line

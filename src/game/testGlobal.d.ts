@@ -49,9 +49,11 @@ export interface TarpitTestApi {
   /**
    * Test only (milestone 25c, e2e/perf.spec.ts): inject `n` Goblins spread
    * evenly along the path into the running wave (starts wave 1 first if in
-   * setup). They are ordinary enemies with fresh ids.
+   * setup). They are ordinary enemies with fresh ids. With `span`, packed
+   * into the first `span` px of path. Returns whether it ran (always in
+   * test mode).
    */
-  spawnHorde(n: number): void;
+  spawnHorde(n: number, span?: number): boolean;
   /** Build on grid cell (col, row) through the scene's action (no clicks). */
   buildAt(col: number, row: number, type: TowerType): BuildResult;
   upgradeAt(col: number, row: number): UpgradeResult;

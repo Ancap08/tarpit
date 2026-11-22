@@ -163,8 +163,9 @@ export function callEarlyStatus(state: GameState): CallEarlyStatus {
  * Allowed when callEarlyStatus says so. The current wave counts as cleared
  * at once: it pays its WAVE_CLEAR_BONUS plus the early bonus and emits
  * `waveClear`; enemies still alive stay on the field (they exit, cost lives
- * and pay bounties as usual) but no longer belong to any wave's clear
- * check. Then the next wave starts its spawn schedule from waveTick 0 on
+ * and pay bounties as usual), and the next wave's clear check waits for
+ * them too: it clears only when its own enemies have all spawned and the
+ * field is empty. Then the next wave starts its spawn schedule from waveTick 0 on
  * top of them: the wave counter goes up, the special charge is set to 1
  * (an unused one does not carry over), and `earlyCall {wave, bonus}` (the
  * new wave) and `waveStart` follow. Towers are already locked mid-wave.
