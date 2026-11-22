@@ -458,3 +458,90 @@ test('a burst of ten alternating resizes ends in the window\'s shape with the ga
     expect(await snapshot(page)).toEqual(before);
   }
 });
+
+// 32b follow-up: a layout switch in the same frame as a scene change. Exactly one scene runs afterwards, in
+// the window's layout, with the right game.
+const activeScenes = (page: Page) => page.evaluate(() => window.__tarpit!.game.scene.getScenes(true).map((x) => x.scene.key));
+type Relayable = { relayout(): void };
+
+test('switch edge: a relayout in the same frame as Play, Play again, Menu, Keep going, a loss and a win', async ({ page }) => {
+  await openTitle(page);
+  // Play on the title, then a switch: only a fresh game.
+  await page.evaluate(() => {
+    const t = window.__tarpit!.game.scene.getScene('title') as unknown as Relayable & { play(d: string, m: string): void };
+    t.play('normal', 'meadow');
+    t.relayout();
+  });
+  await page.waitForFunction(() => (window.__tarpit as TarpitTestApi).scene() === 'game');
+  await page.waitForTimeout(200);
+  expect(await activeScenes(page)).toEqual(['game']);
+  expect(await ui(page)).toMatchObject({ layout: 'portrait' });
+  expect((await state(page)).gold).toBe(100);
+
+  /** The game scene's switch-related methods (test-only access). */
+  type Game = Relayable & { playAgain(): void; toMenu(): void; continueEndless(): void };
+  // A switch, then Play again; and Play again, then a switch: a fresh game either way.
+  for (const relayoutFirst of [true, false]) {
+    await page.evaluate((first) => {
+      (window.__tarpit as TarpitTestApi).state().gold = 4321;
+      const g = window.__tarpit!.game.scene.getScene('game') as unknown as Relayable & { playAgain(): void };
+      if (first) g.relayout();
+      g.playAgain();
+      if (!first) g.relayout();
+    }, relayoutFirst);
+    await page.waitForTimeout(300);
+    const order = relayoutFirst ? 'relayout, Play again' : 'Play again, relayout';
+    expect(await activeScenes(page), order).toEqual(['game']);
+    expect((await state(page)).gold, order).toBe(100);
+    expect((await ui(page)).layout, order).toBe('portrait');
+  }
+
+  // Keep going, then a switch: the endless game is kept.
+  expect(await api(page, (a) => a.runScript('comboBuild'))).toBe('won');
+  const won = await state(page);
+  await page.evaluate(() => {
+    const g = window.__tarpit!.game.scene.getScene('game') as unknown as Game;
+    g.continueEndless();
+    g.relayout();
+  });
+  await page.waitForTimeout(300);
+  expect(await activeScenes(page)).toEqual(['game']);
+  expect(await state(page)).toMatchObject({ endless: true, wave: won.wave, gold: won.gold, lives: won.lives });
+  expect(await api(page, (a) => a.endScreen())).toBeNull();
+
+  // The losing tick, then a switch: the same lost game, its end screen up again.
+  await page.evaluate(() => {
+    const t = window.__tarpit as TarpitTestApi;
+    if (t.state().phase === 'setup') t.startWave();
+    t.state().lives = 0;
+    t.step(1);
+    (t.game.scene.getScene('game') as unknown as Relayable).relayout();
+  });
+  await page.waitForTimeout(300);
+  expect(await activeScenes(page)).toEqual(['game']);
+  expect(await api(page, (a) => a.endScreen())).toBe('lost');
+  expect((await state(page)).endless).toBe(true);
+
+  // The winning tick, then a switch: the won game and its end screen.
+  await page.evaluate(() => (window.__tarpit!.game.scene.getScene('game') as unknown as Game).playAgain());
+  await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    const t = window.__tarpit as TarpitTestApi;
+    t.runScript('comboBuild');
+    (t.game.scene.getScene('game') as unknown as Relayable).relayout();
+  });
+  await page.waitForTimeout(300);
+  expect(await activeScenes(page)).toEqual(['game']);
+  expect(await api(page, (a) => a.endScreen())).toBe('won');
+  expect((await state(page)).phase).toBe('won');
+
+  // A switch, then Menu: only the title, in portrait.
+  await page.evaluate(() => {
+    const g = window.__tarpit!.game.scene.getScene('game') as unknown as Game;
+    g.relayout();
+    g.toMenu();
+  });
+  await waitForTitle(page);
+  expect(await activeScenes(page)).toEqual(['title']);
+  expect(await page.evaluate(() => window.__tarpit!.game.scale.gameSize.width)).toBe(480);
+});

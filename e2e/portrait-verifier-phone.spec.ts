@@ -523,9 +523,9 @@ test('switch edge: Play again or Menu followed by a relayout in the same frame n
   expect((await state(page)).gold, 'Play again then relayout').toBe(100);
 });
 
-// Bug (re-verify, low): toMenu() then relayout() in one frame (a turn in the frame Menu is tapped) leaves the
-// title and a restarted game scene both active: relayout() does not know the scene is leaving.
-test.fixme('switch edge: Menu followed by a relayout in the same frame leaves only the title', async ({ page }) => {
+// Fixed in the 32b follow-up (a leaving scene ignores relayout()). Was: toMenu() then relayout() in one frame
+// (a turn in the frame Menu is tapped) left the title and a restarted game scene both active.
+test('switch edge: Menu followed by a relayout in the same frame leaves only the title', async ({ page }) => {
   await startGame(page);
   await page.evaluate(() => {
     const g = window.__tarpit!.game.scene.getScene('game') as unknown as { relayout(): void; toMenu(): void };

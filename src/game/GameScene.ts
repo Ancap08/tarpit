@@ -407,6 +407,8 @@ export class GameScene extends Phaser.Scene {
   private resume: { state: GameState; recordedCleared: number; accMs: number } | null = null;
   /** A relayout's restart is queued and its create() has not run yet. */
   private restartPending = false;
+  /** Play again or Menu was requested: this scene is going, so a layout switch leaves it alone. */
+  private leaving = false;
   /** Waves cleared already sent to the high score store this game (milestone 26). */
   private recordedCleared = 0;
   private readonly autoTick = !isTestMode();
@@ -431,6 +433,8 @@ export class GameScene extends Phaser.Scene {
     // Follow-up (verifier): requests coalesce. The game to carry is refreshed on every
     // request and kept until the one queued restart's create() takes it; that create()
     // reads the newest layout, so a burst of resizes ends on the window's final shape.
+    // A scene already leaving (Menu, Play again) is not brought back: the next scene reads the layout itself.
+    if (this.leaving) return;
     this.resume = { state: this.state, recordedCleared: this.recordedCleared, accMs: this.accMs };
     if (this.restartPending) return;
     this.restartPending = true;
@@ -443,6 +447,7 @@ export class GameScene extends Phaser.Scene {
     // Only a relayout's restart resumes; Play again, the title and a first start begin a new game.
     const resume = this.restartPending ? this.resume : null;
     this.restartPending = false;
+    this.leaving = false;
     this.resume = null;
     this.state = resume?.state ?? createGame({ difficulty: this.difficulty, map: this.currentMap });
     this.recordedCleared = resume?.recordedCleared ?? 0;
@@ -1035,20 +1040,26 @@ export class GameScene extends Phaser.Scene {
 
   /** Start a brand-new game in a fresh scene, on the same level and map. */
   playAgain(): void {
+    if (this.leaving) return;
+    this.leaving = true;
     this.restartPending = false;
+    this.resume = null;
     const data: GameStartData = { difficulty: this.state.difficulty, map: this.currentMap };
     this.scene.restart(data);
   }
 
   /** Back to the title menu (milestone 25), which still shows the level and (milestone 27) map just played. */
   toMenu(): void {
+    if (this.leaving) return;
+    this.leaving = true;
     this.restartPending = false;
+    this.resume = null;
     this.scene.start('title');
   }
 
   update(_time: number, delta: number): void {
     // Self-check (32b follow-up): a scene drawn for another layout than the window's rebuilds.
-    if (this.layout !== currentLayout()) {
+    if (this.layout !== currentLayout() && !this.leaving) {
       this.relayout();
       return;
     }
