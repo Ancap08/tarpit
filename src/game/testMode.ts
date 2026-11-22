@@ -28,6 +28,7 @@ import {
 } from '../sim';
 import type { GameScene } from './GameScene';
 import { highScores } from './highScore';
+import { pageLockState } from './pageLock';
 import { currentLayout } from './layoutSwitch';
 import type { TarpitTestApi } from './testGlobal';
 import type { TitleScene } from './TitleScene';
@@ -176,6 +177,7 @@ export function installGlobal(game: Phaser.Game): void {
     fx: () => (game.scene.isActive('game') ? (game.scene.getScene('game') as GameScene).fxState() : null),
     // Milestone 34: the map decoration (growth, hidden growth, the moving things).
     decor: () => (game.scene.isActive('game') ? (game.scene.getScene('game') as GameScene).decorState() : null),
+    pageLock: () => pageLockState(),
     towerAngle: (col: number, row: number) =>
       game.scene.isActive('game') ? (game.scene.getScene('game') as GameScene).towerAngle({ col, row }) : null,
   };

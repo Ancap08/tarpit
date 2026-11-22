@@ -197,6 +197,16 @@ import { BAR_TYPES, canPick } from './ui/buildBar';
 import { EndScreen } from './ui/endScreen';
 import { endKind, type EndKind } from './ui/endText';
 import { TowerPanel } from './ui/towerPanel';
+import {
+  magnifierCentre,
+  magnifierWanted,
+  MAGNIFIER_ZOOM,
+  nearestTower,
+  placeMagnifier,
+  snapCell,
+  type MagnifierBox,
+  type MagnifierSide,
+} from './touchAssist';
 
 const sameCell = (a: Cell, b: Cell): boolean => a.col === b.col && a.row === b.row;
 
@@ -228,6 +238,16 @@ export interface UiState {
   layout: LayoutKind;
   /** Milestone 32b follow-up: the touch lift in canvas px (48 in landscape; 48 CSS px on screen in portrait). */
   lift: number;
+  /**
+   * Milestone 35, touch only: the ghost snapped from the point it was lifted
+   * to (`from`, canvas px) to `cell`, or null when it sits where it points.
+   */
+  snap: { from: { x: number; y: number }; cell: Cell } | null;
+  /**
+   * Milestone 35: the drag or aim magnifier on a small touch screen, or
+   * null: its box on the canvas, its side, and the canvas point it centres on.
+   */
+  magnifier: { x: number; y: number; width: number; height: number; side: MagnifierSide; top: boolean; centre: { x: number; y: number } } | null;
   /** The selected tower's cell (its panel is open), or null. */
   selectedCell: Cell | null;
   panelOpen: boolean;
@@ -307,6 +327,8 @@ interface Press {
   active: boolean;
   /** The cell the drag aims at, or null. */
   cell: Cell | null;
+  /** Milestone 35: on touch, the lifted point (canvas px) when the ghost snapped away from it, else null. */
+  snapFrom: { x: number; y: number } | null;
 }
 
 /** Placement ghost opacity. */
@@ -319,6 +341,11 @@ const CELL_FILL_ALPHA = 0.25;
 const CELL_LINE = 2;
 /** The touch drag's finger-to-ghost line width (milestone 25a). */
 const DRAG_LINE = 1.5;
+/** Milestone 35: the snap mark, a line and a ring from the lifted point to the snapped cell. */
+const SNAP_LINE = 2;
+const SNAP_RING = 5;
+/** Milestone 35: the magnifier's frame width (canvas px), drawn just outside its view. */
+const MAG_FRAME = 3;
 /** Aim circle (milestone 25b): outline width and fill opacity; milestone 30: half-length of the centre cross. */
 const AIM_LINE = 3;
 const AIM_FILL_ALPHA = 0.22;
@@ -381,6 +408,10 @@ export class GameScene extends Phaser.Scene {
   private tapCell: Cell | null = null;
   /** On touch with a pick: the buildable cell the next tap on builds, or null. */
   private armed: Cell | null = null;
+  /** Milestone 35: a tap that snapped: the tapped point and the cell it snapped to (shown while that cell is the tap cell). */
+  private tapSnap: { from: { x: number; y: number }; cell: Cell } | null = null;
+  /** Milestone 35: the magnifier's camera and frame while one shows, else null. */
+  private mag: { cam: Phaser.Cameras.Scene2D.Camera; frame: Phaser.GameObjects.Graphics; box: MagnifierBox; centre: { x: number; y: number } } | null = null;
   private cursor = 'default';
   /** A press on a bar button or an unlocked tower that may become a drag (milestone 25a), or null. */
   private press: Press | null = null;
@@ -481,8 +512,11 @@ export class GameScene extends Phaser.Scene {
     this.touch = false;
     this.tapCell = null;
     this.armed = null;
+    this.tapSnap = null;
     this.press = null;
     this.cursor = 'default';
+    // The old scene's cameras and objects went with its shutdown.
+    this.mag = null;
 
     // Draw order: map (milestone 34: the living map's ground, trees and
     // bushes, and its moving things), ground zones, overlay (cell highlight, range circles, ghost), towers,
@@ -593,6 +627,8 @@ export class GameScene extends Phaser.Scene {
       this.aimPress = null;
       this.touchAim = null;
       this.endPress(0, 0, false);
+      // Milestone 35: the magnifier goes with the hold even when no frame follows (test mode).
+      this.redraw();
     });
     this.input.on('gameout', () => {
       if (this.press?.active) this.press.cell = null;
@@ -660,7 +696,21 @@ export class GameScene extends Phaser.Scene {
   private onTap(x: number, y: number): void {
     this.setTouch(true);
     if (this.endScreen.kind) return;
-    const target = classifyClick(x, y, this.panel.rect, this.state, this.layout);
+    let target = classifyClick(x, y, this.panel.rect, this.state, this.layout);
+    // Milestone 35: with no pick, a tap near a tower (within 0.75 of a cell of its centre) selects the nearest one.
+    if (this.pick === null && (target.kind === 'buildable' || target.kind === 'blocked')) {
+      const near = nearestTower(this.layout.toWorld({ x, y }), this.state.towers.map((t) => t.cell));
+      if (near !== null) target = { kind: 'tower', cell: near };
+    }
+    // Milestone 35: with a pick, a tap on a cell that cannot take the tower snaps to the nearest one that can.
+    this.tapSnap = null;
+    if (this.pick !== null && target.kind === 'blocked') {
+      const snapped = snapCell(target.cell, this.layout.toWorld({ x, y }), (c) => isBuildable(this.state, c));
+      if (snapped !== null) {
+        this.tapSnap = { from: { x, y }, cell: snapped };
+        target = { kind: 'buildable', cell: snapped };
+      }
+    }
     switch (target.kind) {
       case 'ui':
         return;
@@ -932,7 +982,7 @@ export class GameScene extends Phaser.Scene {
     if (this.endScreen.kind) return;
     const rects = this.hud.rects();
     const barType = BAR_TYPES.find((type) => contains(rects[`bar:${type}`], x, y));
-    const base = { touch, x0: x, y0: y, x, y, active: false, cell: null };
+    const base = { touch, x0: x, y0: y, x, y, active: false, cell: null, snapFrom: null };
     if (barType !== undefined) {
       if (canPick(this.state, barType)) this.press = { ...base, kind: 'place', tower: barType, from: null };
       return;
@@ -961,8 +1011,28 @@ export class GameScene extends Phaser.Scene {
       this.pick = d.kind === 'place' ? d.tower : null;
       this.cancelSpecial();
     }
-    d.cell = dragTargetCell(x, y, d.touch, this.layout, this.lift);
+    this.aimDrag(d, x, y);
     this.redraw();
+  }
+
+  /**
+   * Set a drag's target cell for the pointer at (x, y). Mouse: the cell
+   * under it, exact. Touch (milestone 35): the cell under the lifted point,
+   * snapped to the nearest cell that can take the tower (touchAssist.ts
+   * snapCell; a move may also go back home), with snapFrom set when it moved.
+   */
+  private aimDrag(d: Press, x: number, y: number): void {
+    d.snapFrom = null;
+    d.cell = dragTargetCell(x, y, d.touch, this.layout, this.lift);
+    if (!d.touch || d.cell === null) return;
+    const from = d.kind === 'move' ? d.from : null;
+    const lifted = { x, y: y - this.lift };
+    const canTake = (c: Cell) => isBuildable(this.state, c) || (from !== null && sameCell(c, from));
+    const snapped = snapCell(d.cell, this.layout.toWorld(lifted), canTake);
+    if (snapped !== null && !sameCell(snapped, d.cell)) {
+      d.cell = snapped;
+      d.snapFrom = lifted;
+    }
   }
 
   /**
@@ -974,7 +1044,8 @@ export class GameScene extends Phaser.Scene {
     const d = this.press;
     this.press = null;
     if (d === null || !d.active) return;
-    const cell = inside ? dragTargetCell(x, y, d.touch, this.layout, this.lift) : null;
+    if (inside) this.aimDrag(d, x, y);
+    const cell = inside ? d.cell : null;
     if (cell !== null && this.endScreen.kind === null) {
       if (d.kind === 'place' && isBuildable(this.state, cell)) this.build(cell, d.tower);
       else if (d.kind === 'move' && d.from !== null) this.move(d.from, cell);
@@ -995,6 +1066,11 @@ export class GameScene extends Phaser.Scene {
     return {
       layout: this.layout.kind,
       lift: this.lift,
+      snap: this.currentSnap(),
+      magnifier:
+        this.mag === null
+          ? null
+          : { x: this.mag.box.x, y: this.mag.box.y, width: this.mag.box.width, height: this.mag.box.height, side: this.mag.box.side, top: this.mag.box.top, centre: { ...this.mag.centre } },
       map: this.currentMap,
       pick: this.pick,
       hoverCell: this.hoverCell,
@@ -1491,6 +1567,82 @@ export class GameScene extends Phaser.Scene {
       g.fillStyle(COLORS.dragLine, 0.85);
       g.fillCircle(f.x, f.y, 3);
     }
+    // Milestone 35: a snapped ghost shows where it was pointed: a ring there and a line to the cell it took.
+    const snap = this.currentSnap();
+    if (snap !== null) {
+      const c = cellCenter(snap.cell);
+      const f = this.layout.toWorld(snap.from);
+      g.lineStyle(SNAP_LINE + 2, COLORS.aimCrossDark, 0.6);
+      g.lineBetween(f.x, f.y, c.x, c.y);
+      g.strokeCircle(f.x, f.y, SNAP_RING);
+      g.lineStyle(SNAP_LINE, COLORS.cellOk, 1);
+      g.lineBetween(f.x, f.y, c.x, c.y);
+      g.strokeCircle(f.x, f.y, SNAP_RING);
+    }
+    this.updateMagnifier(drag, aimAt);
+  }
+
+  /** The snap shown now (milestone 35): a touch drag's, or a snapped tap's while its cell is still the tap cell. */
+  private currentSnap(): UiState['snap'] {
+    const d = this.press?.active ? this.press : null;
+    if (d !== null) return d.snapFrom !== null && d.cell !== null ? { from: { ...d.snapFrom }, cell: { ...d.cell } } : null;
+    const t = this.tapSnap;
+    if (t === null || !this.touch || this.tapCell === null || !sameCell(t.cell, this.tapCell)) return null;
+    return { from: { ...t.from }, cell: { ...t.cell } };
+  }
+
+  /**
+   * Milestone 35: the magnifier. On a touch drag or a touch aim hold, when a
+   * cell is under MAGNIFIER_BELOW_CSS CSS px on screen, a second camera
+   * shows the map around the target at MAGNIFIER_ZOOM in a box placed by
+   * placeMagnifier (top of the map, away from the finger). It draws the same
+   * live scene (the cell highlight, ghost, range and aim cross included),
+   * takes no input, and goes the moment nothing is held. Any other exit (a
+   * scene restart for a layout switch or Play again) destroys it with the
+   * scene's cameras and objects.
+   */
+  private updateMagnifier(drag: Press | null, aimAt: { x: number; y: number } | null): void {
+    let target: { x: number; y: number } | null = null;
+    let finger: { x: number; y: number } | null = null;
+    if (drag !== null && drag.touch && drag.cell !== null) {
+      target = this.layout.cellCenter(drag.cell);
+      finger = { x: drag.x, y: drag.y };
+    } else if (this.aiming !== null && this.aimPress?.active && aimAt !== null) {
+      target = aimAt;
+      finger = { x: this.aimPress.x, y: this.aimPress.y };
+    }
+    if (target === null || finger === null || this.endScreen.kind !== null || !magnifierWanted(this.scale.displayScale.x)) {
+      this.removeMagnifier();
+      return;
+    }
+    const box = placeMagnifier(this.layout.map, finger, target, this.mag?.box.side ?? null);
+    const centre = magnifierCentre(this.layout.map, target);
+    if (this.mag === null) {
+      const frame = this.add.graphics().setDepth(1000);
+      const cam = this.cameras.add(box.x, box.y, box.width, box.height, false, 'magnifier');
+      cam.inputEnabled = false;
+      cam.setZoom(MAGNIFIER_ZOOM).setBackgroundColor(COLORS.grass);
+      cam.ignore([frame, this.bannerBg, this.bannerMain, this.bannerHint]);
+      this.mag = { cam, frame, box, centre };
+    }
+    const m = this.mag;
+    m.box = box;
+    m.centre = centre;
+    m.cam.setViewport(box.x, box.y, box.width, box.height);
+    m.cam.centerOn(centre.x, centre.y);
+    // The frame sits just outside the view (the main camera draws it; the magnifier's camera draws over its inside).
+    m.frame.clear();
+    m.frame.fillStyle(COLORS.aimCrossDark, 0.9);
+    m.frame.fillRect(box.x - MAG_FRAME - 1, box.y - MAG_FRAME - 1, box.width + 2 * MAG_FRAME + 2, box.height + 2 * MAG_FRAME + 2);
+    m.frame.lineStyle(MAG_FRAME, COLORS.dragLine, 1);
+    m.frame.strokeRect(box.x - MAG_FRAME / 2, box.y - MAG_FRAME / 2, box.width + MAG_FRAME, box.height + MAG_FRAME);
+  }
+
+  private removeMagnifier(): void {
+    if (this.mag === null) return;
+    this.cameras.remove(this.mag.cam);
+    this.mag.frame.destroy();
+    this.mag = null;
   }
 
   private setCursor(cursor: string): void {
