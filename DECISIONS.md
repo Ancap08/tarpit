@@ -846,3 +846,10 @@ can change it; "Kyle" means Kyle decided.
   whether the direction needs to change. He asked how to make it easier
   to play on a phone held upright and easier to get to. Fable proposed a
   portrait layout and home-screen install; not yet chosen. Kyle.
+- **A stuck 3x speed, caught by the automated PR review, fixed before
+  merge.** A speed hold released outside the window never ended. The
+  implementer and the verifier had both missed it; milestone 25a had fixed
+  the same hole for tower drags. Now the hold ends on a lost release, a
+  cancelled touch, or the window losing focus. First PR on which the
+  coordinator read that review before merging. Codex (finding), Opus
+  (fix), Sonnet (recheck).
