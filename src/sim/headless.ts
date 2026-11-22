@@ -9,6 +9,14 @@
 // may carry `timed`, per wave, a list of them next to the pre-wave
 // actions; playScripted fires each when the wave's tick counter reaches its
 // atWaveTick. Scripts without `timed` play exactly as before.
+//
+// Milestone 25c adds two timed actions: { type: 'callEarly', atWaveTick }
+// calls the next wave early (game.ts callNextWave), and { type:
+// 'clusterSpecial', atWaveTick } fires the best unlocked special at the
+// densest cluster of enemies at that moment (densestCluster), the aim
+// computed from the live state when it fires. When a wave is called early,
+// playScripted applies the next wave's pre-wave actions at once (mid-wave,
+// so the towers lock at once) and plays that wave without a startWave.
 
 import {
   buildTower,
@@ -28,8 +36,9 @@ import {
   type UpgradeResult,
 } from './actions';
 import type { Difficulty } from './difficulty';
-import { createGame, startWave, tick, type StartWaveResult } from './game';
-import type { SpecialType } from './specials';
+import { callNextWave, createGame, startWave, tick, type CallNextWaveResult, type StartWaveResult } from './game';
+import { enemyPosition } from './combat';
+import { isSpecialUnlocked, type SpecialType } from './specials';
 import type { GameState, TargetingMode, TowerType } from './types';
 import { buildableCells, cellCenter, cellFromKey, cellKey, type Cell } from './grid';
 import { MAP, pathLength, positionAlongPath } from './map';
@@ -67,13 +76,37 @@ export interface SpecialAction {
   atWaveTick: number;
 }
 
+/**
+ * Call the next wave early (milestone 25c, game.ts callNextWave). In a
+ * WaveScript's `timed` list it fires when state.waveTick reaches
+ * atWaveTick; applied directly it fires at once.
+ */
+export interface CallEarlyAction {
+  type: 'callEarly';
+  atWaveTick: number;
+}
+
+/**
+ * Fire the best unlocked special (bestUnlockedSpecial) at the centroid of
+ * the densest cluster of enemies (densestCluster, CLUSTER_RADIUS px) in the
+ * live state at that moment (milestone 25c). Nothing fires, and the charge
+ * is kept, when no enemy is alive. Timed like SpecialAction.
+ */
+export interface ClusterSpecialAction {
+  type: 'clusterSpecial';
+  atWaveTick: number;
+}
+
+/** Actions a WaveScript's `timed` list may hold. */
+export type TimedAction = SpecialAction | CallEarlyAction | ClusterSpecialAction;
+
 export type HeadlessAction =
   | { type: 'startWave' }
   /** Tick until the current wave ends (phase leaves 'wave') or `maxTicks` pass. */
   | { type: 'runUntilWaveEnds'; maxTicks: number }
   | BuildAction
   | PlanningAction
-  | SpecialAction;
+  | TimedAction;
 
 export type HeadlessStepResult =
   | { action: 'startWave'; result: StartWaveResult }
@@ -84,7 +117,10 @@ export type HeadlessStepResult =
   | { action: 'target'; cell: Cell; result: TargetingResult }
   | { action: 'move'; from: Cell; to: Cell; result: MoveResult }
   | { action: 'undoUpgrade'; cell: Cell; result: UndoUpgradeResult }
-  | { action: 'special'; special: SpecialType; x: number; y: number; waveTick: number; result: SpecialResult };
+  | { action: 'special'; special: SpecialType; x: number; y: number; waveTick: number; result: SpecialResult }
+  | { action: 'callEarly'; waveTick: number; result: CallNextWaveResult }
+  /** A clusterSpecial with no enemy alive (or nothing unlocked): nothing fired. */
+  | { action: 'clusterSpecial'; waveTick: number; fired: false };
 
 export interface HeadlessRun {
   state: GameState;
@@ -121,7 +157,65 @@ export function applyAction(state: GameState, action: HeadlessAction): HeadlessS
       const { special, x, y } = action;
       return { action: 'special', special, x, y, waveTick: state.waveTick, result: useSpecial(state, special, { x, y }) };
     }
+    case 'callEarly':
+      return { action: 'callEarly', waveTick: state.waveTick, result: callNextWave(state) };
+    case 'clusterSpecial': {
+      const aim = densestCluster(state);
+      const special = bestUnlockedSpecial(state.wave);
+      if (!aim || !special) return { action: 'clusterSpecial', waveTick: state.waveTick, fired: false };
+      const { x, y } = aim.centroid;
+      return { action: 'special', special, x, y, waveTick: state.waveTick, result: useSpecial(state, special, { x, y }) };
+    }
   }
+}
+
+/** The cluster radius the clusterSpecial policy looks for (milestone 25c): the Powder Keg's radius. */
+export const CLUSTER_RADIUS = 70;
+
+/**
+ * The order clusterSpecial prefers the specials in (milestone 25c): the
+ * first one unlocked on the current wave is fired.
+ */
+export const CLUSTER_SPECIAL_ORDER: readonly SpecialType[] = ['fireArrows', 'tarBarrel', 'keg'];
+
+/** The first special in CLUSTER_SPECIAL_ORDER unlocked on `wave`, or undefined. */
+export function bestUnlockedSpecial(wave: number): SpecialType | undefined {
+  return CLUSTER_SPECIAL_ORDER.find((type) => isSpecialUnlocked(type, wave));
+}
+
+export interface Cluster {
+  /** Ids of the enemies in the cluster, ascending. */
+  ids: number[];
+  /** Mean position of those enemies. */
+  centroid: { x: number; y: number };
+}
+
+/**
+ * The densest cluster of live enemies (milestone 25c). Every live enemy is
+ * a candidate centre; its cluster is every live enemy (flyers included)
+ * whose position is within `radius` px of it, inclusive. The cluster with
+ * the most enemies wins; ties go to the cluster containing the lowest enemy
+ * id, then to the candidate with the lower id. Returns its members and
+ * their centroid, or undefined when no enemy is alive. Deterministic.
+ */
+export function densestCluster(state: GameState, radius = CLUSTER_RADIUS): Cluster | undefined {
+  const pos = state.enemies.map((e) => ({ id: e.id, p: enemyPosition(e) }));
+  let best: { ids: number[]; candidate: number } | undefined;
+  for (const centre of pos) {
+    const ids = pos.filter((o) => Math.hypot(o.p.x - centre.p.x, o.p.y - centre.p.y) <= radius).map((o) => o.id);
+    ids.sort((a, b) => a - b);
+    const better =
+      !best ||
+      ids.length > best.ids.length ||
+      (ids.length === best.ids.length && (ids[0] < best.ids[0] || (ids[0] === best.ids[0] && centre.id < best.candidate)));
+    if (better) best = { ids, candidate: centre.id };
+  }
+  if (!best) return undefined;
+  const members = new Set(best.ids);
+  const inside = pos.filter((o) => members.has(o.id));
+  const x = inside.reduce((n, o) => n + o.p.x, 0) / inside.length;
+  const y = inside.reduce((n, o) => n + o.p.y, 0) / inside.length;
+  return { ids: best.ids, centroid: { x, y } };
 }
 
 export function runHeadless(script: readonly HeadlessAction[], difficulty?: Difficulty): HeadlessRun {
@@ -130,8 +224,12 @@ export function runHeadless(script: readonly HeadlessAction[], difficulty?: Diff
   return { state, log };
 }
 
-/** Per wave (entry i for wave i + 1), the special attacks fired during it (milestone 25b). */
-export type TimedScript = readonly (readonly SpecialAction[])[];
+/**
+ * Per wave (entry i for wave i + 1), the timed actions taken during it:
+ * special attacks (milestone 25b), early calls and cluster specials
+ * (milestone 25c).
+ */
+export type TimedScript = readonly (readonly TimedAction[])[];
 
 /**
  * A scripted game: entry i lists the build, upgrade and sell actions taken
@@ -163,9 +261,11 @@ export function playScripted(script: WaveScript, maxTicksPerWave = 60 * 600, dif
   const state = createGame({ difficulty });
   const log: HeadlessStepResult[] = [];
   const waves: WaveReport[] = [];
-  for (let i = 0; i < WAVES.length && state.phase === 'setup'; i++) {
+  let called = false;
+  for (let i = 0; i < WAVES.length && (state.phase === 'setup' || called); i++) {
     for (const action of script[i] ?? []) log.push(applyAction(state, action));
-    log.push(applyAction(state, { type: 'startWave' }));
+    // A wave called early (milestone 25c) has already started.
+    if (!called) log.push(applyAction(state, { type: 'startWave' }));
     const timed = script.timed?.[i] ?? [];
     let ticks: number;
     if (timed.length === 0) {
@@ -175,7 +275,8 @@ export function playScripted(script: WaveScript, maxTicksPerWave = 60 * 600, dif
     } else {
       ticks = runWaveWithTimed(state, timed, maxTicksPerWave, log);
     }
-    waves.push({ wave: state.wave, lives: state.lives, gold: state.gold, ticks, phase: state.phase });
+    called = state.phase === 'wave' && state.wave === i + 2;
+    waves.push({ wave: i + 1, lives: state.lives, gold: state.gold, ticks, phase: called ? 'setup' : state.phase });
   }
   return { state, log, waves };
 }
@@ -184,13 +285,20 @@ export function playScripted(script: WaveScript, maxTicksPerWave = 60 * 600, dif
  * Run the current wave like runUntilWaveEnds, firing each timed action
  * (in list order) before the tick on which state.waveTick equals its
  * atWaveTick. Timed actions whose tick never comes (the wave ended first)
- * are not fired. Logs each fired action, then one runUntilWaveEnds entry
- * with the wave's tick count; returns that count.
+ * are not fired. Stops at once, without ticking, when an action called the
+ * next wave early (milestone 25c); the caller plays that wave next. Logs
+ * each fired action, then one runUntilWaveEnds entry with the wave's tick
+ * count; returns that count.
  */
-function runWaveWithTimed(state: GameState, timed: readonly SpecialAction[], maxTicks: number, log: HeadlessStepResult[]): number {
+function runWaveWithTimed(state: GameState, timed: readonly TimedAction[], maxTicks: number, log: HeadlessStepResult[]): number {
+  const wave = state.wave;
   let ticks = 0;
-  while (state.phase === 'wave' && ticks < maxTicks) {
-    for (const action of timed) if (action.atWaveTick === state.waveTick) log.push(applyAction(state, action));
+  outer: while (state.phase === 'wave' && ticks < maxTicks) {
+    for (const action of timed) {
+      if (action.atWaveTick !== state.waveTick) continue;
+      log.push(applyAction(state, action));
+      if (state.wave !== wave) break outer;
+    }
     tick(state);
     ticks += 1;
   }
@@ -222,9 +330,12 @@ type Decide = (state: GameState) => BuildAction | undefined;
 
 /**
  * Play all waves on `difficulty` (Normal when left out), asking `decide`
- * for actions before each one; return what it did.
+ * for actions before each one; return what it did. With `timed`
+ * (milestone 25c), each wave also plays its timed actions (as in
+ * playScripted) and the returned script carries them, so a replay with
+ * playScripted is the same game.
  */
-function recordScript(decide: Decide, difficulty?: Difficulty): WaveScript {
+function recordScript(decide: Decide, difficulty?: Difficulty, timed?: TimedScript): WaveScript {
   const state = createGame({ difficulty });
   const script: BuildAction[][] = [];
   for (let i = 0; i < WAVES.length && state.phase === 'setup'; i++) {
@@ -236,9 +347,15 @@ function recordScript(decide: Decide, difficulty?: Difficulty): WaveScript {
     }
     script.push(actions);
     applyAction(state, { type: 'startWave' });
-    applyAction(state, { type: 'runUntilWaveEnds', maxTicks: 60 * 600 });
+    runWaveWithTimed(state, timed?.[i] ?? [], 60 * 600, []);
   }
-  return script;
+  return timed ? Object.assign(script, { timed }) : script;
+}
+
+/** `script` with each wave's actions filtered by `keep`, keeping its timed actions (milestone 25c). */
+function filterScript(script: WaveScript, keep: (action: BuildAction, wave: number) => boolean): WaveScript {
+  const out = script.map((wave, i) => wave.filter((a) => keep(a, i)));
+  return script.timed ? Object.assign(out, { timed: script.timed }) : out;
 }
 
 /** Spacing of the trail walk's step points along the path, in pixels (three cells). */
@@ -392,7 +509,7 @@ export function soundBuildNoTar(difficulty?: Difficulty): WaveScript {
 /** The script without the actions on cells where `script` builds a `type` tower. */
 function withoutTowerType(script: WaveScript, type: TowerType): WaveScript {
   const cells = new Set(script.flat().filter((a) => a.type === 'build' && a.tower === type).map((a) => cellKey(a.cell)));
-  return script.map((wave) => wave.filter((a) => !cells.has(cellKey(a.cell))));
+  return filterScript(script, (a) => !cells.has(cellKey(a.cell)));
 }
 
 /**
@@ -409,27 +526,63 @@ function withoutTowerType(script: WaveScript, type: TowerType): WaveScript {
  * Tar Pit and Fire Pot pair at (11,4) and (10,4) on the top run. Milestone
  * 22 adds anti-air: a third Longbow (17,8) before the Mortar, bought before
  * wave 4 so the first Harpies meet three bows, and its upgrade as the last
- * action. Every action is bought by wave 10.
+ * of the milestone 22 actions. Milestone 25c appends a gold sink (below).
+ * Not every action is bought: on Normal comboBuild buys 28 of the 31 (not
+ * the third Mortar's upgrade, the Cannon or its upgrade), on Easy 30 and
+ * on Hard 17 before it loses. The unbought tail stays so the plan never
+ * runs dry before wave 10 on any level (Easy reaches the Cannon), which
+ * keeps the gold left before wave 9 small (balance.test.ts pins the count).
  */
 export const COMBO_PLAN: readonly BuildAction[] = [
   lb(9, 5), lb(9, 4), t(14, 10), fp(14, 9), lb(17, 8), mo(17, 6), up(14, 10), up(14, 9), lb(17, 9), up(17, 6),
   up(9, 5), up(9, 4), mo(9, 7), lb(17, 10), up(17, 9), up(9, 7), up(17, 10), t(11, 4), fp(10, 4), up(11, 4),
   up(17, 8),
+  // Milestone 25c: the horde pays more, so the plan goes on (bought from
+  // about wave 8): three upgraded Longbows inside the second U and the
+  // first U, then a third Mortar (16,7) and an upgraded Cannon (15,10).
+  // The cheap Longbow pairs come first so the gold left before wave 9 is
+  // always under 70.
+  lb(16, 8), up(16, 8), lb(9, 6), up(9, 6), lb(16, 9), up(16, 9), mo(16, 7), up(16, 7), c(15, 10), up(15, 10),
 ];
 
 /**
+ * The wave tick at which the archetypes' cluster special fires in each wave
+ * (entry i for wave i + 1; milestone 25c). Chosen per wave by a headless
+ * scan of comboBuild on Normal: for each wave in turn (earlier waves
+ * already firing at their ticks), the first wave tick at which the
+ * densest 70 px cluster is largest.
+ */
+export const CLUSTER_POLICY_TICKS: readonly number[] = [164, 109, 291, 398, 749, 651, 668, 1241, 1194, 713];
+
+/** One clusterSpecial per wave at CLUSTER_POLICY_TICKS (milestone 25c). */
+export const CLUSTER_POLICY: TimedScript = CLUSTER_POLICY_TICKS.map((atWaveTick): TimedAction[] => [{ type: 'clusterSpecial', atWaveTick }]);
+
+/**
  * Combo build (milestone 10): COMBO_PLAN, each action bought as soon as gold
- * allows. v2 target (milestone 12): won with 5 to 15 lives and under 150
- * gold after wave 9.
+ * allows. Milestone 25c: plus the cluster special policy (CLUSTER_POLICY:
+ * once per wave, at that wave's CLUSTER_POLICY_TICKS tick, the best
+ * unlocked special at the densest 70 px cluster). v4 target (milestone
+ * 25c): won with 5 to 15 lives and under 200 gold after wave 9.
  */
 export function comboBuild(difficulty?: Difficulty): WaveScript {
+  return recordScript(followPlan(COMBO_PLAN), difficulty, CLUSTER_POLICY);
+}
+
+/**
+ * The combo plan without specials (milestone 25c): COMBO_PLAN, each action
+ * as soon as gold allows, and no timed actions; recorded by playing, since
+ * the specials' kills change the gold. Target: strictly worse than
+ * comboBuild (lost, or fewer lives) but reaches wave 8.
+ */
+export function comboNoSpecials(difficulty?: Difficulty): WaveScript {
   return recordScript(followPlan(COMBO_PLAN), difficulty);
 }
 
 /**
  * comboBuild with every Fire Pot action removed: no Fire Pot builds and no
- * upgrades on the cells where comboBuild builds them. v2 target (milestone
- * 12): strictly worse than comboBuild (lost, or won with fewer lives).
+ * upgrades on the cells where comboBuild builds them; its cluster specials
+ * are kept. v2 target (milestone 12): strictly worse than comboBuild (lost,
+ * or won with fewer lives).
  */
 export function comboBuildNoFire(difficulty?: Difficulty): WaveScript {
   return withoutTowerType(comboBuild(difficulty), 'firepot');
@@ -447,7 +600,8 @@ export const FIRST_HARPY_WAVE = 4;
  * Removing the actions from wave 1 instead (no sells) loses on wave 2,
  * before any Harpy, because the combo build opens with Longbows; that
  * variant is pinned in balance.test.ts as the reason for the sells.
- * Target: every Harpy of wave 4 exits, and the game is lost by wave 8.
+ * Target (milestone 25c second pass): at least 75% of the wave 4 Harpies
+ * exit, it survives wave 4, and the game is lost on wave 5 to 8.
  */
 export function noAntiAir(difficulty?: Difficulty): WaveScript {
   const script = comboBuild(difficulty);
@@ -455,11 +609,13 @@ export function noAntiAir(difficulty?: Difficulty): WaveScript {
   const antiAir = (a: BuildAction) => a.type === 'build' && (a.tower === 'musketeer' || a.tower === 'longbow');
   const cells = new Set(script.flat().filter(antiAir).map((a) => cellKey(a.cell)));
   const owned = script.slice(0, before).flat().filter(antiAir).map((a) => a.cell);
-  return script.map((wave, i) => {
+  const out = script.map((wave, i) => {
     if (i < before) return wave;
     const kept = wave.filter((a) => !cells.has(cellKey(a.cell)));
     return i === before ? [...owned.map((cell): BuildAction => ({ type: 'sell', cell })), ...kept] : kept;
   });
+  // Milestone 25c: the combo's cluster specials are kept.
+  return script.timed ? Object.assign(out, { timed: script.timed }) : out;
 }
 
 /**
@@ -487,7 +643,7 @@ export function bossRush(difficulty?: Difficulty): WaveScript {
   for (let i = 0; i < last && state.phase === 'setup'; i++) {
     for (const action of combo[i] ?? []) applyAction(state, action);
     applyAction(state, { type: 'startWave' });
-    applyAction(state, { type: 'runUntilWaveEnds', maxTicks: 60 * 600 });
+    runWaveWithTimed(state, combo.timed?.[i] ?? [], 60 * 600, []);
   }
   const extra: BuildAction[] = [];
   if (state.phase === 'setup') {
@@ -500,7 +656,8 @@ export function bossRush(difficulty?: Difficulty): WaveScript {
       }
     }
   }
-  return combo.map((wave, i) => (i === last ? [...wave, ...extra] : wave));
+  const out = combo.map((wave, i) => (i === last ? [...wave, ...extra] : wave));
+  return combo.timed ? Object.assign(out, { timed: combo.timed }) : out;
 }
 
 /**
@@ -571,6 +728,34 @@ export function comboWithKegs(difficulty?: Difficulty): WaveScript {
   return Object.assign(script, { timed });
 }
 
+/**
+ * The hand-tuned plan for Hard (milestone 25c, second pass), in purchase
+ * order: upgraded Longbows first, since an upgraded Longbow is the most
+ * damage per gold against Hard's 1080 hp Trolls: the two first Longbows and
+ * (17,8), all three upgraded, then upgraded pairs at (16,8), (9,6) and
+ * (16,9) with the Tar Pit (14,10) between them, then the Fire Pot (14,9)
+ * and the Tar Pit and Fire Pot upgrades, then the rest of COMBO_PLAN in its
+ * order.
+ */
+export const HARD_PLAN: readonly BuildAction[] = ((): BuildAction[] => {
+  const head = [
+    lb(9, 5), lb(9, 4), lb(17, 8), up(9, 5), up(9, 4), up(17, 8), lb(16, 8), up(16, 8), t(14, 10), lb(9, 6), up(9, 6),
+    lb(16, 9), up(16, 9), fp(14, 9), up(14, 10), up(14, 9),
+  ];
+  const key = (a: BuildAction) => `${a.type} ${cellKey(a.cell)}`;
+  const taken = new Set(head.map(key));
+  return [...head, ...COMBO_PLAN.filter((a) => !taken.has(key(a)))];
+})();
+
+/**
+ * Hard build (milestone 25c): HARD_PLAN, each action as soon as gold
+ * allows, plus the cluster special policy (CLUSTER_POLICY). Target: wins on
+ * Hard. Played on Normal too (informational).
+ */
+export function hardBuild(difficulty?: Difficulty): WaveScript {
+  return recordScript(followPlan(HARD_PLAN), difficulty, CLUSTER_POLICY);
+}
+
 export const INFORMATIONAL: Readonly<Record<string, Archetype>> = {
   comboStrongest,
   comboWithKegs,
@@ -586,6 +771,8 @@ export const ARCHETYPES: Readonly<Record<string, Archetype>> = {
   longbowSpam,
   comboBuild,
   comboBuildNoFire,
+  comboNoSpecials,
   noAntiAir,
   bossRush,
+  hardBuild,
 };

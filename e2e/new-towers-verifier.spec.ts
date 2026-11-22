@@ -145,6 +145,7 @@ test('(e) three adjacent Musketeers: they exist, nothing throws, label sizes and
   expect(errors).toEqual([]);
 });
 
+// Milestone 25c: tick 837 and Goblin 2 in its first pass; 687 and Goblin 0 again in its second (new-towers.spec.ts).
 test('(f) Tar Pit (14,6) + Fire Pot (14,8): no slowed-and-burning enemy at tick 686, Goblin 0 has both at 687', async ({ page }) => {
   await startGame(page);
   await setGold(page, 1000);

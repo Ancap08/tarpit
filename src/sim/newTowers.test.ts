@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildTower, sellTower, upgradeTower } from './actions';
 import { applyBurn, burnEnemies, enemyPosition, findTarget, fireTowers } from './combat';
+import { ENEMY_STATS } from './enemies';
 import { createGame, startWave, tick } from './game';
 import { cellCenter, type Cell } from './grid';
 import { TOWER_DEFS, towerStats } from './towers';
@@ -30,7 +31,7 @@ function arena(enemies: Enemy[], towers: [Cell, TowerType, boolean?][] = []): Ga
   s.gold = 10_000;
   s.phase = 'wave';
   s.wave = 1;
-  s.spawnedPerGroup = [8];
+  s.spawnedPerGroup = [20]; // wave 1 fully spawned (20 Goblins since milestone 25c)
   s.enemies = enemies;
   s.nextEnemyId = 100;
   for (const [cell, type, upgraded] of towers) {
@@ -92,7 +93,7 @@ describe('stat tables', () => {
 });
 
 describe('longbow', () => {
-  it('4 damage every 24 ticks: a goblin dies on the 8th hit, at step 168, for 4 gold', () => {
+  it('4 damage every 24 ticks: a goblin (30 hp) dies on the 8th hit, at step 168, for its bounty', () => {
     const s = arena([enemy(0, 138)], [[P, 'longbow']]);
     step(s);
     expect(hp(s)).toEqual({ 0: 26 });
@@ -106,7 +107,7 @@ describe('longbow', () => {
     expect(hp(s)).toEqual({ 0: 2 });
     step(s); // step 168: eighth hit
     expect(s.enemies).toEqual([]);
-    expect(s.gold).toBe(4);
+    expect(s.gold).toBe(ENEMY_STATS.goblin.bounty);
   });
 
   it('range 150 inclusive; upgraded 9 damage and range 170 inclusive', () => {
@@ -163,7 +164,7 @@ describe('mortar splash', () => {
     expect(findTarget(s, s.towers[0])?.id).toBe(2);
     fireTowers(s);
     expect(hp(s)).toEqual({ 0: 500, 1: 455, 2: 455 });
-    expect(s.gold).toBe(4); // the goblin at 150 died to the splash
+    expect(s.gold).toBe(ENEMY_STATS.goblin.bounty); // the goblin at 150 died to the splash
     expect(s.shots).toEqual([
       { cell: P, tower: 'mortar', targetId: 2, from: { x: 208, y: 240 }, to: { x: 138, y: 240 }, splashRadius: 60 },
     ]);
@@ -224,7 +225,7 @@ describe('fire pot', () => {
     let steps = 0;
     for (; steps < 1000 && s.enemies.length > 0; steps++) step(s);
     expect(steps - 1).toBe(216);
-    expect(s.gold).toBe(4);
+    expect(s.gold).toBe(ENEMY_STATS.goblin.bounty);
   });
 
   it('burn damage doubles on a tarred enemy: the goblin dies at step 132', () => {
@@ -251,7 +252,7 @@ describe('fire pot', () => {
     const s = arena([enemy(0, 138, { hp: 4 })], [[P, 'firepot']]);
     step(s);
     expect(s.enemies).toEqual([]);
-    expect(s.gold).toBe(4);
+    expect(s.gold).toBe(ENEMY_STATS.goblin.bounty);
     const t = arena([enemy(0, 138, { hp: 5 })], [[P, 'firepot']]);
     step(t);
     expect(t.enemies[0]).toMatchObject({ hp: 1, burnDps: 5, burnTicksLeft: 180 });
@@ -316,13 +317,13 @@ describe('burns do not stack', () => {
 describe('burn in a full tick', () => {
   it('runs after movement and before combat; a burn death pays its bounty once and a tower never shoots it', () => {
     // The goblin moves 137 -> 138, burns 5/60 and dies, so the Musketeer at P
-    // (in range) never fires. Then the wave is clear: 4 bounty + 25 bonus.
+    // (in range) never fires. Then the wave is clear: 2 bounty (4 before milestone 25c) + 25 bonus.
     const s = arena([enemy(0, 137, { hp: 0.05, burnDps: 5, burnTicksLeft: 10 })], [[P, 'musketeer']]);
     tick(s);
     expect(s.enemies).toEqual([]);
     expect(s.shots).toEqual([]);
     expect(s.towers[0].cooldownTicks).toBe(0);
-    expect(s).toMatchObject({ phase: 'setup', gold: 29, lives: 20 });
+    expect(s).toMatchObject({ phase: 'setup', gold: 27, lives: 20 });
   });
 
   it('tar doubling reads slowTicksLeft after movement counted it down', () => {

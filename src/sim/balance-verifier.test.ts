@@ -28,7 +28,7 @@ describe('balance verifier probes', () => {
     s.gold = 10_000;
     s.phase = 'wave';
     s.wave = 1;
-    s.spawnedPerGroup = [8]; // wave 1 has nothing left to spawn
+    s.spawnedPerGroup = [20]; // wave 1 has nothing left to spawn (20 Goblins since milestone 25c)
     expect(buildTower(s, cell, 'musketeer').ok).toBe(true);
     s.gold = 0;
     const troll: Enemy = { id: 0, type: 'troll', hp: ENEMY_STATS.troll.hp, distance: 0, slow: 0, slowTicksLeft: 0 };

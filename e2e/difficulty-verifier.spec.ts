@@ -162,11 +162,11 @@ test('(d) [Menu] from the win screen: the title with the played level selected; 
   await click(page, 'title:easy');
   await click(page, 'title:play');
   await freshGame(page);
-  // comboBuild on Easy wins with 25 lives and 606 gold (npm run sim).
+  // comboBuild on Easy wins with 29 lives and 414 gold (npm run sim, milestone 25c second pass).
   expect(await api(page, (a) => a.runScript('comboBuild'))).toBe('won');
   expect(await api(page, (a) => a.endScreen())).toBe('won');
   const won = await state(page);
-  expect(won).toMatchObject({ difficulty: 'easy', wave: 10, lives: 25, gold: 606 });
+  expect(won).toMatchObject({ difficulty: 'easy', wave: 10, lives: 29, gold: 414 });
   expect(won.towers.length).toBeGreaterThan(0);
   await click(page, 'menu');
   await onTitle(page);
@@ -174,7 +174,7 @@ test('(d) [Menu] from the win screen: the title with the played level selected; 
   expect(Object.keys(await api(page, (a) => a.uiRects())).sort()).toEqual(['title:easy', 'title:hard', 'title:normal', 'title:play']);
   await click(page, 'title:play');
   await freshGame(page);
-  expect(await state(page)).toMatchObject({ difficulty: 'easy', tick: 0, wave: 0, gold: 150, lives: 25, towers: [], enemies: [], phase: 'setup' });
+  expect(await state(page)).toMatchObject({ difficulty: 'easy', tick: 0, wave: 0, gold: 150, lives: 30, towers: [], enemies: [], phase: 'setup' });
   expect(await api(page, (a) => a.speed())).toBe(1);
   // And the menu still switches level after a round trip: Menu is not on screen, so lose and go back.
   await api(page, (a) => {
@@ -190,21 +190,21 @@ test('(d) [Menu] from the win screen: the title with the played level selected; 
   expect(await state(page)).toMatchObject({ difficulty: 'normal', gold: 100, lives: 20, towers: [] });
 });
 
-test('(e) Play again on Hard keeps Hard, twice: 80 gold, 15 lives, Goblin 39 hp', async ({ page }) => {
+test('(e) Play again on Hard keeps Hard, twice: 80 gold, 15 lives, Goblin 23 hp (milestone 25c second pass)', async ({ page }) => {
   await openTitle(page);
   await click(page, 'title:hard');
   await click(page, 'title:play');
   await freshGame(page);
   for (let round = 0; round < 2; round++) {
-    // No towers on Hard: lost on wave 2 (npm run sim), through the real Start Wave button.
+    // No towers on Hard: lost on wave 1 (npm run sim, milestone 25c), through the real Start Wave button.
     await click(page, 'startWave');
     await api(page, (a) => a.step(1));
-    expect((await state(page)).enemies.map((e) => [e.type, e.hp])).toEqual([['goblin', 39]]);
+    expect((await state(page)).enemies.map((e) => [e.type, e.hp])).toEqual([['goblin', 23]]);
     for (let i = 0; i < 40 && (await state(page)).phase !== 'lost'; i++) {
       if ((await state(page)).phase === 'setup') await click(page, 'startWave');
       await api(page, (a) => a.step(500));
     }
-    expect(await state(page)).toMatchObject({ phase: 'lost', wave: 2, difficulty: 'hard' });
+    expect(await state(page)).toMatchObject({ phase: 'lost', wave: 1, difficulty: 'hard' });
     await click(page, 'playAgain');
     await freshGame(page);
     expect(await state(page)).toMatchObject({ difficulty: 'hard', gold: 80, lives: 15, towers: [], enemies: [] });
@@ -254,18 +254,12 @@ test('(f) HUD tag: none on Normal; the level name on Easy and Hard, clear of the
   }
 });
 
-test('(h) negative lives are shown as 0: Easy lazyBuild ends at -1, and a boss exit with 3 lives left', async ({ page }) => {
-  // The real case: lazyBuild on Easy loses wave 10 at -1 lives (boss exit costs 5 with 4 left).
-  await openTitle(page);
-  await page.evaluate(() => (window.__tarpit as TarpitTestApi).startGame('easy'));
-  expect(await api(page, (a) => a.runScript('lazyBuild'))).toBe('lost');
-  expect(await state(page)).toMatchObject({ phase: 'lost', wave: 10, lives: -1 });
-  expect((await hud(page)).lives).toBe('Lives 0');
-  expect(await api(page, (a) => a.endScreen())).toBe('lost');
-
+// Milestone 25c: the old real case (lazyBuild on Easy losing wave 10 at -1
+// lives) is gone, since lazyBuild now wins on Easy (12 lives); the boss exit
+// below still proves the display rule.
+test('(h) negative lives are shown as 0: a boss exit with 3 lives left', async ({ page }) => {
   // Boss exits with 3 lives left (Normal): the sim says 3 - 5 = -2, the HUD says 0.
-  await click(page, 'menu');
-  await onTitle(page);
+  await openTitle(page);
   await click(page, 'title:normal');
   await click(page, 'title:play');
   await freshGame(page);

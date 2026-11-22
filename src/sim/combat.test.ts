@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildTower, upgradeTower } from './actions';
 import { applySlow, enemyPosition, findTarget, fireTowers } from './combat';
+import { ENEMY_STATS } from './enemies';
 import { createGame, startWave, tick } from './game';
 import { cellCenter, type Cell } from './grid';
 import type { Enemy, EnemyType, GameState, TowerType } from './types';
@@ -22,7 +23,7 @@ function arena(enemies: Enemy[], towers: [Cell, TowerType, boolean?][] = []): Ga
   s.gold = 10_000;
   s.phase = 'wave';
   s.wave = 1;
-  s.spawnedPerGroup = [8];
+  s.spawnedPerGroup = [20]; // wave 1 fully spawned (20 Goblins since milestone 25c)
   s.enemies = enemies;
   s.nextEnemyId = 100;
   for (const [cell, type, upgraded] of towers) {
@@ -99,34 +100,37 @@ describe('targeting', () => {
     ]);
     fireTowers(s);
     expect(hp(s)).toEqual({ 1: 18 });
-    expect(s.gold).toBe(4);
+    expect(s.gold).toBe(ENEMY_STATS.goblin.bounty);
     expect(s.towers.map((t) => t.cooldownTicks)).toEqual([60, 60]);
   });
 });
 
 describe('musketeer', () => {
-  it('fires once, waits 60 ticks, and kills a goblin on the third 12-damage hit for 4 gold', () => {
+  it('fires once, waits 60 ticks, and kills a goblin on the third 12-damage hit for its bounty', () => {
     const s = createGame();
     buildTower(s, A, 'musketeer'); // gold 50
     startWave(s);
     // Goblin 0 spawns on waveTick 0 at (0,240), 102.4 px from A: already in
     // range, but a new enemy is not shot on its spawn tick.
     tick(s);
-    expect(s.enemies[0]).toMatchObject({ id: 0, hp: 30, distance: 0 });
+    expect(s.enemies[0]).toMatchObject({ id: 0, hp: 19, distance: 0 });
+    // Milestone 25c: a Goblin spawns with 19 hp; give this one 30 so the
+    // cooldown shows across three hits, as before.
+    s.enemies[0].hp = 30;
     tick(s);
     expect(s.enemies[0]).toMatchObject({ id: 0, hp: 18, distance: 1 });
     expect(s.towers[0].cooldownTicks).toBe(60);
     for (let i = 0; i < 59; i++) tick(s);
     expect(s.enemies[0].hp).toBe(18);
     expect(s.towers[0].cooldownTicks).toBe(1);
-    tick(s); // waveTick 61; goblin 1 (spawned at 60) is behind goblin 0
+    tick(s); // waveTick 61; goblin 1 (spawned at 72) is not out yet
     expect(s.enemies[0].hp).toBe(6);
     expect(s.gold).toBe(50);
     for (let i = 0; i < 59; i++) tick(s);
     expect(s.enemies[0]).toMatchObject({ id: 0, hp: 6 });
     tick(s); // waveTick 121: third hit at (121,240), 76 px from A
-    expect(s.enemies.map((e) => e.id)).toEqual([1, 2]);
-    expect(s.gold).toBe(54);
+    expect(s.enemies.map((e) => e.id)).toEqual([1]);
+    expect(s.gold).toBe(50 + ENEMY_STATS.goblin.bounty);
   });
 
   it('upgraded: 22 damage and range 125, inclusive', () => {
@@ -155,7 +159,7 @@ describe('cannon splash', () => {
     const s = arena([enemy(0, 370, 'wolf', 25), enemy(1, 400, 'goblin', 25), enemy(2, 440, 'troll')], [[B, 'cannon']]);
     fireTowers(s);
     expect(hp(s)).toEqual({ 2: 475 });
-    expect(s.gold).toBe(9); // wolf 5 + goblin 4
+    expect(s.gold).toBe(ENEMY_STATS.wolf.bounty + ENEMY_STATS.goblin.bounty); // 2 + 2 since milestone 25c (5 + 4 before)
   });
 
   it('upgraded: 40 damage and splash radius 55', () => {
@@ -227,8 +231,8 @@ describe('kills', () => {
     const s = arena([enemy(0, 99, 'goblin', 12)], [[A, 'musketeer']]);
     tick(s);
     expect(s.enemies).toEqual([]);
-    // 4 bounty, then the wave is clear (all spawned, none alive): 25 bonus.
-    expect(s).toMatchObject({ phase: 'setup', gold: 29, lives: 20 });
+    // 2 bounty (4 before milestone 25c), then the wave is clear (all spawned, none alive): 25 bonus.
+    expect(s).toMatchObject({ phase: 'setup', gold: 27, lives: 20 });
   });
 
   it('a newly spawned enemy is not shot on its spawn tick', () => {
@@ -238,8 +242,11 @@ describe('kills', () => {
     upgradeTower(s, U);
     startWave(s);
     tick(s);
-    expect(s.enemies[0]).toMatchObject({ id: 0, hp: 30, distance: 0 });
+    expect(s.enemies[0]).toMatchObject({ id: 0, hp: 19, distance: 0 });
+    expect(s.shots).toEqual([]);
     tick(s);
-    expect(s.enemies[0]).toMatchObject({ id: 0, hp: 8, distance: 1 });
+    // The next tick it is shot (22 > 19: killed).
+    expect(s.shots.map((x) => x.targetId)).toEqual([0]);
+    expect(s.enemies.map((e) => e.id)).toEqual([]);
   });
 });

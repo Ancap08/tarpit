@@ -17,11 +17,15 @@
 // charge is unspent) with a bright pip, greyed with an empty pip otherwise;
 // it shows as picked while its popup is open or a special is being aimed.
 // The popup (ui/specialMenu.ts) opens above it.
+// Milestone 25c: while a wave runs and the next wave can be called early
+// (callEarlyStatus), Start Wave reads "Call next  +14" (names.ts, 14 px so
+// it fits the 130 px button) with the current early bonus, and pressing it
+// calls the next wave; otherwise it reads "Start Wave" as before.
 
 import Phaser from 'phaser';
-import { nextWavePreview, unlockedSpecials, WAVES, type Difficulty, type GameState, type SpecialType, type TowerType } from '../sim';
+import { callEarlyStatus, nextWavePreview, unlockedSpecials, WAVES, type Difficulty, type GameState, type SpecialType, type TowerType } from '../sim';
 import type { Rect } from './input';
-import { BOSS_NAME, DIFFICULTY_LABELS, ENEMY_NAMES, SPECIAL_BUTTON_TEXT } from './names';
+import { BOSS_NAME, callEarlyLabel, DIFFICULTY_LABELS, ENEMY_NAMES, SPECIAL_BUTTON_TEXT, START_WAVE_TEXT } from './names';
 import { COLORS, FONT, TEXT } from './palette';
 import { BossBar } from './ui/bossBar';
 import { BuildBar } from './ui/buildBar';
@@ -97,21 +101,54 @@ export const PREVIEW_X = 356;
 export const PREVIEW_WIDTH = 264;
 export const PREVIEW_SIZE = 16;
 export const PREVIEW_SIZE_LONG = 13;
+/** Milestone 25c: the horde's wave 10 preview needs three lines at 13 px; at 11 px it fits two. */
+export const PREVIEW_SIZE_LONGEST = 11;
+
+/**
+ * Lines `text` takes when word-wrapped greedily to PREVIEW_WIDTH at `size`
+ * px (Courier New advances 0.6 em per character, so no text measuring).
+ */
+export function previewLines(text: string, size: number): number {
+  const perLine = Math.floor(PREVIEW_WIDTH / (0.6 * size));
+  let lines = 1;
+  let used = 0;
+  for (const word of text.split(' ')) {
+    const need = used === 0 ? word.length : used + 1 + word.length;
+    if (need <= perLine) used = need;
+    else {
+      lines += 1;
+      used = word.length;
+    }
+  }
+  return lines;
+}
 
 /**
  * The preview's font size: 16 px when the text fits PREVIEW_WIDTH on one
  * line, else 13 px wrapped to two lines (milestone 23; the wave 10 preview
  * with "+ Grumblefoot" is 61 characters, and the longer milestone 22
- * previews already ran under the Start Wave button). Courier New advances
- * 0.6 em per character, so this needs no text measuring.
+ * previews already ran under the Start Wave button), else 11 px on two
+ * lines (milestone 25c: "Next: 20 Wolf, 13 Troll, 12 Harpy, 8
+ * Shieldbearer + Grumblefoot" wraps to three lines at 13 px).
  */
 export function previewSize(text: string): number {
-  return text.length * 0.6 * PREVIEW_SIZE <= PREVIEW_WIDTH ? PREVIEW_SIZE : PREVIEW_SIZE_LONG;
+  if (text.length * 0.6 * PREVIEW_SIZE <= PREVIEW_WIDTH) return PREVIEW_SIZE;
+  return previewLines(text, PREVIEW_SIZE_LONG) <= 2 ? PREVIEW_SIZE_LONG : PREVIEW_SIZE_LONGEST;
 }
 
 /** Start Wave does something only in setup with waves left. */
 export function canStartWave(state: GameState): boolean {
   return state.phase === 'setup' && state.wave < WAVES.length;
+}
+
+/** Start Wave's label size: 18 px, or 14 px while it reads the call-early label (milestone 25c). */
+export const START_LABEL_SIZE = '18px';
+export const CALL_LABEL_SIZE = '14px';
+
+/** Call early (milestone 25c): whether the next wave can be called now, and the bonus it would pay. */
+export function callEarlyInfo(state: GameState): { available: boolean; bonus: number } {
+  const status = callEarlyStatus(state);
+  return status.ok ? { available: true, bonus: status.bonus } : { available: false, bonus: 0 };
 }
 
 /** A special can be used now: a wave is running and its charge is unspent (milestone 25b). */
@@ -126,6 +163,7 @@ export interface HudSpecial {
 }
 
 export interface HudHandlers {
+  /** Start Wave was pressed: starts the wave in setup, or calls the next one early (milestone 25c). */
   onStartWave: () => void;
   onToggleSpeed: () => void;
   /** A build bar button was clicked (only when pickable). */
@@ -169,7 +207,7 @@ export class Hud {
       right: '',
     });
     this.pip = scene.add.graphics();
-    this.startButton = new Button(scene, { ...START_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H }, 'Start Wave', handlers.onStartWave);
+    this.startButton = new Button(scene, { ...START_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H }, START_WAVE_TEXT, handlers.onStartWave);
     this.speedButton = new Button(scene, { ...SPEED_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H }, '1x', handlers.onToggleSpeed);
     this.specialMenu = new SpecialMenu(scene, SPECIAL_BUTTON.x, HUD_TOP, handlers.onSpecialPick);
     this.bar = new BuildBar(scene, ROW2_BUTTON_Y, handlers.onPick);
@@ -190,7 +228,10 @@ export class Hud {
     // After a loss there is no next wave to play, so the preview goes blank.
     const preview = state.phase === 'lost' ? '' : previewText(state);
     if (this.next.text !== preview) this.next.setFontSize(previewSize(preview)).setText(preview);
-    this.startButton.set('Start Wave', canStartWave(state));
+    const call = callEarlyInfo(state);
+    this.startButton.setFontSize(call.available ? CALL_LABEL_SIZE : START_LABEL_SIZE);
+    if (call.available) this.startButton.set(callEarlyLabel(call.bonus), true);
+    else this.startButton.set(START_WAVE_TEXT, canStartWave(state));
     // Once the game is over the speed toggle is inert (greyed, ignores clicks).
     this.speedButton.set(`${speed}x`, state.phase !== 'won' && state.phase !== 'lost');
     const ready = specialReady(state);

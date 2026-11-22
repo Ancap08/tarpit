@@ -562,3 +562,71 @@ can change it; "Kyle" means Kyle decided.
   `comboWithKegs` policy hits once in ten waves, so 25c needs a
   cluster-seeking policy before it balances around specials. The keg flash
   is brief; v5 effects pass.
+
+## 2026-11-21, milestone 25c (horde retune, call early, kill counts)
+
+- **Two passes. The first made the waves denser, not longer, and went
+  back.** The first brief set no target for wave length or crowding
+  (coordinator's slip, Fable). The result met every balance target but ran
+  381 s of wave time against 405 s before, with up to 47 enemies alive and
+  one unreadable band of sprites on wave 8. The verifier measured it; Kyle
+  had asked for longer waves. The second pass added the rules below.
+- **Wave rules.** In any 3 s of a wave at most 6 walkers and 4 flyers
+  spawn (window `[t, t + 3 s)`); every wave clears at least 15% later
+  than before 25c for the combo build on Normal; the ten waves take 540 to
+  800 s; at most 35 enemies alive at once without early calls; 2.0 to 3.0
+  times the old enemy count; spawn window at most 90 s. Result: 524
+  enemies (217 before), 614 s, peak 22. Fable (rules), Opus (numbers).
+- **Enemy numbers.** Goblin hp 30 to 19, Wolf 28 to 20, Troll 700 to 900,
+  Harpy 40 to 36, Shieldbearer 120 to 70; bounties Goblin 4 to 2, Wolf 5
+  to 2, Harpy 7 to 3, Shieldbearer 9 to 5; Fire Arrows burn 10 to 30 per
+  second; boss at 65 s. No tower number changed. Opus, checked by Fable's
+  revert matrix.
+- **Easy 30 lives (was 25). Hard hp multiplier 1.2 (was 1.3).** Opus.
+- **Hard hp rule: no Hard hp sits 1 or 2 above a multiple of a tower's
+  damage (12, 4, 25, 45).** The first pass gave the Hard Goblin 13 hp
+  against the Musketeer's 12, so every Musketeer opening lost Hard on wave
+  1. Fable (rule), Opus (numbers). Easy is outside the rule.
+- **Hard is a different plan, not the same plan with less room.** The
+  combo build loses Hard on wave 8; the bow-heavy `hardBuild` wins with 9
+  lives. Accepted for now (Fable); Kyle's play notes decide in milestone
+  28.
+- **Skipping anti-air survives the lesson wave.** It leaks all ten of
+  wave 4's Harpies, keeps 2 lives, and loses on wave 5. The first pass
+  lost the whole game on wave 4, which is too harsh for a child. Fable.
+- **Gold entering wave 10: under 200 for the combo build (was under 150
+  since milestone 12).** Raised by the coordinator in the 25c brief
+  because hordes pay more per wave; it was not recorded until the
+  verifier pointed it out. Result 175. Fable.
+- **Call early.** Allowed once every enemy of the running wave has
+  spawned; pays the 25 clear bonus plus `min(20, ceil(20 - seconds since
+  the last spawn))`; old-wave survivors stay and the next clear check
+  waits for them; the special charge resets to 1; wave 9 cannot call the
+  boss wave. Fable (rules), Opus (build).
+- **Calling early is always better for a build that is ahead, and that is
+  accepted for now.** Combo on Normal goes from 13 to 18 lives, 160 bonus
+  gold, 464 s instead of 614. It rewards a strong defence and shortens the
+  game; whether it should carry risk is a play note for Kyle. Fable.
+- **Kill counts.** Each tower counts its kills; a burn kill counts for
+  the tower on the owner cell, and for nobody if that tower was sold.
+  Fable (rule), Opus (build).
+- **The Tar Barrel has its own slow channel**, so a stronger tower slow no
+  longer wastes it. Fable.
+- **`spawnHorde` works only with `?test=1` or `?perf=1`.** Verifier's
+  finding; `?perf=1` only adds enemies. Opus.
+- **For milestone 28 (balance lock):**
+  - Three waves pass 100 s at 1x without calls (7, 8 on Hard, 10).
+  - The Tar Barrel changes nothing measurable on Normal, and the keg does
+    more than the barrel on Hard; Fire Arrows alone make specials matter.
+    `comboNoSpecials` is one life behind the combo.
+  - Tar Pits help (soundBuild lasts 534 ticks longer with them; on Easy
+    tar wins and no-tar loses) but only a verifier probe pins it.
+  - One Musketeer leaks 12 of wave 1's 20 Goblins on Normal; two leak
+    none. A first-time player may lose lives on wave 1.
+  - Thin edges: lazyBuild on wave 8, Hard combo on wave 8, Hard lazyBuild
+    on wave 5. `bossRush` is now the same game as the combo.
+  - The A1 spawn limit sits exactly at 6 on waves 6 and 8.
+- **For the next implementer brief:** the perf spec's "100 alive" check
+  samples right after the top-up and cannot fail; `?perf=1` is documented
+  only in a code comment; stale comments in `src/sim/difficulty.ts:24`
+  and `src/sim/enemies.ts:5`.

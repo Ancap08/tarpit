@@ -6,7 +6,7 @@
 //           6-particle dust burst
 //   burn    orange tint pulse while burnTicksLeft > 0, a small flame particle
 //           every few frames
-//   slowed  dark tar tint while slowTicksLeft > 0
+//   slowed  dark tar tint while tarred (either slow channel, isTarred)
 //   exit    the sprite is removed at once
 //
 // Test mode (?test=1) has no tweens and no particles: a killed enemy's sprite

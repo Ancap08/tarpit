@@ -16,13 +16,13 @@ describe('end screen text', () => {
     expect(endKind(s)).toBe('won');
     expect(endScreenText('won', s)).toEqual({
       title: END_TEXT.wonTitle,
-      lines: [`${END_TEXT.wonLives} 12`, `${END_TEXT.wonGold} 497`],
+      lines: [`${END_TEXT.wonLives} 13`, `${END_TEXT.wonGold} 476`],
     });
   });
 
   it('lose: the wave reached', () => {
     const s = playAllWavesNoTowers();
     expect(endKind(s)).toBe('lost');
-    expect(endScreenText('lost', s)).toEqual({ title: END_TEXT.lostTitle, lines: [`${END_TEXT.lostWave} 2 of 10`] });
+    expect(endScreenText('lost', s)).toEqual({ title: END_TEXT.lostTitle, lines: [`${END_TEXT.lostWave} 1 of 10`] });
   });
 });

@@ -6,8 +6,8 @@ import type { TitleUiState } from '../src/game/TitleScene';
 // Milestone 25: the title menu's difficulty row and Play button, through
 // real clicks and keys (?test=1, time driven by step()). Numbers come from
 // docs/SCOPE-v4.md "Difficulty" and the unit tests in
-// src/sim/difficulty.test.ts: the first Goblin of wave 1 has 23 hp on Easy,
-// 30 on Normal and 39 on Hard.
+// src/sim/difficulty.test.ts: the first Goblin of wave 1 has 14 hp on Easy,
+// 19 on Normal and 23 on Hard (milestone 25c second pass; 23, 30 and 39 before 25c).
 
 const t = (page: Page) => ({
   scene: () => page.evaluate(() => (window.__tarpit as TarpitTestApi).scene()),
@@ -70,8 +70,8 @@ test('the menu starts each level with its gold, lives and Goblin hp; Menu and Pl
   await click(page, 'title:play');
   await freshGame(page);
   expect(await t(page).difficulty()).toBe('easy');
-  expect(await t(page).state()).toMatchObject({ difficulty: 'easy', gold: 150, lives: 25, wave: 0 });
-  expect(await firstGoblinHp(page)).toBe(23);
+  expect(await t(page).state()).toMatchObject({ difficulty: 'easy', gold: 150, lives: 30, wave: 0 });
+  expect(await firstGoblinHp(page)).toBe(14);
   expect((await t(page).hud()).difficulty).toBe(DIFFICULTY_LABELS.easy);
 
   // Lose, then [Menu]: the title again with Easy still selected.
@@ -85,7 +85,7 @@ test('the menu starts each level with its gold, lives and Goblin hp; Menu and Pl
   await click(page, 'title:play');
   await freshGame(page);
   expect(await t(page).state()).toMatchObject({ difficulty: 'hard', gold: 80, lives: 15 });
-  expect(await firstGoblinHp(page)).toBe(39);
+  expect(await firstGoblinHp(page)).toBe(23);
   expect((await t(page).hud()).difficulty).toBe(DIFFICULTY_LABELS.hard);
 
   // Play again after a loss keeps Hard.
@@ -105,7 +105,7 @@ test('the menu starts each level with its gold, lives and Goblin hp; Menu and Pl
   await page.keyboard.press('Enter');
   await freshGame(page);
   expect(await t(page).state()).toMatchObject({ difficulty: 'normal', gold: 100, lives: 20 });
-  expect(await firstGoblinHp(page)).toBe(30);
+  expect(await firstGoblinHp(page)).toBe(19);
   expect((await t(page).hud()).difficulty).toBe('');
 });
 

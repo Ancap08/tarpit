@@ -18,7 +18,7 @@ function arena(enemies: Enemy[], towers: [Cell, TowerType][]): GameState {
   s.gold = 10_000;
   s.phase = 'wave';
   s.wave = 1;
-  s.spawnedPerGroup = [8];
+  s.spawnedPerGroup = [20]; // wave 1 fully spawned (20 Goblins since milestone 25c)
   s.enemies = enemies;
   s.nextEnemyId = 100;
   for (const [cell, type] of towers) buildTower(s, cell, type);

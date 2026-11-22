@@ -10,7 +10,7 @@
 // move, undoUpgrade, special) to state.events, where it stays until the next tick
 // clears the list.
 
-import { applyBurn, applySlow, enemyPosition, removeDead } from './combat';
+import { applyBurn, applySpecialSlow, enemyPosition, removeDead } from './combat';
 import { cellKey, isBuildableTerrain, sameCell, type Cell } from './grid';
 import { MAP } from './map';
 import { isSpecialUnlocked, SPECIAL_DEFS, type SpecialType } from './specials';
@@ -74,6 +74,7 @@ export function buildTower(state: GameState, cell: Cell, type: TowerType): Build
     locked: !setup,
     unlockedSpend: setup ? cost : 0,
     upgradedThisPhase: false,
+    kills: 0,
   };
   state.towers.push(tower);
   state.towers.sort((a, b) => cellKey(a.cell) - cellKey(b.cell));
@@ -114,6 +115,9 @@ export function sellTower(state: GameState, cell: Cell): SellResult {
   const refund = towerSellValue(tower);
   state.gold += refund;
   state.towers = state.towers.filter((t) => t !== tower);
+  // Kill counts (milestone 25c): its burns no longer count for anyone, so a
+  // tower built later on the same cell does not inherit them.
+  for (const enemy of state.enemies) if (enemy.burnOwner && sameCell(enemy.burnOwner, tower.cell)) delete enemy.burnOwner;
   state.events.push({ kind: 'sell', cell: { col: tower.cell.col, row: tower.cell.row }, tower: tower.type, refund, full });
   return { ok: true, refund, gold: state.gold };
 }
@@ -184,7 +188,9 @@ export function setTargeting(state: GameState, cell: Cell, mode: TargetingMode):
  * inclusive ('out-of-bounds'). Otherwise it spends the charge and acts at
  * once on every live enemy whose position is within the special's radius
  * of the point (inclusive), flying or not: damage at full strength
- * (shields ignored), a slow through applySlow (the boss's cap applies) and
+ * (shields ignored), a slow through applySpecialSlow on the special slow
+ * channel (milestone 25c; the boss's cap applies, tower slows neither block
+ * nor shorten it) and
  * a burn through applyBurn (equal or stronger replaces). Emits one
  * `special` event with the number of enemies hit, then `slowed` events for
  * applied slows, then a `kill` (cause 'special') for each enemy it killed,
@@ -207,7 +213,7 @@ export function useSpecial(state: GameState, type: SpecialType, point: Point): S
   for (const enemy of inside) {
     if (def.damage > 0) enemy.hp -= def.damage;
     if (def.slow > 0) {
-      const applied = applySlow(enemy, def.slow, def.slowTicks);
+      const applied = applySpecialSlow(enemy, def.slow, def.slowTicks);
       if (applied !== null) state.events.push({ kind: 'slowed', enemyId: enemy.id, slow: applied, ticks: def.slowTicks });
     }
     if (def.burnDps > 0) applyBurn(enemy, def.burnDps, def.burnTicks);

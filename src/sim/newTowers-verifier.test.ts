@@ -8,6 +8,7 @@
 import { describe, expect, it } from "vitest";
 import { buildTower, upgradeTower } from "./actions";
 import { cellCenter, type Cell } from "./grid";
+import { ENEMY_STATS } from "./enemies";
 import { createGame, tick } from "./game";
 import type { Enemy, EnemyType, GameState, TowerType } from "./types";
 
@@ -40,7 +41,7 @@ function arena(enemies: Enemy[]): GameState {
   const s = createGame();
   s.phase = "wave";
   s.wave = 1;
-  s.spawnedPerGroup = [8];
+  s.spawnedPerGroup = [20]; // wave 1 fully spawned (20 Goblins since milestone 25c)
   s.enemies = enemies;
   s.nextEnemyId = 100;
   return s;
@@ -221,17 +222,17 @@ describe("verifier: burn replacement, kills and ordering", () => {
   });
 
   it("(f) an impact that kills applies no burn and pays the bounty once", () => {
-    // Goblin at 4 hp: impact 4 -> hp 0 -> dead before any burn is applied. Goblin bounty is 4.
+    // Goblin at 4 hp: impact 4 -> hp 0 -> dead before any burn is applied. Goblin bounty is 2 (4 before milestone 25c).
     const g = mk(1, 150, "goblin", { hp: 4 });
     const s = arena([g, dummy()]);
     place(s, Q, "firepot");
     s.gold = 0;
     run(s, 1, PIN);
     expect(s.enemies.map((e) => e.id)).toEqual([99]);
-    expect(s.gold).toBe(4);
+    expect(s.gold).toBe(ENEMY_STATS.goblin.bounty);
     expect([g.burnDps, g.burnTicksLeft]).toEqual([0, 0]);
     run(s, 300, PIN); // the pot keeps firing at nothing; no second payment
-    expect(s.gold).toBe(4);
+    expect(s.gold).toBe(ENEMY_STATS.goblin.bounty);
   });
 
   it("(g) a burn death in the status step pays once and is gone before towers act", () => {
@@ -244,10 +245,10 @@ describe("verifier: burn replacement, kills and ordering", () => {
     s.gold = 0;
     run(s, 1, PIN);
     expect(s.enemies.map((e) => e.id)).toEqual([99]);
-    expect(s.gold).toBe(4);
+    expect(s.gold).toBe(ENEMY_STATS.goblin.bounty);
     expect(s.shots).toHaveLength(0);
     run(s, 100, PIN);
-    expect(s.gold).toBe(4);
+    expect(s.gold).toBe(ENEMY_STATS.goblin.bounty);
 
     // Control: the same enemy without a burn (hp 0.1) is shot on tick 1 by the same Musketeer.
     const c = arena([mk(1, 150, "goblin", { hp: 0.1 }), dummy()]);
@@ -255,6 +256,6 @@ describe("verifier: burn replacement, kills and ordering", () => {
     c.gold = 0;
     run(c, 1, PIN);
     expect(c.shots).toHaveLength(1);
-    expect(c.gold).toBe(4);
+    expect(c.gold).toBe(ENEMY_STATS.goblin.bounty);
   });
 });

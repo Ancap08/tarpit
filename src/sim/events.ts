@@ -4,7 +4,7 @@
 // Lifetime: `tick` empties `state.events` (a fresh array) at its start, like
 // `state.shots`, and appends to it as things happen, in order. Won and lost
 // ticks do nothing, so the list keeps the last tick's events.
-// Actions between ticks (startWave, build, upgrade, sell, targeting, move,
+// Actions between ticks (startWave, callNextWave, build, upgrade, sell, targeting, move,
 // undoUpgrade, useSpecial) append
 // their own event to the same list; it stays there until the next tick clears it. So
 // the renderer reads the new entries after every action and after every
@@ -51,6 +51,12 @@ export type GameEvent =
   | { kind: 'targeting'; cell: Cell; mode: TargetingMode }
   | { kind: 'waveStart'; wave: number }
   | { kind: 'waveClear'; wave: number; bonus: number }
+  /**
+   * The player called wave `wave` early (milestone 25c); `bonus` is the
+   * early bonus, paid with the previous wave's clear bonus. Follows that
+   * wave's 'waveClear' and comes before the new wave's 'waveStart'.
+   */
+  | { kind: 'earlyCall'; wave: number; bonus: number }
   | { kind: 'won' }
   | { kind: 'lost' };
 

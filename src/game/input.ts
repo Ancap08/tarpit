@@ -100,6 +100,9 @@ export function labelRect(centre: Point): Rect {
   return { x: labelX(centre.x, LABEL_WIDTH) - LABEL_WIDTH / 2, y: top, width: LABEL_WIDTH, height: LABEL_HEIGHT };
 }
 
+/** Height of the tower panel's kill count line above its buttons (milestone 25c, ui/towerPanel.ts). */
+export const KILLS_LINE_H = 20;
+
 /**
  * Top-left corner for a `width` x `height` panel beside the tower at
  * `centre`, clamped inside the map area (never over the HUD). The candidates

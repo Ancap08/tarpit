@@ -21,7 +21,12 @@ import { WAVES } from './waves';
 const M: Cell = { col: 7, row: 7 };
 const B: Cell = { col: 2, row: 5 };
 
-function enemy(id: number, type: EnemyType, distance: number, hp = ENEMY_STATS[type].hp): Enemy {
+// Arena hp: the milestone 22 values, fixed so the arithmetic below stays as
+// written; no rule probed here depends on an enemy's full hp (milestone 25c
+// lowered ENEMY_STATS).
+const ARENA_HP: Record<EnemyType, number> = { goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000 };
+
+function enemy(id: number, type: EnemyType, distance: number, hp = ARENA_HP[type]): Enemy {
   return { id, type, hp, distance, slow: 0, slowTicksLeft: 0, burnDps: 0, burnTicksLeft: 0 };
 }
 
@@ -32,7 +37,7 @@ function arena(cell: Cell, tower: TowerType, upgraded: boolean, enemies: Enemy[]
   if (upgraded) expect(upgradeTower(s, cell).ok).toBe(true);
   s.phase = 'wave';
   s.wave = 1;
-  s.spawnedPerGroup = [8];
+  s.spawnedPerGroup = [20]; // wave 1 fully spawned (20 Goblins since milestone 25c)
   s.enemies = enemies;
   s.nextEnemyId = 50;
   return s;
@@ -62,10 +67,10 @@ describe('(a) upgraded Mortar and a Harpy', () => {
     expect(findTarget(s, s.towers[0])?.id).toBe(1);
     fireTowers(s);
     expect(s.shots.map((x) => [x.tower, x.targetId])).toEqual([['mortar', 1]]);
-    // Goblin: 30 - 70 < 0, dead, 4 gold. Harpy untouched: 40.
+    // Goblin: 30 - 70 < 0, dead, its bounty (2 since milestone 25c). Harpy untouched: 40.
     expect(kinds(s, 'hit')).toEqual([expect.objectContaining({ enemyId: 1, damage: 70 })]);
     expect(s.enemies.map((e) => [e.id, e.hp])).toEqual([[0, 40]]);
-    expect(s.gold).toBe(1000 - 110 - 80 + 4);
+    expect(s.gold).toBe(1000 - 110 - 80 + ENEMY_STATS.goblin.bounty);
   });
 
   it('with only the Harpy in range it never fires over 600 ticks: no shot, no hit, hp stays 40', () => {
@@ -173,22 +178,25 @@ describe('(e) Shieldbearer damage', () => {
 });
 
 describe('(f) Shieldbearer bounty', () => {
-  it('a Shieldbearer at 2 hp killed by a halved base Longbow shot (4 -> 2) pays 9 gold once, one kill event', () => {
+  it('a Shieldbearer at 2 hp killed by a halved base Longbow shot (4 -> 2) pays its bounty (5, milestone 25c) once, one kill event', () => {
     const s = arena(B, 'longbow', false, [enemy(0, 'shieldbearer', 128, 2)]);
     const gold = s.gold;
     fireTowers(s);
     expect(s.enemies).toEqual([]);
-    expect(s.gold).toBe(gold + 9);
-    expect(kinds(s, 'kill')).toEqual([{ kind: 'kill', enemyId: 0, enemyType: 'shieldbearer', bounty: 9, cause: 'shot' }]);
+    const bounty = ENEMY_STATS.shieldbearer.bounty;
+    expect(bounty).toBe(5);
+    expect(s.gold).toBe(gold + bounty);
+    expect(kinds(s, 'kill')).toEqual([{ kind: 'kill', enemyId: 0, enemyType: 'shieldbearer', bounty, cause: 'shot' }]);
     burnEnemies(s);
     fireTowers(s);
-    expect(s.gold).toBe(gold + 9);
+    expect(s.gold).toBe(gold + bounty);
   });
 });
 
 describe('(g) wave spawns by type', () => {
   function spawns(wave: number): Record<string, number> {
     const s = createGame();
+    s.lives = 1000; // milestone 25c: a towerless wave 6 would end a 20-life game before it all spawns
     s.wave = wave - 1;
     expect(startWave(s)).toEqual({ ok: true, wave });
     const counts: Record<string, number> = {};
@@ -199,32 +207,22 @@ describe('(g) wave spawns by type', () => {
     return counts;
   }
 
-  it('wave 4 spawns 10 Wolves and exactly 4 Harpies; wave 6 spawns 18 Goblins, 14 Wolves and exactly 3 Shieldbearers', () => {
-    expect(spawns(4)).toEqual({ wolf: 10, harpy: 4 });
-    expect(spawns(6)).toEqual({ goblin: 18, wolf: 14, shieldbearer: 3 });
+  // Milestone 25c (horde retune) changed every group's count and timing.
+  it('wave 4 spawns 30 Goblins and exactly 10 Harpies; wave 6 spawns 45 Goblins, 35 Wolves and exactly 6 Shieldbearers (milestone 25c)', () => {
+    expect(spawns(4)).toEqual({ harpy: 10, goblin: 30 });
+    expect(spawns(6)).toEqual({ goblin: 45, wolf: 35, shieldbearer: 6 });
   });
 
-  it('the milestone 12 groups are unchanged and the new groups are the last ones of waves 4 to 8 and 10 only', () => {
-    const g = (type: EnemyType, count: number, interval: number, delay = 0) => ({ type, count, interval, delay });
-    const before = [
-      [g('goblin', 8, 1.0)],
-      [g('goblin', 12, 0.8)],
-      [g('goblin', 8, 1.0), g('wolf', 6, 0.6, 4)],
-      [g('wolf', 10, 0.6)],
-      [g('goblin', 12, 0.7), g('troll', 2, 3, 2)],
-      [g('goblin', 18, 0.5), g('wolf', 14, 0.5, 5)],
-      [g('wolf', 10, 0.5), g('troll', 10, 2.5, 1)],
-      [g('goblin', 20, 0.5), g('wolf', 10, 0.6, 6), g('troll', 8, 3, 3)],
-      [g('wolf', 12, 0.5), g('troll', 6, 2)],
-      [g('wolf', 8, 0.5, 4), g('troll', 12, 2)],
-    ];
+  it('Harpy and Shieldbearer groups come in waves 4 to 8 and 10 only (milestone 22 placement; 25c sends wave 4\'s Harpies first)', () => {
     const isNew = (t: EnemyType) => t === 'harpy' || t === 'shieldbearer';
-    // Milestone 23 appends the boss group to wave 10 after these (boss.test.ts).
     const m22 = WAVES.map((w) => w.groups.filter((x) => x.type !== 'boss'));
-    m22.forEach((groups, i) => {
-      expect(groups.slice(0, before[i].length), `wave ${i + 1}`).toEqual(before[i]);
-      expect(groups.slice(before[i].length).every((x) => isNew(x.type)), `wave ${i + 1}`).toBe(true);
-    });
     expect(m22.map((groups) => groups.filter((x) => isNew(x.type)).length)).toEqual([0, 0, 0, 1, 1, 1, 1, 2, 0, 2]);
+    // Every wave except 4 still lists them after the older types.
+    m22.forEach((groups, i) => {
+      if (i === 3) return;
+      const firstNew = groups.findIndex((x) => isNew(x.type));
+      if (firstNew >= 0) expect(groups.slice(firstNew).every((x) => isNew(x.type)), `wave ${i + 1}`).toBe(true);
+    });
+    expect(m22[3].map((x) => x.type)).toEqual(['harpy', 'goblin']);
   });
 });

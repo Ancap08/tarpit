@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildableCells, buildTower, cellCenter, cellFromKey, createGame, isBuildableTerrain } from '../sim';
 import { labelAbove, LABEL_HEIGHT, LABEL_OFFSET_Y } from './draw/labels';
-import { cellAt, cellRect, classifyClick, dragTargetCell, mouseDragLost, onPath, pastDragThreshold, pathCover, placeBeside, type Rect } from './input';
+import { cellAt, cellRect, classifyClick, dragTargetCell, KILLS_LINE_H, mouseDragLost, onPath, pastDragThreshold, pathCover, placeBeside, type Rect } from './input';
 
 describe('cellAt', () => {
   it('maps a point to its 32 px cell; edges belong to the cell right of or below them', () => {
@@ -82,11 +82,14 @@ describe('placeBeside', () => {
   // The real tower panel (ui/button.ts ButtonStack): 156 px buttons plus 6 px
   // padding a side, a 4 px gap and the 42 px close column, so 214 wide; three
   // 42 px buttons (Upgrade, Sell, Target, milestone 24) with 4 px gaps and 6 px
-  // padding, so 146 tall. The 168 x 76 pins above test the side choice only.
-  const REAL = { w: 156 + 2 * 6 + 4 + 42, h: 2 * 6 + 3 * 42 + 2 * 4 };
+  // padding, so 146 tall, plus the 20 px kill count line above the buttons
+  // (milestone 25c, KILLS_LINE_H): 166. The 168 x 76 pins above test the
+  // side choice only.
+  const REAL = { w: 156 + 2 * 6 + 4 + 42, h: 2 * 6 + KILLS_LINE_H + 3 * 42 + 2 * 4 };
 
-  it('the real panel is 214 x 146', () => {
-    expect(REAL).toEqual({ w: 214, h: 146 });
+  it('the real panel is 214 x 166 (146 before the milestone 25c kill count line)', () => {
+    expect(KILLS_LINE_H).toBe(20);
+    expect(REAL).toEqual({ w: 214, h: 166 });
   });
 
   for (const PANEL of [{ w: 168, h: 76 }, REAL]) {

@@ -175,7 +175,8 @@ export interface StackItem {
 /**
  * A small popup: buttons stacked vertically on a dark backing, opened beside
  * a point, with an optional square close button ("×") in a column to the
- * right of the stack, at the top. Used by the tower panel.
+ * right of the stack, at the top. Used by the tower panel. `header`
+ * (milestone 25c) leaves that many px above the first button for a caption.
  */
 export class ButtonStack {
   readonly buttons: Button[];
@@ -186,9 +187,15 @@ export class ButtonStack {
   readonly width: number;
   readonly height: number;
 
-  constructor(scene: Phaser.Scene, items: StackItem[], onClose?: () => void) {
+  /** Inner padding of the backing (px). */
+  readonly pad = STACK_PAD;
+  /** Room above the first button for a caption line (milestone 25c: the panel's kill count). */
+  readonly header: number;
+
+  constructor(scene: Phaser.Scene, items: StackItem[], onClose?: () => void, header = 0) {
+    this.header = header;
     this.width = STACK_BUTTON_WIDTH + 2 * STACK_PAD + (onClose ? STACK_GAP + STACK_CLOSE_SIZE : 0);
-    this.height = 2 * STACK_PAD + items.length * STACK_BUTTON_HEIGHT + (items.length - 1) * STACK_GAP;
+    this.height = 2 * STACK_PAD + header + items.length * STACK_BUTTON_HEIGHT + (items.length - 1) * STACK_GAP;
     this.backing = scene.add
       .rectangle(0, 0, this.width, this.height, COLORS.menuBg, 0.92)
       .setOrigin(0, 0)
@@ -224,7 +231,7 @@ export class ButtonStack {
   show(x: number, y: number): void {
     this.backing.setPosition(x, y).setVisible(true);
     this.buttons.forEach((b, i) => {
-      b.moveTo(x + STACK_PAD, y + STACK_PAD + i * (STACK_BUTTON_HEIGHT + STACK_GAP));
+      b.moveTo(x + STACK_PAD, y + STACK_PAD + this.header + i * (STACK_BUTTON_HEIGHT + STACK_GAP));
     });
     this.close?.moveTo(x + this.width - STACK_PAD - STACK_CLOSE_SIZE, y + STACK_PAD);
     for (const b of this.all()) b.setShown(true);

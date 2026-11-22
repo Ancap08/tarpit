@@ -24,6 +24,8 @@ function lcg(seed: number): (n: number) => number {
 }
 
 function clearWave(s: GameState): void {
+  // Milestone 25c: a towerless wave 1 now takes all 20 lives; keep the game going.
+  s.lives = Math.max(s.lives, 1000);
   startWave(s);
   for (let i = 0; i < 60 * 600 && s.phase === 'wave'; i++) tick(s);
 }
