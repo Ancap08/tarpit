@@ -1,5 +1,6 @@
 // Planning phase (milestone 25a): lock, refund, move and undo rules.
 import { describe, expect, it } from 'vitest';
+import { MAPS } from './map';
 import { buildTower, moveTower, sellTower, setTargeting, undoUpgrade, upgradeTower } from './actions';
 import { fireTowers } from './combat';
 import { createGame, startWave, tick } from './game';
@@ -222,7 +223,7 @@ describe('moveTower', () => {
 
   it('after a move and startWave the tower fires from its new cell', () => {
     const far = cell(25, 3);
-    expect(isBuildableTerrain(far)).toBe(true);
+    expect(isBuildableTerrain(far, MAPS.meadow)).toBe(true);
     const s = createGame();
     buildTower(s, cell(2, 5), 'musketeer');
     expect(moveTower(s, cell(2, 5), far).ok).toBe(true);

@@ -36,7 +36,7 @@ import {
   TRAIL_STEP,
   type WaveScript,
 } from './headless';
-import { MAP, pathLength, positionAlongPath } from './map';
+import { MAPS, pathLength, positionAlongPath } from './map';
 import type { GameState } from './types';
 import { WAVES } from './waves';
 
@@ -313,12 +313,12 @@ describe('archetype rules', () => {
     expect(TRAIL_REACH).toBe(72);
     const keys = TRAIL_CELL_ORDER.map(cellKey);
     expect(new Set(keys).size).toBe(keys.length);
-    for (const cell of TRAIL_CELL_ORDER) expect(buildableCells()[cellKey(cell)]).toBe(true);
+    for (const cell of TRAIL_CELL_ORDER) expect(buildableCells(MAPS.meadow)[cellKey(cell)]).toBe(true);
     // Every one of the 16 step points (96 .. 1536 on the 1584 px path) finds a cell.
-    expect(Math.floor(pathLength(MAP) / TRAIL_STEP)).toBe(16);
+    expect(Math.floor(pathLength(MAPS.meadow) / TRAIL_STEP)).toBe(16);
     expect(TRAIL_CELL_ORDER).toHaveLength(16);
     TRAIL_CELL_ORDER.forEach((cell, i) => {
-      const p = positionAlongPath(MAP, TRAIL_STEP * (i + 1));
+      const p = positionAlongPath(MAPS.meadow, TRAIL_STEP * (i + 1));
       const c = cellCenter(cell);
       expect(Math.hypot(c.x - p.x, c.y - p.y), `cell ${i}`).toBeLessThanOrEqual(TRAIL_REACH);
     });

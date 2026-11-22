@@ -74,6 +74,9 @@
 // [Play again] (which passes the level just played). Phaser keeps a scene's
 // last start data, so every start passes it explicitly. [Menu] goes back to
 // the title menu.
+// Maps (milestone 27): GameStartData also carries the map; the game is
+// created on it, [Play again] passes it on, and [Menu] returns to a title
+// that still has it selected. Everything map-dependent reads state.map.
 // Endless (milestone 26): the win screen's [Keep going] runs continueEndless
 // and hides the end screen; the game plays on until it is lost. After every
 // run of ticks and every early call, a waves-cleared count above the one
@@ -90,8 +93,8 @@ import {
   cellCenter,
   createGame,
   DEFAULT_DIFFICULTY,
+  DEFAULT_MAP,
   enemyMaxHp,
-  MAP,
   pathLength,
   isBuildable,
   moveTower,
@@ -117,6 +120,7 @@ import type {
   Difficulty,
   GameEvent,
   GameState,
+  MapId,
   MoveResult,
   SellResult,
   SpecialResult,
@@ -180,6 +184,8 @@ export interface UiState {
   armedCell: Cell | null;
   /** True when the last pointer input was a touch. */
   isTouch: boolean;
+  /** The map this game is played on (milestone 27). */
+  map: MapId;
   /** The selected tower's cell (its panel is open), or null. */
   selectedCell: Cell | null;
   panelOpen: boolean;
@@ -275,6 +281,8 @@ export class GameScene extends Phaser.Scene {
   speed: Speed = 1;
   /** The level this game runs on (set in init from the start data). */
   private difficulty: Difficulty = DEFAULT_DIFFICULTY;
+  /** The map this game runs on (milestone 27; set in init from the start data). */
+  private currentMap: MapId = DEFAULT_MAP;
   private accMs = 0;
   private dynamic!: Phaser.GameObjects.Graphics;
   private enemySprites!: EnemySprites;
@@ -313,7 +321,7 @@ export class GameScene extends Phaser.Scene {
   private touchAim: { x: number; y: number } | null = null;
   /** On touch while aiming: the press in progress, or null. */
   private aimPress: AimPress | null = null;
-  private aim = new Aim();
+  private aim!: Aim;
   /** Waves cleared already sent to the high score store this game (milestone 26). */
   private recordedCleared = 0;
   private readonly autoTick = !isTestMode();
@@ -324,16 +332,17 @@ export class GameScene extends Phaser.Scene {
 
   init(data?: Partial<GameStartData>): void {
     this.difficulty = data?.difficulty ?? DEFAULT_DIFFICULTY;
+    this.currentMap = data?.map ?? DEFAULT_MAP;
   }
 
   create(): void {
-    this.state = createGame({ difficulty: this.difficulty });
+    this.state = createGame({ difficulty: this.difficulty, map: this.currentMap });
     this.recordedCleared = 0;
     this.speed = 1;
     this.accMs = 0;
     this.shots = new ShotEffects();
     this.specialFx = new SpecialEffects(isTestMode());
-    this.aim = new Aim();
+    this.aim = new Aim(this.state.map);
     this.eventCursor = new EventCursor();
     this.aiming = null;
     this.specialMenuOpen = false;
@@ -354,7 +363,7 @@ export class GameScene extends Phaser.Scene {
     // their particles, shot effects, hp bars, tower labels, flying enemy
     // sprites (milestone 22), HUD (which covers any range circle
     // reaching below the map), then the panel and the end screen on top.
-    drawMap(this.add.graphics());
+    drawMap(this.add.graphics(), this.state.map);
     this.overlay = this.add.graphics();
     this.dynamic = this.add.graphics();
     this.enemySprites = new EnemySprites(this, isTestMode());
@@ -738,6 +747,7 @@ export class GameScene extends Phaser.Scene {
 
   uiState(): UiState {
     return {
+      map: this.currentMap,
       pick: this.pick,
       hoverCell: this.hoverCell,
       armedCell: this.armed,
@@ -782,13 +792,18 @@ export class GameScene extends Phaser.Scene {
     return this.endScreen?.kind ?? null;
   }
 
-  /** Start a brand-new game in a fresh scene, on the same level. */
+  /** The map this game runs on (milestone 27). */
+  get mapId(): MapId {
+    return this.currentMap;
+  }
+
+  /** Start a brand-new game in a fresh scene, on the same level and map. */
   playAgain(): void {
-    const data: GameStartData = { difficulty: this.state.difficulty };
+    const data: GameStartData = { difficulty: this.state.difficulty, map: this.currentMap };
     this.scene.restart(data);
   }
 
-  /** Back to the title menu (milestone 25), which still shows the level just played. */
+  /** Back to the title menu (milestone 25), which still shows the level and (milestone 27) map just played. */
   toMenu(): void {
     this.scene.start('title');
   }
@@ -829,7 +844,7 @@ export class GameScene extends Phaser.Scene {
     const cleared = wavesCleared(this.state);
     if (cleared <= this.recordedCleared) return;
     this.recordedCleared = cleared;
-    highScores.record(this.state.difficulty, cleared);
+    highScores.record(this.state.difficulty, cleared, this.currentMap);
   }
 
   /** Keep going after the win (milestone 26): the game turns endless and the end screen goes away. */
@@ -879,7 +894,7 @@ export class GameScene extends Phaser.Scene {
   spawnHorde(n: number, span?: number): boolean {
     if (!isTestMode() && !isPerfMode()) return false;
     if (this.state.phase === 'setup') startWave(this.state);
-    const length = Math.min(span ?? pathLength(MAP), pathLength(MAP));
+    const length = Math.min(span ?? pathLength(this.state.map), pathLength(this.state.map));
     for (let i = 0; i < n; i++) {
       this.state.enemies.push({
         id: this.state.nextEnemyId++,

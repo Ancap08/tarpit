@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { MAPS } from '../src/sim/map';
 import { targetingButtonText } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { buildableCells, cellFromKey } from '../src/sim/grid';
@@ -36,7 +37,7 @@ const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.width && b.x < a.x + a.widt
 // The four extreme buildable cells, from the simulation's own table: the
 // top row's left-most and right-most, the bottom row's left-most and right-most.
 const CELLS: Cell[] = [];
-buildableCells().forEach((ok, key) => {
+buildableCells(MAPS.meadow).forEach((ok, key) => {
   if (ok) CELLS.push(cellFromKey(key));
 });
 const rowsOf = CELLS.map((c) => c.row);

@@ -9,7 +9,7 @@ import { burnEnemies, fireTowers } from './combat';
 import type { GameEvent } from './events';
 import { createGame, startWave, tick } from './game';
 import type { Cell } from './grid';
-import { MAP, pathLength } from './map';
+import { MAPS, pathLength } from './map';
 import type { Enemy, EnemyType, GameState, TowerType } from './types';
 import { WAVES } from './waves';
 
@@ -132,7 +132,7 @@ describe('state.events', () => {
   });
 
   it('exit: an enemy reaching the exit costs a life and emits exit', () => {
-    const end = pathLength(MAP);
+    const end = pathLength(MAPS.meadow);
     const s = arena([enemy(3, end - 0.5), enemy(4, 0)]);
     tick(s);
     expect(ofKind(s, 'exit')).toEqual([{ kind: 'exit', enemyId: 3 }]);
@@ -140,7 +140,7 @@ describe('state.events', () => {
   });
 
   it('lost: the exit that takes the last life, then lost; the lost tick ends there', () => {
-    const s = arena([enemy(3, pathLength(MAP) - 0.5)]);
+    const s = arena([enemy(3, pathLength(MAPS.meadow) - 0.5)]);
     s.lives = 1;
     tick(s);
     expect(s.events).toEqual([{ kind: 'exit', enemyId: 3 }, { kind: 'lost' }]);

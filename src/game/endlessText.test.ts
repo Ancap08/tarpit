@@ -1,6 +1,6 @@
 // Milestone 26: the endless words (names.ts).
 import { describe, expect, it } from 'vitest';
-import { bestScoreText, DIFFICULTY_LABELS, END_TEXT, reachedWaveText, waveCounterText } from './names';
+import { bestScoreText, DIFFICULTY_LABELS, END_TEXT, MAP_NAMES, reachedWaveText, waveCounterText } from './names';
 
 describe('endless words (milestone 26)', () => {
   it('wave counter: "Wave 3/10", and "Wave 11" in an endless game', () => {
@@ -15,8 +15,9 @@ describe('endless words (milestone 26)', () => {
   });
 
   it('title best line, singular for one wave', () => {
-    expect(bestScoreText('normal', 12)).toBe(`Best on ${DIFFICULTY_LABELS.normal}: 12 waves`);
-    expect(bestScoreText('easy', 1)).toBe(`Best on ${DIFFICULTY_LABELS.easy}: 1 wave`);
+    expect(bestScoreText('meadow', 'normal', 12)).toBe(`Best on ${MAP_NAMES.meadow}, ${DIFFICULTY_LABELS.normal}: 12 waves`);
+    expect(bestScoreText('riverbend', 'easy', 1)).toBe(`Best on ${MAP_NAMES.riverbend}, ${DIFFICULTY_LABELS.easy}: 1 wave`);
+    expect(bestScoreText('riverbend', 'normal', 12)).toBe('Best on Riverbend, Normal: 12 waves');
   });
 
   it('Keep going is a names.ts word', () => {

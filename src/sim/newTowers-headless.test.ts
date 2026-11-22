@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { cellCenter, cellKey } from './grid';
 import { COMBO_PLAN, comboBuild, comboBuildNoFire, TRAIL_CELL_ORDER, longbowSpam, playScripted, type BuildAction, type WaveScript } from './headless';
-import { MAP, pathLength, positionAlongPath } from './map';
+import { MAPS, pathLength, positionAlongPath } from './map';
 import { TOWER_DEFS } from './towers';
 import type { Point, TowerType } from './types';
 
@@ -51,8 +51,8 @@ describe('comboBuild', () => {
       return Math.hypot(p.x - c.x, p.y - c.y) <= TOWER_DEFS[type].base.range;
     };
     let shared = 0;
-    for (let d = 0; d <= pathLength(MAP); d++) {
-      const p = positionAlongPath(MAP, d);
+    for (let d = 0; d <= pathLength(MAPS.meadow); d++) {
+      const p = positionAlongPath(MAPS.meadow, d);
       if (tar.some((a) => within(p, a, 'tarpit')) && fire.some((a) => within(p, a, 'firepot'))) shared++;
     }
     expect(shared).toBeGreaterThan(50);

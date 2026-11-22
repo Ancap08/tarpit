@@ -73,7 +73,8 @@ export const SHEETS: Readonly<Record<EnemyType, SheetLayout>> = {
   // SeparateAnim/Dead.png), item, special 1, special 2.
   goblin: { key: 'goblin', url: goblinUrl, frameWidth: 16, frameHeight: 16, scale: 2, walk: fourWay(), sideOnly: false, deadFrame: 24 },
   // Hyena: 28x13, two 14x13 side-view frames facing RIGHT (snout and eye on the
-  // right, checked pixel by pixel); mirrored for left. The path never runs left.
+  // right, checked pixel by pixel); mirrored for left (Switchback's y 192 lane,
+  // milestone 27, is the one leftward segment).
   wolf: {
     key: 'wolf',
     url: wolfUrl,
@@ -114,7 +115,7 @@ export const SHEETS: Readonly<Record<EnemyType, SheetLayout>> = {
   // DemonCyclop (milestone 23, Grumblefoot): Walk.png is 300x50, one row of
   // six 50x50 frames, all facing the viewer (no side or back views; frames
   // 4 and 5 lean slightly). So every facing uses the same six frames,
-  // mirrored for left only (the path never runs left). Hit.png is 150x50,
+  // mirrored for left only (only Switchback's y 192 lane runs left). Hit.png is 150x50,
   // three 50x50 frames: 0 a bright orange flash, 1 and 2 a hurt pose; frame
   // 0 is the hit flash. Feet at row 42-43 of 50, so at 2x they sit 36 px
   // below the frame centre: lift 30 puts them 6 px below the path point.

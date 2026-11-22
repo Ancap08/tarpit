@@ -12,7 +12,7 @@ import type { GameEvent } from './events';
 import { callEarlyStatus, callNextWave, createGame, lastSpawnTick, startWave, tick, WAVE_CLEAR_BONUS } from './game';
 import { cellKey, type Cell } from './grid';
 import { applyAction, ARCHETYPES, COMBO_PLAN, comboBuild, playScripted, type WaveScript } from './headless';
-import { MAP, pathLength, positionAlongPath } from './map';
+import { MAPS, pathLength, positionAlongPath } from './map';
 import { SPECIAL_DEFS } from './specials';
 import { TOWER_DEFS } from './towers';
 import type { Enemy, EnemyType, GameState } from './types';
@@ -499,13 +499,13 @@ describe('E6. special slow channel through a real Tar Pit and a real Tar Barrel'
 
   function withPit(type: EnemyType) {
     const a = arena(type, D);
-    expect(positionAlongPath(MAP, D)).toEqual({ x: 420, y: 336 });
+    expect(positionAlongPath(MAPS.meadow, D)).toEqual({ x: 420, y: 336 });
     expect(buildTower(a.s, PIT, 'tarpit').ok).toBe(true);
     expect(upgradeTower(a.s, PIT).ok).toBe(true);
     return a;
   }
   const barrel = (s: GameState, e: Enemy) => {
-    const p = enemyPosition(e);
+    const p = enemyPosition(e, MAPS.meadow);
     expect(useSpecial(s, 'tarBarrel', p)).toMatchObject({ ok: true });
   };
 
@@ -646,11 +646,11 @@ describe('E8. determinism: byte-equal final state', () => {
         expect(JSON.stringify(b.state), name).toBe(JSON.stringify(a.state));
         expect(JSON.stringify(b.waves), name).toBe(JSON.stringify(a.waves));
       }
-    }, 60_000);
+    });
   }
 
   it('the path is 1584 px (the exit distance the probes above rely on)', () => {
-    expect(pathLength(MAP)).toBe(1584);
+    expect(pathLength(MAPS.meadow)).toBe(1584);
   });
 });
 

@@ -15,13 +15,13 @@ import type { GameEvent } from './events';
 import { createGame, spawnTick, startWave, tick } from './game';
 import { cellCenter, type Cell } from './grid';
 import { applyAction, comboBuild, comboBuildNoFire, type WaveScript } from './headless';
-import { MAP, pathLength, positionAlongPath } from './map';
+import { MAPS, pathLength, positionAlongPath } from './map';
 import { TOWER_DEFS } from './towers';
 import type { Enemy, EnemyType, GameState, TowerType } from './types';
 import { WAVES } from './waves';
 
 const B: Cell = { col: 2, row: 5 };
-const EXIT = pathLength(MAP);
+const EXIT = pathLength(MAPS.meadow);
 
 function enemy(id: number, type: EnemyType, distance: number, hp = ENEMY_STATS[type].hp): Enemy {
   return { id, type, hp, distance, slow: 0, slowTicksLeft: 0, burnDps: 0, burnTicksLeft: 0 };
@@ -51,7 +51,7 @@ describe('verifier geometry', () => {
   it('B is 64 px from distance 80 and 72.9 px from distance 115', () => {
     const c = cellCenter(B);
     const d = (distance: number) => {
-      const p = positionAlongPath(MAP, distance);
+      const p = positionAlongPath(MAPS.meadow, distance);
       return Math.hypot(p.x - c.x, p.y - c.y);
     };
     expect(d(80)).toBe(64);

@@ -2,6 +2,7 @@
 // Own polyline walk, own distance-to-segment, own buildable rule; only the
 // path waypoints and the cottage box are copied from docs/DESIGN.md.
 import { describe, expect, it } from 'vitest';
+import { MAPS } from './map';
 import { buildableCells } from './grid';
 import { TRAIL_CELL_ORDER } from './headless';
 
@@ -68,7 +69,7 @@ describe('trail verifier: TRAIL_CELL_ORDER recomputed independently', () => {
   const mine = recompute();
 
   it('my buildable rule agrees with the sim mask on all 450 cells (344 buildable)', () => {
-    const mask = buildableCells();
+    const mask = buildableCells(MAPS.meadow);
     let n = 0;
     for (let key = 0; key < 450; key++) {
       expect(mask[key]).toBe(buildable(key % 30, Math.floor(key / 30)));

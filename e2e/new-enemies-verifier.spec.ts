@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { COLORS } from '../src/game/palette';
-import { MAP, positionAlongPath } from '../src/sim/map';
+import { MAPS, positionAlongPath } from '../src/sim/map';
 
 // From src/game/anim/sheets.ts (fourWay: right is column 3, up column 1) and
 // src/game/anim/enemySprites.ts (SHIELD_DX, SHIELD_DY), both pinned by
@@ -103,7 +103,7 @@ test('(b) a Harpy has a two-ellipse ground shadow on the path under it', async (
     return t.state().enemies.map((e) => ({ id: e.id, type: e.type, distance: e.distance }));
   });
   // The Harpy on the top run (y 96, x 200..400) furthest from every other enemy.
-  const at = (d: number) => positionAlongPath(MAP, d);
+  const at = (d: number) => positionAlongPath(MAPS.meadow, d);
   const harpies = enemies.filter((e) => e.type === 'harpy' && at(e.distance).y === 96 && at(e.distance).x > 200 && at(e.distance).x < 400);
   const gap = (h: { id: number; distance: number }) => Math.min(...enemies.filter((e) => e.id !== h.id).map((e) => Math.abs(e.distance - h.distance)));
   const harpy = harpies.sort((a, b) => gap(b) - gap(a))[0];

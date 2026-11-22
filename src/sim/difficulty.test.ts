@@ -125,12 +125,12 @@ describe('determinism per level', () => {
   }
 
   // Verifier (milestone 25c): 48 archetype games take about 4 s on the horde
-  // waves and timed out at the default 5 s in a full run; 30 s leaves room on CI.
+  // waves and timed out at the default 5 s in a full run (vitest.config.ts now sets 30 s for all).
   it('Normal by argument equals Normal by default for every archetype', () => {
     for (const archetype of Object.values(ARCHETYPES)) {
       expect(playScripted(archetype('normal'), undefined, 'normal').state).toEqual(playScripted(archetype()).state);
     }
-  }, 30_000);
+  });
 });
 
 const end = (difficulty: Difficulty, script: ReturnType<typeof comboBuild>) => {
@@ -204,5 +204,5 @@ describe('SCOPE-v4 difficulty targets (met in milestone 25c; milestone 28 rechec
       }
     }
     expect(end('normal', comboBuild()).lives).toBe(normalLives);
-  }, 120_000);
+  });
 });

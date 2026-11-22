@@ -3,7 +3,7 @@
 // is an edit here (plus regenerated screenshot baselines). Tests that check a
 // display string build it from these tables, so a rename changes no test.
 
-import type { Difficulty, EnemyType, SpecialType, TargetingMode, TowerType } from '../sim';
+import type { Difficulty, EnemyType, MapId, SpecialType, TargetingMode, TowerType } from '../sim';
 
 /** The wave 10 boss (docs/SCOPE-v4.md, milestone 23): the HUD boss bar and the wave 10 preview. */
 export const BOSS_NAME = 'Grumblefoot';
@@ -57,13 +57,22 @@ export const DIFFICULTY_LABELS: Readonly<Record<Difficulty, string>> = {
   hard: 'Hard',
 };
 
+/** Map names (milestone 27): the title menu's thumbnails and the best-score line. */
+export const MAP_NAMES: Readonly<Record<MapId, string>> = {
+  meadow: 'Meadow',
+  switchback: 'Switchback',
+  riverbend: 'Riverbend',
+};
+
 /** The title menu's words (TitleScene.ts, milestone 25). */
 export const TITLE_TEXT = {
   title: 'Tarpit',
   subtitle: 'a tower defense game',
   difficulty: 'Difficulty',
+  /** The map row's caption (milestone 27). */
+  map: 'Map',
   play: 'Play',
-  prompt: 'Pick a difficulty, then press Play',
+  prompt: 'Pick a difficulty and a map, then press Play',
 } as const;
 
 /** The end screens' words (endText.ts and the end screen's buttons). */
@@ -89,9 +98,12 @@ export function reachedWaveText(wave: number, endless: boolean, lastWave: number
   return endless ? `${END_TEXT.lostWave} ${wave}` : `${END_TEXT.lostWave} ${wave} of ${lastWave}`;
 }
 
-/** The title menu's high-score line (milestone 26): "Best on Normal: 12 waves". */
-export function bestScoreText(difficulty: Difficulty, waves: number): string {
-  return `Best on ${DIFFICULTY_LABELS[difficulty]}: ${waves} ${waves === 1 ? 'wave' : 'waves'}`;
+/**
+ * The title menu's high-score line (milestone 26; milestone 27 names the
+ * map too): "Best on Riverbend, Normal: 12 waves".
+ */
+export function bestScoreText(map: MapId, difficulty: Difficulty, waves: number): string {
+  return `Best on ${MAP_NAMES[map]}, ${DIFFICULTY_LABELS[difficulty]}: ${waves} ${waves === 1 ? 'wave' : 'waves'}`;
 }
 
 /**

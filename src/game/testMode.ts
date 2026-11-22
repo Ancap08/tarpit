@@ -10,6 +10,7 @@ import {
   bestUnlockedSpecial,
   comboBuild,
   DEFAULT_DIFFICULTY,
+  DEFAULT_MAP,
   densestCluster,
   ENDLESS_WAVE_CAP,
   endlessGreedy,
@@ -173,20 +174,20 @@ export function installGlobal(game: Phaser.Game): void {
     scene: () => game.scene.getScenes(true)[0]?.scene.key ?? '',
     state: () => scene().state,
     step: (n) => scene().advance(n),
-    startGame: (difficulty = DEFAULT_DIFFICULTY) =>
+    startGame: (difficulty = DEFAULT_DIFFICULTY, map = DEFAULT_MAP) =>
       new Promise<void>((resolve) => {
         if (game.scene.isActive('game')) {
           resolve();
           return;
         }
         game.scene.getScene('game').events.once('create', () => resolve());
-        titleScene(game).play(difficulty);
+        titleScene(game).play(difficulty, map);
       }),
     difficulty: () => scene().state.difficulty,
     startWave: () => scene().startWave(),
     callNextWave: () => scene().callNextWave(),
     continueEndless: () => scene().continueEndless(),
-    bestScore: (difficulty) => highScores.best(difficulty) ?? null,
+    bestScore: (difficulty, map = DEFAULT_MAP) => highScores.best(difficulty, map) ?? null,
     spawnHorde: (n, span) => scene().spawnHorde(n, span),
     buildAt: (col, row, type) => scene().build({ col, row }, type),
     upgradeAt: (col, row) => scene().upgrade({ col, row }),
@@ -205,8 +206,8 @@ export function installGlobal(game: Phaser.Game): void {
     hudText: () => scene().hudStrings(),
     endScreen: () => scene().endScreenKind(),
     events: () => scene().simEvents(),
-    // The archetype records its script on the running game's level (milestone 25).
-    runScript: (name, untilWave) => runScript(scene(), SCRIPTS[name](scene().state.difficulty), untilWave),
+    // The archetype records its script on the running game's level (milestone 25) and map (27).
+    runScript: (name, untilWave) => runScript(scene(), SCRIPTS[name](scene().state.difficulty, scene().mapId), untilWave),
   };
   window.__tarpit = api;
 }

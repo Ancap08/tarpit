@@ -78,8 +78,9 @@ test('(a) a level click, an empty click and Left/Right do not start the game; Pl
       expect(await sceneKey(page)).toBe('title');
       expect(await titleLevel(page)).toBe(level);
     }
-    // Empty title space: the reserved band, the title text, the caption, the prompt, a corner, between two level buttons.
-    for (const [x, y] of [[480, 366], [480, 110], [480, 224], [480, 522], [5, 575], [405, 265], [480, 300], [480, 440]]) {
+    // Empty title space: beside the map row (milestone 27 filled the reserved band at x 480), the title text,
+    // the caption, the prompt, a corner, between two level buttons.
+    for (const [x, y] of [[120, 366], [480, 110], [480, 224], [480, 522], [5, 575], [405, 265], [480, 300], [480, 440]]) {
       await page.mouse.click(x, y);
     }
     await page.keyboard.press('ArrowRight');
@@ -173,7 +174,7 @@ test('(d) [Menu] from the win screen: the title with the played level selected; 
   await click(page, 'menu');
   await onTitle(page);
   expect(await titleLevel(page)).toBe('easy');
-  expect(Object.keys(await api(page, (a) => a.uiRects())).sort()).toEqual(['title:easy', 'title:hard', 'title:normal', 'title:play']);
+  expect(Object.keys(await api(page, (a) => a.uiRects())).sort()).toEqual(['title:easy', 'title:hard', 'title:map:meadow', 'title:map:riverbend', 'title:map:switchback', 'title:normal', 'title:play']); // milestone 27 adds the map thumbnails
   await click(page, 'title:play');
   await freshGame(page);
   expect(await state(page)).toMatchObject({ difficulty: 'easy', tick: 0, wave: 0, gold: 150, lives: 30, towers: [], enemies: [], phase: 'setup' });

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { BOSS_NAME, ENEMY_NAMES } from '../src/game/names';
 import { COLORS } from '../src/game/palette';
-import { MAP, positionAlongPath } from '../src/sim/map';
+import { MAPS, positionAlongPath } from '../src/sim/map';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 
 // Verifier (milestone 23): renderer probes for Grumblefoot in test mode
@@ -110,7 +110,7 @@ test('(b) he has a two-ellipse ground shadow on the path under his feet', async 
   });
   expect(enemies.map((e) => e.type)).toEqual(['boss']);
   expect(enemies[0].distance).toBeCloseTo((3360 * 25) / 60, 6);
-  const p = positionAlongPath(MAP, enemies[0].distance);
+  const p = positionAlongPath(MAPS.meadow, enemies[0].distance);
   const pos = { x: Math.round(p.x), y: Math.round(p.y) };
   expect(pos).toEqual({ x: 776, y: 192 });
   const dy = BOSS_SHADOW.offsetY + 5; // 9 px below the path point: below his feet, inside the inner ellipse

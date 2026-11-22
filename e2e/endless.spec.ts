@@ -94,18 +94,18 @@ test('lose in endless: "Reached wave 15" without "of 10"; Menu shows the best li
   await click(page, 'menu');
   await waitForTitle(page);
   const ui = await titleUi(page);
-  expect(ui.bestLine?.text).toBe(bestScoreText('normal', 14));
-  // Centred on y 414, below milestone 27's map row (y 302..400) and above Play (y 446).
+  expect(ui.bestLine?.text).toBe(bestScoreText('meadow', 'normal', 14));
+  // Centred on y 422, midway between milestone 27's map row (bottom y 398) and Play (top y 446).
   const r = ui.bestLine!.rect;
   expect(Math.abs(r.x + r.width / 2 - 480)).toBeLessThanOrEqual(1);
-  expect(Math.abs(r.y + r.height / 2 - 414)).toBeLessThanOrEqual(1);
-  expect(r.y).toBeGreaterThan(400);
+  expect(Math.abs(r.y + r.height / 2 - 422)).toBeLessThanOrEqual(1);
+  expect(r.y).toBeGreaterThan(398);
   expect(r.y + r.height).toBeLessThan(446);
   // A level never played shows no line; the line follows the selection.
   await click(page, 'title:easy');
   expect(await titleUi(page)).toMatchObject({ difficulty: 'easy', bestLine: null });
   await click(page, 'title:normal');
-  expect((await titleUi(page)).bestLine?.text).toBe(bestScoreText('normal', 14));
+  expect((await titleUi(page)).bestLine?.text).toBe(bestScoreText('meadow', 'normal', 14));
 });
 
 test('the score survives a reload; a fresh context shows no line', async ({ page, browser }) => {
@@ -123,7 +123,7 @@ test('the score survives a reload; a fresh context shows no line', async ({ page
   await waitForTitle(page);
   expect(await api(page, (t) => t.bestScore('hard'))).toBe(1);
   await page.keyboard.press('ArrowRight');
-  expect((await titleUi(page)).bestLine?.text).toBe(bestScoreText('hard', 1));
+  expect((await titleUi(page)).bestLine?.text).toBe(bestScoreText('meadow', 'hard', 1));
   expect(await page.evaluate(() => localStorage.getItem('tarpit.best'))).toBe('{"v":1,"best":{"meadow":{"hard":1}}}');
 
   const fresh = await browser.newContext({ viewport: { width: 960, height: 580 } });
@@ -160,7 +160,7 @@ test('a win without Keep going stores 10', async ({ page }) => {
   expect(await page.evaluate(() => localStorage.getItem('tarpit.best'))).toBe('{"v":1,"best":{"meadow":{"normal":10}}}');
   await click(page, 'menu');
   await waitForTitle(page);
-  expect((await titleUi(page)).bestLine?.text).toBe(bestScoreText('normal', 10));
+  expect((await titleUi(page)).bestLine?.text).toBe(bestScoreText('meadow', 'normal', 10));
 });
 
 test('runScript stops in setup right after Keep going with untilWave 11', async ({ page }) => {

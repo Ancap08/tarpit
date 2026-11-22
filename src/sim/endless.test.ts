@@ -292,8 +292,8 @@ describe('an endless run (milestone 26)', () => {
     const b = playScripted(endlessGreedy());
     expect(a.state).toEqual(b.state);
     expect(a.waves).toEqual(b.waves);
-    // Verifier: about 3.8 s locally, so the default 5 s limit was too close for CI.
-  }, 30_000);
+    // Verifier: about 3.8 s locally, too close to vitest's 5 s default for CI (now 30 s for all, vitest.config.ts).
+  });
 
   it('gold is conserved across the wave 10 to 11 boundary', () => {
     const s = won();
@@ -398,6 +398,8 @@ describe('a game that is not continued (milestone 26)', () => {
         'events',
         'gold',
         'lives',
+        // Milestone 27: the game's map.
+        'map',
         'nextEnemyId',
         'phase',
         'shots',

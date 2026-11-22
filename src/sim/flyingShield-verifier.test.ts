@@ -9,6 +9,7 @@
 // (128,240), sqrt(48^2 + 64^2) = 80 px away, inside every base range but the
 // Mortar's; distance 148 is (148,240), 20 px further along the same segment.
 import { describe, expect, it } from 'vitest';
+import { MAPS } from './map';
 import { buildTower, upgradeTower } from './actions';
 import { burnEnemies, enemyPosition, findTarget, fireTowers } from './combat';
 import { ENEMY_STATS } from './enemies';
@@ -45,7 +46,7 @@ function arena(cell: Cell, tower: TowerType, upgraded: boolean, enemies: Enemy[]
 
 const px = (cell: Cell, distance: number) => {
   const c = cellCenter(cell);
-  const p = enemyPosition(enemy(0, 'goblin', distance));
+  const p = enemyPosition(enemy(0, 'goblin', distance), MAPS.meadow);
   return Math.hypot(p.x - c.x, p.y - c.y);
 };
 const kinds = (s: GameState, kind: string) => s.events.filter((e) => e.kind === kind);
@@ -53,8 +54,8 @@ const kinds = (s: GameState, kind: string) => s.events.filter((e) => e.kind === 
 describe('verifier geometry', () => {
   it('M is 100 px from distance 220 and 150 px from distance 90; B is 80 px from 128 and 128 -> 148 is 20 px', () => {
     expect([px(M, 220), px(M, 90), px(B, 128)]).toEqual([100, 150, 80]);
-    const a = enemyPosition(enemy(0, 'harpy', 128));
-    const b = enemyPosition(enemy(0, 'harpy', 148));
+    const a = enemyPosition(enemy(0, 'harpy', 128), MAPS.meadow);
+    const b = enemyPosition(enemy(0, 'harpy', 148), MAPS.meadow);
     expect(Math.hypot(a.x - b.x, a.y - b.y)).toBe(20);
     expect(TOWER_DEFS.mortar.upgraded).toMatchObject({ range: 220, minRange: 70, damage: 70, splashRadius: 70 });
     expect(TOWER_DEFS.cannon.base).toMatchObject({ range: 90, damage: 25, splashRadius: 40 });

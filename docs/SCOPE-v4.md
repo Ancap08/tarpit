@@ -73,6 +73,9 @@ Three maps, same grid rules, picked on the title screen with a thumbnail:
    unbuildable (first use of a non-path unbuildable region), favouring long
    range.
 Waypoints are chosen in the map milestone; path length 1500 to 1800 px each.
+(Built in milestone 27: Switchback has two U-turns and a step down, four
+lanes; Riverbend is an arch, up, across and down, around the river. See
+DECISIONS.)
 Each map has its own archetype runs and balance pins; the cottage and cave
 move with the path.
 

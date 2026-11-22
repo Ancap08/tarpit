@@ -15,6 +15,11 @@ export const COLORS = {
   cottageDoor: 0x5a3d28,
   cottageChimney: 0x6e4a3a,
   caveInner: 0x6a5a4c,
+  // Water (milestone 27, Riverbend's river): flat blue, a darker bank edge
+  // and a few pale ripple strokes.
+  water: 0x4f8fc0,
+  waterBank: 0x2e5f8a,
+  waterRipple: 0xa9d0ea,
 
   // Enemies
   goblin: 0x3fa34d,

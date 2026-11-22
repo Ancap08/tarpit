@@ -12,6 +12,7 @@ import type {
   Difficulty,
   GameEvent,
   GameState,
+  MapId,
   MoveResult,
   Phase,
   SellResult,
@@ -40,10 +41,11 @@ export interface TarpitTestApi {
   step(n: number): void;
   /**
    * Leave the title menu as [Play] does, on `difficulty` (Normal when left
-   * out, whatever the menu shows; milestone 25); resolves once GameScene
+   * out, whatever the menu shows; milestone 25) and `map` (Meadow when left
+   * out, whatever the menu shows; milestone 27); resolves once GameScene
    * has been created. Does nothing if GameScene is already running.
    */
-  startGame(difficulty?: Difficulty): Promise<void>;
+  startGame(difficulty?: Difficulty, map?: MapId): Promise<void>;
   /** The running game's level (milestone 25). */
   difficulty(): Difficulty;
   startWave(): StartWaveResult;
@@ -52,10 +54,11 @@ export interface TarpitTestApi {
   /** Keep going after the win through the scene's action, as the win screen's button does (milestone 26). */
   continueEndless(): ContinueEndlessResult;
   /**
-   * The best waves cleared stored for `difficulty` on today's map (milestone
-   * 26, highScore.ts), or null. Works on the title menu too.
+   * The best waves cleared stored for `difficulty` on `map` (Meadow when
+   * left out; milestones 26 and 27, highScore.ts), or null. Works on the
+   * title menu too.
    */
-  bestScore(difficulty: Difficulty): number | null;
+  bestScore(difficulty: Difficulty, map?: MapId): number | null;
   /**
    * Test only (milestone 25c, e2e/perf.spec.ts): inject `n` Goblins spread
    * evenly along the path into the running wave (starts wave 1 first if in
@@ -87,7 +90,8 @@ export interface TarpitTestApi {
    * `bar:mortar`, `bar:firepot`, while the tower
    * panel is open `panel:upgrade`, `panel:sell` and `panel:target`, and `playAgain` and
    * `menu` while an end screen shows. On the title menu (milestone 25):
-   * `title:easy`, `title:normal`, `title:hard` and `title:play` only, and
+   * `title:easy`, `title:normal`, `title:hard`, `title:play` and (milestone
+   * 27) `title:map:meadow`, `title:map:switchback`, `title:map:riverbend` only, and
    * only once titleReady() (none before the menu's first frame). Map cells are not listed: cell (col, row) is clicked at
    * (col * 32 + 16, row * 32 + 16). At the 960x580 test viewport, canvas
    * space equals page space; at other sizes use canvasToPage(). The open
@@ -123,8 +127,10 @@ export interface TarpitTestApi {
    * 25b): charges, the special being aimed, the unlocked specials, whether
    * the popup is open, and the aim circle's centre (canvas px) or null.
    * On the title menu (milestone 25) it is `{ scene: 'title', difficulty,
-   * bestLine }` with the selected level and (milestone 26) the high-score
-   * line's text and box, or null: call it as `ui<TitleUiState>()` there.
+   * map, bestLine }` with the selected level, (milestone 27) the selected
+   * map and (milestone 26) the high-score line's text and box, or null:
+   * call it as `ui<TitleUiState>()` there. In the game, `map` (milestone 27)
+   * is the map being played.
    */
   ui<T extends UiState | TitleUiState = UiState>(): T;
   /** HUD strings; `boss` is the boss bar label ("Grumblefoot 4000 / 4000") or null when hidden. */

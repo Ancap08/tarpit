@@ -56,9 +56,9 @@
 import { burnEnemies, fireTowers } from './combat';
 import { DEFAULT_DIFFICULTY, DIFFICULTY_DEFS, enemyMaxHp, type Difficulty } from './difficulty';
 import { effectiveSlow, ENEMY_STATS, isBoss } from './enemies';
-import { MAP, pathLength } from './map';
+import { pathLength, resolveMap, type MapId } from './map';
 import { secondsToTicks, TICKS_PER_SECOND } from './time';
-import type { GameState, GroupDef } from './types';
+import type { GameState, GroupDef, MapDef } from './types';
 import { hasNextWave, LAST_WAVE, waveDef } from './waves';
 
 export { secondsToTicks, TICKS_PER_SECOND };
@@ -74,12 +74,15 @@ export const EARLY_CALL_MAX_BONUS = 20;
 export interface CreateGameOptions {
   /** Difficulty level (milestone 25); Normal when left out. */
   difficulty?: Difficulty;
+  /** The map (milestone 27): a MAPS id, or a test's own MapDef; Meadow when left out. */
+  map?: MapId | MapDef;
 }
 
 export function createGame(options: CreateGameOptions = {}): GameState {
   const difficulty = options.difficulty ?? DEFAULT_DIFFICULTY;
   const def = DIFFICULTY_DEFS[difficulty];
   return {
+    map: resolveMap(options.map),
     difficulty,
     endless: false,
     phase: 'setup',
@@ -263,7 +266,7 @@ function moveEnemies(state: GameState): void {
 }
 
 function removeExitedEnemies(state: GameState): void {
-  const exit = pathLength(MAP);
+  const exit = pathLength(state.map);
   const remaining: GameState['enemies'] = [];
   for (const e of state.enemies) {
     if (e.distance < exit) {

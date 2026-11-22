@@ -16,14 +16,14 @@ import {
   MIN_PATH_CLEARANCE,
   nearestPathPoint,
 } from './grid';
-import { MAP } from './map';
+import { MAPS } from './map';
 import type { MapDef } from './types';
 
 describe('grid geometry', () => {
   it('a 30 x 15 grid of 32 px cells covers the 960 x 480 map exactly', () => {
     expect([GRID_COLS, GRID_ROWS, CELL]).toEqual([30, 15, 32]);
-    expect(GRID_COLS * CELL).toBe(MAP.width);
-    expect(GRID_ROWS * CELL).toBe(MAP.height);
+    expect(GRID_COLS * CELL).toBe(MAPS.meadow.width);
+    expect(GRID_ROWS * CELL).toBe(MAPS.meadow.height);
   });
 
   it('cellCenter is (col * 32 + 16, row * 32 + 16)', () => {
@@ -67,77 +67,77 @@ describe('grid geometry', () => {
 
 describe('distanceToPath', () => {
   it('is the perpendicular distance to the nearest segment', () => {
-    expect(distanceToPath({ x: 80, y: 176 })).toBe(64); // above the first segment
-    expect(distanceToPath({ x: 240, y: 176 })).toBe(80); // v1 spot 2
-    expect(distanceToPath({ x: 160, y: 240 })).toBe(0); // a corner
+    expect(distanceToPath({ x: 80, y: 176 }, MAPS.meadow)).toBe(64); // above the first segment
+    expect(distanceToPath({ x: 240, y: 176 }, MAPS.meadow)).toBe(80); // v1 spot 2
+    expect(distanceToPath({ x: 160, y: 240 }, MAPS.meadow)).toBe(0); // a corner
   });
 
   it('beyond a segment end it is the distance to that end point', () => {
     // (0,240) is the spawn; (-30, 280) is 50 px from it.
-    expect(distanceToPath({ x: -30, y: 280 })).toBe(50);
+    expect(distanceToPath({ x: -30, y: 280 }, MAPS.meadow)).toBe(50);
   });
 
   it('nearestPathPoint gives how far along the path the nearest point lies', () => {
-    expect(nearestPathPoint({ x: 80, y: 176 })).toEqual({ distance: 64, along: 80 });
+    expect(nearestPathPoint({ x: 80, y: 176 }, MAPS.meadow)).toEqual({ distance: 64, along: 80 });
     // (240,176): 80 px from (160,176) at along 224 and from (240,96) at along 384; the earlier wins.
-    expect(nearestPathPoint({ x: 240, y: 176 })).toEqual({ distance: 80, along: 224 });
+    expect(nearestPathPoint({ x: 240, y: 176 }, MAPS.meadow)).toEqual({ distance: 80, along: 224 });
   });
 });
 
 describe('buildable rule', () => {
   it('a cell is buildable when its centre is at least 36 px from the path centreline, inclusive (no landmarks)', () => {
     expect(MIN_PATH_CLEARANCE).toBe(36);
-    const mask = buildableCells({ width: MAP.width, height: MAP.height, path: MAP.path });
+    const mask = buildableCells({ id: 'bare', width: MAPS.meadow.width, height: MAPS.meadow.height, path: MAPS.meadow.path });
     for (let k = 0; k < GRID_COLS * GRID_ROWS; k++) {
-      expect(mask[k], `cell ${k}`).toBe(distanceToPath(cellCenter(cellFromKey(k))) >= 36);
+      expect(mask[k], `cell ${k}`).toBe(distanceToPath(cellCenter(cellFromKey(k)), MAPS.meadow) >= 36);
     }
   });
 
   it('at the path edge: 32 px from the centreline is not buildable, 48 px is', () => {
     // First segment y = 240 runs through row 7's centres.
-    expect(isBuildableTerrain({ col: 2, row: 7 })).toBe(false); // 0 px
-    expect(isBuildableTerrain({ col: 2, row: 6 })).toBe(false); // (80,208): 32 px
-    expect(isBuildableTerrain({ col: 2, row: 8 })).toBe(false); // (80,272): 32 px
-    expect(isBuildableTerrain({ col: 2, row: 5 })).toBe(true); // (80,176): 64 px
+    expect(isBuildableTerrain({ col: 2, row: 7 }, MAPS.meadow)).toBe(false); // 0 px
+    expect(isBuildableTerrain({ col: 2, row: 6 }, MAPS.meadow)).toBe(false); // (80,208): 32 px
+    expect(isBuildableTerrain({ col: 2, row: 8 }, MAPS.meadow)).toBe(false); // (80,272): 32 px
+    expect(isBuildableTerrain({ col: 2, row: 5 }, MAPS.meadow)).toBe(true); // (80,176): 64 px
     // Vertical x = 160 lies on a cell border: centres 144 and 176 are 16 px away.
-    expect(isBuildableTerrain({ col: 4, row: 4 })).toBe(false);
-    expect(isBuildableTerrain({ col: 5, row: 4 })).toBe(false);
-    expect(isBuildableTerrain({ col: 3, row: 4 })).toBe(true); // (112,144): 48 px
-    expect(isBuildableTerrain({ col: 6, row: 4 })).toBe(true); // (208,144): 48 px
+    expect(isBuildableTerrain({ col: 4, row: 4 }, MAPS.meadow)).toBe(false);
+    expect(isBuildableTerrain({ col: 5, row: 4 }, MAPS.meadow)).toBe(false);
+    expect(isBuildableTerrain({ col: 3, row: 4 }, MAPS.meadow)).toBe(true); // (112,144): 48 px
+    expect(isBuildableTerrain({ col: 6, row: 4 }, MAPS.meadow)).toBe(true); // (208,144): 48 px
     // Vertical x = 420: centre 464 is 44 px away (buildable), 432 is 12 px (not).
-    expect(isBuildableTerrain({ col: 14, row: 8 })).toBe(true);
-    expect(isBuildableTerrain({ col: 13, row: 8 })).toBe(false);
+    expect(isBuildableTerrain({ col: 14, row: 8 }, MAPS.meadow)).toBe(true);
+    expect(isBuildableTerrain({ col: 13, row: 8 }, MAPS.meadow)).toBe(false);
   });
 
   it('exactly 36 px is buildable (inclusive), 35.9 px is not', () => {
     // A one-segment path placed so a cell centre sits exactly 36 or 35.9 px away.
-    const at = (y: number): MapDef => ({ width: 960, height: 480, path: [{ x: 0, y }, { x: 960, y }] });
+    const at = (y: number): MapDef => ({ id: 'test', width: 960, height: 480, path: [{ x: 0, y }, { x: 960, y }] });
     // Cell (0,0) centre (16,16).
     expect(buildableCells(at(52))[0]).toBe(true); // 36 px
     expect(buildableCells(at(51.9))[0]).toBe(false); // 35.9 px
   });
 
   it('cells under the exit cottage are not buildable; their neighbours off it are', () => {
-    // COTTAGE spans x 908..944, y 131..168: it overlaps cells (28,4) and (29,4),
+    // The cottage spans x 908..944, y 131..168: it overlaps cells (28,4) and (29,4),
     // whose centres are 36+ px from the path. (28,5) and (29,5) are path cells anyway.
-    expect(isBuildableTerrain({ col: 28, row: 4 })).toBe(false);
-    expect(isBuildableTerrain({ col: 29, row: 4 })).toBe(false);
-    expect(isBuildableTerrain({ col: 27, row: 4 })).toBe(true);
-    expect(isBuildableTerrain({ col: 29, row: 3 })).toBe(true);
+    expect(isBuildableTerrain({ col: 28, row: 4 }, MAPS.meadow)).toBe(false);
+    expect(isBuildableTerrain({ col: 29, row: 4 }, MAPS.meadow)).toBe(false);
+    expect(isBuildableTerrain({ col: 27, row: 4 }, MAPS.meadow)).toBe(true);
+    expect(isBuildableTerrain({ col: 29, row: 3 }, MAPS.meadow)).toBe(true);
     // Without the landmark the same cells pass the path rule.
-    const bare: MapDef = { width: MAP.width, height: MAP.height, path: MAP.path };
+    const bare: MapDef = { id: 'bare', width: MAPS.meadow.width, height: MAPS.meadow.height, path: MAPS.meadow.path };
     expect(isBuildableTerrain({ col: 28, row: 4 }, bare)).toBe(true);
     expect(isBuildableTerrain({ col: 29, row: 4 }, bare)).toBe(true);
     expect(buildableCells(bare).filter(Boolean)).toHaveLength(346);
   });
 
   it('344 of the 450 cells are buildable on the v1 map', () => {
-    expect(buildableCells().filter(Boolean)).toHaveLength(344);
-    expect(buildableCells()).toHaveLength(450);
+    expect(buildableCells(MAPS.meadow).filter(Boolean)).toHaveLength(344);
+    expect(buildableCells(MAPS.meadow)).toHaveLength(450);
   });
 
   it('the mask is computed once per map', () => {
-    expect(buildableCells(MAP)).toBe(buildableCells(MAP));
+    expect(buildableCells(MAPS.meadow)).toBe(buildableCells(MAPS.meadow));
   });
 
   it('isBuildable also needs the cell to be free', () => {

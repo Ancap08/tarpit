@@ -2,7 +2,6 @@
 // 30 x 15 grid of 32 px cells. A tower stands on one cell; its range and its
 // shots are measured from the cell centre.
 
-import { MAP } from './map';
 import type { GameState, MapDef, Point, Rect } from './types';
 
 export const GRID_COLS = 30;
@@ -64,7 +63,7 @@ function segmentT(p: Point, a: Point, b: Point): number {
  * how far along the path (from the spawn) it lies. On a tie between
  * segments, the one nearer the spawn wins.
  */
-export function nearestPathPoint(point: Point, map: MapDef = MAP): { distance: number; along: number } {
+export function nearestPathPoint(point: Point, map: MapDef): { distance: number; along: number } {
   let best = { distance: Infinity, along: 0 };
   let start = 0;
   for (let i = 1; i < map.path.length; i++) {
@@ -80,11 +79,26 @@ export function nearestPathPoint(point: Point, map: MapDef = MAP): { distance: n
 }
 
 /** Shortest distance from `point` to the path polyline (its centreline). */
-export function distanceToPath(point: Point, map: MapDef = MAP): number {
+export function distanceToPath(point: Point, map: MapDef): number {
   return nearestPathPoint(point, map).distance;
 }
 
-const buildableCache = new WeakMap<MapDef, readonly boolean[]>();
+/**
+ * Why a cell cannot hold a tower whatever stands on it (milestone 27), in
+ * check order: 'outside' the grid (or not an integer cell), on the 'path'
+ * strip (centre closer than MIN_PATH_CLEARANCE), on a 'landmark', or in
+ * 'water'. Undefined for buildable terrain.
+ */
+export type TerrainBlock = 'outside' | 'path' | 'landmark' | 'water';
+
+interface MapMasks {
+  /** Per cellKey: why the cell is blocked, or undefined when buildable. */
+  blocks: readonly (TerrainBlock | undefined)[];
+  /** Per cellKey: true when buildable. */
+  buildable: readonly boolean[];
+}
+
+const maskCache = new WeakMap<MapDef, MapMasks>();
 
 /** True when the cell's 32 px square overlaps the box (touching edges do not count). */
 function cellOverlaps(cell: Cell, r: Rect): boolean {
@@ -93,34 +107,47 @@ function cellOverlaps(cell: Cell, r: Rect): boolean {
   return x < r.x + r.width && r.x < x + CELL && y < r.y + r.height && r.y < y + CELL;
 }
 
-/**
- * Buildable mask indexed by cellKey: true when the cell centre is at least
- * MIN_PATH_CLEARANCE px from the path centreline and the cell's square
- * overlaps none of the map's landmarks. Computed once per map.
- */
-export function buildableCells(map: MapDef = MAP): readonly boolean[] {
-  let mask = buildableCache.get(map);
-  if (!mask) {
-    const cells: boolean[] = [];
+/** The map's terrain masks, computed once per MapDef object. */
+function masks(map: MapDef): MapMasks {
+  let found = maskCache.get(map);
+  if (!found) {
+    const blocks: (TerrainBlock | undefined)[] = [];
     for (let row = 0; row < GRID_ROWS; row++) {
       for (let col = 0; col < GRID_COLS; col++) {
         const cell = { col, row };
-        cells[cellKey(cell)] =
-          distanceToPath(cellCenter(cell), map) >= MIN_PATH_CLEARANCE && !(map.landmarks ?? []).some((r) => cellOverlaps(cell, r));
+        let block: TerrainBlock | undefined;
+        if (distanceToPath(cellCenter(cell), map) < MIN_PATH_CLEARANCE) block = 'path';
+        else if ((map.landmarks ?? []).some((r) => cellOverlaps(cell, r))) block = 'landmark';
+        else if ((map.water ?? []).some((r) => cellOverlaps(cell, r))) block = 'water';
+        blocks[cellKey(cell)] = block;
       }
     }
-    mask = cells;
-    buildableCache.set(map, mask);
+    found = { blocks, buildable: blocks.map((b) => b === undefined) };
+    maskCache.set(map, found);
   }
-  return mask;
+  return found;
 }
 
-/** True when the cell is inside the grid, off the path strip and off the landmarks (ignores towers). */
-export function isBuildableTerrain(cell: Cell, map: MapDef = MAP): boolean {
-  return isInsideGrid(cell) && buildableCells(map)[cellKey(cell)];
+/**
+ * Buildable mask indexed by cellKey: true when the cell centre is at least
+ * MIN_PATH_CLEARANCE px from the path centreline and the cell's square
+ * overlaps none of the map's landmarks and water. Computed once per map.
+ */
+export function buildableCells(map: MapDef): readonly boolean[] {
+  return masks(map).buildable;
 }
 
-/** True when a tower may be built on `cell` now: inside the grid, off the path and landmarks, and free. */
+/** Why `cell` is not buildable terrain on `map` (TerrainBlock), or undefined when it is. */
+export function terrainBlock(cell: Cell, map: MapDef): TerrainBlock | undefined {
+  return isInsideGrid(cell) ? masks(map).blocks[cellKey(cell)] : 'outside';
+}
+
+/** True when the cell is inside the grid, off the path strip, the landmarks and the water (ignores towers). */
+export function isBuildableTerrain(cell: Cell, map: MapDef): boolean {
+  return isInsideGrid(cell) && masks(map).buildable[cellKey(cell)];
+}
+
+/** True when a tower may be built on `cell` now: buildable terrain on the game's map, and free. */
 export function isBuildable(state: GameState, cell: Cell): boolean {
-  return isBuildableTerrain(cell) && !state.towers.some((t) => sameCell(t.cell, cell));
+  return isBuildableTerrain(cell, state.map) && !state.towers.some((t) => sameCell(t.cell, cell));
 }

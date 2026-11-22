@@ -8,6 +8,7 @@
 //   (100, 169.99)                            -> 70.01
 // Tower cell (3, 5): centre (112, 176), 64 px above the path line.
 import { describe, expect, it } from 'vitest';
+import { MAPS } from './map';
 import { buildTower, upgradeTower, useSpecial } from './actions';
 import { enemyPosition, findTarget } from './combat';
 import { ENEMY_STATS } from './enemies';
@@ -62,7 +63,7 @@ describe('(a) Powder Keg radius, shield, flyer', () => {
       [{ x: 100, y: 310.01 }, 0],
     ] as const) {
       const s = inWave(1, [enemy(0, 'troll')]);
-      expect(enemyPosition(s.enemies[0])).toEqual({ x: 100, y: 240 });
+      expect(enemyPosition(s.enemies[0], MAPS.meadow)).toEqual({ x: 100, y: 240 });
       expect(useSpecial(s, 'keg', p)).toMatchObject({ ok: true, hits: lost ? 1 : 0 });
       expect(700 - s.enemies[0].hp).toBe(lost);
     }
@@ -223,7 +224,7 @@ describe('(d) Fire Arrows', () => {
     tick(s);
     expect(s.events.some((e) => e.kind === 'hit' && e.tower === 'firepot' && e.enemyId === 0)).toBe(true);
     expect([s.enemies[0].burnDps, s.enemies[0].burnTicksLeft]).toEqual([0, 0]);
-    const p = enemyPosition(s.enemies[0]);
+    const p = enemyPosition(s.enemies[0], MAPS.meadow);
     useSpecial(s, 'fireArrows', p);
     expect([s.enemies[0].burnDps, s.enemies[0].burnTicksLeft]).toEqual([30, 240]);
     expect(burnTotal(s, 60)).toBeCloseTo(30, 9);

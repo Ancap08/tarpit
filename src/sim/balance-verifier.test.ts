@@ -5,6 +5,7 @@
 // than sound, tarpit-only cannot win, sound loses lives in waves 7 and 8)
 // are suspended with the other balance pins until milestone 12.
 import { describe, expect, it } from 'vitest';
+import { MAPS } from './map';
 import { buildTower } from './actions';
 import { applyAction, playScripted, soundBuild } from './headless';
 import { createGame, TICKS_PER_SECOND, WAVE_CLEAR_BONUS } from './game';
@@ -40,7 +41,7 @@ describe('balance verifier probes', () => {
     const range = TOWER_DEFS.musketeer.base.range;
     let inRangeTicks = 0;
     for (let d = 0; d < 1500; d += 35 / TICKS_PER_SECOND) {
-      const p = enemyPosition({ ...troll, distance: d });
+      const p = enemyPosition({ ...troll, distance: d }, MAPS.meadow);
       if (Math.hypot(p.x - at.x, p.y - at.y) <= range) inRangeTicks += 1;
     }
     const maxShots = Math.ceil(inRangeTicks / TICKS_PER_SECOND) + 1;

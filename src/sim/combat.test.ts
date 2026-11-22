@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MAPS } from './map';
 import { buildTower, upgradeTower } from './actions';
 import { applySlow, enemyPosition, findTarget, fireTowers } from './combat';
 import { ENEMY_STATS } from './enemies';
@@ -46,7 +47,7 @@ describe('geometry used by these tests', () => {
   });
 
   it('A (80,176) is 64 px above path distance 80 and 80 px left of path distance 224', () => {
-    expect([80, 224].map((d) => enemyPosition(enemy(0, d)))).toEqual([
+    expect([80, 224].map((d) => enemyPosition(enemy(0, d), MAPS.meadow))).toEqual([
       { x: 80, y: 240 },
       { x: 160, y: 176 },
     ]);
@@ -82,7 +83,7 @@ describe('targeting', () => {
     // y - 176 = sqrt(1700), at path distance 160 + 64 - sqrt(1700). This
     // distance gives exactly 90 in floating point.
     const exact = 182.7689437438234;
-    const p = enemyPosition(enemy(0, exact));
+    const p = enemyPosition(enemy(0, exact), MAPS.meadow);
     expect(Math.hypot(p.x - 80, p.y - 176)).toBe(90);
     const s = arena([enemy(0, exact), enemy(1, 182.76)], [[A, 'tarpit']]);
     expect(findTarget(s, s.towers[0])?.id).toBe(0);
@@ -216,7 +217,7 @@ describe('tar pit slow', () => {
   it('a base tar pit does not weaken an upgraded tar pit slow on the same enemy', () => {
     // A (upgraded, 60%) acts before B (base, 40%, range 90).
     // Distance 224 = (160,176) is 80 px from both.
-    expect(enemyPosition(enemy(0, 224))).toEqual({ x: 160, y: 176 });
+    expect(enemyPosition(enemy(0, 224), MAPS.meadow)).toEqual({ x: 160, y: 176 });
     const s = arena([enemy(0, 224, 'troll')], [
       [A, 'tarpit', true],
       [B, 'tarpit'],

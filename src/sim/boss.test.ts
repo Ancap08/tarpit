@@ -9,13 +9,13 @@ import { BOSS_TYPE, cappedSlow, ENEMY_STATS, isBoss } from './enemies';
 import type { GameEvent } from './events';
 import { createGame, spawnTick, startWave, tick } from './game';
 import type { Cell } from './grid';
-import { MAP, pathLength } from './map';
+import { MAPS, pathLength } from './map';
 import type { Enemy, EnemyType, GameState, TowerType } from './types';
 import { WAVES } from './waves';
 
 // Cell A, centre (80,176), is 64 px above path distance 80 (combat.test.ts).
 const A: Cell = { col: 2, row: 5 };
-const EXIT = pathLength(MAP);
+const EXIT = pathLength(MAPS.meadow);
 
 function enemy(id: number, distance: number, type: EnemyType = 'boss', hp = ENEMY_STATS[type].hp): Enemy {
   return { id, type, hp, distance, slow: 0, slowTicksLeft: 0, burnDps: 0, burnTicksLeft: 0 };

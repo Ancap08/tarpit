@@ -151,3 +151,21 @@ describe('HighScoreStore (milestone 26)', () => {
     expect(storage.getItem('tarpit.best')).toBe('{"v":1,"best":{"meadow":{"easy":1}}}');
   });
 });
+
+describe('scores per map (milestone 27)', () => {
+  it('a score on one map never shows or counts on another; each map keeps its own best per level', () => {
+    const storage = new MemoryStorage();
+    const store = new HighScoreStore(() => storage);
+    expect(store.record('normal', 12, 'riverbend')).toBe(true);
+    expect(store.best('normal', 'riverbend')).toBe(12);
+    expect(store.best('normal', 'meadow')).toBeUndefined();
+    expect(store.best('normal')).toBeUndefined();
+    expect(store.best('normal', 'switchback')).toBeUndefined();
+    // A lower score on another map is still that map's best.
+    expect(store.record('normal', 3, 'switchback')).toBe(true);
+    expect(store.record('normal', 5)).toBe(true);
+    expect([store.best('normal', 'meadow'), store.best('normal', 'switchback'), store.best('normal', 'riverbend')]).toEqual([5, 3, 12]);
+    expect(store.best('easy', 'riverbend')).toBeUndefined();
+    expect(parseBest(storage.getItem(HIGH_SCORE_KEY))).toEqual({ riverbend: { normal: 12 }, switchback: { normal: 3 }, meadow: { normal: 5 } });
+  });
+});

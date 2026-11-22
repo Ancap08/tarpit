@@ -1,6 +1,7 @@
 // Milestone 22: the Harpy (flying) and Shieldbearer (shield) rules from
 // docs/SCOPE-v4.md, one test per rule.
 import { describe, expect, it } from 'vitest';
+import { MAPS } from './map';
 import { buildTower, upgradeTower } from './actions';
 import { burnEnemies, canTarget, enemyPosition, findTarget, fireTowers, KILL_EPSILON } from './combat';
 import { ENEMY_STATS, SHIELD_THRESHOLD, shotDamage } from './enemies';
@@ -45,7 +46,7 @@ describe('geometry used by these tests', () => {
   it('A is 64 px from distance 80 and 80 px from distance 224', () => {
     const c = cellCenter(A);
     const d = (dist: number) => {
-      const p = enemyPosition(enemy(0, dist, 'goblin'));
+      const p = enemyPosition(enemy(0, dist, 'goblin'), MAPS.meadow);
       return Math.hypot(p.x - c.x, p.y - c.y);
     };
     expect([d(NEAR), d(MORTAR_OK)]).toEqual([64, 80]);

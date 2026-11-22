@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildableCells, buildTower, cellCenter, cellFromKey, createGame, isBuildableTerrain } from '../sim';
+import { buildableCells, MAP_IDS, MAPS, buildTower, cellCenter, cellFromKey, createGame, isBuildableTerrain } from '../sim';
 import { labelAbove, LABEL_HEIGHT, LABEL_OFFSET_Y } from './draw/labels';
 import { cellAt, cellRect, classifyClick, dragTargetCell, KILLS_LINE_H, mouseDragLost, onPath, pastDragThreshold, pathCover, placeBeside, type Rect } from './input';
 
@@ -54,7 +54,7 @@ describe('classifyClick', () => {
 
 describe('placeBeside', () => {
   const PANEL = { w: 168, h: 76 };
-  const at = (col: number, row: number) => placeBeside(cellCenter({ col, row }), PANEL.w, PANEL.h);
+  const at = (col: number, row: number) => placeBeside(cellCenter({ col, row }), PANEL.w, PANEL.h, MAPS.meadow);
 
   it('takes the side over the least path; ties keep right, left, below, above', () => {
     // (18,9): right covers the x 680 run, left and below the y 384 run; above covers the least.
@@ -62,7 +62,7 @@ describe('placeBeside', () => {
     // (29,14) at the bottom-right corner: the right and below sides clamp over the tower, and
     // the left side covers its label (above the tower and shifted left inside the map), so above.
     expect(at(29, 14)).toEqual({ x: 788, y: 348 });
-    expect(pathCover(788, 348, PANEL.w, PANEL.h)).toBe(0);
+    expect(pathCover(788, 348, PANEL.w, PANEL.h, MAPS.meadow)).toBe(0);
   });
 
   it('may cover other towers (no spot rule any more)', () => {
@@ -71,10 +71,10 @@ describe('placeBeside', () => {
   });
 
   it('pathCover is 0 on open grass, 1 inside the path strip', () => {
-    expect(onPath(160, 240)).toBe(true);
-    expect(onPath(240, 176)).toBe(false);
-    expect(pathCover(800, 300, 100, 100)).toBe(0);
-    expect(pathCover(430, 100, 10, 200)).toBe(1); // inside the x 400..440 vertical strip
+    expect(onPath(160, 240, MAPS.meadow)).toBe(true);
+    expect(onPath(240, 176, MAPS.meadow)).toBe(false);
+    expect(pathCover(800, 300, 100, 100, MAPS.meadow)).toBe(0);
+    expect(pathCover(430, 100, 10, 200, MAPS.meadow)).toBe(1); // inside the x 400..440 vertical strip
   });
 
   const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
@@ -92,14 +92,16 @@ describe('placeBeside', () => {
     expect(REAL).toEqual({ w: 214, h: 166 });
   });
 
-  for (const PANEL of [{ w: 168, h: 76 }, REAL]) {
-    it(`for every buildable cell, a ${PANEL.w} x ${PANEL.h} panel: inside the map, off the HUD, never over its own tower or label`, () => {
-      buildableCells().forEach((ok, key) => {
+  // Milestone 27: on every map (the Switchback exit and the Riverbend spawn run along the bottom rows).
+  for (const PANEL of [{ w: 168, h: 76 }, REAL]) for (const id of MAP_IDS) {
+    it(`${id}: for every buildable cell, a ${PANEL.w} x ${PANEL.h} panel: inside the map, off the HUD, never over its own tower or label`, () => {
+      const map = MAPS[id];
+      buildableCells(map).forEach((ok, key) => {
         if (!ok) return;
         const c = cellFromKey(key);
-        expect(isBuildableTerrain(c)).toBe(true);
-        const p = placeBeside(cellCenter(c), PANEL.w, PANEL.h);
-        const where = `cell (${c.col},${c.row})`;
+        expect(isBuildableTerrain(c, map)).toBe(true);
+        const p = placeBeside(cellCenter(c), PANEL.w, PANEL.h, map);
+        const where = `${id} cell (${c.col},${c.row})`;
         expect(p.x, where).toBeGreaterThanOrEqual(0);
         expect(p.x + PANEL.w, where).toBeLessThanOrEqual(960);
         expect(p.y, where).toBeGreaterThanOrEqual(0);

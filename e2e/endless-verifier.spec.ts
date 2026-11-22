@@ -112,7 +112,7 @@ for (const [name, init] of [
     await click(page, 'menu');
     await toTitle(page);
     await page.keyboard.press('ArrowRight');
-    expect(await titleUi(page)).toMatchObject({ difficulty: 'hard', bestLine: { text: 'Best on Hard: 1 wave' } });
+    expect(await titleUi(page)).toMatchObject({ difficulty: 'hard', bestLine: { text: 'Best on Meadow, Hard: 1 wave' } });
     expect(errors).toEqual([]);
   });
 }
@@ -130,7 +130,7 @@ test('the score is saved at each wave clear: clear 3, reload mid-run, the title 
   });
   await page.reload();
   await toTitle(page);
-  expect((await titleUi(page)).bestLine?.text).toBe(bestScoreText('normal', 3));
+  expect((await titleUi(page)).bestLine?.text).toBe(bestScoreText('meadow', 'normal', 3));
 
   // A second, shorter run on Normal: 1 clear, then lost. The best stays 3.
   await startGame(page);
@@ -329,7 +329,7 @@ test('title line: follows mouse and keyboard selection, absent without a score, 
   await page.addInitScript(() => localStorage.setItem('tarpit.best', '{"v":1,"best":{"meadow":{"easy":1,"normal":999}}}'));
   await open(page);
   let ui = await titleUi(page);
-  expect(ui).toMatchObject({ difficulty: 'normal', bestLine: { text: 'Best on Normal: 999 waves' } });
+  expect(ui).toMatchObject({ difficulty: 'normal', bestLine: { text: 'Best on Meadow, Normal: 999 waves' } });
   const rects = (await page.evaluate(() => (window.__tarpit as TarpitTestApi).uiRects())) as Record<string, Rect>;
   const r = ui.bestLine!.rect;
   expect(r.x).toBeGreaterThanOrEqual(16);
@@ -338,12 +338,12 @@ test('title line: follows mouse and keyboard selection, absent without a score, 
   expect(rects['title:play'].y - (r.y + r.height)).toBeGreaterThanOrEqual(8);
   await page.keyboard.press('ArrowLeft');
   ui = await titleUi(page);
-  expect(ui).toMatchObject({ difficulty: 'easy', bestLine: { text: 'Best on Easy: 1 wave' } });
+  expect(ui).toMatchObject({ difficulty: 'easy', bestLine: { text: 'Best on Meadow, Easy: 1 wave' } });
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
   expect(await titleUi(page)).toMatchObject({ difficulty: 'hard', bestLine: null });
   await click(page, 'title:normal');
-  expect((await titleUi(page)).bestLine?.text).toBe('Best on Normal: 999 waves');
+  expect((await titleUi(page)).bestLine?.text).toBe('Best on Meadow, Normal: 999 waves');
   await click(page, 'title:hard');
   expect((await titleUi(page)).bestLine).toBeNull();
 });

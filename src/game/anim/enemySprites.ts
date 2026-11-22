@@ -27,7 +27,7 @@
 // boss bar (ui/bossBar.ts), not a small bar.
 
 import Phaser from 'phaser';
-import { effectiveSlow, ENEMY_STATS, enemyPosition, isTarred, type Enemy, type EnemyType, type GameEvent, type GameState } from '../../sim';
+import { effectiveSlow, ENEMY_STATS, enemyPosition, isTarred, type Enemy, type EnemyType, type GameEvent, type GameState, type MapDef } from '../../sim';
 import { bobOffset, DEATH_MS, burnPulse, FLAME_EVERY, HIT_FLASH_MS, Particles, statusTint, TINT } from './effects';
 import { facingAt } from './facing';
 import { COLORS } from '../palette';
@@ -192,13 +192,13 @@ export class EnemySprites {
     const live = new Set<number>();
     for (const enemy of state.enemies) {
       live.add(enemy.id);
-      this.update(this.views.get(enemy.id) ?? this.create(enemy), enemy, timeScale);
+      this.update(this.views.get(enemy.id) ?? this.create(enemy, state.map), enemy, state.map, timeScale);
     }
     // An enemy gone without a kill or exit event (a test hook, a restart): drop it.
     for (const [id, v] of this.views) if (!live.has(id) && !v.dying) this.remove(id);
   }
 
-  private create(enemy: Enemy): View {
+  private create(enemy: Enemy, map: MapDef): View {
     const sheet = SHEETS[enemy.type];
     const stats = ENEMY_STATS[enemy.type];
     const sprite = this.scene.add.sprite(0, 0, sheet.key, sheet.walk.right.frames[0]).setScale(sheet.scale);
@@ -234,7 +234,7 @@ export class EnemySprites {
       redraws: 0,
     };
     this.views.set(enemy.id, view);
-    this.setFacing(view, facingAt(enemy.distance, this.step(enemy)), true);
+    this.setFacing(view, facingAt(map, enemy.distance, this.step(enemy)), true);
     return view;
   }
 
@@ -254,8 +254,8 @@ export class EnemySprites {
     else v.sprite.anims.play(walkAnimKey(v.type, facing), true);
   }
 
-  private update(v: View, enemy: Enemy, timeScale: number): void {
-    const { x, y } = enemyPosition(enemy);
+  private update(v: View, enemy: Enemy, map: MapDef, timeScale: number): void {
+    const { x, y } = enemyPosition(enemy, map);
     const lift = SHEETS[v.type].lift ?? 0;
     const bob = v.flying && !this.frozen ? bobOffset(this.scene.time.now, enemy.id) : 0;
     v.sprite.setPosition(x, y - lift + bob);
@@ -265,7 +265,7 @@ export class EnemySprites {
       // Just in front of its own sprite, behind any walker lower on screen.
       v.shield.setDepth(y + 0.5);
     }
-    this.setFacing(v, facingAt(enemy.distance, this.step(enemy)));
+    this.setFacing(v, facingAt(map, enemy.distance, this.step(enemy)));
     v.sprite.anims.timeScale = timeScale;
     v.burning = (enemy.burnTicksLeft ?? 0) > 0;
     v.slowed = isTarred(enemy);

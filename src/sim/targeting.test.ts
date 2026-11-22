@@ -4,6 +4,7 @@
 // furthest along the path, then the lower id. Every mode applies after the
 // eligibility rules (range, the Mortar's minimum range, flying).
 import { describe, expect, it } from 'vitest';
+import { MAPS } from './map';
 import { buildTower, sellTower, setTargeting, towerAt } from './actions';
 import { enemyPosition, findTarget, fireTowers } from './combat';
 import { createGame } from './game';
@@ -40,7 +41,7 @@ const pick = (enemies: Enemy[], type: TowerType, mode: TargetingMode) => {
 };
 
 const distFromA = (d: number) => {
-  const p = enemyPosition(enemy(0, d));
+  const p = enemyPosition(enemy(0, d), MAPS.meadow);
   const c = cellCenter(A);
   return Math.hypot(p.x - c.x, p.y - c.y);
 };

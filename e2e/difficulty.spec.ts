@@ -124,13 +124,14 @@ test('Left and Right stop at the ends; Space presses Play; a click away from Pla
   expect(await t(page).difficulty()).toBe('hard');
 });
 
-test('menu geometry: three level buttons and Play, 42 px tall, at least 120 wide, centred', async ({ page }) => {
+test('menu geometry: three level buttons and Play, 42 px tall (map thumbnails 72), at least 120 wide, centred', async ({ page }) => {
   await page.goto('/?test=1');
   await waitForTitle(page);
   const r = await page.evaluate(() => (window.__tarpit as TarpitTestApi).uiRects());
-  expect(Object.keys(r).sort()).toEqual(['title:easy', 'title:hard', 'title:normal', 'title:play']);
-  for (const rect of Object.values(r)) {
-    expect(rect.height).toBe(42);
+  expect(Object.keys(r).sort()).toEqual(['title:easy', 'title:hard', 'title:map:meadow', 'title:map:riverbend', 'title:map:switchback', 'title:normal', 'title:play']);
+  for (const [name, rect] of Object.entries(r)) {
+    // Milestone 27: the map thumbnails are taller buttons.
+    expect(rect.height).toBe(name.startsWith('title:map:') ? 72 : 42);
     expect(rect.width).toBeGreaterThanOrEqual(120);
   }
   const row = ['title:easy', 'title:normal', 'title:hard'].map((n) => r[n]);
@@ -139,7 +140,7 @@ test('menu geometry: three level buttons and Play, 42 px tall, at least 120 wide
   expect(row[1].x + row[1].width).toBeLessThan(row[2].x);
   expect((row[0].x + row[2].x + row[2].width) / 2).toBe(480);
   expect(r['title:play'].x + r['title:play'].width / 2).toBe(480);
-  // Room below the level row for the future map row and high-score line.
+  // Room below the level row for the map row (milestone 27) and high-score line.
   expect(r['title:play'].y - (row[0].y + row[0].height)).toBeGreaterThanOrEqual(120);
 });
 

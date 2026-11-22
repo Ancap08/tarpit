@@ -12,7 +12,7 @@
 import { describe, expect, it } from 'vitest';
 import { createGame, startWave, tick } from './game';
 import { applyAction, comboBuild } from './headless';
-import { positionAlongPath, MAP } from './map';
+import { positionAlongPath, MAPS } from './map';
 
 describe('boss.png frame content', () => {
   it('at tick 5664 of wave 10 he is alone at (420,196), tarred, burning, 2429 hp on the bar, Mortar hit on tick 5662, no hit on 5664', () => {
@@ -34,7 +34,7 @@ describe('boss.png frame content', () => {
     const mortarHitsAt5662 = s.events.filter((e) => e.kind === 'hit' && e.tower === 'mortar' && e.enemyId === boss.id).length;
     tick(s);
     tick(s);
-    const pos = positionAlongPath(MAP, boss.distance);
+    const pos = positionAlongPath(MAPS.meadow, boss.distance);
     expect({
       wave: s.wave,
       waveTick: s.waveTick,
