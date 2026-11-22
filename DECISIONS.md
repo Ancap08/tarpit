@@ -906,3 +906,10 @@ can change it; "Kyle" means Kyle decided.
   Sonnet (findings), Fable.
 - **Not testable here:** Add to Home Screen itself, a real notch, iOS
   storage rules. Kyle's devices.
+- **The kill switch and cache cleanup touch only this copy of the game.**
+  The automated PR review found the kill switch would unregister every
+  service worker on the origin (GitHub Pages project sites share one);
+  the implementer's wider check found cache cleanup had the same reach in
+  three places. Cache names now carry the scope path and registrations are
+  matched by exact scope. Codex (finding), Opus (fix and wider check),
+  Sonnet (rechecked by reverting each part).
