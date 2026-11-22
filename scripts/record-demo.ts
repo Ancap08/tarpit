@@ -27,7 +27,8 @@
 //    and wave 2's last spawn is wave tick 1674. tarpit.png (960x580) is the
 //    first wave 2 frame after the Fire Pot is built where a Goblin is tarred
 //    and burning and the Fire Pot has just fired.
-//    ffmpeg turns the video into a 640 px wide, 12 fps, two-pass palette GIF,
+//    ffmpeg turns the video into a 640 px wide, 12 fps, two-pass palette GIF
+//    (milestone 34: lightly denoised, 128 colours),
 //    sped up to fit about TARGET_SECONDS.
 // 2. tarpit-riverbend.png and tarpit-boss.png: test mode (?test=1, Canvas,
 //    frozen time and walk frames), played by the comboBuild script through
@@ -414,10 +415,13 @@ function makeGif(webm: string, work: string, start: number, end: number): void {
   const factor = Math.max(1, span / TARGET_SECONDS);
   log(`recorded ${span.toFixed(1)} s of play; speeding up ${factor.toFixed(2)}x`);
   const palette = join(work, 'palette.png');
-  const filters = `setpts=PTS/${factor.toFixed(4)},fps=12,scale=640:-1:flags=lanczos`;
+  // Milestone 34: a light temporal denoise and a 128-colour palette, so the
+  // textured ground's video noise does not repaint every GIF frame (6.4 MB
+  // without them, against 3.4 MB before the living map).
+  const filters = `hqdn3d=0:0:12:12,setpts=PTS/${factor.toFixed(4)},fps=12,scale=640:-1:flags=lanczos`;
   const trim = ['-ss', start.toFixed(2), '-t', span.toFixed(2)];
   mkdirSync(MEDIA, { recursive: true });
-  execFileSync(FFMPEG, ['-y', '-v', 'error', ...trim, '-i', webm, '-vf', `${filters},palettegen=stats_mode=diff`, palette]);
+  execFileSync(FFMPEG, ['-y', '-v', 'error', ...trim, '-i', webm, '-vf', `${filters},palettegen=stats_mode=diff:max_colors=128`, palette]);
   execFileSync(FFMPEG, [
     '-y', '-v', 'error', ...trim, '-i', webm, '-i', palette,
     '-lavfi', `${filters} [x]; [x][1:v] paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle`,
