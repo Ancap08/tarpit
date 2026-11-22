@@ -134,9 +134,10 @@ happened, including what went wrong, is in [DEVLOG.md](DEVLOG.md).
 - **The maps brief described the shapes wrongly three times.** The
   implementer built the waypoints as given, tested what was true and
   reported the difference. DECISIONS "milestone 27".
-- **Whole-game tests timed out on CI** three milestones in a row. Now one
-  30 s limit in `vitest.config.ts` and `npm run test:slow` to list slow
-  tests. DECISIONS "milestone 27".
+- **Whole-game tests hit the 5 s unit test limit** in three milestones in a
+  row (the first two on the verifiers' Mac, the third on CI). Now one 30 s
+  limit in `vitest.config.ts` and `npm run test:slow` to list slow tests.
+  DECISIONS "milestone 27".
 - **A scripted special policy made a build worse.** On Riverbend the combo
   build had 8 lives with its specials and 14 without. The specials now come
   from a stored per-wave search that never does worse than firing nothing.

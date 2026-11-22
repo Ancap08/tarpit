@@ -5772,3 +5772,118 @@ Other second passes and misses:
   only real-device check.
 - Every PR also carries an automated Codex review comment, with findings on
   PRs 5, 12, 22 and 23 (`gh`); no record says whether they were read.
+
+### Verifier notes
+
+Verifier: Claude Sonnet (independent of the implementer), on branch `m29-ship`
+at `8f2ee04`, with `git`, `gh` and the built game. Changed only this
+subsection and one README bullet (item 1 below). Judgement calls are left to
+the coordinator.
+
+**Checked and holding.** "By the numbers" recomputed at `e191bf5`: all 13 rows
+match (33 PRs: 28 milestone, 4 scope, 1 CI; 286 commits, 37 merges, 4 branch
+updates; trailers Opus 136, Fable 5.1 36, Fable 5.2 31, Sonnet 25; 22 baseline
+commits; 1035 unit tests in 62 files; 284 browser tests in 48 files with 3
+skipped, confirmed by a full `PW_PORT=4273 npx playwright test` run, 281
+passed; 24 baselines, 23 desktop and 1 tablet; `dist/` 1,310,834 bytes in 4
+files; every timestamp). The retrospective's 124 commits, 14 merges, 10
+baseline commits and trailers 62, 31 and 7 between PR 22 and PR 33 also match,
+as do all eleven merge times and both PR gaps (2 h 17 min, 2 h 34 min). CI
+failed twice in the whole project (runs 44956904244, 44987490579). Lint,
+check:assets, typecheck, `npm test`, build, check:size, `npm run sim` (38 s)
+and `npm run test:slow` ran clean. The deployed Pages build is from
+`e191bf5`. The numbers in "How to play" match `src/sim` (Mortar min range 70,
+sell 70%, undo full price, Call next bonus up to 20 and not for wave 10,
+specials unlock on waves 1, 4 and 7, boss 5 lives, Harpy not hit by Tar Pit,
+Cannon or Mortar, Shieldbearer half damage). The GIF frames, the Riverbend
+still and the boss still match their alt text (the boss still is test mode, so
+"tarred and burning" is pinned by `boss-frame.test.ts`, not visible in the
+image). Media sizes: GIF 3,000,132 bytes, 640 x 387, 12 fps, 25.0 s; three
+PNGs 960 x 580. Media is not in `dist/`. No email address, credential or
+personal detail in the diff. Every relative link resolves. No file, heading or
+new text uses "final". Credits match `assets/MANIFEST.md`.
+
+**1. Corrected in the README (one bullet).** "Whole-game tests timed out on CI
+three milestones in a row" was wrong. Only the milestone 27 timeout was on CI;
+the milestone 25c and 26 timeouts happened in verifier runs on the Mac
+(DEVLOG milestone 25c verifier notes; milestone 26 verifier notes; DEVLOG
+milestone 27 follow-up lists all three). The bullet now says so.
+
+**2. Not changed, for the coordinator (README).**
+
+- "How to play" step 2: "the pick stays until you click the button again or
+  press Escape". `GameScene.ts` lines 14 to 17 also clear it when gold drops
+  below the tower's cost and when a tower is clicked. A new player who spends
+  their last gold will see the pick vanish.
+- Step 3: "everything you bought since the last wave is free to change". A tower
+  bought during a wave is locked at once (DECISIONS milestone 25a; `actions.ts`
+  line 82), so it is not free to move or remove.
+- Step 9: "Once every enemy of a wave is out" means every enemy has spawned, not
+  that the field is clear (`callEarlyStatus`, `game.ts`). The bonus also falls
+  to 0 over 20 s.
+- Step 7 and 5: a Fire Pot's burn does not stick to a Harpy (SCOPE-v4 line 27,
+  `combat.ts`). The text lists only the towers that cannot target it.
+- Intro: "any free cell off the path" is loose: Riverbend's river and the cells
+  near the cave and cottage are not buildable.
+- "How it was built": "Verifiers: a different model ... every milestone" is
+  true, but PR 4 (the baseline workflow) had no separate verifier pass
+  (DECISIONS milestone 7), and in v4 the coordinator and the verifiers are both
+  Claude Fable, so the Fable trailer counts mix the two roles. Milestone 29's
+  own verifier is Claude Sonnet, not Fable. "Every design call and who made it
+  is in DECISIONS" is too strong: the Fable 5.1 to 5.2 switch and the Codex
+  review are in no entry (the README says the first).
+- "Every PR runs lint, the asset license check, ... Playwright" describes CI
+  today. `check:assets` arrived in milestone 15 and `check:size` after PR 1
+  (`git log -- .github/workflows/ci.yml`), so early PRs did not run all of it. `main` requires `ci`, but
+  `enforce_admins` is off.
+- The verifiers "made two small game fixes themselves": the Wolf's facing and
+  "Lives 0" are in the records; I did not find a third in the milestone 22 to
+  28 notes, but did not read every verifier commit.
+- `docs/media/tarpit.png` is in the repo but no longer shown in the README.
+
+**3. Missing from the retrospective (milestones 22 to 28).**
+
+- Milestone 22 shipped HUD wave previews for waves 6, 8 and 10 that ran under
+  the Start Wave button; its verifier did not report it. The milestone 23
+  implementer found it while adding "+ Grumblefoot" and fixed it (DEVLOG
+  milestone 23, "The wave preview ran under the Start Wave button"). The
+  automated Codex review had flagged it on PR 23 (see item 4).
+- "The names table held ... and the tests still passed": in milestone 24 the
+  rename made two `targeting.spec.ts` tests fail; they hard-coded the labels
+  (the retrospective lists this elsewhere, but the claim above it is too
+  clean).
+- The milestone 25c flaky `difficulty.test.ts` test and its 5 s timeout, and
+  "Hard's start gold 90 used in a revert pass" (DEVLOG milestone 25c), are
+  small and left out. Not a defect in the retrospective.
+
+**4. Codex review comments.** All 33 PRs have one Codex summary comment. Four
+have a finding, each with one inline comment, all P2. None of the 29 others has
+a finding. The reviews run on the commit that opened the PR; PRs 24 and 32 were
+later pushed to (their reviewed commit is not the head), so a clean Codex mark
+on those two covers only the first push.
+
+| PR | Finding | Real? | On `origin/main` today? |
+|---|---|---|---|
+| 5 (milestone 3), `GameScene.ts:70` | After the win tick, `tick()` returns early without clearing `state.shots`, so every live update feeds the same shots to the effects again; the winning tracer or splash never fades | Yes, by code reading (not reproduced in a browser). Wins only: a loss clears shots first | Yes. `src/sim/game.ts:229-230` returns before `state.shots = []`; `GameScene.ts:824-829` `advance` calls `shots.afterTick(this.state.shots)` every tick with no phase check. Cosmetic. No record mentions it |
+| 12 (milestone 8), `labels.ts:31` | Tower labels are created after the HUD, panel and end screen, so they draw over the UI; `won.png` shows it | Yes. Fixed one PR later: DEVLOG milestone 9 verifier notes ("labels drew over the HUD, panel and end veil") | No. `GameScene.ts:372` creates the labels before the HUD; `e2e/__screenshots__/visual.spec.ts/won.png` shows labels under the end panel |
+| 22 (milestone 16), `GameScene.ts:366` | With several ticks before a redraw, a new enemy has no sprite until `EnemySprites.sync()`, so its hit and kill events are dropped (at 2x or on catch-up frames) | Yes, by code reading | Yes. `anim/enemySprites.ts:148-163` `hit` and `kill` return when there is no view; views are made only in `sync()` (line 191); `GameScene.ts:824-831` runs `takeEvents` per tick with no sync. Cosmetic: a lost hit flash or death puff. No record mentions it |
+| 23 (milestone 22), `hud.ts:44` | The wave 6, 8 and 10 previews run under the Start Wave button | Yes. Fixed in milestone 23 (DEVLOG milestone 23, item above) | No. `hud.ts` wraps to two lines at 13 px (11 px fallback, lines 120-149); the Riverbend still shows a wrapped preview |
+
+Two of four (PRs 12 and 23) were also found independently by the project's own
+checks one PR later. PRs 5 and 22 were found by nothing in the records and
+still stand. Nothing in the Codex comments on PRs 24 to 33 was missed by the
+implementer's count.
+
+**5. Status section.** Passes. It says the Hard game and the endless run from
+the public link had not happened when written, and it says "built", not
+"shipped". The v5 description matches `docs/SCOPE-v3.md` (milestones 17 to 20:
+art, sound, effects, world with weather and time of day), DECISIONS "reorder
+after the art spike" (tabletop art from clay-style 3D models, HUD skin) and
+SCOPE-v4 question 4 (draw-your-own-trail open).
+
+**Could not check.** Whether each v4 PR merged "after the `ci` check finished"
+(only the final check state is in `gh`); every verifier commit for game-code
+fixes beyond the two named; the Riverbend still's Wolf sprites (small, hard to
+tell from the Harpies); `npm run sim:specials` and `npm run demo` (not run; the
+scripts exist and their documented flags `PW_PORT` and `FFMPEG` match the
+code); the iPad paragraph on a real device.
