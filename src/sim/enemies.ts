@@ -3,9 +3,9 @@ import type { Enemy, EnemyStats, EnemyType } from './types';
 /**
  * Enemy stats from docs/DESIGN.md. Speed is pixels per second. Milestone 25c
  * (horde retune): more enemies, bounties lowered; the second pass (longer,
- * sparser waves) set the hp so that no hp on any level sits by accident 1
- * or 2 points above a multiple of the Musketeer's 12 or the Longbow's 4
- * (DEVLOG). Speeds unchanged.
+ * sparser waves) set the hp so that no Hard hp sits by accident 1 or 2
+ * points above a multiple of a tower's base damage (12, 4, 25 and 45;
+ * docs/DESIGN.md, Hard hp rule). Speeds unchanged.
  */
 export const ENEMY_STATS: Readonly<Record<EnemyType, EnemyStats>> = {
   goblin: { hp: 19, speed: 60, bounty: 2, flying: false, shield: false, livesCost: 1 },

@@ -136,6 +136,9 @@ tick-rate checks do not depend on the machine's GPU (headless Chromium
 without one renders WebGL in software at a few frames a second).
 `e2e/renderer.spec.ts` loads the game without the flag and checks WebGL.
 
+Open the game with `?perf=1` to play in real time with the test-only horde
+injector (`GameScene.spawnHorde`) switched on; `e2e/perf.spec.ts` uses it.
+
 The e2e tests serve the build on port 4173 and never reuse a running server;
 run a second checkout with `PW_PORT=4174 npm run test:e2e`.
 

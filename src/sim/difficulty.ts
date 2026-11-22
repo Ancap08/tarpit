@@ -22,7 +22,8 @@ export interface DifficultyDef {
 
 export const DIFFICULTY_DEFS: Readonly<Record<Difficulty, DifficultyDef>> = {
   // Milestone 25c: Easy lives 25 -> 30; Hard hp 1.3 -> 1.2 (second pass;
-  // 1.1 in the first). Every Hard hp avoids 1 or 2 over a multiple of 12 or 4.
+  // 1.1 in the first). Every Hard hp avoids 1 or 2 over a multiple of a
+  // tower's base damage: 12, 4, 25 and 45 (docs/DESIGN.md, Hard hp rule).
   easy: { hpMultiplier: 0.75, startGold: 150, startLives: 30 },
   normal: { hpMultiplier: 1, startGold: 100, startLives: 20 },
   hard: { hpMultiplier: 1.2, startGold: 80, startLives: 15 },

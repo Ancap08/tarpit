@@ -7,10 +7,11 @@ import { expect, test, type Page } from '@playwright/test';
 // the renderer. Loads /?renderer=canvas like live.spec.ts so the result does
 // not depend on a GPU; PERF_WEBGL=1 drops that flag to measure WebGL
 // locally. ?perf=1 enables the test-only GameScene.spawnHorde on the live
-// loop. The horde is topped up to 120 on every frame as towers kill it (at
-// least 100 alive at every sample), lives are raised so the game is not
-// lost, and the sim must run at least 270 ticks in the 5 s (a stall
-// fails). Two cases: spread along the whole path, and packed into the first
+// loop. The horde is topped up to 120 on every frame as towers kill it,
+// lives are raised so the game is not lost, and the sim must run at least
+// 270 ticks in the 5 s (a stall fails). Milestone 26 dropped the old "at
+// least 100 alive" check: it sampled right after the top-up to 120, so it
+// could not fail; the tick floor and the frame-time limit are the checks. Two cases: spread along the whole path, and packed into the first
 // 120 px (2 s of Goblin walk), the pile-up the horde waves make.
 
 type Rect = { x: number; y: number; width: number; height: number };
@@ -20,7 +21,6 @@ const ENEMIES = 120;
 const TOWERS = 25;
 const SECONDS = 5;
 const FLOOR_MS = 33;
-const MIN_ALIVE = 100;
 const MIN_TICKS = 270;
 
 async function clickTitlePlay(page: Page): Promise<void> {
@@ -69,23 +69,20 @@ for (const [name, span] of [
 
     const frames = await page.evaluate(
       ({ seconds, enemies, span }) =>
-        new Promise<{ deltas: number[]; minEnemies: number; ticks: number }>((resolve) => {
+        new Promise<{ deltas: number[]; ticks: number }>((resolve) => {
           type Scene = { state: { enemies: unknown[]; tick: number }; spawnHorde(n: number, span?: number): boolean };
           const scene = window.__tarpit!.game.scene.getScene('game') as unknown as Scene;
           const deltas: number[] = [];
           let last = performance.now();
           const end = last + seconds * 1000;
           const tick0 = scene.state.tick;
-          let minEnemies = Infinity;
           const frame = (now: number) => {
             deltas.push(now - last);
             last = now;
-            // Top the horde up on every frame, then sample what this frame draws
-            // (Phaser renders after its own update in the same animation frame).
+            // Top the horde up on every frame.
             if (scene.state.enemies.length < enemies) scene.spawnHorde(enemies - scene.state.enemies.length, span ?? undefined);
-            minEnemies = Math.min(minEnemies, scene.state.enemies.length);
             if (now < end) requestAnimationFrame(frame);
-            else resolve({ deltas, minEnemies, ticks: scene.state.tick - tick0 });
+            else resolve({ deltas, ticks: scene.state.tick - tick0 });
           };
           requestAnimationFrame(frame);
         }),
@@ -99,11 +96,10 @@ for (const [name, span] of [
     const renderer = setup.renderer === 2 ? 'WebGL' : setup.renderer === 1 ? 'Canvas' : `type ${setup.renderer}`;
     console.log(
       `perf (${name}): renderer ${renderer}, ${sorted.length} frames in ${SECONDS} s, median ${median.toFixed(1)} ms, ` +
-        `p95 ${p95.toFixed(1)} ms, ${frames.ticks} ticks, at least ${frames.minEnemies} enemies at every sample`,
+        `p95 ${p95.toFixed(1)} ms, ${frames.ticks} ticks`,
     );
-    // The sim kept running at close to 1x (60 ticks per second), and the horde held.
+    // The sim kept running at close to 1x (60 ticks per second).
     expect(frames.ticks).toBeGreaterThanOrEqual(MIN_TICKS);
-    expect(frames.minEnemies).toBeGreaterThanOrEqual(MIN_ALIVE);
     expect(median, `median frame time (renderer ${renderer})`).toBeLessThan(FLOOR_MS);
   });
 }
