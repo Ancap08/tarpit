@@ -1,0 +1,242 @@
+import { execFileSync } from 'node:child_process';
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer, type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
+import { extname, join, normalize } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { writeServiceWorker } from '../scripts/sw-build.ts';
+import { waitForTitle } from './title';
+
+// Milestone 32a: install to the home screen and play offline.
+//
+// The manifest, tag and registration checks run against the preview server
+// (dist/, base /). The offline and update checks serve a copy of a build from
+// a small static server in this file, so a test can swap the build it serves
+// (build A, then build B) and stop it (really offline, on top of
+// context.setOffline). Build B is build A with one changed file (index.html)
+// and its sw.js rebuilt by the same scripts/sw-build.ts the build uses, so it
+// has a new cache version. The /tarpit/ group builds the game with
+// VITE_BASE=/tarpit/ into a temp folder and serves it under /tarpit/, as
+// GitHub Pages does.
+
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
+const BEST = JSON.stringify({ v: 1, best: { meadow: { easy: 7, normal: 3 } } });
+type Rect = { x: number; y: number; width: number; height: number };
+
+const MIME: Record<string, string> = {
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.png': 'image/png',
+  '.webmanifest': 'application/manifest+json',
+  '.json': 'application/json',
+};
+
+/** A static server for `site.dir` mounted at `mount` ('/' or '/tarpit/'); `site.dir` may change between requests. */
+async function serve(site: { dir: string }, mount: string): Promise<{ origin: string; close: () => Promise<void> }> {
+  const server: Server = createServer((req, res) => {
+    const path = decodeURIComponent(new URL(req.url ?? '/', 'http://x').pathname);
+    if (!path.startsWith(mount)) return void res.writeHead(404).end();
+    let rel = normalize(path.slice(mount.length));
+    if (rel === '.' || rel === '' || rel.endsWith('/')) rel = join(rel, 'index.html');
+    try {
+      const body = readFileSync(join(site.dir, rel));
+      res.writeHead(200, { 'content-type': MIME[extname(rel)] ?? 'application/octet-stream', 'cache-control': 'max-age=600' });
+      res.end(body);
+    } catch {
+      res.writeHead(404).end();
+    }
+  });
+  await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+  const { port } = server.address() as AddressInfo;
+  return {
+    origin: `http://127.0.0.1:${port}`,
+    close: () => new Promise<void>((r) => {
+      server.closeAllConnections();
+      server.close(() => r());
+    }),
+  };
+}
+
+function pngSize(buf: Buffer): string {
+  return `${buf.readUInt32BE(16)}x${buf.readUInt32BE(20)}`;
+}
+
+/** The manifest is linked and valid, every icon it names has its stated size, and the iOS tags are there. */
+async function checkManifestAndTags(page: Page, url: string, base: string): Promise<void> {
+  await page.goto(url);
+  const href = await page.locator('link[rel="manifest"]').getAttribute('href');
+  expect(href).toBe(`${base}manifest.webmanifest`);
+  const manifestUrl = new URL(href!, page.url()).href;
+  const res = await page.request.get(manifestUrl);
+  expect(res.ok()).toBe(true);
+  const m = JSON.parse(await res.text());
+  expect(m).toMatchObject({ name: 'Tarpit', short_name: 'Tarpit', display: 'standalone' });
+  expect(m.orientation).toBeUndefined();
+  // start_url and scope resolve against the manifest's own address: the site root.
+  expect(new URL(m.start_url, manifestUrl).pathname).toBe(base);
+  expect(new URL(m.scope, manifestUrl).pathname).toBe(base);
+  expect(m.icons.map((i: { purpose: string }) => i.purpose).sort()).toEqual(['any', 'any', 'maskable']);
+  for (const icon of m.icons as { src: string; sizes: string; type: string }[]) {
+    const r = await page.request.get(new URL(icon.src, manifestUrl).href);
+    expect(r.ok(), icon.src).toBe(true);
+    expect(icon.type).toBe('image/png');
+    expect(pngSize(await r.body()), icon.src).toBe(icon.sizes);
+  }
+  const apple = await page.locator('link[rel="apple-touch-icon"]').getAttribute('href');
+  expect(apple).toBe(`${base}icons/apple-touch-icon.png`);
+  expect(pngSize(await (await page.request.get(new URL(apple!, page.url()).href)).body())).toBe('180x180');
+  const meta = (name: string) => page.locator(`meta[name="${name}"]`).getAttribute('content');
+  expect(await meta('apple-mobile-web-app-capable')).toBe('yes');
+  expect(await meta('mobile-web-app-capable')).toBe('yes');
+  expect(await meta('apple-mobile-web-app-status-bar-style')).toBe('black-translucent');
+  expect(await meta('apple-mobile-web-app-title')).toBe('Tarpit');
+  expect(await meta('theme-color')).toBe('#111418');
+}
+
+/** Wait until a service worker controls the page and return the cache names it made. */
+async function waitForWorker(page: Page): Promise<string[]> {
+  // waitForFunction treats a returned Promise as truthy, so async checks poll here.
+  await expect
+    .poll(() => page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.active?.state ?? 'none'))
+    .toBe('activated');
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  return page.evaluate(() => caches.keys());
+}
+
+/** The game starts: the title is ready and Play opens the game scene. */
+async function playStarts(page: Page): Promise<void> {
+  await waitForTitle(page);
+  const r = await page.evaluate(() => window.__tarpit?.uiRects()['title:play'] as Rect | undefined);
+  expect(r).toBeTruthy();
+  await page.mouse.click(r!.x + r!.width / 2, r!.y + r!.height / 2);
+  await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game'));
+}
+
+async function goOffline(context: BrowserContext, stop: () => Promise<void>): Promise<void> {
+  await stop();
+  await context.setOffline(true);
+}
+
+test.describe('install and offline, base /', () => {
+  test('manifest, icons and iOS tags on the preview build', async ({ page }) => {
+    await checkManifestAndTags(page, '/', '/');
+  });
+
+  test('the canvas stays inside the safe area on a notched phone, landscape and portrait', async ({ browser }) => {
+    // Chromium's Emulation.setSafeAreaInsetsOverride stands in for a notch
+    // and a home bar (390 x 844 phone); env(safe-area-inset-*) then applies.
+    for (const [w, h, insets] of [
+      [844, 390, { left: 47, right: 47, bottom: 21 }],
+      [390, 844, { top: 47, bottom: 34 }],
+    ] as const) {
+      const ctx = await browser.newContext({ viewport: { width: w, height: h }, isMobile: true, hasTouch: true });
+      const page = await ctx.newPage();
+      await (await ctx.newCDPSession(page)).send('Emulation.setSafeAreaInsetsOverride', { insets });
+      await page.goto('/?test=1');
+      await page.waitForFunction(() => document.querySelector('canvas') !== null);
+      const box = await page.evaluate(() => {
+        const c = document.querySelector('canvas')!.getBoundingClientRect();
+        const e = document.documentElement;
+        return { ...c.toJSON(), sw: e.scrollWidth, sh: e.scrollHeight, card: window.__tarpit!.portraitCardVisible() };
+      });
+      const i: Record<'top' | 'right' | 'bottom' | 'left', number> = { top: 0, right: 0, bottom: 0, left: 0 };
+      Object.assign(i, insets);
+      expect(box.left).toBeGreaterThanOrEqual(i.left);
+      expect(box.top).toBeGreaterThanOrEqual(i.top);
+      expect(box.right).toBeLessThanOrEqual(w - i.right + 0.5);
+      expect(box.bottom).toBeLessThanOrEqual(h - i.bottom + 0.5);
+      expect([box.sw, box.sh]).toEqual([w, h]); // nothing scrolls
+      expect(box.card).toBe(h > w);
+      await ctx.close();
+    }
+  });
+
+  test('the service worker registers in a production build', async ({ page }) => {
+    await page.goto('/');
+    const names = await waitForWorker(page);
+    expect(names).toHaveLength(1);
+    expect(names[0]).toMatch(/^tarpit-[0-9a-f]{12}$/);
+    expect(await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.scope)).toBe(
+      new URL('/', page.url()).href,
+    );
+  });
+
+  test('no service worker under ?test=1 or ?perf=1', async ({ page }) => {
+    for (const q of ['?test=1', '?perf=1']) {
+      await page.goto(`/${q}`);
+      await waitForTitle(page);
+      await page.waitForTimeout(500); // past the load event, when the page would register
+      expect(await page.evaluate(() => navigator.serviceWorker.getRegistrations().then((r) => r.length)), q).toBe(0);
+    }
+  });
+
+  test('plays offline after one visit; a new build is picked up online and the old cache is gone', async ({ page, context }) => {
+    const tmp = mkdtempSync(join(tmpdir(), 'tarpit-sw-'));
+    try {
+      const a = join(tmp, 'a');
+      const b = join(tmp, 'b');
+      cpSync(join(ROOT, 'dist'), a, { recursive: true });
+      cpSync(a, b, { recursive: true });
+      const html = readFileSync(join(b, 'index.html'), 'utf8');
+      writeFileSync(join(b, 'index.html'), html.replace('</head>', '<meta name="tarpit-build" content="B" /></head>'));
+      const versionB = await writeServiceWorker(b);
+
+      const site = { dir: a };
+      const server = await serve(site, '/');
+      await page.goto(`${server.origin}/`);
+      await page.evaluate((v) => localStorage.setItem('tarpit.best', v), BEST);
+      const [cacheA] = await waitForWorker(page);
+      expect(cacheA).not.toBe(`tarpit-${versionB}`);
+
+      // Build B is deployed: the next online open shows it (network first)...
+      site.dir = b;
+      await page.reload();
+      await expect(page.locator('meta[name="tarpit-build"]')).toHaveAttribute('content', 'B');
+      // ...and its worker takes over and deletes build A's cache.
+      await expect.poll(() => page.evaluate(() => caches.keys())).toEqual([`tarpit-${versionB}`]);
+      await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+
+      // Offline (server stopped and the context offline): the cached build B starts and plays.
+      await goOffline(context, server.close);
+      await page.reload();
+      await expect(page.locator('meta[name="tarpit-build"]')).toHaveAttribute('content', 'B');
+      await playStarts(page);
+      expect(await page.evaluate(() => localStorage.getItem('tarpit.best'))).toBe(BEST);
+      await context.setOffline(false);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+});
+
+test.describe('install and offline, base /tarpit/ (GitHub Pages paths)', () => {
+  test.describe.configure({ mode: 'serial' });
+  let tmp = '';
+  test.beforeAll(() => {
+    tmp = mkdtempSync(join(tmpdir(), 'tarpit-pages-'));
+    execFileSync('npx', ['vite', 'build', '--outDir', join(tmp, 'site'), '--emptyOutDir', '--logLevel', 'warn'], {
+      cwd: ROOT,
+      env: { ...process.env, VITE_BASE: '/tarpit/' },
+      stdio: 'pipe',
+    });
+  });
+  test.afterAll(() => rmSync(tmp, { recursive: true, force: true }));
+
+  test('manifest, icons, tags, worker scope and offline play under /tarpit/', async ({ page, context }) => {
+    const server = await serve({ dir: join(tmp, 'site') }, '/tarpit/');
+    await checkManifestAndTags(page, `${server.origin}/tarpit/`, '/tarpit/');
+    await page.evaluate((v) => localStorage.setItem('tarpit.best', v), BEST);
+    const names = await waitForWorker(page);
+    expect(names).toHaveLength(1);
+    expect(await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.scope)).toBe(
+      `${server.origin}/tarpit/`,
+    );
+    await goOffline(context, server.close);
+    await page.reload();
+    await playStarts(page);
+    expect(await page.evaluate(() => localStorage.getItem('tarpit.best'))).toBe(BEST);
+    await context.setOffline(false);
+  });
+});

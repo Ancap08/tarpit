@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GameScene } from './game/GameScene';
 import { installPortraitCard } from './game/portrait';
+import { registerServiceWorker } from './sw/register';
 import { installGlobal, isTestMode } from './game/testMode';
 import { TitleScene } from './game/TitleScene';
 
@@ -36,3 +37,4 @@ const game = new Phaser.Game({
 
 installPortraitCard();
 installGlobal(game);
+registerServiceWorker();
