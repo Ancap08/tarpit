@@ -15,6 +15,7 @@ import { cellCenter } from './grid';
 import { MAP, positionAlongPath } from './map';
 import { secondsToTicks, TICKS_PER_SECOND } from './time';
 import { shotCooldown, towerStats } from './towers';
+import type { KillCause } from './events';
 import type { Enemy, GameState, Point, Shot, TargetingMode, Tower, TowerType } from './types';
 
 /**
@@ -133,8 +134,11 @@ export function burnEnemies(state: GameState): void {
   if (burned) removeDead(state, 'burn');
 }
 
-/** Remove dead enemies (isDead), pay their bounty and record each kill. */
-function removeDead(state: GameState, cause: 'shot' | 'burn'): void {
+/**
+ * Remove dead enemies (isDead), pay their bounty and record each kill.
+ * Exported for specials (milestone 25b, cause 'special').
+ */
+export function removeDead(state: GameState, cause: KillCause): void {
   const alive: Enemy[] = [];
   for (const enemy of state.enemies) {
     if (isDead(enemy)) {

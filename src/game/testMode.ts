@@ -123,6 +123,7 @@ export function installGlobal(game: Phaser.Game): void {
     moveAt: (fromCol, fromRow, toCol, toRow) => scene().move({ col: fromCol, row: fromRow }, { col: toCol, row: toRow }),
     undoUpgradeAt: (col, row) => scene().undoUpgrade({ col, row }),
     setTargetingAt: (col, row, mode) => scene().setTargeting({ col, row }, mode),
+    useSpecialAt: (type, x, y) => scene().useSpecialAt(type, x, y),
     setSpeed: (speed) => scene().setSpeed(speed),
     speed: () => scene().speed,
     uiRects: () => {

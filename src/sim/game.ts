@@ -37,7 +37,10 @@
 //      clear bonus and go to 'setup' (or 'won' after the last wave).
 //
 // Towers only act during wave ticks; in 'setup' cooldowns stay where they
-// are. Build, upgrade and sell (actions.ts) happen between ticks.
+// are. Build, upgrade and sell (actions.ts) happen between ticks, and so
+// does useSpecial (milestone 25b): its damage, slow and burn apply at once
+// and its kills are removed and paid before the next tick. startWave grants
+// one special charge; the wave clear in step 7 takes an unused one away.
 //
 // So the first enemy of a group with delay 0 spawns during the first tick()
 // after startWave (waveTick 0), and an enemy spawned at waveTick k is at
@@ -71,6 +74,7 @@ export function createGame(options: CreateGameOptions = {}): GameState {
     gold: def.startGold,
     lives: def.startLives,
     wave: 0,
+    specialCharges: 0,
     tick: 0,
     waveTick: 0,
     spawnedPerGroup: [],
@@ -98,6 +102,8 @@ export function startWave(state: GameState): StartWaveResult {
   state.phase = 'wave';
   state.waveTick = 0;
   state.spawnedPerGroup = WAVES[state.wave - 1].groups.map(() => 0);
+  // One special charge per wave (milestone 25b); never more than one.
+  state.specialCharges = 1;
   // Planning phase ends (milestone 25a): everything bought so far locks.
   for (const tower of state.towers) {
     tower.locked = true;
@@ -187,6 +193,8 @@ function checkWaveClear(state: GameState): void {
   const allSpawned = groups.every((grp, gi) => state.spawnedPerGroup[gi] >= grp.count);
   if (!allSpawned || state.enemies.length > 0) return;
   state.gold += WAVE_CLEAR_BONUS;
+  // An unused special charge does not carry over (milestone 25b).
+  state.specialCharges = 0;
   state.events.push({ kind: 'waveClear', wave: state.wave, bonus: WAVE_CLEAR_BONUS });
   state.phase = state.wave >= WAVES.length && state.lives > 0 ? 'won' : 'setup';
   if (state.phase === 'won') state.events.push({ kind: 'won' });

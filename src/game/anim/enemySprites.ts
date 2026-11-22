@@ -277,14 +277,13 @@ export class EnemySprites {
     }
     if (hit && !v.flash) {
       v.sprite.setTintFill(TINT.flash);
-    } else if (v.flying) {
-      v.sprite.clearTint(); // flyers are never tarred or burned
     } else {
+      // Flyers too: a special can tar or burn a Harpy (milestone 25b).
       const tint = statusTint(v.burning, v.slowed, this.frozen ? 1 : burnPulse(this.scene.time.now));
       if (tint === null) v.sprite.clearTint();
       else v.sprite.setTint(tint);
     }
-    if (v.burning && !v.flying && this.particles && v.redraws % FLAME_EVERY === 0) {
+    if (v.burning && this.particles && v.redraws % FLAME_EVERY === 0) {
       this.particles.flicker(x + Phaser.Math.Between(-6, 6), y - lift - 6);
     }
   }

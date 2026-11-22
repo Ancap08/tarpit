@@ -44,7 +44,7 @@ describe('flyers (milestone 22)', () => {
     id: 0, type, hp: ENEMY_STATS[type].hp, distance, slow: 0, slowTicksLeft: 0, ...extra,
   });
 
-  it('a Harpy gets a two-ellipse ground shadow 3 px below its path position and never a ring', () => {
+  it('a Harpy gets a two-ellipse ground shadow 3 px below its path position, and tar and burn rings on its body when a special set them (milestone 25b)', () => {
     const s = { ...createGame(), enemies: [at('harpy', 100, { slowTicksLeft: 5, burnTicksLeft: 5 })] };
     const shadow = fakeGraphics();
     drawShadows(shadow.g, s);
@@ -52,7 +52,8 @@ describe('flyers (milestone 22)', () => {
     expect(shadow.calls).toEqual([`fill ${SHADOW.outer.alpha}`, 'ellipse 100,243,24,9', `fill ${SHADOW.inner.alpha}`, 'ellipse 100,243,16,6']);
     const rings = fakeGraphics();
     drawStatusRings(rings.g, s);
-    expect(rings.calls).toEqual([]);
+    // Drawn 16 px up (its lift): tar ring 14 + 3, burn ring outside it 14 + 6.
+    expect(rings.calls).toEqual(['ring 100,224,17', 'ring 100,224,20']);
   });
 
   it('walkers get no shadow; a Shieldbearer still gets its tar ring', () => {

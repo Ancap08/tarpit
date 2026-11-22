@@ -8,8 +8,9 @@ Anything not in this file or `docs/SCOPE.md` is out of scope.
 ## Space and time
 
 - Canvas 960 x 580 (v2, milestone 9; v1 was 960 x 540). The map uses the
-  top 960 x 480; the HUD uses the bottom 100 px in two rows: stats and the
-  wave and speed buttons, then the build bar.
+  top 960 x 480; the HUD uses the bottom 100 px in two rows: stats, the
+  next-wave preview and the Special, Start Wave and speed buttons, then the
+  build bar.
 - Positions are in pixels. Speeds are pixels per second.
 - The simulation runs at a fixed 60 ticks per second (`dt = 1/60 s`). It has
   no randomness in v1, so a given sequence of actions always produces the
@@ -171,8 +172,10 @@ Longbow 4 -> 2, upgraded Longbow 9 -> 4.5, Fire Pot impact 4 -> 2, Tar Pit
 damage are full. Hp can be fractional; the 1e-9 death threshold (see Burn)
 applies. A `hit` event carries the damage actually dealt. On screen a Harpy
 flies 16 px above its path position with a soft ground shadow, above every
-other enemy and the tower labels, never tinted or ringed for tar or burn;
-a Shieldbearer carries a small grey shield mark on its left.
+other enemy and the tower labels. No tower can tar or burn it, but a
+special can (see Special attacks), and then it shows the tar and burn
+rings and tints like a walker; a Shieldbearer carries a small grey shield
+mark on its left.
 
 **Boss** (milestone 23, from `docs/SCOPE-v4.md`). Grumblefoot, the Troll
 King, is one unit at the end of wave 10: wave 10's last group, 26 s after
@@ -194,7 +197,8 @@ top of the map (y 24), dark trough, red fill proportional to his hp, 1 px
 cream border, "hp / 4000" right-aligned inside, and his name in 14 px on a
 dark pill above its left end (y 4 to 22). The wave 10 preview reads
 "Next: 8 Wolf, 12 Troll, 5 Harpy, 4 Shieldbearer + Grumblefoot"; a preview
-too long for one 16 px line (350 px) wraps to two 13 px lines.
+too long for one 16 px line (264 px since milestone 25b, 350 before) wraps
+to two 13 px lines.
 
 A slow effect multiplies speed by `(1 - slow)` for its duration. Slows do not
 stack: the strongest slow applies, and a new slow of equal or greater strength
@@ -265,6 +269,70 @@ deaths pay the bounty like any kill.
 
 Range is measured from the tower's cell centre to the enemy's position.
 
+## Special attacks
+
+Milestone 25b, from `docs/SCOPE-v4.md`. Starting numbers; milestones 25c
+and 28 retune them (`src/sim/specials.ts` `SPECIAL_DEFS`).
+
+| Special | Unlocks on wave | Radius | Effect |
+|---|---|---|---|
+| Powder Keg | 1 | 70 px | 80 damage |
+| Tar Barrel | 4 | 90 px | slow 0.5 for 240 ticks (4 s); the boss's 30% cap applies |
+| Fire Arrows | 7 | 80 px | burn 10/s for 240 ticks (4 s) |
+
+- **Charge.** `state.specialCharges` is 0 or 1. Start Wave sets it to 1;
+  the wave clear sets it to 0, so an unused charge does not carry over
+  (the next wave starts with 1, never 2). One special per wave.
+- **Use.** `useSpecial(state, type, {x, y})` acts at once, between ticks,
+  like a build, on every live enemy whose position is within the radius of
+  the aimed point (inclusive: 70 px hits, 70.01 does not). Refused, in this
+  order, with `game-over`, `not-in-wave` (setup), `locked` (`state.wave` <
+  the unlock wave), `no-charge`, `out-of-bounds` (the point must be inside
+  0..960 x 0..480, edges included). A refusal changes nothing.
+- **Flyers and shields.** Specials hit flying enemies: a Harpy takes the
+  keg's damage and can be slowed and burned by a special, although no
+  tower can tar or burn it. Shields do not reduce specials: a
+  Shieldbearer takes the full 80.
+- **Slow and burn rules.** The Tar Barrel goes through the normal slow
+  (`applySlow`): capped at 0.3 on the boss, and a weaker slow does not
+  replace a stronger active one. Fire Arrows go through the normal burn
+  (`applyBurn`): they replace an equal or weaker burn and leave a stronger
+  one; the burn ticks in the usual step and is doubled while the enemy is
+  tarred (20 damage over 60 ticks instead of 10).
+- **Kills.** Enemies the special kills pay their bounty once and are
+  removed at once, each with a `kill` event, cause `special` (and
+  `bossDown`, cause `special`, for the boss). If that was the last enemy
+  of a fully spawned wave, the wave clears on the next tick as usual.
+- **Event.** `special {type, x, y, radius, hits}`, then `slowed` for each
+  applied slow, then the kills.
+- **Headless.** A script action `{type: 'special', special, x, y,
+  atWaveTick}` fires when the wave tick counter reaches `atWaveTick`; a
+  WaveScript may carry `timed`, per wave, a list of them. No balance
+  archetype uses specials. The informational `comboWithKegs` plays the
+  combo build plus one Powder Keg per wave at wave tick 600 aimed at
+  (420, 232), the path point 700 px from the spawn on the long downhill.
+
+On screen (milestone 25b): row 1 of the HUD has a 100 x 42 Special button
+at x 630, left of Start Wave (x 738, 130 wide) and the speed toggle (x 876,
+70 wide); the next-wave preview runs from x 356 to 620. The button is lit
+with a bright pip while a wave runs and the charge is unspent, greyed with
+an empty pip otherwise, and highlighted while its popup is open or a
+special is aimed. Pressing it with one special unlocked selects it; with
+more it opens a popup above it listing the unlocked specials (locked ones
+are not listed). While aiming, a circle of the special's radius (2 px
+outline, 0.18 fill; orange-red keg, dark brown tar barrel, orange-yellow
+fire arrows) follows the mouse over the map; on touch the first tap places
+it where tapped and a drag places it 48 px above the finger with the
+finger line. A mouse press on the map (it fires on the press, not the
+release), a second tap within 24 px of the placed circle, or
+the release of a touch drag with the circle on the map (even with the
+finger over the HUD) fires at the circle's centre. Escape, the Special
+button again or any other press on the HUD cancels. Aiming and the tower
+pick or panel never coexist. Effects in play: the keg flashes and a ring
+expands to the radius (0.4 s); the tar barrel leaves a dark splat fading
+over 0.5 s; fire arrows drop 8 streaks into the circle, then an orange
+flash (0.4 s). In test mode effects are not drawn.
+
 ## Waves
 
 A wave is a list of groups. A group spawns `count` enemies of one type,
@@ -299,7 +367,7 @@ Moving a tower and undoing an upgrade are setup-only (Planning phase).
 
 ## Tick order
 
-Inside one wave tick: (1) enemies move, then slow timers count down; (2)
+Specials (milestone 25b) act between ticks, like builds. Inside one wave tick: (1) enemies move, then slow timers count down; (2)
 enemies at the exit are removed and cost lives (1 each, 5 for the boss; at 0 lives the game is lost
 at once); (3) burns tick and burn deaths pay out; (4) towers fire in cell
 order, and each kill is removed before the next tower acts; (5) due enemies
@@ -314,5 +382,5 @@ Plain TypeScript in `src/sim`, no Phaser, no DOM. One `GameState` object,
 pure data. Functions take the state and return a new state or a result;
 either mutation or immutability is fine as long as it is consistent and
 tested. Required operations: create game, tick, start wave, build tower,
-upgrade tower, sell tower, move tower and undo upgrade (milestone 25a), next-wave preview, and a headless runner that
+upgrade tower, sell tower, move tower and undo upgrade (milestone 25a), use special (milestone 25b), next-wave preview, and a headless runner that
 plays a scripted set of actions for tests and balance work.

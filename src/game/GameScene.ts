@@ -39,6 +39,20 @@
 // pick, a tower press selects it. Drags from the bar work mid-wave too
 // (building then makes a locked tower); tower drags only in setup.
 //
+// Specials (milestone 25b): the HUD's Special button is live while a wave
+// runs and its charge is unspent. Pressing it selects the only unlocked
+// special directly, or opens a popup listing the unlocked ones; picking one
+// starts aiming. While aiming, a circle of the special's radius previews
+// the area: under the mouse (over the map), or on touch at the point the
+// first tap placed (no lift) or 48 px above the finger during a drag, with
+// the drag's finger line. A mouse click on the map, a second tap within
+// SPECIAL_TAP_SLOP px of the placed circle, or the release of a touch drag
+// with the aim on the map (even with the finger over the HUD) fires
+// useSpecial at the circle's centre. Escape, pressing Special again, or a
+// press anywhere else on the HUD cancels aiming (and closes the popup).
+// Aiming, the popup, the tower pick and the tower panel are mutually
+// exclusive: opening one clears the others.
+//
 // Portrait: while the "turn your device" card shows (portrait.ts), update()
 // runs no ticks and drops the time it would have accumulated.
 //
@@ -72,13 +86,16 @@ import {
   moveTower,
   sellTower,
   setTargeting,
+  SPECIAL_DEFS,
   startWave,
   tick,
   TOWER_DEFS,
   towerAt,
   towerStats,
   undoUpgrade,
+  unlockedSpecials,
   upgradeTower,
+  useSpecial,
 } from '../sim';
 import type {
   BuildResult,
@@ -88,6 +105,8 @@ import type {
   GameState,
   MoveResult,
   SellResult,
+  SpecialResult,
+  SpecialType,
   StartWaveResult,
   TargetingMode,
   TargetingResult,
@@ -102,9 +121,21 @@ import { drawHpBars, drawShadows, drawStatusRings } from './draw/enemies';
 import { TowerLabels } from './draw/labels';
 import { drawMap } from './draw/map';
 import { ShotEffects } from './draw/shots';
+import { SpecialEffects } from './draw/specials';
 import { Aim, drawTowerShape, drawTowers } from './draw/towers';
-import { Hud } from './hud';
-import { cellAt, cellRect, classifyClick, contains, dragTargetCell, mouseDragLost, pastDragThreshold, type Rect } from './input';
+import { HUD_TOP, Hud, specialReady } from './hud';
+import {
+  cellAt,
+  cellRect,
+  classifyClick,
+  contains,
+  DRAG_LIFT,
+  dragTargetCell,
+  MAP_AREA,
+  mouseDragLost,
+  pastDragThreshold,
+  type Rect,
+} from './input';
 import { COLORS } from './palette';
 import { portraitCardVisible } from './portrait';
 import { isTestMode } from './testMode';
@@ -150,6 +181,22 @@ export interface UiState {
    * (48 px above a finger), or null over the HUD or off the map.
    */
   dragging: null | { kind: 'place' | 'move'; tower: TowerType; from?: Cell; cell: Cell | null };
+  /**
+   * Specials (milestone 25b): the charges left this wave, the special being
+   * aimed (or null), the specials unlocked on this wave, whether the popup
+   * is open, and the aim circle's centre in canvas px (null while aiming
+   * with nowhere to show it, or not aiming).
+   */
+  special: { charges: number; aiming: SpecialType | null; unlocked: SpecialType[]; menuOpen: boolean; aimPoint: { x: number; y: number } | null };
+}
+
+/** A touch press while aiming a special (milestone 25b): a tap or, past the threshold, a lifted drag. */
+interface AimPress {
+  x0: number;
+  y0: number;
+  x: number;
+  y: number;
+  active: boolean;
 }
 
 /** A press that may become a drag (milestone 25a). */
@@ -180,6 +227,23 @@ const CELL_FILL_ALPHA = 0.25;
 const CELL_LINE = 2;
 /** The touch drag's finger-to-ghost line width (milestone 25a). */
 const DRAG_LINE = 1.5;
+/** Aim circle (milestone 25b): outline width and fill opacity. */
+const AIM_LINE = 2;
+const AIM_FILL_ALPHA = 0.18;
+/** On touch, a second tap this close (canvas px) to the placed aim circle's centre fires it. */
+export const SPECIAL_TAP_SLOP = 24;
+/** The aim circle's colour per special. */
+export const SPECIAL_COLORS: Readonly<Record<SpecialType, number>> = {
+  keg: COLORS.specialKeg,
+  tarBarrel: COLORS.specialTar,
+  fireArrows: COLORS.specialFire,
+};
+
+/** True when (x, y) is on the map (where a special may be aimed): 0..960 x 0..480 inclusive. */
+function onMap(x: number, y: number): boolean {
+  return x >= MAP_AREA.x && x <= MAP_AREA.x + MAP_AREA.width && y >= MAP_AREA.y && y <= MAP_AREA.y + MAP_AREA.height;
+}
+
 /** Dashes in the Mortar's minimum-range circle (each dash half of its slot). */
 const MIN_RANGE_DASHES = 24;
 
@@ -217,6 +281,15 @@ export class GameScene extends Phaser.Scene {
   /** A press on a bar button or an unlocked tower that may become a drag (milestone 25a), or null. */
   private press: Press | null = null;
   private shots = new ShotEffects();
+  private specialFx = new SpecialEffects(isTestMode());
+  /** The special being aimed (milestone 25b), or null. */
+  private aiming: SpecialType | null = null;
+  /** The special popup is open. */
+  private specialMenuOpen = false;
+  /** On touch: where the aim circle was placed by a tap or the last drag position, or null. */
+  private touchAim: { x: number; y: number } | null = null;
+  /** On touch while aiming: the press in progress, or null. */
+  private aimPress: AimPress | null = null;
   private aim = new Aim();
   private readonly autoTick = !isTestMode();
 
@@ -233,8 +306,13 @@ export class GameScene extends Phaser.Scene {
     this.speed = 1;
     this.accMs = 0;
     this.shots = new ShotEffects();
+    this.specialFx = new SpecialEffects(isTestMode());
     this.aim = new Aim();
     this.eventCursor = new EventCursor();
+    this.aiming = null;
+    this.specialMenuOpen = false;
+    this.touchAim = null;
+    this.aimPress = null;
 
     this.pick = null;
     this.pointer = null;
@@ -263,6 +341,8 @@ export class GameScene extends Phaser.Scene {
       onStartWave: () => this.startWave(),
       onToggleSpeed: () => this.setSpeed(this.speed === 1 ? 2 : 1),
       onPick: (type) => this.togglePick(type),
+      onSpecial: () => this.onSpecialButton(),
+      onSpecialPick: (type) => this.selectSpecial(type),
     });
     this.panel = new TowerPanel(this, {
       onUpgrade: () => {
@@ -293,6 +373,8 @@ export class GameScene extends Phaser.Scene {
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       this.press = null;
+      this.aimPress = null;
+      if (this.specialPointerDown(p.x, p.y, p.wasTouch)) return;
       if (p.wasTouch) this.onTap(p.x, p.y);
       else this.onPointerDown(p.x, p.y);
       this.beginPress(p.x, p.y, p.wasTouch);
@@ -303,6 +385,10 @@ export class GameScene extends Phaser.Scene {
       if (this.press !== null && !this.press.touch && !p.wasTouch && mouseDragLost(p.isDown, p.buttons)) {
         this.press = null;
       }
+      if (this.aimPress !== null && p.wasTouch) {
+        this.aimMove(p.x, p.y);
+        return;
+      }
       if (this.press !== null && this.press.touch === p.wasTouch) {
         this.dragMove(p.x, p.y);
         if (p.wasTouch) return;
@@ -310,8 +396,15 @@ export class GameScene extends Phaser.Scene {
       // A finger has no hover: touch moves change nothing else.
       if (!p.wasTouch) this.onPointerMove({ x: p.x, y: p.y });
     });
-    this.input.on('pointerup', (p: Phaser.Input.Pointer) => this.endPress(p.x, p.y, true));
-    this.input.on('pointerupoutside', () => this.endPress(0, 0, false));
+    this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
+      if (this.aimPress !== null) this.endAimPress(p.x, p.y);
+      else this.endPress(p.x, p.y, true);
+    });
+    this.input.on('pointerupoutside', () => {
+      // A touch aim released outside the canvas fires nothing.
+      this.aimPress = null;
+      this.endPress(0, 0, false);
+    });
     this.input.on('gameout', () => {
       if (this.press?.active) this.press.cell = null;
       this.onPointerMove(null);
@@ -405,11 +498,139 @@ export class GameScene extends Phaser.Scene {
     this.redraw();
   }
 
+  /**
+   * Specials (milestone 25b) at a pointerdown. Returns true when the press
+   * belongs to a special (aiming or the popup) and normal handling is
+   * skipped. A press on the popup belongs to its buttons. A press on the
+   * HUD, other than on the Special button (whose click toggles), cancels
+   * aiming and closes the popup, then is handled as usual. While aiming, a
+   * mouse press on the map fires at it; a touch press on the map starts an
+   * aim press, resolved on release (endAimPress).
+   */
+  private specialPointerDown(x: number, y: number, touch: boolean): boolean {
+    if (this.endScreen.kind) return false;
+    const menu = this.hud.specialMenuRect;
+    if (menu !== null && contains(menu, x, y)) return true;
+    const onSpecialButton = contains(this.hud.rects().special, x, y);
+    if (!onMap(x, y) || y >= HUD_TOP) {
+      if (!onSpecialButton) this.cancelSpecial();
+      return false;
+    }
+    if (this.specialMenuOpen) this.specialMenuOpen = false;
+    if (this.aiming === null) return false;
+    this.setTouch(touch);
+    if (touch) {
+      this.aimPress = { x0: x, y0: y, x, y, active: false };
+    } else {
+      this.pointer = { x, y };
+      this.fireSpecial(this.aiming, { x, y });
+    }
+    this.redraw();
+    return true;
+  }
+
+  /** A touch moved during an aim press: past the threshold it becomes a drag aiming DRAG_LIFT px above the finger. */
+  private aimMove(x: number, y: number): void {
+    const d = this.aimPress;
+    if (d === null) return;
+    d.x = x;
+    d.y = y;
+    if (!d.active && pastDragThreshold(d.x0, d.y0, x, y)) d.active = true;
+    if (d.active) {
+      this.touchAim = onMap(x, y - DRAG_LIFT) ? { x, y: y - DRAG_LIFT } : null;
+      this.redraw();
+    }
+  }
+
+  /**
+   * A touch released while aiming. A drag fires at its lifted aim point if
+   * that is on the map (even with the finger over the HUD) and otherwise
+   * fires nothing. A tap within SPECIAL_TAP_SLOP of the placed circle fires
+   * it; any other tap on the map places the circle there.
+   */
+  private endAimPress(x: number, y: number): void {
+    const d = this.aimPress;
+    this.aimPress = null;
+    if (d === null || this.aiming === null) return;
+    if (d.active) {
+      const aimAt = onMap(x, y - DRAG_LIFT) ? { x, y: y - DRAG_LIFT } : null;
+      if (aimAt !== null) this.fireSpecial(this.aiming, aimAt);
+      else this.touchAim = null;
+    } else if (this.touchAim !== null && Math.hypot(d.x0 - this.touchAim.x, d.y0 - this.touchAim.y) <= SPECIAL_TAP_SLOP) {
+      this.fireSpecial(this.aiming, this.touchAim);
+    } else {
+      this.touchAim = { x: d.x0, y: d.y0 };
+    }
+    this.redraw();
+  }
+
+  /** Fire `type` at `point` through the sim and end aiming (whether or not the sim accepts it). */
+  private fireSpecial(type: SpecialType, point: { x: number; y: number }): SpecialResult {
+    this.aiming = null;
+    this.touchAim = null;
+    this.aimPress = null;
+    return this.useSpecialAt(type, point.x, point.y);
+  }
+
+  /** The HUD's Special button: cancel aiming or the popup if either is on, else select the only special or open the popup. */
+  private onSpecialButton(): void {
+    if (this.endScreen.kind || !specialReady(this.state)) return;
+    if (this.aiming !== null || this.specialMenuOpen) {
+      this.cancelSpecial();
+      this.redraw();
+      return;
+    }
+    const unlocked = unlockedSpecials(this.state.wave);
+    if (unlocked.length === 1) {
+      this.selectSpecial(unlocked[0]);
+      return;
+    }
+    this.clearPickAndPanel();
+    this.specialMenuOpen = true;
+    this.redraw();
+  }
+
+  /** Start aiming `type` (from the popup, or directly with one special unlocked); clears the tower pick and panel. */
+  private selectSpecial(type: SpecialType): void {
+    if (this.endScreen.kind || !specialReady(this.state)) return;
+    this.clearPickAndPanel();
+    this.specialMenuOpen = false;
+    this.aiming = type;
+    this.touchAim = null;
+    this.aimPress = null;
+    this.redraw();
+  }
+
+  private clearPickAndPanel(): void {
+    this.press = null;
+    this.pick = null;
+    this.tapCell = null;
+    this.armed = null;
+    this.panel.close();
+  }
+
+  /** Stop aiming and close the popup. */
+  private cancelSpecial(): void {
+    this.aiming = null;
+    this.specialMenuOpen = false;
+    this.touchAim = null;
+    this.aimPress = null;
+  }
+
+  /** Where the aim circle shows, or null: the mouse over the map, or the touch aim point. */
+  private aimCentre(): { x: number; y: number } | null {
+    if (this.aiming === null) return null;
+    if (this.touch) return this.touchAim;
+    const p = this.pointer;
+    return p !== null && onMap(p.x, p.y) && p.y < HUD_TOP ? p : null;
+  }
+
   /** A build bar click: pick that type, or clear the pick if it is already active. */
   private togglePick(type: TowerType): void {
     if (this.endScreen.kind) return;
     // The release of a drag that ended back on its bar button is not a click.
     if (this.press?.active) return;
+    this.cancelSpecial();
     this.tapCell = null;
     this.armed = null;
     if (this.pick === type) this.pick = null;
@@ -455,6 +676,7 @@ export class GameScene extends Phaser.Scene {
       this.armed = null;
       // A bar drag picks the type, so the pick stays after the release.
       this.pick = d.kind === 'place' ? d.tower : null;
+      this.cancelSpecial();
     }
     d.cell = dragTargetCell(x, y, d.touch);
     this.redraw();
@@ -477,9 +699,10 @@ export class GameScene extends Phaser.Scene {
     this.redraw();
   }
 
-  /** Escape: clear the pick and the selection. */
+  /** Escape: clear the pick, the selection, and any special aiming or popup. */
   closeUi(): void {
     this.press = null;
+    this.cancelSpecial();
     this.pick = null;
     this.panel.close();
     this.redraw();
@@ -506,6 +729,16 @@ export class GameScene extends Phaser.Scene {
               ...(this.press.from !== null ? { from: { ...this.press.from } } : {}),
               cell: this.press.cell === null ? null : { ...this.press.cell },
             },
+      special: {
+        charges: this.state.specialCharges,
+        aiming: this.aiming,
+        unlocked: unlockedSpecials(this.state.wave),
+        menuOpen: this.specialMenuOpen,
+        aimPoint: (() => {
+          const c = this.aimCentre();
+          return c === null ? null : { x: c.x, y: c.y };
+        })(),
+      },
     };
   }
 
@@ -548,6 +781,7 @@ export class GameScene extends Phaser.Scene {
       tick(this.state);
       for (const shot of this.state.shots) this.aim.pointAt(shot.cell, shot.to);
       this.shots.afterTick(this.state.shots);
+      this.specialFx.afterTick();
       this.takeEvents();
     }
     if (redraw) this.redraw();
@@ -620,6 +854,15 @@ export class GameScene extends Phaser.Scene {
     return result;
   }
 
+  /** Use a special aimed at (x, y) through the sim (milestone 25b); a success starts its effect. */
+  useSpecialAt(type: SpecialType, x: number, y: number): SpecialResult {
+    const result = useSpecial(this.state, type, { x, y });
+    if (result.ok) this.specialFx.add(type, x, y, SPECIAL_DEFS[type].radius);
+    this.takeEvents();
+    this.redraw();
+    return result;
+  }
+
   setTargeting(cell: Cell, mode: TargetingMode): TargetingResult {
     const result = setTargeting(this.state, cell, mode);
     this.takeEvents();
@@ -643,12 +886,13 @@ export class GameScene extends Phaser.Scene {
     this.enemySprites.sync(this.state, this.speed);
     this.shotFx.clear();
     this.shots.draw(this.shotFx);
+    this.specialFx.draw(this.shotFx);
     this.bars.clear();
     drawHpBars(this.bars, this.state);
     this.labels.update(this.state);
     this.syncEndScreen();
     this.redrawUi();
-    this.hud.update(this.state, this.speed, this.pick);
+    this.hud.update(this.state, this.speed, this.pick, { menuOpen: this.specialMenuOpen, aiming: this.aiming });
   }
 
   /** Show the end screen once the game is won or lost. Idempotent. */
@@ -658,6 +902,7 @@ export class GameScene extends Phaser.Scene {
     this.panel.close();
     this.pick = null;
     this.press = null;
+    this.cancelSpecial();
     this.endScreen.show(kind, this.state);
   }
 
@@ -666,6 +911,8 @@ export class GameScene extends Phaser.Scene {
     // hook, or gold spent below the pick's cost).
     if (this.panel.cell !== null && !towerAt(this.state, this.panel.cell)) this.panel.close();
     if (this.pick !== null && !canPick(this.state, this.pick)) this.pick = null;
+    // Aiming and the popup end once no special can be used (charge spent, wave over).
+    if (!specialReady(this.state) || (this.aiming !== null && !unlockedSpecials(this.state.wave).includes(this.aiming))) this.cancelSpecial();
     this.panel.update(this.state);
     // A drag whose source went away (gold spent elsewhere, the tower sold or
     // locked by a test hook) ends without acting.
@@ -698,7 +945,9 @@ export class GameScene extends Phaser.Scene {
     // A moved tower may be dropped back on its own cell (a no-op).
     const backHome = drag?.kind === 'move' && drag.from !== null && hover !== null && sameCell(drag.from, hover);
     const hoverBuildable = hover !== null && (isBuildable(this.state, hover) || backHome);
+    const aimAt = this.aimCentre();
     if (drag !== null) this.setCursor('grabbing');
+    else if (aimAt !== null) this.setCursor('crosshair');
     else this.setCursor(hoverTower || (this.pick !== null && hoverBuildable) ? 'pointer' : 'default');
 
     const g = this.overlay;
@@ -736,6 +985,23 @@ export class GameScene extends Phaser.Scene {
         drawTowerShape(g, ghostType, c, angle, upgraded, BLOCKED_GHOST_ALPHA);
         g.fillStyle(COLORS.cellBad, BLOCKED_GHOST_TINT);
         g.fillCircle(c.x, c.y, 15);
+      }
+    }
+    // The special's aim circle (milestone 25b), and on a touch drag the
+    // finger line to its lifted centre.
+    if (this.aiming !== null && aimAt !== null) {
+      const color = SPECIAL_COLORS[this.aiming];
+      const r = SPECIAL_DEFS[this.aiming].radius;
+      g.fillStyle(color, AIM_FILL_ALPHA);
+      g.fillCircle(aimAt.x, aimAt.y, r);
+      g.lineStyle(AIM_LINE, color, 1);
+      g.strokeCircle(aimAt.x, aimAt.y, r);
+      const ap = this.aimPress;
+      if (ap?.active) {
+        g.lineStyle(DRAG_LINE, COLORS.dragLine, 0.85);
+        g.lineBetween(ap.x, ap.y, aimAt.x, aimAt.y);
+        g.fillStyle(COLORS.dragLine, 0.85);
+        g.fillCircle(ap.x, ap.y, 3);
       }
     }
     // On touch, a thin line from the fingertip to the lifted ghost's cell.

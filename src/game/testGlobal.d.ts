@@ -12,6 +12,8 @@ import type {
   MoveResult,
   Phase,
   SellResult,
+  SpecialResult,
+  SpecialType,
   StartWaveResult,
   TargetingMode,
   TargetingResult,
@@ -51,6 +53,11 @@ export interface TarpitTestApi {
   undoUpgradeAt(col: number, row: number): UndoUpgradeResult;
   /** Set the targeting mode of the tower on (col, row) through the scene's action (milestone 24). */
   setTargetingAt(col: number, row: number, mode: TargetingMode): TargetingResult;
+  /**
+   * Use a special aimed at canvas point (x, y) through the scene's action
+   * (milestone 25b; no clicks, no aiming). In test mode no effect is drawn.
+   */
+  useSpecialAt(type: SpecialType, x: number, y: number): SpecialResult;
   setSpeed(speed: 1 | 2): void;
   speed(): 1 | 2;
   /**
@@ -64,8 +71,11 @@ export interface TarpitTestApi {
    * space equals page space; at other sizes use canvasToPage(). The open
    * panel also lists `panel:close`. `panel:upgrade` and `panel:sell` keep
    * their names when they read "Undo upgrade" and "Remove" (milestone 25a).
+   * Milestone 25b: `special` (the HUD's Special button) and, while its
+   * popup is open, `special:keg`, `special:tarBarrel` and
+   * `special:fireArrows` for the unlocked specials listed.
    */
-  uiRects(): { startWave: Rect; speed: Rect } & Record<string, Rect>;
+  uiRects(): { startWave: Rect; speed: Rect; special: Rect } & Record<string, Rect>;
   /**
    * A canvas-space point in page coordinates (CSS pixels), through the scale
    * manager's fit and letterboxing, for page.mouse and page.touchscreen.
@@ -79,7 +89,9 @@ export interface TarpitTestApi {
    * selected tower's targeting mode, the targeting, upgrade and sell
    * buttons' labels, and the drag in progress (milestone 25a; `cell` is
    * 48 px above a finger). Towers in state() carry `locked` (no dashed
-   * outline), `unlockedSpend` and `upgradedThisPhase`.
+   * outline), `unlockedSpend` and `upgradedThisPhase`. `special` (milestone
+   * 25b): charges, the special being aimed, the unlocked specials, whether
+   * the popup is open, and the aim circle's centre (canvas px) or null.
    * On the title menu (milestone 25) it is `{ scene: 'title', difficulty }`
    * with the selected level: call it as `ui<TitleUiState>()` there.
    */

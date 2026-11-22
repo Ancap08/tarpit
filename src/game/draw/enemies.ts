@@ -1,6 +1,6 @@
 // Enemies: since milestone 16 the bodies are sprites (anim/enemySprites.ts).
 // This file draws what goes with them: a soft ground shadow under each flyer
-// (milestone 22), a tar ring when slowed and an orange
+// (milestone 22), a tar ring when slowed (flyers too since milestone 25b) and an orange
 // ring when burning (outside the tar ring when both apply), under the sprite
 // as a halo, and an hp bar above the sprite when hurt, on a layer over all
 // sprites so a following enemy never hides one. The rings stay because
@@ -88,13 +88,13 @@ export function statusRings(enemy: Pick<Enemy, 'slowTicksLeft' | 'burnTicksLeft'
 }
 
 /**
- * Tar and burn rings for every walking enemy, drawn under the sprites,
- * centred on the drawn body (the boss's is `lift` px up). Flyers never get
- * rings (they cannot be tarred or burned).
+ * Tar and burn rings for every enemy that carries them, drawn under the
+ * sprites, centred on the drawn body (the boss's and a flyer's are `lift`
+ * px up). Towers never tar or burn a flyer, but a special can (milestone
+ * 25b), so a Harpy shows the rings when its state says so.
  */
 export function drawStatusRings(g: Phaser.GameObjects.Graphics, state: GameState): void {
   for (const enemy of state.enemies) {
-    if (ENEMY_STATS[enemy.type].flying) continue;
     const { x, y } = enemyPosition(enemy);
     for (const ring of statusRings(enemy)) {
       g.lineStyle(3, ring.color, 1);

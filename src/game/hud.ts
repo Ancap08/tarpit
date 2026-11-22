@@ -10,15 +10,23 @@
 // there is no tag and the counter stays centred, so Normal frames are as
 // before. (The 128 px between the wave counter and the preview cannot hold
 // "Wave 10/10" and a tag on one line.)
+// Milestone 25b: row 1 gains a Special button left of Start Wave: Special
+// x 630 (100 wide), Start Wave x 738 (130), speed x 876 (70), 8 px apart;
+// the preview moves to x 356 and narrows to 264 px (to x 620). The Special
+// button is lit while a charge can be used (a wave is running and the
+// charge is unspent) with a bright pip, greyed with an empty pip otherwise;
+// it shows as picked while its popup is open or a special is being aimed.
+// The popup (ui/specialMenu.ts) opens above it.
 
 import Phaser from 'phaser';
-import { nextWavePreview, WAVES, type Difficulty, type GameState, type TowerType } from '../sim';
+import { nextWavePreview, unlockedSpecials, WAVES, type Difficulty, type GameState, type SpecialType, type TowerType } from '../sim';
 import type { Rect } from './input';
-import { BOSS_NAME, DIFFICULTY_LABELS, ENEMY_NAMES } from './names';
+import { BOSS_NAME, DIFFICULTY_LABELS, ENEMY_NAMES, SPECIAL_BUTTON_TEXT } from './names';
 import { COLORS, FONT, TEXT } from './palette';
 import { BossBar } from './ui/bossBar';
 import { BuildBar } from './ui/buildBar';
 import { Button } from './ui/button';
+import { SpecialMenu } from './ui/specialMenu';
 
 export type { Rect };
 
@@ -72,9 +80,21 @@ export function previewText(state: GameState): string {
   return `Next: ${plain.map((g) => `${g.count} ${ENEMY_NAMES[g.type]}`).join(', ')}${boss}`;
 }
 
-/** The preview's room: from x 366 to 10 px before the Start Wave button at x 726. */
-export const PREVIEW_X = 366;
-export const PREVIEW_WIDTH = 350;
+/** Row 1 buttons (milestone 25b): Special, Start Wave and the speed toggle, 8 px apart, 14 px from the right edge. */
+export const SPECIAL_BUTTON = { x: 630, width: 100 } as const;
+export const START_BUTTON = { x: 738, width: 130 } as const;
+export const SPEED_BUTTON = { x: 876, width: 70 } as const;
+/** The Special button's charge pip: radius, and its centre's distance from the button's right edge. */
+export const PIP_RADIUS = 5;
+export const PIP_INSET = 14;
+
+/**
+ * The preview's room: from x 356 (10 px after "Wave 10/10" at 18 px ends)
+ * to 10 px before the Special button at x 630 (milestone 25b; it was x 366
+ * to 716 before the button).
+ */
+export const PREVIEW_X = 356;
+export const PREVIEW_WIDTH = 264;
 export const PREVIEW_SIZE = 16;
 export const PREVIEW_SIZE_LONG = 13;
 
@@ -94,11 +114,26 @@ export function canStartWave(state: GameState): boolean {
   return state.phase === 'setup' && state.wave < WAVES.length;
 }
 
+/** A special can be used now: a wave is running and its charge is unspent (milestone 25b). */
+export function specialReady(state: GameState): boolean {
+  return state.phase === 'wave' && state.specialCharges > 0;
+}
+
+/** What GameScene shows of the specials (milestone 25b): the popup and the special being aimed. */
+export interface HudSpecial {
+  menuOpen: boolean;
+  aiming: SpecialType | null;
+}
+
 export interface HudHandlers {
   onStartWave: () => void;
   onToggleSpeed: () => void;
   /** A build bar button was clicked (only when pickable). */
   onPick: (type: TowerType) => void;
+  /** The Special button was pressed (only while specialReady). */
+  onSpecial: () => void;
+  /** A special was picked in the popup. */
+  onSpecialPick: (type: SpecialType) => void;
 }
 
 export class Hud {
@@ -109,6 +144,10 @@ export class Hud {
   private readonly tag: Phaser.GameObjects.Text;
   private readonly startButton: Button;
   private readonly speedButton: Button;
+  private readonly specialButton: Button;
+  private readonly pip: Phaser.GameObjects.Graphics;
+  private readonly specialMenu: SpecialMenu;
+  private pipLit: boolean | null = null;
   private readonly bar: BuildBar;
   private readonly bossBar: BossBar;
 
@@ -124,13 +163,20 @@ export class Hud {
     this.tag = stat(238, `${TAG_SIZE}px`, TEXT.hudDim).setY(MID + TAG_OFFSET);
     this.next = stat(PREVIEW_X, `${PREVIEW_SIZE}px`, TEXT.hudDim).setWordWrapWidth(PREVIEW_WIDTH, true);
 
-    this.startButton = new Button(scene, { x: 726, y: ROW1_BUTTON_Y, width: 138, height: BUTTON_H }, 'Start Wave', handlers.onStartWave);
-    this.speedButton = new Button(scene, { x: 876, y: ROW1_BUTTON_Y, width: 70, height: BUTTON_H }, '1x', handlers.onToggleSpeed);
+    // The Special label is left-aligned (an empty right label) so the pip fits on its right.
+    this.specialButton = new Button(scene, { ...SPECIAL_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H }, SPECIAL_BUTTON_TEXT, handlers.onSpecial, {
+      fontSize: '16px',
+      right: '',
+    });
+    this.pip = scene.add.graphics();
+    this.startButton = new Button(scene, { ...START_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H }, 'Start Wave', handlers.onStartWave);
+    this.speedButton = new Button(scene, { ...SPEED_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H }, '1x', handlers.onToggleSpeed);
+    this.specialMenu = new SpecialMenu(scene, SPECIAL_BUTTON.x, HUD_TOP, handlers.onSpecialPick);
     this.bar = new BuildBar(scene, ROW2_BUTTON_Y, handlers.onPick);
     this.bossBar = new BossBar(scene);
   }
 
-  update(state: GameState, speed: 1 | 2, pick: TowerType | null): void {
+  update(state: GameState, speed: 1 | 2, pick: TowerType | null, special: HudSpecial = { menuOpen: false, aiming: null }): void {
     const set = (t: Phaser.GameObjects.Text, s: string) => {
       if (t.text !== s) t.setText(s);
     };
@@ -147,8 +193,24 @@ export class Hud {
     this.startButton.set('Start Wave', canStartWave(state));
     // Once the game is over the speed toggle is inert (greyed, ignores clicks).
     this.speedButton.set(`${speed}x`, state.phase !== 'won' && state.phase !== 'lost');
+    const ready = specialReady(state);
+    this.specialButton.set(SPECIAL_BUTTON_TEXT, ready);
+    this.specialButton.setPicked(ready && (special.menuOpen || special.aiming !== null));
+    if (this.pipLit !== ready) {
+      this.pipLit = ready;
+      const cx = SPECIAL_BUTTON.x + SPECIAL_BUTTON.width - PIP_INSET;
+      this.pip.clear();
+      if (ready) this.pip.fillStyle(COLORS.specialPip, 1).fillCircle(cx, MID, PIP_RADIUS);
+      else this.pip.lineStyle(1.5, COLORS.specialPipEmpty, 1).strokeCircle(cx, MID, PIP_RADIUS - 0.75);
+    }
+    this.specialMenu.update(special.menuOpen && ready ? unlockedSpecials(state.wave) : []);
     this.bar.update(state, pick);
     this.bossBar.update(state);
+  }
+
+  /** The special popup's box while open, else null (milestone 25b). */
+  get specialMenuRect(): Rect | null {
+    return this.specialMenu.rect;
   }
 
   strings(): HudStrings {
@@ -164,8 +226,18 @@ export class Hud {
     };
   }
 
-  /** `startWave`, `speed` and `bar:<type>` for each build bar button. */
-  rects(): { startWave: Rect; speed: Rect } & Record<string, Rect> {
-    return { startWave: { ...this.startButton.rect }, speed: { ...this.speedButton.rect }, ...this.bar.rects() };
+  /**
+   * `startWave`, `speed`, `special` (milestone 25b), `bar:<type>` for each
+   * build bar button, and `special:<type>` for each popup button while the
+   * popup is open.
+   */
+  rects(): { startWave: Rect; speed: Rect; special: Rect } & Record<string, Rect> {
+    return {
+      startWave: { ...this.startButton.rect },
+      speed: { ...this.speedButton.rect },
+      special: { ...this.specialButton.rect },
+      ...this.bar.rects(),
+      ...this.specialMenu.rects(),
+    };
   }
 }

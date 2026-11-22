@@ -3,14 +3,19 @@
 // mid-wave"), refused once the game is
 // won or lost. Milestone 25a adds the planning phase: moveTower and
 // undoUpgrade work only in 'setup' (see DESIGN.md "Planning phase"). Each
-// mutates the state in place and returns a typed result.
+// mutates the state in place and returns a typed result. Milestone 25b adds
+// useSpecial, during a wave only (see specials.ts and DESIGN.md "Special
+// attacks").
 // A successful action appends its event (build, upgrade, sell, targeting,
-// move, undoUpgrade) to state.events, where it stays until the next tick
+// move, undoUpgrade, special) to state.events, where it stays until the next tick
 // clears the list.
 
+import { applyBurn, applySlow, enemyPosition, removeDead } from './combat';
 import { cellKey, isBuildableTerrain, sameCell, type Cell } from './grid';
+import { MAP } from './map';
+import { isSpecialUnlocked, SPECIAL_DEFS, type SpecialType } from './specials';
 import { TOWER_DEFS, towerSellValue } from './towers';
-import type { GameState, TargetingMode, Tower, TowerType } from './types';
+import type { GameState, Point, TargetingMode, Tower, TowerType } from './types';
 
 export type BuildResult =
   | { ok: true; tower: Tower; gold: number }
@@ -33,6 +38,10 @@ export type MoveResult =
 export type UndoUpgradeResult =
   | { ok: true; tower: Tower; refund: number; gold: number }
   | { ok: false; reason: 'game-over' | 'not-in-setup' | 'no-tower' | 'nothing-to-undo' };
+
+export type SpecialResult =
+  | { ok: true; hits: number; kills: number; gold: number }
+  | { ok: false; reason: 'game-over' | 'not-in-wave' | 'locked' | 'no-charge' | 'out-of-bounds' };
 
 function isOver(state: GameState): boolean {
   return state.phase === 'won' || state.phase === 'lost';
@@ -165,4 +174,45 @@ export function setTargeting(state: GameState, cell: Cell, mode: TargetingMode):
   tower.targeting = mode;
   state.events.push({ kind: 'targeting', cell: { col: tower.cell.col, row: tower.cell.row }, mode });
   return { ok: true };
+}
+
+/**
+ * Use a special attack aimed at `point` (milestone 25b). Refused, checked in
+ * this order, when the game is over, outside a wave ('not-in-wave'), when
+ * `type` is not unlocked on this wave ('locked'), with no charge left
+ * ('no-charge'), or when the point is outside the map, 0..960 x 0..480
+ * inclusive ('out-of-bounds'). Otherwise it spends the charge and acts at
+ * once on every live enemy whose position is within the special's radius
+ * of the point (inclusive), flying or not: damage at full strength
+ * (shields ignored), a slow through applySlow (the boss's cap applies) and
+ * a burn through applyBurn (equal or stronger replaces). Emits one
+ * `special` event with the number of enemies hit, then `slowed` events for
+ * applied slows, then a `kill` (cause 'special') for each enemy it killed,
+ * which pays its bounty and is removed at once.
+ */
+export function useSpecial(state: GameState, type: SpecialType, point: Point): SpecialResult {
+  if (isOver(state)) return { ok: false, reason: 'game-over' };
+  if (state.phase !== 'wave') return { ok: false, reason: 'not-in-wave' };
+  if (!isSpecialUnlocked(type, state.wave)) return { ok: false, reason: 'locked' };
+  if (state.specialCharges <= 0) return { ok: false, reason: 'no-charge' };
+  const { x, y } = point;
+  if (!(x >= 0 && x <= MAP.width && y >= 0 && y <= MAP.height)) return { ok: false, reason: 'out-of-bounds' };
+  state.specialCharges -= 1;
+  const def = SPECIAL_DEFS[type];
+  const inside = state.enemies.filter((enemy) => {
+    const p = enemyPosition(enemy);
+    return Math.hypot(p.x - x, p.y - y) <= def.radius;
+  });
+  state.events.push({ kind: 'special', type, x, y, radius: def.radius, hits: inside.length });
+  for (const enemy of inside) {
+    if (def.damage > 0) enemy.hp -= def.damage;
+    if (def.slow > 0) {
+      const applied = applySlow(enemy, def.slow, def.slowTicks);
+      if (applied !== null) state.events.push({ kind: 'slowed', enemyId: enemy.id, slow: applied, ticks: def.slowTicks });
+    }
+    if (def.burnDps > 0) applyBurn(enemy, def.burnDps, def.burnTicks);
+  }
+  const before = state.enemies.length;
+  removeDead(state, 'special');
+  return { ok: true, hits: inside.length, kills: before - state.enemies.length, gold: state.gold };
 }
