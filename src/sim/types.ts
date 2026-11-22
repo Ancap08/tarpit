@@ -85,6 +85,12 @@ export interface Enemy {
   burnDps?: number;
   /** Ticks left on the current burn; 0 or absent means no burn applies. */
   burnTicksLeft?: number;
+  /**
+   * Kill counts (milestone 25c): the cell of the tower whose burn is active,
+   * so a burn kill counts for that tower. Absent for a special's burn (Fire
+   * Arrows) and for no burn; cleared if that tower is sold.
+   */
+  burnOwner?: Cell;
 }
 
 export interface GroupDef {
@@ -167,6 +173,12 @@ export interface Tower {
   unlockedSpend: number;
   /** The upgrade was bought during the current setup phase (undoable); cleared by startWave. */
   upgradedThisPhase: boolean;
+  /**
+   * Enemies this tower killed (milestone 25c): its shot (splash included)
+   * or its burn dealt the killing damage. Special kills count for no tower.
+   * 0 at build, so a sell and rebuild resets it; kept on move and upgrade.
+   */
+  kills: number;
 }
 
 /**

@@ -167,6 +167,7 @@ describe('moveTower', () => {
         locked: false,
         unlockedSpend: 85,
         upgradedThisPhase: true,
+        kills: 0,
       },
     ]);
     // Still unlocked after a move: the undo and the full refund work from the new cell.

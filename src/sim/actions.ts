@@ -74,6 +74,7 @@ export function buildTower(state: GameState, cell: Cell, type: TowerType): Build
     locked: !setup,
     unlockedSpend: setup ? cost : 0,
     upgradedThisPhase: false,
+    kills: 0,
   };
   state.towers.push(tower);
   state.towers.sort((a, b) => cellKey(a.cell) - cellKey(b.cell));
@@ -114,6 +115,9 @@ export function sellTower(state: GameState, cell: Cell): SellResult {
   const refund = towerSellValue(tower);
   state.gold += refund;
   state.towers = state.towers.filter((t) => t !== tower);
+  // Kill counts (milestone 25c): its burns no longer count for anyone, so a
+  // tower built later on the same cell does not inherit them.
+  for (const enemy of state.enemies) if (enemy.burnOwner && sameCell(enemy.burnOwner, tower.cell)) delete enemy.burnOwner;
   state.events.push({ kind: 'sell', cell: { col: tower.cell.col, row: tower.cell.row }, tower: tower.type, refund, full });
   return { ok: true, refund, gold: state.gold };
 }

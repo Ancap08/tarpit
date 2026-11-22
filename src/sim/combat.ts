@@ -11,7 +11,7 @@
 // spawns.
 
 import { cappedSlow, ENEMY_STATS, isBoss, isFlying, isTarred, shotDamage } from './enemies';
-import { cellCenter } from './grid';
+import { cellCenter, sameCell, type Cell } from './grid';
 import { MAP, positionAlongPath } from './map';
 import { secondsToTicks, TICKS_PER_SECOND } from './time';
 import { shotCooldown, towerStats } from './towers';
@@ -120,13 +120,18 @@ export function applySpecialSlow(enemy: Enemy, slow: number, ticks: number): num
 /**
  * Apply a burn. Burns do not stack: a burn with dps equal to or greater than
  * the active one replaces it (strength and duration); a weaker one does
- * nothing.
+ * nothing. `owner` (milestone 25c) is the cell of the tower applying it, so
+ * its burn kills count for that tower; leave it out for a special's burn.
+ * The owner changes only when the burn is applied. Returns whether it was.
  */
-export function applyBurn(enemy: Enemy, dps: number, ticks: number): void {
+export function applyBurn(enemy: Enemy, dps: number, ticks: number, owner?: Cell): boolean {
   const active = (enemy.burnTicksLeft ?? 0) > 0 ? (enemy.burnDps ?? 0) : 0;
-  if (dps < active) return;
+  if (dps < active) return false;
   enemy.burnDps = dps;
   enemy.burnTicksLeft = ticks;
+  if (owner) enemy.burnOwner = { col: owner.col, row: owner.row };
+  else delete enemy.burnOwner;
+  return true;
 }
 
 /**
@@ -153,11 +158,17 @@ export function burnEnemies(state: GameState): void {
 /**
  * Remove dead enemies (isDead), pay their bounty and record each kill.
  * Exported for specials (milestone 25b, cause 'special').
+ * Kill counts (milestone 25c): a 'shot' kill counts for `killer`, the tower
+ * that just fired (its splash kills too); a 'burn' kill counts for the tower
+ * on the enemy's burnOwner cell, if one still stands there; a 'special'
+ * kill counts for no tower.
  */
-export function removeDead(state: GameState, cause: KillCause): void {
+export function removeDead(state: GameState, cause: KillCause, killer?: Tower): void {
   const alive: Enemy[] = [];
   for (const enemy of state.enemies) {
     if (isDead(enemy)) {
+      const credited = cause === 'shot' ? killer : cause === 'burn' ? burnOwnerTower(state, enemy) : undefined;
+      if (credited) credited.kills = (credited.kills ?? 0) + 1;
       const bounty = ENEMY_STATS[enemy.type].bounty;
       state.gold += bounty;
       state.events.push({ kind: 'kill', enemyId: enemy.id, enemyType: enemy.type, bounty, cause });
@@ -165,6 +176,13 @@ export function removeDead(state: GameState, cause: KillCause): void {
     } else alive.push(enemy);
   }
   state.enemies = alive;
+}
+
+/** The tower standing on the cell whose burn is on this enemy, if any. */
+function burnOwnerTower(state: GameState, enemy: Enemy): Tower | undefined {
+  const owner = enemy.burnOwner;
+  if (!owner) return undefined;
+  return state.towers.find((t) => sameCell(t.cell, owner));
 }
 
 /** One tower's step: count down, then fire if ready and a target is in range. */
@@ -204,10 +222,10 @@ function towerStep(state: GameState, tower: Tower): void {
   }
   // A burn does not stick to a flying enemy: no surface to burn.
   if (stats.burnDps > 0 && !isDead(target) && !isFlying(target)) {
-    applyBurn(target, stats.burnDps, secondsToTicks(stats.burnDuration));
+    applyBurn(target, stats.burnDps, secondsToTicks(stats.burnDuration), tower.cell);
   }
   tower.cooldownTicks = shotCooldown(stats);
-  removeDead(state, 'shot');
+  removeDead(state, 'shot', tower);
 }
 
 /** Every tower takes its step, in cellKey order; kills resolve between towers. */

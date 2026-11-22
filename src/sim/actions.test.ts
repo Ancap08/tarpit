@@ -27,6 +27,7 @@ describe('buildTower', () => {
         locked: false,
         unlockedSpend: 50,
         upgradedThisPhase: false,
+        kills: 0,
       },
     });
     expect(s.gold).toBe(50);

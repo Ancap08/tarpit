@@ -91,7 +91,7 @@ describe('verifier 2: economy', () => {
     expect(r.ok).toBe(true);
     expect(g.gold).toBe(5);
     expect(g.towers).toEqual([
-      { cell: { col: 7, row: 7 }, type: 'cannon', upgraded: false, targeting: 'first', cooldownTicks: 0, spent: 80, locked: true, unlockedSpend: 0, upgradedThisPhase: false },
+      { cell: { col: 7, row: 7 }, type: 'cannon', upgraded: false, targeting: 'first', cooldownTicks: 0, spent: 80, locked: true, unlockedSpend: 0, upgradedThisPhase: false, kills: 0 },
     ]);
   });
 
