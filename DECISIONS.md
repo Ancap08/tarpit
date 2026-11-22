@@ -979,3 +979,39 @@ can change it; "Kyle" means Kyle decided.
 - **Open, for a real phone:** an iPhone on silent silences the game (the
   normal behaviour for web audio); a sound on the very first tap may be
   dropped while audio starts. Accepted (Fable).
+
+## 2026-11-23, milestone 34 (a living map) and Kyle's phone notes
+
+- **The map is drawn with texture, growth and motion; drawing only.** A
+  fixed seeded recipe per map: grass patches, tufts, flowers, stones, a
+  worn trail; trees and bushes on buildable cells at least 2 cells from
+  the trail, hidden when a tower is built on their cell and restored when
+  it leaves; water crests, chimney smoke, sway, two cloud shadows, a bird,
+  a butterfly and cave eyes. Still in test mode and under reduced motion.
+  Kyle (idea), Fable (scope and rules), Opus (build), Sonnet (checked with
+  its own geometry and contrast measure).
+- **Rulings during the build (Fable, from frames):** growth may sit under
+  the transient wave banners (the first rule left the middle of every map
+  bare); the river's straight flow lines read as rain and became wave
+  crests; ruts made fainter; one repeated tree disc read as polka dots and
+  became four shapes in three sizes.
+- **Readability margin accepted:** enemies against the ground within 2% of
+  before on average and within 10% at the 10th percentile (measured 0.6%
+  and 9.6%). Fable.
+- **Cost accepted:** none with WebGL. With the Canvas fallback under 20
+  times CPU throttling, 17 to 19% fewer frames in landscape and about 46%
+  on the phone layout. Players get WebGL. Sonnet (measured), Fable.
+- **Kyle played on his phone (2026-11-22).** Placing is easier than on the
+  iPad the day before but still not easy, and the page zooms out and is
+  hard to centre again. The upright map is fine if it does not hurt play
+  (it changes no rule). Specials need a little more damage and to last a
+  little longer. Endless should be a little harder. He plans many more
+  levels and maps. Kyle.
+- **Approved by Kyle:** go from 10 to 20 waves with a reward pick every 5
+  waves ("getting something while you complete more levels"). Fable
+  proposed the shape (two acts, a second and bigger boss, a pick of one of
+  three boons after waves 5, 10 and 15, endless after wave 20) and to do
+  it in one balance pass with stronger specials and a harder endless.
+- **Next, in order:** phone fixes (no page zoom or scroll, snap to the
+  nearest valid cell, a magnifier while dragging), then the 20-wave game.
+  Fable.
