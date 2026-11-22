@@ -1,7 +1,7 @@
 // Special attack effects (milestone 25b, reworked in milestone 30 so a
 // player can see a special land):
 //   keg         a flash and a ring expanding to the radius (0.4 s), a short
-//               camera shake (GameScene) and a scorch mark fading over 2 s
+//               map-only shake (fx/effects.ts, milestone 31) and a scorch mark fading over 2 s
 //   tarBarrel   a splash ring (0.3 s), then the tar puddle of its zone
 //   fireArrows  8 arrows falling into the circle (0.4 s), then the burning
 //               patch of its zone

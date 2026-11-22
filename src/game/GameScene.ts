@@ -311,9 +311,6 @@ const AIM_CROSS = 9;
 /** The aim banner's box (milestone 30): top edge and height, centred across the map. */
 const BANNER_Y = 8;
 const BANNER_H = 46;
-/** The keg's camera shake (milestone 30): duration in ms and intensity (share of the view). */
-const KEG_SHAKE_MS = 220;
-const KEG_SHAKE = 0.008;
 /** The aim circle's colour per special. */
 export const SPECIAL_COLORS: Readonly<Record<SpecialType, number>> = {
   keg: COLORS.specialKeg,
@@ -1193,7 +1190,8 @@ export class GameScene extends Phaser.Scene {
     if (result.ok) {
       const landed = this.state.events.slice(from).find((e) => e.kind === 'special');
       if (landed?.kind === 'special') this.specialFx.add(landed);
-      if (type === 'keg' && this.autoTick && this.fx?.shakesAllowed) this.cameras.main.shake(KEG_SHAKE_MS, KEG_SHAKE);
+      // Milestone 31: the map-only shake (fx/effects.ts), off under reduced motion; none in test mode.
+      if (type === 'keg') this.fx?.shakeKeg();
     }
     this.takeEvents();
     this.redraw();

@@ -90,6 +90,8 @@ export const COLORS = {
   bossBurst: 0xffd23a,
   bossBurstRing: 0xff7a1a,
   sparkle: 0xfff2a8,
+  // A dark edge under splash and boss rings, so they read on the trail and on grass.
+  fxDark: 0x14161a,
 
   // HUD
   hudBar: 0x1b1f24,

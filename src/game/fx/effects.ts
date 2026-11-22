@@ -42,6 +42,9 @@ import {
   arcHeight,
   arcPosition,
   BannerQueue,
+  BOSS_RING_DELAYS,
+  BOSS_RING_MS,
+  BOSS_RING_RADII,
   CAPS,
   darkenAlpha,
   EXIT_FLASH_MS,
@@ -54,6 +57,7 @@ import {
   RECOIL_PX,
   recoilOffset,
   SHAKE,
+  shakeOffset,
   SlotPool,
   TRAVEL_MS,
   TURN_RATE,
@@ -63,14 +67,14 @@ import {
 
 /** Impact lengths (game ms). */
 const IMPACT_MS: Readonly<Record<ImpactKind, number>> = {
-  splash: 300,
-  tar: 400,
-  fire: 260,
-  muzzle: 70,
-  bossRing: 700,
+  splash: 380,
+  tar: 420,
+  fire: 300,
+  muzzle: 100,
+  bossRing: BOSS_RING_MS,
 };
 /** The boss's death flash over the whole map (real ms; off under reduced motion). */
-const BOSS_FLASH_MS = 160;
+const BOSS_FLASH_MS = 220;
 /** Map area (the HUD starts at y 480). */
 const MAP_W = 960;
 const MAP_H = 480;
@@ -140,6 +144,8 @@ export interface FxState {
   livesFlashing: boolean;
   pendingKills: number;
   gameMs: number;
+  /** The map camera's scroll and whether the still HUD camera is split off (a shake is running). */
+  camera: { x: number; y: number; split: boolean };
 }
 
 const SMOKE_KEY = 'fx-smoke';
@@ -182,6 +188,12 @@ export class Effects {
   private readonly counts = { shakes: 0, darkenings: 0, screenFlashes: 0, bossEntrances: 0, bossDeaths: 0, exitFlashes: 0 };
   private lastLivesKey = '';
   private lastTurnMs: number | null = null;
+  private shakeAt = -Infinity;
+  private shakeMs = 0;
+  private shakePx = 0;
+  /** While a shake runs: the HUD's own still camera, so only the map shakes. */
+  private hudCam: Phaser.Cameras.Scene2D.Camera | null = null;
+  private savedBg = '';
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -294,8 +306,8 @@ export class Effects {
     pose.firedMs = this.gameMs;
     const m = muzzlePoint(shot);
     if (shot.tower === 'musketeer' || shot.tower === 'cannon' || shot.tower === 'mortar') {
-      this.addImpact('muzzle', m.x, m.y, shot.tower === 'musketeer' ? 5 : 8, pose.targetAngle, COLORS.muzzleFlash);
-      this.smoke.explode(shot.tower === 'musketeer' ? 1 : 3, m.x, m.y);
+      this.addImpact('muzzle', m.x, m.y, shot.tower === 'musketeer' ? 8 : 12, pose.targetAngle, COLORS.muzzleFlash);
+      this.smoke.explode(shot.tower === 'musketeer' ? 2 : 4, m.x, m.y);
     }
   }
 
@@ -403,14 +415,16 @@ export class Effects {
   private killNow(id: number, bounty: number): void {
     const spot = this.sprites.spot(id);
     this.sprites.kill(id);
-    if (spot && bounty > 0) this.addGold(spot.x, spot.y - 10, bounty);
+    if (spot && bounty > 0) this.addGold(spot.x, spot.y - 10, bounty, spot.type === 'boss');
   }
 
-  private addGold(x: number, y: number, amount: number): void {
-    const { slot } = this.gold.add(x, y, amount, this.realMs);
+  /** A gold label; the boss's (`big`) is large and stands alone. */
+  private addGold(x: number, y: number, amount: number, big = false): void {
+    const { slot, merged } = this.gold.add(x, y, amount, this.realMs, big);
     const label = this.gold.labels[slot]!;
     const t = this.goldTexts[slot];
     if (!t) return;
+    if (!merged) t.setFontSize(big ? 34 : 17).setStroke(TEXT.fxStroke, big ? 6 : 4);
     t.setText(goldGainText(label.amount)).setVisible(true);
   }
 
@@ -427,23 +441,62 @@ export class Effects {
     this.counts.bossDeaths += 1;
     const spot = this.sprites.spot(id);
     const p = spot ?? { x: MAP_W / 2, y: MAP_H / 2 };
-    this.sparks.explode(40, p.x, p.y - 20);
-    this.addImpact('bossRing', p.x, p.y - 20, 90, 0, COLORS.bossBurstRing);
+    // The biggest effect in the game: three rings one after another, a
+    // large spark, dust and smoke burst, held about a second.
+    this.sparks.explode(110, p.x, p.y - 20);
+    this.dust.explode(40, p.x, p.y - 10);
+    this.smoke.explode(24, p.x, p.y - 20);
+    BOSS_RING_DELAYS.forEach((delay, i) => this.addImpact('bossRing', p.x, p.y - 20, BOSS_RING_RADII[i], 0, COLORS.bossBurstRing, delay));
     if (this.reducedMotion) return;
     this.flashAt = this.realMs;
     this.counts.screenFlashes += 1;
     this.shake(SHAKE.bossDeath);
   }
 
-  private shake(s: { ms: number; intensity: number }): void {
-    if (this.reducedMotion) return;
-    this.counts.shakes += 1;
-    this.scene.cameras.main.shake(s.ms, s.intensity);
+  /** The Powder Keg's shake (GameScene, milestone 30), through the same map-only shake. */
+  shakeKeg(): void {
+    this.shake(SHAKE.keg);
   }
 
-  private addImpact(kind: ImpactKind, x: number, y: number, radius: number, angle: number, color: number): void {
+  /**
+   * Shake the map, not the HUD: while it runs the main camera shows only
+   * the map rows (its background is grass, so an edge it uncovers shows
+   * grass, never the black canvas) and a second, still camera draws the
+   * HUD rows. The offset never scrolls down (shakeOffset), so the map
+   * camera never shows the HUD.
+   */
+  private shake(s: { ms: number; px: number }): void {
+    if (this.reducedMotion) return;
+    this.counts.shakes += 1;
+    this.shakeAt = this.realMs;
+    this.shakeMs = s.ms;
+    this.shakePx = s.px;
+    if (this.hudCam !== null) return;
+    const cam = this.scene.cameras.main;
+    this.savedBg = cam.backgroundColor.rgba;
+    cam.setViewport(0, 0, MAP_W, MAP_H).setBackgroundColor(COLORS.grass);
+    const h = this.scene.scale.gameSize.height - MAP_H;
+    this.hudCam = this.scene.cameras.add(0, MAP_H, MAP_W, h).setScroll(0, MAP_H);
+  }
+
+  private applyShake(): void {
+    if (this.hudCam === null) return;
+    const ms = this.realMs - this.shakeAt;
+    const cam = this.scene.cameras.main;
+    if (ms >= this.shakeMs) {
+      this.scene.cameras.remove(this.hudCam);
+      this.hudCam = null;
+      cam.setViewport(0, 0, MAP_W, this.scene.scale.gameSize.height).setScroll(0, 0).setBackgroundColor(this.savedBg);
+      return;
+    }
+    const o = shakeOffset(ms, this.shakeMs, this.shakePx);
+    cam.setScroll(o.x, o.y);
+  }
+
+  /** An impact; `delayMs` (game ms) holds it back, as the boss's later rings. */
+  private addImpact(kind: ImpactKind, x: number, y: number, radius: number, angle: number, color: number, delayMs = 0): void {
     const { slot } = this.impactPool.acquire();
-    this.impacts[slot] = { kind, x, y, radius, angle, color, bornMs: this.gameMs };
+    this.impacts[slot] = { kind, x, y, radius, angle, color, bornMs: this.gameMs + delayMs };
   }
 
   /** A projectile arrived: its impact. */
@@ -452,20 +505,23 @@ export class Effects {
     switch (shot.tower) {
       case 'cannon':
         this.addImpact('splash', x, y, shot.splashRadius ?? 0, 0, COLORS.cannonSplash);
-        this.dust.explode(6, x, y);
+        this.dust.explode(10, x, y);
+        this.sparks.explode(6, x, y);
         break;
       case 'mortar':
         this.addImpact('splash', x, y, shot.splashRadius ?? 0, 0, COLORS.mortarSplash);
-        this.dust.explode(10, x, y);
+        this.dust.explode(16, x, y);
+        this.sparks.explode(8, x, y);
+        this.smoke.explode(3, x, y);
         break;
       case 'tarpit':
-        this.addImpact('tar', x, y, 7, 0, COLORS.tarSplat);
+        this.addImpact('tar', x, y, 9, 0, COLORS.tarSplat);
         break;
       case 'firepot':
-        this.addImpact('fire', x, y, 9, 0, COLORS.fireBurst);
+        this.addImpact('fire', x, y, 13, 0, COLORS.fireBurst);
         break;
       default:
-        this.dust.explode(2, x, y);
+        this.dust.explode(4, x, y);
         break;
     }
   }
@@ -533,6 +589,7 @@ export class Effects {
       if (t.text !== text) t.setText(text);
       t.setPosition(l.x, l.y - look.rise).setAlpha(look.alpha);
     }
+    this.applyShake();
     this.drawOverlays(state);
   }
 
@@ -560,7 +617,7 @@ export class Effects {
     for (const s of this.sells) {
       drawTowerScaled(g, s.type, cellCenter(s.cell), { angle: s.angle, recoil: 0, scale: Math.max(0.01, popScale('sell', this.realMs - s.atMs)) }, s.upgraded);
     }
-    for (const f of this.impacts) if (f) drawImpact(g, f, (now - f.bornMs) / IMPACT_MS[f.kind]);
+    for (const f of this.impacts) if (f && now >= f.bornMs) drawImpact(g, f, (now - f.bornMs) / IMPACT_MS[f.kind]);
     for (const p of this.projectiles) if (p) drawProjectile(g, p, (now - p.bornMs) / p.travelMs);
     const exit = flashFade(this.realMs - this.exitAt, EXIT_FLASH_MS);
     if (exit > 0) {
@@ -643,12 +700,8 @@ export class Effects {
       livesFlashing: flashFade(this.realMs - this.exitAt, EXIT_FLASH_MS) > 0,
       pendingKills: this.due.filter((d) => d.kind === 'kill').length,
       gameMs: this.gameMs,
+      camera: { x: this.scene.cameras.main.scrollX, y: this.scene.cameras.main.scrollY, split: this.hudCam !== null },
     };
-  }
-
-  /** Whether the keg's shake (GameScene) may run. */
-  get shakesAllowed(): boolean {
-    return !this.reducedMotion;
   }
 }
 
@@ -666,46 +719,63 @@ function drawProjectile(g: Phaser.GameObjects.Graphics, p: Projectile, t: number
   const a = arcPosition(p.from, p.to, t, p.height);
   const dx = Math.cos(a.angle);
   const dy = Math.sin(a.angle);
+  // A short bright trail behind fast shots: from where it was a little earlier.
+  const trail = (len: number, width: number, color: number, alpha: number) => {
+    const b = arcPosition(p.from, p.to, Math.max(0, t - len), p.height);
+    g.lineStyle(width, color, alpha).lineBetween(b.x, b.y, a.x, a.y);
+  };
   switch (p.tower) {
     case 'musketeer':
-      g.lineStyle(2.5, COLORS.muzzleFlash, 0.75);
-      g.lineBetween(a.x - dx * 12, a.y - dy * 12, a.x, a.y);
-      g.fillStyle(COLORS.musketBall, 1).fillCircle(a.x, a.y, 3);
+      trail(0.45, 5, COLORS.muzzleFlash, 0.35);
+      trail(0.3, 2.5, COLORS.muzzleFlash, 0.9);
+      g.fillStyle(COLORS.muzzleFlash, 1).fillCircle(a.x, a.y, 5.5);
+      g.fillStyle(COLORS.musketBall, 1).fillCircle(a.x, a.y, 4);
       break;
     case 'longbow':
-      g.lineStyle(2.5, COLORS.arrowShaft, 1);
-      g.lineBetween(a.x - dx * 14, a.y - dy * 14, a.x, a.y);
-      g.lineStyle(1.5, COLORS.arrowHead, 1);
-      g.lineBetween(a.x - dx * 14 - dy * 3.5, a.y - dy * 14 + dx * 3.5, a.x - dx * 10, a.y - dy * 10);
-      g.lineBetween(a.x - dx * 14 + dy * 3.5, a.y - dy * 14 - dx * 3.5, a.x - dx * 10, a.y - dy * 10);
-      g.fillStyle(COLORS.arrowHead, 1).fillTriangle(a.x + dx * 4, a.y + dy * 4, a.x - dy * 3, a.y + dx * 3, a.x + dy * 3, a.y - dx * 3);
+      trail(0.35, 2, COLORS.arrowHead, 0.55);
+      g.lineStyle(4, COLORS.musketBall, 0.6).lineBetween(a.x - dx * 16, a.y - dy * 16, a.x, a.y);
+      g.lineStyle(3, COLORS.arrowShaft, 1).lineBetween(a.x - dx * 16, a.y - dy * 16, a.x, a.y);
+      g.lineStyle(2, COLORS.arrowHead, 1);
+      g.lineBetween(a.x - dx * 16 - dy * 5, a.y - dy * 16 + dx * 5, a.x - dx * 11, a.y - dy * 11);
+      g.lineBetween(a.x - dx * 16 + dy * 5, a.y - dy * 16 - dx * 5, a.x - dx * 11, a.y - dy * 11);
+      g.fillStyle(COLORS.arrowHead, 1).fillTriangle(a.x + dx * 6, a.y + dy * 6, a.x - dy * 4, a.y + dx * 4, a.x + dy * 4, a.y - dx * 4);
       break;
     case 'cannon':
-      g.fillStyle(COLORS.shellShadow, 0.22).fillEllipse(a.groundX, a.groundY + 2, 8, 4);
-      g.fillStyle(COLORS.cannonBall, 1).fillCircle(a.x, a.y, 5.5);
-      g.fillStyle(COLORS.arrowHead, 0.6).fillCircle(a.x - 1.5, a.y - 1.5, 1.5);
+      g.fillStyle(COLORS.shellShadow, 0.35).fillEllipse(a.groundX, a.groundY + 3, 16, 7);
+      trail(0.25, 6, COLORS.smoke, 0.4);
+      g.fillStyle(COLORS.arrowHead, 0.9).fillCircle(a.x, a.y, 9);
+      g.fillStyle(COLORS.cannonBall, 1).fillCircle(a.x, a.y, 8);
+      g.fillStyle(COLORS.arrowHead, 0.7).fillCircle(a.x - 3, a.y - 3, 2.5);
       break;
     case 'mortar': {
       const lift = a.groundY - a.y;
       const high = p.height > 0 ? lift / p.height : 0;
-      g.fillStyle(COLORS.shellShadow, 0.4 - 0.1 * high).fillEllipse(a.groundX, a.groundY + 2, 14 - 5 * high, 7 - 2.5 * high);
-      g.fillStyle(COLORS.mortarShell, 1).fillCircle(a.x, a.y, 5 + 2 * high);
-      g.fillStyle(COLORS.muzzleFlash, 0.8).fillCircle(a.x - dx * 4, a.y - dy * 4, 1.5);
+      // A clear shadow on the ground, smaller and fainter the higher the shell.
+      g.fillStyle(COLORS.shellShadow, 0.5 - 0.15 * high).fillEllipse(a.groundX, a.groundY + 3, 22 - 8 * high, 10 - 3 * high);
+      trail(0.15, 7, COLORS.smoke, 0.45);
+      const r = 10 + 2 * high;
+      g.fillStyle(COLORS.arrowHead, 0.9).fillCircle(a.x, a.y, r + 1.5);
+      g.fillStyle(COLORS.mortarShell, 1).fillCircle(a.x, a.y, r);
+      g.fillStyle(COLORS.arrowHead, 0.6).fillCircle(a.x - r * 0.35, a.y - r * 0.35, r * 0.3);
+      g.fillStyle(COLORS.fireBurstCore, 1).fillCircle(a.x - dx * (r + 2), a.y - dy * (r + 2), 3);
       break;
     }
     case 'tarpit':
-      g.fillStyle(COLORS.tarSplat, 0.6).fillCircle(a.x - dx * 6, a.y - dy * 6, 2.5);
-      g.fillStyle(COLORS.tarSplat, 1).fillCircle(a.x, a.y, 6);
-      g.fillStyle(COLORS.tarpitHighlight, 0.8).fillCircle(a.x - 1.5, a.y - 1.5, 1.5);
+      g.fillStyle(COLORS.shellShadow, 0.3).fillEllipse(a.groundX, a.groundY + 3, 12, 5);
+      g.fillStyle(COLORS.tarSplat, 0.7).fillCircle(a.x - dx * 9, a.y - dy * 9, 4);
+      g.fillStyle(COLORS.tarpitHighlight, 0.9).fillCircle(a.x, a.y, 9);
+      g.fillStyle(COLORS.tarSplat, 1).fillCircle(a.x, a.y, 8);
+      g.fillStyle(COLORS.tarpitHighlight, 0.9).fillCircle(a.x - 2.5, a.y - 2.5, 2.5);
       break;
     case 'firepot': {
       // A gout: blobs from the pot to the head, growing toward the head.
-      for (let i = 4; i >= 0; i--) {
-        const u = Math.max(0, t - i * 0.12);
+      for (let i = 5; i >= 0; i--) {
+        const u = Math.max(0, t - i * 0.1);
         const b = arcPosition(p.from, p.to, u, 0);
-        const r = 6 - i;
-        g.fillStyle(i % 2 === 0 ? COLORS.fireBurst : COLORS.fireBurstCore, 0.9 - i * 0.12).fillCircle(b.x, b.y, r);
+        const r = 10 - i * 1.3;
+        g.fillStyle(i % 2 === 0 ? COLORS.fireBurst : COLORS.fireBurstCore, 0.95 - i * 0.1).fillCircle(b.x, b.y, r);
       }
+      g.fillStyle(COLORS.muzzleFlash, 1).fillCircle(a.x, a.y, 4);
       break;
     }
   }
@@ -715,35 +785,49 @@ function drawImpact(g: Phaser.GameObjects.Graphics, f: Impact, u: number): void 
   const a = Math.max(0, 1 - u);
   switch (f.kind) {
     case 'splash': {
-      const r = f.radius * (0.35 + 0.65 * Math.min(1, u * 1.6));
-      g.fillStyle(f.color, 0.35 * a).fillCircle(f.x, f.y, r);
-      g.lineStyle(2.5, f.color, 0.95 * a).strokeCircle(f.x, f.y, r);
+      // A bright flash at the centre first, then a bold ring out to the splash radius.
+      const r = f.radius * (0.35 + 0.65 * Math.min(1, u * 1.8));
+      if (u < 0.3) {
+        const k = 1 - u / 0.3;
+        g.fillStyle(COLORS.fireBurstCore, 0.9 * k).fillCircle(f.x, f.y, f.radius * 0.55);
+        g.fillStyle(COLORS.muzzleFlash, k).fillCircle(f.x, f.y, f.radius * 0.3);
+      }
+      g.fillStyle(f.color, 0.45 * a).fillCircle(f.x, f.y, r);
+      g.lineStyle(6, COLORS.fxDark, 0.5 * a).strokeCircle(f.x, f.y, r);
+      g.lineStyle(4, f.color, a).strokeCircle(f.x, f.y, r);
       break;
     }
     case 'tar':
-      g.fillStyle(f.color, 0.85 * a);
-      g.fillCircle(f.x, f.y, 7);
-      g.fillCircle(f.x - 6, f.y + 4, 4);
-      g.fillCircle(f.x + 6, f.y - 3, 3);
-      g.fillCircle(f.x + 3, f.y + 6, 3);
+      g.fillStyle(f.color, 0.9 * a);
+      g.fillCircle(f.x, f.y, f.radius);
+      g.fillCircle(f.x - 8, f.y + 5, 5);
+      g.fillCircle(f.x + 8, f.y - 4, 4);
+      g.fillCircle(f.x + 4, f.y + 8, 4);
+      g.fillCircle(f.x - 5, f.y - 7, 3);
       break;
     case 'fire':
-      g.fillStyle(COLORS.fireBurst, 0.85 * a).fillCircle(f.x, f.y, f.radius * (0.7 + 0.5 * u));
-      g.fillStyle(COLORS.fireBurstCore, a).fillCircle(f.x, f.y, f.radius * 0.45);
+      g.fillStyle(COLORS.fireBurst, 0.9 * a).fillCircle(f.x, f.y, f.radius * (0.7 + 0.6 * u));
+      g.fillStyle(COLORS.fireBurstCore, a).fillCircle(f.x, f.y, f.radius * 0.5);
+      g.fillStyle(COLORS.muzzleFlash, a).fillCircle(f.x, f.y, f.radius * 0.25);
       break;
     case 'muzzle': {
       const dx = Math.cos(f.angle);
       const dy = Math.sin(f.angle);
       const r = f.radius;
+      g.fillStyle(COLORS.fireBurst, 0.9 * a);
+      g.fillTriangle(f.x - dy * r * 0.8, f.y + dx * r * 0.8, f.x + dy * r * 0.8, f.y - dx * r * 0.8, f.x + dx * r * 2.2, f.y + dy * r * 2.2);
       g.fillStyle(f.color, a);
-      g.fillTriangle(f.x - dy * r * 0.6, f.y + dx * r * 0.6, f.x + dy * r * 0.6, f.y - dx * r * 0.6, f.x + dx * r * 1.8, f.y + dy * r * 1.8);
-      g.fillCircle(f.x, f.y, r * 0.6);
+      g.fillTriangle(f.x - dy * r * 0.5, f.y + dx * r * 0.5, f.x + dy * r * 0.5, f.y - dx * r * 0.5, f.x + dx * r * 1.6, f.y + dy * r * 1.6);
+      g.fillCircle(f.x, f.y, r * 0.7);
+      g.fillStyle(0xffffff, a).fillCircle(f.x, f.y, r * 0.35);
       break;
     }
     case 'bossRing': {
-      const r = f.radius * Math.min(1, 0.2 + u);
-      g.fillStyle(COLORS.bossBurst, 0.4 * a).fillCircle(f.x, f.y, r * 0.7);
-      g.lineStyle(5, f.color, a).strokeCircle(f.x, f.y, r);
+      const r = f.radius * Math.min(1, 0.15 + u * 1.3);
+      g.fillStyle(COLORS.bossBurst, 0.35 * a).fillCircle(f.x, f.y, r * 0.8);
+      g.lineStyle(10, COLORS.fxDark, 0.35 * a).strokeCircle(f.x, f.y, r);
+      g.lineStyle(7, f.color, a).strokeCircle(f.x, f.y, r);
+      g.lineStyle(3, COLORS.bossBurst, a).strokeCircle(f.x, f.y, r - 5);
       break;
     }
   }

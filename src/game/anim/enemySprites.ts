@@ -29,13 +29,15 @@
 // Milestone 31 (effects, play only): GameScene's Effects calls hit(), kill()
 // and remove() itself when a projectile lands, not when the tick fires. An
 // enemy killed by a shot still in flight is `doomed`: its sprite stays where
-// it died (sync does not drop it) until the shot arrives. A hit with a `from`
+// it died (sync does not drop it) until the shot arrives; meanwhile it
+// keeps its walk cycle and walks on along the trail at its last speed
+// (drawing only), so a slow shell does not freeze it. A hit with a `from`
 // point knocks the sprite a pixel or two away from it; the death puff is
 // sized to the enemy (fx/fxMath.ts deathPuff). Test mode never gets here
 // through Effects: onEvents() acts at once, as before.
 
 import Phaser from 'phaser';
-import { effectiveSlow, ENEMY_STATS, enemyPosition, isTarred, type Enemy, type EnemyType, type GameEvent, type GameState, type MapDef } from '../../sim';
+import { effectiveSlow, ENEMY_STATS, enemyPosition, isTarred, positionAlongPath, type Enemy, type EnemyType, type GameEvent, type GameState, type MapDef } from '../../sim';
 import { bobOffset, DEATH_MS, burnPulse, FLAME_EVERY, HIT_FLASH_MS, Particles, statusTint, TINT } from './effects';
 import { awayFrom, deathPuff, KNOCK_MS, knockPx, knockShare } from '../fx/fxMath';
 import { facingAt } from './facing';
@@ -82,6 +84,10 @@ interface View {
   dying: boolean;
   /** Milestone 31: killed by a shot still in flight; kept in place until it lands. */
   doomed: boolean;
+  /** Scene time it was doomed; its last distance and px per tick, for the walk-on. */
+  doomedAt: number;
+  distance: number;
+  stepPx: number;
   /** Milestone 31: the knock direction (unit vector, px per share) and when it started (scene ms). */
   knockX: number;
   knockY: number;
@@ -179,7 +185,10 @@ export class EnemySprites {
   /** Milestone 31: this enemy died to a shot still in flight; keep its sprite until kill(). */
   doom(id: number): void {
     const v = this.views.get(id);
-    if (v && !v.dying) v.doomed = true;
+    if (v && !v.dying && !v.doomed) {
+      v.doomed = true;
+      v.doomedAt = this.scene.time.now;
+    }
   }
 
   /** Where an enemy's sprite stands and its type, or null (milestone 31: puffs and gold labels). */
@@ -242,7 +251,21 @@ export class EnemySprites {
       this.update(this.views.get(enemy.id) ?? this.create(enemy, state.map), enemy, state.map, timeScale);
     }
     // An enemy gone without a kill or exit event (a test hook, a restart): drop it.
-    for (const [id, v] of this.views) if (!live.has(id) && !v.dying && !v.doomed) this.remove(id);
+    for (const [id, v] of this.views) {
+      if (live.has(id) || v.dying) continue;
+      if (v.doomed) this.walkOn(v, state.map, timeScale);
+      else this.remove(id);
+    }
+  }
+
+  /** A doomed sprite walks on along the trail at its last speed until its shot lands (play only). */
+  private walkOn(v: View, map: MapDef, timeScale: number): void {
+    const ticks = ((this.scene.time.now - v.doomedAt) / (1000 / 60)) * timeScale;
+    const { x, y } = positionAlongPath(map, v.distance + v.stepPx * ticks);
+    const lift = SHEETS[v.type].lift ?? 0;
+    v.sprite.setPosition(x, y - lift).setDepth(y);
+    v.sprite.anims.timeScale = timeScale;
+    v.shield?.setPosition(x + SHIELD_DX, y + SHIELD_DY).setDepth(y + 0.5);
   }
 
   private create(enemy: Enemy, map: MapDef): View {
@@ -279,6 +302,9 @@ export class EnemySprites {
       slowed: false,
       dying: false,
       doomed: false,
+      doomedAt: 0,
+      distance: enemy.distance,
+      stepPx: 0,
       knockX: 0,
       knockY: 0,
       knockAt: -1,
@@ -324,6 +350,8 @@ export class EnemySprites {
     }
     this.setFacing(v, facingAt(map, enemy.distance, this.step(enemy)));
     v.sprite.anims.timeScale = timeScale;
+    v.distance = enemy.distance;
+    v.stepPx = this.step(enemy);
     v.burning = (enemy.burnTicksLeft ?? 0) > 0;
     v.slowed = isTarred(enemy);
     v.redraws += 1;

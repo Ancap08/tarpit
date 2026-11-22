@@ -20,6 +20,8 @@ import {
   KNOCK_MS,
   knockShare,
   livesShake,
+  SHAKE,
+  shakeOffset,
   popScale,
   POP_MS,
   RECOIL_MS,
@@ -35,7 +37,8 @@ import {
 const banner = (text: string) => ({ text, sub: '', big: false });
 
 describe('travel times and arcs', () => {
-  it('every tower takes 0.1 to 0.4 s and the mortar is the slowest', () => {
+  it('every tower takes 0.1 to 0.4 s and the mortar is the slowest (320 ms)', () => {
+    expect(TRAVEL_MS.mortar).toBe(320);
     for (const t of Object.keys(TRAVEL_MS) as TowerType[]) {
       expect(TRAVEL_MS[t]).toBeGreaterThanOrEqual(100);
       expect(TRAVEL_MS[t]).toBeLessThanOrEqual(400);
@@ -191,6 +194,16 @@ describe('GoldGroups', () => {
     expect(g.count).toBeLessThanOrEqual(CAPS.goldLabels);
   });
 
+  it("the boss's label stands alone: never absorbs or joins another kill", () => {
+    const g = new GoldGroups();
+    const goblin = g.add(100, 100, 2, 0);
+    const boss = g.add(100, 100, 150, 10, true);
+    expect(boss.merged).toBe(false);
+    expect(boss.slot).not.toBe(goblin.slot);
+    expect(g.add(100, 100, 2, 20).slot).toBe(goblin.slot);
+    expect(g.labels[boss.slot]).toMatchObject({ amount: 150, big: true });
+  });
+
   it('labels expire GOLD_LIFE_MS after their last kill', () => {
     const g = new GoldGroups();
     const { slot } = g.add(0, 0, 2, 0);
@@ -246,6 +259,21 @@ describe('moments', () => {
     expect(darkenAlpha(-1)).toBe(0);
     expect(darkenAlpha(DARKEN_MS / 2)).toBe(DARKEN_ALPHA);
     expect(darkenAlpha(DARKEN_MS)).toBe(0);
+  });
+
+  it('a shake stays inside its bounds, never scrolls down onto the HUD, and stops', () => {
+    for (const s of Object.values(SHAKE)) {
+      let moved = 0;
+      for (let ms = 0; ms < s.ms + 50; ms += 3) {
+        const o = shakeOffset(ms, s.ms, s.px);
+        expect(Math.abs(o.x)).toBeLessThanOrEqual(s.px);
+        expect(o.y).toBeLessThanOrEqual(0);
+        expect(o.y).toBeGreaterThanOrEqual(-s.px);
+        if (o.x !== 0 || o.y !== 0) moved++;
+      }
+      expect(moved).toBeGreaterThan(5);
+      expect(shakeOffset(s.ms, s.ms, s.px)).toEqual({ x: 0, y: 0 });
+    }
   });
 
   it('the Lives shake is a few px and stops', () => {

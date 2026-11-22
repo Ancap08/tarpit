@@ -119,7 +119,7 @@ test('a shot is a projectile that lands after its travel time (110 ms for the mu
   expect(s.slice(gone).some((x) => x.goldLabels.includes('+2'))).toBe(true);
 });
 
-test('travel follows game speed: at 3x a mortar shell lands in about a third of its 400 ms', async ({ page }) => {
+test('travel follows game speed: at 3x a mortar shell lands in about a third of its 320 ms', async ({ page }) => {
   await startPlay(page);
   await page.evaluate(() => (window.__tarpit!.game.scene.getScene('game') as unknown as { setSpeed(s: number): void }).setSpeed(3));
   // The mortar's minimum range is 70 px, so it sits further from the trail.
@@ -140,8 +140,8 @@ test('travel follows game speed: at 3x a mortar shell lands in about a third of 
   expect(first).toBeGreaterThan(0);
   const gone = s.findIndex((x, i) => i > first && x.projectiles === 0);
   expect(gone).toBeGreaterThan(first);
-  expect(s[gone].gameMs - s[first].gameMs).toBeGreaterThanOrEqual(380);
-  expect(s[gone].now - s[first].now).toBeLessThanOrEqual(400 / 3 + 60);
+  expect(s[gone].gameMs - s[first].gameMs).toBeGreaterThanOrEqual(300);
+  expect(s[gone].now - s[first].now).toBeLessThanOrEqual(320 / 3 + 60);
 });
 
 test('a barrel turns toward its target over several frames, never faster than 10 rad/s of game time', async ({ page }) => {
@@ -246,6 +246,10 @@ test('the boss arrives once with his name, a darkening and a shake, and dies onc
     for (const e of scene.state.enemies) if (e.type === 'boss') e.hp = 1;
   });
   await page.waitForFunction(() => window.__tarpit!.fx()!.bossDeaths === 1, undefined, { timeout: 10_000 });
+  // His gold stands alone and large; the burst's three rings are drawn.
+  const after = (await page.evaluate(() => window.__tarpit!.fx()))!;
+  expect(after.goldLabels).toContain('+150');
+  expect(after.impacts).toBeGreaterThanOrEqual(3);
   await page.waitForTimeout(800);
   expect((await page.evaluate(() => window.__tarpit!.fx()))!).toMatchObject({ bossEntrances: 1, bossDeaths: 1, screenFlashes: 1, shakes: 2 });
 });
@@ -313,4 +317,116 @@ test('caps hold under the perf horde: 120 Goblins and 25 towers', async ({ page 
   expect(max('g')).toBeLessThanOrEqual(10);
   expect(max('g')).toBeGreaterThan(0);
   expect(max('parts')).toBeLessThanOrEqual(120);
+});
+
+/**
+ * Every frame for `ms`: the camera state, whether the left column or top
+ * row of the canvas shows the page background (#111418, the "black edge"),
+ * and the colour of the HUD's top line at a few x (it must never move).
+ */
+async function shakeFrames(page: Page, ms: number) {
+  return page.evaluate(
+    (ms) =>
+      new Promise<{ x: number; y: number; split: boolean; edge: boolean; hud: string }[]>((resolve) => {
+        const canvas = window.__tarpit!.game.canvas;
+        const ctx = canvas.getContext('2d')!;
+        const out: { x: number; y: number; split: boolean; edge: boolean; hud: string }[] = [];
+        const end = performance.now() + ms;
+        const bg = (d: Uint8ClampedArray, i: number) => d[i] === 0x11 && d[i + 1] === 0x14 && d[i + 2] === 0x18;
+        const frame = (now: number) => {
+          const left = ctx.getImageData(0, 0, 2, 480).data;
+          const top = ctx.getImageData(0, 0, 960, 2).data;
+          const right = ctx.getImageData(958, 0, 2, 480).data;
+          let edge = false;
+          for (const d of [left, top, right]) for (let i = 0; i < d.length && !edge; i += 4) edge = bg(d, i);
+          const hud = [10, 300, 700]
+            .map((x) => Array.from(ctx.getImageData(x, 480, 1, 1).data.slice(0, 3)).join(','))
+            .join('|');
+          out.push({ ...window.__tarpit!.fx()!.camera, edge, hud });
+          if (now < end) requestAnimationFrame(frame);
+          else resolve(out);
+        };
+        requestAnimationFrame(frame);
+      }),
+    ms,
+  );
+}
+
+test("a shake moves only the map, never shows the canvas edge, and the HUD stays still", async ({ page }) => {
+  await startPlay(page);
+  const before = await shakeFrames(page, 100);
+  await bossArrives(page);
+  const s = await shakeFrames(page, 900);
+  const moving = s.filter((f) => f.x !== 0 || f.y !== 0);
+  expect(moving.length, 'the map moved on several frames').toBeGreaterThan(5);
+  for (const f of s) {
+    expect(Math.abs(f.x)).toBeLessThanOrEqual(5);
+    expect(f.y).toBeLessThanOrEqual(0);
+    expect(f.edge, 'no strip of page background at the canvas edge').toBe(false);
+    expect(f.hud).toBe(before[0].hud);
+  }
+  expect(s.some((f) => f.split)).toBe(true);
+  // After the shake the camera is whole again.
+  expect(s.at(-1)).toMatchObject({ x: 0, y: 0, split: false });
+});
+
+test('the Powder Keg shakes the same way, once', async ({ page }) => {
+  await startPlay(page);
+  await page.evaluate(() => (window.__tarpit!.game.scene.getScene('game') as unknown as { startWave(): unknown }).startWave());
+  const r = await page.evaluate(() =>
+    (window.__tarpit!.game.scene.getScene('game') as unknown as { useSpecialAt(t: string, x: number, y: number): { ok: boolean } }).useSpecialAt('keg', 160, 120),
+  );
+  expect(r.ok).toBe(true);
+  const s = await shakeFrames(page, 400);
+  expect(s.some((f) => f.split && (f.x !== 0 || f.y !== 0))).toBe(true);
+  for (const f of s) expect(f.edge).toBe(false);
+  expect((await page.evaluate(() => window.__tarpit!.fx()))!.shakes).toBe(1);
+});
+
+test('an enemy killed by a shell in flight keeps walking along the trail until it lands', async ({ page }) => {
+  await startPlay(page);
+  const cell = await page.evaluate(() => {
+    const scene = window.__tarpit!.game.scene.getScene('game') as unknown as { build(c: { col: number; row: number }, t: string): { ok: boolean } };
+    for (const [col, row] of [
+      [4, 3],
+      [5, 3],
+      [4, 11],
+      [5, 11],
+    ])
+      if (scene.build({ col, row }, 'mortar').ok) return { col, row };
+    return null;
+  });
+  expect(cell).not.toBeNull();
+  const s = await page.evaluate(
+    () =>
+      new Promise<{ x: number; y: number; frame: number }[]>((resolve) => {
+        type Scene = {
+          spawnHorde(n: number, span?: number): boolean;
+          state: { enemies: { hp: number }[] };
+          fx: { due: { kind: string; id: number }[] };
+          enemySprites: { spot(id: number): { x: number; y: number } | null };
+        };
+        const scene = window.__tarpit!.game.scene.getScene('game') as unknown as Scene;
+        scene.spawnHorde(1, 30);
+        for (const e of scene.state.enemies) e.hp = 1;
+        const out: { x: number; y: number; frame: number }[] = [];
+        let id = -1;
+        const end = performance.now() + 6000;
+        const frame = (now: number) => {
+          const kill = scene.fx.due.find((d) => d.kind === 'kill');
+          if (kill) id = kill.id;
+          if (kill) {
+            const spot = scene.enemySprites.spot(id)!;
+            out.push({ x: spot.x, y: spot.y, frame: window.__tarpit!.animState(id)?.frame ?? -1 });
+          }
+          if ((id >= 0 && !kill) || now > end) resolve(out);
+          else requestAnimationFrame(frame);
+        };
+        requestAnimationFrame(frame);
+      }),
+  );
+  expect(s.length, 'frames while the kill waited for its shell').toBeGreaterThan(5);
+  const moved = Math.hypot(s.at(-1)!.x - s[0].x, s.at(-1)!.y - s[0].y);
+  expect(moved, 'it walked on').toBeGreaterThan(3);
+  expect(new Set(s.map((f) => f.frame)).size, 'its walk cycle kept playing').toBeGreaterThan(1);
 });

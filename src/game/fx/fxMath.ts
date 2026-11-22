@@ -13,7 +13,7 @@ export const TRAVEL_MS: Readonly<Record<TowerType, number>> = {
   longbow: 220,
   tarpit: 240,
   cannon: 260,
-  mortar: 400,
+  mortar: 320,
 };
 
 /** Arc height as a share of the flight distance, and its floor and ceiling in px (0 = straight). */
@@ -213,6 +213,8 @@ export interface GoldLabel {
   amount: number;
   bornMs: number;
   lastMs: number;
+  /** The boss's bounty: drawn large, never grouped with other kills. */
+  big: boolean;
 }
 
 /**
@@ -230,17 +232,17 @@ export class GoldGroups {
     this.labels = new Array<GoldLabel | null>(cap).fill(null);
   }
 
-  add(x: number, y: number, amount: number, nowMs: number): { slot: number; merged: boolean } {
-    for (let i = 0; i < this.labels.length; i++) {
+  add(x: number, y: number, amount: number, nowMs: number, big = false): { slot: number; merged: boolean } {
+    for (let i = 0; i < this.labels.length && !big; i++) {
       const l = this.labels[i];
-      if (l && nowMs - l.bornMs <= GOLD_GROUP_MS && Math.hypot(l.x - x, l.y - y) <= GOLD_GROUP_PX) {
+      if (l && !l.big && nowMs - l.bornMs <= GOLD_GROUP_MS && Math.hypot(l.x - x, l.y - y) <= GOLD_GROUP_PX) {
         l.amount += amount;
         l.lastMs = nowMs;
         return { slot: i, merged: true };
       }
     }
     const { slot } = this.pool.acquire();
-    this.labels[slot] = { x, y, amount, bornMs: nowMs, lastMs: nowMs };
+    this.labels[slot] = { x, y, amount, bornMs: nowMs, lastMs: nowMs, big };
     return { slot, merged: false };
   }
 
@@ -354,11 +356,35 @@ export function flashFade(ms: number, durMs: number): number {
   return 1 - ms / durMs;
 }
 
-/** Camera shakes (real ms, Phaser intensity). Off under reduced motion. */
+/**
+ * Shakes (real ms, amplitude px). Off under reduced motion. Only the map
+ * shakes (GameScene splits off a still HUD camera while one runs).
+ */
 export const SHAKE = {
-  bossEntrance: { ms: 400, intensity: 0.006 },
-  bossDeath: { ms: 500, intensity: 0.01 },
+  bossEntrance: { ms: 400, px: 5 },
+  bossDeath: { ms: 600, px: 8 },
+  keg: { ms: 220, px: 6 },
 } as const;
+
+/**
+ * The map camera's scroll `ms` into a shake of `durMs` and `px`: x in
+ * [-px, px], y in [-px, 0] (never positive, so the view never slides down
+ * onto the HUD's rows), easing out to 0, and exactly 0 outside the shake.
+ * Deterministic (sines, no random).
+ */
+export function shakeOffset(ms: number, durMs: number, px: number): { x: number; y: number } {
+  if (ms < 0 || ms >= durMs || px === 0) return { x: 0, y: 0 };
+  const a = px * (1 - ms / durMs);
+  const t = ms / 1000;
+  const x = Math.round(a * Math.sin(t * 2 * Math.PI * 23) * Math.cos(t * 2 * Math.PI * 7));
+  const y = -Math.round(a * (0.5 + 0.5 * Math.sin(t * 2 * Math.PI * 19 + 1)));
+  return { x: x === 0 ? 0 : x, y: y === 0 ? 0 : y };
+}
+
+/** The boss's death burst: rings started this far apart (game ms), each lasting BOSS_RING_MS, out to these radii. */
+export const BOSS_RING_DELAYS = [0, 160, 320] as const;
+export const BOSS_RING_RADII = [80, 120, 160] as const;
+export const BOSS_RING_MS = 900;
 
 /** Lives number shake on an exit: px left-right, off under reduced motion. */
 export function livesShake(ms: number): number {
