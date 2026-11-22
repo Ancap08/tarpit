@@ -2,6 +2,20 @@ import { expect, test, type Page } from '@playwright/test';
 import { BOSS_NAME, PANEL_TEXT } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { TitleUiState } from '../src/game/TitleScene';
+import { MAP, positionAlongPath } from '../src/sim/map';
+
+// Milestone 25b frames (see the special tests below).
+const AIM_EXPECT = { wave: 4, aim: { x: 197, y: 96 }, enemies: 12, inside: ['harpy 7', 'wolf 8', 'wolf 9', 'harpy 10', 'wolf 11'] };
+const FIRED_EXPECT = {
+  aim: { x: 160, y: 221 },
+  ok: true,
+  hits: 5,
+  kills: 4,
+  before: 15,
+  after: 11,
+  hurt: ['goblin 2 18', 'goblin 4 18', 'troll 9 620'],
+  charges: 0,
+};
 
 // Screenshot checks on frozen frames (?test=1: no time passes unless the
 // test steps it). Baselines are generated on CI; local runs ignore them
@@ -384,6 +398,101 @@ test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splas
   });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('boss.png');
+});
+
+// Milestone 25b: aiming a Tar Barrel. Wave 4 (state.wave = 3, then Start
+// Wave) with the mid-wave frame's towers: Musketeer (7,5), Cannon (15,9),
+// Tar Pit (18,9). At step 420 a cluster of Wolves and Harpies is on the top
+// run (path distances 262 to 406); the pointer sits on Harpy 7 at
+// (197,96) and the 90 px circle covers 2 Harpies and 3 Wolves. The Special
+// button opened its popup and Tar Barrel was picked, so the popup is closed
+// and the button shows picked.
+const AIM_STEPS = 420;
+const AIM_TARGET_ID = 7;
+
+test('special aim: Tar Barrel circle over a cluster on wave 4', async ({ page }) => {
+  await open(page);
+  const r = await page.evaluate(
+    async ({ steps, id }) => {
+      const t = window.__tarpit as TarpitTestApi;
+      await t.startGame();
+      const s = t.state();
+      s.gold = 1000; // test setup: afford all three towers
+      s.wave = 3; // test setup: the next Start Wave plays wave 4
+      t.buildAt(7, 5, 'musketeer');
+      t.buildAt(15, 9, 'cannon');
+      t.buildAt(18, 9, 'tarpit');
+      t.startWave();
+      t.step(steps);
+      return { wave: t.state().wave, enemies: t.state().enemies, target: t.state().enemies.find((e) => e.id === id)?.distance };
+    },
+    { steps: AIM_STEPS, id: AIM_TARGET_ID },
+  );
+  const at = positionAlongPath(MAP, r.target!);
+  const aim = { x: Math.round(at.x), y: Math.round(at.y) };
+  const inside = r.enemies.filter((e) => {
+    const p = positionAlongPath(MAP, e.distance);
+    return Math.hypot(p.x - aim.x, p.y - aim.y) <= 90;
+  });
+  expect({ wave: r.wave, aim, enemies: r.enemies.length, inside: inside.map((e) => `${e.type} ${e.id}`) }).toEqual(AIM_EXPECT);
+  await click(page, 'special');
+  await click(page, 'special:tarBarrel');
+  await page.mouse.move(aim.x, aim.y);
+  const u = await ui(page);
+  expect(u.special).toEqual({ charges: 1, aiming: 'tarBarrel', unlocked: ['keg', 'tarBarrel'], menuOpen: false, aimPoint: aim });
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('special-aim.png');
+});
+
+// Milestone 25b: the tick after a Powder Keg in test mode, where effects are
+// instant (no flash): wave 5 (state.wave = 4) with the same three towers, at
+// step 600 the keg is fired at enemy 13's position (rounded), (160,221) on
+// the first climb: it hits 5, kills 4 and leaves Troll 9 at 620 of 700;
+// then one tick runs. Goblins 2 and 4 carry earlier tower damage.
+const FIRED_STEPS = 600;
+const FIRED_TARGET_ID = 13;
+
+test('special fired: the tick after a Powder Keg (test mode, no flash)', async ({ page }) => {
+  await open(page);
+  const r = await page.evaluate(
+    async ({ steps, id }) => {
+      const t = window.__tarpit as TarpitTestApi;
+      await t.startGame();
+      const s = t.state();
+      s.gold = 1000;
+      s.wave = 4; // test setup: the next Start Wave plays wave 5
+      t.buildAt(7, 5, 'musketeer');
+      t.buildAt(15, 9, 'cannon');
+      t.buildAt(18, 9, 'tarpit');
+      t.startWave();
+      t.step(steps);
+      return t.state().enemies.find((e) => e.id === id)?.distance;
+    },
+    { steps: FIRED_STEPS, id: FIRED_TARGET_ID },
+  );
+  const at = positionAlongPath(MAP, r!);
+  const aim = { x: Math.round(at.x), y: Math.round(at.y) };
+  const counts = await page.evaluate(({ x, y }) => {
+    const t = window.__tarpit as TarpitTestApi;
+    const before = t.state().enemies.length;
+    const res = t.useSpecialAt('keg', x, y);
+    const kills = t.events().filter((e) => e.kind === 'kill' && e.cause === 'special').length;
+    t.step(1);
+    const e = t.state().enemies;
+    return {
+      ok: res.ok,
+      hits: res.ok ? res.hits : -1,
+      kills,
+      before,
+      after: e.length,
+      hurt: e.filter((x) => x.hp < (x.type === 'troll' ? 700 : x.type === 'harpy' ? 40 : 30)).map((x) => `${x.type} ${x.id} ${x.hp}`),
+      charges: t.state().specialCharges,
+    };
+  }, aim);
+  expect({ aim, ...counts }).toEqual(FIRED_EXPECT);
+  await page.mouse.move(900, 440); // empty grass: no hover tint
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('special-fired.png');
 });
 
 // End screens: the HUD under the veil shows the final numbers.
