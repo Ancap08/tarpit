@@ -913,3 +913,39 @@ can change it; "Kyle" means Kyle decided.
   three places. Cache names now carry the scope path and registrations are
   matched by exact scope. Codex (finding), Opus (fix and wider check),
   Sonnet (rechecked by reverting each part).
+
+## 2026-11-22, milestone 32b (portrait layout)
+
+- **A window taller than wide gets a portrait layout; the "turn your
+  device" card is gone.** The canvas is 480 by 1194: a status strip, the
+  map turned a quarter turn clockwise so the trail runs down the screen,
+  a row of six tower buttons and a row with Special, Start Wave and speed.
+  One layout object owns every world-to-screen conversion; landscape is
+  the identity and is byte-identical to before, as is the simulation.
+  Kyle (ask), Fable (design), Opus (build), Sonnet (all 450 cell mappings
+  checked).
+- **Sizes on a 390 px phone opened from the home screen:** buttons about
+  45 px, map cells about 20 px, the game 307 px wide with side bars. In
+  Safari with its bars buttons are about 39 px; the home-screen icon is
+  the intended way to play on a phone. Accepted (Fable). Whether placing
+  on 20 px cells needs a magnifier is Kyle's phone test.
+- **Portrait tower buttons show the tower's shape and cost, no name; map
+  labels are dropped in portrait.** Names do not fit. Opus proposed,
+  Fable accepted.
+- **Turning the device mid-game keeps the game** (it may clear a
+  selection, a drag, a panel, aiming, and returns to 1x). Fable.
+- **Found by the verifier and fixed before merge:** two layout switches in
+  one frame lost the game (restart requests now merge and use the latest
+  window shape); a shake pulled the status strip into the map (portrait
+  shakes sideways only); Menu plus a switch in the same frame left two
+  scenes running (a leaving scene ignores switches). Sonnet (findings),
+  Opus (fixes).
+- **The lift is 48 px on screen in portrait** (it was 48 canvas px, about
+  27 px on a phone, under the thumb). Landscape keeps 48 canvas px so the
+  tablet layout does not move. Fable (ask), Opus.
+- **While aiming in portrait the instruction replaces the next-wave line
+  in the status strip;** on touch it drops "Special again cancels" for
+  space. Fable (ask), Opus.
+- **Known:** Wolves and the boss have only side-view frames, so they walk
+  down the screen sideways (placeholder art). The tower panel hides part
+  of the trail. An upright iPad uses about half its width. Sonnet.
