@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { BOSS_NAME, PANEL_TEXT } from '../src/game/names';
+import { BOSS_NAME, PANEL_TEXT, bestScoreText } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { TitleUiState } from '../src/game/TitleScene';
 import { MAP, positionAlongPath } from '../src/sim/map';
@@ -552,7 +552,9 @@ test('special fired: the tick after a Powder Keg (test mode, no flash)', async (
   await expect(page.locator('canvas')).toHaveScreenshot('special-fired.png');
 });
 
-// End screens: the HUD under the veil shows the final numbers.
+// End screens: the HUD under the veil shows the final numbers. Milestone
+// 26: the win screen has three buttons ([Keep going] first), so won.png
+// changes.
 test('win screen after the combo build', async ({ page }) => {
   await open(page);
   const end = await page.evaluate(async () => {
@@ -564,6 +566,38 @@ test('win screen after the combo build', async ({ page }) => {
   expect(end).toEqual({ phase: 'won', screen: 'won', lives: 13, gold: 476 }); // milestone 25c: horde waves and cluster specials
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('won.png');
+});
+
+// Milestone 26: the title with a stored best for Normal (the selected
+// level), "Best on Normal: 12 waves" centred on y 414.
+test('title with a best score', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('tarpit.best', '{"v":1,"best":{"meadow":{"normal":12}}}'));
+  await open(page);
+  expect((await page.evaluate(() => (window.__tarpit as TarpitTestApi).ui<TitleUiState>())).bestLine?.text).toBe(bestScoreText('normal', 12));
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('title-best.png');
+});
+
+// Milestone 26: endless wave 11 running. The endless idle script wins with
+// the combo build and presses Keep going (untilWave 11 stops in setup), then
+// Start Wave and 900 ticks: the HUD reads "Wave 11" and previews wave 12.
+test('endless wave 11 HUD', async ({ page }) => {
+  test.setTimeout(90_000);
+  await open(page);
+  const r = await page.evaluate(async () => {
+    const t = window.__tarpit as TarpitTestApi;
+    await t.startGame();
+    const phase = t.runScript('endlessIdle', 11);
+    t.startWave();
+    t.step(900);
+    return { phase, wave: t.state().wave, endless: t.state().endless, hud: t.hudText(), screen: t.endScreen() };
+  });
+  expect(r).toMatchObject({ phase: 'setup', wave: 11, endless: true, screen: null });
+  expect(r.hud.wave).toBe('Wave 11');
+  expect(r.hud.boss).toBeNull();
+  expect(r.hud.next).toBe('Next: 30 Wolf, 10 Troll, 10 Harpy');
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('endless-hud.png');
 });
 
 test('lose screen with no towers', async ({ page }) => {
