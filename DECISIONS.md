@@ -878,3 +878,31 @@ can change it; "Kyle" means Kyle decided.
   frame a shake starts is dropped (pinned as a `test.fixme`). In a packed
   horde splash rings and gold labels overlap. Musket balls are the hardest
   shot to see. Sonnet (findings), Fable (accepted).
+
+## 2026-11-22, milestone 32a (install and offline)
+
+- **The phone work is two milestones: install first, then the portrait
+  layout.** Fable; Kyle asked for an easy way to get to the game and for
+  vertical play.
+- **Installable:** a manifest with relative start address and scope (the
+  same file is right under `/` and `/tarpit/`), iOS tags, and an icon (a
+  stone tower beside a tar pool) drawn by `scripts/make-icons.ts`. The
+  asset check accepts MIT only for files made by a repo script. Opus.
+- **Offline by a hand-written service worker, no dependency.** Each build
+  has its own cache, filled whole at install; the page is network-first
+  and built files are cache-first; a new worker takes over at once and
+  deletes old caches. Never registered in the dev server, under `?test=1`
+  or `?perf=1`. Fable (rules), Opus (build).
+- **Three gaps found by the verifier and fixed before merge:** a hanging
+  network left a blank page (now a 3 s limit, then the cached game); a
+  404 or 5xx for the page replaced the cached game (now it falls back);
+  there was no way to retire a bad worker (now `TARPIT_SW=off` builds a
+  worker that deletes its caches and removes itself, and DESIGN.md states
+  the recovery path). Sonnet (findings), Opus (fixes).
+- **Accepted:** the kill switch reloads open pages once, which loses a
+  game in progress (an emergency tool); a slow network can delay a new
+  deploy by one open; one unexplained failure of the two-tab update test
+  in a full local run, not reproduced in sixteen reruns, to watch on CI.
+  Sonnet (findings), Fable.
+- **Not testable here:** Add to Home Screen itself, a real notch, iOS
+  storage rules. Kyle's devices.
