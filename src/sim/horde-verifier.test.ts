@@ -5,9 +5,9 @@
 // slots through real towers and specials, and byte-equal determinism.
 import { describe, expect, it } from 'vitest';
 import { buildTower, sellTower, towerAt, upgradeTower, useSpecial } from './actions';
-import { applySlow, enemyPosition } from './combat';
+import { applySlow, applySpecialSlow } from './combat';
 import { DIFFICULTIES, DIFFICULTY_DEFS } from './difficulty';
-import { effectiveSlow, ENEMY_STATS, isTarred } from './enemies';
+import { cappedSlow, effectiveSlow, ENEMY_STATS, isTarred } from './enemies';
 import type { GameEvent } from './events';
 import { callEarlyStatus, callNextWave, createGame, lastSpawnTick, startWave, tick, WAVE_CLEAR_BONUS } from './game';
 import { cellKey, type Cell } from './grid';
@@ -160,7 +160,7 @@ describe('E1. enemy conservation and kill credit over a full comboBuild game (No
     expect(ledger.earlyBonuses).toBe(0);
     expect(ledger.clearBonuses).toBe(10 * WAVE_CLEAR_BONUS);
     expect(DIFFICULTY_DEFS.normal.startGold + ledger.bounties + ledger.clearBonuses + ledger.earlyBonuses + ledger.refunds - ledger.spend).toBe(s.gold);
-    expect(s.gold).toBe(484);
+    expect(s.gold).toBe(420);
   });
 });
 
@@ -504,9 +504,12 @@ describe('E6. special slow channel through a real Tar Pit and a real Tar Barrel'
     expect(upgradeTower(a.s, PIT).ok).toBe(true);
     return a;
   }
-  const barrel = (s: GameState, e: Enemy) => {
-    const p = enemyPosition(e, MAPS.meadow);
-    expect(useSpecial(s, 'tarBarrel', p)).toMatchObject({ ok: true });
+  // Milestone 30: the Tar Barrel now writes the special slow channel for a
+  // 60-tick linger, refreshed every tick by its zone (specials.test.ts
+  // covers the zone). These probes keep the channel's rules against a real
+  // Tar Pit with one 210-tick special slow written straight to the channel.
+  const barrel = (_s: GameState, e: Enemy) => {
+    expect(applySpecialSlow(e, 0.5, 210)).toBe(cappedSlow(e, 0.5));
   };
 
   it('Tar Pit first, then the barrel: the barrel lands (not wasted), 0.6 wins while both last, and after the Pit is sold the barrel\'s 0.5 runs to tick 210 exactly', () => {
@@ -565,7 +568,6 @@ describe('E6. special slow channel through a real Tar Pit and a real Tar Barrel'
     expect(e.slow).toBe(0.3);
     barrel(s, e);
     expect(e.specialSlow).toBe(0.3);
-    expect(s.events.filter((ev) => ev.kind === 'slowed').slice(-1)).toEqual([{ kind: 'slowed', enemyId: 0, slow: 0.3, ticks: 210 }]);
     for (let i = 0; i < 300; i++) {
       const slow = movedAt(s, e);
       expect(slow).toBeLessThanOrEqual(0.3);
@@ -579,14 +581,14 @@ describe('E6. special slow channel through a real Tar Pit and a real Tar Barrel'
     expect(effectiveSlow(e)).toBe(0.3);
   });
 
-  it('the barrel reaches 90 px and not 90.01, and is the DESIGN.md 0.5 for 210 ticks', () => {
-    expect(SPECIAL_DEFS.tarBarrel).toMatchObject({ radius: 90, slow: 0.5, slowTicks: 210 });
+  it('the barrel reaches 100 px and not 100.01, and is the DESIGN.md 0.5 for the 60-tick linger (milestone 30)', () => {
+    expect(SPECIAL_DEFS.tarBarrel).toMatchObject({ radius: 100, slow: 0.5, zoneTicks: 480 });
     const a = arena('goblin', 100);
-    expect(useSpecial(a.s, 'tarBarrel', { x: 100, y: 240 + 90.01 })).toMatchObject({ ok: true });
-    expect(a.e.specialSlowTicksLeft).toBe(0);
+    expect(useSpecial(a.s, 'tarBarrel', { x: 100, y: 240 + 100.01 })).toMatchObject({ ok: true });
+    expect(a.e.specialSlowTicksLeft ?? 0).toBe(0);
     const b = arena('goblin', 100);
-    expect(useSpecial(b.s, 'tarBarrel', { x: 100, y: 240 + 90 })).toMatchObject({ ok: true });
-    expect(b.e.specialSlowTicksLeft).toBe(210);
+    expect(useSpecial(b.s, 'tarBarrel', { x: 100, y: 240 + 100 })).toMatchObject({ ok: true });
+    expect(b.e.specialSlowTicksLeft).toBe(60);
   });
 });
 
@@ -716,7 +718,7 @@ describe('B. the DESIGN.md wave table, transcribed by the verifier (no other tes
     expect(stat('harpy')).toEqual([36, 90, 3]);
     expect(stat('shieldbearer')).toEqual([70, 45, 5]);
     expect(stat('boss')).toEqual([4000, 25, 150]);
-    expect(SPECIAL_DEFS.fireArrows).toMatchObject({ unlockWave: 7, radius: 80, burnDps: 30, burnTicks: 240 });
+    expect(SPECIAL_DEFS.fireArrows).toMatchObject({ unlockWave: 7, radius: 90, burnDps: 20, zoneTicks: 480 });
     expect(DIFFICULTY_DEFS).toEqual({
       easy: { hpMultiplier: 0.75, startGold: 150, startLives: 35 },
       normal: { hpMultiplier: 1, startGold: 100, startLives: 20 },
@@ -764,21 +766,23 @@ describe('S1. spawn rate (A1), from the merged schedule of all groups of a wave'
 describe('S2. what tar still does (no balance test pins it)', () => {
   const run = (name: string, level: 'easy' | 'normal') => playScripted(ARCHETYPES[name](level), undefined, level);
 
-  // Milestone 28 numbers: both lose on wave 7 (8 before).
-  it('Tar Pit, Normal: soundBuild and soundBuildNoTar both lose on wave 7, but with tar it has 9 lives after wave 6 against 4, and its wave 7 lasts 1890 ticks longer', () => {
+  // Milestone 28 numbers: both lose on wave 7 (8 before). Milestone 30
+  // (Cannon range 105): 9 against 5 after wave 6.
+  it('Tar Pit, Normal: soundBuild and soundBuildNoTar both lose on wave 7, but with tar it has 9 lives after wave 6 against 5, and its wave 7 lasts longer', () => {
     const tar = run('soundBuild', 'normal');
     const none = run('soundBuildNoTar', 'normal');
     expect([tar.state.phase, tar.state.wave, none.state.phase, none.state.wave]).toEqual(['lost', 7, 'lost', 7]);
-    expect([tar.waves[5].lives, none.waves[5].lives]).toEqual([9, 4]);
-    expect([tar.waves[6].ticks, none.waves[6].ticks]).toEqual([5477, 3587]);
+    expect([tar.waves[5].lives, none.waves[5].lives]).toEqual([9, 5]);
+    expect([tar.waves[6].ticks, none.waves[6].ticks]).toEqual([5927, 4127]);
     expect(tar.waves[6].ticks).toBeGreaterThan(none.waves[6].ticks);
   });
 
-  it('Tar Pit, Easy: soundBuild wins with 11 lives and soundBuildNoTar loses on wave 10', () => {
+  // Milestone 30 (Cannon range 105): both win on Easy now, with tar by 10 more lives (11 and a loss on wave 10 before).
+  it('Tar Pit, Easy: soundBuild wins with 14 lives and soundBuildNoTar with 4', () => {
     const tar = run('soundBuild', 'easy');
     const none = run('soundBuildNoTar', 'easy');
-    expect([tar.state.phase, tar.state.lives]).toEqual(['won', 11]);
-    expect([none.state.phase, none.state.wave]).toEqual(['lost', 10]);
+    expect([tar.state.phase, tar.state.lives]).toEqual(['won', 14]);
+    expect([none.state.phase, none.state.lives]).toEqual(['won', 4]);
   });
   // Milestone 28: the Tar Barrel probe ("ends the same without its three
   // barrels") is folded into balance.suite.ts T9, which now requires the

@@ -8,7 +8,8 @@ import { balanceRun, cachedRun, matrixCell, type BalanceRun } from './balanceRun
 import { DIFFICULTY_DEFS, enemyMaxHp } from './difficulty';
 import { ENEMY_STATS } from './enemies';
 import { spawnTick } from './game';
-import { comboBuild, comboWithoutSpecial } from './headless';
+import { comboWithoutSpecial } from './headless';
+import { SPECIAL_TYPES, type SpecialType } from './specials';
 import { MAP_IDS, type MapId } from './map';
 import type { EnemyType } from './types';
 import { WAVES } from './waves';
@@ -20,12 +21,17 @@ export interface TargetResult {
 }
 
 export interface Target {
-  /** T1 .. T9, E1 .. E3, H1 .. H4, or R1 .. R5 for the 25c wave rules. */
+  /** T1 .. T9, S2 and S3, E1 .. E3, H1 .. H4, or R1 .. R5 for the 25c wave rules. */
   id: string;
   /** The map, or undefined for a rule over the tables. */
   map?: MapId;
   label: string;
   check: () => TargetResult;
+  /**
+   * A known miss (milestone 30): the target fails on purpose and the suite
+   * pins that it still fails, with the reason here.
+   */
+  miss?: string;
 }
 
 const leaked = (run: BalanceRun, wave: number): number => Object.values(run.waves[wave - 1]?.exits ?? {}).reduce((a, b) => a + b, 0);
@@ -57,10 +63,18 @@ function waveSpawnTicks(wave: number, flying: boolean): number[] {
   return WAVES[wave].groups.filter((g) => ENEMY_STATS[g.type].flying === flying).flatMap((g) => Array.from({ length: g.count }, (_, i) => spawnTick(g, i)));
 }
 
-/** The combo build on Meadow, Normal, with every Tar Barrel use dropped from its special list (recorded by playing). */
-export function comboNoTarBarrelRun(): BalanceRun {
-  return cachedRun('comboBuild without Tar Barrel, meadow, normal', () => comboWithoutSpecial('tarBarrel'), 'normal');
+/** The combo build on Meadow, Normal, with the special policy forbidden one special (milestone 30, recorded by playing). */
+export function comboWithoutSpecialRun(type: SpecialType): BalanceRun {
+  return cachedRun(`comboBuild without ${type}, meadow, normal`, () => comboWithoutSpecial(type), 'normal');
 }
+
+/** Target T6's margin (milestone 30): comboBuild has at least this many more lives than comboNoSpecials on Normal. */
+export const SPECIALS_LIVES_MARGIN = 3;
+/** Target S3 (milestone 30): in comboBuild on Meadow, Normal, at least this many specials ... */
+export const S3_MIN_SPECIALS = 15;
+/** ... and at least this share of them catch S3_MIN_CATCH or more enemies. */
+export const S3_MIN_SHARE = 0.8;
+export const S3_MIN_CATCH = 3;
 
 function mapTargets(map: MapId): Target[] {
   const r = (name: Parameters<typeof balanceRun>[0], level: 'easy' | 'normal' | 'hard' = 'normal') => balanceRun(name, map, level);
@@ -78,19 +92,27 @@ function mapTargets(map: MapId): Target[] {
       const x = r('longbowSpam');
       return { ok: lostOn(x, 7, 9), info: matrixCell(x) };
     }),
-    t('T4', 'Normal: comboBuild wins with 5 to 18 lives', () => {
-      const x = r('comboBuild');
-      return { ok: x.phase === 'won' && x.lives >= 5 && x.lives <= 18, info: matrixCell(x) };
-    }),
+    {
+      ...t('T4', 'Normal: comboBuild wins with 5 to 18 lives', () => {
+        const x = r('comboBuild');
+        return { ok: x.phase === 'won' && x.lives >= 5 && x.lives <= 18, info: matrixCell(x) };
+      }),
+      // milestone 30 miss: on Switchback comboNoSpecials wins with 16 lives,
+      // so T6 (3 lives better with specials) needs 19 and T4 allows at most
+      // 18. No Troll hp from 950 to 1100 brings Switchback under 16 without
+      // Riverbend's comboNoSpecials losing (T6). The combo wins with 19.
+      ...(map === 'switchback' ? { miss: 'T6 needs 19 or more lives here; T4 allows at most 18 (W 19 measured)' } : {}),
+    },
     t('T5', 'Normal: comboBuildNoFire is strictly worse than comboBuild', () => {
       const x = r('comboBuildNoFire');
       const c = r('comboBuild');
       return { ok: worse(x, c), info: `${matrixCell(x)} against ${matrixCell(c)}` };
     }),
-    t('T6', 'Normal: comboNoSpecials is strictly worse than comboBuild and reaches wave 8', () => {
+    t('T6', 'Normal: comboBuild has at least 3 more lives than comboNoSpecials, which wins', () => {
       const x = r('comboNoSpecials');
       const c = r('comboBuild');
-      return { ok: worse(x, c) && x.wave >= 8, info: `${matrixCell(x)} against ${matrixCell(c)}` };
+      const ok = x.phase === 'won' && c.phase === 'won' && c.lives >= x.lives + SPECIALS_LIVES_MARGIN;
+      return { ok, info: `${matrixCell(c)} against ${matrixCell(x)} without specials` };
     }),
     t('T7', "Normal: noAntiAir leaks at least 75% of wave 4's Harpies, survives wave 4, loses on wave 5 to 8", () => {
       const x = r('noAntiAir');
@@ -156,21 +178,33 @@ const meadowExtras: Target[] = [
       return { ok, info: `${matrixCell(s)} at tick ${s.tick} against ${matrixCell(n)} at tick ${n.tick}` };
     },
   },
+  ...SPECIAL_TYPES.map(
+    (type): Target => ({
+      id: 'S2',
+      map: 'meadow',
+      label: `Meadow, Normal: forbidding the policy the ${type} makes the combo strictly worse (lives, then kills)`,
+      check: () => {
+        const c = balanceRun('comboBuild', 'meadow', 'normal');
+        const x = comboWithoutSpecialRun(type);
+        // Strictly worse by lives, then kills: lost while the combo won, or
+        // fewer lives in the same result, or the same lives and fewer kills.
+        const lostWhereWon = x.phase === 'lost' && c.phase === 'won';
+        const fewerLives = x.phase === c.phase && x.lives < c.lives;
+        const sameLivesFewerKills = x.phase === c.phase && x.lives === c.lives && x.kills < c.kills;
+        const ok = lostWhereWon || fewerLives || sameLivesFewerKills;
+        return { ok, info: `without: ${matrixCell(x)}, ${x.kills} kills; with: ${matrixCell(c)}, ${c.kills} kills` };
+      },
+    }),
+  ),
   {
-    id: 'T9',
+    id: 'S3',
     map: 'meadow',
-    label: "Meadow, Normal: dropping the Tar Barrel uses from the combo's special list is strictly worse (lives, then kills)",
+    label: 'Meadow, Normal: the policy fires at least 15 specials in comboBuild and at least 80% catch 3 or more enemies',
     check: () => {
-      const c = balanceRun('comboBuild', 'meadow', 'normal');
-      const x = comboNoTarBarrelRun();
-      const uses = comboBuild().timed!.flat().filter((a) => a.type === 'special' && a.special === 'tarBarrel').length;
-      // Strictly worse by lives, then kills: lost while the combo won, or
-      // won with fewer lives, or the same lives and fewer kills.
-      const lostWhereWon = x.phase === 'lost' && c.phase === 'won';
-      const fewerLives = x.phase === c.phase && x.lives < c.lives;
-      const sameLivesFewerKills = x.phase === c.phase && x.lives === c.lives && x.kills < c.kills;
-      const ok = uses > 0 && (lostWhereWon || fewerLives || sameLivesFewerKills);
-      return { ok, info: `${uses} barrels; without: ${matrixCell(x)}, ${x.kills} kills; with: ${matrixCell(c)}, ${c.kills} kills` };
+      const hits = balanceRun('comboBuild', 'meadow', 'normal').specialHits;
+      const good = hits.filter((h) => h >= S3_MIN_CATCH).length;
+      const ok = hits.length >= S3_MIN_SPECIALS && good >= S3_MIN_SHARE * hits.length;
+      return { ok, info: `${hits.length} specials, ${good} caught ${S3_MIN_CATCH} or more (hits ${hits.join(' ')})` };
     },
   },
 ];

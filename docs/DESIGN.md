@@ -19,8 +19,12 @@
   has no randomness: a given sequence of actions always produces the same
   state, and tests assert exact values. A time in seconds becomes ticks by
   `round(seconds x 60)`.
-- The 2x speed toggle is a renderer concern: it runs two ticks per frame
-  instead of one. The simulation does not know about it.
+- Speed is a renderer concern: 2x runs two ticks per frame instead of one,
+  3x three. A tap on the speed button toggles 1x and 2x; a press held for
+  300 ms runs 3x while it is held (the button reads "3x") and its release
+  returns to the speed before it without toggling. The fixed-step loop
+  caps a frame at 20 ticks, so 3x at 60 fps (3 ticks a frame) never meets
+  the cap. The simulation does not know about speed.
 
 ## Maps
 
@@ -258,8 +262,8 @@ beside it that returns to the title; the win screen also has [Keep going].
   equal or greater strength refreshes the duration; a weaker one is
   ignored. An enemy has two slots: the tower slot (`slow`,
   `slowTicksLeft`, set by Tar Pits through `applySlow`) and the special
-  slot (`specialSlow`, `specialSlowTicksLeft`, set by the Tar Barrel
-  through `applySpecialSlow`). Each slot follows the rule on its own and
+  slot (`specialSlow`, `specialSlowTicksLeft`, set by the Tar Barrel and
+  its zone through `applySpecialSlow`). Each slot follows the rule on its own and
   counts down on its own; neither blocks or shortens the other. The enemy
   moves at `(1 - effectiveSlow)`, where `effectiveSlow` is the stronger of
   the two active slots, capped by the boss's 30%. An enemy is "tarred"
@@ -280,7 +284,7 @@ the splash radius of the target (flyers excepted) for full damage.
 | Tower | Cost | Range | Min range | Damage | Fire rate | Splash | Slow | Burn |
 |---|---|---|---|---|---|---|---|---|
 | Musketeer | 50 | 110 | - | 12 | 1 | - | - | - |
-| Cannon | 80 | 90 | - | 25 | 0.5 | 40 | - | - |
+| Cannon | 80 | 105 | - | 25 | 0.5 | 40 | - | - |
 | Tar Pit | 60 | 90 | - | 3 | 2 | - | 40% for 2 s | - |
 | Longbow | 40 | 150 | - | 4 | 2.5 | - | - | - |
 | Mortar | 110 | 220 | 70 | 45 | 1/3 | 60 | - | - |
@@ -291,7 +295,7 @@ One upgrade per tower:
 | Tower | Upgrade cost | Range | Damage | Splash | Slow | Burn |
 |---|---|---|---|---|---|---|
 | Musketeer | 35 | 125 | 22 | - | - | - |
-| Cannon | 60 | 90 | 40 | 55 | - | - |
+| Cannon | 60 | 105 | 40 | 55 | - | - |
 | Tar Pit | 50 | 105 | 3 | - | 60% for 2 s | - |
 | Longbow | 30 | 170 | 9 | - | - | - |
 | Mortar | 80 | 220 | 70 | 70 | - | - |
@@ -330,7 +334,8 @@ for every enemy its shot kills (a splash counts each enemy it kills) and
 for every enemy its burn kills: a burn remembers the cell of the tower
 that applied it (`burnOwner`; it changes only when a burn is actually
 applied) and a burn kill counts for the tower on that cell. Special kills,
-including a Fire Arrows burn, count for no tower. Selling a tower clears
+including a Fire Arrows burn, count for no tower; a kill by a special's
+burn has kill cause `special` (the enemy carries `specialBurn`). Selling a tower clears
 its burns' ownership, so a tower rebuilt on the cell starts from 0; moving
 and upgrading keep the count. The tower panel (214 x 166) shows it as a
 13 px "Kills 43" line above its buttons (`names.ts` `KILLS_TEXT`).
@@ -339,53 +344,96 @@ and upgrading keep the count. The tower panel (214 x 166) shows it as a
 
 `src/sim/specials.ts` `SPECIAL_DEFS`.
 
-| Special | Unlock wave | Radius | Damage | Slow | Slow ticks | Burn per s | Burn ticks |
-|---|---|---|---|---|---|---|---|
-| Powder Keg | 1 | 70 | 80 | - | - | - | - |
-| Tar Barrel | 4 | 90 | - | 0.5 | 210 | - | - |
-| Fire Arrows | 7 | 80 | - | - | - | 30 | 240 |
+| Special | Unlock wave | Radius | Damage | Slow | Burn per s | Zone ticks |
+|---|---|---|---|---|---|---|
+| Powder Keg | 1 | 90 | 30 | - | - | - |
+| Tar Barrel | 4 | 100 | - | 0.5 | - | 480 |
+| Fire Arrows | 7 | 90 | - | - | 20 | 480 |
 
-- **Charge.** `state.specialCharges` is 0 or 1. Start Wave sets it to 1;
-  the wave clear sets it to 0, so an unused charge does not carry over.
-  One special per wave. Calling the next wave early also sets it to 1.
+- **Charge.** One charge shared by the three specials. `state.specialCharges`
+  is 0 or 1 and `state.specialRechargeTicks` counts the refill. A wave start
+  (Start Wave or an early call) makes it ready at once (1, recharge 0).
+  Using a special spends it and starts the recharge: it is ready again
+  1200 wave ticks later (20 s, `SPECIAL_RECHARGE_TICKS`), counted in step 6
+  of each wave tick. It does not refill in setup: the wave clear sets the
+  charge and the recharge to 0.
 - **Use.** `useSpecial(state, type, {x, y})` acts at once, between ticks,
   like a build, on every live enemy whose position is within the radius of
-  the aimed point (inclusive: 70 px hits, 70.01 does not). Refused, in this
-  order, with `game-over`, `not-in-wave` (setup), `locked` (`state.wave` <
-  the unlock wave), `no-charge`, `out-of-bounds` (the point must be inside
-  0..960 x 0..480, edges included). A refusal changes nothing.
-- **Effects.** Damage ignores shields and hits flyers. The Tar Barrel slows
-  through the special slot (capped at 0.3 on the boss; a weaker barrel slow
-  does not replace a stronger active barrel slow; tower slows neither block
-  nor shorten it). Fire Arrows go through the normal burn (`applyBurn`, no
-  owner): they replace an equal or weaker burn and leave a stronger one,
-  and the burn is doubled while the enemy is tarred.
-- **Kills.** Enemies the special kills pay their bounty once and are
-  removed at once, each with a `kill` event, cause `special` (and
-  `bossDown`, cause `special`, for the boss). If that was the last enemy
-  of a fully spawned wave, the wave clears on the next tick as usual.
-- **Event.** `special {type, x, y, radius, hits}`, then `slowed` for each
-  applied slow, then the kills.
+  the aimed point (inclusive: 90 px hits, 90.01 does not), flyers included.
+  Refused, in this order, with `game-over`, `not-in-wave` (setup), `locked`
+  (`state.wave` < the unlock wave), `no-charge`, `out-of-bounds` (the point
+  must be inside 0..960 x 0..480, edges included). A refusal changes
+  nothing.
+- **Powder Keg.** 30 damage to each enemy inside, shields ignored. No zone.
+- **Zones.** The Tar Barrel and Fire Arrows act on the enemies inside at
+  once and leave a zone at the point (`state.zones`, each with an id, its
+  type, point, radius and `ticksLeft`) for 480 ticks (8 s). Every wave
+  tick, in step 2b, each zone (oldest first) gives every live enemy inside
+  it, flyers included, its effect for 60 ticks (`ZONE_LINGER_TICKS`), then
+  counts down; at 0 it is removed. So an enemy is slowed or burning while
+  it is inside and for 60 ticks after it leaves. Several zones can exist at
+  once; they do not stack (the slow and burn rules below decide). The wave
+  clear removes every zone.
+- **Effects.** The Tar Barrel slows by 0.5 through the special slot
+  (capped at 0.3 on the boss; a weaker special slow does not replace a
+  stronger active one; tower slows neither block nor shorten it). Fire
+  Arrows burn at 20 per second through the normal burn (`applyBurn`, as a
+  special's burn): they replace an equal or weaker burn and leave a
+  stronger one, and the burn is doubled while the enemy is tarred, so tar
+  and fire on one enemy burn 40 per second.
+- **Kills.** Enemies a special kills pay their bounty once and are
+  removed, each with a `kill` event, cause `special` (and `bossDown`, cause
+  `special`, for the boss); a burn kill from Fire Arrows counts the same.
+  If that was the last enemy of a fully spawned wave, the wave clears on
+  the next tick as usual.
+- **Event.** `special {type, x, y, radius, hits, zoneId?}` (`zoneId` for the
+  Tar Barrel and Fire Arrows), then `slowed` for each slow applied on
+  landing, then the kills.
 - **On screen.** Row 1 of the HUD has a 100 x 42 Special button at x 630,
-  left of Start Wave (x 738, 130 wide) and the speed toggle (x 876, 70
-  wide); the next-wave preview runs from x 356 to 620. The button is lit
-  with a bright pip while a wave runs and the charge is unspent, greyed
-  with an empty pip otherwise, and highlighted while its popup is open or
-  a special is aimed. Pressing it with one special unlocked selects it;
-  with more it opens a popup above it listing the unlocked specials. While
-  aiming, a circle of the special's radius (2 px outline, 0.18 fill;
-  orange-red keg, dark brown tar barrel, orange-yellow fire arrows) follows
-  the mouse over the map; on touch the first tap places it where tapped
-  and a drag places it 48 px above the finger with the finger line. A
-  mouse press on the map (it fires on the press), a second tap within 24
-  px of the placed circle, or the release of a touch drag with the circle
-  on the map (even with the finger over the HUD) fires at the circle's
-  centre. Escape, the Special button again or any other press on the HUD
-  cancels. Aiming and the tower pick or panel never coexist. Effects in
-  play: the keg flashes and a ring expands to the radius (0.4 s); the tar
-  barrel leaves a dark splat fading over 0.5 s; fire arrows drop 8 streaks
-  into the circle, then an orange flash (0.4 s). In test mode effects are
-  not drawn.
+  left of Start Wave (x 738, 130 wide) and the speed button (x 876, 70
+  wide); the next-wave preview runs from x 356 to 620. While a wave runs
+  and the charge is ready the button is lit with a bright pip that pulses
+  (no pulse in test mode). While the charge refills it is greyed, a fill
+  grows from its left edge as the recharge runs and the whole seconds left
+  show small in its lower right corner ("12s"). In setup and after the game
+  it is greyed with an empty pip. It is highlighted while its popup is open
+  or a special is aimed. Pressing it with one special unlocked selects it;
+  with more it opens a popup above it listing the unlocked specials.
+- **Aiming.** While a special is aimed a banner over the top of the map
+  says what to do ("Click the trail to throw the Powder Keg", "Tap the
+  trail to drop the Tar Barrel"; a smaller second line says how to cancel
+  and, on touch, how to hold), and a circle of the special's radius (3 px
+  outline over a pale edge, 0.22 fill, a small cross at the centre;
+  orange-red keg, dark brown tar barrel, orange-yellow fire arrows) shows
+  where it lands. With a mouse the circle follows the pointer over the map
+  and a click on the map fires there. On touch a tap on the map fires at
+  the tap; a press held 300 ms or moved past the drag threshold is a hold:
+  the circle shows 48 px above the finger with the finger line, and the
+  release fires at the circle's centre, or cancels when the finger is over
+  the HUD. There is no second confirming tap. Escape, the Special button
+  again or any other press on the HUD cancels; a cancel spends nothing.
+  Aiming and the tower pick or panel never coexist.
+- **Landing.** The keg: a flash and a ring expanding to the radius
+  (0.4 s), a short camera shake (220 ms) and a scorch mark that fades over
+  2 s. The Tar Barrel: a splash ring (0.3 s), then a tar puddle drawn from
+  its zone for as long as the zone lasts. Fire Arrows: arrows falling into
+  the circle (0.4 s), then a burning patch drawn from its zone. Zones fade
+  over their last second. A label at the spot for 1.5 s reads "3 hit" (the
+  enemies inside when it landed) or "Missed" (`names.ts`). In play effect
+  times are real time, the same at any speed; in test mode they count 1/60 s
+  per simulation tick, nothing fades or flickers and there is no shake.
+
+## Gold cheat
+
+`grantCheatGold(state)` adds 500 gold (`CHEAT_GOLD`), sets `state.cheated`
+and emits `cheat {gold}`; it works in setup and during a wave and is
+refused with `game-over` once the game is won or lost. Nothing else in the
+simulation reads `cheated`. On screen, five presses on the Gold readout
+(the area x 8 to 112 of HUD row 1) within 2 s call it; four, or presses
+spread over more than 2 s, do not. A cheated game shows "cheat used" in
+small type under the Gold number and saves no best score for the rest of
+that game (the stored best stays as it was); Play again starts a clean
+game.
 
 ## Waves
 
@@ -456,7 +504,7 @@ later tick adds 1/60 s, so the bonus is 19 from 60 ticks later and 0 from
 on the field: they move, exit, cost lives and pay bounties as usual, and
 the called wave's clear check waits for them too. The next wave starts its
 spawn schedule from waveTick 0 (the wave counter goes up), the special
-charge is set to 1, event `earlyCall {wave, bonus}` (the new wave) and then
+charge is made ready (1, recharge 0), event `earlyCall {wave, bonus}` (the new wave) and then
 `waveStart`. Each wave pays its clear bonus once. On screen, Start Wave
 reads "Call next  +14" (`names.ts` `callEarlyLabel`, 14 px) with the
 current bonus while a call would succeed, and pressing it calls; otherwise
@@ -471,13 +519,13 @@ it reads "Start Wave". `ui().callEarly` reports `{available, bonus}`.
   going] calls `continueEndless(state)`: allowed only in phase `won`,
   refused with `not-won` otherwise; a refusal changes nothing. It sets
   `state.endless = true` and the phase to `setup` with wave 10 cleared;
-  gold, lives, towers, kill counts and the special charge (0) are kept.
+  gold, lives, towers, kill counts and the special charge (0, not
+  refilling) are kept.
   Event `endlessStart`.
 - **After that** Start Wave plays wave 11, 12, and so on. Clearing a wave
   pays the 25 bonus and returns to setup; it never sets `won`, so the game
-  ends only by losing. The planning phase, one special charge per wave
-  (all three unlocked) and call early work as before, with no `last-wave`
-  refusal.
+  ends only by losing. The planning phase, the special charge (all three
+  unlocked) and call early work as before, with no `last-wave` refusal.
 - **Generated waves** (`waveDef(n)` in `waves.ts`; waves 1 to 10 are the
   table). For n >= 11: `k = n - 11`, `cycle = floor(k / 3) + 1`; the
   groups of table wave 8, 9 or 10 for `k % 3` = 0, 1, 2, without the boss;
@@ -527,7 +575,8 @@ the table in memory, so with storage blocked or full the best lasts for the
 page session and nothing throws. GameScene sends `wavesCleared` to the
 store after every run of ticks and every early call when it went up, and
 the store keeps it if it beats the stored best: every wave clear counts, in
-a lost or abandoned run and in a game that was never continued. A save
+a lost or abandoned run and in a game that was never continued, but not
+in a game where the gold cheat was used (Gold cheat). A save
 writes the whole value back as `{"v":1,"best":...}` built from what was
 parsed, so unknown levels, unknown top-level keys and a stored `v` other
 than 1 are dropped on the next new best.
@@ -543,30 +592,39 @@ Builds, upgrades, sells, moves, specials and early calls act between
 ticks. Inside one wave tick: (1) enemies move at `(1 - effectiveSlow)`,
 then both slow timers count down; (2) enemies at the exit are removed and
 cost their lives (at 0 lives the game is lost at once and nothing else
-happens that tick); (3) burns tick and burn deaths pay out; (4) towers fire
+happens that tick); (2b) each zone, oldest first, slows or burns the live
+enemies inside it for 60 ticks, then counts down and is removed at 0;
+(3) burns tick and burn deaths pay out; (4) towers fire
 in cell order, each counting its cooldown down by 1 first, and each kill is
 removed before the next tower acts and counts for the tower (or the burn's
 owner); (5) due enemies spawn at distance 0, and do not move or get shot
-that tick; (6) the tick counters advance; (7) if the wave has fully
+that tick; (6) the tick counters advance and the special recharge counts
+down (at 0 the charge is ready); (7) if the wave has fully
 spawned and no enemy is alive, the clear bonus is paid and the game goes to
-`setup` (or `won` after wave 10 in a game that is not endless). A slow or
-burn set in step 4 first acts on the next tick. Towers act only during
-wave ticks. The authoritative comment is at the top of `src/sim/game.ts`.
+`setup` (or `won` after wave 10 in a game that is not endless), the
+special charge and recharge go to 0 and the zones are removed. A slow or
+burn set in step 4 first acts on the next tick; a zone's burn acts in
+step 3 of the same tick. Towers act only during wave ticks. Once the game
+is won or lost a tick only clears `state.shots`, so the last tracer or
+splash is drawn once. The authoritative comment is at the top of `src/sim/game.ts`.
 
 ## Simulation API shape
 
 Plain TypeScript in `src/sim`, no Phaser, no DOM. One `GameState` object,
 pure data, changed in place. Operations: create game, tick, start wave,
 build tower, upgrade tower, sell tower, move tower, undo upgrade, set
-targeting, use special, call the next wave early, continue into endless
-waves, next-wave preview, and a headless runner (`headless.ts`) that plays
+targeting, use special, the gold cheat, call the next wave early,
+continue into endless waves, next-wave preview, and a headless runner (`headless.ts`) that plays
 a scripted set of actions for tests and balance work.
 
 Test hooks (`window.__tarpit`, `?test=1`) include `startGame(difficulty?,
 map?)`, `runScript(name, untilWave?)` (an archetype recorded on the running
 game's level and map), `continueEndless()`, `bestScore(difficulty, map?)`,
-`ui()`, `uiRects()`, `titleReady()`, `step(n)`, `state()`, `events()` and
-`hudText()`. `spawnHorde` works only with `?test=1` or `?perf=1`; without
+`ui()` (with `ui().special`: the charge, `ready`, `rechargeTicks`, the
+special aimed, `aimPoint`, `banner`, `holding`, the landing `labels` and
+the `zones`), `uiRects()` (with `gold`, the cheat's tap area),
+`titleReady()`, `step(n)`, `state()`, `events()`, `hudText()`,
+`setSpeed(1 | 2 | 3)`, `speed()` and `cheatGold()`. `spawnHorde` works only with `?test=1` or `?perf=1`; without
 them `window.__tarpit` keeps five read-only hooks.
 
 ## Archetypes
@@ -588,22 +646,22 @@ its script by playing on a level and map and returns a `WaveScript`
 - **comboBuild**: the map's combo plan (31 actions: Longbows, a Tar Pit
   and Fire Pot pair, an anti-air Longbow, Mortars, upgrades, later
   Longbows, a second pair, a Cannon), each action bought as soon as gold
-  allows, plus the stored special list for that plan, level and map.
-  **comboBuildNoFire**: its script without the Fire Pot cells.
+  allows, plus the special policy (below).
+  **comboBuildNoFire**: its purchases without the Fire Pot cells.
   **comboNoSpecials**: the plan with no specials. **noAntiAir**: the combo
-  script that sells its Musketeers and Longbows before wave 4 and builds
-  none after.
+  purchases, selling its Musketeers and Longbows before wave 4 and building
+  none after. comboBuildNoFire and noAntiAir are replayed with the policy,
+  so their specials are fired for their own game.
 - **hardBuild**: the map's Hard plan, the combo plan's cells bought in the
   Hard order (the opening and anti-air Longbows and their upgrades first,
   then three upgraded Longbow pairs with the first Tar Pit, then the first
-  Fire Pot and the pair's upgrades, then the rest), plus its stored
-  special list.
+  Fire Pot and the pair's upgrades, then the rest), plus the special
+  policy.
 - **endlessIdle**: comboBuild, then Keep going and no more purchases.
   **endlessGreedy**: the same, then each endless setup upgrades the
   un-upgraded tower with the cheapest upgrade, or builds a Longbow on the
-  trail order. Endless waves 11 on fire one cluster special at the tick of
-  the table wave they repeat (`CLUSTER_POLICY_TICKS_BY_MAP`; on Meadow
-  1241, 1754 and 713).
+  trail order. Both fire the special policy in every wave, endless ones
+  included.
 - Meadow only (they throw for another map): **soundBuild** (Musketeers, Cannons and a Tar Pit),
   **soundBuildNoTar** (its Tar Pit cells removed), **comboStrongest**
   (every tower set to Strongest).
@@ -611,18 +669,20 @@ its script by playing on a level and map and returns a `WaveScript`
   unlocked of Fire Arrows, Tar Barrel, Powder Keg at the centroid of the
   densest cluster of live enemies within 70 px of a live enemy.
 
-**Special lists.** `npm run sim:specials` (`specialSearch.ts`) searches,
-for each plan (combo, hard), level and map, a wave-by-wave greedy list
-and writes it to `specialLists.ts`. For each wave in order, the earlier
-waves fixed, it plays the wave with no special and with every candidate:
-each unlocked special at every 60th wave tick of the wave (1 s), aimed at
-the centre of each cell whose centre is within 16 px of the path (76 cells
-on Meadow, 100 on Switchback, 76 on Riverbend), candidates that hit the
-same enemies counted once and candidates that hit nothing skipped. The
-best outcome for that wave wins: fewest lives lost, then most kills by the
-wave's end, then the earliest clear; ties keep "no special", then the
-earlier candidate. So a stored special always does strictly better on its
-wave than none.
+**The special policy** (`src/sim/specialPolicy.ts`): how every archetype
+that fires specials fires them, on every map and level, the way a person
+would. It looks every 30 wave ticks while the charge is ready. Candidate
+points lie every 30 px along the path; a point works for a special if its
+circle catches at least 3 enemies. If a Troll or the boss is in a crowd,
+the Tar Barrel and Fire Arrows take turns (Tar Barrel first; before wave 7
+the Tar Barrel takes every turn), fired at the working point with a big
+one inside. Otherwise, if a point works for the Powder Keg, the keg is
+thrown there. Otherwise it waits. The best point catches the most enemies;
+ties go to the point nearest the exit. A forbidden special is skipped (target
+S2), and in the Tar Barrel and Fire Arrows' turns the other takes its
+place. The headless recorder fires each choice and writes it into the
+script's timed list (`timed`), so `playScripted` and the browser's
+`runScript` replay the same game.
 
 ## Balance targets
 
@@ -639,15 +699,24 @@ Normal, every map:
 - **T4** comboBuild wins with 5 to 18 lives.
 - **T5** comboBuildNoFire is strictly worse than comboBuild (fewer lives,
   or lost).
-- **T6** comboNoSpecials is strictly worse than comboBuild and reaches wave
-  8.
+- **T6** comboBuild has at least 3 more lives than comboNoSpecials, and
+  comboNoSpecials wins (a player who never fires a special can still win
+  Normal).
 - **T7** noAntiAir lets at least 75% of wave 4's Harpies exit, survives
   wave 4 and loses on wave 5 to 8.
 - **T8** oneMusket lets at most 6 of wave 1's enemies exit.
 - **T9** (Meadow) comboBuild has under 200 gold entering wave 10;
-  soundBuild loses strictly later than soundBuildNoTar (by tick); the combo
-  without the Tar Barrel uses in its special list does strictly worse
-  (lives, then kills).
+  soundBuild loses strictly later than soundBuildNoTar (by tick).
+- **S2** (Meadow) forbidding the special policy any one of the three
+  specials makes the combo strictly worse (lives, then kills), checked for
+  each of the three.
+- **S3** (Meadow) in a full comboBuild game the policy fires at least 15
+  specials in the ten waves and at least 80% of them catch 3 or more
+  enemies.
+
+T4 on Switchback is a known miss, pinned in the suite as failing: there
+comboNoSpecials wins with 16 lives, so T6 needs 19 or more and T4 allows
+at most 18; comboBuild wins with 19.
 
 Easy, every map: **E1** lazyBuild wins with at least 8 lives; **E2**
 noTowers loses; **E3**
@@ -661,15 +730,12 @@ The wave rules R1 to R5 (Waves) hold too.
 
 Two facts behind these results:
 
-- `comboBuildNoFire` and `noAntiAir` are the combo's script with some
-  actions removed, and they fire the combo's stored special list, which
-  was searched for the full combo, not for them. So T5 and T7 measure
-  those builds with specials aimed for another game.
-- On Hard the winning results depend on the searched special lists. A
-  player who aims worse than a wave-by-wave search does not get them:
-  hardBuild on Hard with no specials wins on Meadow with 2 lives (9 with
-  its list) and loses on Riverbend on wave 8 (wins with its list), and
-  the combo plan with no specials loses on Meadow on wave 3.
+- `comboBuildNoFire` and `noAntiAir` are the combo's purchases with some
+  actions removed, replayed with the special policy, so their specials
+  are fired for their own game.
+- On Hard the specials matter most: hardBuild wins every map with them
+  (Riverbend with 2 lives), and the combo plan with no specials loses on
+  Meadow on wave 3.
 
 ## Measured matrix
 
@@ -683,12 +749,12 @@ lost on wave 8 (endlessIdle: the endless wave it was lost on).
 | lazyBuild | W 10 | L 8 | L 2 | W 20 | L 8 | L 2 | W 9 | L 8 | L 2 |
 | greedyMusket | W 34 | L 8 | L 2 | W 33 | W 1 | L 2 | W 35 | L 8 | L 2 |
 | longbowSpam | W 2 | L 8 | L 7 | W 24 | L 8 | L 8 | W 2 | L 8 | L 7 |
-| noAntiAir | L 7 | L 5 | L 4 | L 7 | L 5 | L 4 | L 7 | L 5 | L 4 |
-| comboBuild | W 35 | W 14 | L 8 | W 35 | W 18 | W 6 | W 35 | W 16 | L 8 |
-| comboBuildNoFire | W 34 | W 4 | L 7 | W 35 | W 13 | L 8 | W 30 | W 5 | L 5 |
+| noAntiAir | L 7 | L 5 | L 5 | L 7 | L 5 | L 4 | L 7 | L 5 | L 5 |
+| comboBuild | W 35 | W 16 | L 8 | W 35 | W 19 | W 8 | W 34 | W 16 | L 8 |
+| comboBuildNoFire | W 34 | W 11 | L 7 | W 35 | W 17 | W 7 | W 32 | W 8 | L 7 |
 | comboNoSpecials | W 34 | W 11 | L 3 | W 35 | W 16 | W 1 | W 34 | W 7 | L 7 |
-| hardBuild | W 35 | W 20 | W 9 | W 35 | W 20 | W 13 | W 35 | W 19 | W 5 |
-| endlessIdle | L 18 | L 14 | L 8 | L 20 | L 16 | L 14 | L 18 | L 15 | L 8 |
-| soundBuild | W 11 | L 7 | L 2 | - | - | - | - | - | - |
-| soundBuildNoTar | L 10 | L 7 | L 2 | - | - | - | - | - | - |
+| hardBuild | W 35 | W 20 | W 10 | W 35 | W 20 | W 14 | W 35 | W 19 | W 2 |
+| endlessIdle | L 19 | L 16 | L 8 | L 20 | L 17 | L 14 | L 19 | L 15 | L 8 |
+| soundBuild | W 14 | L 7 | L 2 | - | - | - | - | - | - |
+| soundBuildNoTar | W 4 | L 7 | L 2 | - | - | - | - | - | - |
 | comboStrongest | W 9 | L 7 | L 2 | - | - | - | - | - | - |

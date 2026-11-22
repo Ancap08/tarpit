@@ -103,6 +103,12 @@ export interface Enemy {
    */
   burnOwner?: Cell;
   /**
+   * Milestone 30: the active burn came from a special (a Fire Arrows zone),
+   * so a burn kill counts as a special kill (kill cause 'special'). Absent
+   * or false for a tower's burn.
+   */
+  specialBurn?: boolean;
+  /**
    * Full hp (milestone 26), set only on enemies of endless waves, whose hp
    * is scaled by the wave; absent means difficulty.ts enemyMaxHp.
    */
@@ -244,10 +250,23 @@ export interface GameState {
   /** Ticks since the game was created. */
   tick: number;
   /**
-   * Special attack charges (milestone 25b): 0 or 1. startWave sets 1; a
-   * wave clear sets 0 (unused charges do not carry over); useSpecial spends it.
+   * The shared special charge (milestone 25b; a timer from milestone 30): 0
+   * or 1. A wave start (startWave or an early call) sets 1; useSpecial
+   * spends it and starts the recharge; a wave clear sets 0.
    */
   specialCharges: number;
+  /**
+   * Milestone 30: wave ticks until the spent charge is ready again; 0 when
+   * the charge is ready or no recharge runs (setup). Counts down in step 6
+   * of a wave tick; reaching 0 sets specialCharges to 1.
+   */
+  specialRechargeTicks: number;
+  /** Milestone 30: the live ground zones of the Tar Barrel and Fire Arrows, oldest first. */
+  zones: Zone[];
+  /** Id for the next zone. */
+  nextZoneId: number;
+  /** Milestone 30: the gold cheat was used in this game (grantCheatGold). */
+  cheated: boolean;
   /** Ticks since the current wave started; the first tick of a wave is 0. */
   waveTick: number;
   /** Enemies spawned so far in the current wave, per group index. */
@@ -270,6 +289,22 @@ export interface GameState {
    * Read-only output for the renderer; no game rule depends on it.
    */
   events: GameEvent[];
+}
+
+/**
+ * A ground zone (milestone 30) left by the Tar Barrel or Fire Arrows at the
+ * aimed point. While `ticksLeft` > 0, every wave tick (step 3, game.ts) it
+ * slows or burns every live enemy within `radius` of (x, y), flyers
+ * included, then counts down; at 0 it is removed.
+ */
+export interface Zone {
+  /** Unique for the game, in firing order from 0. */
+  id: number;
+  type: 'tarBarrel' | 'fireArrows';
+  x: number;
+  y: number;
+  radius: number;
+  ticksLeft: number;
 }
 
 export interface WavePreviewEntry {

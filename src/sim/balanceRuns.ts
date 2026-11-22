@@ -44,6 +44,8 @@ export interface BalanceRun {
   kills: number;
   /** Actions the game refused (0 for every archetype). */
   refused: number;
+  /** Milestone 30: per special fired, in order, the enemies it caught when it landed. */
+  specialHits: number[];
   waves: WaveStats[];
 }
 
@@ -58,6 +60,7 @@ export function playWithStats(script: WaveScript, difficulty?: Difficulty): Bala
   const waves: WaveStats[] = [];
   let refused = 0;
   let kills = 0;
+  const specialHits: number[] = [];
   const limit = script.endless ? ENDLESS_WAVE_CAP : LAST_WAVE;
   for (let i = 0; i < limit && state.phase === 'setup'; i++) {
     const goldEntering = state.gold;
@@ -78,7 +81,10 @@ export function playWithStats(script: WaveScript, difficulty?: Difficulty): Bala
         const from = state.events.length;
         const step = applyAction(state, action);
         if ('result' in step && !step.result.ok) refused += 1;
-        for (const e of state.events.slice(from)) if (e.kind === 'kill') w.kills += 1;
+        for (const e of state.events.slice(from)) {
+          if (e.kind === 'kill') w.kills += 1;
+          else if (e.kind === 'special') specialHits.push(e.hits);
+        }
       }
       tick(state);
       w.ticks += 1;
@@ -98,7 +104,7 @@ export function playWithStats(script: WaveScript, difficulty?: Difficulty): Bala
     waves.push(w);
     if (script.endless && (state.phase as GameState['phase']) === 'won') continueEndless(state);
   }
-  return { phase: state.phase, wave: state.wave, lives: state.lives, gold: state.gold, tick: state.tick, kills, refused, waves };
+  return { phase: state.phase, wave: state.wave, lives: state.lives, gold: state.gold, tick: state.tick, kills, refused, specialHits, waves };
 }
 
 /** "W 13" for a win with 13 lives, "L 8" for a loss on wave 8 (an endless run: the wave it was lost on). */

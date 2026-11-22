@@ -7,12 +7,12 @@
 // useSpecial, during a wave only (see specials.ts and DESIGN.md "Special
 // attacks").
 // A successful action appends its event (build, upgrade, sell, targeting,
-// move, undoUpgrade, special) to state.events, where it stays until the next tick
+// move, undoUpgrade, special, cheat) to state.events, where it stays until the next tick
 // clears the list.
 
 import { applyBurn, applySpecialSlow, enemyPosition, removeDead } from './combat';
 import { cellKey, sameCell, terrainBlock, type Cell } from './grid';
-import { isSpecialUnlocked, SPECIAL_DEFS, type SpecialType } from './specials';
+import { isSpecialUnlocked, SPECIAL_DEFS, SPECIAL_RECHARGE_TICKS, ZONE_LINGER_TICKS, type SpecialType } from './specials';
 import { TOWER_DEFS, towerSellValue } from './towers';
 import type { GameState, Point, TargetingMode, Tower, TowerType } from './types';
 
@@ -190,20 +190,21 @@ export function setTargeting(state: GameState, cell: Cell, mode: TargetingMode):
 }
 
 /**
- * Use a special attack aimed at `point` (milestone 25b). Refused, checked in
- * this order, when the game is over, outside a wave ('not-in-wave'), when
- * `type` is not unlocked on this wave ('locked'), with no charge left
- * ('no-charge'), or when the point is outside the map, 0..960 x 0..480
- * inclusive ('out-of-bounds'). Otherwise it spends the charge and acts at
- * once on every live enemy whose position is within the special's radius
- * of the point (inclusive), flying or not: damage at full strength
- * (shields ignored), a slow through applySpecialSlow on the special slow
- * channel (milestone 25c; the boss's cap applies, tower slows neither block
- * nor shorten it) and
- * a burn through applyBurn (equal or stronger replaces). Emits one
- * `special` event with the number of enemies hit, then `slowed` events for
- * applied slows, then a `kill` (cause 'special') for each enemy it killed,
- * which pays its bounty and is removed at once.
+ * Use a special attack aimed at `point` (milestone 25b; reworked in
+ * milestone 30). Refused, checked in this order, when the game is over,
+ * outside a wave ('not-in-wave'), when `type` is not unlocked on this wave
+ * ('locked'), when the charge is not ready ('no-charge'), or when the point
+ * is outside the map, 0..960 x 0..480 inclusive ('out-of-bounds').
+ * Otherwise it spends the charge, starts the recharge
+ * (SPECIAL_RECHARGE_TICKS wave ticks) and acts at once on every live enemy
+ * whose position is within the special's radius of the point (inclusive),
+ * flying or not: the keg's damage at full strength (shields ignored); the
+ * Tar Barrel's special slow and the Fire Arrows' special burn for
+ * ZONE_LINGER_TICKS, as a zone tick would. The Tar Barrel and Fire Arrows
+ * then leave a zone at the point for `zoneTicks` (game.ts step 2b). Emits
+ * one `special` event with the number of enemies hit (and the zone's id),
+ * then `slowed` events for applied slows, then a `kill` (cause 'special')
+ * for each enemy it killed, which pays its bounty and is removed at once.
  */
 export function useSpecial(state: GameState, type: SpecialType, point: Point): SpecialResult {
   if (isOver(state)) return { ok: false, reason: 'game-over' };
@@ -212,22 +213,47 @@ export function useSpecial(state: GameState, type: SpecialType, point: Point): S
   if (state.specialCharges <= 0) return { ok: false, reason: 'no-charge' };
   const { x, y } = point;
   if (!(x >= 0 && x <= state.map.width && y >= 0 && y <= state.map.height)) return { ok: false, reason: 'out-of-bounds' };
-  state.specialCharges -= 1;
+  state.specialCharges = 0;
+  state.specialRechargeTicks = SPECIAL_RECHARGE_TICKS;
   const def = SPECIAL_DEFS[type];
   const inside = state.enemies.filter((enemy) => {
     const p = enemyPosition(enemy, state.map);
     return Math.hypot(p.x - x, p.y - y) <= def.radius;
   });
-  state.events.push({ kind: 'special', type, x, y, radius: def.radius, hits: inside.length });
+  const zoneId = def.zoneTicks > 0 && type !== 'keg' ? state.nextZoneId : undefined;
+  state.events.push({ kind: 'special', type, x, y, radius: def.radius, hits: inside.length, ...(zoneId === undefined ? {} : { zoneId }) });
   for (const enemy of inside) {
     if (def.damage > 0) enemy.hp -= def.damage;
     if (def.slow > 0) {
-      const applied = applySpecialSlow(enemy, def.slow, def.slowTicks);
-      if (applied !== null) state.events.push({ kind: 'slowed', enemyId: enemy.id, slow: applied, ticks: def.slowTicks });
+      const applied = applySpecialSlow(enemy, def.slow, ZONE_LINGER_TICKS);
+      if (applied !== null) state.events.push({ kind: 'slowed', enemyId: enemy.id, slow: applied, ticks: ZONE_LINGER_TICKS });
     }
-    if (def.burnDps > 0) applyBurn(enemy, def.burnDps, def.burnTicks);
+    if (def.burnDps > 0) applyBurn(enemy, def.burnDps, ZONE_LINGER_TICKS, 'special');
+  }
+  if (zoneId !== undefined && type !== 'keg') {
+    state.zones.push({ id: zoneId, type, x, y, radius: def.radius, ticksLeft: def.zoneTicks });
+    state.nextZoneId += 1;
   }
   const before = state.enemies.length;
   removeDead(state, 'special');
   return { ok: true, hits: inside.length, kills: before - state.enemies.length, gold: state.gold };
+}
+
+/** Gold the cheat grants (milestone 30). */
+export const CHEAT_GOLD = 500;
+
+export type CheatResult = { ok: true; gold: number } | { ok: false; reason: 'game-over' };
+
+/**
+ * The gold cheat (milestone 30), between ticks: +CHEAT_GOLD gold, sets
+ * `state.cheated` and emits `cheat`. Refused with 'game-over' once the game
+ * is won or lost; a refusal changes nothing. Nothing else in the
+ * simulation reads `cheated`.
+ */
+export function grantCheatGold(state: GameState): CheatResult {
+  if (isOver(state)) return { ok: false, reason: 'game-over' };
+  state.gold += CHEAT_GOLD;
+  state.cheated = true;
+  state.events.push({ kind: 'cheat', gold: CHEAT_GOLD });
+  return { ok: true, gold: state.gold };
 }

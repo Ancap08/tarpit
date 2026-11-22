@@ -19,8 +19,8 @@ export const TOWER_DEFS: Readonly<Record<TowerType, TowerDef>> = {
   cannon: {
     cost: 80,
     upgradeCost: 60,
-    base: { ...PLAIN, range: 90, damage: 25, fireRate: 0.5, splashRadius: 40 },
-    upgraded: { ...PLAIN, range: 90, damage: 40, fireRate: 0.5, splashRadius: 55 },
+    base: { ...PLAIN, range: 105, damage: 25, fireRate: 0.5, splashRadius: 40 },
+    upgraded: { ...PLAIN, range: 105, damage: 40, fireRate: 0.5, splashRadius: 55 },
   },
   tarpit: {
     cost: 60,

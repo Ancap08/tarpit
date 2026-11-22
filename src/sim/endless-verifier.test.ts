@@ -8,7 +8,7 @@ import { DIFFICULTIES, DIFFICULTY_DEFS, enemyMaxHp, type Difficulty } from './di
 import { ENEMY_STATS } from './enemies';
 import type { GameEvent } from './events';
 import { callEarlyStatus, callNextWave, continueEndless, createGame, lastSpawnTick, spawnTick, startWave, tick, wavesCleared } from './game';
-import { applyAction, comboBuild, endlessGreedy, ENDLESS_CLUSTER_POLICY, ENDLESS_WAVE_CAP, playScripted, type WaveScript } from './headless';
+import { applyAction, comboBuild, endlessGreedy, ENDLESS_WAVE_CAP, playScripted, type WaveScript } from './headless';
 import { MAPS, positionAlongPath } from './map';
 import { TOWER_DEFS } from './towers';
 import type { EnemyType, GameState } from './types';
@@ -428,10 +428,11 @@ describe('verifier: far waves', () => {
     expect(Number.isFinite(at200)).toBe(true);
   });
 
-  it('the cluster policy covers every wave up to the cap, at the repeated table wave’s tick', () => {
-    expect(ENDLESS_CLUSTER_POLICY).toHaveLength(ENDLESS_WAVE_CAP);
+  it('the special policy fires in the endless waves too (milestone 30: the cluster ticks are gone)', () => {
     expect(ENDLESS_WAVE_CAP).toBe(200);
-    const tickOf = (wave: number) => (ENDLESS_CLUSTER_POLICY[wave - 1][0] as { atWaveTick: number }).atWaveTick;
-    expect([tickOf(11), tickOf(12), tickOf(13), tickOf(14), tickOf(200)]).toEqual([1241, 1754, 713, 1241, 1241]);
+    const script = endlessGreedy();
+    const endlessSpecials = (script.timed ?? []).slice(10).flat().filter((a) => a.type === 'special');
+    expect(endlessSpecials.length).toBeGreaterThan(0);
   });
+
 });

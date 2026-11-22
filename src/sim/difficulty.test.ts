@@ -164,15 +164,16 @@ describe('Hard targets hold with one hp point either way (milestone 25c verifier
 
 describe('thin margin (milestone 28): Goblin hp +1', () => {
   // Goblin 24 makes the Hard Goblin 29 (1 over a multiple of 4: against the
-  // Hard hp rule), and the Hard combo then loses on Meadow on wave 7, which
-  // breaks H3; hardBuild still wins on Meadow.
-  it('Goblin 24: Hard comboBuild on Meadow loses on wave 7; hardBuild still wins', () => {
+  // Hard hp rule). Before milestone 30 the Hard combo then lost on Meadow on
+  // wave 7, breaking H3; with the milestone 30 specials it loses on wave 8,
+  // so only H4 breaks. hardBuild still wins on Meadow.
+  it('Goblin 24: Hard comboBuild on Meadow loses on wave 8; hardBuild still wins', () => {
     const stats = ENEMY_STATS.goblin as { hp: number };
     const hp0 = stats.hp;
     stats.hp = hp0 + 1;
     try {
       expect(enemyMaxHp('goblin', 'hard')).toBe(29);
-      expect(end('hard', comboBuild('hard'))).toMatchObject({ phase: 'lost', wave: 7 });
+      expect(end('hard', comboBuild('hard'))).toMatchObject({ phase: 'lost', wave: 8 });
       expect(end('hard', hardBuild('hard')).phase).toBe('won');
     } finally {
       stats.hp = hp0;

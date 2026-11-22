@@ -81,7 +81,9 @@ test('map at wave 0', async ({ page }) => {
 // then Start Wave; the verifier's proposal). Tick 1904: 15 Goblins out, 10
 // hurt, 2 tarred, the Cannon's splash 3 ticks into its fade, the Tar Pit's
 // shot 2 ticks old, no shot on this tick (src/sim/midwave-frame.test.ts).
-const MID_WAVE_STEPS = 1904;
+// Milestone 30 (Cannon range 105): tick 1880, the first again with the
+// splash 3 ticks into its fade: 16 Goblins out, 10 hurt, 2 tarred.
+const MID_WAVE_STEPS = 1880;
 
 test('mid wave 2 with three towers', async ({ page }) => {
   await open(page);
@@ -134,6 +136,8 @@ test('mid wave 2 with three towers', async ({ page }) => {
 // hurt in all. Second pass (longer, sparser waves): the same scan picked
 // tick 1680: 11 Goblins, 7 Wolves, 5 Trolls (2 hurt), 4 Shieldbearers and
 // 13 Harpies, 3 slowed, 40 on the map, closest pair 8.5 px apart.
+// Milestone 30 (the special policy): at the same tick 9 Goblins, 8 Wolves,
+// 5 Trolls (2 hurt), 4 Shieldbearers, 13 Harpies, 2 slowed.
 const ENEMIES_STEPS = 1680;
 
 test('wave 8 with all five enemy types', async ({ page }) => {
@@ -424,6 +428,8 @@ test('wave 4 Harpies: a Cannon splash ignores one, a Musketeer shoots one', asyn
 // step that meets the same rules, 5361: alone near the top of the downhill
 // run at (420,111), tarred and burning, 3339 of 4000 hp, Mortar splash fired
 // on step 5359, no hit on this step (src/sim/boss-frame.test.ts pins it).
+// Milestone 30 (the special policy): the same step still meets the rules,
+// at (420,108) with 3331 hp.
 const BOSS_STEPS = 5361;
 
 test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splash', async ({ page }) => {

@@ -58,7 +58,7 @@ describe('verifier geometry', () => {
     const b = enemyPosition(enemy(0, 'harpy', 148), MAPS.meadow);
     expect(Math.hypot(a.x - b.x, a.y - b.y)).toBe(20);
     expect(TOWER_DEFS.mortar.upgraded).toMatchObject({ range: 220, minRange: 70, damage: 70, splashRadius: 70 });
-    expect(TOWER_DEFS.cannon.base).toMatchObject({ range: 90, damage: 25, splashRadius: 40 });
+    expect(TOWER_DEFS.cannon.base).toMatchObject({ range: 105, damage: 25, splashRadius: 40 });
   });
 });
 

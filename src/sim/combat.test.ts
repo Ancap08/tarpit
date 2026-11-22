@@ -146,11 +146,12 @@ describe('musketeer', () => {
 });
 
 describe('cannon splash', () => {
-  // Cannon at B (240,176), range 90. Target: distance 400 = (256,96).
-  // Distance 370 = (226,96) is 30 px from it; 440 = (296,96) is exactly 40 px
-  // (and itself out of the cannon's range); 350 = (206,96) is 50 px; 341 is 59 px.
+  // Cannon at B (240,176), range 105 (milestone 30). Target: distance 430 =
+  // (286,96), 92.3 px from B. Distance 400 = (256,96) is 30 px from it; 470 =
+  // (326,96) is exactly 40 px (and itself out of the cannon's range, 117.6
+  // px); 380 = (236,96) is 50 px; 371 is 59 px.
   it('hits every enemy within 40 px of the target, inclusive, and not one outside', () => {
-    const s = arena([enemy(0, 341), enemy(1, 370), enemy(2, 400), enemy(3, 440), enemy(4, 350)], [[B, 'cannon']]);
+    const s = arena([enemy(0, 371), enemy(1, 400), enemy(2, 430), enemy(3, 470), enemy(4, 380)], [[B, 'cannon']]);
     expect(findTarget(s, s.towers[0])?.id).toBe(2);
     fireTowers(s);
     expect(hp(s)).toEqual({ 0: 30, 1: 5, 2: 5, 3: 5, 4: 30 });
@@ -158,7 +159,7 @@ describe('cannon splash', () => {
   });
 
   it('kills every enemy the splash drops to 0 and pays each bounty', () => {
-    const s = arena([enemy(0, 370, 'wolf', 25), enemy(1, 400, 'goblin', 25), enemy(2, 440, 'troll')], [[B, 'cannon']]);
+    const s = arena([enemy(0, 400, 'wolf', 25), enemy(1, 430, 'goblin', 25), enemy(2, 470, 'troll')], [[B, 'cannon']]);
     fireTowers(s);
     expect(hp(s)).toEqual({ 2: 475 });
     expect(s.gold).toBe(ENEMY_STATS.wolf.bounty + ENEMY_STATS.goblin.bounty); // 2 + 2 since milestone 25c (5 + 4 before)
