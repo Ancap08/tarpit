@@ -7117,9 +7117,10 @@ New probes: `e2e/phone-fixes-verifier-phone.spec.ts` and the perf print
   4. Rotate to landscape and back twice in the middle of a game. Expect: the
      game is centred, the same towers are there.
   5. If a zoom does happen: note iOS version, Safari or icon, and what you
-     did; check whether it returns to normal within a second without you
-     touching anything. That tells us the meta rewrite works; if not, use
-     the fallback above.
+     did. Within about a second the game should fill and centre in what you
+     can see (it now fits the visible area even if Safari keeps the zoom).
+     Then note whether the zoom itself went back to normal (the meta
+     rewrite worked) or only the game moved (the fit worked).
   6. Then placing: drag a tower to the trail edge (the ring and line show the
      snap, the magnifier appears), drop it, and tap beside a tower.
 
@@ -7171,3 +7172,18 @@ New probes: `e2e/phone-fixes-verifier-phone.spec.ts` and the perf print
   and the finger penalty) and the second finger direction.
 - **Phone check.** The verifier's six-step check above is the one for
   Kyle. The README lines now say only what the emulated tests show.
+
+Follow-up check (8b0f820, Claude Sonnet): the fit-the-visible-area
+fallback holds with a stubbed `visualViewport` at scales 1.4, 0.8 and 2.5
+with offsets, in portrait and landscape (`phone-fixes-verifier-phone.spec.ts`):
+the canvas lies inside the visible rectangle and is centred in it, taps on up
+to ten cells (corners included) arm the right cells, a lifted drag builds on
+the right cell, `#game` style is written 6 times over 50 events, layout and
+tower state do not change, and normal CSS returns at scale 1. Open points by
+reading, not fixed: while zoomed, `lift` and the magnifier test use canvas px
+per layout CSS px, so on screen the lift is 48 CSS px times the scale and the
+magnifier threshold is off by the same factor. The new snap rule is
+re-derived independently in `src/game/touchAssist-verifier.test.ts` (6 cases,
+three maps in both layouts, 17,640 points each): 0 mismatches, 0 crossings;
+red where the old rule snapped: Meadow 2.4 %, Switchback 0.2 %, Riverbend
+4.5 % of the old snaps.

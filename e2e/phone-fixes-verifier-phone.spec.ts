@@ -228,3 +228,105 @@ test.describe('verifier: snap integrity and magnifier limits', () => {
     }
   });
 });
+
+// Follow-up (8b0f820): #game follows a stubbed zoomed visual viewport.
+test.describe('verifier: zoomed viewport fit', () => {
+  const cases: { scale: number; ox: number; oy: number; w: number; h: number }[] = [
+    { scale: 1.4, ox: 40, oy: 90, w: 390, h: 844 },
+    { scale: 0.8, ox: 0, oy: 0, w: 390, h: 844 },
+    { scale: 2.5, ox: 100, oy: 250, w: 390, h: 844 },
+    { scale: 1.4, ox: 70, oy: 30, w: 844, h: 390 },
+    { scale: 0.8, ox: 0, oy: 0, w: 844, h: 390 },
+    { scale: 2.5, ox: 200, oy: 100, w: 844, h: 390 },
+  ];
+  for (const k of cases) {
+    test(`scale ${k.scale} offsets ${k.ox},${k.oy} at ${k.w}x${k.h}`, async ({ page }) => {
+      await startGame(page);
+      if (k.w > k.h) {
+        await page.setViewportSize({ width: k.w, height: k.h });
+        await page.waitForFunction(() => window.__tarpit!.layout() === 'landscape');
+        await page.waitForTimeout(400);
+      }
+      const layout0 = await page.evaluate(() => window.__tarpit!.layout());
+      await page.evaluate(() => {
+        const t = window.__tarpit as TarpitTestApi;
+        t.state().gold = 5000;
+        t.buildAt(2, 2, 'cannon');
+      });
+      const vv = { scale: k.scale, offsetLeft: k.ox, offsetTop: k.oy, width: k.w / k.scale, height: k.h / k.scale };
+      const writes = await page.evaluate(async (v) => {
+        const box = document.getElementById('game')!;
+        let n = 0;
+        new MutationObserver((m) => (n += m.length)).observe(box, { attributes: true, attributeFilter: ['style'] });
+        Object.defineProperty(window, 'visualViewport', { configurable: true, get: () => ({ ...v }) });
+        for (let i = 0; i < 50; i++) {
+          window.dispatchEvent(new Event('resize'));
+          await new Promise((r) => setTimeout(r, 30));
+        }
+        await new Promise((r) => setTimeout(r, 500));
+        return n;
+      }, vv);
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null)))));
+      const geo = await page.evaluate(() => {
+        const c = document.querySelector('canvas')!.getBoundingClientRect();
+        return { l: c.left, t: c.top, w: c.width, h: c.height };
+      });
+      console.log('writes to #game style', k, writes);
+      expect(writes).toBeLessThanOrEqual(6);
+      // inside the visible rectangle and centred in it
+      expect(geo.l).toBeGreaterThanOrEqual(vv.offsetLeft - 1);
+      expect(geo.t).toBeGreaterThanOrEqual(vv.offsetTop - 1);
+      expect(geo.l + geo.w).toBeLessThanOrEqual(vv.offsetLeft + vv.width + 1);
+      expect(geo.t + geo.h).toBeLessThanOrEqual(vv.offsetTop + vv.height + 1);
+      expect(Math.abs(geo.l + geo.w / 2 - (vv.offsetLeft + vv.width / 2))).toBeLessThanOrEqual(1.5);
+      expect(Math.abs(geo.t + geo.h / 2 - (vv.offsetTop + vv.height / 2))).toBeLessThanOrEqual(1.5);
+      expect(await page.evaluate(() => window.__tarpit!.layout())).toBe(layout0);
+      expect((await state(page)).towers.map((t) => t.cell)).toEqual([{ col: 2, row: 2 }]);
+      // taps land on the right cells (pick, then tap: the armed cell is the tapped one)
+      const cands: { col: number; row: number }[] = [
+        { col: 0, row: 0 }, { col: 29, row: 0 }, { col: 0, row: 14 }, { col: 29, row: 14 },
+        { col: 15, row: 0 }, { col: 15, row: 14 }, { col: 8, row: 6 }, { col: 22, row: 9 }, { col: 5, row: 12 }, { col: 25, row: 4 },
+      ];
+      await tap(page, 'bar:musketeer');
+      let tried = 0;
+      const bad: string[] = [];
+      for (const c of cands) {
+        const p = await cellPage(page, c);
+        if (p.x < 1 || p.y < 1 || p.x > k.w - 1 || p.y > k.h - 1) continue;
+        // skip cells under the HUD
+        const hud = await page.evaluate(([x, y]) => window.__tarpit!.uiRects() && [x, y], [p.x, p.y]);
+        void hud;
+        await page.touchscreen.tap(p.x, p.y);
+        const u = await ui(page);
+        tried++;
+        if (!(u.armedCell?.col === c.col && u.armedCell?.row === c.row) && !(u.snap && u.snap.cell.col === u.armedCell?.col)) bad.push(`${c.col},${c.row}->${JSON.stringify(u.armedCell)}`);
+      }
+      console.log('taps tried', tried, 'bad', bad);
+      expect(tried).toBeGreaterThanOrEqual(2);
+      expect(bad).toEqual([]);
+      // a drag with the lift builds on the right cell
+      const target = { col: 8, row: 6 };
+      const finger = await fingerFor(page, target);
+      if (k.scale >= 1 && finger.x > 0 && finger.y > 0 && finger.x < k.w && finger.y < k.h) {
+        // (a stubbed scale under 1 puts the HUD off the real screen, so no drag there)
+        const client = await page.context().newCDPSession(page);
+        await tStart(client, await rectPage(page, 'bar:musketeer'));
+        await tMove(client, { x: finger.x, y: finger.y - 3 });
+        await tMove(client, finger);
+        await tEnd(client);
+        expect((await state(page)).towers.some((t) => t.cell.col === 8 && t.cell.row === 6)).toBe(true);
+      }
+      // back to scale 1: normal CSS returns
+      await page.evaluate(() => {
+        delete (window as { visualViewport?: unknown }).visualViewport;
+        window.dispatchEvent(new Event('resize'));
+      });
+      await page.waitForTimeout(500);
+      const css = await page.evaluate(() => {
+        const b = document.getElementById('game')!;
+        return { w: b.style.width, l: b.style.left, fit: b.dataset.fit ?? '' };
+      });
+      expect(css).toEqual({ w: '', l: '', fit: '' });
+    });
+  }
+});
