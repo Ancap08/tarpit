@@ -9,12 +9,12 @@ export const MEADOW_COMBO_NORMAL: Omit<GameState, 'map'> = {
   "difficulty": "normal",
   "endless": false,
   "phase": "won",
-  "gold": 412,
-  "lives": 15,
+  "gold": 484,
+  "lives": 14,
   "wave": 10,
   "specialCharges": 0,
-  "tick": 34907,
-  "waveTick": 6198,
+  "tick": 37112,
+  "waveTick": 6259,
   "spawnedPerGroup": [
     20,
     15,
@@ -38,7 +38,7 @@ export const MEADOW_COMBO_NORMAL: Omit<GameState, 'map'> = {
       "locked": true,
       "unlockedSpend": 0,
       "upgradedThisPhase": false,
-      "kills": 125
+      "kills": 75
     },
     {
       "cell": {
@@ -53,7 +53,7 @@ export const MEADOW_COMBO_NORMAL: Omit<GameState, 'map'> = {
       "locked": true,
       "unlockedSpend": 0,
       "upgradedThisPhase": false,
-      "kills": 3
+      "kills": 2
     },
     {
       "cell": {
@@ -68,7 +68,7 @@ export const MEADOW_COMBO_NORMAL: Omit<GameState, 'map'> = {
       "locked": true,
       "unlockedSpend": 0,
       "upgradedThisPhase": false,
-      "kills": 10
+      "kills": 7
     },
     {
       "cell": {
@@ -83,7 +83,7 @@ export const MEADOW_COMBO_NORMAL: Omit<GameState, 'map'> = {
       "locked": true,
       "unlockedSpend": 0,
       "upgradedThisPhase": false,
-      "kills": 110
+      "kills": 127
     },
     {
       "cell": {
@@ -98,7 +98,7 @@ export const MEADOW_COMBO_NORMAL: Omit<GameState, 'map'> = {
       "locked": true,
       "unlockedSpend": 0,
       "upgradedThisPhase": false,
-      "kills": 8
+      "kills": 4
     },
     {
       "cell": {
@@ -108,12 +108,12 @@ export const MEADOW_COMBO_NORMAL: Omit<GameState, 'map'> = {
       "type": "mortar",
       "upgraded": true,
       "targeting": "first",
-      "cooldownTicks": 61,
+      "cooldownTicks": 180,
       "spent": 190,
       "locked": true,
       "unlockedSpend": 0,
       "upgradedThisPhase": false,
-      "kills": 117
+      "kills": 108
     },
     {
       "cell": {
@@ -123,12 +123,12 @@ export const MEADOW_COMBO_NORMAL: Omit<GameState, 'map'> = {
       "type": "mortar",
       "upgraded": true,
       "targeting": "first",
-      "cooldownTicks": 68,
+      "cooldownTicks": 41,
       "spent": 190,
       "locked": true,
       "unlockedSpend": 0,
       "upgradedThisPhase": false,
-      "kills": 40
+      "kills": 44
     },
     {
       "cell": {
@@ -136,14 +136,14 @@ export const MEADOW_COMBO_NORMAL: Omit<GameState, 'map'> = {
         "row": 7
       },
       "type": "mortar",
-      "upgraded": true,
+      "upgraded": false,
       "targeting": "first",
-      "cooldownTicks": 17,
-      "spent": 190,
+      "cooldownTicks": 143,
+      "spent": 110,
       "locked": true,
       "unlockedSpend": 0,
       "upgradedThisPhase": false,
-      "kills": 6
+      "kills": 4
     },
     {
       "cell": {
@@ -153,12 +153,12 @@ export const MEADOW_COMBO_NORMAL: Omit<GameState, 'map'> = {
       "type": "longbow",
       "upgraded": true,
       "targeting": "first",
-      "cooldownTicks": 10,
+      "cooldownTicks": 8,
       "spent": 70,
       "locked": true,
       "unlockedSpend": 0,
       "upgradedThisPhase": false,
-      "kills": 3
+      "kills": 5
     },
     {
       "cell": {
@@ -168,12 +168,12 @@ export const MEADOW_COMBO_NORMAL: Omit<GameState, 'map'> = {
       "type": "longbow",
       "upgraded": true,
       "targeting": "first",
-      "cooldownTicks": 9,
+      "cooldownTicks": 8,
       "spent": 70,
       "locked": true,
       "unlockedSpend": 0,
       "upgradedThisPhase": false,
-      "kills": 16
+      "kills": 47
     },
     {
       "cell": {
@@ -183,12 +183,12 @@ export const MEADOW_COMBO_NORMAL: Omit<GameState, 'map'> = {
       "type": "firepot",
       "upgraded": true,
       "targeting": "first",
-      "cooldownTicks": 67,
+      "cooldownTicks": 68,
       "spent": 120,
       "locked": true,
       "unlockedSpend": 0,
       "upgradedThisPhase": false,
-      "kills": 26
+      "kills": 24
     },
     {
       "cell": {
@@ -198,12 +198,12 @@ export const MEADOW_COMBO_NORMAL: Omit<GameState, 'map'> = {
       "type": "longbow",
       "upgraded": true,
       "targeting": "first",
-      "cooldownTicks": 24,
+      "cooldownTicks": 22,
       "spent": 70,
       "locked": true,
       "unlockedSpend": 0,
       "upgradedThisPhase": false,
-      "kills": 2
+      "kills": 5
     },
     {
       "cell": {
@@ -213,12 +213,12 @@ export const MEADOW_COMBO_NORMAL: Omit<GameState, 'map'> = {
       "type": "longbow",
       "upgraded": true,
       "targeting": "first",
-      "cooldownTicks": 23,
+      "cooldownTicks": 21,
       "spent": 70,
       "locked": true,
       "unlockedSpend": 0,
       "upgradedThisPhase": false,
-      "kills": 17
+      "kills": 19
     },
     {
       "cell": {
@@ -228,12 +228,12 @@ export const MEADOW_COMBO_NORMAL: Omit<GameState, 'map'> = {
       "type": "tarpit",
       "upgraded": true,
       "targeting": "first",
-      "cooldownTicks": 23,
+      "cooldownTicks": 9,
       "spent": 110,
       "locked": true,
       "unlockedSpend": 0,
       "upgradedThisPhase": false,
-      "kills": 7
+      "kills": 18
     },
     {
       "cell": {
@@ -243,30 +243,31 @@ export const MEADOW_COMBO_NORMAL: Omit<GameState, 'map'> = {
       "type": "longbow",
       "upgraded": true,
       "targeting": "first",
-      "cooldownTicks": 13,
+      "cooldownTicks": 11,
       "spent": 70,
       "locked": true,
       "unlockedSpend": 0,
       "upgradedThisPhase": false,
-      "kills": 7
+      "kills": 8
     }
   ],
   "shots": [
     {
       "cell": {
-        "col": 16,
-        "row": 9
+        "col": 17,
+        "row": 6
       },
-      "tower": "longbow",
+      "tower": "mortar",
       "targetId": 523,
       "from": {
-        "x": 528,
-        "y": 304
+        "x": 560,
+        "y": 208
       },
       "to": {
         "x": 420,
-        "y": 347.9583333333036
-      }
+        "y": 369.49999999996726
+      },
+      "splashRadius": 70
     }
   ],
   "events": [
@@ -279,11 +280,11 @@ export const MEADOW_COMBO_NORMAL: Omit<GameState, 'map'> = {
       "kind": "hit",
       "enemyId": 523,
       "cell": {
-        "col": 16,
-        "row": 9
+        "col": 17,
+        "row": 6
       },
-      "tower": "longbow",
-      "damage": 9
+      "tower": "mortar",
+      "damage": 70
     },
     {
       "kind": "kill",

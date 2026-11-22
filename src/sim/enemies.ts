@@ -5,12 +5,15 @@ import type { Enemy, EnemyStats, EnemyType } from './types';
  * (horde retune): more enemies, bounties lowered; the second pass (longer,
  * sparser waves) set the hp so that no Hard hp sits by accident 1 or 2
  * points above a multiple of a tower's base damage (12, 4, 25 and 45;
- * docs/DESIGN.md, Hard hp rule). Speeds unchanged.
+ * docs/DESIGN.md, Hard hp rule). Speeds unchanged. Milestone 28: Goblin
+ * 19 -> 23 (Hard 28, three Musketeer shots on Hard and two on Easy and
+ * Normal: target H2) and Troll 900 -> 950 (Hard 1140; targets T4 and T6 on
+ * Switchback).
  */
 export const ENEMY_STATS: Readonly<Record<EnemyType, EnemyStats>> = {
-  goblin: { hp: 19, speed: 60, bounty: 2, flying: false, shield: false, livesCost: 1 },
+  goblin: { hp: 23, speed: 60, bounty: 2, flying: false, shield: false, livesCost: 1 },
   wolf: { hp: 20, speed: 120, bounty: 2, flying: false, shield: false, livesCost: 1 },
-  troll: { hp: 900, speed: 35, bounty: 8, flying: false, shield: false, livesCost: 1 },
+  troll: { hp: 950, speed: 35, bounty: 8, flying: false, shield: false, livesCost: 1 },
   harpy: { hp: 36, speed: 90, bounty: 3, flying: true, shield: false, livesCost: 1 },
   shieldbearer: { hp: 70, speed: 45, bounty: 5, flying: false, shield: true, livesCost: 1 },
   // Grumblefoot, the Troll King (milestone 23, docs/SCOPE-v4.md): one at the

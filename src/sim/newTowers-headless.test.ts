@@ -59,12 +59,12 @@ describe('comboBuild', () => {
   });
 
   // Milestone 25c: the plan's last items soak up late gold, so it ends
-  // before them: 29 of its 31 actions are bought (milestone 28; all 21 older ones).
-  it('follows COMBO_PLAN in order: 29 of 31 actions bought by wave 10', () => {
+  // before them: 28 of its 31 actions are bought (all 21 older ones).
+  it('follows COMBO_PLAN in order: 28 of 31 actions bought by wave 10', () => {
     const bought = comboBuild().flat();
     expect(COMBO_PLAN).toHaveLength(31);
-    expect(bought).toHaveLength(29);
-    expect(bought).toEqual(COMBO_PLAN.slice(0, 29));
+    expect(bought).toHaveLength(28);
+    expect(bought).toEqual(COMBO_PLAN.slice(0, 28));
   });
 });
 

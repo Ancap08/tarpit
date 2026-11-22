@@ -465,20 +465,21 @@ describe('E. sim probes on every map', () => {
 });
 
 describe('B. archetypes and the map argument', () => {
-  it('the archetypes that take a map record it and play on it', () => {
-    for (const f of [noTowers, lazyBuild, longbowSpam, comboBuild, noAntiAir, endlessIdle]) {
+  // Milestone 28: one test per archetype (the six together took over 5 s).
+  for (const f of [noTowers, lazyBuild, longbowSpam, comboBuild, noAntiAir, endlessIdle]) {
+    it(`the archetypes that take a map record it and play on it: ${f.name}`, () => {
       for (const id of NEW_MAPS) expect(f('normal', id).mapId, `${f.name} ${id}`).toBe(id);
       expect(f('normal').mapId, f.name).toBeUndefined();
       expect(f('normal', 'meadow').mapId, f.name).toBe('meadow');
-    }
-  });
+    });
+  }
 
   // Finding (verifier, low): ARCHETYPES and INFORMATIONAL are typed (difficulty, map) => WaveScript, but
   // soundBuild, soundBuildNoTar, hardBuild, comboStrongest and comboWithKegs dropped the map and returned a
   // Meadow script with no mapId, so `ARCHETYPES.hardBuild('hard', 'riverbend')` silently played Meadow.
   // Fixed in the milestone 27 follow-up (implementer): those five now throw for a map other than Meadow;
   // milestone 28 gave hardBuild a plan per map, so four refuse. This was an it.fails pin; it now checks that every entry given
-  // a map either returns a script for that map or refuses it loudly, and that exactly those five refuse.
+  // a map either returns a script for that map or refuses it loudly, and that exactly those four refuse.
   it('every entry of ARCHETYPES and INFORMATIONAL given a map returns a script for that map or throws', async () => {
     const { ARCHETYPES, INFORMATIONAL } = await import('./headless');
     const wrong: string[] = [];

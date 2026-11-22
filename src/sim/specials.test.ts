@@ -46,10 +46,10 @@ function inWave(wave: number, enemies: Enemy[]): GameState {
 const kinds = (events: GameEvent[]) => events.map((e) => e.kind);
 
 describe('the specials table (SCOPE-v4 starting numbers)', () => {
-  it('Powder Keg wave 1, 80 damage, 70 px; Tar Barrel wave 4, slow 0.5 for 240 ticks, 90 px; Fire Arrows wave 7, burn 30/s for 240 ticks, 80 px (10/s before milestone 25c)', () => {
+  it('Powder Keg wave 1, 80 damage, 70 px; Tar Barrel wave 4, slow 0.5 for 210 ticks, 90 px; Fire Arrows wave 7, burn 30/s for 240 ticks, 80 px (10/s before milestone 25c)', () => {
     expect(SPECIAL_TYPES).toEqual(['keg', 'tarBarrel', 'fireArrows']);
     expect(SPECIAL_DEFS.keg).toMatchObject({ unlockWave: 1, radius: 70, damage: 80, slow: 0, burnDps: 0 });
-    expect(SPECIAL_DEFS.tarBarrel).toMatchObject({ unlockWave: 4, radius: 90, damage: 0, slow: 0.5, slowTicks: 240, burnDps: 0 });
+    expect(SPECIAL_DEFS.tarBarrel).toMatchObject({ unlockWave: 4, radius: 90, damage: 0, slow: 0.5, slowTicks: 210, burnDps: 0 });
     expect(SPECIAL_DEFS.fireArrows).toMatchObject({ unlockWave: 7, radius: 80, damage: 0, slow: 0, burnDps: 30, burnTicks: 240 });
     expect([1, 3, 4, 6, 7, 10].map(unlockedSpecials)).toEqual([
       ['keg'],
@@ -77,18 +77,18 @@ describe('Powder Keg', () => {
 });
 
 describe('Tar Barrel', () => {
-  it('slows a Goblin, a Harpy and a Shieldbearer by 0.5 for 240 ticks, and the boss by his 0.3 cap', () => {
+  it('slows a Goblin, a Harpy and a Shieldbearer by 0.5 for 210 ticks, and the boss by his 0.3 cap', () => {
     const s = inWave(4, FOUR.map((type, i) => enemy(i, type)));
     expect(useSpecial(s, 'tarBarrel', POINT)).toMatchObject({ ok: true, hits: 4, kills: 0 });
     // Milestone 25c: the barrel uses the special slow channel; the tower slow stays empty.
     expect(s.enemies.map((e) => [e.type, e.specialSlow, e.specialSlowTicksLeft, e.slowTicksLeft])).toEqual([
-      ['goblin', 0.5, 240, 0],
-      ['harpy', 0.5, 240, 0],
-      ['shieldbearer', 0.5, 240, 0],
-      ['boss', 0.3, 240, 0],
+      ['goblin', 0.5, 210, 0],
+      ['harpy', 0.5, 210, 0],
+      ['shieldbearer', 0.5, 210, 0],
+      ['boss', 0.3, 210, 0],
     ]);
     expect(s.events.filter((e) => e.kind === 'slowed')).toEqual(
-      FOUR.map((type, i) => ({ kind: 'slowed', enemyId: i, slow: type === 'boss' ? 0.3 : 0.5, ticks: 240 })),
+      FOUR.map((type, i) => ({ kind: 'slowed', enemyId: i, slow: type === 'boss' ? 0.3 : 0.5, ticks: 210 })),
     );
     // No damage.
     expect(s.enemies.map((e) => e.hp)).toEqual(FOUR.map((type) => ARENA_HP[type]));

@@ -164,7 +164,7 @@ test('(c)(d)(e) flash on a hit tick, label null before spawn and after death, fi
     let firstHit: { tick: number; tower: string; flash: boolean; texture: string; frame: string | number; flagHit: boolean; dx: number; dy: number } | null = null;
     let afterHit: { tick: number; flash: boolean; flagHit: boolean } | null = null;
     let ticks = spawnTick + 1;
-    while (ticks < 5664 && (firstHit === null || afterHit === null)) {
+    while (ticks < 5721 && (firstHit === null || afterHit === null)) {
       t.step(1);
       ticks += 1;
       const hit = t.events().find((e) => e.kind === 'hit' && e.enemyId === id);
@@ -190,16 +190,17 @@ test('(c)(d)(e) flash on a hit tick, label null before spawn and after death, fi
   expect(r.bossBefore).toBeNull();
   expect(r.bossAtSpawnMinus1).toBeNull();
   expect(r.labelAtSpawn).toBe(`${BOSS_NAME} 4000 / 4000`);
-  expect(r.firstHit).toMatchObject({ tower: 'longbow', flash: true, texture: 'boss-hit', frame: 0, flagHit: true, dx: 0, dy: 0 });
+  expect(r.firstHit).toMatchObject({ tower: 'firepot', flash: true, texture: 'boss-hit', frame: 0, flagHit: true, dx: 0, dy: 0 });
   expect(r.firstHit!.tick).toBeGreaterThan(BOSS_SPAWN_TICK + 1000);
   expect(r.afterHit).toMatchObject({ tick: r.firstHit!.tick + 1, flash: false, flagHit: false });
 
   // Fill width at the spawn tick's full bar is read from a fresh game below;
-  // here, read it at tick 5664 (the boss.png frame): hp 2428.0x -> 182 px.
+  // here, read it at tick 5721 (milestone 28; 5664 before, the old boss.png
+  // frame): hp 2212.x -> 166 px, the hp text clear of the fill.
   const fill = await page.evaluate(
     async ({ bar, red, bg, id, now }) => {
       const t = window.__tarpit as TarpitTestApi;
-      t.step(5664 - now);
+      t.step(5721 - now);
       const boss = t.state().enemies.find((e) => e.id === id)!;
       await new Promise((resolve) => requestAnimationFrame(resolve));
       const ctx = t.game.canvas.getContext('2d')!;
@@ -213,10 +214,10 @@ test('(c)(d)(e) flash on a hit tick, label null before spawn and after death, fi
     },
     { bar: BAR, red: rgb(COLORS.bossBarFill), bg: rgb(COLORS.bossBarBg), id: r.id, now: r.ticks },
   );
-  expect(fill.waveTick).toBe(5664);
-  expect(fill.label).toBe(`${BOSS_NAME} 2429 / 4000`);
+  expect(fill.waveTick).toBe(5721);
+  expect(fill.label).toBe(`${BOSS_NAME} 2213 / 4000`);
   const want = Math.round((BAR.width * fill.hp) / 4000);
-  expect(want).toBe(182);
+  expect(want).toBe(166);
   expect(Math.abs(fill.redRun - want), `red run ${fill.redRun}, want ${want}`).toBeLessThanOrEqual(2);
   // The trough continues past the fill until the right-aligned hp text (37 px at the milestone 25c frame; was over 40 at 178 px).
   expect(fill.bgAfter).toBeGreaterThan(20);

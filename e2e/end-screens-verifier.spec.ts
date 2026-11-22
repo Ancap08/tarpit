@@ -51,9 +51,9 @@ test('(a) third game behaves like the first', async ({ page }) => {
   await click(page, 'bar:musketeer');
   await page.mouse.click(240, 176); // cell (7,5)
   await click(page, 'startWave');
-  await api(page, (a) => a.step(3000));
-  // Milestone 25c second pass: 19 hp Goblins take two shots; the Musketeer kills 8 of 20 and 12 leak: 50 + 8 x 2 + 25.
-  expect(await state(page)).toMatchObject({ phase: 'setup', wave: 1, lives: 8, gold: 91 });
+  await api(page, (a) => a.step(3100));
+  // Milestone 28: Goblins every 2.5 s; the Musketeer kills all 20 (the wave clears after 3062 ticks): 50 + 20 x 2 + 25.
+  expect(await state(page)).toMatchObject({ phase: 'setup', wave: 1, lives: 20, gold: 115 });
 });
 
 test('(b) after Play again no playAgain rect and no end screen', async ({ page }) => {
@@ -111,8 +111,8 @@ test('(d) win screen HUD text', async ({ page }) => {
   await api(page, (a) => a.runScript('comboBuild'));
   expect(await endScreen(page)).toBe('won');
   expect(await api(page, (a) => a.hudText())).toMatchObject({
-    gold: 'Gold 476', // milestone 25c second pass (497 in milestone 23)
-    lives: 'Lives 13',
+    gold: 'Gold 484', // milestone 28 (476 in 25c, 497 in milestone 23)
+    lives: 'Lives 14',
     wave: 'Wave 10/10',
     next: 'Next: none',
   });

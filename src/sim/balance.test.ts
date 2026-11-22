@@ -56,8 +56,8 @@ describe('every archetype (Meadow, Normal)', () => {
 });
 
 describe('comboBuild on Meadow, Normal', () => {
-  it('buys 29 of the 31 COMBO_PLAN actions (the tail is a gold sink)', () => {
-    expect(combo().flat()).toHaveLength(29);
+  it('buys 28 of the 31 COMBO_PLAN actions (the tail is a gold sink)', () => {
+    expect(combo().flat()).toHaveLength(28);
   });
 
   it("fires the stored special list (specialPolicy('combo')), every special accepted", () => {
@@ -72,8 +72,8 @@ describe('comboBuild on Meadow, Normal', () => {
   // The 25c wave rules on these numbers are R5 in balance.suite.ts; the exact ticks are pinned here.
   it('clear ticks and the most enemies alive per wave, no early calls (R5 exact)', () => {
     const run = balanceRun('comboBuild', 'meadow', 'normal');
-    expect(run.waves.map((w) => w.ticks)).toEqual([1463, 1863, 1703, 2353, 4439, 2939, 5801, 5485, 2663, 6198]);
-    expect(run.waves.map((w) => w.peak)).toEqual([4, 8, 16, 16, 18, 19, 17, 22, 14, 16]);
+    expect(run.waves.map((w) => w.ticks)).toEqual([2941, 2185, 1732, 2368, 4385, 3058, 5819, 5617, 2748, 6259]);
+    expect(run.waves.map((w) => w.peak)).toEqual([2, 12, 17, 16, 18, 19, 18, 22, 14, 16]);
   });
 });
 

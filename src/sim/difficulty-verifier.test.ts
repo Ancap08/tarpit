@@ -29,9 +29,9 @@ const LEVELS = ['easy', 'normal', 'hard'] as const;
 //   Shieldbearer  70 x 0.75 = 52.5 -> 53    70 x 1.2 = 84
 //   Boss        4000 x 0.75 = 3000        4000 x 1.2 = 4800
 const HAND: Record<EnemyType, readonly [number, number, number]> = {
-  goblin: [14, 19, 23],
+  goblin: [17, 23, 28],
   wolf: [15, 20, 24],
-  troll: [675, 900, 1080],
+  troll: [713, 950, 1140],
   harpy: [27, 36, 43],
   shieldbearer: [53, 70, 84],
   boss: [3000, 4000, 4800],
@@ -79,9 +79,10 @@ function spawned(difficulty: Difficulty): { type: EnemyType; hp: number; distanc
 }
 
 describe('(a) scaled hp, by hand, against spawned enemies', () => {
-  it('Math.round on the fractional cases: 19 x 0.75 = 14.25 -> 14, 19 x 1.2 = 22.8 -> 23, 36 x 1.2 = 43.2 -> 43 (milestone 25c second pass; no half case left)', () => {
-    expect(enemyMaxHp('goblin', 'easy')).toBe(14);
-    expect(enemyMaxHp('goblin', 'hard')).toBe(23);
+  it('Math.round on the fractional cases: 23 x 0.75 = 17.25 -> 17, 23 x 1.2 = 27.6 -> 28, 36 x 1.2 = 43.2 -> 43, 950 x 0.75 = 712.5 -> 713 (milestone 28)', () => {
+    expect(enemyMaxHp('goblin', 'easy')).toBe(17);
+    expect(enemyMaxHp('goblin', 'hard')).toBe(28);
+    expect(enemyMaxHp('troll', 'easy')).toBe(713); // half rounds up
     expect(enemyMaxHp('harpy', 'hard')).toBe(43);
     expect(70 * 0.75).toBe(52.5);
     expect(enemyMaxHp('shieldbearer', 'easy')).toBe(53); // half rounds up
@@ -108,9 +109,9 @@ describe('(a) scaled hp, by hand, against spawned enemies', () => {
 describe('(b) bounty, speed, livesCost and slowCap do not depend on the level', () => {
   it('ENEMY_STATS is one table with no level in it (the Normal numbers)', () => {
     expect(ENEMY_STATS).toEqual({
-      goblin: { hp: 19, speed: 60, bounty: 2, flying: false, shield: false, livesCost: 1 },
+      goblin: { hp: 23, speed: 60, bounty: 2, flying: false, shield: false, livesCost: 1 },
       wolf: { hp: 20, speed: 120, bounty: 2, flying: false, shield: false, livesCost: 1 },
-      troll: { hp: 900, speed: 35, bounty: 8, flying: false, shield: false, livesCost: 1 },
+      troll: { hp: 950, speed: 35, bounty: 8, flying: false, shield: false, livesCost: 1 },
       harpy: { hp: 36, speed: 90, bounty: 3, flying: true, shield: false, livesCost: 1 },
       shieldbearer: { hp: 70, speed: 45, bounty: 5, flying: false, shield: true, livesCost: 1 },
       boss: { hp: 4000, speed: 25, bounty: 150, flying: false, shield: false, livesCost: 5, slowCap: 0.3 },

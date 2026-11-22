@@ -161,8 +161,8 @@ test('an early call is saved at once', async ({ page }) => {
   const r = await api(page, (t) => {
     t.state().lives = 1e6;
     t.startWave();
-    // Wave 1's last Goblin spawns at 19 x 1.2 = 22.8 s (tick 1368).
-    t.step(1400);
+    // Wave 1's last Goblin spawns at 19 x 2.5 = 47.5 s (tick 2850; milestone 28).
+    t.step(2900);
     const call = t.callNextWave();
     return { call, wave: t.state().wave, phase: t.state().phase, best: t.bestScore('normal') };
   });

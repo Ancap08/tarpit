@@ -132,9 +132,11 @@ test('a Harpy is drawn above Goblins and tower labels, with no tar or burn', asy
 // at (1,5), found by a scan of every buildable cell: Shieldbearer 7 on tick
 // 362, 70 -> 58. Second pass (Shieldbearers 70 hp, the first at 0.5 s, id 1):
 // the Longbow at (7,5) first hits Shieldbearer 1 on tick 346 (70 -> 68),
-// the Musketeer at (1,5) on tick 122 (70 -> 58).
+// the Musketeer at (1,5) on tick 122 (70 -> 58). Milestone 28 (23 hp
+// Goblins keep the Longbow busy longer): the Longbow's first hit on him is
+// on tick 538; the Musketeer's is unchanged.
 for (const [tower, tick, id, dealt, col, row] of [
-  ['longbow', 346, 1, 2, 7, 5],
+  ['longbow', 538, 1, 2, 7, 5],
   ['musketeer', 122, 1, 12, 1, 5],
 ] as const) {
   test(`wave 6: a base ${tower} takes ${dealt} hp off a Shieldbearer`, async ({ page }) => {

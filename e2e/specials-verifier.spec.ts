@@ -214,7 +214,7 @@ test('(g) the Special button looks greyed in setup, after use and after the game
   // Next wave: lit again. Then the game ends mid-wave with the charge unspent.
   await api(page, (a) => {
     a.state().lives = 1000;
-    a.step(4000);
+    a.step(4500); // milestone 28: wave 1 ends after 4435 ticks
   });
   expect((await state(page)).phase).toBe('setup');
   await page.mouse.move(100, 100);

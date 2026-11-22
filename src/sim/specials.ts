@@ -23,10 +23,14 @@ export interface SpecialDef {
   burnTicks: number;
 }
 
-/** Starting numbers from SCOPE-v4, retuned in milestone 25c (Fire Arrows 10 -> 30 burn per second); milestone 28 retunes. */
+/**
+ * Starting numbers from SCOPE-v4, retuned in milestone 25c (Fire Arrows 10 ->
+ * 30 burn per second) and milestone 28 (Tar Barrel 240 -> 210 slow ticks,
+ * 3.5 s: target T4 on Switchback).
+ */
 export const SPECIAL_DEFS: Readonly<Record<SpecialType, SpecialDef>> = {
   keg: { unlockWave: 1, radius: 70, damage: 80, slow: 0, slowTicks: 0, burnDps: 0, burnTicks: 0 },
-  tarBarrel: { unlockWave: 4, radius: 90, damage: 0, slow: 0.5, slowTicks: 240, burnDps: 0, burnTicks: 0 },
+  tarBarrel: { unlockWave: 4, radius: 90, damage: 0, slow: 0.5, slowTicks: 210, burnDps: 0, burnTicks: 0 },
   fireArrows: { unlockWave: 7, radius: 80, damage: 0, slow: 0, slowTicks: 0, burnDps: 30, burnTicks: 240 },
 };
 

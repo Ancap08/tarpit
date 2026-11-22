@@ -170,6 +170,9 @@ test('Switchback: a Musketeer between two lanes hits enemies on both lanes', asy
     await t.startGame('normal', 'switchback');
     t.buildAt(13, 4, 'musketeer'); // row 4, between the y 96 lane and the y 192 lane
     t.state().lives = 1000;
+    // Milestone 28: wave 1's Goblins (one every 2.5 s) all die on the first
+    // lane, so play wave 2 (one every 0.9 s), where some reach the second.
+    t.state().wave = 1;
     t.startWave();
     const ys = new Set<number>();
     for (let i = 0; i < 2400 && t.state().phase === 'wave'; i++) {

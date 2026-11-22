@@ -651,12 +651,14 @@ export const COMBO_PLAN: readonly BuildAction[] = [
  * (entry i for wave i + 1; milestone 25c). Since milestone 28 the
  * archetypes fire their stored special lists in waves 1 to 10 and these
  * ticks are read only by the endless waves (ENDLESS_CLUSTER_POLICY: the
- * ticks of waves 8, 9 and 10). Chosen per wave by a headless
+ * ticks of waves 8, 9 and 10). Rescanned in milestone 28 on its numbers
+ * (wave 1's tick is 1: no wave 1 cluster is ever larger than one enemy).
+ * Chosen per wave by a headless
  * scan of comboBuild on Normal: for each wave in turn (earlier waves
  * already firing at their ticks), the first wave tick at which the
  * densest 70 px cluster is largest.
  */
-export const CLUSTER_POLICY_TICKS: readonly number[] = [164, 109, 291, 398, 749, 651, 668, 1241, 1194, 713];
+export const CLUSTER_POLICY_TICKS: readonly number[] = [1, 109, 291, 398, 749, 651, 668, 1241, 1754, 713];
 
 /**
  * Switchback's combo plan (milestone 27): COMBO_PLAN's tower mix and
@@ -716,8 +718,8 @@ export const COMBO_PLANS: Readonly<Record<MapId, readonly BuildAction[]>> = {
  */
 export const CLUSTER_POLICY_TICKS_BY_MAP: Readonly<Record<MapId, readonly number[]>> = {
   meadow: CLUSTER_POLICY_TICKS,
-  switchback: [1, 109, 291, 461, 749, 741, 1244, 1343, 1194, 541],
-  riverbend: [304, 109, 1491, 461, 749, 767, 1430, 1241, 1490, 1520],
+  switchback: [1, 109, 291, 461, 749, 741, 1244, 1343, 1604, 541],
+  riverbend: [1, 109, 1311, 461, 749, 767, 1430, 1241, 1496, 1349],
 };
 
 /** The combo plan for a map: COMBO_PLAN on Meadow. */
@@ -949,7 +951,7 @@ export function hardBuild(difficulty?: Difficulty, map?: MapId): WaveScript {
 /**
  * Endless waves' cluster special (milestone 26): each endless wave (11 on)
  * fires one clusterSpecial at the cluster tick of the table wave it repeats
- * (8, 9 or 10; on Meadow 1241, 1194, 713, CLUSTER_POLICY_TICKS). Entry i is
+ * (8, 9 or 10; on Meadow 1241, 1754, 713, CLUSTER_POLICY_TICKS). Entry i is
  * for wave i + 1. Milestone 28: the first ten are the combo build's stored
  * special list on Normal (specialPolicy('combo')).
  */

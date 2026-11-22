@@ -10,10 +10,12 @@ function g(type: GroupDef['type'], count: number, interval: number, delay = 0): 
  * boss as wave 10's last group. Milestone 25c (horde retune, second pass):
  * many more enemies than before 25c, spread out so that in any 3 s of a
  * wave at most 6 walkers and 4 flyers spawn (waves.test.ts), and waves
- * last longer: wave 4 sends its Harpies first, then Goblins.
+ * last longer: wave 4 sends its Harpies first, then Goblins. Milestone 28:
+ * wave 1's Goblins come every 2.5 s (1.2 before), so one Musketeer stops
+ * them all on Easy and Normal (balance targets T8, E3).
  */
 export const WAVES: readonly WaveDef[] = [
-  { groups: [g('goblin', 20, 1.2)] },
+  { groups: [g('goblin', 20, 2.5)] },
   { groups: [g('goblin', 32, 0.9)] },
   { groups: [g('goblin', 22, 1.0), g('wolf', 12, 1.5, 4.5)] },
   { groups: [g('harpy', 10, 1.5), g('goblin', 30, 1.0, 3)] },

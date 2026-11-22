@@ -82,20 +82,20 @@ describe('applySpecialSlow', () => {
 });
 
 describe('the barrel is never wasted or cut short by tower slows', () => {
-  it('a Tar Pit hitting a barrel-tarred Goblin does not shorten the barrel: it walks at 0.5 for the full 240 ticks', () => {
+  it('a Tar Pit hitting a barrel-tarred Goblin does not shorten the barrel: it walks at 0.5 for the full 210 ticks', () => {
     // Tar Pit at (3,5), centre (112, 176): reaches the first run.
     const s = inWave(4, [enemy(0, 'goblin', { hp: 1e6, distance: 60 })]);
     buildTower(s, { col: 3, row: 5 }, 'tarpit');
     useSpecial(s, 'tarBarrel', { x: 60, y: 240 });
     let slowedByPit = 0;
-    for (let i = 0; i < 240; i++) {
+    for (let i = 0; i < 210; i++) {
       tick(s);
       slowedByPit += s.events.filter((e) => e.kind === 'slowed').length;
-      if (i < 239) expect(effectiveSlow(s.enemies[0]), `tick ${i}`).toBe(0.5);
+      if (i < 209) expect(effectiveSlow(s.enemies[0]), `tick ${i}`).toBe(0.5);
     }
     expect(slowedByPit).toBeGreaterThan(0); // the pit did hit it (0.4 on the tower channel)
-    // 240 ticks at 0.5: 240 * 60 * 0.5 / 60 = 120 px.
-    expect(s.enemies[0].distance).toBeCloseTo(60 + 120, 9);
+    // 210 ticks at 0.5: 210 * 60 * 0.5 / 60 = 105 px.
+    expect(s.enemies[0].distance).toBeCloseTo(60 + 105, 9);
     expect(s.enemies[0].specialSlowTicksLeft).toBe(0);
   });
 

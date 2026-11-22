@@ -62,7 +62,7 @@ test('win, three buttons, Keep going by mouse: wave 11 starts, "Wave 11", no bos
   expect(await api(page, (t) => t.endScreen())).toBeNull();
   expect(await api(page, (t) => t.uiRects().keepGoing)).toBeUndefined();
   const s = await api(page, (t) => t.state());
-  expect(s).toMatchObject({ phase: 'setup', endless: true, wave: 10, lives: 13, gold: 476 });
+  expect(s).toMatchObject({ phase: 'setup', endless: true, wave: 10, lives: 14, gold: 484 });
   expect(await api(page, (t) => t.hudText().wave)).toBe('Wave 10');
 
   await click(page, 'startWave');
@@ -73,28 +73,28 @@ test('win, three buttons, Keep going by mouse: wave 11 starts, "Wave 11", no bos
   expect(hud.wave).toBe('Wave 11');
   expect(hud.boss).toBeNull();
   expect(await api(page, (t) => t.events().some((e) => e.kind === 'bossSpawn'))).toBe(false);
-  // Wave 11 Goblins: round(19 x 1.6) = 30 hp.
-  expect(await api(page, (t) => t.state().enemies.find((e) => e.type === 'goblin')?.maxHp)).toBe(30);
+  // Wave 11 Goblins: round(23 x 1.6) = 37 hp (milestone 28).
+  expect(await api(page, (t) => t.state().enemies.find((e) => e.type === 'goblin')?.maxHp)).toBe(37);
 });
 
-test('lose in endless: "Reached wave 15" without "of 10"; Menu shows the best line for Normal only', async ({ page }) => {
+test('lose in endless: "Reached wave 14" without "of 10"; Menu shows the best line for Normal only', async ({ page }) => {
   test.setTimeout(120_000);
   await open(page);
   expect(await titleUi(page)).toMatchObject({ difficulty: 'normal', bestLine: null });
   await startGame(page);
   expect(await api(page, (t) => t.runScript('endlessIdle'))).toBe('lost');
   expect(await api(page, (t) => t.endScreen())).toBe('lost');
-  expect(await api(page, (t) => t.state().wave)).toBe(15);
+  expect(await api(page, (t) => t.state().wave)).toBe(14);
   expect(await api(page, (t) => t.uiRects().keepGoing)).toBeUndefined();
   const texts = await visibleTexts(page);
-  expect(texts).toContain(`${END_TEXT.lostWave} 15`);
+  expect(texts).toContain(`${END_TEXT.lostWave} 14`);
   expect(texts.some((x) => x.includes(' of '))).toBe(false);
-  expect(await api(page, (t) => t.bestScore('normal'))).toBe(14);
+  expect(await api(page, (t) => t.bestScore('normal'))).toBe(13);
 
   await click(page, 'menu');
   await waitForTitle(page);
   const ui = await titleUi(page);
-  expect(ui.bestLine?.text).toBe(bestScoreText('meadow', 'normal', 14));
+  expect(ui.bestLine?.text).toBe(bestScoreText('meadow', 'normal', 13));
   // Centred on y 422, midway between milestone 27's map row (bottom y 398) and Play (top y 446).
   const r = ui.bestLine!.rect;
   expect(Math.abs(r.x + r.width / 2 - 480)).toBeLessThanOrEqual(1);
@@ -105,7 +105,7 @@ test('lose in endless: "Reached wave 15" without "of 10"; Menu shows the best li
   await click(page, 'title:easy');
   expect(await titleUi(page)).toMatchObject({ difficulty: 'easy', bestLine: null });
   await click(page, 'title:normal');
-  expect((await titleUi(page)).bestLine?.text).toBe(bestScoreText('meadow', 'normal', 14));
+  expect((await titleUi(page)).bestLine?.text).toBe(bestScoreText('meadow', 'normal', 13));
 });
 
 test('the score survives a reload; a fresh context shows no line', async ({ page, browser }) => {
@@ -115,7 +115,7 @@ test('the score survives a reload; a fresh context shows no line', async ({ page
   await api(page, (t) => {
     t.state().lives = 1e6; // test setup: survive the leaks
     t.startWave();
-    t.step(4000);
+    t.step(4500); // milestone 28: wave 1 ends after 4435 ticks
   });
   expect(await api(page, (t) => t.state().phase)).toBe('setup');
   expect(await api(page, (t) => t.bestScore('hard'))).toBe(1);

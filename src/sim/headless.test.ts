@@ -13,10 +13,10 @@ describe('headless runner', () => {
       { action: 'startWave', result: { ok: true, wave: 1 } },
       { action: 'startWave', result: { ok: false, reason: 'not-in-setup' } },
       { action: 'runUntilWaveEnds', ticks: 100 },
-      { action: 'runUntilWaveEnds', ticks: 2853 },
+      { action: 'runUntilWaveEnds', ticks: 4335 },
     ]);
-    // Milestone 25c: all 20 wave 1 Goblins exit; the last (spawned at
-    // waveTick 1368) takes the 20th life on waveTick 1368 + 1584 = 2952.
+    // Milestone 28: all 20 wave 1 Goblins exit; the last (spawned at
+    // waveTick 2850) takes the 20th life on waveTick 2850 + 1584 = 4434.
     expect(run.state).toMatchObject({ phase: 'lost', wave: 1, lives: 0, gold: 100 });
   });
 

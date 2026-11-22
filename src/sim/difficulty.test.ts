@@ -26,9 +26,9 @@ describe('difficulty table (docs/SCOPE-v4.md)', () => {
       (Object.keys(ENEMY_STATS) as EnemyType[]).map((t) => [t, DIFFICULTIES.map((d) => enemyMaxHp(t, d))]),
     );
     expect(table).toEqual({
-      goblin: [14, 19, 23],
+      goblin: [17, 23, 28],
       wolf: [15, 20, 24],
-      troll: [675, 900, 1080],
+      troll: [713, 950, 1140],
       harpy: [27, 36, 43],
       shieldbearer: [53, 70, 84],
       boss: [3000, 4000, 4800],
@@ -53,9 +53,9 @@ describe('createGame per level', () => {
   });
 
   it.each([
-    ['easy', 14],
-    ['normal', 19],
-    ['hard', 23],
+    ['easy', 17],
+    ['normal', 23],
+    ['hard', 28],
   ] as const)('%s: the first Goblin of wave 1 spawns with %i hp', (difficulty, hp) => {
     const s = createGame({ difficulty });
     startWave(s);
@@ -140,7 +140,9 @@ const end = (difficulty: Difficulty, script: ReturnType<typeof comboBuild>) => {
 describe('Hard targets hold with one hp point either way (milestone 25c verifier; H1 and H3)', () => {
   // The verifier found Hard balanced on one Wolf hp; the second pass holds
   // the Hard combo target with Goblin and Wolf hp one point either way.
-  for (const [type, d] of [['goblin', 1], ['goblin', -1], ['wolf', 1], ['wolf', -1]] as const) {
+  // Milestone 28: it holds for Goblin -1 and Wolf +-1. Goblin +1 (24, Hard
+  // 29) breaks the Hard hp rule itself and is pinned below as a thin margin.
+  for (const [type, d] of [['goblin', -1], ['wolf', 1], ['wolf', -1]] as const) {
     it(`${type} hp ${d > 0 ? '+' : ''}${d}: the Hard combo target and the hardBuild win hold`, () => {
       const normalLives = end('normal', comboBuild()).lives;
       const stats = ENEMY_STATS[type] as { hp: number };
@@ -158,4 +160,22 @@ describe('Hard targets hold with one hp point either way (milestone 25c verifier
       expect(end('normal', comboBuild()).lives).toBe(normalLives);
     });
   }
+});
+
+describe('thin margin (milestone 28): Goblin hp +1', () => {
+  // Goblin 24 makes the Hard Goblin 29 (1 over a multiple of 4: against the
+  // Hard hp rule), and the Hard combo then loses on Meadow on wave 7, which
+  // breaks H3; hardBuild still wins on Meadow.
+  it('Goblin 24: Hard comboBuild on Meadow loses on wave 7; hardBuild still wins', () => {
+    const stats = ENEMY_STATS.goblin as { hp: number };
+    const hp0 = stats.hp;
+    stats.hp = hp0 + 1;
+    try {
+      expect(enemyMaxHp('goblin', 'hard')).toBe(29);
+      expect(end('hard', comboBuild('hard'))).toMatchObject({ phase: 'lost', wave: 7 });
+      expect(end('hard', hardBuild('hard')).phase).toBe('won');
+    } finally {
+      stats.hp = hp0;
+    }
+  });
 });

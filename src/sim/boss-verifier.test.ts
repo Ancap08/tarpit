@@ -210,22 +210,22 @@ describe('(g) the combo builds against him', () => {
     return { s, boss };
   }
 
-  it('comboBuild: one bossSpawn at 3900, one bossDown by shot or burn at 6197, won with 15 lives and 412 gold (milestone 28)', () => {
+  it('comboBuild: one bossSpawn at 3900, one bossDown by shot or burn at 6258, won with 14 lives and 484 gold (milestone 28)', () => {
     const { s, boss } = run(comboBuild());
     expect(boss.map((b) => b.kind)).toEqual(['bossSpawn', 'bossDown']);
     expect(boss[0].waveTick).toBe(3900);
     expect(['shot', 'burn']).toContain(boss[1].cause);
-    expect(boss[1]).toEqual({ waveTick: 6197, kind: 'bossDown', cause: 'shot' });
-    expect(s).toMatchObject({ phase: 'won', wave: 10, lives: 15, gold: 412 });
+    expect(boss[1]).toEqual({ waveTick: 6258, kind: 'bossDown', cause: 'shot' });
+    expect(s).toMatchObject({ phase: 'won', wave: 10, lives: 14, gold: 484 });
   });
 
-  it('comboBuildNoFire kills him later, at 6265 (68 ticks after the combo build), won with 9 lives', () => {
+  it('comboBuildNoFire kills him later, at 6411 (153 ticks after the combo build), won with 4 lives', () => {
     const combo = run(comboBuild()).boss[1].waveTick;
     const { s, boss } = run(comboBuildNoFire());
-    expect(boss[1]).toMatchObject({ kind: 'bossDown', waveTick: 6265 });
+    expect(boss[1]).toMatchObject({ kind: 'bossDown', waveTick: 6411 });
     expect(['shot', 'burn']).toContain(boss[1].cause);
-    expect(boss[1].waveTick - combo).toBe(6265 - 6197);
-    expect(s).toMatchObject({ phase: 'won', lives: 9 });
+    expect(boss[1].waveTick - combo).toBe(6411 - 6258);
+    expect(s).toMatchObject({ phase: 'won', lives: 4 });
   });
 });
 
