@@ -75,6 +75,23 @@ export const COLORS = {
   fireFlash: 0xff8c1a,
   fireBurst: 0xff7a1a,
   fireBurstCore: 0xffd23a,
+  // Milestone 31 (effects): projectiles, muzzle flash, smoke, shadows, the
+  // exit glow, the boss darkening and burst, and the sparkle of an upgrade.
+  musketBall: 0x2a2a2a,
+  muzzleFlash: 0xfff2a8,
+  smoke: 0xd8d4cc,
+  arrowShaft: 0xc08a48,
+  arrowHead: 0xe8e0c8,
+  cannonBall: 0x1c1d1f,
+  mortarShell: 0x26282b,
+  shellShadow: 0x000000,
+  exitGlow: 0xe0473a,
+  darken: 0x05060a,
+  bossBurst: 0xffd23a,
+  bossBurstRing: 0xff7a1a,
+  sparkle: 0xfff2a8,
+  // A dark edge under splash and boss rings, so they read on the trail and on grass.
+  fxDark: 0x14161a,
 
   // HUD
   hudBar: 0x1b1f24,
@@ -162,4 +179,11 @@ export const TEXT = {
   specialHit: '#fff2a8',
   specialMiss: '#e0b0a8',
   cheatMark: '#e8a07a',
+  // Milestone 31: floating gold, the wave and boss banners, the Lives flash.
+  goldGain: '#f2c94c',
+  waveBanner: '#f2e6c9',
+  waveBannerSub: '#f2c94c',
+  bossBanner: '#e0473a',
+  livesFlash: '#e0473a',
+  fxStroke: '#14161a',
 } as const;

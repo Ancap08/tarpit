@@ -613,6 +613,59 @@ step 3 of the same tick. Towers act only during wave ticks. Once the game
 is won or lost a tick only clears `state.shots`, so the last tracer or
 splash is drawn once. The authoritative comment is at the top of `src/sim/game.ts`.
 
+## Effects
+
+Milestone 31. Effects are drawing only: the simulation is instant-hit and
+applies damage on the tick a tower fires; no rule, number or outcome
+depends on them (`npm run sim` is unchanged). The maths is in
+`src/game/fx/fxMath.ts`, the drawing in `src/game/fx/effects.ts`.
+
+- **Projectiles.** Each shot is drawn flying from the muzzle to the point
+  the simulation recorded (`shot.to`), even if the target has since died or
+  moved. Travel times in game time (so 2x and 3x shorten them): Musketeer
+  110 ms (8 px ball with a bright trail, muzzle flash, smoke), Fire Pot
+  150 ms (a gout of fire up to 20 px wide), Longbow 220 ms (16 px arrow
+  with a pale trail, slight arc), Tar Pit 240 ms (16 px glob, low arc),
+  Cannon 260 ms (16 px ball, low arc up to 22 px, flash and smoke), Mortar
+  320 ms (20 to 24 px shell, high arc of 40 to 90 px, a clear shadow on
+  the ground). The impact (a bright flash, then a bold ring out to the
+  splash radius for Cannon and Mortar, with dust and sparks; tar splat;
+  fire burst) and the enemy's hit flash and knock (2 px, 1 px for a Troll
+  or the boss, gone in 120 ms) are drawn on arrival. An enemy killed by a
+  shot in flight keeps walking along the trail at its last speed, walk
+  cycle running, until the shot lands; then the death puff (sized to the
+  enemy) and the gold label show.
+- **Towers.** The barrel, bow or tube turns toward its current target at
+  10 rad/s of game time (about 570 degrees a second), never a snap, and
+  kicks back 2 to 4 px for 160 ms when it fires. Build, upgrade and sell
+  pop (280, 320 and 240 ms of scale bounce with dust; a sparkle for an
+  upgrade).
+- **Gold and moments.** A kill's bounty floats up as "+N"; kills within
+  56 px and 350 ms share one label. Wave start ("Wave 3") and clear
+  ("Wave 3 cleared", "+N gold") banners show for 1.5 s above the map's
+  middle, under the HUD, take no input, and never stack: a new banner cuts
+  the current one to 250 ms and replaces any waiting one. The boss
+  arrives with his name, the map darkening to 45% for 1.4 s and a 5 px
+  shake for 0.4 s. His death is the biggest effect in the game: three
+  rings (80, 120 and 160 px) starting 160 ms apart and lasting 0.9 s
+  each, 110 sparks with dust and smoke, a large "+150" that never groups
+  with other kills, a 220 ms white flash and an 8 px shake for 0.6 s.
+  An enemy getting through flashes the cottage red and the Lives number
+  red, shaking it 3 px, for 0.6 s.
+- **Shakes** move only the map (boss entrance, boss death, and the Powder
+  Keg's 6 px for 0.22 s). While one runs the main camera shows only the
+  map rows, its background is grass, and its offset never scrolls down;
+  a second, still camera draws the HUD rows. So no shake shows the page
+  behind the canvas and the HUD never moves.
+- **Caps.** Live projectiles 96, impacts 48, gold labels 10, particles 120
+  per emitter; past a cap the oldest is recycled. Slots are allocated once.
+- **Reduced motion.** When `prefers-reduced-motion: reduce` matches there
+  are no camera shakes (the Powder Keg's included), no darkening or
+  full-screen flash and no Lives shake; everything else stays.
+- **Test mode.** `?test=1` creates no effects: shots are the old fading
+  tracers, barrels snap to each shot, and hits and kills react at once, so
+  the screenshot baselines are unchanged.
+
 ## Simulation API shape
 
 Plain TypeScript in `src/sim`, no Phaser, no DOM. One `GameState` object,

@@ -20,7 +20,9 @@ the cottage), five enemy types (one of
 them flies, one carries a shield) and a boss, three difficulty levels, three
 special attacks, and play on a tablet. The enemies are placeholder pixel
 sprites; towers, maps and the HUD are simple shapes with labels until the
-art pass (see Status).
+art pass (see Status). Shots fly as musket balls, arrows,
+cannonballs, mortar shells, tar globs and gouts of fire; towers turn and
+kick back, kills drop floating gold, and waves and the boss get banners.
 
 ## How to play
 

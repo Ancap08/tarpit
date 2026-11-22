@@ -182,3 +182,22 @@ export function speedLabel(speed: 1 | 2 | 3): string {
 
 /** The small mark under the Gold readout once the gold cheat was used (milestone 30). */
 export const CHEAT_MARK = 'cheat used';
+
+/**
+ * Milestone 31 (effects): the wave banners ("Wave 3", "Wave 3 cleared" with
+ * "+20 gold" under it), the boss banner's second line, and the gold that
+ * floats up from a kill ("+2").
+ */
+export function waveStartBanner(wave: number): string {
+  return `Wave ${wave}`;
+}
+export function waveClearBanner(wave: number): string {
+  return `Wave ${wave} cleared`;
+}
+export function bonusGoldText(bonus: number): string {
+  return `+${bonus} gold`;
+}
+export const BOSS_BANNER_SUB = 'is coming';
+export function goldGainText(amount: number): string {
+  return `+${amount}`;
+}

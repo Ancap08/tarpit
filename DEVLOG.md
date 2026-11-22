@@ -6136,3 +6136,173 @@ over a whole comboBuild game, endless boundary, determinism),
 - PR review fix: a 3x speed hold released outside the window (no pointerup) stayed at 3x. It now ends, back to the speed before it and with no toggle from a late click, on a mouse move with no button down, on leaving the canvas with no button down, on pointercancel or touchcancel, on window blur and on a hidden page; the touch aim hold and a drag end there too (aiming stays on).
 - Aim hold check: a mouse aim fires on the press, so it has no hold; a cancelled touch aim hold was never stuck (a new touch, Escape or Special recovered it) but left its lifted circle drawn until then. Tests: a lost mouse release, window blur, and touchcancel on the tablet; no baseline changes.
 - **Re-verify of 819476f (lost 3x release).** Fix is at the right place (the hold's state, ended on a no-button move, canvas exit, cancel, blur and hidden page). The three new tests fail with the `src/` part reverted and pass with it. My probes show a 3x hold survives leaving the canvas and returning with the button down, and a tower drag out of the window and back still places; lint, typecheck, 1053 unit tests, build and 316 e2e pass; the endless determinism test takes 4.8 s.
+
+## 2026-11-22: milestone 31, effects
+
+Implementer: Claude Opus 5.5. Scope: `docs/SCOPE-v5.md`, "Milestone 31:
+effects". Everything is drawing; the simulation is untouched (no field
+added to events or shot records: `hit` already carries the tower's cell and
+`Shot` the target id and recorded point).
+
+### What I built
+
+- **Projectiles** (`src/game/fx/effects.ts`, maths in `fx/fxMath.ts`).
+  Each shot of a tick becomes a projectile from the muzzle to `shot.to`.
+  Travel in game ms: Musketeer 110 (ball, trail, muzzle flash, smoke),
+  Fire Pot 150 (gout of five blobs), Longbow 220 (arrow, arc up to
+  10 px), Tar Pit 240 (glob, arc 6 to 24 px), Cannon 260 (ball, arc 6 to
+  22 px, flash, smoke), Mortar 400 (shell, arc 40 to 90 px, ground
+  shadow). The hit events of that tick are matched to their tower's shot
+  by cell and scheduled for its arrival: impact, hit flash, knock (2 px,
+  1 px for Troll and boss, 120 ms; splash knocks away from the blast, a
+  direct hit away from the tower). A kill in the same batch is deferred
+  too: the sprite is "doomed" (kept in place, not dropped by `sync`) until
+  the shot lands, then dies with a puff sized to the enemy (6 Goblin,
+  9 Shieldbearer, 14 Troll in a bigger dust, 24 boss) and its gold. Burn
+  and special kills react at once, as before.
+- **Towers.** Per-cell pose: the barrel turns toward the current target's
+  live position at 10 rad/s of game time (`turnStep`), recoils 3 px
+  (Musketeer), 4 (Cannon, Mortar), 2 (Longbow bow) over 160 ms. Build
+  280 ms (0.5 to 1.15 to 1), upgrade 320 ms (to 1.2 and back, 14 sparks),
+  sell 240 ms (a swell, then shrink to nothing, drawn as a ghost after the
+  tower is gone), each with dust. Pops are drawn through the Graphics
+  transform stack (`drawTowerScaled`).
+- **Enemies and gold.** Gold labels "+N" rise 26 px over 0.9 s after their
+  last kill; kills within 56 px and 350 ms add to one label; 10 labels at
+  most. An exit glows the cottage red and turns the Lives number red with
+  a 3 px shake for 0.6 s (`Hud.livesFx`).
+- **Moments.** Banners: "Wave N" on start, "Wave N cleared" with "+B gold"
+  on clear, 1.5 s with 0.2 s fades, centred over the map at y 150, drawn
+  under the HUD, panel and end screen (added before them), no input. A
+  new banner cuts the current one to at most 250 ms and replaces any
+  waiting one, so early calls never stack; banners are cleared when the
+  game is won or lost. Boss entrance: "Grumblefoot" / "is coming" in red,
+  the map darkened to 45% over 1.4 s, a 400 ms shake. Boss death: 40
+  sparks, a 90 px ring, a 160 ms white flash and a 500 ms shake.
+- **Limits.** Reduced motion (`matchMedia('(prefers-reduced-motion:
+  reduce)')`, read live): no camera shake (the Powder Keg's too: a small
+  change to milestone 30's shake under reduced motion only), no darkening,
+  no full-screen flash, no Lives shake. Caps: projectiles 96, impacts 48,
+  gold labels 10 (`SlotPool`, oldest recycled), particles 120 per emitter
+  (`maxAliveParticles`). Speed: the effects clock advances by frame time
+  times the speed, capped at 20 ticks a frame like the tick loop, so
+  travel follows game time; pops, banners, labels and the knock use real
+  time. Test mode creates no `Effects`: tracers, snapping barrels and
+  instant reactions are exactly as before.
+- **Words** in `names.ts`: `waveStartBanner`, `waveClearBanner`,
+  `bonusGoldText`, `BOSS_BANNER_SUB`, `goldGainText`.
+- **Hooks** (also outside test mode): `window.__tarpit.fx()` (counts of
+  projectiles, impacts, labels, banner, shakes, darkenings, ...; null in
+  test mode) and `towerAngle(col, row)`. `live.spec.ts` and
+  `test-hooks-gate.spec.ts` pin the read-only hook list and now include
+  them.
+- **Endless determinism test.** The wave-19 test and the determinism test
+  in `src/sim/endless.test.ts` share one `endlessGreedy` run (computed in
+  `beforeAll`); determinism compares it in full with a second fresh run.
+  The test: 2.8 s to 1.4 s; the file: 6.0 s to 4.6 s on this Mac.
+
+### Evidence
+
+- Baselines: `git archive` of main and of the tip, each built, every
+  `visual.spec.ts` and `visual-tablet.spec.ts` frame written with
+  `CI=1 --update-snapshots=all` and compared pixel by pixel: all 27
+  frames identical. No baseline added, no PNG baseline committed.
+- `npm run sim`: byte-identical to main (14230 bytes).
+- Perf (`e2e/perf.spec.ts`, Canvas, effects active): main median 16.7 /
+  p95 16.7 ms (spread) and 16.7 / 16.7 (packed); tip 16.7 / 16.7 and
+  16.7 / 16.7-16.8, 301 ticks each. Both are vsync-bound. Under 20x CPU
+  throttling (scratch script, same horde): spread 211 frames in 6 s on
+  main against 184 on the tip (about 13% more work per frame), packed
+  211 against 210; median 33.3 ms in both except main packed 16.8.
+- Tests: 1077 unit tests (24 new in `fx/fxMath.test.ts`); 326 browser
+  tests pass and 5 skip (10 new in `e2e/effects.spec.ts`, run three times
+  in a row).
+- Demo re-recorded with `npm run demo`: every assertion in the script
+  passed; `tarpit.gif` 3.17 to 3.42 MB; `tarpit.png` now shows an arrow,
+  a "+2" and the Fire Pot's build pop; the two test-mode stills are
+  unchanged.
+
+### What went wrong
+
+- `setParticleScale` replaces the dust emitter's start-end scale with a
+  fixed one; big puffs got their own emitter instead.
+- My first e2e drafts assumed a spawned Goblin dies to one musket ball
+  (Normal hp is higher) and that waves 2 to 4 can always be called early
+  (the towers cleared wave 2 first, so the call was refused). Both tests
+  now set hp and start a wave that has ended.
+- The first frames used gold and lives of a million, which overlapped the
+  HUD readouts; the frame script uses 9000 and 99.
+- The first `m31-shots` frame showed a jammed horde and tiny projectiles;
+  the musket ball, arrow, cannonball and glob are now drawn a little
+  larger, and the mortar shadow and the exit glow stronger.
+
+### For the verifier
+
+- Look at a kill by a slow shot (mortar): the enemy stands still for up
+  to 0.4 s before its puff. That is by design (the shot lands at the
+  recorded point) but may read as a freeze.
+- The musket ball is small and fast (110 ms); at 3x it is on screen for
+  two frames.
+- Banners sit over the map's middle top (y 150) and can cover a tower for
+  1.5 s.
+- `fx()` counters (`shakes`, `darkenings`, `screenFlashes`) count what was
+  started, which is what the reduced-motion test checks.
+- The spread-case cost under heavy throttling (13%) is the one perf
+  change; the 30 fps floor is far away at real speed.
+
+### Follow-up (coordinator review of the frames)
+
+1. **Shots readable at a glance.** Bodies about twice the size: musket
+   ball 8 px with a pale halo and a two-layer bright trail; arrow 16 px
+   with a dark outline, fletching and a pale trail; cannonball 16 px with
+   a highlight and a smoke trail; mortar shell 20 to 24 px with a halo, a
+   lit fuse and a shadow up to 22 x 10 px at 50% (35% at the top of the
+   arc); tar glob 16 px with a ground shadow; fire gout up to 20 px.
+   Muzzle flashes 8 px (musket) and 12 px (cannon, mortar), two-colour
+   with a white core, 100 ms. Impacts: Cannon and Mortar open with a
+   bright yellow-white flash over half the splash radius, then a 4 px ring
+   with a dark edge out to the radius over 380 ms, with 10 or 16 dust and
+   6 or 8 sparks; tar splat 9 px; fire burst 13 px. Caps and pools are
+   unchanged.
+2. **Boss death.** Three rings (80, 120, 160 px) starting 160 ms apart,
+   each 900 ms; 110 sparks, 40 dust, 24 smoke; the gold label is 34 px
+   and never groups (`GoldGroups.add(..., big)`); white flash 220 ms;
+   shake 8 px for 600 ms. Reduced motion keeps the burst and label, drops
+   flash and shake.
+3. **Shake edge.** Phaser's camera shake moved the whole camera, showing
+   the page background (#111418) at the edges and moving the HUD. Shakes
+   are now my own (`shakeOffset` in fxMath: x within the amplitude, y
+   never positive): while one runs the main camera's viewport is the map
+   rows with a grass background, and a second camera, added for the
+   shake and removed after, draws the HUD rows still. The keg uses the
+   same path. A new e2e test reads the canvas every frame of the boss
+   entrance shake: no page-background pixel in the left, right or top
+   two px, the HUD's top line identical on every frame, and the camera
+   whole again after.
+4. **Mortar freeze.** Travel 400 to 320 ms. A doomed sprite (dead in the
+   sim, its shot in flight) now walks on along the trail at its last speed
+   with its walk cycle running (`EnemySprites.walkOn`: one
+   `positionAlongPath` per doomed sprite per frame, so cheap). New e2e
+   test: the sprite moves more than 3 px and changes walk frame while its
+   kill waits.
+
+Checks after the follow-up: the 27 visual frames are again identical to
+main (same `git archive` method); `npm run sim` byte-identical; 1079 unit
+tests (26 in `fxMath.test.ts`); 13 tests in `e2e/effects.spec.ts`. The
+demo was re-recorded (3.23 MB, every assertion passed). Perf spec:
+16.7 ms median and 16.7 ms p95 in both cases, 302 ticks.
+
+What went wrong: the first boss-death frame was taken 120 ms in, under
+the white flash and before the rings spread; the saved frame is at about
+400 ms.
+
+### Verifier notes (Claude Sonnet, independent check of milestone 31)
+
+Verdict: merge. Checks and evidence:
+
+- Simulation untouched: `src/sim` differs only in `endless.test.ts`; its determinism test still compares the shared run `a` with a fresh second `playScripted` run `b`. `npm run sim` is byte-identical to `origin/main` (checked in a temporary worktree). `?test=1` makes no effects (`fx()` is null); no baseline PNG changed (only `docs/media/tarpit.png` and `.gif`).
+- Suite: lint, check:assets, typecheck, 1079 unit tests (15.7 s), build, size budget, and `npm run test:e2e` twice (329 then 345 passed with the new spec, 5 to 6 skips, all known frame-writer skips plus the one `VERIFIER_LONG` gate). `e2e/effects.spec.ts` five times, 13 of 13 each.
+- New `e2e/effects-verifier.spec.ts` (real mode): clicks on the bar, map, a tower panel, Speed and Start Wave land during the boss and keg shakes; after Play again, Menu and Keep going mid-shake there is one camera, 960x580, scroll 0, nothing in flight. Cannon flight is 267, 140 and 100 real ms at 1x, 2x and 3x. A 60 s stale frame advances the effects clock by at most 20 ticks. Under reduced motion the boss entrance and death and the keg start no shake, darkening or flash, and the banner and rings still show. A dead enemy waiting for its shell near the exit costs no life and its sprite is gone after the landing and when the game ends first. Sell and move leave no pose or ghost. The boss's "+150" label shows alone. Ten waves at 3x (`VERIFIER_LONG=1`, 2.3 min): the "+N" labels summed to 983, equal to the bounty in the kill events; after Play again projectiles, impacts, labels, banner, particles and sprites are 0 and there is one camera. Particles reach exactly the 120 cap per emitter; the pools stayed far under their caps.
+- One low finding, `test.fixme`: a click in the very frame a shake starts is dropped (60 ms later it works). A person cannot click that fast, so it does not block the merge.
+- Perf (Canvas, vsync-bound): `perf.spec.ts` three times, median 16.7 ms, p95 16.7 to 16.8 ms, 301 ticks. Under 20x CPU throttling, 5 s, frames on main against this branch: spread 203 and 215 against 171 and 175, packed 214 and 218 against 179 and 183, spread at 3x 156 and 160 against 132 and 133 (ticks 600 against 456 to 477). So effects cost about 17 to 20% at 20x throttle (more than the 13% in the notes above); at 6x throttle both are 16.7 ms.
+- Look: every projectile type reads at 960x580 and 1024x768; mortar shadows, rings and gold labels read well. In a packed horde the rings and labels overlap and it is busy; a "Wave N" banner can cover a tower for 1.5 s; the boss death's "+150" sits over the burst. Hp bars, the trail and tower labels stay visible. Not checked: a hidden tab in a real browser, a real touch device.

@@ -17,6 +17,7 @@
 
 import type Phaser from 'phaser';
 import type { GameEvent, GameState } from '../../sim';
+import { CAPS } from '../fx/fxMath';
 
 /**
  * Hands out each entry of state.events once. `tick` replaces the array, so a
@@ -88,6 +89,8 @@ const FLAME_KEY = 'fx-flame';
 export class Particles {
   private readonly dust: Phaser.GameObjects.Particles.ParticleEmitter;
   private readonly flame: Phaser.GameObjects.Particles.ParticleEmitter;
+  /** Milestone 31: the Troll's and the boss's bigger, slower death dust. */
+  private readonly bigDust: Phaser.GameObjects.Particles.ParticleEmitter;
 
   constructor(scene: Phaser.Scene) {
     if (!scene.textures.exists(DUST_KEY)) {
@@ -102,6 +105,15 @@ export class Particles {
       speed: { min: 25, max: 55 },
       scale: { start: 1, end: 0.2 },
       alpha: { start: 0.8, end: 0 },
+      maxAliveParticles: CAPS.particles,
+    });
+    this.bigDust = scene.add.particles(0, 0, DUST_KEY, {
+      emitting: false,
+      lifespan: 520,
+      speed: { min: 30, max: 80 },
+      scale: { start: 2, end: 0.4 },
+      alpha: { start: 0.85, end: 0 },
+      maxAliveParticles: CAPS.particles,
     });
     this.flame = scene.add.particles(0, 0, FLAME_KEY, {
       emitting: false,
@@ -110,11 +122,13 @@ export class Particles {
       speedX: { min: -6, max: 6 },
       alpha: { start: 1, end: 0 },
       tint: [0xffd23a, 0xff7a1a],
+      maxAliveParticles: CAPS.particles,
     });
   }
 
-  puff(x: number, y: number): void {
-    this.dust.explode(6, x, y);
+  /** A death puff: `count` dust particles (6 before milestone 31); `scale` over 1.3 uses the big dust (milestone 31). */
+  puff(x: number, y: number, count = 6, scale = 1): void {
+    (scale > 1.3 ? this.bigDust : this.dust).explode(count, x, y);
   }
 
   flicker(x: number, y: number): void {

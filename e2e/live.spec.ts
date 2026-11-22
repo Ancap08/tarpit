@@ -45,9 +45,12 @@ test('live loop ticks, spawns enemies, and 2x runs faster', async ({ page }) => 
   expect(await page.evaluate(() => Object.keys(window.__tarpit ?? {}).sort())).toEqual([
     'animState',
     'canvasToPage',
+    // Milestone 31: the effects' read-only counts and a tower's drawn barrel angle.
+    'fx',
     'game',
     'portraitCardVisible',
     'titleReady',
+    'towerAngle',
     'uiRects',
   ]);
   await clickButton(page, 'startWave');

@@ -853,3 +853,28 @@ can change it; "Kyle" means Kyle decided.
   cancelled touch, or the window losing focus. First PR on which the
   coordinator read that review before merging. Codex (finding), Opus
   (fix), Sonnet (recheck).
+
+## 2026-11-22, milestone 31 (effects)
+
+- **Order: effects first, then the phone layout.** Kyle ("the animation
+  should help too").
+- **Effects are drawing only.** Shots stay instant in the rules; a drawn
+  projectile takes 110 to 320 ms and its impact is drawn on arrival. The
+  balance report and every screenshot baseline are unchanged; test mode
+  draws no effects. Fable (rule), Opus (build), Sonnet (checked).
+- **Sent back once for size.** The first pass met the scope but its shots
+  could hardly be seen and the boss death was one small ring. Projectiles
+  were doubled, given trails and brighter impacts, and the boss death made
+  the biggest effect in the game. Fable (judged from frames).
+- **An enemy killed by a shot still in flight keeps walking until it
+  lands** (drawing only; it costs no life). It replaced a freeze of up to
+  0.4 s on mortar kills. Fable (ask), Opus.
+- **Shakes move only the map, inside the canvas, and the HUD stays
+  still;** all shakes, the darkening and full-screen flashes are off under
+  reduced motion, including the Powder Keg's. Fable (ask), Opus.
+- **Known and accepted:** under 20 times CPU throttling effects cost 17 to
+  20% of frames, nothing at 6 times, and the performance floor still
+  holds; the iPad is the real check, and it is Kyle's. A click in the very
+  frame a shake starts is dropped (pinned as a `test.fixme`). In a packed
+  horde splash rings and gold labels overlap. Musket balls are the hardest
+  shot to see. Sonnet (findings), Fable (accepted).
