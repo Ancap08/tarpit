@@ -6084,3 +6084,52 @@ Harpies frame from step 199 to 304. Baselines come from CI.
 Tests: 1037 unit tests pass (about 15 s, slowest 4.0 s); 295 browser tests
 pass, 3 skipped (35 s). The `special-aim`, `special-tar-zone` and `special-recharging`
 frames change again; baselines come from CI.
+
+### Verifier notes (Claude Sonnet, independent of the implementer)
+
+Reproduced: lint, check:assets, typecheck, build and check:size pass;
+`npm test` 1037 tests in 15.8 s (slowest 3.9 s); `npm run test:e2e` twice
+on port 4273, 295 pass and 3 skipped (the known frame writers), no `it.fails`
+or `milestone 30 miss` left; `npm run sim` takes 40 s and every target
+(T1 to T9, S2, S3, E1 to E3, H1 to H4, R1 to R5) is ok on all three maps.
+New probes: `src/sim/specials-rework-verifier.test.ts` (16 tests: charge
+timing, double fire, setup, early call, won and lost, zone linger and
+expiry, overlap, boss cap, burn credit, cheat deep-compare, conservation
+over a whole comboBuild game, endless boundary, determinism),
+`e2e/specials-rework-verifier.spec.ts` (mouse) and
+`e2e/specials-rework-verifier-touch.spec.ts` (tablet).
+
+- **Revert pass confirmed.** With the numbers alone put back: zone 300
+  breaks T6 (Meadow W 13 against W 11, Riverbend W 5 against W 7), S2
+  twice and H1 on Riverbend; keg damage 80 breaks T7 on all three maps; fire
+  burn 30 breaks T9 (207 gold) and S2 for the Tar Barrel. Cannon range 90
+  breaks no target (the range is pinned by frame tests, not by balance).
+- **Thin margins.** T6 on Switchback is exactly 3 lives (W 19 against
+  W 16) and T4 there is at the cap (19). T9 is 199 gold against 200. H1 on
+  Riverbend wins with 2 lives. S2 compares 516 against 520 kills on the keg.
+- **Policy is optimistic, not unfair.** It reads only visible things (enemy
+  positions, whether one is a Troll or the boss), never fires before the
+  charge is ready, and looks every 0.5 s. It does aim at exact positions with
+  no reaction time. Replaying the same purchases with the policy's choice
+  fired 0, 30, 60 and 120 ticks late (stale aim point): Meadow W 16, 15, 16,
+  16; Switchback W 19 throughout; Riverbend W 16, 14, 14, 11. A slow human
+  still wins; Riverbend loses lives.
+- **Design doc gaps.** `designSpec.test.ts` guards the specials table, the
+  recharge and linger, the policy's interval, threshold and spacing, and the
+  Cannon tables (a one-number edit of each fails it). It does not guard the
+  prose numbers for T4 (5 to 19), T6 (3 lives), S3 (15 and 80%), the cheat
+  (500 gold, 2 s, five presses) or the zone ticks in the Zones paragraph.
+- **Scope wording.** SCOPE-v5 says releasing over the HUD cancels; the
+  coordinator's follow-up ruling (the lifted point decides) is built and
+  documented in DESIGN.md, but SCOPE-v5 still reads as the old rule. A hold
+  that starts on the HUD cancels aiming; the bottom rows by hold need a slide
+  from the map (a tap reaches them directly).
+- **Cheat.** Ten quick taps give two grants (+1000); the tap counter resets
+  after each grant. The scope says five taps give 500.
+- **Tests weakened or removed outside the search machinery.**
+  `e2e/maps-verifier-touch.spec.ts` lost `expect(speed()).toBe(1)` in the
+  Riverbend special test; `src/sim/horde-verifier.test.ts` now writes the
+  special slow straight through `applySpecialSlow` instead of firing the
+  barrel through `useSpecial` for its slow-channel probes (the barrel path
+  is covered in `specials.test.ts`); `e2e/endless-verifier.spec.ts` sets gold
+  to 1000 as test setup. The rest are number updates.
