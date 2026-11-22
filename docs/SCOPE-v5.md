@@ -194,6 +194,35 @@ changes, and no new art files (shapes drawn in code, in the palette).
   In test mode the map is still and the same every run, so baselines are
   stable (they change once, on purpose). Both layouts.
 
+## Milestone 35: phone fixes
+
+Kyle, after playing on his phone (2026-11-22): placing is easier than
+before but still not easy, and "the screen will zoom out and be hard to
+get centered again".
+
+- **The page cannot zoom or drift.** No pinch zoom, no double-tap zoom, no
+  scrolling or rubber-banding, in Safari and from the home-screen icon,
+  wherever the finger starts (the game, the side bars, the edges). If the
+  browser zooms or shifts the page anyway, the game puts itself back,
+  centred, without the player doing anything.
+- **Snap to the nearest valid cell.** On touch, when the spot under the
+  lifted ghost cannot take the tower but a cell that can is close by
+  (within about a cell and a half), the ghost jumps to that cell and shows
+  that it did. Red shows only when nothing valid is near. The same for
+  moving a tower in the planning phase and for tap placement. Mouse
+  placement stays exact.
+- **A magnifier while dragging.** On a small screen (cells under about
+  28 px on screen), dragging a tower or holding a special's aim shows a
+  magnified view of the spot under the ghost, placed where the thumb does
+  not cover it, with the target cell marked.
+- **Easier to pick a tower.** A tap near a tower selects it, not only a
+  tap exactly on its cell.
+- Drawing and input only: no rule or number changes. The landscape
+  desktop game with a mouse behaves exactly as before.
+
+Real phones are the test: the agents can only emulate touch, so Kyle's
+phone decides whether this is fixed.
+
 ## Later milestones (order agreed, detail to come)
 
 | # | Milestone | Idea |
