@@ -12,7 +12,7 @@
 // small hp bar (the HUD boss bar shows his hp).
 
 import type Phaser from 'phaser';
-import { ENEMY_STATS, enemyMaxHp, enemyPosition, type Enemy, type EnemyType, type GameState } from '../../sim';
+import { ENEMY_STATS, enemyMaxHp, enemyPosition, isTarred, type Enemy, type EnemyType, type GameState } from '../../sim';
 import { SHEETS } from '../anim/sheets';
 import { COLORS } from '../palette';
 
@@ -78,8 +78,11 @@ export function hpColor(fraction: number): number {
  * Status rings around an enemy, as offsets from its body radius: tar at +3
  * when slowed, burn at +3 alone or +6 (outside the tar ring) when both.
  */
-export function statusRings(enemy: Pick<Enemy, 'slowTicksLeft' | 'burnTicksLeft'>): { color: number; offset: number }[] {
-  const tarred = enemy.slowTicksLeft > 0;
+export function statusRings(
+  enemy: Pick<Enemy, 'slowTicksLeft' | 'specialSlowTicksLeft' | 'burnTicksLeft'>,
+): { color: number; offset: number }[] {
+  // Either slow channel (milestone 25c: tower or special) shows the tar ring.
+  const tarred = isTarred(enemy);
   const burning = (enemy.burnTicksLeft ?? 0) > 0;
   const rings: { color: number; offset: number }[] = [];
   if (tarred) rings.push({ color: COLORS.tarRing, offset: 3 });

@@ -27,7 +27,7 @@
 // boss bar (ui/bossBar.ts), not a small bar.
 
 import Phaser from 'phaser';
-import { ENEMY_STATS, enemyPosition, type Enemy, type EnemyType, type GameEvent, type GameState } from '../../sim';
+import { effectiveSlow, ENEMY_STATS, enemyPosition, isTarred, type Enemy, type EnemyType, type GameEvent, type GameState } from '../../sim';
 import { bobOffset, DEATH_MS, burnPulse, FLAME_EVERY, HIT_FLASH_MS, Particles, statusTint, TINT } from './effects';
 import { facingAt } from './facing';
 import { COLORS } from '../palette';
@@ -240,7 +240,7 @@ export class EnemySprites {
 
   /** Pixels this enemy moved on its last tick. */
   private step(enemy: Enemy): number {
-    const slow = enemy.slowTicksLeft > 0 ? enemy.slow : 0;
+    const slow = effectiveSlow(enemy);
     return (ENEMY_STATS[enemy.type].speed * (1 - slow)) / 60;
   }
 
@@ -268,7 +268,7 @@ export class EnemySprites {
     this.setFacing(v, facingAt(enemy.distance, this.step(enemy)));
     v.sprite.anims.timeScale = timeScale;
     v.burning = (enemy.burnTicksLeft ?? 0) > 0;
-    v.slowed = enemy.slowTicksLeft > 0;
+    v.slowed = isTarred(enemy);
     v.redraws += 1;
 
     const hit = this.isHit(v);

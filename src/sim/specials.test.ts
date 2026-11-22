@@ -74,11 +74,12 @@ describe('Tar Barrel', () => {
   it('slows a Goblin, a Harpy and a Shieldbearer by 0.5 for 240 ticks, and the boss by his 0.3 cap', () => {
     const s = inWave(4, FOUR.map((type, i) => enemy(i, type)));
     expect(useSpecial(s, 'tarBarrel', POINT)).toMatchObject({ ok: true, hits: 4, kills: 0 });
-    expect(s.enemies.map((e) => [e.type, e.slow, e.slowTicksLeft])).toEqual([
-      ['goblin', 0.5, 240],
-      ['harpy', 0.5, 240],
-      ['shieldbearer', 0.5, 240],
-      ['boss', 0.3, 240],
+    // Milestone 25c: the barrel uses the special slow channel; the tower slow stays empty.
+    expect(s.enemies.map((e) => [e.type, e.specialSlow, e.specialSlowTicksLeft, e.slowTicksLeft])).toEqual([
+      ['goblin', 0.5, 240, 0],
+      ['harpy', 0.5, 240, 0],
+      ['shieldbearer', 0.5, 240, 0],
+      ['boss', 0.3, 240, 0],
     ]);
     expect(s.events.filter((e) => e.kind === 'slowed')).toEqual(
       FOUR.map((type, i) => ({ kind: 'slowed', enemyId: i, slow: type === 'boss' ? 0.3 : 0.5, ticks: 240 })),

@@ -26,6 +26,28 @@ export function cappedSlow(enemy: Pick<Enemy, 'type'>, slow: number): number {
   return cap === undefined ? slow : Math.min(slow, cap);
 }
 
+/**
+ * The slow that acts on this enemy now (milestone 25c): the stronger of its
+ * active tower slow (`slow` while `slowTicksLeft` > 0) and its active
+ * special slow (`specialSlow` while `specialSlowTicksLeft` > 0), capped by
+ * its slowCap (the boss: 0.3). 0 when neither is active.
+ */
+export function effectiveSlow(
+  enemy: Pick<Enemy, 'type' | 'slow' | 'slowTicksLeft' | 'specialSlow' | 'specialSlowTicksLeft'>,
+): number {
+  const tower = enemy.slowTicksLeft > 0 ? enemy.slow : 0;
+  const special = (enemy.specialSlowTicksLeft ?? 0) > 0 ? (enemy.specialSlow ?? 0) : 0;
+  return cappedSlow(enemy, Math.max(tower, special));
+}
+
+/**
+ * Whether the enemy counts as tarred (milestone 25c): a tower slow or a
+ * special slow is active. Burn damage doubles while it is.
+ */
+export function isTarred(enemy: Pick<Enemy, 'slowTicksLeft' | 'specialSlowTicksLeft'>): boolean {
+  return enemy.slowTicksLeft > 0 || (enemy.specialSlowTicksLeft ?? 0) > 0;
+}
+
 /** A shield halves shots whose base damage is this or less (docs/SCOPE-v4.md). */
 export const SHIELD_THRESHOLD = 10;
 

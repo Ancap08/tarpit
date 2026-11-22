@@ -13,14 +13,15 @@
 //
 // Order of work inside one wave tick (move, exit, burn, combat, spawn,
 // counters, clear check):
-//   1. Move live enemies by speed / 60 (times (1 - slow) while a slow is
-//      active), then count down slow timers.
+//   1. Move live enemies by speed / 60 times (1 - effectiveSlow): the
+//      stronger of the active tower slow and the active special slow
+//      (milestone 25c), boss cap applied; then count down both slow timers.
 //   2. Remove enemies at or past the exit; each costs its livesCost (1, or
 //      5 for the boss, milestone 23).
 //      Lives <= 0 -> phase 'lost' at once, nothing else happens this tick.
 //   3. Burn (combat.ts burnEnemies): each burning enemy takes burnDps / 60,
-//      doubled if slowTicksLeft > 0 after step 1, then its burn timer counts
-//      down. Dead enemies (hp <= KILL_EPSILON, 1e-9) are removed and pay
+//      doubled if it is tarred (a tower or special slow active, milestone
+//      25c) after step 1, then its burn timer counts down. Dead enemies (hp <= KILL_EPSILON, 1e-9) are removed and pay
 //      their bounty. A burn applied in step 4 first does damage on the next
 //      tick.
 //   4. Towers fire (combat.ts fireTowers), in cellKey order. Each tower
@@ -48,7 +49,7 @@
 
 import { burnEnemies, fireTowers } from './combat';
 import { DEFAULT_DIFFICULTY, DIFFICULTY_DEFS, enemyMaxHp, type Difficulty } from './difficulty';
-import { ENEMY_STATS, isBoss } from './enemies';
+import { effectiveSlow, ENEMY_STATS, isBoss } from './enemies';
 import { MAP, pathLength } from './map';
 import { secondsToTicks, TICKS_PER_SECOND } from './time';
 import type { GameState, GroupDef } from './types';
@@ -141,11 +142,16 @@ export function tick(state: GameState): void {
 
 function moveEnemies(state: GameState): void {
   for (const enemy of state.enemies) {
-    const slow = enemy.slowTicksLeft > 0 ? enemy.slow : 0;
+    const slow = effectiveSlow(enemy);
     enemy.distance += (ENEMY_STATS[enemy.type].speed * (1 - slow)) / TICKS_PER_SECOND;
     if (enemy.slowTicksLeft > 0) {
       enemy.slowTicksLeft -= 1;
       if (enemy.slowTicksLeft === 0) enemy.slow = 0;
+    }
+    const special = enemy.specialSlowTicksLeft ?? 0;
+    if (special > 0) {
+      enemy.specialSlowTicksLeft = special - 1;
+      if (special === 1) enemy.specialSlow = 0;
     }
   }
 }
@@ -177,6 +183,8 @@ function spawnDueEnemies(state: GameState): void {
         distance: 0,
         slow: 0,
         slowTicksLeft: 0,
+        specialSlow: 0,
+        specialSlowTicksLeft: 0,
         burnDps: 0,
         burnTicksLeft: 0,
       });

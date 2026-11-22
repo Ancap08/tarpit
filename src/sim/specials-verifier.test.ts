@@ -126,7 +126,8 @@ describe('(c) Tar Barrel', () => {
   it('the boss gets 0.3: 240 ticks * 25 * 0.7 / 60 = 70 px', () => {
     const s = inWave(10, [enemy(0, 'boss')]);
     useSpecial(s, 'tarBarrel', { x: 100, y: 240 });
-    expect([s.enemies[0].slow, s.enemies[0].slowTicksLeft]).toEqual([0.3, 240]);
+    // Milestone 25c: on the special slow channel.
+    expect([s.enemies[0].specialSlow, s.enemies[0].specialSlowTicksLeft]).toEqual([0.3, 240]);
     run(s, 240);
     expect(s.enemies[0].distance).toBeCloseTo(170, 9);
   });
@@ -134,7 +135,7 @@ describe('(c) Tar Barrel', () => {
   it('a Harpy is slowed (90 * 0.5 * 4 = 180 px in 240 ticks) and a Tar Pit in range still cannot target it', () => {
     const s = inWave(4, [enemy(0, 'harpy')], 'tarpit');
     useSpecial(s, 'tarBarrel', { x: 100, y: 240 });
-    expect([s.enemies[0].slow, s.enemies[0].slowTicksLeft]).toEqual([0.5, 240]);
+    expect([s.enemies[0].specialSlow, s.enemies[0].specialSlowTicksLeft]).toEqual([0.5, 240]);
     // Tower centre (112, 176): 65.1 px from the Harpy, inside the 90 px range.
     expect(Math.hypot(112 - 100, 176 - 240)).toBeLessThan(90);
     expect(findTarget(s, s.towers[0])).toBeUndefined();
@@ -143,23 +144,33 @@ describe('(c) Tar Barrel', () => {
     expect(s.enemies[0].hp).toBe(40); // the Tar Pit never shot it
   });
 
-  it('under a stronger 0.6 slow the barrel does nothing: strength 0.6 and its 50 ticks stay, no slowed event', () => {
+  // Milestone 25c (special slow channel): before 25c the barrel did nothing
+  // under a stronger tower slow and its 240 ticks were lost when that slow
+  // ran out. Now it sits on its own channel and outlasts the tower slow.
+  it('under a stronger 0.6 tower slow the barrel still lands on its own channel and takes over when the 0.6 runs out', () => {
     const s = inWave(4, [enemy(0, 'troll', { slow: 0.6, slowTicksLeft: 50 })]);
     expect(useSpecial(s, 'tarBarrel', { x: 100, y: 240 })).toMatchObject({ ok: true, hits: 1 });
     expect([s.enemies[0].slow, s.enemies[0].slowTicksLeft]).toEqual([0.6, 50]);
-    expect(s.events.map((e) => e.kind)).toEqual(['special']);
+    expect([s.enemies[0].specialSlow, s.enemies[0].specialSlowTicksLeft]).toEqual([0.5, 240]);
+    expect(s.events.map((e) => e.kind)).toEqual(['special', 'slowed']);
     expect(s.specialCharges).toBe(0);
-    // After the 50 ticks the enemy is unslowed: the barrel's 240 are lost.
+    // 50 ticks at 0.6 (35 * 0.4 / 60 each), then 190 at 0.5, then free.
+    const start = s.enemies[0].distance;
     run(s, 50);
+    expect(s.enemies[0].distance - start).toBeCloseTo((50 * 35 * 0.4) / 60, 9);
     expect([s.enemies[0].slow, s.enemies[0].slowTicksLeft]).toEqual([0, 0]);
+    expect(s.enemies[0].specialSlowTicksLeft).toBe(190);
+    run(s, 190);
+    expect(s.enemies[0].distance - start).toBeCloseTo((50 * 35 * 0.4 + 190 * 35 * 0.5) / 60, 9);
+    expect([s.enemies[0].specialSlow, s.enemies[0].specialSlowTicksLeft]).toEqual([0, 0]);
   });
 
-  it('an equal 0.5 slow is refreshed to 240 ticks; a weaker 0.4 is replaced', () => {
+  it('a tower slow (equal or weaker) leaves the special slow untouched; both channels keep their own timers', () => {
     const s = inWave(4, [enemy(0, 'troll', { slow: 0.5, slowTicksLeft: 7 }), enemy(1, 'troll', { slow: 0.4, slowTicksLeft: 7 })]);
     useSpecial(s, 'tarBarrel', { x: 100, y: 240 });
-    expect(s.enemies.map((e) => [e.slow, e.slowTicksLeft])).toEqual([
-      [0.5, 240],
-      [0.5, 240],
+    expect(s.enemies.map((e) => [e.slow, e.slowTicksLeft, e.specialSlow, e.specialSlowTicksLeft])).toEqual([
+      [0.5, 7, 0.5, 240],
+      [0.4, 7, 0.5, 240],
     ]);
   });
 });

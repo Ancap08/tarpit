@@ -10,7 +10,7 @@
 // fireTowers once per wave tick, after movement and exit removal, before
 // spawns.
 
-import { cappedSlow, ENEMY_STATS, isBoss, isFlying, shotDamage } from './enemies';
+import { cappedSlow, ENEMY_STATS, isBoss, isFlying, isTarred, shotDamage } from './enemies';
 import { cellCenter } from './grid';
 import { MAP, positionAlongPath } from './map';
 import { secondsToTicks, TICKS_PER_SECOND } from './time';
@@ -102,6 +102,22 @@ export function applySlow(enemy: Enemy, slow: number, ticks: number): number | n
 }
 
 /**
+ * Apply a special slow (milestone 25c, the Tar Barrel) on the enemy's
+ * special channel, apart from tower slows: capped by slowCap like
+ * applySlow; an equal or stronger special slow replaces the active one and
+ * refreshes its duration; a weaker one does nothing. A tower slow neither
+ * blocks nor shortens it. Returns the strength applied, or null if ignored.
+ */
+export function applySpecialSlow(enemy: Enemy, slow: number, ticks: number): number | null {
+  const strength = cappedSlow(enemy, slow);
+  const active = (enemy.specialSlowTicksLeft ?? 0) > 0 ? (enemy.specialSlow ?? 0) : 0;
+  if (strength < active) return null;
+  enemy.specialSlow = strength;
+  enemy.specialSlowTicksLeft = ticks;
+  return strength;
+}
+
+/**
  * Apply a burn. Burns do not stack: a burn with dps equal to or greater than
  * the active one replaces it (strength and duration); a weaker one does
  * nothing.
@@ -115,7 +131,7 @@ export function applyBurn(enemy: Enemy, dps: number, ticks: number): void {
 
 /**
  * Burn status step: every burning enemy takes burnDps / 60 damage, doubled
- * while it is slowed by tar (slowTicksLeft > 0), then its burn timer counts
+ * while it is tarred (isTarred: a tower or a special slow is active), then its burn timer counts
  * down. Burn deaths pay their bounty and are removed like any kill.
  */
 export function burnEnemies(state: GameState): void {
@@ -124,7 +140,7 @@ export function burnEnemies(state: GameState): void {
     const left = enemy.burnTicksLeft ?? 0;
     if (left <= 0) continue;
     const dps = enemy.burnDps ?? 0;
-    const damage = (dps / TICKS_PER_SECOND) * (enemy.slowTicksLeft > 0 ? 2 : 1);
+    const damage = (dps / TICKS_PER_SECOND) * (isTarred(enemy) ? 2 : 1);
     enemy.hp -= damage;
     state.events.push({ kind: 'burn', enemyId: enemy.id, damage });
     enemy.burnTicksLeft = left - 1;

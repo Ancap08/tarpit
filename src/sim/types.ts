@@ -69,6 +69,15 @@ export interface Enemy {
   /** Ticks left on the current slow; 0 means no slow applies. */
   slowTicksLeft: number;
   /**
+   * Special slow channel (milestone 25c): the Tar Barrel's slow, kept apart
+   * from tower slows so neither cuts the other short. The effective slow is
+   * the stronger of the two active ones (combat.ts effectiveSlow). Optional
+   * so hand-built enemies stay valid; absent means 0.
+   */
+  specialSlow?: number;
+  /** Ticks left on the special slow; 0 or absent means none applies. */
+  specialSlowTicksLeft?: number;
+  /**
    * Burn damage per second from a Fire Pot (milestone 10); 0 or absent means
    * no burn. Optional so enemies written before burns existed stay valid;
    * the sim spawns every enemy with 0 and treats absent as 0.
