@@ -1,8 +1,10 @@
 # Asset manifest
 
-Every file under `assets/` and `docs/art/` is listed here with its source,
-author and license. Only CC0, or CC-BY with a credit line in Notes
-(`Credit: ...`), may be committed (docs/SCOPE-v3.md, "Hard rules").
+Every file under `assets/`, `docs/art/` and `public/icons/` is listed here
+with its source, author and license. Only CC0, or CC-BY with a credit line
+in Notes (`Credit: ...`), may be committed (docs/SCOPE-v3.md, "Hard
+rules"). The one exception is the project's own work drawn by a script in
+this repo (Source `scripts/...`): it carries the repo's MIT license.
 `npm run check:assets` (scripts/check-asset-manifest.ts) fails CI if a file
 is missing from the table, carries another license, or a row points at no
 file. Markdown files (this manifest, `docs/art/INVENTORY.md`) are project
@@ -25,3 +27,7 @@ the checker looks for it.
 | `assets/sprites/shieldbearer.png` | https://pixel-boy.itch.io/ninja-adventure-asset-pack (`Actor/Character/Knight/SpriteSheet.png`, unchanged) | Pixel-boy and AAA (Ninja Adventure) | CC0 1.0 | Placeholder until v5; layout in src/game/anim/sheets.ts |
 | `assets/sprites/boss.png` | https://pixel-boy.itch.io/ninja-adventure-asset-pack (`Actor/Boss/DemonCyclop/Walk.png`, unchanged) | Pixel-boy and AAA (Ninja Adventure) | CC0 1.0 | Placeholder until v5 (Grumblefoot, milestone 23); layout in src/game/anim/sheets.ts |
 | `assets/sprites/boss-hit.png` | https://pixel-boy.itch.io/ninja-adventure-asset-pack (`Actor/Boss/DemonCyclop/Hit.png`, unchanged) | Pixel-boy and AAA (Ninja Adventure) | CC0 1.0 | Placeholder until v5 (Grumblefoot's hit flash, milestone 23); layout in src/game/anim/sheets.ts |
+| `public/icons/icon-192.png` | `scripts/make-icons.ts` (drawn in code, no source art) | Tarpit agents | MIT | Home-screen icon 192 px, milestone 32a |
+| `public/icons/icon-512.png` | `scripts/make-icons.ts` (drawn in code, no source art) | Tarpit agents | MIT | Home-screen icon 512 px, milestone 32a |
+| `public/icons/icon-maskable-512.png` | `scripts/make-icons.ts` (drawn in code, no source art) | Tarpit agents | MIT | Home-screen icon 512 px, maskable (drawing in the central 80%), milestone 32a |
+| `public/icons/apple-touch-icon.png` | `scripts/make-icons.ts` (drawn in code, no source art) | Tarpit agents | MIT | Home-screen icon 180 px for iOS, milestone 32a |

@@ -6306,3 +6306,173 @@ Verdict: merge. Checks and evidence:
 - One low finding, `test.fixme`: a click in the very frame a shake starts is dropped (60 ms later it works). A person cannot click that fast, so it does not block the merge.
 - Perf (Canvas, vsync-bound): `perf.spec.ts` three times, median 16.7 ms, p95 16.7 to 16.8 ms, 301 ticks. Under 20x CPU throttling, 5 s, frames on main against this branch: spread 203 and 215 against 171 and 175, packed 214 and 218 against 179 and 183, spread at 3x 156 and 160 against 132 and 133 (ticks 600 against 456 to 477). So effects cost about 17 to 20% at 20x throttle (more than the 13% in the notes above); at 6x throttle both are 16.7 ms.
 - Look: every projectile type reads at 960x580 and 1024x768; mortar shadows, rings and gold labels read well. In a packed horde the rings and labels overlap and it is busy; a "Wave N" banner can cover a tower for 1.5 s; the boss death's "+150" sits over the burst. Hp bars, the trail and tower labels stay visible. Not checked: a hidden tab in a real browser, a real touch device.
+
+## 2026-11-22: milestone 32a, install and offline
+
+Implementer: Claude Opus 5.5. Scope: `docs/SCOPE-v5.md`, "Milestone 32a:
+install to the home screen". No game rule or drawing changes.
+
+### What I built
+
+- **Manifest** (`public/manifest.webmanifest`): name and short name
+  Tarpit, `display: standalone`, colours `#111418`, icons 192, 512 and a
+  maskable 512, no orientation. `start_url`, `scope` and `id` are `./`,
+  which resolve against the manifest's own address, so one static file is
+  right under `/` and `/tarpit/`.
+- **iOS tags** in `index.html`: apple-touch-icon 180,
+  `apple-mobile-web-app-capable` and `mobile-web-app-capable`,
+  `black-translucent` status bar, title, theme colour. Vite prefixes the
+  base on the manifest and icon links.
+- **Icon** (`scripts/make-icons.ts`, run by hand): a stone tower with a red
+  pennant and a dark tar pool on the path, on the green field, 4 x 4
+  samples per pixel and a 60-line PNG encoder on `node:zlib`. Files in
+  `public/icons/`, listed in `assets/MANIFEST.md` as MIT (own work);
+  `check:assets` now covers `public/icons/` and allows MIT only for rows
+  whose source is a repo script.
+- **Safe area**: `#game` is fixed to the `env(safe-area-inset-*)` box, so
+  Phaser's FIT scale sizes the canvas inside it; the rotate card pads by the
+  insets; `overscroll-behavior: none` stops the bounce.
+- **Service worker** (`src/sw/sw.ts`, rules in `src/sw/rules.ts`, built by
+  `scripts/sw-build.ts` from a `closeBundle` hook in `vite.config.ts`). One
+  cache per build named for a hash of every built file; install precaches
+  the whole build past the HTTP cache, then `skipWaiting`; activate deletes
+  the other `tarpit-` caches, then `clients.claim`. The page is network
+  first and never written to the cache; `assets/` is cache first. The page
+  registers it after `load` and calls `update()`, in production only, never
+  under `?test=1` or `?perf=1`. Rules in `docs/DESIGN.md`, "Install and
+  offline".
+
+### Evidence
+
+- `e2e/install.spec.ts` (6 tests): manifest linked, valid, every icon
+  served at its stated size, iOS tags; the canvas inside emulated notch and
+  home-bar insets (Chromium `Emulation.setSafeAreaInsetsOverride`) at
+  844 x 390 and 390 x 844, nothing scrolls; the worker registers on the
+  preview build and not under `?test=1` or `?perf=1`; offline play and
+  update: build A is a copy of `dist`, build B is A with one meta tag added
+  to `index.html` and its `sw.js` rebuilt by `scripts/sw-build.ts`; served
+  from an in-test static server, B shows on the next online load, the cache
+  list becomes B's only, then with the server stopped and the context
+  offline the reload is B and Play works; best scores are unchanged. The
+  `/tarpit/` test builds with `VITE_BASE=/tarpit/` into a temp folder,
+  serves it under `/tarpit/` and repeats the manifest, scope and offline
+  checks.
+- Unit: 1087 tests (rules, icon encoder and committed icon sizes, the
+  MIT rule in the asset checker).
+- Full e2e three times: 351 passed, 7 skipped, no failures each run.
+- Screenshot baselines: generated macOS baselines for the 27 visual frames
+  on main in a temporary worktree, ran this branch against them with
+  comparison on: 27 of 27 match. Restored the CI baselines after.
+- `npm run sim` byte-identical to main. Built size 1.30 MB (1,358,852
+  bytes, main 1,334,232).
+
+### What went wrong
+
+- The first update test failed offline: build B's page was missing. Two
+  causes. `page.waitForFunction` with an `async` predicate returns a
+  Promise, which is truthy, so the wait for B's cache passed at once; and
+  Chrome did not re-check `sw.js` on that navigation, so B's worker had not
+  installed. The page now calls `registration.update()` after every load,
+  and the spec polls with `expect.poll`.
+
+### Not tested here
+
+A real iPhone, iPad or Android device: Add to Home Screen, the standalone
+window, the real notch and home bar, iOS Safari's service worker and its
+storage limits.
+
+### Verifier notes
+
+Verifier: Claude Sonnet 5.5. Probes are in `e2e/install-verifier.spec.ts`
+(real second build made from a copy of the source with one changed source
+file; a static server that can answer 404, 500, HTML or hang).
+
+Passed: lint, `check:assets`, typecheck, 1087 unit tests, build, size
+budget, full e2e twice (351 passed, 7 skipped each), `npm run sim` output
+byte-identical to `origin/main`, `make-icons.ts` reproduces the committed
+icons byte for byte, no screenshot baseline in the diff. A to B online
+shows B on the next open; B plays offline; A's cache is deleted; best
+scores survive. A failed install (one asset 500) leaves no active worker
+and no partly filled cache (at most an empty one); with A active, a failed
+B leaves A serving offline. `?test=1` still works under an installed
+worker. Click and tap place towers on the pointed cell at all four map
+corners with emulated safe-area insets (pointer mapping is unchanged).
+
+Found:
+
+- **Medium: no timeout on the page fetch.** `networkFirst` in
+  `src/sw/sw.ts` waits for the network as long as the browser does. With
+  the game fully cached, a hanging connection (captive portal, bad
+  signal) leaves a blank page for minutes. `test.fixme` in the verifier spec.
+- **Medium: a bad response is not a fallback.** The cache is used only when
+  `fetch()` throws. A 5xx or 404 for the page (Pages outage, CDN mid-deploy)
+  replaces the cached game with the error page. `test.fixme` in the verifier spec.
+- **Medium: no kill switch.** Removing `sw.js` from a deploy (404) does not
+  unregister installed workers (Chrome keeps them; probe in the spec). Recovery from a bad
+  worker is to deploy a fixed `sw.js`; it is re-fetched on every load (and
+  by `update()`), past the HTTP cache. The emergency file would be a
+  self-removing `sw.js` (unregister, delete `tarpit-` caches); none is
+  written or documented yet.
+- **Low: `"id": "./"`** resolves, per the manifest spec, against the
+  origin of `start_url`, so under `/tarpit/` the app id is likely the site
+  root (`https://<user>.github.io/`), shared with any other project site on
+  that origin. Not confirmed (headless Chrome returns no app id). Drop `id`
+  or use `/tarpit/`.
+- **Low: tab on the old page after an update.** Build B's worker deletes
+  A's cache; an A tab asking for a hashed file B changed gets a 404 online
+  and an error offline. Not hit today: the bundle and sprites load at boot.
+  The HTTP cache hid it in the probe (10 min `max-age`).
+- Install.spec's build B differs only by a meta tag; the verifier spec
+  covers a real build.
+
+Re-verify (follow-up commits 1185ba9, 2c988cf, 27e6499): the page timeout,
+error fallback, `id` removal and `TARPIT_SW=off` kill switch work; both former
+`fixme` tests pass unweakened. The retiring worker reloads an open page
+exactly once (probe added), but that reload also hits a page mid-game; a slow
+network is served the cached page at 3 s, yet the new worker still installs in
+the background and takes over, so a deploy is not missed. One run of the
+two-tab update test failed under full-suite load and passed on 4 reruns and
+12 repeats; cause not found.
+
+Re-verify 2 (47162f5, scope-prefixed caches): exact-scope filter and the
+`tarpit|<path>|` prefix hold under `/` and `/tarpit/` (the closing `|` keeps `/` from
+matching `/tarpit/` caches); each of three scratch reversions (page kill switch,
+retiring worker, activate) made a sibling test fail. At the origin root the game
+touches no sibling's worker or cache, but its retiring worker would reload
+sibling pages that have no worker of their own.
+
+Needs a real phone: Add to Home Screen wording and icon on current iOS
+(Share is under the ellipsis menu in newer Safari), standalone window and
+status bar, real notch and home bar, Android install prompt and maskable
+mask, iOS storage eviction of the cache.
+
+### Follow-up (Claude Opus 5.5, after the verifier's notes)
+
+1. **Page timeout.** `networkFirst` races the network against 3 s
+   (`PAGE_TIMEOUT_MS` in `src/sw/rules.ts`) when a cached copy exists and
+   serves the cached copy on timeout; with no cached copy it waits. The
+   verifier's hanging-page `test.fixme` is now a passing test.
+2. **Error answers fall back.** A not-ok answer (404, 5xx) serves the cached
+   copy when there is one. The fallback is still the page this worker's
+   build cached at install, so the fallback page and its files stay one
+   build; a new deploy that answers 200 still wins (the update test). The
+   verifier's 503 `test.fixme` now passes.
+3. **Kill switch.** `TARPIT_SW=off npm run build` writes a retiring `sw.js`
+   (skipWaiting, delete every `tarpit-` cache, unregister, reload open
+   pages) and builds a page that registers nothing and removes any worker
+   it finds. Two new tests in `e2e/install.spec.ts`: deploying it over an
+   installed worker leaves no registration and no caches after the next
+   online open, and the game plays; and the retiring `sw.js` on its own,
+   fetched by the old page's update check with no reload, cleans up and
+   reloads the page. Recovery is in `docs/DESIGN.md`, "Install and offline".
+4. **Manifest `id` removed;** the manifest test asserts it is absent.
+5. **Old tab after an update.** A hashed file in no worker cache goes to
+   the network and its answer is returned. Tested: a hashed name on no
+   server gives 404 online and a network error at once offline (not a
+   hang). In the verifier's two-tab test the old bundle came back with A's
+   own bytes from the browser's HTTP cache, online and offline; the
+   assertion there now accepts A's exact bytes or 404 / a network error. A
+   2xx miss is kept in the current cache; that is a correct file under its
+   own hashed name, deleted with that cache at the next update.
+6. **Shared origin (PR review).** The kill switch unregistered every worker on the origin and every `tarpit-` cache; activate and the retiring `sw.js` also matched any `tarpit-` cache, so two copies of the game on one origin would delete each other's. Now caches are named `tarpit|<scope path>|<version>`, only that prefix is deleted, and only the registration with exactly the game's scope is removed.
+   Tested in `e2e/install.spec.ts` with a sibling site at `/other/` (own worker and cache) and a `/preview/` copy's cache on the same origin: the update to B, the off build and the retiring `sw.js` alone remove only `/tarpit/`'s worker and caches.

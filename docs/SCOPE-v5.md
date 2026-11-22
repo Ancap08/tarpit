@@ -98,9 +98,47 @@ instant in the rules; only what is drawn takes time.
 Not in this milestone: sound (next after the phone layout), new art,
 upgrades that change a tower's look, any rule or number change.
 
-| # | Milestone | Idea |
-|---|---|---|
-| 32 | Phone layout and install | A portrait layout with the trail running top to bottom and thumb-sized controls; "Add to Home Screen" with an icon, full screen, and offline play |
+## Milestone 32a: install to the home screen
+
+Kyle asked for an easy way to get to the game on a phone. Small, and done
+before the portrait layout so every later phone check runs full screen.
+
+- **Add to Home Screen.** A web app manifest (name, short name, colours,
+  icons, start address and scope under `/tarpit/`, display standalone) and
+  the iOS tags, so the game opens from an icon with no browser bars.
+- **An icon** in the game's placeholder style, drawn by a script in the
+  repo (no downloaded art), in the sizes iOS and Android need, listed in
+  `assets/MANIFEST.md`.
+- **Fits the screen.** The game stays inside the safe area on phones with
+  a notch or a home bar, and nothing is cut off in standalone mode.
+- **Plays offline.** A small hand-written service worker, no new
+  dependency: the page itself is fetched fresh when online so a new deploy
+  shows up on the next open, built files are cached, and old caches are
+  removed. The best scores are untouched.
+- **README:** how to install on iPhone, iPad and Android in three lines.
+
+## Milestone 32b: portrait layout
+
+Kyle: "how can I make it easier to play on a phone, like vertically".
+Today a tall window shows a "turn your device" card.
+
+- **A window taller than it is wide gets a portrait layout** instead of
+  the card: the map turned a quarter turn so the trail runs from the top
+  of the screen to the bottom, with the controls underneath in thumb
+  reach. Turning the device mid-game switches layout and keeps the game.
+- **Controls sized for thumbs.** Every button at least 44 px on a 390 px
+  wide phone: the six towers, Special, Start Wave and speed at the bottom;
+  gold, lives, wave and the next-wave preview in a thin strip at the top.
+  Tower panel, special aim, banners, boss bar, end screens and the title
+  menu each get a portrait arrangement.
+- **Same game.** The simulation, its numbers, the maps and the best
+  scores do not change; only where things are drawn and where touches
+  land. The landscape layout and its screenshot baselines stay exactly as
+  they are.
+- **Known limit, accepted for now:** a phone shows the whole 30 by 15
+  cell map, so cells are about 20 px on screen. Placing uses the lifted
+  ghost and the highlighted cell as today. If placing feels fiddly on
+  Kyle's phone, a magnifier while dragging is the follow-up.
 
 ## Later milestones (order agreed, detail to come)
 

@@ -666,6 +666,59 @@ depends on them (`npm run sim` is unchanged). The maths is in
   tracers, barrels snap to each shot, and hits and kills react at once, so
   the screenshot baselines are unchanged.
 
+## Install and offline
+
+Milestone 32a. No game rule changes. `public/manifest.webmanifest` (name,
+colours `#111418`, icons 192, 512 and a maskable 512, display standalone,
+no orientation, no `id`, so the start URL identifies the app) uses relative
+`start_url` and `scope` (`./`), so it works under `/` and `/tarpit/`; `index.html` links it and carries the iOS tags
+(apple-touch-icon 180, web-app capable, `black-translucent` status bar,
+title). The icons are drawn by `scripts/make-icons.ts` (run by hand). The
+game's parent box sits inside `env(safe-area-inset-*)`.
+
+The service worker (`src/sw/sw.ts`, rules in `src/sw/rules.ts`) is written
+to `<base>sw.js` after each production build by `scripts/sw-build.ts`. The
+page registers it after `load`, then calls `update()`, in production builds
+only and never under `?test=1` or `?perf=1`. Cache rules:
+
+- One cache per build, `tarpit|<scope path>|<hash>` (for example
+  `tarpit|/tarpit/|4a6c930af73c`): the hash covers every built file, so any
+  change makes a new cache. Cache Storage and worker registrations are
+  shared by the whole origin (other project sites on `github.io`, another
+  copy of the game under another path), so the game only ever deletes
+  caches with its own scope's prefix and only unregisters the registration
+  whose scope is exactly its base. Install fills it with every file of the build
+  (past the HTTP cache), then calls `skipWaiting`; activate deletes every
+  other cache with this scope's prefix, then calls `clients.claim`.
+- The page (navigations, the scope root, `index.html`): network first
+  (`no-cache`, so it revalidates). A 2xx answer is served, so a new deploy
+  shows on the next open. If the network fails, answers not ok (an outage's
+  404 or 5xx), or has not answered after 3 s (`PAGE_TIMEOUT_MS`), the worker
+  serves the copy of the page that this worker's build cached at install;
+  with no cached copy it waits for the network. A network page is never
+  written to the cache.
+- `assets/` (content-hashed names): cache first. A miss (for example an old
+  tab asking for the previous build's file) goes to the network, and its
+  answer is returned as it is; a 2xx answer is kept.
+- Other files in scope (manifest, icons): as the page, with their own
+  cached copies as the fallback.
+- Anything else (not GET, another origin, outside the scope, `sw.js`) is
+  not handled. `localStorage` (best scores) is never touched.
+
+Old and new files cannot mix: a cache holds one build, filled at install and
+never overwritten by a network page, so a fallback page and its files are
+always one build; online, a page names only its own hashed files, and a
+hashed name always means the same bytes.
+
+Recovery. A broken worker is repaired by deploying a fixed `sw.js`: the
+page checks it past the HTTP cache on every online open, and the new worker
+takes over at once. To retire the worker, build with `TARPIT_SW=off`: that
+`sw.js` deletes this scope's caches, unregisters itself and reloads open
+pages from the network, and the page registers nothing and removes any
+worker it finds. A page that cannot load at all still recovers at the
+browser's own update check of `sw.js`, within about a day. Deleting `sw.js`
+from a deploy does not remove installed workers.
+
 ## Simulation API shape
 
 Plain TypeScript in `src/sim`, no Phaser, no DOM. One `GameState` object,

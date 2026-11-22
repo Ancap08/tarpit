@@ -81,6 +81,10 @@ kick back, kills drop floating gold, and waves and the boss get banners.
     special, tap where it should land, or hold to see the circle above your
     finger and let go to fire.
 
+**Install it.** On iPhone and iPad: open the game in Safari, tap Share, then Add to Home Screen.
+On Android: open it in Chrome, open the menu, then Install app.
+After the first visit it plays offline; best scores stay on the device.
+
 ![Riverbend in wave 7: the river runs down the middle of the arch-shaped path; Longbows, Mortars, a Tar Pit and a Fire Pot stand beside it, and Trolls, Wolves and Harpies come up the left side and over the top](docs/media/tarpit-riverbend.png)
 
 ![Wave 10 on Meadow: Grumblefoot, the Troll King, with his health bar at 3331 of 4000, tarred and burning under a Mortar splash](docs/media/tarpit-boss.png)
@@ -239,7 +243,9 @@ src/game/         Phaser rendering, input, HUD and the window.__tarpit hooks
   ui/               build bar, tower panel, special menu, boss bar, end screen
   anim/             enemy sprite animation from the simulation's events
   testMode.ts       ?test=1 hooks (typed in testGlobal.d.ts)
-scripts/          npm run sim, test:slow, demo, check:assets, check:size
+src/sw/           the offline service worker and its rules (docs/DESIGN.md, "Install and offline")
+public/           web app manifest and home-screen icons (drawn by scripts/make-icons.ts)
+scripts/          npm run sim, test:slow, demo, check:assets, check:size; make-icons, sw-build
 e2e/              Playwright tests (desktop and tablet projects) and CI screenshot baselines
 .github/workflows CI checks, Pages deploy, screenshot baseline update
 ```

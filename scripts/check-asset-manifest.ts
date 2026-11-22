@@ -1,6 +1,7 @@
-// `npm run check:assets`: every file under assets/ and docs/art/ must be
-// listed in assets/MANIFEST.md with a CC0 or CC-BY license (CC-BY with a
-// credit line). See docs/SCOPE-v3.md, "Hard rules". The matching logic is
+// `npm run check:assets`: every file under assets/, docs/art/ and
+// public/icons/ must be listed in assets/MANIFEST.md with a CC0 or CC-BY
+// license (CC-BY with a credit line), or MIT when a script in this repo drew
+// it (the project's own work, milestone 32a). See docs/SCOPE-v3.md, "Hard rules". The matching logic is
 // pure (checkManifest, parseManifest) and tested in
 // check-asset-manifest.test.ts; the file walk runs only when this file is
 // the entry point.
@@ -18,7 +19,7 @@ export interface ManifestRow {
 }
 
 /** Folders whose files must each be listed in the manifest. */
-export const CHECKED_DIRS = ['assets/', 'docs/art/'];
+export const CHECKED_DIRS = ['assets/', 'docs/art/', 'public/icons/'];
 
 /**
  * Files under the checked folders that are not assets: Markdown docs (the
@@ -29,9 +30,14 @@ export function isIgnored(path: string): boolean {
   return path.endsWith('.md') || path.endsWith('/.DS_Store') || path === '.DS_Store';
 }
 
-/** Licenses a committed asset may carry (docs/SCOPE-v3.md, "Hard rules"). */
-export function licenseKind(license: string): 'cc0' | 'cc-by' | null {
+/**
+ * Licenses a committed asset may carry (docs/SCOPE-v3.md, "Hard rules").
+ * 'mit' is the repo's own license; checkManifest allows it only for files a
+ * repo script drew (see isOwnWork).
+ */
+export function licenseKind(license: string): 'cc0' | 'cc-by' | 'mit' | null {
   const l = license.trim().toUpperCase();
+  if (l === 'MIT') return 'mit';
   if (/^CC0(\s|$)/.test(l)) return 'cc0';
   if (/^CC-BY(\s+\d(\.\d)?)?$/.test(l)) return 'cc-by';
   return null;
@@ -70,6 +76,11 @@ export function parseManifest(markdown: string): ManifestRow[] {
   return rows;
 }
 
+/** True if the row's source is a script in this repo (`scripts/...`): the project's own work. */
+export function isOwnWork(row: ManifestRow): boolean {
+  return /^scripts\/\S+\.ts\b/.test(row.source.replace(/`/g, '').trim());
+}
+
 /** True if the row's notes carry a credit line ("Credit: ..."), required for CC-BY. */
 export function hasCredit(row: ManifestRow): boolean {
   return /credit:\s*\S/i.test(row.notes);
@@ -96,6 +107,8 @@ export function checkManifest(files: string[], rows: ManifestRow[]): string[] {
     }
     const kind = licenseKind(row.license);
     if (kind === null) problems.push(`${f}: license "${row.license}" is not allowed (only CC0 or CC-BY)`);
+    if (kind === 'mit' && !isOwnWork(row))
+      problems.push(`${f}: MIT is allowed only for files drawn by a repo script (Source "scripts/...")`);
     if (kind === 'cc-by' && !hasCredit(row)) problems.push(`${f}: CC-BY needs a credit line in Notes ("Credit: ...")`);
   }
   const present = new Set(checked);
