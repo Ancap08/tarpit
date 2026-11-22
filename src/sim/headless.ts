@@ -759,7 +759,7 @@ function comboPlan(map: MapId = DEFAULT_MAP): readonly BuildAction[] {
  * Combo build (milestone 10): the map's combo plan, each action bought as
  * soon as gold allows. Milestone 30: plus the special policy
  * (specialPolicy.ts), recorded into its timed list.
- * Target T4: won with 5 to 18 lives on Normal on every map.
+ * Target T4: won with 5 to 19 lives on Normal on every map (18 before milestone 30).
  */
 export function comboBuild(difficulty?: Difficulty, map?: MapId): WaveScript {
   return recordScript(followPlan(comboPlan(map)), difficulty, undefined, false, map, {});

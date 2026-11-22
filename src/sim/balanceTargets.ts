@@ -27,11 +27,6 @@ export interface Target {
   map?: MapId;
   label: string;
   check: () => TargetResult;
-  /**
-   * A known miss (milestone 30): the target fails on purpose and the suite
-   * pins that it still fails, with the reason here.
-   */
-  miss?: string;
 }
 
 const leaked = (run: BalanceRun, wave: number): number => Object.values(run.waves[wave - 1]?.exits ?? {}).reduce((a, b) => a + b, 0);
@@ -92,17 +87,13 @@ function mapTargets(map: MapId): Target[] {
       const x = r('longbowSpam');
       return { ok: lostOn(x, 7, 9), info: matrixCell(x) };
     }),
-    {
-      ...t('T4', 'Normal: comboBuild wins with 5 to 18 lives', () => {
-        const x = r('comboBuild');
-        return { ok: x.phase === 'won' && x.lives >= 5 && x.lives <= 18, info: matrixCell(x) };
-      }),
-      // milestone 30 miss: on Switchback comboNoSpecials wins with 16 lives,
-      // so T6 (3 lives better with specials) needs 19 and T4 allows at most
-      // 18. No Troll hp from 950 to 1100 brings Switchback under 16 without
-      // Riverbend's comboNoSpecials losing (T6). The combo wins with 19.
-      ...(map === 'switchback' ? { miss: 'T6 needs 19 or more lives here; T4 allows at most 18 (W 19 measured)' } : {}),
-    },
+    // Milestone 30: the cap is 19 (18 before). With the reworked specials the
+    // combo wins the gentlest map (Switchback) with 19, and T6 needs it 3
+    // lives over comboNoSpecials's 16 there (coordinator's ruling).
+    t('T4', 'Normal: comboBuild wins with 5 to 19 lives', () => {
+      const x = r('comboBuild');
+      return { ok: x.phase === 'won' && x.lives >= 5 && x.lives <= 19, info: matrixCell(x) };
+    }),
     t('T5', 'Normal: comboBuildNoFire is strictly worse than comboBuild', () => {
       const x = r('comboBuildNoFire');
       const c = r('comboBuild');

@@ -187,14 +187,6 @@ export function describeBalance(map: MapId): void {
     for (const target of TARGETS) {
       const mine = map === 'meadow' ? target.map === undefined || target.map === 'meadow' : target.map === map;
       if (!mine) continue;
-      if (target.miss) {
-        // milestone 30 miss: pinned as failing until the targets are changed.
-        it(`${target.id}: ${target.label} (milestone 30 miss: ${target.miss})`, () => {
-          const result = target.check();
-          expect(result.ok, result.info).toBe(false);
-        });
-        continue;
-      }
       it(`${target.id}: ${target.label}`, () => {
         const result = target.check();
         expect(result.ok, result.info).toBe(true);
