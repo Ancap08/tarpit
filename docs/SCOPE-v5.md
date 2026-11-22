@@ -223,6 +223,80 @@ get centered again".
 Real phones are the test: the agents can only emulate touch, so Kyle's
 phone decides whether this is fixed.
 
+## Milestone 36: the longer game
+
+Kyle (2026-11-22 and 23): go from 10 to 20 waves, "getting something
+while you complete more levels"; specials need "a little more" damage and
+to "last a little longer"; endless should be "a little harder". He
+approved the shape below and was shown the reward list. One balance pass
+covers all of it. Built in two parts on one branch: 36a the rules, 36b the
+screen.
+
+### Two acts, 20 waves
+
+- Waves 1 to 10 stay close to today's. Grumblefoot still arrives at the
+  end of wave 10, now as the mid-boss: beating wave 10 no longer wins.
+- Waves 11 to 20 are new tables with tougher mixes of the same five enemy
+  types, built to the same wave rules (spawn rate, length, crowding).
+- Wave 20 ends with a second, bigger boss (working name **Grumblemaw**,
+  in `names.ts` like every name). More hp than Grumblefoot, the same slow
+  cap, more lives lost if he gets through. As his hp falls past two
+  thirds and one third he calls a pack of Wolves from the cave.
+- Clearing wave 20 wins. Keep going starts endless at wave 21.
+
+### A reward after waves 5, 10 and 15
+
+Clearing each of those waves offers three boons; the player picks one
+before the next wave can start. The offers are fixed (no luck):
+
+| After wave | Boon | Effect (starting numbers) |
+|---|---|---|
+| 5 | Long Barrels | Cannon and Mortar range +15% |
+| 5 | Keen Arrows | Longbow damage +25% |
+| 5 | War Chest | 100 gold now |
+| 10 | Sticky Tar | Tar Pit and Tar Barrel slows last 50% longer |
+| 10 | Hot Coals | Every burn does 40% more damage |
+| 10 | Quick Hands | Specials recharge 30% faster |
+| 15 | Stone Walls | 5 lives |
+| 15 | Veteran Crews | Every tower fires 12% faster |
+| 15 | Bigger Blasts | Cannon, Mortar and Powder Keg blast radius +20% |
+
+A boon applies to towers already built and built later, for the rest of
+the run, endless included. The numbers are starting points for the
+balance pass; the names and what each one does are fixed.
+
+### Stronger specials
+
+More damage and longer effects for all three (starting numbers: Powder
+Keg damage 30 to 60, tar and fire zones 8 s to 11 s, Fire Arrows burn 20
+to 26 per second). Each must be clearly felt: the Powder Keg must hurt
+more than small enemies.
+
+### Harder endless
+
+Endless repeats waves 18, 19 and 20 without the boss and grows faster
+than today (starting number: hp times 1.8 per cycle, was 1.6).
+
+### Balance
+
+The milestone 28 and 30 targets are restated for 20 waves in the brief and
+pinned as a matrix on all three maps and difficulties. In short: a build
+with no towers loses early; a lazy build loses in act 1 or early act 2 on
+Normal and wins on Easy; a good build wins Normal with lives to spare and
+is at least 3 lives better with specials than without; a build that never
+fires a special and one that always takes the first boon can both still
+win Normal; no single boon is so strong that skipping it loses, or so weak
+that it never changes a result; skipping anti-air still loses; Hard is
+winnable with its own plan. A full game is about 20 minutes at 1x.
+
+### The screen (36b)
+
+The reward pick (three cards with a name, one line and a drawn icon, in
+both layouts); the boons held shown small in the HUD; `Wave 3/20`; an act
+banner after wave 10; the second boss with his bar, entrance, pack call
+and fall; sounds for the new moments; win and endless flow; README, demo
+and docs.
+
 ## Later milestones (order agreed, detail to come)
 
 | # | Milestone | Idea |
@@ -237,7 +311,8 @@ on it.
 ## Roles
 
 Coordinator plans and writes no game code. Implementers: Claude Opus at
-medium effort, or a cheaper model for mechanical work. Verifiers: Claude
+medium effort, or a cheaper model for mechanical work; Codex (rules in
+`AGENTS.md`) while Kyle's Claude usage is short. Verifiers: Claude
 Sonnet, always a different model from the implementer. Kyle plays and
 approves.
 
