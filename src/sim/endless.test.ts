@@ -292,7 +292,8 @@ describe('an endless run (milestone 26)', () => {
     const b = playScripted(endlessGreedy());
     expect(a.state).toEqual(b.state);
     expect(a.waves).toEqual(b.waves);
-  });
+    // Verifier: about 3.8 s locally, so the default 5 s limit was too close for CI.
+  }, 30_000);
 
   it('gold is conserved across the wave 10 to 11 boundary', () => {
     const s = won();

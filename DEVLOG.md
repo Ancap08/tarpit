@@ -4285,3 +4285,150 @@ macOS as always).
 - `mergeBest` keeps the larger score only; the store never lowers a best.
 - Baselines: CI must regenerate `won.png` and create `title-best.png` and
   `endless-hud.png` before the visual job passes on CI.
+
+### Verifier notes
+
+Verifier: Claude Fable 5.2, on `m26-endless` at d5c2fdc. No code outside
+tests was changed. Probes: `src/sim/endless-verifier.test.ts` (26),
+`src/sim/endless-verifier-cap.test.ts` (1), `src/game/highScore-verifier.test.ts`
+(53), `e2e/endless-verifier.spec.ts` (10), `e2e/endless-verifier-touch.spec.ts`
+(1, tablet). One test edit: the endlessGreedy determinism test in
+`endless.test.ts` took 3.7 to 3.9 s against the default 5 s limit and now
+has a 30 s limit. No sim, renderer or storage bug was found; nothing is
+marked `it.fails` or `test.fixme`.
+
+**Checks.** Lint, check:assets, typecheck, build and check:size pass. 717
+unit tests passed twice before the probes, 797 with them. Playwright: 223
+before the probes, 234 with them. The full Playwright run is not reliably
+green: `perf.spec.ts` (and once `live.spec.ts`) timed out waiting for the
+game scene after the click on the title's Play in 4 of 8 full runs on this
+branch and in 1 of 5 full runs on `origin/main`. Both specs load the live
+loop (no `?test=1`). Alone, the perf spec passed 10 of 10 (median 16.7 ms,
+300 or 301 ticks) and the live spec 40 of 40 with 10 workers. So the flake
+is older than this milestone (25c's notes mention the same timeout) and
+shows more often with the extra endless specs running beside it. Cause not
+established; a click that lands before the title's first rendered frame is
+the likely one (the end screen's comment describes the same Phaser
+behaviour). Not fixed here. Pixel comparisons do not run locally: `won.png`
+is the old two-button frame and `title-best.png` and `endless-hud.png` do
+not exist, so the visual job fails on CI until update-snapshots runs.
+
+**Ten-wave game unchanged.** `npm run sim` on a worktree of `origin/main`
+against the branch differs only by the appended Endless table. Outside
+`waves.ts`, no code reads `WAVES[...]` for the running or next wave;
+`WAVES.length` remains only as the ten-wave loop bound in headless scripts
+and `testMode.ts`. The generated waves share the table's group objects and
+do not change them.
+
+**Spec to code.** Every number in DESIGN.md's Endless mode and High score
+sections matches the code, the six-row table and the cycle 1 to 3 hp list
+included. In code but not in DESIGN.md: `waveDef` throws for n < 1 or a
+non-integer and memoises generated waves without a bound; a score above
+2^53 - 1 is refused; a map id `__proto__` is skipped; a save rewrites the
+whole value, so unknown levels, other top-level keys, bad entries and a
+stored version other than 1 are dropped on the next new best (DESIGN.md
+says they are skipped on read, not that a save removes them). Not in
+DECISIONS.md: the change of the scope's 1.15 to 1.6, the preview's
+per-type merge, and specials in the endless archetypes. SCOPE-v4 still
+says 1.15. Those two files are the coordinator's.
+
+**By hand.** Waves 11, 13, 14, 20 and 40 on Normal and wave 11 on Hard,
+worked out from the rule, match `waveDef`: groups, hp per type, Harpy
+count and start, last spawn tick (4935, 4305, 5025, 5205, 4575). Hp is one
+rounding, half up: for every type and level through cycle 20 it equals the
+exact `base x level x 8^c / 5^c` rounded in integers; Easy Goblin cycle 1
+is 23 where two roundings would give 22.
+
+**The win rule and the boundary.** The game is won when wave 10 has fully
+spawned, no enemy is alive and lives are above 0. The boss dying with
+others alive is not yet a win; the boss walking out with lives to spare is
+a win; a boss exit that takes the last lives is a loss. So Keep going
+always starts with no enemies, hence no burns, slows or shots, charge 0,
+and every tower locked with nothing refundable. Nothing can be bought,
+sold or moved while `won`. A tower built in the endless setup moves free
+and refunds in full, with no profit. `continueEndless` is refused in
+setup, wave, lost and after use, changing nothing.
+
+**Runs.** Over a whole endlessGreedy run gold matched kills, bonuses and
+purchases on every tick and action; spawned = killed + exited + alive; the
+score climbs one at a time and never falls; one `won`, one `endlessStart`,
+one `lost`. Call early from 11 to 15 keeps survivors with their own
+`maxHp` (1440 and 2304 Trolls side by side). The spawn-rate rule holds for
+waves 11 to 60. Wave 150 runs in normal time with finite, whole hp. From
+wave 200 a Troll's hp passes 2^53 and 1-point hits stop registering; the
+live game has no wave cap, but no build gets near it. With lives mocked up
+the headless cap stops at 200 waves and reports `capped`.
+
+**High score.** `parseBest` returned an empty table and did not throw for
+38 malformed values (not JSON, arrays, wrong types at each level, strings
+of digits, negative, 0, floats, 1e400, 2^53 + 1, missing `v`, `v` 2,
+`__proto__` and `constructor` keys) and a 5 MB string; nothing reached
+`Object.prototype`. Merge keeps the larger. Two tabs: each save re-reads
+storage, so neither loses the other's score. With storage cleared in
+another tab this tab still shows its best but writes it back only on its
+next higher score.
+
+**Browser.** With `getItem` throwing, `setItem` throwing, or
+`window.localStorage` itself throwing: no console error, the game plays,
+and the title shows "Best on Hard: 1 wave" for the session. The score is
+in storage after each clear and after an early call; a reload mid-wave 4
+shows 3; a shorter later run and Play again do not lower it; levels are
+separate. There is no Menu or Play again outside the end screen, so
+leaving mid-run means a reload, which loses nothing. Win screen at desktop
+and tablet size: three buttons, no overlap, 16 px apart (canvas), at least
+44 px tall on the tablet page, labels inside, row centred. Enter, Space,
+Escape and Tab do nothing there. A double click or double tap on Keep
+going only keeps going; the second click is a plain map click, as are
+clicks where Play again and Menu were. A tower type picked on the bar
+before the win is not picked afterwards. "Wave 11", "Wave 123" and "Wave
+9998" stay clear of Lives and the preview on Normal and Easy; the widest
+preview (30 Harpy, before wave 20) stays inside x 356 to 620. A normal
+loss reads "Reached wave 1 of 10", an endless one "Reached wave 11"; Play
+again after an endless loss is a normal game ("Wave 0/10"). The title line
+follows mouse and keys, is absent without a score, and "Best on Normal:
+999 waves" clears Play by 8 px or more. The new words are only in
+`names.ts`. Frames looked at (tablet): the win panel with [Keep going]
+highlighted on the left over the dimmed map; a wave 14 fight with 30
+towers, Trolls, Wolves, Goblins and Harpies with hp bars, "Wave 14" and a
+one-line preview; the title with the line between the level row and Play.
+
+**Test changes.** `toEqual` became `toMatchObject` in six title checks
+(five in `difficulty.spec.ts`, one in `touch-verifier.spec.ts`); they no
+longer notice an extra field, nothing else got weaker. The perf spec is
+still a real check: 25 towers built, 120 enemies at the start, at least
+270 ticks in 5 s and a median under 33 ms. It no longer shows that the
+horde stays near 120 during the run.
+
+**Balance (informational).** The implementer's table reproduces. Endless
+with other builds, growth 1.6 (wave lost on; endless waves cleared;
+seconds of wave time at 1x from wave 11). "Spend all" is the greedy rule
+that goes on building Longbows on any free cell within 150 px of the path
+once the trail cells are full; the greedy archetype stops buying after
+wave 14 and dies with about 1500 gold.
+
+| Build | Level | Idle | Greedy | Spend all |
+|---|---|---|---|---|
+| comboBuild | Easy | 18; 7; 685 s | 22; 11; 991 s | 27; 16; 1391 s |
+| comboBuild | Normal | 15; 4; 424 s | 18; 7; 641 s | 23; 12; 1081 s |
+| comboBuild | Hard | loses wave 8 | loses wave 8 | loses wave 8 |
+| hardBuild | Easy | 18; 7; 687 s | 22; 11; 992 s | 28; 17; 1451 s |
+| hardBuild | Normal | 16; 5; 500 s | 19; 8; 737 s | 23; 12; 1122 s |
+| hardBuild | Hard | 14; 3; 361 s | 17; 6; 599 s | 20; 9; 837 s |
+
+Growth scan, comboBuild on Normal (scratch edits, restored):
+
+| Growth | Idle | Greedy | Spend all |
+|---|---|---|---|
+| 1.15 | 25; 14; 1241 s | 37; 26; 2128 s | 75; 64; 4700 s |
+| 1.3 | 18; 7; 680 s | 25; 14; 1192 s | 39; 28; 2243 s |
+| 1.45 | 16; 5; 512 s | 21; 10; 882 s | 27; 16; 1377 s |
+| 1.6 | 15; 4; 424 s | 18; 7; 641 s | 23; 12; 1081 s |
+
+A wave takes 80 to 86 s on average at 1x. At 1.6 a player who keeps
+spending gets about 12 endless waves in 18 minutes on Normal, and the end
+is a cliff: idle goes 12 lives, 4, 0 over waves 13 to 15. At 1.15 idle
+survives 14 waves untouched and a spender plays 78 minutes. My reading:
+1.6 fits the targets as written and is a little steep for a good player;
+1.45 is the gentlest value that still keeps idle inside 11 to 16 (on the
+edge) and gives a spender 16 waves in 23 minutes. The lose screen says
+"Reached wave 15" where the title then says "14 waves" for the same run.
