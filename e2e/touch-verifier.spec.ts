@@ -148,20 +148,20 @@ test('(m25 g) tap Hard, tap Play: 80 gold, 15 lives; all four title buttons are 
   // One frame, so the menu's buttons are in Phaser's input list before the first tap.
   await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
   const r = await rects(page);
-  expect(Object.keys(r).sort()).toEqual(['title:easy', 'title:hard', 'title:normal', 'title:play']);
+  expect(Object.keys(r).sort()).toEqual(['title:easy', 'title:hard', 'title:map:meadow', 'title:map:riverbend', 'title:map:switchback', 'title:normal', 'title:play']);
   for (const [name, rect] of Object.entries(r)) {
     const top = await toPage(page, rect.x, rect.y);
     const bottom = await toPage(page, rect.x + rect.width, rect.y + rect.height);
-    // 42 canvas px x 1024 / 960 = 44.8 px on screen.
-    expect(bottom.y - top.y, name).toBeCloseTo(44.8, 1);
+    // 42 canvas px x 1024 / 960 = 44.8 px on screen (milestone 27 map thumbnails: 72 -> 76.8).
+    expect(bottom.y - top.y, name).toBeCloseTo(name.startsWith('title:map:') ? 76.8 : 44.8, 1);
     expect(bottom.y - top.y, name).toBeGreaterThanOrEqual(44);
     expect(bottom.x - top.x, name).toBeGreaterThanOrEqual(44);
   }
   await tap(page, 'title:hard');
   expect(await api(page, (a) => a.scene())).toBe('title'); // a tap on a level only selects it
   expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).ui<TitleUiState>())).toMatchObject({ scene: 'title', difficulty: 'hard' }); // milestone 26 adds bestLine
-  // A tap on empty title space starts nothing.
-  await tapAt(page, 480, 366);
+  // A tap on empty title space starts nothing (milestone 27: x 120, left of the map row, which now fills x 480).
+  await tapAt(page, 120, 366);
   expect(await api(page, (a) => a.scene())).toBe('title');
   await tap(page, 'title:play');
   await page.waitForFunction(() => window.__tarpit?.scene?.() === 'game');

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildableCells, MAPS, buildTower, cellCenter, cellFromKey, createGame, isBuildableTerrain } from '../sim';
+import { buildableCells, MAP_IDS, MAPS, buildTower, cellCenter, cellFromKey, createGame, isBuildableTerrain } from '../sim';
 import { labelAbove, LABEL_HEIGHT, LABEL_OFFSET_Y } from './draw/labels';
 import { cellAt, cellRect, classifyClick, dragTargetCell, KILLS_LINE_H, mouseDragLost, onPath, pastDragThreshold, pathCover, placeBeside, type Rect } from './input';
 
@@ -92,14 +92,16 @@ describe('placeBeside', () => {
     expect(REAL).toEqual({ w: 214, h: 166 });
   });
 
-  for (const PANEL of [{ w: 168, h: 76 }, REAL]) {
-    it(`for every buildable cell, a ${PANEL.w} x ${PANEL.h} panel: inside the map, off the HUD, never over its own tower or label`, () => {
-      buildableCells(MAPS.meadow).forEach((ok, key) => {
+  // Milestone 27: on every map (the Switchback exit and the Riverbend spawn run along the bottom rows).
+  for (const PANEL of [{ w: 168, h: 76 }, REAL]) for (const id of MAP_IDS) {
+    it(`${id}: for every buildable cell, a ${PANEL.w} x ${PANEL.h} panel: inside the map, off the HUD, never over its own tower or label`, () => {
+      const map = MAPS[id];
+      buildableCells(map).forEach((ok, key) => {
         if (!ok) return;
         const c = cellFromKey(key);
-        expect(isBuildableTerrain(c, MAPS.meadow)).toBe(true);
-        const p = placeBeside(cellCenter(c), PANEL.w, PANEL.h, MAPS.meadow);
-        const where = `cell (${c.col},${c.row})`;
+        expect(isBuildableTerrain(c, map)).toBe(true);
+        const p = placeBeside(cellCenter(c), PANEL.w, PANEL.h, map);
+        const where = `${id} cell (${c.col},${c.row})`;
         expect(p.x, where).toBeGreaterThanOrEqual(0);
         expect(p.x + PANEL.w, where).toBeLessThanOrEqual(960);
         expect(p.y, where).toBeGreaterThanOrEqual(0);
