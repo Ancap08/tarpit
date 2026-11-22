@@ -795,3 +795,54 @@ can change it; "Kyle" means Kyle decided.
   go into milestone 30. The coordinator now reads it on every PR. Fable.
 - **README corrected by the coordinator** after the Sonnet fact-check
   (wording only; every number had matched). Fable.
+
+## 2026-11-22, milestone 30 (specials rework, Cannon, 3x, gold cheat)
+
+- **Specials: a shared charge that is ready at each wave start and
+  refills 20 s of wave time after use; Tar Barrel and Fire Arrows leave a
+  ground zone for 8 s (60 ticks of linger) that affects everything inside,
+  flyers included; radii 90, 100, 90.** Kyle (complaint), Fable (design in
+  SCOPE-v5), Opus (build and numbers). Zone time is 8 s, not the scope's
+  5 s starting number: at 5 s specials did not matter enough.
+- **Powder Keg damage 80 to 30; Fire Arrows burn 30 to 20 per second.**
+  At 80 the keg killed Harpies and broke the anti-air lesson; at 30 it
+  still kills every Goblin and Wolf in a bigger circle but barely marks a
+  Troll. Opus, confirmed by Sonnet's revert runs. A play note for Kyle;
+  the alternative is a stronger keg that does not hit flyers.
+- **Aim: banner, circle on the pointer, one tap or release fires; the
+  lifted circle decides where it lands.** The scope's first draft said a
+  release over the HUD cancels; that made the bottom rows unreachable by
+  hold, so Fable changed it during the build and the scope now says so.
+- **Seeing it land:** blast, shake and scorch mark; a tar puddle and a
+  burning patch drawn for the zone's life; an "N hit" or "Missed" label;
+  the button reads "Wait 15s" while it refills. Fable (asks), Opus.
+- **Headless builds fire specials by one person-like rule** (when ready,
+  at a crowd of 3 or more; tar and fire take turns on crowds with a Troll
+  or the boss, otherwise the keg). The stored per-wave search from
+  milestone 28 is deleted. Fable. Measured on Meadow, Normal: 28 specials
+  in ten waves, 19% of all kills.
+- **Targets changed:** T6 is now "at least 3 lives better with specials,
+  and a build with none still wins Normal on every map"; S2 (removing any
+  one special makes the Meadow combo strictly worse); S3 (at least 15
+  specials a game, most catching 3 or more). T4's band is 5 to 19: on
+  Switchback the combo wins with 19, T4 and T6 could not both hold at 18,
+  and T6 is the owner's requirement. Fable.
+- **Cannon range 90 to 105 at both levels.** Kyle. No target depends on
+  it.
+- **Speed: tap for 1x and 2x, hold 300 ms for 3x while held.** Kyle
+  (idea), Fable (form).
+- **Gold cheat: five taps on Gold within 2 s give 500; the run is marked
+  and saves no best score.** Kyle (cheat), Fable (marker and score rule).
+  Ten quick taps give 1000.
+- **Known and accepted:** the Tar Barrel is the least felt special (it
+  only slows); the policy stops using the keg from wave 7; an early call
+  refills the charge at once; inside a fire patch the patch's burn
+  replaces a Fire Pot's, so those kills count for the special; thin
+  margins (hardBuild wins Hard on Riverbend with 2 lives; 199 gold against
+  a 200 limit on Meadow); some prose numbers in DESIGN.md are not guarded
+  by the spec test. Sonnet (findings), Fable (accepted).
+- **Kyle's third play notes:** the right type of game, expand it; no new
+  map types for now; a story mode later; the coming upgrades will show
+  whether the direction needs to change. He asked how to make it easier
+  to play on a phone held upright and easier to get to. Fable proposed a
+  portrait layout and home-screen install; not yet chosen. Kyle.

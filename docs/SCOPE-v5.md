@@ -22,8 +22,11 @@ how to place the attack and didn't know if it landed."
   map says what to do, and the circle follows the pointer. A mouse click
   fires. On touch, a tap fires at the tap; holding shows the circle under
   the finger (lifted, as for tower drags) and releasing fires. There is no
-  second confirming tap. Special again, Escape, or releasing over the HUD
-  cancels.
+  second confirming tap. The lifted circle decides where it lands, as for
+  tower drags, so the bottom rows can be reached with the finger over the
+  HUD. Special again, Escape, or a circle off the map cancels. (First
+  draft: releasing over the HUD cancels. Changed in the build so the
+  bottom rows are reachable; see DECISIONS.)
 - **You can see it land.** Powder Keg: a blast, a short shake and a scorch
   mark that fades. Tar Barrel: a tar puddle that stays for as long as it
   works. Fire Arrows: a burning patch that stays for as long as it works. A
@@ -32,7 +35,7 @@ how to place the attack and didn't know if it landed."
 - **More power.** The charge is ready at each wave start and refills on a
   timer while the wave runs (starting number: 20 s), so a special is used
   several times a wave. The Tar Barrel and Fire Arrows leave a zone on the
-  ground for a few seconds (starting number: 5 s) that slows or burns every
+  ground for a few seconds (starting number: 5 s; built as 8 s) that slows or burns every
   enemy inside it, flyers included. Circles get bigger (starting numbers:
   keg 90, tar 100, fire 90). One shared charge, three specials unlocked on
   waves 1, 4 and 7 as today.
@@ -84,6 +87,13 @@ Coordinator plans and writes no game code. Implementers: Claude Opus at
 medium effort, or a cheaper model for mechanical work. Verifiers: Claude
 Sonnet, always a different model from the implementer. Kyle plays and
 approves.
+
+## Later, not scheduled
+
+A story mode (Kyle, third play notes). No new map types until later. Ideas
+put to Kyle and not yet chosen: a phone portrait layout with home-screen
+install, a second upgrade tier with a choice, stars per map and
+difficulty, tower unlocks, a pause button and an enemy card.
 
 ## Out of scope for milestone 30
 
