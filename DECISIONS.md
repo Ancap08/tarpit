@@ -541,3 +541,24 @@ can change it; "Kyle" means Kyle decided.
 - **A faint red ghost shows over blocked cells during drags; a mouse drag
   cancels if a move arrives with no button down.** Fable and Opus.
 - **Unlocked towers have a dashed outline (3.9:1 against grass).** Opus.
+
+## 2026-11-21, milestone 25b (special attacks)
+
+- **One charge per wave, granted at Start Wave, gone at wave clear, never
+  more than one. Powder Keg from wave 1, Tar Barrel from wave 4, Fire
+  Arrows from wave 7, with the SCOPE starting numbers.** Kyle (idea),
+  Fable (rules), Opus (build).
+- **Specials hit flyers (Harpies can be tarred and burned by specials, not
+  by towers) and ignore shields; the boss slow cap applies.** Fable.
+- **A special fired at empty ground still spends the charge.** Accepted
+  (Fable): one charge per wave means aim matters.
+- **Locked specials are not listed in the popup; with one unlocked the HUD
+  button selects it directly. The mouse fires on press; touch fires on a
+  second tap within 24 px or on drag release, with the 48 px lift.**
+  Default (Opus).
+- **For 25c:** the Tar Barrel does nothing to an enemy already under a
+  stronger tower slow, and a later tower slow can cut its 4 s short; decide
+  whether special slows get their own channel. The informational
+  `comboWithKegs` policy hits once in ten waves, so 25c needs a
+  cluster-seeking policy before it balances around specials. The keg flash
+  is brief; v5 effects pass.
