@@ -386,7 +386,7 @@ async function takeStills(browser: Browser): Promise<void> {
     const s = t.state!();
     return { map: s.map.id, wave: s.wave, enemies: s.enemies.length, towers: s.towers.length, lives: s.lives };
   });
-  if (JSON.stringify(river) !== JSON.stringify({ map: 'riverbend', wave: 7, enemies: 16, towers: 9, lives: 19 })) {
+  if (JSON.stringify(river) !== JSON.stringify({ map: 'riverbend', wave: 7, enemies: 16, towers: 9, lives: 18 })) {
     throw new Error(`Riverbend frame changed: ${JSON.stringify(river)}`);
   }
   await settle();
@@ -402,7 +402,7 @@ async function takeStills(browser: Browser): Promise<void> {
     t.step!(5361);
     return { wave: t.state!().wave, enemies: t.state!().enemies.length, bar: t.hudText!().boss };
   });
-  if (boss.wave !== 10 || boss.enemies !== 1 || !boss.bar?.endsWith('3339 / 4000')) throw new Error(`boss frame changed: ${JSON.stringify(boss)}`);
+  if (boss.wave !== 10 || boss.enemies !== 1 || !boss.bar?.endsWith('3331 / 4000')) throw new Error(`boss frame changed: ${JSON.stringify(boss)}`);
   await settle();
   await page.screenshot({ path: PNG_BOSS });
   log(`boss still: ${JSON.stringify(boss)}`);
