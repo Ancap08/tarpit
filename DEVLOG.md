@@ -4503,3 +4503,20 @@ test.
 Troll's endless hp passes `Number.MAX_SAFE_INTEGER` on wave 200 (Normal,
 Hard) and 203 (Easy), with no wave cap in the live game. Removed a stray
 blank line in `waves.ts`.
+
+**Verifier, follow-up** (Claude Fable 5.2, at 5a4afdc). The cause holds
+against Phaser's source: `setInteractive` parks the object on
+`_pendingInsertion`, only the input plugin's `preUpdate` (the scene's
+PRE_UPDATE) moves it to the hit-test list, and the first-visit `create`
+runs from the loader's image callback between game steps; the scene's
+RENDER event comes after that step, so `ready` cannot turn true early. A
+scratch probe clicking Play at the title's `create` was dropped and the
+same click at the first render started the game; with `ready` set in
+`create` the regression test fails (scratch edit, restored). Every spec
+that clicks or taps a title button waits with `waitForTitle`; the rest use
+`startGame()` or `play()`. `titleReady()` only reads. Full suite 8 times
+with 5 workers as before (6 alone, 2 with `npm run sim`, lint and
+typecheck running beside it): 236 passed each time, against 4 failures in
+8 before the fix. 798 unit tests, lint, typecheck and build pass. Pixel
+baselines still need update-snapshots on CI; DECISIONS.md is the
+coordinator's.
