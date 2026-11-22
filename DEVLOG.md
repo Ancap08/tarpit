@@ -6476,3 +6476,95 @@ mask, iOS storage eviction of the cache.
    own hashed name, deleted with that cache at the next update.
 6. **Shared origin (PR review).** The kill switch unregistered every worker on the origin and every `tarpit-` cache; activate and the retiring `sw.js` also matched any `tarpit-` cache, so two copies of the game on one origin would delete each other's. Now caches are named `tarpit|<scope path>|<version>`, only that prefix is deleted, and only the registration with exactly the game's scope is removed.
    Tested in `e2e/install.spec.ts` with a sibling site at `/other/` (own worker and cache) and a `/preview/` copy's cache on the same origin: the update to B, the off build and the retiring `sw.js` alone remove only `/tarpit/`'s worker and caches.
+
+## 2026-11-22: milestone 32b, portrait layout
+
+Implementer: Claude Opus 5.5. Scope: `docs/SCOPE-v5.md`, "Milestone 32b:
+portrait layout". Kyle: "how can I make it easier to play on a phone,
+like vertically". No simulation change: `npm run sim` is byte-identical
+to main.
+
+### What I built
+
+- **One layout object** (`src/game/layout.ts`, phase 1): every
+  world-to-screen and screen-to-world conversion. World-space Graphics
+  take its transform with `placeWorld()`; sprites, text, hp bars,
+  particles and banners are placed with `toScreen()`; input uses
+  `cellAt()`, `toWorld()` and `onMap()`. Landscape is the identity.
+- **Portrait** (phases 2 and 3): a window taller than it is wide gets a
+  480 x 1194 canvas: a 76 px status strip, the map turned a quarter turn
+  clockwise (480 x 960, spawn at the top), a row of six 75 x 70 tower
+  buttons (shape and cost) and a row with Special 130, Start Wave 214 and
+  speed 114 (70 tall). Portrait arrangements for the tower panel (220 x 70
+  buttons, inside the map), special popup, aim banner (at the map's foot),
+  wave and boss banners, boss bar, end screens (stacked 280 x 70 buttons)
+  and the title menu. Text is 18 px or more. Things with an up (arcs, the
+  lift, flyers, shadows, the Fire Pot's flame, the Longbow's post, the
+  falling fire arrows, the cottage) use the top of the screen.
+- **Switching** (`src/game/layoutSwitch.ts`, replacing `portrait.ts` and
+  the `#rotate-card`): on a change of window shape the canvas takes the
+  new size and the running scene restarts; a game restarts on the same
+  `GameState`, waves-cleared record and tick accumulator.
+- **Hooks:** `ui().layout`, and `layout()`, `cellToPage()` and
+  `worldToPage()` in and out of test mode (they replace
+  `portraitCardVisible()`).
+- **Pure geometry** for tests: `src/game/ui/geometry.ts` (stacks, panel
+  box, portrait controls, portrait title).
+
+### Sizes
+
+| | 390 x 763 (standalone) | 390 x 664 (Safari with bars) |
+|---|---|---|
+| Scale (canvas px to CSS px) | 0.639 | 0.556 |
+| Canvas on screen | 307 x 763 | 267 x 664 |
+| Control buttons (70 px) | 44.7 | 38.9 |
+| Tower buttons (75 x 70) | 47.9 x 44.7 | 41.7 x 38.9 |
+| 18 px text | 11.5 | 10.0 |
+| Map cell (32 px) | 20.5 | 17.8 |
+
+At 390 x 664 the buttons are under 44 px and text under 11 px: the scope
+asks for 44 px on the standalone phone only.
+
+### Tests
+
+- Unit: `src/game/layout.test.ts`, 23 tests: round trips for every cell
+  centre and the corners in both layouts, the transform against the
+  Graphics rotation, spawns at the top, facing, lift, arcs, the portrait
+  panel inside the map and off the tower for every buildable cell of
+  every map, and the controls' and title's arithmetic.
+- Playwright `phone` project (390 x 844, touch, device scale 3, files
+  ending `-phone.spec.ts`, plus `perf.spec.ts`'s packed case):
+  `e2e/portrait-phone.spec.ts` (16 tests) and `e2e/visual-phone.spec.ts`
+  (12 frames, no PNGs committed). `update-snapshots.yml` now also runs
+  `e2e/visual-phone.spec.ts`; CI already runs every project.
+- Rewritten rotate-card tests: `touch.spec.ts` (two tests),
+  `touch-verifier.spec.ts` (g), `install.spec.ts` (safe area),
+  `live.spec.ts` and `test-hooks-gate.spec.ts` (hook lists).
+- Landscape: every `visual.spec.ts` and `visual-tablet.spec.ts` frame
+  written on this Mac (`CI=1 --update-snapshots=all`) from main and from
+  each phase's tip is byte-identical (27 of 27).
+
+### What went wrong
+
+- My first edit script for `fx/effects.ts` matched against a copy of the
+  file I had read with its comments stripped, so several replacements
+  missed; the script stopped on the first miss and wrote nothing. Rewrote
+  it to report misses.
+- Phone tests: towers built beside the cave killed the first Goblins
+  before the facing check; a special hold that starts on the controls
+  cancels aiming (as in landscape), so the bottom-edge case presses on the
+  map and slides down.
+- The first aim banner sat at the map's top, over the spawn where enemies
+  bunch; moved to the map's foot.
+
+### For the verifier
+
+- Pixel identity of landscape: compare main and the tip as above.
+- The rotation in `layout.ts` (`toScreen`, `placeWorld`) and the places
+  that must stay upright: `draw/towers.ts`, `draw/map.ts` (cottage),
+  `draw/specials.ts` (flames, arrows), `fx/effects.ts` (arcs, shadows,
+  boss rings, cottage glow), `draw/enemies.ts`.
+- The switch mid-game (`GameScene.relayout`): tick continuity on the live
+  loop is checked only to within real time.
+- Frames on a real phone: cell size (20 CSS px), the tower icons in the
+  bar, and the letterbox (the canvas uses 307 of 390 px of width).

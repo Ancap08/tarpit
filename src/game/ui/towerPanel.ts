@@ -17,12 +17,12 @@
 
 import type Phaser from 'phaser';
 import { TARGETING_MODES, TOWER_DEFS, towerAt, towerSellValue, type Cell, type GameState, type TargetingMode } from '../../sim';
-import { KILLS_LINE_H, placeBeside, type Rect } from '../input';
-import { PORTRAIT_STACK } from '../hud';
+import { placeBeside, type Rect } from '../input';
 import { fontPx, type Layout } from '../layout';
 import { killsLabel, PANEL_TEXT, targetingButtonText } from '../names';
 import { FONT, TEXT } from '../palette';
 import { ButtonStack } from './button';
+import { panelGeometry } from './geometry';
 
 export interface TowerPanelHandlers {
   onUpgrade: () => void;
@@ -52,13 +52,14 @@ export class TowerPanel {
   ) {
     // Milestone 32b: portrait buttons are 220 x 70 with 18 px text, and the kills line is 18 px too.
     const portrait = layout.kind === 'portrait';
+    const geo = panelGeometry(layout);
     const f = (px: number) => fontPx(layout, px);
     this.stack = new ButtonStack(scene, [
       { text: PANEL_TEXT.upgrade, right: '', fontSize: f(16), onClick: () => (this.undo ? handlers.onUndoUpgrade() : handlers.onUpgrade()) },
       { text: PANEL_TEXT.sell, right: '', fontSize: f(16), onClick: handlers.onSell },
       { text: targetingButtonText('first'), fontSize: f(13), onClick: () => handlers.onTarget(nextMode(this.mode)) },
-    ], handlers.onClose, portrait ? PORTRAIT_KILLS_LINE_H : KILLS_LINE_H, portrait ? PORTRAIT_STACK : undefined, portrait ? '30px' : '24px');
-    this.killsLineH = portrait ? PORTRAIT_KILLS_LINE_H : KILLS_LINE_H;
+    ], handlers.onClose, geo.header, geo.size, portrait ? '30px' : '24px');
+    this.killsLineH = geo.header;
     this.killsText = scene.add
       .text(0, 0, killsLabel(0), { fontFamily: FONT, fontSize: f(13), fontStyle: 'bold', color: TEXT.hudDim })
       .setOrigin(0, 0.5)
@@ -140,9 +141,6 @@ export class TowerPanel {
 }
 
 /** The mode after `mode` in the cycle first -> last -> strongest -> first. */
-/** The kills line's height in a portrait panel (18 px text). */
-const PORTRAIT_KILLS_LINE_H = 26;
-
 export function nextMode(mode: TargetingMode): TargetingMode {
   return TARGETING_MODES[(TARGETING_MODES.indexOf(mode) + 1) % TARGETING_MODES.length];
 }

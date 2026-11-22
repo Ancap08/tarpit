@@ -22,7 +22,7 @@
 // 200, subtitle y 270, "Difficulty" y 390, level buttons 144 x 70 (12 px
 // apart) at y 410, "Map" y 530, map buttons 144 x 116 at y 550 (a 120 x 60
 // thumbnail, 18 px name), the best line y 720, [Play] 260 x 80 at y 770,
-// the prompt wrapped to two lines (310 px) round y 930. Every button is at least as
+// the prompt wrapped to two lines (330 px) round y 930. Every button is at least as
 // large as the game's 70 px controls, and all text is 18 px or more. When
 // the window changes shape, relayout() rebuilds the menu with its picks.
 //
@@ -52,6 +52,7 @@ import { bestScoreText, DIFFICULTY_LABELS, MAP_NAMES, TITLE_TEXT } from './names
 import { COLORS, FONT, TEXT } from './palette';
 import { currentLayout } from './layoutSwitch';
 import { Button } from './ui/button';
+import { PORTRAIT_TITLE, titleRects, type TitleGeometry } from './ui/geometry';
 
 /** Menu buttons: 42 px tall like every touch target (44.8 px on an iPad in landscape). */
 export const MENU_BUTTON_H = 42;
@@ -77,34 +78,6 @@ export const BEST_LINE_Y = (MAP_ROW_Y + MAP_BUTTON_H + PLAY_BUTTON_Y) / 2;
 export const BEST_LINE_SIZE = 18;
 
 /** What the test hook ui() reports while the title menu shows. */
-/** Where the title menu's parts go (milestone 32b: landscape as above, or portrait). */
-interface TitleGeometry {
-  titleY: number;
-  subtitleY: number;
-  levelCaptionY: number;
-  levelY: number;
-  levelW: number;
-  levelH: number;
-  gap: number;
-  mapCaptionY: number;
-  mapY: number;
-  mapH: number;
-  thumbW: number;
-  thumbH: number;
-  thumbTop: number;
-  thumbNameY: number;
-  mapNameSize: string;
-  levelFont: string;
-  bestY: number;
-  playW: number;
-  playH: number;
-  playY: number;
-  playFont: string;
-  promptY: number;
-  /** Wrap width for the prompt, or 0 for one line. */
-  promptWrap: number;
-}
-
 const LANDSCAPE_TITLE: TitleGeometry = {
   titleY: 110,
   subtitleY: 172,
@@ -129,32 +102,6 @@ const LANDSCAPE_TITLE: TitleGeometry = {
   playFont: '22px',
   promptY: 522,
   promptWrap: 0,
-};
-
-const PORTRAIT_TITLE: TitleGeometry = {
-  titleY: 200,
-  subtitleY: 270,
-  levelCaptionY: 390,
-  levelY: 410,
-  levelW: 144,
-  levelH: 70,
-  gap: 12,
-  mapCaptionY: 530,
-  mapY: 550,
-  mapH: 116,
-  thumbW: 120,
-  thumbH: 60,
-  thumbTop: 8,
-  thumbNameY: 92,
-  mapNameSize: '18px',
-  levelFont: '22px',
-  bestY: 720,
-  playW: 260,
-  playH: 80,
-  playY: 770,
-  playFont: '26px',
-  promptY: 930,
-  promptWrap: 310,
 };
 
 export interface TitleUiState {
@@ -222,10 +169,10 @@ export class TitleScene extends Phaser.Scene {
     this.add
       .text(cx, geo.levelCaptionY, TITLE_TEXT.difficulty, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: TEXT.subtitle })
       .setOrigin(0.5);
-    const rowWidth = DIFFICULTIES.length * geo.levelW + (DIFFICULTIES.length - 1) * geo.gap;
+    const rects = titleRects(geo, cx);
     this.levelButtons = new Map();
     DIFFICULTIES.forEach((level, i) => {
-      const rect = { x: cx - rowWidth / 2 + i * (geo.levelW + geo.gap), y: geo.levelY, width: geo.levelW, height: geo.levelH };
+      const rect = rects.levels[i];
       this.levelButtons.set(level, new Button(this, rect, DIFFICULTY_LABELS[level], () => this.select(level), { fontSize: geo.levelFont }));
     });
 
@@ -233,10 +180,9 @@ export class TitleScene extends Phaser.Scene {
     this.add
       .text(cx, geo.mapCaptionY, TITLE_TEXT.map, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: TEXT.subtitle })
       .setOrigin(0.5);
-    const mapRowWidth = MAP_IDS.length * geo.levelW + (MAP_IDS.length - 1) * geo.gap;
     this.mapButtons = new Map();
     MAP_IDS.forEach((map, i) => {
-      const rect = { x: cx - mapRowWidth / 2 + i * (geo.levelW + geo.gap), y: geo.mapY, width: geo.levelW, height: geo.mapH };
+      const rect = rects.maps[i];
       this.mapButtons.set(map, new Button(this, rect, '', () => this.selectMap(map)));
       // Drawn after the button, so over its box; neither the picture nor the name takes input.
       const g = this.add.graphics();
@@ -254,7 +200,7 @@ export class TitleScene extends Phaser.Scene {
 
     this.playButton = new Button(
       this,
-      { x: cx - geo.playW / 2, y: geo.playY, width: geo.playW, height: geo.playH },
+      rects.play,
       TITLE_TEXT.play,
       () => this.play(),
       { fontSize: geo.playFont },

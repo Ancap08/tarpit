@@ -6,6 +6,9 @@ import { defineConfig, devices } from '@playwright/test';
  */
 const PORT = Number(process.env.PW_PORT ?? 4173);
 
+/** Specs that run only in the phone project (milestone 32b): files ending -phone.spec.ts. */
+const PHONE_SPECS = [/-phone\.spec\.ts$/];
+
 /** Specs that run only in the tablet project (and never on the desktop one). */
 const TABLET_SPECS = [/touch\.spec\.ts$/, /touch-drag\.spec\.ts$/, /touch-verifier\.spec\.ts$/, /visual-tablet\.spec\.ts$/];
 
@@ -28,14 +31,14 @@ export default defineConfig({
     baseURL: `http://localhost:${PORT}`,
     trace: 'on-first-retry',
   },
-  // ignoreSnapshots and updateSnapshots above apply to both projects.
+  // ignoreSnapshots and updateSnapshots above apply to every project.
   projects: [
     {
       name: 'chromium',
       // A 960x580 viewport makes the Scale.FIT canvas exactly 960x580 at
       // (0,0), so canvas coordinates from window.__tarpit.uiRects() are page
       // coordinates for page.mouse.click.
-      testIgnore: TABLET_SPECS,
+      testIgnore: [...TABLET_SPECS, ...PHONE_SPECS],
       use: { ...devices['Desktop Chrome'], viewport: { width: 960, height: 580 }, deviceScaleFactor: 1 },
     },
     {
@@ -48,6 +51,22 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         viewport: { width: 1024, height: 768 },
         deviceScaleFactor: 1,
+        hasTouch: true,
+        isMobile: true,
+      },
+    },
+    {
+      name: 'phone',
+      // Milestone 32b: a 390 x 844 touch phone in portrait (iPhone size, a
+      // mobile device scale factor). The portrait canvas (480 x 1194) fits at
+      // 844 / 1194; specs map map points with cellToPage() and worldToPage()
+      // and buttons with uiRects() and canvasToPage(). perf.spec.ts runs its
+      // packed case here too.
+      testMatch: [...PHONE_SPECS, /perf\.spec\.ts$/],
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 390, height: 844 },
+        deviceScaleFactor: 3,
         hasTouch: true,
         isMobile: true,
       },

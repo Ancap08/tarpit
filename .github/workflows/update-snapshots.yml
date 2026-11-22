@@ -35,8 +35,9 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run build
-      # visual.spec.ts runs in the desktop project, visual-tablet.spec.ts in the tablet one.
-      - run: npx playwright test e2e/visual.spec.ts e2e/visual-tablet.spec.ts --update-snapshots=${{ inputs.all && 'all' || 'changed' }}
+      # visual.spec.ts runs in the desktop project, visual-tablet.spec.ts in the tablet one,
+      # visual-phone.spec.ts (milestone 32b) in the phone one.
+      - run: npx playwright test e2e/visual.spec.ts e2e/visual-tablet.spec.ts e2e/visual-phone.spec.ts --update-snapshots=${{ inputs.all && 'all' || 'changed' }}
         env:
           CI: '1'
       - name: Commit changed baselines

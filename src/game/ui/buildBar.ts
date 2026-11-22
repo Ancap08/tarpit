@@ -7,7 +7,8 @@ import type Phaser from 'phaser';
 import { TOWER_DEFS, type GameState, type TowerType } from '../../sim';
 import type { Rect } from '../input';
 import { drawTowerShape } from '../draw/towers';
-import { LANDSCAPE, PORTRAIT_BUTTON_H, PORTRAIT_ROW1_Y, PORTRAIT_WIDTH, type Layout } from '../layout';
+import { LANDSCAPE, type Layout } from '../layout';
+import { portraitBarRects } from './geometry';
 import { TOWER_NAMES } from '../names';
 import { Button } from './button';
 
@@ -26,24 +27,13 @@ export const BAR_LEFT = 16;
 export const BAR_GAP = 8;
 
 /** True when the player can pick `type` now: enough gold and the game is not over. */
-/**
- * Portrait (milestone 32b): six 75 x 70 buttons in one row, 4 px apart,
- * centred in the 480 px canvas. A tower name at the 18 px portrait text
- * size does not fit 75 px ("Musketeer" is 97 px, even "Longbow" 76 px), so
- * a portrait button shows the tower's own map shape over its cost.
- */
-export const PORTRAIT_BAR_W = 75;
-export const PORTRAIT_BAR_GAP = 4;
-const PORTRAIT_BAR_LEFT = (PORTRAIT_WIDTH - BAR_TYPES.length * PORTRAIT_BAR_W - (BAR_TYPES.length - 1) * PORTRAIT_BAR_GAP) / 2;
-/** Where the icon's centre and the cost's centre sit, in px from the button's top. */
+/** Where a portrait button's icon centre and cost centre sit, in px from its top (milestone 32b, geometry.ts). */
 const ICON_Y = 27;
 const COST_Y = 56;
 
 /** The bar's button rectangles for `layout`, in BAR_TYPES order. */
 export function barRects(layout: Layout, top: number): Rect[] {
-  if (layout.kind === 'portrait') {
-    return BAR_TYPES.map((_, i) => ({ x: PORTRAIT_BAR_LEFT + i * (PORTRAIT_BAR_W + PORTRAIT_BAR_GAP), y: PORTRAIT_ROW1_Y, width: PORTRAIT_BAR_W, height: PORTRAIT_BUTTON_H }));
-  }
+  if (layout.kind === 'portrait') return portraitBarRects();
   return BAR_TYPES.map((_, i) => ({ x: BAR_LEFT + i * (BAR_BUTTON_WIDTH + BAR_GAP), y: top, width: BAR_BUTTON_WIDTH, height: BAR_BUTTON_HEIGHT }));
 }
 

@@ -27,14 +27,18 @@ const MIN_TICKS = 270;
 async function clickTitlePlay(page: Page): Promise<void> {
   const r = await page.evaluate(() => window.__tarpit?.uiRects()['title:play'] as Rect | undefined);
   expect(r, "uiRects()['title:play']").toBeTruthy();
-  await page.mouse.click(r!.x + r!.width / 2, r!.y + r!.height / 2);
+  // Through canvasToPage (milestone 32b): the phone project's canvas is fitted and letterboxed.
+  const p = await page.evaluate(([x, y]) => window.__tarpit!.canvasToPage(x, y), [r!.x + r!.width / 2, r!.y + r!.height / 2]);
+  await page.mouse.click(p.x, p.y);
 }
 
 for (const [name, span] of [
   ['spread along the path', undefined],
   ['packed into the first 120 px', 120],
 ] as const) {
-  test(`120 enemies (${name}) and 25 towers keep the median frame under 33 ms`, async ({ page }) => {
+  test(`120 enemies (${name}) and 25 towers keep the median frame under 33 ms`, async ({ page }, testInfo) => {
+    // Milestone 32b: the phone project (portrait) runs the packed case only.
+    test.skip(testInfo.project.name === 'phone' && span === undefined, 'the phone project runs the packed case only');
     test.setTimeout(60_000);
     await page.goto(URL);
     await waitForTitle(page);

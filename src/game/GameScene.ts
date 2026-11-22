@@ -489,7 +489,8 @@ export class GameScene extends Phaser.Scene {
     const bannerText = (y: number, size: string, color: string) =>
       this.add.text(this.bannerX, y, '', { fontFamily: FONT, fontSize: size, fontStyle: 'bold', color }).setOrigin(0.5, 0.5).setDepth(4);
     if (this.layout.kind === 'portrait') {
-      // Milestone 32b: 18 px for both lines; the touch hint wraps to two lines inside the 480 px map.
+      // Milestone 32b: 18 px for both lines; the touch hint wraps to two lines inside the 480 px map
+      // (drawBanner puts the box at the map's foot).
       this.bannerMain = bannerText(bannerTop + 8, `${PORTRAIT_MIN_FONT}px`, TEXT.aimBanner).setOrigin(0.5, 0);
       this.bannerHint = bannerText(bannerTop + 32, `${PORTRAIT_MIN_FONT}px`, TEXT.aimHint)
         .setOrigin(0.5, 0)
@@ -1288,8 +1289,16 @@ export class GameScene extends Phaser.Scene {
       this.bannerBg.clear();
       if (text !== null) {
         const w = Math.max(this.bannerMain.width, this.bannerHint.width) + 32;
-        const h = this.layout.kind === 'portrait' ? 32 + this.bannerHint.height + 8 : BANNER_H;
-        const top = this.layout.map.y + BANNER_Y;
+        let top = this.layout.map.y + BANNER_Y;
+        let h = BANNER_H;
+        if (this.layout.kind === 'portrait') {
+          // Milestone 32b: at the map's foot, just above the controls, so it does not cover the
+          // trail's start under the spawn, where the enemies bunch up, nor the boss bar.
+          h = 32 + this.bannerHint.height + 8;
+          top = this.layout.map.y + this.layout.map.height - BANNER_Y - h;
+          this.bannerMain.setY(top + 8);
+          this.bannerHint.setY(top + 32);
+        }
         this.bannerBg.fillStyle(COLORS.aimBanner, 0.82).fillRoundedRect(this.bannerX - w / 2, top, w, h, 8);
         this.bannerBg.lineStyle(2, SPECIAL_COLORS[this.aiming!], 1).strokeRoundedRect(this.bannerX - w / 2, top, w, h, 8);
       }

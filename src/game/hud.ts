@@ -62,16 +62,14 @@ import {
 import { COLORS, FONT, TEXT } from './palette';
 import { BossBar } from './ui/bossBar';
 import { BuildBar } from './ui/buildBar';
-import { Button, STACK_SIZE, type StackSize } from './ui/button';
+import { Button } from './ui/button';
+import { PORTRAIT_STACK, portraitRow2, STACK_SIZE, type StackSize } from './ui/geometry';
 import {
   LANDSCAPE,
-  PORTRAIT_BUTTON_H,
   PORTRAIT_CONTROLS_Y,
-  PORTRAIT_GAP,
   PORTRAIT_HEIGHT,
   PORTRAIT_MIN_FONT,
   PORTRAIT_ROW1_Y,
-  PORTRAIT_ROW2_Y,
   PORTRAIT_STRIP_H,
   PORTRAIT_WIDTH,
   type Layout,
@@ -302,20 +300,8 @@ export const LANDSCAPE_HUD: HudMetrics = {
   barTop: ROW2_BUTTON_Y,
 };
 
-/** Portrait row 2: Special, Start Wave and speed, 6 px apart, from x 5 (475 px in all). */
-export const PORTRAIT_SPECIAL_W = 130;
-export const PORTRAIT_START_W = 214;
-export const PORTRAIT_SPEED_W = 114;
-/** Portrait popups and panels: 220 x 70 buttons and a 70 px close button, 18 px text. */
-export const PORTRAIT_STACK: StackSize = { buttonW: 220, buttonH: PORTRAIT_BUTTON_H, close: PORTRAIT_BUTTON_H };
-
 export const PORTRAIT_HUD: HudMetrics = (() => {
-  const y = PORTRAIT_ROW2_Y;
-  const h = PORTRAIT_BUTTON_H;
-  const g = PORTRAIT_GAP;
-  const special = { x: 5, y, width: PORTRAIT_SPECIAL_W, height: h };
-  const start = { x: special.x + special.width + g, y, width: PORTRAIT_START_W, height: h };
-  const speed = { x: start.x + start.width + g, y, width: PORTRAIT_SPEED_W, height: h };
+  const { special, start, speed } = portraitRow2();
   const size = `${PORTRAIT_MIN_FONT}px`;
   return {
     portrait: true,

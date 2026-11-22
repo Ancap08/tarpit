@@ -10,6 +10,7 @@
 import Phaser from 'phaser';
 import type { Rect } from '../input';
 import { COLORS, FONT, TEXT } from '../palette';
+import { STACK_GAP, STACK_PAD, STACK_SIZE, stackBox, type StackSize } from './geometry';
 
 export interface ButtonOptions {
   fontSize?: string;
@@ -166,23 +167,7 @@ export class Button {
   }
 }
 
-export const STACK_BUTTON_WIDTH = 156;
-/** 42 px: at least 44 px on screen at iPad landscape scale (milestone 14). */
-export const STACK_BUTTON_HEIGHT = 42;
-/** The square close button in the stack's top-right corner. */
-export const STACK_CLOSE_SIZE = 42;
-const STACK_GAP = 4;
-const STACK_PAD = 6;
-
-/** A stack's button sizes (milestone 32b: portrait stacks are larger). */
-export interface StackSize {
-  buttonW: number;
-  buttonH: number;
-  close: number;
-}
-
-/** The landscape stack: 156 x 42 buttons and a 42 px close button. */
-export const STACK_SIZE: StackSize = { buttonW: STACK_BUTTON_WIDTH, buttonH: STACK_BUTTON_HEIGHT, close: STACK_CLOSE_SIZE };
+export { STACK_BUTTON_HEIGHT, STACK_BUTTON_WIDTH, STACK_CLOSE_SIZE, STACK_SIZE, type StackSize } from './geometry';
 
 export interface StackItem {
   text: string;
@@ -219,8 +204,9 @@ export class ButtonStack {
   constructor(scene: Phaser.Scene, items: StackItem[], onClose?: () => void, header = 0, size: StackSize = STACK_SIZE, closeFont = '24px') {
     this.header = header;
     this.size = size;
-    this.width = size.buttonW + 2 * STACK_PAD + (onClose ? STACK_GAP + size.close : 0);
-    this.height = 2 * STACK_PAD + header + items.length * size.buttonH + (items.length - 1) * STACK_GAP;
+    const box = stackBox(size, items.length, header, onClose !== undefined);
+    this.width = box.width;
+    this.height = box.height;
     this.backing = scene.add
       .rectangle(0, 0, this.width, this.height, COLORS.menuBg, 0.92)
       .setOrigin(0, 0)
