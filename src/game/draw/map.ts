@@ -132,7 +132,7 @@ export function drawTuft(g: Phaser.GameObjects.Graphics, x: number, y: number, a
 /** Milestone 34: the worn trail: colour spots, two broken ruts along its direction and pebbles. */
 function trailTexture(g: Phaser.GameObjects.Graphics, d: Decor): void {
   for (const s of d.trailSpots) {
-    g.fillStyle(s.tone === 0 ? COLORS.pathLight : COLORS.pathDark, 0.45);
+    g.fillStyle(s.tone === 0 ? COLORS.pathLight : COLORS.pathDark, 0.35);
     g.fillCircle(s.x, s.y, s.r);
   }
   g.lineStyle(2, COLORS.pathRut, 0.33);
@@ -203,8 +203,8 @@ export function drawMap(g: Phaser.GameObjects.Graphics, map: MapDef, layout: Lay
   for (const box of map.water ?? []) water(g, box, map.height);
   // Milestone 34: a soft darker margin outside the trail's edge, then the edge and the strip.
   // Opaque blends of grass and pathSoft: overlapping pieces of a translucent path would double up at the corners.
-  thickPath(g, map.path, PATH_WIDTH + 14, mix(COLORS.grass, COLORS.pathSoft, 0.35));
-  thickPath(g, map.path, PATH_WIDTH + 8, mix(COLORS.grass, COLORS.pathSoft, 0.7));
+  thickPath(g, map.path, PATH_WIDTH + 12, mix(COLORS.grass, COLORS.pathSoft, 0.2));
+  thickPath(g, map.path, PATH_WIDTH + 7, mix(COLORS.grass, COLORS.pathSoft, 0.45));
   thickPath(g, map.path, PATH_WIDTH + 4, COLORS.pathEdge);
   thickPath(g, map.path, PATH_WIDTH, COLORS.path);
   trailTexture(g, decor);

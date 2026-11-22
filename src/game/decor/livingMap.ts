@@ -29,7 +29,6 @@ import { BUSH_R, decorFor, hiddenGrowth, TREE_R, type Decor, type Growth } from 
 
 const TREE_KEYS = ['decor-tree-0', 'decor-tree-1', 'decor-tree-2'];
 const BUSH_KEYS = ['decor-bush-0', 'decor-bush-1', 'decor-bush-2'];
-const SHADOW_KEY = 'decor-shadow';
 const CLOUD_KEY = 'decor-cloud';
 const PUFF_KEY = 'decor-puff';
 /** Growth opacity while a tower is being placed (a pick or a drag). */
@@ -54,9 +53,16 @@ export interface DecorState {
 
 interface GrowthView {
   g: Growth;
-  shadow: Phaser.GameObjects.Image;
   top: Phaser.GameObjects.Image;
   home: Point;
+}
+
+/** A soft round shadow under a tree or bush (in its texture, so one image per growth). */
+function softShadow(g: Phaser.GameObjects.Graphics, x: number, y: number, r: number): void {
+  for (let i = 0; i < 3; i++) {
+    g.fillStyle(COLORS.treeShadow, 0.09);
+    g.fillCircle(x, y, r - i * 2.5);
+  }
 }
 
 /** Make the decoration textures once per game (fixed keys, so a restart reuses them). */
@@ -65,9 +71,10 @@ function makeTextures(scene: Phaser.Scene): void {
   const g = scene.make.graphics({}, false);
   TREE_KEYS.forEach((key, v) => {
     const r = TREE_R[v];
-    const s = Math.ceil(2 * r + 4);
-    const c = s / 2;
+    const s = Math.ceil(2 * r + 10);
+    const c = s / 2 - 3;
     g.clear();
+    softShadow(g, c + 3, c + 3, r + 2);
     // A lumpy canopy seen from above: a dark rim of lobes, a mid body, lighter tops up and to the left.
     const lobes = 6;
     g.fillStyle(COLORS.treeDark, 1);
@@ -88,9 +95,10 @@ function makeTextures(scene: Phaser.Scene): void {
   });
   BUSH_KEYS.forEach((key, v) => {
     const r = BUSH_R[v];
-    const s = Math.ceil(2 * r + 6);
-    const c = s / 2;
+    const s = Math.ceil(2 * r + 10);
+    const c = s / 2 - 2;
     g.clear();
+    softShadow(g, c + 2, c + 2, r + 2);
     g.fillStyle(COLORS.bushDark, 1);
     g.fillCircle(c - r * 0.45, c + r * 0.15, r * 0.65);
     g.fillCircle(c + r * 0.45, c + r * 0.2, r * 0.6);
@@ -105,19 +113,12 @@ function makeTextures(scene: Phaser.Scene): void {
     }
     g.generateTexture(key, s, s);
   });
-  // A soft round shadow, scaled per growth.
-  g.clear();
-  for (let i = 0; i < 3; i++) {
-    g.fillStyle(COLORS.treeShadow, 0.09);
-    g.fillCircle(16, 16, 16 - i * 3);
-  }
-  g.generateTexture(SHADOW_KEY, 32, 32);
-  // A cloud shadow: nested ellipses at a very low alpha, darkest in the middle (about 7% at most).
+  // A cloud shadow: nested ellipses at a very low alpha, darkest in the middle (about 5% at most).
   g.clear();
   const rings = 9;
   for (let i = 0; i < rings; i++) {
     const k = 1 - i / rings;
-    g.fillStyle(COLORS.cloudShadow, 0.008);
+    g.fillStyle(COLORS.cloudShadow, 0.006);
     g.fillEllipse(CLOUD.w / 2, CLOUD.h / 2, CLOUD.w * k, CLOUD.h * k);
   }
   g.generateTexture(CLOUD_KEY, CLOUD.w, CLOUD.h);
@@ -169,11 +170,10 @@ export class LivingMap {
     for (const gr of this.decor.growth) {
       const home = layout.toScreen(gr);
       const tree = gr.kind === 'tree';
-      const shadow = scene.add
-        .image(home.x + (tree ? 3 : 2), home.y + (tree ? 3 : 2), SHADOW_KEY)
-        .setScale(((gr.r + 2) * 2) / 32);
-      const top = scene.add.image(home.x, home.y, (tree ? TREE_KEYS : BUSH_KEYS)[gr.variant]);
-      this.growth.push({ g: gr, shadow, top, home });
+      // The texture's canopy centre is 3 px (bush 2 px) up and left of its middle: room for the shadow.
+      const off = tree ? 3 : 2;
+      const top = scene.add.image(home.x + off, home.y + off, (tree ? TREE_KEYS : BUSH_KEYS)[gr.variant]);
+      this.growth.push({ g: gr, top, home: { x: home.x + off, y: home.y + off } });
     }
     // The chimney's top on the screen (draw/map.ts exitCottage, drawn upright in both layouts).
     const box = map.landmarks?.[0];
@@ -230,7 +230,6 @@ export class LivingMap {
     const unit = layout.offset({ x: 0, y: 0 }, 1, 0);
     for (const v of this.growth) {
       const show = !this.hidden.has(v.g.id);
-      v.shadow.setVisible(show).setAlpha(this.alpha);
       const dx = v.g.kind === 'tree' ? sway(t, v.g.phase) : 0;
       v.top.setVisible(show).setAlpha(this.alpha).setPosition(v.home.x + dx, v.home.y);
     }

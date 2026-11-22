@@ -22,8 +22,8 @@ export const COLORS = {
   // Milestone 34 (a living map): ground texture, kept close to the grass and
   // trail colours so nothing that matters loses contrast; trees and bushes a
   // darker, bluer green than the Longbow; the moving things.
-  grassLight: 0x67884f,
-  grassDark: 0x587843,
+  grassLight: 0x698a51,
+  grassDark: 0x5a7a45,
   tuftDark: 0x4f6e3d,
   tuftLight: 0x759558,
   flowerCream: 0xe4dcbc,

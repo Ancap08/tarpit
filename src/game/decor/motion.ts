@@ -10,7 +10,7 @@ import { hash01, seedOf } from './recipe';
 export const STILL_T = 0;
 
 /** Counts of the moving things (pooled; never more). */
-export const MOTION_COUNTS = { clouds: 3, smokePuffs: 4, flowLines: 9, glints: 3, birds: 1, butterflies: 1, eyes: 2, puffs: 4 } as const;
+export const MOTION_COUNTS = { clouds: 2, smokePuffs: 4, flowLines: 9, glints: 3, birds: 1, butterflies: 1, eyes: 2, puffs: 4 } as const;
 
 /** Tree tops and swaying tufts: an offset of at most 1.5 px on a slow cycle, in 0.5 px steps. */
 export function sway(t: number, phase: number): number {
