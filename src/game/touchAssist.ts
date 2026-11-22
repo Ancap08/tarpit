@@ -71,7 +71,7 @@ export function nearestTower(point: Point, towers: readonly Cell[]): Cell | null
 /** The magnifier shows when a cell is smaller than this on screen (CSS px). */
 export const MAGNIFIER_BELOW_CSS = 28;
 /** Magnification (canvas px per canvas px; the camera's zoom). */
-export const MAGNIFIER_ZOOM = 2.25;
+export const MAGNIFIER_ZOOM = 2;
 /** The magnifier's square side in canvas px. */
 export const MAGNIFIER_SIZE = 200;
 /** Gap between the magnifier and the map's edges (canvas px). */

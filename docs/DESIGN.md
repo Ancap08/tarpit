@@ -912,6 +912,68 @@ drawn and where touches land differ.
   and is drawn for the window's shape when it runs; a scene drawn for
   another layout than the window's rebuilds on its next frame.
 
+## Touch and phones
+
+Milestone 35 (`src/game/pageLock.ts`, `src/game/touchAssist.ts`). Mouse
+input never goes through any of this: placement and selection with a
+mouse stay exact in every layout.
+
+- **Page lock.** `index.html` fixes `html` and `body` (`position: fixed`,
+  `overflow: hidden`, `overscroll-behavior: none`) so the document has
+  nothing to scroll, and gives `html`, `body`, `#game` and everything in
+  them `touch-action: none`, no text selection, no callout and no tap
+  highlight. iOS Safari ignores `user-scalable=no`, so a pinch or double
+  tap that starts on the letterbox bars beside a portrait canvas (plain
+  `body` before this) zoomed the page. `installPageLock()` also prevents,
+  at the document and non-passive, Safari's `gesturestart`,
+  `gesturechange` and `gestureend`, any `touchmove` with two or more
+  touches, a one-finger `touchmove` that started off the canvas, and
+  `dblclick`. It never prevents `touchstart` or `touchend`, so taps, drags,
+  the five-tap gold cheat and Phaser's own window listeners are unchanged.
+- **Recovery.** On `visualViewport` `resize` and `scroll`, window `scroll`,
+  `resize`, `orientationchange`, `pageshow` and a return to the page, a
+  check runs 150 ms after the last event (`recoveryFor`): a scale more than
+  0.01 from 1 or an offset or scroll of 0.5 CSS px or more is put back.
+  It scrolls to the origin and, for a scale, rewrites the viewport meta
+  content to an equivalent spelling (`initial-scale=1` and
+  `initial-scale=1.0`, alternating): Safari re-reads a changed meta tag
+  and clamps the zoom into its `maximum-scale=1`, so it snaps to 1. The
+  rewrite happens at most once a second, so a browser that refuses cannot
+  make it loop. Then the canvas refits through the layout switch
+  (`layoutSwitch.ts` `refit()`: no switch unless the shape changed, and
+  GameScene restarts coalesce). The layout is chosen from the visual
+  viewport at scale 1, else the layout viewport, never a zoomed view; when
+  the visual viewport differs from the layout viewport at scale 1 (a
+  Safari toolbar mid-change), `#game` takes the visual viewport's size
+  inside the safe areas.
+- **Snap.** On touch (a bar drag, a planning-phase move and tap
+  placement), when the cell under the lifted point cannot take the tower
+  (trail margin, water, the cottage, occupied, the map's edge) the ghost
+  takes the nearest cell that can among the cells within 1.5 cells, centre
+  to centre, of the cell under the point (its eight neighbours), measured
+  from the lifted point; ties go to the lower cell key (the upper row,
+  then the left column, in world terms). A move may go back home. A ring at
+  the lifted point and a line to the cell show the snap. Red shows only
+  with no such cell near, and a release then cancels; a lifted point off
+  the map never snaps. Gold plays no part. A tap on a tower still selects
+  it, even with a pick.
+- **Magnifier.** When a 32 px cell is under 28 CSS px on screen (phones,
+  portrait and landscape; not the tablet or desktop), a touch drag, move
+  or special aim hold shows a 200 x 200 canvas px view of the map at 2x,
+  centred on the target cell (or the aim point) and kept inside the map.
+  It is a second Phaser camera on the same scene (no input, the aim banner
+  and its own frame ignored), so it shows the live game, the cell
+  highlight, ghost, range and aim cross; it costs one more pass over the
+  display list while a drag lasts. It sits in a top corner of the map on
+  the side away from the finger, keeps its side until the finger (56 px)
+  or the target (24 px) would touch it, then takes the other top corner,
+  then a bottom corner. It goes when the hold ends, is cancelled or the
+  game ends; a layout switch or Play again destroys it with the scene.
+- **Nearest tower.** With no pick and no aiming, a touch tap on no tower's
+  cell within 0.75 of a cell (24 px) of a tower's centre selects the
+  nearest tower (ties to the lower cell key). Further away it closes the
+  panel as before.
+
 ## Install and offline
 
 Milestone 32a. No game rule changes. `public/manifest.webmanifest` (name,

@@ -123,18 +123,24 @@ test('(c) finger over the HUD with the aim on a buildable row-14 cell builds; ai
   expect(await ui(page)).toMatchObject({ dragging: null, pick: 'longbow' });
 });
 
-test('(d) touch: an unlocked tower dragged onto another tower stays; a short slide is a tap that selects it', async ({ page }) => {
+// Milestone 35: on touch a ghost over another tower snaps to the nearest free cell (touchAssist.ts snapCell),
+// so the move lands beside it; the other tower stays.
+test('(d) touch: an unlocked tower dragged onto another tower snaps beside it; a short slide is a tap that selects it', async ({ page }) => {
   await startGame(page);
   await api(page, (a) => a.buildAt(7, 5, 'musketeer'));
   await api(page, (a) => a.buildAt(9, 5, 'longbow'));
-  const before = await state(page);
   const f = await finger(page);
   await f.down(centre(C75));
   await f.move({ x: centre(C95).x, y: centre(C95).y + LIFT });
-  expect((await ui(page)).dragging).toEqual({ kind: 'move', tower: 'musketeer', from: C75, cell: C95 });
+  const snapped = (await ui(page)).dragging?.cell;
+  expect(snapped).not.toEqual(C95);
+  expect(Math.max(Math.abs(snapped!.col - 9), Math.abs(snapped!.row - 5))).toBe(1);
   await f.up();
-  expect((await state(page)).towers).toEqual(before.towers);
+  expect((await state(page)).towers.map((t) => [t.type, t.cell]).sort()).toEqual([['longbow', C95], ['musketeer', snapped]].sort());
   expect((await ui(page)).dragging).toBeNull();
+  // Put it back for the tap check below.
+  await api(page, (a) => a.state().towers.filter((t) => t.type === 'musketeer').forEach((t) => a.moveAt(t.cell.col, t.cell.row, 7, 5)));
+  const before = await state(page);
 
   // 5 canvas px of slide: not a drag; the tap selected the tower.
   await f.down(centre(C75));

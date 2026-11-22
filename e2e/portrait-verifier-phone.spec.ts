@@ -123,13 +123,16 @@ for (const map of MAP_IDS) {
       expect(towers.filter((t) => t.cell.col === cell.col && t.cell.row === cell.row).map((t) => t.type), `${map} ${cell.col},${cell.row}`).toEqual([type]);
     }
     expect((await state(page)).towers).toHaveLength(targets.length);
-    // Refused cells: path, water, landmark, an occupied cell.
+    // Refused cells: path, water, landmark. Milestone 35: a touch ghost snaps to a free buildable
+    // cell within 1.5 cells, so a refused cell refuses only with no such cell near (red, cancel).
     const before = (await state(page)).towers.length;
+    const taken = new Set((await state(page)).towers.map((t) => `${t.cell.col},${t.cell.row}`));
+    const free = (c: Cell) => buildable(map, c) && !taken.has(`${c.col},${c.row}`);
+    const nothingNear = (c: Cell) => [-1, 0, 1].every((dr) => [-1, 0, 1].every((dc) => !free({ col: c.col + dc, row: c.row + dr })));
     const refused: [string, Cell | undefined][] = [
-      ['path', allCells().find((c) => terrainBlock(c, MAPS[map]) === 'path')],
-      ['water', allCells().find((c) => terrainBlock(c, MAPS[map]) === 'water')],
-      ['landmark', allCells().find((c) => terrainBlock(c, MAPS[map]) === 'landmark')],
-      ['occupied', targets[0]],
+      ['path', allCells().find((c) => terrainBlock(c, MAPS[map]) === 'path' && nothingNear(c))],
+      ['water', allCells().find((c) => terrainBlock(c, MAPS[map]) === 'water' && nothingNear(c))],
+      ['landmark', allCells().find((c) => terrainBlock(c, MAPS[map]) === 'landmark' && nothingNear(c))],
     ];
     for (const [why, cell] of refused) {
       if (!cell) continue;
@@ -139,6 +142,12 @@ for (const map of MAP_IDS) {
       });
       expect((await state(page)).towers, `${map} ${why} refused`).toHaveLength(before);
     }
+    // An occupied cell (milestone 35): the ghost snaps off it to a free cell nearby, or refuses with none near.
+    const occ = targets[0];
+    await touchDrag(page, client, await rectPage(page, 'bar:cannon'), await fingerFor(page, occ), async () => {
+      expect((await ui(page)).dragging?.cell, `${map} occupied`).not.toEqual(occ);
+    });
+    expect((await state(page)).towers.filter((t) => t.cell.col === occ.col && t.cell.row === occ.row)).toHaveLength(1);
   });
 
   test(`${map}: the tower panel for every buildable cell stays in the map, off the tower, and its buttons take taps`, async ({ page }) => {

@@ -177,3 +177,51 @@ test('portrait lose screen with no towers', async ({ page }) => {
   await settle(page);
   await shot(page, 'phone-lost.png');
 });
+
+// Milestone 35: the drag magnifier and a snapped ghost (phone only).
+test('portrait magnifier: a Cannon dragged beside the trail mid wave 2, the magnifier at the top away from the finger', async ({ page }) => {
+  await open(page);
+  await threeTowers(page, 1);
+  await page.evaluate(() => {
+    const t = window.__tarpit as TarpitTestApi;
+    t.startWave();
+    t.step(600);
+  });
+  const client = await page.context().newCDPSession(page);
+  const from = await rectPage(page, 'bar:cannon');
+  const finger = await fingerFor(page, { col: 10, row: 5 });
+  await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [from] });
+  for (let i = 1; i <= 10; i++) {
+    await client.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x: from.x + ((finger.x - from.x) * i) / 10, y: from.y + ((finger.y - from.y) * i) / 10 }],
+    });
+  }
+  const u = await ui(page);
+  expect(u.dragging?.cell).toEqual({ col: 10, row: 5 });
+  expect(u.magnifier).not.toBeNull();
+  await settle(page);
+  await shot(page, 'phone-magnifier.png');
+  await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+});
+
+test('portrait snap: a Musketeer dragged over the trail margin snaps to the cell beside it', async ({ page }) => {
+  await open(page);
+  await page.evaluate(() => (window.__tarpit as TarpitTestApi).startGame());
+  const client = await page.context().newCDPSession(page);
+  const from = await rectPage(page, 'bar:musketeer');
+  // (4,2) is on Meadow's trail margin; the lifted point a little up and left of its centre snaps to (4,1).
+  const at = await worldPage(page, { x: 4 * 32 + 11, y: 2 * 32 + 7 });
+  const finger = { x: at.x, y: at.y + (await liftPage(page)) };
+  await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [from] });
+  for (let i = 1; i <= 10; i++) {
+    await client.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x: from.x + ((finger.x - from.x) * i) / 10, y: from.y + ((finger.y - from.y) * i) / 10 }],
+    });
+  }
+  expect((await ui(page)).snap).toMatchObject({ cell: { col: 4, row: 1 } });
+  await settle(page);
+  await shot(page, 'phone-snap.png');
+  await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+});

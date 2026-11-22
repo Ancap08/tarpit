@@ -3,7 +3,9 @@ import type Phaser from 'phaser';
 import { DRAG_LIFT } from '../src/game/input';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { TitleUiState } from '../src/game/TitleScene';
-import { buildableCells } from '../src/sim/grid';
+import { buildableCells, isBuildableTerrain } from '../src/sim/grid';
+import { snapCell } from '../src/game/touchAssist';
+import { LANDSCAPE } from '../src/game/layout';
 import { MAPS, type MapId } from '../src/sim/map';
 import type { TowerType } from '../src/sim/types';
 import { waitForTitle } from './title';
@@ -132,7 +134,9 @@ for (const map of NEW_MAPS) {
     expect(errors).toEqual([]);
   });
 
-  test(`${map} by touch: a drag released with the aim on the path, the cave or the cottage places nothing`, async ({ page }) => {
+  // Milestone 35: a touch ghost snaps to a free buildable cell within 1.5 cells of the aim (touchAssist.ts
+  // snapCell), so an aim on the path, the cave or the cottage places nothing only with no such cell near.
+  test(`${map} by touch: a drag released with the aim on the path, the cave or the cottage places nothing, or snaps beside it`, async ({ page }) => {
     const errors = watchErrors(page);
     await start(page, map, 1000);
     const client = await page.context().newCDPSession(page);
@@ -145,9 +149,13 @@ for (const map of NEW_MAPS) {
       ...m.path.slice(1).map((p, i) => ({ x: (p.x + m.path[i].x) / 2, y: (p.y + m.path[i].y) / 2 })),
       ...(map === 'riverbend' ? [{ x: 480, y: 320 }, { x: 480, y: 470 }, { x: 420, y: 164 }] : []),
     ];
-    for (const aim of aims) {
+    for (const exact of aims) {
+      // Off the cell edges by a fraction of a px, so page rounding cannot change the cell under the aim.
+      const aim = { x: exact.x + 0.3, y: exact.y + 0.3 };
+      const expected = snapCell(LANDSCAPE.cellAt(aim.x, aim.y), aim, (c) => isBuildableTerrain(c, m));
       await touchDrag(page, client, bar, { x: aim.x, y: aim.y + DRAG_LIFT });
-      expect((await state(page)).towers, JSON.stringify(aim)).toEqual([]);
+      expect((await state(page)).towers.map((t) => t.cell), JSON.stringify(aim)).toEqual(expected === null ? [] : [expected]);
+      if (expected !== null) await api(page, (a) => a.state().towers.forEach((t) => a.sellAt(t.cell.col, t.cell.row)));
     }
     expect((await state(page)).gold).toBe(1000);
     expect(errors).toEqual([]);
@@ -187,15 +195,23 @@ for (const map of NEW_MAPS) {
   });
 }
 
-test('Riverbend by touch: tap-tap on the river arms nothing and builds nothing; the bank cell beside it builds', async ({ page }) => {
+// Milestone 35: a tap on the river with a bank cell within 1.5 cells snaps to it (arms it, and a second tap builds there).
+test('Riverbend by touch: tap-tap on the river arms nothing and builds nothing unless a bank cell is near; the bank cell beside it builds', async ({ page }) => {
   const errors = watchErrors(page);
   await start(page, 'riverbend', 1000);
   await tap(page, 'bar:longbow');
   for (const river of [{ col: 13, row: 8 }, { col: 16, row: 14 }, { col: 13, row: 5 }]) {
-    await tapAt(page, centre(river));
-    expect((await ui(page)).armedCell, JSON.stringify(river)).toBeNull();
-    await tapAt(page, centre(river));
-    expect((await state(page)).towers).toEqual([]);
+    // A little up and left of the centre, so a tie between two bank cells does not hang on rounding.
+    const at = { x: centre(river).x - 5, y: centre(river).y - 9 };
+    const expected = snapCell(river, at, (c) => isBuildableTerrain(c, MAPS.riverbend));
+    await tapAt(page, at);
+    expect((await ui(page)).armedCell, JSON.stringify(river)).toEqual(expected);
+    await tapAt(page, at);
+    expect((await state(page)).towers.map((t) => t.cell)).toEqual(expected === null ? [] : [expected]);
+    if (expected !== null) {
+      await api(page, (a) => a.state().towers.forEach((t) => a.sellAt(t.cell.col, t.cell.row)));
+      if ((await ui(page)).pick === null) await tap(page, 'bar:longbow');
+    }
   }
   expect((await ui(page)).pick).toBe('longbow');
   const bank = { col: 12, row: 8 };

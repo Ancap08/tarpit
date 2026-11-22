@@ -7003,3 +7003,57 @@ with small centres. `DESIGN.md` now says about 85 tufts (the code makes
 85 or 86) and records the verifier's phone finding. Readability against
 main: mean within 0.6%, 10th percentile within 9.6% (unchanged worst
 case); perf spec median 16.7 ms in all three cases.
+
+## 2026-11-23: milestone 35, phone fixes
+
+Kyle's iPhone report: placing was easier but "not that easy to drop
+pieces", and "the screen will zoom out and be hard to get centered again".
+
+**Zoom and drift.** Not reproducible in emulation, so the cause is
+reasoned from the page: in portrait the canvas is letterboxed (about 307
+of 390 CSS px wide on an iPhone in Safari), and only the canvas had
+`touch-action: none`. A pinch or double tap that starts on the side bars
+landed on plain `body`, and iOS Safari ignores `user-scalable=no`, so it
+zoomed the page; a pinch with one finger on each side did the same. The
+layout switch also read `window.innerWidth`/`innerHeight`, which on iOS
+shrink with a pinch zoom, so a zoomed page could pick the wrong layout.
+Now `html`, `body`, `#game` and everything in them have `touch-action:
+none`, html and body are fixed, the document prevents gesture events,
+multi-touch moves, side-bar moves and `dblclick`, and a debounced check
+puts a zoomed or offset visual viewport back (scroll to the origin;
+rewrite the viewport meta content so Safari clamps to `maximum-scale=1`)
+and re-centres the canvas through the layout switch, which now reads the
+visual viewport at scale 1 (`DESIGN.md` "Touch and phones").
+
+**Placing.** Touch ghosts snap to the nearest valid cell within 1.5 cells;
+a tap beside a tower selects it; phones get a magnifier camera while
+dragging or aiming. The magnifier's first zoom (2.25) showed under three
+cells across, mostly plain grass around a target; 2x shows about three
+cells and reads better, still inside the scope's 2 to 2.5.
+
+**Tests changed by the new rule.** Four older touch tests asserted that a
+drag or tap onto the trail, water, the cottage or another tower places
+nothing; on touch these now snap when a free cell is within 1.5 cells, so
+they assert the snap (and refuse only with nothing near):
+`drag-verifier-touch.spec.ts` (d), `maps-verifier-touch.spec.ts` (two),
+`portrait-verifier-phone.spec.ts`. Mouse tests are unchanged. Two hook-list
+tests gained `pageLock`. A first version of those updates aimed at points
+exactly on a cell edge or at a cell centre between two equal neighbours,
+where page rounding flipped the result between runs; the specs now aim a
+fraction of a pixel or a few pixels off.
+
+**Evidence.** Unit: snap (every unbuildable cell with a buildable
+neighbour on all three maps, from five points in the cell), nearest tower,
+magnifier placement over a 16 px grid in both layouts, recovery decision.
+Browser: `phone-fixes-phone.spec.ts` (page lock, recovery with a stubbed
+`visualViewport`, ten resizes, snap per map and per cell kind, magnifier
+sides and every exit route, nearest tower), `phone-fixes-touch.spec.ts`
+(tablet), `phone-fixes.spec.ts` (mouse does not snap or pick near). All
+24 chromium and tablet screenshot frames rendered locally are
+byte-identical to main's; of the phone frames only `phone-placing` and
+`phone-aim` changed (they now show the magnifier), plus the new
+`phone-magnifier` and `phone-snap`.
+
+**Needs a real iPhone.** Whether Safari honours `touch-action: none` on
+the side bars, whether the meta rewrite snaps the zoom back, and how the
+toolbar and home-screen mode behave cannot be emulated.
