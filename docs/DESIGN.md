@@ -737,7 +737,7 @@ Sounds follow the renderer's events and change no rule, number or outcome
   not sounded for 500 ms (a beat), so each stays audible at least twice a
   second when it is asked for. Player actions, moments and big sounds
   are not limited. In the 120-enemy horde with 25 towers: 21 starts a
-  second at 1x and 25 at 3x (33 and 90 before the budget).
+  second at 1x and 24 at 3x (33 and 90 before the budget).
 - **Voice cap:** 16 voices at once. At the cap a new sound pushes out the
   live voice that ranks lowest (priority, then level, then age) if that
   voice's priority is not above its own, with a 5 ms fade; otherwise the

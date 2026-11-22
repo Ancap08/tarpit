@@ -949,3 +949,33 @@ can change it; "Kyle" means Kyle decided.
 - **Known:** Wolves and the boss have only side-view frames, so they walk
   down the screen sideways (placeholder art). The tower panel hides part
   of the trail. An upright iPad uses about half its width. Sonnet.
+
+## 2026-11-22, milestone 33 (sound)
+
+- **Sounds are made in code, with no audio files.** Kyle chose this over
+  a downloaded pack. 35 short synthesized sounds on the Web Audio API,
+  following the same events as the effects; an impact sounds when its
+  projectile lands. No music. Kyle (choice), Fable (scope), Opus (build).
+- **Kyle listened to the rendered file and accepted the sounds for now;**
+  they can be changed later. He will mostly play muted and asked that
+  muting be easy. Kyle.
+- **Mute is one tap and remembered:** a speaker button on the title and
+  in the game in both layouts, the `M` key, stored under `tarpit.muted`.
+  The default stays on, so children hear the game without finding a
+  setting. Fable.
+- **Tuned once before Kyle heard it,** from the implementer's own list of
+  weak spots: low sounds given a mid layer so they carry on a phone
+  speaker (they keep at least half their level with everything under
+  200 Hz removed); the smallest sounds share a budget of 20 starts a
+  second so a horde does not rattle (21 a second at 1x and 24 at 3x, from
+  33 and 90). Fable (asks), Opus, Sonnet (re-measured with its own
+  filter).
+- **Sound starts on the first tap and never before; test mode is silent;
+  a missing or failing audio engine means a silent game.** Phaser's own
+  sound manager is off. Opus, checked by Sonnet.
+- **To make room for the mute button** the landscape build buttons went
+  from 148 to 140 px wide and the portrait Start Wave from 214 to 170.
+  Opus.
+- **Open, for a real phone:** an iPhone on silent silences the game (the
+  normal behaviour for web audio); a sound on the very first tap may be
+  dropped while audio starts. Accepted (Fable).
