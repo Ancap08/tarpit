@@ -17,7 +17,12 @@ const A: Cell = { col: 2, row: 5 };
 const NEAR = 80;
 const MORTAR_OK = 224;
 
-function enemy(id: number, distance: number, type: EnemyType, hp = ENEMY_STATS[type].hp): Enemy {
+// Arena hp: the milestone 22 values, fixed so the damage arithmetic below
+// stays as written; no rule here depends on an enemy's full hp (milestone
+// 25c lowered ENEMY_STATS, pinned in the stats test).
+const ARENA_HP: Record<EnemyType, number> = { goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000 };
+
+function enemy(id: number, distance: number, type: EnemyType, hp = ARENA_HP[type]): Enemy {
   return { id, type, hp, distance, slow: 0, slowTicksLeft: 0, burnDps: 0, burnTicksLeft: 0 };
 }
 
@@ -26,7 +31,7 @@ function arena(enemies: Enemy[], tower: TowerType, upgraded = false): GameState 
   s.gold = 10_000;
   s.phase = 'wave';
   s.wave = 1;
-  s.spawnedPerGroup = [8];
+  s.spawnedPerGroup = [20]; // wave 1 fully spawned (20 Goblins since milestone 25c)
   s.enemies = enemies;
   s.nextEnemyId = 100;
   expect(buildTower(s, A, tower).ok).toBe(true);
@@ -48,9 +53,9 @@ describe('geometry used by these tests', () => {
 });
 
 describe('enemy stats (docs/SCOPE-v4.md)', () => {
-  it('Harpy 40 hp, 90 px/s, 7 gold, flying; Shieldbearer 120 hp, 45 px/s, 9 gold, shielded; the others neither', () => {
-    expect(ENEMY_STATS.harpy).toEqual({ hp: 40, speed: 90, bounty: 7, flying: true, shield: false, livesCost: 1 });
-    expect(ENEMY_STATS.shieldbearer).toEqual({ hp: 120, speed: 45, bounty: 9, flying: false, shield: true, livesCost: 1 });
+  it('Harpy 22 hp, 90 px/s, 3 gold, flying; Shieldbearer 70 hp, 45 px/s, 5 gold, shielded (milestone 25c); the others neither', () => {
+    expect(ENEMY_STATS.harpy).toEqual({ hp: 22, speed: 90, bounty: 3, flying: true, shield: false, livesCost: 1 });
+    expect(ENEMY_STATS.shieldbearer).toEqual({ hp: 70, speed: 45, bounty: 5, flying: false, shield: true, livesCost: 1 });
     for (const type of ['goblin', 'wolf', 'troll'] as const) {
       expect([ENEMY_STATS[type].flying, ENEMY_STATS[type].shield]).toEqual([false, false]);
     }
@@ -151,13 +156,13 @@ describe('Shieldbearer: shield', () => {
     expect(s.enemies[0].hp).toBeCloseTo(118 - 5 / 60, 12);
   });
 
-  it('fractional hp: a halved shot that brings hp to 0 kills and pays the 9 gold bounty', () => {
+  it('fractional hp: a halved shot that brings hp to 0 kills and pays the 5 gold bounty (9 before milestone 25c)', () => {
     const s = arena([enemy(0, NEAR, 'shieldbearer', 4.5)], 'longbow', true);
     s.gold = 0;
     fireTowers(s);
     expect(s.enemies).toEqual([]);
-    expect(s.gold).toBe(9);
-    expect(s.events.filter((e) => e.kind === 'kill')).toEqual([{ kind: 'kill', enemyId: 0, enemyType: 'shieldbearer', bounty: 9, cause: 'shot' }]);
+    expect(s.gold).toBe(5);
+    expect(s.events.filter((e) => e.kind === 'kill')).toEqual([{ kind: 'kill', enemyId: 0, enemyType: 'shieldbearer', bounty: 5, cause: 'shot' }]);
     expect(KILL_EPSILON).toBe(1e-9);
   });
 });

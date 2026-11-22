@@ -25,7 +25,7 @@ function arena(enemies: Enemy[], type: TowerType, mode: TargetingMode): GameStat
   s.gold = 10_000;
   s.phase = 'wave';
   s.wave = 1;
-  s.spawnedPerGroup = [8];
+  s.spawnedPerGroup = [20]; // wave 1 fully spawned (20 Goblins since milestone 25c)
   s.enemies = enemies;
   s.nextEnemyId = 100;
   expect(buildTower(s, A, type).ok).toBe(true);
@@ -208,8 +208,8 @@ describe('comboStrongest (informational)', () => {
     expect(a.state.towers.every((t) => t.targeting === 'strongest')).toBe(true);
   });
 
-  it("result (no target, pinned so a change shows): lost on wave 5, 0 lives, 105 gold", () => {
+  it("result (no target, pinned so a change shows): lost on wave 5, 0 lives, 58 gold", () => {
     const s = playScripted(comboStrongest()).state;
-    expect(`${s.phase} on wave ${s.wave}, ${s.lives} lives, ${s.gold} gold`).toBe('lost on wave 5, 0 lives, 105 gold');
+    expect(`${s.phase} on wave ${s.wave}, ${s.lives} lives, ${s.gold} gold`).toBe('lost on wave 5, 0 lives, 58 gold');
   });
 });

@@ -90,8 +90,9 @@ test('pick Musketeer, place it on (7,5) with a real click, then clear wave 1', a
 
   await click(page, 'startWave');
   await step(page, 2005);
-  expect(await state(page)).toMatchObject({ phase: 'setup', wave: 1, lives: 14, gold: 83 });
-  expect(await api(page, (a) => a.hudText())).toMatchObject({ gold: 'Gold 83', lives: 'Lives 14' });
+  // Milestone 25c: the Musketeer kills all 20 wave 1 Goblins (12 hp each): 50 + 20 x 2 + 25.
+  expect(await state(page)).toMatchObject({ phase: 'setup', wave: 1, lives: 20, gold: 115 });
+  expect(await api(page, (a) => a.hudText())).toMatchObject({ gold: 'Gold 115', lives: 'Lives 20' });
 });
 
 test('clicking the active bar button again clears the pick; only one pick at a time', async ({ page }) => {

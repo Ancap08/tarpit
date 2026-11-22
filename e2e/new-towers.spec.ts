@@ -103,8 +103,10 @@ test('Mortar is not pickable at 109 gold and pickable at 110', async ({ page }) 
 // long downhill run (x = 420), as in the combo build. In wave 1 the first
 // enemy that is slowed and burning at once is Goblin 0 at tick 687 (headless
 // scan: slowTicksLeft 92, burnTicksLeft 180); the loop below finds it with a
-// cap rather than hard-coding the tick.
-const FIRST_SLOWED_AND_BURNING_TICK = 687;
+// cap rather than hard-coding the tick. Milestone 25c (12 hp Goblins: the
+// first two die to impact and burn before both land): Goblin 2 at tick 837,
+// slowTicksLeft 92, burnTicksLeft 180, 2 hp left (headless scan).
+const FIRST_SLOWED_AND_BURNING_TICK = 837;
 
 test('a Tar Pit and a Fire Pot together leave an enemy slowed and burning', async ({ page }) => {
   await startGame(page);
@@ -126,5 +128,5 @@ test('a Tar Pit and a Fire Pot together leave an enemy slowed and burning', asyn
     }
     return null;
   });
-  expect(found).toEqual({ tick: FIRST_SLOWED_AND_BURNING_TICK, id: 0, slow: 92, burn: 180 });
+  expect(found).toEqual({ tick: FIRST_SLOWED_AND_BURNING_TICK, id: 2, slow: 92, burn: 180 });
 });

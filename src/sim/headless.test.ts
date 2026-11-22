@@ -13,9 +13,11 @@ describe('headless runner', () => {
       { action: 'startWave', result: { ok: true, wave: 1 } },
       { action: 'startWave', result: { ok: false, reason: 'not-in-setup' } },
       { action: 'runUntilWaveEnds', ticks: 100 },
-      { action: 'runUntilWaveEnds', ticks: 1905 },
+      { action: 'runUntilWaveEnds', ticks: 2397 },
     ]);
-    expect(run.state).toMatchObject({ phase: 'setup', wave: 1, lives: 12, gold: 125 });
+    // Milestone 25c: all 20 wave 1 Goblins exit; the last (spawned at
+    // waveTick 912) takes the 20th life on waveTick 912 + 1584 = 2496.
+    expect(run.state).toMatchObject({ phase: 'lost', wave: 1, lives: 0, gold: 100 });
   });
 
   it('is deterministic', () => {
@@ -27,8 +29,8 @@ describe('headless runner', () => {
     const msg = `no-tower run ended on wave ${final.wave} with ${final.lives} lives, phase ${final.phase}`;
     expect(final.phase, msg).toBe('lost');
     expect(final.lives, msg).toBeLessThanOrEqual(0);
-    // Wave 1 leaks 8 goblins (20 -> 12); wave 2 leaks the 12th goblin at 0.
-    expect(final.wave, msg).toBe(2);
+    // Milestone 25c: wave 1 leaks all 20 goblins (20 -> 0).
+    expect(final.wave, msg).toBe(1);
     expect(final.lives, msg).toBe(0);
   });
 
@@ -72,7 +74,7 @@ describe('scripted builds', () => {
   });
 
   it('playScripted stops after a loss and caps each wave', () => {
-    expect(playScripted(noTowers()).waves.map((w) => w.phase)).toEqual(['setup', 'lost']);
+    expect(playScripted(noTowers()).waves.map((w) => w.phase)).toEqual(['lost']);
     const capped = playScripted([], 100);
     expect(capped.waves[0]).toMatchObject({ wave: 1, ticks: 100, phase: 'wave' });
     expect(capped.waves).toHaveLength(1);

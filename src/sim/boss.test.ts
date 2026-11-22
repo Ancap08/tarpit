@@ -27,7 +27,7 @@ function arena(enemies: Enemy[], towers: [Cell, TowerType, boolean?][] = []): Ga
   s.gold = 10_000;
   s.phase = 'wave';
   s.wave = 1;
-  s.spawnedPerGroup = [8];
+  s.spawnedPerGroup = [20]; // wave 1 fully spawned (20 Goblins since milestone 25c)
   s.enemies = enemies;
   s.nextEnemyId = 100;
   for (const [cell, type, upgraded] of towers) {
@@ -161,13 +161,13 @@ describe('boss bounty', () => {
 });
 
 describe('boss in wave 10', () => {
-  it("is wave 10's last group: 1 boss, 26 s in, 4 s after the 12th Troll at 22 s (waveTick 1560)", () => {
+  it("is wave 10's last group: 1 boss, 26 s in, 2 s after the 13th Troll at 24 s (waveTick 1560; milestone 25c)", () => {
     const groups = WAVES[9].groups;
     const boss = groups.at(-1)!;
     expect(boss).toEqual({ type: 'boss', count: 1, interval: 0, delay: 26 });
     const lastOthers = Math.max(...groups.slice(0, -1).map((g) => spawnTick(g, g.count - 1)));
-    expect(lastOthers).toBe(1320);
-    expect(spawnTick(boss, 0)).toBe(lastOthers + 240);
+    expect(lastOthers).toBe(1440);
+    expect(spawnTick(boss, 0)).toBe(lastOthers + 120);
     expect(spawnTick(boss, 0)).toBe(1560);
     for (const w of WAVES.slice(0, 9)) expect(w.groups.some((g) => g.type === 'boss')).toBe(false);
   });
@@ -208,7 +208,7 @@ describe('boss in wave 10', () => {
     const end = log.at(-1)!;
     expect(end.events.filter((e) => e.kind === 'bossDown')).toEqual([{ kind: 'bossDown', enemyId: expect.any(Number), cause: 'exit' }]);
     expect(s.phase).toBe('won');
-    // 8 Wolves, 12 Trolls, 5 Harpies, 4 Shieldbearers at 1 life each, then him at 5.
-    expect(s.lives).toBe(1000 - 29 - 5);
+    // 20 Wolves, 13 Trolls, 12 Harpies, 8 Shieldbearers at 1 life each (milestone 25c), then him at 5.
+    expect(s.lives).toBe(1000 - 53 - 5);
   });
 });

@@ -8,7 +8,7 @@ import { buildTower, moveTower, sellTower, upgradeTower, useSpecial } from './ac
 import { burnEnemies, fireTowers } from './combat';
 import { createGame, startWave, tick } from './game';
 import { type Cell } from './grid';
-import { comboBuild, playScripted } from './headless';
+import { applyAction, comboBuild, playScripted } from './headless';
 import type { Enemy, EnemyType, GameState, TowerType } from './types';
 
 // P (208,240) sits right of the first path segment (y = 240): an enemy at
@@ -26,7 +26,7 @@ function arena(enemies: Enemy[], towers: [Cell, TowerType][] = []): GameState {
   s.phase = 'wave';
   s.wave = 1;
   s.specialCharges = 1;
-  s.spawnedPerGroup = [8];
+  s.spawnedPerGroup = [20]; // wave 1 fully spawned (20 Goblins since milestone 25c)
   s.enemies = enemies;
   s.nextEnemyId = 100;
   for (const [cell, type] of towers) expect(buildTower(s, cell, type).ok).toBe(true);
@@ -135,7 +135,7 @@ describe('kill counts', () => {
     expect(s.towers[0]).toMatchObject({ cell: { col: 7, row: 7 }, kills: 5 });
   });
 
-  it('over a whole comboBuild game (no sells), the towers\' kills add up to every shot and burn kill', () => {
+  it('over a whole comboBuild game (no sells), the towers\' kills add up to every shot kill and tower-burn kill; special kills (keg, Fire Arrows burn) count for none', () => {
     const run = playScripted(comboBuild());
     // Replay tick by tick to count kill events by cause.
     const s = createGame();
@@ -150,17 +150,29 @@ describe('kill counts', () => {
       }
       startWave(s);
       while (running()) {
+        // The cluster specials (milestone 25c): their kills count for no tower.
+        for (const a of script.timed?.[i] ?? []) {
+          if (a.atWaveTick !== s.waveTick) continue;
+          applyAction(s, a);
+          special += s.events.filter((e) => e.kind === 'kill' && e.cause === 'special').length;
+        }
+        // A burn kill counts only if a tower's burn was on it (Fire Arrows burns have no owner).
+        const owned = new Set(s.enemies.filter((e) => e.burnOwner).map((e) => e.id));
         tick(s);
         for (const e of s.events) {
-          if (e.kind === 'kill' && e.cause !== 'special') shotOrBurn += 1;
-          if (e.kind === 'kill' && e.cause === 'special') special += 1;
+          if (e.kind === 'kill' && e.cause === 'shot') shotOrBurn += 1;
+          if (e.kind === 'kill' && e.cause === 'burn') {
+            if (owned.has(e.enemyId)) shotOrBurn += 1;
+            else special += 1;
+          }
         }
       }
     }
     expect(s).toEqual(run.state);
-    expect(special).toBe(0);
+    expect(special).toBeGreaterThan(0);
     expect(shotOrBurn).toBeGreaterThan(100);
     expect(s.towers.reduce((n, t) => n + t.kills, 0)).toBe(shotOrBurn);
-    expect(s.towers.every((t) => t.kills > 0)).toBe(true);
+    // Most towers kill something (a Longbow bought before wave 10 may not).
+    expect(s.towers.filter((t) => t.kills > 0).length).toBeGreaterThan(s.towers.length / 2);
   });
 });

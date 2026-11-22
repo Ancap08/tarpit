@@ -145,7 +145,8 @@ test('(e) three adjacent Musketeers: they exist, nothing throws, label sizes and
   expect(errors).toEqual([]);
 });
 
-test('(f) Tar Pit (14,6) + Fire Pot (14,8): no slowed-and-burning enemy at tick 686, Goblin 0 has both at 687', async ({ page }) => {
+// Milestone 25c: tick 837 and Goblin 2 (was 687 and Goblin 0; new-towers.spec.ts).
+test('(f) Tar Pit (14,6) + Fire Pot (14,8): no slowed-and-burning enemy at tick 836, Goblin 2 has both at 837', async ({ page }) => {
   await startGame(page);
   await setGold(page, 1000);
   await clickBar(page, 'bar:tarpit');
@@ -156,11 +157,11 @@ test('(f) Tar Pit (14,6) + Fire Pot (14,8): no slowed-and-burning enemy at tick 
   await clickBar(page, 'startWave');
   const both = (a: TarpitTestApi) =>
     a.state().enemies.filter((x) => x.slowTicksLeft > 0 && (x.burnTicksLeft ?? 0) > 0).map((x) => x.id);
-  await page.evaluate(() => (window.__tarpit as TarpitTestApi).step(686));
+  await page.evaluate(() => (window.__tarpit as TarpitTestApi).step(836));
   expect(await api(page, both)).toEqual([]);
   await page.evaluate(() => (window.__tarpit as TarpitTestApi).step(1));
-  expect(await api(page, both)).toEqual([0]);
-  const e = await api(page, (a) => a.state().enemies.find((x) => x.id === 0)!);
+  expect(await api(page, both)).toEqual([2]);
+  const e = await api(page, (a) => a.state().enemies.find((x) => x.id === 2)!);
   expect(e.slowTicksLeft).toBeGreaterThan(0);
   expect(e.burnTicksLeft).toBeGreaterThan(0);
 });

@@ -69,7 +69,8 @@ test('(a) at tick 1700 of wave 10 his layer is above the walkers and below shots
       flashVisible: bossView.flash?.visible ?? null,
     };
   });
-  expect(r.types).toEqual(['boss', 'shieldbearer', 'troll']);
+  // Milestone 25c: wave 10's 12 Harpies (spawned until 12.6 s) are still flying at 1700.
+  expect(r.types).toEqual(['boss', 'harpy', 'shieldbearer', 'troll']);
   expect(r.bossRanks).toEqual([r.bossLayer]);
   expect(r.walkerRanks).toEqual([r.walkerLayer]);
   expect(r.bossLayer).toBeGreaterThan(r.walkerLayer);
@@ -139,7 +140,10 @@ test('(b) he has a two-ellipse ground shadow on the path under his feet', async 
 // (texture boss-hit, frame 0) over him and animState flags hit; a later
 // tick with no hit hides it. At tick 3562 (the boss.png frame) the red run
 // along the bar's middle row is round(300 x hp / 4000) px wide. After his
-// death the label is null again.
+// death the label is null again. Milestone 25c: the boss.png frame is tick
+// 3230 (hp 2487.0000000000828, so 187 px), and the first hit on him is the
+// Tar Pit at (11,4) at step 2629 (with a Longbow on the same tick; the Tar
+// Pit fires first in cell order).
 test('(c)(d)(e) flash on a hit tick, label null before spawn and after death, fill proportional', async ({ page }) => {
   await startGame(page);
   const r = await page.evaluate((spawnTick) => {
@@ -157,7 +161,7 @@ test('(c)(d)(e) flash on a hit tick, label null before spawn and after death, fi
     let firstHit: { tick: number; tower: string; flash: boolean; texture: string; frame: string | number; flagHit: boolean; dx: number; dy: number } | null = null;
     let afterHit: { tick: number; flash: boolean; flagHit: boolean } | null = null;
     let ticks = spawnTick + 1;
-    while (ticks < 3562 && (firstHit === null || afterHit === null)) {
+    while (ticks < 3230 && (firstHit === null || afterHit === null)) {
       t.step(1);
       ticks += 1;
       const hit = t.events().find((e) => e.kind === 'hit' && e.enemyId === id);
@@ -183,16 +187,16 @@ test('(c)(d)(e) flash on a hit tick, label null before spawn and after death, fi
   expect(r.bossBefore).toBeNull();
   expect(r.bossAtSpawnMinus1).toBeNull();
   expect(r.labelAtSpawn).toBe(`${BOSS_NAME} 4000 / 4000`);
-  expect(r.firstHit).toMatchObject({ tower: 'firepot', flash: true, texture: 'boss-hit', frame: 0, flagHit: true, dx: 0, dy: 0 });
+  expect(r.firstHit).toMatchObject({ tower: 'tarpit', flash: true, texture: 'boss-hit', frame: 0, flagHit: true, dx: 0, dy: 0 });
   expect(r.firstHit!.tick).toBeGreaterThan(2400);
   expect(r.afterHit).toMatchObject({ tick: r.firstHit!.tick + 1, flash: false, flagHit: false });
 
   // Fill width at the spawn tick's full bar is read from a fresh game below;
-  // here, read it at tick 3562 (the boss.png frame): hp 2373.x -> 178 px.
+  // here, read it at tick 3230 (the boss.png frame): hp 2487.0x -> 187 px.
   const fill = await page.evaluate(
     async ({ bar, red, bg, id, now }) => {
       const t = window.__tarpit as TarpitTestApi;
-      t.step(3562 - now);
+      t.step(3230 - now);
       const boss = t.state().enemies.find((e) => e.id === id)!;
       await new Promise((resolve) => requestAnimationFrame(resolve));
       const ctx = t.game.canvas.getContext('2d')!;
@@ -206,12 +210,13 @@ test('(c)(d)(e) flash on a hit tick, label null before spawn and after death, fi
     },
     { bar: BAR, red: rgb(COLORS.bossBarFill), bg: rgb(COLORS.bossBarBg), id: r.id, now: r.ticks },
   );
-  expect(fill.waveTick).toBe(3562);
-  expect(fill.label).toBe(`${BOSS_NAME} 2374 / 4000`);
+  expect(fill.waveTick).toBe(3230);
+  expect(fill.label).toBe(`${BOSS_NAME} 2488 / 4000`);
   const want = Math.round((BAR.width * fill.hp) / 4000);
-  expect(want).toBe(178);
+  expect(want).toBe(187);
   expect(Math.abs(fill.redRun - want), `red run ${fill.redRun}, want ${want}`).toBeLessThanOrEqual(2);
-  expect(fill.bgAfter).toBeGreaterThan(40); // the trough continues past the fill (the hp text starts further right)
+  // The trough continues past the fill until the right-aligned hp text (37 px at the milestone 25c frame; was over 40 at 178 px).
+  expect(fill.bgAfter).toBeGreaterThan(20);
 
   const end = await page.evaluate((id) => {
     const t = window.__tarpit as TarpitTestApi;
@@ -226,7 +231,8 @@ test('(c)(d)(e) flash on a hit tick, label null before spawn and after death, fi
 });
 
 // (f) The wave 10 preview. In setup before wave 10 the HUD's preview text
-// object holds the one-line string (hudText().next) at 13 px and wraps it
+// object holds the one-line string (hudText().next) at 13 px (11 px since
+// milestone 25c: the horde's longer preview needs three lines at 13) and wraps it
 // to exactly two lines through Phaser's word wrap (getWrappedText), the
 // second ending with the boss name; before wave 1 the preview is one 16 px
 // line. The pill and the bar sit inside the map (y 4 to 39).
@@ -242,10 +248,10 @@ test('(f) the wave 10 preview ends with the boss name and wraps to two 13 px lin
     return { wave1, wave10, hud: t.hudText().next };
   });
   expect(r.wave1.size).toBe('16px');
-  expect(r.wave1.lines).toEqual([`Next: 8 ${ENEMY_NAMES.goblin}`]);
-  expect(r.hud).toBe(`Next: 8 ${ENEMY_NAMES.wolf}, 12 ${ENEMY_NAMES.troll}, 5 ${ENEMY_NAMES.harpy}, 4 ${ENEMY_NAMES.shieldbearer} + ${BOSS_NAME}`);
+  expect(r.wave1.lines).toEqual([`Next: 20 ${ENEMY_NAMES.goblin}`]);
+  expect(r.hud).toBe(`Next: 20 ${ENEMY_NAMES.wolf}, 13 ${ENEMY_NAMES.troll}, 12 ${ENEMY_NAMES.harpy}, 8 ${ENEMY_NAMES.shieldbearer} + ${BOSS_NAME}`);
   expect(r.wave10.text).toBe(r.hud);
-  expect(r.wave10.size).toBe('13px');
+  expect(r.wave10.size).toBe('11px');
   expect(r.wave10.lines).toHaveLength(2);
   expect(r.wave10.lines[1].trimEnd().endsWith(BOSS_NAME)).toBe(true);
   expect(r.wave10.lines.join(' ').replace(/\s+/g, ' ').trim()).toBe(r.hud);

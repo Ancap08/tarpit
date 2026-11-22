@@ -7,16 +7,17 @@ describe('waves', () => {
     expect(WAVES).toHaveLength(10);
   });
 
+  // Milestone 25c counts.
   it('previews wave 1 before the game starts', () => {
     const state = createGame();
-    expect(nextWavePreview(state)).toEqual([{ type: 'goblin', count: 8 }]);
+    expect(nextWavePreview(state)).toEqual([{ type: 'goblin', count: 20 }]);
   });
 
   it('previews wave 3 after wave 2', () => {
     const state = { ...createGame(), wave: 2 };
     expect(nextWavePreview(state)).toEqual([
-      { type: 'goblin', count: 8 },
-      { type: 'wolf', count: 6 },
+      { type: 'goblin', count: 20 },
+      { type: 'wolf', count: 15 },
     ]);
   });
 

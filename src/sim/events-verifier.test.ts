@@ -20,7 +20,7 @@ function arena(enemies: Enemy[], towers: [Cell, TowerType][]): GameState {
   s.gold = 10_000;
   s.phase = 'wave';
   s.wave = 1;
-  s.spawnedPerGroup = [8];
+  s.spawnedPerGroup = [20]; // wave 1 fully spawned (20 Goblins since milestone 25c)
   s.enemies = enemies;
   s.nextEnemyId = 100;
   for (const [cell, type] of towers) buildTower(s, cell, type);
@@ -124,7 +124,7 @@ describe('events verifier', () => {
     expect(run(0)).toEqual(['hit', 'slowed']);
   });
 
-  it('(e) wave 3 spawn events: 8 Goblin and 6 Wolf, ids 0..13 once each', () => {
+  it('(e) wave 3 spawn events: 20 Goblin and 15 Wolf (milestone 25c), ids 0..34 once each', () => {
     const s = createGame();
     s.wave = 2;
     startWave(s);
@@ -134,9 +134,9 @@ describe('events verifier', () => {
       spawns.push(...s.events.filter((e) => e.kind === 'spawn'));
     }
     const count = (t: EnemyType) => spawns.filter((e) => e.kind === 'spawn' && e.enemyType === t).length;
-    expect(count('goblin')).toBe(8);
-    expect(count('wolf')).toBe(6);
-    expect(spawns.map((e) => (e.kind === 'spawn' ? e.enemyId : -1))).toEqual([...Array(14).keys()]);
+    expect(count('goblin')).toBe(20);
+    expect(count('wolf')).toBe(15);
+    expect(spawns.map((e) => (e.kind === 'spawn' ? e.enemyId : -1))).toEqual([...Array(35).keys()]);
   });
 
   it('(f) a setup-phase tick has empty events; action events survive until the next tick only', () => {

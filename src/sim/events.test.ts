@@ -28,7 +28,7 @@ function arena(enemies: Enemy[], towers: [Cell, TowerType][] = []): GameState {
   s.gold = 10_000;
   s.phase = 'wave';
   s.wave = 1;
-  s.spawnedPerGroup = [8];
+  s.spawnedPerGroup = [20]; // wave 1 fully spawned (20 Goblins since milestone 25c)
   s.enemies = enemies;
   s.nextEnemyId = 100;
   for (const [cell, type] of towers) expect(buildTower(s, cell, type).ok).toBe(true);
@@ -67,9 +67,9 @@ describe('state.events', () => {
       { kind: 'spawn', enemyId: 0, enemyType: 'goblin' },
       { kind: 'spawn', enemyId: 1, enemyType: 'goblin' },
     ]);
-    // At waveTick 240 Goblin 4 (group 0) and the first Wolf (group 1) spawn
-    // together, in group order.
-    expect(spawns.find((e) => e.kind === 'spawn' && e.enemyType === 'wolf')).toEqual({ kind: 'spawn', enemyId: 5, enemyType: 'wolf' });
+    // Milestone 25c: Goblins every 42 ticks (0 .. 210 are ids 0 to 5), then
+    // the first Wolf at waveTick 240.
+    expect(spawns.find((e) => e.kind === 'spawn' && e.enemyType === 'wolf')).toEqual({ kind: 'spawn', enemyId: 6, enemyType: 'wolf' });
   });
 
   it('hit: one per shot on a single target, with the tower cell, type and damage', () => {
@@ -117,9 +117,9 @@ describe('state.events', () => {
     fireTowers(s);
     expect(s.events).toEqual([
       { kind: 'hit', enemyId: 0, cell: { col: 6, row: 7 }, tower: 'musketeer', damage: 12 },
-      { kind: 'kill', enemyId: 0, enemyType: 'wolf', bounty: 5, cause: 'shot' },
+      { kind: 'kill', enemyId: 0, enemyType: 'wolf', bounty: 2, cause: 'shot' },
     ]);
-    expect(s.gold).toBe(gold + 5);
+    expect(s.gold).toBe(gold + 2); // 5 before milestone 25c
   });
 
   it('kill by burn: after the burn tick, cause burn', () => {
@@ -203,9 +203,9 @@ describe('state.events', () => {
       all.push(...s.events);
     }
     const count = (k: GameEvent['kind']) => all.filter((e) => e.kind === k).length;
-    expect(count('spawn')).toBe(8);
+    expect(count('spawn')).toBe(20);
     expect(count('hit')).toBe(shots);
-    expect(count('kill') + count('exit')).toBe(8);
+    expect(count('kill') + count('exit')).toBe(20);
     expect(20 - s.lives).toBe(count('exit'));
     expect(all.at(-1)).toEqual({ kind: 'waveClear', wave: 1, bonus: 25 });
   });

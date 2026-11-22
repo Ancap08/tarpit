@@ -137,7 +137,7 @@ describe('firing order', () => {
     s.gold = 10_000;
     s.phase = 'wave';
     s.wave = 1;
-    s.spawnedPerGroup = [8];
+    s.spawnedPerGroup = [20]; // wave 1 fully spawned (20 Goblins since milestone 25c)
     const hi = { col: 3, row: 5 }; // key 153, built first
     const lo = { col: 2, row: 5 }; // key 152
     expect(cellKey(lo)).toBeLessThan(cellKey(hi));

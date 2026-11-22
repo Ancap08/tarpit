@@ -169,7 +169,7 @@ describe('(f) he walks and has no shield', () => {
     expect(findTarget(s, s.towers[0])?.id).toBe(1); // the Harpy is further along but untargetable
     tick(s);
     expect(s.enemies.find((e) => e.id === 1)?.hp).toBe(4000 - 25);
-    expect(s.enemies.find((e) => e.id === 2)?.hp).toBe(40); // splash stays on the ground
+    expect(s.enemies.find((e) => e.id === 2)?.hp).toBe(ENEMY_STATS.harpy.hp); // splash stays on the ground
     expect(of(s.events, 'hit')).toEqual([{ kind: 'hit', enemyId: 1, cell: B, tower: 'cannon', damage: 25 }]);
   });
 
@@ -197,6 +197,8 @@ describe('(g) the combo builds against him', () => {
       for (const a of script[w] ?? []) expect(applyAction(s, a)).toMatchObject({ result: { ok: true } });
       expect(startWave(s).ok).toBe(true);
       for (let t = 0; running() && t < 60 * 600; t++) {
+        // Milestone 25c: the combo builds fire their cluster specials.
+        for (const a of script.timed?.[w] ?? []) if (a.atWaveTick === s.waveTick) applyAction(s, a);
         const waveTick = s.waveTick;
         tick(s);
         for (const e of s.events) {
@@ -208,36 +210,36 @@ describe('(g) the combo builds against him', () => {
     return { s, boss };
   }
 
-  it('comboBuild: one bossSpawn at 1560, one bossDown by shot or burn at 4639, won with 12 lives and 497 gold', () => {
+  it('comboBuild: one bossSpawn at 1560, one bossDown by shot or burn at 3921, won with 13 lives and 418 gold (milestone 25c)', () => {
     const { s, boss } = run(comboBuild());
     expect(boss.map((b) => b.kind)).toEqual(['bossSpawn', 'bossDown']);
     expect(boss[0].waveTick).toBe(1560);
     expect(['shot', 'burn']).toContain(boss[1].cause);
-    expect(boss[1]).toEqual({ waveTick: 4639, kind: 'bossDown', cause: 'shot' });
-    expect(s).toMatchObject({ phase: 'won', wave: 10, lives: 12, gold: 497 });
+    expect(boss[1]).toEqual({ waveTick: 3921, kind: 'bossDown', cause: 'shot' });
+    expect(s).toMatchObject({ phase: 'won', wave: 10, lives: 13, gold: 418 });
   });
 
-  it('comboBuildNoFire kills him later, at 5150 (511 ticks after the combo build), won with 2 lives', () => {
+  it('comboBuildNoFire kills him later, at 4026 (105 ticks after the combo build), won with 4 lives', () => {
     const combo = run(comboBuild()).boss[1].waveTick;
     const { s, boss } = run(comboBuildNoFire());
-    expect(boss[1]).toMatchObject({ kind: 'bossDown', waveTick: 5150 });
+    expect(boss[1]).toMatchObject({ kind: 'bossDown', waveTick: 4026 });
     expect(['shot', 'burn']).toContain(boss[1].cause);
-    expect(boss[1].waveTick - combo).toBe(5150 - 4639);
-    expect(s).toMatchObject({ phase: 'won', lives: 2 });
+    expect(boss[1].waveTick - combo).toBe(4026 - 3921);
+    expect(s).toMatchObject({ phase: 'won', lives: 4 });
   });
 });
 
 describe('(h) wave 10 spawn table, from the groups themselves', () => {
-  it('last non-boss spawn is the 12th Troll at 22 s (1320); he comes at 26 s (1560), the last spawn', () => {
+  it('last non-boss spawn is the 13th Troll at 24 s (1440); he comes at 26 s (1560), the last spawn (milestone 25c)', () => {
     const groups = WAVES[9].groups;
     // Last spawn of a group: delay + (count - 1) x interval, in seconds.
     const lastSecond = groups.map((g) => g.delay + (g.count - 1) * g.interval);
     expect(groups.map((g) => g.type)).toEqual(['wolf', 'troll', 'harpy', 'shieldbearer', 'boss']);
-    // Wolves 4 + 7 x 0.5 = 7.5; Trolls 0 + 11 x 2 = 22; Harpies 6 + 4 x 0.8 = 9.2;
-    // Shieldbearers 2 + 3 x 2 = 8; him 26 + 0.
-    expect(lastSecond.map((x) => Math.round(x * 10) / 10)).toEqual([7.5, 22, 9.2, 8, 26]);
-    expect(Math.max(...lastSecond.slice(0, -1))).toBe(22);
-    expect(groups.map((g) => spawnTick(g, g.count - 1))).toEqual([450, 1320, 552, 480, 1560]);
+    // Wolves 4 + 19 x 0.35 = 10.65; Trolls 0 + 12 x 2 = 24; Harpies 6 + 11 x 0.6 = 12.6;
+    // Shieldbearers 2 + 7 x 1.4 = 11.8; him 26 + 0.
+    expect(lastSecond.map((x) => Math.round(x * 100) / 100)).toEqual([10.65, 24, 12.6, 11.8, 26]);
+    expect(Math.max(...lastSecond.slice(0, -1))).toBe(24);
+    expect(groups.map((g) => spawnTick(g, g.count - 1))).toEqual([639, 1440, 756, 708, 1560]);
     expect(groups.filter((g) => g.type === 'boss').map((g) => g.count)).toEqual([1]);
     expect(WAVES.slice(0, 9).flatMap((w) => w.groups).some((g) => g.type === 'boss')).toBe(false);
   });

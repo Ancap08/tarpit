@@ -49,6 +49,9 @@ test('a Musketeer hit flags the sprite for that tick; a kill removes it', async 
     let hitId = -1;
     for (let i = 1; i <= 2000 && hitTick < 0; i++) {
       t.step(1);
+      // Milestone 25c: a Goblin has 12 hp, one Musketeer shot; give Goblin 0
+      // 30 (test setup) so the hit leaves it alive and the kill comes later.
+      if (i === 1) t.state().enemies[0].hp = 30;
       const hit = t.events().find((e) => e.kind === 'hit');
       if (hit && hit.kind === 'hit') {
         hitTick = i;
@@ -74,14 +77,15 @@ test('a Musketeer hit flags the sprite for that tick; a kill removes it', async 
   expect({ hitTick: r.hitTick, hitId: r.hitId }).toEqual({ hitTick: 152, hitId: 0 });
   expect(r.onHit?.flags.hit).toBe(true);
   expect(r.after?.flags.hit).toBe(false);
-  expect(r.kill).toMatchObject({ kind: 'kill', enemyType: 'goblin', bounty: 4, cause: 'shot' });
+  expect(r.kill).toMatchObject({ kind: 'kill', enemyType: 'goblin', bounty: 2, cause: 'shot' });
   expect(r.killState).toBeNull();
 });
 
 // Milestone 11's verified cells and tick (e2e/new-towers.spec.ts): a Tar Pit
 // at (14,6) and a Fire Pot at (14,8) leave Goblin 0 slowed and burning at
-// tick 687 of wave 1, and no enemy at 686.
-test('a tarred, burning Goblin shows both flags at tick 687', async ({ page }) => {
+// tick 687 of wave 1, and no enemy at 686. Milestone 25c: Goblin 2 at tick
+// 837, none at 836.
+test('a tarred, burning Goblin shows both flags at tick 837', async ({ page }) => {
   await startGame(page);
   const r = await page.evaluate(() => {
     const t = window.__tarpit as TarpitTestApi;
@@ -89,14 +93,14 @@ test('a tarred, burning Goblin shows both flags at tick 687', async ({ page }) =
     t.buildAt(14, 6, 'tarpit');
     t.buildAt(14, 8, 'firepot');
     t.startWave();
-    t.step(686);
+    t.step(836);
     const before = t.state().enemies.map((e) => t.animState(e.id)?.flags);
     t.step(1);
-    return { before, at687: t.animState(0) };
+    return { before, at837: t.animState(2) };
   });
   expect(r.before.some((f) => f?.burning && f?.slowed)).toBe(false);
-  expect(r.at687?.flags).toMatchObject({ burning: true, slowed: true, dying: false });
-  expect(r.at687?.facing).toBe('down'); // on the long downhill run at x 420
+  expect(r.at837?.flags).toMatchObject({ burning: true, slowed: true, dying: false });
+  expect(r.at837?.facing).toBe('down'); // on the long downhill run at x 420
 });
 
 test('facing turns up at the first corner (x 160)', async ({ page }) => {
@@ -122,7 +126,7 @@ test('a Wolf is not mirrored while moving right (the Hyena frames face right)', 
   await startGame(page);
   const a = await page.evaluate(() => {
     const t = window.__tarpit as TarpitTestApi;
-    t.state().wave = 3; // test setup: the next Start Wave plays wave 4 (Wolves only)
+    t.state().wave = 8; // test setup: the next Start Wave plays wave 9 (Wolves first, milestone 25c)
     t.startWave();
     t.step(30);
     return t.animState(0);

@@ -43,7 +43,7 @@ describe('verifier: edge cases', () => {
   it('an enemy that lands exactly on the exit distance is removed on that tick', () => {
     const s = createGame();
     startWave(s);
-    s.spawnedPerGroup = [8]; // stop further spawns so only our enemy matters
+    s.spawnedPerGroup = [20]; // stop further spawns so only our enemy matters (wave 1: 20 Goblins since milestone 25c)
     s.enemies = [enemy({ id: 0, distance: 1583 })];
     tick(s);
     expect(s.enemies).toHaveLength(0);
@@ -53,7 +53,7 @@ describe('verifier: edge cases', () => {
   it('a fast enemy that overshoots the exit is removed once and costs one life', () => {
     const s = createGame();
     startWave(s);
-    s.spawnedPerGroup = [8];
+    s.spawnedPerGroup = [20]; // wave 1 fully spawned (20 Goblins since milestone 25c)
     s.enemies = [enemy({ id: 0, type: 'wolf', hp: 20, distance: 1583 })]; // +2 -> 1585
     tick(s);
     expect(s.enemies).toHaveLength(0);
@@ -73,7 +73,7 @@ describe('verifier: edge cases', () => {
     const s = createGame();
     s.phase = 'wave';
     s.wave = 1;
-    s.spawnedPerGroup = [8];
+    s.spawnedPerGroup = [20]; // wave 1 fully spawned (20 Goblins since milestone 25c)
     s.enemies = [enemy({ id: 0, slow: 0.5, slowTicksLeft: 10 }), enemy({ id: 1, slow: 0.5, slowTicksLeft: 0 })];
     tick(s);
     expect(s.enemies[0].distance).toBe(0.5);

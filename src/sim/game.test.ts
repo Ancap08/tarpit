@@ -53,7 +53,7 @@ describe('enemy movement', () => {
 
   it('a wolf moves 2 px per tick', () => {
     const s = createGame();
-    s.wave = 3; // next is wave 4: 10 wolves, no delay
+    s.wave = 8; // next is wave 9: its first group is 30 wolves, no delay (milestone 25c)
     startWave(s);
     tick(s);
     runTicks(s, 100);
@@ -62,7 +62,7 @@ describe('enemy movement', () => {
 
   it('a troll moves 35/60 px per tick', () => {
     const s = createGame();
-    s.wave = 8; // next is wave 9: 12 wolves and 8 trolls, both no delay
+    s.wave = 8; // next is wave 9: 30 wolves and 7 trolls, both no delay
     startWave(s);
     tick(s);
     runTicks(s, 120);
@@ -84,12 +84,12 @@ describe('enemy movement', () => {
 });
 
 describe('wave spawning', () => {
-  it('wave 1 spawns 8 goblins one second apart from waveTick 0, and no ninth', () => {
+  it('wave 1 spawns 20 goblins 0.8 s (48 ticks) apart from waveTick 0, and no 21st (milestone 25c)', () => {
     const s = createGame();
     startWave(s);
     const seen = spawnTicks(s, 1500);
-    expect(seen).toEqual([0, 60, 120, 180, 240, 300, 360, 420].map((wt, i) => ({ waveTick: wt, type: 'goblin', id: i })));
-    expect(s.nextEnemyId).toBe(8);
+    expect(seen).toEqual(Array.from({ length: 20 }, (_, i) => ({ waveTick: 48 * i, type: 'goblin', id: i })));
+    expect(s.nextEnemyId).toBe(20);
   });
 
   it('wave 3 runs groups concurrently; wolves start after the 4 s delay', () => {
@@ -99,23 +99,23 @@ describe('wave spawning', () => {
     const seen = spawnTicks(s, 600);
     const wolves = seen.filter((e) => e.type === 'wolf').map((e) => e.waveTick);
     const goblins = seen.filter((e) => e.type === 'goblin').map((e) => e.waveTick);
-    expect(wolves).toEqual([240, 276, 312, 348, 384, 420]);
-    expect(goblins).toEqual([0, 60, 120, 180, 240, 300, 360, 420]);
-    // At waveTick 240 both groups spawn; group order breaks the tie.
-    const at240 = seen.filter((e) => e.waveTick === 240);
-    expect(at240.map((e) => e.type)).toEqual(['goblin', 'wolf']);
-    expect(at240[1].id).toBe(at240[0].id + 1);
-    // And again at waveTick 420 (goblin 8 and wolf 6).
-    expect(seen.filter((e) => e.waveTick === 420).map((e) => e.type)).toEqual(['goblin', 'wolf']);
+    // Milestone 25c: Goblins every 0.7 s (42 ticks), Wolves every 0.5 s (30) from 4 s.
+    expect(wolves).toEqual(Array.from({ length: 12 }, (_, j) => 240 + 30 * j));
+    expect(goblins).toEqual(Array.from({ length: 15 }, (_, k) => 42 * k));
+    // At waveTick 420 both groups spawn (goblin 11, wolf 7); group order breaks the tie.
+    const at420 = seen.filter((e) => e.waveTick === 420);
+    expect(at420.map((e) => e.type)).toEqual(['goblin', 'wolf']);
+    expect(at420[1].id).toBe(at420[0].id + 1);
   });
 
   it('enemy ids keep counting across waves', () => {
     const s = createGame();
     startWave(s);
+    s.lives = 1000; // a towerless wave 1 would lose (milestone 25c)
     runWave(s);
     startWave(s);
     tick(s);
-    expect(s.enemies[0].id).toBe(8);
+    expect(s.enemies[0].id).toBe(20);
   });
 });
 
@@ -154,10 +154,11 @@ describe('startWave and wave clear', () => {
 
   it('clearing a wave pays +25 and returns to setup; the next startWave works', () => {
     const s = createGame();
+    s.lives = 100; // 20 exits would lose a 20-life game (milestone 25c)
     startWave(s);
-    // Last goblin spawns at waveTick 420 and exits on waveTick 420 + 1584.
-    expect(runWave(s)).toBe(2005);
-    expect(s).toMatchObject({ phase: 'setup', gold: 125, lives: 12, wave: 1, enemies: [] });
+    // Last goblin spawns at waveTick 19 * 48 = 912 and exits on waveTick 912 + 1584.
+    expect(runWave(s)).toBe(2497);
+    expect(s).toMatchObject({ phase: 'setup', gold: 125, lives: 80, wave: 1, enemies: [] });
     expect(startWave(s)).toEqual({ ok: true, wave: 2 });
     expect(s.phase).toBe('wave');
   });

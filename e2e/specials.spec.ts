@@ -117,11 +117,12 @@ test('Tar Barrel on wave 4: the popup lists Powder Keg and Tar Barrel; enemies i
   await page.mouse.move(at.x, at.y);
   await page.mouse.click(at.x, at.y);
   const s = await state(page);
+  // Milestone 25c: the barrel slows on the special slow channel.
   for (const e of s.enemies) {
     const inside = dist(pos(e), at) <= SPECIAL_DEFS.tarBarrel.radius;
-    expect(inside ? [e.slow, e.slowTicksLeft] : [e.id, 'outside'], `enemy ${e.id}`).toEqual(inside ? [0.5, 240] : [e.id, 'outside']);
+    expect(inside ? [e.specialSlow, e.specialSlowTicksLeft] : [e.id, 'outside'], `enemy ${e.id}`).toEqual(inside ? [0.5, 240] : [e.id, 'outside']);
   }
-  expect(s.enemies.filter((e) => e.slowTicksLeft === 240).map((e) => e.id).sort()).toEqual([...ids].sort());
+  expect(s.enemies.filter((e) => e.specialSlowTicksLeft === 240).map((e) => e.id).sort()).toEqual([...ids].sort());
   expect(s.specialCharges).toBe(0);
 });
 
@@ -142,7 +143,7 @@ test('Fire Arrows on wave 7 set a Harpy burning', async ({ page }) => {
   await page.mouse.click(at.x, at.y);
   const h = (await state(page)).enemies.find((e) => e.id === harpy!.id)!;
   expect(h.burnTicksLeft).toBeGreaterThan(0);
-  expect([h.burnDps, h.burnTicksLeft]).toEqual([10, 240]);
+  expect([h.burnDps, h.burnTicksLeft]).toEqual([SPECIAL_DEFS.fireArrows.burnDps, 240]); // 30/s since milestone 25c
 });
 
 test('Escape, the Special button, a HUD press and a tower pick cancel aiming and keep the charge', async ({ page }) => {

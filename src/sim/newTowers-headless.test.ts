@@ -58,8 +58,13 @@ describe('comboBuild', () => {
     expect(shared).toBeGreaterThan(50);
   });
 
-  it('follows COMBO_PLAN to the end', () => {
-    expect(comboBuild().flat()).toEqual(COMBO_PLAN);
+  // Milestone 25c: the plan's last items soak up late gold, so it ends
+  // before them: 28 of its 31 actions are bought (all 21 older ones).
+  it('follows COMBO_PLAN in order: 28 of 31 actions bought by wave 10', () => {
+    const bought = comboBuild().flat();
+    expect(COMBO_PLAN).toHaveLength(31);
+    expect(bought).toHaveLength(28);
+    expect(bought).toEqual(COMBO_PLAN.slice(0, 28));
   });
 });
 
@@ -68,7 +73,9 @@ describe('comboBuildNoFire', () => {
     const combo = comboBuild();
     const noFire = comboBuildNoFire();
     const fireCells = new Set(builds(combo, 'firepot').map((a) => cellKey(a.cell)));
-    expect(noFire).toEqual(combo.map((wave) => wave.filter((a) => !fireCells.has(cellKey(a.cell)))));
+    expect([...noFire]).toEqual(combo.map((wave) => wave.filter((a) => !fireCells.has(cellKey(a.cell)))));
+    // Milestone 25c: it keeps the combo's cluster specials.
+    expect(noFire.timed).toEqual(combo.timed);
     expect(builds(noFire, 'firepot')).toEqual([]);
     const withFire = play(combo);
     const without = play(noFire);

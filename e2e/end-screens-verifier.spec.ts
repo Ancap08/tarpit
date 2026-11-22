@@ -52,7 +52,8 @@ test('(a) third game behaves like the first', async ({ page }) => {
   await page.mouse.click(240, 176); // cell (7,5)
   await click(page, 'startWave');
   await api(page, (a) => a.step(2005));
-  expect(await state(page)).toMatchObject({ phase: 'setup', wave: 1, lives: 14, gold: 83 });
+  // Milestone 25c: the Musketeer kills all 20 wave 1 Goblins: 50 + 20 x 2 + 25.
+  expect(await state(page)).toMatchObject({ phase: 'setup', wave: 1, lives: 20, gold: 115 });
 });
 
 test('(b) after Play again no playAgain rect and no end screen', async ({ page }) => {
@@ -110,8 +111,8 @@ test('(d) win screen HUD text', async ({ page }) => {
   await api(page, (a) => a.runScript('comboBuild'));
   expect(await endScreen(page)).toBe('won');
   expect(await api(page, (a) => a.hudText())).toMatchObject({
-    gold: 'Gold 497', // milestone 23: plus the 150 boss bounty
-    lives: 'Lives 12',
+    gold: 'Gold 418', // milestone 25c (497 in milestone 23)
+    lives: 'Lives 13',
     wave: 'Wave 10/10',
     next: 'Next: none',
   });

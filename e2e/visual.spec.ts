@@ -5,15 +5,21 @@ import type { TitleUiState } from '../src/game/TitleScene';
 import { MAP, positionAlongPath } from '../src/sim/map';
 
 // Milestone 25b frames (see the special tests below).
-const AIM_EXPECT = { wave: 4, aim: { x: 197, y: 96 }, enemies: 12, inside: ['harpy 7', 'wolf 8', 'wolf 9', 'harpy 10', 'wolf 11'] };
+// Milestone 25c: recomputed headlessly on the horde waves.
+const AIM_EXPECT = {
+  wave: 4,
+  aim: { x: 160, y: 162 },
+  enemies: 14,
+  inside: ['harpy 5', 'harpy 7', 'wolf 8', 'wolf 9', 'harpy 10', 'wolf 11', 'wolf 12', 'harpy 13', 'wolf 14'],
+};
 const FIRED_EXPECT = {
-  aim: { x: 160, y: 221 },
+  aim: { x: 160, y: 161 },
   ok: true,
-  hits: 5,
-  kills: 4,
-  before: 15,
-  after: 11,
-  hurt: ['goblin 2 18', 'goblin 4 18', 'troll 9 620'],
+  hits: 11,
+  kills: 9,
+  before: 21,
+  after: 13,
+  hurt: ['troll 5 420', 'troll 12 420'],
   charges: 0,
 };
 
@@ -64,7 +70,13 @@ test('map at wave 0', async ({ page }) => {
 // because the splash and hp bars cover more of the renderer; milestone 8
 // moved spot 6 to the centre of cell (15,9), so the Cannon's first shot came
 // 7 ticks earlier and the same frame is now tick 848 (headless run).
-const MID_WAVE_STEPS = 848;
+// Milestone 25c: a wave 1 Goblin has 12 hp, so the Musketeer kills each with
+// one shot and the Cannon and Tar Pit never fire in wave 1 (no hurt bars
+// either; the enemies, harpies and boss frames cover hp bars). A headless
+// scan for a Musketeer tracer 1 to 3 ticks old with the most Goblins out
+// found tick 873 (6 Goblins); tick 874 shows the tracer of the shot at 872
+// two ticks into its fade, with the same 6 Goblins.
+const MID_WAVE_STEPS = 874;
 
 test('mid wave 1 with three towers', async ({ page }) => {
   await open(page);
@@ -78,9 +90,9 @@ test('mid wave 1 with three towers', async ({ page }) => {
     t.startWave();
     t.step(steps);
     const s = t.state();
-    return { enemies: s.enemies.length, hurt: s.enemies.filter((e) => e.hp < 30).length };
+    return { enemies: s.enemies.length, hurt: s.enemies.filter((e) => e.hp < 12).length, shotsThisTick: s.shots.length };
   }, MID_WAVE_STEPS);
-  expect(counts).toEqual({ enemies: 5, hurt: 4 });
+  expect(counts).toEqual({ enemies: 6, hurt: 0, shotsThisTick: 0 });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('mid-wave.png');
 });
@@ -102,7 +114,13 @@ test('mid wave 1 with three towers', async ({ page }) => {
 // also has 3 Shieldbearers and 4 Harpies (rechecked headlessly). The closest
 // pair is now 7 px apart; the Harpies fly 16 px above the path, over the
 // walkers, so each sprite still reads.
-const ENEMIES_STEPS = 1350;
+// Milestone 25c (horde): wave 8 has 106 enemies, so with these four towers
+// the map holds 60 or more and some sprites overlap at every tick. A
+// headless scan of every 30th tick for all five types, at least 3 hurt
+// Trolls and some tar rings picked tick 1560: 22 Goblins, 10 Wolves, 10
+// Trolls (3 hurt), 6 Shieldbearers and 14 Harpies, 3 slowed, 15 enemies
+// hurt in all.
+const ENEMIES_STEPS = 1560;
 
 test('wave 8 with all five enemy types', async ({ page }) => {
   await open(page);
@@ -125,13 +143,13 @@ test('wave 8 with all five enemy types', async ({ page }) => {
       goblins: of('goblin').length,
       wolves: of('wolf').length,
       trolls: of('troll').length,
-      hurtTrolls: of('troll').filter((x) => x.hp < 700).length, // Troll max hp is 700
+      hurtTrolls: of('troll').filter((x) => x.hp < 500).length, // Troll max hp is 500 (milestone 25c)
       slowed: e.filter((x) => x.slowTicksLeft > 0).length,
       shieldbearers: of('shieldbearer').length,
       harpies: of('harpy').length,
     };
   }, ENEMIES_STEPS);
-  expect(counts).toEqual({ wave: 8, goblins: 10, wolves: 3, trolls: 7, hurtTrolls: 3, slowed: 4, shieldbearers: 3, harpies: 4 });
+  expect(counts).toEqual({ wave: 8, goblins: 22, wolves: 10, trolls: 10, hurtTrolls: 3, slowed: 3, shieldbearers: 6, harpies: 14 });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('enemies.png');
 });
@@ -197,7 +215,7 @@ test('upgraded Musketeer selected with its panel and range', async ({ page }) =>
 // built before wave 1 is locked (no outline); a Cannon at (10,5) just placed
 // in this setup is unlocked (pale dashed outline) and selected with a real
 // click, so its panel reads "Remove  +80", the full refund. Wave 1 with one
-// Musketeer ends with 83 gold (build-ui.spec.ts), enough for the Cannon.
+// Musketeer ends with 115 gold (milestone 25c: it kills all 20 Goblins), enough for the Cannon.
 test('planning phase: a locked Musketeer and an unlocked Cannon selected', async ({ page }) => {
   await open(page);
   const s = await page.evaluate(async () => {
@@ -213,7 +231,7 @@ test('planning phase: a locked Musketeer and an unlocked Cannon selected', async
   expect(s).toEqual({
     phase: 'setup',
     wave: 1,
-    gold: 3,
+    gold: 35,
     towers: [
       { type: 'musketeer', locked: true },
       { type: 'cannon', locked: false },
@@ -247,8 +265,13 @@ test('planning phase: a locked Musketeer and an unlocked Cannon selected', async
 // at 1488 (2 ticks into its fade, as before), both Trolls carry the tar and
 // burn rings, 10 px apart (Troll 3 at 417 of 700 hp), and Harpy 16, hurt,
 // flies near the cottage.
-const MORTAR_FIRE_TICK = 1488;
-const NEW_TOWERS_STEPS = 1490;
+// Milestone 25c: the Mortar fires at 1386, 1566, 1746; a scan for a Mortar
+// splash 2 ticks old with an enemy slowed and burning found 1568 (two
+// Trolls and five Harpies, overlapping) and 1748: the two Trolls left, 10
+// px apart, Troll 12 slowed and burning at 98 of 500 hp, Troll 5 at 61.
+// Both slowed and burning together no longer happens with a splash on screen.
+const MORTAR_FIRE_TICK = 1746;
+const NEW_TOWERS_STEPS = 1748;
 
 test('new towers upgraded, Mortar selected, splash and burning tarred Trolls', async ({ page }) => {
   await open(page);
@@ -285,7 +308,7 @@ test('new towers upgraded, Mortar selected, splash and burning tarred Trolls', a
     },
     { fire: MORTAR_FIRE_TICK, steps: NEW_TOWERS_STEPS },
   );
-  expect(counts).toEqual({ wave: 5, upgraded: 4, mortarShots: 1, enemies: 3, slowedAndBurning: 2, harpies: 1 });
+  expect(counts).toEqual({ wave: 5, upgraded: 4, mortarShots: 1, enemies: 2, slowedAndBurning: 1, harpies: 0 });
   await page.mouse.click(17 * 32 + 16, 6 * 32 + 16); // select the Mortar
   await page.mouse.move(900, 440); // empty grass: no hover tint
   expect(await ui(page)).toMatchObject({ pick: null, selectedCell: { col: 17, row: 6 }, panelOpen: true });
@@ -306,7 +329,15 @@ test('new towers upgraded, Mortar selected, splash and burning tarred Trolls', a
 // Cannon shot Wolf 9 at tick 469 (splash 2 ticks into its 10), and Harpy 7,
 // 19 px from Wolf 9 inside the splash, keeps its 28 hp. Harpies 7 and 10
 // are inside the Cannon's 90 px range. 4 Harpies and 7 Wolves are out.
-const HARPIES_STEPS = 471;
+// Milestone 25c: wave 4 sends its 10 Harpies first and the Wolves from 3 s.
+// The same scan (the 8 Cannon cells against every Musketeer cell covering
+// 150 px of the first 700, plus a Harpy within 40 px of the Cannon's shot)
+// kept the Cannon at (7,4) and moved the Musketeer to (6,1). Tick 291: the
+// Cannon shot Wolf 4 at 289 (splash 2 ticks into its fade) with a Harpy
+// inside the splash untouched; the Musketeer shot Harpy 1 at 290 (12 of 22
+// hp, tracer 1 tick old); Harpies 1, 2 and 3 are inside the Cannon's range;
+// 6 Harpies and 3 Wolves are out, no two sprites closer than 20 px.
+const HARPIES_STEPS = 291;
 
 test('wave 4 Harpies: a Cannon splash ignores one, a Musketeer shoots one', async ({ page }) => {
   await open(page);
@@ -317,14 +348,14 @@ test('wave 4 Harpies: a Cannon splash ignores one, a Musketeer shoots one', asyn
     s.gold = 1000; // test setup: afford both towers
     s.wave = 3; // test setup: the next Start Wave plays wave 4
     t.buildAt(7, 4, 'cannon');
-    t.buildAt(2, 3, 'musketeer');
+    t.buildAt(6, 1, 'musketeer');
     t.startWave();
     const typeOf = new Map<number, string>();
     const shots: string[] = [];
     for (let i = 1; i <= steps; i++) {
       t.step(1);
       for (const e of t.events()) if (e.kind === 'spawn') typeOf.set(e.enemyId, e.enemyType);
-      for (const x of t.state().shots) if (i >= 468) shots.push(`${i} ${x.tower} ${typeOf.get(x.targetId)} ${x.targetId}`);
+      for (const x of t.state().shots) if (i >= 288) shots.push(`${i} ${x.tower} ${typeOf.get(x.targetId)} ${x.targetId}`);
     }
     const e = t.state().enemies;
     const harpies = e.filter((x) => x.type === 'harpy');
@@ -338,15 +369,17 @@ test('wave 4 Harpies: a Cannon splash ignores one, a Musketeer shoots one', asyn
   }, HARPIES_STEPS);
   expect(r).toEqual({
     wave: 4,
-    shots: ['468 musketeer harpy 10', '469 cannon wolf 9'],
+    shots: ['289 cannon wolf 4', '290 musketeer harpy 1'],
     harpies: [
-      { id: 4, hp: 40 },
-      { id: 7, hp: 28 },
-      { id: 10, hp: 28 },
-      { id: 13, hp: 40 },
+      { id: 1, hp: 10 },
+      { id: 2, hp: 22 },
+      { id: 3, hp: 22 },
+      { id: 5, hp: 22 },
+      { id: 7, hp: 22 },
+      { id: 10, hp: 22 },
     ],
-    wolves: 7,
-    textures: ['harpy', 'harpy', 'harpy', 'harpy'],
+    wolves: 3,
+    textures: ['harpy', 'harpy', 'harpy', 'harpy', 'harpy', 'harpy'],
   });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('harpies.png');
@@ -361,7 +394,12 @@ test('wave 4 Harpies: a Cannon splash ignores one, a Musketeer shoots one', asyn
 // 2374 of 4000 hp on the bar, a Mortar splash on him 2 ticks into its
 // fade (fired on step 3560) and no shot hit him on this tick, so his walk frame shows,
 // not the hit flash.
-const BOSS_STEPS = 3562;
+// Milestone 25c: runScript now fires the combo's cluster specials in waves
+// 1 to 9 (wave 10 is stepped by hand, so his wave has none). The same scan
+// found Mortar hits on him from step 2838; step 3230: alone on the downhill
+// run at (420,152), tarred and burning, 2488 of 4000 hp, Mortar splash
+// fired on step 3228, no hit on this step.
+const BOSS_STEPS = 3230;
 
 test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splash', async ({ page }) => {
   await open(page);
@@ -393,7 +431,7 @@ test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splas
     slowed: true,
     hitNow: false,
     mortarHitOnBoss: 1,
-    bar: `${BOSS_NAME} 2374 / 4000`,
+    bar: `${BOSS_NAME} 2488 / 4000`,
     texture: 'boss',
   });
   await settle(page);
@@ -407,8 +445,12 @@ test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splas
 // (197,96) and the 90 px circle covers 2 Harpies and 3 Wolves. The Special
 // button opened its popup and Tar Barrel was picked, so the popup is closed
 // and the button shows picked.
+// Milestone 25c: same step, rescanned (every 30th step, the enemy whose
+// position covers the most enemies within 90 px): the pointer sits on Wolf
+// 11 at (160,162) on the first climb and the circle covers 4 Harpies and 5
+// Wolves of the 14 out.
 const AIM_STEPS = 420;
-const AIM_TARGET_ID = 7;
+const AIM_TARGET_ID = 11;
 
 test('special aim: Tar Barrel circle over a cluster on wave 4', async ({ page }) => {
   await open(page);
@@ -449,8 +491,12 @@ test('special aim: Tar Barrel circle over a cluster on wave 4', async ({ page })
 // step 600 the keg is fired at enemy 13's position (rounded), (160,221) on
 // the first climb: it hits 5, kills 4 and leaves Troll 9 at 620 of 700;
 // then one tick runs. Goblins 2 and 4 carry earlier tower damage.
+// Milestone 25c: same step, rescanned the same way: the keg at enemy 14's
+// position, (160,161) on the first climb, hits 11 (2 Trolls, 6 Goblins, 3
+// Harpies), kills the 9 that are not Trolls and leaves both Trolls at 420
+// of 500.
 const FIRED_STEPS = 600;
-const FIRED_TARGET_ID = 13;
+const FIRED_TARGET_ID = 14;
 
 test('special fired: the tick after a Powder Keg (test mode, no flash)', async ({ page }) => {
   await open(page);
@@ -485,7 +531,8 @@ test('special fired: the tick after a Powder Keg (test mode, no flash)', async (
       kills,
       before,
       after: e.length,
-      hurt: e.filter((x) => x.hp < (x.type === 'troll' ? 700 : x.type === 'harpy' ? 40 : 30)).map((x) => `${x.type} ${x.id} ${x.hp}`),
+      // Full hp since milestone 25c: Troll 500, Harpy 22, Wolf 17, Goblin 12.
+      hurt: e.filter((x) => x.hp < ({ troll: 500, harpy: 22, wolf: 17, goblin: 12 } as Record<string, number>)[x.type]).map((x) => `${x.type} ${x.id} ${x.hp}`),
       charges: t.state().specialCharges,
     };
   }, aim);
@@ -504,7 +551,7 @@ test('win screen after the combo build', async ({ page }) => {
     const phase = t.runScript('comboBuild');
     return { phase, screen: t.endScreen(), lives: t.state().lives, gold: t.state().gold };
   });
-  expect(end).toEqual({ phase: 'won', screen: 'won', lives: 12, gold: 497 }); // milestone 23: plus the 150 boss bounty
+  expect(end).toEqual({ phase: 'won', screen: 'won', lives: 13, gold: 418 }); // milestone 25c: horde waves and cluster specials
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('won.png');
 });
@@ -520,7 +567,7 @@ test('lose screen with no towers', async ({ page }) => {
     }
     return { screen: t.endScreen(), wave: t.state().wave, lives: t.state().lives };
   });
-  expect(end).toEqual({ screen: 'lost', wave: 2, lives: 0 });
+  expect(end).toEqual({ screen: 'lost', wave: 1, lives: 0 }); // milestone 25c: wave 1's 20 Goblins take all 20 lives
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('lost.png');
 });

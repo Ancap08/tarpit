@@ -8,6 +8,7 @@ import { buildTower, useSpecial } from './actions';
 import { applySlow, applySpecialSlow } from './combat';
 import { effectiveSlow, ENEMY_STATS, isTarred } from './enemies';
 import { createGame, startWave, tick } from './game';
+import { SPECIAL_DEFS } from './specials';
 import type { Enemy, EnemyType, GameState } from './types';
 import { WAVES } from './waves';
 
@@ -98,11 +99,12 @@ describe('the barrel is never wasted or cut short by tower slows', () => {
     expect(s.enemies[0].specialSlowTicksLeft).toBe(0);
   });
 
-  it('a burn doubles under the special slow alone (Fire Arrows on a barrel-tarred Troll: 20 over 60 ticks)', () => {
+  it('a burn doubles under the special slow alone (Fire Arrows, 30/s, on a barrel-tarred Troll: 60 over 60 ticks, 30 untarred)', () => {
     const s = inWave(7, [enemy(0, 'troll', { specialSlow: 0.5, specialSlowTicksLeft: 1000 }), enemy(1, 'troll')]);
     useSpecial(s, 'fireArrows', { x: 80, y: 240 });
     for (let i = 0; i < 60; i++) tick(s);
-    expect(ENEMY_STATS.troll.hp - s.enemies[0].hp).toBeCloseTo(20, 9);
-    expect(ENEMY_STATS.troll.hp - s.enemies[1].hp).toBeCloseTo(10, 9);
+    const dps = SPECIAL_DEFS.fireArrows.burnDps;
+    expect(ENEMY_STATS.troll.hp - s.enemies[0].hp).toBeCloseTo(2 * dps, 9);
+    expect(ENEMY_STATS.troll.hp - s.enemies[1].hp).toBeCloseTo(dps, 9);
   });
 });
