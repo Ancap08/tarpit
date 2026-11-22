@@ -3314,3 +3314,93 @@ Claude Fable 5.2.
 - A unit test looped `while (s.phase === 'wave')` and then compared the
   phase again; TypeScript narrowed it and refused the comparison. The
   loop is in a closure now.
+
+### Verifier notes
+
+Verifier: Claude Fable 5.2, on `ce61956`. Verdict: pass, with two small
+doc corrections (`f82b118`) and four points for the coordinator.
+
+- **Clean run.** `rm -rf dist && npm ci`, lint, typecheck, unit (519 in
+  42 files), build, `check:assets`, `check:size` (1.23 MB), e2e (177) and
+  `npm run sim`: exit 0. The two specials specs plus `drag.spec.ts` and
+  `touch-drag.spec.ts` with `--repeat-each=5`: 100 of 100. With the probes
+  below: 542 unit, 203 e2e; the two probe specs with `--repeat-each=5`:
+  130 of 130.
+- **Balance untouched.** `npm run sim` on a worktree of `origin/main`
+  against this branch differs only by the added `comboWithKegs` lines (13
+  in the Normal tables, one each in the summary, Easy and Hard).
+  `balance.test.ts` is unmodified. The two older test files that changed:
+  `targeting.test.ts` (the `INFORMATIONAL` map now has two entries) and
+  `draw/enemies.test.ts` (a Harpy with tar and burn set now draws both
+  rings; only a special can set them).
+- **Rule probes** (`src/sim/specials-verifier.test.ts`, 23). Enemies at
+  path distance 100, that is (100, 240). Keg at (100, 170) and at
+  (58, 184) (42 across, 56 down) is exactly 70 px: 80 damage; at
+  (100, 169.99): 0. Shieldbearer 120 to 40. Harpy dies, pays 7 once,
+  cause `special`. Boss 4000 to 3920 with no `bossDown`; a boss at 80 hp
+  gives one `kill`, one `bossDown`, +150, the wave clears on the next
+  tick and the game is won. Tar Barrel: a Goblin walks 240 x 60 x 0.5 /
+  60 = 120 px in the 240 ticks (240 unslowed); the boss 240 x 25 x 0.7 /
+  60 = 70 px; a Harpy 180 px, and a Tar Pit 65 px away still has no
+  target. Fire Arrows: 240 x 10 / 60 = 40 on a Troll; 80 on one kept
+  tarred by an upgraded Tar Pit; it sticks to a Harpy that a Fire Pot
+  shot leaves unburnt; an 8/s burn becomes 10/s for 240. Charges read 0,
+  1, 0, 0, 1, 1, 0, 1 across setup, start, use, clear, start, a refused
+  second start, an unused clear and the next start. The five refusals
+  come in the documented order with everything wrong at once and leave
+  the state's JSON identical. Bounds: -1, 961, -1, 481 refused; (0, 0)
+  and (960, 480) accepted. A full `comboWithKegs` game replayed tick by
+  tick: kills + exits = spawns, no id twice, the state equals
+  `playScripted`'s, two runs identical.
+- **Two rules worth knowing.** (1) A special fired at empty ground
+  spends the charge and emits `special` with hits 0. That fits "one
+  charge per wave" and the player sees the circle first, but it is a
+  choice nobody recorded. (2) A Tar Barrel on an enemy already under a
+  stronger slow (an upgraded Tar Pit's 0.6) does nothing to it: strength
+  and remaining ticks stay, no `slowed` event, and when the 0.6 runs out
+  the enemy is unslowed. That is the existing "a weaker slow does
+  nothing" rule applied as written; the barrel is wasted on those enemies.
+  An equal slow is refreshed to 240 ticks.
+- **The keg policy.** In `comboWithKegs` on Normal the ten kegs hit 0, 0,
+  0, 2, 0, 0, 0, 0, 0, 0 enemies: one keg in ten does anything. The two
+  it kills are a Harpy and a Wolf, not 2 Wolves as the implementer notes
+  said; corrected there and pinned in the probe.
+- **UI probes** (`e2e/specials-verifier.spec.ts`, 16, real mouse;
+  `e2e/specials-verifier-touch.spec.ts`, 10, CDP touch). Aiming and the
+  pick or panel clear each other both ways; a click on a tower while
+  aiming fires there and opens no panel. Escape and a second press of
+  Special cancel aiming and the popup with the charge kept. The mouse
+  fires on the press, at the press point, once: holding, moving and
+  releasing over a tower adds nothing (DESIGN said "a click"; corrected).
+  Aiming and then clicking the speed button toggles the speed, ends the
+  aiming and fires nothing; the disabled Start Wave, the bare HUD and
+  y 480 do the same. Fires at (2, 2), (500, 479) and (958, 240). The
+  popup lists nothing on waves 1 and 3 (the keg is selected directly),
+  two on 4 and 6, three on 7 and 10, inside the map, and closes on a
+  choice and on a map click. The button's pixels in setup and after use
+  are identical and differ from the lit ones; after a loss it is not
+  lit and does nothing. Touch: a second tap 20 px away fires at the
+  first tap's point; 26 px and 40 px away re-aim; a drag fires 48 px
+  above the finger on release; released on the speed button it fires on
+  the map and the speed stays 1x; released on the build bar (aim below
+  the map) nothing fires, nothing is picked and aiming stays. A bar drag
+  begun while aiming cancels the aim and builds. A second finger is
+  ignored while the first is down, in both directions. The preview's
+  right edge is at most x 614 for every wave, in setup and mid-wave
+  (button at 630). Row 1 and popup buttons are 44.8 CSS px tall on the
+  tablet.
+- **Names.** No "Powder Keg", "Tar Barrel", "Fire Arrows" or "Special"
+  literal in `src/game` outside `names.ts`. Renamed to "Boom Barrel":
+  build, 542 unit and the four specials specs (34) pass; reverted and
+  rebuilt.
+- **Frames.** The aim circle reads on grass and path; the popup is
+  legible and inside the map; the touch line shows. The live keg's ring
+  is clear at 100 ms; its filled flash is faint by then (about 0.27
+  opacity) and gone at 200 ms.
+- **For the coordinator.** `DECISIONS.md` has no 25b section (hits 0
+  spends the charge; flyers can be tarred and burned by specials; locked
+  specials are not listed; the mouse fires on the press). The barrel
+  being wasted under a 0.6 tower slow, and the keg policy that hits once
+  in ten, are for 25c. Baselines (`special-aim.png`, `special-fired.png`
+  new; every in-game frame changed by the new button) are not on the
+  branch until `update-snapshots.yml` runs.
