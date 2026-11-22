@@ -564,9 +564,9 @@ export class Effects {
     for (const p of this.projectiles) if (p) drawProjectile(g, p, (now - p.bornMs) / p.travelMs);
     const exit = flashFade(this.realMs - this.exitAt, EXIT_FLASH_MS);
     if (exit > 0) {
-      g.fillStyle(COLORS.exitGlow, 0.35 * exit);
+      g.fillStyle(COLORS.exitGlow, 0.5 * exit);
       g.fillCircle(this.cottage.x, this.cottage.y, 30);
-      g.lineStyle(3, COLORS.exitGlow, 0.9 * exit);
+      g.lineStyle(4, COLORS.exitGlow, exit);
       g.strokeCircle(this.cottage.x, this.cottage.y, 30 + 10 * (1 - exit));
     }
   }
@@ -668,33 +668,34 @@ function drawProjectile(g: Phaser.GameObjects.Graphics, p: Projectile, t: number
   const dy = Math.sin(a.angle);
   switch (p.tower) {
     case 'musketeer':
-      g.lineStyle(2, COLORS.muzzleFlash, 0.6);
-      g.lineBetween(a.x - dx * 8, a.y - dy * 8, a.x, a.y);
-      g.fillStyle(COLORS.musketBall, 1).fillCircle(a.x, a.y, 2.5);
+      g.lineStyle(2.5, COLORS.muzzleFlash, 0.75);
+      g.lineBetween(a.x - dx * 12, a.y - dy * 12, a.x, a.y);
+      g.fillStyle(COLORS.musketBall, 1).fillCircle(a.x, a.y, 3);
       break;
     case 'longbow':
-      g.lineStyle(2, COLORS.arrowShaft, 1);
-      g.lineBetween(a.x - dx * 11, a.y - dy * 11, a.x, a.y);
+      g.lineStyle(2.5, COLORS.arrowShaft, 1);
+      g.lineBetween(a.x - dx * 14, a.y - dy * 14, a.x, a.y);
       g.lineStyle(1.5, COLORS.arrowHead, 1);
-      g.lineBetween(a.x - dx * 11 - dy * 3, a.y - dy * 11 + dx * 3, a.x - dx * 8, a.y - dy * 8);
-      g.lineBetween(a.x - dx * 11 + dy * 3, a.y - dy * 11 - dx * 3, a.x - dx * 8, a.y - dy * 8);
-      g.fillStyle(COLORS.arrowHead, 1).fillTriangle(a.x + dx * 3, a.y + dy * 3, a.x - dy * 2.5, a.y + dx * 2.5, a.x + dy * 2.5, a.y - dx * 2.5);
+      g.lineBetween(a.x - dx * 14 - dy * 3.5, a.y - dy * 14 + dx * 3.5, a.x - dx * 10, a.y - dy * 10);
+      g.lineBetween(a.x - dx * 14 + dy * 3.5, a.y - dy * 14 - dx * 3.5, a.x - dx * 10, a.y - dy * 10);
+      g.fillStyle(COLORS.arrowHead, 1).fillTriangle(a.x + dx * 4, a.y + dy * 4, a.x - dy * 3, a.y + dx * 3, a.x + dy * 3, a.y - dx * 3);
       break;
     case 'cannon':
       g.fillStyle(COLORS.shellShadow, 0.22).fillEllipse(a.groundX, a.groundY + 2, 8, 4);
-      g.fillStyle(COLORS.cannonBall, 1).fillCircle(a.x, a.y, 4.5);
+      g.fillStyle(COLORS.cannonBall, 1).fillCircle(a.x, a.y, 5.5);
+      g.fillStyle(COLORS.arrowHead, 0.6).fillCircle(a.x - 1.5, a.y - 1.5, 1.5);
       break;
     case 'mortar': {
       const lift = a.groundY - a.y;
       const high = p.height > 0 ? lift / p.height : 0;
-      g.fillStyle(COLORS.shellShadow, 0.3 - 0.15 * high).fillEllipse(a.groundX, a.groundY + 2, 10 - 4 * high, 5 - 2 * high);
+      g.fillStyle(COLORS.shellShadow, 0.4 - 0.1 * high).fillEllipse(a.groundX, a.groundY + 2, 14 - 5 * high, 7 - 2.5 * high);
       g.fillStyle(COLORS.mortarShell, 1).fillCircle(a.x, a.y, 5 + 2 * high);
       g.fillStyle(COLORS.muzzleFlash, 0.8).fillCircle(a.x - dx * 4, a.y - dy * 4, 1.5);
       break;
     }
     case 'tarpit':
       g.fillStyle(COLORS.tarSplat, 0.6).fillCircle(a.x - dx * 6, a.y - dy * 6, 2.5);
-      g.fillStyle(COLORS.tarSplat, 1).fillCircle(a.x, a.y, 5);
+      g.fillStyle(COLORS.tarSplat, 1).fillCircle(a.x, a.y, 6);
       g.fillStyle(COLORS.tarpitHighlight, 0.8).fillCircle(a.x - 1.5, a.y - 1.5, 1.5);
       break;
     case 'firepot': {
