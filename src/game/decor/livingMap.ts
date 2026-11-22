@@ -25,9 +25,10 @@ import { drawMap, drawTuft } from '../draw/map';
 import type { Layout } from '../layout';
 import { COLORS } from '../palette';
 import { birdAt, blinking, butterflyAt, CLOUD, cloudAt, glint, ripple, MOTION_COUNTS, puffLook, smokePuff, STILL_T, sway } from './motion';
-import { BUSH_R, decorFor, hiddenGrowth, TREE_R, type Decor, type Growth } from './recipe';
+import { BUSH_R, decorFor, hiddenGrowth, TREE_EXTENT, TREE_SHAPES, type Decor, type Growth, type TreeShape } from './recipe';
 
-const TREE_KEYS = ['decor-tree-0', 'decor-tree-1', 'decor-tree-2'];
+/** A tree texture's key: one per shape and size. */
+const treeKey = (shape: TreeShape, v: number) => `decor-tree-${shape}-${v}`;
 const BUSH_KEYS = ['decor-bush-0', 'decor-bush-1', 'decor-bush-2'];
 const CLOUD_KEY = 'decor-cloud';
 const PUFF_KEY = 'decor-puff';
@@ -65,34 +66,74 @@ function softShadow(g: Phaser.GameObjects.Graphics, x: number, y: number, r: num
   }
 }
 
+/**
+ * One tree, flat, lit from the upper left: centre (c, c), extent e (half
+ * its larger side), size variant v. Round: a lumpy canopy. Twin: two lobes,
+ * taller than wide. Conifer: three stacked triangles on a short trunk.
+ * Sapling: a small light canopy.
+ */
+function drawTree(g: Phaser.GameObjects.Graphics, shape: TreeShape, c: number, e: number, v: number): void {
+  if (shape === 'conifer') {
+    g.fillStyle(COLORS.trunk, 1);
+    g.fillRect(c - 1.5, c + e * 0.7, 3, e * 0.3);
+    for (let i = 0; i < 3; i++) {
+      const top = c - e + i * e * 0.5;
+      const half = e * (0.42 + i * 0.12);
+      const base = top + e * 0.85;
+      g.fillStyle(COLORS.coniferDark, 1);
+      g.fillTriangle(c - half, base, c + half, base, c, top);
+      g.fillStyle(COLORS.coniferLight, 1);
+      g.fillTriangle(c - half, base, c - half * 0.05, base, c, top);
+    }
+    return;
+  }
+  if (shape === 'twin') {
+    const lobes: [number, number, number][] = [
+      [0, e * 0.3, e * 0.62],
+      [-e * 0.34, e * 0.02, e * 0.38],
+      [e * 0.32, -e * 0.06, e * 0.4],
+      [-e * 0.05, -e * 0.32, e * 0.58],
+    ];
+    g.fillStyle(COLORS.treeDark, 1);
+    for (const [x, y, r] of lobes) g.fillCircle(c + x, c + y, r);
+    g.fillStyle(COLORS.treeMid, 1);
+    for (const [x, y, r] of lobes) g.fillCircle(c + x - 1, c + y - 1, r * 0.8);
+    g.fillStyle(COLORS.treeLight, 1);
+    for (const [x, y, r] of [lobes[1], lobes[3]]) g.fillCircle(c + x - r * 0.35, c + y - r * 0.3, r * 0.38);
+    return;
+  }
+  const r = shape === 'sapling' ? e * 0.85 : e;
+  const lobes = shape === 'sapling' ? 4 : 6;
+  g.fillStyle(shape === 'sapling' ? COLORS.treeMid : COLORS.treeDark, 1);
+  for (let i = 0; i < lobes; i++) {
+    const a = (i / lobes) * Math.PI * 2 + v;
+    g.fillCircle(c + Math.cos(a) * r * 0.45, c + Math.sin(a) * r * 0.45, r * 0.55);
+  }
+  g.fillStyle(shape === 'sapling' ? COLORS.treeLight : COLORS.treeMid, 1);
+  g.fillCircle(c - 1, c - 1, r * 0.72);
+  // The lit side: a lighter crescent up and to the left, and a small bright top.
+  g.fillStyle(shape === 'sapling' ? COLORS.saplingLight : COLORS.treeLight, 1);
+  g.fillCircle(c - r * 0.28, c - r * 0.28, r * 0.42);
+  g.fillStyle(shape === 'sapling' ? COLORS.treeMid : COLORS.treeMid, 1);
+  g.fillCircle(c + r * 0.02, c + r * 0.02, r * 0.36);
+  g.fillStyle(shape === 'sapling' ? COLORS.saplingLight : COLORS.treeLight, 1);
+  g.fillCircle(c - r * 0.42, c - r * 0.4, r * 0.18);
+}
+
 /** Make the decoration textures once per game (fixed keys, so a restart reuses them). */
 function makeTextures(scene: Phaser.Scene): void {
   if (scene.textures.exists(CLOUD_KEY)) return;
   const g = scene.make.graphics({}, false);
-  TREE_KEYS.forEach((key, v) => {
-    const r = TREE_R[v];
-    const s = Math.ceil(2 * r + 10);
-    const c = s / 2 - 3;
-    g.clear();
-    softShadow(g, c + 3, c + 3, r + 2);
-    // A lumpy canopy seen from above: a dark rim of lobes, a mid body, lighter tops up and to the left.
-    const lobes = 6;
-    g.fillStyle(COLORS.treeDark, 1);
-    for (let i = 0; i < lobes; i++) {
-      const a = (i / lobes) * Math.PI * 2 + v;
-      g.fillCircle(c + Math.cos(a) * r * 0.45, c + Math.sin(a) * r * 0.45, r * 0.55);
-    }
-    g.fillStyle(COLORS.treeMid, 1);
-    g.fillCircle(c - 1, c - 1, r * 0.72);
-    for (let i = 0; i < 3; i++) {
-      const a = Math.PI * (1.0 + i * 0.35) + v * 0.3;
-      g.fillCircle(c + Math.cos(a) * r * 0.42 - 0.5, c + Math.sin(a) * r * 0.42 - 0.5, r * 0.36);
-    }
-    g.fillStyle(COLORS.treeLight, 1);
-    g.fillCircle(c - r * 0.3, c - r * 0.32, r * 0.28);
-    g.fillCircle(c + r * 0.1, c - r * 0.45, r * 0.18);
-    g.generateTexture(key, s, s);
-  });
+  for (const shape of TREE_SHAPES) {
+    TREE_EXTENT[shape].forEach((e, v) => {
+      const size = Math.ceil(2 * e + 10);
+      const c = size / 2 - 3;
+      g.clear();
+      softShadow(g, c + 3, c + 3, e * 0.85 + 1);
+      drawTree(g, shape, c, e, v);
+      g.generateTexture(treeKey(shape, v), size, size);
+    });
+  }
   BUSH_KEYS.forEach((key, v) => {
     const r = BUSH_R[v];
     const s = Math.ceil(2 * r + 10);
@@ -172,7 +213,7 @@ export class LivingMap {
       const tree = gr.kind === 'tree';
       // The texture's canopy centre is 3 px (bush 2 px) up and left of its middle: room for the shadow.
       const off = tree ? 3 : 2;
-      const top = scene.add.image(home.x + off, home.y + off, (tree ? TREE_KEYS : BUSH_KEYS)[gr.variant]);
+      const top = scene.add.image(home.x + off, home.y + off, gr.shape === 'bush' ? BUSH_KEYS[gr.variant] : treeKey(gr.shape, gr.variant));
       this.growth.push({ g: gr, top, home: { x: home.x + off, y: home.y + off } });
     }
     // The chimney's top on the screen (draw/map.ts exitCottage, drawn upright in both layouts).

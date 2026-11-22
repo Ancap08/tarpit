@@ -3,7 +3,8 @@
 import { describe, expect, it } from 'vitest';
 import { CELL, cellCenter, cellKey, distanceToPath, GRID_COLS, GRID_ROWS, isBuildableTerrain, MAP_IDS, MAPS, terrainBlock, type Rect } from '../../sim';
 import { birdAt, blinking, butterflyAt, cloudAt, glint, ripple, MOTION_COUNTS, smokePuff, STILL_T, sway } from './motion';
-import { BUSH_RANGE, canGrow, DECOR_KEEP_OUT, decorFor, GROWTH_TRAIL_CLEARANCE, hiddenGrowth, TREE_RANGE } from './recipe';
+import { AIM_BANNER, aimBannerMaxWidth } from '../names';
+import { BUSH_RANGE, canGrow, DECOR_KEEP_OUT, decorFor, GROWTH_TRAIL_CLEARANCE, hiddenGrowth, TREE_EXTENT, TREE_RANGE, type TreeShape } from './recipe';
 
 const inside = (x: number, y: number, r: Rect) => x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height;
 
@@ -96,6 +97,29 @@ describe('decorFor', () => {
       });
     });
   }
+
+  it('keeps clear of the aim banner at its widest, derived from its texts (477 px, as measured in the browser)', () => {
+    const w = aimBannerMaxWidth();
+    expect(w).toBeGreaterThanOrEqual(477);
+    const banner = { x: 480 - w / 2, y: AIM_BANNER.top, width: w, height: AIM_BANNER.height };
+    const box = DECOR_KEEP_OUT[0];
+    expect(box.x).toBeLessThanOrEqual(banner.x);
+    expect(box.x + box.width).toBeGreaterThanOrEqual(banner.x + banner.width);
+    expect(box.y + box.height).toBeGreaterThanOrEqual(banner.y + banner.height);
+    for (const id of MAP_IDS)
+      for (const g of decorFor(MAPS[id]).growth) {
+        const clear = g.x + g.r <= banner.x || g.x - g.r >= banner.x + banner.width || g.y - g.r >= banner.y + banner.height;
+        expect(clear, `${id} ${g.kind} ${g.id}`).toBe(true);
+      }
+  });
+
+  it('gives trees several shapes, sizes and real extents', () => {
+    for (const id of MAP_IDS) {
+      const trees = decorFor(MAPS[id]).growth.filter((g) => g.kind === 'tree');
+      expect(new Set(trees.map((t) => t.shape)).size, id).toBeGreaterThanOrEqual(3);
+      for (const t of trees) expect(t.r).toBe(TREE_EXTENT[t.shape as TreeShape][t.variant]);
+    }
+  });
 
   it('differs between maps', () => {
     expect(decorFor(MAPS.meadow).patches).not.toEqual(decorFor(MAPS.switchback).patches);

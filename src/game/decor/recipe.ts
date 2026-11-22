@@ -25,11 +25,13 @@ import {
   GRID_COLS,
   GRID_ROWS,
   isBuildableTerrain,
+  MAP_WIDTH,
   type Cell,
   type MapDef,
   type Point,
   type Rect,
 } from '../../sim';
+import { AIM_BANNER, aimBannerMaxWidth } from '../names';
 
 /** Trail strip half-width (draw/map.ts PATH_WIDTH / 2). */
 const TRAIL_HALF = 20;
@@ -38,8 +40,23 @@ export const GROWTH_TRAIL_CLEARANCE = 2 * CELL;
 /** Trees and bushes per map: inclusive ranges. */
 export const TREE_RANGE = { min: 8, max: 14 } as const;
 export const BUSH_RANGE = { min: 8, max: 14 } as const;
-/** Canopy radius per look variant: trees and bushes. */
-export const TREE_R = [13, 14.5, 16] as const;
+/**
+ * Tree shapes (milestone 34 follow-up 2): a round canopy, a taller
+ * two-lobe canopy, a conifer of stacked triangles, a small sapling. Each
+ * has three sizes (variant 0..2); TREE_EXTENT is the shape's real extent
+ * (half its larger side, px), the radius the clearance rules use.
+ */
+export type TreeShape = 'round' | 'twin' | 'conifer' | 'sapling';
+export const TREE_SHAPES: readonly TreeShape[] = ['round', 'twin', 'conifer', 'sapling'];
+/** Share of each shape among the trees (in TREE_SHAPES order). */
+const SHAPE_WEIGHTS = [0.35, 0.25, 0.25, 0.15];
+export const TREE_EXTENT: Readonly<Record<TreeShape, readonly [number, number, number]>> = {
+  round: [13, 14.5, 16],
+  twin: [13, 14.5, 16],
+  conifer: [15, 16, 17],
+  sapling: [8, 9, 10],
+};
+/** Bush radius per variant. */
 export const BUSH_R = [7, 8, 9] as const;
 /** Growth regions: the map's 30 x 15 cells in blocks of this many columns and rows (6 x 3 regions). */
 export const REGION_COLS_CELLS = 5;
@@ -50,18 +67,30 @@ export const MAX_SWAY_TUFTS = 12;
 const TREE_SPACING = 56;
 const BUSH_SPACING = 40;
 
+/** Margin round the keep-out boxes, px. */
+const KEEP_OUT_MARGIN = 4;
+/** The aim banner's widest width (names.ts aimBannerMaxWidth: its longest line in Courier New plus padding). */
+const AIM_W = aimBannerMaxWidth();
+
 /**
  * World rects where nothing grows: what stays over the map in either
- * layout (ui/bossBar.ts bossBarGeometry, GameScene's aim banner), with a
- * little margin. Landscape: the boss bar and the aim banner at the top
- * middle. Portrait (the map turned: world x runs down the screen, world y
- * right to left): the boss bar across the top of the screen (world x
- * 0..64; portrait shows no aim banner over the map). The wave and boss
- * banners (fx/effects.ts) show for 1.5 s only, so growth may sit under
- * them (milestone 34 follow-up, coordinator's ruling).
+ * layout, with a little margin. Landscape: the boss bar and its name pill
+ * (ui/bossBar.ts, x 330..630, y 4..38) and the aim banner at its widest
+ * (names.ts AIM_BANNER and aimBannerMaxWidth, centred on the map's middle,
+ * y 8..54), so the box is derived from the banner and cannot drift from
+ * it. Portrait (the map turned: world x runs down the screen, world y right
+ * to left): the boss bar across the top of the screen (world x 0..64);
+ * portrait shows no aim banner over the map. The wave and boss banners
+ * (fx/effects.ts) show for 1.5 s only, so growth may sit under them
+ * (milestone 34 follow-up, coordinator's ruling).
  */
 export const DECOR_KEEP_OUT: readonly Rect[] = [
-  { x: 296, y: 0, width: 368, height: 66 },
+  {
+    x: MAP_WIDTH / 2 - Math.max(AIM_W, 300) / 2 - KEEP_OUT_MARGIN,
+    y: 0,
+    width: Math.max(AIM_W, 300) + 2 * KEEP_OUT_MARGIN,
+    height: AIM_BANNER.top + AIM_BANNER.height + 3 * KEEP_OUT_MARGIN,
+  },
   { x: 0, y: 56, width: 66, height: 368 },
 ];
 
@@ -76,10 +105,12 @@ export interface Growth {
   /** Centre, world px (the cell centre with a small jitter). */
   x: number;
   y: number;
-  /** Canopy radius, px. */
+  /** Extent radius, px: half the shape's larger side (the clearance rules use it). */
   r: number;
-  /** Look variant (0..2). */
+  /** Size variant (0..2). */
   variant: number;
+  /** A tree's shape; 'bush' for a bush. */
+  shape: TreeShape | 'bush';
   /** Sway phase, radians. */
   phase: number;
 }
@@ -178,7 +209,8 @@ export function canGrow(cell: Cell, map: MapDef): boolean {
   if (distanceToPath(c, map) < GROWTH_TRAIL_CLEARANCE) return false;
   const x = cell.col * CELL;
   const y = cell.row * CELL;
-  if (DECOR_KEEP_OUT.some((r) => overlaps(x, y, CELL, CELL, r))) return false;
+  // The cell grown by 4 px: the largest extent (17 px) plus the 3 px jitter reaches 4 px past the cell.
+  if (DECOR_KEEP_OUT.some((r) => overlaps(x - 4, y - 4, CELL + 8, CELL + 8, r))) return false;
   // A cell clear of the river and the cottage, so no canopy hangs over them.
   return !nearBox(c.x, c.y, CELL / 2, [...(map.water ?? []), ...(map.landmarks ?? [])], CELL);
 }
@@ -239,17 +271,17 @@ export function decorFor(map: MapDef): Decor {
     }
   }
 
-  // Flower beds: a few clusters of 4 to 7 small flowers, in one of three colours each.
+  // Flower beds: a few clusters of 8 to 12 small flowers, in one of three colours each.
   const flowers: Dot[] = [];
   const flowerBeds: Point[] = [];
   for (let i = 0; i < 40 && flowerBeds.length < 12; i++) {
     const c = { x: 20 + r(S.flower, i, 0) * (map.width - 40), y: 20 + r(S.flower, i, 1) * (map.height - 40) };
-    if (!onGrass(c, map, 14)) continue;
+    if (!onGrass(c, map, 18)) continue;
     const tone = Math.floor(r(S.flower, i, 2) * 3);
-    const n = 4 + Math.floor(r(S.flower, i, 3) * 4);
+    const n = 8 + Math.floor(r(S.flower, i, 3) * 5);
     for (let j = 0; j < n; j++) {
-      const p = { x: c.x + (r(S.flower, i, 10 + j) - 0.5) * 22, y: c.y + (r(S.flower, i, 20 + j) - 0.5) * 18 };
-      if (onGrass(p, map, 2)) flowers.push({ ...p, r: 1.4 + r(S.flower, i, 30 + j) * 0.6, tone });
+      const p = { x: c.x + (r(S.flower, i, 10 + j) - 0.5) * 30, y: c.y + (r(S.flower, i, 20 + j) - 0.5) * 24 };
+      if (onGrass(p, map, 2)) flowers.push({ ...p, r: 1.8 + r(S.flower, i, 30 + j) * 0.8, tone });
     }
     if (distanceToPath(c, map) >= GROWTH_TRAIL_CLEARANCE + 8) flowerBeds.push(c);
   }
@@ -335,14 +367,27 @@ function growthFor(map: MapDef, seed: number): Growth[] {
       const jx = (hash01(seed, S.jitter * 7919 + k, 0) - 0.5) * 6;
       const jy = (hash01(seed, S.jitter * 7919 + k, 1) - 0.5) * 6;
       const variant = Math.floor(hash01(seed, S.jitter * 7919 + k, 3) * 3);
+      let shape: TreeShape | 'bush' = 'bush';
+      if (kind === 'tree') {
+        let u = hash01(seed, S.jitter * 7919 + k, 4);
+        shape = TREE_SHAPES[TREE_SHAPES.length - 1];
+        for (let i = 0; i < TREE_SHAPES.length; i++) {
+          if (u < SHAPE_WEIGHTS[i]) {
+            shape = TREE_SHAPES[i];
+            break;
+          }
+          u -= SHAPE_WEIGHTS[i];
+        }
+      }
       growth.push({
         id: growth.length,
         kind,
         cell,
         x: c.x + jx,
         y: c.y + jy,
-        r: kind === 'tree' ? TREE_R[variant] : BUSH_R[variant],
+        r: shape === 'bush' ? BUSH_R[variant] : TREE_EXTENT[shape][variant],
         variant,
+        shape,
         phase: hash01(seed, S.sway * 7919 + k) * Math.PI * 2,
       });
       placed += 1;

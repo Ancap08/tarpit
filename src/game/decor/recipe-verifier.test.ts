@@ -41,8 +41,8 @@ function overlays(): { name: string; rect: Rect }[] {
   // Landscape: the boss bar and its pill (screen = world), and the aim banner (18 px text; the touch
   // hint line is the widest, about 440 px with its 32 px padding): y 8..54, centred on x 480.
   out.push({ name: 'boss bar landscape', rect: { x: BOSS_BAR.x, y: BOSS_PILL.y, width: BOSS_BAR.width, height: BOSS_BAR.y + BOSS_BAR.height - BOSS_PILL.y } });
-  // The aim banner is checked at its real widest in the it.fails test below; here the keep-out's own 368 px (x 296..664).
-  out.push({ name: 'aim banner landscape (keep-out width)', rect: { x: 296, y: 8, width: 368, height: 46 } });
+  // The aim banner at its real widest (477 px, x 242..719; also checked on its own below).
+  out.push({ name: 'aim banner landscape (widest)', rect: { x: 242, y: 8, width: 477, height: 46 } });
   // Portrait: the boss bar in screen px, back to world px through the layout.
   const geo = bossBarGeometry(PORTRAIT);
   const a = PORTRAIT.toWorld({ x: geo.bar.x, y: geo.pill.y });
@@ -156,10 +156,10 @@ describe('verifier: recipe geometry, own maths', () => {
 
   // Measured in the browser (e2e): the aim banner's widest text is the touch hint (445 px at 13 px bold) and
   // the main line "Click the trail to shoot the Fire Arrows" (433 px at 18 px bold); with 32 px of padding the box
-  // is up to 477 px wide, centred on x 480 (x 242..719), y 8..54. DECOR_KEEP_OUT only covers x 296..664.
+  // is up to 477 px wide, centred on x 480 (x 242..719), y 8..54. DECOR_KEEP_OUT covered only x 296..664 before follow-up 2.
   // Switchback tree 3 (238, 14) and Riverbend bush 17 (242, 46) reach under it. Harmless to play (the banner is
   // drawn over them and is on screen only while aiming) but it breaks the stated rule "not under the aim banner".
-  it.fails('VERIFIER FINDING: no growth reaches under the widest aim banner (x 242..719)', () => {
+  it('no growth reaches under the widest aim banner (x 242..719; verifier finding, fixed in follow-up 2)', () => {
     const banner: Rect = { x: 242, y: 8, width: 477, height: 46 };
     for (const id of MAP_IDS) for (const g of decorFor(MAPS[id]).growth) expect(overlap({ x: g.x - g.r, y: g.y - g.r, width: 2 * g.r, height: 2 * g.r }, banner), `${id} ${g.kind} ${g.id}`).toBe(false);
   });

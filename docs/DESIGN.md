@@ -678,9 +678,9 @@ drawing in `src/game/decor/livingMap.ts` and `src/game/draw/map.ts`.
   run and device. The pattern is laid out in world space (the 960 x 480
   map), so portrait shows the same place turned with the map; the list
   does not depend on the layout.
-- **Ground.** Lighter and darker grass patches with soft edges, about 75
-  still tufts and up to 12 swaying ones, 70 to 95 small flowers in 12
-  beds (cream, yellow, lilac), 12 stones. The trail has a soft darker
+- **Ground.** Lighter and darker grass patches with soft edges, about 85
+  tufts (73 or 74 still, 12 swaying), 130 to 170 small flowers with a
+  small centre in 12 beds of 8 to 12 (cream, yellow, lilac), 12 stones. The trail has a soft darker
   margin, faint colour spots, two faint worn tracks about 8 px either side
   of the centreline in short broken dashes (7 to 22 px) that wander up to
   2 px sideways, and about 75 pebbles; it stays one continuous tan strip.
@@ -691,8 +691,13 @@ drawing in `src/game/decor/livingMap.ts` and `src/game/draw/map.ts`.
   cell, on buildable cells only: the cell centre at least two cells (64
   px) from the trail centreline, at least one cell clear of the river and
   the cottage, and not under the boss bar or the aim banner in either
-  layout. They may stand under the wave and boss banners, which show for
-  1.5 s. Cells are taken round-robin across 6 x 3 regions of the map (5 x
+  layout (the aim banner's box comes from its widest text, `names.ts`
+  `aimBannerMaxWidth`, 477 px). They may stand under the wave and boss
+  banners, which show for 1.5 s. Trees come in four flat shapes, lit from
+  the upper left, each in three sizes: a round canopy (about 35%), a
+  taller canopy of overlapping lobes (25%), a conifer of three stacked
+  triangles (25%) and a small light sapling (15%); the clearance rules use
+  each shape's real extent (8 to 17 px). Cells are taken round-robin across 6 x 3 regions of the map (5 x
   5 cells each), so growth covers the whole map. Building a tower on a
   tree's or bush's cell hides it (with a small puff in play); selling or
   moving the tower away brings it back. While a tower is being placed (a
@@ -710,6 +715,10 @@ drawing in `src/game/decor/livingMap.ts` and `src/game/draw/map.ts`.
   blinks every few seconds. Everything is pooled: at most 2 clouds, 4
   smoke puffs, 14 ripples, 3 glints, 1 bird, 1 butterfly and 4 build
   puffs.
+- **Cost.** The ground is one full-map image drawn every frame. With
+  WebGL (what players get) that costs nothing measurable; on the Canvas
+  fallback on a phone under heavy CPU throttling (20x) it costs about 46%
+  of frames.
 - **Order.** All of it draws under the zones, the placement highlight,
   towers, enemies, shots, hp bars, banners and the HUD. The static ground
   is drawn once into one image per map and layout; a layout switch or

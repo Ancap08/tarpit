@@ -6986,3 +6986,20 @@ Verifier: Claude Sonnet 5.5, independent of the implementer.
   27 px to a Troll's sprite edge; the boss (sprite reaches 80 px above his
   path point) and lifted Harpies can overlap a canopy, but all decoration
   draws under every enemy layer, so nothing is hidden.
+
+### Follow-up 2
+
+After the verifier's merge verdict, three small items. The aim banner
+keep-out was 368 px wide but the banner is up to 477 px (x 242..719): the
+keep-out is now derived from the banner's own texts (`names.ts`
+`AIM_BANNER` and `aimBannerMaxWidth`, Courier New at 0.6 em per character,
+477 px, the same constants GameScene draws it with), and the verifier's
+`it.fails` test is a normal passing test; counts did not change (Meadow 8
+and 8, Switchback 12 and 10, Riverbend 13 and 11). Trees now come in four
+seeded shapes (round, a taller lobed canopy, a conifer, a sapling) in
+three sizes each, lit from the upper left, with each shape's real extent
+used for the clearance rules; flower beds have 8 to 12 larger flowers
+with small centres. `DESIGN.md` now says about 85 tufts (the code makes
+85 or 86) and records the verifier's phone finding. Readability against
+main: mean within 0.6%, 10th percentile within 9.6% (unchanged worst
+case); perf spec median 16.7 ms in all three cases.

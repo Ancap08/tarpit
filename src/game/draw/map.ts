@@ -118,8 +118,11 @@ function grassTexture(g: Phaser.GameObjects.Graphics, d: Decor): void {
     g.fillEllipse(s.x, s.y, s.r * 2, s.r * 1.5);
   }
   for (const f of d.flowers) {
-    g.fillStyle(FLOWER_TONES[f.tone], 0.9);
+    g.fillStyle(FLOWER_TONES[f.tone], 0.95);
     g.fillCircle(f.x, f.y, f.r);
+    // A small centre, so each reads as a flower and not a dot.
+    g.fillStyle(f.tone === 1 ? COLORS.flowerCentreDark : COLORS.flowerCentre, 1);
+    g.fillCircle(f.x, f.y, f.r * 0.42);
   }
 }
 
