@@ -36,7 +36,7 @@ import {
 import type { EnemySprites } from '../anim/enemySprites';
 import { STEP_MS } from '../loop';
 import { BOSS_BANNER_SUB, BOSS_NAME, bonusGoldText, goldGainText, waveClearBanner, waveStartBanner } from '../names';
-import { LANDSCAPE, type Layout } from '../layout';
+import { fontPx, LANDSCAPE, PORTRAIT_MIN_FONT, type Layout } from '../layout';
 import { COLORS, FONT, TEXT } from '../palette';
 import { Aim, drawTowerScaled, MUZZLE, type TowerPose } from '../draw/towers';
 import {
@@ -208,7 +208,9 @@ export class Effects {
     this.startAim = new Aim(map);
     const exit = positionAlongPath(map, pathLength(map));
     const box = cottageFor(exit);
-    this.cottage = { x: box.x + box.width / 2, y: box.y + box.height - 12 };
+    // The glow's centre: 12 px above the cottage's base on the screen (milestone 32b: the cottage is drawn upright).
+    const c = layout.toScreen({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
+    this.cottage = layout.turned ? layout.toWorld({ x: c.x, y: c.y + box.height / 2 - 12 }) : { x: box.x + box.width / 2, y: box.y + box.height - 12 };
     this.motionQuery = typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
     if (!scene.textures.exists(SMOKE_KEY)) {
       const g = scene.make.graphics({}, false);
@@ -265,7 +267,7 @@ export class Effects {
       .setOrigin(0.5, 0.5)
       .setVisible(false);
     this.bannerSub = this.scene.add
-      .text(this.bannerX, 0, '', { fontFamily: FONT, fontSize: '17px', fontStyle: 'bold', color: TEXT.waveBannerSub, stroke: TEXT.fxStroke, strokeThickness: 4 })
+      .text(this.bannerX, 0, '', { fontFamily: FONT, fontSize: fontPx(this.layout, 17), fontStyle: 'bold', color: TEXT.waveBannerSub, stroke: TEXT.fxStroke, strokeThickness: 4 })
       .setOrigin(0.5, 0.5)
       .setVisible(false);
   }
@@ -434,7 +436,7 @@ export class Effects {
     const label = this.gold.labels[slot]!;
     const t = this.goldTexts[slot];
     if (!t) return;
-    if (!merged) t.setFontSize(big ? 34 : 17).setStroke(TEXT.fxStroke, big ? 6 : 4);
+    if (!merged) t.setFontSize(big ? 34 : this.layout.kind === 'portrait' ? PORTRAIT_MIN_FONT : 17).setStroke(TEXT.fxStroke, big ? 6 : 4);
     t.setText(goldGainText(label.amount)).setVisible(true);
   }
 
@@ -639,7 +641,7 @@ export class Effects {
   draw(g: Phaser.GameObjects.Graphics): void {
     const now = this.gameMs;
     for (const s of this.sells) {
-      drawTowerScaled(g, s.type, cellCenter(s.cell), { angle: s.angle, recoil: 0, scale: Math.max(0.01, popScale('sell', this.realMs - s.atMs)) }, s.upgraded);
+      drawTowerScaled(g, s.type, cellCenter(s.cell), { angle: s.angle, recoil: 0, scale: Math.max(0.01, popScale('sell', this.realMs - s.atMs)) }, s.upgraded, 1, this.layout);
     }
     for (const f of this.impacts) if (f && now >= f.bornMs) drawImpact(g, f, (now - f.bornMs) / IMPACT_MS[f.kind]);
     for (const p of this.projectiles) if (p) drawProjectile(g, p, (now - p.bornMs) / p.travelMs, this.layout);

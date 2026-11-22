@@ -38,6 +38,20 @@ const BUTTON_H = 42;
 /** [Menu] (milestone 25): smaller, to the right of [Play again]. */
 const MENU_W = 100;
 const BUTTON_GAP = 16;
+/**
+ * Portrait (milestone 32b): the row of buttons does not fit 480 px at
+ * thumb size, so they stack, 280 x 70 and 12 px apart, under the title and
+ * lines in a 440 px panel centred on the map.
+ */
+const P_PANEL_W = 440;
+const P_BUTTON_W = 280;
+const P_BUTTON_H = 70;
+const P_GAP = 12;
+/** From the panel's top: the title's centre, the lines' centre and the first button's top. */
+const P_TITLE_Y = 52;
+const P_LINES_Y = 124;
+const P_BUTTONS_Y = 178;
+const P_PAD_BOTTOM = 24;
 
 export class EndScreen {
   private readonly veil: Phaser.GameObjects.Rectangle;
@@ -50,12 +64,18 @@ export class EndScreen {
   private readonly buttonY: number;
   private readonly cx: number;
   private shown: EndKind | null = null;
+  private readonly portrait: boolean;
+  private readonly cy: number;
 
   /** `layout` (milestone 32b): the veil covers its map box and the panel is centred on it. */
   constructor(scene: Phaser.Scene, layout: Layout, onPlayAgain: () => void, onMenu: () => void, onKeepGoing: () => void) {
     const MAP_AREA = layout.map;
     const cx = MAP_AREA.x + MAP_AREA.width / 2;
     const cy = MAP_AREA.y + MAP_AREA.height / 2;
+    this.portrait = layout.kind === 'portrait';
+    this.cy = cy;
+    const bw = this.portrait ? P_BUTTON_W : BUTTON_W;
+    const bh = this.portrait ? P_BUTTON_H : BUTTON_H;
     const top = cy - PANEL_H / 2;
 
     this.veil = scene.add
@@ -82,18 +102,18 @@ export class EndScreen {
     const y = top + PANEL_H - BUTTON_H - 22;
     this.buttonY = y;
     this.cx = cx;
-    this.button = new Button(scene, { x: left, y, width: BUTTON_W, height: BUTTON_H }, END_TEXT.playAgain, onPlayAgain, {
-      fontSize: '20px',
+    this.button = new Button(scene, { x: left, y, width: bw, height: bh }, END_TEXT.playAgain, onPlayAgain, {
+      fontSize: this.portrait ? '22px' : '20px',
     });
     this.menu = new Button(
       scene,
-      { x: left + BUTTON_W + BUTTON_GAP, y, width: MENU_W, height: BUTTON_H },
+      { x: left + BUTTON_W + BUTTON_GAP, y, width: this.portrait ? P_BUTTON_W : MENU_W, height: bh },
       END_TEXT.menu,
       onMenu,
-      { fontSize: '18px' },
+      { fontSize: this.portrait ? '22px' : '18px' },
     );
-    this.keepGoing = new Button(scene, { x: 0, y, width: KEEP_GOING_W, height: BUTTON_H }, END_TEXT.keepGoing, onKeepGoing, {
-      fontSize: '20px',
+    this.keepGoing = new Button(scene, { x: 0, y, width: this.portrait ? P_BUTTON_W : KEEP_GOING_W, height: bh }, END_TEXT.keepGoing, onKeepGoing, {
+      fontSize: this.portrait ? '22px' : '20px',
     });
     this.keepGoing.setPicked(true);
     this.setVisible(false);
@@ -132,6 +152,16 @@ export class EndScreen {
   /** The panel width and the button row for this screen: two buttons, or three on the win screen (milestone 26). */
   private layout(kind: EndKind): void {
     const won = kind === 'won';
+    if (this.portrait) {
+      const column = won ? [this.keepGoing, this.button, this.menu] : [this.button, this.menu];
+      const h = P_BUTTONS_Y + column.length * P_BUTTON_H + (column.length - 1) * P_GAP + P_PAD_BOTTOM;
+      const top = this.cy - h / 2;
+      this.panel.setSize(P_PANEL_W, h).setDisplayOrigin(P_PANEL_W / 2, h / 2);
+      this.title.setY(top + P_TITLE_Y);
+      this.lines.setY(top + P_LINES_Y);
+      column.forEach((b, i) => b.moveTo(this.cx - P_BUTTON_W / 2, top + P_BUTTONS_Y + i * (P_BUTTON_H + P_GAP)));
+      return;
+    }
     this.panel.setSize(won ? PANEL_W_WON : PANEL_W, PANEL_H);
     const row = won ? [this.keepGoing, this.button, this.menu] : [this.button, this.menu];
     const total = row.reduce((n, b) => n + b.rect.width, 0) + (row.length - 1) * BUTTON_GAP;

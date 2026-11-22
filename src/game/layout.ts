@@ -125,3 +125,45 @@ export class Layout {
 
 /** Today's layout: a 960 x 580 canvas, the map at the top, the HUD's two rows under it. */
 export const LANDSCAPE = new Layout('landscape', { width: 960, height: 580 }, { x: 0, y: 0, width: MAP_WIDTH, height: MAP_HEIGHT });
+
+/**
+ * Portrait (milestone 32b): a 480 px wide canvas. From the top: the status
+ * strip (PORTRAIT_STRIP_H), the map turned a quarter turn clockwise (480 x
+ * 960: world x runs down the screen, world y right to left, so the spawn is
+ * at the top and the cottage at the bottom), then the controls: a row of
+ * the six tower buttons and a row with Special, Start Wave and speed, each
+ * PORTRAIT_BUTTON_H tall with PORTRAIT_GAP around them.
+ *
+ * Sizes: on a 390 x 763 CSS px phone (iPhone standalone, inside the safe
+ * areas) the 480 x 1194 canvas fits at 763 / 1194 = 0.639, so a 70 px
+ * button is 44.7 CSS px and 18 px text is 11.5 CSS px; with Safari's bars
+ * (390 x 664) the scale is 0.556: buttons 38.9 CSS px, 18 px text 10.0.
+ */
+export const PORTRAIT_WIDTH = 480;
+export const PORTRAIT_STRIP_H = 76;
+export const PORTRAIT_BUTTON_H = 70;
+export const PORTRAIT_GAP = 6;
+/** Top of the controls (the map's bottom edge). */
+export const PORTRAIT_CONTROLS_Y = PORTRAIT_STRIP_H + MAP_WIDTH;
+export const PORTRAIT_ROW1_Y = PORTRAIT_CONTROLS_Y + PORTRAIT_GAP;
+export const PORTRAIT_ROW2_Y = PORTRAIT_ROW1_Y + PORTRAIT_BUTTON_H + PORTRAIT_GAP;
+export const PORTRAIT_HEIGHT = PORTRAIT_ROW2_Y + PORTRAIT_BUTTON_H + PORTRAIT_GAP;
+
+export const PORTRAIT = new Layout(
+  'portrait',
+  { width: PORTRAIT_WIDTH, height: PORTRAIT_HEIGHT },
+  { x: 0, y: PORTRAIT_STRIP_H, width: MAP_HEIGHT, height: MAP_WIDTH },
+);
+
+/** Portrait text is at least this size, so it reads at 11 CSS px or more on a 390 x 763 phone. */
+export const PORTRAIT_MIN_FONT = 18;
+
+/** The layout for a window: taller than it is wide is portrait, anything else landscape. */
+export function layoutFor(width: number, height: number): Layout {
+  return height > width ? PORTRAIT : LANDSCAPE;
+}
+
+/** A font size in px for `layout`: as given in landscape, at least PORTRAIT_MIN_FONT in portrait. */
+export function fontPx(layout: Layout, px: number): string {
+  return `${layout.kind === 'portrait' ? Math.max(px, PORTRAIT_MIN_FONT) : px}px`;
+}

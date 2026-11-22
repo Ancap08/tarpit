@@ -9,6 +9,7 @@
 import type Phaser from 'phaser';
 import { enemyMaxHp, isBoss, type GameState } from '../../sim';
 import { BOSS_NAME } from '../names';
+import { LANDSCAPE, PORTRAIT_MIN_FONT, type Layout } from '../layout';
 import { COLORS, FONT, TEXT } from '../palette';
 
 export const BOSS_BAR = { x: 330, y: 24, width: 300, height: 14 } as const;
@@ -16,6 +17,31 @@ export const BOSS_BAR = { x: 330, y: 24, width: 300, height: 14 } as const;
 export const BOSS_PILL = { y: 4, height: 18, padX: 6 } as const;
 export const BOSS_NAME_SIZE = 14;
 export const BOSS_HP_SIZE = 11;
+
+/** The bar's geometry: the bar, the name pill above it and the two text sizes. */
+export interface BossBarGeometry {
+  bar: { x: number; y: number; width: number; height: number };
+  pill: { y: number; height: number; padX: number };
+  nameSize: number;
+  hpSize: number;
+}
+
+/**
+ * Where the boss bar goes in `layout` (milestone 32b): landscape as above;
+ * portrait a 360 px bar 30 px under the map's top edge, with 18 px text
+ * (the hp count inside the bar), centred across the 480 px map.
+ */
+export function bossBarGeometry(layout: Layout): BossBarGeometry {
+  if (layout.kind === 'landscape') return { bar: { ...BOSS_BAR }, pill: { ...BOSS_PILL }, nameSize: BOSS_NAME_SIZE, hpSize: BOSS_HP_SIZE };
+  const m = layout.map;
+  const width = 360;
+  return {
+    bar: { x: m.x + (m.width - width) / 2, y: m.y + 34, width, height: 22 },
+    pill: { y: m.y + 6, height: 26, padX: 6 },
+    nameSize: PORTRAIT_MIN_FONT,
+    hpSize: PORTRAIT_MIN_FONT,
+  };
+}
 
 export interface BossBarInfo {
   name: string;
@@ -44,13 +70,17 @@ export class BossBar {
   private readonly name: Phaser.GameObjects.Text;
   private readonly hp: Phaser.GameObjects.Text;
   private info: BossBarInfo | null = null;
+  private readonly geo: BossBarGeometry;
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene, layout: Layout = LANDSCAPE) {
+    const geo = bossBarGeometry(layout);
+    const { bar: BOSS_BAR, pill: BOSS_PILL } = geo;
+    this.geo = geo;
     this.g = scene.add.graphics();
     this.name = scene.add
       .text(BOSS_BAR.x + BOSS_PILL.padX, BOSS_PILL.y + BOSS_PILL.height / 2, '', {
         fontFamily: FONT,
-        fontSize: `${BOSS_NAME_SIZE}px`,
+        fontSize: `${geo.nameSize}px`,
         fontStyle: 'bold',
         color: TEXT.bossName,
       })
@@ -58,7 +88,7 @@ export class BossBar {
     this.hp = scene.add
       .text(BOSS_BAR.x + BOSS_BAR.width - 4, BOSS_BAR.y + BOSS_BAR.height / 2, '', {
         fontFamily: FONT,
-        fontSize: `${BOSS_HP_SIZE}px`,
+        fontSize: `${geo.hpSize}px`,
         fontStyle: 'bold',
         color: TEXT.bossHp,
       })
@@ -81,7 +111,8 @@ export class BossBar {
     }
     if (this.name.text !== info.name) this.name.setText(info.name);
     if (this.hp.text !== info.hpText) this.hp.setText(info.hpText);
-    const { x, y, width, height } = BOSS_BAR;
+    const { x, y, width, height } = this.geo.bar;
+    const BOSS_PILL = this.geo.pill;
     const g = this.g;
     g.clear();
     // Name pill, sized to the name.

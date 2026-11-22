@@ -1,5 +1,5 @@
 // Shape of window.__tarpit. Outside test mode only `game` and the read-only (milestone 31: also `fx()` and `towerAngle()`)
-// `uiRects()`, `canvasToPage()`, `portraitCardVisible()`, `animState()` and
+// `uiRects()`, `canvasToPage()`, (milestone 32b) `layout()`, `cellToPage()`, `worldToPage()`, `animState()` and
 // (milestone 26 follow-up) `titleReady()` are set (uiRects() lists the title
 // buttons once the title is ready, and the game's once GameScene runs); with ?test=1 every hook below is
 // present (see testMode.ts).
@@ -96,8 +96,9 @@ export interface TarpitTestApi {
    * `menu` while an end screen shows. On the title menu (milestone 25):
    * `title:easy`, `title:normal`, `title:hard`, `title:play` and (milestone
    * 27) `title:map:meadow`, `title:map:switchback`, `title:map:riverbend` only, and
-   * only once titleReady() (none before the menu's first frame). Map cells are not listed: cell (col, row) is clicked at
-   * (col * 32 + 16, row * 32 + 16). At the 960x580 test viewport, canvas
+   * only once titleReady() (none before the menu's first frame). Map cells are not listed: use cellToPage()
+   * (milestone 32b; in landscape cell (col, row) is at canvas (col * 32 + 16, row * 32 + 16)).
+   * Rectangles are in canvas coordinates for the active layout. At the 960x580 test viewport, canvas
    * space equals page space; at other sizes use canvasToPage(). The open
    * panel also lists `panel:close`. `panel:upgrade` and `panel:sell` keep
    * their names when they read "Undo upgrade" and "Remove" (milestone 25a).
@@ -112,8 +113,12 @@ export interface TarpitTestApi {
    * manager's fit and letterboxing, for page.mouse and page.touchscreen.
    */
   canvasToPage(x: number, y: number): { x: number; y: number };
-  /** True while the "turn your device" card shows (portrait window). */
-  portraitCardVisible(): boolean;
+  /** Milestone 32b (it replaces portraitCardVisible): the layout the window gets, 'landscape' or 'portrait'. */
+  layout(): 'landscape' | 'portrait';
+  /** Milestone 32b: the page point of a map cell's centre in the active layout, for page.mouse and page.touchscreen. */
+  cellToPage(col: number, row: number): { x: number; y: number };
+  /** Milestone 32b: the page point of a world point (the simulation's 960 x 480 map) in the active layout. */
+  worldToPage(x: number, y: number): { x: number; y: number };
   /**
    * The title menu is showing and has been drawn, so its buttons take
    * clicks (milestone 26 follow-up; TitleScene "Ready"). Wait for it
@@ -169,7 +174,7 @@ export interface TarpitTestApi {
   towerAngle(col: number, row: number): number | null;
 }
 
-export type TarpitGlobal = Pick<TarpitTestApi, 'game' | 'uiRects' | 'canvasToPage' | 'portraitCardVisible' | 'animState' | 'titleReady' | 'fx' | 'towerAngle'> &
+export type TarpitGlobal = Pick<TarpitTestApi, 'game' | 'uiRects' | 'canvasToPage' | 'layout' | 'cellToPage' | 'worldToPage' | 'animState' | 'titleReady' | 'fx' | 'towerAngle'> &
   Partial<TarpitTestApi>;
 
 declare global {

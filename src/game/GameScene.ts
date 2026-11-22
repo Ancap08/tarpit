@@ -65,8 +65,13 @@
 // CHEAT_WINDOW_MS call grantCheatGold. A cheated game records no best score
 // (recordScore) for the rest of that game; Play again starts a clean one.
 //
-// Portrait: while the "turn your device" card shows (portrait.ts), update()
-// runs no ticks and drops the time it would have accumulated.
+// Layouts (milestone 32b): the scene is built for the layout of the window
+// at create() (layoutSwitch.ts currentLayout): landscape, or portrait with
+// the map turned a quarter turn. When the window changes shape,
+// relayout() restarts the scene on the same GameState (and its waves
+// cleared record and tick accumulator), so no tick is lost or run twice;
+// the pick, a drag, an aim, the popup, the panel and the speed (back to 1x)
+// clear, and the effects in flight start fresh.
 //
 // Animation (milestone 16): enemies are sprites (anim/enemySprites.ts). The
 // scene hands the simulation's events (state.events) to them through an
@@ -163,7 +168,7 @@ import { ShotEffects } from './draw/shots';
 import { SpecialEffects } from './draw/specials';
 import { Aim, drawTowerShape, drawTowers } from './draw/towers';
 import { highScores } from './highScore';
-import { callEarlyInfo, CHEAT_TAPS, CHEAT_WINDOW_MS, GOLD_RECT, Hud, specialReady, specialRecharge } from './hud';
+import { callEarlyInfo, CHEAT_TAPS, CHEAT_WINDOW_MS, Hud, specialReady, specialRecharge } from './hud';
 import { aimBannerText } from './names';
 import {
   cellAt,
@@ -176,9 +181,9 @@ import {
   pastDragThreshold,
   type Rect,
 } from './input';
-import { LANDSCAPE, type Layout } from './layout';
+import { LANDSCAPE, PORTRAIT_MIN_FONT, type Layout, type LayoutKind } from './layout';
 import { COLORS, FONT, TEXT } from './palette';
-import { portraitCardVisible } from './portrait';
+import { currentLayout } from './layoutSwitch';
 import { isPerfMode, isTestMode } from './testMode';
 import type { GameStartData } from './TitleScene';
 import { ticksDue } from './loop';
@@ -213,6 +218,8 @@ export interface UiState {
   isTouch: boolean;
   /** The map this game is played on (milestone 27). */
   map: MapId;
+  /** Milestone 32b: the layout the scene is drawn in. */
+  layout: LayoutKind;
   /** The selected tower's cell (its panel is open), or null. */
   selectedCell: Cell | null;
   panelOpen: boolean;
@@ -394,6 +401,8 @@ export class GameScene extends Phaser.Scene {
   /** On touch while aiming: the press in progress, or null. */
   private aimPress: AimPress | null = null;
   private aim!: Aim;
+  /** Milestone 32b: the game a relayout() carries into the restarted scene, until create() takes it. */
+  private resume: { state: GameState; recordedCleared: number; accMs: number } | null = null;
   /** Waves cleared already sent to the high score store this game (milestone 26). */
   private recordedCleared = 0;
   private readonly autoTick = !isTestMode();
@@ -409,11 +418,25 @@ export class GameScene extends Phaser.Scene {
     this.currentMap = data?.map ?? DEFAULT_MAP;
   }
 
+  /**
+   * Milestone 32b: rebuild the scene for the window's new layout and keep
+   * the game. layoutSwitch.ts calls this after it resized the canvas.
+   */
+  relayout(): void {
+    if (!this.dynamic) return;
+    this.resume = { state: this.state, recordedCleared: this.recordedCleared, accMs: this.accMs };
+    const data: GameStartData = { difficulty: this.state.difficulty, map: this.currentMap };
+    this.scene.restart(data);
+  }
+
   create(): void {
-    this.state = createGame({ difficulty: this.difficulty, map: this.currentMap });
-    this.recordedCleared = 0;
+    this.layout = currentLayout();
+    const resume = this.resume;
+    this.resume = null;
+    this.state = resume?.state ?? createGame({ difficulty: this.difficulty, map: this.currentMap });
+    this.recordedCleared = resume?.recordedCleared ?? 0;
     this.speed = 1;
-    this.accMs = 0;
+    this.accMs = resume?.accMs ?? 0;
     this.shots = new ShotEffects();
     this.specialFx = new SpecialEffects(this, isTestMode(), this.layout);
     this.speedPress = null;
@@ -421,6 +444,8 @@ export class GameScene extends Phaser.Scene {
     this.goldTaps = [];
     this.aim = new Aim(this.state.map);
     this.eventCursor = new EventCursor();
+    // A resumed game's current events were already handed out before the relayout.
+    if (resume) this.eventCursor.take(this.state);
     this.aiming = null;
     this.specialMenuOpen = false;
     this.touchAim = null;
@@ -442,7 +467,8 @@ export class GameScene extends Phaser.Scene {
     // reaching below the map), then the panel and the end screen on top.
     // Milestone 32b: world-space layers take the layout's transform (placeWorld); the rest is placed through it.
     const world = () => this.layout.placeWorld(this.add.graphics());
-    drawMap(world(), this.state.map);
+    const mapLayer = world();
+    drawMap(mapLayer, this.state.map, this.layout, this.layout.turned ? this.add.graphics() : undefined);
     this.ground = world();
     this.overlay = world();
     this.dynamic = world();
@@ -462,8 +488,17 @@ export class GameScene extends Phaser.Scene {
     const bannerTop = this.layout.map.y + BANNER_Y;
     const bannerText = (y: number, size: string, color: string) =>
       this.add.text(this.bannerX, y, '', { fontFamily: FONT, fontSize: size, fontStyle: 'bold', color }).setOrigin(0.5, 0.5).setDepth(4);
-    this.bannerMain = bannerText(bannerTop + 14, '18px', TEXT.aimBanner);
-    this.bannerHint = bannerText(bannerTop + 34, '13px', TEXT.aimHint);
+    if (this.layout.kind === 'portrait') {
+      // Milestone 32b: 18 px for both lines; the touch hint wraps to two lines inside the 480 px map.
+      this.bannerMain = bannerText(bannerTop + 8, `${PORTRAIT_MIN_FONT}px`, TEXT.aimBanner).setOrigin(0.5, 0);
+      this.bannerHint = bannerText(bannerTop + 32, `${PORTRAIT_MIN_FONT}px`, TEXT.aimHint)
+        .setOrigin(0.5, 0)
+        .setAlign('center')
+        .setWordWrapWidth(this.layout.map.width - 48, true);
+    } else {
+      this.bannerMain = bannerText(bannerTop + 14, '18px', TEXT.aimBanner);
+      this.bannerHint = bannerText(bannerTop + 34, '13px', TEXT.aimHint);
+    }
     this.hud = new Hud(this, {
       // Milestone 25c: mid-wave, Start Wave reads "Call next  +N" and calls the next wave.
       onStartWave: () => (callEarlyStatus(this.state).ok ? this.callNextWave() : this.startWave()),
@@ -472,7 +507,7 @@ export class GameScene extends Phaser.Scene {
       onPick: (type) => this.togglePick(type),
       onSpecial: () => this.onSpecialButton(),
       onSpecialPick: (type) => this.selectSpecial(type),
-    });
+    }, this.layout);
     this.panel = new TowerPanel(this, this.layout, {
       onUpgrade: () => {
         if (this.panel.cell !== null) this.upgrade(this.panel.cell);
@@ -505,7 +540,7 @@ export class GameScene extends Phaser.Scene {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       this.press = null;
       this.aimPress = null;
-      if (contains(GOLD_RECT, p.x, p.y)) this.goldTap();
+      if (contains(this.hud.rects().gold, p.x, p.y)) this.goldTap();
       if (this.specialPointerDown(p.x, p.y, p.wasTouch)) return;
       if (p.wasTouch) this.onTap(p.x, p.y);
       else this.onPointerDown(p.x, p.y);
@@ -937,6 +972,7 @@ export class GameScene extends Phaser.Scene {
 
   uiState(): UiState {
     return {
+      layout: this.layout.kind,
       map: this.currentMap,
       pick: this.pick,
       hoverCell: this.hoverCell,
@@ -1007,9 +1043,7 @@ export class GameScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     this.checkSpeedHold();
     this.checkAimHold();
-    if (this.autoTick && portraitCardVisible()) {
-      this.accMs = 0;
-    } else if (this.autoTick) {
+    if (this.autoTick) {
       // Ticks beyond the cap are dropped (see loop.ts for why).
       const { ticks, accMs } = ticksDue(this.accMs + delta, this.speed);
       this.accMs = accMs;
@@ -1222,7 +1256,7 @@ export class GameScene extends Phaser.Scene {
     const moving = this.press?.active && this.press.kind === 'move' ? this.press.from : null;
     const fx = this.fx;
     fx?.update(this.state);
-    drawTowers(g, this.state, this.aim, moving, fx ? (cell, type) => fx.towerPose(cell, type) : undefined);
+    drawTowers(g, this.state, this.aim, moving, fx ? (cell, type) => fx.towerPose(cell, type) : undefined, this.layout);
     drawStatusRings(g, this.state, this.layout);
     drawShadows(g, this.state, this.layout);
     this.enemySprites.sync(this.state, this.speed);
@@ -1254,9 +1288,10 @@ export class GameScene extends Phaser.Scene {
       this.bannerBg.clear();
       if (text !== null) {
         const w = Math.max(this.bannerMain.width, this.bannerHint.width) + 32;
+        const h = this.layout.kind === 'portrait' ? 32 + this.bannerHint.height + 8 : BANNER_H;
         const top = this.layout.map.y + BANNER_Y;
-        this.bannerBg.fillStyle(COLORS.aimBanner, 0.82).fillRoundedRect(this.bannerX - w / 2, top, w, BANNER_H, 8);
-        this.bannerBg.lineStyle(2, SPECIAL_COLORS[this.aiming!], 1).strokeRoundedRect(this.bannerX - w / 2, top, w, BANNER_H, 8);
+        this.bannerBg.fillStyle(COLORS.aimBanner, 0.82).fillRoundedRect(this.bannerX - w / 2, top, w, h, 8);
+        this.bannerBg.lineStyle(2, SPECIAL_COLORS[this.aiming!], 1).strokeRoundedRect(this.bannerX - w / 2, top, w, h, 8);
       }
     }
   }
@@ -1343,13 +1378,13 @@ export class GameScene extends Phaser.Scene {
       const angle = this.aim.angle(moved ? moved.cell : hover);
       if (hoverBuildable) {
         this.rangeCircles(hover, moved ? towerStats(moved) : TOWER_DEFS[ghostType].base);
-        drawTowerShape(g, ghostType, cellCenter(hover), angle, upgraded, GHOST_ALPHA);
+        drawTowerShape(g, ghostType, cellCenter(hover), angle, upgraded, GHOST_ALPHA, 0, this.layout);
       } else if (drag !== null) {
         // During a drag a blocked cell also shows a faint red-tinted ghost,
         // so the player sees where it would land. Click and two-tap
         // placement keep the red cell only (no ghost, no range).
         const c = cellCenter(hover);
-        drawTowerShape(g, ghostType, c, angle, upgraded, BLOCKED_GHOST_ALPHA);
+        drawTowerShape(g, ghostType, c, angle, upgraded, BLOCKED_GHOST_ALPHA, 0, this.layout);
         g.fillStyle(COLORS.cellBad, BLOCKED_GHOST_TINT);
         g.fillCircle(c.x, c.y, 15);
       }

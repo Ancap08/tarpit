@@ -197,7 +197,10 @@ export class SpecialEffects {
       const flicker = this.frozen ? 1 : 0.75 + 0.25 * Math.sin(this.timeMs / 90 + i * 1.7);
       const h = 14 * flicker;
       g.fillStyle(i % 3 === 0 ? COLORS.fireBurstCore : COLORS.fireFlame, 0.9 * fade);
-      g.fillTriangle(x - 5, y + 4, x + 5, y + 4, x, y + 4 - h);
+      // Flames point up the screen in any layout (milestone 32b).
+      const foot = this.layout.offset({ x, y }, 0, 4);
+      const [a, b, c] = [this.layout.offset(foot, -5, 0), this.layout.offset(foot, 5, 0), this.layout.offset(foot, 0, -h)];
+      g.fillTriangle(a.x, a.y, b.x, b.y, c.x, c.y);
     }
   }
 
@@ -227,9 +230,10 @@ export class SpecialEffects {
           for (let i = 0; i < ARROWS; i++) {
             const ang = (i * 2 * Math.PI) / ARROWS + 0.4;
             const r = f.radius * (i % 2 === 0 ? 0.6 : 0.3);
-            const tx = f.x + Math.cos(ang) * r;
-            const y = f.y + Math.sin(ang) * r - ARROW_FALL * (1 - fall);
-            g.lineBetween(tx - 3, y - ARROW_LENGTH, tx, y);
+            // The arrows fall down the screen in any layout (milestone 32b).
+            const head = this.layout.offset({ x: f.x + Math.cos(ang) * r, y: f.y + Math.sin(ang) * r }, 0, -ARROW_FALL * (1 - fall));
+            const tail = this.layout.offset(head, -3, -ARROW_LENGTH);
+            g.lineBetween(tail.x, tail.y, head.x, head.y);
           }
           break;
         }

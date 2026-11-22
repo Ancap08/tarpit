@@ -9,7 +9,7 @@ import { SPECIAL_TYPES, type SpecialType } from '../../sim';
 import type { Rect } from '../input';
 import { SPECIAL_NAMES } from '../names';
 import { COLORS } from '../palette';
-import { Button, STACK_BUTTON_HEIGHT, STACK_BUTTON_WIDTH } from './button';
+import { Button, STACK_SIZE, type StackSize } from './button';
 
 const PAD = 6;
 const GAP = 4;
@@ -28,15 +28,18 @@ export class SpecialMenu {
     private readonly left: number,
     private readonly hudTop: number,
     onPick: (type: SpecialType) => void,
+    /** Milestone 32b: portrait passes larger buttons and text. */
+    private readonly size: StackSize = STACK_SIZE,
+    fontSize = '16px',
   ) {
     this.backing = scene.add
-      .rectangle(0, 0, STACK_BUTTON_WIDTH + 2 * PAD, 10, COLORS.menuBg, 0.92)
+      .rectangle(0, 0, size.buttonW + 2 * PAD, 10, COLORS.menuBg, 0.92)
       .setOrigin(0, 0)
       .setStrokeStyle(1.5, COLORS.menuEdge, 0.8)
       .setVisible(false);
     const make = (type: SpecialType) =>
-      new Button(scene, { x: 0, y: 0, width: STACK_BUTTON_WIDTH, height: STACK_BUTTON_HEIGHT }, SPECIAL_NAMES[type], () => onPick(type), {
-        fontSize: '16px',
+      new Button(scene, { x: 0, y: 0, width: size.buttonW, height: size.buttonH }, SPECIAL_NAMES[type], () => onPick(type), {
+        fontSize,
       });
     this.buttons = { keg: make('keg'), tarBarrel: make('tarBarrel'), fireArrows: make('fireArrows') };
     for (const b of Object.values(this.buttons)) b.setShown(false);
@@ -57,16 +60,16 @@ export class SpecialMenu {
       for (const b of Object.values(this.buttons)) b.setShown(false);
       return;
     }
-    const height = 2 * PAD + types.length * STACK_BUTTON_HEIGHT + (types.length - 1) * GAP;
+    const height = 2 * PAD + types.length * this.size.buttonH + (types.length - 1) * GAP;
     const top = this.hudTop - MENU_GAP_ABOVE_HUD - height;
-    this.box = { x: this.left, y: top, width: STACK_BUTTON_WIDTH + 2 * PAD, height };
+    this.box = { x: this.left, y: top, width: this.size.buttonW + 2 * PAD, height };
     this.backing.setPosition(this.left, top).setSize(this.box.width, height).setVisible(true);
     for (const type of SPECIAL_TYPES) {
       const i = types.indexOf(type);
       const b = this.buttons[type];
       if (i < 0) b.setShown(false);
       else {
-        b.moveTo(this.left + PAD, top + PAD + i * (STACK_BUTTON_HEIGHT + GAP));
+        b.moveTo(this.left + PAD, top + PAD + i * (this.size.buttonH + GAP));
         b.setShown(true);
       }
     }

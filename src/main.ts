@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { GameScene } from './game/GameScene';
-import { installPortraitCard } from './game/portrait';
+import { currentLayout, installLayoutSwitch } from './game/layoutSwitch';
 import { registerServiceWorker } from './sw/register';
 import { installGlobal, isTestMode } from './game/testMode';
 import { TitleScene } from './game/TitleScene';
@@ -22,10 +22,12 @@ const game = new Phaser.Game({
   pixelArt: true,
   roundPixels: true,
   parent: 'game',
-  width: 960,
-  height: 580,
+  // Milestone 32b: 960 x 580 in landscape, 480 x 1194 in portrait (layout.ts);
+  // layoutSwitch.ts changes the size when the window's shape changes.
+  width: currentLayout().width,
+  height: currentLayout().height,
   backgroundColor: '#111418',
-  // FIT keeps the 960 x 580 canvas whole and letterboxes the rest of the
+  // FIT keeps the canvas whole and letterboxes the rest of the
   // screen; Phaser re-fits on resize and orientation changes. All game and
   // test coordinates stay in canvas space (see canvasToPage in testMode.ts).
   scale: {
@@ -35,6 +37,6 @@ const game = new Phaser.Game({
   scene: [TitleScene, GameScene],
 });
 
-installPortraitCard();
+installLayoutSwitch(game);
 installGlobal(game);
 registerServiceWorker();

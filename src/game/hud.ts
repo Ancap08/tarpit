@@ -62,7 +62,20 @@ import {
 import { COLORS, FONT, TEXT } from './palette';
 import { BossBar } from './ui/bossBar';
 import { BuildBar } from './ui/buildBar';
-import { Button } from './ui/button';
+import { Button, STACK_SIZE, type StackSize } from './ui/button';
+import {
+  LANDSCAPE,
+  PORTRAIT_BUTTON_H,
+  PORTRAIT_CONTROLS_Y,
+  PORTRAIT_GAP,
+  PORTRAIT_HEIGHT,
+  PORTRAIT_MIN_FONT,
+  PORTRAIT_ROW1_Y,
+  PORTRAIT_ROW2_Y,
+  PORTRAIT_STRIP_H,
+  PORTRAIT_WIDTH,
+  type Layout,
+} from './layout';
 import { SpecialMenu } from './ui/specialMenu';
 
 export type { Rect };
@@ -237,6 +250,105 @@ export interface HudHandlers {
 /** The Lives readout's left edge. */
 const LIVES_X = 126;
 
+/**
+ * Where everything in the HUD goes (milestone 32b). Landscape: the
+ * milestone 14 to 30 bar under the map, exactly as before. Portrait: a
+ * status strip over the map (gold, lives, the wave and level tag in a row,
+ * the cheat mark at its right end, the preview on up to two lines under
+ * them) and the controls under the map (layout.ts).
+ */
+export interface HudMetrics {
+  portrait: boolean;
+  /** HUD backgrounds and their edge lines. */
+  bands: Rect[];
+  lines: Rect[];
+  /** Row of stats: centre y and font size. */
+  statY: number;
+  statSize: string;
+  goldX: number;
+  /** Portrait: gap between the stats, which follow each other's widths (else fixed x). */
+  flowGap: number;
+  preview: { x: number; y: number; width: number; originY: number };
+  cheat: { x: number; y: number; size: string; originX: number };
+  gold: Rect;
+  special: Rect;
+  start: Rect;
+  speed: Rect;
+  specialFont: string;
+  startFont: string;
+  callFont: string;
+  menu: { left: number; top: number; size: StackSize; font: string };
+  barTop: number;
+}
+
+export const LANDSCAPE_HUD: HudMetrics = {
+  portrait: false,
+  bands: [{ x: 0, y: HUD_TOP, width: 960, height: HUD_HEIGHT }],
+  lines: [{ x: 0, y: HUD_TOP, width: 960, height: 2 }],
+  statY: MID,
+  statSize: '18px',
+  goldX: 14,
+  flowGap: 0,
+  preview: { x: PREVIEW_X, y: MID, width: PREVIEW_WIDTH, originY: 0.5 },
+  cheat: { x: GOLD_RECT.x + 6, y: MID + 12, size: '11px', originX: 0 },
+  gold: { ...GOLD_RECT },
+  special: { ...SPECIAL_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H },
+  start: { ...START_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H },
+  speed: { ...SPEED_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H },
+  specialFont: '16px',
+  startFont: START_LABEL_SIZE,
+  callFont: CALL_LABEL_SIZE,
+  menu: { left: SPECIAL_BUTTON.x, top: HUD_TOP, size: STACK_SIZE, font: '16px' },
+  barTop: ROW2_BUTTON_Y,
+};
+
+/** Portrait row 2: Special, Start Wave and speed, 6 px apart, from x 5 (475 px in all). */
+export const PORTRAIT_SPECIAL_W = 130;
+export const PORTRAIT_START_W = 214;
+export const PORTRAIT_SPEED_W = 114;
+/** Portrait popups and panels: 220 x 70 buttons and a 70 px close button, 18 px text. */
+export const PORTRAIT_STACK: StackSize = { buttonW: 220, buttonH: PORTRAIT_BUTTON_H, close: PORTRAIT_BUTTON_H };
+
+export const PORTRAIT_HUD: HudMetrics = (() => {
+  const y = PORTRAIT_ROW2_Y;
+  const h = PORTRAIT_BUTTON_H;
+  const g = PORTRAIT_GAP;
+  const special = { x: 5, y, width: PORTRAIT_SPECIAL_W, height: h };
+  const start = { x: special.x + special.width + g, y, width: PORTRAIT_START_W, height: h };
+  const speed = { x: start.x + start.width + g, y, width: PORTRAIT_SPEED_W, height: h };
+  const size = `${PORTRAIT_MIN_FONT}px`;
+  return {
+    portrait: true,
+    bands: [
+      { x: 0, y: 0, width: PORTRAIT_WIDTH, height: PORTRAIT_STRIP_H },
+      { x: 0, y: PORTRAIT_CONTROLS_Y, width: PORTRAIT_WIDTH, height: PORTRAIT_HEIGHT - PORTRAIT_CONTROLS_Y },
+    ],
+    lines: [
+      { x: 0, y: PORTRAIT_STRIP_H - 2, width: PORTRAIT_WIDTH, height: 2 },
+      { x: 0, y: PORTRAIT_CONTROLS_Y, width: PORTRAIT_WIDTH, height: 2 },
+    ],
+    statY: 15,
+    statSize: size,
+    goldX: 6,
+    flowGap: 14,
+    preview: { x: 6, y: 29, width: PORTRAIT_WIDTH - 12, originY: 0 },
+    cheat: { x: PORTRAIT_WIDTH - 6, y: 15, size, originX: 1 },
+    gold: { x: 0, y: 0, width: 120, height: 30 },
+    special,
+    start,
+    speed,
+    specialFont: size,
+    startFont: size,
+    callFont: size,
+    menu: { left: special.x, top: PORTRAIT_CONTROLS_Y, size: PORTRAIT_STACK, font: size },
+    barTop: PORTRAIT_ROW1_Y,
+  };
+})();
+
+export function hudMetrics(layout: Layout): HudMetrics {
+  return layout.kind === 'portrait' ? PORTRAIT_HUD : LANDSCAPE_HUD;
+}
+
 export class Hud {
   private readonly gold: Phaser.GameObjects.Text;
   private readonly lives: Phaser.GameObjects.Text;
@@ -254,22 +366,29 @@ export class Hud {
   private pipKey = '';
   private readonly bar: BuildBar;
   private readonly bossBar: BossBar;
+  private readonly m: HudMetrics;
+  /** The Lives readout's left edge now (portrait: after the gold), for the exit shake. */
+  private livesX = LIVES_X;
 
-  constructor(scene: Phaser.Scene, handlers: HudHandlers) {
-    scene.add.rectangle(0, HUD_TOP, 960, HUD_HEIGHT, COLORS.hudBar).setOrigin(0, 0);
-    scene.add.rectangle(0, HUD_TOP, 960, 2, COLORS.hudLine).setOrigin(0, 0);
+  constructor(scene: Phaser.Scene, handlers: HudHandlers, layout: Layout = LANDSCAPE) {
+    const m = hudMetrics(layout);
+    this.m = m;
+    for (const b of m.bands) scene.add.rectangle(b.x, b.y, b.width, b.height, COLORS.hudBar).setOrigin(0, 0);
+    for (const l of m.lines) scene.add.rectangle(l.x, l.y, l.width, l.height, COLORS.hudLine).setOrigin(0, 0);
 
-    const stat = (x: number, size = '18px', color: string = TEXT.hud) =>
-      scene.add.text(x, MID, '', { fontFamily: FONT, fontSize: size, fontStyle: 'bold', color }).setOrigin(0, 0.5);
-    this.gold = stat(14);
+    const stat = (x: number, size = m.statSize, color: string = TEXT.hud) =>
+      scene.add.text(x, m.statY, '', { fontFamily: FONT, fontSize: size, fontStyle: 'bold', color }).setOrigin(0, 0.5);
+    this.gold = stat(m.goldX);
     this.lives = stat(LIVES_X);
     this.wave = stat(238);
-    this.tag = stat(238, `${TAG_SIZE}px`, TEXT.hudDim).setY(MID + TAG_OFFSET);
-    this.next = stat(PREVIEW_X, `${PREVIEW_SIZE}px`, TEXT.hudDim).setWordWrapWidth(PREVIEW_WIDTH, true);
+    this.tag = m.portrait ? stat(0, m.statSize, TEXT.hudDim) : stat(238, `${TAG_SIZE}px`, TEXT.hudDim).setY(MID + TAG_OFFSET);
+    this.next = m.portrait
+      ? stat(m.preview.x, m.statSize, TEXT.hudDim).setY(m.preview.y).setOrigin(0, m.preview.originY).setWordWrapWidth(m.preview.width, true)
+      : stat(PREVIEW_X, `${PREVIEW_SIZE}px`, TEXT.hudDim).setWordWrapWidth(PREVIEW_WIDTH, true);
 
     // The Special label is left-aligned (an empty right label) so the pip fits on its right.
-    this.specialButton = new Button(scene, { ...SPECIAL_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H }, SPECIAL_BUTTON_TEXT, handlers.onSpecial, {
-      fontSize: '16px',
+    this.specialButton = new Button(scene, m.special, SPECIAL_BUTTON_TEXT, handlers.onSpecial, {
+      fontSize: m.specialFont,
       right: '',
     });
     // The recharge fill sits over the button's box and under its label.
@@ -277,14 +396,14 @@ export class Hud {
     scene.children.moveBelow(this.rechargeFill, this.specialButton.labelObjects[0]);
     this.pip = scene.add.graphics();
     this.cheatMark = scene.add
-      .text(GOLD_RECT.x + 6, MID + 12, CHEAT_MARK, { fontFamily: FONT, fontSize: '11px', fontStyle: 'bold', color: TEXT.cheatMark })
-      .setOrigin(0, 0.5)
+      .text(m.cheat.x, m.cheat.y, CHEAT_MARK, { fontFamily: FONT, fontSize: m.cheat.size, fontStyle: 'bold', color: TEXT.cheatMark })
+      .setOrigin(m.cheat.originX, 0.5)
       .setVisible(false);
-    this.startButton = new Button(scene, { ...START_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H }, START_WAVE_TEXT, handlers.onStartWave);
-    this.speedButton = new Button(scene, { ...SPEED_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H }, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress });
-    this.specialMenu = new SpecialMenu(scene, SPECIAL_BUTTON.x, HUD_TOP, handlers.onSpecialPick);
-    this.bar = new BuildBar(scene, ROW2_BUTTON_Y, handlers.onPick);
-    this.bossBar = new BossBar(scene);
+    this.startButton = new Button(scene, m.start, START_WAVE_TEXT, handlers.onStartWave, m.portrait ? { fontSize: m.startFont } : {});
+    this.speedButton = new Button(scene, m.speed, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress });
+    this.specialMenu = new SpecialMenu(scene, m.menu.left, m.menu.top, handlers.onSpecialPick, m.menu.size, m.menu.font);
+    this.bar = new BuildBar(scene, m.barTop, handlers.onPick, layout);
+    this.bossBar = new BossBar(scene, layout);
   }
 
   /**
@@ -292,28 +411,41 @@ export class Hud {
    * Lives number in red; `dx` shakes it sideways by that many px.
    */
   livesFx(flash: number, dx: number): void {
-    this.lives.setColor(flash > 0 ? TEXT.livesFlash : TEXT.hud).setX(LIVES_X + dx);
+    this.lives.setColor(flash > 0 ? TEXT.livesFlash : TEXT.hud).setX(this.livesX + dx);
   }
 
   /** `nowMs`: the clock in play, for the ready pip's pulse; left out in test mode (no pulse). */
   update(state: GameState, speed: 1 | 2 | 3, pick: TowerType | null, special: HudSpecial = { menuOpen: false, aiming: null }, nowMs?: number): void {
+    const m = this.m;
     const set = (t: Phaser.GameObjects.Text, s: string) => {
       if (t.text !== s) t.setText(s);
     };
     set(this.gold, `Gold ${state.gold}`);
     this.cheatMark.setVisible(state.cheated);
-    this.gold.setY(state.cheated ? MID - 6 : MID);
     // The sim lets lives go below 0 (the boss's exit costs 5); the HUD shows 0.
     set(this.lives, `Lives ${Math.max(0, state.lives)}`);
     set(this.wave, waveCounterText(state.wave, state.endless, LAST_WAVE));
     const tag = difficultyTag(state.difficulty);
     set(this.tag, tag);
-    this.wave.setY(tag ? MID + WAVE_TAG_SHIFT : MID);
+    if (m.portrait) {
+      // One row: each stat starts after the one before it; the cheat mark is right-aligned.
+      const dx = this.lives.x - this.livesX;
+      this.livesX = this.gold.x + this.gold.width + m.flowGap;
+      this.lives.setX(this.livesX + dx);
+      this.wave.setX(this.livesX + this.lives.width + m.flowGap);
+      this.tag.setX(this.wave.x + this.wave.width + m.flowGap / 2);
+    } else {
+      this.gold.setY(state.cheated ? MID - 6 : MID);
+      this.wave.setY(tag ? MID + WAVE_TAG_SHIFT : MID);
+    }
     // After a loss there is no next wave to play, so the preview goes blank.
     const preview = state.phase === 'lost' ? '' : previewText(state);
-    if (this.next.text !== preview) this.next.setFontSize(previewSize(preview)).setText(preview);
+    if (this.next.text !== preview) {
+      if (m.portrait) this.next.setText(preview);
+      else this.next.setFontSize(previewSize(preview)).setText(preview);
+    }
     const call = callEarlyInfo(state);
-    this.startButton.setFontSize(call.available ? CALL_LABEL_SIZE : START_LABEL_SIZE);
+    this.startButton.setFontSize(call.available ? m.callFont : m.startFont);
     if (call.available) this.startButton.set(callEarlyLabel(call.bonus), true);
     else this.startButton.set(START_WAVE_TEXT, canStartWave(state));
     // Once the game is over the speed toggle is inert (greyed, ignores clicks).
@@ -324,21 +456,23 @@ export class Hud {
     this.specialButton.set(recharge ? rechargeText(state.specialRechargeTicks, TICKS_PER_SECOND) : SPECIAL_BUTTON_TEXT, ready);
     this.specialButton.setPicked(ready && (special.menuOpen || special.aiming !== null));
     // The fill grows in whole pixels, so it redraws at most once per pixel.
-    const fillWidth = recharge ? Math.round(SPECIAL_BUTTON.width * recharge.progress) : 0;
+    const sb = m.special;
+    const fillWidth = recharge ? Math.round(sb.width * recharge.progress) : 0;
     const pulse = ready && nowMs !== undefined ? Math.round(4 * (1 + Math.sin(nowMs / 160))) : 0;
     const key = `${ready}:${recharge ? fillWidth : -1}:${pulse}`;
     if (this.pipKey !== key) {
       this.pipKey = key;
-      const cx = SPECIAL_BUTTON.x + SPECIAL_BUTTON.width - PIP_INSET;
+      const cx = sb.x + sb.width - PIP_INSET;
+      const cy = sb.y + sb.height / 2;
       this.pip.clear();
       this.rechargeFill.clear();
       if (ready) {
-        this.pip.fillStyle(COLORS.specialPip, 1).fillCircle(cx, MID, PIP_RADIUS);
+        this.pip.fillStyle(COLORS.specialPip, 1).fillCircle(cx, cy, PIP_RADIUS);
         // The pulse: a ring round the pip, growing and fading (play only).
-        if (pulse > 0) this.pip.lineStyle(2, COLORS.specialPip, 1 - pulse / 9).strokeCircle(cx, MID, PIP_RADIUS + pulse);
+        if (pulse > 0) this.pip.lineStyle(2, COLORS.specialPip, 1 - pulse / 9).strokeCircle(cx, cy, PIP_RADIUS + pulse);
       } else if (recharge) {
-        this.rechargeFill.fillStyle(COLORS.rechargeFill, 1).fillRect(SPECIAL_BUTTON.x, ROW1_BUTTON_Y, fillWidth, BUTTON_H);
-      } else this.pip.lineStyle(1.5, COLORS.specialPipEmpty, 1).strokeCircle(cx, MID, PIP_RADIUS - 0.75);
+        this.rechargeFill.fillStyle(COLORS.rechargeFill, 1).fillRect(sb.x, sb.y, fillWidth, sb.height);
+      } else this.pip.lineStyle(1.5, COLORS.specialPipEmpty, 1).strokeCircle(cx, cy, PIP_RADIUS - 0.75);
     }
     this.specialMenu.update(special.menuOpen && ready ? unlockedSpecials(state.wave) : []);
     this.bar.update(state, pick);
@@ -372,7 +506,7 @@ export class Hud {
    */
   rects(): { startWave: Rect; speed: Rect; special: Rect; gold: Rect } & Record<string, Rect> {
     return {
-      gold: { ...GOLD_RECT },
+      gold: { ...this.m.gold },
       startWave: { ...this.startButton.rect },
       speed: { ...this.speedButton.rect },
       special: { ...this.specialButton.rect },

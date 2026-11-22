@@ -6,6 +6,8 @@
 import type Phaser from 'phaser';
 import { TOWER_DEFS, type GameState, type TowerType } from '../../sim';
 import type { Rect } from '../input';
+import { drawTowerShape } from '../draw/towers';
+import { LANDSCAPE, PORTRAIT_BUTTON_H, PORTRAIT_ROW1_Y, PORTRAIT_WIDTH, type Layout } from '../layout';
 import { TOWER_NAMES } from '../names';
 import { Button } from './button';
 
@@ -24,32 +26,66 @@ export const BAR_LEFT = 16;
 export const BAR_GAP = 8;
 
 /** True when the player can pick `type` now: enough gold and the game is not over. */
+/**
+ * Portrait (milestone 32b): six 75 x 70 buttons in one row, 4 px apart,
+ * centred in the 480 px canvas. A tower name at the 18 px portrait text
+ * size does not fit 75 px ("Musketeer" is 97 px, even "Longbow" 76 px), so
+ * a portrait button shows the tower's own map shape over its cost.
+ */
+export const PORTRAIT_BAR_W = 75;
+export const PORTRAIT_BAR_GAP = 4;
+const PORTRAIT_BAR_LEFT = (PORTRAIT_WIDTH - BAR_TYPES.length * PORTRAIT_BAR_W - (BAR_TYPES.length - 1) * PORTRAIT_BAR_GAP) / 2;
+/** Where the icon's centre and the cost's centre sit, in px from the button's top. */
+const ICON_Y = 27;
+const COST_Y = 56;
+
+/** The bar's button rectangles for `layout`, in BAR_TYPES order. */
+export function barRects(layout: Layout, top: number): Rect[] {
+  if (layout.kind === 'portrait') {
+    return BAR_TYPES.map((_, i) => ({ x: PORTRAIT_BAR_LEFT + i * (PORTRAIT_BAR_W + PORTRAIT_BAR_GAP), y: PORTRAIT_ROW1_Y, width: PORTRAIT_BAR_W, height: PORTRAIT_BUTTON_H }));
+  }
+  return BAR_TYPES.map((_, i) => ({ x: BAR_LEFT + i * (BAR_BUTTON_WIDTH + BAR_GAP), y: top, width: BAR_BUTTON_WIDTH, height: BAR_BUTTON_HEIGHT }));
+}
+
 export function canPick(state: GameState, type: TowerType): boolean {
   return state.phase !== 'won' && state.phase !== 'lost' && state.gold >= TOWER_DEFS[type].cost;
 }
 
 export class BuildBar {
   private readonly buttons: Button[];
+  /** Portrait only: the tower icons over the buttons, and the enabled flags they were drawn for. */
+  private readonly icons: Phaser.GameObjects.Graphics | null = null;
+  private iconKey = '';
 
-  constructor(scene: Phaser.Scene, top: number, onClick: (type: TowerType) => void) {
-    this.buttons = BAR_TYPES.map(
-      (type, i) =>
-        new Button(
-          scene,
-          { x: BAR_LEFT + i * (BAR_BUTTON_WIDTH + BAR_GAP), y: top, width: BAR_BUTTON_WIDTH, height: BAR_BUTTON_HEIGHT },
-          TOWER_NAMES[type],
-          () => onClick(type),
-          { fontSize: '16px', right: String(TOWER_DEFS[type].cost) },
-        ),
+  constructor(scene: Phaser.Scene, top: number, onClick: (type: TowerType) => void, layout?: Layout) {
+    const portrait = layout?.kind === 'portrait';
+    const rects = portrait && layout ? barRects(layout, top) : barRects(LANDSCAPE, top);
+    this.buttons = BAR_TYPES.map((type, i) =>
+      portrait
+        ? new Button(scene, rects[i], String(TOWER_DEFS[type].cost), () => onClick(type), { fontSize: '18px', labelY: COST_Y })
+        : new Button(scene, rects[i], TOWER_NAMES[type], () => onClick(type), { fontSize: '16px', right: String(TOWER_DEFS[type].cost) }),
     );
+    if (portrait) this.icons = scene.add.graphics();
   }
 
   /** Grey what cannot be picked and highlight the pick. Call on every redraw. */
   update(state: GameState, pick: TowerType | null): void {
+    const portrait = this.icons !== null;
     BAR_TYPES.forEach((type, i) => {
       const b = this.buttons[i];
-      b.set(TOWER_NAMES[type], canPick(state, type));
+      b.set(portrait ? String(TOWER_DEFS[type].cost) : TOWER_NAMES[type], canPick(state, type));
       b.setPicked(pick === type);
+    });
+    const g = this.icons;
+    if (g === null) return;
+    const key = BAR_TYPES.map((t) => (canPick(state, t) ? '1' : '0')).join('');
+    if (key === this.iconKey) return;
+    this.iconKey = key;
+    g.clear();
+    BAR_TYPES.forEach((type, i) => {
+      const r = this.buttons[i].rect;
+      // Barrels point up the screen; a tower the player cannot afford is faint, as its greyed cost.
+      drawTowerShape(g, type, { x: r.x + r.width / 2, y: r.y + ICON_Y }, -Math.PI / 2, false, canPick(state, type) ? 1 : 0.4);
     });
   }
 
