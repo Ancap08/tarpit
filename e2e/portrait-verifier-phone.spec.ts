@@ -274,9 +274,9 @@ test('controls: sizes with 47/34 safe-area insets, no overlap, no scroll, no cli
   await ctx.close();
 });
 
-// Bug (verifier, 32b): two layout switches inside one frame (relayout() called twice before the first restart's
+// Fixed in the 32b follow-up (relayout() coalesces). Was: two layout switches inside one frame (relayout() called twice before the first restart's
 // create() ran) restart the scene twice; the second create() finds no resume and builds a fresh game.
-test.fixme('two layout switches in one frame keep the game', async ({ page }) => {
+test('two layout switches in one frame keep the game', async ({ page }) => {
   await startGame(page);
   await page.evaluate(() => {
     (window.__tarpit as TarpitTestApi).state().gold = 7777;
@@ -290,6 +290,7 @@ test.fixme('two layout switches in one frame keep the game', async ({ page }) =>
   });
   await page.waitForTimeout(400);
   expect((await state(page)).gold).toBe(7777);
+  expect((await ui(page)).layout).toBe('portrait');
 });
 
 test('title: difficulty, map, Play, best line by touch (all three maps)', async ({ page }) => {
@@ -461,10 +462,10 @@ test('an upright iPad (768 x 1024) gets portrait and is usable', async ({ browse
   await ctx.close();
 });
 
-// Bug (verifier, 32b): shakeOffset never scrolls down, which keeps the controls out of view in landscape, but in
+// Fixed in the 32b follow-up (portrait shakes sideways only). Was: shakeOffset never scrolls down, which keeps the controls out of view in landscape, but in
 // portrait the status strip is above the map, so a scroll up (y offset below 0) slides the strip's bottom edge
 // (dark band and divider line) into the top 6 to 8 px of the map for the shake's 220 to 600 ms.
-test.fixme('a shake never shows the status strip inside the map', async ({ page }) => {
+test('a shake never shows the status strip inside the map', async ({ page }) => {
   await page.goto('/');
   await page.waitForFunction(() => window.__tarpit?.titleReady?.() === true);
   await tap(page, 'title:play');
@@ -477,7 +478,10 @@ test.fixme('a shake never shows the status strip inside the map', async ({ page 
         let min = 0;
         const t0 = performance.now();
         const loop = () => {
-          min = Math.min(min, window.__tarpit!.fx()!.camera.y);
+          const cam = window.__tarpit!.fx()!.camera;
+          min = Math.min(min, cam.y);
+          // 32b follow-up: and the map does shake (sideways in portrait).
+          if (cam.x !== 0) (window as unknown as { __shookX: boolean }).__shookX = true;
           if (performance.now() - t0 < 700) requestAnimationFrame(loop);
           else resolve(min);
         };
@@ -485,4 +489,5 @@ test.fixme('a shake never shows the status strip inside the map', async ({ page 
       }),
   );
   expect(minY).toBeGreaterThanOrEqual(0);
+  expect(await page.evaluate(() => (window as unknown as { __shookX?: boolean }).__shookX)).toBe(true);
 });

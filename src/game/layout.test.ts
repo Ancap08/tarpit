@@ -5,9 +5,10 @@ import { describe, expect, it } from 'vitest';
 import { cellCenter, GRID_COLS, GRID_ROWS, isBuildableTerrain, MAP_HEIGHT, MAP_IDS, MAP_WIDTH, MAPS, type Cell, type Rect } from '../sim';
 import { facingAt, facingOf } from './anim/facing';
 import { arcPosition } from './fx/fxMath';
-import { DRAG_LIFT, dragTargetCell, placeBeside } from './input';
+import { DRAG_LIFT, dragTargetCell, LIFT_CSS, liftPx, placeBeside } from './input';
+import { aimBannerText } from './names';
 import { LANDSCAPE, layoutFor, PORTRAIT, PORTRAIT_HEIGHT, PORTRAIT_MIN_FONT, PORTRAIT_WIDTH, type Layout } from './layout';
-import { panelGeometry, PORTRAIT_STACK, PORTRAIT_TITLE, portraitBarRects, portraitRow2, stackBox, titleRects } from './ui/geometry';
+import { panelGeometry, PORTRAIT_STACK, PORTRAIT_TITLE, portraitBarRects, portraitRow2, stackBox, STRIP_LINE_CHARS, stripAimText, titleRects } from './ui/geometry';
 
 const allCells: Cell[] = [];
 for (let col = 0; col < GRID_COLS; col++) for (let row = 0; row < GRID_ROWS; row++) allCells.push({ col, row });
@@ -220,5 +221,35 @@ describe('portrait controls and title arithmetic', () => {
       expect(r.width).toBeGreaterThanOrEqual(75);
       all.slice(i + 1).forEach((q) => expect(overlaps(r, q)).toBe(false));
     });
+  });
+});
+
+describe('the lift on screen (32b follow-up)', () => {
+  it('is DRAG_LIFT canvas px in landscape at any fit, and LIFT_CSS CSS px in portrait', () => {
+    expect(liftPx(LANDSCAPE, 1)).toBe(DRAG_LIFT);
+    expect(liftPx(LANDSCAPE, 960 / 1024)).toBe(DRAG_LIFT); // the tablet keeps its 51.2 page px
+    const phone = PORTRAIT_HEIGHT / 763; // canvas px per CSS px on a 390 x 763 phone
+    expect(liftPx(PORTRAIT, phone)).toBe(75);
+    expect(liftPx(PORTRAIT, phone) / phone).toBeCloseTo(LIFT_CSS, 0);
+  });
+
+  it('reaches the top and bottom screen rows of the turned map with the bigger lift', () => {
+    const lift = liftPx(PORTRAIT, PORTRAIT_HEIGHT / 664); // the largest: Safari with its bars
+    for (const cell of [{ col: 0, row: 7 }, { col: 29, row: 7 }]) {
+      const c = PORTRAIT.cellCenter(cell);
+      expect(dragTargetCell(c.x, c.y + lift, true, PORTRAIT, lift)).toEqual(cell);
+    }
+  });
+});
+
+describe('the aim instruction in the portrait strip (32b follow-up)', () => {
+  it('keeps the main line and the hint sentences that fit one 18 px line', () => {
+    expect(STRIP_LINE_CHARS).toBe(43);
+    const touch = stripAimText(aimBannerText('keg', true));
+    expect(touch).toBe('Tap the trail to throw the Powder Keg\nOr hold to aim and lift to let go.');
+    const mouse = stripAimText(aimBannerText('fireArrows', false));
+    expect(mouse).toBe('Click the trail to shoot the Fire Arrows\nEsc or Special again cancels.');
+    for (const type of ['keg', 'tarBarrel', 'fireArrows'] as const)
+      for (const t of [true, false]) for (const line of stripAimText(aimBannerText(type, t)).split('\n')) expect(line.length).toBeLessThanOrEqual(STRIP_LINE_CHARS);
   });
 });

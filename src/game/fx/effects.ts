@@ -516,7 +516,9 @@ export class Effects {
       return;
     }
     const o = shakeOffset(ms, this.shakeMs, this.shakePx);
-    cam.setScroll(this.mapScroll.x + o.x, this.mapScroll.y + o.y);
+    // Portrait (32b follow-up): the strip is above the map and the controls below, so the
+    // map shakes sideways only; grass shows at the uncovered side, as above the map in landscape.
+    cam.setScroll(this.mapScroll.x + o.x, this.mapScroll.y + (this.layout.turned ? 0 : o.y));
   }
 
   /** An impact; `delayMs` (game ms) holds it back, as the boss's later rings. */

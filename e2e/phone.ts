@@ -1,5 +1,4 @@
 import { expect, type CDPSession, type Page } from '@playwright/test';
-import { DRAG_LIFT } from '../src/game/input';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { waitForTitle } from './title';
 
@@ -65,10 +64,15 @@ export async function tapCell(page: Page, c: Cell): Promise<void> {
   await page.touchscreen.tap(p.x, p.y);
 }
 
-/** Where a finger goes (page px) so a touch drag aims at cell `c`: DRAG_LIFT canvas px below it on the screen. */
+/** The game's touch lift in page px (ui().lift canvas px: 48 CSS px on screen in portrait, 32b follow-up). */
+export async function liftPage(page: Page): Promise<number> {
+  return (await ui(page)).lift * (await pageScale(page));
+}
+
+/** Where a finger goes (page px) so a touch drag aims at cell `c`: the lift below it on the screen. */
 export async function fingerFor(page: Page, c: Cell): Promise<Point> {
   const p = await cellPage(page, c);
-  return { x: p.x, y: p.y + DRAG_LIFT * (await pageScale(page)) };
+  return { x: p.x, y: p.y + (await liftPage(page)) };
 }
 
 /** A real touch drag between page points in `steps` moves; `during` runs with the finger still down at `to`. */

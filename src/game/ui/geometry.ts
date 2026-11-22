@@ -3,7 +3,7 @@
 
 import type { Rect } from '../../sim';
 import { KILLS_LINE_H } from '../input';
-import { PORTRAIT_BUTTON_H, PORTRAIT_GAP, PORTRAIT_ROW1_Y, PORTRAIT_ROW2_Y, PORTRAIT_WIDTH, type Layout } from '../layout';
+import { PORTRAIT_BUTTON_H, PORTRAIT_GAP, PORTRAIT_MIN_FONT, PORTRAIT_ROW1_Y, PORTRAIT_ROW2_Y, PORTRAIT_WIDTH, type Layout } from '../layout';
 
 /** Stack buttons (milestone 25a): 156 x 42 in landscape. */
 export const STACK_BUTTON_WIDTH = 156;
@@ -141,4 +141,25 @@ export function titleRects(geo: TitleGeometry, cx: number): { levels: Rect[]; ma
     maps: [0, 1, 2].map((i) => ({ x: at(i), y: geo.mapY, width: geo.levelW, height: geo.mapH })),
     play: { x: cx - geo.playW / 2, y: geo.playY, width: geo.playW, height: geo.playH },
   };
+}
+
+/** Characters on one portrait strip line: 468 px of 18 px Courier New (0.6 em a character). */
+export const STRIP_LINE_CHARS = Math.floor((PORTRAIT_WIDTH - 12) / (0.6 * PORTRAIT_MIN_FONT));
+
+/**
+ * The aim instruction in the portrait strip (32b follow-up), in place of the
+ * preview's two lines: the banner's main line, then as many whole sentences
+ * of its hint as fit one line. The touch hint ("Or hold to aim and lift to
+ * let go. Special again cancels.", 56 characters) loses its second
+ * sentence; the Special button shows picked while aiming.
+ */
+export function stripAimText(banner: { main: string; hint: string }): string {
+  const sentences = banner.hint.match(/[^.]+\.?/g)?.map((t) => t.trim()) ?? [];
+  let hint = '';
+  for (const t of sentences) {
+    const next = hint === '' ? t : `${hint} ${t}`;
+    if (next.length > STRIP_LINE_CHARS) break;
+    hint = next;
+  }
+  return hint === '' ? banner.main : `${banner.main}\n${hint}`;
 }

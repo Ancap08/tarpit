@@ -697,14 +697,26 @@ drawn and where touches land differ.
   sprites, text, hp bars, particles and banners are placed through it and
   stay upright. Anything with an up (arcs, the ghost's and the aim's lift,
   flyers' lift, shadows, the Fire Pot's flame, the Longbow's post, the
-  falling fire arrows, the cottage) uses the top of the screen. Sprites
+  falling fire arrows, the cottage) uses the top of the screen. The touch
+  lift (drag ghost and special aim) is 48 canvas px in landscape, as
+  before, and 48 CSS px on screen in portrait (`input.ts` `liftPx`: 75
+  canvas px on a 390 x 763 phone); a finger may rest on the controls to
+  reach the bottom rows, and a press that starts on the controls still
+  cancels aiming. Sprites
   face the way they move on the screen; Wolves and the boss have only side
   frames, so walking down the screen they show their right-facing side.
 - **Portrait arrangements.** Tower labels are not drawn (a readable label
   spans two or three cells). The tower panel (220 x 70 buttons, 70 px
   close) opens beside the tower inside the map. The special popup opens
-  above the controls. The aim banner sits at the map's foot. The boss bar
-  is a 360 px bar at the map's top. End screens stack their buttons
+  above the controls. While aiming, the instruction replaces the preview
+  in the status strip (the main line, then the hint's sentences that fit
+  one line: on touch "Special again cancels." is left out) and nothing is
+  drawn over the map. Wave and boss banners stay centred 150 and 200 px
+  below the map's top (canvas y 196 to 280 and 246 to 346): under the
+  cave's 30 px and far above the cottage at the map's foot. The boss bar
+  is a 360 px bar at the map's top. A shake moves the map sideways only
+  (the strip is above it and the controls below), with grass at the
+  uncovered side. End screens stack their buttons
   (280 x 70). The title stacks the title, the level row (144 x 70), the map
   row (144 x 116), the best line, Play (260 x 80) and the prompt.
 - **Switching.** When the window changes shape (`layoutSwitch.ts`) the
@@ -712,7 +724,10 @@ drawn and where touches land differ.
   its picks; a game keeps its simulation state, its recorded waves cleared
   and its tick accumulator, so no tick is lost or run twice. The switch
   clears the pick, a drag, the panel, the special popup and aiming, and
-  returns the speed to 1x; effects in flight start fresh.
+  returns the speed to 1x; effects in flight start fresh. Requests
+  coalesce: a burst of resizes queues one restart, which carries the game
+  and is drawn for the window's shape when it runs; a scene drawn for
+  another layout than the window's rebuilds on its next frame.
 
 ## Install and offline
 

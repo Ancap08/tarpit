@@ -6616,3 +6616,38 @@ Verdict: merge after fixes (one data-loss bug in switching, one cosmetic).
   21 CSS px tall): it is a hidden cheat, not a button. DRAG_LIFT is 48 canvas
   px, about 27 CSS px at 0.57 scale: that is a small lift for a thumb; judge
   on a real phone. An upright iPad uses about 54 percent of its width.
+
+### Follow-up (Claude Opus 5.5, after the verifier's notes)
+
+1. **Two switches close together lost the game.** Cause: every
+   `relayout()` queued its own `scene.restart`; the first `create()` took
+   the carried game and the second built a fresh one. Fix: requests
+   coalesce. Each refreshes the carried game, only the first queues a
+   restart, and its `create()` takes the game (only a relayout's restart
+   does: Play again and the title start fresh) and reads the newest layout.
+   `update()` also rebuilds a scene drawn for another layout than the
+   window's. The verifier's test passes; a new test runs ten alternating
+   resizes with no wait, ending in each orientation.
+2. **A shake pulled the strip into the map.** Cause: the shake scrolls up
+   to 8 px upward, and in portrait the strip is above the map. Fix: in
+   portrait the map shakes sideways only; grass shows at the uncovered
+   side. The verifier's test passes and now also checks that the map moved.
+3. **The lift is a size on screen in portrait:** 48 CSS px (`liftPx`, 75
+   canvas px on a 390 x 763 phone, 68 on the 390 x 844 test phone).
+   Landscape keeps 48 canvas px: a CSS rule would make the tablet's
+   51.2 page px 48 and move its tests, so the on-screen rule is portrait
+   only. `ui().lift` reports it and the phone helpers use it. Unit tests
+   check the top and bottom screen rows at the largest lift (Safari with
+   bars); the drag and special tests reach all four edges.
+4. **The aim instruction is in the strip in portrait,** replacing the
+   preview's two lines; nothing is drawn over the map. The touch hint is
+   56 characters and a strip line holds 43 at 18 px, so "Special again
+   cancels." is left out on touch (the Special button shows picked while
+   aiming). Wave and boss banners cover canvas y 196 to 280 and 246 to
+   346: not the cave (y 46 to 106, mostly under the strip) nor the cottage
+   (the map's foot), so they stay.
+
+Checks: lint, check:assets, typecheck, 1113 unit tests, build,
+check:size, 421 Playwright tests (8 skipped) on chromium, tablet and
+phone; `npm run sim` byte-identical to main; landscape frames
+byte-identical to main (27 of 27, re-run).

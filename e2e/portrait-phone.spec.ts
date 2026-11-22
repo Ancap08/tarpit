@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { bestScoreText } from '../src/game/names';
+import { stripAimText } from '../src/game/ui/geometry';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { TitleUiState } from '../src/game/TitleScene';
 import { GRID_COLS, GRID_ROWS, isBuildableTerrain } from '../src/sim/grid';
@@ -9,8 +10,8 @@ import {
   api,
   cellPage,
   fingerFor,
+  liftPage,
   openTitle,
-  pageScale,
   rectPage,
   rectPageSize,
   rects,
@@ -233,7 +234,9 @@ test('a special by tap, then by hold and release near each map edge', async ({ p
   // slide down until the lifted circle sits on the target (a press that
   // starts on the controls cancels aiming, as in landscape).
   const client = await page.context().newCDPSession(page);
-  const scale = await pageScale(page);
+  const lift = await liftPage(page);
+  // 32b follow-up: the lift is 48 CSS px on the page in portrait.
+  expect(lift).toBeCloseTo(48, 0);
   for (const [i, target] of [
     { x: 10, y: 240 },
     { x: 950, y: 240 },
@@ -245,7 +248,7 @@ test('a special by tap, then by hold and release near each map edge', async ({ p
     await tap(page, 'special');
     expect((await ui(page)).special.aiming, label).toBe('keg');
     const p = await worldPage(page, target);
-    const finger = { x: p.x, y: p.y + 48 * scale };
+    const finger = { x: p.x, y: p.y + lift };
     const during = async () => {
       expect((await ui(page)).special.holding, label).toBe(true);
     };
@@ -400,4 +403,58 @@ test('the gold cheat: five taps on the Gold readout in the strip', async ({ page
   for (let i = 0; i < 5; i++) await tap(page, 'gold');
   expect((await state(page)).gold).toBe(gold + 500);
   expect((await api(page, (a) => a.hudText())).cheat).toBe('cheat used');
+});
+
+test('the drag ghost sits 48 CSS px above the finger in portrait (32b follow-up)', async ({ page }) => {
+  await startGame(page);
+  expect(await liftPage(page)).toBeCloseTo(48, 0);
+  const client = await page.context().newCDPSession(page);
+  const cell = besideTrail[4];
+  const finger = await fingerFor(page, cell);
+  const centre = await cellPage(page, cell);
+  expect(finger.y - centre.y).toBeCloseTo(48, 0);
+  await touchDrag(page, client, await rectPage(page, 'bar:musketeer'), finger, async () => {
+    expect((await ui(page)).dragging).toEqual({ kind: 'place', tower: 'musketeer', cell });
+  });
+  expect((await state(page)).towers).toEqual([expect.objectContaining({ cell, type: 'musketeer' })]);
+});
+
+test('aiming in portrait: the instruction replaces the preview in the strip, nothing over the map (32b follow-up)', async ({ page }) => {
+  await startGame(page);
+  await richAndSafe(page);
+  const preview = (await api(page, (a) => a.hudText())).next;
+  await tap(page, 'startWave');
+  await api(page, (a) => a.step(30));
+  await tap(page, 'special');
+  const u = await ui(page);
+  expect(u.special.aiming).toBe('keg');
+  expect((await api(page, (a) => a.hudText())).next).toBe(stripAimText(u.special.banner!));
+  const mapBanner = await page.evaluate(() => (window.__tarpit!.game.scene.getScene('game') as unknown as { bannerMain: { text: string } }).bannerMain.text);
+  expect(mapBanner).toBe('');
+  await tap(page, 'special'); // cancels
+  expect((await ui(page)).special.aiming).toBeNull();
+  expect((await api(page, (a) => a.hudText())).next).not.toBe(stripAimText(u.special.banner!));
+  expect(preview).toMatch(/^Next: /);
+});
+
+test('a burst of ten alternating resizes ends in the window\'s shape with the game intact (32b follow-up)', async ({ page }) => {
+  await startGame(page);
+  for (const c of CORNERS.slice(0, 2)) await page.evaluate(([col, row]) => (window.__tarpit as TarpitTestApi).buildAt(col, row, 'cannon'), [c.col, c.row]);
+  await tap(page, 'startWave');
+  await api(page, (a) => a.step(200));
+  const before = await snapshot(page);
+  for (const end of ['landscape', 'portrait'] as const) {
+    // Ten resizes with no wait between them; the last one is `end`.
+    const sizes = Array.from({ length: 10 }, (_, i) => ((i % 2 === 0) === (end === 'portrait') ? [844, 390] : [390, 844]));
+    for (const [w, h] of sizes) await page.setViewportSize({ width: w, height: h });
+    const want = end === 'portrait' ? [480, 1194] : [960, 580];
+    await page.waitForFunction((k) => {
+      const t = window.__tarpit as TarpitTestApi;
+      return t.scene() === 'game' && t.ui().layout === k;
+    }, end);
+    await page.waitForTimeout(150);
+    expect((await ui(page)).layout).toBe(end);
+    expect(await page.evaluate(() => [window.__tarpit!.game.scale.gameSize.width, window.__tarpit!.game.scale.gameSize.height])).toEqual(want);
+    expect(await snapshot(page)).toEqual(before);
+  }
 });

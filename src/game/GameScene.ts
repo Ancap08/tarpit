@@ -175,13 +175,13 @@ import {
   cellRect,
   classifyClick,
   contains,
-  DRAG_LIFT,
   dragTargetCell,
+  liftPx,
   mouseDragLost,
   pastDragThreshold,
   type Rect,
 } from './input';
-import { LANDSCAPE, PORTRAIT_MIN_FONT, type Layout, type LayoutKind } from './layout';
+import { LANDSCAPE, type Layout, type LayoutKind } from './layout';
 import { COLORS, FONT, TEXT } from './palette';
 import { currentLayout } from './layoutSwitch';
 import { isPerfMode, isTestMode } from './testMode';
@@ -220,6 +220,8 @@ export interface UiState {
   map: MapId;
   /** Milestone 32b: the layout the scene is drawn in. */
   layout: LayoutKind;
+  /** Milestone 32b follow-up: the touch lift in canvas px (48 in landscape; 48 CSS px on screen in portrait). */
+  lift: number;
   /** The selected tower's cell (its panel is open), or null. */
   selectedCell: Cell | null;
   panelOpen: boolean;
@@ -326,14 +328,14 @@ export const SPECIAL_COLORS: Readonly<Record<SpecialType, number>> = {
 };
 
 /**
- * A touch hold's aim point (milestone 30), in canvas px: DRAG_LIFT px
+ * A touch hold's aim point (milestone 30), in canvas px: `lift` px (DRAG_LIFT, or in portrait 48 CSS px)
  * above the finger (milestone 32b: always up the screen), or null when that
  * point is off `layout`'s map (edges included). As for tower drags
  * (milestone 25a) the lifted point decides, so a finger on the HUD aims at
  * the map's bottom rows.
  */
-function liftedAim(x: number, y: number, layout: Layout): { x: number; y: number } | null {
-  return layout.onMap(x, y - DRAG_LIFT) ? { x, y: y - DRAG_LIFT } : null;
+function liftedAim(x: number, y: number, layout: Layout, lift: number): { x: number; y: number } | null {
+  return layout.onMap(x, y - lift) ? { x, y: y - lift } : null;
 }
 
 /** Dashes in the Mortar's minimum-range circle (each dash half of its slot). */
@@ -403,6 +405,8 @@ export class GameScene extends Phaser.Scene {
   private aim!: Aim;
   /** Milestone 32b: the game a relayout() carries into the restarted scene, until create() takes it. */
   private resume: { state: GameState; recordedCleared: number; accMs: number } | null = null;
+  /** A relayout's restart is queued and its create() has not run yet. */
+  private restartPending = false;
   /** Waves cleared already sent to the high score store this game (milestone 26). */
   private recordedCleared = 0;
   private readonly autoTick = !isTestMode();
@@ -424,14 +428,21 @@ export class GameScene extends Phaser.Scene {
    */
   relayout(): void {
     if (!this.dynamic) return;
+    // Follow-up (verifier): requests coalesce. The game to carry is refreshed on every
+    // request and kept until the one queued restart's create() takes it; that create()
+    // reads the newest layout, so a burst of resizes ends on the window's final shape.
     this.resume = { state: this.state, recordedCleared: this.recordedCleared, accMs: this.accMs };
+    if (this.restartPending) return;
+    this.restartPending = true;
     const data: GameStartData = { difficulty: this.state.difficulty, map: this.currentMap };
     this.scene.restart(data);
   }
 
   create(): void {
     this.layout = currentLayout();
-    const resume = this.resume;
+    // Only a relayout's restart resumes; Play again, the title and a first start begin a new game.
+    const resume = this.restartPending ? this.resume : null;
+    this.restartPending = false;
     this.resume = null;
     this.state = resume?.state ?? createGame({ difficulty: this.difficulty, map: this.currentMap });
     this.recordedCleared = resume?.recordedCleared ?? 0;
@@ -488,18 +499,9 @@ export class GameScene extends Phaser.Scene {
     const bannerTop = this.layout.map.y + BANNER_Y;
     const bannerText = (y: number, size: string, color: string) =>
       this.add.text(this.bannerX, y, '', { fontFamily: FONT, fontSize: size, fontStyle: 'bold', color }).setOrigin(0.5, 0.5).setDepth(4);
-    if (this.layout.kind === 'portrait') {
-      // Milestone 32b: 18 px for both lines; the touch hint wraps to two lines inside the 480 px map
-      // (drawBanner puts the box at the map's foot).
-      this.bannerMain = bannerText(bannerTop + 8, `${PORTRAIT_MIN_FONT}px`, TEXT.aimBanner).setOrigin(0.5, 0);
-      this.bannerHint = bannerText(bannerTop + 32, `${PORTRAIT_MIN_FONT}px`, TEXT.aimHint)
-        .setOrigin(0.5, 0)
-        .setAlign('center')
-        .setWordWrapWidth(this.layout.map.width - 48, true);
-    } else {
-      this.bannerMain = bannerText(bannerTop + 14, '18px', TEXT.aimBanner);
-      this.bannerHint = bannerText(bannerTop + 34, '13px', TEXT.aimHint);
-    }
+    // Portrait (32b follow-up) shows the aim instruction in the status strip instead (Hud).
+    this.bannerMain = bannerText(bannerTop + 14, '18px', TEXT.aimBanner);
+    this.bannerHint = bannerText(bannerTop + 34, '13px', TEXT.aimHint);
     this.hud = new Hud(this, {
       // Milestone 25c: mid-wave, Start Wave reads "Call next  +N" and calls the next wave.
       onStartWave: () => (callEarlyStatus(this.state).ok ? this.callNextWave() : this.startWave()),
@@ -732,7 +734,7 @@ export class GameScene extends Phaser.Scene {
     d.y = y;
     if (!d.active && pastDragThreshold(d.x0, d.y0, x, y)) d.active = true;
     if (d.active) {
-      this.touchAim = liftedAim(x, y, this.layout);
+      this.touchAim = liftedAim(x, y, this.layout, this.lift);
       this.redraw();
     }
   }
@@ -742,7 +744,7 @@ export class GameScene extends Phaser.Scene {
     const d = this.aimPress;
     if (d === null || d.active || this.time.now - d.t0 < AIM_HOLD_MS) return;
     d.active = true;
-    this.touchAim = liftedAim(d.x, d.y, this.layout);
+    this.touchAim = liftedAim(d.x, d.y, this.layout, this.lift);
   }
 
   /**
@@ -759,7 +761,7 @@ export class GameScene extends Phaser.Scene {
     if (!d.active) {
       this.fireSpecial(this.aiming, { x: d.x0, y: d.y0 });
     } else {
-      const aimAt = liftedAim(x, y, this.layout);
+      const aimAt = liftedAim(x, y, this.layout, this.lift);
       if (aimAt === null || contains(this.hud.rects().special, x, y)) this.cancelSpecial();
       else this.fireSpecial(this.aiming, aimAt);
     }
@@ -941,7 +943,7 @@ export class GameScene extends Phaser.Scene {
       this.pick = d.kind === 'place' ? d.tower : null;
       this.cancelSpecial();
     }
-    d.cell = dragTargetCell(x, y, d.touch, this.layout);
+    d.cell = dragTargetCell(x, y, d.touch, this.layout, this.lift);
     this.redraw();
   }
 
@@ -954,7 +956,7 @@ export class GameScene extends Phaser.Scene {
     const d = this.press;
     this.press = null;
     if (d === null || !d.active) return;
-    const cell = inside ? dragTargetCell(x, y, d.touch, this.layout) : null;
+    const cell = inside ? dragTargetCell(x, y, d.touch, this.layout, this.lift) : null;
     if (cell !== null && this.endScreen.kind === null) {
       if (d.kind === 'place' && isBuildable(this.state, cell)) this.build(cell, d.tower);
       else if (d.kind === 'move' && d.from !== null) this.move(d.from, cell);
@@ -974,6 +976,7 @@ export class GameScene extends Phaser.Scene {
   uiState(): UiState {
     return {
       layout: this.layout.kind,
+      lift: this.lift,
       map: this.currentMap,
       pick: this.pick,
       hoverCell: this.hoverCell,
@@ -1032,16 +1035,23 @@ export class GameScene extends Phaser.Scene {
 
   /** Start a brand-new game in a fresh scene, on the same level and map. */
   playAgain(): void {
+    this.restartPending = false;
     const data: GameStartData = { difficulty: this.state.difficulty, map: this.currentMap };
     this.scene.restart(data);
   }
 
   /** Back to the title menu (milestone 25), which still shows the level and (milestone 27) map just played. */
   toMenu(): void {
+    this.restartPending = false;
     this.scene.start('title');
   }
 
   update(_time: number, delta: number): void {
+    // Self-check (32b follow-up): a scene drawn for another layout than the window's rebuilds.
+    if (this.layout !== currentLayout()) {
+      this.relayout();
+      return;
+    }
     this.checkSpeedHold();
     this.checkAimHold();
     if (this.autoTick) {
@@ -1270,8 +1280,17 @@ export class GameScene extends Phaser.Scene {
     this.labels.update(this.state);
     this.syncEndScreen();
     this.redrawUi();
-    this.hud.update(this.state, this.speed, this.pick, { menuOpen: this.specialMenuOpen, aiming: this.aiming }, this.autoTick ? this.time.now : undefined);
+    const banner = this.aiming === null ? null : aimBannerText(this.aiming, this.touch);
+    this.hud.update(this.state, this.speed, this.pick, { menuOpen: this.specialMenuOpen, aiming: this.aiming, banner }, this.autoTick ? this.time.now : undefined);
     this.drawBanner();
+  }
+
+  /**
+   * The touch lift in canvas px (32b follow-up): DRAG_LIFT in landscape; in
+   * portrait LIFT_CSS CSS px at the canvas's current fit (input.ts liftPx).
+   */
+  private get lift(): number {
+    return liftPx(this.layout, this.scale.displayScale.y);
   }
 
   /** The aim banner's centre line: the middle of the map on the screen (milestone 32b). */
@@ -1281,7 +1300,8 @@ export class GameScene extends Phaser.Scene {
 
   /** The aim banner (milestone 30): shown while aiming, with what to do and how to cancel. */
   private drawBanner(): void {
-    const text = this.aiming === null ? null : aimBannerText(this.aiming, this.touch);
+    // Portrait (32b follow-up): the instruction is in the status strip (Hud), nothing over the map.
+    const text = this.aiming === null || this.layout.kind === 'portrait' ? null : aimBannerText(this.aiming, this.touch);
     const main = text?.main ?? '';
     if (this.bannerMain.text !== main) {
       this.bannerMain.setText(main);
@@ -1289,16 +1309,8 @@ export class GameScene extends Phaser.Scene {
       this.bannerBg.clear();
       if (text !== null) {
         const w = Math.max(this.bannerMain.width, this.bannerHint.width) + 32;
-        let top = this.layout.map.y + BANNER_Y;
-        let h = BANNER_H;
-        if (this.layout.kind === 'portrait') {
-          // Milestone 32b: at the map's foot, just above the controls, so it does not cover the
-          // trail's start under the spawn, where the enemies bunch up, nor the boss bar.
-          h = 32 + this.bannerHint.height + 8;
-          top = this.layout.map.y + this.layout.map.height - BANNER_Y - h;
-          this.bannerMain.setY(top + 8);
-          this.bannerHint.setY(top + 32);
-        }
+        const top = this.layout.map.y + BANNER_Y;
+        const h = BANNER_H;
         this.bannerBg.fillStyle(COLORS.aimBanner, 0.82).fillRoundedRect(this.bannerX - w / 2, top, w, h, 8);
         this.bannerBg.lineStyle(2, SPECIAL_COLORS[this.aiming!], 1).strokeRoundedRect(this.bannerX - w / 2, top, w, h, 8);
       }

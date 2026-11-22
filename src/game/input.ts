@@ -148,6 +148,20 @@ export const DRAG_THRESHOLD = 8;
 /** On touch the drag's target is this many px above the finger, so the finger does not hide the ghost. */
 export const DRAG_LIFT = 48;
 
+/**
+ * Portrait (milestone 32b follow-up): the lift is a size on the screen, this
+ * many CSS px, so the ghost and the aim circle clear a thumb whatever the
+ * canvas's scale (75 canvas px on a 390 x 763 phone). Landscape keeps
+ * DRAG_LIFT canvas px (48 CSS px on the 960 x 580 desktop, 51.2 on the
+ * 1024 x 768 tablet), so its frames and tests do not move.
+ */
+export const LIFT_CSS = 48;
+
+/** The lift in canvas px for `layout`, given the canvas px per CSS px of the fitted canvas. */
+export function liftPx(layout: Layout, canvasPerCss: number): number {
+  return layout.kind === 'portrait' ? Math.round(LIFT_CSS * canvasPerCss) : DRAG_LIFT;
+}
+
 /** True once (x, y) is more than DRAG_THRESHOLD px from the press at (x0, y0). */
 export function pastDragThreshold(x0: number, y0: number, x: number, y: number): boolean {
   return Math.hypot(x - x0, y - y0) > DRAG_THRESHOLD;
@@ -160,9 +174,9 @@ export function pastDragThreshold(x0: number, y0: number, x: number, y: number):
  * null once the aim point is off the map. Mouse: the cell under the
  * pointer, null over the HUD or off the map. A release on null cancels.
  */
-export function dragTargetCell(x: number, y: number, touch: boolean, layout: Layout = LANDSCAPE): Cell | null {
+export function dragTargetCell(x: number, y: number, touch: boolean, layout: Layout = LANDSCAPE, lift = DRAG_LIFT): Cell | null {
   // The lift is always toward the top of the screen, whatever the layout.
-  return layout.cellAt(x, touch ? y - DRAG_LIFT : y);
+  return layout.cellAt(x, touch ? y - lift : y);
 }
 
 /**

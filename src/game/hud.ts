@@ -63,7 +63,7 @@ import { COLORS, FONT, TEXT } from './palette';
 import { BossBar } from './ui/bossBar';
 import { BuildBar } from './ui/buildBar';
 import { Button } from './ui/button';
-import { PORTRAIT_STACK, portraitRow2, STACK_SIZE, type StackSize } from './ui/geometry';
+import { PORTRAIT_STACK, portraitRow2, STACK_SIZE, stripAimText, type StackSize } from './ui/geometry';
 import {
   LANDSCAPE,
   PORTRAIT_CONTROLS_Y,
@@ -229,7 +229,10 @@ export function specialRecharge(state: GameState): { progress: number; seconds: 
 export interface HudSpecial {
   menuOpen: boolean;
   aiming: SpecialType | null;
+  /** 32b follow-up: the aim banner's words while aiming; portrait shows them in the strip. */
+  banner?: { main: string; hint: string } | null;
 }
+
 
 export interface HudHandlers {
   /** Start Wave was pressed: starts the wave in setup, or calls the next one early (milestone 25c). */
@@ -425,9 +428,10 @@ export class Hud {
       this.wave.setY(tag ? MID + WAVE_TAG_SHIFT : MID);
     }
     // After a loss there is no next wave to play, so the preview goes blank.
-    const preview = state.phase === 'lost' ? '' : previewText(state);
+    const aimText = m.portrait && special.aiming !== null && special.banner ? stripAimText(special.banner) : null;
+    const preview = aimText ?? (state.phase === 'lost' ? '' : previewText(state));
     if (this.next.text !== preview) {
-      if (m.portrait) this.next.setText(preview);
+      if (m.portrait) this.next.setText(preview).setColor(aimText === null ? TEXT.hudDim : TEXT.aimBanner);
       else this.next.setFontSize(previewSize(preview)).setText(preview);
     }
     const call = callEarlyInfo(state);

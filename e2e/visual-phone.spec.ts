@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { MAP_IDS } from '../src/sim/map';
-import { cellPage, fingerFor, rectPage, tap, tapCell, ui, worldPage } from './phone';
+import { fingerFor, liftPage, rectPage, tap, tapCell, ui, worldPage } from './phone';
 
 // Milestone 32b: portrait screenshot baselines for the phone project
 // (390 x 844, touch), frozen in test mode as visual.spec.ts does. Baselines
@@ -105,8 +105,7 @@ test('portrait special aim: a Tar Barrel held over the first climb on wave 4', a
   await tap(page, 'special:tarBarrel');
   const client = await page.context().newCDPSession(page);
   const target = await worldPage(page, { x: 160, y: 191 });
-  const scale = (await cellPage(page, { col: 1, row: 0 })).y - (await cellPage(page, { col: 0, row: 0 })).y;
-  const finger = { x: target.x, y: target.y + (48 * scale) / 32 };
+  const finger = { x: target.x, y: target.y + (await liftPage(page)) };
   await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [target] });
   for (let i = 1; i <= 6; i++) {
     await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: target.x, y: target.y + ((finger.y - target.y) * i) / 6 }] });

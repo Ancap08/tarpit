@@ -146,15 +146,20 @@ export class TitleScene extends Phaser.Scene {
 
   /** Milestone 32b: rebuild the menu for the window's new layout, keeping the picks (layoutSwitch.ts). */
   relayout(): void {
-    if (this.starting) return;
+    // One queued restart serves a burst of requests; its create() reads the newest layout.
+    if (this.starting || this.restartPending) return;
+    this.restartPending = true;
     this.scene.restart();
   }
+
+  private restartPending = false;
 
   create(): void {
     const { width } = this.scale;
     const cx = width / 2;
     const geo = currentLayout().kind === 'portrait' ? PORTRAIT_TITLE : LANDSCAPE_TITLE;
     this.cameras.main.setBackgroundColor(COLORS.titleBg);
+    this.restartPending = false;
     this.starting = false;
     this.ready = false;
     this.events.once(Phaser.Scenes.Events.RENDER, () => {
