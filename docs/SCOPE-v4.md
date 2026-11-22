@@ -56,8 +56,9 @@ lives than on Normal (balance milestone pins both).
 ## Endless mode and high score (default)
 
 After a win on wave 10 (boss dead), the win screen offers **Keep going**.
-Waves 11+ are generated: the wave 8 to 10 tables cycle with hp x 1.15 per
-cycle, plus one Harpy group per wave, no second boss. Score = waves cleared
+Waves 11+ are generated: the wave 8 to 10 tables cycle with hp x 1.6 per
+cycle (1.15 in the first draft; changed in milestone 26, see DECISIONS),
+plus one Harpy group per wave, no second boss. Score = waves cleared
 on that run. The highest score per difficulty is kept in `localStorage` and
 shown on the title screen. Losing in endless shows the lose screen with
 "Reached wave N" as today. Everything stays deterministic (no randomness).
