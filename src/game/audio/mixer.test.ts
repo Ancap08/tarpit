@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dropsBefore, MAX_VOICES, MIN_REPEAT_LEVEL, Mixer, RECENT_MS, repeatLevel, THIN_MS } from './mixer';
+import { BEAT_MS, BUDGET_PER_S, BUDGET_PRIORITY, dropsBefore, MAX_VOICES, MIN_REPEAT_LEVEL, Mixer, RECENT_MS, repeatLevel, THIN_MS } from './mixer';
 
 describe('repeatLevel', () => {
   it('is full for a first start and falls as recent starts rise, never under the floor', () => {
@@ -38,12 +38,50 @@ describe('thinning', () => {
   });
 
   it('is decided in the times given (real ms), whatever the game speed', () => {
-    // At 3x three times the shots arrive per real second; the window is the same.
+    // At 3x three times the requests arrive per real second; the window is the same.
     const m = new Mixer();
     let played = 0;
-    for (let t = 0; t < 1000; t += 1000 / 180) if (m.request('shot', 1, 80, t).action === 'play') played += 1;
+    for (let t = 0; t < 1000; t += 1000 / 180) if (m.request('ui', 3, 80, t).action === 'play') played += 1;
     expect(played).toBeLessThanOrEqual(Math.ceil(1000 / THIN_MS));
     expect(played).toBeGreaterThan(1000 / THIN_MS / 2);
+  });
+
+  it('a recipe can set a longer window', () => {
+    const m = new Mixer();
+    expect(m.request('hit', 0, 20, 0, 120).action).toBe('play');
+    expect(m.request('hit', 0, 20, 100, 120).action).toBe('thin');
+    expect(m.request('hit', 0, 20, 120, 120).action).toBe('play');
+  });
+});
+
+describe('budget for busy sounds', () => {
+  it('caps the busy sounds at BUDGET_PER_S starts a second, keeping each one audible once a beat', () => {
+    const m = new Mixer(1000);
+    const names = ['hit', 'shot.a', 'shot.b', 'impact.a', 'death.small'];
+    const played = new Map<string, number[]>();
+    // 5 names, each asked for every 60 ms (about 83 a second in all), for 10 s.
+    for (let t = 0; t < 10_000; t += 12) {
+      const name = names[(t / 12) % names.length];
+      if (m.request(name, 0, 30, t).action === 'play') played.set(name, [...(played.get(name) ?? []), t]);
+    }
+    const total = [...played.values()].reduce((s, v) => s + v.length, 0);
+    // Budget, plus at most one start a beat for each name past it.
+    expect(total / 10).toBeLessThanOrEqual(BUDGET_PER_S + names.length * (1000 / BEAT_MS));
+    expect(total / 10).toBeLessThan(83 / 2);
+    for (const name of names) {
+      const ts = played.get(name)!;
+      for (let i = 1; i < ts.length; i++) expect(ts[i] - ts[i - 1], name).toBeLessThanOrEqual(BEAT_MS + 60);
+    }
+  });
+
+  it('does not limit player actions, moments or big sounds', () => {
+    const m = new Mixer(1000);
+    for (let t = 0; t < 1000; t += 10) m.request(`busy${t % 50}`, BUDGET_PRIORITY, 30, t);
+    let t = 1000;
+    for (const [name, p] of [['build', 3], ['waveStart', 4], ['special.keg', 5]] as const) {
+      expect(m.request(name, p, 300, t).action).toBe('play');
+      t += 1;
+    }
   });
 });
 

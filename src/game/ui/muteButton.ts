@@ -1,14 +1,12 @@
 // Milestone 33 (sound): the mute button, on the title menu and in the HUD.
 // A Button with no label and a speaker drawn in code over it: two sound
-// waves when the sound is on, a cross when muted. A small "M" in the lower
-// right corner hints at the key. It follows the engine's state, so M or a
-// mute in another scene shows at once.
+// waves when the sound is on, a cross when muted (the M key is documented,
+// not drawn: a hint that fits the button was too small to read). It follows
+// the engine's state, so M or a mute in another scene shows at once.
 
 import type Phaser from 'phaser';
 import { sound } from '../audio/engine';
 import type { Rect } from '../input';
-import { MUTE_TEXT } from '../names';
-import { FONT, TEXT } from '../palette';
 import { Button } from './button';
 
 /** The speaker's colour: the button text's cream (TEXT.button). */
@@ -20,13 +18,10 @@ export class MuteButton {
   private readonly icon: Phaser.GameObjects.Graphics;
   private readonly rect: Rect;
 
-  constructor(scene: Phaser.Scene, rect: Rect, keyFont: string) {
+  constructor(scene: Phaser.Scene, rect: Rect) {
     this.rect = { ...rect };
     this.button = new Button(scene, rect, '', () => sound.toggleMute(), { sound: null });
     this.icon = scene.add.graphics();
-    scene.add
-      .text(rect.x + rect.width - 4, rect.y + rect.height - 2, MUTE_TEXT.key, { fontFamily: FONT, fontSize: keyFont, fontStyle: 'bold', color: TEXT.hudDim })
-      .setOrigin(1, 1);
     const off = sound.onChange(() => this.draw());
     scene.events.once('shutdown', off);
     this.draw();

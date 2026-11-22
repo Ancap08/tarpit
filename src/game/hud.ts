@@ -410,7 +410,7 @@ export class Hud {
     this.specialMenu = new SpecialMenu(scene, m.menu.left, m.menu.top, handlers.onSpecialPick, m.menu.size, m.menu.font);
     this.bar = new BuildBar(scene, m.barTop, handlers.onPick, layout);
     this.bossBar = new BossBar(scene, layout);
-    this.muteButton = new MuteButton(scene, m.mute, m.portrait ? '16px' : '10px');
+    this.muteButton = new MuteButton(scene, m.mute);
   }
 
   /**

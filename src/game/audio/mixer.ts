@@ -4,8 +4,14 @@
 // 1x, 2x and 3x.
 //
 // - Thinning: a sound started again within THIN_MS of its last start is
-//   dropped. Each start's level falls as the same sound's starts in the last
-//   RECENT_MS rise (repeatLevel).
+//   dropped (a recipe may set a longer window: the smallest sounds and the
+//   exit warning do). Each start's level falls as the same sound's starts
+//   in the last RECENT_MS rise (repeatLevel).
+// - Budget (milestone 33 follow-up): the busy sounds (priority BUDGET_PRIORITY
+//   or less: hit ticks, shots, impacts, deaths) share BUDGET_PER_S starts
+//   in any second. Past the budget, a busy sound still starts if it has not
+//   sounded for BEAT_MS, so every one stays audible at least once a beat:
+//   a dense wave reads as a texture, not a rattle. Other sounds ignore it.
 // - Voice cap: at most MAX_VOICES sound at once. A new sound at the cap
 //   pushes out the live voice that ranks lowest (lowest priority, then
 //   quietest, then oldest) if that voice's priority is not above its own;
@@ -13,6 +19,9 @@
 //   jingles) therefore always get a voice, and hit ticks go first.
 
 export const THIN_MS = 50;
+export const BUDGET_PER_S = 20;
+export const BUDGET_PRIORITY = 2;
+export const BEAT_MS = 500;
 export const RECENT_MS = 400;
 export const MAX_VOICES = 16;
 /** The quietest a repeated sound gets. */
@@ -48,6 +57,8 @@ export type Decision =
 
 export class Mixer {
   private readonly starts = new Map<string, number[]>();
+  /** Starts of busy sounds in the last second (the budget). */
+  private busy: number[] = [];
   private voices: VoiceInfo[] = [];
   private nextId = 1;
 
@@ -59,13 +70,22 @@ export class Mixer {
     return this.voices;
   }
 
-  /** A sound `name` of `priority` and `lengthMs` wants to start at `nowMs`: play it (maybe pushing a voice out), thin it, or drop it at the cap. */
-  request(name: string, priority: number, lengthMs: number, nowMs: number): Decision {
-    const recent = (this.starts.get(name) ?? []).filter((t) => nowMs - t < RECENT_MS);
+  /**
+   * A sound `name` of `priority` and `lengthMs` wants to start at `nowMs`:
+   * play it (maybe pushing a voice out), thin it (its window `gapMs`, or the
+   * budget), or drop it at the cap.
+   */
+  request(name: string, priority: number, lengthMs: number, nowMs: number, gapMs = THIN_MS): Decision {
+    const recent = (this.starts.get(name) ?? []).filter((t) => nowMs - t < Math.max(RECENT_MS, BEAT_MS));
     this.starts.set(name, recent);
     const last = recent[recent.length - 1];
-    if (last !== undefined && nowMs - last < THIN_MS) return { action: 'thin' };
-    const level = repeatLevel(recent.length);
+    if (last !== undefined && nowMs - last < gapMs) return { action: 'thin' };
+    const budgeted = priority <= BUDGET_PRIORITY;
+    if (budgeted) {
+      this.busy = this.busy.filter((t) => nowMs - t < 1000);
+      if (this.busy.length >= BUDGET_PER_S && last !== undefined && nowMs - last < BEAT_MS) return { action: 'thin' };
+    }
+    const level = repeatLevel(recent.filter((t) => nowMs - t < RECENT_MS).length);
     const live = this.live(nowMs);
     const voice: VoiceInfo = { id: this.nextId, name, priority, level, startMs: nowMs, endMs: nowMs + lengthMs };
     let evict: number | null = null;
@@ -78,6 +98,7 @@ export class Mixer {
     }
     this.nextId += 1;
     recent.push(nowMs);
+    if (budgeted) this.busy.push(nowMs);
     this.voices.push(voice);
     return { action: 'play', id: voice.id, level, evict };
   }
@@ -85,6 +106,7 @@ export class Mixer {
   /** Forget every voice (the context was closed or suspended). */
   clear(): void {
     this.voices = [];
+    this.busy = [];
     this.starts.clear();
   }
 }

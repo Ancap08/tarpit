@@ -230,7 +230,7 @@ export class TitleScene extends Phaser.Scene {
 
     // Milestone 33: the mute button, in the top right corner (TITLE_MUTE).
     const portrait = currentLayout().kind === 'portrait';
-    this.muteButton = new MuteButton(this, titleMuteRect(portrait, width), portrait ? '16px' : '10px');
+    this.muteButton = new MuteButton(this, titleMuteRect(portrait, width));
 
     const prompt = this.add
       .text(cx, geo.promptY, TITLE_TEXT.prompt, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: TEXT.prompt })

@@ -5,6 +5,11 @@ import { MUTE_TEXT } from '../src/game/names';
 import { audio, buildNearSpawn, contexts, count, countContexts, muteRoundTrip, onScene, rectCentre, startPlay } from './sound';
 import { waitForTitle } from './title';
 
+/** The horde measurement's length, and the most sound starts per second it may show (DESIGN.md, "Sound"). */
+const HORDE_SECONDS = 4;
+/** The budget (20 a second) plus a little room for moments and the beat floor; 90 a second at 3x before the follow-up. */
+const HORDE_MAX_STARTS_PER_S = 40;
+
 // Milestone 33 (sound), real mode in the desktop project. The engine's
 // counts (window.__tarpit.audio()) show which sounds were requested and
 // played; the scene's own actions drive the game, as effects.spec.ts does.
@@ -242,41 +247,58 @@ test('hiding the page suspends the context and showing it resumes', async ({ pag
   await page.waitForFunction(() => window.__tarpit!.audio().context === 'running');
 });
 
-test('a 120-enemy horde at 3x stays under the voice cap and is thinned', async ({ page }) => {
-  test.setTimeout(60_000);
-  await startPlay(page);
-  await onScene(page, (scene) => {
-    const types = ['musketeer', 'cannon', 'tarpit', 'longbow', 'mortar', 'firepot'];
-    let built = 0;
-    for (let row = 1; row < 15 && built < 25; row += 2) {
-      for (let col = 1; col < 30 && built < 25; col += 2) if (scene.build({ col, row }, types[built % types.length]).ok) built += 1;
+for (const speed of [1, 3]) {
+  test(`a 120-enemy horde at ${speed}x stays under the voice cap, is thinned and keeps its starts per second down`, async ({ page }) => {
+    test.setTimeout(60_000);
+    await startPlay(page);
+    await onScene(page, (scene, speed) => {
+      const types = ['musketeer', 'cannon', 'tarpit', 'longbow', 'mortar', 'firepot'];
+      let built = 0;
+      for (let row = 1; row < 15 && built < 25; row += 2) {
+        for (let col = 1; col < 30 && built < 25; col += 2) if (scene.build({ col, row }, types[built % types.length]).ok) built += 1;
+      }
+      scene.spawnHorde(120);
+      scene.setSpeed(speed);
+    }, speed);
+    // Let the horde reach the towers, then measure.
+    await page.waitForTimeout(1500);
+    const before = await audio(page);
+    const voices = await page.evaluate(
+      (seconds) =>
+        new Promise<number[]>((resolve) => {
+          type Scene = { state: { enemies: unknown[] }; spawnHorde(n: number): boolean };
+          const scene = window.__tarpit!.game.scene.getScene('game') as unknown as Scene;
+          const seen: number[] = [];
+          const end = performance.now() + seconds * 1000;
+          const frame = (now: number) => {
+            if (scene.state.enemies.length < 120) scene.spawnHorde(120 - scene.state.enemies.length);
+            seen.push(window.__tarpit!.audio().voices);
+            if (now < end) requestAnimationFrame(frame);
+            else resolve(seen);
+          };
+          requestAnimationFrame(frame);
+        }),
+      HORDE_SECONDS,
+    );
+    const a = await audio(page);
+    const delta = (k: 'requested' | 'played' | 'thinned' | 'capped') =>
+      Object.entries(a[k]).reduce((s, [n, v]) => s + v - (before[k][n] ?? 0), 0);
+    const perS = delta('played') / HORDE_SECONDS;
+    const names = Object.keys(a.played).filter((n) => (a.played[n] ?? 0) > (before.played[n] ?? 0));
+    console.log(
+      `horde ${speed}x: ${perS.toFixed(1)} starts/s, max voices ${Math.max(...voices)}, requested ${delta('requested')}, ` +
+        `played ${delta('played')}, thinned ${delta('thinned')}, capped ${delta('capped')}; playing: ${names.sort().join(' ')}`,
+    );
+    expect(Math.max(...voices)).toBeLessThanOrEqual(MAX_VOICES);
+    expect(delta('thinned')).toBeGreaterThan(0);
+    expect(perS).toBeGreaterThan(0);
+    expect(perS).toBeLessThanOrEqual(HORDE_MAX_STARTS_PER_S);
+    // The texture keeps the busy sounds audible: hits, small deaths and Musketeer shots and ticks each still play at least once a second.
+    for (const n of ['hit', 'death.small', 'shot.musketeer', 'impact.musketeer']) {
+      expect((a.played[n] ?? 0) - (before.played[n] ?? 0), n).toBeGreaterThanOrEqual(HORDE_SECONDS);
     }
-    scene.spawnHorde(120);
-    scene.setSpeed(3);
-  }, null);
-  const voices = await page.evaluate(
-    () =>
-      new Promise<number[]>((resolve) => {
-        type Scene = { state: { enemies: unknown[] }; spawnHorde(n: number): boolean };
-        const scene = window.__tarpit!.game.scene.getScene('game') as unknown as Scene;
-        const seen: number[] = [];
-        const end = performance.now() + 3000;
-        const frame = (now: number) => {
-          if (scene.state.enemies.length < 120) scene.spawnHorde(120 - scene.state.enemies.length);
-          seen.push(window.__tarpit!.audio().voices);
-          if (now < end) requestAnimationFrame(frame);
-          else resolve(seen);
-        };
-        requestAnimationFrame(frame);
-      }),
-  );
-  const a = await audio(page);
-  const sum = (t: Record<string, number>) => Object.values(t).reduce((s, n) => s + n, 0);
-  console.log(`horde: max voices ${Math.max(...voices)}, requested ${sum(a.requested)}, played ${sum(a.played)}, thinned ${sum(a.thinned)}, capped ${sum(a.capped)}`);
-  expect(Math.max(...voices)).toBeLessThanOrEqual(MAX_VOICES);
-  expect(sum(a.thinned)).toBeGreaterThan(0);
-  expect(sum(a.played)).toBeGreaterThan(0);
-});
+  });
+}
 
 test('the mute buttons (960 x 580, mouse): 42 px, overlapping nothing, on the title and in the HUD', async ({ page }) => {
   await muteRoundTrip(page, false, 42);

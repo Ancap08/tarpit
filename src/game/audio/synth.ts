@@ -7,9 +7,9 @@
 import { layerEnd, recipeLength, type Layer, type Recipe } from './recipes';
 
 /** The mix bus level before the limiter. */
-export const MASTER_LEVEL = 0.6;
+export const MASTER_LEVEL = 0.55;
 /** The limiter: a fast, hard compressor just under full scale. */
-export const LIMITER = { threshold: -6, knee: 0, ratio: 20, attack: 0.002, release: 0.12 } as const;
+export const LIMITER = { threshold: -3, knee: 0, ratio: 20, attack: 0.002, release: 0.1 } as const;
 /** Exponential decays end at this gain (-80 dB), then the gain is set to 0. */
 const FLOOR = 0.0001;
 
@@ -108,8 +108,16 @@ export function fadeOut(ctx: BaseAudioContext, s: Scheduled): void {
   }
 }
 
-/** The mix bus: input -> level -> limiter -> mute gain -> destination. Voices connect to `input`. */
-export function masterChain(ctx: BaseAudioContext): { input: GainNode; mute: GainNode; limiter: DynamicsCompressorNode } {
+/**
+ * The mix bus: input -> level -> limiter -> mute gain -> `out` (the
+ * destination). Voices connect to `input`. `limit` false bypasses the
+ * limiter (offline only, to measure what it does).
+ */
+export function masterChain(
+  ctx: BaseAudioContext,
+  limit = true,
+  out: AudioNode = ctx.destination,
+): { input: GainNode; mute: GainNode; limiter: DynamicsCompressorNode } {
   const input = ctx.createGain();
   input.gain.value = MASTER_LEVEL;
   const limiter = ctx.createDynamicsCompressor();
@@ -119,8 +127,10 @@ export function masterChain(ctx: BaseAudioContext): { input: GainNode; mute: Gai
   limiter.attack.value = LIMITER.attack;
   limiter.release.value = LIMITER.release;
   const mute = ctx.createGain();
-  input.connect(limiter);
-  limiter.connect(mute);
-  mute.connect(ctx.destination);
+  if (limit) {
+    input.connect(limiter);
+    limiter.connect(mute);
+  } else input.connect(mute);
+  mute.connect(out);
   return { input, mute, limiter };
 }

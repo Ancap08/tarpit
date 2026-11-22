@@ -6,8 +6,10 @@
 // src/game/audio/lab.ts): each sound in turn with a 0.4 s gap, then a
 // 10 s busy wave (six towers firing, impacts on arrival, hits, deaths, an
 // exit, a Powder Keg, the charge ready and the wave clear, thinned and
-// capped as in play). Writes m33-sounds.wav (mono, 16-bit, 22.05 kHz) and
-// m33-sounds.txt (each sound's name, start and length, in order) into the
+// capped as in play). Writes m33-sounds.wav (mono, 16-bit, 22.05 kHz),
+// m33-sounds-phone.wav (the same through a 200 Hz high-pass, a rough
+// phone speaker) and m33-sounds.txt (each sound's name, start and length,
+// in order) into the
 // folder (default: the system temp folder). The WAV is for listening only:
 // never commit it.
 
@@ -68,20 +70,24 @@ async function main(): Promise<void> {
     await page.goto(`${URL_BASE}?test=1`);
     await page.waitForFunction(() => window.__tarpit?.audioLab !== undefined);
     const reel = await page.evaluate(() => window.__tarpit!.audioLab.reel());
+    const phone = await page.evaluate(() => window.__tarpit!.audioLab.reel(true));
     await browser.close();
     const file = join(out, 'm33-sounds.wav');
     writeFileSync(file, wav(Buffer.from(reel.pcm16, 'base64'), reel.rate));
+    const phoneFile = join(out, 'm33-sounds-phone.wav');
+    writeFileSync(phoneFile, wav(Buffer.from(phone.pcm16, 'base64'), phone.rate));
     const lines = [
       `Tarpit milestone 33 sounds: ${file}`,
       `Mono, 16-bit, ${reel.rate} Hz, through the master chain (level and limiter). Peak ${reel.peak.toFixed(3)}.`,
+      `m33-sounds-phone.wav: the same, then a 200 Hz high-pass (24 dB/octave), a rough stand-in for a phone speaker. Peak ${phone.peak.toFixed(3)}.`,
       '',
       'start (s)  length (s)  sound',
       ...reel.order.map((o) => `${o.at.toFixed(2).padStart(9)}  ${o.length.toFixed(2).padStart(10)}  ${o.name}`),
-      `${reel.busyAt.toFixed(2).padStart(9)}  ${'10.50'.padStart(10)}  busy wave: six towers, impacts, hits, deaths, an exit at +4.2 s, a Powder Keg at +5.5 s, the charge ready at +8.2 s, the wave clear at +9.5 s`,
+      `${reel.busyAt.toFixed(2).padStart(9)}  ${'10.50'.padStart(10)}  busy wave: six towers, impacts, hits, deaths, a wave horn at +3.0 s, an exit at +4.2 s, a Powder Keg at +5.5 s, the charge ready at +8.2 s, the wave clear at +9.5 s`,
     ];
     writeFileSync(join(out, 'm33-sounds.txt'), `${lines.join('\n')}\n`);
     const mb = statSync(file).size / 1024 / 1024;
-    console.log(`[sounds] wrote ${file} (${mb.toFixed(2)} MB) and m33-sounds.txt; peak ${reel.peak.toFixed(3)}`);
+    console.log(`[sounds] wrote ${file} (${mb.toFixed(2)} MB), ${phoneFile} and m33-sounds.txt; peak ${reel.peak.toFixed(3)}`);
     if (mb >= MAX_MB) throw new Error(`the WAV is ${MAX_MB} MB or more`);
   } finally {
     server.kill();

@@ -30,6 +30,8 @@ export interface AudioState {
   muted: boolean;
   /** The mute button's words: "Sound on" or "Sound off" (names.ts). */
   label: string;
+  /** The key hint (names.ts MUTE_TEXT.hint). */
+  hint: string;
   /** The AudioContext's state, or 'none' before the first gesture (and always in test mode). */
   context: 'none' | AudioContextState;
   /** Voices sounding now. */
@@ -146,7 +148,7 @@ export class SoundEngine {
     const ctx = this.ctx;
     if (this.muted || ctx === null || this.bus === null || ctx.state !== 'running' || document.hidden) return;
     const recipe = RECIPES[name];
-    const decision = this.mixer.request(name, recipe.priority, recipeLength(recipe) * 1000, this.now());
+    const decision = this.mixer.request(name, recipe.priority, recipeLength(recipe) * 1000, this.now(), recipe.thin);
     if (decision.action === 'thin') {
       this.bump(this.counts.thinned, name);
       return;
@@ -208,6 +210,7 @@ export class SoundEngine {
       enabled: this.enabled,
       muted: this.muted,
       label: this.muted ? MUTE_TEXT.off : MUTE_TEXT.on,
+      hint: MUTE_TEXT.hint,
       context: this.ctx === null ? 'none' : this.ctx.state,
       voices: this.mixer.live(this.now()).length,
       requested: copy(this.counts.requested),

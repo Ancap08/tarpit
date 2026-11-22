@@ -6726,3 +6726,58 @@ simulation change: `npm run sim` is byte-identical to main.
 Checks: lint, check:assets, typecheck, 1166 unit tests, build,
 check:size (1.32 MB), 447 Playwright tests (8 skipped) on chromium,
 tablet and phone; `npm run sim` byte-identical to main.
+
+### Follow-up (coordinator, before Kyle listens)
+
+The game is played mostly on phones and tablets; my own "weakest on
+paper" list became the follow-up.
+
+1. **Low sounds carry on small speakers.** The Cannon thump and boom,
+   Mortar boom, Troll death, exit warning, Powder Keg, Tar Barrel and the
+   boss's drone, stomps and fall got a mid layer (a triangle body an
+   octave or two up and a band-passed noise crack, 200 to 900 Hz) and
+   less sub-bass. Through the phone stand-in (a 200 Hz high-pass, 24
+   dB/octave) they keep 0.56 to 0.78 of their RMS; before, 0.16 (Mortar
+   boom), 0.19 (Cannon boom), 0.20 (Cannon thump), 0.30 (Keg), 0.32 and
+   0.33 (boss), 0.39 (Tar Barrel), 0.46 (exit). The test floor is 0.5
+   (-6 dB): most of the sound's energy is in the part a phone plays.
+   One mistake on the way: Web Audio reads a high-pass's Q in dB, so my
+   first stand-in (Q 0.707) had a resonant bump that flattered the
+   numbers; it now uses -3.01 dB, the flat Butterworth response.
+2. **Levels set by tier** (table in `docs/DESIGN.md`, "Sound"): the RMS of
+   each sound's loudest 50 ms, before the master chain, sits in its
+   tier's band, checked offline. Hit ticks 0.012, shots 0.055 to 0.06 (the
+   Fire Pot whoosh rose to 0.06, level with the others; the Cannon thump
+   fell from 0.12), impacts and deaths 0.07 to 0.10 (each impact above its
+   shot), actions 0.05 to 0.08, moments 0.12 to 0.165, big moments 0.17
+   to 0.23. In the busy wave the mix gets 5.0 dB louder at the wave horn
+   and 5.3 dB at the Keg (tested at 3 dB or more).
+3. **Harshness.** The coin is two triangles with a quiet low-passed
+   square edge (bare squares before); the refused sound is two round
+   falling triangle notes with a little filtered buzz (low-passed squares
+   before), still unlike sell's rising-then-falling pair.
+4. **Busy waves.** The smallest sounds (hit tick, Musketeer tick, small
+   death pop) thin over 120 ms and the exit warning over 400 ms; hit
+   ticks, shots, impacts and deaths share a budget of 20 starts a second,
+   and past it each still plays once it has been quiet for 500 ms. The
+   120-enemy horde with 25 towers: 21 starts a second at 1x and 24 at 3x,
+   from 33 and 90; every busy sound still plays at least once a second.
+   The limiter now only catches peaks: level 0.55 (from 0.6), threshold
+   -3 dB (from -6). Worst case (40 shots, impacts and deaths in 0.5 s):
+   peak 0.51 thinned, 0.92 unthinned; deepest gain reduction 0.0 and 0.8
+   dB, measured against the same render with the limiter bypassed, lined
+   up for its 6 ms look-ahead, in 20 ms windows. (My first measure showed
+   -12 dB: the renders were not lined up, and the compressor had no
+   settled state at time 0. The cues now start after 0.3 s of silence,
+   and Chrome's fixed make-up gain is taken out.)
+5. **The "M" hint** is gone from the mute button in every layout; M still
+   works and is in the README, `docs/DESIGN.md` and `audio().hint`.
+
+Listening files re-rendered: `m33-sounds.wav` (peak 0.66) and the new
+`m33-sounds-phone.wav` (the same through the stand-in, peak 0.68), with
+`m33-sounds.txt`; the busy wave now has a wave horn at +3 s.
+
+Checks: lint, check:assets, typecheck, 1172 unit tests, build,
+check:size (1.33 MB), 450 Playwright tests (8 skipped) on chromium,
+tablet and phone; perf median 16.7 ms, p95 16.7 to 16.8 ms;
+`npm run sim` byte-identical to main.

@@ -20,6 +20,39 @@ export interface RenderStats {
   tailMax: number;
   /** Largest sample after the stated length plus 20 ms. */
   afterMax: number;
+  /** Short-term loudness: the RMS of the loudest 50 ms window (the level table in DESIGN.md "Sound"). */
+  loud: number;
+}
+
+/** The phone stand-in: a 200 Hz high-pass, two 12 dB/octave stages (24 dB/octave, like a small speaker's roll-off). */
+export const PHONE_HIGHPASS_HZ = 200;
+
+/** Route `into` through the phone stand-in to `dest`; returns the node to connect sounds to. */
+export function phoneFilter(ctx: BaseAudioContext, dest: AudioNode): AudioNode {
+  const a = ctx.createBiquadFilter();
+  const b = ctx.createBiquadFilter();
+  for (const f of [a, b]) {
+    f.type = 'highpass';
+    f.frequency.value = PHONE_HIGHPASS_HZ;
+    // Web Audio reads a high-pass's Q in dB: -3.01 dB is the flat Butterworth response (no bump above the cut).
+    f.Q.value = -3.01;
+  }
+  a.connect(b);
+  b.connect(dest);
+  return a;
+}
+
+/** The RMS of the loudest `windowS` window of `data` between samples `from` and `to`. */
+export function loudest(data: Float32Array, rate: number, windowS = 0.05, from = 0, to = data.length): number {
+  const w = Math.max(1, Math.round(windowS * rate));
+  let sum = 0;
+  let best = 0;
+  for (let i = from; i < to; i++) {
+    sum += data[i] * data[i];
+    if (i - from >= w) sum -= data[i - w] * data[i - w];
+    best = Math.max(best, sum);
+  }
+  return Math.sqrt(Math.max(0, best) / w);
 }
 
 const PAD_S = 0.1;
@@ -34,15 +67,15 @@ function stats(name: string, data: Float32Array, rate: number, length: number): 
   for (let i = Math.max(0, n - Math.round(0.005 * rate)); i < n; i++) tailMax = Math.max(tailMax, Math.abs(data[i]));
   let afterMax = 0;
   for (let i = n + Math.round(0.02 * rate); i < data.length; i++) afterMax = Math.max(afterMax, Math.abs(data[i]));
-  return { name, length, rendered: data.length / rate, peak, rms: Math.sqrt(sum / Math.max(1, n)), tailMax, afterMax };
+  return { name, length, rendered: data.length / rate, peak, rms: Math.sqrt(sum / Math.max(1, n)), tailMax, afterMax, loud: loudest(data, rate) };
 }
 
-/** Render one recipe alone (no master chain: the peak before the limiter). */
-export async function renderOne(name: SoundName, rate = 44100): Promise<RenderStats> {
+/** Render one recipe alone (no master chain: the peak before the limiter); `phone` passes it through the phone stand-in. */
+export async function renderOne(name: SoundName, phone = false, rate = 44100): Promise<RenderStats> {
   const recipe = RECIPES[name];
   const length = recipeLength(recipe);
   const ctx = new OfflineAudioContext(1, Math.ceil((length + PAD_S) * rate), rate);
-  schedule(ctx, recipe, ctx.destination, 0);
+  schedule(ctx, recipe, phone ? phoneFilter(ctx, ctx.destination) : ctx.destination, 0);
   const buf = await ctx.startRendering();
   return stats(name, buf.getChannelData(0), rate, length);
 }
@@ -64,7 +97,7 @@ function scheduleCues(ctx: BaseAudioContext, cues: Cue[], dest: AudioNode, offse
       out.played += 1;
       continue;
     }
-    const d = mixer.request(c.name, recipe.priority, recipeLength(recipe) * 1000, c.t * 1000);
+    const d = mixer.request(c.name, recipe.priority, recipeLength(recipe) * 1000, c.t * 1000, recipe.thin);
     if (d.action === 'thin') out.thinned += 1;
     else if (d.action === 'cap') out.capped += 1;
     else {
@@ -88,6 +121,8 @@ function lcg(seed: number): () => number {
 
 const TOWERS = ['musketeer', 'longbow', 'cannon', 'mortar', 'tarpit', 'firepot'] as const;
 
+const WORST_LEAD_S = 0.3;
+
 /** The worst case: 40 shots, 40 impacts and 40 deaths in half a second. */
 function worstCues(): Cue[] {
   const r = lcg(33);
@@ -101,14 +136,57 @@ function worstCues(): Cue[] {
   return cues;
 }
 
-/** Render the worst case through the master chain; `thin` false skips the mixer (the limiter alone). */
-export async function renderWorstCase(thin = true, rate = 44100): Promise<RenderStats & { played: number; thinned: number; capped: number; maxVoices: number }> {
-  const ctx = new OfflineAudioContext(1, Math.ceil(1.2 * rate), rate);
-  const bus = masterChain(ctx);
-  const counts = scheduleCues(ctx, worstCues(), bus.input, 0, thin);
-  const buf = await ctx.startRendering();
-  return { ...stats(thin ? 'worst case' : 'worst case, no thinning', buf.getChannelData(0), rate, 1.2), ...counts };
+/**
+ * Render the worst case through the master chain; `thin` false skips the
+ * mixer (the limiter alone). `reductionDb` is the limiter's deepest gain
+ * reduction: the same cues are rendered with the limiter bypassed, and
+ * the lowest ratio of the two renders' 20 ms RMS (where the unlimited one
+ * is above -40 dB) is taken. Pumping shows as a deep reduction; a limiter
+ * that only catches peaks stays within a few dB.
+ */
+export async function renderWorstCase(
+  thin = true,
+  rate = 44100,
+): Promise<RenderStats & { played: number; thinned: number; capped: number; maxVoices: number; reductionDb: number }> {
+  const render = async (limit: boolean) => {
+    // The cues start after WORST_LEAD_S of silence, so the limiter starts settled as in play.
+    const ctx = new OfflineAudioContext(1, Math.ceil((WORST_LEAD_S + 1.2) * rate), rate);
+    const bus = masterChain(ctx, limit);
+    const counts = scheduleCues(ctx, worstCues(), bus.input, WORST_LEAD_S, thin);
+    return { data: (await ctx.startRendering()).getChannelData(0), counts };
+  };
+  const limited = await render(true);
+  const open = await render(false);
+  // The limiter looks ahead (Chrome delays its output by a few ms): line the renders up first.
+  let lag = 0;
+  let bestCorr = -Infinity;
+  for (let l = 0; l <= Math.round(0.012 * rate); l++) {
+    let c = 0;
+    for (let j = 0; j + l < open.data.length; j += 4) c += open.data[j] * limited.data[j + l];
+    if (c > bestCorr) {
+      bestCorr = c;
+      lag = l;
+    }
+  }
+  const w = Math.round(0.02 * rate);
+  const dbs: number[] = [];
+  for (let i = 0; i + w + lag <= open.data.length; i += w) {
+    let a = 0;
+    let b = 0;
+    for (let j = i; j < i + w; j++) {
+      a += limited.data[j + lag] * limited.data[j + lag];
+      b += open.data[j] * open.data[j];
+    }
+    if (Math.sqrt(b / w) > 0.01) dbs.push(10 * Math.log10(a / b));
+  }
+  // Chrome's compressor adds a fixed make-up gain: the reduction is measured from its unreduced level.
+  const reductionDb = dbs.length === 0 ? 0 : Math.min(...dbs) - Math.max(...dbs);
+  return { ...stats(thin ? 'worst case' : 'worst case, no thinning', limited.data, rate, WORST_LEAD_S + 1.2), ...limited.counts, reductionDb };
 }
+
+/** In the busy wave: a horn mid-wave (the next wave started) and a Powder Keg (s). */
+export const BUSY_HORN_S = 3;
+export const BUSY_KEG_S = 5.5;
 
 /** A 10 s busy wave: six towers firing, impacts on arrival, hits, deaths, an exit, a keg, the charge and the clear. */
 export function busyWaveCues(): Cue[] {
@@ -126,7 +204,7 @@ export function busyWaveCues(): Cue[] {
       if (impacts % 4 === 0) cues.push({ t: land, name: deathSound(['goblin', 'wolf', 'goblin', 'troll', 'shieldbearer'][impacts % 5]) });
     }
   }
-  cues.push({ t: 4.2, name: 'exit' }, { t: 5.5, name: 'special.keg' }, { t: 5.5, name: 'death.small' }, { t: 5.52, name: 'death.medium' });
+  cues.push({ t: BUSY_HORN_S, name: 'waveStart' }, { t: 4.2, name: 'exit' }, { t: BUSY_KEG_S, name: 'special.keg' }, { t: 5.5, name: 'death.small' }, { t: 5.52, name: 'death.medium' });
   cues.push({ t: 8.2, name: 'chargeReady' }, { t: 9.5, name: 'waveClear' });
   return cues;
 }
@@ -135,7 +213,7 @@ export function busyWaveCues(): Cue[] {
 export const REEL_GAP_S = 0.4;
 export const BUSY_WAVE_S = 10.5;
 
-export async function renderReel(rate = 22050): Promise<{ rate: number; pcm16: string; order: { name: string; at: number; length: number }[]; peak: number; busyAt: number }> {
+export async function renderReel(phone = false, rate = 22050): Promise<{ rate: number; pcm16: string; order: { name: string; at: number; length: number }[]; peak: number; busyAt: number }> {
   const order: { name: string; at: number; length: number }[] = [];
   let t = 0.3;
   for (const name of SOUND_NAMES) {
@@ -146,7 +224,7 @@ export async function renderReel(rate = 22050): Promise<{ rate: number; pcm16: s
   const busyAt = t + 0.6;
   const total = busyAt + BUSY_WAVE_S;
   const ctx = new OfflineAudioContext(1, Math.ceil(total * rate), rate);
-  const bus = masterChain(ctx);
+  const bus = masterChain(ctx, true, phone ? phoneFilter(ctx, ctx.destination) : ctx.destination);
   for (const o of order) schedule(ctx, RECIPES[o.name as SoundName], bus.input, o.at);
   scheduleCues(ctx, busyWaveCues(), bus.input, busyAt, true);
   const data = (await ctx.startRendering()).getChannelData(0);
@@ -163,9 +241,35 @@ export async function renderReel(rate = 22050): Promise<{ rate: number; pcm16: s
   return { rate, pcm16: btoa(bin), order, peak, busyAt };
 }
 
+/**
+ * Does the busy wave bury the horn or the Keg? The busy wave is rendered
+ * through the master chain with and without each, and the loudest 50 ms
+ * in the half second after it starts is compared: `gainDb` is how much
+ * louder the mix gets when it sounds.
+ */
+export async function renderBusyAudibility(rate = 22050): Promise<{ name: string; at: number; gainDb: number }[]> {
+  const render = async (cues: Cue[]) => {
+    const ctx = new OfflineAudioContext(1, Math.ceil(BUSY_WAVE_S * rate), rate);
+    const bus = masterChain(ctx);
+    scheduleCues(ctx, cues, bus.input, 0, true);
+    return (await ctx.startRendering()).getChannelData(0);
+  };
+  const all = busyWaveCues();
+  const full = await render(all);
+  const out: { name: string; at: number; gainDb: number }[] = [];
+  for (const [name, at] of [['waveStart', BUSY_HORN_S], ['special.keg', BUSY_KEG_S]] as const) {
+    const without = await render(all.filter((c) => !(c.name === name && c.t === at)));
+    const from = Math.round(at * rate);
+    const to = Math.round((at + 0.5) * rate);
+    out.push({ name, at, gainDb: 20 * Math.log10(loudest(full, rate, 0.05, from, to) / loudest(without, rate, 0.05, from, to)) });
+  }
+  return out;
+}
+
 export const audioLab = {
   names: (): string[] => [...SOUND_NAMES],
-  render: (name: string) => renderOne(name as SoundName),
+  render: (name: string, phone = false) => renderOne(name as SoundName, phone),
   worstCase: (thin = true) => renderWorstCase(thin),
-  reel: () => renderReel(),
+  busyAudibility: () => renderBusyAudibility(),
+  reel: (phone = false) => renderReel(phone),
 };

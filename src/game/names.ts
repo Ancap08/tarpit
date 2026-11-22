@@ -202,10 +202,9 @@ export function goldGainText(amount: number): string {
   return `+${amount}`;
 }
 
-/** Milestone 33: the mute button's state words (window.__tarpit.audio().label) and its key hint, drawn in the button's corner. */
+/** Milestone 33: the mute button's state words and the key hint (window.__tarpit.audio() label and hint; README). */
 export const MUTE_TEXT = {
   on: 'Sound on',
   off: 'Sound off',
-  key: 'M',
   hint: 'M turns the sound on or off',
 } as const;
