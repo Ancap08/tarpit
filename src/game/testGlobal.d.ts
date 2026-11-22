@@ -1,4 +1,4 @@
-// Shape of window.__tarpit. Outside test mode only `game` and the read-only
+// Shape of window.__tarpit. Outside test mode only `game` and the read-only (milestone 31: also `fx()` and `towerAngle()`)
 // `uiRects()`, `canvasToPage()`, `portraitCardVisible()`, `animState()` and
 // (milestone 26 follow-up) `titleReady()` are set (uiRects() lists the title
 // buttons once the title is ready, and the game's once GameScene runs); with ?test=1 every hook below is
@@ -26,6 +26,7 @@ import type {
   UpgradeResult,
 } from '../sim';
 import type { AnimState } from './anim/enemySprites';
+import type { FxState } from './fx/effects';
 import type { UiState } from './GameScene';
 import type { HudStrings, Rect } from './hud';
 import type { ScriptName } from './testMode';
@@ -158,9 +159,17 @@ export interface TarpitTestApi {
   animState(enemyId: number): AnimState | null;
   /** The simulation's current event list (state.events, see src/sim/events.ts). */
   events(): GameEvent[];
+  /**
+   * Milestone 31 (also outside test mode): the play-mode effects' counts
+   * (projectiles, impacts, gold labels, banner, shakes, darkenings, ...), or
+   * null in test mode, where effects are off.
+   */
+  fx(): FxState | null;
+  /** Milestone 31: the drawn barrel angle of the tower on (col, row) in play, or null. */
+  towerAngle(col: number, row: number): number | null;
 }
 
-export type TarpitGlobal = Pick<TarpitTestApi, 'game' | 'uiRects' | 'canvasToPage' | 'portraitCardVisible' | 'animState' | 'titleReady'> &
+export type TarpitGlobal = Pick<TarpitTestApi, 'game' | 'uiRects' | 'canvasToPage' | 'portraitCardVisible' | 'animState' | 'titleReady' | 'fx' | 'towerAngle'> &
   Partial<TarpitTestApi>;
 
 declare global {

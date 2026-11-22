@@ -234,6 +234,9 @@ export interface HudHandlers {
   onSpecialPick: (type: SpecialType) => void;
 }
 
+/** The Lives readout's left edge. */
+const LIVES_X = 126;
+
 export class Hud {
   private readonly gold: Phaser.GameObjects.Text;
   private readonly lives: Phaser.GameObjects.Text;
@@ -259,7 +262,7 @@ export class Hud {
     const stat = (x: number, size = '18px', color: string = TEXT.hud) =>
       scene.add.text(x, MID, '', { fontFamily: FONT, fontSize: size, fontStyle: 'bold', color }).setOrigin(0, 0.5);
     this.gold = stat(14);
-    this.lives = stat(126);
+    this.lives = stat(LIVES_X);
     this.wave = stat(238);
     this.tag = stat(238, `${TAG_SIZE}px`, TEXT.hudDim).setY(MID + TAG_OFFSET);
     this.next = stat(PREVIEW_X, `${PREVIEW_SIZE}px`, TEXT.hudDim).setWordWrapWidth(PREVIEW_WIDTH, true);
@@ -282,6 +285,14 @@ export class Hud {
     this.specialMenu = new SpecialMenu(scene, SPECIAL_BUTTON.x, HUD_TOP, handlers.onSpecialPick);
     this.bar = new BuildBar(scene, ROW2_BUTTON_Y, handlers.onPick);
     this.bossBar = new BossBar(scene);
+  }
+
+  /**
+   * Milestone 31 (play only): an enemy got through. `flash` > 0 shows the
+   * Lives number in red; `dx` shakes it sideways by that many px.
+   */
+  livesFx(flash: number, dx: number): void {
+    this.lives.setColor(flash > 0 ? TEXT.livesFlash : TEXT.hud).setX(LIVES_X + dx);
   }
 
   /** `nowMs`: the clock in play, for the ready pip's pulse; left out in test mode (no pulse). */

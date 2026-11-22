@@ -75,6 +75,13 @@
 // tracers still read state.shots. In test mode the sprites are frozen: no
 // walk cycle, tweens or particles.
 //
+// Effects (milestone 31, fx/effects.ts): in play the scene feeds every tick's
+// shots and every event batch to Effects instead of straight to the sprites;
+// it draws projectiles, turns and kicks the towers, delays each hit's flash
+// and each kill's puff to the projectile's arrival, and draws the banners,
+// gold labels and the boss and exit moments. Test mode creates no Effects
+// and draws exactly as before (tracers, snapping barrels, instant reactions).
+//
 // End of game: every redraw checks the sim's phase; once it is 'won' or
 // 'lost' the end screen shows (once), the pick and panel clear, the bar greys
 // and map input is ignored.
@@ -147,6 +154,7 @@ import type {
   UpgradeResult,
 } from '../sim';
 import { EventCursor } from './anim/effects';
+import { Effects, type FxState } from './fx/effects';
 import { EnemySprites, type AnimState } from './anim/enemySprites';
 import { drawHpBars, drawShadows, drawStatusRings } from './draw/enemies';
 import { TowerLabels } from './draw/labels';
@@ -394,6 +402,8 @@ export class GameScene extends Phaser.Scene {
   /** Waves cleared already sent to the high score store this game (milestone 26). */
   private recordedCleared = 0;
   private readonly autoTick = !isTestMode();
+  /** Milestone 31: the play-mode effects; null in test mode. */
+  private fx: Effects | null = null;
 
   constructor() {
     super('game');
@@ -441,12 +451,15 @@ export class GameScene extends Phaser.Scene {
     this.dynamic = this.add.graphics();
     this.enemySprites = new EnemySprites(this, isTestMode());
     this.shotFx = this.add.graphics();
+    this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx)) : null;
     this.bars = this.add.graphics();
     this.labels = new TowerLabels(this);
     // Flyers (Harpies) draw above every walker and label, below the HUD.
     this.enemySprites.setAirLayer(this.add.layer());
     // The aim banner (milestone 30): over the map's top edge, under the HUD and panels.
     // The aim circle's centre cross (milestone 30 follow-up), above every sprite.
+    // Milestone 31: the boss veil, gold labels and wave banners, under the HUD.
+    this.fx?.createOverlays();
     this.aimCross = this.add.graphics();
     this.bannerBg = this.add.graphics().setDepth(4);
     const bannerText = (y: number, size: string, color: string) =>
@@ -1000,6 +1013,7 @@ export class GameScene extends Phaser.Scene {
       // Ticks beyond the cap are dropped (see loop.ts for why).
       const { ticks, accMs } = ticksDue(this.accMs + delta, this.speed);
       this.accMs = accMs;
+      this.fx?.advanceClock(delta, this.speed);
       this.advance(ticks, false);
       // Effects age in real time in play (milestone 30), so a label lasts 1.5 s at any speed.
       this.specialFx.advance(delta);
@@ -1013,6 +1027,7 @@ export class GameScene extends Phaser.Scene {
       // Milestone 30: once won or lost nothing ticks, so nothing replays after the win.
       if (this.state.phase === 'won' || this.state.phase === 'lost') break;
       tick(this.state);
+      this.fx?.onTick(this.state.shots);
       for (const shot of this.state.shots) this.aim.pointAt(shot.cell, shot.to);
       this.shots.afterTick(this.state.shots);
       // In test mode effects age by tick (milestone 30), so step(n) frames are always the same.
@@ -1056,12 +1071,23 @@ export class GameScene extends Phaser.Scene {
     if (!this.enemySprites) return;
     const { events, newTick } = this.eventCursor.take(this.state);
     if (newTick) this.enemySprites.newTick();
-    this.enemySprites.onEvents(events);
+    if (this.fx) this.fx.onEvents(events, this.state);
+    else this.enemySprites.onEvents(events);
   }
 
   /** Test hook: the current simulation events. */
   simEvents(): GameEvent[] {
     return this.state.events;
+  }
+
+  /** Test hook (milestone 31, play only): the effects' counts, or null in test mode. */
+  fxState(): FxState | null {
+    return this.fx?.snapshot() ?? null;
+  }
+
+  /** Test hook (milestone 31, play only): the drawn barrel angle of the tower on `cell`, or null. */
+  towerAngle(cell: Cell): number | null {
+    return this.fx?.towerAngle(cell) ?? null;
   }
 
   /** Test hook: an enemy sprite's animation state, or null if it has none. */
@@ -1167,7 +1193,7 @@ export class GameScene extends Phaser.Scene {
     if (result.ok) {
       const landed = this.state.events.slice(from).find((e) => e.kind === 'special');
       if (landed?.kind === 'special') this.specialFx.add(landed);
-      if (type === 'keg' && this.autoTick) this.cameras.main.shake(KEG_SHAKE_MS, KEG_SHAKE);
+      if (type === 'keg' && this.autoTick && this.fx?.shakesAllowed) this.cameras.main.shake(KEG_SHAKE_MS, KEG_SHAKE);
     }
     this.takeEvents();
     this.redraw();
@@ -1193,12 +1219,15 @@ export class GameScene extends Phaser.Scene {
     const g = this.dynamic;
     g.clear();
     const moving = this.press?.active && this.press.kind === 'move' ? this.press.from : null;
-    drawTowers(g, this.state, this.aim, moving);
+    const fx = this.fx;
+    fx?.update(this.state);
+    drawTowers(g, this.state, this.aim, moving, fx ? (cell, type) => fx.towerPose(cell, type) : undefined);
     drawStatusRings(g, this.state);
     drawShadows(g, this.state);
     this.enemySprites.sync(this.state, this.speed);
     this.shotFx.clear();
-    this.shots.draw(this.shotFx);
+    if (fx) fx.draw(this.shotFx);
+    else this.shots.draw(this.shotFx);
     this.specialFx.draw(this.shotFx);
     this.bars.clear();
     drawHpBars(this.bars, this.state);

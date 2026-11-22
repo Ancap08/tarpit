@@ -157,6 +157,10 @@ export function installGlobal(game: Phaser.Game): void {
     canvasToPage: (x: number, y: number) => canvasToPage(game, x, y),
     portraitCardVisible,
     titleReady: () => game.scene.isActive('title') && titleScene(game).isReady,
+    // Milestone 31: the play-mode effects (null in test mode or between scenes).
+    fx: () => (game.scene.isActive('game') ? (game.scene.getScene('game') as GameScene).fxState() : null),
+    towerAngle: (col: number, row: number) =>
+      game.scene.isActive('game') ? (game.scene.getScene('game') as GameScene).towerAngle({ col, row }) : null,
   };
   if (!isTestMode()) {
     window.__tarpit = always;

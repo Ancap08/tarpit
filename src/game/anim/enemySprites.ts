@@ -25,10 +25,19 @@
 // sprite) instead of the white tint fill, so it shows in Canvas too. His
 // ground shadow and rings are drawn in draw/enemies.ts; his hp is the HUD
 // boss bar (ui/bossBar.ts), not a small bar.
+//
+// Milestone 31 (effects, play only): GameScene's Effects calls hit(), kill()
+// and remove() itself when a projectile lands, not when the tick fires. An
+// enemy killed by a shot still in flight is `doomed`: its sprite stays where
+// it died (sync does not drop it) until the shot arrives. A hit with a `from`
+// point knocks the sprite a pixel or two away from it; the death puff is
+// sized to the enemy (fx/fxMath.ts deathPuff). Test mode never gets here
+// through Effects: onEvents() acts at once, as before.
 
 import Phaser from 'phaser';
 import { effectiveSlow, ENEMY_STATS, enemyPosition, isTarred, type Enemy, type EnemyType, type GameEvent, type GameState, type MapDef } from '../../sim';
 import { bobOffset, DEATH_MS, burnPulse, FLAME_EVERY, HIT_FLASH_MS, Particles, statusTint, TINT } from './effects';
+import { awayFrom, deathPuff, KNOCK_MS, knockPx, knockShare } from '../fx/fxMath';
 import { facingAt } from './facing';
 import { COLORS } from '../palette';
 import { FACINGS, SHEETS, walkAnimKey, WALK_FPS, type Facing } from './sheets';
@@ -71,6 +80,12 @@ interface View {
   burning: boolean;
   slowed: boolean;
   dying: boolean;
+  /** Milestone 31: killed by a shot still in flight; kept in place until it lands. */
+  doomed: boolean;
+  /** Milestone 31: the knock direction (unit vector, px per share) and when it started (scene ms). */
+  knockX: number;
+  knockY: number;
+  knockAt: number;
   redraws: number;
 }
 
@@ -146,14 +161,35 @@ export class EnemySprites {
     }
   }
 
-  private hit(id: number): void {
+  /** A hit: the flash, and (milestone 31, play) a knock away from `from` when given. */
+  hit(id: number, from?: { x: number; y: number }): void {
     const v = this.views.get(id);
     if (!v || v.dying) return;
     v.hitThisTick = true;
     v.hitUntil = this.scene.time.now + HIT_FLASH_MS;
+    if (from && !this.frozen) {
+      const d = awayFrom(from, { x: v.sprite.x, y: v.sprite.y });
+      const px = knockPx(v.type);
+      v.knockX = d.x * px;
+      v.knockY = d.y * px;
+      v.knockAt = this.scene.time.now;
+    }
   }
 
-  private kill(id: number): void {
+  /** Milestone 31: this enemy died to a shot still in flight; keep its sprite until kill(). */
+  doom(id: number): void {
+    const v = this.views.get(id);
+    if (v && !v.dying) v.doomed = true;
+  }
+
+  /** Where an enemy's sprite stands and its type, or null (milestone 31: puffs and gold labels). */
+  spot(id: number): { x: number; y: number; type: EnemyType } | null {
+    const v = this.views.get(id);
+    if (!v) return null;
+    return { x: v.sprite.x, y: v.sprite.y + (SHEETS[v.type].lift ?? 0), type: v.type };
+  }
+
+  kill(id: number): void {
     const v = this.views.get(id);
     if (!v || v.dying) return;
     if (this.frozen) {
@@ -167,7 +203,8 @@ export class EnemySprites {
     v.sprite.clearTint();
     v.shield?.setVisible(false);
     v.flash?.setVisible(false);
-    this.particles?.puff(v.sprite.x, v.sprite.y);
+    const puff = deathPuff(v.type);
+    this.particles?.puff(v.sprite.x, v.sprite.y, puff.count, puff.scale);
     this.scene.tweens.add({
       targets: v.sprite,
       scale: 0,
@@ -177,7 +214,7 @@ export class EnemySprites {
     });
   }
 
-  private remove(id: number): void {
+  remove(id: number): void {
     const v = this.views.get(id);
     if (!v) return;
     this.scene.tweens.killTweensOf(v.sprite);
@@ -205,7 +242,7 @@ export class EnemySprites {
       this.update(this.views.get(enemy.id) ?? this.create(enemy, state.map), enemy, state.map, timeScale);
     }
     // An enemy gone without a kill or exit event (a test hook, a restart): drop it.
-    for (const [id, v] of this.views) if (!live.has(id) && !v.dying) this.remove(id);
+    for (const [id, v] of this.views) if (!live.has(id) && !v.dying && !v.doomed) this.remove(id);
   }
 
   private create(enemy: Enemy, map: MapDef): View {
@@ -241,6 +278,10 @@ export class EnemySprites {
       burning: false,
       slowed: false,
       dying: false,
+      doomed: false,
+      knockX: 0,
+      knockY: 0,
+      knockAt: -1,
       redraws: 0,
     };
     this.views.set(enemy.id, view);
@@ -268,7 +309,13 @@ export class EnemySprites {
     const { x, y } = enemyPosition(enemy, map);
     const lift = SHEETS[v.type].lift ?? 0;
     const bob = v.flying && !this.frozen ? bobOffset(this.scene.time.now, enemy.id) : 0;
-    v.sprite.setPosition(x, y - lift + bob);
+    if (v.knockAt >= 0 && this.scene.time.now - v.knockAt >= KNOCK_MS) v.knockAt = -1;
+    if (v.knockAt >= 0) {
+      const k = knockShare(this.scene.time.now - v.knockAt);
+      v.sprite.setPosition(x + v.knockX * k, y - lift + bob + v.knockY * k);
+    } else {
+      v.sprite.setPosition(x, y - lift + bob);
+    }
     v.sprite.setDepth(y);
     if (v.shield) {
       v.shield.setPosition(x + SHIELD_DX, y + SHIELD_DY);
