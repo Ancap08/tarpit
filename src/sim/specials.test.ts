@@ -25,7 +25,7 @@ const LINE: MapDef = { id: 'line', width: 960, height: 480, path: [{ x: 0, y: 24
 
 // Arena hp, fixed so the arithmetic below stays as written; no special rule
 // depends on an enemy's full hp.
-const ARENA_HP: Record<EnemyType, number> = { goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000 };
+const ARENA_HP: Record<EnemyType, number> = { goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000, grumblemaw: 13500 };
 
 function enemy(id: number, type: EnemyType, distance = AT, hp = ARENA_HP[type]): Enemy {
   return { id, type, hp, distance, slow: 0, slowTicksLeft: 0, burnDps: 0, burnTicksLeft: 0 };
@@ -52,11 +52,11 @@ const ticks = (s: GameState, n: number) => {
 };
 
 describe('the specials table (milestone 30)', () => {
-  it('keg wave 1, 90 px, 30 damage; Tar Barrel wave 4, 100 px, slow 0.5, zone 480; Fire Arrows wave 7, 90 px, burn 20/s, zone 480; recharge 1200, linger 60', () => {
+  it('keg wave 1, 90 px, 60 damage; Tar Barrel wave 4, 100 px, slow 0.5, zone 660; Fire Arrows wave 7, 90 px, burn 26/s, zone 660; recharge 1200, linger 60', () => {
     expect(SPECIAL_TYPES).toEqual(['keg', 'tarBarrel', 'fireArrows']);
-    expect(SPECIAL_DEFS.keg).toEqual({ unlockWave: 1, radius: 90, damage: 30, slow: 0, burnDps: 0, zoneTicks: 0 });
-    expect(SPECIAL_DEFS.tarBarrel).toEqual({ unlockWave: 4, radius: 100, damage: 0, slow: 0.5, burnDps: 0, zoneTicks: 480 });
-    expect(SPECIAL_DEFS.fireArrows).toEqual({ unlockWave: 7, radius: 90, damage: 0, slow: 0, burnDps: 20, zoneTicks: 480 });
+    expect(SPECIAL_DEFS.keg).toEqual({ unlockWave: 1, radius: 90, damage: 60, slow: 0, burnDps: 0, zoneTicks: 0 });
+    expect(SPECIAL_DEFS.tarBarrel).toEqual({ unlockWave: 4, radius: 100, damage: 0, slow: 0.5, burnDps: 0, zoneTicks: 660 });
+    expect(SPECIAL_DEFS.fireArrows).toEqual({ unlockWave: 7, radius: 90, damage: 0, slow: 0, burnDps: 26, zoneTicks: 660 });
     expect(SPECIAL_RECHARGE_TICKS).toBe(1200);
     expect(ZONE_LINGER_TICKS).toBe(60);
     expect([1, 3, 4, 6, 7, 10].map(unlockedSpecials)).toEqual([
@@ -71,15 +71,15 @@ describe('the specials table (milestone 30)', () => {
 });
 
 describe('Powder Keg', () => {
-  it('deals 30 to a Goblin, a Harpy (flying), a Shieldbearer (shield ignored) and the boss, and leaves no zone', () => {
-    // Goblin and Harpy given 200 hp so the 30 shows instead of a kill.
-    const s = inWave(1, [enemy(0, 'goblin', AT, 200), enemy(1, 'harpy', AT, 200), enemy(2, 'shieldbearer'), enemy(3, 'boss')]);
+  it('deals 60 to a Goblin, a Harpy (flying), a Shieldbearer (shield ignored) and the boss, and leaves no zone', () => {
+    // Goblin and Harpy given 200 hp so the 60 shows instead of a kill.
+    const s = inWave(1, [enemy(0, 'goblin', AT, 200), enemy(1, 'harpy', AT, 200), enemy(2, 'shieldbearer', AT, 120), enemy(3, 'boss')]);
     expect(useSpecial(s, 'keg', POINT)).toEqual({ ok: true, hits: 4, kills: 0, gold: s.gold });
     expect(s.enemies.map((e) => [e.type, e.hp])).toEqual([
-      ['goblin', 170],
-      ['harpy', 170],
-      ['shieldbearer', 90],
-      ['boss', 3970],
+      ['goblin', 140],
+      ['harpy', 140],
+      ['shieldbearer', 60],
+      ['boss', 3940],
     ]);
     expect(s.zones).toEqual([]);
     expect(s.events[0]).toEqual({ kind: 'special', type: 'keg', x: AT, y: 240, radius: 90, hits: 4 });
@@ -98,18 +98,18 @@ describe('Tar Barrel landing', () => {
     ]);
     expect(s.events[0]).toEqual({ kind: 'special', type: 'tarBarrel', x: AT, y: 240, radius: 100, hits: 4, zoneId: 0 });
     expect(s.events.filter((e) => e.kind === 'slowed')).toEqual(FOUR.map((type, i) => ({ kind: 'slowed', enemyId: i, slow: type === 'boss' ? 0.3 : 0.5, ticks: 60 })));
-    expect(s.zones).toEqual([{ id: 0, type: 'tarBarrel', x: AT, y: 240, radius: 100, ticksLeft: 480 }]);
+    expect(s.zones).toEqual([{ id: 0, type: 'tarBarrel', x: AT, y: 240, radius: 100, ticksLeft: 660 }]);
     expect(s.nextZoneId).toBe(1);
     expect(s.enemies.map((e) => e.hp)).toEqual(FOUR.map((type) => ARENA_HP[type]));
   });
 });
 
 describe('Fire Arrows landing', () => {
-  it('sets a 20/s special burn for the linger on a Harpy and on walkers, and leaves a zone', () => {
+  it('sets a 26/s special burn for the linger on a Harpy and on walkers, and leaves a zone', () => {
     const s = inWave(7, FOUR.map((type, i) => enemy(i, type)));
     expect(useSpecial(s, 'fireArrows', POINT)).toMatchObject({ ok: true, hits: 4, kills: 0 });
-    expect(s.enemies.map((e) => [e.type, e.burnDps, e.burnTicksLeft, e.specialBurn])).toEqual(FOUR.map((type) => [type, 20, 60, true]));
-    expect(s.zones).toEqual([{ id: 0, type: 'fireArrows', x: AT, y: 240, radius: 90, ticksLeft: 480 }]);
+    expect(s.enemies.map((e) => [e.type, e.burnDps, e.burnTicksLeft, e.specialBurn])).toEqual(FOUR.map((type) => [type, 26, 60, true]));
+    expect(s.zones).toEqual([{ id: 0, type: 'fireArrows', x: AT, y: 240, radius: 90, ticksLeft: 660 }]);
   });
 
   it('replaces a weaker burn and leaves a stronger one', () => {
@@ -118,7 +118,7 @@ describe('Fire Arrows landing', () => {
     const s = inWave(7, [weak, strong]);
     useSpecial(s, 'fireArrows', POINT);
     expect(s.enemies.map((e) => [e.burnDps, e.burnTicksLeft])).toEqual([
-      [20, 60],
+      [26, 60],
       [40, 30],
     ]);
   });
@@ -152,10 +152,10 @@ describe('zones (step 2b of the tick)', () => {
     expect(s.enemies[0].distance).toBe(462);
   });
 
-  it('expiry: a zone acts for 480 ticks and is then removed; an enemy on the spot afterwards is not slowed', () => {
+  it('expiry: a zone acts for 660 ticks and is then removed; an enemy on the spot afterwards is not slowed', () => {
     const s = inWave(4, [enemy(0, 'troll', 0, 100000)], LINE);
     useSpecial(s, 'tarBarrel', { x: 900, y: 240 });
-    ticks(s, 479);
+    ticks(s, 659);
     expect(s.zones.map((z) => z.ticksLeft)).toEqual([1]);
     tick(s);
     expect(s.zones).toEqual([]);
@@ -164,7 +164,7 @@ describe('zones (step 2b of the tick)', () => {
     expect(s.enemies[1].specialSlowTicksLeft ?? 0).toBe(0);
   });
 
-  it('two overlapping zones: tar and fire on one enemy burn at 20/s doubled (40/s); two tar zones do not stack', () => {
+  it('two overlapping zones: tar and fire on one enemy burn at 26/s doubled (52/s); two tar zones do not stack', () => {
     const s = inWave(7, [enemy(0, 'troll', 300, 1000)], LINE);
     useSpecial(s, 'tarBarrel', { x: 300, y: 240 });
     s.specialCharges = 1; // test setup: a second charge at once
@@ -177,7 +177,7 @@ describe('zones (step 2b of the tick)', () => {
       [2, 'tarBarrel'],
     ]);
     ticks(s, 60);
-    expect(1000 - s.enemies[0].hp).toBeCloseTo(40, 9);
+    expect(1000 - s.enemies[0].hp).toBeCloseTo(52, 9);
     // 35 px/s at 0.5 for 60 ticks: 17.5 px, not less.
     expect(s.enemies[0].distance).toBeCloseTo(317.5, 9);
   });
@@ -188,7 +188,7 @@ describe('zones (step 2b of the tick)', () => {
     s.specialCharges = 1;
     useSpecial(s, 'tarBarrel', { x: 300, y: 240 });
     tick(s);
-    expect([s.enemies[0].burnDps, s.enemies[0].specialSlow]).toEqual([20, 0.5]);
+    expect([s.enemies[0].burnDps, s.enemies[0].specialSlow]).toEqual([26, 0.5]);
   });
 
   it('the boss in a tar zone is slowed by his 0.3 cap, never more', () => {
@@ -209,7 +209,7 @@ describe('zones (step 2b of the tick)', () => {
     const gold = s.gold;
     useSpecial(s, 'fireArrows', { x: 300, y: 240 });
     expect(s.enemies[0].burnOwner).toBeUndefined();
-    ticks(s, 3); // 20/60 a tick on 1 hp: dead on the third tick
+    ticks(s, 3); // 26/60 a tick on 1 hp: dead on the third tick
     expect(s.enemies).toEqual([]);
     expect(pot.kills ?? 0).toBe(0);
     expect(s.events.filter((e) => e.kind === 'kill')).toEqual([{ kind: 'kill', enemyId: 0, enemyType: 'goblin', bounty: 2, cause: 'special' }]);
@@ -335,7 +335,7 @@ describe('kills', () => {
     useSpecial(s, 'keg', POINT);
     expect(s.events.slice(1)).toEqual([
       { kind: 'kill', enemyId: 0, enemyType: 'boss', bounty: 150, cause: 'special' },
-      { kind: 'bossDown', enemyId: 0, cause: 'special' },
+      { kind: 'bossDown', enemyId: 0, enemyType: 'boss', cause: 'special' },
     ]);
   });
 });

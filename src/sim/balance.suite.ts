@@ -1,6 +1,6 @@
 // The balance suite (milestone 28): the full archetype matrix (archetype by
 // map by level) pinned as exact results, and every balance target from
-// docs/DESIGN.md "Balance targets" as a band, labelled T, E, H or R in the
+// docs/DESIGN.md "Balance targets" as a band, labelled N, E, H, R or X in the
 // test name. One module; balance-meadow.test.ts, balance-switchback.test.ts
 // and balance-riverbend.test.ts each run it for one map so the whole-game
 // runs spread over three test workers. Every game is played once per file
@@ -10,10 +10,11 @@
 // matrix) and update EXPECTED_MATRIX with a DECISIONS.md entry.
 
 import { describe, expect, it } from 'vitest';
-import { balanceRun, matrixCell, MATRIX_ARCHETYPES, runsOn, type MatrixArchetype } from './balanceRuns';
-import { TARGETS } from './balanceTargets';
+import { archetypeScript, balanceRun, matrixCell, MATRIX_ARCHETYPES, runsOn, type MatrixArchetype } from './balanceRuns';
+import { boonBalancePicks, boonBalanceRun, TARGETS } from './balanceTargets';
 import type { Difficulty } from './difficulty';
 import type { MapId } from './map';
+import { playScripted } from './headless';
 
 export type MatrixColumn = `${MapId} ${Difficulty}`;
 
@@ -42,117 +43,128 @@ export const EXPECTED_MATRIX: Readonly<Record<MatrixArchetype, Readonly<Partial<
     'riverbend hard': 'L 2, 79 gold',
   },
   lazyBuild: {
-    'meadow easy': 'W 10, 932 gold',
-    'meadow normal': 'L 8, 355 gold',
+    'meadow easy': 'W 8, 3407 gold',
+    'meadow normal': 'L 8, 353 gold',
     'meadow hard': 'L 2, 43 gold',
-    'switchback easy': 'W 20, 912 gold',
+    'switchback easy': 'W 19, 3311 gold',
     'switchback normal': 'L 8, 291 gold',
     'switchback hard': 'L 2, 35 gold',
-    'riverbend easy': 'W 9, 924 gold',
-    'riverbend normal': 'L 8, 353 gold',
+    'riverbend easy': 'W 8, 3407 gold',
+    'riverbend normal': 'L 8, 369 gold',
     'riverbend hard': 'L 2, 35 gold',
   },
   greedyMusket: {
-    'meadow easy': 'W 34, 674 gold',
-    'meadow normal': 'L 8, 227 gold',
+    'meadow easy': 'W 33, 3973 gold',
+    'meadow normal': 'L 8, 225 gold',
     'meadow hard': 'L 2, 54 gold',
-    'switchback easy': 'W 33, 496 gold',
-    'switchback normal': 'W 1, 436 gold',
+    'switchback easy': 'W 33, 3803 gold',
+    'switchback normal': 'W 1, 3607 gold',
     'switchback hard': 'L 2, 48 gold',
-    'riverbend easy': 'W 35, 682 gold',
+    'riverbend easy': 'W 34, 3965 gold',
     'riverbend normal': 'L 8, 246 gold',
     'riverbend hard': 'L 2, 48 gold',
   },
   longbowSpam: {
-    'meadow easy': 'W 2, 1028 gold',
+    'meadow easy': 'L 10, 963 gold',
     'meadow normal': 'L 8, 525 gold',
     'meadow hard': 'L 7, 260 gold',
-    'switchback easy': 'W 24, 1124 gold',
+    'switchback easy': 'L 17, 2946 gold',
     'switchback normal': 'L 8, 495 gold',
     'switchback hard': 'L 8, 408 gold',
-    'riverbend easy': 'W 2, 1028 gold',
+    'riverbend easy': 'L 10, 963 gold',
     'riverbend normal': 'L 8, 509 gold',
     'riverbend hard': 'L 7, 260 gold',
   },
   noAntiAir: {
-    'meadow easy': 'L 7, 354 gold',
-    'meadow normal': 'L 5, 86 gold',
-    'meadow hard': 'L 5, 120 gold',
-    'switchback easy': 'L 7, 368 gold',
-    'switchback normal': 'L 5, 103 gold',
-    'switchback hard': 'L 4, 223 gold',
-    'riverbend easy': 'L 7, 336 gold',
-    'riverbend normal': 'L 5, 86 gold',
-    'riverbend hard': 'L 5, 126 gold',
+    'meadow easy': 'L 7, 369 gold',
+    'meadow normal': 'L 5, 149 gold',
+    'meadow hard': 'L 5, 131 gold',
+    'switchback easy': 'L 8, 253 gold',
+    'switchback normal': 'L 5, 148 gold',
+    'switchback hard': 'L 5, 128 gold',
+    'riverbend easy': 'L 7, 359 gold',
+    'riverbend normal': 'L 5, 98 gold',
+    'riverbend hard': 'L 5, 134 gold',
   },
   comboBuild: {
-    'meadow easy': 'W 35, 422 gold',
-    'meadow normal': 'W 16, 420 gold',
-    'meadow hard': 'L 8, 321 gold',
-    'switchback easy': 'W 35, 422 gold',
-    'switchback normal': 'W 19, 444 gold',
-    'switchback hard': 'W 8, 456 gold',
-    'riverbend easy': 'W 34, 414 gold',
-    'riverbend normal': 'W 16, 420 gold',
-    'riverbend hard': 'L 8, 263 gold',
+    'meadow easy': 'W 40, 3562 gold',
+    'meadow normal': 'W 17, 3196 gold',
+    'meadow hard': 'W 3, 3093 gold',
+    'switchback easy': 'W 40, 3702 gold',
+    'switchback normal': 'W 19, 3352 gold',
+    'switchback hard': 'W 9, 3292 gold',
+    'riverbend easy': 'W 40, 3142 gold',
+    'riverbend normal': 'W 16, 2768 gold',
+    'riverbend hard': 'L 20, 2635 gold',
   },
   comboBuildNoFire: {
-    'meadow easy': 'W 34, 604 gold',
-    'meadow normal': 'W 11, 570 gold',
-    'meadow hard': 'L 7, 233 gold',
-    'switchback easy': 'W 35, 612 gold',
-    'switchback normal': 'W 17, 618 gold',
-    'switchback hard': 'W 7, 638 gold',
-    'riverbend easy': 'W 32, 588 gold',
-    'riverbend normal': 'W 8, 546 gold',
-    'riverbend hard': 'L 7, 223 gold',
+    'meadow easy': 'W 40, 3802 gold',
+    'meadow normal': 'W 15, 3420 gold',
+    'meadow hard': 'L 7, 254 gold',
+    'switchback easy': 'W 40, 3942 gold',
+    'switchback normal': 'W 17, 3576 gold',
+    'switchback hard': 'W 7, 3516 gold',
+    'riverbend easy': 'W 38, 3366 gold',
+    'riverbend normal': 'W 12, 2976 gold',
+    'riverbend hard': 'L 7, 234 gold',
   },
   comboNoSpecials: {
-    'meadow easy': 'W 34, 414 gold',
-    'meadow normal': 'W 11, 460 gold',
+    'meadow easy': 'W 40, 3562 gold',
+    'meadow normal': 'W 9, 3137 gold',
     'meadow hard': 'L 3, 60 gold',
-    'switchback easy': 'W 35, 422 gold',
-    'switchback normal': 'W 16, 420 gold',
-    'switchback hard': 'W 1, 510 gold',
-    'riverbend easy': 'W 34, 414 gold',
-    'riverbend normal': 'W 7, 428 gold',
-    'riverbend hard': 'L 7, 127 gold',
+    'switchback easy': 'W 40, 3702 gold',
+    'switchback normal': 'W 16, 3328 gold',
+    'switchback hard': 'W 2, 3236 gold',
+    'riverbend easy': 'W 39, 3134 gold',
+    'riverbend normal': 'W 6, 2688 gold',
+    'riverbend hard': 'L 7, 126 gold',
   },
   hardBuild: {
-    'meadow easy': 'W 35, 422 gold',
-    'meadow normal': 'W 20, 452 gold',
-    'meadow hard': 'W 10, 472 gold',
-    'switchback easy': 'W 35, 422 gold',
-    'switchback normal': 'W 20, 452 gold',
-    'switchback hard': 'W 14, 424 gold',
-    'riverbend easy': 'W 35, 422 gold',
-    'riverbend normal': 'W 19, 444 gold',
-    'riverbend hard': 'W 2, 518 gold',
+    'meadow easy': 'W 40, 3562 gold',
+    'meadow normal': 'W 19, 3212 gold',
+    'meadow hard': 'W 12, 3160 gold',
+    'switchback easy': 'W 40, 3702 gold',
+    'switchback normal': 'W 19, 3352 gold',
+    'switchback hard': 'W 14, 3332 gold',
+    'riverbend easy': 'W 40, 3142 gold',
+    'riverbend normal': 'W 18, 2784 gold',
+    'riverbend hard': 'W 1, 2668 gold',
   },
   endlessIdle: {
-    'meadow easy': 'L 19, 2822 gold',
-    'meadow normal': 'L 16, 1953 gold',
-    'meadow hard': 'L 8, 321 gold',
-    'switchback easy': 'L 20, 3091 gold',
-    'switchback normal': 'L 17, 2305 gold',
-    'switchback hard': 'L 14, 1613 gold',
-    'riverbend easy': 'L 19, 2669 gold',
-    'riverbend normal': 'L 15, 1702 gold',
-    'riverbend hard': 'L 8, 263 gold',
+    'meadow easy': 'L 28, 6485 gold',
+    'meadow normal': 'L 25, 5071 gold',
+    'meadow hard': 'L 23, 4338 gold',
+    'switchback easy': 'L 27, 6446 gold',
+    'switchback normal': 'L 25, 5233 gold',
+    'switchback hard': 'L 24, 4760 gold',
+    'riverbend easy': 'L 28, 6253 gold',
+    'riverbend normal': 'L 25, 4726 gold',
+    'riverbend hard': 'L 20, 2635 gold',
+  },
+  endlessGreedy: {
+    'meadow easy': 'L 30, 6426 gold',
+    'meadow normal': 'L 27, 4996 gold',
+    'meadow hard': 'L 24, 3695 gold',
+    'switchback easy': 'L 30, 6665 gold',
+    'switchback normal': 'L 27, 5281 gold',
+    'switchback hard': 'L 25, 4379 gold',
+    'riverbend easy': 'L 31, 6226 gold',
+    'riverbend normal': 'L 28, 4737 gold',
+    'riverbend hard': 'L 20, 2635 gold',
   },
   soundBuild: {
-    'meadow easy': 'W 14, 789 gold',
-    'meadow normal': 'L 7, 132 gold',
+    'meadow easy': 'L 19, 3460 gold',
+    'meadow normal': 'L 7, 140 gold',
     'meadow hard': 'L 2, 45 gold',
   },
   soundBuildNoTar: {
-    'meadow easy': 'W 4, 819 gold',
+    'meadow easy': 'L 12, 1256 gold',
     'meadow normal': 'L 7, 217 gold',
     'meadow hard': 'L 2, 45 gold',
   },
   comboStrongest: {
-    'meadow easy': 'W 9, 415 gold',
-    'meadow normal': 'L 7, 60 gold',
+    'meadow easy': 'W 7, 3863 gold',
+    'meadow normal': 'L 5, 115 gold',
     'meadow hard': 'L 2, 27 gold',
   },
 };
@@ -180,6 +192,27 @@ export function describeBalance(map: MapId): void {
           expect(run.kills + exits, 'kills + exits against spawned').toBeLessThanOrEqual(spawned);
         });
       }
+    }
+  });
+
+  if (map === 'meadow') {
+    it('records and replays named boon picks through an ordinary purchasing archetype', () => {
+      const defaults = archetypeScript('lazyBuild', map, 'easy');
+      const named = archetypeScript('lazyBuild', map, 'easy', { 5: 'warChest', 10: 'quickHands', 15: 'veteranCrews' });
+      expect(named[5].length).toBeGreaterThan(defaults[5].length);
+      const run = playScripted(named, undefined, 'easy');
+      expect(run.state.boons).toEqual(['warChest', 'quickHands', 'veteranCrews']);
+      expect(run.log.filter((step) => 'result' in step && !step.result.ok)).toEqual([]);
+    });
+  }
+
+  describe(`representative boon picks on ${map}`, () => {
+    for (const picks of boonBalancePicks(map, 'representative')) {
+      it(`N10: combo wins with ${picks.join(' / ')}`, () => {
+        const run = boonBalanceRun(map, picks);
+        expect(run.phase).toBe('won');
+        expect(run.refused).toBe(0);
+      });
     }
   });
 

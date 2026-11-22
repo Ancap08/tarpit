@@ -67,7 +67,7 @@ function fourWay(): Record<Facing, WalkCycle> {
   return { down: cycle(0), up: cycle(1), left: cycle(2), right: cycle(3) };
 }
 
-export const SHEETS: Readonly<Record<EnemyType, SheetLayout>> = {
+const baseSheets: Readonly<Record<Exclude<EnemyType, 'grumblemaw'>, SheetLayout>> = {
   // GreenPig: 64x112, 7 rows of 16x16. Rows 0-3 walk; row 4 attack, row 5
   // jump (1 frame per facing each); row 6: dead (col 0, identical to
   // SeparateAnim/Dead.png), item, special 1, special 2.
@@ -136,6 +136,12 @@ export const SHEETS: Readonly<Record<EnemyType, SheetLayout>> = {
     fps: 8,
     hitFlash: { key: 'boss-hit', url: bossHitUrl, frameWidth: 50, frameHeight: 50, frame: 0 },
   },
+};
+
+// Placeholder for 36a. Both bosses use the existing sheet until 36b supplies its art.
+export const SHEETS: Readonly<Record<EnemyType, SheetLayout>> = {
+  ...baseSheets,
+  grumblemaw: { ...baseSheets.boss, key: 'grumblemaw' },
 };
 
 /** Walk animation frame rate in play unless a sheet sets `fps` (test mode freezes frame 0). */

@@ -18,7 +18,7 @@ import { LANDSCAPE, type Layout } from '../layout';
 import { COLORS } from '../palette';
 
 /** Status ring base radius per type: just outside the sprite's body. */
-export const RING_RADIUS: Record<EnemyType, number> = { goblin: 14, wolf: 12, troll: 21, harpy: 14, shieldbearer: 14, boss: 38 };
+export const RING_RADIUS: Record<EnemyType, number> = { goblin: 14, wolf: 12, troll: 21, harpy: 14, shieldbearer: 14, boss: 38, grumblemaw: 38 };
 
 /** Half the sprite's drawn height: the hp bar sits above this. */
 export function spriteHalfHeight(type: EnemyType): number {

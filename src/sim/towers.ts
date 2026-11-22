@@ -1,3 +1,4 @@
+import { boonScale, type BoonId } from './boons';
 import { TICKS_PER_SECOND } from './time';
 import type { Tower, TowerDef, TowerLevelStats, TowerType } from './types';
 
@@ -67,10 +68,34 @@ export function towerSellValue(tower: Pick<Tower, 'locked' | 'spent' | 'unlocked
   return tower.unlockedSpend + sellRefund(tower.spent - tower.unlockedSpend);
 }
 
+/** The array of held boons is replaced at each pick. Cache the finite set of
+ * level variants so targeting does not allocate a fresh stats object each tick. */
+const boonStats = new WeakMap<readonly BoonId[], Map<TowerLevelStats, TowerLevelStats>>();
+
 /** The stats that apply to a tower at its current level. */
-export function towerStats(tower: Pick<Tower, 'type' | 'upgraded'>): TowerLevelStats {
+export function towerStats(tower: Pick<Tower, 'type' | 'upgraded'>, held?: readonly BoonId[]): TowerLevelStats {
   const def = TOWER_DEFS[tower.type];
-  return tower.upgraded ? def.upgraded : def.base;
+  const base = tower.upgraded ? def.upgraded : def.base;
+  if (!held?.length) return base;
+  let variants = boonStats.get(held);
+  if (!variants) {
+    variants = new Map();
+    boonStats.set(held, variants);
+  }
+  const cached = variants.get(base);
+  if (cached) return cached;
+  const artillery = tower.type === 'mortar' || tower.type === 'cannon';
+  const stats = {
+    ...base,
+    range: artillery ? boonScale(base.range, held, 'longBarrels') : base.range,
+    damage: tower.type === 'longbow' ? boonScale(base.damage, held, 'keenArrows') : base.damage,
+    slowDuration: boonScale(base.slowDuration, held, 'stickyTar'),
+    burnDps: boonScale(base.burnDps, held, 'hotCoals'),
+    fireRate: boonScale(base.fireRate, held, 'veteranCrews'),
+    splashRadius: boonScale(base.splashRadius, held, 'biggerBlasts'),
+  };
+  variants.set(base, stats);
+  return stats;
 }
 
 /** Ticks between shots at a level: round(60 / fireRate). */

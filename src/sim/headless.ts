@@ -19,7 +19,7 @@
 // so the towers lock at once) and plays that wave without a startWave.
 //
 // Milestone 26: a WaveScript with `endless: true` presses Keep going
-// (continueEndless) when wave 10 is won and plays on, wave by wave, until
+// (continueEndless) when wave 20 is won and plays on, wave by wave, until
 // the game is lost or ENDLESS_WAVE_CAP waves have been played. Scripts
 // without it play exactly as before.
 //
@@ -44,6 +44,7 @@
 import {
   buildTower,
   moveTower,
+  pickBoon,
   sellTower,
   setTargeting,
   towerAt,
@@ -58,6 +59,7 @@ import {
   type TargetingResult,
   type UpgradeResult,
 } from './actions';
+import type { BoonId } from './boons';
 import type { Difficulty } from './difficulty';
 import { callNextWave, continueEndless, createGame, startWave, tick, wavesCleared, type CallNextWaveResult, type StartWaveResult } from './game';
 import { enemyPosition } from './combat';
@@ -66,7 +68,7 @@ import type { GameState, MapDef, TargetingMode, TowerType } from './types';
 import { buildableCells, cellCenter, cellFromKey, cellKey, type Cell } from './grid';
 import { DEFAULT_MAP, MAPS, pathLength, positionAlongPath, type MapId } from './map';
 import { TOWER_DEFS } from './towers';
-import { WAVES } from './waves';
+import { ACT_ONE_LAST_WAVE, LAST_WAVE } from './waves';
 import { policyChoice, type PolicyOptions } from './specialPolicy';
 
 export type BuildAction =
@@ -126,6 +128,7 @@ export type TimedAction = SpecialAction | CallEarlyAction | ClusterSpecialAction
 
 export type HeadlessAction =
   | { type: 'startWave' }
+  | { type: 'pickBoon'; boon: BoonId }
   /** Tick until the current wave ends (phase leaves 'wave') or `maxTicks` pass. */
   | { type: 'runUntilWaveEnds'; maxTicks: number }
   | BuildAction
@@ -134,6 +137,7 @@ export type HeadlessAction =
 
 export type HeadlessStepResult =
   | { action: 'startWave'; result: StartWaveResult }
+  | { action: 'pickBoon'; boon: BoonId; result: ReturnType<typeof pickBoon> }
   | { action: 'runUntilWaveEnds'; ticks: number }
   | { action: 'build'; cell: Cell; result: BuildResult }
   | { action: 'upgrade'; cell: Cell; result: UpgradeResult }
@@ -155,6 +159,8 @@ export interface HeadlessRun {
 /** Apply one action to `state` in place and describe what happened. */
 export function applyAction(state: GameState, action: HeadlessAction): HeadlessStepResult {
   switch (action.type) {
+    case 'pickBoon':
+      return { action: 'pickBoon', boon: action.boon, result: pickBoon(state, action.boon) };
     case 'startWave':
       return { action: 'startWave', result: startWave(state) };
     case 'runUntilWaveEnds': {
@@ -255,14 +261,12 @@ export function runHeadless(script: readonly HeadlessAction[], difficulty?: Diff
  */
 export type TimedScript = readonly (readonly TimedAction[])[];
 
-/**
- * A scripted game: entry i lists the build, upgrade and sell actions taken
- * in setup before wave i + 1. Missing entries mean no actions that wave.
- * `timed` (milestone 25b, optional) lists, per wave, the special attacks
- * fired during it; no existing archetype has it.
- */
-export type WaveScript = readonly (readonly BuildAction[])[] & {
+export type BoonChoices = Readonly<Partial<Record<number, BoonId>>>;
+
+interface WaveScriptMeta {
   readonly timed?: TimedScript;
+  /** Optional picks keyed by the wave just cleared. Missing picks take the first card. */
+  readonly boons?: BoonChoices;
   /**
    * Milestone 26: press Keep going after the win and play endless waves
    * (entry i still holds wave i + 1's actions) until lost or
@@ -271,14 +275,19 @@ export type WaveScript = readonly (readonly BuildAction[])[] & {
   readonly endless?: boolean;
   /** Milestone 27: the map the script is played on; Meadow when absent. (Not `map`: a WaveScript is an array.) */
   readonly mapId?: MapId;
-};
+}
 
 /**
- * `out` with `from`'s timed actions, endless flag and map (the parts of a
- * WaveScript beside its per-wave actions), each only when `from` has it.
+ * Entry i lists purchases and target changes in setup before wave i + 1.
+ * Missing entries mean no actions that wave. The metadata holds the
+ * script's choices at boon offers and actions taken during waves.
  */
-function withMeta(out: (readonly BuildAction[])[], from: WaveScript): WaveScript {
-  const meta: { timed?: TimedScript; endless?: boolean; mapId?: MapId } = {};
+export type WaveScript = readonly (readonly BuildAction[])[] & WaveScriptMeta;
+
+/** Copy the optional script metadata when filtering or recording actions. */
+function withMeta(out: (readonly BuildAction[])[], from: WaveScriptMeta): WaveScript {
+  const meta: { -readonly [Key in keyof WaveScriptMeta]: WaveScriptMeta[Key] } = {};
+  if (from.boons) meta.boons = from.boons;
   if (from.timed) meta.timed = from.timed;
   if (from.endless) meta.endless = true;
   if (from.mapId) meta.mapId = from.mapId;
@@ -292,9 +301,16 @@ function withMeta(out: (readonly BuildAction[])[], from: WaveScript): WaveScript
  */
 export const ENDLESS_WAVE_CAP = 200;
 
-/** How many waves a script plays at most: 10, or ENDLESS_WAVE_CAP for an endless script. */
+/** How many waves a script plays at most: the campaign length, or ENDLESS_WAVE_CAP for an endless script. */
 function waveLimit(script: { readonly endless?: boolean } | undefined): number {
-  return script?.endless ? ENDLESS_WAVE_CAP : WAVES.length;
+  return script?.endless ? ENDLESS_WAVE_CAP : LAST_WAVE;
+}
+
+/** Resolve a pending offer before the next wave's purchases. */
+export function applyScriptBoon(state: GameState, script?: { readonly boons?: BoonChoices }): HeadlessStepResult | undefined {
+  const pending = state.pendingBoon;
+  if (!pending) return undefined;
+  return applyAction(state, { type: 'pickBoon', boon: script?.boons?.[pending.wave] ?? pending.options[0] });
 }
 
 export interface WaveReport {
@@ -311,7 +327,7 @@ export interface ScriptedRun extends HeadlessRun {
 }
 
 /**
- * Play all 10 waves: before each wave apply that wave's actions, then start
+ * Play all campaign waves: before each wave apply that wave's actions, then start
  * it and run until it ends or `maxTicksPerWave` pass. Stops once lost.
  * `difficulty` (milestone 25) defaults to Normal. An endless script
  * (milestone 26) presses Keep going after the win and plays on until lost
@@ -325,6 +341,11 @@ export function playScripted(script: WaveScript, maxTicksPerWave = 60 * 600, dif
   let called = false;
   const limit = waveLimit(script);
   for (let i = 0; i < limit && (state.phase === 'setup' || called); i++) {
+    const boon = applyScriptBoon(state, script);
+    if (boon) {
+      log.push(boon);
+      if ('result' in boon && !boon.result.ok) break;
+    }
     for (const action of script[i] ?? []) log.push(applyAction(state, action));
     // A wave called early (milestone 25c) has already started.
     if (!called) log.push(applyAction(state, { type: 'startWave' }));
@@ -410,9 +431,11 @@ export function withPolicy(script: WaveScript, difficulty?: Difficulty, options:
   const state = createGame({ difficulty, map: script.mapId });
   const policy: PolicyRecorder = { options, fired: [] };
   let played = 0;
-  for (let i = 0; i < WAVES.length && state.phase === 'setup'; i++) {
+  for (let i = 0; i < LAST_WAVE && state.phase === 'setup'; i++) {
+    const boon = applyScriptBoon(state, script);
+    if (boon && 'result' in boon && !boon.result.ok) break;
     for (const action of script[i] ?? []) applyAction(state, action);
-    applyAction(state, { type: 'startWave' });
+    startWave(state);
     runWaveWithTimed(state, script.timed?.[i] ?? [], 60 * 600, [], policy);
     played = i + 1;
   }
@@ -421,15 +444,11 @@ export function withPolicy(script: WaveScript, difficulty?: Difficulty, options:
 }
 
 /**
- * Start each of the 10 waves and run it to its end, with no towers.
+ * Start each campaign wave and run it to its end, with no towers.
  * `maxTicksPerWave` caps each wave's run so a bug cannot loop forever.
  */
 export function playAllWavesNoTowers(maxTicksPerWave = 60 * 600, map?: MapId): GameState {
-  const script: HeadlessAction[] = [];
-  for (let i = 0; i < WAVES.length; i++) {
-    script.push({ type: 'startWave' }, { type: 'runUntilWaveEnds', maxTicks: maxTicksPerWave });
-  }
-  return runHeadless(script, undefined, map).state;
+  return playScripted(noTowers(undefined, map), maxTicksPerWave).state;
 }
 
 // ---------------------------------------------------------------------------
@@ -442,20 +461,23 @@ export function playAllWavesNoTowers(maxTicksPerWave = 60 * 600, map?: MapId): G
 /** Decide the next action before a wave, or undefined to start the wave. */
 type Decide = (state: GameState) => BuildAction | undefined;
 
-/**
- * Play all waves on `difficulty` (Normal when left out), asking `decide`
- * for actions before each one; return what it did. With `timed`
- * (milestone 25c), each wave also plays its timed actions (as in
- * playScripted) and the returned script carries them, so a replay with
- * playScripted is the same game. With `map` (milestone 27) it plays on
- * that map and the script records it.
- */
-function recordScript(decide: Decide, difficulty?: Difficulty, timed?: TimedScript, endless = false, map?: MapId, options?: PolicyOptions): WaveScript {
+interface RecordOptions {
+  difficulty?: Difficulty;
+  map?: MapId;
+  boons?: BoonChoices;
+  endless?: boolean;
+  specials?: PolicyOptions;
+}
+
+/** Play the decisions against a real game and record purchases and policy casts for replay. */
+function recordScript(decide: Decide, { difficulty, map, boons, endless, specials }: RecordOptions): WaveScript {
   const state = createGame({ difficulty, map });
-  const policy: PolicyRecorder | undefined = options ? { options, fired: [] } : undefined;
+  const policy: PolicyRecorder | undefined = specials ? { options: specials, fired: [] } : undefined;
   const script: BuildAction[][] = [];
   const limit = waveLimit({ endless });
   for (let i = 0; i < limit && state.phase === 'setup'; i++) {
+    const boon = applyScriptBoon(state, { boons });
+    if (boon && 'result' in boon && !boon.result.ok) throw new Error(`recordScript: ${JSON.stringify(boon)}`);
     const actions: BuildAction[] = [];
     for (let action = decide(state); action; action = decide(state)) {
       const step = applyAction(state, action);
@@ -463,14 +485,12 @@ function recordScript(decide: Decide, difficulty?: Difficulty, timed?: TimedScri
       actions.push(action);
     }
     script.push(actions);
-    applyAction(state, { type: 'startWave' });
-    runWaveWithTimed(state, timed?.[i] ?? [], 60 * 600, [], policy);
+    startWave(state);
+    runWaveWithTimed(state, [], 60 * 600, [], policy);
     if (endless && (state.phase as GameState['phase']) === 'won') continueEndless(state);
   }
-  const allTimed = mergeTimed(timed, policy, script.length);
-  const out = allTimed ? Object.assign(script, { timed: allTimed }) : script;
-  const withEndless = endless ? Object.assign(out, { endless: true }) : out;
-  return map ? Object.assign(withEndless, { mapId: map }) : withEndless;
+  const allTimed = mergeTimed(undefined, policy, script.length);
+  return withMeta(script, { timed: allTimed, endless, mapId: map, boons });
 }
 
 /** `script` with each wave's actions filtered by `keep`, keeping its timed actions (milestone 25c) and map (27). */
@@ -498,8 +518,14 @@ export const TRAIL_REACH = 72;
 export function trailCellOrder(map: MapDef): readonly Cell[] {
   const known = trailCache.get(map);
   if (known) return known;
+  const order = walkTrail(map);
+  trailCache.set(map, order);
+  return order;
+}
+
+/** Take one nearest unused buildable cell at each trail step. */
+function walkTrail(map: MapDef, used = new Set<number>()): Cell[] {
   const mask = buildableCells(map);
-  const used = new Set<number>();
   const order: Cell[] = [];
   const total = pathLength(map);
   for (let d = TRAIL_STEP; d <= total; d += TRAIL_STEP) {
@@ -516,7 +542,6 @@ export function trailCellOrder(map: MapDef): readonly Cell[] {
       order.push(cellFromKey(best.key));
     }
   }
-  trailCache.set(map, order);
   return order;
 }
 
@@ -527,6 +552,18 @@ export const TRAIL_CELL_ORDER: readonly Cell[] = trailCellOrder(MAPS.meadow);
 
 function nextFreeKidCell(state: GameState): Cell | undefined {
   return trailCellOrder(state.map).find((cell) => !towerAt(state, cell));
+}
+
+const secondTrailCache = new WeakMap<MapDef, readonly Cell[]>();
+
+/** Repeat the same trail walk, passing over all cells from the first walk. */
+function secondTrailCellOrder(map: MapDef): readonly Cell[] {
+  let order = secondTrailCache.get(map);
+  if (!order) {
+    order = walkTrail(map, new Set(trailCellOrder(map).map(cellKey)));
+    secondTrailCache.set(map, order);
+  }
+  return order;
 }
 
 /**
@@ -540,35 +577,37 @@ function meadowOnly(name: string, map: MapId | undefined): void {
 }
 
 /** Archetype 1: build nothing (on any level). Target: lost by wave 3. */
-export function noTowers(_difficulty?: Difficulty, map?: MapId): WaveScript {
-  return map ? Object.assign([], { mapId: map }) : [];
+export function noTowers(_difficulty?: Difficulty, map?: MapId, boons?: BoonChoices): WaveScript {
+  return withMeta([], { mapId: map, boons });
 }
 
 /**
  * A first-time player's opening (milestone 28): one base Musketeer on the
  * first cell of the map's trail order (trailCellOrder) before wave 1, and
- * nothing else, ever. Used only to measure wave 1: targets T8 (Normal:
+ * nothing else, ever. Used only to measure wave 1: targets N8 (Normal:
  * at most 6 of wave 1's enemies exit) and E3 (Easy: at most 3).
  */
-export function oneMusket(_difficulty?: Difficulty, map?: MapId): WaveScript {
+export function oneMusket(_difficulty?: Difficulty, map?: MapId, boons?: BoonChoices): WaveScript {
   const cell = trailCellOrder(MAPS[map ?? DEFAULT_MAP])[0];
   const script: (readonly BuildAction[])[] = [[{ type: 'build', cell, tower: 'musketeer' }]];
-  return map ? Object.assign(script, { mapId: map }) : script;
+  return withMeta(script, { mapId: map, boons });
 }
 
 /**
  * Archetype 2, a kid's build: before each wave, buy base Musketeers while
  * affordable, on cells in TRAIL_CELL_ORDER. Never upgrades, never sells.
- * Target T2 (milestone 28): lost on wave 6 to 9 on Normal on every map;
- * E1: wins on Easy with at least 8 lives; H2: survives wave 1 on Hard and
- * loses by wave 5.
+ * After the first act, starts a second pass when the first cells are full.
+ * Targets: loses on waves 7 to 14 on Normal, wins Easy with at least 8
+ * lives, and loses on waves 2 to 8 on Hard.
  */
-export function lazyBuild(difficulty?: Difficulty, map?: MapId): WaveScript {
+export function lazyBuild(difficulty?: Difficulty, map?: MapId, boons?: BoonChoices): WaveScript {
   return recordScript((state) => {
-    const cell = nextFreeKidCell(state);
+    const firstPass = nextFreeKidCell(state);
+    const actTwo = state.wave >= ACT_ONE_LAST_WAVE;
+    const cell = firstPass ?? (actTwo ? secondTrailCellOrder(state.map).find((spot) => !towerAt(state, spot)) : undefined);
     if (cell === undefined || state.gold < TOWER_DEFS.musketeer.cost) return undefined;
     return { type: 'build', cell, tower: 'musketeer' };
-  }, difficulty, undefined, false, map);
+  }, { difficulty, map, boons });
 }
 
 /**
@@ -576,7 +615,7 @@ export function lazyBuild(difficulty?: Difficulty, map?: MapId): WaveScript {
  * (when affordable) before another is bought, so purchases alternate buy,
  * upgrade, buy. Informational since milestone 12: no target.
  */
-export function greedyMusket(difficulty?: Difficulty, map?: MapId): WaveScript {
+export function greedyMusket(difficulty?: Difficulty, map?: MapId, boons?: BoonChoices): WaveScript {
   return recordScript((state) => {
     const plain = state.towers.find((tw) => tw.type === 'musketeer' && !tw.upgraded);
     if (plain) {
@@ -585,7 +624,7 @@ export function greedyMusket(difficulty?: Difficulty, map?: MapId): WaveScript {
     const cell = nextFreeKidCell(state);
     if (cell === undefined || state.gold < TOWER_DEFS.musketeer.cost) return undefined;
     return { type: 'build', cell, tower: 'musketeer' };
-  }, difficulty, undefined, false, map);
+  }, { difficulty, map, boons });
 }
 
 /**
@@ -593,12 +632,12 @@ export function greedyMusket(difficulty?: Difficulty, map?: MapId): WaveScript {
  * affordable, on cells in TRAIL_CELL_ORDER. Never upgrades, never sells.
  * v2 target (milestone 12): lost on wave 7 to 9.
  */
-export function longbowSpam(difficulty?: Difficulty, map?: MapId): WaveScript {
+export function longbowSpam(difficulty?: Difficulty, map?: MapId, boons?: BoonChoices): WaveScript {
   return recordScript((state) => {
     const cell = nextFreeKidCell(state);
     if (cell === undefined || state.gold < TOWER_DEFS.longbow.cost) return undefined;
     return { type: 'build', cell, tower: 'longbow' };
-  }, difficulty, undefined, false, map);
+  }, { difficulty, map, boons });
 }
 
 const m = (col: number, row: number): BuildAction => ({ type: 'build', cell: { col, row }, tower: 'musketeer' });
@@ -620,10 +659,10 @@ function actionCost(state: GameState, action: BuildAction): number {
 }
 
 /** Take the plan's actions in order, each as soon as it is affordable. */
-export function followPlan(plan: readonly BuildAction[]): Decide {
+export function followPlan(plan: readonly BuildAction[], actTwo: readonly BuildAction[] = []): Decide {
   let next = 0;
   return (state) => {
-    const action = plan[next];
+    const action = plan[next] ?? (state.wave >= ACT_ONE_LAST_WAVE ? actTwo[next - plan.length] : undefined);
     if (!action || state.gold < actionCost(state, action)) return undefined;
     next += 1;
     return action;
@@ -647,9 +686,9 @@ export const SOUND_PLAN: readonly BuildAction[] = [
  * soon as gold allows. v1 towers only. Informational since milestone 12: no
  * target (the combo build carries the v2 targets).
  */
-export function soundBuild(difficulty?: Difficulty, map?: MapId): WaveScript {
+export function soundBuild(difficulty?: Difficulty, map?: MapId, boons?: BoonChoices): WaveScript {
   meadowOnly('soundBuild', map);
-  return recordScript(followPlan(SOUND_PLAN), difficulty);
+  return recordScript(followPlan(SOUND_PLAN), { difficulty, map, boons });
 }
 
 /**
@@ -657,11 +696,9 @@ export function soundBuild(difficulty?: Difficulty, map?: MapId): WaveScript {
  * upgrades on the cells where soundBuild builds them. Informational since
  * milestone 12: no target.
  */
-export function soundBuildNoTar(difficulty?: Difficulty, map?: MapId): WaveScript {
+export function soundBuildNoTar(difficulty?: Difficulty, map?: MapId, boons?: BoonChoices): WaveScript {
   meadowOnly('soundBuildNoTar', map);
-  const script = soundBuild(difficulty);
-  const tarCells = new Set(script.flat().filter((a) => a.type === 'build' && a.tower === 'tarpit').map((a) => cellKey(a.cell)));
-  return script.map((wave) => wave.filter((a) => !tarCells.has(cellKey(a.cell))));
+  return withoutTowerType(soundBuild(difficulty, map, boons), 'tarpit');
 }
 
 /** The script without the actions on cells where `script` builds a `type` tower. */
@@ -685,11 +722,8 @@ function withoutTowerType(script: WaveScript, type: TowerType): WaveScript {
  * 22 adds anti-air: a third Longbow (17,8) before the Mortar, bought before
  * wave 4 so the first Harpies meet three bows, and its upgrade as the last
  * of the milestone 22 actions. Milestone 25c appends a gold sink (below).
- * Not every action is bought: on Normal comboBuild buys 28 of the 31 (not
- * the third Mortar's upgrade, the Cannon or its upgrade), on Easy 30 and
- * on Hard 17 before it loses. The unbought tail stays so the plan never
- * runs dry before wave 10 on any level (Easy reaches the Cannon), which
- * keeps the gold left before wave 9 small (balance.test.ts pins the count).
+ * The order offers useful buys through the first act. The campaign tails
+ * continue the plan into the second act.
  */
 export const COMBO_PLAN: readonly BuildAction[] = [
   lb(9, 5), lb(9, 4), t(14, 10), fp(14, 9), lb(17, 8), mo(17, 6), up(14, 10), up(14, 9), lb(17, 9), up(17, 6),
@@ -750,56 +784,70 @@ export const COMBO_PLANS: Readonly<Record<MapId, readonly BuildAction[]>> = {
   riverbend: RIVERBEND_COMBO_PLAN,
 };
 
-/** The combo plan for a map: COMBO_PLAN on Meadow. */
-function comboPlan(map: MapId = DEFAULT_MAP): readonly BuildAction[] {
-  return COMBO_PLANS[map];
+/** Act 2 reinforces the exit and the firing lanes after the first plan is complete.
+ * Extra bows cover Meadow's two turns and Riverbend's narrower firing lanes.
+ */
+export const ACT_TWO_PLANS: Readonly<Record<MapId, readonly BuildAction[]>> = {
+  meadow: [
+    up(10, 4), c(23, 8), up(23, 8), m(25, 8), up(25, 8),
+    lb(8, 5), up(8, 5), lb(8, 6), up(8, 6),
+  ],
+  switchback: [up(14, 4), c(24, 10), up(24, 10), m(25, 10), up(25, 10)],
+  riverbend: [
+    up(18, 5), c(22, 9), up(22, 9), m(23, 9), up(23, 9),
+    lb(5, 8), up(5, 8), lb(24, 8), up(24, 8), lb(5, 9), up(5, 9), lb(24, 9), up(24, 9),
+    lb(7, 7), up(7, 7), lb(10, 7), up(10, 7), lb(11, 7), up(11, 7), lb(18, 7), up(18, 7),
+  ],
+};
+
+function followComboPlan(map: MapId = DEFAULT_MAP): Decide {
+  return followPlan(COMBO_PLANS[map], ACT_TWO_PLANS[map]);
 }
 
 /**
  * Combo build (milestone 10): the map's combo plan, each action bought as
  * soon as gold allows. Milestone 30: plus the special policy
  * (specialPolicy.ts), recorded into its timed list.
- * Target T4: won with 5 to 19 lives on Normal on every map (18 before milestone 30).
+ * Target N4: won with 5 to 19 lives on Normal on every map.
  */
-export function comboBuild(difficulty?: Difficulty, map?: MapId): WaveScript {
-  return recordScript(followPlan(comboPlan(map)), difficulty, undefined, false, map, {});
+export function comboBuild(difficulty?: Difficulty, map?: MapId, boons?: BoonChoices): WaveScript {
+  return recordScript(followComboPlan(map), { difficulty, map, boons, specials: {} });
 }
 
 /**
  * The combo build with the special policy forbidden one special (milestone
  * 30), recorded by playing (the specials change the gold, so the purchases
- * can differ). Target S2 on Meadow, Normal: forbidding any one of the three
+ * can differ). Target N9 on Meadow, Normal: forbidding any one of the three
  * makes the combo strictly worse.
  */
-export function comboWithoutSpecial(type: SpecialType, difficulty?: Difficulty, map?: MapId): WaveScript {
-  return recordScript(followPlan(comboPlan(map)), difficulty, undefined, false, map, { forbid: type });
+export function comboWithoutSpecial(type: SpecialType, difficulty?: Difficulty, map?: MapId, boons?: BoonChoices): WaveScript {
+  return recordScript(followComboPlan(map), { difficulty, map, boons, specials: { forbid: type } });
 }
 
 /**
  * The combo plan without specials (milestone 25c): COMBO_PLAN, each action
  * as soon as gold allows, and no timed actions; recorded by playing, since
  * the specials' kills change the gold. Target: strictly worse than
- * comboBuild (lost, or fewer lives) but reaches wave 8.
+ * comboBuild by at least 3 lives. Both win Normal.
  */
-export function comboNoSpecials(difficulty?: Difficulty, map?: MapId): WaveScript {
-  return recordScript(followPlan(comboPlan(map)), difficulty, undefined, false, map);
+export function comboNoSpecials(difficulty?: Difficulty, map?: MapId, boons?: BoonChoices): WaveScript {
+  return recordScript(followComboPlan(map), { difficulty, map, boons });
 }
 
 /**
  * comboBuild with every Fire Pot action removed: no Fire Pot builds and no
  * upgrades on the cells where comboBuild builds them; its specials are
  * the policy's, re-recorded for this game (withPolicy, milestone 30).
- * Target T5: strictly worse than comboBuild (lost, or won with fewer lives).
+ * Target N5: strictly worse than comboBuild (lost, or won with fewer lives).
  */
-export function comboBuildNoFire(difficulty?: Difficulty, map?: MapId): WaveScript {
-  return withPolicy(withoutSpecials(withoutTowerType(comboBuild(difficulty, map), 'firepot')), difficulty);
+export function comboBuildNoFire(difficulty?: Difficulty, map?: MapId, boons?: BoonChoices): WaveScript {
+  return withPolicy(withoutSpecials(withoutTowerType(comboBuild(difficulty, map, boons), 'firepot')), difficulty);
 }
 
 /** `script` without its timed actions (its purchases, endless flag and map kept). */
 function withoutSpecials(script: WaveScript): WaveScript {
   const out = script.map((wave) => [...wave]);
-  if (script.endless) Object.assign(out, { endless: true });
-  return script.mapId ? Object.assign(out, { mapId: script.mapId }) : out;
+  return withMeta(out, { endless: script.endless, mapId: script.mapId, boons: script.boons });
 }
 
 /** The first wave with Harpies (WAVES). */
@@ -814,11 +862,11 @@ export const FIRST_HARPY_WAVE = 4;
  * Removing the actions from wave 1 instead (no sells) loses on wave 2,
  * before any Harpy, because the combo build opens with Longbows; that
  * variant is pinned in balance.test.ts as the reason for the sells.
- * Target (milestone 25c second pass): at least 75% of the wave 4 Harpies
- * exit, it survives wave 4, and the game is lost on wave 5 to 8.
+ * Target N7: at least half of wave 4's Harpies exit, and the game is lost
+ * by wave 12.
  */
-export function noAntiAir(difficulty?: Difficulty, map?: MapId): WaveScript {
-  const script = comboBuild(difficulty, map);
+export function noAntiAir(difficulty?: Difficulty, map?: MapId, boons?: BoonChoices): WaveScript {
+  const script = comboBuild(difficulty, map, boons);
   const before = FIRST_HARPY_WAVE - 1;
   const antiAir = (a: BuildAction) => a.type === 'build' && (a.tower === 'musketeer' || a.tower === 'longbow');
   const cells = new Set(script.flat().filter(antiAir).map((a) => cellKey(a.cell)));
@@ -838,8 +886,8 @@ export function noAntiAir(difficulty?: Difficulty, map?: MapId): WaveScript {
  * (like withoutTowerType). Not an archetype: it loses on wave 2, before any
  * Harpy, which is why noAntiAir sells its bows before wave 4 instead.
  */
-export function comboBuildNoBows(difficulty?: Difficulty, map?: MapId): WaveScript {
-  return withoutTowerType(withoutTowerType(comboBuild(difficulty, map), 'musketeer'), 'longbow');
+export function comboBuildNoBows(difficulty?: Difficulty, map?: MapId, boons?: BoonChoices): WaveScript {
+  return withoutTowerType(withoutTowerType(comboBuild(difficulty, map, boons), 'musketeer'), 'longbow');
 }
 
 /**
@@ -850,7 +898,7 @@ export function comboBuildNoBows(difficulty?: Difficulty, map?: MapId): WaveScri
  * comboBuild script, because the mode changes kills and so the gold. No
  * target: `npm run sim` reports it beside comboBuild.
  */
-export function comboStrongest(difficulty?: Difficulty, map?: MapId): WaveScript {
+export function comboStrongest(difficulty?: Difficulty, map?: MapId, boons?: BoonChoices): WaveScript {
   meadowOnly('comboStrongest', map);
   const plan = followPlan(COMBO_PLAN);
   let pending: BuildAction | undefined;
@@ -863,7 +911,7 @@ export function comboStrongest(difficulty?: Difficulty, map?: MapId): WaveScript
     const action = plan(state);
     if (action?.type === 'build') pending = { type: 'target', cell: action.cell, mode: 'strongest' };
     return action;
-  }, difficulty);
+  }, { difficulty, map, boons });
 }
 
 /**
@@ -875,7 +923,7 @@ export function comboStrongest(difficulty?: Difficulty, map?: MapId): WaveScript
  * (Normal when left out; milestone 25). Replay it with playScripted on the
  * same level, since gold and kills differ between levels.
  */
-export type Archetype = (difficulty?: Difficulty, map?: MapId) => WaveScript;
+export type Archetype = (difficulty?: Difficulty, map?: MapId, boons?: BoonChoices) => WaveScript;
 
 // comboWithKegs (milestone 25b, a Powder Keg at a fixed point every wave)
 // was removed in milestone 28: its kegs hit nothing on the horde waves, so
@@ -926,8 +974,9 @@ export const HARD_PLANS: Readonly<Record<MapId, readonly BuildAction[]>> = {
  * (milestone 30). Target H1: wins on Hard on every map. Played on Easy and
  * Normal too (informational).
  */
-export function hardBuild(difficulty?: Difficulty, map?: MapId): WaveScript {
-  return recordScript(followPlan(HARD_PLANS[map ?? DEFAULT_MAP]), difficulty, undefined, false, map, {});
+export function hardBuild(difficulty?: Difficulty, map?: MapId, boons?: BoonChoices): WaveScript {
+  const mapId = map ?? DEFAULT_MAP;
+  return recordScript(followPlan(HARD_PLANS[mapId], ACT_TWO_PLANS[mapId]), { difficulty, map, boons, specials: {} });
 }
 
 /**
@@ -935,9 +984,9 @@ export function hardBuild(difficulty?: Difficulty, map?: MapId): WaveScript {
  * allows), then Keep going after the win with no further purchases; the
  * special policy fires in every wave, endless ones included (milestone 30).
  */
-export function endlessIdle(difficulty?: Difficulty, map?: MapId): WaveScript {
-  const plan = followPlan(comboPlan(map));
-  return recordScript((state) => (state.endless ? undefined : plan(state)), difficulty, undefined, true, map, {});
+export function endlessIdle(difficulty?: Difficulty, map?: MapId, boons?: BoonChoices): WaveScript {
+  const plan = followComboPlan(map);
+  return recordScript((state) => (state.endless ? undefined : plan(state)), { difficulty, map, boons, endless: true, specials: {} });
 }
 
 /**
@@ -947,11 +996,11 @@ export function endlessIdle(difficulty?: Difficulty, map?: MapId): WaveScript {
  * the un-upgraded tower with the cheapest upgrade (ties to the first in
  * cell order), and wait if it is not yet affordable; with every tower
  * upgraded, build a Longbow on the next free cell of TRAIL_CELL_ORDER; with
- * no free trail cell left, buy nothing. Target on Normal: further than
- * endlessIdle, at least wave 14, and lost by wave 40.
+ * no free trail cell left, buy nothing. Target X2 on Normal: further than
+ * endlessIdle, and lost by the twelfth endless wave.
  */
-export function endlessGreedy(difficulty?: Difficulty, map?: MapId): WaveScript {
-  const plan = followPlan(comboPlan(map));
+export function endlessGreedy(difficulty?: Difficulty, map?: MapId, boons?: BoonChoices): WaveScript {
+  const plan = followComboPlan(map);
   return recordScript(
     (state) => {
       if (!state.endless) return plan(state);
@@ -965,11 +1014,7 @@ export function endlessGreedy(difficulty?: Difficulty, map?: MapId): WaveScript 
       if (cell === undefined || state.gold < TOWER_DEFS.longbow.cost) return undefined;
       return { type: 'build', cell, tower: 'longbow' };
     },
-    difficulty,
-    undefined,
-    true,
-    map,
-    {},
+    { difficulty, map, boons, endless: true, specials: {} },
   );
 }
 

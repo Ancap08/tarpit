@@ -108,7 +108,7 @@ describe('boss exit', () => {
     expect(s.phase).not.toBe('lost');
     expect(kinds(s.events, 'exit', 'bossDown')).toEqual([
       { kind: 'exit', enemyId: 7 },
-      { kind: 'bossDown', enemyId: 7, cause: 'exit' },
+      { kind: 'bossDown', enemyId: 7, enemyType: 'boss', cause: 'exit' },
     ]);
   });
 
@@ -123,14 +123,15 @@ describe('boss exit', () => {
     });
   }
 
-  it('with 6 lives he leaves 1, and an empty wave 10 is then won', () => {
+  it('with 6 lives he leaves 1, and an empty wave 10 then offers a boon', () => {
     const s = arena([enemy(7, EXIT - 0.1)]);
-    s.wave = WAVES.length;
-    s.spawnedPerGroup = WAVES[WAVES.length - 1].groups.map((g) => g.count);
+    s.wave = 10;
+    s.spawnedPerGroup = WAVES[9].groups.map((g) => g.count);
     s.lives = 6;
     tick(s);
     expect(s.lives).toBe(1);
-    expect(s.phase).toBe('won');
+    expect(s.phase).toBe('setup');
+    expect(s.pendingBoon?.wave).toBe(10);
   });
 });
 
@@ -142,7 +143,7 @@ describe('boss bounty', () => {
     expect(s.gold).toBe(150 + 25);
     expect(kinds(s.events, 'kill', 'bossDown')).toEqual([
       { kind: 'kill', enemyId: 3, enemyType: 'boss', bounty: 150, cause: 'shot' },
-      { kind: 'bossDown', enemyId: 3, cause: 'shot' },
+      { kind: 'bossDown', enemyId: 3, enemyType: 'boss', cause: 'shot' },
     ]);
     expect(kinds(s.events, 'kill')).toHaveLength(1);
     for (let i = 0; i < 120; i++) tick(s);
@@ -154,7 +155,7 @@ describe('boss bounty', () => {
     tick(s);
     expect(kinds(s.events, 'kill', 'bossDown')).toEqual([
       { kind: 'kill', enemyId: 3, enemyType: 'boss', bounty: 150, cause: 'burn' },
-      { kind: 'bossDown', enemyId: 3, cause: 'burn' },
+      { kind: 'bossDown', enemyId: 3, enemyType: 'boss', cause: 'burn' },
     ]);
     expect(s.gold).toBe(150 + 25);
   });
@@ -195,19 +196,20 @@ describe('boss in wave 10', () => {
     expect(spawns.filter((e) => e.kind === 'spawn' && e.enemyType === 'boss')).toHaveLength(1);
     const at = log.find((l) => l.waveTick === 3900)!;
     const i = at.events.findIndex((e) => e.kind === 'spawn' && e.enemyType === 'boss');
-    expect(at.events[i + 1]).toEqual({ kind: 'bossSpawn', enemyId: last.enemyId });
+    expect(at.events[i + 1]).toEqual({ kind: 'bossSpawn', enemyId: last.enemyId, enemyType: 'boss' });
     expect(log.flatMap((l) => l.events).filter((e) => e.kind === 'bossSpawn')).toHaveLength(1);
   });
 
-  it('the wave does not clear while he lives; it ends (won) when he exits, costing 5 lives', () => {
+  it('the wave does not clear while he lives; it offers a boon when he exits, costing 5 lives', () => {
     const { s, log } = playWave10();
     // Every other enemy is gone long before he exits.
     const othersGone = log.findIndex((l, i) => i > 3900 && l.events.length === 0 && l.bossAlive);
     expect(othersGone).toBeGreaterThan(0);
     for (const l of log) if (l.bossAlive) expect(l.phase).toBe('wave');
     const end = log.at(-1)!;
-    expect(end.events.filter((e) => e.kind === 'bossDown')).toEqual([{ kind: 'bossDown', enemyId: expect.any(Number), cause: 'exit' }]);
-    expect(s.phase).toBe('won');
+    expect(end.events.filter((e) => e.kind === 'bossDown')).toEqual([{ kind: 'bossDown', enemyId: expect.any(Number), enemyType: 'boss', cause: 'exit' }]);
+    expect(s.phase).toBe('setup');
+    expect(s.pendingBoon?.wave).toBe(10);
     // 20 Wolves, 15 Trolls, 12 Harpies, 8 Shieldbearers at 1 life each (milestone 25c), then him at 5.
     expect(s.lives).toBe(1000 - 55 - 5);
   });

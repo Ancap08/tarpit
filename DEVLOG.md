@@ -7187,3 +7187,182 @@ re-derived independently in `src/game/touchAssist-verifier.test.ts` (6 cases,
 three maps in both layouts, 17,640 points each): 0 mismatches, 0 crossings;
 red where the old rule snapped: Meadow 2.4 %, Switchback 0.2 %, Riverbend
 4.5 % of the old snaps.
+
+## 2026-11-23: milestone 36a, the longer game (rules)
+
+The campaign clears twenty waves. The simulation and headless player resolve the three reward choices. The interactive game reaches its first pending pick after wave 5. The reward screen belongs to 36b.
+
+### Rules and numbers
+
+| Rule | Before | Milestone 36a |
+|---|---|---|
+| Victory | Clear 10 | Clear 20. Grumblefoot still spawns on tick 3900 of wave 10. |
+| Wave 4 Harpy interval | 1.5 s | 1 s |
+| Wave 5 Troll interval | 8 s | 10 s |
+| Wave 7 Troll interval | 4.5 s | 4.4 s |
+| Wave 8 Troll interval | 5 s | 4.9 s |
+| Act 2 | No campaign waves 11–20 | 881 scheduled enemies against 524 in act 1. Two full pack calls add 16 Wolves. |
+| Grumblemaw | New. First trial 9,000 HP and 10 exit lives | 13,500 Normal HP, 25 px/s, 300 gold, 6 exit lives, 30% slow cap. Easy HP 10,125 and Hard HP 16,200. |
+| Pack call | New | At 2/3 and 1/3 HP, 8 Wolves each from the cave, one every 30 ticks per pack. |
+| Powder Keg | 30 damage | 60 damage. It kills a full-health Harpy or Wolf and takes 6.32% off a Normal Troll. |
+| Tar Barrel and Fire Arrows | 480-tick zones | 660 ticks (11 s). Base linger is 60 ticks. |
+| Fire Arrows | 20 damage/s | 26 damage/s |
+| Endless | Wave 11, repeats 8/9/10, HP ×1.6 per three waves | Wave 21, repeats 18/19/20, HP ×1.8 per three waves. Bosses are removed before the extra Harpy group is appended. |
+
+After wave 5 the fixed options are Long Barrels (Cannon/Mortar maximum range ×1.15), Keen Arrows (Longbow damage ×1.25) and War Chest (+100 gold). After wave 10 they are Sticky Tar (Tar Pit slow and Tar Barrel slow linger ×1.5), Hot Coals (both burns ×1.4 before tar doubling) and Quick Hands (recharge time ×0.7, 1200 to 840 ticks). After wave 15 they are Stone Walls (+5 lives), Veteran Crews (all tower fire rates ×1.12) and Bigger Blasts (Cannon/Mortar/Keg splash radii ×1.2). These are new offers. Each retained its starting number. The sim scales by integer percentage numerators and rounds tick timers to the nearest integer, half up. Existing, upgraded and later-built towers read the same held boons.
+
+A campaign call from **or into** 5, 10 or 15 returns `boon-wave`. Calling into the last boss wave, or out of wave 20, returns `last-wave`. Normal start returns `boon-pending` while the offer is unresolved. A rejected pick returns `no-boon-pending` or `boon-not-offered`. Clear and pick emit `boonOffered` and `boonPicked`. Endless retains the picks and awards no more.
+
+Both boss events carry `enemyId` and `enemyType` (`boss` or `grumblemaw`). Each crossed threshold emits `packCall`, including thresholds crossed by lethal damage. Both packs can start on the same spawn step. Their timers continue independently after the boss dies. The clear bonus waits until all queued Wolves have spawned and every survivor is gone. All use normal Wolf HP, bounty, exit cost and kill credit.
+
+**Act 2 schedule.** Each cell gives count / interval / first spawn, in seconds. A dash means no group. The final boss is separate.
+
+| Wave | Goblin | Wolf | Troll | Shieldbearer | Harpy | Boss |
+|---:|---|---|---|---|---|---|
+| 11 | 42/0.85/0 | — | — | 18/1.5/8 | 18/1.1/16 | — |
+| 12 | — | 45/1.45/0 | 14/4/7 | — | 18/2.6/17 | — |
+| 13 | 50/1.4/0 | — | — | 18/3.5/12 | 21/2.75/10 | — |
+| 14 | — | 37/1.85/0 | 18/3.8/5 | — | 22/2.5/16 | — |
+| 15 | 28/1.75/0 | 24/1.7/31.65 | 15/4.6/5 | — | 20/2.8/13 | — |
+| 16 | 42/1.7/0 | — | — | 25/2.95/4 | 24/2.75/10 | — |
+| 17 | — | 40/1.8/0 | 20/3.65/5 | — | 26/2.7/10 | — |
+| 18 | 46/1.7/0 | — | 16/4.6/5 | 14/5/3 | 24/2.8/11 | — |
+| 19 | — | 42/1.85/0 | 24/3.4/4 | — | 27/2.75/9 | — |
+| 20 | — | 38/2.2/3 | 22/3.95/4 | 16/4.5/12 | 26/3/9 | 1 at 88.95 s |
+
+### Plans, experiments and revert pass
+
+The first purchase sequence on each map and its Hard ordering remain the act-1 plans. Act 2 first upgrades the second Fire Pot, then adds and upgrades an exit-side Cannon and Musketeer. The purchase cells are (10,4), (23,8), (25,8) on Meadow, (14,4), (24,10), (25,10) on Switchback, and (18,5), (22,9), (23,9) on Riverbend. The first cell in each triple already holds the Fire Pot. On the shorter or less tightly folded lanes, the plan then spends more of its remaining gold on upgraded Longbows. Meadow adds (8,5), (8,6). Riverbend adds (5,8), (24,8), (5,9), (24,9), (7,7), (10,7), (11,7), (18,7). These rank highly for path covered in upgraded range, sampled every 4 px with ties in cell order. The purchases put boss damage within reach of different boon combinations. Switchback's interleaved lanes already provide that coverage. No tower stat or ordinary enemy stat changed.
+
+Easy's lazy player exhausted the first pass over the trail during act 1. In act 2 it continues its existing base-Musketeer strategy on a second pass, skipping previously taken cells. Without those purchases the first trial lost on wave 12 on Meadow and Riverbend. Even with the purchases, at a 10-life boss cost only 5 and 4 lives remained on those maps in that trial. The scripted special policy retains its 30-tick look interval, 30 px candidate spacing, three-enemy minimum and alternation. It recognizes both bosses and uses the effective Keg radius.
+
+The unrestricted first hand schedule was too long. With the finished plans it measured 927.5 s on Meadow. One trial compressed 21 parameters on seven waves. Replaying the restored hand tables located a smaller change. Only the three wave-11 intervals differ from that hand schedule. The timing reverts below each restore one value with the other two at their selected settings. A dense alternative with 45 Trolls in wave 11 separated the forbidden specials but cost Easy's lazy player its campaign and defeated the Meadow and Riverbend no-specials plans. In act 1 the chosen timings made each special matter while keeping those plans viable.
+
+| Single revert, other numbers held | Result |
+|---|---|
+| Wave 4 Harpy interval 1 → 1.5 s | N9, forbidding the Keg ties the full combo on Meadow. |
+| Wave 5 Troll interval 10 → 8 s | N6, Switchback finishes with 18 lives with specials and 16 without them. |
+| Wave 7 Troll interval 4.4 → 4.5 s | N9, forbidding Tar Barrel ties the full combo on Meadow. |
+| Wave 8 Troll interval 4.9 → 5 s | H3, the Normal plan on Hard loses on Riverbend wave 8. |
+| Wave 11 Goblin interval 0.85 → 1.55 s | R3, 927.5 s |
+| Wave 11 Shieldbearer interval 1.5 → 3 s | R3, 918.9 s |
+| Wave 11 Harpy interval 1.1 → 2.4 s | R3, 915.5 s |
+| Keg damage 60 → 30 | N11, fails to kill a full-health Harpy or remove 5% of a Troll. |
+| Shared zone duration 660 → 480 ticks | Meadow N9 and N10, Switchback N6, Riverbend H3. |
+| Tar Barrel duration alone 660 → 480 ticks | Switchback N6, Riverbend H3. |
+| Fire Arrows duration alone 660 → 480 ticks | Meadow N9, Riverbend H1, H3 and N10. |
+| Fire Arrows burn 26 → 20 per second | Meadow N9, Riverbend H3 and N10. |
+| Endless HP per cycle 1.8 → 1.6 | X1 on all maps. Idle loses on waves 26, 26 and 27. |
+| Grumblemaw exit cost 6 → 10 | Meadow and Riverbend E1, Riverbend H1, and N10 on all maps. |
+| Grumblemaw HP 13,500 → 9,000 | N4 on all maps (23, 25 and 22 lives), N10 on all maps and Riverbend X1 (wave 26). |
+
+Every individual revert of a tuned number broke at least one labelled target. The other new wave groups and the nine boon values have no changed trial value to revert. No previously existing enemy or tower number changed.
+
+### Measured results
+
+W means lives remaining at victory. L means the wave of defeat, including the absolute wave number in endless. The balance suite also pins ending gold in every applicable cell. `npm run sim` prints all 81 named boon combinations.
+
+| Archetype | Meadow easy | Meadow normal | Meadow hard | Switchback easy | Switchback normal | Switchback hard | Riverbend easy | Riverbend normal | Riverbend hard |
+|---|---|---|---|---|---|---|---|---|---|
+| noTowers | L 2 | L 1 | L 1 | L 2 | L 1 | L 1 | L 2 | L 1 | L 1 |
+| oneMusket | L 3 | L 2 | L 2 | L 3 | L 2 | L 2 | L 3 | L 2 | L 2 |
+| lazyBuild | W 8 | L 8 | L 2 | W 19 | L 8 | L 2 | W 8 | L 8 | L 2 |
+| greedyMusket | W 33 | L 8 | L 2 | W 33 | W 1 | L 2 | W 34 | L 8 | L 2 |
+| longbowSpam | L 10 | L 8 | L 7 | L 17 | L 8 | L 8 | L 10 | L 8 | L 7 |
+| noAntiAir | L 7 | L 5 | L 5 | L 8 | L 5 | L 5 | L 7 | L 5 | L 5 |
+| comboBuild | W 40 | W 17 | W 3 | W 40 | W 19 | W 9 | W 40 | W 16 | L 20 |
+| comboBuildNoFire | W 40 | W 15 | L 7 | W 40 | W 17 | W 7 | W 38 | W 12 | L 7 |
+| comboNoSpecials | W 40 | W 9 | L 3 | W 40 | W 16 | W 2 | W 39 | W 6 | L 7 |
+| hardBuild | W 40 | W 19 | W 12 | W 40 | W 19 | W 14 | W 40 | W 18 | W 1 |
+| endlessIdle | L 28 | L 25 | L 23 | L 27 | L 25 | L 24 | L 28 | L 25 | L 20 |
+| endlessGreedy | L 30 | L 27 | L 24 | L 30 | L 27 | L 25 | L 31 | L 28 | L 20 |
+| soundBuild | L 19 | L 7 | L 2 | - | - | - | - | - | - |
+| soundBuildNoTar | L 12 | L 7 | L 2 | - | - | - | - | - | - |
+| comboStrongest | W 7 | L 5 | L 2 | - | - | - | - | - | - |
+
+On Normal the three maps respectively leak 7, 8 and 8 of the 10 wave-4 Harpies without anti-air. One Musketeer leaks zero on wave 1 on Easy and Normal. Meadow's sound build lasts 23,009 ticks with tar and 21,700 without it. The default combo fires 66 specials and all 66 catch at least three. The full combo wins with 17 lives and 1,418 kills. Forbidding Keg, Tar Barrel or Fire Arrows gives 13/1,414, 16/1,417 and 12/1,413 lives/kills. Special use accounts for 8, 3 and 10 lives over the no-specials campaign on Meadow, Switchback and Riverbend.
+
+The final Meadow game takes 631.4 s in act 1 (peak 25 alive) and 894.9 s in act 2 (peak 17 alive), 25.4 minutes at 1x, excluding setup. Act 2 has only 5.1 s of headroom under R3. The spawn schedule reaches the six-walker limit. Other thin margins are Easy lazy's 8 remaining lives on Meadow and Riverbend, Switchback's 19 combo lives and three-life specials advantage, and Riverbend Hard's single remaining life with the Hard plan. All three idle builds lose on wave 25, the allowed upper limit. For each offer on each map, holding the other two picks fixed can change lives, kills or gold. Some individual pairs of choices tie. The largest observed leads over both alternatives are 6, 6, 6 lives in map order (limit 6).
+
+### Verification and handoff
+
+The 25 balance labels pass. The full simulator took 105.32 s of wall time and reported 65 passing checks, 81/81 winning choice combinations, and 117 applicable matrix cells. The balance suites pin final gold and zero refused actions as well as the outcomes.
+
+| Check | Result |
+|---|---|
+| `npm run lint`, `npm run typecheck` | Passed |
+| `npm run check:assets` | Passed, all 16 manifest rows |
+| `npm run build`, `npm run check:size` | Passed, 1,418,666 bytes in 10 files against a 20 MiB budget |
+| `npm test` | 1,356 passed, 3 failed in 77 files, 34.23 s wall time. All simulation tests passed. |
+| `npm run test:slow -- 0` | 34.43 s wall time, slowest individual test 4.4 s, zero over 5 s. The underlying Vitest run repeated the same three failures. |
+| `npm run sim` | Passed, 105.32 s |
+| Playwright / browser | Unrun. The sandbox cannot launch the browser. |
+
+All three unit failures are obsolete expectations in `src/game/ui/endText.test.ts`. Meadow now wins with 17 lives and 3,196 gold (old expectations 16 and 420), the no-towers loss displays “Reached wave 1 of 20” (old expectation “1 of 10”), and endless idle now loses on wave 25 (old expectation 16). A separate terminal check ran all three game outcomes through the production end-screen helper and verified the new text exactly. The brief restricts edits in `src/game` to those needed for typechecking, linting or building. The UI test requires a scope decision.
+
+The verifier should compare the paired boon cases as well as the default choices, replay a lethal hit that crosses both thresholds, and check the order of the Wave 20 clear after the last pack Wolf. For 36b, the sim reference for the burning, slowed mid-boss two ticks after a Mortar hit moves to wave-10 tick 5215. The simulation checks the frame contents. The deterministic replay reconciles gold and all 1,421 spawns, including both packs. The simulator uses squared-distance targeting and the straight axis of each path segment to reduce work per tick. Browser clicks, rendering and baselines require the coordinator's browser environment.
+
+The only production renderer edits are the display name in `src/game/names.ts`, the existing boss sheet as a temporary mapping in `src/game/anim/sheets.ts`, and the ring-radius lookup in `src/game/draw/enemies.ts`. No reward HUD, art or audio was added. The branch is `m36-twenty-waves`, with the working-tree changes left for the coordinator to commit.
+
+### Changed files
+
+- `DEVLOG.md`
+- `docs/DESIGN.md`
+- `scripts/simulate.ts`
+- `src/game/anim/sheets.ts`
+- `src/game/draw/enemies.ts`
+- `src/game/names.ts`
+- `src/sim/actions.ts`
+- `src/sim/balance.suite.ts`
+- `src/sim/balance.test.ts`
+- `src/sim/balanceRuns.ts`
+- `src/sim/balanceTargets.ts`
+- `src/sim/boons.test.ts`
+- `src/sim/boons.ts`
+- `src/sim/boss-frame.test.ts`
+- `src/sim/boss-verifier.test.ts`
+- `src/sim/boss.test.ts`
+- `src/sim/callEarly.test.ts`
+- `src/sim/combat.test.ts`
+- `src/sim/combat.ts`
+- `src/sim/designSpec.test.ts`
+- `src/sim/difficulty-verifier.test.ts`
+- `src/sim/difficulty.test.ts`
+- `src/sim/difficulty.ts`
+- `src/sim/endless-verifier-cap.test.ts`
+- `src/sim/endless-verifier.test.ts`
+- `src/sim/endless.test.ts`
+- `src/sim/enemies-frame.test.ts`
+- `src/sim/enemies.ts`
+- `src/sim/events-verifier.test.ts`
+- `src/sim/events.test.ts`
+- `src/sim/events.ts`
+- `src/sim/fixtures/meadowComboNormal.ts`
+- `src/sim/flyingShield-verifier.test.ts`
+- `src/sim/flyingShield.test.ts`
+- `src/sim/frame-verifier.test.ts`
+- `src/sim/game.test.ts`
+- `src/sim/game.ts`
+- `src/sim/grumblemaw.test.ts`
+- `src/sim/headless.test.ts`
+- `src/sim/headless.ts`
+- `src/sim/horde-verifier.test.ts`
+- `src/sim/index.ts`
+- `src/sim/killCounts.test.ts`
+- `src/sim/map.ts`
+- `src/sim/maps-verifier.test.ts`
+- `src/sim/maps.test.ts`
+- `src/sim/newTowers-headless.test.ts`
+- `src/sim/newTowers-verifier.test.ts`
+- `src/sim/newTowers.test.ts`
+- `src/sim/specialPolicy.ts`
+- `src/sim/specials-rework-verifier.test.ts`
+- `src/sim/specials-verifier.test.ts`
+- `src/sim/specials.test.ts`
+- `src/sim/specials.ts`
+- `src/sim/targeting.test.ts`
+- `src/sim/towers.ts`
+- `src/sim/types.ts`
+- `src/sim/verifier.test.ts`
+- `src/sim/waves.test.ts`
+- `src/sim/waves.ts`

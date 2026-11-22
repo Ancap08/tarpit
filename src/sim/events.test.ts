@@ -18,7 +18,7 @@ import { WAVES } from './waves';
 const P: Cell = { col: 6, row: 7 };
 
 function enemy(id: number, distance: number, over: Partial<Enemy> = {}, type: EnemyType = 'goblin'): Enemy {
-  const fullHp = ({ goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000 } as const)[type];
+  const fullHp = ({ goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000, grumblemaw: 13500 } as const)[type];
   return { id, type, hp: fullHp, distance, slow: 0, slowTicksLeft: 0, burnDps: 0, burnTicksLeft: 0, ...over };
 }
 
@@ -177,7 +177,7 @@ describe('state.events', () => {
     s.wave = WAVES.length;
     s.spawnedPerGroup = WAVES[WAVES.length - 1].groups.map((g) => g.count);
     tick(s);
-    expect(s.events).toEqual([{ kind: 'waveClear', wave: 10, bonus: 25 }, { kind: 'won' }]);
+    expect(s.events).toEqual([{ kind: 'waveClear', wave: 20, bonus: 25 }, { kind: 'won' }]);
     expect(s.phase).toBe('won');
   });
 

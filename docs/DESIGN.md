@@ -1,6 +1,6 @@
 # Tarpit: game design spec
 
-> **Frozen as of milestone 28.** This file states every number and rule the
+> **Frozen as of milestone 36.** This file states every number and rule the
 > game uses. Changing any of them needs a `DECISIONS.md` entry (who decided
 > and why) and the balance pins updated in the same change
 > (`src/sim/balance.suite.ts`, `npm run sim`). Kyle's play notes can reopen
@@ -88,11 +88,13 @@ Buildable counts are of the 450 cells.
 ## Economy and lives
 
 - Each kill pays the enemy's bounty. Clearing a wave pays a 25 gold bonus.
+  Clearing campaign waves 5, 10 and 15 also offers a boon.
 - Calling the next wave early pays the current wave's 25 clear bonus at
   once plus an early bonus of up to 20 (see Call early).
-- An enemy reaching the exit costs its lives cost (1; the boss 5) and is
-  removed. Lives at 0 or below: lost, at once.
-- Clearing wave 10 with lives above 0 wins. After the win the player may
+- An enemy reaching the exit costs its lives cost (1 for regular enemies,
+  5 for Grumblefoot and 6 for Grumblemaw) and is removed. The game ends
+  in a loss when lives reach zero or below.
+- Clearing wave 20 with lives above 0 wins. After the win the player may
   keep going into endless waves, where clearing a wave never wins again.
 - Starting gold and lives depend on the level (see Difficulty).
 - Selling a locked tower returns 70% of the total spent on it (build plus
@@ -182,8 +184,10 @@ every level; every Normal number in this file is the base number.
 | Harpy | 27 | 36 | 43 |
 | Shieldbearer | 53 | 70 | 84 |
 | Grumblefoot (boss) | 3000 | 4000 | 4800 |
+| Grumblemaw (boss) | 10125 | 13500 | 16200 |
 
-**Hard hp rule.** No enemy's Hard hp sits 1 or 2 points above a multiple
+**Hard hp rule.** No ordinary enemy's Hard hp sits 1 or 2 points above
+a multiple
 of a tower's base damage (Musketeer 12, Longbow and Fire Pot impact 4,
 Cannon 25, Mortar 45; the Tar Pit's 3 is left out, since every whole
 number is 0, 1 or 2 above a multiple of 3), so no Hard enemy needs one
@@ -226,6 +230,7 @@ beside it that returns to the title; the win screen also has [Keep going].
 | Harpy | 36 | 90 | 3 | 1 | flying |
 | Shieldbearer | 70 | 45 | 5 | 1 | shield |
 | Grumblefoot, the Troll King | 4000 | 25 | 150 | 5 | boss; slows capped at 30% |
+| Grumblemaw | 13500 | 25 | 300 | 6 | boss; slows capped at 30% |
 
 - **Flying.** A Harpy flies over the path. Tar Pit, Cannon and Mortar never
   target it, and a Cannon or Mortar splash skips it even when it is inside
@@ -234,29 +239,31 @@ beside it that returns to the title; the win screen also has [Keep going].
   it (it can be slowed and burned by a special). On screen a Harpy flies
   16 px above its path position with a soft ground shadow, above every
   other enemy and the tower labels.
-- **Shield.** A Shieldbearer takes half damage from any shot whose base
+- **Shield.** A Shieldbearer takes half damage from any shot whose effective
   damage is 10 or less: base Longbow 4 -> 2, upgraded Longbow 9 -> 4.5,
   Fire Pot impact 4 -> 2, Tar Pit 3 -> 1.5. Shots over 10 (Musketeer 12
   and 22, Cannon, Mortar), burn damage and specials are full. It carries a
-  small grey shield mark on its left.
-- **Boss.** Grumblefoot, the Troll King, is one unit at the end of wave 10:
-  wave 10's last group, 65 s after the wave starts (waveTick 3900), 2 s
-  after the last spawn of the other groups (the 15th Troll at 63 s). He
-  walks (every tower can target him; splash and burn work on him,
-  including the doubled burn under tar) and has no shield. Slows cap at
-  30% on him: a stronger slow is applied at 30% for its full duration (so
-  he walks 25 x 0.7 = 17.5 px/s while tarred), and the `slowed` event
-  carries the applied 0.3. If he exits he costs 5 lives (at 5 or fewer the
-  game is lost at once); a kill pays 150. Wave 10 clears only when he is
-  dead or gone. The simulation emits `bossSpawn` after his `spawn` event
-  and `bossDown` (cause `shot`, `burn`, `special` or `exit`) after his
-  `kill` or `exit` event. On screen he is a 2x sprite (100 px frame) above
-  the walkers and below shots, hp bars, labels and Harpies, with a wide
-  ground shadow; instead of a small hp bar, a HUD boss bar shows while he
-  lives: 300 x 14 px centred at the top of the map (y 24), dark trough,
-  red fill proportional to his hp, 1 px cream border, "hp / 4000"
-  right-aligned inside, and his name in 14 px on a dark pill above its
-  left end (y 4 to 22).
+  small grey shield mark on its left. Keen Arrows raises an upgraded
+  Longbow shot to 11.25, so it bypasses the shield.
+- **Bosses.** Grumblefoot, the Troll King, is the last spawn of wave 10
+  at 65 s (waveTick 3900), 2 s after the last Troll. Grumblemaw is the last
+  scheduled spawn of wave 20. Both walk without a shield. Every tower can
+  target them. Splash, burn and tar apply, with slows capped at 30% for
+  the effect's full duration. At the cap either boss walks at 17.5 px/s,
+  and `slowed` carries the applied 0.3. The wave clears after they and all remaining
+  enemies are defeated or exit. `bossSpawn` follows `spawn`, and
+  `bossDown` (cause `shot`, `burn`, `special` or `exit`) follows `kill` or
+  `exit`. Both boss events carry `enemyType` and `enemyId`. A boss has a
+  wide ground shadow and a named HUD bar showing current and maximum hp.
+  Grumblefoot uses a 2x sprite (100 px frame), above walkers and below
+  shots, hp bars, labels and Harpies.
+- **Grumblemaw's pack calls.** Crossing two thirds or one third of full
+  hp emits `packCall` with the crossed threshold (numerator 2 or 1 over
+  3) and schedules 8 Wolves from the cave. The first Wolf spawns in
+  the next spawn step and the rest every 30 ticks. Both packs can spawn
+  concurrently. A hit that crosses both thresholds triggers both calls,
+  even if it kills him. The wave waits for all scheduled Wolves and
+  surviving enemies.
 - **Slows.** A slow multiplies speed by `(1 - slow)` for its duration.
   Slows in one slot do not stack: the strongest applies, and a new slow of
   equal or greater strength refreshes the duration; a weaker one is
@@ -266,7 +273,7 @@ beside it that returns to the title; the win screen also has [Keep going].
   its zone through `applySpecialSlow`). Each slot follows the rule on its own and
   counts down on its own; neither blocks or shortens the other. The enemy
   moves at `(1 - effectiveSlow)`, where `effectiveSlow` is the stronger of
-  the two active slots, capped by the boss's 30%. An enemy is "tarred"
+  the two active slots, capped at 30% for either boss. An enemy is "tarred"
   (burns double) while either slot is active (`isTarred`); the renderer's
   tar ring and tint follow the same rule.
 - **Hp.** Hp can be fractional (burn, shields); an enemy counts as dead at
@@ -279,7 +286,9 @@ fires when its cooldown is zero and a target is in range, then its cooldown
 resets to `round(60 / fire rate)` ticks (Musketeer 60, Cannon 120, Tar Pit
 30, Longbow 24, Mortar 180, Fire Pot 75). Range is measured from the
 tower's cell centre to the enemy's position. Splash hits every enemy within
-the splash radius of the target (flyers excepted) for full damage.
+the splash radius of the target (flyers excepted) for full damage. The
+base tables precede boon modifiers. Veteran Crews multiplies fire rate
+before the cooldown is rounded.
 
 | Tower | Cost | Range | Min range | Damage | Fire rate | Splash | Slow | Burn |
 |---|---|---|---|---|---|---|---|---|
@@ -340,47 +349,72 @@ its burns' ownership, so a tower rebuilt on the cell starts from 0; moving
 and upgrading keep the count. The tower panel (214 x 166) shows it as a
 13 px "Kills 43" line above its buttons (`names.ts` `KILLS_TEXT`).
 
+## Boons
+
+Clearing waves 5, 10 and 15 offers three fixed boons in order. The
+player picks one with `pickBoon(state, id)` before starting the next
+wave. The pending offer is `state.pendingBoon` with the cleared wave and
+its options. The chosen boon is stored in `state.boons` and lasts for the
+run, including endless. Tower boons apply to existing and new towers.
+War Chest grants its gold on pick, and Stone Walls grants its lives on
+pick. A pick is refused with `no-boon-pending` when no offer is pending
+and `boon-not-offered` when the id is outside the offer. Start Wave is
+refused with `boon-pending` until the player chooses. The simulation
+emits `boonOffered` with the cleared wave and options. Picking clears the
+offer and emits `boonPicked` with the wave and selected id.
+
+| Boon | ID | After wave | Value | Effect |
+|---|---|---|---|---|
+| Long Barrels | longBarrels | 5 | 1.15 | Cannon and Mortar maximum range multiplier |
+| Keen Arrows | keenArrows | 5 | 1.25 | Longbow damage multiplier |
+| War Chest | warChest | 5 | 100 | Gold gained immediately |
+| Sticky Tar | stickyTar | 10 | 1.5 | Tar Pit and Tar Barrel slow duration multiplier |
+| Hot Coals | hotCoals | 10 | 1.4 | Damage multiplier for all burns |
+| Quick Hands | quickHands | 10 | 0.7 | Special recharge time multiplier |
+| Stone Walls | stoneWalls | 15 | 5 | Lives gained immediately |
+| Veteran Crews | veteranCrews | 15 | 1.12 | Tower fire rate multiplier |
+| Bigger Blasts | biggerBlasts | 15 | 1.2 | Cannon, Mortar and Powder Keg splash radius multiplier |
+
 ## Special attacks
 
 `src/sim/specials.ts` `SPECIAL_DEFS`.
 
 | Special | Unlock wave | Radius | Damage | Slow | Burn per s | Zone ticks |
 |---|---|---|---|---|---|---|
-| Powder Keg | 1 | 90 | 30 | - | - | - |
-| Tar Barrel | 4 | 100 | - | 0.5 | - | 480 |
-| Fire Arrows | 7 | 90 | - | - | 20 | 480 |
+| Powder Keg | 1 | 90 | 60 | - | - | - |
+| Tar Barrel | 4 | 100 | - | 0.5 | - | 660 |
+| Fire Arrows | 7 | 90 | - | - | 26 | 660 |
 
 - **Charge.** One charge shared by the three specials. `state.specialCharges`
   is 0 or 1 and `state.specialRechargeTicks` counts the refill. A wave start
   (Start Wave or an early call) makes it ready at once (1, recharge 0).
   Using a special spends it and starts the recharge: it is ready again
-  1200 wave ticks later (20 s, `SPECIAL_RECHARGE_TICKS`), counted in step 6
-  of each wave tick. It does not refill in setup: the wave clear sets the
-  charge and the recharge to 0.
+  1200 wave ticks later (20 s, `SPECIAL_RECHARGE_TICKS`). Quick Hands
+  lowers this interval to 840 ticks (14 s). The counter runs in step 6
+  of each wave tick. Wave clear resets the charge and the recharge to 0.
 - **Use.** `useSpecial(state, type, {x, y})` acts at once, between ticks,
-  like a build, on every live enemy whose position is within the radius of
-  the aimed point (inclusive: 90 px hits, 90.01 does not), flyers included.
+  like a build, on every live enemy whose position is within the effective
+  radius of the aimed point (inclusive), flyers included.
   Refused, in this order, with `game-over`, `not-in-wave` (setup), `locked`
   (`state.wave` < the unlock wave), `no-charge`, `out-of-bounds` (the point
-  must be inside 0..960 x 0..480, edges included). A refusal changes
-  nothing.
-- **Powder Keg.** 30 damage to each enemy inside, shields ignored. No zone.
+  must be inside 0..960 x 0..480, edges included). A refusal changes nothing.
+- **Powder Keg.** 60 damage to each enemy inside, shields ignored. No zone.
 - **Zones.** The Tar Barrel and Fire Arrows act on the enemies inside at
   once and leave a zone at the point (`state.zones`, each with an id, its
-  type, point, radius and `ticksLeft`) for 480 ticks (8 s). Every wave
+  type, point, radius and `ticksLeft`) for 660 ticks (11 s). Every wave
   tick, in step 2b, each zone (oldest first) gives every live enemy inside
-  it, flyers included, its effect for 60 ticks (`ZONE_LINGER_TICKS`), then
-  counts down; at 0 it is removed. So an enemy is slowed or burning while
-  it is inside and for 60 ticks after it leaves. Several zones can exist at
-  once; they do not stack (the slow and burn rules below decide). The wave
+  it, flyers included, its effect, then counts down and is removed at 0.
+  The effect stays for 60 ticks after an enemy leaves
+  (`ZONE_LINGER_TICKS`). Sticky Tar extends the slow linger to 90 ticks.
+  Several zones can exist at once; they do not stack (the slow and burn rules below decide). The wave
   clear removes every zone.
 - **Effects.** The Tar Barrel slows by 0.5 through the special slot
-  (capped at 0.3 on the boss; a weaker special slow does not replace a
+  (capped at 0.3 on either boss; a weaker special slow does not replace a
   stronger active one; tower slows neither block nor shorten it). Fire
-  Arrows burn at 20 per second through the normal burn (`applyBurn`, as a
+  Arrows burn at 26 per second through the normal burn (`applyBurn`, as a
   special's burn): they replace an equal or weaker burn and leave a
   stronger one, and the burn is doubled while the enemy is tarred, so tar
-  and fire on one enemy burn 40 per second.
+  and fire on one enemy burn 52 per second before boons.
 - **Kills.** Enemies a special kills pay their bounty once and are
   removed, each with a `kill` event, cause `special` (and `bossDown`, cause
   `special`, for the boss); a burn kill from Fire Arrows counts the same.
@@ -442,6 +476,9 @@ game.
 
 ## Waves
 
+The campaign has two acts. Waves 1 to 10 end with Grumblefoot. Waves 11
+to 20 end with Grumblemaw. Clearing wave 20 opens endless play.
+
 A wave is a list of groups. A group spawns `count` enemies of one type,
 `interval` seconds apart, starting `delay` seconds after the wave starts;
 enemy `i` of a group spawns on waveTick `round((delay + i x interval) x
@@ -452,41 +489,49 @@ enemy `i` of a group spawns on waveTick `round((delay + i x interval) x
 | 1 | 20 Goblin every 2.5 s | 20 | 460 | 40 | 47.5 s |
 | 2 | 32 Goblin every 0.9 s | 32 | 736 | 64 | 27.9 s |
 | 3 | 22 Goblin every 1 s; 12 Wolf every 1.5 s, delay 4.5 s | 34 | 746 | 68 | 21 s |
-| 4 | 10 Harpy every 1.5 s; 30 Goblin every 1 s, delay 3 s | 40 | 1050 | 90 | 32 s |
-| 5 | 40 Goblin every 1 s; 3 Troll every 8 s, delay 10 s; 10 Harpy every 1.2 s, delay 8 s | 53 | 4130 | 134 | 39 s |
+| 4 | 10 Harpy every 1 s; 30 Goblin every 1 s, delay 3 s | 40 | 1050 | 90 | 32 s |
+| 5 | 40 Goblin every 1 s; 3 Troll every 10 s, delay 10 s; 10 Harpy every 1.2 s, delay 8 s | 53 | 4130 | 134 | 39 s |
 | 6 | 45 Goblin every 1 s; 35 Wolf every 1 s, delay 9 s; 6 Shieldbearer every 1.5 s, delay 0.5 s | 86 | 2155 | 190 | 44 s |
-| 7 | 26 Wolf every 1.5 s; 13 Troll every 4.5 s, delay 1 s; 16 Harpy every 1 s, delay 8 s | 55 | 13446 | 204 | 55 s |
-| 8 | 50 Goblin every 1.5 s; 25 Wolf every 1.5 s, delay 6.75 s; 13 Troll every 5 s, delay 3 s; 6 Shieldbearer every 6 s, delay 4 s; 14 Harpy every 1.2 s, delay 10 s | 108 | 14924 | 326 | 73.5 s |
+| 7 | 26 Wolf every 1.5 s; 13 Troll every 4.4 s, delay 1 s; 16 Harpy every 1 s, delay 8 s | 55 | 13446 | 204 | 53.8 s |
+| 8 | 50 Goblin every 1.5 s; 25 Wolf every 1.5 s, delay 6.75 s; 13 Troll every 4.9 s, delay 3 s; 6 Shieldbearer every 6 s, delay 4 s; 14 Harpy every 1.2 s, delay 10 s | 108 | 14924 | 326 | 73.5 s |
 | 9 | 30 Wolf every 1 s; 10 Troll every 2 s, delay 2 s | 40 | 10100 | 140 | 29 s |
 | 10 | 20 Wolf every 1.5 s, delay 4 s; 15 Troll every 4.5 s; 12 Harpy every 1.5 s, delay 6 s; 8 Shieldbearer every 5 s, delay 2.5 s; 1 Grumblefoot (boss), delay 65 s | 56 | 19642 | 386 | 65 s |
+| 11 | 42 Goblin every 0.85 s; 18 Shieldbearer every 1.5 s, delay 8 s; 18 Harpy every 1.1 s, delay 16 s | 78 | 2874 | 228 | 34.85 s |
+| 12 | 45 Wolf every 1.45 s; 14 Troll every 4 s, delay 7 s; 18 Harpy every 2.6 s, delay 17 s | 77 | 14848 | 256 | 63.8 s |
+| 13 | 50 Goblin every 1.4 s; 18 Shieldbearer every 3.5 s, delay 12 s; 21 Harpy every 2.75 s, delay 10 s | 89 | 3166 | 253 | 71.5 s |
+| 14 | 37 Wolf every 1.85 s; 18 Troll every 3.8 s, delay 5 s; 22 Harpy every 2.5 s, delay 16 s | 77 | 18632 | 284 | 69.6 s |
+| 15 | 28 Goblin every 1.75 s; 24 Wolf every 1.7 s, delay 31.65 s; 15 Troll every 4.6 s, delay 5 s; 20 Harpy every 2.8 s, delay 13 s | 87 | 16094 | 284 | 70.75 s |
+| 16 | 42 Goblin every 1.7 s; 25 Shieldbearer every 2.95 s, delay 4 s; 24 Harpy every 2.75 s, delay 10 s | 91 | 3580 | 281 | 74.8 s |
+| 17 | 40 Wolf every 1.8 s; 20 Troll every 3.65 s, delay 5 s; 26 Harpy every 2.7 s, delay 10 s | 86 | 20736 | 318 | 77.5 s |
+| 18 | 46 Goblin every 1.7 s; 16 Troll every 4.6 s, delay 5 s; 14 Shieldbearer every 5 s, delay 3 s; 24 Harpy every 2.8 s, delay 11 s | 100 | 18102 | 362 | 76.5 s |
+| 19 | 42 Wolf every 1.85 s; 24 Troll every 3.4 s, delay 4 s; 27 Harpy every 2.75 s, delay 9 s | 93 | 24612 | 357 | 82.2 s |
+| 20 | 38 Wolf every 2.2 s, delay 3 s; 22 Troll every 3.95 s, delay 4 s; 16 Shieldbearer every 4.5 s, delay 12 s; 26 Harpy every 3 s, delay 9 s; 1 Grumblemaw (boss), delay 88.95 s | 103 | 37216 | 710 | 88.95 s |
 
-Total hp and bounty are on Normal, without the 25 clear bonus. The ten
-waves hold 524 enemies. Wave 1 is deliberately gentle: one
+Total hp and bounty are on Normal, before pack calls and the 25 clear
+bonus. The twenty waves hold 1405 scheduled enemies. Wave 1 sends one
 Goblin every 2.5 s, so a single Musketeer stops all of them on Easy and
 Normal (three shots per Goblin on Hard make it a real wave there). Kyle's
 play notes decide whether it stays this long.
 
-**Wave rules** (`balance.suite.ts` R1 to R5):
+**Wave rules** (`balanceTargets.ts`):
 
-- **R1 spawn rate.** In any 3 s (180 ticks, the window `[t, t + 180)`) of
-  any wave at most 6 walkers and at most 4 flyers spawn.
-- **R2.** Every wave has at least as many enemies as, and more bounty than,
-  this reference table (enemies, bounty): 8 and 32, 12 and 48, 14 and 62,
-  14 and 78, 17 and 85, 35 and 169, 24 and 158, 45 and 249, 18 and 108,
-  30 and 357.
-- **R3.** The ten waves hold 434 to 651 enemies.
-- **R4.** Every wave's last spawn is within 90 s; the boss comes 2 s after
-  wave 10's last other spawn.
-- **R5.** comboBuild on Meadow, Normal, without early calls clears each
-  wave no sooner than 1.15 times these reference ticks: 951, 1447, 1162,
-  1321, 3101, 1705, 4199, 3788, 1992, 4640; the ten waves take 540 to 800
-  s of wave time; at most 35 enemies are alive at once.
+- **R1** In any 3 s (180 ticks, the window `[t, t + 180)`) of a
+  campaign wave, at most 6 walkers and 4 flyers spawn on the schedule.
+  Each campaign wave's last scheduled spawn is within 90 s. The
+  Grumblemaw packs are triggered by damage.
+- **R2** Act 2 schedules 1.2 to 2 times as many enemies as act 1.
+- **R3** comboBuild on Meadow, Normal, without early calls takes 600 to
+  900 s of wave time in act 2, with at most 40 enemies alive at once.
+- **R4** The same run clears each act 1 wave no sooner than 1.15 times
+  these reference ticks: 951, 1447, 1162, 1321, 3101, 1705, 4199, 3788,
+  1992, 4640. Act 1 takes 540 to 800 s of wave time, with at most 35
+  enemies alive at once.
 
 **Wave flow.** The player presses Start Wave. The wave is active until
-every enemy in it has spawned and none remain alive (old-wave survivors
-after an early call included). Then the clear bonus is paid and the next
-wave can be started. Start Wave is unavailable while a wave is active,
-except to call the next wave early. The next-wave preview lists each type
+every scheduled enemy and called Wolf has spawned and none remain alive,
+including survivors from an early call. Then the clear bonus is paid.
+The next wave can start after any boon pick. During a wave, the button
+calls the next wave when early calls are allowed. The next-wave preview lists each type
 once in first-group order with its counts summed ("Next: 20 Goblin"); a
 preview too long for one 16 px line (264 px) wraps to two 13 px lines, or,
 if that takes three lines, to two 11 px lines. The wave 10 preview reads
@@ -496,11 +541,11 @@ if that takes three lines, to two 11 px lines. The wave 10 preview reads
 
 `callNextWave(state)` in `game.ts`. While a wave runs and every one of its
 enemies has spawned, the next wave can be called at once. Refused, in this
-order, with `game-over`, `not-in-wave` (setup), `last-wave` (the current
-wave is the last, or the next wave holds the boss: wave 9 cannot call wave
-10; never in an endless game) and `still-spawning`; a refusal changes
-nothing. A call clears the current wave at once: it pays the 25 clear bonus
-(event `waveClear`) plus the early bonus, `min(20, ceil(secondsRemaining))`
+order, with `game-over`, `not-in-wave` (setup), `boon-wave` (from or into
+campaign wave 5, 10 or 15), `last-wave` (from or into campaign wave 20)
+and `still-spawning`. The campaign restrictions do not apply in endless.
+A refusal changes nothing. A call clears the current wave at once and
+pays the 25 clear bonus (event `waveClear`) plus the early bonus, `min(20, ceil(secondsRemaining))`
 with `secondsRemaining = max(0, 20 - seconds since the wave's last
 spawn)`. The last spawn happens during the tick with waveTick =
 `lastSpawnTick(wave)`; right after it 0 s have passed (bonus 20), and each
@@ -517,52 +562,51 @@ it reads "Start Wave". `ui().callEarly` reports `{available, bonus}`.
 
 ## Endless mode
 
-- **Keep going.** The win screen (wave 10 cleared) has three buttons:
+- **Keep going.** The win screen (wave 20 cleared) has three buttons:
   [Keep going] (the primary: highlighted, on the left, 170 x 42), [Play
   again] (180 x 42) and [Menu] (100 x 42), 16 px apart, centred in a 520 x
   230 panel (the lose screen has a 460 px panel and two buttons). [Keep
   going] calls `continueEndless(state)`: allowed only in phase `won`,
   refused with `not-won` otherwise; a refusal changes nothing. It sets
-  `state.endless = true` and the phase to `setup` with wave 10 cleared;
-  gold, lives, towers, kill counts and the special charge (0, not
+  `state.endless = true` and the phase to `setup` with wave 20 cleared;
+  gold, lives, towers, kill counts, boons and the special charge (0, not
   refilling) are kept.
   Event `endlessStart`.
-- **After that** Start Wave plays wave 11, 12, and so on. Clearing a wave
+- **After that** Start Wave plays wave 21, 22, and so on. Clearing a wave
   pays the 25 bonus and returns to setup; it never sets `won`, so the game
   ends only by losing. The planning phase, the special charge (all three
   unlocked) and call early work as before, with no `last-wave` refusal.
-- **Generated waves** (`waveDef(n)` in `waves.ts`; waves 1 to 10 are the
-  table). For n >= 11: `k = n - 11`, `cycle = floor(k / 3) + 1`; the
-  groups of table wave 8, 9 or 10 for `k % 3` = 0, 1, 2, without the boss;
+- **Generated waves** (`waveDef(n)` in `waves.ts`; waves 1 to 20 are the
+  table). For n >= 21: `k = n - 21`, `cycle = floor(k / 3) + 1`; the
+  groups of table wave 18, 19 or 20 for `k % 3` = 0, 1, 2, without the bosses;
   plus one Harpy group of `min(16, 8 + 2 x cycle)` Harpies, one every 0.75
-  s, starting 2 s after the base wave's last spawn; hp multiplier `1.6 ^
+  s, starting 2 s after the base wave's last spawn; hp multiplier `1.8 ^
   cycle` (`ENDLESS_HP_GROWTH`). An enemy spawns with `round(base hp x level
   multiplier x wave multiplier)` (one rounding, half up) and carries it as
   `maxHp`, which the hp bar uses. Bounties, speeds and lives costs do not
-  change. The 90 s spawn-window rule (R4) does not apply; the spawn-rate
+  change. The 90 s spawn-window rule (R1) does not apply; the spawn-rate
   rule (R1) does. The Hard hp rule does not apply. `waveDef` throws for n
-  < 1 and for a non-integer n. The live game has no wave cap (headless runs
-  stop at 200, `ENDLESS_WAVE_CAP`); hp leaves the exact-integer range near
-  wave 200, which no build reaches.
+  < 1 and for a non-integer n. Live play continues while lives remain. Headless runs stop at 200
+  (`ENDLESS_WAVE_CAP`).
 - **Score.** `wavesCleared(state)` (`game.ts`, derived, no state field):
-  `state.wave` in `setup` or `won`, else `state.wave - 1`. A win scores 10,
+  `state.wave` in `setup` or `won`, else `state.wave - 1`. A win scores 20,
   a loss on wave 7 scores 6.
-- **On screen.** The HUD wave counter reads "Wave 11" in an endless game
-  (no "/10"; "Wave 10" right after Keep going). The preview merges repeated
-  types ("24 Harpy"). The lose screen reads "Reached wave 15" (no "of
-  10"). Words in `names.ts`: `END_TEXT.keepGoing`, `waveCounterText`,
+- **On screen.** The HUD wave counter reads "Wave 21" in an endless game
+  (no "/20"; "Wave 20" right after Keep going). The preview merges repeated
+  types ("24 Harpy"). The lose screen reads "Reached wave 25" (no "of
+  20"). Words in `names.ts`: `END_TEXT.keepGoing`, `waveCounterText`,
   `reachedWaveText`, `bestScoreText`.
 
 | Wave | Cycle | Base | Extra Harpies | Enemies | Hp x | Total hp (Normal) | Bounty | Last spawn |
 |---|---|---|---|---|---|---|---|---|
-| 11 | 1 | 8 | 10 from 75.5 s | 118 | 1.6 | 24474 | 356 | 82.25 s |
-| 12 | 1 | 9 | 10 from 31 s | 50 | 1.6 | 16740 | 170 | 37.75 s |
-| 13 | 1 | 10 | 10 from 65 s | 65 | 1.6 | 25612 | 266 | 71.75 s |
-| 14 | 2 | 8 | 12 from 75.5 s | 120 | 2.56 | 39307 | 362 | 83.75 s |
-| 15 | 2 | 9 | 12 from 31 s | 52 | 2.56 | 26954 | 176 | 39.25 s |
-| 16 | 2 | 10 | 12 from 65 s | 67 | 2.56 | 41140 | 272 | 73.25 s |
+| 21 | 1 | 18 | 10 from 78.5 s | 110 | 1.8 | 33220 | 392 | 85.25 s |
+| 22 | 1 | 19 | 10 from 84.2 s | 103 | 1.8 | 44957 | 387 | 90.95 s |
+| 23 | 1 | 20 | 10 from 88.95 s | 112 | 1.8 | 43344 | 440 | 95.7 s |
+| 24 | 2 | 18 | 12 from 78.5 s | 112 | 3.24 | 60088 | 398 | 86.75 s |
+| 25 | 2 | 19 | 12 from 84.2 s | 105 | 3.24 | 81165 | 393 | 92.45 s |
+| 26 | 2 | 20 | 12 from 88.95 s | 114 | 3.24 | 78264 | 446 | 97.2 s |
 
-Endless hp at cycles 1, 2, 3 (Easy / Normal / Hard): Goblin 28/37/44, 44/59/71, 71/94/113; Troll 1140/1520/1824, 1824/2432/2918, 2918/3891/4669; Harpy 43/58/69, 69/92/111, 111/147/177.
+Endless hp at cycles 1, 2, 3 (Easy / Normal / Hard): Goblin 31/41/50, 56/75/89, 101/134/161; Troll 1283/1710/2052, 2309/3078/3694, 4155/5540/6648; Harpy 49/65/78, 87/117/140, 157/210/252.
 
 ## High score
 
@@ -593,21 +637,23 @@ changing with either selection; no line when that pair has no score.
 
 ## Tick order
 
-Builds, upgrades, sells, moves, specials and early calls act between
+Builds, upgrades, sells, moves, boon picks, specials and early calls act between
 ticks. Inside one wave tick: (1) enemies move at `(1 - effectiveSlow)`,
 then both slow timers count down; (2) enemies at the exit are removed and
 cost their lives (at 0 lives the game is lost at once and nothing else
 happens that tick); (2b) each zone, oldest first, slows or burns the live
-enemies inside it for 60 ticks, then counts down and is removed at 0;
+enemies inside it for the linger duration, then counts down and is
+removed at 0;
 (3) burns tick and burn deaths pay out; (4) towers fire
 in cell order, each counting its cooldown down by 1 first, and each kill is
 removed before the next tower acts and counts for the tower (or the burn's
-owner); (5) due enemies spawn at distance 0, and do not move or get shot
-that tick; (6) the tick counters advance and the special recharge counts
-down (at 0 the charge is ready); (7) if the wave has fully
-spawned and no enemy is alive, the clear bonus is paid and the game goes to
-`setup` (or `won` after wave 10 in a game that is not endless), the
-special charge and recharge go to 0 and the zones are removed. A slow or
+owner); (5) due enemies, including called Wolves, spawn at distance 0
+and first move or take damage on a later tick; (6) the tick counters advance and the special recharge counts
+down (at 0 the charge is ready); (7) if all scheduled enemies and called
+Wolves have spawned and none are alive, the game pays the clear bonus,
+resets the charge and recharge, removes the zones, and goes to `setup`
+(or `won` after campaign wave 20). Campaign waves 5, 10 and 15 also
+offer a boon. A slow or
 burn set in step 4 first acts on the next tick; a zone's burn acts in
 step 3 of the same tick. Towers act only during wave ticks. Once the game
 is won or lost a tick only clears `state.shots`, so the last tracer or
@@ -1050,7 +1096,7 @@ from a deploy does not remove installed workers.
 Plain TypeScript in `src/sim`, no Phaser, no DOM. One `GameState` object,
 pure data, changed in place. Operations: create game, tick, start wave,
 build tower, upgrade tower, sell tower, move tower, undo upgrade, set
-targeting, use special, the gold cheat, call the next wave early,
+targeting, pick a boon, use a special, the gold cheat, call the next wave early,
 continue into endless waves, next-wave preview, and a headless runner (`headless.ts`) that plays
 a scripted set of actions for tests and balance work.
 
@@ -1069,21 +1115,26 @@ them `window.__tarpit` keeps five read-only hooks.
 The archetypes (`src/sim/headless.ts`) are scripted players. Each records
 its script by playing on a level and map and returns a `WaveScript`
 (per wave: setup actions; `timed`: actions at wave ticks; `mapId`;
-`endless`), so `playScripted` and the browser's `runScript` replay it.
+`endless`; optional picks by offer wave in `boons`). When a script has no
+pick for an offer, it selects the first boon. `playScripted` and the
+browser's `runScript` replay it.
 
 - **noTowers**: builds nothing.
 - **oneMusket**: one base Musketeer on the first cell of the map's trail
   order before wave 1, nothing else. It measures wave 1 for a first-time
   player.
 - **lazyBuild**: before each wave, base Musketeers while affordable, on the
-  trail order. **greedyMusket**: the same, upgrading each Musketeer before
-  buying the next. **longbowSpam**: base Longbows on the trail order.
-  The trail order walks the path in 96 px steps from 96 px and takes, at
-  each step, the nearest free buildable cell within 72 px.
+  trail order. In act 2, once the first pass is full, it repeats the trail
+  walk with the first pass's cells excluded. **greedyMusket** uses the
+  first pass and upgrades each Musketeer before buying the next.
+  **longbowSpam** buys base Longbows on the first pass. The trail order
+  walks the path in 96 px steps from 96 px and takes, at each step, the
+  nearest free buildable cell within 72 px.
 - **comboBuild**: the map's combo plan (31 actions: Longbows, a Tar Pit
   and Fire Pot pair, an anti-air Longbow, Mortars, upgrades, later
   Longbows, a second pair, a Cannon), each action bought as soon as gold
-  allows, plus the special policy (below).
+  allows, plus the special policy (below). In act 2 it finishes that
+  plan and buys the map's reinforcement plan (`ACT_TWO_PLANS`).
   **comboBuildNoFire**: its purchases without the Fire Pot cells.
   **comboNoSpecials**: the plan with no specials. **noAntiAir**: the combo
   purchases, selling its Musketeers and Longbows before wave 4 and building
@@ -1093,12 +1144,12 @@ its script by playing on a level and map and returns a `WaveScript`
   Hard order (the opening and anti-air Longbows and their upgrades first,
   then three upgraded Longbow pairs with the first Tar Pit, then the first
   Fire Pot and the pair's upgrades, then the rest), plus the special
-  policy.
+  policy. It uses the same act 2 reinforcement plan.
 - **endlessIdle**: comboBuild, then Keep going and no more purchases.
-  **endlessGreedy**: the same, then each endless setup upgrades the
-  un-upgraded tower with the cheapest upgrade, or builds a Longbow on the
-  trail order. Both fire the special policy in every wave, endless ones
-  included.
+  **endlessGreedy**: the same campaign. In endless setup it buys the
+  cheapest remaining upgrade while affordable, breaking ties by cell
+  order. Once all towers are upgraded, it fills free trail-order cells
+  with Longbows. Both use the special policy through endless.
 - Meadow only (they throw for another map): **soundBuild** (Musketeers, Cannons and a Tar Pit),
   **soundBuildNoTar** (its Tar Pit cells removed), **comboStrongest**
   (every tower set to Strongest).
@@ -1110,13 +1161,13 @@ its script by playing on a level and map and returns a `WaveScript`
 that fires specials fires them, on every map and level, the way a person
 would. It looks every 30 wave ticks while the charge is ready. Candidate
 points lie every 30 px along the path; a point works for a special if its
-circle catches at least 3 enemies. If a Troll or the boss is in a crowd,
+circle catches at least 3 enemies. If a Troll or either boss is in a crowd,
 the Tar Barrel and Fire Arrows take turns (Tar Barrel first; before wave 7
 the Tar Barrel takes every turn), fired at the working point with a big
 one inside. Otherwise, if a point works for the Powder Keg, the keg is
 thrown there. Otherwise it waits. The best point catches the most enemies;
 ties go to the point nearest the exit. A forbidden special is skipped (target
-S2), and in the Tar Barrel and Fire Arrows' turns the other takes its
+N9), and in the Tar Barrel and Fire Arrows' turns the other takes its
 place. The headless recorder fires each choice and writes it into the
 script's timed list (`timed`), so `playScripted` and the browser's
 `runScript` replay the same game.
@@ -1128,66 +1179,75 @@ Asserted by `src/sim/balance.suite.ts` (run per map by
 `balance-riverbend.test.ts`). Maps may differ in difficulty; every map
 sits inside every band.
 
-Normal, every map:
+Normal, every map unless specified:
 
-- **T1** noTowers loses by wave 3.
-- **T2** lazyBuild loses on wave 6 to 9.
-- **T3** longbowSpam loses on wave 7 to 9.
-- **T4** comboBuild wins with 5 to 19 lives.
-- **T5** comboBuildNoFire is strictly worse than comboBuild (fewer lives,
-  or lost).
-- **T6** comboBuild has at least 3 more lives than comboNoSpecials, and
-  comboNoSpecials wins (a player who never fires a special can still win
-  Normal).
-- **T7** noAntiAir lets at least 75% of wave 4's Harpies exit, survives
-  wave 4 and loses on wave 5 to 8.
-- **T8** oneMusket lets at most 6 of wave 1's enemies exit.
-- **T9** (Meadow) comboBuild has under 200 gold entering wave 10;
-  soundBuild loses strictly later than soundBuildNoTar (by tick).
-- **S2** (Meadow) forbidding the special policy any one of the three
-  specials makes the combo strictly worse (lives, then kills), checked for
-  each of the three.
-- **S3** (Meadow) in a full comboBuild game the policy fires at least 15
-  specials in the ten waves and at least 80% of them catch 3 or more
+- **N1** noTowers loses by wave 3.
+- **N2** lazyBuild loses on wave 7 to 14.
+- **N3** longbowSpam loses on wave 8 to 16.
+- **N4** comboBuild wins with 5 to 19 lives.
+- **N5** comboBuildNoFire is strictly worse than comboBuild by lives or loss.
+- **N6** comboNoSpecials wins. comboBuild wins with at least 3 more lives.
+- **N7** noAntiAir lets at least half of wave 4's Harpies exit and loses
+  by wave 12.
+- **N8** oneMusket lets at most 6 of wave 1's enemies exit.
+- **N9** On Meadow, soundBuild lasts longer than soundBuildNoTar. Forbidding
+  any one special makes the combo strictly worse by lives and then kills.
+  The policy fires at least 30 specials and at least 80% catch 3 or more
   enemies.
+- **N10** All 27 boon combinations win. For each offer, at least one
+  set of the other picks shows a difference by lives, kills or gold
+  among that offer's options. With the other picks fixed, no option
+  leads both alternatives by more than 6 lives. The simulation report
+  checks every combination. Unit checks cover the default, each single
+  substitution, and the contrasting picks for Meadow and Riverbend.
+- **N11** A Powder Keg kills a Harpy or Wolf in one hit and inflicts at
+  least 5% of a Troll's health.
 
-Easy, every map: **E1** lazyBuild wins with at least 8 lives; **E2**
-noTowers loses; **E3**
-oneMusket lets at most 3 of wave 1's enemies exit.
+Easy, every map:
 
-Hard, every map: **H1** hardBuild wins; **H2** lazyBuild survives wave 1
-and loses by wave 5; **H3** comboBuild has at least 5 fewer lives than on
-Normal, or loses on wave 8 or later; **H4** the Hard hp rule.
+- **E1** lazyBuild wins with at least 8 lives.
+- **E2** noTowers loses.
+- **E3** oneMusket lets at most 3 of wave 1's enemies exit.
 
-The wave rules R1 to R5 (Waves) hold too.
+Hard, every map:
 
-Two facts behind these results:
+- **H1** hardBuild wins.
+- **H2** lazyBuild loses on wave 2 to 8.
+- **H3** comboBuild has at least 5 fewer lives than on Normal or loses on
+  wave 12 or later.
+- **H4** The Hard hp rule holds.
 
-- `comboBuildNoFire` and `noAntiAir` are the combo's purchases with some
-  actions removed, replayed with the special policy, so their specials
-  are fired for their own game.
-- On Hard the specials matter most: hardBuild wins every map with them
-  (Riverbend with 2 lives), and the combo plan with no specials loses on
-  Meadow on wave 3.
+Endless, every map:
+
+- **X1** On Normal, endlessIdle loses on the second through fifth
+  endless wave.
+- **X2** On Normal, endlessGreedy loses on a later endless wave than
+  endlessIdle, by the twelfth endless wave.
+- **X3** The six measured endless runs per map (idle and greedy on Easy,
+  Normal and Hard) end in loss below the headless cap.
+
+The campaign wave rules R1 to R4 hold too.
 
 ## Measured matrix
 
 `npm run sim` ends with this table. "W 13": won with 13 lives; "L 8":
-lost on wave 8 (endlessIdle: the endless wave it was lost on).
+lost on wave 8. For endlessIdle and endlessGreedy, the loss uses the
+absolute wave number, starting endless at 21.
 
 | Archetype | Meadow easy | Meadow normal | Meadow hard | Switchback easy | Switchback normal | Switchback hard | Riverbend easy | Riverbend normal | Riverbend hard |
 |---|---|---|---|---|---|---|---|---|---|
 | noTowers | L 2 | L 1 | L 1 | L 2 | L 1 | L 1 | L 2 | L 1 | L 1 |
 | oneMusket | L 3 | L 2 | L 2 | L 3 | L 2 | L 2 | L 3 | L 2 | L 2 |
-| lazyBuild | W 10 | L 8 | L 2 | W 20 | L 8 | L 2 | W 9 | L 8 | L 2 |
-| greedyMusket | W 34 | L 8 | L 2 | W 33 | W 1 | L 2 | W 35 | L 8 | L 2 |
-| longbowSpam | W 2 | L 8 | L 7 | W 24 | L 8 | L 8 | W 2 | L 8 | L 7 |
-| noAntiAir | L 7 | L 5 | L 5 | L 7 | L 5 | L 4 | L 7 | L 5 | L 5 |
-| comboBuild | W 35 | W 16 | L 8 | W 35 | W 19 | W 8 | W 34 | W 16 | L 8 |
-| comboBuildNoFire | W 34 | W 11 | L 7 | W 35 | W 17 | W 7 | W 32 | W 8 | L 7 |
-| comboNoSpecials | W 34 | W 11 | L 3 | W 35 | W 16 | W 1 | W 34 | W 7 | L 7 |
-| hardBuild | W 35 | W 20 | W 10 | W 35 | W 20 | W 14 | W 35 | W 19 | W 2 |
-| endlessIdle | L 19 | L 16 | L 8 | L 20 | L 17 | L 14 | L 19 | L 15 | L 8 |
-| soundBuild | W 14 | L 7 | L 2 | - | - | - | - | - | - |
-| soundBuildNoTar | W 4 | L 7 | L 2 | - | - | - | - | - | - |
-| comboStrongest | W 9 | L 7 | L 2 | - | - | - | - | - | - |
+| lazyBuild | W 8 | L 8 | L 2 | W 19 | L 8 | L 2 | W 8 | L 8 | L 2 |
+| greedyMusket | W 33 | L 8 | L 2 | W 33 | W 1 | L 2 | W 34 | L 8 | L 2 |
+| longbowSpam | L 10 | L 8 | L 7 | L 17 | L 8 | L 8 | L 10 | L 8 | L 7 |
+| noAntiAir | L 7 | L 5 | L 5 | L 8 | L 5 | L 5 | L 7 | L 5 | L 5 |
+| comboBuild | W 40 | W 17 | W 3 | W 40 | W 19 | W 9 | W 40 | W 16 | L 20 |
+| comboBuildNoFire | W 40 | W 15 | L 7 | W 40 | W 17 | W 7 | W 38 | W 12 | L 7 |
+| comboNoSpecials | W 40 | W 9 | L 3 | W 40 | W 16 | W 2 | W 39 | W 6 | L 7 |
+| hardBuild | W 40 | W 19 | W 12 | W 40 | W 19 | W 14 | W 40 | W 18 | W 1 |
+| endlessIdle | L 28 | L 25 | L 23 | L 27 | L 25 | L 24 | L 28 | L 25 | L 20 |
+| endlessGreedy | L 30 | L 27 | L 24 | L 30 | L 27 | L 25 | L 31 | L 28 | L 20 |
+| soundBuild | L 19 | L 7 | L 2 | - | - | - | - | - | - |
+| soundBuildNoTar | L 12 | L 7 | L 2 | - | - | - | - | - | - |
+| comboStrongest | W 7 | L 5 | L 2 | - | - | - | - | - | - |

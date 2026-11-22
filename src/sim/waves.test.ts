@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { ENEMY_STATS } from './enemies';
 import { createGame, spawnTick } from './game';
-import { nextWavePreview, WAVES } from './waves';
+import { nextWavePreview, waveDef, WAVES } from './waves';
 
 describe('waves', () => {
-  it('has 10 waves', () => {
-    expect(WAVES).toHaveLength(10);
+  it('has 20 waves', () => {
+    expect(WAVES).toHaveLength(20);
   });
 
   // Milestone 25c counts.
@@ -22,8 +22,15 @@ describe('waves', () => {
     ]);
   });
 
-  it('previews nothing after wave 10', () => {
+  it('previews campaign wave 11 without endless scaling after the mid-boss', () => {
     const state = { ...createGame(), wave: 10 };
+    expect(nextWavePreview(state)).toEqual(WAVES[10].groups.map(({ type, count }) => ({ type, count })));
+    expect(waveDef(11)).toBe(WAVES[10]);
+    expect(waveDef(11).hpMultiplier).toBeUndefined();
+  });
+
+  it('previews nothing after wave 20', () => {
+    const state = { ...createGame(), wave: 20 };
     expect(nextWavePreview(state)).toEqual([]);
   });
 });

@@ -1,12 +1,14 @@
-// docs/DESIGN.md is the frozen spec (milestone 28): its main tables are
+// docs/DESIGN.md is the frozen spec (milestone 36): its main tables are
 // parsed from the markdown and compared with the constants, so the spec and
 // the code cannot drift apart. Tables: maps (waypoints, length, buildable
 // cells), difficulty rows, hp per level, enemy stats, tower and upgrade
-// stats, specials, the ten waves and the first endless waves.
+// stats, boons, specials, the campaign waves and the first endless waves.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { DIFFICULTIES, DIFFICULTY_DEFS, enemyMaxHp } from './difficulty';
-import { ENEMY_STATS } from './enemies';
+import { BOONS } from './boons';
+import { PACK_INTERVAL_TICKS, PACK_SIZE } from './combat';
+import { ENEMY_STATS, isBoss } from './enemies';
 import { lastSpawnTick } from './game';
 import { buildableCells } from './grid';
 import { MAPS, pathLength, type MapId } from './map';
@@ -14,7 +16,7 @@ import { SPECIAL_DEFS, SPECIAL_RECHARGE_TICKS, ZONE_LINGER_TICKS, type SpecialTy
 import { POLICY_CHECK_TICKS, POLICY_MIN_HITS, POLICY_POINT_SPACING } from './specialPolicy';
 import { TOWER_DEFS } from './towers';
 import type { EnemyType, TowerLevelStats, TowerType } from './types';
-import { ENDLESS_HP_GROWTH, waveDef, WAVES } from './waves';
+import { ENDLESS_BASE_WAVES, ENDLESS_HP_GROWTH, endlessCycle, LAST_WAVE, waveDef, WAVES } from './waves';
 import { EXPECTED_MATRIX } from './balance.suite';
 import { MATRIX_ARCHETYPES } from './balanceRuns';
 import { TARGETS } from './balanceTargets';
@@ -54,6 +56,8 @@ const ENEMY_NAMES: Record<string, EnemyType> = {
   Shieldbearer: 'shieldbearer',
   'Grumblefoot, the Troll King': 'boss',
   'Grumblefoot (boss)': 'boss',
+  Grumblemaw: 'grumblemaw',
+  'Grumblemaw (boss)': 'grumblemaw',
 };
 const TOWER_NAMES: Record<string, TowerType> = {
   Musketeer: 'musketeer',
@@ -90,7 +94,7 @@ const burn = (s: string): [number, number] => {
 
 describe('docs/DESIGN.md matches the code', () => {
   it('has the frozen banner', () => {
-    expect(md).toMatch(/^# Tarpit: game design spec\n\n> \*\*Frozen as of milestone 28\.\*\*/);
+    expect(md).toMatch(/^# Tarpit: game design spec\n\n> \*\*Frozen as of milestone 36\.\*\*/);
   });
 
   it('maps: waypoints, path length and buildable cells', () => {
@@ -133,6 +137,12 @@ describe('docs/DESIGN.md matches the code', () => {
     }
   });
 
+  it('Grumblemaw packs: size and spawn interval', () => {
+    const enemies = section('Enemies').replace(/\s+/g, ' ');
+    expect(enemies).toContain(`schedules ${PACK_SIZE} Wolves`);
+    expect(enemies).toContain(`the rest every ${PACK_INTERVAL_TICKS} ticks`);
+  });
+
   const level = (stats: TowerLevelStats) => ({
     range: stats.range,
     damage: stats.damage,
@@ -164,7 +174,12 @@ describe('docs/DESIGN.md matches the code', () => {
     }
   });
 
-  it('specials: unlock wave, radius, damage, slow, burn, zone ticks (milestone 30)', () => {
+  it('boons: id, offer wave and effect value', () => {
+    const rows = table('Boons', 'Boon');
+    expect(rows.map(([, id, wave, value]) => ({ id, wave: Number(wave), value: Number(value) }))).toEqual(Object.values(BOONS));
+  });
+
+  it('specials: unlock wave, radius, damage, slow, burn, zone ticks', () => {
     const rows = table('Special attacks', 'Special');
     expect(rows.map((r) => SPECIAL_NAMES[r[0]])).toEqual(['keg', 'tarBarrel', 'fireArrows']);
     for (const [name, unlock, radius, damage, sl, burnDps, zoneTicks] of rows) {
@@ -182,7 +197,7 @@ describe('docs/DESIGN.md matches the code', () => {
     expect(arche).toContain(`every ${POLICY_POINT_SPACING} px along the path`);
   });
 
-  it('the ten waves: every group, enemies, total hp, bounty and last spawn', () => {
+  it('the twenty waves: every group, enemies, total hp, bounty and last spawn', () => {
     const rows = table('Waves', 'Wave');
     expect(rows.map((r) => Number(r[0]))).toEqual(WAVES.map((_, i) => i + 1));
     for (const [n, groups, enemies, hp, bounty, last] of rows) {
@@ -214,13 +229,13 @@ describe('docs/DESIGN.md matches the code', () => {
     }
   });
 
-  it('balance targets: every T, S, E, H and R label the suite asserts is in the spec, and no other', () => {
+  it('balance targets: every target label the suite asserts is in the spec, and no other', () => {
     const text = section('Balance targets') + section('Waves');
-    const inDoc = new Set([...text.matchAll(/\*\*([TSEHR]\d)\b/g)].map((m) => m[1]));
+    const inDoc = new Set([...text.matchAll(/\*\*([A-Z]+\d+)\b/g)].map((m) => m[1]));
     expect([...inDoc].sort()).toEqual([...new Set(TARGETS.map((t) => t.id))].sort());
   });
 
-  it('the endless hp line and the prose numbers the tables do not hold: cooldowns, sell refunds, 524 enemies', () => {
+  it('the endless hp line and the prose numbers the tables do not hold: cooldowns, sell refunds and campaign enemy count', () => {
     const cycles = [1, 2, 3].map((c) => ENDLESS_HP_GROWTH ** c);
     const hpLine = (['goblin', 'troll', 'harpy'] as const)
       .map((t) => `${t[0].toUpperCase()}${t.slice(1)} ${cycles.map((m) => DIFFICULTIES.map((d) => enemyMaxHp(t, d, m)).join('/')).join(', ')}`)
@@ -233,18 +248,20 @@ describe('docs/DESIGN.md matches the code', () => {
     expect(flat('Towers')).toContain(`(${names.map(([n, t]) => `${n} ${Math.round(60 / TOWER_DEFS[t].base.fireRate)}`).join(', ')})`);
     const refund = (t: TowerType) => Math.floor(((TOWER_DEFS[t].cost + TOWER_DEFS[t].upgradeCost) * 7) / 10);
     expect(flat('Towers')).toContain(`${names.map(([n, t]) => `${n} ${refund(t)}`).join(', ')}.`);
-    expect(flat('Waves')).toContain(`waves hold ${WAVES.reduce((n, w) => n + w.groups.reduce((a, g) => a + g.count, 0), 0)} enemies.`);
+    expect(flat('Waves')).toContain(`waves hold ${WAVES.reduce((n, w) => n + w.groups.reduce((a, g) => a + g.count, 0), 0)} scheduled enemies.`);
   });
 
   it('the first endless waves: base wave, extra Harpies, enemies, hp multiplier, total hp, bounty, last spawn', () => {
     expect(section('Endless mode')).toContain(`\`${ENDLESS_HP_GROWTH} ^\n  cycle\``);
     const rows = table('Endless mode', 'Wave');
-    expect(rows.map((r) => Number(r[0]))).toEqual([11, 12, 13, 14, 15, 16]);
+    expect(rows.map((r) => Number(r[0]))).toEqual(Array.from({ length: 6 }, (_, i) => LAST_WAVE + 1 + i));
     for (const [n, cycle, base, extra, enemies, mult, hp, bounty, last] of rows) {
       const w = waveDef(Number(n));
       const harpies = w.groups[w.groups.length - 1];
-      expect([Number(cycle), extra], n).toEqual([Math.floor((Number(n) - 11) / 3) + 1, `${harpies.count} from ${harpies.delay} s`]);
-      expect(w.groups.slice(0, -1), n).toEqual(WAVES[Number(base) - 1].groups.filter((g) => g.type !== 'boss'));
+      expect(Number(cycle), n).toBe(endlessCycle(Number(n)));
+      expect(Number(base), n).toBe(ENDLESS_BASE_WAVES[(Number(n) - LAST_WAVE - 1) % ENDLESS_BASE_WAVES.length]);
+      expect(extra, n).toBe(`${harpies.count} from ${Number(harpies.delay.toFixed(8))} s`);
+      expect(w.groups.slice(0, -1), n).toEqual(WAVES[Number(base) - 1].groups.filter((g) => !isBoss(g)));
       expect(Number(enemies)).toBe(w.groups.reduce((a, g) => a + g.count, 0));
       expect(Number(mult)).toBe(Math.round(w.hpMultiplier! * 100) / 100);
       expect(Number(hp)).toBe(w.groups.reduce((a, g) => a + g.count * enemyMaxHp(g.type, 'normal', w.hpMultiplier), 0));

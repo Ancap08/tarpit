@@ -1,3 +1,4 @@
+import { applyScriptBoon } from './headless';
 // Verifier (milestone 16): independent probes of state.events.
 import { describe, expect, it } from 'vitest';
 import { buildTower, upgradeTower } from './actions';
@@ -11,7 +12,7 @@ import type { Enemy, EnemyType, GameState, TowerType } from './types';
 const P: Cell = { col: 6, row: 7 }; // right of path segment y = 240; enemy at distance d <= 160 is at (d,240)
 
 function enemy(id: number, distance: number, over: Partial<Enemy> = {}, type: EnemyType = 'goblin'): Enemy {
-  const hp = ({ goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000 } as const)[type];
+  const hp = ({ goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000, grumblemaw: 13500 } as const)[type];
   return { id, type, hp, distance, slow: 0, slowTicksLeft: 0, burnDps: 0, burnTicksLeft: 0, ...over };
 }
 
@@ -29,9 +30,10 @@ function arena(enemies: Enemy[], towers: [Cell, TowerType][]): GameState {
 }
 
 /** Play every wave with a strong defence, logging every event exactly once per tick or action. */
-function playLogged(towers: [number, number, TowerType][], upto = 10): { log: GameEvent[]; s: GameState; ticksAfterWon: GameEvent[] } {
+function playLogged(towers: [number, number, TowerType][], upto = 20): { log: GameEvent[]; s: GameState; ticksAfterWon: GameEvent[] } {
   const s = createGame();
   s.gold = 100_000;
+  s.lives = 1000;
   for (const [col, row, type] of towers) {
     buildTower(s, { col, row }, type);
     upgradeTower(s, { col, row });
@@ -47,7 +49,9 @@ function playLogged(towers: [number, number, TowerType][], upto = 10): { log: Ga
   };
   take();
   for (let w = 1; w <= upto && s.phase === 'setup'; w++) {
-    startWave(s);
+    applyScriptBoon(s);
+    take();
+    expect(startWave(s).ok).toBe(true);
     take();
     for (let i = 0; i < 60 * 600 && (s.phase as string) === 'wave'; i++) {
       tick(s);
@@ -92,7 +96,7 @@ describe('events verifier', () => {
     const kills = log.filter((e) => e.kind === 'kill');
     const exits = log.filter((e) => e.kind === 'exit');
     expect(s.enemies).toHaveLength(0);
-    expect(spawns.length).toBe(WAVES.reduce((n, w) => n + w.groups.reduce((m, g) => m + g.count, 0), 0));
+    expect(spawns.length).toBe(WAVES.reduce((n, w) => n + w.groups.reduce((m, g) => m + g.count, 0), 0) + 8 * log.filter((e) => e.kind === 'packCall').length);
     expect(kills.length).toBe(spawns.length - exits.length);
     const ids = [...kills, ...exits].map((e) => (e as { enemyId: number }).enemyId);
     expect(new Set(ids).size).toBe(ids.length);
@@ -104,11 +108,11 @@ describe('events verifier', () => {
     const { log, s, ticksAfterWon } = playLogged(DEFENCE);
     expect(s.phase).toBe('won');
     const clears = log.filter((e) => e.kind === 'waveClear');
-    expect(clears.map((e) => (e.kind === 'waveClear' ? e.wave : 0))).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(clears.map((e) => (e.kind === 'waveClear' ? e.wave : 0))).toEqual(Array.from({ length: 20 }, (_, i) => i + 1));
     expect(clears.every((e) => e.kind === 'waveClear' && e.bonus === WAVE_CLEAR_BONUS)).toBe(true);
     expect(log.filter((e) => e.kind === 'won')).toHaveLength(1);
     const idxWon = log.findIndex((e) => e.kind === 'won');
-    expect(log[idxWon - 1]).toMatchObject({ kind: 'waveClear', wave: 10 });
+    expect(log[idxWon - 1]).toMatchObject({ kind: 'waveClear', wave: 20 });
     expect(log.filter((e) => e.kind === 'lost')).toHaveLength(0);
     // Documented: ticking a won game leaves the last list, so a naive per-tick reader would see 'won' again.
     expect(ticksAfterWon.map((e) => e.kind)).toContain('won');

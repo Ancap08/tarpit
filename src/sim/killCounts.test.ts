@@ -8,7 +8,7 @@ import { buildTower, moveTower, sellTower, upgradeTower, useSpecial } from './ac
 import { burnEnemies, fireTowers } from './combat';
 import { createGame, startWave, tick } from './game';
 import { type Cell } from './grid';
-import { applyAction, comboBuild, playScripted } from './headless';
+import { applyAction, applyScriptBoon, comboBuild, playScripted } from './headless';
 import type { Enemy, EnemyType, GameState, TowerType } from './types';
 
 // P (208,240) sits right of the first path segment (y = 240): an enemy at
@@ -136,14 +136,15 @@ describe('kill counts', () => {
   });
 
   it('over a whole comboBuild game (no sells), the towers\' kills add up to every shot kill and tower-burn kill; special kills (keg, Fire Arrows burn) count for none', () => {
-    const run = playScripted(comboBuild());
+    const script = comboBuild();
+    const run = playScripted(script);
     // Replay tick by tick to count kill events by cause.
     const s = createGame();
     let shotOrBurn = 0;
     let special = 0;
-    const script = comboBuild();
     const running = () => s.phase === 'wave';
-    for (let i = 0; i < 10 && s.phase === 'setup'; i++) {
+    for (let i = 0; i < 20 && s.phase === 'setup'; i++) {
+      applyScriptBoon(s, script);
       for (const a of script[i] ?? []) {
         if (a.type === 'build') buildTower(s, a.cell, a.tower);
         else if (a.type === 'upgrade') upgradeTower(s, a.cell);
@@ -172,7 +173,7 @@ describe('kill counts', () => {
     expect(special).toBeGreaterThan(0);
     expect(shotOrBurn).toBeGreaterThan(100);
     expect(s.towers.reduce((n, t) => n + t.kills, 0)).toBe(shotOrBurn);
-    // Most towers kill something (a Longbow bought before wave 10 may not).
+    // Most towers kill something (a Longbow bought near the end may not).
     expect(s.towers.filter((t) => t.kills > 0).length).toBeGreaterThan(s.towers.length / 2);
   });
 });

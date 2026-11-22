@@ -5,14 +5,14 @@
 // Geometry (as boss-verifier.test.ts): cell B = (2,5), centre (80,176).
 // Path distance 80 is (80,240), 64 px below B: inside the Musketeer's 110
 // and the Longbow's 150.
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { buildTower, upgradeTower } from './actions';
 import { enemyMaxHp, type Difficulty } from './difficulty';
 import { ENEMY_STATS } from './enemies';
 import type { GameEvent } from './events';
 import { createGame, startWave, tick } from './game';
 import type { Cell } from './grid';
-import { comboBuild, playScripted } from './headless';
+import { applyScriptBoon, comboBuild, playScripted } from './headless';
 import type { Enemy, EnemyType, GameState, TowerType } from './types';
 import { WAVES } from './waves';
 
@@ -35,6 +35,7 @@ const HAND: Record<EnemyType, readonly [number, number, number]> = {
   harpy: [27, 36, 43],
   shieldbearer: [53, 70, 84],
   boss: [3000, 4000, 4800],
+  grumblemaw: [10125, 13500, 16200],
 };
 
 function enemy(id: number, type: EnemyType, distance: number, hp: number): Enemy {
@@ -59,12 +60,13 @@ function arena(difficulty: Difficulty, enemies: Enemy[], towers: [Cell, TowerTyp
   return s;
 }
 
-/** Every enemy the 10 waves spawn on a level, read on its spawn tick; lives kept high so no loss. */
+/** Every enemy the 20 waves spawn on a level, read on its spawn tick; lives kept high so no loss. */
 function spawned(difficulty: Difficulty): { type: EnemyType; hp: number; distance: number }[] {
   const s = createGame({ difficulty });
   s.lives = 1e9;
   const out: { type: EnemyType; hp: number; distance: number }[] = [];
   for (let w = 0; w < WAVES.length; w++) {
+    applyScriptBoon(s);
     startWave(s);
     while (s.phase === 'wave') {
       tick(s);
@@ -89,11 +91,12 @@ describe('(a) scaled hp, by hand, against spawned enemies', () => {
   });
 
   LEVELS.forEach((level, i) => {
-    it(`${level}: all six types spawn with the hand-computed hp, at distance 0`, () => {
+    it(`${level}: all seven types spawn with the hand-computed hp, at distance 0`, () => {
       const all = spawned(level);
-      // 10 waves: every type appears, and the boss exactly once.
+      // Every type appears, and each boss appears once.
       expect(new Set(all.map((e) => e.type))).toEqual(new Set(Object.keys(HAND)));
       expect(all.filter((e) => e.type === 'boss')).toHaveLength(1);
+      expect(all.filter((e) => e.type === 'grumblemaw')).toHaveLength(1);
       for (const e of all) {
         expect(e.hp, `${level} ${e.type}`).toBe(HAND[e.type][i]);
         expect(e.distance).toBe(0);
@@ -115,6 +118,7 @@ describe('(b) bounty, speed, livesCost and slowCap do not depend on the level', 
       harpy: { hp: 36, speed: 90, bounty: 3, flying: true, shield: false, livesCost: 1 },
       shieldbearer: { hp: 70, speed: 45, bounty: 5, flying: false, shield: true, livesCost: 1 },
       boss: { hp: 4000, speed: 25, bounty: 150, flying: false, shield: false, livesCost: 5, slowCap: 0.3 },
+      grumblemaw: { hp: 13500, speed: 25, bounty: 300, flying: false, shield: false, livesCost: 6, slowCap: 0.3 },
     });
   });
 
@@ -127,25 +131,25 @@ describe('(b) bounty, speed, livesCost and slowCap do not depend on the level', 
         // Musketeer (12 damage, full on a shield since 12 > 10) kills a 1 hp enemy on tick 1.
         const s = arena(level, [enemy(1, type, 80, 1), enemy(2, 'goblin', 500, 1e6)], [[B, 'musketeer']]);
         tick(s);
-        expect(s.gold, `${level} ${type}`).toBe([2, 2, 8, 3, 5, 150][Object.keys(HAND).indexOf(type)]);
+        expect(s.gold, `${level} ${type}`).toBe([2, 2, 8, 3, 5, 150, 300][Object.keys(HAND).indexOf(type)]);
       }
     });
 
     it(`${level}: speed (one tick = speed / 60 px), the boss slow cap 0.3, and exit cost`, () => {
-      for (const [type, speed] of [['goblin', 60], ['wolf', 120], ['troll', 35], ['harpy', 90], ['shieldbearer', 45], ['boss', 25]] as const) {
+      for (const [type, speed] of [['goblin', 60], ['wolf', 120], ['troll', 35], ['harpy', 90], ['shieldbearer', 45], ['boss', 25], ['grumblemaw', 25]] as const) {
         const s = arena(level, [enemy(1, type, 80, 1e6)]);
         tick(s);
         expect(s.enemies[0].distance, `${level} ${type}`).toBeCloseTo(80 + speed / 60, 9);
       }
       // Upgraded Tar Pit: slow 0.6, capped to 0.3 on the boss, full on a Troll.
-      for (const [type, slow] of [['boss', 0.3], ['troll', 0.6]] as const) {
+      for (const [type, slow] of [['boss', 0.3], ['grumblemaw', 0.3], ['troll', 0.6]] as const) {
         const s = arena(level, [enemy(1, type, 80, 1e6)], [[B, 'tarpit', true]]);
         tick(s);
         const ev = s.events.filter((e): e is Extract<GameEvent, { kind: 'slowed' }> => e.kind === 'slowed');
         expect(ev.map((e) => e.slow)).toEqual([slow]);
       }
       // Exits: a Goblin costs 1, the boss 5. Start from 100 lives on every level.
-      for (const [type, cost] of [['goblin', 1], ['boss', 5]] as const) {
+      for (const [type, cost] of [['goblin', 1], ['boss', 5], ['grumblemaw', 6]] as const) {
         const s = arena(level, [enemy(1, type, 1e9, 1e6), enemy(2, 'goblin', 10, 1e6)]);
         s.lives = 100;
         tick(s);
@@ -211,14 +215,23 @@ describe('(f) createGame() is Normal', () => {
 
 describe('(g) determinism per level', () => {
   for (const level of LEVELS) {
-    it(`${level}: two full comboBuild runs are identical (script, state, wave reports)`, () => {
-      const s1 = comboBuild(level);
-      const s2 = comboBuild(level);
-      expect(s2).toEqual(s1);
-      const a = playScripted(s1, undefined, level);
-      const b = playScripted(s2, undefined, level);
-      expect(JSON.stringify(b.state)).toBe(JSON.stringify(a.state));
-      expect(b.waves).toEqual(a.waves);
+    describe(level, () => {
+      let script: ReturnType<typeof comboBuild>;
+      let replay: ReturnType<typeof playScripted>;
+      beforeAll(() => {
+        script = comboBuild(level);
+        replay = playScripted(script, undefined, level);
+      });
+
+      it('records the same comboBuild script twice', () => {
+        expect(comboBuild(level)).toEqual(script);
+      });
+
+      it('replays the same state and wave reports twice', () => {
+        const again = playScripted(script, undefined, level);
+        expect(again.state).toEqual(replay.state);
+        expect(again.waves).toEqual(replay.waves);
+      });
     });
   }
 });

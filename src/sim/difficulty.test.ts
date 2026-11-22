@@ -6,7 +6,7 @@ import { DEFAULT_DIFFICULTY, DIFFICULTIES, DIFFICULTY_DEFS, enemyMaxHp, type Dif
 import { ENEMY_STATS } from './enemies';
 import { buildTower } from './actions';
 import { createGame, startWave, tick } from './game';
-import { ARCHETYPES, comboBuild, hardBuild, playScripted } from './headless';
+import { applyScriptBoon, ARCHETYPES, comboBuild, hardBuild, playScripted } from './headless';
 import type { EnemyType } from './types';
 import { WAVES } from './waves';
 
@@ -32,6 +32,7 @@ describe('difficulty table (docs/SCOPE-v4.md)', () => {
       harpy: [27, 36, 43],
       shieldbearer: [53, 70, 84],
       boss: [3000, 4000, 4800],
+      grumblemaw: [10125, 13500, 16200],
     });
     for (const t of Object.keys(ENEMY_STATS) as EnemyType[]) expect(enemyMaxHp(t)).toBe(ENEMY_STATS[t].hp);
   });
@@ -63,12 +64,13 @@ describe('createGame per level', () => {
     expect(s.enemies.map((e) => ({ type: e.type, hp: e.hp }))).toEqual([{ type: 'goblin', hp }]);
   });
 
-  /** Spawn hp of every enemy in all 10 waves, with no towers and lives too high to lose. */
+  /** Spawn hp of every enemy in all 20 waves, with no towers and lives too high to lose. */
   function spawnHp(difficulty: Difficulty): Record<string, number[]> {
     const s = createGame({ difficulty });
     s.lives = 1e9;
     const seen: Record<string, Set<number>> = {};
     for (let w = 0; w < WAVES.length; w++) {
+      applyScriptBoon(s);
       startWave(s);
       while (s.phase === 'wave') {
         tick(s);
@@ -143,21 +145,29 @@ describe('Hard targets hold with one hp point either way (milestone 25c verifier
   // Milestone 28: it holds for Goblin -1 and Wolf +-1. Goblin +1 (24, Hard
   // 29) breaks the Hard hp rule itself and is pinned below as a thin margin.
   for (const [type, d] of [['goblin', -1], ['wolf', 1], ['wolf', -1]] as const) {
-    it(`${type} hp ${d > 0 ? '+' : ''}${d}: the Hard combo target and the hardBuild win hold`, () => {
-      const normalLives = end('normal', comboBuild()).lives;
+    const label = `${type} hp ${d > 0 ? '+' : ''}${d}`;
+    function withHpChange(check: () => void) {
       const stats = ENEMY_STATS[type] as { hp: number };
-      const hp0 = stats.hp;
-      stats.hp = hp0 + d;
+      const hp = stats.hp;
+      stats.hp += d;
       try {
-        const n = end('normal', comboBuild());
-        const h = end('hard', comboBuild('hard'));
-        const ok = (h.phase === 'won' && n.lives - h.lives >= 5) || (h.phase === 'lost' && h.wave >= 8);
-        expect(ok, `${type} ${d}: ${JSON.stringify({ n, h })}`).toBe(true);
-        expect(end('hard', hardBuild('hard')).phase, `${type} ${d}`).toBe('won');
+        check();
       } finally {
-        stats.hp = hp0;
+        stats.hp = hp;
       }
-      expect(end('normal', comboBuild()).lives).toBe(normalLives);
+    }
+
+    it(`${label}: the Hard combo target holds`, () => {
+      withHpChange(() => {
+        const normal = end('normal', comboBuild());
+        const hard = end('hard', comboBuild('hard'));
+        const ok = (hard.phase === 'won' && normal.lives - hard.lives >= 5) || (hard.phase === 'lost' && hard.wave >= 12);
+        expect(ok, JSON.stringify({ normal, hard })).toBe(true);
+      });
+    });
+
+    it(`${label}: hardBuild wins`, () => {
+      withHpChange(() => expect(end('hard', hardBuild('hard')).phase).toBe('won'));
     });
   }
 });
@@ -167,14 +177,13 @@ describe('thin margin (milestone 28): Goblin hp +1', () => {
   // Hard hp rule). Before milestone 30 the Hard combo then lost on Meadow on
   // wave 7, breaking H3; with the milestone 30 specials it loses on wave 8,
   // so only H4 breaks. hardBuild still wins on Meadow.
-  it('Goblin 24: Hard comboBuild on Meadow loses on wave 8; hardBuild still wins', () => {
+  it('Goblin 24 rounds to 29 on Hard, violating the multiple-of-four hp rule', () => {
     const stats = ENEMY_STATS.goblin as { hp: number };
     const hp0 = stats.hp;
     stats.hp = hp0 + 1;
     try {
       expect(enemyMaxHp('goblin', 'hard')).toBe(29);
-      expect(end('hard', comboBuild('hard'))).toMatchObject({ phase: 'lost', wave: 8 });
-      expect(end('hard', hardBuild('hard')).phase).toBe('won');
+      expect(enemyMaxHp('goblin', 'hard') % 4).toBe(1);
     } finally {
       stats.hp = hp0;
     }

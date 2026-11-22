@@ -1,3 +1,4 @@
+import { isBoss } from './enemies';
 import type { GameState, GroupDef, WaveDef, WavePreviewEntry } from './types';
 
 function g(type: GroupDef['type'], count: number, interval: number, delay = 0): GroupDef {
@@ -5,25 +6,25 @@ function g(type: GroupDef['type'], count: number, interval: number, delay = 0): 
 }
 
 /**
- * The 10 waves from docs/DESIGN.md, in seconds as written. Index 0 is wave 1.
+ * The 20 waves from docs/DESIGN.md, in seconds as written. Index 0 is wave 1.
  * Milestone 22 added the Harpy and Shieldbearer groups; milestone 23 the
  * boss as wave 10's last group. Milestone 25c (horde retune, second pass):
  * many more enemies than before 25c, spread out so that in any 3 s of a
  * wave at most 6 walkers and 4 flyers spawn (waves.test.ts), and waves
  * last longer: wave 4 sends its Harpies first, then Goblins. Milestone 28:
  * wave 1's Goblins come every 2.5 s (1.2 before), so one Musketeer stops
- * them all on Easy and Normal (balance targets T8, E3).
+ * them all on Easy and Normal (balance targets N8, E3).
  */
 export const WAVES: readonly WaveDef[] = [
   { groups: [g('goblin', 20, 2.5)] },
   { groups: [g('goblin', 32, 0.9)] },
   { groups: [g('goblin', 22, 1.0), g('wolf', 12, 1.5, 4.5)] },
-  { groups: [g('harpy', 10, 1.5), g('goblin', 30, 1.0, 3)] },
-  { groups: [g('goblin', 40, 1.0), g('troll', 3, 8, 10), g('harpy', 10, 1.2, 8)] },
+  { groups: [g('harpy', 10, 1.0), g('goblin', 30, 1.0, 3)] },
+  { groups: [g('goblin', 40, 1.0), g('troll', 3, 10, 10), g('harpy', 10, 1.2, 8)] },
   { groups: [g('goblin', 45, 1.0), g('wolf', 35, 1.0, 9), g('shieldbearer', 6, 1.5, 0.5)] },
-  { groups: [g('wolf', 26, 1.5), g('troll', 13, 4.5, 1), g('harpy', 16, 1.0, 8)] },
+  { groups: [g('wolf', 26, 1.5), g('troll', 13, 4.4, 1), g('harpy', 16, 1.0, 8)] },
   {
-    groups: [g('goblin', 50, 1.5), g('wolf', 25, 1.5, 6.75), g('troll', 13, 5, 3), g('shieldbearer', 6, 6, 4), g('harpy', 14, 1.2, 10)],
+    groups: [g('goblin', 50, 1.5), g('wolf', 25, 1.5, 6.75), g('troll', 13, 4.9, 3), g('shieldbearer', 6, 6, 4), g('harpy', 14, 1.2, 10)],
   },
   { groups: [g('wolf', 30, 1.0), g('troll', 10, 2, 2)] },
   {
@@ -38,20 +39,36 @@ export const WAVES: readonly WaveDef[] = [
       g('boss', 1, 0, 65),
     ],
   },
+  { groups: [g('goblin', 42, 0.85), g('shieldbearer', 18, 1.5, 8), g('harpy', 18, 1.1, 16)] },
+  { groups: [g('wolf', 45, 1.45), g('troll', 14, 4, 7), g('harpy', 18, 2.6, 17)] },
+  { groups: [g('goblin', 50, 1.4), g('shieldbearer', 18, 3.5, 12), g('harpy', 21, 2.75, 10)] },
+  { groups: [g('wolf', 37, 1.85), g('troll', 18, 3.8, 5), g('harpy', 22, 2.5, 16)] },
+  { groups: [g('goblin', 28, 1.75), g('wolf', 24, 1.7, 31.65), g('troll', 15, 4.6, 5), g('harpy', 20, 2.8, 13)] },
+  { groups: [g('goblin', 42, 1.7), g('shieldbearer', 25, 2.95, 4), g('harpy', 24, 2.75, 10)] },
+  { groups: [g('wolf', 40, 1.8), g('troll', 20, 3.65, 5), g('harpy', 26, 2.7, 10)] },
+  { groups: [g('goblin', 46, 1.7), g('troll', 16, 4.6, 5), g('shieldbearer', 14, 5, 3), g('harpy', 24, 2.8, 11)] },
+  { groups: [g('wolf', 42, 1.85), g('troll', 24, 3.4, 4), g('harpy', 27, 2.75, 9)] },
+  {
+    groups: [
+      g('wolf', 38, 2.2, 3),
+      g('troll', 22, 3.95, 4),
+      g('shieldbearer', 16, 4.5, 12),
+      g('harpy', 26, 3, 9),
+      g('grumblemaw', 1, 0, 88.95),
+    ],
+  },
 ];
+
+/** Grumblefoot closes the first act. */
+export const ACT_ONE_LAST_WAVE = 10;
 
 /** The last wave of the table: winning it wins the game unless the player keeps going (milestone 26). */
 export const LAST_WAVE = WAVES.length;
 
-/**
- * Endless mode (milestone 26): enemy hp grows by this factor per cycle of
- * three waves. The scope's 1.15 let the idle combo build live to wave 25
- * on Normal (target 11 to 16): it lost no life before about 2x hp. 1.6
- * (about 1.17 per wave) puts it at wave 15 (DEVLOG).
- */
-export const ENDLESS_HP_GROWTH = 1.6;
-/** Endless mode: the waves 11, 12, 13, ... repeat these table waves (8, 9, 10) in turn. */
-export const ENDLESS_BASE_WAVES: readonly number[] = [8, 9, 10];
+/** Enemy hp multiplier for each three-wave endless cycle. */
+export const ENDLESS_HP_GROWTH = 1.8;
+/** The campaign waves repeated in endless mode, with bosses excluded. */
+export const ENDLESS_BASE_WAVES: readonly number[] = [18, 19, 20];
 /** Endless mode: the extra Harpy group has 8 + 2 x cycle Harpies ... */
 export const ENDLESS_HARPY_BASE = 8;
 export const ENDLESS_HARPY_PER_CYCLE = 2;
@@ -62,7 +79,7 @@ export const ENDLESS_HARPY_INTERVAL = 0.75;
 /** Endless mode: the extra Harpy group starts this many seconds after the base wave's last spawn. */
 export const ENDLESS_HARPY_GAP = 2;
 
-/** The endless cycle of wave `n` (n >= 11): 1 for waves 11 to 13, 2 for 14 to 16, and so on. */
+/** The endless cycle of wave `n` (n >= 21): 1 for waves 21 to 23, 2 for 24 to 26, and so on. */
 export function endlessCycle(n: number): number {
   return Math.floor((n - LAST_WAVE - 1) / ENDLESS_BASE_WAVES.length) + 1;
 }
@@ -76,12 +93,12 @@ const endlessCache = new Map<number, WaveDef>();
 
 /**
  * The wave played as wave `n` (1-based, n >= 1; milestone 26). Waves 1 to
- * 10 are the table (WAVES[n - 1], the same object). From wave 11 the waves
- * are generated: with k = n - 11 and cycle = floor(k / 3) + 1, the groups
- * of table wave 8, 9 or 10 (k % 3 = 0, 1, 2) without the boss, plus one
+ * 20 are the table (WAVES[n - 1], the same object). From wave 21 the waves
+ * are generated: with k = n - 21 and cycle = floor(k / 3) + 1, the groups
+ * of table wave 18, 19 or 20 (k % 3 = 0, 1, 2) without either boss, plus one
  * Harpy group of min(16, 8 + 2 x cycle) Harpies, one every 0.75 s,
  * starting 2 s after the base wave's last spawn; `hpMultiplier` is
- * ENDLESS_HP_GROWTH ^ cycle (1.6 ^ cycle), applied at spawn on top of the level's multiplier.
+ * ENDLESS_HP_GROWTH ^ cycle (1.8 ^ cycle), applied at spawn on top of the level's multiplier.
  * Bounties, speeds and lives cost do not change. Pure and deterministic.
  */
 export function waveDef(n: number): WaveDef {
@@ -91,7 +108,7 @@ export function waveDef(n: number): WaveDef {
   if (cached) return cached;
   const k = n - LAST_WAVE - 1;
   const cycle = endlessCycle(n);
-  const base = WAVES[ENDLESS_BASE_WAVES[k % ENDLESS_BASE_WAVES.length] - 1].groups.filter((grp) => grp.type !== 'boss');
+  const base = WAVES[ENDLESS_BASE_WAVES[k % ENDLESS_BASE_WAVES.length] - 1].groups.filter((grp) => !isBoss(grp));
   const last = Math.max(...base.map(lastSpawnSeconds));
   const harpies = Math.min(ENDLESS_HARPY_MAX, ENDLESS_HARPY_BASE + ENDLESS_HARPY_PER_CYCLE * cycle);
   const def: WaveDef = {

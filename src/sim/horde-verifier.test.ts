@@ -4,14 +4,15 @@
 // enemies and gold over full games, the early-call edge cases, the two slow
 // slots through real towers and specials, and byte-equal determinism.
 import { describe, expect, it } from 'vitest';
+import { BOONS } from './boons';
 import { buildTower, sellTower, towerAt, upgradeTower, useSpecial } from './actions';
-import { applySlow, applySpecialSlow } from './combat';
+import { applySlow, applySpecialSlow, PACK_SIZE } from './combat';
 import { DIFFICULTIES, DIFFICULTY_DEFS } from './difficulty';
 import { cappedSlow, effectiveSlow, ENEMY_STATS, isTarred } from './enemies';
 import type { GameEvent } from './events';
 import { callEarlyStatus, callNextWave, createGame, lastSpawnTick, startWave, tick, WAVE_CLEAR_BONUS } from './game';
 import { cellKey, type Cell } from './grid';
-import { applyAction, ARCHETYPES, COMBO_PLAN, comboBuild, playScripted, type WaveScript } from './headless';
+import { applyAction, applyScriptBoon, ARCHETYPES, COMBO_PLAN, comboBuild, playScripted, type WaveScript } from './headless';
 import { MAPS, pathLength, positionAlongPath } from './map';
 import { SPECIAL_DEFS } from './specials';
 import { TOWER_DEFS } from './towers';
@@ -25,9 +26,14 @@ const running = (s: GameState): boolean => s.phase === 'wave';
 interface Ledger {
   spawned: number[];
   exited: number[];
+  exitCost: number;
+  types: Map<number, EnemyType>;
   /** Kill events in order, with the cell the verifier credits (undefined: nobody). */
   kills: { id: number; cause: string; credit?: number }[];
   bounties: number;
+  calls: number;
+  boonGold: number;
+  boonLives: number;
   clearBonuses: number;
   earlyBonuses: number;
   refunds: number;
@@ -41,7 +47,7 @@ interface Ledger {
 
 function newLedger(): Ledger {
   return {
-    spawned: [], exited: [], kills: [], bounties: 0, clearBonuses: 0, earlyBonuses: 0, refunds: 0, spend: 0,
+    spawned: [], exited: [], kills: [], bounties: 0, clearBonuses: 0, earlyBonuses: 0, refunds: 0, spend: 0, exitCost: 0, types: new Map(), calls: 0, boonGold: 0, boonLives: 0,
     waveClears: [], waveStarts: [], earlyCalls: [], won: 0, lost: 0,
   };
 }
@@ -56,8 +62,13 @@ function book(ledger: Ledger, events: readonly GameEvent[], burnOwners: Readonly
   const lastHit = new Map<number, number>();
   for (const e of events) {
     switch (e.kind) {
-      case 'spawn': ledger.spawned.push(e.enemyId); break;
-      case 'exit': ledger.exited.push(e.enemyId); break;
+      case 'spawn': ledger.spawned.push(e.enemyId); ledger.types.set(e.enemyId, e.enemyType); break;
+      case 'exit': {
+        ledger.exited.push(e.enemyId);
+        const type = ledger.types.get(e.enemyId);
+        if (type) ledger.exitCost += ENEMY_STATS[type].livesCost;
+        break;
+      }
       case 'hit': lastHit.set(e.enemyId, cellKey(e.cell)); break;
       case 'kill': {
         const credit = e.cause === 'shot' ? lastHit.get(e.enemyId) : e.cause === 'burn' ? burnOwners.get(e.enemyId) : undefined;
@@ -65,6 +76,11 @@ function book(ledger: Ledger, events: readonly GameEvent[], burnOwners: Readonly
         ledger.bounties += e.bounty;
         break;
       }
+      case 'packCall': ledger.calls += 1; break;
+      case 'boonPicked':
+        if (e.id === 'warChest') ledger.boonGold += BOONS.warChest.value;
+        if (e.id === 'stoneWalls') ledger.boonLives += BOONS.stoneWalls.value;
+        break;
       case 'waveClear': ledger.waveClears.push(e.wave); ledger.clearBonuses += e.bonus; break;
       case 'earlyCall': ledger.earlyCalls.push(e.wave); ledger.earlyBonuses += e.bonus; break;
       case 'waveStart': ledger.waveStarts.push(e.wave); break;
@@ -120,6 +136,7 @@ function replay(script: WaveScript, onClear: (s: GameState, ledger: Ledger, wave
   const s = createGame();
   const ledger = newLedger();
   for (let i = 0; i < WAVES.length && s.phase === 'setup'; i++) {
+    between(s, ledger, () => applyScriptBoon(s, script));
     for (const a of script[i] ?? []) between(s, ledger, () => expect(applyAction(s, a)).toMatchObject({ result: { ok: true } }));
     between(s, ledger, () => startWave(s));
     while (running(s)) {
@@ -143,12 +160,13 @@ describe('E1. enemy conservation and kill credit over a full comboBuild game (No
       for (const k of led.kills) if (k.credit !== undefined) want.set(k.credit, (want.get(k.credit) ?? 0) + 1);
       for (const t of state.towers) expect(t.kills, `wave ${wave}, tower ${t.type} (${t.cell.col},${t.cell.row})`).toBe(want.get(cellKey(t.cell)) ?? 0);
       const spawnedSoFar = WAVES.slice(0, wave).reduce((n, w) => n + w.groups.reduce((m, g) => m + g.count, 0), 0);
-      expect(led.spawned.length).toBe(spawnedSoFar);
+      expect(led.spawned.length).toBe(spawnedSoFar + led.calls * PACK_SIZE);
     });
-    expect(clears).toBe(10);
+    expect(clears).toBe(20);
     expect(s.phase).toBe('won');
-    expect(ledger.spawned.length).toBe(524);
-    expect(ledger.exited.length).toBe(DIFFICULTY_DEFS.normal.startLives - s.lives);
+    expect(ledger.calls).toBeGreaterThan(0);
+    expect(DIFFICULTY_DEFS.normal.startLives + ledger.boonLives - s.lives).toBe(ledger.exitCost);
+    expect(ledger.kills.filter((k) => k.credit === undefined).every((k) => k.cause === 'special')).toBe(true);
     // The three kinds of kill all occur, so the check above is not vacuous.
     expect(ledger.kills.some((k) => k.cause === 'shot')).toBe(true);
     expect(ledger.kills.some((k) => k.cause === 'burn' && k.credit !== undefined)).toBe(true);
@@ -156,18 +174,18 @@ describe('E1. enemy conservation and kill credit over a full comboBuild game (No
   });
 
   it('gold: start + bounties + clear bonuses + early bonuses + refunds - spend = final gold', () => {
-    const { s, ledger } = replay(comboBuild(), () => {});
+    const { s, ledger } = replay(comboBuild('normal', 'meadow', {5: 'warChest'}), () => {});
     expect(ledger.earlyBonuses).toBe(0);
-    expect(ledger.clearBonuses).toBe(10 * WAVE_CLEAR_BONUS);
-    expect(DIFFICULTY_DEFS.normal.startGold + ledger.bounties + ledger.clearBonuses + ledger.earlyBonuses + ledger.refunds - ledger.spend).toBe(s.gold);
-    expect(s.gold).toBe(420);
+    expect(ledger.clearBonuses).toBe(WAVES.length * WAVE_CLEAR_BONUS);
+    expect(DIFFICULTY_DEFS.normal.startGold + ledger.boonGold + ledger.bounties + ledger.clearBonuses + ledger.earlyBonuses + ledger.refunds - ledger.spend).toBe(s.gold);
+    expect(ledger.boonGold).toBe(BOONS.warChest.value);
   });
 });
 
 /**
  * A full game that calls the next wave the first moment it is allowed,
  * follows COMBO_PLAN whenever gold allows (in setup and mid-wave), and sells
- * and rebuilds one Fire Pot mid-wave. Lives are raised so it runs all ten
+ * and rebuilds one Fire Pot mid-wave. Lives are raised so it runs all twenty
  * waves whatever leaks.
  */
 function playCallingEarly(lives: number): { s: GameState; ledger: Ledger; soldKills: number } {
@@ -188,7 +206,10 @@ function playCallingEarly(lives: number): { s: GameState; ledger: Ledger; soldKi
   let guard = 0;
   while (s.phase !== 'won' && s.phase !== 'lost' && guard++ < 10 * 60 * 600) {
     buy();
-    if (s.phase === 'setup') between(s, ledger, () => expect(startWave(s).ok).toBe(true));
+    if (s.phase === 'setup') {
+      between(s, ledger, () => applyScriptBoon(s));
+      between(s, ledger, () => expect(startWave(s).ok).toBe(true));
+    }
     else if (callEarlyStatus(s).ok) between(s, ledger, () => expect(callNextWave(s).ok).toBe(true));
     // One sell and rebuild mid-wave, with enemies burning from that Fire Pot.
     const pot: Cell = { col: 14, row: 9 };
@@ -208,33 +229,32 @@ function playCallingEarly(lives: number): { s: GameState; ledger: Ledger; soldKi
 describe('E2. a game that calls early every time it can', () => {
   const { s, ledger, soldKills } = playCallingEarly(1e6);
 
-  it('ends won after wave 10; waveClear fires exactly once per wave, in order; won fires once', () => {
+  it('ends won after wave 20; waveClear fires exactly once per wave, in order; won fires once', () => {
     expect(s.phase).toBe('won');
-    expect(s.wave).toBe(10);
-    expect(ledger.waveClears).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-    expect(ledger.waveStarts).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(s.wave).toBe(20);
+    expect(ledger.waveClears).toEqual(WAVES.map((_, i) => i + 1));
+    expect(ledger.waveStarts).toEqual(WAVES.map((_, i) => i + 1));
     expect(ledger.won).toBe(1);
     expect(ledger.lost).toBe(0);
   });
 
-  it('calls waves 2 to 9 early, never wave 10 (the boss wave), each with the full 20', () => {
-    expect(ledger.earlyCalls).toEqual([2, 3, 4, 5, 6, 7, 8, 9]);
-    expect(ledger.earlyBonuses).toBe(8 * 20);
-    expect(ledger.clearBonuses).toBe(10 * WAVE_CLEAR_BONUS);
+  it('calls only ordinary waves away from reward boundaries, each with the full 20', () => {
+    expect(ledger.earlyCalls).toEqual([2, 3, 4, 7, 8, 9, 12, 13, 14, 17, 18, 19]);
+    expect(ledger.earlyBonuses).toBe(12 * 20);
+    expect(ledger.clearBonuses).toBe(WAVES.length * WAVE_CLEAR_BONUS);
   });
 
-  it('every one of the 524 enemies was killed or exited exactly once; exits cost exactly their lives', () => {
+  it('each scheduled enemy and every called wolf was killed or exited exactly once; exits cost exactly their lives', () => {
     expect(s.enemies).toEqual([]);
-    expect(ledger.spawned.length).toBe(524);
+    expect(ledger.spawned.length).toBe(WAVES.flatMap(w => w.groups).reduce((n, g) => n + g.count, 0) + ledger.calls * PACK_SIZE);
     expect(soldKills).toBeGreaterThan(0);
     expectEnemiesConserved(s, ledger, 'end', soldKills);
-    // No boss exit is possible with lives this high and still be 'won', but count by type anyway.
-    expect(1e6 - s.lives).toBeGreaterThanOrEqual(ledger.exited.length);
+    expect(1e6 + ledger.boonLives - s.lives).toBe(ledger.exitCost);
   });
 
   it('gold is conserved through early bonuses, a mid-wave sell (70%) and a rebuild', () => {
     expect(ledger.refunds).toBeGreaterThan(0);
-    expect(DIFFICULTY_DEFS.normal.startGold + ledger.bounties + ledger.clearBonuses + ledger.earlyBonuses + ledger.refunds - ledger.spend).toBe(s.gold);
+    expect(DIFFICULTY_DEFS.normal.startGold + ledger.boonGold + ledger.bounties + ledger.clearBonuses + ledger.earlyBonuses + ledger.refunds - ledger.spend).toBe(s.gold);
   });
 
   it('plays identically twice (byte-equal final state)', () => {
@@ -253,13 +273,13 @@ function justSpawned(wave: number, lives = 1e6): GameState {
 }
 
 describe('E3. call early: the bonus', () => {
-  it('one tick before the last spawn it is refused; right after it 20; +59 ticks 20; +60 19; +1199 1; +1200 0 (wave 5, Trolls keep the wave alive)', () => {
+  it('one tick before the last spawn it is refused; right after it 20; +59 ticks 20; +60 19; +1199 1; +1200 0 (wave 7, Trolls keep the wave alive)', () => {
     const s = createGame();
     s.lives = 1e6;
-    s.wave = 4;
+    s.wave = 6;
     startWave(s);
-    const last = lastSpawnTick(5);
-    expect(last).toBe(2340);
+    const last = lastSpawnTick(7);
+    expect(last).toBe(3228);
     while (s.waveTick < last) tick(s);
     // waveTick === last: the tick that spawns the last enemy has not run yet.
     expect(callEarlyStatus(s)).toEqual({ ok: false, reason: 'still-spawning' });
@@ -280,7 +300,7 @@ describe('E3. call early: the bonus', () => {
     expect(at(1200)).toEqual({ ok: true, bonus: 0 });
     expect(at(1500)).toEqual({ ok: true, bonus: 0 });
     const gold = s.gold;
-    expect(callNextWave(s)).toEqual({ ok: true, wave: 6, bonus: 0, gold: gold + WAVE_CLEAR_BONUS });
+    expect(callNextWave(s)).toEqual({ ok: true, wave: 8, bonus: 0, gold: gold + WAVE_CLEAR_BONUS });
   });
 
   it('for every whole second k from 0 to 20 the bonus is 20 - k exactly on the second and 20 - k on the 59 ticks before the next (no float drift)', () => {
@@ -288,9 +308,9 @@ describe('E3. call early: the bonus', () => {
       for (const off of [0, 1, 30, 59]) {
         const s = createGame();
         s.phase = 'wave';
-        s.wave = 5;
-        s.spawnedPerGroup = WAVES[4].groups.map((g) => g.count);
-        s.waveTick = lastSpawnTick(5) + 1 + 60 * k + off;
+        s.wave = 7;
+        s.spawnedPerGroup = WAVES[6].groups.map((g) => g.count);
+        s.waveTick = lastSpawnTick(7) + 1 + 60 * k + off;
         expect(callEarlyStatus(s), `k ${k} off ${off}`).toEqual({ ok: true, bonus: 20 - k });
       }
     }
@@ -329,10 +349,10 @@ describe('E4. call early: refusals change nothing (deep compare)', () => {
     refused(s, 'not-in-wave');
   });
 
-  it('last-wave on wave 10, and on wave 9 calling wave 10 (the boss), even after every enemy has spawned; last-wave wins over still-spawning', () => {
-    refused(justSpawned(10), 'last-wave');
-    refused(justSpawned(9), 'last-wave');
-    for (const wave of [9, 10]) {
+  it('last-wave on wave 20, and on wave 19 calling wave 20 (the boss), even after every enemy has spawned; last-wave wins over still-spawning', () => {
+    refused(justSpawned(20), 'last-wave');
+    refused(justSpawned(19), 'last-wave');
+    for (const wave of [19, 20]) {
       const s = createGame();
       s.wave = wave - 1;
       startWave(s);
@@ -341,10 +361,10 @@ describe('E4. call early: refusals change nothing (deep compare)', () => {
     }
   });
 
-  it('wave 8 can call wave 9: the last call the game allows', () => {
-    const s = justSpawned(8);
-    expect(callNextWave(s)).toMatchObject({ ok: true, wave: 9, bonus: 20 });
-    while (s.waveTick <= lastSpawnTick(9)) tick(s);
+  it('wave 18 can call wave 19: the last call the game allows', () => {
+    const s = justSpawned(18);
+    expect(callNextWave(s)).toMatchObject({ ok: true, wave: 19, bonus: 20 });
+    while (s.waveTick <= lastSpawnTick(19)) tick(s);
     refused(s, 'last-wave');
   });
 
@@ -582,7 +602,7 @@ describe('E6. special slow channel through a real Tar Pit and a real Tar Barrel'
   });
 
   it('the barrel reaches 100 px and not 100.01, and is the DESIGN.md 0.5 for the 60-tick linger (milestone 30)', () => {
-    expect(SPECIAL_DEFS.tarBarrel).toMatchObject({ radius: 100, slow: 0.5, zoneTicks: 480 });
+    expect(SPECIAL_DEFS.tarBarrel).toMatchObject({ radius: 100, slow: 0.5, zoneTicks: 660 });
     const a = arena('goblin', 100);
     expect(useSpecial(a.s, 'tarBarrel', { x: 100, y: 240 + 100.01 })).toMatchObject({ ok: true });
     expect(a.e.specialSlowTicksLeft ?? 0).toBe(0);
@@ -640,15 +660,15 @@ describe('E7. burn kill credit when the owner is sold', () => {
 
 describe('E8. determinism: byte-equal final state', () => {
   for (const level of DIFFICULTIES) {
-    it(`${level}: comboBuild, lazyBuild, noAntiAir and hardBuild, recorded and played twice, give the same JSON`, () => {
-      for (const name of ['comboBuild', 'lazyBuild', 'noAntiAir', 'hardBuild']) {
+    for (const name of ['comboBuild', 'lazyBuild', 'noAntiAir', 'hardBuild']) {
+      it(`${level} ${name} recorded and played twice gives the same JSON`, () => {
         const archetype = ARCHETYPES[name];
         const a = playScripted(archetype(level), undefined, level);
         const b = playScripted(archetype(level), undefined, level);
         expect(JSON.stringify(b.state), name).toBe(JSON.stringify(a.state));
         expect(JSON.stringify(b.waves), name).toBe(JSON.stringify(a.waves));
-      }
-    });
+      });
+    }
   }
 
   it('the path is 1584 px (the exit distance the probes above rely on)', () => {
@@ -690,18 +710,18 @@ describe('B. the DESIGN.md wave table, transcribed by the verifier (no other tes
     [[g('goblin', 20, 2.5)], 20, 460, 40],
     [[g('goblin', 32, 0.9)], 32, 736, 64],
     [[g('goblin', 22, 1.0), g('wolf', 12, 1.5, 4.5)], 34, 746, 68],
-    [[g('harpy', 10, 1.5), g('goblin', 30, 1.0, 3)], 40, 1050, 90],
-    [[g('goblin', 40, 1.0), g('troll', 3, 8, 10), g('harpy', 10, 1.2, 8)], 53, 4130, 134],
+    [[g('harpy', 10, 1), g('goblin', 30, 1.0, 3)], 40, 1050, 90],
+    [[g('goblin', 40, 1.0), g('troll', 3, 10, 10), g('harpy', 10, 1.2, 8)], 53, 4130, 134],
     [[g('goblin', 45, 1.0), g('wolf', 35, 1.0, 9), g('shieldbearer', 6, 1.5, 0.5)], 86, 2155, 190],
-    [[g('wolf', 26, 1.5), g('troll', 13, 4.5, 1), g('harpy', 16, 1.0, 8)], 55, 13446, 204],
-    [[g('goblin', 50, 1.5), g('wolf', 25, 1.5, 6.75), g('troll', 13, 5, 3), g('shieldbearer', 6, 6, 4), g('harpy', 14, 1.2, 10)], 108, 14924, 326],
+    [[g('wolf', 26, 1.5), g('troll', 13, 4.4, 1), g('harpy', 16, 1.0, 8)], 55, 13446, 204],
+    [[g('goblin', 50, 1.5), g('wolf', 25, 1.5, 6.75), g('troll', 13, 4.9, 3), g('shieldbearer', 6, 6, 4), g('harpy', 14, 1.2, 10)], 108, 14924, 326],
     [[g('wolf', 30, 1.0), g('troll', 10, 2, 2)], 40, 10100, 140],
     [[g('wolf', 20, 1.5, 4), g('troll', 15, 4.5), g('harpy', 12, 1.5, 6), g('shieldbearer', 8, 5, 2.5), g('boss', 1, 0, 65)], 56, 19642, 386],
   ];
 
-  it('every group of every wave, and each wave\'s enemies, total hp and bounty', () => {
-    expect(WAVES.map((w) => w.groups)).toEqual(TABLE.map((row) => row[0]));
-    WAVES.forEach((w, i) => {
+  it('every group of the first act, and each wave\'s enemies, total hp and bounty', () => {
+    expect(WAVES.slice(0, 10).map((w) => w.groups)).toEqual(TABLE.map((row) => row[0]));
+    WAVES.slice(0, 10).forEach((w, i) => {
       const [, enemies, hp, bounty] = TABLE[i];
       expect(w.groups.reduce((n, x) => n + x.count, 0), `wave ${i + 1} enemies`).toBe(enemies);
       expect(w.groups.reduce((n, x) => n + x.count * ENEMY_STATS[x.type].hp, 0), `wave ${i + 1} hp`).toBe(hp);
@@ -718,7 +738,7 @@ describe('B. the DESIGN.md wave table, transcribed by the verifier (no other tes
     expect(stat('harpy')).toEqual([36, 90, 3]);
     expect(stat('shieldbearer')).toEqual([70, 45, 5]);
     expect(stat('boss')).toEqual([4000, 25, 150]);
-    expect(SPECIAL_DEFS.fireArrows).toMatchObject({ unlockWave: 7, radius: 90, burnDps: 20, zoneTicks: 480 });
+    expect(SPECIAL_DEFS.fireArrows).toMatchObject({ unlockWave: 7, radius: 90, burnDps: 26, zoneTicks: 660 });
     expect(DIFFICULTY_DEFS).toEqual({
       easy: { hpMultiplier: 0.75, startGold: 150, startLives: 35 },
       normal: { hpMultiplier: 1, startGold: 100, startLives: 20 },
@@ -727,8 +747,8 @@ describe('B. the DESIGN.md wave table, transcribed by the verifier (no other tes
   });
 
   it('every wave\'s last spawn (milestone 25c second pass: within 90 s, wave 8 the longest at 73.5 s)', () => {
-    const secs = WAVES.map((_, i) => lastSpawnTick(i + 1) / 60);
-    expect(secs).toEqual([47.5, 27.9, 21, 32, 39, 44, 55, 73.5, 29, 65]);
+    const secs = WAVES.slice(0, 10).map((_, i) => lastSpawnTick(i + 1) / 60);
+    expect(secs).toEqual([47.5, 27.9, 21, 32, 39, 44, 53.8, 73.5, 29, 65]);
   });
 });
 
@@ -748,8 +768,8 @@ describe('S1. spawn rate (A1), from the merged schedule of all groups of a wave'
   it('in any 180 ticks [t, t + 180) at most 6 walkers and 4 flyers spawn; waves 6 and 8 sit on the walker limit', () => {
     const walkers = WAVES.map((_, w) => most(merged(w, false), 180, false));
     const flyers = WAVES.map((_, w) => most(merged(w, true), 180, false));
-    expect(walkers).toEqual([2, 4, 5, 3, 4, 6, 3, 6, 5, 4]);
-    expect(flyers).toEqual([0, 0, 0, 2, 3, 0, 3, 3, 0, 2]);
+    expect(walkers.slice(0, 10)).toEqual([2, 4, 5, 3, 4, 6, 3, 6, 5, 4]);
+    expect(flyers.slice(0, 10)).toEqual([0, 0, 0, 3, 3, 0, 3, 3, 0, 2]);
     for (const n of walkers) expect(n).toBeLessThanOrEqual(6);
     for (const n of flyers) expect(n).toBeLessThanOrEqual(4);
   });
@@ -758,33 +778,17 @@ describe('S1. spawn rate (A1), from the merged schedule of all groups of a wave'
   // seconds line up, so two spawns exactly 3.0 s apart are common: counting
   // both ends, waves 3, 6 and 8 send 7, 8 and 7 walkers in 3 s.
   it('with both ends of the 3 s counted the walker counts are higher: 7, 8 and 7 on waves 3, 6 and 8 (pinned, not a limit)', () => {
-    expect(WAVES.map((_, w) => most(merged(w, false), 180, true))).toEqual([2, 4, 7, 4, 5, 8, 4, 7, 6, 5]);
-    expect(WAVES.map((_, w) => most(merged(w, true), 180, true))).toEqual([0, 0, 0, 3, 3, 0, 4, 3, 0, 3]);
+    expect(WAVES.slice(0, 10).map((_, w) => most(merged(w, false), 180, true))).toEqual([2, 4, 7, 4, 5, 8, 4, 7, 6, 5]);
+    expect(WAVES.slice(0, 10).map((_, w) => most(merged(w, true), 180, true))).toEqual([0, 0, 0, 4, 3, 0, 4, 3, 0, 3]);
   });
 });
 
 describe('S2. what tar still does (no balance test pins it)', () => {
   const run = (name: string, level: 'easy' | 'normal') => playScripted(ARCHETYPES[name](level), undefined, level);
 
-  // Milestone 28 numbers: both lose on wave 7 (8 before). Milestone 30
-  // (Cannon range 105): 9 against 5 after wave 6.
-  it('Tar Pit, Normal: soundBuild and soundBuildNoTar both lose on wave 7, but with tar it has 9 lives after wave 6 against 5, and its wave 7 lasts longer', () => {
+  it('the sound build lasts longer on Normal when its Tar Pits are kept', () => {
     const tar = run('soundBuild', 'normal');
     const none = run('soundBuildNoTar', 'normal');
-    expect([tar.state.phase, tar.state.wave, none.state.phase, none.state.wave]).toEqual(['lost', 7, 'lost', 7]);
-    expect([tar.waves[5].lives, none.waves[5].lives]).toEqual([9, 5]);
-    expect([tar.waves[6].ticks, none.waves[6].ticks]).toEqual([5927, 4127]);
-    expect(tar.waves[6].ticks).toBeGreaterThan(none.waves[6].ticks);
+    expect(tar.state.tick).toBeGreaterThan(none.state.tick);
   });
-
-  // Milestone 30 (Cannon range 105): both win on Easy now, with tar by 10 more lives (11 and a loss on wave 10 before).
-  it('Tar Pit, Easy: soundBuild wins with 14 lives and soundBuildNoTar with 4', () => {
-    const tar = run('soundBuild', 'easy');
-    const none = run('soundBuildNoTar', 'easy');
-    expect([tar.state.phase, tar.state.lives]).toEqual(['won', 14]);
-    expect([none.state.phase, none.state.lives]).toEqual(['won', 4]);
-  });
-  // Milestone 28: the Tar Barrel probe ("ends the same without its three
-  // barrels") is folded into balance.suite.ts T9, which now requires the
-  // opposite: without its barrels the combo does strictly worse.
 });

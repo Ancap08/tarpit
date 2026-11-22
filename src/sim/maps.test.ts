@@ -299,7 +299,7 @@ describe('Meadow combo game, whole final state (milestone 27 fixture, rewritten 
 
 describe('the new maps in headless play (milestone 27)', () => {
   for (const id of ['switchback', 'riverbend'] as const) {
-    it(`${id}: comboBuild is deterministic, wins on Normal, and Keep going starts wave 11`, () => {
+    it(`${id}: comboBuild is deterministic, wins on Normal, and Keep going starts wave 21`, () => {
       const script = comboBuild('normal', id);
       expect(script.mapId).toBe(id);
       expect(script.timed!.flat().every((a) => a.type === 'special')).toBe(true);
@@ -312,8 +312,8 @@ describe('the new maps in headless play (milestone 27)', () => {
       // Every plan cell is buildable on its map.
       for (const action of COMBO_PLANS[id]) if (action.type === 'build') expect(isBuildableTerrain(action.cell, MAPS[id])).toBe(true);
       const s = a.state;
-      expect(continueEndless(s)).toEqual({ ok: true, wave: 10 });
-      expect(startWave(s)).toEqual({ ok: true, wave: 11 });
+      expect(continueEndless(s)).toEqual({ ok: true, wave: 20 });
+      expect(startWave(s)).toEqual({ ok: true, wave: 21 });
       for (let i = 0; i < 600; i++) tick(s);
       expect(s.phase).toBe('wave');
       expect(s.enemies.length).toBeGreaterThan(0);

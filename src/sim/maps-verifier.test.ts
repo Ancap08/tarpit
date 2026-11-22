@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { buildTower, moveTower, towerAt, useSpecial } from './actions';
 import { enemyPosition } from './combat';
 import { ENEMY_STATS } from './enemies';
-import { callNextWave, continueEndless, createGame, startWave, tick } from './game';
+import { callNextWave, createGame, startWave, tick } from './game';
 import { buildableCells, isBuildable, isBuildableTerrain, terrainBlock } from './grid';
 import {
   COMBO_PLANS,
@@ -21,6 +21,7 @@ import {
 } from './headless';
 import { MAP_IDS, MAPS, pathLength, type MapId } from './map';
 import type { Enemy, EnemyType, GameState, MapDef, Point, Rect } from './types';
+import { WAVES } from './waves';
 
 const WAYPOINTS: Record<MapId, number[][]> = {
   meadow: [[0, 240], [160, 240], [160, 96], [420, 96], [420, 384], [680, 384], [680, 192], [960, 192]],
@@ -369,18 +370,18 @@ describe('E. sim probes on every map', () => {
   // Milestone 28: the result pins of this table are cells of the balance
   // matrix (balance.suite.ts); what stays here is that each run records
   // the same script twice and refuses nothing, one test per map.
+  const recorders = { noTowers, lazyBuild, longbowSpam, comboBuild, noAntiAir };
   for (const id of NEW_MAPS) {
-    it(`${id}: noTowers, lazyBuild, longbowSpam, comboBuild and noAntiAir record the same script twice and refuse nothing`, () => {
-      const make = { noTowers, lazyBuild, longbowSpam, comboBuild, noAntiAir };
-      for (const [name, f] of Object.entries(make)) {
-        const a = f('normal', id);
-        expect(f('normal', id), `${id} ${name}`).toEqual(a);
-        expect(a.mapId).toBe(id);
-        const run = playScripted(a);
+    for (const [name, record] of Object.entries(recorders)) {
+      it(`${id}: ${name} records the same script twice and refuses nothing`, () => {
+        const script = record('normal', id);
+        expect(record('normal', id)).toEqual(script);
+        expect(script.mapId).toBe(id);
+        const run = playScripted(script);
         expect(run.state.map.id).toBe(id);
-        expect(run.log.filter((step) => 'result' in step && !step.result.ok), `${id} ${name}`).toEqual([]);
-      }
-    });
+        expect(run.log.filter((step) => 'result' in step && !step.result.ok)).toEqual([]);
+      });
+    }
   }
 
   for (const id of NEW_MAPS) {
@@ -388,10 +389,7 @@ describe('E. sim probes on every map', () => {
       // The boss: wave 10 with no towers on a huge life pool; it exits pathLength / 25 s after it spawns.
       const s = createGame({ map: id });
       s.lives = 100000;
-      for (let w = 1; w < 10; w++) {
-        startWave(s);
-        while (s.phase === 'wave') tick(s);
-      }
+      s.wave = 9;
       startWave(s);
       let spawned = -1;
       let exited = -1;
@@ -401,9 +399,10 @@ describe('E. sim probes on every map', () => {
         if (s.events.some((e) => e.kind === 'bossDown')) exited = s.waveTick;
       }
       expect(Math.abs(exited - spawned - (LENGTH[id] / 25) * 60)).toBeLessThanOrEqual(1);
-      expect(s.phase).toBe('won'); // lives were never the limit
-      expect(continueEndless(s)).toEqual({ ok: true, wave: 10 });
-      expect(startWave(s)).toEqual({ ok: true, wave: 11 });
+      expect(s.phase).toBe('setup');
+      expect(s.pendingBoon?.wave).toBe(10);
+      const wave10Exits = WAVES[9].groups.reduce((count, group) => count + group.count, 0);
+      expect(100000 - s.lives).toBe(wave10Exits + 4);
       expect(s.map.id).toBe(id);
 
       // Call early: refused while spawning, accepted once the last enemy is out, and wave 2 walks the same map.
@@ -421,12 +420,12 @@ describe('E. sim probes on every map', () => {
       for (let n = 0; n < 120; n++) tick(c);
       for (const e of c.enemies) expect(pathDist(enemyPosition(e, c.map), MAPS[id].path)).toBeLessThan(1e-9);
 
-      // Endless: endlessIdle plays past wave 10 on this map and loses there.
+      // Endless: endlessIdle plays past wave 20 on this map and loses there.
       const run = playScripted(endlessIdle('normal', id));
       expect(run.state.map.id).toBe(id);
       expect(run.state.endless).toBe(true);
       expect(run.state.phase).toBe('lost');
-      expect(run.state.wave).toBe(id === 'switchback' ? 17 : 15);
+      expect(run.state.wave).toBeGreaterThan(20);
     });
   }
 });

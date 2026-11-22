@@ -13,17 +13,18 @@
 // its fade on the frame) and asserts no hit on him on tick BOSS_STEPS.
 import { describe, expect, it } from 'vitest';
 import { createGame, startWave, tick } from './game';
-import { applyAction, comboBuild } from './headless';
+import { applyAction, applyScriptBoon, comboBuild } from './headless';
 import { positionAlongPath, MAPS } from './map';
 
-/** e2e/visual.spec.ts BOSS_STEPS. */
-const BOSS_STEPS = 5361;
+/** Simulation reference for the 36b browser frame. */
+const BOSS_STEPS = 5215;
 
 describe('boss.png frame content', () => {
-  it(`at tick ${BOSS_STEPS} of wave 10 he is alone at (420,108), tarred, burning, 3331 hp on the bar, Mortar hit 2 ticks before, no hit now`, () => {
+  it(`at tick ${BOSS_STEPS} of wave 10 he is alone at (389,96), tarred, burning, 3599 hp on the bar, Mortar hit 2 ticks before, no hit now`, () => {
     const s = createGame();
     const script = comboBuild();
     for (let w = 0; w < 9; w++) {
+      applyScriptBoon(s, script);
       for (const a of script[w] ?? []) expect(applyAction(s, a)).toMatchObject({ result: { ok: true } });
       expect(startWave(s).ok).toBe(true);
       for (let t = 0; s.phase === 'wave' && t < 60 * 600; t++) {
@@ -58,14 +59,14 @@ describe('boss.png frame content', () => {
       waveTick: BOSS_STEPS,
       enemies: 1,
       type: 'boss',
-      pos: { x: 420, y: 108 },
+      pos: { x: 389, y: 96 },
       burning: true,
       slowed: true,
       slow: 0.3,
-      hpOnBar: 3331,
+      hpOnBar: 3599,
       mortarHits2Before: 1,
       hitNow: false,
-      lives: 16,
+      lives: 18,
     });
   });
 });

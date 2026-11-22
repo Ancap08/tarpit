@@ -16,6 +16,7 @@ export const ENEMY_NAMES: Readonly<Record<EnemyType, string>> = {
   harpy: 'Harpy',
   shieldbearer: 'Shieldbearer',
   boss: BOSS_NAME,
+  grumblemaw: 'Grumblemaw',
 };
 
 /** Tower names, as on the build bar ("Musketeer  50"). */

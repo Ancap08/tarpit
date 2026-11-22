@@ -18,6 +18,7 @@ export const ENEMY_STATS: Readonly<Record<EnemyType, EnemyStats>> = {
   shieldbearer: { hp: 70, speed: 45, bounty: 5, flying: false, shield: true, livesCost: 1 },
   // Grumblefoot, the Troll King (milestone 23, docs/SCOPE-v4.md): one at the
   // end of wave 10; costs 5 lives if he exits; slows cap at 30% on him.
+  grumblemaw: { hp: 13500, speed: 25, bounty: 300, flying: false, shield: false, livesCost: 6, slowCap: 0.3 },
   boss: { hp: 4000, speed: 25, bounty: 150, flying: false, shield: false, livesCost: 5, slowCap: 0.3 },
 };
 
@@ -26,7 +27,7 @@ export const BOSS_TYPE = 'boss' satisfies EnemyType;
 
 /** Whether this enemy is the boss. */
 export function isBoss(enemy: Pick<Enemy, 'type'>): boolean {
-  return enemy.type === BOSS_TYPE;
+  return enemy.type === BOSS_TYPE || enemy.type === 'grumblemaw';
 }
 
 /** The slow strength this enemy actually takes from a slow of `slow`: capped by its slowCap. */

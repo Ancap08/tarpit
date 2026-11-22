@@ -1,5 +1,6 @@
 // Data shapes for the simulation. Pure data: no classes, no methods.
 
+import type { BoonId, BoonOffer } from './boons';
 import type { Difficulty } from './difficulty';
 import type { GameEvent } from './events';
 import type { Cell } from './grid';
@@ -40,7 +41,7 @@ export interface MapDef {
   water?: readonly Rect[];
 }
 
-export type EnemyType = 'goblin' | 'wolf' | 'troll' | 'harpy' | 'shieldbearer' | 'boss';
+export type EnemyType = 'goblin' | 'wolf' | 'troll' | 'harpy' | 'shieldbearer' | 'boss' | 'grumblemaw';
 
 export interface EnemyStats {
   hp: number;
@@ -113,6 +114,8 @@ export interface Enemy {
    * is scaled by the wave; absent means difficulty.ts enemyMaxHp.
    */
   maxHp?: number;
+  /** Grumblemaw thresholds already called, including on the killing hit. */
+  packCalls?: number;
 }
 
 export interface GroupDef {
@@ -128,7 +131,7 @@ export interface WaveDef {
   groups: readonly GroupDef[];
   /**
    * Endless waves (milestone 26): enemy hp at spawn is multiplied by this
-   * on top of the level's multiplier. Absent for the ten table waves.
+   * on top of the level's multiplier. Absent for the twenty table waves.
    */
   hpMultiplier?: number;
 }
@@ -238,10 +241,14 @@ export interface GameState {
   difficulty: Difficulty;
   /**
    * Endless mode (milestone 26): false until the player presses Keep going
-   * after winning wave 10 (game.ts continueEndless). In an endless game
-   * waves go on past 10 and clearing a wave never wins.
+   * after winning wave 20 (game.ts continueEndless). In an endless game
+   * waves go on past 20 and clearing a wave never wins.
    */
   endless: boolean;
+  boons: readonly BoonId[];
+  pendingBoon: BoonOffer | null;
+  /** Wolf packs keep spawning independently even after their caller dies. */
+  packs: { nextTick: number; remaining: number }[];
   phase: Phase;
   gold: number;
   lives: number;

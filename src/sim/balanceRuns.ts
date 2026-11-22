@@ -5,12 +5,10 @@
 // part of the game bundle (src/sim/index.ts does not export it).
 
 import type { Difficulty } from './difficulty';
-import { createGame, startWave, tick } from './game';
-import { applyAction, ARCHETYPES, ENDLESS_ARCHETYPES, INFORMATIONAL, type WaveScript } from './headless';
-import { continueEndless } from './game';
+import { continueEndless, createGame, startWave, tick } from './game';
+import { applyAction, applyScriptBoon, ARCHETYPES, ENDLESS_ARCHETYPES, ENDLESS_WAVE_CAP, INFORMATIONAL, type BoonChoices, type WaveScript } from './headless';
 import type { MapId } from './map';
 import type { EnemyType, GameState } from './types';
-import { ENDLESS_WAVE_CAP } from './headless';
 import { LAST_WAVE } from './waves';
 
 /** One wave as played. */
@@ -35,7 +33,7 @@ export interface WaveStats {
 
 export interface BalanceRun {
   phase: GameState['phase'];
-  /** The wave the game ended on (won: 10; endless: the wave it was lost on, or the cap). */
+  /** The wave the game ended on (won: last campaign wave; endless: the wave it was lost on, or the cap). */
   wave: number;
   lives: number;
   gold: number;
@@ -63,12 +61,21 @@ export function playWithStats(script: WaveScript, difficulty?: Difficulty): Bala
   const specialHits: number[] = [];
   const limit = script.endless ? ENDLESS_WAVE_CAP : LAST_WAVE;
   for (let i = 0; i < limit && state.phase === 'setup'; i++) {
+    const boon = applyScriptBoon(state, script);
+    if (boon && 'result' in boon && !boon.result.ok) {
+      refused += 1;
+      break;
+    }
     const goldEntering = state.gold;
     for (const action of script[i] ?? []) {
       const step = applyAction(state, action);
       if ('result' in step && !step.result.ok) refused += 1;
     }
-    startWave(state);
+    const start = startWave(state);
+    if (!start.ok) {
+      refused += 1;
+      break;
+    }
     const timed = script.timed?.[i] ?? [];
     const w: WaveStats = { wave: state.wave, goldEntering, lives: 0, gold: 0, ticks: 0, exits: {}, spawns: {}, kills: 0, peak: 0, phase: 'wave' };
     const types = new Map<number, EnemyType>();
@@ -125,6 +132,7 @@ export const ALL_MAP_ARCHETYPES = [
   'comboNoSpecials',
   'hardBuild',
   'endlessIdle',
+  'endlessGreedy',
 ] as const;
 
 /** Archetypes with a Meadow plan only. */
@@ -142,25 +150,29 @@ export function runsOn(name: MatrixArchetype, map: MapId): boolean {
 const scripts = new Map<string, WaveScript>();
 const runs = new Map<string, BalanceRun>();
 
-/** The recorded script of an archetype on a map and level (cached). */
-export function archetypeScript(name: MatrixArchetype, map: MapId, level: Difficulty): WaveScript {
-  const key = `${name} ${map} ${level}`;
+function archetypeKey(name: MatrixArchetype, map: MapId, level: Difficulty, boons?: BoonChoices): string {
+  return JSON.stringify([name, map, level, ...Object.entries(boons ?? {})]);
+}
+
+/** The recorded script of an archetype for its map, level and boon choices. */
+export function archetypeScript(name: MatrixArchetype, map: MapId, level: Difficulty, boons?: BoonChoices): WaveScript {
+  const key = archetypeKey(name, map, level, boons);
   let script = scripts.get(key);
   if (!script) {
     const archetype = ARCHETYPES[name] ?? INFORMATIONAL[name] ?? ENDLESS_ARCHETYPES[name];
     if (!archetype) throw new Error(`no archetype ${name}`);
-    script = archetype(level, map);
+    script = archetype(level, map, boons);
     scripts.set(key, script);
   }
   return script;
 }
 
 /** The balance run of an archetype on a map and level (cached). */
-export function balanceRun(name: MatrixArchetype, map: MapId, level: Difficulty): BalanceRun {
-  const key = `${name} ${map} ${level}`;
+export function balanceRun(name: MatrixArchetype, map: MapId, level: Difficulty, boons?: BoonChoices): BalanceRun {
+  const key = archetypeKey(name, map, level, boons);
   let run = runs.get(key);
   if (!run) {
-    run = playWithStats(archetypeScript(name, map, level), level);
+    run = playWithStats(archetypeScript(name, map, level, boons), level);
     runs.set(key, run);
   }
   return run;

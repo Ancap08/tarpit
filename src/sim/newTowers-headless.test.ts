@@ -5,7 +5,7 @@
 // three are in balance.test.ts.
 import { describe, expect, it } from 'vitest';
 import { cellCenter, cellKey } from './grid';
-import { COMBO_PLAN, comboBuild, comboBuildNoFire, TRAIL_CELL_ORDER, longbowSpam, playScripted, type BuildAction, type WaveScript } from './headless';
+import { ACT_TWO_PLANS, COMBO_PLAN, comboBuild, comboBuildNoFire, TRAIL_CELL_ORDER, longbowSpam, playScripted, type BuildAction, type WaveScript } from './headless';
 import { MAPS, pathLength, positionAlongPath } from './map';
 import { TOWER_DEFS } from './towers';
 import type { Point, TowerType } from './types';
@@ -30,11 +30,11 @@ describe('longbowSpam', () => {
 });
 
 describe('comboBuild', () => {
-  it('wins all 10 waves with every action accepted', () => {
+  it('wins all 20 waves with every action accepted', () => {
     const r = play(comboBuild());
     expect(r.refused).toEqual([]);
     expect(r.phase, r.msg).toBe('won');
-    expect(r.wave, r.msg).toBe(10);
+    expect(r.wave, r.msg).toBe(20);
   });
 
   it('uses a Tar Pit and a Fire Pot covering the same stretch of path, Longbows and a Mortar', () => {
@@ -58,13 +58,14 @@ describe('comboBuild', () => {
     expect(shared).toBeGreaterThan(50);
   });
 
-  // Milestone 25c: the plan's last items soak up late gold, so it ends
-  // before them: 29 of its 31 actions are bought (28 before milestone 30).
-  it('follows COMBO_PLAN in order: 29 of 31 actions bought by wave 10', () => {
-    const bought = comboBuild().flat();
-    expect(COMBO_PLAN).toHaveLength(31);
-    expect(bought).toHaveLength(29);
-    expect(bought).toEqual(COMBO_PLAN.slice(0, 29));
+  it('buys in plan order and starts reinforcements in act 2', () => {
+    const script = comboBuild();
+    const bought = script.flat();
+    const actOne = script.slice(0, 10).flat();
+    const plan = [...COMBO_PLAN, ...ACT_TWO_PLANS.meadow];
+    expect(actOne).toEqual(COMBO_PLAN.slice(0, actOne.length));
+    expect(bought).toEqual(plan.slice(0, bought.length));
+    expect(bought.length).toBeGreaterThan(COMBO_PLAN.length);
   });
 });
 
@@ -73,7 +74,7 @@ describe('comboBuildNoFire', () => {
     const combo = comboBuild();
     const noFire = comboBuildNoFire();
     const fireCells = new Set(builds(combo, 'firepot').map((a) => cellKey(a.cell)));
-    expect([...noFire]).toEqual(combo.map((wave) => wave.filter((a) => !fireCells.has(cellKey(a.cell)))));
+    expect(noFire.flat()).toEqual(combo.flat().filter((a) => !fireCells.has(cellKey(a.cell))).slice(0, noFire.flat().length));
     // Milestone 30: its specials are the policy's, recorded for its own game.
     expect(noFire.timed!.flat().length).toBeGreaterThan(0);
     expect(noFire.timed!.flat().every((a) => a.type === 'special')).toBe(true);

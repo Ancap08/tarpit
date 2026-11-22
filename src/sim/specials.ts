@@ -9,6 +9,8 @@
 // shields. The radius is measured from the aimed point to the enemy
 // position, inclusive.
 
+import { boonScale, type BoonId } from './boons';
+
 export type SpecialType = 'keg' | 'tarBarrel' | 'fireArrows';
 
 export interface SpecialDef {
@@ -48,9 +50,9 @@ export const SPECIAL_RECHARGE_TICKS = 1200;
  * lasted 210 ticks and the fire burn 240, with no zones.
  */
 export const SPECIAL_DEFS: Readonly<Record<SpecialType, SpecialDef>> = {
-  keg: { unlockWave: 1, radius: 90, damage: 30, slow: 0, burnDps: 0, zoneTicks: 0 },
-  tarBarrel: { unlockWave: 4, radius: 100, damage: 0, slow: 0.5, burnDps: 0, zoneTicks: 480 },
-  fireArrows: { unlockWave: 7, radius: 90, damage: 0, slow: 0, burnDps: 20, zoneTicks: 480 },
+  keg: { unlockWave: 1, radius: 90, damage: 60, slow: 0, burnDps: 0, zoneTicks: 0 },
+  tarBarrel: { unlockWave: 4, radius: 100, damage: 0, slow: 0.5, burnDps: 0, zoneTicks: 660 },
+  fireArrows: { unlockWave: 7, radius: 90, damage: 0, slow: 0, burnDps: 26, zoneTicks: 660 },
 };
 
 /** Every special, in unlock order (the HUD popup lists them in this order). */
@@ -64,4 +66,13 @@ export function isSpecialUnlocked(type: SpecialType, wave: number): boolean {
 /** The specials unlocked on `wave`, in unlock order. */
 export function unlockedSpecials(wave: number): SpecialType[] {
   return SPECIAL_TYPES.filter((type) => isSpecialUnlocked(type, wave));
+}
+
+/** Effective radius for both the actual impact and the headless player's aim. */
+export function specialRadius(type: SpecialType, held: readonly BoonId[]): number {
+  return type === 'keg' ? boonScale(SPECIAL_DEFS[type].radius, held, 'biggerBlasts') : SPECIAL_DEFS[type].radius;
+}
+
+export function tarLingerTicks(held: readonly BoonId[]): number {
+  return Math.round(boonScale(ZONE_LINGER_TICKS, held, 'stickyTar'));
 }
