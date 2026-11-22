@@ -6928,3 +6928,61 @@ for three changes.
   the trail margin). Perf spec: median 16.7 ms, p95 16.7 to 16.8 ms in
   all three cases. 20x throttle: spread 146 and 144 frames, packed 164 and
   168 (main 173 and 174, 209 and 207). README demo re-recorded: 3.75 MB.
+
+### Verifier notes
+
+Verifier: Claude Sonnet 5.5, independent of the implementer.
+
+- **Unchanged:** no diff under `src/sim`, `package.json`, `assets/` or
+  `public/`; `npm run sim` output identical to `origin/main` (294 lines,
+  `cmp`); 7 title frames (default, three maps by easy and hard) are
+  byte-identical to main's after the follow-up.
+- **Suite:** lint, check:assets, typecheck, `npm test` (1220 + 1 expected
+  fail), build, check:size, and `npm run test:e2e` twice, all green.
+- **Added:** `src/game/decor/recipe-verifier.test.ts` (recipe with the
+  verifier's own geometry), `e2e/decor-verifier.spec.ts` and
+  `e2e/decor-verifier-phone.spec.ts`.
+- **Finding (low), `it.fails`:** the aim banner is up to 477 px wide
+  (x 242..719: the touch hint is 445 px of text and the Fire Arrows main
+  line 433 px, plus 32 px of padding) but `DECOR_KEEP_OUT` covers only
+  x 296..664. Switchback tree 3 (238, 14) and Riverbend bush 17 (242, 46)
+  reach 4 to 12 px under it. The banner draws over them and shows only while
+  aiming, so nothing is hidden, but "never under the aim banner" is not
+  literally true.
+- **Finding (low):** `DESIGN.md` says "about 75 still tufts"; there are 85 or
+  86 per map. Nothing else in "Map decoration" disagreed with the code.
+- **Perf, Canvas renderer, 20x CPU throttle, phone project (390 x 844 at 3x),
+  packed case:** main 199 to 201 frames in 5 s, median 16.7 ms, 232
+  ticks; branch 105 to 108 frames, median 50 ms, 106 ticks (about 46%
+  fewer). Landscape: spread 134 and 135 against 162 and 163, packed 160
+  and 155 against 192 and 195 (about 17% to 19% fewer). At 6x all cases
+  hold 300 frames. With the WebGL renderer (the one players get) the 20x
+  runs show no cost (phone 140 against 160 ticks and 134 frames for main,
+  landscape equal or better), so the phone cost is the full-map image blit
+  on the Canvas fallback at device scale 3.
+- **Readability** (same state on main and branch, test mode, 4 busy frames
+  per map): outline pixels of enemy sprites and hp bars against the ground
+  under them, mean RGB distance within 0.7% of main in every frame; 10th
+  percentile down 4% to 9.4% (worst Switchback wave 3, 136.4 to 123.6);
+  the worst single enemy unchanged. Trail edge (inside 16 px and outside
+  27 px from the centreline, all along the path, ground only): mean 114.5
+  to 110.5..113, 10th percentile 114.5 to 100.7..105.8, lowest sample
+  114.5 to 57.7 (Meadow), 87.1 (Switchback), 87.5 (Riverbend). Placement
+  highlight against the ground beside it: mean 91 to 92 on both, lowest
+  cell 88 to 79 (Meadow). The trail stays obvious. Tree cells show the same
+  highlight as grass (mean change 36.6 against 36.4, lowest 35.5 against
+  35.8, over 24 and 25 cells).
+- **Checked and fine:** every tree and bush cell on all three maps builds
+  and sells, hides exactly its own growth once; moves, upgrade undo, mid-wave
+  sale, a layout switch and Play again restore the right set; the fade ends
+  after Escape, a toggle, the last gold, a layout switch mid-drag; a
+  released-off-map drag keeps the bar's pick as on main, so the fade
+  follows the pick. Decoration has no input handlers; clicks, taps and
+  drags on tree, flower and stone cells build. Test mode frames identical
+  across loads and 3 s, in both layouts, on every map. After ten layout
+  switches, five Play agains and three map changes, textures (named and
+  anonymous), objects and listeners are unchanged. Smallest clearance:
+  canopy edge to the trail centreline 51.1 px (31 px to the strip edge),
+  27 px to a Troll's sprite edge; the boss (sprite reaches 80 px above his
+  path point) and lifted Harpies can overlap a canopy, but all decoration
+  draws under every enemy layer, so nothing is hidden.
