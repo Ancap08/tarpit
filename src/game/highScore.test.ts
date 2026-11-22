@@ -139,4 +139,15 @@ describe('HighScoreStore (milestone 26)', () => {
     expect(store.best('hard')).toBe(7);
     expect(store.record('hard', 5)).toBe(false);
   });
+
+  it('a save rewrites the whole value: unknown levels, unknown keys and another version are dropped (accepted)', () => {
+    const storage = new MemoryStorage();
+    storage.setItem('tarpit.best', '{"v":1,"extra":1,"best":{"meadow":{"normal":3,"nightmare":9}}}');
+    expect(new HighScoreStore(() => storage).record('normal', 4)).toBe(true);
+    expect(storage.getItem('tarpit.best')).toBe('{"v":1,"best":{"meadow":{"normal":4}}}');
+
+    storage.setItem('tarpit.best', '{"v":2,"best":{"meadow":{"normal":50}}}');
+    expect(new HighScoreStore(() => storage).record('easy', 1)).toBe(true);
+    expect(storage.getItem('tarpit.best')).toBe('{"v":1,"best":{"meadow":{"easy":1}}}');
+  });
 });

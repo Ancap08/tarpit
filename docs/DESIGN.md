@@ -516,7 +516,12 @@ Milestone 26, from `docs/SCOPE-v4.md` ("Endless mode and high score").
   not apply; the longest endless window is 86.75 s (wave 8 based waves
   from cycle 4: 75.5 + 15 x 0.75). The spawn-rate rule (A1) holds on the
   merged schedule (pinned for waves 11 to 40). The Hard hp rule is not
-  applied to endless hp.
+  applied to endless hp. `waveDef` throws for n < 1 (and for a
+  non-integer n). The live game has no wave cap (only the headless runs
+  stop at 200), and hp leaves the exact-integer range near wave 200: the
+  Troll's spawn hp passes `Number.MAX_SAFE_INTEGER` on wave 200 on Normal
+  and Hard (cycle 64) and wave 203 on Easy. Accepted: no build gets near
+  it.
 - **Hp growth 1.6 per cycle, not the scope's 1.15.** At 1.15 the idle
   combo build lived to wave 25 on Normal (target 11 to 16): the combo lost
   no life until the hp passed about 2x. 1.6 (about 1.17 per wave) puts the
@@ -580,6 +585,10 @@ lasts for the page session and nothing throws. GameScene sends
 when it went up, and the store keeps it if it beats the stored best: every
 wave clear counts, in a lost or abandoned run and in a game that was never
 continued (a loss on wave 7 stores 6, a win 10).
+A save writes the whole value back as `{"v":1,"best":...}` built from
+what was parsed, so unknown levels, unknown top-level keys and a stored
+`v` other than 1 are dropped on the next new best (accepted; pinned in
+`highScore.test.ts`).
 
 Title menu: one 18 px line centred at (480, 414), "Best on Normal: 12
 waves" ("1 wave" for one) for the selected level, changing with the

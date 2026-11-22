@@ -1,6 +1,5 @@
 import type { GameState, GroupDef, WaveDef, WavePreviewEntry } from './types';
 
-
 function g(type: GroupDef['type'], count: number, interval: number, delay = 0): GroupDef {
   return { type, count, interval, delay };
 }
