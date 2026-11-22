@@ -5003,3 +5003,513 @@ load on the runner it reached 6.7 s. Runs: `npm test` three times, 871
 passed each time (about 18 s); lint, typecheck and build pass; 281
 Playwright tests passed and 3 skipped (the verifier's screenshot-only
 probes), one run with `PW_PORT=4173`.
+
+## 2026-11-22: milestone 28, balance lock
+
+Roles: implementer Claude Opus; verifier and coordinator to follow. Kyle
+has not play-tested since the horde retune, so the endless growth (1.6),
+the call-early rule and the 25c wave-length rules are untouched.
+
+### Implementer notes
+
+**Result.** Every target (T1 to T9, E1 to E3, H1 to H4) and every 25c wave
+rule (R1 to R5) is met on all three maps. No `// milestone 28 miss`. Four
+game numbers changed; every one of them is needed (revert pass below).
+
+**Part 1, the script side (commit `f760b6d`, no game number changed).**
+
+- *Special search* (`src/sim/specialSearch.ts`, `npm run sim:specials`).
+  A wave-by-wave greedy search, offline, stored as data in
+  `src/sim/specialLists.ts`. For each wave in order, the earlier waves
+  fixed, it plays the wave with no special and with every candidate and
+  keeps the best by fewest lives lost, then most kills by the wave's end,
+  then earliest clear; ties keep "no special", then the earlier
+  candidate. Candidates: every 60th wave tick (1 s) until the wave ends
+  without a special; each special unlocked that wave; aimed at the centre
+  of every cell whose centre is within 16 px of the path (76 cells on
+  Meadow, 100 on Switchback, 76 on Riverbend). A special's effect does not
+  depend on where in its radius an enemy stands, so only the first target
+  of each distinct set of enemies hit is played, and a target that hits
+  nothing is skipped. A branch stops early once it has lost more lives
+  than the best so far, or is still running at the best's clear tick with
+  no more kills possible. Lists exist per plan (combo, hard), level and
+  map: 18 searches, about 6 minutes on this Mac in 18 child processes. The
+  combo build on Hard uses the list searched for the combo plan on Hard
+  (searching only on Normal left the Meadow Hard combo losing on wave 7).
+- *Tests of the search* (`specialSearch.test.ts`). The full search takes
+  about 2 minutes per plan and map, so the test reruns waves 1 to 3 of the
+  Meadow combo list on Normal (the greedy fixes waves in order, so a
+  prefix of the search is a prefix of the list) and checks, for all 18
+  stored lists and every wave, that the stored choice is strictly better
+  on its wave than no special. A full rerun after the last change gave a
+  byte-identical `specialLists.ts`.
+- *Per-map Hard plans.* `HARD_ORDER` writes Meadow's 25c Hard order as
+  indexes into a combo plan; every map's combo plan has the same 31 roles
+  in the same order, so each Hard plan is that map's combo cells (chosen in
+  milestone 27 by path covered in range) bought in Meadow's Hard order:
+  the opening and anti-air Longbows and their upgrades first, three
+  upgraded Longbow pairs with the first Tar Pit, the first Fire Pot, the
+  pair's upgrades, then the rest. `HARD_PLAN` is `hardPlanFrom(COMBO_PLAN)`
+  and equals the old constant. They won on Hard on every map at once, so
+  no other cells were tried. A scan of single moves on Riverbend (each
+  later action moved earlier, 255 plans) found nothing better.
+- *Archetypes.* noTowers, oneMusket (new), lazyBuild, greedyMusket,
+  longbowSpam, noAntiAir, comboBuild, comboBuildNoFire, comboNoSpecials,
+  hardBuild and endlessIdle run on every map; soundBuild, soundBuildNoTar,
+  comboStrongest and comboWithKegs stay Meadow-only and throw for another
+  map. bossRush is removed (it bought nothing extra and was the combo
+  game); its one meaningful pin, the boss's death tick, lives on in
+  `boss-verifier.test.ts`. Endless waves 11 on still fire the cluster
+  special at the tick of the table wave they repeat;
+  `CLUSTER_POLICY_TICKS(_BY_MAP)` were rescanned on the final numbers so
+  the verifier's scan test still reproduces them (Meadow's wave 9 tick
+  1194 -> 1754; Switchback 1194 -> 1604; Riverbend 304, 1491, 1490, 1520
+  -> 1, 1311, 1496, 1349; every map's wave 1 is now 1).
+- *What part 1 alone changed* (Meadow results of the archetypes that fire
+  no special are identical to main on every level, checked line by line
+  against main's `npm run sim`): Meadow combo Normal 13 -> 15 lives, Hard
+  lost on 8 -> won with 1; Switchback combo 18 -> 20, Hard 7 -> 10;
+  Riverbend combo 8 -> 18 (specials no longer hurt there: comboNoSpecials
+  14), Hard still lost on 8; hardBuild won on Hard on every map (13, 14,
+  8). Open after part 1: T8 and E3 on every map (one Musketeer leaked 12
+  of 20 on Meadow, 14 on the others) and T4 on Switchback (20 lives).
+
+**Part 3, game numbers.** Before and after:
+
+| Number | Before | After | Lever | Why |
+|---|---|---|---|---|
+| Wave 1 Goblin interval | 1.2 s | 2.5 s | 2 | T8 and E3: one Musketeer stops every wave 1 Goblin on Easy and Normal (12 to 14 leaked). Count unchanged (20), so R2 to R5 hold; wave 1 now lasts 47.5 s of spawning |
+| Goblin hp | 19 | 23 | 5 | H2: with a gentle wave 1, Hard lazyBuild (one Musketeer, like oneMusket) kept 12+ lives and lasted to wave 7. Hard Goblin 28 needs three Musketeer shots (Easy 17 and Normal 23 need two), so Hard lazyBuild survives wave 1 with 6 to 8 lives and loses on wave 2. 23 is the only base under 25 whose Hard hp passes the Hard hp rule and needs three shots |
+| Troll hp | 900 | 950 | 5 | T4 with T6 on Switchback: comboNoSpecials had 18 lives there, so the combo could not be both strictly better and at most 18. Hard Troll 1140 passes the Hard hp rule (940 and 970 were the nearest other legal values; 970 broke H1 on Riverbend and T9) |
+| Tar Barrel duration | 240 ticks | 210 ticks (3.5 s) | 3 | T4 on Switchback: with Troll 950 the searched combo still won with 19 there; its wave 7 barrel stopped every Troll leak. 180 ticks also met T4 but lost H1 on Riverbend |
+
+Levers 3 and 4 were tried first for T4: Fire Arrows 25/s, Fire Arrows
+radius 70 and keg damage 70 left Switchback at 19; barrel slow 0.4 broke
+H1 and H3 on Riverbend. Lever 5 alone (Troll 950 or 970, Troll bounty 6 or
+7, Harpy 40, Shieldbearer 90, one more Troll in wave 5, 7 or 9) never got
+Switchback under 19 without breaking something else. Lever 6 (towers) was
+not needed.
+
+**Method.** A scratch harness evaluated every target from a config of
+patched numbers, first with the special lists of the last search (fast,
+about 10 s), then for promising configs with a fresh search of the 9 lists
+the targets read (combo on Normal and Hard, hard on Hard; about 3 to 6
+minutes). Seven searched configs in all: wave 1 + Goblin 23; + Troll 940;
++ Troll 950; + Troll 950 and barrel 180; + Troll 970; + Troll 950 and
+barrel 210 (final); and the final numbers regenerated with all 18 lists.
+About 30 stale-list configs before them (wave 1 intervals 1.4 to 3.0 and
+counts 17 to 20, denser waves 2, Wolf 23, Troll and special variants). No
+random sweep: the space was small once the binding targets were clear.
+
+**Revert pass** (each change put back alone, the other three final, with
+a fresh search of the 9 lists):
+
+| Revert | Targets broken |
+|---|---|
+| Wave 1 interval 2.5 -> 1.2 s | T8 and E3 on every map (12 or 14 of 20 leak); H2 on every map (Hard lazyBuild loses on wave 1: three-shot Goblins every 1.2 s) |
+| Goblin 23 -> 19 | H2 on every map (Hard lazyBuild keeps 15 lives after wave 1 and loses on wave 7) |
+| Troll 950 -> 900 | T4 on Switchback (won with 20) |
+| Tar Barrel 210 -> 240 ticks | T4 on Switchback (won with 19) |
+
+No change breaks nothing.
+
+**Matrix.** Before (main), the cells that existed:
+
+| Archetype | Meadow E / N / H | Switchback N | Riverbend N |
+|---|---|---|---|
+| noTowers | L 2 / L 1 / L 1 | L 1 | L 1 |
+| lazyBuild | W 9 / L 8 / L 5 | L 9 | L 8 |
+| greedyMusket | W 30 / L 10 / L 2 | | |
+| longbowSpam | W 2 / L 8 / L 7 | L 8 | L 8 |
+| noAntiAir | L 6 / L 5 / L 4 | L 5 | L 5 |
+| comboBuild | W 29 / W 13 / L 8 | W 18 (Easy W 30, Hard W 7) | W 8 (Easy W 29, Hard L 8) |
+| comboBuildNoFire | W 29 / W 9 / L 7 | | |
+| comboNoSpecials | W 30 / W 12 / L 7 | | |
+| hardBuild | W 30 / W 20 / W 9 | | |
+| endlessIdle | L 18 / L 15 / L 8 | L 16 | L 14 |
+| soundBuild | W 9 / L 8 / L 3 | | |
+| soundBuildNoTar | L 10 / L 8 / L 3 | | |
+| comboStrongest | W 11 / L 7 / L 4 | | |
+| comboWithKegs | W 30 / W 12 / L 7 | | |
+
+After (`npm run sim`, last table; E, N, H per map):
+
+| Archetype | Meadow | Switchback | Riverbend |
+|---|---|---|---|
+| noTowers | L 2, L 1, L 1 | L 2, L 1, L 1 | L 2, L 1, L 1 |
+| oneMusket | L 3, L 2, L 2 | L 2, L 2, L 2 | L 2, L 2, L 2 |
+| lazyBuild | W 5, L 8, L 2 | W 15, L 8, L 2 | W 4, L 8, L 2 |
+| greedyMusket | W 29, L 8, L 2 | W 28, W 1, L 2 | W 30, L 8, L 2 |
+| longbowSpam | L 10, L 8, L 7 | W 19, L 8, L 8 | L 10, L 8, L 7 |
+| noAntiAir | L 7, L 5, L 4 | L 7, L 5, L 4 | L 7, L 5, L 4 |
+| comboBuild | W 30, W 14, L 8 | W 30, W 18, W 6 | W 30, W 16, L 8 |
+| comboBuildNoFire | W 29, W 4, L 7 | W 30, W 13, L 8 | W 25, W 5, L 5 |
+| comboNoSpecials | W 29, W 11, L 3 | W 30, W 16, W 1 | W 29, W 7, L 7 |
+| hardBuild | W 30, W 20, W 9 | W 30, W 20, W 13 | W 30, W 19, W 5 |
+| endlessIdle | L 18, L 14, L 8 | L 19, L 16, L 14 | L 18, L 15, L 8 |
+| soundBuild | W 6, L 7, L 2 | | |
+| soundBuildNoTar | L 10, L 7, L 2 | | |
+| comboStrongest | W 4, L 7, L 2 | | |
+| comboWithKegs | W 29, W 11, L 3 | | |
+
+Meadow measures: combo enters wave 10 with 183 gold (T9 under 200);
+soundBuild loses on wave 7 at tick 22291, soundBuildNoTar at 20934; the
+combo without its two Tar Barrels (waves 5 and 7) wins with 11 lives
+against 14. Wave time for the combo on Meadow is 618.5 s (R5 540 to 800),
+peak 22 alive, wave 1 clears at 2941 ticks (1.15 x 951 = 1094 needed).
+Endless on Normal: endlessIdle loses on wave 14 (15 before), endlessGreedy
+on 19 (18).
+
+**Thin margins.**
+
+- T4 Switchback: the combo wins with exactly 18 lives, the top of the
+  band. Troll 900 gives 20, barrel 240 gives 19.
+- H3 on Meadow and Riverbend: the Hard combo loses on wave 8 exactly, the
+  edge of "wave 8 or later". Goblin 24 (Hard 29, against the Hard hp rule)
+  makes it lose on wave 7 on Meadow (pinned in `difficulty.test.ts`) and,
+  in a scratch probe, makes hardBuild lose on Riverbend on wave 8. Goblin
+  22, Wolf 19 and Wolf 21 hold (the probe's other three cases, tested).
+- H1 on Riverbend: hardBuild wins with 5 lives; Troll +50 makes it lose on
+  wave 8.
+- E1: Easy lazyBuild wins with 5 (Meadow) and 4 (Riverbend) lives, down
+  from 9.
+- T5 Meadow and Riverbend: comboBuildNoFire wins with 4 and 5 lives (still
+  far below the combo). T6 Switchback on Hard is not a target, but
+  comboNoSpecials there wins with 1.
+- T7: noAntiAir keeps only 4, 3 and 2 lives after wave 4 on Meadow,
+  Switchback and Riverbend (10 of 10 Harpies leak on every map).
+- T9 tar: the combo without its barrels is 3 lives worse on Meadow; two
+  barrels are in its list.
+
+**Test time.** Before (main): 871 unit tests, `npm test` about 18 s on this
+Mac; `npm run test:slow`: 8 tests over 3 s, the slowest 8.3 s
+(`difficulty.test.ts` Normal by argument), then 5.7, 4.2, 4.0, 3.8, 3.5,
+3.2, 3.0 s. After: 1034 unit tests, `npm test` about 16 s; no test over 5
+s; `test:slow` lists 7 tests between 3.3 and 4.1 s (endless runs, the
+per-map special-list checks, the cluster scan). What changed: the matrix
+and targets run once per map file (`balance-meadow/switchback/riverbend
+.test.ts`, about 7 s each in parallel) from a cache of recorded scripts
+and runs (`balanceRuns.ts`); the "Normal by argument" test compares
+recorded scripts, one test per archetype; the verifier's six-archetype map
+test and the ±1 hp probe are split per case; duplicate whole-game pins
+were folded into the matrix (below). The 30 s limit is unchanged.
+
+**Folded into the balance suite** (the matrix pins every cell exactly; the
+targets carry the rules):
+
+- `balance.test.ts`: the v2 targets 1 to 6, the per-archetype end pins,
+  the noAntiAir band and Harpy count, the A2/A3 band checks (R5) and the
+  horde-shape count and bounty checks (R2 to R4). Kept there: the trail
+  rules, the plan actions bought, the stored special list being fired, the
+  exact per-wave clear ticks and peaks, the anti-air sells, the boss never
+  met by lazy builds, and a replay check of every Meadow archetype against
+  the suite's own counter. bossRush's pins went with it.
+- `difficulty.test.ts`: the Easy and Hard targets (a) to (d) and the Hard
+  combo pin (E1, E2, H1 to H3 and the matrix); the Hard hp rule test (H4);
+  the per-level combo determinism (kept in `difficulty-verifier.test.ts`
+  (g)).
+- `difficulty-verifier.test.ts` (h): the Easy lazy and Hard combo pins.
+- `maps-verifier.test.ts`: the DEVLOG Normal table's result pins (its
+  determinism and refused-nothing checks stay, one test per map).
+- `horde-verifier.test.ts` S2: the "Tar Barrel changes nothing" probe,
+  now the opposite target in T9.
+
+**Frames that moved** (baselines regenerate on CI; no PNG committed):
+
+- `mid-wave.png`: wave 1 tick 1160 -> 155. The Musketeer at (7,5) now
+  kills every Goblin before the Cannon or Tar Pit fires (neither fires in
+  wave 1), so the frame shows the Musketeer's tracer 3 ticks into its fade
+  with 2 Goblins out, 1 hurt. Thinner than before; moving it to wave 2
+  would keep a Cannon shot but change the frame's setup.
+- `boss.png`: tick 5664 -> 5361 (the first wave 10 tick with him alone,
+  tarred, burning, 30% to 90% hp, a Mortar hit 2 ticks earlier and none
+  now): (420,111), 3339 of 4000. The boss-bar fill probe moved to tick
+  5721 (2213 hp, 166 px), where the hp text clears the fill.
+- `new-towers.png`, `enemies.png`, `special-fired.png`: same ticks, hp
+  values updated. `won.png`: 14 lives, 484 gold. The horde verifier's
+  densest wave 8 frame: tick 1576 -> 1261, 22 enemies.
+- Browser tests that played wave 1 for a fixed 3000 ticks now step 3100
+  (one Musketeer clears it at tick 3062 with no leak); two tests that need
+  several Goblins at once play wave 2 instead (targeting cycle, Switchback
+  between-lane shots); the maps-verifier "lose" helper plays until a leak.
+
+**Frames for the coordinator** (scratchpad, not committed):
+`m28-wave1-onemusket.png` (Meadow, Normal, one Musketeer at (2,5), wave 1
+tick 1555: one hurt Goblin leaving the cave, 20 lives) and
+`m28-tarbarrel.png` (Meadow, Normal, comboBuild, wave 5 tick 2100, a Tar
+Barrel at the densest 90 px cluster on the first climb: 5 enemies tarred,
+a Troll among them). Test mode draws no special effects, so the barrel's
+splat is not in the frame; the tar rings on the enemies are.
+
+**DESIGN.md** is rewritten in the present tense with the frozen banner;
+`designSpec.test.ts` parses its map, difficulty, hp, enemy, tower,
+upgrade, special, wave and endless tables and compares them with the
+constants (a deliberate wrong number in three tables fails three tests).
+
+### What went wrong
+
+- My first harness module ran its own command-line code when another
+  scratch script imported it (`evalcfg.ts` ends with `cfg.ts`); one search
+  run was wasted.
+- A special list searched only on Normal made the Hard combo worse than
+  the 25c cluster policy (lost on wave 7 on Meadow). The lists are now per
+  level.
+- Lever order: T4 needed a lever 5 change (Troll hp) because T6 tied the
+  base game to the band, and then a lever 3 change (the barrel) for one
+  life; the barrel was meant for T9. Tar still matters (T9 holds), but the
+  barrel is now 3.5 s.
+- The 25c "Hard combo holds with ±1 hp" probe no longer holds for Goblin
+  +1. That configuration also breaks the Hard hp rule, but it shows how
+  close H3 sits.
+- The search's full rerun is minutes long, so the unit test checks only a
+  prefix of one list plus the "never worse than none" property of all of
+  them.
+
+### For the verifier
+
+- Rerun `npm run sim:specials` and diff `src/sim/specialLists.ts` (it was
+  byte-identical here). The search is deterministic but long (about 6
+  minutes with 10 cores).
+- `balance.suite.ts` is one module run by three files so the whole-game
+  runs spread over three workers; check that every map's file covers its
+  column and that the rules (H4, R1 to R5) run once (Meadow's file).
+- The candidate set: 1 s ticks and path cells within 16 px. A finer grid
+  may find better lists and so move results; the stored lists are what the
+  pins hold.
+- Thin margins above, especially T4 on Switchback (18 of 18) and H3 on
+  Meadow and Riverbend (wave 8 exactly).
+- Feel questions for Kyle: wave 1 now spawns for 47.5 s; Goblins take a
+  third Musketeer shot on Hard; Easy lazyBuild wins with 4 or 5 lives.
+
+### Verifier notes
+
+Verifier: Claude Fable 5.2, independent of the implementer. Verdict: merge
+after fixes (none of them a game number). Checked on this Mac.
+
+**A. Suite.** lint, check:assets, typecheck, build and check:size pass.
+`npm test` twice: 1034 of 1034, 14.8 s and 15.1 s wall. `npm run
+test:slow`: 3 tests over 3 s (3.3, 3.1, 3.1 s), none over 5 s (the
+implementer listed 7; the count depends on load). `PW_PORT=4273 npm run
+test:e2e` twice: 281 passed, 3 skipped (the three "frame for a person"
+tests, which need `VERIFIER_SHOTS`), 33 s each. Local runs ignore pixel baselines
+(`ignoreSnapshots` off CI), so no changed frame was compared as pixels.
+
+**B. Targets.** My own replay code (not `playWithStats`) gives all 111
+cells of the matrix, result and gold, as `EXPECTED_MATRIX` and the DEVLOG
+table have them, and every target T1 to T9, E1 to E3, H1 to H4 and R1 to
+R5 holds on all three maps with the measures the implementer reports. The
+suite asserts each target with the stated bounds. The branch added no
+`it.fails`, `skip`, `todo`, `only` or `fixme` to `src` or `e2e`; the
+three conditional `test.skip` calls in `e2e` are main's (two need
+`VERIFIER_SHOTS`; the one in `endless-verifier.spec.ts:188` did not
+skip). One target is looser in the test than in the brief: T9
+"without its Tar Barrels the combo is strictly worse" also passes on equal
+lives and fewer kills (not reached today: 11 lives against 14).
+
+**C. Folded pins.** Every rule check deleted from an old test file is
+still asserted: the v2 targets 1 to 6 as T1 to T6, the anti-air band as
+T7, gold after wave 9 as T9, the wave rules as R1 to R5, the Easy and
+Hard targets as E1, E2, H1 to H4, and every end pin as a matrix cell. H4
+is stricter (it now includes the boss); R4 is `<= 90 s` where the old
+test had `< 90 s` (the rule says "at most"). What was lost were exact
+measures, not rules: the 10 of 10 Harpies and lives after wave 4, the
+wave 1 leak counts, lives after wave 1 on Hard, 183 gold entering wave
+10, and "comboNoSpecials has no timed actions". I pinned those again in
+`balance.test.ts`. One new test was empty: "oneMusket builds on the first
+trail cell on every map" compared the cell with itself on Switchback and
+Riverbend; fixed. The cache keys are `name map level`, so a wrong map,
+level or archetype cannot be returned; cached scripts and runs are shared
+objects that nothing freezes, and no test writes to them (vitest gives
+each test file its own module instance, so the hp-patching tests in
+`difficulty.test.ts` cannot reach the cache).
+
+**D. The special search.** Deterministic; the candidate set is as
+described (60 tick steps, 76, 100 and 76 cells). `npm run sim:specials`
+took 5 min 20 s and wrote a byte-identical `specialLists.ts`. With my own
+wave replay, all 18 lists: every stored choice is strictly better on its
+wave than no special, the whole game is never worse with the list than
+with no specials, and every special is one a player could fire (unlocked
+on its wave, one per wave, during the wave, the charge granted at Start
+Wave, never refused, never off the map). Greedy is not optimal over the
+game: on the Hard combo, which loses on wave 8 on Meadow and Riverbend,
+dropping one of three choices delays the loss by 72 to 235 ticks on the
+same wave.
+
+**E. Revert matrix** (stored lists, not regenerated, so every cell that
+plays a special list is approximate; `*` marks a cell I rechecked with a
+fresh search of that one list):
+
+| Change | Targets broken |
+|---|---|
+| Wave 1 interval 1.2 s | T8 and E3 on every map (12, 14, 14 leak); H2 on every map (lost on wave 1) |
+| Goblin 19 | H2 on every map (15 lives after wave 1, lost on wave 7) |
+| Troll 900 | T4 on Switchback (W 19 stale, W 20 fresh*) |
+| Tar Barrel 240 | T4 on Switchback (W 19 fresh*; the stale list says W 18 and a false H1 loss on Riverbend, fresh W 6*) |
+| Wave 1 interval 1.5 s | T8 on Switchback and Riverbend (8 leak), E3 on every map (6, 8, 8), H2 on every map |
+| Wave 1 interval 1.8 s | H2 on every map only (leaks 0, 2, 2 on Easy and on Normal) |
+| Wave 1 interval 2.0 s | H2 on every map only (no leak on any map) |
+| Goblin 22 | H4 (Hard 26); nothing else |
+| Goblin 24 | H4 (Hard 29); H3 on Meadow (lost on wave 7); H1 on Riverbend only with the stale list (fresh W 5*) |
+| Troll 925 | H4 (Hard 1110); T4 on Switchback (W 19, stale) |
+| Troll 975 | H4 (Hard 1170); H1 on Riverbend with the stale list (fresh W 1*) |
+
+All four changes are needed. The wave 1 interval is 2.5 s for H2 alone:
+T8 and E3 hold from 1.8 s. Easy and Normal leak the same on wave 1 (two
+Musketeer shots either way).
+
+**F. Easy margin.** Easy lazyBuild wins with 5, 15 and 4 lives. Smallest
+single-lever changes that give 8 or more on every map with E2 and E3
+holding: lives 30 to 34 (9, 19, 8), or hp multiplier 0.75 to 0.72 (9, 16,
+9). Start gold alone does not get there (200 gold: 6, 17, 6). Lives moves
+nothing but the final lives of games that are won, and longbowSpam on
+Easy turns from lost on wave 10 to won with 1 on Meadow and Riverbend. The
+hp lever also changes Easy hp (Wolf 14, Troll 684, Harpy 26, Shieldbearer
+50, boss 2880) and needs the six Easy lists searched again. Recommended
+for Kyle: lives 35 (10, 20, 9).
+
+**G. Spec guard.** `designSpec.test.ts` parses the tables: one changed
+number in each of 19 places (banner, maps, both difficulty tables,
+enemies, towers, upgrades, specials, waves, endless) failed its test.
+Not guarded before this pass: the measured matrix, the endless hp line,
+the cooldowns, the sell refunds and the 524; I added tests for them.
+Still unguarded: the bounds written in the target and rule prose (5 to
+18, 6 walkers, 25 gold bonus). One defect in the doc, fixed: the endless
+section read "hp multiplier `1.6 ^ cycle` (`Goblin 28/37/44, ...
+111/147/177_GROWTH`)", a replace gone wrong; it is `ENDLESS_HP_GROWTH`
+again. No history is left in the doc. Not stated in it: the plans' cells,
+the Hard order's indexes, and Switchback's and Riverbend's cluster ticks.
+The banner says what the scope asks. The scope's evidence row also lists
+Kyle's play notes, and there are none yet, so the spec is frozen before
+the play test the scope names.
+
+**H. Frames.** The sim-side frame tests and the browser values pass. The
+mid-wave frame (wave 1, tick 155) now shows one hurt Goblin, a second
+half inside the cave, one Musketeer tracer and an idle Cannon and Tar
+Pit: it no longer covers a splash, a tar ring or more than one hp bar.
+Proposed: the same three towers, wave 2 (`state.wave = 1`, then Start
+Wave), tick 1904: 15 Goblins, 10 hurt, 2 tarred, the Cannon's splash 3
+ticks into its fade, the Tar Pit's shot 2 ticks old, 20 lives (tick 2144:
+12 Goblins, all hurt, 3 tarred). Rendered locally; it reads well. Wave 1
+with one Musketeer on the first trail cell: at most one Goblin is on
+screen, and for 1692 of the wave's 2912 ticks (28 of 48.5 s) none is.
+After the first Musketeer 50 gold is left, so a second Musketeer or a
+Longbow is affordable before wave 1 starts; a Tar Pit after 11 s, a Fire
+Pot after 23.5 s, a Cannon after 36 s, a Mortar only after the clear.
+
+**I. Play length** (comboBuild, Normal, seconds of wave time at 1x):
+
+| Map | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | Total | Total on main | Wave 1 on main |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Meadow | 49.0 | 36.4 | 28.9 | 39.5 | 73.1 | 51.0 | 97.0 | 93.6 | 45.8 | 104.3 | 618.5 | 614.4 | 26.8 |
+| Switchback | 51.9 | 38.1 | 29.1 | 38.8 | 77.5 | 47.5 | 96.6 | 91.3 | 45.1 | 97.3 | 613.2 | 601.7 | 30.3 |
+| Riverbend | 51.0 | 34.7 | 28.5 | 37.4 | 64.0 | 48.1 | 91.1 | 92.0 | 52.1 | 112.1 | 611.1 | 617.3 | 29.8 |
+
+**Findings.**
+
+1. Wave 1 is now the emptiest minute of the game (H, I): 49 to 52 s with
+   one Goblin at a time, to meet a Hard-only target (H2). 1.8 or 2.0 s
+   meets T8 and E3. A decision for Kyle before the freeze, not a defect.
+2. H1 and H3 rest on the searched lists. hardBuild on Hard without
+   specials wins with 2 and 12 lives on Meadow and Switchback and loses
+   on wave 8 on Riverbend; with its list it wins with 5 there. The
+   comboNoSpecials game on Hard loses on wave 3 on Meadow. A player who
+   aims worse than a per-wave search does not get these results.
+3. `playWithStats` counts a kill twice when a special fires on the tick
+   after it (`balanceRuns.ts`, the loop after `applyAction`): hardBuild
+   on Meadow, Normal reports 525 kills of 524 enemies. Only T9's
+   tie-break reads kills. Pinned as `it.fails` in `balance.test.ts`.
+4. `comboWithKegs` hits nothing in any wave on any level and is the same
+   game as `comboNoSpecials` (as `bossRush` was the combo).
+5. `comboBuildNoFire` and `noAntiAir` fire the list searched for the full
+   combo, so T5 and T7 measure a build with specials aimed for another
+   game.
+6. Stale comments: `headless.ts` "Hard's 1080 hp Trolls" (1140),
+   lazyBuild "lost on wave 6, 7 or 8" (T2 is 6 to 9), "cluster specials"
+   in three places; `balanceTargets.ts` "R1 .. R6" (there are five);
+   `specialSearch.ts` says the test reruns Meadow's lists (it reruns
+   three waves of one).
+7. The committed baseline PNGs are from main; CI fails its pixel checks
+   until the snapshot workflow regenerates them, and a person should look
+   at the new mid-wave, boss and win frames then.
+
+**Changed by the verifier:** `balance.test.ts` (the oneMusket test, the
+`it.fails` pin, the exact measures), `designSpec.test.ts` (three guards),
+`docs/DESIGN.md` (the one corrupted line). No file in `src` outside tests.
+
+**Could not check:** pixel baselines; the revert rows without `*` with
+fresh lists; anything about feel beyond the frames.
+
+**Re-verify of the follow-up (`070de79`, `e7e351a`):** all seven checks pass. Easy lives 35 is the only game number that moved and `specialLists.ts` is unchanged; my replay gives all 108 cells, every target holds (E1 at 10, 20, 9), the kill counter now agrees with mine on every cell, and the suite is green (1035 unit, 281 e2e, 51 of 51 in `npm run sim`).
+The mid-wave frame (wave 2, tick 1904) renders as proposed, also showing "Call next +17"; left open: wave 1's length and Kyle's play notes, the unguarded prose bounds, and the CI baselines.
+
+### Follow-up (implementer)
+
+Six items from the coordinator after the verifier's pass, on top of
+`13d37dd`.
+
+1. **Easy lives 30 -> 35** (`DIFFICULTY_DEFS.easy.startLives`). E1 is now
+   "Easy lazyBuild wins with at least 8 lives on every map": it wins with
+   10, 20 and 9 (5, 15 and 4 before). E2 and E3 hold. Only Easy cells of
+   the matrix moved: every won Easy game has 5 more lives; longbowSpam on
+   Easy now wins with 2 on Meadow and Riverbend (lost on wave 10), and
+   with 24 on Switchback; oneMusket on Easy loses on wave 3 everywhere;
+   endlessIdle on Easy, Switchback lasts one wave longer (wave 20);
+   noAntiAir on Easy still loses on wave 7 with a little more gold. No
+   special list changed: `npm run sim:specials` wrote a byte-identical
+   `specialLists.ts` (the search compares lives lost per wave, not lives
+   left, and no Easy branch comes near 30 lost). Browser values updated:
+   Easy start lives in `difficulty.spec.ts` and `difficulty-verifier.spec.ts`
+   (title start and the Easy win screen, 35 lives).
+2. **`playWithStats` counted a kill twice** when a timed special fired on
+   the tick after it: it read every `kill` event in `state.events`, which
+   still held the previous tick's. It now counts only the events the
+   action appends. The verifier's `it.fails` pin passes as a normal test
+   (hardBuild on Meadow, Normal: kills + exits = 524), and every matrix cell
+   now checks that kills, and kills plus exits, never exceed the enemies
+   spawned. No target result moved (only T9's tie-break reads kills).
+3. **T9's barrel check** reads as the brief does: lost where the combo
+   won, or fewer lives, or the same lives and fewer kills. The measured
+   values are pinned in `balance.test.ts`: 11 lives without the barrels,
+   14 with them.
+4. **Mid-wave frame** (`e2e/visual.spec.ts`, `src/sim/midwave-frame.test.ts`):
+   the verifier's proposal, the same three towers in wave 2 (`state.wave =
+   1`, then Start Wave), tick 1904: 15 Goblins, 10 hurt, 2 tarred, the
+   Cannon's splash 3 ticks into its fade (fired at 1901), the Tar Pit's
+   shot 2 ticks old (1902), no shot on the tick, 20 lives. Local frame
+   `m28b-midwave.png`: Goblins strung along the top run and the downhill,
+   hp bars on most of them, the Cannon's orange splash circle at the
+   bottom corner with its tracer, two tar-ringed Goblins on the bottom run
+   by the Tar Pit, the Musketeer idle between shots. The baseline
+   regenerates on CI.
+5. **`comboWithKegs` removed** (its kegs hit nothing; it was the
+   comboNoSpecials game), with `KEG_POLICY_DISTANCE` and
+   `KEG_POLICY_WAVE_TICK`. The pins that still meant something moved to
+   comboBuild: the verifier's full-game event bookkeeping in
+   `specials-verifier.test.ts` (j)(l) (kills + exits = spawns, each id
+   gone once, the replay equals `playScripted`, special kills at most the
+   hits) now runs on comboBuild, whose 10 specials all hit and some kill.
+   Its matrix row, the Meadow-only list and the "three refuse" check
+   followed.
+6. **Comments and DESIGN.md.** `headless.ts`: Hard Trolls 1140; lazyBuild's
+   targets (T2 6 to 9, E1, H2); comboBuildNoFire, noAntiAir and endlessIdle
+   no longer say "cluster specials" for waves 1 to 10. `balanceTargets.ts`:
+   R1 to R5. `specialSearch.ts`: the test reruns three waves of one list.
+   DESIGN.md: Easy 35 lives, E1's new wording, the matrix, comboWithKegs
+   gone, a note that wave 1 is deliberately gentle and Kyle's play notes
+   decide, and two facts in the balance section: comboBuildNoFire and
+   noAntiAir fire the full combo's list; on Hard the wins rest on the
+   searched lists (hardBuild with no specials: Meadow won with 2, Riverbend
+   lost on wave 8).
+
+Easy column of the matrix (Meadow, Switchback, Riverbend): noTowers L 2,
+L 2, L 2; oneMusket L 3, L 3, L 3; lazyBuild W 10, W 20, W 9; greedyMusket
+W 34, W 33, W 35; longbowSpam W 2, W 24, W 2; noAntiAir L 7, L 7, L 7;
+comboBuild W 35, W 35, W 35; comboBuildNoFire W 34, W 35, W 30;
+comboNoSpecials W 34, W 35, W 34; hardBuild W 35, W 35, W 35; endlessIdle
+L 18, L 20, L 18; soundBuild W 11; soundBuildNoTar L 10; comboStrongest
+W 9.
+
+The DESIGN.md generator in my scratch folder had pasted the endless hp
+line into `ENDLESS_HP_GROWTH` (a placeholder that was a prefix of a real
+name); its placeholders are now delimited, and the regenerated file keeps
+the verifier's fix.

@@ -79,14 +79,14 @@ describe('waveDef (milestone 26)', () => {
   });
 
   it('hp at spawn: round(base x level x 1.6 ^ cycle), by hand', () => {
-    expect(enemyMaxHp('goblin', 'normal', waveDef(11).hpMultiplier)).toBe(30); // 30.4
-    expect(enemyMaxHp('troll', 'normal', waveDef(11).hpMultiplier)).toBe(1440);
+    expect(enemyMaxHp('goblin', 'normal', waveDef(11).hpMultiplier)).toBe(37); // 36.8
+    expect(enemyMaxHp('troll', 'normal', waveDef(11).hpMultiplier)).toBe(1520);
     expect(enemyMaxHp('harpy', 'normal', waveDef(11).hpMultiplier)).toBe(58); // 57.6
-    expect(enemyMaxHp('goblin', 'easy', waveDef(11).hpMultiplier)).toBe(23); // 22.8
-    expect(enemyMaxHp('goblin', 'hard', waveDef(11).hpMultiplier)).toBe(36); // 36.48
-    expect(enemyMaxHp('goblin', 'normal', waveDef(14).hpMultiplier)).toBe(49); // 48.64
-    expect(enemyMaxHp('troll', 'normal', waveDef(17).hpMultiplier)).toBe(3686); // 3686.4
-    expect(enemyMaxHp('goblin', 'normal', waveDef(17).hpMultiplier)).toBe(78); // 77.824
+    expect(enemyMaxHp('goblin', 'easy', waveDef(11).hpMultiplier)).toBe(28); // 27.6
+    expect(enemyMaxHp('goblin', 'hard', waveDef(11).hpMultiplier)).toBe(44); // 44.16
+    expect(enemyMaxHp('goblin', 'normal', waveDef(14).hpMultiplier)).toBe(59); // 58.88
+    expect(enemyMaxHp('troll', 'normal', waveDef(17).hpMultiplier)).toBe(3891); // 3891.2
+    expect(enemyMaxHp('goblin', 'normal', waveDef(17).hpMultiplier)).toBe(94); // 94.208
   });
 
   it('no boss after wave 10', () => {
@@ -148,7 +148,7 @@ const won = () => structuredClone(wonState);
 
 describe('continueEndless (milestone 26)', () => {
   it('the combo build wins on Normal (the starting point)', () => {
-    expect(wonState).toMatchObject({ phase: 'won', wave: 10, lives: 13, gold: 476, endless: false });
+    expect(wonState).toMatchObject({ phase: 'won', wave: 10, lives: 14, gold: 484, endless: false });
   });
 
   it('allowed when won: setup, endless, wave 10 cleared, everything kept', () => {
@@ -199,8 +199,8 @@ describe('continueEndless (milestone 26)', () => {
     tick(s);
     const first = s.enemies[0];
     expect(first.type).toBe('goblin');
-    expect(first.hp).toBe(30);
-    expect(first.maxHp).toBe(30);
+    expect(first.hp).toBe(37);
+    expect(first.maxHp).toBe(37);
     expect(s.specialCharges).toBe(1);
   });
 
@@ -261,9 +261,9 @@ describe('an endless run (milestone 26)', () => {
     expect(idle.phases.at(-1)).toBe('lost');
   });
 
-  it('endlessIdle on Normal loses on wave 15 with 14 waves cleared (target: wave 11 to 16)', () => {
-    expect(idle.state).toMatchObject({ phase: 'lost', wave: 15, endless: true });
-    expect(wavesCleared(idle.state)).toBe(14);
+  it('endlessIdle on Normal loses on wave 14 with 13 waves cleared (target: wave 11 to 16)', () => {
+    expect(idle.state).toMatchObject({ phase: 'lost', wave: 14, endless: true });
+    expect(wavesCleared(idle.state)).toBe(13);
     // The replay here and playScripted agree (the replay drains the event list).
     expect({ ...playScripted(endlessIdle()).state, events: [] }).toEqual(idle.state);
   });
@@ -284,7 +284,7 @@ describe('an endless run (milestone 26)', () => {
     expect(greedy.wave).toBeGreaterThan(idle.state.wave);
     expect(greedy.wave).toBeGreaterThanOrEqual(14);
     expect(greedy.wave).toBeLessThanOrEqual(40);
-    expect(greedy.wave).toBe(18);
+    expect(greedy.wave).toBe(19);
   });
 
   it('determinism: two endlessGreedy runs to the end give deep-equal final states', () => {

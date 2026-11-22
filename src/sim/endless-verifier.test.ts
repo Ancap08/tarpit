@@ -28,14 +28,14 @@ describe('verifier: generated waves worked out by hand (section D)', () => {
       '14 harpy every 1.2 from 10',
       '10 harpy every 0.75 from 75.5',
     ]);
-    // 19 x 1.6 = 30.4, 20 x 1.6 = 32, 900 x 1.6 = 1440, 70 x 1.6 = 112, 36 x 1.6 = 57.6.
-    expect(hpOf(11, 'normal')).toEqual({ goblin: 30, wolf: 32, troll: 1440, shieldbearer: 112, harpy: 58 });
+    // 23 x 1.6 = 36.8, 20 x 1.6 = 32, 950 x 1.6 = 1520, 70 x 1.6 = 112, 36 x 1.6 = 57.6 (milestone 28 hp).
+    expect(hpOf(11, 'normal')).toEqual({ goblin: 37, wolf: 32, troll: 1520, shieldbearer: 112, harpy: 58 });
     expect(lastSpawnTick(11)).toBe(4935); // 75.5 + 9 x 0.75 = 82.25 s
   });
 
   it('wave 11 Hard: x1.2 x1.6 = x1.92 with one rounding', () => {
-    // 36.48, 38.4, 1728, 134.4, 69.12.
-    expect(hpOf(11, 'hard')).toEqual({ goblin: 36, wolf: 38, troll: 1728, shieldbearer: 134, harpy: 69 });
+    // 44.16, 38.4, 1824, 134.4, 69.12.
+    expect(hpOf(11, 'hard')).toEqual({ goblin: 44, wolf: 38, troll: 1824, shieldbearer: 134, harpy: 69 });
   });
 
   it('wave 13 Normal: wave 10 without the boss + 10 Harpies from 65 s, last spawn tick 4305', () => {
@@ -46,30 +46,30 @@ describe('verifier: generated waves worked out by hand (section D)', () => {
       '8 shieldbearer every 5 from 2.5',
       '10 harpy every 0.75 from 65',
     ]);
-    expect(hpOf(13, 'normal')).toEqual({ wolf: 32, troll: 1440, harpy: 58, shieldbearer: 112 });
+    expect(hpOf(13, 'normal')).toEqual({ wolf: 32, troll: 1520, harpy: 58, shieldbearer: 112 });
     expect(lastSpawnTick(13)).toBe(4305); // 65 + 9 x 0.75 = 71.75 s
   });
 
   it('wave 14 Normal: cycle 2, wave 8, 12 Harpies, x2.56, last spawn tick 5025', () => {
     expect(counts(14).at(-1)).toBe('12 harpy every 0.75 from 75.5');
-    // 48.64, 51.2, 2304, 179.2, 92.16.
-    expect(hpOf(14, 'normal')).toEqual({ goblin: 49, wolf: 51, troll: 2304, shieldbearer: 179, harpy: 92 });
+    // 58.88, 51.2, 2432, 179.2, 92.16.
+    expect(hpOf(14, 'normal')).toEqual({ goblin: 59, wolf: 51, troll: 2432, shieldbearer: 179, harpy: 92 });
     expect(lastSpawnTick(14)).toBe(5025); // 75.5 + 11 x 0.75 = 83.75 s
   });
 
   it('wave 20 Normal: k 9, cycle 4, wave 8, 16 Harpies, x6.5536, last spawn tick 5205', () => {
     expect(counts(20).slice(0, -1)).toEqual(counts(11).slice(0, -1));
     expect(counts(20).at(-1)).toBe('16 harpy every 0.75 from 75.5');
-    // 124.5184, 131.072, 5898.24, 458.752, 235.9296.
-    expect(hpOf(20, 'normal')).toEqual({ goblin: 125, wolf: 131, troll: 5898, shieldbearer: 459, harpy: 236 });
+    // 150.7328, 131.072, 6225.92, 458.752, 235.9296.
+    expect(hpOf(20, 'normal')).toEqual({ goblin: 151, wolf: 131, troll: 6226, shieldbearer: 459, harpy: 236 });
     expect(lastSpawnTick(20)).toBe(5205); // 75.5 + 15 x 0.75 = 86.75 s
   });
 
   it('wave 40 Normal: k 29, cycle 10, wave 10 without the boss, 16 Harpies, x109.9511627776', () => {
     expect(counts(40).slice(0, -1)).toEqual(counts(13).slice(0, -1));
     expect(counts(40).at(-1)).toBe('16 harpy every 0.75 from 65');
-    // 2199.02, 98956.05, 3958.24, 7696.58.
-    expect(hpOf(40, 'normal')).toEqual({ wolf: 2199, troll: 98956, harpy: 3958, shieldbearer: 7697 });
+    // 2199.02, 104453.60, 3958.24, 7696.58.
+    expect(hpOf(40, 'normal')).toEqual({ wolf: 2199, troll: 104454, harpy: 3958, shieldbearer: 7697 });
     expect(lastSpawnTick(40)).toBe(4575); // 65 + 15 x 0.75 = 76.25 s
     expect(waveDef(40).groups.reduce((n, g) => n + g.count, 0)).toBe(71);
   });
@@ -96,9 +96,9 @@ describe('verifier: generated waves worked out by hand (section D)', () => {
   });
 
   it('two roundings would differ from the code somewhere (so the single rounding is really tested)', () => {
-    // Easy Goblin cycle 1: round(19 x 0.75) = 14, round(14 x 1.6) = 22; one rounding gives round(22.8) = 23.
-    expect(enemyMaxHp('goblin', 'easy', 1.6)).toBe(23);
-    expect(Math.round(enemyMaxHp('goblin', 'easy') * 1.6)).toBe(22);
+    // Easy Goblin cycle 1: round(23 x 0.75) = 17, round(17 x 1.6) = 27; one rounding gives round(27.6) = 28.
+    expect(enemyMaxHp('goblin', 'easy', 1.6)).toBe(28);
+    expect(Math.round(enemyMaxHp('goblin', 'easy') * 1.6)).toBe(27);
   });
 });
 
@@ -270,7 +270,7 @@ describe('verifier: call early in endless', () => {
         for (let i = 0; i < 300; i++) tick(s);
         expect(s.enemies.every((e) => e.maxHp !== undefined && e.hp <= e.maxHp)).toBe(true);
         const trollHp = new Set(s.enemies.filter((e) => e.type === 'troll').map((e) => e.maxHp));
-        expect([...trollHp].sort((x, y) => x! - y!)).toEqual([1440, 2304]);
+        expect([...trollHp].sort((x, y) => x! - y!)).toEqual([1520, 2432]);
       }
     }
     toClear(s);
@@ -356,11 +356,11 @@ describe('verifier: a whole endlessGreedy run', () => {
   it('gold is conserved on every tick and action from wave 1 to the loss', () => {
     expect(problems).toEqual([]);
     expect(state.phase).toBe('lost');
-    expect(state.wave).toBe(18);
+    expect(state.wave).toBe(19);
   });
 
-  it('the score climbs 0, 1, 2, ... 17 one at a time and never falls', () => {
-    expect(scoreTrail).toEqual(Array.from({ length: 18 }, (_, i) => i));
+  it('the score climbs 0, 1, 2, ... 18 one at a time and never falls', () => {
+    expect(scoreTrail).toEqual(Array.from({ length: 19 }, (_, i) => i));
   });
 
   it('kill accounting: spawned = killed + exited + alive; tower kills + special kills + unowned burns = kills', () => {
@@ -376,7 +376,7 @@ describe('verifier: a whole endlessGreedy run', () => {
     // Ids are handed out once each, in order.
     expect(state.nextEnemyId - createGame().nextEnemyId).toBe(n('spawn'));
     // One won, one endlessStart, one lost, a waveStart and (but the last) a waveClear per wave.
-    expect([n('won'), n('endlessStart'), n('lost'), n('waveStart'), n('waveClear')]).toEqual([1, 1, 1, 18, 17]);
+    expect([n('won'), n('endlessStart'), n('lost'), n('waveStart'), n('waveClear')]).toEqual([1, 1, 1, 19, 18]);
     // Lives lost = exits (no boss exit in this run).
     expect(20 - state.lives).toBe(n('exit'));
   });
@@ -432,6 +432,6 @@ describe('verifier: far waves', () => {
     expect(ENDLESS_CLUSTER_POLICY).toHaveLength(ENDLESS_WAVE_CAP);
     expect(ENDLESS_WAVE_CAP).toBe(200);
     const tickOf = (wave: number) => (ENDLESS_CLUSTER_POLICY[wave - 1][0] as { atWaveTick: number }).atWaveTick;
-    expect([tickOf(11), tickOf(12), tickOf(13), tickOf(14), tickOf(200)]).toEqual([1241, 1194, 713, 1241, 1241]);
+    expect([tickOf(11), tickOf(12), tickOf(13), tickOf(14), tickOf(200)]).toEqual([1241, 1754, 713, 1241, 1241]);
   });
 });

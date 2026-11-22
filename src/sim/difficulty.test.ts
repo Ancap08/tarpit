@@ -1,19 +1,19 @@
 // Difficulty levels (milestone 25, docs/SCOPE-v4.md "Difficulty"): the
 // table, hp scaling per enemy type, createGame per level, determinism per
-// level, and the SCOPE-v4 Easy and Hard targets, met in milestone 25c.
+// level; the Easy and Hard targets are in balance.suite.ts (milestone 28).
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_DIFFICULTY, DIFFICULTIES, DIFFICULTY_DEFS, enemyMaxHp, type Difficulty } from './difficulty';
 import { ENEMY_STATS } from './enemies';
 import { buildTower } from './actions';
 import { createGame, startWave, tick } from './game';
-import { ARCHETYPES, comboBuild, hardBuild, lazyBuild, noTowers, playScripted } from './headless';
+import { ARCHETYPES, comboBuild, hardBuild, playScripted } from './headless';
 import type { EnemyType } from './types';
 import { WAVES } from './waves';
 
 describe('difficulty table (docs/SCOPE-v4.md)', () => {
-  it('Easy 0.75x hp, 150 gold, 30 lives; Normal 1x, 100, 20; Hard 1.2x, 80, 15 (milestone 25c)', () => {
+  it('Easy 0.75x hp, 150 gold, 35 lives; Normal 1x, 100, 20; Hard 1.2x, 80, 15 (milestone 28)', () => {
     expect(DIFFICULTY_DEFS).toEqual({
-      easy: { hpMultiplier: 0.75, startGold: 150, startLives: 30 },
+      easy: { hpMultiplier: 0.75, startGold: 150, startLives: 35 },
       normal: { hpMultiplier: 1, startGold: 100, startLives: 20 },
       hard: { hpMultiplier: 1.2, startGold: 80, startLives: 15 },
     });
@@ -26,9 +26,9 @@ describe('difficulty table (docs/SCOPE-v4.md)', () => {
       (Object.keys(ENEMY_STATS) as EnemyType[]).map((t) => [t, DIFFICULTIES.map((d) => enemyMaxHp(t, d))]),
     );
     expect(table).toEqual({
-      goblin: [14, 19, 23],
+      goblin: [17, 23, 28],
       wolf: [15, 20, 24],
-      troll: [675, 900, 1080],
+      troll: [713, 950, 1140],
       harpy: [27, 36, 43],
       shieldbearer: [53, 70, 84],
       boss: [3000, 4000, 4800],
@@ -45,7 +45,7 @@ describe('createGame per level', () => {
   });
 
   it.each([
-    ['easy', 150, 30],
+    ['easy', 150, 35],
     ['normal', 100, 20],
     ['hard', 80, 15],
   ] as const)('%s starts with %i gold and %i lives and records its level', (difficulty, gold, lives) => {
@@ -53,9 +53,9 @@ describe('createGame per level', () => {
   });
 
   it.each([
-    ['easy', 14],
-    ['normal', 19],
-    ['hard', 23],
+    ['easy', 17],
+    ['normal', 23],
+    ['hard', 28],
   ] as const)('%s: the first Goblin of wave 1 spawns with %i hp', (difficulty, hp) => {
     const s = createGame({ difficulty });
     startWave(s);
@@ -112,24 +112,19 @@ describe('createGame per level', () => {
 });
 
 describe('determinism per level', () => {
-  for (const difficulty of DIFFICULTIES) {
-    it(`${difficulty}: the combo build plays a full game identically twice`, () => {
-      const a = playScripted(comboBuild(difficulty), undefined, difficulty);
-      const b = playScripted(comboBuild(difficulty), undefined, difficulty);
-      expect(['won', 'lost']).toContain(a.state.phase);
-      expect(a.state.difficulty).toBe(difficulty);
-      expect(b.state).toEqual(a.state);
-      expect(b.waves).toEqual(a.waves);
-      expect(b.log).toEqual(a.log);
+  // Each level's combo game played twice: difficulty-verifier.test.ts (g).
+  // Verifier (milestone 25c): Normal by argument and by default. Milestone
+  // 28: one test per archetype, comparing the recorded scripts (the whole
+  // game is a function of the script), so no test plays more than two games.
+  for (const [name, archetype] of Object.entries(ARCHETYPES)) {
+    it(`Normal by argument equals Normal by default: ${name}`, () => {
+      expect(archetype('normal')).toEqual(archetype());
     });
   }
 
-  // Verifier (milestone 25c): 48 archetype games take about 4 s on the horde
-  // waves and timed out at the default 5 s in a full run (vitest.config.ts now sets 30 s for all).
-  it('Normal by argument equals Normal by default for every archetype', () => {
-    for (const archetype of Object.values(ARCHETYPES)) {
-      expect(playScripted(archetype('normal'), undefined, 'normal').state).toEqual(playScripted(archetype()).state);
-    }
+  it('playScripted on Normal by argument equals playScripted by default', () => {
+    const script = comboBuild();
+    expect(playScripted(script, undefined, 'normal').state).toEqual(playScripted(script).state);
   });
 });
 
@@ -139,57 +134,17 @@ const end = (difficulty: Difficulty, script: ReturnType<typeof comboBuild>) => {
   return { phase: r.state.phase, wave: r.state.wave, lives: r.state.lives, gold: r.state.gold, refused: refused.length };
 };
 
-describe('SCOPE-v4 difficulty targets (met in milestone 25c; milestone 28 rechecks them)', () => {
-  it('(a) lazyBuild wins on Easy: won, 9 lives, 964 gold', () => {
-    expect(end('easy', lazyBuild('easy'))).toEqual({ phase: 'won', wave: 10, lives: 9, gold: 964, refused: 0 });
-  });
-
-  it('(a) noTowers still loses on Easy', () => {
-    expect(end('easy', noTowers())).toMatchObject({ phase: 'lost' });
-  });
-
-  it('(b) comboBuild on Hard loses at least 5 more lives than on Normal, or loses the game on wave 8 or later', () => {
-    const normal = end('normal', comboBuild());
-    const hard = end('hard', comboBuild('hard'));
-    expect(hard.refused).toBe(0);
-    const ok = (hard.phase === 'won' && normal.lives - hard.lives >= 5) || (hard.phase === 'lost' && hard.wave >= 8);
-    expect(ok, JSON.stringify({ normal, hard })).toBe(true);
-  });
-
-  it('comboBuild on Hard: pinned at lost on wave 8, 284 gold (13 lives on Normal)', () => {
-    expect(end('hard', comboBuild('hard'))).toEqual({ phase: 'lost', wave: 8, lives: 0, gold: 284, refused: 0 });
-  });
-
-  // Milestone 25c second pass: it must survive wave 1 and lose on 2 to 5.
-  it('(c) lazyBuild on Hard survives wave 1 and loses on wave 2 to 5: lost on wave 5', () => {
-    const r = end('hard', lazyBuild('hard'));
-    expect(r.phase).toBe('lost');
-    expect(r.wave).toBeGreaterThanOrEqual(2);
-    expect(r.wave).toBeLessThanOrEqual(5);
-    expect(r).toEqual({ phase: 'lost', wave: 5, lives: 0, gold: 128, refused: 0 });
-  });
-
-  it('(d) hardBuild wins on Hard: won, 9 lives, 464 gold', () => {
-    expect(end('hard', hardBuild('hard'))).toEqual({ phase: 'won', wave: 10, lives: 9, gold: 464, refused: 0 });
-  });
-
-  // Milestone 25c second pass: no enemy's Hard hp sits 1 or 2 points above
-  // a multiple of the Musketeer's 12 or the Longbow's 4 (the Hard Goblin at
-  // 13 made every Musketeer opening lose on wave 1), nor above the Cannon's
-  // 25 or the Mortar's 45. The Tar Pit's 3 is left out: every whole number
-  // is 0, 1 or 2 above a multiple of 3.
-  it('no Hard hp is 1 or 2 above a multiple of 12, 4, 25 or 45', () => {
-    for (const t of ['goblin', 'wolf', 'troll', 'harpy', 'shieldbearer'] as const) {
-      const hp = enemyMaxHp(t, 'hard');
-      for (const d of [12, 4, 25, 45]) expect([1, 2], `${t} ${hp} mod ${d}`).not.toContain(hp % d);
-    }
-  });
-
+// The SCOPE-v4 Easy and Hard targets (E1 to E3, H1 to H4) and the exact
+// results per level are in balance.suite.ts (milestone 28). This keeps the
+// verifier's robustness probe on them.
+describe('Hard targets hold with one hp point either way (milestone 25c verifier; H1 and H3)', () => {
   // The verifier found Hard balanced on one Wolf hp; the second pass holds
   // the Hard combo target with Goblin and Wolf hp one point either way.
-  it('the Hard combo target holds with Goblin or Wolf hp one point up or down', () => {
-    const normalLives = end('normal', comboBuild()).lives;
-    for (const [type, d] of [['goblin', 1], ['goblin', -1], ['wolf', 1], ['wolf', -1]] as const) {
+  // Milestone 28: it holds for Goblin -1 and Wolf +-1. Goblin +1 (24, Hard
+  // 29) breaks the Hard hp rule itself and is pinned below as a thin margin.
+  for (const [type, d] of [['goblin', -1], ['wolf', 1], ['wolf', -1]] as const) {
+    it(`${type} hp ${d > 0 ? '+' : ''}${d}: the Hard combo target and the hardBuild win hold`, () => {
+      const normalLives = end('normal', comboBuild()).lives;
       const stats = ENEMY_STATS[type] as { hp: number };
       const hp0 = stats.hp;
       stats.hp = hp0 + d;
@@ -202,7 +157,25 @@ describe('SCOPE-v4 difficulty targets (met in milestone 25c; milestone 28 rechec
       } finally {
         stats.hp = hp0;
       }
+      expect(end('normal', comboBuild()).lives).toBe(normalLives);
+    });
+  }
+});
+
+describe('thin margin (milestone 28): Goblin hp +1', () => {
+  // Goblin 24 makes the Hard Goblin 29 (1 over a multiple of 4: against the
+  // Hard hp rule), and the Hard combo then loses on Meadow on wave 7, which
+  // breaks H3; hardBuild still wins on Meadow.
+  it('Goblin 24: Hard comboBuild on Meadow loses on wave 7; hardBuild still wins', () => {
+    const stats = ENEMY_STATS.goblin as { hp: number };
+    const hp0 = stats.hp;
+    stats.hp = hp0 + 1;
+    try {
+      expect(enemyMaxHp('goblin', 'hard')).toBe(29);
+      expect(end('hard', comboBuild('hard'))).toMatchObject({ phase: 'lost', wave: 7 });
+      expect(end('hard', hardBuild('hard')).phase).toBe('won');
+    } finally {
+      stats.hp = hp0;
     }
-    expect(end('normal', comboBuild()).lives).toBe(normalLives);
   });
 });

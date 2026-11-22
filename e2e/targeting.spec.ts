@@ -66,10 +66,12 @@ const setHp = (page: Page, hp: Record<number, number> | number) =>
 test('cycling the panel button changes which goblin the Musketeer shoots', async ({ page }) => {
   await startGame(page);
   // Milestone 25c: (test setup) every Goblin is kept at 1000 hp for the
-  // first 212 ticks so none dies early; in the second pass they spawn every
-  // 72 ticks. Expected hits from a headless replay of the same steps.
+  // first 212 ticks so none dies early. Milestone 28: wave 1's Goblins come
+  // every 150 ticks, too few for this test, so it plays wave 2 (one every
+  // 54 ticks). Expected hits from a headless replay of the same steps.
   await api(page, (a) => {
     a.state().gold = 1000;
+    a.state().wave = 1; // test setup: the next Start Wave plays wave 2
     a.buildAt(7, 5, 'musketeer');
     a.startWave();
     for (let i = 0; i < 212; i++) {
@@ -79,11 +81,12 @@ test('cycling the panel button changes which goblin the Musketeer shoots', async
   });
   const at212 = await api(page, (a) => ({ tick: a.state().tick, enemies: a.state().enemies.map((e) => ({ id: e.id, distance: e.distance })) }));
   expect(at212.tick).toBe(212);
-  // Id 0 is in range; 1 (139, 120 px away) and 2 (67) are not yet.
+  // Id 0 is in range; 1 (157), 2 (103) and 3 (49) are not yet.
   expect(at212.enemies).toEqual([
     { id: 0, distance: 211 },
-    { id: 1, distance: 139 },
-    { id: 2, distance: 67 },
+    { id: 1, distance: 157 },
+    { id: 2, distance: 103 },
+    { id: 3, distance: 49 },
   ]);
 
   // First (the default): the furthest goblin.
@@ -98,7 +101,7 @@ test('cycling the panel button changes which goblin the Musketeer shoots', async
   expect(await ui(page)).toMatchObject({ selectedTargeting: 'last', targetLabel: targetingButtonText('last') });
   expect(await api(page, (a) => a.events().at(-1))).toEqual({ kind: 'targeting', cell: C75, mode: 'last' });
   const last = await nextHit(page);
-  expect(last).toMatchObject({ tick: 332, enemyId: 2 });
+  expect(last).toMatchObject({ tick: 332, enemyId: 3 });
   // A different, lower-path-distance goblin than the furthest one ('first' would take id 0).
   const furthest = last.before.reduce((a, b) => (b.distance > a.distance ? b : a));
   expect(furthest.id).toBe(0);

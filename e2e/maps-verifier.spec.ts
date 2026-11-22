@@ -415,13 +415,19 @@ test('title keyboard: Up and Down stop at the ends (no wrap), and the map picked
   expect((await state(page)).map.id).toBe('riverbend');
 });
 
-/** Lose the running game at once. */
+/**
+ * Lose the running game at once. Milestone 28: a Longbow can stop every
+ * wave 1 Goblin now (one every 2.5 s), so it plays on, wave by wave, until
+ * one exits.
+ */
 const lose = (page: Page) =>
   page.evaluate(() => {
     const a = window.__tarpit as TarpitTestApi;
     a.state().lives = 1;
-    if (a.state().phase === 'setup') a.startWave();
-    a.step(3000);
+    for (let n = 0; n < 100 && a.state().phase !== 'lost'; n++) {
+      if (a.state().phase === 'setup') a.startWave();
+      a.step(600);
+    }
   });
 const freshGame = (page: Page) => page.waitForFunction(() => window.__tarpit?.scene?.() === 'game' && window.__tarpit.state?.().tick === 0);
 

@@ -84,11 +84,11 @@ describe('enemy movement', () => {
 });
 
 describe('wave spawning', () => {
-  it('wave 1 spawns 20 goblins 1.2 s (72 ticks) apart from waveTick 0, and no 21st (milestone 25c)', () => {
+  it('wave 1 spawns 20 goblins 2.5 s (150 ticks) apart from waveTick 0, and no 21st (milestone 28)', () => {
     const s = createGame();
     startWave(s);
-    const seen = spawnTicks(s, 1500);
-    expect(seen).toEqual(Array.from({ length: 20 }, (_, i) => ({ waveTick: 72 * i, type: 'goblin', id: i })));
+    const seen = spawnTicks(s, 3000);
+    expect(seen).toEqual(Array.from({ length: 20 }, (_, i) => ({ waveTick: 150 * i, type: 'goblin', id: i })));
     expect(s.nextEnemyId).toBe(20);
   });
 
@@ -156,8 +156,8 @@ describe('startWave and wave clear', () => {
     const s = createGame();
     s.lives = 100; // 20 exits would lose a 20-life game (milestone 25c)
     startWave(s);
-    // Last goblin spawns at waveTick 19 * 72 = 1368 and exits on waveTick 1368 + 1584.
-    expect(runWave(s)).toBe(2953);
+    // Last goblin spawns at waveTick 19 * 150 = 2850 and exits on waveTick 2850 + 1584.
+    expect(runWave(s)).toBe(4435);
     expect(s).toMatchObject({ phase: 'setup', gold: 125, lives: 80, wave: 1, enemies: [] });
     expect(startWave(s)).toEqual({ ok: true, wave: 2 });
     expect(s.phase).toBe('wave');

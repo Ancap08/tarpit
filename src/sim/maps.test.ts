@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { buildTower, moveTower, useSpecial } from './actions';
 import { enemyPosition } from './combat';
 import { ENEMY_STATS } from './enemies';
-import { MEADOW_COMBO_NORMAL_M26 } from './fixtures/meadowComboNormal';
+import { MEADOW_COMBO_NORMAL } from './fixtures/meadowComboNormal';
 import { continueEndless, createGame, startWave, tick, TICKS_PER_SECOND } from './game';
 import {
   buildableCells,
@@ -20,16 +20,15 @@ import {
   type Cell,
 } from './grid';
 import {
-  CLUSTER_POLICY,
   CLUSTER_POLICY_TICKS,
   CLUSTER_POLICY_TICKS_BY_MAP,
-  clusterPolicyFor,
   COMBO_PLAN,
   COMBO_PLANS,
   comboBuild,
   lazyBuild,
   noTowers,
   playScripted,
+  specialPolicy,
   TRAIL_CELL_ORDER,
   trailCellOrder,
 } from './headless';
@@ -282,19 +281,22 @@ describe('movement on every map (milestone 27)', () => {
   });
 });
 
-describe('Meadow is unchanged (milestone 27)', () => {
-  it('a full comboBuild game on Normal ends in the state main ended in, apart from the new map field', () => {
+// Milestone 27 pinned this final state against main to prove the map
+// refactor left Meadow alone. Milestone 28 changed the combo's specials, so
+// the fixture is now the milestone 28 game: a whole-state pin of the combo
+// build on Meadow, Normal (rewrite it from a dump when a game number moves).
+describe('Meadow combo game, whole final state (milestone 27 fixture, rewritten in 28)', () => {
+  it('a full comboBuild game on Normal ends in the fixture state, apart from the map field', () => {
     const { state } = playScripted(comboBuild());
     const { map, ...rest } = state;
     expect(map).toBe(MAPS.meadow);
-    expect(rest).toEqual(MEADOW_COMBO_NORMAL_M26);
+    expect(rest).toEqual(MEADOW_COMBO_NORMAL);
   });
 
-  it("the trail order, plan and cluster ticks for Meadow are milestone 26's", () => {
+  it('the trail order, plan and endless cluster ticks for Meadow are the Meadow constants', () => {
     expect(trailCellOrder(MAPS.meadow)).toBe(TRAIL_CELL_ORDER);
     expect(COMBO_PLANS.meadow).toBe(COMBO_PLAN);
     expect(CLUSTER_POLICY_TICKS_BY_MAP.meadow).toBe(CLUSTER_POLICY_TICKS);
-    expect(clusterPolicyFor('meadow')).toBe(CLUSTER_POLICY);
     expect(comboBuild().mapId).toBeUndefined();
   });
 });
@@ -304,7 +306,7 @@ describe('the new maps in headless play (milestone 27)', () => {
     it(`${id}: comboBuild is deterministic, wins on Normal, and Keep going starts wave 11`, () => {
       const script = comboBuild('normal', id);
       expect(script.mapId).toBe(id);
-      expect(script.timed?.map((w) => w[0].atWaveTick)).toEqual(CLUSTER_POLICY_TICKS_BY_MAP[id]);
+      expect(script.timed).toEqual(specialPolicy('combo', 'normal', id));
       const a = playScripted(script);
       const b = playScripted(comboBuild('normal', id));
       expect(JSON.stringify(a.state)).toBe(JSON.stringify(b.state));

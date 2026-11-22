@@ -169,7 +169,7 @@ test('(d) [Menu] from the win screen: the title with the played level selected; 
   expect(await api(page, (a) => a.runScript('comboBuild'))).toBe('won');
   expect(await api(page, (a) => a.endScreen())).toBe('won');
   const won = await state(page);
-  expect(won).toMatchObject({ difficulty: 'easy', wave: 10, lives: 29, gold: 414 });
+  expect(won).toMatchObject({ difficulty: 'easy', wave: 10, lives: 35, gold: 422 });
   expect(won.towers.length).toBeGreaterThan(0);
   await click(page, 'menu');
   await onTitle(page);
@@ -177,7 +177,7 @@ test('(d) [Menu] from the win screen: the title with the played level selected; 
   expect(Object.keys(await api(page, (a) => a.uiRects())).sort()).toEqual(['title:easy', 'title:hard', 'title:map:meadow', 'title:map:riverbend', 'title:map:switchback', 'title:normal', 'title:play']); // milestone 27 adds the map thumbnails
   await click(page, 'title:play');
   await freshGame(page);
-  expect(await state(page)).toMatchObject({ difficulty: 'easy', tick: 0, wave: 0, gold: 150, lives: 30, towers: [], enemies: [], phase: 'setup' });
+  expect(await state(page)).toMatchObject({ difficulty: 'easy', tick: 0, wave: 0, gold: 150, lives: 35, towers: [], enemies: [], phase: 'setup' });
   expect(await api(page, (a) => a.speed())).toBe(1);
   // And the menu still switches level after a round trip: Menu is not on screen, so lose and go back.
   await api(page, (a) => {
@@ -193,7 +193,7 @@ test('(d) [Menu] from the win screen: the title with the played level selected; 
   expect(await state(page)).toMatchObject({ difficulty: 'normal', gold: 100, lives: 20, towers: [] });
 });
 
-test('(e) Play again on Hard keeps Hard, twice: 80 gold, 15 lives, Goblin 23 hp (milestone 25c second pass)', async ({ page }) => {
+test('(e) Play again on Hard keeps Hard, twice: 80 gold, 15 lives, Goblin 28 hp (milestone 28)', async ({ page }) => {
   await openTitle(page);
   await click(page, 'title:hard');
   await click(page, 'title:play');
@@ -202,7 +202,7 @@ test('(e) Play again on Hard keeps Hard, twice: 80 gold, 15 lives, Goblin 23 hp 
     // No towers on Hard: lost on wave 1 (npm run sim, milestone 25c), through the real Start Wave button.
     await click(page, 'startWave');
     await api(page, (a) => a.step(1));
-    expect((await state(page)).enemies.map((e) => [e.type, e.hp])).toEqual([['goblin', 23]]);
+    expect((await state(page)).enemies.map((e) => [e.type, e.hp])).toEqual([['goblin', 28]]);
     for (let i = 0; i < 40 && (await state(page)).phase !== 'lost'; i++) {
       if ((await state(page)).phase === 'setup') await click(page, 'startWave');
       await api(page, (a) => a.step(500));

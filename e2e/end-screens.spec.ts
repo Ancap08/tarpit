@@ -97,11 +97,12 @@ test('lose with no towers, map clicks do nothing, play again starts a clean game
   await expectFreshGame(page);
   expect(await leakProbe(page)).toEqual(before);
 
-  // Wave 1 again plays exactly as in a first game: after 2005 ticks 6 of its
-  // 20 Goblins have exited (milestone 25c second pass; headless run).
+  // Wave 1 again plays exactly as in a first game: after 2005 ticks 3 of its
+  // 20 Goblins have exited (milestone 28: one every 2.5 s, each exiting
+  // 1584 ticks after it spawns).
   await click(page, 'startWave');
   await step(page, 2005);
-  expect(await state(page)).toMatchObject({ phase: 'wave', wave: 1, lives: 14, gold: 100 });
+  expect(await state(page)).toMatchObject({ phase: 'wave', wave: 1, lives: 17, gold: 100 });
   // And the build bar works in the new game.
   await click(page, 'bar:musketeer');
   expect(await ui(page)).toMatchObject({ pick: 'musketeer' });
@@ -114,10 +115,10 @@ test('win with the combo build through the scene actions, then play again', asyn
   const phase = await page.evaluate(() => (window.__tarpit as TarpitTestApi).runScript('comboBuild'));
   expect(phase).toBe('won');
   expect(await endScreen(page)).toBe('won');
-  expect(await state(page)).toMatchObject({ phase: 'won', wave: 10, lives: 13, gold: 476 });
+  expect(await state(page)).toMatchObject({ phase: 'won', wave: 10, lives: 14, gold: 484 });
   expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).hudText())).toMatchObject({
-    gold: 'Gold 476',
-    lives: 'Lives 13',
+    gold: 'Gold 484',
+    lives: 'Lives 14',
     wave: 'Wave 10/10',
   });
 

@@ -399,23 +399,22 @@ describe('E. sim probes on every map', () => {
     }
   });
 
-  it("the DEVLOG's Normal table, replayed; each run is deterministic and refuses nothing", () => {
-    const want: Record<(typeof NEW_MAPS)[number], Record<string, [string, number, number, number]>> = {
-      switchback: { noTowers: ['lost', 1, 0, 100], lazyBuild: ['lost', 9, 0, 448], longbowSpam: ['lost', 8, 0, 511], comboBuild: ['won', 10, 18, 436], noAntiAir: ['lost', 5, 0, 68] },
-      riverbend: { noTowers: ['lost', 1, 0, 100], lazyBuild: ['lost', 8, 0, 369], longbowSpam: ['lost', 8, 0, 525], comboBuild: ['won', 10, 8, 436], noAntiAir: ['lost', 5, 0, 74] },
-    };
-    const make = { noTowers, lazyBuild, longbowSpam, comboBuild, noAntiAir };
-    for (const id of NEW_MAPS) {
+  // Milestone 28: the result pins of this table are cells of the balance
+  // matrix (balance.suite.ts); what stays here is that each run records
+  // the same script twice and refuses nothing, one test per map.
+  for (const id of NEW_MAPS) {
+    it(`${id}: noTowers, lazyBuild, longbowSpam, comboBuild and noAntiAir record the same script twice and refuse nothing`, () => {
+      const make = { noTowers, lazyBuild, longbowSpam, comboBuild, noAntiAir };
       for (const [name, f] of Object.entries(make)) {
-        const a = playScripted(f('normal', id));
-        const b = playScripted(f('normal', id));
-        expect(JSON.stringify(a), `${id} ${name}`).toBe(JSON.stringify(b));
-        expect(a.state.map.id).toBe(id);
-        expect(a.log.filter((step) => 'result' in step && !step.result.ok), `${id} ${name}`).toEqual([]);
-        expect([a.state.phase, a.state.wave, a.state.lives, a.state.gold], `${id} ${name}`).toEqual(want[id][name]);
+        const a = f('normal', id);
+        expect(f('normal', id), `${id} ${name}`).toEqual(a);
+        expect(a.mapId).toBe(id);
+        const run = playScripted(a);
+        expect(run.state.map.id).toBe(id);
+        expect(run.log.filter((step) => 'result' in step && !step.result.ok), `${id} ${name}`).toEqual([]);
       }
-    }
-  });
+    });
+  }
 
   for (const id of NEW_MAPS) {
     it(`${id}: the boss walks the whole path and costs 5 lives; call early and endless work`, () => {
@@ -460,26 +459,27 @@ describe('E. sim probes on every map', () => {
       expect(run.state.map.id).toBe(id);
       expect(run.state.endless).toBe(true);
       expect(run.state.phase).toBe('lost');
-      expect(run.state.wave).toBe(id === 'switchback' ? 16 : 14);
+      expect(run.state.wave).toBe(id === 'switchback' ? 16 : 15);
     });
   }
 });
 
 describe('B. archetypes and the map argument', () => {
-  it('the archetypes that take a map record it and play on it', () => {
-    for (const f of [noTowers, lazyBuild, longbowSpam, comboBuild, noAntiAir, endlessIdle]) {
+  // Milestone 28: one test per archetype (the six together took over 5 s).
+  for (const f of [noTowers, lazyBuild, longbowSpam, comboBuild, noAntiAir, endlessIdle]) {
+    it(`the archetypes that take a map record it and play on it: ${f.name}`, () => {
       for (const id of NEW_MAPS) expect(f('normal', id).mapId, `${f.name} ${id}`).toBe(id);
       expect(f('normal').mapId, f.name).toBeUndefined();
       expect(f('normal', 'meadow').mapId, f.name).toBe('meadow');
-    }
-  });
+    });
+  }
 
   // Finding (verifier, low): ARCHETYPES and INFORMATIONAL are typed (difficulty, map) => WaveScript, but
   // soundBuild, soundBuildNoTar, hardBuild, comboStrongest and comboWithKegs dropped the map and returned a
   // Meadow script with no mapId, so `ARCHETYPES.hardBuild('hard', 'riverbend')` silently played Meadow.
-  // Fixed in the milestone 27 follow-up (implementer): those five now throw for a map other than Meadow
-  // (milestone 28 writes per-map versions). This was an it.fails pin; it now checks that every entry given
-  // a map either returns a script for that map or refuses it loudly, and that exactly those five refuse.
+  // Fixed in the milestone 27 follow-up (implementer): those five now throw for a map other than Meadow;
+  // milestone 28 gave hardBuild a plan per map and removed comboWithKegs, so three refuse. This was an it.fails pin; it now checks that every entry given
+  // a map either returns a script for that map or refuses it loudly, and that exactly those three refuse.
   it('every entry of ARCHETYPES and INFORMATIONAL given a map returns a script for that map or throws', async () => {
     const { ARCHETYPES, INFORMATIONAL } = await import('./headless');
     const wrong: string[] = [];
@@ -496,7 +496,7 @@ describe('B. archetypes and the map argument', () => {
       if (script.mapId !== 'riverbend') wrong.push(name);
     }
     expect(wrong).toEqual([]);
-    expect(refused.sort()).toEqual(['comboStrongest', 'comboWithKegs', 'hardBuild', 'soundBuild', 'soundBuildNoTar']);
+    expect(refused.sort()).toEqual(['comboStrongest', 'soundBuild', 'soundBuildNoTar']);
     // Meadow, named or not, still gets its script from each of them.
     for (const name of refused) {
       const f = { ...ARCHETYPES, ...INFORMATIONAL }[name];

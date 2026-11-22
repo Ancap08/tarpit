@@ -160,7 +160,7 @@ describe('E1. enemy conservation and kill credit over a full comboBuild game (No
     expect(ledger.earlyBonuses).toBe(0);
     expect(ledger.clearBonuses).toBe(10 * WAVE_CLEAR_BONUS);
     expect(DIFFICULTY_DEFS.normal.startGold + ledger.bounties + ledger.clearBonuses + ledger.earlyBonuses + ledger.refunds - ledger.spend).toBe(s.gold);
-    expect(s.gold).toBe(476);
+    expect(s.gold).toBe(484);
   });
 });
 
@@ -509,12 +509,12 @@ describe('E6. special slow channel through a real Tar Pit and a real Tar Barrel'
     expect(useSpecial(s, 'tarBarrel', p)).toMatchObject({ ok: true });
   };
 
-  it('Tar Pit first, then the barrel: the barrel lands (not wasted), 0.6 wins while both last, and after the Pit is sold the barrel\'s 0.5 runs to tick 240 exactly', () => {
+  it('Tar Pit first, then the barrel: the barrel lands (not wasted), 0.6 wins while both last, and after the Pit is sold the barrel\'s 0.5 runs to tick 210 exactly', () => {
     const { s, e } = withPit('troll');
     tick(s); // the Pit fires: 0.6 for 120 ticks
     expect([e.slow, e.slowTicksLeft]).toEqual([0.6, 120]);
     barrel(s, e);
-    expect([e.specialSlow, e.specialSlowTicksLeft]).toEqual([0.5, 240]);
+    expect([e.specialSlow, e.specialSlowTicksLeft]).toEqual([0.5, 210]);
     expect([e.slow, e.slowTicksLeft]).toEqual([0.6, 120]);
     const seen: number[] = [];
     for (let i = 0; i < 60; i++) seen.push(movedAt(s, e));
@@ -524,7 +524,7 @@ describe('E6. special slow channel through a real Tar Pit and a real Tar Barrel'
     expect(towerLeft).toBeGreaterThan(0);
     for (let i = 0; i < towerLeft; i++) expect(movedAt(s, e), `tower slot tick ${i}`).toBe(0.6);
     const barrelLeft = e.specialSlowTicksLeft!;
-    expect(barrelLeft).toBe(240 - 60 - towerLeft);
+    expect(barrelLeft).toBe(210 - 60 - towerLeft);
     expect(barrelLeft).toBeGreaterThan(0);
     for (let i = 0; i < barrelLeft; i++) expect(movedAt(s, e), `barrel tick ${i}`).toBe(0.5);
     expect(movedAt(s, e)).toBe(0);
@@ -539,13 +539,13 @@ describe('E6. special slow channel through a real Tar Pit and a real Tar Barrel'
     expect(upgradeTower(s, PIT).ok).toBe(true);
     expect(movedAt(s, e)).toBe(0.5); // the Pit fires during this tick, after movement
     expect([e.slow, e.slowTicksLeft]).toEqual([0.6, 120]);
-    expect(e.specialSlowTicksLeft).toBe(240 - 31);
+    expect(e.specialSlowTicksLeft).toBe(210 - 31);
     expect(movedAt(s, e)).toBe(0.6);
     expect(sellTower(s, PIT).ok).toBe(true);
     for (let i = 0; i < 119; i++) expect(movedAt(s, e)).toBe(0.6);
-    // 31 + 1 + 119 = 151 ticks of the barrel used; 89 left at 0.5.
-    expect(e.specialSlowTicksLeft).toBe(89);
-    for (let i = 0; i < 89; i++) expect(movedAt(s, e)).toBe(0.5);
+    // 31 + 1 + 119 = 151 ticks of the barrel used; 59 left at 0.5.
+    expect(e.specialSlowTicksLeft).toBe(59);
+    for (let i = 0; i < 59; i++) expect(movedAt(s, e)).toBe(0.5);
     expect(movedAt(s, e)).toBe(0);
   });
 
@@ -554,8 +554,8 @@ describe('E6. special slow channel through a real Tar Pit and a real Tar Barrel'
     barrel(s, e);
     for (let i = 0; i < 200; i++) movedAt(s, e);
     expect(applySlow(e, 0.4, 120)).toBe(0.4);
-    for (let i = 0; i < 40; i++) expect(movedAt(s, e)).toBe(0.5);
-    for (let i = 0; i < 80; i++) expect(movedAt(s, e)).toBe(0.4);
+    for (let i = 0; i < 10; i++) expect(movedAt(s, e)).toBe(0.5);
+    for (let i = 0; i < 110; i++) expect(movedAt(s, e)).toBe(0.4);
     expect(movedAt(s, e)).toBe(0);
   });
 
@@ -565,7 +565,7 @@ describe('E6. special slow channel through a real Tar Pit and a real Tar Barrel'
     expect(e.slow).toBe(0.3);
     barrel(s, e);
     expect(e.specialSlow).toBe(0.3);
-    expect(s.events.filter((ev) => ev.kind === 'slowed').slice(-1)).toEqual([{ kind: 'slowed', enemyId: 0, slow: 0.3, ticks: 240 }]);
+    expect(s.events.filter((ev) => ev.kind === 'slowed').slice(-1)).toEqual([{ kind: 'slowed', enemyId: 0, slow: 0.3, ticks: 210 }]);
     for (let i = 0; i < 300; i++) {
       const slow = movedAt(s, e);
       expect(slow).toBeLessThanOrEqual(0.3);
@@ -579,14 +579,14 @@ describe('E6. special slow channel through a real Tar Pit and a real Tar Barrel'
     expect(effectiveSlow(e)).toBe(0.3);
   });
 
-  it('the barrel reaches 90 px and not 90.01, and is the DESIGN.md 0.5 for 240 ticks', () => {
-    expect(SPECIAL_DEFS.tarBarrel).toMatchObject({ radius: 90, slow: 0.5, slowTicks: 240 });
+  it('the barrel reaches 90 px and not 90.01, and is the DESIGN.md 0.5 for 210 ticks', () => {
+    expect(SPECIAL_DEFS.tarBarrel).toMatchObject({ radius: 90, slow: 0.5, slowTicks: 210 });
     const a = arena('goblin', 100);
     expect(useSpecial(a.s, 'tarBarrel', { x: 100, y: 240 + 90.01 })).toMatchObject({ ok: true });
     expect(a.e.specialSlowTicksLeft).toBe(0);
     const b = arena('goblin', 100);
     expect(useSpecial(b.s, 'tarBarrel', { x: 100, y: 240 + 90 })).toMatchObject({ ok: true });
-    expect(b.e.specialSlowTicksLeft).toBe(240);
+    expect(b.e.specialSlowTicksLeft).toBe(210);
   });
 });
 
@@ -684,17 +684,17 @@ describe('B. the DESIGN.md wave table, transcribed by the verifier (no other tes
   const g = (type: EnemyType, count: number, interval: number, delay = 0) => ({ type, count, interval, delay });
   // docs/DESIGN.md "Waves": groups, then enemies, total hp, bounty.
   const TABLE: [ReturnType<typeof g>[], number, number, number][] = [
-    // Milestone 25c second pass (longer, sparser waves).
-    [[g('goblin', 20, 1.2)], 20, 380, 40],
-    [[g('goblin', 32, 0.9)], 32, 608, 64],
-    [[g('goblin', 22, 1.0), g('wolf', 12, 1.5, 4.5)], 34, 658, 68],
-    [[g('harpy', 10, 1.5), g('goblin', 30, 1.0, 3)], 40, 930, 90],
-    [[g('goblin', 40, 1.0), g('troll', 3, 8, 10), g('harpy', 10, 1.2, 8)], 53, 3820, 134],
-    [[g('goblin', 45, 1.0), g('wolf', 35, 1.0, 9), g('shieldbearer', 6, 1.5, 0.5)], 86, 1975, 190],
-    [[g('wolf', 26, 1.5), g('troll', 13, 4.5, 1), g('harpy', 16, 1.0, 8)], 55, 12796, 204],
-    [[g('goblin', 50, 1.5), g('wolf', 25, 1.5, 6.75), g('troll', 13, 5, 3), g('shieldbearer', 6, 6, 4), g('harpy', 14, 1.2, 10)], 108, 14074, 326],
-    [[g('wolf', 30, 1.0), g('troll', 10, 2, 2)], 40, 9600, 140],
-    [[g('wolf', 20, 1.5, 4), g('troll', 15, 4.5), g('harpy', 12, 1.5, 6), g('shieldbearer', 8, 5, 2.5), g('boss', 1, 0, 65)], 56, 18892, 386],
+    // Milestone 25c second pass (longer, sparser waves); milestone 28: wave 1 every 2.5 s, Goblin 23 hp, Troll 950.
+    [[g('goblin', 20, 2.5)], 20, 460, 40],
+    [[g('goblin', 32, 0.9)], 32, 736, 64],
+    [[g('goblin', 22, 1.0), g('wolf', 12, 1.5, 4.5)], 34, 746, 68],
+    [[g('harpy', 10, 1.5), g('goblin', 30, 1.0, 3)], 40, 1050, 90],
+    [[g('goblin', 40, 1.0), g('troll', 3, 8, 10), g('harpy', 10, 1.2, 8)], 53, 4130, 134],
+    [[g('goblin', 45, 1.0), g('wolf', 35, 1.0, 9), g('shieldbearer', 6, 1.5, 0.5)], 86, 2155, 190],
+    [[g('wolf', 26, 1.5), g('troll', 13, 4.5, 1), g('harpy', 16, 1.0, 8)], 55, 13446, 204],
+    [[g('goblin', 50, 1.5), g('wolf', 25, 1.5, 6.75), g('troll', 13, 5, 3), g('shieldbearer', 6, 6, 4), g('harpy', 14, 1.2, 10)], 108, 14924, 326],
+    [[g('wolf', 30, 1.0), g('troll', 10, 2, 2)], 40, 10100, 140],
+    [[g('wolf', 20, 1.5, 4), g('troll', 15, 4.5), g('harpy', 12, 1.5, 6), g('shieldbearer', 8, 5, 2.5), g('boss', 1, 0, 65)], 56, 19642, 386],
   ];
 
   it('every group of every wave, and each wave\'s enemies, total hp and bounty', () => {
@@ -710,15 +710,15 @@ describe('B. the DESIGN.md wave table, transcribed by the verifier (no other tes
 
   it('enemy hp and bounty, Fire Arrows, Easy lives and the Hard multiplier as DESIGN.md states them', () => {
     const stat = (t: EnemyType) => [ENEMY_STATS[t].hp, ENEMY_STATS[t].speed, ENEMY_STATS[t].bounty];
-    expect(stat('goblin')).toEqual([19, 60, 2]);
+    expect(stat('goblin')).toEqual([23, 60, 2]);
     expect(stat('wolf')).toEqual([20, 120, 2]);
-    expect(stat('troll')).toEqual([900, 35, 8]);
+    expect(stat('troll')).toEqual([950, 35, 8]);
     expect(stat('harpy')).toEqual([36, 90, 3]);
     expect(stat('shieldbearer')).toEqual([70, 45, 5]);
     expect(stat('boss')).toEqual([4000, 25, 150]);
     expect(SPECIAL_DEFS.fireArrows).toMatchObject({ unlockWave: 7, radius: 80, burnDps: 30, burnTicks: 240 });
     expect(DIFFICULTY_DEFS).toEqual({
-      easy: { hpMultiplier: 0.75, startGold: 150, startLives: 30 },
+      easy: { hpMultiplier: 0.75, startGold: 150, startLives: 35 },
       normal: { hpMultiplier: 1, startGold: 100, startLives: 20 },
       hard: { hpMultiplier: 1.2, startGold: 80, startLives: 15 },
     });
@@ -726,7 +726,7 @@ describe('B. the DESIGN.md wave table, transcribed by the verifier (no other tes
 
   it('every wave\'s last spawn (milestone 25c second pass: within 90 s, wave 8 the longest at 73.5 s)', () => {
     const secs = WAVES.map((_, i) => lastSpawnTick(i + 1) / 60);
-    expect(secs).toEqual([22.8, 27.9, 21, 32, 39, 44, 55, 73.5, 29, 65]);
+    expect(secs).toEqual([47.5, 27.9, 21, 32, 39, 44, 55, 73.5, 29, 65]);
   });
 });
 
@@ -746,7 +746,7 @@ describe('S1. spawn rate (A1), from the merged schedule of all groups of a wave'
   it('in any 180 ticks [t, t + 180) at most 6 walkers and 4 flyers spawn; waves 6 and 8 sit on the walker limit', () => {
     const walkers = WAVES.map((_, w) => most(merged(w, false), 180, false));
     const flyers = WAVES.map((_, w) => most(merged(w, true), 180, false));
-    expect(walkers).toEqual([3, 4, 5, 3, 4, 6, 3, 6, 5, 4]);
+    expect(walkers).toEqual([2, 4, 5, 3, 4, 6, 3, 6, 5, 4]);
     expect(flyers).toEqual([0, 0, 0, 2, 3, 0, 3, 3, 0, 2]);
     for (const n of walkers) expect(n).toBeLessThanOrEqual(6);
     for (const n of flyers) expect(n).toBeLessThanOrEqual(4);
@@ -756,7 +756,7 @@ describe('S1. spawn rate (A1), from the merged schedule of all groups of a wave'
   // seconds line up, so two spawns exactly 3.0 s apart are common: counting
   // both ends, waves 3, 6 and 8 send 7, 8 and 7 walkers in 3 s.
   it('with both ends of the 3 s counted the walker counts are higher: 7, 8 and 7 on waves 3, 6 and 8 (pinned, not a limit)', () => {
-    expect(WAVES.map((_, w) => most(merged(w, false), 180, true))).toEqual([3, 4, 7, 4, 5, 8, 4, 7, 6, 5]);
+    expect(WAVES.map((_, w) => most(merged(w, false), 180, true))).toEqual([2, 4, 7, 4, 5, 8, 4, 7, 6, 5]);
     expect(WAVES.map((_, w) => most(merged(w, true), 180, true))).toEqual([0, 0, 0, 3, 3, 0, 4, 3, 0, 3]);
   });
 });
@@ -764,31 +764,23 @@ describe('S1. spawn rate (A1), from the merged schedule of all groups of a wave'
 describe('S2. what tar still does (no balance test pins it)', () => {
   const run = (name: string, level: 'easy' | 'normal') => playScripted(ARCHETYPES[name](level), undefined, level);
 
-  it('Tar Pit, Normal: soundBuild and soundBuildNoTar both lose on wave 8, but with tar it has one more life after wave 7 and lasts 534 ticks longer', () => {
+  // Milestone 28 numbers: both lose on wave 7 (8 before).
+  it('Tar Pit, Normal: soundBuild and soundBuildNoTar both lose on wave 7, but with tar it has 9 lives after wave 6 against 4, and its wave 7 lasts 1890 ticks longer', () => {
     const tar = run('soundBuild', 'normal');
     const none = run('soundBuildNoTar', 'normal');
-    expect([tar.state.phase, tar.state.wave, none.state.phase, none.state.wave]).toEqual(['lost', 8, 'lost', 8]);
-    expect([tar.waves[6].lives, none.waves[6].lives]).toEqual([3, 2]);
-    expect([tar.waves[7].ticks, none.waves[7].ticks]).toEqual([4031, 3497]);
-    expect(tar.waves[7].ticks).toBeGreaterThan(none.waves[7].ticks);
+    expect([tar.state.phase, tar.state.wave, none.state.phase, none.state.wave]).toEqual(['lost', 7, 'lost', 7]);
+    expect([tar.waves[5].lives, none.waves[5].lives]).toEqual([9, 4]);
+    expect([tar.waves[6].ticks, none.waves[6].ticks]).toEqual([5477, 3587]);
+    expect(tar.waves[6].ticks).toBeGreaterThan(none.waves[6].ticks);
   });
 
-  it('Tar Pit, Easy: soundBuild wins with 9 lives and soundBuildNoTar loses on wave 10', () => {
+  it('Tar Pit, Easy: soundBuild wins with 11 lives and soundBuildNoTar loses on wave 10', () => {
     const tar = run('soundBuild', 'easy');
     const none = run('soundBuildNoTar', 'easy');
-    expect([tar.state.phase, tar.state.lives]).toEqual(['won', 9]);
+    expect([tar.state.phase, tar.state.lives]).toEqual(['won', 11]);
     expect([none.state.phase, none.state.wave]).toEqual(['lost', 10]);
   });
-
-  it('Tar Barrel, Normal: comboBuild without its three barrels (waves 4 to 6) ends the same, 13 lives and 476 gold; only wave 5 clears 180 ticks later', () => {
-    const script = comboBuild();
-    const withBarrel = playScripted(script);
-    const timed = script.timed!.map((list, i) => (i >= 3 && i <= 5 ? [] : list));
-    const without = playScripted(Object.assign(script.map((w) => [...w]), { timed }));
-    expect(without.log.filter((l) => 'result' in l && !l.result.ok)).toEqual([]);
-    expect([without.state.phase, without.state.lives, without.state.gold]).toEqual(['won', 13, 476]);
-    expect(without.waves.map((w) => w.lives)).toEqual(withBarrel.waves.map((w) => w.lives));
-    const later = without.waves.map((w, i) => w.ticks - withBarrel.waves[i].ticks);
-    expect(later).toEqual([0, 0, 0, 0, 180, 0, 0, 0, 0, 0]);
-  });
+  // Milestone 28: the Tar Barrel probe ("ends the same without its three
+  // barrels") is folded into balance.suite.ts T9, which now requires the
+  // opposite: without its barrels the combo does strictly worse.
 });

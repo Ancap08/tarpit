@@ -20,7 +20,7 @@ const FIRED_EXPECT = {
   kills: 5,
   before: 15,
   after: 10,
-  hurt: ['goblin 5 7', 'troll 13 820'],
+  hurt: ['goblin 5 11', 'troll 13 870'],
   charges: 0,
 };
 
@@ -76,23 +76,35 @@ test('map at wave 0', async ({ page }) => {
 // effect 1 to 3 ticks old with at least 2 hurt Goblins found the Cannon's
 // first shot at 1157; tick 1160 shows its splash 3 ticks into its fade, as
 // the original frame did, with 10 Goblins out and 4 hurt.
-const MID_WAVE_STEPS = 1160;
+// Milestone 28 follow-up: wave 1's Goblins come every 2.5 s and the
+// Musketeer alone clears them, so the frame plays wave 2 (state.wave = 1,
+// then Start Wave; the verifier's proposal). Tick 1904: 15 Goblins out, 10
+// hurt, 2 tarred, the Cannon's splash 3 ticks into its fade, the Tar Pit's
+// shot 2 ticks old, no shot on this tick (src/sim/midwave-frame.test.ts).
+const MID_WAVE_STEPS = 1904;
 
-test('mid wave 1 with three towers', async ({ page }) => {
+test('mid wave 2 with three towers', async ({ page }) => {
   await open(page);
   const counts = await page.evaluate(async (steps) => {
     const t = window.__tarpit as TarpitTestApi;
     await t.startGame();
     t.state().gold = 1000; // test setup: afford all three towers
+    t.state().wave = 1; // test setup: the next Start Wave plays wave 2
     t.buildAt(7, 5, 'musketeer'); // legacy spot 2
     t.buildAt(15, 9, 'cannon'); // legacy spot 6
     t.buildAt(18, 9, 'tarpit'); // legacy spot 7
     t.startWave();
     t.step(steps);
     const s = t.state();
-    return { enemies: s.enemies.length, hurt: s.enemies.filter((e) => e.hp < 19).length, shotsThisTick: s.shots.length };
+    return {
+      wave: s.wave,
+      enemies: s.enemies.length,
+      hurt: s.enemies.filter((e) => e.hp < 23).length,
+      tarred: s.enemies.filter((e) => e.slowTicksLeft > 0).length,
+      shotsThisTick: s.shots.length,
+    };
   }, MID_WAVE_STEPS);
-  expect(counts).toEqual({ enemies: 10, hurt: 4, shotsThisTick: 0 });
+  expect(counts).toEqual({ wave: 2, enemies: 15, hurt: 10, tarred: 2, shotsThisTick: 0 });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('mid-wave.png');
 });
@@ -145,7 +157,7 @@ test('wave 8 with all five enemy types', async ({ page }) => {
       goblins: of('goblin').length,
       wolves: of('wolf').length,
       trolls: of('troll').length,
-      hurtTrolls: of('troll').filter((x) => x.hp < 900).length, // Troll max hp is 900 (milestone 25c second pass)
+      hurtTrolls: of('troll').filter((x) => x.hp < 950).length, // Troll max hp is 950 (milestone 28)
       slowed: e.filter((x) => x.slowTicksLeft > 0).length,
       shieldbearers: of('shieldbearer').length,
       harpies: of('harpy').length,
@@ -217,7 +229,7 @@ test('upgraded Musketeer selected with its panel and range', async ({ page }) =>
 // built before wave 1 is locked (no outline); a Cannon at (10,5) just placed
 // in this setup is unlocked (pale dashed outline) and selected with a real
 // click, so its panel reads "Remove  +80", the full refund. Wave 1 with one
-// Musketeer ends with 91 gold (milestone 25c second pass: it kills 8 of 20 Goblins), enough for the Cannon.
+// Musketeer ends with 115 gold (milestone 28: it kills all 20 Goblins), enough for the Cannon.
 test('planning phase: a locked Musketeer and an unlocked Cannon selected', async ({ page }) => {
   await open(page);
   const s = await page.evaluate(async () => {
@@ -233,7 +245,7 @@ test('planning phase: a locked Musketeer and an unlocked Cannon selected', async
   expect(s).toEqual({
     phase: 'setup',
     wave: 1,
-    gold: 11,
+    gold: 35,
     towers: [
       { type: 'musketeer', locked: true },
       { type: 'cannon', locked: false },
@@ -274,7 +286,8 @@ test('planning phase: a locked Musketeer and an unlocked Cannon selected', async
 // Both slowed and burning together no longer happens with a splash on screen.
 // Second pass: the Mortar fires at 1836, 2016, 2196; tick 2198 has its
 // splash 2 ticks old, Troll 13 slowed and burning (375 of 900 hp), two more
-// Trolls and 10 Goblins (3 hurt) behind, no Harpy.
+// Trolls and 10 Goblins (3 hurt) behind, no Harpy. Milestone 28 (Goblin 23,
+// Troll 950): the same tick and enemies, Troll 13 at 425 of 950 hp.
 const MORTAR_FIRE_TICK = 2196;
 const NEW_TOWERS_STEPS = 2198;
 
@@ -407,7 +420,11 @@ test('wave 4 Harpies: a Cannon splash ignores one, a Musketeer shoots one', asyn
 // fired on step 3228, no hit on this step. Second pass (he comes at 65 s):
 // step 5664, alone on the downhill run at (420,196), tarred and burning,
 // 2429 of 4000 hp, Mortar splash fired on step 5662, no hit on this step.
-const BOSS_STEPS = 5664;
+// Milestone 28 (the stored special list in waves 1 to 9): the first wave 10
+// step that meets the same rules, 5361: alone near the top of the downhill
+// run at (420,111), tarred and burning, 3339 of 4000 hp, Mortar splash fired
+// on step 5359, no hit on this step (src/sim/boss-frame.test.ts pins it).
+const BOSS_STEPS = 5361;
 
 test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splash', async ({ page }) => {
   await open(page);
@@ -439,7 +456,7 @@ test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splas
     slowed: true,
     hitNow: false,
     mortarHitOnBoss: 1,
-    bar: `${BOSS_NAME} 2429 / 4000`,
+    bar: `${BOSS_NAME} 3339 / 4000`,
     texture: 'boss',
   });
   await settle(page);
@@ -506,6 +523,8 @@ test('special aim: Tar Barrel circle over a cluster on wave 4', async ({ page })
 // of 500. Second pass: step 810, the keg at enemy 12's position (160,191)
 // hits 6 (3 Goblins, 2 Harpies, Troll 13), kills the 5 that are not the
 // Troll and leaves it at 820 of 900; Goblin 5 carries earlier damage.
+// Milestone 28 (Goblin 23, Troll 950): the same step, hits and kills; the
+// Troll is left at 870 of 950 and Goblin 5 at 11.
 const FIRED_STEPS = 810;
 const FIRED_TARGET_ID = 12;
 
@@ -542,8 +561,8 @@ test('special fired: the tick after a Powder Keg (test mode, no flash)', async (
       kills,
       before,
       after: e.length,
-      // Full hp since milestone 25c (second pass): Troll 900, Harpy 36, Wolf 20, Goblin 19.
-      hurt: e.filter((x) => x.hp < ({ troll: 900, harpy: 36, wolf: 20, goblin: 19 } as Record<string, number>)[x.type]).map((x) => `${x.type} ${x.id} ${x.hp}`),
+      // Full hp since milestone 28: Troll 950, Harpy 36, Wolf 20, Goblin 23.
+      hurt: e.filter((x) => x.hp < ({ troll: 950, harpy: 36, wolf: 20, goblin: 23 } as Record<string, number>)[x.type]).map((x) => `${x.type} ${x.id} ${x.hp}`),
       charges: t.state().specialCharges,
     };
   }, aim);
@@ -564,7 +583,7 @@ test('win screen after the combo build', async ({ page }) => {
     const phase = t.runScript('comboBuild');
     return { phase, screen: t.endScreen(), lives: t.state().lives, gold: t.state().gold };
   });
-  expect(end).toEqual({ phase: 'won', screen: 'won', lives: 13, gold: 476 }); // milestone 25c: horde waves and cluster specials
+  expect(end).toEqual({ phase: 'won', screen: 'won', lives: 14, gold: 484 }); // milestone 28: the stored special list
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('won.png');
 });

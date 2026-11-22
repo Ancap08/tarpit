@@ -74,7 +74,7 @@ describe('comboBuildNoFire', () => {
     const noFire = comboBuildNoFire();
     const fireCells = new Set(builds(combo, 'firepot').map((a) => cellKey(a.cell)));
     expect([...noFire]).toEqual(combo.map((wave) => wave.filter((a) => !fireCells.has(cellKey(a.cell)))));
-    // Milestone 25c: it keeps the combo's cluster specials.
+    // Milestone 25c: it keeps the combo's specials (28: the stored list).
     expect(noFire.timed).toEqual(combo.timed);
     expect(builds(noFire, 'firepot')).toEqual([]);
     const withFire = play(combo);

@@ -23,11 +23,11 @@ async function clickButton(page: Page, which: 'startWave' | 'speed'): Promise<vo
   await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
 }
 
-// Milestone 25c: wave 1 is 20 Goblins 1.2 s apart; with no towers all 20
-// exit, which would end a 20-life game, so these tests raise the lives to
-// 100 first (test setup). The last Goblin spawns at waveTick 1368 and exits
-// at 1368 + 1584, so the wave ends after 2953 ticks.
-const WAVE1_NO_TOWERS_TICKS = 2953;
+// Milestone 25c: wave 1 is 20 Goblins; with no towers all 20 exit, which
+// would end a 20-life game, so these tests raise the lives to 100 first
+// (test setup). Milestone 28: they come 2.5 s apart; the last spawns at
+// waveTick 2850 and exits at 2850 + 1584, so the wave ends after 4435 ticks.
+const WAVE1_NO_TOWERS_TICKS = 4435;
 const lives100 = (page: Page) => page.evaluate(() => void ((window.__tarpit as TarpitTestApi).state().lives = 100));
 
 test('wave 1 with no towers: 20 goblins, 20 leaks, clear bonus paid', async ({ page }) => {
@@ -47,16 +47,17 @@ test('wave 1 with no towers: 20 goblins, 20 leaks, clear bonus paid', async ({ p
 });
 
 // Milestone 25c: a 12 hp Goblin dies to one Musketeer shot; this one kills
-// all 20 (before: 2 of 8). 100 - 50 + 20 x 2 + 25 = 115. Second pass: 19 hp
-// Goblins take two shots, so it kills 8 and 12 leak: 100 - 50 + 8 x 2 + 25 = 91.
-test('one musketeer at cell (7,5) kills 8 of the 20 goblins in wave 1', async ({ page }) => {
+// all 20 (before: 2 of 8). Second pass: 19 hp Goblins take two shots, so it
+// killed 8 and 12 leaked. Milestone 28: 23 hp Goblins, still two shots, but
+// one every 2.5 s, so it kills all 20 again: 100 - 50 + 20 x 2 + 25 = 115.
+test('one musketeer at cell (7,5) kills all 20 goblins in wave 1', async ({ page }) => {
   await startGame(page);
   const built = await page.evaluate(() => (window.__tarpit as TarpitTestApi).buildAt(7, 5, 'musketeer'));
   expect(built.ok).toBe(true);
   await clickButton(page, 'startWave');
-  await step(page, 3000);
-  expect(await state(page)).toMatchObject({ phase: 'setup', wave: 1, lives: 8, gold: 91 });
-  expect(await hud(page)).toMatchObject({ gold: 'Gold 91', lives: 'Lives 8' });
+  await step(page, 3100);
+  expect(await state(page)).toMatchObject({ phase: 'setup', wave: 1, lives: 20, gold: 115 });
+  expect(await hud(page)).toMatchObject({ gold: 'Gold 115', lives: 'Lives 20' });
 });
 
 test('speed button toggles 1x and 2x', async ({ page }) => {

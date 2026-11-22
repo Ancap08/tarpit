@@ -56,7 +56,7 @@ describe('verifier 2: combat', () => {
     expect(s.gold).toBe(3 * ENEMY_STATS.goblin.bounty); // 3 kills, each paid exactly once (2 gold each since milestone 25c)
   });
 
-  it('a lone 30 hp goblin crossing S2 musketeer coverage dies on the 3rd shot; the milestone 25c wave 1 (19 hp Goblins) leaks 12 of 20', () => {
+  it('a lone 30 hp goblin crossing S2 musketeer coverage dies on the 3rd shot; the milestone 28 wave 1 (23 hp Goblins every 2.5 s) leaks none of 20', () => {
     // First in range at path distance ~150.54 (x 150.5, y 240; 110 px from S2).
     // At 1 px/tick the goblin is first shot at distance 151, then 211 and 271 (3 x 12 = 36 >= 30).
     const s = arena([goblin(0, 0)], [[S2, 'musketeer']]);
@@ -72,15 +72,15 @@ describe('verifier 2: combat', () => {
     expect(s.enemies).toEqual([]);
     expect(s.gold).toBe(ENEMY_STATS.goblin.bounty);
 
-    // Whole of wave 1 with only this tower: each 19 hp Goblin takes two
-    // shots, so 8 die and 12 leak (milestone 25c second pass; first pass
-    // 12 hp, no leaks; before 25c: 2 kills, 6 leaks of 8).
+    // Whole of wave 1 with only this tower: each 23 hp Goblin takes two
+    // shots, and one comes every 2.5 s, so all 20 die (milestone 28; the
+    // 25c second pass, 19 hp every 1.2 s, leaked 12).
     const g = createGame();
     buildTower(g, S2, 'musketeer');
     startWave(g);
     while (g.phase === 'wave') tick(g);
-    expect(g.lives).toBe(8);
-    expect(g.gold).toBe(100 - 50 + 8 * 2 + 25);
+    expect(g.lives).toBe(20);
+    expect(g.gold).toBe(100 - 50 + 20 * 2 + 25);
   });
 });
 

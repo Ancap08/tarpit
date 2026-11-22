@@ -16,7 +16,7 @@ describe('end screen text', () => {
     expect(endKind(s)).toBe('won');
     expect(endScreenText('won', s)).toEqual({
       title: END_TEXT.wonTitle,
-      lines: [`${END_TEXT.wonLives} 13`, `${END_TEXT.wonGold} 476`],
+      lines: [`${END_TEXT.wonLives} 14`, `${END_TEXT.wonGold} 484`],
     });
   });
 
@@ -28,7 +28,7 @@ describe('end screen text', () => {
 
   it('lose in an endless game (milestone 26): the wave reached, no "of 10"', () => {
     const s = playScripted(endlessIdle()).state;
-    expect([s.phase, s.endless, s.wave]).toEqual(['lost', true, 15]);
-    expect(endScreenText('lost', s)).toEqual({ title: END_TEXT.lostTitle, lines: [`${END_TEXT.lostWave} 15`] });
+    expect([s.phase, s.endless, s.wave]).toEqual(['lost', true, 14]);
+    expect(endScreenText('lost', s)).toEqual({ title: END_TEXT.lostTitle, lines: [`${END_TEXT.lostWave} 14`] });
   });
 });

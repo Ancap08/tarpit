@@ -2,8 +2,6 @@ import { expect, test, type Page } from '@playwright/test';
 import { callEarlyLabel, killsLabel } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { lastSpawnTick } from '../src/sim/game';
-import { bestUnlockedSpecial, CLUSTER_POLICY_TICKS, densestCluster } from '../src/sim/headless';
-import type { GameState } from '../src/sim/types';
 
 // Verifier probes for milestone 25c in the browser (desktop project, real
 // mouse, frozen time with ?test=1): the call-early label for every bonus
@@ -201,8 +199,10 @@ test('kills and moves: a tower that has kills is locked and cannot be moved; an 
   expect((await ui(page)).killsLabel).toBe(killsLabel(kills));
 });
 
-// Milestone 25c second pass: the densest moment of wave 8 is now wave tick 1576, 22 enemies.
-test('frame: comboBuild, wave 8 at its densest moment (wave tick 1576, 22 enemies on the map)', async ({ page }, testInfo) => {
+// Milestone 25c second pass: the densest moment of wave 8 was wave tick 1576, 22 enemies.
+// Milestone 28: with the stored special list (wave 8's Fire Arrows come at 4620, after it)
+// it is wave tick 1261, 22 enemies.
+test('frame: comboBuild, wave 8 at its densest moment (wave tick 1261, 22 enemies on the map)', async ({ page }, testInfo) => {
   test.setTimeout(60_000);
   const errors = watchErrors(page);
   await page.goto('/?test=1');
@@ -213,16 +213,10 @@ test('frame: comboBuild, wave 8 at its densest moment (wave tick 1576, 22 enemie
     t.runScript('comboBuild', 8);
     t.startWave();
   });
-  expect(await state(page)).toMatchObject({ phase: 'wave', wave: 8, lives: 13 });
-  // The combo's cluster special for wave 8, as runScript would fire it.
-  await step(page, CLUSTER_POLICY_TICKS[7]);
-  const live = (await state(page)) as GameState;
-  const aim = densestCluster(live)!;
-  const special = bestUnlockedSpecial(8)!;
-  expect(await page.evaluate(({ s, x, y }) => (window.__tarpit as TarpitTestApi).useSpecialAt(s, x, y).ok, { s: special, x: aim.centroid.x, y: aim.centroid.y })).toBe(true);
-  await step(page, 1576 - CLUSTER_POLICY_TICKS[7]);
+  expect(await state(page)).toMatchObject({ phase: 'wave', wave: 8, lives: 14 });
+  await step(page, 1261);
   const s = await state(page);
-  expect(s.waveTick).toBe(1576);
+  expect(s.waveTick).toBe(1261);
   expect(s.enemies.length).toBe(22);
   await page.screenshot({ path: testInfo.outputPath('wave8-densest.png') });
   expect(errors).toEqual([]);

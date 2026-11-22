@@ -28,8 +28,16 @@
 // archetypes take the map after the difficulty and record it in the script.
 // TRAIL_CELL_ORDER and the combo plan and its cluster ticks exist per map
 // (trailCellOrder, COMBO_PLANS, CLUSTER_POLICY_TICKS_BY_MAP); the other
-// hand-placed plans (SOUND_PLAN, HARD_PLAN, the keg policy) are Meadow's
-// alone, and those archetypes always play Meadow.
+// hand-placed plans (SOUND_PLAN, the keg policy) are Meadow's alone, and
+// those archetypes throw for another map.
+//
+// Milestone 28: the archetypes that fire specials (comboBuild and the
+// scripts made from it, hardBuild, the endless ones in waves 1 to 10) fire
+// a stored list (specialLists.ts) found offline by a wave-by-wave greedy
+// search (specialSearch.ts, `npm run sim:specials`), one per plan, level and
+// map, instead of the cluster policy. hardBuild has a plan per map
+// (HARD_PLANS). oneMusket is new; bossRush is gone (it had become the same
+// game as comboBuild).
 
 import {
   buildTower,
@@ -48,7 +56,7 @@ import {
   type TargetingResult,
   type UpgradeResult,
 } from './actions';
-import type { Difficulty } from './difficulty';
+import { DEFAULT_DIFFICULTY, type Difficulty } from './difficulty';
 import { callNextWave, continueEndless, createGame, startWave, tick, wavesCleared, type CallNextWaveResult, type StartWaveResult } from './game';
 import { enemyPosition } from './combat';
 import { isSpecialUnlocked, type SpecialType } from './specials';
@@ -57,6 +65,7 @@ import { buildableCells, cellCenter, cellFromKey, cellKey, type Cell } from './g
 import { DEFAULT_MAP, MAPS, pathLength, positionAlongPath, type MapId } from './map';
 import { TOWER_DEFS } from './towers';
 import { ENDLESS_BASE_WAVES, LAST_WAVE, WAVES } from './waves';
+import { SPECIAL_LISTS, type SpecialPlanId, type StoredSpecial } from './specialLists';
 
 export type BuildAction =
   | { type: 'build'; cell: Cell; tower: TowerType }
@@ -467,9 +476,9 @@ function nextFreeKidCell(state: GameState): Cell | undefined {
 
 /**
  * Milestone 27 follow-up: the archetypes whose plans are Meadow's alone
- * (soundBuild, soundBuildNoTar, hardBuild, comboStrongest, comboWithKegs)
- * throw for any other map instead of returning a Meadow script that would
- * be played on it. Per-map versions are milestone 28's.
+ * (soundBuild, soundBuildNoTar, comboStrongest; hardBuild
+ * has a plan per map from milestone 28) throw for any other map instead of
+ * returning a Meadow script that would be played on it.
  */
 function meadowOnly(name: string, map: MapId | undefined): void {
   if (map !== undefined && map !== 'meadow') throw new Error(`${name} has a script for Meadow only, not for ${map}`);
@@ -481,9 +490,23 @@ export function noTowers(_difficulty?: Difficulty, map?: MapId): WaveScript {
 }
 
 /**
+ * A first-time player's opening (milestone 28): one base Musketeer on the
+ * first cell of the map's trail order (trailCellOrder) before wave 1, and
+ * nothing else, ever. Used only to measure wave 1: targets T8 (Normal:
+ * at most 6 of wave 1's enemies exit) and E3 (Easy: at most 3).
+ */
+export function oneMusket(_difficulty?: Difficulty, map?: MapId): WaveScript {
+  const cell = trailCellOrder(MAPS[map ?? DEFAULT_MAP])[0];
+  const script: (readonly BuildAction[])[] = [[{ type: 'build', cell, tower: 'musketeer' }]];
+  return map ? Object.assign(script, { mapId: map }) : script;
+}
+
+/**
  * Archetype 2, a kid's build: before each wave, buy base Musketeers while
  * affordable, on cells in TRAIL_CELL_ORDER. Never upgrades, never sells.
- * v2 target (milestone 12): lost on wave 6, 7 or 8.
+ * Target T2 (milestone 28): lost on wave 6 to 9 on Normal on every map;
+ * E1: wins on Easy with at least 8 lives; H2: survives wave 1 on Hard and
+ * loses by wave 5.
  */
 export function lazyBuild(difficulty?: Difficulty, map?: MapId): WaveScript {
   return recordScript((state) => {
@@ -542,7 +565,7 @@ function actionCost(state: GameState, action: BuildAction): number {
 }
 
 /** Take the plan's actions in order, each as soon as it is affordable. */
-function followPlan(plan: readonly BuildAction[]): Decide {
+export function followPlan(plan: readonly BuildAction[]): Decide {
   let next = 0;
   return (state) => {
     const action = plan[next];
@@ -626,21 +649,18 @@ export const COMBO_PLAN: readonly BuildAction[] = [
 ];
 
 /**
- * The wave tick at which the archetypes' cluster special fires in each wave
- * (entry i for wave i + 1; milestone 25c). Chosen per wave by a headless
+ * The wave tick at which the archetypes' cluster special fired in each wave
+ * (entry i for wave i + 1; milestone 25c). Since milestone 28 the
+ * archetypes fire their stored special lists in waves 1 to 10 and these
+ * ticks are read only by the endless waves (ENDLESS_CLUSTER_POLICY: the
+ * ticks of waves 8, 9 and 10). Rescanned in milestone 28 on its numbers
+ * (wave 1's tick is 1: no wave 1 cluster is ever larger than one enemy).
+ * Chosen per wave by a headless
  * scan of comboBuild on Normal: for each wave in turn (earlier waves
  * already firing at their ticks), the first wave tick at which the
  * densest 70 px cluster is largest.
  */
-export const CLUSTER_POLICY_TICKS: readonly number[] = [164, 109, 291, 398, 749, 651, 668, 1241, 1194, 713];
-
-/** One clusterSpecial per wave at the given ticks (entry i for wave i + 1). */
-function clusterPolicy(ticks: readonly number[]): TimedScript {
-  return ticks.map((atWaveTick): TimedAction[] => [{ type: 'clusterSpecial', atWaveTick }]);
-}
-
-/** One clusterSpecial per wave at CLUSTER_POLICY_TICKS (milestone 25c). */
-export const CLUSTER_POLICY: TimedScript = clusterPolicy(CLUSTER_POLICY_TICKS);
+export const CLUSTER_POLICY_TICKS: readonly number[] = [1, 109, 291, 398, 749, 651, 668, 1241, 1754, 713];
 
 /**
  * Switchback's combo plan (milestone 27): COMBO_PLAN's tower mix and
@@ -690,8 +710,9 @@ export const COMBO_PLANS: Readonly<Record<MapId, readonly BuildAction[]>> = {
 };
 
 /**
- * The cluster special ticks per map (milestone 27), entry i for wave
- * i + 1. Meadow's are CLUSTER_POLICY_TICKS; the others were scanned the
+ * The cluster special ticks per map (milestone 27; read only by the endless
+ * waves since milestone 28), entry i for wave i + 1. Meadow's are
+ * CLUSTER_POLICY_TICKS; the others were scanned the
  * same way on that map's comboBuild on Normal (for each wave in turn, the
  * earlier waves firing at their ticks, the first wave tick at which the
  * densest 70 px cluster is largest; the same scan gives Meadow's ticks
@@ -699,14 +720,9 @@ export const COMBO_PLANS: Readonly<Record<MapId, readonly BuildAction[]>> = {
  */
 export const CLUSTER_POLICY_TICKS_BY_MAP: Readonly<Record<MapId, readonly number[]>> = {
   meadow: CLUSTER_POLICY_TICKS,
-  switchback: [1, 109, 291, 461, 749, 741, 1244, 1343, 1194, 541],
-  riverbend: [304, 109, 1491, 461, 749, 767, 1430, 1241, 1490, 1520],
+  switchback: [1, 109, 291, 461, 749, 741, 1244, 1343, 1604, 541],
+  riverbend: [1, 109, 1311, 461, 749, 767, 1430, 1241, 1496, 1349],
 };
-
-/** The cluster special policy for a map: CLUSTER_POLICY on Meadow. */
-export function clusterPolicyFor(map: MapId = DEFAULT_MAP): TimedScript {
-  return map === 'meadow' ? CLUSTER_POLICY : clusterPolicy(CLUSTER_POLICY_TICKS_BY_MAP[map]);
-}
 
 /** The combo plan for a map: COMBO_PLAN on Meadow. */
 function comboPlan(map: MapId = DEFAULT_MAP): readonly BuildAction[] {
@@ -714,14 +730,45 @@ function comboPlan(map: MapId = DEFAULT_MAP): readonly BuildAction[] {
 }
 
 /**
- * Combo build (milestone 10): COMBO_PLAN, each action bought as soon as gold
- * allows. Milestone 25c: plus the cluster special policy (CLUSTER_POLICY:
- * once per wave, at that wave's CLUSTER_POLICY_TICKS tick, the best
- * unlocked special at the densest 70 px cluster). v4 target (milestone
- * 25c): won with 5 to 15 lives and under 200 gold after wave 9.
+ * A stored special list (specialLists.ts, written by `npm run sim:specials`,
+ * milestone 28) as a TimedScript: entry i for wave i + 1, one special at a
+ * cell centre on a wave tick, or nothing that wave.
+ */
+export function storedSpecials(list: readonly (StoredSpecial | null)[]): TimedScript {
+  return list.map((choice): readonly TimedAction[] => {
+    if (!choice) return [];
+    const { x, y } = cellCenter({ col: choice.col, row: choice.row });
+    return [{ type: 'special', special: choice.special, x, y, atWaveTick: choice.atWaveTick }];
+  });
+}
+
+/**
+ * The stored special policy of a plan on a level and map (milestone 28):
+ * the special search's choices for that plan played on that level and map.
+ */
+export function specialPolicy(plan: SpecialPlanId, difficulty: Difficulty = DEFAULT_DIFFICULTY, map: MapId = DEFAULT_MAP): TimedScript {
+  return storedSpecials(SPECIAL_LISTS[plan][difficulty][map]);
+}
+
+/**
+ * Combo build (milestone 10): the map's combo plan, each action bought as
+ * soon as gold allows. Milestone 28: plus the stored special list for the
+ * combo plan on that level and map (specialPolicy('combo', difficulty, map)).
+ * Targets (milestone 28): won with 5 to 18 lives on Normal on every map.
  */
 export function comboBuild(difficulty?: Difficulty, map?: MapId): WaveScript {
-  return recordScript(followPlan(comboPlan(map)), difficulty, clusterPolicyFor(map), false, map);
+  return recordScript(followPlan(comboPlan(map)), difficulty, specialPolicy('combo', difficulty, map), false, map);
+}
+
+/**
+ * The combo build with every use of one special dropped from its special
+ * list (milestone 28), recorded by playing (fewer special kills change the
+ * gold, so the purchases can differ). Target T9 on Meadow, Normal: without
+ * its Tar Barrels the combo does strictly worse.
+ */
+export function comboWithoutSpecial(type: SpecialType, difficulty?: Difficulty, map?: MapId): WaveScript {
+  const timed = specialPolicy('combo', difficulty, map).map((wave) => wave.filter((a) => !(a.type === 'special' && a.special === type)));
+  return recordScript(followPlan(comboPlan(map)), difficulty, timed, false, map);
 }
 
 /**
@@ -736,9 +783,9 @@ export function comboNoSpecials(difficulty?: Difficulty, map?: MapId): WaveScrip
 
 /**
  * comboBuild with every Fire Pot action removed: no Fire Pot builds and no
- * upgrades on the cells where comboBuild builds them; its cluster specials
- * are kept. v2 target (milestone 12): strictly worse than comboBuild (lost,
- * or won with fewer lives).
+ * upgrades on the cells where comboBuild builds them; it keeps the combo's
+ * stored special list (searched for the full combo, not for this build).
+ * Target T5: strictly worse than comboBuild (lost, or won with fewer lives).
  */
 export function comboBuildNoFire(difficulty?: Difficulty, map?: MapId): WaveScript {
   return withoutTowerType(comboBuild(difficulty, map), 'firepot');
@@ -770,7 +817,8 @@ export function noAntiAir(difficulty?: Difficulty, map?: MapId): WaveScript {
     const kept = wave.filter((a) => !cells.has(cellKey(a.cell)));
     return i === before ? [...owned.map((cell): BuildAction => ({ type: 'sell', cell })), ...kept] : kept;
   });
-  // Milestone 25c: the combo's cluster specials are kept (and, 27, its map).
+  // The combo's stored special list is kept (searched for the full combo, not
+  // for this build), and its map (milestone 27).
   return withMeta(out, script);
 }
 
@@ -781,41 +829,6 @@ export function noAntiAir(difficulty?: Difficulty, map?: MapId): WaveScript {
  */
 export function comboBuildNoBows(difficulty?: Difficulty, map?: MapId): WaveScript {
   return withoutTowerType(withoutTowerType(comboBuild(difficulty, map), 'musketeer'), 'longbow');
-}
-
-/**
- * Informational (milestone 23): the combo build, then in setup before wave
- * 10, after the combo's own wave 10 actions, every remaining gold piece goes
- * to Longbow upgrades. The combo build has upgraded all its Longbows by
- * then, so each upgrade needs a new Longbow first: while gold allows a
- * Longbow and its upgrade (40 + 30), build one on the next free cell in
- * TRAIL_CELL_ORDER and upgrade it. No target: it shows how much faster a
- * richer bow line kills the boss.
- */
-export function bossRush(difficulty?: Difficulty, map?: MapId): WaveScript {
-  const combo = comboBuild(difficulty, map);
-  const last = WAVES.length - 1;
-  const state = createGame({ difficulty, map });
-  for (let i = 0; i < last && state.phase === 'setup'; i++) {
-    for (const action of combo[i] ?? []) applyAction(state, action);
-    applyAction(state, { type: 'startWave' });
-    runWaveWithTimed(state, combo.timed?.[i] ?? [], 60 * 600, []);
-  }
-  const extra: BuildAction[] = [];
-  if (state.phase === 'setup') {
-    for (const action of combo[last] ?? []) applyAction(state, action);
-    const pair = TOWER_DEFS.longbow.cost + TOWER_DEFS.longbow.upgradeCost;
-    for (let cell = nextFreeKidCell(state); cell && state.gold >= pair; cell = nextFreeKidCell(state)) {
-      for (const action of [lb(cell.col, cell.row), up(cell.col, cell.row)]) {
-        applyAction(state, action);
-        extra.push(action);
-      }
-    }
-  }
-  return withMeta(
-    combo.map((wave, i) => (i === last ? [...wave, ...extra] : wave)),
-    combo,
-  );
 }
 
 /**
@@ -853,81 +866,75 @@ export function comboStrongest(difficulty?: Difficulty, map?: MapId): WaveScript
  */
 export type Archetype = (difficulty?: Difficulty, map?: MapId) => WaveScript;
 
-/** comboWithKegs aims every Powder Keg at the path point this far from the spawn (the long downhill run). */
-export const KEG_POLICY_DISTANCE = 700;
-/** comboWithKegs fires its Powder Keg when the wave tick counter reaches this (10 s into the wave). */
-export const KEG_POLICY_WAVE_TICK = 600;
+// comboWithKegs (milestone 25b, a Powder Keg at a fixed point every wave)
+// was removed in milestone 28: its kegs hit nothing on the horde waves, so
+// it was the comboNoSpecials game.
 
 /**
- * Informational (milestone 25b): the combo build plus one Powder Keg per
- * wave at a fixed policy: at wave tick KEG_POLICY_WAVE_TICK (600), aimed at
- * the path point KEG_POLICY_DISTANCE (700) px from the spawn, (420, 232) in
- * the middle of the long downhill run. COMBO_PLAN is followed as in
- * comboBuild, recorded by playing (the keg kills change the gold), so the
- * pre-wave actions can differ from comboBuild's. No target.
+ * The Hard purchase order (milestone 25c second pass on Meadow; milestone 28
+ * for every map), as indexes into a combo plan, whose 31 actions are role
+ * for role the same on every map: the two opening Longbows (0, 1) and the
+ * anti-air Longbow (4), then their upgrades (10, 11, 20), the first late
+ * Longbow pair (21, 22), the first Tar Pit (2), the second and third late
+ * pairs (23 to 26), the first Fire Pot (3), the Tar Pit and Fire Pot
+ * upgrades (6, 7). The rest of the combo plan follows in its own order.
+ * Upgraded Longbows first, since an upgraded Longbow is the most damage per
+ * gold against Hard's 1140 hp Trolls.
  */
-export function comboWithKegs(difficulty?: Difficulty, map?: MapId): WaveScript {
-  meadowOnly('comboWithKegs', map);
-  const at = positionAlongPath(MAPS.meadow, KEG_POLICY_DISTANCE);
-  const keg: SpecialAction = { type: 'special', special: 'keg', x: at.x, y: at.y, atWaveTick: KEG_POLICY_WAVE_TICK };
-  const decide = followPlan(COMBO_PLAN);
-  const state = createGame({ difficulty });
-  const script: BuildAction[][] = [];
-  const timed: SpecialAction[][] = [];
-  for (let i = 0; i < WAVES.length && state.phase === 'setup'; i++) {
-    const actions: BuildAction[] = [];
-    for (let action = decide(state); action; action = decide(state)) {
-      applyAction(state, action);
-      actions.push(action);
-    }
-    script.push(actions);
-    timed.push([keg]);
-    applyAction(state, { type: 'startWave' });
-    runWaveWithTimed(state, [keg], 60 * 600, []);
-  }
-  return Object.assign(script, { timed });
+export const HARD_ORDER: readonly number[] = [0, 1, 4, 10, 11, 20, 21, 22, 2, 23, 24, 25, 26, 3, 6, 7];
+
+/** A map's Hard plan (milestone 28): its combo plan's own cells, bought in HARD_ORDER, then the rest in plan order. */
+export function hardPlanFrom(plan: readonly BuildAction[]): BuildAction[] {
+  const head = HARD_ORDER.map((i) => plan[i]);
+  return [...head, ...plan.filter((_, i) => !HARD_ORDER.includes(i))];
 }
 
 /**
- * The hand-tuned plan for Hard (milestone 25c, second pass), in purchase
- * order: upgraded Longbows first, since an upgraded Longbow is the most
- * damage per gold against Hard's 1080 hp Trolls: the two first Longbows and
- * (17,8), all three upgraded, then upgraded pairs at (16,8), (9,6) and
- * (16,9) with the Tar Pit (14,10) between them, then the Fire Pot (14,9)
- * and the Tar Pit and Fire Pot upgrades, then the rest of COMBO_PLAN in its
- * order.
+ * The hand-tuned plan for Hard on Meadow (milestone 25c, second pass), in
+ * purchase order: the two first Longbows and (17,8), all three upgraded,
+ * then upgraded pairs at (16,8), (9,6) and (16,9) with the Tar Pit (14,10)
+ * between them, then the Fire Pot (14,9) and the Tar Pit and Fire Pot
+ * upgrades, then the rest of COMBO_PLAN in its order: hardPlanFrom(COMBO_PLAN).
  */
-export const HARD_PLAN: readonly BuildAction[] = ((): BuildAction[] => {
-  const head = [
-    lb(9, 5), lb(9, 4), lb(17, 8), up(9, 5), up(9, 4), up(17, 8), lb(16, 8), up(16, 8), t(14, 10), lb(9, 6), up(9, 6),
-    lb(16, 9), up(16, 9), fp(14, 9), up(14, 10), up(14, 9),
-  ];
-  const key = (a: BuildAction) => `${a.type} ${cellKey(a.cell)}`;
-  const taken = new Set(head.map(key));
-  return [...head, ...COMBO_PLAN.filter((a) => !taken.has(key(a)))];
-})();
+export const HARD_PLAN: readonly BuildAction[] = hardPlanFrom(COMBO_PLAN);
 
 /**
- * Hard build (milestone 25c): HARD_PLAN, each action as soon as gold
- * allows, plus the cluster special policy (CLUSTER_POLICY). Target: wins on
- * Hard. Played on Normal too (informational).
+ * The Hard plan per map (milestone 28): each map's combo plan cells in
+ * HARD_ORDER. No cell differs from that map's combo plan, so the Hard plan
+ * reuses the per-map cell choice of milestone 27 (the most path in range).
+ */
+export const HARD_PLANS: Readonly<Record<MapId, readonly BuildAction[]>> = {
+  meadow: HARD_PLAN,
+  switchback: hardPlanFrom(SWITCHBACK_COMBO_PLAN),
+  riverbend: hardPlanFrom(RIVERBEND_COMBO_PLAN),
+};
+
+/**
+ * Hard build (milestone 25c; per map from milestone 28): the map's Hard
+ * plan, each action as soon as gold allows, plus the stored special list
+ * for the Hard plan on that level and map (specialPolicy('hard',
+ * difficulty, map)). Target: wins on Hard on every map. Played on Easy and
+ * Normal too (informational).
  */
 export function hardBuild(difficulty?: Difficulty, map?: MapId): WaveScript {
-  meadowOnly('hardBuild', map);
-  return recordScript(followPlan(HARD_PLAN), difficulty, CLUSTER_POLICY);
+  return recordScript(followPlan(HARD_PLANS[map ?? DEFAULT_MAP]), difficulty, specialPolicy('hard', difficulty, map), false, map);
 }
 
 /**
- * Endless waves' cluster special (milestone 26): each endless wave fires one
- * clusterSpecial at the CLUSTER_POLICY_TICKS tick of the table wave it
- * repeats (8, 9 or 10: 1241, 1194, 713). Entry i is for wave i + 1; the
- * first ten are CLUSTER_POLICY.
+ * Endless waves' cluster special (milestone 26): each endless wave (11 on)
+ * fires one clusterSpecial at the cluster tick of the table wave it repeats
+ * (8, 9 or 10; on Meadow 1241, 1754, 713, CLUSTER_POLICY_TICKS). Entry i is
+ * for wave i + 1. Milestone 28: the first ten are the combo build's stored
+ * special list on Normal (specialPolicy('combo')).
  */
 export const ENDLESS_CLUSTER_POLICY: TimedScript = endlessClusterPolicy(DEFAULT_MAP);
 
-/** ENDLESS_CLUSTER_POLICY for any map (milestone 27), from that map's cluster ticks. */
-export function endlessClusterPolicy(map: MapId): TimedScript {
-  const table = clusterPolicyFor(map);
+/**
+ * ENDLESS_CLUSTER_POLICY for any map (milestone 27) and level (28): the
+ * combo's special list for that level and map, then that map's cluster ticks.
+ */
+export function endlessClusterPolicy(map: MapId, difficulty: Difficulty = DEFAULT_DIFFICULTY): TimedScript {
+  const table = specialPolicy('combo', difficulty, map);
   const ticks = CLUSTER_POLICY_TICKS_BY_MAP[map];
   return Array.from({ length: ENDLESS_WAVE_CAP }, (_, i): readonly TimedAction[] => {
     if (i < LAST_WAVE) return table[i];
@@ -938,13 +945,13 @@ export function endlessClusterPolicy(map: MapId): TimedScript {
 
 /**
  * Informational (milestone 26): comboBuild (COMBO_PLAN as soon as gold
- * allows, the cluster special policy), then Keep going after the win with
+ * allows, its stored special list), then Keep going after the win with
  * no further purchases, one cluster special per endless wave
  * (ENDLESS_CLUSTER_POLICY). Target on Normal: loses on wave 11 to 16.
  */
 export function endlessIdle(difficulty?: Difficulty, map?: MapId): WaveScript {
   const plan = followPlan(comboPlan(map));
-  return recordScript((state) => (state.endless ? undefined : plan(state)), difficulty, map ? endlessClusterPolicy(map) : ENDLESS_CLUSTER_POLICY, true, map);
+  return recordScript((state) => (state.endless ? undefined : plan(state)), difficulty, endlessClusterPolicy(map ?? DEFAULT_MAP, difficulty), true, map);
 }
 
 /**
@@ -973,7 +980,7 @@ export function endlessGreedy(difficulty?: Difficulty, map?: MapId): WaveScript 
       return { type: 'build', cell, tower: 'longbow' };
     },
     difficulty,
-    map ? endlessClusterPolicy(map) : ENDLESS_CLUSTER_POLICY,
+    endlessClusterPolicy(map ?? DEFAULT_MAP, difficulty),
     true,
     map,
   );
@@ -1009,12 +1016,12 @@ export const ENDLESS_ARCHETYPES: Readonly<Record<string, Archetype>> = {
 
 export const INFORMATIONAL: Readonly<Record<string, Archetype>> = {
   comboStrongest,
-  comboWithKegs,
 };
 
 /** Every archetype, in report order. */
 export const ARCHETYPES: Readonly<Record<string, Archetype>> = {
   noTowers,
+  oneMusket,
   lazyBuild,
   greedyMusket,
   soundBuild,
@@ -1024,6 +1031,5 @@ export const ARCHETYPES: Readonly<Record<string, Archetype>> = {
   comboBuildNoFire,
   comboNoSpecials,
   noAntiAir,
-  bossRush,
   hardBuild,
 };

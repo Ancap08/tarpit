@@ -14,7 +14,7 @@ import { enemyPosition, findTarget } from './combat';
 import { ENEMY_STATS } from './enemies';
 import type { GameEvent } from './events';
 import { createGame, startWave, tick } from './game';
-import { applyAction, comboWithKegs, playScripted } from './headless';
+import { applyAction, comboBuild, playScripted } from './headless';
 import { SPECIAL_TYPES } from './specials';
 import type { Enemy, EnemyType, GameState, TowerType } from './types';
 import { WAVES } from './waves';
@@ -118,37 +118,37 @@ describe('(b) keg and the boss', () => {
 });
 
 describe('(c) Tar Barrel', () => {
-  it('a Goblin walks 120 px in the 240 slowed ticks (240 unslowed), then full speed', () => {
-    // 240 ticks * 60 px/s * (1 - 0.5) / 60 = 120.
+  it('a Goblin walks 105 px in the 210 slowed ticks (210 unslowed), then full speed', () => {
+    // 210 ticks * 60 px/s * (1 - 0.5) / 60 = 105 (milestone 28: 210 ticks, 240 before).
     const s = inWave(4, [enemy(0, 'goblin', { distance: 100 }), enemy(1, 'goblin', { distance: 400 })]);
     // 90 px radius: goblin 0 at (100, 240) is inside (100, 150); goblin 1 at (160, 96 + ...) is far.
     expect(useSpecial(s, 'tarBarrel', { x: 100, y: 150 })).toMatchObject({ ok: true, hits: 1 });
-    run(s, 240);
-    expect(s.enemies[0].distance).toBeCloseTo(220, 9);
-    expect(s.enemies[1].distance).toBeCloseTo(640, 9);
+    run(s, 210);
+    expect(s.enemies[0].distance).toBeCloseTo(205, 9);
+    expect(s.enemies[1].distance).toBeCloseTo(610, 9);
     expect([s.enemies[0].slow, s.enemies[0].slowTicksLeft]).toEqual([0, 0]);
     run(s, 60);
-    expect(s.enemies[0].distance).toBeCloseTo(280, 9);
+    expect(s.enemies[0].distance).toBeCloseTo(265, 9);
   });
 
-  it('the boss gets 0.3: 240 ticks * 25 * 0.7 / 60 = 70 px', () => {
+  it('the boss gets 0.3: 210 ticks * 25 * 0.7 / 60 = 61.25 px', () => {
     const s = inWave(10, [enemy(0, 'boss')]);
     useSpecial(s, 'tarBarrel', { x: 100, y: 240 });
     // Milestone 25c: on the special slow channel.
-    expect([s.enemies[0].specialSlow, s.enemies[0].specialSlowTicksLeft]).toEqual([0.3, 240]);
-    run(s, 240);
-    expect(s.enemies[0].distance).toBeCloseTo(170, 9);
+    expect([s.enemies[0].specialSlow, s.enemies[0].specialSlowTicksLeft]).toEqual([0.3, 210]);
+    run(s, 210);
+    expect(s.enemies[0].distance).toBeCloseTo(161.25, 9);
   });
 
-  it('a Harpy is slowed (90 * 0.5 * 4 = 180 px in 240 ticks) and a Tar Pit in range still cannot target it', () => {
+  it('a Harpy is slowed (90 * 0.5 * 3.5 = 157.5 px in 210 ticks) and a Tar Pit in range still cannot target it', () => {
     const s = inWave(4, [enemy(0, 'harpy')], 'tarpit');
     useSpecial(s, 'tarBarrel', { x: 100, y: 240 });
-    expect([s.enemies[0].specialSlow, s.enemies[0].specialSlowTicksLeft]).toEqual([0.5, 240]);
+    expect([s.enemies[0].specialSlow, s.enemies[0].specialSlowTicksLeft]).toEqual([0.5, 210]);
     // Tower centre (112, 176): 65.1 px from the Harpy, inside the 90 px range.
     expect(Math.hypot(112 - 100, 176 - 240)).toBeLessThan(90);
     expect(findTarget(s, s.towers[0])).toBeUndefined();
-    run(s, 240);
-    expect(s.enemies[0].distance).toBeCloseTo(280, 9);
+    run(s, 210);
+    expect(s.enemies[0].distance).toBeCloseTo(257.5, 9);
     expect(s.enemies[0].hp).toBe(40); // the Tar Pit never shot it
   });
 
@@ -159,17 +159,17 @@ describe('(c) Tar Barrel', () => {
     const s = inWave(4, [enemy(0, 'troll', { slow: 0.6, slowTicksLeft: 50 })]);
     expect(useSpecial(s, 'tarBarrel', { x: 100, y: 240 })).toMatchObject({ ok: true, hits: 1 });
     expect([s.enemies[0].slow, s.enemies[0].slowTicksLeft]).toEqual([0.6, 50]);
-    expect([s.enemies[0].specialSlow, s.enemies[0].specialSlowTicksLeft]).toEqual([0.5, 240]);
+    expect([s.enemies[0].specialSlow, s.enemies[0].specialSlowTicksLeft]).toEqual([0.5, 210]);
     expect(s.events.map((e) => e.kind)).toEqual(['special', 'slowed']);
     expect(s.specialCharges).toBe(0);
-    // 50 ticks at 0.6 (35 * 0.4 / 60 each), then 190 at 0.5, then free.
+    // 50 ticks at 0.6 (35 * 0.4 / 60 each), then 160 at 0.5, then free.
     const start = s.enemies[0].distance;
     run(s, 50);
     expect(s.enemies[0].distance - start).toBeCloseTo((50 * 35 * 0.4) / 60, 9);
     expect([s.enemies[0].slow, s.enemies[0].slowTicksLeft]).toEqual([0, 0]);
-    expect(s.enemies[0].specialSlowTicksLeft).toBe(190);
-    run(s, 190);
-    expect(s.enemies[0].distance - start).toBeCloseTo((50 * 35 * 0.4 + 190 * 35 * 0.5) / 60, 9);
+    expect(s.enemies[0].specialSlowTicksLeft).toBe(160);
+    run(s, 160);
+    expect(s.enemies[0].distance - start).toBeCloseTo((50 * 35 * 0.4 + 160 * 35 * 0.5) / 60, 9);
     expect([s.enemies[0].specialSlow, s.enemies[0].specialSlowTicksLeft]).toEqual([0, 0]);
   });
 
@@ -177,8 +177,8 @@ describe('(c) Tar Barrel', () => {
     const s = inWave(4, [enemy(0, 'troll', { slow: 0.5, slowTicksLeft: 7 }), enemy(1, 'troll', { slow: 0.4, slowTicksLeft: 7 })]);
     useSpecial(s, 'tarBarrel', { x: 100, y: 240 });
     expect(s.enemies.map((e) => [e.slow, e.slowTicksLeft, e.specialSlow, e.specialSlowTicksLeft])).toEqual([
-      [0.5, 7, 0.5, 240],
-      [0.4, 7, 0.5, 240],
+      [0.5, 7, 0.5, 210],
+      [0.4, 7, 0.5, 210],
     ]);
   });
 });
@@ -329,9 +329,9 @@ describe('(i) a special on empty ground', () => {
   });
 });
 
-/** Replay a comboWithKegs script tick by tick, collecting every event once. */
+/** Replay a comboBuild script tick by tick, collecting every event once. */
 function replay(): { state: GameState; events: GameEvent[] } {
-  const script = comboWithKegs();
+  const script = comboBuild();
   const s = createGame();
   const events: GameEvent[] = [];
   for (let i = 0; i < WAVES.length && phaseOf(s) === 'setup'; i++) {
@@ -351,10 +351,12 @@ function replay(): { state: GameState; events: GameEvent[] } {
   return { state: s, events };
 }
 
-describe('(j) (l) a full comboWithKegs game', () => {
+// Milestone 28: comboWithKegs is gone (its kegs hit nothing); the same
+// checks run on comboBuild, whose stored special list does kill.
+describe('(j) (l) a full comboBuild game with its stored special list', () => {
   it('kills + exits == spawns, each id gone at most once; the replay equals playScripted', () => {
     const { state, events } = replay();
-    const reference = playScripted(comboWithKegs());
+    const reference = playScripted(comboBuild());
     expect(state).toEqual(reference.state);
     const ids = (kind: string) => events.filter((e) => e.kind === kind).map((e) => (e as { enemyId: number }).enemyId);
     const spawns = ids('spawn');
@@ -368,17 +370,15 @@ describe('(j) (l) a full comboWithKegs game', () => {
     expect(specials).toHaveLength(10);
     const specialKills = events.filter((e) => e.kind === 'kill' && e.cause === 'special');
     expect(specialKills.length).toBeLessThanOrEqual(specials.reduce((n, e) => n + (e.kind === 'special' ? e.hits : 0), 0));
-    // The DEVLOG's "the fixed policy mostly misses": on the milestone 25c
-    // second-pass waves no keg hits anything (25b: one keg, a Harpy and a
-    // Wolf). The archetypes use the cluster policy instead.
-    expect(specials.map((e) => (e.kind === 'special' ? e.hits : -1))).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-    expect(specialKills).toEqual([]);
-    expect([state.phase, state.wave, state.lives, state.gold]).toEqual(['won', 10, 12, 468]);
+    // Every stored special hits something, and some of them kill.
+    for (const e of specials) expect(e.kind === 'special' && e.hits).toBeGreaterThan(0);
+    expect(specialKills.length).toBeGreaterThan(0);
+    expect([state.phase, state.wave, state.lives, state.gold]).toEqual(['won', 10, 14, 484]);
   });
 
   it('two runs are identical (state, waves, log)', () => {
-    const a = playScripted(comboWithKegs());
-    const b = playScripted(comboWithKegs());
+    const a = playScripted(comboBuild());
+    const b = playScripted(comboBuild());
     expect(JSON.stringify(b)).toBe(JSON.stringify(a));
   });
 });

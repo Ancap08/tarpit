@@ -120,9 +120,10 @@ test('Tar Barrel on wave 4: the popup lists Powder Keg and Tar Barrel; enemies i
   // Milestone 25c: the barrel slows on the special slow channel.
   for (const e of s.enemies) {
     const inside = dist(pos(e), at) <= SPECIAL_DEFS.tarBarrel.radius;
-    expect(inside ? [e.specialSlow, e.specialSlowTicksLeft] : [e.id, 'outside'], `enemy ${e.id}`).toEqual(inside ? [0.5, 240] : [e.id, 'outside']);
+    expect(inside ? [e.specialSlow, e.specialSlowTicksLeft] : [e.id, 'outside'], `enemy ${e.id}`).toEqual(inside ? [0.5, SPECIAL_DEFS.tarBarrel.slowTicks] : [e.id, 'outside']);
   }
-  expect(s.enemies.filter((e) => e.specialSlowTicksLeft === 240).map((e) => e.id).sort()).toEqual([...ids].sort());
+  expect(SPECIAL_DEFS.tarBarrel.slowTicks).toBe(210); // milestone 28 (240 before)
+  expect(s.enemies.filter((e) => e.specialSlowTicksLeft === 210).map((e) => e.id).sort()).toEqual([...ids].sort());
   expect(s.specialCharges).toBe(0);
 });
 
