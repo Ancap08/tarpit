@@ -6380,3 +6380,52 @@ install to the home screen". No game rule or drawing changes.
 A real iPhone, iPad or Android device: Add to Home Screen, the standalone
 window, the real notch and home bar, iOS Safari's service worker and its
 storage limits.
+
+### Verifier notes
+
+Verifier: Claude Sonnet 5.5. Probes are in `e2e/install-verifier.spec.ts`
+(real second build made from a copy of the source with one changed source
+file; a static server that can answer 404, 500, HTML or hang).
+
+Passed: lint, `check:assets`, typecheck, 1087 unit tests, build, size
+budget, full e2e twice (351 passed, 7 skipped each), `npm run sim` output
+byte-identical to `origin/main`, `make-icons.ts` reproduces the committed
+icons byte for byte, no screenshot baseline in the diff. A to B online
+shows B on the next open; B plays offline; A's cache is deleted; best
+scores survive. A failed install (one asset 500) leaves no active worker
+and no partly filled cache (at most an empty one); with A active, a failed
+B leaves A serving offline. `?test=1` still works under an installed
+worker. Click and tap place towers on the pointed cell at all four map
+corners with emulated safe-area insets (pointer mapping is unchanged).
+
+Found:
+
+- **Medium: no timeout on the page fetch.** `networkFirst` in
+  `src/sw/sw.ts` waits for the network as long as the browser does. With
+  the game fully cached, a hanging connection (captive portal, bad
+  signal) leaves a blank page for minutes. `test.fixme` in the verifier spec.
+- **Medium: a bad response is not a fallback.** The cache is used only when
+  `fetch()` throws. A 5xx or 404 for the page (Pages outage, CDN mid-deploy)
+  replaces the cached game with the error page. `test.fixme` in the verifier spec.
+- **Medium: no kill switch.** Removing `sw.js` from a deploy (404) does not
+  unregister installed workers (Chrome keeps them; probe in the spec). Recovery from a bad
+  worker is to deploy a fixed `sw.js`; it is re-fetched on every load (and
+  by `update()`), past the HTTP cache. The emergency file would be a
+  self-removing `sw.js` (unregister, delete `tarpit-` caches); none is
+  written or documented yet.
+- **Low: `"id": "./"`** resolves, per the manifest spec, against the
+  origin of `start_url`, so under `/tarpit/` the app id is likely the site
+  root (`https://<user>.github.io/`), shared with any other project site on
+  that origin. Not confirmed (headless Chrome returns no app id). Drop `id`
+  or use `/tarpit/`.
+- **Low: tab on the old page after an update.** Build B's worker deletes
+  A's cache; an A tab asking for a hashed file B changed gets a 404 online
+  and an error offline. Not hit today: the bundle and sprites load at boot.
+  The HTTP cache hid it in the probe (10 min `max-age`).
+- Install.spec's build B differs only by a meta tag; the verifier spec
+  covers a real build.
+
+Needs a real phone: Add to Home Screen wording and icon on current iOS
+(Share is under the ellipsis menu in newer Safari), standalone window and
+status bar, real notch and home bar, Android install prompt and maskable
+mask, iOS storage eviction of the cache.
