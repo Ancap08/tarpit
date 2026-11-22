@@ -16,13 +16,16 @@ export function cottageFor(exit: Point): Rect {
 }
 
 /** The maps players can pick (milestone 27). */
-export type MapId = 'meadow';
+export type MapId = 'meadow' | 'switchback' | 'riverbend';
 
 /** Map ids in title-screen order. */
-export const MAP_IDS: readonly MapId[] = ['meadow'];
+export const MAP_IDS: readonly MapId[] = ['meadow', 'switchback', 'riverbend'];
 
 /** The map a game is created on when none is given. */
 export const DEFAULT_MAP: MapId = 'meadow';
+
+/** Riverbend's river: x 416..544, y 160..480 (milestone 27). */
+export const RIVER: Rect = { x: 416, y: 160, width: 128, height: 320 };
 
 function defineMap(id: MapId, path: readonly Point[], water?: readonly Rect[]): MapDef {
   const exit = path[path.length - 1];
@@ -49,6 +52,33 @@ export const MAPS: Readonly<Record<MapId, MapDef>> = {
     { x: 680, y: 192 },
     { x: 960, y: 192 },
   ]),
+  // Three runs joined by U-turns, lanes 96 px apart: one row of cells
+  // between two lanes reaches both. Length 1728 px.
+  switchback: defineMap('switchback', [
+    { x: 0, y: 96 },
+    { x: 560, y: 96 },
+    { x: 560, y: 192 },
+    { x: 320, y: 192 },
+    { x: 320, y: 288 },
+    { x: 560, y: 288 },
+    { x: 560, y: 384 },
+    { x: 960, y: 384 },
+  ]),
+  // A wide S with a river down the middle of its pocket: columns 13 to 16,
+  // rows 5 to 14 (40 cells), off the bottom edge, a rounded pool at the top
+  // (drawn; the rule uses the rectangle). Length 1536 px.
+  riverbend: defineMap(
+    'riverbend',
+    [
+      { x: 0, y: 384 },
+      { x: 300, y: 384 },
+      { x: 300, y: 96 },
+      { x: 660, y: 96 },
+      { x: 660, y: 384 },
+      { x: 960, y: 384 },
+    ],
+    [RIVER],
+  ),
 };
 
 /** True for a registered map id (title selection, test hooks). */

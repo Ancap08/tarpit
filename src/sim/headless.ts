@@ -630,14 +630,65 @@ function clusterPolicy(ticks: readonly number[]): TimedScript {
 /** One clusterSpecial per wave at CLUSTER_POLICY_TICKS (milestone 25c). */
 export const CLUSTER_POLICY: TimedScript = clusterPolicy(CLUSTER_POLICY_TICKS);
 
+/**
+ * Switchback's combo plan (milestone 27): COMBO_PLAN's tower mix and
+ * purchase order, role for role (two opening Longbows, a Tar Pit and Fire
+ * Pot pair, the anti-air Longbow, Mortars, later Longbows, a second pair, a
+ * Cannon), on Switchback's best cells. Cell choice: rank the free buildable
+ * cells by the path length within the tower's range (sampled every 4 px;
+ * for the Mortar between 70 and 220 px) and take the top one, with three
+ * exceptions: a Fire Pot stands beside its Tar Pit (11,7); the Mortars stay
+ * off the one-cell rows between two lanes (row 4, columns 10 to 15, and row
+ * 7, columns 11 to 17), which go to the short-range towers, and take the
+ * best cells outside them ((14,11), (19,7), (18,7)); the Cannon (17,7), never
+ * bought on Normal, ends the row 7 stretch. So most Longbows and both pairs
+ * stand between two lanes and reach both.
+ */
+export const SWITCHBACK_COMBO_PLAN: readonly BuildAction[] = [
+  lb(14, 7), lb(13, 4), t(12, 7), fp(11, 7), lb(13, 7), mo(14, 11), up(12, 7), up(11, 7), lb(12, 4), up(14, 11),
+  up(14, 7), up(13, 4), mo(19, 7), lb(15, 7), up(12, 4), up(19, 7), up(15, 7), t(15, 4), fp(14, 4), up(15, 4),
+  up(13, 7),
+  lb(11, 4), up(11, 4), lb(16, 7), up(16, 7), lb(10, 4), up(10, 4), mo(18, 7), up(18, 7), c(17, 7), up(17, 7),
+];
+
+/**
+ * Riverbend's combo plan (milestone 27), chosen like SWITCHBACK_COMBO_PLAN:
+ * COMBO_PLAN's roles, each on the free cell covering the most path for its
+ * range, or one within 1% of it inside the arch, so the first six towers
+ * stand on the river's banks and reach both the climbs and the top run; the
+ * Fire Pots stand beside their Tar Pits. Opening Longbows (12,5) and (12,6)
+ * and the first Mortar (12,7) on the left bank; the first pair (11,4) and
+ * (11,5) in the arch's top-left corner, the second (18,4) and (18,5) in its
+ * top-right corner; the anti-air Longbow and the second Mortar on the right
+ * bank; the later Longbows, the third Mortar and the Cannon at the two outer
+ * corners and on the banks.
+ */
+export const RIVERBEND_COMBO_PLAN: readonly BuildAction[] = [
+  lb(12, 5), lb(12, 6), t(11, 4), fp(11, 5), lb(17, 5), mo(12, 7), up(11, 4), up(11, 5), lb(17, 6), up(12, 7),
+  up(12, 5), up(12, 6), mo(17, 7), lb(6, 8), up(17, 6), up(17, 7), up(6, 8), t(18, 4), fp(18, 5), up(18, 4),
+  up(17, 5),
+  lb(23, 8), up(23, 8), lb(11, 6), up(11, 6), lb(18, 6), up(18, 6), mo(6, 7), up(6, 7), c(7, 10), up(7, 10),
+];
+
 /** The combo build's plan per map (milestone 27); Meadow's is COMBO_PLAN. */
 export const COMBO_PLANS: Readonly<Record<MapId, readonly BuildAction[]>> = {
   meadow: COMBO_PLAN,
+  switchback: SWITCHBACK_COMBO_PLAN,
+  riverbend: RIVERBEND_COMBO_PLAN,
 };
 
-/** The cluster special ticks per map (milestone 27); Meadow's are CLUSTER_POLICY_TICKS. */
+/**
+ * The cluster special ticks per map (milestone 27), entry i for wave
+ * i + 1. Meadow's are CLUSTER_POLICY_TICKS; the others were scanned the
+ * same way on that map's comboBuild on Normal (for each wave in turn, the
+ * earlier waves firing at their ticks, the first wave tick at which the
+ * densest 70 px cluster is largest; the same scan gives Meadow's ticks
+ * back exactly).
+ */
 export const CLUSTER_POLICY_TICKS_BY_MAP: Readonly<Record<MapId, readonly number[]>> = {
   meadow: CLUSTER_POLICY_TICKS,
+  switchback: [1, 109, 291, 461, 749, 741, 1244, 1343, 1194, 541],
+  riverbend: [304, 109, 1491, 461, 749, 767, 1430, 1241, 1490, 1520],
 };
 
 /** The cluster special policy for a map: CLUSTER_POLICY on Meadow. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createGame, buildTower, MAPS, startWave, tick } from '../../sim';
+import { createGame, buildTower, ENEMY_STATS, MAP_IDS, MAPS, positionAlongPath, startWave, tick, type EnemyType } from '../../sim';
 import { BOB_PX, bobOffset, EventCursor, statusTint, TINT } from './effects';
 import { facingAt, facingOf } from './facing';
 import { SHEETS, walkAnimKey } from './sheets';
@@ -20,6 +20,45 @@ describe('facing', () => {
     expect(facingAt(MAPS.meadow, 161.5, 1)).toBe('up');
     expect(facingAt(MAPS.meadow, 160 + 144 + 10, 1)).toBe('right');
     expect(facingAt(MAPS.meadow, 160 + 144 + 260 + 10, 1)).toBe('down');
+  });
+
+  it('every segment of every map (milestone 27): an enemy faces the way that segment runs, at every speed', () => {
+    const seen = new Set<string>();
+    for (const id of MAP_IDS) {
+      const map = MAPS[id];
+      let start = 0;
+      for (let i = 1; i < map.path.length; i++) {
+        const [a, b] = [map.path[i - 1], map.path[i]];
+        const len = Math.hypot(b.x - a.x, b.y - a.y);
+        const want = b.x > a.x ? 'right' : b.x < a.x ? 'left' : b.y < a.y ? 'up' : 'down';
+        seen.add(want);
+        for (const type of Object.keys(ENEMY_STATS) as EnemyType[]) {
+          const step = ENEMY_STATS[type].speed / 60;
+          // From one full step into the segment to its end (the tick that lands on the next corner still counts).
+          for (let d = start + step; d <= start + len; d += step) {
+            expect(facingAt(map, d, step), `${id} segment ${i} ${type} at ${d}`).toBe(want);
+          }
+        }
+        start += len;
+      }
+      // Before moving, an enemy faces the way the path starts: right on every map.
+      expect(facingAt(map, 0, 1)).toBe('right');
+      expect(positionAlongPath(map, 1).x).toBe(1);
+    }
+    // Switchback's y 192 lane is the first leftward segment on any map.
+    expect([...seen].sort()).toEqual(['down', 'left', 'right', 'up']);
+  });
+
+  it('on a leftward segment every sprite shows a left-facing frame: own left frames, or right frames mirrored', () => {
+    const facing = facingAt(MAPS.switchback, 560 + 96 + 100, 1);
+    expect(facing).toBe('left');
+    for (const type of Object.keys(ENEMY_STATS) as EnemyType[]) {
+      const left = SHEETS[type].walk.left;
+      const right = SHEETS[type].walk.right;
+      // Either distinct left frames (not mirrored) or the right frames mirrored. Never right frames unmirrored.
+      const sameFrames = JSON.stringify(left.frames) === JSON.stringify(right.frames);
+      expect(sameFrames ? left.flipX && !right.flipX : !left.flipX, type).toBe(true);
+    }
   });
 });
 

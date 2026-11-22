@@ -69,3 +69,29 @@ for (const level of ['easy', 'normal', 'hard'] as const) {
     );
   }
 }
+
+// Milestone 27: the other maps, appended so Meadow's report above stays as it
+// was. Per map: the Normal table for the archetypes with map targets, the
+// combo build on Easy and Hard, and endlessIdle on Normal. "lives by wave"
+// is the lives left after each wave played.
+const MAP_ARCHETYPES = ['noTowers', 'lazyBuild', 'longbowSpam', 'comboBuild', 'noAntiAir'] as const;
+const mapWidth = Math.max(...MAP_ARCHETYPES.map((n) => n.length), 'endlessIdle'.length);
+for (const map of sim.MAP_IDS) {
+  if (map === 'meadow') continue;
+  console.log(`\nMap: ${map} (path ${sim.pathLength(sim.MAPS[map])} px, ${sim.buildableCells(sim.MAPS[map]).filter(Boolean).length} buildable cells)`);
+  console.log(`${'archetype'.padEnd(mapWidth)}  level   result  wave  lives  gold  lives by wave`);
+  const row = (name: string, level: Sim.Difficulty, script: Sim.WaveScript): void => {
+    const run = sim.playScripted(script, undefined, level);
+    const s = run.state;
+    const refused = run.log.filter((step) => 'result' in step && !step.result.ok).length;
+    console.log(
+      `${name.padEnd(mapWidth)}  ${level.padEnd(6)}  ${s.phase.padEnd(6)}  ${String(s.wave).padStart(4)}  ${String(s.lives).padStart(5)}  ${String(s.gold).padStart(4)}  ${run.waves.map((w) => w.lives).join(' ')}${refused ? `  (${refused} refused)` : ''}`,
+    );
+  };
+  for (const name of MAP_ARCHETYPES) row(name, 'normal', sim.ARCHETYPES[name]('normal', map));
+  for (const level of ['easy', 'hard'] as const) row('comboBuild', level, sim.comboBuild(level, map));
+  const r = sim.endlessReport(sim.endlessIdle('normal', map), 'normal');
+  console.log(
+    `${'endlessIdle'.padEnd(mapWidth)}  normal  ${r.result.padEnd(6)}  ${String(r.wave).padStart(4)}  ${String(r.lives).padStart(5)}  ${String(r.gold).padStart(4)}  (${r.wavesCleared} waves cleared)`,
+  );
+}
