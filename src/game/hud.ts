@@ -21,11 +21,25 @@
 // (callEarlyStatus), Start Wave reads "Call next  +14" (names.ts, 14 px so
 // it fits the 130 px button) with the current early bonus, and pressing it
 // calls the next wave; otherwise it reads "Start Wave" as before.
+// Milestone 26: in an endless game the wave counter reads "Wave 11" (no
+// "/10") and the preview shows the generated wave; a type that comes in two
+// groups (an endless wave's extra Harpies) is listed once with the sum.
 
 import Phaser from 'phaser';
-import { callEarlyStatus, nextWavePreview, unlockedSpecials, WAVES, type Difficulty, type GameState, type SpecialType, type TowerType } from '../sim';
+import {
+  callEarlyStatus,
+  hasNextWave,
+  LAST_WAVE,
+  nextWavePreview,
+  unlockedSpecials,
+  type Difficulty,
+  type EnemyType,
+  type GameState,
+  type SpecialType,
+  type TowerType,
+} from '../sim';
 import type { Rect } from './input';
-import { BOSS_NAME, callEarlyLabel, DIFFICULTY_LABELS, ENEMY_NAMES, SPECIAL_BUTTON_TEXT, START_WAVE_TEXT } from './names';
+import { BOSS_NAME, callEarlyLabel, DIFFICULTY_LABELS, ENEMY_NAMES, SPECIAL_BUTTON_TEXT, START_WAVE_TEXT, waveCounterText } from './names';
 import { COLORS, FONT, TEXT } from './palette';
 import { BossBar } from './ui/bossBar';
 import { BuildBar } from './ui/buildBar';
@@ -79,9 +93,12 @@ export const TAG_SIZE = 12;
 export function previewText(state: GameState): string {
   const groups = nextWavePreview(state);
   if (groups.length === 0) return 'Next: none';
-  const plain = groups.filter((g) => g.type !== 'boss');
-  const boss = plain.length < groups.length ? ` + ${BOSS_NAME}` : '';
-  return `Next: ${plain.map((g) => `${g.count} ${ENEMY_NAMES[g.type]}`).join(', ')}${boss}`;
+  // Milestone 26: one entry per type, in first-group order, counts summed
+  // (an endless wave's extra Harpy group joins the base wave's Harpies).
+  const counts = new Map<EnemyType, number>();
+  for (const g of groups) if (g.type !== 'boss') counts.set(g.type, (counts.get(g.type) ?? 0) + g.count);
+  const boss = groups.some((g) => g.type === 'boss') ? ` + ${BOSS_NAME}` : '';
+  return `Next: ${[...counts].map(([type, count]) => `${count} ${ENEMY_NAMES[type]}`).join(', ')}${boss}`;
 }
 
 /** Row 1 buttons (milestone 25b): Special, Start Wave and the speed toggle, 8 px apart, 14 px from the right edge. */
@@ -136,9 +153,9 @@ export function previewSize(text: string): number {
   return previewLines(text, PREVIEW_SIZE_LONG) <= 2 ? PREVIEW_SIZE_LONG : PREVIEW_SIZE_LONGEST;
 }
 
-/** Start Wave does something only in setup with waves left. */
+/** Start Wave does something only in setup with waves left (always, in an endless game). */
 export function canStartWave(state: GameState): boolean {
-  return state.phase === 'setup' && state.wave < WAVES.length;
+  return state.phase === 'setup' && hasNextWave(state);
 }
 
 /** Start Wave's label size: 18 px, or 14 px while it reads the call-early label (milestone 25c). */
@@ -221,7 +238,7 @@ export class Hud {
     set(this.gold, `Gold ${state.gold}`);
     // The sim lets lives go below 0 (the boss's exit costs 5); the HUD shows 0.
     set(this.lives, `Lives ${Math.max(0, state.lives)}`);
-    set(this.wave, `Wave ${state.wave}/${WAVES.length}`);
+    set(this.wave, waveCounterText(state.wave, state.endless, LAST_WAVE));
     const tag = difficultyTag(state.difficulty);
     set(this.tag, tag);
     this.wave.setY(tag ? MID + WAVE_TAG_SHIFT : MID);

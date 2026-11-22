@@ -35,7 +35,8 @@
 //      distance 0, with the level's hp (difficulty.ts enemyMaxHp). A new enemy does not move or get shot on its spawn tick.
 //   6. Advance waveTick and tick.
 //   7. If every enemy of the wave has spawned and none are alive, pay the
-//      clear bonus and go to 'setup' (or 'won' after the last wave).
+//      clear bonus and go to 'setup' (or 'won' after the last wave, unless
+//      the game is endless, milestone 26).
 //
 // Towers only act during wave ticks; in 'setup' cooldowns stay where they
 // are. Build, upgrade and sell (actions.ts) happen between ticks, and so
@@ -44,7 +45,9 @@
 // one special charge; the wave clear in step 7 takes an unused one away.
 // callNextWave (milestone 25c) also acts between ticks: once every enemy of
 // the current wave has spawned it clears that wave at once and starts the
-// next one on top of the survivors.
+// next one on top of the survivors. continueEndless (milestone 26) turns a
+// won game into an endless one between ticks: back to 'setup' with
+// everything kept, and waves go on past 10 (waves.ts waveDef).
 //
 // So the first enemy of a group with delay 0 spawns during the first tick()
 // after startWave (waveTick 0), and an enemy spawned at waveTick k is at
@@ -56,7 +59,7 @@ import { effectiveSlow, ENEMY_STATS, isBoss } from './enemies';
 import { MAP, pathLength } from './map';
 import { secondsToTicks, TICKS_PER_SECOND } from './time';
 import type { GameState, GroupDef } from './types';
-import { WAVES } from './waves';
+import { hasNextWave, LAST_WAVE, waveDef } from './waves';
 
 export { secondsToTicks, TICKS_PER_SECOND };
 /** Normal's starting gold and lives (difficulty.ts has every level's). */
@@ -78,6 +81,7 @@ export function createGame(options: CreateGameOptions = {}): GameState {
   const def = DIFFICULTY_DEFS[difficulty];
   return {
     difficulty,
+    endless: false,
     phase: 'setup',
     gold: def.startGold,
     lives: def.startLives,
@@ -105,11 +109,11 @@ export type StartWaveResult =
 
 export function startWave(state: GameState): StartWaveResult {
   if (state.phase !== 'setup') return { ok: false, reason: 'not-in-setup' };
-  if (state.wave >= WAVES.length) return { ok: false, reason: 'no-more-waves' };
+  if (!hasNextWave(state)) return { ok: false, reason: 'no-more-waves' };
   state.wave += 1;
   state.phase = 'wave';
   state.waveTick = 0;
-  state.spawnedPerGroup = WAVES[state.wave - 1].groups.map(() => 0);
+  state.spawnedPerGroup = waveDef(state.wave).groups.map(() => 0);
   // One special charge per wave (milestone 25b); never more than one.
   state.specialCharges = 1;
   // Planning phase ends (milestone 25a): everything bought so far locks.
@@ -130,7 +134,7 @@ export type CallNextWaveResult = { ok: true; wave: number; bonus: number; gold: 
 
 /** waveTick on which the last enemy of wave `wave` (1-based) spawns. */
 export function lastSpawnTick(wave: number): number {
-  return Math.max(...WAVES[wave - 1].groups.map((g) => spawnTick(g, g.count - 1)));
+  return Math.max(...waveDef(wave).groups.map((g) => spawnTick(g, g.count - 1)));
 }
 
 /**
@@ -138,7 +142,8 @@ export function lastSpawnTick(wave: number): number {
  * (milestone 25c). Refused, checked in this order: 'game-over' (won or
  * lost); 'not-in-wave' (setup); 'last-wave' when the current wave is the
  * last, or when the next wave holds the boss (the boss is never called
- * early, so wave 9 cannot call wave 10); 'still-spawning' while an enemy
+ * early, so wave 9 cannot call wave 10); in an endless game (milestone 26)
+ * there is no last wave and no boss, so it never applies; 'still-spawning' while an enemy
  * of the current wave has yet to spawn. The bonus is
  * min(EARLY_CALL_MAX_BONUS, ceil(secondsRemaining)), where secondsRemaining
  * = max(0, EARLY_CALL_GRACE_SECONDS - seconds since the last spawn). The
@@ -149,9 +154,8 @@ export function lastSpawnTick(wave: number): number {
 export function callEarlyStatus(state: GameState): CallEarlyStatus {
   if (state.phase === 'won' || state.phase === 'lost') return { ok: false, reason: 'game-over' };
   if (state.phase !== 'wave') return { ok: false, reason: 'not-in-wave' };
-  const next = WAVES[state.wave];
-  if (!next || next.groups.some((g) => isBoss(g))) return { ok: false, reason: 'last-wave' };
-  const groups = WAVES[state.wave - 1].groups;
+  if (!hasNextWave(state) || waveDef(state.wave + 1).groups.some((g) => isBoss(g))) return { ok: false, reason: 'last-wave' };
+  const groups = waveDef(state.wave).groups;
   if (!groups.every((g, gi) => state.spawnedPerGroup[gi] >= g.count)) return { ok: false, reason: 'still-spawning' };
   const elapsedTicks = state.waveTick - (lastSpawnTick(state.wave) + 1);
   const remaining = Math.max(0, EARLY_CALL_GRACE_SECONDS - elapsedTicks / TICKS_PER_SECOND);
@@ -178,11 +182,43 @@ export function callNextWave(state: GameState): CallNextWaveResult {
   state.events.push({ kind: 'waveClear', wave: cleared, bonus: WAVE_CLEAR_BONUS });
   state.wave += 1;
   state.waveTick = 0;
-  state.spawnedPerGroup = WAVES[state.wave - 1].groups.map(() => 0);
+  state.spawnedPerGroup = waveDef(state.wave).groups.map(() => 0);
   state.specialCharges = 1;
   state.events.push({ kind: 'earlyCall', wave: state.wave, bonus: status.bonus });
   state.events.push({ kind: 'waveStart', wave: state.wave });
   return { ok: true, wave: state.wave, bonus: status.bonus, gold: state.gold };
+}
+
+export type ContinueEndlessResult = { ok: true; wave: number } | { ok: false; reason: 'not-won' };
+
+/**
+ * Keep going after the win (milestone 26), between ticks. Allowed only when
+ * the phase is 'won' (wave 10 cleared); refused with 'not-won' otherwise. An
+ * endless game never reaches 'won' again, so "already endless" is also
+ * 'not-won'. Sets `state.endless` and goes back to 'setup' with wave 10
+ * cleared: gold, lives, towers, kill counts and the special charge (0 since
+ * the clear) are kept. Emits `endlessStart`. From then on Start Wave plays
+ * wave 11, 12, ... (waves.ts waveDef) and the game ends only by losing. A
+ * refusal changes nothing.
+ */
+export function continueEndless(state: GameState): ContinueEndlessResult {
+  if (state.phase !== 'won') return { ok: false, reason: 'not-won' };
+  state.endless = true;
+  state.phase = 'setup';
+  state.events.push({ kind: 'endlessStart' });
+  return { ok: true, wave: state.wave };
+}
+
+/**
+ * The score (milestone 26): waves cleared in this run, counting from wave
+ * 1, derived from the state. Every wave before the current one has cleared
+ * (at its clear or when the next was called early; each wave clears once),
+ * and the current one has too once the phase is 'setup' or 'won'. So a win
+ * scores 10, a loss on wave 7 scores 6, and a loss on wave 14 of an endless
+ * run scores 13.
+ */
+export function wavesCleared(state: Pick<GameState, 'phase' | 'wave'>): number {
+  return state.phase === 'setup' || state.phase === 'won' ? state.wave : state.wave - 1;
 }
 
 /** Advance the game by exactly one 1/60 s step. Does nothing once won or lost. */
@@ -242,14 +278,15 @@ function removeExitedEnemies(state: GameState): void {
 }
 
 function spawnDueEnemies(state: GameState): void {
-  const groups = WAVES[state.wave - 1].groups;
-  groups.forEach((group, gi) => {
+  const def = waveDef(state.wave);
+  def.groups.forEach((group, gi) => {
     const index = state.spawnedPerGroup[gi];
     if (index < group.count && spawnTick(group, index) === state.waveTick) {
+      const hp = enemyMaxHp(group.type, state.difficulty, def.hpMultiplier ?? 1);
       state.enemies.push({
         id: state.nextEnemyId,
         type: group.type,
-        hp: enemyMaxHp(group.type, state.difficulty),
+        hp,
         distance: 0,
         slow: 0,
         slowTicksLeft: 0,
@@ -257,6 +294,8 @@ function spawnDueEnemies(state: GameState): void {
         specialSlowTicksLeft: 0,
         burnDps: 0,
         burnTicksLeft: 0,
+        // Endless waves only (milestone 26): the table waves leave it out.
+        ...(def.hpMultiplier === undefined ? {} : { maxHp: hp }),
       });
       state.events.push({ kind: 'spawn', enemyId: state.nextEnemyId, enemyType: group.type });
       if (isBoss(group)) state.events.push({ kind: 'bossSpawn', enemyId: state.nextEnemyId });
@@ -267,13 +306,14 @@ function spawnDueEnemies(state: GameState): void {
 }
 
 function checkWaveClear(state: GameState): void {
-  const groups = WAVES[state.wave - 1].groups;
+  const groups = waveDef(state.wave).groups;
   const allSpawned = groups.every((grp, gi) => state.spawnedPerGroup[gi] >= grp.count);
   if (!allSpawned || state.enemies.length > 0) return;
   state.gold += WAVE_CLEAR_BONUS;
   // An unused special charge does not carry over (milestone 25b).
   state.specialCharges = 0;
   state.events.push({ kind: 'waveClear', wave: state.wave, bonus: WAVE_CLEAR_BONUS });
-  state.phase = state.wave >= WAVES.length && state.lives > 0 ? 'won' : 'setup';
+  // An endless game (milestone 26) never wins again: it ends only by losing.
+  state.phase = !state.endless && state.wave >= LAST_WAVE && state.lives > 0 ? 'won' : 'setup';
   if (state.phase === 'won') state.events.push({ kind: 'won' });
 }

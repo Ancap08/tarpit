@@ -630,3 +630,42 @@ can change it; "Kyle" means Kyle decided.
   samples right after the top-up and cannot fail; `?perf=1` is documented
   only in a code comment; stale comments in `src/sim/difficulty.ts:24`
   and `src/sim/enemies.ts:5`.
+
+## 2026-11-21, milestone 26 (endless mode and high score)
+
+- **Endless hp grows 1.6 times every three waves, not the scope's 1.15.**
+  At 1.15 the combo build with no new purchases lived to wave 25 and a
+  build that kept spending played 78 more minutes. At 1.6 the idle build
+  loses on wave 15 and a spender gets about 12 endless waves in 18
+  minutes on Normal. Opus proposed it against the coordinator's targets
+  (idle loses on 11 to 16); Fable accepted it after the verifier's scan of
+  1.15, 1.3, 1.45 and 1.6. The verifier calls 1.6 a little steep, with a
+  cliff at the end (lives 12, 4, 0 over three waves); 1.45 gives 16 waves
+  in 23 minutes. Kyle's play notes decide in milestone 28.
+- **Generated waves.** Waves 8, 9 and 10 repeat without the boss, plus
+  `min(16, 8 + 2 * cycle)` Harpies after the base wave's last spawn. The
+  90 s spawn-window limit does not apply; the spawn-rate rule does. Fable.
+- **Keep going is offered only on the win screen.** The game then ends
+  only by losing. Call early and specials work as before. Fable.
+- **Score is waves cleared, derived from the state, not stored in it.**
+  Saved at every wave clear, per map and difficulty, under `tarpit.best`;
+  a normal win scores 10 and a loss on wave 7 scores 6. A save rewrites
+  the stored value, dropping anything it did not understand. Storage
+  failures fall back to memory for the session. Fable (rules), Opus
+  (build).
+- **The lose screen says "Reached wave 15" and the title then says "14
+  waves".** Both are true (reached against cleared). Accepted (Fable);
+  the v5 HUD pass can reword.
+- **The next-wave preview merges repeated types** ("24 Harpy"). Default
+  (Opus).
+- **A flaky Play click became a check.** On a first visit the title scene
+  is active one frame before Phaser makes its buttons clickable, so a test
+  clicking in that frame lost the click (4 of 8 full runs for the
+  verifier; also on main). Players are not affected: the frame is not
+  drawn yet. Now the title reports ready at its first rendered frame,
+  every spec waits through one shared `waitForTitle`, and
+  `e2e/title-ready.spec.ts` pins the cause. Fable (verifier) found it,
+  Opus fixed it, Fable re-ran 8 of 8 clean.
+- **For milestone 28:** the growth number; endless hp ignores the Hard hp
+  rule; `endlessGreedy` stops buying after wave 14, so it is not a
+  ceiling for a good player.

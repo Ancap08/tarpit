@@ -1,8 +1,9 @@
 // Headless balance report: `npm run sim`. Plays every balance archetype from
 // src/sim/headless.ts on Normal and prints lives, gold and ticks after each
 // wave, then a one-line summary per archetype, then (milestone 25) a compact
-// table of every archetype on Easy and on Hard. Loads src/sim through Vite's module
-// runner, so it needs no extra dependency.
+// table of every archetype on Easy and on Hard, then (milestone 26) the endless
+// archetypes on every level. Loads src/sim through Vite's module runner, so it
+// needs no extra dependency.
 import { fileURLToPath } from 'node:url';
 import { runnerImport } from 'vite';
 import type * as Sim from '../src/sim/index';
@@ -50,6 +51,21 @@ for (const level of ['easy', 'hard'] as const) {
     const refused = run.log.filter((step) => 'result' in step && !step.result.ok).length;
     console.log(
       `${name.padEnd(width)}  ${s.phase.padEnd(6)}  ${String(s.wave).padStart(4)}  ${String(s.lives).padStart(5)}  ${String(s.gold).padStart(4)}${refused ? `  (${refused} refused)` : ''}`,
+    );
+  }
+}
+
+// Milestone 26: endless archetypes (informational), on every level: the
+// wave each run loses on and its waves cleared, or "capped" if it was still
+// alive after ENDLESS_WAVE_CAP waves.
+console.log(`\nEndless (cap ${sim.ENDLESS_WAVE_CAP} waves)`);
+const endlessWidth = Math.max(...Object.keys(sim.ENDLESS_ARCHETYPES).map((n) => n.length));
+console.log(`${'archetype'.padEnd(endlessWidth)}  level   result  wave  cleared  lives  gold`);
+for (const level of ['easy', 'normal', 'hard'] as const) {
+  for (const [name, archetype] of Object.entries(sim.ENDLESS_ARCHETYPES)) {
+    const r = sim.endlessReport(archetype(level), level);
+    console.log(
+      `${name.padEnd(endlessWidth)}  ${level.padEnd(6)}  ${r.result.padEnd(6)}  ${String(r.wave).padStart(4)}  ${String(r.wavesCleared).padStart(7)}  ${String(r.lives).padStart(5)}  ${String(r.gold).padStart(4)}`,
     );
   }
 }

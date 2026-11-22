@@ -48,7 +48,9 @@ Towers fire in cellKey order (row by row, left to right).
   wave's 25 clear bonus at once plus an early bonus of up to 20.
 - An enemy reaching the exit costs 1 life (the boss: 5) and is removed.
 - Lives at 0 or below: lose, immediately.
-- Clearing wave 10 with lives above 0: win.
+- Clearing wave 10 with lives above 0: win. After the win the player may
+  keep going into endless waves (milestone 26, see Endless mode), where
+  clearing a wave never wins again.
 - Sell returns 70% of the total spent on that tower (build plus upgrade),
   rounded down, for a locked tower, plus in full any upgrade bought on it
   during the current setup phase. An unlocked tower (built during the
@@ -152,14 +154,22 @@ this file is the base number.
 
 Title menu: the title and subtitle, a "Difficulty" caption and a row of
 three 132 x 42 buttons (Easy, Normal, Hard; the selection highlighted like
-the build bar's active pick) at y 244, an empty band (y 302 to 430) kept
-for the map row and the high-score line of later milestones, a 200 x 42
+the build bar's active pick) at y 244, a band (y 302 to 430) for the map
+row of milestone 27 (y 302 to 400) and the high-score line (milestone 26,
+centred on y 414; see Endless mode), a 200 x 42
 [Play] at y 446, and a prompt line. Clicking a level only selects it; Play
 (or Enter or Space) starts the game; Left and Right move the selection.
-The selection is kept for the page session. On Easy and Hard the HUD shows
+The selection is kept for the page session. The title reports ready (the
+`titleReady()` hook, and its buttons in `uiRects()`) from its first
+rendered frame: on a first visit Phaser makes the buttons hit-testable
+only from the scene's next update after `create()`, and a click before
+that is lost (milestone 26 follow-up; nothing is drawn yet then, so only
+a test can click that early). Specs wait with `e2e/title.ts`
+`waitForTitle`. On Easy and Hard the HUD shows
 the level's name in small muted text under the wave counter (which moves
 up 7 px); on Normal there is no tag. The end screens have [Play again]
-(same level) and a 100 x 42 [Menu] beside it that returns to the title.
+(same level) and a 100 x 42 [Menu] beside it that returns to the title;
+the win screen also has [Keep going] (milestone 26).
 
 ## Enemies
 
@@ -449,7 +459,8 @@ each group's type and count.
 wave runs and every one of its enemies has spawned, the next wave can be
 called at once. Refused, in this order, with `game-over`, `not-in-wave`
 (setup), `last-wave` (the current wave is the last, or the next wave holds
-the boss: wave 9 cannot call wave 10) and `still-spawning`; a refusal
+the boss: wave 9 cannot call wave 10; never in an endless game, which
+has no last wave and no boss, milestone 26) and `still-spawning`; a refusal
 changes nothing. A call clears the current wave at once: it pays the 25
 clear bonus (event `waveClear`) plus the early bonus, `min(20,
 ceil(secondsRemaining))` with `secondsRemaining = max(0, 20 - seconds
@@ -476,6 +487,123 @@ bonus}`.
 Players can build, upgrade and sell at any time, including mid-wave.
 Moving a tower and undoing an upgrade are setup-only (Planning phase).
 
+## Endless mode
+
+Milestone 26, from `docs/SCOPE-v4.md` ("Endless mode and high score").
+
+- **Keep going.** The win screen (wave 10 cleared, boss dead or gone) has
+  three buttons: [Keep going] (the primary: highlighted, on the left,
+  170 x 42), [Play again] (180 x 42) and [Menu] (100 x 42), 16 px apart,
+  centred in a 520 x 230 panel (460 before; the lose screen keeps 460 and
+  its two buttons). [Keep going] calls `continueEndless(state)`
+  (`game.ts`): allowed only in phase `won`, refused with `not-won`
+  otherwise (an endless game never reaches `won`, so "already endless" is
+  `not-won` too); a refusal changes nothing. It sets `state.endless =
+  true` (false from `createGame`) and the phase to `setup` with wave 10
+  cleared; gold, lives, towers, kill counts and the special charge (0
+  after the clear) are kept. Event `endlessStart`. The end screen goes
+  away; the boss is already gone, so there is no boss bar.
+- **After that** Start Wave plays wave 11, 12, and so on. Clearing a wave
+  pays the 25 bonus and returns to setup; it never sets `won`, so the game
+  ends only by losing. The planning phase, one special charge per wave
+  (all three specials are unlocked, Fire Arrows included) and call early
+  work as before; call early has no `last-wave` refusal in an endless
+  game. A game that is not continued is the game before milestone 26:
+  `won` on wave 10.
+- **Generated waves** (`waveDef(n)` in `waves.ts`; waves 1 to 10 are the
+  table). For n >= 11: `k = n - 11`, `cycle = floor(k / 3) + 1`; the
+  groups of table wave 8, 9 or 10 for `k % 3` = 0, 1, 2, without the boss;
+  plus one Harpy group of `min(16, 8 + 2 x cycle)` Harpies, one every
+  0.75 s, starting 2 s after the base wave's last spawn; hp multiplier
+  `1.6 ^ cycle`. An enemy spawns with `round(base hp x level multiplier x
+  wave multiplier)` (one rounding, half up) and carries it as `maxHp`,
+  which the hp bar uses (table-wave enemies have no `maxHp`). Bounties,
+  speeds and lives cost do not change. The 90 s spawn-window limit does
+  not apply; the longest endless window is 86.75 s (wave 8 based waves
+  from cycle 4: 75.5 + 15 x 0.75). The spawn-rate rule (A1) holds on the
+  merged schedule (pinned for waves 11 to 40). The Hard hp rule is not
+  applied to endless hp. `waveDef` throws for n < 1 (and for a
+  non-integer n). The live game has no wave cap (only the headless runs
+  stop at 200), and hp leaves the exact-integer range near wave 200: the
+  Troll's spawn hp passes `Number.MAX_SAFE_INTEGER` on wave 200 on Normal
+  and Hard (cycle 64) and wave 203 on Easy. Accepted: no build gets near
+  it.
+- **Hp growth 1.6 per cycle, not the scope's 1.15.** At 1.15 the idle
+  combo build lived to wave 25 on Normal (target 11 to 16): the combo lost
+  no life until the hp passed about 2x. 1.6 (about 1.17 per wave) puts the
+  idle build at wave 15 and the greedy one at 18. The Harpy group is the
+  scope's: it barely moves the result (DEVLOG milestone 26).
+- **Score.** `wavesCleared(state)` (`game.ts`, derived, no state field):
+  `state.wave` in `setup` or `won`, else `state.wave - 1`. Every wave
+  before the current one has cleared (at its clear or when the next was
+  called early), so a call-early clear counts. A win scores 10, a loss on
+  wave 7 scores 6.
+- **On screen.** The HUD wave counter reads "Wave 11" in an endless game
+  (no "/10"; "Wave 10" right after Keep going). The preview lists each
+  type once in first-group order with the counts summed, so the extra
+  Harpies join the base wave's ("Next: 50 Goblin, 25 Wolf, 13 Troll, 6
+  Shieldbearer, 24 Harpy" before wave 14 reads 26 Harpy); the two-line
+  and small-font rules fit every endless preview. The lose screen reads
+  "Reached wave 15" (no "of 10"). Words in `names.ts`: `END_TEXT.keepGoing`,
+  `waveCounterText`, `reachedWaveText`, `bestScoreText`.
+
+| Wave | Cycle | Base | Extra Harpies | Enemies | Hp x | Total hp (Normal) | Bounty | Last spawn |
+|---|---|---|---|---|---|---|---|---|
+| 11 | 1 | 8 | 10 from 75.5 s | 118 | 1.6 | 23084 | 356 | 82.25 s |
+| 12 | 1 | 9 | 10 from 31 s | 50 | 1.6 | 15940 | 170 | 37.75 s |
+| 13 | 1 | 10 | 10 from 65 s | 65 | 1.6 | 24412 | 266 | 71.75 s |
+| 14 | 2 | 8 | 12 from 75.5 s | 120 | 2.56 | 37143 | 362 | 83.75 s |
+| 15 | 2 | 9 | 12 from 31 s | 52 | 2.56 | 25674 | 176 | 39.25 s |
+| 16 | 2 | 10 | 12 from 65 s | 67 | 2.56 | 39220 | 272 | 73.25 s |
+
+Endless hp at cycles 1, 2, 3 (Easy / Normal / Hard): Goblin 23/30/36,
+36/49/58, 58/78/93; Troll 1080/1440/1728, 1728/2304/2765,
+2765/3686/4424; Harpy 43/58/69, 69/92/111, 111/147/177.
+
+**Headless** (informational, `npm run sim` "Endless" table, cap
+`ENDLESS_WAVE_CAP` = 200 waves; a run still alive there reports
+`capped`). A WaveScript with `endless: true` presses Keep going after the
+win and plays on. `endlessIdle`: comboBuild, then no purchases.
+`endlessGreedy`: comboBuild, then in each endless setup, while gold
+allows, upgrade the un-upgraded tower with the cheapest upgrade (wait if
+it is not affordable yet), else build a Longbow on the next free cell of
+`TRAIL_CELL_ORDER`, else nothing. Both fire one cluster special per
+endless wave at the `CLUSTER_POLICY_TICKS` tick of the table wave it
+repeats (1241, 1194, 713). Targets on Normal: idle loses on wave 11 to
+16 (15); greedy further than idle, at least wave 14, lost by 40 (18).
+
+## High score
+
+Milestone 26. The best waves cleared per map and difficulty, in
+`localStorage` under `tarpit.best`:
+
+    { "v": 1, "best": { "meadow": { "easy": 12, "normal": 10 } } }
+
+keyed by map id, then level, so later maps need no migration; today's
+only map id is `meadow`. `src/game/highScore.ts` parses (anything
+malformed is ignored part by part: bad JSON, another or no version, a
+map entry that is not an object, an unknown level, a score that is not a
+whole number of at least 1; unknown keys are skipped), merges (keeps the
+larger) and serializes. The store reads and writes inside try/catch and
+also keeps the table in memory, so with storage blocked or full the best
+lasts for the page session and nothing throws. GameScene sends
+`wavesCleared` to the store after every run of ticks and every early call
+when it went up, and the store keeps it if it beats the stored best: every
+wave clear counts, in a lost or abandoned run and in a game that was never
+continued (a loss on wave 7 stores 6, a win 10).
+A save writes the whole value back as `{"v":1,"best":...}` built from
+what was parsed, so unknown levels, unknown top-level keys and a stored
+`v` other than 1 are dropped on the next new best (accepted; pinned in
+`highScore.test.ts`).
+
+Title menu: one 18 px line centred at (480, 414), "Best on Normal: 12
+waves" ("1 wave" for one) for the selected level, changing with the
+selection; no line when that level has no score. Test hooks
+(`window.__tarpit`, `?test=1`): `continueEndless()`,
+`bestScore(difficulty)`, `ui().bestLine` on the title, `keepGoing` in
+`uiRects()` on the win screen, and `runScript('endlessIdle' |
+'endlessGreedy', untilWave)` (untilWave may be past 10).
+
 ## Tick order
 
 Specials (milestone 25b) and early calls (milestone 25c) act between ticks, like builds. Inside one wave tick: (1) enemies move at `(1 - effectiveSlow)`, then both slow timers count down; (2)
@@ -494,5 +622,5 @@ Plain TypeScript in `src/sim`, no Phaser, no DOM. One `GameState` object,
 pure data. Functions take the state and return a new state or a result;
 either mutation or immutability is fine as long as it is consistent and
 tested. Required operations: create game, tick, start wave, build tower,
-upgrade tower, sell tower, move tower and undo upgrade (milestone 25a), use special (milestone 25b), call the next wave early (milestone 25c), next-wave preview, and a headless runner that
+upgrade tower, sell tower, move tower and undo upgrade (milestone 25a), use special (milestone 25b), call the next wave early (milestone 25c), continue into endless waves (milestone 26), next-wave preview, and a headless runner that
 plays a scripted set of actions for tests and balance work.

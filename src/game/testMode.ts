@@ -1,6 +1,7 @@
 // Test mode (?test=1): time is frozen and window.__tarpit exposes hooks for
 // Playwright. Outside test mode window.__tarpit holds the Phaser game and the
-// read-only uiRects(), canvasToPage(), portraitCardVisible() and animState(), so real-time
+// read-only uiRects(), canvasToPage(), portraitCardVisible(), animState() and
+// titleReady() (milestone 26 follow-up), so real-time
 // tests and the demo recorder click the HUD (and, from milestone 25, the
 // title menu) where it is drawn at any viewport size.
 
@@ -10,6 +11,9 @@ import {
   comboBuild,
   DEFAULT_DIFFICULTY,
   densestCluster,
+  ENDLESS_WAVE_CAP,
+  endlessGreedy,
+  endlessIdle,
   lazyBuild,
   soundBuild,
   WAVES,
@@ -20,6 +24,7 @@ import {
   type WaveScript,
 } from '../sim';
 import type { GameScene } from './GameScene';
+import { highScores } from './highScore';
 import { portraitCardVisible } from './portrait';
 import type { TarpitTestApi } from './testGlobal';
 import type { TitleScene } from './TitleScene';
@@ -37,7 +42,9 @@ export function isPerfMode(): boolean {
   return new URLSearchParams(window.location.search).get('perf') === '1';
 }
 
-const SCRIPTS: Record<'soundBuild' | 'lazyBuild' | 'comboBuild', Archetype> = { soundBuild, lazyBuild, comboBuild };
+/** Scripts runScript plays; the endless ones (milestone 26) press Keep going after the win. */
+export type ScriptName = 'soundBuild' | 'lazyBuild' | 'comboBuild' | 'endlessIdle' | 'endlessGreedy';
+const SCRIPTS: Record<ScriptName, Archetype> = { soundBuild, lazyBuild, comboBuild, endlessIdle, endlessGreedy };
 
 /** Same cap per wave as the headless runner (src/sim/headless.ts). */
 const MAX_TICKS_PER_WAVE = 60 * 600;
@@ -52,7 +59,10 @@ const MAX_TICKS_PER_WAVE = 60 * 600;
  * specials; 25c cluster specials and early calls) fire before the tick on
  * which the wave tick counter reaches their atWaveTick, as in playScripted;
  * a cluster special aims at densestCluster of the live state, and a wave
- * called early starts without Start Wave.
+ * called early starts without Start Wave. An endless script (milestone 26)
+ * presses Keep going (the scene's continueEndless) when wave 10 is won and
+ * plays on, so `untilWave` may be past 10 (11 stops in setup right after
+ * Keep going).
  */
 function runScript(scene: GameScene, script: WaveScript, untilWave?: number): Phase {
   const apply = (a: BuildAction) => {
@@ -83,7 +93,9 @@ function runScript(scene: GameScene, script: WaveScript, untilWave?: number): Ph
   // across the calls that change it.
   const phase = (): Phase => scene.state.phase;
   let called = false;
-  while ((phase() === 'setup' || called) && scene.state.wave < WAVES.length) {
+  const limit = script.endless ? ENDLESS_WAVE_CAP : WAVES.length;
+  if (script.endless && phase() === 'won') scene.continueEndless();
+  while ((phase() === 'setup' || called) && scene.state.wave < limit) {
     const index = called ? scene.state.wave - 1 : scene.state.wave;
     for (const action of script[index] ?? []) apply(action);
     if (!called) {
@@ -102,6 +114,7 @@ function runScript(scene: GameScene, script: WaveScript, untilWave?: number): Ph
       }
       scene.advance(1, false);
     }
+    if (script.endless && phase() === 'won') scene.continueEndless();
   }
   scene.redraw();
   return phase();
@@ -142,6 +155,7 @@ export function installGlobal(game: Phaser.Game): void {
     animState: (enemyId: number) => (game.scene.isActive('game') ? (game.scene.getScene('game') as GameScene).animState(enemyId) : null),
     canvasToPage: (x: number, y: number) => canvasToPage(game, x, y),
     portraitCardVisible,
+    titleReady: () => game.scene.isActive('title') && titleScene(game).isReady,
   };
   if (!isTestMode()) {
     window.__tarpit = always;
@@ -171,6 +185,8 @@ export function installGlobal(game: Phaser.Game): void {
     difficulty: () => scene().state.difficulty,
     startWave: () => scene().startWave(),
     callNextWave: () => scene().callNextWave(),
+    continueEndless: () => scene().continueEndless(),
+    bestScore: (difficulty) => highScores.best(difficulty) ?? null,
     spawnHorde: (n, span) => scene().spawnHorde(n, span),
     buildAt: (col, row, type) => scene().build({ col, row }, type),
     upgradeAt: (col, row) => scene().upgrade({ col, row }),

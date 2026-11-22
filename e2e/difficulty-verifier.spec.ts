@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { DIFFICULTY_LABELS } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { TitleUiState } from '../src/game/TitleScene';
+import { waitForTitle } from './title';
 
 // Milestone 25 verifier probes: the title menu, the HUD level tag, [Menu]
 // and Play again, through real clicks and keys at uiRects() (?test=1).
@@ -21,11 +22,12 @@ const twoFrames = (page: Page) => page.evaluate(() => new Promise<void>((r) => r
  * Wait until the title menu takes clicks. Phaser adds new interactive
  * objects to a scene's input list on that scene's next update, so a click
  * in the same frame the title scene starts (seen on a fast reload: about 2
- * in 25) hits nothing. No person clicks that fast; a test can.
+ * in 25) hits nothing. No person clicks that fast; a test can. Milestone 26
+ * follow-up: the shared e2e/title.ts waitForTitle waits for the title's
+ * first rendered frame (titleReady()), which replaces the two-frame wait.
  */
 async function onTitle(page: Page): Promise<void> {
-  await page.waitForFunction(() => window.__tarpit?.scene?.() === 'title');
-  await twoFrames(page);
+  await waitForTitle(page);
 }
 async function openTitle(page: Page): Promise<void> {
   await page.goto('/?test=1');

@@ -22,7 +22,8 @@ export interface DifficultyDef {
 
 export const DIFFICULTY_DEFS: Readonly<Record<Difficulty, DifficultyDef>> = {
   // Milestone 25c: Easy lives 25 -> 30; Hard hp 1.3 -> 1.2 (second pass;
-  // 1.1 in the first). Every Hard hp avoids 1 or 2 over a multiple of 12 or 4.
+  // 1.1 in the first). Every Hard hp avoids 1 or 2 over a multiple of a
+  // tower's base damage: 12, 4, 25 and 45 (docs/DESIGN.md, Hard hp rule).
   easy: { hpMultiplier: 0.75, startGold: 150, startLives: 30 },
   normal: { hpMultiplier: 1, startGold: 100, startLives: 20 },
   hard: { hpMultiplier: 1.2, startGold: 80, startLives: 15 },
@@ -31,8 +32,11 @@ export const DIFFICULTY_DEFS: Readonly<Record<Difficulty, DifficultyDef>> = {
 /**
  * An enemy's hp at spawn (and so its full hp) on this level: the base hp
  * times the level's multiplier, rounded to a whole number (Goblin 19:
- * Easy 14, Normal 19, Hard 23).
+ * Easy 14, Normal 19, Hard 23). Endless waves (milestone 26) pass their
+ * `waveMultiplier` (1.6 ^ cycle), applied before the one rounding:
+ * round(base x level x wave), so a Normal wave 11 Goblin has
+ * round(19 x 1.6) = 30.
  */
-export function enemyMaxHp(type: EnemyType, difficulty: Difficulty = DEFAULT_DIFFICULTY): number {
-  return Math.round(ENEMY_STATS[type].hp * DIFFICULTY_DEFS[difficulty].hpMultiplier);
+export function enemyMaxHp(type: EnemyType, difficulty: Difficulty = DEFAULT_DIFFICULTY, waveMultiplier = 1): number {
+  return Math.round(ENEMY_STATS[type].hp * DIFFICULTY_DEFS[difficulty].hpMultiplier * waveMultiplier);
 }
