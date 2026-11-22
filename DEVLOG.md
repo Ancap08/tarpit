@@ -6434,6 +6434,13 @@ the background and takes over, so a deploy is not missed. One run of the
 two-tab update test failed under full-suite load and passed on 4 reruns and
 12 repeats; cause not found.
 
+Re-verify 2 (47162f5, scope-prefixed caches): exact-scope filter and the
+`tarpit|<path>|` prefix hold under `/` and `/tarpit/` (the closing `|` keeps `/` from
+matching `/tarpit/` caches); each of three scratch reversions (page kill switch,
+retiring worker, activate) made a sibling test fail. At the origin root the game
+touches no sibling's worker or cache, but its retiring worker would reload
+sibling pages that have no worker of their own.
+
 Needs a real phone: Add to Home Screen wording and icon on current iOS
 (Share is under the ellipsis menu in newer Safari), standalone window and
 status bar, real notch and home bar, Android install prompt and maskable
