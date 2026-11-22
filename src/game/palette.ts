@@ -96,6 +96,13 @@ export const COLORS = {
   unlockedOutline: 0xfff8d8,
   // Drag (milestone 25a): the thin line from a finger to the lifted ghost.
   dragLine: 0xfff8d8,
+  // Special attacks (milestone 25b): aim circle and effect colour per special,
+  // and the HUD button's charge pip (lit, or an empty grey ring).
+  specialKeg: 0xe0502a,
+  specialTar: 0x3b2a1c,
+  specialFire: 0xf2a62a,
+  specialPip: 0xfff2a8,
+  specialPipEmpty: 0x6a6e76,
   menuBg: 0x1b1f24,
   menuEdge: 0xd9b77e,
 
