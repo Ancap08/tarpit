@@ -10,15 +10,20 @@
 //
 // Layout (canvas 960 x 580, everything centred on x 480): title y 110,
 // subtitle y 172, "Difficulty" caption y 224, level buttons y 244..286,
-// then y 302..430 left empty for later milestones (a "Map" row with
-// thumbnails, milestone 27, and a high-score line, milestone 26), [Play]
-// y 446..488, prompt y 522.
+// then y 302..430 for later milestones: a "Map" row with thumbnails
+// (milestone 27, y 302..400) and the high-score line (milestone 26,
+// centred on y 414), [Play] y 446..488, prompt y 522.
+//
+// High-score line (milestone 26): "Best on Normal: 12 waves" for the
+// selected level (highScore.ts, names.ts bestScoreText), redrawn when the
+// selection changes; no line when that level has no score.
 
 import Phaser from 'phaser';
 import { DEFAULT_DIFFICULTY, DIFFICULTIES, type Difficulty } from '../sim';
 import { loadEnemySheets } from './anim/enemySprites';
 import type { Rect } from './input';
-import { DIFFICULTY_LABELS, TITLE_TEXT } from './names';
+import { highScores } from './highScore';
+import { bestScoreText, DIFFICULTY_LABELS, TITLE_TEXT } from './names';
 import { COLORS, FONT, TEXT } from './palette';
 import { Button } from './ui/button';
 
@@ -29,11 +34,16 @@ const LEVEL_GAP = 16;
 export const LEVEL_ROW_Y = 244;
 export const PLAY_BUTTON_W = 200;
 export const PLAY_BUTTON_Y = 446;
+/** The high-score line's centre (milestone 26), below milestone 27's map row (y 302..400). */
+export const BEST_LINE_Y = 414;
+export const BEST_LINE_SIZE = 18;
 
 /** What the test hook ui() reports while the title menu shows. */
 export interface TitleUiState {
   scene: 'title';
   difficulty: Difficulty;
+  /** The high-score line (milestone 26) and its box in canvas px, or null when the level has no score. */
+  bestLine: { text: string; rect: Rect } | null;
 }
 
 /** Data GameScene is started with. */
@@ -46,6 +56,7 @@ export class TitleScene extends Phaser.Scene {
   private selected: Difficulty = DEFAULT_DIFFICULTY;
   private levelButtons = new Map<Difficulty, Button>();
   private playButton: Button | null = null;
+  private bestLine: Phaser.GameObjects.Text | null = null;
   private starting = false;
 
   constructor() {
@@ -78,8 +89,10 @@ export class TitleScene extends Phaser.Scene {
       this.levelButtons.set(level, new Button(this, rect, DIFFICULTY_LABELS[level], () => this.select(level)));
     });
 
-    // Reserved (y 302..430): a "Map" row (milestone 27) and a high-score
-    // line (milestone 26) go here. Nothing is drawn yet.
+    // Reserved (y 302..400): a "Map" row (milestone 27) goes here.
+    this.bestLine = this.add
+      .text(cx, BEST_LINE_Y, '', { fontFamily: FONT, fontSize: `${BEST_LINE_SIZE}px`, fontStyle: 'bold', color: TEXT.subtitle })
+      .setOrigin(0.5);
 
     this.playButton = new Button(
       this,
@@ -114,6 +127,8 @@ export class TitleScene extends Phaser.Scene {
   select(level: Difficulty): void {
     this.selected = level;
     for (const [l, b] of this.levelButtons) b.setPicked(l === level);
+    const best = highScores.best(level);
+    this.bestLine?.setText(best === undefined ? '' : bestScoreText(level, best));
   }
 
   /** Move the selection one level left (-1) or right (+1), stopping at the ends. */
@@ -132,7 +147,12 @@ export class TitleScene extends Phaser.Scene {
   }
 
   uiState(): TitleUiState {
-    return { scene: 'title', difficulty: this.selected };
+    const line = this.bestLine;
+    const bestLine =
+      line === null || line.text === ''
+        ? null
+        : { text: line.text, rect: { x: line.x - line.width / 2, y: line.y - line.height / 2, width: line.width, height: line.height } };
+    return { scene: 'title', difficulty: this.selected, bestLine };
   }
 
   /** `title:easy`, `title:normal`, `title:hard` and `title:play`. */

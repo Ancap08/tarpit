@@ -75,7 +75,24 @@ export const END_TEXT = {
   wonGold: 'Gold left:',
   lostTitle: 'The village fell',
   lostWave: 'Reached wave',
+  /** The win screen's primary button (milestone 26): play on into endless waves. */
+  keepGoing: 'Keep going',
 } as const;
+
+/** The HUD's wave counter: "Wave 3/10", or "Wave 11" in an endless game (milestone 26). */
+export function waveCounterText(wave: number, endless: boolean, lastWave: number): string {
+  return endless ? `Wave ${wave}` : `Wave ${wave}/${lastWave}`;
+}
+
+/** The lose screen's line: "Reached wave 7 of 10", or "Reached wave 14" in an endless game (milestone 26). */
+export function reachedWaveText(wave: number, endless: boolean, lastWave: number): string {
+  return endless ? `${END_TEXT.lostWave} ${wave}` : `${END_TEXT.lostWave} ${wave} of ${lastWave}`;
+}
+
+/** The title menu's high-score line (milestone 26): "Best on Normal: 12 waves". */
+export function bestScoreText(difficulty: Difficulty, waves: number): string {
+  return `Best on ${DIFFICULTY_LABELS[difficulty]}: ${waves} ${waves === 1 ? 'wave' : 'waves'}`;
+}
 
 /**
  * The tower panel's button words (milestone 25a moved them here). In setup an

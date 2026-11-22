@@ -4,6 +4,10 @@
 // through faintly, holds a title, one or two lines, a [Play again] button
 // (same level) and, beside it, a smaller [Menu] button back to the title
 // menu (milestone 25). The scene ignores map clicks and hover while it shows.
+// Milestone 26: the win screen widens to 520 px and adds [Keep going] as
+// the primary button (highlighted, on the left): [Keep going] [Play again]
+// [Menu], 42 px tall and 16 px apart. Pressing it turns the game endless
+// and hides the screen. The lose screen is unchanged.
 //
 // The veil is deliberately not interactive. Phaser orders overlapping
 // interactive objects by the camera's last render list; a click that lands
@@ -22,8 +26,12 @@ import { endScreenText, type EndKind } from './endText';
 export type { EndKind };
 
 const PANEL_W = 460;
+/** The win screen's panel (milestone 26): wide enough for three buttons. */
+const PANEL_W_WON = 520;
 const PANEL_H = 230;
 const BUTTON_W = 180;
+/** [Keep going] (milestone 26). */
+const KEEP_GOING_W = 170;
 /** 42 px: at least 44 px on screen at iPad landscape scale (milestone 14). */
 const BUTTON_H = 42;
 /** [Menu] (milestone 25): smaller, to the right of [Play again]. */
@@ -37,9 +45,12 @@ export class EndScreen {
   private readonly lines: Phaser.GameObjects.Text;
   private readonly button: Button;
   private readonly menu: Button;
+  private readonly keepGoing: Button;
+  private readonly buttonY: number;
+  private readonly cx: number;
   private shown: EndKind | null = null;
 
-  constructor(scene: Phaser.Scene, onPlayAgain: () => void, onMenu: () => void) {
+  constructor(scene: Phaser.Scene, onPlayAgain: () => void, onMenu: () => void, onKeepGoing: () => void) {
     const cx = MAP_AREA.x + MAP_AREA.width / 2;
     const cy = MAP_AREA.y + MAP_AREA.height / 2;
     const top = cy - PANEL_H / 2;
@@ -66,6 +77,8 @@ export class EndScreen {
     // The pair is centred on the panel: [Play again] then [Menu].
     const left = cx - (BUTTON_W + BUTTON_GAP + MENU_W) / 2;
     const y = top + PANEL_H - BUTTON_H - 22;
+    this.buttonY = y;
+    this.cx = cx;
     this.button = new Button(scene, { x: left, y, width: BUTTON_W, height: BUTTON_H }, END_TEXT.playAgain, onPlayAgain, {
       fontSize: '20px',
     });
@@ -76,6 +89,10 @@ export class EndScreen {
       onMenu,
       { fontSize: '18px' },
     );
+    this.keepGoing = new Button(scene, { x: 0, y, width: KEEP_GOING_W, height: BUTTON_H }, END_TEXT.keepGoing, onKeepGoing, {
+      fontSize: '20px',
+    });
+    this.keepGoing.setPicked(true);
     this.setVisible(false);
   }
 
@@ -91,17 +108,41 @@ export class EndScreen {
     const { title, lines } = endScreenText(kind, state);
     this.title.setText(title).setColor(kind === 'won' ? TEXT.victory : TEXT.defeat);
     this.lines.setText(lines.join('\n'));
+    this.layout(kind);
     this.setVisible(true);
   }
 
-  /** `playAgain` and `menu` while shown, else nothing. */
+  /** Hide the screen (milestone 26: after Keep going); a later show() works again. */
+  hide(): void {
+    this.shown = null;
+    this.setVisible(false);
+  }
+
+  /** `playAgain` and `menu` while shown, and `keepGoing` on the win screen; else nothing. */
   rects(): Record<string, Rect> {
-    return this.shown === null ? {} : { playAgain: this.button.rect, menu: this.menu.rect };
+    if (this.shown === null) return {};
+    const out: Record<string, Rect> = { playAgain: this.button.rect, menu: this.menu.rect };
+    if (this.shown === 'won') out.keepGoing = this.keepGoing.rect;
+    return out;
+  }
+
+  /** The panel width and the button row for this screen: two buttons, or three on the win screen (milestone 26). */
+  private layout(kind: EndKind): void {
+    const won = kind === 'won';
+    this.panel.setSize(won ? PANEL_W_WON : PANEL_W, PANEL_H);
+    const row = won ? [this.keepGoing, this.button, this.menu] : [this.button, this.menu];
+    const total = row.reduce((n, b) => n + b.rect.width, 0) + (row.length - 1) * BUTTON_GAP;
+    let x = this.cx - total / 2;
+    for (const b of row) {
+      b.moveTo(x, this.buttonY);
+      x += b.rect.width + BUTTON_GAP;
+    }
   }
 
   private setVisible(visible: boolean): void {
     for (const o of [this.veil, this.panel, this.title, this.lines]) o.setVisible(visible);
     this.button.setShown(visible);
     this.menu.setShown(visible);
+    this.keepGoing.setShown(visible && this.shown === 'won');
   }
 }

@@ -109,8 +109,9 @@ export function drawStatusRings(g: Phaser.GameObjects.Graphics, state: GameState
 /** Hp bars for hurt enemies, drawn over the sprites. Not for the boss: the HUD boss bar shows his. */
 export function drawHpBars(g: Phaser.GameObjects.Graphics, state: GameState): void {
   for (const enemy of state.enemies) {
-    // Full hp on this level (milestone 25): Easy and Hard scale it.
-    const maxHp = enemyMaxHp(enemy.type, state.difficulty);
+    // Full hp on this level (milestone 25): Easy and Hard scale it; an
+    // endless wave's enemy carries its own (milestone 26).
+    const maxHp = enemy.maxHp ?? enemyMaxHp(enemy.type, state.difficulty);
     if (enemy.hp < maxHp && enemy.type !== 'boss') {
       const { x, y } = enemyPosition(enemy);
       const fraction = Math.max(0, enemy.hp) / maxHp;

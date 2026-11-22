@@ -61,11 +61,11 @@ async function loseQuickly(page: Page): Promise<void> {
 test('the menu starts each level with its gold, lives and Goblin hp; Menu and Play again keep the level', async ({ page }) => {
   await page.goto('/?test=1');
   await onScene(page, 'title');
-  expect(await t(page).title()).toEqual({ scene: 'title', difficulty: 'normal' });
+  expect(await t(page).title()).toMatchObject({ scene: 'title', difficulty: 'normal' });
 
   // Easy: selecting does not start the game; Play does.
   await click(page, 'title:easy');
-  expect(await t(page).title()).toEqual({ scene: 'title', difficulty: 'easy' });
+  expect(await t(page).title()).toMatchObject({ scene: 'title', difficulty: 'easy' });
   expect(await t(page).scene()).toBe('title');
   await click(page, 'title:play');
   await freshGame(page);
@@ -78,7 +78,7 @@ test('the menu starts each level with its gold, lives and Goblin hp; Menu and Pl
   await loseQuickly(page);
   await click(page, 'menu');
   await onScene(page, 'title');
-  expect(await t(page).title()).toEqual({ scene: 'title', difficulty: 'easy' });
+  expect(await t(page).title()).toMatchObject({ scene: 'title', difficulty: 'easy' });
 
   // Hard.
   await click(page, 'title:hard');
@@ -99,9 +99,9 @@ test('the menu starts each level with its gold, lives and Goblin hp; Menu and Pl
   await loseQuickly(page);
   await click(page, 'menu');
   await onScene(page, 'title');
-  expect(await t(page).title()).toEqual({ scene: 'title', difficulty: 'hard' });
+  expect(await t(page).title()).toMatchObject({ scene: 'title', difficulty: 'hard' });
   await page.keyboard.press('ArrowLeft');
-  expect(await t(page).title()).toEqual({ scene: 'title', difficulty: 'normal' });
+  expect(await t(page).title()).toMatchObject({ scene: 'title', difficulty: 'normal' });
   await page.keyboard.press('Enter');
   await freshGame(page);
   expect(await t(page).state()).toMatchObject({ difficulty: 'normal', gold: 100, lives: 20 });

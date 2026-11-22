@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { comboBuild, createGame, playAllWavesNoTowers, playScripted } from '../../sim';
+import { comboBuild, createGame, endlessIdle, playAllWavesNoTowers, playScripted } from '../../sim';
 import { END_TEXT } from '../names';
 import { endKind, endScreenText } from './endText';
 
@@ -24,5 +24,11 @@ describe('end screen text', () => {
     const s = playAllWavesNoTowers();
     expect(endKind(s)).toBe('lost');
     expect(endScreenText('lost', s)).toEqual({ title: END_TEXT.lostTitle, lines: [`${END_TEXT.lostWave} 1 of 10`] });
+  });
+
+  it('lose in an endless game (milestone 26): the wave reached, no "of 10"', () => {
+    const s = playScripted(endlessIdle()).state;
+    expect([s.phase, s.endless, s.wave]).toEqual(['lost', true, 15]);
+    expect(endScreenText('lost', s)).toEqual({ title: END_TEXT.lostTitle, lines: [`${END_TEXT.lostWave} 15`] });
   });
 });

@@ -158,7 +158,7 @@ test('(m25 g) tap Hard, tap Play: 80 gold, 15 lives; all four title buttons are 
   }
   await tap(page, 'title:hard');
   expect(await api(page, (a) => a.scene())).toBe('title'); // a tap on a level only selects it
-  expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).ui<TitleUiState>())).toEqual({ scene: 'title', difficulty: 'hard' });
+  expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).ui<TitleUiState>())).toMatchObject({ scene: 'title', difficulty: 'hard' }); // milestone 26 adds bestLine
   // A tap on empty title space starts nothing.
   await tapAt(page, 480, 366);
   expect(await api(page, (a) => a.scene())).toBe('title');

@@ -74,6 +74,11 @@
 // [Play again] (which passes the level just played). Phaser keeps a scene's
 // last start data, so every start passes it explicitly. [Menu] goes back to
 // the title menu.
+// Endless (milestone 26): the win screen's [Keep going] runs continueEndless
+// and hides the end screen; the game plays on until it is lost. After every
+// run of ticks and every early call, a waves-cleared count above the one
+// already recorded this game goes to the high score store (highScore.ts),
+// which keeps it if it beats the stored best for this map and level.
 
 import Phaser from 'phaser';
 import {
@@ -81,6 +86,7 @@ import {
   callEarlyStatus,
   callNextWave,
   CELL,
+  continueEndless,
   cellCenter,
   createGame,
   DEFAULT_DIFFICULTY,
@@ -101,10 +107,12 @@ import {
   unlockedSpecials,
   upgradeTower,
   useSpecial,
+  wavesCleared,
 } from '../sim';
 import type {
   BuildResult,
   CallNextWaveResult,
+  ContinueEndlessResult,
   Cell,
   Difficulty,
   GameEvent,
@@ -129,6 +137,7 @@ import { drawMap } from './draw/map';
 import { ShotEffects } from './draw/shots';
 import { SpecialEffects } from './draw/specials';
 import { Aim, drawTowerShape, drawTowers } from './draw/towers';
+import { highScores } from './highScore';
 import { callEarlyInfo, HUD_TOP, Hud, specialReady } from './hud';
 import {
   cellAt,
@@ -305,6 +314,8 @@ export class GameScene extends Phaser.Scene {
   /** On touch while aiming: the press in progress, or null. */
   private aimPress: AimPress | null = null;
   private aim = new Aim();
+  /** Waves cleared already sent to the high score store this game (milestone 26). */
+  private recordedCleared = 0;
   private readonly autoTick = !isTestMode();
 
   constructor() {
@@ -317,6 +328,7 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     this.state = createGame({ difficulty: this.difficulty });
+    this.recordedCleared = 0;
     this.speed = 1;
     this.accMs = 0;
     this.shots = new ShotEffects();
@@ -384,6 +396,7 @@ export class GameScene extends Phaser.Scene {
       this,
       () => this.playAgain(),
       () => this.toMenu(),
+      () => this.continueEndless(),
     );
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
@@ -801,7 +814,31 @@ export class GameScene extends Phaser.Scene {
       this.specialFx.afterTick();
       this.takeEvents();
     }
+    this.recordScore();
     if (redraw) this.redraw();
+  }
+
+  /**
+   * Milestone 26: send the waves cleared to the high score store when it
+   * went up since the last call. A wave clears only in a tick or an early
+   * call, and the count never goes down in a game, so checking after each
+   * run of ticks and each call saves every clear, in a lost or abandoned
+   * run too.
+   */
+  private recordScore(): void {
+    const cleared = wavesCleared(this.state);
+    if (cleared <= this.recordedCleared) return;
+    this.recordedCleared = cleared;
+    highScores.record(this.state.difficulty, cleared);
+  }
+
+  /** Keep going after the win (milestone 26): the game turns endless and the end screen goes away. */
+  continueEndless(): ContinueEndlessResult {
+    const result = continueEndless(this.state);
+    if (result.ok) this.endScreen.hide();
+    this.takeEvents();
+    this.redraw();
+    return result;
   }
 
   /** Hand the events not yet seen to the sprites (after every tick and action). */
@@ -866,6 +903,7 @@ export class GameScene extends Phaser.Scene {
   callNextWave(): CallNextWaveResult {
     const result = callNextWave(this.state);
     this.takeEvents();
+    this.recordScore();
     this.redraw();
     return result;
   }
