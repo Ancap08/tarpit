@@ -6425,6 +6425,15 @@ Found:
 - Install.spec's build B differs only by a meta tag; the verifier spec
   covers a real build.
 
+Re-verify (follow-up commits 1185ba9, 2c988cf, 27e6499): the page timeout,
+error fallback, `id` removal and `TARPIT_SW=off` kill switch work; both former
+`fixme` tests pass unweakened. The retiring worker reloads an open page
+exactly once (probe added), but that reload also hits a page mid-game; a slow
+network is served the cached page at 3 s, yet the new worker still installs in
+the background and takes over, so a deploy is not missed. One run of the
+two-tab update test failed under full-suite load and passed on 4 reruns and
+12 repeats; cause not found.
+
 Needs a real phone: Add to Home Screen wording and icon on current iOS
 (Share is under the ellipsis menu in newer Safari), standalone window and
 status bar, real notch and home bar, Android install prompt and maskable

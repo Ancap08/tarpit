@@ -343,3 +343,26 @@ test.describe('safe area input mapping', () => {
   }
 });
 
+
+test('kill switch: the retiring worker reloads an open page exactly once, then nothing controls it', async ({ page }) => {
+  const off = join(tmp, 'off');
+  execFileSync('npx', ['vite', 'build', '--outDir', off, '--emptyOutDir', '--logLevel', 'warn'], {
+    cwd: ROOT,
+    env: { ...process.env, TARPIT_SW: 'off' },
+    stdio: 'pipe',
+  });
+  const site: Site = { dir: A, hits: [] };
+  const srv = await serve(site);
+  await page.goto(`${srv.origin}/`);
+  await waitActive(page);
+  let navs = 0;
+  page.on('framenavigated', (f) => f === page.mainFrame() && navs++);
+  site.dir = off;
+  await page.evaluate(() => navigator.serviceWorker.getRegistration().then((r) => r?.update()));
+  await expect.poll(() => navs).toBeGreaterThanOrEqual(1);
+  await page.waitForTimeout(4000); // a loop would keep counting
+  expect(navs).toBe(1);
+  const st = await page.evaluate(async () => ({ regs: (await navigator.serviceWorker.getRegistrations()).length, caches: await caches.keys() }));
+  expect(st).toEqual({ regs: 0, caches: [] });
+  await srv.close();
+});
