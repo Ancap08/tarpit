@@ -3404,3 +3404,227 @@ doc corrections (`f82b118`) and four points for the coordinator.
   in ten, are for 25c. Baselines (`special-aim.png`, `special-fired.png`
   new; every in-game frame changed by the new button) are not on the
   branch until `update-snapshots.yml` runs.
+
+## 2026-11-22: milestone 25c, horde retune
+
+Roles: implementer Claude Opus, verifier Claude Fable 5.2, coordinator
+Claude Fable 5.2.
+
+### Implementer notes
+
+Kyle's direction: "make the waves longer and easier to kill the enemies,
+but that doesn't mean it gets easier overall, just easier to kill more
+enemies and gain more gold." Built in four parts, committed separately.
+
+**Part 1, sim features (before balancing).**
+
+- **Special slow channel** (`Enemy.specialSlow`, `specialSlowTicksLeft`,
+  `combat.ts applySpecialSlow`, `enemies.ts effectiveSlow` and
+  `isTarred`). The Tar Barrel slows on its own slot; movement uses the
+  stronger active slot with the boss cap; burns double while either is
+  active; the renderer's tar ring and walk speed use the same helpers.
+  The two 25b verifier probes that pinned "the barrel does nothing under a
+  stronger 0.6" now pin the opposite (it lands, outlasts the 0.6 and
+  takes over). `npm run sim` was byte-identical after this part.
+- **Kill counts** (`Tower.kills`, `Enemy.burnOwner`). A shot kill counts
+  for the firing tower (each splash kill too); a burn kill for the tower
+  on the burn's owner cell; Fire Arrows clear the owner, so special kills
+  count for nobody; selling clears the sold tower's burns. Over a whole
+  comboBuild game the towers' kills equal the shot kills plus the
+  tower-burn kills (`killCounts.test.ts`).
+- **Call early** (`game.ts callEarlyStatus`, `callNextWave`). Rules in
+  `docs/DESIGN.md` "Call early". The "boss is not involved" rule is
+  implemented as: the next wave may not hold the boss, so wave 9 cannot
+  call wave 10; it reports `last-wave` (the brief's four reasons have no
+  separate one). Headless timed actions `callEarly` and `clusterSpecial`;
+  `playScripted` plays a called wave without a Start Wave and applies its
+  pre-wave actions at the call.
+
+**Part 2, the retune.** Every number changed, before -> after, with the
+reason and what reverting it alone does on the final numbers (revert
+pass, harness in the scratchpad, every archetype on all three levels):
+
+| Number | Before | After | Why | Reverting it alone |
+|---|---|---|---|---|
+| Goblin hp | 30 | 12 | horde: one Musketeer shot, many more of them | lazy and Longbow spam lose on wave 2, combo loses on wave 2 |
+| Goblin bounty | 4 | 2 | 2.5x the Goblins would pay 2.5x the gold | combo 20 lives, 217 after wave 9; specials and Fire Pots stop mattering |
+| Wolf hp | 28 | 17 | weaker but still two Musketeer shots, so Wolves leak | combo loses on wave 7, Hard combo on 4 |
+| Wolf bounty | 5 | 2 | as Goblin | combo 20 lives, 292 after wave 9 |
+| Troll hp | 700 | 500 | more Trolls per wave, each weaker | Easy lazy loses on wave 10, Hard combo on 7 |
+| Harpy hp | 40 | 22 | horde | combo wins with 1 life; Hard combo loses on 5 |
+| Harpy bounty | 7 | 3 | as Goblin | 215 after wave 9; specials stop mattering |
+| Shieldbearer hp | 120 | 70 | horde (twice as many) | no target breaks (kept for the horde shape; Easy lazy 12 -> 9 lives) |
+| Shieldbearer bounty | 9 | 5 | as Goblin | no target breaks (kept for margin: 163 -> 189 gold after wave 9, combo 14 lives) |
+| Waves 1 to 10 | 217 enemies | 500 | horde, a little longer | each wave alone: old waves 4, 9 and 10 pay less bounty than before at the new bounties (horde target); old waves 1, 2, 3, 5, 6 lose Hard combo before wave 8; old 7 moves lazy and spam to wave 9 and specials stop mattering; old 8 moves both to wave 10 |
+| Fire Arrows burn | 10/s | 30/s | the only late special must touch Trolls | no target breaks; comboNoSpecials is then only 1 life worse (10 vs 11) and Hard combo wins with 1 life (kept for margin) |
+| Easy lives | 25 | 30 | Easy should forgive | no target breaks; Easy lazy wins with 7 instead of 12 (kept for margin) |
+| Hard hp multiplier | 1.3 | 1.1 | 1.3 made every Hard Goblin a three-shot | Hard combo loses on wave 4 |
+| COMBO_PLAN | 21 actions | 31 | the horde pays more; three upgraded Longbows, a Mortar and a Cannon soak it (cheap pairs first, so the gold left before wave 9 is always under 70) | 343 gold after wave 9 |
+| Cluster special ticks | (new) | 197, 164, 413, 813, 692, 1534, 573, 923, 545, 473 | scan: per wave, the first tick with the largest densest cluster | all at 600: Hard combo loses on wave 7; combo 11 lives |
+| Hard start gold | 80 | 80 | tried 90 during tuning; reverting it changed no target, so it stayed 80 | - |
+
+Unchanged: every tower number, the special keg and barrel numbers, speeds,
+the 25 clear bonus, the boss (4000 hp, 26 s delay), Normal's 100 gold and
+20 lives, the path, grid, tick order and targeting.
+
+Per wave, before (milestone 25b) and after, Normal, without the 25 clear
+bonus (total hp = sum of spawn hp):
+
+| Wave | Enemies before | after | Total hp before | after | Bounty before | after |
+|---|---|---|---|---|---|---|
+| 1 | 8 | 20 | 240 | 240 | 32 | 40 |
+| 2 | 12 | 30 | 360 | 360 | 48 | 60 |
+| 3 | 14 | 35 | 408 | 495 | 62 | 70 |
+| 4 | 14 | 35 | 440 | 645 | 78 | 80 |
+| 5 | 17 | 42 | 1880 | 1580 | 85 | 106 |
+| 6 | 35 | 86 | 1292 | 1555 | 169 | 190 |
+| 7 | 24 | 55 | 7440 | 7777 | 158 | 210 |
+| 8 | 45 | 106 | 7000 | 7253 | 249 | 310 |
+| 9 | 18 | 37 | 4536 | 4010 | 108 | 116 |
+| 10 | 30 | 54 | 13304 | 11664 | 357 | 370 |
+| all | 217 | 500 | 36900 | 35579 | 1346 | 1552 |
+
+2.30 times the enemies, the same total hp within 4%, 15% more bounty, last
+spawn of every wave within 27 s. Average hp: Goblin 30 -> 12, Wolf 28 ->
+17, Harpy 40 -> 22.
+
+**Targets.** Normal (pinned in `balance.test.ts`), all met:
+
+| Target | Result |
+|---|---|
+| noTowers lost by wave 3 | lost on wave 1 |
+| lazyBuild lost on 6, 7 or 8 | lost on wave 8 (edge) |
+| longbowSpam lost on 7, 8 or 9 | lost on wave 8 |
+| comboBuild won, 5 to 15 lives, under 200 gold after wave 9 | won, 13 lives, 163 gold after wave 9, kills the boss (shot, waveTick 3921) |
+| comboBuildNoFire strictly worse | won with 4 lives |
+| noAntiAir leaks 75% of wave 4 Harpies, lost by wave 8 | 8 of 10 leak, lost on wave 4 |
+| comboNoSpecials strictly worse, reaches wave 8 | won with 10 lives |
+| horde shape (2x to 3x, no wave fewer, more bounty per wave, lower Goblin, Wolf, Harpy hp) | 2.30x; all per-wave checks pass |
+
+Easy: lazyBuild won with 12 lives; noTowers lost on wave 2. Hard:
+comboBuild won with 3 lives (10 fewer than Normal); lazyBuild lost on
+wave 1; hardBuild won with 11 lives. All met; nothing pinned as a miss.
+
+`hardBuild` (`HARD_PLAN`): the combo's cells with the opening reordered:
+Longbows (9,5) and (9,4), Tar Pit (14,10), Longbow (17,8), Fire Pot
+(14,9), both first Longbow upgrades, then the Mortar (17,6), then the
+rest of COMBO_PLAN. Wave 4 is where the combo bleeds (6 lives on Normal,
+8 on Hard); two upgraded bows before it close that gap. On Normal it wins
+with 20 lives, so comboBuild is a thoughtful plan, not the best one.
+
+`npm run sim`, Normal, lives / gold after each wave:
+
+| Wave | noTowers | lazy | greedy | sound | soundNoTar | spam | combo | noFire | noSpecials | noAntiAir | bossRush | hard |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | lost 0/100 | 20/65 | 20/80 | 20/65 | 20/65 | 20/85 | 20/85 | 20/85 | 20/85 | 20/85 | 20/85 | 20/85 |
+| 2 | | 20/100 | 20/115 | 20/115 | 20/115 | 20/90 | 20/110 | 20/110 | 20/110 | 20/110 | 20/110 | 20/110 |
+| 3 | | 20/95 | 18/121 | 18/111 | 17/169 | 20/105 | 20/95 | 20/165 | 20/95 | 20/95 | 20/95 | 20/95 |
+| 4 | | 20/150 | 18/106 | 17/133 | 16/191 | 20/130 | 14/184 | 8/242 | 14/185 | lost 0/189 | 14/184 | 20/140 |
+| 5 | | 18/115 | 17/144 | 12/129 | 11/237 | 19/133 | 14/155 | 8/213 | 14/156 | | 14/155 | 20/161 |
+| 6 | | 18/230 | 17/224 | 12/264 | 8/360 | 19/228 | 14/280 | 8/388 | 14/281 | | 14/280 | 20/236 |
+| 7 | | 6/169 | 6/166 | 1/181 | lost 0/236 | 7/287 | 13/257 | 4/341 | 10/234 | | 13/257 | 20/241 |
+| 8 | | lost 0/349 | 1/326 | lost 0/257 | | lost 0/504 | 13/352 | 4/436 | 10/389 | | 13/352 | 20/376 |
+| 9 | | | 1/177 | | | | 13/163 | 4/317 | 10/180 | | 13/163 | 20/157 |
+| 10 | | | lost -4/227 | | | | won 13/418 | won 4/572 | won 10/395 | | won 13/418 | won 20/442 |
+
+Informational: comboStrongest lost on wave 5 (58 gold); comboWithKegs
+won with 11 lives, its fixed keg hitting one Wolf in ten waves.
+
+Easy and Hard, before (milestone 25b) and after:
+
+| Archetype | Easy before | Easy after | Hard before | Hard after |
+|---|---|---|---|---|
+| noTowers | lost w3 | lost w2 | lost w2 | lost w1 |
+| lazyBuild | lost w10, -1 | won, 12 | lost w2 | lost w1 |
+| greedyMusket | won, 19 | won, 29 | lost w2 | lost w1 |
+| soundBuild | won, 5 | won, 15 | lost w2 | lost w1 |
+| soundBuildNoTar | lost w10 | won, 1 | lost w2 | lost w1 |
+| longbowSpam | lost w10 | lost w10, -2 | lost w6 | lost w8 |
+| comboBuild | won, 25 | won, 30 | lost w3 | won, 3 |
+| comboBuildNoFire | won, 23 | won, 30 | lost w3 | lost w4 |
+| comboNoSpecials | (new) | won, 30 | (new) | lost w7 |
+| noAntiAir | lost w10 | lost w6 | lost w3 | lost w4, -1 |
+| bossRush | won, 25 | won, 30 | lost w3 | won, 3 |
+| hardBuild | (new) | won, 30 | (new) | won, 11 |
+
+**Margins.** lazyBuild loses on wave 8, the top of its range (goblin hp
+13 instead of 12 drops it to wave 6 with no middle option: the one-shot
+line is a cliff). comboNoSpecials is 3 lives worse than comboBuild;
+without the Fire Arrows raise it would be 1. noAntiAir leaks 8 of 10, 80%
+against 75%. Gold after wave 9 is 37 under the limit. Wave 4 bounty is 80
+against 78 before, wave 9 116 against 108, wave 10 370 against 357.
+
+**Method and iterations.** A scratch harness (scratchpad, not in the repo)
+patched the tables in memory and replayed every archetype on all three
+levels. About 25 hand configurations (Goblin hp 12 to 14, Wolf and Harpy
+hp, Troll hp 350 to 700 and counts, wave 4 order, Fire Arrows 10 to 40,
+two outcome-optimised tick searches), then two random sweeps over 16 knobs
+(414 configurations) and 12 knobs around the best point (234), then hand
+fixes (the plan soak order, wave 4 Wolves 18 -> 25 for the bounty rule),
+then the revert pass above. One revert stuck: Hard start gold had moved to
+90 during tuning and changed nothing, so it is back at 80.
+
+**Part 3, renderer.** Start Wave reads "Call next  +N" at 14 px while a
+call would succeed (`ui().callEarly`); the tower panel shows "Kills N"
+above its buttons and is 214 x 166; `GameScene.spawnHorde(n)` is a
+test-only hook (reachable through `window.__tarpit.game` outside test
+mode, so the perf test runs on the live loop); test mode's `runScript`
+plays timed actions like `playScripted`, so the browser replays the
+combo's cluster specials. The wave 10 preview ("Next: 20 Wolf, 13 Troll,
+12 Harpy, 8 Shieldbearer + Grumblefoot") wraps to three lines at 13 px,
+so a preview that needs more than two lines drops to 11 px.
+
+**Performance floor** (`e2e/perf.spec.ts`, 120 Goblins topped up as they
+die, 25 towers, 5 s at 1x, `?renderer=canvas`, median of
+requestAnimationFrame deltas under 33 ms). This Mac, headless Chromium:
+Canvas, three runs: median 16.7 ms, p95 16.8 / 16.8 / 16.7 ms, 301 ticks
+in 5 s, at least 75 enemies on the field at every frame. WebGL
+(`PERF_WEBGL=1`, no flag), one run: median 16.7 ms, p95 16.7 ms. Both are
+vsync-bound at 60 fps; CI's software path is the one the 33 ms floor is
+for.
+
+**Part 4, pins and frames.** Every moved pin recomputed with headless
+runs. Mechanics arenas that took hp from `ENEMY_STATS` now use the
+milestone 22 hp as a fixed fixture (no rule they test depends on full
+hp), so their arithmetic stays as written; bounties read `ENEMY_STATS`.
+Frame ticks: mid-wave 848 -> 874 (the Cannon and Tar Pit never fire in
+wave 1 now: one Musketeer shot kills a Goblin, so the frame shows the
+Musketeer tracer and 6 Goblins, no hurt bars), enemies 1350 -> 1560,
+new-towers 1490 -> 1748 (one Troll slowed and burning, not two),
+harpies 471 -> 291 with the Musketeer moved from (2,3) to (6,1) by the
+same cell scan, boss 3562 -> 3230, special-aim and special-fired at the
+same steps on rescanned targets; won 13 lives / 418 gold; lost on wave
+1. Baselines change on CI; no PNGs committed.
+
+Local frames (scratchpad): `m25c-horde.png` (combo, wave 8 tick 931, 41
+enemies on the map), `m25c-call-early.png`, `m25c-panel-kills.png`. The
+horde frame is **partly a blob**: at the first U the Goblins, Wolves and
+Harpies pile into one mass at the corner (Wolves overtake Goblins and
+Harpies fly over both); sprites and hp bars there do not read one by one.
+The rest of the path reads. Feedback for the wave spacing or for v5's
+art pass.
+
+### What went wrong
+
+- First tries treated the problem as hp only. Goblin 14 killed the lazy
+  build on wave 2 and Goblin 12 pushed it to wave 9: the Musketeer's 12
+  damage makes Goblin hp a cliff, not a dial.
+- For a long time the specials did not matter: the combo leaked only
+  Trolls on wave 7, and a keg or a 10/s burn does nothing to a 700 hp
+  Troll. Outcome-optimised special ticks bought at most one life. What
+  worked was letting Wolves and Harpies leak on wave 4 (where the keg and
+  barrel help), lowering Troll hp so a burn matters, and raising Fire
+  Arrows to 30/s.
+- Gold after wave 9 jumped between 145 and 219 with tiny changes, because
+  the combo's last purchase before wave 9 either fit or did not. Ordering
+  the plan's late soak as cheap Longbow pairs first made it stable.
+- The first final candidate broke the "more bounty per wave" rule on wave
+  4 (66 against 78); the harness did not check the horde shape. Wave 4
+  went back to 25 Wolves (80).
+- A towerless wave 1 now takes all 20 lives, which broke many tests that
+  played wave 1 with no towers as setup; they raise the lives first.
+- The wave 10 preview wrapped to three lines and would have spilled out
+  of the HUD row; caught by the boss verifier spec, fixed with the 11 px
+  fallback.
+- A revert pass run used Hard start gold 90 before it was reverted; the
+  table above is from a rerun on the final numbers.

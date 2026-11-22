@@ -1,8 +1,8 @@
 # Tarpit: game design spec
 
-Numbers here are the values tuned in the milestone 6a balance pass and the
-milestone 12 balance pass v2 (see DEVLOG.md for before and after, and
-`npm run sim` for the evidence).
+Numbers here are the values tuned in the milestone 6a balance pass, the
+milestone 12 balance pass v2 and the milestone 25c horde retune (see
+DEVLOG.md for before and after, and `npm run sim` for the evidence).
 Anything not in this file or `docs/SCOPE.md` is out of scope.
 
 ## Space and time
@@ -44,6 +44,8 @@ Towers fire in cellKey order (row by row, left to right).
 
 - Start with 100 gold and 20 lives on Normal (see Difficulty).
 - Each kill pays the enemy's bounty. Clearing a wave pays a 25 gold bonus.
+- Calling the next wave early (milestone 25c, see Waves) pays the current
+  wave's 25 clear bonus at once plus an early bonus of up to 20.
 - An enemy reaching the exit costs 1 life (the boss: 5) and is removed.
 - Lives at 0 or below: lose, immediately.
 - Clearing wave 10 with lives above 0: win.
@@ -121,23 +123,26 @@ Normal and the level is recorded in `state.difficulty`.
 
 | | Easy | Normal | Hard |
 |---|---|---|---|
-| Enemy hp | 0.75x | 1x | 1.3x |
+| Enemy hp | 0.75x | 1x | 1.1x |
 | Start gold | 150 | 100 | 80 |
-| Lives | 25 | 20 | 15 |
+| Lives | 30 | 20 | 15 |
 
-An enemy spawns with `round(base hp x multiplier)`, a whole number, which
-is also its full hp for the hp bar and the boss bar. Bounties, speeds,
-towers, upgrades and waves are the same on every level. Normal is the game
-as it was before milestone 25, so every Normal number in this file holds.
+Milestone 25c retuned the table (Easy lives 25 -> 30, Hard hp 1.3x ->
+1.1x) so that the lazy build wins on Easy and the best Hard plan wins.
+An enemy spawns with `round(base hp x multiplier)`, a whole number (half
+rounds up), which is also its full hp for the hp bar and the boss bar.
+Bounties, speeds, towers, upgrades and waves are the same on every level.
+Normal has multiplier 1, 100 gold and 20 lives, so every Normal number in
+this file is the base number.
 
 | Enemy | Easy | Normal | Hard |
 |---|---|---|---|
-| Goblin | 23 | 30 | 39 |
-| Wolf | 21 | 28 | 36 |
-| Troll | 525 | 700 | 910 |
-| Harpy | 30 | 40 | 52 |
-| Shieldbearer | 90 | 120 | 156 |
-| Grumblefoot (boss) | 3000 | 4000 | 5200 |
+| Goblin | 9 | 12 | 13 |
+| Wolf | 13 | 17 | 19 |
+| Troll | 375 | 500 | 550 |
+| Harpy | 17 | 22 | 24 |
+| Shieldbearer | 53 | 70 | 77 |
+| Grumblefoot (boss) | 3000 | 4000 | 4400 |
 
 Title menu: the title and subtitle, a "Difficulty" caption and a row of
 three 132 x 42 buttons (Easy, Normal, Hard; the selection highlighted like
@@ -154,12 +159,16 @@ up 7 px); on Normal there is no tag. The end screens have [Play again]
 
 | Type | HP | Speed | Bounty | Notes |
 |---|---|---|---|---|
-| Goblin | 30 | 60 | 4 | normal |
-| Wolf | 28 | 120 | 5 | fast |
-| Troll | 700 | 35 | 8 | tanky |
-| Harpy | 40 | 90 | 7 | flying (milestone 22) |
-| Shieldbearer | 120 | 45 | 9 | shield (milestone 22) |
+| Goblin | 12 | 60 | 2 | normal; one Musketeer shot |
+| Wolf | 17 | 120 | 2 | fast |
+| Troll | 500 | 35 | 8 | tanky |
+| Harpy | 22 | 90 | 3 | flying (milestone 22) |
+| Shieldbearer | 70 | 45 | 5 | shield (milestone 22) |
 | Grumblefoot, the Troll King | 4000 | 25 | 150 | boss: 5 lives on exit, slows capped at 30% (milestone 23) |
+
+Milestone 25c (horde retune) lowered the hp and bounties (before: Goblin
+30 hp / 4 gold, Wolf 28 / 5, Troll 700 / 8, Harpy 40 / 7, Shieldbearer
+120 / 9) and roughly doubled to tripled the counts; speeds are unchanged.
 
 **Flying and shields** (milestone 22, from `docs/SCOPE-v4.md`). A Harpy
 flies over the path. Tar Pit, Cannon and Mortar never target it, and a
@@ -179,8 +188,8 @@ mark on its left.
 
 **Boss** (milestone 23, from `docs/SCOPE-v4.md`). Grumblefoot, the Troll
 King, is one unit at the end of wave 10: wave 10's last group, 26 s after
-the wave starts (waveTick 1560), 4 s after the last spawn of the other
-groups (the 12th Troll at 22 s). He walks (every tower can target him and
+the wave starts (waveTick 1560), 2 s after the last spawn of the other
+groups (the 13th Troll at 24 s; milestone 25c). He walks (every tower can target him and
 splash and burn work on him, including the doubled burn under tar) and has
 no shield. Slows cap at 30% on him: a stronger slow is applied at 30% for
 its full duration (the Tar Pit's 40% and 60% both become 30%, so he walks
@@ -196,13 +205,26 @@ hp bar, a HUD boss bar shows while he lives: 300 x 14 px centred at the
 top of the map (y 24), dark trough, red fill proportional to his hp, 1 px
 cream border, "hp / 4000" right-aligned inside, and his name in 14 px on a
 dark pill above its left end (y 4 to 22). The wave 10 preview reads
-"Next: 8 Wolf, 12 Troll, 5 Harpy, 4 Shieldbearer + Grumblefoot"; a preview
+"Next: 20 Wolf, 13 Troll, 12 Harpy, 8 Shieldbearer + Grumblefoot"; a preview
 too long for one 16 px line (264 px since milestone 25b, 350 before) wraps
-to two 13 px lines.
+to two 13 px lines, or, if that takes three lines, to two 11 px lines
+(milestone 25c; only the wave 10 preview needs it).
 
 A slow effect multiplies speed by `(1 - slow)` for its duration. Slows do not
 stack: the strongest slow applies, and a new slow of equal or greater strength
 refreshes the duration.
+
+**Special slow channel** (milestone 25c). An enemy has two slow slots:
+the tower slot (`slow`, `slowTicksLeft`, set by Tar Pits through
+`applySlow`) and the special slot (`specialSlow`, `specialSlowTicksLeft`,
+set by the Tar Barrel through `applySpecialSlow`). Each slot follows the
+rule above on its own and counts down on its own; neither blocks or
+shortens the other, so a Tar Barrel is never wasted on an enemy under a
+stronger Tar Pit slow and a Tar Pit hit never cuts the barrel short. The
+enemy moves at `(1 - effectiveSlow)`, where `effectiveSlow` is the
+stronger of the two active slots, capped by the boss's 30%. An enemy is
+"tarred" (burns double) while either slot is active (`isTarred`); the
+renderer's tar ring and tint follow the same rule.
 
 ## Towers
 
@@ -259,8 +281,9 @@ damage per second for 3 s (180 ticks), or 8/s for 4 s (240 ticks)
 upgraded. An impact kill sets no burn. Burns do not stack: a new burn with
 dps equal to or greater than the active one replaces it (strength and
 duration); a weaker one is ignored. Each tick a burning enemy takes
-dps / 60 damage, doubled if it is slowed by tar at that moment
-(`slowTicksLeft > 0`), then its burn timer counts down. So hp can be
+dps / 60 damage, doubled if it is tarred at that moment (either slow
+slot active, milestone 25c; `slowTicksLeft > 0` before), then its burn
+timer counts down. So hp can be
 fractional; an enemy counts as dead at hp <= 1e-9, which absorbs floating
 point error so burn kills land on the tick exact arithmetic gives (a lone
 Fire Pot kills a static 30 hp Goblin 216 ticks after its first hit, or 132
@@ -269,20 +292,33 @@ deaths pay the bounty like any kill.
 
 Range is measured from the tower's cell centre to the enemy's position.
 
+**Kill counts** (milestone 25c). Each tower has `kills`, 0 when built. It
+goes up by one for every enemy its shot kills (a splash counts each enemy
+it kills) and for every enemy its burn kills: a burn remembers the cell
+of the tower that applied it (`burnOwner`; it changes only when a burn is
+actually applied) and a burn kill counts for the tower on that cell.
+Special kills, including a Fire Arrows burn, count for no tower. Selling
+a tower clears its burns' ownership, so a tower rebuilt on the cell
+starts from 0; moving and upgrading keep the count. The tower panel shows
+it as a 13 px "Kills 43" line above its buttons (names.ts `KILLS_TEXT`);
+the panel is 214 x 166 (146 before, plus the 20 px line).
+
 ## Special attacks
 
-Milestone 25b, from `docs/SCOPE-v4.md`. Starting numbers; milestones 25c
-and 28 retune them (`src/sim/specials.ts` `SPECIAL_DEFS`).
+Milestone 25b, from `docs/SCOPE-v4.md`; milestone 25c raised the Fire
+Arrows burn from 10/s to 30/s and gave the Tar Barrel its own slow
+channel; milestone 28 retunes (`src/sim/specials.ts` `SPECIAL_DEFS`).
 
 | Special | Unlocks on wave | Radius | Effect |
 |---|---|---|---|
 | Powder Keg | 1 | 70 px | 80 damage |
 | Tar Barrel | 4 | 90 px | slow 0.5 for 240 ticks (4 s); the boss's 30% cap applies |
-| Fire Arrows | 7 | 80 px | burn 10/s for 240 ticks (4 s) |
+| Fire Arrows | 7 | 80 px | burn 30/s for 240 ticks (4 s); 10/s before milestone 25c |
 
 - **Charge.** `state.specialCharges` is 0 or 1. Start Wave sets it to 1;
   the wave clear sets it to 0, so an unused charge does not carry over
-  (the next wave starts with 1, never 2). One special per wave.
+  (the next wave starts with 1, never 2). One special per wave. Calling
+  the next wave early (milestone 25c) also sets it to 1.
 - **Use.** `useSpecial(state, type, {x, y})` acts at once, between ticks,
   like a build, on every live enemy whose position is within the radius of
   the aimed point (inclusive: 70 px hits, 70.01 does not). Refused, in this
@@ -293,12 +329,14 @@ and 28 retune them (`src/sim/specials.ts` `SPECIAL_DEFS`).
   keg's damage and can be slowed and burned by a special, although no
   tower can tar or burn it. Shields do not reduce specials: a
   Shieldbearer takes the full 80.
-- **Slow and burn rules.** The Tar Barrel goes through the normal slow
-  (`applySlow`): capped at 0.3 on the boss, and a weaker slow does not
-  replace a stronger active one. Fire Arrows go through the normal burn
-  (`applyBurn`): they replace an equal or weaker burn and leave a stronger
-  one; the burn ticks in the usual step and is doubled while the enemy is
-  tarred (20 damage over 60 ticks instead of 10).
+- **Slow and burn rules.** The Tar Barrel slows through its own channel
+  (`applySpecialSlow`, milestone 25c; see the special slow channel under
+  Enemies): capped at 0.3 on the boss, a weaker barrel slow does not
+  replace a stronger active barrel slow, and tower slows neither block nor
+  shorten it. Fire Arrows go through the normal burn (`applyBurn`, no
+  owner): they replace an equal or weaker burn and leave a stronger one;
+  the burn ticks in the usual step and is doubled while the enemy is
+  tarred (60 damage over 60 ticks instead of 30).
 - **Kills.** Enemies the special kills pay their bounty once and are
   removed at once, each with a `kill` event, cause `special` (and
   `bossDown`, cause `special`, for the boss). If that was the last enemy
@@ -307,10 +345,27 @@ and 28 retune them (`src/sim/specials.ts` `SPECIAL_DEFS`).
   applied slow, then the kills.
 - **Headless.** A script action `{type: 'special', special, x, y,
   atWaveTick}` fires when the wave tick counter reaches `atWaveTick`; a
-  WaveScript may carry `timed`, per wave, a list of them. No balance
-  archetype uses specials. The informational `comboWithKegs` plays the
-  combo build plus one Powder Keg per wave at wave tick 600 aimed at
-  (420, 232), the path point 700 px from the spawn on the long downhill.
+  WaveScript may carry `timed`, per wave, a list of them. Milestone 25c
+  adds two timed actions: `{type: 'callEarly', atWaveTick}` (see Waves)
+  and `{type: 'clusterSpecial', atWaveTick}`, which fires the best
+  unlocked special at the densest cluster in the live state at that tick.
+  **Cluster policy:** `densestCluster(state)` takes every live enemy
+  (flyers too) as a candidate centre and counts the live enemies within
+  70 px (`CLUSTER_RADIUS`, inclusive) of it; the largest count wins, ties
+  go to the cluster containing the lowest enemy id, then to the lower
+  candidate id; the aim is the centroid of that cluster's positions.
+  `bestUnlockedSpecial(wave)` is the first unlocked of Fire Arrows, Tar
+  Barrel, Powder Keg (so the keg on waves 1 to 3, the barrel on 4 to 6,
+  fire arrows from 7). With no enemy alive nothing fires and the charge
+  is kept. The archetypes comboBuild, comboBuildNoFire, noAntiAir,
+  bossRush and hardBuild fire one cluster special per wave at
+  `CLUSTER_POLICY_TICKS` = 197, 164, 413, 813, 692, 1534, 573, 923, 545,
+  473 (waves 1 to 10), chosen by a scan of comboBuild on Normal: for each
+  wave in turn the first tick at which the densest cluster is largest.
+  `comboNoSpecials` is the combo plan without them. The informational
+  `comboWithKegs` plays the combo build plus one Powder Keg per wave at
+  wave tick 600 aimed at (420, 232), the path point 700 px from the spawn
+  on the long downhill.
 
 On screen (milestone 25b): row 1 of the HUD has a 100 x 42 Special button
 at x 630, left of Start Wave (x 738, 130 wide) and the speed toggle (x 876,
@@ -339,38 +394,68 @@ A wave is a list of groups. A group spawns `count` enemies of one type,
 `interval` seconds apart, starting `delay` seconds after the wave starts.
 Groups in a wave run concurrently from the wave start.
 
-| Wave | Groups |
-|---|---|
-| 1 | 8 Goblin, every 1.0 s |
-| 2 | 12 Goblin, every 0.8 s |
-| 3 | 8 Goblin every 1.0 s; 6 Wolf every 0.6 s, delay 4 s |
-| 4 | 10 Wolf every 0.6 s; 4 Harpy every 1.2 s, delay 2 s |
-| 5 | 12 Goblin every 0.7 s; 2 Troll every 3 s, delay 2 s; 3 Harpy every 1.0 s, delay 6 s |
-| 6 | 18 Goblin every 0.5 s; 14 Wolf every 0.5 s, delay 5 s; 3 Shieldbearer every 2.0 s, delay 3 s |
-| 7 | 10 Wolf every 0.5 s; 10 Troll every 2.5 s, delay 1 s; 4 Harpy every 1.0 s, delay 8 s |
-| 8 | 20 Goblin every 0.5 s; 10 Wolf every 0.6 s, delay 6 s; 8 Troll every 3 s, delay 3 s; 3 Shieldbearer every 2.5 s, delay 4 s; 4 Harpy every 1.0 s, delay 10 s |
-| 9 | 12 Wolf every 0.5 s; 6 Troll every 2 s |
-| 10 | 8 Wolf every 0.5 s, delay 4 s; 12 Troll every 2 s; 5 Harpy every 0.8 s, delay 6 s; 4 Shieldbearer every 2.0 s, delay 2 s; 1 Grumblefoot (boss), delay 26 s |
+| Wave | Groups | Enemies | Total hp | Bounty |
+|---|---|---|---|---|
+| 1 | 20 Goblin, every 0.8 s | 20 | 240 | 40 |
+| 2 | 30 Goblin, every 0.6 s | 30 | 360 | 60 |
+| 3 | 20 Goblin every 0.7 s; 15 Wolf every 0.5 s, delay 4 s | 35 | 495 | 70 |
+| 4 | 10 Harpy every 0.8 s; 25 Wolf every 0.5 s, delay 3 s | 35 | 645 | 80 |
+| 5 | 30 Goblin every 0.5 s; 2 Troll every 3 s, delay 2 s; 10 Harpy every 0.6 s, delay 6 s | 42 | 1580 | 106 |
+| 6 | 45 Goblin every 0.5 s; 35 Wolf every 0.5 s, delay 5 s; 6 Shieldbearer every 1.5 s, delay 3 s | 86 | 1555 | 190 |
+| 7 | 25 Wolf every 0.4 s; 14 Troll every 1.9 s, delay 1 s; 16 Harpy every 0.6 s, delay 8 s | 55 | 7777 | 210 |
+| 8 | 50 Goblin every 0.5 s; 25 Wolf every 0.5 s, delay 6 s; 11 Troll every 2.4 s, delay 3 s; 6 Shieldbearer every 1.8 s, delay 4 s; 14 Harpy every 0.6 s, delay 10 s | 106 | 7253 | 310 |
+| 9 | 30 Wolf every 0.35 s; 7 Troll every 2 s | 37 | 4010 | 116 |
+| 10 | 20 Wolf every 0.35 s, delay 4 s; 13 Troll every 2 s; 12 Harpy every 0.6 s, delay 6 s; 8 Shieldbearer every 1.4 s, delay 2 s; 1 Grumblefoot (boss), delay 26 s | 54 | 11664 | 370 |
 
-Milestone 22 added the Harpy and Shieldbearer groups (each wave's last
-groups); every older group is unchanged. Milestone 23 added the boss as
-wave 10's last group. Wave 9 has none, which keeps the
-combo build under 150 gold after wave 9.
+Total hp and bounty are on Normal, without the 25 clear bonus. Milestone
+22 added the Harpy and Shieldbearer groups; milestone 23 the boss as wave
+10's last group. Milestone 25c (horde retune) changed every group: 500
+enemies over the ten waves (217 before), every wave with more enemies and
+more bounty than before (DEVLOG has the before and after table), wave 4
+sending its Harpies first, and every wave spawning within 27 s (90 s is
+the limit).
 
 Wave flow: the player presses Start Wave. The wave is active until every
 enemy in it has spawned and none remain alive. Then the clear bonus is paid
 and the next wave can be started. Start Wave is unavailable while a wave is
-active. The next-wave preview lists each group's type and count.
+active, except to call the next wave early. The next-wave preview lists
+each group's type and count.
+
+**Call early** (milestone 25c, `callNextWave(state)` in `game.ts`). While a
+wave runs and every one of its enemies has spawned, the next wave can be
+called at once. Refused, in this order, with `game-over`, `not-in-wave`
+(setup), `last-wave` (the current wave is the last, or the next wave holds
+the boss: wave 9 cannot call wave 10) and `still-spawning`; a refusal
+changes nothing. A call clears the current wave at once: it pays the 25
+clear bonus (event `waveClear`) plus the early bonus, `min(20,
+ceil(secondsRemaining))` with `secondsRemaining = max(0, 20 - seconds
+since the wave's last spawn)`. The last spawn happens during the tick with
+waveTick = `lastSpawnTick(wave)`; right after it 0 s have passed (bonus
+20), and each later tick adds 1/60 s, so the bonus is 19 from 60 ticks
+later and 0 from 1200 ticks later (a call is still allowed at 0). Enemies
+still alive stay on the field: they move, exit, cost lives and pay
+bounties as usual, but no wave's clear check waits for them. Then the next
+wave starts its spawn schedule from waveTick 0 (the wave counter goes up),
+the special charge is set to 1 (an unused one does not carry over), event
+`earlyCall {wave, bonus}` (the new wave) and then `waveStart`. Towers are
+locked already mid-wave, so nothing new locks. Each wave pays its clear
+bonus once: an early-called wave when it is called, the others at their
+clear. On screen, Start Wave reads "Call next  +14" (names.ts
+`callEarlyLabel`, 14 px so it fits the 130 px button) with the current
+bonus while a call would succeed, and pressing it calls; otherwise it
+reads "Start Wave" as before. `ui().callEarly` reports `{available,
+bonus}`.
 
 Players can build, upgrade and sell at any time, including mid-wave.
 Moving a tower and undoing an upgrade are setup-only (Planning phase).
 
 ## Tick order
 
-Specials (milestone 25b) act between ticks, like builds. Inside one wave tick: (1) enemies move, then slow timers count down; (2)
+Specials (milestone 25b) and early calls (milestone 25c) act between ticks, like builds. Inside one wave tick: (1) enemies move at `(1 - effectiveSlow)`, then both slow timers count down; (2)
 enemies at the exit are removed and cost lives (1 each, 5 for the boss; at 0 lives the game is lost
 at once); (3) burns tick and burn deaths pay out; (4) towers fire in cell
-order, and each kill is removed before the next tower acts; (5) due enemies
+order, and each kill is removed before the next tower acts and counts for
+the tower (or the burn's owner); (5) due enemies
 spawn, and do not move or get shot that tick; (6) the tick counters
 advance; (7) if the wave has fully spawned and no enemy is alive, the clear
 bonus is paid. A slow or burn set in step 4 first acts on the next tick.
@@ -382,5 +467,5 @@ Plain TypeScript in `src/sim`, no Phaser, no DOM. One `GameState` object,
 pure data. Functions take the state and return a new state or a result;
 either mutation or immutability is fine as long as it is consistent and
 tested. Required operations: create game, tick, start wave, build tower,
-upgrade tower, sell tower, move tower and undo upgrade (milestone 25a), use special (milestone 25b), next-wave preview, and a headless runner that
+upgrade tower, sell tower, move tower and undo upgrade (milestone 25a), use special (milestone 25b), call the next wave early (milestone 25c), next-wave preview, and a headless runner that
 plays a scripted set of actions for tests and balance work.
