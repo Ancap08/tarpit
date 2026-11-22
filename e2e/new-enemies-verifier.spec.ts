@@ -67,7 +67,7 @@ test('(a) at tick 1680 of wave 8 every Harpy draws above every walker, the label
       airIsWalkerLayer: scene.enemySprites.airLayer === scene.enemySprites.layer,
     };
   });
-  expect(r.enemies).toBe(40); // 11 Goblins, 7 Wolves, 5 Trolls, 4 Shieldbearers, 13 Harpies (enemies-frame.test.ts)
+  expect(r.enemies).toBe(39); // 9 Goblins, 8 Wolves, 5 Trolls, 4 Shieldbearers, 13 Harpies (enemies-frame.test.ts; milestone 30)
   expect(r.harpyRanks).toHaveLength(1);
   expect(r.walkerRanks).toHaveLength(1);
   expect(r.labelRanks).toHaveLength(1);

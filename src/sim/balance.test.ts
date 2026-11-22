@@ -3,13 +3,13 @@
 // balance target (T, E, H, R labels) are in balance.suite.ts, run by
 // balance-meadow.test.ts and its two siblings. This file keeps what the
 // matrix does not say: how the archetypes are built (trail order, the plan
-// actions bought, the special list they fire, the anti-air sells), the
+// actions bought, the specials they fire, the anti-air sells), the
 // per-wave clear ticks and peaks on Meadow, and that a replay is the same
 // game (the boss's death tick is in boss-verifier.test.ts). Runs come from balanceRuns.ts, cached, so each
 // game is recorded once in this file.
 import { describe, expect, it } from 'vitest';
 import { archetypeScript, balanceRun, MATRIX_ARCHETYPES, playWithStats } from './balanceRuns';
-import { comboNoTarBarrelRun } from './balanceTargets';
+import { comboWithoutSpecialRun } from './balanceTargets';
 import { ENEMY_STATS } from './enemies';
 import { buildableCells, cellCenter, cellKey } from './grid';
 import {
@@ -19,7 +19,6 @@ import {
   FIRST_HARPY_WAVE,
   INFORMATIONAL,
   playScripted,
-  specialPolicy,
   TRAIL_CELL_ORDER,
   TRAIL_REACH,
   TRAIL_STEP,
@@ -58,24 +57,25 @@ describe('every archetype (Meadow, Normal)', () => {
 });
 
 describe('comboBuild on Meadow, Normal', () => {
-  it('buys 28 of the 31 COMBO_PLAN actions (the tail is a gold sink)', () => {
-    expect(combo().flat()).toHaveLength(28);
+  it('buys 29 of the 31 COMBO_PLAN actions (the tail is a gold sink)', () => {
+    expect(combo().flat()).toHaveLength(29);
   });
 
-  it("fires the stored special list (specialPolicy('combo')), every special accepted", () => {
+  it('fires the 28 specials the policy recorded (milestone 30), every one accepted', () => {
     const script = combo();
-    expect(script.timed).toEqual(specialPolicy('combo'));
+    const recorded = script.timed!.flat();
+    expect(recorded).toHaveLength(28);
     const run = playScripted(script);
     const fired = run.log.filter((l) => l.action === 'special');
-    expect(fired).toHaveLength(specialPolicy('combo').filter((w) => w.length > 0).length);
+    expect(fired).toHaveLength(28);
     for (const f of fired) expect(f).toMatchObject({ result: { ok: true } });
   });
 
   // The 25c wave rules on these numbers are R5 in balance.suite.ts; the exact ticks are pinned here.
   it('clear ticks and the most enemies alive per wave, no early calls (R5 exact)', () => {
     const run = balanceRun('comboBuild', 'meadow', 'normal');
-    expect(run.waves.map((w) => w.ticks)).toEqual([2941, 2185, 1732, 2368, 4385, 3058, 5819, 5617, 2748, 6259]);
-    expect(run.waves.map((w) => w.peak)).toEqual([2, 12, 17, 16, 18, 19, 18, 22, 14, 16]);
+    expect(run.waves.map((w) => w.ticks)).toEqual([3105, 2081, 1722, 2601, 4924, 3156, 5939, 5665, 2951, 6446]);
+    expect(run.waves.map((w) => w.peak)).toEqual([2, 9, 17, 16, 18, 21, 16, 22, 15, 14]);
   });
 });
 
@@ -110,9 +110,10 @@ describe('anti-air (milestone 22)', () => {
     expect(w4.exits.harpy ?? 0).toBeLessThan(10);
   });
 
-  it('why noAntiAir sells instead: dropping the bows from wave 1 loses on wave 2, before any Harpy', () => {
+  it('why noAntiAir sells instead: dropping the bows from wave 1 loses on wave 1, before any Harpy', () => {
+    // Milestone 30: on wave 2 before, when a stored keg helped on wave 1.
     const run = playScripted(comboBuildNoBows());
-    expect(`${run.state.phase} on wave ${run.state.wave}, ${run.state.lives} lives, ${run.state.gold} gold`).toBe('lost on wave 2, 0 lives, 71 gold');
+    expect(`${run.state.phase} on wave ${run.state.wave}, ${run.state.lives} lives, ${run.state.gold} gold`).toBe('lost on wave 1, 0 lives, 100 gold');
   });
 });
 
@@ -202,15 +203,22 @@ describe('verifier (milestone 28)', () => {
     expect(run.kills + exits).toBe(spawned);
   });
 
-  // T9's barrel check is a band (strictly worse by lives, then kills); the
-  // measured values (milestone 28 follow-up): without its two Tar Barrels
-  // the combo on Meadow, Normal wins with 11 lives against 14.
-  it('T9 measured: the combo without its Tar Barrels wins with 11 lives, the combo with them 14', () => {
-    const without = comboNoTarBarrelRun();
+  // S2 is a band (strictly worse by lives, then kills); the measured values
+  // (milestone 30): the combo on Meadow, Normal wins with 16 lives; with the
+  // policy forbidden the keg 12, the Tar Barrel 13, the Fire Arrows 12.
+  it('S2 measured: without the keg, the Tar Barrel or the Fire Arrows the combo wins with 12, 13 and 12 lives, with all three 16', () => {
     const combo = balanceRun('comboBuild', 'meadow', 'normal');
-    expect([without.phase, without.lives, combo.phase, combo.lives]).toEqual(['won', 11, 'won', 14]);
-    const spawned = without.waves.reduce((n, w) => n + sum(w.spawns), 0);
-    expect(without.kills + without.waves.reduce((n, w) => n + sum(w.exits), 0)).toBe(spawned);
+    expect([combo.phase, combo.lives]).toEqual(['won', 16]);
+    for (const [type, lives] of [
+      ['keg', 12],
+      ['tarBarrel', 13],
+      ['fireArrows', 12],
+    ] as const) {
+      const without = comboWithoutSpecialRun(type);
+      expect([without.phase, without.lives], type).toEqual(['won', lives]);
+      const spawned = without.waves.reduce((n, w) => n + sum(w.spawns), 0);
+      expect(without.kills + without.waves.reduce((n, w) => n + sum(w.exits), 0)).toBe(spawned);
+    }
   });
 
   // The targets assert bands; these are the exact measures behind T7, T8,
@@ -223,12 +231,12 @@ describe('verifier (milestone 28)', () => {
       [0, 0, 0],
     ]);
     expect(maps.map((m) => balanceRun('noAntiAir', m, 'normal').waves[3]).map((w) => [w.exits.harpy, w.spawns.harpy, w.lives])).toEqual([
-      [10, 10, 4],
-      [10, 10, 3],
-      [10, 10, 2],
+      [10, 10, 7],
+      [9, 10, 8],
+      [10, 10, 6],
     ]);
     expect(maps.map((m) => balanceRun('lazyBuild', m, 'hard').waves[0].lives)).toEqual([8, 6, 6]);
-    expect(balanceRun('comboBuild', 'meadow', 'normal').waves[9].goldEntering).toBe(183);
+    expect(balanceRun('comboBuild', 'meadow', 'normal').waves[9].goldEntering).toBe(199);
   });
 
   it('comboNoSpecials has no timed actions on any map', () => {

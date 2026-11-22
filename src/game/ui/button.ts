@@ -17,6 +17,8 @@ export interface ButtonOptions {
   right?: string;
   /** Called with true when the pointer enters and false when it leaves (or the button hides). */
   onHover?: (over: boolean) => void;
+  /** Called when a press starts on the button (milestone 30: the speed button's hold), enabled or not. */
+  onPress?: () => void;
 }
 
 const PAD_X = 10;
@@ -57,6 +59,7 @@ export class Button {
     this.box.on('pointerdown', () => {
       this.pressed = true;
       this.refresh();
+      if (this.enabled && this.shown) options.onPress?.();
     });
     this.box.on('pointerup', () => {
       const wasPressed = this.pressed;
@@ -72,6 +75,11 @@ export class Button {
 
   get text(): string {
     return this.rightLabel?.text ? `${this.label.text}  ${this.rightLabel.text}` : this.label.text;
+  }
+
+  /** The label text objects (milestone 30: the HUD slides the recharge fill under them). */
+  get labelObjects(): Phaser.GameObjects.Text[] {
+    return this.rightLabel ? [this.label, this.rightLabel] : [this.label];
   }
 
   get isEnabled(): boolean {

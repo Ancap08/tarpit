@@ -126,8 +126,8 @@ describe('modes keep the eligibility rules', () => {
   it('modes never reach past the range', () => {
     // 450 is 239.7 px from A, past the Mortar's 220.
     expect(pick([enemy(0, 450, 'troll'), enemy(1, 125)], 'mortar', 'strongest')).toBe(1);
-    // 150 is 94.8 px, past the Cannon's 90.
-    expect(pick([enemy(0, 150, 'troll'), enemy(1, 125)], 'cannon', 'strongest')).toBe(1);
+    // 304 = (160,96) is 113.1 px, past the Cannon's 105 (milestone 30).
+    expect(pick([enemy(0, 304, 'troll'), enemy(1, 125)], 'cannon', 'strongest')).toBe(1);
   });
 
   it('strongest never picks a Harpy for a Cannon; a Musketeer does pick it', () => {

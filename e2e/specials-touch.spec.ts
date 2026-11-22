@@ -4,12 +4,13 @@ import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { Enemy, GameEvent } from '../src/sim';
 import { MAPS, positionAlongPath } from '../src/sim/map';
 
-// Milestone 25b, tablet project (playwright.config.ts TABLET_SPECS matches
-// touch.spec.ts): a Powder Keg fired by touch, by tap-tap and by a drag
-// with the lifted aim. Drags go through CDP Input.dispatchTouchEvent as in
+// Milestone 25b, reworked in milestone 30, tablet project
+// (playwright.config.ts TABLET_SPECS matches touch.spec.ts): a special
+// fired by touch, by a tap (at the tap) and by a hold (lifted aim, fired on
+// release). Drags go through CDP Input.dispatchTouchEvent as in
 // touch-drag.spec.ts; every point is a canvas point mapped with
 // canvasToPage() (the canvas is fitted at 1024 / 960 with letterboxing).
-// A touch drag aims DRAG_LIFT (48) canvas px above the finger.
+// A hold aims DRAG_LIFT (48) canvas px above the finger.
 
 type Point = { x: number; y: number };
 
@@ -59,32 +60,70 @@ async function touchDrag(page: Page, client: CDPSession, from: Point, to: Point,
   await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 }
 
-test('tap-tap: the first tap on the map places the aim circle, a second tap on it fires the Powder Keg', async ({ page }) => {
+/** Put one finger down at canvas point `p`, wait `ms`, run `during`, then lift it there. */
+async function touchHold(page: Page, client: CDPSession, p: Point, ms: number, during?: () => Promise<void>): Promise<void> {
+  const a = await toPage(page, p);
+  await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: a.x, y: a.y }] });
+  await page.waitForTimeout(ms);
+  if (during) await during();
+  await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+}
+
+const near = (a: Point, b: Point) => Math.abs(a.x - b.x) <= 1 && Math.abs(a.y - b.y) <= 1;
+
+test('a tap on the map fires at once at the tap point, with the touch banner shown before', async ({ page }) => {
   await startWave1(page);
   await tapRect(page, 'special');
   expect((await ui(page)).special).toMatchObject({ aiming: 'keg', aimPoint: null });
-
   const goblin = (await state(page)).enemies[0];
   const at = pos(goblin);
   const tap = { x: Math.round(at.x), y: Math.round(at.y) };
   await tapAt(page, tap);
-  let u = await ui(page);
-  expect(u.isTouch).toBe(true);
-  expect(u.special.aiming).toBe('keg');
-  const placed = u.special.aimPoint!;
-  expect(Math.abs(placed.x - tap.x)).toBeLessThanOrEqual(1);
-  expect(Math.abs(placed.y - tap.y)).toBeLessThanOrEqual(1);
-  expect(specialOf(await events(page))).toBeUndefined();
-
-  await tapAt(page, tap);
   const ev = await events(page);
-  expect(specialOf(ev)).toMatchObject({ type: 'keg', x: placed.x, y: placed.y });
+  const sp = specialOf(ev);
+  if (sp?.kind !== 'special') throw new Error('no special event');
+  expect(near(sp, tap)).toBe(true);
   expect(ev.some((e) => e.kind === 'kill' && e.enemyId === goblin.id && e.cause === 'special')).toBe(true);
-  u = await ui(page);
-  expect(u.special).toMatchObject({ charges: 0, aiming: null, aimPoint: null });
+  const u = await ui(page);
+  expect(u.isTouch).toBe(true);
+  expect(u.special).toMatchObject({ charges: 0, aiming: null, aimPoint: null, banner: null });
+  expect(u.special.labels).toEqual([expect.objectContaining({ text: '1 hit' })]);
 });
 
-test('drag: the aim circle is 48 canvas px above the finger and the release fires there', async ({ page }) => {
+test('the banner on touch says to tap, and how to hold', async ({ page }) => {
+  await startWave1(page);
+  await tapRect(page, 'special');
+  // isTouch is set by the tap on the Special button's press.
+  expect((await ui(page)).special.banner).toEqual({ main: 'Tap the trail to throw the Powder Keg', hint: 'Or hold to aim and lift to let go. Special again cancels.' });
+});
+
+test('a tap in the bottom row of the map fires there', async ({ page }) => {
+  await startWave1(page);
+  await tapRect(page, 'special');
+  await tapAt(page, { x: 500, y: 474 });
+  const sp = specialOf(await events(page));
+  if (sp?.kind !== 'special') throw new Error('no special event');
+  expect(near(sp, { x: 500, y: 474 })).toBe(true);
+  expect((await ui(page)).special.charges).toBe(0);
+});
+
+test('hold without moving: after 300 ms the circle shows 48 px above the finger and the release fires there', async ({ page }) => {
+  await startWave1(page);
+  const client = await page.context().newCDPSession(page);
+  await tapRect(page, 'special');
+  const finger = { x: 400, y: 300 };
+  await touchHold(page, client, finger, 450, async () => {
+    const u = await ui(page);
+    expect(u.special.holding).toBe(true);
+    expect(near(u.special.aimPoint!, { x: finger.x, y: finger.y - DRAG_LIFT })).toBe(true);
+    expect(specialOf(await events(page))).toBeUndefined();
+  });
+  const sp = specialOf(await events(page));
+  if (sp?.kind !== 'special') throw new Error('no special event');
+  expect(near(sp, { x: finger.x, y: finger.y - DRAG_LIFT })).toBe(true);
+});
+
+test('hold and slide: the circle follows 48 px above the finger and the release fires there', async ({ page }) => {
   await startWave1(page);
   const client = await page.context().newCDPSession(page);
   await tapRect(page, 'special');
@@ -94,47 +133,123 @@ test('drag: the aim circle is 48 canvas px above the finger and the release fire
   await touchDrag(page, client, { x: 600, y: 300 }, finger, async () => {
     const u = await ui(page);
     expect(u.special.aiming).toBe('keg');
-    const aim = u.special.aimPoint!;
-    // Page px map back to canvas px through the fit, so allow a pixel.
-    expect(Math.abs(aim.x - finger.x)).toBeLessThanOrEqual(1);
-    expect(Math.abs(finger.y - aim.y - DRAG_LIFT)).toBeLessThanOrEqual(1);
+    expect(near(u.special.aimPoint!, { x: finger.x, y: finger.y - DRAG_LIFT })).toBe(true);
     expect(specialOf(await events(page))).toBeUndefined();
   });
   const ev = await events(page);
   const sp = specialOf(ev);
-  expect(sp).toMatchObject({ type: 'keg' });
   if (sp?.kind !== 'special') throw new Error('no special event');
-  expect(Math.abs(sp.y - (at.y as number))).toBeLessThanOrEqual(1);
+  expect(Math.abs(sp.y - at.y)).toBeLessThanOrEqual(1);
   expect(ev.some((e) => e.kind === 'kill' && e.enemyId === goblin.id && e.cause === 'special')).toBe(true);
   expect((await ui(page)).special).toMatchObject({ charges: 0, aiming: null });
 });
 
-test('drag released with the finger over the HUD and the aim on the map fires on the map, pressing no button', async ({ page }) => {
+// Follow-up: as for tower drags, the lifted point decides. A finger on the
+// HUD aims at the map's bottom rows and fires there; buttons under the
+// finger are not pressed.
+test('hold and release with the finger on the HUD fires on a bottom-row target 48 px above it', async ({ page }) => {
+  await startWave1(page);
+  const client = await page.context().newCDPSession(page);
+  await tapRect(page, 'special');
+  const target = { x: 500, y: 474 }; // the map's bottom row (y 448..480)
+  const finger = { x: target.x, y: target.y + DRAG_LIFT };
+  expect(finger.y).toBeGreaterThan(480); // the finger is on the HUD
+  await touchDrag(page, client, { x: 500, y: 300 }, finger, async () => {
+    const u = await ui(page);
+    expect(u.special.holding).toBe(true);
+    expect(near(u.special.aimPoint!, target)).toBe(true);
+  });
+  const sp = specialOf(await events(page));
+  if (sp?.kind !== 'special') throw new Error('no special event');
+  expect(near(sp, target)).toBe(true);
+  expect((await ui(page)).special).toMatchObject({ charges: 0, aiming: null });
+});
+
+test('a hold released with the finger on the speed button fires 48 px above it and presses nothing', async ({ page }) => {
   await startWave1(page);
   const client = await page.context().newCDPSession(page);
   await tapRect(page, 'special');
   const speed = (await rects(page)).speed;
   const finger = { x: speed.x + speed.width / 2, y: speed.y + speed.height / 2 };
-  expect(finger.y - DRAG_LIFT).toBeLessThan(480); // the aim point is on the map
   await touchDrag(page, client, { x: 600, y: 300 }, finger);
   const sp = specialOf(await events(page));
-  expect(sp).toMatchObject({ type: 'keg' });
   if (sp?.kind !== 'special') throw new Error('no special event');
-  expect(Math.abs(sp.x - finger.x)).toBeLessThanOrEqual(1);
-  expect(Math.abs(sp.y - (finger.y - DRAG_LIFT))).toBeLessThanOrEqual(1);
-  expect(sp.y).toBeLessThan(480);
+  expect(near(sp, { x: finger.x, y: finger.y - DRAG_LIFT })).toBe(true);
   expect(await api(page, (a) => a.speed())).toBe(1);
-  expect((await ui(page)).special.charges).toBe(0);
 });
 
-test('a tap on the HUD cancels touch aiming and keeps the charge', async ({ page }) => {
+test('a hold released with the finger on the Special button, or with the lifted point off the map, cancels and spends nothing', async ({ page }) => {
+  await startWave1(page);
+  const client = await page.context().newCDPSession(page);
+  const r = await rects(page);
+  await tapRect(page, 'special');
+  await touchDrag(page, client, { x: 600, y: 300 }, { x: r.special.x + r.special.width / 2, y: r.special.y + r.special.height / 2 });
+  expect(specialOf(await events(page))).toBeUndefined();
+  expect((await ui(page)).special).toMatchObject({ aiming: null, charges: 1 });
+  await tapRect(page, 'special');
+  const bar = r['bar:longbow'];
+  await touchDrag(page, client, { x: 300, y: 300 }, { x: bar.x + bar.width / 2, y: bar.y + bar.height / 2 });
+  expect(specialOf(await events(page))).toBeUndefined();
+  const u = await ui(page);
+  expect(u.pick).toBeNull();
+  expect(u.special).toMatchObject({ aiming: null, charges: 1 });
+});
+
+test('a tap on the HUD and a tap on Special again cancel touch aiming and keep the charge', async ({ page }) => {
   await startWave1(page);
   await tapRect(page, 'special');
-  await tapAt(page, { x: 500, y: 200 });
-  const u = await ui(page);
-  expect(u.special.aiming).toBe('keg');
-  expect(u.special.aimPoint!.x).toBeCloseTo(500, 2);
-  expect(u.special.aimPoint!.y).toBeCloseTo(200, 2);
   await tapAt(page, { x: 300, y: 505 });
   expect((await ui(page)).special).toMatchObject({ aiming: null, aimPoint: null, charges: 1 });
+  await tapRect(page, 'special');
+  expect((await ui(page)).special.aiming).toBe('keg');
+  await tapRect(page, 'special');
+  expect((await ui(page)).special).toMatchObject({ aiming: null, charges: 1 });
+});
+
+test('speed by touch: a tap toggles to 2x; a hold runs 3x and the release goes back to 2x', async ({ page }) => {
+  await startWave1(page);
+  const client = await page.context().newCDPSession(page);
+  await tapRect(page, 'speed');
+  expect(await api(page, (a) => a.speed())).toBe(2);
+  const r = (await rects(page)).speed;
+  await touchHold(page, client, { x: r.x + r.width / 2, y: r.y + r.height / 2 }, 450, async () => {
+    expect(await api(page, (a) => a.speed())).toBe(3);
+    expect((await api(page, (a) => a.hudText())).speed).toBe('3x');
+  });
+  expect(await api(page, (a) => a.speed())).toBe(2);
+});
+
+// Follow-up (PR review): a touch the system cancels (no touchend) ends a 3x hold and an aim hold.
+test('pointercancel ends a 3x speed hold and a special aim hold; nothing fires or toggles', async ({ page }) => {
+  await startWave1(page);
+  const client = await page.context().newCDPSession(page);
+  const r = await rects(page);
+  const s = await toPage(page, { x: r.speed.x + r.speed.width / 2, y: r.speed.y + r.speed.height / 2 });
+  await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: s.x, y: s.y }] });
+  await page.waitForTimeout(450);
+  expect(await api(page, (a) => a.speed())).toBe(3);
+  await client.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+  expect(await api(page, (a) => a.speed())).toBe(1);
+
+  await tapRect(page, 'special');
+  const m = await toPage(page, { x: 400, y: 300 });
+  await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: m.x, y: m.y }] });
+  await page.waitForTimeout(450);
+  expect((await ui(page)).special.holding).toBe(true);
+  await client.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+  const u = await ui(page);
+  expect(u.special).toMatchObject({ holding: false, aimPoint: null, charges: 1 });
+  expect(specialOf(await events(page))).toBeUndefined();
+  // Still aiming and recoverable: a tap fires.
+  await tapAt(page, { x: 400, y: 300 });
+  expect(specialOf(await events(page))).toBeDefined();
+  expect(await api(page, (a) => a.speed())).toBe(1);
+});
+
+test('gold cheat by touch: five quick taps on Gold add 500', async ({ page }) => {
+  await startWave1(page);
+  const gold = (await state(page)).gold;
+  for (let i = 0; i < 5; i++) await tapRect(page, 'gold');
+  expect((await state(page)).gold).toBe(gold + 500);
+  expect((await api(page, (a) => a.hudText())).cheat).toBe('cheat used');
 });

@@ -20,15 +20,12 @@ import {
   type Cell,
 } from './grid';
 import {
-  CLUSTER_POLICY_TICKS,
-  CLUSTER_POLICY_TICKS_BY_MAP,
   COMBO_PLAN,
   COMBO_PLANS,
   comboBuild,
   lazyBuild,
   noTowers,
   playScripted,
-  specialPolicy,
   TRAIL_CELL_ORDER,
   trailCellOrder,
 } from './headless';
@@ -285,7 +282,7 @@ describe('movement on every map (milestone 27)', () => {
 // refactor left Meadow alone. Milestone 28 changed the combo's specials, so
 // the fixture is now the milestone 28 game: a whole-state pin of the combo
 // build on Meadow, Normal (rewrite it from a dump when a game number moves).
-describe('Meadow combo game, whole final state (milestone 27 fixture, rewritten in 28)', () => {
+describe('Meadow combo game, whole final state (milestone 27 fixture, rewritten in 28 and 30)', () => {
   it('a full comboBuild game on Normal ends in the fixture state, apart from the map field', () => {
     const { state } = playScripted(comboBuild());
     const { map, ...rest } = state;
@@ -293,10 +290,9 @@ describe('Meadow combo game, whole final state (milestone 27 fixture, rewritten 
     expect(rest).toEqual(MEADOW_COMBO_NORMAL);
   });
 
-  it('the trail order, plan and endless cluster ticks for Meadow are the Meadow constants', () => {
+  it('the trail order and plan for Meadow are the Meadow constants', () => {
     expect(trailCellOrder(MAPS.meadow)).toBe(TRAIL_CELL_ORDER);
     expect(COMBO_PLANS.meadow).toBe(COMBO_PLAN);
-    expect(CLUSTER_POLICY_TICKS_BY_MAP.meadow).toBe(CLUSTER_POLICY_TICKS);
     expect(comboBuild().mapId).toBeUndefined();
   });
 });
@@ -306,7 +302,7 @@ describe('the new maps in headless play (milestone 27)', () => {
     it(`${id}: comboBuild is deterministic, wins on Normal, and Keep going starts wave 11`, () => {
       const script = comboBuild('normal', id);
       expect(script.mapId).toBe(id);
-      expect(script.timed).toEqual(specialPolicy('combo', 'normal', id));
+      expect(script.timed!.flat().every((a) => a.type === 'special')).toBe(true);
       const a = playScripted(script);
       const b = playScripted(comboBuild('normal', id));
       expect(JSON.stringify(a.state)).toBe(JSON.stringify(b.state));

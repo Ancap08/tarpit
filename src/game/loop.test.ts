@@ -14,6 +14,20 @@ describe('ticksDue', () => {
     expect(ticksDue(250, 2)).toEqual({ ticks: 20, accMs: 0 });
   });
 
+  // Milestone 30: holding the speed button runs 3x; at 60 fps that is 3
+  // ticks a frame, far under the cap, so 60 frames run exactly 180 ticks.
+  it('3x at 60 fps runs 3 ticks a frame and never meets the cap', () => {
+    let acc = 0;
+    let total = 0;
+    for (let i = 0; i < 60; i++) {
+      const due = ticksDue(acc + 1000 / 60, 3);
+      expect(due.ticks).toBeLessThan(MAX_TICKS_PER_FRAME);
+      acc = due.accMs;
+      total += due.ticks;
+    }
+    expect(total).toBe(180);
+  });
+
   it('runs one tick per 60 fps frame', () => {
     expect(ticksDue(1000 / 60, 1)).toEqual({ ticks: 1, accMs: 0 });
     expect(ticksDue(1000 / 60, 2).ticks).toBe(2);

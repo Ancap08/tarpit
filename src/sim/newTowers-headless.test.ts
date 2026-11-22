@@ -59,12 +59,12 @@ describe('comboBuild', () => {
   });
 
   // Milestone 25c: the plan's last items soak up late gold, so it ends
-  // before them: 28 of its 31 actions are bought (all 21 older ones).
-  it('follows COMBO_PLAN in order: 28 of 31 actions bought by wave 10', () => {
+  // before them: 29 of its 31 actions are bought (28 before milestone 30).
+  it('follows COMBO_PLAN in order: 29 of 31 actions bought by wave 10', () => {
     const bought = comboBuild().flat();
     expect(COMBO_PLAN).toHaveLength(31);
-    expect(bought).toHaveLength(28);
-    expect(bought).toEqual(COMBO_PLAN.slice(0, 28));
+    expect(bought).toHaveLength(29);
+    expect(bought).toEqual(COMBO_PLAN.slice(0, 29));
   });
 });
 
@@ -74,8 +74,9 @@ describe('comboBuildNoFire', () => {
     const noFire = comboBuildNoFire();
     const fireCells = new Set(builds(combo, 'firepot').map((a) => cellKey(a.cell)));
     expect([...noFire]).toEqual(combo.map((wave) => wave.filter((a) => !fireCells.has(cellKey(a.cell)))));
-    // Milestone 25c: it keeps the combo's specials (28: the stored list).
-    expect(noFire.timed).toEqual(combo.timed);
+    // Milestone 30: its specials are the policy's, recorded for its own game.
+    expect(noFire.timed!.flat().length).toBeGreaterThan(0);
+    expect(noFire.timed!.flat().every((a) => a.type === 'special')).toBe(true);
     expect(builds(noFire, 'firepot')).toEqual([]);
     const withFire = play(combo);
     const without = play(noFire);

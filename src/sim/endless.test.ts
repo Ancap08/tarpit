@@ -148,7 +148,7 @@ const won = () => structuredClone(wonState);
 
 describe('continueEndless (milestone 26)', () => {
   it('the combo build wins on Normal (the starting point)', () => {
-    expect(wonState).toMatchObject({ phase: 'won', wave: 10, lives: 14, gold: 484, endless: false });
+    expect(wonState).toMatchObject({ phase: 'won', wave: 10, lives: 16, gold: 420, endless: false });
   });
 
   it('allowed when won: setup, endless, wave 10 cleared, everything kept', () => {
@@ -261,9 +261,9 @@ describe('an endless run (milestone 26)', () => {
     expect(idle.phases.at(-1)).toBe('lost');
   });
 
-  it('endlessIdle on Normal loses on wave 14 with 13 waves cleared (target: wave 11 to 16)', () => {
-    expect(idle.state).toMatchObject({ phase: 'lost', wave: 14, endless: true });
-    expect(wavesCleared(idle.state)).toBe(13);
+  it('endlessIdle on Normal loses on wave 16 with 15 waves cleared (target: wave 11 to 16)', () => {
+    expect(idle.state).toMatchObject({ phase: 'lost', wave: 16, endless: true });
+    expect(wavesCleared(idle.state)).toBe(15);
     // The replay here and playScripted agree (the replay drains the event list).
     expect({ ...playScripted(endlessIdle()).state, events: [] }).toEqual(idle.state);
   });
@@ -405,6 +405,11 @@ describe('a game that is not continued (milestone 26)', () => {
         'shots',
         'spawnedPerGroup',
         'specialCharges',
+        // Milestone 30: the recharge, the zones and the cheat mark.
+        'specialRechargeTicks',
+        'zones',
+        'nextZoneId',
+        'cheated',
         'tick',
         'towers',
         'wave',

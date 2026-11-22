@@ -5907,3 +5907,232 @@ code); the iPad paragraph on a real device.
   towers can go, when the bar pick clears, what locks mid-wave, Harpies
   and fire, what "Call next" waits for, which roles the Fable trailers
   cover, and which CI checks existed from when.
+
+## 2026-11-22: milestone 30, specials rework
+
+Roles: implementer Claude Opus 5.5; verifier to follow (a different model).
+Scope: docs/SCOPE-v5.md milestone 30. Kyle's note: specials were
+"essentially useless and hard to use".
+
+### What was built
+
+- **Simulation.** One shared charge, ready at every wave start (Start Wave
+  or an early call), spent by a special and ready again 1200 wave ticks
+  later (`SPECIAL_RECHARGE_TICKS`); no refill in setup. The Tar Barrel and
+  Fire Arrows leave a zone (`state.zones`) at the aimed point for 480
+  ticks; in a new step 2b of the tick every zone slows or burns every
+  enemy inside it (flyers included) for a 60-tick linger. A burn kill
+  from a special's burn is a `special` kill (`enemy.specialBurn`). The keg
+  stays instant damage. `grantCheatGold` (+500, `state.cheated`, event
+  `cheat`). Won and lost ticks now clear `state.shots`.
+- **The special policy** (`src/sim/specialPolicy.ts`) replaces the stored
+  search (`specialSearch.ts`, `specialLists.ts`, `scripts/special-search.ts`,
+  `npm run sim:specials` and its tests are deleted). Every 30 wave ticks,
+  with the charge ready: if a Troll or the boss is in a crowd (a circle
+  catching 3 or more at a candidate point every 30 px along the path), the
+  Tar Barrel and Fire Arrows take turns there; otherwise the keg goes to
+  the biggest crowd of 3 or more; otherwise wait. Ties go to the point
+  nearest the exit. The recorder writes each fired special into the
+  script's `timed` list, so every replayer (playScripted, playWithStats,
+  the browser's runScript) plays the same game with no policy code.
+  comboBuildNoFire and noAntiAir are re-recorded with the policy
+  (`withPolicy`), so their specials fit their own game. Endless waves use
+  the same rule; `CLUSTER_POLICY_TICKS(_BY_MAP)` and the endless cluster
+  ticks are gone (the `clusterSpecial` timed action stays for tests).
+- **Renderer.** Aim banner over the map; mouse click fires; on touch a tap
+  fires at the tap, a hold (300 ms, or moved past the drag threshold)
+  shows the circle 48 px above the finger and the release fires, or
+  cancels over the HUD; no second tap. Landing: keg flash and ring, camera
+  shake, 2 s scorch; tar puddle and fire patch drawn from `state.zones`; a
+  1.5 s "N hit" or "Missed" label. The Special button shows the recharge
+  (a fill and "12s") and pulses when ready. Speed: hold 300 ms for 3x.
+  Gold cheat: five presses on Gold within 2 s; a cheated game records no
+  best score. Fixes: sprites for enemies spawned earlier in a frame are
+  made before the next tick's events (`EnemySprites.addNew`), and
+  `advance` stops ticking once won or lost.
+
+### Numbers (before, after, why)
+
+| Number | Before | After | Reason |
+|---|---|---|---|
+| Keg radius | 70 | 90 | SCOPE-v5 starting number |
+| Tar Barrel radius | 90 | 100 | SCOPE-v5 starting number |
+| Fire Arrows radius | 80 | 90 | SCOPE-v5 starting number |
+| Charge | 1 per wave | ready at wave start, 1200-tick recharge | SCOPE-v5 (20 s starting number, kept) |
+| Zone time | none | 480 ticks (8 s) | starting number 300; at 300 T6 failed on Meadow (W 13 against W 11) and Riverbend (W 5 against W 7), S2 failed for keg and tar, H1 failed on Riverbend |
+| Zone linger | - | 60 ticks | brief's starting number, kept |
+| Tar Barrel slow | 0.5 for 210 ticks | 0.5 while inside + 60 | zones replace the duration |
+| Keg damage | 80 | 30 | at 80 kegs kill Harpies (36 hp), so noAntiAir no longer leaked 75% of wave 4's Harpies (T7: 7, 6 and 6 of 10 out); 30 still kills Goblins (23) and Wolves (20) |
+| Fire Arrows burn | 30/s for 240 ticks | 20/s while inside + 60 | at 30 the combo did better with the Tar Barrel forbidden (S2: W 18 against W 17) and Meadow's gold entering wave 10 was 207 (T9) |
+| Cannon range | 90 | 105 (both levels) | Kyle's ask |
+| Policy look interval, threshold, spacing | - | 30 ticks, 3 enemies, 30 px | first choice; thresholds 4, 5 and 6 were each worse on several targets |
+
+No enemy, wave or other tower number changed. Troll hp was tried (1000,
+1025, 1050, 1075, 1100) to bring Switchback's comboNoSpecials under 16
+lives and was dropped: it broke T6 on Riverbend (comboNoSpecials lost from
+1025 up) and E1 before it moved Switchback enough.
+
+**Revert pass** (each changed number alone back to its old value, the others
+kept): keg damage 80 breaks T7 on all three maps; Fire Arrows 30/s breaks
+T9's gold (207) and S2 for the Tar Barrel; zones 300 breaks T6 on Meadow
+and Riverbend, S2 for keg and tar, and H1 on Riverbend. Every change is
+needed.
+
+### Targets
+
+Every target holds on every map and level except one, pinned as a
+milestone 30 miss (`balanceTargets.ts` `miss`, the suite asserts it still
+fails): **T4 on Switchback**, comboBuild W 19 against the 18 cap. T6 now
+needs the combo to beat comboNoSpecials by 3 lives, and comboNoSpecials
+already wins Switchback with 16, so T6 and T4 cannot both hold there
+without making Switchback harder without specials; no Troll hp did that
+without breaking Riverbend. Kept T6 (Kyle's new requirement) over T4's cap.
+
+- T6: Meadow W 16 against W 11, Switchback W 19 against W 16, Riverbend
+  W 16 against W 7.
+- S2 (Meadow, Normal): without the keg W 12, without the Tar Barrel W 13,
+  without Fire Arrows W 12; with all three W 16.
+- S3: 28 specials in the ten waves, all 28 caught 3 or more (hits 3 5 3 6
+  3 4 3 7 5 3 8 6 3 7 3 3 3 3 10 7 5 3 3 6 3 7 4 3). The policy only fires
+  at 3 or more, so the 80% half of S3 holds by construction; the count is
+  the real measure.
+- H1: hardBuild wins Hard on every map; Riverbend with 2 lives (thin).
+- T9 gold entering wave 10: 199 (under 200 by 1).
+
+### Matrix (Normal row per map)
+
+| Archetype | Meadow | Switchback | Riverbend |
+|---|---|---|---|
+| comboBuild | W 16 | W 19 | W 16 |
+| comboBuildNoFire | W 11 | W 17 | W 8 |
+| comboNoSpecials | W 11 | W 16 | W 7 |
+| hardBuild | W 20 | W 20 | W 19 |
+| noAntiAir | L 5 | L 5 | L 5 |
+| lazyBuild | L 8 | L 8 | L 8 |
+| longbowSpam | L 8 | L 8 | L 8 |
+
+The full matrix is in docs/DESIGN.md and `npm run sim`'s last table.
+
+### Tests
+
+`npm test`: 1037 tests in 62 files, 15 to 19 s on this Mac, nothing over
+5 s (`npm run test:slow`: the slowest is 4.0 to 4.1 s). Browser: 293 tests
+pass (`PW_PORT=4173 npm run test:e2e`, 36 s; 3 skipped). New: `specials.test.ts`
+rewritten (charge timing, zones enter, stay, leave, expiry, overlap,
+flyers, boss cap, tar doubling of fire, kill credit, radii, cheat, cleared
+shots), `specialPolicy.test.ts`, the 3x loop test. Browser: the specials
+specs rewritten for the new flow (mouse and tablet: tap, hold, hold and
+slide, bottom row, cancel three ways, banner, labels, recharge and a
+second special in the same wave, zone present and gone, 3x hold by mouse
+and touch, the cheat with four and slow presses, a cheated game's best,
+the same-frame hit). Visual: `special-aim` and `special-fired` changed;
+`special-tar-zone`, `special-fire-zone` and `special-recharging` added;
+the mid-wave frame moved from tick 1904 to 1880 (Cannon range), the
+Harpies frame from step 199 to 304. Baselines come from CI.
+
+### What went wrong
+
+- First tuning runs changed numbers through a second module graph (Vite's
+  runner loads each entry separately), so the Troll hp sweep measured
+  nothing. Fixed by loading one entry that re-exports everything.
+- The Special pip did not redraw when a recharge ended with the wave: the
+  redraw key was the same at "recharging, 0 px filled" and "setup". Caught
+  by the verifier spec's screenshot comparison (g); fixed in hud.ts.
+- With the first policy rule (the unlocked specials take turns), forbidding
+  the Tar Barrel made the combo better (S2: W 17 against W 14), and
+  forbidding the keg changed nothing. The role rule (big enemies get
+  tar and fire in turns, crowds of small ones get the keg) gives each
+  special a job of its own.
+
+### For the verifier
+
+- T4 on Switchback is a deliberate, pinned miss; check the reasoning and
+  whether Kyle should loosen T4 or T6.
+- H1 on Riverbend (W 2) and T9's gold (199) have thin margins.
+- S3's 80% is guaranteed by the policy threshold.
+- The demo (`npm run demo`, PW_PORT=4173) shows the banner, the keg landing
+  and its "4 hit" label; GIF 3.0 MB.
+- The visual baselines for the five special frames and the moved frames
+  (mid-wave, wave 8, harpies, boss, won) need the CI update-snapshots
+  workflow before CI's visual check passes.
+
+### Follow-up (coordinator's five items)
+
+1. **T4 is 5 to 19 lives** (coordinator's ruling; no game number changed).
+   The `// milestone 30 miss` pin and the suite's `miss` machinery are
+   removed; `balanceTargets.ts`, DESIGN.md and `npm run sim` now show T4
+   ok on every map (Switchback W 19).
+2. **Touch aim: the lifted point decides**, as for tower drags. A hold
+   released with the finger over the HUD fires at the point 48 px above it
+   when that point is on the map, so the bottom rows are reachable by hold
+   and release; it cancels when the lifted point is off the map or the
+   finger is on the Special button. New tablet tests: a bottom-row target
+   (y 474) by hold and release with the finger on the HUD, a release on
+   the speed button that fires above it and presses nothing, and cancels on
+   the Special button and the build bar. The Riverbend touch test now
+   reaches the bottom row by a hold.
+3. **Recharge readout.** The label is replaced by the countdown while the
+   charge refills ("Wait 15s", the button's 16 px label size, no overlap),
+   and the fill is an opaque dark amber drawn over the box and under the
+   label (it was a 55% wash over the label).
+4. **Tar puddle.** A light rim broken into nine uneven arcs just outside
+   its edge, and two glints inside; unlike the aim circle it has no full
+   ring and no cross.
+5. **Aim centre.** A 9 px light cross with a 6 px dark outline, on its own
+   layer above the sprites.
+
+Tests: 1037 unit tests pass (about 15 s, slowest 4.0 s); 295 browser tests
+pass, 3 skipped (35 s). The `special-aim`, `special-tar-zone` and `special-recharging`
+frames change again; baselines come from CI.
+
+### Verifier notes (Claude Sonnet, independent of the implementer)
+
+Reproduced: lint, check:assets, typecheck, build and check:size pass;
+`npm test` 1037 tests in 15.8 s (slowest 3.9 s); `npm run test:e2e` twice
+on port 4273, 295 pass and 3 skipped (the known frame writers), no `it.fails`
+or `milestone 30 miss` left; `npm run sim` takes 40 s and every target
+(T1 to T9, S2, S3, E1 to E3, H1 to H4, R1 to R5) is ok on all three maps.
+New probes: `src/sim/specials-rework-verifier.test.ts` (16 tests: charge
+timing, double fire, setup, early call, won and lost, zone linger and
+expiry, overlap, boss cap, burn credit, cheat deep-compare, conservation
+over a whole comboBuild game, endless boundary, determinism),
+`e2e/specials-rework-verifier.spec.ts` (mouse) and
+`e2e/specials-rework-verifier-touch.spec.ts` (tablet).
+
+- **Revert pass confirmed.** With the numbers alone put back: zone 300
+  breaks T6 (Meadow W 13 against W 11, Riverbend W 5 against W 7), S2
+  twice and H1 on Riverbend; keg damage 80 breaks T7 on all three maps; fire
+  burn 30 breaks T9 (207 gold) and S2 for the Tar Barrel. Cannon range 90
+  breaks no target (the range is pinned by frame tests, not by balance).
+- **Thin margins.** T6 on Switchback is exactly 3 lives (W 19 against
+  W 16) and T4 there is at the cap (19). T9 is 199 gold against 200. H1 on
+  Riverbend wins with 2 lives. S2 compares 516 against 520 kills on the keg.
+- **Policy is optimistic, not unfair.** It reads only visible things (enemy
+  positions, whether one is a Troll or the boss), never fires before the
+  charge is ready, and looks every 0.5 s. It does aim at exact positions with
+  no reaction time. Replaying the same purchases with the policy's choice
+  fired 0, 30, 60 and 120 ticks late (stale aim point): Meadow W 16, 15, 16,
+  16; Switchback W 19 throughout; Riverbend W 16, 14, 14, 11. A slow human
+  still wins; Riverbend loses lives.
+- **Design doc gaps.** `designSpec.test.ts` guards the specials table, the
+  recharge and linger, the policy's interval, threshold and spacing, and the
+  Cannon tables (a one-number edit of each fails it). It does not guard the
+  prose numbers for T4 (5 to 19), T6 (3 lives), S3 (15 and 80%), the cheat
+  (500 gold, 2 s, five presses) or the zone ticks in the Zones paragraph.
+- **Scope wording.** SCOPE-v5 says releasing over the HUD cancels; the
+  coordinator's follow-up ruling (the lifted point decides) is built and
+  documented in DESIGN.md, but SCOPE-v5 still reads as the old rule. A hold
+  that starts on the HUD cancels aiming; the bottom rows by hold need a slide
+  from the map (a tap reaches them directly).
+- **Cheat.** Ten quick taps give two grants (+1000); the tap counter resets
+  after each grant. The scope says five taps give 500.
+- **Tests weakened or removed outside the search machinery.**
+  `e2e/maps-verifier-touch.spec.ts` lost `expect(speed()).toBe(1)` in the
+  Riverbend special test; `src/sim/horde-verifier.test.ts` now writes the
+  special slow straight through `applySpecialSlow` instead of firing the
+  barrel through `useSpecial` for its slow-channel probes (the barrel path
+  is covered in `specials.test.ts`); `e2e/endless-verifier.spec.ts` sets gold
+  to 1000 as test setup. The rest are number updates.
+- PR review fix: a 3x speed hold released outside the window (no pointerup) stayed at 3x. It now ends, back to the speed before it and with no toggle from a late click, on a mouse move with no button down, on leaving the canvas with no button down, on pointercancel or touchcancel, on window blur and on a hidden page; the touch aim hold and a drag end there too (aiming stays on).
+- Aim hold check: a mouse aim fires on the press, so it has no hold; a cancelled touch aim hold was never stuck (a new touch, Escape or Special recovered it) but left its lifted circle drawn until then. Tests: a lost mouse release, window blur, and touchcancel on the tablet; no baseline changes.
+- **Re-verify of 819476f (lost 3x release).** Fix is at the right place (the hold's state, ended on a no-button move, canvas exit, cancel, blur and hidden page). The three new tests fail with the `src/` part reverted and pass with it. My probes show a 3x hold survives leaving the canvas and returning with the button down, and a tower drag out of the window and back still places; lint, typecheck, 1053 unit tests, build and 316 e2e pass; the endless determinism test takes 4.8 s.

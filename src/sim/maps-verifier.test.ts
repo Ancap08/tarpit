@@ -9,11 +9,8 @@ import { ENEMY_STATS } from './enemies';
 import { callNextWave, continueEndless, createGame, startWave, tick } from './game';
 import { buildableCells, isBuildable, isBuildableTerrain, terrainBlock } from './grid';
 import {
-  applyAction,
-  CLUSTER_POLICY_TICKS_BY_MAP,
   COMBO_PLANS,
   comboBuild,
-  densestCluster,
   endlessIdle,
   lazyBuild,
   longbowSpam,
@@ -23,7 +20,6 @@ import {
   trailCellOrder,
 } from './headless';
 import { MAP_IDS, MAPS, pathLength, type MapId } from './map';
-import { TOWER_DEFS } from './towers';
 import type { Enemy, EnemyType, GameState, MapDef, Point, Rect } from './types';
 
 const WAYPOINTS: Record<MapId, number[][]> = {
@@ -335,7 +331,8 @@ describe('E. sim probes on every map', () => {
     // Burn: Fire Arrows on lane 1, the wolf burns to death on the leftward lane.
     const b = arena('switchback');
     b.wave = 7;
-    const w = enemy(1, 'troll', 540, 100);
+    // 15 hp: the landing's 20/s special burn lasts 60 ticks (milestone 30) and kills it in 45.
+    const w = enemy(1, 'troll', 540, 15);
     b.enemies.push(w);
     expect(useSpecial(b, 'fireArrows', { x: 540, y: 96 })).toMatchObject({ ok: true, hits: 1 });
     w.distance = 560 + 96 + 10; // carried onto the leftward lane with the burn on it
@@ -366,38 +363,8 @@ describe('E. sim probes on every map', () => {
     });
   }
 
-  it('the cluster tick scan, rerun here, gives the ticks in the code on all three maps', () => {
-    // For each wave in turn, earlier waves firing at their ticks and this one not firing: the first wave
-    // tick at which the densest 70 px cluster is largest. The plan is bought as soon as gold allows.
-    for (const id of MAP_IDS) {
-      const plan = COMBO_PLANS[id];
-      const ticks: number[] = [];
-      for (let w = 1; w <= 10; w++) {
-        const s = createGame({ map: id });
-        let next = 0;
-        let best = { size: 0, tick: -1 };
-        for (let i = 1; i <= w && s.phase === 'setup'; i++) {
-          for (let a = plan[next]; a; a = plan[next]) {
-            const cost = a.type === 'build' ? TOWER_DEFS[a.tower].cost : a.type === 'upgrade' ? TOWER_DEFS[towerAt(s, a.cell)!.type].upgradeCost : 0;
-            if (s.gold < cost) break;
-            applyAction(s, a);
-            next += 1;
-          }
-          startWave(s);
-          for (let n = 0; (s.phase as GameState['phase']) === 'wave' && n < 36000; n++) {
-            if (i < w && s.waveTick === ticks[i - 1]) applyAction(s, { type: 'clusterSpecial', atWaveTick: 0 });
-            if (i === w) {
-              const size = densestCluster(s)?.ids.length ?? 0;
-              if (size > best.size) best = { size, tick: s.waveTick };
-            }
-            tick(s);
-          }
-        }
-        ticks.push(best.tick);
-      }
-      expect(ticks, id).toEqual(CLUSTER_POLICY_TICKS_BY_MAP[id]);
-    }
-  });
+  // Milestone 30: the cluster tick scan is gone with CLUSTER_POLICY_TICKS_BY_MAP
+  // (endless waves fire by the special policy).
 
   // Milestone 28: the result pins of this table are cells of the balance
   // matrix (balance.suite.ts); what stays here is that each run records
@@ -459,7 +426,7 @@ describe('E. sim probes on every map', () => {
       expect(run.state.map.id).toBe(id);
       expect(run.state.endless).toBe(true);
       expect(run.state.phase).toBe('lost');
-      expect(run.state.wave).toBe(id === 'switchback' ? 16 : 15);
+      expect(run.state.wave).toBe(id === 'switchback' ? 17 : 15);
     });
   }
 });

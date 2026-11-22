@@ -121,16 +121,19 @@ export function applySpecialSlow(enemy: Enemy, slow: number, ticks: number): num
  * Apply a burn. Burns do not stack: a burn with dps equal to or greater than
  * the active one replaces it (strength and duration); a weaker one does
  * nothing. `owner` (milestone 25c) is the cell of the tower applying it, so
- * its burn kills count for that tower; leave it out for a special's burn.
- * The owner changes only when the burn is applied. Returns whether it was.
+ * its burn kills count for that tower; 'special' (milestone 30) marks a
+ * special's burn, whose kills count as special kills. The owner changes only
+ * when the burn is applied. Returns whether it was.
  */
-export function applyBurn(enemy: Enemy, dps: number, ticks: number, owner?: Cell): boolean {
+export function applyBurn(enemy: Enemy, dps: number, ticks: number, owner?: Cell | 'special'): boolean {
   const active = (enemy.burnTicksLeft ?? 0) > 0 ? (enemy.burnDps ?? 0) : 0;
   if (dps < active) return false;
   enemy.burnDps = dps;
   enemy.burnTicksLeft = ticks;
-  if (owner) enemy.burnOwner = { col: owner.col, row: owner.row };
-  else delete enemy.burnOwner;
+  delete enemy.burnOwner;
+  delete enemy.specialBurn;
+  if (owner === 'special') enemy.specialBurn = true;
+  else if (owner) enemy.burnOwner = { col: owner.col, row: owner.row };
   return true;
 }
 
@@ -167,12 +170,14 @@ export function removeDead(state: GameState, cause: KillCause, killer?: Tower): 
   const alive: Enemy[] = [];
   for (const enemy of state.enemies) {
     if (isDead(enemy)) {
-      const credited = cause === 'shot' ? killer : cause === 'burn' ? burnOwnerTower(state, enemy) : undefined;
+      // Milestone 30: a burn kill from a special's burn is a special kill.
+      const why: KillCause = cause === 'burn' && enemy.specialBurn ? 'special' : cause;
+      const credited = why === 'shot' ? killer : why === 'burn' ? burnOwnerTower(state, enemy) : undefined;
       if (credited) credited.kills = (credited.kills ?? 0) + 1;
       const bounty = ENEMY_STATS[enemy.type].bounty;
       state.gold += bounty;
-      state.events.push({ kind: 'kill', enemyId: enemy.id, enemyType: enemy.type, bounty, cause });
-      if (isBoss(enemy)) state.events.push({ kind: 'bossDown', enemyId: enemy.id, cause });
+      state.events.push({ kind: 'kill', enemyId: enemy.id, enemyType: enemy.type, bounty, cause: why });
+      if (isBoss(enemy)) state.events.push({ kind: 'bossDown', enemyId: enemy.id, cause: why });
     } else alive.push(enemy);
   }
   state.enemies = alive;

@@ -80,7 +80,7 @@ test('the combo build meets Grumblefoot in wave 10: preview, bar, hp drop, kill,
   expect(end).toEqual({
     down: { kind: 'bossDown', enemyId: spawn.bossId, cause: 'shot' },
     phase: 'won',
-    lives: 14,
+    lives: 16,
     screen: 'won',
     boss: null,
   });

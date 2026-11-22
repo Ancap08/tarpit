@@ -39,19 +39,31 @@
 // pick, a tower press selects it. Drags from the bar work mid-wave too
 // (building then makes a locked tower); tower drags only in setup.
 //
-// Specials (milestone 25b): the HUD's Special button is live while a wave
-// runs and its charge is unspent. Pressing it selects the only unlocked
-// special directly, or opens a popup listing the unlocked ones; picking one
-// starts aiming. While aiming, a circle of the special's radius previews
-// the area: under the mouse (over the map), or on touch at the point the
-// first tap placed (no lift) or 48 px above the finger during a drag, with
-// the drag's finger line. A mouse click on the map, a second tap within
-// SPECIAL_TAP_SLOP px of the placed circle, or the release of a touch drag
-// with the aim on the map (even with the finger over the HUD) fires
-// useSpecial at the circle's centre. Escape, pressing Special again, or a
-// press anywhere else on the HUD cancels aiming (and closes the popup).
-// Aiming, the popup, the tower pick and the tower panel are mutually
-// exclusive: opening one clears the others.
+// Specials (milestone 25b, aim flow reworked in milestone 30): the HUD's
+// Special button is live while a wave runs and the charge is ready.
+// Pressing it selects the only unlocked special directly, or opens a popup
+// listing the unlocked ones; picking one starts aiming. While aiming, a
+// banner over the map says what to do (names.ts aimBannerText) and a circle
+// of the special's radius follows the mouse over the map. A mouse click on
+// the map fires there. On touch, a tap on the map fires at the tap; a press
+// held AIM_HOLD_MS or moved past the drag threshold shows the circle 48 px
+// above the finger (DRAG_LIFT, with the finger line) and its release fires
+// there when that point is on the map (the finger may be over the HUD, so
+// the bottom rows are reachable), or cancels when the lifted point is off
+// the map or the finger is on the Special button. Escape, pressing
+// Special again, or a press anywhere else on the HUD cancels aiming (and
+// closes the popup); a cancel spends nothing. Aiming, the popup, the tower
+// pick and the tower panel are mutually exclusive: opening one clears the
+// others. A special that lands shows its effects (draw/specials.ts), and
+// the keg shakes the camera (not in test mode).
+//
+// Speed (milestone 30): a tap on the speed button toggles 1x and 2x; a press
+// held SPEED_HOLD_MS runs 3x while held and reads "3x", and its release
+// returns to the speed before it without toggling.
+//
+// Gold cheat (milestone 30): CHEAT_TAPS presses on the Gold readout within
+// CHEAT_WINDOW_MS call grantCheatGold. A cheated game records no best score
+// (recordScore) for the rest of that game; Play again starts a clean one.
 //
 // Portrait: while the "turn your device" card shows (portrait.ts), update()
 // runs no ticks and drops the time it would have accumulated.
@@ -100,6 +112,7 @@ import {
   moveTower,
   sellTower,
   setTargeting,
+  grantCheatGold,
   SPECIAL_DEFS,
   startWave,
   tick,
@@ -142,7 +155,8 @@ import { ShotEffects } from './draw/shots';
 import { SpecialEffects } from './draw/specials';
 import { Aim, drawTowerShape, drawTowers } from './draw/towers';
 import { highScores } from './highScore';
-import { callEarlyInfo, HUD_TOP, Hud, specialReady } from './hud';
+import { callEarlyInfo, CHEAT_TAPS, CHEAT_WINDOW_MS, GOLD_RECT, HUD_TOP, Hud, specialReady, specialRecharge } from './hud';
+import { aimBannerText } from './names';
 import {
   cellAt,
   cellRect,
@@ -155,7 +169,7 @@ import {
   pastDragThreshold,
   type Rect,
 } from './input';
-import { COLORS } from './palette';
+import { COLORS, FONT, TEXT } from './palette';
 import { portraitCardVisible } from './portrait';
 import { isPerfMode, isTestMode } from './testMode';
 import type { GameStartData } from './TitleScene';
@@ -168,7 +182,12 @@ import { TowerPanel } from './ui/towerPanel';
 const sameCell = (a: Cell, b: Cell): boolean => a.col === b.col && a.row === b.row;
 
 
-export type Speed = 1 | 2;
+export type Speed = 1 | 2 | 3;
+
+/** A press on the speed button held this long runs 3x while held (milestone 30). */
+export const SPEED_HOLD_MS = 300;
+/** A touch press while aiming held this long, unmoved, becomes a hold: the lifted circle shows (milestone 30). */
+export const AIM_HOLD_MS = 300;
 
 /** Build UI state, as the test hook ui() reports it. */
 export interface UiState {
@@ -208,7 +227,25 @@ export interface UiState {
    * is open, and the aim circle's centre in canvas px (null while aiming
    * with nowhere to show it, or not aiming).
    */
-  special: { charges: number; aiming: SpecialType | null; unlocked: SpecialType[]; menuOpen: boolean; aimPoint: { x: number; y: number } | null };
+  special: {
+    charges: number;
+    aiming: SpecialType | null;
+    unlocked: SpecialType[];
+    menuOpen: boolean;
+    aimPoint: { x: number; y: number } | null;
+    /** Milestone 30: the charge is ready now (a wave runs and it is not refilling). */
+    ready: boolean;
+    /** Milestone 30: wave ticks until the charge is ready again; 0 when ready or not refilling. */
+    rechargeTicks: number;
+    /** Milestone 30: the aim banner's two lines while aiming, else null. */
+    banner: { main: string; hint: string } | null;
+    /** Milestone 30: on touch, a press is held and the lifted circle shows. */
+    holding: boolean;
+    /** Milestone 30: the "3 hit" or "Missed" labels showing, with their canvas positions. */
+    labels: { text: string; x: number; y: number }[];
+    /** Milestone 30: the zones drawn now (the simulation's state.zones). */
+    zones: { id: number; type: 'tarBarrel' | 'fireArrows'; x: number; y: number; ticksLeft: number }[];
+  };
   /**
    * Call early (milestone 25c): whether Start Wave now calls the next wave
    * (callNextWave would succeed) and the early bonus it would pay (0 when
@@ -225,7 +262,10 @@ interface AimPress {
   y0: number;
   x: number;
   y: number;
+  /** A hold (moved past the threshold, or held AIM_HOLD_MS): the lifted circle shows and the release fires there. */
   active: boolean;
+  /** Scene time of the press (milestone 30). */
+  t0: number;
 }
 
 /** A press that may become a drag (milestone 25a). */
@@ -256,17 +296,32 @@ const CELL_FILL_ALPHA = 0.25;
 const CELL_LINE = 2;
 /** The touch drag's finger-to-ghost line width (milestone 25a). */
 const DRAG_LINE = 1.5;
-/** Aim circle (milestone 25b): outline width and fill opacity. */
-const AIM_LINE = 2;
-const AIM_FILL_ALPHA = 0.18;
-/** On touch, a second tap this close (canvas px) to the placed aim circle's centre fires it. */
-export const SPECIAL_TAP_SLOP = 24;
+/** Aim circle (milestone 25b): outline width and fill opacity; milestone 30: half-length of the centre cross. */
+const AIM_LINE = 3;
+const AIM_FILL_ALPHA = 0.22;
+const AIM_CROSS = 9;
+/** The aim banner's box (milestone 30): top edge and height, centred across the map. */
+const BANNER_Y = 8;
+const BANNER_H = 46;
+/** The keg's camera shake (milestone 30): duration in ms and intensity (share of the view). */
+const KEG_SHAKE_MS = 220;
+const KEG_SHAKE = 0.008;
 /** The aim circle's colour per special. */
 export const SPECIAL_COLORS: Readonly<Record<SpecialType, number>> = {
   keg: COLORS.specialKeg,
   tarBarrel: COLORS.specialTar,
   fireArrows: COLORS.specialFire,
 };
+
+/**
+ * A touch hold's aim point (milestone 30): DRAG_LIFT px above the finger,
+ * or null when that point is off the map. As for tower drags (milestone
+ * 25a) the lifted point decides, so a finger on the HUD aims at the map's
+ * bottom rows.
+ */
+function liftedAim(x: number, y: number): { x: number; y: number } | null {
+  return onMap(x, y - DRAG_LIFT) ? { x, y: y - DRAG_LIFT } : null;
+}
 
 /** True when (x, y) is on the map (where a special may be aimed): 0..960 x 0..480 inclusive. */
 function onMap(x: number, y: number): boolean {
@@ -312,12 +367,26 @@ export class GameScene extends Phaser.Scene {
   /** A press on a bar button or an unlocked tower that may become a drag (milestone 25a), or null. */
   private press: Press | null = null;
   private shots = new ShotEffects();
-  private specialFx = new SpecialEffects(isTestMode());
+  private specialFx!: SpecialEffects;
+  /** The aim circle's centre cross, above the sprites (milestone 30 follow-up). */
+  private aimCross!: Phaser.GameObjects.Graphics;
+  /** Ground layer over the map (milestone 30): zones and scorch marks. */
+  private ground!: Phaser.GameObjects.Graphics;
+  /** The aim banner (milestone 30): its backing and two lines. */
+  private bannerBg!: Phaser.GameObjects.Graphics;
+  private bannerMain!: Phaser.GameObjects.Text;
+  private bannerHint!: Phaser.GameObjects.Text;
+  /** A press on the speed button (milestone 30): when it started, the speed before it, and whether it became a 3x hold. */
+  private speedPress: { t0: number; before: Speed; holding: boolean } | null = null;
+  /** Scene times of the recent presses on the Gold readout (milestone 30, the cheat). */
+  private goldTaps: number[] = [];
+  /** A 3x hold ended without its release (milestone 30 review): the button's late click must not toggle. */
+  private speedHoldLost = false;
   /** The special being aimed (milestone 25b), or null. */
   private aiming: SpecialType | null = null;
   /** The special popup is open. */
   private specialMenuOpen = false;
-  /** On touch: where the aim circle was placed by a tap or the last drag position, or null. */
+  /** On touch: the lifted aim circle's centre during a hold, or null. */
   private touchAim: { x: number; y: number } | null = null;
   /** On touch while aiming: the press in progress, or null. */
   private aimPress: AimPress | null = null;
@@ -341,7 +410,10 @@ export class GameScene extends Phaser.Scene {
     this.speed = 1;
     this.accMs = 0;
     this.shots = new ShotEffects();
-    this.specialFx = new SpecialEffects(isTestMode());
+    this.specialFx = new SpecialEffects(this, isTestMode());
+    this.speedPress = null;
+    this.speedHoldLost = false;
+    this.goldTaps = [];
     this.aim = new Aim(this.state.map);
     this.eventCursor = new EventCursor();
     this.aiming = null;
@@ -364,6 +436,7 @@ export class GameScene extends Phaser.Scene {
     // sprites (milestone 22), HUD (which covers any range circle
     // reaching below the map), then the panel and the end screen on top.
     drawMap(this.add.graphics(), this.state.map);
+    this.ground = this.add.graphics();
     this.overlay = this.add.graphics();
     this.dynamic = this.add.graphics();
     this.enemySprites = new EnemySprites(this, isTestMode());
@@ -372,10 +445,19 @@ export class GameScene extends Phaser.Scene {
     this.labels = new TowerLabels(this);
     // Flyers (Harpies) draw above every walker and label, below the HUD.
     this.enemySprites.setAirLayer(this.add.layer());
+    // The aim banner (milestone 30): over the map's top edge, under the HUD and panels.
+    // The aim circle's centre cross (milestone 30 follow-up), above every sprite.
+    this.aimCross = this.add.graphics();
+    this.bannerBg = this.add.graphics().setDepth(4);
+    const bannerText = (y: number, size: string, color: string) =>
+      this.add.text(480, y, '', { fontFamily: FONT, fontSize: size, fontStyle: 'bold', color }).setOrigin(0.5, 0.5).setDepth(4);
+    this.bannerMain = bannerText(BANNER_Y + 14, '18px', TEXT.aimBanner);
+    this.bannerHint = bannerText(BANNER_Y + 34, '13px', TEXT.aimHint);
     this.hud = new Hud(this, {
       // Milestone 25c: mid-wave, Start Wave reads "Call next  +N" and calls the next wave.
       onStartWave: () => (callEarlyStatus(this.state).ok ? this.callNextWave() : this.startWave()),
-      onToggleSpeed: () => this.setSpeed(this.speed === 1 ? 2 : 1),
+      onToggleSpeed: () => this.onSpeedClick(),
+      onSpeedPress: () => this.onSpeedPress(),
       onPick: (type) => this.togglePick(type),
       onSpecial: () => this.onSpecialButton(),
       onSpecialPick: (type) => this.selectSpecial(type),
@@ -411,6 +493,7 @@ export class GameScene extends Phaser.Scene {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       this.press = null;
       this.aimPress = null;
+      if (contains(GOLD_RECT, p.x, p.y)) this.goldTap();
       if (this.specialPointerDown(p.x, p.y, p.wasTouch)) return;
       if (p.wasTouch) this.onTap(p.x, p.y);
       else this.onPointerDown(p.x, p.y);
@@ -422,6 +505,8 @@ export class GameScene extends Phaser.Scene {
       if (this.press !== null && !this.press.touch && !p.wasTouch && mouseDragLost(p.isDown, p.buttons)) {
         this.press = null;
       }
+      // The same for a 3x speed hold (PR review): its release was lost, so it ends here.
+      if (this.speedPress !== null && !p.wasTouch && mouseDragLost(p.isDown, p.buttons)) this.releaseLostHolds();
       if (this.aimPress !== null && p.wasTouch) {
         this.aimMove(p.x, p.y);
         return;
@@ -434,17 +519,41 @@ export class GameScene extends Phaser.Scene {
       if (!p.wasTouch) this.onPointerMove({ x: p.x, y: p.y });
     });
     this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
+      this.endSpeedPress();
       if (this.aimPress !== null) this.endAimPress(p.x, p.y);
       else this.endPress(p.x, p.y, true);
     });
     this.input.on('pointerupoutside', () => {
+      this.endSpeedPress();
       // A touch aim released outside the canvas fires nothing.
       this.aimPress = null;
+      this.touchAim = null;
       this.endPress(0, 0, false);
     });
     this.input.on('gameout', () => {
       if (this.press?.active) this.press.cell = null;
+      // The pointer left the canvas with no button down: a speed hold has lost its release.
+      if (this.speedPress !== null && this.input.activePointer.buttons === 0) this.releaseLostHolds();
       this.onPointerMove(null);
+    });
+    // Holds whose release may never come (PR review): a cancelled touch, a
+    // hidden page or a window that lost focus end the speed hold (back to
+    // the speed before it) and the touch aim hold (aiming stays on, so a
+    // tap still fires), and drop a drag in progress.
+    const lost = () => this.releaseLostHolds();
+    const hidden = () => {
+      if (document.hidden) lost();
+    };
+    const canvas = this.game.canvas;
+    canvas.addEventListener('pointercancel', lost);
+    canvas.addEventListener('touchcancel', lost);
+    window.addEventListener('blur', lost);
+    document.addEventListener('visibilitychange', hidden);
+    this.events.once('shutdown', () => {
+      canvas.removeEventListener('pointercancel', lost);
+      canvas.removeEventListener('touchcancel', lost);
+      window.removeEventListener('blur', lost);
+      document.removeEventListener('visibilitychange', hidden);
     });
     this.input.keyboard?.on('keydown-ESC', () => this.closeUi());
     this.redraw();
@@ -557,7 +666,8 @@ export class GameScene extends Phaser.Scene {
     if (this.aiming === null) return false;
     this.setTouch(touch);
     if (touch) {
-      this.aimPress = { x0: x, y0: y, x, y, active: false };
+      this.aimPress = { x0: x, y0: y, x, y, active: false, t0: this.time.now };
+      this.touchAim = null;
     } else {
       this.pointer = { x, y };
       this.fireSpecial(this.aiming, { x, y });
@@ -566,7 +676,7 @@ export class GameScene extends Phaser.Scene {
     return true;
   }
 
-  /** A touch moved during an aim press: past the threshold it becomes a drag aiming DRAG_LIFT px above the finger. */
+  /** A touch moved during an aim press: past the threshold it becomes a hold, aiming DRAG_LIFT px above the finger. */
   private aimMove(x: number, y: number): void {
     const d = this.aimPress;
     if (d === null) return;
@@ -574,29 +684,36 @@ export class GameScene extends Phaser.Scene {
     d.y = y;
     if (!d.active && pastDragThreshold(d.x0, d.y0, x, y)) d.active = true;
     if (d.active) {
-      this.touchAim = onMap(x, y - DRAG_LIFT) ? { x, y: y - DRAG_LIFT } : null;
+      this.touchAim = liftedAim(x, y);
       this.redraw();
     }
   }
 
+  /** Every frame: a touch aim press held AIM_HOLD_MS without moving becomes a hold (milestone 30). */
+  private checkAimHold(): void {
+    const d = this.aimPress;
+    if (d === null || d.active || this.time.now - d.t0 < AIM_HOLD_MS) return;
+    d.active = true;
+    this.touchAim = liftedAim(d.x, d.y);
+  }
+
   /**
-   * A touch released while aiming. A drag fires at its lifted aim point if
-   * that is on the map (even with the finger over the HUD) and otherwise
-   * fires nothing. A tap within SPECIAL_TAP_SLOP of the placed circle fires
-   * it; any other tap on the map places the circle there.
+   * A touch released while aiming (milestone 30). A tap fires at the tap
+   * point. A hold fires at its lifted aim point when that point is on the
+   * map (the finger may be over the HUD); it cancels aiming and spends
+   * nothing when the lifted point is off the map or the finger is on the
+   * Special button.
    */
   private endAimPress(x: number, y: number): void {
     const d = this.aimPress;
     this.aimPress = null;
     if (d === null || this.aiming === null) return;
-    if (d.active) {
-      const aimAt = onMap(x, y - DRAG_LIFT) ? { x, y: y - DRAG_LIFT } : null;
-      if (aimAt !== null) this.fireSpecial(this.aiming, aimAt);
-      else this.touchAim = null;
-    } else if (this.touchAim !== null && Math.hypot(d.x0 - this.touchAim.x, d.y0 - this.touchAim.y) <= SPECIAL_TAP_SLOP) {
-      this.fireSpecial(this.aiming, this.touchAim);
+    if (!d.active) {
+      this.fireSpecial(this.aiming, { x: d.x0, y: d.y0 });
     } else {
-      this.touchAim = { x: d.x0, y: d.y0 };
+      const aimAt = liftedAim(x, y);
+      if (aimAt === null || contains(this.hud.rects().special, x, y)) this.cancelSpecial();
+      else this.fireSpecial(this.aiming, aimAt);
     }
     this.redraw();
   }
@@ -654,12 +771,72 @@ export class GameScene extends Phaser.Scene {
     this.aimPress = null;
   }
 
-  /** Where the aim circle shows, or null: the mouse over the map, or the touch aim point. */
+  /** Where the aim circle shows, or null: the mouse over the map, or on touch the lifted point of a hold. */
   private aimCentre(): { x: number; y: number } | null {
     if (this.aiming === null) return null;
     if (this.touch) return this.touchAim;
     const p = this.pointer;
     return p !== null && onMap(p.x, p.y) && p.y < HUD_TOP ? p : null;
+  }
+
+  /** A press started on the speed button: it may become a 3x hold (milestone 30). */
+  private onSpeedPress(): void {
+    if (this.endScreen.kind) return;
+    this.speedHoldLost = false;
+    this.speedPress = { t0: this.time.now, before: this.speed, holding: false };
+  }
+
+  /** Every frame: a speed press held SPEED_HOLD_MS runs 3x while held. */
+  private checkSpeedHold(): void {
+    const d = this.speedPress;
+    if (d === null || d.holding || this.time.now - d.t0 < SPEED_HOLD_MS) return;
+    d.holding = true;
+    this.speed = 3;
+  }
+
+  /** The speed button's click (its release over it): toggles 1x and 2x, unless the press was a 3x hold. */
+  private onSpeedClick(): void {
+    // A hold that ended without its release (blur, cancel) may still get the button's late click: it toggles nothing.
+    if (this.speedPress?.holding || this.speedHoldLost) {
+      this.speedHoldLost = false;
+      return;
+    }
+    this.speedPress = null;
+    this.setSpeed(this.speed === 1 ? 2 : 1);
+  }
+
+  /** Any release: a 3x hold ends and the speed goes back to what it was. */
+  private endSpeedPress(): void {
+    const d = this.speedPress;
+    this.speedPress = null;
+    if (d?.holding) this.setSpeed(d.before);
+  }
+
+  /** End every hold whose release was lost: the speed hold, the touch aim hold and a drag (see create()). */
+  releaseLostHolds(): void {
+    if (this.speedPress?.holding) this.speedHoldLost = true;
+    this.endSpeedPress();
+    this.aimPress = null;
+    this.touchAim = null;
+    this.press = null;
+    this.redraw();
+  }
+
+  /** A press on the Gold readout (milestone 30): the CHEAT_TAPS-th within CHEAT_WINDOW_MS grants the cheat gold. */
+  private goldTap(): void {
+    const now = this.time.now;
+    this.goldTaps = [...this.goldTaps.filter((t) => now - t <= CHEAT_WINDOW_MS), now];
+    if (this.goldTaps.length < CHEAT_TAPS) return;
+    this.goldTaps = [];
+    this.cheatGold();
+  }
+
+  /** The gold cheat through the sim (milestone 30); also the test hook. */
+  cheatGold(): ReturnType<typeof grantCheatGold> {
+    const result = grantCheatGold(this.state);
+    this.takeEvents();
+    this.redraw();
+    return result;
   }
 
   /** A build bar click: pick that type, or clear the pick if it is already active. */
@@ -778,6 +955,12 @@ export class GameScene extends Phaser.Scene {
           const c = this.aimCentre();
           return c === null ? null : { x: c.x, y: c.y };
         })(),
+        ready: specialReady(this.state),
+        rechargeTicks: specialRecharge(this.state) === null ? 0 : this.state.specialRechargeTicks,
+        banner: this.aiming === null ? null : aimBannerText(this.aiming, this.touch),
+        holding: this.aimPress?.active ?? false,
+        labels: this.specialFx.labelInfo(),
+        zones: this.state.zones.map((z) => ({ id: z.id, type: z.type, x: z.x, y: z.y, ticksLeft: z.ticksLeft })),
       },
     };
   }
@@ -809,6 +992,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
+    this.checkSpeedHold();
+    this.checkAimHold();
     if (this.autoTick && portraitCardVisible()) {
       this.accMs = 0;
     } else if (this.autoTick) {
@@ -816,6 +1001,8 @@ export class GameScene extends Phaser.Scene {
       const { ticks, accMs } = ticksDue(this.accMs + delta, this.speed);
       this.accMs = accMs;
       this.advance(ticks, false);
+      // Effects age in real time in play (milestone 30), so a label lasts 1.5 s at any speed.
+      this.specialFx.advance(delta);
     }
     this.redraw();
   }
@@ -823,10 +1010,16 @@ export class GameScene extends Phaser.Scene {
   /** Run `n` simulation ticks, feeding each tick's shots and events to the effects. */
   advance(n: number, redraw = true): void {
     for (let i = 0; i < n; i++) {
+      // Milestone 30: once won or lost nothing ticks, so nothing replays after the win.
+      if (this.state.phase === 'won' || this.state.phase === 'lost') break;
       tick(this.state);
       for (const shot of this.state.shots) this.aim.pointAt(shot.cell, shot.to);
       this.shots.afterTick(this.state.shots);
-      this.specialFx.afterTick();
+      // In test mode effects age by tick (milestone 30), so step(n) frames are always the same.
+      if (!this.autoTick) this.specialFx.advance(1000 / 60);
+      // Milestone 30: a sprite for every enemy spawned this tick, before its
+      // events, so a hit or kill on the next tick of the same frame is not lost.
+      this.enemySprites.addNew(this.state);
       this.takeEvents();
     }
     this.recordScore();
@@ -841,6 +1034,8 @@ export class GameScene extends Phaser.Scene {
    * run too.
    */
   private recordScore(): void {
+    // Milestone 30: a cheated game saves no best score (the stored best stays as it was).
+    if (this.state.cheated) return;
     const cleared = wavesCleared(this.state);
     if (cleared <= this.recordedCleared) return;
     this.recordedCleared = cleared;
@@ -965,10 +1160,15 @@ export class GameScene extends Phaser.Scene {
     return result;
   }
 
-  /** Use a special aimed at (x, y) through the sim (milestone 25b); a success starts its effect. */
+  /** Use a special aimed at (x, y) through the sim (milestone 25b); a success starts its effects (30: and the keg shakes the camera). */
   useSpecialAt(type: SpecialType, x: number, y: number): SpecialResult {
+    const from = this.state.events.length;
     const result = useSpecial(this.state, type, { x, y });
-    if (result.ok) this.specialFx.add(type, x, y, SPECIAL_DEFS[type].radius);
+    if (result.ok) {
+      const landed = this.state.events.slice(from).find((e) => e.kind === 'special');
+      if (landed?.kind === 'special') this.specialFx.add(landed);
+      if (type === 'keg' && this.autoTick) this.cameras.main.shake(KEG_SHAKE_MS, KEG_SHAKE);
+    }
     this.takeEvents();
     this.redraw();
     return result;
@@ -988,6 +1188,8 @@ export class GameScene extends Phaser.Scene {
   redraw(): void {
     if (!this.dynamic) return;
     this.aim.prune(this.state);
+    this.ground.clear();
+    this.specialFx.drawGround(this.ground, this.state);
     const g = this.dynamic;
     g.clear();
     const moving = this.press?.active && this.press.kind === 'move' ? this.press.from : null;
@@ -1003,7 +1205,24 @@ export class GameScene extends Phaser.Scene {
     this.labels.update(this.state);
     this.syncEndScreen();
     this.redrawUi();
-    this.hud.update(this.state, this.speed, this.pick, { menuOpen: this.specialMenuOpen, aiming: this.aiming });
+    this.hud.update(this.state, this.speed, this.pick, { menuOpen: this.specialMenuOpen, aiming: this.aiming }, this.autoTick ? this.time.now : undefined);
+    this.drawBanner();
+  }
+
+  /** The aim banner (milestone 30): shown while aiming, with what to do and how to cancel. */
+  private drawBanner(): void {
+    const text = this.aiming === null ? null : aimBannerText(this.aiming, this.touch);
+    const main = text?.main ?? '';
+    if (this.bannerMain.text !== main) {
+      this.bannerMain.setText(main);
+      this.bannerHint.setText(text?.hint ?? '');
+      this.bannerBg.clear();
+      if (text !== null) {
+        const w = Math.max(this.bannerMain.width, this.bannerHint.width) + 32;
+        this.bannerBg.fillStyle(COLORS.aimBanner, 0.82).fillRoundedRect(480 - w / 2, BANNER_Y, w, BANNER_H, 8);
+        this.bannerBg.lineStyle(2, SPECIAL_COLORS[this.aiming!], 1).strokeRoundedRect(480 - w / 2, BANNER_Y, w, BANNER_H, 8);
+      }
+    }
   }
 
   /** Show the end screen once the game is won or lost. Idempotent. */
@@ -1063,6 +1282,7 @@ export class GameScene extends Phaser.Scene {
 
     const g = this.overlay;
     g.clear();
+    this.aimCross.clear();
 
     const selected = this.panel.cell === null ? undefined : towerAt(this.state, this.panel.cell);
     if (selected) {
@@ -1105,8 +1325,20 @@ export class GameScene extends Phaser.Scene {
       const r = SPECIAL_DEFS[this.aiming].radius;
       g.fillStyle(color, AIM_FILL_ALPHA);
       g.fillCircle(aimAt.x, aimAt.y, r);
+      // A pale outer edge under the coloured one, so the dark tar circle reads on the path too.
+      g.lineStyle(AIM_LINE + 2, COLORS.dragLine, 0.7);
+      g.strokeCircle(aimAt.x, aimAt.y, r);
       g.lineStyle(AIM_LINE, color, 1);
       g.strokeCircle(aimAt.x, aimAt.y, r);
+      // The landing point: a light cross with a dark outline at the centre,
+      // drawn on the cross layer above the sprites (milestone 30 follow-up).
+      const c = this.aimCross;
+      c.lineStyle(6, COLORS.aimCrossDark, 0.9);
+      c.lineBetween(aimAt.x - AIM_CROSS - 1, aimAt.y, aimAt.x + AIM_CROSS + 1, aimAt.y);
+      c.lineBetween(aimAt.x, aimAt.y - AIM_CROSS - 1, aimAt.x, aimAt.y + AIM_CROSS + 1);
+      c.lineStyle(2.5, COLORS.dragLine, 1);
+      c.lineBetween(aimAt.x - AIM_CROSS, aimAt.y, aimAt.x + AIM_CROSS, aimAt.y);
+      c.lineBetween(aimAt.x, aimAt.y - AIM_CROSS, aimAt.x, aimAt.y + AIM_CROSS);
       const ap = this.aimPress;
       if (ap?.active) {
         g.lineStyle(DRAG_LINE, COLORS.dragLine, 0.85);

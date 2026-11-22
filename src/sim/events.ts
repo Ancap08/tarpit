@@ -5,7 +5,7 @@
 // `state.shots`, and appends to it as things happen, in order. Won and lost
 // ticks do nothing, so the list keeps the last tick's events.
 // Actions between ticks (startWave, callNextWave, continueEndless, build, upgrade, sell, targeting, move,
-// undoUpgrade, useSpecial) append
+// undoUpgrade, useSpecial, grantCheatGold) append
 // their own event to the same list; it stays there until the next tick clears it. So
 // the renderer reads the new entries after every action and after every
 // tick (GameScene does both, see EventCursor in src/game/anim/effects.ts).
@@ -44,9 +44,12 @@ export type GameEvent =
   /**
    * A special attack was used (milestone 25b): aimed at (x, y) with this
    * radius; `hits` enemies were inside it. Its kills follow as 'kill'
-   * events with cause 'special'.
+   * events with cause 'special'. `zoneId` (milestone 30): the id of the
+   * zone it left (Tar Barrel and Fire Arrows).
    */
-  | { kind: 'special'; type: SpecialType; x: number; y: number; radius: number; hits: number }
+  | { kind: 'special'; type: SpecialType; x: number; y: number; radius: number; hits: number; zoneId?: number }
+  /** The gold cheat was used (milestone 30): `gold` was added. */
+  | { kind: 'cheat'; gold: number }
   /** A tower's targeting mode was set (milestone 24). */
   | { kind: 'targeting'; cell: Cell; mode: TargetingMode }
   | { kind: 'waveStart'; wave: number }

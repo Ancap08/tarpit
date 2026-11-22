@@ -10,7 +10,8 @@ import { ENEMY_STATS } from './enemies';
 import { lastSpawnTick } from './game';
 import { buildableCells } from './grid';
 import { MAPS, pathLength, type MapId } from './map';
-import { SPECIAL_DEFS, type SpecialType } from './specials';
+import { SPECIAL_DEFS, SPECIAL_RECHARGE_TICKS, ZONE_LINGER_TICKS, type SpecialType } from './specials';
+import { POLICY_CHECK_TICKS, POLICY_MIN_HITS, POLICY_POINT_SPACING } from './specialPolicy';
 import { TOWER_DEFS } from './towers';
 import type { EnemyType, TowerLevelStats, TowerType } from './types';
 import { ENDLESS_HP_GROWTH, waveDef, WAVES } from './waves';
@@ -163,15 +164,22 @@ describe('docs/DESIGN.md matches the code', () => {
     }
   });
 
-  it('specials: unlock wave, radius, damage, slow, burn', () => {
+  it('specials: unlock wave, radius, damage, slow, burn, zone ticks (milestone 30)', () => {
     const rows = table('Special attacks', 'Special');
     expect(rows.map((r) => SPECIAL_NAMES[r[0]])).toEqual(['keg', 'tarBarrel', 'fireArrows']);
-    for (const [name, unlock, radius, damage, sl, slowTicks, burnDps, burnTicks] of rows) {
-      expect(
-        { unlockWave: Number(unlock), radius: Number(radius), damage: opt(damage), slow: opt(sl), slowTicks: opt(slowTicks), burnDps: opt(burnDps), burnTicks: opt(burnTicks) },
-        name,
-      ).toEqual(SPECIAL_DEFS[SPECIAL_NAMES[name]]);
+    for (const [name, unlock, radius, damage, sl, burnDps, zoneTicks] of rows) {
+      expect({ unlockWave: Number(unlock), radius: Number(radius), damage: opt(damage), slow: opt(sl), burnDps: opt(burnDps), zoneTicks: opt(zoneTicks) }, name).toEqual(
+        SPECIAL_DEFS[SPECIAL_NAMES[name]],
+      );
     }
+    // The prose numbers: the recharge, the linger, the policy's look interval, threshold and spacing, the cheat.
+    const flat = section('Special attacks').replace(/\s+/g, ' ');
+    expect(flat).toContain(`${SPECIAL_RECHARGE_TICKS} wave ticks`);
+    expect(flat).toContain(`${ZONE_LINGER_TICKS} ticks after`);
+    const arche = section('Archetypes').replace(/\s+/g, ' ');
+    expect(arche).toContain(`every ${POLICY_CHECK_TICKS} wave ticks`);
+    expect(arche).toContain(`at least ${POLICY_MIN_HITS} enemies`);
+    expect(arche).toContain(`every ${POLICY_POINT_SPACING} px along the path`);
   });
 
   it('the ten waves: every group, enemies, total hp, bounty and last spawn', () => {
@@ -206,9 +214,9 @@ describe('docs/DESIGN.md matches the code', () => {
     }
   });
 
-  it('balance targets: every T, E, H and R label the suite asserts is in the spec, and no other', () => {
+  it('balance targets: every T, S, E, H and R label the suite asserts is in the spec, and no other', () => {
     const text = section('Balance targets') + section('Waves');
-    const inDoc = new Set([...text.matchAll(/\*\*([TEHR]\d)\b/g)].map((m) => m[1]));
+    const inDoc = new Set([...text.matchAll(/\*\*([TSEHR]\d)\b/g)].map((m) => m[1]));
     expect([...inDoc].sort()).toEqual([...new Set(TARGETS.map((t) => t.id))].sort());
   });
 

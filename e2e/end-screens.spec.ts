@@ -115,10 +115,10 @@ test('win with the combo build through the scene actions, then play again', asyn
   const phase = await page.evaluate(() => (window.__tarpit as TarpitTestApi).runScript('comboBuild'));
   expect(phase).toBe('won');
   expect(await endScreen(page)).toBe('won');
-  expect(await state(page)).toMatchObject({ phase: 'won', wave: 10, lives: 14, gold: 484 });
+  expect(await state(page)).toMatchObject({ phase: 'won', wave: 10, lives: 16, gold: 420 });
   expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).hudText())).toMatchObject({
-    gold: 'Gold 484',
-    lives: 'Lives 14',
+    gold: 'Gold 420',
+    lives: 'Lives 16',
     wave: 'Wave 10/10',
   });
 

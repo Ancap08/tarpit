@@ -175,7 +175,11 @@ test('a tower type picked on the bar when the game is won is no longer picked on
   await open(page);
   await startGame(page);
   // A tower type is picked on the bar when the game is won: the pick must not survive into endless.
-  await api(page, (t) => t.runScript('comboBuild', 10));
+  // Gold for a pick (test setup): since milestone 30 the plan's wave 10 purchases can leave less than a Longbow.
+  await api(page, (t) => {
+    t.runScript('comboBuild', 10);
+    t.state().gold = 1000;
+  });
   await click(page, 'bar:longbow');
   expect(await api(page, (t) => t.ui().pick)).toBe('longbow');
   await api(page, (t) => {

@@ -1,27 +1,30 @@
-// Milestone 25b: special attacks (docs/SCOPE-v4.md "Special attacks (25b)",
-// DESIGN.md "Special attacks"). Exact values, one rule per test.
+// Special attacks: milestone 25b, reworked in milestone 30 (docs/SCOPE-v5.md
+// "Specials rework", DESIGN.md "Special attacks"): a recharging charge,
+// ground zones for the Tar Barrel and Fire Arrows, bigger circles, the gold
+// cheat. Exact values, one rule per test.
 import { describe, expect, it } from 'vitest';
-import { useSpecial } from './actions';
+import { buildTower, CHEAT_GOLD, grantCheatGold, useSpecial } from './actions';
 import { enemyPosition } from './combat';
 import { ENEMY_STATS } from './enemies';
 import type { GameEvent } from './events';
-import { createGame, startWave, tick } from './game';
+import { callNextWave, createGame, lastSpawnTick, startWave, tick } from './game';
 import { playScripted } from './headless';
 import { MAPS } from './map';
-import { SPECIAL_DEFS, SPECIAL_TYPES, unlockedSpecials, type SpecialType } from './specials';
-import type { Enemy, EnemyType, GameState } from './types';
+import { SPECIAL_DEFS, SPECIAL_RECHARGE_TICKS, SPECIAL_TYPES, unlockedSpecials, ZONE_LINGER_TICKS, type SpecialType } from './specials';
+import type { Enemy, EnemyType, GameState, MapDef } from './types';
 import { WAVES } from './waves';
 
-// Path distance d < 160 is the point (d, 240) on the first run, so an enemy
-// at distance 80 stands at (80, 240).
+// Path distance d < 160 is the point (d, 240) on Meadow's first run, so an
+// enemy at distance 80 stands at (80, 240).
 const AT = 80;
 const POINT = { x: AT, y: 240 };
 const FOUR: EnemyType[] = ['goblin', 'harpy', 'shieldbearer', 'boss'];
 
-// Arena hp: the milestone 22 values (Goblin 30, Harpy 40, Shieldbearer 120,
-// Troll 700, boss 4000), fixed so the arithmetic below stays as written; no
-// special rule depends on an enemy's full hp (milestone 25c lowered
-// ENEMY_STATS).
+/** A straight path along y = 240: distance d is the point (d, 240). */
+const LINE: MapDef = { id: 'line', width: 960, height: 480, path: [{ x: 0, y: 240 }, { x: 960, y: 240 }] };
+
+// Arena hp, fixed so the arithmetic below stays as written; no special rule
+// depends on an enemy's full hp.
 const ARENA_HP: Record<EnemyType, number> = { goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000 };
 
 function enemy(id: number, type: EnemyType, distance = AT, hp = ARENA_HP[type]): Enemy {
@@ -29,11 +32,11 @@ function enemy(id: number, type: EnemyType, distance = AT, hp = ARENA_HP[type]):
 }
 
 /**
- * A game in wave `wave` (started through startWave, so it has its charge)
+ * A game in wave `wave` (started through startWave, so its charge is ready)
  * with every enemy of the wave already spawned, holding only `enemies`.
  */
-function inWave(wave: number, enemies: Enemy[]): GameState {
-  const s = createGame();
+function inWave(wave: number, enemies: Enemy[], map?: MapDef): GameState {
+  const s = createGame({ map });
   s.wave = wave - 1;
   expect(startWave(s).ok).toBe(true);
   s.spawnedPerGroup = WAVES[wave - 1].groups.map((g) => g.count);
@@ -44,13 +47,18 @@ function inWave(wave: number, enemies: Enemy[]): GameState {
 }
 
 const kinds = (events: GameEvent[]) => events.map((e) => e.kind);
+const ticks = (s: GameState, n: number) => {
+  for (let i = 0; i < n; i++) tick(s);
+};
 
-describe('the specials table (SCOPE-v4 starting numbers)', () => {
-  it('Powder Keg wave 1, 80 damage, 70 px; Tar Barrel wave 4, slow 0.5 for 210 ticks, 90 px; Fire Arrows wave 7, burn 30/s for 240 ticks, 80 px (10/s before milestone 25c)', () => {
+describe('the specials table (milestone 30)', () => {
+  it('keg wave 1, 90 px, 30 damage; Tar Barrel wave 4, 100 px, slow 0.5, zone 480; Fire Arrows wave 7, 90 px, burn 20/s, zone 480; recharge 1200, linger 60', () => {
     expect(SPECIAL_TYPES).toEqual(['keg', 'tarBarrel', 'fireArrows']);
-    expect(SPECIAL_DEFS.keg).toMatchObject({ unlockWave: 1, radius: 70, damage: 80, slow: 0, burnDps: 0 });
-    expect(SPECIAL_DEFS.tarBarrel).toMatchObject({ unlockWave: 4, radius: 90, damage: 0, slow: 0.5, slowTicks: 210, burnDps: 0 });
-    expect(SPECIAL_DEFS.fireArrows).toMatchObject({ unlockWave: 7, radius: 80, damage: 0, slow: 0, burnDps: 30, burnTicks: 240 });
+    expect(SPECIAL_DEFS.keg).toEqual({ unlockWave: 1, radius: 90, damage: 30, slow: 0, burnDps: 0, zoneTicks: 0 });
+    expect(SPECIAL_DEFS.tarBarrel).toEqual({ unlockWave: 4, radius: 100, damage: 0, slow: 0.5, burnDps: 0, zoneTicks: 480 });
+    expect(SPECIAL_DEFS.fireArrows).toEqual({ unlockWave: 7, radius: 90, damage: 0, slow: 0, burnDps: 20, zoneTicks: 480 });
+    expect(SPECIAL_RECHARGE_TICKS).toBe(1200);
+    expect(ZONE_LINGER_TICKS).toBe(60);
     expect([1, 3, 4, 6, 7, 10].map(unlockedSpecials)).toEqual([
       ['keg'],
       ['keg'],
@@ -63,53 +71,45 @@ describe('the specials table (SCOPE-v4 starting numbers)', () => {
 });
 
 describe('Powder Keg', () => {
-  it('deals the full 80 to a Goblin, a Harpy (flying), a Shieldbearer (shield ignored) and the boss', () => {
-    // Goblin and Harpy given 200 hp so the 80 shows instead of a kill.
+  it('deals 30 to a Goblin, a Harpy (flying), a Shieldbearer (shield ignored) and the boss, and leaves no zone', () => {
+    // Goblin and Harpy given 200 hp so the 30 shows instead of a kill.
     const s = inWave(1, [enemy(0, 'goblin', AT, 200), enemy(1, 'harpy', AT, 200), enemy(2, 'shieldbearer'), enemy(3, 'boss')]);
     expect(useSpecial(s, 'keg', POINT)).toEqual({ ok: true, hits: 4, kills: 0, gold: s.gold });
     expect(s.enemies.map((e) => [e.type, e.hp])).toEqual([
-      ['goblin', 120],
-      ['harpy', 120],
-      ['shieldbearer', 40],
-      ['boss', 3920],
+      ['goblin', 170],
+      ['harpy', 170],
+      ['shieldbearer', 90],
+      ['boss', 3970],
     ]);
+    expect(s.zones).toEqual([]);
+    expect(s.events[0]).toEqual({ kind: 'special', type: 'keg', x: AT, y: 240, radius: 90, hits: 4 });
   });
 });
 
-describe('Tar Barrel', () => {
-  it('slows a Goblin, a Harpy and a Shieldbearer by 0.5 for 210 ticks, and the boss by his 0.3 cap', () => {
+describe('Tar Barrel landing', () => {
+  it('slows a Goblin, a Harpy and a Shieldbearer by 0.5 and the boss by his 0.3 cap, for the linger, and leaves a zone', () => {
     const s = inWave(4, FOUR.map((type, i) => enemy(i, type)));
     expect(useSpecial(s, 'tarBarrel', POINT)).toMatchObject({ ok: true, hits: 4, kills: 0 });
-    // Milestone 25c: the barrel uses the special slow channel; the tower slow stays empty.
     expect(s.enemies.map((e) => [e.type, e.specialSlow, e.specialSlowTicksLeft, e.slowTicksLeft])).toEqual([
-      ['goblin', 0.5, 210, 0],
-      ['harpy', 0.5, 210, 0],
-      ['shieldbearer', 0.5, 210, 0],
-      ['boss', 0.3, 210, 0],
+      ['goblin', 0.5, 60, 0],
+      ['harpy', 0.5, 60, 0],
+      ['shieldbearer', 0.5, 60, 0],
+      ['boss', 0.3, 60, 0],
     ]);
-    expect(s.events.filter((e) => e.kind === 'slowed')).toEqual(
-      FOUR.map((type, i) => ({ kind: 'slowed', enemyId: i, slow: type === 'boss' ? 0.3 : 0.5, ticks: 210 })),
-    );
-    // No damage.
+    expect(s.events[0]).toEqual({ kind: 'special', type: 'tarBarrel', x: AT, y: 240, radius: 100, hits: 4, zoneId: 0 });
+    expect(s.events.filter((e) => e.kind === 'slowed')).toEqual(FOUR.map((type, i) => ({ kind: 'slowed', enemyId: i, slow: type === 'boss' ? 0.3 : 0.5, ticks: 60 })));
+    expect(s.zones).toEqual([{ id: 0, type: 'tarBarrel', x: AT, y: 240, radius: 100, ticksLeft: 480 }]);
+    expect(s.nextZoneId).toBe(1);
     expect(s.enemies.map((e) => e.hp)).toEqual(FOUR.map((type) => ARENA_HP[type]));
   });
 });
 
-describe('Fire Arrows', () => {
-  it('sets a 30/s burn for 240 ticks on a Harpy (it sticks, unlike a Fire Pot burn) and on walkers', () => {
+describe('Fire Arrows landing', () => {
+  it('sets a 20/s special burn for the linger on a Harpy and on walkers, and leaves a zone', () => {
     const s = inWave(7, FOUR.map((type, i) => enemy(i, type)));
     expect(useSpecial(s, 'fireArrows', POINT)).toMatchObject({ ok: true, hits: 4, kills: 0 });
-    expect(s.enemies.map((e) => [e.type, e.burnDps, e.burnTicksLeft])).toEqual(FOUR.map((type) => [type, 30, 240]));
-  });
-
-  it('burns double on a tarred enemy: 60 against 30 over 60 ticks', () => {
-    const tarred = { ...enemy(0, 'troll'), slow: 0.5, slowTicksLeft: 1000 };
-    const s = inWave(7, [tarred, enemy(1, 'troll')]);
-    expect(useSpecial(s, 'fireArrows', POINT)).toMatchObject({ ok: true, hits: 2 });
-    for (let i = 0; i < 60; i++) tick(s);
-    const lost = s.enemies.map((e) => ARENA_HP.troll - e.hp);
-    expect(lost[0]).toBeCloseTo(60, 9);
-    expect(lost[1]).toBeCloseTo(30, 9);
+    expect(s.enemies.map((e) => [e.type, e.burnDps, e.burnTicksLeft, e.specialBurn])).toEqual(FOUR.map((type) => [type, 20, 60, true]));
+    expect(s.zones).toEqual([{ id: 0, type: 'fireArrows', x: AT, y: 240, radius: 90, ticksLeft: 480 }]);
   });
 
   it('replaces a weaker burn and leaves a stronger one', () => {
@@ -118,74 +118,182 @@ describe('Fire Arrows', () => {
     const s = inWave(7, [weak, strong]);
     useSpecial(s, 'fireArrows', POINT);
     expect(s.enemies.map((e) => [e.burnDps, e.burnTicksLeft])).toEqual([
-      [30, 240],
+      [20, 60],
       [40, 30],
     ]);
   });
 });
 
+describe('zones (step 2b of the tick)', () => {
+  it('enter: a Wolf is slowed on the tick it reaches the zone edge, not before', () => {
+    // Zone at (300, 240), 100 px: the Wolf (2 px a tick) at 196 reaches 200 on the second tick.
+    const s = inWave(4, [enemy(0, 'wolf', 196, 1000)], LINE);
+    useSpecial(s, 'tarBarrel', { x: 300, y: 240 });
+    tick(s);
+    expect([s.enemies[0].distance, s.enemies[0].specialSlowTicksLeft ?? 0]).toEqual([198, 0]);
+    tick(s);
+    expect([s.enemies[0].distance, s.enemies[0].specialSlow, s.enemies[0].specialSlowTicksLeft]).toEqual([200, 0.5, 60]);
+    // Stay: refreshed to the linger every tick while inside, at half speed.
+    tick(s);
+    expect([s.enemies[0].distance, s.enemies[0].specialSlowTicksLeft]).toEqual([201, 60]);
+  });
+
+  it('leave: the slow lasts the linger after the last tick inside, then full speed', () => {
+    // At 390, inside, so the landing slows it: 1 px a tick to 400 (inside, the edge) on tick 10.
+    const s = inWave(4, [enemy(0, 'wolf', 390, 1000)], LINE);
+    useSpecial(s, 'tarBarrel', { x: 300, y: 240 });
+    ticks(s, 10);
+    expect([s.enemies[0].distance, s.enemies[0].specialSlowTicksLeft]).toEqual([400, 60]);
+    tick(s); // 401: outside, not refreshed
+    expect([s.enemies[0].distance, s.enemies[0].specialSlowTicksLeft]).toEqual([401, 59]);
+    ticks(s, 59);
+    expect([s.enemies[0].distance, s.enemies[0].specialSlowTicksLeft, s.enemies[0].specialSlow]).toEqual([460, 0, 0]);
+    tick(s);
+    expect(s.enemies[0].distance).toBe(462);
+  });
+
+  it('expiry: a zone acts for 480 ticks and is then removed; an enemy on the spot afterwards is not slowed', () => {
+    const s = inWave(4, [enemy(0, 'troll', 0, 100000)], LINE);
+    useSpecial(s, 'tarBarrel', { x: 900, y: 240 });
+    ticks(s, 479);
+    expect(s.zones.map((z) => z.ticksLeft)).toEqual([1]);
+    tick(s);
+    expect(s.zones).toEqual([]);
+    s.enemies.push(enemy(1, 'goblin', 900, 1000));
+    tick(s);
+    expect(s.enemies[1].specialSlowTicksLeft ?? 0).toBe(0);
+  });
+
+  it('two overlapping zones: tar and fire on one enemy burn at 20/s doubled (40/s); two tar zones do not stack', () => {
+    const s = inWave(7, [enemy(0, 'troll', 300, 1000)], LINE);
+    useSpecial(s, 'tarBarrel', { x: 300, y: 240 });
+    s.specialCharges = 1; // test setup: a second charge at once
+    useSpecial(s, 'fireArrows', { x: 320, y: 240 });
+    s.specialCharges = 1;
+    useSpecial(s, 'tarBarrel', { x: 280, y: 240 });
+    expect(s.zones.map((z) => [z.id, z.type])).toEqual([
+      [0, 'tarBarrel'],
+      [1, 'fireArrows'],
+      [2, 'tarBarrel'],
+    ]);
+    ticks(s, 60);
+    expect(1000 - s.enemies[0].hp).toBeCloseTo(40, 9);
+    // 35 px/s at 0.5 for 60 ticks: 17.5 px, not less.
+    expect(s.enemies[0].distance).toBeCloseTo(317.5, 9);
+  });
+
+  it('a flyer in a fire zone burns and in a tar zone is slowed', () => {
+    const s = inWave(7, [enemy(0, 'harpy', 300, 1000)], LINE);
+    useSpecial(s, 'fireArrows', { x: 300, y: 240 });
+    s.specialCharges = 1;
+    useSpecial(s, 'tarBarrel', { x: 300, y: 240 });
+    tick(s);
+    expect([s.enemies[0].burnDps, s.enemies[0].specialSlow]).toEqual([20, 0.5]);
+  });
+
+  it('the boss in a tar zone is slowed by his 0.3 cap, never more', () => {
+    const s = inWave(10, [enemy(0, 'boss', 300)], LINE);
+    useSpecial(s, 'tarBarrel', { x: 300, y: 240 });
+    ticks(s, 60);
+    expect(s.enemies[0].specialSlow).toBe(0.3);
+    // 25 px/s at 0.7 for 60 ticks.
+    expect(s.enemies[0].distance).toBeCloseTo(317.5, 9);
+  });
+
+  it('a zone burn kill is a special kill: bounty paid, cause special, no tower credited (even after a Fire Pot burn)', () => {
+    const s = inWave(7, [{ ...enemy(0, 'goblin', 300, 1), burnDps: 5, burnTicksLeft: 100, burnOwner: { col: 5, row: 5 } }], LINE);
+    s.phase = 'setup';
+    expect(buildTower(s, { col: 5, row: 5 }, 'firepot').ok).toBe(true);
+    s.phase = 'wave';
+    const pot = s.towers[0];
+    const gold = s.gold;
+    useSpecial(s, 'fireArrows', { x: 300, y: 240 });
+    expect(s.enemies[0].burnOwner).toBeUndefined();
+    ticks(s, 3); // 20/60 a tick on 1 hp: dead on the third tick
+    expect(s.enemies).toEqual([]);
+    expect(pot.kills ?? 0).toBe(0);
+    expect(s.events.filter((e) => e.kind === 'kill')).toEqual([{ kind: 'kill', enemyId: 0, enemyType: 'goblin', bounty: 2, cause: 'special' }]);
+    // The bounty, then the wave clear bonus (the wave's last enemy).
+    expect(s.gold).toBe(gold + ENEMY_STATS.goblin.bounty + 25);
+  });
+
+  it('the wave clear removes the zones', () => {
+    const s = inWave(4, [enemy(0, 'goblin', 300, 1)], LINE);
+    useSpecial(s, 'tarBarrel', { x: 600, y: 240 });
+    s.enemies = [];
+    tick(s);
+    expect([s.phase, s.zones]).toEqual(['setup', []]);
+  });
+});
+
 describe('radius', () => {
-  it('is measured from the aimed point to the enemy position, inclusive at exactly 70 px and exclusive at 70.01', () => {
+  it('is measured from the aimed point to the enemy position, inclusive at exactly 90 px and exclusive at 90.01 (keg)', () => {
     const at = (dx: number) => {
       const s = inWave(1, [enemy(0, 'troll')]);
       const p = enemyPosition(s.enemies[0], MAPS.meadow);
       return useSpecial(s, 'keg', { x: p.x + dx, y: p.y });
     };
-    expect(at(70)).toMatchObject({ ok: true, hits: 1 });
-    expect(at(70.01)).toMatchObject({ ok: true, hits: 0 });
+    expect(at(90)).toMatchObject({ ok: true, hits: 1 });
+    expect(at(90.01)).toMatchObject({ ok: true, hits: 0 });
   });
 
-  it('the special event counts the enemies inside the radius', () => {
-    const s = inWave(1, [enemy(0, 'troll', AT), enemy(1, 'troll', AT + 60), enemy(2, 'troll', AT + 71)]);
-    expect(useSpecial(s, 'keg', POINT)).toMatchObject({ ok: true, hits: 2 });
-    expect(s.events).toEqual([{ kind: 'special', type: 'keg', x: AT, y: 240, radius: 70, hits: 2 }]);
-    expect(s.enemies.map((e) => e.hp)).toEqual([620, 620, 700]);
+  it('Tar Barrel 100 and Fire Arrows 90, in the zone too', () => {
+    const s = inWave(7, [enemy(0, 'troll', 400, 1000), enemy(1, 'troll', 400.01, 1000)], LINE);
+    expect(useSpecial(s, 'tarBarrel', { x: 300, y: 240 })).toMatchObject({ hits: 1 });
+    s.specialCharges = 1;
+    expect(useSpecial(s, 'fireArrows', { x: 310, y: 240 })).toMatchObject({ hits: 1 });
   });
 });
 
-describe('unlocks, charges and refusals', () => {
-  it('Tar Barrel is locked on wave 3 and works on wave 4; Fire Arrows unlock on wave 7', () => {
-    expect(useSpecial(inWave(3, [enemy(0, 'troll')]), 'tarBarrel', POINT)).toEqual({ ok: false, reason: 'locked' });
-    expect(useSpecial(inWave(4, [enemy(0, 'troll')]), 'tarBarrel', POINT)).toMatchObject({ ok: true, hits: 1 });
-    expect(useSpecial(inWave(6, [enemy(0, 'troll')]), 'fireArrows', POINT)).toEqual({ ok: false, reason: 'locked' });
-    expect(useSpecial(inWave(7, [enemy(0, 'troll')]), 'fireArrows', POINT)).toMatchObject({ ok: true, hits: 1 });
+describe('the charge (milestone 30: ready at a wave start, recharges in wave time)', () => {
+  it('ready at Start Wave; a use spends it and it is ready again 1200 wave ticks later', () => {
+    const s = inWave(4, [enemy(0, 'troll', 0, 1e9)], LINE);
+    expect([s.specialCharges, s.specialRechargeTicks]).toEqual([1, 0]);
+    expect(useSpecial(s, 'keg', POINT).ok).toBe(true);
+    expect([s.specialCharges, s.specialRechargeTicks]).toEqual([0, 1200]);
+    expect(useSpecial(s, 'keg', POINT)).toEqual({ ok: false, reason: 'no-charge' });
+    ticks(s, 1199);
+    expect([s.specialCharges, s.specialRechargeTicks]).toEqual([0, 1]);
+    tick(s);
+    expect([s.specialCharges, s.specialRechargeTicks]).toEqual([1, 0]);
+    expect(useSpecial(s, 'tarBarrel', POINT).ok).toBe(true);
   });
 
-  it('one charge per wave: a second use fails no-charge and changes nothing', () => {
+  it('a refused second use changes nothing', () => {
     const s = inWave(4, [enemy(0, 'troll')]);
-    expect(s.specialCharges).toBe(1);
-    expect(useSpecial(s, 'keg', POINT).ok).toBe(true);
-    expect(s.specialCharges).toBe(0);
+    useSpecial(s, 'keg', POINT);
     const hp = s.enemies[0].hp;
     expect(useSpecial(s, 'tarBarrel', POINT)).toEqual({ ok: false, reason: 'no-charge' });
     expect(s.enemies[0]).toMatchObject({ hp, slowTicksLeft: 0 });
+    expect(s.zones).toEqual([]);
     expect(kinds(s.events)).toEqual(['special']);
   });
 
-  it('the charge resets on the next startWave; an unused one does not carry over (1, not 2)', () => {
-    const s = createGame();
-    s.lives = 1000; // test setup: survive waves 1 and 2 with no towers
-    // A function, so TypeScript does not narrow the phase across startWave.
-    const playOn = () => {
-      while (s.phase === 'wave') tick(s);
-    };
+  it('does not recharge in setup, and the next Start Wave makes it ready at once', () => {
+    const s = inWave(1, [enemy(0, 'goblin', AT, 1)]);
+    expect(useSpecial(s, 'keg', POINT)).toMatchObject({ ok: true, kills: 1 });
+    tick(s); // the wave clears
+    expect([s.phase, s.specialCharges, s.specialRechargeTicks]).toEqual(['setup', 0, 0]);
+    ticks(s, 2000);
     expect(s.specialCharges).toBe(0);
     startWave(s);
-    expect(s.specialCharges).toBe(1);
-    // Wave 1 with no towers: 8 Goblins; use the charge on nothing, play on.
-    expect(useSpecial(s, 'keg', { x: 900, y: 40 })).toMatchObject({ ok: true, hits: 0 });
-    playOn();
-    expect([s.phase, s.specialCharges]).toEqual(['setup', 0]);
-    startWave(s);
-    expect(s.specialCharges).toBe(1);
-    // Wave 2 cleared without using it: 0 in setup, then 1 again, not 2.
-    playOn();
-    expect([s.phase, s.wave, s.specialCharges]).toEqual(['setup', 2, 0]);
-    startWave(s);
-    expect(s.specialCharges).toBe(1);
+    expect([s.specialCharges, s.specialRechargeTicks]).toEqual([1, 0]);
   });
 
-  it('is not usable in setup, outside the map, or once the game is over', () => {
+  it('an early call makes it ready at once, mid-recharge', () => {
+    const s = createGame();
+    s.lives = 1000; // test setup: no towers
+    startWave(s);
+    while (s.waveTick <= lastSpawnTick(1)) tick(s);
+    expect(useSpecial(s, 'keg', { x: 10, y: 10 }).ok).toBe(true);
+    expect(s.specialRechargeTicks).toBe(1200);
+    expect(callNextWave(s).ok).toBe(true);
+    expect([s.specialCharges, s.specialRechargeTicks]).toEqual([1, 0]);
+  });
+
+  it('locked specials, setup, outside the map and a finished game are refused', () => {
+    expect(useSpecial(inWave(3, [enemy(0, 'troll')]), 'tarBarrel', POINT)).toEqual({ ok: false, reason: 'locked' });
+    expect(useSpecial(inWave(6, [enemy(0, 'troll')]), 'fireArrows', POINT)).toEqual({ ok: false, reason: 'locked' });
     const s = createGame();
     expect(useSpecial(s, 'keg', POINT)).toEqual({ ok: false, reason: 'not-in-wave' });
     startWave(s);
@@ -212,26 +320,57 @@ describe('kills', () => {
     const gold = s.gold;
     const bounty = ENEMY_STATS.goblin.bounty;
     expect(useSpecial(s, 'keg', POINT)).toEqual({ ok: true, hits: 1, kills: 1, gold: gold + bounty });
-    expect(s.gold).toBe(gold + bounty);
     expect(s.enemies).toEqual([]);
     expect(s.events).toEqual([
-      { kind: 'special', type: 'keg', x: AT, y: 240, radius: 70, hits: 1 },
+      { kind: 'special', type: 'keg', x: AT, y: 240, radius: 90, hits: 1 },
       { kind: 'kill', enemyId: 0, enemyType: 'goblin', bounty, cause: 'special' },
     ]);
-    expect(s.phase).toBe('wave');
     tick(s);
     expect(s.phase).toBe('setup');
-    expect(s.events).toEqual([{ kind: 'waveClear', wave: 1, bonus: 25 }]);
     expect(s.gold).toBe(gold + bounty + 25);
   });
 
   it('a boss killed by a special emits bossDown with cause special', () => {
-    const s = inWave(10, [enemy(0, 'boss', AT, 50)]);
+    const s = inWave(10, [enemy(0, 'boss', AT, 20)]);
     useSpecial(s, 'keg', POINT);
     expect(s.events.slice(1)).toEqual([
       { kind: 'kill', enemyId: 0, enemyType: 'boss', bounty: 150, cause: 'special' },
       { kind: 'bossDown', enemyId: 0, cause: 'special' },
     ]);
+  });
+});
+
+describe('the gold cheat (grantCheatGold)', () => {
+  it('adds 500 gold, marks the game cheated and emits cheat, in setup and in a wave', () => {
+    const s = createGame();
+    const gold = s.gold;
+    expect(grantCheatGold(s)).toEqual({ ok: true, gold: gold + CHEAT_GOLD });
+    expect([s.gold, s.cheated, s.events]).toEqual([gold + 500, true, [{ kind: 'cheat', gold: 500 }]]);
+    startWave(s);
+    expect(grantCheatGold(s)).toEqual({ ok: true, gold: gold + 1000 });
+  });
+
+  it('is refused once the game is won or lost, changing nothing', () => {
+    for (const phase of ['won', 'lost'] as const) {
+      const s = createGame();
+      s.phase = phase;
+      const before = structuredClone(s);
+      expect(grantCheatGold(s)).toEqual({ ok: false, reason: 'game-over' });
+      expect(s).toEqual(before);
+    }
+  });
+});
+
+describe('after the win', () => {
+  it('the win tick keeps its shots for one draw; the next tick clears them and nothing else changes', () => {
+    const s = createGame();
+    s.phase = 'won';
+    s.shots = [{ cell: { col: 1, row: 1 }, tower: 'cannon', targetId: 3, from: { x: 0, y: 0 }, to: { x: 1, y: 1 }, splashRadius: 40 }];
+    s.events = [{ kind: 'won' }];
+    const before = structuredClone(s);
+    tick(s);
+    expect(s.shots).toEqual([]);
+    expect({ ...s, shots: before.shots }).toEqual(before);
   });
 });
 
@@ -243,8 +382,5 @@ describe('headless: timed special actions', () => {
     const run = playScripted(script);
     const fired = run.log.filter((l) => l.action === 'special');
     expect(fired).toEqual([expect.objectContaining({ action: 'special', special: 'keg', waveTick: 123, result: expect.objectContaining({ ok: true }) })]);
-    expect(run.waves[0].wave).toBe(1);
   });
-  // Milestone 28: comboWithKegs (a keg at (420, 232) at wave tick 600 every
-  // wave) is removed; it hit nothing and was the comboNoSpecials game.
 });
