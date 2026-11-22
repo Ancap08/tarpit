@@ -18,13 +18,21 @@ describe('licenseKind', () => {
     expect(licenseKind('CC-BY 4.0')).toBe('cc-by');
   });
   it('rejects everything else', () => {
-    for (const l of ['CC-BY-SA 4.0', 'CC-BY-NC 4.0', 'MIT', 'proprietary', '', 'CC0-ish', 'GPL']) {
+    for (const l of ['CC-BY-SA 4.0', 'CC-BY-NC 4.0', 'MIT-0', 'proprietary', '', 'CC0-ish', 'GPL']) {
       expect(licenseKind(l), l).toBeNull();
     }
   });
 });
 
 describe('checkManifest', () => {
+  it('checks public/icons/ and allows MIT only for files a repo script drew', () => {
+    const own = { ...row('public/icons/icon-192.png', 'MIT'), source: '`scripts/make-icons.ts`' };
+    const files = ['public/icons/icon-192.png', 'public/icons/x.png', 'public/manifest.webmanifest'];
+    const problems = checkManifest(files, [own, row('public/icons/x.png', 'MIT')]);
+    expect(licenseKind('MIT')).toBe('mit');
+    expect(problems).toEqual([expect.stringMatching(/^public\/icons\/x\.png: MIT is allowed only/)]);
+  });
+
   it('passes when every checked file is listed with an allowed license', () => {
     const files = ['assets/a.png', 'docs/art/mockups/b.png', 'src/main.ts'];
     expect(checkManifest(files, [row('assets/a.png'), row('docs/art/mockups/b.png')])).toEqual([]);
