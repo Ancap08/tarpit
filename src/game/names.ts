@@ -3,7 +3,7 @@
 // is an edit here (plus regenerated screenshot baselines). Tests that check a
 // display string build it from these tables, so a rename changes no test.
 
-import type { Difficulty, EnemyType, TargetingMode, TowerType } from '../sim';
+import type { Difficulty, EnemyType, SpecialType, TargetingMode, TowerType } from '../sim';
 
 /** The wave 10 boss (docs/SCOPE-v4.md, milestone 23): the HUD boss bar and the wave 10 preview. */
 export const BOSS_NAME = 'Grumblefoot';
@@ -89,3 +89,13 @@ export const PANEL_TEXT = {
   sell: 'Sell',
   remove: 'Remove',
 } as const;
+
+/** Special attack names (milestone 25b): the HUD popup's buttons. */
+export const SPECIAL_NAMES: Readonly<Record<SpecialType, string>> = {
+  keg: 'Powder Keg',
+  tarBarrel: 'Tar Barrel',
+  fireArrows: 'Fire Arrows',
+};
+
+/** The HUD's special button label (milestone 25b). */
+export const SPECIAL_BUTTON_TEXT = 'Special';
