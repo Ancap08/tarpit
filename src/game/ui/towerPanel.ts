@@ -64,7 +64,7 @@ export class TowerPanel {
 
   open(cell: Cell, state: GameState): void {
     this.at = cell;
-    const { x, y } = placeBeside(cellCenter(cell), this.stack.width, this.stack.height);
+    const { x, y } = placeBeside(cellCenter(cell), this.stack.width, this.stack.height, state.map);
     this.update(state);
     this.stack.show(x, y);
     this.killsText.setPosition(x + this.stack.pad, y + this.stack.pad + KILLS_LINE_H / 2 - 2).setVisible(true);

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { TarpitTestApi } from '../src/game/testGlobal';
-import { MAP, positionAlongPath } from '../src/sim/map';
+import { MAPS, positionAlongPath } from '../src/sim/map';
 import { SPECIAL_DEFS } from '../src/sim/specials';
 import type { Enemy, GameEvent } from '../src/sim';
 
@@ -15,7 +15,7 @@ const state = (page: Page) => api(page, (a) => a.state());
 const ui = (page: Page) => api(page, (a) => a.ui());
 const rects = (page: Page) => api(page, (a) => a.uiRects());
 const events = (page: Page) => api(page, (a) => a.events());
-const pos = (e: Enemy): Point => positionAlongPath(MAP, e.distance);
+const pos = (e: Enemy): Point => positionAlongPath(MAPS.meadow, e.distance);
 const dist = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
 
 /** Start a game and, with `wave` > 1, jump so the next Start Wave plays that wave (test setup). */

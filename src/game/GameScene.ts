@@ -91,7 +91,6 @@ import {
   createGame,
   DEFAULT_DIFFICULTY,
   enemyMaxHp,
-  MAP,
   pathLength,
   isBuildable,
   moveTower,
@@ -313,7 +312,7 @@ export class GameScene extends Phaser.Scene {
   private touchAim: { x: number; y: number } | null = null;
   /** On touch while aiming: the press in progress, or null. */
   private aimPress: AimPress | null = null;
-  private aim = new Aim();
+  private aim!: Aim;
   /** Waves cleared already sent to the high score store this game (milestone 26). */
   private recordedCleared = 0;
   private readonly autoTick = !isTestMode();
@@ -333,7 +332,7 @@ export class GameScene extends Phaser.Scene {
     this.accMs = 0;
     this.shots = new ShotEffects();
     this.specialFx = new SpecialEffects(isTestMode());
-    this.aim = new Aim();
+    this.aim = new Aim(this.state.map);
     this.eventCursor = new EventCursor();
     this.aiming = null;
     this.specialMenuOpen = false;
@@ -354,7 +353,7 @@ export class GameScene extends Phaser.Scene {
     // their particles, shot effects, hp bars, tower labels, flying enemy
     // sprites (milestone 22), HUD (which covers any range circle
     // reaching below the map), then the panel and the end screen on top.
-    drawMap(this.add.graphics());
+    drawMap(this.add.graphics(), this.state.map);
     this.overlay = this.add.graphics();
     this.dynamic = this.add.graphics();
     this.enemySprites = new EnemySprites(this, isTestMode());
@@ -879,7 +878,7 @@ export class GameScene extends Phaser.Scene {
   spawnHorde(n: number, span?: number): boolean {
     if (!isTestMode() && !isPerfMode()) return false;
     if (this.state.phase === 'setup') startWave(this.state);
-    const length = Math.min(span ?? pathLength(MAP), pathLength(MAP));
+    const length = Math.min(span ?? pathLength(this.state.map), pathLength(this.state.map));
     for (let i = 0; i < n; i++) {
       this.state.enemies.push({
         id: this.state.nextEnemyId++,

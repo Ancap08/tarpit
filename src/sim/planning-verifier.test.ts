@@ -2,6 +2,7 @@
 // docs/SCOPE-v4.md and docs/DESIGN.md "Planning phase", not from the
 // implementer's tests. Gold is exact everywhere.
 import { describe, expect, it } from 'vitest';
+import { MAPS } from './map';
 import { buildTower, moveTower, sellTower, setTargeting, undoUpgrade, upgradeTower } from './actions';
 import { createGame, startWave, tick } from './game';
 import { cellKey, GRID_COLS, GRID_ROWS, isBuildableTerrain, type Cell } from './grid';
@@ -37,7 +38,7 @@ const worth = (s: GameState) =>
 const snapshot = (s: GameState) => JSON.stringify({ gold: s.gold, towers: s.towers });
 
 const BUILDABLE: Cell[] = [];
-for (let row = 0; row < GRID_ROWS; row++) for (let col = 0; col < GRID_COLS; col++) if (isBuildableTerrain(cell(col, row))) BUILDABLE.push(cell(col, row));
+for (let row = 0; row < GRID_ROWS; row++) for (let col = 0; col < GRID_COLS; col++) if (isBuildableTerrain(cell(col, row), MAPS.meadow)) BUILDABLE.push(cell(col, row));
 
 describe('(a) exploit hunt', () => {
   // Coordinator follow-up: the fresh upgrade comes back in full, the rest at 70%.
@@ -106,7 +107,7 @@ describe('(a) exploit hunt', () => {
           expect(t.locked).toBe(false);
           expect(t.spent).toBe(TOWER_DEFS[t.type].cost + (t.upgraded ? TOWER_DEFS[t.type].upgradeCost : 0));
           expect(t.unlockedSpend).toBe(t.spent);
-          expect(isBuildableTerrain(t.cell)).toBe(true);
+          expect(isBuildableTerrain(t.cell, MAPS.meadow)).toBe(true);
         }
       }
       expect(ok).toBeGreaterThan(60); // the walk really did things

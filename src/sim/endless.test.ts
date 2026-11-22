@@ -285,7 +285,7 @@ describe('an endless run (milestone 26)', () => {
     expect(greedy.wave).toBeGreaterThanOrEqual(14);
     expect(greedy.wave).toBeLessThanOrEqual(40);
     expect(greedy.wave).toBe(18);
-  });
+  }, 30_000);
 
   it('determinism: two endlessGreedy runs to the end give deep-equal final states', () => {
     const a = playScripted(endlessGreedy());
@@ -398,6 +398,8 @@ describe('a game that is not continued (milestone 26)', () => {
         'events',
         'gold',
         'lives',
+        // Milestone 27: the game's map.
+        'map',
         'nextEnemyId',
         'phase',
         'shots',

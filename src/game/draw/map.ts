@@ -1,17 +1,16 @@
-// Static map: grass, the dirt path, spawn and exit markers. No grid lines:
-// the build grid shows only through the placement highlight.
-// Drawn once into its own Graphics object.
+// Static map: grass, the dirt path, spawn and exit markers, drawn from the
+// game's map data (milestone 27). No grid lines: the build grid shows only
+// through the placement highlight. Drawn once into its own Graphics object.
 
 import type Phaser from 'phaser';
-import { COTTAGE, MAP } from '../../sim';
+import type { MapDef, Point, Rect } from '../../sim';
 import { COLORS } from '../palette';
 
 export const PATH_WIDTH = 40;
 
 /** Fill a thick polyline with round joins: a rectangle per segment plus a disc per waypoint. */
-function thickPath(g: Phaser.GameObjects.Graphics, width: number, color: number): void {
+function thickPath(g: Phaser.GameObjects.Graphics, pts: readonly Point[], width: number, color: number): void {
   const half = width / 2;
-  const pts = MAP.path;
   g.fillStyle(color, 1);
   for (let i = 1; i < pts.length; i++) {
     const a = pts[i - 1];
@@ -26,8 +25,7 @@ function thickPath(g: Phaser.GameObjects.Graphics, width: number, color: number)
   for (let i = 1; i < pts.length - 1; i++) g.fillCircle(pts[i].x, pts[i].y, half);
 }
 
-function spawnMarker(g: Phaser.GameObjects.Graphics): void {
-  const s = MAP.path[0];
+function spawnMarker(g: Phaser.GameObjects.Graphics, s: Point): void {
   // A dark cave mouth half off the left edge.
   g.fillStyle(COLORS.spawnRim, 1);
   g.fillCircle(s.x, s.y, 30);
@@ -40,11 +38,12 @@ function spawnMarker(g: Phaser.GameObjects.Graphics): void {
   g.strokePath();
 }
 
-function exitCottage(g: Phaser.GameObjects.Graphics): void {
+function exitCottage(g: Phaser.GameObjects.Graphics, box: Rect): void {
   // A small cottage just above the path's last stretch, near the right edge,
-  // drawn inside the sim's COTTAGE box (no cell overlapping it is buildable).
-  const cx = COTTAGE.x + COTTAGE.width / 2;
-  const base = COTTAGE.y + COTTAGE.height;
+  // drawn inside the sim's landmark box (map.ts cottageFor; no cell
+  // overlapping it is buildable).
+  const cx = box.x + box.width / 2;
+  const base = box.y + box.height;
   const w = 28;
   const h = 20;
   // Chimney first, so the roof covers its foot.
@@ -58,12 +57,12 @@ function exitCottage(g: Phaser.GameObjects.Graphics): void {
   g.fillRect(cx - 4, base - 11, 8, 11);
 }
 
-export function drawMap(g: Phaser.GameObjects.Graphics): void {
+export function drawMap(g: Phaser.GameObjects.Graphics, map: MapDef): void {
   g.fillStyle(COLORS.grass, 1);
-  g.fillRect(0, 0, MAP.width, MAP.height);
+  g.fillRect(0, 0, map.width, map.height);
 
-  thickPath(g, PATH_WIDTH + 4, COLORS.pathEdge);
-  thickPath(g, PATH_WIDTH, COLORS.path);
-  spawnMarker(g);
-  exitCottage(g);
+  thickPath(g, map.path, PATH_WIDTH + 4, COLORS.pathEdge);
+  thickPath(g, map.path, PATH_WIDTH, COLORS.path);
+  spawnMarker(g, map.path[0]);
+  for (const box of map.landmarks ?? []) exitCottage(g, box);
 }

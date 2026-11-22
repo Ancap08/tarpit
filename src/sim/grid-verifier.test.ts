@@ -6,7 +6,7 @@ import { fireTowers } from './combat';
 import { createGame } from './game';
 import { buildableCells, cellCenter, cellKey, GRID_COLS, GRID_ROWS, MIN_PATH_CLEARANCE } from './grid';
 import { lazyBuild, TRAIL_CELL_ORDER } from './headless';
-import { MAP } from './map';
+import { MAPS } from './map';
 import type { MapDef, Point } from './types';
 
 /** Distance from p to segment a-b by projection (independent of grid.ts). */
@@ -47,9 +47,9 @@ function ownMask(map: MapDef): boolean[] {
 }
 
 describe('buildable mask, recomputed independently', () => {
-  it('equals buildableCells(MAP) cell for cell, with 344 of 450 buildable', () => {
-    const mine = ownMask(MAP);
-    const theirs = buildableCells(MAP);
+  it('equals buildableCells(MAPS.meadow) cell for cell, with 344 of 450 buildable', () => {
+    const mine = ownMask(MAPS.meadow);
+    const theirs = buildableCells(MAPS.meadow);
     expect(theirs.length).toBe(450);
     for (let key = 0; key < 450; key++) expect(theirs[key], `key ${key}`).toBe(mine[key]);
     expect(mine.filter(Boolean).length).toBe(344);
@@ -58,6 +58,7 @@ describe('buildable mask, recomputed independently', () => {
   it('the 36 px boundary is inclusive: 36 buildable, 35.9 not (synthetic straight paths)', () => {
     // Row 0 cells have centre y = 16. A horizontal path at y = 16 - d sits d px above them.
     const mapAt = (d: number): MapDef => ({
+      id: 'test',
       width: 960,
       height: 480,
       path: [
@@ -72,6 +73,7 @@ describe('buildable mask, recomputed independently', () => {
     // Beyond the segment end the distance is to the end point (a diagonal): 36 exactly at (3,4,..) style.
     // Path ends at x = 100; cell centre (16 + 32*c, 16): c = 5 -> x 176, dx 76 -> clearly buildable; c = 3 -> x 112, dx 12, dy 36 -> hypot > 36.
     const short: MapDef = {
+      id: 'test',
       width: 960,
       height: 480,
       path: [
@@ -81,29 +83,29 @@ describe('buildable mask, recomputed independently', () => {
     };
     expect(buildableCells(short)[cellKey({ col: 3, row: 0 })]).toBe(true);
     // End point 36 px away diagonally less than 36 -> refused: endpoint (100, -2): cell (3,0) centre (112,16): hypot(12,18)=21.6
-    const near: MapDef = { width: 960, height: 480, path: [{ x: 0, y: -2 }, { x: 100, y: -2 }] };
+    const near: MapDef = { id: 'test', width: 960, height: 480, path: [{ x: 0, y: -2 }, { x: 100, y: -2 }] };
     expect(buildableCells(near)[cellKey({ col: 3, row: 0 })]).toBe(false);
   });
 
   it('on the real map the y=240 run puts row 5 centres in columns 0 to 2 (y=176) 64 px away, and no real cell is exactly 36', () => {
-    for (let c = 0; c < 3; c++) expect(distToPolyline({ x: 16 + 32 * c, y: 176 }, MAP.path)).toBeCloseTo(64, 9);
-    const exact = ownMask(MAP).filter((_, k) => Math.abs(distToPolyline({ x: (k % 30) * 32 + 16, y: Math.floor(k / 30) * 32 + 16 }, MAP.path) - 36) < 1e-9);
+    for (let c = 0; c < 3; c++) expect(distToPolyline({ x: 16 + 32 * c, y: 176 }, MAPS.meadow.path)).toBeCloseTo(64, 9);
+    const exact = ownMask(MAPS.meadow).filter((_, k) => Math.abs(distToPolyline({ x: (k % 30) * 32 + 16, y: Math.floor(k / 30) * 32 + 16 }, MAPS.meadow.path) - 36) < 1e-9);
     expect(exact.length).toBe(0);
   });
 
   it('no buildable cell body (26 px square, half-diagonal ignored: centre distance >= 33) overlaps the 40 px strip', () => {
-    const mask = buildableCells(MAP);
+    const mask = buildableCells(MAPS.meadow);
     for (let key = 0; key < 450; key++) {
       if (!mask[key]) continue;
       const c = cellCenter({ col: key % 30, row: Math.floor(key / 30) });
-      expect(distToPolyline(c, MAP.path), `key ${key}`).toBeGreaterThanOrEqual(20 + 13);
+      expect(distToPolyline(c, MAPS.meadow.path), `key ${key}`).toBeGreaterThanOrEqual(20 + 13);
     }
     // Exact check on the square body: nearest point of the 26 px square to the polyline stays >= 20.
     for (let key = 0; key < 450; key++) {
       if (!mask[key]) continue;
       const c = cellCenter({ col: key % 30, row: Math.floor(key / 30) });
       for (const [sx, sy] of [[-13, -13], [13, -13], [-13, 13], [13, 13], [0, -13], [0, 13], [-13, 0], [13, 0]]) {
-        expect(distToPolyline({ x: c.x + sx, y: c.y + sy }, MAP.path)).toBeGreaterThanOrEqual(20);
+        expect(distToPolyline({ x: c.x + sx, y: c.y + sy }, MAPS.meadow.path)).toBeGreaterThanOrEqual(20);
       }
     }
   });
@@ -154,21 +156,21 @@ describe('firing order', () => {
 
 describe('lazy archetype order', () => {
   it('TRAIL_CELL_ORDER matches an independent recomputation, and lazyBuild buys its prefix', () => {
-    const mask = buildableCells(MAP);
+    const mask = buildableCells(MAPS.meadow);
     // Own walk along the path: the point at distance d, by segment lengths.
     const pointAt = (d: number): Point => {
       let left = d;
-      for (let i = 0; i + 1 < MAP.path.length; i++) {
-        const a = MAP.path[i];
-        const b = MAP.path[i + 1];
+      for (let i = 0; i + 1 < MAPS.meadow.path.length; i++) {
+        const a = MAPS.meadow.path[i];
+        const b = MAPS.meadow.path[i + 1];
         const len = Math.hypot(b.x - a.x, b.y - a.y);
         if (left <= len) return { x: a.x + ((b.x - a.x) * left) / len, y: a.y + ((b.y - a.y) * left) / len };
         left -= len;
       }
-      return MAP.path[MAP.path.length - 1];
+      return MAPS.meadow.path[MAPS.meadow.path.length - 1];
     };
     let total = 0;
-    for (let i = 0; i + 1 < MAP.path.length; i++) total += Math.hypot(MAP.path[i + 1].x - MAP.path[i].x, MAP.path[i + 1].y - MAP.path[i].y);
+    for (let i = 0; i + 1 < MAPS.meadow.path.length; i++) total += Math.hypot(MAPS.meadow.path[i + 1].x - MAPS.meadow.path[i].x, MAPS.meadow.path[i + 1].y - MAPS.meadow.path[i].y);
     const used = new Set<number>();
     const mine: number[] = [];
     for (let d = 96; d <= total; d += 96) {

@@ -2,14 +2,14 @@
 // what a click means, and where the tower panel goes next to a tower. Pure
 // functions with no Phaser, so they are unit tested in input.test.ts.
 
-import { CELL, distanceToPath, GRID_COLS, GRID_ROWS, isBuildable, MAP, towerAt, type Cell, type GameState, type Point, type Rect } from '../sim';
+import { CELL, distanceToPath, GRID_COLS, GRID_ROWS, isBuildable, MAP_HEIGHT, MAP_WIDTH, towerAt, type Cell, type GameState, type MapDef, type Point, type Rect } from '../sim';
 import { labelAbove, LABEL_HEIGHT, LABEL_OFFSET_Y, labelX } from './draw/labels';
 import { PATH_WIDTH } from './draw/map';
 
 export type { Rect };
 
 /** The map area. Panels and ghosts stay inside it, never over the HUD. */
-export const MAP_AREA: Rect = { x: 0, y: 0, width: MAP.width, height: MAP.height };
+export const MAP_AREA: Rect = { x: 0, y: 0, width: MAP_WIDTH, height: MAP_HEIGHT };
 
 /** Gap between a tower's centre and the near edge of a panel to its right or left: clears a 56 px label. */
 const PANEL_OFFSET = 30;
@@ -30,7 +30,7 @@ export function contains(r: Rect, x: number, y: number): boolean {
  * A point on a shared edge belongs to the cell to its right or below.
  */
 export function cellAt(x: number, y: number): Cell | null {
-  if (!(x >= 0 && x < MAP.width && y >= 0 && y < MAP.height)) return null;
+  if (!(x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT)) return null;
   const col = Math.floor(x / CELL);
   const row = Math.floor(y / CELL);
   return col < GRID_COLS && row < GRID_ROWS ? { col, row } : null;
@@ -63,9 +63,9 @@ export function classifyClick(x: number, y: number, ui: Rect | null, state: Game
   return isBuildable(state, cell) ? { kind: 'buildable', cell } : { kind: 'blocked', cell };
 }
 
-/** True if (x, y) lies on the drawn path strip (PATH_WIDTH wide, round joins). */
-export function onPath(x: number, y: number): boolean {
-  return distanceToPath({ x, y }) <= PATH_WIDTH / 2;
+/** True if (x, y) lies on the map's drawn path strip (PATH_WIDTH wide, round joins). */
+export function onPath(x: number, y: number, map: MapDef): boolean {
+  return distanceToPath({ x, y }, map) <= PATH_WIDTH / 2;
 }
 
 /** Samples per side for pathCover: a 9 x 9 grid that includes the corners and the centre. */
@@ -75,13 +75,13 @@ const COVER_SAMPLES = 9;
  * Approximate share (0 to 1) of a box that lies over the path, from a grid
  * of sample points. Used only to rank candidate sides, so coarse is fine.
  */
-export function pathCover(x: number, y: number, width: number, height: number): number {
+export function pathCover(x: number, y: number, width: number, height: number, map: MapDef): number {
   let hits = 0;
   for (let i = 0; i < COVER_SAMPLES; i++) {
     for (let j = 0; j < COVER_SAMPLES; j++) {
       const px = x + (width * i) / (COVER_SAMPLES - 1);
       const py = y + (height * j) / (COVER_SAMPLES - 1);
-      if (onPath(px, py)) hits++;
+      if (onPath(px, py, map)) hits++;
     }
   }
   return hits / (COVER_SAMPLES * COVER_SAMPLES);
@@ -109,10 +109,10 @@ export const KILLS_LINE_H = 20;
  * are right, left, below and above. A candidate over the tower's own cell or
  * label (the clamp can push one there) is skipped, so the tower stays
  * visible and clickable; among the rest, the one over the least path wins,
- * so the player can still see the enemies. Ties keep that order. Panels may
+ * (of `map`, the game's map) so the player can still see the enemies. Ties keep that order. Panels may
  * cover other towers.
  */
-export function placeBeside(centre: Point, width: number, height: number): Point {
+export function placeBeside(centre: Point, width: number, height: number, map: MapDef): Point {
   const clamp = (x: number, y: number): Point => ({
     x: Math.min(MAP_AREA.x + MAP_AREA.width - PANEL_MARGIN - width, Math.max(MAP_AREA.x + PANEL_MARGIN, x)),
     y: Math.min(MAP_AREA.y + MAP_AREA.height - PANEL_MARGIN - height, Math.max(MAP_AREA.y + PANEL_MARGIN, y)),
@@ -130,7 +130,7 @@ export function placeBeside(centre: Point, width: number, height: number): Point
   for (const p of candidates) {
     const box = { x: p.x, y: p.y, width, height };
     if (overlaps(box, own) || overlaps(box, label)) continue;
-    const cover = pathCover(p.x, p.y, width, height);
+    const cover = pathCover(p.x, p.y, width, height, map);
     if (cover < bestCover) {
       best = p;
       bestCover = cover;

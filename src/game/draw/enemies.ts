@@ -54,7 +54,7 @@ export function drawShadows(g: Phaser.GameObjects.Graphics, state: GameState): v
   for (const enemy of state.enemies) {
     const shadow = shadowOf(enemy.type);
     if (!shadow) continue;
-    const { x, y } = enemyPosition(enemy);
+    const { x, y } = enemyPosition(enemy, state.map);
     for (const e of [shadow.outer, shadow.inner]) {
       g.fillStyle(COLORS.shadow, e.alpha);
       g.fillEllipse(x, y + shadow.offsetY, e.w, e.h);
@@ -98,7 +98,7 @@ export function statusRings(
  */
 export function drawStatusRings(g: Phaser.GameObjects.Graphics, state: GameState): void {
   for (const enemy of state.enemies) {
-    const { x, y } = enemyPosition(enemy);
+    const { x, y } = enemyPosition(enemy, state.map);
     for (const ring of statusRings(enemy)) {
       g.lineStyle(3, ring.color, 1);
       g.strokeCircle(x, y - spriteLift(enemy.type), RING_RADIUS[enemy.type] + ring.offset);
@@ -113,7 +113,7 @@ export function drawHpBars(g: Phaser.GameObjects.Graphics, state: GameState): vo
     // endless wave's enemy carries its own (milestone 26).
     const maxHp = enemy.maxHp ?? enemyMaxHp(enemy.type, state.difficulty);
     if (enemy.hp < maxHp && enemy.type !== 'boss') {
-      const { x, y } = enemyPosition(enemy);
+      const { x, y } = enemyPosition(enemy, state.map);
       const fraction = Math.max(0, enemy.hp) / maxHp;
       const left = Math.round(x - BAR_WIDTH / 2);
       const top = Math.round(y - spriteLift(enemy.type) - spriteHalfHeight(enemy.type) - BAR_GAP - BAR_HEIGHT - 1);

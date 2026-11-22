@@ -18,6 +18,11 @@ export interface Rect {
 }
 
 export interface MapDef {
+  /**
+   * The map's id (milestone 27): one of map.ts MAP_IDS for the registered
+   * maps; a test map may use any string. High scores are kept per id.
+   */
+  id: string;
   width: number;
   height: number;
   /** Polyline from spawn (first point) to exit (last point). */
@@ -27,6 +32,12 @@ export interface MapDef {
    * square overlaps one is buildable. Optional: test maps leave it out.
    */
   landmarks?: readonly Rect[];
+  /**
+   * Water (milestone 27, Riverbend's river): no cell whose 32 px square
+   * overlaps one is buildable, the same rule as landmarks. Water blocks only
+   * building; shots, ranges, specials and flyers ignore it. Optional.
+   */
+  water?: readonly Rect[];
 }
 
 export type EnemyType = 'goblin' | 'wolf' | 'troll' | 'harpy' | 'shieldbearer' | 'boss';
@@ -209,6 +220,11 @@ export interface Shot {
 export type Phase = 'setup' | 'wave' | 'won' | 'lost';
 
 export interface GameState {
+  /**
+   * The map this game is played on (milestone 27), fixed at createGame.
+   * Everything that needs the path or the build grid reads it from here.
+   */
+  map: MapDef;
   /**
    * Difficulty level (milestone 25), fixed at createGame: it set the
    * starting gold and lives and scales every enemy's hp at spawn.

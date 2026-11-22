@@ -3,6 +3,7 @@
 // docs/DESIGN.md. Most tests call burnEnemies and fireTowers directly on a
 // static arena so enemies do not move; the `in a full tick` block runs tick().
 import { describe, expect, it } from 'vitest';
+import { MAPS } from './map';
 import { buildTower, sellTower, upgradeTower } from './actions';
 import { applyBurn, burnEnemies, enemyPosition, findTarget, fireTowers } from './combat';
 import { ENEMY_STATS } from './enemies';
@@ -57,7 +58,7 @@ describe('geometry used by these tests', () => {
       { x: 240, y: 240 },
       { x: 208, y: 272 },
     ]);
-    expect([19, 58, 138, 139].map((d) => enemyPosition(enemy(0, d)))).toEqual([
+    expect([19, 58, 138, 139].map((d) => enemyPosition(enemy(0, d), MAPS.meadow))).toEqual([
       { x: 19, y: 240 },
       { x: 58, y: 240 },
       { x: 138, y: 240 },

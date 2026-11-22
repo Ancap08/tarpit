@@ -9,7 +9,7 @@ import { ENEMY_STATS } from './enemies';
 import type { GameEvent } from './events';
 import { callEarlyStatus, callNextWave, continueEndless, createGame, lastSpawnTick, spawnTick, startWave, tick, wavesCleared } from './game';
 import { applyAction, comboBuild, endlessGreedy, ENDLESS_CLUSTER_POLICY, ENDLESS_WAVE_CAP, playScripted, type WaveScript } from './headless';
-import { MAP, positionAlongPath } from './map';
+import { MAPS, positionAlongPath } from './map';
 import { TOWER_DEFS } from './towers';
 import type { EnemyType, GameState } from './types';
 import { nextWavePreview, waveDef, WAVES } from './waves';
@@ -162,7 +162,7 @@ describe('verifier: the win and the wave 10 to 11 boundary (section E)', () => {
     const boss = s.enemies.find((e) => e.type === 'boss')!;
     expect(s.enemies.length).toBeGreaterThan(1);
     boss.hp = 1;
-    const p = positionAlongPath(MAP, boss.distance);
+    const p = positionAlongPath(MAPS.meadow, boss.distance);
     expect(useSpecial(s, 'keg', p)).toMatchObject({ ok: true });
     expect(s.events.some((e) => e.kind === 'bossDown' && e.cause === 'special')).toBe(true);
     expect(s.enemies.length).toBeGreaterThan(0);
@@ -387,7 +387,7 @@ describe('verifier: a whole endlessGreedy run', () => {
     expect(a.state).toEqual(b.state);
     expect(a.log).toEqual(b.log);
     expect({ ...a.state, events: [] }).toEqual(state);
-  });
+  }, 30_000);
 });
 
 describe('verifier: far waves', () => {

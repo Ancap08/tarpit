@@ -11,15 +11,14 @@
 // clears the list.
 
 import { applyBurn, applySpecialSlow, enemyPosition, removeDead } from './combat';
-import { cellKey, isBuildableTerrain, sameCell, type Cell } from './grid';
-import { MAP } from './map';
+import { cellKey, sameCell, terrainBlock, type Cell } from './grid';
 import { isSpecialUnlocked, SPECIAL_DEFS, type SpecialType } from './specials';
 import { TOWER_DEFS, towerSellValue } from './towers';
 import type { GameState, Point, TargetingMode, Tower, TowerType } from './types';
 
 export type BuildResult =
   | { ok: true; tower: Tower; gold: number }
-  | { ok: false; reason: 'game-over' | 'not-buildable' | 'cell-occupied' | 'not-enough-gold' };
+  | { ok: false; reason: 'game-over' | 'not-buildable' | 'water' | 'cell-occupied' | 'not-enough-gold' };
 
 export type UpgradeResult =
   | { ok: true; tower: Tower; gold: number }
@@ -33,7 +32,7 @@ export type TargetingResult = { ok: true } | { ok: false; reason: 'game-over' | 
 
 export type MoveResult =
   | { ok: true; tower: Tower }
-  | { ok: false; reason: 'game-over' | 'not-in-setup' | 'no-tower' | 'locked' | 'not-buildable' | 'cell-occupied' };
+  | { ok: false; reason: 'game-over' | 'not-in-setup' | 'no-tower' | 'locked' | 'not-buildable' | 'water' | 'cell-occupied' };
 
 export type UndoUpgradeResult =
   | { ok: true; tower: Tower; refund: number; gold: number }
@@ -47,18 +46,27 @@ function isOver(state: GameState): boolean {
   return state.phase === 'won' || state.phase === 'lost';
 }
 
+/** The refusal for building on `cell` on the game's map: 'water', 'not-buildable', or undefined for buildable terrain. */
+function terrainRefusal(state: GameState, cell: Cell): 'water' | 'not-buildable' | undefined {
+  const block = terrainBlock(cell, state.map);
+  if (block === undefined) return undefined;
+  return block === 'water' ? 'water' : 'not-buildable';
+}
+
 export function towerAt(state: GameState, cell: Cell): Tower | undefined {
   return state.towers.find((t) => sameCell(t.cell, cell));
 }
 
 /**
  * Build on `cell`. Refused when the game is over, the cell is outside the
- * grid, on the path strip or not an integer cell ('not-buildable'), already
- * holds a tower, or gold is short, checked in that order.
+ * grid, on the path strip, on a landmark or not an integer cell
+ * ('not-buildable'), in water ('water', milestone 27), already holds a
+ * tower, or gold is short, checked in that order.
  */
 export function buildTower(state: GameState, cell: Cell, type: TowerType): BuildResult {
   if (isOver(state)) return { ok: false, reason: 'game-over' };
-  if (!isBuildableTerrain(cell)) return { ok: false, reason: 'not-buildable' };
+  const block = terrainRefusal(state, cell);
+  if (block) return { ok: false, reason: block };
   if (towerAt(state, cell)) return { ok: false, reason: 'cell-occupied' };
   const cost = TOWER_DEFS[type].cost;
   if (state.gold < cost) return { ok: false, reason: 'not-enough-gold' };
@@ -136,7 +144,8 @@ export function moveTower(state: GameState, from: Cell, to: Cell): MoveResult {
   if (!tower) return { ok: false, reason: 'no-tower' };
   if (tower.locked) return { ok: false, reason: 'locked' };
   if (sameCell(from, to)) return { ok: true, tower };
-  if (!isBuildableTerrain(to)) return { ok: false, reason: 'not-buildable' };
+  const block = terrainRefusal(state, to);
+  if (block) return { ok: false, reason: block };
   if (towerAt(state, to)) return { ok: false, reason: 'cell-occupied' };
   const old = { col: tower.cell.col, row: tower.cell.row };
   tower.cell = { col: to.col, row: to.row };
@@ -202,11 +211,11 @@ export function useSpecial(state: GameState, type: SpecialType, point: Point): S
   if (!isSpecialUnlocked(type, state.wave)) return { ok: false, reason: 'locked' };
   if (state.specialCharges <= 0) return { ok: false, reason: 'no-charge' };
   const { x, y } = point;
-  if (!(x >= 0 && x <= MAP.width && y >= 0 && y <= MAP.height)) return { ok: false, reason: 'out-of-bounds' };
+  if (!(x >= 0 && x <= state.map.width && y >= 0 && y <= state.map.height)) return { ok: false, reason: 'out-of-bounds' };
   state.specialCharges -= 1;
   const def = SPECIAL_DEFS[type];
   const inside = state.enemies.filter((enemy) => {
-    const p = enemyPosition(enemy);
+    const p = enemyPosition(enemy, state.map);
     return Math.hypot(p.x - x, p.y - y) <= def.radius;
   });
   state.events.push({ kind: 'special', type, x, y, radius: def.radius, hits: inside.length });

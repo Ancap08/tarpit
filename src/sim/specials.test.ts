@@ -7,7 +7,7 @@ import { ENEMY_STATS } from './enemies';
 import type { GameEvent } from './events';
 import { createGame, startWave, tick } from './game';
 import { comboWithKegs, KEG_POLICY_DISTANCE, KEG_POLICY_WAVE_TICK, playScripted } from './headless';
-import { MAP, positionAlongPath } from './map';
+import { MAPS, positionAlongPath } from './map';
 import { SPECIAL_DEFS, SPECIAL_TYPES, unlockedSpecials, type SpecialType } from './specials';
 import type { Enemy, EnemyType, GameState } from './types';
 import { WAVES } from './waves';
@@ -128,7 +128,7 @@ describe('radius', () => {
   it('is measured from the aimed point to the enemy position, inclusive at exactly 70 px and exclusive at 70.01', () => {
     const at = (dx: number) => {
       const s = inWave(1, [enemy(0, 'troll')]);
-      const p = enemyPosition(s.enemies[0]);
+      const p = enemyPosition(s.enemies[0], MAPS.meadow);
       return useSpecial(s, 'keg', { x: p.x + dx, y: p.y });
     };
     expect(at(70)).toMatchObject({ ok: true, hits: 1 });
@@ -199,7 +199,7 @@ describe('unlocks, charges and refusals', () => {
       expect(useSpecial(s, 'keg', p)).toEqual({ ok: false, reason: 'out-of-bounds' });
     }
     expect(s.specialCharges).toBe(1);
-    expect(useSpecial(s, 'keg', { x: MAP.width, y: MAP.height })).toMatchObject({ ok: true });
+    expect(useSpecial(s, 'keg', { x: MAPS.meadow.width, y: MAPS.meadow.height })).toMatchObject({ ok: true });
     s.phase = 'lost';
     s.specialCharges = 1;
     expect(useSpecial(s, 'keg', POINT)).toEqual({ ok: false, reason: 'game-over' });
@@ -248,7 +248,7 @@ describe('headless: timed special actions and comboWithKegs', () => {
 
   it('comboWithKegs aims at (420, 232), the path point 700 px from the spawn, at wave tick 600, every action accepted', () => {
     expect([KEG_POLICY_DISTANCE, KEG_POLICY_WAVE_TICK]).toEqual([700, 600]);
-    expect(positionAlongPath(MAP, KEG_POLICY_DISTANCE)).toEqual({ x: 420, y: 232 });
+    expect(positionAlongPath(MAPS.meadow, KEG_POLICY_DISTANCE)).toEqual({ x: 420, y: 232 });
     const script = comboWithKegs();
     expect(script.timed).toHaveLength(script.length);
     const run = playScripted(script);

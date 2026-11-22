@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { BOSS_NAME, PANEL_TEXT, bestScoreText } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { TitleUiState } from '../src/game/TitleScene';
-import { MAP, positionAlongPath } from '../src/sim/map';
+import { MAPS, positionAlongPath } from '../src/sim/map';
 
 // Milestone 25b frames (see the special tests below).
 // Milestone 25c (second pass): recomputed headlessly on the longer waves.
@@ -478,10 +478,10 @@ test('special aim: Tar Barrel circle over a cluster on wave 4', async ({ page })
     },
     { steps: AIM_STEPS, id: AIM_TARGET_ID },
   );
-  const at = positionAlongPath(MAP, r.target!);
+  const at = positionAlongPath(MAPS.meadow, r.target!);
   const aim = { x: Math.round(at.x), y: Math.round(at.y) };
   const inside = r.enemies.filter((e) => {
-    const p = positionAlongPath(MAP, e.distance);
+    const p = positionAlongPath(MAPS.meadow, e.distance);
     return Math.hypot(p.x - aim.x, p.y - aim.y) <= 90;
   });
   expect({ wave: r.wave, aim, enemies: r.enemies.length, inside: inside.map((e) => `${e.type} ${e.id}`) }).toEqual(AIM_EXPECT);
@@ -526,7 +526,7 @@ test('special fired: the tick after a Powder Keg (test mode, no flash)', async (
     },
     { steps: FIRED_STEPS, id: FIRED_TARGET_ID },
   );
-  const at = positionAlongPath(MAP, r!);
+  const at = positionAlongPath(MAPS.meadow, r!);
   const aim = { x: Math.round(at.x), y: Math.round(at.y) };
   const counts = await page.evaluate(({ x, y }) => {
     const t = window.__tarpit as TarpitTestApi;

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { ENEMY_NAMES } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
-import { MAP, positionAlongPath } from '../src/sim/map';
+import { MAPS, positionAlongPath } from '../src/sim/map';
 
 // Milestone 22: the Harpy (flying) and the Shieldbearer (shield) in the
 // browser, test mode (?test=1: frozen, time driven by step()). Tick numbers
@@ -16,7 +16,7 @@ async function startGame(page: Page): Promise<void> {
 const CANNON = { x: 240, y: 240, range: 90 }; // cell (7,7)
 const MUSKET = { x: 240, y: 176, range: 110 }; // cell (7,5)
 const inRange = (d: number, t: { x: number; y: number; range: number }) => {
-  const p = positionAlongPath(MAP, d);
+  const p = positionAlongPath(MAPS.meadow, d);
   return Math.hypot(p.x - t.x, p.y - t.y) <= t.range;
 };
 

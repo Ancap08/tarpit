@@ -2,7 +2,7 @@ import { expect, test, type CDPSession, type Page } from '@playwright/test';
 import { DRAG_LIFT } from '../src/game/input';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { Enemy, GameEvent } from '../src/sim';
-import { MAP, positionAlongPath } from '../src/sim/map';
+import { MAPS, positionAlongPath } from '../src/sim/map';
 
 // Milestone 25b, tablet project (playwright.config.ts TABLET_SPECS matches
 // touch.spec.ts): a Powder Keg fired by touch, by tap-tap and by a drag
@@ -19,7 +19,7 @@ const ui = (page: Page) => api(page, (a) => a.ui());
 const rects = (page: Page) => api(page, (a) => a.uiRects());
 const events = (page: Page) => api(page, (a) => a.events());
 const toPage = (page: Page, p: Point) => page.evaluate(([cx, cy]) => window.__tarpit!.canvasToPage(cx, cy), [p.x, p.y]);
-const pos = (e: Enemy): Point => positionAlongPath(MAP, e.distance);
+const pos = (e: Enemy): Point => positionAlongPath(MAPS.meadow, e.distance);
 const specialOf = (ev: GameEvent[]) => ev.find((e) => e.kind === 'special');
 
 /** Wave 1 started and 600 ticks in (Goblins on the path). */

@@ -13,6 +13,7 @@
 // D 700 -> (420,232) on the fourth leg, hypot(116,88) = 145.60.
 // D 600 -> (420,132), hypot(116,12) = 116.62 (inside a Mortar's 70..220).
 import { describe, expect, it } from 'vitest';
+import { MAPS } from './map';
 import { buildTower, sellTower, setTargeting, towerAt, upgradeTower } from './actions';
 import { enemyPosition, findTarget, fireTowers } from './combat';
 import { createGame } from './game';
@@ -40,7 +41,7 @@ const pick = (enemies: Enemy[], type: TowerType, mode: TargetingMode) => {
 };
 
 const fromT = (d: number) => {
-  const p = enemyPosition(e(0, d, 1));
+  const p = enemyPosition(e(0, d, 1), MAPS.meadow);
   const c = cellCenter(T);
   return Math.round(Math.hypot(p.x - c.x, p.y - c.y) * 100) / 100;
 };
@@ -48,7 +49,7 @@ const fromT = (d: number) => {
 describe('verifier m24: geometry', () => {
   it('T is (304,144) and the distances in the header hold', () => {
     expect(cellCenter(T)).toEqual({ x: 304, y: 144 });
-    expect(enemyPosition(e(0, 448, 1))).toEqual({ x: 304, y: 96 });
+    expect(enemyPosition(e(0, 448, 1), MAPS.meadow)).toEqual({ x: 304, y: 96 });
     expect([400, 420, 430, 448, 470, 480, 500, 540].map(fromT)).toEqual([67.88, 55.57, 51.26, 48, 52.8, 57.69, 70.77, 103.77]);
     expect([100, 700, 600].map(fromT)).toEqual([225.46, 145.6, 116.62]);
   });

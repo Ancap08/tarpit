@@ -7,7 +7,7 @@
 // outline round their cell. Labels are Text objects (labels.ts).
 
 import type Phaser from 'phaser';
-import { CELL, cellCenter, cellKey, MAP, nearestPathPoint, positionAlongPath, type Cell, type GameState, type Point, type TowerType } from '../../sim';
+import { CELL, cellCenter, cellKey, nearestPathPoint, positionAlongPath, type Cell, type GameState, type MapDef, type Point, type TowerType } from '../../sim';
 import { COLORS } from '../palette';
 
 /** Barrel length from the tower centre; shot tracers start at the muzzle. */
@@ -31,11 +31,14 @@ const TUBE_R = 7;
 export class Aim {
   private readonly angles = new Map<number, number>();
 
+  /** `map` is the game's map: a new barrel starts aimed at its path. */
+  constructor(private readonly map: MapDef) {}
+
   angle(cell: Cell): number {
     const known = this.angles.get(cellKey(cell));
     if (known !== undefined) return known;
     const p = cellCenter(cell);
-    const q = positionAlongPath(MAP, nearestPathPoint(p).along);
+    const q = positionAlongPath(this.map, nearestPathPoint(p, this.map).along);
     return Math.atan2(q.y - p.y, q.x - p.x);
   }
 

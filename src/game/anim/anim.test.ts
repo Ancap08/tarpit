@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createGame, buildTower, startWave, tick } from '../../sim';
+import { createGame, buildTower, MAPS, startWave, tick } from '../../sim';
 import { BOB_PX, bobOffset, EventCursor, statusTint, TINT } from './effects';
 import { facingAt, facingOf } from './facing';
 import { SHEETS, walkAnimKey } from './sheets';
@@ -14,12 +14,12 @@ describe('facing', () => {
 
   it('along the path: right from the spawn, up at x 160, right at y 96, down at x 420', () => {
     // Path: (0,240) -> (160,240) -> (160,96) -> (420,96) -> (420,384) ...
-    expect(facingAt(0, 1)).toBe('right');
-    expect(facingAt(100, 1)).toBe('right');
-    expect(facingAt(160, 1)).toBe('right'); // on the corner: the last tick was still rightward
-    expect(facingAt(161.5, 1)).toBe('up');
-    expect(facingAt(160 + 144 + 10, 1)).toBe('right');
-    expect(facingAt(160 + 144 + 260 + 10, 1)).toBe('down');
+    expect(facingAt(MAPS.meadow, 0, 1)).toBe('right');
+    expect(facingAt(MAPS.meadow, 100, 1)).toBe('right');
+    expect(facingAt(MAPS.meadow, 160, 1)).toBe('right'); // on the corner: the last tick was still rightward
+    expect(facingAt(MAPS.meadow, 161.5, 1)).toBe('up');
+    expect(facingAt(MAPS.meadow, 160 + 144 + 10, 1)).toBe('right');
+    expect(facingAt(MAPS.meadow, 160 + 144 + 260 + 10, 1)).toBe('down');
   });
 });
 

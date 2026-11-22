@@ -12,11 +12,11 @@
 
 import { cappedSlow, ENEMY_STATS, isBoss, isFlying, isTarred, shotDamage } from './enemies';
 import { cellCenter, sameCell, type Cell } from './grid';
-import { MAP, positionAlongPath } from './map';
+import { positionAlongPath } from './map';
 import { secondsToTicks, TICKS_PER_SECOND } from './time';
 import { shotCooldown, towerStats } from './towers';
 import type { KillCause } from './events';
-import type { Enemy, GameState, Point, Shot, TargetingMode, Tower, TowerType } from './types';
+import type { Enemy, GameState, MapDef, Point, Shot, TargetingMode, Tower, TowerType } from './types';
 
 /**
  * An enemy is dead at hp <= KILL_EPSILON rather than hp <= 0. Burn ticks
@@ -40,9 +40,9 @@ export function towerPosition(tower: Tower): Point {
   return cellCenter(tower.cell);
 }
 
-/** Enemy position on the map. */
-export function enemyPosition(enemy: Enemy): Point {
-  return positionAlongPath(MAP, enemy.distance);
+/** Enemy position on `map` (milestone 27: the game's map, state.map). */
+export function enemyPosition(enemy: Enemy, map: MapDef): Point {
+  return positionAlongPath(map, enemy.distance);
 }
 
 /** Towers that work on the ground and so never target a flying enemy (milestone 22). */
@@ -79,7 +79,7 @@ export function findTarget(state: GameState, tower: Tower): Enemy | undefined {
   let best: Enemy | undefined;
   for (const enemy of state.enemies) {
     if (isDead(enemy) || !canTarget(tower.type, enemy)) continue;
-    const d = dist(from, enemyPosition(enemy));
+    const d = dist(from, enemyPosition(enemy, state.map));
     if (d > range || d < minRange) continue;
     if (!best || preferred(mode, enemy, best)) best = enemy;
   }
@@ -197,7 +197,7 @@ function towerStep(state: GameState, tower: Tower): void {
     tower: tower.type,
     targetId: target.id,
     from: towerPosition(tower),
-    to: enemyPosition(target),
+    to: enemyPosition(target, state.map),
   };
   if (stats.splashRadius > 0) shot.splashRadius = stats.splashRadius;
   state.shots.push(shot);
@@ -208,9 +208,9 @@ function towerStep(state: GameState, tower: Tower): void {
   };
   if (stats.splashRadius > 0) {
     // Splash stays on the ground: flying enemies inside the radius are skipped.
-    const center = enemyPosition(target);
+    const center = enemyPosition(target, state.map);
     for (const enemy of state.enemies) {
-      if (!isFlying(enemy) && dist(center, enemyPosition(enemy)) <= stats.splashRadius) hit(enemy);
+      if (!isFlying(enemy) && dist(center, enemyPosition(enemy, state.map)) <= stats.splashRadius) hit(enemy);
     }
   } else {
     hit(target);
