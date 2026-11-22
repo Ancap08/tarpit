@@ -101,16 +101,39 @@ export const PREVIEW_X = 356;
 export const PREVIEW_WIDTH = 264;
 export const PREVIEW_SIZE = 16;
 export const PREVIEW_SIZE_LONG = 13;
+/** Milestone 25c: the horde's wave 10 preview needs three lines at 13 px; at 11 px it fits two. */
+export const PREVIEW_SIZE_LONGEST = 11;
+
+/**
+ * Lines `text` takes when word-wrapped greedily to PREVIEW_WIDTH at `size`
+ * px (Courier New advances 0.6 em per character, so no text measuring).
+ */
+export function previewLines(text: string, size: number): number {
+  const perLine = Math.floor(PREVIEW_WIDTH / (0.6 * size));
+  let lines = 1;
+  let used = 0;
+  for (const word of text.split(' ')) {
+    const need = used === 0 ? word.length : used + 1 + word.length;
+    if (need <= perLine) used = need;
+    else {
+      lines += 1;
+      used = word.length;
+    }
+  }
+  return lines;
+}
 
 /**
  * The preview's font size: 16 px when the text fits PREVIEW_WIDTH on one
  * line, else 13 px wrapped to two lines (milestone 23; the wave 10 preview
  * with "+ Grumblefoot" is 61 characters, and the longer milestone 22
- * previews already ran under the Start Wave button). Courier New advances
- * 0.6 em per character, so this needs no text measuring.
+ * previews already ran under the Start Wave button), else 11 px on two
+ * lines (milestone 25c: "Next: 20 Wolf, 13 Troll, 12 Harpy, 8
+ * Shieldbearer + Grumblefoot" wraps to three lines at 13 px).
  */
 export function previewSize(text: string): number {
-  return text.length * 0.6 * PREVIEW_SIZE <= PREVIEW_WIDTH ? PREVIEW_SIZE : PREVIEW_SIZE_LONG;
+  if (text.length * 0.6 * PREVIEW_SIZE <= PREVIEW_WIDTH) return PREVIEW_SIZE;
+  return previewLines(text, PREVIEW_SIZE_LONG) <= 2 ? PREVIEW_SIZE_LONG : PREVIEW_SIZE_LONGEST;
 }
 
 /** Start Wave does something only in setup with waves left. */
