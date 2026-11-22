@@ -5438,3 +5438,75 @@ Pot after 23.5 s, a Cannon after 36 s, a Mortar only after the clear.
 
 **Could not check:** pixel baselines; the revert rows without `*` with
 fresh lists; anything about feel beyond the frames.
+
+### Follow-up (implementer)
+
+Six items from the coordinator after the verifier's pass, on top of
+`13d37dd`.
+
+1. **Easy lives 30 -> 35** (`DIFFICULTY_DEFS.easy.startLives`). E1 is now
+   "Easy lazyBuild wins with at least 8 lives on every map": it wins with
+   10, 20 and 9 (5, 15 and 4 before). E2 and E3 hold. Only Easy cells of
+   the matrix moved: every won Easy game has 5 more lives; longbowSpam on
+   Easy now wins with 2 on Meadow and Riverbend (lost on wave 10), and
+   with 24 on Switchback; oneMusket on Easy loses on wave 3 everywhere;
+   endlessIdle on Easy, Switchback lasts one wave longer (wave 20);
+   noAntiAir on Easy still loses on wave 7 with a little more gold. No
+   special list changed: `npm run sim:specials` wrote a byte-identical
+   `specialLists.ts` (the search compares lives lost per wave, not lives
+   left, and no Easy branch comes near 30 lost). Browser values updated:
+   Easy start lives in `difficulty.spec.ts` and `difficulty-verifier.spec.ts`
+   (title start and the Easy win screen, 35 lives).
+2. **`playWithStats` counted a kill twice** when a timed special fired on
+   the tick after it: it read every `kill` event in `state.events`, which
+   still held the previous tick's. It now counts only the events the
+   action appends. The verifier's `it.fails` pin passes as a normal test
+   (hardBuild on Meadow, Normal: kills + exits = 524), and every matrix cell
+   now checks that kills, and kills plus exits, never exceed the enemies
+   spawned. No target result moved (only T9's tie-break reads kills).
+3. **T9's barrel check** reads as the brief does: lost where the combo
+   won, or fewer lives, or the same lives and fewer kills. The measured
+   values are pinned in `balance.test.ts`: 11 lives without the barrels,
+   14 with them.
+4. **Mid-wave frame** (`e2e/visual.spec.ts`, `src/sim/midwave-frame.test.ts`):
+   the verifier's proposal, the same three towers in wave 2 (`state.wave =
+   1`, then Start Wave), tick 1904: 15 Goblins, 10 hurt, 2 tarred, the
+   Cannon's splash 3 ticks into its fade (fired at 1901), the Tar Pit's
+   shot 2 ticks old (1902), no shot on the tick, 20 lives. Local frame
+   `m28b-midwave.png`: Goblins strung along the top run and the downhill,
+   hp bars on most of them, the Cannon's orange splash circle at the
+   bottom corner with its tracer, two tar-ringed Goblins on the bottom run
+   by the Tar Pit, the Musketeer idle between shots. The baseline
+   regenerates on CI.
+5. **`comboWithKegs` removed** (its kegs hit nothing; it was the
+   comboNoSpecials game), with `KEG_POLICY_DISTANCE` and
+   `KEG_POLICY_WAVE_TICK`. The pins that still meant something moved to
+   comboBuild: the verifier's full-game event bookkeeping in
+   `specials-verifier.test.ts` (j)(l) (kills + exits = spawns, each id
+   gone once, the replay equals `playScripted`, special kills at most the
+   hits) now runs on comboBuild, whose 10 specials all hit and some kill.
+   Its matrix row, the Meadow-only list and the "three refuse" check
+   followed.
+6. **Comments and DESIGN.md.** `headless.ts`: Hard Trolls 1140; lazyBuild's
+   targets (T2 6 to 9, E1, H2); comboBuildNoFire, noAntiAir and endlessIdle
+   no longer say "cluster specials" for waves 1 to 10. `balanceTargets.ts`:
+   R1 to R5. `specialSearch.ts`: the test reruns three waves of one list.
+   DESIGN.md: Easy 35 lives, E1's new wording, the matrix, comboWithKegs
+   gone, a note that wave 1 is deliberately gentle and Kyle's play notes
+   decide, and two facts in the balance section: comboBuildNoFire and
+   noAntiAir fire the full combo's list; on Hard the wins rest on the
+   searched lists (hardBuild with no specials: Meadow won with 2, Riverbend
+   lost on wave 8).
+
+Easy column of the matrix (Meadow, Switchback, Riverbend): noTowers L 2,
+L 2, L 2; oneMusket L 3, L 3, L 3; lazyBuild W 10, W 20, W 9; greedyMusket
+W 34, W 33, W 35; longbowSpam W 2, W 24, W 2; noAntiAir L 7, L 7, L 7;
+comboBuild W 35, W 35, W 35; comboBuildNoFire W 34, W 35, W 30;
+comboNoSpecials W 34, W 35, W 34; hardBuild W 35, W 35, W 35; endlessIdle
+L 18, L 20, L 18; soundBuild W 11; soundBuildNoTar L 10; comboStrongest
+W 9.
+
+The DESIGN.md generator in my scratch folder had pasted the endless hp
+line into `ENDLESS_HP_GROWTH` (a placeholder that was a prefix of a real
+name); its placeholders are now delimited, and the regenerated file keeps
+the verifier's fix.
