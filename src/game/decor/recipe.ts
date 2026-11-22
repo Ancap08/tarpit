@@ -12,7 +12,9 @@
 // trail strip, the cottage or the river), with the cell centre at least
 // GROWTH_TRAIL_CLEARANCE (two cells) from the trail centreline, at least
 // one cell clear of the river and the cottage, and never under the boss
-// bar, the aim banner or the wave banners in either layout (DECOR_KEEP_OUT).
+// bar or the aim banner in either layout (DECOR_KEEP_OUT). Cells are taken
+// round-robin across 6 x 3 regions of the map (REGION_COLS_CELLS, REGION_ROWS_CELLS), so the
+// growth spreads over the whole map, not only its emptiest edges.
 // A tower built on a growth's cell hides it (hiddenGrowth).
 
 import {
@@ -39,6 +41,9 @@ export const BUSH_RANGE = { min: 8, max: 14 } as const;
 /** Canopy radius per look variant: trees and bushes. */
 export const TREE_R = [13, 14.5, 16] as const;
 export const BUSH_R = [7, 8, 9] as const;
+/** Growth regions: the map's 30 x 15 cells in blocks of this many columns and rows (6 x 3 regions). */
+export const REGION_COLS_CELLS = 5;
+export const REGION_ROWS_CELLS = 5;
 /** Tufts that sway in play (drawn every frame), at most. */
 export const MAX_SWAY_TUFTS = 12;
 /** Least distance between two growth centres: trees, and a bush from anything. */
@@ -46,19 +51,18 @@ const TREE_SPACING = 56;
 const BUSH_SPACING = 40;
 
 /**
- * World rects where nothing grows: what sits over the map in either layout
- * (ui/bossBar.ts bossBarGeometry, GameScene's aim banner, the wave and boss
- * banners in fx/effects.ts), with a little margin. Landscape: the boss bar
- * and aim banner at the top middle, the banners in the middle. Portrait
- * (the map turned: world x runs down the screen, world y right to left):
- * the boss bar across the top of the screen (world x 0..64) and the
- * banners across the middle (world x 115..305).
+ * World rects where nothing grows: what stays over the map in either
+ * layout (ui/bossBar.ts bossBarGeometry, GameScene's aim banner), with a
+ * little margin. Landscape: the boss bar and the aim banner at the top
+ * middle. Portrait (the map turned: world x runs down the screen, world y
+ * right to left): the boss bar across the top of the screen (world x
+ * 0..64; portrait shows no aim banner over the map). The wave and boss
+ * banners (fx/effects.ts) show for 1.5 s only, so growth may sit under
+ * them (milestone 34 follow-up, coordinator's ruling).
  */
 export const DECOR_KEEP_OUT: readonly Rect[] = [
   { x: 296, y: 0, width: 368, height: 66 },
-  { x: 296, y: 112, width: 368, height: 196 },
   { x: 0, y: 56, width: 66, height: 368 },
-  { x: 112, y: 56, width: 196, height: 368 },
 ];
 
 export type GrowthKind = 'tree' | 'bush';
@@ -276,14 +280,18 @@ export function decorFor(map: MapDef): Decor {
       const t = r(S.spot, s * 1000 + i, 0) * len;
       trailSpots.push({ ...at(t, (r(S.spot, s * 1000 + i, 1) - 0.5) * 18), r: 6 + r(S.spot, s * 1000 + i, 2) * 7, tone: Math.floor(r(S.spot, s * 1000 + i, 3) * 2) });
     }
-    // Ruts: two lines 8 px either side of the centreline, broken into dashes, clear of the rounded corners.
+    // Ruts: two worn tracks about 8 px either side of the centreline, in short
+    // broken dashes that wander a little sideways, clear of the rounded corners.
     for (const side of [-8, 8]) {
-      let t = 22;
+      let t = 22 + r(S.rut, s * 1000, side + 150) * 20;
       for (let i = 0; t < len - 22; i++) {
-        const dash = 14 + r(S.rut, s * 1000 + i, side) * 30;
+        const k = s * 1000 + i;
+        const dash = 7 + r(S.rut, k, side) * 15;
         const end = Math.min(len - 22, t + dash);
-        if (r(S.rut, s * 1000 + i, side + 50) < 0.8) ruts.push({ a: at(t, side), b: at(end, side) });
-        t = end + 6 + r(S.rut, s * 1000 + i, side + 100) * 16;
+        const wa = side + (r(S.rut, k, side + 200) - 0.5) * 4;
+        const wb = side + (r(S.rut, k, side + 250) - 0.5) * 4;
+        if (r(S.rut, k, side + 50) < 0.6) ruts.push({ a: at(t, wa), b: at(end, wb) });
+        t = end + 10 + r(S.rut, k, side + 100) * 26;
       }
     }
   }
@@ -301,10 +309,25 @@ function growthFor(map: MapDef, seed: number): Growth[] {
     }
   }
   cells.sort((p, q) => p.order - q.order);
+  // Round-robin over the regions (each in hashed order), so every part of the map gets its share.
+  const regions = new Map<number, Cell[]>();
+  for (const { cell } of cells) {
+    const key = Math.floor(cell.row / REGION_ROWS_CELLS) * 100 + Math.floor(cell.col / REGION_COLS_CELLS);
+    if (!regions.has(key)) regions.set(key, []);
+    regions.get(key)!.push(cell);
+  }
+  const regionOrder = [...regions.keys()].sort((p, q) => hash01(seed, S.grow * 7919 + 5000 + p) - hash01(seed, S.grow * 7919 + 5000 + q));
+  const spread: Cell[] = [];
+  for (let round = 0; spread.length < cells.length; round++) {
+    for (const key of regionOrder) {
+      const list = regions.get(key)!;
+      if (round < list.length) spread.push(list[round]);
+    }
+  }
   const growth: Growth[] = [];
   const pick = (kind: GrowthKind, target: number, spacing: number) => {
     let placed = 0;
-    for (const { cell } of cells) {
+    for (const cell of spread) {
       if (placed >= target) break;
       const c = cellCenter(cell);
       if (growth.some((g) => (g.cell.col === cell.col && g.cell.row === cell.row) || Math.hypot(g.x - c.x, g.y - c.y) < spacing)) continue;

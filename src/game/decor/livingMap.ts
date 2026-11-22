@@ -13,7 +13,7 @@
 //   puff in play), and all of them fade while a tower is being placed, so
 //   the placement highlight reads over them.
 // - Moving things (decor/motion.ts, counts in MOTION_COUNTS): river flow
-//   lines and glints, chimney smoke, swaying tufts and tree tops, cloud
+//   ripples (little wave crests) and glints, chimney smoke, swaying tufts and tree tops, cloud
 //   shadows, a bird, a butterfly and the cave's eyes. In test mode and
 //   under prefers-reduced-motion they hold the fixed frame at t = 0
 //   (STILL_T): no bird or butterfly, eyes open, clouds, smoke and water
@@ -24,7 +24,7 @@ import type { GameState, MapDef, Point } from '../../sim';
 import { drawMap, drawTuft } from '../draw/map';
 import type { Layout } from '../layout';
 import { COLORS } from '../palette';
-import { birdAt, blinking, butterflyAt, CLOUD, cloudAt, flowLine, glint, MOTION_COUNTS, puffLook, smokePuff, STILL_T, sway } from './motion';
+import { birdAt, blinking, butterflyAt, CLOUD, cloudAt, glint, ripple, MOTION_COUNTS, puffLook, smokePuff, STILL_T, sway } from './motion';
 import { BUSH_R, decorFor, hiddenGrowth, TREE_R, type Decor, type Growth } from './recipe';
 
 const TREE_KEYS = ['decor-tree-0', 'decor-tree-1', 'decor-tree-2'];
@@ -45,7 +45,7 @@ export interface DecorState {
   still: boolean;
   /** The clock the moving things were last drawn at (ms; STILL_T when still). */
   t: number;
-  /** Where the moving things are: cloud centres (screen px), smoke alphas, the first flow line, bird and butterfly (or null), eyes open. */
+  /** Where the moving things are: cloud centres (screen px), smoke alphas, the first ripple, bird and butterfly (or null), eyes open. */
   moving: { clouds: Point[]; smoke: number[]; flow: Point | null; bird: Point | null; butterfly: Point | null; eyesOpen: boolean; sway: number };
   /** Puffs showing now. */
   puffs: number;
@@ -239,13 +239,18 @@ export class LivingMap {
     if (w) {
       w.clear();
       for (const box of map.water ?? []) {
-        w.lineStyle(1.5, COLORS.waterFlow, 1);
-        for (let i = 0; i < MOTION_COUNTS.flowLines; i++) {
-          const f = flowLine(box, i, t);
+        for (let i = 0; i < MOTION_COUNTS.ripples; i++) {
+          const f = ripple(box, i, t);
           if (i === 0) flow = { x: f.x, y: f.y };
           if (f.alpha <= 0) continue;
+          // A little crest across the flow: a shallow arch bowed upstream.
           w.lineStyle(1.5, COLORS.waterFlow, f.alpha);
-          w.lineBetween(f.x, f.y, f.x, f.y + f.len);
+          w.beginPath();
+          w.moveTo(f.x - f.w / 2, f.y);
+          w.lineTo(f.x - f.w / 4, f.y - f.bow * 0.8);
+          w.lineTo(f.x + f.w / 4, f.y - f.bow * 0.8);
+          w.lineTo(f.x + f.w / 2, f.y);
+          w.strokePath();
         }
         for (let i = 0; i < MOTION_COUNTS.glints; i++) {
           const gl = glint(map, box, i, t);

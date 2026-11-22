@@ -6902,3 +6902,29 @@ to main, no new dependency, no art files.
 - The first highlight check asked for the outline's exact colour; the
   range circle's faint fill lies over it, so the check compares against
   a hovered grass cell instead.
+
+### Follow-up
+
+The coordinator accepted the throttled cost (clouds kept) and the
+readability margin (mean within 2%, 10th percentile within 10%), and asked
+for three changes.
+
+- **Growth over the whole map.** The keep-out boxes now hold only the boss
+  bar and the aim banner; trees and bushes may stand under the 1.5 s wave
+  and boss banners. Cells are taken round-robin across 6 x 3 regions, so
+  the middle of every map has trees. Counts unchanged: Meadow 8 and 8,
+  Switchback 12 and 10, Riverbend 13 and 11. New unit test: growth in
+  every third of the map across and down, and at least half of it off the
+  edge cells.
+- **Water.** The straight flow lines (they read as rain) became 14 little
+  wave crests: shallow arches across the flow, in three staggered lanes,
+  drifting downstream at 14 px/s, glints kept. The still test-mode frame
+  shows at least 8 of them, so the river reads as water at a glance.
+- **Ruts.** Fainter (1.5 px at 24% instead of 2 px at 33%), shorter (7 to
+  22 px dashes, fewer and further apart) and wandering up to 2 px
+  sideways.
+- **Numbers.** Readability against main: mean within 0.6% in every frame,
+  10th percentile within 9.6% (Riverbend wave 7, unchanged: Harpies over
+  the trail margin). Perf spec: median 16.7 ms, p95 16.7 to 16.8 ms in
+  all three cases. 20x throttle: spread 146 and 144 frames, packed 164 and
+  168 (main 173 and 174, 209 and 207). README demo re-recorded: 3.75 MB.

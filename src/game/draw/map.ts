@@ -135,7 +135,7 @@ function trailTexture(g: Phaser.GameObjects.Graphics, d: Decor): void {
     g.fillStyle(s.tone === 0 ? COLORS.pathLight : COLORS.pathDark, 0.35);
     g.fillCircle(s.x, s.y, s.r);
   }
-  g.lineStyle(2, COLORS.pathRut, 0.33);
+  g.lineStyle(1.5, COLORS.pathRut, 0.24);
   for (const r of d.ruts) g.lineBetween(r.a.x, r.a.y, r.b.x, r.b.y);
   for (const p of d.pebbles) {
     g.fillStyle(p.tone === 0 ? COLORS.pebbleDark : COLORS.pebbleLight, 0.9);

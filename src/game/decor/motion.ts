@@ -10,7 +10,7 @@ import { hash01, seedOf } from './recipe';
 export const STILL_T = 0;
 
 /** Counts of the moving things (pooled; never more). */
-export const MOTION_COUNTS = { clouds: 2, smokePuffs: 4, flowLines: 9, glints: 3, birds: 1, butterflies: 1, eyes: 2, puffs: 4 } as const;
+export const MOTION_COUNTS = { clouds: 2, smokePuffs: 4, ripples: 14, glints: 3, birds: 1, butterflies: 1, eyes: 2, puffs: 4 } as const;
 
 /** Tree tops and swaying tufts: an offset of at most 1.5 px on a slow cycle, in 0.5 px steps. */
 export function sway(t: number, phase: number): number {
@@ -37,15 +37,24 @@ export function smokePuff(i: number, t: number): { dx: number; dy: number; scale
   return { dx: 5 * p + Math.sin(p * 5 + i) * 1.5, dy: -26 * p, scale: 0.45 + p * 0.9, alpha: 0.4 * (1 - p) * Math.min(1, p * 6) };
 }
 
-/** River flow line i: a short stroke drifting downstream (+y) at 16 px/s inside the box. */
-export function flowLine(box: Rect, i: number, t: number): { x: number; y: number; len: number; alpha: number } {
-  const n = MOTION_COUNTS.flowLines;
-  const x = box.x + 18 + ((i * 37) % (box.width - 46));
-  const span = box.height - 24 - 18;
-  const y0 = (i / n) * span + ((i * 53) % 29);
-  const y = box.y + 12 + ((((y0 + (t / 1000) * 16) % span) + span) % span);
-  const edge = Math.min(y - box.y - 12, box.y + 12 + span - y);
-  return { x, y, len: 12 + (i % 3) * 3, alpha: Math.max(0, Math.min(1, edge / 30)) * 0.55 };
+/**
+ * River ripple i: a little wave crest lying across the flow (a shallow arch
+ * `w` px wide, bowed `bow` px upstream), drifting downstream (+y) at 14 px/s
+ * inside the box, in a staggered pattern so even the still frame reads as
+ * water. Fades in at the top and out at the bottom.
+ */
+export function ripple(box: Rect, i: number, t: number): { x: number; y: number; w: number; bow: number; alpha: number } {
+  const n = MOTION_COUNTS.ripples;
+  const lanes = 3;
+  const lane = i % lanes;
+  const laneW = (box.width - 24) / lanes;
+  const w = 10 + (i % 3) * 3;
+  const x = box.x + 12 + laneW * (lane + 0.5) + (((i * 37) % 13) - 6);
+  const span = box.height - 28;
+  const y0 = (i / n) * span + ((i * 53) % 17);
+  const y = box.y + 14 + ((((y0 + (t / 1000) * 14) % span) + span) % span);
+  const edge = Math.min(y - box.y - 14, box.y + 14 + span - y);
+  return { x, y, w, bow: 2 + (i % 2), alpha: Math.max(0, Math.min(1, edge / 30)) * 0.6 };
 }
 
 /** River glint i: a small bright dot shown 600 ms of every 3.6 s cycle, at a new spot each cycle. */

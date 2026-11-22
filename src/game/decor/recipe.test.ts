@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { CELL, cellCenter, cellKey, distanceToPath, GRID_COLS, GRID_ROWS, isBuildableTerrain, MAP_IDS, MAPS, terrainBlock, type Rect } from '../../sim';
-import { birdAt, blinking, butterflyAt, cloudAt, flowLine, glint, MOTION_COUNTS, smokePuff, STILL_T, sway } from './motion';
+import { birdAt, blinking, butterflyAt, cloudAt, glint, ripple, MOTION_COUNTS, smokePuff, STILL_T, sway } from './motion';
 import { BUSH_RANGE, canGrow, DECOR_KEEP_OUT, decorFor, GROWTH_TRAIL_CLEARANCE, hiddenGrowth, TREE_RANGE } from './recipe';
 
 const inside = (x: number, y: number, r: Rect) => x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height;
@@ -52,6 +52,17 @@ describe('decorFor', () => {
         }
       });
 
+      it('spreads over the whole map: growth in every third across and down, the middle included', () => {
+        const thirds = (v: number, size: number) => Math.min(2, Math.floor((v / size) * 3));
+        for (let k = 0; k < 3; k++) {
+          expect(d.growth.some((g) => thirds(g.x, map.width) === k), `column third ${k}`).toBe(true);
+          expect(d.growth.some((g) => thirds(g.y, map.height) === k), `row third ${k}`).toBe(true);
+        }
+        // Off the bottom row and the edges for most of it.
+        const inner = d.growth.filter((g) => g.cell.row > 0 && g.cell.row < 14 && g.cell.col > 0 && g.cell.col < 29);
+        expect(inner.length).toBeGreaterThanOrEqual(d.growth.length / 2);
+      });
+
       it('records one growth per cell with stable ids', () => {
         const keys = d.growth.map((g) => cellKey(g.cell));
         expect(new Set(keys).size).toBe(keys.length);
@@ -73,13 +84,15 @@ describe('decorFor', () => {
         }
         for (const p of [...d.pebbles, ...d.trailSpots]) expect(distanceToPath(p, map)).toBeLessThanOrEqual(16);
         for (const r of d.ruts) {
-          expect(distanceToPath(r.a, map)).toBeLessThanOrEqual(8.001);
-          expect(distanceToPath(r.b, map)).toBeLessThanOrEqual(8.001);
+          expect(distanceToPath(r.a, map)).toBeLessThanOrEqual(10.001);
+          expect(distanceToPath(r.b, map)).toBeLessThanOrEqual(10.001);
+          // Short dashes.
+          expect(Math.hypot(r.b.x - r.a.x, r.b.y - r.a.y)).toBeLessThanOrEqual(22.5);
         }
         for (const b of d.flowerBeds) expect(distanceToPath(b, map)).toBeGreaterThanOrEqual(GROWTH_TRAIL_CLEARANCE);
         expect(d.flowers.length).toBeGreaterThan(20);
         expect(d.patches.length).toBeGreaterThan(30);
-        expect(d.ruts.length).toBeGreaterThan(20);
+        expect(d.ruts.length).toBeGreaterThan(15);
       });
     });
   }
@@ -112,23 +125,27 @@ describe('motion', () => {
     }
   });
 
-  it('moves clouds slowly and keeps the flow lines and glints inside the river', () => {
+  it('moves clouds slowly and keeps the ripples and glints inside the river', () => {
     const a = cloudAt(map, 0, 0);
     const b = cloudAt(map, 0, 1000);
     expect(b.x - a.x).toBeGreaterThan(0);
     expect(b.x - a.x).toBeLessThan(10);
     for (let t = 0; t < 20000; t += 250) {
-      for (let i = 0; i < MOTION_COUNTS.flowLines; i++) {
-        const f = flowLine(river, i, t);
-        expect(inside(f.x, f.y, river)).toBe(true);
-        expect(inside(f.x, f.y + f.len, river)).toBe(true);
+      for (let i = 0; i < MOTION_COUNTS.ripples; i++) {
+        const f = ripple(river, i, t);
+        expect(inside(f.x - f.w / 2, f.y - f.bow, river)).toBe(true);
+        expect(inside(f.x + f.w / 2, f.y, river)).toBe(true);
+        // Across the flow: wider than it is tall.
+        expect(f.w).toBeGreaterThan(2 * f.bow);
       }
       for (let i = 0; i < MOTION_COUNTS.glints; i++) {
         const g = glint(map, river, i, t);
         if (g) expect(inside(g.x, g.y, river)).toBe(true);
       }
     }
-    expect(flowLine(river, 0, 1000).y).not.toBe(flowLine(river, 0, 0).y);
+    expect(ripple(river, 0, 1000).y).toBeGreaterThan(ripple(river, 0, 0).y);
+    // The still frame shows most ripples (it reads as water).
+    expect(Array.from({ length: MOTION_COUNTS.ripples }, (_, i) => ripple(river, i, 0)).filter((f) => f.alpha > 0.3).length).toBeGreaterThanOrEqual(8);
   });
 
   it('shows a bird and a butterfly now and then, the butterfly two cells from the trail', () => {
