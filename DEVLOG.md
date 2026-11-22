@@ -4112,3 +4112,176 @@ wave called early, at the peak: hardBuild on Hard, wave 8, 34 enemies,
 and comboBuild on Normal, wave 6, 33 enemies. Both read: the enemies are
 strung over three stretches of trail with small knots of two or three,
 nothing like the first pass's band.
+
+## 2026-11-21: milestone 26, endless mode
+
+Roles: implementer Claude Opus; verifier and coordinator to follow.
+
+### Implementer notes
+
+Built in five commits: the milestone 25c cleanups first, then the
+simulation, the high score storage, the renderer, and the browser tests.
+
+**Cleanups from 25c.** `e2e/perf.spec.ts` drops the "at least 100 alive"
+check (it sampled right after the top-up to 120, so it could not fail);
+the 270-tick floor and the 33 ms median stay. `?perf=1` is in the README's
+"Run locally" section. The Hard hp rule comments in `difficulty.ts` and
+`enemies.ts` now name 12, 4, 25 and 45 and say Hard only.
+
+**Simulation.** `waves.ts waveDef(n)` returns the table for waves 1 to 10
+(the same objects) and generates waves 11+: table wave 8, 9 or 10 in
+turn without the boss, one extra Harpy group of `min(16, 8 + 2 x cycle)`
+every 0.75 s from 2 s after the base wave's last spawn, and `hpMultiplier
+= 1.6 ^ cycle` (cycle = floor((n - 11) / 3) + 1). Spawning, `startWave`,
+`nextWavePreview`, `lastSpawnTick`, call early and the clear check all go
+through `waveDef`; nothing reads `WAVES[...]` for the running or next
+wave any more. `difficulty.ts enemyMaxHp` takes the wave multiplier and
+rounds once: `round(base x level x wave)`. Endless enemies carry `maxHp`
+(the hp bar reads it); table-wave enemies have no such key, so their
+state is unchanged. `game.ts continueEndless` (refused with `not-won`
+outside `won`; an endless game never reaches `won`, so "already endless"
+is `not-won` too), `GameState.endless` (false at create), event
+`endlessStart`, and `wavesCleared(state)`, derived rather than stored:
+`wave` in setup or won, else `wave - 1`. Deriving it keeps the state
+shape to one new field and cannot drift from the clears; it counts
+call-early clears because a called wave is cleared before the next one
+starts. Call early has no `last-wave` refusal in an endless game (wave 9
+still cannot call the boss wave, wave 10 is still the last in a normal
+game).
+
+**Headless.** A `WaveScript` with `endless: true` presses Keep going after
+the win and plays until lost or `ENDLESS_WAVE_CAP` (200) waves; a run
+alive at the cap reports `capped`. `endlessIdle` is comboBuild and then
+no purchases; `endlessGreedy` is comboBuild and then, in each endless
+setup while gold allows, the cheapest pending upgrade (waiting if it is
+not affordable), else a Longbow on the next free `TRAIL_CELL_ORDER` cell.
+Both fire one cluster special per endless wave at the tick the matching
+table wave uses (1241, 1194, 713); the brief did not say whether endless
+archetypes use specials, and without them the endless runs would not be
+playing like the comboBuild they continue. `npm run sim` prints them in a
+new "Endless" table after the Easy and Hard tables.
+
+**Endless results** (`npm run sim`):
+
+| Archetype | Level | Result | Wave | Waves cleared | Gold left |
+|---|---|---|---|---|---|
+| endlessIdle | Easy | lost | 18 | 17 | 2538 |
+| endlessGreedy | Easy | lost | 22 | 21 | 2565 |
+| endlessIdle | Normal | lost | 15 | 14 | 1780 |
+| endlessGreedy | Normal | lost | 18 | 17 | 1495 |
+| endlessIdle | Hard | lost | 8 | 7 | 284 |
+| endlessGreedy | Hard | lost | 8 | 7 | 284 |
+
+Normal targets: idle loses on 11 to 16 (15), greedy further than idle, at
+least 14 and lost by 40 (18). Met. On Hard the combo build loses wave 8
+(as since 25c), so neither endless archetype reaches Keep going there;
+the Hard rows are the comboBuild loss.
+
+**The one scope number changed: hp growth 1.15 -> 1.6 per cycle.** At the
+scope's 1.15 the idle build lost on wave 25 on Normal and the greedy one
+on 37. Lives per wave for idle at 1.15: 13 from wave 7 to wave 20, then
+12, 11, 5, 1, 0. The combo build won wave 10 with a large margin once the
+boss is gone; it lost nothing until the hp passed about 2x (1.15 ^ 5 =
+2.01 at wave 23). The Harpy group barely matters: 16 + 4 per cycle (cap
+40) moved idle from 25 to 24; 8 + 8 per cycle (cap 80) also 24; growth
+1.2 with 8 + 4 gave 21. Growth scan on Normal (idle, greedy): 1.25 (20,
+28), 1.3 (18, 25), 1.4 (17, 21), 1.45 (16, 21), 1.5 (16, 20), 1.55 (15,
+19), 1.6 (15, 18), 1.7 (15, 18), 1.8 (14, 17). 1.5 sits on the edge (16);
+1.6 gives one wave of margin on each side of 16 and 14. 1.6 per cycle is
+about 1.17 per wave (1.6 ^ (1/3)), close to what "1.15" would mean if
+read per wave; I kept the per-cycle rule and changed the one number.
+Both Normal losses come on a wave 9 based wave (15, 18): 30 Wolves and
+10 Trolls in 38 s, the densest Troll wave.
+
+Lives per wave after the win, Normal, idle (wave:lives/gold): 11:13/857
+12:12/1044 13:12/1335 14:4/1658 15:0/1780. Greedy: 11:13/407 12:13/222
+13:13/303 14:13/550 15:12/743 16:12/1040 17:3/1361 18:0/1495. Greedy buys
+before waves 11 to 14 (upgrades, then Longbows on the trail) and nothing
+from wave 15: every tower is upgraded and every `TRAIL_CELL_ORDER` cell is
+taken, so its gold piles up.
+
+**Generated waves 11 to 16** (Normal hp, no clear bonus):
+
+| Wave | Cycle | Base | Extra Harpies | Enemies | Hp x | Total hp | Bounty | Last spawn |
+|---|---|---|---|---|---|---|---|---|
+| 11 | 1 | 8 | 10 from 75.5 s | 118 | 1.6 | 23084 | 356 | 82.25 s |
+| 12 | 1 | 9 | 10 from 31 s | 50 | 1.6 | 15940 | 170 | 37.75 s |
+| 13 | 1 | 10 | 10 from 65 s | 65 | 1.6 | 24412 | 266 | 71.75 s |
+| 14 | 2 | 8 | 12 from 75.5 s | 120 | 2.56 | 37143 | 362 | 83.75 s |
+| 15 | 2 | 9 | 12 from 31 s | 52 | 2.56 | 25674 | 176 | 39.25 s |
+| 16 | 2 | 10 | 12 from 65 s | 67 | 2.56 | 39220 | 272 | 73.25 s |
+
+The longest spawn window is 86.75 s (wave 8 based waves from cycle 4,
+16 Harpies). The spawn-rate rule holds for waves 11 to 40 on the merged
+schedule (`endless.test.ts`): the extra Harpies come 4 per 3 s and start
+after every base Harpy group has finished.
+
+**Ten-wave game unchanged.** `npm run sim` on main and on this branch,
+diffed: the only difference is the new "Endless" table appended at the
+end. A scratch harness also dumped, for every archetype and informational
+script on Easy, Normal and Hard, the final state (minus `endless`), the
+per-wave reports and the full action logs, as JSON on both commits:
+byte-identical.
+
+**High score.** `src/game/highScore.ts`: `parseBest`, `mergeBest`,
+`serializeBest`, `bestFor`, and `HighScoreStore`, which wraps storage in
+try/catch and keeps the table in memory too. Stored as `{"v":1,"best":
+{"meadow":{"normal":14}}}` under `tarpit.best`. A score must be a whole
+number of at least 1 (a score is only saved after a clear, so 0 is never
+written; a stored 0 is ignored). A `__proto__` map id is skipped. Another
+version (`"v": 2`) reads as empty and would be overwritten by the next
+best; there is no version 2 yet. GameScene records after every run of
+ticks and every early call when `wavesCleared` went up.
+
+**Renderer.** The win screen is 520 px wide with [Keep going] (170,
+highlighted, left), [Play again] (180) and [Menu] (100), 16 px apart; the
+lose screen keeps its 460 px panel and two buttons. Keep going hides the
+end screen (`EndScreen.hide`). The HUD reads "Wave 11" in an endless
+game. The preview sums the counts of a type that comes in two groups, so
+the extra Harpies show as one entry ("24 Harpy" before wave 11, not "14
+Harpy, 10 Harpy"); this is a display choice I made, and no table wave
+has a repeated type, so every earlier preview is the same string. The
+longest endless preview ("Next: 50 Goblin, 25 Wolf, 13 Troll, 6
+Shieldbearer, 24 Harpy") wraps to two lines (checked in the browser).
+Title: one 18 px line at (480, 414), "Best on Normal: 12 waves", redrawn
+on every selection change. New words in `names.ts`.
+
+**Tests.** Unit: `src/sim/endless.test.ts` (32: waveDef 1 to 10 and by
+hand for 11, 12, 13, 14, 17, hp by hand on all levels, no boss to 200,
+spawn rate 11 to 40, the 86.75 s window, preview, continueEndless allowed
+and refused in setup, wave, lost and already-endless with a deep compare,
+won exactly once, idle's loss, lost is final, greedy's targets,
+determinism, gold conservation over the 10 to 11 boundary, wavesCleared
+through call-early clears into endless, call early in endless and its
+refusal on 9 and 10 in a normal game, the non-endless state's keys),
+`src/game/highScore.test.ts` (28), `src/game/endlessText.test.ts` (4),
+one more `endText.test.ts` case. 717 unit tests in all. Browser:
+`e2e/endless.spec.ts` (6), `e2e/endless-touch.spec.ts` (1, tablet), and
+visual `title with a best score` and `endless wave 11 HUD`; `won.png`
+changes. 223 Playwright tests pass locally (pixel comparison skipped on
+macOS as always).
+
+### What went wrong
+
+- The scope's 1.15 per cycle missed the idle target by nine waves. The
+  combo build's margin after the boss was larger than the scope assumed.
+  Changed to 1.6 as above.
+- Two existing title-menu checks (`difficulty.spec.ts`,
+  `touch-verifier.spec.ts`) compared `ui()` with `toEqual`, so the new
+  `bestLine` field broke them; they now use `toMatchObject`.
+- A first draft of the browser spec saved frames to the scratchpad from a
+  committed file; moved to an uncommitted one-off spec.
+
+### For the verifier
+
+- The preview's per-type merge (above) is my choice, not in the brief.
+- Endless archetypes fire a cluster special each endless wave; the brief
+  did not say. Without specials the endless numbers would move.
+- Endless hp is not checked against the Hard hp rule (no Hard hp 1 or 2
+  above a multiple of 12, 4, 25 or 45). The brief did not ask for it.
+- Neither endless archetype reaches wave 11 on Hard. If endless on Hard
+  should be measured, a `hardBuild`-based endless script would be needed;
+  I did not add one.
+- `mergeBest` keeps the larger score only; the store never lowers a best.
+- Baselines: CI must regenerate `won.png` and create `title-best.png` and
+  `endless-hud.png` before the visual job passes on CI.
