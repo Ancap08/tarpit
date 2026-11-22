@@ -167,11 +167,37 @@ Sound cannot be judged by a screenshot or by the agents: Kyle is the
 judge. The implementer renders every sound into one audio file for him to
 hear before merge.
 
+## Milestone 34: a living map
+
+Kyle: "The map is a good place where we could make it seem complex while
+remaining simple to do." Drawing only: no rule, number or map data
+changes, and no new art files (shapes drawn in code, in the palette).
+
+- **Ground with texture.** Patches of lighter and darker grass, tufts,
+  small flowers and stones; a trail with pebbles, ruts and a soft edge
+  instead of one flat strip. Laid out by a fixed recipe per map, so a map
+  looks the same every time.
+- **Things growing.** A few trees and bushes, kept away from the trail so
+  they never hide enemies. Building on a cell clears what grows there;
+  selling brings it back. Nothing drawn may make a buildable cell look
+  blocked: the placement highlight stays the authority and must read
+  clearly over the new ground.
+- **Things moving.** Water that flows and glints on Riverbend; smoke from
+  the cottage chimney; a slow sway in grass and trees; soft cloud shadows
+  drifting across; now and then a bird or a butterfly; something alive in
+  the cave mouth.
+- **Readable first.** Enemies, towers, hp bars, zones and the trail must
+  stand out as well as they do today. Decoration is low in contrast and
+  sits under everything that matters.
+- **Limits.** Static ground is drawn once; moving things are few and
+  cheap; the performance floor holds. Motion stops under reduced motion.
+  In test mode the map is still and the same every run, so baselines are
+  stable (they change once, on purpose). Both layouts.
+
 ## Later milestones (order agreed, detail to come)
 
 | # | Milestone | Idea |
 |---|---|---|
-| 34 | A living map | Moving water, chimney smoke, trees, varied grass: rich to look at, simple to build |
 | 35 | Towers with personality | Upgrades that change the look |
 | 36 | Tabletop-art spike | One tower, one enemy and one patch of map in the stop-motion tabletop style, rendered off the Mac, for Kyle to judge before any full art pass |
 | 37 | Themed HUD | Replace the placeholder bar and panels |
