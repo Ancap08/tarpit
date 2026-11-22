@@ -6812,3 +6812,93 @@ Verifier: Claude Sonnet 5.5 (not the implementer). No `src/` change.
 - Only ears or a real phone settle: how any sound feels, harshness, the
   tier balance, whether small speakers carry the low sounds, iOS silent
   switch and first-tap unlock, hardware limiter behaviour.
+
+## 2026-11-23: milestone 34, living map
+
+Implementer: Claude Opus 5.5. Scope: `docs/SCOPE-v5.md`, "Milestone 34: a
+living map". Drawing only: `src/sim` untouched, `npm run sim` byte-identical
+to main, no new dependency, no art files.
+
+### What I built
+
+- **A fixed recipe per map** (`src/game/decor/recipe.ts`, pure, no
+  Phaser): every choice is a hash of the map id and a position or index.
+  `decorFor(map)` returns grass patches, tufts, flowers, stones, flower
+  beds, trail spots, ruts, pebbles and the trees and bushes, in world px,
+  so portrait shows the same place turned. Trees and bushes per map:
+  Meadow 8 and 8, Switchback 12 and 10, Riverbend 13 and 11. Placement and
+  hide rules are in `docs/DESIGN.md`, "Map decoration".
+- **Ground** (`draw/map.ts`): patches with a soft halo, tufts seen from
+  above, flowers in three colours, stones; the trail with a soft darker
+  margin, faint colour spots, two broken ruts and pebbles; the river with
+  a soft bank. Baked once into one RenderTexture per map and layout
+  (`decor/livingMap.ts`); the scene's shutdown destroys it and its
+  texture.
+- **Trees and bushes** are one Image each (textures made once per game
+  under fixed keys, shadow baked in). A tower on the cell hides it, with
+  a puff in play; selling or moving the tower brings it back. While a
+  tower is being placed they all fade to 30%.
+- **Moving things** (`decor/motion.ts`, pure time functions): river flow
+  lines and glints, chimney smoke, tuft and tree-top sway, 2 cloud
+  shadows, a bird, a butterfly, blinking eyes in the cave. Test mode and
+  reduced motion hold the frame at t = 0 (water and smoke stop too).
+- **Hook** `window.__tarpit.decor()` (also outside test mode): the growth
+  list, hidden ids, the fade, still or not, and where the moving things
+  are.
+
+### Evidence
+
+- Unit: `src/game/decor/recipe.test.ts`, 25 tests (same list for the
+  same map; counts in range on all three maps; no growth within two cells
+  of the trail, on water, near the cottage or river, under the keep-out
+  boxes or outside the grid; one growth per cell with stable ids;
+  `hiddenGrowth`; ground details off the strip, trail details on it;
+  motion bounds and timing). 1197 unit tests pass.
+- Browser: `e2e/decor.spec.ts` (9) and `e2e/decor-phone.spec.ts` (4): the
+  hook list equals the recipe in landscape and portrait; build hides, sell
+  and a planning-phase move restore; the highlight over a tree cell: the
+  trees fade, the outline is the "ok" green and the hovered tree cell's
+  mean colour is within 1 level of a hovered grass cell beside it (131
+  levels of change from no highlight); two test-mode loads give
+  byte-identical map frames; in play clouds, smoke, water and sway move
+  and a build puff shows and ends; under reduced motion nothing moves;
+  five layout switches and three Play agains leave texture and object
+  counts unchanged. Full Playwright run: 493 passed, 8 skipped.
+- Existing specs updated on purpose: the hook lists in `live.spec.ts` and
+  `test-hooks-gate.spec.ts` gain `decor`; `boss-verifier.spec.ts` (b)
+  reads each probe's ground colour before the boss arrives instead of
+  assuming a flat trail.
+- Perf: `e2e/perf.spec.ts` unchanged and passing in both cases and in the
+  phone case: median 16.7 ms, p95 16.7 to 16.8 ms, 301 ticks, before and
+  after (vsync-bound). Under 20x CPU throttling, 5 s, main against this
+  branch side by side: spread 173 and 174 against 145 and 145 frames,
+  packed 209 and 207 against 168 and 167 (about 16% and 20% fewer). The
+  cost is the full-map ground image blit (about 8%), the cloud shadows
+  (about 5%) and the growth images (about 3%); a first version with 3
+  clouds and separate shadow images cost 20 to 25%.
+- Readability (scratch spec, test mode, six busy frames, two per map,
+  same sim state on main and branch): for every enemy sprite outline
+  pixel, the RGB distance to the ground under it (the same frame with the
+  sprites hidden). Mean within 1.1% of main in every frame (worst -0.8%
+  after tuning); 10th percentile within 10% (worst Riverbend wave 7,
+  133.5 to 120.8: Harpies over the darker trail margin). The first
+  version lost 15.6% there; the margin, the trail spots and the cloud
+  shadows were lightened for it.
+- Determinism: `decorFor` is pure and tested twice per map; two loads
+  in test mode give byte-identical frames; the title frame is
+  byte-identical to main.
+- README demo re-recorded: `docs/media/tarpit.gif` 3.74 MB (3.23 MB
+  before). The textured ground made the old GIF settings give 6.37 MB, so
+  `record-demo.ts` now adds a light temporal denoise and a 128-colour
+  palette.
+
+### What went wrong
+
+- The first cut of the trail margin used translucent rings; overlapping
+  segment pieces would have doubled the alpha at every corner, so the
+  margin is two opaque blended rings.
+- The static water ripples crossed the new flow lines into little "+"
+  marks; the ripples were removed.
+- The first highlight check asked for the outline's exact colour; the
+  range circle's faint fill lies over it, so the check compares against
+  a hovered grass cell instead.

@@ -19,10 +19,13 @@ towers you can build on any free grass cell (not on the path, the river or
 the cottage), five enemy types (one of
 them flies, one carries a shield) and a boss, three difficulty levels, three
 special attacks, and play on a tablet. The enemies are placeholder pixel
-sprites; towers, maps and the HUD are simple shapes with labels until the
-art pass (see Status). Shots fly as musket balls, arrows,
+sprites; towers and the HUD are simple shapes with labels, and the maps are
+drawn in code, until the art pass (see Status). Shots fly as musket balls, arrows,
 cannonballs, mortar shells, tar globs and gouts of fire; towers turn and
 kick back, kills drop floating gold, and waves and the boss get banners.
+The maps are alive: textured grass and a worn dirt trail, trees and bushes
+that clear when you build on them, a flowing river, chimney smoke, drifting
+cloud shadows and the odd bird or butterfly, all still under reduced motion.
 
 ## How to play
 
