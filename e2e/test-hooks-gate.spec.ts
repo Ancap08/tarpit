@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 // Milestone 25c (B5): the test-only GameScene.spawnHorde works only with
 // ?test=1 or ?perf=1. Without them the page keeps its read-only hooks
-// (game, uiRects, canvasToPage, portraitCardVisible, animState, titleReady,
+// (game, uiRects, canvasToPage, layout, cellToPage, worldToPage, animState, titleReady,
 // and from milestone 31 fx and towerAngle;
 // live.spec.ts),
 // window.__tarpit has no spawnHorde, and calling the scene's method adds no
@@ -21,7 +21,7 @@ test('spawnHorde does nothing outside test and perf mode', async ({ page }) => {
     const ran = scene.spawnHorde(50);
     return { keys, ran, before, after: scene.state.enemies.length };
   });
-  expect(r.keys).toEqual(['animState', 'canvasToPage', 'fx', 'game', 'portraitCardVisible', 'titleReady', 'towerAngle', 'uiRects']);
+  expect(r.keys).toEqual(['animState', 'canvasToPage', 'cellToPage', 'fx', 'game', 'layout', 'titleReady', 'towerAngle', 'uiRects', 'worldToPage']);
   expect(r).toMatchObject({ ran: false, before: 0, after: 0 });
 });
 
@@ -37,6 +37,6 @@ test('spawnHorde works with ?perf=1 on the live loop', async ({ page }) => {
     return { ran: scene.spawnHorde(50), keys: Object.keys(t).length, alive: scene.state.enemies.length };
   });
   expect(r.ran).toBe(true);
-  expect(r.keys).toBe(8);
+  expect(r.keys).toBe(10); // milestone 32b: layout, cellToPage and worldToPage replaced portraitCardVisible
   expect(r.alive).toBeGreaterThanOrEqual(50);
 });

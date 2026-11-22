@@ -16,11 +16,13 @@
 // count ("Kills 43"); the panel grows by KILLS_LINE_H.
 
 import type Phaser from 'phaser';
-import { cellCenter, TARGETING_MODES, TOWER_DEFS, towerAt, towerSellValue, type Cell, type GameState, type TargetingMode } from '../../sim';
-import { KILLS_LINE_H, placeBeside, type Rect } from '../input';
+import { TARGETING_MODES, TOWER_DEFS, towerAt, towerSellValue, type Cell, type GameState, type TargetingMode } from '../../sim';
+import { placeBeside, type Rect } from '../input';
+import { fontPx, type Layout } from '../layout';
 import { killsLabel, PANEL_TEXT, targetingButtonText } from '../names';
 import { FONT, TEXT } from '../palette';
 import { ButtonStack } from './button';
+import { panelGeometry } from './geometry';
 
 export interface TowerPanelHandlers {
   onUpgrade: () => void;
@@ -40,15 +42,26 @@ export class TowerPanel {
   private mode: TargetingMode = 'first';
   /** The Upgrade slot shows "Undo upgrade" (milestone 25a). */
   private undo = false;
+  private readonly killsLineH: number;
 
-  constructor(scene: Phaser.Scene, handlers: TowerPanelHandlers) {
+  /** `layout` (milestone 32b) places the panel beside the tower inside the map's box on the screen. */
+  constructor(
+    scene: Phaser.Scene,
+    private readonly layout: Layout,
+    handlers: TowerPanelHandlers,
+  ) {
+    // Milestone 32b: portrait buttons are 220 x 70 with 18 px text, and the kills line is 18 px too.
+    const portrait = layout.kind === 'portrait';
+    const geo = panelGeometry(layout);
+    const f = (px: number) => fontPx(layout, px);
     this.stack = new ButtonStack(scene, [
-      { text: PANEL_TEXT.upgrade, right: '', onClick: () => (this.undo ? handlers.onUndoUpgrade() : handlers.onUpgrade()) },
-      { text: PANEL_TEXT.sell, right: '', onClick: handlers.onSell },
-      { text: targetingButtonText('first'), fontSize: '13px', onClick: () => handlers.onTarget(nextMode(this.mode)) },
-    ], handlers.onClose, KILLS_LINE_H);
+      { text: PANEL_TEXT.upgrade, right: '', fontSize: f(16), onClick: () => (this.undo ? handlers.onUndoUpgrade() : handlers.onUpgrade()) },
+      { text: PANEL_TEXT.sell, right: '', fontSize: f(16), onClick: handlers.onSell },
+      { text: targetingButtonText('first'), fontSize: f(13), onClick: () => handlers.onTarget(nextMode(this.mode)) },
+    ], handlers.onClose, geo.header, geo.size, portrait ? '30px' : '24px');
+    this.killsLineH = geo.header;
     this.killsText = scene.add
-      .text(0, 0, killsLabel(0), { fontFamily: FONT, fontSize: '13px', fontStyle: 'bold', color: TEXT.hudDim })
+      .text(0, 0, killsLabel(0), { fontFamily: FONT, fontSize: f(13), fontStyle: 'bold', color: TEXT.hudDim })
       .setOrigin(0, 0.5)
       .setVisible(false);
   }
@@ -64,10 +77,10 @@ export class TowerPanel {
 
   open(cell: Cell, state: GameState): void {
     this.at = cell;
-    const { x, y } = placeBeside(cellCenter(cell), this.stack.width, this.stack.height, state.map);
+    const { x, y } = placeBeside(this.layout.cellCenter(cell), this.stack.width, this.stack.height, state.map, this.layout);
     this.update(state);
     this.stack.show(x, y);
-    this.killsText.setPosition(x + this.stack.pad, y + this.stack.pad + KILLS_LINE_H / 2 - 2).setVisible(true);
+    this.killsText.setPosition(x + this.stack.pad, y + this.stack.pad + this.killsLineH / 2 - 2).setVisible(true);
   }
 
   close(): void {
@@ -84,7 +97,7 @@ export class TowerPanel {
     const [upgrade, sell, target] = this.stack.buttons;
     const cost = TOWER_DEFS[tower.type].upgradeCost;
     this.undo = state.phase === 'setup' && tower.upgraded && tower.upgradedThisPhase;
-    upgrade.setFontSize(this.undo ? '14px' : '16px');
+    upgrade.setFontSize(fontPx(this.layout, this.undo ? 14 : 16));
     if (this.undo) {
       upgrade.set(PANEL_TEXT.undoUpgrade, true, `+${cost}`);
     } else if (tower.upgraded) {

@@ -8,6 +8,7 @@
 
 import type Phaser from 'phaser';
 import { CELL, cellCenter, cellKey, nearestPathPoint, positionAlongPath, type Cell, type GameState, type MapDef, type Point, type TowerType } from '../../sim';
+import { LANDSCAPE, type Layout } from '../layout';
 import { COLORS } from '../palette';
 
 /** Barrel length from the tower centre; shot tracers start at the muzzle. */
@@ -71,7 +72,9 @@ function barrel(g: Phaser.GameObjects.Graphics, p: Point, angle: number, len: nu
  * One tower's shape at `p`, its barrel at `angle`. `alpha` scales every fill
  * and line (1 for a placed tower, lower for the placement ghost). `recoil`
  * (milestone 31, play only; 0 in test mode) slides the barrel, bow or tube
- * back by that many px.
+ * back by that many px. `g` is world-space; `layout` (milestone 32b) keeps
+ * the parts that have an up (the Fire Pot's flame, the Longbow's post, the
+ * Tar Pit's blobs and gloss) the right way up on a turned map.
  */
 export function drawTowerShape(
   g: Phaser.GameObjects.Graphics,
@@ -81,7 +84,9 @@ export function drawTowerShape(
   upgraded: boolean,
   alpha = 1,
   recoil = 0,
+  layout: Layout = LANDSCAPE,
 ): void {
+  const at = (dx: number, dy: number) => layout.offset(p, dx, dy);
   if (upgraded) {
     g.lineStyle(2, COLORS.upgradeRing, alpha);
     g.strokeCircle(p.x, p.y, 19);
@@ -105,16 +110,25 @@ export function drawTowerShape(
     case 'tarpit':
       g.fillStyle(COLORS.tarpit, alpha);
       g.fillCircle(p.x, p.y, 14);
-      g.fillCircle(p.x - 8, p.y + 6, 7);
-      g.fillCircle(p.x + 9, p.y + 5, 6);
+      for (const [dx, dy, r] of [
+        [-8, 6, 7],
+        [9, 5, 6],
+      ] as const) {
+        const b = at(dx, dy);
+        g.fillCircle(b.x, b.y, r);
+      }
       g.fillStyle(COLORS.tarpitHighlight, 0.85 * alpha);
-      g.fillCircle(p.x - 5, p.y - 5, 3);
+      {
+        const h = at(-5, -5);
+        g.fillCircle(h.x, h.y, 3);
+      }
       break;
     case 'longbow': {
+      const post = layout.ellipse(10, 26);
       g.fillStyle(COLORS.longbow, alpha);
-      g.fillRect(p.x - 5, p.y - 13, 10, 26);
+      g.fillRect(p.x - post.w / 2, p.y - post.h / 2, post.w, post.h);
       g.lineStyle(1.5, COLORS.longbowEdge, alpha);
-      g.strokeRect(p.x - 5, p.y - 13, 10, 26);
+      g.strokeRect(p.x - post.w / 2, p.y - post.h / 2, post.w, post.h);
       // Bow: an arc of radius 12 centred on the tower, 100 degrees wide,
       // bulging towards the target, with a pale string across its ends.
       const half = (50 * Math.PI) / 180;
@@ -157,7 +171,10 @@ export function drawTowerShape(
       g.strokeCircle(p.x, p.y, 13);
       // Flame: a yellow triangle standing on the pot's centre, its tip just above the rim.
       g.fillStyle(COLORS.firepotFlame, alpha);
-      g.fillTriangle(p.x - 6, p.y + 1, p.x + 6, p.y + 1, p.x, p.y - 16);
+      {
+        const [a, b, c] = [at(-6, 1), at(6, 1), at(0, -16)];
+        g.fillTriangle(a.x, a.y, b.x, b.y, c.x, c.y);
+      }
       break;
   }
 }
@@ -203,16 +220,17 @@ export function drawTowerScaled(
   pose: TowerPose,
   upgraded: boolean,
   alpha = 1,
+  layout: Layout = LANDSCAPE,
 ): void {
   if (pose.scale === 1) {
-    drawTowerShape(g, type, p, pose.angle, upgraded, alpha, pose.recoil);
+    drawTowerShape(g, type, p, pose.angle, upgraded, alpha, pose.recoil, layout);
     return;
   }
   g.save();
   g.translateCanvas(p.x, p.y);
   g.scaleCanvas(pose.scale, pose.scale);
   g.translateCanvas(-p.x, -p.y);
-  drawTowerShape(g, type, p, pose.angle, upgraded, alpha, pose.recoil);
+  drawTowerShape(g, type, p, pose.angle, upgraded, alpha, pose.recoil, layout);
   g.restore();
 }
 
@@ -227,11 +245,12 @@ export function drawTowers(
   aim: Aim,
   dimmed: Cell | null = null,
   pose?: (cell: Cell, type: TowerType) => TowerPose,
+  layout: Layout = LANDSCAPE,
 ): void {
   for (const tower of state.towers) {
     const dim = dimmed !== null && dimmed.col === tower.cell.col && dimmed.row === tower.cell.row;
     if (!tower.locked) drawUnlockedOutline(g, tower.cell, dim ? DRAG_ORIGIN_ALPHA : 0.9);
-    if (pose) drawTowerScaled(g, tower.type, cellCenter(tower.cell), pose(tower.cell, tower.type), tower.upgraded, dim ? DRAG_ORIGIN_ALPHA : 1);
-    else drawTowerShape(g, tower.type, cellCenter(tower.cell), aim.angle(tower.cell), tower.upgraded, dim ? DRAG_ORIGIN_ALPHA : 1);
+    if (pose) drawTowerScaled(g, tower.type, cellCenter(tower.cell), pose(tower.cell, tower.type), tower.upgraded, dim ? DRAG_ORIGIN_ALPHA : 1, layout);
+    else drawTowerShape(g, tower.type, cellCenter(tower.cell), aim.angle(tower.cell), tower.upgraded, dim ? DRAG_ORIGIN_ALPHA : 1, 0, layout);
   }
 }

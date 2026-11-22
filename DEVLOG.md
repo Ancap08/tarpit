@@ -6476,3 +6476,181 @@ mask, iOS storage eviction of the cache.
    own hashed name, deleted with that cache at the next update.
 6. **Shared origin (PR review).** The kill switch unregistered every worker on the origin and every `tarpit-` cache; activate and the retiring `sw.js` also matched any `tarpit-` cache, so two copies of the game on one origin would delete each other's. Now caches are named `tarpit|<scope path>|<version>`, only that prefix is deleted, and only the registration with exactly the game's scope is removed.
    Tested in `e2e/install.spec.ts` with a sibling site at `/other/` (own worker and cache) and a `/preview/` copy's cache on the same origin: the update to B, the off build and the retiring `sw.js` alone remove only `/tarpit/`'s worker and caches.
+
+## 2026-11-22: milestone 32b, portrait layout
+
+Implementer: Claude Opus 5.5. Scope: `docs/SCOPE-v5.md`, "Milestone 32b:
+portrait layout". Kyle: "how can I make it easier to play on a phone,
+like vertically". No simulation change: `npm run sim` is byte-identical
+to main.
+
+### What I built
+
+- **One layout object** (`src/game/layout.ts`, phase 1): every
+  world-to-screen and screen-to-world conversion. World-space Graphics
+  take its transform with `placeWorld()`; sprites, text, hp bars,
+  particles and banners are placed with `toScreen()`; input uses
+  `cellAt()`, `toWorld()` and `onMap()`. Landscape is the identity.
+- **Portrait** (phases 2 and 3): a window taller than it is wide gets a
+  480 x 1194 canvas: a 76 px status strip, the map turned a quarter turn
+  clockwise (480 x 960, spawn at the top), a row of six 75 x 70 tower
+  buttons (shape and cost) and a row with Special 130, Start Wave 214 and
+  speed 114 (70 tall). Portrait arrangements for the tower panel (220 x 70
+  buttons, inside the map), special popup, aim banner (at the map's foot),
+  wave and boss banners, boss bar, end screens (stacked 280 x 70 buttons)
+  and the title menu. Text is 18 px or more. Things with an up (arcs, the
+  lift, flyers, shadows, the Fire Pot's flame, the Longbow's post, the
+  falling fire arrows, the cottage) use the top of the screen.
+- **Switching** (`src/game/layoutSwitch.ts`, replacing `portrait.ts` and
+  the `#rotate-card`): on a change of window shape the canvas takes the
+  new size and the running scene restarts; a game restarts on the same
+  `GameState`, waves-cleared record and tick accumulator.
+- **Hooks:** `ui().layout`, and `layout()`, `cellToPage()` and
+  `worldToPage()` in and out of test mode (they replace
+  `portraitCardVisible()`).
+- **Pure geometry** for tests: `src/game/ui/geometry.ts` (stacks, panel
+  box, portrait controls, portrait title).
+
+### Sizes
+
+| | 390 x 763 (standalone) | 390 x 664 (Safari with bars) |
+|---|---|---|
+| Scale (canvas px to CSS px) | 0.639 | 0.556 |
+| Canvas on screen | 307 x 763 | 267 x 664 |
+| Control buttons (70 px) | 44.7 | 38.9 |
+| Tower buttons (75 x 70) | 47.9 x 44.7 | 41.7 x 38.9 |
+| 18 px text | 11.5 | 10.0 |
+| Map cell (32 px) | 20.5 | 17.8 |
+
+At 390 x 664 the buttons are under 44 px and text under 11 px: the scope
+asks for 44 px on the standalone phone only.
+
+### Tests
+
+- Unit: `src/game/layout.test.ts`, 23 tests: round trips for every cell
+  centre and the corners in both layouts, the transform against the
+  Graphics rotation, spawns at the top, facing, lift, arcs, the portrait
+  panel inside the map and off the tower for every buildable cell of
+  every map, and the controls' and title's arithmetic.
+- Playwright `phone` project (390 x 844, touch, device scale 3, files
+  ending `-phone.spec.ts`, plus `perf.spec.ts`'s packed case):
+  `e2e/portrait-phone.spec.ts` (16 tests) and `e2e/visual-phone.spec.ts`
+  (12 frames, no PNGs committed). `update-snapshots.yml` now also runs
+  `e2e/visual-phone.spec.ts`; CI already runs every project.
+- Rewritten rotate-card tests: `touch.spec.ts` (two tests),
+  `touch-verifier.spec.ts` (g), `install.spec.ts` (safe area),
+  `live.spec.ts` and `test-hooks-gate.spec.ts` (hook lists).
+- Landscape: every `visual.spec.ts` and `visual-tablet.spec.ts` frame
+  written on this Mac (`CI=1 --update-snapshots=all`) from main and from
+  each phase's tip is byte-identical (27 of 27).
+
+### What went wrong
+
+- My first edit script for `fx/effects.ts` matched against a copy of the
+  file I had read with its comments stripped, so several replacements
+  missed; the script stopped on the first miss and wrote nothing. Rewrote
+  it to report misses.
+- Phone tests: towers built beside the cave killed the first Goblins
+  before the facing check; a special hold that starts on the controls
+  cancels aiming (as in landscape), so the bottom-edge case presses on the
+  map and slides down.
+- The first aim banner sat at the map's top, over the spawn where enemies
+  bunch; moved to the map's foot.
+
+### For the verifier
+
+- Pixel identity of landscape: compare main and the tip as above.
+- The rotation in `layout.ts` (`toScreen`, `placeWorld`) and the places
+  that must stay upright: `draw/towers.ts`, `draw/map.ts` (cottage),
+  `draw/specials.ts` (flames, arrows), `fx/effects.ts` (arcs, shadows,
+  boss rings, cottage glow), `draw/enemies.ts`.
+- The switch mid-game (`GameScene.relayout`): tick continuity on the live
+  loop is checked only to within real time.
+- Frames on a real phone: cell size (20 CSS px), the tower icons in the
+  bar, and the letterbox (the canvas uses 307 of 390 px of width).
+
+### Verifier notes
+
+Verifier: Claude Sonnet 5.5, different model from the implementer.
+Verdict: merge after fixes (one data-loss bug in switching, one cosmetic).
+
+- **Unchanged things hold.** `src/sim` has no diff; `npm run sim` summary is
+  byte-identical to `origin/main`; no landscape baseline PNG is in the diff.
+  Eight landscape frames (title, each map with towers, each map mid-wave,
+  win) rendered from main and from the tip at 960 x 580 are byte-identical
+  (md5), so the landscape claim is checked locally, not only by CI.
+- **Suite.** lint, check:assets, typecheck, 1110 unit tests, build, check:size
+  green. `test:e2e` (all three projects) twice: 399 passed, 8 skipped (416 passed, 10 skipped with the verifier spec, whose 2 skips are the fixmes), no
+  flake; the phone project alone three more times: 29 passed each. The
+  skips are the known ones (plus the perf spec's phone-project skip).
+- **Probes added**: `e2e/portrait-verifier-phone.spec.ts`. cellToPage matches
+  the documented transform for all 450 cells; on every map 60 buildable cells
+  tapped arm exactly that cell (and its four inner corners); every tower type
+  dragged to the four corners and cells beside trail, water and cottage lands
+  under the lifted ghost, and refused cells (path, water, cottage, occupied)
+  refuse; the tower panel for 45 cells per map stays inside the map, above the
+  controls and off its own tower; sprites on all three maps (ground, flyers,
+  boss waves) sit on the transformed path, never below their ground point, and
+  face their screen direction on straight stretches; controls are at least 44
+  CSS px with 47/34 px insets and none overlap or scroll; title by touch; five
+  turns mid-wave add no listeners, objects or cameras and change no state;
+  switching during a drag, an open panel, aiming, a speed hold, an end screen
+  and the title leaves nothing stuck; a square window is landscape and
+  600 x 601 is portrait (one flip at the boundary, no flapping); an upright
+  iPad (768 x 1024) gets portrait and plays.
+- **Bug 1 (fixme, medium).** Two layout switches before the first restart's
+  `create()` runs (two resizes inside one frame; the test calls `relayout()`
+  twice) restart the scene twice. The second `create()` finds `resume`
+  already taken and builds a new game: gold, towers and wave are lost. One
+  switch, or switches a frame apart, are fine (checked at 16, 40, 100 ms).
+  Needs a guard in `relayout()` (skip when a restart is pending, or keep
+  `resume` until the last create).
+- **Bug 2 (fixme, low).** `shakeOffset` never scrolls down, which hides the
+  controls in landscape, but in portrait the status strip is above the map,
+  so the shake's upward scroll (up to 8 px) pulls the strip's dark bottom
+  edge into the top of the map for 220 to 600 ms (keg, boss entrance, boss
+  death). Seen in a screenshot with the offset held at -6.
+- **Doc fix made.** DESIGN.md said 6 px gaps everywhere; the tower row's gap
+  is 4 px (`PORTRAIT_BAR_GAP`), the second row's 6 px.
+- **Notes, not bugs.** The Gold cheat target is 120 x 30 canvas px (about
+  21 CSS px tall): it is a hidden cheat, not a button. DRAG_LIFT is 48 canvas
+  px, about 27 CSS px at 0.57 scale: that is a small lift for a thumb; judge
+  on a real phone. An upright iPad uses about 54 percent of its width.
+
+### Follow-up (Claude Opus 5.5, after the verifier's notes)
+
+1. **Two switches close together lost the game.** Cause: every
+   `relayout()` queued its own `scene.restart`; the first `create()` took
+   the carried game and the second built a fresh one. Fix: requests
+   coalesce. Each refreshes the carried game, only the first queues a
+   restart, and its `create()` takes the game (only a relayout's restart
+   does: Play again and the title start fresh) and reads the newest layout.
+   `update()` also rebuilds a scene drawn for another layout than the
+   window's. The verifier's test passes; a new test runs ten alternating
+   resizes with no wait, ending in each orientation.
+2. **A shake pulled the strip into the map.** Cause: the shake scrolls up
+   to 8 px upward, and in portrait the strip is above the map. Fix: in
+   portrait the map shakes sideways only; grass shows at the uncovered
+   side. The verifier's test passes and now also checks that the map moved.
+3. **The lift is a size on screen in portrait:** 48 CSS px (`liftPx`, 75
+   canvas px on a 390 x 763 phone, 68 on the 390 x 844 test phone).
+   Landscape keeps 48 canvas px: a CSS rule would make the tablet's
+   51.2 page px 48 and move its tests, so the on-screen rule is portrait
+   only. `ui().lift` reports it and the phone helpers use it. Unit tests
+   check the top and bottom screen rows at the largest lift (Safari with
+   bars); the drag and special tests reach all four edges.
+4. **The aim instruction is in the strip in portrait,** replacing the
+   preview's two lines; nothing is drawn over the map. The touch hint is
+   56 characters and a strip line holds 43 at 18 px, so "Special again
+   cancels." is left out on touch (the Special button shows picked while
+   aiming). Wave and boss banners cover canvas y 196 to 280 and 246 to
+   346: not the cave (y 46 to 106, mostly under the strip) nor the cottage
+   (the map's foot), so they stay.
+
+Checks: lint, check:assets, typecheck, 1113 unit tests, build,
+check:size, 421 Playwright tests (8 skipped) on chromium, tablet and
+phone; `npm run sim` byte-identical to main; landscape frames
+byte-identical to main (27 of 27, re-run).
+- **Re-verify of 2bcc13b.** Both earlier fixmes pass unweakened (switch race, shake). New probes pass: a relayout during `create()`, Play again plus relayout in one frame (fresh game, not the old one), the title-to-game transition, a won screen with a switch and Keep going, a burst of 8 switches on the live loop (ticks within real time, no extra tick), the lift (48 CSS px) reaching every map edge by tower drag and special aim at 390 x 844, 390 x 664 and 768 x 1024 with the cancel rules, the aim text in the strip with the preview back after cancel and fire, and 8 landscape frames still byte-identical to main.
+- **Open, low (fixme).** `toMenu()` then `relayout()` in the same frame leaves the title and a restarted game scene both active (`relayout()` does not know the scene is leaving). It needs a turn in the same frame as the Menu tap.
+- **Fixed (Claude Opus 5.5): a switch in the frame the scene leaves.** Play again and Menu mark the game scene as leaving, and `relayout()` then does nothing (the next scene reads the layout itself); a switch in the same frame as Play, Play again (either order), Menu, Keep going, the losing tick or the winning tick leaves exactly one scene, in the window's layout, with the right game (`portrait-phone.spec.ts`, "switch edge"); the verifier's fixme passes unchanged.

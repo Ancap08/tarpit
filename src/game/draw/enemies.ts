@@ -14,6 +14,7 @@
 import type Phaser from 'phaser';
 import { ENEMY_STATS, enemyMaxHp, enemyPosition, isTarred, type Enemy, type EnemyType, type GameState } from '../../sim';
 import { SHEETS } from '../anim/sheets';
+import { LANDSCAPE, type Layout } from '../layout';
 import { COLORS } from '../palette';
 
 /** Status ring base radius per type: just outside the sprite's body. */
@@ -50,14 +51,16 @@ export function shadowOf(type: EnemyType): typeof SHADOW | typeof BOSS_SHADOW | 
 }
 
 /** Ground shadows for every flying enemy and the boss, drawn on the ground under all sprites. */
-export function drawShadows(g: Phaser.GameObjects.Graphics, state: GameState): void {
+export function drawShadows(g: Phaser.GameObjects.Graphics, state: GameState, layout: Layout = LANDSCAPE): void {
+  // `g` is world-space (milestone 32b): the offset is down the screen and the ellipse wide on screen in any layout.
   for (const enemy of state.enemies) {
     const shadow = shadowOf(enemy.type);
     if (!shadow) continue;
-    const { x, y } = enemyPosition(enemy, state.map);
+    const { x, y } = layout.offset(enemyPosition(enemy, state.map), 0, shadow.offsetY);
     for (const e of [shadow.outer, shadow.inner]) {
+      const size = layout.ellipse(e.w, e.h);
       g.fillStyle(COLORS.shadow, e.alpha);
-      g.fillEllipse(x, y + shadow.offsetY, e.w, e.h);
+      g.fillEllipse(x, y, size.w, size.h);
     }
   }
 }
@@ -96,24 +99,26 @@ export function statusRings(
  * px up). Towers never tar or burn a flyer, but a special can (milestone
  * 25b), so a Harpy shows the rings when its state says so.
  */
-export function drawStatusRings(g: Phaser.GameObjects.Graphics, state: GameState): void {
+export function drawStatusRings(g: Phaser.GameObjects.Graphics, state: GameState, layout: Layout = LANDSCAPE): void {
+  // `g` is world-space (milestone 32b): the lift is up the screen in any layout.
   for (const enemy of state.enemies) {
-    const { x, y } = enemyPosition(enemy, state.map);
+    const { x, y } = layout.offset(enemyPosition(enemy, state.map), 0, -spriteLift(enemy.type));
     for (const ring of statusRings(enemy)) {
       g.lineStyle(3, ring.color, 1);
-      g.strokeCircle(x, y - spriteLift(enemy.type), RING_RADIUS[enemy.type] + ring.offset);
+      g.strokeCircle(x, y, RING_RADIUS[enemy.type] + ring.offset);
     }
   }
 }
 
 /** Hp bars for hurt enemies, drawn over the sprites. Not for the boss: the HUD boss bar shows his. */
-export function drawHpBars(g: Phaser.GameObjects.Graphics, state: GameState): void {
+export function drawHpBars(g: Phaser.GameObjects.Graphics, state: GameState, layout: Layout = LANDSCAPE): void {
+  // `g` is screen-space (milestone 32b): a bar stays level above its sprite in any layout.
   for (const enemy of state.enemies) {
     // Full hp on this level (milestone 25): Easy and Hard scale it; an
     // endless wave's enemy carries its own (milestone 26).
     const maxHp = enemy.maxHp ?? enemyMaxHp(enemy.type, state.difficulty);
     if (enemy.hp < maxHp && enemy.type !== 'boss') {
-      const { x, y } = enemyPosition(enemy, state.map);
+      const { x, y } = layout.toScreen(enemyPosition(enemy, state.map));
       const fraction = Math.max(0, enemy.hp) / maxHp;
       const left = Math.round(x - BAR_WIDTH / 2);
       const top = Math.round(y - spriteLift(enemy.type) - spriteHalfHeight(enemy.type) - BAR_GAP - BAR_HEIGHT - 1);

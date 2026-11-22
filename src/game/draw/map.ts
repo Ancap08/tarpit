@@ -4,6 +4,7 @@
 
 import type Phaser from 'phaser';
 import type { MapDef, Point, Rect } from '../../sim';
+import { LANDSCAPE, type Layout } from '../layout';
 import { COLORS } from '../palette';
 
 export const PATH_WIDTH = 40;
@@ -134,7 +135,12 @@ export function drawMapThumbnail(g: Phaser.GameObjects.Graphics, map: MapDef, x:
   }
 }
 
-export function drawMap(g: Phaser.GameObjects.Graphics, map: MapDef): void {
+/**
+ * `g` is world-space (placed with layout.placeWorld). Milestone 32b: on a
+ * turned map the cottage would lie on its side, so it is drawn upright on
+ * `upright`, a screen-space Graphics over `g`, centred where its box lands.
+ */
+export function drawMap(g: Phaser.GameObjects.Graphics, map: MapDef, layout: Layout = LANDSCAPE, upright?: Phaser.GameObjects.Graphics): void {
   g.fillStyle(COLORS.grass, 1);
   g.fillRect(0, 0, map.width, map.height);
 
@@ -142,5 +148,12 @@ export function drawMap(g: Phaser.GameObjects.Graphics, map: MapDef): void {
   thickPath(g, map.path, PATH_WIDTH + 4, COLORS.pathEdge);
   thickPath(g, map.path, PATH_WIDTH, COLORS.path);
   spawnMarker(g, map.path[0]);
-  for (const box of map.landmarks ?? []) exitCottage(g, box);
+  for (const box of map.landmarks ?? []) {
+    if (!layout.turned || !upright) {
+      exitCottage(g, box);
+      continue;
+    }
+    const c = layout.toScreen({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
+    exitCottage(upright, { x: c.x - box.width / 2, y: c.y - box.height / 2, width: box.width, height: box.height });
+  }
 }

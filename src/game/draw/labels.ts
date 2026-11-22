@@ -13,6 +13,7 @@
 
 import type Phaser from 'phaser';
 import { cellCenter, cellKey, type GameState, type Tower } from '../../sim';
+import { LANDSCAPE, type Layout } from '../layout';
 import { TOWER_SHORT_LABELS } from '../names';
 import { FONT, TEXT } from '../palette';
 
@@ -107,7 +108,16 @@ export class TowerLabels {
   private readonly labels = new Map<number, Phaser.GameObjects.Text>();
   private readonly layer: Phaser.GameObjects.Layer;
 
-  constructor(private readonly scene: Phaser.Scene) {
+  /**
+   * Milestone 32b: labels are drawn in landscape only. In portrait a 12 px
+   * label would be under 8 CSS px on a 390 px phone, and at the 18 px that
+   * reads as 11 CSS px a label spans two to three 20 px cells, so portrait
+   * shows none; towers are told apart by their shapes.
+   */
+  constructor(
+    private readonly scene: Phaser.Scene,
+    private readonly layout: Layout = LANDSCAPE,
+  ) {
     this.layer = scene.add.layer();
   }
 
@@ -115,7 +125,7 @@ export class TowerLabels {
     const key = cellKey(tower.cell);
     let label = this.labels.get(key);
     if (!label) {
-      const p = cellCenter(tower.cell);
+      const p = this.layout.toScreen(cellCenter(tower.cell));
       const above = labelAbove(p.y);
       label = this.scene.add
         .text(p.x, above ? p.y - LABEL_OFFSET_Y : p.y + LABEL_OFFSET_Y, '', {
@@ -135,6 +145,7 @@ export class TowerLabels {
   }
 
   update(state: GameState): void {
+    if (this.layout.kind !== 'landscape') return;
     const layout = layoutLabels(state.towers);
     const shown = new Set<number>();
     for (const tower of state.towers) {
@@ -146,7 +157,7 @@ export class TowerLabels {
       if (label.text !== text || label.style.fontSize !== fontSize) {
         label.setText(text);
         label.setFontSize(fontSize);
-        label.setX(labelX(cellCenter(tower.cell).x, label.width));
+        label.setX(labelX(this.layout.toScreen(cellCenter(tower.cell)).x, label.width));
       }
       if (!visible) continue;
       shown.add(key);

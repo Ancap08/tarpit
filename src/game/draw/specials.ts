@@ -15,6 +15,7 @@
 
 import type Phaser from 'phaser';
 import type { GameEvent, GameState, SpecialType, Zone } from '../../sim';
+import { LANDSCAPE, type Layout } from '../layout';
 import { specialResultText } from '../names';
 import { COLORS, FONT, TEXT } from '../palette';
 
@@ -82,14 +83,17 @@ export class SpecialEffects {
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly frozen: boolean,
+    private readonly layout: Layout = LANDSCAPE,
   ) {}
 
   /** A special landed: its `special` event. */
   add(e: Extract<GameEvent, { kind: 'special' }>): void {
     this.blasts.push({ type: e.type, x: e.x, y: e.y, radius: e.radius, ageMs: 0 });
     if (e.type === 'keg') this.scorches.push({ x: e.x, y: e.y, radius: e.radius * 0.7, ageMs: 0 });
+    // The label is upright text on the screen (milestone 32b): placed through the layout, rising up the screen.
+    const at = this.layout.toScreen({ x: e.x, y: e.y });
     const text = this.scene.add
-      .text(e.x, e.y, specialResultText(e.hits), {
+      .text(at.x, at.y, specialResultText(e.hits), {
         fontFamily: FONT,
         fontSize: '18px',
         fontStyle: 'bold',
@@ -99,8 +103,8 @@ export class SpecialEffects {
       })
       .setOrigin(0.5, 1)
       .setDepth(5);
-    this.labels.push({ text, y0: e.y - 6, ageMs: 0 });
-    text.setY(e.y - 6);
+    this.labels.push({ text, y0: at.y - 6, ageMs: 0 });
+    text.setY(at.y - 6);
   }
 
   /** Let `ms` pass: in play once per frame with the frame time; in test mode 1000/60 per tick. */
@@ -193,7 +197,10 @@ export class SpecialEffects {
       const flicker = this.frozen ? 1 : 0.75 + 0.25 * Math.sin(this.timeMs / 90 + i * 1.7);
       const h = 14 * flicker;
       g.fillStyle(i % 3 === 0 ? COLORS.fireBurstCore : COLORS.fireFlame, 0.9 * fade);
-      g.fillTriangle(x - 5, y + 4, x + 5, y + 4, x, y + 4 - h);
+      // Flames point up the screen in any layout (milestone 32b).
+      const foot = this.layout.offset({ x, y }, 0, 4);
+      const [a, b, c] = [this.layout.offset(foot, -5, 0), this.layout.offset(foot, 5, 0), this.layout.offset(foot, 0, -h)];
+      g.fillTriangle(a.x, a.y, b.x, b.y, c.x, c.y);
     }
   }
 
@@ -223,9 +230,10 @@ export class SpecialEffects {
           for (let i = 0; i < ARROWS; i++) {
             const ang = (i * 2 * Math.PI) / ARROWS + 0.4;
             const r = f.radius * (i % 2 === 0 ? 0.6 : 0.3);
-            const tx = f.x + Math.cos(ang) * r;
-            const y = f.y + Math.sin(ang) * r - ARROW_FALL * (1 - fall);
-            g.lineBetween(tx - 3, y - ARROW_LENGTH, tx, y);
+            // The arrows fall down the screen in any layout (milestone 32b).
+            const head = this.layout.offset({ x: f.x + Math.cos(ang) * r, y: f.y + Math.sin(ang) * r }, 0, -ARROW_FALL * (1 - fall));
+            const tail = this.layout.offset(head, -3, -ARROW_LENGTH);
+            g.lineBetween(tail.x, tail.y, head.x, head.y);
           }
           break;
         }

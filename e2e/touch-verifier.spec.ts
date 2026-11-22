@@ -122,7 +122,8 @@ test.describe('(f) 1366x1024', () => {
   });
 });
 
-test('(g) portrait without test mode: card visible and no ticks; landscape: hidden and ticks', async ({ page }) => {
+// Milestone 32b: there is no card any more; portrait is a layout and the wave keeps running.
+test('(g) portrait without test mode: the portrait layout and ticks; landscape: the landscape layout and ticks', async ({ page }) => {
   await page.goto('/');
   await waitForTitle(page);
   await tap(page, 'title:play'); // milestone 25: only Play starts the game
@@ -130,12 +131,12 @@ test('(g) portrait without test mode: card visible and no ticks; landscape: hidd
   const tick = () => page.evaluate(() => (window.__tarpit!.game.scene.getScene('game') as unknown as { state: { tick: number } }).state.tick);
   await tap(page, 'startWave'); // a wave is running, so ticks have something to do
   await page.setViewportSize({ width: 768, height: 1024 });
-  await expect(page.locator('#rotate-card')).toBeVisible();
+  await page.waitForFunction(() => window.__tarpit!.layout() === 'portrait');
   const t0 = await tick();
   await page.waitForTimeout(600);
-  expect(await tick()).toBe(t0);
+  expect(await tick()).toBeGreaterThan(t0);
   await page.setViewportSize({ width: 1024, height: 768 });
-  await expect(page.locator('#rotate-card')).toBeHidden();
+  await page.waitForFunction(() => window.__tarpit!.layout() === 'landscape');
   const t1 = await tick();
   await page.waitForTimeout(600);
   expect(await tick()).toBeGreaterThan(t1);

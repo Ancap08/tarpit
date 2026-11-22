@@ -666,6 +666,69 @@ depends on them (`npm run sim` is unchanged). The maths is in
   tracers, barrels snap to each shot, and hits and kills react at once, so
   the screenshot baselines are unchanged.
 
+## Layouts
+
+Milestone 32b. No game rule changes: the simulation, its numbers, the maps
+and the best scores are the same in both layouts; only where things are
+drawn and where touches land differ.
+
+- **When.** A window taller than it is wide gets the portrait layout; any
+  other window (square included) gets the landscape one. Desktop windows
+  follow the same rule. The milestone 14 "turn your device" card is gone.
+- **Landscape** is the 960 x 580 canvas as before: the map at the top
+  (960 x 480), the HUD's two rows under it. Its frames did not move.
+- **Portrait** is a 480 x 1194 canvas. From the top: a 76 px status strip
+  (gold, lives, wave and level tag in one row, "cheat used" at its right
+  end, the next-wave preview on up to two lines under them), the map
+  turned a quarter turn clockwise (480 x 960, spawn at the top, cottage at
+  the bottom), then the controls: a row of the six tower buttons (75 x 70,
+  each the tower's map shape over its cost, because a name at 18 px does
+  not fit 75 px) and a row with Special (130 x 70), Start Wave (214 x 70)
+  and speed (114 x 70). The tower buttons are 4 px apart and the second row's 6 px; both rows start 5 px from the edge. Portrait text is 18 px or more.
+  On a 390 x 763 CSS px phone (standalone, inside the safe areas) the
+  canvas fits at 0.639: buttons are 44.7 CSS px, text 11.5 CSS px and a
+  map cell 20.5 CSS px. With Safari's bars (390 x 664) the scale is 0.556:
+  buttons 38.9, text 10.0 and cells 17.8 CSS px.
+- **The transform.** `src/game/layout.ts` owns every world-to-screen and
+  screen-to-world conversion. Portrait: screen x = 480 - world y, screen
+  y = 76 + world x (world x runs down the screen, world y right to left).
+  Landscape is the identity. World-space Graphics (map, zones, towers,
+  range circles, ghost, projectiles, impacts) take the transform whole;
+  sprites, text, hp bars, particles and banners are placed through it and
+  stay upright. Anything with an up (arcs, the ghost's and the aim's lift,
+  flyers' lift, shadows, the Fire Pot's flame, the Longbow's post, the
+  falling fire arrows, the cottage) uses the top of the screen. The touch
+  lift (drag ghost and special aim) is 48 canvas px in landscape, as
+  before, and 48 CSS px on screen in portrait (`input.ts` `liftPx`: 75
+  canvas px on a 390 x 763 phone); a finger may rest on the controls to
+  reach the bottom rows, and a press that starts on the controls still
+  cancels aiming. Sprites
+  face the way they move on the screen; Wolves and the boss have only side
+  frames, so walking down the screen they show their right-facing side.
+- **Portrait arrangements.** Tower labels are not drawn (a readable label
+  spans two or three cells). The tower panel (220 x 70 buttons, 70 px
+  close) opens beside the tower inside the map. The special popup opens
+  above the controls. While aiming, the instruction replaces the preview
+  in the status strip (the main line, then the hint's sentences that fit
+  one line: on touch "Special again cancels." is left out) and nothing is
+  drawn over the map. Wave and boss banners stay centred 150 and 200 px
+  below the map's top (canvas y 196 to 280 and 246 to 346): under the
+  cave's 30 px and far above the cottage at the map's foot. The boss bar
+  is a 360 px bar at the map's top. A shake moves the map sideways only
+  (the strip is above it and the controls below), with grass at the
+  uncovered side. End screens stack their buttons
+  (280 x 70). The title stacks the title, the level row (144 x 70), the map
+  row (144 x 116), the best line, Play (260 x 80) and the prompt.
+- **Switching.** When the window changes shape (`layoutSwitch.ts`) the
+  canvas takes the new size and the running scene rebuilds: the title keeps
+  its picks; a game keeps its simulation state, its recorded waves cleared
+  and its tick accumulator, so no tick is lost or run twice. The switch
+  clears the pick, a drag, the panel, the special popup and aiming, and
+  returns the speed to 1x; effects in flight start fresh. Requests
+  coalesce: a burst of resizes queues one restart, which carries the game
+  and is drawn for the window's shape when it runs; a scene drawn for
+  another layout than the window's rebuilds on its next frame.
+
 ## Install and offline
 
 Milestone 32a. No game rule changes. `public/manifest.webmanifest` (name,

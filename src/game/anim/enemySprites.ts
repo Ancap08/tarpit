@@ -41,6 +41,7 @@ import { effectiveSlow, ENEMY_STATS, enemyPosition, isTarred, positionAlongPath,
 import { bobOffset, DEATH_MS, burnPulse, FLAME_EVERY, HIT_FLASH_MS, Particles, statusTint, TINT } from './effects';
 import { awayFrom, deathPuff, KNOCK_MS, knockPx, knockShare } from '../fx/fxMath';
 import { facingAt } from './facing';
+import { LANDSCAPE, type Layout } from '../layout';
 import { COLORS } from '../palette';
 import { FACINGS, SHEETS, walkAnimKey, WALK_FPS, type Facing } from './sheets';
 
@@ -133,9 +134,11 @@ export class EnemySprites {
   private airLayer: Phaser.GameObjects.Layer;
   private readonly particles: Particles | null;
 
+  /** `layout` (milestone 32b) places every sprite on the screen and turns its facing with the map. */
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly frozen: boolean,
+    private readonly layout: Layout = LANDSCAPE,
   ) {
     ensureAnims(scene);
     this.layer = scene.add.layer();
@@ -174,7 +177,7 @@ export class EnemySprites {
     v.hitThisTick = true;
     v.hitUntil = this.scene.time.now + HIT_FLASH_MS;
     if (from && !this.frozen) {
-      const d = awayFrom(from, { x: v.sprite.x, y: v.sprite.y });
+      const d = awayFrom(this.layout.toScreen(from), { x: v.sprite.x, y: v.sprite.y });
       const px = knockPx(v.type);
       v.knockX = d.x * px;
       v.knockY = d.y * px;
@@ -261,7 +264,7 @@ export class EnemySprites {
   /** A doomed sprite walks on along the trail at its last speed until its shot lands (play only). */
   private walkOn(v: View, map: MapDef, timeScale: number): void {
     const ticks = ((this.scene.time.now - v.doomedAt) / (1000 / 60)) * timeScale;
-    const { x, y } = positionAlongPath(map, v.distance + v.stepPx * ticks);
+    const { x, y } = this.layout.toScreen(positionAlongPath(map, v.distance + v.stepPx * ticks));
     const lift = SHEETS[v.type].lift ?? 0;
     v.sprite.setPosition(x, y - lift).setDepth(y);
     v.sprite.anims.timeScale = timeScale;
@@ -311,7 +314,7 @@ export class EnemySprites {
       redraws: 0,
     };
     this.views.set(enemy.id, view);
-    this.setFacing(view, facingAt(map, enemy.distance, this.step(enemy)), true);
+    this.setFacing(view, facingAt(map, enemy.distance, this.step(enemy), this.layout), true);
     return view;
   }
 
@@ -332,7 +335,7 @@ export class EnemySprites {
   }
 
   private update(v: View, enemy: Enemy, map: MapDef, timeScale: number): void {
-    const { x, y } = enemyPosition(enemy, map);
+    const { x, y } = this.layout.toScreen(enemyPosition(enemy, map));
     const lift = SHEETS[v.type].lift ?? 0;
     const bob = v.flying && !this.frozen ? bobOffset(this.scene.time.now, enemy.id) : 0;
     if (v.knockAt >= 0 && this.scene.time.now - v.knockAt >= KNOCK_MS) v.knockAt = -1;
@@ -348,7 +351,7 @@ export class EnemySprites {
       // Just in front of its own sprite, behind any walker lower on screen.
       v.shield.setDepth(y + 0.5);
     }
-    this.setFacing(v, facingAt(map, enemy.distance, this.step(enemy)));
+    this.setFacing(v, facingAt(map, enemy.distance, this.step(enemy), this.layout));
     v.sprite.anims.timeScale = timeScale;
     v.distance = enemy.distance;
     v.stepPx = this.step(enemy);

@@ -5,7 +5,7 @@ import { waitForTitle } from './title';
 // ?renderer=canvas so the frame rate, and so the tick rate, does not depend
 // on GPU availability (headless Chromium without a GPU renders WebGL in
 // software at about 4 fps). The WebGL check is in renderer.spec.ts. window.__tarpit holds
-// `game` and the read-only uiRects(), canvasToPage(), portraitCardVisible(), animState() and titleReady() here, so the clicks go where the HUD
+// `game` and the read-only uiRects(), canvasToPage(), layout(), cellToPage(), worldToPage(), animState() and titleReady() here, so the clicks go where the HUD
 // buttons are drawn (canvas == page at the 960x580 test viewport).
 
 type LiveState = { tick: number; enemies: unknown[]; phase: string };
@@ -46,12 +46,15 @@ test('live loop ticks, spawns enemies, and 2x runs faster', async ({ page }) => 
     'animState',
     'canvasToPage',
     // Milestone 31: the effects' read-only counts and a tower's drawn barrel angle.
+    // Milestone 32b: cellToPage, layout (it replaced portraitCardVisible) and worldToPage.
+    'cellToPage',
     'fx',
     'game',
-    'portraitCardVisible',
+    'layout',
     'titleReady',
     'towerAngle',
     'uiRects',
+    'worldToPage',
   ]);
   await clickButton(page, 'startWave');
   const t0 = await read();

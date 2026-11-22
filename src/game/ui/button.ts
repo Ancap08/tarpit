@@ -10,6 +10,7 @@
 import Phaser from 'phaser';
 import type { Rect } from '../input';
 import { COLORS, FONT, TEXT } from '../palette';
+import { STACK_GAP, STACK_PAD, STACK_SIZE, stackBox, type StackSize } from './geometry';
 
 export interface ButtonOptions {
   fontSize?: string;
@@ -19,6 +20,8 @@ export interface ButtonOptions {
   onHover?: (over: boolean) => void;
   /** Called when a press starts on the button (milestone 30: the speed button's hold), enabled or not. */
   onPress?: () => void;
+  /** Milestone 32b: the label's centre, in px from the button's top (default: the middle). */
+  labelY?: number;
 }
 
 const PAD_X = 10;
@@ -28,6 +31,7 @@ export class Button {
   private readonly label: Phaser.GameObjects.Text;
   private readonly rightLabel: Phaser.GameObjects.Text | null;
   private readonly onHover?: (over: boolean) => void;
+  private readonly labelY?: number;
   private r: Rect;
   private enabled = true;
   private hover = false;
@@ -38,6 +42,7 @@ export class Button {
   constructor(scene: Phaser.Scene, rect: Rect, text: string, onClick: () => void, options: ButtonOptions = {}) {
     this.r = { ...rect };
     this.onHover = options.onHover;
+    this.labelY = options.labelY;
     const style = { fontFamily: FONT, fontSize: options.fontSize ?? '18px', fontStyle: 'bold', color: TEXT.button };
     this.box = scene.add.rectangle(0, 0, rect.width, rect.height, COLORS.button).setOrigin(0, 0);
     if (options.right === undefined) {
@@ -118,7 +123,7 @@ export class Button {
     this.r.x = x;
     this.r.y = y;
     this.box.setPosition(x, y);
-    const mid = y + this.r.height / 2;
+    const mid = y + (this.labelY ?? this.r.height / 2);
     if (this.rightLabel) {
       this.label.setPosition(x + PAD_X, mid);
       this.rightLabel.setPosition(x + this.r.width - PAD_X, mid);
@@ -162,13 +167,7 @@ export class Button {
   }
 }
 
-export const STACK_BUTTON_WIDTH = 156;
-/** 42 px: at least 44 px on screen at iPad landscape scale (milestone 14). */
-export const STACK_BUTTON_HEIGHT = 42;
-/** The square close button in the stack's top-right corner. */
-export const STACK_CLOSE_SIZE = 42;
-const STACK_GAP = 4;
-const STACK_PAD = 6;
+export { STACK_BUTTON_HEIGHT, STACK_BUTTON_WIDTH, STACK_CLOSE_SIZE, STACK_SIZE, type StackSize } from './geometry';
 
 export interface StackItem {
   text: string;
@@ -200,24 +199,28 @@ export class ButtonStack {
   /** Room above the first button for a caption line (milestone 25c: the panel's kill count). */
   readonly header: number;
 
-  constructor(scene: Phaser.Scene, items: StackItem[], onClose?: () => void, header = 0) {
+  private readonly size: StackSize;
+
+  constructor(scene: Phaser.Scene, items: StackItem[], onClose?: () => void, header = 0, size: StackSize = STACK_SIZE, closeFont = '24px') {
     this.header = header;
-    this.width = STACK_BUTTON_WIDTH + 2 * STACK_PAD + (onClose ? STACK_GAP + STACK_CLOSE_SIZE : 0);
-    this.height = 2 * STACK_PAD + header + items.length * STACK_BUTTON_HEIGHT + (items.length - 1) * STACK_GAP;
+    this.size = size;
+    const box = stackBox(size, items.length, header, onClose !== undefined);
+    this.width = box.width;
+    this.height = box.height;
     this.backing = scene.add
       .rectangle(0, 0, this.width, this.height, COLORS.menuBg, 0.92)
       .setOrigin(0, 0)
       .setStrokeStyle(1.5, COLORS.menuEdge, 0.8)
       .setVisible(false);
     this.buttons = items.map((item) =>
-      new Button(scene, { x: 0, y: 0, width: STACK_BUTTON_WIDTH, height: STACK_BUTTON_HEIGHT }, item.text, item.onClick, {
+      new Button(scene, { x: 0, y: 0, width: size.buttonW, height: size.buttonH }, item.text, item.onClick, {
         fontSize: item.fontSize ?? '16px',
         right: item.right,
         onHover: item.onHover,
       }),
     );
     this.close = onClose
-      ? new Button(scene, { x: 0, y: 0, width: STACK_CLOSE_SIZE, height: STACK_CLOSE_SIZE }, '\u00d7', onClose, { fontSize: '24px' })
+      ? new Button(scene, { x: 0, y: 0, width: size.close, height: size.close }, '\u00d7', onClose, { fontSize: closeFont })
       : null;
     for (const b of this.all()) b.setShown(false);
   }
@@ -239,9 +242,9 @@ export class ButtonStack {
   show(x: number, y: number): void {
     this.backing.setPosition(x, y).setVisible(true);
     this.buttons.forEach((b, i) => {
-      b.moveTo(x + STACK_PAD, y + STACK_PAD + this.header + i * (STACK_BUTTON_HEIGHT + STACK_GAP));
+      b.moveTo(x + STACK_PAD, y + STACK_PAD + this.header + i * (this.size.buttonH + STACK_GAP));
     });
-    this.close?.moveTo(x + this.width - STACK_PAD - STACK_CLOSE_SIZE, y + STACK_PAD);
+    this.close?.moveTo(x + this.width - STACK_PAD - this.size.close, y + STACK_PAD);
     for (const b of this.all()) b.setShown(true);
     this.open = true;
   }

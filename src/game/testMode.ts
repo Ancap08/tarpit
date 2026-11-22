@@ -1,6 +1,6 @@
 // Test mode (?test=1): time is frozen and window.__tarpit exposes hooks for
 // Playwright. Outside test mode window.__tarpit holds the Phaser game and the
-// read-only uiRects(), canvasToPage(), portraitCardVisible(), animState() and
+// read-only uiRects(), canvasToPage(), layout(), cellToPage(), worldToPage(), animState() and
 // titleReady() (milestone 26 follow-up), so real-time
 // tests and the demo recorder click the HUD (and, from milestone 25, the
 // title menu) where it is drawn at any viewport size.
@@ -26,7 +26,7 @@ import {
 } from '../sim';
 import type { GameScene } from './GameScene';
 import { highScores } from './highScore';
-import { portraitCardVisible } from './portrait';
+import { currentLayout } from './layoutSwitch';
 import type { TarpitTestApi } from './testGlobal';
 import type { TitleScene } from './TitleScene';
 
@@ -155,7 +155,16 @@ export function installGlobal(game: Phaser.Game): void {
     uiRects: () => uiRectsOf(game),
     animState: (enemyId: number) => (game.scene.isActive('game') ? (game.scene.getScene('game') as GameScene).animState(enemyId) : null),
     canvasToPage: (x: number, y: number) => canvasToPage(game, x, y),
-    portraitCardVisible,
+    // Milestone 32b: the layout, and map points in page coordinates through it.
+    layout: () => currentLayout().kind,
+    cellToPage: (col: number, row: number) => {
+      const c = currentLayout().cellCenter({ col, row });
+      return canvasToPage(game, c.x, c.y);
+    },
+    worldToPage: (x: number, y: number) => {
+      const c = currentLayout().toScreen({ x, y });
+      return canvasToPage(game, c.x, c.y);
+    },
     titleReady: () => game.scene.isActive('title') && titleScene(game).isReady,
     // Milestone 31: the play-mode effects (null in test mode or between scenes).
     fx: () => (game.scene.isActive('game') ? (game.scene.getScene('game') as GameScene).fxState() : null),

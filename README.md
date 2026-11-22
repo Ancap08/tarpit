@@ -75,11 +75,13 @@ kick back, kills drop floating gold, and waves and the boss get banners.
     Tap the speed button for 1x or 2x; hold it for 3x while held. Tap the
     Gold number five times quickly for 500 gold (that game then saves no
     best score).
-12. **iPad.** Play in landscape (portrait shows a "turn your device" card).
-    Tap a cell once to aim, tap it again to build; when you drag, the ghost
-    floats above your finger. Tap the × to close a tower's panel. For a
-    special, tap where it should land, or hold to see the circle above your
-    finger and let go to fire.
+12. **Phone or iPad.** Hold it either way: a tall screen turns the map so
+    the trail runs top to bottom with the buttons under it in thumb reach,
+    and turning the device mid-game keeps the game. Tap a cell once to aim,
+    tap it again to build; when you drag, the ghost floats above your
+    finger. Tap the × to close a tower's panel. For a special, tap where it
+    should land, or hold to see the circle above your finger and let go to
+    fire.
 
 **Install it.** On iPhone and iPad: open the game in Safari, tap Share, then Add to Home Screen.
 On Android: open it in Chrome, open the menu, then Install app.
@@ -246,7 +248,7 @@ src/game/         Phaser rendering, input, HUD and the window.__tarpit hooks
 src/sw/           the offline service worker and its rules (docs/DESIGN.md, "Install and offline")
 public/           web app manifest and home-screen icons (drawn by scripts/make-icons.ts)
 scripts/          npm run sim, test:slow, demo, check:assets, check:size; make-icons, sw-build
-e2e/              Playwright tests (desktop and tablet projects) and CI screenshot baselines
+e2e/              Playwright tests (desktop, tablet and phone projects) and CI screenshot baselines
 .github/workflows CI checks, Pages deploy, screenshot baseline update
 ```
 

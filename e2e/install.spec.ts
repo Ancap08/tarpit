@@ -147,7 +147,7 @@ test.describe('install and offline, base /', () => {
       const box = await page.evaluate(() => {
         const c = document.querySelector('canvas')!.getBoundingClientRect();
         const e = document.documentElement;
-        return { ...c.toJSON(), sw: e.scrollWidth, sh: e.scrollHeight, card: window.__tarpit!.portraitCardVisible() };
+        return { ...c.toJSON(), sw: e.scrollWidth, sh: e.scrollHeight, layout: window.__tarpit!.layout() };
       });
       const i: Record<'top' | 'right' | 'bottom' | 'left', number> = { top: 0, right: 0, bottom: 0, left: 0 };
       Object.assign(i, insets);
@@ -156,7 +156,8 @@ test.describe('install and offline, base /', () => {
       expect(box.right).toBeLessThanOrEqual(w - i.right + 0.5);
       expect(box.bottom).toBeLessThanOrEqual(h - i.bottom + 0.5);
       expect([box.sw, box.sh]).toEqual([w, h]); // nothing scrolls
-      expect(box.card).toBe(h > w);
+      // Milestone 32b: a tall phone gets the portrait layout (it replaced the rotate card).
+      expect(box.layout).toBe(h > w ? 'portrait' : 'landscape');
       await ctx.close();
     }
   });

@@ -132,7 +132,7 @@ test('tapping the map outside the open panel closes it', async ({ page }) => {
   expect(await ui(page)).toMatchObject({ panelOpen: false, selectedCell: null, pick: null });
 });
 
-test('every button is at least 44 px tall on the page; no portrait card in landscape', async ({ page }) => {
+test('every button is at least 44 px tall on the page; the landscape layout on the tablet', async ({ page }) => {
   await startGame(page);
   await page.evaluate(() => (window.__tarpit as TarpitTestApi).buildAt(7, 5, 'musketeer'));
   await tapCell(page, C75); // open the panel so its buttons are listed
@@ -150,7 +150,8 @@ test('every button is at least 44 px tall on the page; no portrait card in lands
   const end = (await rects(page)).playAgain;
   expect(end).toBeTruthy();
   expect((await pageSize(page, end)).height).toBeGreaterThanOrEqual(44);
-  expect(await page.evaluate(() => window.__tarpit!.portraitCardVisible())).toBe(false);
+  // Milestone 32b: the rotate card is gone; a landscape window gets the landscape layout.
+  expect(await page.evaluate(() => window.__tarpit!.layout())).toBe('landscape');
 });
 
 test('the title menu starts on a tap on Play (milestone 25)', async ({ page }) => {
@@ -172,28 +173,30 @@ test('the title menu: tap Hard, then Play, starts a Hard game (milestone 25)', a
   expect(r).not.toHaveProperty('title:play');
 });
 
-// Non-test mode: the real loop runs, so the pause is observable.
-test('portrait shows the turn-your-device card and stops ticking; landscape hides it', async ({ page }) => {
+// Non-test mode: the real loop runs. Milestone 32b replaced the turn-your-device
+// card (and its pause) with the portrait layout: turning keeps the game ticking.
+test('portrait switches to the portrait layout and keeps ticking the same game; landscape switches back', async ({ page }) => {
   await page.goto('/');
   await waitForTitle(page);
   await tap(page, 'title:play');
   await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game'));
   const tick = () =>
     page.evaluate(() => (window.__tarpit!.game.scene.getScene('game') as unknown as { state: { tick: number } }).state.tick);
-  const visible = () => page.evaluate(() => window.__tarpit!.portraitCardVisible());
+  const size = () => page.evaluate(() => [window.__tarpit!.game.scale.gameSize.width, window.__tarpit!.game.scale.gameSize.height]);
 
-  expect(await visible()).toBe(false);
+  expect(await page.evaluate(() => window.__tarpit!.layout())).toBe('landscape');
+  await tap(page, 'startWave');
   await page.setViewportSize({ width: 768, height: 1024 });
-  await page.waitForFunction(() => window.__tarpit!.portraitCardVisible());
-  await expect(page.locator('#rotate-card')).toBeVisible();
-  await expect(page.locator('#rotate-card')).toContainText('Turn your device sideways');
+  await page.waitForFunction(() => window.__tarpit!.layout() === 'portrait');
+  expect(await size()).toEqual([480, 1194]);
+  await expect(page.locator('#rotate-card')).toHaveCount(0);
   const t0 = await tick();
   await page.waitForTimeout(500);
-  expect(await tick()).toBe(t0);
+  expect(await tick()).toBeGreaterThan(t0);
 
   await page.setViewportSize({ width: 1024, height: 768 });
-  await page.waitForFunction(() => !window.__tarpit!.portraitCardVisible());
-  await expect(page.locator('#rotate-card')).toBeHidden();
+  await page.waitForFunction(() => window.__tarpit!.layout() === 'landscape');
+  expect(await size()).toEqual([960, 580]);
   const t1 = await tick();
   await page.waitForTimeout(300);
   expect(await tick()).toBeGreaterThan(t1);
