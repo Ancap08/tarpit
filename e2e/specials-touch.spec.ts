@@ -219,6 +219,33 @@ test('speed by touch: a tap toggles to 2x; a hold runs 3x and the release goes b
   expect(await api(page, (a) => a.speed())).toBe(2);
 });
 
+// Follow-up (PR review): a touch the system cancels (no touchend) ends a 3x hold and an aim hold.
+test('pointercancel ends a 3x speed hold and a special aim hold; nothing fires or toggles', async ({ page }) => {
+  await startWave1(page);
+  const client = await page.context().newCDPSession(page);
+  const r = await rects(page);
+  const s = await toPage(page, { x: r.speed.x + r.speed.width / 2, y: r.speed.y + r.speed.height / 2 });
+  await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: s.x, y: s.y }] });
+  await page.waitForTimeout(450);
+  expect(await api(page, (a) => a.speed())).toBe(3);
+  await client.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+  expect(await api(page, (a) => a.speed())).toBe(1);
+
+  await tapRect(page, 'special');
+  const m = await toPage(page, { x: 400, y: 300 });
+  await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: m.x, y: m.y }] });
+  await page.waitForTimeout(450);
+  expect((await ui(page)).special.holding).toBe(true);
+  await client.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+  const u = await ui(page);
+  expect(u.special).toMatchObject({ holding: false, aimPoint: null, charges: 1 });
+  expect(specialOf(await events(page))).toBeUndefined();
+  // Still aiming and recoverable: a tap fires.
+  await tapAt(page, { x: 400, y: 300 });
+  expect(specialOf(await events(page))).toBeDefined();
+  expect(await api(page, (a) => a.speed())).toBe(1);
+});
+
 test('gold cheat by touch: five quick taps on Gold add 500', async ({ page }) => {
   await startWave1(page);
   const gold = (await state(page)).gold;

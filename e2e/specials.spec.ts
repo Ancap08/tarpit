@@ -214,6 +214,45 @@ test('speed: a click toggles 1x and 2x; a press held 300 ms runs 3x while held a
   expect((await hud(page)).speed).toBe('3x');
 });
 
+// Follow-up (PR review): a hold whose release happens outside the window
+// gets no pointerup. The next mouse move arrives with no button down, and
+// the hold must end there: back to the speed before it, nothing toggled.
+test('speed: a 3x hold whose release is lost (button up outside the window) ends on the next move', async ({ page }) => {
+  await startGame(page);
+  const r = (await rects(page)).speed;
+  const c = { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+  await page.mouse.move(c.x, c.y);
+  await page.mouse.down();
+  await page.waitForTimeout(450);
+  expect(await api(page, (a) => a.speed())).toBe(3);
+  // The pointer comes back with no button down and no mouseup was ever seen.
+  await page.evaluate(() => {
+    const canvas = document.querySelector('canvas')!;
+    canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: 400, clientY: 300, buttons: 0, bubbles: true }));
+  });
+  expect(await api(page, (a) => a.speed())).toBe(1);
+  expect((await hud(page)).speed).toBe('1x');
+  // Nothing sticks: a later click toggles as usual.
+  await page.mouse.up();
+  expect(await api(page, (a) => a.speed())).toBe(1);
+  await page.mouse.click(c.x, c.y);
+  expect(await api(page, (a) => a.speed())).toBe(2);
+});
+
+test('speed: a 3x hold ends when the page loses focus, back to the speed before it', async ({ page }) => {
+  await startGame(page);
+  await api(page, (a) => a.setSpeed(2));
+  const r = (await rects(page)).speed;
+  await page.mouse.move(r.x + r.width / 2, r.y + r.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(450);
+  expect(await api(page, (a) => a.speed())).toBe(3);
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  expect(await api(page, (a) => a.speed())).toBe(2);
+  await page.mouse.up();
+  expect(await api(page, (a) => a.speed())).toBe(2);
+});
+
 /** Click the Gold readout `n` times, `gapMs` apart. */
 async function tapGold(page: Page, n: number, gapMs: number): Promise<void> {
   const r = (await rects(page)).gold;

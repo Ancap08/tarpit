@@ -6133,3 +6133,5 @@ over a whole comboBuild game, endless boundary, determinism),
   barrel through `useSpecial` for its slow-channel probes (the barrel path
   is covered in `specials.test.ts`); `e2e/endless-verifier.spec.ts` sets gold
   to 1000 as test setup. The rest are number updates.
+- PR review fix: a 3x speed hold released outside the window (no pointerup) stayed at 3x. It now ends, back to the speed before it and with no toggle from a late click, on a mouse move with no button down, on leaving the canvas with no button down, on pointercancel or touchcancel, on window blur and on a hidden page; the touch aim hold and a drag end there too (aiming stays on).
+- Aim hold check: a mouse aim fires on the press, so it has no hold; a cancelled touch aim hold was never stuck (a new touch, Escape or Special recovered it) but left its lifted circle drawn until then. Tests: a lost mouse release, window blur, and touchcancel on the tablet; no baseline changes.

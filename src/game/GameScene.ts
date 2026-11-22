@@ -380,6 +380,8 @@ export class GameScene extends Phaser.Scene {
   private speedPress: { t0: number; before: Speed; holding: boolean } | null = null;
   /** Scene times of the recent presses on the Gold readout (milestone 30, the cheat). */
   private goldTaps: number[] = [];
+  /** A 3x hold ended without its release (milestone 30 review): the button's late click must not toggle. */
+  private speedHoldLost = false;
   /** The special being aimed (milestone 25b), or null. */
   private aiming: SpecialType | null = null;
   /** The special popup is open. */
@@ -410,6 +412,7 @@ export class GameScene extends Phaser.Scene {
     this.shots = new ShotEffects();
     this.specialFx = new SpecialEffects(this, isTestMode());
     this.speedPress = null;
+    this.speedHoldLost = false;
     this.goldTaps = [];
     this.aim = new Aim(this.state.map);
     this.eventCursor = new EventCursor();
@@ -502,6 +505,8 @@ export class GameScene extends Phaser.Scene {
       if (this.press !== null && !this.press.touch && !p.wasTouch && mouseDragLost(p.isDown, p.buttons)) {
         this.press = null;
       }
+      // The same for a 3x speed hold (PR review): its release was lost, so it ends here.
+      if (this.speedPress !== null && !p.wasTouch && mouseDragLost(p.isDown, p.buttons)) this.releaseLostHolds();
       if (this.aimPress !== null && p.wasTouch) {
         this.aimMove(p.x, p.y);
         return;
@@ -527,7 +532,28 @@ export class GameScene extends Phaser.Scene {
     });
     this.input.on('gameout', () => {
       if (this.press?.active) this.press.cell = null;
+      // The pointer left the canvas with no button down: a speed hold has lost its release.
+      if (this.speedPress !== null && this.input.activePointer.buttons === 0) this.releaseLostHolds();
       this.onPointerMove(null);
+    });
+    // Holds whose release may never come (PR review): a cancelled touch, a
+    // hidden page or a window that lost focus end the speed hold (back to
+    // the speed before it) and the touch aim hold (aiming stays on, so a
+    // tap still fires), and drop a drag in progress.
+    const lost = () => this.releaseLostHolds();
+    const hidden = () => {
+      if (document.hidden) lost();
+    };
+    const canvas = this.game.canvas;
+    canvas.addEventListener('pointercancel', lost);
+    canvas.addEventListener('touchcancel', lost);
+    window.addEventListener('blur', lost);
+    document.addEventListener('visibilitychange', hidden);
+    this.events.once('shutdown', () => {
+      canvas.removeEventListener('pointercancel', lost);
+      canvas.removeEventListener('touchcancel', lost);
+      window.removeEventListener('blur', lost);
+      document.removeEventListener('visibilitychange', hidden);
     });
     this.input.keyboard?.on('keydown-ESC', () => this.closeUi());
     this.redraw();
@@ -756,6 +782,7 @@ export class GameScene extends Phaser.Scene {
   /** A press started on the speed button: it may become a 3x hold (milestone 30). */
   private onSpeedPress(): void {
     if (this.endScreen.kind) return;
+    this.speedHoldLost = false;
     this.speedPress = { t0: this.time.now, before: this.speed, holding: false };
   }
 
@@ -769,7 +796,11 @@ export class GameScene extends Phaser.Scene {
 
   /** The speed button's click (its release over it): toggles 1x and 2x, unless the press was a 3x hold. */
   private onSpeedClick(): void {
-    if (this.speedPress?.holding) return;
+    // A hold that ended without its release (blur, cancel) may still get the button's late click: it toggles nothing.
+    if (this.speedPress?.holding || this.speedHoldLost) {
+      this.speedHoldLost = false;
+      return;
+    }
     this.speedPress = null;
     this.setSpeed(this.speed === 1 ? 2 : 1);
   }
@@ -779,6 +810,16 @@ export class GameScene extends Phaser.Scene {
     const d = this.speedPress;
     this.speedPress = null;
     if (d?.holding) this.setSpeed(d.before);
+  }
+
+  /** End every hold whose release was lost: the speed hold, the touch aim hold and a drag (see create()). */
+  releaseLostHolds(): void {
+    if (this.speedPress?.holding) this.speedHoldLost = true;
+    this.endSpeedPress();
+    this.aimPress = null;
+    this.touchAim = null;
+    this.press = null;
+    this.redraw();
   }
 
   /** A press on the Gold readout (milestone 30): the CHEAT_TAPS-th within CHEAT_WINDOW_MS grants the cheat gold. */
