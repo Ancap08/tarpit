@@ -14,8 +14,11 @@
 // - Self-recovery: on visualViewport resize and scroll, window scroll and
 //   resize, pageshow and a return to the page, a debounced check reads the
 //   visual viewport. A scroll or offset puts the page back at the origin;
-//   a scale other than 1 re-applies the viewport meta tag (see rescale()).
-//   Then the canvas refits (layoutSwitch.ts refit(), which reuses the layout
+//   a scale other than 1 re-applies the viewport meta tag (see rescale()),
+//   a first attempt only. Whatever the browser does, #game is then placed
+//   on the visible rectangle (fitBox, boxFitFor), so the game fills and is
+//   centred in what the player sees, zoomed or not, and goes back to the
+//   normal CSS at scale 1 with no offset. Then the canvas refits (layoutSwitch.ts refit(), which reuses the layout
 //   switch: no switch unless the shape changed, and GameScene.relayout()
 //   coalesces restarts).
 
@@ -102,30 +105,55 @@ function scrollHome(): void {
   document.body.scrollLeft = 0;
 }
 
+/** How #game is placed: index.html's insets, or a box from the visual viewport (layout-viewport CSS px). */
+export type BoxFit =
+  | { kind: 'css' }
+  | { kind: 'visible'; left: number; top: number; width: number; height: number; scale: number };
+
 /**
- * Size #game to the visual viewport where it differs from the layout
- * viewport at scale 1 (a Safari toolbar showing or hiding before the fixed
- * box catches up), inside the safe areas; otherwise leave index.html's
- * insets alone (desktop and most phones: nothing changes).
+ * Where #game goes for a visual viewport (follow-up). Zoomed (scale not 1)
+ * or offset: the visible rectangle itself (offsetLeft, offsetTop, width,
+ * height), so the canvas fits and centres in what the player sees even if
+ * the browser keeps the zoom. At scale 1 with no offset but a size other
+ * than the layout viewport's (a Safari toolbar mid-change): the visible
+ * size at the origin. Otherwise index.html's CSS.
  */
-function fitBox(): void {
+export function boxFitFor(vv: { scale: number; offsetLeft: number; offsetTop: number; width: number; height: number } | null, layout: { width: number; height: number }): BoxFit {
+  if (!vv) return { kind: 'css' };
+  const zoomed = Math.abs(vv.scale - 1) > SCALE_TOLERANCE;
+  const offset = Math.abs(vv.offsetLeft) >= OFFSET_TOLERANCE || Math.abs(vv.offsetTop) >= OFFSET_TOLERANCE;
+  const resized = Math.abs(vv.width - layout.width) > 1 || Math.abs(vv.height - layout.height) > 1;
+  if (!zoomed && !offset && !resized) return { kind: 'css' };
+  return { kind: 'visible', left: vv.offsetLeft, top: vv.offsetTop, width: vv.width, height: vv.height, scale: vv.scale };
+}
+
+/**
+ * Place #game per boxFitFor. The safe-area insets are screen px at the
+ * screen's edges, which are the visible rectangle's edges, so in layout px
+ * they count 1 / scale.
+ */
+/** Returns true when the box moved (the canvas must then refit at once, so taps map to its new bounds). */
+function fitBox(): boolean {
   const box = document.getElementById('game');
-  const vv = window.visualViewport;
-  if (!box) return;
+  if (!box) return false;
   const root = document.documentElement;
-  const differs =
-    vv !== null &&
-    vv !== undefined &&
-    Math.abs(vv.scale - 1) <= SCALE_TOLERANCE &&
-    (Math.abs(vv.width - root.clientWidth) > 1 || Math.abs(vv.height - root.clientHeight) > 1);
-  if (differs) {
-    box.style.width = `calc(${vv.width}px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px))`;
-    box.style.height = `calc(${vv.height}px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))`;
-    box.style.right = 'auto';
-    box.style.bottom = 'auto';
-  } else if (box.style.width !== '') {
-    box.style.width = box.style.height = box.style.right = box.style.bottom = '';
+  const vv = window.visualViewport ?? null;
+  const fit = boxFitFor(vv, { width: root.clientWidth, height: root.clientHeight });
+  const key = fit.kind === 'css' ? '' : `${fit.left},${fit.top},${fit.width},${fit.height},${fit.scale}`;
+  if ((box.dataset.fit ?? '') === key) return false;
+  box.dataset.fit = key;
+  if (fit.kind === 'css') {
+    box.style.left = box.style.top = box.style.width = box.style.height = box.style.right = box.style.bottom = '';
+    return true;
   }
+  const inset = (side: string) => `env(safe-area-inset-${side}, 0px) / ${fit.scale}`;
+  box.style.left = `calc(${fit.left}px + ${inset('left')})`;
+  box.style.top = `calc(${fit.top}px + ${inset('top')})`;
+  box.style.width = `calc(${fit.width}px - ${inset('left')} - ${inset('right')})`;
+  box.style.height = `calc(${fit.height}px - ${inset('top')} - ${inset('bottom')})`;
+  box.style.right = 'auto';
+  box.style.bottom = 'auto';
+  return true;
 }
 
 /** The usable area for choosing a layout: the visual viewport at scale 1, else the layout viewport (never a zoomed-in view). */
@@ -174,8 +202,9 @@ export function installPageLock(refit: () => void): void {
     refit();
   };
   const schedule = () => {
-    // A layout-size change fits the box at once, so Phaser's own resize sees the right parent.
-    fitBox();
+    // The box follows the visible rectangle at once, and the canvas refits with it, so taps map
+    // to its real bounds; the recovery check still runs after the quiet time.
+    if (fitBox()) refit();
     if (timer !== undefined) window.clearTimeout(timer);
     timer = window.setTimeout(check, RECOVERY_DEBOUNCE_MS);
   };

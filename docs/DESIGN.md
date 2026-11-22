@@ -936,27 +936,45 @@ mouse stay exact in every layout.
   0.01 from 1 or an offset or scroll of 0.5 CSS px or more is put back.
   It scrolls to the origin and, for a scale, rewrites the viewport meta
   content to an equivalent spelling (`initial-scale=1` and
-  `initial-scale=1.0`, alternating): Safari re-reads a changed meta tag
-  and clamps the zoom into its `maximum-scale=1`, so it snaps to 1. The
-  rewrite happens at most once a second, so a browser that refuses cannot
-  make it loop. Then the canvas refits through the layout switch
-  (`layoutSwitch.ts` `refit()`: no switch unless the shape changed, and
-  GameScene restarts coalesce). The layout is chosen from the visual
-  viewport at scale 1, else the layout viewport, never a zoomed view; when
-  the visual viewport differs from the layout viewport at scale 1 (a
-  Safari toolbar mid-change), `#game` takes the visual viewport's size
-  inside the safe areas.
+  `initial-scale=1.0`, alternating), at most once a second. That rewrite is
+  only a first attempt: iOS ignores `maximum-scale` for a pinch, Apple does
+  not promise that a changed meta tag drops the zoom, and `scrollTo` does
+  not move a pinch-zoomed view. So, whatever the browser does, `#game` is
+  placed on what is actually visible (`boxFitFor`): when the visual
+  viewport is zoomed or offset, `#game` takes its rectangle
+  (`offsetLeft`, `offsetTop`, `width`, `height`, in layout-viewport CSS px,
+  less the safe-area insets divided by the scale), so the canvas fits and
+  centres in the visible area even if the page stays zoomed; at scale 1
+  with no offset it returns to `index.html`'s insets (or, while a Safari
+  toolbar is mid-change, the visible size at the origin). The box moves on
+  every viewport event and the canvas refits at once (Phaser re-reads the
+  canvas bounds, so taps map to the right cells), then again after the
+  check, through the layout switch (`layoutSwitch.ts` `refit()`: no switch
+  unless the shape changed, GameScene restarts coalesce). Placing the box
+  fires no viewport event, so nothing loops. The layout is chosen from the
+  visual viewport at scale 1, else the layout viewport, never a zoomed
+  view, so a zoom never flips the layout or restarts the game.
 - **Snap.** On touch (a bar drag, a planning-phase move and tap
   placement), when the cell under the lifted point cannot take the tower
   (trail margin, water, the cottage, occupied, the map's edge) the ghost
-  takes the nearest cell that can among the cells within 1.5 cells, centre
-  to centre, of the cell under the point (its eight neighbours), measured
-  from the lifted point; ties go to the lower cell key (the upper row,
-  then the left column, in world terms). A move may go back home. A ring at
-  the lifted point and a line to the cell show the snap. Red shows only
-  with no such cell near, and a release then cancels; a lifted point off
-  the map never snaps. Gold plays no part. A tap on a tower still selects
-  it, even with a pick.
+  moves to another cell (`snapCell`). The candidates are the cells within
+  1.5 cells, centre to centre, of the cell under the point (its eight
+  neighbours) that can take the tower and that the straight line from the
+  lifted point reaches without crossing the trail's centreline, water or
+  the cottage (leaving a water or cottage box the point starts in is not
+  crossing). The nearest to the lifted point wins, except that a candidate
+  toward the finger (its offset has a positive part toward the bottom of
+  the screen: world +y in landscape, world +x in portrait) loses to any
+  other candidate at most 25% farther. Remaining ties go to the lower cell
+  key (the upper row, then the left column, in world terms). A move may go
+  back home. A ring at the lifted point and a line to the cell show the
+  snap. Red shows only with no candidate, and a release then cancels; a
+  lifted point off the map never snaps. Gold plays no part. A tap on a
+  tower still selects it, even with a pick. Against the first rule (nearest
+  only), 49 points in every unbuildable cell: Meadow 3.1%, Switchback 0.1%
+  and Riverbend 6.6% of the points that snapped now find no candidate
+  (each of those snaps crossed the trail, water or the cottage); none of
+  the remaining snaps crosses one.
 - **Magnifier.** When a 32 px cell is under 28 CSS px on screen (phones,
   portrait and landscape; not the tablet or desktop), a touch drag, move
   or special aim hold shows a 200 x 200 canvas px view of the map at 2x,

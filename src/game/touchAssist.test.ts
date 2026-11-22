@@ -12,116 +12,178 @@ import {
   placeMagnifier,
   snapCell,
   SNAP_CELLS,
+  crossesBarrier,
+  FINGER_SIDE_PENALTY,
 } from './touchAssist';
 
 const same = (a: Cell, b: Cell) => a.col === b.col && a.row === b.row;
 
+/** Landscape and portrait: the world direction toward the bottom of the screen. */
+const DOWN_L = { x: 0, y: 1 };
+const DOWN_P = { x: 1, y: 0 };
+/** A map with no barriers near the test cells (a trail along the far bottom edge). */
+const OPEN = { path: [{ x: 0, y: 2000 }, { x: 960, y: 2000 }], water: [], landmarks: [] };
+const open = { map: OPEN, down: DOWN_L };
+
 describe('snapCell', () => {
   const state = createGame();
   const can = (c: Cell) => isBuildable(state, c);
+  const meadow = { map: MAPS.meadow, down: DOWN_L };
 
   it('keeps a cell that can take the tower', () => {
-    expect(snapCell({ col: 2, row: 5 }, cellCenter({ col: 2, row: 5 }), can)).toEqual({ col: 2, row: 5 });
+    expect(snapCell({ col: 2, row: 5 }, cellCenter({ col: 2, row: 5 }), can, meadow)).toEqual({ col: 2, row: 5 });
   });
 
   it('is null off the map: no snap from outside', () => {
-    expect(snapCell(null, { x: -10, y: 100 }, () => true)).toBeNull();
+    expect(snapCell(null, { x: -10, y: 100 }, () => true, open)).toBeNull();
   });
 
   it('takes the nearest valid neighbour to the lifted point, never one further than 1.5 cells centre to centre', () => {
-    // (2,7) is on Meadow's trail margin; (2,5) is buildable two rows up, out of reach.
     const under = { col: 2, row: 7 };
-    expect(isBuildable(state, under)).toBe(false);
     const only = (target: Cell) => (c: Cell) => same(c, target);
-    expect(snapCell(under, cellCenter(under), only({ col: 2, row: 5 }))).toBeNull();
-    expect(snapCell(under, cellCenter(under), only({ col: 3, row: 8 }))).toEqual({ col: 3, row: 8 });
-    // Two candidates: the lifted point near the top of the cell picks the upper one.
+    expect(snapCell(under, cellCenter(under), only({ col: 2, row: 5 }), open)).toBeNull();
+    expect(snapCell(under, cellCenter(under), only({ col: 3, row: 8 }), open)).toEqual({ col: 3, row: 8 });
     const both = (c: Cell) => same(c, { col: 2, row: 6 }) || same(c, { col: 2, row: 8 });
-    expect(snapCell(under, { x: 80, y: 226 }, both)).toEqual({ col: 2, row: 6 });
-    expect(snapCell(under, { x: 80, y: 250 }, both)).toEqual({ col: 2, row: 8 });
+    expect(snapCell(under, { x: 80, y: 226 }, both, open)).toEqual({ col: 2, row: 6 });
+    // Below the centre by 10 px: the lower cell is 22 px away, the upper 42; 42 > 1.25 x 22, so the lower one still wins.
+    expect(snapCell(under, { x: 80, y: 250 }, both, open)).toEqual({ col: 2, row: 8 });
   });
 
-  it('breaks a tie by the lower cellKey (upper row, then left column)', () => {
+  it('a candidate toward the finger loses to one at most 25% farther', () => {
     const under = { col: 5, row: 5 };
-    const ring = (c: Cell) => !same(c, under);
-    // From the centre the four side neighbours are nearest (32 px); the upper one has the lowest key.
-    expect(snapCell(under, cellCenter(under), ring)).toEqual({ col: 5, row: 4 });
-    const lr = (c: Cell) => same(c, { col: 4, row: 5 }) || same(c, { col: 6, row: 5 });
-    expect(snapCell(under, cellCenter(under), lr)).toEqual({ col: 4, row: 5 });
+    const c = cellCenter(under);
+    const both = (k: Cell) => same(k, { col: 5, row: 4 }) || same(k, { col: 5, row: 6 });
+    // Landscape: row 6 is toward the finger. 4 px below centre: 28 vs 36 px; 36 <= 1.25 x 28 = 35? No: the lower one wins.
+    expect(snapCell(under, { x: c.x, y: c.y + 4 }, both, open)).toEqual({ col: 5, row: 6 });
+    // 3 px below: 29 vs 35; 35 <= 36.25, so the upper one wins.
+    expect(snapCell(under, { x: c.x, y: c.y + 3 }, both, open)).toEqual({ col: 5, row: 4 });
+    // Portrait: the finger is toward +x (world), so up and down in world are both off the finger's side.
+    expect(snapCell(under, { x: c.x, y: c.y + 3 }, both, { map: OPEN, down: DOWN_P })).toEqual({ col: 5, row: 6 });
+    const lr = (k: Cell) => same(k, { col: 4, row: 5 }) || same(k, { col: 6, row: 5 });
+    expect(snapCell(under, { x: c.x + 3, y: c.y }, lr, { map: OPEN, down: DOWN_P })).toEqual({ col: 4, row: 5 });
   });
 
-  it('treats an occupied cell as invalid and lets a move go back home', () => {
-    const s = createGame();
-    s.gold = 1000;
-    buildTower(s, { col: 7, row: 5 }, 'musketeer');
-    buildTower(s, { col: 8, row: 5 }, 'musketeer');
-    const at = { col: 8, row: 5 };
-    const placed = snapCell(at, cellCenter(at), (c) => isBuildable(s, c));
-    expect(placed).not.toBeNull();
-    expect(isBuildable(s, placed!)).toBe(true);
-    const home = (c: Cell) => isBuildable(s, c) || same(c, at);
-    expect(snapCell(at, cellCenter(at), home)).toEqual(at);
+  it('breaks a remaining tie by the lower cellKey (upper row, then left column)', () => {
+    const under = { col: 5, row: 5 };
+    expect(snapCell(under, cellCenter(under), (c) => !same(c, under), open)).toEqual({ col: 5, row: 4 });
+    const lr = (c: Cell) => same(c, { col: 4, row: 5 }) || same(c, { col: 6, row: 5 });
+    expect(snapCell(under, cellCenter(under), lr, open)).toEqual({ col: 4, row: 5 });
+  });
+
+  it('never crosses the trail centreline, water or the cottage', () => {
+    const under = { col: 5, row: 5 };
+    const c = cellCenter(under);
+    const up = (k: Cell) => same(k, { col: 5, row: 4 });
+    // A trail centreline across the top of the cell (y 165, between the point and row 4's centre).
+    const trail = { map: { path: [{ x: 0, y: 165 }, { x: 960, y: 165 }], water: [], landmarks: [] }, down: DOWN_L };
+    expect(snapCell(under, c, up, trail)).toBeNull();
+    // A water box in the way; and the same box with the point inside it (leaving it is fine).
+    const pond = { x: 150, y: 150, width: 40, height: 10 };
+    expect(snapCell(under, c, up, { map: { ...OPEN, water: [pond] }, down: DOWN_L })).toBeNull();
+    expect(snapCell(under, { x: 176, y: 155 }, up, { map: { ...OPEN, water: [pond] }, down: DOWN_L })).toEqual({ col: 5, row: 4 });
+    // The cottage (a landmark) the same.
+    expect(snapCell(under, c, up, { map: { ...OPEN, landmarks: [pond] }, down: DOWN_L })).toBeNull();
+    expect(crossesBarrier(c, cellCenter({ col: 5, row: 4 }), OPEN)).toBe(false);
   });
 
   it('does not look at gold: a broke game snaps the same', () => {
     const s = createGame();
     s.gold = 0;
-    expect(snapCell({ col: 2, row: 7 }, cellCenter({ col: 2, row: 7 }), (c) => isBuildable(s, c))).toEqual(
-      snapCell({ col: 2, row: 7 }, cellCenter({ col: 2, row: 7 }), can),
-    );
+    const u = { col: 2, row: 7 };
+    expect(snapCell(u, cellCenter(u), (c) => isBuildable(s, c), meadow)).toEqual(snapCell(u, cellCenter(u), can, meadow));
   });
 
-  for (const id of MAP_IDS) {
-    it(`${id}: every unbuildable cell with a buildable neighbour snaps to a buildable neighbour from anywhere in it`, () => {
-      const map = MAPS[id];
-      let checked = 0;
-      const blocks = new Set<string>();
-      for (let row = 0; row < GRID_ROWS; row++) {
-        for (let col = 0; col < GRID_COLS; col++) {
-          const under = { col, row };
-          if (isBuildableTerrain(under, map)) continue;
-          const neighbours: Cell[] = [];
-          for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) if (dr || dc) neighbours.push({ col: col + dc, row: row + dr });
-          const valid = neighbours.filter((c) => isBuildableTerrain(c, map));
-          const canTake = (c: Cell) => isBuildableTerrain(c, map);
-          const c0 = cellCenter(under);
-          // The centre and four points near the corners of the cell.
-          for (const [dx, dy] of [[0, 0], [-15, -15], [15, -15], [-15, 15], [15, 15]]) {
-            const p = { x: c0.x + dx, y: c0.y + dy };
-            const got = snapCell(under, p, canTake);
-            if (valid.length === 0) {
-              expect(got).toBeNull();
-              continue;
-            }
-            expect(got, `${id} (${col},${row})`).not.toBeNull();
-            expect(valid.some((v) => same(v, got!))).toBe(true);
-            const best = Math.min(...valid.map((v) => Math.hypot(cellCenter(v).x - p.x, cellCenter(v).y - p.y)));
-            expect(Math.hypot(cellCenter(got!).x - p.x, cellCenter(got!).y - p.y)).toBeCloseTo(best, 9);
-          }
-          if (valid.length > 0) {
-            checked++;
-            blocks.add(terrainBlock(under, map)!);
-          }
-        }
-      }
-      expect(checked).toBeGreaterThan(20);
-      // Trail margins on every map, the cottage on every map, water on Riverbend.
-      expect(blocks.has('path')).toBe(true);
-      expect(blocks.has('landmark')).toBe(true);
-      if (id === 'riverbend') expect(blocks.has('water')).toBe(true);
-    });
-  }
+  it('a move may go back home; an occupied cell is not a candidate', () => {
+    const s = createGame();
+    s.gold = 1000;
+    buildTower(s, { col: 7, row: 5 }, 'musketeer');
+    buildTower(s, { col: 8, row: 5 }, 'musketeer');
+    const at = { col: 8, row: 5 };
+    const placed = snapCell(at, cellCenter(at), (c) => isBuildable(s, c), meadow);
+    expect(placed).not.toBeNull();
+    expect(isBuildable(s, placed!)).toBe(true);
+    expect(snapCell(at, cellCenter(at), (c) => isBuildable(s, c) || same(c, at), meadow)).toEqual(at);
+  });
 
   it('reaches exactly the eight neighbours (1.5 cells)', () => {
     expect(SNAP_CELLS).toBe(1.5);
+    expect(FINGER_SIDE_PENALTY).toBe(1.25);
     const hit: Cell[] = [];
     snapCell({ col: 10, row: 7 }, cellCenter({ col: 10, row: 7 }), (c) => {
       hit.push(c);
       return false;
-    });
+    }, open);
     // The cell under the point, then its eight neighbours.
     expect(hit).toHaveLength(9);
   });
+
+  // An independent reference (follow-up): candidates listed, barriers found by solving each crossing
+  // and by sampling the segment against the boxes, then sorted by the rule. 49 points per unbuildable
+  // cell on every map, in both layouts' finger directions.
+  function reference(under: Cell, p: { x: number; y: number }, canTake: (c: Cell) => boolean, map: (typeof MAPS)['meadow'], down: { x: number; y: number }): Cell | null {
+    if (canTake(under)) return under;
+    const crossesLine = (a: { x: number; y: number }, b: { x: number; y: number }, c: { x: number; y: number }, d: { x: number; y: number }) => {
+      const den = (b.x - a.x) * (d.y - c.y) - (b.y - a.y) * (d.x - c.x);
+      if (den === 0) return false;
+      const t = ((c.x - a.x) * (d.y - c.y) - (c.y - a.y) * (d.x - c.x)) / den;
+      const u = ((c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x)) / den;
+      return t > 1e-9 && t < 1 - 1e-9 && u > 1e-9 && u < 1 - 1e-9;
+    };
+    const boxes = [...(map.water ?? []), ...(map.landmarks ?? [])];
+    const inBox = (q: { x: number; y: number }, r: { x: number; y: number; width: number; height: number }) => q.x > r.x && q.x < r.x + r.width && q.y > r.y && q.y < r.y + r.height;
+    const list: { cell: Cell; score: number; finger: boolean; key: number }[] = [];
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        const cell = { col: under.col + dc, row: under.row + dr };
+        if ((!dr && !dc) || cell.col < 0 || cell.row < 0 || cell.col >= GRID_COLS || cell.row >= GRID_ROWS || !canTake(cell)) continue;
+        const q = cellCenter(cell);
+        let blocked = false;
+        for (let i = 1; i < map.path.length && !blocked; i++) blocked = crossesLine(p, q, map.path[i - 1], map.path[i]);
+        for (const r of boxes) {
+          if (blocked || inBox(p, r)) continue;
+          for (let k = 1; k < 400 && !blocked; k++) blocked = inBox({ x: p.x + ((q.x - p.x) * k) / 400, y: p.y + ((q.y - p.y) * k) / 400 }, r);
+        }
+        if (blocked) continue;
+        const finger = (q.x - p.x) * down.x + (q.y - p.y) * down.y > 1e-9;
+        list.push({ cell, score: Math.hypot(q.x - p.x, q.y - p.y) * (finger ? 1.25 : 1), finger, key: cell.row * GRID_COLS + cell.col });
+      }
+    }
+    list.sort((a, b) => (Math.abs(a.score - b.score) > 1e-9 ? a.score - b.score : a.finger !== b.finger ? (a.finger ? 1 : -1) : a.key - b.key));
+    return list[0]?.cell ?? null;
+  }
+
+  for (const id of MAP_IDS) {
+    it(`${id}: matches the independent reference at 49 points in every unbuildable cell, both layouts; trail margins, the cottage and (Riverbend) water all snap somewhere`, () => {
+      const map = MAPS[id];
+      const canTake = (c: Cell) => isBuildableTerrain(c, map);
+      const snappedKinds = new Set<string>();
+      let samples = 0;
+      for (let row = 0; row < GRID_ROWS; row++) {
+        for (let col = 0; col < GRID_COLS; col++) {
+          const under = { col, row };
+          if (canTake(under)) continue;
+          for (let i = 0; i < 7; i++) {
+            for (let j = 0; j < 7; j++) {
+              const p = { x: col * CELL + 1 + i * 5, y: row * CELL + 1 + j * 5 };
+              for (const down of [DOWN_L, DOWN_P]) {
+                const got = snapCell(under, p, canTake, { map, down });
+                expect(got, `${id} (${col},${row}) at ${p.x},${p.y}`).toEqual(reference(under, p, canTake, map, down));
+                if (got) {
+                  snappedKinds.add(terrainBlock(under, map)!);
+                  expect(crossesBarrier(p, cellCenter(got), map)).toBe(false);
+                }
+                samples++;
+              }
+            }
+          }
+        }
+      }
+      expect(samples).toBeGreaterThan(1000);
+      expect(snappedKinds.has('path')).toBe(true);
+      expect(snappedKinds.has('landmark')).toBe(true);
+      if (id === 'riverbend') expect(snappedKinds.has('water')).toBe(true);
+    });
+  }
 });
 
 describe('nearestTower', () => {

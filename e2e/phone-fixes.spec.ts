@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { cellPage, rectPage, startGame, state, ui, worldPage } from './phone';
-import { snapCases } from './snapCases';
+import { LANDSCAPE_DOWN, snapCases } from './snapCases';
 
 // Milestone 35, desktop project (mouse): placement and selection stay
 // exact. A mouse drag over a cell that cannot take the tower stays there
@@ -14,7 +14,7 @@ test('a mouse drag over the trail margin, water, the cottage or a tower does not
       const t = window.__tarpit as TarpitTestApi;
       t.state().gold = 1000;
     });
-    for (const c of snapCases(map).filter((k) => k.kind !== 'none')) {
+    for (const c of snapCases(map, LANDSCAPE_DOWN).filter((k) => k.kind !== 'none')) {
       if (c.kind === 'occupied') await page.evaluate(([col, row]) => (window.__tarpit as TarpitTestApi).buildAt(col, row, 'cannon'), [c.under.col, c.under.row]);
       const towers0 = (await state(page)).towers.length;
       const from = await rectPage(page, 'bar:musketeer');

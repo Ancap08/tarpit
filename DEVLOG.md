@@ -7122,3 +7122,52 @@ New probes: `e2e/phone-fixes-verifier-phone.spec.ts` and the perf print
      the fallback above.
   6. Then placing: drag a tower to the trail edge (the ring and line show the
      snap, the magnifier appears), drop it, and tap beside a tower.
+
+### Follow-up (coordinator, after the verifier's notes)
+
+- **Recovery no longer rests on the meta rewrite.** The rewrite stays as a
+  first attempt, but the verifier is right that nothing promises it works
+  on iOS. Now, whenever the visual viewport is zoomed (scale not 1) or
+  offset, `#game` is placed on the visible rectangle (`offsetLeft`,
+  `offsetTop`, `width`, `height`, less the safe-area insets divided by the
+  scale), so the canvas fits and is centred in what the player sees even if
+  Safari keeps the zoom; at scale 1 with no offset the normal CSS returns.
+  The box moves on each viewport event and the canvas refits at once, so
+  Phaser has the real bounds and taps map to the right cells; the debounced
+  check refits again. Placing the box fires no viewport event (no loop),
+  and the layout is still chosen from the unzoomed size (no flip, no
+  restart, no lost state). Browser tests stub `visualViewport` at scale 1.4
+  and 0.8 with offsets: the canvas ends inside the visible rectangle,
+  centred, filling one side; a tap selects the right tower and tap-tap
+  builds on the right cell; back at scale 1 the inline style is gone and
+  the canvas is centred in the window.
+- **Snap may not cross a barrier, and avoids the thumb.** Two rules added
+  to `snapCell`: a candidate whose straight line from the lifted point
+  crosses the trail's centreline, water or the cottage is not allowed
+  (leaving a box the point starts in is allowed), and a candidate toward
+  the finger (toward the bottom of the screen; the layout's direction is an
+  input, so the function stays pure) loses to any other allowed candidate
+  at most 25% farther. Over 49 points in every unbuildable cell, against
+  the first rule: snaps that found a cell before and find none now are
+  Meadow 154 of 4,900 (3.1%), Switchback 7 of 5,341 (0.1%), Riverbend 385
+  of 5,831 (6.6%), the same in both layouts; every one of them had crossed
+  the trail, water or the cottage (155, 8 and 386 crossing snaps before,
+  of which those were the only choice; 0 now). Snaps toward the finger fell
+  from 2,239 to 1,310 (portrait Meadow; landscape 2,292 to 1,779). The
+  largest jump is still 66.5 world px (a diagonal from a far corner), and
+  the verifier's wider measure (any blocked cell between the point and the
+  chosen cell) rose, because the finger rule more often picks a diagonal
+  past a trail-margin cell on the same side of the trail; no snap crosses
+  the trail itself.
+- **The verifier's comparison.** The 17,640-sample independent comparison
+  the verifier describes is not in its committed spec
+  (`phone-fixes-verifier-phone.spec.ts` checks one snap case through
+  `snapCases`, which follows the new rule unchanged). So the same check now
+  lives in `src/game/touchAssist.test.ts`: an independent reference (line
+  crossings solved directly, boxes found by sampling the segment, candidates
+  sorted by the rule) is compared with `snapCell` at 49 points in every
+  unbuildable cell on the three maps, in both layouts' finger directions.
+  Changed against the verifier's description: the expected rule (barriers
+  and the finger penalty) and the second finger direction.
+- **Phone check.** The verifier's six-step check above is the one for
+  Kyle. The README lines now say only what the emulated tests show.

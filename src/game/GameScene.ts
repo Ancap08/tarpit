@@ -206,6 +206,7 @@ import {
   snapCell,
   type MagnifierBox,
   type MagnifierSide,
+  type SnapContext,
 } from './touchAssist';
 
 const sameCell = (a: Cell, b: Cell): boolean => a.col === b.col && a.row === b.row;
@@ -705,7 +706,7 @@ export class GameScene extends Phaser.Scene {
     // Milestone 35: with a pick, a tap on a cell that cannot take the tower snaps to the nearest one that can.
     this.tapSnap = null;
     if (this.pick !== null && target.kind === 'blocked') {
-      const snapped = snapCell(target.cell, this.layout.toWorld({ x, y }), (c) => isBuildable(this.state, c));
+      const snapped = snapCell(target.cell, this.layout.toWorld({ x, y }), (c) => isBuildable(this.state, c), this.snapContext);
       if (snapped !== null) {
         this.tapSnap = { from: { x, y }, cell: snapped };
         target = { kind: 'buildable', cell: snapped };
@@ -1028,7 +1029,7 @@ export class GameScene extends Phaser.Scene {
     const from = d.kind === 'move' ? d.from : null;
     const lifted = { x, y: y - this.lift };
     const canTake = (c: Cell) => isBuildable(this.state, c) || (from !== null && sameCell(c, from));
-    const snapped = snapCell(d.cell, this.layout.toWorld(lifted), canTake);
+    const snapped = snapCell(d.cell, this.layout.toWorld(lifted), canTake, this.snapContext);
     if (snapped !== null && !sameCell(snapped, d.cell)) {
       d.cell = snapped;
       d.snapFrom = lifted;
@@ -1580,6 +1581,11 @@ export class GameScene extends Phaser.Scene {
       g.strokeCircle(f.x, f.y, SNAP_RING);
     }
     this.updateMagnifier(drag, aimAt);
+  }
+
+  /** The snap's barriers and finger direction (milestone 35 follow-up): this map, and the screen's bottom in world terms. */
+  private get snapContext(): SnapContext {
+    return { map: this.state.map, down: { x: -this.layout.up.x, y: -this.layout.up.y } };
   }
 
   /** The snap shown now (milestone 35): a touch drag's, or a snapped tap's while its cell is still the tap cell. */

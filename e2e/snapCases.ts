@@ -23,16 +23,24 @@ export function liftedPoint(under: Cell): Point {
   return { x: c.x - 5, y: c.y - 9 };
 }
 
-function stable(under: Cell, canTake: (c: Cell) => boolean): Cell | null | undefined {
+/** Portrait: world +x is down the screen. */
+export const PORTRAIT_DOWN: Point = { x: 1, y: 0 };
+export const LANDSCAPE_DOWN: Point = { x: 0, y: 1 };
+
+function stable(under: Cell, canTake: (c: Cell) => boolean, map: MapId, down: Point): Cell | null | undefined {
   const c = liftedPoint(under);
-  const picks = [[0, 0], [0.5, 0.5], [-0.5, 0.5], [0.5, -0.5], [-0.5, -0.5]].map(([dx, dy]) => snapCell(under, { x: c.x + dx, y: c.y + dy }, canTake));
+  const picks = [[0, 0], [0.5, 0.5], [-0.5, 0.5], [0.5, -0.5], [-0.5, -0.5]].map(([dx, dy]) => snapCell(under, { x: c.x + dx, y: c.y + dy }, canTake, { map: MAPS[map], down }));
   const first = picks[0];
   const same = picks.every((p) => (p === null ? first === null : first !== null && p.col === first.col && p.row === first.row));
   return same ? first : undefined;
 }
 
-/** The first case of each kind that exists on `map`, in cellKey order. */
-export function snapCases(map: MapId): SnapCase[] {
+/**
+ * The first case of each kind that exists on `map`, in cellKey order.
+ * `down` is the world direction toward the bottom of the screen: portrait
+ * (the phone project) by default, { x: 0, y: 1 } in landscape.
+ */
+export function snapCases(map: MapId, down: Point = PORTRAIT_DOWN): SnapCase[] {
   const def = MAPS[map];
   const terrain = (c: Cell) => isBuildableTerrain(c, def);
   const out: SnapCase[] = [];
@@ -43,7 +51,7 @@ export function snapCases(map: MapId): SnapCase[] {
       if (terrain(under)) {
         // An occupied cell: a free buildable cell whose own snap (once occupied) is stable.
         if (!found.has('occupied')) {
-          const e = stable(under, (c) => terrain(c) && !(c.col === col && c.row === row));
+          const e = stable(under, (c) => terrain(c) && !(c.col === col && c.row === row), map, down);
           if (e) {
             out.push({ map, kind: 'occupied', under, at: liftedPoint(under), expected: e });
             found.add('occupied');
@@ -52,7 +60,7 @@ export function snapCases(map: MapId): SnapCase[] {
         continue;
       }
       const block = terrainBlock(under, def) as SnapCase['kind'];
-      const e = stable(under, terrain);
+      const e = stable(under, terrain, map, down);
       if (e === undefined) continue;
       const kind = e === null ? 'none' : block;
       if (found.has(kind)) continue;

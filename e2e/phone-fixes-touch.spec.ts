@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { liftPage, rectPage, startGame, state, touchDrag, ui, worldPage } from './phone';
-import { snapCases } from './snapCases';
+import { LANDSCAPE_DOWN, snapCases } from './snapCases';
 
 // Milestone 35, tablet project (1024 x 768 touch, landscape, a cell 34 CSS
 // px on screen): touch snapping and nearest-tower selection work as on the
@@ -9,7 +9,7 @@ import { snapCases } from './snapCases';
 
 test('a touch drag over the trail margin snaps and builds; no magnifier on the tablet', async ({ page }) => {
   await startGame(page);
-  const c = snapCases('meadow').find((k) => k.kind === 'path')!;
+  const c = snapCases('meadow', LANDSCAPE_DOWN).find((k) => k.kind === 'path')!;
   const client = await page.context().newCDPSession(page);
   const at = await worldPage(page, c.at);
   await touchDrag(page, client, await rectPage(page, 'bar:musketeer'), { x: at.x, y: at.y + (await liftPage(page)) }, async () => {
@@ -23,7 +23,7 @@ test('a touch drag over the trail margin snaps and builds; no magnifier on the t
 
 test('a touch drag over a cell with nothing valid near shows red and cancels', async ({ page }) => {
   await startGame(page);
-  const c = snapCases('meadow').find((k) => k.kind === 'none')!;
+  const c = snapCases('meadow', LANDSCAPE_DOWN).find((k) => k.kind === 'none')!;
   const client = await page.context().newCDPSession(page);
   const at = await worldPage(page, c.at);
   await touchDrag(page, client, await rectPage(page, 'bar:musketeer'), { x: at.x, y: at.y + (await liftPage(page)) }, async () => {

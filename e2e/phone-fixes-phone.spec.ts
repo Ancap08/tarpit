@@ -183,6 +183,69 @@ test.describe('page lock', () => {
     expect((await ui(page)).layout).toBe('portrait');
   });
 
+  // Follow-up: the browser may keep the zoom (the meta rewrite is only a first attempt). The game then
+  // fits the visible rectangle, centred, and taps still land on the right cells.
+  for (const z of [
+    { scale: 1.4, offsetLeft: 30, offsetTop: 60 },
+    { scale: 0.8, offsetLeft: -48, offsetTop: -105 },
+  ]) {
+    test(`a viewport stuck at scale ${z.scale} with offsets: the game fits the visible rectangle and taps hit the right cells`, async ({ page }) => {
+      await startGame(page);
+      await page.evaluate(() => {
+        const t = window.__tarpit as TarpitTestApi;
+        t.state().gold = 1000;
+        t.buildAt(7, 5, 'musketeer');
+      });
+      const before = await page.evaluate(() => (window.__tarpit as TarpitTestApi).pageLock());
+      const vis = await page.evaluate((v) => {
+        const real = window.visualViewport!;
+        const fake = { ...v, width: window.innerWidth / v.scale, height: window.innerHeight / v.scale };
+        (window as unknown as { __fakeVv: typeof fake; __realVv: VisualViewport }).__fakeVv = fake;
+        (window as unknown as { __realVv: VisualViewport }).__realVv = real;
+        Object.defineProperty(window, 'visualViewport', { configurable: true, get: () => ({ ...(window as unknown as { __fakeVv: typeof fake }).__fakeVv }) });
+        real.dispatchEvent(new Event('resize'));
+        return fake;
+      }, z);
+      await page.waitForTimeout(400);
+      const after = await page.evaluate(() => (window.__tarpit as TarpitTestApi).pageLock());
+      expect(after.rescales - before.rescales).toBe(1);
+      const r = await page.evaluate(() => {
+        const c = document.querySelector('#game canvas')!.getBoundingClientRect();
+        return { left: c.left, top: c.top, right: c.right, bottom: c.bottom };
+      });
+      expect(r.left).toBeGreaterThanOrEqual(vis.offsetLeft - 1);
+      expect(r.top).toBeGreaterThanOrEqual(vis.offsetTop - 1);
+      expect(r.right).toBeLessThanOrEqual(vis.offsetLeft + vis.width + 1);
+      expect(r.bottom).toBeLessThanOrEqual(vis.offsetTop + vis.height + 1);
+      // Centred in the visible rectangle, filling one side of it.
+      expect(Math.abs((r.left + r.right) / 2 - (vis.offsetLeft + vis.width / 2))).toBeLessThanOrEqual(1);
+      expect(Math.abs((r.top + r.bottom) / 2 - (vis.offsetTop + vis.height / 2))).toBeLessThanOrEqual(1);
+      expect(Math.min(Math.abs(r.right - r.left - vis.width), Math.abs(r.bottom - r.top - vis.height))).toBeLessThanOrEqual(1);
+      expect((await ui(page)).layout).toBe('portrait');
+      // Taps through cellToPage land on the right cells: the tower selects; with a pick, a free cell arms.
+      const tower = await cellPage(page, { col: 7, row: 5 });
+      await page.touchscreen.tap(tower.x, tower.y);
+      expect(await ui(page)).toMatchObject({ panelOpen: true, selectedCell: { col: 7, row: 5 } });
+      await tap(page, 'bar:cannon');
+      const free = await cellPage(page, { col: 2, row: 5 });
+      await page.touchscreen.tap(free.x, free.y);
+      expect((await ui(page)).armedCell).toEqual({ col: 2, row: 5 });
+      await page.touchscreen.tap(free.x, free.y);
+      expect((await state(page)).towers.map((t) => t.cell)).toContainEqual({ col: 2, row: 5 });
+      // The browser comes back to scale 1: the normal CSS returns and the canvas is centred in the window.
+      await page.evaluate(() => {
+        Object.assign((window as unknown as { __fakeVv: object }).__fakeVv, { scale: 1, offsetLeft: 0, offsetTop: 0, width: window.innerWidth, height: window.innerHeight });
+        (window as unknown as { __realVv: VisualViewport }).__realVv.dispatchEvent(new Event('resize'));
+      });
+      await page.waitForTimeout(400);
+      expect(await page.evaluate(() => document.getElementById('game')!.style.cssText)).toBe('');
+      const c = await centring(page);
+      expect(Math.abs(c.dx)).toBeLessThanOrEqual(1);
+      expect(Math.abs(c.dy)).toBeLessThanOrEqual(1);
+      expect((await state(page)).towers).toHaveLength(2);
+    });
+  }
+
   test('the canvas is centred after ten rotations and resizes, and the game survives', async ({ page }) => {
     await startGame(page);
     await page.evaluate(() => (window.__tarpit as TarpitTestApi).buildAt(7, 5, 'musketeer'));

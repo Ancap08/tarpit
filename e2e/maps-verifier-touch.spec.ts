@@ -152,7 +152,7 @@ for (const map of NEW_MAPS) {
     for (const exact of aims) {
       // Off the cell edges by a fraction of a px, so page rounding cannot change the cell under the aim.
       const aim = { x: exact.x + 0.3, y: exact.y + 0.3 };
-      const expected = snapCell(LANDSCAPE.cellAt(aim.x, aim.y), aim, (c) => isBuildableTerrain(c, m));
+      const expected = snapCell(LANDSCAPE.cellAt(aim.x, aim.y), aim, (c) => isBuildableTerrain(c, m), { map: m, down: { x: 0, y: 1 } });
       await touchDrag(page, client, bar, { x: aim.x, y: aim.y + DRAG_LIFT });
       expect((await state(page)).towers.map((t) => t.cell), JSON.stringify(aim)).toEqual(expected === null ? [] : [expected]);
       if (expected !== null) await api(page, (a) => a.state().towers.forEach((t) => a.sellAt(t.cell.col, t.cell.row)));
@@ -203,7 +203,7 @@ test('Riverbend by touch: tap-tap on the river arms nothing and builds nothing u
   for (const river of [{ col: 13, row: 8 }, { col: 16, row: 14 }, { col: 13, row: 5 }]) {
     // A little up and left of the centre, so a tie between two bank cells does not hang on rounding.
     const at = { x: centre(river).x - 5, y: centre(river).y - 9 };
-    const expected = snapCell(river, at, (c) => isBuildableTerrain(c, MAPS.riverbend));
+    const expected = snapCell(river, at, (c) => isBuildableTerrain(c, MAPS.riverbend), { map: MAPS.riverbend, down: { x: 0, y: 1 } });
     await tapAt(page, at);
     expect((await ui(page)).armedCell, JSON.stringify(river)).toEqual(expected);
     await tapAt(page, at);

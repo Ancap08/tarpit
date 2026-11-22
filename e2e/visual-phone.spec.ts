@@ -210,8 +210,8 @@ test('portrait snap: a Musketeer dragged over the trail margin snaps to the cell
   await page.evaluate(() => (window.__tarpit as TarpitTestApi).startGame());
   const client = await page.context().newCDPSession(page);
   const from = await rectPage(page, 'bar:musketeer');
-  // (4,2) is on Meadow's trail margin; the lifted point a little up and left of its centre snaps to (4,1).
-  const at = await worldPage(page, { x: 4 * 32 + 11, y: 2 * 32 + 7 });
+  // (4,2) is on Meadow's trail margin; the lifted point a little above its centre snaps to (4,1) (not toward the finger).
+  const at = await worldPage(page, { x: 4 * 32 + 18, y: 2 * 32 + 7 });
   const finger = { x: at.x, y: at.y + (await liftPage(page)) };
   await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [from] });
   for (let i = 1; i <= 10; i++) {

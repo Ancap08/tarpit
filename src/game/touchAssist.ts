@@ -3,10 +3,75 @@
 // the drag magnifier. Pure functions with no Phaser or DOM, unit tested in
 // touchAssist.test.ts. Mouse input never goes through them.
 
-import { CELL, cellCenter, cellKey, GRID_COLS, GRID_ROWS, type Cell, type Point, type Rect } from '../sim';
+import { CELL, cellCenter, cellKey, GRID_COLS, GRID_ROWS, type Cell, type MapDef, type Point, type Rect } from '../sim';
 
 /** A cell within this many cells (centre to centre) of the cell under the lifted point may take the snap. */
 export const SNAP_CELLS = 1.5;
+/** A candidate toward the finger loses to any other allowed candidate at most this much farther (follow-up). */
+export const FINGER_SIDE_PENALTY = 1.25;
+
+/** What the snap needs besides the cells: the barriers it may not cross, and which way the finger is. */
+export interface SnapContext {
+  /** The map: a snap never crosses its trail centreline, its water or its landmarks (the cottage). */
+  map: Pick<MapDef, 'path' | 'water' | 'landmarks'>;
+  /** Unit world vector toward the bottom of the screen (where the finger is): the negative of the layout's `up`. */
+  down: Point;
+}
+
+/** Orientation of c against the line a-b: positive, negative or 0 (collinear). */
+function orient(a: Point, b: Point, c: Point): number {
+  return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+}
+
+/** True when segments p-q and a-b cross at a point inside both (touching ends and collinear overlaps do not count). */
+function segmentsCross(p: Point, q: Point, a: Point, b: Point): boolean {
+  const d1 = orient(a, b, p);
+  const d2 = orient(a, b, q);
+  const d3 = orient(p, q, a);
+  const d4 = orient(p, q, b);
+  return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+}
+
+/** True when segment p-q passes through the open interior of box r (Liang-Barsky clip). */
+function segmentEntersRect(p: Point, q: Point, r: Rect): boolean {
+  let t0 = 0;
+  let t1 = 1;
+  const dx = q.x - p.x;
+  const dy = q.y - p.y;
+  const clip = (den: number, num: number): boolean => {
+    if (den === 0) return num > 0;
+    const t = num / den;
+    if (den < 0) {
+      // Entering across this edge.
+      if (t > t1) return false;
+      if (t > t0) t0 = t;
+    } else {
+      // Leaving across this edge.
+      if (t < t0) return false;
+      if (t < t1) t1 = t;
+    }
+    return true;
+  };
+  if (!clip(-dx, p.x - r.x) || !clip(dx, r.x + r.width - p.x) || !clip(-dy, p.y - r.y) || !clip(dy, r.y + r.height - p.y)) return false;
+  return t1 - t0 > 1e-9;
+}
+
+function insideRect(p: Point, r: Rect): boolean {
+  return p.x > r.x && p.x < r.x + r.width && p.y > r.y && p.y < r.y + r.height;
+}
+
+/**
+ * True when the straight line from `from` to `to` crosses a barrier: the
+ * trail's centreline, or a water or landmark box that `from` is not
+ * already in (leaving the box a point starts in is not crossing it).
+ */
+export function crossesBarrier(from: Point, to: Point, map: SnapContext['map']): boolean {
+  for (let i = 1; i < map.path.length; i++) if (segmentsCross(from, to, map.path[i - 1], map.path[i])) return true;
+  for (const r of [...(map.water ?? []), ...(map.landmarks ?? [])]) {
+    if (!insideRect(from, r) && segmentEntersRect(from, to, r)) return true;
+  }
+  return false;
+}
 
 /**
  * The cell a touch ghost sits on (milestone 35). `under` is the cell under
@@ -17,17 +82,25 @@ export const SNAP_CELLS = 1.5;
  * - `under` can take it: `under`.
  * - Otherwise the candidates are the cells whose centre lies within
  *   SNAP_CELLS cells of `under`'s centre (its eight neighbours) that can
- *   take it; the nearest to `point` wins. Ties go to the lower cellKey
- *   (the upper row, then the left column, in world terms).
+ *   take it and that the straight line from `point` reaches without
+ *   crossing a barrier (crossesBarrier: the trail centreline, water, the
+ *   cottage).
+ * - The nearest to `point` wins, except that a candidate on the finger's
+ *   side of `point` (its offset has a positive component along `down`)
+ *   loses to any other candidate at most FINGER_SIDE_PENALTY times as far:
+ *   finger-side distances count FINGER_SIDE_PENALTY times, and on an equal
+ *   count the candidate off the finger's side wins. Remaining ties go to the
+ *   lower cellKey (the upper row, then the left column, in world terms).
  * - No candidate: null (red; a release cancels).
  */
-export function snapCell(under: Cell | null, point: Point, canTake: (cell: Cell) => boolean): Cell | null {
+export function snapCell(under: Cell | null, point: Point, canTake: (cell: Cell) => boolean, ctx: SnapContext): Cell | null {
   if (under === null) return null;
   if (canTake(under)) return under;
   const reach = Math.floor(SNAP_CELLS);
   const max = SNAP_CELLS * CELL;
   let best: Cell | null = null;
-  let bestD = Infinity;
+  let bestScore = Infinity;
+  let bestFinger = false;
   for (let row = under.row - reach; row <= under.row + reach; row++) {
     for (let col = under.col - reach; col <= under.col + reach; col++) {
       if (col < 0 || row < 0 || col >= GRID_COLS || row >= GRID_ROWS || (col === under.col && row === under.row)) continue;
@@ -35,11 +108,17 @@ export function snapCell(under: Cell | null, point: Point, canTake: (cell: Cell)
       const cell = { col, row };
       if (!canTake(cell)) continue;
       const c = cellCenter(cell);
-      const d = Math.hypot(c.x - point.x, c.y - point.y);
-      // Rows and columns run in cellKey order, so a strict < keeps the lower key on a tie.
-      if (d < bestD) {
+      if (crossesBarrier(point, c, ctx.map)) continue;
+      const dx = c.x - point.x;
+      const dy = c.y - point.y;
+      const finger = dx * ctx.down.x + dy * ctx.down.y > 1e-9;
+      const score = Math.hypot(dx, dy) * (finger ? FINGER_SIDE_PENALTY : 1);
+      // Rows and columns run in cellKey order, so keeping the first of equals keeps the lower key.
+      const better = score < bestScore - 1e-9 || (Math.abs(score - bestScore) <= 1e-9 && bestFinger && !finger);
+      if (better) {
         best = cell;
-        bestD = d;
+        bestScore = score;
+        bestFinger = finger;
       }
     }
   }
