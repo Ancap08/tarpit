@@ -42,7 +42,7 @@ test('tablet win screen: three buttons 44 px tall, 8 px apart, inside the canvas
   for (const b of [row[1], row[2]]) await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
   expect(await api(page, (a) => a.scene())).toBe('game');
   const s = await api(page, (a) => a.state());
-  expect(s).toMatchObject({ phase: 'setup', endless: true, wave: 10, gold: before.gold });
+  expect(s).toMatchObject({ phase: 'setup', endless: true, wave: 20, gold: before.gold });
   expect(s.towers.length).toBe(before.towers);
   const ui = await api(page, (a) => a.ui());
   expect(ui.pick).toBeNull();

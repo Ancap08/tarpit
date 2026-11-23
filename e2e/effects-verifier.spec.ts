@@ -10,6 +10,7 @@ type Scene = {
   state: any;
   build(c: { col: number; row: number }, t: string): { ok: boolean };
   startWave(): { ok: boolean };
+  pickBoon(id: string): unknown;
   advance(n: number, redraw?: boolean): void;
   spawnHorde(n: number, span?: number): boolean;
   setSpeed(s: number): void;
@@ -180,7 +181,11 @@ test('ten waves at 3x then Play again: idle counts, nothing from the old game', 
       for (const o of s.children.list as any[]) if (o.getAliveParticleCount) parts = Math.max(parts, o.getAliveParticleCount());
       m.parts = Math.max(m.parts, parts);
       for (const e of s.state.enemies) if (e.type === 'boss') e.hp = Math.min(e.hp, 1);
-      if (s.state.phase === 'setup' || s.state.phase === 'cleared') s.startWave();
+      if (s.state.phase === 'setup' || s.state.phase === 'cleared') {
+        const id = s.state.pendingBoon?.options[0];
+        if (id) s.pickBoon(id);
+        s.startWave();
+      }
       else s.callNextWave?.();
     };
     requestAnimationFrame(frame);

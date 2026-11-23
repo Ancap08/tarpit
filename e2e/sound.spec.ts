@@ -170,8 +170,9 @@ test('wave clear, an exit, the boss arriving and falling, the win and the loss s
     if (e) e.distance = 1e5;
   }, null);
   await page.waitForFunction(() => (window.__tarpit!.audio().requested.exit ?? 0) > 0);
-  // The win: the last wave's field cleared.
+  // The win: the wave-20 field is fully cleared.
   await onScene(page, (scene) => {
+    scene.state.wave = 20;
     scene.state.spawnedPerGroup = scene.state.spawnedPerGroup.map(() => 1e6);
     scene.state.enemies = [];
   }, null);

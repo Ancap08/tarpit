@@ -2,18 +2,9 @@ import { expect, test, type Page } from '@playwright/test';
 import { BOSS_NAME, ENEMY_NAMES } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 
-// Milestone 23: Grumblefoot, the Troll King, at the end of wave 10, with the
-// HUD boss bar. Test mode (?test=1): time only passes through step().
-//
-// He spawns on the tick with waveTick 1560 (26 s into wave 10), so after
-// 1561 steps. The combo build's Longbows aim at the enemy furthest along
-// the path, so he walks untouched behind the rest of the wave until about
-// step 2538, when the Fire Pot at (10,4) first hits him on the top run;
-// the test steps 300 at a time until the bar shows lost hp. The combo
-// build kills him at waveTick 4639 (src/sim/balance.test.ts). Milestone
-// 25c second pass: he spawns at waveTick 3900 (after 3901 steps); the
-// Longbow at (9,4) first hits him at step 5085, so still in the fourth chunk;
-// he dies at waveTick 6292.
+// Grumblefoot spawns during wave-10 tick 3900. With the current combo
+// build but without its timed wave-10 special, the first damage is from a
+// Fire Pot at step 5024 and Grumblefoot falls at step 6256.
 
 const BOSS_SPAWN_STEPS = 3901;
 
@@ -25,7 +16,7 @@ async function startGame(page: Page): Promise<void> {
 
 const hud = (page: Page) => page.evaluate(() => (window.__tarpit as TarpitTestApi).hudText());
 
-test('the combo build meets Grumblefoot in wave 10: preview, bar, hp drop, kill, win', async ({ page }) => {
+test('the combo build meets Grumblefoot in wave 10: preview, bar, hp drop, kill, reward', async ({ page }) => {
   await startGame(page);
   const before = await page.evaluate(() => {
     const t = window.__tarpit as TarpitTestApi;
@@ -75,13 +66,15 @@ test('the combo build meets Grumblefoot in wave 10: preview, bar, hp drop, kill,
       t.step(1);
       down = t.events().find((e) => e.kind === 'bossDown') ?? null;
     }
-    return { down, phase: t.state().phase, lives: t.state().lives, screen: t.endScreen(), boss: t.hudText().boss };
+    return { down, phase: t.state().phase, lives: t.state().lives, screen: t.endScreen(), boss: t.hudText().boss, pending: t.pendingBoon(), tick: t.state().waveTick };
   });
   expect(end).toEqual({
-    down: { kind: 'bossDown', enemyId: spawn.bossId, cause: 'shot' },
-    phase: 'won',
+    down: { kind: 'bossDown', enemyId: spawn.bossId, enemyType: 'boss', cause: 'shot' },
+    phase: 'setup',
     lives: 16,
-    screen: 'won',
+    pending: { wave: 10, options: ['stickyTar', 'hotCoals', 'quickHands'] },
+    tick: 6256,
+    screen: null,
     boss: null,
   });
 });
@@ -113,7 +106,7 @@ test('Grumblefoot exits with 5 lives left: 0 lives, lost', async ({ page }) => {
   });
   expect(r).toEqual({
     livesAlone: 5,
-    down: { kind: 'bossDown', enemyId: expect.any(Number), cause: 'exit' },
+    down: { kind: 'bossDown', enemyId: expect.any(Number), enemyType: 'boss', cause: 'exit' },
     phase: 'lost',
     lives: 0,
     screen: 'lost',

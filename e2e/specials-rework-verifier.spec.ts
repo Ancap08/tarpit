@@ -199,10 +199,10 @@ test('a keg leaves a scorch that fades; the tar puddle and fire patch are drawn 
       await api(page, (a) => a.step(240));
       expect(Buffer.compare(await shot(page, SPOT), base), `${type} at 241`).not.toBe(0);
       if (frames) fs.writeFileSync(`${frames}/${type}-mid.png`, await page.screenshot({ clip: { x: 0, y: 0, width: 960, height: 580 } }));
-      await api(page, (a) => a.step(230)); // 471 ticks: faded but still there
+      await api(page, (a) => a.step(410)); // 651 ticks: faded but still there
       expect((await state(page)).zones.length).toBe(1);
-      expect(Buffer.compare(await shot(page, SPOT), base), `${type} at 471 (fading)`).not.toBe(0);
-      await api(page, (a) => a.step(10)); // 481
+      expect(Buffer.compare(await shot(page, SPOT), base), `${type} at 651 (fading)`).not.toBe(0);
+      await api(page, (a) => a.step(10)); // 661
       expect((await state(page)).zones.length).toBe(0);
       expect(Buffer.compare(await shot(page, SPOT), base), `${type} gone after its life`).toBe(0);
     }
@@ -225,7 +225,7 @@ test('speed: short press toggles once, hold gives 3x only while held; holding th
   // Win while holding: kill the troll and run to the end.
   await api(page, (a) => {
     const s = a.state();
-    s.wave = 10;
+    s.wave = 20;
     s.enemies = [];
     s.spawnedPerGroup = Array(12).fill(9999);
     a.step(3);
@@ -245,7 +245,7 @@ test('cheat: ten quick taps give two grants (+1000); the marker shows; refused o
   expect((await hud(page)).cheat).toBe('cheat used');
   await api(page, (a) => {
     const st = a.state();
-    st.wave = 10;
+    st.wave = 20;
     st.enemies = [];
     st.spawnedPerGroup = Array(12).fill(9999);
     a.step(3);
@@ -273,10 +273,21 @@ test('cheat in setup, mid-wave and in endless adds 500; the best is untouched by
   await tap();
   expect((await state(page)).gold - g).toBe(500);
   expect(await api(page, (a) => a.bestScore('normal'))).toBeNull();
-  await api(page, (a) => a.runScript('comboBuild', 10));
-  await api(page, (a) => a.startWave());
-  await api(page, (a) => a.step(8000));
-  // The cheated game's progress is not stored.
+  await api(page, (a) => {
+    // Finish the campaign while preserving the cheat flag set by real input.
+    const s = a.state();
+    s.wave = 20;
+    s.enemies = [];
+    s.spawnedPerGroup = Array(5).fill(9999);
+    a.step(1);
+  });
+  expect((await state(page)).phase).toBe('won');
+  await clickRect(page, 'keepGoing');
+  expect((await state(page)).endless).toBe(true);
+  g = (await state(page)).gold;
+  await page.waitForTimeout(2100);
+  await tap();
+  expect((await state(page)).gold - g).toBe(500);
   expect(await api(page, (a) => a.bestScore('normal'))).toBeNull();
 });
 

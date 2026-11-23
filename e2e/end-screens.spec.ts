@@ -3,13 +3,8 @@ import type { TarpitTestApi } from '../src/game/testGlobal';
 
 // Win and lose screens reached through the real simulation, and [Play again]
 // through a real click. Time is frozen (?test=1) and driven by step().
-// Numbers come from the verified simulation: with no towers the game is lost
-// on wave 1 with 0 lives (milestone 25c: 20 Goblins; wave 2 before); the
-// combo build wins with 13 lives and 418 gold (milestone 25c; 12 and 497
-// in milestone 23: the milestone 22 347 plus Grumblefoot's 150 bounty;
-// 11 lives and 177 gold before the Harpy and Shieldbearer
-// waves; until milestone 12 the sound build, v1 towers only, won with 13
-// lives and 269 gold, and it no longer wins).
+// In Normal on Meadow, a run with no towers loses on wave 1 with 0 lives.
+// The combo build clears wave 20 with 19 lives and 2847 gold.
 
 async function startGame(page: Page): Promise<void> {
   await page.goto('/?test=1');
@@ -63,7 +58,7 @@ async function playAgain(page: Page): Promise<void> {
 }
 
 async function expectFreshGame(page: Page): Promise<void> {
-  expect(await state(page)).toMatchObject({ gold: 100, lives: 20, wave: 0, phase: 'setup', tick: 0, towers: [], enemies: [] });
+  expect(await state(page)).toMatchObject({ gold: 100, lives: 20, wave: 0, phase: 'setup', tick: 0, towers: [], enemies: [], boons: [], pendingBoon: null });
   expect(await endScreen(page)).toBeNull();
   expect(await speed(page)).toBe(1);
   expect(await ui(page)).toMatchObject({ pick: null, selectedCell: null, panelOpen: false });
@@ -80,7 +75,7 @@ test('lose with no towers, map clicks do nothing, play again starts a clean game
   expect(await endScreen(page)).toBe('lost');
   expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).hudText())).toMatchObject({
     lives: 'Lives 0',
-    wave: 'Wave 1/10',
+    wave: 'Wave 1/20',
     next: '', // no next wave after a loss
   });
 
@@ -115,11 +110,11 @@ test('win with the combo build through the scene actions, then play again', asyn
   const phase = await page.evaluate(() => (window.__tarpit as TarpitTestApi).runScript('comboBuild'));
   expect(phase).toBe('won');
   expect(await endScreen(page)).toBe('won');
-  expect(await state(page)).toMatchObject({ phase: 'won', wave: 10, lives: 16, gold: 420 });
+  expect(await state(page)).toMatchObject({ phase: 'won', wave: 20, lives: 19, gold: 2847 });
   expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).hudText())).toMatchObject({
-    gold: 'Gold 420',
-    lives: 'Lives 16',
-    wave: 'Wave 10/10',
+    gold: 'Gold 2847',
+    lives: 'Lives 19',
+    wave: 'Wave 20/20',
   });
 
   // A tower under the veil does not select, and the bar is greyed even with gold.

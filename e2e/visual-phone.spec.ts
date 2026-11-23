@@ -1,7 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { TarpitTestApi } from '../src/game/testGlobal';
+import { GRUMBLEMAW_NAME } from '../src/game/names';
 import { MAP_IDS } from '../src/sim/map';
-import { fingerFor, liftPage, rectPage, tap, tapCell, ui, worldPage } from './phone';
+import { fingerFor, liftPage, rectPage, rectPageSize, tap, tapCell, ui, worldPage } from './phone';
+import { FIRST_REWARD_STEPS, GRUMBLEFOOT_STEPS, beginVisualWave, finalBossFrame } from './visualCampaign';
+import { waitForTitle } from './title';
 
 // Milestone 32b: portrait screenshot baselines for the phone project
 // (390 x 844, touch), frozen in test mode as visual.spec.ts does. Baselines
@@ -10,7 +13,7 @@ import { fingerFor, liftPage, rectPage, tap, tapCell, ui, worldPage } from './ph
 
 async function open(page: Page): Promise<void> {
   await page.goto('/?test=1');
-  await page.waitForFunction(() => window.__tarpit?.titleReady?.() === true);
+  await waitForTitle(page);
   await page.evaluate(() => document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => r(null)))));
 }
 
@@ -104,7 +107,7 @@ test('portrait special aim: a Tar Barrel held over the first climb on wave 4', a
   await tap(page, 'special');
   await tap(page, 'special:tarBarrel');
   const client = await page.context().newCDPSession(page);
-  const target = await worldPage(page, { x: 160, y: 191 });
+  const target = await worldPage(page, { x: 160, y: 131 });
   const finger = { x: target.x, y: target.y + (await liftPage(page)) };
   await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [target] });
   for (let i = 1; i <= 6; i++) {
@@ -135,16 +138,16 @@ test('portrait tar zone: a Tar Barrel puddle one second after it lands on wave 7
 
 test('portrait boss: Grumblefoot with his bar on wave 10', async ({ page }) => {
   await open(page);
-  const bar = await page.evaluate(() => {
+  const bar = await page.evaluate((steps) => {
     const t = window.__tarpit as TarpitTestApi;
     return t.startGame().then(() => {
       t.runScript('comboBuild', 10);
       t.startWave();
-      t.step(5361); // visual.spec.ts BOSS_STEPS: Grumblefoot burning and tarred under a Mortar splash
+      t.step(steps);
       return t.hudText().boss;
     });
-  });
-  expect(bar).toMatch(/^Grumblefoot /);
+  }, GRUMBLEFOOT_STEPS);
+  expect(bar).toMatch(/^Grumblefoot 3525 \/ 4000$/);
   await settle(page);
   await shot(page, 'phone-boss.png');
 });
@@ -224,4 +227,34 @@ test('portrait snap: a Musketeer dragged over the trail margin snaps to the cell
   await settle(page);
   await shot(page, 'phone-snap.png');
   await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+});
+
+test('portrait reward cards are touch-sized and tapping chooses a boon', async ({ page }) => {
+  await open(page);
+  const reward = await beginVisualWave(page, 5, FIRST_REWARD_STEPS);
+  expect(reward.pending).toEqual({ wave: 5, options: ['longBarrels', 'keenArrows', 'warChest'] });
+  for (const id of reward.pending?.options ?? []) {
+    const size = await rectPageSize(page, `reward:${id}`);
+    expect(Math.min(size.width, size.height)).toBeGreaterThanOrEqual(44);
+  }
+  await settle(page);
+  await shot(page, 'phone-boon-pick.png');
+  await tap(page, 'reward:longBarrels');
+  await tap(page, 'boon:longBarrels');
+  expect((await ui(page)).boonTooltip).toBe('longBarrels');
+  await settle(page);
+  await shot(page, 'phone-boon-icons.png');
+});
+
+test('portrait Grumblemaw keeps his bar and effects on wave 20', async ({ page }) => {
+  await open(page);
+  expect(await finalBossFrame(page)).toMatchObject({
+    wave: 20,
+    bar: `${GRUMBLEMAW_NAME} 4722 / 5600`,
+    texture: 'boss',
+    slowed: true,
+    burning: true,
+  });
+  await settle(page);
+  await shot(page, 'phone-grumblemaw.png');
 });

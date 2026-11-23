@@ -497,7 +497,7 @@ test('Menu, then another map: the picture is exactly a fresh game on that map (n
   expect(errors).toEqual([]);
 });
 
-test('Switchback endless: play past wave 10, lose, and the best line shows on Switchback only', async ({ page }) => {
+test('Switchback endless: play past wave 20, lose, and the best line shows on Switchback only', async ({ page }) => {
   test.setTimeout(60_000);
   const errors = watchErrors(page);
   await openTitle(page);
@@ -507,14 +507,14 @@ test('Switchback endless: play past wave 10, lose, and the best line shows on Sw
   const phase = await api(page, (a) => a.runScript('endlessIdle'));
   expect(phase).toBe('lost');
   const s = await state(page);
-  expect([s.map.id, s.endless, s.wave]).toEqual(['switchback', true, 17]); // as the headless table: lost on wave 17 (milestone 30)
+  expect([s.map.id, s.endless, s.wave]).toEqual(['switchback', true, 25]); // matches the deterministic headless report
   expect(await api(page, (a) => a.endScreen())).toBe('lost');
-  expect(await api(page, (a) => [a.bestScore('normal', 'switchback'), a.bestScore('normal', 'meadow'), a.bestScore('normal', 'riverbend'), a.bestScore('normal')])).toEqual([16, null, null, null]);
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('tarpit.best')!))).toEqual({ v: 1, best: { switchback: { normal: 16 } } });
+  expect(await api(page, (a) => [a.bestScore('normal', 'switchback'), a.bestScore('normal', 'meadow'), a.bestScore('normal', 'riverbend'), a.bestScore('normal')])).toEqual([24, null, null, null]);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('tarpit.best')!))).toEqual({ v: 1, best: { switchback: { normal: 24 } } });
   await click(page, 'menu');
   await waitForTitle(page);
   let u = await titleUi(page);
-  expect([u.map, u.difficulty, u.bestLine?.text]).toEqual(['switchback', 'normal', 'Best on Switchback, Normal: 16 waves']);
+  expect([u.map, u.difficulty, u.bestLine?.text]).toEqual(['switchback', 'normal', 'Best on Switchback, Normal: 24 waves']);
   for (const other of ['meadow', 'riverbend'] as const) {
     await click(page, `title:map:${other}`);
     u = await titleUi(page);
@@ -529,7 +529,7 @@ test('Switchback endless: play past wave 10, lose, and the best line shows on Sw
   u = await titleUi(page);
   expect([u.map, u.bestLine]).toEqual(['meadow', null]);
   await click(page, 'title:map:switchback');
-  expect((await titleUi(page)).bestLine?.text).toBe('Best on Switchback, Normal: 16 waves');
+  expect((await titleUi(page)).bestLine?.text).toBe('Best on Switchback, Normal: 24 waves');
   expect(errors).toEqual([]);
 });
 

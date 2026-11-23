@@ -175,21 +175,22 @@ test('a tower type picked on the bar when the game is won is no longer picked on
   await open(page);
   await startGame(page);
   // A tower type is picked on the bar when the game is won: the pick must not survive into endless.
-  // Gold for a pick (test setup): since milestone 30 the plan's wave 10 purchases can leave less than a Longbow.
   await api(page, (t) => {
-    t.runScript('comboBuild', 10);
-    t.state().gold = 1000;
+    const s = t.state();
+    s.wave = 19;
+    s.gold = 1000;
+    t.buildAt(7, 5, 'musketeer');
+    t.startWave();
   });
   await click(page, 'bar:longbow');
   expect(await api(page, (t) => t.ui().pick)).toBe('longbow');
   await api(page, (t) => {
-    t.startWave();
-    // The script's wave 10 special, as runScript would fire it.
-    for (let k = 0; k < 40000 && t.state().phase === 'wave'; k++) t.step(1);
+    // Fixture: step the final tick after all wave-20 groups have spawned.
+    const s = t.state();
+    s.spawnedPerGroup.fill(9999);
+    t.step(1);
   });
-  // Without the scripted special the combo build may not win; make sure we are on the win screen.
-  const phase = await api(page, (t) => t.state().phase);
-  test.skip(phase !== 'won', 'comboBuild without its wave 10 special did not win; covered by the next test');
+  expect(await api(page, (t) => t.endScreen())).toBe('won');
   expect(await api(page, (t) => t.ui().pick)).toBeNull();
   const towers = await api(page, (t) => t.state().towers.length);
   await click(page, 'keepGoing');
@@ -244,7 +245,7 @@ test('win screen: three buttons apart and inside the panel, labels inside their 
   const k = row[0];
   await page.mouse.dblclick(k.x + k.width / 2, k.y + k.height / 2);
   const s = await api(page, (t) => t.state());
-  expect(s).toMatchObject({ phase: 'setup', endless: true, wave: 10, gold });
+  expect(s).toMatchObject({ phase: 'setup', endless: true, wave: 20, gold });
   expect(s.towers.length).toBe(towers);
   expect(await api(page, (t) => t.endScreen())).toBeNull();
   const ui = await api(page, (t) => t.ui());
@@ -253,7 +254,7 @@ test('win screen: three buttons apart and inside the panel, labels inside their 
   // Clicks where Play again and Menu were: plain map clicks now (no restart, no menu).
   for (const r of [row[1], row[2]]) await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
   expect(await api(page, (t) => t.scene())).toBe('game');
-  expect(await api(page, (t) => t.state())).toMatchObject({ phase: 'setup', endless: true, wave: 10, gold });
+  expect(await api(page, (t) => t.state())).toMatchObject({ phase: 'setup', endless: true, wave: 20, gold });
   expect((await api(page, (t) => t.state())).towers.length).toBe(towers);
   expect(await api(page, (t) => t.uiRects().keepGoing)).toBeUndefined();
   // The hook refuses a second Keep going.
@@ -261,12 +262,12 @@ test('win screen: three buttons apart and inside the panel, labels inside their 
   expect(errors).toEqual([]);
 });
 
-test('endless HUD: "Wave 11" and "Wave 123" keep clear of the preview; the widest endless preview fits its room', async ({ page }) => {
+test('endless HUD: "Wave 21" and "Wave 123" keep clear of the preview; the widest endless preview fits its room', async ({ page }) => {
   test.setTimeout(90_000);
   await open(page);
   for (const level of ['normal', 'easy'] as const) {
     await startGame(page, level);
-    for (const wave of [10, 19, 122, 9998]) {
+    for (const wave of [20, 22, 122, 9998]) {
       // Test setup: jump to an endless setup phase with `wave` cleared.
       await api(page, `(t) => { const s = t.state(); s.endless = true; s.wave = ${wave}; t.step(1); }` as unknown as (t: TarpitTestApi) => void);
       const hud = await api(page, (t) => t.hudText());
@@ -288,45 +289,45 @@ test('endless HUD: "Wave 11" and "Wave 123" keep clear of the preview; the wides
       const tag = all.find((x) => x.text === hud.difficulty && hud.difficulty !== '');
       if (tag) expect(overlap(tag, next)).toBe(false);
     }
-    // Before wave 20 (wave 8 based, 14 + 16 Harpies): the widest endless preview.
+    // Before wave 23 (wave 20 based, with 18 + 10 Harpies and no boss).
     await api(page, (t) => {
-      t.state().wave = 19;
+      t.state().wave = 22;
       t.step(1);
     });
-    expect((await api(page, (t) => t.hudText())).next).toBe('Next: 50 Goblin, 25 Wolf, 13 Troll, 6 Shieldbearer, 30 Harpy');
+    expect((await api(page, (t) => t.hudText())).next).toBe('Next: 20 Wolf, 15 Shieldbearer, 28 Harpy, 12 Troll');
     await page.reload();
     await toTitle(page);
   }
 });
 
-test('lose screens: "Reached wave 1 of 10" in a normal game, "Reached wave 11" in an endless one', async ({ page }) => {
+test('lose screens: "Reached wave 1 of 20" in a normal game, "Reached wave 21" in an endless one', async ({ page }) => {
   test.setTimeout(90_000);
   await open(page);
   await startGame(page);
   await lose(page);
   let lines = (await texts(page)).map((x) => x.text);
-  expect(lines).toContain('Reached wave 1 of 10');
+  expect(lines).toContain('Reached wave 1 of 20');
   expect(await api(page, (t) => t.uiRects().keepGoing)).toBeUndefined();
   await click(page, 'playAgain');
   await page.waitForFunction(() => (window.__tarpit as TarpitTestApi).endScreen() === null && (window.__tarpit as TarpitTestApi).state().wave === 0);
   expect(await api(page, (t) => t.state().endless)).toBe(false);
 
-  expect(await api(page, (t) => t.runScript('endlessIdle', 11))).toBe('setup');
-  // Test setup: take the towers away so wave 11 walks through.
+  expect(await api(page, (t) => t.runScript('endlessIdle', 21))).toBe('setup');
+  // Test setup: take the towers away so wave 21 walks through.
   await api(page, (t) => {
     t.state().towers.splice(0);
   });
   await lose(page);
   lines = (await texts(page)).map((x) => x.text);
-  expect(lines).toContain('Reached wave 11');
+  expect(lines).toContain('Reached wave 21');
   expect(lines.some((x) => x.includes(' of '))).toBe(false);
   expect(await api(page, (t) => t.uiRects().keepGoing)).toBeUndefined();
-  expect(await api(page, (t) => t.hudText().wave)).toBe('Wave 11');
-  // Play again after an endless loss starts a normal game: "Wave 0/10", not endless.
+  expect(await api(page, (t) => t.hudText().wave)).toBe('Wave 21');
+  // Play again after an endless loss starts a normal game: "Wave 0/20", not endless.
   await click(page, 'playAgain');
   await page.waitForFunction(() => (window.__tarpit as TarpitTestApi).endScreen() === null && (window.__tarpit as TarpitTestApi).state().wave === 0);
   expect(await api(page, (t) => t.state().endless)).toBe(false);
-  expect(await api(page, (t) => t.hudText().wave)).toBe('Wave 0/10');
+  expect(await api(page, (t) => t.hudText().wave)).toBe('Wave 0/20');
 });
 
 test('title line: follows mouse and keyboard selection, absent without a score, fits at 999 waves', async ({ page }) => {

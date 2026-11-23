@@ -53,7 +53,7 @@ for (const map of ['meadow', 'switchback', 'riverbend'] as const) {
     await tap(page, 'title:play');
     await page.waitForFunction(() => window.__tarpit?.scene?.() === 'game');
     expect((await state(page)).map.id).toBe(map);
-    expect((await api(page, (a) => a.hudText())).wave).toBe('Wave 0/10');
+    expect((await api(page, (a) => a.hudText())).wave).toBe('Wave 0/20');
 
     const client = await page.context().newCDPSession(page);
     const target = centre(BOW[map]);

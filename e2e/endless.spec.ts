@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { END_TEXT, bestScoreText } from '../src/game/names';
+import { END_TEXT, bestScoreText, heldBoonsText } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { TitleUiState } from '../src/game/TitleScene';
 import { waitForTitle } from './title';
@@ -7,9 +7,9 @@ import { waitForTitle } from './title';
 // Milestone 26: endless mode and the local high score. Time is frozen
 // (?test=1) and driven by the scripts and step(); buttons are pressed with
 // real mouse clicks at the rectangles uiRects() reports. Numbers come from
-// the headless sim: comboBuild wins Normal with 16 lives and 420 gold;
+// the headless sim: comboBuild wins Normal with 19 lives and 2847 gold;
 // endlessIdle (comboBuild, then Keep going with no purchases) loses on
-// wave 16 with 15 waves cleared (milestone 30).
+// wave 24 with 23 waves cleared.
 
 async function open(page: Page): Promise<void> {
   await page.goto('/?test=1');
@@ -29,6 +29,8 @@ async function click(page: Page, name: string): Promise<void> {
   await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
 }
 
+const comboBoons = ['longBarrels', 'stickyTar', 'stoneWalls'] as const;
+
 /** The visible texts of the running game scene (the end screen's lines among them). */
 const visibleTexts = (page: Page) =>
   page.evaluate(() => {
@@ -38,12 +40,13 @@ const visibleTexts = (page: Page) =>
       .map((o) => (o as unknown as { text: string }).text);
   });
 
-test('win, three buttons, Keep going by mouse: wave 11 starts, "Wave 11", no boss bar', async ({ page }) => {
+test('win, three buttons, Keep going by mouse: wave 21 starts, "Wave 21", no boss bar', async ({ page }) => {
   test.setTimeout(90_000);
   await open(page);
   await startGame(page);
   expect(await api(page, (t) => t.runScript('comboBuild'))).toBe('won');
   expect(await api(page, (t) => t.endScreen())).toBe('won');
+  expect(await visibleTexts(page)).toContain(heldBoonsText(comboBoons));
   const rects = await api(page, (t) => t.uiRects());
   const row = [rects.keepGoing, rects.playAgain, rects.menu];
   for (const r of row) {
@@ -62,39 +65,40 @@ test('win, three buttons, Keep going by mouse: wave 11 starts, "Wave 11", no bos
   expect(await api(page, (t) => t.endScreen())).toBeNull();
   expect(await api(page, (t) => t.uiRects().keepGoing)).toBeUndefined();
   const s = await api(page, (t) => t.state());
-  expect(s).toMatchObject({ phase: 'setup', endless: true, wave: 10, lives: 16, gold: 420 });
-  expect(await api(page, (t) => t.hudText().wave)).toBe('Wave 10');
+  expect(s).toMatchObject({ phase: 'setup', endless: true, wave: 20, lives: 19, gold: 2847, boons: comboBoons });
+  expect(await api(page, (t) => t.hudText().wave)).toBe('Wave 20');
 
   await click(page, 'startWave');
   expect(await api(page, (t) => t.state().phase)).toBe('wave');
-  expect(await api(page, (t) => t.state().wave)).toBe(11);
-  await api(page, (t) => t.step(600));
+  expect(await api(page, (t) => t.state().wave)).toBe(21);
+  await api(page, (t) => t.step(1));
   const hud = await api(page, (t) => t.hudText());
-  expect(hud.wave).toBe('Wave 11');
+  expect(hud.wave).toBe('Wave 21');
   expect(hud.boss).toBeNull();
   expect(await api(page, (t) => t.events().some((e) => e.kind === 'bossSpawn'))).toBe(false);
-  // Wave 11 Goblins: round(23 x 1.6) = 37 hp (milestone 28).
-  expect(await api(page, (t) => t.state().enemies.find((e) => e.type === 'goblin')?.maxHp)).toBe(37);
+  // Wave 21 Goblins: round(23 x 1.8) = 41 hp.
+  expect(await api(page, (t) => t.state().enemies.find((e) => e.type === 'goblin')?.maxHp)).toBe(41);
 });
 
-test('lose in endless: "Reached wave 16" without "of 10"; Menu shows the best line for Normal only', async ({ page }) => {
+test('lose in endless: "Reached wave 24" without "of 20"; Menu shows the best line for Normal only', async ({ page }) => {
   test.setTimeout(120_000);
   await open(page);
   expect(await titleUi(page)).toMatchObject({ difficulty: 'normal', bestLine: null });
   await startGame(page);
   expect(await api(page, (t) => t.runScript('endlessIdle'))).toBe('lost');
   expect(await api(page, (t) => t.endScreen())).toBe('lost');
-  expect(await api(page, (t) => t.state().wave)).toBe(16);
+  expect(await api(page, (t) => t.state().wave)).toBe(24);
   expect(await api(page, (t) => t.uiRects().keepGoing)).toBeUndefined();
   const texts = await visibleTexts(page);
-  expect(texts).toContain(`${END_TEXT.lostWave} 16`);
+  expect(texts).toContain(`${END_TEXT.lostWave} 24`);
+  expect(texts).toContain(heldBoonsText(comboBoons));
   expect(texts.some((x) => x.includes(' of '))).toBe(false);
-  expect(await api(page, (t) => t.bestScore('normal'))).toBe(15);
+  expect(await api(page, (t) => t.bestScore('normal'))).toBe(23);
 
   await click(page, 'menu');
   await waitForTitle(page);
   const ui = await titleUi(page);
-  expect(ui.bestLine?.text).toBe(bestScoreText('meadow', 'normal', 15));
+  expect(ui.bestLine?.text).toBe(bestScoreText('meadow', 'normal', 23));
   // Centred on y 422, midway between milestone 27's map row (bottom y 398) and Play (top y 446).
   const r = ui.bestLine!.rect;
   expect(Math.abs(r.x + r.width / 2 - 480)).toBeLessThanOrEqual(1);
@@ -105,7 +109,7 @@ test('lose in endless: "Reached wave 16" without "of 10"; Menu shows the best li
   await click(page, 'title:easy');
   expect(await titleUi(page)).toMatchObject({ difficulty: 'easy', bestLine: null });
   await click(page, 'title:normal');
-  expect((await titleUi(page)).bestLine?.text).toBe(bestScoreText('meadow', 'normal', 15));
+  expect((await titleUi(page)).bestLine?.text).toBe(bestScoreText('meadow', 'normal', 23));
 });
 
 test('the score survives a reload; a fresh context shows no line', async ({ page, browser }) => {
@@ -151,26 +155,26 @@ test('a malformed stored value shows no line and no console error', async ({ pag
   expect(errors).toEqual([]);
 });
 
-test('a win without Keep going stores 10', async ({ page }) => {
+test('a win without Keep going stores 20', async ({ page }) => {
   test.setTimeout(90_000);
   await open(page);
   await startGame(page);
   expect(await api(page, (t) => t.runScript('comboBuild'))).toBe('won');
-  expect(await api(page, (t) => t.bestScore('normal'))).toBe(10);
-  expect(await page.evaluate(() => localStorage.getItem('tarpit.best'))).toBe('{"v":1,"best":{"meadow":{"normal":10}}}');
+  expect(await api(page, (t) => t.bestScore('normal'))).toBe(20);
+  expect(await page.evaluate(() => localStorage.getItem('tarpit.best'))).toBe('{"v":1,"best":{"meadow":{"normal":20}}}');
   await click(page, 'menu');
   await waitForTitle(page);
-  expect((await titleUi(page)).bestLine?.text).toBe(bestScoreText('meadow', 'normal', 10));
+  expect((await titleUi(page)).bestLine?.text).toBe(bestScoreText('meadow', 'normal', 20));
 });
 
-test('runScript stops in setup right after Keep going with untilWave 11', async ({ page }) => {
+test('runScript stops in setup right after Keep going with untilWave 21', async ({ page }) => {
   test.setTimeout(90_000);
   await open(page);
   await startGame(page);
-  expect(await api(page, (t) => t.runScript('endlessIdle', 11))).toBe('setup');
-  expect(await api(page, (t) => t.state())).toMatchObject({ phase: 'setup', wave: 10, endless: true });
+  expect(await api(page, (t) => t.runScript('endlessIdle', 21))).toBe('setup');
+  expect(await api(page, (t) => t.state())).toMatchObject({ phase: 'setup', wave: 20, endless: true });
   expect(await api(page, (t) => t.endScreen())).toBeNull();
-  // The generated wave 11 preview fits its box: at most two lines.
+  // The generated wave 21 preview fits its box: at most two lines.
   const fit = await page.evaluate(() => {
     const scene = (window.__tarpit as TarpitTestApi).game.scene.getScene('game');
     const next = scene.children.list.find((o) => o.type === 'Text' && (o as unknown as { text: string }).text.startsWith('Next:')) as unknown as {
@@ -181,6 +185,6 @@ test('runScript stops in setup right after Keep going with untilWave 11', async 
     };
     return { text: next.text, lines: next.getWrappedText().length, size: next.style.fontSize };
   });
-  expect(fit.text).toBe('Next: 50 Goblin, 25 Wolf, 13 Troll, 6 Shieldbearer, 24 Harpy');
+  expect(fit.text).toBe('Next: 36 Goblin, 18 Troll, 11 Shieldbearer, 29 Harpy');
   expect(fit.lines).toBeLessThanOrEqual(2);
 });

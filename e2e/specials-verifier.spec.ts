@@ -275,7 +275,7 @@ test('(j) the wave preview never reaches the Special button, in setup and mid-wa
   await page.evaluate(() => (window.__tarpit as TarpitTestApi).startGame());
   const special = (await rects(page)).special;
   const out: string[] = [];
-  for (let wave = 1; wave <= 10; wave++) {
+  for (let wave = 1; wave <= 20; wave++) {
     for (const running of [false, true]) {
       const b = await page.evaluate(
         ([w, run]) => {
@@ -307,7 +307,7 @@ test('(j) the wave preview never reaches the Special button, in setup and mid-wa
       if (!running && wave >= 2) expect(b.length, `a preview at wave ${wave}`).toBeGreaterThanOrEqual(1);
     }
   }
-  expect(out.length).toBeGreaterThanOrEqual(19);
+  expect(out.length).toBeGreaterThanOrEqual(39);
   // Row 1 buttons: 8 px apart, 14 px from the right edge, none overlapping.
   const r = await rects(page);
   expect([r.special, r.startWave, r.speed].map((q) => [q.x, q.width, q.y, q.height])).toEqual([
