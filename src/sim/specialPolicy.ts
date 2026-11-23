@@ -84,7 +84,10 @@ function bestPoint(state: GameState, pos: readonly { p: Point; big: boolean }[],
     let hits = 0;
     let big = false;
     for (const q of pos) {
-      if (Math.hypot(q.p.x - c.x, q.p.y - c.y) <= r) {
+      const dx = q.p.x - c.x;
+      const dy = q.p.y - c.y;
+      if (Math.abs(dx) > r || Math.abs(dy) > r) continue;
+      if (Math.hypot(dx, dy) <= r) {
         hits += 1;
         big ||= q.big;
       }

@@ -6,6 +6,9 @@ import type * as Balance from '../src/sim/balanceRuns';
 import type * as Targets from '../src/sim/balanceTargets';
 import type * as Maps from '../src/sim/map';
 import type * as Boons from '../src/sim/boonBalance';
+import type * as Specials from '../src/sim/specials';
+import type * as Paths from '../src/sim/pathBalance';
+import type * as Encounters from '../src/sim/pathEncounter';
 
 const server = await createServer({
   root: fileURLToPath(new URL('..', import.meta.url)),
@@ -24,20 +27,50 @@ try {
 
   console.log('Balance targets');
   for (const target of targets.TARGETS) {
-    if (target.id === 'N10a') continue; // The report checks the entire matrix below.
     const result = target.check();
     console.log(`${result.ok ? 'ok  ' : 'MISS'}  ${target.id.padEnd(3)} ${(target.map ?? '').padEnd(10)} ${target.label}: ${result.info}`);
     if (!result.ok) process.exitCode = 1;
   }
 
+  const { SPECIAL_TYPES } = await server.ssrLoadModule('/src/sim/specials.ts') as typeof Specials;
+  console.log('\nNormal comboBuild with one special omitted (information only)');
+  console.log('map'.padEnd(10) + ['all', ...SPECIAL_TYPES.map(type => `without ${type}`)].map(label => label.padStart(18)).join('  '));
+  for (const map of MAP_IDS) {
+    const all = balance.balanceRun('comboBuild', map, 'normal');
+    const singles = SPECIAL_TYPES.map(type => targets.comboWithoutSpecialRun(type, map));
+    console.log(map.padEnd(10) + [all, ...singles].map(run => balance.matrixCell(run).padStart(18)).join('  '));
+  }
+
   for (const map of MAP_IDS) {
     console.log(`\n${map}, Normal: boon matrix (lives, kills, gold)`);
-    for (const { picks, run } of targets.boonBalanceRuns(map, 'all')) {
+    for (const { picks, run } of targets.boonBalanceRuns(map)) {
       console.log(`${picks.join(' / ')}  ${balance.matrixCell(run)}, ${run.kills} kills, ${run.gold} gold`);
     }
-    const result = targets.checkBoonBalance(map, 'all');
-    console.log(`${result.ok ? 'ok' : 'MISS'}  N10a  ${map}: ${result.info}`);
-    if (!result.ok) process.exitCode = 1;
+  }
+
+  const paths = await server.ssrLoadModule('/src/sim/pathBalance.ts') as typeof Paths;
+  const rows = paths.PATH_SCENARIOS.map(paths.measurePathScenario);
+  console.log('\nNormal, default rewards and specials: adaptive A/B, then matched A/B/copy');
+  for (const row of rows) {
+    if (!row.pathValid || !row.copyValid) process.exitCode = 1;
+    console.log(`${row.pathValid && row.copyValid ? '' : 'MISS  purchase control  '}${row.tower} ${row.build}/${row.map}: ${[row.a, row.b, row.matchedA, row.matchedB, row.copy].map(balance.matrixCell).join(' / ')}`);
+  }
+  for (const s of paths.summarizePathBalance(rows)) {
+    const checks = [
+      ['P1', s.p1, `A minus B: ${s.ab.join('/')}`],
+      ['P2', s.p2, `largest A/B gap: ${s.largestGap}`],
+      ['P4', (s.p4.aWin || s.p4.bWin) && (s.p4.aCopy || s.p4.bCopy), `A minus copy: ${s.ac.join('/')}, B minus copy: ${s.bc.join('/')}`],
+    ] as const;
+    for (const [id, passed, evidence] of checks) {
+      console.log(`${passed ? 'ok' : 'MISS'}  ${id} ${s.tower}: ${evidence}`);
+      if (!passed) process.exitCode = 1;
+    }
+  }
+
+  const encounters = await server.ssrLoadModule('/src/sim/pathEncounter.ts') as typeof Encounters;
+  for (const row of encounters.measurePathEncounters()) {
+    console.log(`${row.ok ? 'ok' : 'MISS'}  P3 ${row.tower}: lone Troll ${row.loneMetric} ${row.lone.join('/')}, ten Goblins ${row.packMetric} ${row.pack.join('/')}`);
+    if (!row.ok) process.exitCode = 1;
   }
 
   const boons = await server.ssrLoadModule('/src/sim/boonBalance.ts') as typeof Boons;
@@ -75,10 +108,15 @@ try {
   for (const map of MAP_IDS) {
     const run = balance.balanceRun('comboBuild', map, 'normal');
     console.log(`\n${map}, Normal: comboBuild by wave`);
-    console.log('wave  lives  gold   ticks  peak');
+    console.log('wave  lives  lost  gold before combat  ending gold  ticks  peak');
     for (const wave of run.waves) {
-      console.log([wave.wave, wave.lives, wave.gold, wave.ticks, wave.peak].map((value, i) => String(value).padStart(i === 3 ? 6 : 4)).join('  '));
+      console.log([wave.wave, wave.lives, wave.livesLost, wave.goldAfterPurchases, wave.gold, wave.ticks, wave.peak].map((value, i) => String(value).padStart(i === 3 ? 6 : 4)).join('  '));
     }
+  }
+
+  console.log('\nNormal ending gold                  Meadow / Switchback / Riverbend');
+  for (const name of ['comboBuild', 'wideBuild', 'hardBuild', 'artilleryBuild', 'burnBuild', 'musketBuild'] as const) {
+    console.log(`${name.padEnd(nameWidth)}  ${MAP_IDS.map((map) => balance.balanceRun(name, map, 'normal').gold).join(' / ')}`);
   }
 
   console.log('\nMatrix');

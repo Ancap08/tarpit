@@ -148,10 +148,10 @@ test('"Kills N" follows the tower tick by tick while the panel is open, and a 3-
       type Box = { x: number; y: number; width: number; height: number };
       type Txt = { text: string; getBounds(): Box };
       const scene = window.__tarpit!.game.scene.getScene('game') as unknown as {
-        panel: { killsText: Txt; stack: { backing: { getBounds(): Box } } };
+        panel: { killsText: Txt; backing: { getBounds(): Box } };
       };
       const k = scene.panel.killsText.getBounds();
-      const p = scene.panel.stack.backing.getBounds();
+      const p = scene.panel.backing.getBounds();
       return { kills: { x: k.x, y: k.y, width: k.width, height: k.height }, panel: { x: p.x, y: p.y, width: p.width, height: p.height } };
     });
   for (const n of [9, 99, 999, 9999]) {
@@ -200,7 +200,7 @@ test('kills and moves: a tower that has kills is locked and cannot be moved; an 
   expect((await ui(page)).killsLabel).toBe(killsLabel(kills));
 });
 
-// Replaying the 36a combo build to wave 8 and ticking it without a
+// Replaying the combo build to wave 8 and ticking it without a
 // special first reaches a peak of 22 live enemies at step 1396.
 test('frame: comboBuild, wave 8 at its densest moment (wave tick 1396, 22 enemies on the map)', async ({ page }, testInfo) => {
   test.setTimeout(60_000);
@@ -213,7 +213,7 @@ test('frame: comboBuild, wave 8 at its densest moment (wave tick 1396, 22 enemie
     t.runScript('comboBuild', 8);
     t.startWave();
   });
-  expect(await state(page)).toMatchObject({ phase: 'wave', wave: 8, lives: 16 });
+  expect(await state(page)).toMatchObject({ phase: 'wave', wave: 8, lives: 14 });
   await step(page, 1396);
   const s = await state(page);
   expect(s.waveTick).toBe(1396);

@@ -45,10 +45,13 @@ cloud shadows and the odd bird or butterfly, all still under reduced motion.
    waves is free to change (a tower bought while a wave runs locks at once): drag a tower (dashed outline) to another
    cell, Remove it for all its gold back, or Undo an upgrade for its full
    price. Once the wave starts, towers are locked in place and sell for 70%.
-4. **Upgrade, sell, target.** Click a tower to open its panel: Upgrade (one
-   level), Sell, and Target, which cycles which enemy it shoots: First
-   (furthest along the path), Last (closest to the cave) or Strongest (most
-   hp). The panel also shows the tower's kills.
+4. **Upgrade, sell, target.** Open a tower's panel and choose Upgrade to
+   reach level 2. At level 2, choose one of two paths to reach level 3.
+   Each choice shows its price and describes the shot, blast, slow or burn in plain words. A gold diamond or
+   two blue dots beside the tower show which path you bought. During
+   planning, Undo upgrade refunds purchases from that round one at a
+   time, starting with the latest. The panel also shows the tower's kills
+   and lets you sell it or cycle its target through First, Last and Strongest.
 5. **Tar and fire.** A Fire Pot's burn does double damage to an enemy slowed
    by tar, so build a Tar Pit and a Fire Pot side by side.
 6. **Mortar.** It cannot hit enemies inside its dashed inner circle (70 px),
@@ -72,11 +75,13 @@ cloud shadows and the odd bird or butterfly, all still under reduced motion.
    blocked into and out of waves 5, 10, 15 and 20.
 10. **Pick a reward.** After waves 5, 10 and 15, click or tap one of
     three cards, or press 1, 2 or 3. Hover over or tap a reward icon in
-    the HUD to read what it does. You keep your rewards in endless play.
+    the HUD to read what it does. War Chest gives 80 gold and Stone Walls
+    adds four lives when picked. You keep your rewards in endless play.
     Turning your device keeps your run and any open reward cards.
     Reloading starts a new run.
 11. **Two bosses.** Grumblefoot, the Troll King, arrives at the end of
     wave 10 and costs 5 lives if he gets through. Act II begins on wave 11.
+    On Normal and Hard, enemies gain health each wave through wave 20.
     Grumblemaw arrives at the end of wave 20 and costs 10 lives if he gets
     through. When his health falls past two thirds and one third, he calls
     Wolves from the cave. The health bar shows which boss is on the trail.
@@ -158,7 +163,7 @@ happened, including what went wrong, is in [DEVLOG.md](DEVLOG.md).
   "milestone 25c"; DEVLOG "milestone 25c, Second pass".
 - **The Hard hp cliff.** The first horde numbers gave the Hard Goblin 13 hp
   against the Musketeer's 12 damage, so every Musketeer opening lost Hard on
-  wave 1. Now a rule, pinned by a test: no Hard hp sits 1 or 2 above a
+  wave 1. Now a rule, pinned by a test: in waves 1 to 10 no ordinary Hard enemy has hp 1 or 2 above a
   multiple of a tower's damage. DECISIONS "milestone 25c".
 - **A flaky Play click.** The title scene is active one frame before Phaser
   makes its buttons clickable; a test clicking in that frame lost the click

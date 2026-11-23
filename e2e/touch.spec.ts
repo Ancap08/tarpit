@@ -98,8 +98,9 @@ test('two-tap placement: pick by tap, arm (7,5), build on the second tap, move t
   expect((await ui(page)).pick).toBeNull();
   await tapCell(page, C75);
   expect(await ui(page)).toMatchObject({ selectedCell: C75, panelOpen: true });
-  const r = await rects(page);
-  expect(r['panel:close']).toMatchObject({ width: 42, height: 42 });
+  const close = await pageSize(page, (await rects(page))['panel:close']);
+  expect(close.width).toBeGreaterThanOrEqual(44);
+  expect(close.height).toBeGreaterThanOrEqual(44);
   await tap(page, 'panel:close');
   expect(await ui(page)).toMatchObject({ selectedCell: null, panelOpen: false });
   expect((await state(page)).towers).toHaveLength(1);

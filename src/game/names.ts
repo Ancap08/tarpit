@@ -3,7 +3,7 @@
 // is an edit here (plus regenerated screenshot baselines). Tests that check a
 // display string build it from these tables, so a rename changes no test.
 
-import { BOONS, type BoonId, type Difficulty, type EnemyType, type MapId, type SpecialType, type TargetingMode, type TowerType } from '../sim';
+import { BOONS, type BoonId, type Difficulty, type EnemyType, type MapId, type SpecialType, type TargetingMode, type TowerLevel, type TowerType, type UpgradePath } from '../sim';
 
 /** The wave 10 boss (docs/SCOPE-v4.md, milestone 23): the HUD boss bar and the wave 10 preview. */
 export const BOSS_NAME = 'Grumblefoot';
@@ -115,11 +115,38 @@ export function bestScoreText(map: MapId, difficulty: Difficulty, waves: number)
  */
 export const PANEL_TEXT = {
   upgrade: 'Upgrade',
-  upgraded: 'Upgraded',
   undoUpgrade: 'Undo upgrade',
   sell: 'Sell',
   remove: 'Remove',
+  notEnoughGold: 'Not enough gold',
 } as const;
+
+export const PATH_NAMES: Readonly<Record<TowerType, Record<UpgradePath, string>>> = {
+  musketeer: { A: 'Sharpshooter', B: 'Volley' },
+  cannon: { A: 'Heavy Shot', B: 'Quick Loader' },
+  tarpit: { A: 'Deep Tar', B: 'Wide Tar' },
+  longbow: { A: 'War Bow', B: 'Quick Draw' },
+  mortar: { A: 'Siege Shell', B: 'Wide Burst' },
+  firepot: { A: 'Inferno', B: 'Lasting Flames' },
+};
+
+export function towerPanelTitle(type: TowerType, level: TowerLevel, path?: UpgradePath): string {
+  return `${path ? PATH_NAMES[type][path] : TOWER_NAMES[type]} · Level ${level}`;
+}
+
+const PATH_DESCRIPTIONS: Readonly<Record<TowerType, Record<UpgradePath, string>>> = {
+  musketeer: { A: 'Farther, harder shots', B: 'Fires much faster' },
+  cannon: { A: 'A much bigger blast', B: 'Fires twice as fast' },
+  tarpit: { A: 'Slows enemies to a crawl', B: 'Slows from farther away' },
+  longbow: { A: 'Hits almost twice as hard', B: 'Fires almost twice as fast' },
+  mortar: { A: 'Hits much harder', B: 'Blast reaches twice as far' },
+  firepot: { A: 'Hotter, shorter burns', B: 'Burns twice as long' },
+};
+
+/** The upgrade's change from level two. Rewards are applied separately by the sim. */
+export function pathDescription(type: TowerType, path: UpgradePath): string {
+  return PATH_DESCRIPTIONS[type][path];
+}
 
 /** The Start Wave button's label (milestone 25c moved it here from hud.ts). */
 export const START_WAVE_TEXT = 'Start Wave';

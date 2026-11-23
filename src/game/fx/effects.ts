@@ -37,6 +37,7 @@ import {
   type Point,
   type Shot,
   type TowerType,
+  type UpgradePath,
 } from '../../sim';
 import type { EnemySprites } from '../anim/enemySprites';
 import { sound } from '../audio/engine';
@@ -119,6 +120,7 @@ interface Pose {
   firedMs: number;
   type: TowerType;
   upgraded: boolean;
+  path?: UpgradePath;
   popKind: PopKind | null;
   popMs: number;
 }
@@ -127,6 +129,7 @@ interface SellGhost {
   cell: Cell;
   type: TowerType;
   upgraded: boolean;
+  path?: UpgradePath;
   angle: number;
   atMs: number;
 }
@@ -391,7 +394,7 @@ export class Effects {
           sound.play('build');
           break;
         case 'upgrade':
-          sound.play('upgrade');
+          sound.play(e.level === 3 ? 'upgradePath' : 'upgrade');
           this.pop(e.cell, e.tower, 'upgrade');
           {
             this.burst(this.sparks, 14, cellCenter(e.cell));
@@ -399,7 +402,7 @@ export class Effects {
           break;
         case 'sell': {
           const old = this.poses.get(cellKey(e.cell));
-          this.sells.push({ cell: e.cell, type: e.tower, upgraded: old?.upgraded ?? false, angle: old?.angle ?? 0, atMs: this.realMs });
+          this.sells.push({ cell: e.cell, type: e.tower, upgraded: old?.upgraded ?? false, path: old?.path, angle: old?.angle ?? 0, atMs: this.realMs });
           this.poses.delete(cellKey(e.cell));
           this.burst(this.dust, 8, cellCenter(e.cell), 0, 8);
           sound.play('sell');
@@ -622,6 +625,7 @@ export class Effects {
       const pose = this.pose(t.cell, t.type);
       live.add(cellKey(t.cell));
       pose.upgraded = t.upgraded;
+      pose.path = t.path;
       pose.type = t.type;
       const target = byId.get(pose.targetId);
       if (target) {
@@ -670,7 +674,7 @@ export class Effects {
   draw(g: Phaser.GameObjects.Graphics): void {
     const now = this.gameMs;
     for (const s of this.sells) {
-      drawTowerScaled(g, s.type, cellCenter(s.cell), { angle: s.angle, recoil: 0, scale: Math.max(0.01, popScale('sell', this.realMs - s.atMs)) }, s.upgraded, 1, this.layout);
+      drawTowerScaled(g, s.type, cellCenter(s.cell), { angle: s.angle, recoil: 0, scale: Math.max(0.01, popScale('sell', this.realMs - s.atMs)) }, s.upgraded, 1, this.layout, s.path);
     }
     for (const f of this.impacts) if (f && now >= f.bornMs) drawImpact(g, f, (now - f.bornMs) / IMPACT_MS[f.kind]);
     for (const p of this.projectiles) if (p) drawProjectile(g, p, (now - p.bornMs) / p.travelMs, this.layout);

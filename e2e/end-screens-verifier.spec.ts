@@ -110,9 +110,10 @@ test('(d) win screen HUD text', async ({ page }) => {
   await startGame(page);
   await api(page, (a) => a.runScript('comboBuild'));
   expect(await endScreen(page)).toBe('won');
+  const won = await state(page);
   expect(await api(page, (a) => a.hudText())).toMatchObject({
-    gold: 'Gold 2847',
-    lives: 'Lives 19',
+    gold: `Gold ${won.gold}`,
+    lives: `Lives ${won.lives}`,
     wave: 'Wave 20/20',
     next: 'Next: none',
   });

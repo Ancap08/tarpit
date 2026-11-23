@@ -231,8 +231,8 @@ describe('(g) the combo builds against him', () => {
   });
 
   it.each([
-    [comboBuild, 6213, 16, 420],
-    [comboBuildNoFire, 6369, 16, 610],
+    [comboBuild, 6215, 14, 489],
+    [comboBuildNoFire, 6345, 12, 663],
   ] as const)('%s defeats Grumblefoot at tick %i, ending act 1 with %i lives and %i gold', (record, killTick, lives, gold) => {
     const replay = record === comboBuild ? combo : run(record(), 10);
     expect(replay.boss.filter((e) => e.wave <= 10)).toEqual([
@@ -242,14 +242,14 @@ describe('(g) the combo builds against him', () => {
     expect(replay.midpoint).toMatchObject({ phase: 'setup', wave: 10, lives, gold, pendingBoon: { wave: 10 } });
   });
 
-  it('Normal combo kills Grumblemaw at tick 5735, winning with 19 lives and 2847 gold', () => {
+  it('Normal combo kills Grumblemaw at tick 5235, winning with 14 lives and 250 gold', () => {
     expect(combo.boss.filter((e) => e.wave === 20)).toEqual([
-      { wave: 20, waveTick: 2892, kind: 'bossSpawn' },
-      { wave: 20, waveTick: 4421, kind: 'packCall', threshold: 2 },
-      { wave: 20, waveTick: 4938, kind: 'packCall', threshold: 1 },
-      { wave: 20, waveTick: 5735, kind: 'bossDown', cause: 'shot' },
+      { wave: 20, waveTick: 1170, kind: 'bossSpawn' },
+      { wave: 20, waveTick: 3367, kind: 'packCall', threshold: 2 },
+      { wave: 20, waveTick: 4372, kind: 'packCall', threshold: 1 },
+      { wave: 20, waveTick: 5235, kind: 'bossDown', cause: 'shot' },
     ]);
-    expect(combo.s).toMatchObject({ phase: 'won', wave: 20, lives: 19, gold: 2847 });
+    expect(combo.s).toMatchObject({ phase: 'won', wave: 20, lives: 14, gold: 250 });
   });
 });
 

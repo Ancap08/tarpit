@@ -13,7 +13,7 @@
 import type { BoonId, BoonOffer } from './boons';
 import type { Cell } from './grid';
 import type { SpecialType } from './specials';
-import type { EnemyType, TargetingMode, TowerType } from './types';
+import type { EnemyType, TargetingMode, TowerType, UpgradePath } from './types';
 
 /** What killed an enemy: a tower shot, a burn tick, or a special attack (milestone 25b). */
 export type KillCause = 'shot' | 'burn' | 'special';
@@ -38,7 +38,7 @@ export type GameEvent =
   | ({ kind: 'boonOffered' } & BoonOffer)
   | { kind: 'boonPicked'; wave: number; id: BoonId }
   | { kind: 'build'; cell: Cell; tower: TowerType }
-  | { kind: 'upgrade'; cell: Cell; tower: TowerType }
+  | ({ kind: 'upgrade'; cell: Cell; tower: TowerType } & ({ level: 2; path?: never } | { level: 3; path: UpgradePath }))
   /** A tower was sold; `full` when it was unlocked and refunded everything (milestone 25a). */
   | { kind: 'sell'; cell: Cell; tower: TowerType; refund: number; full: boolean }
   /** An unlocked tower was moved in setup (milestone 25a). */

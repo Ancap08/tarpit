@@ -16,11 +16,11 @@ import { createGame, startWave, tick } from './game';
 import { applyAction, applyScriptBoon, comboBuild } from './headless';
 import { positionAlongPath, MAPS } from './map';
 
-/** Simulation reference for the 36b browser frame. */
-const BOSS_STEPS = 5263;
+/** Simulation reference for the browser frame. */
+const BOSS_STEPS = 5316;
 
 describe('boss.png frame content', () => {
-  it(`at tick ${BOSS_STEPS} of wave 10 he is alone at (403,96), tarred, burning, 3525 hp on the bar, Mortar hit 2 ticks before, no hit now`, () => {
+  it(`at tick ${BOSS_STEPS} of wave 10 he is alone at (420,98), tarred, burning, 3400 hp on the bar, Mortar hit 2 ticks before, no hit now`, () => {
     const s = createGame();
     const script = comboBuild();
     for (let w = 0; w < 9; w++) {
@@ -59,14 +59,14 @@ describe('boss.png frame content', () => {
       waveTick: BOSS_STEPS,
       enemies: 1,
       type: 'boss',
-      pos: { x: 403, y: 96 },
+      pos: { x: 420, y: 98 },
       burning: true,
       slowed: true,
       slow: 0.3,
-      hpOnBar: 3525,
+      hpOnBar: 3400,
       mortarHits2Before: 1,
       hitNow: false,
-      lives: 16,
+      lives: 14,
     });
   });
 });

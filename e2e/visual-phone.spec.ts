@@ -3,9 +3,10 @@ import type { TarpitTestApi } from '../src/game/testGlobal';
 import { GRUMBLEMAW_NAME } from '../src/game/names';
 import { MAP_IDS } from '../src/sim/map';
 import { fingerFor, liftPage, rectPage, rectPageSize, tap, tapCell, ui, worldPage } from './phone';
-import { FIRST_REWARD_STEPS, GRUMBLEFOOT_STEPS, beginVisualWave, finalBossFrame } from './visualCampaign';
+import { GRUMBLEFOOT_STEPS, beginVisualWave, finalBossFrame } from './visualCampaign';
 import { expectOffer, visibleTexts } from './campaign';
 import { waitForTitle } from './title';
+import { choiceVisual } from './upgradeChoice';
 
 // Milestone 32b: portrait screenshot baselines for the phone project
 // (390 x 844, touch), frozen in test mode as visual.spec.ts does. Baselines
@@ -148,7 +149,7 @@ test('portrait boss: Grumblefoot with his bar on wave 10', async ({ page }) => {
       return t.hudText().boss;
     });
   }, GRUMBLEFOOT_STEPS);
-  expect(bar).toMatch(/^Grumblefoot 3525 \/ 4000$/);
+  expect(bar).toMatch(/^Grumblefoot 3400 \/ 4000$/);
   await settle(page);
   await shot(page, 'phone-boss.png');
 });
@@ -232,7 +233,7 @@ test('portrait snap: a Musketeer dragged over the trail margin snaps to the cell
 
 test('portrait reward cards are touch-sized and tapping chooses a reward', async ({ page }) => {
   await open(page);
-  const reward = await beginVisualWave(page, 5, FIRST_REWARD_STEPS);
+  const reward = await beginVisualWave(page, 5);
   expect(reward.pending).toEqual({ wave: 5, options: ['longBarrels', 'keenArrows', 'warChest'] });
   await expectOffer(page, 5);
   await settle(page);
@@ -251,7 +252,7 @@ test('portrait Grumblemaw keeps his bar and effects on wave 20', async ({ page }
   await open(page);
   expect(await finalBossFrame(page)).toMatchObject({
     wave: 20,
-    bar: `${GRUMBLEMAW_NAME} 4722 / 5600`,
+    bar: `${GRUMBLEMAW_NAME} 16810 / 21280`,
     texture: 'boss',
     slowed: true,
     burning: true,
@@ -259,3 +260,5 @@ test('portrait Grumblemaw keeps his bar and effects on wave 20', async ({ page }
   await settle(page);
   await shot(page, 'phone-grumblemaw.png');
 });
+
+choiceVisual(true, 'phone-upgrade-choice');

@@ -5,9 +5,10 @@ import type { TowerType } from '../src/sim/types';
 import type { TitleUiState } from '../src/game/TitleScene';
 import { MAPS, positionAlongPath } from '../src/sim/map';
 import { SPECIAL_DEFS } from '../src/sim/specials';
-import { expectOffer, visibleTexts } from './campaign';
+import { api, expectOffer, openCampaign, press, visibleTexts } from './campaign';
+import { choices, choiceVisual } from './upgradeChoice';
 import { cellPage, rectPage, rectPageSize } from './phone';
-import { ACT_TWO_STEPS, FIRST_PACK_FRAME, FIRST_PACK_STEPS, FIRST_REWARD_STEPS, GRUMBLEFOOT_STEPS, beginVisualWave, finalBossFrame } from './visualCampaign';
+import { FIRST_PACK_FRAME, FIRST_PACK_STEPS, GRUMBLEFOOT_STEPS, beginVisualWave, finalBossFrame } from './visualCampaign';
 import { waitForTitle } from './title';
 
 // Milestone 25b frames (see the special tests below).
@@ -467,6 +468,7 @@ test('wave 4 Harpies: a Cannon splash ignores one, a Musketeer shoots one', asyn
 // Milestone 30 (the special policy): the same step still meets the rules,
 // at (420,108) with 3331 hp.
 // Milestone 36: the wave 5 range boon and changed special policy give tick 5263.
+// Milestone 37: the revised opening moves this to 5316 at (420,98), 3400 HP.
 
 test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splash', async ({ page }) => {
   await open(page);
@@ -499,7 +501,7 @@ test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splas
     slowed: true,
     hitNow: false,
     mortarHitOnBoss: 1,
-    bar: `${BOSS_NAME} 3525 / 4000`,
+    bar: `${BOSS_NAME} 3400 / 4000`,
     texture: 'boss',
   });
   await settle(page);
@@ -711,9 +713,9 @@ test('win screen after the combo build', async ({ page }) => {
     const t = window.__tarpit as TarpitTestApi;
     await t.startGame();
     const phase = t.runScript('comboBuild');
-    return { phase, screen: t.endScreen(), wave: t.state().wave, lives: t.state().lives, gold: t.state().gold };
+    return { phase, screen: t.endScreen(), wave: t.state().wave };
   });
-  expect(end).toEqual({ phase: 'won', screen: 'won', wave: 20, lives: 19, gold: 2847 });
+  expect(end).toEqual({ phase: 'won', screen: 'won', wave: 20 });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('won.png');
 });
@@ -744,7 +746,7 @@ test('endless wave 21 HUD', async ({ page }) => {
   expect(r).toMatchObject({ phase: 'setup', wave: 21, endless: true, screen: null });
   expect(r.hud.wave).toBe('Wave 21');
   expect(r.hud.boss).toBeNull();
-  expect(r.hud.next).toBe('Next: 33 Wolf, 23 Troll, 31 Harpy');
+  expect(r.hud.next).toBe('Next: 33 Wolf, 15 Troll, 31 Harpy');
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('endless-hud.png');
 });
@@ -839,12 +841,10 @@ test('riverbend placing invalid: a drag held over the river', async ({ page }) =
 
 test('wave 5 shows three reward cards and lets the player pick one', async ({ page }) => {
   await open(page);
-  const reward = await beginVisualWave(page, 5, FIRST_REWARD_STEPS);
+  const reward = await beginVisualWave(page, 5);
   expect(reward).toMatchObject({
     wave: 5,
     pending: { wave: 5, options: ['longBarrels', 'keenArrows', 'warChest'] },
-    lives: 18,
-    gold: 145,
   });
   await expectOffer(page, 5);
   await settle(page);
@@ -871,19 +871,17 @@ test('all three held boons remain in the HUD after the third reward', async ({ p
   const icon = await rectPage(page, 'boon:stoneWalls');
   await page.mouse.move(icon.x, icon.y);
   expect((await ui(page)).boonTooltip).toBe('stoneWalls');
-  expect(await visibleTexts(page)).toContain('3 more lives');
+  expect(await visibleTexts(page)).toContain('4 more lives');
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('boon-icons.png');
 });
 
 test('after the second reward, wave 11 opens with Act II', async ({ page }) => {
   await open(page);
-  const reward = await beginVisualWave(page, 10, ACT_TWO_STEPS);
+  const reward = await beginVisualWave(page, 10);
   expect(reward).toMatchObject({
     wave: 10,
     pending: { wave: 10, options: ['stickyTar', 'hotCoals', 'quickHands'] },
-    lives: 16,
-    gold: 420,
   });
   await expectOffer(page, 10);
   await settle(page);
@@ -903,7 +901,7 @@ test('wave 20 shows Grumblemaw under a Mortar splash', async ({ page }) => {
   expect(await finalBossFrame(page)).toEqual({
     wave: 20,
     enemies: 1,
-    bar: `${GRUMBLEMAW_NAME} 4722 / 5600`,
+    bar: `${GRUMBLEMAW_NAME} 16810 / 21280`,
     texture: 'boss',
     slowed: true,
     burning: true,
@@ -933,9 +931,74 @@ test('wave 20 shows Grumblemaw’s first pack call and two Wolves', async ({ pag
     call: expect.objectContaining({ kind: 'packCall', threshold: 2 }),
     cue: true,
     banner: PACK_CALL_TEXT,
-    bar: `${GRUMBLEMAW_NAME} 3592 / 5600`,
+    bar: `${GRUMBLEMAW_NAME} 13793 / 21280`,
     enemies: ['grumblemaw', 'wolf', 'wolf'],
   });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('pack-call.png');
+});
+
+choiceVisual(false, 'upgrade-choice');
+
+test('towers-level3', async ({ page }) => {
+  await openCampaign(page);
+  const placements = choices.flatMap(([type, a, b], i) => [
+    { type, label: a, path: 'A', col: 2 + i * 5, row: 1 },
+    { type, label: b, path: 'B', col: 2 + i * 5, row: 13 },
+  ] as const);
+  const points = await page.evaluate((placements) => {
+    const t = window.__tarpit as TarpitTestApi;
+    t.state().gold = 10000;
+    return placements.map(({ type, label, path, col, row }) => {
+      if (!t.buildAt(col, row, type).ok || !t.upgradeAt(col, row).ok || !t.upgradeAt(col, row, path).ok)
+        throw new Error(`Could not place ${label} at (${col}, ${row})`);
+      return { ...t.cellToPage(col, row), label };
+    });
+  }, placements);
+  expect(await api(page, (t) => t.state().towers.filter((tower) => tower.level === 3 && tower.path !== undefined).length)).toBe(12);
+  await page.evaluate((points) => {
+    for (const point of points) {
+      const label = document.createElement('span');
+      label.textContent = point.label;
+      label.style.cssText = `position:fixed;z-index:100;left:${point.x}px;top:${point.y + 18}px;
+        transform:translateX(-50%);background:#282219;color:#fce8b4;font:bold 15px sans-serif;
+        padding:3px 6px;border-radius:4px;pointer-events:none;white-space:nowrap`;
+      document.body.append(label);
+    }
+  }, points);
+  await settle(page);
+  await expect(page).toHaveScreenshot('towers-level3.png');
+  if (process.env.M37_FRAMES) await page.screenshot({ path: `${process.env.M37_FRAMES}/m37-towers-level3.png` });
+});
+
+test('m37-midwave', async ({ page }) => {
+  await openCampaign(page);
+  const towers = await api(page, (t) => {
+    const state = t.state();
+    state.wave = 16;
+    state.gold = 1600;
+    for (const [col, row, type, path] of [
+      [7, 5, 'musketeer', 'A'],
+      [15, 9, 'cannon', 'B'],
+      [18, 9, 'tarpit', 'B'],
+      [17, 6, 'mortar', 'B'],
+      [7, 8, 'longbow', 'A'],
+      [14, 8, 'firepot', 'A'],
+    ] as const) {
+      if (!t.buildAt(col, row, type).ok || !t.upgradeAt(col, row).ok || !t.upgradeAt(col, row, path).ok)
+        throw new Error(`Could not place ${type} at (${col}, ${row})`);
+    }
+    return state.towers.filter((tower) => tower.path !== undefined).length;
+  });
+  expect(towers).toBe(6);
+  await press(page, 'startWave');
+  await api(page, (t) => t.step(1800));
+  const midWave = await api(page, (t) => t.state());
+  expect(midWave).toMatchObject({ phase: 'wave', wave: 17 });
+  expect(midWave.enemies.length).toBeGreaterThan(0);
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('m37-midwave.png');
+  if (process.env.M37_FRAMES) {
+    await page.locator('canvas').screenshot({ path: `${process.env.M37_FRAMES}/m37-midwave.png` });
+  }
 });

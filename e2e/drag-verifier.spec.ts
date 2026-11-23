@@ -286,7 +286,7 @@ async function labelBounds(page: Page, left: string, right: string) {
   );
 }
 
-async function expectFits(page: Page, slot: 'panel:upgrade' | 'panel:sell', left: string, right: string): Promise<void> {
+async function expectFits(page: Page, slot: 'panel:undo' | 'panel:sell', left: string, right: string): Promise<void> {
   const button = (await rects(page))[slot];
   const { lefts, rights } = await labelBounds(page, left, right);
   const inRow = (t: { y: number; height: number }) => t.y >= button.y && t.y + t.height <= button.y + button.height;
@@ -318,18 +318,18 @@ for (const type of TYPES) {
       upgradeLabel: `${PANEL_TEXT.undoUpgrade}  +${upgradeCost}`,
       sellLabel: `${PANEL_TEXT.remove}  +${cost + upgradeCost}`,
     });
-    await expectFits(page, 'panel:upgrade', PANEL_TEXT.undoUpgrade, `+${upgradeCost}`);
+    await expectFits(page, 'panel:undo', PANEL_TEXT.undoUpgrade, `+${upgradeCost}`);
     await expectFits(page, 'panel:sell', PANEL_TEXT.remove, `+${cost + upgradeCost}`);
 
     // Undo pays the upgrade back in full; upgrade again; Start Wave locks it.
-    await clickRect(page, 'panel:upgrade');
+    await clickRect(page, 'panel:undo');
     expect((await state(page)).gold).toBe(1000 - cost);
     expect(await ui(page)).toMatchObject({ upgradeLabel: `${PANEL_TEXT.upgrade}  ${upgradeCost}`, sellLabel: `${PANEL_TEXT.remove}  +${cost}` });
     await clickRect(page, 'panel:upgrade');
     await clickRect(page, 'startWave'); // closes the panel
     await clickCell(page, C75);
     const refund = Math.floor(((cost + upgradeCost) * 7) / 10);
-    expect(await ui(page)).toMatchObject({ panelOpen: true, upgradeLabel: PANEL_TEXT.upgraded, sellLabel: `${PANEL_TEXT.sell}  +${refund}` });
+    expect(await ui(page)).toMatchObject({ panelOpen: true, upgradeLabel: null, sellLabel: `${PANEL_TEXT.sell}  +${refund}` });
     await expectFits(page, 'panel:sell', PANEL_TEXT.sell, `+${refund}`);
     await clickRect(page, 'panel:sell');
     const s = await state(page);
@@ -355,7 +355,7 @@ test('panel: a locked tower upgraded in the next setup shows Undo upgrade +35 be
   expect((await state(page)).gold).toBe(65);
   // Sell here pays 35 + 35 = 70 (coordinator follow-up), the same as Undo then Sell.
   expect(await ui(page)).toMatchObject({ upgradeLabel: `${PANEL_TEXT.undoUpgrade}  +35`, sellLabel: `${PANEL_TEXT.sell}  +70` });
-  await clickRect(page, 'panel:upgrade');
+  await clickRect(page, 'panel:undo');
   expect((await state(page)).gold).toBe(100);
   expect((await state(page)).towers).toEqual([expect.objectContaining({ cell: C75, locked: true, upgraded: false, spent: 50 })]);
   // A locked tower does not drag in setup.

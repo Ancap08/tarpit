@@ -159,7 +159,7 @@ describe('state.events', () => {
     expect(buildTower(s, { col: 0, row: 7 }, 'cannon').ok).toBe(false); // on the path: no event
     expect(s.events).toEqual([
       { kind: 'build', cell: { col: 6, row: 7 }, tower: 'cannon' },
-      { kind: 'upgrade', cell: { col: 6, row: 7 }, tower: 'cannon' },
+      { kind: 'upgrade', cell: { col: 6, row: 7 }, tower: 'cannon', level: 2 },
       { kind: 'waveStart', wave: 1 },
       { kind: 'sell', cell: { col: 6, row: 7 }, tower: 'cannon', refund: 98, full: false },
     ]);

@@ -137,7 +137,15 @@ export function placeBeside(centre: Point, width: number, height: number, map: M
       bestCover = cover;
     }
   }
-  return best ?? candidates[0];
+  if (best !== null) return best;
+  // A tall panel at the map edge may also need to clear the shifted label.
+  return [
+    clamp(Math.max(label.x + label.width, own.x + own.width), centre.y - height / 2),
+    clamp(Math.min(label.x, own.x) - width, centre.y - height / 2),
+  ].find((p) => {
+    const box = { ...p, width, height };
+    return !overlaps(box, own) && !overlaps(box, label);
+  }) ?? candidates[0];
 }
 
 /**

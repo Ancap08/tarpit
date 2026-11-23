@@ -12,6 +12,25 @@ vi.mock('./difficulty', async (importOriginal) => {
   };
 });
 
+// Keep the real wave numbers, scaling, and transitions. One Goblin per
+// wave is enough to exercise the cap without simulating 200 full hordes.
+vi.mock('./waves', async (importOriginal) => {
+  const real = await importOriginal<typeof import('./waves')>();
+  const groups = [{ type: 'goblin', count: 1, interval: 0, delay: 0 }] as const;
+  const waves = new Map<number, ReturnType<typeof real.waveDef>>();
+  return {
+    ...real,
+    waveDef(wave: number) {
+      let def = waves.get(wave);
+      if (!def) {
+        def = { ...real.waveDef(wave), groups };
+        waves.set(wave, def);
+      }
+      return def;
+    },
+  };
+});
+
 it('an endless script that never loses stops after ENDLESS_WAVE_CAP waves and reports capped', async () => {
   const { playScripted, ENDLESS_WAVE_CAP } = await import('./headless');
   const script = Object.assign([], { endless: true as const });

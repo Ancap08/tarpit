@@ -3,7 +3,7 @@
 // implementer's callEarly / killCounts / specialSlow tests: conservation of
 // enemies and gold over full games, the early-call edge cases, the two slow
 // slots through real towers and specials, and byte-equal determinism.
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { BOONS } from './boons';
 import { buildTower, sellTower, towerAt, upgradeTower, useSpecial } from './actions';
 import { applySlow, applySpecialSlow, PACK_SIZE } from './combat';
@@ -15,7 +15,7 @@ import { cellKey, type Cell } from './grid';
 import { applyAction, applyScriptBoon, ARCHETYPES, COMBO_PLAN, comboBuild, playScripted, type WaveScript } from './headless';
 import { MAPS, pathLength, positionAlongPath } from './map';
 import { SPECIAL_DEFS } from './specials';
-import { TOWER_DEFS } from './towers';
+import { TOWER_DEFS, TOWER_PATHS } from './towers';
 import type { Enemy, EnemyType, GameState } from './types';
 import { WAVES } from './waves';
 
@@ -96,7 +96,7 @@ function book(ledger: Ledger, events: readonly GameEvent[], burnOwners: Readonly
 
 function cost(e: GameEvent): number {
   if (e.kind === 'build') return TOWER_DEFS[e.tower].cost;
-  if (e.kind === 'upgrade') return TOWER_DEFS[e.tower].upgradeCost;
+  if (e.kind === 'upgrade') return e.level === 3 ? TOWER_PATHS[e.tower].cost : TOWER_DEFS[e.tower].upgradeCost;
   return 0;
 }
 
@@ -197,7 +197,12 @@ function playCallingEarly(lives: number): { s: GameState; ledger: Ledger; soldKi
   let soldKills = 0;
   const buy = () => {
     for (let a = COMBO_PLAN[next]; a; a = COMBO_PLAN[next]) {
-      const price = a.type === 'build' ? TOWER_DEFS[a.tower].cost : a.type === 'upgrade' ? TOWER_DEFS[towerAt(s, a.cell)!.type].upgradeCost : 0;
+      let price = 0;
+      if (a.type === 'build') price = TOWER_DEFS[a.tower].cost;
+      if (a.type === 'upgrade') {
+        const type = towerAt(s, a.cell)!.type;
+        price = a.path ? TOWER_PATHS[type].cost : TOWER_DEFS[type].upgradeCost;
+      }
       if (s.gold < price) break;
       between(s, ledger, () => expect(applyAction(s, a)).toMatchObject({ result: { ok: true } }));
       next += 1;
@@ -211,12 +216,15 @@ function playCallingEarly(lives: number): { s: GameState; ledger: Ledger; soldKi
       between(s, ledger, () => expect(startWave(s).ok).toBe(true));
     }
     else if (callEarlyStatus(s).ok) between(s, ledger, () => expect(callNextWave(s).ok).toBe(true));
-    // One sell and rebuild mid-wave, with enemies burning from that Fire Pot.
+    // Sell and rebuild a Fire Pot that owns both a credited kill and an active burn.
     const pot: Cell = { col: 14, row: 9 };
-    if (!sold && s.phase === 'wave' && s.enemies.some((e) => e.burnOwner && cellKey(e.burnOwner) === cellKey(pot) && (e.burnTicksLeft ?? 0) > 0) && s.gold >= TOWER_DEFS.firepot.cost) {
+    const firePot = towerAt(s, pot);
+    if (!sold && s.phase === 'wave' && firePot && firePot.kills > 0
+      && s.enemies.some((e) => e.burnOwner && cellKey(e.burnOwner) === cellKey(pot) && (e.burnTicksLeft ?? 0) > 0)
+      && s.gold >= TOWER_DEFS.firepot.cost) {
       sold = true;
       // The sold tower takes its count with it; the verifier keeps it for the sum.
-      soldKills = towerAt(s, pot)!.kills;
+      soldKills = firePot.kills;
       between(s, ledger, () => expect(sellTower(s, pot).ok).toBe(true));
       expect(s.enemies.some((e) => e.burnOwner && cellKey(e.burnOwner) === cellKey(pot))).toBe(false);
       between(s, ledger, () => expect(buildTower(s, pot, 'firepot').ok).toBe(true));
@@ -661,12 +669,23 @@ describe('E7. burn kill credit when the owner is sold', () => {
 describe('E8. determinism: byte-equal final state', () => {
   for (const level of DIFFICULTIES) {
     for (const name of ['comboBuild', 'lazyBuild', 'noAntiAir', 'hardBuild']) {
-      it(`${level} ${name} recorded and played twice gives the same JSON`, () => {
-        const archetype = ARCHETYPES[name];
-        const a = playScripted(archetype(level), undefined, level);
-        const b = playScripted(archetype(level), undefined, level);
-        expect(JSON.stringify(b.state), name).toBe(JSON.stringify(a.state));
-        expect(JSON.stringify(b.waves), name).toBe(JSON.stringify(a.waves));
+      describe(`${level} ${name}`, () => {
+        const record = ARCHETYPES[name];
+        let script: WaveScript;
+        beforeAll(() => {
+          script = record(level);
+        });
+
+        it('records the same decisions twice', () => {
+          expect(JSON.stringify(record(level))).toBe(JSON.stringify(script));
+        });
+
+        it('replays with byte-equal state and wave reports', () => {
+          const a = playScripted(script, undefined, level);
+          const b = playScripted(script, undefined, level);
+          expect(JSON.stringify(b.state)).toBe(JSON.stringify(a.state));
+          expect(JSON.stringify(b.waves)).toBe(JSON.stringify(a.waves));
+        });
       });
     }
   }

@@ -70,14 +70,14 @@ describe('boon UI', () => {
   it('describes all nine effects in player language', () => {
     expect(Object.values(BOONS).map(({ id }) => boonDescription(id))).toEqual([
       'Cannons and Mortars reach 30% farther',
-      'Longbows hit 25% harder',
-      '100 gold right now',
+      'Longbows hit 11% harder',
+      '80 gold right now',
       'Tar slows enemies twice as long',
-      'Fire burns 80% hotter',
-      'Specials come back 38% sooner',
-      '3 more lives',
-      'Every tower fires 10% faster',
-      'Explosions are 40% bigger',
+      'Fire burns 111% hotter',
+      'Specials come back 43% sooner',
+      '4 more lives',
+      'Every tower fires 11% faster',
+      'Explosions are 30% bigger',
     ]);
   });
 

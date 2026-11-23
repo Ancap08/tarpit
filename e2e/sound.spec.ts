@@ -92,7 +92,7 @@ test('every tower has its shot and impact', async ({ page }) => {
   }
 });
 
-test('build, upgrade, sell, a refused action, a tap, a tower select, the cheat and Call next each sound', async ({ page }) => {
+test('build, both upgrades, sell, a refusal, tap, tower select, cheat and Call next each sound', async ({ page }) => {
   await startPlay(page);
   const cell = await buildNearSpawn(page, 'musketeer');
   expect(await count(page, 'requested', 'build')).toBe(1);
@@ -101,10 +101,15 @@ test('build, upgrade, sell, a refused action, a tap, a tower select, the cheat a
   // Building on the same cell is refused.
   await onScene(page, (scene, c) => scene.build(c, 'cannon'), cell);
   expect(await count(page, 'requested', 'refuse')).toBeGreaterThan(0);
+  await onScene(page, (scene) => { scene.state.gold = 1000; }, null);
   // A click on the tower selects it.
   const tower = await page.evaluate(([c, r]) => window.__tarpit!.cellToPage(c, r), [cell.col, cell.row]);
   await page.mouse.click(tower.x, tower.y);
   expect(await count(page, 'requested', 'select')).toBe(1);
+  const path = await rectCentre(page, 'panel:path:A');
+  await page.mouse.click(path.x, path.y);
+  expect(await count(page, 'requested', 'upgradePath')).toBe(1);
+  expect(await count(page, 'requested', 'upgrade')).toBe(1);
   // A HUD button (the speed toggle) taps.
   const taps = await count(page, 'requested', 'tap');
   const speed = await rectCentre(page, 'speed');

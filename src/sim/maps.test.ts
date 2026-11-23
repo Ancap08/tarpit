@@ -278,11 +278,9 @@ describe('movement on every map (milestone 27)', () => {
   });
 });
 
-// Milestone 27 pinned this final state against main to prove the map
-// refactor left Meadow alone. Milestone 28 changed the combo's specials, so
-// the fixture is now the milestone 28 game: a whole-state pin of the combo
-// build on Meadow, Normal (rewrite it from a dump when a game number moves).
-describe('Meadow combo game, whole final state (milestone 27 fixture, rewritten in 28 and 30)', () => {
+// Pin the complete state of the current Meadow Normal combo, except its map.
+// This includes the paths bought in act two and the last tick's events.
+describe('Meadow combo game, whole final state', () => {
   it('a full comboBuild game on Normal ends in the fixture state, apart from the map field', () => {
     const { state } = playScripted(comboBuild());
     const { map, ...rest } = state;

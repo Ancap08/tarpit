@@ -163,6 +163,7 @@ import type {
   TowerType,
   UndoUpgradeResult,
   UpgradeResult,
+  UpgradePath,
 } from '../sim';
 import { EventCursor } from './anim/effects';
 import { sound } from './audio/engine';
@@ -200,6 +201,7 @@ import { BAR_TYPES, canPick } from './ui/buildBar';
 import { EndScreen } from './ui/endScreen';
 import { endKind, type EndKind } from './ui/endText';
 import { TowerPanel } from './ui/towerPanel';
+import type { PathChoice } from './ui/towerPanelModel';
 import {
   magnifierCentre,
   magnifierWanted,
@@ -267,6 +269,8 @@ export interface UiState {
   targetLabel: string | null;
   /** The panel's Upgrade and Sell slot labels ("Undo upgrade  +35", "Remove  +50"), or null while closed. */
   upgradeLabel: string | null;
+  pathChoices: PathChoice[];
+  towerTitle: string | null;
   sellLabel: string | null;
   /**
    * A drag in progress (milestone 25a), or null: placing a tower from the
@@ -578,8 +582,8 @@ export class GameScene extends Phaser.Scene {
       onSpecialPick: (type) => this.selectSpecial(type),
     }, this.layout);
     this.panel = new TowerPanel(this, this.layout, {
-      onUpgrade: () => {
-        if (this.panel.cell !== null) this.upgrade(this.panel.cell);
+      onUpgrade: (path) => {
+        if (this.panel.cell !== null) this.upgrade(this.panel.cell, path);
       },
       onUndoUpgrade: () => {
         if (this.panel.cell !== null) this.undoUpgrade(this.panel.cell);
@@ -1113,6 +1117,8 @@ export class GameScene extends Phaser.Scene {
       selectedTargeting: this.panel.cell === null ? null : (towerAt(this.state, this.panel.cell)?.targeting ?? null),
       targetLabel: this.panel.targetText,
       upgradeLabel: this.panel.upgradeText,
+      pathChoices: this.panel.choices,
+      towerTitle: this.panel.title,
       sellLabel: this.panel.sellText,
       killsLabel: this.panel.killsLine,
       callEarly: callEarlyInfo(this.state),
@@ -1362,8 +1368,8 @@ export class GameScene extends Phaser.Scene {
     return result;
   }
 
-  upgrade(cell: Cell): UpgradeResult {
-    const result = upgradeTower(this.state, cell);
+  upgrade(cell: Cell, path?: UpgradePath): UpgradeResult {
+    const result = upgradeTower(this.state, cell, path);
     if (!result.ok) sound.play('refuse');
     this.takeEvents();
     this.redraw();
@@ -1571,13 +1577,13 @@ export class GameScene extends Phaser.Scene {
       const angle = this.aim.angle(moved ? moved.cell : hover);
       if (hoverBuildable) {
         this.rangeCircles(hover, towerStats(moved ?? { type: ghostType, upgraded: false }, this.state.boons));
-        drawTowerShape(g, ghostType, cellCenter(hover), angle, upgraded, GHOST_ALPHA, 0, this.layout);
+        drawTowerShape(g, ghostType, cellCenter(hover), angle, upgraded, GHOST_ALPHA, 0, this.layout, moved?.path);
       } else if (drag !== null) {
         // During a drag a blocked cell also shows a faint red-tinted ghost,
         // so the player sees where it would land. Click and two-tap
         // placement keep the red cell only (no ghost, no range).
         const c = cellCenter(hover);
-        drawTowerShape(g, ghostType, c, angle, upgraded, BLOCKED_GHOST_ALPHA, 0, this.layout);
+        drawTowerShape(g, ghostType, c, angle, upgraded, BLOCKED_GHOST_ALPHA, 0, this.layout, moved?.path);
         g.fillStyle(COLORS.cellBad, BLOCKED_GHOST_TINT);
         g.fillCircle(c.x, c.y, 15);
       }

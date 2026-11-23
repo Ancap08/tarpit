@@ -1,6 +1,6 @@
 import { boonScale, type BoonId } from './boons';
 import { TICKS_PER_SECOND } from './time';
-import type { Tower, TowerDef, TowerLevelStats, TowerType } from './types';
+import type { Tower, TowerDef, TowerLevel, TowerLevelStats, TowerType, UpgradePath } from './types';
 
 /** No minimum range, splash, slow or burn: fields a level overrides as needed. */
 const PLAIN = { minRange: 0, splashRadius: 0, slow: 0, slowDuration: 0, burnDps: 0, burnDuration: 0 } as const;
@@ -49,6 +49,40 @@ export const TOWER_DEFS: Readonly<Record<TowerType, TowerDef>> = {
   },
 };
 
+/** The two complete level-3 stat rows and their common price per tower. */
+export const TOWER_PATHS: Readonly<Record<TowerType, { cost: number } & Record<UpgradePath, TowerLevelStats>>> = {
+  musketeer: {
+    cost: 85,
+    A: { ...PLAIN, range: 200, damage: 45, fireRate: 1 },
+    B: { ...PLAIN, range: 125, damage: 22, fireRate: 2.8 },
+  },
+  cannon: {
+    cost: 140,
+    A: { ...PLAIN, range: 105, damage: 40, fireRate: 0.5, splashRadius: 105 },
+    B: { ...PLAIN, range: 105, damage: 40, fireRate: 1, splashRadius: 55 },
+  },
+  tarpit: {
+    cost: 110,
+    A: { ...PLAIN, range: 105, damage: 3, fireRate: 2, slow: 0.78, slowDuration: 2 },
+    B: { ...PLAIN, range: 145, damage: 3, fireRate: 2, slow: 0.64, slowDuration: 2 },
+  },
+  longbow: {
+    cost: 70,
+    A: { ...PLAIN, range: 170, damage: 16, fireRate: 2.5 },
+    B: { ...PLAIN, range: 170, damage: 9, fireRate: 4.5 },
+  },
+  mortar: {
+    cost: 190,
+    A: { ...PLAIN, range: 220, minRange: 70, damage: 140, fireRate: 1 / 3, splashRadius: 70 },
+    B: { ...PLAIN, range: 220, minRange: 70, damage: 80, fireRate: 1 / 3, splashRadius: 150 },
+  },
+  firepot: {
+    cost: 120,
+    A: { ...PLAIN, range: 125, damage: 4, fireRate: 1, burnDps: 17, burnDuration: 1 },
+    B: { ...PLAIN, range: 100, damage: 4, fireRate: 1, burnDps: 8, burnDuration: 8 },
+  },
+};
+
 /**
  * Sell refund: 70% of total spent, rounded down. Integer math on purpose:
  * 90 * 0.7 is 62.99999999999999 in floating point, which floors to 62.
@@ -60,8 +94,7 @@ export function sellRefund(spent: number): number {
 /**
  * What selling `tower` pays now (milestone 25a). Unlocked (built this setup
  * phase): everything spent. Locked: the gold spent on it this setup phase
- * (an upgrade bought this phase) in full, plus sellRefund of the rest; so
- * the same as undoing that upgrade and then selling.
+ * (any upgrades bought this phase) in full, plus sellRefund of the rest.
  */
 export function towerSellValue(tower: Pick<Tower, 'locked' | 'spent' | 'unlockedSpend'>): number {
   if (!tower.locked) return tower.spent;
@@ -72,10 +105,23 @@ export function towerSellValue(tower: Pick<Tower, 'locked' | 'spent' | 'unlocked
  * level variants so targeting does not allocate a fresh stats object each tick. */
 const boonStats = new WeakMap<readonly BoonId[], Map<TowerLevelStats, TowerLevelStats>>();
 
+export function towerLevel(tower: Pick<Tower, 'upgraded' | 'path'>): TowerLevel {
+  if (tower.path) return 3;
+  return tower.upgraded ? 2 : 1;
+}
+
+/** The latest upgrade's full setup refund, or zero if it is locked. */
+export function towerUndoValue(tower: Pick<Tower, 'type' | 'upgraded' | 'path' | 'upgradedThisPhase'>): number {
+  if (!tower.upgradedThisPhase) return 0;
+  const level = towerLevel(tower);
+  if (level === 3) return TOWER_PATHS[tower.type].cost;
+  return level === 2 ? TOWER_DEFS[tower.type].upgradeCost : 0;
+}
+
 /** The stats that apply to a tower at its current level. */
-export function towerStats(tower: Pick<Tower, 'type' | 'upgraded'>, held?: readonly BoonId[]): TowerLevelStats {
+export function towerStats(tower: Pick<Tower, 'type' | 'upgraded' | 'path'>, held?: readonly BoonId[]): TowerLevelStats {
   const def = TOWER_DEFS[tower.type];
-  const base = tower.upgraded ? def.upgraded : def.base;
+  const base = tower.path ? TOWER_PATHS[tower.type][tower.path] : tower.upgraded ? def.upgraded : def.base;
   if (!held?.length) return base;
   let variants = boonStats.get(held);
   if (!variants) {

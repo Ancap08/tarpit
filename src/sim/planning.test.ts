@@ -255,7 +255,7 @@ describe('events', () => {
     expect(moveTower(s, A, B).ok).toBe(false); // refused: no event
     expect(s.events).toEqual([
       { kind: 'build', cell: A, tower: 'musketeer' },
-      { kind: 'upgrade', cell: A, tower: 'musketeer' },
+      { kind: 'upgrade', cell: A, tower: 'musketeer', level: 2 },
       { kind: 'move', from: A, to: B, tower: 'musketeer' },
       { kind: 'undoUpgrade', cell: B, tower: 'musketeer', refund: 35 },
       { kind: 'sell', cell: B, tower: 'musketeer', refund: 50, full: true },

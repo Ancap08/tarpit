@@ -77,8 +77,8 @@ describe('boon offers and progression', () => {
       tick(state);
       const { gold, lives } = state;
       expect(pickBoon(state, id).ok).toBe(true);
-      expect(state.gold).toBe(gold + (wave === 5 ? 100 : 0));
-      expect(state.lives).toBe(lives + (wave === 15 ? 3 : 0));
+      expect(state.gold).toBe(gold + (wave === 5 ? 80 : 0));
+      expect(state.lives).toBe(lives + (wave === 15 ? 4 : 0));
       expect(pickBoon(state, id)).toEqual({ ok: false, reason: 'no-boon-pending' });
     }
     finish(state, 20);
@@ -130,11 +130,11 @@ describe('boon effects on existing and later towers', () => {
   });
 
   it.each([
-    [5, 'keenArrows', 'longbow', 'damage', 1.25],
+    [5, 'keenArrows', 'longbow', 'damage', 1.11],
     [10, 'stickyTar', 'tarpit', 'slowDuration', 2],
-    [10, 'hotCoals', 'firepot', 'burnDps', 1.8],
-    [15, 'biggerBlasts', 'cannon', 'splashRadius', 1.4],
-    [15, 'biggerBlasts', 'mortar', 'splashRadius', 1.4],
+    [10, 'hotCoals', 'firepot', 'burnDps', 2.11],
+    [15, 'biggerBlasts', 'cannon', 'splashRadius', 1.3],
+    [15, 'biggerBlasts', 'mortar', 'splashRadius', 1.3],
   ] as const)('%s reward %s changes %s %s at both levels', (wave, id, type, key, scale) => {
     const state = field();
     expect(buildTower(state, CELL, type).ok).toBe(true);
@@ -177,7 +177,7 @@ describe('boon effects on existing and later towers', () => {
     finish(state, 16, [troll(0, 238)]);
     fireTowers(state);
     for (const tower of state.towers) {
-      const expected = 60 / (TOWER_DEFS[type].base.fireRate * 1.1);
+      const expected = 60 / (TOWER_DEFS[type].base.fireRate * 1.11);
       expect(tower.cooldownTicks).toBe(Math.round(expected));
       expect(shotCooldown(towerStats(tower, state.boons))).toBe(Math.round(expected));
     }
@@ -203,20 +203,20 @@ describe('boon effects on specials', () => {
       expect(state.enemies[0].specialSlowTicksLeft).toBe(120);
     }
     if (id === 'hotCoals') {
-      expect(state.enemies[0].burnDps).toBeCloseTo(46.8);
+      expect(state.enemies[0].burnDps).toBeCloseTo(54.86);
       tick(state);
-      expect(state.enemies[0].hp).toBeCloseTo(1000 - 46.8 / 60);
+      expect(state.enemies[0].hp).toBeCloseTo(1000 - 54.86 / 60);
     }
     if (id === 'quickHands') {
-      expect(state.specialRechargeTicks).toBe(744);
-      for (let i = 0; i < 743; i++) tick(state);
+      expect(state.specialRechargeTicks).toBe(684);
+      for (let i = 0; i < 683; i++) tick(state);
       expect(state.specialCharges).toBe(0);
       tick(state);
       expect(state.specialCharges).toBe(1);
     }
   });
 
-  it('Bigger Blasts still catches an enemy 126 px away with the Powder Keg in endless', () => {
+  it('Bigger Blasts still catches an enemy 117 px away with the Powder Keg in endless', () => {
     const state = field();
     finish(state, 15);
     tick(state);
@@ -225,7 +225,7 @@ describe('boon effects on specials', () => {
     tick(state);
     expect(continueEndless(state).ok).toBe(true);
     expect(startWave(state)).toEqual({ ok: true, wave: 21 });
-    finish(state, 21, [troll(0, 426), troll(1, 426.01)]);
+    finish(state, 21, [troll(0, 417), troll(1, 417.01)]);
     expect(useSpecial(state, 'keg', { x: 300, y: 240 })).toMatchObject({ ok: true, hits: 1 });
     expect(state.enemies.map((enemy) => enemy.hp)).toEqual([940, 1000]);
   });
