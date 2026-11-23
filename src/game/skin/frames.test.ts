@@ -63,3 +63,26 @@ describe('shipped painted sheets', () => {
     }
   });
 });
+
+describe('packed painted atlases', () => {
+  it.each([1, 2])('%ix retains every shared sheet, frame and anchor without overlap', (density) => {
+    const layout = JSON.parse(readFileSync(new URL(`packed/shared-${density}x.json`, directory), 'utf8'));
+    const maps = new Set(Object.keys(MAPS));
+    const sources = sheets.filter(file => file.endsWith(`-${density}x.json`))
+      .map(file => file.slice(0, -`-${density}x.json`.length)).filter(name => !maps.has(name));
+    expect(Object.keys(layout).sort()).toEqual(sources.sort());
+    const placed: { x: number; y: number; w: number; h: number }[] = [];
+    for (const name of sources) {
+      const { offset, ...sheet } = layout[name];
+      const source = JSON.parse(readFileSync(new URL(`${name}-${density}x.json`, directory), 'utf8'));
+      expect(sheet).toEqual(source);
+      expect(offset).toHaveLength(2);
+      expect(offset.every((n: number) => Number.isSafeInteger(n) && n >= 0)).toBe(true);
+      const [x, y] = offset;
+      const w = sheet.frameSize[0] * sheet.columns;
+      const h = sheet.frameSize[1] * Math.ceil(sheet.frameOrder.length / sheet.columns);
+      expect(placed.some(r => x < r.x + r.w && x + w > r.x && y < r.y + r.h && y + h > r.y)).toBe(false);
+      placed.push({ x, y, w, h });
+    }
+  });
+});

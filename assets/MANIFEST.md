@@ -143,6 +143,24 @@ the checker looks for it.
 | `assets/art-painted/wolf-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
 | `assets/art-painted/wolf-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
 | `assets/art-painted/wolf-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/packed/meadow-1x.webp` | `scripts/art/pack_painted.py` | Tarpit agents | MIT | Painted map ground |
+| `assets/art-painted/packed/meadow-2x.webp` | `scripts/art/pack_painted.py` | Tarpit agents | MIT | Painted map ground |
+| `assets/art-painted/packed/riverbend-1x.webp` | `scripts/art/pack_painted.py` | Tarpit agents | MIT | Painted map ground |
+| `assets/art-painted/packed/riverbend-2x.webp` | `scripts/art/pack_painted.py` | Tarpit agents | MIT | Painted map ground |
+| `assets/art-painted/packed/shared-1x.json` | `scripts/art/pack_painted.py` | Tarpit agents | MIT | Packed frame layout |
+| `assets/art-painted/packed/shared-1x.webp` | `scripts/art/pack_painted.py` | Tarpit agents | MIT | Packed painted sprites and effects |
+| `assets/art-painted/packed/shared-2x.json` | `scripts/art/pack_painted.py` | Tarpit agents | MIT | Packed frame layout |
+| `assets/art-painted/packed/shared-2x.webp` | `scripts/art/pack_painted.py` | Tarpit agents | MIT | Packed painted sprites and effects |
+| `assets/art-painted/packed/switchback-1x.webp` | `scripts/art/pack_painted.py` | Tarpit agents | MIT | Painted map ground |
+| `assets/art-painted/packed/switchback-2x.webp` | `scripts/art/pack_painted.py` | Tarpit agents | MIT | Painted map ground |
+| `assets/art-painted/switchback-1x.json` | `scripts/art/build_slice.py` | Tarpit agents | MIT | Painted ground frame layout |
+| `assets/art-painted/switchback-1x.png` | `scripts/art/build_slice.py` | Tarpit agents | MIT | Painted map ground |
+| `assets/art-painted/switchback-2x.json` | `scripts/art/build_slice.py` | Tarpit agents | MIT | Painted ground frame layout |
+| `assets/art-painted/switchback-2x.png` | `scripts/art/build_slice.py` | Tarpit agents | MIT | Painted map ground |
+| `assets/art-painted/riverbend-1x.json` | `scripts/art/build_slice.py` | Tarpit agents | MIT | Painted ground frame layout |
+| `assets/art-painted/riverbend-1x.png` | `scripts/art/build_slice.py` | Tarpit agents | MIT | Painted map ground |
+| `assets/art-painted/riverbend-2x.json` | `scripts/art/build_slice.py` | Tarpit agents | MIT | Painted ground frame layout |
+| `assets/art-painted/riverbend-2x.png` | `scripts/art/build_slice.py` | Tarpit agents | MIT | Painted map ground |
 | `docs/art/slice-meadow/meadow-comparison-phone.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review with tracked game capture. Original Goblin sprite by Pixel-boy and AAA (Ninja Adventure), CC0 1.0. |
 | `docs/art/slice-meadow/meadow-comparison.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review with tracked game capture. Original Goblin sprite by Pixel-boy and AAA (Ninja Adventure), CC0 1.0. |
 | `docs/art/slice-meadow/meadow-contact.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review |
