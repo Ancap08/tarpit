@@ -81,7 +81,7 @@ export function campaignVerifierSuite(touch: boolean, rotated: boolean) {
     await onScreen(page, 'levelMap');
     // A shut stop cannot start and says why in one line.
     await click(page, 'title:stop:5');
-    await expect.poll(() => api(page, (t) => t.ui<TitleUiState>().lockedMessage)).toBe('Win level 4 first');
+    await expect.poll(() => api(page, (t) => t.ui<TitleUiState>().lockedMessage)).toBe('Win level 1 first');
     expect(await api(page, (t) => t.screen())).toBe('levelMap');
     expect(await api(page, (t) => t.levelStops().filter((s) => s.open).map((s) => s.id))).toEqual([1]);
     await click(page, 'title:stop:1');
@@ -161,9 +161,8 @@ export function campaignVerifierSuite(touch: boolean, rotated: boolean) {
     info.annotations.push({ type: 'cheated-win-screen', description: JSON.stringify(seen) });
     expect(seen.cheated).toBe(true);
     expect(seen.progress).toEqual({});
-    expect(seen.result).toMatchObject({ stars: 3, nextId: null });
-    // Pinned finding (see DEVLOG verifier notes): the screen shows three stars and offers no Next or any reason.
-    expect(seen.result!.details.join('|')).not.toMatch(/cheat|not saved|no stars|saved/i);
+    expect(seen.result).toMatchObject({ stars: 0, slots: '☆☆☆', nextId: null, hint: 'Gold cheat used: stars not saved' });
+    expect(seen.texts).toEqual(expect.arrayContaining(['☆☆☆', 'Gold cheat used: stars not saved']));
     if (process.env.VERIFY_SHOT) await page.screenshot({ path: `${process.env.VERIFY_SHOT}-${info.project.name}.png` });
   });
 
@@ -175,8 +174,7 @@ export function campaignVerifierSuite(touch: boolean, rotated: boolean) {
     await api(page, (t) => t.setCampaignProgress({ 1: 3, 2: 1 }));
     await onScreen(page, 'levelMap');
     await click(page, 'title:stop:5');
-    // Finding: with levels 1 and 2 won, the lock on stop 5 names level 4 (itself shut), not the open level 3.
-    await expect.poll(() => api(page, (t) => t.ui<TitleUiState>().lockedMessage)).toBe('Win level 4 first');
+    await expect.poll(() => api(page, (t) => t.ui<TitleUiState>().lockedMessage)).toBe('Win level 3 first');
     await rotate(page, 'levelMap');
     expect(await textProblems(page)).toEqual([]);
     expect(await api(page, (t) => t.levelStops().map((s) => [s.open, s.stars]).slice(0, 4))).toEqual([[true, 3], [true, 1], [true, 0], [false, 0]]);
@@ -284,12 +282,54 @@ export function campaignVerifierSuite(touch: boolean, rotated: boolean) {
     expect(await api(page, (t) => t.hudText().wave)).toMatch(/20/);
   });
 
-  // Pinned finding: on main, Enter or Space on the title started a game. The new first screen registers no
-  // keyboard handlers (they sit after its early return), and the level map and card have none at all.
-  test('Enter on the first screen reaches a game, as it did on the old title', async ({ page }) => {
-    test.fail();
+  test('Enter opens Campaign and the map highlights the next unwon open level', async ({ page }) => {
     await open(page);
+    await api(page, (t) => t.setCampaignProgress({ 1: 3, 2: 2 }));
     await page.keyboard.press('Enter');
-    await expect.poll(() => api(page, (t) => t.screen()), { timeout: 2000 }).not.toBe('first');
+    await onScreen(page, 'levelMap');
+    // Right at the last open stop cannot select a lock.
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('Space');
+    await onScreen(page, 'levelCard');
+    expect(await api(page, (t) => t.ui<TitleUiState>().levelId)).toBe(3);
+    await page.keyboard.press('Escape');
+    await onScreen(page, 'levelMap');
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('Enter');
+    await onScreen(page, 'levelCard');
+    expect(await api(page, (t) => t.ui<TitleUiState>().levelId)).toBe(2);
+  });
+
+  test('keys alone reach a running level one and operate its result', async ({ page }) => {
+    await open(page);
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await onScreen(page, 'freePlay');
+    await page.keyboard.press('Escape');
+    await onScreen(page, 'first');
+    await page.keyboard.press('Space');
+    await onScreen(page, 'levelMap');
+    await page.keyboard.press('Enter');
+    await onScreen(page, 'levelCard');
+    await page.keyboard.press('Space');
+    await onScreen(page, 'game');
+    expect(await api(page, (t) => t.state().level?.id)).toBe(1);
+    await end(page, true);
+    await onScreen(page, 'result');
+    await page.keyboard.press('Enter');
+    await onScreen(page, 'levelCard');
+    expect(await api(page, (t) => t.ui<TitleUiState>().levelId)).toBe(2);
+    await page.keyboard.press('Space');
+    await onScreen(page, 'game');
+    await end(page, true);
+    await onScreen(page, 'result');
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('Space');
+    await onScreen(page, 'game');
+    expect(await api(page, (t) => t.state().level?.id)).toBe(2);
+    await end(page, false);
+    await onScreen(page, 'result');
+    await page.keyboard.press('Escape');
+    await onScreen(page, 'levelMap');
   });
 }

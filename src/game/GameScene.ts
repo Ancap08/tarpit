@@ -723,6 +723,7 @@ export class GameScene extends Phaser.Scene {
     });
     this.input.keyboard?.on('keydown', (key: KeyboardEvent) => {
       if (key.repeat || key.altKey || key.ctrlKey || key.metaKey) return;
+      if (this.endScreen.handleKey) return this.endScreen.handleKey(key);
       const id = this.state.pendingBoon?.options[REWARD_KEYS.indexOf(key.key)];
       if (id) this.pickBoon(id);
     });

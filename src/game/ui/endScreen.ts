@@ -21,6 +21,7 @@ import type { Rect } from '../input';
 import type { Layout } from '../layout';
 import { COLORS, FONT, TEXT } from '../palette';
 import { Button } from './button';
+import { menuKeys } from './menuKeys';
 import { CAMPAIGN_END, END_TEXT } from '../names';
 import { endScreenText, type CampaignResult, type EndKind } from './endText';
 
@@ -65,6 +66,7 @@ export class EndScreen {
   private readonly menu: Button;
   private readonly keepGoing: Button;
   private campaign: CampaignResult | null = null;
+  handleKey?: (event: KeyboardEvent) => void;
   private readonly buttonY: number;
   private readonly cx: number;
   private shown: EndKind | null = null;
@@ -180,6 +182,7 @@ export class EndScreen {
     this.detailRows = [];
     this.shown = null;
     this.campaign = null;
+    this.handleKey = undefined;
     this.setVisible(false);
   }
 
@@ -195,6 +198,7 @@ export class EndScreen {
   private layout(): void {
     const buttons = this.hasAdvance ? [this.keepGoing, this.button, this.menu] : [this.button, this.menu];
     if (this.campaign) {
+      this.handleKey = menuKeys(buttons, 0, this.menu);
       const titleY = this.portrait ? P_TITLE_Y : 36;
       const starsY = this.portrait ? P_LINES_Y : 82;
       const rowGap = 8;

@@ -58,6 +58,7 @@ import { CAMPAIGN_TEXT, lockedLevelText, bestScoreText, DIFFICULTY_LABELS, MAP_N
 import { COLORS, FONT, TEXT } from './palette';
 import { currentLayout } from './layoutSwitch';
 import { Button } from './ui/button';
+import { menuKeys } from './ui/menuKeys';
 import { PORTRAIT_TITLE, titleRects, type TitleGeometry } from './ui/geometry';
 import { MuteButton } from './ui/muteButton';
 import { LOOKS, LookStore, paintedDensity, type Look } from './skin/look';
@@ -225,6 +226,11 @@ export class TitleScene extends Phaser.Scene {
     return button;
   };
 
+  private bindMenuKeys(keys: string[], first = 0): void {
+    const buttons = keys.map(key => this.campaignButtons.get(`title:${key}`)!);
+    this.input.keyboard?.on('keydown', menuKeys(buttons, first, this.campaignButtons.get('title:back')));
+  }
+
   create(): void {
     const { width } = this.scale;
     const cx = width / 2;
@@ -260,16 +266,21 @@ export class TitleScene extends Phaser.Scene {
       this.lockLabel = drawCampaignMap(this, portrait, this.mapStops, this.lockedMessage, this.action, stop => {
         if (stop.open) this.visit('levelCard', stop.id);
         else {
-          this.lockedMessage = lockedLevelText(stop.id);
+          const next = this.mapStops.find(candidate => candidate.next);
+          if (!next) return;
+          this.lockedMessage = lockedLevelText(next.id);
           this.lockLabel?.setText(this.lockedMessage);
         }
       }, () => this.visit('first'));
+      const open = this.mapStops.filter(stop => stop.open);
+      this.bindMenuKeys(open.map(stop => `stop:${stop.id}`), Math.max(0, open.findIndex(stop => stop.next)));
       return;
     }
     if (this.page === 'levelCard' && this.card) {
       const level = this.card;
       this.playButton = drawLevelCard(this, portrait, level, campaignProgress.table()[level.id] ?? 0, this.action,
         () => this.startGame({ difficulty: DEFAULT_DIFFICULTY, map: level.map, level }), () => this.visit('levelMap'));
+      this.bindMenuKeys(portrait ? ['play', 'back'] : ['back', 'play'], portrait ? 0 : 1);
       this.refreshLoading();
       return;
     }
@@ -308,9 +319,10 @@ export class TitleScene extends Phaser.Scene {
       const w = portrait ? 330 : 264;
       const h = portrait ? 106 : 84;
       this.action('title:campaign', { x: portrait ? cx - w / 2 : cx - w - 12, y: portrait ? 452 : 286,
-        width: w, height: h }, CAMPAIGN_TEXT.campaign, () => this.visit('levelMap'), 32).setPicked(true);
+        width: w, height: h }, CAMPAIGN_TEXT.campaign, () => this.visit('levelMap'), 32);
       this.action('title:freePlay', { x: portrait ? cx - w / 2 : cx + 12, y: portrait ? 584 : 286,
         width: w, height: h }, CAMPAIGN_TEXT.freePlay, () => this.visit('freePlay'), 32);
+      this.bindMenuKeys(['campaign', 'freePlay']);
       this.refreshLook();
       return;
     }
@@ -363,6 +375,7 @@ export class TitleScene extends Phaser.Scene {
     this.refreshPicks();
     this.refreshLook();
     this.refreshLoading();
+    kb?.on('keydown-ESC', once(() => this.visit('first')));
     kb?.on('keydown-LEFT', once(() => this.move(-1)));
     kb?.on('keydown-RIGHT', once(() => this.move(1)));
     kb?.on('keydown-UP', once(() => this.moveMap(-1)));

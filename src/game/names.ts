@@ -339,6 +339,7 @@ export function blockedWaveLabel(pending: boolean, reason: string): string {
 }
 
 export const CAMPAIGN_END = {
+  cheated: 'Gold cheat used: stars not saved',
   next: 'Next level',
   map: 'Level map',
   retry: 'Try again',
@@ -390,5 +391,5 @@ export const LEVEL_NEW: Readonly<Record<number, string>> = {
 };
 
 export const levelNumberText = (id: number): string => `Level ${id}`;
-export const lockedLevelText = (id: number): string => `Win level ${id - 1} first`;
+export const lockedLevelText = (id: number): string => `Win level ${id} first`;
 export const starSlots = (stars: number): string => '★'.repeat(stars) + '☆'.repeat(3 - stars);

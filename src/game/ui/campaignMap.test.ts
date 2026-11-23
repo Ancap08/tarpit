@@ -19,7 +19,7 @@ it.each([false, true])('fits ten separate stops on one screen (portrait=%s)', po
   }
 });
 
-it('tells the player which previous level opens a shut stop', () => {
-  expect(lockedLevelText(2)).toBe('Win level 1 first');
-  expect(lockedLevelText(10)).toBe('Win level 9 first');
+it('tells the player which open level to win', () => {
+  expect(lockedLevelText(1)).toBe('Win level 1 first');
+  expect(lockedLevelText(9)).toBe('Win level 9 first');
 });
