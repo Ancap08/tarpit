@@ -1441,3 +1441,17 @@ can change it; "Kyle" means Kyle decided.
   not CC0. Chosen over IM Fell English (Fable): Caslon is the typeface of
   the period's printing and stays readable small. It goes in with the
   themed screens (44c).
+- **The characters re-dressed (44b), Painted only.** Tricorn and satchel
+  on the Collector, the King's red on the Redcoat, a writ for the Harpy, a
+  toll-gate bar for the Troll, a wig and ledger for the Assessor, a crown
+  and cape for the King; four distinct Guards in the town's blue; a coin
+  pennon by the cottage. Classic keeps its drawings. Codex (art), Sonnet
+  (verdict merge, two fixes asked for by Fable first).
+- **Team colours: enemies carry red and gold, the town carries blue.**
+  The Hound was blue and ran into blue Guards; it is now charcoal with a
+  red collar (Sonnet found it).
+- **The Assessor was redrawn to look like nobody else's character.**
+  Sonnet noticed his front view (red dome, moustache, round nose) came
+  close to a famous game character. He has his own maroon and orange,
+  horns and tusks again. The rule for all art: original designs, no
+  resemblance to any particular existing character.
