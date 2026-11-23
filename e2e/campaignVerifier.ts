@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import type { TitleUiState } from '../src/game/TitleScene';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { api, press } from './campaign';
+import { useTallFontMetrics } from './campaignFont';
 import { waitForFirstScreen } from './title';
 
 type Screen = ReturnType<TarpitTestApi['screen']>;
@@ -51,12 +52,13 @@ const targets = (page: Page) => page.evaluate(() => {
 const textProblems = (page: Page) => page.evaluate(() => {
   const t = window.__tarpit as TarpitTestApi;
   const scene = t.game.scene.getScene(t.scene());
-  const texts = scene.children.list.filter((o): o is Phaser.GameObjects.Text =>
-    o.type === 'Text' && (o as Phaser.GameObjects.Text).visible && !!(o as Phaser.GameObjects.Text).text);
+  const texts = t.campaignLabels();
   const problems: string[] = [];
   const W = scene.scale.width;
   const H = scene.scale.height;
-  const boxes = texts.map((x) => ({ text: x.text.replace(/\n/g, ' / '), b: x.getBounds() }));
+  const boxes = texts.map(({ text, x, y, width, height }) => ({
+    text: text.replace(/\n/g, ' / '), b: { left: x, top: y, right: x + width, bottom: y + height },
+  }));
   for (const { text, b } of boxes) {
     if (b.left < 0 || b.top < 0 || b.right > W || b.bottom > H) problems.push(`outside canvas: ${text}`);
   }
@@ -154,8 +156,7 @@ export function campaignVerifierSuite(touch: boolean, rotated: boolean) {
     await onScreen(page, 'result');
     const seen = await page.evaluate(() => {
       const t = window.__tarpit as TarpitTestApi;
-      const texts = t.game.scene.getScene('game').children.list.filter((o): o is Phaser.GameObjects.Text =>
-        o.type === 'Text' && (o as Phaser.GameObjects.Text).visible && !!(o as Phaser.GameObjects.Text).text).map((o) => o.text);
+      const texts = t.campaignLabels().map(label => label.text);
       return { texts, result: t.campaignResult(), progress: t.progress(), cheated: t.state().cheated };
     });
     info.annotations.push({ type: 'cheated-win-screen', description: JSON.stringify(seen) });
@@ -182,93 +183,99 @@ export function campaignVerifierSuite(touch: boolean, rotated: boolean) {
     expect(await api(page, (t) => t.progress())).toEqual({ 1: 3 });
   });
 
-  test('every campaign screen keeps its place across a turn, with one scene running', async ({ page }) => {
-    await open(page);
-    await rotate(page, 'first');
-    await click(page, 'title:campaign');
-    await onScreen(page, 'levelMap');
-    await api(page, (t) => t.setCampaignProgress({ 1: 3, 2: 1 }));
-    await onScreen(page, 'levelMap');
-    await click(page, 'title:stop:5');
-    await expect.poll(() => api(page, (t) => t.ui<TitleUiState>().lockedMessage)).toBe('Win level 3 first');
-    await rotate(page, 'levelMap');
-    expect(await textProblems(page)).toEqual([]);
-    expect(await api(page, (t) => t.levelStops().map((s) => [s.open, s.stars]).slice(0, 4))).toEqual([[true, 3], [true, 1], [true, 0], [false, 0]]);
-    await click(page, 'title:stop:3');
-    await onScreen(page, 'levelCard');
-    await rotate(page, 'levelCard');
-    expect(await api(page, (t) => t.ui<TitleUiState>().levelId)).toBe(3);
-    expect(await textProblems(page)).toEqual([]);
-    await click(page, 'title:play');
-    await onScreen(page, 'game');
-    // Mid-level: build, spend, start the wave, then turn twice.
-    await api(page, (t) => { t.buildAt(10, 5, 'musketeer'); t.startWave(); t.step(300); });
-    const before = await api(page, (t) => { const s = t.state(); return { gold: s.gold, wave: s.wave, tick: s.tick, towers: s.towers.length, id: s.level?.id }; });
-    await rotate(page, 'game');
-    await rotate(page, 'game');
-    expect(await api(page, (t) => { const s = t.state(); return { gold: s.gold, wave: s.wave, tick: s.tick, towers: s.towers.length, id: s.level?.id }; })).toEqual(before);
-    // On the result screen, in both layouts.
-    await end(page, true, 14);
-    await onScreen(page, 'result');
-    await rotate(page, 'result');
-    expect(await api(page, (t) => t.campaignResult())).toMatchObject({ levelId: 3, stars: 2, nextId: 4 });
-    expect(await textProblems(page)).toEqual([]);
-    await rotate(page, 'result');
-    expect(await textProblems(page)).toEqual([]);
-  });
-
-  test('every control meets the 44 px target size and every screen has clean text', async ({ page }, info) => {
-    await open(page);
-    const small: string[] = [];
-    const turned: string[] = [];
-    const first = page.viewportSize()!;
-    const record = async (label: string) => {
-      const here = page.viewportSize()!;
-      for (const c of await targets(page)) {
-        if (c.width < 44 || c.height < 44) {
-          (here.width === first.width ? small : turned).push(`${label} ${c.key} ${c.width.toFixed(0)}x${c.height.toFixed(0)}`);
-        }
-      }
-      const problems = await textProblems(page);
-      expect(problems, label).toEqual([]);
-    };
-    const viewportLabel = () => `${page.viewportSize()!.width}x${page.viewportSize()!.height}`;
-    for (const turn of rotated ? [0, 1] : [0]) {
-      if (turn) await rotate(page, 'first');
-      const v = viewportLabel();
-      await record(`${v} first`);
+  for (const tall of [false, true]) {
+    test(`every campaign screen keeps its place across a turn, with one scene running${tall ? ' (tall metrics)' : ''}`, async ({ page }) => {
+      if (tall) await useTallFontMetrics(page);
+      await open(page);
+      await rotate(page, 'first');
       await click(page, 'title:campaign');
       await onScreen(page, 'levelMap');
-      await record(`${v} map`);
-      await api(page, (t) => t.setCampaignProgress(JSON.parse('{"1":3,"2":3,"3":3,"4":3,"5":3,"6":3,"7":3,"8":3,"9":3,"10":3}')));
+      await api(page, (t) => t.setCampaignProgress({ 1: 3, 2: 1 }));
       await onScreen(page, 'levelMap');
-      for (let id = 1; id <= 10; id++) {
-        await click(page, `title:stop:${id}`);
-        await onScreen(page, 'levelCard');
-        await record(`${v} card ${id}`);
-        await click(page, 'title:back');
-        await onScreen(page, 'levelMap');
-      }
-      await click(page, 'title:stop:10');
+      await click(page, 'title:stop:5');
+      await expect.poll(() => api(page, (t) => t.ui<TitleUiState>().lockedMessage)).toBe('Win level 3 first');
+      await rotate(page, 'levelMap');
+      expect(await textProblems(page)).toEqual([]);
+      expect(await api(page, (t) => t.levelStops().map((s) => [s.open, s.stars]).slice(0, 4))).toEqual([[true, 3], [true, 1], [true, 0], [false, 0]]);
+      await click(page, 'title:stop:3');
       await onScreen(page, 'levelCard');
+      await rotate(page, 'levelCard');
+      expect(await api(page, (t) => t.ui<TitleUiState>().levelId)).toBe(3);
+      expect(await textProblems(page)).toEqual([]);
       await click(page, 'title:play');
       await onScreen(page, 'game');
-      for (const [id, win, lives] of [[1, true, 12], [1, true, 20], [1, false, 0], [10, true, 12], [10, true, 20]] as const) {
-        await page.evaluate((id) => (window.__tarpit as TarpitTestApi).startLevel(id), id);
-        await end(page, win, lives);
-        await onScreen(page, 'result');
-        await record(`${v} result L${id} ${win ? lives : 'loss'}`);
+      // Mid-level: build, spend, start the wave, then turn twice.
+      await api(page, (t) => { t.buildAt(10, 5, 'musketeer'); t.startWave(); t.step(300); });
+      const before = await api(page, (t) => { const s = t.state(); return { gold: s.gold, wave: s.wave, tick: s.tick, towers: s.towers.length, id: s.level?.id }; });
+      await rotate(page, 'game');
+      await rotate(page, 'game');
+      expect(await api(page, (t) => { const s = t.state(); return { gold: s.gold, wave: s.wave, tick: s.tick, towers: s.towers.length, id: s.level?.id }; })).toEqual(before);
+      // On the result screen, in both layouts.
+      await end(page, true, 14);
+      await onScreen(page, 'result');
+      await rotate(page, 'result');
+      expect(await api(page, (t) => t.campaignResult())).toMatchObject({ levelId: 3, stars: 2, nextId: 4 });
+      expect(await textProblems(page)).toEqual([]);
+      await rotate(page, 'result');
+      expect(await textProblems(page)).toEqual([]);
+    });
+  }
+
+  for (const tall of [false, true]) {
+    test(`every control meets the 44 px target size and every screen has clean text${tall ? ' (tall metrics)' : ''}`, async ({ page }, info) => {
+      if (tall) await useTallFontMetrics(page);
+      await open(page);
+      const small: string[] = [];
+      const turned: string[] = [];
+      const first = page.viewportSize()!;
+      const record = async (label: string) => {
+        const here = page.viewportSize()!;
+        for (const c of await targets(page)) {
+          if (c.width < 44 || c.height < 44) {
+            (here.width === first.width ? small : turned).push(`${label} ${c.key} ${c.width.toFixed(0)}x${c.height.toFixed(0)}`);
+          }
+        }
+        const problems = await textProblems(page);
+        expect(problems, label).toEqual([]);
+      };
+      const viewportLabel = () => `${page.viewportSize()!.width}x${page.viewportSize()!.height}`;
+      for (const turn of rotated ? [0, 1] : [0]) {
+        if (turn) await rotate(page, 'first');
+        const v = viewportLabel();
+        await record(`${v} first`);
+        await click(page, 'title:campaign');
+        await onScreen(page, 'levelMap');
+        await record(`${v} map`);
+        await api(page, (t) => t.setCampaignProgress(JSON.parse('{"1":3,"2":3,"3":3,"4":3,"5":3,"6":3,"7":3,"8":3,"9":3,"10":3}')));
+        await onScreen(page, 'levelMap');
+        for (let id = 1; id <= 10; id++) {
+          await click(page, `title:stop:${id}`);
+          await onScreen(page, 'levelCard');
+          await record(`${v} card ${id}`);
+          await click(page, 'title:back');
+          await onScreen(page, 'levelMap');
+        }
+        await click(page, 'title:stop:10');
+        await onScreen(page, 'levelCard');
+        await click(page, 'title:play');
+        await onScreen(page, 'game');
+        for (const [id, win, lives] of [[1, true, 12], [1, true, 20], [1, false, 0], [10, true, 12], [10, true, 20]] as const) {
+          await page.evaluate((id) => (window.__tarpit as TarpitTestApi).startLevel(id), id);
+          await end(page, win, lives);
+          await onScreen(page, 'result');
+          await record(`${v} result L${id} ${win ? lives : 'loss'}`);
+        }
+        await click(page, 'menu');
+        await onScreen(page, 'levelMap');
+        await click(page, 'title:back');
+        await onScreen(page, 'first');
       }
-      await click(page, 'menu');
-      await onScreen(page, 'levelMap');
-      await click(page, 'title:back');
-      await onScreen(page, 'first');
-    }
-    info.annotations.push({ type: 'small-targets-turned', description: JSON.stringify([...new Set(turned)]) });
-    info.annotations.push({ type: 'small-targets', description: JSON.stringify([...new Set(small)]) });
-    // A mouse-only layout (desktop) is allowed smaller buttons: its Look and mute were already 42 px on main.
-    if (touch) expect([...new Set(small)]).toEqual([]);
-  });
+      info.annotations.push({ type: 'small-targets-turned', description: JSON.stringify([...new Set(turned)]) });
+      info.annotations.push({ type: 'small-targets', description: JSON.stringify([...new Set(small)]) });
+      // A mouse-only layout (desktop) is allowed smaller buttons: its Look and mute were already 42 px on main.
+      if (touch) expect([...new Set(small)]).toEqual([]);
+    });
+  }
 
   test('Free play still reaches the old picker, a game and its best score; mute and Look work', async ({ page }) => {
     await open(page);

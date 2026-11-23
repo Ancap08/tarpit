@@ -21,6 +21,7 @@ import type { Rect } from '../input';
 import type { Layout } from '../layout';
 import { COLORS, FONT, TEXT } from '../palette';
 import { Button } from './button';
+import { drawStarRow } from './starRow';
 import { menuKeys } from './menuKeys';
 import { CAMPAIGN_END, END_TEXT } from '../names';
 import { endScreenText, type CampaignResult, type EndKind } from './endText';
@@ -61,6 +62,7 @@ export class EndScreen {
   private readonly title: Phaser.GameObjects.Text;
   private readonly lines: Phaser.GameObjects.Text;
   private readonly boons: Phaser.GameObjects.Text;
+  private starRow?: Phaser.GameObjects.Container;
   private detailRows: Phaser.GameObjects.Text[] = [];
   private readonly button: Button;
   private readonly menu: Button;
@@ -154,7 +156,7 @@ export class EndScreen {
     this.campaign = campaign;
     if (campaign) {
       this.title.setText(campaign.title);
-      this.lines.setText(campaign.slots).setFontSize(32).setColor(TEXT.victory);
+      if (kind === 'won') this.starRow = drawStarRow(this.title.scene, this.cx, 0, campaign.stars, 28, TEXT.victory);
       this.detailRows = campaign.details.map(text => this.boons.scene.add.text(this.cx, 0, text, {
         fontFamily: FONT, fontSize: '18px', color: TEXT.endLine, align: 'center',
         wordWrap: { width: (this.portrait ? P_PANEL_W : 560) - 32 },
@@ -180,6 +182,8 @@ export class EndScreen {
   hide(): void {
     for (const row of this.detailRows) row.destroy();
     this.detailRows = [];
+    this.starRow?.destroy();
+    this.starRow = undefined;
     this.shown = null;
     this.campaign = null;
     this.handleKey = undefined;
@@ -202,8 +206,8 @@ export class EndScreen {
       const titleY = this.portrait ? P_TITLE_Y : 36;
       const starsY = this.portrait ? P_LINES_Y : 82;
       const rowGap = 8;
-      let cursor = this.lines.text
-        ? starsY + this.lines.height / 2 + rowGap
+      let cursor = this.starRow
+        ? starsY + this.starRow.getBounds().height / 2 + 1 + rowGap
         : starsY;
       for (const row of this.detailRows) {
         row.setY(cursor);
@@ -217,7 +221,7 @@ export class EndScreen {
       const top = this.cy - h / 2;
       this.panel.setSize(this.portrait ? P_PANEL_W : 560, h);
       this.title.setY(top + titleY);
-      this.lines.setY(top + starsY);
+      this.starRow?.setY(top + starsY);
       for (const row of this.detailRows) row.setY(top + row.y);
       if (this.portrait) {
         buttons.forEach((b, i) => b.moveTo(this.cx - P_BUTTON_W / 2, top + buttonsY + i * (P_BUTTON_H + P_GAP)));

@@ -52,6 +52,7 @@ export interface TarpitTestApi {
   scene(): string;
   /** Visible screen, including the title's campaign pages and terminal results. */
   screen(): TitleUiState['screen'] | 'game' | 'result' | null;
+  campaignLabels(): (Rect & { text: string })[];
   levelStops(): TitleUiState['stops'];
   /** Replace saved campaign progress in a frozen test session. */
   setCampaignProgress(table: CampaignProgress): void;

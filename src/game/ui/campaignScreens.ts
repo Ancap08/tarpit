@@ -1,10 +1,12 @@
 import type Phaser from 'phaser';
 import { MAPS, type LevelDef } from '../../sim';
 import { drawMapThumbnail } from '../draw/map';
-import { CAMPAIGN_TEXT, LEVEL_NAMES, LEVEL_NEW, MAP_NAMES, TITLE_TEXT, levelNumberText, starSlots } from '../names';
+import { CAMPAIGN_TEXT, LEVEL_NAMES, LEVEL_NEW, MAP_NAMES, TITLE_TEXT, levelNumberText } from '../names';
 import { COLORS, FONT, TEXT } from '../palette';
 import type { Rect } from '../input';
 import type { CampaignStop } from './campaignMap';
+import { drawStarRow } from './starRow';
+import { makeLock } from './lock';
 import type { Button } from './button';
 
 type Action = (key: string, rect: Rect, label: string, click: () => void, size?: number) => Button;
@@ -48,16 +50,19 @@ export function drawCampaignMap(
     const cy = rect.y + rect.height / 2;
     const button = action(`title:stop:${stop.id}`, rect, '', () => select(stop));
     button.setPicked(stop.next);
-    label(scene, cx + (stop.open ? 0 : 10), cy - 12, String(stop.id), portrait ? 32 : 28,
-      stop.open ? TEXT.button : TEXT.buttonDisabled);
-    if (!stop.open) {
-      const lock = scene.add.graphics();
-      const lx = cx - (stop.id < 10 ? 14 : 21);
-      lock.lineStyle(3, COLORS.buttonEdge);
-      lock.beginPath().arc(lx, cy - 15, 5, Math.PI, 2 * Math.PI).strokePath();
-      lock.fillStyle(COLORS.buttonEdge).fillRoundedRect(lx - 7, cy - 15, 14, 12, 2);
-    }
-    label(scene, cx, cy + 17, starSlots(stop.stars), portrait ? 25 : 23, stop.open ? TEXT.victory : TEXT.buttonDisabled);
+    const fontSize = portrait ? 32 : 28;
+    const numberHeight = fontSize + 4;
+    const starSize = portrait ? 22 : 20;
+    const gap = 6;
+    const top = cy - (numberHeight + gap + starSize) / 2;
+    const numberY = top + numberHeight / 2;
+    scene.add.text(cx + (stop.open ? 0 : 10), numberY, String(stop.id), {
+      fontFamily: FONT, fontSize, fontStyle: 'bold', color: stop.open ? TEXT.button : TEXT.buttonDisabled,
+      fixedHeight: numberHeight, metrics: { ascent: fontSize, descent: 4, fontSize: numberHeight },
+    }).setOrigin(0.5);
+    if (!stop.open) makeLock(scene).setPosition(cx - (stop.id < 10 ? 14 : 21), numberY - 3);
+    drawStarRow(scene, cx, top + numberHeight + gap + starSize / 2, stop.stars, starSize,
+      stop.open ? TEXT.victory : TEXT.buttonDisabled);
   }
   backButton(portrait, action, back);
   return label(scene, width / 2, portrait ? 988 : 450, lockedMessage ?? '', portrait ? 22 : 20, TEXT.prompt);
@@ -85,7 +90,13 @@ export function drawLevelCard(
   label(scene, cx, portrait ? 582 : 288, words.twist, portrait ? 23 : 20, TEXT.title, wrap);
   label(scene, cx, portrait ? 687 : 349, CAMPAIGN_TEXT.newThisLevel, 18, TEXT.subtitle);
   label(scene, cx, portrait ? 738 : 380, LEVEL_NEW[level.id], portrait ? 23 : 20, TEXT.button, wrap);
-  label(scene, cx, portrait ? 833 : 429, `${CAMPAIGN_TEXT.bestStars}  ${starSlots(stars)}`, 22, TEXT.prompt);
+  const starsY = portrait ? 833 : 429;
+  const caption = label(scene, cx, starsY, CAMPAIGN_TEXT.bestStars, 22, TEXT.prompt);
+  const row = drawStarRow(scene, cx, starsY, stars, 20, TEXT.prompt);
+  const rowWidth = row.getBounds().width + 2;
+  const gap = 12;
+  caption.setX(cx - (rowWidth + gap) / 2);
+  row.setX(cx + (caption.width + gap) / 2);
   const playButton = action('title:play', portrait ? { x: 106, y: 894, width: 268, height: 78 }
     : { x: 487, y: 466, width: 194, height: 54 }, TITLE_TEXT.play, play, 26);
   if (portrait) backButton(true, action, back);
