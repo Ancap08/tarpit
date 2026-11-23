@@ -8155,3 +8155,48 @@ count from campaign wave 1. A dash marks a Meadow-only plan.
 | soundBuild | L 20 | L 7 | L 2 | - | - | - | - | - | - |
 | soundBuildNoTar | L 10 | L 7 | L 2 | - | - | - | - | - | - |
 | comboStrongest | W 13 | L 5 | L 2 | - | - | - | - | - | - |
+
+### Verifier notes (37)
+
+Verified by Claude Sonnet against 18d37e5. Suite green on the branch: lint,
+check:assets, typecheck, build, check:size, `npm run sim` (no MISS), `npm test`
+(1633 tests, 43 s), `npm run test:slow` (none over 3 s), and the browser suite
+twice on chromium, tablet and phone (668 passed, 8 skipped, both runs; the
+skips are the existing env-gated ones). The verifier added
+`src/sim/upgrade-choice-verifier.test.ts` (24 tests: state and refusals, undo
+order, sell values 35/59/119, the twelve rows against hand-computed numbers,
+the six rewards on level 3 rows, conservation) and
+`e2e/upgrade-choice-verifier*.spec.ts` (panel inside the map, off the controls
+and off the tower for towers at eight edge and corner cells at levels 1 to 3 in
+all three layouts, 44 CSS px on touch, Menu then Play again twice leaks
+nothing). All pass.
+
+- On Normal the paths do not change the result. With all of one tower type on
+  A against all on B, in comboBuild and in the specialist build, on all three
+  maps, 35 of 36 pairs have the same lives, kills and leak waves. The one
+  exception is Wide Tar in comboBuild on Meadow (loses at wave 20, Deep Tar
+  wins with 17). The U4 witnesses that separate A and B use Hard, non-default
+  rewards or no specials, and some are decided by a few kills with lives tied.
+  U5 allows five lives, so it accepts this by design.
+- Normal is still too easy. All of comboBuild's leaks are in waves 4 to 7 (and
+  the first boss on Switchback); waves 11 to 20 leak nothing, and 2,000+ gold
+  sits unspent at the end. Doubling every act-two wave count changes no result.
+  Act-two enemy hp at 2x gives 11/14/16 lives but breaks Easy lazyBuild (loses
+  on two maps at 1.5x), and the fixed-plan builds fall off a cliff between 2x
+  and 2.25x.
+- Normal start lives 20 to 17 gives comboBuild and wideBuild 14, 14 and 13
+  lives; Easy and Hard are unchanged (lazyBuild Easy still 22/29/19, hardBuild
+  Hard 15/18/14). In a scratch run only N6 on Riverbend (the no-specials run
+  loses) and B2 miss. It is a cushion change, not a harder game.
+- Keeping Grumblemaw's exit cost at 10 fails N6 on Meadow and Riverbend, N10b on
+  both (spreads 8 and 7) and B2. Speed 35 with the cost of 6 fails B2.
+- Child-readable panel lines: all twelve use percentages. "+24% range, +59%
+  damage", "Fires 100% faster" (twice), "100% bigger blast", "Hits 71% harder",
+  "88% more burn damage" and "Burns 100% longer" are not one plain line. Deep
+  Tar and Wide Tar read best.
+- Changed existing tests: the Hard "Wolf hp +1 holds" probe was replaced by a pin
+  that it fails (Hard combo loses wave 8); the endless e2e checks replaced exact
+  waves 24 and 25 with "above 20" (the exact numbers stay in balance.suite).
+- The `designSpec` guard catches an edit to any path row, price, the boss row and
+  the refund line. The panel and mark prose and the U-target wording are not
+  guarded.
