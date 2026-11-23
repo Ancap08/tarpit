@@ -269,6 +269,7 @@ export interface HudHandlers {
 
 /** The Lives readout's left edge. */
 const LIVES_X = 126;
+const GOLD_LABEL_X = 24;
 
 /**
  * Where everything in the HUD goes (milestone 32b). Landscape: the
@@ -309,10 +310,10 @@ export const LANDSCAPE_HUD: HudMetrics = {
   lines: [{ x: 0, y: HUD_TOP, width: 960, height: 2 }],
   statY: MID,
   statSize: '18px',
-  goldX: 14,
+  goldX: GOLD_LABEL_X,
   flowGap: 0,
   preview: { x: PREVIEW_X, y: MID, width: PREVIEW_WIDTH, originY: 0.5 },
-  cheat: { x: GOLD_RECT.x + 6, y: MID + 12, size: '11px', originX: 0 },
+  cheat: { x: GOLD_LABEL_X, y: MID + 12, size: '11px', originX: 0 },
   gold: { ...GOLD_RECT },
   special: { ...SPECIAL_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H },
   start: { ...START_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H },
@@ -409,7 +410,7 @@ export class Hud {
       }).setOrigin(0, 0.5);
     };
     const statSize = Number.parseInt(m.statSize, 10);
-    if (!m.portrait) coin(counter, 8, m.statY, 5);
+    if (!m.portrait) coin(counter, 13, m.statY, 5);
     this.gold = fixedStat(m.goldX, statSize, TEXT.hud);
     this.lives = fixedStat(LIVES_X, statSize, TEXT.hud);
     this.wave = fixedStat(238, statSize, TEXT.hud);
@@ -473,6 +474,7 @@ export class Hud {
       this.tag.setVisible(this.tag.x + this.tag.width <= rightEdge);
     } else {
       this.gold.setY(state.cheated ? MID - 6 : MID);
+      this.gold.setScale(Math.min(1, (LIVES_X - m.goldX - 4) / this.gold.width), 1);
       this.wave.setY(tag ? MID + WAVE_TAG_SHIFT : MID);
     }
     // After a loss there is no next wave to play, so the preview goes blank.

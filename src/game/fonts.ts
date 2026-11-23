@@ -14,7 +14,7 @@ export async function loadFonts(): Promise<void> {
     ];
     const loaded = await Promise.race([
       Promise.all(faces.map((face) => face.load())),
-      new Promise<undefined>((resolve) => { deadline = window.setTimeout(resolve, 2000); }),
+      new Promise<undefined>((resolve) => { deadline = window.setTimeout(resolve, 1000); }),
     ]);
     if (loaded) for (const face of loaded) document.fonts.add(face);
   } catch {

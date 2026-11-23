@@ -56,10 +56,11 @@ async function checkSpacing(page: Page) {
       if (!label) throw new Error(`Missing separate result line: ${value}`);
       return label;
     }) : labels;
-    if (t.screen() === 'levelMap' && labels.filter(label => /^[★☆]{3}$/.test(label.text)).length !== t.levelStops().length) {
+    const starRow = /^[0-3] of 3 stars$/;
+    if (t.screen() === 'levelMap' && labels.filter(label => starRow.test(label.text)).length !== t.levelStops().length) {
       throw new Error('Missing level-map star row');
     }
-    if (t.screen() === 'levelCard' && !labels.some(label => /^[★☆]{3}$/.test(label.text))) {
+    if (t.screen() === 'levelCard' && !labels.some(label => starRow.test(label.text))) {
       throw new Error('Missing level-card star row');
     }
     let stop = '';
@@ -68,7 +69,7 @@ async function checkSpacing(page: Page) {
       let owner = owners.get(label.text) ?? '';
       if (t.screen() === 'levelMap') {
         if (/^\d+$/.test(label.text)) stop = `title:stop:${label.text}`;
-        if (/^[★☆]+$|^\d+$/.test(label.text)) owner = stop;
+        if (starRow.test(label.text) || /^\d+$/.test(label.text)) owner = stop;
       }
       boxes.push({ key: label.text, owner, button: false, x, y, width, height });
     }

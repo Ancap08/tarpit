@@ -73,6 +73,7 @@ export function drawCampaignMap(
     const cx = rect.x + rect.width / 2;
     const cy = rect.y + rect.height / 2;
     const button = action(`title:stop:${stop.id}`, rect, '', () => select(stop));
+    button.setLocked(!stop.open);
     button.setPicked(stop.next);
     const fontSize = portrait ? 32 : 28;
     const numberHeight = fontSize + 4;

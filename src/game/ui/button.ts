@@ -39,6 +39,7 @@ export class Button {
   private readonly labelInset: number;
   private r: Rect;
   private enabled = true;
+  private locked = false;
   private hover = false;
   private pressed = false;
   private shown = true;
@@ -107,6 +108,13 @@ export class Button {
 
   get isEnabled(): boolean {
     return this.enabled;
+  }
+
+  /** A closed campaign stop still responds with its unlock condition. */
+  setLocked(locked: boolean): void {
+    if (this.locked === locked) return;
+    this.locked = locked;
+    this.refresh();
   }
 
   /** Update the label(s) and whether the button responds to clicks. */
@@ -180,7 +188,7 @@ export class Button {
       // A hidden button gets no pointerout, so clear hover and press here.
       this.pressed = false;
       this.setHover(false);
-    }
+    } else this.refresh();
   }
 
   private setHover(over: boolean): void {
@@ -191,16 +199,18 @@ export class Button {
   }
 
   private refresh(): void {
+    const available = this.enabled && !this.locked;
+    this.trim.setVisible(this.shown && available);
     let fill: number = COLORS.button;
-    if (!this.enabled) fill = COLORS.buttonDisabled;
+    if (!available) fill = COLORS.buttonDisabled;
     else if (this.pressed) fill = COLORS.buttonPressed;
     else if (this.picked) fill = COLORS.buttonPicked;
     else if (this.hover) fill = COLORS.buttonHover;
     this.box.setFillStyle(fill);
-    if (!this.enabled) this.box.setStrokeStyle(2, COLORS.buttonEdgeDisabled);
+    if (!available) this.box.setStrokeStyle();
     else if (this.picked) this.box.setStrokeStyle(3, COLORS.buttonEdgePicked);
     else this.box.setStrokeStyle(2, COLORS.buttonEdge);
-    const color = this.enabled ? TEXT.button : TEXT.buttonDisabled;
+    const color = available ? TEXT.button : TEXT.buttonDisabled;
     this.label.setColor(color);
     this.rightLabel?.setColor(color);
   }

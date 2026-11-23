@@ -182,6 +182,8 @@ export class TowerPanel {
         const { description, reason } = this.pathText[path.path];
         const hint = path.disabledReason ?? '';
         if (description.text !== path.description) description.setText(path.description);
+        const color = button.isEnabled ? TEXT.button : TEXT.buttonDisabled;
+        if (description.style.color !== color) description.setColor(color);
         if (reason.text !== hint) reason.setText(hint);
         description.setPosition(left + 10, top + (portrait ? 46 : 35));
         reason.setPosition(left + 10, top + (portrait ? 73 : 54));

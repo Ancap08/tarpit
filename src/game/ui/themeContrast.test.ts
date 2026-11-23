@@ -41,11 +41,6 @@ const pairs: Pair[] = [
   ['Button hovered', TEXT.button, COLORS.buttonHover],
   ['Button pressed', TEXT.button, COLORS.buttonPressed],
   ['Button picked', TEXT.button, COLORS.buttonPicked],
-  ['Button unavailable', TEXT.buttonDisabled, COLORS.buttonDisabled],
-  ['Unavailable upgrade description', TEXT.button, COLORS.buttonDisabled],
-  ['Closed campaign milestone', TEXT.buttonDisabled, COLORS.button],
-  ['Closed milestone hovered', TEXT.buttonDisabled, COLORS.buttonHover],
-  ['Closed milestone pressed', TEXT.buttonDisabled, COLORS.buttonPressed],
   ['Earned stars on milestone', TEXT.victory, COLORS.button],
   ['Earned stars on hovered milestone', TEXT.victory, COLORS.buttonHover],
   ['Earned stars on pressed milestone', TEXT.victory, COLORS.buttonPressed],
@@ -80,3 +75,12 @@ for (const [where, text, surface] of pairs) {
     expect(ratio).toBeGreaterThanOrEqual(4.5);
   });
 }
+
+it('keeps unavailable labels readable and at most half the contrast of a ready button', () => {
+  const enabled = contrast(TEXT.button, COLORS.button);
+  for (const surface of [COLORS.buttonDisabled, COLORS.rechargeFill]) {
+    const disabled = contrast(TEXT.buttonDisabled, surface);
+    expect(disabled).toBeGreaterThanOrEqual(3);
+    expect(disabled).toBeLessThanOrEqual(enabled / 2);
+  }
+});

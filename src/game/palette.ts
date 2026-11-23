@@ -143,9 +143,8 @@ export const COLORS = {
   button: 0x503524,
   buttonHover: 0x66472e,
   buttonPressed: 0x322117,
-  buttonDisabled: 0x4d4640,
+  buttonDisabled: 0x494847,
   buttonEdge: 0xd9b77e,
-  buttonEdgeDisabled: 0x5a5e66,
   // The build bar's active pick: brighter fill, pale-yellow edge.
   buttonPicked: 0x254a57,
   buttonEdgePicked: 0xfff2a8,
@@ -174,7 +173,7 @@ export const COLORS = {
   specialPipEmpty: 0x6a6e76,
   // Milestone 30: the Special button's recharge fill, the aim banner's
   // backing, the keg's scorch mark, and the zones (tar puddle, fire patch).
-  rechargeFill: 0x473215,
+  rechargeFill: 0x363534,
   aimBanner: 0x14161a,
   aimCrossDark: 0x14161a,
   scorch: 0x1e1a16,
@@ -211,7 +210,7 @@ export const TEXT = {
   hudDim: '#e7cea2',
   button: '#fff4dc',
   // Contrast against each button surface is checked in ui/themeContrast.test.ts.
-  buttonDisabled: '#ddd2bf',
+  buttonDisabled: '#a29f99',
   title: '#f2e6c9',
   subtitle: '#a89f8a',
   prompt: '#e8c37a',

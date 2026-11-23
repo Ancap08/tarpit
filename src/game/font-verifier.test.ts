@@ -1,8 +1,8 @@
 // Milestone 44c verifier: the bundled font's files, licence, credit and glyph coverage.
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
-import { readdirSync, readFileSync } from 'node:fs';
+import { globSync, readdirSync, readFileSync } from 'node:fs';
 import { brotliDecompressSync } from 'node:zlib';
+import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
 const HASHES: Record<string, string> = {
@@ -31,9 +31,20 @@ function cmap(file: string): Set<number> {
   const set = new Set<number>();
   for (let i = 0, n = t.readUInt16BE(2); i < n; i++) {
     const off = t.readUInt32BE(4 + i * 8 + 4);
-    if (t.readUInt16BE(off) === 4) {
+    const platform = t.readUInt16BE(4 + i * 8);
+    const encoding = t.readUInt16BE(6 + i * 8);
+    if (t.readUInt16BE(off) === 4 && (platform === 0 || (platform === 3 && encoding === 1))) {
       const segs = t.readUInt16BE(off + 6) / 2, end = off + 14, start = end + segs * 2 + 2;
-      for (let k = 0; k < segs; k++) for (let c = t.readUInt16BE(start + k * 2); c <= t.readUInt16BE(end + k * 2) && c < 0xffff; c++) set.add(c);
+      const deltas = start + segs * 2, offsets = deltas + segs * 2;
+      for (let k = 0; k < segs; k++) {
+        const first = t.readUInt16BE(start + k * 2), last = t.readUInt16BE(end + k * 2);
+        const delta = t.readInt16BE(deltas + k * 2);
+        const offsetPos = offsets + k * 2, offset = t.readUInt16BE(offsetPos);
+        for (let c = first; c <= last && c < 0xffff; c++) {
+          const glyph = offset ? t.readUInt16BE(offsetPos + offset + (c - first) * 2) : c;
+          if (glyph && ((glyph + delta) & 0xffff)) set.add(c);
+        }
+      }
     }
   }
   return set;
@@ -52,18 +63,26 @@ describe('bundled font (44c verifier)', () => {
     expect(readFileSync('assets/fonts/OFL.txt', 'utf8')).toContain('SIL OPEN FONT LICENSE Version 1.1');
   });
 
-  it('draws every non-ASCII character in player-facing source except the two star glyphs (those use the fallback font)', () => {
-    const files = execFileSync('git', ['ls-files', 'src/**/*.ts'], { encoding: 'utf8' }).split('\n')
-      .filter((f) => f && !/\.test\.ts$|\.d\.ts$/.test(f));
-    const used = new Set<number>();
-    for (const f of files) for (const ch of readFileSync(f, 'utf8')) { const c = ch.codePointAt(0)!; if (c > 126) used.add(c); }
+  it('both weights cover every printable character in game strings', () => {
+    const used = new Map<number, string>();
+    for (const file of globSync('src/**/*.ts', { exclude: ['**/*.test.ts', '**/*.d.ts'] })) {
+      const tree = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest);
+      const visit = (node: ts.Node): void => {
+        // The parsed text includes escaped characters and the literal parts of templates.
+        if (ts.isStringLiteralLike(node) || ts.isTemplateLiteralToken(node)) {
+          for (const ch of node.text) {
+            const code = ch.codePointAt(0)!;
+            if (code > 126) used.set(code, file);
+          }
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(tree);
+    }
     for (const weight of ['Regular', 'Bold']) {
       const mapped = cmap(`assets/fonts/LibreCaslonText-${weight}-latin.woff2`);
       for (let c = 32; c < 127; c++) expect(mapped.has(c), `ASCII ${c} in ${weight}`).toBe(true);
-      const missing = [...used].filter((c) => !mapped.has(c)).sort();
-      // U+2605 and U+2606 (names.ts starSlots) come from Courier New or the system font. A new
-      // character here means the fallback draws it: check it on a phone before accepting it.
-      expect(missing.map((c) => c.toString(16)), weight).toEqual(['2605', '2606']);
+      for (const [code, file] of used) expect(mapped.has(code), `${file}: U+${code.toString(16)} in ${weight}`).toBe(true);
     }
   });
 });

@@ -20,18 +20,38 @@ test('the font comes from the site itself: no request leaves the origin', async 
   expect(outside).toEqual([]);
 });
 
-test('a font held for 5 s: the game starts in the fallback at about 2 s and never changes its text widths', async ({ page }) => {
-  await page.route(/\.woff2/, async (route) => {
-    if (route.request().resourceType() !== 'font') return route.continue();
-    await new Promise((r) => setTimeout(r, 5000));
-    await route.continue().catch(() => undefined);
+test('preloads both weights, shows Loading on parchment, and keeps fallback after a one-second wait', async ({ page }) => {
+  const time = new Date('2026-01-01T12:00:00Z');
+  await page.clock.install({ time });
+  await page.clock.pauseAt(new Date(time.getTime() + 1000));
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  const requests: string[] = [];
+  await page.route(/\.woff2$/, async route => {
+    requests.push(route.request().url());
+    await held;
+    await route.continue();
   });
-  const t0 = Date.now();
-  await page.goto('/?test=1', { waitUntil: 'commit' });
-  await page.waitForFunction(() => window.__tarpit?.titleReady?.(), undefined, { timeout: 4000 });
-  expect(Date.now() - t0).toBeLessThan(3500);
+  await page.goto('/?test=1', { waitUntil: 'domcontentloaded' });
+  const preloads = await page.locator('head link[rel=preload][as=font][crossorigin]')
+    .evaluateAll(links => links.map(link => (link as HTMLLinkElement).href));
+  expect(preloads).toHaveLength(2);
+  await expect.poll(() => [...requests].sort()).toEqual(preloads.sort());
+  await page.clock.runFor(999);
+  const loading = page.getByRole('status');
+  await expect(loading).toHaveText('Loading');
+  await expect(loading).toBeVisible();
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(241, 223, 181)');
+  await expect(page.locator('canvas')).toHaveCount(0);
+
+  await page.clock.runFor(1);
+  await expect(loading).toHaveCount(0);
+  await page.clock.resume();
+  await page.waitForFunction(() => window.__tarpit?.titleReady?.());
   const first = await titleWidth(page);
-  await page.waitForTimeout(4000); // the held font arrives
+  expect(first).toBeGreaterThan(0);
+  release();
+  await page.waitForLoadState('networkidle');
   expect(await titleWidth(page)).toBe(first);
   expect(await page.evaluate(() => [...document.fonts].length)).toBe(0);
 });

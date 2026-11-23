@@ -6,6 +6,7 @@ import { LANDSCAPE, PORTRAIT } from '../src/game/layout';
 import { bossBarGeometry } from '../src/game/ui/bossBar';
 import { api, press } from './campaign';
 import { useTallFontMetrics } from './campaignFont';
+import { momentBannerSuite } from './momentBanners';
 import { settle } from './painted';
 import { waitForFirstScreen, waitForTitle } from './title';
 
@@ -32,6 +33,7 @@ async function checkLabels(page: Page, wanted: string[], area: Rect, controls?: 
 }
 
 export function themeSuite(touch: boolean) {
+  momentBannerSuite(touch);
   for (const tall of [false, true]) {
     test(`theme copy clears title controls, longest previews and both boss bars${tall ? ' (tall metrics)' : ''}`, async ({ page }, info) => {
       if (tall) await useTallFontMetrics(page);

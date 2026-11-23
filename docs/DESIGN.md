@@ -37,20 +37,29 @@ pinned to wood boards, with a capital masthead, a red proclamation ribbon and
 a town silhouette. A double keyline frames the paper. Brass-edged wood
 plaques carry cream lettering. Town blue marks a selection and the King's
 red marks a warning. The ink is #352216, parchment #f1dfb5, wood #422919,
-brass #b68a48, blue #254a57 and red #843629.
+brass #b68a48, blue #254a57 and red #843629. Unavailable actions and
+unaffordable purchases use a flat grey plaque (#494847) with dim lettering
+(#a29f99) and no brass trim. Text contrast is 3.46:1, compared with
+10.25:1 on a ready plaque. Locked choices keep their lock.
 
-Libre Caslon Text Regular and Bold ship with the game. Boot loads the Latin
-faces before Phaser measures text, including in test mode. If either request
-fails or the pair takes more than two seconds, the session uses Courier New
+The page preloads both Libre Caslon Text weights and shows “Loading” in
+plain type on parchment. Boot waits up to one second for both Latin faces
+before Phaser measures text. If either weight fails or misses the deadline,
+the session uses Courier New
 with a monospace fallback. The service worker caches both weights. Running
 totals, prices and timers use the typewriter digits because Caslon's figures
 have different advances. Star awards and locks are drawn shapes.
 
-The HUD is a wooden counter. A coin sits beside Gold in landscape. The level
+The HUD is a wooden counter. The landscape coin has 5 px of clearance from
+the brass frame and 6 px from the Gold label. Large balances leave at least
+4 px before Lives. The level
 map traces a road between ten plaques, with brass locks, star slots and a
 blue next stop. Cards and results use dark type on paper. The reward offer
 uses the same paper for each choice. Wave and boss banners use blue and red
-respectively. Changing the look changes the battlefield art.
+respectively. Each banner line fits inside 24 px of horizontal padding, and
+the plaque leaves at least 8 px at either map edge. Tall text expands the
+plaque vertically and leaves at least 2 px between lines. Changing the look
+changes the battlefield art.
 
 ## Space and time
 

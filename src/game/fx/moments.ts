@@ -9,6 +9,8 @@ import { BannerQueue } from './fxMath';
 
 let showedBarricadeUnlock = false;
 let showedGuardsUnlock = false;
+const PANEL_GUTTER = 8;
+const TEXT_PAD_X = 24;
 
 /** The same single banner queue and cave signal in play and frozen browser frames. */
 export class Moments {
@@ -128,10 +130,18 @@ export class Moments {
           .setColor(b.big ? TEXT.bossBanner : TEXT.waveBanner)
           .setY(y)
           .setVisible(true);
-        this.bannerSub.setText(b.sub).setY(y + (b.big ? 36 : 28)).setVisible(b.sub !== '');
-        const w = Math.max(this.bannerText.width, this.bannerSub.width) + 48;
-        const h = b.sub === '' ? 52 : b.big ? 100 : 84;
-        panel(this.bannerBg, { x: this.bannerX - w / 2, y: y - 30, width: w, height: h }, b.big ? THEME.red : THEME.blue);
+        this.bannerSub.setText(b.sub).setVisible(b.sub !== '');
+        const maxWidth = this.layout.map.width - 2 * (PANEL_GUTTER + TEXT_PAD_X);
+        for (const line of [this.bannerText, this.bannerSub]) {
+          line.setScale(Math.min(1, maxWidth / Math.max(1, line.width)));
+        }
+        const headingBottom = y + this.bannerText.displayHeight / 2;
+        this.bannerSub.setY(Math.max(y + (b.big ? 36 : 28), headingBottom + 2 + this.bannerSub.displayHeight / 2));
+        const w = Math.max(this.bannerText.displayWidth, this.bannerSub.displayWidth) + 2 * TEXT_PAD_X;
+        const top = Math.min(y - 30, y - this.bannerText.displayHeight / 2 - 4);
+        const contentBottom = this.bannerSub.visible ? this.bannerSub.y + this.bannerSub.displayHeight / 2 : headingBottom;
+        const bottom = Math.max(y - 30 + (b.sub === '' ? 52 : b.big ? 100 : 84), contentBottom + 4);
+        panel(this.bannerBg, { x: this.bannerX - w / 2, y: top, width: w, height: bottom - top }, b.big ? THEME.red : THEME.blue);
       }
     }
     if (cur !== null) {

@@ -49,9 +49,9 @@ describe('end screen text', () => {
 
 describe('campaign result', () => {
   it.each([
-    [1, 1, '★☆☆', 'Finish with 12 lives for two stars'],
-    [12, 2, '★★☆', 'Finish with 18 lives for three stars'],
-    [18, 3, '★★★', ''],
+    [1, 1, '1 of 3 stars', 'Finish with 12 lives for two stars'],
+    [12, 2, '2 of 3 stars', 'Finish with 18 lives for three stars'],
+    [18, 3, '3 of 3 stars', ''],
   ] as const)('shows this run with %i lives, even after a better win', (lives, stars, slots, hint) => {
     const state = createGame({ level: LEVELS[0] });
     state.phase = 'won';
@@ -77,7 +77,7 @@ describe('campaign result', () => {
     state.phase = 'won';
     state.cheated = true;
     expect(campaignResultText(state, { 1: 0 })).toMatchObject({
-      stars: 0, slots: '☆☆☆', hint: CAMPAIGN_END.cheated, nextId: 2, buttons: ['Next level', 'Play again', 'Level map'],
+      stars: 0, slots: '0 of 3 stars', hint: CAMPAIGN_END.cheated, nextId: 2, buttons: ['Next level', 'Play again', 'Level map'],
     });
     const last = { ...state, level: LEVELS[LEVELS.length - 1] };
     expect(campaignResultText(last, {})).toMatchObject({ hint: CAMPAIGN_END.cheatedLast, nextId: null, complete: CAMPAIGN_END.complete });

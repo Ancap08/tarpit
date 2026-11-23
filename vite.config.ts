@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
+import { TITLE_TEXT } from './src/game/names.ts';
 import { swEnabled, writeServiceWorker } from './scripts/sw-build.ts';
 import { PAINTED_ASSET_DIR } from './src/sw/rules.ts';
 
@@ -43,6 +44,9 @@ export default defineConfig({
     },
   },
   // TARPIT_SW=off builds a deploy that retires the worker (scripts/sw-build.ts).
-  define: { __TARPIT_SW__: JSON.stringify(swEnabled()) },
+  define: {
+    __TARPIT_SW__: JSON.stringify(swEnabled()),
+    'import.meta.env.LOADING_TEXT': JSON.stringify(TITLE_TEXT.loading),
+  },
   plugins: [serviceWorker()],
 });

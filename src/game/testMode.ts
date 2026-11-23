@@ -38,6 +38,7 @@ import type { GameScene } from './GameScene';
 import { campaignProgress } from './campaignProgress';
 import { highScores } from './highScore';
 import { pageLockState } from './pageLock';
+import { starSlots } from './names';
 import { STAR_ROW } from './ui/starRow';
 import { currentLayout } from './layoutSwitch';
 import type { TarpitTestApi } from './testGlobal';
@@ -264,7 +265,8 @@ export function installGlobal(game: Phaser.Game): void {
           const row = node as Phaser.GameObjects.Container;
           if (!row.visible) return [];
           const stars = row.list as Phaser.GameObjects.Star[];
-          text = stars.filter(star => star.visible).map(star => star.isFilled ? '★' : '☆').join('');
+          const visible = stars.filter(star => star.visible);
+          text = starSlots(visible.filter(star => star.isFilled).length, visible.length);
           // Shape.getBounds() covers the path; its stroke straddles the boundary.
           bounds = row.getBounds();
           const stroke = stars[0].lineWidth;

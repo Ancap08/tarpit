@@ -9382,3 +9382,15 @@ Verifier notes (44c, independent run on 5de4694, baseline 6f5d8fd):
   changed to "the one cache is not A's" the test passes. The product behaves.
 - Found: the landscape coin sits on the brass frame and touches the G of
   Gold (`docs/review/m44c/verifier/desktop-hud-coin-touches-gold.jpg`).
+
+**Fixes after verification.** The update test waits until build B owns the sole
+cache, then reloads B offline. Boss and wave banners now fit each visible line
+to the map. Browser checks measure both boss entrances and the longest wave
+messages in Caslon and fallback, with normal and tall metrics on all three
+projects. Disabled and unaffordable plaques lose their brass edge and use
+3.46:1 text contrast beside 10.25:1 on ready controls. Locked choices retain
+their lock. The landscape coin clears both the frame and Gold. The page
+preloads both font weights and shows “Loading” on parchment during the
+one-second wait. Campaign screens draw their stars, and both font files
+must cover every printable character used in game strings. Updated review
+captures include the Assessor’s entrance in portrait.

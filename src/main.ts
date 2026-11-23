@@ -17,6 +17,7 @@ const forceCanvas = new URLSearchParams(window.location.search).get('renderer') 
 void loadFonts().then(startGame);
 
 function startGame(): void {
+  document.getElementById('loading')?.remove();
   const game = new Phaser.Game({
     // Play uses WebGL (AUTO falls back to Canvas without it). Test mode uses
     // CANVAS: it draws the same pixels in headless Chromium on every run, which
