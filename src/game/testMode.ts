@@ -202,6 +202,7 @@ export function installGlobal(game: Phaser.Game): void {
     ...always,
     scene: () => game.scene.getScenes(true)[0]?.scene.key ?? '',
     state: () => scene().state,
+    painted: () => scene().paintedState(),
     step: (n) => scene().advance(n),
     startGame: (difficulty = DEFAULT_DIFFICULTY, map = DEFAULT_MAP) =>
       new Promise<void>((resolve) => {

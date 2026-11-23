@@ -113,7 +113,8 @@ export function drawStatusRings(g: Phaser.GameObjects.Graphics, state: GameState
 }
 
 /** Hp bars for hurt enemies, drawn over the sprites. Not for the boss: the HUD boss bar shows his. */
-export function drawHpBars(g: Phaser.GameObjects.Graphics, state: GameState, layout: Layout = LANDSCAPE): void {
+export function drawHpBars(g: Phaser.GameObjects.Graphics, state: GameState, layout: Layout = LANDSCAPE,
+  bodyTop?: (id: number) => { x: number; y: number } | undefined): void {
   // `g` is screen-space (milestone 32b): a bar stays level above its sprite in any layout.
   for (const enemy of state.enemies) {
     // Full hp on this level (milestone 25): Easy and Hard scale it; an
@@ -122,8 +123,9 @@ export function drawHpBars(g: Phaser.GameObjects.Graphics, state: GameState, lay
     if (enemy.hp < maxHp && !isBoss(enemy)) {
       const { x, y } = layout.toScreen(enemyPosition(enemy, state.map));
       const fraction = Math.max(0, enemy.hp) / maxHp;
-      const left = Math.round(x - BAR_WIDTH / 2);
-      const top = Math.round(y - spriteLift(enemy.type) - spriteHalfHeight(enemy.type) - BAR_GAP - BAR_HEIGHT - 1);
+      const body = bodyTop?.(enemy.id);
+      const left = Math.round((body?.x ?? x) - BAR_WIDTH / 2);
+      const top = Math.round((body?.y ?? y - spriteLift(enemy.type) - spriteHalfHeight(enemy.type)) - BAR_GAP - BAR_HEIGHT - 1);
       g.fillStyle(COLORS.hpBorder, 1);
       g.fillRect(left - 1, top - 1, BAR_WIDTH + 2, BAR_HEIGHT + 2);
       g.fillStyle(hpColor(fraction), 1);

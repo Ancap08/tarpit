@@ -19,6 +19,7 @@
 // shot when fired, its impact, hit tick and death pop when the projectile
 // lands, and every other event as it is routed here.
 
+import type { PaintedSkin } from '../skin/painted';
 import type Phaser from 'phaser';
 import {
   ACT_ONE_LAST_WAVE,
@@ -667,13 +668,15 @@ export class Effects {
   }
 
   /** Projectiles, impacts, sold towers shrinking and the cottage glow, on the shot layer. */
-  draw(g: Phaser.GameObjects.Graphics): void {
+  draw(g: Phaser.GameObjects.Graphics, painted?: PaintedSkin): void {
     const now = this.gameMs;
     for (const s of this.sells) {
-      drawTowerScaled(g, s.type, cellCenter(s.cell), { angle: s.angle, recoil: 0, scale: Math.max(0.01, popScale('sell', this.realMs - s.atMs)) }, s.upgraded, 1, this.layout);
+      const pose = { angle: s.angle, recoil: 0, scale: Math.max(0.01, popScale('sell', this.realMs - s.atMs)) };
+      if (painted) painted.sold(s.type, cellCenter(s.cell), pose);
+      drawTowerScaled(g, painted ? null : s.type, cellCenter(s.cell), pose, s.upgraded, 1, this.layout);
     }
     for (const f of this.impacts) if (f && now >= f.bornMs) drawImpact(g, f, (now - f.bornMs) / IMPACT_MS[f.kind]);
-    for (const p of this.projectiles) if (p) drawProjectile(g, p, (now - p.bornMs) / p.travelMs, this.layout);
+    for (const p of this.projectiles) if (p) drawProjectile(g, p, (now - p.bornMs) / p.travelMs, this.layout, painted);
     const exit = flashFade(this.realMs - this.exitAt, EXIT_FLASH_MS);
     if (exit > 0) {
       g.fillStyle(COLORS.exitGlow, 0.5 * exit);
@@ -739,10 +742,14 @@ function muzzlePoint(shot: Shot): Point {
   return { x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k };
 }
 
-function drawProjectile(g: Phaser.GameObjects.Graphics, p: Projectile, t: number, layout: Layout): void {
+function drawProjectile(g: Phaser.GameObjects.Graphics, p: Projectile, t: number, layout: Layout, painted?: PaintedSkin): void {
   // World-space drawing (milestone 32b): arcs rise up the screen, and shadows sit below them, flat on the screen.
   const up = layout.up;
   const a = arcPosition(p.from, p.to, t, p.height, up);
+  if (painted) {
+    painted.projectile(p.tower, a, a.angle);
+    return;
+  }
   const shadow = (w: number, h: number, alpha: number) => {
     const at = layout.offset({ x: a.groundX, y: a.groundY }, 0, 3);
     const size = layout.ellipse(w, h);
