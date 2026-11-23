@@ -29,9 +29,20 @@ describe('checkManifest', () => {
     const own = { ...row('public/icons/icon-192.png', 'MIT'), source: '`scripts/make-icons.ts`' };
     const atlas = { ...row('assets/art-painted/goblin.png', 'MIT'), source: 'scripts/art/slice_sheets.py' };
     const files = [own.path, atlas.path, 'public/icons/x.png', 'public/manifest.webmanifest'];
-    const problems = checkManifest(files, [own, atlas, row('public/icons/x.png', 'MIT')]);
+    const scripts = new Set(['scripts/make-icons.ts', 'scripts/art/slice_sheets.py']);
+    const problems = checkManifest(files, [own, atlas, row('public/icons/x.png', 'MIT')], scripts);
     expect(licenseKind('MIT')).toBe('mit');
     expect(problems).toEqual([expect.stringMatching(/^public\/icons\/x\.png: MIT is allowed only/)]);
+  });
+
+  it('rejects a manifest row that names a missing source script', () => {
+    const scripts = new Set(['scripts/art/slice_sheets.py', 'scripts/make-icons.ts']);
+    for (const source of ['scripts/art/missing.py', 'scripts/missing.ts']) {
+      const asset = { ...row('assets/a.png', 'MIT'), source };
+      expect(checkManifest([asset.path], [asset], scripts)).toEqual([
+        `assets/a.png: source script "${source}" does not exist in the repo`,
+      ]);
+    }
   });
 
   it('passes when every checked file is listed with an allowed license', () => {
