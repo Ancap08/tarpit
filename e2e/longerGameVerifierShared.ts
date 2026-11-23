@@ -25,7 +25,7 @@ const finish = (page: Page) => page.evaluate(() => {
   t.step(1);
 });
 
-export function inputChecks(touch: boolean, phone = false): void {
+export function inputChecks(touch: boolean): void {
   test('V1 a bar drag that is still held when the offer opens cannot build under the panel', async ({ page }) => {
     await openCampaign(page, touch);
     await endWaveNow(page, 5);
@@ -69,9 +69,7 @@ export function inputChecks(touch: boolean, phone = false): void {
     await expectOffer(page, 5);
   });
 
-  // Verifier finding (low): on the phone the second tap of a double tap lands on the map the card
-  // just left and selects the tower under it. The pick itself happens once.
-  (phone ? test.fixme : test)('V3 a double click or tap on a card picks once and selects nothing under it', async ({ page }) => {
+  test('V3 a double click or tap on a card picks once and selects nothing under it', async ({ page }) => {
     await openCampaign(page, touch);
     await endWaveNow(page, 5);
     await finish(page);
@@ -266,16 +264,50 @@ export function layoutChecks(touch: boolean): void {
 }
 
 export function iconSizeCheck(touch: boolean): void {
-  // Verifier finding (low): the held-boon icons are 40 x 42 canvas px (36 x 42 in portrait), so 25 x 30 CSS px on
-  // the phone and 42.7 wide on the tablet. They take taps (tooltip) but are under the 44 px touch size the other buttons meet.
-  test.fixme(`L4 held boon icons are at least 44 x 44 CSS px on a touch screen (touch=${touch})`, async ({ page }) => {
+  test(`L4 held boon icons are at least 44 x 44 CSS px (touch=${touch})`, async ({ page }) => {
     await openCampaign(page, touch);
     await api(page, (t) => { t.state().boons = ['longBarrels', 'stickyTar', 'stoneWalls']; t.step(0); });
-    const sizes = await page.evaluate(() => {
-      const t = window.__tarpit!;
-      const k = (t.canvasToPage(100, 0).x - t.canvasToPage(0, 0).x) / 100;
-      return Object.entries(t.uiRects()).filter(([n]) => n.startsWith('boon:')).map(([, r]) => [r.width * k, r.height * k]);
-    });
-    for (const [w, h] of sizes) { expect(w).toBeGreaterThanOrEqual(44); expect(h).toBeGreaterThanOrEqual(44); }
+    const original = page.viewportSize()!;
+    const short = original.width < original.height ? { width: 390, height: 664 } : { width: 844, height: 390 };
+    for (const viewport of [original, short, original]) {
+      await page.setViewportSize(viewport);
+      await page.waitForFunction(({ width, height }) => {
+        const game = window.__tarpit!.game;
+        const parent = game.scale.parentSize;
+        return parent.width === width && parent.height === height &&
+          game.scene.getScene('game').cameras.main.width === game.scale.width;
+      }, viewport);
+      const { rects, k, canvas } = await page.evaluate(() => {
+        const t = window.__tarpit!;
+        return { rects: t.uiRects() as Record<string, R>,
+          k: (t.canvasToPage(100, 0).x - t.canvasToPage(0, 0).x) / 100,
+          canvas: { width: t.game.scale.width, height: t.game.scale.height } };
+      });
+      const icons = Object.entries(rects).filter(([n]) => n.startsWith('boon:'));
+      expect(icons).toHaveLength(3);
+      for (const [id, r] of icons) {
+        expect(r.width * k, id).toBeGreaterThanOrEqual(44);
+        expect(r.height * k, id).toBeGreaterThanOrEqual(44);
+        expect(r.x, id).toBeGreaterThanOrEqual(0);
+        expect(r.y, id).toBeGreaterThanOrEqual(0);
+        expect(r.x + r.width, id).toBeLessThanOrEqual(canvas.width);
+        expect(r.y + r.height, id).toBeLessThanOrEqual(canvas.height);
+        for (const [other, box] of Object.entries(rects)) {
+          if (id !== other) expect(hit(r, box), `${id} overlaps ${other}`).toBe(false);
+        }
+      }
+      const size = icons[0][1].width * k;
+      test.info().annotations.push({ type: 'reward-size', description: `${viewport.width}x${viewport.height}: ${size.toFixed(2)} CSS px square` });
+      for (const id of ['longBarrels', 'stickyTar', 'stoneWalls']) {
+        const corner = await page.evaluate((id) => {
+          const t = window.__tarpit!;
+          const r = t.uiRects()[`boon:${id}`];
+          return t.canvasToPage(r.x + r.width - 4, r.y + r.height - 4);
+        }, id);
+        if (touch) await page.touchscreen.tap(corner.x, corner.y);
+        else await page.mouse.click(corner.x, corner.y);
+        expect(await api(page, (t) => t.ui().boonTooltip), `${id} at ${viewport.width}×${viewport.height}`).toBe(id);
+      }
+    }
   });
 }

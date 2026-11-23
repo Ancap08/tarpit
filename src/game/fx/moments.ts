@@ -2,7 +2,7 @@ import type Phaser from 'phaser';
 import { ACT_ONE_LAST_WAVE, type GameEvent, type MapDef } from '../../sim';
 import { sound } from '../audio/engine';
 import { fontPx, type Layout } from '../layout';
-import { ACT_TWO_TEXT, BOON_NAMES, BOSS_BANNER_SUB, GRUMBLEMAW_SUB, ENEMY_NAMES, PACK_CALL_TEXT, waveStartBanner, waveClearBanner, bonusGoldText } from '../names';
+import { ACT_TWO_TEXT, BOON_NAMES, BOSS_BANNER_SUB, GRUMBLEMAW_SUB, ENEMY_NAMES, PACK_CALL_TEXT, REWARD_PICKED_TEXT, waveStartBanner, waveClearBanner, bonusGoldText } from '../names';
 import { COLORS, FONT, TEXT } from '../palette';
 import { BannerQueue } from './fxMath';
 
@@ -43,7 +43,7 @@ export class Moments {
           sound.play('boonOffer');
           break;
         case 'boonPicked':
-          this.banners.push({ text: BOON_NAMES[e.id], sub: '', big: false }, now);
+          this.banners.push({ text: BOON_NAMES[e.id], sub: REWARD_PICKED_TEXT, big: false }, now);
           sound.play('boonPick');
           break;
         case 'waveStart':

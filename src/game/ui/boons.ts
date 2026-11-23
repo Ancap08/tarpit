@@ -41,7 +41,7 @@ export class BoonReward {
         .setStrokeStyle(1.5, COLORS.menuEdge);
       const icon = scene.add.graphics().setPosition(centerX, centerY).setScale(g.scale);
       const name = label(scene, n.font, TEXT.button, true).setOrigin(origin, 0.5).setPosition(r.x + n.x, r.y + n.y);
-      const effect = label(scene, d.font, TEXT.hud).setOrigin(origin, 0.5).setPosition(r.x + d.x, r.y + d.y)
+      const effect = label(scene, d.font, TEXT.button).setOrigin(origin, 0.5).setPosition(r.x + d.x, r.y + d.y)
         .setAlign(layout.kind === 'portrait' ? 'left' : 'center').setWordWrapWidth(this.geo.textWidth, true);
       this.view.add([card, tile, icon, name, effect]);
       if (layout.kind === 'landscape') {
@@ -101,7 +101,7 @@ export class BoonReward {
 
 /** Held boons stay in the HUD. Hover or tap an icon to briefly see its effect. */
 export class HeldBoons {
-  private readonly geo: ReturnType<typeof heldBoonLayout>;
+  private geo: ReturnType<typeof heldBoonLayout>;
   private readonly icons: { view: Phaser.GameObjects.Container; icon: Phaser.GameObjects.Graphics; box: Phaser.GameObjects.Rectangle }[];
   private readonly detail: Phaser.GameObjects.Container;
   private readonly name: Phaser.GameObjects.Text;
@@ -111,13 +111,13 @@ export class HeldBoons {
   private tapped: BoonId | null = null;
   private timer: Phaser.Time.TimerEvent | null = null;
 
-  constructor(scene: Phaser.Scene, layout: Layout) {
-    this.geo = heldBoonLayout(layout);
+  constructor(private readonly scene: Phaser.Scene, private readonly layout: Layout) {
+    this.geo = heldBoonLayout(layout, scene.scale.parentSize);
     this.icons = this.geo.slots.map((r, i) => {
       const view = scene.add.container(r.x, r.y).setDepth(HELD_DEPTH).setVisible(false);
       const box = scene.add.rectangle(0, 0, r.width, r.height, COLORS.button).setOrigin(0)
         .setStrokeStyle(1.5, COLORS.menuEdge).setInteractive({ useHandCursor: true });
-      const icon = scene.add.graphics().setPosition(r.width / 2, r.height / 2).setScale(0.8);
+      const icon = scene.add.graphics().setPosition(r.width / 2, r.height / 2).setScale(r.width / 46);
       view.add([box, icon]);
       if (box.input) box.input.enabled = false;
       let pressed = false;
@@ -158,7 +158,15 @@ export class HeldBoons {
     this.effect = label(scene, this.geo.descriptionFont, TEXT.hud).setOrigin(0, 0.5).setPosition(14, r.height * 0.68)
       .setWordWrapWidth(r.width - 28, true);
     this.detail = scene.add.container(r.x, r.y, [bg, this.name, this.effect]).setDepth(HELD_DEPTH).setVisible(false);
-    scene.events.once('shutdown', () => this.dismiss());
+    scene.scale.on('resize', this.fit, this);
+    scene.events.once('shutdown', () => {
+      scene.scale.off('resize', this.fit, this);
+      this.dismiss();
+      // On rotation the next layout already owns the canvas size.
+      if (scene.scale.height === layout.height && scene.scale.width !== layout.width) {
+        scene.scale.setGameSize(layout.width, layout.height);
+      }
+    });
   }
 
   get tooltip(): BoonId | null {
@@ -177,6 +185,7 @@ export class HeldBoons {
   update(ids: readonly BoonId[]): void {
     if (ids.length === this.ids.length && ids.every((id, i) => id === this.ids[i])) return;
     this.ids = [...ids];
+    this.fit();
     this.dismiss();
     this.icons.forEach(({ view, icon, box }, i) => {
       const id = ids[i];
@@ -195,6 +204,22 @@ export class HeldBoons {
 
   rects(): Record<string, Rect> {
     return Object.fromEntries(this.ids.map((id, i) => [`boon:${id}`, { ...this.geo.slots[i] }]));
+  }
+
+  /** Refit the actual input boxes on a pick, rotation or same-orientation resize. */
+  private fit(): void {
+    const scale = this.scene.scale;
+    if (scale.height !== this.layout.height) return;
+    const geo = heldBoonLayout(this.layout, scale.parentSize);
+    this.geo = geo;
+    this.icons.forEach(({ view, icon, box }, i) => {
+      const r = geo.slots[i];
+      view.setPosition(r.x, r.y);
+      box.setSize(r.width, r.height);
+      icon.setPosition(r.width / 2, r.height / 2).setScale(r.width / 46);
+    });
+    const width = this.ids.length > 0 ? geo.canvasWidth : this.layout.width;
+    if (scale.width !== width) scale.setGameSize(width, this.layout.height);
   }
 
   private startTimer(scene: Phaser.Scene): void {

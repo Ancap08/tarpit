@@ -34,18 +34,28 @@ export function drawBoonIcon(g: Phaser.GameObjects.Graphics, id: BoonId): void {
       g.fillStyle(ink).fillCircle(0, 0, 1.5);
       break;
     case 'stickyTar':
-      polygon([0, -14, -8, -2, -11, 5, -7, 11, 0, 14, 7, 11, 11, 5, 8, -2], iron);
-      g.fillStyle(ink).fillEllipse(0, 6, 16, 11);
-      g.fillStyle(gold).fillEllipse(-3, 6, 5, 2);
+      // A lifted boot pulls two strings of tar out of the puddle.
+      g.fillStyle(COLORS.tarSheen).fillEllipse(0, 10, 30, 10);
+      g.fillStyle(COLORS.tarSplat).fillEllipse(0, 10, 25, 6);
+      line(-6, 2, -7, 10, COLORS.tarSheen, 2.5);
+      line(4, 3, 2, 10, COLORS.tarSheen, 2.5);
+      polygon([-10, -13, 0, -13, 0, -6, 9, -5, 13, -2, 12, 2, -9, 3], gold);
+      line(-10, -12, 1, -12, COLORS.tarpitHighlight, 3);
+      line(-7, 3, 11, 2, COLORS.tarSheen, 2.5);
       break;
     case 'hotCoals':
       polygon([-12, 10, -12, 2, -7, -5, -5, 0, 0, -14, 6, -6, 7, 0, 11, -3, 13, 7, 8, 12, -7, 12], COLORS.burnRing);
       polygon([-6, 10, -6, 5, 0, -4, 5, 3, 7, 9, 4, 12, -3, 12], gold);
       break;
     case 'quickHands':
-      polygon([0, -14, 10, -14, 3, -3, 12, -3, -5, 15, -1, 3, -10, 3], gold);
-      line(-14, -7, -6, -7, iron);
-      line(-15, 8, -9, 8, iron);
+      line(-13, -7, -6, -7, gold);
+      line(-16, 0, -7, 0, gold);
+      line(-12, 7, -6, 7, gold);
+      g.fillStyle(gold).fillCircle(3, 0, 12);
+      g.fillStyle(COLORS.longbowString).fillCircle(3, 0, 9.5);
+      line(3, -7, 3, 0, ink, 2.5);
+      line(3, 0, 9, 3, ink, 2.5);
+      g.fillStyle(ink).fillCircle(3, 0, 1.8);
       break;
     case 'stoneWalls':
       polygon([-14, 12, -14, -11, -8, -11, -8, -5, -3, -5, -3, -11, 3, -11, 3, -5, 8, -5, 8, -11, 14, -11, 14, 12], iron);

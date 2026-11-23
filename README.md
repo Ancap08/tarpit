@@ -70,10 +70,11 @@ cloud shadows and the odd bird or butterfly, all still under reduced motion.
    next +N". Press it to send the next wave now: you get the wave's clear
    bonus at once plus up to 20 gold. In the campaign, early calls are
    blocked into and out of waves 5, 10, 15 and 20.
-10. **Pick a boon.** After waves 5, 10 and 15, pick one of three cards
-    by click, tap or the 1, 2 and 3 keys before starting the next wave. Its effect lasts for the run, including
-    endless. The HUD shows the boons you've picked. Turning your device
-    keeps your run and any pending pick. Reloading starts a new run.
+10. **Pick a reward.** After waves 5, 10 and 15, click or tap one of
+    three cards, or press 1, 2 or 3. Hover over or tap a reward icon in
+    the HUD to read what it does. You keep your rewards in endless play.
+    Turning your device keeps your run and any open reward cards.
+    Reloading starts a new run.
 11. **Two bosses.** Grumblefoot, the Troll King, arrives at the end of
     wave 10 and costs 5 lives if he gets through. Act II begins on wave 11.
     Grumblemaw arrives at the end of wave 20 and costs 10 lives if he gets

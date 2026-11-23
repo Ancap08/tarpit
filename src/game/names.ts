@@ -248,8 +248,9 @@ export const BOON_NAMES: Readonly<Record<BoonId, string>> = {
 };
 
 export const REWARD_KEYS: readonly string[] = ['1', '2', '3'];
-export const BOON_PENDING_TEXT = 'Pick a boon';
+export const BOON_PENDING_TEXT = 'Pick a reward';
 export const BOON_WAVE_TEXT = 'Reward wave';
+export const REWARD_PICKED_TEXT = 'Reward picked';
 export const LAST_WAVE_TEXT = 'Last wave';
 export const BOSS_WAVE_NEXT_TEXT = 'Boss wave next';
 export const ACT_TWO_TEXT = 'Act II';
@@ -261,22 +262,22 @@ export function rewardTitle(wave: number): string {
 }
 
 export function heldBoonsText(boons: readonly BoonId[]): string {
-  return boons.length === 0 ? '' : `Boons: ${boons.map((id) => BOON_NAMES[id]).join(' · ')}`;
+  return boons.length === 0 ? '' : `Rewards: ${boons.map((id) => BOON_NAMES[id]).join(' · ')}`;
 }
 
 export function boonDescription(id: BoonId): string {
   const value = BOONS[id].value;
   const gain = Math.round((value - 1) * 100);
   switch (id) {
-    case 'longBarrels': return `Cannon and Mortar range +${gain}%`;
-    case 'keenArrows': return `Longbow damage +${gain}%`;
-    case 'warChest': return `+${value} gold now`;
-    case 'stickyTar': return `Tar Pit/Barrel slow time +${gain}%`;
-    case 'hotCoals': return `Burn damage +${gain}%`;
-    case 'quickHands': return `Special recharge time −${-gain}%`;
-    case 'stoneWalls': return `+${value} lives now`;
-    case 'veteranCrews': return `All towers fire ${gain}% faster`;
-    case 'biggerBlasts': return `Cannon/Mortar/Keg blast radius +${gain}%`;
+    case 'longBarrels': return `Cannons and Mortars reach ${gain}% farther`;
+    case 'keenArrows': return `Longbows hit ${gain}% harder`;
+    case 'warChest': return `${value} gold right now`;
+    case 'stickyTar': return `Tar slows enemies ${value === 2 ? 'twice as long' : `${gain}% longer`}`;
+    case 'hotCoals': return `Fire burns ${gain}% hotter`;
+    case 'quickHands': return `Specials come back ${-gain}% sooner`;
+    case 'stoneWalls': return `${value} more lives`;
+    case 'veteranCrews': return `Every tower fires ${gain}% faster`;
+    case 'biggerBlasts': return `Explosions are ${gain}% bigger`;
   }
 }
 

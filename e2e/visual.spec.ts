@@ -5,7 +5,8 @@ import type { TowerType } from '../src/sim/types';
 import type { TitleUiState } from '../src/game/TitleScene';
 import { MAPS, positionAlongPath } from '../src/sim/map';
 import { SPECIAL_DEFS } from '../src/sim/specials';
-import { cellPage, rectPage } from './phone';
+import { expectOffer, visibleTexts } from './campaign';
+import { cellPage, rectPage, rectPageSize } from './phone';
 import { ACT_TWO_STEPS, FIRST_PACK_FRAME, FIRST_PACK_STEPS, FIRST_REWARD_STEPS, GRUMBLEFOOT_STEPS, beginVisualWave, finalBossFrame } from './visualCampaign';
 import { waitForTitle } from './title';
 
@@ -845,6 +846,7 @@ test('wave 5 shows three reward cards and lets the player pick one', async ({ pa
     lives: 18,
     gold: 145,
   });
+  await expectOffer(page, 5);
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('boon-pick.png');
 
@@ -862,10 +864,14 @@ test('all three held boons remain in the HUD after the third reward', async ({ p
     return t.state().boons;
   });
   expect(boons).toEqual(['longBarrels', 'stickyTar', 'stoneWalls']);
-  for (const id of boons) await rectPage(page, `boon:${id}`);
+  for (const id of boons) {
+    const size = await rectPageSize(page, `boon:${id}`);
+    expect(Math.min(size.width, size.height)).toBeGreaterThanOrEqual(44);
+  }
   const icon = await rectPage(page, 'boon:stoneWalls');
   await page.mouse.move(icon.x, icon.y);
   expect((await ui(page)).boonTooltip).toBe('stoneWalls');
+  expect(await visibleTexts(page)).toContain('3 more lives');
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('boon-icons.png');
 });
@@ -879,6 +885,9 @@ test('after the second reward, wave 11 opens with Act II', async ({ page }) => {
     lives: 16,
     gold: 420,
   });
+  await expectOffer(page, 10);
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('reward-pick-wave10.png');
   await click(page, 'reward:stickyTar');
   // Let the boon-pick banner finish, then advance the act banner through its fade-in.
   await page.evaluate(() => (window.__tarpit as TarpitTestApi).step(100));

@@ -507,8 +507,8 @@ export class Effects {
     // Milestone 32b: the map's box shakes; each HUD band beside it (below in
     // landscape, above and below in portrait) gets its own still camera.
     const m = this.layout.map;
-    const W = this.scene.scale.gameSize.width;
-    const H = this.scene.scale.gameSize.height;
+    const W = this.layout.width;
+    const H = this.layout.height;
     cam.setViewport(m.x, m.y, m.width, m.height).setScroll(m.x, m.y).setBackgroundColor(COLORS.grass);
     this.mapScroll = { x: m.x, y: m.y };
     for (const band of [
@@ -529,6 +529,15 @@ export class Effects {
       this.mapScroll = { x: 0, y: 0 };
       cam.setViewport(0, 0, this.scene.scale.gameSize.width, this.scene.scale.gameSize.height).setScroll(0, 0).setBackgroundColor(this.savedBg);
       return;
+    }
+    // The reward rail is also still. It can appear or change size mid-shake
+    // if a reward is claimed or the browser's usable width changes.
+    const right = this.layout.width;
+    const railWidth = this.scene.scale.width - right;
+    if (railWidth > 0) {
+      const existing = this.hudCams.find((c) => c.x === right);
+      if (!existing) this.hudCams.push(this.scene.cameras.add(right, 0, railWidth, this.layout.height).setScroll(right, 0));
+      else if (existing.width !== railWidth) existing.setSize(railWidth, this.layout.height);
     }
     const o = shakeOffset(ms, this.shakeMs, this.shakePx);
     // Portrait (32b follow-up): the strip is above the map and the controls below, so the

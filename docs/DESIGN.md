@@ -88,7 +88,7 @@ Buildable counts are of the 450 cells.
 ## Economy and lives
 
 - Each kill pays the enemy's bounty. Clearing a wave pays a 25 gold bonus.
-  Clearing campaign waves 5, 10 and 15 also offers a boon.
+  Clearing campaign waves 5, 10 and 15 also offers a reward.
 - Calling the next wave early pays the current wave's 25 clear bonus at
   once plus an early bonus of up to 20 (see Call early).
 - An enemy reaching the exit costs its lives cost (1 for regular enemies,
@@ -289,7 +289,7 @@ resets to `round(60 / fire rate)` ticks (Musketeer 60, Cannon 120, Tar Pit
 30, Longbow 24, Mortar 180, Fire Pot 75). Range is measured from the
 tower's cell centre to the enemy's position. Splash hits every enemy within
 the splash radius of the target (flyers excepted) for full damage. The
-base tables precede boon modifiers. Veteran Crews multiplies fire rate
+base tables precede reward modifiers. Veteran Crews multiplies fire rate
 before the cooldown is rounded.
 
 | Tower | Cost | Range | Min range | Damage | Fire rate | Splash | Slow | Burn |
@@ -353,11 +353,11 @@ and upgrading keep the count. The tower panel (214 x 166) shows it as a
 
 ## Boons
 
-Clearing waves 5, 10 and 15 offers three fixed boons in order. The
+Clearing waves 5, 10 and 15 offers three fixed rewards in order. The
 player picks one with `pickBoon(state, id)` before starting the next
 wave. The pending offer is `state.pendingBoon` with the cleared wave and
-its options. The chosen boon is stored in `state.boons` and lasts for the
-run, including endless. Tower boons apply to existing and new towers.
+its options. The chosen reward is stored in `state.boons` and lasts for the
+run, including endless. Tower rewards apply to existing and new towers.
 War Chest grants its gold on pick, and Stone Walls grants its lives on
 pick. A pick is refused with `no-boon-pending` when no offer is pending
 and `boon-not-offered` when the id is outside the offer. Start Wave is
@@ -365,21 +365,30 @@ refused with `boon-pending` until the player chooses. The simulation
 emits `boonOffered` with the cleared wave and options. Picking clears the
 offer and emits `boonPicked` with the wave and selected id.
 
-The reward panel shows three cards in offer order, each with a drawn icon,
-name and one-line effect. The cards sit in a row in landscape (296 x 168 px,
-14 px gap) and a column in portrait (448 x 112 px, 12 px gap).
-Click or tap a card, or use 1, 2 or 3 on a keyboard. The HUD
-shows one icon per held boon in pick order, in the build row in landscape
-and the preview row in portrait. Once the first boon is held, the six
-landscape build buttons narrow from 140 px to 118 px and their text from
-16 px to 14 px. Held icons use 40 x 42 px slots there and 36 x 42 px in
-portrait, with 3 px gaps. The portrait preview then wraps in 348 px and
-steps down from 18 to 16, 14 or 13 px as needed to stay within two lines. Hover or tap an icon to read its name
-and effect for up to 2.8 s. The win and loss screens list the held names in 14 px text in
-landscape and 18 px text in portrait. The portrait list wraps above the
-buttons. A pending reward and the chosen boons survive a layout switch
-with the rest of the run. The open panel blocks map placement and selection.
-Start Wave shows “Pick a boon”. After a pick, a short banner names it.
+Each reward card shows its name, a drawn icon and a short sentence using the
+value in the table below. The cream effect text is 18 px in landscape and
+22 px in portrait and can wrap to two lines. The three cards sit in a row
+in landscape (296 x 168 px, 14 px gap) and a column in portrait
+(448 x 112 px, 12 px gap). Sticky Tar shows a boot pulling strands from a
+tar puddle. Quick Hands shows a clock with motion lines.
+
+Click or tap a card, or press 1, 2 or 3. While the offer is open, the map
+ignores placement and selection and Start Wave reads “Pick a reward”.
+After a pick, a banner shows the reward name and “Reward picked”. The map
+ignores new presses for 300 ms of real time so a second tap cannot select
+a tower underneath the card. HUD buttons remain usable.
+
+Held rewards appear in pick order. Each icon has its own hit area of at
+least 44 x 44 CSS px. When the landscape canvas fits at full size, the
+icons share the build row with the six tower buttons. Once the first
+reward is held, those buttons narrow from 140 to 116 px and their labels
+from 16 to 14 px. In portrait and smaller landscape windows the icons sit
+in a column beside the board. The portrait preview keeps its full 468 px.
+Hover or tap an icon to read its name and effect for up to 2.8 s.
+
+The win and loss screens list the names under “Rewards” in 14 px text in
+landscape and 18 px in portrait. The portrait list wraps above the buttons.
+Turning the device keeps the run, any open offer and all chosen rewards.
 Reloading starts a new run.
 
 | Boon | ID | After wave | Value | Effect |
@@ -433,7 +442,7 @@ Reloading starts a new run.
   Arrows burn at 26 per second through the normal burn (`applyBurn`, as a
   special's burn): they replace an equal or weaker burn and leave a
   stronger one, and the burn is doubled while the enemy is tarred, so tar
-  and fire on one enemy burn 52 per second before boons.
+  and fire on one enemy burn 52 per second before rewards.
 - **Kills.** Enemies a special kills pay their bounty once and are
   removed, each with a `kill` event, cause `special` (and `bossDown`, cause
   `special`, for the boss); a burn kill from Fire Arrows counts the same.
@@ -550,7 +559,7 @@ play notes decide whether it stays this long.
 **Wave flow.** The player presses Start Wave. The wave is active until
 every scheduled enemy and called Wolf has spawned and none remain alive,
 including survivors from an early call. Then the clear bonus is paid.
-The next wave can start after any boon pick. During a wave, the button
+The next wave can start after any reward pick. During a wave, the button
 calls the next wave when early calls are allowed. The next-wave preview lists each type
 once in first-group order with its counts summed ("Next: 20 Goblin"); a
 preview too long for one 16 px line (264 px) wraps to two 13 px lines, or,
@@ -589,7 +598,7 @@ it reads "Start Wave". `ui().callEarly` reports `{available, bonus}`.
   going] calls `continueEndless(state)`: allowed only in phase `won`,
   refused with `not-won` otherwise; a refusal changes nothing. It sets
   `state.endless = true` and the phase to `setup` with wave 20 cleared;
-  gold, lives, towers, kill counts, boons and the special charge (0, not
+  gold, lives, towers, kill counts, rewards and the special charge (0, not
   refilling) are kept.
   Event `endlessStart`.
 - **After that** Start Wave plays wave 21, 22, and so on. Clearing a wave
@@ -657,7 +666,7 @@ changing with either selection; no line when that pair has no score.
 
 ## Tick order
 
-Builds, upgrades, sells, moves, boon picks, specials and early calls act between
+Builds, upgrades, sells, moves, reward picks, specials and early calls act between
 ticks. Inside one wave tick: (1) enemies move at `(1 - effectiveSlow)`,
 then both slow timers count down; (2) enemies at the exit are removed and
 cost their lives (at 0 lives the game is lost at once and nothing else
@@ -673,7 +682,7 @@ down (at 0 the charge is ready); (7) if all scheduled enemies and called
 Wolves have spawned and none are alive, the game pays the clear bonus,
 resets the charge and recharge, removes the zones, and goes to `setup`
 (or `won` after campaign wave 20). Campaign waves 5, 10 and 15 also
-offer a boon. A slow or
+offer a reward. A slow or
 burn set in step 4 first acts on the next tick; a zone's burn acts in
 step 3 of the same tick. Towers act only during wave ticks. Once the game
 is won or lost a tick only clears `state.shots`, so the last tracer or
@@ -829,7 +838,7 @@ Sounds follow the renderer's events and change no rule, number or outcome
   ready 0.36 s; wave start horn 0.70 s, wave clear chime 0.51 s, Call next
   0.35 s; Grumblefoot's arrival 1.40 s and fall 1.41 s; win 1.76 s and lose
   1.93 s; the gold cheat's coin 0.42 s (triangles with a low-passed edge).
-  The boon offer is a descending chime (0.468 s) and the pick a rising
+  The reward offer is a descending chime (0.468 s) and the pick a rising
   pair (0.363 s). Act II starts with three brass notes (0.615 s).
   Grumblemaw's pack call is a two-part howl (0.510 s), his arrival a
   rising roar (1.298 s) and his fall a descending rumble (1.444 s).
@@ -851,7 +860,7 @@ Sounds follow the renderer's events and change no rule, number or outcome
   | Tick | hit | 0.008 to 0.02 | 0.012 |
   | Shot | the six shots | 0.05 to 0.065 | 0.06 (Musketeer 0.055) |
   | Impact | the six impacts, the death pops | 0.068 to 0.11 | 0.09 (Musketeer 0.07, Fire Pot 0.08; deaths 0.08, 0.09, 0.10) |
-  | Action | build, upgrade, sell, refused, tap, select, coin, boon offer and pick | 0.045 to 0.10 | 0.08 (tap 0.05, select 0.07) |
+  | Action | build, upgrade, sell, refused, tap, select, coin, reward offer and pick | 0.045 to 0.10 | 0.08 (tap 0.05, select 0.07) |
   | Moment | exit, charge ready, wave clear, Call next, wave horn, Act II, pack call | 0.11 to 0.17 | 0.12, 0.12, 0.14, 0.14, 0.165, 0.158, 0.148 |
   | Big | specials, both bosses' arrivals and falls, win, lose | 0.17 to 0.26 | 0.17 to 0.23, with Grumblemaw arrival 0.241 and fall 0.243 |
 
@@ -867,7 +876,7 @@ Sounds follow the renderer's events and change no rule, number or outcome
   burst (no death pop for him). An early call plays Call next instead of
   the horn; the win or lose jingle replaces the last wave's chime.
   The reward offer chime takes the place of the usual clear chime, and
-  the Act II fanfare takes the place of the wave 11 horn. A boon pick
+  the Act II fanfare takes the place of the wave 11 horn. A reward pick
   and pack call each have a cue. Grumblemaw uses his own arrival and fall
   sounds.
   `GameScene` adds a tower select, a refused action (a failed build,
@@ -1134,7 +1143,7 @@ from a deploy does not remove installed workers.
 Plain TypeScript in `src/sim`, no Phaser, no DOM. One `GameState` object,
 pure data, changed in place. Operations: create game, tick, start wave,
 build tower, upgrade tower, sell tower, move tower, undo upgrade, set
-targeting, pick a boon, use a special, the gold cheat, call the next wave early,
+targeting, pick a reward, use a special, the gold cheat, call the next wave early,
 continue into endless waves, next-wave preview, and a headless runner (`headless.ts`) that plays
 a scripted set of actions for tests and balance work.
 
@@ -1155,7 +1164,7 @@ The archetypes (`src/sim/headless.ts`) are scripted players. Each records
 its script by playing on a level and map and returns a `WaveScript`
 (per wave: setup actions; `timed`: actions at wave ticks; `mapId`;
 `endless`; optional picks by offer wave in `boons`). When a script has no
-pick for an offer, it selects the first boon. `playScripted` and the
+pick for an offer, it selects the first reward. `playScripted` and the
 browser's `runScript` replay it.
 
 - **noTowers**: builds nothing.
@@ -1248,9 +1257,9 @@ Normal, every map unless specified:
   substitution and the two diagonals of non-default choices.
 - **N10b** For each offer, fixing the other picks at their defaults,
   the difference between the best and worst final lives is at most four.
-- **N10c** Each boon is strictly best among its offer on a named build,
+- **N10c** Each reward is strictly best among its offer on a named build,
   map and difficulty (Normal or Hard), ranked by lives then kills.
-- **N10d** Each boon changes lives or defeat wave for at least three
+- **N10d** Each reward changes lives or defeat wave for at least three
   distinct build/map pairs. Difficulty alone does not create a new pair.
   Both runs play the same build. The comparison neutralizes just the
   selected effect and keeps the other two picks active. Purchases respond

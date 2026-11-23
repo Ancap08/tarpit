@@ -7844,3 +7844,34 @@ lightning bolt with no obvious meaning.
 Could not check: two fingers on a card at once (Playwright has one touch
 point; a two-finger tap on a real device); real device safe-area insets;
 listening to the sounds.
+
+### Follow-up
+
+- A successful reward pick now blocks map presses for 300 ms of real time.
+  A phone can draw several frames between the two taps. V3 checks the
+  original double tap with a tower under the card on all three projects.
+  The held icons and the Start Wave button still take input immediately.
+- Held rewards have separate square targets. The landscape build row
+  uses 46 x 46 canvas px in place of 40 x 42, with 116 px tower buttons
+  in place of 118. On portrait and smaller landscape screens the icons
+  form a column to the right of the board. The squares adapt to the
+  displayed canvas scale, replacing the 36 x 42 portrait slots.
+  The portrait preview has its full 468 px again (previously 348).
+  L4 checks the bounds, separation and input at the edge of each square.
+  The square sides measured 46.00 CSS px on desktop, 49.07 on tablet and
+  45.24 on phone. They remained 45.04 at 390 x 664 and 45.05 at 844 x
+  390 after resize. A live phone test also taps one during a map shake.
+- The button says “Pick a reward”, the pick banner says “Reward picked”,
+  and both end screens list “Rewards”. The nine effect lines use the
+  simulation's values in plain language. A recharge factor of 0.62, for
+  example, reads “Specials come back 38% sooner”.
+- Card effects went from 13 to 18 px in landscape and from 17 to 22 px
+  in portrait. The cream text has 15.16:1 contrast against the card
+  and 5.13:1 on hover. Two lines fit below the name on the existing
+  cards. Sticky Tar shows a boot pulling strands from a puddle. Quick
+  Hands shows a clock with motion lines. The wave 10 visual spec now
+  captures both emblems together.
+- The opt-in ten-wave leak run plays through Grumblefoot's fall, clicks
+  Sticky Tar, checks both rewards and requires one boss death before it
+  drains effects and checks Play again. It remains gated by
+  `VERIFIER_LONG=1`.

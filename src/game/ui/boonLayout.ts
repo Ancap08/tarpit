@@ -22,22 +22,37 @@ export function rewardLayout(layout: Layout) {
       height,
     })),
     icon: portrait ? { x: 43, y: 56, scale: 1.5 } : { x: width / 2, y: 48, scale: 1.75 },
-    name: portrait ? { x: 80, y: 39, font: 24 } : { x: width / 2, y: 99, font: 23 },
-    description: portrait ? { x: 80, y: 74, font: 17 } : { x: width / 2, y: 133, font: 13 },
+    name: portrait ? { x: 80, y: 30, font: 24 } : { x: width / 2, y: 99, font: 23 },
+    description: portrait ? { x: 80, y: 76, font: 22 } : { x: width / 2, y: 138, font: 18 },
     textWidth: portrait ? width - 90 : width - 16,
   };
 }
 
-/** Space reserved in the HUD's build row (landscape) or preview row (portrait). */
-export function heldBoonLayout(layout: Layout) {
+type Size = { width: number; height: number };
+
+/** Use the landscape build row when it fits, otherwise a rail beside the game. */
+export function heldBoonLayout(layout: Layout, parent: Size) {
   const portrait = layout.kind === 'portrait';
-  const width = portrait ? 36 : 40;
-  const height = 42;
-  const left = portrait ? layout.width - 120 : 772;
-  const top = portrait ? 30 : 533;
+  const inRow = !portrait && parent.width >= layout.width && parent.height >= layout.height;
   const gap = 3;
+  // FIT can be limited by height or by width. In the latter case the rail
+  // itself widens the canvas: size * parent.width / (layout.width + 2*gap + size) >= 45.
+  // One spare CSS pixel accommodates rounding in the browser's canvas bounds.
+  const target = 45;
+  const size = inRow ? 46 : Math.ceil(Math.max(
+    target * layout.height / Math.max(1, parent.height),
+    target * (layout.width + 2 * gap) / Math.max(1, parent.width - target),
+  ));
+  const left = inRow ? 758 : layout.width + gap;
+  const top = inRow ? 531 : portrait ? gap : layout.height - COUNT * (size + gap);
   return {
-    slots: Array.from({ length: COUNT }, (_, i): Rect => ({ x: left + i * (width + gap), y: top, width, height })),
+    canvasWidth: inRow ? layout.width : layout.width + size + 2 * gap,
+    slots: Array.from({ length: COUNT }, (_, i): Rect => ({
+      x: left + (inRow ? i * (size + gap) : 0),
+      y: top + (inRow ? 0 : i * (size + gap)),
+      width: size,
+      height: size,
+    })),
     tooltip: portrait
       ? { x: 58, y: layout.map.y + 62, width: 416, height: 84 }
       : { x: 534, y: layout.map.height - 68, width: 362, height: 68 },

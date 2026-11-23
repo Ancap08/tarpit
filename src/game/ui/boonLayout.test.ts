@@ -36,17 +36,30 @@ describe('boon UI', () => {
     }
     for (const { id } of Object.values(BOONS)) {
       expect(BOON_NAMES[id].length * geo.name.font * MONO_ADVANCE).toBeLessThan(geo.textWidth);
-      expect(lineCount(boonDescription(id), geo.description.font, geo.textWidth)).toBe(1);
+      expect(geo.description.font).toBeGreaterThanOrEqual(18);
+      expect(lineCount(boonDescription(id), geo.description.font, geo.textWidth)).toBeLessThanOrEqual(2);
     }
   });
 
-  it.each([LANDSCAPE, PORTRAIT])('fits the icons in the $kind HUD and the tooltip beside them', (layout) => {
-    const geo = heldBoonLayout(layout);
+  it.each([
+    [LANDSCAPE, 960, 580], [LANDSCAPE, 1024, 768], [LANDSCAPE, 844, 390],
+    [PORTRAIT, 390, 844], [PORTRAIT, 390, 763], [PORTRAIT, 390, 664],
+  ] as const)('fits three separate 44 CSS px reward targets and a tooltip at %s %ix%i', (layout, width, height) => {
+    const geo = heldBoonLayout(layout, { width, height });
+    const scale = Math.min(width / geo.canvasWidth, height / layout.height);
+    const inRow = geo.canvasWidth === layout.width;
     expect(geo.slots).toHaveLength(3);
-    for (const slot of geo.slots) {
-      expect(inside({ x: 0, y: 0, width: layout.width, height: layout.height }, slot)).toBe(true);
-      if (layout.kind === 'portrait') expect(slot.y + slot.height).toBeLessThan(layout.map.y);
-      else expect(slot.y).toBeGreaterThan(layout.map.y + layout.map.height);
+    for (const [i, slot] of geo.slots.entries()) {
+      expect(inside({ x: 0, y: 0, width: geo.canvasWidth, height: layout.height }, slot)).toBe(true);
+      expect(Math.min(slot.width, slot.height) * scale).toBeGreaterThanOrEqual(44);
+      if (inRow) {
+        expect(slot.y).toBeGreaterThan(layout.map.height);
+        expect(slot.x + slot.width).toBeLessThan(904); // mute
+        if (i > 0) expect(slot.x).toBeGreaterThan(geo.slots[i - 1].x + geo.slots[i - 1].width);
+      } else {
+        expect(slot.x).toBeGreaterThan(layout.width); // clear of the map and every control
+        if (i > 0) expect(slot.y).toBeGreaterThan(geo.slots[i - 1].y + geo.slots[i - 1].height);
+      }
     }
     expect(inside(layout.map, geo.tooltip)).toBe(true);
     for (const { id } of Object.values(BOONS)) {
@@ -54,13 +67,23 @@ describe('boon UI', () => {
     }
   });
 
-  it('derives shown gains and grants from the simulation definitions', () => {
-    for (const { id, value } of Object.values(BOONS)) {
-      const amount = id === 'warChest' || id === 'stoneWalls' ? value : Math.round(Math.abs(value - 1) * 100);
-      expect(boonDescription(id)).toContain(String(amount));
-    }
+  it('describes all nine effects in player language', () => {
+    expect(Object.values(BOONS).map(({ id }) => boonDescription(id))).toEqual([
+      'Cannons and Mortars reach 30% farther',
+      'Longbows hit 25% harder',
+      '100 gold right now',
+      'Tar slows enemies twice as long',
+      'Fire burns 80% hotter',
+      'Specials come back 38% sooner',
+      '3 more lives',
+      'Every tower fires 10% faster',
+      'Explosions are 40% bigger',
+    ]);
+  });
+
+  it('shows the cleared wave and the names of chosen rewards', () => {
     expect(heldBoonsText([])).toBe('');
-    expect(heldBoonsText(boonOptions(5))).toBe('Boons: Long Barrels · Keen Arrows · War Chest');
+    expect(heldBoonsText(boonOptions(5))).toBe('Rewards: Long Barrels · Keen Arrows · War Chest');
     expect(rewardTitle(15)).toContain('15');
   });
 });

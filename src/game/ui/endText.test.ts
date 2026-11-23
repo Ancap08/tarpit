@@ -17,7 +17,7 @@ describe('end screen text', () => {
     expect(endScreenText('won', s)).toEqual({
       title: END_TEXT.wonTitle,
       lines: [`${END_TEXT.wonLives} 19`, `${END_TEXT.wonGold} 2847`],
-      boons: `Boons: ${BOON_NAMES.longBarrels} · ${BOON_NAMES.stickyTar} · ${BOON_NAMES.stoneWalls}`,
+      boons: `Rewards: ${BOON_NAMES.longBarrels} · ${BOON_NAMES.stickyTar} · ${BOON_NAMES.stoneWalls}`,
     });
   });
 
@@ -33,7 +33,7 @@ describe('end screen text', () => {
     expect(endScreenText('lost', s)).toEqual({
       title: END_TEXT.lostTitle,
       lines: [`${END_TEXT.lostWave} 24`],
-      boons: `Boons: ${BOON_NAMES.longBarrels} · ${BOON_NAMES.stickyTar} · ${BOON_NAMES.stoneWalls}`,
+      boons: `Rewards: ${BOON_NAMES.longBarrels} · ${BOON_NAMES.stickyTar} · ${BOON_NAMES.stoneWalls}`,
     });
   });
 });

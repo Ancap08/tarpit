@@ -76,17 +76,35 @@ export async function expectOffer(page: Page, wave: keyof typeof OFFERS): Promis
   }
   const cards = await page.evaluate((options) => {
     const t = window.__tarpit!;
-    return options.map((id) => {
+    const scene = t.game.scene.getScene('game');
+    const gold = t.hudText!().gold;
+    const body = scene.children.list.find((o) =>
+      o.type === 'Text' && (o as Phaser.GameObjects.Text).text === gold) as Phaser.GameObjects.Text;
+    const labels = scene.children.list.filter((o) => o.type === 'Container' && (o as Phaser.GameObjects.Container).visible)
+      .flatMap((o) => (o as Phaser.GameObjects.Container).list)
+      .filter((o) => o.type === 'Text') as Phaser.GameObjects.Text[];
+    return options.map(({ id, name, effect }) => {
       const r = t.uiRects()[`reward:${id}`];
-      return { top: t.canvasToPage(r.x, r.y), bottom: t.canvasToPage(r.x + r.width, r.y + r.height) };
+      const title = labels.find((label) => label.text === name)!;
+      const description = labels.find((label) => label.text === effect)!;
+      const box = description.getBounds();
+      return {
+        top: t.canvasToPage(r.x, r.y), bottom: t.canvasToPage(r.x + r.width, r.y + r.height),
+        effectFits: box.left >= r.x && box.right <= r.x + r.width &&
+          box.top >= title.getBounds().bottom && box.bottom <= r.y + r.height,
+        effectFont: parseFloat(String(description.style.fontSize)), hudFont: parseFloat(String(body.style.fontSize)),
+      };
     });
-  }, options);
+  }, options.map((id) => ({ id, name: BOON_NAMES[id], effect: boonDescription(id) })));
   const viewport = page.viewportSize()!;
   for (const [i, card] of cards.entries()) {
+    expect(card.effectFits, options[i]).toBe(true);
+    expect(card.effectFont, options[i]).toBeGreaterThanOrEqual(card.hudFont);
     expect(card.top.x).toBeGreaterThanOrEqual(0);
     expect(card.top.y).toBeGreaterThanOrEqual(0);
     expect(card.bottom.x).toBeLessThanOrEqual(viewport.width);
     expect(card.bottom.y).toBeLessThanOrEqual(viewport.height);
+    expect(card.bottom.x - card.top.x).toBeGreaterThanOrEqual(44);
     expect(card.bottom.y - card.top.y).toBeGreaterThanOrEqual(44);
     for (const other of cards.slice(i + 1)) {
       const overlaps = card.top.x < other.bottom.x && card.bottom.x > other.top.x &&

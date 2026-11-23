@@ -4,6 +4,7 @@ import { GRUMBLEMAW_NAME } from '../src/game/names';
 import { MAP_IDS } from '../src/sim/map';
 import { fingerFor, liftPage, rectPage, rectPageSize, tap, tapCell, ui, worldPage } from './phone';
 import { FIRST_REWARD_STEPS, GRUMBLEFOOT_STEPS, beginVisualWave, finalBossFrame } from './visualCampaign';
+import { expectOffer, visibleTexts } from './campaign';
 import { waitForTitle } from './title';
 
 // Milestone 32b: portrait screenshot baselines for the phone project
@@ -229,19 +230,19 @@ test('portrait snap: a Musketeer dragged over the trail margin snaps to the cell
   await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 });
 
-test('portrait reward cards are touch-sized and tapping chooses a boon', async ({ page }) => {
+test('portrait reward cards are touch-sized and tapping chooses a reward', async ({ page }) => {
   await open(page);
   const reward = await beginVisualWave(page, 5, FIRST_REWARD_STEPS);
   expect(reward.pending).toEqual({ wave: 5, options: ['longBarrels', 'keenArrows', 'warChest'] });
-  for (const id of reward.pending?.options ?? []) {
-    const size = await rectPageSize(page, `reward:${id}`);
-    expect(Math.min(size.width, size.height)).toBeGreaterThanOrEqual(44);
-  }
+  await expectOffer(page, 5);
   await settle(page);
   await shot(page, 'phone-boon-pick.png');
   await tap(page, 'reward:longBarrels');
+  const size = await rectPageSize(page, 'boon:longBarrels');
+  expect(Math.min(size.width, size.height)).toBeGreaterThanOrEqual(44);
   await tap(page, 'boon:longBarrels');
   expect((await ui(page)).boonTooltip).toBe('longBarrels');
+  expect(await visibleTexts(page)).toContain('Cannons and Mortars reach 30% farther');
   await settle(page);
   await shot(page, 'phone-boon-icons.png');
 });

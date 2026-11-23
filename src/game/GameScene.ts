@@ -221,6 +221,8 @@ export type Speed = 1 | 2 | 3;
 export const SPEED_HOLD_MS = 300;
 /** A touch press while aiming held this long, unmoved, becomes a hold: the lifted circle shows (milestone 30). */
 export const AIM_HOLD_MS = 300;
+/** Ignore the map half of a double tap when the first tap closes the reward panel. */
+const REWARD_MAP_GUARD_MS = 300;
 
 /** Build UI state, as the test hook ui() reports it. */
 export interface UiState {
@@ -403,6 +405,7 @@ export class GameScene extends Phaser.Scene {
   private overlay!: Phaser.GameObjects.Graphics;
   private hud!: Hud;
   private reward!: BoonReward;
+  private mapBlockedUntil = 0;
   private held!: HeldBoons;
   private moments!: Moments;
   private frozenMs = 0;
@@ -502,6 +505,7 @@ export class GameScene extends Phaser.Scene {
     this.leaving = false;
     this.resume = null;
     this.state = resume?.state ?? createGame({ difficulty: this.difficulty, map: this.currentMap });
+    if (!resume) this.mapBlockedUntil = 0;
     this.recordedCleared = resume?.recordedCleared ?? 0;
     this.speed = 1;
     this.accMs = resume?.accMs ?? 0;
@@ -608,6 +612,7 @@ export class GameScene extends Phaser.Scene {
       this.press = null;
       this.aimPress = null;
       if (this.state.pendingBoon || this.held.contains(p.x, p.y)) return;
+      if (this.layout.onMap(p.x, p.y) && performance.now() < this.mapBlockedUntil) return;
       this.held.dismiss();
       if (contains(this.hud.rects().gold, p.x, p.y)) this.goldTap();
       if (this.specialPointerDown(p.x, p.y, p.wasTouch)) return;
@@ -1289,6 +1294,7 @@ export class GameScene extends Phaser.Scene {
 
   pickBoon(id: BoonId): ReturnType<typeof pickBoon> {
     const result = pickBoon(this.state, id);
+    if (result.ok) this.mapBlockedUntil = performance.now() + REWARD_MAP_GUARD_MS;
     this.takeEvents();
     this.redraw();
     return result;

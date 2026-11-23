@@ -66,7 +66,7 @@ export class BuildBar {
     const compact = !portrait && state.boons.length > 0;
     if (this.compact !== compact) {
       this.compact = compact;
-      const width = compact ? 118 : BAR_BUTTON_WIDTH;
+      const width = compact ? 116 : BAR_BUTTON_WIDTH;
       this.buttons.forEach((button, i) => {
         button.setWidth(width);
         button.moveTo(BAR_LEFT + i * (width + BAR_GAP), button.rect.y);

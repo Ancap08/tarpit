@@ -374,7 +374,6 @@ export class Hud {
   private readonly cheatMark: Phaser.GameObjects.Text;
   private readonly specialMenu: SpecialMenu;
   private pipKey = '';
-  private previewWidth = 0;
   private readonly bar: BuildBar;
   private readonly bossBar: BossBar;
   /** Milestone 33: the mute button (row 2's right end in landscape, row 2's right end in portrait). */
@@ -456,9 +455,8 @@ export class Hud {
     // After a loss there is no next wave to play, so the preview goes blank.
     const aimText = m.portrait && special.aiming !== null && special.banner ? stripAimText(special.banner) : null;
     const preview = aimText ?? (state.phase === 'lost' ? '' : previewText(state));
-    const width = m.portrait && state.boons.length > 0 ? 348 : m.preview.width;
-    if (this.next.text !== preview || this.previewWidth !== width) {
-      this.previewWidth = width;
+    if (this.next.text !== preview) {
+      const width = m.preview.width;
       if (m.portrait) {
         const size = [18, 16, 14].find((px) => previewLines(preview, px, width) <= 2) ?? 13;
         this.next.setWordWrapWidth(width, true).setFontSize(size).setText(preview).setColor(aimText === null ? TEXT.hudDim : TEXT.aimBanner);

@@ -32,6 +32,8 @@ test('only three cards per offer, modal inputs, held tooltip and Long Barrels ra
   await page.mouse.move(icon.x, icon.y);
   await expect.poll(() => api(page, (t) => t.ui().boonTooltip)).toBe('longBarrels');
   expect((await visibleTexts(page)).join(' ')).toContain(boonDescription('longBarrels'));
+  // The double-tap guard expires in real time, even while the simulation is paused.
+  await page.waitForTimeout(300);
   await mapPress(page, 7, 1);
   expect(await api(page, (t) => t.ui().rangeRadius)).toBe(136.5);
   expect(await api(page, (t) => t.buildAt(8, 1, 'cannon'))).toMatchObject({ ok: true });
