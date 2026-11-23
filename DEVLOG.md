@@ -9314,3 +9314,11 @@ stuck after a layout switch, no ADD blend, no boss overlay in Painted. Still
 stale: `docs/DESIGN.md` line 602 says "Painted Meadow uses four bearings ...
 Other maps use the Classic drawing" (the Guards section), and the README
 credits line says "Painted Meadow art".
+
+## 2026-11-24: milestone 44a, theme names and the default look
+
+The King's collectors have full names on campaign cards, in tips and on boss
+bars. Wave previews use their compact names and keep the count-first format.
+Level 9 is The King's Assessor. Both first-screen layouts introduce the King's
+demand for the town's gold. New players start in Painted. A saved choice or
+visit override still applies, and a fresh test-mode visit starts in Classic.

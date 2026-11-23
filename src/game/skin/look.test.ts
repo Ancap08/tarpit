@@ -10,10 +10,18 @@ function storage(initial?: string) {
 }
 
 describe('Look preference', () => {
-  it('defaults to Classic and ignores unknown stored or URL values', () => {
-    expect(new LookStore(() => storage(), '').get()).toBe('classic');
-    expect(new LookStore(() => storage('other'), '?look=other').get()).toBe('classic');
+  it('defaults to Painted and ignores unknown stored or URL values', () => {
+    expect(new LookStore(() => storage(), '').get()).toBe('painted');
+    expect(new LookStore(() => storage('other'), '?look=other').get()).toBe('painted');
+    expect(new LookStore(() => storage('classic'), '').get()).toBe('classic');
     expect(new LookStore(() => storage('painted'), '?look=other').get()).toBe('painted');
+  });
+
+  it('uses Classic in test mode unless storage or the URL selects Painted', () => {
+    expect(new LookStore(() => storage(), '?test=1').get()).toBe('classic');
+    expect(new LookStore(() => storage('painted'), '?test=1').get()).toBe('painted');
+    expect(new LookStore(() => storage('classic'), '?test=1&look=painted').get()).toBe('painted');
+    expect(new LookStore(() => storage(), '?test=0').get()).toBe('painted');
   });
 
   it('takes a visit override without replacing the stored choice', () => {
@@ -32,9 +40,9 @@ describe('Look preference', () => {
 
   it('remembers an explicit choice in memory when storage throws', () => {
     const look = new LookStore(() => { throw new Error('blocked'); }, '');
-    expect(look.get()).toBe('classic');
-    look.set('painted');
     expect(look.get()).toBe('painted');
+    look.set('classic');
+    expect(look.get()).toBe('classic');
   });
 });
 

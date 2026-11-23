@@ -18,7 +18,7 @@ async function play(page: Page): Promise<void> {
   await settle(page);
 }
 
-test('fresh Classic visit, lazy Painted assets, mouse and keyboard Look, and URL precedence', async ({ page }) => {
+test('fresh Classic test-mode visit, lazy Painted assets, mouse and keyboard Look, and URL precedence', async ({ page }) => {
   const requests: string[] = [];
   await page.route(paintedAsset, (route) => {
     requests.push(route.request().url());

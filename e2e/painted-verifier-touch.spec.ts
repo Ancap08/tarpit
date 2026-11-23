@@ -21,6 +21,10 @@ test('D tablet: touch picks Painted, it is remembered, tablet at device ratio 1 
   page.on('request', (r) => { if (r.url().includes('/assets/painted/')) requests.push(new URL(r.url()).pathname); });
   await page.goto('/');
   await waitForTitle(page);
+  expect(await look(page)).toBe('painted');
+  await tap(page, 'title:look:classic');
+  await page.reload();
+  await waitForTitle(page);
   expect(await look(page)).toBe('classic');
   await tap(page, 'title:look:painted');
   await page.reload();

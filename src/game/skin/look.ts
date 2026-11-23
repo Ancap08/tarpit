@@ -12,20 +12,23 @@ function parseLook(value: string | null | undefined): Look | undefined {
 
 export class LookStore {
   private choice: Look | undefined;
+  private readonly defaultLook: Look;
 
   constructor(
     private readonly getStorage: () => StorageLike | undefined | null,
     search: string,
   ) {
-    this.choice = parseLook(new URLSearchParams(search).get('look'));
+    const params = new URLSearchParams(search);
+    this.choice = parseLook(params.get('look'));
+    this.defaultLook = params.get('test') === '1' ? 'classic' : 'painted';
   }
 
   get(): Look {
     if (this.choice) return this.choice;
     try {
-      return parseLook(this.getStorage()?.getItem(LOOK_KEY)) ?? 'classic';
+      return parseLook(this.getStorage()?.getItem(LOOK_KEY)) ?? this.defaultLook;
     } catch {
-      return 'classic';
+      return this.defaultLook;
     }
   }
 
