@@ -4,6 +4,8 @@ import type { GameScene } from '../src/game/GameScene';
 import { openCampaign } from './campaign';
 
 test('painted guards keep their outfit through fights, speed 3x, blur, a layout switch and a second squad', async ({ page }) => {
+  // Live play, counted in real frames: about 12 s on a Mac, and it reached the 30 s limit on the CI runner.
+  test.setTimeout(120_000);
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.addInitScript(() => localStorage.setItem('tarpit.look', 'painted'));
   await openCampaign(page, false, true);
