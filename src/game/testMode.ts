@@ -275,6 +275,7 @@ export function installGlobal(game: Phaser.Game): void {
       });
     },
     levelStops: () => game.scene.isActive('title') ? titleScene(game).uiState().stops : [],
+    setTipsEnabled: enabled => { titleScene(game).tipsEnabled = enabled; },
     setCampaignProgress: table => {
       campaignProgress.replaceForTest(table);
       if (game.scene.isActive('title')) titleScene(game).refreshProgress();
