@@ -1690,10 +1690,9 @@ the first screen. An open stop shows a card with the level name, map,
 twist, new equipment or enemies, and best stars. Play starts that level.
 
 The build bar keeps every tower in its usual slot. Towers unavailable in
-this level appear dimmed with a lock. Taps, clicks and shortcut keys can
-select only allowed towers. The tower panel offers upgrades up to the
-level’s tier limit and shows the tower as fully upgraded once it reaches
-that limit. From wave one, the specials menu lists the level’s specials.
+this level appear dimmed with a lock and cannot be selected. The tower
+panel offers upgrades up to the level’s tier limit. At a campaign cap
+below tier three, it shows “Max for this level” beside the kill count. From wave one, the specials menu lists the level’s specials.
 
 The game shows the level number and counts waves against the level's own
 length. A win shows this run's stars and lives. A gold-cheat win shows empty star slots and explains that stars were not saved. It opens no level and offers no Next. Below three stars it gives
