@@ -1270,3 +1270,67 @@ can change it; "Kyle" means Kyle decided.
   project's 73 Codex session logs (262 MB) and the art worktree's
   installed dependencies. Briefs now tell agents to keep scratch output
   small, delete it, and leave no wait loops running. Fable.
+
+## 2026-11-23, milestone 41 (a campaign of levels)
+
+- **A level is a small record, and the game can start from one.** Ten
+  short levels across the three maps, each bringing in one new thing.
+  Today's game is unchanged and is called Free play. Kyle ("100's of
+  levels with varying challenges along the way"; campaign first, in the
+  agreed order), Fable (the shape), Codex (build), Sonnet (verified).
+- **Every level starts with 20 lives and uses one star rule:** a win is
+  one star, 12 lives left is two, 18 is three. Codex's first build tuned
+  each level with its own lives and thresholds, then with enemy hp scaled
+  from 0.55 to 4.10. Both rejected (Fable): a level may change its waves,
+  its starting gold and an hp scale between 0.85 and 1.35, nothing else.
+  The same lesson as milestones 36 and 37: name the levers that are off
+  limits before the tuning starts.
+- **Three bots judge a level,** using only what a player can see: a
+  capable one, a person-like one (looks at most every 3 seconds, aims at
+  the middle of a 48 px cell, picks among its top three cells, fires a
+  special up to 1.5 seconds late) and a beginner (cheapest tower, first
+  cells, no specials). The levels are tuned to the person-like bot.
+  Fable (rule), Codex (bots).
+- **The gate judges any level, not the ten we wrote.** `checkLevel` takes
+  a level and a context (what it introduces, how hard it is meant to be);
+  `checkCampaign` takes any ordered list. The first gate was keyed to
+  level ids 1 to 10 and could not have judged an 11th (Sonnet found it).
+  This is what lets levels be generated later. A twelve-level test
+  campaign passes; scratch levels that should fail do fail.
+- **Margins, not knife edges.** A level's new thing must matter with hp
+  2% up or down and gold 10 up or down; the stars a level must give must
+  hold under the same nudges; wave 1 is never the hardest and has at most
+  60 enemies; a last wave has 20 enemies or a boss. Each of these came
+  from a Sonnet finding: four levels passed "the new thing matters" by a
+  hair, Stand Fast sat exactly on the two-star line, several levels opened
+  on a horde of 85 to 165, and the gate accepted a last wave of one
+  Goblin and a finale without Grumblemaw.
+- **Stand Fast (level 8) is still thin, accepted (Fable):** after the
+  retune the capable bot holds two stars at hp 2% up or down and gold 10
+  up or down, and loses one at 4% or 20 gold (Sonnet). The margin rule
+  moved the edge outward; it did not make the level roomy. Play notes
+  decide whether it needs more gold.
+- **Known and accepted (Fable):** the person-like bot builds with the
+  capable bot's own chooser, so it is a good builder with slow hands, not
+  a novice. It beats the hand-written reference build by up to 9 lives in
+  Free play and beats the capable bot on level 4. The stars are therefore
+  tuned for a capable player. Only play by Kyle and the children can say
+  whether that is right; the levers to move are per-level gold and hp
+  scale.
+- **The screens:** a first screen with Campaign and Free play, a level
+  map with ten stops, stars and locks on one screen without scrolling, a
+  card before each level, a result screen with stars, the next star's
+  target and Next level. Built by a second Codex in its own worktree
+  while the first reworked the gate; they met in one merge with one
+  conflict, in a document. Fable (brief, merge), Codex (build).
+- **A win with the gold cheat saves no stars and opens nothing,** as a
+  cheated Free play run saves no best score, and the result screen says
+  so. The first build said nothing, which read as a bug (Sonnet). Fable;
+  whether the cheat should open levels is Kyle's to decide.
+- **Keyboard:** arrows, Enter or Space, and Escape work on every campaign
+  screen. The first build lost Enter and Space on the first screen
+  (Sonnet found it against main).
+- **Not fixed, older than this milestone:** on a phone held sideways
+  (844x390) buttons are 35 to 37 px tall, under the 44 px the portrait
+  layout keeps.
+- **No unlock-all cheat** (Fable): not asked for.
