@@ -10,6 +10,8 @@
   "columns": 2,
   "frameOrder": [
     "E",
-    "S"
+    "S",
+    "E-closed",
+    "S-closed"
   ]
 }

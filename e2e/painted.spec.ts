@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import type { GameScene } from '../src/game/GameScene';
 import type { TitleScene, TitleUiState } from '../src/game/TitleScene';
 import { api, cellPage, state, ui, worldPage } from './phone';
-import { click, expectMeadowDirections, openPainted, painted, paintedAsset, settle, stageMeadowDirections, waitForGame } from './painted';
+import { click, expectMeadowDirections, openPainted, painted, paintedAsset, paintedBar, settle, stageMeadowDirections, waitForGame } from './painted';
 import { waitForTitle } from './title';
 
 const livePainted = (page: Page) => page.evaluate(() => {
@@ -147,6 +147,43 @@ test('a painted Musketeer turns from the path to the first shot', async ({ page 
   });
   expect((await state(page)).shots).toContainEqual(expect.objectContaining({ cell: { col: 7, row: 5 } }));
   expect(await musketeer()).toMatchObject({ frame: 10 }); // Aims southwest at the Goblin.
+});
+
+test('painted landscape bar keeps every label in its button and the ghost faces the same way at each cell', async ({ page }) => {
+  await openPainted(page);
+  await api(page, (a) => {
+    const state = a.state();
+    state.gold = 50;
+    state.boons = ['longBarrels'];
+    a.step(0);
+  });
+  const bar = await paintedBar(page);
+  expect(bar.map(({ icons }) => icons)).toEqual([
+    [{ key: 'painted:musketeer:1x', frame: 6, alpha: 1 }],
+    [{ key: 'painted:cannon:1x', frame: 6, alpha: 0.4 }],
+    [{ key: 'painted:tar-pit:1x', frame: 6, alpha: 0.4 }],
+    [{ key: 'painted:longbow:1x', frame: 6, alpha: 1 }],
+    [{ key: 'painted:mortar:1x', frame: 6, alpha: 0.4 }],
+    [{ key: 'painted:fire-pot:1x', frame: 6, alpha: 0.4 }],
+  ]);
+  expect(bar.map(({ labels }) => labels.map(({ text }) => text))).toEqual([
+    ['Musketeer', '50'], ['Cannon', '80'], ['Tar Pit', '60'], ['Longbow', '40'], ['Mortar', '110'], ['Fire Pot', '70'],
+  ]);
+  for (const { name, labels: [nameLabel, priceLabel], rect } of bar) {
+    expect(nameLabel.left, name).toBeGreaterThan(rect.x);
+    expect(nameLabel.right, name).toBeLessThan(priceLabel.left);
+    expect(priceLabel.right, name).toBeLessThan(rect.x + rect.width);
+  }
+  await click(page, 'bar:musketeer');
+  for (const cell of [{ col: 7, row: 5 }, { col: 3, row: 5 }]) {
+    const position = await cellPage(page, cell);
+    await page.mouse.move(position.x, position.y);
+    expect((await painted(page)).sprites).toContainEqual(expect.objectContaining({
+      key: 'painted:musketeer:1x', frame: 6, visible: true, x: cell.col * 32 + 16, y: cell.row * 32 + 16,
+    }));
+  }
+  await page.keyboard.press('Escape');
+  expect((await painted(page)).sprites.filter((sprite) => sprite.visible && sprite.key.includes(':musketeer:'))).toEqual([]);
 });
 
 test('painted sheets face each Meadow segment through a live layout change', async ({ page }) => {

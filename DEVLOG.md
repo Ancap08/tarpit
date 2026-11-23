@@ -8546,3 +8546,48 @@ Painted used 2× assets.
 | 6× | Painted | 231 | 16.7 ms | 33.4 ms | 266 |
 | 20× | Classic | 60 | 83.3 ms | 133.3 ms | 61 |
 | 20× | Painted | 68 | 66.7 ms | 100.0 ms | 69 |
+
+### Follow-up
+
+Merged milestone 37 at `d326cf1`. Classic uses main's simulation and
+tower panel. Placed Painted towers show main's gold level 2 ring and its
+level 3 gold diamond or paired cyan dots. Both build bars and the
+placement ghost use the southeast view from the existing tower sheets.
+The landscape bar keeps the names and prices, including its compact
+layout. Portrait keeps its price under each tower.
+
+The Harpy's maximum outlined wingspan fell from 52 to 42 game pixels
+at 1×. Its talons sit 8 px above the trail before bobbing, down from 19.
+The ground shadow stays on the trail. The six ground enemies traded
+their opaque discs for feathered contact shadows peaking at 56/255
+alpha. The tower discs remain. Live walkers blend compass views over
+100 ms. A watched Goblin made all six turns in both layouts. Its feet
+still slide a little between the four stride poses and the two
+silhouettes are briefly visible together on a fast turn.
+
+Health bars keep their dark 1 px outline and leave 1 px clear between
+neighbours. A foreground Troll covered a healthy Wolf's entire body box
+at the wave 8 bend. The Wolf kept its own bar. All 16 sampled crowd
+layouts had at least 1 px of separation. In the tightest stack it can
+still be hard to tell which bar belongs to which miniature.
+
+The cave moved 22 px into the trail and now blinks using open and
+closed painted frames. The opening and eyes are visible at both edges.
+Smoke rises from the painted chimney using the existing puff motion.
+Cloud shadows stay off so the painted terrain keeps its shading.
+
+The 26-enemy wave 8 captures used the real play loop, with gold and
+wave position staged for the shot. Both path badges read on the
+emulated phone. Enemies can cover the cave in a busy spawn. The
+side-by-side bars keep every icon and price distinct, though the
+landscape miniatures are small. The six-frame corner strip shows the
+Wolf catching the Goblin. The 800 × 484 GIF contains 160 frames at
+16 fps over 10 seconds and occupies 5,111,174 bytes. A physical phone
+was not used.
+
+A same-browser replay compared all 54 main frames. All 50 gameplay
+frames matched pixel for pixel. Only `title.png`, `title-best.png`,
+`title-hard.png` and `phone-title.png` changed in the area of the Look
+row. The simulation output matched all 28,614 bytes from main.
+The 108 shipped painted files total 590,041 bytes at 1× and 1,659,301
+bytes at 2×, previously 594,049 and 1,630,492 bytes.

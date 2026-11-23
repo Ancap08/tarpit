@@ -901,10 +901,33 @@ their next game on Meadow.
   quarter turn. The ground anchor sets both placement and draw order, so
   a piece nearer the bottom of the screen covers one behind it. Flyers
   draw above walkers.
-- Painted mode keeps the existing tower upgrade marks, health bars,
-  status rings, range circles, placement highlights, magnifier, effects,
-  banners and HUD. Its painted scenery is still. The simulation and input
-  geometry are shared with Classic.
+- Level 2 and level 3 show the existing gold upgrade ring over the painted
+  base. Level 3 also shows the path's diamond or paired dots. Placed towers
+  turn to aim. The six build buttons and the placement ghost show the
+  same southeast bearing (atlas frame 6) in both layouts. Build images fit
+  within 32 × 22 px in landscape and 46 × 38 px in portrait. Landscape
+  names and prices use 14 px text, or 13 px in the compact bar. Buttons
+  retain their price and hit area. The tower panel, reward icons and special icons are shared
+  with Classic.
+- Ground enemies use a feathered contact shadow. Towers stand on discs.
+  In play, a turning walker blends its old and new compass views over
+  100 ms with both views on the same stride. The Harpy spans at most
+  42 game pixels including its outline (1.31 cells). Its talons sit
+  5 px above the art anchor and the sprite floats another 3 px above the
+  trail, plus its existing bob. Its separate shadow stays on the ground.
+- Hurt enemies have a 30 × 4 px health bar just above their painted
+  silhouette, with a 1 px dark outline. Bars leave at least 1 px between
+  outlines. A healthy walker also gets a bar when a foreground
+  silhouette more than 30% larger by bounding-box area covers its centre.
+  Boss health stays in the HUD.
+- The painted cave sits 22 px along the trail from the spawn, opening to
+  the right in landscape and down in portrait. Its two golden eyes blink
+  on the living map's clock. Four smoke puffs rise from the chimney,
+  11 px right and 22 px above the cottage anchor in either layout.
+  Test mode and reduced motion hold the open eyes and smoke at time zero.
+  Painted omits cloud shadows to keep the ground shading visible.
+  Status rings, range circles, placement highlights, magnifier, effects,
+  simulation and input geometry are shared with Classic.
 
 ## Sound
 

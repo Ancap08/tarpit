@@ -553,7 +553,7 @@ export class GameScene extends Phaser.Scene {
     // Milestone 32b: world-space layers take the layout's transform (placeWorld); the rest is placed through it.
     const world = () => this.layout.placeWorld(this.add.graphics());
     // Milestone 34: the living map (decor/livingMap.ts): the baked ground, trees and bushes, and the moving things, under everything else.
-    this.painted = this.paintedAssets ? new PaintedSkin(this, this.paintedAssets, this.layout, this.state.map) : undefined;
+    this.painted = this.paintedAssets ? new PaintedSkin(this, this.paintedAssets, this.layout, this.state.map, isTestMode()) : undefined;
     this.living = this.painted ?? new LivingMap(this, this.state.map, this.layout, isTestMode());
     this.ground = world();
     this.painted?.placeGround(this.ground);
@@ -587,7 +587,7 @@ export class GameScene extends Phaser.Scene {
       onPick: (type) => this.togglePick(type),
       onSpecial: () => this.onSpecialButton(),
       onSpecialPick: (type) => this.selectSpecial(type),
-    }, this.layout);
+    }, this.layout, this.painted);
     this.panel = new TowerPanel(this, this.layout, {
       onUpgrade: (path) => {
         if (this.panel.cell !== null) this.upgrade(this.panel.cell, path);
@@ -1592,14 +1592,14 @@ export class GameScene extends Phaser.Scene {
       const angle = this.aim.angle(moved ? moved.cell : hover);
       if (hoverBuildable) {
         this.rangeCircles(hover, towerStats(moved ?? { type: ghostType, upgraded: false }, this.state.boons));
-        if (this.painted) this.painted.drawGhost(ghostType, cellCenter(hover), angle, GHOST_ALPHA);
+        if (this.painted) this.painted.drawGhost(ghostType, cellCenter(hover), GHOST_ALPHA);
         drawTowerShape(g, this.painted ? null : ghostType, cellCenter(hover), angle, upgraded, GHOST_ALPHA, 0, this.layout, moved?.path);
       } else if (drag !== null) {
         // During a drag a blocked cell also shows a faint red-tinted ghost,
         // so the player sees where it would land. Click and two-tap
         // placement keep the red cell only (no ghost, no range).
         const c = cellCenter(hover);
-        if (this.painted) this.painted.drawGhost(ghostType, c, angle, BLOCKED_GHOST_ALPHA);
+        if (this.painted) this.painted.drawGhost(ghostType, c, BLOCKED_GHOST_ALPHA);
         drawTowerShape(g, this.painted ? null : ghostType, c, angle, upgraded, BLOCKED_GHOST_ALPHA, 0, this.layout, moved?.path);
         g.fillStyle(COLORS.cellBad, BLOCKED_GHOST_TINT);
         g.fillCircle(c.x, c.y, 15);

@@ -39,8 +39,9 @@ def frame_layout(kind):
     if kind == "oak":
         return 4, [(f"oak-{variant}", 0, variant) for variant in range(4)]
     if kind == "cave":
-        # The portal opens along the trail at both screen edges.
-        return 2, [("E", 0, 0), ("S", 90, 0)]
+        # Both screen edges use the same ground pivot for the open and closed eyes.
+        return 2, [("E", 0, 0), ("S", 90, 0),
+                   ("E-closed", 0, 1), ("S-closed", 90, 1)]
     return 1, [(kind, 0, 0)]
 
 
@@ -239,7 +240,7 @@ def render_cells(kind):
 # so walking moves the limbs without making the entire figure pulse.
 BODY_HEIGHT = {"goblin": 38, "wolf": 38, "shieldbearer": 38, "harpy": 38,
                "troll": 56, "grumblefoot": 84, "grumblemaw": 92}
-DISC_WIDTH = {"goblin": 24, "wolf": 28, "shieldbearer": 27, "harpy": 23,
+CONTACT_WIDTH = {"goblin": 24, "wolf": 28, "shieldbearer": 27,
               "troll": 36, "grumblefoot": 52, "grumblemaw": 58}
 INK = (30, 28, 30)
 
@@ -255,8 +256,16 @@ def actor_frames(kind, frames, raw):
     # A common horizontal scale preserves the broadside of a weapon or wings.
     # Use a separate vertical fit per heading for foreshortened poses.
     typical = statistics.median(box[3] - box[1] for box in boxes)
-    disc_w = DISC_WIDTH.get(kind, 33) * 2
-    disc_h = round(disc_w * .29)
+    contact_w = (33 if tower else CONTACT_WIDTH.get(kind, 0)) * 2
+    contact_h = round(contact_w * .29)
+    max_width = 55 if tower else BODY_HEIGHT[kind] * 1.35
+    normal_sx = target / typical
+    if kind == "harpy":
+        # Keep a common horizontal fit throughout the flap cycle. Allow
+        # two logical pixels for the existing silhouette outline.
+        max_width = 40
+        widest = max(box[2] - box[0] for box in boxes)
+        normal_sx = min(normal_sx, max_width * 2 / widest)
     pivot_x = raw["anchor"][0]
     placements = []
     for i, (image, box) in enumerate(zip(frames, boxes)):
@@ -268,14 +277,12 @@ def actor_frames(kind, frames, raw):
         # Limbs still animate, but no ordinary pose shrinks below 36 px.
         fitted = max(target - 4, min(target + 4, height * target / usual_height))
         sy = fitted / height
-        sx = target / typical
+        sx = normal_sx
         if tower:
             sx = max(sx, 28 * 2 / (box[2] - box[0]))
-        max_width = (55 if tower else BODY_HEIGHT[kind] * 1.35) * 2
-        sx = min(sx, max_width / (box[2] - box[0]))
-        # Let the platform or the feet sit on the rear half of the disc.
-        lift = 10 if kind == "harpy" else 0
-        foot_y = 4 - lift
+        sx = min(sx, max_width * 2 / (box[2] - box[0]))
+        # The Harpy's separate trail shadow stays at the ground anchor.
+        foot_y = 4 if tower else -10 if kind == "harpy" else 0
         crop = image.crop(box)
         rgb = ImageEnhance.Color(crop.convert("RGB")).enhance(1.22)
         rgb = ImageEnhance.Contrast(rgb).enhance(1.10)
@@ -286,26 +293,36 @@ def actor_frames(kind, frames, raw):
                            foot_y - body.height))
 
     # Export one integral 1x ground pivot for the entire heading/cycle atlas.
-    left = min(-disc_w // 2, *(x for _, x, _ in placements))
-    right = max(disc_w // 2 + 1, *(x + im.width for im, x, _ in placements))
+    left = min(-contact_w // 2, *(x for _, x, _ in placements))
+    right = max(contact_w // 2 + 1, *(x + im.width for im, x, _ in placements))
     top = min(y for _, _, y in placements)
     ax = 2 * math.ceil((5 - left) / 2)
     ay = 2 * math.ceil((5 - top) / 2)
     size = (ax + 2 * math.ceil((right + 5) / 2),
-            ay + 2 * math.ceil((disc_h / 2 + 6) / 2))
+            ay + 2 * math.ceil((contact_h / 2 + 6) / 2))
     images = []
     body_bounds = []
     for body, x, y in placements:
         piece = Image.new("RGBA", size)
-        pen = ImageDraw.Draw(piece)
-        bounds = (ax - disc_w // 2, ay - disc_h // 2,
-                  ax + disc_w // 2, ay + disc_h // 2)
-        pen.ellipse(bounds, fill=INK)
-        x0, y0, x1, y1 = bounds
-        pen.ellipse((x0 + 2, y0 + 2, x1 - 2, y1 - 3),
-                    fill="#b7a486" if tower else "#ba8963")
-        pen.ellipse((x0 + 4, y0 + 3, x1 - 4, y1 - 5),
-                    fill="#736754" if tower else "#805640")
+        bounds = (ax - contact_w // 2, ay - contact_h // 2,
+                  ax + contact_w // 2, ay + contact_h // 2)
+        if tower:
+            pen = ImageDraw.Draw(piece)
+            pen.ellipse(bounds, fill=INK)
+            x0, y0, x1, y1 = bounds
+            pen.ellipse((x0 + 2, y0 + 2, x1 - 2, y1 - 3), fill="#b7a486")
+            pen.ellipse((x0 + 4, y0 + 3, x1 - 4, y1 - 5), fill="#736754")
+        elif contact_w:
+            # A tapered ground shadow gives the feet contact without a base.
+            shadow = Image.new("RGBA", (contact_w, contact_h), INK)
+            alpha = Image.new("L", shadow.size)
+            alpha.putdata([
+                round(56 * max(0, 1 - ((2 * x + 1) / contact_w - 1)**2
+                                  - ((2 * y + 1) / contact_h - 1)**2)**2)
+                for y in range(contact_h) for x in range(contact_w)
+            ])
+            shadow.putalpha(alpha)
+            piece.paste(shadow, bounds[:2])
         face = Image.new("RGBA", size)
         face.paste(body, (ax + x, ay + y))
         stroke = Image.new("RGBA", size, INK)

@@ -52,6 +52,7 @@ import {
   type TowerType,
 } from '../sim';
 import type { Rect } from './input';
+import type { PaintedSkin } from './skin/painted';
 import {
   BOON_PENDING_TEXT,
   BOON_WAVE_TEXT,
@@ -382,7 +383,7 @@ export class Hud {
   /** The Lives readout's left edge now (portrait: after the gold), for the exit shake. */
   private livesX = LIVES_X;
 
-  constructor(scene: Phaser.Scene, handlers: HudHandlers, layout: Layout = LANDSCAPE) {
+  constructor(scene: Phaser.Scene, handlers: HudHandlers, layout: Layout = LANDSCAPE, painted?: PaintedSkin) {
     const m = hudMetrics(layout);
     this.m = m;
     for (const b of m.bands) scene.add.rectangle(b.x, b.y, b.width, b.height, COLORS.hudBar).setOrigin(0, 0);
@@ -415,7 +416,7 @@ export class Hud {
     this.startButton = new Button(scene, m.start, START_WAVE_TEXT, handlers.onStartWave, m.portrait ? { fontSize: m.startFont, sound: null } : { sound: null });
     this.speedButton = new Button(scene, m.speed, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress });
     this.specialMenu = new SpecialMenu(scene, m.menu.left, m.menu.top, handlers.onSpecialPick, m.menu.size, m.menu.font);
-    this.bar = new BuildBar(scene, m.barTop, handlers.onPick, layout);
+    this.bar = new BuildBar(scene, m.barTop, handlers.onPick, layout, painted);
     this.bossBar = new BossBar(scene, layout);
     this.muteButton = new MuteButton(scene, m.mute);
   }

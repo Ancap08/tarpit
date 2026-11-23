@@ -5,6 +5,9 @@ import type { EnemyType, Point, TowerType } from '../../sim';
 export const towerArt = (type: TowerType) => type === 'tarpit' ? 'tar-pit' : type === 'firepot' ? 'fire-pot' : type;
 export const enemyArt = (type: EnemyType) => type === 'boss' ? 'grumblefoot' : type;
 
+/** Southeast, fixed in screen space for the build bar and placement ghost. */
+export const TOWER_PREVIEW_FRAME = 6;
+
 /** The atlas starts at north and runs clockwise. Game angles start at world east. */
 export function bearingFrame(angle: number, layout: Layout): number {
   const sector = Math.round(angle / (Math.PI / 8)) + (layout.turned ? 8 : 4);

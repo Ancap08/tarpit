@@ -1,11 +1,13 @@
 import Phaser from 'phaser';
 import { cellKey, type Tower, type GameState, type MapDef, type Point, type TowerType } from '../../sim';
+import { blinking, MOTION_COUNTS, smokePuff, STILL_T } from '../decor/motion';
+import { COLORS } from '../palette';
 import { PLACING_ALPHA, type DecorState } from '../decor/livingMap';
 import { decorFor, hiddenGrowth, type Growth } from '../decor/recipe';
 import type { TowerPose } from '../draw/towers';
 import { arcHeight, arcPosition } from '../fx/fxMath';
 import type { Layout } from '../layout';
-import { bearingFrame, footDepth, towerArt } from './frames';
+import { bearingFrame, footDepth, TOWER_PREVIEW_FRAME, towerArt } from './frames';
 import type { PaintedAssets, PaintedName } from './loading';
 
 type Image = Phaser.GameObjects.Image;
@@ -30,6 +32,11 @@ export class PaintedSkin {
   readonly air: Phaser.GameObjects.Layer;
   readonly shadows: Phaser.GameObjects.Layer;
   private readonly ground: Image;
+  private readonly cave: Image;
+  private readonly chimney: Point;
+  private readonly smoke: Phaser.GameObjects.Graphics;
+  private readonly reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  private drawnTime = Number.NaN;
   private readonly growth: { g: Growth; image: Image }[];
   private readonly towers = new Map<number, Image>();
   private readonly effects: Phaser.GameObjects.Layer;
@@ -39,7 +46,7 @@ export class PaintedSkin {
   private alpha = 1;
   private ghost?: Image;
 
-  constructor(private readonly scene: Phaser.Scene, readonly assets: PaintedAssets, private readonly layout: Layout, private readonly map: MapDef) {
+  constructor(private readonly scene: Phaser.Scene, readonly assets: PaintedAssets, private readonly layout: Layout, private readonly map: MapDef, private readonly testMode: boolean) {
     this.ground = layout.placeWorld(this.image('meadow'));
     this.shadows = scene.add.layer();
     this.standing = scene.add.layer();
@@ -51,8 +58,15 @@ export class PaintedSkin {
       this.standing.add(image);
       return image;
     };
-    place('cave', map.path[0], layout.turned ? 1 : 0);
-    for (const box of map.landmarks ?? []) place('cottage', { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+    const spawn = map.path[0];
+    this.cave = place('cave', { x: spawn.x + 22, y: spawn.y }, layout.turned ? 1 : 0);
+    // Painted art exists only for Meadow, with one cottage at the exit.
+    const box = map.landmarks![0];
+    const cottage = place('cottage', { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+    // Centre of the chimney opening in the 1x frame, relative to its ground anchor.
+    this.chimney = { x: cottage.x + 11, y: cottage.y - 22 };
+    this.smoke = scene.add.graphics().setDepth(cottage.depth + 0.1);
+    this.standing.add(this.smoke);
     this.growth = decorFor(map).growth.map(g => {
       const name = growthArt(g);
       return { g, image: place(name, g, name === 'oak' ? g.id % 4 : 0) };
@@ -78,6 +92,17 @@ export class PaintedSkin {
   }
 
   update(state: GameState, placing: boolean): void {
+    const t = this.testMode || this.reducedMotion.matches ? STILL_T : this.scene.time.now;
+    if (t !== this.drawnTime) {
+      this.drawnTime = t;
+      this.cave.setFrame((this.layout.turned ? 1 : 0) + (blinking(t) ? 2 : 0));
+      this.smoke.clear();
+      for (let i = 0; i < MOTION_COUNTS.smokePuffs; i++) {
+        const puff = smokePuff(i, t);
+        this.smoke.fillStyle(COLORS.chimneySmoke, puff.alpha);
+        this.smoke.fillCircle(this.chimney.x + puff.dx, this.chimney.y + puff.dy, 6 * puff.scale);
+      }
+    }
     const occupied = new Set(state.towers.map(t => cellKey(t.cell)));
     for (const [id, image] of this.towers) {
       if (occupied.has(id)) continue;
@@ -92,8 +117,13 @@ export class PaintedSkin {
   snapshot(): DecorState {
     return {
       mapId: this.map.id, growth: this.growth.map(({ g }) => ({ id: g.id, kind: g.kind, ...g.cell, x: g.x, y: g.y })),
-      hidden: [...this.hidden], growthAlpha: this.alpha, still: true, t: 0, puffs: 0,
-      moving: { clouds: [], smoke: [], flow: null, bird: null, butterfly: null, eyesOpen: false, sway: 0 },
+      hidden: [...this.hidden], growthAlpha: this.alpha, puffs: 0,
+      still: this.testMode || this.reducedMotion.matches, t: this.drawnTime,
+      moving: {
+        clouds: [], flow: null, bird: null, butterfly: null, sway: 0,
+        smoke: Array.from({ length: MOTION_COUNTS.smokePuffs }, (_, i) => smokePuff(i, this.drawnTime).alpha),
+        eyesOpen: !blinking(this.drawnTime),
+      },
     };
   }
 
@@ -118,12 +148,25 @@ export class PaintedSkin {
 
   clearGhost(): void { this.ghost?.setVisible(false); }
 
-  drawGhost(type: TowerType, p: Point, angle: number, alpha: number): void {
+  drawGhost(type: TowerType, p: Point, alpha: number): void {
     if (!this.ghost) {
       this.ghost = this.image(towerArt(type));
       this.standing.add(this.ghost);
     }
-    this.towerPiece(this.ghost.setVisible(true), type, p, { angle, recoil: 0, scale: 1 }, alpha);
+    const screen = this.layout.toScreen(p);
+    this.pose(this.ghost, towerArt(type), TOWER_PREVIEW_FRAME)
+      .setPosition(screen.x, screen.y).setAlpha(alpha).setDepth(footDepth(p, this.layout)).setVisible(true);
+  }
+
+  towerIcon(type: TowerType, maxWidth: number, maxHeight: number): Image {
+    const name = towerArt(type);
+    const sheet = this.assets.sheets[name];
+    const [left, top, right, bottom] = sheet.bodyBounds![TOWER_PREVIEW_FRAME];
+    const [width, height] = sheet.frameSize;
+    const scale = Math.min(maxWidth / (right - left), maxHeight / (bottom - top));
+    return this.image(name, TOWER_PREVIEW_FRAME)
+      .setOrigin((left + right) / (2 * width), (top + bottom) / (2 * height))
+      .setScale(scale);
   }
 
   beginEffects(): void { this.used = 0; }

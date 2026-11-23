@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import type Phaser from 'phaser';
 import { api, rectPage } from './phone';
 import { waitForTitle } from './title';
 
@@ -14,6 +15,31 @@ export async function waitForGame(page: Page): Promise<void> {
 }
 
 export const painted = (page: Page) => api(page, (a) => a.painted());
+
+/** The painted bar images and text all live directly in the scene's display list. */
+export const paintedBar = (page: Page) => page.evaluate(() => {
+  const api = window.__tarpit!;
+  const scene = api.game.scene.getScene('game');
+  return Object.entries(api.uiRects()).filter(([name]) => name.startsWith('bar:')).map(([name, rect]) => {
+    const items = scene.children.list.filter((child) => {
+      if (!('x' in child && typeof child.x === 'number' && 'y' in child && typeof child.y === 'number')) return false;
+      return child.x > rect.x && child.x < rect.x + rect.width && child.y > rect.y && child.y < rect.y + rect.height;
+    });
+    return {
+      name,
+      rect,
+      icons: items.filter((child) => child.type === 'Image').map((child) => {
+        const image = child as Phaser.GameObjects.Image;
+        return { key: image.texture.key, frame: Number(image.frame.name), alpha: image.alpha };
+      }),
+      labels: items.filter((child) => child.type === 'Text').map((child) => {
+        const label = child as Phaser.GameObjects.Text;
+        return { text: label.text, left: label.getLeftCenter().x, right: label.getRightCenter().x };
+      }),
+    };
+  });
+});
+
 export const settle = (page: Page) =>
   page.evaluate(async () => {
     await document.fonts.ready;

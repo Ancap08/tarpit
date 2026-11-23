@@ -70,7 +70,15 @@ export interface AnimState {
   flags: { hit: boolean; burning: boolean; slowed: boolean; dying: boolean };
 }
 
+export interface PaintedBody {
+  x: number; y: number; width: number; height: number; depth: number;
+}
+
+// Keep both atlas bearings on the same stride while turning a painted walker.
+const TURN_MS = 100;
+
 interface View {
+  turn?: { previous: Phaser.GameObjects.Image; facing: Facing; start: number };
   sprite: Phaser.GameObjects.Sprite;
   shadow?: Phaser.GameObjects.Image;
   crown: Phaser.GameObjects.Graphics | null;
@@ -200,18 +208,21 @@ export class EnemySprites {
   }
 
   private lift(type: EnemyType): number {
-    return this.painted && !ENEMY_STATS[type].flying ? 0 : SHEETS[type].lift ?? 0;
+    if (this.painted) return ENEMY_STATS[type].flying ? 3 : 0;
+    return SHEETS[type].lift ?? 0;
   }
 
   /** Actual upper body edge after bob and knock, in canvas pixels. */
-  paintedBar(id: number): { x: number; y: number } | undefined {
+  paintedBar(id: number): PaintedBody | undefined {
     const v = this.views.get(id);
     if (!this.painted || !v) return;
     const { density, sheets } = this.painted.assets;
     const sheet = sheets[enemyArt(v.type)];
     const bounds = sheet.bodyBounds?.[Number(v.sprite.frame.name)];
     if (bounds) return { x: v.sprite.x + ((bounds[0] + bounds[2]) / 2 - sheet.anchor[0]) / density,
-      y: v.sprite.y + (bounds[1] - sheet.anchor[1]) / density };
+      y: v.sprite.y + (bounds[1] - sheet.anchor[1]) / density,
+      width: (bounds[2] - bounds[0]) / density, height: (bounds[3] - bounds[1]) / density,
+      depth: v.flying ? Infinity : v.sprite.depth };
   }
 
   /** Where an enemy's sprite stands and its type, or null (milestone 31: puffs and gold labels). */
@@ -228,7 +239,10 @@ export class EnemySprites {
       this.remove(id);
       return;
     }
+    v.turn?.previous.destroy();
+    v.turn = undefined;
     v.dying = true;
+    v.sprite.setAlpha(1);
     v.sprite.anims.stop();
     const dead = SHEETS[v.type].deadFrame;
     if (!this.painted && dead !== undefined) v.sprite.setFrame(dead);
@@ -252,6 +266,7 @@ export class EnemySprites {
     const v = this.views.get(id);
     if (!v) return;
     this.scene.tweens.killTweensOf(v.sprite);
+    v.turn?.previous.destroy();
     v.sprite.destroy();
     v.shadow?.destroy();
     v.crown?.destroy();
@@ -290,10 +305,10 @@ export class EnemySprites {
     const ticks = ((this.scene.time.now - v.doomedAt) / (1000 / 60)) * timeScale;
     const distance = v.distance + v.stepPx * ticks;
     const { x, y } = this.layout.toScreen(positionAlongPath(map, distance));
-    if (this.painted) this.setFacing(v, facingAt(map, distance, v.stepPx, this.layout), false, distance);
     v.shadow?.setPosition(x, y);
     const lift = this.lift(v.type);
     v.sprite.setPosition(x, y - lift).setDepth(y);
+    if (this.painted) this.setFacing(v, facingAt(map, distance, v.stepPx, this.layout), false, distance);
     v.sprite.anims.timeScale = timeScale;
     v.crown?.setPosition(v.sprite.x, v.sprite.y - 41).setDepth(y + 1);
     v.shield?.setPosition(x + SHIELD_DX, y + SHIELD_DY).setDepth(y + 0.5);
@@ -370,6 +385,23 @@ export class EnemySprites {
 
   private setFacing(v: View, facing: Facing, force = false, distance = v.distance): void {
     if (this.painted) {
+      const now = this.scene.time.now;
+      if (!force && !this.frozen && !v.flying && facing !== v.facing) {
+        const previous = v.turn?.previous ?? this.painted.image(enemyArt(v.type));
+        this.layer.add(previous);
+        v.turn = { previous, facing: v.facing, start: now };
+      }
+      if (v.turn) {
+        const fade = Math.min(1, (now - v.turn.start) / TURN_MS);
+        v.sprite.setAlpha(fade);
+        if (fade === 1) {
+          v.turn.previous.destroy();
+          v.turn = undefined;
+        } else {
+          v.turn.previous.setPosition(v.sprite.x, v.sprite.y).setDepth(v.sprite.depth)
+            .setFrame(walkFrame(v.turn.facing, distance, false)).setAlpha(1 - fade);
+        }
+      }
       v.facing = facing;
       const index = walkFrame(facing, distance, this.frozen);
       if (Number(v.sprite.frame.name) !== index) v.sprite.setFrame(index);

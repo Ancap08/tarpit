@@ -88,6 +88,28 @@ describe('flyers (milestone 22)', () => {
     expect(rects([at('boss', 100, { hp: 10 })])).toBe(0);
   });
 
+  it('gives an occluded healthy walker its own outlined bar, with clear space between neighbours', () => {
+    const enemies = [at('goblin', 80), at('goblin', 83, { id: 1, hp: 5 }), at('troll', 80, { id: 2 })];
+    const bodies = [
+      { x: 80, y: 100, width: 20, height: 30, depth: 130 },
+      { x: 83, y: 101, width: 20, height: 30, depth: 131 },
+      { x: 80, y: 90, width: 40, height: 60, depth: 150 },
+    ];
+    const borders: number[] = [];
+    const g = { fillStyle: () => g, fillRect: (_x: number, y: number, w: number) => {
+      if (w === 32) borders.push(y);
+    } };
+    const draw = () => drawHpBars(g as unknown as Phaser.GameObjects.Graphics,
+      { ...createGame(), enemies }, undefined, id => bodies[id]);
+    draw();
+    expect(borders).toHaveLength(2);
+    expect(Math.abs(borders[0] - borders[1])).toBe(7); // 6 px of bar plus 1 px clear.
+    bodies[2].depth = 120;
+    borders.length = 0;
+    draw();
+    expect(borders).toHaveLength(1);
+  });
+
   it("a Harpy's hp bar sits above its lifted sprite", () => {
     expect(spriteLift('harpy')).toBe(16);
     expect(spriteLift('goblin')).toBe(0);

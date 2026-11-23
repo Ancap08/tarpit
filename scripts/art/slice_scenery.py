@@ -20,8 +20,12 @@ def spike_root(builder, *args):
                 if obj not in existing and obj.parent is None)
 
 
-def cave():
+def cave(eyes_open):
     root = spike_root(meadow.cave)
+    if not eyes_open:
+        for child in root.children_recursive:
+            if child.name.startswith("Lantern eye"):
+                bpy.data.objects.remove(child, do_unlink=True)
     root.location = (0, 0, 0)
     # The spike's mouth is pitched up and slightly toward the copy stand.
     root.rotation_euler.z = -.22
@@ -227,7 +231,7 @@ def build(kind, mat, phase=0):
     meadow.material = mat
     try:
         if kind == "cave":
-            return cave()
+            return cave(eyes_open=phase == 0)
         root = meadow.group(kind)
         meadow.parent = root
         if kind == "cottage":

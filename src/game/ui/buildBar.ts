@@ -8,6 +8,7 @@ import { TOWER_DEFS, type GameState, type TowerType } from '../../sim';
 import type { Rect } from '../input';
 import { drawTowerShape } from '../draw/towers';
 import { LANDSCAPE, type Layout } from '../layout';
+import type { PaintedSkin } from '../skin/painted';
 import { portraitBarRects } from './geometry';
 import { TOWER_NAMES } from '../names';
 import { Button } from './button';
@@ -31,6 +32,8 @@ export const BAR_GAP = 8;
 /** Where a portrait button's icon centre and cost centre sit, in px from its top (milestone 32b, geometry.ts). */
 const ICON_Y = 27;
 const COST_Y = 56;
+const PAINTED_WIDE_ICON_Y = 12;
+const PAINTED_WIDE_LABEL_Y = 30;
 
 /** The bar's button rectangles for `layout`, in BAR_TYPES order. */
 export function barRects(layout: Layout, top: number): Rect[] {
@@ -44,25 +47,38 @@ export function canPick(state: GameState, type: TowerType): boolean {
 
 export class BuildBar {
   private readonly buttons: Button[];
-  /** Portrait only: the tower icons over the buttons, and the enabled flags they were drawn for. */
-  private readonly icons: Phaser.GameObjects.Graphics | null = null;
+  /** The Classic portrait icons and the enabled flags they were drawn for. */
+  private readonly classicIcons?: Phaser.GameObjects.Graphics;
+  private readonly paintedIcons?: Phaser.GameObjects.Image[];
   private iconKey = '';
   private compact = false;
 
-  constructor(scene: Phaser.Scene, top: number, onClick: (type: TowerType) => void, layout?: Layout) {
-    const portrait = layout?.kind === 'portrait';
-    const rects = portrait && layout ? barRects(layout, top) : barRects(LANDSCAPE, top);
+  constructor(scene: Phaser.Scene, top: number, onClick: (type: TowerType) => void, private readonly layout: Layout = LANDSCAPE, painted?: PaintedSkin) {
+    const portrait = layout.kind === 'portrait';
+    const rects = barRects(layout, top);
     this.buttons = BAR_TYPES.map((type, i) =>
       portrait
         ? new Button(scene, rects[i], String(TOWER_DEFS[type].cost), () => onClick(type), { fontSize: '18px', labelY: COST_Y })
-        : new Button(scene, rects[i], TOWER_NAMES[type], () => onClick(type), { fontSize: '16px', right: String(TOWER_DEFS[type].cost) }),
+        : new Button(scene, rects[i], TOWER_NAMES[type], () => onClick(type), {
+          fontSize: painted ? '14px' : '16px',
+          right: String(TOWER_DEFS[type].cost),
+          labelY: painted ? PAINTED_WIDE_LABEL_Y : undefined,
+        }),
     );
-    if (portrait) this.icons = scene.add.graphics();
+    if (painted) {
+      this.paintedIcons = BAR_TYPES.map((type, i) => {
+        const r = rects[i];
+        return painted.towerIcon(type, portrait ? 46 : 32, portrait ? 38 : 22)
+          .setPosition(r.x + r.width / 2, r.y + (portrait ? ICON_Y : PAINTED_WIDE_ICON_Y));
+      });
+    } else if (portrait) {
+      this.classicIcons = scene.add.graphics();
+    }
   }
 
   /** Grey what cannot be picked and highlight the pick. Call on every redraw. */
   update(state: GameState, pick: TowerType | null): void {
-    const portrait = this.icons !== null;
+    const portrait = this.layout.kind === 'portrait';
     const compact = !portrait && state.boons.length > 0;
     if (this.compact !== compact) {
       this.compact = compact;
@@ -70,16 +86,20 @@ export class BuildBar {
       this.buttons.forEach((button, i) => {
         button.setWidth(width);
         button.moveTo(BAR_LEFT + i * (width + BAR_GAP), button.rect.y);
-        button.setFontSize(compact ? '14px' : '16px');
+        button.setFontSize(this.paintedIcons ? (compact ? '13px' : '14px') : (compact ? '14px' : '16px'));
+        const r = button.rect;
+        this.paintedIcons?.[i].setX(r.x + r.width / 2);
       });
     }
     BAR_TYPES.forEach((type, i) => {
       const b = this.buttons[i];
-      b.set(portrait ? String(TOWER_DEFS[type].cost) : TOWER_NAMES[type], canPick(state, type));
+      const enabled = canPick(state, type);
+      b.set(portrait ? String(TOWER_DEFS[type].cost) : TOWER_NAMES[type], enabled);
       b.setPicked(pick === type);
+      this.paintedIcons?.[i].setAlpha(enabled ? 1 : 0.4);
     });
-    const g = this.icons;
-    if (g === null) return;
+    const g = this.classicIcons;
+    if (!g) return;
     const key = BAR_TYPES.map((t) => (canPick(state, t) ? '1' : '0')).join('');
     if (key === this.iconKey) return;
     this.iconKey = key;

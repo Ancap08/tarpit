@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { api, fingerFor, rectPage, state, tap, touchDrag, ui } from './phone';
-import { expectMeadowDirections, openPainted, painted, stageMeadowDirections, waitForGame } from './painted';
+import { expectMeadowDirections, openPainted, painted, paintedBar, stageMeadowDirections, waitForGame } from './painted';
 import { waitForTitle } from './title';
 import type { TitleUiState } from '../src/game/TitleScene';
 
@@ -12,6 +12,11 @@ test('touch Look enables 2x Painted Meadow and its drag magnifier', async ({ pag
   await tap(page, 'title:play');
   await waitForGame(page);
   await expect.poll(() => painted(page)).toMatchObject({ active: true, density: 2 });
+  const bar = await paintedBar(page);
+  expect(bar.map(({ icons }) => icons.map(({ key, frame }) => [key, frame]))).toEqual([
+    'musketeer', 'cannon', 'tar-pit', 'longbow', 'mortar', 'fire-pot',
+  ].map((name) => [[`painted:${name}:2x`, 6]]));
+  expect(bar.map(({ labels }) => labels.map(({ text }) => text))).toEqual([['50'], ['80'], ['60'], ['40'], ['110'], ['70']]);
 
   const cell = { col: 7, row: 5 };
   const client = await page.context().newCDPSession(page);
@@ -19,6 +24,9 @@ test('touch Look enables 2x Painted Meadow and its drag magnifier', async ({ pag
     const current = await ui(page);
     expect(current.magnifier).not.toBeNull();
     expect(current.dragging?.cell).toEqual(cell);
+    expect((await painted(page)).sprites).toContainEqual(expect.objectContaining({
+      key: 'painted:musketeer:2x', frame: 6, visible: true, x: 304, y: 316,
+    }));
     await expect.poll(() => page.evaluate(() => {
       const scene = window.__tarpit!.game.scene.getScene('game');
       return scene.cameras.getCamera('magnifier')?.renderList.flatMap((child) =>
