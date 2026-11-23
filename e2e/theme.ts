@@ -84,7 +84,7 @@ export function themeSuite(touch: boolean) {
             const scene = t.game.scene.getScene('game');
             const label = scene.children.list.find(child => child.type === 'Text' &&
               (child as Phaser.GameObjects.Text).text === t.hudText().next) as Phaser.GameObjects.Text;
-            return Number.parseFloat(label.style.fontSize) * label.scaleY / scene.scale.displayScale.y;
+            return Number.parseFloat(String(label.style.fontSize)) * label.scaleY / scene.scale.displayScale.y;
           });
           expect(cssSize).toBeGreaterThanOrEqual(14);
         }
