@@ -73,8 +73,8 @@ export const TOWER_PATHS: Readonly<Record<TowerType, { cost: number } & Record<U
   },
   mortar: {
     cost: 190,
-    A: { ...PLAIN, range: 220, minRange: 70, damage: 130, fireRate: 1 / 3, splashRadius: 70 },
-    B: { ...PLAIN, range: 220, minRange: 70, damage: 70, fireRate: 1 / 3, splashRadius: 105 },
+    A: { ...PLAIN, range: 220, minRange: 70, damage: 120, fireRate: 1 / 3, splashRadius: 70 },
+    B: { ...PLAIN, range: 220, minRange: 70, damage: 70, fireRate: 1 / 3, splashRadius: 140 },
   },
   firepot: {
     cost: 120,

@@ -374,9 +374,10 @@ function spawnEnemy(state: GameState, type: EnemyType, multiplier?: number): voi
 }
 
 function checkWaveClear(state: GameState): void {
+  if (state.enemies.length || state.packs.length) return;
   const groups = waveDef(state.wave).groups;
   const allSpawned = groups.every((grp, gi) => state.spawnedPerGroup[gi] >= grp.count);
-  if (!allSpawned || state.enemies.length > 0 || state.packs.length > 0) return;
+  if (!allSpawned) return;
   state.gold += WAVE_CLEAR_BONUS;
   // An unused special charge does not carry over (milestone 25b), and the
   // zones end with the wave (milestone 30).

@@ -146,16 +146,16 @@ describe('kill counts', () => {
     for (let i = 0; i < 20 && s.phase === 'setup'; i++) {
       applyScriptBoon(s, script);
       for (const a of script[i] ?? []) {
-        if (a.type === 'build') buildTower(s, a.cell, a.tower);
-        else if (a.type === 'upgrade') upgradeTower(s, a.cell);
+        expect(applyAction(s, a)).toMatchObject({ result: { ok: true } });
       }
       startWave(s);
       while (running()) {
         // The cluster specials (milestone 25c): their kills count for no tower.
         for (const a of script.timed?.[i] ?? []) {
           if (a.atWaveTick !== s.waveTick) continue;
+          const from = s.events.length;
           applyAction(s, a);
-          special += s.events.filter((e) => e.kind === 'kill' && e.cause === 'special').length;
+          special += s.events.slice(from).filter((e) => e.kind === 'kill' && e.cause === 'special').length;
         }
         // A burn kill counts only if a tower's burn was on it (Fire Arrows burns have no owner).
         const owned = new Set(s.enemies.filter((e) => e.burnOwner).map((e) => e.id));

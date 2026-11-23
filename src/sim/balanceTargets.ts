@@ -5,14 +5,16 @@
 // bundle.
 
 import { boonOptions, type BoonId } from './boons';
-import { balanceRun, cachedRun, matrixCell, type BalanceRun } from './balanceRuns';
+import { archetypeScript, balanceRun, cachedRun, matrixCell, type BalanceRun } from './balanceRuns';
 import { DIFFICULTY_DEFS, enemyMaxHp } from './difficulty';
 import { ENEMY_STATS, isBoss } from './enemies';
 import { spawnTick } from './game';
-import { comboWithoutSpecial, ENDLESS_WAVE_CAP, type BoonChoices } from './headless';
+import { comboChoiceRun, comboWithoutSpecial, ENDLESS_WAVE_CAP, type BoonChoices, type RecordedOutcome, type WaveScript } from './headless';
 import { SPECIAL_DEFS, SPECIAL_TYPES, type SpecialType } from './specials';
 import { MAP_IDS, type MapId } from './map';
-import type { EnemyType } from './types';
+import type { EnemyType, TowerType } from './types';
+import { TOWER_DEFS, TOWER_PATHS } from './towers';
+import { cellKey } from './grid';
 import { ACT_ONE_LAST_WAVE, LAST_WAVE, WAVES } from './waves';
 
 export interface TargetResult {
@@ -70,6 +72,23 @@ export const S3_MIN_SPECIALS = 30;
 export const S3_MIN_SHARE = 0.8;
 export const S3_MIN_CATCH = 3;
 
+/** Gold committed by a scripted player to building and upgrading towers. */
+function purchaseBudget(script: WaveScript): number {
+  const homes = new Map<number, TowerType>();
+  let gold = 0;
+  for (const action of script.flat()) {
+    const key = cellKey(action.cell);
+    if (action.type === 'build') {
+      homes.set(key, action.tower);
+      gold += TOWER_DEFS[action.tower].cost;
+    } else if (action.type === 'upgrade') {
+      const type = homes.get(key)!;
+      gold += action.path ? TOWER_PATHS[type].cost : TOWER_DEFS[type].upgradeCost;
+    }
+  }
+  return gold;
+}
+
 function mapTargets(map: MapId): Target[] {
   const r = (name: Parameters<typeof balanceRun>[0], level: 'easy' | 'normal' | 'hard' = 'normal') => balanceRun(name, map, level);
   const t = (id: string, label: string, check: () => TargetResult): Target => ({ id, map, label, check });
@@ -86,9 +105,54 @@ function mapTargets(map: MapId): Target[] {
       const x = r('longbowSpam');
       return { ok: lostOn(x, 8, 16), info: matrixCell(x) };
     }),
-    t('N4', 'Normal: comboBuild wins with 5 to 19 lives', () => {
+    t('U1', 'Normal: comboBuild wins with 8 to 17 lives', () => {
       const x = r('comboBuild');
-      return { ok: x.phase === 'won' && x.lives >= 5 && x.lives <= 19, info: matrixCell(x) };
+      return { ok: x.phase === 'won' && x.lives >= 8 && x.lives <= 17, info: matrixCell(x) };
+    }),
+    t('U2', 'removing all second upgrades costs five lives or the game', () => {
+      const combo = r('comboBuild');
+      const plain = cachedRun(`no second upgrades on ${map}`, () => comboChoiceRun(map, 'skip'), 'normal');
+      const bought = archetypeScript('comboBuild', map, 'normal').flat().filter((a) => a.type === 'upgrade' && a.path).length;
+      return { ok: bought > 0 && plain.refused === 0 && combo.phase === 'won' && (plain.phase === 'lost' || combo.lives - plain.lives >= 5),
+        info: `${bought} branches: ${matrixCell(combo)} against ${matrixCell(plain)}` };
+    }),
+    t('U3', 'wideBuild spends the branch budget on level-two towers and stays within six lives', () => {
+      const wide = r('wideBuild');
+      const easy = r('wideBuild', 'easy');
+      const combo = r('comboBuild');
+      const wideScript = archetypeScript('wideBuild', map, 'normal');
+      const tallScript = archetypeScript('comboBuild', map, 'normal');
+      const budget = purchaseBudget(wideScript);
+      const equal = budget === purchaseBudget(tallScript);
+      const wideOnly = wideScript.flat().every((a) => a.type !== 'upgrade' || !a.path);
+      const copies = wideScript.flat().filter((a) => a.type === 'build').length - tallScript.flat().filter((a) => a.type === 'build').length;
+      return { ok: equal && wideOnly && copies > 0 && easy.phase === 'won' && Math.abs(combo.lives - wide.lives) <= 6 && wide.refused === 0,
+        info: `${copies} extra towers, ${budget} gold; Easy ${matrixCell(easy)}, Normal ${matrixCell(wide)} against ${matrixCell(combo)}` };
+    }),
+    ...(Object.keys(TOWER_DEFS) as TowerType[]).map((tower) =>
+      t('U5', `swapping ${tower} paths keeps the win within five lives`, () => {
+        const base = archetypeScript('comboBuild', map, 'normal').flat();
+        const homes = new Set(base.flatMap((a) => a.type === 'build' && a.tower === tower ? [cellKey(a.cell)] : []));
+        const branches = base.filter((a) => a.type === 'upgrade' && a.path && homes.has(cellKey(a.cell)));
+        let outcome: RecordedOutcome | undefined;
+        const variant = comboChoiceRun(map, tower, 'normal', undefined, (value) => { outcome = value; });
+        if (!outcome) throw new Error('Missing branch comparison result');
+        const flipped = variant.flat().filter((a) => a.type === 'upgrade' && a.path && homes.has(cellKey(a.cell)));
+        const changed = branches.length > 0 && flipped.length === branches.length && branches.every((a, i) => {
+          const b = flipped[i];
+          return a.type === 'upgrade' && b.type === 'upgrade' && cellKey(a.cell) === cellKey(b.cell) && b.path !== a.path;
+        });
+        const x = outcome;
+        const c = r('comboBuild');
+        return { ok: changed && c.phase === 'won' && x.phase === 'won' && Math.abs(c.lives - x.lives) <= 5,
+          info: `${flipped.length} changed, ${matrixCell(c)} against ${matrixCell(x)}` };
+      })),
+    t('U7', 'Hard specialists win with three lives, while lazy loses by wave eight and wins Easy with eight', () => {
+      const hard = r('hardBuild', 'hard');
+      const lazyHard = r('lazyBuild', 'hard');
+      const lazyEasy = r('lazyBuild', 'easy');
+      return { ok: hard.phase === 'won' && hard.lives >= 3 && lostOn(lazyHard, 2, 8) && lazyEasy.phase === 'won' && lazyEasy.lives >= 8,
+        info: `Hard ${matrixCell(hard)}, lazy Hard ${matrixCell(lazyHard)}, lazy Easy ${matrixCell(lazyEasy)}` };
     }),
     t('N5', 'Normal: comboBuildNoFire is strictly worse than comboBuild', () => {
       const x = r('comboBuildNoFire');
@@ -358,5 +422,14 @@ export const RULE_TARGETS: Target[] = [
   },
 
 ];
+
+RULE_TARGETS.push({
+  id: 'U8',
+  label: 'campaign length and wave shape satisfy R1 through R4',
+  check: () => {
+    const shape = RULE_TARGETS.filter((t) => ['R1', 'R2', 'R3', 'R4'].includes(t.id)).map((t) => t.check());
+    return { ok: shape.length === 4 && shape.every((r) => r.ok), info: shape.map((r, i) => `R${i + 1} ${r.ok ? 'pass' : 'miss'}`).join(', ') };
+  },
+});
 
 export const TARGETS: Target[] = [...MAP_IDS.flatMap((map) => [...mapTargets(map), ...(map === 'meadow' ? meadowExtras : [])]), ...RULE_TARGETS];

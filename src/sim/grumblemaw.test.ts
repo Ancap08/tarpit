@@ -33,7 +33,7 @@ describe('Grumblemaw', () => {
   it('is bigger than Grumblefoot and shares its 30% slow cap', () => {
     expect(isBoss({ type: 'grumblemaw' })).toBe(true);
     expect(cappedSlow({ type: 'grumblemaw' }, 0.5)).toBe(0.3);
-    expect(ENEMY_STATS.grumblemaw).toEqual({ hp: 5600, speed: 35, bounty: 300, flying: false, shield: false, livesCost: 10, slowCap: 0.3 });
+    expect(ENEMY_STATS.grumblemaw).toEqual({ hp: 5600, speed: 38, bounty: 300, flying: false, shield: false, livesCost: 6, slowCap: 0.3 });
   });
 
   it('spawns once as wave 20’s last enemy, 120 ticks after the last normal enemy', () => {
@@ -53,13 +53,13 @@ describe('Grumblemaw', () => {
     expect(state.enemies.at(-1)?.hp).toBe(5600);
   });
 
-  it.each([[11, 'won'], [10, 'lost']] as const)('an exit costs ten lives with %i left, ending %s', (lives, phase) => {
+  it.each([[7, 'won'], [6, 'lost']] as const)('an exit costs six lives with %i left, ending %s', (lives, phase) => {
     const state = arena();
     state.lives = lives;
     state.enemies[0].distance = pathLength(MAPS.meadow) - 0.1;
     const gold = state.gold;
     tick(state);
-    expect(state.lives).toBe(lives - 10);
+    expect(state.lives).toBe(lives - 6);
     expect(state.phase).toBe(phase);
     expect(state.events.slice(0, 2)).toEqual([
       { kind: 'exit', enemyId: 0 },

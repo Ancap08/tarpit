@@ -64,16 +64,16 @@ import type { Difficulty } from './difficulty';
 import { callNextWave, continueEndless, createGame, startWave, tick, wavesCleared, type CallNextWaveResult, type StartWaveResult } from './game';
 import { enemyPosition } from './combat';
 import { isSpecialUnlocked, type SpecialType } from './specials';
-import type { GameState, MapDef, TargetingMode, TowerType } from './types';
+import type { GameState, MapDef, TargetingMode, TowerType, UpgradePath } from './types';
 import { buildableCells, cellCenter, cellFromKey, cellKey, type Cell } from './grid';
 import { DEFAULT_MAP, MAPS, pathLength, positionAlongPath, type MapId } from './map';
-import { TOWER_DEFS } from './towers';
+import { TOWER_DEFS, TOWER_PATHS } from './towers';
 import { ACT_ONE_LAST_WAVE, LAST_WAVE } from './waves';
 import { policyChoice, type PolicyOptions } from './specialPolicy';
 
 export type BuildAction =
   | { type: 'build'; cell: Cell; tower: TowerType }
-  | { type: 'upgrade'; cell: Cell }
+  | { type: 'upgrade'; cell: Cell; path?: UpgradePath }
   | { type: 'sell'; cell: Cell }
   /** Set a tower's targeting mode (milestone 24); costs nothing. */
   | { type: 'target'; cell: Cell; mode: TargetingMode };
@@ -174,7 +174,7 @@ export function applyAction(state: GameState, action: HeadlessAction): HeadlessS
     case 'build':
       return { action: 'build', cell: action.cell, result: buildTower(state, action.cell, action.tower) };
     case 'upgrade':
-      return { action: 'upgrade', cell: action.cell, result: upgradeTower(state, action.cell) };
+      return { action: 'upgrade', cell: action.cell, result: upgradeTower(state, action.cell, action.path) };
     case 'sell':
       return { action: 'sell', cell: action.cell, result: sellTower(state, action.cell) };
     case 'target':
@@ -672,7 +672,8 @@ const t = (col: number, row: number): BuildAction => ({ type: 'build', cell: { c
 const lb = (col: number, row: number): BuildAction => ({ type: 'build', cell: { col, row }, tower: 'longbow' });
 const mo = (col: number, row: number): BuildAction => ({ type: 'build', cell: { col, row }, tower: 'mortar' });
 const fp = (col: number, row: number): BuildAction => ({ type: 'build', cell: { col, row }, tower: 'firepot' });
-const up = (col: number, row: number): BuildAction => ({ type: 'upgrade', cell: { col, row } });
+const up = (col: number, row: number, path?: UpgradePath): BuildAction =>
+  path ? { type: 'upgrade', cell: { col, row }, path } : { type: 'upgrade', cell: { col, row } };
 
 const laterUpgrade = (build: BuildAction): BuildAction => up(build.cell.col, build.cell.row);
 
@@ -681,17 +682,18 @@ function actionCost(state: GameState, action: BuildAction): number {
   if (action.type === 'build') return TOWER_DEFS[action.tower].cost;
   if (action.type === 'upgrade') {
     const tower = towerAt(state, action.cell);
-    return tower ? TOWER_DEFS[tower.type].upgradeCost : 0;
+    if (!tower) return 0;
+    return action.path ? TOWER_PATHS[tower.type].cost : TOWER_DEFS[tower.type].upgradeCost;
   }
   return 0;
 }
 
 /** Take the plan's actions in order, each as soon as it is affordable. */
-export function followPlan(plan: readonly BuildAction[], actTwo: readonly BuildAction[] = []): Decide {
+export function followPlan(plan: readonly BuildAction[], actTwo: readonly BuildAction[] = [], buyCost = actionCost): Decide {
   let next = 0;
   return (state) => {
     const action = plan[next] ?? (state.wave >= ACT_ONE_LAST_WAVE ? actTwo[next - plan.length] : undefined);
-    if (!action || state.gold < actionCost(state, action)) return undefined;
+    if (!action || state.gold < buyCost(state, action)) return undefined;
     next += 1;
     return action;
   };
@@ -753,33 +755,36 @@ function withoutTowerType(script: WaveScript, type: TowerType): WaveScript {
  * The order offers useful buys through the first act. The campaign tails
  * continue the plan into the second act.
  */
-export const COMBO_PLAN: readonly BuildAction[] = [
-  lb(9, 5), lb(9, 4), t(14, 10), fp(14, 9), lb(17, 8), mo(17, 6), up(14, 10), up(14, 9), lb(17, 9), up(17, 6),
-  up(9, 5), up(9, 4), mo(9, 7), lb(17, 10), up(17, 9), up(9, 7), up(17, 10), t(11, 4), fp(10, 4), up(11, 4),
-  up(17, 8),
-  // Milestone 25c: the horde pays more, so the plan goes on (bought from
-  // about wave 8): three upgraded Longbows inside the second U and the
-  // first U, then a third Mortar (16,7) and an upgraded Cannon (15,10).
-  // The cheap Longbow pairs come first so the gold left before wave 9 is
-  // always under 70.
-  lb(16, 8), up(16, 8), lb(9, 6), up(9, 6), lb(16, 9), up(16, 9), mo(16, 7), up(16, 7), c(15, 10), up(15, 10),
-];
+function meadowPlan(bow: BuildAction): readonly BuildAction[] {
+  return [
+    lb(9, 5), lb(9, 4), t(14, 10), fp(14, 9), bow, mo(17, 6), up(14, 10), up(14, 9), lb(17, 9), up(17, 6),
+    up(9, 5), up(9, 4), mo(9, 7), lb(17, 10), up(17, 9), up(9, 7), up(17, 10), t(11, 4), fp(10, 4), up(11, 4),
+    laterUpgrade(bow),
+    // Milestone 25c: the horde pays more, so the plan goes on (bought from
+    // about wave 8): three upgraded Longbows inside the second U and the
+    // first U, then a third Mortar (16,7) and an upgraded Cannon (15,10).
+    // The cheap Longbow pairs come first so the gold left before wave 9 is
+    // always under 70.
+    lb(16, 8), up(16, 8), lb(9, 6), up(9, 6), lb(16, 9), up(16, 9), mo(16, 7), up(16, 7), c(15, 10), up(15, 10),
+  ];
+}
+
+export const COMBO_PLAN = meadowPlan(lb(15, 6));
 
 /**
- * The Normal plan opens with a Musketeer between lanes and a Longbow by the
- * exit. Hard and specialized builds open with two Longbows. The shared
+ * The first two purchases cover the folded lanes. The shared
  * purchases put Fire Pots beside Tar Pits and place Mortars outside the
  * narrow strips between lanes, leaving both strips for short-range towers.
  */
-function switchbackPlan(lead: BuildAction, rear: BuildAction): readonly BuildAction[] {
+function switchbackPlan(lead: BuildAction, rear: BuildAction, rearLane = lb(15, 7)): readonly BuildAction[] {
   return [
     lead, rear, t(12, 7), fp(11, 7), lb(13, 7), mo(14, 11), up(12, 7), up(11, 7), lb(12, 4), up(14, 11),
-    laterUpgrade(lead), laterUpgrade(rear), mo(19, 7), lb(15, 7), up(12, 4), up(19, 7), up(15, 7), t(15, 4), fp(14, 4), up(15, 4),
+    laterUpgrade(lead), laterUpgrade(rear), mo(19, 7), rearLane, up(12, 4), up(19, 7), laterUpgrade(rearLane), t(15, 4), fp(14, 4), up(15, 4),
     up(13, 7),
     lb(11, 4), up(11, 4), lb(16, 7), up(16, 7), lb(10, 4), up(10, 4), mo(18, 7), up(18, 7), c(17, 7), up(17, 7),
   ];
 }
-export const SWITCHBACK_COMBO_PLAN = switchbackPlan(m(13, 4), lb(27, 13));
+export const SWITCHBACK_COMBO_PLAN = switchbackPlan(lb(14, 7), lb(18, 7), lb(20, 7)).slice(0, 15);
 
 /**
  * Riverbend's combo plan (milestone 27), chosen like SWITCHBACK_COMBO_PLAN:
@@ -794,19 +799,19 @@ export const SWITCHBACK_COMBO_PLAN = switchbackPlan(m(13, 4), lb(27, 13));
  * bank; the later Longbows, the third Mortar and the Cannon at the two outer
  * corners and on the banks.
  */
-function riverbendPlan(lead: BuildAction, rear: BuildAction): readonly BuildAction[] {
+function riverbendPlan(lead: BuildAction, rear: BuildAction, tar = t(11, 4)): readonly BuildAction[] {
   return [
-    lead, rear, t(11, 4), fp(11, 5), lb(17, 5), mo(12, 7), up(11, 4), up(11, 5), lb(17, 6), up(12, 7),
+    lead, rear, tar, fp(11, 5), lb(17, 5), mo(12, 7), laterUpgrade(tar), up(11, 5), lb(17, 6), up(12, 7),
     laterUpgrade(lead), laterUpgrade(rear), mo(17, 7), lb(6, 8), up(17, 6), up(17, 7), up(6, 8), t(18, 4), fp(18, 5), up(18, 4),
     up(17, 5),
     lb(23, 8), up(23, 8), lb(11, 6), up(11, 6), lb(18, 6), up(18, 6), mo(6, 7), up(6, 7), c(7, 10), up(7, 10),
   ];
 }
-export const RIVERBEND_COMBO_PLAN = riverbendPlan(lb(10, 6), lb(12, 6));
+export const RIVERBEND_COMBO_PLAN = riverbendPlan(lb(10, 6), lb(12, 6), t(10, 1));
 
 /** The paired Longbow opening used by the Hard and specialized builds. */
 const BOW_OPENINGS: Readonly<Record<MapId, readonly BuildAction[]>> = {
-  meadow: COMBO_PLAN,
+  meadow: meadowPlan(lb(17, 8)),
   switchback: switchbackPlan(lb(14, 7), lb(13, 4)),
   riverbend: riverbendPlan(lb(12, 5), lb(12, 6)),
 };
@@ -821,7 +826,7 @@ export const COMBO_PLANS: Readonly<Record<MapId, readonly BuildAction[]>> = {
 /** Act 2 reinforces the exit and the firing lanes after the first plan is complete.
  * Extra bows cover Meadow's two turns and Riverbend's narrower firing lanes.
  */
-export const ACT_TWO_PLANS: Readonly<Record<MapId, readonly BuildAction[]>> = {
+const HARD_REINFORCEMENTS: Readonly<Record<MapId, readonly BuildAction[]>> = {
   meadow: [
     up(10, 4), c(23, 8), up(23, 8), m(25, 8), up(25, 8),
     lb(8, 5), up(8, 5), lb(8, 6), up(8, 6),
@@ -834,15 +839,54 @@ export const ACT_TWO_PLANS: Readonly<Record<MapId, readonly BuildAction[]>> = {
   ],
 };
 
-function followComboPlan(map: MapId = DEFAULT_MAP): Decide {
-  return followPlan(COMBO_PLANS[map], ACT_TWO_PLANS[map]);
+/** Buy one branch in each role, adding bow and artillery coverage where the lane needs it. */
+export const ACT_TWO_PLANS: Readonly<Record<MapId, readonly BuildAction[]>> = {
+  meadow: [
+    m(25, 8), up(25, 8), up(25, 8, 'A'), up(15, 10, 'B'), up(14, 10, 'A'),
+    up(9, 5, 'A'), up(17, 6, 'A'), up(14, 9, 'B'),
+  ],
+  switchback: [
+    up(19, 7), c(17, 7), up(17, 7), m(25, 10), up(25, 10),
+    up(25, 10, 'A'), up(17, 7, 'A'), up(12, 7, 'B'), up(14, 7, 'B'),
+    up(18, 7, 'B'), up(12, 4, 'B'), up(14, 11, 'A'), up(19, 7, 'A'), up(11, 7, 'B'),
+  ],
+  riverbend: [
+    m(23, 9), up(23, 9), up(23, 9, 'A'), up(7, 10, 'B'), up(10, 1, 'A'),
+    up(10, 6, 'A'), up(12, 6, 'A'), up(12, 7, 'A'), up(17, 7, 'A'), up(11, 5, 'B'),
+  ],
+};
+
+type ComboChoice = 'skip' | 'wide' | TowerType;
+
+function followComboPlan(map: MapId = DEFAULT_MAP, choice?: ComboChoice): Decide {
+  const opening = COMBO_PLANS[map];
+  const tail = ACT_TWO_PLANS[map];
+  if (!choice) return followPlan(opening, tail);
+  const builds = new Map([...opening, ...tail].flatMap((a) => a.type === 'build' ? [[cellKey(a.cell), a.tower] as const] : []));
+  const focus = tail.flatMap((a) => a.type === 'upgrade' && a.path ? [builds.get(cellKey(a.cell))!] : []);
+  const copies = choice === 'wide' ? reinforcementPlan(map, [...opening, ...tail], focus) : [];
+  const purchases = tail.flatMap((a): BuildAction[] => {
+    if (a.type !== 'upgrade' || !a.path) return [a];
+    if (choice === 'skip') return [];
+    if (choice === 'wide') return copies.splice(0, 2);
+    return [builds.get(cellKey(a.cell)) === choice ? { ...a, path: a.path === 'A' ? 'B' : 'A' } : a];
+  });
+  return followPlan(opening, purchases);
+}
+
+export function comboChoiceRun(map: MapId, choice: ComboChoice, difficulty: Difficulty = 'normal', boons?: BoonChoices, report?: RecordReporter): WaveScript {
+  return recordScript(followComboPlan(map, choice), { map, difficulty, boons, specials: {}, report });
+}
+
+export function wideBuild(difficulty: Difficulty = 'normal', map: MapId = DEFAULT_MAP, boons?: BoonChoices): WaveScript {
+  return comboChoiceRun(map, 'wide', difficulty, boons);
 }
 
 /**
  * Combo build (milestone 10): the map's combo plan, each action bought as
  * soon as gold allows. Milestone 30: plus the special policy
  * (specialPolicy.ts), recorded into its timed list.
- * Target N4: won with 5 to 19 lives on Normal on every map.
+ * Target U1: win with 8 to 17 lives on Normal on every map.
  */
 export function comboBuild(difficulty?: Difficulty, map?: MapId, boons?: BoonChoices, report?: RecordReporter): WaveScript {
   return recordScript(followComboPlan(map), { difficulty, map, boons, specials: {}, report });
@@ -989,12 +1033,10 @@ export function hardPlanFrom(plan: readonly BuildAction[]): BuildAction[] {
  * between them, then the Fire Pot (14,9) and the Tar Pit and Fire Pot
  * upgrades, then the rest of COMBO_PLAN in its order: hardPlanFrom(COMBO_PLAN).
  */
-export const HARD_PLAN: readonly BuildAction[] = hardPlanFrom(COMBO_PLAN);
+export const HARD_PLAN: readonly BuildAction[] = hardPlanFrom(BOW_OPENINGS.meadow);
 
 /**
- * The Hard plans open with two Longbows on the folded lanes and buy their
- * upgrades in HARD_ORDER. The Normal Switchback plan instead pairs a
- * Musketeer between lanes with an exit-side Longbow.
+ * Hard uses the paired-bow opening and buys its early upgrades in HARD_ORDER.
  */
 export const HARD_PLANS: Readonly<Record<MapId, readonly BuildAction[]>> = {
   meadow: HARD_PLAN,
@@ -1017,7 +1059,7 @@ const HARD_ARTILLERY: Record<MapId, readonly BuildAction[]> = {
  */
 export function hardBuild(difficulty?: Difficulty, map?: MapId, boons?: BoonChoices): WaveScript {
   const mapId = map ?? DEFAULT_MAP;
-  return recordScript(followPlan(HARD_PLANS[mapId], [...ACT_TWO_PLANS[mapId], ...HARD_ARTILLERY[mapId]]), { difficulty, map, boons, specials: {} });
+  return recordScript(followPlan(...referencePlan('hardBuild', mapId)), { difficulty, map, boons, specials: {} });
 }
 
 /**
@@ -1091,6 +1133,7 @@ export const INFORMATIONAL: Readonly<Record<string, Archetype>> = {
   comboStrongest,
   artilleryBuild,
   burnBuild,
+  musketBuild,
 };
 
 /** Every archetype, in report order. */
@@ -1103,6 +1146,7 @@ export const ARCHETYPES: Readonly<Record<string, Archetype>> = {
   soundBuildNoTar,
   longbowSpam,
   comboBuild,
+  wideBuild,
   comboBuildNoFire,
   comboNoSpecials,
   noAntiAir,
@@ -1134,9 +1178,10 @@ function limitType(plan: readonly BuildAction[], type: TowerType, count: number)
 /** Spend on another upgraded tower once the opening defense is complete. */
 function reinforcementPlan(map: MapId, opening: readonly BuildAction[], types: readonly TowerType[]): BuildAction[] {
   const used = new Set(opening.flatMap((action) => action.type === 'build' ? [cellKey(action.cell)] : []));
+  const ranked = new Map([...new Set(types)].map((type) => [type, reinforcementCells(MAPS[map], type)]));
   let lastTar: Cell | undefined;
   return types.flatMap((tower) => {
-    const choices = reinforcementCells(MAPS[map], tower).filter((candidate) => !used.has(cellKey(candidate)));
+    const choices = ranked.get(tower)!.filter((candidate) => !used.has(cellKey(candidate)));
     const tar = lastTar;
     const nearby = tower === 'firepot' && tar
       ? choices.find(({ col, row }) => Math.abs(col - tar.col) + Math.abs(row - tar.row) <= 2)
@@ -1152,14 +1197,63 @@ function reinforcementPlan(map: MapId, opening: readonly BuildAction[], types: r
 
 /** Adds and upgrades Cannons and Mortars as the campaign's second act begins. */
 export function artilleryBuild(difficulty?: Difficulty, map: MapId = DEFAULT_MAP, boons?: BoonChoices, report?: RecordReporter): WaveScript {
-  const opening = limitType(BOW_OPENINGS[map], 'longbow', 4);
-  const plan = reinforcementPlan(map, opening, ['cannon', 'mortar', 'cannon', 'mortar']);
+  const [opening, plan] = referencePlan('artilleryBuild', map);
   return recordScript(followPlan(opening, plan), { difficulty, map, boons, specials: {}, report });
 }
 
 /** Reinforces a mixed opening with Fire Pots beside upgraded Tar Pits. */
 export function burnBuild(difficulty?: Difficulty, map: MapId = DEFAULT_MAP, boons?: BoonChoices, report?: RecordReporter): WaveScript {
-  const opening = limitType(BOW_OPENINGS[map], 'mortar', 1);
-  const plan = reinforcementPlan(map, opening, ['tarpit', 'firepot', 'tarpit', 'firepot']);
+  const [opening, plan] = referencePlan('burnBuild', map);
   return recordScript(followPlan(opening, plan), { difficulty, map, boons, specials: {}, report });
+}
+
+export function musketBuild(difficulty?: Difficulty, map: MapId = DEFAULT_MAP, boons?: BoonChoices): WaveScript {
+  return recordScript(followPlan(...referencePlan('musketBuild', map)), { difficulty, map, boons, specials: {} });
+}
+
+/** Reference plans available for the equal-budget branch and copy comparisons. */
+export type ChoiceBuild = 'comboBuild' | 'hardBuild' | 'artilleryBuild' | 'burnBuild' | 'musketBuild';
+
+function referencePlan(build: ChoiceBuild, map: MapId): [readonly BuildAction[], readonly BuildAction[]] {
+  if (build === 'hardBuild') {
+    const mortar = HARD_PLANS[map].find((a) => a.type === 'build' && a.tower === 'mortar')!.cell;
+    return [HARD_PLANS[map], [...HARD_REINFORCEMENTS[map], ...HARD_ARTILLERY[map], up(mortar.col, mortar.row, 'A')]];
+  }
+  if (build === 'comboBuild') return [COMBO_PLANS[map], ACT_TWO_PLANS[map]];
+  if (build === 'musketBuild') {
+    const opening = limitType(BOW_OPENINGS[map], 'mortar', 1);
+    const musketeers: TowerType[] = Array.from({ length: 6 }, () => 'musketeer');
+    return [opening, reinforcementPlan(map, opening, musketeers)];
+  }
+  const artillery = build === 'artilleryBuild';
+  const opening = artillery ? limitType(BOW_OPENINGS[map], 'longbow', 4) : limitType(BOW_OPENINGS[map], 'mortar', 1);
+  const reinforcements: TowerType[] = artillery ? ['cannon', 'mortar', 'cannon', 'mortar'] : ['tarpit', 'firepot', 'tarpit', 'firepot'];
+  return [opening, reinforcementPlan(map, opening, reinforcements)];
+}
+
+/** Finish the reference purchases, then specialize every level-2 tower of one
+ * type, or spend its price on another level-2 copy on an open firing lane. */
+export function compareTowerPlan(build: ChoiceBuild, map: MapId, difficulty: Difficulty, tower: TowerType,
+  choice: UpgradePath | 'copy', report?: RecordReporter, boons?: BoonChoices, targeting?: TargetingMode, useSpecials = true): WaveScript {
+  const [opening, reinforcements] = referencePlan(build, map);
+  const plan = [...opening, ...reinforcements];
+  const cells = new Set(plan.flatMap((a) => a.type === 'build' && a.tower === tower ? [cellKey(a.cell)] : []));
+  const upgrades = plan.filter((a) => a.type === 'upgrade' && !a.path && cells.has(cellKey(a.cell)));
+  const rest = reinforcements.filter((a) => !(a.type === 'upgrade' && a.path && cells.has(cellKey(a.cell))));
+  const choices = choice === 'copy' ? reinforcementPlan(map, plan, upgrades.map(() => tower))
+    : upgrades.map(({ cell }): BuildAction => ({ type: 'upgrade', cell, path: choice }));
+  const actTwo = targeting === undefined ? [...rest, ...choices] : [
+    ...rest.filter((action) => cells.has(cellKey(action.cell))),
+    ...upgrades.map(({ cell }): BuildAction => ({ type: 'target', cell, mode: targeting })),
+    ...choices,
+    ...rest.filter((action) => !cells.has(cellKey(action.cell))),
+  ];
+  const options = { map, difficulty, boons, specials: useSpecials ? {} : undefined, report };
+  if (choice !== 'copy') return recordScript(followPlan(opening, actTwo), options);
+  const copyBuilds = new Set(choices.filter((action) => action.type === 'build'));
+  const readyCost = (state: GameState, action: BuildAction) => {
+    const cost = actionCost(state, action);
+    return action.type === 'build' && copyBuilds.has(action) ? cost + TOWER_DEFS[tower].upgradeCost : cost;
+  };
+  return recordScript(followPlan(opening, actTwo, readyCost), options);
 }

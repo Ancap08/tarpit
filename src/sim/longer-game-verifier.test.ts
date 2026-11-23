@@ -105,7 +105,7 @@ describe('verifier 36a: the rules', () => {
     }
   });
 
-  it('Grumblemaw: 10 lives on exit; slow cap 0.3 under a Tar Pit, a Tar Barrel and both; burn doubles under tar', () => {
+  it('Grumblemaw: 6 lives on exit; slow cap 0.3 under a Tar Pit, a Tar Barrel and both; burn doubles under tar', () => {
     const s = inWave(20, [enemy(0, 'grumblemaw')]);
     applySlow(s.enemies[0], 0.6, 100);
     expect(effectiveSlow(s.enemies[0])).toBe(0.3);
@@ -113,7 +113,7 @@ describe('verifier 36a: the rules', () => {
     expect(effectiveSlow(s.enemies[0])).toBe(0.3);
     const d0 = s.enemies[0].distance;
     tick(s);
-    expect(s.enemies[0].distance - d0).toBeCloseTo((35 / 60) * 0.7, 9);
+    expect(s.enemies[0].distance - d0).toBeCloseTo((38 / 60) * 0.7, 9);
 
     const t = inWave(20, [enemy(0, 'grumblemaw')]);
     applySpecialSlow(t.enemies[0], 0.5, 100);
@@ -124,7 +124,7 @@ describe('verifier 36a: the rules', () => {
     expect(hp - t.enemies[0].hp).toBeCloseTo(52 / 60, 9);
 
     const x = inWave(20, [enemy(0, 'grumblemaw', { distance: pathLength(MAPS.meadow) - 0.1 })]);
-    x.lives = 10;
+    x.lives = 6;
     tick(x);
     expect(x.lives).toBe(0);
     expect(ofKind(x, 'bossDown')).toEqual([{ kind: 'bossDown', enemyId: 0, enemyType: 'grumblemaw', cause: 'exit' }]);
@@ -223,13 +223,13 @@ describe('verifier 36a: Grumblemaw pack calls', () => {
     s.packs = [{ nextTick: s.waveTick, remaining: 8 }];
     s.lives = 20;
     tick(s);
-    expect(s.lives).toBe(10);
+    expect(s.lives).toBe(14);
     expect(ofKind(s, 'packCall')).toEqual([]);
     expect(s.phase).toBe('wave');
     let guard = 0;
     while (s.phase === 'wave' && guard++ < 20000) tick(s);
     expect(s.phase).toBe('won'); // wolves walked out: 8 lives more
-    expect(s.lives).toBe(2);
+    expect(s.lives).toBe(6);
   });
 
   it('wave 19 cannot call wave 20 (last-wave); wave 18 can call 19', () => {

@@ -16,7 +16,7 @@ describe('end screen text', () => {
     expect(endKind(s)).toBe('won');
     expect(endScreenText('won', s)).toEqual({
       title: END_TEXT.wonTitle,
-      lines: [`${END_TEXT.wonLives} 19`, `${END_TEXT.wonGold} 2847`],
+      lines: [`${END_TEXT.wonLives} 17`, `${END_TEXT.wonGold} 2451`],
       boons: `Rewards: ${BOON_NAMES.longBarrels} · ${BOON_NAMES.stickyTar} · ${BOON_NAMES.stoneWalls}`,
     });
   });
@@ -29,10 +29,10 @@ describe('end screen text', () => {
 
   it('endless loss: the wave reached and held boons', () => {
     const s = playScripted(endlessIdle()).state;
-    expect([s.phase, s.endless, s.wave]).toEqual(['lost', true, 24]);
+    expect([s.phase, s.endless, s.wave]).toEqual(['lost', true, 25]);
     expect(endScreenText('lost', s)).toEqual({
       title: END_TEXT.lostTitle,
-      lines: [`${END_TEXT.lostWave} 24`],
+      lines: [`${END_TEXT.lostWave} 25`],
       boons: `Rewards: ${BOON_NAMES.longBarrels} · ${BOON_NAMES.stickyTar} · ${BOON_NAMES.stoneWalls}`,
     });
   });

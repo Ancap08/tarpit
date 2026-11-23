@@ -80,7 +80,7 @@ cloud shadows and the odd bird or butterfly, all still under reduced motion.
     Reloading starts a new run.
 11. **Two bosses.** Grumblefoot, the Troll King, arrives at the end of
     wave 10 and costs 5 lives if he gets through. Act II begins on wave 11.
-    Grumblemaw arrives at the end of wave 20 and costs 10 lives if he gets
+    Grumblemaw arrives at the end of wave 20 and costs 6 lives if he gets
     through. When his health falls past two thirds and one third, he calls
     Wolves from the cave. The health bar shows which boss is on the trail.
 12. **Win, then keep going.** Survive wave 20 to win. Choose Keep going,

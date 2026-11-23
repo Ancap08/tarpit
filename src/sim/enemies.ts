@@ -16,8 +16,8 @@ export const ENEMY_STATS: Readonly<Record<EnemyType, EnemyStats>> = {
   troll: { hp: 950, speed: 35, bounty: 8, flying: false, shield: false, livesCost: 1 },
   harpy: { hp: 36, speed: 90, bounty: 3, flying: true, shield: false, livesCost: 1 },
   shieldbearer: { hp: 70, speed: 45, bounty: 5, flying: false, shield: true, livesCost: 1 },
-  // Grumblemaw closes wave 20 and costs 10 lives if he escapes.
-  grumblemaw: { hp: 5600, speed: 35, bounty: 300, flying: false, shield: false, livesCost: 10, slowCap: 0.3 },
+  // Grumblemaw closes wave 20 and costs 6 lives if he escapes.
+  grumblemaw: { hp: 5600, speed: 38, bounty: 300, flying: false, shield: false, livesCost: 6, slowCap: 0.3 },
   // Grumblefoot closes wave 10 and costs 5 lives if he escapes.
   boss: { hp: 4000, speed: 25, bounty: 150, flying: false, shield: false, livesCost: 5, slowCap: 0.3 },
 };

@@ -6,6 +6,7 @@ import type * as Balance from '../src/sim/balanceRuns';
 import type * as Targets from '../src/sim/balanceTargets';
 import type * as Maps from '../src/sim/map';
 import type * as Boons from '../src/sim/boonBalance';
+import type * as Paths from '../src/sim/pathBalance';
 
 const server = await createServer({
   root: fileURLToPath(new URL('..', import.meta.url)),
@@ -38,6 +39,17 @@ try {
     const result = targets.checkBoonBalance(map, 'all');
     console.log(`${result.ok ? 'ok' : 'MISS'}  N10a  ${map}: ${result.info}`);
     if (!result.ok) process.exitCode = 1;
+  }
+
+  const paths = await server.ssrLoadModule('/src/sim/pathBalance.ts') as typeof Paths;
+  for (const [id, witnesses] of [['U4', paths.PATH_WITNESSES], ['U6', paths.COPY_WITNESSES]] as const) {
+    for (const witness of witnesses) {
+      const { valid, delta, winner, other, winnerCount } = paths.measurePathWitness(witness);
+      const ok = valid && (witness.tie ? delta === 0 : delta > 0);
+      const { tower, build, map, difficulty } = witness;
+      console.log(`${ok ? 'ok' : 'MISS'}  ${id}  ${tower} ${build}/${map}/${difficulty}: ${witness.winner} ${witness.tie ? '=' : '>'} ${witness.other}, ${winner.lives}/${winner.kills} vs ${other.lives}/${other.kills}, ${winnerCount} purchases each`);
+      if (!ok) process.exitCode = 1;
+    }
   }
 
   const boons = await server.ssrLoadModule('/src/sim/boonBalance.ts') as typeof Boons;

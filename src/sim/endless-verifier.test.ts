@@ -10,7 +10,7 @@ import type { GameEvent } from './events';
 import { callEarlyStatus, callNextWave, continueEndless, createGame, lastSpawnTick, spawnTick, startWave, tick, wavesCleared } from './game';
 import { applyAction, applyScriptBoon, comboBuild, endlessGreedy, ENDLESS_WAVE_CAP, playScripted, type WaveScript } from './headless';
 import { MAPS, positionAlongPath } from './map';
-import { TOWER_DEFS } from './towers';
+import { TOWER_DEFS, TOWER_PATHS } from './towers';
 import type { EnemyType, GameState } from './types';
 import { nextWavePreview, waveDef, WAVES } from './waves';
 
@@ -128,7 +128,8 @@ describe('verifier: the win and the wave 20 to 21 boundary (section E)', () => {
     }
     expect(events.some((e) => e.kind === 'bossDown' && e.cause === 'exit')).toBe(true);
     expect(s.phase).toBe('won');
-    expect(s.lives).toBe(1000 - WAVES[19].groups.reduce((n, g) => n + g.count, 0) - 9);
+    const scheduled = WAVES[19].groups.reduce((n, group) => n + group.count, 0);
+    expect(s.lives).toBe(1000 - (scheduled - 1) - 6);
     expect(continueEndless(s).ok).toBe(true);
     expect(s).toMatchObject({ phase: 'setup', endless: true, wave: 20, enemies: [], specialCharges: 0 });
     expect(nextWavePreview(s).some((p) => p.type === 'boss' || p.type === 'grumblemaw')).toBe(false);
@@ -263,7 +264,7 @@ describe('verifier: a whole endlessGreedy run', () => {
         else if (e.kind === 'boonPicked' && e.id === 'warChest') expected += 100;
         else if (e.kind === 'waveClear' || e.kind === 'earlyCall') expected += e.bonus;
         else if (e.kind === 'build') expected -= TOWER_DEFS[e.tower].cost;
-        else if (e.kind === 'upgrade') expected -= TOWER_DEFS[e.tower].upgradeCost;
+        else if (e.kind === 'upgrade') expected -= e.level === 3 ? TOWER_PATHS[e.tower].cost : TOWER_DEFS[e.tower].upgradeCost;
         else if (e.kind === 'sell') expected += e.refund;
       }
       all.push(...state.events);

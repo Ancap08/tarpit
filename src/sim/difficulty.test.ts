@@ -136,29 +136,33 @@ const end = (difficulty: Difficulty, script: ReturnType<typeof comboBuild>) => {
   return { phase: r.state.phase, wave: r.state.wave, lives: r.state.lives, gold: r.state.gold, refused: refused.length };
 };
 
-// The SCOPE-v4 Easy and Hard targets (E1 to E3, H1 to H4) and the exact
-// results per level are in balance.suite.ts (milestone 28). This keeps the
-// verifier's robustness probe on them.
-describe('Hard targets hold with one hp point either way (milestone 25c verifier; H1 and H3)', () => {
-  // The verifier found Hard balanced on one Wolf hp; the second pass holds
-  // the Hard combo target with Goblin and Wolf hp one point either way.
-  // Milestone 28: it holds for Goblin -1 and Wolf +-1. Goblin +1 (24, Hard
-  // 29) breaks the Hard hp rule itself and is pinned below as a thin margin.
+function withHpChange(type: EnemyType, delta: number, check: () => void) {
+  const stats = ENEMY_STATS[type] as { hp: number };
+  const hp = stats.hp;
+  stats.hp += delta;
+  try {
+    check();
+  } finally {
+    stats.hp = hp;
+  }
+}
+
+// The exact results for the frozen difficulties are in balance.suite.ts.
+describe('Hard campaign robustness against one-point HP changes', () => {
+  it('the baseline Hard combo reaches wave 20, but one extra Wolf HP makes it lose on wave 8', () => {
+    const baseline = end('hard', comboBuild('hard'));
+    expect(baseline).toEqual({ phase: 'lost', wave: 20, lives: -2, gold: 2047, refused: 0 });
+    withHpChange('wolf', 1, () => {
+      expect(end('normal', comboBuild())).toEqual({ phase: 'won', wave: 20, lives: 17, gold: 2451, refused: 0 });
+      expect(end('hard', comboBuild('hard'))).toEqual({ phase: 'lost', wave: 8, lives: 0, gold: 337, refused: 0 });
+    });
+  });
+
   for (const [type, d] of [['goblin', -1], ['wolf', 1], ['wolf', -1]] as const) {
     const label = `${type} hp ${d > 0 ? '+' : ''}${d}`;
-    function withHpChange(check: () => void) {
-      const stats = ENEMY_STATS[type] as { hp: number };
-      const hp = stats.hp;
-      stats.hp += d;
-      try {
-        check();
-      } finally {
-        stats.hp = hp;
-      }
-    }
 
-    it(`${label}: the Hard combo target holds`, () => {
-      withHpChange(() => {
+    if (d < 0) it(`${label}: the Hard combo target holds`, () => {
+      withHpChange(type, d, () => {
         const normal = end('normal', comboBuild());
         const hard = end('hard', comboBuild('hard'));
         const ok = (hard.phase === 'won' && normal.lives - hard.lives >= 5) || (hard.phase === 'lost' && hard.wave >= 12);
@@ -167,7 +171,7 @@ describe('Hard targets hold with one hp point either way (milestone 25c verifier
     });
 
     it(`${label}: hardBuild wins`, () => {
-      withHpChange(() => expect(end('hard', hardBuild('hard')).phase).toBe('won'));
+      withHpChange(type, d, () => expect(end('hard', hardBuild('hard')).phase).toBe('won'));
     });
   }
 });

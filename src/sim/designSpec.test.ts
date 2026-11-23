@@ -249,7 +249,8 @@ describe('docs/DESIGN.md matches the code', () => {
   it('balance targets: every target label the suite asserts is in the spec, and no other', () => {
     const text = section('Balance targets') + section('Waves');
     const inDoc = new Set([...text.matchAll(/\*\*([A-Z]+\d+[a-z]?)\b/g)].map((m) => m[1]));
-    expect([...inDoc].sort()).toEqual([...new Set([...TARGETS.map((t) => t.id), 'N10c', 'N10d'])].sort());
+    const separateChecks = ['N10c', 'N10d', 'U4', 'U6'];
+    expect([...inDoc].sort()).toEqual([...new Set([...TARGETS.map((t) => t.id), ...separateChecks])].sort());
   });
 
   it('the endless hp line and the prose numbers the tables do not hold: cooldowns, sell refunds and campaign enemy count', () => {
@@ -263,8 +264,16 @@ describe('docs/DESIGN.md matches the code', () => {
     /** A section with every run of white space as one space (prose wraps). */
     const flat = (heading: string) => section(heading).replace(/\s+/g, ' ');
     expect(flat('Towers')).toContain(`(${names.map(([n, t]) => `${n} ${Math.round(60 / TOWER_DEFS[t].base.fireRate)}`).join(', ')})`);
-    const refund = (t: TowerType) => Math.floor(((TOWER_DEFS[t].cost + TOWER_DEFS[t].upgradeCost) * 7) / 10);
-    expect(flat('Towers')).toContain(`${names.map(([n, t]) => `${n} ${refund(t)}`).join(', ')}.`);
+    const lockedRefunds = (withPath: boolean) => {
+      const gold = names.map(([, type]) => {
+        const { cost, upgradeCost } = TOWER_DEFS[type];
+        const total = cost + upgradeCost + (withPath ? TOWER_PATHS[type].cost : 0);
+        return Math.floor((total * 7) / 10);
+      });
+      return `${gold.slice(0, -1).join(', ')} and ${gold.at(-1)} gold.`;
+    };
+    expect(flat('Towers')).toContain(`sell for ${lockedRefunds(false)}`);
+    expect(flat('Towers')).toContain(`At level 3 their locked refunds are ${lockedRefunds(true)}`);
     expect(flat('Waves')).toContain(`waves hold ${WAVES.reduce((n, w) => n + w.groups.reduce((a, g) => a + g.count, 0), 0)} scheduled enemies.`);
   });
 

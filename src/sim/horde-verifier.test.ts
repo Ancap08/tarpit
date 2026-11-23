@@ -15,7 +15,7 @@ import { cellKey, type Cell } from './grid';
 import { applyAction, applyScriptBoon, ARCHETYPES, COMBO_PLAN, comboBuild, playScripted, type WaveScript } from './headless';
 import { MAPS, pathLength, positionAlongPath } from './map';
 import { SPECIAL_DEFS } from './specials';
-import { TOWER_DEFS } from './towers';
+import { TOWER_DEFS, TOWER_PATHS } from './towers';
 import type { Enemy, EnemyType, GameState } from './types';
 import { WAVES } from './waves';
 
@@ -96,7 +96,7 @@ function book(ledger: Ledger, events: readonly GameEvent[], burnOwners: Readonly
 
 function cost(e: GameEvent): number {
   if (e.kind === 'build') return TOWER_DEFS[e.tower].cost;
-  if (e.kind === 'upgrade') return TOWER_DEFS[e.tower].upgradeCost;
+  if (e.kind === 'upgrade') return e.level === 3 ? TOWER_PATHS[e.tower].cost : TOWER_DEFS[e.tower].upgradeCost;
   return 0;
 }
 
@@ -197,7 +197,12 @@ function playCallingEarly(lives: number): { s: GameState; ledger: Ledger; soldKi
   let soldKills = 0;
   const buy = () => {
     for (let a = COMBO_PLAN[next]; a; a = COMBO_PLAN[next]) {
-      const price = a.type === 'build' ? TOWER_DEFS[a.tower].cost : a.type === 'upgrade' ? TOWER_DEFS[towerAt(s, a.cell)!.type].upgradeCost : 0;
+      let price = 0;
+      if (a.type === 'build') price = TOWER_DEFS[a.tower].cost;
+      if (a.type === 'upgrade') {
+        const type = towerAt(s, a.cell)!.type;
+        price = a.path ? TOWER_PATHS[type].cost : TOWER_DEFS[type].upgradeCost;
+      }
       if (s.gold < price) break;
       between(s, ledger, () => expect(applyAction(s, a)).toMatchObject({ result: { ok: true } }));
       next += 1;

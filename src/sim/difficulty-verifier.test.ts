@@ -118,7 +118,7 @@ describe('(b) bounty, speed, livesCost and slowCap do not depend on the level', 
       harpy: { hp: 36, speed: 90, bounty: 3, flying: true, shield: false, livesCost: 1 },
       shieldbearer: { hp: 70, speed: 45, bounty: 5, flying: false, shield: true, livesCost: 1 },
       boss: { hp: 4000, speed: 25, bounty: 150, flying: false, shield: false, livesCost: 5, slowCap: 0.3 },
-      grumblemaw: { hp: 5600, speed: 35, bounty: 300, flying: false, shield: false, livesCost: 10, slowCap: 0.3 },
+      grumblemaw: { hp: 5600, speed: 38, bounty: 300, flying: false, shield: false, livesCost: 6, slowCap: 0.3 },
     });
   });
 
@@ -136,7 +136,7 @@ describe('(b) bounty, speed, livesCost and slowCap do not depend on the level', 
     });
 
     it(`${level}: speed (one tick = speed / 60 px), the boss slow cap 0.3, and exit cost`, () => {
-      for (const [type, speed] of [['goblin', 60], ['wolf', 120], ['troll', 35], ['harpy', 90], ['shieldbearer', 45], ['boss', 25], ['grumblemaw', 35]] as const) {
+      for (const [type, speed] of [['goblin', 60], ['wolf', 120], ['troll', 35], ['harpy', 90], ['shieldbearer', 45], ['boss', 25], ['grumblemaw', 38]] as const) {
         const s = arena(level, [enemy(1, type, 80, 1e6)]);
         tick(s);
         expect(s.enemies[0].distance, `${level} ${type}`).toBeCloseTo(80 + speed / 60, 9);
@@ -148,8 +148,8 @@ describe('(b) bounty, speed, livesCost and slowCap do not depend on the level', 
         const ev = s.events.filter((e): e is Extract<GameEvent, { kind: 'slowed' }> => e.kind === 'slowed');
         expect(ev.map((e) => e.slow)).toEqual([slow]);
       }
-      // Exits: a Goblin costs 1, the boss 5. Start from 100 lives on every level.
-      for (const [type, cost] of [['goblin', 1], ['boss', 5], ['grumblemaw', 10]] as const) {
+      // Start from 100 lives on every level.
+      for (const [type, cost] of [['goblin', 1], ['boss', 5], ['grumblemaw', 6]] as const) {
         const s = arena(level, [enemy(1, type, 1e9, 1e6), enemy(2, 'goblin', 10, 1e6)]);
         s.lives = 100;
         tick(s);

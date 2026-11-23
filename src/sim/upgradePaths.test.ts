@@ -140,8 +140,8 @@ describe('level 3 combat on each of the twelve paths', () => {
     ['tarpit',    'B', 155, 0, 3, 30, 0, 0.6, 0, 0],
     ['longbow',   'A', 170, 0, 16, 24, 0, 0, 0, 0],
     ['longbow',   'B', 170, 0, 9, 13, 0, 0, 0, 0],
-    ['mortar',    'A', 220, 70, 130, 180, 70, 0, 0, 0],
-    ['mortar',    'B', 220, 70, 70, 180, 105, 0, 0, 0],
+    ['mortar',    'A', 220, 70, 120, 180, 70, 0, 0, 0],
+    ['mortar',    'B', 220, 70, 70, 180, 140, 0, 0, 0],
     ['firepot',   'A', 100, 0, 4, 75, 0, 0, 15, 240],
     ['firepot',   'B', 100, 0, 4, 75, 0, 0, 8, 480],
   ] as const)('%s path %s uses its full stat row', (type, path, range, minimum, damage, cooldown, splash, slow, dps, duration) => {
@@ -205,7 +205,7 @@ describe('level 3 combat on each of the twelve paths', () => {
     ['cannon', 'A', ['longBarrels', 'biggerBlasts'], 136.5, 119, 40, 120, 0, 0],
     ['tarpit', 'A', ['stickyTar'], 105, 0, 3, 30, 240, 0],
     ['longbow', 'A', ['keenArrows', 'veteranCrews'], 170, 0, 20, 22, 0, 0],
-    ['mortar', 'B', ['longBarrels', 'biggerBlasts'], 286, 147, 70, 180, 0, 0],
+    ['mortar', 'B', ['longBarrels', 'biggerBlasts'], 286, 196, 70, 180, 0, 0],
     ['firepot', 'A', ['hotCoals'], 100, 0, 4, 75, 0, 27],
   ] as const)('%s %s applies rewards after selecting the path row', (type, path, boons, range, radius, damage, cooldown, slowTicks, dps) => {
     const { state, tower } = combat(type, path);

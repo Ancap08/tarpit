@@ -161,67 +161,67 @@ export const BOON_EFFECT_WITNESSES: readonly BoonEffectWitness[] = [
   {
     scenario: { build: 'burnBuild', map: 'meadow', difficulty: 'hard', wave: 5,
       picks: defaultBoonPicks() },
-    best: 'warChest', changed: ['warChest', 'longBarrels', 'keenArrows'],
+    best: 'warChest', changed: ['longBarrels', 'keenArrows', 'warChest'],
   },
   {
     scenario: { build: 'artilleryBuild', map: 'switchback', difficulty: 'hard', wave: 5,
       picks: defaultBoonPicks() },
-    best: 'keenArrows', changed: ['keenArrows', 'longBarrels', 'warChest'],
+    best: 'keenArrows', changed: ['longBarrels', 'keenArrows', 'warChest'],
   },
   {
-    scenario: { build: 'artilleryBuild', map: 'riverbend', difficulty: 'normal', wave: 5,
-      picks: ['longBarrels', 'stickyTar', 'biggerBlasts'] },
-    best: 'longBarrels', changed: ['longBarrels', 'warChest', 'keenArrows'],
-  },
-  {
-    scenario: { build: 'artilleryBuild', map: 'riverbend', difficulty: 'normal', wave: 15,
-      picks: defaultBoonPicks() },
-    best: 'biggerBlasts', changed: ['biggerBlasts', 'stoneWalls'],
-  },
-  {
-    scenario: { build: 'burnBuild', map: 'meadow', difficulty: 'normal', wave: 15,
-      picks: ['longBarrels', 'hotCoals', 'stoneWalls'] },
-    best: 'veteranCrews', changed: ['veteranCrews', 'stoneWalls'],
-  },
-  {
-    scenario: { build: 'artilleryBuild', map: 'meadow', difficulty: 'normal', wave: 15,
-      picks: defaultBoonPicks() },
-    best: 'stoneWalls', changed: ['stoneWalls'],
-  },
-  {
-    scenario: { build: 'artilleryBuild', map: 'meadow', difficulty: 'hard', wave: 10,
+    scenario: { build: 'comboBuild', map: 'meadow', difficulty: 'hard', wave: 5,
       picks: ['longBarrels', 'stickyTar', 'veteranCrews'] },
-    best: 'quickHands', changed: ['quickHands'],
-  },
-  {
-    scenario: { build: 'burnBuild', map: 'meadow', difficulty: 'normal', wave: 10,
-      picks: ['longBarrels', 'stickyTar', 'veteranCrews'] },
-    best: 'hotCoals', changed: ['hotCoals'],
-  },
-  {
-    scenario: { build: 'burnBuild', map: 'switchback', difficulty: 'normal', wave: 10,
-      picks: ['warChest', 'stickyTar', 'stoneWalls'] },
-    best: 'stickyTar', changed: ['stickyTar'],
+    best: 'longBarrels', changed: ['longBarrels', 'keenArrows', 'warChest'],
   },
   {
     scenario: { build: 'burnBuild', map: 'riverbend', difficulty: 'hard', wave: 10,
       picks: ['warChest', 'stickyTar', 'stoneWalls'] },
-    changed: ['quickHands', 'stickyTar', 'hotCoals'],
+    best: 'quickHands', changed: ['stickyTar', 'hotCoals', 'quickHands'],
   },
   {
-    scenario: { build: 'comboBuild', map: 'riverbend', difficulty: 'normal', wave: 10,
-      picks: ['warChest', 'stickyTar', 'stoneWalls'] },
+    scenario: { build: 'burnBuild', map: 'switchback', difficulty: 'hard', wave: 10,
+      picks: ['keenArrows', 'stickyTar', 'veteranCrews'] },
+    best: 'hotCoals', changed: ['hotCoals'],
+  },
+  {
+    scenario: { build: 'comboBuild', map: 'meadow', difficulty: 'hard', wave: 10,
+      picks: ['longBarrels', 'stickyTar', 'veteranCrews'] },
+    best: 'stickyTar', changed: ['stickyTar'],
+  },
+  {
+    scenario: { build: 'artilleryBuild', map: 'meadow', difficulty: 'normal', wave: 10,
+      picks: ['keenArrows', 'stickyTar', 'stoneWalls'] },
     changed: ['stickyTar', 'hotCoals', 'quickHands'],
   },
   {
-    scenario: { build: 'artilleryBuild', map: 'meadow', difficulty: 'hard', wave: 15,
-      picks: ['longBarrels', 'quickHands', 'stoneWalls'] },
-    changed: ['veteranCrews', 'biggerBlasts'],
+    scenario: { build: 'burnBuild', map: 'switchback', difficulty: 'normal', wave: 10,
+      picks: defaultBoonPicks() },
+    changed: ['hotCoals', 'quickHands'],
   },
   {
     scenario: { build: 'artilleryBuild', map: 'switchback', difficulty: 'hard', wave: 15,
       picks: ['warChest', 'stickyTar', 'stoneWalls'] },
-    changed: ['veteranCrews', 'biggerBlasts'],
+    best: 'biggerBlasts', changed: ['stoneWalls', 'biggerBlasts'],
+  },
+  {
+    scenario: { build: 'comboBuild', map: 'meadow', difficulty: 'hard', wave: 15,
+      picks: defaultBoonPicks() },
+    best: 'veteranCrews', changed: ['stoneWalls', 'veteranCrews'],
+  },
+  {
+    scenario: { build: 'artilleryBuild', map: 'riverbend', difficulty: 'normal', wave: 15,
+      picks: defaultBoonPicks() },
+    best: 'stoneWalls', changed: ['stoneWalls'],
+  },
+  {
+    scenario: { build: 'artilleryBuild', map: 'meadow', difficulty: 'normal', wave: 15,
+      picks: defaultBoonPicks() },
+    changed: ['stoneWalls', 'veteranCrews', 'biggerBlasts'],
+  },
+  {
+    scenario: { build: 'burnBuild', map: 'switchback', difficulty: 'normal', wave: 15,
+      picks: defaultBoonPicks() },
+    changed: ['stoneWalls', 'veteranCrews', 'biggerBlasts'],
   },
 ];
 

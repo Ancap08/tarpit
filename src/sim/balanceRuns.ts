@@ -145,11 +145,13 @@ export const ALL_MAP_ARCHETYPES = [
   'longbowSpam',
   'noAntiAir',
   'comboBuild',
+  'wideBuild',
   'comboBuildNoFire',
   'comboNoSpecials',
   'hardBuild',
   'artilleryBuild',
   'burnBuild',
+  'musketBuild',
   'endlessIdle',
   'endlessGreedy',
 ] as const;
