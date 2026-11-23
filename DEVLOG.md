@@ -8443,3 +8443,53 @@ Normal matrix from the closing pass. W gives lives at victory. L gives the defea
 | soundBuild | L 7 | - | - |
 | soundBuildNoTar | L 7 | - | - |
 | comboStrongest | L 5 | - | - |
+
+### Verifier notes, re-verify
+
+Re-verified by Claude Sonnet at e22c493. All checks green: lint,
+check:assets, typecheck, build, check:size, `npm run sim` (no MISS), `npm test`
+(1778 tests, 38 s alone, 65 s under load from other jobs), `npm run test:slow`
+(0 over 3 s alone), and the browser suite twice on three projects (668 passed,
+8 existing env-gated skips, both runs). No new skip, fixme, fails or todo.
+
+Added to `src/sim/upgrade-choice-verifier.test.ts` (Codex had updated the
+twelve-row table in it; I re-checked it against the DESIGN.md table): act 2 hp
+by hand with exact integer arithmetic for every type on Easy, Normal and Hard
+on waves 1 to 10 (unchanged), 11, 15 and 20; the Hard hp rule for waves 1 to 10;
+endless hp on waves 21, 22 and 24 (Normal Troll 3,610, 3,791 and 6,823, so no
+drop at 21; the 3,790.5 tie rounds up); Grumblemaw's exit costs 10; and a
+purchase-by-purchase replay of the reinvest rule on the combo on all three maps
+(cheapest branch first, then the main type, cap of one purchase per setup,
+425 after a loss of three or more, reserve before wave 20). All pass.
+
+Own replay: comboBuild on Normal finishes 14, 11 and 14, with 250 gold left;
+act 2 loses lives only on waves 15 to 19 (Meadow 1/2/1/1 on 15 and 17 to 19,
+Switchback 1/2/4, Riverbend 1/1/3). The 0.95 and 1.05 act-2 hp nudges give
+15 and 14, 15 and 11, 17 and 15; Switchback is exactly four lives from its
+baseline, on the S3 bound, as is its worst wave (4 lives, the S2 bound). The
+fixed plan alone loses on Meadow and Switchback and wins Riverbend with 2.
+hardBuild on Hard gives 9, 15 and 8. lazyBuild wins Easy with 33, 37 and 31.
+Both bosses die. Scratch proofs: Grumblemaw cost back to 6 fails V5 on all
+three maps; Normal act-2 growth 28% to 20% fails S1, S2, V2, S8, P1 and P4.
+
+Not asked for and large: Grumblemaw's speed went from 38 to 14 px/s and his
+bounty from 300 to 75, and wave 20 was cut from 20/15/18/12 enemies to
+8/5/8/6 with the boss arriving at 19.5 s. The scope called for the end of
+the game to matter more; the boss is now very slow and the last wave small.
+
+Paths on Normal, all of one type on A against all on B (comboBuild and the
+specialist build, three maps, my replay): lives now differ in most pairs
+(only Longbow, 3 of 6, and Firepot, 2 of 6, tie often). Tar Pit B never beats
+A (it ties or loses in all six, by up to 12 lives). Mortar B is far worse on
+Meadow and better on one Switchback build. Many of these are cliff results
+(L20 against W2), so lives gaps overstate a difference a player would feel.
+Tar Barrel: removing it gives 17, 12 and 20 lives against 14, 11 and 14.
+
+Panel lines are now twelve plain phrases ("Fires twice as fast", "Burns twice
+as long") and each is true to its numbers. Inferno's "Hotter, shorter burns"
+hides that its single burn now deals 17 against 32 before, and that its range
+and fire rate rose. Changed tests: the Wolf plus or minus one Hard check is
+back as a real check. The wave 200 hp-overflow informational test was removed.
+The designSpec guard catches the act-2 rate, any path row and the endless hp
+line; it does not guard target wording (P2 edit passed) or the Known weaknesses
+list.

@@ -197,3 +197,152 @@ describe('determinism', () => {
     expect(JSON.stringify(run())).toBe(JSON.stringify(run()));
   });
 });
+
+// ---- Re-verify: act 2 hp rule, endless continuation, Grumblemaw ----
+import { continueEndless, tick } from './game';
+import { ENEMY_STATS } from './enemies';
+import type { EnemyType } from './types';
+import type { Difficulty } from './difficulty';
+
+const BASE_HP: Record<string, number> = { goblin: 23, wolf: 20, troll: 950, harpy: 36, shieldbearer: 70, boss: 4000, grumblemaw: 5600 };
+// multiplier m = mn/md, act-2 rate r = rn/rd per wave past 10 (28%, 21.3%, 0%).
+const LEVEL = { easy: { mn: 3, md: 4, rn: 0, rd: 1 }, normal: { mn: 1, md: 1, rn: 28, rd: 100 }, hard: { mn: 6, md: 5, rn: 213, rd: 1000 } } as const;
+/** round half up of base x m x (1 + r x steps) x extra (extra = en/ed), exact integer arithmetic. */
+function handHp(type: string, d: Difficulty, steps: number, en = 1, ed = 1): number {
+  const { mn, md, rn, rd } = LEVEL[d];
+  const num = BASE_HP[type] * mn * (rd + rn * steps) * en;
+  const den = md * rd * ed;
+  return Math.floor((2 * num + den) / (2 * den));
+}
+function spawnedHp(d: Difficulty, wave: number, endless = false): Map<string, number> {
+  const s = createGame({ difficulty: d });
+  s.lives = 1_000_000;
+  if (endless) {
+    s.wave = 20; s.phase = 'won';
+    expect(continueEndless(s).ok).toBe(true);
+    s.wave = wave - 1;
+  } else s.wave = wave - 1;
+  expect(startWave(s).ok).toBe(true);
+  expect(s.wave).toBe(wave);
+  const seen = new Map<string, number>();
+  for (let i = 0; i < 60 * 80 && s.phase === 'wave'; i++) {
+    tick(s);
+    for (const e of s.enemies) if (!seen.has(e.type)) seen.set(e.type, e.hp);
+  }
+  return seen;
+}
+
+describe('act 2 hp rule, by hand', () => {
+  it.each(['easy', 'normal', 'hard'] as const)('%s: waves 1-10 unchanged, 11/15/20 add rate x steps once-rounded', (d) => {
+    for (let w = 1; w <= 10; w++) for (const [type, hp] of spawnedHp(d, w)) expect(hp, `${d} w${w} ${type}`).toBe(handHp(type, d, 0));
+    for (const [w, steps] of [[11, 1], [15, 5], [20, 10]] as const) {
+      const seen = spawnedHp(d, w);
+      expect(seen.size).toBeGreaterThanOrEqual(3);
+      for (const [type, hp] of seen) expect(hp, `${d} w${w} ${type}`).toBe(handHp(type, d, steps));
+    }
+  });
+  it('Hard hp rule for waves 1-10: no ordinary Hard hp is 1 or 2 over a multiple of 12, 4, 25 or 45', () => {
+    for (const type of ['goblin', 'wolf', 'troll', 'harpy', 'shieldbearer']) {
+      const hp = handHp(type, 'hard', 0);
+      for (const d of [12, 4, 25, 45]) expect([1, 2], `${type} ${hp} ${d}`).not.toContain(hp % d);
+    }
+  });
+  it('endless continues from wave 20 with no drop: 21-23 x1.05, 24 x1.89, Normal goblin 87 then 92 then 165', () => {
+    for (const d of ['easy', 'normal', 'hard'] as const) {
+      const w20 = spawnedHp(d, 20);
+      for (const [w, en, ed, steps] of [[21, 105, 100, 10], [22, 105, 100, 10], [24, 189, 100, 10]] as const) {
+        for (const [type, hp] of spawnedHp(d, w, true)) {
+          if (type === 'grumblemaw') continue;
+          expect(hp, `${d} w${w} ${type}`).toBe(handHp(type, d, steps, en, ed));
+          if (w < 24 && w20.has(type)) expect(hp).toBeGreaterThanOrEqual(w20.get(type)!);
+        }
+      }
+    }
+    expect([20, 21, 24].map((w) => spawnedHp('normal', w, w > 20).get('troll'))).toEqual([3610, 3791, 6823]); // 3790.5 rounds up
+    expect([21, 24].map((w) => spawnedHp('normal', w, true).get('goblin'))).toEqual([92, 165]);
+  });
+});
+
+describe('Grumblemaw', () => {
+  it('costs ten lives on exit', () => {
+    expect(ENEMY_STATS.grumblemaw.livesCost).toBe(10);
+    const s = createGame();
+    s.wave = 20; s.phase = 'wave'; s.lives = 20;
+    const len = 5000;
+    s.enemies = [{ id: 1, type: 'grumblemaw' as EnemyType, distance: len, hp: 100, slow: 0, slowTicksLeft: 0 }];
+    for (let i = 0; i < 5; i++) tick(s);
+    expect(s.lives).toBe(10);
+  });
+});
+
+// ---- Re-verify: the act 2 reinvest rule on the combo, replayed purchase by purchase ----
+import { applyAction, applyScriptBoon, comboBuild, ACT_TWO_PLANS, COMBO_PLANS } from './headless';
+import { BOONS } from './boons';
+import { TOWER_DEFS, TOWER_PATHS } from './towers';
+import { cellKey } from './grid';
+import type { MapId } from './map';
+
+describe.each(['meadow', 'switchback', 'riverbend'] as const)('reinvest rule, comboBuild on Normal, %s', (map: MapId) => {
+  it('every purchase after the fixed plan follows the stated order and the per-setup cap', () => {
+    const script = comboBuild('normal', map);
+    const main = map === 'riverbend' ? 'tarpit' : 'longbow';
+    const fixed = [...COMBO_PLANS[map], ...ACT_TWO_PLANS[map]].map((a) => JSON.stringify(a));
+    const state = createGame({ difficulty: 'normal', map });
+    let prevLives: number | undefined;
+    let reinvested = 0;
+    const remaining = [...fixed];
+    for (let i = 0; i < 20 && state.phase === 'setup'; i++) {
+      applyScriptBoon(state, script);
+      const lives = state.lives - (state.boons.includes('stoneWalls') ? BOONS.stoneWalls.value : 0);
+      const costly = prevLives !== undefined && prevLives - lives >= 3;
+      prevLives = lives;
+      let spent = 0, count = 0;
+      for (const action of script[i] ?? []) {
+        const key = JSON.stringify(action);
+        const at = remaining.indexOf(key);
+        if (at >= 0 && remaining.length > 0) {
+          remaining.splice(at, 1);
+          applyAction(state, action);
+          continue;
+        }
+        // A reinvestment purchase: only once the fixed plan is exhausted for this game.
+        expect(remaining, `wave ${i + 1}: reinvesting starts only once the fixed plan is bought`).toEqual([]);
+        if (action.type !== 'build' && action.type !== 'upgrade') throw new Error(`unexpected ${action.type}`);
+        const upgrades = state.towers.filter((t) => t.upgraded && !t.path && TOWER_PATHS[t.type].cost <= state.gold);
+        let cost: number;
+        if (upgrades.length) {
+          const cheapest = Math.min(...upgrades.map((t) => TOWER_PATHS[t.type].cost));
+          const want = upgrades.find((t) => TOWER_PATHS[t.type].cost === cheapest)!;
+          expect(action, `wave ${i + 1} must take the cheapest branch`).toEqual({ type: 'upgrade', cell: want.cell, path: 'A' });
+          cost = cheapest;
+        } else if (state.towers.some((t) => t.type === main && !t.upgraded) && state.gold >= TOWER_DEFS[main].upgradeCost) {
+          expect(action.type).toBe('upgrade');
+          expect('path' in action && action.path).toBeFalsy();
+          cost = TOWER_DEFS[main].upgradeCost;
+        } else {
+          expect(action).toMatchObject({ type: 'build', tower: main });
+          expect(state.towers.some((t) => cellKey(t.cell) === cellKey(action.cell))).toBe(false);
+          cost = TOWER_DEFS[main].cost;
+        }
+        expect(state.gold, `wave ${i + 1} affordable`).toBeGreaterThanOrEqual(cost);
+        const last = state.wave === 19; // the setup before wave 20 spends the reserve
+        if (!last) {
+          if (count > 0) {
+            expect(costly, `wave ${i + 1}: a second purchase needs a 3-life loss`).toBe(true);
+            expect(spent + cost, `wave ${i + 1} cap`).toBeLessThanOrEqual(425);
+          }
+        }
+        spent += cost; count += 1; reinvested += 1;
+        applyAction(state, action);
+      }
+      startWave(state);
+      const timed = script.timed?.[i] ?? [];
+      while ((state.phase as string) === 'wave') {
+        for (const a of timed) if (a.atWaveTick === state.waveTick) applyAction(state, a);
+        tick(state);
+      }
+    }
+    expect(reinvested).toBeGreaterThan(5);
+    expect(state.phase).toBe('won');
+  });
+});
