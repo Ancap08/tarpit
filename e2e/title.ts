@@ -1,8 +1,9 @@
 import type { Page } from '@playwright/test';
 
 /** Phaser registers a scene's buttons on its first rendered frame. */
-export async function waitForFirstScreen(page: Page): Promise<void> {
+export async function waitForFirstScreen(page: Page, { showTips = false } = {}): Promise<void> {
   await page.waitForFunction(() => window.__tarpit?.titleReady?.() && !!window.__tarpit.uiRects()['title:freePlay']);
+  if (!showTips) await page.evaluate(() => window.__tarpit?.setTipsEnabled?.(false));
 }
 
 /** Reach the map and difficulty picker that existing Free play specs exercise. */
