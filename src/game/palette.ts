@@ -208,7 +208,7 @@ export const TEXT = {
   hud: '#f2e6c9',
   hudDim: '#e7cea2',
   button: '#fff4dc',
-  // 4.83:1 against COLORS.buttonDisabled (0x3a3d42); enabled text is 9.98:1.
+  // Contrast against each button surface is checked in ui/themeContrast.test.ts.
   buttonDisabled: '#ddd2bf',
   title: '#f2e6c9',
   subtitle: '#a89f8a',
