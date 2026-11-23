@@ -102,11 +102,11 @@ export class SpecialEffects {
     const text = this.scene.add
       .text(p.x, p.y, message, {
         fontFamily: FONT,
-        fontSize: '18px',
+        fontSize: this.layout.kind === 'portrait' ? '20px' : '18px',
         fontStyle: 'bold',
         color: good ? TEXT.specialHit : TEXT.specialMiss,
-        stroke: '#14161a',
-        strokeThickness: 4,
+        backgroundColor: TEXT.fxStroke,
+        padding: { x: 5, y: 2 },
       })
       .setOrigin(0.5, 1)
       .setDepth(5);

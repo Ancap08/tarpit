@@ -184,13 +184,15 @@ export const COLORS = {
   tarSheen: 0xe6d3ae,
   firePatch: 0xd0471c,
   fireFlame: 0xffb43a,
+  rewardHover: 0xffe8b7,
+  rewardPressed: 0xe4c58d,
   menuBg: 0x1b1f24,
   menuEdge: 0xd9b77e,
 
   // Boss bar (milestone 23): dark trough, red fill, 1 px cream border, dark name pill.
   bossBarBg: 0x15171a,
-  bossBarFill: 0xd0392e,
-  bossBarEdge: 0xf2e6c9,
+  bossBarFill: 0x89382b,
+  bossBarEdge: 0xd3ac63,
   bossNamePill: 0x14161a,
 
   // End screens: dark veil over the map, centred panel
@@ -232,7 +234,7 @@ export const TEXT = {
   goldGain: '#f2c94c',
   waveBanner: '#f2e6c9',
   waveBannerSub: '#f2c94c',
-  bossBanner: '#e0473a',
+  bossBanner: '#ffedcd',
   livesFlash: '#ff9780',
   fxStroke: '#14161a',
 } as const;

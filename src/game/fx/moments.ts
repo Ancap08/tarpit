@@ -1,3 +1,4 @@
+import { panel, THEME } from '../ui/theme';
 import type Phaser from 'phaser';
 import { ACT_ONE_LAST_WAVE, SPECIAL_DEFS, specialAllowed, type GameState, type GameEvent, type MapDef } from '../../sim';
 import { sound } from '../audio/engine';
@@ -24,11 +25,11 @@ export class Moments {
     this.cave = layout.placeWorld(scene.add.graphics());
     this.bannerBg = this.scene.add.graphics();
     this.bannerText = this.scene.add
-      .text(this.bannerX, 0, '', { fontFamily: FONT, fontSize: '30px', fontStyle: 'bold', color: TEXT.waveBanner, stroke: TEXT.fxStroke, strokeThickness: 5 })
+      .text(this.bannerX, 0, '', { fontFamily: FONT, fontSize: '30px', fontStyle: 'bold', color: TEXT.waveBanner })
       .setOrigin(0.5, 0.5)
       .setVisible(false);
     this.bannerSub = this.scene.add
-      .text(this.bannerX, 0, '', { fontFamily: FONT, fontSize: fontPx(this.layout, 17), fontStyle: 'bold', color: TEXT.waveBannerSub, stroke: TEXT.fxStroke, strokeThickness: 4 })
+      .text(this.bannerX, 0, '', { fontFamily: FONT, fontSize: fontPx(this.layout, 17), fontStyle: 'bold', color: TEXT.waveBannerSub })
       .setOrigin(0.5, 0.5)
       .setVisible(false);
   }
@@ -130,7 +131,7 @@ export class Moments {
         this.bannerSub.setText(b.sub).setY(y + (b.big ? 36 : 28)).setVisible(b.sub !== '');
         const w = Math.max(this.bannerText.width, this.bannerSub.width) + 48;
         const h = b.sub === '' ? 52 : b.big ? 100 : 84;
-        this.bannerBg.fillStyle(COLORS.aimBanner, 0.7).fillRoundedRect(this.bannerX - w / 2, y - 30, w, h, 10);
+        panel(this.bannerBg, { x: this.bannerX - w / 2, y: y - 30, width: w, height: h }, b.big ? THEME.red : THEME.blue);
       }
     }
     if (cur !== null) {

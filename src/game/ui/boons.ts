@@ -4,6 +4,7 @@ import { contains } from '../input';
 import type { Layout } from '../layout';
 import { BOON_NAMES, REWARD_KEYS, boonDescription, rewardTitle } from '../names';
 import { COLORS, FONT, TEXT } from '../palette';
+import { ink, panel, THEME } from './theme';
 import { drawBoonIcon } from './boonIcons';
 import { heldBoonLayout, rewardLayout } from './boonLayout';
 
@@ -28,22 +29,24 @@ export class BoonReward {
     this.geo = rewardLayout(layout);
     this.view = scene.add.container(0, 0).setDepth(REWARD_DEPTH).setVisible(false);
     const veil = scene.add.rectangle(m.x, m.y, m.width, m.height, COLORS.endVeil, 0.8).setOrigin(0);
-    this.title = label(scene, 30, TEXT.victory, true).setOrigin(0.5).setPosition(this.geo.title.x, this.geo.title.y);
+    this.title = label(scene, 30, TEXT.hud, true).setOrigin(0.5).setPosition(this.geo.title.x, this.geo.title.y);
     this.view.add([veil, this.title]);
     const origin = layout.kind === 'portrait' ? 0 : 0.5;
     this.cards = this.geo.cards.map((r, i) => {
       const { icon: g, name: n, description: d } = this.geo;
-      const card = scene.add.rectangle(r.x, r.y, r.width, r.height, COLORS.menuBg).setOrigin(0)
+      const card = scene.add.rectangle(r.x, r.y, r.width, r.height, THEME.paper).setOrigin(0)
         .setStrokeStyle(2, COLORS.menuEdge).setInteractive({ useHandCursor: true });
+      const print = scene.add.graphics();
+      panel(print, r);
       const centerX = r.x + g.x;
       const centerY = r.y + g.y;
       const tile = scene.add.circle(centerX, centerY, 19 * g.scale, COLORS.button)
         .setStrokeStyle(1.5, COLORS.menuEdge);
       const icon = scene.add.graphics().setPosition(centerX, centerY).setScale(g.scale);
-      const name = label(scene, n.font, TEXT.button, true).setOrigin(origin, 0.5).setPosition(r.x + n.x, r.y + n.y);
-      const effect = label(scene, d.font, TEXT.button).setOrigin(origin, 0.5).setPosition(r.x + d.x, r.y + d.y)
+      const name = label(scene, n.font, ink, true).setOrigin(origin, 0.5).setPosition(r.x + n.x, r.y + n.y);
+      const effect = label(scene, d.font, ink).setOrigin(origin, 0.5).setPosition(r.x + d.x, r.y + d.y)
         .setAlign(layout.kind === 'portrait' ? 'left' : 'center').setWordWrapWidth(this.geo.textWidth, true);
-      this.view.add([card, tile, icon, name, effect]);
+      this.view.add([card, print, tile, icon, name, effect]);
       if (layout.kind === 'landscape') {
         const keyX = r.x + 22;
         const keyY = r.y + 22;
@@ -52,22 +55,22 @@ export class BoonReward {
         this.view.add([keycap, key]);
       }
       let pressed = false;
-      card.on('pointerover', () => card.setFillStyle(COLORS.buttonHover).setStrokeStyle(2, COLORS.buttonEdgePicked));
+      card.on('pointerover', () => panel(print.clear(), r, COLORS.rewardHover));
       card.on('pointerout', () => {
         pressed = false;
-        card.setFillStyle(COLORS.menuBg).setStrokeStyle(2, COLORS.menuEdge);
+        panel(print.clear(), r);
       });
       card.on('pointerdown', (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
         event.stopPropagation();
         pressed = true;
-        card.setFillStyle(COLORS.buttonPressed);
+        panel(print.clear(), r, COLORS.rewardPressed);
       });
       card.on('pointerup', (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
         event.stopPropagation();
         const id = this.offer?.options[i];
         const pick = pressed && id !== undefined;
         pressed = false;
-        card.setFillStyle(COLORS.menuBg).setStrokeStyle(2, COLORS.menuEdge);
+        panel(print.clear(), r);
         if (pick) onPick(id);
       });
       if (card.input) card.input.enabled = false;
@@ -153,9 +156,10 @@ export class HeldBoons {
       return { view, icon, box };
     });
     const r = this.geo.tooltip;
-    const bg = scene.add.rectangle(0, 0, r.width, r.height, COLORS.menuBg).setOrigin(0).setStrokeStyle(2, COLORS.menuEdge);
-    this.name = label(scene, 20, TEXT.button, true).setOrigin(0, 0.5).setPosition(14, r.height * 0.3);
-    this.effect = label(scene, this.geo.descriptionFont, TEXT.hud).setOrigin(0, 0.5).setPosition(14, r.height * 0.68)
+    const bg = scene.add.graphics();
+    panel(bg, { ...r, x: 0, y: 0 });
+    this.name = label(scene, 20, ink, true).setOrigin(0, 0.5).setPosition(14, r.height * 0.3);
+    this.effect = label(scene, this.geo.descriptionFont, ink).setOrigin(0, 0.5).setPosition(14, r.height * 0.68)
       .setWordWrapWidth(r.width - 28, true);
     this.detail = scene.add.container(r.x, r.y, [bg, this.name, this.effect]).setDepth(HELD_DEPTH).setVisible(false);
     scene.scale.on('resize', this.fit, this);

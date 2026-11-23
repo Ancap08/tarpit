@@ -30,6 +30,28 @@ identifiers and labels.
 
 The Guards are an Axeman, a Swordsman, an Archer and a Captain.
 
+## Theme and screens
+
+Both looks use the same printed furniture. The title is a parchment broadside
+pinned to wood boards, with a capital masthead, a red proclamation ribbon and
+a town silhouette. A double keyline frames the paper. Brass-edged wood
+plaques carry cream lettering. Town blue marks a selection and the King's
+red marks a warning. The ink is #352216, parchment #f1dfb5, wood #422919,
+brass #b68a48, blue #254a57 and red #843629.
+
+Libre Caslon Text Regular and Bold ship with the game. Boot loads the Latin
+faces before Phaser measures text, including in test mode. If either request
+fails or the pair takes more than two seconds, the session uses Courier New
+with a monospace fallback. The service worker caches both weights. Running
+totals, prices and timers use the typewriter digits because Caslon's figures
+have different advances. Star awards and locks are drawn shapes.
+
+The HUD is a wooden counter. A coin sits beside Gold in landscape. The level
+map traces a road between ten plaques, with brass locks, star slots and a
+blue next stop. Cards and results use dark type on paper. The reward offer
+uses the same paper for each choice. Wave and boss banners use blue and red
+respectively. Changing the look changes the battlefield art.
+
 ## Space and time
 
 - The canvas is 960 x 580 px. The map uses the top 960 x 480; the HUD uses
@@ -242,7 +264,7 @@ the buttons hit-testable only from the scene's next update after
 In landscape, the campaign level or Easy/Hard tag sits below the wave
 counter. The 18 px counter moves up 9 px and the 12 px tag sits 12 px
 below row centre. Their fixed heights (22 and 15 px) leave a 2.5 px gap.
-Portrait keeps both labels at 18 px on one line with a 7 px gap.
+Portrait sets both labels at 20 px on one line with a 7 px gap.
 Normal Free play has no tag. The end
 screens have [Play again] (same level and map) and a 100 x 42 [Menu]
 beside it that returns to the title; the win screen also has [Keep going].
@@ -451,7 +473,7 @@ emits `boonOffered` with the cleared wave and options. Picking clears the
 offer and emits `boonPicked` with the wave and selected id.
 
 Each reward card shows its name, a drawn icon and a short sentence using the
-value in the table below. The cream effect text is 18 px in landscape and
+value in the table below. The dark ink effect text is 18 px in landscape and
 22 px in portrait and can wrap to two lines. The three cards sit in a row
 in landscape (296 x 168 px, 14 px gap) and a column in portrait
 (448 x 112 px, 12 px gap). Sticky Tar shows a boot pulling strands from a
@@ -472,7 +494,7 @@ in a column beside the board. The portrait preview keeps its full 468 px.
 Hover or tap an icon to read its name and effect for up to 2.8 s.
 
 The win and loss screens list the names under “Rewards” in 14 px text in
-landscape and 18 px in portrait. The portrait list wraps above the buttons.
+landscape and 20 px in portrait. The portrait list wraps above the buttons.
 Turning the device keeps the run, any open offer and all chosen rewards.
 Reloading starts a new run.
 
@@ -1205,11 +1227,11 @@ drawn and where touches land differ.
   each the tower's map shape over its cost, because a name at 18 px does
   not fit 75 px) and a row with Special (130 x 70), Start Wave (214 x 70)
   and speed (114 x 70); milestone 33 narrowed Start Wave to 170 and speed
-  to 82 for the 70 x 70 mute button at the row's end ("Sound"). The tower buttons are 4 px apart and the second row's 6 px; both rows start 5 px from the edge. Portrait text is 18 px or more.
+  to 82 for the 70 x 70 mute button at the row's end ("Sound"). The tower buttons are 4 px apart and the second row's 6 px; both rows start 5 px from the edge. The main portrait controls use 20 px type. The next-wave preview fits two lines in the remaining strip height.
   On a 390 x 763 CSS px phone (standalone, inside the safe areas) the
-  canvas fits at 0.639: buttons are 44.7 CSS px, text 11.5 CSS px and a
+  canvas fits at 0.639: buttons are 44.7 CSS px, 20 px text 12.8 CSS px and a
   map cell 20.5 CSS px. With Safari's bars (390 x 664) the scale is 0.556:
-  buttons 38.9, text 10.0 and cells 17.8 CSS px.
+  buttons 38.9, text 11.1 and cells 17.8 CSS px.
 - **The transform.** `src/game/layout.ts` owns every world-to-screen and
   screen-to-world conversion. Portrait: screen x = 480 - world y, screen
   y = 76 + world x (world x runs down the screen, world y right to left).
@@ -1238,7 +1260,7 @@ drawn and where touches land differ.
   is a 360 px bar at the map's top. A shake moves the map sideways only
   (the strip is above it and the controls below), with grass at the
   uncovered side. End screens stack their buttons
-  (280 x 70). The title stacks the title, the level row (144 x 70), the map
+  (280 x 70). The Free play picker stacks the title, the difficulty row (144 x 70), the map
   row (144 x 116), the best line, Play (260 x 80) and the prompt.
 - **Switching.** When the window changes shape (`layoutSwitch.ts`) the
   canvas takes the new size and the running scene rebuilds: the title keeps

@@ -113,6 +113,7 @@
 // which keeps it if it beats the stored best for this map and level.
 
 import Phaser from 'phaser';
+import { panel, THEME } from './ui/theme';
 import {
   buildTower,
   callEarlyStatus,
@@ -1624,9 +1625,9 @@ export class GameScene extends Phaser.Scene {
         const top = this.layout.map.y + BANNER_Y;
         const h = showFallback ? this.bannerMain.height + BANNER_MAIN_Y : BANNER_H;
         this.bannerMain.setY(top + (showFallback ? h / 2 : BANNER_MAIN_Y));
-        this.bannerBg.fillStyle(COLORS.aimBanner, 0.82).fillRoundedRect(this.bannerX - w / 2, top, w, h, 8);
+        panel(this.bannerBg, { x: this.bannerX - w / 2, y: top, width: w, height: h }, THEME.wood);
         if (text !== null) {
-          this.bannerBg.lineStyle(2, SPECIAL_COLORS[this.aiming!], 1).strokeRoundedRect(this.bannerX - w / 2, top, w, h, 8);
+          this.bannerBg.fillStyle(SPECIAL_COLORS[this.aiming!]).fillCircle(this.bannerX - w / 2 + 6, top + h / 2, 3);
         }
       }
     }

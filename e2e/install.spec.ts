@@ -330,6 +330,10 @@ self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));`,
     await goOffline(context, server.close);
     await page.reload();
     await playStarts(page);
+    const weights = await page.evaluate(() => [...document.fonts]
+      .filter((face) => face.family.replace(/["']/g, '') === 'Libre Caslon Text' && face.status === 'loaded')
+      .map((face) => face.weight).sort());
+    expect(weights).toEqual(['400', '700']);
     expect(await page.evaluate(() => localStorage.getItem('tarpit.best'))).toBe(BEST);
     await context.setOffline(false);
   });

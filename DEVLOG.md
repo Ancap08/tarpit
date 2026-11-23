@@ -9322,3 +9322,16 @@ bars. Wave previews use their compact names and keep the count-first format.
 Level 9 is The King's Assessor. Both first-screen layouts introduce the King's
 demand for the town's gold. New players start in Painted. A saved choice or
 visit override still applies, and a fresh test-mode visit starts in Classic.
+
+## 2026-11-24: milestone 44c, the font and the themed screens
+
+The first screen is a tavern broadside, the battle controls sit on a wood
+counter, and the campaign road, cards and rewards are printed on parchment.
+Both looks share the furniture. Review JPEGs cover nine views in landscape
+and portrait under `docs/review/m44c/`.
+
+The approved local Caslon weights use proportional figures. Running HUD
+figures retain the typewriter advances. Both weights must load before the
+two-second deadline to prevent a late change in measured label widths.
+The browser checks exercise a blocked font through a purchase and wave,
+tall fallback metrics in both menus and the HUD, and cached fonts offline.

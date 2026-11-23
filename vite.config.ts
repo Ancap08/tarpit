@@ -32,9 +32,13 @@ export default defineConfig({
     chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
-        assetFileNames: ({ originalFileNames }) => originalFileNames.some((path) => path.startsWith('assets/art-painted/'))
-          ? `${PAINTED_ASSET_DIR}[name]-[hash][extname]`
-          : 'assets/[name]-[hash][extname]',
+        assetFileNames: ({ originalFileNames }) => {
+          if (originalFileNames.some((path) => path.startsWith('assets/art-painted/')))
+            return `${PAINTED_ASSET_DIR}[name]-[hash][extname]`;
+          if (originalFileNames.some((path) => path.startsWith('assets/fonts/')))
+            return 'assets/fonts/[name]-[hash][extname]';
+          return 'assets/[name]-[hash][extname]';
+        },
       },
     },
   },

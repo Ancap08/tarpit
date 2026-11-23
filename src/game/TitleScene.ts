@@ -109,7 +109,7 @@ const LANDSCAPE_TITLE: TitleGeometry = {
   levelW: LEVEL_BUTTON_W,
   levelH: MENU_BUTTON_H,
   gap: LEVEL_GAP,
-  mapCaptionY: MAP_ROW_Y - 14,
+  mapCaptionY: MAP_ROW_Y - 19,
   mapY: MAP_ROW_Y,
   mapH: MAP_BUTTON_H,
   thumbW: THUMB_W,
@@ -332,7 +332,8 @@ export class TitleScene extends Phaser.Scene {
       town(paper, cx, portrait ? 938 : 493);
     }
     this.add
-      .text(cx, titleY, first ? TITLE_TEXT.title.toUpperCase() : TITLE_TEXT.title, { fontFamily: FONT, fontSize: '72px', fontStyle: 'bold', color: ink })
+      .text(cx, titleY, first ? TITLE_TEXT.title.toUpperCase() : TITLE_TEXT.title, { fontFamily: FONT, fontSize: '72px', fontStyle: 'bold', color: ink,
+        metrics: { ascent: 59, descent: 16, fontSize: 75 } })
       .setOrigin(0.5);
     const subtitleStyle = { fontFamily: FONT, fontSize: '24px', color: ink };
     if (first) {
@@ -349,11 +350,11 @@ export class TitleScene extends Phaser.Scene {
     const lookHeight = portrait ? geo.levelH : MENU_BUTTON_H;
     const lookX = cx - (captionWidth + lookWidth * 2 + geo.gap) / 2;
     this.add
-      .text(lookX, 14 + lookHeight / 2, TITLE_TEXT.look, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: ink })
+      .text(lookX, 14 + lookHeight / 2, TITLE_TEXT.look, { fontFamily: FONT, fontSize: portrait ? '20px' : '18px', fontStyle: 'bold', color: ink })
       .setOrigin(0, 0.5);
     LOOKS.forEach((look, index) => {
       const rect = { x: lookX + captionWidth + index * (lookWidth + geo.gap), y: 14, width: lookWidth, height: lookHeight };
-      const button = new Button(this, rect, TITLE_TEXT[look], () => this.selectLook(look));
+      const button = new Button(this, rect, TITLE_TEXT[look], () => this.selectLook(look), { fontSize: portrait ? '20px' : '18px' });
       this.lookButtons.set(look, button);
     });
 
@@ -383,7 +384,7 @@ export class TitleScene extends Phaser.Scene {
     this.action('title:back', portrait ? { x: 130, y: 1020, width: 220, height: 74 }
       : { x: 28, y: 496, width: 120, height: MENU_BUTTON_H }, CAMPAIGN_TEXT.back, () => this.visit('first'));
     this.add
-      .text(cx, geo.levelCaptionY, TITLE_TEXT.difficulty, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: ink })
+      .text(cx, geo.levelCaptionY, TITLE_TEXT.difficulty, { fontFamily: FONT, fontSize: portrait ? '20px' : '18px', fontStyle: 'bold', color: ink })
       .setOrigin(0.5);
     const rects = titleRects(geo, cx);
     DIFFICULTIES.forEach((level, i) => {
@@ -393,7 +394,7 @@ export class TitleScene extends Phaser.Scene {
 
     // The map row (milestone 27): a caption, then a thumbnail button per map.
     this.add
-      .text(cx, geo.mapCaptionY, TITLE_TEXT.map, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: ink })
+      .text(cx, geo.mapCaptionY, TITLE_TEXT.map, { fontFamily: FONT, fontSize: portrait ? '20px' : '18px', fontStyle: 'bold', color: ink })
       .setOrigin(0.5);
     MAP_IDS.forEach((map, i) => {
       const rect = rects.maps[i];
@@ -409,7 +410,7 @@ export class TitleScene extends Phaser.Scene {
     });
 
     this.bestLine = this.add
-      .text(cx, geo.bestY, '', { fontFamily: FONT, fontSize: `${BEST_LINE_SIZE}px`, fontStyle: 'bold', color: ink })
+      .text(cx, geo.bestY, '', { fontFamily: FONT, fontSize: portrait ? '20px' : `${BEST_LINE_SIZE}px`, fontStyle: 'bold', color: ink })
       .setOrigin(0.5);
 
     this.playButton = new Button(
@@ -421,7 +422,7 @@ export class TitleScene extends Phaser.Scene {
     );
 
     this.prompt = this.add
-      .text(cx, geo.promptY, TITLE_TEXT.prompt, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: ink })
+      .text(cx, geo.promptY, TITLE_TEXT.prompt, { fontFamily: FONT, fontSize: portrait ? '20px' : '18px', fontStyle: 'bold', color: ink })
       .setOrigin(0.5);
     if (geo.promptWrap > 0) this.prompt.setAlign('center').setWordWrapWidth(geo.promptWrap, true);
 
@@ -473,7 +474,10 @@ export class TitleScene extends Phaser.Scene {
     const progress = this.progress;
     const portrait = currentLayout().kind === 'portrait';
     const playFont = portrait ? PORTRAIT_TITLE.playFont : LANDSCAPE_TITLE.playFont;
-    this.playButton?.setFontSize(progress === null ? playFont : portrait ? '17px' : '13px');
+    if (this.playButton) {
+      this.playButton.labelObjects[0].setWordWrapWidth(progress === null ? 0 : this.playButton.rect.width - 12);
+    }
+    this.playButton?.setFontSize(progress === null ? playFont : portrait ? '20px' : '16px');
     this.playButton?.set(progress === null ? (this.page === 'levelTips' ? CAMPAIGN_TEXT.gotIt : TITLE_TEXT.play) : paintedLoadingText(progress), progress === null);
   }
 

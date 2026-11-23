@@ -8,9 +8,10 @@
 
 import type Phaser from 'phaser';
 import { enemyMaxHp, isBoss, type GameState } from '../../sim';
+import { panel, THEME } from './theme';
 import { ENEMY_NAMES } from '../names';
-import { LANDSCAPE, PORTRAIT_MIN_FONT, type Layout } from '../layout';
-import { COLORS, FONT, TEXT } from '../palette';
+import { LANDSCAPE, type Layout } from '../layout';
+import { COLORS, FONT, HUD_FONT, TEXT } from '../palette';
 
 export const BOSS_BAR = { x: 330, y: 24, width: 300, height: 14 } as const;
 /** The name pill: 18 px tall, ending 2 px above the bar, flush with its left end. */
@@ -38,8 +39,8 @@ export function bossBarGeometry(layout: Layout): BossBarGeometry {
   return {
     bar: { x: m.x + (m.width - width) / 2, y: m.y + 34, width, height: 22 },
     pill: { y: m.y + 6, height: 26, padX: 6 },
-    nameSize: PORTRAIT_MIN_FONT,
-    hpSize: PORTRAIT_MIN_FONT,
+    nameSize: 20,
+    hpSize: 20,
   };
 }
 
@@ -87,7 +88,7 @@ export class BossBar {
       .setOrigin(0, 0.5);
     this.hp = scene.add
       .text(BOSS_BAR.x + BOSS_BAR.width - 4, BOSS_BAR.y + BOSS_BAR.height / 2, '', {
-        fontFamily: FONT,
+        fontFamily: HUD_FONT,
         fontSize: `${geo.hpSize}px`,
         fontStyle: 'bold',
         color: TEXT.bossHp,
@@ -122,8 +123,7 @@ export class BossBar {
     const g = this.g;
     g.clear();
     // Name pill, sized to the name.
-    g.fillStyle(COLORS.bossNamePill, 0.85);
-    g.fillRoundedRect(x, BOSS_PILL.y, Math.ceil(this.name.displayWidth) + 2 * BOSS_PILL.padX, BOSS_PILL.height, 5);
+    panel(g, { x, y: BOSS_PILL.y, width: Math.ceil(this.name.displayWidth) + 2 * BOSS_PILL.padX, height: BOSS_PILL.height }, THEME.red);
     // Border, trough, fill.
     g.fillStyle(COLORS.bossBarEdge, 1);
     g.fillRect(x - 1, y - 1, width + 2, height + 2);
