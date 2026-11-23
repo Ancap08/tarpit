@@ -1336,6 +1336,13 @@ can change it; "Kyle" means Kyle decided.
   numbers. Players on Android and Windows would have seen it. The overlap
   cases now run a second time with font metrics 20% taller, so the next
   one fails on any machine. Fable (cause, rule), Codex (fix).
+- **A check must give the same answer on every machine.** The first
+  tall-font guard multiplied each machine's own font heights, so it passed
+  on the Mac and failed on CI three times running, each time on a new
+  1 to 4 px overlap (the HUD's level label, the level card, the result
+  title). The coordinator had asked for a multiplier. The guard now uses
+  fixed heights (1.20 em above the line, 0.45 em below), and on the Mac it
+  reports the same overlaps CI did. Fable (mistake and rule), Codex (fix).
 - **The controls offer only what the level allows.** The first build let
   a player pick a tower the level forbids and then refused to place it,
   and showed second-upgrade buttons that could not work. Found by the
