@@ -1,3 +1,4 @@
+import { waitForTitle } from './title';
 import assert from 'node:assert/strict';
 import { expect, test, type Page } from '@playwright/test';
 import type { TarpitTestApi } from '../src/game/testGlobal';
@@ -243,7 +244,7 @@ test('enemy sprites sit on the turned path, face the way they move on screen, on
     expect([...kinds].length, `${map} kinds ${[...kinds]}`).toBeGreaterThanOrEqual(2);
     // go back to the title for the next map
     await page.evaluate(() => (window.__tarpit!.game.scene.getScene('game') as unknown as { toMenu(): void }).toMenu());
-    await page.waitForFunction(() => window.__tarpit?.titleReady?.() === true);
+    await waitForTitle(page);
   }
 });
 
@@ -442,11 +443,11 @@ test('switching during a drag, aim, panel, speed hold, shake, end screen and tit
   expect(await api(page, (a) => a.endScreen())).toBe(e);
   // title
   await page.evaluate(() => (window.__tarpit!.game.scene.getScene('game') as unknown as { toMenu(): void }).toMenu());
-  await page.waitForFunction(() => window.__tarpit?.titleReady?.() === true);
+  await waitForTitle(page);
   await tap(page, 'title:hard');
   await tap(page, 'title:map:riverbend');
   await flip();
-  await page.waitForFunction(() => window.__tarpit?.titleReady?.() === true);
+  await waitForTitle(page);
   const t = (await ui(page)) as unknown as { difficulty: string; map: string };
   expect(t).toMatchObject({ difficulty: 'hard', map: 'riverbend' });
 });
@@ -480,7 +481,7 @@ test('an upright iPad (768 x 1024) gets portrait and is usable', async ({ browse
 // (dark band and divider line) into the top 6 to 8 px of the map for the shake's 220 to 600 ms.
 test('a shake never shows the status strip inside the map', async ({ page }) => {
   await page.goto('/');
-  await page.waitForFunction(() => window.__tarpit?.titleReady?.() === true);
+  await waitForTitle(page);
   await tap(page, 'title:play');
   await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game'));
   const minY = await page.evaluate(
@@ -588,7 +589,7 @@ test('switch edge: the title to game transition, a won screen, Keep going', asyn
 
 test('switch edge: the live loop never runs extra ticks across a burst of switches', async ({ page }) => {
   await page.goto('/');
-  await page.waitForFunction(() => window.__tarpit?.titleReady?.() === true);
+  await waitForTitle(page);
   await tap(page, 'title:play');
   await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game'));
   await tap(page, 'startWave');

@@ -208,7 +208,7 @@ import type { GameStartData as TitleStartData } from './TitleScene';
 import { ticksDue } from './loop';
 import { BAR_TYPES, canPick } from './ui/buildBar';
 import { EndScreen } from './ui/endScreen';
-import { endKind, type EndKind } from './ui/endText';
+import { campaignResultText, endKind, type EndKind } from './ui/endText';
 import { TowerPanel } from './ui/towerPanel';
 import type { PathChoice } from './ui/towerPanelModel';
 import {
@@ -644,7 +644,11 @@ export class GameScene extends Phaser.Scene {
       this.layout,
       () => this.playAgain(),
       () => this.toMenu(),
-      () => this.continueEndless(),
+      () => {
+        const next = this.campaignResult()?.nextId;
+        if (next) this.leaveForTitle({ screen: 'levelCard', levelId: next });
+        else this.continueEndless();
+      },
     );
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
@@ -1261,6 +1265,10 @@ export class GameScene extends Phaser.Scene {
     return this.endScreen?.kind ?? null;
   }
 
+  campaignResult() {
+    return this.endScreen?.result ?? null;
+  }
+
   /** The map this game runs on (milestone 27). */
   get mapId(): MapId {
     return this.currentMap;
@@ -1272,17 +1280,21 @@ export class GameScene extends Phaser.Scene {
     this.leaving = true;
     this.restartPending = false;
     this.resume = null;
-    const data: GameStartData = { difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets };
+    const data: GameStartData = { difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, paintedFallback: this.paintedFallback };
     this.scene.restart(data);
   }
 
   /** Back to the title menu (milestone 25), which still shows the level and (milestone 27) map just played. */
   toMenu(): void {
+    this.leaveForTitle({ screen: this.state.level ? 'levelMap' : 'freePlay' });
+  }
+
+  private leaveForTitle(destination: { screen: 'levelMap' | 'freePlay' | 'levelCard'; levelId?: number }): void {
     if (this.leaving) return;
     this.leaving = true;
     this.restartPending = false;
     this.resume = null;
-    this.scene.start('title');
+    this.scene.start('title', destination);
   }
 
   update(_time: number, delta: number): void {
@@ -1632,7 +1644,8 @@ export class GameScene extends Phaser.Scene {
     this.pick = null;
     this.press = null;
     this.cancelSpecial();
-    this.endScreen.show(kind, this.state);
+    const campaign = this.state.level ? campaignResultText(this.state, campaignProgress.table()) : null;
+    this.endScreen.show(kind, this.state, campaign);
   }
 
   private redrawUi(): void {

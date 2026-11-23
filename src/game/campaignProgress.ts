@@ -21,17 +21,25 @@ export class CampaignProgressStore {
     return stored;
   }
 
+  replaceForTest(table: CampaignProgress): void {
+    this.save(parseProgress(serializeProgress(table)));
+  }
+
   record(id: number, stars: number): boolean {
     const progress = this.table();
     const next = mergeProgress(progress, id, stars);
     if (next === progress) return false;
+    this.save(next);
+    return true;
+  }
+
+  private save(next: CampaignProgress): void {
     this.memory = next;
     try {
       this.getStorage()?.setItem(CAMPAIGN_PROGRESS_KEY, serializeProgress(next));
     } catch {
       // Keep the best stars for this page session when storage is unavailable.
     }
-    return true;
   }
 }
 

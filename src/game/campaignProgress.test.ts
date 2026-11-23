@@ -55,3 +55,18 @@ describe('campaign progress', () => {
     expect(inaccessible.table()).toEqual({ 1: 2 });
   });
 });
+
+it('replaces both in-memory and saved stars when setting up a test screen', () => {
+  let saved: string | null = null;
+  const storage = {
+    getItem: () => saved,
+    setItem: (_key: string, value: string) => { saved = value; },
+  };
+  const store = new CampaignProgressStore(() => storage);
+  store.record(1, 3);
+  store.replaceForTest({ 1: 1, 2: 2 });
+  expect(store.table()).toEqual({ 1: 1, 2: 2 });
+  store.replaceForTest({});
+  expect(store.table()).toEqual({});
+  expect(new CampaignProgressStore(() => storage).table()).toEqual({});
+});

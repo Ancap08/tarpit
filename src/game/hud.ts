@@ -59,6 +59,7 @@ import {
   BOSS_WAVE_NEXT_TEXT,
   LAST_WAVE_TEXT,
   callEarlyLabel,
+  levelNumberText,
   blockedWaveLabel,
   CHEAT_MARK,
   DIFFICULTY_LABELS,
@@ -440,7 +441,7 @@ export class Hud {
     // The sim lets lives go below 0 (the boss's exit costs 5); the HUD shows 0.
     set(this.lives, `Lives ${Math.max(0, state.lives)}`);
     set(this.wave, waveCounterText(state.wave, state.endless, lastWave(state)));
-    const tag = difficultyTag(state.difficulty);
+    const tag = state.level ? levelNumberText(state.level.id) : difficultyTag(state.difficulty);
     set(this.tag, tag);
     if (m.portrait) {
       // One row: each stat starts after the one before it; the cheat mark is right-aligned.
@@ -449,6 +450,8 @@ export class Hud {
       this.lives.setX(this.livesX + dx);
       this.wave.setX(this.livesX + this.lives.width + m.flowGap);
       this.tag.setX(this.wave.x + this.wave.width + m.flowGap / 2);
+      const rightEdge = state.cheated ? this.cheatMark.x - this.cheatMark.width - 4 : PORTRAIT_WIDTH;
+      this.tag.setVisible(this.tag.x + this.tag.width <= rightEdge);
     } else {
       this.gold.setY(state.cheated ? MID - 6 : MID);
       this.wave.setY(tag ? MID + WAVE_TAG_SHIFT : MID);

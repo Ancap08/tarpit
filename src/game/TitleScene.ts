@@ -46,12 +46,15 @@
 // score.
 
 import Phaser from 'phaser';
-import { DEFAULT_DIFFICULTY, DEFAULT_MAP, DIFFICULTIES, MAP_IDS, MAPS, type Difficulty, type MapId } from '../sim';
+import { DEFAULT_DIFFICULTY, DEFAULT_MAP, DIFFICULTIES, LEVELS, MAP_IDS, MAPS, type Difficulty, type MapId, type LevelDef } from '../sim';
 import { loadEnemySheets } from './anim/enemySprites';
 import { drawMapThumbnail } from './draw/map';
 import type { Rect } from './input';
 import { highScores } from './highScore';
-import { bestScoreText, DIFFICULTY_LABELS, MAP_NAMES, paintedLoadingText, TITLE_TEXT } from './names';
+import { campaignProgress } from './campaignProgress';
+import { campaignStops, type CampaignStop } from './ui/campaignMap';
+import { drawCampaignMap, drawLevelCard } from './ui/campaignScreens';
+import { CAMPAIGN_TEXT, lockedLevelText, bestScoreText, DIFFICULTY_LABELS, MAP_NAMES, paintedLoadingText, TITLE_TEXT } from './names';
 import { COLORS, FONT, TEXT } from './palette';
 import { currentLayout } from './layoutSwitch';
 import { Button } from './ui/button';
@@ -121,7 +124,14 @@ const LANDSCAPE_TITLE: TitleGeometry = {
   promptWrap: 0,
 };
 
+export type TitleScreen = 'first' | 'freePlay' | 'levelMap' | 'levelCard';
+interface TitleVisit { screen?: TitleScreen; levelId?: number }
+
 export interface TitleUiState {
+  screen: TitleScreen;
+  stops: CampaignStop[];
+  lockedMessage: string | null;
+  levelId: number | null;
   scene: 'title';
   difficulty: Difficulty;
   /** The selected map (milestone 27). */
@@ -137,6 +147,7 @@ export interface TitleUiState {
 
 /** Data GameScene is started with. */
 export interface GameStartData {
+  level?: LevelDef;
   difficulty: Difficulty;
   /** The map (milestone 27); Meadow when left out. */
   map?: MapId;
@@ -145,6 +156,12 @@ export interface GameStartData {
 }
 
 export class TitleScene extends Phaser.Scene {
+  private page: TitleScreen = 'first';
+  private card?: LevelDef;
+  private mapStops: CampaignStop[] = [];
+  private lockedMessage: string | null = null;
+  private lockLabel?: Phaser.GameObjects.Text;
+  private campaignButtons = new Map<string, Button>();
   /** The selected level; kept across visits to the menu for the page session. */
   private selected: Difficulty = DEFAULT_DIFFICULTY;
   private levelButtons = new Map<Difficulty, Button>();
@@ -178,10 +195,35 @@ export class TitleScene extends Phaser.Scene {
     // One queued restart serves a burst of requests; its create() reads the newest layout.
     if ((this.starting && this.progress === null) || this.restartPending) return;
     this.restartPending = true;
-    this.scene.restart();
+    this.ready = false;
+    this.scene.restart({ screen: this.page, levelId: this.card?.id });
+  }
+
+  refreshProgress(): void {
+    if (this.page === 'levelMap' || this.page === 'levelCard') this.relayout();
   }
 
   private restartPending = false;
+
+  init(visit?: TitleVisit): void {
+    this.page = visit?.screen ?? 'first';
+    this.card = this.page === 'levelCard' ? LEVELS.find(level => level.id === visit?.levelId) : undefined;
+    if (this.page === 'levelCard' && !this.card) this.page = 'levelMap';
+  }
+
+  private visit(screen: TitleScreen, levelId?: number): void {
+    if (this.starting || this.restartPending) return;
+    this.lockedMessage = null;
+    this.page = screen;
+    this.card = LEVELS.find(level => level.id === levelId);
+    this.relayout();
+  }
+
+  private action = (key: string, rect: Rect, text: string, click: () => void, size = 22): Button => {
+    const button = new Button(this, rect, text, click, { fontSize: `${size}px` });
+    this.campaignButtons.set(key, button);
+    return button;
+  };
 
   create(): void {
     const { width } = this.scale;
@@ -201,16 +243,84 @@ export class TitleScene extends Phaser.Scene {
       this.ready = true;
     });
 
+    this.campaignButtons.clear();
+    this.levelButtons.clear();
+    this.mapButtons.clear();
+    this.lookButtons.clear();
+    this.playButton = null;
+    this.prompt = null;
+    this.bestLine = null;
+    this.muteButton = null;
+    this.lockLabel = undefined;
+    this.mapStops = [];
+    const portrait = currentLayout().kind === 'portrait';
+
+    if (this.page === 'levelMap') {
+      this.mapStops = campaignStops(portrait, campaignProgress.table());
+      this.lockLabel = drawCampaignMap(this, portrait, this.mapStops, this.lockedMessage, this.action, stop => {
+        if (stop.open) this.visit('levelCard', stop.id);
+        else {
+          this.lockedMessage = lockedLevelText(stop.id);
+          this.lockLabel?.setText(this.lockedMessage);
+        }
+      }, () => this.visit('first'));
+      return;
+    }
+    if (this.page === 'levelCard' && this.card) {
+      const level = this.card;
+      this.playButton = drawLevelCard(this, portrait, level, campaignProgress.table()[level.id] ?? 0, this.action,
+        () => this.startGame({ difficulty: DEFAULT_DIFFICULTY, map: level.map, level }), () => this.visit('levelMap'));
+      this.refreshLoading();
+      return;
+    }
     this.add
       .text(cx, geo.titleY, TITLE_TEXT.title, { fontFamily: FONT, fontSize: '72px', fontStyle: 'bold', color: TEXT.title })
       .setOrigin(0.5);
     this.add.text(cx, geo.subtitleY, TITLE_TEXT.subtitle, { fontFamily: FONT, fontSize: '24px', color: TEXT.subtitle }).setOrigin(0.5);
 
+    // Milestone 33: the mute button, in the top right corner (TITLE_MUTE).
+    this.muteButton = new MuteButton(this, titleMuteRect(portrait, width));
+    const lookWidth = portrait ? 116 : LEVEL_BUTTON_W;
+    const captionWidth = 54;
+    const lookHeight = portrait ? geo.levelH : MENU_BUTTON_H;
+    const lookX = cx - (captionWidth + lookWidth * 2 + geo.gap) / 2;
+    this.add
+      .text(lookX, 14 + lookHeight / 2, TITLE_TEXT.look, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: TEXT.subtitle })
+      .setOrigin(0, 0.5);
+    LOOKS.forEach((look, index) => {
+      const rect = { x: lookX + captionWidth + index * (lookWidth + geo.gap), y: 14, width: lookWidth, height: lookHeight };
+      const button = new Button(this, rect, TITLE_TEXT[look], () => this.selectLook(look));
+      this.lookButtons.set(look, button);
+    });
+
+    // Phaser re-runs its whole key queue on every DOM key event and clears it
+    // only once per frame, so two presses inside one frame (a fast typist, or
+    // Playwright) re-emit the first keydown. Handle each DOM event once.
+    const seen = new WeakSet<KeyboardEvent>();
+    const once = (f: () => void) => (e: KeyboardEvent) => {
+      if (seen.has(e)) return;
+      seen.add(e);
+      f();
+    };
+    const kb = this.input.keyboard;
+    kb?.on('keydown-L', once(() => this.selectLook(this.lookStore.get() === 'classic' ? 'painted' : 'classic')));
+    if (this.page === 'first') {
+      const w = portrait ? 330 : 264;
+      const h = portrait ? 106 : 84;
+      this.action('title:campaign', { x: portrait ? cx - w / 2 : cx - w - 12, y: portrait ? 452 : 286,
+        width: w, height: h }, CAMPAIGN_TEXT.campaign, () => this.visit('levelMap'), 32).setPicked(true);
+      this.action('title:freePlay', { x: portrait ? cx - w / 2 : cx + 12, y: portrait ? 584 : 286,
+        width: w, height: h }, CAMPAIGN_TEXT.freePlay, () => this.visit('freePlay'), 32);
+      this.refreshLook();
+      return;
+    }
+
+    this.action('title:back', portrait ? { x: 130, y: 1020, width: 220, height: 74 }
+      : { x: 28, y: 496, width: 120, height: MENU_BUTTON_H }, CAMPAIGN_TEXT.back, () => this.visit('first'));
     this.add
       .text(cx, geo.levelCaptionY, TITLE_TEXT.difficulty, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: TEXT.subtitle })
       .setOrigin(0.5);
     const rects = titleRects(geo, cx);
-    this.levelButtons = new Map();
     DIFFICULTIES.forEach((level, i) => {
       const rect = rects.levels[i];
       this.levelButtons.set(level, new Button(this, rect, DIFFICULTY_LABELS[level], () => this.select(level), { fontSize: geo.levelFont }));
@@ -220,7 +330,6 @@ export class TitleScene extends Phaser.Scene {
     this.add
       .text(cx, geo.mapCaptionY, TITLE_TEXT.map, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: TEXT.subtitle })
       .setOrigin(0.5);
-    this.mapButtons = new Map();
     MAP_IDS.forEach((map, i) => {
       const rect = rects.maps[i];
       this.mapButtons.set(map, new Button(this, rect, '', () => this.selectMap(map)));
@@ -246,23 +355,6 @@ export class TitleScene extends Phaser.Scene {
       { fontSize: geo.playFont },
     );
 
-    // Milestone 33: the mute button, in the top right corner (TITLE_MUTE).
-    const portrait = currentLayout().kind === 'portrait';
-    this.muteButton = new MuteButton(this, titleMuteRect(portrait, width));
-    const lookWidth = portrait ? 116 : LEVEL_BUTTON_W;
-    const captionWidth = 54;
-    const lookHeight = portrait ? geo.levelH : MENU_BUTTON_H;
-    const lookX = cx - (captionWidth + lookWidth * 2 + geo.gap) / 2;
-    this.add
-      .text(lookX, 14 + lookHeight / 2, TITLE_TEXT.look, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: TEXT.subtitle })
-      .setOrigin(0, 0.5);
-    this.lookButtons = new Map();
-    LOOKS.forEach((look, index) => {
-      const rect = { x: lookX + captionWidth + index * (lookWidth + geo.gap), y: 14, width: lookWidth, height: lookHeight };
-      const button = new Button(this, rect, TITLE_TEXT[look], () => this.selectLook(look));
-      this.lookButtons.set(look, button);
-    });
-
     this.prompt = this.add
       .text(cx, geo.promptY, TITLE_TEXT.prompt, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: TEXT.prompt })
       .setOrigin(0.5);
@@ -271,21 +363,10 @@ export class TitleScene extends Phaser.Scene {
     this.refreshPicks();
     this.refreshLook();
     this.refreshLoading();
-    // Phaser re-runs its whole key queue on every DOM key event and clears it
-    // only once per frame, so two presses inside one frame (a fast typist, or
-    // Playwright) re-emit the first keydown. Handle each DOM event once.
-    const seen = new WeakSet<KeyboardEvent>();
-    const once = (f: () => void) => (e: KeyboardEvent) => {
-      if (seen.has(e)) return;
-      seen.add(e);
-      f();
-    };
-    const kb = this.input.keyboard;
     kb?.on('keydown-LEFT', once(() => this.move(-1)));
     kb?.on('keydown-RIGHT', once(() => this.move(1)));
     kb?.on('keydown-UP', once(() => this.moveMap(-1)));
     kb?.on('keydown-DOWN', once(() => this.moveMap(1)));
-    kb?.on('keydown-L', once(() => this.selectLook(this.lookStore.get() === 'classic' ? 'painted' : 'classic')));
     kb?.on('keydown-ENTER', once(() => this.play()));
     kb?.on('keydown-SPACE', once(() => this.play()));
   }
@@ -356,9 +437,13 @@ export class TitleScene extends Phaser.Scene {
     this.selected = level;
     this.refreshPicks();
     this.refreshLook();
+    this.startGame({ difficulty: level, map });
+  }
+
+  private startGame(data: GameStartData): void {
+    if (this.starting || this.restartPending) return;
     this.starting = true;
-    const data: GameStartData = { difficulty: level, map };
-    if (map !== 'meadow' || this.lookStore.get() !== 'painted') {
+    if (data.map !== 'meadow' || this.lookStore.get() !== 'painted') {
       this.scene.start('game', data);
       return;
     }
@@ -386,6 +471,7 @@ export class TitleScene extends Phaser.Scene {
         ? null
         : { text: line.text, rect: { x: line.x - line.width / 2, y: line.y - line.height / 2, width: line.width, height: line.height } };
     return {
+      screen: this.page, stops: this.mapStops, lockedMessage: this.lockedMessage, levelId: this.card?.id ?? null,
       scene: 'title', difficulty: this.selected, map: this.selectedMap, ready: this.ready,
       look: this.lookStore.get(), loading: this.progress, bestLine,
     };
@@ -404,6 +490,7 @@ export class TitleScene extends Phaser.Scene {
   rects(): Record<string, Rect> {
     const out: Record<string, Rect> = {};
     if (!this.ready) return out;
+    for (const [key, button] of this.campaignButtons) out[key] = button.rect;
     for (const [l, b] of this.levelButtons) out[`title:${l}`] = b.rect;
     for (const [m, b] of this.mapButtons) out[`title:map:${m}`] = b.rect;
     for (const [look, button] of this.lookButtons) out[`title:look:${look}`] = button.rect;

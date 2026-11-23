@@ -1669,3 +1669,24 @@ Stars/lives give each bot’s highest award and surviving lives. Time counts Goo
 Good clears the campaign in 72.70 minutes. Its mean surviving lives drop by 4.00 from the first third to the last.
 
 Pack Trail builds up from three-Goblin ranks to groups of six. Heavy Feet ends with a column of 20 Trolls, which Mortars can hit on Riverbend beyond the reach of the installed short-range towers. Hold the Bend has the most spawns. Stand Fast combines shielded ground formations with air pressure. The Troll King sends upgraded towers against Trolls and a shielded escort before Grumblefoot. Last Light closes with Grumblemaw.
+
+## Campaign screens
+
+The first screen offers **Campaign** and **Free play**. Free play opens the
+map and difficulty picker. Its best scores belong to the selected map and
+difficulty. Campaign opens the level map and reads the saved campaign stars.
+
+The trail crosses five stops and returns across five in landscape. In
+portrait it winds down five rows of two. Each stop shows its level number
+and three star slots. The first open level without a win is highlighted.
+Tapping a lock gives the number of the level to win first. Back returns to
+the first screen. An open stop shows a card with the level name, map,
+twist, new equipment or enemies, and best stars. Play starts that level.
+
+The game shows the level number and counts waves against the level's own
+length. A win shows this run's stars and lives. Below three stars it gives
+the life target for the next award. Next level opens the next card. Winning
+level ten shows the campaign-complete message. Play again restarts the
+same level, and Level map shows the player's saved bests. A loss offers
+Try again and Level map. Turning the device keeps the current screen and
+level selection. Both looks use the same campaign controls.

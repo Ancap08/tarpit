@@ -9117,3 +9117,15 @@ Checked at 33f2309 by Claude Sonnet. Bounds hold: nothing pushed, no dependency 
 - The gate accepts a last wave of one Goblin (levels 5, 7, 8) and the finale with Grumblemaw removed. It is tied to the ten ids (L1 and L2 star bands, feature table, hp exceptions, finale, L8 cohorts, 60 to 80 minute total), so a candidate level 11 cannot be checked as it stands.
 - At 80% starting gold Good loses levels 3, 6, 8, 9 and 10.
 
+
+## 2026-11-23: milestone 41b, campaign screens
+
+The campaign now has a player route from the first screen through the
+level map and card to the game and its result. Free play keeps its map
+and difficulty picker. Campaign screens use the existing button, palette,
+map drawing and end-screen components. The trail changes its row length
+when the device turns.
+
+The old browser helper assumed the first rendered title was the Free play
+picker. It now enters that picker for existing specs. Tests of the first
+gesture and first rendered frame start on the new first screen.

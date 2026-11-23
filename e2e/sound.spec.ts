@@ -3,7 +3,7 @@ import { MAX_VOICES } from '../src/game/audio/mixer';
 import { TRAVEL_MS } from '../src/game/fx/fxMath';
 import { MUTE_TEXT } from '../src/game/names';
 import { audio, buildNearSpawn, contexts, count, countContexts, muteRoundTrip, onScene, rectCentre, startPlay } from './sound';
-import { waitForTitle } from './title';
+import { waitForFirstScreen, waitForTitle } from './title';
 
 /** The horde measurement's length, and the most sound starts per second it may show (DESIGN.md, "Sound"). */
 const HORDE_SECONDS = 4;
@@ -17,7 +17,7 @@ const HORDE_MAX_STARTS_PER_S = 40;
 test('no AudioContext exists before the first gesture; one exists and runs after it', async ({ page }) => {
   await countContexts(page);
   await page.goto('/?renderer=canvas');
-  await waitForTitle(page);
+  await waitForFirstScreen(page);
   await page.waitForTimeout(300);
   expect(await contexts(page)).toBe(0);
   expect((await audio(page)).context).toBe('none');
