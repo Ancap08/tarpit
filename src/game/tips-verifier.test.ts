@@ -54,7 +54,7 @@ describe('milestone 42 tips use only gear the level allows', () => {
       `${action} Special and choose Barricade.`, `${action} the trail ahead of a pack, near your towers.`,
     ]);
     expect(levelTips(9, touch)[0]).toBe(`${action} a tower you have upgraded once.`);
-    expect(levelTips(5, touch)[0]).toBe('Harpies fly over the trail. Longbows and Musketeers hit them.');
+    expect(levelTips(5, touch)[0]).toBe('Longbows and Musketeers can hit flying Royal Harpies.');
     expect(levelTips(6, touch)[2]).toBe('It cannot hit enemies right beside it.');
   });
 });

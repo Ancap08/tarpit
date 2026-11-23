@@ -521,6 +521,54 @@ This part does not depend on the theme, which Kyle is still choosing.
 Not in this milestone: new names, new characters, a themed HUD (the theme
 pass, next).
 
+## Milestone 44: a theme, "the King's collectors"
+
+Kyle (2026-11-23) wants a definite theme and a better look to show people
+the next evening: "a cross between medieval and colonial/1776 theme where
+we keep characters like ... Axeman, Swordsman, Archer and special
+character. And adding in a 'taxation is theft' vibe." He approved the
+coordinator's table ("Yes, go"). The coordinator would not build a theme
+from an existing franchise; these are original designs and common
+archetypes only, and must not resemble any particular existing character.
+
+**The world.** A frontier town in a fantasy 1776. King Grumblemaw sends
+his collectors up the road to take the town's gold. The player keeps it.
+
+| Id (unchanged) | Was | Becomes | Short form where space is tight |
+|---|---|---|---|
+| goblin | Goblin | Goblin Collector | Collector |
+| wolf | Wolf | Revenue Hound | Hound |
+| shieldbearer | Shieldbearer | Redcoat Shieldbearer | Redcoat |
+| harpy | Harpy | Royal Harpy | Harpy |
+| troll | Troll | Toll Troll | Toll Troll |
+| boss | Grumblefoot | Assessor Grumblefoot | Grumblefoot |
+| grumblemaw | Grumblemaw | King Grumblemaw | Grumblemaw |
+
+Towers and specials keep their names. The four Guards are an Axeman, a
+Swordsman, an Archer and a Captain; the special is still called Guards.
+The game is still called Tarpit. Internal ids, rules and numbers do not
+change.
+
+Three parts:
+
+- **44a, names and the default look.** The names above everywhere a
+  player reads them (HUD, previews, cards, twist lines, tips, results,
+  README), with short forms where the long ones do not fit; "Taxation is
+  theft" and one line of story on the first screen; level names adjusted
+  only where the theme makes one wrong; Painted becomes the default look
+  for new players, with Classic one tap away and a stored choice
+  respected (the coordinator's call for the showing; Kyle was asked and
+  can reverse it).
+- **44b, the characters re-dressed (Painted).** The five enemies and two
+  bosses dressed for the theme, and four distinct Guards. Classic keeps
+  its drawings and gets only the names.
+- **44c, themed screens.** The first screen, level map, cards, result and
+  HUD in the theme's look, replacing the placeholder panels (this is the
+  "Themed HUD" long listed below).
+
+Not in this milestone: new towers, enemies, rules or levels; a story
+mode; Classic art changes; a new font file unless Kyle approves one.
+
 ## Later milestones (order agreed, detail to come)
 
 | # | Milestone | Idea |

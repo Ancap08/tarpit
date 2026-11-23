@@ -6,7 +6,7 @@
 
 A small browser tower defense game, built by AI agents under human direction.
 
-![Tarpit on Meadow, Normal: the title menu with its map row, a Longbow dragged from the build bar and moved in the planning phase, a Tar Pit, waves 1 and 2 at 2x, a Powder Keg fired on four Goblins, a Fire Pot built beside the Tar Pit, Call next pressed once, and the Longbow's panel showing its kills (GIF sped up about 2.4x)](docs/media/tarpit.gif)
+![Tarpit on Meadow, Normal: the title menu with its map row, a Longbow dragged from the build bar and moved in the planning phase, a Tar Pit, waves 1 and 2 at 2x, a Powder Keg fired on four Goblin Collectors, a Fire Pot built beside the Tar Pit, Call next pressed once, and the Longbow's panel showing its kills (GIF sped up about 2.4x)](docs/media/tarpit.gif)
 
 ## What this is
 
@@ -20,7 +20,7 @@ the cottage), five enemy types (one of
 them flies, one carries a shield) and two bosses, three difficulty levels, three
 special attacks, and play on a tablet. Classic uses placeholder pixel sprites
 for enemies, simple shapes and labels for towers and HUD, and maps drawn in
-code. The optional Painted look gives all three maps Blender-rendered miniature
+code. The default Painted look gives all three maps Blender-rendered miniature
 towers, enemies, scenery and projectiles. Shots fly as musket balls, arrows,
 cannonballs, mortar shells, tar globs and gouts of fire; towers turn and
 kick back, kills drop floating gold, and banners mark new waves and boss arrivals.
@@ -34,9 +34,9 @@ cloud shadows and the odd bird or butterfly, all still under reduced motion.
    gold and lives) and a map (Meadow, Switchback or Riverbend), then press
    Play (Enter or Space also work). The title shows your best score for that
    map and difficulty once you have one.
-   The title’s **Look** switch starts on **Classic**. Choose **Painted** to
-   see the miniature art on any map in Free play or the campaign.
-   The game remembers your choice.
+   New players start in **Painted** on every map. Use **Look** on the title
+   screen to switch between **Painted** and **Classic**. The game remembers
+   your choice.
 2. **Build.** Drag a tower from the build bar under the map onto an open
    cell. A ghost shows the tower and its range. In Painted, an ivory frame
    marks an open cell and a crossed frame marks a blocked one. In Classic,
@@ -61,9 +61,9 @@ cloud shadows and the odd bird or butterfly, all still under reduced motion.
    by tar, so build a Tar Pit and a Fire Pot side by side.
 6. **Mortar.** It cannot hit enemies inside its dashed inner circle (70 px),
    so put it back from the path it guards.
-7. **Enemies.** Goblins, fast Wolves, tough Trolls, flying Harpies (the Tar
+7. **Enemies.** Goblin Collectors, fast Revenue Hounds, tough Toll Trolls, flying Royal Harpies (the Tar
    Pit, Cannon and Mortar cannot hit them, and a Fire Pot's burn does not
-   stick to them) and Shieldbearers (small shots do
+   stick to them) and Redcoat Shieldbearers (small shots do
    half damage). Each one that reaches the cottage costs a life.
 8. **Specials.** The charge is ready when a wave starts and refills 20 s
    after each use, so you can fire several in a wave. Press Special (left of
@@ -74,7 +74,7 @@ cloud shadows and the odd bird or butterfly, all still under reduced motion.
    Fire Arrows (from wave 7) leave a burning patch for 11 s. A label shows how
    many it caught, and the button shows the seconds until the next one.
    From wave 3, place a Barricade across the trail beside a Cannon or Mortar.
-   Walkers stop and attack it, Harpies fly over it, and bosses break it quickly.
+   Walkers stop and attack it, Royal Harpies fly over it, and bosses break it quickly.
    From wave 6, aim Guards at the trail to deploy a short line of soldiers.
    Each holds walkers and strikes one at a time. Survivors leave after 12 seconds.
 9. **Call next.** Once every enemy of a wave has come out of the cave
@@ -88,12 +88,12 @@ cloud shadows and the odd bird or butterfly, all still under reduced motion.
     adds four lives when picked. You keep your rewards in endless play.
     Turning your device keeps your run and any open reward cards.
     Reloading starts a new run.
-11. **Two bosses.** Grumblefoot, the Troll King, arrives at the end of
+11. **Two bosses.** Assessor Grumblefoot arrives at the end of
     wave 10 and costs 5 lives if he gets through. Act II begins on wave 11.
     On Normal and Hard, enemies gain health each wave through wave 20.
-    Grumblemaw arrives at the end of wave 20 and costs 10 lives if he gets
+    King Grumblemaw arrives at the end of wave 20 and costs 10 lives if he gets
     through. When his health falls past two thirds and one third, he calls
-    Wolves from the cave. The health bar shows which boss is on the trail.
+    Revenue Hounds from the cave. The health bar shows which boss is on the trail.
 12. **Win, then keep going.** Survive wave 20 to win. Choose Keep going,
     then press Start Wave to play wave 21. Endless waves get tougher until
     you lose. Your browser saves your best score (waves cleared) per map
@@ -118,9 +118,9 @@ After the first visit it plays offline; best scores stay on the device.
 **Sound.** Every action has a short retro sound, made in code (no audio files); it starts on your first tap or click.
 The speaker button on the title and in the game, or the M key, mutes it; the choice is remembered.
 
-![Riverbend in wave 7: the river runs down the middle of the arch-shaped path; Longbows, Mortars, a Tar Pit and a Fire Pot stand beside it, and Trolls, Wolves and Harpies come up the left side and over the top](docs/media/tarpit-riverbend.png)
+![Riverbend in wave 7: the river runs down the middle of the arch-shaped path; Longbows, Mortars, a Tar Pit and a Fire Pot stand beside it, and Toll Trolls, Revenue Hounds and Royal Harpies come up the left side and over the top](docs/media/tarpit-riverbend.png)
 
-![Wave 10 on Meadow: Grumblefoot, the Troll King, with his health bar at 3525 of 4000, tarred and burning under a Mortar splash](docs/media/tarpit-boss.png)
+![Wave 10 on Meadow: Assessor Grumblefoot with his health bar at 3525 of 4000, tarred and burning under a Mortar splash](docs/media/tarpit-boss.png)
 
 ## How it was built
 
@@ -148,7 +148,7 @@ The speaker button on the title and in the game, or the M key, mutes it; the cho
   below mix the two roles. The CI baseline workflow (PR 4) had no separate
   verifier pass. Verifiers re-ran the checks,
   re-derived numbers with their own code, added their own tests and made
-  two small game fixes themselves (the Wolf's facing in
+  two small game fixes themselves (the Revenue Hound's facing in
   milestone 16, "Lives 0" instead of "Lives -1" in milestone 25).
 - **One PR per milestone.** Every PR runs lint, typecheck, Vitest, build
   and Playwright (smoke, play, touch and screenshot tests); from milestone
@@ -170,7 +170,7 @@ happened, including what went wrong, is in [DEVLOG.md](DEVLOG.md).
   verifier measured 381 s of waves against 405 s before and up to 47 enemies
   alive, and the milestone went back for a second pass. DECISIONS
   "milestone 25c"; DEVLOG "milestone 25c, Second pass".
-- **The Hard hp cliff.** The first horde numbers gave the Hard Goblin 13 hp
+- **The Hard hp cliff.** The first horde numbers gave the Hard Goblin Collector 13 hp
   against the Musketeer's 12 damage, so every Musketeer opening lost Hard on
   wave 1. Now a rule, pinned by a test: in waves 1 to 10 no ordinary Hard enemy has hp 1 or 2 above a
   multiple of a tower's damage. DECISIONS "milestone 25c".
@@ -345,7 +345,7 @@ long late waves, and how much Hard leans on well-aimed specials) are listed
 in [DECISIONS.md](DECISIONS.md), "milestone 28".
 
 v5 is the presentation pass that was moved out of v3. Milestone 43 extends the
-optional Painted look to all three maps. Classic remains the default. Painted supports both screen orientations and
+Painted look to all three maps. Milestone 44a makes Painted the default. Painted supports both screen orientations and
 loads one art density on demand. The HUD and tower upgrade marks are shared.
 See the [Painted Meadow review](docs/art/slice-meadow/README.md) for the
 desktop and phone comparisons, contact sheet and rebuild instructions.

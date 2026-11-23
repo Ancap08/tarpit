@@ -750,7 +750,7 @@ test('endless wave 21 HUD', async ({ page }) => {
   expect(r).toMatchObject({ phase: 'setup', wave: 21, endless: true, screen: null });
   expect(r.hud.wave).toBe('Wave 21');
   expect(r.hud.boss).toBeNull();
-  expect(r.hud.next).toBe('Next: 33 Wolf, 15 Troll, 31 Harpy');
+  expect(r.hud.next).toBe('Next: 33 Hound, 15 Toll Troll, 31 Harpy');
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('endless-hud.png');
 });

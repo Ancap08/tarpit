@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { BOSS_NAME, ENEMY_NAMES } from '../src/game/names';
+import { BOSS_NAME, ENEMY_SHORT_NAMES } from '../src/game/names';
 import { COLORS } from '../src/game/palette';
 import { MAPS, positionAlongPath } from '../src/sim/map';
 import type { TarpitTestApi } from '../src/game/testGlobal';
@@ -228,13 +228,7 @@ test('(c)(d)(e) flash on a hit tick, label null before spawn and after death, fi
   expect(end).toMatchObject({ down: true, boss: null, phase: 'setup', sprite: null });
 });
 
-// (f) The wave 10 preview. In setup before wave 10 the HUD's preview text
-// object holds the one-line string (hudText().next) at 13 px (11 px since
-// milestone 25c: the horde's longer preview needs three lines at 13) and wraps it
-// to exactly two lines through Phaser's word wrap (getWrappedText), the
-// second ending with the boss name; before wave 1 the preview is one 16 px
-// line. The pill and the bar sit inside the map (y 4 to 39).
-test('(f) the wave 10 preview ends with the boss name and wraps to two 11 px lines; the wave 1 preview is one 16 px line', async ({ page }) => {
+test('(f) wave 10 fits two lines and ends with the boss name; wave 1 fits one line', async ({ page }) => {
   await startGame(page);
   const r = await page.evaluate(() => {
     const t = window.__tarpit as TarpitTestApi;
@@ -246,12 +240,12 @@ test('(f) the wave 10 preview ends with the boss name and wraps to two 11 px lin
     return { wave1, wave10, hud: t.hudText().next };
   });
   expect(r.wave1.size).toBe('16px');
-  expect(r.wave1.lines).toEqual([`Next: 20 ${ENEMY_NAMES.goblin}`]);
-  expect(r.hud).toBe(`Next: 20 ${ENEMY_NAMES.wolf}, 15 ${ENEMY_NAMES.troll}, 12 ${ENEMY_NAMES.harpy}, 8 ${ENEMY_NAMES.shieldbearer} + ${BOSS_NAME}`);
+  expect(r.wave1.lines).toEqual([`Next: 20 ${ENEMY_SHORT_NAMES.goblin}`]);
+  expect(r.hud).toBe(`Next: 20 ${ENEMY_SHORT_NAMES.wolf}, 15 ${ENEMY_SHORT_NAMES.troll}, 12 ${ENEMY_SHORT_NAMES.harpy}, 8 ${ENEMY_SHORT_NAMES.shieldbearer} + ${ENEMY_SHORT_NAMES.boss}`);
   expect(r.wave10.text).toBe(r.hud);
-  expect(r.wave10.size).toBe('11px');
+  expect(r.wave10.size).toBe('13px');
   expect(r.wave10.lines).toHaveLength(2);
-  expect(r.wave10.lines[1].trimEnd().endsWith(BOSS_NAME)).toBe(true);
+  expect(r.wave10.lines[1].trimEnd().endsWith(ENEMY_SHORT_NAMES.boss)).toBe(true);
   expect(r.wave10.lines.join(' ').replace(/\s+/g, ' ').trim()).toBe(r.hud);
   expect(r.wave10.height).toBeGreaterThan(r.wave1.height);
 });

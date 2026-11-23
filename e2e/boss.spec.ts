@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { BOSS_NAME, ENEMY_NAMES } from '../src/game/names';
+import { BOSS_NAME, ENEMY_SHORT_NAMES } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 
 // Grumblefoot spawns during wave-10 tick 3900. With the current combo
@@ -24,7 +24,7 @@ test('the combo build meets Grumblefoot in wave 10: preview, bar, hp drop, kill,
     return { phase, wave: t.state().wave };
   });
   expect(before).toEqual({ phase: 'setup', wave: 9 });
-  const wave10 = `Next: 20 ${ENEMY_NAMES.wolf}, 15 ${ENEMY_NAMES.troll}, 12 ${ENEMY_NAMES.harpy}, 8 ${ENEMY_NAMES.shieldbearer} + ${BOSS_NAME}`;
+  const wave10 = `Next: 20 ${ENEMY_SHORT_NAMES.wolf}, 15 ${ENEMY_SHORT_NAMES.troll}, 12 ${ENEMY_SHORT_NAMES.harpy}, 8 ${ENEMY_SHORT_NAMES.shieldbearer} + ${ENEMY_SHORT_NAMES.boss}`;
   expect(await hud(page)).toMatchObject({ next: wave10, boss: null });
 
   const spawn = await page.evaluate((steps) => {

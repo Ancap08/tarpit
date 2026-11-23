@@ -293,7 +293,7 @@ test('the boss bar shows in portrait', async ({ page }) => {
   await api(page, (a) => a.runScript('comboBuild', 10));
   await api(page, (a) => a.startWave());
   for (let i = 0; i < 100 && (await api(page, (a) => a.hudText())).boss === null; i++) await api(page, (a) => a.step(60));
-  expect((await api(page, (a) => a.hudText())).boss).toMatch(/^Grumblefoot \d+ \/ \d+$/);
+  expect((await api(page, (a) => a.hudText())).boss).toMatch(/^Assessor Grumblefoot \d+ \/ \d+$/);
 });
 
 test('win screen: Keep going; then Play again; lose screen: Menu', async ({ page }) => {

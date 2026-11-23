@@ -9,6 +9,27 @@
 > and `DECISIONS.md`, not here. Anything not in this file or the scope
 > documents is out of scope.
 
+## Theme and names
+
+King Grumblemaw sends his collectors to take the town's gold. The next-wave
+preview uses short names and the existing count style. Boss bars and entrance
+banners use full names. The portrait preview fits its measured text into the
+remaining HUD strip. Boss labels scale down when their measured height exceeds
+the name pill or health bar. The simulation and balance report retain their original
+identifiers and labels.
+
+| Id | Display name | Short name |
+|---|---|---|
+| goblin | Goblin Collector | Collector |
+| wolf | Revenue Hound | Hound |
+| shieldbearer | Redcoat Shieldbearer | Redcoat |
+| harpy | Royal Harpy | Harpy |
+| troll | Toll Troll | Toll Troll |
+| boss | Assessor Grumblefoot | Grumblefoot |
+| grumblemaw | King Grumblemaw | Grumblemaw |
+
+The Guards are an Axeman, a Swordsman, an Archer and a Captain.
+
 ## Space and time
 
 - The canvas is 960 x 580 px. The map uses the top 960 x 480; the HUD uses
@@ -235,7 +256,7 @@ beside it that returns to the title; the win screen also has [Keep going].
 | Troll | 950 | 35 | 8 | 1 | 45 | tanky |
 | Harpy | 36 | 90 | 3 | 1 | 0 | flying |
 | Shieldbearer | 70 | 45 | 5 | 1 | 12 | shield |
-| Grumblefoot, the Troll King | 4000 | 25 | 150 | 5 | 300 | boss; slows capped at 30% |
+| Assessor Grumblefoot | 4000 | 25 | 150 | 5 | 300 | boss; slows capped at 30% |
 | Grumblemaw | 5600 | 14 | 75 | 10 | 400 | boss; slows capped at 30% |
 
 - **Flying.** A Harpy flies over the path. Tar Pit, Cannon and Mortar never
@@ -251,7 +272,7 @@ beside it that returns to the title; the win screen also has [Keep going].
   and 22, Cannon, Mortar), burn damage and specials are full. It carries a
   small grey shield mark on its left. Keen Arrows raises an upgraded
   Longbow shot to 11.25, so it bypasses the shield.
-- **Bosses.** Grumblefoot, the Troll King, is the last spawn of wave 10
+- **Bosses.** Assessor Grumblefoot, is the last spawn of wave 10
   at 65 s (waveTick 3900), 2 s after the last Troll. Grumblemaw is the last
   scheduled spawn of wave 20. Both walk without a shield. Every tower can
   target them. Splash, burn and tar apply, with slows capped at 30% for
@@ -699,10 +720,10 @@ every scheduled enemy and called Wolf has spawned and none remain alive,
 including survivors from an early call. Then the clear bonus is paid.
 The next wave can start after any reward pick. During a wave, the button
 calls the next wave when early calls are allowed. The next-wave preview lists each type
-once in first-group order with its counts summed ("Next: 20 Goblin"); a
+once in first-group order with its counts summed ("Next: 20 Collector"); a
 preview too long for one 16 px line (264 px) wraps to two 13 px lines, or,
 if that takes three lines, to two 11 px lines. The wave 10 preview reads
-"Next: 20 Wolf, 15 Troll, 12 Harpy, 8 Shieldbearer + Grumblefoot".
+"Next: 20 Hound, 15 Toll Troll, 12 Harpy, 8 Redcoat + Grumblefoot".
 
 ## Call early
 
@@ -962,8 +983,7 @@ drawing in `src/game/decor/livingMap.ts` and `src/game/draw/map.ts`.
 
 ## Looks
 
-The title screen offers Classic and Painted. Classic is the
-default. The game stores the choice as `tarpit.look` on this browser.
+The title screen offers Classic and Painted. Painted is the default for a fresh browser. Test mode defaults to Classic. The game stores the choice as `tarpit.look` on this browser.
 `?look=classic` and `?look=painted` set the look for a visit. The choice applies to all three maps in Free play and the campaign.
 
 - Painted loads one ground image for the selected map and a shared atlas
@@ -1688,17 +1708,17 @@ Stars/lives give each bot’s highest award and surviving lives. Time counts Goo
 | 6 | Heavy Feet | Riverbend | 7 | 331 | 270 | 1 | — | 2 | — | 2/15 | 2/14 | 0/0 | 8.41 | 10 | 56 |
 | 7 | Hold the Bend | Meadow | 8 | 738 | 245 | 1.3 | — | 2 | — | 2/16 | 2/12 | 0/0 | 8.13 | 28 | 53 |
 | 8 | Stand Fast | Switchback | 7 | 517 | 295 | 1.28 | — | 2 | — | 2/12 | 2/13 | 0/0 | 8.08 | 30 | 36 |
-| 9 | The Troll King | Riverbend | 7 | 535 | 255 | 1 | 6 | 3 | 5 | 3/20 | 3/20 | 0/0 | 7.57 | 17 | 42 |
+| 9 | The King's Assessor | Riverbend | 7 | 535 | 255 | 1 | 6 | 3 | 5 | 3/20 | 3/20 | 0/0 | 7.57 | 17 | 42 |
 | 10 | Last Light | Meadow | 7 | 633 | 280 | 0.925 | 5 | 3 | 5 | 2/16 | 2/13 | 0/0 | 8.89 | 19 | 36 |
 
 Good clears the campaign in 72.70 minutes. Its mean surviving lives drop by 4.00 from the first third to the last.
 
-Pack Trail builds up from three-Goblin ranks to groups of six. Heavy Feet ends with a column of 20 Trolls, which Mortars can hit on Riverbend beyond the reach of the installed short-range towers. Hold the Bend has the most spawns. Stand Fast combines shielded ground formations with air pressure. The Troll King sends upgraded towers against Trolls and a shielded escort before Grumblefoot. Last Light closes with Grumblemaw.
+Pack Trail builds up from three-Goblin ranks to groups of six. Heavy Feet ends with a column of 20 Trolls, which Mortars can hit on Riverbend beyond the reach of the installed short-range towers. Hold the Bend has the most spawns. Stand Fast combines shielded ground formations with air pressure. The King's Assessor sends upgraded towers against Trolls and a shielded escort before Grumblefoot. Last Light closes with Grumblemaw.
 
 ## Campaign screens
 
-The first screen offers **Campaign** and **Free play**. Its subtitle sits
-20 px below the Free play picker’s subtitle position. Free play opens the
+The first screen offers **Campaign** and **Free play**. Under the title it reads “Taxation is theft” and
+“The King wants your gold. Keep it.” Free play opens the
 map and difficulty picker. Its best scores belong to the selected map and
 difficulty. Campaign opens the level map and reads the saved campaign stars.
 

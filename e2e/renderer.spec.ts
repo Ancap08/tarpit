@@ -16,7 +16,7 @@ async function clickButton(page: Page, name: 'startWave'): Promise<void> {
 }
 
 test('live play uses WebGL when available, ticks, and the walk cycle advances', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?look=classic');
   await waitForTitle(page);
   const info = await page.evaluate(() => ({
     renderer: window.__tarpit?.game.renderer.type,

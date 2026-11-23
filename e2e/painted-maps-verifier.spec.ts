@@ -121,7 +121,7 @@ test('test mode stays frozen and silent under Painted on a new map', async ({ pa
   expect(a.audio.slice(0, 3)).toEqual([false, 'none', 0]);
 });
 
-test('a fresh visit is Classic, and a Painted visit makes 3 art requests (4 with the speed probe) at each density', async ({ browser }) => {
+test('a fresh test-mode visit is Classic, and a Painted visit makes 3 art requests (4 with the speed probe) at each density', async ({ browser }) => {
   for (const map of MAP_IDS) {
     for (const [dpr, hints, expected] of [[1, 'fast', 3], [2, 'fast', 3], [2, 'none', 4]] as const) {
       const context = await browser.newContext({ viewport: { width: 960, height: 580 }, deviceScaleFactor: dpr });

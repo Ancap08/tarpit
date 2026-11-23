@@ -8,8 +8,10 @@ import { SPECIAL_DEFS } from '../src/sim/specials';
 import { openCampaign, press, visibleTexts } from './campaign';
 
 for (const motion of ['no-preference', 'reduce'] as const) {
-  test(`Grumblemaw arrival, health bar, two pack calls and fall in live play (${motion})`, async ({ page }) => {
+  test(`Grumblemaw arrival, health bar, two pack calls and fall in live Classic play (${motion})`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: motion });
+    // Classic enlarges the boss sprite. Painted uses a full-size atlas frame.
+    await page.addInitScript(() => localStorage.setItem('tarpit.look', 'classic'));
     await openCampaign(page, false, true);
     if (motion === 'no-preference') {
       await page.evaluate(() => {

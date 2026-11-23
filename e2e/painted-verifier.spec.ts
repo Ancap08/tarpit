@@ -36,48 +36,56 @@ async function play(page: Page): Promise<void> {
   await settle(page);
 }
 
-test('D1 fresh profile is Classic, plays a real wave with no painted request and writes nothing', async ({ page }) => {
+test('D1 fresh profile plays in Painted without storing a choice; a saved Classic choice remains Classic', async ({ page }) => {
   const problems = watch(page);
   const requests: string[] = [];
   page.on('request', (r) => { if (r.url().includes('/assets/painted/') || /art-painted/.test(r.url())) requests.push(r.url()); });
   await page.goto('/?perf=1');
   await waitForTitle(page);
-  expect((await titleState(page)).look).toBe('classic');
+  expect((await titleState(page)).look).toBe('painted');
   expect(await page.evaluate(() => localStorage.getItem('tarpit.look'))).toBeNull();
   await play(page);
-  expect((await livePainted(page)).active).toBe(false);
+  expect((await livePainted(page)).active).toBe(true);
   await page.evaluate(() => (window.__tarpit!.game.scene.getScene('game') as GameScene).spawnHorde(5));
   await page.waitForTimeout(1500);
-  expect(requests).toEqual([]);
+  expect(requests.length).toBeGreaterThan(0);
   expect(await page.evaluate(() => localStorage.getItem('tarpit.look'))).toBeNull();
+  await page.reload();
+  await waitForTitle(page);
+  await clickRect(page, 'title:look:classic');
+  await page.reload();
+  await waitForTitle(page);
+  expect((await titleState(page)).look).toBe('classic');
+  await play(page);
+  expect((await livePainted(page)).active).toBe(false);
   expect(problems).toEqual([]);
 });
 
 for (const bad of ['', 'Painted', ' painted', 'painted ', 'PAINTED', '{"look":"painted"}', 'null', '1', 'classic\u0000painted']) {
-  test(`D2 malformed stored value ${JSON.stringify(bad)} falls back to Classic silently`, async ({ page }) => {
+  test(`D2 malformed stored value ${JSON.stringify(bad)} defaults to Painted silently`, async ({ page }) => {
     const problems = watch(page);
     await page.addInitScript((v) => localStorage.setItem('tarpit.look', v), bad);
     await page.goto('/');
     await waitForTitle(page);
-    expect((await titleState(page)).look).toBe('classic');
+    expect((await titleState(page)).look).toBe('painted');
     await play(page);
-    expect((await livePainted(page)).active).toBe(false);
+    expect((await livePainted(page)).active).toBe(true);
     expect(problems).toEqual([]);
   });
 }
 
-test('D2 throwing storage falls back to Classic silently, and a click still holds for the visit', async ({ page }) => {
+test('D2 throwing storage defaults to Painted silently, and a click still holds for the visit', async ({ page }) => {
   const problems = watch(page);
   await page.addInitScript(() => {
     Object.defineProperty(window, 'localStorage', { get() { throw new DOMException('denied', 'SecurityError'); } });
   });
   await page.goto('/');
   await waitForTitle(page);
-  expect((await titleState(page)).look).toBe('classic');
-  await clickRect(page, 'title:look:painted');
   expect((await titleState(page)).look).toBe('painted');
+  await clickRect(page, 'title:look:classic');
+  expect((await titleState(page)).look).toBe('classic');
   await play(page);
-  expect((await livePainted(page)).active).toBe(true);
+  expect((await livePainted(page)).active).toBe(false);
   expect(problems).toEqual([]);
 });
 
@@ -88,7 +96,7 @@ test('D3 URL values apply for one visit and do not change the stored choice', as
   expect(await page.evaluate(() => localStorage.getItem('tarpit.look'))).toBeNull();
   await page.goto('/');
   await waitForTitle(page);
-  expect((await titleState(page)).look).toBe('classic');
+  expect((await titleState(page)).look).toBe('painted');
   await clickRect(page, 'title:look:painted');
   expect(await page.evaluate(() => localStorage.getItem('tarpit.look'))).toBe('painted');
   await page.goto('/?look=classic');

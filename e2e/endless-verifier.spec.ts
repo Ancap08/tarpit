@@ -294,7 +294,7 @@ test('endless HUD: "Wave 21" and "Wave 123" keep clear of the preview; the wides
       t.state().wave = 22;
       t.step(1);
     });
-    expect((await api(page, (t) => t.hudText())).next).toBe('Next: 8 Wolf, 5 Shieldbearer, 18 Harpy, 6 Troll');
+    expect((await api(page, (t) => t.hudText())).next).toBe('Next: 8 Hound, 5 Redcoat, 18 Harpy, 6 Toll Troll');
     await page.reload();
     await toTitle(page);
   }

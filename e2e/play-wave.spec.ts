@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { ENEMY_NAMES } from '../src/game/names';
+import { ENEMY_SHORT_NAMES } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { waitForTitle } from './title';
 
@@ -32,7 +32,7 @@ const lives100 = (page: Page) => page.evaluate(() => void ((window.__tarpit as T
 
 test('wave 1 with no towers: 20 goblins, 20 leaks, clear bonus paid', async ({ page }) => {
   await startGame(page);
-  expect(await hud(page)).toMatchObject({ gold: 'Gold 100', lives: 'Lives 20', wave: 'Wave 0/20', next: `Next: 20 ${ENEMY_NAMES.goblin}` });
+  expect(await hud(page)).toMatchObject({ gold: 'Gold 100', lives: 'Lives 20', wave: 'Wave 0/20', next: `Next: 20 ${ENEMY_SHORT_NAMES.goblin}` });
   expect(await state(page)).toMatchObject({ gold: 100, lives: 20, wave: 0, phase: 'setup' });
   await lives100(page);
 
@@ -43,7 +43,7 @@ test('wave 1 with no towers: 20 goblins, 20 leaks, clear bonus paid', async ({ p
   expect(await state(page)).toMatchObject({ phase: 'wave', lives: 81 });
   await step(page, 1);
   expect(await state(page)).toMatchObject({ phase: 'setup', wave: 1, lives: 80, gold: 125, enemies: [] });
-  expect(await hud(page)).toMatchObject({ gold: 'Gold 125', lives: 'Lives 80', wave: 'Wave 1/20', next: `Next: 32 ${ENEMY_NAMES.goblin}` });
+  expect(await hud(page)).toMatchObject({ gold: 'Gold 125', lives: 'Lives 80', wave: 'Wave 1/20', next: `Next: 32 ${ENEMY_SHORT_NAMES.goblin}` });
 });
 
 // Milestone 25c: a 12 hp Goblin dies to one Musketeer shot; this one kills
