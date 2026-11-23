@@ -211,7 +211,7 @@ describe('docs/DESIGN.md matches the code', () => {
       expect(Number(enemies)).toBe(wave.groups.reduce((a, g) => a + g.count, 0));
       expect(Number(hp)).toBe(wave.groups.reduce((a, g) => a + g.count * ENEMY_STATS[g.type].hp, 0));
       expect(Number(bounty)).toBe(wave.groups.reduce((a, g) => a + g.count * ENEMY_STATS[g.type].bounty, 0));
-      expect(last).toBe(`${lastSpawnTick(Number(n)) / 60} s`);
+      expect(last).toBe(`${Number((lastSpawnTick(Number(n)) / 60).toFixed(3))} s`);
     }
   });
 
@@ -231,8 +231,8 @@ describe('docs/DESIGN.md matches the code', () => {
 
   it('balance targets: every target label the suite asserts is in the spec, and no other', () => {
     const text = section('Balance targets') + section('Waves');
-    const inDoc = new Set([...text.matchAll(/\*\*([A-Z]+\d+)\b/g)].map((m) => m[1]));
-    expect([...inDoc].sort()).toEqual([...new Set(TARGETS.map((t) => t.id))].sort());
+    const inDoc = new Set([...text.matchAll(/\*\*([A-Z]+\d+[a-z]?)\b/g)].map((m) => m[1]));
+    expect([...inDoc].sort()).toEqual([...new Set([...TARGETS.map((t) => t.id), 'N10c', 'N10d'])].sort());
   });
 
   it('the endless hp line and the prose numbers the tables do not hold: cooldowns, sell refunds and campaign enemy count', () => {
@@ -266,7 +266,7 @@ describe('docs/DESIGN.md matches the code', () => {
       expect(Number(mult)).toBe(Math.round(w.hpMultiplier! * 100) / 100);
       expect(Number(hp)).toBe(w.groups.reduce((a, g) => a + g.count * enemyMaxHp(g.type, 'normal', w.hpMultiplier), 0));
       expect(Number(bounty)).toBe(w.groups.reduce((a, g) => a + g.count * ENEMY_STATS[g.type].bounty, 0));
-      expect(last).toBe(`${lastSpawnTick(Number(n)) / 60} s`);
+      expect(last).toBe(`${Number((lastSpawnTick(Number(n)) / 60).toFixed(3))} s`);
     }
   });
 });

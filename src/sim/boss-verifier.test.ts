@@ -7,7 +7,7 @@
 // 64 px straight below B: inside every base range (Cannon 90, Tar Pit 90,
 // Longbow 150). Walking right from there to distance 115 ((115,240)) B is
 // sqrt(35^2 + 64^2) = 72.9 px away, still inside the upgraded Tar Pit's 105.
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { buildTower, upgradeTower } from './actions';
 import { findTarget } from './combat';
 import { ENEMY_STATS } from './enemies';
@@ -189,36 +189,67 @@ describe('(f) he walks and has no shield', () => {
 });
 
 describe('(g) the combo builds against him', () => {
-  /** Play a script to its end; the wave 10 tick of every boss event. */
-  function run(script: WaveScript) {
+  /** Replay through the requested wave and record boss events from ticks and specials. */
+  function run(script: WaveScript, lastWave: number) {
     const s = createGame();
-    const boss: { waveTick: number; kind: string; cause?: string }[] = [];
+    const boss: { wave: number; waveTick: number; kind: string; cause?: string; threshold?: number }[] = [];
     const running = () => s.phase === 'wave';
-    for (let w = 0; w < 10 && s.phase === 'setup'; w++) {
+    const recordBossEvents = (events: GameEvent[], waveTick: number) => {
+      for (const e of events) {
+        if (e.kind === 'bossSpawn') boss.push({ wave: s.wave, waveTick, kind: e.kind });
+        if (e.kind === 'bossDown') boss.push({ wave: s.wave, waveTick, kind: e.kind, cause: e.cause });
+        if (e.kind === 'packCall') boss.push({ wave: s.wave, waveTick, kind: e.kind, threshold: e.threshold });
+      }
+    };
+    let midpoint: Pick<GameState, 'phase' | 'wave' | 'gold' | 'lives' | 'pendingBoon'> | undefined;
+    for (let w = 0; w < lastWave && s.phase === 'setup'; w++) {
       applyScriptBoon(s, script);
       for (const a of script[w] ?? []) expect(applyAction(s, a)).toMatchObject({ result: { ok: true } });
       expect(startWave(s).ok).toBe(true);
       for (let t = 0; running() && t < 60 * 600; t++) {
-        // Milestone 25c: the combo builds fire their specials (28: the stored list).
-        for (const a of script.timed?.[w] ?? []) if (a.atWaveTick === s.waveTick) applyAction(s, a);
         const waveTick = s.waveTick;
-        tick(s);
-        for (const e of s.events) {
-          if (e.kind === 'bossSpawn') boss.push({ waveTick, kind: e.kind });
-          if (e.kind === 'bossDown') boss.push({ waveTick, kind: e.kind, cause: e.cause });
+        for (const a of script.timed?.[w] ?? []) {
+          if (a.atWaveTick !== waveTick) continue;
+          const firstEvent = s.events.length;
+          applyAction(s, a);
+          recordBossEvents(s.events.slice(firstEvent), waveTick);
         }
+        tick(s);
+        recordBossEvents(s.events, waveTick);
+      }
+      if (s.wave === 10) {
+        const { phase, wave, gold, lives, pendingBoon } = s;
+        midpoint = { phase, wave, gold, lives, pendingBoon };
       }
     }
-    return { s, boss };
+    return { s, boss, midpoint };
   }
 
-  it.each([comboBuild, comboBuildNoFire])('%s defeats Grumblefoot and offers the second boon', (record) => {
-    const { s, boss } = run(record());
-    expect(boss.map((b) => b.kind)).toEqual(['bossSpawn', 'bossDown']);
-    expect(boss[0].waveTick).toBe(3900);
-    expect(boss[1].waveTick).toBeGreaterThan(3900);
-    expect(boss[1].cause).not.toBe('exit');
-    expect(s).toMatchObject({ phase: 'setup', wave: 10, pendingBoon: { wave: 10 } });
+  let combo: ReturnType<typeof run>;
+  beforeAll(() => {
+    combo = run(comboBuild(), 20);
+  });
+
+  it.each([
+    [comboBuild, 6213, 16, 420],
+    [comboBuildNoFire, 6369, 16, 610],
+  ] as const)('%s defeats Grumblefoot at tick %i, ending act 1 with %i lives and %i gold', (record, killTick, lives, gold) => {
+    const replay = record === comboBuild ? combo : run(record(), 10);
+    expect(replay.boss.filter((e) => e.wave <= 10)).toEqual([
+      { wave: 10, waveTick: 3900, kind: 'bossSpawn' },
+      { wave: 10, waveTick: killTick, kind: 'bossDown', cause: 'shot' },
+    ]);
+    expect(replay.midpoint).toMatchObject({ phase: 'setup', wave: 10, lives, gold, pendingBoon: { wave: 10 } });
+  });
+
+  it('Normal combo kills Grumblemaw at tick 5735, winning with 19 lives and 2847 gold', () => {
+    expect(combo.boss.filter((e) => e.wave === 20)).toEqual([
+      { wave: 20, waveTick: 2892, kind: 'bossSpawn' },
+      { wave: 20, waveTick: 4421, kind: 'packCall', threshold: 2 },
+      { wave: 20, waveTick: 4938, kind: 'packCall', threshold: 1 },
+      { wave: 20, waveTick: 5735, kind: 'bossDown', cause: 'shot' },
+    ]);
+    expect(combo.s).toMatchObject({ phase: 'won', wave: 20, lives: 19, gold: 2847 });
   });
 });
 

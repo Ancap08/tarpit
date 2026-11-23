@@ -43,12 +43,13 @@ describe('waveDef (milestone 26)', () => {
       const tableWave = 18 + ((n - 21) % 3);
       const cycle = Math.floor((n - 21) / 3) + 1;
       expect(withoutLast(n)).toEqual(noBoss(tableWave));
-      expect(harpyGroup(n)).toEqual({
+      const harpies = harpyGroup(n);
+      expect(harpies).toMatchObject({
         type: 'harpy',
         count: Math.min(16, 8 + 2 * cycle),
         interval: 0.75,
-        delay: (lastSpawnTick(tableWave) - (tableWave === 20 ? 120 : 0)) / 60 + 2,
       });
+      expect(spawnTick(harpies, 0)).toBe(lastSpawnTick(tableWave) + (tableWave === 20 ? 0 : 120));
       expect(waveDef(n).hpMultiplier).toBe(1.8 ** cycle);
     }
   });
@@ -239,29 +240,28 @@ describe('an endless run (milestone 26)', () => {
     expect(callEarlyStatus(s)).toEqual({ ok: false, reason: 'game-over' });
   });
 
-  // One endlessGreedy run shared by the two tests below (milestone 31 trimmed
-  // the determinism test from two fresh runs to this one plus one fresh run:
-  // still two independent runs compared in full).
-  let greedyRun: ReturnType<typeof playScripted> | undefined;
-  const sharedGreedy = () => (greedyRun ??= playScripted(endlessGreedy()));
+  let greedyScript: WaveScript;
+  let greedyRun: ReturnType<typeof playScripted>;
   beforeAll(() => {
-    sharedGreedy();
+    greedyScript = endlessGreedy();
+    greedyRun = playScripted(greedyScript);
   });
 
   it('endlessGreedy on Normal goes further than endlessIdle, loses by wave 40', () => {
-    const greedy = sharedGreedy().state;
+    const greedy = greedyRun.state;
     expect(greedy.phase).toBe('lost');
     expect(greedy.wave).toBeGreaterThan(idle.state.wave);
     expect(greedy.wave).toBeLessThanOrEqual(40);
   });
 
-  it('determinism: two endlessGreedy runs to the end give deep-equal final states', () => {
-    const a = sharedGreedy();
-    const b = playScripted(endlessGreedy());
-    expect(b).not.toBe(a);
-    expect(a.state).toEqual(b.state);
-    expect(a.waves).toEqual(b.waves);
-    // Verifier: about 3.8 s locally, too close to vitest's 5 s default for CI (now 30 s for all, vitest.config.ts).
+  it('records the same endlessGreedy decisions twice', () => {
+    expect(endlessGreedy()).toEqual(greedyScript);
+  });
+
+  it('two endlessGreedy replays give deep-equal final states and wave reports', () => {
+    const again = playScripted(greedyScript);
+    expect(again.state).toEqual(greedyRun.state);
+    expect(again.waves).toEqual(greedyRun.waves);
   });
 
   it('gold is conserved across the wave 20 to 21 boundary', () => {

@@ -32,7 +32,7 @@ describe('difficulty table (docs/SCOPE-v4.md)', () => {
       harpy: [27, 36, 43],
       shieldbearer: [53, 70, 84],
       boss: [3000, 4000, 4800],
-      grumblemaw: [10125, 13500, 16200],
+      grumblemaw: [4200, 5600, 6720],
     });
     for (const t of Object.keys(ENEMY_STATS) as EnemyType[]) expect(enemyMaxHp(t)).toBe(ENEMY_STATS[t].hp);
   });

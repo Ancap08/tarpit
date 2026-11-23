@@ -24,7 +24,7 @@ const CELL = { col: 3, row: 5 };
 // Arena hp: the milestone 22 values, fixed so the arithmetic below stays as
 // written (milestone 25c lowered ENEMY_STATS; no special rule depends on
 // an enemy's full hp). Bounties are read from ENEMY_STATS.
-const ARENA_HP: Record<EnemyType, number> = { goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000, grumblemaw: 13500 };
+const ARENA_HP: Record<EnemyType, number> = { goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000, grumblemaw: 5600 };
 
 function enemy(id: number, type: EnemyType, extra: Partial<Enemy> = {}): Enemy {
   return { id, type, hp: ARENA_HP[type], distance: D, slow: 0, slowTicksLeft: 0, burnDps: 0, burnTicksLeft: 0, ...extra };
@@ -199,7 +199,7 @@ describe('(j) (l) a full comboBuild game with its recorded specials', () => {
       if (e.kind === 'upgrade') gold -= TOWER_DEFS[e.tower].upgradeCost;
       if (e.kind === 'sell') gold += e.refund;
       if (e.kind === 'boonPicked' && e.id === 'warChest') gold += 100;
-      if (e.kind === 'boonPicked' && e.id === 'stoneWalls') lives += 5;
+      if (e.kind === 'boonPicked' && e.id === 'stoneWalls') lives += 3;
       if (e.kind === 'exit') lives -= ENEMY_STATS[enemyTypes.get(e.enemyId)!].livesCost;
     }
     expect(state.gold).toBe(gold);

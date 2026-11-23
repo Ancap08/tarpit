@@ -2,16 +2,19 @@
 // scratch, the refusal order, the mask cache across maps, and sim probes on
 // every map. Nothing here uses grid.ts's distance or overlap helpers to
 // decide what is expected.
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { buildTower, moveTower, towerAt, useSpecial } from './actions';
 import { enemyPosition } from './combat';
 import { ENEMY_STATS } from './enemies';
 import { callNextWave, createGame, startWave, tick } from './game';
 import { buildableCells, isBuildable, isBuildableTerrain, terrainBlock } from './grid';
 import {
+  ACT_TWO_PLANS,
+  ARCHETYPES,
   COMBO_PLANS,
   comboBuild,
   endlessIdle,
+  INFORMATIONAL,
   lazyBuild,
   longbowSpam,
   noAntiAir,
@@ -19,7 +22,7 @@ import {
   playScripted,
   trailCellOrder,
 } from './headless';
-import { MAP_IDS, MAPS, pathLength, type MapId } from './map';
+import { MAP_IDS, MAPS, pathLength, positionAlongPath, type MapId } from './map';
 import type { Enemy, EnemyType, GameState, MapDef, Point, Rect } from './types';
 import { WAVES } from './waves';
 
@@ -72,6 +75,48 @@ function expectedMask(id: MapId): Why[] {
   const cottage = { x: exit.x - 52, y: exit.y - 61, width: 36, height: 37 };
   return ownMask(path, [cottage], id === 'riverbend' ? [{ x: 416, y: 160, width: 128, height: 320 }] : []);
 }
+
+describe('Euclidean path interpolation', () => {
+  const mixed: MapDef = {
+    id: 'mixed',
+    width: 960,
+    height: 480,
+    path: [{ x: 0, y: 10 }, { x: 0, y: 10 }, { x: 27.3, y: 9.1 }, { x: 27.3, y: 43.7 }, { x: 109.4, y: 43.7 }],
+  };
+
+  it.each([...Object.values(MAPS), mixed])('$id matches the Euclidean reference on every segment', (map) => {
+    const segments = map.path.slice(1).map((b, i) => {
+      const a = map.path[i];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      return { a, dx, dy, length: Math.hypot(dx, dy) };
+    });
+    const length = segments.reduce((sum, segment) => sum + segment.length, 0);
+    expect(pathLength(map)).toBe(length);
+
+    const reference = (distance: number): Point => {
+      if (distance <= 0) return map.path[0];
+      for (const { a, dx, dy, length: segmentLength } of segments) {
+        if (distance <= segmentLength) {
+          const fraction = segmentLength === 0 ? 0 : distance / segmentLength;
+          return { x: a.x + dx * fraction, y: a.y + dy * fraction };
+        }
+        distance -= segmentLength;
+      }
+      return map.path.at(-1)!;
+    };
+    let start = 0;
+    for (const segment of segments) {
+      for (const fraction of [0, Number.EPSILON, 0.123, 0.5, 0.897, 1 - Number.EPSILON, 1]) {
+        const distance = start + fraction * segment.length;
+        expect(positionAlongPath(map, distance)).toEqual(reference(distance));
+      }
+      start += segment.length;
+    }
+    expect(positionAlongPath(map, -0.1)).toEqual(reference(-0.1));
+    expect(positionAlongPath(map, length + 0.1)).toEqual(reference(length + 0.1));
+  });
+});
 
 describe('D. map data, recomputed', () => {
   for (const id of MAP_IDS) {
@@ -346,14 +391,22 @@ describe('E. sim probes on every map', () => {
   });
 
   for (const id of NEW_MAPS) {
-    it(`${id}: the plan uses only buildable, distinct cells; its special ticks are what the Meadow scan gives on this map`, () => {
+    it(`${id}: the plan uses only buildable, distinct cells across both acts`, () => {
       const plan = COMBO_PLANS[id];
       expect(plan).toHaveLength(COMBO_PLANS.meadow.length);
-      // Role for role: the same action types and towers in the same order as Meadow's plan.
-      expect(plan.map((a) => (a.type === 'build' ? a.tower : a.type))).toEqual(COMBO_PLANS.meadow.map((a) => (a.type === 'build' ? a.tower : a.type)));
+      const roles = COMBO_PLANS.meadow.map((a) => (a.type === 'build' ? a.tower : a.type));
+      // The Switchback opening uses a Musketeer with its rear Longbow.
+      if (id === 'switchback') {
+        roles[0] = 'musketeer';
+        expect(plan.slice(0, 2)).toEqual([
+          { type: 'build', tower: 'musketeer', cell: { col: 13, row: 4 } },
+          { type: 'build', tower: 'longbow', cell: { col: 27, row: 13 } },
+        ]);
+      }
+      expect(plan.map((a) => (a.type === 'build' ? a.tower : a.type))).toEqual(roles);
       const want = expectedMask(id);
       const built = new Set<number>();
-      for (const a of plan) {
+      for (const a of [...plan, ...ACT_TWO_PLANS[id]]) {
         const key = a.cell.row * 30 + a.cell.col;
         if (a.type === 'build') {
           expect(want[key], `${a.cell.col},${a.cell.row}`).toBeUndefined();
@@ -373,19 +426,28 @@ describe('E. sim probes on every map', () => {
   const recorders = { noTowers, lazyBuild, longbowSpam, comboBuild, noAntiAir };
   for (const id of NEW_MAPS) {
     for (const [name, record] of Object.entries(recorders)) {
-      it(`${id}: ${name} records the same script twice and refuses nothing`, () => {
-        const script = record('normal', id);
-        expect(record('normal', id)).toEqual(script);
-        expect(script.mapId).toBe(id);
-        const run = playScripted(script);
-        expect(run.state.map.id).toBe(id);
-        expect(run.log.filter((step) => 'result' in step && !step.result.ok)).toEqual([]);
+      describe(`${id}: ${name}`, () => {
+        let script: ReturnType<typeof record>;
+        beforeAll(() => {
+          script = record('normal', id);
+        });
+
+        it('records the same script twice', () => {
+          expect(record('normal', id)).toEqual(script);
+          expect(script.mapId).toBe(id);
+        });
+
+        it('plays on its map and refuses no action', () => {
+          const run = playScripted(script);
+          expect(run.state.map.id).toBe(id);
+          expect(run.log.filter((step) => 'result' in step && !step.result.ok)).toEqual([]);
+        });
       });
     }
   }
 
   for (const id of NEW_MAPS) {
-    it(`${id}: the boss walks the whole path and costs 5 lives; call early and endless work`, () => {
+    it(`${id}: the boss walks the whole path and costs 5 lives, and called waves stay on their map`, () => {
       // The boss: wave 10 with no towers on a huge life pool; it exits pathLength / 25 s after it spawns.
       const s = createGame({ map: id });
       s.lives = 100000;
@@ -420,7 +482,9 @@ describe('E. sim probes on every map', () => {
       for (let n = 0; n < 120; n++) tick(c);
       for (const e of c.enemies) expect(pathDist(enemyPosition(e, c.map), MAPS[id].path)).toBeLessThan(1e-9);
 
-      // Endless: endlessIdle plays past wave 20 on this map and loses there.
+    });
+
+    it(`${id}: endlessIdle stays on its map through the loss`, () => {
       const run = playScripted(endlessIdle('normal', id));
       expect(run.state.map.id).toBe(id);
       expect(run.state.endless).toBe(true);
@@ -431,42 +495,21 @@ describe('E. sim probes on every map', () => {
 });
 
 describe('B. archetypes and the map argument', () => {
-  // Milestone 28: one test per archetype (the six together took over 5 s).
-  for (const f of [noTowers, lazyBuild, longbowSpam, comboBuild, noAntiAir, endlessIdle]) {
-    it(`the archetypes that take a map record it and play on it: ${f.name}`, () => {
-      for (const id of NEW_MAPS) expect(f('normal', id).mapId, `${f.name} ${id}`).toBe(id);
-      expect(f('normal').mapId, f.name).toBeUndefined();
-      expect(f('normal', 'meadow').mapId, f.name).toBe('meadow');
+  for (const record of [noTowers, lazyBuild, longbowSpam, comboBuild, noAntiAir, endlessIdle]) {
+    it.each([...NEW_MAPS, undefined, 'meadow'] as const)(`${record.name} records the map argument %s`, (map) => {
+      expect(record('normal', map).mapId).toBe(map);
     });
   }
 
-  // Finding (verifier, low): ARCHETYPES and INFORMATIONAL are typed (difficulty, map) => WaveScript, but
-  // soundBuild, soundBuildNoTar, hardBuild, comboStrongest and comboWithKegs dropped the map and returned a
-  // Meadow script with no mapId, so `ARCHETYPES.hardBuild('hard', 'riverbend')` silently played Meadow.
-  // Fixed in the milestone 27 follow-up (implementer): those five now throw for a map other than Meadow;
-  // milestone 28 gave hardBuild a plan per map and removed comboWithKegs, so three refuse. This was an it.fails pin; it now checks that every entry given
-  // a map either returns a script for that map or refuses it loudly, and that exactly those three refuse.
-  it('every entry of ARCHETYPES and INFORMATIONAL given a map returns a script for that map or throws', async () => {
-    const { ARCHETYPES, INFORMATIONAL } = await import('./headless');
-    const wrong: string[] = [];
-    const refused: string[] = [];
-    for (const [name, f] of Object.entries({ ...ARCHETYPES, ...INFORMATIONAL })) {
-      let script;
-      try {
-        script = f('normal', 'riverbend');
-      } catch (e) {
-        expect((e as Error).message, name).toBe(`${name} has a script for Meadow only, not for riverbend`);
-        refused.push(name);
-        continue;
-      }
-      if (script.mapId !== 'riverbend') wrong.push(name);
-    }
-    expect(wrong).toEqual([]);
-    expect(refused.sort()).toEqual(['comboStrongest', 'soundBuild', 'soundBuildNoTar']);
-    // Meadow, named or not, still gets its script from each of them.
-    for (const name of refused) {
-      const f = { ...ARCHETYPES, ...INFORMATIONAL }[name];
-      expect(() => f('normal', 'meadow'), name).not.toThrow();
-    }
-  });
+  // Meadow-only builds must refuse a different map. All other builds
+  // must carry the requested map through to their script.
+  const meadowOnly = new Set(['comboStrongest', 'soundBuild', 'soundBuildNoTar']);
+  for (const [name, record] of Object.entries({ ...ARCHETYPES, ...INFORMATIONAL })) {
+    it(`${name} enforces its map support`, () => {
+      if (meadowOnly.has(name)) {
+        expect(() => record('normal', 'riverbend')).toThrow(`${name} has a script for Meadow only, not for riverbend`);
+        expect(() => record('normal', 'meadow')).not.toThrow();
+      } else expect(record('normal', 'riverbend').mapId).toBe('riverbend');
+    });
+  }
 });

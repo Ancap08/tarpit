@@ -5,6 +5,7 @@ import { createServer } from 'vite';
 import type * as Balance from '../src/sim/balanceRuns';
 import type * as Targets from '../src/sim/balanceTargets';
 import type * as Maps from '../src/sim/map';
+import type * as Boons from '../src/sim/boonBalance';
 
 const server = await createServer({
   root: fileURLToPath(new URL('..', import.meta.url)),
@@ -23,7 +24,7 @@ try {
 
   console.log('Balance targets');
   for (const target of targets.TARGETS) {
-    if (target.id === 'N10') continue; // The report checks the entire matrix below.
+    if (target.id === 'N10a') continue; // The report checks the entire matrix below.
     const result = target.check();
     console.log(`${result.ok ? 'ok  ' : 'MISS'}  ${target.id.padEnd(3)} ${(target.map ?? '').padEnd(10)} ${target.label}: ${result.info}`);
     if (!result.ok) process.exitCode = 1;
@@ -35,9 +36,32 @@ try {
       console.log(`${picks.join(' / ')}  ${balance.matrixCell(run)}, ${run.kills} kills, ${run.gold} gold`);
     }
     const result = targets.checkBoonBalance(map, 'all');
-    console.log(`${result.ok ? 'ok' : 'MISS'}  N10  ${map}: ${result.info}`);
+    console.log(`${result.ok ? 'ok' : 'MISS'}  N10a  ${map}: ${result.info}`);
     if (!result.ok) process.exitCode = 1;
   }
+
+  const boons = await server.ssrLoadModule('/src/sim/boonBalance.ts') as typeof Boons;
+  const impact = boons.compareBoonEffects();
+  for (const [label, result] of [['N10c', impact.c], ['N10d', impact.d]] as const) {
+    console.log(`${result.ok ? 'ok' : 'MISS'}  ${label}  ${result.info}`);
+    if (!result.ok) process.exitCode = 1;
+  }
+  for (const effect of impact.effects) {
+    const best = impact.measurements.filter(({ scenario }) => effect.best.includes(scenario));
+    const witness = best.find(({ outcomes }) => outcomes.some(({ boon, actual }) => boon === effect.boon && actual.phase === 'won')) ?? best[0];
+    const pairs = effect.changed.map(({ build, map }) => `${build}/${map}`).join(', ');
+    if (witness) {
+      const { build, map, difficulty, picks } = witness.scenario;
+      const scores = witness.outcomes.map(({ boon, actual }) => `${boon} ${actual.lives} lives/${actual.kills} kills`).join(', ');
+      console.log(`${effect.boon}: strict best ${build}/${map}/${difficulty}, picks ${picks.join('/')}: ${scores}; changes ${pairs}`);
+    } else {
+      console.log(`${effect.boon}: no strict best; changes ${pairs}`);
+    }
+  }
+
+  const fight = balance.balanceRun('comboBuild', 'meadow', 'normal').bossFight;
+  console.log('\nMeadow Normal, Grumblemaw (wave-20 ticks)');
+  console.log(fight.map(({ tick, event, hp }) => `${tick}: ${hp === undefined ? event : Math.round(hp) + ' HP'}`).join(' | '));
 
   console.log('\nEndless');
   console.log('archetype      map         level   result  wave  lives  gold');

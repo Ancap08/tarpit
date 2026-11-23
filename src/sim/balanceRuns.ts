@@ -8,6 +8,7 @@ import type { Difficulty } from './difficulty';
 import { continueEndless, createGame, startWave, tick } from './game';
 import { applyAction, applyScriptBoon, ARCHETYPES, ENDLESS_ARCHETYPES, ENDLESS_WAVE_CAP, INFORMATIONAL, type BoonChoices, type WaveScript } from './headless';
 import type { MapId } from './map';
+import type { GameEvent } from './events';
 import type { EnemyType, GameState } from './types';
 import { LAST_WAVE } from './waves';
 
@@ -44,6 +45,8 @@ export interface BalanceRun {
   refused: number;
   /** Milestone 30: per special fired, in order, the enemies it caught when it landed. */
   specialHits: number[];
+  /** Wave-local, zero-based fight ticks; HP samples are taken every 10 s. */
+  bossFight: { tick: number; event: 'spawn' | 'kill' | 'exit' | 'pack 2/3' | 'pack 1/3' | 'hp'; hp?: number }[];
   waves: WaveStats[];
 }
 
@@ -59,6 +62,14 @@ export function playWithStats(script: WaveScript, difficulty?: Difficulty): Bala
   let refused = 0;
   let kills = 0;
   const specialHits: number[] = [];
+  const bossFight: BalanceRun['bossFight'] = [];
+  function recordBossEvent(event: GameEvent, waveTick: number): void {
+    if (event.kind === 'packCall') {
+      bossFight.push({ tick: waveTick, event: `pack ${event.threshold}/3` });
+    } else if ((event.kind === 'bossSpawn' || event.kind === 'bossDown') && event.enemyType === 'grumblemaw') {
+      bossFight.push({ tick: waveTick, event: event.kind === 'bossSpawn' ? 'spawn' : event.cause === 'exit' ? 'exit' : 'kill' });
+    }
+  }
   const limit = script.endless ? ENDLESS_WAVE_CAP : LAST_WAVE;
   for (let i = 0; i < limit && state.phase === 'setup'; i++) {
     const boon = applyScriptBoon(state, script);
@@ -89,6 +100,7 @@ export function playWithStats(script: WaveScript, difficulty?: Difficulty): Bala
         const step = applyAction(state, action);
         if ('result' in step && !step.result.ok) refused += 1;
         for (const e of state.events.slice(from)) {
+          if (state.wave === LAST_WAVE) recordBossEvent(e, state.waveTick);
           if (e.kind === 'kill') w.kills += 1;
           else if (e.kind === 'special') specialHits.push(e.hits);
         }
@@ -96,6 +108,7 @@ export function playWithStats(script: WaveScript, difficulty?: Difficulty): Bala
       tick(state);
       w.ticks += 1;
       for (const e of state.events) {
+        if (state.wave === LAST_WAVE) recordBossEvent(e, w.ticks - 1);
         if (e.kind === 'spawn') {
           types.set(e.enemyId, e.enemyType);
           w.spawns[e.enemyType] = (w.spawns[e.enemyType] ?? 0) + 1;
@@ -104,6 +117,10 @@ export function playWithStats(script: WaveScript, difficulty?: Difficulty): Bala
           w.exits[type] = (w.exits[type] ?? 0) + 1;
         } else if (e.kind === 'kill') w.kills += 1;
       }
+      if (state.wave === LAST_WAVE && bossFight.length && (w.ticks - 1 - bossFight[0].tick) % 600 === 0) {
+        const boss = state.enemies.find((e) => e.type === 'grumblemaw');
+        if (boss) bossFight.push({ tick: w.ticks - 1, event: 'hp', hp: boss.hp });
+      }
       w.peak = Math.max(w.peak, state.enemies.length);
     }
     kills += w.kills;
@@ -111,7 +128,7 @@ export function playWithStats(script: WaveScript, difficulty?: Difficulty): Bala
     waves.push(w);
     if (script.endless && (state.phase as GameState['phase']) === 'won') continueEndless(state);
   }
-  return { phase: state.phase, wave: state.wave, lives: state.lives, gold: state.gold, tick: state.tick, kills, refused, specialHits, waves };
+  return { phase: state.phase, wave: state.wave, lives: state.lives, gold: state.gold, tick: state.tick, kills, refused, specialHits, bossFight, waves };
 }
 
 /** "W 13" for a win with 13 lives, "L 8" for a loss on wave 8 (an endless run: the wave it was lost on). */
@@ -131,6 +148,8 @@ export const ALL_MAP_ARCHETYPES = [
   'comboBuildNoFire',
   'comboNoSpecials',
   'hardBuild',
+  'artilleryBuild',
+  'burnBuild',
   'endlessIdle',
   'endlessGreedy',
 ] as const;

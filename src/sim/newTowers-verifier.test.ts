@@ -15,7 +15,7 @@ import type { Enemy, EnemyType, GameState, TowerType } from "./types";
 const P: Cell = { col: 6, row: 7 };
 const Q: Cell = { col: 7, row: 7 };
 
-const FULL_HP: Record<EnemyType, number> = { goblin: 30, wolf: 28, troll: 500, harpy: 40, shieldbearer: 120, boss: 4000, grumblemaw: 13500 };
+const FULL_HP: Record<EnemyType, number> = { goblin: 30, wolf: 28, troll: 500, harpy: 40, shieldbearer: 120, boss: 4000, grumblemaw: 5600 };
 
 function mk(
   id: number,

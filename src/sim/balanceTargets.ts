@@ -141,8 +141,17 @@ function mapTargets(map: MapId): Target[] {
       const ok = (x.phase === 'lost' && x.wave >= 12) || (x.phase === 'won' && n.phase === 'won' && x.lives <= n.lives - 5);
       return { ok, info: `${matrixCell(x)} against ${matrixCell(n)} on Normal` };
     }),
-    t('N10', 'Normal: representative boon combinations win and show at least one different outcome per offer', () =>
-      checkBoonBalance(map, 'representative')),
+    t('B1', 'default combo kills Grumblemaw on Normal and hardBuild kills him on Hard', () => {
+      const normal = bossOutcome(r('comboBuild'));
+      const hard = bossOutcome(r('hardBuild', 'hard'));
+      return { ok: normal === 'kill' && hard === 'kill', info: `Normal ${normal}, Hard ${hard}` };
+    }),
+    t('B3', 'Easy lazyBuild wins with at least eight lives; record the boss outcome', () => {
+      const run = r('lazyBuild', 'easy');
+      return { ok: run.phase === 'won' && run.lives >= 8, info: `${matrixCell(run)}, boss ${bossOutcome(run)}` };
+    }),
+    t('N10a', 'every measured three-boon combination wins', () => checkBoonBalance(map, 'representative')),
+    t('N10b', 'at default other picks each offer spans at most four lives', () => checkDefaultSpread(map)),
     t('X1', 'Normal: endlessIdle loses on the second through fifth endless wave', () => {
       const x = r('endlessIdle');
       return { ok: lostOn(x, LAST_WAVE + 2, LAST_WAVE + 5), info: matrixCell(x) };
@@ -211,22 +220,15 @@ export interface BoonBalanceRun {
   run: BalanceRun;
 }
 
-function resultKey(run: BalanceRun): string {
-  return `${run.lives}/${run.kills}/${run.gold}`;
-}
-
-export function boonBalancePicks(map: MapId, coverage: 'all' | 'representative'): Picks[] {
+/** Seven single-choice comparisons plus the two all-alternative diagonals. */
+export function boonBalancePicks(_map: MapId, coverage: 'all' | 'representative'): Picks[] {
   const [first, second, third] = OFFER_WAVES.map(boonOptions);
   const picks: Picks[] = [];
   for (const [i, a] of first.entries()) {
     for (const [j, b] of second.entries()) {
       for (const [k, c] of third.entries()) {
-        const singleSubstitution = Number(i !== 0) + Number(j !== 0) + Number(k !== 0) <= 1;
-        // These combinations expose a measurable difference between middle picks.
-        const contrastingPair = a === 'keenArrows' && (
-          (map === 'meadow' && c === 'veteranCrews') || (map === 'riverbend' && c === 'stoneWalls')
-        );
-        if (coverage === 'all' || singleSubstitution || contrastingPair) picks.push([a, b, c]);
+        const substitutions = Number(i !== 0) + Number(j !== 0) + Number(k !== 0);
+        if (coverage === 'all' || substitutions <= 1 || (i === j && j === k)) picks.push([a, b, c]);
       }
     }
   }
@@ -244,33 +246,28 @@ export function boonBalanceRuns(map: MapId, coverage: 'all' | 'representative'):
   return boonBalancePicks(map, coverage).map((picks) => ({ picks, run: boonBalanceRun(map, picks) }));
 }
 
-/** Units use the default, its substitutions and measured contrasts. The report checks all 27. */
 export function checkBoonBalance(map: MapId, coverage: 'all' | 'representative'): TargetResult {
   const results = boonBalanceRuns(map, coverage);
-  const issues: string[] = [];
-  if (coverage === 'all' && results.length !== 27) issues.push(`expected 27 combinations, measured ${results.length}`);
-  for (const { picks, run } of results) {
-    if (run.phase !== 'won' || run.refused > 0) issues.push(`${picks.join('/')}: ${matrixCell(run)}, ${run.refused} refused`);
-  }
-  for (const [index, wave] of OFFER_WAVES.entries()) {
-    const options = boonOptions(wave);
-    const groups = new Map<string, BoonBalanceRun[]>();
-    for (const entry of results) {
-      const key = entry.picks.filter((_, i) => i !== index).join('/');
-      const group = groups.get(key) ?? [];
-      group.push(entry);
-      groups.set(key, group);
-    }
-    let differs = false;
-    for (const [key, group] of groups) {
-      if (group.length !== options.length) continue;
-      const lives = group.map(({ run }) => run.lives).sort((a, b) => b - a);
-      if (lives[0] - lives[1] > 6) issues.push(`offer ${wave}, with ${key}: lives ${lives.join('/')}`);
-      differs ||= new Set(group.map(({ run }) => resultKey(run))).size > 1;
-    }
-    if (!differs) issues.push(`offer ${wave}: all options have identical outcomes`);
-  }
-  return { ok: issues.length === 0, info: issues.join(', ') || `${results.length} wins, a different outcome in each offer, at most 6 lives ahead of both alternatives` };
+  const wins = results.filter(({ run }) => run.phase === 'won' && run.refused === 0).length;
+  const expected = coverage === 'all' ? 27 : 9;
+  return { ok: results.length === expected && wins === expected, info: `${wins}/${expected} wins` };
+}
+
+function checkDefaultSpread(map: MapId): TargetResult {
+  const defaults = OFFER_WAVES.map((wave) => boonOptions(wave)[0]);
+  const spreads = OFFER_WAVES.map((wave, index) => {
+    const lives = boonOptions(wave).map((id) => {
+      const picks: [BoonId, BoonId, BoonId] = [defaults[0], defaults[1], defaults[2]];
+      picks[index] = id;
+      return boonBalanceRun(map, picks).lives;
+    });
+    return Math.max(...lives) - Math.min(...lives);
+  });
+  return { ok: spreads.every((n) => n <= 4), info: `best minus worst lives by offer: ${spreads.join('/')}` };
+}
+
+export function bossOutcome(run: BalanceRun): string {
+  return run.bossFight.find((e) => e.event === 'kill' || e.event === 'exit')?.event ?? 'unresolved';
 }
 
 function campaignTiming() {
@@ -283,6 +280,15 @@ function campaignTiming() {
 }
 
 export const RULE_TARGETS: Target[] = [
+  {
+    id: 'B2',
+    label: 'without specials the combo still wins and Grumblemaw exits on at least two maps',
+    check: () => {
+      const runs = MAP_IDS.map((map) => balanceRun('comboNoSpecials', map, 'normal'));
+      const outcomes = runs.map(bossOutcome);
+      return { ok: runs.every((r) => r.phase === 'won') && outcomes.filter((s) => s === 'exit').length >= 2, info: outcomes.join('/') };
+    },
+  },
   {
     id: 'H4',
     label: 'no ordinary Hard enemy hp is 1 or 2 above a multiple of 12, 4, 25 or 45',
@@ -331,11 +337,13 @@ export const RULE_TARGETS: Target[] = [
   {
     id: 'R3',
     map: 'meadow',
-    label: 'Meadow, Normal, comboBuild: act 2 takes 600 to 900 s and has at most 40 enemies alive at once',
+    label: 'Meadow, Normal, comboBuild: act 2 takes 560 to 720 s, each wave at most 100 s, at most 40 alive and the campaign at most 22 minutes',
     check: () => {
-      const { clear, seconds, peak } = campaignTiming()[1];
-      const ok = clear.length === LAST_WAVE - ACT_ONE_LAST_WAVE && seconds >= 600 && seconds <= 900 && peak <= 40;
-      return { ok, info: `${seconds.toFixed(1)} s, peak ${peak}` };
+      const [first, { clear, seconds, peak }] = campaignTiming();
+      const longest = Math.max(...clear) / 60;
+      const whole = first.seconds + seconds;
+      const ok = clear.length === LAST_WAVE - ACT_ONE_LAST_WAVE && seconds >= 560 && seconds <= 720 && longest <= 100 && peak <= 40 && whole <= 1320;
+      return { ok, info: `act 2 ${seconds.toFixed(1)} s, longest wave ${longest.toFixed(1)} s, peak ${peak}, campaign ${whole.toFixed(1)} s` };
     },
   },
   {

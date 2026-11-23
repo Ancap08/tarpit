@@ -18,7 +18,7 @@ import { WAVES } from './waves';
 const P: Cell = { col: 6, row: 7 };
 
 function enemy(id: number, distance: number, over: Partial<Enemy> = {}, type: EnemyType = 'goblin'): Enemy {
-  const fullHp = ({ goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000, grumblemaw: 13500 } as const)[type];
+  const fullHp = ({ goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000, grumblemaw: 5600 } as const)[type];
   return { id, type, hp: fullHp, distance, slow: 0, slowTicksLeft: 0, burnDps: 0, burnTicksLeft: 0, ...over };
 }
 

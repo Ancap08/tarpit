@@ -114,7 +114,7 @@ export interface Enemy {
    * is scaled by the wave; absent means difficulty.ts enemyMaxHp.
    */
   maxHp?: number;
-  /** Grumblemaw thresholds already called, including on the killing hit. */
+  /** Grumblemaw thresholds already called, after surviving a hit. */
   packCalls?: number;
 }
 

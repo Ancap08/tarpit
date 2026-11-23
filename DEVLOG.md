@@ -7380,3 +7380,255 @@ Verifier: Claude Sonnet, on commit 227ef95. Added `src/sim/longer-game-verifier.
 - Finding 5 (low): `findTarget` squared-distance and `segmentLength` axis changes in `src/sim` were not asked for. They are disclosed in this log, and no test result changed.
 - Finding 6: `e2e/visual.spec.ts` BOSS_STEPS is still 5361 while the sim reference moved to 5215 (36b work).
 - Time: Meadow Normal comboBuild takes 1526 s (25 min 26 s) at 1x; act 2 is 895 s against the 900 s R3 ceiling.
+
+### Follow-up
+
+The verifier tested commit 227ef95 and added the original independent probes in 84c27ef. The follow-up moves Grumblemaw's cost back to ten lives, makes the reference builds defeat him, tightens the boon comparisons and shortens the campaign. All measurements use actual 60 Hz simulation ticks. The campaign time excludes setup, boon selection and early calls.
+
+#### The fight and the campaign
+
+| Target | Measurement on Meadow / Switchback / Riverbend |
+|---|---|
+| B1 | The default Normal combo kills Grumblemaw on all three maps. The Hard plans also kill him, ending with 15 / 18 / 14 lives. |
+| B2 | Without specials Grumblemaw exits / dies / exits. The Normal combo still wins with 3 / 14 / 5 lives. |
+| B3 | Easy lazyBuild wins with 18 / 26 / 15 lives. Grumblemaw exits on all three. |
+| N10a | 27/27 Normal combo victories on each map. Nine representative combinations per map run in the unit suite. |
+| N10b | The spreads at waves 5 / 10 / 15 are 2 / 0 / 3 lives on each map. |
+| N10c and N10d | Each of the nine options wins a three-way comparison. Eight change lives or defeat wave on three distinct build/map pairs; Stone Walls changes four. |
+| R3 | Meadow, Normal, takes 673.8 seconds in act 2. The longest act-2 wave takes 95.6 seconds and reaches the campaign victory. Peak act-2 occupancy is 21. The campaign takes 1,311.7 seconds (21:51.7), down from 1,526.3 (25:26.3). |
+
+The ordinary Normal combo wins with 19 lives on each map. Its advantages over the no-specials run are 16 / 5 / 14 lives. Riverbend Hard now has 14 lives at victory; Meadow and Riverbend Easy lazy both have at least 15. The R3 whole-game ceiling has 8.3 seconds of headroom. The five ordinary enemy stats, Grumblefoot, tower stats, waypoint geometry, pack size and 30-tick pack interval retain the original campaign values.
+
+Grumblemaw changes from 13,500 to 5,600 Normal HP (Easy 10,125 to 4,200; Hard 16,200 to 6,720), from 25 to 35 px/s and from six to ten lives on exit. His bounty stays at 300, and his slow cap at 30%. At full slow his speed changes from 17.5 to 24.5 px/s. His two thresholds on Normal are 11,200/3 and 5,600/3 HP. A nonlethal hit crossing both thresholds still starts two packs. A lethal hit starts zero, and any Wolves already called finish spawning. The verifier test previously expected sixteen Wolves from a lethal crossing. It now checks zero new calls and covers calls already in progress.
+
+Meadow Normal, zero-based wave-20 ticks, HP rounded for display: **2892** spawn 5600 → **3492** 5600 → **4092** 5358 → **4421** first pack → **4692** 2769 → **4938** second pack → **5292** 834 → **5735** kill. The campaign ends with 19 lives and 2,847 gold. Its act-2 wave lengths in ticks are 1792, 3890, 2284, 4347, 4293, 3615, 4734, 4660, 5077 and 5736.
+
+#### Wave and boon numbers
+
+Cells give count / interval / first spawn, with times in seconds, before → after. The last boss follows the last Troll by 120 ticks. The campaign now schedules 524 enemies in act 1 and 685 in act 2, a ratio of 1.31. Both pack calls add 16 Wolves. Act 1's tables did not change. Act 2 previously scheduled 881.
+
+| Wave | Goblin | Wolf | Troll | Shieldbearer | Harpy | Grumblemaw |
+|---:|---|---|---|---|---|---|
+| 11 | 42/0.85/0 → 33/0.85/0 | — | — | 18/1.5/8 → 14/1.5/5.76 | 18/1.1/16 → 14/1.1/11.52 | — |
+| 12 | — | 45/1.45/0 → 35/1.45/0 | 14/4/7 → 11/4/5.04 | — | 18/2.6/17 → 14/2.6/12.24 | — |
+| 13 | 50/1.4/0 → 39/0.95/0 | — | — | 18/3.5/12 → 14/2/8.64 | 21/2.75/10 → 16/1.9/7.2 | — |
+| 14 | — | 37/1.85/0 → 29/1.85/0 | 18/3.8/5 → 14/3.8/3.6 | — | 22/2.5/16 → 17/2.5/11.52 | — |
+| 15 | 28/1.75/0 → 22/1.75/0 | 24/1.7/31.65 → 19/1.7/22.79 | 15/4.6/5 → 12/4.6/3.6 | — | 20/2.8/13 → 16/2.8/9.36 | — |
+| 16 | 42/1.7/0 → 33/1.7/0 | — | — | 25/2.95/4 → 20/2.95/2.88 | 24/2.75/10 → 19/2.75/7.2 | — |
+| 17 | — | 40/1.8/0 → 31/1.8/0 | 20/3.65/5 → 16/3.65/3.6 | — | 26/2.7/10 → 20/2.7/7.2 | — |
+| 18 | 46/1.7/0 → 36/1.7/0 | — | 16/4.6/5 → 18/3/3.6 | 14/5/3 → 11/5/2.16 | 24/2.8/11 → 19/2.8/7.92 | — |
+| 19 | — | 42/1.85/0 → 33/1.85/0 | 24/3.4/4 → 23/2.65/2.88 | — | 27/2.75/9 → 21/2.75/6.48 | — |
+| 20 | — | 38/2.2/3 → 20/1.55/0 | 22/3.95/4 → 12/1.7/27.5 | 16/4.5/12 → 15/2/4 | 26/3/9 → 18/1.65/5 | 1/0/88.95 → 1/0/48.2 |
+
+| Offer | Boon | Previous | Follow-up | Effect |
+|---:|---|---:|---:|---|
+| 5 | Long Barrels | 1.15 | 1.30 | Cannon and Mortar maximum range |
+| 5 | Keen Arrows | 1.25 | 1.25 | Longbow damage |
+| 5 | War Chest | 100 | 100 | Gold at pick |
+| 10 | Sticky Tar | 1.50 | 2.00 | Tar Pit slow and Tar Barrel slow linger |
+| 10 | Hot Coals | 1.40 | 1.80 | Burn DPS before tar doubling |
+| 10 | Quick Hands | 0.70 | 0.62 | Recharge multiplier, 840 → 744 ticks |
+| 15 | Stone Walls | 5 | 3 | Lives at pick |
+| 15 | Veteran Crews | 1.12 | 1.10 | Tower fire rate |
+| 15 | Bigger Blasts | 1.20 | 1.40 | Cannon, Mortar and Powder Keg splash radius |
+
+The default choices remain Long Barrels, Sticky Tar and Stone Walls. An offer's four-life limit compares final lives at fixed default picks for the other two offers. There is a separate three-way competition for every strict-best witness, with both alternative cards played. The neutral comparison retains the two other boons and removes the selected effect in measurement only. Each build/map pair counts once, even if the boon changes both difficulty levels. The full simulator and the unit suite each play the witness games. The three witness planners count kills during the same simulation that records their purchases and specials, including special kills between ticks. All 13 full score comparisons matched independent script replays, and a permanent test checks the recorder against a static Riverbend Hard replay.
+
+Witness scores are final lives/kills, in offer order from the table above. A negative lives value is the signed result after a lethal exit. The picks column identifies the other two held choices during substitution.
+
+| Strict winner | Build/map/level | Picks used as the comparison starting point | Three scores in offer order | Distinct changed build/map pairs |
+|---|---|---|---|---|
+| longBarrels | artilleryBuild/riverbend/normal | longBarrels/stickyTar/biggerBlasts | 16/1221; 7/1221; 8/1222 | burnBuild/meadow, artilleryBuild/switchback, artilleryBuild/riverbend |
+| keenArrows | artilleryBuild/switchback/hard | longBarrels/stickyTar/stoneWalls | 13/1220; 15/1222; 5/1221 | burnBuild/meadow, artilleryBuild/switchback, artilleryBuild/riverbend |
+| warChest | burnBuild/meadow/hard | longBarrels/stickyTar/stoneWalls | -2/1206; 2/1210; 4/1212 | burnBuild/meadow, artilleryBuild/switchback, artilleryBuild/riverbend |
+| stickyTar | burnBuild/switchback/normal | warChest/stickyTar/stoneWalls | 23/1225; 13/1224; 13/1224 | burnBuild/switchback, burnBuild/riverbend, comboBuild/riverbend |
+| hotCoals | burnBuild/meadow/normal | longBarrels/stickyTar/veteranCrews | 8/1222; 18/1223; 8/1222 | burnBuild/meadow, burnBuild/riverbend, comboBuild/riverbend |
+| quickHands | artilleryBuild/meadow/hard | longBarrels/stickyTar/veteranCrews | -5/1214; -5/1214; 5/1215 | artilleryBuild/meadow, burnBuild/riverbend, comboBuild/riverbend |
+| stoneWalls | artilleryBuild/meadow/normal | longBarrels/stickyTar/stoneWalls | 19/1221; 16/1221; 16/1221 | artilleryBuild/riverbend, burnBuild/meadow, artilleryBuild/meadow, artilleryBuild/switchback |
+| veteranCrews | burnBuild/meadow/normal | longBarrels/hotCoals/stoneWalls | 11/1222; 18/1223; 8/1222 | burnBuild/meadow, artilleryBuild/meadow, artilleryBuild/switchback |
+| biggerBlasts | artilleryBuild/riverbend/normal | longBarrels/stickyTar/stoneWalls | 9/1220; 6/1220; 16/1221 | artilleryBuild/riverbend, artilleryBuild/meadow, artilleryBuild/switchback |
+
+#### Purchase choices and rejected trials
+
+The Normal Switchback opening formerly bought two Longbows at (14,7) and (13,4). It now puts a Musketeer at (13,4) covering the folded lanes and a Longbow at (27,13) near the exit. The first working exit position (25,13) left a three-life specials margin. Moving it two cells farther produced five. On Riverbend the first bow moves from (12,5) to (10,6) along the approach. The act-2 plan retains a base bow at (11,7), previously upgraded, and removes the upgraded bow at (18,7). That leaves the no-specials build able to pay the boss toll and still win. The Hard and specialized openings retain their established pair of Longbows.
+
+The Hard plan buys one additional upgraded Mortar on Meadow at (17,5) and one on Riverbend at (14,4), covering the remaining long firing lanes. Trials with two extra upgraded Mortars on each map passed but were redundant. Without either extra Mortar Meadow and Riverbend Hard both let the boss through. Switchback Hard already kills him with its original artillery. On Easy the lazy player now starts a second walk over free trail cells as soon as its first circuit is full; formerly it waited for the end of wave 10. It still buys only base Musketeers. Artillery and burn builds provide two more comparisons. The artillery build uses four opening bows at most, then buys two upgraded Cannons and Mortars apiece. The burn build uses one opening Mortar and adds two upgraded Tar Pit/Fire Pot pairs.
+
+The first shortened schedule met the spawn constraint but strong Normal builds leaked too few ordinary enemies and Hard bosses still escaped. Bringing an escorted boss in at 39 seconds made ordinary plans viable but produced an eight-life spread in Meadow's first reward and sometimes ten on Riverbend. A late Meadow Mortar helped unmodified-range choices kill him, but often made the run without Tar Barrel better than the full combo. The selected escort and timing fix the spread while retaining a benefit from every special. An interim endless growth of 2.0 made idle lose on schedule; the denser Troll groups in waves 18 and 19 achieve that with the original 1.8. The first shortened wave-13 schedule missed the 22-minute ceiling by 2.8 seconds with the selected boss escort. Compressing its ordinary spawns recovered 11.2 seconds.
+
+#### Revert pass
+
+Reference 84c27ef. Each trial restores one field while holding the remaining accepted settings fixed. The W20 timing check holds the boss delay fixed during escort-field reverts and requires a 120-tick gap. Trials stop at the first failure. A C/D witness failure means the named pinned measurement no longer meets its assertion.
+
+67 independent failures, 3 with all checked thresholds passing, 0 pending.
+
+Restoring all three individually passing W12 fields together fails Meadow B1: the Normal combo kills Grumblemaw, and the Hard build lets him escape.
+
+| Field | 84c27ef | Accepted | First failure or coverage | Measured evidence |
+|---|---:|---:|---|---|
+| W11 goblin count | 42 | 33 | meadow B1 | Normal kill, Hard exit |
+| W11 shieldbearer count | 18 | 14 | meadow B1 | Normal kill, Hard exit |
+| W11 shieldbearer delay | 8 | 5.76 | meadow B1 | Normal kill, Hard exit |
+| W11 harpy count | 18 | 14 | meadow B1 | Normal kill, Hard exit |
+| W11 harpy delay | 16 | 11.52 | meadow B1 | Normal kill, Hard exit |
+| W12 wolf count | 45 | 35 | All checked thresholds pass | N10b, 13 pinned C/D witness scenarios, and 81 boon combinations pass. |
+| W12 troll count | 14 | 11 | meadow R3 | act 2 685.5 s, longest wave 95.6 s, peak 21, campaign 1323.4 s |
+| W12 troll delay | 7 | 5.04 | meadow B1 | Normal kill, Hard exit |
+| W12 harpy count | 18 | 14 | All checked thresholds pass | N10b, 13 pinned C/D witness scenarios, and 81 boon combinations pass. |
+| W12 harpy delay | 17 | 12.24 | All checked thresholds pass | N10b, 13 pinned C/D witness scenarios, and 81 boon combinations pass. |
+| W13 goblin count | 50 | 39 | meadow R3 | act 2 682.8 s, longest wave 95.6 s, peak 21, campaign 1320.7 s |
+| W13 goblin interval | 1.4 | 0.95 | meadow R3 | act 2 691.0 s, longest wave 95.6 s, peak 21, campaign 1328.8 s |
+| W13 shieldbearer count | 18 | 14 | meadow R3 | act 2 683.1 s, longest wave 95.6 s, peak 21, campaign 1320.9 s |
+| W13 shieldbearer interval | 3.5 | 2 | meadow R3 | act 2 690.3 s, longest wave 95.6 s, peak 21, campaign 1328.1 s |
+| W13 shieldbearer delay | 12 | 8.64 | meadow B1 | Normal kill, Hard exit |
+| W13 harpy count | 21 | 16 | meadow R3 | act 2 683.1 s, longest wave 95.6 s, peak 21, campaign 1321.0 s |
+| W13 harpy interval | 2.75 | 1.9 | meadow R3 | act 2 686.4 s, longest wave 95.6 s, peak 21, campaign 1324.3 s |
+| W13 harpy delay | 10 | 7.2 | meadow B1 | Normal kill, Hard exit |
+| W14 wolf count | 37 | 29 | meadow B1 | Normal kill, Hard exit |
+| W14 troll count | 18 | 14 | meadow R3 | act 2 693.3 s, longest wave 96.5 s, peak 19, campaign 1331.2 s |
+| W14 troll delay | 5 | 3.6 | meadow B1 | Normal kill, Hard exit |
+| W14 harpy count | 22 | 17 | meadow B1 | Normal kill, Hard exit |
+| W14 harpy delay | 16 | 11.52 | meadow B1 | Normal kill, Hard exit |
+| W15 goblin count | 28 | 22 | meadow B1 | Normal kill, Hard exit |
+| W15 wolf count | 24 | 19 | meadow B1 | Normal kill, Hard exit |
+| W15 wolf delay | 31.65 | 22.79 | meadow B1 | Normal kill, Hard exit |
+| W15 troll count | 15 | 12 | meadow R3 | act 2 688.5 s, longest wave 95.6 s, peak 21, campaign 1326.4 s |
+| W15 troll delay | 5 | 3.6 | meadow B1 | Normal kill, Hard exit |
+| W15 harpy count | 20 | 16 | N10c/d pinned witness: artilleryBuild/meadow/10/longBarrels-stickyTar-veteranCrews | required winner quickHands failed; absent changes: quickHands |
+| W15 harpy delay | 13 | 9.36 | meadow B1 | Normal kill, Hard exit |
+| W16 goblin count | 42 | 33 | meadow R3 | act 2 685.4 s, longest wave 95.6 s, peak 21, campaign 1323.3 s |
+| W16 shieldbearer count | 25 | 20 | meadow R3 | act 2 688.8 s, longest wave 95.6 s, peak 21, campaign 1326.7 s |
+| W16 shieldbearer delay | 4 | 2.88 | meadow B1 | Normal kill, Hard exit |
+| W16 harpy count | 24 | 19 | meadow R3 | act 2 685.6 s, longest wave 95.6 s, peak 21, campaign 1323.5 s |
+| W16 harpy delay | 10 | 7.2 | meadow N9 | without: W 20, 1222 kills; with: W 19, 1221 kills |
+| W17 wolf count | 40 | 31 | riverbend B1 | Normal kill, Hard exit |
+| W17 troll count | 20 | 16 | meadow N10b | best minus worst lives by offer: 10/0/3 |
+| W17 troll delay | 5 | 3.6 | N10c/d pinned witness: artilleryBuild/meadow/10/longBarrels-stickyTar-veteranCrews | required winner quickHands failed; absent changes: quickHands |
+| W17 harpy count | 26 | 20 | meadow B1 | Normal kill, Hard exit |
+| W17 harpy delay | 10 | 7.2 | meadow B1 | Normal kill, Hard exit |
+| W18 goblin count | 46 | 36 | riverbend B1 | Normal kill, Hard exit |
+| W18 troll count | 16 | 18 | meadow N5 | W 19 against W 19 |
+| W18 troll interval | 4.6 | 3 | meadow R3 | act 2 694.9 s, longest wave 98.8 s, peak 16, campaign 1332.8 s |
+| W18 troll delay | 5 | 3.6 | meadow N5 | W 19 against W 19 |
+| W18 shieldbearer count | 14 | 11 | meadow B1 | Normal exit, Hard kill |
+| W18 shieldbearer delay | 3 | 2.16 | meadow N9 | without: W 20, 1222 kills; with: W 19, 1221 kills |
+| W18 harpy count | 24 | 19 | meadow B1 | Normal kill, Hard exit |
+| W18 harpy delay | 11 | 7.92 | N10c/d pinned witness: artilleryBuild/riverbend/5/longBarrels-stickyTar-biggerBlasts | required winner longBarrels failed; absent changes: none |
+| W19 wolf count | 42 | 33 | meadow N9 | without: W 20, 1231 kills; with: W 19, 1230 kills |
+| W19 troll count | 24 | 23 | meadow N5 | W 19 against W 19 |
+| W19 troll interval | 3.4 | 2.65 | meadow R3 | act 2 688.0 s, longest wave 97.7 s, peak 21, campaign 1325.9 s |
+| W19 troll delay | 4 | 2.88 | meadow B1 | Normal kill, Hard exit |
+| W19 harpy count | 27 | 21 | meadow B1 | Normal kill, Hard exit |
+| W19 harpy delay | 9 | 6.48 | meadow B1 | Normal exit, Hard kill |
+| W20 wolf count | 38 | 20 | boss 2s after last scheduled spawn | boss 2892t, previous 3441t, delta -549t |
+| W20 wolf interval | 2.2 | 1.55 | meadow N5 | W 19 against W 19 |
+| W20 wolf delay | 3 | 0 | meadow N5 | W 19 against W 19 |
+| W20 shieldbearer count | 16 | 15 | N10c/d pinned witness: burnBuild/switchback/10/warChest-stickyTar-stoneWalls | required winner stickyTar failed; absent changes: stickyTar |
+| W20 shieldbearer interval | 4.5 | 2 | boss 2s after last scheduled spawn | boss 2892t, previous 4020t, delta -1128t |
+| W20 shieldbearer delay | 12 | 4 | meadow N5 | W 19 against W 19 |
+| W20 harpy count | 26 | 18 | boss 2s after last scheduled spawn | boss 2892t, previous 2775t, delta 117t |
+| W20 harpy interval | 3 | 1.65 | boss 2s after last scheduled spawn | boss 2892t, previous 3360t, delta -468t |
+| W20 harpy delay | 9 | 5 | meadow B1 | Normal kill, Hard exit |
+| W20 troll count | 22 | 12 | boss 2s after last scheduled spawn | boss 2892t, previous 3792t, delta -900t |
+| W20 troll interval | 3.95 | 1.7 | boss 2s after last scheduled spawn | boss 2892t, previous 4257t, delta -1365t |
+| W20 troll delay | 4 | 27.5 | boss 2s after last scheduled spawn | boss 2892t, previous 1983t, delta 909t |
+| W20 grumblemaw delay | 88.95 | 48.2 | boss 2s after last scheduled spawn | boss 5337t, previous 2772t, delta 2565t |
+| Grumblemaw hp | 13500 | 5600 | meadow B1 | Normal exit, Hard exit |
+| Grumblemaw speed | 25 | 35 | every map B2 | kill/kill/kill |
+| Grumblemaw livesCost | 6 | 10 | required exit cost of 10 | 6 lives |
+
+The controls passed before restoring each knob. All seven adjusted boon values still permit all 81 Normal campaigns when restored alone. The first independently observed losses of coverage below include specific pinned strict-best or neutral-change examples. A lost example leaves the wider set of untested build/pick combinations open.
+
+| Restored boon | Assertions broken |
+|---|---|
+| Long Barrels 1.15 | B1, B2, H1, H3, N5, N6, N9, N10b, pinned N10c and N10d |
+| Sticky Tar 1.5 | B1, N10b, pinned N10c and N10d |
+| Hot Coals 1.4 | Pinned N10c and N10d |
+| Quick Hands 0.70 | Pinned N10c and N10d |
+| Stone Walls 5 | N4 and N10b on all three maps |
+| Veteran Crews 1.12 | Pinned N10c |
+| Bigger Blasts 1.2 | Pinned N10c and N10d |
+
+Keen Arrows at 1.13 and War Chest at 160 were trial values. After restoring 1.25 and 100 together the controls still passed, so both keep their original values. No special, ordinary enemy, tower, or endless growth value changes in this follow-up.
+
+Purchase reverts used the same map and level as each plan. On Switchback, restoring the lead column or row alone makes the purchase invalid. Restoring the lead tower type produces 22 lives (N4); restoring the exit bow's column produces 20 (N4); restoring its row loses the no-specials and Hard opening on wave 2 (N6/H3). Restoring the lead bow's column on Riverbend collides with the second bow; its old row produces 20 lives (N4). Restoring either the bow upgrade at (11,7) or the upgraded bow at (18,7) makes no-specials kill the boss on two maps (B2). Removing the remaining Hard Mortar lets Grumblemaw escape on Meadow and Riverbend (B1); the initial second extra Mortar per map and both trial Switchback Mortars were unnecessary and were dropped. Restoring the Easy lazy wave-10 gate loses Meadow and Riverbend on wave 20 (E1/B3); Switchback still passes. These plan checks cover the affected targets.
+
+#### Measured matrix
+
+W is the number of lives at campaign victory. L is the absolute wave of defeat. The balance suite also asserts exact final gold on all 135 applicable results.
+
+| Archetype | Meadow easy | Meadow normal | Meadow hard | Switchback easy | Switchback normal | Switchback hard | Riverbend easy | Riverbend normal | Riverbend hard |
+|---|---|---|---|---|---|---|---|---|---|
+| noTowers | L 2 | L 1 | L 1 | L 2 | L 1 | L 1 | L 2 | L 1 | L 1 |
+| oneMusket | L 3 | L 2 | L 2 | L 3 | L 2 | L 2 | L 3 | L 2 | L 2 |
+| lazyBuild | W 18 | L 8 | L 2 | W 26 | L 8 | L 2 | W 15 | L 8 | L 2 |
+| greedyMusket | W 22 | L 8 | L 2 | W 27 | L 20 | L 2 | W 23 | L 8 | L 2 |
+| longbowSpam | L 10 | L 8 | L 7 | L 18 | L 8 | L 8 | L 10 | L 8 | L 7 |
+| noAntiAir | L 8 | L 5 | L 5 | L 8 | L 5 | L 4 | L 8 | L 5 | L 5 |
+| comboBuild | W 38 | W 19 | L 20 | W 38 | W 19 | L 20 | W 38 | W 19 | L 20 |
+| comboBuildNoFire | W 38 | W 9 | L 7 | W 37 | W 14 | L 7 | W 36 | W 16 | L 7 |
+| comboNoSpecials | W 38 | W 3 | L 3 | W 38 | W 14 | L 2 | W 37 | W 5 | L 5 |
+| hardBuild | W 38 | W 23 | W 15 | W 38 | W 23 | W 18 | W 38 | W 23 | W 14 |
+| artilleryBuild | W 38 | W 19 | L 20 | W 38 | W 23 | W 13 | W 38 | W 9 | L 10 |
+| burnBuild | W 38 | W 11 | L 20 | W 38 | W 23 | W 5 | W 38 | W 10 | L 10 |
+| endlessIdle | L 28 | L 24 | L 20 | L 28 | L 25 | L 20 | L 28 | L 25 | L 20 |
+| endlessGreedy | L 30 | L 27 | L 20 | L 30 | L 27 | L 20 | L 30 | L 27 | L 20 |
+| soundBuild | L 20 | L 7 | L 2 | - | - | - | - | - | - |
+| soundBuildNoTar | L 10 | L 7 | L 2 | - | - | - | - | - | - |
+| comboStrongest | W 10 | L 5 | L 2 | - | - | - | - | - | - |
+
+#### Independent checks and handoff
+
+The Grumblefoot replay once again checks exact wave-10 kill ticks, lives and gold. The default Meadow combo kills on tick 6213 and clears with 16 lives and 420 gold. Without Fire Pots the kill is tick 6369 with 16 lives and 610 gold. The wave-10 burning/slowed frame moves from 5215 to 5263 (403,96; 3525 HP); browser verification stays with 36b. Fixed expectations also cover endless waves 21, 22, 23, 24 and 60. Conservation tests compare recorded purchases, bounty, wave gold, killed/exited enemies and actual signed lives. They coexist with exact independently recorded outcomes.
+
+Targeting again uses the original Euclidean range test. The cheap candidate order and outer-square rejections are checked against independent Euclidean filtering and sorting for all six tower types, both tiers, targeting modes and maps. Axis-aligned path length specialization is retained; exact coordinate checks exercise each map segment, endpoints, interiors, a diagonal and repeated waypoints against the original interpolation.
+
+On branch m36-twenty-waves at 84c27ef, lint, typecheck, the 16-row asset manifest, production build (75 modules) and size budget (1,419,230 bytes across ten files against 20 MB) pass. The full simulation finishes in 94.45 seconds. All 77 printed target checks pass. Its 135 matrix results, 81 combination games and 13 additional three-way boon comparisons use the frozen numbers above. The text output of the single-record and independent replay implementations is identical.
+
+The full unit command takes 34.16 seconds wall time (Vitest 33.96 seconds). It passes 1,520 of 1,523 tests. All three failures belong to the existing src/game/ui/endText.test.ts screen expectations: old victory figures 16 lives/420 gold versus 19/2847, “wave 1 of 10” versus “wave 1 of 20”, and endless wave 16 versus 24. The slow-test report takes 35.68 seconds with a slowest case of 2.7 seconds and zero cases over five seconds. No src/game file changed. The sandbox cannot launch a browser; PW_PORT=4173 npm run test:e2e was not run. Browser frame BOSS_STEPS is still 5361; the new tested simulation frame is 5263. The sandbox's .git is read-only, so the coordinator receives working-tree changes for review and commit.
+
+Changed files relative to 84c27ef (43). No src/game file changed.
+
+- `DEVLOG.md`
+- `docs/DESIGN.md`
+- `scripts/simulate.ts`
+- `src/sim/balance.suite.ts`
+- `src/sim/balance.test.ts`
+- `src/sim/balanceRuns.ts`
+- `src/sim/balanceTargets.ts`
+- `src/sim/boon-impact-meadow.test.ts`
+- `src/sim/boon-impact-riverbend.test.ts`
+- `src/sim/boon-impact-switchback.test.ts`
+- `src/sim/boon-impact.suite.ts`
+- `src/sim/boonBalance.ts`
+- `src/sim/boons.test.ts`
+- `src/sim/boons.ts`
+- `src/sim/boss-frame.test.ts`
+- `src/sim/boss-verifier.test.ts`
+- `src/sim/callEarly.test.ts`
+- `src/sim/combat.test.ts`
+- `src/sim/combat.ts`
+- `src/sim/designSpec.test.ts`
+- `src/sim/difficulty-verifier.test.ts`
+- `src/sim/difficulty.test.ts`
+- `src/sim/endless-verifier.test.ts`
+- `src/sim/endless.test.ts`
+- `src/sim/enemies.ts`
+- `src/sim/events-verifier.test.ts`
+- `src/sim/events.test.ts`
+- `src/sim/fixtures/meadowComboNormal.ts`
+- `src/sim/flyingShield-verifier.test.ts`
+- `src/sim/flyingShield.test.ts`
+- `src/sim/grid-verifier.test.ts`
+- `src/sim/grumblemaw.test.ts`
+- `src/sim/headless.ts`
+- `src/sim/longer-game-verifier.test.ts`
+- `src/sim/map.ts`
+- `src/sim/maps-verifier.test.ts`
+- `src/sim/newTowers-verifier.test.ts`
+- `src/sim/newTowers.test.ts`
+- `src/sim/specials-verifier.test.ts`
+- `src/sim/specials.test.ts`
+- `src/sim/targeting.test.ts`
+- `src/sim/types.ts`
+- `src/sim/waves.ts`

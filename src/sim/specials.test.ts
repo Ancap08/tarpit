@@ -25,7 +25,7 @@ const LINE: MapDef = { id: 'line', width: 960, height: 480, path: [{ x: 0, y: 24
 
 // Arena hp, fixed so the arithmetic below stays as written; no special rule
 // depends on an enemy's full hp.
-const ARENA_HP: Record<EnemyType, number> = { goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000, grumblemaw: 13500 };
+const ARENA_HP: Record<EnemyType, number> = { goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000, grumblemaw: 5600 };
 
 function enemy(id: number, type: EnemyType, distance = AT, hp = ARENA_HP[type]): Enemy {
   return { id, type, hp, distance, slow: 0, slowTicksLeft: 0, burnDps: 0, burnTicksLeft: 0 };

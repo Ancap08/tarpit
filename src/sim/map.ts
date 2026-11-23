@@ -93,10 +93,12 @@ export function resolveMap(map: MapId | MapDef | undefined): MapDef {
 }
 
 function segmentLength(a: Point, b: Point): number {
-  // Campaign paths are axis-aligned. Keep Euclidean lengths for custom paths.
-  if (a.x === b.x) return Math.abs(b.y - a.y);
-  if (a.y === b.y) return Math.abs(b.x - a.x);
-  return Math.hypot(b.x - a.x, b.y - a.y);
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  // The Euclidean length of one nonzero coordinate is its magnitude.
+  if (dx === 0) return Math.abs(dy);
+  if (dy === 0) return Math.abs(dx);
+  return Math.hypot(dx, dy);
 }
 
 /** Total length of the path polyline, in pixels. */
