@@ -286,7 +286,11 @@ def troll(phase, rank=0):
         pebble("Pale slate backplate", (roll + .024, -.140, .720 + bob),
                (.115, .086, .025), "#C7B4A5")
     elif rank == 1:
-        pebble("Wine-red mantle", (roll, -.136, .635 + bob), (.261, .177, .124), cloth)
+        pebble("Short oxblood frock coat", (roll, -.125, .603 + bob),
+               (.270, .195, .169), "#AC3440")
+        for side in (-1, 1):
+            limb("Buff turned lapel", (roll + side*.185, .014, .693+bob),
+                 (roll + side*.092, .100, .476+bob), .043, .032, BONE)
     else:
         # Sweep the cape behind the feet. Its scalloped ermine hem shows in all four headings.
         outline = ((-.16, .015, .695), (.16, .015, .695), (.29, -.22, .50),
@@ -328,15 +332,19 @@ def troll(phase, rank=0):
             mid = Vector(fist) + Vector((.044, .105, .147))
             end = Vector(fist) + Vector((.055, .236, .263))
             if rank == 1:
-                end += Vector((.078, .105, .082))
-                taper("Oversized blackwood club grip", start, mid, .060, .085, INK)
-                limb("Grumblefoot's iron club", mid, end, .135, .111, "#3C2A39")
-                limb("Orange bronze club band", mid.lerp(end, .65), mid.lerp(end, .80),
-                     .139, .112, "#BD7546")
-                for dx, dy in ((-.053, .008), (.053, -.035)):
-                    stud = end + Vector((dx, dy, .029))
-                    taper("Ivory club stud", stud, stud + Vector((dx * .45, .011, .093)),
-                          .046, .012, BONE)
+                # Large bound account book with exposed page block and a gilt clasp.
+                x, y, z = fist
+                for title, dz, dims, color in (
+                    ("Lower ledger cover", .065, (.25,.34,.032), "#493139"),
+                    ("Ivory page block", .095, (.232,.319,.052), "#FFD79A"),
+                    ("Upper ledger cover", .132, (.25,.34,.032), "#54333D"),
+                    ("Ledger clasp", .155, (.25,.047,.016), GOLD),
+                ):
+                    meadow.box(title, (x, y+.028, z+dz), dims, color, .010)
+                meadow.box("Ledger lettering panel", (x,y+.117,z+.157),
+                           (.141,.072,.014), "#F1D19A", .005)
+                meadow.box("Ledger spine", (x-.109,y+.028,z+.133),
+                           (.033,.343,.048), "#7C4940", .008)
             else:
                 tip = end + Vector((.045,.104,.052))
                 for i in range(5):
@@ -372,13 +380,13 @@ def troll(phase, rank=0):
         taper("Curved ivory tusk", (roll + side * .100, face_y + .156, .630 + bob),
               (roll + side * .115, face_y + .170, .709 + bob), .031, .007, BONE)
     if rank == 1:
+        # Broad centre part and paired banks of rolled, powdered hair.
         for side in (-1, 1):
-            base = Vector((roll + side * .122, face_y - .082, .776 + bob))
-            bend = base + Vector((side * .104, -.075, .094))
-            tip = bend + Vector((side * .115, .049, .124))
-            pebble("Dark horn socket", base, (.100, .094, .086), shadow)
-            taper("Ivory horn base", base, bend, .084, .066, BONE)
-            taper("Upturned horn tip", bend, tip, .069, .012, "#FFEDB6")
+            pebble("Parted powdered wig", (roll+side*.074, face_y-.047, .826+bob),
+                   (.091,.140,.066), "#F5E6CF")
+            for i in range(3):
+                pebble("Rolled wig curl", (roll+side*(.147+.009*i), face_y+.044-i*.071,
+                       .780+bob-.012*i), (.061,.054,.063), "#FFF0DA" if i%2 == 0 else "#CEC1AF")
     if rank == 2:
         # Broad crown band with raised points readable from the copy stand.
         profile("Grumblemaw's gold crown band", (roll, face_y - .024, .794 + bob), (
