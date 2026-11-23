@@ -218,8 +218,11 @@ buttons in `uiRects()`) from its first rendered frame, because Phaser makes
 the buttons hit-testable only from the scene's next update after
 `create()`; specs wait with `e2e/title.ts` `waitForTitle`.
 
-On Easy and Hard the HUD shows the level's name in small muted text under
-the wave counter (which moves up 7 px); on Normal there is no tag. The end
+In landscape, the campaign level or Easy/Hard tag sits below the wave
+counter. The 18 px counter moves up 9 px and the 12 px tag sits 12 px
+below row centre. Their fixed heights (22 and 15 px) leave a 2.5 px gap.
+Portrait keeps both labels at 18 px on one line with a 7 px gap.
+Normal Free play has no tag. The end
 screens have [Play again] (same level and map) and a 100 x 42 [Menu]
 beside it that returns to the title; the win screen also has [Keep going].
 
@@ -1676,7 +1679,8 @@ Pack Trail builds up from three-Goblin ranks to groups of six. Heavy Feet ends w
 
 ## Campaign screens
 
-The first screen offers **Campaign** and **Free play**. Free play opens the
+The first screen offers **Campaign** and **Free play**. Its subtitle sits
+20 px below the Free play picker’s subtitle position. Free play opens the
 map and difficulty picker. Its best scores belong to the selected map and
 difficulty. Campaign opens the level map and reads the saved campaign stars.
 

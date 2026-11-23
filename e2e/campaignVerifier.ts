@@ -64,7 +64,8 @@ const textProblems = (page: Page) => page.evaluate(() => {
   }
   for (const [i, a] of boxes.entries()) for (const c of boxes.slice(i + 1)) {
     if (a.b.left < c.b.right && c.b.left < a.b.right && a.b.top < c.b.bottom && c.b.top < a.b.bottom) {
-      problems.push(`overlap: "${a.text}" with "${c.text}"`);
+      const height = Math.min(a.b.bottom, c.b.bottom) - Math.max(a.b.top, c.b.top);
+      problems.push(`overlap: "${a.text}" with "${c.text}" by ${height.toFixed(2)} px vertically`);
     }
   }
   return problems;
@@ -208,7 +209,9 @@ export function campaignVerifierSuite(touch: boolean, rotated: boolean) {
       await api(page, (t) => { t.buildAt(10, 5, 'musketeer'); t.startWave(); t.step(300); });
       const before = await api(page, (t) => { const s = t.state(); return { gold: s.gold, wave: s.wave, tick: s.tick, towers: s.towers.length, id: s.level?.id }; });
       await rotate(page, 'game');
+      expect(await textProblems(page)).toEqual([]);
       await rotate(page, 'game');
+      expect(await textProblems(page)).toEqual([]);
       expect(await api(page, (t) => { const s = t.state(); return { gold: s.gold, wave: s.wave, tick: s.tick, towers: s.towers.length, id: s.level?.id }; })).toEqual(before);
       // On the result screen, in both layouts.
       await end(page, true, 14);

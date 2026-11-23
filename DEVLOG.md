@@ -9165,3 +9165,5 @@ numbers. The map, card and result now draw stars as shapes, and each stop
 reserves space between its number and stars. The build bar and tower panel
 now use the simulation’s level restrictions when offering purchases. Locked
 towers keep their slots, and upgrades end at the level’s tier limit.
+
+At 1.5× font metrics the old landscape wave counter overlapped the level tag by 4.06 px on Mac Chromium. Fixed-height HUD labels and a lower first-screen subtitle clear the stricter guard, which now also checks the running HUD after each rotation.

@@ -127,8 +127,8 @@ export function difficultyTag(difficulty: Difficulty): string {
 }
 
 /** The wave counter's y shift and the tag's y offset from row 1's centre when a tag shows. */
-export const WAVE_TAG_SHIFT = -7;
-export const TAG_OFFSET = 11;
+export const WAVE_TAG_SHIFT = -9;
+export const TAG_OFFSET = 12;
 export const TAG_SIZE = 12;
 
 /**
@@ -394,8 +394,18 @@ export class Hud {
       scene.add.text(x, m.statY, '', { fontFamily: FONT, fontSize: size, fontStyle: 'bold', color }).setOrigin(0, 0.5);
     this.gold = stat(m.goldX);
     this.lives = stat(LIVES_X);
-    this.wave = stat(238);
-    this.tag = m.portrait ? stat(0, m.statSize, TEXT.hudDim) : stat(238, `${TAG_SIZE}px`, TEXT.hudDim).setY(MID + TAG_OFFSET);
+    const waveLabel = (size: number, color: string) => {
+      const descent = Math.ceil(size / 5);
+      const height = size + descent;
+      return scene.add.text(238, m.statY, '', {
+        fontFamily: FONT, fontSize: size, fontStyle: 'bold', color, fixedHeight: height,
+        metrics: { ascent: size, descent, fontSize: height },
+      }).setOrigin(0, 0.5);
+    };
+    const statSize = Number.parseInt(m.statSize, 10);
+    this.wave = waveLabel(statSize, TEXT.hud);
+    this.tag = waveLabel(m.portrait ? statSize : TAG_SIZE, TEXT.hudDim);
+    if (!m.portrait) this.tag.setY(MID + TAG_OFFSET);
     this.next = m.portrait
       ? stat(m.preview.x, m.statSize, TEXT.hudDim).setY(m.preview.y).setOrigin(0, m.preview.originY).setWordWrapWidth(m.preview.width, true)
       : stat(PREVIEW_X, `${PREVIEW_SIZE}px`, TEXT.hudDim).setWordWrapWidth(PREVIEW_WIDTH, true);

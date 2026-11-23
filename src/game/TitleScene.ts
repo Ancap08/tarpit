@@ -287,7 +287,8 @@ export class TitleScene extends Phaser.Scene {
     this.add
       .text(cx, geo.titleY, TITLE_TEXT.title, { fontFamily: FONT, fontSize: '72px', fontStyle: 'bold', color: TEXT.title })
       .setOrigin(0.5);
-    this.add.text(cx, geo.subtitleY, TITLE_TEXT.subtitle, { fontFamily: FONT, fontSize: '24px', color: TEXT.subtitle }).setOrigin(0.5);
+    const subtitleY = this.page === 'first' ? geo.subtitleY + 20 : geo.subtitleY;
+    this.add.text(cx, subtitleY, TITLE_TEXT.subtitle, { fontFamily: FONT, fontSize: '24px', color: TEXT.subtitle }).setOrigin(0.5);
 
     // Milestone 33: the mute button, in the top right corner (TITLE_MUTE).
     this.muteButton = new MuteButton(this, titleMuteRect(portrait, width));
