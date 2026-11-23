@@ -5,6 +5,7 @@
 
 /** How long the page (and manifest, icons) may take before the cached copy is served. */
 export const PAGE_TIMEOUT_MS = 3000;
+export const PAINTED_ASSET_DIR = 'assets/painted/';
 
 /**
  * Cache Storage is shared by the whole origin (on GitHub Pages, every

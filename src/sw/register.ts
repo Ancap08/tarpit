@@ -7,6 +7,22 @@ import { isOwnCache, shouldRegister } from './rules';
 /** False in a build made with TARPIT_SW=off (vite.config.ts); true in tests and the dev server. */
 declare const __TARPIT_SW__: boolean;
 const swOn = typeof __TARPIT_SW__ === 'undefined' ? true : __TARPIT_SW__;
+const CONTROL_WAIT_MS = 3000;
+let firstControl: Promise<void> | undefined;
+
+/** Give the first worker time to claim a Painted visit so it can cache the art. */
+export async function waitForWorkerControl(): Promise<void> {
+  if (!firstControl || navigator.serviceWorker.controller) return;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, CONTROL_WAIT_MS);
+  });
+  try {
+    await Promise.race([firstControl, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /**
  * Kill switch: unregister this game's worker and delete this copy's caches.
@@ -29,14 +45,23 @@ export function registerServiceWorker(): void {
   const base = import.meta.env.BASE_URL;
   if (!swOn) return retire(new URL(base, window.location.href).href);
   if (!shouldRegister(import.meta.env.PROD, window.location.search)) return;
-  window.addEventListener('load', () => {
+  const serviceWorker = navigator.serviceWorker;
+  firstControl = new Promise<void>((resolve) => {
+    const finish = () => {
+      serviceWorker.removeEventListener('controllerchange', finish);
+      resolve();
+    };
+    if (serviceWorker.controller) finish();
+    else serviceWorker.addEventListener('controllerchange', finish, { once: true });
     // update() checks sw.js on every open (past the HTTP cache), so a new
     // deploy's worker installs now and its cache is ready for the next one.
-    navigator.serviceWorker
-      .register(`${base}sw.js`, { scope: base })
-      .then((reg) => reg.update())
-      .catch(() => {
-        // No worker (private mode, blocked storage): the game still plays online.
-      });
+    const register = () => {
+      void serviceWorker.register(`${base}sw.js`, { scope: base })
+        .then((reg) => { void reg.update().catch(() => undefined); })
+        // No worker (private mode, blocked storage): play online.
+        .catch(finish);
+    };
+    if (document.readyState === 'complete') register();
+    else window.addEventListener('load', register, { once: true });
   });
 }

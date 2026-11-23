@@ -51,12 +51,14 @@ import { loadEnemySheets } from './anim/enemySprites';
 import { drawMapThumbnail } from './draw/map';
 import type { Rect } from './input';
 import { highScores } from './highScore';
-import { bestScoreText, DIFFICULTY_LABELS, MAP_NAMES, TITLE_TEXT } from './names';
+import { bestScoreText, DIFFICULTY_LABELS, MAP_NAMES, paintedLoadingText, TITLE_TEXT } from './names';
 import { COLORS, FONT, TEXT } from './palette';
 import { currentLayout } from './layoutSwitch';
 import { Button } from './ui/button';
 import { PORTRAIT_TITLE, titleRects, type TitleGeometry } from './ui/geometry';
 import { MuteButton } from './ui/muteButton';
+import { LOOKS, LookStore, paintedDensity, type Look } from './skin/look';
+import { loadPainted, type PaintedAssets } from './skin/loading';
 
 /** Menu buttons: 42 px tall like every touch target (44.8 px on an iPad in landscape). */
 export const MENU_BUTTON_H = 42;
@@ -124,6 +126,9 @@ export interface TitleUiState {
   difficulty: Difficulty;
   /** The selected map (milestone 27). */
   map: MapId;
+  look: Look;
+  /** Progress from 0 to 1 while fetching painted art. */
+  loading: number | null;
   /** The menu has been drawn once, so its buttons take clicks (milestone 26 follow-up). */
   ready: boolean;
   /** The high-score line (milestone 26) and its box in canvas px, or null when the map and level have no score. */
@@ -135,6 +140,7 @@ export interface GameStartData {
   difficulty: Difficulty;
   /** The map (milestone 27); Meadow when left out. */
   map?: MapId;
+  painted?: PaintedAssets;
 }
 
 export class TitleScene extends Phaser.Scene {
@@ -144,6 +150,10 @@ export class TitleScene extends Phaser.Scene {
   /** The selected map (milestone 27); kept like the level. */
   private selectedMap: MapId = DEFAULT_MAP;
   private mapButtons = new Map<MapId, Button>();
+  private readonly lookStore = new LookStore(() => window.localStorage, window.location.search);
+  private lookButtons = new Map<Look, Button>();
+  private prompt: Phaser.GameObjects.Text | null = null;
+  private progress: number | null = null;
   private playButton: Button | null = null;
   /** Milestone 33: the mute button in the top right corner. */
   private muteButton: MuteButton | null = null;
@@ -164,7 +174,7 @@ export class TitleScene extends Phaser.Scene {
   /** Milestone 32b: rebuild the menu for the window's new layout, keeping the picks (layoutSwitch.ts). */
   relayout(): void {
     // One queued restart serves a burst of requests; its create() reads the newest layout.
-    if (this.starting || this.restartPending) return;
+    if ((this.starting && this.progress === null) || this.restartPending) return;
     this.restartPending = true;
     this.scene.restart();
   }
@@ -177,7 +187,7 @@ export class TitleScene extends Phaser.Scene {
     const geo = currentLayout().kind === 'portrait' ? PORTRAIT_TITLE : LANDSCAPE_TITLE;
     this.cameras.main.setBackgroundColor(COLORS.titleBg);
     this.restartPending = false;
-    this.starting = false;
+    this.starting = this.progress !== null;
     this.ready = false;
     this.events.once(Phaser.Scenes.Events.RENDER, () => {
       this.ready = true;
@@ -231,14 +241,28 @@ export class TitleScene extends Phaser.Scene {
     // Milestone 33: the mute button, in the top right corner (TITLE_MUTE).
     const portrait = currentLayout().kind === 'portrait';
     this.muteButton = new MuteButton(this, titleMuteRect(portrait, width));
+    const lookWidth = portrait ? 116 : LEVEL_BUTTON_W;
+    const captionWidth = 54;
+    const lookHeight = portrait ? geo.levelH : MENU_BUTTON_H;
+    const lookX = cx - (captionWidth + lookWidth * 2 + geo.gap) / 2;
+    this.add
+      .text(lookX, 14 + lookHeight / 2, TITLE_TEXT.look, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: TEXT.subtitle })
+      .setOrigin(0, 0.5);
+    this.lookButtons = new Map();
+    LOOKS.forEach((look, index) => {
+      const rect = { x: lookX + captionWidth + index * (lookWidth + geo.gap), y: 14, width: lookWidth, height: lookHeight };
+      const button = new Button(this, rect, TITLE_TEXT[look], () => this.selectLook(look));
+      this.lookButtons.set(look, button);
+    });
 
-    const prompt = this.add
+    this.prompt = this.add
       .text(cx, geo.promptY, TITLE_TEXT.prompt, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: TEXT.prompt })
       .setOrigin(0.5);
-    if (geo.promptWrap > 0) prompt.setAlign('center').setWordWrapWidth(geo.promptWrap, true);
+    if (geo.promptWrap > 0) this.prompt.setAlign('center').setWordWrapWidth(geo.promptWrap, true);
 
-    this.selectMap(this.selectedMap);
-    this.select(this.selected);
+    this.refreshPicks();
+    this.refreshLook();
+    this.refreshLoading();
     // Phaser re-runs its whole key queue on every DOM key event and clears it
     // only once per frame, so two presses inside one frame (a fast typist, or
     // Playwright) re-emit the first keydown. Handle each DOM event once.
@@ -253,22 +277,46 @@ export class TitleScene extends Phaser.Scene {
     kb?.on('keydown-RIGHT', once(() => this.move(1)));
     kb?.on('keydown-UP', once(() => this.moveMap(-1)));
     kb?.on('keydown-DOWN', once(() => this.moveMap(1)));
+    kb?.on('keydown-L', once(() => this.selectLook(this.lookStore.get() === 'classic' ? 'painted' : 'classic')));
     kb?.on('keydown-ENTER', once(() => this.play()));
     kb?.on('keydown-SPACE', once(() => this.play()));
   }
 
   /** Select a level (highlighting its button); does not start the game. */
   select(level: Difficulty): void {
+    if (this.starting) return;
     this.selected = level;
-    for (const [l, b] of this.levelButtons) b.setPicked(l === level);
-    this.showBest();
+    this.refreshPicks();
   }
 
   /** Select a map (milestone 27; highlighting its thumbnail); does not start the game. */
   selectMap(map: MapId): void {
+    if (this.starting) return;
     this.selectedMap = map;
-    for (const [m, b] of this.mapButtons) b.setPicked(m === map);
+    this.refreshPicks();
+  }
+
+  private refreshPicks(): void {
+    for (const [l, b] of this.levelButtons) b.setPicked(l === this.selected);
+    for (const [m, b] of this.mapButtons) b.setPicked(m === this.selectedMap);
     this.showBest();
+  }
+
+  private selectLook(look: Look): void {
+    if (this.starting) return;
+    this.lookStore.set(look);
+    this.refreshLook();
+  }
+
+  private refreshLook(): void {
+    const look = this.lookStore.get();
+    for (const [option, button] of this.lookButtons) button.setPicked(option === look);
+    this.prompt?.setText(look === 'painted' ? TITLE_TEXT.paintedPrompt : TITLE_TEXT.prompt);
+  }
+
+  private refreshLoading(): void {
+    const progress = this.progress;
+    this.playButton?.set(progress === null ? TITLE_TEXT.play : paintedLoadingText(progress), progress === null);
   }
 
   /** The high-score line for the selected map and level, or no line when they have no score. */
@@ -292,11 +340,26 @@ export class TitleScene extends Phaser.Scene {
   /** Start GameScene on `level` and `map` (the selected ones when left out). Ignored once starting. */
   play(level: Difficulty = this.selected, map: MapId = this.selectedMap): void {
     if (this.starting) return;
+    this.selectedMap = map;
+    this.selected = level;
+    this.refreshPicks();
     this.starting = true;
-    this.selectMap(map);
-    this.select(level);
     const data: GameStartData = { difficulty: level, map };
-    this.scene.start('game', data);
+    if (map !== 'meadow' || this.lookStore.get() !== 'painted') {
+      this.scene.start('game', data);
+      return;
+    }
+    this.progress = 0;
+    this.refreshLoading();
+    const canvasScale = this.game.canvas.getBoundingClientRect().width / this.scale.gameSize.width;
+    const density = paintedDensity(canvasScale, window.devicePixelRatio);
+    void loadPainted(this.textures, density, (progress) => {
+      this.progress = progress;
+      this.refreshLoading();
+    }).then((painted) => {
+      this.progress = null;
+      this.scene.start('game', { ...data, painted });
+    });
   }
 
   uiState(): TitleUiState {
@@ -305,7 +368,10 @@ export class TitleScene extends Phaser.Scene {
       line === null || line.text === ''
         ? null
         : { text: line.text, rect: { x: line.x - line.width / 2, y: line.y - line.height / 2, width: line.width, height: line.height } };
-    return { scene: 'title', difficulty: this.selected, map: this.selectedMap, ready: this.ready, bestLine };
+    return {
+      scene: 'title', difficulty: this.selected, map: this.selectedMap, ready: this.ready,
+      look: this.lookStore.get(), loading: this.progress, bestLine,
+    };
   }
 
   /** Whether the menu has been drawn and its buttons take clicks. */
@@ -323,6 +389,7 @@ export class TitleScene extends Phaser.Scene {
     if (!this.ready) return out;
     for (const [l, b] of this.levelButtons) out[`title:${l}`] = b.rect;
     for (const [m, b] of this.mapButtons) out[`title:map:${m}`] = b.rect;
+    for (const [look, button] of this.lookButtons) out[`title:look:${look}`] = button.rect;
     if (this.playButton) out['title:play'] = this.playButton.rect;
     if (this.muteButton) out['title:mute'] = this.muteButton.bounds;
     return out;

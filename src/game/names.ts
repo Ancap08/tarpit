@@ -73,9 +73,17 @@ export const TITLE_TEXT = {
   difficulty: 'Difficulty',
   /** The map row's caption (milestone 27). */
   map: 'Map',
+  look: 'Look',
+  classic: 'Classic',
+  painted: 'Painted',
   play: 'Play',
   prompt: 'Pick a difficulty and a map, then press Play',
+  paintedPrompt: 'Painted art is available on Meadow only',
 } as const;
+
+export function paintedLoadingText(progress: number): string {
+  return `Loading… ${Math.floor(progress * 100)}%`;
+}
 
 /** The end screens' words (endText.ts and the end screen's buttons). */
 export const END_TEXT = {

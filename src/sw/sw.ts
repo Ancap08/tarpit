@@ -1,8 +1,9 @@
 // The offline service worker (milestone 32a), built to <base>sw.js by
 // scripts/sw-build.ts with this build's version and file list.
 //
-// - Install: cache every file of this build (fetched past the HTTP cache)
-//   into the cache named for this build, then skipWaiting.
+// - Install: cache the core files of this build (fetched past the HTTP
+//   cache) into the cache named for this build, then skipWaiting. Painted
+//   files use the on-demand cache-first route for hashed assets.
 // - Activate: delete this copy's caches from other builds (never another
 //   site's or another copy's: rules.ts cachePrefix), then clients.claim.
 // - Fetch: the page is network first (a new deploy that answers 200 shows
