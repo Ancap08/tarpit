@@ -225,8 +225,9 @@ def harpy(phase):
         limb("Split plum tail", (x * .4, -.131, root_height),
              (x, -.311 - (.028 if x == 0 else 0), root_height - .035), .037, .025, plum)
     pebble("Harpy head", (0, .107, root_height + .178), (.126, .123, .106), coral)
-    profile("Gold circlet", (0, .107, root_height+.231),
-            [(0,.129,.117,0,0),(.043,.124,.113,0,0)], GOLD, sides=20)
+    circlet = [(.113*cos(i*tau/12), .107+.105*sin(i*tau/12), root_height+.245)
+               for i in range(12)]
+    seam("Open gold circlet", circlet, .018, GOLD, cyclic=True)
     pebble("Circlet jewel", (0,.203,root_height+.250), (.028,.026,.025), "#CB243E")
     pebble("Gold hooked beak", (0, .207, root_height + .168), (.071, .111, .057), GOLD)
     for side in (-1, 1):
@@ -268,7 +269,7 @@ def shieldbearer(phase):
     blade("Oxblood shield face", plate(outline, .79, .055), "#751D36", .025)
     crown = ((-.117,-.064),(.117,-.064),(.145,.092),(.060,.033),
              (0,.131),(-.060,.033),(-.145,.092))
-    blade("Gold crown badge", plate(crown, 1, .079), "#FFD769", .019)
+    blade("Gold crown badge", plate([(x, -y) for x, y in crown], 1, .079), "#FFD769", .019)
 
 
 def troll(phase, rank=0):
