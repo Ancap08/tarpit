@@ -9004,3 +9004,59 @@ the walkers and advancing them. That changed which overlapping sprite
 was on top. Main and this branch produced identical pixels for each of
 the two timings. The fixture now introduces and advances the walkers
 in one browser call.
+
+### Verifier notes (Claude Sonnet, milestone 40)
+
+Independent check of the seven Codex commits on `m40-guards` (tip 6fac52c).
+Added `src/sim/guards-verifier.test.ts` (30 tests, hand-worked numbers),
+`e2e/guards-verifier.spec.ts`, `-phone` and `-touch` variants and the helper
+`e2e/guardsVerifier.ts`. No source file changed.
+
+- **Suite.** Lint, check:assets, typecheck, build and check:size pass. `npm test`
+  1,972 tests before my additions, 64 s. `npm run sim`: no misses, 2 m 55 s.
+  Browser suite twice on all three projects: 754 passed, 8 skipped, no flake,
+  both runs. The 8 skips are older (`VERIFIER_*` frame gates, perf phone case,
+  one `fixme`); the branch adds none.
+- **G1 by hand.** `npm run sim` on `origin/main` (d6a714b) against the branch:
+  stderr byte-identical, the branch stdout starts with main's stdout exactly and
+  only appends the Guards block. Final comboBuild state on all nine map and
+  difficulty pairs, with the new fields removed, hashes the same as main's, and
+  the full action logs match too.
+- **Rule, by hand.** Every Codex number matched an independent calculation: lone
+  Goblin dies on contact tick 138 (guard 58.2), Wolf 120 (56), Troll breaks a
+  guard on 96 (934 hp left), Shieldbearer takes full guard damage, ten Goblins
+  together break guards on 72 and 156 with the first death on 149, expiry holds
+  and strikes through tick 720 and releases on 721, a new squad frees the held
+  walkers. Both bosses lose well under 3 s.
+- **Strength, my own sweep** (comboBuild purchases, the combo's own special
+  policy replayed exactly as the baseline, 48 px grid): the policy-timed use in
+  the milestone's sweep (cast the moment the charge is ready, instead of every
+  other special) is weak. With sensible timing, squad only when three or more
+  walkers are within 250 px of the point and the other specials otherwise, the
+  best gain is Normal Meadow +3, Switchback +4, Riverbend +6; Hard Meadow +1,
+  Switchback +1, Riverbend +2; Easy 0 everywhere (already won with 39 lives).
+  One Hard Switchback point turns a loss into a win. Wall then squad at the same
+  point: Riverbend Normal +7, Hard Switchback five loss-to-win points. The wall
+  alone gives +7 and eight such points, so most of that is the Barricade's
+  strength, not Guards. This is above G2's five-life limit under sensible play
+  and outside what G2 measures.
+- **Dead rule.** The cave-end refusal in `guardsPlacement` (anchor before 36 px)
+  can never fire, because the Barricade's 64 px clearance refuses first. Harmless.
+- **Test edits.** Existing tests changed for the one-special-per-tick rule (it now
+  covers every special, not only the Barricade): `specials.test.ts`,
+  `specials-rework-verifier.test.ts`, `longer-game-verifier.test.ts` and
+  `grumblemaw.test.ts` add a tick between casts; the Grumblemaw test replaces a
+  keg kill with a burn kill. The `barricade-verifier.test.ts` edits are only
+  `blocker` to `blockers`. What they check is unchanged.
+- **Late commits.** d900c01 (`layoutSwitch.ts`) fixes a real bug: after a turn
+  from portrait to landscape Phaser fitted the canvas to the stale parent width,
+  so a quick tap missed. Reverting it makes the phone placement test fail 6 of 12
+  runs; with it 12 of 12 pass. It changes behaviour for players, for the better.
+  6fac52c is a screenshot-fixture ordering fix only.
+- **Painted guard.** Running `scripts/art/slice_sheets.py guard` in headless
+  Blender (4 s, output redirected away from the repo) reproduces all four guard
+  files byte for byte. Shipped size added: 18,138 bytes of PNG plus two small JSON.
+- **Pixels.** Guards were measured from the screen, not from the drawing's own
+  report: hide the bodies, show one, diff the page. Feet within 3 px of the
+  simulation point and bodies centred within 6 px in Classic and Painted,
+  landscape and portrait, after a turn and back, and across a corner.
