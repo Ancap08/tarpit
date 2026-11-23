@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { lastSpawnTick, LEVELS } from '../src/sim';
+import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { Rect } from '../src/game/hud';
 import { LANDSCAPE, PORTRAIT } from '../src/game/layout';
 import { bossBarGeometry } from '../src/game/ui/bossBar';
@@ -50,7 +51,7 @@ export function themeSuite(touch: boolean) {
       await api(page, t => t.setCampaignProgress(Object.fromEntries(Array.from({ length: 8 }, (_, i) => [i + 1, 3]))));
       await page.waitForFunction(() => window.__tarpit!.titleReady());
       await press(page, 'title:stop:9', touch);
-      await page.waitForFunction(() => window.__tarpit!.titleReady() && window.__tarpit!.screen() === 'levelCard');
+      await page.waitForFunction(() => window.__tarpit!.titleReady() && window.__tarpit?.screen?.() === 'levelCard');
       expect(await api(page, t => t.campaignLabels().map(label => label.text).join(' '))).toContain("The King's Assessor");
       await shot('level-9-card');
 
@@ -61,10 +62,10 @@ export function themeSuite(touch: boolean) {
           await waitForTitle(page);
         }
         await press(page, 'title:play', touch);
-        await page.waitForFunction(() => window.__tarpit!.scene() === 'game');
+        await page.waitForFunction(() => window.__tarpit?.scene?.() === 'game');
         const wave = campaign ? 7 : 20;
         await page.evaluate(wave => {
-          const t = window.__tarpit!;
+          const t = window.__tarpit as TarpitTestApi;
           t.state().wave = wave - 1;
           t.step(0);
         }, wave);
@@ -75,7 +76,7 @@ export function themeSuite(touch: boolean) {
         await shot(campaign ? 'level-9-preview' : 'free-play-wave-20');
         const spawn = lastSpawnTick(wave, campaign ? { level: LEVELS[8] } : undefined);
         await page.evaluate(spawn => {
-          const t = window.__tarpit!;
+          const t = window.__tarpit as TarpitTestApi;
           t.state().lives = 1000;
           t.startWave();
           // Advance past the arrival banner so the boss bar alone labels the encounter.

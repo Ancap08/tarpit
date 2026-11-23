@@ -374,13 +374,13 @@ export const LEVEL_NAMES: Readonly<Record<number, { name: string; twist: string 
   1: { name: 'First Watch', twist: 'Cover the trail with Musketeers and Longbows.' },
   2: { name: 'Pack Trail', twist: 'Use Cannon fire to thin the crowds.' },
   3: { name: 'The Switchback', twist: 'Slow the Revenue Hounds at the bends.' },
-  4: { name: 'Burn Line', twist: 'Set the tar alight as Redcoat Shieldbearers march through.' },
-  5: { name: 'Wings Over the River', twist: 'Keep the sky covered as Royal Harpies cross the river.' },
+  4: { name: 'Burn Line', twist: 'Ignite the tar under Redcoat Shieldbearers.' },
+  5: { name: 'Wings Over the River', twist: 'Cover the sky as Royal Harpies cross the river.' },
   6: { name: 'Heavy Feet', twist: 'Give the Mortar a clear shot at the Toll Trolls.' },
   7: { name: 'Hold the Bend', twist: 'Raise a Barricade within reach of your towers.' },
   8: { name: 'Stand Fast', twist: 'Meet the crowds with Guards and Fire Arrows.' },
-  9: { name: "The King's Assessor", twist: 'Choose a second upgrade before Assessor Grumblefoot arrives.' },
-  10: { name: 'Last Light', twist: 'Bring every special to the fight with King Grumblemaw.' },
+  9: { name: "The King's Assessor", twist: 'Face Assessor Grumblefoot with a second upgrade.' },
+  10: { name: 'Last Light', twist: 'Bring every special to face King Grumblemaw.' },
 };
 
 export const CAMPAIGN_TEXT = {
