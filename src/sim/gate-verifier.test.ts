@@ -10,6 +10,10 @@ import type { GroupDef } from './types';
 import { levelStars } from './campaignProgress';
 import { createGame } from './game';
 
+// These cases run the real bots over whole levels. The slowest takes about 9 s on a Mac and
+// about 37 s on the CI runner, over the suite's 30 s limit, so this file sets its own.
+vi.setConfig({ testTimeout: 180_000 });
+
 afterEach(() => vi.restoreAllMocks());
 const goblins = (count: number, interval: number, delay = 0): GroupDef => ({ type: 'goblin', count, interval, delay });
 const withLastWave = (level: LevelDef, groups: GroupDef[]): LevelDef => ({
