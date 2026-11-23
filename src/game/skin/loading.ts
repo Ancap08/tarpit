@@ -37,7 +37,34 @@ export interface PaintedAssets {
 }
 
 const loaded = new WeakMap<Phaser.Textures.TextureManager, Map<PaintedDensity, PaintedAssets>>();
-const LOAD_TIMEOUT_MS = 12_000;
+const LOAD_TIMEOUT_MS = 25_000;
+const PROBE_TIMEOUT_MS = 2_000;
+
+function assetUrl(name: PaintedName, density: PaintedDensity, extension: 'png' | 'json'): string {
+  return ART[`../../../assets/art-painted/${name}-${density}x.${extension}`];
+}
+
+interface ConnectionHints {
+  effectiveType?: string;
+  downlink?: number;
+  saveData?: boolean;
+}
+
+function slowConnection(): boolean | undefined {
+  const hints = (navigator as Navigator & { connection?: ConnectionHints }).connection;
+  if (!hints) return undefined;
+  if (hints.saveData || ['slow-2g', '2g', '3g'].includes(hints.effectiveType ?? '')) return true;
+  if (hints.downlink !== undefined && hints.downlink > 0) return hints.downlink <= 2;
+  return hints.effectiveType === '4g' ? false : undefined;
+}
+
+// A high-density phone may have warmed either set online. Reuse a complete
+// cached set offline, even if its current connection hints have changed.
+async function offlineDensity(): Promise<PaintedDensity> {
+  const matches = await Promise.all(SHEET_NAMES.flatMap((name) =>
+    (['png', 'json'] as const).map((ext) => caches.match(assetUrl(name, 2, ext), { ignoreVary: true }))));
+  return matches.every(Boolean) ? 2 : 1;
+}
 
 async function getAsset(url: string, signal: AbortSignal): Promise<Response> {
   const response = await fetch(url, { signal });
@@ -103,12 +130,12 @@ function validateSheet(
 // Decode and validate every pair before registering textures. A failed pair
 // falls back as a whole and a later play can retry without partial textures.
 export async function loadPainted(
-  textures: Phaser.Textures.TextureManager, density: PaintedDensity, onProgress: (progress: number) => void,
+  textures: Phaser.Textures.TextureManager, displayDensity: PaintedDensity, onProgress: (progress: number) => void,
   cancellation: AbortSignal,
 ): Promise<PaintedAssets | undefined> {
   if (cancellation.aborted) return undefined;
   const existing = loaded.get(textures);
-  const cached = existing?.get(density);
+  const cached = existing?.get(displayDensity);
   if (cached) return cached;
 
   const controller = new AbortController();
@@ -119,6 +146,7 @@ export async function loadPainted(
   const aborted = new Promise<never>((_, reject) => {
     signal.addEventListener('abort', () => reject(signal.reason), { once: true });
   });
+  let probeTimer: ReturnType<typeof setTimeout> | undefined;
   const registered: string[] = [];
   let complete = 0;
   const markComplete = <T>(value: T): T => {
@@ -129,11 +157,31 @@ export async function loadPainted(
     // During first install, wait for the worker so downloads can populate its offline cache.
     await Promise.race([waitForWorkerControl(), aborted]);
     signal.throwIfAborted();
+    let density = displayDensity;
+    let ground: Promise<HTMLImageElement> | undefined;
+    const loadImage = (name: PaintedName, scale: PaintedDensity) =>
+      getAsset(assetUrl(name, scale, 'png'), signal).then((r) => decodeImage(r, signal));
+    if (displayDensity === 2) {
+      const slow = slowConnection();
+      if (!navigator.onLine && typeof caches !== 'undefined') {
+        density = await Promise.race([offlineDensity(), aborted]);
+      } else if (slow) {
+        density = 1;
+      } else if (slow === undefined) {
+        // The ground is the largest 1× file. Start the remaining 1× requests
+        // as soon as the probe budget expires, even if it is still arriving.
+        ground = loadImage('meadow', 1);
+        density = await Promise.race([aborted, ground.then(() => 2 as const),
+          new Promise<1>((resolve) => { probeTimer = setTimeout(() => resolve(1), PROBE_TIMEOUT_MS); })]);
+        clearTimeout(probeTimer);
+      }
+    }
+    const ready = existing?.get(density);
+    if (ready) return ready;
     const pairs = await Promise.race([aborted, Promise.all(SHEET_NAMES.map(async (name) => {
-      const path = `../../../assets/art-painted/${name}-${density}x`;
       const [image, metadata] = await Promise.all([
-        getAsset(ART[`${path}.png`], signal).then((r) => decodeImage(r, signal)).then(markComplete),
-        getAsset(ART[`${path}.json`], signal).then((r) => r.json()).then(markComplete),
+        (name === 'meadow' && density === 1 && ground ? ground : loadImage(name, density)).then(markComplete),
+        getAsset(assetUrl(name, density, 'json'), signal).then((r) => r.json()).then(markComplete),
       ]);
       const sheet = validateSheet(name, `painted:${name}:${density}x`, metadata, image);
       return { name, sheet, image };
@@ -160,6 +208,7 @@ export async function loadPainted(
     for (const key of registered) textures.remove(key);
     return undefined;
   } finally {
+    clearTimeout(probeTimer);
     clearTimeout(timer);
     cancellation.removeEventListener('abort', cancel);
   }

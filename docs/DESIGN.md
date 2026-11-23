@@ -926,17 +926,25 @@ and Riverbend use Classic art and retain the player's preference for
 their next game on Meadow.
 
 - Painted Meadow uses the Blender ground, tower, enemy, scenery and
-  projectile art in `assets/art-painted/`. It loads one density on
-  demand. It uses 2× art when device pixel ratio times displayed canvas
-  scale reaches 1.5 device pixels per game pixel and 1× otherwise. A
-  failed painted asset load falls back to Classic for the run. Atlas
-  dimensions and anchors are in texture pixels and are divided by
-  density for drawing in game coordinates. The service worker caches
-  painted files on their first successful fetch. Play shows “Loading
-  painted art” while waiting for the worker, then the percentage of files
-  loaded. Worker startup and files share one 12-second limit. A failure or
-  timeout starts Classic and shows a banner until the player starts wave 1.
+  projectile art in `assets/art-painted/`. On Play it selects 2× when the
+  device pixel ratio times the displayed canvas scale reaches 1.5 and 1×
+  otherwise. A cold load uses 1× on a data-saving connection, on 3G or
+  slower, or with an estimated downlink of 2 Mbps or less. A browser
+  without a speed estimate tries the 1× Meadow ground first when the
+  screen calls for 2×. If the ground takes at least two seconds, the rest
+  loads at 1×. Otherwise the high-density screen gets 2×.
+  Atlas dimensions and anchors are in texture pixels and are divided by
+  density for drawing in game coordinates. The service worker caches painted
+  files on first use for offline play. Play shows “Loading painted art 0%”
+  from the click, then the percentage of the selected files ready.
+  Worker startup, the speed check and all files share one 25-second limit.
+  A failure or timeout starts Classic and shows a banner until wave 1.
   The Meadow-only note appears when the player chooses Painted on another map.
+- The code-drawn Barricade sits across the painted trail in either layout.
+  Held enemies use their painted sprites, grouped within 36 game pixels of
+  the wall at their on-screen trail positions. Its hp bar and the count
+  for four or more held enemies sit above the pile. The placement marker
+  and refusal text use the same rules as Classic.
 - Towers use 16 clockwise headings from north. Enemies walk in four
   directions, advancing one of four poses per 6 game pixels walked. Test
   mode holds the first pose for each direction. The ground turns with the

@@ -166,6 +166,56 @@ test.describe('device pixel ratio 2', () => {
     });
     expect(new Set(filters)).toEqual(new Set([0]));
   });
+
+  test('D5 a slow connection starts directly at 1x and reopens that set offline', async ({ page, context }) => {
+    await page.addInitScript(() => Object.defineProperty(navigator, 'connection', {
+      value: navigator.onLine ? { effectiveType: '3g' } : { effectiveType: '4g' },
+    }));
+    const requests: string[] = [];
+    page.on('request', (r) => { if (r.url().includes('/assets/painted/')) requests.push(r.url()); });
+    await page.goto('/?look=painted');
+    await waitForTitle(page);
+    await play(page);
+    expect(await livePainted(page)).toMatchObject({ active: true, density: 1 });
+    expect(requests).toHaveLength(54);
+    expect(requests.every((url) => url.includes('-1x-'))).toBe(true);
+
+    await context.setOffline(true);
+    await page.reload();
+    await waitForTitle(page);
+    await play(page);
+    expect(await livePainted(page)).toMatchObject({ active: true, density: 1 });
+  });
+
+  for (const delayed of [false, true]) {
+    test(`D5 without connection hints a ${delayed ? 'pending' : 'fast'} first ground selects ${delayed ? 1 : 2}x`, async ({ page }) => {
+      await page.addInitScript(() => Object.defineProperty(navigator, 'connection', { value: undefined }));
+      const requests: string[] = [];
+      page.on('request', (r) => { if (r.url().includes('/assets/painted/')) requests.push(r.url()); });
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => { release = resolve; });
+      if (delayed) {
+        await page.route('**/assets/painted/meadow-1x-*.png', async (route) => {
+          await gate;
+          await route.continue();
+        });
+      }
+      await page.goto('/?test=1&look=painted');
+      await waitForTitle(page);
+      await clickRect(page, 'title:play');
+      try {
+        if (delayed) await expect.poll(() => requests.length).toBeGreaterThan(1);
+      } finally {
+        release();
+      }
+      await waitForGame(page);
+      expect(await livePainted(page)).toMatchObject({ active: true, density: delayed ? 1 : 2 });
+      expect(requests[0]).toMatch(/meadow-1x-.*\.png$/);
+      expect(requests.filter((url) => url.includes('-1x-'))).toHaveLength(delayed ? 54 : 1);
+      expect(requests.filter((url) => url.includes('-2x-'))).toHaveLength(delayed ? 0 : 54);
+      expect(new Set(requests).size).toBe(requests.length);
+    });
+  }
 });
 
 test.describe('painted file failures (service worker blocked so page.route sees the fetches)', () => {
@@ -204,7 +254,7 @@ test.describe('painted file failures (service worker blocked so page.route sees 
     expect(problems).toEqual([]);
   });
 
-  test('D6 worker and a hung sheet share a 12 s limit, with Play progress as files arrive', async ({ page }) => {
+  test('D6 worker and a hung sheet share a 25 s limit, with Play progress as files arrive', async ({ page }) => {
     test.setTimeout(60_000);
     await page.addInitScript(() => {
       ServiceWorkerContainer.prototype.register = async () => {
@@ -219,14 +269,14 @@ test.describe('painted file failures (service worker blocked so page.route sees 
     const t0 = Date.now();
     await clickRect(page, 'title:play');
     await expect.poll(() => titleState(page).then((s) => s.loading)).toBe(0);
-    expect((await titleTexts(page)).filter((t) => t.startsWith('Loading'))).toEqual(['Loading painted art']);
+    expect((await titleTexts(page)).filter((t) => t.startsWith('Loading'))).toEqual(['Loading painted art 0%']);
     await page.waitForTimeout(4000);
     await page.evaluate(() => window.dispatchEvent(new Event('release-worker-registration')));
     await expect.poll(async () => (await titleState(page)).loading ?? 0).toBeGreaterThan(0);
     expect((await titleTexts(page)).some((t) => /^Loading painted art [1-9]\d?%$/.test(t))).toBe(true);
     await waitForGame(page);
-    expect(Date.now() - t0).toBeGreaterThanOrEqual(11_500);
-    expect(Date.now() - t0).toBeLessThan(15_000);
+    expect(Date.now() - t0).toBeGreaterThanOrEqual(24_500);
+    expect(Date.now() - t0).toBeLessThan(28_500);
     expect((await livePainted(page)).active).toBe(false);
   });
 });

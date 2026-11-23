@@ -82,7 +82,7 @@ export const TITLE_TEXT = {
 } as const;
 
 export function paintedLoadingText(progress: number): string {
-  return progress === 0 ? 'Loading painted art' : `Loading painted art ${Math.floor(progress * 100)}%`;
+  return `Loading painted art ${Math.floor(progress * 100)}%`;
 }
 
 export const PAINTED_FALLBACK = 'Painted art could not load. Playing Classic.';
