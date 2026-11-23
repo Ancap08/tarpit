@@ -7,7 +7,7 @@
 // outline round their cell. Labels are Text objects (labels.ts).
 
 import type Phaser from 'phaser';
-import { CELL, cellCenter, cellKey, nearestPathPoint, positionAlongPath, type Cell, type GameState, type MapDef, type Point, type TowerType } from '../../sim';
+import { CELL, cellCenter, cellKey, nearestPathPoint, positionAlongPath, type Cell, type GameState, type MapDef, type Point, type TowerType, type UpgradePath } from '../../sim';
 import { LANDSCAPE, type Layout } from '../layout';
 import { COLORS } from '../palette';
 
@@ -85,6 +85,7 @@ export function drawTowerShape(
   alpha = 1,
   recoil = 0,
   layout: Layout = LANDSCAPE,
+  path?: UpgradePath,
 ): void {
   const at = (dx: number, dy: number) => layout.offset(p, dx, dy);
   if (upgraded) {
@@ -177,6 +178,20 @@ export function drawTowerShape(
       }
       break;
   }
+
+  if (path) {
+    const center = at(10, -10);
+    g.fillStyle(COLORS.towerPathEdge, alpha).fillCircle(center.x, center.y, 8);
+    if (path === 'A') {
+      const [top, right, bottom, left] = [at(10, -16), at(16, -10), at(10, -4), at(4, -10)];
+      g.fillStyle(COLORS.towerPathA, alpha)
+        .fillTriangle(top.x, top.y, right.x, right.y, bottom.x, bottom.y)
+        .fillTriangle(top.x, top.y, bottom.x, bottom.y, left.x, left.y);
+    } else {
+      const [left, right] = [at(6, -10), at(14, -10)];
+      g.fillStyle(COLORS.towerPathB, alpha).fillCircle(left.x, left.y, 3).fillCircle(right.x, right.y, 3);
+    }
+  }
 }
 
 /** The unlocked outline: 2 px pale dashes, DASH long with DASH gaps, inset 1 px so it stays inside the cell. */
@@ -221,16 +236,17 @@ export function drawTowerScaled(
   upgraded: boolean,
   alpha = 1,
   layout: Layout = LANDSCAPE,
+  path?: UpgradePath,
 ): void {
   if (pose.scale === 1) {
-    drawTowerShape(g, type, p, pose.angle, upgraded, alpha, pose.recoil, layout);
+    drawTowerShape(g, type, p, pose.angle, upgraded, alpha, pose.recoil, layout, path);
     return;
   }
   g.save();
   g.translateCanvas(p.x, p.y);
   g.scaleCanvas(pose.scale, pose.scale);
   g.translateCanvas(-p.x, -p.y);
-  drawTowerShape(g, type, p, pose.angle, upgraded, alpha, pose.recoil, layout);
+  drawTowerShape(g, type, p, pose.angle, upgraded, alpha, pose.recoil, layout, path);
   g.restore();
 }
 
@@ -250,7 +266,7 @@ export function drawTowers(
   for (const tower of state.towers) {
     const dim = dimmed !== null && dimmed.col === tower.cell.col && dimmed.row === tower.cell.row;
     if (!tower.locked) drawUnlockedOutline(g, tower.cell, dim ? DRAG_ORIGIN_ALPHA : 0.9);
-    if (pose) drawTowerScaled(g, tower.type, cellCenter(tower.cell), pose(tower.cell, tower.type), tower.upgraded, dim ? DRAG_ORIGIN_ALPHA : 1, layout);
-    else drawTowerShape(g, tower.type, cellCenter(tower.cell), aim.angle(tower.cell), tower.upgraded, dim ? DRAG_ORIGIN_ALPHA : 1, 0, layout);
+    if (pose) drawTowerScaled(g, tower.type, cellCenter(tower.cell), pose(tower.cell, tower.type), tower.upgraded, dim ? DRAG_ORIGIN_ALPHA : 1, layout, tower.path);
+    else drawTowerShape(g, tower.type, cellCenter(tower.cell), aim.angle(tower.cell), tower.upgraded, dim ? DRAG_ORIGIN_ALPHA : 1, 0, layout, tower.path);
   }
 }

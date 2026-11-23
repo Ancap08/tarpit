@@ -3,7 +3,7 @@
 // is an edit here (plus regenerated screenshot baselines). Tests that check a
 // display string build it from these tables, so a rename changes no test.
 
-import { BOONS, type BoonId, type Difficulty, type EnemyType, type MapId, type SpecialType, type TargetingMode, type TowerType } from '../sim';
+import { BOONS, TOWER_DEFS, TOWER_PATHS, type BoonId, type Difficulty, type EnemyType, type MapId, type SpecialType, type TargetingMode, type TowerLevel, type TowerType, type UpgradePath } from '../sim';
 
 /** The wave 10 boss (docs/SCOPE-v4.md, milestone 23): the HUD boss bar and the wave 10 preview. */
 export const BOSS_NAME = 'Grumblefoot';
@@ -115,11 +115,41 @@ export function bestScoreText(map: MapId, difficulty: Difficulty, waves: number)
  */
 export const PANEL_TEXT = {
   upgrade: 'Upgrade',
-  upgraded: 'Upgraded',
   undoUpgrade: 'Undo upgrade',
   sell: 'Sell',
   remove: 'Remove',
+  notEnoughGold: 'Not enough gold',
 } as const;
+
+export const PATH_NAMES: Readonly<Record<TowerType, Record<UpgradePath, string>>> = {
+  musketeer: { A: 'Sharpshooter', B: 'Volley' },
+  cannon: { A: 'Heavy Shot', B: 'Quick Loader' },
+  tarpit: { A: 'Deep Tar', B: 'Wide Tar' },
+  longbow: { A: 'War Bow', B: 'Quick Draw' },
+  mortar: { A: 'Siege Shell', B: 'Wide Burst' },
+  firepot: { A: 'Inferno', B: 'Lasting Flames' },
+};
+
+export function towerPanelTitle(type: TowerType, level: TowerLevel, path?: UpgradePath): string {
+  return `${path ? PATH_NAMES[type][path] : TOWER_NAMES[type]} · Level ${level}`;
+}
+
+/** The upgrade's change from level two. Rewards are applied separately by the sim. */
+export function pathDescription(type: TowerType, path: UpgradePath): string {
+  const before = TOWER_DEFS[type].upgraded;
+  const after = TOWER_PATHS[type][path];
+  const gain = (a: number, b: number) => Math.round((b / a - 1) * 100);
+  if (type === 'musketeer' && path === 'A') {
+    return `+${gain(before.range, after.range)}% range, +${gain(before.damage, after.damage)}% damage`;
+  }
+  if (after.fireRate !== before.fireRate) return `Fires ${gain(before.fireRate, after.fireRate)}% faster`;
+  if (after.splashRadius !== before.splashRadius) return `${gain(before.splashRadius, after.splashRadius)}% bigger blast`;
+  if (after.slow !== before.slow) return `Slows enemies by ${Math.round(after.slow * 100)}%`;
+  if (after.range !== before.range) return `${gain(before.range, after.range)}% longer range`;
+  if (after.damage !== before.damage) return `Hits ${gain(before.damage, after.damage)}% harder`;
+  if (after.burnDps !== before.burnDps) return `${gain(before.burnDps, after.burnDps)}% more burn damage`;
+  return `Burns ${gain(before.burnDuration, after.burnDuration)}% longer`;
+}
 
 /** The Start Wave button's label (milestone 25c moved it here from hud.ts). */
 export const START_WAVE_TEXT = 'Start Wave';

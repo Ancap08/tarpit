@@ -1,142 +1,229 @@
-// Tower panel: opens beside a selected tower with "Upgrade  40", "Sell  +35"
-// and "Target: First". Upgrade reads "Upgraded" and is greyed once used, and
-// is greyed when unaffordable. Sell shows the refund, towerSellValue: 70% of
-// spent rounded down, plus in full any upgrade bought this setup phase.
-// The targeting button (milestone 24) shows the tower's mode and cycles it
-// first -> last -> strongest -> first; its label is 13 px and centred so
-// "Target: Strongest" (17 Courier characters, about 133 px) fits the 156 px
-// button with about 11 px to spare a side (14 px left about 6).
-// A 42 x 42 close button ("×") sits in the top-right corner (milestone 14),
-// for touch players with no Escape key.
-// Planning phase (milestone 25a): an unlocked tower's Sell reads
-// "Remove  +<spent>" (a full refund), and while its upgrade was bought this
-// setup phase the Upgrade slot reads "Undo upgrade  +<cost>" in 14 px (16 px
-// would not fit the 156 px button) and undoes it. Words from names.ts.
-// Milestone 25c: a small 13 px line above the buttons shows the tower's kill
-// count ("Kills 43"); the panel grows by KILLS_LINE_H.
-
 import type Phaser from 'phaser';
-import { TARGETING_MODES, TOWER_DEFS, towerAt, towerSellValue, type Cell, type GameState, type TargetingMode } from '../../sim';
+import {
+  TARGETING_MODES,
+  TOWER_DEFS,
+  towerAt,
+  towerLevel,
+  towerSellValue,
+  towerUndoValue,
+  type Cell,
+  type GameState,
+  type TargetingMode,
+  type UpgradePath,
+} from '../../sim';
 import { placeBeside, type Rect } from '../input';
 import { fontPx, type Layout } from '../layout';
-import { killsLabel, PANEL_TEXT, targetingButtonText } from '../names';
-import { FONT, TEXT } from '../palette';
-import { ButtonStack } from './button';
-import { panelGeometry } from './geometry';
+import { killsLabel, PANEL_TEXT, targetingButtonText, towerPanelTitle } from '../names';
+import { COLORS, FONT, TEXT } from '../palette';
+import { Button } from './button';
+import { STACK_GAP, STACK_PAD } from './geometry';
+import { getPathChoices, towerPanelSize, UPGRADE_PATHS, type PathChoice } from './towerPanelModel';
 
 export interface TowerPanelHandlers {
-  onUpgrade: () => void;
-  /** The Upgrade slot was clicked while it read "Undo upgrade" (milestone 25a). */
+  onUpgrade: (path?: UpgradePath) => void;
   onUndoUpgrade: () => void;
-  /** Sell, or Remove for an unlocked tower: the sim decides the refund. */
   onSell: () => void;
-  /** The targeting button was clicked; `next` is the mode after the tower's current one. */
   onTarget: (next: TargetingMode) => void;
   onClose: () => void;
 }
 
+interface Row {
+  key: string;
+  button: Button;
+  path?: PathChoice;
+}
+
 export class TowerPanel {
-  private readonly stack: ButtonStack;
+  private readonly backing: Phaser.GameObjects.Rectangle;
+  private readonly upgrade: Button;
+  private readonly undo: Button;
+  private readonly sell: Button;
+  private readonly target: Button;
+  private readonly closeButton: Button;
+  private readonly pathButtons: Record<UpgradePath, Button>;
+  private readonly allButtons: Button[];
+  private readonly titleText: Phaser.GameObjects.Text;
   private readonly killsText: Phaser.GameObjects.Text;
+  private readonly pathText: Record<UpgradePath, { description: Phaser.GameObjects.Text; reason: Phaser.GameObjects.Text }>;
   private at: Cell | null = null;
   private mode: TargetingMode = 'first';
-  /** The Upgrade slot shows "Undo upgrade" (milestone 25a). */
-  private undo = false;
-  private readonly killsLineH: number;
+  private activeRows: Row[] = [];
+  private placed: Rect | null = null;
 
-  /** `layout` (milestone 32b) places the panel beside the tower inside the map's box on the screen. */
   constructor(
-    scene: Phaser.Scene,
+    private readonly scene: Phaser.Scene,
     private readonly layout: Layout,
     handlers: TowerPanelHandlers,
   ) {
-    // Milestone 32b: portrait buttons are 220 x 70 with 18 px text, and the kills line is 18 px too.
-    const portrait = layout.kind === 'portrait';
-    const geo = panelGeometry(layout);
     const f = (px: number) => fontPx(layout, px);
-    this.stack = new ButtonStack(scene, [
-      { text: PANEL_TEXT.upgrade, right: '', fontSize: f(16), onClick: () => (this.undo ? handlers.onUndoUpgrade() : handlers.onUpgrade()) },
-      { text: PANEL_TEXT.sell, right: '', fontSize: f(16), onClick: handlers.onSell },
-      { text: targetingButtonText('first'), fontSize: f(13), onClick: () => handlers.onTarget(nextMode(this.mode)) },
-    ], handlers.onClose, geo.header, geo.size, portrait ? '30px' : '24px');
-    this.killsLineH = geo.header;
-    this.killsText = scene.add
-      .text(0, 0, killsLabel(0), { fontFamily: FONT, fontSize: f(13), fontStyle: 'bold', color: TEXT.hudDim })
-      .setOrigin(0, 0.5)
-      .setVisible(false);
+    const rect = { x: 0, y: 0, width: 1, height: 1 };
+    const portrait = layout.kind === 'portrait';
+    this.backing = scene.add.rectangle(0, 0, 1, 1, COLORS.menuBg, 0.92)
+      .setOrigin(0, 0).setStrokeStyle(1.5, COLORS.menuEdge, 0.8).setVisible(false);
+    this.upgrade = new Button(scene, rect, PANEL_TEXT.upgrade, () => handlers.onUpgrade(), { fontSize: f(16), right: '' });
+    this.undo = new Button(scene, rect, PANEL_TEXT.undoUpgrade, handlers.onUndoUpgrade, { fontSize: f(14), right: '' });
+    this.sell = new Button(scene, rect, PANEL_TEXT.sell, handlers.onSell, { fontSize: f(16), right: '' });
+    this.target = new Button(scene, rect, targetingButtonText('first'), () => handlers.onTarget(nextMode(this.mode)), { fontSize: f(13) });
+    this.closeButton = new Button(scene, rect, '×', handlers.onClose, { fontSize: portrait ? '30px' : '24px' });
+    const pathButton = (path: UpgradePath) => new Button(scene, rect, '', () => handlers.onUpgrade(path), {
+      right: '',
+      fontSize: portrait ? '22px' : '17px',
+      labelY: portrait ? 20 : 14,
+      sound: null,
+    });
+    this.pathButtons = { A: pathButton('A'), B: pathButton('B') };
+    this.allButtons = [this.upgrade, this.undo, this.sell, this.target, this.closeButton, this.pathButtons.A, this.pathButtons.B];
+    for (const button of this.allButtons) button.setShown(false);
+
+    const caption = (size: string, color: string, fontStyle = 'normal') => scene.add.text(0, 0, '', {
+      fontFamily: FONT, fontSize: size, color, fontStyle,
+    }).setOrigin(0, 0.5).setVisible(false);
+    this.titleText = caption(portrait ? '22px' : '17px', TEXT.button, 'bold');
+    this.killsText = caption(f(13), TEXT.hudDim, 'bold');
+    const pathCaption = () => ({
+      description: caption(portrait ? '20px' : '15px', TEXT.button),
+      reason: caption(portrait ? '19px' : '14px', TEXT.buttonDisabled),
+    });
+    this.pathText = { A: pathCaption(), B: pathCaption() };
   }
 
-  /** The cell of the selected tower, or null when closed. */
   get cell(): Cell | null {
     return this.at;
   }
 
   get rect(): Rect | null {
-    return this.stack.rect;
+    return this.placed;
   }
 
   open(cell: Cell, state: GameState): void {
     this.at = cell;
-    const { x, y } = placeBeside(this.layout.cellCenter(cell), this.stack.width, this.stack.height, state.map, this.layout);
+    this.placed = null;
     this.update(state);
-    this.stack.show(x, y);
-    this.killsText.setPosition(x + this.stack.pad, y + this.stack.pad + this.killsLineH / 2 - 2).setVisible(true);
   }
 
   close(): void {
     this.at = null;
-    this.stack.hide();
+    this.placed = null;
+    this.activeRows = [];
+    this.backing.setVisible(false);
+    for (const button of this.allButtons) button.setShown(false);
+    this.titleText.setVisible(false);
     this.killsText.setVisible(false);
+    for (const { description, reason } of Object.values(this.pathText)) {
+      description.setVisible(false);
+      reason.setVisible(false);
+    }
   }
 
-  /** Refresh labels and affordability. Call on every redraw. */
+  /** Refresh affordability, and refit the panel when its rows or display scale change. */
   update(state: GameState): void {
     if (this.at === null) return;
     const tower = towerAt(state, this.at);
     if (!tower) return;
-    const [upgrade, sell, target] = this.stack.buttons;
-    const cost = TOWER_DEFS[tower.type].upgradeCost;
-    this.undo = state.phase === 'setup' && tower.upgraded && tower.upgradedThisPhase;
-    upgrade.setFontSize(fontPx(this.layout, this.undo ? 14 : 16));
-    if (this.undo) {
-      upgrade.set(PANEL_TEXT.undoUpgrade, true, `+${cost}`);
-    } else if (tower.upgraded) {
-      upgrade.set(PANEL_TEXT.upgraded, false, '');
-    } else {
-      upgrade.set(PANEL_TEXT.upgrade, state.gold >= cost, String(cost));
+    const level = towerLevel(tower);
+    const undo = state.phase === 'setup' ? towerUndoValue(tower) : 0;
+    const rows: Row[] = [];
+    if (level === 1) {
+      const cost = TOWER_DEFS[tower.type].upgradeCost;
+      this.upgrade.set(PANEL_TEXT.upgrade, state.gold >= cost, String(cost));
+      rows.push({ key: 'upgrade', button: this.upgrade });
     }
-    sell.set(tower.locked ? PANEL_TEXT.sell : PANEL_TEXT.remove, true, `+${towerSellValue(tower)}`);
+    for (const path of getPathChoices(tower, state.gold)) {
+      const button = this.pathButtons[path.path];
+      button.set(path.name, path.disabledReason === null, String(path.price));
+      rows.push({ key: `path:${path.path}`, button, path });
+    }
+    if (undo > 0) {
+      this.undo.set(PANEL_TEXT.undoUpgrade, true, `+${undo}`);
+      rows.push({ key: 'undo', button: this.undo });
+    }
+    this.sell.set(tower.locked ? PANEL_TEXT.sell : PANEL_TEXT.remove, true, `+${towerSellValue(tower)}`);
     this.mode = tower.targeting;
-    target.set(targetingButtonText(tower.targeting), true);
+    this.target.set(targetingButtonText(tower.targeting), true);
+    rows.push({ key: 'sell', button: this.sell }, { key: 'target', button: this.target });
+    this.activeRows = rows;
+
+    const portrait = this.layout.kind === 'portrait';
+    const scale = portrait || this.scene.sys.game.device.input.touch
+      ? Math.max(this.scene.scale.displayScale.x, this.scene.scale.displayScale.y)
+      : 0;
+    const { close, rowHeight, pathHeight, header, width, height, buttonWidth } =
+      towerPanelSize(this.layout, level, rows.length, scale);
+    if (this.placed?.width !== width || this.placed.height !== height) {
+      const location = placeBeside(this.layout.cellCenter(this.at), width, height, state.map, this.layout);
+      this.placed = { ...location, width, height };
+      this.backing.setPosition(location.x, location.y).setSize(width, height).setVisible(true);
+    }
+    const { x, y } = this.placed;
+    const left = x + STACK_PAD;
+    this.closeButton.setSize(close, close);
+    this.closeButton.moveTo(x + width - STACK_PAD - close, y + STACK_PAD);
+    this.closeButton.setShown(true);
+
+    const title = towerPanelTitle(tower.type, level, tower.path);
+    if (this.titleText.text !== title) this.titleText.setText(title);
+    this.titleText.setPosition(left, y + STACK_PAD + (portrait ? 13 : 9)).setVisible(level > 1);
     const kills = killsLabel(tower.kills ?? 0);
     if (this.killsText.text !== kills) this.killsText.setText(kills);
+    this.killsText.setPosition(left, y + STACK_PAD + (level > 1 ? (portrait ? 39 : 29) : header / 2 - 2)).setVisible(true);
+
+    let top = y + STACK_PAD + header;
+    for (const { key, button, path } of rows) {
+      const h = path ? pathHeight : rowHeight;
+      const split = level > 1 ? Math.round(buttonWidth * 0.43) : 0;
+      const isSell = split > 0 && key === 'sell';
+      const isTarget = split > 0 && key === 'target';
+      button.setSize(isSell ? split : isTarget ? buttonWidth - split - STACK_GAP : buttonWidth, h);
+      button.moveTo(isTarget ? left + split + STACK_GAP : left, top);
+      if (path) {
+        const { description, reason } = this.pathText[path.path];
+        const hint = path.disabledReason ?? '';
+        if (description.text !== path.description) description.setText(path.description);
+        if (reason.text !== hint) reason.setText(hint);
+        description.setPosition(left + 10, top + (portrait ? 46 : 35));
+        reason.setPosition(left + 10, top + (portrait ? 73 : 54));
+      }
+      if (!isSell) top += h + STACK_GAP;
+    }
+    for (const b of this.allButtons) b.setShown(b === this.closeButton || rows.some((row) => row.button === b));
+    for (const path of UPGRADE_PATHS) {
+      const choice = rows.find((row) => row.path?.path === path)?.path;
+      const { description, reason } = this.pathText[path];
+      description.setVisible(choice !== undefined);
+      reason.setVisible(choice !== undefined && choice.disabledReason !== null);
+    }
   }
 
-  /** Button rectangles keyed `panel:upgrade`, `panel:sell`, `panel:target` and `panel:close`, only while open. */
   rects(): Record<string, Rect> {
-    if (!this.stack.isOpen) return {};
-    const [upgrade, sell, target] = this.stack.buttons;
-    const close = this.stack.close as NonNullable<ButtonStack['close']>;
-    return { 'panel:upgrade': upgrade.rect, 'panel:sell': sell.rect, 'panel:target': target.rect, 'panel:close': close.rect };
+    if (!this.placed) return {};
+    return Object.fromEntries([
+      ['panel:close', this.closeButton.rect],
+      ...this.activeRows.map(({ key, button }) => [`panel:${key}`, button.rect]),
+    ]);
   }
 
-  /** The Upgrade and Sell slots' labels ("Remove  +50"), while open (for tests), else null. */
   get upgradeText(): string | null {
-    return this.stack.isOpen ? this.stack.buttons[0].text : null;
+    return this.activeRows.find(({ key }) => key === 'upgrade' || key === 'undo')?.button.text ?? null;
+  }
+
+  get choices(): PathChoice[] {
+    return this.activeRows.flatMap(({ path }) => path ? [path] : []);
+  }
+
+  get title(): string | null {
+    return this.placed && this.titleText.visible ? this.titleText.text : null;
   }
 
   get sellText(): string | null {
-    return this.stack.isOpen ? this.stack.buttons[1].text : null;
+    return this.placed ? this.sell.text : null;
   }
 
-  /** The kill count line ("Kills 43"), while open (for tests), else null (milestone 25c). */
   get killsLine(): string | null {
-    return this.stack.isOpen ? this.killsText.text : null;
+    return this.placed ? this.killsText.text : null;
   }
 
-  /** The targeting button's label, while open (for tests), else null. */
   get targetText(): string | null {
-    return this.stack.isOpen ? this.stack.buttons[2].text : null;
+    return this.placed ? this.target.text : null;
   }
 }
 

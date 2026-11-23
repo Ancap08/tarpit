@@ -45,10 +45,13 @@ cloud shadows and the odd bird or butterfly, all still under reduced motion.
    waves is free to change (a tower bought while a wave runs locks at once): drag a tower (dashed outline) to another
    cell, Remove it for all its gold back, or Undo an upgrade for its full
    price. Once the wave starts, towers are locked in place and sell for 70%.
-4. **Upgrade, sell, target.** Click a tower to open its panel: Upgrade (one
-   level), Sell, and Target, which cycles which enemy it shoots: First
-   (furthest along the path), Last (closest to the cave) or Strongest (most
-   hp). The panel also shows the tower's kills.
+4. **Upgrade, sell, target.** Open a tower's panel and choose Upgrade to
+   reach level 2. At level 2, choose one of two paths to reach level 3.
+   Each choice shows its price and what it improves. A gold diamond or
+   two blue dots beside the tower show which path you bought. During
+   planning, Undo upgrade refunds purchases from that round one at a
+   time, starting with the latest. The panel also shows the tower's kills
+   and lets you sell it or cycle its target through First, Last and Strongest.
 5. **Tar and fire.** A Fire Pot's burn does double damage to an enemy slowed
    by tar, so build a Tar Pit and a Fire Pot side by side.
 6. **Mortar.** It cannot hit enemies inside its dashed inner circle (70 px),

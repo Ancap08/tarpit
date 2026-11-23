@@ -1,7 +1,7 @@
 // Special attack popup (milestone 25b): a small stack of buttons above the
 // HUD's Special button, one per unlocked special (names from SPECIAL_NAMES),
 // in unlock order. Locked specials are not listed. Same look as the tower
-// panel's ButtonStack (button.ts), but the list length follows the wave.
+// tower panel, but the list length follows the wave.
 // The menu only reports clicks; GameScene owns whether it is open.
 
 import type Phaser from 'phaser';
@@ -9,7 +9,8 @@ import { SPECIAL_TYPES, type SpecialType } from '../../sim';
 import type { Rect } from '../input';
 import { SPECIAL_NAMES } from '../names';
 import { COLORS } from '../palette';
-import { Button, STACK_SIZE, type StackSize } from './button';
+import { Button } from './button';
+import { STACK_SIZE, type StackSize } from './geometry';
 
 const PAD = 6;
 const GAP = 4;
