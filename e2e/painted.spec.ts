@@ -412,7 +412,7 @@ test('a Painted hit brightens the same pose, preserves its detail and clears nex
     const blend = sprite.blendMode;
     a.step(1);
     const normal = sprite.frame;
-    const source = sprite.texture.getSourceImage() as HTMLCanvasElement;
+    const source = normal.source.image as HTMLCanvasElement;
     const ctx = source.getContext('2d')!;
     const pixels = (f: Phaser.Textures.Frame) => ctx.getImageData(f.cutX, f.cutY, f.cutWidth, f.cutHeight).data;
     const before = pixels(normal);
