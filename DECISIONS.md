@@ -1380,3 +1380,31 @@ can change it; "Kyle" means Kyle decided.
   unlocked" at wave 3 with no Barricade to use.
 - **Difficulty left alone.** Kyle after levels 1 to 5: "a little easy but
   not enough to change right now."
+
+## 2026-11-23, milestone 43 (the painted look on every map)
+
+- **Painted now covers Switchback and Riverbend,** in Free play and the
+  campaign, from the same Blender scripts as Meadow. Before this a campaign
+  played in Painted fell back to Classic on seven of ten levels. Kyle ("I
+  need to make a more definitive theme and improve the images and
+  graphics", to show others the next evening), Fable (do the part that does
+  not depend on the theme first), Codex (art and code), Sonnet (verified).
+- **The art is packed:** 3 requests for a painted game in place of 56, and
+  ground loaded only for the map being played. On a throttled phone link
+  (1.6 Mbit/s, 150 ms) the painted art loads in about 2.4 s at 1x and 5.4 s
+  at 2x, down from 11.5 s and 17 s (Codex measured, Sonnet reproduced on its
+  own throttle). The page and script add about 2.8 s that those figures
+  leave out.
+- **The picture matches the rules.** Sonnet sampled all 450 cells on each
+  map in both layouts: nothing buildable is painted as water or trail.
+  A few blocked cells beside the trail look like grass (the clearance
+  rule); accepted, as on Meadow, since the placement highlight says so.
+- **In Painted, what the player must read was made to stand out** after
+  Sonnet's readability pass: placement cells have an ivory frame (valid) or
+  a coral frame with an X (blocked), Switchback's trail got a clear edge,
+  and a hit brightens the sprite where it used to cover it with a white
+  shape. Classic is unchanged.
+- **Classic stays the default look** until Kyle says otherwise.
+- **Not done (Fable):** Riverbend's timber deck stands 64 px short of the
+  river head, because the grass between is buildable and cannot be painted
+  as water.
