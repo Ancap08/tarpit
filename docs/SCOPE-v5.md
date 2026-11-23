@@ -431,8 +431,8 @@ levels and bots; 41b the screens.
 
 ### A level is data (41a)
 
-- One small record per level: its name, its map, its waves, starting gold
-  and lives, how tough enemies are, which towers and specials the player
+- One small record per level: its name, its map, its waves, starting gold,
+  how tough enemies are, which towers and specials the player
   may use, whether rewards are offered, one line describing its twist,
   and what it takes to earn two and three stars.
 - A game can be started from a level. Everything a level does not change
@@ -455,8 +455,10 @@ levels and bots; 41b the screens.
 | 9 | Riverbend | The second upgrade, and Grumblefoot | The Troll King |
 | 10 | Meadow | Everything, and Grumblemaw | Last Light |
 
-- **Stars:** one for winning, two and three for winning with more lives
-  left (thresholds per level). Progress (stars, which levels are open) is
+- **Stars:** every level starts with 20 lives; one star for winning, two
+  for winning with at least 12 lives, three with at least 18. The same
+  rule on every level (the first build had lives and thresholds per level;
+  changed, see DECISIONS). Progress (stars, which levels are open) is
   kept in the browser like the best scores. Winning a level opens the
   next.
 - **Bots prove every level.** A capable bot (places sensibly, upgrades,
