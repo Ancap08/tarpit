@@ -1,14 +1,17 @@
 {
   "frameSize": [
-    55,
-    53
+    47,
+    47
   ],
   "anchor": [
-    27,
-    42
+    23,
+    36
   ],
-  "columns": 1,
+  "columns": 4,
   "frameOrder": [
-    "oak"
+    "oak-0",
+    "oak-1",
+    "oak-2",
+    "oak-3"
   ]
 }

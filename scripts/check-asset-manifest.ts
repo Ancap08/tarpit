@@ -78,7 +78,7 @@ export function parseManifest(markdown: string): ManifestRow[] {
 
 /** True if the row's source is a script in this repo (`scripts/...`): the project's own work. */
 export function isOwnWork(row: ManifestRow): boolean {
-  return /^scripts\/\S+\.ts\b/.test(row.source.replace(/`/g, '').trim());
+  return /^scripts\/\S+\.(?:ts|py)(?=\s|$)/.test(row.source.replace(/`/g, '').trim());
 }
 
 /** True if the row's notes carry a credit line ("Credit: ..."), required for CC-BY. */

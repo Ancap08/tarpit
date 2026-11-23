@@ -1,104 +1,68 @@
 # Painted Meadow
 
-**I’d play this Meadow on desktop and take the same art into a phone playtest.** At 32 px per cell I can follow a shot from the tower to its target and recognize the Wolf, Harpy and crowned boss without labels. At 20 px the six towers still separate by shape and colour. Small details go first, especially the mortar shell’s fuse and the cottage door.
+**Enemies are as easy to see as in the current game at both sizes.** In a check with Goblins placed at the same points around the first bend, I could follow each figure through the turn. The smallest ordinary pose is 23 px tall at 20 px per cell.
 
-**Keep the ground overhead and the pieces at 65° above the horizon.** In the matched 1× study, compare the Longbow’s post, the Troll’s stance and the spruce’s tiers. Those features gain height while their bases stay on exactly the same points. The bend retains its width in both pictures. I see no reason to lower the camera or shorten the figures. [Matched camera study](camera-study.webp)
+**Towers are as easy to find at both sizes.** An independent reviewer correctly named all six in a shuffled strip at 20 px per cell. Tar Pit was the tentative match. The black kettle reads clearly, but its contents are harder to identify in isolation. Human recognition within one second remains unmeasured.
 
-![Painted Meadow mid-wave at 32 pixels per cell](meadow-mid-wave-map-1x.webp)
+**The trail is as easy to trace at both sizes.** Its 40 px band stays continuous through all seven segments. A boss covers part of the surface, but the entrance and exit of its bend remain visible. These judgments apply to the still frames. The previous report overstated what its phone plate established about playability.
 
-## Views for the owner
+[Compare desktop at 1×](meadow-comparison.png) · [Compare the phone captures at their native size](meadow-comparison-phone.png) · [Inspect the phone-size tower strip and silhouettes](meadow-contact.png)
 
-| Scene | Full map at 1× and 2× | With the HUD space reserved | Phone at 20 px per cell |
+## Piece measurements
+
+Heights in screen pixels. The previous column measures the opaque extent in commit `661a7f3`, which includes platforms modelled into those towers. The new measurements use visible body pixels, excluding the added ink rim, disc, shadow, labels, and HP bars. The 1× and 20 px columns cover every bearing and walk phase. The phone capture column measures the poses in the published mid-wave composition at their actual positions.
+
+| Piece | Previous 1× | New 1× | At 20 px per cell | In the phone capture |
+|---|---:|---:|---:|---:|
+| Goblin | 16–25 | 36–40 | 23–25 | 28–29 |
+| Wolf | 22–35 | 36–40 | 23–25 | 26 |
+| Harpy | 16–29 | 36–40 | 23–25 | 27–29 |
+| Shieldbearer | 18–25 | 36–40 | 23–25 | 26–27 |
+| Troll | 22–30 | 54–58 | 34–36 | 38–39 |
+| Grumblefoot | 28–41 | 82–86 | 51–53 | 61 |
+| Grumblemaw | 36–47 | 90–94 | 57–59 | 65 |
+| Musketeer | 28–41 | 40 | 25 | 28 |
+| Cannon | 29–35 | 40 | 25 | 29 |
+| Tar Pit | 25–29 | 40 | 25 | 28 |
+| Longbow | 32–36 | 40 | 25 | 28 |
+| Mortar | 28–29 | 40 | 25 | 28 |
+| Fire Pot | 28–34 | 40 | 25 | 29 |
+
+Tower bodies span 28–46 px in width across their 96 headings at 1×. Each stands on a 33 px disc centred on its build cell. The upright Musketeer carries one long rifle, the Cannon has two wheels, and the Tar Pit has a hanging kettle bail. The Longbow shows the opening between stave and string, the Mortar has a short upward-facing bore, and the Fire Pot has a forked orange and gold flame. The ground camera stays overhead. The tower camera moves from 65° to 48° above the horizon so a wheel, a barrel side and the figure’s face occupy more pixels. Enemies and scenery keep the 65° view. [Camera study](camera-study.png)
+
+Grumblefoot now has a copper body, burgundy mantle, two ivory horns and a studded iron club. The Troll keeps its green hide and smaller wooden club. Four oak crowns vary in height, branching, size and rotation. Muted foliage, softer stipple and fewer flowers near the route leave a quieter background to the units’ dark rims. The umber trail edge follows the original bends.
+
+## Game frames
+
+| Scene | Desktop with HUD | Map only | Portrait with status and controls |
 |---|---|---|---|
-| Before wave 1 | [960 × 480](meadow-before-map-1x.webp) · [1920 × 960](meadow-before-map-2x.webp) | [1×](meadow-before-1x.webp) · [2×](meadow-before-2x.webp) | [Portrait](meadow-before-phone.webp) |
-| Mid-wave | [960 × 480](meadow-mid-wave-map-1x.webp) · [1920 × 960](meadow-mid-wave-map-2x.webp) | [1×](meadow-mid-wave-1x.webp) · [2×](meadow-mid-wave-2x.webp) | [Portrait](meadow-mid-wave-phone.webp) |
+| Before wave 1 | [1×](meadow-before-1x.png) · [2×](meadow-before-2x.png) | [1×](meadow-before-map-1x.png) · [2×](meadow-before-map-2x.png) | [Phone](meadow-before-phone.png) |
+| Mid-wave | [1×](meadow-mid-wave-1x.png) · [2×](meadow-mid-wave-2x.png) | [1×](meadow-mid-wave-map-1x.png) · [2×](meadow-mid-wave-map-2x.png) | [Phone](meadow-mid-wave-phone.png) |
 
-- Before wave 1, each of the six tower models stands on a buildable cell centre. The cave opens at (0, 240) and the cottage stands at (926, 150).
-- Mid-wave stages 20 figures, including both bosses, to show the whole roster together. The Cannon fires toward a Shieldbearer and the Longbow toward Grumblefoot. Each tower aims at the furthest-along eligible enemy in range. This is an art composition. The current wave schedule does not put these two bosses together.
-- The desktop frames reserve 100 px under the complete 1× map for the HUD, or 200 px at 2×. The portrait plate is 480 × 734 with a 300 × 600 map inset at (90, 54). That gives exactly 20 px per cell across the 15-cell width. The margins and HUD space are dark. Open at actual size to judge the silhouettes.
-- The current game capture and the painted scene share a 32 px grid scale. The capture has its real HUD and its original wave. Its panel matches the tracked PNG pixel for pixel. [Side-by-side comparison](meadow-comparison.webp)
-- The labelled contact sheet pairs a native 2× pose with its phone-size counterpart for every piece on neutral swatches. The bottom shows the ground at both scales. [Contact sheet](meadow-contact.webp)
+The desktop frame is 960 × 580. Its HUD starts at y = 480. The portrait capture is 340 × 844. Its map occupies 339 × 678 at (0, 54), giving 22.6 px per cell. The rightmost capture column, top status strip and two bottom control rows come directly from the reference. The compositor copies the HUD pixels from the corresponding tracked setup or mid-wave screenshot. The 2× desktop plate doubles each HUD pixel. [Desktop mid-wave source](../../../e2e/__screenshots__/visual.spec.ts/mid-wave.png) · [Phone mid-wave source](../../../e2e/__screenshots__/visual-phone.spec.ts/phone-midwave.png)
 
-## Delivery size
+The scene stages six towers on legal cells and 18 enemies, including both bosses, to expose the whole roster. The reference HUD keeps its original wave, gold and controls. This composition also shows five HP bars over hurt enemies, a dark tar ring on the Shieldbearer, an orange burn ring on the Wolf, the Musketeer’s 110 px range, and one valid placement cell. Desktop tower names use the game’s short labels. The campaign encounters the two bosses on separate waves.
 
-Exact file sizes in bytes. A player needs the assets for one density.
+## Atlas and verification
 
-| PNG assets | 1× | 2× |
-|---|---:|---:|
-| Level-one towers | 231,487 | 756,568 |
-| Enemies and bosses | 221,560 | 663,191 |
-| Scenery | 28,824 | 92,820 |
-| Projectiles and Harpy shadow | 3,068 | 8,880 |
-| Ground | 646,438 | 1,765,839 |
-| **All piece sheets, excluding ground** | **484,939** | **1,521,459** |
-| **All shipping PNGs** | **1,131,377** | **3,287,298** |
-| JSON alongside them | 5,471 | 5,491 |
-| **Shipping PNG + JSON** | **1,136,848** | **3,292,789** |
+Each PNG has a JSON neighbour. `frameSize` and `anchor` use texture pixels at the file’s density. `bodyBounds` gives each actor’s measured body rectangle within its frame as left, top, right and bottom, with exclusive right and bottom edges. Use the fixed ground anchor for placement, and the top body edge for the HP bar. Divide texture dimensions by density for world dimensions.
 
-Both densities together use **4,429,637 bytes** including JSON. The 13 WebP review plates add 3,214,570 bytes. All images committed for this slice together use **7,633,245 bytes (7.63 MB)**. Existing spike and game reference images are excluded.
+Towers keep 16 clockwise headings beginning at north, with eight frames per row. Enemies have four walk phases across each of four direction rows in N, E, S, W order. The oak sheet has four variants, and the cave has landscape and portrait openings. In portrait, rotate the ground clockwise and map each anchor to (480 − y, x). Turn tower headings forward by four and enemy headings by one, then draw the miniatures upright. The Harpy has a separate soft shadow beneath its disc.
 
-| Asset | 1× PNG bytes | 2× PNG bytes | What reads at game scale |
-|---|---:|---:|---|
-| Musketeer | [42,581](../../../assets/art-painted/musketeer-1x.png) | [139,086](../../../assets/art-painted/musketeer-2x.png) | The offset steel musket extends past the blue hat, including when it points north. |
-| Cannon | [36,942](../../../assets/art-painted/cannon-1x.png) | [124,355](../../../assets/art-painted/cannon-2x.png) | The long iron barrel and red wheels separate it from the squat Mortar. |
-| Tar Pit | [33,590](../../../assets/art-painted/tar-pit-1x.png) | [110,904](../../../assets/art-painted/tar-pit-2x.png) | A low square timber crib holds a black pool. Its open side is the subtlest aim cue. |
-| Longbow | [42,180](../../../assets/art-painted/longbow-1x.png) | [138,215](../../../assets/art-painted/longbow-2x.png) | The amber stave, pale string and nocked arrow make the widest tower silhouette. |
-| Mortar | [38,609](../../../assets/art-painted/mortar-1x.png) | [121,479](../../../assets/art-painted/mortar-2x.png) | A lavender rim surrounds a deep, upward-facing bore. |
-| Fire Pot | [37,585](../../../assets/art-painted/fire-pot-1x.png) | [122,529](../../../assets/art-painted/fire-pot-2x.png) | The orange flame and red bowl stay visible against the green and ochre. |
-| Goblin | [19,359](../../../assets/art-painted/goblin-1x.png) | [57,467](../../../assets/art-painted/goblin-2x.png) | Wide ears and small dark feet carry the lime silhouette through the walk. |
-| Wolf | [26,946](../../../assets/art-painted/wolf-1x.png) | [79,494](../../../assets/art-painted/wolf-2x.png) | The pale muzzle, backed ears and swept brush tail read in profile and head-on. |
-| Troll | [27,037](../../../assets/art-painted/troll-1x.png) | [81,625](../../../assets/art-painted/troll-2x.png) | A heavy green torso and short brown club distinguish it from the small Goblin. |
-| Harpy | [22,760](../../../assets/art-painted/harpy-1x.png) | [66,891](../../../assets/art-painted/harpy-2x.png) | The wine-red wings open and close above a separate shadow. |
-| Shieldbearer | [19,241](../../../assets/art-painted/shieldbearer-1x.png) | [57,227](../../../assets/art-painted/shieldbearer-2x.png) | The blue kite shield carries a pale cross large enough to read on the phone plate. |
-| Grumblefoot | [44,064](../../../assets/art-painted/grumblefoot-1x.png) | [132,352](../../../assets/art-painted/grumblefoot-2x.png) | The teal hide, broad stance and club mark the first boss. Its side view resembles a larger Troll. |
-| Grumblemaw | [62,153](../../../assets/art-painted/grumblemaw-1x.png) | [188,135](../../../assets/art-painted/grumblemaw-2x.png) | The gold crown above the largest purple body makes it the quickest boss to pick out. |
-| Cave mouth | [10,440](../../../assets/art-painted/cave-1x.png) | [32,977](../../../assets/art-painted/cave-2x.png) | Two upright views let the hollow open onto the route at the left edge or the top edge. |
-| Cottage | [4,294](../../../assets/art-painted/cottage-1x.png) | [13,938](../../../assets/art-painted/cottage-2x.png) | The tiled gable and chimney mark the exit. The door is mostly a desktop detail. |
-| Spruce | [2,752](../../../assets/art-painted/spruce-1x.png) | [9,243](../../../assets/art-painted/spruce-2x.png) | A dark flared skirt and a light pointed tip give it a stepped outline. |
-| Oak | [4,311](../../../assets/art-painted/oak-1x.png) | [14,104](../../../assets/art-painted/oak-2x.png) | The broad overlapping crowns fill out the groves. Repeated copies are still apparent. |
-| Birch | [3,417](../../../assets/art-painted/birch-1x.png) | [11,203](../../../assets/art-painted/birch-2x.png) | Yellow foliage on a pale trunk breaks up the darker trees. |
-| Bush | [1,888](../../../assets/art-painted/bush-1x.png) | [5,877](../../../assets/art-painted/bush-2x.png) | A low pale mound stays distinct from the taller trees. |
-| Berry bush | [1,722](../../../assets/art-painted/berry-bush-1x.png) | [5,478](../../../assets/art-painted/berry-bush-2x.png) | A few red berries punctuate the dark leaves. |
-| Cannonball | [492](../../../assets/art-painted/cannonball-1x.png) | [1,349](../../../assets/art-painted/cannonball-2x.png) | A small round iron shot remains visible between Cannon and target. |
-| Arrow | [455](../../../assets/art-painted/arrow-1x.png) | [1,321](../../../assets/art-painted/arrow-2x.png) | A warm shaft connects the pale point and red fletching. This is the thinnest shot. |
-| Mortar shell | [650](../../../assets/art-painted/mortar-shell-1x.png) | [1,801](../../../assets/art-painted/mortar-shell-2x.png) | A fuse and ember identify the shell at 2×. The ember is a speck at phone size. |
-| Tar glob | [559](../../../assets/art-painted/tar-glob-1x.png) | [1,607](../../../assets/art-painted/tar-glob-2x.png) | A dark, trailing glossy drop breaks the round silhouette of the cannonball. |
-| Flame | [494](../../../assets/art-painted/flame-1x.png) | [1,382](../../../assets/art-painted/flame-2x.png) | A single warm tapered tongue stays visible even as a small shot. |
-| Harpy shadow | [418](../../../assets/art-painted/harpy-shadow-1x.png) | [1,420](../../../assets/art-painted/harpy-shadow-2x.png) | A separate soft oval sits at the Harpy’s ground position. |
-| Meadow ground | [646,438](../../../assets/art-painted/meadow-1x.png) | [1,765,839](../../../assets/art-painted/meadow-2x.png) | A brush-stippled pasture, broken wheel ruts, clover, small stones and eleven flower beds follow the full route. |
-
-## Wiring the art
-
-- Render the opaque ground at world origin with a 960 × 480 logical footprint. A camera straight above Meadow preserves the 30 × 15 build grid. The trail follows the seven straight segments, round outer corners and square inner corners. The visible edge stayed within one logical pixel of the intended 20 px radius in both files.
-- Read the JSON next to each PNG. `frameSize` and `anchor` use **pixels in that density**, with (0, 0) at the top left of the frame. Every pose in a sheet has the same anchor. For frame index `i`, take column `i % columns` and row `floor(i / columns)`. Set the sprite’s origin to `(anchorX / frameWidth, anchorY / frameHeight)`. For example, the 1× Musketeer is 50 × 50 with its ground pivot at (25, 31).
-- Set display dimensions to the source frame dimensions divided by its density. A 64 px cell in a 2× texture occupies 32 logical world pixels. A projectile’s anchor is its flight position. Draw the separate Harpy shadow first at the same ground anchor as the Harpy. The model already includes its flight height. Other grounded pieces have a centred soft contact shadow and projectiles have none.
-- All six level-one towers use **16 headings**. The new long musket made 45° changes conspicuous at phone scale. The extra headings halve the step to 22.5°. Read eight frames across and then the second row, clockwise from N through NNE, NE, ENE, E and onward. Snap the **screen-space** aim vector to the nearest bearing. The single arrow image points north and rotates about its anchor during flight.
-- Every enemy and both bosses have four phases across and four rows down, in N, E, S, W order. A ground-contact pivot stays fixed while the feet, arms or wings cycle. Use the game’s movement clock to advance the phase. The cave has an east-opening cell for landscape and a south-opening cell for portrait. The other scenery and projectile sheets each have one frame.
-- For portrait, turn the ground clockwise and transform each world anchor to `(480 − y, x)` before display scale and HUD offset. Add 4 tower headings or 1 enemy row modulo the count. Draw the selected miniature upright. Keep the ground and scenery behind the figures, sort overlapping figures by screen base Y, and draw shots above them.
-- Use linear texture filtering with alpha-correct compositing. The cell gutters are transparent. At 1× and 2× use the matching native texture. For the phone mock, the compositor filters from 2×. Preserve the existing simulation positions, ranges, build checks and drawing layers when wiring the switch.
-
-## Rebuild and verification
-
-Run from the art worktree on this Mac.
+Rebuild from this worktree with the installed Blender 4.5 and Python/Pillow.
 
 ```sh
 python3 scripts/art/build_slice.py
 ```
 
-The entry point runs Blender 4.5.11 LTS headless for the geometry, paint, lighting and contact shadows. The board uses Cycles at 16 samples and the pieces use EEVEE at 32. The same upper-left key lights both. The host Python and Pillow pack and composite the PNGs. The ground export rounds each colour channel by at most one 8-bit step. Raw frames and timing output stay in `/private/tmp/tarpit-art-scratch`.
+Checks covered 54 PNG/JSON pairs, all 450 sprite cells at the two densities, transparent gutters, anchors, body sizes, six build cells, the placement cell, and both full comparisons. Pixel comparisons verified the source HUD regions, the original and painted halves of each comparison, and both desktop map crops. Motion and physical-handset recognition remain untested.
 
-| Measured stage on this Mac | Seconds |
-|---|---:|
-| 16 camera-study renders, with setup and file writes | 3.31 |
-| Ground, with setup and file write | 8.76 |
-| 222 native cells, sheet packing and both PNG densities | 67.90 |
-| Full-map mocks, contact sheet and current-game comparison | 3.16 |
-| **Complete command, including ground export and camera plate** | **84.80** |
+| Bytes on disk | 1× | 2× |
+|---|---:|---:|
+| Ground and sprite PNGs | 577,757 | 1,613,903 |
+| Atlas JSON | 16,292 | 16,589 |
+| Total at one density | 594,049 | 1,630,492 |
 
-The ground render call alone took 8.216 seconds. I inspected the ground, each packed pose at both densities, the camera comparison and all review plates. Checks covered 54 matching PNG/JSON pairs, all 444 sprite cells, transparent padding, fixed anchors, exact 2-to-1 frame and anchor scaling, frame orders, the trail boundary through all bends, six legal tower cells, the actual aim targets, output dimensions and the unchanged reference panel. The brief excludes game tests. Animation in the running game and visibility on a physical handset remain unverified.
+The 14 PNG review plates use 6,730,979 bytes. The review plates and both densities of asset PNGs together use **8,922,639 bytes**.
 
-## Where a human hand would help
-
-The field still shows an even dry-brush grain, and recurring tree crowns give away the stamps. The Troll and Grumblefoot share rounded shoulders and a similar club swing. An artist could put more weight into Grumblefoot’s planted leg, give the Troll a more crooked back, and paint a few distinctive edges into the groves. Those refinements matter more than extra tower angles now.
-
-Next logical thing: Kyle can judge the portrait mid-wave frame and decide whether to wire this Meadow behind the art switch.
+The asset manifest covers 155 files, including the generated art from both spikes. The validator accepts their Python generators. The runtime checks could not run in this worktree because ESLint, TypeScript, Vitest, Vite and Playwright are absent. The runtime size check requires a built `dist/` directory.

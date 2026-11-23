@@ -31,3 +31,142 @@ the checker looks for it.
 | `public/icons/icon-512.png` | `scripts/make-icons.ts` (drawn in code, no source art) | Tarpit agents | MIT | Home-screen icon 512 px, milestone 32a |
 | `public/icons/icon-maskable-512.png` | `scripts/make-icons.ts` (drawn in code, no source art) | Tarpit agents | MIT | Home-screen icon 512 px, maskable (drawing in the central 80%), milestone 32a |
 | `public/icons/apple-touch-icon.png` | `scripts/make-icons.ts` (drawn in code, no source art) | Tarpit agents | MIT | Home-screen icon 180 px for iOS, milestone 32a |
+| `assets/art-painted/arrow-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/arrow-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/arrow-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/arrow-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/berry-bush-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/berry-bush-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/berry-bush-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/berry-bush-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/birch-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/birch-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/birch-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/birch-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/bush-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/bush-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/bush-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/bush-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/cannon-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/cannon-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/cannon-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/cannon-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/cannonball-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/cannonball-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/cannonball-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/cannonball-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/cave-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/cave-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/cave-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/cave-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/cottage-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/cottage-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/cottage-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/cottage-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/fire-pot-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/fire-pot-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/fire-pot-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/fire-pot-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/flame-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/flame-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/flame-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/flame-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/goblin-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/goblin-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/goblin-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/goblin-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/grumblefoot-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/grumblefoot-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/grumblefoot-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/grumblefoot-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/grumblemaw-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/grumblemaw-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/grumblemaw-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/grumblemaw-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/harpy-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/harpy-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/harpy-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/harpy-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/harpy-shadow-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/harpy-shadow-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/harpy-shadow-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/harpy-shadow-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/longbow-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/longbow-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/longbow-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/longbow-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/meadow-1x.json` | `scripts/art/build_slice.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/meadow-1x.png` | `scripts/art/build_slice.py` | Tarpit agents | MIT | Generated Meadow ground |
+| `assets/art-painted/meadow-2x.json` | `scripts/art/build_slice.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/meadow-2x.png` | `scripts/art/build_slice.py` | Tarpit agents | MIT | Generated Meadow ground |
+| `assets/art-painted/mortar-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/mortar-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/mortar-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/mortar-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/mortar-shell-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/mortar-shell-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/mortar-shell-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/mortar-shell-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/musketeer-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/musketeer-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/musketeer-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/musketeer-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/oak-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/oak-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/oak-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/oak-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/shieldbearer-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/shieldbearer-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/shieldbearer-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/shieldbearer-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/spruce-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/spruce-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/spruce-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/spruce-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/tar-glob-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/tar-glob-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/tar-glob-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/tar-glob-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/tar-pit-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/tar-pit-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/tar-pit-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/tar-pit-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/troll-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/troll-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/troll-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/troll-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/wolf-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/wolf-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/wolf-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/wolf-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `docs/art/slice-meadow/camera-study.png` | `scripts/art/build_slice.py` | Tarpit agents | MIT | Painted Meadow review |
+| `docs/art/slice-meadow/meadow-before-1x.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review with HUD from the tracked game capture. |
+| `docs/art/slice-meadow/meadow-before-2x.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review with HUD from the tracked game capture. |
+| `docs/art/slice-meadow/meadow-before-map-1x.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review |
+| `docs/art/slice-meadow/meadow-before-map-2x.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review |
+| `docs/art/slice-meadow/meadow-before-phone.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review with HUD from the tracked game capture. |
+| `docs/art/slice-meadow/meadow-comparison-phone.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review with tracked game capture. Original Goblin sprite by Pixel-boy and AAA (Ninja Adventure), CC0 1.0. |
+| `docs/art/slice-meadow/meadow-comparison.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review with tracked game capture. Original Goblin sprite by Pixel-boy and AAA (Ninja Adventure), CC0 1.0. |
+| `docs/art/slice-meadow/meadow-contact.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review |
+| `docs/art/slice-meadow/meadow-mid-wave-1x.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review with HUD from the tracked game capture. |
+| `docs/art/slice-meadow/meadow-mid-wave-2x.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review with HUD from the tracked game capture. |
+| `docs/art/slice-meadow/meadow-mid-wave-map-1x.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review |
+| `docs/art/slice-meadow/meadow-mid-wave-map-2x.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review |
+| `docs/art/slice-meadow/meadow-mid-wave-phone.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review with HUD from the tracked game capture. |
+| `docs/art/spike-v5/cannon-turn-2x.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
+| `docs/art/spike-v5/clay-detail.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
+| `docs/art/spike-v5/clay-tilt-20.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
+| `docs/art/spike-v5/clay-tilt-32.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
+| `docs/art/spike-v5/clay-tilt-64.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
+| `docs/art/spike-v5/clay-top-20.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
+| `docs/art/spike-v5/clay-top-32.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
+| `docs/art/spike-v5/clay-top-64.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
+| `docs/art/spike-v5/comparison.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study with tracked game capture. Original game sprites by Pixel-boy and AAA (Ninja Adventure), CC0 1.0. |
+| `docs/art/spike-v5/goblin-walk-2x.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
+| `docs/art/spike-v5/painted-detail.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
+| `docs/art/spike-v5/painted-tilt-20.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
+| `docs/art/spike-v5/painted-tilt-32.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
+| `docs/art/spike-v5/painted-tilt-64.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
+| `docs/art/spike-v5/painted-top-20.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
+| `docs/art/spike-v5/painted-top-32.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
+| `docs/art/spike-v5/painted-top-64.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |

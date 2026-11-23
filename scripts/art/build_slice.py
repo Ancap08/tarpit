@@ -23,16 +23,16 @@ STUDY = [
 
 
 def pack_ground():
-    from PIL import Image
+    from PIL import Image, ImageFilter
     OUT.mkdir(parents=True, exist_ok=True)
     with Image.open(SCRATCH/"meadow.png") as source:
         for density in (1,2):
             ground = source.convert("RGB").resize((960*density,480*density),
                                                   Image.Resampling.LANCZOS)
             path = OUT / f"meadow-{density}x.png"
-            # Discard at most one 8-bit step per channel. The grass stipple
-            # compresses better and rare flower colours retain their hue.
-            ground.point(lambda channel: 3 * round(channel / 3)).save(path, optimize=True)
+            # Keep a common restrained palette for the large review plates.
+            ground = ground.filter(ImageFilter.GaussianBlur(.65 * density))
+            ground.quantize(40, dither=Image.Dither.NONE).save(path, optimize=True)
             data = dict(frameSize=list(ground.size), anchor=[0,0], columns=1,
                         frameOrder=["meadow"], pixelsPerCell=32*density)
             path.with_suffix(".json").write_text(json.dumps(data, indent=2)+"\n")
@@ -43,10 +43,11 @@ def proof():
     REVIEW.mkdir(parents=True, exist_ok=True)
     with Image.open(OUT/"meadow-1x.png") as source:
         patch = source.crop((32,48,320,272)).convert("RGBA")
-    page = Image.new("RGB", (624,274), "#eae4d5")
+    page = Image.new("RGB", (928,274), "#eae4d5")
     pen = ImageDraw.Draw(page)
     font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf",16)
-    for x,angle,label in [(16,90,"Ground and pieces at 90°"), (320,65,"Ground at 90°, pieces at 65°")]:
+    for x,angle,label in [(16,90,"90°  /  overhead"), (320,65,"65°  /  enemies and scenery"),
+                          (624,48,"48°  /  towers")]:
         pen.text((x,12),label,font=font,fill="#282a23")
         sample = patch.copy()
         for kind,px,py,_ in sorted(STUDY,key=lambda row: row[2]):
@@ -54,7 +55,7 @@ def proof():
                 small = sprite.resize((96,96), Image.Resampling.BOX)
                 sample.alpha_composite(small, (px-32-48,py-48-48))
         page.paste(sample,(x,38))
-    page.save(REVIEW/"camera-study.webp",lossless=True,method=6)
+    page.quantize(192, dither=Image.Dither.NONE).save(REVIEW/"camera-study.png", optimize=True)
 
 
 def run_stage(name, command):

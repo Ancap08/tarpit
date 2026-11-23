@@ -1,131 +1,208 @@
 """Painted Meadow miniatures. The ground pivot is local zero and +Y is forward."""
 
-from math import cos, pi, sin, tau
+from math import cos, sin, tau
 
 import meadow
-from cannon import build_cannon
 
 IRON = "#364454"
 GOLD = "#DFAD59"
 INK = "#211E27"
 WOOD = "#79482D"
 PALE = "#F6DFAA"
-TEAL = "#247F94"
-VIOLET = "#77688E"
+TEAL = "#348EAF"
 COAL = "#61262D"
 EMBER = "#EA5625"
 AMBER = "#FFBC45"
 
 
-def _footing(edge, top, radius=.475):
-    meadow.disc("Pedestal edge", radius, .085, edge)
-    meadow.ringbody("Painted pedestal top", (0, 0, .063),
-                    [(0, radius-.026, radius-.026, 0, 0),
-                     (.034, radius-.046, radius-.046, 0, 0)], top)
+def _profile(name, dimensions, colors):
+    """Turn a vessel or barrel profile around local Z and paint whole bands."""
+    sides = 28
+    body = meadow.ringbody(
+        name, (0, 0, 0), [(z, radius, radius, 0, 0) for z, radius, _ in dimensions],
+        colors[0], sides=sides, wobble=.009,
+    )
+    for color in colors[1:]:
+        body.data.materials.append(meadow.material(f"{name} band", color))
+    for face in body.data.polygons[1:-1]:
+        band = (face.index - 1) // sides
+        face.material_index = dimensions[band][2]
+        face.use_smooth = dimensions[band][0] != dimensions[band+1][0]
+    body.data.polygons[-1].material_index = dimensions[-1][2]
+    return body
 
 
 def _musketeer():
-    _footing("#394248", "#57726B")
-    # Step toward the firing line, with the trailing boot behind the coat.
-    for x, y, turn in ((-.15, .12, -.13), (.22, -.18, -.43)):
-        meadow.peb("Leather gaiter", (x, y, .16), (.103, .176, .084), WOOD, turn)
-        meadow.twig("Tan breeches", (x, y-.025, .17), (.055 + x*.62, -.079, .31),
-                   .086, .090, "#C49A68")
-    coat = meadow.ringbody("Blue field coat", (.063, -.087, .252),
-                          [(0, .205, .15, 0, 0), (.12, .187, .133, 0, 0),
-                           (.224, .203, .153, -.026, .032), (.29, .119, .110, -.049, .066)],
-                          TEAL)
-    coat.rotation_euler.z = -.25
-    meadow.twig("Cream crossbelt", (-.113, -.193, .472), (.193, -.219, .299),
-               .036, .034, PALE)
-    meadow.peb("Red neckcloth", (.035, .035, .533), (.113, .120, .064), "#BB4935")
-    meadow.peb("Face", (.022, -.014, .600), (.139, .146, .141), "#D69362")
-    meadow.peb("Nose", (-.017, .104, .584), (.050, .069, .047), "#E4A577")
-    meadow.peb("Navy hat brim", (.034, -.035, .681), (.180, .171, .041), "#243444", -.17)
-    hat = meadow.ringbody("Cocked felt hat", (.034, -.035, .683),
-                          [(0, .183, .16, 0, 0), (.048, .173, .153, 0, 0),
-                           (.095, .121, .105, 0, .012)], "#2C435A",
-                          sides=3, smooth=False)
-    hat.rotation_euler.z = .36
-    meadow.line("Ochre brim stitching", [(-.084, -.101, .711), (.061, -.201, .707),
-                                         (.175, -.126, .708)], .017, GOLD)
-    plume = meadow.peb("Ivory cockade plume", (.144, -.122, .750),
-                       (.060, .171, .043), PALE, .72)
-    plume.rotation_euler.x = -.37
-    meadow.peb("Red cockade", (.105, -.068, .771), (.047, .054, .029), "#C64B38")
+    for x in (-.31, .31):
+        meadow.box("Oak platform crosspiece", (x, 0, .07), (.13, .58, .14), WOOD)
+    for y in (-.19, 0, .19):
+        meadow.box("Honey oak planks", (0, y, .15), (.76, .18, .13), "#AE784C", .024)
+    # Keep the figure upright, with daylight between the shako and the gun.
+    # A head, two boots and a single straight barrel survive a 25 px rendering.
+    for x, y in ((-.09, .09), (.23, -.12)):
+        meadow.peb("Brown boot", (x, y, .28), (.124, .171, .099), "#482C29")
+        meadow.twig("Buff breeches", (x, y, .30), (x, y-.018, .56),
+                   .091, .118, "#E5BD80")
 
-    front_hand, back_hand = (-.249, .227, .457), (-.247, -.072, .509)
-    for start, elbow, grip in (((-.107, .019, .493), (-.169, .103, .423), front_hand),
-                               ((.212, -.024, .483), (.126, .105, .406), back_hand)):
-        meadow.twig("Coat upper arm", start, elbow, .088, .079, TEAL)
-        meadow.twig("Aiming sleeve", elbow, grip, .079, .067, TEAL)
-        meadow.peb("Pale cuff", grip, (.074, .065, .058), PALE)
-    stock = meadow.box("Carved walnut butt", (-.249, -.201, .507),
-                       (.148, .284, .105), "#A45F34", .036)
-    stock.rotation_euler.x = .12
-    meadow.twig("Warm walnut fore-end", (-.249, -.153, .497), (-.249, .365, .512),
-               .069, .047, "#A66E3E")
-    # Show the blued silhouette beside the hat, with a lit strip down the barrel.
-    meadow.twig("Extended steel barrel", (-.249, -.142, .555), (-.249, .602, .594),
-               .058, .047, "#304054")
-    meadow.twig("Lit barrel rib", (-.249, -.094, .604), (-.249, .544, .625),
-               .024, .016, "#98ADB5")
-    for y in (.149, .380, .563):
-        z = .555 + (y + .142) * .039 / .744
-        meadow.twig("Brass barrel band", (-.249, y, z), (-.249, y+.039, z+.002),
-                   .057, .056, GOLD)
-    meadow.peb("Dark muzzle opening", (-.249, .606, .594),
-               (.029, .013, .027), INK)
+    meadow.ringbody("Deep blue frock coat", (.087, -.066, .45),
+                    [(0, .27, .20, 0, 0), (.17, .22, .17, 0, 0),
+                     (.37, .25, .19, 0, 0), (.43, .17, .13, 0, 0)],
+                    "#245FA1", sides=18)
+    meadow.peb("Crimson neckcloth", (.095, .008, .876), (.163, .149, .084), "#C43D37")
+    meadow.peb("Warm face", (.095, .04, 1.046), (.221, .197, .225), "#FFC491")
+    meadow.peb("Nose", (.085, .208, 1.039), (.079, .067, .062), "#FFD2A7")
+    meadow.ringbody("Blue shako with a brass band", (.10, -.02, 1.198),
+                    [(0, .252, .210, 0, 0), (.036, .243, .204, 0, 0),
+                     (.058, .198, .168, 0, 0), (.238, .224, .186, 0, -.028)],
+                    "#26374B", sides=20)
+    meadow.line("Brass hatband", [(-.071, .09, 1.265), (.095, .154, 1.259),
+                                  (.255, .089, 1.263)], .031, GOLD)
+    meadow.peb("Scarlet plume", (.24, -.078, 1.457), (.080, .081, .144), "#CD463C", .22)
+
+    for side, shoulder, elbow, hand in (
+            ("Forward", (-.082, .047, .800), (-.252, .157, .633), (-.301, .279, .754)),
+            ("Rear", (.234, -.024, .806), (.217, .192, .688), (-.252, .027, .743))):
+        meadow.twig(f"{side} coat sleeve", shoulder, elbow, .122, .105, "#286EB1")
+        meadow.twig(f"{side} forearm", elbow, hand, .103, .074, "#286EB1")
+        meadow.peb(f"{side} hand", hand, (.087, .077, .064), "#F0B788")
+
+    meadow.box("Long walnut stock", (-.31, -.090, .761), (.155, .60, .116), "#815138", .026)
+    meadow.box("Walnut butt", (-.31, -.350, .743), (.178, .180, .142), "#815138", .026)
+    meadow.twig("Single long steel barrel", (-.31, -.255, .821), (-.31, .966, .888),
+               .082, .064, "#2F404C")
+    meadow.twig("Lit steel rib", (-.31, -.165, .882), (-.31, .900, .942),
+               .023, .020, "#A8BEC6")
+    meadow.twig("Brass muzzle", (-.31, .899, .885), (-.31, .980, .890), .077, .077, GOLD)
+
+
+def _cannon():
+    meadow.box("Smoked oak carriage", (0, -.162, .193), (.425, .655, .221), "#624438", .045)
+    meadow.box("Dark trail shoe", (0, -.415, .122), (.433, .181, .108), IRON, .025)
+    for side in (-1, 1):
+        meadow.box("Blued carriage cheek", (side*.162, -.07, .277),
+                   (.144, .45, .194), "#425866", .038)
+        wheel = _profile("Steel tire and wood wheel", [
+            (0, .237, 0), (.027, .282, 0), (.128, .282, 1),
+            (.152, .253, 1), (.152, .216, 2), (.139, .203, 2),
+        ], ("#26333D", "#806048", "#604235"))
+        wheel.location = (side*.326, -.085, .285)
+        wheel.rotation_euler.y = side * tau/4
+        for spoke in range(5):
+            angle = tau*spoke/5 + .20
+            meadow.twig("Wheel spoke", (side*.474, -.085, .285),
+                        (side*.474, -.085+.229*cos(angle), .285+.229*sin(angle)),
+                        .049, .042, "#A67C57")
+        meadow.peb("Steel wheel hub", (side*.492, -.085, .285),
+                   (.064, .104, .104), "#6C8C99")
+
+    tube = _profile("Long cannon barrel", [
+        (0, .110, 0), (.055, .174, 0), (.147, .169, 0),
+        (.746, .133, 0), (.819, .175, 1), (.906, .175, 1),
+        (.934, .157, 1), (.934, .110, 2), (.778, .097, 2),
+    ], ("#435B70", "#D1D9DE", INK))
+    tube.location = (0, -.321, .394)
+    tube.rotation_euler.x = -1.37
+    meadow.twig("Pewter barrel highlight", (0, -.187, .574), (0, .406, .645),
+               .030, .023, "#7F99A6")
+
+
+def _tar_pit():
+    for x, y in ((-.242, -.170), (.242, -.170), (0, .265)):
+        meadow.twig("Iron pot foot", (x, y, .018), (x*.80, y*.80, .215),
+                   .075, .096, "#353238")
+    _profile("Bellied iron pitch pot", [
+        (.112, .238, 0), (.162, .330, 0), (.281, .405, 0), (.414, .412, 0),
+        (.502, .349, 0), (.540, .341, 0), (.560, .391, 1), (.609, .399, 1),
+        (.632, .379, 1), (.632, .326, 2), (.578, .308, 2),
+    ], ("#4D4851", "#A48461", "#201D27"))
+    # Half the bail rises above the back lip, like a heavy hanging kettle.
+    # Short hinge buttons leave one uninterrupted belly under the liquid.
+    arch = [(.36*cos(i*tau/24), -.070 - .12*sin(i*tau/24),
+             .48 + .40*sin(i*tau/24)) for i in range(13)]
+    meadow.line("Forged kettle bail", arch, .039, "#626168")
+    for x in (-.365, .365):
+        meadow.peb("Bail hinge button", (x, -.071, .489), (.070, .067, .066), "#A88A68")
+    for x, y, radius in ((-.103, .065, .105), (.130, -.070, .069)):
+        meadow.peb("Tar bubble", (x, y, .584), (radius, radius*.93, radius*.59), "#342E3C")
+        meadow.peb("Tar glint", (x-.023, y-.013, .583+radius*.49),
+                   (radius*.49, radius*.26, .016), "#B9A9B1")
+    meadow.line("Pitch overflowing the lip", [(.072, .261, .588), (.080, .350, .639),
+                                              (.088, .397, .554), (.101, .405, .393),
+                                              (.111, .349, .235)],
+                .058, "#241E28")
+
+
+def _longbow():
+    for side in (-1, 1):
+        for front in (-1, 1):
+            meadow.twig("Splayed oak stand leg",
+                       (side*.254, front*.239, .031), (side*.149, front*.156, .471),
+                       .092, .075, "#8F4D2D")
+        meadow.twig("Side brace", (side*.237, -.200, .142), (side*.145, .171, .458),
+                   .070, .057, "#CB8549")
+    meadow.box("Stand deck", (0, -.058, .446), (.489, .475, .147), "#A9683D", .049)
+    meadow.box("Forest-green bow rest", (0, -.059, .532), (.148, .559, .13), "#35776A", .029)
+    bow = [(-.501, -.130, .577), (-.386, .053, .583), (-.222, .171, .593),
+           (0, .219, .609), (.222, .171, .593), (.386, .053, .583), (.501, -.130, .577)]
+    meadow.line("Dark bow backing", bow, .083, "#713B2C")
+    meadow.line("Amber bow stave", [(x, y, z+.037) for x, y, z in bow], .065, "#FFB84C")
+    for x, y, z in (bow[0], bow[-1]):
+        meadow.peb("Ivory bow tip", (x, y, z), (.079, .068, .074), PALE)
+        meadow.twig("Flax bowstring", (x, y, z+.018), (0, -.356, .645),
+                   .033, .033, PALE)
+    meadow.twig("Nocked arrow", (0, -.360, .657), (0, .457, .700), .042, .037, PALE)
+    meadow.mesh("Pewter broadhead", [(-.108, .377, .688), (0, .558, .702),
+                (.108, .377, .688), (0, .405, .763)],
+                [(0, 1, 3), (1, 2, 3), (2, 0, 3), (2, 1, 0)], "#D3DEE0")
+    for side in (-1, 1):
+        meadow.peb("Red fletching", (side*.045, -.266, .666),
+                   (.059, .101, .034), "#D85537", side*.39)
 
 
 def _mortar():
-    _footing("#433C4C", "#8E8093")
-    for x in (-.185, .185):
-        meadow.box("Heavy oak sled runner", (x, -.018, .148), (.168, .69, .139),
-                   "#6A513F", .036)
-        meadow.box("Iron shoe", (x, .287, .171), (.172, .11, .15), IRON, .026)
-        meadow.peb("Pewter trunnion", (x*1.47, .018, .316), (.061, .106, .106), VIOLET)
-    meadow.box("Purple iron cradle", (0, -.02, .25), (.483, .43, .20), VIOLET, .044)
-    profile = [
-        (0, .152, .152, 0, 0), (.034, .190, .190, 0, 0), (.215, .206, .206, 0, 0),
-        (.263, .242, .242, 0, 0), (.324, .240, .240, 0, 0),
-        (.345, .219, .219, 0, 0), (.345, .167, .167, 0, 0),
-        (.319, .147, .147, 0, 0), (.141, .125, .125, 0, 0),
-    ]
-    tube = meadow.ringbody("Short mortar with open bore", (0, 0, 0), profile, IRON,
-                           sides=36, wobble=.014)
-    tube.location = (0, -.108, .27)
-    tube.rotation_euler.x = -.62
-    tube.data.materials.append(meadow.material("Pewter muzzle lip", "#B6A7C4"))
-    tube.data.materials.append(meadow.material("Mortar bore", INK))
-    for face in tube.data.polygons[1:-1]:
-        band = (face.index - 1) // 36
-        face.material_index = 1 if band in (3, 4, 5) else 2 if band > 5 else 0
-        face.use_smooth = band != 5
-    tube.data.polygons[-1].material_index = 2
+    for x in (-.276, .276):
+        meadow.box("Heavy oak sled runner", (x, -.078, .089),
+                   (.218, .848, .178), "#9C623F", .046)
+        for y in (-.425, .285):
+            meadow.box("Pewter skid shoe", (x, y, .101), (.224, .162, .168), "#91A3AD", .036)
+    meadow.box("Violet mortar cradle", (0, -.085, .179), (.587, .517, .205), "#66547E", .05)
+    tube = _profile("Short mortar with wide open bore", [
+        (0, .194, 0), (.072, .253, 1), (.154, .254, 0), (.415, .264, 0),
+        (.462, .309, 1), (.527, .305, 1), (.551, .284, 1),
+        (.551, .179, 2), (.526, .158, 2), (.260, .117, 2),
+    ], ("#635173", "#B8AAC8", INK))
+    tube.location = (0, -.175, .255)
+    tube.rotation_euler.x = -.72
 
 
 def _fire_pot():
-    _footing("#453A38", "#7A5F53")
-    for x, y in ((-.29, -.22), (.29, -.22), (0, .30)):
-        meadow.twig("Splayed iron leg", (x, y, .09), (x*.67, y*.67, .36),
-                   .061, .054, IRON)
-    meadow.ringbody("Terracotta fire pot", (0, 0, .17),
-                    [(0, .16, .16, 0, 0), (.048, .237, .237, 0, 0),
-                     (.15, .303, .303, 0, .008), (.225, .301, .301, 0, .016),
-                     (.27, .265, .265, 0, .028), (.27, .235, .235, 0, .029)],
-                    "#AB4133", sides=28)
-    meadow.ringbody("Charred bowl lip", (0, .03, .425),
-                    [(0, .28, .28, 0, 0), (.029, .292, .292, 0, 0),
-                     (.054, .268, .268, 0, 0), (.054, .232, .232, 0, 0),
-                     (.023, .21, .21, 0, 0)], COAL, sides=28)
-    for t in range(6):
-        a = t * tau/6 + .35
-        meadow.peb("Red coals", (.15*cos(a), .03+.15*sin(a), .469),
-                   (.071, .087, .038), EMBER, a)
-    _flame_body(.02, .055, .464, 1.25)
-    meadow.twig("Terracotta pouring spout", (0, .205, .421), (0, .411, .467),
-               .104, .078, "#BC5836")
+    for x, y in ((-.331, -.258), (.331, -.258), (0, .342)):
+        meadow.twig("Splayed iron brazier leg", (x, y, .014), (x*.60, y*.60, .343),
+                   .076, .069, IRON)
+    _profile("Dark iron brazier", [
+        (.168, .122, 0), (.219, .220, 0), (.343, .363, 0),
+        (.398, .385, 1), (.443, .382, 1), (.463, .347, 1),
+        (.463, .268, 2), (.399, .228, 2),
+    ], ("#303745", "#697781", COAL))
+    for x, spread, height in ((-.142, -.220, .342), (.131, .215, .522)):
+        meadow.ringbody("Tapering vermilion flame", (x, .015, .418),
+                        [(0, .108, .103, 0, 0), (height*.21, .123, .110, spread*.13, .018),
+                         (height*.47, .101, .085, spread*.35, .025),
+                         (height*.72, .059, .052, spread*.63, .051),
+                         (height, .009, .010, spread, .091)], EMBER, sides=18)
+        meadow.ringbody("Amber tongue", (x, -.041, .424),
+                        [(0, .061, .052, 0, 0), (height*.23, .070, .068, spread*.10, .005),
+                         (height*.49, .035, .041, spread*.24, .008),
+                         (height*.72, .008, .009, spread*.48, .034)], AMBER, sides=14)
+    # A broad central gold flame overlaps the two separate orange tips.
+    # The gap between the outer tips should never look like an empty bowl.
+    meadow.ringbody("Golden central flame", (.010, -.045, .421),
+                    [(0, .156, .128, 0, 0), (.11, .159, .131, -.017, -.012),
+                     (.255, .124, .102, -.032, .010), (.386, .082, .068, 0, .022),
+                     (.548, .043, .039, .078, .020), (.678, .006, .007, .052, .061)],
+                    "#FFB32E", sides=18)
+    meadow.peb("Glowing coals in the bowl", (.017, -.122, .438),
+               (.120, .074, .031), "#D86B36")
 
 
 def _flame_body(x, y, z, scale):
@@ -188,22 +265,13 @@ def build(kind, mat, phase=0):
 
     The static models accept the same phase argument as the shared sprite renderer.
     """
-    if kind == "cannon":
-        return build_cannon(mat)
     previous_parent, previous_material = meadow.parent, meadow.material
     meadow.material = mat
     try:
-        if kind == "longbow":
-            return meadow.longbow()
-        if kind == "tar-pit":
-            # The broken front wall faces local +Y in slice assets.
-            root = meadow.tarpit()
-            for obj in root.children:
-                obj.location.x *= -1
-                obj.location.y *= -1
-                obj.rotation_euler.z += pi
-            return root
         builder = {
+            "cannon": _cannon,
+            "longbow": _longbow,
+            "tar-pit": _tar_pit,
             "musketeer": _musketeer,
             "mortar": _mortar,
             "fire-pot": _fire_pot,

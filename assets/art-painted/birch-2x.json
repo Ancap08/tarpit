@@ -1,11 +1,11 @@
 {
   "frameSize": [
-    82,
-    98
+    64,
+    80
   ],
   "anchor": [
-    42,
-    78
+    32,
+    60
   ],
   "columns": 1,
   "frameOrder": [

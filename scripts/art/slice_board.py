@@ -48,7 +48,7 @@ def camera_study():
             builder = slice_towers
         root = builder.build(kind, paint)
         root.rotation_euler.z -= math.radians(bearing)
-        for angle in (90, 65):
+        for angle in (90, 65, 48):
             render.camera(scene, (0,0,0), angle, 3, "painted", True)
             render.render(scene, SCRATCH/f"study-{kind}-{angle}.png", 192, 192,
                           f"study-{kind}-{angle}")
@@ -124,31 +124,34 @@ def painted_surface():
     # the broad green washes, mirroring the painted finish on the figures.
     flecks = noise(calc("MULTIPLY", position, (1.1,1.45,1), True), 12, 1.5, .3)
     fleck_opacity = calc("MULTIPLY", calc("MAXIMUM", 0,
-                         calc("SUBTRACT", flecks, .48)), 1.18)
-    grass = mix(fleck_opacity, grass, swatch("9EA275"))
-    earth = colors(noise(dragged, 1.6, 4, .35),
-                   [(.20,"AD885B"),(.80,"D1AD7A"),(.48,"BD9969")])
+                         calc("SUBTRACT", flecks, .49)), .72)
+    earth = colors(noise(dragged, 1.6, 3, .35),
+                   [(.20,"B69366"),(.80,"C8A77A"),(.48,"C1A071")])
     granules = noise(position, 9, 2)
-    sand = calc("MINIMUM", .40, calc("MAXIMUM", 0, calc("MULTIPLY",
-               calc("SUBTRACT", noise(position, 19, 1, .1), .57), 2.0)))
-    earth = mix(sand, earth, swatch("E8D2AD"))
-    shifted = calc("ADD", distance, calc("MULTIPLY", calc("SUBTRACT", granules,.50), .105))
-    # The narrow shadow at the cut edge is part of the trail width.
-    def smooth_edge(start, end):
+    sand = calc("MINIMUM", .21, calc("MAXIMUM", 0, calc("MULTIPLY",
+               calc("SUBTRACT", noise(position, 19, 1, .1), .57), 1.2)))
+    earth = mix(sand, earth, swatch("D9BF98"))
+    shifted = calc("ADD", distance, calc("MULTIPLY", calc("SUBTRACT", granules,.50), .057))
+
+    def smooth_edge(start, end, sampled_distance=shifted):
         n = nodes.new("ShaderNodeMapRange")
         n.interpolation_type = "SMOOTHSTEP"
-        connect(n.inputs["Value"], shifted)
+        connect(n.inputs["Value"], sampled_distance)
         n.inputs["From Min"].default_value = start
         n.inputs["From Max"].default_value = end
         return n.outputs[0]
-    soil = mix(smooth_edge(.48,.614), earth, swatch("A7895F"))
-    color = mix(smooth_edge(.608,.642), soil, grass)
+    # Give the full road a continuous dark umber cut edge and a quiet grass
+    # shoulder. The original 40-pixel field of travel stays in the same place.
+    grass = mix(calc("MULTIPLY", fleck_opacity, smooth_edge(.73, 1.36, distance)),
+                grass, swatch("9EA275"))
+    soil = mix(smooth_edge(.565, .624), earth, swatch("786244"))
+    color = mix(smooth_edge(.669, .705), soil, grass)
     shader = nodes.get("Principled BSDF")
     connect(shader.inputs["Base Color"], color)
     shader.inputs["Roughness"].default_value = .93
     bump = nodes.new("ShaderNodeBump")
     bump.inputs["Distance"].default_value = .012
-    bump.inputs["Strength"].default_value = .16
+    bump.inputs["Strength"].default_value = .12
     connect(bump.inputs["Height"], brush)
     connect(shader.inputs["Normal"], bump.outputs[0])
     return material
@@ -199,7 +202,7 @@ def scatter_details():
         wind = rng.uniform(0,math.tau)
         for _ in range(rng.randrange(2,10)):
             x,y = rng.gauss(cx,.54),rng.gauss(cy,.30)
-            if on_grass(x,y,.16):
+            if on_grass(x,y,.28):
                 for _ in range(rng.randrange(2,5)):
                     leaf(x,y,rng.uniform(.065,.20),rng.uniform(.013,.032),
                          wind+rng.uniform(-1.45,1.45),rng.uniform(.025,.10),
@@ -209,23 +212,23 @@ def scatter_details():
     for j,(cx,cy) in enumerate(beds):
         for _ in range(rng.randrange(7,14)):
             x,y = rng.gauss(cx,.37),rng.gauss(cy,.21)
-            if not on_grass(x,y,.22):
+            if not on_grass(x,y,.66):
                 continue
             a = rng.uniform(0,math.tau)
             leaf(x,y,.12,.032,a,.05,"4D7653")
             leaf(x,y,.10,.028,a+2.2,.055,"73964C")
-            size = rng.uniform(.032,.061)
+            size = rng.uniform(.029,.053)
             for k in range(5):
                 b = a+k*math.tau/5
                 dab(x+size*.74*math.cos(b),y+size*.74*math.sin(b),.037,
-                    size*.76,size*.49,b,.017,("F8E7AE","DDC179","B3ABCA")[j%3],5)
-            dab(x,y,.06,size*.46,size*.46,0,.014,"C88B49",6)
+                    size*.76,size*.49,b,.017,("E6D7A7","CABB83","ADA9B8")[j%3],5)
+            dab(x,y,.06,size*.46,size*.46,0,.014,"B98F62",6)
     # Four patches of wild clover. Each trefoil is three folded, veined leaves.
     # The difference in leaf scale breaks up the distant flower-and-grass pattern.
     for cx,cy in [(2.10,11.55),(9.85,2.82),(15.76,7.60),(27.40,4.32)]:
         for _ in range(27):
             x,y = rng.gauss(cx,.44),rng.gauss(cy,.28)
-            if not on_grass(x,y,.24):
+            if not on_grass(x,y,.51):
                 continue
             turn = rng.uniform(0,math.tau)
             length = rng.uniform(.06,.17)
@@ -257,12 +260,12 @@ def scatter_details():
                 dab(x,y,.004,half,.013,angle,.0008,
                     rng.choice(("BC996A","C9A878","BC9A70")),8)
                 u+=half*2+rng.uniform(.12,.49)
-        for _ in range(round(length*5)):
+        for _ in range(round(length*3)):
             u,offset=rng.uniform(0,length),rng.uniform(-.56,.56)
             x,y=ax+u*dx-offset*dy, ay+u*dy+offset*dx
-            size=rng.uniform(.018,.058)
+            size=rng.uniform(.018,.044)
             dab(x,y,.006,size,size*.68,angle+rng.uniform(-1.1,1.1),size*.38,
-                rng.choice(("B2916D","E9CDA0","A59378","DABE94")),6)
+                rng.choice(("B4916D","D2B68E","A79378","CBAF89")),6)
     mesh = bpy.data.meshes.new("Pasture brushwork")
     mesh.from_pydata(vertices, [], faces)
     mesh.update()

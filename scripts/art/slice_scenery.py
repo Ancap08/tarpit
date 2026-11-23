@@ -1,6 +1,6 @@
 """Painted scenery with ground pivots and a clear silhouette at 65 degrees."""
 
-from math import atan, cos, sin, sqrt, tau
+from math import atan, cos, sin, tau
 
 import bpy
 
@@ -29,13 +29,13 @@ def cave():
 
 
 def spruce():
-    twig("Exposed fir trunk", (-.033, -.166, 0), (.028, .359, 1.19), .110, .035, "#A06A48")
-    twig("Visible fir root", (-.092, -.249, .011), (-.023, -.143, .111), .039, .070, "#8E5A43")
+    twig("Exposed fir trunk", (-.033, -.166, 0), (.028, .359, 1.19), .110, .035, "#766851")
+    twig("Visible fir root", (-.092, -.249, .011), (-.023, -.143, .111), .039, .070, "#72634F")
     tiers = (
-        (-.016, -.014, .380, .514, -.57, "#284F52"),
-        (.055, .142, .629, .381, .22, "#366C62"),
-        (-.037, .271, .872, .270, .97, "#4D826B"),
-        (.032, .404, 1.083, .166, 1.96, "#81A978"),
+        (-.016, -.014, .380, .514, -.57, "#456357"),
+        (.055, .142, .629, .381, .22, "#50725F"),
+        (-.037, .271, .872, .270, .97, "#5A7C63"),
+        (.032, .404, 1.083, .166, 1.96, "#6B896B"),
     )
     sides = 20
     for x, y, z, radius, angle, color in tiers:
@@ -59,22 +59,31 @@ def spruce():
         meadow.mesh("Flared fir skirt", vertices, faces, color, smooth=True, bevel=.012)
 
 
-def oak():
-    bark = "#774E38"
-    twig("Split oak trunk", (.05, -.024, 0), (-.036, -.026, 1.05), .137, .092, bark)
-    for angle in (0, 1.18, 2.72, 4.06, 5.34):
-        twig("Exposed clinker root", (.23*cos(angle), .21*sin(angle), .025),
-             (.01, -.021, .19), .036, .079, bark)
+def oak(variant):
+    # Crown centres and radii describe four silhouettes: a broad mature crown,
+    # a high fork, a wind-bent crown and a low, round sapling.
     crowns = (
-        (-.386, .01, 1.04, .37, "#38673F", -.38),
-        (.394, -.07, 1.08, .36, "#487943", .29),
-        (.03, .345, 1.18, .38, "#4A7940", .85),
-        (-.15, -.305, 1.12, .38, "#5F8F48", -.73),
-        (-.191, .038, 1.36, .43, "#66984B", -.52),
-        (.255, .070, 1.30, .39, "#578B46", .57),
-    )
-    for index, (x, y, z, r, color, tilt) in enumerate(crowns):
-        twig("Crooked oak bough", (-.02, 0, .70), (x, y, z), .068, .026, bark)
+        ((-.386, .01, 1.04, .36), (.394, -.07, 1.08, .35), (.03, .345, 1.18, .36),
+         (-.15, -.305, 1.12, .34), (-.191, .038, 1.36, .40), (.255, .070, 1.30, .37)),
+        ((-.25, -.09, 1.00, .31), (.24, -.09, 1.16, .32), (.23, .16, 1.32, .33),
+         (-.14, .13, 1.48, .34), (.12, .07, 1.59, .30)),
+        ((-.23, -.21, .89, .31), (.18, -.20, .99, .34), (.52, .06, 1.02, .33),
+         (.14, .20, 1.13, .43), (.40, .11, 1.23, .35)),
+        ((-.21, .03, .85, .29), (.23, -.10, .92, .27), (.05, .22, .95, .27),
+         (-.06, -.06, 1.08, .36)),
+    )[variant]
+    lean_x, lean_y, height = ((-.04, -.03, 1.05), (.05, .12, 1.27),
+                             (.23, .15, .97), (-.01, .02, .88))[variant]
+    bark = "#72644B"
+    twig("Split oak trunk", (.03, -.024, 0), (lean_x, lean_y, height), .130, .074, bark)
+    for angle in (.18, 2.72, 4.06, 5.34):
+        twig("Exposed oak root", (.18*cos(angle), .18*sin(angle), .025),
+             (.023, -.021, .16), .029, .069, bark)
+    foliage = ("#496B4D", "#517450", "#557951", "#5E8057", "#678858", "#608156")
+    for index, (x, y, z, r) in enumerate(crowns):
+        tilt = (-.38, .29, .85, -.73, -.52, .57)[index]
+        twig("Crooked oak bough", (lean_x*.62, lean_y*.62, height*.62),
+             (x, y, z), .059, .024, bark)
         crown = meadow.ringbody("Flattened lobed oak crown", (0, 0, 0), (
             (-.141, r*.38, r*.35, -.04, -.026),
             (-.063, r*.83, r*.64, -.052, -.020),
@@ -83,10 +92,10 @@ def oak():
             (.133, r*.69, r*.49, .005, -.014),
             (.153, r*.31, r*.32, -.041, -.006),
             (.162, r*.05, r*.06, -.021, -.001),
-        ), color, sides=30, wobble=.107)
+        ), foliage[index], sides=30, wobble=.107)
         crown.location = (x, y, z)
         crown.rotation_euler.z = tilt
-        for i in range(8):
+        for i in range(6):
             a = i * 2.4 + index
             u = r * (.25 + .20 * (i % 3))
             # Overlapping flat oak leaves break up the shoulders of the cluster.
@@ -98,12 +107,12 @@ def oak():
                                        (v*1.54, v*.34, .006), (v*1.75, 0, .005),
                                        (v*1.44, -v*.43, .006), (v*.64, -v*.52, .008),
                                        (v*.21, -v*.38, .012), (v*.77, 0, .026))
-            ], [(i, (i-1)%8, 8) for i in range(8)], ("#789C51", "#83A255", "#67964D")[i%3],
+            ], [(i, (i-1)%8, 8) for i in range(8)], ("#6C8B58", "#74935D", "#668758")[i%3],
                 smooth=True)
 
 
 def birch():
-    bark = "#E7DAB7"
+    bark = "#AFA28B"
     twig("Ivoried birch trunk", (-.02, 0, 0), (.10, .06, 1.84), .090, .038, bark)
     for i in range(6):
         z = .19 + i * .171
@@ -112,11 +121,11 @@ def birch():
         line("Birch bark scar", [(x-.037, y+.007, z), (x-.007, y, z+.014),
                                 (x+.038, y+.006, z+.004)], .010, "#77675D")
     twigs = (
-        (-.27, -.03, .99, .54, "#B7973A"),
-        (.31, -.15, 1.23, .73, "#CFAC45"),
-        (-.23, .18, 1.42, 2.44, "#DDB748"),
-        (.22, .12, 1.66, 1.07, "#E4C251"),
-        (.03, -.05, 1.84, -1.10, "#F1CE5B"),
+        (-.27, -.03, .99, .54, "#7A8150"),
+        (.31, -.15, 1.23, .73, "#858B51"),
+        (-.23, .18, 1.42, 2.44, "#8B8F52"),
+        (.22, .12, 1.66, 1.07, "#959956"),
+        (.03, -.05, 1.84, -1.10, "#9A9A56"),
     )
     for index, (x, y, z, tilt, color) in enumerate(twigs):
         twig("Pale birch branch", (.015, .018, z-.32), (x, y, z),
@@ -126,11 +135,11 @@ def birch():
         for i in range(5):
             a = i * 2.4 + tilt
             leaf("Long birch leaf", (x+.094*cos(a), y+.103*sin(a), z+.151),
-                 .179, .036, a, .061 - .032*(i % 2), ("#F0CB54", "#D9AC3F", "#EAD071")[(index + i) % 3])
+                 .179, .036, a, .061 - .032*(i % 2), ("#9D9D5B", "#83864D", "#9A9D60")[(index + i) % 3])
 
 
 def bush(berries):
-    shades = ("#416845", "#56824A", "#6F8E47") if berries else ("#65884A", "#7DA657", "#98B758")
+    shades = ("#49694D", "#597B52", "#618054") if berries else ("#607A51", "#698457", "#748B5B")
     width = .27 if berries else .32
     for index, (x, y, lift) in enumerate(((0, 0, .21), (-.21, .045, .145),
                                          (.20, .08, .16), (.04, -.16, .125))):
@@ -143,10 +152,10 @@ def bush(berries):
         z = .365 - r*.31
         leaf("Pointed bush leaf" if berries else "Painted dock leaf", (x, y, z),
              .162 if berries else .190, .040 if berries else .059, a, .025,
-             "#94A94F" if berries else "#ACBF65")
-        if berries and index < 8:
-            peb("Crimson berry", (x+.031, y, z+.029), (.055, .054, .048),
-                ("#D45154", "#A83248", "#EA6556")[index % 3])
+             "#758B59" if berries else "#819662")
+        if berries and index < 6:
+            peb("Muted rose berry", (x+.031, y, z+.024), (.039, .038, .033),
+                ("#A46659", "#8C584E", "#AC7560")[index % 3])
 
 
 def cottage():
@@ -225,12 +234,17 @@ def build(kind, mat, phase=0):
             cottage()
         elif kind == "spruce":
             spruce()
+            root.scale = (.89,) * 3
         elif kind == "oak":
-            oak()
+            oak(phase)
+            root.scale = ((.86, .76, .82, .68)[phase],) * 3
+            root.rotation_euler.z = (.18, -.43, 1.10, -1.72)[phase]
         elif kind == "birch":
             birch()
+            root.scale = (.75,) * 3
         else:
             bush(kind == "berry-bush")
+            root.scale = (.92, .92, .80)
         return root
     finally:
         meadow.parent, meadow.material = previous

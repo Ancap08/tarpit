@@ -7,6 +7,7 @@ subset. Raw renders stay in scratch. Pillow packing uses the host Python 3.
 import argparse
 import json
 import math
+import statistics
 import subprocess
 import sys
 from pathlib import Path
@@ -14,6 +15,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 OUT = HERE.parents[1] / "assets/art-painted"
 SCRATCH = Path("/private/tmp/tarpit-art-scratch/slice-frames")
+TOWER_ELEVATION = 48
 ELEVATION = 65
 TILT = math.radians(90 - ELEVATION)
 DENSITY = 64
@@ -34,6 +36,8 @@ def frame_layout(kind):
     if kind in ENEMIES:
         return 4, [(f"{label}-{phase}", 90 * heading, phase)
                    for heading, label in enumerate(BEARINGS[::4]) for phase in range(4)]
+    if kind == "oak":
+        return 4, [(f"oak-{variant}", 0, variant) for variant in range(4)]
     if kind == "cave":
         # The portal opens along the trail at both screen edges.
         return 2, [("E", 0, 0), ("S", 90, 0)]
@@ -62,15 +66,15 @@ def shadow_radius(kind):
     }.get(kind)
 
 
-def projected_point(x, y, z, bearing):
+def projected_point(x, y, z, bearing, tilt):
     turn = math.radians(bearing)
     return (x * math.cos(turn) + y * math.sin(turn),
-            -((-x * math.sin(turn) + y * math.cos(turn)) * math.cos(TILT)
-              + z * math.sin(TILT)))
+            -((-x * math.sin(turn) + y * math.cos(turn)) * math.cos(tilt)
+              + z * math.sin(tilt)))
 
 
-def frame_metadata(kind, columns, frames, vertices):
-    projected = [projected_point(*vertex, bearing)
+def frame_metadata(kind, columns, frames, vertices, resolution, tilt):
+    projected = [projected_point(*vertex, bearing, tilt)
                  for _, bearing, phase in frames for vertex in vertices.get(phase, ())]
     radii = shadow_radius(kind)
     if radii:
@@ -80,8 +84,8 @@ def frame_metadata(kind, columns, frames, vertices):
         lo = min(0, min(point[axis] for point in projected))
         hi = max(0, max(point[axis] for point in projected))
         # Even sides guarantee an integral 1× anchor after box reduction.
-        bounds.append((2 * math.floor((lo * DENSITY - BORDER) / 2),
-                       2 * math.ceil((hi * DENSITY + BORDER) / 2)))
+        bounds.append((2 * math.floor((lo * resolution - BORDER) / 2),
+                       2 * math.ceil((hi * resolution + BORDER) / 2)))
     return {
         "frameSize": [hi - lo for lo, hi in bounds],
         "anchor": [-lo for lo, _ in bounds],
@@ -197,19 +201,24 @@ def render_cells(kind):
             for child in root.children_recursive:
                 child.hide_render = True
 
-    meta = frame_metadata(kind, cols, frames, vertices)
+    actor = kind in ENEMIES + TOWERS
+    resolution = 192 if actor else DENSITY
+    elevation = TOWER_ELEVATION if kind in TOWERS else ELEVATION
+    tilt = math.radians(90 - elevation)
+    meta = frame_metadata(kind, cols, frames, vertices, resolution, tilt)
     folder = SCRATCH / kind
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "layout.json").write_text(json.dumps(meta))
-    add_contact(bpy, kind)
+    if not actor:
+        add_contact(bpy, kind)
 
     width, height = meta["frameSize"]
     ax, ay = meta["anchor"]
-    horizontal = (width / 2 - ax) / DENSITY
-    vertical = (ay - height / 2) / DENSITY
-    target = Vector((horizontal, vertical * math.cos(TILT), vertical * math.sin(TILT)))
+    horizontal = (width / 2 - ax) / resolution
+    vertical = (ay - height / 2) / resolution
+    target = Vector((horizontal, vertical * math.cos(tilt), vertical * math.sin(tilt)))
     # Blender's orthographic sensor fits the larger render dimension.
-    render.camera(scene, target, ELEVATION, max(width, height) / DENSITY, "painted", True)
+    render.camera(scene, target, elevation, max(width, height) / resolution, "painted", True)
     scene.render.resolution_x, scene.render.resolution_y = width, height
     for label, bearing, phase in frames:
         root = roots.get(phase)
@@ -226,27 +235,117 @@ def render_cells(kind):
         erase(bpy, root)
 
 
-def styled_frame(Image, ImageFilter, kind, folder, label, size):
-    with Image.open(folder / f"{label}.png") as source:
-        if list(source.size) != size or source.mode != "RGBA":
-            raise ValueError(f"{kind} {label} expected RGBA frame {size}, got {source.mode} {source.size}")
-        sprite = source.copy()
-    if kind not in ENEMIES:
-        return sprite
-    # Isolate the model's alpha above the contact's maximum before adding a rim.
-    opacity = sprite.getchannel("A").point(lambda value: max(0, value - 72))
-    opacity = opacity.filter(ImageFilter.MaxFilter(3))
-    outline = Image.new("RGBA", tuple(size), (27, 28, 24, 0))
-    outline.putalpha(opacity.point(lambda value: round(value * 84 / 183)))
-    outline.alpha_composite(sprite)
-    return outline
+# Opaque body height in logical pixels. Fit all four walk phases together
+# so walking moves the limbs without making the entire figure pulse.
+BODY_HEIGHT = {"goblin": 38, "wolf": 38, "shieldbearer": 38, "harpy": 38,
+               "troll": 56, "grumblefoot": 84, "grumblemaw": 92}
+DISC_WIDTH = {"goblin": 24, "wolf": 28, "shieldbearer": 27, "harpy": 23,
+              "troll": 36, "grumblefoot": 52, "grumblemaw": 58}
+INK = (30, 28, 30)
+
+
+def actor_frames(kind, frames, raw):
+    from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
+
+    tower = kind in TOWERS
+    target = BODY_HEIGHT.get(kind, 40) * 2
+    groupsize = 1 if tower else 4
+    boxes = [frame.getchannel("A").point(lambda a: 255 if a >= 128 else 0).getbbox()
+             for frame in frames]
+    # A common horizontal scale preserves the broadside of a weapon or wings.
+    # Use a separate vertical fit per heading for foreshortened poses.
+    typical = statistics.median(box[3] - box[1] for box in boxes)
+    disc_w = DISC_WIDTH.get(kind, 33) * 2
+    disc_h = round(disc_w * .29)
+    pivot_x = raw["anchor"][0]
+    placements = []
+    for i, (image, box) in enumerate(zip(frames, boxes)):
+        start = i // groupsize * groupsize
+        group = boxes[start:start + groupsize]
+        usual_height = statistics.median(b[3] - b[1] for b in group)
+        height = box[3] - box[1]
+        # Limit projected height changes from a raised club or a folding wing.
+        # Limbs still animate, but no ordinary pose shrinks below 36 px.
+        fitted = max(target - 4, min(target + 4, height * target / usual_height))
+        sy = fitted / height
+        sx = target / typical
+        if tower:
+            sx = max(sx, 28 * 2 / (box[2] - box[0]))
+        max_width = (55 if tower else BODY_HEIGHT[kind] * 1.35) * 2
+        sx = min(sx, max_width / (box[2] - box[0]))
+        # Let the platform or the feet sit on the rear half of the disc.
+        lift = 10 if kind == "harpy" else 0
+        foot_y = 4 - lift
+        crop = image.crop(box)
+        rgb = ImageEnhance.Color(crop.convert("RGB")).enhance(1.22)
+        rgb = ImageEnhance.Contrast(rgb).enhance(1.10)
+        rgb.putalpha(crop.getchannel("A"))
+        body = rgb.resize((round(crop.width * sx), round(crop.height * sy)),
+                          Image.Resampling.LANCZOS)
+        placements.append((body, round((box[0] - pivot_x) * sx),
+                           foot_y - body.height))
+
+    # Export one integral 1x ground pivot for the entire heading/cycle atlas.
+    left = min(-disc_w // 2, *(x for _, x, _ in placements))
+    right = max(disc_w // 2 + 1, *(x + im.width for im, x, _ in placements))
+    top = min(y for _, _, y in placements)
+    ax = 2 * math.ceil((5 - left) / 2)
+    ay = 2 * math.ceil((5 - top) / 2)
+    size = (ax + 2 * math.ceil((right + 5) / 2),
+            ay + 2 * math.ceil((disc_h / 2 + 6) / 2))
+    images = []
+    body_bounds = []
+    for body, x, y in placements:
+        piece = Image.new("RGBA", size)
+        pen = ImageDraw.Draw(piece)
+        bounds = (ax - disc_w // 2, ay - disc_h // 2,
+                  ax + disc_w // 2, ay + disc_h // 2)
+        pen.ellipse(bounds, fill=INK)
+        x0, y0, x1, y1 = bounds
+        pen.ellipse((x0 + 2, y0 + 2, x1 - 2, y1 - 3),
+                    fill="#b7a486" if tower else "#ba8963")
+        pen.ellipse((x0 + 4, y0 + 3, x1 - 4, y1 - 5),
+                    fill="#736754" if tower else "#805640")
+        face = Image.new("RGBA", size)
+        face.paste(body, (ax + x, ay + y))
+        stroke = Image.new("RGBA", size, INK)
+        stroke.putalpha(face.getchannel("A").filter(ImageFilter.MaxFilter(5)))
+        piece.alpha_composite(stroke)
+        piece.alpha_composite(face)
+        body_bounds.append(face.getchannel("A").point(lambda a: 255 if a >= 128 else 0).getbbox())
+        images.append(piece)
+    return dict(raw, anchor=[ax, ay], frameSize=list(size), bodyBounds=body_bounds), images
+
+
+def indexed_piece(image):
+    from PIL import Image
+
+    # The outermost pixels are ink. Give them their own alpha ramp and use
+    # the rest of the palette for the solid painted interior.
+    alpha = image.getchannel("A")
+    indexed = image.convert("RGB").quantize(224, dither=Image.Dither.NONE)
+    palette = indexed.getpalette()[:224 * 3] + list(INK) * 32
+    indexed.putpalette(palette)
+    fringe = alpha.point(lambda a: 224 + round(a * 31 / 255))
+    indexed.paste(fringe, mask=alpha.point(lambda a: 255 if a < 247 else 0))
+    indexed.info["transparency"] = bytes([255] * 224 + [round(i * 255 / 31) for i in range(32)])
+    return indexed
 
 
 def pack(kind):
-    from PIL import Image, ImageFilter
+    from PIL import Image
 
     folder = SCRATCH / kind
     meta = json.loads((folder / "layout.json").read_text())
+    frames = []
+    for label in meta["frameOrder"]:
+        with Image.open(folder / f"{label}.png") as source:
+            if list(source.size) != meta["frameSize"]:
+                raise ValueError(f"{kind} {label} has the wrong size")
+            frames.append(source.convert("RGBA"))
+    actor = kind in TOWERS + ENEMIES
+    if actor:
+        meta, frames = actor_frames(kind, frames, meta)
     cols = meta["columns"]
     order = meta["frameOrder"]
     rows = len(order) // cols
@@ -256,8 +355,7 @@ def pack(kind):
     atlases = {density: Image.new("RGBA", (cols * width * density // 2,
                                           rows * height * density // 2))
                for density in (1, 2)}
-    for index, label in enumerate(order):
-        full = styled_frame(Image, ImageFilter, kind, folder, label, meta["frameSize"])
+    for index, (label, full) in enumerate(zip(order, frames)):
         half = full.resize((width // 2, height // 2), Image.Resampling.BOX)
         for density, frame in ((1, half), (2, full)):
             w, h = frame.size
@@ -270,8 +368,12 @@ def pack(kind):
     for density, atlas in atlases.items():
         scaled = dict(meta, frameSize=[value * density // 2 for value in meta["frameSize"]],
                       anchor=[value * density // 2 for value in meta["anchor"]])
+        if actor:
+            scaled["bodyBounds"] = [[round(v * density / 2) for v in box]
+                                    for box in meta["bodyBounds"]]
         path = OUT / f"{kind}-{density}x.png"
-        atlas.save(path, optimize=True)
+        output = indexed_piece(atlas) if actor else atlas
+        output.save(path, optimize=True)
         path.with_suffix(".json").write_text(json.dumps(scaled, indent=2) + "\n")
         print(f"{path.name}: {atlas.width}×{atlas.height}, {len(order)} frames, {path.stat().st_size:,} bytes")
 
