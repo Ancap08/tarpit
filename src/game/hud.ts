@@ -40,11 +40,11 @@ import {
   hasNextWave,
   isBoss,
   boonScale,
-  LAST_WAVE,
+  lastWave,
   SPECIAL_RECHARGE_TICKS,
   TICKS_PER_SECOND,
   nextWavePreview,
-  unlockedSpecials,
+  availableSpecials,
   type Difficulty,
   type EnemyType,
   type GameState,
@@ -439,7 +439,7 @@ export class Hud {
     this.cheatMark.setVisible(state.cheated);
     // The sim lets lives go below 0 (the boss's exit costs 5); the HUD shows 0.
     set(this.lives, `Lives ${Math.max(0, state.lives)}`);
-    set(this.wave, waveCounterText(state.wave, state.endless, LAST_WAVE));
+    set(this.wave, waveCounterText(state.wave, state.endless, lastWave(state)));
     const tag = difficultyTag(state.difficulty);
     set(this.tag, tag);
     if (m.portrait) {
@@ -467,7 +467,7 @@ export class Hud {
     let reason: string | null = null;
     if (state.pendingBoon) reason = BOON_PENDING_TEXT;
     else if (!call.ok && call.reason === 'boon-wave') reason = BOON_WAVE_TEXT;
-    else if (!call.ok && call.reason === 'last-wave') reason = state.wave < LAST_WAVE ? BOSS_WAVE_NEXT_TEXT : LAST_WAVE_TEXT;
+    else if (!call.ok && call.reason === 'last-wave') reason = state.wave < lastWave(state) ? BOSS_WAVE_NEXT_TEXT : LAST_WAVE_TEXT;
     this.startButton.setFontSize(call.ok || reason ? m.callFont : m.startFont);
     if (reason) this.startButton.set(blockedWaveLabel(!!state.pendingBoon, reason), false);
     else if (call.ok) this.startButton.set(callEarlyLabel(call.bonus), true);
@@ -498,7 +498,7 @@ export class Hud {
         this.rechargeFill.fillStyle(COLORS.rechargeFill, 1).fillRect(sb.x, sb.y, fillWidth, sb.height);
       } else this.pip.lineStyle(1.5, COLORS.specialPipEmpty, 1).strokeCircle(cx, cy, PIP_RADIUS - 0.75);
     }
-    this.specialMenu.update(special.menuOpen && ready ? unlockedSpecials(state.wave) : []);
+    this.specialMenu.update(special.menuOpen && ready ? availableSpecials(state) : []);
     this.bar.update(state, pick);
     this.bossBar.update(state);
   }

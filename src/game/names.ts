@@ -337,3 +337,17 @@ export function boonDescription(id: BoonId): string {
 export function blockedWaveLabel(pending: boolean, reason: string): string {
   return pending ? `${START_WAVE_TEXT}\n${BOON_PENDING_TEXT}` : `${CALL_EARLY_TEXT}\n${reason}`;
 }
+
+/** Campaign cards and twist lines, keyed by the saved level id. */
+export const LEVEL_NAMES: Readonly<Record<number, { name: string; twist: string }>> = {
+  1: { name: 'First Watch', twist: 'Cover the trail with Musketeers and Longbows.' },
+  2: { name: 'Pack Trail', twist: 'Use Cannon fire to thin the crowds.' },
+  3: { name: 'The Switchback', twist: 'Slow the Wolves at the bends.' },
+  4: { name: 'Burn Line', twist: 'Set the tar alight as Shieldbearers march through.' },
+  5: { name: 'Wings Over the River', twist: 'Keep the sky covered as Harpies cross the river.' },
+  6: { name: 'Heavy Feet', twist: 'Give the Mortar a clear shot at the Trolls.' },
+  7: { name: 'Hold the Bend', twist: 'Raise a Barricade within reach of your towers.' },
+  8: { name: 'Stand Fast', twist: 'Meet the crowds with Guards and Fire Arrows.' },
+  9: { name: 'The Troll King', twist: 'Choose a second upgrade before Grumblefoot arrives.' },
+  10: { name: 'Last Light', twist: 'Bring every special to the fight with Grumblemaw.' },
+};

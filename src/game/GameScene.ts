@@ -121,6 +121,7 @@ import {
   continueEndless,
   cellCenter,
   createGame,
+  levelStars,
   DEFAULT_DIFFICULTY,
   DEFAULT_MAP,
   barricadePlacement,
@@ -140,7 +141,7 @@ import {
   towerAt,
   towerStats,
   undoUpgrade,
-  unlockedSpecials,
+  availableSpecials,
   upgradeTower,
   useSpecial,
   wavesCleared,
@@ -182,6 +183,7 @@ import { GuardEffects, drawGuardsAim, guardFoot, type DrawnGuard } from './draw/
 import { ShotEffects } from './draw/shots';
 import { SpecialEffects } from './draw/specials';
 import { Aim, drawTowerShape, drawTowers } from './draw/towers';
+import { campaignProgress } from './campaignProgress';
 import { highScores } from './highScore';
 import { callEarlyInfo, CHEAT_TAPS, CHEAT_WINDOW_MS, Hud, specialReady, specialRecharge } from './hud';
 import { AIM_BANNER, aimBannerText, BARRICADE_AIM_REASONS, PAINTED_FALLBACK, REWARD_KEYS } from './names';
@@ -202,7 +204,7 @@ import { currentLayout } from './layoutSwitch';
 import { isPerfMode, isTestMode } from './testMode';
 import { PaintedSkin, type PaintedState } from './skin/painted';
 import type { PaintedAssets } from './skin/loading';
-import type { GameStartData } from './TitleScene';
+import type { GameStartData as TitleStartData } from './TitleScene';
 import { ticksDue } from './loop';
 import { BAR_TYPES, canPick } from './ui/buildBar';
 import { EndScreen } from './ui/endScreen';
@@ -403,6 +405,8 @@ function liftedAim(x: number, y: number, layout: Layout, lift: number): { x: num
 /** Dashes in the Mortar's minimum-range circle (each dash half of its slot). */
 const MIN_RANGE_DASHES = 24;
 
+type GameStartData = TitleStartData & { level?: GameState['level'] };
+
 export class GameScene extends Phaser.Scene {
   state: GameState = createGame();
   speed: Speed = 1;
@@ -412,6 +416,7 @@ export class GameScene extends Phaser.Scene {
   private difficulty: Difficulty = DEFAULT_DIFFICULTY;
   /** The map this game runs on (milestone 27; set in init from the start data). */
   private currentMap: MapId = DEFAULT_MAP;
+  private campaignLevel?: GameState['level'];
   private accMs = 0;
   private dynamic!: Phaser.GameObjects.Graphics;
   private enemySprites!: EnemySprites;
@@ -500,7 +505,8 @@ export class GameScene extends Phaser.Scene {
 
   init(data?: Partial<GameStartData>): void {
     this.difficulty = data?.difficulty ?? DEFAULT_DIFFICULTY;
-    this.currentMap = data?.map ?? DEFAULT_MAP;
+    this.campaignLevel = data?.level;
+    this.currentMap = this.campaignLevel?.map ?? data?.map ?? DEFAULT_MAP;
     this.paintedAssets = data?.painted;
     this.paintedFallback = data?.paintedFallback ?? false;
   }
@@ -520,7 +526,7 @@ export class GameScene extends Phaser.Scene {
     if (this.restartPending) return;
     this.restartPending = true;
     const data: GameStartData = {
-      difficulty: this.state.difficulty, map: this.currentMap, painted: this.paintedAssets,
+      difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets,
       paintedFallback: this.paintedFallback,
     };
     this.scene.restart(data);
@@ -533,7 +539,7 @@ export class GameScene extends Phaser.Scene {
     this.restartPending = false;
     this.leaving = false;
     this.resume = null;
-    this.state = resume?.state ?? createGame({ difficulty: this.difficulty, map: this.currentMap });
+    this.state = resume?.state ?? createGame({ difficulty: this.difficulty, map: this.currentMap, level: this.campaignLevel });
     if (!resume) this.mapBlockedUntil = 0;
     this.recordedCleared = resume?.recordedCleared ?? 0;
     this.speed = 1;
@@ -947,7 +953,7 @@ export class GameScene extends Phaser.Scene {
       this.redraw();
       return;
     }
-    const unlocked = unlockedSpecials(this.state.wave);
+    const unlocked = availableSpecials(this.state);
     if (unlocked.length === 1) {
       this.selectSpecial(unlocked[0]);
       return;
@@ -1196,7 +1202,7 @@ export class GameScene extends Phaser.Scene {
       special: {
         charges: this.state.specialCharges,
         aiming: this.aiming,
-        unlocked: unlockedSpecials(this.state.wave),
+        unlocked: availableSpecials(this.state),
         menuOpen: this.specialMenuOpen,
         aimPoint: (() => {
           const c = this.aimCentre();
@@ -1266,7 +1272,7 @@ export class GameScene extends Phaser.Scene {
     this.leaving = true;
     this.restartPending = false;
     this.resume = null;
-    const data: GameStartData = { difficulty: this.state.difficulty, map: this.currentMap, painted: this.paintedAssets };
+    const data: GameStartData = { difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets };
     this.scene.restart(data);
   }
 
@@ -1343,7 +1349,11 @@ export class GameScene extends Phaser.Scene {
     const cleared = wavesCleared(this.state);
     if (cleared <= this.recordedCleared) return;
     this.recordedCleared = cleared;
-    highScores.record(this.state.difficulty, cleared, this.currentMap);
+    if (this.state.level) {
+      if (this.state.phase === 'won') campaignProgress.record(this.state.level.id, levelStars(this.state));
+    } else {
+      highScores.record(this.state.difficulty, cleared, this.currentMap);
+    }
   }
 
   /** Keep going after the win (milestone 26): the game turns endless and the end screen goes away. */
@@ -1631,7 +1641,7 @@ export class GameScene extends Phaser.Scene {
     if (this.panel.cell !== null && !towerAt(this.state, this.panel.cell)) this.panel.close();
     if (this.pick !== null && !canPick(this.state, this.pick)) this.pick = null;
     // Aiming and the popup end once no special can be used (charge spent, wave over).
-    if (!specialReady(this.state) || (this.aiming !== null && !unlockedSpecials(this.state.wave).includes(this.aiming))) this.cancelSpecial();
+    if (!specialReady(this.state) || (this.aiming !== null && !availableSpecials(this.state).includes(this.aiming))) this.cancelSpecial();
     this.panel.update(this.state);
     // A drag whose source went away (gold spent elsewhere, the tower sold or
     // locked by a test hook) ends without acting.

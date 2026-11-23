@@ -10,6 +10,12 @@ import { sound } from './audio/engine';
 import { audioLab } from './audio/lab';
 import {
   bestUnlockedSpecial,
+  LEVELS,
+  levelStars,
+  unlockedLevel,
+  runBot,
+  botGood,
+  botBeginner,
   comboBuild,
   DEFAULT_DIFFICULTY,
   DEFAULT_MAP,
@@ -29,6 +35,7 @@ import {
   towerLevel,
 } from '../sim';
 import type { GameScene } from './GameScene';
+import { campaignProgress } from './campaignProgress';
 import { highScores } from './highScore';
 import { pageLockState } from './pageLock';
 import { currentLayout } from './layoutSwitch';
@@ -224,6 +231,25 @@ export function installGlobal(game: Phaser.Game): void {
         game.scene.getScene('game').events.once('create', () => resolve());
         titleScene(game).play(difficulty, map);
       }),
+    startLevel: (id) => {
+      const level = LEVELS.find(entry => entry.id === id);
+      if (!level) throw new RangeError(`Unknown campaign level ${id}`);
+      return new Promise<void>(resolve => {
+        const target = game.scene.getScene('game');
+        target.events.once('create', resolve);
+        if (game.scene.isActive('game')) target.scene.restart({ level });
+        else titleScene(game).scene.start('game', { level });
+      });
+    },
+    levelStars: () => levelStars(scene().state),
+    progress: () => campaignProgress.table(),
+    levelOpen: id => unlockedLevel(campaignProgress.table(), id),
+    runBot: (name, throughWave) => {
+      const current = scene();
+      const { state } = runBot(current.state, name === 'botGood' ? botGood : botBeginner, throughWave);
+      current.advance(0);
+      return state.phase;
+    },
     difficulty: () => scene().state.difficulty,
     pendingBoon: () => scene().state.pendingBoon,
     heldBoons: () => [...scene().state.boons],

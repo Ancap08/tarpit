@@ -7,6 +7,7 @@
 
 import type Phaser from 'phaser';
 import type {
+  CampaignProgress,
   BoonChoices,
   BoonId,
   BoonOffer,
@@ -61,6 +62,11 @@ export interface TarpitTestApi {
    * has been created. Does nothing if GameScene is already running.
    */
   startGame(difficulty?: Difficulty, map?: MapId): Promise<void>;
+  startLevel(id: number): Promise<void>;
+  levelStars(): 0 | 1 | 2 | 3;
+  progress(): CampaignProgress;
+  levelOpen(id: number): boolean;
+  runBot(name: 'botGood' | 'botBeginner', throughWave?: number): Phase;
   /** The running game's level (milestone 25). */
   difficulty(): Difficulty;
   pendingBoon(): BoonOffer | null;

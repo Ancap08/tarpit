@@ -1,6 +1,6 @@
 // Words on the win and lose screens. No Phaser, so it is unit tested.
 
-import { LAST_WAVE, type GameState } from '../../sim';
+import { lastWave, type GameState } from '../../sim';
 import { END_TEXT, heldBoonsText, reachedWaveText } from '../names';
 
 export type EndKind = 'won' | 'lost';
@@ -15,5 +15,5 @@ export function endScreenText(kind: EndKind, state: GameState): { title: string;
   if (kind === 'won') {
     return { title: END_TEXT.wonTitle, lines: [`${END_TEXT.wonLives} ${state.lives}`, `${END_TEXT.wonGold} ${state.gold}`], boons };
   }
-  return { title: END_TEXT.lostTitle, lines: [reachedWaveText(state.wave, state.endless, LAST_WAVE)], boons };
+  return { title: END_TEXT.lostTitle, lines: [reachedWaveText(state.wave, state.endless, lastWave(state))], boons };
 }
