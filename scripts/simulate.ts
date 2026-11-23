@@ -34,11 +34,11 @@ try {
 
   const { SPECIAL_TYPES } = await server.ssrLoadModule('/src/sim/specials.ts') as typeof Specials;
   console.log('\nNormal comboBuild with one special omitted (information only)');
-  console.log('map         ' + ['all', ...SPECIAL_TYPES.map(type => `without ${type}`)].map(label => label.padStart(18)).join(''));
+  console.log('map'.padEnd(10) + ['all', ...SPECIAL_TYPES.map(type => `without ${type}`)].map(label => label.padStart(18)).join('  '));
   for (const map of MAP_IDS) {
     const all = balance.balanceRun('comboBuild', map, 'normal');
     const singles = SPECIAL_TYPES.map(type => targets.comboWithoutSpecialRun(type, map));
-    console.log(map.padEnd(12) + [all, ...singles].map(run => balance.matrixCell(run).padStart(18)).join(''));
+    console.log(map.padEnd(10) + [all, ...singles].map(run => balance.matrixCell(run).padStart(18)).join('  '));
   }
 
   for (const map of MAP_IDS) {
