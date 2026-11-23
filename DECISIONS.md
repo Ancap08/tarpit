@@ -1183,9 +1183,14 @@ can change it; "Kyle" means Kyle decided.
   Hard; re-placing walls can hold the last small enemy for as long as the
   player likes (the wave just does not end; nothing is gained). Accepted
   (Fable); play notes decide.
-- **A held crowd fans out in ranks behind the wall, with a count beside
-  the wall's hp bar.** Drawing only. The first version stacked fifteen
-  enemies on one spot. Fable and Sonnet (saw it), Codex.
+- **A held crowd is drawn as a tight pile at the wall with a count beside
+  the wall's hp bar.** The first version stacked fifteen enemies on one
+  spot with no count. The coordinator then asked for a fan-out, and Codex
+  drew ranks up to 310 px back; the automated PR review pointed out that
+  every held enemy is really at the wall, so a Powder Keg aimed at the
+  visible rear ranks would hit nothing. Now no held enemy is drawn more
+  than 36 px from where it is, and a test ties that limit to the smallest
+  blast radius. Fable (the bad ask), Codex review (finding), Codex (fix).
 - **For later:** troops need a contact list so a blocker can hit back; a
   castle wall at the exit needs the exit check moved, because a walker at
   the exit counts as out before it can be held. Sonnet (read the code).
