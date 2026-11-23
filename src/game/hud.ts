@@ -392,19 +392,19 @@ export class Hud {
 
     const stat = (x: number, size = m.statSize, color: string = TEXT.hud) =>
       scene.add.text(x, m.statY, '', { fontFamily: FONT, fontSize: size, fontStyle: 'bold', color }).setOrigin(0, 0.5);
-    this.gold = stat(m.goldX);
-    this.lives = stat(LIVES_X);
-    const waveLabel = (size: number, color: string) => {
+    const fixedStat = (x: number, size: number, color: string) => {
       const descent = Math.ceil(size / 5);
       const height = size + descent;
-      return scene.add.text(238, m.statY, '', {
+      return scene.add.text(x, m.statY, '', {
         fontFamily: FONT, fontSize: size, fontStyle: 'bold', color, fixedHeight: height,
         metrics: { ascent: size, descent, fontSize: height },
       }).setOrigin(0, 0.5);
     };
     const statSize = Number.parseInt(m.statSize, 10);
-    this.wave = waveLabel(statSize, TEXT.hud);
-    this.tag = waveLabel(m.portrait ? statSize : TAG_SIZE, TEXT.hudDim);
+    this.gold = fixedStat(m.goldX, statSize, TEXT.hud);
+    this.lives = fixedStat(LIVES_X, statSize, TEXT.hud);
+    this.wave = fixedStat(238, statSize, TEXT.hud);
+    this.tag = fixedStat(238, m.portrait ? statSize : TAG_SIZE, TEXT.hudDim);
     if (!m.portrait) this.tag.setY(MID + TAG_OFFSET);
     this.next = m.portrait
       ? stat(m.preview.x, m.statSize, TEXT.hudDim).setY(m.preview.y).setOrigin(0, m.preview.originY).setWordWrapWidth(m.preview.width, true)
