@@ -1383,10 +1383,10 @@ export class GameScene extends Phaser.Scene {
     if (newTick) this.enemySprites.newTick();
     this.barricadeFx.onEvents(events);
     this.guardFx.onEvents(events);
-    if (this.fx) this.fx.onEvents(events);
+    if (this.fx) this.fx.onEvents(events, this.state);
     else {
       this.enemySprites.onEvents(events);
-      this.moments.onEvents(events, this.frozenMs, false);
+      this.moments.onEvents(events, this.frozenMs, false, this.state);
     }
     if (events.some((event) => event.kind === 'boonOffered')) {
       this.clearPickAndPanel();

@@ -324,8 +324,8 @@ export class Effects {
   }
 
   /** Route a batch of simulation events (after a tick or an action). */
-  onEvents(events: readonly GameEvent[]): void {
-    this.moments.onEvents(events, this.realMs, true);
+  onEvents(events: readonly GameEvent[], state: GameState): void {
+    this.moments.onEvents(events, this.realMs, true, state);
     this.tickHits.clear();
     // Milestone 33: an early call sounds Call next instead of the wave horn; the end jingles replace the clear chime.
     const early = events.some((e) => e.kind === 'earlyCall');

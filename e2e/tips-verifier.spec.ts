@@ -6,14 +6,26 @@ import { waitForFirstScreen } from './title';
 
 tipsVerifierSuite(false);
 
-test('level 1 does not announce an unlocked Barricade at wave 3 (it has none)', async ({ page }) => {
-  // Pins a defect that predates milestone 42 (fx/moments.ts shows the unlock banner in every game):
-  // level 1 offers the Powder Keg only, yet says "Barricade unlocked". Remove test.fail when fixed.
-  test.fail();
-  await page.goto('/?test=1');
-  await waitForFirstScreen(page);
-  await api(page, (t) => t.startLevel(1));
-  await page.waitForFunction(() => (window.__tarpit as TarpitTestApi | undefined)?.screen() === 'game');
-  await api(page, (t) => { t.state().wave = 2; t.startWave(); t.step(5); });
-  expect(await api(page, (t) => t.ui().momentBanner)).not.toBe('Barricade unlocked');
-});
+for (const [wave, hint] of [[3, 'Barricade unlocked'], [6, 'Guards unlocked']] as const) {
+  for (const { level, cheat, allowed } of [
+    { level: 1, cheat: false, allowed: false },
+    { level: 1, cheat: true, allowed: true },
+    { level: 8, cheat: false, allowed: true },
+  ]) {
+    test(`level ${level} shows "${hint}" at wave ${wave} only when available (cheat=${cheat})`, async ({ page }) => {
+      await page.goto('/?test=1');
+      await waitForFirstScreen(page);
+      await page.evaluate((level) => (window.__tarpit as TarpitTestApi).startLevel(level), level);
+      await page.waitForFunction(() => (window.__tarpit as TarpitTestApi | undefined)?.screen() === 'game');
+      if (cheat) await api(page, (t) => t.cheatGold());
+      await page.evaluate((wave) => {
+        const t = window.__tarpit as TarpitTestApi;
+        t.state().wave = wave - 1;
+        t.startWave();
+        t.step(5);
+      }, wave);
+      expect(await api(page, (t) => t.state().wave)).toBe(wave);
+      expect(await api(page, (t) => t.ui().momentBanner)).toBe(allowed ? hint : null);
+    });
+  }
+}
