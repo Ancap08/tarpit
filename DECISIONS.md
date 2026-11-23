@@ -1194,3 +1194,45 @@ can change it; "Kyle" means Kyle decided.
 - **For later:** troops need a contact list so a blocker can hit back; a
   castle wall at the exit needs the exit check moved, because a walker at
   the exit counts as out before it can be held. Sonnet (read the code).
+
+## 2026-11-23, milestone 38 (the painted look, behind a switch)
+
+- **Kyle chose the painted-miniature look** from a Blender spike that
+  showed clay and painted versions of one Meadow corner beside the current
+  game, and said to wire improvements in as we go. Kyle.
+- **All of the art is made by script in Blender** (`scripts/art/`), with
+  nothing downloaded: the Meadow ground, six towers in 16 bearings, seven
+  enemies with four-direction walk cycles, scenery, projectiles and bar
+  icons. It rebuilds in about 100 seconds. Fable (approach), Codex (art
+  and pipeline), Sonnet (rebuilt it: 104 of 108 files byte-identical).
+- **A Look choice on the title, Classic by default, remembered.** Painted
+  applies to Meadow; the other maps stay Classic until their art exists.
+  Painted files load only when chosen. Classic is pixel-identical to
+  before, and the simulation is identical in both looks. Fable (scope),
+  Codex, Sonnet (checked).
+- **The ground is drawn straight down to match the grid; pieces are drawn
+  from a tilted camera and stand on their cells,** nearer ones in front.
+  Hit areas, ranges and placement are unchanged. Fable.
+- **Sent back three times on what the coordinator saw in frames:** pieces
+  half the size they needed to be and melting into the ground (Codex had
+  called the phone frame playable; it was not); Harpies too big, Classic
+  icons on the build bar, gliding and corner snapping; a green Troll
+  beside green Goblins. Fable (judged from frames), Codex.
+- **Tower name labels are not drawn in Painted;** the gold ring and the
+  path marks carry upgrades. Fable.
+- **Slow connections:** the first version missed its 12 s limit on mobile
+  data and fell back to Classic every time. Now the smaller files load
+  first on a slow connection, with one 25 s limit and progress shown (10
+  to 14 s to the first painted frame on Slow 4G and Fast 3G); a banner
+  says so if it falls back. Sonnet and Codex (measured), Fable (ask).
+- **The asset check now requires the named generator script to exist.**
+  Sonnet (finding), Codex.
+- **Accepted for now:** with the Canvas fallback under heavy CPU
+  throttling Painted is slower than Classic on desktop (182 frames against
+  295 in 5 s at 6 times); a big enemy can hide a small one's body in a
+  crowd; some foot slide; 54 separate files make the first load slower
+  than it need be (a packed atlas would fix it). Sonnet (findings), Fable.
+- **Two CC0 packs from kenney.nl** (Tower Defense top-down, Medieval RTS)
+  were downloaded to a scratch folder with Kyle's approval, as style
+  references only. Nothing from them is in the repo. Kyle (approved),
+  Fable.
