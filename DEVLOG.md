@@ -8564,3 +8564,55 @@ hp bar overlapped attacking walkers and their own bars did not follow
 their displayed positions. The wall bar now clears the approach and
 the walkers' hp bars and status marks follow their bodies. Individual
 walkers still overlap in a dense pile, particularly on the phone.
+
+### Verifier notes
+
+Independent check by Claude Sonnet of branch `m39-barricade` at `da2a91c`.
+
+- **K1 holds.** `npm run sim` on a clean worktree of `origin/main` (`d326cf1`)
+  and on the branch gives byte-identical reports (28,501 bytes without the npm
+  banner; the 28,614 in the section above counts the banner). A stronger check
+  replayed `comboBuild` on all nine map and difficulty pairs on both trees and
+  hashed the whole state every 7 ticks, every tick's events, and the final
+  state, leaving out only the new fields (`blocker`, `lastBarricadeTick`): all
+  nine equal. No wall placed means no change.
+- **The rule checks out by hand.** `src/sim/barricade-verifier.test.ts` (new,
+  27 tests) works the numbers out independently: exact stop at the point at
+  normal and slowed speed, clamped wolf, staggered arrivals, break ticks (lone
+  Troll 534, ten Goblins 400, Troll with two Goblins and a Shieldbearer 348,
+  Grumblefoot 80, Grumblemaw 60, lone Goblin 4000, lone Wolf 3000), release on
+  the tick after the break, an enemy exactly on the point held and one past it
+  free, flyers, timers, bounty, targeting, replacement, a wall carried across
+  wave clear, a win and Keep going (documented in DESIGN.md), and a brute-force
+  nearest-point oracle over a 6 px grid of aims on all three maps (verdict,
+  point, arc distance and angle).
+- **Finding, K3.** The three fixed points are conservative. On Meadow a wall
+  at trail distance 1360 (about 224 px before the exit) takes Hard from 3 to 10
+  lives (+7) and Normal from 14 to 20 (+6). DESIGN.md K3 says at most six on
+  every map and difficulty. A sweep of 48 to 128 px steps on the other maps
+  found at most +5 on Normal; Switchback Hard flips a loss on wave 19 into a
+  win when the wall is anywhere from 704 to 960 or 1344 to 1472. Recorded as
+  `it.fails` in the verifier test. Either state K3 for the fixed points only,
+  or move a number (hp 400 to 300, or a larger end exclusion).
+- **Finding, a crowd is a blob.** Fifteen walkers held at the wall (six
+  Goblins, three Wolves, three Shieldbearers, two Trolls, one Harpy overhead)
+  draw as three or four overlapping sprites; the count and the types cannot be
+  read. The code fans a crowd over 9 slots (three columns, three ranks, 15 px
+  and 13 px apart), so the tenth walker lands on the first. A drawing-only fix:
+  more ranks and wider spacing, or a small count badge beside the wall bar.
+- **Held for ever.** A lone Goblin, Wolf or Shieldbearer is held indefinitely
+  by placing a fresh wall on every recharge (0.1, 0.133 and 0.2 hp per tick
+  against 1200 ticks). A lone Troll breaks it in 534 ticks. Nothing misbehaves:
+  the wave does not clear and call early still works. No gold or lives gain.
+- **Reuse.** The movement rule takes a list of blockers, so several at once
+  need only a list in `GameState`. A blocker at the exit would not hold anyone:
+  the walker is clamped to the exit distance and `removeExitedEnemies` counts
+  `distance >= exit` as out. Damage back and healing need new steps after the
+  attack pass, which does not keep who touched which blocker.
+- **Checks.** Lint, assets, typecheck, build, size and `npm run sim` pass.
+  `npm test`: 92 files, 1841 passed and 1 expected fail (the K3 finding above),
+  about 41 to 48 s. Browser suite (chromium, tablet, phone; 689 tests with the
+  two new crowd specs, which print the held crowd and write frames when
+  `M39_FRAMES` is set) ran twice: 681 passed and 8 skipped both times, the
+  skips being the existing environment-gated frame and perf cases. No new skip,
+  fixme or miss pin from the branch.
