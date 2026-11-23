@@ -1,6 +1,6 @@
 # Tarpit: game design spec
 
-> **Frozen as of milestone 36.** This file states every number and rule the
+> **Frozen as of milestone 37.** This file states every number and rule the
 > game uses. Changing any of them needs a `DECISIONS.md` entry (who decided
 > and why) and the balance pins updated in the same change
 > (`src/sim/balance.suite.ts`, `npm run sim`). Kyle's play notes can reopen
@@ -311,6 +311,24 @@ One upgrade per tower:
 | Longbow | 30 | 170 | 9 | - | - | - |
 | Mortar | 80 | 220 | 70 | 70 | - | - |
 | Fire Pot | 50 | 100 | 4 | - | - | 8/s for 4 s |
+
+At level 2 the next upgrade picks one path. Paths A and B for a tower cost
+the same. A level 3 tower has no further upgrade.
+
+| Tower | Path | Name | Cost | Range | Min range | Damage | Fire rate | Splash | Slow | Burn |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Musketeer | A | Sharpshooter | 85 | 155 | - | 35 | 1 | - | - | - |
+| Musketeer | B | Volley | 85 | 125 | - | 22 | 2 | - | - | - |
+| Cannon | A | Heavy Shot | 140 | 105 | - | 40 | 0.5 | 85 | - | - |
+| Cannon | B | Quick Loader | 140 | 105 | - | 40 | 1 | 55 | - | - |
+| Tar Pit | A | Deep Tar | 110 | 105 | - | 3 | 2 | - | 80% for 2 s | - |
+| Tar Pit | B | Wide Tar | 110 | 155 | - | 3 | 2 | - | 60% for 2 s | - |
+| Longbow | A | War Bow | 70 | 170 | - | 16 | 2.5 | - | - | - |
+| Longbow | B | Quick Draw | 70 | 170 | - | 9 | 4.5 | - | - | - |
+| Mortar | A | Siege Shell | 190 | 220 | 70 | 130 | 1/3 | 70 | - | - |
+| Mortar | B | Wide Burst | 190 | 220 | 70 | 70 | 1/3 | 105 | - | - |
+| Fire Pot | A | Inferno | 120 | 100 | - | 4 | 0.8 | - | - | 15/s for 4 s |
+| Fire Pot | B | Lasting Flames | 120 | 100 | - | 4 | 0.8 | - | - | 8/s for 8 s |
 
 Slow is strength for seconds; burn is damage per second for seconds. Sell
 refunds after an upgrade (locked): Musketeer 59, Cannon 98, Tar Pit 77, Longbow 49, Mortar 133, Fire Pot 84.

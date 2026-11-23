@@ -14,7 +14,7 @@ import { buildableCells } from './grid';
 import { MAPS, pathLength, type MapId } from './map';
 import { SPECIAL_DEFS, SPECIAL_RECHARGE_TICKS, ZONE_LINGER_TICKS, type SpecialType } from './specials';
 import { POLICY_CHECK_TICKS, POLICY_MIN_HITS, POLICY_POINT_SPACING } from './specialPolicy';
-import { TOWER_DEFS } from './towers';
+import { TOWER_DEFS, TOWER_PATHS } from './towers';
 import type { EnemyType, TowerLevelStats, TowerType } from './types';
 import { ENDLESS_BASE_WAVES, ENDLESS_HP_GROWTH, endlessCycle, LAST_WAVE, waveDef, WAVES } from './waves';
 import { EXPECTED_MATRIX } from './balance.suite';
@@ -94,7 +94,7 @@ const burn = (s: string): [number, number] => {
 
 describe('docs/DESIGN.md matches the code', () => {
   it('has the frozen banner', () => {
-    expect(md).toMatch(/^# Tarpit: game design spec\n\n> \*\*Frozen as of milestone 36\.\*\*/);
+    expect(md).toMatch(/^# Tarpit: game design spec\n\n> \*\*Frozen as of milestone 37\.\*\*/);
   });
 
   it('maps: waypoints, path length and buildable cells', () => {
@@ -171,6 +171,23 @@ describe('docs/DESIGN.md matches the code', () => {
       expect(Number(cost), name).toBe(def.upgradeCost);
       expect([def.upgraded.fireRate, def.upgraded.minRange], name).toEqual([def.base.fireRate, def.base.minRange]);
       expect({ range: Number(range), damage: Number(damage), splash: opt(splash), slow: slow(sl), burn: burn(bu) }, name).toEqual(level(def.upgraded));
+    }
+  });
+
+  it('paths: both complete stat rows and prices for every level 3 tower', () => {
+    const rows = table('Towers', 'Tower', 2);
+    expect(rows.map(([name, path]) => `${TOWER_NAMES[name]}:${path}`).sort()).toEqual(
+      Object.keys(TOWER_PATHS).flatMap((type) => [`${type}:A`, `${type}:B`]).sort(),
+    );
+    for (const [name, path, , cost, range, minRange, damage, rate, splash, sl, bu] of rows) {
+      if (path !== 'A' && path !== 'B') throw new Error(`unknown path "${path}"`);
+      const def = TOWER_PATHS[TOWER_NAMES[name]];
+      const stats = def[path];
+      const label = `${name} ${path}`;
+      expect(Number(cost), label).toBe(def.cost);
+      expect(opt(minRange), label).toBe(stats.minRange);
+      expect(num(rate), label).toBe(stats.fireRate);
+      expect({ range: Number(range), damage: Number(damage), splash: opt(splash), slow: slow(sl), burn: burn(bu) }, label).toEqual(level(stats));
     }
   });
 

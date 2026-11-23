@@ -11,7 +11,7 @@ import { callEarlyStatus, callNextWave, continueEndless, createGame, lastSpawnTi
 import { applyAction, applyScriptBoon, comboBuild } from './headless';
 import { MAPS, pathLength, type MapId } from './map';
 import { specialRadius, tarLingerTicks } from './specials';
-import { shotCooldown, TOWER_DEFS, towerStats } from './towers';
+import { shotCooldown, TOWER_DEFS, TOWER_PATHS, towerStats } from './towers';
 import type { Enemy, EnemyType, GameState, TowerType } from './types';
 import { endlessCycle, waveDef, WAVES } from './waves';
 
@@ -507,7 +507,7 @@ describe('verifier 36a: conservation over full games', () => {
         if (e.kind === 'kill') gold += e.bounty;
         if (e.kind === 'waveClear' || e.kind === 'earlyCall') gold += e.bonus;
         if (e.kind === 'build') gold -= TOWER_DEFS[e.tower].cost;
-        if (e.kind === 'upgrade') gold -= TOWER_DEFS[e.tower].upgradeCost;
+        if (e.kind === 'upgrade') gold -= e.level === 3 ? TOWER_PATHS[e.tower].cost : TOWER_DEFS[e.tower].upgradeCost;
         if (e.kind === 'sell') gold += e.refund;
         if (e.kind === 'undoUpgrade') gold += e.refund;
         if (e.kind === 'boonPicked' && e.id === 'warChest') gold += 100;
