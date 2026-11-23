@@ -87,13 +87,13 @@ export async function placement(page: Page, touch: boolean, phone = false): Prom
     await expectStanding(page);
   }
   // The wall takes the next shared charge. Both types survive together.
-  await api(page, t => { t.step(1); t.state().specialCharges = 1; });
+  await api(page, t => { t.state().specialRechargeTicks = 1; t.step(1); });
   await aimBarricade(page, touch);
   await castAt(page, { x: 420, y: 260 }, touch);
   expect((await ui(page)).special.blocker).not.toBeNull();
   await expectStanding(page);
   if (touch) {
-    await api(page, t => { t.step(1); t.state().specialCharges = 1; });
+    await api(page, t => { t.state().specialRechargeTicks = 1; t.step(1); });
     await chooseGuards(page, true);
     await castAt(page, { x: 620, y: 384 }, true);
     const live = await api(page, t => t.state().blockers.filter(b => b.kind === 'guard'));

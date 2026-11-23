@@ -8991,3 +8991,10 @@ five pre-existing Painted baselines matched main pixel for pixel.
 A castle wall placed at the exit still needs the exit step to distinguish
 a walker held on the threshold from a walker who has passed it. Today's
 exit check removes any walker at the exit distance.
+
+A rapid tap after turning from portrait to landscape exposed a stale fit.
+The viewport was already 844 × 390 while Phaser still fitted the new
+canvas to the old 390 px parent width. A menu item could move between
+press and release. Measuring the resized parent before changing the game
+size fixes the first landscape frame. The phone placement test failed
+16 of 20 repetitions before the fix and passed 20 of 20 after it.
