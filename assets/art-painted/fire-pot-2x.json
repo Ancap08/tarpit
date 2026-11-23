@@ -1,0 +1,29 @@
+{
+  "frameSize": [
+    84,
+    86
+  ],
+  "anchor": [
+    42,
+    48
+  ],
+  "columns": 8,
+  "frameOrder": [
+    "N",
+    "NNE",
+    "NE",
+    "ENE",
+    "E",
+    "ESE",
+    "SE",
+    "SSE",
+    "S",
+    "SSW",
+    "SW",
+    "WSW",
+    "W",
+    "WNW",
+    "NW",
+    "NNW"
+  ]
+}

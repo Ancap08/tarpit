@@ -1,0 +1,14 @@
+{
+  "frameSize": [
+    34,
+    32
+  ],
+  "anchor": [
+    16,
+    16
+  ],
+  "columns": 1,
+  "frameOrder": [
+    "cannonball"
+  ]
+}

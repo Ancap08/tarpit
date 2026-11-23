@@ -1,0 +1,14 @@
+{
+  "frameSize": [
+    56,
+    40
+  ],
+  "anchor": [
+    28,
+    20
+  ],
+  "columns": 1,
+  "frameOrder": [
+    "harpy-shadow"
+  ]
+}

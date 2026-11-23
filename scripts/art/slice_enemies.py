@@ -1,0 +1,297 @@
+"""Painted Meadow enemies. Each phase builds one miniature facing local +Y."""
+
+from math import cos, sin, tau
+
+import bpy
+from mathutils import Vector
+
+import meadow
+from goblin import build_goblin
+
+
+# Left and right pairs are forward excursion and lift above the trail.
+WALK = (
+    ((.16, 0), (-.14, 0)),
+    ((-.07, 0), (.10, .09)),
+    ((-.14, 0), (.16, 0)),
+    ((.10, .09), (-.07, 0)),
+)
+BOB = (-.015, .019, -.011, .022)
+INK = "#30252B"
+BONE = "#F5D995"
+GOLD = "#EFA743"
+LEATHER = "#603C36"
+STEEL = "#9DB3B7"
+
+pebble = meadow.peb
+profile = meadow.ringbody
+taper = meadow.twig
+seam = meadow.line
+
+
+def limb(name, start, end, width, depth, color):
+    start, end = Vector(start), Vector(end)
+    delta = end - start
+    part = pebble(name, (start + end) / 2, (width, depth, delta.length / 2 + .035), color)
+    part.rotation_euler = delta.to_track_quat("Z", "Y").to_euler()
+    return part
+
+
+def blade(name, outline, color, thickness=.024):
+    """A beveled, thin solid outline with a normal along local +Z."""
+    count = len(outline)
+    vertices = [(x, y, z + layer * thickness / 2)
+                for layer in (-1, 1) for x, y, z in outline]
+    faces = [tuple(range(count)), tuple(reversed(range(count, count * 2)))]
+    for i in range(count):
+        j = (i + 1) % count
+        faces.append((j, i, i + count, j + count))
+    if sum(outline[i][0] * outline[i - 1][1] - outline[i - 1][0] * outline[i][1]
+           for i in range(count)) < 0:
+        faces = [tuple(reversed(face)) for face in faces]
+    return meadow.mesh(name, vertices, faces, color, bevel=thickness * .26)
+
+
+def wolf(phase):
+    coal, fur, grey, ivory = "#364755", "#617A8D", "#93A8AD", "#F1DAB0"
+    bob = BOB[phase] / 2
+    pebble("Dark saddle", (0, -.039, .360 + bob), (.142, .251, .111), coal)
+    pebble("High slate shoulders", (0, .090, .404 + bob), (.156, .164, .136), fur)
+    pebble("Pale chest", (0, .150, .339 + bob), (.124, .103, .115), ivory)
+    pebble("Lean haunch", (0, -.190, .327 + bob), (.128, .126, .117), fur)
+    for index, side in enumerate((-1, 1)):
+        for front in (False, True):
+            pair = index if front else 1 - index
+            reach, lift = WALK[phase][pair]
+            y = .139 if front else -.190
+            x = side * (.132 if front else .113)
+            knee = (x + side * .033, y + (.047 if front else -.068) + reach * .55, .187)
+            ankle = (x + side * .038, y + reach * .90, .068 + lift)
+            limb("Bent foreleg" if front else "Bent hindleg",
+                 (x * .83, y, .346 + bob), knee, .053, .053, fur)
+            limb("Pale lower leg", knee, ankle, .038, .037, grey)
+            pebble("Dark paw", (ankle[0], ankle[1] + .030, .039 + lift), (.052, .064, .039), coal)
+
+    wag = (.023, .060, -.005, -.031)[phase]
+    tail_base = (-.045, -.218, .365 + bob)
+    tail_bend = (-.211 + wag, -.348, .391 + bob)
+    tail_tip = (-.346 + wag, -.522, .310 + bob)
+    limb("Swept bushy tail", tail_base, tail_bend, .078, .065, fur)
+    limb("Broad dark tail brush", tail_bend, tail_tip, .089, .060, coal)
+    taper("Tail brush point", tail_bend, (-.399 + wag, -.585, .303 + bob), .065, .012, grey)
+
+    turn = (.24, .32, .27, .19)[phase]
+    def head(x, y, z):
+        return (x*cos(turn)+y*sin(turn), .147+y*cos(turn)-x*sin(turn), z+bob)
+
+    pebble("Angular skull", head(0, .047, .486), (.147, .141, .110), fur)
+    snout = pebble("Long light muzzle", head(0, .192, .475), (.098, .166, .067), ivory, -turn)
+    snout.rotation_euler.x = -.08
+    pebble("Darker lower jaw", head(0, .209, .432), (.082, .125, .034), grey, -turn)
+    pebble("Broad dark nose", head(0, .322, .470), (.069, .047, .046), coal, -turn)
+    for side in (-1, 1):
+        for tuft in range(2):
+            taper("Angular pale cheek guard", head(side*.094, .069+tuft*.028, .485-tuft*.048),
+                  head(side*(.221-tuft*.011), -.050-tuft*.018, .405-tuft*.034),
+                  .073, .013, ivory if tuft == 0 else grey, 7)
+        taper("Splayed charcoal ear", head(side*.092, -.019, .526),
+              head(side*.241, -.056, .723), .098, .008, coal, 7)
+        taper("Pale inner ear", head(side*.115, .043, .536),
+              head(side*.230, -.026, .698), .056, .010, ivory, 7)
+        pebble("Amber eye", head(side*.091, .141, .537), (.030, .030, .023), GOLD)
+        pebble("Eye center", head(side*.101, .159, .547), (.013, .014, .014), INK)
+
+
+def harpy(phase):
+    plum, russet, coral, cream = "#633653", "#A25044", "#DA7760", "#F6C784"
+    bob = (.010, .046, .012, .029)[phase]
+    root_height = .60 + bob
+    pebble("Wine-red feathered body", (0, -.043, root_height), (.147, .204, .125), plum)
+    pebble("Coral breast", (0, .055, root_height + .047), (.125, .125, .106), coral)
+    for side in (-1, 1):
+        lift = (0, .081, .018, .049)[phase] + side * .009
+        ankle = (side * .078, -.047, .418 + lift)
+        limb("Raked shin", (side * .069, -.022, root_height - .064),
+             ankle, .026, .024, GOLD)
+        for offset in (-.028, .028):
+            taper("Hooked talon", ankle, (ankle[0] + offset, .056, ankle[2] - .036),
+                  .021, .007, cream, 8)
+        shoulder = (side * .096, .021, root_height + .052)
+        flap = (.065, .255, -.064, .133)[phase]
+        span = (.252, .220, .240, .242)[phase]
+        wrist = (side * span, -.027, root_height + .06 + flap * .46)
+        tip = (side * (span + .131), -.213, root_height + .048 + flap)
+        limb("Wing shoulder", shoulder, wrist, .066, .064, russet)
+        limb("Wing leading edge", wrist, tip, .049, .045, russet)
+        for i in range(5):
+            base = Vector(shoulder).lerp(Vector(tip), .31 + i * .155)
+            end = (base.x + side * (.125 - i * .009),
+                   base.y - (.225 - i * .017), base.z + flap * .15 - .022)
+            limb("Vermilion flight feather", base, end, .049, .025, plum if i == 4 else russet)
+            limb("Painted feather shaft", (base.x, base.y, base.z + .018),
+                 Vector(end).lerp(base, .25) + Vector((0, 0, .020)), .019, .009,
+                 plum if i == 4 else coral)
+    for x in (-.056, 0, .056):
+        limb("Split plum tail", (x * .4, -.131, root_height),
+             (x, -.311 - (.028 if x == 0 else 0), root_height - .035), .037, .025, plum)
+    pebble("Harpy head", (0, .070, root_height + .165), (.101, .098, .092), coral)
+    pebble("Gold hooked beak", (0, .162, root_height + .162), (.049, .076, .048), GOLD)
+    for side in (-1, 1):
+        taper("Crest feather", (side * .039, .047, root_height + .208),
+              (side * .097, -.044, root_height + .328), .047, .004, plum)
+        pebble("Bright eye mask", (side * .052, .133, root_height + .217), (.037, .033, .027), cream)
+        pebble("Black eye", (side * .052, .156, root_height + .224), (.016, .018, .015), INK)
+
+
+def shieldbearer(phase):
+    blue, mail, skin = "#326F93", "#607E8B", "#B58756"
+    bob = BOB[phase] * .62
+    pebble("Blue surcoat", (0, -.017, .325 + bob), (.178, .126, .169), blue)
+    pebble("Wide belt", (0, .021, .271 + bob), (.179, .115, .038), LEATHER)
+    pebble("Brass buckle", (0, .130, .280 + bob), (.047, .020, .041), GOLD)
+    for side, (reach, lift) in zip((-1, 1), WALK[phase]):
+        x = side * .094
+        limb("Mail gaiter", (x, -.031, .272 + bob), (x, reach, .084 + lift), .057, .055, mail)
+        pebble("Work boot", (x, reach + .028, .045 + lift), (.075, .103, .045), LEATHER)
+        arm = (side * .200, .064 - reach / 2, .332 + bob)
+        limb("Mail sleeve", (side * .124, -.020, .421 + bob), arm, .064, .058, mail)
+        pebble("Gauntlet", arm, (.058, .053, .058), STEEL)
+    pebble("Helmet dome", (0, -.008, .567 + bob), (.150, .132, .139), STEEL)
+    pebble("Copper face slot", (0, .101, .536 + bob), (.100, .060, .058), skin)
+    pebble("Blue helmet stripe", (0, -.018, .667 + bob), (.042, .116, .041), blue)
+    pebble("Nasal guard", (0, .156, .570 + bob), (.026, .030, .061), STEEL)
+    # The block is carried high and almost flat so the enamel reads from every bearing.
+    cx, cy = -.229, .157 - WALK[phase][0][0] * .28
+    outline = ((-.205, .015), (0, -.282), (.205, .015),
+               (.190, .134), (0, .193), (-.190, .134))
+
+    def plate(points, scale, height):
+        return [(cx + x * scale, cy + y * scale, .499 + y * .30 + bob + height)
+                for x, y in points]
+
+    blade("Beveled gunmetal kite rim", plate(outline, 1, 0), "#394858", .060)
+    blade("Bright silver kite rim", plate(outline, .94, .034), "#CCD1B9", .031)
+    blade("Royal blue enamel shield face", plate(outline, .79, .055), "#224889", .025)
+    cross = ((-.040, -.149), (.040, -.149), (.040, -.022), (.122, -.022),
+             (.122, .051), (.040, .051), (.040, .126), (-.040, .126),
+             (-.040, .051), (-.122, .051), (-.122, -.022), (-.040, -.022))
+    blade("Ivory cross", plate(cross, 1, .073), "#FFE297", .012)
+
+
+def troll(phase, rank=0):
+    skin, stone, shadow, cloth = (
+        ("#698B53", "#A3AD6B", "#45553D", "#9C5239"),
+        ("#76A79A", "#B6C6A8", "#4B7066", "#B05E42"),
+        ("#817493", "#BAB1CB", "#594468", "#AE3E56"),
+    )[rank]
+    bob = BOB[phase]
+    roll = (-.032, -.019, .030, .022)[phase]
+    pebble("Rounded working back", (roll, -.068, .500 + bob), (.252, .203, .210), skin)
+    pebble("Wide shoulder ridge", (roll, -.029, .601 + bob), (.300, .162, .134), skin)
+    pebble("Painted knee-length hide apron", (0, -.003, .335 + bob), (.215, .157, .101), cloth)
+    pebble("Broad leather belt", (0, .011, .406 + bob), (.226, .163, .046), LEATHER)
+    pebble("Belt buckle", (0, .166, .403 + bob), (.054, .022, .042), GOLD if rank else BONE)
+    for side, (reach, lift) in zip((-1, 1), WALK[phase]):
+        x = side * .146
+        knee = (x, .042 + reach * .48, .189 + lift * .4)
+        foot = (x, .044 + reach, .054 + lift)
+        limb("Stocky thigh", (x, -.020, .324 + bob), knee, .089, .085, shadow)
+        limb("Bent shin", knee, foot, .072, .068, skin)
+        pebble("Broad bare foot", foot, (.110, .120, .054), skin)
+        for i in (-1, 0, 1):
+            pebble("Stone toenail", (x + i * .047, foot[1] + .085, foot[2] + .025),
+                   (.029, .028, .023), stone)
+
+        shoulder = (side * .224 + roll, -.060, .597 + bob)
+        elbow = (side * .306 + roll, -reach * .53 - .024, .417 + bob)
+        fist = (side * .333 + roll, -reach + .075, .316 + bob + abs(reach) * .20)
+        limb("Heavy upper arm", shoulder, elbow, .102, .090, skin)
+        limb("Heavy forearm", elbow, fist, .088, .079, skin)
+        pebble("Knuckle", fist, (.103, .088, .092), stone)
+        if side == 1 and rank != 2:
+            start = Vector(fist) + Vector((.020, -.077, -.084))
+            mid = Vector(fist) + Vector((.038, .105, .140))
+            end = Vector(fist) + Vector((.060, .215, .259))
+            taper("Blackwood club grip", start, mid, .042, .062, LEATHER)
+            limb("Knotted cudgel head", mid, end, .087, .072, "#805137")
+            seam("Club grain", [mid + Vector((.025, 0, .055)),
+                 end + Vector((.018, -.039, .027))], .012, "#B77C4B")
+            if rank:
+                limb("Grumblefoot's iron-studded club", mid.lerp(end, .47), end,
+                     .085, .074, "#4A6971")
+                pebble("Club rivet", end + Vector((.037, 0, .060)), (.039, .039, .034), STEEL)
+        elif rank == 2:
+            limb("Bronze gauntlet cuff", elbow,
+                 Vector(elbow).lerp(Vector(fist), .46), .105, .094, "#AF723D")
+        if rank:
+            pebble("Shoulder pauldron", (shoulder[0], -.048, .635 + bob),
+                   (.128, .132, .078), "#D49252" if rank == 2 else "#577C82")
+            pebble("Pauldron rivet", (shoulder[0], .013, .699 + bob),
+                   (.039, .035, .022), GOLD)
+
+    face_y = .103 + (0, .028, .005, -.019)[phase]
+    pebble("Forward-lumped skull", (roll, face_y, .696 + bob), (.166, .147, .126), skin)
+    pebble("Broad lower jaw", (roll, face_y + .079, .636 + bob), (.149, .103, .065), stone)
+    pebble("Mouth crease", (roll, face_y + .161, .662 + bob), (.105, .027, .025), INK)
+    pebble("Hammer nose", (roll, face_y + .135, .726 + bob), (.064, .070, .048), stone)
+    for side in (-1, 1):
+        pebble("Troll ear", (roll + side * .158, face_y - .013, .706 + bob),
+               (.061, .069, .047), shadow)
+        pebble("Heavy raised brow", (roll + side * .082, face_y + .083, .779 + bob),
+               (.066, .063, .030), shadow).rotation_euler.y = side * .28
+        pebble("Amber eyes", (roll + side * .082, face_y + .126, .749 + bob),
+               (.033, .027, .024), GOLD)
+        taper("Curved ivory tusk", (roll + side * .100, face_y + .156, .630 + bob),
+              (roll + side * .115, face_y + .170, .709 + bob), .031, .007, BONE)
+    if rank == 2:
+        # Broad crown band with raised points readable from the copy stand.
+        profile("Grumblemaw's gold crown band", (roll, face_y - .024, .794 + bob), (
+            (0, .135, .110, 0, 0), (.027, .148, .122, 0, 0),
+            (.082, .169, .138, 0, -.005), (.097, .163, .134, 0, -.005),
+        ), GOLD, sides=24)
+        for i in range(5):
+            angle = tau * i / 5 + tau / 4
+            x, y = cos(angle), sin(angle)
+            taper("Gold crown point", (roll + x * .132, face_y - .024 + y * .111, .861 + bob),
+                  (roll + x * .172, face_y - .024 + y * .151, .990 + bob),
+                  .047, .017, GOLD)
+        pebble("Crown ruby", (roll, face_y + .102, .879 + bob),
+               (.047, .040, .039), "#CF3850")
+
+
+KINDS = ("goblin", "wolf", "troll", "harpy", "shieldbearer", "grumblefoot", "grumblemaw")
+
+
+def build(kind, mat, phase=0):
+    """Return a ground-pivoted root. Harpy height is baked into its mesh pose."""
+    phase %= 4
+    if kind == "goblin":
+        root = build_goblin(mat, phase)
+        for part in root.children:
+            if part.name.startswith("Chamfered round base"):
+                bpy.data.objects.remove(part, do_unlink=True)
+            else:
+                part.location.z -= .053
+        return root
+
+    if kind not in KINDS:
+        raise ValueError(f"Unknown Meadow enemy: {kind}")
+
+    root = meadow.group(f"{kind} · cycle {phase}")
+    previous = meadow.parent, meadow.material
+    meadow.parent, meadow.material = root, mat
+    try:
+        if kind == "wolf":
+            wolf(phase)
+        elif kind == "harpy":
+            harpy(phase)
+        elif kind == "shieldbearer":
+            shieldbearer(phase)
+        else:
+            rank, scale = {"troll": (0, 1.0), "grumblefoot": (1, 1.32),
+                           "grumblemaw": (2, 1.68)}[kind]
+            troll(phase, rank)
+            root.scale = (scale,) * 3
+    finally:
+        meadow.parent, meadow.material = previous
+    return root

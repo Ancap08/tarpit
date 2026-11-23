@@ -1,0 +1,15 @@
+{
+  "frameSize": [
+    128,
+    126
+  ],
+  "anchor": [
+    64,
+    70
+  ],
+  "columns": 2,
+  "frameOrder": [
+    "E",
+    "S"
+  ]
+}
