@@ -164,6 +164,22 @@ export function campaignVerifierSuite(touch: boolean, rotated: boolean) {
     expect(seen.result).toMatchObject({ stars: 0, slots: '☆☆☆', nextId: null, hint: 'Gold cheat used: stars not saved' });
     expect(seen.texts).toEqual(expect.arrayContaining(['☆☆☆', 'Gold cheat used: stars not saved']));
     if (process.env.VERIFY_SHOT) await page.screenshot({ path: `${process.env.VERIFY_SHOT}-${info.project.name}.png` });
+    expect(await textProblems(page)).toEqual([]);
+    await rotate(page, 'result');
+    expect(await textProblems(page)).toEqual([]);
+    if (process.env.VERIFY_SHOT) await page.screenshot({ path: `${process.env.VERIFY_SHOT}-${info.project.name}-turned.png` });
+    expect(await api(page, (t) => t.campaignResult())).toMatchObject({ slots: '☆☆☆', nextId: null });
+    // An uncheated win is unchanged.
+    await click(page, 'menu');
+    await onScreen(page, 'levelMap');
+    await click(page, 'title:stop:1');
+    await onScreen(page, 'levelCard');
+    await click(page, 'title:play');
+    await onScreen(page, 'game');
+    expect(await api(page, (t) => t.runBot('botGood'))).toBe('won');
+    await onScreen(page, 'result');
+    expect(await api(page, (t) => t.campaignResult())).toMatchObject({ stars: 3, nextId: 2, hint: '' });
+    expect(await api(page, (t) => t.progress())).toEqual({ 1: 3 });
   });
 
   test('every campaign screen keeps its place across a turn, with one scene running', async ({ page }) => {
@@ -331,5 +347,64 @@ export function campaignVerifierSuite(touch: boolean, rotated: boolean) {
     await onScreen(page, 'result');
     await page.keyboard.press('Escape');
     await onScreen(page, 'levelMap');
+  });
+
+  /** Total keyboard listeners on the scene that is showing. */
+  const listeners = (page: Page) => page.evaluate(() => {
+    const t = window.__tarpit as TarpitTestApi;
+    const kb = t.game.scene.getScene(t.scene()).input.keyboard!;
+    return kb.eventNames().reduce((n, name) => n + kb.listenerCount(name), 0);
+  });
+
+  test('keys: no leaked listeners across screens and turns, nothing odd in a level or Free play', async ({ page }) => {
+    await open(page);
+    const first = await listeners(page);
+    for (let i = 0; i < 3; i++) await rotate(page, 'first');
+    expect(await listeners(page)).toBe(first);
+    await page.keyboard.press('Enter');
+    await onScreen(page, 'levelMap');
+    const map = await listeners(page);
+    await rotate(page, 'levelMap');
+    await rotate(page, 'levelMap');
+    expect(await listeners(page)).toBe(map);
+    await page.keyboard.press('Escape');
+    await onScreen(page, 'first');
+    expect(await listeners(page)).toBe(first);
+    // Free play's picker: Enter plays once, Escape goes back once.
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await onScreen(page, 'freePlay');
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('Escape');
+    await onScreen(page, 'first');
+    expect(await api(page, (t) => t.scene())).toBe('title');
+    await page.keyboard.press('Enter');
+    await onScreen(page, 'levelMap');
+    await page.keyboard.press('Enter');
+    await onScreen(page, 'levelCard');
+    await page.keyboard.press('Enter');
+    await onScreen(page, 'game');
+    const at = await api(page, (t) => { const s = t.state(); return { tick: s.tick, wave: s.wave, phase: s.phase, gold: s.gold, towers: s.towers.length, scene: t.scene() }; });
+    for (const key of ['Escape', 'Enter', 'Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']) await page.keyboard.press(key);
+    await rotate(page, 'game');
+    expect(await api(page, (t) => { const s = t.state(); return { tick: s.tick, wave: s.wave, phase: s.phase, gold: s.gold, towers: s.towers.length, scene: t.scene() }; })).toEqual(at);
+    const inGame = await listeners(page);
+    // Win, press Space on the result (Next level), come back and win again: the game scene adds no listeners.
+    await end(page, true);
+    await onScreen(page, 'result');
+    await page.keyboard.press('Space');
+    await onScreen(page, 'levelCard');
+    expect(await api(page, (t) => t.scene())).toBe('title');
+    await page.keyboard.press('Enter');
+    await onScreen(page, 'game');
+    expect(await api(page, (t) => ({ id: t.state().level?.id, wave: t.state().wave, phase: t.state().phase }))).toEqual({ id: 2, wave: 0, phase: 'setup' });
+    expect(await listeners(page)).toBe(inGame);
+    await end(page, false);
+    await onScreen(page, 'result');
+    await rotate(page, 'result');
+    await page.keyboard.press('Enter'); // Try again, once
+    await onScreen(page, 'game');
+    expect(await api(page, (t) => ({ id: t.state().level?.id, wave: t.state().wave, lives: t.state().lives }))).toEqual({ id: 2, wave: 0, lives: 20 });
+    expect(await listeners(page)).toBe(inGame);
   });
 }

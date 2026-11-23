@@ -155,3 +155,31 @@ describe('Stand Fast keeps its two-star margin', () => {
     }
   });
 });
+
+describe('recheck: L1m, undeclared first appearances, the changed fixture', () => {
+  it('L1m is a real rule: the pre-fix Stand Fast data (gold 285, hp 1.3) fails only L1m', () => {
+    const old: LevelDef = { ...LEVELS[7], id: 401, startGold: 285, hpScale: 1.3 };
+    expect(checkLevel(old, CAMPAIGN_CONTEXTS[7]).failed).toEqual(['L1m']);
+  });
+
+  it('the ten levels pass every label, campaign and each level alone', () => {
+    expect(checkCampaign(LEVELS, CAMPAIGN_CONTEXTS).failed).toEqual([]);
+  });
+
+  it.each([
+    [0, 'musketeer'], [0, 'keg'], [0, 2], [0, 'goblin'], [2, 'wolf'], [3, 'shieldbearer'], [4, 'tarBarrel'], [5, 'troll'], [8, 'boss'],
+  ] as const)('rejects the ten levels when context %i leaves out %s', (index, missing) => {
+    const contexts = CAMPAIGN_CONTEXTS.map((context, i) => i === index
+      ? { ...context, alsoIntroduces: context.alsoIntroduces!.filter(key => key !== missing) } : context);
+    expect(checkCampaign(LEVELS, contexts).failed).toContain('L3');
+  });
+
+  it('the old twelve-level fixture (five extra Trolls, full gold) now fails L1m: the fixture changed, not the rule', () => {
+    const lastLight = LEVELS[9];
+    const heavy: LevelDef = { ...lastLight, id: 12, waves: lastLight.waves.map((w, i) => {
+      if (i === 0) return { groups: w.groups.map(g => ({ ...g, interval: g.interval * 0.85 })) };
+      return i === 3 ? { groups: w.groups.map((g, j) => j === 0 ? { ...g, count: g.count + 5 } : g) } : w;
+    }) };
+    expect(checkLevel(heavy, { band: 'finale', introduces: null }).failed).toContain('L1m');
+  });
+});
