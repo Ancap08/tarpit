@@ -209,6 +209,12 @@ export function installGlobal(game: Phaser.Game): void {
   const api: TarpitTestApi = {
     ...always,
     scene: () => game.scene.getScenes(true)[0]?.scene.key ?? '',
+    screen: (): ReturnType<TarpitTestApi['screen']> => {
+      if (game.scene.isActive('title')) return titleScene(game).uiState().screen;
+      if (!game.scene.isActive('game')) return null;
+      const phase = (game.scene.getScene('game') as GameScene).state.phase;
+      return phase === 'lost' || phase === 'won' ? 'result' : 'game';
+    },
     state: () => {
       const state = scene().state;
       // Existing browser fixtures mutate live state. Expose the derived
@@ -243,6 +249,12 @@ export function installGlobal(game: Phaser.Game): void {
     },
     levelStars: () => levelStars(scene().state),
     progress: () => campaignProgress.table(),
+    levelStops: () => game.scene.isActive('title') ? titleScene(game).uiState().stops : [],
+    setCampaignProgress: table => {
+      campaignProgress.replaceForTest(table);
+      if (game.scene.isActive('title')) titleScene(game).refreshProgress();
+    },
+    campaignResult: () => game.scene.isActive('game') ? scene().campaignResult() : null,
     levelOpen: id => unlockedLevel(campaignProgress.table(), id),
     runBot: (name, throughWave) => {
       const current = scene();

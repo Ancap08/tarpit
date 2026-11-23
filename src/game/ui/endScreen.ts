@@ -21,8 +21,8 @@ import type { Rect } from '../input';
 import type { Layout } from '../layout';
 import { COLORS, FONT, TEXT } from '../palette';
 import { Button } from './button';
-import { END_TEXT } from '../names';
-import { endScreenText, type EndKind } from './endText';
+import { CAMPAIGN_END, END_TEXT } from '../names';
+import { endScreenText, type CampaignResult, type EndKind } from './endText';
 
 export type { EndKind };
 
@@ -63,6 +63,7 @@ export class EndScreen {
   private readonly button: Button;
   private readonly menu: Button;
   private readonly keepGoing: Button;
+  private campaign: CampaignResult | null = null;
   private readonly buttonY: number;
   private readonly cx: number;
   private shown: EndKind | null = null;
@@ -135,21 +136,44 @@ export class EndScreen {
     return this.shown;
   }
 
+  get result(): CampaignResult | null {
+    return this.campaign;
+  }
+
+  private get hasAdvance(): boolean {
+    return this.campaign ? this.campaign.nextId !== null : this.shown === 'won';
+  }
+
   /** Show the screen for `kind`. Calling it again while shown does nothing. */
-  show(kind: EndKind, state: GameState): void {
+  show(kind: EndKind, state: GameState, campaign: CampaignResult | null): void {
     if (this.shown !== null) return;
     this.shown = kind;
-    const { title, lines, boons } = endScreenText(kind, state);
-    this.title.setText(title).setColor(kind === 'won' ? TEXT.victory : TEXT.defeat);
-    this.lines.setText(lines.join('\n'));
-    this.boons.setText(boons);
-    this.layout(kind);
+    this.campaign = campaign;
+    if (campaign) {
+      this.title.setText(campaign.title);
+      this.lines.setText(campaign.slots).setFontSize(32).setColor(TEXT.victory);
+      this.boons.setText(campaign.details).setFontSize(18);
+      this.button.set(kind === 'won' ? END_TEXT.playAgain : CAMPAIGN_END.retry, true);
+      this.menu.set(CAMPAIGN_END.map, true);
+      this.keepGoing.set(CAMPAIGN_END.next, true);
+      if (!this.portrait) {
+        for (const b of [this.keepGoing, this.button, this.menu]) b.setSize(160, 52);
+      }
+    } else {
+      const { title, lines, boons } = endScreenText(kind, state);
+      this.title.setText(title);
+      this.lines.setText(lines.join('\n'));
+      this.boons.setText(boons);
+    }
+    this.title.setColor(kind === 'won' ? TEXT.victory : TEXT.defeat);
+    this.layout();
     this.setVisible(true);
   }
 
   /** Hide the screen (milestone 26: after Keep going); a later show() works again. */
   hide(): void {
     this.shown = null;
+    this.campaign = null;
     this.setVisible(false);
   }
 
@@ -157,33 +181,46 @@ export class EndScreen {
   rects(): Record<string, Rect> {
     if (this.shown === null) return {};
     const out: Record<string, Rect> = { playAgain: this.button.rect, menu: this.menu.rect };
-    if (this.shown === 'won') out.keepGoing = this.keepGoing.rect;
+    if (this.hasAdvance) out[this.campaign ? 'nextLevel' : 'keepGoing'] = this.keepGoing.rect;
     return out;
   }
 
   /** The panel width and the button row for this screen: two buttons, or three on the win screen (milestone 26). */
-  private layout(kind: EndKind): void {
-    const won = kind === 'won';
+  private layout(): void {
+    const buttons = this.hasAdvance ? [this.keepGoing, this.button, this.menu] : [this.button, this.menu];
     if (this.portrait) {
-      const column = won ? [this.keepGoing, this.button, this.menu] : [this.button, this.menu];
+      const detailsY = this.campaign?.kind === 'lost' ? P_LINES_Y : P_BOONS_TOP;
       const buttonsY = this.boons.text
-        ? Math.max(P_BUTTONS_Y, P_BOONS_TOP + this.boons.height + 10)
+        ? Math.max(P_BUTTONS_Y, detailsY + this.boons.height + 10)
         : P_BUTTONS_Y;
-      const h = buttonsY + column.length * P_BUTTON_H + (column.length - 1) * P_GAP + P_PAD_BOTTOM;
+      const h = buttonsY + buttons.length * P_BUTTON_H + (buttons.length - 1) * P_GAP + P_PAD_BOTTOM;
       const top = this.cy - h / 2;
       this.panel.setSize(P_PANEL_W, h).setDisplayOrigin(P_PANEL_W / 2, h / 2);
       this.title.setY(top + P_TITLE_Y);
       this.lines.setY(top + P_LINES_Y);
-      this.boons.setY(top + P_BOONS_TOP);
-      column.forEach((b, i) => b.moveTo(this.cx - P_BUTTON_W / 2, top + buttonsY + i * (P_BUTTON_H + P_GAP)));
+      this.boons.setY(top + detailsY);
+      buttons.forEach((b, i) => b.moveTo(this.cx - P_BUTTON_W / 2, top + buttonsY + i * (P_BUTTON_H + P_GAP)));
       return;
     }
-    this.panel.setSize(won ? PANEL_W_WON : PANEL_W, PANEL_H);
-    const row = won ? [this.keepGoing, this.button, this.menu] : [this.button, this.menu];
-    const total = row.reduce((n, b) => n + b.rect.width, 0) + (row.length - 1) * BUTTON_GAP;
+    let y = this.buttonY;
+    if (this.campaign) {
+      this.boons.setOrigin(0.5, 0);
+      const detailsY = this.lines.text ? 112 : 82;
+      const buttonsY = detailsY + this.boons.height + 22;
+      const h = buttonsY + this.button.rect.height + 22;
+      const top = this.cy - h / 2;
+      this.panel.setSize(560, h);
+      this.title.setY(top + 36);
+      this.lines.setY(top + 82);
+      this.boons.setY(top + detailsY);
+      y = top + buttonsY;
+    } else {
+      this.panel.setSize(this.hasAdvance ? PANEL_W_WON : PANEL_W, PANEL_H);
+    }
+    const total = buttons.reduce((n, b) => n + b.rect.width, 0) + (buttons.length - 1) * BUTTON_GAP;
     let x = this.cx - total / 2;
-    for (const b of row) {
-      b.moveTo(x, this.buttonY);
+    for (const b of buttons) {
+      b.moveTo(x, y);
       x += b.rect.width + BUTTON_GAP;
     }
   }
@@ -192,6 +229,6 @@ export class EndScreen {
     for (const o of [this.veil, this.panel, this.title, this.lines, this.boons]) o.setVisible(visible);
     this.button.setShown(visible);
     this.menu.setShown(visible);
-    this.keepGoing.setShown(visible && this.shown === 'won');
+    this.keepGoing.setShown(visible && this.hasAdvance);
   }
 }

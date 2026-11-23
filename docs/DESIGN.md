@@ -1637,3 +1637,24 @@ Total wave time is **75.27 minutes**. Good averages 20.00 lives on levels 1–3 
 First Watch opens with four-Goblin ranks. Its 100 gold buys two Longbows. Pack Trail sends tight packs through Cannon range. Fast Wolves test Tar Pit coverage on The Switchback, and Shieldbearers lead into mixed waves on Burn Line. Harpies cross Riverbend in flights of up to four. Heavy Feet sends 42 full-HP Trolls, starting with one behind the first wave of Goblins. Hold the Bend sends the largest horde, 865 walkers. Stand Fast mixes shielded walkers and flyers with Trolls for Guards and Fire Arrows. Stand Fast and Last Light use 300 gold to fund their opening defenses. Grumblefoot and Grumblemaw are the last scheduled enemies of their levels.
 
 The gate accepts nominal HP scales from 0.85 to 1.35, with two measured exceptions. Pack Trail uses 1.979 (46 HP per Goblin). At 1.978 the same packs leave Good with 20 lives even without Cannon. At 1.979 removing Cannon costs one life. The Switchback uses 1.375 (28 HP per Wolf). At 1.374 removing Tar Pit costs nothing, and at 1.375 it costs three lives. These were the lowest passing scales found in sweeps of pack size, timing and starting gold.
+
+## Campaign screens
+
+The first screen offers **Campaign** and **Free play**. Free play opens the
+map and difficulty picker. Its best scores belong to the selected map and
+difficulty. Campaign opens the level map and reads the saved campaign stars.
+
+The trail crosses five stops and returns across five in landscape. In
+portrait it winds down five rows of two. Each stop shows its level number
+and three star slots. The first open level without a win is highlighted.
+Tapping a lock gives the number of the level to win first. Back returns to
+the first screen. An open stop shows a card with the level name, map,
+twist, new equipment or enemies, and best stars. Play starts that level.
+
+The game shows the level number and counts waves against the level's own
+length. A win shows this run's stars and lives. Below three stars it gives
+the life target for the next award. Next level opens the next card. Winning
+level ten shows the campaign-complete message. Play again restarts the
+same level, and Level map shows the player's saved bests. A loss offers
+Try again and Level map. Turning the device keeps the current screen and
+level selection. Both looks use the same campaign controls.

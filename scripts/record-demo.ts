@@ -283,6 +283,8 @@ async function recordPlay(browser: Browser, work: string): Promise<{ webm: strin
   await page.waitForTimeout(800);
   const start = Math.max(0, at() - 0.5);
   await page.waitForTimeout(2500);
+  await clickRect(page, 'title:freePlay', 400);
+  await page.waitForFunction(() => !!window.__tarpit?.uiRects()['title:play']);
   // Meadow and Normal are preselected; clicking them only selects.
   await clickRect(page, 'title:map:meadow', 500);
   await clickRect(page, 'title:normal', 400);

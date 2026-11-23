@@ -338,6 +338,21 @@ export function blockedWaveLabel(pending: boolean, reason: string): string {
   return pending ? `${START_WAVE_TEXT}\n${BOON_PENDING_TEXT}` : `${CALL_EARLY_TEXT}\n${reason}`;
 }
 
+export const CAMPAIGN_END = {
+  next: 'Next level',
+  map: 'Level map',
+  retry: 'Try again',
+  complete: 'Campaign complete!',
+} as const;
+
+export function livesLeftText(lives: number): string {
+  return `Lives left: ${lives}`;
+}
+
+export function starGoalText(lives: number, stars: 2 | 3): string {
+  return `Finish with ${lives} lives for ${stars === 2 ? 'two' : 'three'} stars`;
+}
+
 /** Campaign cards and twist lines, keyed by the saved level id. */
 export const LEVEL_NAMES: Readonly<Record<number, { name: string; twist: string }>> = {
   1: { name: 'First Watch', twist: 'Cover the trail with Musketeers and Longbows.' },
@@ -351,3 +366,29 @@ export const LEVEL_NAMES: Readonly<Record<number, { name: string; twist: string 
   9: { name: 'The Troll King', twist: 'Choose a second upgrade before Grumblefoot arrives.' },
   10: { name: 'Last Light', twist: 'Bring every special to the fight with Grumblemaw.' },
 };
+
+export const CAMPAIGN_TEXT = {
+  campaign: 'Campaign',
+  freePlay: 'Free play',
+  levelMap: 'Level map',
+  back: 'Back',
+  bestStars: 'Best stars',
+  newThisLevel: 'New this level',
+} as const;
+
+export const LEVEL_NEW: Readonly<Record<number, string>> = {
+  1: 'Musketeer, Longbow and Powder Keg',
+  2: 'Cannon',
+  3: 'Tar Pit',
+  4: 'Fire Pot and Shieldbearers',
+  5: 'Harpies and Tar Barrel',
+  6: 'Mortar and Trolls',
+  7: 'Barricade',
+  8: 'Guards and Fire Arrows',
+  9: 'Second upgrades and Grumblefoot',
+  10: 'The full arsenal and Grumblemaw',
+};
+
+export const levelNumberText = (id: number): string => `Level ${id}`;
+export const lockedLevelText = (id: number): string => `Win level ${id - 1} first`;
+export const starSlots = (stars: number): string => '★'.repeat(stars) + '☆'.repeat(3 - stars);
