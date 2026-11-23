@@ -8,7 +8,7 @@
 
 import type Phaser from 'phaser';
 import { enemyMaxHp, isBoss, type GameState } from '../../sim';
-import { BOSS_NAME } from '../names';
+import { ENEMY_NAMES } from '../names';
 import { LANDSCAPE, PORTRAIT_MIN_FONT, type Layout } from '../layout';
 import { COLORS, FONT, TEXT } from '../palette';
 
@@ -57,7 +57,7 @@ export function bossBarInfo(state: GameState): BossBarInfo | null {
   if (!boss) return null;
   const max = enemyMaxHp(boss.type, state.difficulty); // 4000 on Normal, scaled by the level (milestone 25)
   const hp = Math.max(0, boss.hp);
-  return { name: BOSS_NAME, hpText: `${Math.ceil(hp)} / ${max}`, fraction: Math.min(1, hp / max) };
+  return { name: ENEMY_NAMES[boss.type], hpText: `${Math.ceil(hp)} / ${max}`, fraction: Math.min(1, hp / max) };
 }
 
 /** The HUD's boss label text (hudText().boss): name and hp, or null when hidden. */

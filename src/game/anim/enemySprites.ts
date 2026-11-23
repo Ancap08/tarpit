@@ -37,7 +37,7 @@
 // through Effects: onEvents() acts at once, as before.
 
 import Phaser from 'phaser';
-import { effectiveSlow, ENEMY_STATS, enemyPosition, isTarred, positionAlongPath, type Enemy, type EnemyType, type GameEvent, type GameState, type MapDef } from '../../sim';
+import { effectiveSlow, ENEMY_STATS, enemyPosition, isBoss, isTarred, positionAlongPath, type Enemy, type EnemyType, type GameEvent, type GameState, type MapDef } from '../../sim';
 import { bobOffset, DEATH_MS, burnPulse, FLAME_EVERY, HIT_FLASH_MS, Particles, statusTint, TINT } from './effects';
 import { awayFrom, deathPuff, KNOCK_MS, knockPx, knockShare } from '../fx/fxMath';
 import { facingAt } from './facing';
@@ -70,6 +70,7 @@ export interface AnimState {
 
 interface View {
   sprite: Phaser.GameObjects.Sprite;
+  crown: Phaser.GameObjects.Graphics | null;
   /** The Shieldbearer's shield mark, drawn in front of the sprite; null for other types. */
   shield: Phaser.GameObjects.Graphics | null;
   /** The boss's hit-flash frame (sheets.ts hitFlash), shown over the sprite while hit; null for other types. */
@@ -213,6 +214,7 @@ export class EnemySprites {
     const dead = SHEETS[v.type].deadFrame;
     if (dead !== undefined) v.sprite.setFrame(dead);
     v.sprite.clearTint();
+    v.crown?.setVisible(false);
     v.shield?.setVisible(false);
     v.flash?.setVisible(false);
     const puff = deathPuff(v.type);
@@ -231,6 +233,7 @@ export class EnemySprites {
     if (!v) return;
     this.scene.tweens.killTweensOf(v.sprite);
     v.sprite.destroy();
+    v.crown?.destroy();
     v.shield?.destroy();
     v.flash?.destroy();
     this.views.delete(id);
@@ -268,6 +271,7 @@ export class EnemySprites {
     const lift = SHEETS[v.type].lift ?? 0;
     v.sprite.setPosition(x, y - lift).setDepth(y);
     v.sprite.anims.timeScale = timeScale;
+    v.crown?.setPosition(v.sprite.x, v.sprite.y - 41).setDepth(y + 1);
     v.shield?.setPosition(x + SHIELD_DX, y + SHIELD_DY).setDepth(y + 0.5);
   }
 
@@ -275,7 +279,7 @@ export class EnemySprites {
     const sheet = SHEETS[enemy.type];
     const stats = ENEMY_STATS[enemy.type];
     const sprite = this.scene.add.sprite(0, 0, sheet.key, sheet.walk.right.frames[0]).setScale(sheet.scale);
-    const layer = stats.flying ? this.airLayer : enemy.type === 'boss' ? this.bossLayer : this.layer;
+    const layer = stats.flying ? this.airLayer : isBoss(enemy) ? this.bossLayer : this.layer;
     layer.add(sprite);
     let flash: Phaser.GameObjects.Sprite | null = null;
     if (sheet.hitFlash) {
@@ -292,7 +296,18 @@ export class EnemySprites {
       shield.fillRoundedRect(-h, -h, SHIELD_SIZE, SHIELD_SIZE, 2);
       this.layer.add(shield);
     }
+    let crown: Phaser.GameObjects.Graphics | null = null;
+    if (enemy.type === 'grumblemaw') {
+      crown = this.scene.add.graphics();
+      const points = [{ x: -18, y: -14 }, { x: -7, y: -6 }, { x: 0, y: -20 }, { x: 7, y: -6 },
+        { x: 18, y: -14 }, { x: 14, y: 3 }, { x: -14, y: 3 }];
+      crown.fillStyle(COLORS.bossBurst).fillPoints(points, true);
+      crown.lineStyle(3, COLORS.fxDark).strokePoints(points, true);
+      crown.fillStyle(COLORS.bossBarFill).fillCircle(0, -3, 3);
+      layer.add(crown);
+    }
     const view: View = {
+      crown,
       sprite,
       shield,
       flash,
@@ -346,6 +361,7 @@ export class EnemySprites {
       v.sprite.setPosition(x, y - lift + bob);
     }
     v.sprite.setDepth(y);
+    v.crown?.setPosition(v.sprite.x, v.sprite.y - 41).setDepth(y + 1);
     if (v.shield) {
       v.shield.setPosition(x + SHIELD_DX, y + SHIELD_DY);
       // Just in front of its own sprite, behind any walker lower on screen.
@@ -389,7 +405,7 @@ export class EnemySprites {
     const current = s.anims.currentAnim;
     const frame = this.frozen || !current || !s.anims.currentFrame ? 0 : current.frames.indexOf(s.anims.currentFrame);
     return {
-      texture: v.type,
+      texture: SHEETS[v.type].key,
       anim,
       frame: Math.max(0, frame),
       facing: v.facing,

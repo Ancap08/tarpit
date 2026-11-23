@@ -184,9 +184,14 @@ export async function renderWorstCase(
   return { ...stats(thin ? 'worst case' : 'worst case, no thinning', limited.data, rate, WORST_LEAD_S + 1.2), ...limited.counts, reductionDb };
 }
 
-/** In the busy wave: a horn mid-wave (the next wave started) and a Powder Keg (s). */
-export const BUSY_HORN_S = 3;
-export const BUSY_KEG_S = 5.5;
+/** Important cues during the busy wave (times in seconds). */
+const BUSY_MOMENTS = [
+  { t: 1.5, name: 'grumblemawArrive' },
+  { t: 3, name: 'waveStart' },
+  { t: 4.4, name: 'packCall' },
+  { t: 5.5, name: 'special.keg' },
+  { t: 7, name: 'grumblemawFall' },
+] as const satisfies readonly Cue[];
 
 /** A 10 s busy wave: six towers firing, impacts on arrival, hits, deaths, an exit, a keg, the charge and the clear. */
 export function busyWaveCues(): Cue[] {
@@ -204,7 +209,7 @@ export function busyWaveCues(): Cue[] {
       if (impacts % 4 === 0) cues.push({ t: land, name: deathSound(['goblin', 'wolf', 'goblin', 'troll', 'shieldbearer'][impacts % 5]) });
     }
   }
-  cues.push({ t: BUSY_HORN_S, name: 'waveStart' }, { t: 4.2, name: 'exit' }, { t: BUSY_KEG_S, name: 'special.keg' }, { t: 5.5, name: 'death.small' }, { t: 5.52, name: 'death.medium' });
+  cues.push(...BUSY_MOMENTS, { t: 4.2, name: 'exit' }, { t: 5.5, name: 'death.small' }, { t: 5.52, name: 'death.medium' });
   cues.push({ t: 8.2, name: 'chargeReady' }, { t: 9.5, name: 'waveClear' });
   return cues;
 }
@@ -242,7 +247,7 @@ export async function renderReel(phone = false, rate = 22050): Promise<{ rate: n
 }
 
 /**
- * Does the busy wave bury the horn or the Keg? The busy wave is rendered
+ * Does the busy wave bury its important cues? The busy wave is rendered
  * through the master chain with and without each, and the loudest 50 ms
  * in the half second after it starts is compared: `gainDb` is how much
  * louder the mix gets when it sounds.
@@ -257,7 +262,7 @@ export async function renderBusyAudibility(rate = 22050): Promise<{ name: string
   const all = busyWaveCues();
   const full = await render(all);
   const out: { name: string; at: number; gainDb: number }[] = [];
-  for (const [name, at] of [['waveStart', BUSY_HORN_S], ['special.keg', BUSY_KEG_S]] as const) {
+  for (const { name, t: at } of BUSY_MOMENTS) {
     const without = await render(all.filter((c) => !(c.name === name && c.t === at)));
     const from = Math.round(at * rate);
     const to = Math.round((at + 0.5) * rate);

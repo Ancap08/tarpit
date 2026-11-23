@@ -21,6 +21,7 @@
 
 import type Phaser from 'phaser';
 import {
+  ACT_ONE_LAST_WAVE,
   cellCenter,
   cellKey,
   cottageFor,
@@ -41,14 +42,14 @@ import type { EnemySprites } from '../anim/enemySprites';
 import { sound } from '../audio/engine';
 import { deathSound } from '../audio/recipes';
 import { STEP_MS } from '../loop';
-import { BOSS_BANNER_SUB, BOSS_NAME, bonusGoldText, goldGainText, waveClearBanner, waveStartBanner } from '../names';
-import { fontPx, LANDSCAPE, PORTRAIT_MIN_FONT, type Layout } from '../layout';
+import { goldGainText } from '../names';
+import { Moments } from './moments';
+import { LANDSCAPE, PORTRAIT_MIN_FONT, type Layout } from '../layout';
 import { COLORS, FONT, TEXT } from '../palette';
 import { Aim, drawTowerScaled, MUZZLE, type TowerPose } from '../draw/towers';
 import {
   arcHeight,
   arcPosition,
-  BannerQueue,
   BOSS_RING_DELAYS,
   BOSS_RING_MS,
   BOSS_RING_RADII,
@@ -108,7 +109,7 @@ interface Impact {
 type Due =
   | { at: number; kind: 'hit'; id: number; from: Point }
   | { at: number; kind: 'kill'; id: number; bounty: number; type: EnemyType }
-  | { at: number; kind: 'bossDown'; id: number }
+  | { at: number; kind: 'bossDown'; id: number; large: boolean }
   | { at: number; kind: 'impact'; shot: Shot };
 
 interface Pose {
@@ -175,11 +176,6 @@ export class Effects {
   private readonly startAim: Aim;
   private readonly gold = new GoldGroups();
   private readonly goldTexts: Phaser.GameObjects.Text[] = [];
-  private readonly banners = new BannerQueue();
-  private bannerText!: Phaser.GameObjects.Text;
-  private bannerSub!: Phaser.GameObjects.Text;
-  private bannerBg!: Phaser.GameObjects.Graphics;
-  private bannerKey = '';
   private veil!: Phaser.GameObjects.Graphics;
   private readonly smoke: Phaser.GameObjects.Particles.ParticleEmitter;
   private readonly sparks: Phaser.GameObjects.Particles.ParticleEmitter;
@@ -257,7 +253,9 @@ export class Effects {
    * the gold labels and the banner. GameScene calls this after the flyers'
    * layer and before the HUD, so the HUD, panel and end screen cover them.
    */
-  createOverlays(): void {
+  private moments!: Moments;
+
+  createOverlays(): Moments {
     this.veil = this.scene.add.graphics();
     for (let i = 0; i < CAPS.goldLabels; i++) {
       this.goldTexts.push(
@@ -267,20 +265,8 @@ export class Effects {
           .setVisible(false),
       );
     }
-    this.bannerBg = this.scene.add.graphics();
-    this.bannerText = this.scene.add
-      .text(this.bannerX, 0, '', { fontFamily: FONT, fontSize: '30px', fontStyle: 'bold', color: TEXT.waveBanner, stroke: TEXT.fxStroke, strokeThickness: 5 })
-      .setOrigin(0.5, 0.5)
-      .setVisible(false);
-    this.bannerSub = this.scene.add
-      .text(this.bannerX, 0, '', { fontFamily: FONT, fontSize: fontPx(this.layout, 17), fontStyle: 'bold', color: TEXT.waveBannerSub, stroke: TEXT.fxStroke, strokeThickness: 4 })
-      .setOrigin(0.5, 0.5)
-      .setVisible(false);
-  }
-
-  /** The banners' centre line: the middle of the map on the screen. */
-  private get bannerX(): number {
-    return this.layout.map.x + this.layout.map.width / 2;
+    this.moments = new Moments(this.scene, this.layout, this.map);
+    return this.moments;
   }
 
   /** A particle burst of `n` at world point `p`, moved (dx, dy) on the screen. */
@@ -334,7 +320,8 @@ export class Effects {
   }
 
   /** Route a batch of simulation events (after a tick or an action). */
-  onEvents(events: readonly GameEvent[], state: GameState): void {
+  onEvents(events: readonly GameEvent[]): void {
+    this.moments.onEvents(events, this.realMs, true);
     this.tickHits.clear();
     // Milestone 33: an early call sounds Call next instead of the wave horn; the end jingles replace the clear chime.
     const early = events.some((e) => e.kind === 'earlyCall');
@@ -371,23 +358,21 @@ export class Effects {
           sound.play('exit');
           break;
         case 'bossSpawn':
-          this.bossEntrance();
+          this.bossEntrance(e.enemyType === 'grumblemaw');
           break;
         case 'bossDown':
           if (e.cause === 'exit') break;
           {
             const at = this.tickHits.get(e.enemyId);
-            if (at === undefined) this.bossDeath(e.enemyId);
-            else this.due.push({ at, kind: 'bossDown', id: e.enemyId });
+            if (at === undefined) this.bossDeath(e.enemyId, e.enemyType === 'grumblemaw');
+            else this.due.push({ at, kind: 'bossDown', id: e.enemyId, large: e.enemyType === 'grumblemaw' });
           }
           break;
         case 'waveStart':
-          this.banners.push({ text: waveStartBanner(e.wave), sub: '', big: false }, this.realMs);
-          sound.play(early ? 'callNext' : 'waveStart');
+          if (e.wave !== ACT_ONE_LAST_WAVE + 1) sound.play(early ? 'callNext' : 'waveStart');
           break;
         case 'waveClear':
-          this.banners.push({ text: waveClearBanner(e.wave), sub: e.bonus > 0 ? bonusGoldText(e.bonus) : '', big: false }, this.realMs);
-          if (!ended) sound.play('waveClear');
+          if (!ended && !events.some((event) => event.kind === 'boonOffered')) sound.play('waveClear');
           break;
         case 'won':
           sound.play('win');
@@ -430,8 +415,6 @@ export class Effects {
           break;
       }
     }
-    // The game ended: no banner over the end screen.
-    if (state.phase === 'won' || state.phase === 'lost') this.banners.clear();
   }
 
   private pop(cell: Cell, type: TowerType, kind: PopKind): void {
@@ -455,10 +438,10 @@ export class Effects {
 
   private killNow(id: number, bounty: number, type: EnemyType): void {
     // Milestone 33: a pop pitched by size; the boss's fall has its own sound (bossDeath).
-    if (type !== 'boss') sound.play(deathSound(type));
+    if (type !== 'boss' && type !== 'grumblemaw') sound.play(deathSound(type));
     const spot = this.sprites.spot(id);
     this.sprites.kill(id);
-    if (spot && bounty > 0) this.addGold(spot.x, spot.y - 10, bounty, spot.type === 'boss');
+    if (spot && bounty > 0) this.addGold(spot.x, spot.y - 10, bounty, spot.type === 'boss' || spot.type === 'grumblemaw');
   }
 
   /** A gold label; the boss's (`big`) is large and stands alone. */
@@ -471,19 +454,18 @@ export class Effects {
     t.setText(goldGainText(label.amount)).setVisible(true);
   }
 
-  private bossEntrance(): void {
+  private bossEntrance(large: boolean): void {
     this.counts.bossEntrances += 1;
-    sound.play('bossArrive');
-    this.banners.push({ text: BOSS_NAME, sub: BOSS_BANNER_SUB, big: true }, this.realMs);
+    sound.play(large ? 'grumblemawArrive' : 'bossArrive');
     if (this.reducedMotion) return;
     this.darkenAt = this.realMs;
     this.counts.darkenings += 1;
-    this.shake(SHAKE.bossEntrance);
+    this.shake(SHAKE.bossEntrance, large ? 1.3 : 1);
   }
 
-  private bossDeath(id: number): void {
+  private bossDeath(id: number, large: boolean): void {
     this.counts.bossDeaths += 1;
-    sound.play('bossFall');
+    sound.play(large ? 'grumblemawFall' : 'bossFall');
     const spot = this.sprites.spot(id);
     // `spot` is on the screen (milestone 32b); the rings are world-space, so their centre goes back through the layout.
     const m = this.layout.map;
@@ -491,14 +473,14 @@ export class Effects {
     const ring = this.layout.toWorld({ x: p.x, y: p.y - 20 });
     // The biggest effect in the game: three rings one after another, a
     // large spark, dust and smoke burst, held about a second.
-    this.sparks.explode(110, p.x, p.y - 20);
-    this.dust.explode(40, p.x, p.y - 10);
-    this.smoke.explode(24, p.x, p.y - 20);
-    BOSS_RING_DELAYS.forEach((delay, i) => this.addImpact('bossRing', ring.x, ring.y, BOSS_RING_RADII[i], 0, COLORS.bossBurstRing, delay));
+    this.sparks.explode(large ? CAPS.particles : 110, p.x, p.y - 20);
+    this.dust.explode(large ? 55 : 40, p.x, p.y - 10);
+    this.smoke.explode(large ? 32 : 24, p.x, p.y - 20);
+    BOSS_RING_DELAYS.forEach((delay, i) => this.addImpact('bossRing', ring.x, ring.y, BOSS_RING_RADII[i] * (large ? 1.4 : 1), 0, COLORS.bossBurstRing, delay));
     if (this.reducedMotion) return;
     this.flashAt = this.realMs;
     this.counts.screenFlashes += 1;
-    this.shake(SHAKE.bossDeath);
+    this.shake(SHAKE.bossDeath, large ? 1.3 : 1);
   }
 
   /** The Powder Keg's shake (GameScene, milestone 30), through the same map-only shake. */
@@ -513,12 +495,12 @@ export class Effects {
    * HUD rows. The offset never scrolls down (shakeOffset), so the map
    * camera never shows the HUD.
    */
-  private shake(s: { ms: number; px: number }): void {
+  private shake(s: { ms: number; px: number }, strength = 1): void {
     if (this.reducedMotion) return;
     this.counts.shakes += 1;
     this.shakeAt = this.realMs;
     this.shakeMs = s.ms;
-    this.shakePx = s.px;
+    this.shakePx = s.px * strength;
     if (this.hudCams.length > 0) return;
     const cam = this.scene.cameras.main;
     this.savedBg = cam.backgroundColor.rgba;
@@ -603,7 +585,7 @@ export class Effects {
           this.sprites.hit(d.id, d.from);
           sound.play('hit');
         } else if (d.kind === 'kill') this.killNow(d.id, d.bounty, d.type);
-        else this.bossDeath(d.id);
+        else this.bossDeath(d.id, d.large);
       }
       this.due.length = keep;
     }
@@ -654,7 +636,7 @@ export class Effects {
       t.setPosition(l.x, l.y - look.rise).setAlpha(look.alpha);
     }
     this.applyShake();
-    this.drawOverlays(state);
+    this.drawOverlays();
   }
 
   /** The pose drawTowers uses for the tower on `cell`. */
@@ -693,7 +675,7 @@ export class Effects {
   }
 
   /** The veil (boss darkening, boss flash), the banner and the Lives flash. */
-  private drawOverlays(state: GameState): void {
+  private drawOverlays(): void {
     const v = this.veil;
     v.clear();
     const dark = darkenAlpha(this.realMs - this.darkenAt);
@@ -701,37 +683,6 @@ export class Effects {
     if (dark > 0) v.fillStyle(COLORS.darken, dark).fillRect(m.x, m.y, m.width, m.height);
     const flash = flashFade(this.realMs - this.flashAt, BOSS_FLASH_MS);
     if (flash > 0) v.fillStyle(0xffffff, 0.5 * flash).fillRect(m.x, m.y, m.width, m.height);
-
-    const ended = state.phase === 'won' || state.phase === 'lost';
-    if (ended) this.banners.clear();
-    const cur = this.banners.current(this.realMs);
-    const key = cur === null ? '' : `${cur.banner.text}|${cur.banner.sub}|${cur.banner.big}`;
-    if (key !== this.bannerKey) {
-      this.bannerKey = key;
-      this.bannerBg.clear();
-      if (cur === null) {
-        this.bannerText.setVisible(false);
-        this.bannerSub.setVisible(false);
-      } else {
-        const b = cur.banner;
-        const y = this.layout.map.y + (b.big ? 200 : 150);
-        this.bannerText
-          .setText(b.text)
-          .setFontSize(b.big ? 44 : 30)
-          .setColor(b.big ? TEXT.bossBanner : TEXT.waveBanner)
-          .setY(y)
-          .setVisible(true);
-        this.bannerSub.setText(b.sub).setY(y + (b.big ? 36 : 28)).setVisible(b.sub !== '');
-        const w = Math.max(this.bannerText.width, this.bannerSub.width) + 48;
-        const h = b.sub === '' ? 52 : b.big ? 100 : 84;
-        this.bannerBg.fillStyle(COLORS.aimBanner, 0.7).fillRoundedRect(this.bannerX - w / 2, y - 30, w, h, 10);
-      }
-    }
-    if (cur !== null) {
-      this.bannerText.setAlpha(cur.alpha);
-      this.bannerSub.setAlpha(cur.alpha);
-      this.bannerBg.setAlpha(cur.alpha);
-    }
 
     const since = this.realMs - this.exitAt;
     const lf = flashFade(since, EXIT_FLASH_MS);
@@ -747,13 +698,12 @@ export class Effects {
   snapshot(): FxState {
     const labels: string[] = [];
     for (const l of this.gold.labels) if (l) labels.push(goldGainText(l.amount));
-    const cur = this.banners.current(this.realMs);
     return {
       projectiles: this.projectilePool.count,
       impacts: this.impactPool.count,
       goldLabels: labels,
-      banner: cur === null ? null : cur.banner.text,
-      bannerPending: this.banners.pending,
+      banner: this.moments?.text ?? null,
+      bannerPending: this.moments?.pending ?? 0,
       reducedMotion: this.reducedMotion,
       shakes: this.counts.shakes,
       darkenings: this.counts.darkenings,

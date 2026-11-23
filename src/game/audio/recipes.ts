@@ -121,6 +121,12 @@ export const SOUND_NAMES = [
   'win',
   'lose',
   'coin',
+  'boonOffer',
+  'boonPick',
+  'act2',
+  'packCall',
+  'grumblemawArrive',
+  'grumblemawFall',
 ] as const;
 
 export type SoundName = (typeof SOUND_NAMES)[number];
@@ -398,6 +404,55 @@ export const RECIPES: Readonly<Record<SoundName, Recipe>> = {
       tone('sawtooth', E5, undefined, { a: 0.02, h: 0.08, d: 0.12 }, 0.3, { at: 0.13, filter: { type: 'lowpass', f0: 1800 } }),
     ],
   },
+  // A soft descending chime opens the cards; a brighter rising pair confirms the pick.
+  boonOffer: {
+    gain: 0.44,
+    priority: PRIORITY.ui,
+    layers: [...note(E6, 0, 0.06, 0.14, 0.3), ...note(C6, 0.12, 0.09, 0.25, 0.3)],
+  },
+  boonPick: {
+    gain: 0.44,
+    priority: PRIORITY.ui,
+    layers: [...note(C5, 0, 0.05, 0.04, 0.3), ...note(G5, 0.095, 0.12, 0.14, 0.3)],
+  },
+  // Three measured brass notes mark the new act.
+  act2: {
+    gain: 0.75,
+    priority: PRIORITY.moment,
+    layers: [C4, G4, C5].flatMap((freq, i) => [
+      tone('sawtooth', freq, undefined, { a: 0.025, h: 0.11, d: 0.12 }, 0.23, { at: i * 0.18, filter: { type: 'lowpass', f0: 1400 } }),
+      tone('triangle', freq, undefined, { a: 0.025, h: 0.11, d: 0.12 }, 0.19, { at: i * 0.18 }),
+    ]),
+  },
+  // An upturned howl and a shorter answer announce the Wolves.
+  packCall: {
+    gain: 0.8,
+    priority: PRIORITY.moment,
+    layers: [
+      tone('triangle', 430, 710, { a: 0.045, h: 0.15, d: 0.22 }, 0.32),
+      tone('triangle', 570, 390, { a: 0.03, h: 0.1, d: 0.13 }, 0.26, { at: 0.25 }),
+    ],
+  },
+  grumblemawArrive: {
+    gain: 0.955,
+    priority: PRIORITY.big,
+    layers: [
+      tone('sawtooth', 84, 112, { a: 0.16, h: 0.46, d: 0.6 }, 0.17, { filter: { type: 'lowpass', f0: 420, f1: 1100 } }),
+      tone('triangle', 260, 335, { a: 0.16, h: 0.46, d: 0.6 }, 0.33),
+      tone('triangle', 390, 490, { a: 0.15, h: 0.36, d: 0.5 }, 0.17, { at: 0.12 }),
+      noise({ type: 'bandpass', f0: 670, f1: 310, q: 0.8 }, { a: 0.018, h: 0.13, d: 0.6 }, 0.35, 0.55),
+    ],
+  },
+  grumblemawFall: {
+    gain: 1.23,
+    priority: PRIORITY.big,
+    layers: [
+      tone('triangle', 360, 118, { a: 0.012, h: 0.12, d: 0.8 }, 0.34),
+      tone('sine', 63, 22, { a: 0.012, h: 0.09, d: 0.85 }, 0.13, { at: 0.18 }),
+      noise({ type: 'bandpass', f0: 830, f1: 410, q: 0.8 }, { a: 0.008, h: 0.07, d: 0.5 }, 0.47, 0.18),
+      noise({ type: 'bandpass', f0: 550, f1: 300, q: 0.9 }, { a: 0.014, d: 0.85 }, 0.36, 0.58),
+    ],
+  },
   bossArrive: {
     gain: 1.41,
     priority: PRIORITY.big,
@@ -494,8 +549,8 @@ export function levelTier(name: SoundName): LevelTier {
   if (name === 'hit') return 'tick';
   if (name.startsWith('shot.')) return 'shot';
   if (name.startsWith('impact.') || name.startsWith('death.')) return 'impact';
-  if (['build', 'upgrade', 'sell', 'refuse', 'tap', 'select', 'coin'].includes(name)) return 'action';
-  if (['exit', 'chargeReady', 'waveStart', 'waveClear', 'callNext'].includes(name)) return 'moment';
+  if (['build', 'upgrade', 'sell', 'refuse', 'tap', 'select', 'coin', 'boonOffer', 'boonPick'].includes(name)) return 'action';
+  if (['exit', 'chargeReady', 'waveStart', 'waveClear', 'callNext', 'act2', 'packCall'].includes(name)) return 'moment';
   return 'big';
 }
 
@@ -510,4 +565,6 @@ export const LOW_SOUNDS: readonly SoundName[] = [
   'special.tarBarrel',
   'bossArrive',
   'bossFall',
+  'grumblemawArrive',
+  'grumblemawFall',
 ];

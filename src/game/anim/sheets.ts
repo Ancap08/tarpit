@@ -138,10 +138,10 @@ const baseSheets: Readonly<Record<Exclude<EnemyType, 'grumblemaw'>, SheetLayout>
   },
 };
 
-// Placeholder for 36a. Both bosses use the existing sheet until 36b supplies its art.
+// Both bosses use the same six frames. Grumblemaw stands taller on the trail.
 export const SHEETS: Readonly<Record<EnemyType, SheetLayout>> = {
   ...baseSheets,
-  grumblemaw: { ...baseSheets.boss, key: 'grumblemaw' },
+  grumblemaw: { ...baseSheets.boss, scale: 3, lift: 45 },
 };
 
 /** Walk animation frame rate in play unless a sheet sets `fps` (test mode freezes frame 0). */
@@ -150,5 +150,6 @@ export const WALK_FPS = 10;
 /** Phaser animation key for a type's walk cycle in one facing. */
 export function walkAnimKey(type: EnemyType, facing: Facing): string {
   // Side-only sheets have one cycle; the facing changes only the mirroring.
-  return SHEETS[type].sideOnly ? `${type}-walk` : `${type}-walk-${facing}`;
+  const sheet = SHEETS[type];
+  return sheet.sideOnly ? `${sheet.key}-walk` : `${sheet.key}-walk-${facing}`;
 }

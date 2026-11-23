@@ -38,6 +38,8 @@ import Phaser from 'phaser';
 import {
   callEarlyStatus,
   hasNextWave,
+  isBoss,
+  boonScale,
   LAST_WAVE,
   SPECIAL_RECHARGE_TICKS,
   TICKS_PER_SECOND,
@@ -51,8 +53,12 @@ import {
 } from '../sim';
 import type { Rect } from './input';
 import {
-  BOSS_NAME,
+  BOON_PENDING_TEXT,
+  BOON_WAVE_TEXT,
+  BOSS_WAVE_NEXT_TEXT,
+  LAST_WAVE_TEXT,
   callEarlyLabel,
+  blockedWaveLabel,
   CHEAT_MARK,
   DIFFICULTY_LABELS,
   ENEMY_NAMES,
@@ -134,8 +140,9 @@ export function previewText(state: GameState): string {
   // Milestone 26: one entry per type, in first-group order, counts summed
   // (an endless wave's extra Harpy group joins the base wave's Harpies).
   const counts = new Map<EnemyType, number>();
-  for (const g of groups) if (g.type !== 'boss') counts.set(g.type, (counts.get(g.type) ?? 0) + g.count);
-  const boss = groups.some((g) => g.type === 'boss') ? ` + ${BOSS_NAME}` : '';
+  for (const g of groups) if (!isBoss(g)) counts.set(g.type, (counts.get(g.type) ?? 0) + g.count);
+  const bossGroup = groups.find(isBoss);
+  const boss = bossGroup ? ` + ${ENEMY_NAMES[bossGroup.type]}` : '';
   return `Next: ${[...counts].map(([type, count]) => `${count} ${ENEMY_NAMES[type]}`).join(', ')}${boss}`;
 }
 
@@ -174,8 +181,8 @@ export const PREVIEW_SIZE_LONGEST = 11;
  * Lines `text` takes when word-wrapped greedily to PREVIEW_WIDTH at `size`
  * px (Courier New advances 0.6 em per character, so no text measuring).
  */
-export function previewLines(text: string, size: number): number {
-  const perLine = Math.floor(PREVIEW_WIDTH / (0.6 * size));
+export function previewLines(text: string, size: number, width = PREVIEW_WIDTH): number {
+  const perLine = Math.floor(width / (0.6 * size));
   let lines = 1;
   let used = 0;
   for (const word of text.split(' ')) {
@@ -204,7 +211,7 @@ export function previewSize(text: string): number {
 
 /** Start Wave does something only in setup with waves left (always, in an endless game). */
 export function canStartWave(state: GameState): boolean {
-  return state.phase === 'setup' && hasNextWave(state);
+  return state.phase === 'setup' && !state.pendingBoon && hasNextWave(state);
 }
 
 /** Start Wave's label size: 18 px, or 14 px while it reads the call-early label (milestone 25c). */
@@ -230,7 +237,7 @@ export function specialReady(state: GameState): boolean {
 export function specialRecharge(state: GameState): { progress: number; seconds: number } | null {
   if (state.phase !== 'wave' || state.specialCharges > 0 || state.specialRechargeTicks <= 0) return null;
   return {
-    progress: 1 - state.specialRechargeTicks / SPECIAL_RECHARGE_TICKS,
+    progress: 1 - state.specialRechargeTicks / Math.round(boonScale(SPECIAL_RECHARGE_TICKS, state.boons, 'quickHands')),
     seconds: Math.ceil(state.specialRechargeTicks / TICKS_PER_SECOND),
   };
 }
@@ -367,6 +374,7 @@ export class Hud {
   private readonly cheatMark: Phaser.GameObjects.Text;
   private readonly specialMenu: SpecialMenu;
   private pipKey = '';
+  private previewWidth = 0;
   private readonly bar: BuildBar;
   private readonly bossBar: BossBar;
   /** Milestone 33: the mute button (row 2's right end in landscape, row 2's right end in portrait). */
@@ -448,13 +456,22 @@ export class Hud {
     // After a loss there is no next wave to play, so the preview goes blank.
     const aimText = m.portrait && special.aiming !== null && special.banner ? stripAimText(special.banner) : null;
     const preview = aimText ?? (state.phase === 'lost' ? '' : previewText(state));
-    if (this.next.text !== preview) {
-      if (m.portrait) this.next.setText(preview).setColor(aimText === null ? TEXT.hudDim : TEXT.aimBanner);
-      else this.next.setFontSize(previewSize(preview)).setText(preview);
+    const width = m.portrait && state.boons.length > 0 ? 348 : m.preview.width;
+    if (this.next.text !== preview || this.previewWidth !== width) {
+      this.previewWidth = width;
+      if (m.portrait) {
+        const size = [18, 16, 14].find((px) => previewLines(preview, px, width) <= 2) ?? 13;
+        this.next.setWordWrapWidth(width, true).setFontSize(size).setText(preview).setColor(aimText === null ? TEXT.hudDim : TEXT.aimBanner);
+      } else this.next.setFontSize(previewSize(preview)).setText(preview);
     }
-    const call = callEarlyInfo(state);
-    this.startButton.setFontSize(call.available ? m.callFont : m.startFont);
-    if (call.available) this.startButton.set(callEarlyLabel(call.bonus), true);
+    const call = callEarlyStatus(state);
+    let reason: string | null = null;
+    if (state.pendingBoon) reason = BOON_PENDING_TEXT;
+    else if (!call.ok && call.reason === 'boon-wave') reason = BOON_WAVE_TEXT;
+    else if (!call.ok && call.reason === 'last-wave') reason = state.wave < LAST_WAVE ? BOSS_WAVE_NEXT_TEXT : LAST_WAVE_TEXT;
+    this.startButton.setFontSize(call.ok || reason ? m.callFont : m.startFont);
+    if (reason) this.startButton.set(blockedWaveLabel(!!state.pendingBoon, reason), false);
+    else if (call.ok) this.startButton.set(callEarlyLabel(call.bonus), true);
     else this.startButton.set(START_WAVE_TEXT, canStartWave(state));
     // Once the game is over the speed toggle is inert (greyed, ignores clicks).
     this.speedButton.set(speedLabel(speed), state.phase !== 'won' && state.phase !== 'lost');

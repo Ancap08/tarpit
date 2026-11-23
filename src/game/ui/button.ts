@@ -50,7 +50,7 @@ export class Button {
     const style = { fontFamily: FONT, fontSize: options.fontSize ?? '18px', fontStyle: 'bold', color: TEXT.button };
     this.box = scene.add.rectangle(0, 0, rect.width, rect.height, COLORS.button).setOrigin(0, 0);
     if (options.right === undefined) {
-      this.label = scene.add.text(0, 0, text, style).setOrigin(0.5);
+      this.label = scene.add.text(0, 0, text, style).setOrigin(0.5).setAlign('center');
       this.rightLabel = null;
     } else {
       this.label = scene.add.text(0, 0, text, style).setOrigin(0, 0.5);
@@ -125,6 +125,12 @@ export class Button {
     if (this.picked === picked) return;
     this.picked = picked;
     this.refresh();
+  }
+
+  setWidth(width: number): void {
+    this.r.width = width;
+    this.box.setSize(width, this.r.height);
+    this.moveTo(this.r.x, this.r.y);
   }
 
   moveTo(x: number, y: number): void {

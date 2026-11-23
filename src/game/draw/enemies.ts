@@ -12,13 +12,13 @@
 // small hp bar (the HUD boss bar shows his hp).
 
 import type Phaser from 'phaser';
-import { ENEMY_STATS, enemyMaxHp, enemyPosition, isTarred, type Enemy, type EnemyType, type GameState } from '../../sim';
+import { ENEMY_STATS, enemyMaxHp, enemyPosition, isBoss, isTarred, type Enemy, type EnemyType, type GameState } from '../../sim';
 import { SHEETS } from '../anim/sheets';
 import { LANDSCAPE, type Layout } from '../layout';
 import { COLORS } from '../palette';
 
 /** Status ring base radius per type: just outside the sprite's body. */
-export const RING_RADIUS: Record<EnemyType, number> = { goblin: 14, wolf: 12, troll: 21, harpy: 14, shieldbearer: 14, boss: 38, grumblemaw: 38 };
+export const RING_RADIUS: Record<EnemyType, number> = { goblin: 14, wolf: 12, troll: 21, harpy: 14, shieldbearer: 14, boss: 38, grumblemaw: 57 };
 
 /** Half the sprite's drawn height: the hp bar sits above this. */
 export function spriteHalfHeight(type: EnemyType): number {
@@ -45,7 +45,9 @@ export const SHADOW = { offsetY: 3, outer: { w: 24, h: 9, alpha: 0.15 }, inner: 
 export const BOSS_SHADOW = { offsetY: 4, outer: { w: 72, h: 20, alpha: 0.15 }, inner: { w: 52, h: 14, alpha: 0.2 } } as const;
 
 /** The ground shadow for this type, or null for walkers that have none. */
-export function shadowOf(type: EnemyType): typeof SHADOW | typeof BOSS_SHADOW | null {
+const GRUMBLEMAW_SHADOW = { offsetY: 6, outer: { w: 108, h: 30, alpha: 0.15 }, inner: { w: 78, h: 21, alpha: 0.2 } } as const;
+export function shadowOf(type: EnemyType): typeof SHADOW | typeof BOSS_SHADOW | typeof GRUMBLEMAW_SHADOW | null {
+  if (type === 'grumblemaw') return GRUMBLEMAW_SHADOW;
   if (type === 'boss') return BOSS_SHADOW;
   return ENEMY_STATS[type].flying ? SHADOW : null;
 }
@@ -117,7 +119,7 @@ export function drawHpBars(g: Phaser.GameObjects.Graphics, state: GameState, lay
     // Full hp on this level (milestone 25): Easy and Hard scale it; an
     // endless wave's enemy carries its own (milestone 26).
     const maxHp = enemy.maxHp ?? enemyMaxHp(enemy.type, state.difficulty);
-    if (enemy.hp < maxHp && enemy.type !== 'boss') {
+    if (enemy.hp < maxHp && !isBoss(enemy)) {
       const { x, y } = layout.toScreen(enemyPosition(enemy, state.map));
       const fraction = Math.max(0, enemy.hp) / maxHp;
       const left = Math.round(x - BAR_WIDTH / 2);
