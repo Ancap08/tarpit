@@ -165,49 +165,40 @@ export interface BoonEffectWitness {
 /** A compact set of real scenarios that proves both effectiveness targets. */
 export const BOON_EFFECT_WITNESSES: readonly BoonEffectWitness[] = [
   {
-    scenario: { build: 'musketBuild', map: 'switchback', difficulty: 'normal', wave: 5,
-      picks: defaultBoonPicks() },
-    best: 'longBarrels', changed: ['longBarrels', 'keenArrows', 'warChest'],
-  },
-  {
-    scenario: { build: 'comboBuild', map: 'riverbend', difficulty: 'normal', wave: 5,
-      picks: defaultBoonPicks() },
+    scenario: { build: 'comboBuild', map: 'meadow', difficulty: 'normal', wave: 5, picks: defaultBoonPicks() },
     best: 'keenArrows', changed: ['longBarrels', 'keenArrows', 'warChest'],
   },
   {
-    scenario: { build: 'musketBuild', map: 'meadow', difficulty: 'normal', wave: 5,
-      picks: defaultBoonPicks() },
-    best: 'warChest', changed: ['longBarrels', 'keenArrows', 'warChest'],
-  },
-  {
-    scenario: { build: 'hardBuild', map: 'switchback', difficulty: 'normal', wave: 10,
-      picks: defaultBoonPicks() },
-    best: 'stickyTar', changed: ['stickyTar', 'hotCoals', 'quickHands'],
-  },
-  {
-    scenario: { build: 'musketBuild', map: 'meadow', difficulty: 'normal', wave: 10,
-      picks: defaultBoonPicks() },
-    best: 'hotCoals', changed: ['stickyTar', 'hotCoals', 'quickHands'],
-  },
-  {
-    scenario: { build: 'comboBuild', map: 'riverbend', difficulty: 'normal', wave: 10,
-      picks: defaultBoonPicks() },
-    best: 'quickHands', changed: ['stickyTar', 'hotCoals', 'quickHands'],
-  },
-  {
-    scenario: { build: 'hardBuild', map: 'switchback', difficulty: 'hard', wave: 15,
-      picks: defaultBoonPicks() },
-    best: 'stoneWalls', changed: ['stoneWalls', 'veteranCrews', 'biggerBlasts'],
-  },
-  {
-    scenario: { build: 'wideBuild', map: 'meadow', difficulty: 'normal', wave: 15,
-      picks: defaultBoonPicks() },
+    scenario: { build: 'comboBuild', map: 'meadow', difficulty: 'normal', wave: 15, picks: defaultBoonPicks() },
     best: 'veteranCrews', changed: ['stoneWalls', 'veteranCrews', 'biggerBlasts'],
   },
   {
-    scenario: { build: 'musketBuild', map: 'riverbend', difficulty: 'normal', wave: 15,
-      picks: defaultBoonPicks() },
+    scenario: { build: 'comboBuild', map: 'switchback', difficulty: 'normal', wave: 15, picks: defaultBoonPicks() },
     best: 'biggerBlasts', changed: ['stoneWalls', 'veteranCrews', 'biggerBlasts'],
+  },
+  {
+    scenario: { build: 'comboBuild', map: 'riverbend', difficulty: 'normal', wave: 10, picks: defaultBoonPicks() },
+    best: 'stickyTar', changed: ['stickyTar', 'hotCoals', 'quickHands'],
+  },
+  {
+    scenario: { build: 'comboBuild', map: 'riverbend', difficulty: 'normal', wave: 15, picks: defaultBoonPicks() },
+    best: 'stoneWalls', changed: ['stoneWalls', 'veteranCrews', 'biggerBlasts'],
+  },
+  {
+    scenario: { build: 'hardBuild', map: 'switchback', difficulty: 'normal', wave: 10, picks: defaultBoonPicks() },
+    best: 'quickHands', changed: ['stickyTar', 'hotCoals', 'quickHands'],
+  },
+  {
+    scenario: { build: 'wideBuild', map: 'meadow', difficulty: 'normal', wave: 5, picks: defaultBoonPicks() },
+    best: 'longBarrels', changed: ['longBarrels', 'keenArrows', 'warChest'],
+  },
+  {
+    scenario: { build: 'musketBuild', map: 'meadow', difficulty: 'hard', wave: 10, picks: defaultBoonPicks() },
+    best: 'hotCoals', changed: ['stickyTar', 'hotCoals', 'quickHands'],
+  },
+  {
+    scenario: { build: 'artilleryBuild', map: 'meadow', difficulty: 'hard', wave: 5, picks: defaultBoonPicks() },
+    best: 'warChest', changed: ['longBarrels', 'keenArrows', 'warChest'],
   },
 ];
 

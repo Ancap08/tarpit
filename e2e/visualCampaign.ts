@@ -6,8 +6,8 @@ export const GRUMBLEFOOT_STEPS = 5316;
 /** The first lone, burning and slowed Grumblemaw with a Mortar hit two ticks
  * earlier and no hit on the frame, playing wave 20 without timed specials. */
 const GRUMBLEMAW_STEPS = 3006;
-export const FIRST_PACK_STEPS = 3256;
-export const FIRST_PACK_FRAME = 3296;
+export const FIRST_PACK_STEPS = 3376;
+export const FIRST_PACK_FRAME = 3436;
 
 /** Play the normal script up to this wave, then step it by hand. Omit steps to reach its reward. */
 export async function beginVisualWave(page: Page, wave: number, steps?: number) {

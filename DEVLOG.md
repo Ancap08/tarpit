@@ -8351,3 +8351,11 @@ Each cell lists the Normal spawn HP factor before rounding, then **lives lost / 
 | 20 | 1.000 · 0/7, 0/6, 0/9 | 1.480 · 0/8, 0/9, 0/9 | 1.967 · 0/8, 0/9, 0/9 | 2.594 · 0/9, 0/9, 0/8 | 3.395 · 0/9, 0/9, 0/9 |
 
 Replaying the unchanged 1.13 Normal and 1.12 Hard factors through the new assertions provided the negative control. S2 failed on all six reference campaigns. For S3, Meadow Normal finished with 17, 10 and 10 lives at 95%, 100% and 105% act-2 HP. Meadow Hard finished with 6 lives, 4 lives and defeat on wave 19. Riverbend Hard also lost on wave 19 at 105%.
+
+#### Campaign and endless
+
+The next measured campaign uses linear growth. Each wave after ten adds 28% of base Normal HP or 21.3% of base Hard HP. Easy adds zero. Normal goes from 1.28× on wave 11 to 3.80× on wave 20. The last step increases HP by 8.0% relative to wave 19. The tables in DESIGN give each changed count, interval and delay on waves 12–19. The wave-18 Troll group fell from 34 to 15, and the wave-19 group from 27 to 15. Wave 20 kept its original escorts and boss schedule.
+
+After their fixed purchases, the combo, wide and Hard references make one additional purchase per setup, then spend their reserve before Grumblemaw. The idle and reinvesting scripts play the same campaign. The latter buys Siege Shell Mortars after victory. On Normal the two scripts lose on waves 25/28, 24/27 and 25/27 on Meadow, Switchback and Riverbend. Across every level the furthest run loses on wave 40.
+
+The slope passes all six S2 and S3 checks in this configuration. Normal wins with 14/11/14 and Hard with 8/15/4. Meadow takes 1,316.5 seconds, 3.5 seconds under the limit. S5, S7 and several P1/P2/P4 comparisons still fail. The verifier reports those failures.

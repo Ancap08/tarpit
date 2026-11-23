@@ -65,17 +65,17 @@ describe('every archetype (Meadow, Normal)', () => {
 });
 
 describe('comboBuild on Meadow, Normal', () => {
-  it('buys 69 actions through both acts', () => {
-    expect(combo().flat()).toHaveLength(69);
+  it('buys 67 actions through both acts', () => {
+    expect(combo().flat()).toHaveLength(67);
   });
 
-  it('fires the 60 specials the policy recorded, every one accepted', () => {
+  it('fires the 58 specials the policy recorded, every one accepted', () => {
     const script = combo();
     const recorded = script.timed!.flat();
-    expect(recorded).toHaveLength(60);
+    expect(recorded).toHaveLength(58);
     const run = playScripted(script);
     const fired = run.log.filter((l) => l.action === 'special');
-    expect(fired).toHaveLength(60);
+    expect(fired).toHaveLength(58);
     for (const f of fired) expect(f).toMatchObject({ result: { ok: true } });
   });
 
@@ -84,11 +84,11 @@ describe('comboBuild on Meadow, Normal', () => {
     const run = balanceRun('comboBuild', 'meadow', 'normal');
     expect(run.waves.map((w) => w.ticks)).toEqual([
       3105, 2081, 1674, 2462, 5368, 3077, 6375, 5397, 2622, 6216,
-      1795, 3740, 2319, 3980, 4648, 3026, 4454, 5673, 4071, 4854,
+      1907, 2456, 1930, 4004, 5225, 4774, 4528, 5210, 5343, 5236,
     ]);
     expect(run.waves.map((w) => w.peak)).toEqual([
       2, 9, 15, 14, 19, 18, 16, 26, 15, 15,
-      10, 14, 9, 20, 14, 6, 18, 40, 31, 9,
+      16, 23, 22, 20, 18, 28, 28, 33, 24, 9,
     ]);
   });
 });
@@ -218,20 +218,20 @@ describe('verifier (milestone 28)', () => {
     const spawned = run.waves.reduce((n, w) => n + sum(w.spawns), 0);
     const exits = run.waves.reduce((n, w) => n + sum(w.exits), 0);
     const scheduled = WAVES.flatMap((wave) => wave.groups).reduce((n, group) => n + group.count, 0);
-    expect(scheduled).toBe(1191);
+    expect(scheduled).toBe(1158);
     expect(spawned).toBe(scheduled + 16);
     expect(run.kills + exits).toBe(spawned);
   });
 
-  // N9 checks the comparison. Pin the campaign results and conservation
+  // S5 checks the comparison. Pin the campaign results and conservation
   // for each policy variant, including kills by the retained specials.
   it.each([
-    ['keg', 8, 1191],
-    ['tarBarrel', 17, 1200],
-    ['fireArrows', 6, 1189],
+    ['keg', 15, 1165],
+    ['tarBarrel', 17, 1167],
+    ['fireArrows', 8, 1158],
   ] as const)('without %s the combo wins with %i lives and %i kills', (type, lives, kills) => {
     const combo = balanceRun('comboBuild', 'meadow', 'normal');
-    expect([combo.phase, combo.lives, combo.kills]).toEqual(['won', 10, 1193]);
+    expect([combo.phase, combo.lives, combo.kills]).toEqual(['won', 14, 1164]);
     const without = comboWithoutSpecialRun(type);
     expect([without.phase, without.lives, without.kills]).toEqual(['won', lives, kills]);
     const spawned = without.waves.reduce((n, w) => n + sum(w.spawns), 0);

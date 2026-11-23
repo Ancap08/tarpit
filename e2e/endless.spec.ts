@@ -1,4 +1,4 @@
-import { ACT_TWO_HP_GROWTH } from '../src/sim/difficulty';
+import { campaignHpFactor } from '../src/sim/difficulty';
 import { expect, test, type Page } from '@playwright/test';
 import { END_TEXT, bestScoreText, heldBoonsText } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
@@ -76,8 +76,8 @@ test('win, three buttons, Keep going by mouse: wave 21 starts, "Wave 21", no bos
   expect(hud.wave).toBe('Wave 21');
   expect(hud.boss).toBeNull();
   expect(await api(page, (t) => t.events().some((e) => e.kind === 'bossSpawn'))).toBe(false);
-  // The first endless wave grows from wave 20's unrounded campaign HP.
-  const hp = Math.round(23 * ACT_TWO_HP_GROWTH.normal ** 10 * 1.8);
+  // The first cycle adds 5% to wave 20's unrounded campaign HP.
+  const hp = Math.round(23 * campaignHpFactor(20, 'normal') * 1.05);
   expect(await api(page, (t) => t.state().enemies.find((e) => e.type === 'goblin')?.maxHp)).toBe(hp);
 });
 
@@ -187,6 +187,6 @@ test('runScript stops in setup right after Keep going with untilWave 21', async 
     };
     return { text: next.text, lines: next.getWrappedText().length, size: next.style.fontSize };
   });
-  expect(fit.text).toBe('Next: 36 Goblin, 34 Troll, 11 Shieldbearer, 29 Harpy');
+  expect(fit.text).toBe('Next: 23 Goblin, 15 Troll, 9 Shieldbearer, 29 Harpy');
   expect(fit.lines).toBeLessThanOrEqual(2);
 });

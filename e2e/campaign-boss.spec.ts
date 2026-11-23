@@ -41,7 +41,7 @@ for (const motion of ['no-preference', 'reduce'] as const) {
       const boss = scene.state.enemies.find((enemy) => enemy.type === 'grumblemaw')!;
       return { before, after: scene.hudStrings().boss, sprite: t.animState(boss.id), fx: t.fx() };
     }, lastSpawnTick(20));
-    const factor = ACT_TWO_HP_GROWTH.normal ** 10;
+    const factor = 1 + ACT_TWO_HP_GROWTH.normal * 10;
     const fullHp = Math.round(ENEMY_STATS.grumblemaw.hp * factor);
     const wolfHp = Math.round(ENEMY_STATS.wolf.hp * factor);
     const kegDamage = SPECIAL_DEFS.keg.damage!;

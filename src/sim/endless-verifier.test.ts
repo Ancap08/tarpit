@@ -4,7 +4,7 @@
 // rule does at sizes nobody plays.
 import { beforeAll, describe, expect, it } from 'vitest';
 import { buildTower, moveTower, sellTower, undoUpgrade, upgradeTower, useSpecial } from './actions';
-import { ACT_TWO_HP_GROWTH, DIFFICULTIES, DIFFICULTY_DEFS, campaignHpFactor, enemyMaxHp, type Difficulty } from './difficulty';
+import { DIFFICULTIES, DIFFICULTY_DEFS, campaignHpFactor, enemyMaxHp, type Difficulty } from './difficulty';
 import { ENEMY_STATS } from './enemies';
 import type { GameEvent } from './events';
 import { callEarlyStatus, callNextWave, continueEndless, createGame, lastSpawnTick, spawnTick, startWave, tick, wavesCleared } from './game';
@@ -16,11 +16,11 @@ import { nextWavePreview, waveDef, WAVES } from './waves';
 
 describe('verifier: generated wave rounding', () => {
   it('hp is round-half-up of the exact product (one rounding), every type and level, cycles 1 to 20', () => {
-    // Exact: base x (num/den) x campaign^10 x 9^c / 5^c, in integers.
+    // Use integer arithmetic after receiving the unrounded campaign factor.
     const level: Record<Difficulty, [bigint, bigint]> = { easy: [3n, 4n], normal: [1n, 1n], hard: [6n, 5n] };
     for (const d of DIFFICULTIES) expect(Number(level[d][0]) / Number(level[d][1])).toBe(DIFFICULTY_DEFS[d].hpMultiplier);
     const growth = (difficulty: Difficulty): [bigint, bigint] => {
-      const factor = ACT_TWO_HP_GROWTH[difficulty].toString();
+      const factor = campaignHpFactor(20, difficulty).toString();
       const decimals = factor.split('.')[1]?.length ?? 0;
       return [BigInt(factor.replace('.', '')), 10n ** BigInt(decimals)];
     };
@@ -31,8 +31,8 @@ describe('verifier: generated wave rounding', () => {
       for (const d of DIFFICULTIES) {
         for (const t of types) {
           const [growthNumerator, growthDenominator] = growth(d);
-          const num = BigInt(ENEMY_STATS[t].hp) * level[d][0] * growthNumerator ** 10n * 9n ** BigInt(c);
-          const den = level[d][1] * growthDenominator ** 10n * 5n ** BigInt(c);
+          const num = BigInt(ENEMY_STATS[t].hp) * level[d][0] * growthNumerator * 21n * 9n ** BigInt(c - 1);
+          const den = level[d][1] * growthDenominator * 20n * 5n ** BigInt(c - 1);
           const exact = (2n * num + den) / (2n * den); // floor(x + 1/2)
           const got = enemyMaxHp(t, d, campaignHpFactor(n, d) * waveDef(n).hpMultiplier!);
           if (BigInt(got) !== exact) wrong.push(`${t} ${d} cycle ${c}: ${got} vs exact ${exact}`);
@@ -43,9 +43,9 @@ describe('verifier: generated wave rounding', () => {
   });
 
   it('two roundings would differ from the code somewhere (so the single rounding is really tested)', () => {
-    // Easy Goblin base: round(23 x 0.75) = 17. In cycle 2, using that rounded value gives 55 instead of 56.
-    expect(enemyMaxHp('goblin', 'easy', 3.24)).toBe(56);
-    expect(Math.round(enemyMaxHp('goblin', 'easy') * 3.24)).toBe(55);
+    // Easy Goblin base: round(23 x 0.75) = 17. In cycle 2, using 17 gives 32 instead of 33.
+    expect(enemyMaxHp('goblin', 'easy', 1.89)).toBe(33);
+    expect(Math.round(enemyMaxHp('goblin', 'easy') * 1.89)).toBe(32);
   });
 });
 
@@ -216,11 +216,12 @@ describe('verifier: call early in endless', () => {
       expect([s.phase, s.wave, wavesCleared(s), s.specialCharges]).toEqual(['wave', w + 1, w, 1]);
       if (w === 23) {
         // Wave 23 (cycle 1) survivors next to wave 24 (cycle 2) spawns: each carries its own full hp.
-        for (let i = 0; i < 301; i++) tick(s);
+        const newTrolls = waveDef(24).groups.find((group) => group.type === 'troll')!;
+        for (let i = 0; i <= spawnTick(newTrolls, 0); i++) tick(s);
         expect(s.enemies.every((e) => e.maxHp !== undefined && e.hp <= e.maxHp)).toBe(true);
         const trollHp = new Set(s.enemies.filter((e) => e.type === 'troll').map((e) => e.maxHp));
-        const campaign = ACT_TWO_HP_GROWTH.normal ** 10;
-        expect([...trollHp].sort((x, y) => x! - y!)).toEqual([1.8, 3.24].map((endless) => Math.round(950 * campaign * endless)));
+        const campaign = campaignHpFactor(20, 'normal');
+        expect([...trollHp].sort((x, y) => x! - y!)).toEqual([1.05, 1.89].map((endless) => Math.round(950 * campaign * endless)));
       }
     }
     toClear(s);
@@ -352,12 +353,12 @@ describe('verifier: a whole endlessGreedy run', () => {
 });
 
 describe('verifier: far waves', () => {
-  it('wave 150 (hp x 1.8^44): hp is a finite safe integer, towers still hurt, a wave takes the usual time', () => {
+  it('wave 150: hp is a finite safe integer, towers still hurt, a wave takes the usual time', () => {
     const s = at(150, true);
     for (const [col, row] of [[9, 5], [9, 4], [9, 6], [16, 8], [17, 8]]) buildTower(s, { col, row }, 'longbow');
     buildTower(s, { col: 14, row: 10 }, 'tarpit');
     buildTower(s, { col: 14, row: 9 }, 'firepot');
-    expect(waveDef(150).hpMultiplier).toBe(1.8 ** 44);
+    expect(waveDef(150).hpMultiplier).toBe(1.05 * 1.8 ** 43);
     startWave(s);
     const t0 = performance.now();
     let ticks = 0;
@@ -380,13 +381,11 @@ describe('verifier: far waves', () => {
     expect(performance.now() - t0).toBeLessThan(3000);
   });
 
-  it('informational: by wave 200 (cycle 60) a Troll has more hp than 2^53, so small hits stop registering', () => {
-    const at150 = enemyMaxHp('troll', 'normal', campaignHpFactor(150, 'normal') * waveDef(150).hpMultiplier!);
+  it('a wave 200 Troll has finite HP beyond single-point precision', () => {
     const at200 = enemyMaxHp('troll', 'normal', campaignHpFactor(200, 'normal') * waveDef(200).hpMultiplier!);
-    expect(Number.isSafeInteger(at150)).toBe(true);
-    expect(Number.isSafeInteger(at200)).toBe(false);
-    expect(at200 - (at200 - 1)).not.toBe(1); // a 1-damage hit is not 1 damage any more
     expect(Number.isFinite(at200)).toBe(true);
+    expect(Number.isSafeInteger(at200)).toBe(false);
+    expect(at200 - (at200 - 1)).not.toBe(1);
   });
 
   it('the special policy fires in the endless waves too (milestone 30: the cluster ticks are gone)', () => {

@@ -909,11 +909,22 @@ function reinvest(main: TowerType, paths: false | Readonly<Partial<Record<TowerT
   };
 }
 
+/** The reference player makes one extra purchase per setup and spends the reserve before the boss. */
+function paceReinvestment(buy: Decide): Decide {
+  let lastPurchase = -1;
+  return (state) => {
+    if (lastPurchase === state.wave && state.wave < LAST_WAVE - 1) return undefined;
+    const action = buy(state);
+    if (action) lastPurchase = state.wave;
+    return action;
+  };
+}
+
 function followComboPlan(map: MapId = DEFAULT_MAP, wide = false, { fixedOnly }: ReinvestmentOptions = {}): Decide {
   const opening = COMBO_PLANS[map];
   const tail = ACT_TWO_PLANS[map];
   const main = referenceMainTower(wide ? 'wideBuild' : 'comboBuild', map);
-  const afterPlan = fixedOnly ? undefined : reinvest(main, wide ? false : REINVESTMENT_PATHS);
+  const afterPlan = fixedOnly ? undefined : paceReinvestment(reinvest(main, wide ? false : REINVESTMENT_PATHS));
   if (!wide) return followPlan(opening, tail, actionCost, afterPlan);
   const builds = new Map([...opening, ...tail].flatMap((a) => a.type === 'build' ? [[cellKey(a.cell), a.tower] as const] : []));
   const focus = tail.flatMap((a) => a.type === 'upgrade' && a.path ? [builds.get(cellKey(a.cell))!] : []);
@@ -930,7 +941,7 @@ export function wideBuild(difficulty?: Difficulty, map?: MapId, boons?: BoonChoi
  * Combo build (milestone 10): the map's combo plan, each action bought as
  * soon as gold allows. Milestone 30: plus the special policy
  * (specialPolicy.ts), recorded into its timed list.
- * Target V1: win with 9 to 14 lives and lose at least three lives in act two on Normal.
+ * Targets S1 and S2 measure this plan’s Normal campaign and act-two losses.
  */
 export function comboBuild(difficulty?: Difficulty, map?: MapId, boons?: BoonChoices, report?: RecordReporter, options?: ReinvestmentOptions): WaveScript {
   return recordScript(followComboPlan(map, false, options), { difficulty, map, boons, specials: {}, report });
@@ -949,8 +960,7 @@ export function comboWithoutSpecial(type: SpecialType, difficulty?: Difficulty, 
 /**
  * The combo plan without specials (milestone 25c): COMBO_PLAN, each action
  * as soon as gold allows, and no timed actions; recorded by playing, since
- * the specials' kills change the gold. Target: strictly worse than
- * comboBuild by at least 3 lives. Both win Normal.
+ * the specials' kills change the gold. Target: at least three lives below the combo, with a win or a loss on wave 17 or later.
  */
 export function comboNoSpecials(difficulty?: Difficulty, map?: MapId, boons?: BoonChoices): WaveScript {
   return recordScript(followComboPlan(map), { difficulty, map, boons });
@@ -960,7 +970,7 @@ export function comboNoSpecials(difficulty?: Difficulty, map?: MapId, boons?: Bo
  * comboBuild with every Fire Pot action removed: no Fire Pot builds and no
  * upgrades on the cells where comboBuild builds them; its specials are
  * the policy's, re-recorded for this game (withPolicy, milestone 30).
- * Target N5: strictly worse than comboBuild (lost, or won with fewer lives).
+ * Target S6 compares final lives on all three Normal maps.
  */
 export function comboBuildNoFire(difficulty?: Difficulty, map?: MapId, boons?: BoonChoices, report?: RecordReporter): WaveScript {
   return withPolicy(withoutSpecials(withoutTowerType(comboBuild(difficulty, map, boons), 'firepot')), difficulty, {}, report);
@@ -1118,13 +1128,11 @@ export function endlessIdle(difficulty?: Difficulty, map?: MapId, boons?: BoonCh
 /**
  * Informational (milestone 26): comboBuild, then Keep going after the win,
  * with the special policy in every wave (milestone 30).
- * Keep making the campaign's reinvestment purchases in endless setup.
- * Target X2 on Normal: further than endlessIdle, and lost by the twelfth
- * endless wave.
+ * Invest in Siege Shell Mortars after victory to handle the repeated Troll waves.
  */
 export function endlessGreedy(difficulty?: Difficulty, map?: MapId, boons?: BoonChoices): WaveScript {
   const plan = followComboPlan(map);
-  const reinforce = reinvest(referenceMainTower('comboBuild', map ?? DEFAULT_MAP));
+  const reinforce = reinvest('mortar', { mortar: 'A' });
   return recordScript(
     (state) => state.endless ? reinforce(state) : plan(state),
     { difficulty, map, boons, endless: true, specials: {} },
@@ -1261,7 +1269,8 @@ export function referenceBuild(build: ReferenceBuild, difficulty?: Difficulty, m
   if (build === 'comboBuild') return comboBuild(difficulty, map, boons, report, options);
   if (build === 'wideBuild') return recordScript(followComboPlan(map, true, options), { difficulty, map, boons, specials: {}, report });
   const [opening, plan] = referencePlan(build, map);
-  const afterPlan = options?.fixedOnly ? undefined : reinvest(referenceMainTower(build, map));
+  const buy = reinvest(referenceMainTower(build, map));
+  const afterPlan = options?.fixedOnly ? undefined : build === 'hardBuild' ? paceReinvestment(buy) : buy;
   return recordScript(followPlan(opening, plan, actionCost, afterPlan), { difficulty, map, boons, specials: {}, report });
 }
 
@@ -1311,7 +1320,8 @@ export function compareTowerPaths(build: ChoiceBuild, map: MapId, tower: TowerTy
     action.type === 'upgrade' && action.path && cells.has(cellKey(action.cell)) ? { ...action, path } : action,
   );
   const reinforce = reinvest(referenceMainTower(build, map), { ...REINVESTMENT_PATHS, [tower]: path });
-  return recordScript(followPlan(opening, [...actTwo, ...firstUpgrades], actionCost, reinforce),
+  return recordScript(followPlan(opening, [...actTwo, ...firstUpgrades], actionCost,
+    build === 'comboBuild' || build === 'hardBuild' ? paceReinvestment(reinforce) : reinforce),
     { map, difficulty: 'normal', specials: {}, report });
 }
 

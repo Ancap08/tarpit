@@ -31,12 +31,12 @@ export const DIFFICULTY_DEFS: Readonly<Record<Difficulty, DifficultyDef>> = {
   hard: { hpMultiplier: 1.2, startGold: 80, startLives: 15 },
 };
 
-/** Each act-two wave gains another power. Endless carries all ten powers forward. */
-export const ACT_TWO_HP_GROWTH: Readonly<Record<Difficulty, number>> = { easy: 1, normal: 1.13, hard: 1.12 };
+/** Add this fraction of base difficulty HP per act-two wave. Endless retains wave 20 HP. */
+export const ACT_TWO_HP_GROWTH: Readonly<Record<Difficulty, number>> = { easy: 0, normal: 0.28, hard: 0.213 };
 
 export function campaignHpFactor(wave: number, difficulty: Difficulty): number {
   const steps = Math.max(0, Math.min(wave, LAST_WAVE) - ACT_ONE_LAST_WAVE);
-  return ACT_TWO_HP_GROWTH[difficulty] ** steps;
+  return 1 + ACT_TWO_HP_GROWTH[difficulty] * steps;
 }
 
 /** All factors apply before rounding the final spawn hp once, half up. */

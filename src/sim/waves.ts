@@ -40,14 +40,14 @@ export const WAVES: readonly WaveDef[] = [
     ],
   },
   { groups: [g('goblin', 33, 0.85), g('shieldbearer', 14, 1.5, 5.76), g('harpy', 14, 1.1, 11.52)] },
-  { groups: [g('wolf', 35, 1.16), g('troll', 11, 3.2, 4.032), g('harpy', 14, 2.08, 9.792)] },
-  { groups: [g('goblin', 39, 0.95), g('shieldbearer', 14, 2, 8.64), g('harpy', 16, 1.9, 7.2)] },
-  { groups: [g('wolf', 29, 1.48), g('troll', 14, 3.04, 2.88), g('harpy', 17, 2, 9.216)] },
-  { groups: [g('goblin', 22, 1.75), g('wolf', 19, 1.7, 22.79), g('troll', 12, 4.6, 3.6), g('harpy', 16, 2.8, 9.36)] },
-  { groups: [g('goblin', 33, 1.36), g('shieldbearer', 20, 2.36, 2.304), g('harpy', 19, 2.2, 5.76)] },
-  { groups: [g('wolf', 31, 1.44), g('troll', 16, 2.92, 2.88), g('harpy', 20, 2.16, 5.76)] },
-  { groups: [g('goblin', 36, 1.7), g('troll', 34, 1), g('shieldbearer', 11, 5, 2.16), g('harpy', 19, 2.8, 9)] },
-  { groups: [g('wolf', 33, 1.85), g('troll', 27, 0.9, 3), g('harpy', 21, 2.75, 6.48)] },
+  { groups: [g('wolf', 35, 0.75), g('troll', 11, 1.5, 0.375), g('harpy', 14, 1, 5)] },
+  { groups: [g('goblin', 39, 0.75), g('shieldbearer', 14, 1.5, 0.375), g('harpy', 16, 0.75, 4)] },
+  { groups: [g('wolf', 29, 1.48), g('troll', 14, 2.6, 0.375), g('harpy', 17, 2, 12)] },
+  { groups: [g('goblin', 14, 1.5, 3), g('wolf', 19, 1.7, 3), g('troll', 19, 2, 8), g('harpy', 16, 0.75, 9.36)] },
+  { groups: [g('goblin', 33, 2), g('shieldbearer', 20, 2.36, 2.304), g('harpy', 19, 2.2), g('troll', 15, 2.25, 12)] },
+  { groups: [g('wolf', 31, 1.44), g('troll', 15, 1.1, 2), g('harpy', 20, 2.16)] },
+  { groups: [g('goblin', 23, 1.7), g('troll', 15, 1.25, 8), g('shieldbearer', 9, 5, 3), g('harpy', 19, 2.8, 8)] },
+  { groups: [g('wolf', 33, 1.85), g('troll', 15, 2.25), g('harpy', 21, 2.75, 4)] },
   {
     groups: [
       g('wolf', 8, 1.55),
@@ -65,8 +65,10 @@ export const ACT_ONE_LAST_WAVE = 10;
 /** The last wave of the table: winning it wins the game unless the player keeps going (milestone 26). */
 export const LAST_WAVE = WAVES.length;
 
-/** Enemy hp multiplier for each three-wave endless cycle. */
+/** Enemy hp multiplier per three-wave cycle after the first endless cycle. */
 export const ENDLESS_HP_GROWTH = 1.8;
+/** Enemy hp multiplier in the first endless cycle. */
+export const ENDLESS_START_HP = 1.05;
 /** The campaign waves repeated in endless mode, with bosses excluded. */
 export const ENDLESS_BASE_WAVES: readonly number[] = [18, 19, 20];
 /** Endless mode: the extra Harpy group has 8 + 2 x cycle Harpies ... */
@@ -98,7 +100,8 @@ const endlessCache = new Map<number, WaveDef>();
  * of table wave 18, 19 or 20 (k % 3 = 0, 1, 2) without either boss, plus one
  * Harpy group of min(16, 8 + 2 x cycle) Harpies, one every 0.75 s,
  * starting 2 s after the base wave's last spawn; `hpMultiplier` is
- * ENDLESS_HP_GROWTH ^ cycle (1.8 ^ cycle), applied at spawn on top of the difficulty multiplier and wave 20 campaign growth.
+ * ENDLESS_START_HP x ENDLESS_HP_GROWTH ^ (cycle - 1), applied on top of the
+ * difficulty and wave 20 campaign factors.
  * Bounties, speeds and lives cost do not change. Pure and deterministic.
  */
 export function waveDef(n: number): WaveDef {
@@ -113,7 +116,7 @@ export function waveDef(n: number): WaveDef {
   const harpies = Math.min(ENDLESS_HARPY_MAX, ENDLESS_HARPY_BASE + ENDLESS_HARPY_PER_CYCLE * cycle);
   const def: WaveDef = {
     groups: [...base, g('harpy', harpies, ENDLESS_HARPY_INTERVAL, last + ENDLESS_HARPY_GAP)],
-    hpMultiplier: ENDLESS_HP_GROWTH ** cycle,
+    hpMultiplier: ENDLESS_START_HP * ENDLESS_HP_GROWTH ** (cycle - 1),
   };
   endlessCache.set(n, def);
   return def;

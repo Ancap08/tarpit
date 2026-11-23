@@ -20,7 +20,7 @@ import {
 import { applyAction, applyScriptBoon, comboBuild, endlessGreedy, endlessIdle, ENDLESS_WAVE_CAP, playScripted, type WaveScript } from './headless';
 import type { GameEvent } from './events';
 import type { GameState, GroupDef } from './types';
-import { ENDLESS_HP_GROWTH, hasNextWave, LAST_WAVE, nextWavePreview, waveDef, WAVES } from './waves';
+import { ENDLESS_HP_GROWTH, ENDLESS_START_HP, hasNextWave, LAST_WAVE, nextWavePreview, waveDef, WAVES } from './waves';
 
 const harpyGroup = (n: number): GroupDef => waveDef(n).groups[waveDef(n).groups.length - 1];
 const withoutLast = (n: number) => waveDef(n).groups.slice(0, -1);
@@ -37,7 +37,8 @@ describe('waveDef (milestone 26)', () => {
     expect(() => waveDef(1.5)).toThrow();
   });
 
-  it('adds Harpies to waves 18–20, excludes bosses, and grows hp by 1.8 per cycle', () => {
+  it('adds Harpies to waves 18–20, excludes bosses, and grows hp by 1.8 after each cycle', () => {
+    expect(ENDLESS_START_HP).toBe(1.05);
     expect(ENDLESS_HP_GROWTH).toBe(1.8);
     for (let n = 21; n <= 200; n++) {
       const tableWave = 18 + ((n - 21) % 3);
@@ -49,16 +50,17 @@ describe('waveDef (milestone 26)', () => {
         count: Math.min(16, 8 + 2 * cycle),
         interval: 0.75,
       });
-      expect(spawnTick(harpies, 0)).toBe(lastSpawnTick(tableWave) + (tableWave === 20 ? 0 : 120));
-      expect(waveDef(n).hpMultiplier).toBe(1.8 ** cycle);
+      const lastBaseTick = Math.max(...noBoss(tableWave).map((group) => spawnTick(group, group.count - 1)));
+      expect(spawnTick(harpies, 0)).toBe(lastBaseTick + 120);
+      expect(waveDef(n).hpMultiplier).toBe(1.05 * 1.8 ** (cycle - 1));
     }
   });
 
   it('hp gain is applied once, after difficulty, campaign and endless multipliers', () => {
     const campaign = campaignHpFactor(20, 'normal');
     expect(enemyMaxHp('goblin', 'normal', campaign * waveDef(21).hpMultiplier!))
-      .toBe(Math.round(23 * campaign * 1.8));
-    expect(enemyMaxHp('goblin', 'easy', waveDef(21).hpMultiplier)).toBe(31);
+      .toBe(Math.round(23 * campaign * 1.05));
+    expect(enemyMaxHp('goblin', 'easy', waveDef(21).hpMultiplier)).toBe(18);
   });
 
   it('bounties, speeds and lives cost come from the enemy table, unchanged', () => {
@@ -159,7 +161,7 @@ describe('continueEndless (milestone 26)', () => {
     tick(s);
     const first = s.enemies[0];
     expect(first.type).toBe('goblin');
-    const hp = Math.round(23 * campaignHpFactor(20, 'normal') * 1.8);
+    const hp = Math.round(23 * campaignHpFactor(20, 'normal') * 1.05);
     expect(first.hp).toBe(hp);
     expect(first.maxHp).toBe(hp);
     expect(s.specialCharges).toBe(1);
@@ -208,9 +210,11 @@ function replayEvents(script: WaveScript, difficulty?: GameState['difficulty']):
 }
 
 describe('an endless run (milestone 26)', () => {
+  let idleScript: WaveScript;
   let idle: ReturnType<typeof replayEvents>;
   beforeAll(() => {
-    idle = replayEvents(endlessIdle());
+    idleScript = endlessIdle();
+    idle = replayEvents(idleScript);
   });
 
   it('won fires exactly once, then endlessStart once; the game ends by losing', () => {
@@ -228,7 +232,7 @@ describe('an endless run (milestone 26)', () => {
     expect(idle.state.wave).toBeGreaterThan(20);
     expect(wavesCleared(idle.state)).toBe(idle.state.wave - 1);
     // The replay here and playScripted agree (the replay drains the event list).
-    expect({ ...playScripted(endlessIdle()).state, events: [] }).toEqual(idle.state);
+    expect({ ...playScripted(idleScript).state, events: [] }).toEqual(idle.state);
   });
 
   it('losing in endless: lost is final and ticks do nothing', () => {
@@ -248,10 +252,11 @@ describe('an endless run (milestone 26)', () => {
     greedyRun = playScripted(greedyScript);
   });
 
-  // milestone 37 miss (X2): on Normal Meadow neither plan clears wave 21.
-  it('the Normal Meadow idle and greedy builds both lose on wave 21', () => {
-    expect(idle.state).toMatchObject({ phase: 'lost', wave: 21 });
-    expect(greedyRun.state).toMatchObject({ phase: 'lost', wave: 21 });
+  it('the two scripts play the same campaign and only the greedy script purchases after victory', () => {
+    expect(greedyScript.slice(0, LAST_WAVE)).toEqual(idleScript.slice(0, LAST_WAVE));
+    expect(greedyScript.timed?.slice(0, LAST_WAVE)).toEqual(idleScript.timed?.slice(0, LAST_WAVE));
+    expect(idleScript.slice(LAST_WAVE).flat()).toHaveLength(0);
+    expect(greedyScript.slice(LAST_WAVE).flat()).toContainEqual(expect.objectContaining({ type: 'build', tower: 'mortar' }));
   });
 
   it('records the same endlessGreedy decisions twice', () => {

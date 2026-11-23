@@ -16,7 +16,7 @@ import { SPECIAL_DEFS, SPECIAL_RECHARGE_TICKS, ZONE_LINGER_TICKS, type SpecialTy
 import { POLICY_CHECK_TICKS, POLICY_MIN_HITS, POLICY_POINT_SPACING } from './specialPolicy';
 import { TOWER_DEFS, TOWER_PATHS } from './towers';
 import type { EnemyType, TowerLevelStats, TowerType } from './types';
-import { ENDLESS_BASE_WAVES, ENDLESS_HP_GROWTH, endlessCycle, LAST_WAVE, waveDef, WAVES } from './waves';
+import { ENDLESS_BASE_WAVES, ENDLESS_HP_GROWTH, ENDLESS_START_HP, endlessCycle, LAST_WAVE, waveDef, WAVES } from './waves';
 import { EXPECTED_MATRIX } from './balance.suite';
 import { MATRIX_ARCHETYPES } from './balanceRuns';
 import { TARGETS } from './balanceTargets';
@@ -117,10 +117,10 @@ describe('docs/DESIGN.md matches the code', () => {
 
   it('difficulty rows: hp multiplier, start gold, lives', () => {
     const rows = Object.fromEntries(table('Difficulty', '').map((r) => [r[0], r.slice(1)]));
-    expect(Object.keys(rows)).toEqual(['Enemy hp', 'Act 2 per wave', 'Start gold', 'Lives']);
+    expect(Object.keys(rows)).toEqual(['Enemy hp', 'Added HP per act-2 wave', 'Start gold', 'Lives']);
     DIFFICULTIES.forEach((d, i) => {
       expect(num(rows['Enemy hp'][i].replace(/x$/, '')), d).toBe(DIFFICULTY_DEFS[d].hpMultiplier);
-      expect(num(rows['Act 2 per wave'][i].replace(/x$/, '')), d).toBe(ACT_TWO_HP_GROWTH[d]);
+      expect(Number.parseFloat(rows['Added HP per act-2 wave'][i]) / 100, d).toBe(ACT_TWO_HP_GROWTH[d]);
       expect(Number(rows['Start gold'][i]), d).toBe(DIFFICULTY_DEFS[d].startGold);
       expect(Number(rows.Lives[i]), d).toBe(DIFFICULTY_DEFS[d].startLives);
     });
@@ -276,12 +276,12 @@ describe('docs/DESIGN.md matches the code', () => {
   });
 
   it('the endless hp line and the prose numbers the tables do not hold: cooldowns, sell refunds and campaign enemy count', () => {
-    const cycles = [1, 2, 3].map((c) => ENDLESS_HP_GROWTH ** c);
+    const cycles = [0, 1, 2].map((completedCycles) => ENDLESS_START_HP * ENDLESS_HP_GROWTH ** completedCycles);
     const hpLine = (['goblin', 'troll', 'harpy'] as const)
       .map((t) => `${t[0].toUpperCase()}${t.slice(1)} ${cycles.map((m) => DIFFICULTIES.map((d) => enemyMaxHp(t, d, campaignHpFactor(LAST_WAVE, d) * m)).join('/')).join(', ')}`)
       .join('; ');
     expect(section('Endless mode').replace(/\s+/g, ' ')).toContain(`(Easy / Normal / Hard): ${hpLine}.`);
-    expect(section('Endless mode')).toContain('(`ENDLESS_HP_GROWTH`)');
+    expect(section('Endless mode')).toContain('`ENDLESS_START_HP`, then `ENDLESS_HP_GROWTH`');
     const names = Object.entries(TOWER_NAMES) as [string, TowerType][];
     /** A section with every run of white space as one space (prose wraps). */
     const flat = (heading: string) => section(heading).replace(/\s+/g, ' ');
@@ -300,7 +300,7 @@ describe('docs/DESIGN.md matches the code', () => {
   });
 
   it('the first endless waves: base wave, extra Harpies, enemies, hp multiplier, total hp, bounty, last spawn', () => {
-    expect(section('Endless mode')).toContain(`\`${ENDLESS_HP_GROWTH} ^\n  cycle\``);
+    expect(section('Endless mode')).toContain(`\`${ENDLESS_START_HP} x ${ENDLESS_HP_GROWTH} ^ (cycle - 1)\``);
     const rows = table('Endless mode', 'Wave');
     expect(rows.map((r) => Number(r[0]))).toEqual(Array.from({ length: 6 }, (_, i) => LAST_WAVE + 1 + i));
     for (const [n, cycle, base, extra, enemies, mult, hp, bounty, last] of rows) {

@@ -167,13 +167,12 @@ Picked on the title menu before each game (Normal preselected);
 | | Easy | Normal | Hard |
 |---|---|---|---|
 | Enemy hp | 0.75x | 1x | 1.2x |
-| Act 2 per wave | 1x | 1.13x | 1.12x |
+| Added HP per act-2 wave | 0% | 28% | 21.3% |
 | Start gold | 150 | 100 | 80 |
 | Lives | 35 | 20 | 15 |
 
 Through wave 10, multiply base hp by the difficulty multiplier. Starting on
-wave 11, also multiply by the act-2 factor once for each wave past 10.
-Endless keeps all ten factors from wave 20 and adds its own cycle multiplier.
+wave 11, each wave adds the listed percentage of the enemy’s original difficulty HP. The campaign factor is 1 plus that rate times the number of waves past ten, up to ten steps. Endless carries forward the wave-20 factor.
 Round the product once, half up, for the enemy's starting and maximum hp.
 Scheduled enemies and summoned Wolves use the same rule. The table below
 gives base difficulty hp before wave growth.
@@ -586,19 +585,19 @@ enemy `i` of a group spawns on waveTick `round((delay + i x interval) x
 | 8 | 50 Goblin every 1.5 s; 25 Wolf every 1.5 s, delay 6.75 s; 13 Troll every 4.9 s, delay 3 s; 6 Shieldbearer every 6 s, delay 4 s; 14 Harpy every 1.2 s, delay 10 s | 108 | 14924 | 326 | 73.5 s |
 | 9 | 30 Wolf every 1 s; 10 Troll every 2 s, delay 2 s | 40 | 10100 | 140 | 29 s |
 | 10 | 20 Wolf every 1.5 s, delay 4 s; 15 Troll every 4.5 s; 12 Harpy every 1.5 s, delay 6 s; 8 Shieldbearer every 5 s, delay 2.5 s; 1 Grumblefoot (boss), delay 65 s | 56 | 19642 | 386 | 65 s |
-| 11 | 33 Goblin every 0.85 s; 14 Shieldbearer every 1.5 s, delay 5.76 s; 14 Harpy every 1.1 s, delay 11.52 s | 61 | 2538 | 178 | 27.2 s |
-| 12 | 35 Wolf every 1.16 s; 11 Troll every 3.2 s, delay 4.032 s; 14 Harpy every 2.08 s, delay 9.792 s | 60 | 14897 | 200 | 39.433 s |
-| 13 | 39 Goblin every 0.95 s; 14 Shieldbearer every 2 s, delay 8.64 s; 16 Harpy every 1.9 s, delay 7.2 s | 69 | 3533 | 196 | 36.1 s |
-| 14 | 29 Wolf every 1.48 s; 14 Troll every 3.04 s, delay 2.88 s; 17 Harpy every 2 s, delay 9.216 s | 60 | 23646 | 221 | 42.4 s |
-| 15 | 22 Goblin every 1.75 s; 19 Wolf every 1.7 s, delay 22.79 s; 12 Troll every 4.6 s, delay 3.6 s; 16 Harpy every 2.8 s, delay 9.36 s | 69 | 23683 | 226 | 54.2 s |
-| 16 | 33 Goblin every 1.36 s; 20 Shieldbearer every 2.36 s, delay 2.304 s; 19 Harpy every 2.2 s, delay 5.76 s | 72 | 5929 | 223 | 47.15 s |
-| 17 | 31 Wolf every 1.44 s; 16 Troll every 2.92 s, delay 2.88 s; 20 Harpy every 2.16 s, delay 5.76 s | 67 | 38917 | 250 | 46.8 s |
-| 18 | 36 Goblin every 1.7 s; 34 Troll every 1 s; 11 Shieldbearer every 5 s, delay 2.16 s; 19 Harpy every 2.8 s, delay 9 s | 100 | 91950 | 456 | 59.5 s |
-| 19 | 33 Wolf every 1.85 s; 27 Troll every 0.9 s, delay 3 s; 21 Harpy every 2.75 s, delay 6.48 s | 81 | 81306 | 345 | 61.483 s |
-| 20 | 8 Wolf every 1.55 s; 5 Shieldbearer every 2 s, delay 4 s; 8 Harpy every 1.65 s, delay 5 s; 6 Troll every 1.7 s, delay 9 s; 1 Grumblemaw (boss), delay 19.5 s | 28 | 41070 | 188 | 19.5 s |
+| 11 | 33 Goblin every 0.85 s; 14 Shieldbearer every 1.5 s, delay 5.76 s; 14 Harpy every 1.1 s, delay 11.52 s | 61 | 2861 | 178 | 27.2 s |
+| 12 | 35 Wolf every 0.75 s; 11 Troll every 1.5 s, delay 0.375 s; 14 Harpy every 1 s, delay 5 s | 60 | 18171 | 200 | 25.5 s |
+| 13 | 39 Goblin every 0.75 s; 14 Shieldbearer every 1.5 s, delay 0.375 s; 16 Harpy every 0.75 s, delay 4 s | 69 | 4500 | 196 | 28.5 s |
+| 14 | 29 Wolf every 1.48 s; 14 Troll every 2.6 s, delay 0.375 s; 17 Harpy every 2 s, delay 12 s | 60 | 30706 | 221 | 44 s |
+| 15 | 14 Goblin every 1.5 s, delay 3 s; 19 Wolf every 1.7 s, delay 3 s; 19 Troll every 2 s, delay 8 s; 16 Harpy every 0.75 s, delay 9.36 s | 68 | 46378 | 266 | 44 s |
+| 16 | 33 Goblin every 2 s; 20 Shieldbearer every 2.36 s, delay 2.304 s; 19 Harpy every 2.2 s; 15 Troll every 2.25 s, delay 12 s | 87 | 45820 | 343 | 64 s |
+| 17 | 31 Wolf every 1.44 s; 15 Troll every 1.1 s, delay 2 s; 20 Harpy every 2.16 s | 66 | 46149 | 242 | 43.2 s |
+| 18 | 23 Goblin every 1.7 s; 15 Troll every 1.25 s, delay 8 s; 9 Shieldbearer every 5 s, delay 3 s; 19 Harpy every 2.8 s, delay 8 s | 66 | 52161 | 268 | 58.4 s |
+| 19 | 33 Wolf every 1.85 s; 15 Troll every 2.25 s; 21 Harpy every 2.75 s, delay 4 s | 69 | 55137 | 249 | 59.2 s |
+| 20 | 8 Wolf every 1.55 s; 5 Shieldbearer every 2 s, delay 4 s; 8 Harpy every 1.65 s, delay 5 s; 6 Troll every 1.7 s, delay 9 s; 1 Grumblemaw (boss), delay 19.5 s | 28 | 45974 | 188 | 19.5 s |
 
 Total hp and bounty are on Normal, before pack calls and the 25 clear
-bonus. The twenty waves hold 1191 scheduled enemies. Wave 1 sends one
+bonus. The twenty waves hold 1158 scheduled enemies. Wave 1 sends one
 Goblin every 2.5 s, so a single Musketeer stops all of them on Easy and
 Normal (three shots per Goblin on Hard make it a real wave there). Kyle's
 play notes decide whether it stays this long.
@@ -671,10 +670,13 @@ it reads "Start Wave". `ui().callEarly` reports `{available, bonus}`.
   table). For n >= 21: `k = n - 21`, `cycle = floor(k / 3) + 1`; the
   groups of table wave 18, 19 or 20 for `k % 3` = 0, 1, 2, without the bosses;
   plus one Harpy group of `min(16, 8 + 2 x cycle)` Harpies, one every 0.75
-  s, starting 2 s after the base wave's last spawn; hp multiplier `1.8 ^
-  cycle` (`ENDLESS_HP_GROWTH`). An enemy spawns with `round(base hp x level
+  s, starting 2 s after the base wave's last spawn. The first cycle adds 5%
+  to wave 20's hp scaling. The multiplier is `1.05 x 1.8 ^ (cycle - 1)`
+  (`ENDLESS_START_HP`, then `ENDLESS_HP_GROWTH` per completed cycle).
+  An enemy spawns with `round(base hp x level
   multiplier x wave-20 campaign factor x endless multiplier)` (one rounding,
-  half up) and carries it as `maxHp`, which the hp bar uses. Bounties,
+  half up). If the campaign and endless factors multiply to anything other
+  than 1, the hp bar uses the spawned enemy's `maxHp`. Bounties,
   speeds and lives costs do not change. The 90 s spawn-window rule (R1)
   does not apply; the spawn-rate
   rule (R1) does. The Hard hp rule does not apply. `waveDef` throws for n
@@ -691,14 +693,14 @@ it reads "Start Wave". `ui().callEarly` reports `{available, bonus}`.
 
 | Wave | Cycle | Base | Extra Harpies | Enemies | Endless hp x | Total hp (Normal) | Bounty | Last spawn |
 |---|---|---|---|---|---|---|---|---|
-| 21 | 1 | 18 | 10 from 61.5 s | 110 | 1.8 | 213534 | 486 | 68.25 s |
-| 22 | 1 | 19 | 10 from 63.48 s | 91 | 1.8 | 167581 | 375 | 70.233 s |
-| 23 | 1 | 20 | 10 from 19.5 s | 37 | 1.8 | 41906 | 143 | 26.25 s |
-| 24 | 2 | 18 | 12 from 61.5 s | 112 | 3.24 | 385086 | 492 | 69.75 s |
-| 25 | 2 | 19 | 12 from 63.48 s | 93 | 3.24 | 302424 | 381 | 71.733 s |
-| 26 | 2 | 20 | 12 from 19.5 s | 39 | 3.24 | 76218 | 149 | 27.75 s |
+| 21 | 1 | 18 | 10 from 60.4 s | 76 | 1.05 | 65668 | 298 | 67.15 s |
+| 22 | 1 | 19 | 10 from 61.2 s | 79 | 1.05 | 63969 | 279 | 67.95 s |
+| 23 | 1 | 20 | 10 from 19.5 s | 37 | 1.05 | 27373 | 143 | 26.25 s |
+| 24 | 2 | 18 | 12 from 60.4 s | 78 | 1.89 | 118696 | 304 | 68.65 s |
+| 25 | 2 | 19 | 12 from 61.2 s | 81 | 1.89 | 115644 | 285 | 69.45 s |
+| 26 | 2 | 20 | 12 from 19.5 s | 39 | 1.89 | 49785 | 149 | 27.75 s |
 
-Endless hp at cycles 1, 2, 3 (Easy / Normal / Hard): Goblin 31/141/154, 56/253/278, 101/455/500; Troll 1283/5805/6373, 2309/10448/11472, 4155/18807/20649; Harpy 49/220/242, 87/396/435, 157/713/782.
+Endless hp at cycles 1, 2, 3 (Easy / Normal / Hard): Goblin 18/92/91, 33/165/163, 59/297/294; Troll 748/3791/3747, 1347/6823/6744, 2424/12281/12139; Harpy 28/144/142, 51/259/256, 92/465/460.
 
 ## High score
 
@@ -1263,8 +1265,8 @@ browser's `runScript` replay it.
   policy. The Hard opening uses two Longbows on every map. In act 2 the Meadow
   and Riverbend plans buy one extra Mortar and upgrade it. Switchback
   already covers the boss approach with its existing Mortars. Each Hard plan buys Siege Shell for its first Mortar. Riverbend also specializes its Mortar at (17,7) at the start of act 2 and turns to reinvestment after its artillery purchases.
-- **Act-2 spending.** In every setup after the fixed purchases, buy the cheapest affordable second upgrade on an owned level-2 tower (path A for each type, cell order breaks ties). Otherwise upgrade a base tower of the main type or build that type on the next free trail cell. Repeat while affordable. Hard buys Longbows. Combo and wide buy Longbows on Meadow and Switchback. On Riverbend combo buys Tar Pits and wide buys Cannons. Artillery buys Mortars, burn buys Fire Pots and musket buys Musketeers. Wide skips all second upgrades. The fixed-only control stops after the identical fixed plan.
-- **endlessIdle** and **endlessGreedy** play the same reinvesting combo throughout the campaign. Idle stops buying at victory and greedy continues investing in endless setup. Both keep using specials.
+- **Act-2 spending.** In every setup after the fixed purchases, buy the cheapest affordable second upgrade on an owned level-2 tower (path A for each type, cell order breaks ties). Otherwise upgrade a base tower of the main type or build that type on the next free trail cell. Combo, wide and Hard make one reinvestment purchase per setup until the last campaign setup, when they spend their reserve. The artillery, burn and musket specialists continue buying while affordable. Hard buys Longbows. Combo and wide buy Longbows on Meadow and Switchback. On Riverbend combo buys Tar Pits and wide buys Cannons. Artillery buys Mortars, burn buys Fire Pots and musket buys Musketeers. Wide skips all second upgrades. The fixed-only control stops after the identical fixed plan.
+- **endlessIdle** and **endlessGreedy** play the same reinvesting combo throughout the campaign. Idle stops buying at victory. Greedy invests in Siege Shell Mortars, buying the branch wherever it is available before upgrading or adding another Mortar. Both keep using specials.
 - Meadow only (they throw for another map): **soundBuild** (Musketeers, Cannons and a Tar Pit),
   **soundBuildNoTar** (its Tar Pit cells removed), **comboStrongest**
   (every tower set to Strongest).
@@ -1301,7 +1303,8 @@ Normal, every map unless specified:
 - **N1** noTowers loses by wave 3.
 - **N2** lazyBuild loses on wave 7 to 14.
 - **N3** longbowSpam loses on wave 8 to 16.
-- **S1** The reinvesting combo with default rewards and specials wins Normal with 9 to 15 lives (the N4 band).
+- **N4** The reinvesting combo wins Normal.
+- **S1** With default rewards and specials, it wins with 9 to 15 lives.
 - **S2** The combo loses lives on at least three act-2 waves, at most four on any wave. The Hard plan on Hard also loses lives on at least three waves, at most five per wave.
 - **S3** In balance tests, scale act-2 spawn HP by 0.95 and 1.05 before rounding. Both perturbed campaigns must win. Final lives must stay within four of the ordinary Normal combo and within five of the ordinary Hard plan on Hard.
 - **V2** Its fixed plan loses in act 2 or wins with at least five fewer lives.
@@ -1355,7 +1358,7 @@ The campaign wave rules R1 to R4 hold too.
 
 ## Measured matrix
 
-The milestone 37 Follow-up in DEVLOG records each target, reward spread, boss outcome and thin margin at this revision. The live simulator prints the same measurements.
+The milestone 37 Third pass in DEVLOG records the measured campaign and remaining misses. The live simulator prints the current measurements.
 
 `npm run sim` ends with this table. “W 13” means a win with 13 lives.
 “L 8” means defeat on wave 8. The endless rows count from campaign wave 1.
@@ -1365,19 +1368,19 @@ The milestone 37 Follow-up in DEVLOG records each target, reward spread, boss ou
 | noTowers | L 2 | L 1 | L 1 | L 2 | L 1 | L 1 | L 2 | L 1 | L 1 |
 | oneMusket | L 3 | L 2 | L 2 | L 3 | L 2 | L 2 | L 3 | L 2 | L 2 |
 | lazyBuild | W 33 | L 8 | L 2 | W 37 | L 8 | L 2 | W 31 | L 8 | L 2 |
-| greedyMusket | L 19 | L 8 | L 2 | L 19 | L 12 | L 2 | L 19 | L 8 | L 2 |
-| longbowSpam | L 10 | L 8 | L 7 | L 18 | L 8 | L 8 | L 10 | L 8 | L 7 |
+| greedyMusket | L 18 | L 8 | L 2 | W 22 | L 12 | L 2 | L 18 | L 8 | L 2 |
+| longbowSpam | L 10 | L 8 | L 7 | L 15 | L 8 | L 8 | L 10 | L 8 | L 7 |
 | noAntiAir | L 8 | L 5 | L 5 | L 8 | L 5 | L 5 | L 7 | L 5 | L 5 |
-| comboBuild | W 39 | W 10 | L 18 | W 39 | W 13 | L 18 | W 39 | W 13 | L 18 |
-| wideBuild | W 39 | W 7 | L 18 | W 39 | W 17 | L 18 | W 39 | W 11 | L 18 |
-| comboBuildNoFire | W 38 | W 8 | L 8 | W 39 | W 11 | L 10 | W 37 | W 14 | L 7 |
-| comboNoSpecials | W 39 | L 19 | L 7 | W 39 | L 18 | L 9 | W 38 | W 6 | L 3 |
-| hardBuild | W 39 | W 18 | W 4 | W 39 | W 24 | W 17 | W 39 | W 19 | W 5 |
-| artilleryBuild | W 39 | W 15 | L 18 | W 39 | W 24 | W 14 | W 39 | W 6 | L 10 |
-| burnBuild | W 39 | W 5 | L 18 | W 39 | W 18 | W 2 | W 39 | W 1 | L 18 |
-| musketBuild | W 39 | L 19 | L 18 | W 39 | W 16 | W 2 | W 39 | W 9 | L 18 |
-| endlessIdle | L 30 | L 21 | L 18 | L 30 | L 21 | L 18 | L 30 | L 21 | L 18 |
-| endlessGreedy | L 31 | L 21 | L 18 | L 31 | L 21 | L 18 | L 33 | L 21 | L 18 |
-| soundBuild | L 18 | L 7 | L 2 | - | - | - | - | - | - |
+| comboBuild | W 39 | W 14 | W 3 | W 39 | W 11 | L 19 | W 39 | W 14 | W 1 |
+| wideBuild | W 39 | W 13 | W 1 | W 39 | W 15 | L 19 | W 39 | W 10 | L 15 |
+| comboBuildNoFire | W 38 | W 13 | L 8 | W 39 | W 11 | L 10 | W 37 | W 12 | L 7 |
+| comboNoSpecials | W 39 | L 19 | L 7 | W 39 | L 18 | L 9 | W 38 | L 19 | L 3 |
+| hardBuild | W 39 | W 18 | W 8 | W 39 | W 21 | W 15 | W 39 | W 17 | W 4 |
+| artilleryBuild | W 39 | W 20 | W 9 | W 39 | W 24 | W 14 | W 39 | W 20 | L 10 |
+| burnBuild | W 39 | W 20 | W 9 | W 39 | W 24 | W 14 | W 39 | W 20 | W 3 |
+| musketBuild | W 39 | W 19 | W 8 | W 39 | W 24 | W 14 | W 39 | W 20 | W 4 |
+| endlessIdle | L 37 | L 25 | L 24 | L 36 | L 24 | L 19 | L 36 | L 25 | L 24 |
+| endlessGreedy | L 40 | L 28 | L 27 | L 40 | L 27 | L 19 | L 38 | L 27 | L 27 |
+| soundBuild | L 15 | L 7 | L 2 | - | - | - | - | - | - |
 | soundBuildNoTar | L 10 | L 7 | L 2 | - | - | - | - | - | - |
-| comboStrongest | W 7 | L 5 | L 3 | - | - | - | - | - | - |
+| comboStrongest | W 14 | L 5 | L 3 | - | - | - | - | - | - |

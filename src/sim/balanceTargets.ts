@@ -55,18 +55,18 @@ function waveSpawnTicks(wave: number, flying: boolean): number[] {
   return WAVES[wave].groups.filter((g) => ENEMY_STATS[g.type].flying === flying).flatMap((g) => Array.from({ length: g.count }, (_, i) => spawnTick(g, i)));
 }
 
-/** The combo build on Meadow, Normal, with the special policy forbidden one special (milestone 30, recorded by playing). */
+/** Record the Normal combo with one special forbidden on the measured map. */
 export function comboWithoutSpecialRun(type: SpecialType, map: MapId = 'meadow'): BalanceRun {
   return cachedRun(`comboBuild without ${type}, ${map}, normal`, () => comboWithoutSpecial(type, 'normal', map), 'normal');
 }
 
-/** Target T6's margin (milestone 30): comboBuild has at least this many more lives than comboNoSpecials on Normal. */
+/** Minimum benefit of the full special policy on Normal. */
 export const SPECIALS_LIVES_MARGIN = 3;
-/** Target S3 (milestone 30): in comboBuild on Meadow, Normal, at least this many specials ... */
-export const S3_MIN_SPECIALS = 30;
-/** ... and at least this share of them catch S3_MIN_CATCH or more enemies. */
-export const S3_MIN_SHARE = 0.8;
-export const S3_MIN_CATCH = 3;
+/** N9: the Meadow Normal combo must cast at least this many specials ... */
+export const MIN_POLICY_CASTS = 30;
+/** ... and at least this share of them catch MIN_CROWD_SIZE or more enemies. */
+export const MIN_CROWD_SHARE = 0.8;
+export const MIN_CROWD_SIZE = 3;
 
 /** Exercise the real purchasing and firing policies with perturbed spawn HP.
  * Only this synchronous balance run sees the temporary wave definitions.
@@ -105,6 +105,10 @@ function mapTargets(map: MapId): Target[] {
     t('N3', 'Normal: longbowSpam loses on wave 8 to 16', () => {
       const x = r('longbowSpam');
       return { ok: lostOn(x, 8, 16), info: matrixCell(x) };
+    }),
+    t('N4', 'the reinvesting combo wins Normal', () => {
+      const run = r('comboBuild');
+      return { ok: run.phase === 'won', info: matrixCell(run) };
     }),
     t('S1', 'reinvesting Normal combo wins with 9–15 lives', () => {
       const combo = r('comboBuild');
@@ -248,9 +252,9 @@ const meadowExtras: Target[] = [
     label: 'Meadow, Normal: the policy fires at least 30 specials in comboBuild and at least 80% catch 3 or more enemies',
     check: () => {
       const hits = balanceRun('comboBuild', 'meadow', 'normal').specialHits;
-      const good = hits.filter((h) => h >= S3_MIN_CATCH).length;
-      const ok = hits.length >= S3_MIN_SPECIALS && good >= S3_MIN_SHARE * hits.length;
-      return { ok, info: `${hits.length} specials, ${good} caught ${S3_MIN_CATCH} or more (hits ${hits.join(' ')})` };
+      const good = hits.filter((h) => h >= MIN_CROWD_SIZE).length;
+      const ok = hits.length >= MIN_POLICY_CASTS && good >= MIN_CROWD_SHARE * hits.length;
+      return { ok, info: `${hits.length} specials, ${good} caught ${MIN_CROWD_SIZE} or more (hits ${hits.join(' ')})` };
     },
   },
 ];

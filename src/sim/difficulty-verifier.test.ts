@@ -84,12 +84,12 @@ describe('(a) scaled hp, by hand, against spawned enemies', () => {
   });
 
   // Expected HP is calculated from base HP, difficulty and the wave factors by hand.
-  // The wave-21 Goblin also distinguishes one rounding (141) from two (140).
+  // Wave 21 applies the first endless factor to wave 20 HP before rounding.
   it.each([
     ['hard', 10, 'boss', 4800],
-    ['hard', 11, 'goblin', 31],
-    ['normal', 20, 'grumblemaw', 19010],
-    ['normal', 21, 'goblin', 141],
+    ['hard', 11, 'goblin', 33],
+    ['normal', 20, 'grumblemaw', 21280],
+    ['normal', 21, 'goblin', 92],
   ] as const)('%s wave %i: a fresh %s has exactly %i HP', (difficulty, wave, type, hp) => {
     const s = createGame({ difficulty });
     s.wave = wave - 1;
@@ -114,7 +114,7 @@ describe('(a) scaled hp, by hand, against spawned enemies', () => {
       expect(all.filter((e) => e.type === 'grumblemaw')).toHaveLength(1);
       for (const e of all) {
         const expected = e.wave <= 10 ? HAND[e.type][i]
-          : Math.round(ENEMY_STATS[e.type].hp * [0.75, 1, 1.2][i] * ACT_TWO_HP_GROWTH[level] ** (e.wave - 10));
+          : Math.round(ENEMY_STATS[e.type].hp * [0.75, 1, 1.2][i] * (1 + ACT_TWO_HP_GROWTH[level] * (e.wave - 10)));
         expect(e.hp, `${level} wave ${e.wave} ${e.type}`).toBe(expected);
         expect(e.distance).toBe(0);
         expect(e.maxHp ?? HAND[e.type][i]).toBe(expected);

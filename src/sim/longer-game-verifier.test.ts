@@ -399,20 +399,19 @@ describe('verifier 36a: boons by hand', () => {
 describe('verifier 36a: endless by hand', () => {
   const norm = (n: number) => waveDef(n).groups.map((g) => `${g.count} ${g.type} every ${g.interval} from ${Number(g.delay.toFixed(6))}`);
 
-  it('wave 21: wave 18 + 10 Harpies from 61.5 s (35 Goblin intervals of 1.7 s + 2), x1.8', () => {
-    expect(norm(21)).toEqual([
-      '36 goblin every 1.7 from 0', '34 troll every 1 from 0', '11 shieldbearer every 5 from 2.16', '19 harpy every 2.8 from 9', '10 harpy every 0.75 from 61.5',
-    ]);
-    expect(waveDef(21).hpMultiplier).toBe(1.8);
+  it('wave 21: wave 18 with extra Harpies and the first-cycle health bonus', () => {
+    expect(norm(21).slice(0, -1)).toEqual(norm(18));
+    expect(norm(21).at(-1)).toBe('10 harpy every 0.75 from 60.4');
+    expect(waveDef(21).hpMultiplier).toBe(1.05);
     const s = inWave(21, []);
     s.spawnedPerGroup.fill(0);
     tick(s);
-    const hp = Math.round(23 * campaignHpFactor(20, 'normal') * 1.8);
+    const hp = Math.round(23 * campaignHpFactor(20, 'normal') * 1.05);
     expect(s.enemies[0]).toMatchObject({ type: 'goblin', hp, maxHp: hp });
   });
 
-  it('wave 22: wave 19 + 10 Harpies from 63.48 s (last Harpy: 6.48 + 20 x 2.75 = 61.48), x1.8', () => {
-    expect(norm(22).at(-1)).toBe('10 harpy every 0.75 from 63.48');
+  it('wave 22: wave 19 + 10 Harpies from 61.2 s (32 Wolf intervals of 1.85 s + 2)', () => {
+    expect(norm(22).at(-1)).toBe('10 harpy every 0.75 from 61.2');
     expect(norm(22)).toHaveLength(4);
   });
 
@@ -424,13 +423,13 @@ describe('verifier 36a: endless by hand', () => {
     expect(waveDef(23).groups).toHaveLength(5);
   });
 
-  it('wave 24: cycle 2, wave 18, 12 Harpies, x3.24; wave 60: cycle 14, wave 18, 16 Harpies (cap), x1.8^14', () => {
+  it('cycles 2 and 14 repeat wave 18, grow hp and eventually cap the extra Harpy group', () => {
     expect(endlessCycle(24)).toBe(2);
-    expect(norm(24).at(-1)).toBe('12 harpy every 0.75 from 61.5');
-    expect(waveDef(24).hpMultiplier).toBeCloseTo(3.24, 12);
+    expect(norm(24).at(-1)).toBe('12 harpy every 0.75 from 60.4');
+    expect(waveDef(24).hpMultiplier).toBeCloseTo(1.89, 12);
     expect(endlessCycle(60)).toBe(14);
-    expect(norm(60).at(-1)).toBe('16 harpy every 0.75 from 61.5');
-    expect(waveDef(60).hpMultiplier).toBeCloseTo(1.8 ** 14, 6);
+    expect(norm(60).at(-1)).toBe('16 harpy every 0.75 from 60.4');
+    expect(waveDef(60).hpMultiplier).toBeCloseTo(1.05 * 1.8 ** 13, 6);
   });
 
   it('endless never offers a boon, never calls a pack, and wavesCleared is wave - 1 on a loss', () => {
