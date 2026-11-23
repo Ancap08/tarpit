@@ -7632,3 +7632,15 @@ Changed files relative to 84c27ef (43). No src/game file changed.
 - `src/sim/targeting.test.ts`
 - `src/sim/types.ts`
 - `src/sim/waves.ts`
+
+#### Verifier notes on the follow-up (8c0f6c2)
+
+Verifier: Claude Sonnet. Verdict: go on to the screen work. Own replay (not the suite runner) reproduced the numbers below; `src/sim/longer-game-verifier.test.ts` now has 46 tests (adds a boundary probe: `findTarget` matches a naive hypot reference for every tower, upgraded or not, with and without Long Barrels, at range and range +/- 1e-9).
+
+- Suite: lint, typecheck, check:assets, build, check:size pass. `npm test` has only the 3 known `endText.test.ts` failures (35 s). `npm run sim` takes 94 s, no MISS, 77 ok lines.
+- Boss (Normal, comboBuild): killed on all three maps. Wave-20 ticks Meadow: spawn 2893, packs at 4422 (3730 hp) and 4939 (1862 hp), dies 5736 (47.4 s on the map). Switchback: packs 4403 / 4943, dies 5535 (44.0 s). Riverbend: packs 4180 / 4907, dies 5431 (42.3 s). hardBuild on Hard also kills him on all three (45.7 s, 52.8 s, 48.9 s). comboNoSpecials: Meadow exits (W 3), Switchback kills (W 14), Riverbend exits (W 5): B2 holds. Easy lazyBuild: W 18 / 26 / 15, he exits. 5,600 hp is 1.4 times Grumblefoot and he walks 1.4 times faster, so he spends about as long on the map as Grumblefoot did (about 42 s) with twice the dps needed, two packs and a 10-life exit. Still a boss.
+- Lethal crossing: zero new calls is the right reading of "none after he dies" and DESIGN.md. A non-lethal hit crossing both thresholds still starts both packs (grumblemaw.test.ts and the verifier file).
+- Boons: three of the nine "strictly best" claims recomputed with `playScripted`, matching: Sticky Tar (burnBuild, Switchback, Normal: 23 / 13 / 13), Hot Coals (burnBuild, Meadow, Normal: 8 / 18 / 8), Bigger Blasts (artilleryBuild, Riverbend, Normal: 9 / 6 / 16). Keen Arrows (artillery, Switchback, Hard: 13 / 15 / 5) too.
+- Builds: both new archetypes are playable purchase plans, but they were added to give boons something to win. At default picks `comboBuild` shows spreads of only 2 / 0 / 3 lives, so for a person who plays the combo the wave-10 offer is worth nothing.
+- Length (Meadow Normal comboBuild): 1311.7 s (21:51.7), act 2 673.8 s, longest act-2 wave 95.6 s (per-wave: 51.8 34.7 28.7 43.4 87.7 51.8 101.7 90.3 44.3 103.6 29.9 64.8 38.1 72.5 71.5 60.3 78.9 77.7 84.6 95.6). Waves 7 and 10 in act 1 still run over 100 s (not limited by the target).
+- On a bound: comboBuild Normal wins with 19 lives on every map (N4 ceiling is 19); X1 idle loses on wave 25 on Switchback and Riverbend (ceiling); R3 total 8.3 s under 22 min; B2 Meadow no-specials wins with 3 lives; N9 Keg margin is one life (18 against 19). N6 leads are 16 / 5 / 14 (min 3).

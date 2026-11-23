@@ -530,3 +530,36 @@ describe('verifier 36a: conservation over full games', () => {
     });
   });
 });
+
+describe('verifier 36a follow-up: Euclidean targeting matches a naive hypot reference at the range boundary', () => {
+  it('every tower type, base and upgraded, with and without Long Barrels, at range and range +/- 1e-9', async () => {
+    const { findTarget } = await import('./combat');
+    const line = { id: 'line', width: 4000, height: 480, path: [{ x: 0, y: 240 }, { x: 4000, y: 240 }] };
+    let checked = 0;
+    for (const type of Object.keys(TOWER_DEFS) as TowerType[]) {
+      for (const upgraded of [false, true]) {
+        for (const boons of [[], ['longBarrels']] as BoonId[][]) {
+          const s = createGame({ map: line });
+          s.boons = boons;
+          const tower = { type, upgraded, cell: { col: 20, row: 7 }, cooldownTicks: 0, targeting: 'first' } as unknown as GameState['towers'][number];
+          const st = towerStats(tower, boons);
+          const cx = 20 * 32 + 16; // row 7 centre y is 240: the path line, so dy = 0
+          for (const edge of [st.range, st.minRange]) {
+            if (edge === 0) continue;
+            for (const off of [-1e-9, 0, 1e-9, 0.5]) {
+              for (const sign of [1, -1]) {
+                const x = cx + sign * (edge + off);
+                s.enemies = [{ id: 1, type: 'goblin', hp: 10, distance: x, slow: 0, slowTicksLeft: 0 }];
+                const d = Math.hypot(cx - x, 0);
+                const naive = d <= st.range && d >= st.minRange;
+                expect(findTarget(s, tower) !== undefined, `${type} up=${upgraded} ${boons} edge=${edge} off=${off}`).toBe(naive);
+                checked++;
+              }
+            }
+          }
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(100);
+  });
+});
