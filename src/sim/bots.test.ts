@@ -225,6 +225,22 @@ describe('person policy', () => {
     }
   });
 
+  it('uses its previous opening aim when the next wave starts too soon for another look', () => {
+    const state = createGame({ level });
+    expect(startWave(state).ok).toBe(true);
+    state.waveTick = state.tick = 90;
+    const first = botPerson.special(state);
+    expect(first).toBeDefined();
+    state.wave = 2;
+    state.tick += 110;
+    state.waveTick = 90;
+    state.enemies = [600, 601, 602].map((distance, id) => ({
+      id, distance, type: 'goblin', hp: 10, slow: 0, slowTicksLeft: 0,
+    }));
+    expect(botPerson.special(state)).toEqual(first);
+    expect(botPerson.special({ ...state })).not.toEqual(first);
+  });
+
   it('spends each charge within 90 ticks on a cell centre and spaces fight decisions by at least 180 ticks', () => {
     const state = createGame({ level: { ...level, waves: [{ groups: [
       { type: 'goblin', count: 2, interval: 3000, delay: 0 },
@@ -235,6 +251,7 @@ describe('person policy', () => {
     while (state.waveTick < 1500) {
       const action = botPerson.special(state);
       if (action) {
+        expect(botPerson.special(state)).toEqual(action);
         expect(action.x % 48).toBe(24);
         expect(action.y % 48).toBe(24);
         expect(state.tick - readyAt).toBe(90);

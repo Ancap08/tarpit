@@ -301,13 +301,28 @@ function personAims(map: MapDef): readonly Point[] {
   return aims;
 }
 
+// Setup consumes no simulation ticks. An early next-wave charge can fall
+// inside the previous look interval, so keep the last planned opening cast.
+const personLooks = new WeakMap<GameState, { tick: number; choice?: SpecialAction; opening?: SpecialAction }>();
+
 function personSpecial(state: GameState, lastZone?: SpecialType): SpecialAction | undefined {
   if (state.phase !== 'wave' || state.specialCharges <= 0) return undefined;
   const waveStart = state.tick - state.waveTick;
   const previousCast = state.lastSpecialTick ?? -Infinity;
   const recharge = Math.round(boonScale(SPECIAL_RECHARGE_TICKS, state.boons, 'quickHands'));
   const ready = previousCast >= waveStart ? previousCast + recharge : waveStart;
-  if (state.tick !== ready + PERSON_REACTION_TICKS || (previousCast >= waveStart && state.tick - previousCast < PERSON_LOOK_TICKS)) return undefined;
+  if (state.tick !== ready + PERSON_REACTION_TICKS) return undefined;
+  const previous = personLooks.get(state);
+  if (previous?.tick === state.tick) return previous.choice;
+  if (previous && state.tick - previous.tick < PERSON_LOOK_TICKS) {
+    return previous.opening && { ...previous.opening, atWaveTick: state.waveTick };
+  }
+  const choice = choosePersonCast(state, lastZone);
+  personLooks.set(state, { tick: state.tick, choice, opening: ready === waveStart ? choice : previous?.opening });
+  return choice;
+}
+
+function choosePersonCast(state: GameState, lastZone?: SpecialType): SpecialAction | undefined {
   const aims = personAims(state.map);
   const choice = chooseSpecial(state, lastZone, aims) ?? chooseSpecial(state, lastZone, aims, 1);
   if (choice) return choice;
