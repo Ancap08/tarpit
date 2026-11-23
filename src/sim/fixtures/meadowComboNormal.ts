@@ -19,6 +19,7 @@ export const MEADOW_COMBO_NORMAL: Omit<GameState, 'map'> = {
   "specialCharges": 0,
   "specialRechargeTicks": 0,
   "zones": [],
+  "blocker": null,
   "nextZoneId": 39,
   "cheated": false,
   "tick": 78990,

@@ -16,7 +16,9 @@
 // spawn, counters, clear check):
 //   1. Move live enemies by speed / 60 times (1 - effectiveSlow): the
 //      stronger of the active tower slow and the active special slow
-//      (milestone 25c), boss cap applied; then count down both slow timers.
+//      (milestone 25c), boss cap applied. Walking enemies stop on contact
+//      with a blocker and damage it. After all movement, a broken blocker is
+//      removed, and enemies resume moving next tick. Both slow timers count down.
 //   2. Remove enemies at or past the exit; each costs its livesCost (1, or
 //      5 for the boss, milestone 23).
 //      Lives <= 0 -> phase 'lost' at once, nothing else happens this tick.
@@ -65,10 +67,11 @@
 // after startWave (waveTick 0), and an enemy spawned at waveTick k is at
 // distance speed/60 * n after the tick with waveTick k + n.
 
+import { moveEnemies } from './movement';
 import { boonScale, boonOptions } from './boons';
 import { burnEnemies, fireTowers, PACK_INTERVAL_TICKS } from './combat';
 import { DEFAULT_DIFFICULTY, DIFFICULTY_DEFS, campaignHpFactor, enemyMaxHp, type Difficulty } from './difficulty';
-import { effectiveSlow, ENEMY_STATS, isBoss } from './enemies';
+import { ENEMY_STATS, isBoss } from './enemies';
 import { pathLength, resolveMap, type MapId } from './map';
 import { applyBurn, applySpecialSlow, enemyPosition } from './combat';
 import { SPECIAL_DEFS, ZONE_LINGER_TICKS, tarLingerTicks } from './specials';
@@ -110,6 +113,7 @@ export function createGame(options: CreateGameOptions = {}): GameState {
     specialCharges: 0,
     specialRechargeTicks: 0,
     zones: [],
+    blocker: null,
     nextZoneId: 0,
     cheated: false,
     tick: 0,
@@ -264,7 +268,9 @@ export function tick(state: GameState): void {
     return;
   }
 
-  moveEnemies(state);
+  const blocker = state.blocker;
+  moveEnemies(state.enemies, state.events, blocker ? [blocker] : undefined);
+  if (blocker && blocker.hp === 0) state.blocker = null;
   removeExitedEnemies(state);
   if (state.lives <= 0) {
     state.phase = 'lost';
@@ -308,22 +314,6 @@ export function applyZone(state: GameState, zone: Pick<GameState['zones'][number
     if (Math.hypot(p.x - zone.x, p.y - zone.y) > zone.radius) continue;
     if (def.slow > 0) applySpecialSlow(enemy, def.slow, slowTicks);
     if (def.burnDps > 0) applyBurn(enemy, burnDps, ZONE_LINGER_TICKS, 'special');
-  }
-}
-
-function moveEnemies(state: GameState): void {
-  for (const enemy of state.enemies) {
-    const slow = effectiveSlow(enemy);
-    enemy.distance += (ENEMY_STATS[enemy.type].speed * (1 - slow)) / TICKS_PER_SECOND;
-    if (enemy.slowTicksLeft > 0) {
-      enemy.slowTicksLeft -= 1;
-      if (enemy.slowTicksLeft === 0) enemy.slow = 0;
-    }
-    const special = enemy.specialSlowTicksLeft ?? 0;
-    if (special > 0) {
-      enemy.specialSlowTicksLeft = special - 1;
-      if (special === 1) enemy.specialSlow = 0;
-    }
   }
 }
 

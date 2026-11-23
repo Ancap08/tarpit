@@ -48,6 +48,8 @@ export interface EnemyStats {
   /** Pixels per second. */
   speed: number;
   bounty: number;
+  /** Damage per second to a trail blocker while in contact. */
+  blockerDps: number;
   /**
    * Flies over the path (Harpy, milestone 22): Tar Pit, Cannon and Mortar
    * never target it and splash skips it; a Fire Pot impact hits it but its
@@ -233,6 +235,18 @@ export interface Shot {
 
 export type Phase = 'setup' | 'wave' | 'won' | 'lost';
 
+/** A point on the trail and its forward tangent in radians. */
+export interface TrailPoint extends Point {
+  distance: number;
+  angle: number;
+}
+
+/** An obstacle on the trail that walking enemies stop at and attack. */
+export interface Blocker extends TrailPoint {
+  hp: number;
+  maxHp: number;
+}
+
 export interface GameState {
   /**
    * The map this game is played on (milestone 27), fixed at createGame.
@@ -275,6 +289,9 @@ export interface GameState {
   specialRechargeTicks: number;
   /** Milestone 30: the live ground zones of the Tar Barrel and Fire Arrows, oldest first. */
   zones: Zone[];
+  blocker: Blocker | null;
+  /** The last Barricade cast tick, preventing a second cast across an early call. */
+  lastBarricadeTick?: number;
   /** Id for the next zone. */
   nextZoneId: number;
   /** Milestone 30: the gold cheat was used in this game (grantCheatGold). */

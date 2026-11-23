@@ -53,7 +53,8 @@ const ticks = (s: GameState, n: number) => {
 
 describe('the specials table (milestone 30)', () => {
   it('keg wave 1, 90 px, 60 damage; Tar Barrel wave 4, 100 px, slow 0.5, zone 660; Fire Arrows wave 7, 90 px, burn 26/s, zone 660; recharge 1200, linger 60', () => {
-    expect(SPECIAL_TYPES).toEqual(['keg', 'tarBarrel', 'fireArrows']);
+    expect(SPECIAL_TYPES).toEqual(['keg', 'barricade', 'tarBarrel', 'fireArrows']);
+    expect(SPECIAL_DEFS.barricade).toEqual({ unlockWave: 3, radius: 0, damage: 0, slow: 0, burnDps: 0, zoneTicks: 0 });
     expect(SPECIAL_DEFS.keg).toEqual({ unlockWave: 1, radius: 90, damage: 60, slow: 0, burnDps: 0, zoneTicks: 0 });
     expect(SPECIAL_DEFS.tarBarrel).toEqual({ unlockWave: 4, radius: 100, damage: 0, slow: 0.5, burnDps: 0, zoneTicks: 660 });
     expect(SPECIAL_DEFS.fireArrows).toEqual({ unlockWave: 7, radius: 90, damage: 0, slow: 0, burnDps: 26, zoneTicks: 660 });
@@ -61,11 +62,11 @@ describe('the specials table (milestone 30)', () => {
     expect(ZONE_LINGER_TICKS).toBe(60);
     expect([1, 3, 4, 6, 7, 10].map(unlockedSpecials)).toEqual([
       ['keg'],
-      ['keg'],
-      ['keg', 'tarBarrel'],
-      ['keg', 'tarBarrel'],
-      ['keg', 'tarBarrel', 'fireArrows'],
-      ['keg', 'tarBarrel', 'fireArrows'],
+      ['keg', 'barricade'],
+      ['keg', 'barricade', 'tarBarrel'],
+      ['keg', 'barricade', 'tarBarrel'],
+      ['keg', 'barricade', 'tarBarrel', 'fireArrows'],
+      ['keg', 'barricade', 'tarBarrel', 'fireArrows'],
     ]);
   });
 });
