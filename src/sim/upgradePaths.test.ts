@@ -132,18 +132,18 @@ function combat(towerType: TowerType, path: UpgradePath) {
 describe('level 3 combat on each of the twelve paths', () => {
   it.each([
     // Type, path, range, minimum, damage, cooldown ticks, splash, slow, burn.
-    ['musketeer', 'A', 155, 0, 35, 60, 0, 0, 0, 0],
-    ['musketeer', 'B', 125, 0, 22, 30, 0, 0, 0, 0],
-    ['cannon',    'A', 105, 0, 40, 120, 85, 0, 0, 0],
+    ['musketeer', 'A', 200, 0, 45, 60, 0, 0, 0, 0],
+    ['musketeer', 'B', 125, 0, 22, 21, 0, 0, 0, 0],
+    ['cannon',    'A', 105, 0, 40, 120, 105, 0, 0, 0],
     ['cannon',    'B', 105, 0, 40, 60, 55, 0, 0, 0],
-    ['tarpit',    'A', 105, 0, 3, 30, 0, 0.8, 0, 0],
-    ['tarpit',    'B', 155, 0, 3, 30, 0, 0.6, 0, 0],
+    ['tarpit',    'A', 105, 0, 3, 30, 0, 0.78, 0, 0],
+    ['tarpit',    'B', 145, 0, 3, 30, 0, 0.64, 0, 0],
     ['longbow',   'A', 170, 0, 16, 24, 0, 0, 0, 0],
     ['longbow',   'B', 170, 0, 9, 13, 0, 0, 0, 0],
-    ['mortar',    'A', 220, 70, 120, 180, 70, 0, 0, 0],
-    ['mortar',    'B', 220, 70, 70, 180, 140, 0, 0, 0],
-    ['firepot',   'A', 100, 0, 4, 75, 0, 0, 15, 240],
-    ['firepot',   'B', 100, 0, 4, 75, 0, 0, 8, 480],
+    ['mortar',    'A', 220, 70, 140, 180, 70, 0, 0, 0],
+    ['mortar',    'B', 220, 70, 80, 180, 150, 0, 0, 0],
+    ['firepot',   'A', 104, 0, 4, 60, 0, 0, 17, 60],
+    ['firepot',   'B', 100, 0, 4, 60, 0, 0, 8, 480],
   ] as const)('%s path %s uses its full stat row', (type, path, range, minimum, damage, cooldown, splash, slow, dps, duration) => {
     const { state, tower } = combat(type, path);
     if (minimum > 0) {
@@ -201,12 +201,12 @@ describe('level 3 combat on each of the twelve paths', () => {
   it.each([
     // The chosen path row gets its own range, radius, shot ticks and damage
     // after applying the existing boon multipliers.
-    ['musketeer', 'B', ['veteranCrews'], 125, 0, 22, 27, 0, 0],
-    ['cannon', 'A', ['longBarrels', 'biggerBlasts'], 136.5, 119, 40, 120, 0, 0],
+    ['musketeer', 'B', ['veteranCrews'], 125, 0, 22, 19, 0, 0],
+    ['cannon', 'A', ['longBarrels', 'biggerBlasts'], 136.5, 136.5, 40, 120, 0, 0],
     ['tarpit', 'A', ['stickyTar'], 105, 0, 3, 30, 240, 0],
     ['longbow', 'A', ['keenArrows', 'veteranCrews'], 170, 0, 20, 22, 0, 0],
-    ['mortar', 'B', ['longBarrels', 'biggerBlasts'], 286, 196, 70, 180, 0, 0],
-    ['firepot', 'A', ['hotCoals'], 100, 0, 4, 75, 0, 27],
+    ['mortar', 'B', ['longBarrels', 'biggerBlasts'], 286, 195, 80, 180, 0, 0],
+    ['firepot', 'A', ['hotCoals'], 104, 0, 4, 60, 0, 30.6],
   ] as const)('%s %s applies rewards after selecting the path row', (type, path, boons, range, radius, damage, cooldown, slowTicks, dps) => {
     const { state, tower } = combat(type, path);
     state.boons = [...boons] satisfies BoonId[];

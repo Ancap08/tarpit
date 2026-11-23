@@ -5,7 +5,7 @@
 // stats, boons, specials, the campaign waves and the first endless waves.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { DIFFICULTIES, DIFFICULTY_DEFS, enemyMaxHp } from './difficulty';
+import { ACT_TWO_HP_GROWTH, DIFFICULTIES, DIFFICULTY_DEFS, campaignHpFactor, enemyMaxHp } from './difficulty';
 import { BOONS } from './boons';
 import { PACK_INTERVAL_TICKS, PACK_SIZE } from './combat';
 import { ENEMY_STATS, isBoss } from './enemies';
@@ -20,6 +20,12 @@ import { ENDLESS_BASE_WAVES, ENDLESS_HP_GROWTH, endlessCycle, LAST_WAVE, waveDef
 import { EXPECTED_MATRIX } from './balance.suite';
 import { MATRIX_ARCHETYPES } from './balanceRuns';
 import { TARGETS } from './balanceTargets';
+
+// This spec alone compares documentation with both the UI and the simulation.
+// eslint-disable-next-line no-restricted-imports
+import { PATH_NAMES, pathDescription } from '../game/names';
+// eslint-disable-next-line no-restricted-imports
+import { PATH_MARKS } from '../game/draw/towers';
 
 const md = readFileSync(new URL('../../docs/DESIGN.md', import.meta.url), 'utf8');
 
@@ -111,9 +117,10 @@ describe('docs/DESIGN.md matches the code', () => {
 
   it('difficulty rows: hp multiplier, start gold, lives', () => {
     const rows = Object.fromEntries(table('Difficulty', '').map((r) => [r[0], r.slice(1)]));
-    expect(Object.keys(rows)).toEqual(['Enemy hp', 'Start gold', 'Lives']);
+    expect(Object.keys(rows)).toEqual(['Enemy hp', 'Act 2 per wave', 'Start gold', 'Lives']);
     DIFFICULTIES.forEach((d, i) => {
       expect(num(rows['Enemy hp'][i].replace(/x$/, '')), d).toBe(DIFFICULTY_DEFS[d].hpMultiplier);
+      expect(num(rows['Act 2 per wave'][i].replace(/x$/, '')), d).toBe(ACT_TWO_HP_GROWTH[d]);
       expect(Number(rows['Start gold'][i]), d).toBe(DIFFICULTY_DEFS[d].startGold);
       expect(Number(rows.Lives[i]), d).toBe(DIFFICULTY_DEFS[d].startLives);
     });
@@ -191,6 +198,21 @@ describe('docs/DESIGN.md matches the code', () => {
     }
   });
 
+  it('upgrade panels: all twelve labels and both path marks', () => {
+    const paths = ['A', 'B'] as const;
+    const types = Object.keys(TOWER_PATHS) as TowerType[];
+    expect(table('Towers', 'Path name')).toEqual(types.flatMap((type) => paths.map((path) => [
+      PATH_NAMES[type][path], pathDescription(type, path),
+    ])));
+    expect(table('Towers', 'Path mark')).toEqual(paths.map((path) => {
+      const { shape, color } = PATH_MARKS[path];
+      return [path, shape, `#${color.toString(16).padStart(6, '0')}`];
+    }));
+    expect(section('Towers').replace(/\s+/g, ' ')).toContain(
+      `${PATH_MARKS.centerX} map px right and ${-PATH_MARKS.centerY} px above its centre`,
+    );
+  });
+
   it('boons: id, offer wave and effect value', () => {
     const rows = table('Boons', 'Boon');
     expect(rows.map(([, id, wave, value]) => ({ id, wave: Number(wave), value: Number(value) }))).toEqual(Object.values(BOONS));
@@ -226,7 +248,7 @@ describe('docs/DESIGN.md matches the code', () => {
       });
       expect(parsed, `wave ${n}`).toEqual(wave.groups.map((g) => ({ type: g.type, count: g.count, interval: g.interval, delay: g.delay })));
       expect(Number(enemies)).toBe(wave.groups.reduce((a, g) => a + g.count, 0));
-      expect(Number(hp)).toBe(wave.groups.reduce((a, g) => a + g.count * ENEMY_STATS[g.type].hp, 0));
+      expect(Number(hp)).toBe(wave.groups.reduce((a, g) => a + g.count * enemyMaxHp(g.type, 'normal', campaignHpFactor(Number(n), 'normal')), 0));
       expect(Number(bounty)).toBe(wave.groups.reduce((a, g) => a + g.count * ENEMY_STATS[g.type].bounty, 0));
       expect(last).toBe(`${Number((lastSpawnTick(Number(n)) / 60).toFixed(3))} s`);
     }
@@ -249,14 +271,14 @@ describe('docs/DESIGN.md matches the code', () => {
   it('balance targets: every target label the suite asserts is in the spec, and no other', () => {
     const text = section('Balance targets') + section('Waves');
     const inDoc = new Set([...text.matchAll(/\*\*([A-Z]+\d+[a-z]?)\b/g)].map((m) => m[1]));
-    const separateChecks = ['N10c', 'N10d', 'U4', 'U6'];
+    const separateChecks = ['N10c', 'N10d', 'P1', 'P2', 'P3', 'P4'];
     expect([...inDoc].sort()).toEqual([...new Set([...TARGETS.map((t) => t.id), ...separateChecks])].sort());
   });
 
   it('the endless hp line and the prose numbers the tables do not hold: cooldowns, sell refunds and campaign enemy count', () => {
     const cycles = [1, 2, 3].map((c) => ENDLESS_HP_GROWTH ** c);
     const hpLine = (['goblin', 'troll', 'harpy'] as const)
-      .map((t) => `${t[0].toUpperCase()}${t.slice(1)} ${cycles.map((m) => DIFFICULTIES.map((d) => enemyMaxHp(t, d, m)).join('/')).join(', ')}`)
+      .map((t) => `${t[0].toUpperCase()}${t.slice(1)} ${cycles.map((m) => DIFFICULTIES.map((d) => enemyMaxHp(t, d, campaignHpFactor(LAST_WAVE, d) * m)).join('/')).join(', ')}`)
       .join('; ');
     expect(section('Endless mode').replace(/\s+/g, ' ')).toContain(`(Easy / Normal / Hard): ${hpLine}.`);
     expect(section('Endless mode')).toContain('(`ENDLESS_HP_GROWTH`)');
@@ -290,7 +312,7 @@ describe('docs/DESIGN.md matches the code', () => {
       expect(w.groups.slice(0, -1), n).toEqual(WAVES[Number(base) - 1].groups.filter((g) => !isBoss(g)));
       expect(Number(enemies)).toBe(w.groups.reduce((a, g) => a + g.count, 0));
       expect(Number(mult)).toBe(Math.round(w.hpMultiplier! * 100) / 100);
-      expect(Number(hp)).toBe(w.groups.reduce((a, g) => a + g.count * enemyMaxHp(g.type, 'normal', w.hpMultiplier), 0));
+      expect(Number(hp)).toBe(w.groups.reduce((a, g) => a + g.count * enemyMaxHp(g.type, 'normal', campaignHpFactor(LAST_WAVE, 'normal') * w.hpMultiplier!), 0));
       expect(Number(bounty)).toBe(w.groups.reduce((a, g) => a + g.count * ENEMY_STATS[g.type].bounty, 0));
       expect(last).toBe(`${Number((lastSpawnTick(Number(n)) / 60).toFixed(3))} s`);
     }

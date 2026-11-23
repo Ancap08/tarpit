@@ -242,14 +242,14 @@ describe('(g) the combo builds against him', () => {
     expect(replay.midpoint).toMatchObject({ phase: 'setup', wave: 10, lives, gold, pendingBoon: { wave: 10 } });
   });
 
-  it('Normal combo kills Grumblemaw at tick 5336, winning with 17 lives and 2451 gold', () => {
+  it('Normal combo kills Grumblemaw at tick 4853, winning with 10 lives and 280 gold', () => {
     expect(combo.boss.filter((e) => e.wave === 20)).toEqual([
-      { wave: 20, waveTick: 2892, kind: 'bossSpawn' },
-      { wave: 20, waveTick: 4335, kind: 'packCall', threshold: 2 },
-      { wave: 20, waveTick: 4753, kind: 'packCall', threshold: 1 },
-      { wave: 20, waveTick: 5336, kind: 'bossDown', cause: 'shot' },
+      { wave: 20, waveTick: 1170, kind: 'bossSpawn' },
+      { wave: 20, waveTick: 3231, kind: 'packCall', threshold: 2 },
+      { wave: 20, waveTick: 4095, kind: 'packCall', threshold: 1 },
+      { wave: 20, waveTick: 4853, kind: 'bossDown', cause: 'shot' },
     ]);
-    expect(combo.s).toMatchObject({ phase: 'won', wave: 20, lives: 17, gold: 2451 });
+    expect(combo.s).toMatchObject({ phase: 'won', wave: 20, lives: 10, gold: 280 });
   });
 });
 

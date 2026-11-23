@@ -65,8 +65,8 @@ describe('every archetype (Meadow, Normal)', () => {
 });
 
 describe('comboBuild on Meadow, Normal', () => {
-  it('buys 39 actions through both acts', () => {
-    expect(combo().flat()).toHaveLength(39);
+  it('buys 69 actions through both acts', () => {
+    expect(combo().flat()).toHaveLength(69);
   });
 
   it('fires the 60 specials the policy recorded, every one accepted', () => {
@@ -84,11 +84,11 @@ describe('comboBuild on Meadow, Normal', () => {
     const run = balanceRun('comboBuild', 'meadow', 'normal');
     expect(run.waves.map((w) => w.ticks)).toEqual([
       3105, 2081, 1674, 2462, 5368, 3077, 6375, 5397, 2622, 6216,
-      1795, 4190, 2350, 4320, 4242, 3678, 4660, 4536, 4931, 5337,
+      1795, 3740, 2319, 3980, 4648, 3026, 4454, 5673, 4071, 4854,
     ]);
     expect(run.waves.map((w) => w.peak)).toEqual([
       2, 9, 15, 14, 19, 18, 16, 26, 15, 15,
-      9, 12, 9, 13, 13, 4, 14, 23, 18, 11,
+      10, 14, 9, 20, 14, 6, 18, 40, 31, 9,
     ]);
   });
 });
@@ -198,7 +198,7 @@ describe('boss (milestone 23)', () => {
     expect(waves[9].spawns.boss).toBe(1);
     expect(waves[9].exits.boss).toBeUndefined();
     expect(waves[19].spawns.grumblemaw).toBe(1);
-    expect(waves[19].spawns.wolf).toBe(36);
+    expect(waves[19].spawns.wolf).toBe(24);
     expect(waves[19].exits.grumblemaw).toBeUndefined();
   });
 });
@@ -218,7 +218,7 @@ describe('verifier (milestone 28)', () => {
     const spawned = run.waves.reduce((n, w) => n + sum(w.spawns), 0);
     const exits = run.waves.reduce((n, w) => n + sum(w.exits), 0);
     const scheduled = WAVES.flatMap((wave) => wave.groups).reduce((n, group) => n + group.count, 0);
-    expect(scheduled).toBe(1209);
+    expect(scheduled).toBe(1191);
     expect(spawned).toBe(scheduled + 16);
     expect(run.kills + exits).toBe(spawned);
   });
@@ -226,12 +226,12 @@ describe('verifier (milestone 28)', () => {
   // N9 checks the comparison. Pin the campaign results and conservation
   // for each policy variant, including kills by the retained specials.
   it.each([
-    ['keg', 15, 1217],
-    ['tarBarrel', 12, 1219],
-    ['fireArrows', 13, 1215],
+    ['keg', 8, 1191],
+    ['tarBarrel', 17, 1200],
+    ['fireArrows', 6, 1189],
   ] as const)('without %s the combo wins with %i lives and %i kills', (type, lives, kills) => {
     const combo = balanceRun('comboBuild', 'meadow', 'normal');
-    expect([combo.phase, combo.lives, combo.kills]).toEqual(['won', 17, 1219]);
+    expect([combo.phase, combo.lives, combo.kills]).toEqual(['won', 10, 1193]);
     const without = comboWithoutSpecialRun(type);
     expect([without.phase, without.lives, without.kills]).toEqual(['won', lives, kills]);
     const spawned = without.waves.reduce((n, w) => n + sum(w.spawns), 0);
@@ -249,7 +249,7 @@ describe('verifier (milestone 28)', () => {
     expect(maps.map((m) => balanceRun('noAntiAir', m, 'normal').waves[3]).map((w) => [w.exits.harpy, w.spawns.harpy, w.lives])).toEqual([
       [7, 10, 11],
       [8, 10, 11],
-      [8, 10, 7],
+      [8, 10, 8],
     ]);
     expect(maps.map((m) => balanceRun('lazyBuild', m, 'hard').waves[0].lives)).toEqual([8, 6, 6]);
     expect(balanceRun('comboBuild', 'meadow', 'normal').waves[9].goldEntering).toBe(188);

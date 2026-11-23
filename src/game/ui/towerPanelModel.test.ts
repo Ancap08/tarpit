@@ -1,9 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { MAPS, MAP_IDS, TOWER_DEFS, TOWER_PATHS, buildableCells, cellFromKey, type TowerType } from '../../sim';
+import { MAPS, MAP_IDS, TOWER_DEFS, TOWER_PATHS, buildableCells, cellFromKey, type TowerLevelStats, type TowerType, type UpgradePath } from '../../sim';
 import { placeBeside } from '../input';
 import { LANDSCAPE, PORTRAIT } from '../layout';
-import { PANEL_TEXT, PATH_NAMES, towerPanelTitle } from '../names';
+import { PANEL_TEXT, PATH_NAMES, pathDescription, towerPanelTitle } from '../names';
 import { getPathChoices, towerPanelSize } from './towerPanelModel';
+
+const comparisonBands = {
+  more: [1, Infinity],
+  shorter: [0, 1],
+  much: [1.5, Infinity],
+  twice: [1.8, 2.2],
+  'almost twice': [1.6, 1.95],
+} as const;
+type ComparisonBand = keyof typeof comparisonBands;
+
+const descriptionStats = {
+  musketeer: { A: { range: 'more', damage: 'more' }, B: { fireRate: 'much' } },
+  cannon: { A: { splashRadius: 'much' }, B: { fireRate: 'twice' } },
+  tarpit: { A: { slow: 'more' }, B: { range: 'more' } },
+  longbow: { A: { damage: 'almost twice' }, B: { fireRate: 'almost twice' } },
+  mortar: { A: { damage: 'much' }, B: { splashRadius: 'twice' } },
+  firepot: { A: { burnDps: 'more', burnDuration: 'shorter' }, B: { burnDuration: 'twice' } },
+} satisfies Record<TowerType, Record<UpgradePath, Partial<Record<keyof TowerLevelStats, ComparisonBand>>>>;
 
 describe('tower upgrade choices', () => {
   it('offers both paths at level two and explains unaffordability for each', () => {
@@ -18,12 +36,36 @@ describe('tower upgrade choices', () => {
       for (const choice of choices) {
         expect(choice.price).toBe(price);
         expect(choice.disabledReason).toBeNull();
-        expect(choice.description).toMatch(/\d+%/);
+        expect(choice.description).not.toMatch(/[%\n]/);
         expect(towerPanelTitle(type, 3, choice.path)).toBe(`${choice.name} · Level 3`);
       }
       expect(getPathChoices(tower, price - 1).map(({ disabledReason }) => disabledReason))
         .toEqual([PANEL_TEXT.notEnoughGold, PANEL_TEXT.notEnoughGold]);
     }
+  });
+
+  it('describes real changes from level two and keeps comparisons within their stated bands', () => {
+    for (const type of Object.keys(descriptionStats) as TowerType[]) {
+      const before = TOWER_DEFS[type].upgraded;
+      for (const path of ['A', 'B'] as const) {
+        const after = TOWER_PATHS[type][path];
+        const description = pathDescription(type, path);
+        const comparisons = Object.entries(descriptionStats[type][path]) as [keyof TowerLevelStats, ComparisonBand][];
+        const claimedBand = description.match(/\balmost twice\b|\btwice\b|\bmuch\b/)?.[0] ?? 'more';
+        expect(comparisons.map(([, band]) => band)).toContain(claimedBand);
+        for (const [stat, band] of comparisons) {
+          const label = `${type} ${path}: ${description} (${stat})`;
+          const ratio = after[stat]! / before[stat]!;
+          const [min, max] = comparisonBands[band];
+          if (band === 'shorter') expect(after[stat]!, label).toBeLessThan(before[stat]!);
+          else expect(after[stat]!, label).toBeGreaterThan(before[stat]!);
+          expect(ratio, label).toBeGreaterThanOrEqual(min);
+          expect(ratio, label).toBeLessThanOrEqual(max);
+        }
+      }
+    }
+    // A crawl leaves the enemy moving at no more than a quarter of full speed.
+    expect(TOWER_PATHS.tarpit.A.slow).toBeGreaterThanOrEqual(0.75);
   });
 
   it('fits both paths and undo inside each map with touch targets at least 44 CSS pixels', () => {

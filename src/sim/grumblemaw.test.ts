@@ -1,22 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import { buildTower, useSpecial } from './actions';
-import { enemyMaxHp } from './difficulty';
+import { campaignHpFactor, enemyMaxHp } from './difficulty';
 import { cappedSlow, ENEMY_STATS, isBoss } from './enemies';
 import type { GameEvent } from './events';
 import { createGame, lastSpawnTick, spawnTick, startWave, tick, WAVE_CLEAR_BONUS } from './game';
 import { MAPS, pathLength } from './map';
 import type { GameState } from './types';
-import { WAVES } from './waves';
+import { LAST_WAVE, WAVES } from './waves';
 
 function arena(difficulty: GameState['difficulty'] = 'normal'): GameState {
   const state = createGame({ difficulty });
   state.wave = 19;
   startWave(state);
   state.spawnedPerGroup = WAVES[19].groups.map((group) => group.count);
+  const maxHp = enemyMaxHp('grumblemaw', difficulty, campaignHpFactor(LAST_WAVE, difficulty));
   state.enemies = [{
     id: 0,
     type: 'grumblemaw',
-    hp: enemyMaxHp('grumblemaw', difficulty),
+    hp: maxHp,
+    maxHp,
     distance: 80,
     slow: 0,
     slowTicksLeft: 0,
@@ -30,10 +32,10 @@ const packCalls = (state: GameState) => state.events.filter((event) => event.kin
 const wolfSpawns = (events: GameEvent[]) => events.filter((event): event is Extract<GameEvent, { kind: 'spawn' }> => event.kind === 'spawn' && event.enemyType === 'wolf');
 
 describe('Grumblemaw', () => {
-  it('is bigger than Grumblefoot and shares its 30% slow cap', () => {
+  it('is a boss with a 30% slow cap and an exit cost of 10 lives', () => {
     expect(isBoss({ type: 'grumblemaw' })).toBe(true);
     expect(cappedSlow({ type: 'grumblemaw' }, 0.5)).toBe(0.3);
-    expect(ENEMY_STATS.grumblemaw).toEqual({ hp: 5600, speed: 38, bounty: 300, flying: false, shield: false, livesCost: 6, slowCap: 0.3 });
+    expect(ENEMY_STATS.grumblemaw).toMatchObject({ hp: 5600, speed: 14, bounty: 75, flying: false, shield: false, livesCost: 10, slowCap: 0.3 });
   });
 
   it('spawns once as wave 20’s last enemy, 120 ticks after the last normal enemy', () => {
@@ -50,16 +52,17 @@ describe('Grumblemaw', () => {
     while (state.waveTick <= lastSpawnTick(20)) tick(state);
     const spawn = state.events.find((e): e is Extract<GameEvent, { kind: 'spawn' }> => e.kind === 'spawn' && e.enemyType === 'grumblemaw')!;
     expect(state.events.at(-1)).toEqual({ kind: 'bossSpawn', enemyId: spawn.enemyId, enemyType: 'grumblemaw' });
-    expect(state.enemies.at(-1)?.hp).toBe(5600);
+    const full = enemyMaxHp('grumblemaw', 'normal', campaignHpFactor(20, 'normal'));
+    expect(state.enemies.at(-1)).toMatchObject({ hp: full, maxHp: full });
   });
 
-  it.each([[7, 'won'], [6, 'lost']] as const)('an exit costs six lives with %i left, ending %s', (lives, phase) => {
+  it.each([[11, 'won'], [10, 'lost']] as const)('an exit costs ten lives with %i left, ending %s', (lives, phase) => {
     const state = arena();
     state.lives = lives;
     state.enemies[0].distance = pathLength(MAPS.meadow) - 0.1;
     const gold = state.gold;
     tick(state);
-    expect(state.lives).toBe(lives - 6);
+    expect(state.lives).toBe(lives - 10);
     expect(state.phase).toBe(phase);
     expect(state.events.slice(0, 2)).toEqual([
       { kind: 'exit', enemyId: 0 },
@@ -73,18 +76,18 @@ describe('Grumblemaw', () => {
     const state = arena('hard');
     const boss = state.enemies[0];
     const hardMaxHp = boss.hp;
-    expect(hardMaxHp).toBe(6720);
-    // A base Musketeer hits for 12. Its first shot lands exactly at two thirds.
+    // A base Musketeer hits for 12. Its first shot reaches the two-thirds threshold.
     buildTower(state, { col: 2, row: 5 }, 'musketeer');
     const tower = state.towers[0];
-    boss.hp = 2 * hardMaxHp / 3 + 12;
+    boss.hp = Math.floor(2 * hardMaxHp / 3) + 12;
     tick(state);
     expect(packCalls(state)).toEqual([{ kind: 'packCall', enemyId: 0, threshold: 2 }]);
     tower.cooldownTicks = 0;
     tick(state);
     expect(packCalls(state)).toEqual([]);
+    const wolfHp = enemyMaxHp('wolf', 'hard', campaignHpFactor(20, 'hard'));
     expect(state.enemies.filter((enemy) => enemy.type === 'wolf')).toEqual([
-      expect.objectContaining({ hp: 24 }),
+      expect.objectContaining({ hp: wolfHp, maxHp: wolfHp }),
     ]);
 
     boss.hp = hardMaxHp / 3 + 1;
@@ -128,7 +131,7 @@ describe('Grumblemaw', () => {
     }
     expect(state.events.slice(-2)).toEqual([{ kind: 'waveClear', wave: 20, bonus: 25 }, { kind: 'won' }]);
     expect(state.phase).toBe('won');
-    expect(state.gold).toBe(gold + 300 + 25 - (cause === 'shot' ? 50 : 0));
+    expect(state.gold).toBe(gold + 75 + 25 - (cause === 'shot' ? 50 : 0));
   });
 
   it('a lethal hit crossing the lower threshold leaves only the pack called earlier', () => {
@@ -145,6 +148,7 @@ describe('Grumblemaw', () => {
     expect(boss.hp).toBe(51);
     expect(packCalls(state)).toEqual([{ kind: 'packCall', enemyId: 0, threshold: 2 }]);
     expect(wolfSpawns(state.events)).toHaveLength(1);
+    state.enemies.find((enemy) => enemy.type === 'wolf')!.hp = 1;
     const beforeKill = state.events.length;
     expect(useSpecial(state, 'keg', { x: 80, y: 240 })).toMatchObject({ ok: true, hits: 2, kills: 2 });
     expect(state.events.slice(beforeKill).filter((e) => e.kind === 'packCall')).toEqual([]);
@@ -188,7 +192,7 @@ describe('Grumblemaw', () => {
       expect(new Set(wolfSpawns(events).map((e) => e.enemyId)).size).toBe(16);
       expect(events.filter((e) => e.kind === 'packCall')).toHaveLength(2);
       expect(events.at(-1)).toEqual({ kind: 'won' });
-      expect(state.gold).toBe(gold + 300 + 25);
+      expect(state.gold).toBe(gold + 75 + 25);
       expect(state.lives).toBe(4);
       return { state, events };
     }

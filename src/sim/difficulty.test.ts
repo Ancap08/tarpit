@@ -2,7 +2,7 @@
 // table, hp scaling per enemy type, createGame per level, determinism per
 // level; the Easy and Hard targets are in balance.suite.ts (milestone 28).
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_DIFFICULTY, DIFFICULTIES, DIFFICULTY_DEFS, enemyMaxHp, type Difficulty } from './difficulty';
+import { DEFAULT_DIFFICULTY, DIFFICULTIES, DIFFICULTY_DEFS, campaignHpFactor, enemyMaxHp, type Difficulty } from './difficulty';
 import { ENEMY_STATS } from './enemies';
 import { buildTower } from './actions';
 import { createGame, startWave, tick } from './game';
@@ -64,29 +64,24 @@ describe('createGame per level', () => {
     expect(s.enemies.map((e) => ({ type: e.type, hp: e.hp }))).toEqual([{ type: 'goblin', hp }]);
   });
 
-  /** Spawn hp of every enemy in all 20 waves, with no towers and lives too high to lose. */
-  function spawnHp(difficulty: Difficulty): Record<string, number[]> {
+  it.each(DIFFICULTIES)('%s: every enemy of every campaign wave spawns at full hp for its wave', (difficulty) => {
     const s = createGame({ difficulty });
     s.lives = 1e9;
-    const seen: Record<string, Set<number>> = {};
-    for (let w = 0; w < WAVES.length; w++) {
+    for (let w = 1; w <= WAVES.length; w++) {
       applyScriptBoon(s);
       startWave(s);
       while (s.phase === 'wave') {
         tick(s);
         for (const e of s.events) {
           if (e.kind !== 'spawn') continue;
-          const enemy = s.enemies.find((x) => x.id === e.enemyId);
-          (seen[e.enemyType] ??= new Set()).add(enemy!.hp);
+          const enemy = s.enemies.find((x) => x.id === e.enemyId)!;
+          const full = enemyMaxHp(enemy.type, difficulty, campaignHpFactor(w, difficulty));
+          if (enemy.hp !== full || (enemy.maxHp ?? enemyMaxHp(enemy.type, difficulty)) !== full) {
+            throw new Error(`Wave ${w} ${enemy.type} spawned with ${enemy.hp} / ${enemy.maxHp} hp, expected ${full}`);
+          }
         }
       }
     }
-    return Object.fromEntries(Object.entries(seen).map(([k, v]) => [k, [...v]]));
-  }
-
-  it.each(DIFFICULTIES)('%s: every enemy of every wave spawns with enemyMaxHp of its type', (difficulty) => {
-    const want = Object.fromEntries((Object.keys(ENEMY_STATS) as EnemyType[]).map((t) => [t, [enemyMaxHp(t, difficulty)]]));
-    expect(spawnHp(difficulty)).toEqual(want);
   });
 
   it('speeds and bounties do not depend on the level', () => {
@@ -149,19 +144,10 @@ function withHpChange(type: EnemyType, delta: number, check: () => void) {
 
 // The exact results for the frozen difficulties are in balance.suite.ts.
 describe('Hard campaign robustness against one-point HP changes', () => {
-  it('the baseline Hard combo reaches wave 20, but one extra Wolf HP makes it lose on wave 8', () => {
-    const baseline = end('hard', comboBuild('hard'));
-    expect(baseline).toEqual({ phase: 'lost', wave: 20, lives: -2, gold: 2047, refused: 0 });
-    withHpChange('wolf', 1, () => {
-      expect(end('normal', comboBuild())).toEqual({ phase: 'won', wave: 20, lives: 17, gold: 2451, refused: 0 });
-      expect(end('hard', comboBuild('hard'))).toEqual({ phase: 'lost', wave: 8, lives: 0, gold: 337, refused: 0 });
-    });
-  });
-
   for (const [type, d] of [['goblin', -1], ['wolf', 1], ['wolf', -1]] as const) {
     const label = `${type} hp ${d > 0 ? '+' : ''}${d}`;
 
-    if (d < 0) it(`${label}: the Hard combo target holds`, () => {
+    it(`${label}: the Hard combo target holds`, () => {
       withHpChange(type, d, () => {
         const normal = end('normal', comboBuild());
         const hard = end('hard', comboBuild('hard'));

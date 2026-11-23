@@ -1,122 +1,165 @@
-import { boonOptions, type BoonId } from './boons';
 import { cellKey } from './grid';
-import { compareTowerPlan, type BoonChoices, type ChoiceBuild, type RecordedOutcome, type WaveScript } from './headless';
-import type { MapId } from './map';
+import { compareTowerPaths, compareTowerPlan, type ChoiceBuild, type RecordedOutcome, type WaveScript } from './headless';
+import { MAP_IDS, type MapId } from './map';
 import { TOWER_DEFS, TOWER_PATHS } from './towers';
-import type { TargetingMode, TowerType, UpgradePath } from './types';
+import type { TowerType, UpgradePath } from './types';
 import { ACT_ONE_LAST_WAVE } from './waves';
 
 type Choice = UpgradePath | 'copy';
+const SPECIALIST: Readonly<Record<TowerType, ChoiceBuild>> = {
+  musketeer: 'musketBuild',
+  cannon: 'artilleryBuild',
+  tarpit: 'burnBuild',
+  longbow: 'hardBuild',
+  mortar: 'artilleryBuild',
+  firepot: 'burnBuild',
+};
+const TYPES = Object.keys(SPECIALIST) as TowerType[];
+const COPY_SUPPORT: Partial<Record<TowerType, Partial<Record<MapId, number>>>> = {
+  musketeer: { riverbend: 6 },
+  firepot: { meadow: 8 },
+  tarpit: { meadow: 7 },
+  mortar: { meadow: 1 },
+};
 
 export interface PathScenario {
+  tower: TowerType;
   build: ChoiceBuild;
   map: MapId;
-  difficulty: 'normal' | 'hard';
-  tower: TowerType;
-  /** Set the focal towers to this mode and specialize them before other act-two buys. */
-  targeting?: TargetingMode;
-  useSpecials?: false;
-  rewards?: readonly [BoonId, BoonId, BoonId];
+  /** Identical level-two reinforcements paid for after the focal purchases in P4. */
+  support?: number;
 }
 
-export interface PathWitness extends PathScenario {
-  winner: Choice;
-  other: Choice;
-  /** Only for a copy comparison where neither option has a strict edge. */
-  tie?: true;
-}
+export const PATH_SCENARIOS: readonly PathScenario[] = TYPES.flatMap((tower) =>
+  MAP_IDS.flatMap((map) =>
+    (['comboBuild', SPECIALIST[tower]] as const).map((build) => ({
+      tower, build, map,
+      // Shared reinforcements extend these fixed plans into the late act-two fights.
+      support: build === 'comboBuild' ? COPY_SUPPORT[tower]?.[map] : undefined,
+    })),
+  ),
+);
 
-const defaultRewards = [boonOptions(5)[0], boonOptions(10)[0], boonOptions(15)[0]] as const;
-
-function play(scenario: PathScenario, choice: Choice) {
-  const { build, map, difficulty, tower, rewards = defaultRewards } = scenario;
-  const boons: BoonChoices = { 5: rewards[0], 10: rewards[1], 15: rewards[2] };
+function play({ build, map, tower, support }: PathScenario, choice: Choice, adaptive = false) {
   let outcome: RecordedOutcome | undefined;
-  const script = compareTowerPlan(build, map, difficulty, tower, choice, (value) => { outcome = value; }, boons, scenario.targeting, scenario.useSpecials);
-  if (!outcome) throw new Error(`No outcome for ${build}/${map}/${difficulty}/${tower}/${choice}`);
+  const report = (value: RecordedOutcome) => { outcome = value; };
+  const script = adaptive && choice !== 'copy' ? compareTowerPaths(build, map, tower, choice, report)
+    : compareTowerPlan(build, map, tower, choice, report, support);
+  if (!outcome) throw new Error(`No outcome for ${build}/${map}/${tower}/${choice}`);
   return { outcome, script };
 }
 
-function buildCells(script: WaveScript, tower: TowerType): Set<number> {
-  return new Set(script.flatMap((actions) =>
-    actions.flatMap((action) => action.type === 'build' && action.tower === tower ? [cellKey(action.cell)] : []),
-  ));
+function focalCells(script: WaveScript, tower: TowerType): Set<number> {
+  return new Set(script.flatMap((wave) => wave.flatMap((action) =>
+    action.type === 'build' && action.tower === tower ? [cellKey(action.cell)] : [],
+  )));
 }
 
-function purchases(script: WaveScript, ownCells: Set<number>, choice: Choice, peer: Set<number>): number {
-  const eligible = new Set(ownCells);
-  // A copy is an extra tower with its level-two upgrade completed in act two.
-  for (const key of choice === 'copy' ? peer : []) eligible.delete(key);
-  const path = choice === 'copy' ? undefined : choice;
-  return new Set(script.slice(ACT_ONE_LAST_WAVE).flatMap((actions) => actions.flatMap((action) =>
-    action.type === 'upgrade' && action.path === path && eligible.has(cellKey(action.cell)) ? [cellKey(action.cell)] : [],
-  ))).size;
+function summarizePurchases(script: WaveScript, cells: Set<number>, tower: TowerType, choice: Choice) {
+  const copies = new Map<number, number>();
+  const purchased = new Set<number>();
+  const common = [];
+  let gold = 0;
+  for (const [wave, actions] of script.entries()) {
+    for (const action of actions) {
+      const cell = cellKey(action.cell);
+      if (choice === 'copy' && action.type === 'build' && action.tower === tower && !cells.has(cell)) {
+        if (wave >= ACT_ONE_LAST_WAVE) {
+          copies.set(cell, wave);
+          gold += TOWER_DEFS[tower].cost;
+          continue;
+        }
+      }
+      if (wave >= ACT_ONE_LAST_WAVE && action.type === 'upgrade') {
+        if (choice === 'copy' && !action.path && copies.get(cell) === wave) {
+          purchased.add(cell);
+          gold += TOWER_DEFS[tower].upgradeCost;
+          continue;
+        }
+        if (choice !== 'copy' && action.path === choice && cells.has(cell)) {
+          purchased.add(cell);
+          gold += TOWER_PATHS[tower].cost;
+          continue;
+        }
+      }
+      common.push(action);
+    }
+  }
+  return {
+    gold,
+    count: purchased.size,
+    complete: purchased.size > 0 && purchased.size === cells.size && (choice !== 'copy' || copies.size === purchased.size),
+    common: JSON.stringify(common),
+  };
 }
 
-/** Compare the agreed campaign scores. Purchased paths use the same price as each other and as one level-2 copy. */
-export function measurePathWitness(witness: PathWitness) {
-  const a = play(witness, witness.winner);
-  const b = play(witness, witness.other);
-  const { tower } = witness;
-  const aCells = buildCells(a.script, tower);
-  const bCells = buildCells(b.script, tower);
-  const winnerCount = purchases(a.script, aCells, witness.winner, bCells);
-  const otherCount = purchases(b.script, bCells, witness.other, aCells);
-  const winnerBuilt = aCells.size;
-  const otherBuilt = bCells.size;
-  const allBranched = (witness.winner === 'copy' || winnerCount === winnerBuilt)
-    && (witness.other === 'copy' || otherCount === otherBuilt);
-  const winner = a.outcome;
-  const other = b.outcome;
-  const completed = (outcome: RecordedOutcome) => outcome.phase === 'won' || outcome.phase === 'lost';
-  const valid = completed(winner) && completed(other) && allBranched && winnerCount > 0 && winnerCount === otherCount
-    && (witness.winner !== 'copy' && witness.other !== 'copy'
-      || TOWER_PATHS[tower].cost === TOWER_DEFS[tower].cost + TOWER_DEFS[tower].upgradeCost);
-  const delta = winner.lives - other.lives || winner.kills - other.kills;
-  return { valid, delta, winner, other, winnerCount, otherCount, winnerBuilt, otherBuilt };
+/** Normal campaign, default rewards and specials. Common purchases and actual choice spending must match. */
+export function measurePathScenario(scenario: PathScenario) {
+  const { tower } = scenario;
+  const a = play(scenario, 'A', true);
+  const b = play(scenario, 'B', true);
+  const matchedA = play(scenario, 'A');
+  const matchedB = play(scenario, 'B');
+  const copy = play(scenario, 'copy');
+  const cells = focalCells(matchedA.script, tower);
+  const aBudget = summarizePurchases(matchedA.script, cells, tower, 'A');
+  const bBudget = summarizePurchases(matchedB.script, cells, tower, 'B');
+  const copyBudget = summarizePurchases(copy.script, cells, tower, 'copy');
+  const finished = ({ outcome }: typeof a) => outcome.phase === 'won' || outcome.phase === 'lost';
+  const equal = (other: typeof aBudget) =>
+    other.complete && other.gold === aBudget.gold && other.count === aBudget.count && other.common === aBudget.common;
+  const samePaths = aBudget.complete && equal(bBudget);
+  const sameCopy = samePaths && equal(copyBudget);
+  const lives = ({ outcome }: typeof a) => Math.max(0, outcome.lives);
+  const purchasedPaths = ({ script }: typeof a) => {
+    const focal = focalCells(script, tower);
+    return script.flatMap((wave) => wave.flatMap((action) =>
+      action.type === 'upgrade' && action.path && focal.has(cellKey(action.cell)) ? [action.path] : [],
+    ));
+  };
+  const aPaths = purchasedPaths(a);
+  const bPaths = purchasedPaths(b);
+  const pathValid = [a, b].every(finished) && aPaths.length > 0 && bPaths.length > 0
+    && aPaths.every((path) => path === 'A') && bPaths.every((path) => path === 'B');
+  const copyValid = [matchedA, matchedB, copy].every(finished) && sameCopy;
+  return {
+    ...scenario,
+    pathValid,
+    copyValid,
+    branches: [aPaths.length, bPaths.length],
+    count: aBudget.count,
+    gold: aBudget.gold,
+    budgets: [aBudget.gold, bBudget.gold, copyBudget.gold],
+    a: a.outcome,
+    b: b.outcome,
+    matchedA: matchedA.outcome,
+    matchedB: matchedB.outcome,
+    copy: copy.outcome,
+    aMinusB: lives(a) - lives(b),
+    aMinusCopy: lives(matchedA) - lives(copy),
+    bMinusCopy: lives(matchedB) - lives(copy),
+  };
 }
 
-/** Same-budget evidence for every tower. Exact ties are counted as neither a win nor a loss. */
-export const COPY_WITNESSES: readonly PathWitness[] = [
-  { tower: 'musketeer', build: 'musketBuild', map: 'meadow', difficulty: 'normal', winner: 'A', other: 'copy', tie: true },
-  { tower: 'cannon', build: 'artilleryBuild', map: 'meadow', difficulty: 'hard', winner: 'A', other: 'copy', tie: true },
-  { tower: 'cannon', build: 'artilleryBuild', map: 'riverbend', difficulty: 'normal', winner: 'B', other: 'copy',
-    rewards: ['warChest', 'hotCoals', 'biggerBlasts'] },
-  { tower: 'tarpit', build: 'burnBuild', map: 'riverbend', difficulty: 'normal', winner: 'A', other: 'copy', tie: true },
-  { tower: 'longbow', build: 'artilleryBuild', map: 'meadow', difficulty: 'normal', winner: 'A', other: 'copy', tie: true },
-  { tower: 'mortar', build: 'artilleryBuild', map: 'riverbend', difficulty: 'hard', winner: 'A', other: 'copy',
-    rewards: ['warChest', 'hotCoals', 'biggerBlasts'], tie: true },
-  { tower: 'firepot', build: 'burnBuild', map: 'meadow', difficulty: 'normal', winner: 'A', other: 'copy', tie: true },
-  { tower: 'musketeer', build: 'musketBuild', map: 'riverbend', difficulty: 'hard', winner: 'copy', other: 'A',
-    rewards: ['warChest', 'stickyTar', 'veteranCrews'] },
-  { tower: 'tarpit', build: 'burnBuild', map: 'riverbend', difficulty: 'normal', winner: 'copy', other: 'B' },
-  { tower: 'mortar', build: 'burnBuild', map: 'meadow', difficulty: 'normal', winner: 'B', other: 'copy', useSpecials: false },
-  { tower: 'mortar', build: 'burnBuild', map: 'meadow', difficulty: 'normal', winner: 'copy', other: 'A', useSpecials: false },
-  { tower: 'firepot', build: 'burnBuild', map: 'meadow', difficulty: 'hard', winner: 'A', other: 'copy',
-    rewards: ['longBarrels', 'hotCoals', 'stoneWalls'] },
-];
+export type PathRow = ReturnType<typeof measurePathScenario>;
 
-/** Frozen scenarios with an actual act-two purchase and a strict campaign result. */
-export const PATH_WITNESSES: readonly PathWitness[] = [
-  { tower: 'musketeer', build: 'comboBuild', map: 'meadow', difficulty: 'normal', winner: 'A', other: 'B',
-    rewards: ['warChest', 'quickHands', 'stoneWalls'], targeting: 'last' },
-  { tower: 'musketeer', build: 'musketBuild', map: 'riverbend', difficulty: 'hard', winner: 'B', other: 'A',
-    rewards: ['warChest', 'stickyTar', 'veteranCrews'] },
-  { tower: 'cannon', build: 'comboBuild', map: 'riverbend', difficulty: 'normal', winner: 'A', other: 'B',
-    rewards: ['keenArrows', 'stickyTar', 'stoneWalls'], targeting: 'last' },
-  { tower: 'cannon', build: 'artilleryBuild', map: 'meadow', difficulty: 'hard', winner: 'B', other: 'A',
-    rewards: ['keenArrows', 'stickyTar', 'veteranCrews'], targeting: 'strongest' },
-  { tower: 'tarpit', build: 'burnBuild', map: 'riverbend', difficulty: 'normal', winner: 'A', other: 'B' },
-  { tower: 'tarpit', build: 'burnBuild', map: 'switchback', difficulty: 'hard', winner: 'B', other: 'A',
-    rewards: ['warChest', 'quickHands', 'stoneWalls'], targeting: 'last' },
-  { tower: 'longbow', build: 'artilleryBuild', map: 'switchback', difficulty: 'normal', winner: 'A', other: 'B',
-    rewards: ['keenArrows', 'stickyTar', 'veteranCrews'], targeting: 'strongest' },
-  { tower: 'longbow', build: 'artilleryBuild', map: 'switchback', difficulty: 'hard', winner: 'B', other: 'A',
-    rewards: ['keenArrows', 'stickyTar', 'veteranCrews'], targeting: 'strongest' },
-  { tower: 'mortar', build: 'artilleryBuild', map: 'meadow', difficulty: 'hard', winner: 'A', other: 'B' },
-  { tower: 'mortar', build: 'burnBuild', map: 'meadow', difficulty: 'normal', winner: 'B', other: 'A', useSpecials: false },
-  { tower: 'firepot', build: 'burnBuild', map: 'meadow', difficulty: 'hard', winner: 'A', other: 'B',
-    rewards: ['longBarrels', 'hotCoals', 'stoneWalls'] },
-  { tower: 'firepot', build: 'burnBuild', map: 'switchback', difficulty: 'hard', winner: 'B', other: 'A',
-    targeting: 'last', useSpecials: false },
-];
+export function summarizePathBalance(rows: readonly PathRow[]) {
+  return TYPES.map((tower) => {
+    const cases = rows.filter((row) => row.tower === tower);
+    const ab = cases.map((row) => row.aMinusB);
+    const ac = cases.map((row) => row.aMinusCopy);
+    const bc = cases.map((row) => row.bMinusCopy);
+    const p1 = {
+      a: cases.some((row) => row.pathValid && row.aMinusB >= 2),
+      b: cases.some((row) => row.pathValid && row.aMinusB <= -2),
+    };
+    const p2 = cases.every((row) => row.pathValid && Math.abs(row.aMinusB) <= 6);
+    const p4 = {
+      aWin: cases.some((row) => row.copyValid && row.aMinusCopy >= 1),
+      aCopy: cases.some((row) => row.copyValid && row.aMinusCopy <= 0),
+      bWin: cases.some((row) => row.copyValid && row.bMinusCopy >= 1),
+      bCopy: cases.some((row) => row.copyValid && row.bMinusCopy <= 0),
+    };
+    return { tower, ab, ac, bc, p1, p2, p4 };
+  });
+}

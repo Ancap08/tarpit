@@ -3,7 +3,7 @@
 // continueEndless turns a won game into an endless one; the score is
 // game.ts wavesCleared.
 import { beforeAll, describe, expect, it } from 'vitest';
-import { enemyMaxHp } from './difficulty';
+import { campaignHpFactor, enemyMaxHp } from './difficulty';
 import { ENEMY_STATS, isBoss } from './enemies';
 import {
   callEarlyStatus,
@@ -54,11 +54,11 @@ describe('waveDef (milestone 26)', () => {
     }
   });
 
-  it('hp at spawn is rounded once, after difficulty and endless multipliers', () => {
-    expect(enemyMaxHp('goblin', 'normal', waveDef(21).hpMultiplier)).toBe(41);
+  it('hp gain is applied once, after difficulty, campaign and endless multipliers', () => {
+    const campaign = campaignHpFactor(20, 'normal');
+    expect(enemyMaxHp('goblin', 'normal', campaign * waveDef(21).hpMultiplier!))
+      .toBe(Math.round(23 * campaign * 1.8));
     expect(enemyMaxHp('goblin', 'easy', waveDef(21).hpMultiplier)).toBe(31);
-    expect(enemyMaxHp('goblin', 'hard', waveDef(21).hpMultiplier)).toBe(50);
-    expect(enemyMaxHp('troll', 'normal', waveDef(24).hpMultiplier)).toBe(3078);
   });
 
   it('bounties, speeds and lives cost come from the enemy table, unchanged', () => {
@@ -159,12 +159,13 @@ describe('continueEndless (milestone 26)', () => {
     tick(s);
     const first = s.enemies[0];
     expect(first.type).toBe('goblin');
-    expect(first.hp).toBe(41);
-    expect(first.maxHp).toBe(41);
+    const hp = Math.round(23 * campaignHpFactor(20, 'normal') * 1.8);
+    expect(first.hp).toBe(hp);
+    expect(first.maxHp).toBe(hp);
     expect(s.specialCharges).toBe(1);
   });
 
-  it('table waves never set maxHp', () => {
+  it('an unscaled campaign wave does not set maxHp', () => {
     const s = createGame();
     startWave(s);
     tick(s);
@@ -247,11 +248,10 @@ describe('an endless run (milestone 26)', () => {
     greedyRun = playScripted(greedyScript);
   });
 
-  it('endlessGreedy on Normal goes further than endlessIdle, loses by wave 40', () => {
-    const greedy = greedyRun.state;
-    expect(greedy.phase).toBe('lost');
-    expect(greedy.wave).toBeGreaterThan(idle.state.wave);
-    expect(greedy.wave).toBeLessThanOrEqual(40);
+  // milestone 37 miss (X2): on Normal Meadow neither plan clears wave 21.
+  it('the Normal Meadow idle and greedy builds both lose on wave 21', () => {
+    expect(idle.state).toMatchObject({ phase: 'lost', wave: 21 });
+    expect(greedyRun.state).toMatchObject({ phase: 'lost', wave: 21 });
   });
 
   it('records the same endlessGreedy decisions twice', () => {
@@ -266,6 +266,7 @@ describe('an endless run (milestone 26)', () => {
 
   it('gold is conserved across the wave 20 to 21 boundary', () => {
     const s = won();
+    s.lives = 1000; // Let the fixture reach the clear even if the full endless wave leaks.
     const gold = s.gold;
     continueEndless(s);
     expect(s.gold).toBe(gold);

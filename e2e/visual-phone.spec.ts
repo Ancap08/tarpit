@@ -252,7 +252,7 @@ test('portrait Grumblemaw keeps his bar and effects on wave 20', async ({ page }
   await open(page);
   expect(await finalBossFrame(page)).toMatchObject({
     wave: 20,
-    bar: `${GRUMBLEMAW_NAME} 4066 / 5600`,
+    bar: `${GRUMBLEMAW_NAME} 14380 / 19010`,
     texture: 'boss',
     slowed: true,
     burning: true,

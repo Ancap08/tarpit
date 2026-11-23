@@ -5,9 +5,9 @@ import type { TarpitTestApi } from '../src/game/testGlobal';
 export const GRUMBLEFOOT_STEPS = 5316;
 /** The first lone, burning and slowed Grumblemaw with a Mortar hit two ticks
  * earlier and no hit on the frame, playing wave 20 without timed specials. */
-const GRUMBLEMAW_STEPS = 4245;
-export const FIRST_PACK_STEPS = 4366;
-export const FIRST_PACK_FRAME = 4406;
+const GRUMBLEMAW_STEPS = 3006;
+export const FIRST_PACK_STEPS = 3256;
+export const FIRST_PACK_FRAME = 3296;
 
 /** Play the normal script up to this wave, then step it by hand. Omit steps to reach its reward. */
 export async function beginVisualWave(page: Page, wave: number, steps?: number) {

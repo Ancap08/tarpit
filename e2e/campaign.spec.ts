@@ -60,7 +60,7 @@ test('only three cards per offer, modal inputs, held tooltip and Long Barrels ra
   await expectOffer(page, 15);
   const lives = await api(page, (t) => t.state().lives);
   await press(page, 'reward:stoneWalls');
-  expect(await api(page, (t) => t.state())).toMatchObject({ lives: lives + 3, boons: ['longBarrels', 'hotCoals', 'stoneWalls'] });
+  expect(await api(page, (t) => t.state())).toMatchObject({ lives: lives + 4, boons: ['longBarrels', 'hotCoals', 'stoneWalls'] });
 });
 
 test('an act-two loss shows the campaign total and Menu clears the run', async ({ page }) => {

@@ -8200,3 +8200,120 @@ nothing). All pass.
 - The `designSpec` guard catches an edit to any path row, price, the boss row and
   the refund line. The panel and mark prose and the U-target wording are not
   guarded.
+
+### Follow-up
+
+The default Normal plan now needs the second act. Freezing its purchases loses every map, and all six towers have a two-way choice on Normal. V6 misses on two maps. All 81 reward combinations win, but a single reward can still be worth eleven lives. The reward search measured 1,728 games and scored 3,072 combinations of values. Raising Stone Walls to five improved one reward profile but put Mortar beyond the six-life path limit.
+
+All campaign comparisons below use default rewards and specials unless a row specifies otherwise. W is remaining lives. L is the wave of defeat. Time is simulation time at 1× from first spawn to victory, including wave transitions and excluding time the player spends in setup.
+
+| Campaign target | Meadow | Switchback | Riverbend |
+|---|---|---|---|
+| V1 · win / act-2 lives lost | Met · W 10, 8 lives lost in act 2 | Met · W 13, 5 lives lost in act 2 | Met · W 13, 6 lives lost in act 2 |
+| V2 · spending / fixed only | Met · reinvest W 10, fixed L 19 | Met · reinvest W 13, fixed L 18 | Met · reinvest W 13, fixed L 19 |
+| V3 · wide / combo | Met · wide W 7, combo W 10 | Met · wide W 17, combo W 13 | Met · wide W 11, combo W 13 |
+| V4 · Hard plan / lazy Easy, Normal, Hard | Met · hardBuild W 4, lazy E/N/H W 33/L 8/L 2 | Met · hardBuild W 17, lazy E/N/H W 37/L 8/L 2 | Met · hardBuild W 5, lazy E/N/H W 31/L 8/L 2 |
+| V5 · Grumblemaw, Normal / Hard | Met · Normal kill, Hard kill | Met · Normal kill, Hard kill | Met · Normal kill, Hard kill |
+| V6 · 27 choices and maximum spread at offers 5/10/15 | Met · 27/27 wins, largest spreads by offer 4/4/5 | Miss · 27/27 wins, largest spreads by offer 11/9/9 | Miss · 27/27 wins, largest spreads by offer 7/8/5 |
+| V7 · Meadow timing and wave shape | Met · 1,282.3 s (21:22.3) | — | — |
+
+R1 meets the three-second six-walker/four-flyer cap and the 90-second last-spawn limit on all twenty waves. R2 schedules 667 enemies in act 2 against 524 in act 1 (1.27×). Act 1 takes 639.6 s and peaks at 26 enemies. Act 2 takes 642.7 s, peaks at exactly 40 and has a longest wave of 94.5 s. Meadow loses these lives in waves 1 through 20, counting the Stone Walls grant separately: **0, 0, 0, 1, 2, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0**. All eight late losses occur on wave 18. The wave-20 boss spawns at tick 1,170, calls packs at 3,231 and 4,095, and dies at 4,853.
+
+**Reference-build ending gold on Normal.** These are actual balances including income from the last fight. The last shopping phase is before the last fight.
+
+| Build | Meadow | Switchback | Riverbend |
+|---|---:|---:|---:|
+| comboBuild | W 10, 280 gold | W 13, 259 gold | W 13, 269 gold |
+| wideBuild | W 7, 256 gold | W 17, 261 gold | W 11, 293 gold |
+| hardBuild | W 18, 249 gold | W 24, 247 gold | W 19, 247 gold |
+| artilleryBuild | W 15, 245 gold | W 24, 317 gold | W 6, 288 gold |
+| burnBuild | W 5, 275 gold | W 18, 309 gold | W 1, 293 gold |
+| musketBuild | L 19, 311 gold | W 16, 253 gold | W 9, 282 gold |
+
+Every setup in act 2 resumes the fixed queue, then buys the cheapest affordable second upgrade on an owned level-2 tower, breaking ties in cell order. The reinvestment path is A for every type. Otherwise upgrade a base tower of the main type, or buy that type on the next free trail cell. Repeat while affordable. Wide skips second upgrades and substitutes an equal-price level-2 copy for every fixed branch. On Meadow and Switchback the combo and wide buy Longbows. On Riverbend they buy Tar Pits and Cannons respectively. Hard buys Longbows. Artillery, burn and musket buy Mortars, Fire Pots and Musketeers respectively. The fixed-only control has the same initial and act-two queue. The lazy build continues placing base Musketeers after exhausting its second trail pass.
+
+**Level-3 rows, prices and panel.** Range, minimum range and splash are pixels. Rate is shots per second. Ordinary slow and burn durations are seconds. Both paths cost exactly one new level-2 copy of that type.
+
+| Tower / path | Gold | Range / min | Damage | Rate | Splash | Slow or burn | Panel |
+|---|---:|---:|---:|---:|---:|---|---|
+| Musketeer A · Sharpshooter | 85 | 200 / 0 | 45 | 1 | 0 | — | Farther, harder shots |
+| Musketeer B · Volley | 85 | 125 / 0 | 22 | 2.8 | 0 | — | Fires much faster |
+| Cannon A · Heavy Shot | 140 | 105 / 0 | 40 | 0.5 | 105 | — | A much bigger blast |
+| Cannon B · Quick Loader | 140 | 105 / 0 | 40 | 1 | 55 | — | Fires twice as fast |
+| Tar Pit A · Deep Tar | 110 | 105 / 0 | 3 | 2 | 0 | 78% slow, 2 s | Slows enemies to a crawl |
+| Tar Pit B · Wide Tar | 110 | 145 / 0 | 3 | 2 | 0 | 64% slow, 2 s | Slows from farther away |
+| Longbow A · War Bow | 70 | 170 / 0 | 16 | 2.5 | 0 | — | Hits almost twice as hard |
+| Longbow B · Quick Draw | 70 | 170 / 0 | 9 | 4.5 | 0 | — | Fires almost twice as fast |
+| Mortar A · Siege Shell | 190 | 220 / 70 | 140 | ⅓ | 70 | — | Hits much harder |
+| Mortar B · Wide Burst | 190 | 220 / 70 | 80 | ⅓ | 150 | — | Blast reaches twice as far |
+| Fire Pot A · Inferno | 120 | 104 / 0 | 4 | 1 | 0 | 17/s, 1 s | Hotter, shorter burns |
+| Fire Pot B · Lasting Flames | 120 | 100 / 0 | 4 | 1 | 0 | 8/s, 8 s | Burns twice as long |
+
+**Normal path and copy comparisons.** The left pair is A/B in an adaptive campaign. The right triple is A/B/level-2 copy in the matched-spending control. Each control pays for every focal purchase and makes identical nonfocal purchases; a copy and its first upgrade are bought together. A defeat counts as zero surviving lives for the comparison. Both arms can lose on different waves. The simulator prints their wave of defeat.
+
+| Tower and build | Meadow · A/B · matched A/B/copy | Switchback | Riverbend |
+|---|---|---|---|
+| Musketeer · comboBuild | W10/W9 · L19/L19/L19 | W13/W13 · L18/L18/L19 | W13/W13 · W4/W2/W3 |
+| Musketeer · musketBuild | L19/W5 · L18/L18/L18 | W16/W22 · L19/L19/L19 | W9/W7 · L18/L18/L18 |
+| Cannon · comboBuild | W12/W10 · L19/L19/L19 | W13/W11 · L18/L18/L18 | W13/W13 · L19/L19/L19 |
+| Cannon · artilleryBuild | W15/W20 · L20/W1/L19 | W24/W24 · W23/W24/W17 | W6/W10 · L18/L18/L18 |
+| Tar Pit · comboBuild | W10/W11 · W7/L19/L19 | W17/W13 · L18/L18/L19 | W13/W10 · L19/L19/L19 |
+| Tar Pit · burnBuild | W5/L19 · L19/L19/L19 | W18/W22 · W4/W5/W8 | W1/L19 · L18/L18/L19 |
+| Longbow · comboBuild | W10/W12 · L19/L19/W1 | W13/W11 · L19/L19/L19 | W13/W13 · L19/L19/L19 |
+| Longbow · hardBuild | W18/W16 · W11/W11/W10 | W24/W24 · W12/W13/W12 | W19/W16 · W6/W8/W7 |
+| Mortar · comboBuild | W10/W11 · W10/W10/W9 | W13/W18 · L18/L19/L18 | W13/W13 · L19/L20/L19 |
+| Mortar · artilleryBuild | W15/W15 · W19/W18/W20 | W24/W24 · W24/W24/W24 | W6/L20 · W13/W7/W13 |
+| Fire Pot · comboBuild | W10/W10 · W1/W3/L19 | W13/W13 · L18/L18/L18 | W15/W15 · L19/L19/L19 |
+| Fire Pot · burnBuild | W5/L19 · L18/L18/L19 | W18/W19 · L19/L19/L19 | W1/W4 · L18/L18/L18 |
+
+The matched control keeps support spending fixed to avoid charging only one arm for additional towers. Shared level-2 Longbows after the focal package are six for the Riverbend combo Musketeer comparison and one, seven and eight for the Meadow combo Mortar, Tar Pit and Fire Pot comparisons respectively. Other controls stop after their matched packages. Some controls die holding gold; their purpose is to isolate the purchase.
+
+| Tower | P1 · greatest lead for A / B (lives) | P2 · largest gap | P3 · lone Troll A/B | P3 · ten Goblins A/B | P4 · best branch over copy / best copy over branch |
+|---|---:|---:|---|---|---:|
+| Musketeer | +2 / +6 | 6 | 45/0 damage | 5/6 kills | 1 / 1 |
+| Cannon | +2 / +5 | 5 | 80/120 damage | 10/7 kills | 7 / 0 |
+| Tar Pit | +5 / +4 | 5 | 0.78/0.64 slow | 0/1 slowed | 7 / 4 |
+| Longbow | +3 / +2 | 3 | 16/9 damage | 2/3 kills | 1 / 1 |
+| Mortar | +6 / +5 | 6 | 140/80 damage | 6/10 kills | 1 / 6 |
+| Fire Pot | +5 / +3 | 5 | 54.22/31.87 damage | 0/10 kills | 3 / 0 |
+
+P1, P2, P3 and P4 all pass for all six towers. Musketeer B and Mortar A reach the six-life trap ceiling. Musketeer, Longbow and Mortar have only a one-life branch-over-copy witness. In the Fire Pot encounter Inferno refreshes its hotter, shorter burn on a Troll; on passing Goblins Lasting Flames finishes all ten. Siege Shell deals 140 against 80 to one Troll and Wide Burst catches ten Goblins against six at the tested spacing.
+
+**Tuning changes against 6180e3c.**
+
+- No level-1/2 tower number, ordinary enemy base HP, starting lives, starting gold or tower price changed. Sharpshooter range 155 → 200 and damage 35 → 45 improve its reach and single hit. Volley rate 2 → 2.8 improves crowd coverage. Heavy Shot radius 85 → 105 rewards grouped targets. Deep Tar slow 80% → 78%, Wide Tar range 155 → 145 and slow 60% → 64% bring both paths inside the six-life band. Siege Shell damage 120 → 140 and Wide Burst damage 70 → 80, radius 140 → 150 trade impact against coverage. Inferno range 100 → 104, burn 15 → 17/s and duration 4 → 1 s favor repeated hits; both Fire Pot rates 0.8 → 1 give distinct passing-target outcomes. Both Longbow rows and Quick Loader retain their original numbers.
+- Added one campaign HP factor, formerly 1 throughout: Easy 1.00, Normal 1.13, Hard 1.12. Multiply base HP by the original difficulty factor, then by the new factor to the power of waves past ten, clamped to ten. On endless waves also multiply by 1.8 per three-wave cycle. Round the product once to the nearest whole HP, halves up. Apply it to regular spawns, both bosses and called Wolves. The early Hard divisibility rule covers waves 1–10. At 1.04 Normal the reference leaked nothing in act 2. Concentrating the late ground waves and timing their air support created the decision within R1–R4. No extra count multiplier was added.
+- Grumblemaw base HP stays 5,600. Speed 38 → 14 px/s (fully slowed 26.6 → 9.8), bounty 300 → 75 and exit 6 → 10 lives. At wave 20 Normal he has 19,010 HP. Slower travel gives a reinvesting defense time to kill him. Reducing final income puts actual ending balances near 300; before this change the player could earn more than 600 gold after the last chance to spend it.
+- Wave 12, intervals for Wolf/Troll/Harpy 1.45/4/2.6 → 1.16/3.2/2.08 s; Troll/Harpy delays 5.04/12.24 → 4.032/9.792 s. Wave 14 intervals 1.85/3.8/2.5 → 1.48/3.04/2; delays 3.6/11.52 → 2.88/9.216. Wave 16 Goblin/Shieldbearer/Harpy intervals 1.7/2.95/2.75 → 1.36/2.36/2.2; delays 2.88/7.2 → 2.304/5.76. Wave 17 Wolf/Troll/Harpy intervals 1.8/3.65/2.7 → 1.44/2.92/2.16; delays 3.6/7.2 → 2.88/5.76. These keep the full campaign under 22 minutes.
+- Wave 18 Troll count/interval/delay 18/3/3.6 → 34/1/0; Harpy delay 7.92 → 9 s keeps the Meadow peak at 40. Wave 19 Trolls 23/2.65/2.88 → 27/0.9/3. Wave 20 Wolves 20 → 8, Shieldbearers 15 → 5, Harpies 18 → 8, Trolls 12 → 6, Troll delay 27.5 → 9 and boss delay 48.2 → 19.5. Wave 20 still places the boss two seconds after the last ordinary spawn. Act 1 wave data is unchanged.
+- War Chest 100 → 80 gold, Quick Hands recharge factor 0.62 → 0.67 (744 → 804 ticks, 12.4 → 13.4 s), Stone Walls 3 → 4 lives and Bigger Blasts radius factor 1.4 → 1.3 narrowed reward spreads. Each of the nine rewards retains a strict-best witness and affects two distinct build/map pairs in the existing reward-effect checks.
+- Meadow moves its third Longbow at (15,6) from purchase five to three. Riverbend moves the first combo Tar Pit (10,1) → (12,4), including its later upgrade. Riverbend Hard specializes the Mortar at (17,7) immediately, dropping the thirteen fixed late Longbow purchases at (5,8), (24,8), (5,9), (24,9), (7,7), (10,7), (11,7) in favor of reinvestment. The original Wolf ±1 test now requires a real pass. Artillery goes from two Cannons/two Mortars to three/two, alternating, and specializes its first Cannon. Musket retains up to two opening Mortars (formerly one), adds four Musketeers on Meadow and Switchback and two on Riverbend (formerly six), and specializes the first. Burn retains three opening Mortars (formerly one), then buys Fire/Tar/Fire instead of Tar/Fire/Tar/Fire. Its Switchback Tar at (13,10) can cover the next turn with Wide Tar. All path comparisons use the same layout in both arms.
+- Panel lines are hand written, checked against level 2 and compared to the frozen design table along with the diamond and bars. Removed the three geometry-only button size exports. Tower level is derived from its first upgrade and chosen path; the first-upgrade flag distinguishes base from level two. The per-tick targeting optimization rejects unreachable trail sections before making the original exact distance comparison. The test suite distributes whole-game path comparisons across three workers.
+
+**Verifier tests.** The milestone-37 hand-computed table uses the new rows above, including Volley cooldown 30 → 21 and both Fire Pot cooldowns 75 → 60 ticks. The out-of-range Sharpshooter shot moves 156 → 201 px. Splash boundary probes now stand outside the target to measure the larger radius. Bigger Blasts checks 119 → 136.5 for Heavy Shot and 196 → 195 for Wide Burst. Hot Coals on Inferno checks 27 → 30.6. State, refusals, refunds, cell placement and all three panel-layout tests retain their original contracts.
+
+Older verifier pins moved with their owning numbers. Grumblemaw arrival/pack/pack/kill ticks 2892/4335/4753/5336 → 1170/3231/4095/4853; the winning Meadow state 17 lives/2,451 gold → 10/280. Spawn HP, boss bars, packs and endless HP guard the new single-round rule. Life and gold conservation use the new grants and ten-life exit. Bigger Blasts base/upgraded Cannon radii 56/77 → 52/71.5, Mortar 84/98 → 78/91 and Keg 126 → 117. The wave-19 visual preview has 27 Trolls instead of 23. Wave-18 and wave-20 group, timing and replay assertions follow the tables above. The cap test exercises the actual 200-wave transition with one moving Goblin per wave. Deterministic replays still compare complete state and events.
+
+**Scratch reversion pass.** Each control was exercised in an isolated copy, restored and run again. On Meadow, reverting Normal growth 1.13 → 1.00 failed V1 with W18 and zero act-2 losses. Enabling reinvestment in the fixed control failed V2 with W10 against W10. Replacing both Mortar branches with level-2 stats failed P1 (all six spreads zero) and P4 (no branch beats the equal-gold copy). Restoring the inputs passed all four assertions.
+
+**Remaining misses.** A green unit run accepts only the exact observed misses below. Any different failing result remains an error.
+
+| Target | Map | Observation |
+|---|---|---|
+| N6 | meadow | W 10 against L 19 without specials |
+| X1 | meadow | L 21 |
+| X2 | meadow | greedy L 21, idle L 21 |
+| N9 | meadow | without: W 17, 1200 kills; with: W 10, 1193 kills |
+| N6 | switchback | W 13 against L 18 without specials |
+| V6 | switchback | 27/27 wins, largest spreads by offer 11/9/9 |
+| N10b | switchback | best minus worst lives by offer: 4/9/3 |
+| X1 | switchback | L 21 |
+| X2 | switchback | greedy L 21, idle L 21 |
+| N5 | riverbend | W 14 against W 13 |
+| V6 | riverbend | 27/27 wins, largest spreads by offer 7/8/5 |
+| N10b | riverbend | best minus worst lives by offer: 7/3/2 |
+| X1 | riverbend | L 21 |
+| X2 | riverbend | greedy L 21, idle L 21 |
+| B2 | all | unresolved/unresolved/kill |
+
+Without specials, two Normal plans die before the final boss; Riverbend kills him. Disabling Tar Barrel on Meadow improves the result because the policy also changes the sequence of other casts. The idle and spending endless builds both die on the first 1.8× cycle. Giving the spender different purchases in scratch did not restore a later survival wave. These are old target regressions alongside the two V6 misses.

@@ -7,27 +7,20 @@
 // and the Longbow's 150.
 import { beforeAll, describe, expect, it } from 'vitest';
 import { buildTower, upgradeTower } from './actions';
-import { enemyMaxHp, type Difficulty } from './difficulty';
+import { ACT_TWO_HP_GROWTH, enemyMaxHp, type Difficulty } from './difficulty';
 import { ENEMY_STATS } from './enemies';
 import type { GameEvent } from './events';
 import { createGame, startWave, tick } from './game';
 import type { Cell } from './grid';
 import { applyScriptBoon, comboBuild, playScripted } from './headless';
 import type { Enemy, EnemyType, GameState, TowerType } from './types';
-import { WAVES } from './waves';
+import { WAVES, waveDef } from './waves';
 
 const B: Cell = { col: 2, row: 5 };
 const LEVELS = ['easy', 'normal', 'hard'] as const;
 
-// (a) By hand, base x multiplier, then Math.round (half rounds up, toward
-// +infinity). Milestone 25c second pass numbers (base hp 19 / 20 / 900 /
-// 36 / 70 / 4000; Easy 0.75, Hard 1.2); one half case, the Easy Shieldbearer:
-//   Goblin        19 x 0.75 = 14.25 -> 14   19 x 1.2 = 22.8 -> 23
-//   Wolf          20 x 0.75 = 15            20 x 1.2 = 24
-//   Troll        900 x 0.75 = 675          900 x 1.2 = 1080
-//   Harpy         36 x 0.75 = 27            36 x 1.2 = 43.2 -> 43
-//   Shieldbearer  70 x 0.75 = 52.5 -> 53    70 x 1.2 = 84
-//   Boss        4000 x 0.75 = 3000        4000 x 1.2 = 4800
+// (a) Before the campaign factor applies, base HP times difficulty is
+// rounded once. The Easy Troll and Shieldbearer are exact half-up cases.
 const HAND: Record<EnemyType, readonly [number, number, number]> = {
   goblin: [17, 23, 28],
   wolf: [15, 20, 24],
@@ -61,10 +54,10 @@ function arena(difficulty: Difficulty, enemies: Enemy[], towers: [Cell, TowerTyp
 }
 
 /** Every enemy the 20 waves spawn on a level, read on its spawn tick; lives kept high so no loss. */
-function spawned(difficulty: Difficulty): { type: EnemyType; hp: number; distance: number }[] {
+function spawned(difficulty: Difficulty): { type: EnemyType; hp: number; maxHp?: number; distance: number; wave: number }[] {
   const s = createGame({ difficulty });
   s.lives = 1e9;
-  const out: { type: EnemyType; hp: number; distance: number }[] = [];
+  const out: { type: EnemyType; hp: number; maxHp?: number; distance: number; wave: number }[] = [];
   for (let w = 0; w < WAVES.length; w++) {
     applyScriptBoon(s);
     startWave(s);
@@ -73,7 +66,7 @@ function spawned(difficulty: Difficulty): { type: EnemyType; hp: number; distanc
       for (const e of s.events) {
         if (e.kind !== 'spawn') continue;
         const en = s.enemies.find((x) => x.id === e.enemyId)!;
-        out.push({ type: en.type, hp: en.hp, distance: en.distance });
+        out.push({ type: en.type, hp: en.hp, maxHp: en.maxHp, distance: en.distance, wave: s.wave });
       }
     }
   }
@@ -90,6 +83,28 @@ describe('(a) scaled hp, by hand, against spawned enemies', () => {
     expect(enemyMaxHp('shieldbearer', 'easy')).toBe(53); // half rounds up
   });
 
+  // Expected HP is calculated from base HP, difficulty and the wave factors by hand.
+  // The wave-21 Goblin also distinguishes one rounding (141) from two (140).
+  it.each([
+    ['hard', 10, 'boss', 4800],
+    ['hard', 11, 'goblin', 31],
+    ['normal', 20, 'grumblemaw', 19010],
+    ['normal', 21, 'goblin', 141],
+  ] as const)('%s wave %i: a fresh %s has exactly %i HP', (difficulty, wave, type, hp) => {
+    const s = createGame({ difficulty });
+    s.wave = wave - 1;
+    s.endless = wave > 20;
+    s.lives = 1000;
+    expect(startWave(s)).toMatchObject({ ok: true, wave });
+    const group = waveDef(wave).groups.findIndex((g) => g.type === type);
+    expect(group).toBeGreaterThanOrEqual(0);
+    const firstSpawn = Math.round(waveDef(wave).groups[group].delay * 60);
+    for (let i = 0; i <= firstSpawn; i++) tick(s);
+    const enemy = s.enemies.find((candidate) => candidate.type === type && candidate.distance === 0);
+    expect(enemy?.hp).toBe(hp);
+    if (wave >= 11) expect(enemy?.maxHp).toBe(hp);
+  });
+
   LEVELS.forEach((level, i) => {
     it(`${level}: all seven types spawn with the hand-computed hp, at distance 0`, () => {
       const all = spawned(level);
@@ -98,19 +113,21 @@ describe('(a) scaled hp, by hand, against spawned enemies', () => {
       expect(all.filter((e) => e.type === 'boss')).toHaveLength(1);
       expect(all.filter((e) => e.type === 'grumblemaw')).toHaveLength(1);
       for (const e of all) {
-        expect(e.hp, `${level} ${e.type}`).toBe(HAND[e.type][i]);
+        const expected = e.wave <= 10 ? HAND[e.type][i]
+          : Math.round(ENEMY_STATS[e.type].hp * [0.75, 1, 1.2][i] * ACT_TWO_HP_GROWTH[level] ** (e.wave - 10));
+        expect(e.hp, `${level} wave ${e.wave} ${e.type}`).toBe(expected);
         expect(e.distance).toBe(0);
+        expect(e.maxHp ?? HAND[e.type][i]).toBe(expected);
       }
-      // (e) The renderer's "hurt" test is hp < enemyMaxHp(type, level): a fresh enemy is not hurt.
-      for (const e of all) expect(e.hp < enemyMaxHp(e.type, level)).toBe(false);
-      // The same count spawns on every level (waves do not change).
-      expect(all.length).toBe(spawned('normal').length);
+      // With no towers, the boss never calls a pack.
+      const scheduled = WAVES.flatMap((wave) => wave.groups).reduce((count, group) => count + group.count, 0);
+      expect(all.length).toBe(scheduled);
     });
   });
 });
 
 describe('(b) bounty, speed, livesCost and slowCap do not depend on the level', () => {
-  it('ENEMY_STATS is one table with no level in it (the Normal numbers)', () => {
+  it('ENEMY_STATS is one base table with no difficulty or wave in it', () => {
     expect(ENEMY_STATS).toEqual({
       goblin: { hp: 23, speed: 60, bounty: 2, flying: false, shield: false, livesCost: 1 },
       wolf: { hp: 20, speed: 120, bounty: 2, flying: false, shield: false, livesCost: 1 },
@@ -118,7 +135,7 @@ describe('(b) bounty, speed, livesCost and slowCap do not depend on the level', 
       harpy: { hp: 36, speed: 90, bounty: 3, flying: true, shield: false, livesCost: 1 },
       shieldbearer: { hp: 70, speed: 45, bounty: 5, flying: false, shield: true, livesCost: 1 },
       boss: { hp: 4000, speed: 25, bounty: 150, flying: false, shield: false, livesCost: 5, slowCap: 0.3 },
-      grumblemaw: { hp: 5600, speed: 38, bounty: 300, flying: false, shield: false, livesCost: 6, slowCap: 0.3 },
+      grumblemaw: { hp: 5600, speed: 14, bounty: 75, flying: false, shield: false, livesCost: 10, slowCap: 0.3 },
     });
   });
 
@@ -131,12 +148,12 @@ describe('(b) bounty, speed, livesCost and slowCap do not depend on the level', 
         // Musketeer (12 damage, full on a shield since 12 > 10) kills a 1 hp enemy on tick 1.
         const s = arena(level, [enemy(1, type, 80, 1), enemy(2, 'goblin', 500, 1e6)], [[B, 'musketeer']]);
         tick(s);
-        expect(s.gold, `${level} ${type}`).toBe([2, 2, 8, 3, 5, 150, 300][Object.keys(HAND).indexOf(type)]);
+        expect(s.gold, `${level} ${type}`).toBe([2, 2, 8, 3, 5, 150, 75][Object.keys(HAND).indexOf(type)]);
       }
     });
 
     it(`${level}: speed (one tick = speed / 60 px), the boss slow cap 0.3, and exit cost`, () => {
-      for (const [type, speed] of [['goblin', 60], ['wolf', 120], ['troll', 35], ['harpy', 90], ['shieldbearer', 45], ['boss', 25], ['grumblemaw', 38]] as const) {
+      for (const [type, speed] of [['goblin', 60], ['wolf', 120], ['troll', 35], ['harpy', 90], ['shieldbearer', 45], ['boss', 25], ['grumblemaw', 14]] as const) {
         const s = arena(level, [enemy(1, type, 80, 1e6)]);
         tick(s);
         expect(s.enemies[0].distance, `${level} ${type}`).toBeCloseTo(80 + speed / 60, 9);
@@ -149,7 +166,7 @@ describe('(b) bounty, speed, livesCost and slowCap do not depend on the level', 
         expect(ev.map((e) => e.slow)).toEqual([slow]);
       }
       // Start from 100 lives on every level.
-      for (const [type, cost] of [['goblin', 1], ['boss', 5], ['grumblemaw', 6]] as const) {
+      for (const [type, cost] of [['goblin', 1], ['boss', 5], ['grumblemaw', 10]] as const) {
         const s = arena(level, [enemy(1, type, 1e9, 1e6), enemy(2, 'goblin', 10, 1e6)]);
         s.lives = 100;
         tick(s);

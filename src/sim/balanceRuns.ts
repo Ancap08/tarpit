@@ -6,7 +6,8 @@
 
 import type { Difficulty } from './difficulty';
 import { continueEndless, createGame, startWave, tick } from './game';
-import { applyAction, applyScriptBoon, ARCHETYPES, ENDLESS_ARCHETYPES, ENDLESS_WAVE_CAP, INFORMATIONAL, type BoonChoices, type WaveScript } from './headless';
+import { applyAction, applyScriptBoon, ARCHETYPES, comboBuild, ENDLESS_ARCHETYPES, ENDLESS_WAVE_CAP, INFORMATIONAL, type BoonChoices, type WaveScript } from './headless';
+import type { BoonOutcome } from './boonBalance';
 import type { MapId } from './map';
 import type { GameEvent } from './events';
 import type { EnemyType, GameState } from './types';
@@ -17,6 +18,9 @@ export interface WaveStats {
   wave: number;
   /** Gold at the start of the wave's setup, before its purchases (after the previous wave's clear). */
   goldEntering: number;
+  goldAfterPurchases: number;
+  /** Lives lost during the wave, excluding lives gained from boons. */
+  livesLost: number;
   /** Lives and gold after the wave. */
   lives: number;
   gold: number;
@@ -82,13 +86,15 @@ export function playWithStats(script: WaveScript, difficulty?: Difficulty): Bala
       const step = applyAction(state, action);
       if ('result' in step && !step.result.ok) refused += 1;
     }
+    const livesEntering = state.lives;
+    const goldAfterPurchases = state.gold;
     const start = startWave(state);
     if (!start.ok) {
       refused += 1;
       break;
     }
     const timed = script.timed?.[i] ?? [];
-    const w: WaveStats = { wave: state.wave, goldEntering, lives: 0, gold: 0, ticks: 0, exits: {}, spawns: {}, kills: 0, peak: 0, phase: 'wave' };
+    const w: WaveStats = { wave: state.wave, goldEntering, goldAfterPurchases, livesLost: 0, lives: 0, gold: 0, ticks: 0, exits: {}, spawns: {}, kills: 0, peak: 0, phase: 'wave' };
     const types = new Map<number, EnemyType>();
     while ((state.phase as GameState['phase']) === 'wave') {
       for (const action of timed) {
@@ -124,7 +130,7 @@ export function playWithStats(script: WaveScript, difficulty?: Difficulty): Bala
       w.peak = Math.max(w.peak, state.enemies.length);
     }
     kills += w.kills;
-    Object.assign(w, { lives: state.lives, gold: state.gold, phase: state.phase });
+    Object.assign(w, { lives: state.lives, livesLost: livesEntering - state.lives, gold: state.gold, phase: state.phase });
     waves.push(w);
     if (script.endless && (state.phase as GameState['phase']) === 'won') continueEndless(state);
   }
@@ -170,6 +176,7 @@ export function runsOn(name: MatrixArchetype, map: MapId): boolean {
 
 const scripts = new Map<string, WaveScript>();
 const runs = new Map<string, BalanceRun>();
+const comboOutcomes = new Map<string, BoonOutcome>();
 
 function archetypeKey(name: MatrixArchetype, map: MapId, level: Difficulty, boons?: BoonChoices): string {
   return JSON.stringify([name, map, level, ...Object.entries(boons ?? {})]);
@@ -209,8 +216,21 @@ export function cachedRun(key: string, script: () => WaveScript, level: Difficul
   return run;
 }
 
+/** Record a named Normal combo run without replaying it for wave-level statistics. */
+export function comboOutcome(map: MapId, boons: BoonChoices): BoonOutcome {
+  const key = archetypeKey('comboBuild', map, 'normal', boons);
+  const known = comboOutcomes.get(key);
+  if (known) return known;
+  let outcome: BoonOutcome | undefined;
+  comboBuild('normal', map, boons, (summary, refused) => { outcome = { ...summary, refused }; });
+  if (!outcome) throw new Error(`no recorded combo outcome for ${map}/${JSON.stringify(boons)}`);
+  comboOutcomes.set(key, outcome);
+  return outcome;
+}
+
 /** Forget every cached script and run (for tools that change numbers between runs). */
 export function clearBalanceCache(): void {
   scripts.clear();
   runs.clear();
+  comboOutcomes.clear();
 }

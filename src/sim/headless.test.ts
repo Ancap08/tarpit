@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { comboBuild, lazyBuild, noTowers, playAllWavesNoTowers, playScripted, runHeadless } from './headless';
+import { playWithStats } from './balanceRuns';
+import { comboBuild, lazyBuild, noTowers, playAllWavesNoTowers, playScripted, referenceBuild, runHeadless } from './headless';
+import { TOWER_DEFS } from './towers';
+import { ACT_ONE_LAST_WAVE } from './waves';
 
 describe('headless runner', () => {
   it('runs a script and logs each action', () => {
@@ -72,6 +75,26 @@ describe('scripted builds', () => {
     expect(run.log.filter((l) => 'result' in l && !l.result.ok)).toEqual([]);
     expect(run.state.phase).toBe('lost');
   });
+
+  it.each([
+    ['comboBuild', 'longbow'], ['wideBuild', 'longbow'], ['hardBuild', 'longbow'],
+    ['artilleryBuild', 'mortar'], ['burnBuild', 'firepot'], ['musketBuild', 'musketeer'],
+  ] as const)(
+    '%s keeps the fixed plan and spends on its own reinforcements in act two',
+    (build, main) => {
+      const fixed = referenceBuild(build, 'normal', 'meadow', undefined, { fixedOnly: true });
+      const reinvesting = referenceBuild(build, 'normal', 'meadow');
+      expect(reinvesting.slice(0, ACT_ONE_LAST_WAVE)).toEqual(fixed.slice(0, ACT_ONE_LAST_WAVE));
+      expect(reinvesting.flat().slice(0, fixed.flat().length)).toEqual(fixed.flat());
+      expect(reinvesting.flat().length).toBeGreaterThan(fixed.flat().length);
+      if (build === 'wideBuild') {
+        expect(reinvesting.flat().some((action) => action.type === 'upgrade' && action.path)).toBe(false);
+      }
+      const run = playWithStats(reinvesting, 'normal');
+      expect(run.refused).toBe(0);
+      expect(run.waves.at(-1)?.goldAfterPurchases).toBeLessThan(TOWER_DEFS[main].cost);
+    },
+  );
 
   it('playScripted stops after a loss and caps each wave', () => {
     expect(playScripted(noTowers()).waves.map((w) => w.phase)).toEqual(['lost']);

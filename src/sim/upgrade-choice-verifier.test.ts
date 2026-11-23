@@ -106,12 +106,12 @@ describe('state kept', () => {
 
 // type, path, range, minRange, damage, cooldown ticks (round(60/rate)), splash, slow, burn dps, burn ticks
 const ROWS = [
-  ['musketeer', 'A', 155, 0, 35, 60, 0, 0, 0, 0], ['musketeer', 'B', 125, 0, 22, 30, 0, 0, 0, 0],
-  ['cannon', 'A', 105, 0, 40, 120, 85, 0, 0, 0], ['cannon', 'B', 105, 0, 40, 60, 55, 0, 0, 0],
-  ['tarpit', 'A', 105, 0, 3, 30, 0, 0.8, 0, 0], ['tarpit', 'B', 155, 0, 3, 30, 0, 0.6, 0, 0],
+  ['musketeer', 'A', 200, 0, 45, 60, 0, 0, 0, 0], ['musketeer', 'B', 125, 0, 22, 21, 0, 0, 0, 0],
+  ['cannon', 'A', 105, 0, 40, 120, 105, 0, 0, 0], ['cannon', 'B', 105, 0, 40, 60, 55, 0, 0, 0],
+  ['tarpit', 'A', 105, 0, 3, 30, 0, 0.78, 0, 0], ['tarpit', 'B', 145, 0, 3, 30, 0, 0.64, 0, 0],
   ['longbow', 'A', 170, 0, 16, 24, 0, 0, 0, 0], ['longbow', 'B', 170, 0, 9, 13, 0, 0, 0, 0],
-  ['mortar', 'A', 220, 70, 120, 180, 70, 0, 0, 0], ['mortar', 'B', 220, 70, 70, 180, 140, 0, 0, 0],
-  ['firepot', 'A', 100, 0, 4, 75, 0, 0, 15, 240], ['firepot', 'B', 100, 0, 4, 75, 0, 0, 8, 480],
+  ['mortar', 'A', 220, 70, 140, 180, 70, 0, 0, 0], ['mortar', 'B', 220, 70, 80, 180, 150, 0, 0, 0],
+  ['firepot', 'A', 104, 0, 4, 60, 0, 0, 17, 60], ['firepot', 'B', 100, 0, 4, 60, 0, 0, 8, 480],
 ] as const;
 
 describe('twelve rows in combat', () => {
@@ -144,7 +144,7 @@ describe('twelve rows in combat', () => {
     expect(s.shots).toHaveLength(1);
     if (splash) {
       s.shots = []; t.cooldownTicks = 0;
-      const near = troll(3, range - splash), far = troll(4, range - splash - 1);
+      const near = troll(3, range + splash), far = troll(4, range + splash + 1);
       s.enemies = [troll(2, range), near, far];
       fireTowers(s);
       expect(s.enemies[1].hp).toBe(1000 - dmg);
@@ -172,16 +172,16 @@ describe('rewards on top of level 3', () => {
   it('Veteran Crews on Quick Draw: 4.5 x 1.1 rate gives round(60/4.95) = 12 ticks', () => expect(shot('longbow', 'B', ['veteranCrews'], 170).t.cooldownTicks).toBe(12));
   it('Veteran Crews on Siege Shell: round(60 / (1/3 x 1.1)) = 164', () => expect(shot('mortar', 'A', ['veteranCrews'], 220).t.cooldownTicks).toBe(164));
   it('Long Barrels on Sharpshooter does nothing (artillery only), on Mortar 220 x 1.3 = 286', () => {
-    expect(shot('musketeer', 'A', ['longBarrels'], 156).s.shots).toHaveLength(0);
+    expect(shot('musketeer', 'A', ['longBarrels'], 201).s.shots).toHaveLength(0);
     expect(shot('mortar', 'B', ['longBarrels'], 286).s.shots).toHaveLength(1);
     expect(shot('mortar', 'B', ['longBarrels'], 287).s.shots).toHaveLength(0);
   });
-  it('Bigger Blasts: Heavy Shot 85 x 1.4 = 119, Wide Burst 140 x 1.4 = 196', () => {
-    expect(shot('cannon', 'A', ['biggerBlasts'], 105).s.shots[0].splashRadius).toBe(119);
-    expect(shot('mortar', 'B', ['biggerBlasts'], 220).s.shots[0].splashRadius).toBe(196);
+  it('Bigger Blasts: Heavy Shot 105 x 1.3 = 136.5, Wide Burst 150 x 1.3 = 195', () => {
+    expect(shot('cannon', 'A', ['biggerBlasts'], 105).s.shots[0].splashRadius).toBe(136.5);
+    expect(shot('mortar', 'B', ['biggerBlasts'], 220).s.shots[0].splashRadius).toBe(195);
   });
-  it('Hot Coals on Inferno 15 x 1.8 = 27; Sticky Tar on Deep Tar 2 s x 2 = 240 ticks', () => {
-    expect(shot('firepot', 'A', ['hotCoals'], 100).e.burnDps).toBe(27);
+  it('Hot Coals on Inferno 17 x 1.8 = 30.6; Sticky Tar on Deep Tar 2 s x 2 = 240 ticks', () => {
+    expect(shot('firepot', 'A', ['hotCoals'], 104).e.burnDps).toBeCloseTo(30.6);
     expect(shot('tarpit', 'A', ['stickyTar'], 105).e.slowTicksLeft).toBe(240);
   });
 });

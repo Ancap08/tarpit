@@ -1,3 +1,4 @@
+import { ACT_TWO_HP_GROWTH } from '../src/sim/difficulty';
 import { expect, test, type Page } from '@playwright/test';
 import { END_TEXT, bestScoreText, heldBoonsText } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
@@ -75,8 +76,9 @@ test('win, three buttons, Keep going by mouse: wave 21 starts, "Wave 21", no bos
   expect(hud.wave).toBe('Wave 21');
   expect(hud.boss).toBeNull();
   expect(await api(page, (t) => t.events().some((e) => e.kind === 'bossSpawn'))).toBe(false);
-  // Wave 21 Goblins: round(23 x 1.8) = 41 hp.
-  expect(await api(page, (t) => t.state().enemies.find((e) => e.type === 'goblin')?.maxHp)).toBe(41);
+  // The first endless wave grows from wave 20's unrounded campaign HP.
+  const hp = Math.round(23 * ACT_TWO_HP_GROWTH.normal ** 10 * 1.8);
+  expect(await api(page, (t) => t.state().enemies.find((e) => e.type === 'goblin')?.maxHp)).toBe(hp);
 });
 
 test('lose in endless: the wave label omits "of 20" and Menu shows the best line for Normal only', async ({ page }) => {

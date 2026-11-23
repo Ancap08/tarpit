@@ -746,7 +746,7 @@ test('endless wave 21 HUD', async ({ page }) => {
   expect(r).toMatchObject({ phase: 'setup', wave: 21, endless: true, screen: null });
   expect(r.hud.wave).toBe('Wave 21');
   expect(r.hud.boss).toBeNull();
-  expect(r.hud.next).toBe('Next: 33 Wolf, 23 Troll, 31 Harpy');
+  expect(r.hud.next).toBe('Next: 33 Wolf, 27 Troll, 31 Harpy');
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('endless-hud.png');
 });
@@ -871,7 +871,7 @@ test('all three held boons remain in the HUD after the third reward', async ({ p
   const icon = await rectPage(page, 'boon:stoneWalls');
   await page.mouse.move(icon.x, icon.y);
   expect((await ui(page)).boonTooltip).toBe('stoneWalls');
-  expect(await visibleTexts(page)).toContain('3 more lives');
+  expect(await visibleTexts(page)).toContain('4 more lives');
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('boon-icons.png');
 });
@@ -901,7 +901,7 @@ test('wave 20 shows Grumblemaw under a Mortar splash', async ({ page }) => {
   expect(await finalBossFrame(page)).toEqual({
     wave: 20,
     enemies: 1,
-    bar: `${GRUMBLEMAW_NAME} 4066 / 5600`,
+    bar: `${GRUMBLEMAW_NAME} 14380 / 19010`,
     texture: 'boss',
     slowed: true,
     burning: true,
@@ -931,7 +931,7 @@ test('wave 20 shows Grumblemaw’s first pack call and two Wolves', async ({ pag
     call: expect.objectContaining({ kind: 'packCall', threshold: 2 }),
     cue: true,
     banner: PACK_CALL_TEXT,
-    bar: `${GRUMBLEMAW_NAME} 3429 / 5600`,
+    bar: `${GRUMBLEMAW_NAME} 12262 / 19010`,
     enemies: ['grumblemaw', 'wolf', 'wolf'],
   });
   await settle(page);

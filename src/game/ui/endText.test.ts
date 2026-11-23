@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { comboBuild, createGame, endlessIdle, playAllWavesNoTowers, playScripted } from '../../sim';
+import { createGame, playAllWavesNoTowers } from '../../sim';
 import { BOON_NAMES, END_TEXT } from '../names';
 import { endKind, endScreenText } from './endText';
 
@@ -12,7 +12,12 @@ describe('end screen text', () => {
   });
 
   it('win: lives, gold and held boons', () => {
-    const s = playScripted(comboBuild()).state;
+    const s = createGame();
+    s.phase = 'won';
+    s.wave = 20;
+    s.lives = 17;
+    s.gold = 2451;
+    s.boons = ['longBarrels', 'stickyTar', 'stoneWalls'];
     expect(endKind(s)).toBe('won');
     expect(endScreenText('won', s)).toEqual({
       title: END_TEXT.wonTitle,
@@ -28,8 +33,12 @@ describe('end screen text', () => {
   });
 
   it('endless loss: the wave reached and held boons', () => {
-    const s = playScripted(endlessIdle()).state;
-    expect([s.phase, s.endless, s.wave]).toEqual(['lost', true, 25]);
+    const s = createGame();
+    s.phase = 'lost';
+    s.endless = true;
+    s.wave = 25;
+    s.boons = ['longBarrels', 'stickyTar', 'stoneWalls'];
+    expect(endKind(s)).toBe('lost');
     expect(endScreenText('lost', s)).toEqual({
       title: END_TEXT.lostTitle,
       lines: [`${END_TEXT.lostWave} 25`],
