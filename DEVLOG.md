@@ -8724,6 +8724,27 @@ total. All 27 removed plates were regenerated in scratch. Including the
 shipped Painted PNGs, this branch adds 4,399,607 image bytes to main. With
 metadata, a player loads 589,433 bytes at 1× or 1,657,924 bytes at 2×.
 
+### Merge with milestone 39
+
+The merge brings the Barricade from `938243e` onto Painted Meadow. The wooden
+wall turns across the trail with the map. Fifteen painted walkers bunch up
+behind it, with the large Trolls in front, a wall hp bar and an x15 count.
+The Harpy flies past. Desktop and phone cases check the aim marker, refusal
+text, and the 36 px limit for both the sprite anchors and painted body
+centres, including both bosses. Against the same browser rendering main,
+all 53 Classic gameplay frames match pixel for pixel. The four title frames
+differ only at the Look control.
+
+The shared cold-load deadline increased from 12 to 25 seconds. Play shows
+progress from 0%. A slow connection chooses 1×, and a high-density screen
+without connection hints times its first 1× ground file for up to two
+seconds. With empty Chromium profiles, Play to the first rendered Painted
+frame took 13.92 s on desktop and 13.92 s on the emulated phone at Fast
+3G, and 10.71 s on each at Slow 4G. Both simulated links shared 1.6 Mbps
+across page and service-worker traffic, with 562 ms and 150 ms of request
+latency respectively and matching browser connection hints. All four runs
+fetched 54 files at 1× (589,433 bytes).
+
 ## 2026-11-23: milestone 39, the Barricade
 
 Wave 3 unlocks the fourth special on the existing charge. Aim near the

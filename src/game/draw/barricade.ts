@@ -1,10 +1,12 @@
 import type Phaser from 'phaser';
-import { isFlying, positionAlongPath, type GameEvent, type GameState, type Point } from '../../sim';
+import { isFlying, positionAlongPath, type EnemyType, type GameEvent, type GameState, type Point } from '../../sim';
 import { knockPx } from '../fx/fxMath';
 import { fontPx, type Layout } from '../layout';
 import { heldCountText } from '../names';
 import { COLORS, FONT, TEXT } from '../palette';
 import { RING_RADIUS, spriteLift } from './enemies';
+import { enemyArt } from '../skin/frames';
+import type { PaintedSkin } from '../skin/painted';
 import { PATH_WIDTH } from './map';
 
 const WOOD = 0x986338;
@@ -62,7 +64,25 @@ export class BarricadeEffects {
   private strikes = new Map<number, number>();
   private broken: { at: number; spot: Break } | null = null;
 
-  constructor(scene: Phaser.Scene, private readonly layout: Layout) {
+  private readonly paintedWall?: Phaser.GameObjects.Graphics;
+  private readonly bodyCircles = new Map<EnemyType, { y: number; radius: number }>();
+
+  constructor(scene: Phaser.Scene, private readonly layout: Layout, painted?: PaintedSkin) {
+    if (painted) {
+      this.paintedWall = layout.placeWorld(scene.add.graphics());
+      painted.standing.add(this.paintedWall);
+      for (const type of Object.keys(RING_RADIUS) as EnemyType[]) {
+        const sheet = painted.assets.sheets[enemyArt(type)];
+        const centres = sheet.bodyBounds!.map(([l, t, r, b]) => ({
+          x: ((l + r) / 2 - sheet.anchor[0]) / painted.assets.density,
+          y: ((t + b) / 2 - sheet.anchor[1]) / painted.assets.density,
+        }));
+        // One circle encloses the foot and the silhouette centre of every walk pose.
+        const y = Math.min(...centres.map(p => p.y)) / 2;
+        const radius = Math.max(-y, ...centres.map(p => Math.hypot(p.x, p.y - y)));
+        this.bodyCircles.set(type, { y, radius });
+      }
+    }
     this.count = scene.add.text(0, 0, '', {
       fontFamily: FONT, fontStyle: 'bold', fontSize: fontPx(layout, 14),
       color: TEXT.towerLabel, backgroundColor: TEXT.towerLabelBg, padding: { x: 3, y: 1 },
@@ -97,6 +117,8 @@ export class BarricadeEffects {
     const held = state.enemies.filter(e => !isFlying(e) && e.distance === wall.distance);
     held.sort((a, b) => RING_RADIUS[b.type] - RING_RADIUS[a.type]);
     const wallY = this.layout.toScreen(wall).y;
+    // In Painted the pile sorts with neighbouring pieces at the front rank's feet.
+    const pileY = this.paintedWall ? this.layout.toScreen(positionAlongPath(state.map, wall.distance - 12)).y : wallY;
     for (const [i, enemy] of held.entries()) {
       // Fill the three front places first. Extra walkers share the rear rank.
       const side = CROWD_COLUMNS[i % CROWD_COLUMNS.length];
@@ -107,6 +129,18 @@ export class BarricadeEffects {
       const foot = acrossBarricade({ ...rank, angle }, side);
       // Bound the visible centre, including boss lift and room for hit recoil.
       // Portrait rotates world offsets without changing their length.
+      const circle = this.bodyCircles.get(enemy.type);
+      if (circle) {
+        const centre = this.layout.offset(foot, 0, circle.y);
+        const dx = centre.x - wall.x;
+        const dy = centre.y - wall.y;
+        const limit = HELD_DRAW_CAP - knockPx(enemy.type) - circle.radius;
+        const gap = Math.hypot(dx, dy);
+        const scale = gap > limit ? limit / gap : 1;
+        const anchor = this.layout.offset({ x: wall.x + dx * scale, y: wall.y + dy * scale }, 0, -circle.y);
+        stopped.set(enemy.id, { ...anchor, distance, lunge, depth: pileY + RING_RADIUS[enemy.type] / 100 });
+        continue;
+      }
       const lift = spriteLift(enemy.type);
       const roomForLift = HELD_DRAW_CAP - knockPx(enemy.type) - Math.hypot(foot.x - wall.x, foot.y - wall.y);
       const anchor = this.layout.offset(foot, 0, Math.max(0, lift - roomForLift));
@@ -135,7 +169,12 @@ export class BarricadeEffects {
     return this.broken?.spot ?? null;
   }
 
-  drawWall(g: Phaser.GameObjects.Graphics, wall: BlockerView, layout: Layout, motion: boolean): void {
+  drawWall(g: Phaser.GameObjects.Graphics, wall: BlockerView | null, layout: Layout, motion: boolean): void {
+    if (this.paintedWall) {
+      g = this.paintedWall.clear();
+      if (wall) g.setDepth(layout.toScreen(wall).y + 1);
+    }
+    if (!wall) return;
     const p = layout.offset(wall, this.wallShake(motion), 0);
     const left = acrossBarricade({ ...p, angle: wall.angle }, -HALF_WIDTH);
     const right = acrossBarricade({ ...p, angle: wall.angle }, HALF_WIDTH);
@@ -180,7 +219,10 @@ export class BarricadeEffects {
     // badge stays clear of the crowd.
     const placeLeft = vertical ? x - 28 - totalWidth >= mapLeft : along.x < 0;
     const side = placeLeft ? -1 : 1;
-    const offset = vertical ? 28 : -width / 2;
+    // A counted Painted pile has silhouette bars above its front rank. Keep
+    // the entire wall readout on the exit side of a horizontal trail.
+    const besideWall = vertical || (this.paintedWall && this.count.visible);
+    const offset = besideWall ? 28 : -width / 2;
     const ideal = placeLeft ? x - offset - totalWidth : x + offset;
     const groupLeft = Math.max(mapLeft, Math.min(mapRight, ideal));
     const left = groupLeft + (placeLeft ? badgeWidth : 0);

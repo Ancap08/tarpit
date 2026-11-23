@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { paintedHolding } from './barricade-crowd';
 import { aimBarricade, aimCases, castAt, startBarricadeWave } from './barricade';
 import { BARRICADE_HP } from '../src/sim/blockers';
 import { api } from './campaign';
@@ -23,3 +24,5 @@ test('a tap places the wall and turning the phone keeps it across the trail', as
     expect(await api(page, t => t.state().blocker)).toEqual(before);
   }
 });
+
+test('Painted Barricade shows its aim, refusal and counted pile', async ({ page }) => paintedHolding(page, true));

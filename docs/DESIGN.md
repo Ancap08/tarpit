@@ -942,8 +942,10 @@ their next game on Meadow.
   The Meadow-only note appears when the player chooses Painted on another map.
 - The code-drawn Barricade sits across the painted trail in either layout.
   Held enemies use their painted sprites, grouped within 36 game pixels of
-  the wall at their on-screen trail positions. Its hp bar and the count
-  for four or more held enemies sit above the pile. The placement marker
+  the wall. Larger walkers draw in front of smaller ones. The wall and pile
+  sort with towers and scenery by their trail positions on screen. The count
+  appears beside the wall hp bar from four held enemies. On a horizontal
+  stretch, that group sits 28 px toward the exit, clear of the pile. The placement marker
   and refusal text use the same rules as Classic.
 - Towers use 16 clockwise headings from north. Enemies walk in four
   directions, advancing one of four poses per 6 game pixels walked. Test

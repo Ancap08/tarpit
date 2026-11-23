@@ -100,7 +100,7 @@ describe('flyers (milestone 22)', () => {
       if (w === 32) borders.push(y);
     } };
     const draw = () => drawHpBars(g as unknown as Phaser.GameObjects.Graphics,
-      { ...createGame(), enemies }, undefined, id => bodies[id]);
+      { ...createGame(), enemies }, undefined, undefined, id => bodies[id]);
     draw();
     expect(borders).toHaveLength(2);
     expect(Math.abs(borders[0] - borders[1])).toBe(7); // 6 px of bar plus 1 px clear.
