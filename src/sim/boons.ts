@@ -2,13 +2,13 @@
 // Values are multipliers except for the two immediate grants.
 export const BOONS = {
   longBarrels: { id: 'longBarrels', wave: 5, value: 1.3 },
-  keenArrows: { id: 'keenArrows', wave: 5, value: 1.25 },
+  keenArrows: { id: 'keenArrows', wave: 5, value: 1.11 },
   warChest: { id: 'warChest', wave: 5, value: 80 },
   stickyTar: { id: 'stickyTar', wave: 10, value: 2 },
-  hotCoals: { id: 'hotCoals', wave: 10, value: 1.8 },
-  quickHands: { id: 'quickHands', wave: 10, value: 0.67 },
+  hotCoals: { id: 'hotCoals', wave: 10, value: 2.1 },
+  quickHands: { id: 'quickHands', wave: 10, value: 0.57 },
   stoneWalls: { id: 'stoneWalls', wave: 15, value: 4 },
-  veteranCrews: { id: 'veteranCrews', wave: 15, value: 1.1 },
+  veteranCrews: { id: 'veteranCrews', wave: 15, value: 1.11 },
   biggerBlasts: { id: 'biggerBlasts', wave: 15, value: 1.3 },
 } as const;
 

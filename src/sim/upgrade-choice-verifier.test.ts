@@ -168,9 +168,9 @@ describe('rewards on top of level 3', () => {
     fireTowers(s);
     return { s, e, t: s.towers[0] };
   }
-  it('Keen Arrows on War Bow: 16 x 1.25 = 20', () => expect(shot('longbow', 'A', ['keenArrows'], 170).e.hp).toBe(980));
-  it('Veteran Crews on Quick Draw: 4.5 x 1.1 rate gives round(60/4.95) = 12 ticks', () => expect(shot('longbow', 'B', ['veteranCrews'], 170).t.cooldownTicks).toBe(12));
-  it('Veteran Crews on Siege Shell: round(60 / (1/3 x 1.1)) = 164', () => expect(shot('mortar', 'A', ['veteranCrews'], 220).t.cooldownTicks).toBe(164));
+  it('Keen Arrows on War Bow: 16 x 1.11 = 17.76', () => expect(shot('longbow', 'A', ['keenArrows'], 170).e.hp).toBeCloseTo(982.24));
+  it('Veteran Crews on Quick Draw: 4.5 x 1.11 rate gives round(60/4.995) = 12 ticks', () => expect(shot('longbow', 'B', ['veteranCrews'], 170).t.cooldownTicks).toBe(12));
+  it('Veteran Crews on Siege Shell: round(60 / (1/3 x 1.11)) = 162', () => expect(shot('mortar', 'A', ['veteranCrews'], 220).t.cooldownTicks).toBe(162));
   it('Long Barrels on Sharpshooter does nothing (artillery only), on Mortar 220 x 1.3 = 286', () => {
     expect(shot('musketeer', 'A', ['longBarrels'], 201).s.shots).toHaveLength(0);
     expect(shot('mortar', 'B', ['longBarrels'], 286).s.shots).toHaveLength(1);
@@ -180,8 +180,8 @@ describe('rewards on top of level 3', () => {
     expect(shot('cannon', 'A', ['biggerBlasts'], 105).s.shots[0].splashRadius).toBe(136.5);
     expect(shot('mortar', 'B', ['biggerBlasts'], 220).s.shots[0].splashRadius).toBe(195);
   });
-  it('Hot Coals on Inferno 17 x 1.8 = 30.6; Sticky Tar on Deep Tar 2 s x 2 = 240 ticks', () => {
-    expect(shot('firepot', 'A', ['hotCoals'], 104).e.burnDps).toBeCloseTo(30.6);
+  it('Hot Coals on Inferno 17 x 2.1 = 35.7; Sticky Tar on Deep Tar 2 s x 2 = 240 ticks', () => {
+    expect(shot('firepot', 'A', ['hotCoals'], 104).e.burnDps).toBeCloseTo(35.7);
     expect(shot('tarpit', 'A', ['stickyTar'], 105).e.slowTicksLeft).toBe(240);
   });
 });

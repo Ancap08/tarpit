@@ -269,10 +269,10 @@ describe('verifier 36a: boons by hand', () => {
     for (const t of ['musketeer', 'tarpit', 'longbow', 'firepot'] as const) expect(stats(s, t, true).range).toBe(TOWER_DEFS[t].upgraded.range);
   });
 
-  it('Keen Arrows: Longbow 4 -> 5, 9 -> 11.25; others unchanged', () => {
+  it('Keen Arrows: Longbow 4 -> 4.44, 9 -> 9.99; others unchanged', () => {
     const s = withBoon('keenArrows');
-    expect(stats(s, 'longbow', false).damage).toBeCloseTo(5, 9);
-    expect(stats(s, 'longbow', true).damage).toBeCloseTo(11.25, 9);
+    expect(stats(s, 'longbow', false).damage).toBeCloseTo(4.44, 9);
+    expect(stats(s, 'longbow', true).damage).toBeCloseTo(9.99, 9);
     expect(stats(s, 'musketeer', true).damage).toBe(22);
   });
 
@@ -283,23 +283,23 @@ describe('verifier 36a: boons by hand', () => {
     expect(tarLingerTicks([])).toBe(60);
   });
 
-  it('Hot Coals: Fire Pot burn 5 -> 9 and 8 -> 14.4; Fire Arrows 26 -> 46.8, doubled under tar', () => {
+  it('Hot Coals: Fire Pot burn 5 -> 10.5 and 8 -> 16.8; Fire Arrows 26 -> 54.6, doubled under tar', () => {
     const s = withBoon('hotCoals');
-    expect(stats(s, 'firepot', false).burnDps).toBeCloseTo(9, 9);
-    expect(stats(s, 'firepot', true).burnDps).toBeCloseTo(14.4, 9);
+    expect(stats(s, 'firepot', false).burnDps).toBeCloseTo(10.5, 9);
+    expect(stats(s, 'firepot', true).burnDps).toBeCloseTo(16.8, 9);
     const w = inWave(7, [enemy(0, 'troll', { hp: 1e6 })]);
     w.boons = ['hotCoals'];
     w.specialCharges = 1;
     useSpecial(w, 'fireArrows', { x: 100, y: 240 });
-    expect(w.enemies[0].burnDps).toBeCloseTo(46.8, 9);
+    expect(w.enemies[0].burnDps).toBeCloseTo(54.6, 9);
   });
 
-  it('Quick Hands: recharge 1200 -> 804 for the next use; a recharge cannot be running at a pick (wave clear resets it)', () => {
+  it('Quick Hands: recharge 1200 -> 684 for the next use; a recharge cannot be running at a pick (wave clear resets it)', () => {
     const w = inWave(3, [enemy(0, 'troll', { hp: 1e6 })]);
     w.boons = ['quickHands'];
     w.specialCharges = 1;
     useSpecial(w, 'keg', { x: 100, y: 240 });
-    expect(w.specialRechargeTicks).toBe(804);
+    expect(w.specialRechargeTicks).toBe(684);
     const c = inWave(10, [enemy(0, 'troll', { hp: 1e6 })]);
     c.specialCharges = 1;
     useSpecial(c, 'keg', { x: 100, y: 240 });
@@ -311,8 +311,8 @@ describe('verifier 36a: boons by hand', () => {
 
   it('Veteran Crews: fire interval in ticks, by hand', () => {
     const s = withBoon('veteranCrews');
-    // round(60 / (rate x 1.10))
-    const want: Record<TowerType, number> = { musketeer: 55, cannon: 109, tarpit: 27, longbow: 22, mortar: 164, firepot: 68 };
+    // round(60 / (rate x 1.11))
+    const want: Record<TowerType, number> = { musketeer: 54, cannon: 108, tarpit: 27, longbow: 22, mortar: 162, firepot: 68 };
     for (const t of TYPES) expect(shotCooldown(stats(s, t, false)), t).toBe(want[t]);
     expect(shotCooldown(towerStats({ type: 'musketeer', upgraded: false }))).toBe(60);
   });
@@ -375,7 +375,7 @@ describe('verifier 36a: boons by hand', () => {
     expect(sellTower(s, OTHER).ok).toBe(true);
     buildTower(s, CELL, 'cannon');
     expect(towerStats(s.towers[0], s.boons).range).toBeCloseTo(136.5, 9);
-    expect(shotCooldown(towerStats(s.towers[0], s.boons))).toBe(109);
+    expect(shotCooldown(towerStats(s.towers[0], s.boons))).toBe(108);
     // Not before the pick, not twice: boon list holds one entry per pick, so a duplicate id cannot arise from the game.
     const none = createGame();
     expect(towerStats({ type: 'cannon', upgraded: false }, none.boons).range).toBe(105);

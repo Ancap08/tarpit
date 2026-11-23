@@ -130,9 +130,9 @@ describe('boon effects on existing and later towers', () => {
   });
 
   it.each([
-    [5, 'keenArrows', 'longbow', 'damage', 1.25],
+    [5, 'keenArrows', 'longbow', 'damage', 1.11],
     [10, 'stickyTar', 'tarpit', 'slowDuration', 2],
-    [10, 'hotCoals', 'firepot', 'burnDps', 1.8],
+    [10, 'hotCoals', 'firepot', 'burnDps', 2.1],
     [15, 'biggerBlasts', 'cannon', 'splashRadius', 1.3],
     [15, 'biggerBlasts', 'mortar', 'splashRadius', 1.3],
   ] as const)('%s reward %s changes %s %s at both levels', (wave, id, type, key, scale) => {
@@ -177,7 +177,7 @@ describe('boon effects on existing and later towers', () => {
     finish(state, 16, [troll(0, 238)]);
     fireTowers(state);
     for (const tower of state.towers) {
-      const expected = 60 / (TOWER_DEFS[type].base.fireRate * 1.1);
+      const expected = 60 / (TOWER_DEFS[type].base.fireRate * 1.11);
       expect(tower.cooldownTicks).toBe(Math.round(expected));
       expect(shotCooldown(towerStats(tower, state.boons))).toBe(Math.round(expected));
     }
@@ -203,13 +203,13 @@ describe('boon effects on specials', () => {
       expect(state.enemies[0].specialSlowTicksLeft).toBe(120);
     }
     if (id === 'hotCoals') {
-      expect(state.enemies[0].burnDps).toBeCloseTo(46.8);
+      expect(state.enemies[0].burnDps).toBeCloseTo(54.6);
       tick(state);
-      expect(state.enemies[0].hp).toBeCloseTo(1000 - 46.8 / 60);
+      expect(state.enemies[0].hp).toBeCloseTo(1000 - 54.6 / 60);
     }
     if (id === 'quickHands') {
-      expect(state.specialRechargeTicks).toBe(804);
-      for (let i = 0; i < 803; i++) tick(state);
+      expect(state.specialRechargeTicks).toBe(684);
+      for (let i = 0; i < 683; i++) tick(state);
       expect(state.specialCharges).toBe(0);
       tick(state);
       expect(state.specialCharges).toBe(1);

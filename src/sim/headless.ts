@@ -909,16 +909,26 @@ function reinvest(main: TowerType, paths: false | Readonly<Partial<Record<TowerT
   };
 }
 
-/** The reference player makes one extra purchase per setup and spends the reserve before the boss. */
-function paceReinvestment(buy: Decide): Decide {
-  let lastPurchase = -1;
+/** Allow one extra purchase per setup, or a specialist's spending allowance. Spend the bank before the boss. */
+function paceReinvestment(buy: Decide, allowance = 0): Decide {
+  let wave = -1;
+  let spent = 0;
   return (state) => {
-    if (lastPurchase === state.wave && state.wave < LAST_WAVE - 1) return undefined;
+    if (state.wave === LAST_WAVE - 1) return buy(state);
+    if (wave !== state.wave) {
+      wave = state.wave;
+      spent = 0;
+    }
     const action = buy(state);
-    if (action) lastPurchase = state.wave;
+    if (!action) return undefined;
+    const cost = actionCost(state, action);
+    if (spent > 0 && spent + cost > allowance) return undefined;
+    spent += cost;
     return action;
   };
 }
+
+const SPECIALIST_SETUP_GOLD = 180;
 
 function followComboPlan(map: MapId = DEFAULT_MAP, wide = false, { fixedOnly }: ReinvestmentOptions = {}): Decide {
   const opening = COMBO_PLANS[map];
@@ -1270,7 +1280,7 @@ export function referenceBuild(build: ReferenceBuild, difficulty?: Difficulty, m
   if (build === 'wideBuild') return recordScript(followComboPlan(map, true, options), { difficulty, map, boons, specials: {}, report });
   const [opening, plan] = referencePlan(build, map);
   const buy = reinvest(referenceMainTower(build, map));
-  const afterPlan = options?.fixedOnly ? undefined : build === 'hardBuild' ? paceReinvestment(buy) : buy;
+  const afterPlan = options?.fixedOnly ? undefined : paceReinvestment(buy, build === 'hardBuild' ? 0 : SPECIALIST_SETUP_GOLD);
   return recordScript(followPlan(opening, plan, actionCost, afterPlan), { difficulty, map, boons, specials: {}, report });
 }
 
@@ -1321,7 +1331,7 @@ export function compareTowerPaths(build: ChoiceBuild, map: MapId, tower: TowerTy
   );
   const reinforce = reinvest(referenceMainTower(build, map), { ...REINVESTMENT_PATHS, [tower]: path });
   return recordScript(followPlan(opening, [...actTwo, ...firstUpgrades], actionCost,
-    build === 'comboBuild' || build === 'hardBuild' ? paceReinvestment(reinforce) : reinforce),
+    paceReinvestment(reinforce, build === 'comboBuild' || build === 'hardBuild' ? 0 : SPECIALIST_SETUP_GOLD)),
     { map, difficulty: 'normal', specials: {}, report });
 }
 
