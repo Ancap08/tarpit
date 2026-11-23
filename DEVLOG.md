@@ -8998,3 +8998,9 @@ canvas to the old 390 px parent width. A menu item could move between
 press and release. Measuring the resized parent before changing the game
 size fixes the first landscape frame. The phone placement test failed
 16 of 20 repetitions before the fix and passed 20 of 20 after it.
+
+The desktop Barricade crowd fixture could repaint between introducing
+the walkers and advancing them. That changed which overlapping sprite
+was on top. Main and this branch produced identical pixels for each of
+the two timings. The fixture now introduces and advances the walkers
+in one browser call.

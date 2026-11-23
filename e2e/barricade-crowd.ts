@@ -11,7 +11,7 @@ import { startBarricadeWave, aimBarricade, castAt } from './barricade';
 import { api, visibleTexts } from './campaign';
 
 // One walker reaches the wall per tick. A Harpy flies past without joining the count.
-async function stageCrowd(page: Page, phone: boolean, size: number, painted = false): Promise<void> {
+async function stageCrowd(page: Page, phone: boolean, size: number, ticks = 0, painted = false): Promise<void> {
   if (painted) await page.addInitScript(() => localStorage.setItem('tarpit.look', 'painted'));
   await startBarricadeWave(page, 7, phone);
   await api(page, t => {
@@ -26,7 +26,7 @@ async function stageCrowd(page: Page, phone: boolean, size: number, painted = fa
     const { hp, speed } = ENEMY_STATS[type];
     return { type, hp: i % 3 === 0 ? Math.ceil(hp / 2) : hp, behind: (i + 0.5) * speed / 60 };
   });
-  await page.evaluate(walkers => {
+  await page.evaluate(({ walkers, ticks }) => {
     const s = window.__tarpit!.state!();
     const wall = s.blockers.find(b => b.kind === 'barricade')!;
     s.spawnedPerGroup.fill(9999);
@@ -35,7 +35,10 @@ async function stageCrowd(page: Page, phone: boolean, size: number, painted = fa
       id: s.nextEnemyId++, type, hp, distance: wall.distance - behind, slow: 0, slowTicksLeft: 0,
     }));
     s.enemies.push({ id: s.nextEnemyId++, type: 'harpy', hp: 36, distance: wall.distance - 1, slow: 0, slowTicksLeft: 0 });
-  }, walkers);
+    // A repaint of the injected walkers before the first tick changes their
+    // depth tie order. Capture a single, repeatable arrival sequence.
+    if (ticks) window.__tarpit!.step!(ticks);
+  }, { walkers, ticks });
 }
 
 async function expectHeldCrowd(page: Page, phone: boolean, n: number): Promise<void> {
@@ -85,8 +88,7 @@ async function stageBossCrowd(page: Page, phone: boolean): Promise<void> {
 }
 
 export async function holdingFrame(page: Page, phone: boolean): Promise<void> {
-  await stageCrowd(page, phone, 15);
-  await api(page, t => t.step(35));
+  await stageCrowd(page, phone, 15, 35);
   await expectHeldCrowd(page, phone, 15);
   const blocker = await api(page, t => t.state().blockers.find(b => b.kind === 'barricade'));
   expect(blocker!.hp).toBeLessThan(blocker!.maxHp);
@@ -146,8 +148,7 @@ async function expectPaintedCentres(page: Page, size: number): Promise<void> {
 }
 
 export async function paintedHolding(page: Page, phone: boolean): Promise<void> {
-  await stageCrowd(page, phone, 15, true);
-  await api(page, t => t.step(35));
+  await stageCrowd(page, phone, 15, 35, true);
   await expectHeldCrowd(page, phone, 15);
   await expectPaintedCentres(page, 15);
   const wall = (await ui(page)).special.blocker!;
