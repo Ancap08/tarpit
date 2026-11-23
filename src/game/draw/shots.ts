@@ -4,6 +4,7 @@
 
 import type Phaser from 'phaser';
 import type { Shot, TowerType } from '../../sim';
+import type { PaintedSkin } from '../skin/painted';
 import { COLORS } from '../palette';
 import { MUZZLE } from './towers';
 
@@ -48,11 +49,15 @@ export class ShotEffects {
     return this.fx.length;
   }
 
-  draw(g: Phaser.GameObjects.Graphics): void {
+  draw(g: Phaser.GameObjects.Graphics, painted?: PaintedSkin): void {
     for (const { shot, ticksLeft } of this.fx) {
       const a = ticksLeft / LIFETIME[shot.tower];
       const { to } = shot;
       const from = muzzle(shot);
+      if (painted) {
+        painted.frozenShot(shot.tower, from, to, 1 - a);
+        continue;
+      }
       switch (shot.tower) {
         case 'musketeer':
           g.lineStyle(2.5, COLORS.musketTracer, a);

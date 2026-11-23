@@ -173,7 +173,7 @@ test('(d) [Menu] from the win screen: the title with the played level selected; 
   await click(page, 'menu');
   await onTitle(page);
   expect(await titleLevel(page)).toBe('easy');
-  expect(Object.keys(await api(page, (a) => a.uiRects())).sort()).toEqual(['title:easy', 'title:hard', 'title:map:meadow', 'title:map:riverbend', 'title:map:switchback', 'title:mute', 'title:normal', 'title:play']); // milestone 27 adds the map thumbnails
+  expect(Object.keys(await api(page, (a) => a.uiRects())).sort()).toEqual(['title:easy', 'title:hard', 'title:look:classic', 'title:look:painted', 'title:map:meadow', 'title:map:riverbend', 'title:map:switchback', 'title:mute', 'title:normal', 'title:play']); // milestone 27 adds the map thumbnails
   await click(page, 'title:play');
   await freshGame(page);
   expect(await state(page)).toMatchObject({ difficulty: 'easy', tick: 0, wave: 0, gold: 150, lives: 35, towers: [], enemies: [], phase: 'setup' });

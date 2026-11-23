@@ -182,7 +182,7 @@ import { SpecialEffects } from './draw/specials';
 import { Aim, drawTowerShape, drawTowers } from './draw/towers';
 import { highScores } from './highScore';
 import { callEarlyInfo, CHEAT_TAPS, CHEAT_WINDOW_MS, Hud, specialReady, specialRecharge } from './hud';
-import { AIM_BANNER, aimBannerText, BARRICADE_AIM_REASONS, REWARD_KEYS } from './names';
+import { AIM_BANNER, aimBannerText, BARRICADE_AIM_REASONS, PAINTED_FALLBACK, REWARD_KEYS } from './names';
 import {
   cellAt,
   cellRect,
@@ -198,6 +198,8 @@ import { LANDSCAPE, type Layout, type LayoutKind } from './layout';
 import { COLORS, FONT, TEXT } from './palette';
 import { currentLayout } from './layoutSwitch';
 import { isPerfMode, isTestMode } from './testMode';
+import { PaintedSkin, type PaintedState } from './skin/painted';
+import type { PaintedAssets } from './skin/loading';
 import type { GameStartData } from './TitleScene';
 import { ticksDue } from './loop';
 import { BAR_TYPES, canPick } from './ui/buildBar';
@@ -373,6 +375,7 @@ const AIM_CROSS = 9;
 /** The aim banner's box (milestone 30): top edge and height, centred across the map. */
 const BANNER_Y = AIM_BANNER.top;
 const BANNER_H = AIM_BANNER.height;
+const BANNER_MAIN_Y = 14;
 /** The aim circle's colour per special. */
 export const SPECIAL_COLORS: Readonly<Record<SpecialType, number>> = {
   keg: COLORS.specialKeg,
@@ -480,7 +483,10 @@ export class GameScene extends Phaser.Scene {
   /** Milestone 31: the play-mode effects; null in test mode. */
   private fx: Effects | null = null;
   /** Milestone 34: the map's ground, growth and moving things. */
-  private living: LivingMap | null = null;
+  private living: LivingMap | PaintedSkin | null = null;
+  private paintedAssets?: PaintedAssets;
+  private paintedFallback = false;
+  private painted?: PaintedSkin;
 
   constructor() {
     super('game');
@@ -489,6 +495,8 @@ export class GameScene extends Phaser.Scene {
   init(data?: Partial<GameStartData>): void {
     this.difficulty = data?.difficulty ?? DEFAULT_DIFFICULTY;
     this.currentMap = data?.map ?? DEFAULT_MAP;
+    this.paintedAssets = data?.painted;
+    this.paintedFallback = data?.paintedFallback ?? false;
   }
 
   /**
@@ -505,7 +513,10 @@ export class GameScene extends Phaser.Scene {
     this.resume = { state: this.state, recordedCleared: this.recordedCleared, accMs: this.accMs };
     if (this.restartPending) return;
     this.restartPending = true;
-    const data: GameStartData = { difficulty: this.state.difficulty, map: this.currentMap };
+    const data: GameStartData = {
+      difficulty: this.state.difficulty, map: this.currentMap, painted: this.paintedAssets,
+      paintedFallback: this.paintedFallback,
+    };
     this.scene.restart(data);
   }
 
@@ -556,18 +567,20 @@ export class GameScene extends Phaser.Scene {
     // Milestone 32b: world-space layers take the layout's transform (placeWorld); the rest is placed through it.
     const world = () => this.layout.placeWorld(this.add.graphics());
     // Milestone 34: the living map (decor/livingMap.ts): the baked ground, trees and bushes, and the moving things, under everything else.
-    this.living = new LivingMap(this, this.state.map, this.layout, isTestMode());
+    this.painted = this.paintedAssets ? new PaintedSkin(this, this.paintedAssets, this.layout, this.state.map, isTestMode()) : undefined;
+    this.living = this.painted ?? new LivingMap(this, this.state.map, this.layout, isTestMode());
     this.ground = world();
+    this.painted?.placeGround(this.ground);
     this.overlay = world();
     this.dynamic = world();
-    this.enemySprites = new EnemySprites(this, isTestMode(), this.layout);
+    this.enemySprites = new EnemySprites(this, isTestMode(), this.layout, this.painted);
     this.shotFx = world();
     this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx), this.layout) : null;
     this.bars = this.add.graphics();
-    this.barricadeFx = new BarricadeEffects(this, this.layout);
+    this.barricadeFx = new BarricadeEffects(this, this.layout, this.painted);
     this.labels = new TowerLabels(this, this.layout);
     // Flyers (Harpies) draw above every walker and label, below the HUD.
-    this.enemySprites.setAirLayer(this.add.layer());
+    this.enemySprites.setAirLayer(this.painted?.air ?? this.add.layer());
     // The aim banner (milestone 30): over the map's top edge, under the HUD and panels.
     // The aim circle's centre cross (milestone 30 follow-up), above every sprite.
     // Milestone 31: the boss veil, gold labels and wave banners, under the HUD.
@@ -577,9 +590,9 @@ export class GameScene extends Phaser.Scene {
     this.bannerBg = this.add.graphics().setDepth(4);
     const bannerTop = this.layout.map.y + BANNER_Y;
     const bannerText = (y: number, size: string, color: string) =>
-      this.add.text(this.bannerX, y, '', { fontFamily: FONT, fontSize: size, fontStyle: 'bold', color }).setOrigin(0.5, 0.5).setDepth(4);
+      this.add.text(this.bannerX, y, '', { fontFamily: FONT, fontSize: size, fontStyle: 'bold', color }).setOrigin(0.5, 0.5).setAlign('center').setDepth(4);
     // Portrait (32b follow-up) shows the aim instruction in the status strip instead (Hud).
-    this.bannerMain = bannerText(bannerTop + 14, `${AIM_BANNER.mainPx}px`, TEXT.aimBanner);
+    this.bannerMain = bannerText(bannerTop + BANNER_MAIN_Y, `${AIM_BANNER.mainPx}px`, TEXT.aimBanner);
     this.bannerHint = bannerText(bannerTop + 34, `${AIM_BANNER.hintPx}px`, TEXT.aimHint);
     this.hud = new Hud(this, {
       // Milestone 25c: mid-wave, Start Wave reads "Call next  +N" and calls the next wave.
@@ -589,7 +602,7 @@ export class GameScene extends Phaser.Scene {
       onPick: (type) => this.togglePick(type),
       onSpecial: () => this.onSpecialButton(),
       onSpecialPick: (type) => this.selectSpecial(type),
-    }, this.layout);
+    }, this.layout, this.painted);
     this.panel = new TowerPanel(this, this.layout, {
       onUpgrade: (path) => {
         if (this.panel.cell !== null) this.upgrade(this.panel.cell, path);
@@ -1225,7 +1238,7 @@ export class GameScene extends Phaser.Scene {
     this.leaving = true;
     this.restartPending = false;
     this.resume = null;
-    const data: GameStartData = { difficulty: this.state.difficulty, map: this.currentMap };
+    const data: GameStartData = { difficulty: this.state.difficulty, map: this.currentMap, painted: this.paintedAssets };
     this.scene.restart(data);
   }
 
@@ -1348,6 +1361,10 @@ export class GameScene extends Phaser.Scene {
   /** Test hook (milestone 31, play only): the drawn barrel angle of the tower on `cell`, or null. */
   towerAngle(cell: Cell): number | null {
     return this.fx?.towerAngle(cell) ?? null;
+  }
+
+  paintedState(): PaintedState {
+    return this.painted?.state() ?? { active: false, density: null, sprites: [] };
   }
 
   /** Test hook: an enemy sprite's animation state, or null if it has none. */
@@ -1498,23 +1515,26 @@ export class GameScene extends Phaser.Scene {
     const moving = this.press?.active && this.press.kind === 'move' ? this.press.from : null;
     const fx = this.fx;
     fx?.update(this.state);
-    drawTowers(g, this.state, this.aim, moving, fx ? (cell, type) => fx.towerPose(cell, type) : undefined, this.layout);
+    const pose = fx ? (cell: Cell, type: TowerType) => fx.towerPose(cell, type) : undefined;
+    drawTowers(g, this.state, this.aim, moving, pose, this.layout, this.painted?.towerBody);
     const blocker = this.state.blocker;
     const motion = this.barricadeMotion;
     const stopped = this.barricadeFx.stoppedPositions(this.state, motion);
     drawStatusRings(g, this.state, this.layout, stopped);
-    drawShadows(g, this.state, this.layout, stopped);
+    if (!this.painted) drawShadows(g, this.state, this.layout, stopped);
     this.enemySprites.sync(this.state, this.speed, stopped);
     this.shotFx.clear();
-    if (fx) fx.draw(this.shotFx);
-    else this.shots.draw(this.shotFx);
+    this.painted?.beginEffects();
+    if (fx) fx.draw(this.shotFx, this.painted);
+    else this.shots.draw(this.shotFx, this.painted);
+    this.painted?.endEffects();
     this.specialFx.draw(this.shotFx);
-    if (blocker) this.barricadeFx.drawWall(this.shotFx, blocker, this.layout, motion);
+    this.barricadeFx.drawWall(this.shotFx, blocker, this.layout, motion);
     this.barricadeFx.drawCrash(this.shotFx, this.layout, motion);
     this.bars.clear();
-    drawHpBars(this.bars, this.state, this.layout, stopped);
+    drawHpBars(this.bars, this.state, this.layout, stopped, this.painted ? id => this.enemySprites.paintedBar(id) : undefined);
     this.barricadeFx.drawHp(this.bars, blocker, this.layout, stopped?.size ?? 0);
-    this.labels.update(this.state);
+    if (!this.painted) this.labels.update(this.state);
     this.syncEndScreen();
     this.redrawUi();
     const banner = this.aimBanner();
@@ -1538,21 +1558,26 @@ export class GameScene extends Phaser.Scene {
     return this.layout.map.x + this.layout.map.width / 2;
   }
 
-  /** The aim banner (milestone 30): shown while aiming, with what to do and how to cancel. */
+  /** Setup fallback or landscape aim instructions, above the map. */
   private drawBanner(): void {
-    // Portrait (32b follow-up): the instruction is in the status strip (Hud), nothing over the map.
+    // Portrait shows aim instructions in the HUD status strip.
     const text = this.layout.kind === 'portrait' ? null : this.aimBanner();
-    const main = text?.main ?? '';
+    const showFallback = this.paintedFallback && this.state.wave === 0 && this.aiming === null;
+    const main = text?.main ?? (showFallback ? PAINTED_FALLBACK : '');
     if (this.bannerMain.text !== main || this.bannerHint.text !== (text?.hint ?? '')) {
+      this.bannerMain.setWordWrapWidth(showFallback ? this.layout.map.width - 2 * AIM_BANNER.padX : 0);
       this.bannerMain.setText(main);
       this.bannerHint.setText(text?.hint ?? '');
       this.bannerBg.clear();
-      if (text !== null) {
+      if (main) {
         const w = Math.max(this.bannerMain.width, this.bannerHint.width) + AIM_BANNER.padX;
         const top = this.layout.map.y + BANNER_Y;
-        const h = BANNER_H;
+        const h = showFallback ? this.bannerMain.height + BANNER_MAIN_Y : BANNER_H;
+        this.bannerMain.setY(top + (showFallback ? h / 2 : BANNER_MAIN_Y));
         this.bannerBg.fillStyle(COLORS.aimBanner, 0.82).fillRoundedRect(this.bannerX - w / 2, top, w, h, 8);
-        this.bannerBg.lineStyle(2, SPECIAL_COLORS[this.aiming!], 1).strokeRoundedRect(this.bannerX - w / 2, top, w, h, 8);
+        if (text !== null) {
+          this.bannerBg.lineStyle(2, SPECIAL_COLORS[this.aiming!], 1).strokeRoundedRect(this.bannerX - w / 2, top, w, h, 8);
+        }
       }
     }
   }
@@ -1616,6 +1641,7 @@ export class GameScene extends Phaser.Scene {
     const g = this.overlay;
     g.clear();
     this.aimCross.clear();
+    this.painted?.clearGhost();
 
     this.drawnRange = null;
     const selected = this.panel.cell === null ? undefined : towerAt(this.state, this.panel.cell);
@@ -1641,13 +1667,15 @@ export class GameScene extends Phaser.Scene {
       const angle = this.aim.angle(moved ? moved.cell : hover);
       if (hoverBuildable) {
         this.rangeCircles(hover, towerStats(moved ?? { type: ghostType, upgraded: false }, this.state.boons));
-        drawTowerShape(g, ghostType, cellCenter(hover), angle, upgraded, GHOST_ALPHA, 0, this.layout, moved?.path);
+        if (this.painted) this.painted.drawGhost(ghostType, cellCenter(hover), GHOST_ALPHA);
+        drawTowerShape(g, this.painted ? null : ghostType, cellCenter(hover), angle, upgraded, GHOST_ALPHA, 0, this.layout, moved?.path);
       } else if (drag !== null) {
         // During a drag a blocked cell also shows a faint red-tinted ghost,
         // so the player sees where it would land. Click and two-tap
         // placement keep the red cell only (no ghost, no range).
         const c = cellCenter(hover);
-        drawTowerShape(g, ghostType, c, angle, upgraded, BLOCKED_GHOST_ALPHA, 0, this.layout, moved?.path);
+        if (this.painted) this.painted.drawGhost(ghostType, c, BLOCKED_GHOST_ALPHA);
+        drawTowerShape(g, this.painted ? null : ghostType, c, angle, upgraded, BLOCKED_GHOST_ALPHA, 0, this.layout, moved?.path);
         g.fillStyle(COLORS.cellBad, BLOCKED_GHOST_TINT);
         g.fillCircle(c.x, c.y, 15);
       }

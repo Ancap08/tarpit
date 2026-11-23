@@ -5,7 +5,7 @@
 // pure (checkManifest, parseManifest) and tested in
 // check-asset-manifest.test.ts; the file walk runs only when this file is
 // the entry point.
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -33,7 +33,7 @@ export function isIgnored(path: string): boolean {
 /**
  * Licenses a committed asset may carry (docs/SCOPE-v3.md, "Hard rules").
  * 'mit' is the repo's own license; checkManifest allows it only for files a
- * repo script drew (see isOwnWork).
+ * repo script drew.
  */
 export function licenseKind(license: string): 'cc0' | 'cc-by' | 'mit' | null {
   const l = license.trim().toUpperCase();
@@ -76,9 +76,9 @@ export function parseManifest(markdown: string): ManifestRow[] {
   return rows;
 }
 
-/** True if the row's source is a script in this repo (`scripts/...`): the project's own work. */
-export function isOwnWork(row: ManifestRow): boolean {
-  return /^scripts\/\S+\.ts\b/.test(row.source.replace(/`/g, '').trim());
+/** The repo script named at the start of Source, before any explanation. */
+function sourceScript(row: ManifestRow): string | undefined {
+  return /^scripts\/\S+\.(?:ts|py)(?=\s|$)/.exec(row.source.replace(/`/g, '').trim())?.[0];
 }
 
 /** True if the row's notes carry a credit line ("Credit: ..."), required for CC-BY. */
@@ -91,7 +91,7 @@ export function hasCredit(row: ManifestRow): boolean {
  * manifest rows: unlisted files, disallowed licenses, CC-BY without a credit
  * line, and rows that point at no file. Empty means the check passes.
  */
-export function checkManifest(files: string[], rows: ManifestRow[]): string[] {
+export function checkManifest(files: string[], rows: ManifestRow[], scripts: ReadonlySet<string> = new Set()): string[] {
   const problems: string[] = [];
   const checked = files.filter((f) => CHECKED_DIRS.some((d) => f.startsWith(d)) && !isIgnored(f)).sort();
   const byPath = new Map<string, ManifestRow>();
@@ -107,7 +107,9 @@ export function checkManifest(files: string[], rows: ManifestRow[]): string[] {
     }
     const kind = licenseKind(row.license);
     if (kind === null) problems.push(`${f}: license "${row.license}" is not allowed (only CC0 or CC-BY)`);
-    if (kind === 'mit' && !isOwnWork(row))
+    const script = sourceScript(row);
+    if (script && !scripts.has(script)) problems.push(`${f}: source script "${script}" does not exist in the repo`);
+    if (kind === 'mit' && !script)
       problems.push(`${f}: MIT is allowed only for files drawn by a repo script (Source "scripts/...")`);
     if (kind === 'cc-by' && !hasCredit(row)) problems.push(`${f}: CC-BY needs a credit line in Notes ("Credit: ...")`);
   }
@@ -134,7 +136,8 @@ function main(): void {
   }
   const rows = parseManifest(readFileSync(manifestPath, 'utf8'));
   const files = CHECKED_DIRS.flatMap((d) => walk(root, join(root, d)));
-  const problems = checkManifest(files, rows);
+  const scripts = walk(root, join(root, 'scripts')).filter((path) => lstatSync(join(root, path)).isFile());
+  const problems = checkManifest(files, rows, new Set(scripts));
   if (problems.length > 0) {
     console.error(`check:assets: ${problems.length} problem(s) with assets/MANIFEST.md:`);
     for (const p of problems) console.error(`  - ${p}`);

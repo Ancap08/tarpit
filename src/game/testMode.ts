@@ -213,6 +213,7 @@ export function installGlobal(game: Phaser.Game): void {
       }
       return state as ReturnType<TarpitTestApi['state']>;
     },
+    painted: () => scene().paintedState(),
     step: (n) => scene().advance(n),
     startGame: (difficulty = DEFAULT_DIFFICULTY, map = DEFAULT_MAP) =>
       new Promise<void>((resolve) => {

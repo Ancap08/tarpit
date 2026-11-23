@@ -1,0 +1,14 @@
+{
+  "frameSize": [
+    16,
+    19
+  ],
+  "anchor": [
+    8,
+    8
+  ],
+  "columns": 1,
+  "frameOrder": [
+    "tar-glob"
+  ]
+}

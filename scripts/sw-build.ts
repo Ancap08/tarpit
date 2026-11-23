@@ -3,7 +3,8 @@
 // production build; e2e/install.spec.ts runs it on a changed copy of a build
 // to make a second version. The version is a hash of every built file, so
 // any change to the site makes a new cache name, and the precache list is
-// every file except sw.js, with the page as './' (relative to the scope).
+// every core file except sw.js, with the page as './' (relative to the scope).
+// Painted files use the on-demand cache-first route for hashed assets.
 //
 // Kill switch: with TARPIT_SW=off (swEnabled() false) it writes RETIRE_SW
 // instead, a worker that removes itself; the page built with the same switch
@@ -13,6 +14,7 @@ import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'vite';
+import { PAINTED_ASSET_DIR } from '../src/sw/rules.ts';
 
 function walk(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
@@ -55,7 +57,9 @@ export function swManifest(outDir: string): { version: string; precache: string[
     .sort();
   const hash = createHash('sha256');
   for (const f of files) hash.update(f).update('\0').update(readFileSync(join(outDir, f))).update('\0');
-  const precache = files.map((f) => (f === 'index.html' ? './' : f));
+  const precache = files
+    .filter((f) => !f.startsWith(PAINTED_ASSET_DIR))
+    .map((f) => (f === 'index.html' ? './' : f));
   return { version: hash.digest('hex').slice(0, 12), precache };
 }
 

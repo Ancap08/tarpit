@@ -1,0 +1,14 @@
+{
+  "frameSize": [
+    15,
+    18
+  ],
+  "anchor": [
+    7,
+    10
+  ],
+  "columns": 1,
+  "frameOrder": [
+    "flame"
+  ]
+}

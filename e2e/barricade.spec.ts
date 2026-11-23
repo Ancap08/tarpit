@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { paintedHolding } from './barricade-crowd';
 import { aimBarricade, aimCases, castAt, hintAndRestart, startBarricadeWave } from './barricade';
 import type { GameScene } from '../src/game/GameScene';
 import { BARRICADE_HP } from '../src/sim/blockers';
@@ -104,3 +105,5 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
     expect(samples.sounds.blockerBreak).toBe(1);
   });
 }
+
+test('Painted Barricade shows its aim, refusal and counted pile', async ({ page }) => paintedHolding(page, false));

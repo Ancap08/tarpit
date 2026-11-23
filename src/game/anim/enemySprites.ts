@@ -41,6 +41,8 @@ import type { BlockedPosition, BlockedPositions } from '../draw/barricade';
 import { effectiveSlow, ENEMY_STATS, enemyPosition, isBoss, isTarred, positionAlongPath, type Enemy, type EnemyType, type GameEvent, type GameState, type MapDef } from '../../sim';
 import { bobOffset, DEATH_MS, burnPulse, FLAME_EVERY, HIT_FLASH_MS, Particles, statusTint, TINT } from './effects';
 import { awayFrom, deathPuff, KNOCK_MS, knockPx, knockShare } from '../fx/fxMath';
+import { enemyArt, walkFrame } from '../skin/frames';
+import type { PaintedSkin } from '../skin/painted';
 import { facingAt } from './facing';
 import { LANDSCAPE, type Layout } from '../layout';
 import { COLORS } from '../palette';
@@ -73,8 +75,17 @@ export interface AnimState {
   flags: { hit: boolean; burning: boolean; slowed: boolean; dying: boolean };
 }
 
+export interface PaintedBody {
+  x: number; y: number; width: number; height: number; depth: number;
+}
+
+// Keep both atlas bearings on the same stride while turning a painted walker.
+const TURN_MS = 100;
+
 interface View {
+  turn?: { previous: Phaser.GameObjects.Image; facing: Facing; start: number };
   sprite: Phaser.GameObjects.Sprite;
+  shadow?: Phaser.GameObjects.Image;
   crown: Phaser.GameObjects.Graphics | null;
   /** The Shieldbearer's shield mark, drawn in front of the sprite; null for other types. */
   shield: Phaser.GameObjects.Graphics | null;
@@ -146,10 +157,11 @@ export class EnemySprites {
     private readonly scene: Phaser.Scene,
     private readonly frozen: boolean,
     private readonly layout: Layout = LANDSCAPE,
+    private readonly painted?: PaintedSkin,
   ) {
-    ensureAnims(scene);
-    this.layer = scene.add.layer();
-    this.bossLayer = scene.add.layer();
+    if (!painted) ensureAnims(scene);
+    this.layer = painted?.standing ?? scene.add.layer();
+    this.bossLayer = painted?.standing ?? scene.add.layer();
     this.airLayer = this.layer;
     this.particles = frozen ? null : new Particles(scene);
   }
@@ -201,11 +213,29 @@ export class EnemySprites {
     }
   }
 
+  private lift(type: EnemyType): number {
+    if (this.painted) return ENEMY_STATS[type].flying ? 3 : 0;
+    return SHEETS[type].lift ?? 0;
+  }
+
+  /** Actual upper body edge after bob and knock, in canvas pixels. */
+  paintedBar(id: number): PaintedBody | undefined {
+    const v = this.views.get(id);
+    if (!this.painted || !v) return;
+    const { density, sheets } = this.painted.assets;
+    const sheet = sheets[enemyArt(v.type)];
+    const bounds = sheet.bodyBounds?.[Number(v.sprite.frame.name)];
+    if (bounds) return { x: v.sprite.x + ((bounds[0] + bounds[2]) / 2 - sheet.anchor[0]) / density,
+      y: v.sprite.y + (bounds[1] - sheet.anchor[1]) / density,
+      width: (bounds[2] - bounds[0]) / density, height: (bounds[3] - bounds[1]) / density,
+      depth: v.flying ? Infinity : v.sprite.depth };
+  }
+
   /** Where an enemy's sprite stands and its type, or null (milestone 31: puffs and gold labels). */
   spot(id: number): { x: number; y: number; type: EnemyType } | null {
     const v = this.views.get(id);
     if (!v) return null;
-    return { x: v.sprite.x, y: v.sprite.y + (SHEETS[v.type].lift ?? 0), type: v.type };
+    return { x: v.sprite.x, y: v.sprite.y + this.lift(v.type), type: v.type };
   }
 
   kill(id: number): void {
@@ -215,11 +245,15 @@ export class EnemySprites {
       this.remove(id);
       return;
     }
+    v.turn?.previous.destroy();
+    v.turn = undefined;
     v.dying = true;
+    v.sprite.setAlpha(1);
     v.sprite.anims.stop();
     const dead = SHEETS[v.type].deadFrame;
-    if (dead !== undefined) v.sprite.setFrame(dead);
-    v.sprite.clearTint();
+    if (!this.painted && dead !== undefined) v.sprite.setFrame(dead);
+    v.sprite.clearTint().setBlendMode(Phaser.BlendModes.NORMAL);
+    v.shadow?.setVisible(false);
     v.crown?.setVisible(false);
     v.shield?.setVisible(false);
     v.flash?.setVisible(false);
@@ -238,7 +272,9 @@ export class EnemySprites {
     const v = this.views.get(id);
     if (!v) return;
     this.scene.tweens.killTweensOf(v.sprite);
+    v.turn?.previous.destroy();
     v.sprite.destroy();
+    v.shadow?.destroy();
     v.crown?.destroy();
     v.shield?.destroy();
     v.flash?.destroy();
@@ -276,9 +312,12 @@ export class EnemySprites {
   private walkOn(v: View, map: MapDef, timeScale: number): void {
     if (v.stepPx === 0) return; // A walker killed against the wall stays there until the shot lands.
     const ticks = ((this.scene.time.now - v.doomedAt) / (1000 / 60)) * timeScale;
-    const { x, y } = this.layout.toScreen(positionAlongPath(map, v.distance + v.stepPx * ticks));
-    const lift = SHEETS[v.type].lift ?? 0;
+    const distance = v.distance + v.stepPx * ticks;
+    const { x, y } = this.layout.toScreen(positionAlongPath(map, distance));
+    v.shadow?.setPosition(x, y);
+    const lift = this.lift(v.type);
     v.sprite.setPosition(x, y - lift).setDepth(y);
+    if (this.painted) this.setFacing(v, facingAt(map, distance, v.stepPx, this.layout), false, distance);
     v.sprite.anims.timeScale = timeScale;
     v.crown?.setPosition(v.sprite.x, v.sprite.y - 41).setDepth(y + 1);
     v.shield?.setPosition(x + SHIELD_DX, y + SHIELD_DY).setDepth(y + 0.5);
@@ -287,16 +326,21 @@ export class EnemySprites {
   private create(enemy: Enemy, map: MapDef): View {
     const sheet = SHEETS[enemy.type];
     const stats = ENEMY_STATS[enemy.type];
-    const sprite = this.scene.add.sprite(0, 0, sheet.key, sheet.walk.right.frames[0]).setScale(sheet.scale);
+    const art = enemyArt(enemy.type);
+    const sprite = this.painted
+      ? this.painted.pose(this.scene.add.sprite(0, 0, this.painted.assets.sheets[art].key, 0), art, 0)
+      : this.scene.add.sprite(0, 0, sheet.key, sheet.walk.right.frames[0]).setScale(sheet.scale);
+    const shadow = this.painted && stats.flying ? this.painted.image('harpy-shadow') : undefined;
+    if (shadow) this.painted!.shadows.add(shadow);
     const layer = stats.flying ? this.airLayer : isBoss(enemy) ? this.bossLayer : this.layer;
     layer.add(sprite);
     let flash: Phaser.GameObjects.Sprite | null = null;
-    if (sheet.hitFlash) {
+    if (!this.painted && sheet.hitFlash) {
       flash = this.scene.add.sprite(0, 0, sheet.hitFlash.key, sheet.hitFlash.frame).setScale(sheet.scale).setVisible(false);
       layer.add(flash);
     }
     let shield: Phaser.GameObjects.Graphics | null = null;
-    if (stats.shield) {
+    if (!this.painted && stats.shield) {
       const h = SHIELD_SIZE / 2;
       shield = this.scene.add.graphics();
       shield.fillStyle(COLORS.shieldMarkEdge, 1);
@@ -306,7 +350,7 @@ export class EnemySprites {
       this.layer.add(shield);
     }
     let crown: Phaser.GameObjects.Graphics | null = null;
-    if (enemy.type === 'grumblemaw') {
+    if (!this.painted && enemy.type === 'grumblemaw') {
       crown = this.scene.add.graphics();
       const points = [{ x: -18, y: -14 }, { x: -7, y: -6 }, { x: 0, y: -20 }, { x: 7, y: -6 },
         { x: 18, y: -14 }, { x: 14, y: 3 }, { x: -14, y: 3 }];
@@ -316,7 +360,7 @@ export class EnemySprites {
       layer.add(crown);
     }
     const view: View = {
-      crown,
+      shadow, crown,
       sprite,
       shield,
       flash,
@@ -349,7 +393,30 @@ export class EnemySprites {
     return (ENEMY_STATS[enemy.type].speed * (1 - slow)) / 60;
   }
 
-  private setFacing(v: View, facing: Facing, force = false): void {
+  private setFacing(v: View, facing: Facing, force = false, distance = v.distance): void {
+    if (this.painted) {
+      const now = this.scene.time.now;
+      if (!force && !this.frozen && !v.flying && facing !== v.facing) {
+        const previous = v.turn?.previous ?? this.painted.image(enemyArt(v.type));
+        this.layer.add(previous);
+        v.turn = { previous, facing: v.facing, start: now };
+      }
+      if (v.turn) {
+        const fade = Math.min(1, (now - v.turn.start) / TURN_MS);
+        v.sprite.setAlpha(fade);
+        if (fade === 1) {
+          v.turn.previous.destroy();
+          v.turn = undefined;
+        } else {
+          v.turn.previous.setPosition(v.sprite.x, v.sprite.y).setDepth(v.sprite.depth)
+            .setFrame(walkFrame(v.turn.facing, distance, false)).setAlpha(1 - fade);
+        }
+      }
+      v.facing = facing;
+      const index = walkFrame(facing, distance, this.frozen);
+      if (Number(v.sprite.frame.name) !== index) v.sprite.setFrame(index);
+      return;
+    }
     if (!force && facing === v.facing) return;
     v.facing = facing;
     const cycle = SHEETS[v.type].walk[facing];
@@ -362,7 +429,7 @@ export class EnemySprites {
   private update(v: View, enemy: Enemy, map: MapDef, timeScale: number, stoppedAt?: BlockedPosition): void {
     const { x, y } = this.layout.toScreen(stoppedAt ?? enemyPosition(enemy, map));
     v.blockerLunge = stoppedAt?.lunge ?? 0;
-    const lift = SHEETS[v.type].lift ?? 0;
+    const lift = this.lift(v.type);
     const bob = v.flying && !this.frozen ? bobOffset(this.scene.time.now, enemy.id) : 0;
     if (v.knockAt >= 0 && this.scene.time.now - v.knockAt >= KNOCK_MS) v.knockAt = -1;
     if (v.knockAt >= 0) {
@@ -379,7 +446,8 @@ export class EnemySprites {
       // Keep the shield just in front of its owner.
       v.shield.setDepth(depth + 0.5);
     }
-    this.setFacing(v, facingAt(map, stoppedAt?.distance ?? enemy.distance, this.step(enemy), this.layout));
+    this.setFacing(v, facingAt(map, stoppedAt?.distance ?? enemy.distance, this.step(enemy), this.layout), false, enemy.distance);
+    v.shadow?.setPosition(x, y);
     v.sprite.anims.timeScale = stoppedAt ? 0 : timeScale;
     v.distance = enemy.distance;
     v.stepPx = stoppedAt ? 0 : this.step(enemy);
@@ -391,6 +459,7 @@ export class EnemySprites {
     if (v.flash) {
       v.flash.setPosition(x, y - lift).setDepth(depth + 0.1).setVisible(hit);
     }
+    if (this.painted) v.sprite.setBlendMode(hit ? Phaser.BlendModes.ADD : Phaser.BlendModes.NORMAL);
     if (hit && !v.flash) {
       v.sprite.setTintFill(TINT.flash);
     } else {
@@ -421,10 +490,10 @@ export class EnemySprites {
       y: s.y,
       texture: SHEETS[v.type].key,
       anim,
-      frame: Math.max(0, frame),
+      frame: this.painted ? Number(s.frame.name) % 4 : Math.max(0, frame),
       facing: v.facing,
       flipX: s.flipX,
-      scale: SHEETS[v.type].scale,
+      scale: s.scaleX,
       blockerLunge: v.blockerLunge,
       flags: { hit: this.isHit(v), burning: v.burning, slowed: v.slowed, dying: v.dying },
     };

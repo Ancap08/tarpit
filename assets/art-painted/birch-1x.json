@@ -1,0 +1,14 @@
+{
+  "frameSize": [
+    32,
+    40
+  ],
+  "anchor": [
+    16,
+    30
+  ],
+  "columns": 1,
+  "frameOrder": [
+    "birch"
+  ]
+}

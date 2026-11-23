@@ -18,9 +18,10 @@ The game has three maps, twenty campaign waves and then endless waves, six
 towers you can build on any free grass cell (not on the path, the river or
 the cottage), five enemy types (one of
 them flies, one carries a shield) and two bosses, three difficulty levels, three
-special attacks, and play on a tablet. The enemies are placeholder pixel
-sprites; towers and the HUD are simple shapes with labels, and the maps are
-drawn in code, until the art pass (see Status). Shots fly as musket balls, arrows,
+special attacks, and play on a tablet. Classic uses placeholder pixel sprites
+for enemies, simple shapes and labels for towers and HUD, and maps drawn in
+code. The optional Painted look gives Meadow Blender-rendered miniature
+towers, enemies, scenery and projectiles. Shots fly as musket balls, arrows,
 cannonballs, mortar shells, tar globs and gouts of fire; towers turn and
 kick back, kills drop floating gold, and banners mark new waves and boss arrivals.
 The maps are alive: textured grass and a worn dirt trail, trees and bushes
@@ -33,6 +34,9 @@ cloud shadows and the odd bird or butterfly, all still under reduced motion.
    gold and lives) and a map (Meadow, Switchback or Riverbend), then press
    Play (Enter or Space also work). The title shows your best score for that
    map and difficulty once you have one.
+   The title’s **Look** switch starts on **Classic**. Choose **Painted** to
+   see the miniature art on Meadow.
+   Your choice is remembered. Switchback and Riverbend use Classic art.
 2. **Build.** Drag a tower from the build bar under the map onto a green
    cell: a ghost shows the tower and its range, and red means it cannot go
    there. You can also click a tower on the bar and then click cells; the
@@ -250,8 +254,8 @@ docs/SCOPE-v3.md  v3 scope (tablet, art spike, animation engine; its art, sound 
 docs/SCOPE-v4.md  v4 scope and milestones 22 to 29
 docs/DESIGN.md    the frozen game spec: maps, economy, enemies, towers, specials, waves, endless, balance targets
 docs/media/       README GIF and stills
-docs/art/         art source spike (milestone 15): INVENTORY.md and the style mockups
-assets/           enemy sprite sheets (placeholders from Ninja Adventure); MANIFEST.md lists every file's source and license
+docs/art/         art source inventory, style mockups and Painted Meadow review sheets
+assets/           Classic enemy sprites and Painted atlases; MANIFEST.md lists sources and licenses
 src/sim/          game logic in plain TypeScript, no Phaser or DOM (lint-enforced)
   game.ts           state, ticks, waves, call early, endless
   actions.ts        build, upgrade, sell, move, undo, targeting, specials
@@ -337,17 +341,20 @@ wave 1, whether calling early should carry risk, the endless growth rate,
 long late waves, and how much Hard leans on well-aimed specials) are listed
 in [DECISIONS.md](DECISIONS.md), "milestone 28".
 
-v5 is planned as the presentation pass that was moved out of v3: art in a
-stop-motion tabletop style (pre-rendered from clay-style 3D models), sound,
-effects, world effects such as weather and time of day, and a themed HUD.
-Today's enemy sprites, tower and map shapes and the HUD bar are
-placeholders. Whether players can draw their own trail is still an open
+v5 is the presentation pass that was moved out of v3. Milestone 38 adds the
+optional Painted look for Meadow. Classic remains the default and is used on
+Switchback and Riverbend. Painted supports both screen orientations and
+loads one art density on demand. The HUD and tower upgrade marks are shared.
+See the [Painted Meadow review](docs/art/slice-meadow/README.md) for the
+desktop and phone comparisons, contact sheet and rebuild instructions.
+A themed HUD and further world effects such as weather and time of day
+remain planned. Whether players can draw their own trail is still an open
 question. No dates are set.
 
 ## Credits
 
-Placeholder enemy sprites: [Ninja Adventure](https://pixel-boy.itch.io/ninja-adventure-asset-pack)
-by Pixel-boy and AAA, CC0 (attribution appreciated, not required). Every
+Classic placeholder enemy sprites: [Ninja Adventure](https://pixel-boy.itch.io/ninja-adventure-asset-pack)
+by Pixel-boy and AAA, CC0 (attribution appreciated, not required). Painted Meadow art is generated in Blender by this project. Every
 asset file and its license is listed in [assets/MANIFEST.md](assets/MANIFEST.md).
 
 Further reading: [docs/SCOPE-v4.md](docs/SCOPE-v4.md),

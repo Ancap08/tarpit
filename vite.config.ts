@@ -1,6 +1,7 @@
 import { resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 import { swEnabled, writeServiceWorker } from './scripts/sw-build.ts';
+import { PAINTED_ASSET_DIR } from './src/sw/rules.ts';
 
 /** After a production build, write sw.js for it (milestone 32a, scripts/sw-build.ts). */
 function serviceWorker(): Plugin {
@@ -25,6 +26,13 @@ export default defineConfig({
   build: {
     // Phaser alone is about 1.2 MB minified; warn only above that.
     chunkSizeWarningLimit: 1500,
+    rollupOptions: {
+      output: {
+        assetFileNames: ({ originalFileNames }) => originalFileNames.some((path) => path.startsWith('assets/art-painted/'))
+          ? `${PAINTED_ASSET_DIR}[name]-[hash][extname]`
+          : 'assets/[name]-[hash][extname]',
+      },
+    },
   },
   // TARPIT_SW=off builds a deploy that retires the worker (scripts/sw-build.ts).
   define: { __TARPIT_SW__: JSON.stringify(swEnabled()) },

@@ -1,0 +1,17 @@
+{
+  "frameSize": [
+    64,
+    63
+  ],
+  "anchor": [
+    32,
+    35
+  ],
+  "columns": 2,
+  "frameOrder": [
+    "E",
+    "S",
+    "E-closed",
+    "S-closed"
+  ]
+}

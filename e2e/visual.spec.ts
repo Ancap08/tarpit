@@ -9,6 +9,7 @@ import { api, expectOffer, openCampaign, press, visibleTexts } from './campaign'
 import { choices, choiceVisual } from './upgradeChoice';
 import { cellPage, rectPage, rectPageSize } from './phone';
 import { FIRST_PACK_FRAME, FIRST_PACK_STEPS, GRUMBLEFOOT_STEPS, beginVisualWave, finalBossFrame } from './visualCampaign';
+import { click as paintedClick, midwave as paintedMidwave, openPainted } from './painted';
 import { aimFrame } from './barricade';
 import { holdingFrame } from './barricade-crowd';
 import { waitForTitle } from './title';
@@ -938,6 +939,36 @@ test('wave 20 shows Grumblemaw’s first pack call and two Wolves', async ({ pag
   });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('pack-call.png');
+});
+
+test('painted Meadow at wave zero', async ({ page }) => {
+  await openPainted(page);
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('painted-meadow-wave0.png');
+});
+
+test('painted Meadow midwave', async ({ page }) => {
+  await openPainted(page);
+  await paintedMidwave(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('painted-midwave.png');
+});
+
+test('painted Meadow placement and range', async ({ page }) => {
+  await openPainted(page);
+  await paintedClick(page, 'bar:musketeer');
+  const at = await cellPage(page, { col: 7, row: 5 });
+  await page.mouse.move(at.x, at.y);
+  await settle(page);
+  expect(await page.evaluate(() => window.__tarpit!.ui!())).toMatchObject({ pick: 'musketeer', hoverCell: { col: 7, row: 5 }, rangeRadius: 110 });
+  await expect(page.locator('canvas')).toHaveScreenshot('painted-placing.png');
+});
+
+test('painted Grumblefoot and boss bar', async ({ page }) => {
+  await openPainted(page);
+  await beginVisualWave(page, 10, GRUMBLEFOOT_STEPS);
+  await settle(page);
+  expect(await page.evaluate(() => window.__tarpit!.bossOnField!())).toBe('boss');
+  await expect(page.locator('canvas')).toHaveScreenshot('painted-boss.png');
 });
 
 choiceVisual(false, 'upgrade-choice');

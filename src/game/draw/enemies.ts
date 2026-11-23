@@ -13,6 +13,7 @@
 
 import type Phaser from 'phaser';
 import { ENEMY_STATS, enemyMaxHp, enemyPosition, isBoss, isTarred, type Enemy, type EnemyType, type GameState } from '../../sim';
+import type { PaintedBody } from '../anim/enemySprites';
 import { SHEETS } from '../anim/sheets';
 import { LANDSCAPE, type Layout } from '../layout';
 import { COLORS } from '../palette';
@@ -113,8 +114,62 @@ export function drawStatusRings(g: Phaser.GameObjects.Graphics, state: GameState
   }
 }
 
+// The fill starts 1 px inside its dark outline. Adjacent outlined bars leave
+// another pixel of clear ground between them. Prefer a free slot above.
+interface Bar { left: number; top: number }
+
+function freeTop(left: number, wanted: number, placed: Bar[], mapTop: number): number {
+  const stride = BAR_HEIGHT + 3;
+  const adjacent = placed.filter(b => Math.abs(b.left - left) < BAR_WIDTH + 3)
+    .sort((a, b) => b.top - a.top);
+  let top = Math.max(mapTop + 1, wanted);
+  for (const b of adjacent) {
+    if (Math.abs(b.top - top) < stride) top = b.top - stride;
+  }
+  if (top >= mapTop + 1) return top;
+  top = mapTop + 1;
+  for (let i = adjacent.length - 1; i >= 0; i--) {
+    if (Math.abs(adjacent[i].top - top) < stride) top = adjacent[i].top + stride;
+  }
+  return top;
+}
+
+function drawBar(g: Phaser.GameObjects.Graphics, left: number, top: number, fraction: number): void {
+  g.fillStyle(COLORS.hpBorder, 1);
+  g.fillRect(left - 1, top - 1, BAR_WIDTH + 2, BAR_HEIGHT + 2);
+  g.fillStyle(hpColor(fraction), 1);
+  g.fillRect(left, top, Math.max(1, Math.round(BAR_WIDTH * fraction)), BAR_HEIGHT);
+}
+
+function paintedBars(g: Phaser.GameObjects.Graphics, state: GameState, layout: Layout,
+  bodyTop: (id: number) => PaintedBody | undefined): void {
+  const pieces = state.enemies.flatMap(enemy => {
+    const body = bodyTop(enemy.id);
+    return body ? [{ enemy, body }] : [];
+  });
+  const placed: Bar[] = [];
+  // Place lower bars first so higher bars can move up without crossing owners.
+  pieces.sort((a, b) => b.body.y - a.body.y);
+  for (const { enemy, body } of pieces) {
+    if (isBoss(enemy)) continue;
+    const maxHp = enemy.maxHp ?? enemyMaxHp(enemy.type, state.difficulty);
+    // A larger foreground miniature can completely mask a healthy smaller one.
+    // Keep that enemy count visible with its own full bar during the overlap.
+    if (enemy.hp >= maxHp && !pieces.some(({ body: front }) =>
+      front.depth >= body.depth && front.width * front.height > 1.3 * body.width * body.height &&
+      Math.abs(front.x - body.x) < front.width / 2 &&
+      front.y <= body.y + body.height / 2 && front.y + front.height >= body.y + body.height / 2)) continue;
+    const left = Math.max(1, Math.min(layout.width - BAR_WIDTH - 1, Math.round(body.x - BAR_WIDTH / 2)));
+    const top = freeTop(left, Math.round(body.y - BAR_GAP - BAR_HEIGHT - 1), placed, layout.map.y);
+    drawBar(g, left, top, Math.max(0, enemy.hp) / maxHp);
+    placed.push({ left, top });
+  }
+}
+
 /** Hp bars for hurt enemies, drawn over the sprites. Not for the boss: the HUD boss bar shows his. */
-export function drawHpBars(g: Phaser.GameObjects.Graphics, state: GameState, layout: Layout = LANDSCAPE, stopped?: BlockedPositions): void {
+export function drawHpBars(g: Phaser.GameObjects.Graphics, state: GameState, layout: Layout = LANDSCAPE,
+  stopped?: BlockedPositions, bodyTop?: (id: number) => PaintedBody | undefined): void {
+  if (bodyTop) return paintedBars(g, state, layout, bodyTop);
   // `g` is screen-space (milestone 32b): a bar stays level above its sprite in any layout.
   for (const enemy of state.enemies) {
     // Full hp on this level (milestone 25): Easy and Hard scale it; an

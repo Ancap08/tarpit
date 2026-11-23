@@ -1,8 +1,9 @@
 // The offline service worker (milestone 32a), built to <base>sw.js by
 // scripts/sw-build.ts with this build's version and file list.
 //
-// - Install: cache every file of this build (fetched past the HTTP cache)
-//   into the cache named for this build, then skipWaiting.
+// - Install: cache the core files of this build (fetched past the HTTP
+//   cache) into the cache named for this build, then skipWaiting. Painted
+//   files use the on-demand cache-first route for hashed assets.
 // - Activate: delete this copy's caches from other builds (never another
 //   site's or another copy's: rules.ts cachePrefix), then clients.claim.
 // - Fetch: the page is network first (a new deploy that answers 200 shows
@@ -92,7 +93,10 @@ async function networkFirst(req: Request, fallbackUrl: string): Promise<Response
 
 async function cacheFirst(req: Request): Promise<Response> {
   const cache = await caches.open(CACHE);
-  const hit = await cache.match(req);
+  // A module request can carry a different Origin header than install's
+  // precache request (Vite serves Vary: Origin). These same-origin static
+  // files are identified by their full, content-hashed URL.
+  const hit = await cache.match(req, { ignoreVary: true });
   if (hit) return hit;
   const res = await fetch(req);
   if (res.ok) await cache.put(req, res.clone());

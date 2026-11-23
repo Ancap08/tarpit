@@ -917,6 +917,72 @@ drawing in `src/game/decor/livingMap.ts` and `src/game/draw/map.ts`.
   smoke where time 0 puts them, the ripples, eyes open, no bird, no
   butterfly, no puffs), so every run is identical.
 
+## Looks
+
+Milestone 38. The title screen offers Classic and Painted. Classic is the
+default. The game stores the choice as `tarpit.look` on this browser.
+`?look=classic` and `?look=painted` set the look for a visit. Switchback
+and Riverbend use Classic art and retain the player's preference for
+their next game on Meadow.
+
+- Painted Meadow uses the Blender ground, tower, enemy, scenery and
+  projectile art in `assets/art-painted/`. On Play it selects 2× when the
+  device pixel ratio times the displayed canvas scale reaches 1.5 and 1×
+  otherwise. A cold load uses 1× on a data-saving connection, on 3G or
+  slower, or with an estimated downlink of 2 Mbps or less. A browser
+  without a speed estimate tries the 1× Meadow ground first when the
+  screen calls for 2×. If the ground takes at least two seconds, the rest
+  loads at 1×. Otherwise the high-density screen gets 2×.
+  Atlas dimensions and anchors are in texture pixels and are divided by
+  density for drawing in game coordinates. The service worker caches painted
+  files on first use for offline play. Play shows “Loading painted art 0%”
+  from the click, then the percentage of the selected files ready.
+  Worker startup, the speed check and all files share one 25-second limit.
+  A failure or timeout starts Classic and shows a banner until wave 1.
+  The Meadow-only note appears when the player chooses Painted on another map.
+- The code-drawn Barricade sits across the painted trail in either layout.
+  Held enemies use their painted sprites, grouped within 36 game pixels of
+  the wall. Larger walkers draw in front of smaller ones. The wall and pile
+  sort with towers and scenery by their trail positions on screen. The count
+  appears beside the wall hp bar from four held enemies. On a horizontal
+  stretch, that group sits 28 px toward the exit, clear of the pile. The placement marker
+  and refusal text use the same rules as Classic.
+- Towers use 16 clockwise headings from north. Enemies walk in four
+  directions, advancing one of four poses per 6 game pixels walked. Test
+  mode holds the first pose for each direction. The ground turns with the
+  portrait map and the pieces stay upright, with their headings turned a
+  quarter turn. The ground anchor sets both placement and draw order, so
+  a piece nearer the bottom of the screen covers one behind it. Flyers
+  draw above walkers.
+- Painted omits the name label and its “+” on placed towers. A gold ring
+  over the base marks levels 2 and 3. At level 3, a gold diamond marks
+  path A and paired cyan dots mark path B. Placed towers
+  turn to aim. The six build buttons and the placement ghost show the
+  same southeast bearing (atlas frame 6) in both layouts. Build images fit
+  within 32 × 22 px in landscape and 46 × 38 px in portrait. Landscape
+  names and prices use 14 px text, or 13 px in the compact bar. Buttons
+  retain their price and hit area. The tower panel, reward icons and special icons are shared
+  with Classic.
+- Ground enemies use a feathered contact shadow. Towers stand on discs.
+  In play, a turning walker blends its old and new compass views over
+  100 ms with both views on the same stride. The Harpy spans at most
+  42 game pixels including its outline (1.31 cells). Its talons sit
+  5 px above the art anchor and the sprite floats another 3 px above the
+  trail, plus its existing bob. Its separate shadow stays on the ground.
+- Hurt enemies have a 30 × 4 px health bar 4 px above their painted
+  silhouette, with a 1 px dark outline. Bars leave at least 1 px between
+  outlines. A healthy walker also gets a bar when a foreground
+  silhouette more than 30% larger by bounding-box area covers its centre.
+  Boss health stays in the HUD.
+- The painted cave sits 22 px along the trail from the spawn, opening to
+  the right in landscape and down in portrait. Its two golden eyes blink
+  on the living map's clock. Four smoke puffs rise from the chimney,
+  11 px right and 22 px above the cottage anchor in either layout.
+  Test mode and reduced motion hold the open eyes and smoke at time zero.
+  Painted omits cloud shadows to keep the ground shading visible.
+  Status rings, range circles, placement highlights, magnifier, effects,
+  simulation and input geometry are shared with Classic.
+
 ## Sound
 
 Milestone 33 (with its follow-up and six new cues in milestone 36).
@@ -1212,8 +1278,8 @@ only and never under `?test=1` or `?perf=1`. Cache rules:
   shared by the whole origin (other project sites on `github.io`, another
   copy of the game under another path), so the game only ever deletes
   caches with its own scope's prefix and only unregisters the registration
-  whose scope is exactly its base. Install fills it with every file of the build
-  (past the HTTP cache), then calls `skipWaiting`; activate deletes every
+  whose scope is exactly its base. Install fetches the core build files
+  past the HTTP cache, then calls `skipWaiting`; activate deletes every
   other cache with this scope's prefix, then calls `clients.claim`.
 - The page (navigations, the scope root, `index.html`): network first
   (`no-cache`, so it revalidates). A 2xx answer is served, so a new deploy
@@ -1224,7 +1290,9 @@ only and never under `?test=1` or `?perf=1`. Cache rules:
   written to the cache.
 - `assets/` (content-hashed names): cache first. A miss (for example an old
   tab asking for the previous build's file) goes to the network, and its
-  answer is returned as it is; a 2xx answer is kept.
+  answer is returned as it is; a 2xx answer is kept. Painted art is
+  fetched this way at the density in use and is then available offline
+  for that density in this build.
 - Other files in scope (manifest, icons): as the page, with their own
   cached copies as the fallback.
 - Anything else (not GET, another origin, outside the scope, `sw.js`) is

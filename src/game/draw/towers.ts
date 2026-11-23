@@ -7,7 +7,7 @@
 // outline round their cell. Labels are Text objects (labels.ts).
 
 import type Phaser from 'phaser';
-import { CELL, cellCenter, cellKey, nearestPathPoint, positionAlongPath, type Cell, type GameState, type MapDef, type Point, type TowerType, type UpgradePath } from '../../sim';
+import { CELL, cellCenter, cellKey, nearestPathPoint, positionAlongPath, type Cell, type GameState, type MapDef, type Point, type Tower, type TowerType, type UpgradePath } from '../../sim';
 import { LANDSCAPE, type Layout } from '../layout';
 import { COLORS } from '../palette';
 
@@ -77,6 +77,7 @@ function barrel(g: Phaser.GameObjects.Graphics, p: Point, angle: number, len: nu
 }
 
 /**
+ * A null type draws just the code-drawn marks over a separately painted body.
  * One tower's shape at `p`, its barrel at `angle`. `alpha` scales every fill
  * and line (1 for a placed tower, lower for the placement ghost). `recoil`
  * (milestone 31, play only; 0 in test mode) slides the barrel, bow or tube
@@ -86,7 +87,7 @@ function barrel(g: Phaser.GameObjects.Graphics, p: Point, angle: number, len: nu
  */
 export function drawTowerShape(
   g: Phaser.GameObjects.Graphics,
-  type: TowerType,
+  type: TowerType | null,
   p: Point,
   angle: number,
   upgraded: boolean,
@@ -241,7 +242,7 @@ export interface TowerPose {
  */
 export function drawTowerScaled(
   g: Phaser.GameObjects.Graphics,
-  type: TowerType,
+  type: TowerType | null,
   p: Point,
   pose: TowerPose,
   upgraded: boolean,
@@ -273,11 +274,15 @@ export function drawTowers(
   dimmed: Cell | null = null,
   pose?: (cell: Cell, type: TowerType) => TowerPose,
   layout: Layout = LANDSCAPE,
+  body?: (tower: Tower, p: Point, pose: TowerPose, alpha: number) => void,
 ): void {
   for (const tower of state.towers) {
     const dim = dimmed !== null && dimmed.col === tower.cell.col && dimmed.row === tower.cell.row;
     if (!tower.locked) drawUnlockedOutline(g, tower.cell, dim ? DRAG_ORIGIN_ALPHA : 0.9);
-    if (pose) drawTowerScaled(g, tower.type, cellCenter(tower.cell), pose(tower.cell, tower.type), tower.upgraded, dim ? DRAG_ORIGIN_ALPHA : 1, layout, tower.path);
-    else drawTowerShape(g, tower.type, cellCenter(tower.cell), aim.angle(tower.cell), tower.upgraded, dim ? DRAG_ORIGIN_ALPHA : 1, 0, layout, tower.path);
+    const p = cellCenter(tower.cell);
+    const stance = pose?.(tower.cell, tower.type) ?? { angle: aim.angle(tower.cell), scale: 1, recoil: 0 };
+    const alpha = dim ? DRAG_ORIGIN_ALPHA : 1;
+    body?.(tower, p, stance, alpha);
+    drawTowerScaled(g, body ? null : tower.type, p, stance, tower.upgraded, alpha, layout, tower.path);
   }
 }

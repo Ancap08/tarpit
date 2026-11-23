@@ -8494,6 +8494,257 @@ The designSpec guard catches the act-2 rate, any path row and the endless hp
 line; it does not guard target wording (P2 edit passed) or the Known weaknesses
 list.
 
+## 2026-11-23: milestone 38, the painted look behind a switch
+
+Painted Meadow loads one texture density when play begins. Classic,
+Switchback and Riverbend use the original drawing path. A failed
+painted file restores the entire Classic view for that run. The
+painted scenery follows the existing growth recipe. Cloud shadows,
+chimney smoke, cave eyes, swaying tufts, birds and butterflies are
+omitted in Painted. The shot, hit and kill effects remain.
+
+The manifest lists 108 generated PNG and JSON files under
+`assets/art-painted/` and 155 assets in all. The validator was extended
+in the art work to recognize a source under `scripts/` ending in `.py`
+as well as `.ts`. The extension must end the source token. The check
+still requires a separate manifest row for each file, rejects duplicate
+and missing rows, and requires attribution for CC-BY assets. MIT is
+accepted only for repo-script sources.
+
+The first offline reload could miss the JavaScript module even though
+it appeared in the install cache. The preview server sends
+`Vary: Origin` and a module request carries an Origin header that the
+install request lacks. For same-origin hashed files the worker now
+matches the full URL across those header variants. The first Painted
+start waits for worker control before it fetches its sheets. A stalled
+first install falls back to Classic.
+
+The simulation output matched `main` byte for byte (21,510 bytes).
+Of the 50 existing screenshots replayed in the same browser on this
+Mac, 46 matched pixel for pixel. The three desktop title screenshots
+and the portrait title screenshot changed only in the Look row. The
+candidate build used 3,680,231 bytes, including 2,224,541 bytes of
+painted files. The core was 1,455,690 bytes, compared with 1,434,562
+bytes on `main`.
+
+The live desktop and emulated portrait captures used actual Wave 8
+enemies from all five ordinary types. The scene was advanced to the
+busy stretch and then ran at 1×. The 10-second clip captured 596 live
+ticks in 9.93 seconds. The trail is easy to follow and the HUD remains
+legible. In the crowded bends, larger bodies hide smaller figures
+and nearby HP bars overlap. Turns show a visible jump between bearings.
+The clip samples eight frames a second. Play on a physical phone
+remains unverified.
+
+One five-second Canvas measurement per look at 390 × 844 CSS px used
+120 enemies packed into the first 120 game pixels and 25 towers.
+Painted used 2× assets.
+
+| CPU throttle | Look | Frames | Median frame | 95th percentile | Sim ticks |
+|---|---|---:|---:|---:|---:|
+| 6× | Classic | 264 | 16.7 ms | 33.4 ms | 283 |
+| 6× | Painted | 231 | 16.7 ms | 33.4 ms | 266 |
+| 20× | Classic | 60 | 83.3 ms | 133.3 ms | 61 |
+| 20× | Painted | 68 | 66.7 ms | 100.0 ms | 69 |
+
+### Follow-up
+
+Merged milestone 37 at `d326cf1`. Classic uses main's simulation and
+tower panel. Placed Painted towers show main's gold level 2 ring and its
+level 3 gold diamond or paired cyan dots. Both build bars and the
+placement ghost use the southeast view from the existing tower sheets.
+The landscape bar keeps the names and prices, including its compact
+layout. Portrait keeps its price under each tower.
+
+The Harpy's maximum outlined wingspan fell from 52 to 42 game pixels
+at 1×. Its talons sit 8 px above the trail before bobbing, down from 19.
+The ground shadow stays on the trail. The six ground enemies traded
+their opaque discs for feathered contact shadows peaking at 56/255
+alpha. The tower discs remain. Live walkers blend compass views over
+100 ms. A watched Goblin made all six turns in both layouts. Its feet
+still slide a little between the four stride poses and the two
+silhouettes are briefly visible together on a fast turn.
+
+Health bars keep their dark 1 px outline and leave 1 px clear between
+neighbours. A foreground Troll covered a healthy Wolf's entire body box
+at the wave 8 bend. The Wolf kept its own bar. All 16 sampled crowd
+layouts had at least 1 px of separation. In the tightest stack it can
+still be hard to tell which bar belongs to which miniature.
+
+The cave moved 22 px into the trail and now blinks using open and
+closed painted frames. The opening and eyes are visible at both edges.
+Smoke rises from the painted chimney using the existing puff motion.
+Cloud shadows stay off so the painted terrain keeps its shading.
+
+The 26-enemy wave 8 captures used the real play loop, with gold and
+wave position staged for the shot. Both path badges read on the
+emulated phone. Enemies can cover the cave in a busy spawn. The
+side-by-side bars keep every icon and price distinct, though the
+landscape miniatures are small. The six-frame corner strip shows the
+Wolf catching the Goblin. The 800 × 484 GIF contains 160 frames at
+16 fps over 10 seconds and occupies 5,111,174 bytes. A physical phone
+was not used.
+
+A same-browser replay compared all 54 main frames. All 50 gameplay
+frames matched pixel for pixel. Only `title.png`, `title-best.png`,
+`title-hard.png` and `phone-title.png` changed in the area of the Look
+row. The simulation output matched all 28,614 bytes from main.
+The 108 shipped painted files total 590,041 bytes at 1× and 1,659,301
+bytes at 2×, previously 594,049 and 1,630,492 bytes.
+
+### Verifier notes
+
+Independent verifier (Claude Sonnet), against `2dee3eb`. A third full e2e run with the new specs: 724 passed, 8 skipped. Verdict: merge after
+one decision (below); no blocking bug found.
+
+**Passed.** Nothing pushed; `package.json` and `src/sim` unchanged;
+`DECISIONS.md` identical; no baseline PNG; trailers name Codex (the scope
+commit names Claude). `npm run sim` matched `origin/main` byte for byte
+(28,501 bytes, run directly). Lint, check:assets, typecheck, 1,842 unit
+tests, build and check:size passed. The full e2e suite ran twice on all
+three projects: 691 and 689 passed, 8 skipped. Two cases failed in the second
+run under machine load (`install-verifier.spec.ts:103` and
+`painted.spec.ts:189`, which reads portrait sprites before the restarted scene
+has drawn); each passed three times alone. No new `fixme`, `skip` or `fails`.
+All 50 gameplay screenshots matched `origin/main` byte for byte in one
+browser (a scratch config wrote both sets outside the repo); only the four
+title frames differ, inside the Look row (bounding box y 8 to 61). No existing
+title rectangle moved at nine viewport sizes on the three projects; the Look
+buttons are 42 canvas px tall in landscape (70 in portrait), and clear the
+mute button by 7 px in portrait. The whole existing e2e suite was also run
+with `tarpit.look=painted` stored: all tablet and phone behaviour cases
+passed; 24 chromium cases failed, all of them read Classic internals (sprite
+keys, label text, decor textures, layer order), none a behaviour failure.
+New `e2e/painted-verifier*.spec.ts`: malformed and throwing storage, URL
+override both ways, one density per device ratio (1 at 1, 2 at 2, and 2 at a
+canvas scale of 1.7), every sheet requested once (54 files), four single-file
+aborts, a corrupt sheet, a hung sheet (Classic after 12.1 s), service worker
+precache without painted files and 54 cached after one Painted game, a
+Classic and Painted sim comparison at five tick counts (identical), tower
+frame against the target's screen bearing in both layouts (33 shots each,
+11 bearings, wrap-around included, 0 mismatches), no texture or object growth
+over five Play agains, three Menu trips and a Look change, and hit areas
+(a tap on the painted body above a tower's cell acts as in Classic, mouse,
+tablet and phone).
+
+**Findings.**
+1. Tower name labels ("Musket+", "Cannon") are not drawn in Painted
+   (`GameScene.ts` skips `labels.update`). Scope says everything drawn on top
+   stays; DESIGN "Looks" does not say labels go. The "+" upgrade mark goes
+   with them; the gold ring still shows. Kyle should decide whether that is
+   intended.
+2. Painted is slower on desktop under CPU throttling (Canvas renderer,
+   120 packed enemies, 25 towers, 5 s). 6x: Classic 295 frames, Painted 182
+   (median 33.3 ms against 16.7). 20x: Classic 88 to 91, Painted 51 to 54.
+   At 1x both hold 60 fps. On the phone project (2x art) the gap is small
+   (6x: 250 to 254 against 231; 20x: 60 to 87 against 61). The DEVLOG table
+   was phone size only.
+3. Load on a cold cache with a modelled Fast 3G link (1.6 Mbps, 562 ms): the
+   title is ready 8.8 s after load; Play to game scene took 12.4 s on a
+   desktop window (1x art) and 17.6 s on the phone project (2x art). The Play
+   button reads "Loading... 0%" for the first seconds (waiting for the worker)
+   and the prompt line reads "Painted art is available on Meadow only" even
+   with Meadow selected. A slower link falls back to Classic after 12 s for
+   the worker and 12 s for the files, with no message.
+4. Readability. Painted Troll and Goblin are both green, so a crowd at a bend
+   is a green mass told apart by size only; Classic uses red for the Troll.
+   Wolves read as pink V shapes. Bars stack in a ladder above a pile. The
+   landscape build buttons use 14 px names where Classic uses 16 px.
+5. `check-asset-manifest.ts` still demands a row per file, but any source text
+   `scripts/<anything>.py` now passes as the project's own work, and the check
+   never looks for the script (the `.ts` rule was equally loose). A downloaded
+   file could pass under a made-up `.py` name. The rows are true: the rebuild
+   below wrote the files from the named scripts.
+6. Docs. DESIGN said the health bar sits "just above" the silhouette; the
+   gap is 4 px (fixed in DESIGN). `README.md` lines 21 to 23 and 344 to 346
+   still call the sprites placeholders. The art scripts hardcode
+   `/private/tmp/tarpit-art-scratch` and macOS font paths.
+7. Size. Committed images total 14.2 MB (11.9 MB of review plates in
+   `docs/art`, 2.2 MB of sheets). `dist` is 3.7 MB, of which 2.25 MB are the
+   108 painted files; a player downloads one density (0.59 or 1.66 MB).
+
+**Rebuild.** `python3 scripts/art/build_slice.py` in a clean checkout, with
+Blender 4.5 headless, took about 100 s. 104 of 108 files were byte identical,
+including all 54 JSON; the four that differ (`goblin-1x/2x`, `meadow-1x/2x`)
+have mean RGB differences of at most 0.002 of 255 and equal alpha.
+
+**Not checked.** A physical phone; WebGL under throttling (headless software
+GL); the gif's turn pops and foot slide beyond the sampled frames.
+
+### Closing pass
+
+Placed Painted towers omit their name and “+”. At the Wave 8 bend the
+level 2 gold ring and both level 3 path marks were visible in each layout.
+DESIGN records that choice. The fresh 960 × 580 and 390 × 844 CSS viewport
+captures show the live 1× game at the same stretch, with six built towers
+and 26 enemies from all five ordinary types. The crimson Troll stands out
+from the green Goblin. The pink V shapes were Harpies. A broader feathered
+wing, darker body and larger beak are visible in the phone capture. The
+blue-grey Wolf and both bosses retain their earlier art. The Harpy still
+spans at most 42 game pixels. Crowded figures can still cover one another.
+The phone check used Chromium device emulation.
+
+Play now shows “Loading painted art” until the first file is ready, then
+reports the percentage of 54 files decoded or parsed. The loading label
+uses 13 px on desktop and 17 px in portrait to fit the Play button. The
+Meadow-only note appears on Switchback and Riverbend with Painted selected.
+One 12-second deadline covers worker startup and files. A failed load opens
+Classic with “Painted art could not load. Playing Classic.” in the field of
+play until wave 1. A corrupt sheet showed the banner in both layouts with
+zero page or console errors.
+
+Cold-cache browser timings below are from Play to game. Each build used
+the same local server, with 1.6 Mbps shared across requests and 562 ms
+latency per request, including worker traffic. The verifier's original
+measurements were 12.4 s and 17.6 s. The title itself took about 9.2 s in
+the repeat. On this link the worker took about eight seconds of the art
+budget before the first sheet file was ready.
+
+| Viewport | Before, 6538cd7 | Closing pass | Last displayed percentage |
+|---|---:|---:|---:|
+| Desktop, 1× art | 13.93 s, Painted | 12.18 s, Classic with banner | 66% |
+| Portrait phone, 2× art | 17.03 s, Painted | 12.08 s, Classic with banner | 40% |
+
+Two verifier definitions changed, both in `e2e/painted-verifier.spec.ts`.
+The D4 map cases check that Meadow starts without the map restriction
+note before selecting Switchback or Riverbend. D6 holds worker registration
+for four seconds and then hangs one sheet, checking the initial Play text,
+a real percentage, and the single deadline. The original Painted gameplay
+spec also checks banner dismissal and a successful retry from Menu.
+
+The manifest now checks each claimed script against regular files under
+`scripts/`. A unit case covers missing Python and TypeScript names. The
+art scripts accept `TARPIT_ART_SCRATCH` with the existing default and use
+Pillow's default font if the preferred fonts are unavailable. The two art
+READMEs give the commands for regenerating the standalone plates in scratch.
+
+The 31 branch review PNGs occupied 11,998,278 bytes. The spike comparison,
+two Meadow comparisons and contact sheet now occupy 2,185,183 bytes in
+total. All 27 removed plates were regenerated in scratch. Including the
+shipped Painted PNGs, this branch adds 4,399,607 image bytes to main. With
+metadata, a player loads 589,433 bytes at 1× or 1,657,924 bytes at 2×.
+
+### Merge with milestone 39
+
+The merge brings the Barricade from `938243e` onto Painted Meadow. The wooden
+wall turns across the trail with the map. Fifteen painted walkers bunch up
+behind it, with the large Trolls in front, a wall hp bar and an x15 count.
+The Harpy flies past. Desktop and phone cases check the aim marker, refusal
+text, and the 36 px limit for both the sprite anchors and painted body
+centres, including both bosses. Against the same browser rendering main,
+all 53 Classic gameplay frames match pixel for pixel. The four title frames
+differ only at the Look control.
+
+The shared cold-load deadline increased from 12 to 25 seconds. Play shows
+progress from 0%. A slow connection chooses 1×, and a high-density screen
+without connection hints times its first 1× ground file for up to two
+seconds. With empty Chromium profiles, Play to the first rendered Painted
+frame took 13.92 s on desktop and 13.92 s on the emulated phone at Fast
+3G, and 10.71 s on each at Slow 4G. Both simulated links shared 1.6 Mbps
+across page and service-worker traffic, with 562 ms and 150 ms of request
+latency respectively and matching browser connection hints. All four runs
+fetched 54 files at 1× (589,433 bytes).
+
 ## 2026-11-23: milestone 39, the Barricade
 
 Wave 3 unlocks the fourth special on the existing charge. Aim near the

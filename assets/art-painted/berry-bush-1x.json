@@ -1,0 +1,14 @@
+{
+  "frameSize": [
+    32,
+    26
+  ],
+  "anchor": [
+    16,
+    14
+  ],
+  "columns": 1,
+  "frameOrder": [
+    "berry-bush"
+  ]
+}
