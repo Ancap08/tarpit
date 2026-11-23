@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { useSpecial } from './actions';
 import { GUARD_HP, GUARD_LIFETIME_TICKS, guardsPlacement } from './blockers';
+import { BOONS } from './boons';
 import { ENEMY_STATS } from './enemies';
 import { callNextWave, continueEndless, createGame, lastSpawnTick, startWave, tick } from './game';
 import type { Enemy, EnemyType, GameState, MapDef } from './types';
@@ -65,6 +66,9 @@ describe('Guards placement and shared charge', () => {
     const charged = structuredClone(active);
     charged.specialCharges = 1;
     for (const [state, aim, reason] of [
+      [createGame(), AIM, 'not-in-wave'],
+      [{ ...charged, phase: 'won' }, AIM, 'game-over'],
+      [{ ...charged, phase: 'lost' }, AIM, 'game-over'],
       [locked, AIM, 'locked'],
       [active, AIM, 'no-charge'],
       [charged, { x: -1, y: 240 }, 'out-of-bounds'],
@@ -82,6 +86,19 @@ describe('Guards placement and shared charge', () => {
     expect(charged.blockers.find((blocker) => blocker.kind === 'barricade')).toBe(wall);
     expect(charged.blockers.filter((blocker) => blocker.kind === 'guard').map((guard) => guard.id)).toEqual([4, 5, 6, 7]);
     expect(charged.events).toContainEqual({ kind: 'squadGone', guards: old, reason: 'replaced' });
+  });
+
+  it.each(Object.values(BOONS))('G6: $id preserves the squad and its damage in contact', ({ id }) => {
+    const normal = arena([enemy(0, 'shieldbearer')], 16);
+    const rewarded = structuredClone(normal);
+    rewarded.boons = [id];
+    cast(normal);
+    cast(rewarded);
+    expect(rewarded.specialRechargeTicks).toBe(id === 'quickHands' ? 684 : 1200);
+    tick(normal);
+    tick(rewarded);
+    expect(rewarded.blockers).toEqual(normal.blockers);
+    expect(rewarded.enemies).toEqual(normal.enemies);
   });
 
   it.each([[false, 1200], [true, 684]] as const)('G6: Quick Hands %s refills after %i ticks', (quickHands, recharge) => {
