@@ -915,7 +915,7 @@ their next game on Meadow.
   42 game pixels including its outline (1.31 cells). Its talons sit
   5 px above the art anchor and the sprite floats another 3 px above the
   trail, plus its existing bob. Its separate shadow stays on the ground.
-- Hurt enemies have a 30 × 4 px health bar just above their painted
+- Hurt enemies have a 30 × 4 px health bar 4 px above their painted
   silhouette, with a 1 px dark outline. Bars leave at least 1 px between
   outlines. A healthy walker also gets a bar when a foreground
   silhouette more than 30% larger by bounding-box area covers its centre.

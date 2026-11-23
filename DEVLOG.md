@@ -8591,3 +8591,82 @@ frames matched pixel for pixel. Only `title.png`, `title-best.png`,
 row. The simulation output matched all 28,614 bytes from main.
 The 108 shipped painted files total 590,041 bytes at 1× and 1,659,301
 bytes at 2×, previously 594,049 and 1,630,492 bytes.
+
+### Verifier notes
+
+Independent verifier (Claude Sonnet), against `2dee3eb`. A third full e2e run with the new specs: 724 passed, 8 skipped. Verdict: merge after
+one decision (below); no blocking bug found.
+
+**Passed.** Nothing pushed; `package.json` and `src/sim` unchanged;
+`DECISIONS.md` identical; no baseline PNG; trailers name Codex (the scope
+commit names Claude). `npm run sim` matched `origin/main` byte for byte
+(28,501 bytes, run directly). Lint, check:assets, typecheck, 1,842 unit
+tests, build and check:size passed. The full e2e suite ran twice on all
+three projects: 691 and 689 passed, 8 skipped. Two cases failed in the second
+run under machine load (`install-verifier.spec.ts:103` and
+`painted.spec.ts:189`, which reads portrait sprites before the restarted scene
+has drawn); each passed three times alone. No new `fixme`, `skip` or `fails`.
+All 50 gameplay screenshots matched `origin/main` byte for byte in one
+browser (a scratch config wrote both sets outside the repo); only the four
+title frames differ, inside the Look row (bounding box y 8 to 61). No existing
+title rectangle moved at nine viewport sizes on the three projects; the Look
+buttons are 42 canvas px tall in landscape (70 in portrait), and clear the
+mute button by 7 px in portrait. The whole existing e2e suite was also run
+with `tarpit.look=painted` stored: all tablet and phone behaviour cases
+passed; 24 chromium cases failed, all of them read Classic internals (sprite
+keys, label text, decor textures, layer order), none a behaviour failure.
+New `e2e/painted-verifier*.spec.ts`: malformed and throwing storage, URL
+override both ways, one density per device ratio (1 at 1, 2 at 2, and 2 at a
+canvas scale of 1.7), every sheet requested once (54 files), four single-file
+aborts, a corrupt sheet, a hung sheet (Classic after 12.1 s), service worker
+precache without painted files and 54 cached after one Painted game, a
+Classic and Painted sim comparison at five tick counts (identical), tower
+frame against the target's screen bearing in both layouts (33 shots each,
+11 bearings, wrap-around included, 0 mismatches), no texture or object growth
+over five Play agains, three Menu trips and a Look change, and hit areas
+(a tap on the painted body above a tower's cell acts as in Classic, mouse,
+tablet and phone).
+
+**Findings.**
+1. Tower name labels ("Musket+", "Cannon") are not drawn in Painted
+   (`GameScene.ts` skips `labels.update`). Scope says everything drawn on top
+   stays; DESIGN "Looks" does not say labels go. The "+" upgrade mark goes
+   with them; the gold ring still shows. Kyle should decide whether that is
+   intended.
+2. Painted is slower on desktop under CPU throttling (Canvas renderer,
+   120 packed enemies, 25 towers, 5 s). 6x: Classic 295 frames, Painted 182
+   (median 33.3 ms against 16.7). 20x: Classic 88 to 91, Painted 51 to 54.
+   At 1x both hold 60 fps. On the phone project (2x art) the gap is small
+   (6x: 250 to 254 against 231; 20x: 60 to 87 against 61). The DEVLOG table
+   was phone size only.
+3. Load on a cold cache with a modelled Fast 3G link (1.6 Mbps, 562 ms): the
+   title is ready 8.8 s after load; Play to game scene took 12.4 s on a
+   desktop window (1x art) and 17.6 s on the phone project (2x art). The Play
+   button reads "Loading... 0%" for the first seconds (waiting for the worker)
+   and the prompt line reads "Painted art is available on Meadow only" even
+   with Meadow selected. A slower link falls back to Classic after 12 s for
+   the worker and 12 s for the files, with no message.
+4. Readability. Painted Troll and Goblin are both green, so a crowd at a bend
+   is a green mass told apart by size only; Classic uses red for the Troll.
+   Wolves read as pink V shapes. Bars stack in a ladder above a pile. The
+   landscape build buttons use 14 px names where Classic uses 16 px.
+5. `check-asset-manifest.ts` still demands a row per file, but any source text
+   `scripts/<anything>.py` now passes as the project's own work, and the check
+   never looks for the script (the `.ts` rule was equally loose). A downloaded
+   file could pass under a made-up `.py` name. The rows are true: the rebuild
+   below wrote the files from the named scripts.
+6. Docs. DESIGN said the health bar sits "just above" the silhouette; the
+   gap is 4 px (fixed in DESIGN). `README.md` lines 21 to 23 and 344 to 346
+   still call the sprites placeholders. The art scripts hardcode
+   `/private/tmp/tarpit-art-scratch` and macOS font paths.
+7. Size. Committed images total 14.2 MB (11.9 MB of review plates in
+   `docs/art`, 2.2 MB of sheets). `dist` is 3.7 MB, of which 2.25 MB are the
+   108 painted files; a player downloads one density (0.59 or 1.66 MB).
+
+**Rebuild.** `python3 scripts/art/build_slice.py` in a clean checkout, with
+Blender 4.5 headless, took about 100 s. 104 of 108 files were byte identical,
+including all 54 JSON; the four that differ (`goblin-1x/2x`, `meadow-1x/2x`)
+have mean RGB differences of at most 0.002 of 255 and equal alpha.
+
+**Not checked.** A physical phone; WebGL under throttling (headless software
+GL); the gif's turn pops and foot slide beyond the sampled frames.
