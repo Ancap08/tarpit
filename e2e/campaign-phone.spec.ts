@@ -1,3 +1,4 @@
+import { campaignPurchaseCase } from './campaignPurchases';
 import { expect, test } from '@playwright/test';
 import { blockedWaveLabel, BOON_PENDING_TEXT, BOON_WAVE_TEXT, BOSS_WAVE_NEXT_TEXT, LAST_WAVE_TEXT } from '../src/game/names';
 import { api, clearToOffer, expectActTwoPreviewsFit, expectOffer, expectStartLabelFits, mapPress, openCampaign, pickEachPosition, postSpawn, press } from './campaign';
@@ -49,3 +50,5 @@ test('Call next displays each refusal inside the phone button', async ({ page })
     expect(await api(page, (t) => t.state())).toMatchObject({ phase: 'wave', wave });
   }
 });
+
+campaignPurchaseCase(true);

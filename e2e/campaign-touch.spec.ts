@@ -1,3 +1,4 @@
+import { campaignPurchaseCase } from './campaignPurchases';
 import { expect, test } from '@playwright/test';
 import { api, clearToOffer, expectOffer, mapPress, openCampaign, pickEachPosition, press } from './campaign';
 
@@ -20,3 +21,5 @@ test('tablet taps can choose a card but cannot reach a selected tower under the 
 });
 
 test('each reward card position accepts a tap', ({ page }) => pickEachPosition(page, 'touch'));
+
+campaignPurchaseCase(true);

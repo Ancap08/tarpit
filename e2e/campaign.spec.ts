@@ -1,3 +1,4 @@
+import { campaignPurchaseCase } from './campaignPurchases';
 import { expect, test } from '@playwright/test';
 import type { GameScene } from '../src/game/GameScene';
 import { ACT_TWO_TEXT, blockedWaveLabel, boonDescription, BOON_PENDING_TEXT, BOON_WAVE_TEXT, BOSS_WAVE_NEXT_TEXT, heldBoonsText, LAST_WAVE_TEXT } from '../src/game/names';
@@ -191,3 +192,5 @@ test('scripted campaign replay honors requested picks across all three offers', 
   });
   expect(await api(page, (t) => t.heldBoons())).toEqual(['warChest', 'quickHands', 'biggerBlasts']);
 });
+
+campaignPurchaseCase(false);
