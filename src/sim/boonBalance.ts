@@ -1,24 +1,35 @@
-import { playWithStats, type BalanceRun } from './balanceRuns';
 import { BOONS, boonOptions, type BoonId } from './boons';
 import {
-  ARCHETYPES,
   artilleryBuild,
   burnBuild,
   comboBuild,
+  comboBuildNoFire,
+  lazyBuild,
+  longbowSpam,
+  referenceBuild,
+  soundBuild,
   type BoonChoices,
   type RecordedOutcome,
+  type ReferenceBuild,
 } from './headless';
 import type { MapId } from './map';
 
+function reportReference(build: ReferenceBuild) {
+  return (difficulty: BoonScenario['difficulty'], map: MapId, picks: BoonChoices,
+    report: (value: RecordedOutcome, refused: number) => void) => referenceBuild(build, difficulty, map, picks, undefined, report);
+}
+
 export const BOON_EFFECT_BUILDS = {
   comboBuild,
-  hardBuild: ARCHETYPES.hardBuild,
-  comboBuildNoFire: ARCHETYPES.comboBuildNoFire,
-  longbowSpam: ARCHETYPES.longbowSpam,
-  soundBuild: ARCHETYPES.soundBuild,
-  lazyBuild: ARCHETYPES.lazyBuild,
+  hardBuild: reportReference('hardBuild'),
+  comboBuildNoFire,
+  longbowSpam,
+  soundBuild,
+  lazyBuild,
   artilleryBuild,
   burnBuild,
+  musketBuild: reportReference('musketBuild'),
+  wideBuild: reportReference('wideBuild'),
 };
 
 export const BOON_WAVES = [5, 10, 15] as const;
@@ -35,7 +46,7 @@ export interface BoonScenario {
   picks: BoonPicks;
 }
 
-export type BoonOutcome = Pick<BalanceRun, 'lives' | 'wave' | 'phase' | 'kills' | 'refused'>;
+export type BoonOutcome = RecordedOutcome & { refused: number };
 
 export interface BoonMeasurement {
   boon: BoonId;
@@ -55,21 +66,16 @@ export function defaultBoonPicks(): BoonPicks {
 /**
  * Remove only the chosen option's benefit in the comparison run. The same
  * card is still picked by the standard script runner, and the other two
- * keep their real effects. The direct planners report their own runs,
- * saving a replay. Other builds record and replay under the same
- * temporary value because early purchases can depend on the effect.
+ * keep their real effects. The planners report the outcomes they record,
+ * including any refused actions when adapting a script from another build.
  */
 function runComparison(scenario: BoonScenario, picks: BoonChoices, neutral?: BoonId): BoonOutcome {
   const { build, difficulty, map } = scenario;
   const run = () => {
-    if (build === 'comboBuild' || build === 'artilleryBuild' || build === 'burnBuild') {
-      let outcome: RecordedOutcome | undefined;
-      BOON_EFFECT_BUILDS[build](difficulty, map, picks, (recorded) => { outcome = recorded; });
-      if (!outcome) throw new Error(`no recorded outcome for ${build}`);
-      return { ...outcome, refused: 0 };
-    }
-    const { lives, wave, phase, kills, refused } = playWithStats(BOON_EFFECT_BUILDS[build](difficulty, map, picks), difficulty);
-    return { lives, wave, phase, kills, refused };
+    let outcome: BoonOutcome | undefined;
+    BOON_EFFECT_BUILDS[build](difficulty, map, picks, (recorded, refused) => { outcome = { ...recorded, refused }; });
+    if (!outcome) throw new Error(`no recorded outcome for ${build}`);
+    return outcome;
   };
   if (neutral === undefined) return run();
   const def: { value: number } = BOONS[neutral];
@@ -159,69 +165,40 @@ export interface BoonEffectWitness {
 /** A compact set of real scenarios that proves both effectiveness targets. */
 export const BOON_EFFECT_WITNESSES: readonly BoonEffectWitness[] = [
   {
-    scenario: { build: 'burnBuild', map: 'meadow', difficulty: 'hard', wave: 5,
-      picks: defaultBoonPicks() },
-    best: 'warChest', changed: ['warChest', 'longBarrels', 'keenArrows'],
+    scenario: { build: 'comboBuild', map: 'meadow', difficulty: 'normal', wave: 5, picks: defaultBoonPicks() },
+    best: 'keenArrows', changed: ['longBarrels', 'keenArrows', 'warChest'],
   },
   {
-    scenario: { build: 'artilleryBuild', map: 'switchback', difficulty: 'hard', wave: 5,
-      picks: defaultBoonPicks() },
-    best: 'keenArrows', changed: ['keenArrows', 'longBarrels', 'warChest'],
+    scenario: { build: 'comboBuild', map: 'meadow', difficulty: 'normal', wave: 10, picks: defaultBoonPicks() },
+    best: 'stickyTar', changed: ['stickyTar', 'hotCoals', 'quickHands'],
   },
   {
-    scenario: { build: 'artilleryBuild', map: 'riverbend', difficulty: 'normal', wave: 5,
-      picks: ['longBarrels', 'stickyTar', 'biggerBlasts'] },
-    best: 'longBarrels', changed: ['longBarrels', 'warChest', 'keenArrows'],
+    scenario: { build: 'comboBuild', map: 'meadow', difficulty: 'normal', wave: 15, picks: defaultBoonPicks() },
+    best: 'stoneWalls', changed: ['stoneWalls', 'veteranCrews', 'biggerBlasts'],
   },
   {
-    scenario: { build: 'artilleryBuild', map: 'riverbend', difficulty: 'normal', wave: 15,
-      picks: defaultBoonPicks() },
-    best: 'biggerBlasts', changed: ['biggerBlasts', 'stoneWalls'],
+    scenario: { build: 'comboBuild', map: 'switchback', difficulty: 'normal', wave: 15, picks: defaultBoonPicks() },
+    best: 'biggerBlasts', changed: ['stoneWalls', 'veteranCrews', 'biggerBlasts'],
   },
   {
-    scenario: { build: 'burnBuild', map: 'meadow', difficulty: 'normal', wave: 15,
-      picks: ['longBarrels', 'hotCoals', 'stoneWalls'] },
-    best: 'veteranCrews', changed: ['veteranCrews', 'stoneWalls'],
+    scenario: { build: 'comboBuild', map: 'riverbend', difficulty: 'normal', wave: 10, picks: defaultBoonPicks() },
+    best: 'quickHands', changed: ['stickyTar', 'hotCoals', 'quickHands'],
   },
   {
-    scenario: { build: 'artilleryBuild', map: 'meadow', difficulty: 'normal', wave: 15,
-      picks: defaultBoonPicks() },
-    best: 'stoneWalls', changed: ['stoneWalls'],
+    scenario: { build: 'hardBuild', map: 'meadow', difficulty: 'normal', wave: 15, picks: defaultBoonPicks() },
+    best: 'veteranCrews', changed: ['stoneWalls', 'veteranCrews', 'biggerBlasts'],
   },
   {
-    scenario: { build: 'artilleryBuild', map: 'meadow', difficulty: 'hard', wave: 10,
-      picks: ['longBarrels', 'stickyTar', 'veteranCrews'] },
-    best: 'quickHands', changed: ['quickHands'],
+    scenario: { build: 'hardBuild', map: 'riverbend', difficulty: 'normal', wave: 5, picks: defaultBoonPicks() },
+    best: 'longBarrels', changed: ['longBarrels', 'keenArrows', 'warChest'],
   },
   {
-    scenario: { build: 'burnBuild', map: 'meadow', difficulty: 'normal', wave: 10,
-      picks: ['longBarrels', 'stickyTar', 'veteranCrews'] },
-    best: 'hotCoals', changed: ['hotCoals'],
+    scenario: { build: 'wideBuild', map: 'meadow', difficulty: 'normal', wave: 10, picks: defaultBoonPicks() },
+    best: 'hotCoals', changed: ['stickyTar', 'hotCoals', 'quickHands'],
   },
   {
-    scenario: { build: 'burnBuild', map: 'switchback', difficulty: 'normal', wave: 10,
-      picks: ['warChest', 'stickyTar', 'stoneWalls'] },
-    best: 'stickyTar', changed: ['stickyTar'],
-  },
-  {
-    scenario: { build: 'burnBuild', map: 'riverbend', difficulty: 'hard', wave: 10,
-      picks: ['warChest', 'stickyTar', 'stoneWalls'] },
-    changed: ['quickHands', 'stickyTar', 'hotCoals'],
-  },
-  {
-    scenario: { build: 'comboBuild', map: 'riverbend', difficulty: 'normal', wave: 10,
-      picks: ['warChest', 'stickyTar', 'stoneWalls'] },
-    changed: ['stickyTar', 'hotCoals', 'quickHands'],
-  },
-  {
-    scenario: { build: 'artilleryBuild', map: 'meadow', difficulty: 'hard', wave: 15,
-      picks: ['longBarrels', 'quickHands', 'stoneWalls'] },
-    changed: ['veteranCrews', 'biggerBlasts'],
-  },
-  {
-    scenario: { build: 'artilleryBuild', map: 'switchback', difficulty: 'hard', wave: 15,
-      picks: ['warChest', 'stickyTar', 'stoneWalls'] },
-    changed: ['veteranCrews', 'biggerBlasts'],
+    scenario: { build: 'musketBuild', map: 'meadow', difficulty: 'normal', wave: 5, picks: defaultBoonPicks() },
+    best: 'warChest', changed: ['longBarrels', 'keenArrows', 'warChest'],
   },
 ];
 

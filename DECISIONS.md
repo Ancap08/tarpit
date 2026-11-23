@@ -1099,3 +1099,59 @@ can change it; "Kyle" means Kyle decided.
   the wave 10 offer changes little for a bow and mortar build; Longbows
   and Mortars do most of the damage in act 2 in that build; waves 7 and 10
   still pass 100 s. Sonnet (findings), Fable (held for play notes).
+
+## 2026-11-23, milestone 37 (a second upgrade with a choice) and Kyle's notes
+
+- **Kyle finished 20 waves on Normal: "a little too easy", and the
+  rewards made it more fun.** He asked how to improve the look of the
+  pieces and towers, and raised bigger ideas: a castle wall with hp as a
+  last defence (archers, grunts, trebuchets), longer maps, hundreds of
+  levels with varying challenges, a wall special that holds enemies, and a
+  short burst of troops. Kyle.
+- **Order agreed with Kyle:** the second upgrade (this milestone); then a
+  Barricade special as the first use of one new rule (something on the
+  trail with hp that enemies stop at and hit), then troops on the same
+  rule; then levels as data with a campaign; then the castle as a level
+  type. Longer trails on the same map size are cheap; physically bigger
+  maps need a scrolling camera and wait. Fable (order), Kyle (agreed).
+- **A second upgrade with a choice of two paths per tower,** twelve rows
+  of numbers, one price per tower, a mark on the tower, two buttons in the
+  panel with a plain line each. Kyle (approved the idea), Fable (the
+  twelve ideas), Codex (numbers and build), Sonnet (verified).
+- **It took four Codex passes, and the coordinator's targets were the
+  problem twice.** Pass 1 met every target while the two paths played the
+  same on Normal and act 2 cost nothing (the targets allowed witnesses
+  from Hard and builds that stopped spending). Pass 2 made act 2 hard with
+  a cliff (hp x1.13 a wave; 8 lives lost on wave 18 alone) that broke
+  endless and 15 other targets, which Codex pinned as accepted misses;
+  rejected. Pass 3 replaced the cliff with a slope and reported, without
+  pinning, that three targets could not all hold. Pass 4 restated those
+  three. Sonnet (findings each time), Fable (targets), Codex.
+- **Rules added:** reference builds reinvest their gold by one stated
+  rule; from wave 11 enemy hp grows by a per-difficulty share of base hp
+  each wave (Easy 0%, Normal 28%, Hard 21.3%); endless continues from wave
+  20. Slope and smoothness are now tested: act 2 losses on several waves,
+  none over 4 lives, and a 5% hp nudge moves the result by at most 4.
+  Fable (targets), Codex.
+- **Normal now:** the reinvesting reference build ends with 14, 11 and 14
+  lives (it was 19 on every map), losing them across waves 15 to 19.
+- **Targets relaxed by the coordinator after three passes** (Fable):
+  "no single special may hurt" is information only; "each path wins by 2
+  lives somewhere" became "no path is useless or always worse"; the widest
+  allowed gap between a tower's paths is 9 lives.
+- **Known weaknesses, accepted for now and written into DESIGN.md:** the
+  Tar Barrel's charge is usually better spent on the keg or Fire Arrows
+  (skipping it gives 17, 12, 20 lives against 14, 11, 14); the Tar Pit's
+  path B never beats path A; Cannon, Longbow and Fire Pot paths often tie.
+- **The finale was reshaped to meet the targets and needs Kyle's eye:**
+  Grumblemaw now walks at 14 px a second (38 before) with a 75 bounty (300
+  before), and wave 20 has far fewer escorts. He is on the map about two
+  minutes with act 2's hp growth on top. Whether that is an epic slow
+  fight or a slog is a play note. Sonnet (finding), Fable (held for play).
+- **Art, in parallel (Kyle approved Blender and free packs):** a Blender
+  spike showed the tabletop look is achievable by script; Kyle chose the
+  painted miniature look; two CC0 packs from kenney.nl were downloaded to
+  a scratch folder as style references only (the first is modern
+  military, the second medieval and close to the theme). The painted
+  Meadow is wired in behind a Look switch on a separate branch (milestone
+  38). Kyle (choices), Fable, Codex.

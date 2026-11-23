@@ -87,7 +87,7 @@ test('drag to place, move, remove, undo upgrade, then locked after Start Wave', 
   expect(s.gold).toBe(15);
   expect(s.towers).toEqual([expect.objectContaining({ cell: C75, upgraded: true, upgradedThisPhase: true })]);
   expect(await ui(page)).toMatchObject({ upgradeLabel: undo(35), sellLabel: remove(85) });
-  await click(page, 'panel:upgrade');
+  await click(page, 'panel:undo');
   s = await state(page);
   expect(s.gold).toBe(50);
   expect(s.towers).toEqual([expect.objectContaining({ cell: C75, upgraded: false, upgradedThisPhase: false, locked: false })]);

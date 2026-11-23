@@ -5,10 +5,6 @@ import type { Rect } from '../../sim';
 import { KILLS_LINE_H } from '../input';
 import { PORTRAIT_BUTTON_H, PORTRAIT_GAP, PORTRAIT_MIN_FONT, PORTRAIT_ROW1_Y, PORTRAIT_ROW2_Y, PORTRAIT_WIDTH, type Layout } from '../layout';
 
-/** Stack buttons (milestone 25a): 156 x 42 in landscape. */
-export const STACK_BUTTON_WIDTH = 156;
-export const STACK_BUTTON_HEIGHT = 42;
-export const STACK_CLOSE_SIZE = 42;
 export const STACK_GAP = 4;
 export const STACK_PAD = 6;
 
@@ -20,7 +16,7 @@ export interface StackSize {
 }
 
 /** The landscape stack: 156 x 42 buttons and a 42 px close button. */
-export const STACK_SIZE: StackSize = { buttonW: STACK_BUTTON_WIDTH, buttonH: STACK_BUTTON_HEIGHT, close: STACK_CLOSE_SIZE };
+export const STACK_SIZE: StackSize = { buttonW: 156, buttonH: 42, close: 42 };
 /** Portrait popups and panels: 220 x 70 buttons and a 70 px close button, 18 px text. */
 export const PORTRAIT_STACK: StackSize = { buttonW: 220, buttonH: PORTRAIT_BUTTON_H, close: PORTRAIT_BUTTON_H };
 

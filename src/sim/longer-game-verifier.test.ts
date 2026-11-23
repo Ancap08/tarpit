@@ -4,14 +4,14 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { buildTower, moveTower, pickBoon, sellTower, undoUpgrade, upgradeTower, useSpecial } from './actions';
 import { boonOptions, type BoonId } from './boons';
 import { applyBurn, applySlow, applySpecialSlow } from './combat';
-import { enemyMaxHp } from './difficulty';
+import { campaignHpFactor, enemyMaxHp } from './difficulty';
 import { effectiveSlow, ENEMY_STATS } from './enemies';
 import type { GameEvent } from './events';
 import { callEarlyStatus, callNextWave, continueEndless, createGame, lastSpawnTick, startWave, tick, wavesCleared } from './game';
 import { applyAction, applyScriptBoon, comboBuild } from './headless';
 import { MAPS, pathLength, type MapId } from './map';
-import { specialRadius, tarLingerTicks } from './specials';
-import { shotCooldown, TOWER_DEFS, towerStats } from './towers';
+import { SPECIAL_DEFS, specialRadius, tarLingerTicks } from './specials';
+import { shotCooldown, TOWER_DEFS, TOWER_PATHS, towerStats } from './towers';
 import type { Enemy, EnemyType, GameState, TowerType } from './types';
 import { endlessCycle, waveDef, WAVES } from './waves';
 
@@ -33,9 +33,10 @@ function enemy(id: number, type: EnemyType, extra: Partial<Enemy> = {}): Enemy {
 function inWave(wave: number, enemies: Enemy[], difficulty: GameState['difficulty'] = 'normal'): GameState {
   const s = createGame({ difficulty });
   s.wave = wave - 1;
+  s.endless = wave > 20;
   s.lives = 1000;
   expect(startWave(s).ok).toBe(true);
-  s.spawnedPerGroup = WAVES[wave - 1].groups.map((g) => g.count);
+  s.spawnedPerGroup = waveDef(wave).groups.map((g) => g.count);
   s.enemies = enemies;
   s.nextEnemyId = 1000;
   s.events = [];
@@ -88,11 +89,10 @@ describe('verifier 36a: the rules', () => {
   it('Grumblemaw spawns 2 s after wave 20 last ordinary spawn, alone, with the right hp per level', () => {
     const groups = WAVES[19].groups;
     const ordinaryLast = Math.max(...groups.slice(0, -1).map((g) => Math.round(g.delay * 60) + (g.count - 1) * Math.round(g.interval * 60)));
-    expect(ordinaryLast).toBe(2772); // 46.2 s: the 12th Troll, 27.5 + 11 x 1.7
     const spawnAt = ordinaryLast + 120;
     expect(lastSpawnTick(20)).toBe(spawnAt);
-    for (const [level, hp] of [['easy', 4200], ['normal', 5600], ['hard', 6720]] as const) {
-      expect(enemyMaxHp('grumblemaw', level)).toBe(hp);
+    for (const level of ['easy', 'normal', 'hard'] as const) {
+      const hp = enemyMaxHp('grumblemaw', level, campaignHpFactor(20, level));
       const s = createGame({ difficulty: level });
       s.wave = 19;
       s.lives = 1e6;
@@ -100,6 +100,7 @@ describe('verifier 36a: the rules', () => {
       while (s.waveTick <= spawnAt) tick(s);
       const boss = s.enemies.find((e) => e.type === 'grumblemaw')!;
       expect(boss.hp).toBe(hp);
+      expect(boss.maxHp ?? enemyMaxHp('grumblemaw', level)).toBe(hp);
       expect(s.waveTick).toBe(spawnAt + 1);
       expect(ofKind(s, 'bossSpawn')).toEqual([{ kind: 'bossSpawn', enemyId: boss.id, enemyType: 'grumblemaw' }]);
     }
@@ -113,7 +114,7 @@ describe('verifier 36a: the rules', () => {
     expect(effectiveSlow(s.enemies[0])).toBe(0.3);
     const d0 = s.enemies[0].distance;
     tick(s);
-    expect(s.enemies[0].distance - d0).toBeCloseTo((35 / 60) * 0.7, 9);
+    expect(s.enemies[0].distance - d0).toBeCloseTo((14 / 60) * 0.7, 9);
 
     const t = inWave(20, [enemy(0, 'grumblemaw')]);
     applySpecialSlow(t.enemies[0], 0.5, 100);
@@ -134,30 +135,35 @@ describe('verifier 36a: the rules', () => {
 describe('verifier 36a: Grumblemaw pack calls', () => {
   const keg = (s: GameState) => useSpecial(s, 'keg', { x: 100, y: 240 });
   const boss = (hp: number, difficulty: GameState['difficulty'] = 'normal') => {
-    const s = inWave(20, [enemy(0, 'grumblemaw', { hp })], difficulty);
+    const maxHp = enemyMaxHp('grumblemaw', difficulty, campaignHpFactor(20, difficulty));
+    const s = inWave(20, [enemy(0, 'grumblemaw', { hp, maxHp })], difficulty);
     s.specialCharges = 1;
     return s;
   };
 
-  it('exact boundary: hp on Easy exactly 2800 calls, 2801 does not; thresholds fire once', () => {
-    const above = boss(2861, 'easy');
-    keg(above);
-    expect(above.enemies[0].hp).toBe(2801);
-    expect(ofKind(above, 'packCall')).toEqual([]);
-
-    const a = boss(2860, 'easy');
+  it('Easy: each pack calls on its HP threshold, with no early or repeated call', () => {
+    const kegDamage = SPECIAL_DEFS.keg.damage!;
+    const full = enemyMaxHp('grumblemaw', 'easy', campaignHpFactor(20, 'easy'));
+    const twoThirds = Math.floor(2 * full / 3);
+    const oneThird = Math.floor(full / 3);
+    const a = boss(twoThirds + kegDamage + 1, 'easy');
     keg(a);
-    expect(a.enemies[0].hp).toBe(2800);
+    expect(a.enemies[0].hp).toBe(twoThirds + 1);
+    expect(ofKind(a, 'packCall')).toEqual([]);
+
+    a.enemies[0].hp = twoThirds + kegDamage;
+    a.specialCharges = 1;
+    keg(a);
+    expect(a.enemies[0].hp).toBe(twoThirds);
     expect(ofKind(a, 'packCall')).toEqual([{ kind: 'packCall', enemyId: 0, threshold: 2 }]);
-    // Hit again deeper than 2/3 but above 1/3: no second call at threshold 2.
     a.specialCharges = 1;
     keg(a);
     expect(ofKind(a, 'packCall')).toHaveLength(1);
-    // Cross one third exactly.
-    a.enemies[0].hp = 1460;
+
+    a.enemies[0].hp = oneThird + kegDamage;
     a.specialCharges = 1;
     keg(a);
-    expect(a.enemies[0].hp).toBe(1400);
+    expect(a.enemies[0].hp).toBe(oneThird);
     expect(ofKind(a, 'packCall').map((e) => e.threshold)).toEqual([2, 1]);
     a.specialCharges = 1;
     keg(a);
@@ -174,19 +180,24 @@ describe('verifier 36a: Grumblemaw pack calls', () => {
     expect(s.packs).toEqual([{ nextTick: s.waveTick, remaining: 8 }, { nextTick: s.waveTick, remaining: 8 }]);
   });
 
-  it('wolves are real: spawn at 30-tick spacing, 8 per call, 20 hp on Normal, count for the clear, pay bounty', () => {
-    const s = boss(3793);
+  it('wolves spawn at 30-tick spacing, eight per call, at wave-20 HP, and pay bounty', () => {
+    const full = enemyMaxHp('grumblemaw', 'normal', campaignHpFactor(20, 'normal'));
+    const s = boss(Math.floor(2 * full / 3) + SPECIAL_DEFS.keg.damage!);
     keg(s);
-    s.enemies = [enemy(0, 'grumblemaw', { hp: 3733, packCalls: 1 })];
+    expect(ofKind(s, 'packCall').map((e) => e.threshold)).toEqual([2]);
+    const wolfHp = enemyMaxHp('wolf', 'normal', campaignHpFactor(20, 'normal'));
     const spawns: number[] = [];
     for (let i = 0; i < 300; i++) {
       tick(s);
       for (const event of ofKind(s, 'spawn')) {
         if (event.enemyType !== 'wolf') continue;
         spawns.push(s.waveTick - 1);
-        expect(s.enemies.find((wolf) => wolf.id === event.enemyId)).toMatchObject({ hp: 20, distance: 0 });
+        const wolf = s.enemies.find((enemy) => enemy.id === event.enemyId)!;
+        expect(wolf).toMatchObject({ hp: wolfHp, distance: 0 });
+        expect(wolf.maxHp ?? enemyMaxHp('wolf', 'normal')).toBe(wolfHp);
         if (spawns.length === 1) {
           const gold = s.gold;
+          wolf.hp = 1;
           s.specialCharges = 1;
           expect(useSpecial(s, 'keg', { x: 0, y: 240 })).toMatchObject({ hits: 1, kills: 1 });
           expect(s.gold).toBe(gold + 2);
@@ -199,8 +210,7 @@ describe('verifier 36a: Grumblemaw pack calls', () => {
   });
 
   it('the wave cannot clear while a pack is queued, even with the field empty', () => {
-    const s = boss(3793);
-    keg(s);
+    const s = boss(100);
     s.enemies = [];
     s.packs = [{ nextTick: s.waveTick + 100, remaining: 8 }];
     for (let i = 0; i < 50; i++) tick(s);
@@ -259,10 +269,10 @@ describe('verifier 36a: boons by hand', () => {
     for (const t of ['musketeer', 'tarpit', 'longbow', 'firepot'] as const) expect(stats(s, t, true).range).toBe(TOWER_DEFS[t].upgraded.range);
   });
 
-  it('Keen Arrows: Longbow 4 -> 5, 9 -> 11.25; others unchanged', () => {
+  it('Keen Arrows: Longbow 4 -> 4.44, 9 -> 9.99; others unchanged', () => {
     const s = withBoon('keenArrows');
-    expect(stats(s, 'longbow', false).damage).toBeCloseTo(5, 9);
-    expect(stats(s, 'longbow', true).damage).toBeCloseTo(11.25, 9);
+    expect(stats(s, 'longbow', false).damage).toBeCloseTo(4.44, 9);
+    expect(stats(s, 'longbow', true).damage).toBeCloseTo(9.99, 9);
     expect(stats(s, 'musketeer', true).damage).toBe(22);
   });
 
@@ -273,23 +283,23 @@ describe('verifier 36a: boons by hand', () => {
     expect(tarLingerTicks([])).toBe(60);
   });
 
-  it('Hot Coals: Fire Pot burn 5 -> 9 and 8 -> 14.4; Fire Arrows 26 -> 46.8, doubled under tar', () => {
+  it('Hot Coals: Fire Pot burn 5 -> 10.55 and 8 -> 16.88; Fire Arrows 26 -> 54.86, doubled under tar', () => {
     const s = withBoon('hotCoals');
-    expect(stats(s, 'firepot', false).burnDps).toBeCloseTo(9, 9);
-    expect(stats(s, 'firepot', true).burnDps).toBeCloseTo(14.4, 9);
+    expect(stats(s, 'firepot', false).burnDps).toBeCloseTo(10.55, 9);
+    expect(stats(s, 'firepot', true).burnDps).toBeCloseTo(16.88, 9);
     const w = inWave(7, [enemy(0, 'troll', { hp: 1e6 })]);
     w.boons = ['hotCoals'];
     w.specialCharges = 1;
     useSpecial(w, 'fireArrows', { x: 100, y: 240 });
-    expect(w.enemies[0].burnDps).toBeCloseTo(46.8, 9);
+    expect(w.enemies[0].burnDps).toBeCloseTo(54.86, 9);
   });
 
-  it('Quick Hands: recharge 1200 -> 744 for the next use; a recharge cannot be running at a pick (wave clear resets it)', () => {
+  it('Quick Hands: recharge 1200 -> 684 for the next use; a recharge cannot be running at a pick (wave clear resets it)', () => {
     const w = inWave(3, [enemy(0, 'troll', { hp: 1e6 })]);
     w.boons = ['quickHands'];
     w.specialCharges = 1;
     useSpecial(w, 'keg', { x: 100, y: 240 });
-    expect(w.specialRechargeTicks).toBe(744);
+    expect(w.specialRechargeTicks).toBe(684);
     const c = inWave(10, [enemy(0, 'troll', { hp: 1e6 })]);
     c.specialCharges = 1;
     useSpecial(c, 'keg', { x: 100, y: 240 });
@@ -301,34 +311,34 @@ describe('verifier 36a: boons by hand', () => {
 
   it('Veteran Crews: fire interval in ticks, by hand', () => {
     const s = withBoon('veteranCrews');
-    // round(60 / (rate x 1.10))
-    const want: Record<TowerType, number> = { musketeer: 55, cannon: 109, tarpit: 27, longbow: 22, mortar: 164, firepot: 68 };
+    // round(60 / (rate x 1.11))
+    const want: Record<TowerType, number> = { musketeer: 54, cannon: 108, tarpit: 27, longbow: 22, mortar: 162, firepot: 68 };
     for (const t of TYPES) expect(shotCooldown(stats(s, t, false)), t).toBe(want[t]);
     expect(shotCooldown(towerStats({ type: 'musketeer', upgraded: false }))).toBe(60);
   });
 
-  it('Bigger Blasts: Cannon 40/55 -> 56/77, Mortar 60/70 -> 84/98, Keg 90 -> 126; Tar Barrel and Fire Arrows unchanged', () => {
+  it('Bigger Blasts: Cannon 40/55 -> 52/71.5, Mortar 60/70 -> 78/91, Keg 90 -> 117; Tar Barrel and Fire Arrows unchanged', () => {
     const s = withBoon('biggerBlasts');
-    expect(stats(s, 'cannon', false).splashRadius).toBeCloseTo(56, 9);
-    expect(stats(s, 'cannon', true).splashRadius).toBeCloseTo(77, 9);
-    expect(stats(s, 'mortar', false).splashRadius).toBeCloseTo(84, 9);
-    expect(stats(s, 'mortar', true).splashRadius).toBeCloseTo(98, 9);
-    expect(specialRadius('keg', s.boons)).toBeCloseTo(126, 9);
+    expect(stats(s, 'cannon', false).splashRadius).toBeCloseTo(52, 9);
+    expect(stats(s, 'cannon', true).splashRadius).toBeCloseTo(71.5, 9);
+    expect(stats(s, 'mortar', false).splashRadius).toBeCloseTo(78, 9);
+    expect(stats(s, 'mortar', true).splashRadius).toBeCloseTo(91, 9);
+    expect(specialRadius('keg', s.boons)).toBeCloseTo(117, 9);
     expect(specialRadius('tarBarrel', s.boons)).toBe(100);
     expect(specialRadius('fireArrows', s.boons)).toBe(90);
   });
 
-  it('War Chest +100 gold and Stone Walls +3 lives, exactly once, and not before the pick', () => {
+  it('War Chest +80 gold and Stone Walls +4 lives, exactly once, and not before the pick', () => {
     const a = clearedAt(5);
     const g = a.gold;
     expect(pickBoon(a, 'warChest')).toEqual({ ok: true });
-    expect(a.gold).toBe(g + 100);
+    expect(a.gold).toBe(g + 80);
     expect(pickBoon(a, 'warChest')).toEqual({ ok: false, reason: 'no-boon-pending' });
-    expect(a.gold).toBe(g + 100);
+    expect(a.gold).toBe(g + 80);
     const b = clearedAt(15);
     const l = b.lives;
     pickBoon(b, 'stoneWalls');
-    expect(b.lives).toBe(l + 3);
+    expect(b.lives).toBe(l + 4);
   });
 
   it('refusals change nothing (deep compare), after the game ends too', () => {
@@ -365,7 +375,7 @@ describe('verifier 36a: boons by hand', () => {
     expect(sellTower(s, OTHER).ok).toBe(true);
     buildTower(s, CELL, 'cannon');
     expect(towerStats(s.towers[0], s.boons).range).toBeCloseTo(136.5, 9);
-    expect(shotCooldown(towerStats(s.towers[0], s.boons))).toBe(109);
+    expect(shotCooldown(towerStats(s.towers[0], s.boons))).toBe(108);
     // Not before the pick, not twice: boon list holds one entry per pick, so a duplicate id cannot arise from the game.
     const none = createGame();
     expect(towerStats({ type: 'cannon', upgraded: false }, none.boons).range).toBe(105);
@@ -389,34 +399,37 @@ describe('verifier 36a: boons by hand', () => {
 describe('verifier 36a: endless by hand', () => {
   const norm = (n: number) => waveDef(n).groups.map((g) => `${g.count} ${g.type} every ${g.interval} from ${Number(g.delay.toFixed(6))}`);
 
-  it('wave 21: wave 18 + 10 Harpies from 61.5 s (35 Goblin intervals of 1.7 s + 2), x1.8; hp Normal 41 / troll 1710', () => {
-    expect(norm(21)).toEqual([
-      '36 goblin every 1.7 from 0', '18 troll every 3 from 3.6', '11 shieldbearer every 5 from 2.16', '19 harpy every 2.8 from 7.92', '10 harpy every 0.75 from 61.5',
-    ]);
-    expect(waveDef(21).hpMultiplier).toBe(1.8);
-    expect(enemyMaxHp('goblin', 'normal', 1.8)).toBe(41); // 41.4
-    expect(enemyMaxHp('troll', 'normal', 1.8)).toBe(1710);
+  it('wave 21: wave 18 with extra Harpies and the first-cycle health bonus', () => {
+    expect(norm(21).slice(0, -1)).toEqual(norm(18));
+    expect(norm(21).at(-1)).toBe('10 harpy every 0.75 from 60.4');
+    expect(waveDef(21).hpMultiplier).toBe(1.05);
+    const s = inWave(21, []);
+    s.spawnedPerGroup.fill(0);
+    tick(s);
+    const hp = Math.round(23 * campaignHpFactor(20, 'normal') * 1.05);
+    expect(s.enemies[0]).toMatchObject({ type: 'goblin', hp, maxHp: hp });
   });
 
-  it('wave 22: wave 19 + 10 Harpies from 63.48 s (last Harpy: 6.48 + 20 x 2.75 = 61.48), x1.8', () => {
-    expect(norm(22).at(-1)).toBe('10 harpy every 0.75 from 63.48');
+  it('wave 22: wave 19 + 10 Harpies from 61.2 s (32 Wolf intervals of 1.85 s + 2)', () => {
+    expect(norm(22).at(-1)).toBe('10 harpy every 0.75 from 61.2');
     expect(norm(22)).toHaveLength(4);
   });
 
-  it('wave 23: wave 20 without Grumblemaw + 10 Harpies from 48.2 s; no boss, no pack', () => {
-    expect(norm(23).at(-1)).toBe('10 harpy every 0.75 from 48.2');
+  it('wave 23: wave 20 without Grumblemaw + 10 Harpies two seconds after the ordinary spawns', () => {
+    const lastOrdinary = Math.max(...WAVES[19].groups.filter((g) => g.type !== 'grumblemaw')
+      .map((g) => g.delay + (g.count - 1) * g.interval));
+    expect(norm(23).at(-1)).toBe(`10 harpy every 0.75 from ${Number((lastOrdinary + 2).toFixed(6))}`);
     expect(waveDef(23).groups.some((g) => g.type === 'grumblemaw' || g.type === 'boss')).toBe(false);
     expect(waveDef(23).groups).toHaveLength(5);
   });
 
-  it('wave 24: cycle 2, wave 18, 12 Harpies, x3.24; wave 60: cycle 14, wave 18, 16 Harpies (cap), x1.8^14', () => {
+  it('cycles 2 and 14 repeat wave 18, grow hp and eventually cap the extra Harpy group', () => {
     expect(endlessCycle(24)).toBe(2);
-    expect(norm(24).at(-1)).toBe('12 harpy every 0.75 from 61.5');
-    expect(waveDef(24).hpMultiplier).toBeCloseTo(3.24, 12);
+    expect(norm(24).at(-1)).toBe('12 harpy every 0.75 from 60.4');
+    expect(waveDef(24).hpMultiplier).toBeCloseTo(1.89, 12);
     expect(endlessCycle(60)).toBe(14);
-    expect(norm(60).at(-1)).toBe('16 harpy every 0.75 from 61.5');
-    expect(waveDef(60).hpMultiplier).toBeCloseTo(1.8 ** 14, 6);
-    expect(enemyMaxHp('troll', 'normal', waveDef(24).hpMultiplier)).toBe(3078);
+    expect(norm(60).at(-1)).toBe('16 harpy every 0.75 from 60.4');
+    expect(waveDef(60).hpMultiplier).toBeCloseTo(1.05 * 1.8 ** 13, 6);
   });
 
   it('endless never offers a boon, never calls a pack, and wavesCleared is wave - 1 on a loss', () => {
@@ -507,11 +520,11 @@ describe('verifier 36a: conservation over full games', () => {
         if (e.kind === 'kill') gold += e.bounty;
         if (e.kind === 'waveClear' || e.kind === 'earlyCall') gold += e.bonus;
         if (e.kind === 'build') gold -= TOWER_DEFS[e.tower].cost;
-        if (e.kind === 'upgrade') gold -= TOWER_DEFS[e.tower].upgradeCost;
+        if (e.kind === 'upgrade') gold -= e.level === 3 ? TOWER_PATHS[e.tower].cost : TOWER_DEFS[e.tower].upgradeCost;
         if (e.kind === 'sell') gold += e.refund;
         if (e.kind === 'undoUpgrade') gold += e.refund;
-        if (e.kind === 'boonPicked' && e.id === 'warChest') gold += 100;
-        if (e.kind === 'boonPicked' && e.id === 'stoneWalls') lives += 3;
+        if (e.kind === 'boonPicked' && e.id === 'warChest') gold += 80;
+        if (e.kind === 'boonPicked' && e.id === 'stoneWalls') lives += 4;
         if (e.kind === 'exit') lives -= ENEMY_STATS[spawned.get(e.enemyId)!].livesCost;
       }
       expect(s.gold).toBe(gold);

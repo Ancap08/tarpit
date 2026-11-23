@@ -14,7 +14,7 @@ import type { GameEvent } from './events';
 import { createGame, startWave, tick } from './game';
 import { applyAction, applyScriptBoon, comboBuild, playScripted, type WaveScript } from './headless';
 import { SPECIAL_TYPES } from './specials';
-import { TOWER_DEFS } from './towers';
+import { TOWER_DEFS, TOWER_PATHS } from './towers';
 import type { Enemy, EnemyType, GameState, TowerType } from './types';
 import { WAVES } from './waves';
 
@@ -196,10 +196,10 @@ describe('(j) (l) a full comboBuild game with its recorded specials', () => {
       if (e.kind === 'kill') gold += e.bounty;
       if (e.kind === 'waveClear' || e.kind === 'earlyCall') gold += e.bonus;
       if (e.kind === 'build') gold -= TOWER_DEFS[e.tower].cost;
-      if (e.kind === 'upgrade') gold -= TOWER_DEFS[e.tower].upgradeCost;
+      if (e.kind === 'upgrade') gold -= e.level === 3 ? TOWER_PATHS[e.tower].cost : TOWER_DEFS[e.tower].upgradeCost;
       if (e.kind === 'sell') gold += e.refund;
-      if (e.kind === 'boonPicked' && e.id === 'warChest') gold += 100;
-      if (e.kind === 'boonPicked' && e.id === 'stoneWalls') lives += 3;
+      if (e.kind === 'boonPicked' && e.id === 'warChest') gold += 80;
+      if (e.kind === 'boonPicked' && e.id === 'stoneWalls') lives += 4;
       if (e.kind === 'exit') lives -= ENEMY_STATS[enemyTypes.get(e.enemyId)!].livesCost;
     }
     expect(state.gold).toBe(gold);
@@ -208,8 +208,9 @@ describe('(j) (l) a full comboBuild game with its recorded specials', () => {
   });
 
   it('two runs are identical (state, waves, log)', () => {
-    const a = playScripted(comboBuild());
-    const b = playScripted(comboBuild());
+    const script = comboBuild();
+    const a = playScripted(script);
+    const b = playScripted(script);
     expect(JSON.stringify(b)).toBe(JSON.stringify(a));
   });
 });

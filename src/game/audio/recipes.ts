@@ -105,6 +105,7 @@ export const SOUND_NAMES = [
   'exit',
   'build',
   'upgrade',
+  'upgradePath',
   'sell',
   'refuse',
   'tap',
@@ -317,6 +318,14 @@ export const RECIPES: Readonly<Record<SoundName, Recipe>> = {
     gain: 1.018,
     priority: PRIORITY.ui,
     layers: [C5, E5, G5, C6].map((f, i) => tone('triangle', f, undefined, { a: 0.004, d: 0.14 }, 0.32, { at: i * 0.06 })),
+  },
+  upgradePath: {
+    gain: 0.9,
+    priority: PRIORITY.ui,
+    layers: [
+      tone('triangle', G5, undefined, { a: 0.004, d: 0.10 }, 0.35),
+      tone('triangle', E6, undefined, { a: 0.004, d: 0.14 }, 0.37, { at: 0.075 }),
+    ],
   },
   sell: {
     gain: 0.737,
@@ -549,7 +558,7 @@ export function levelTier(name: SoundName): LevelTier {
   if (name === 'hit') return 'tick';
   if (name.startsWith('shot.')) return 'shot';
   if (name.startsWith('impact.') || name.startsWith('death.')) return 'impact';
-  if (['build', 'upgrade', 'sell', 'refuse', 'tap', 'select', 'coin', 'boonOffer', 'boonPick'].includes(name)) return 'action';
+  if (['build', 'upgrade', 'upgradePath', 'sell', 'refuse', 'tap', 'select', 'coin', 'boonOffer', 'boonPick'].includes(name)) return 'action';
   if (['exit', 'chargeReady', 'waveStart', 'waveClear', 'callNext', 'act2', 'packCall'].includes(name)) return 'moment';
   return 'big';
 }

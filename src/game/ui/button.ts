@@ -12,7 +12,6 @@ import { sound } from '../audio/engine';
 import type { SoundName } from '../audio/recipes';
 import type { Rect } from '../input';
 import { COLORS, FONT, TEXT } from '../palette';
-import { STACK_GAP, STACK_PAD, STACK_SIZE, stackBox, type StackSize } from './geometry';
 
 export interface ButtonOptions {
   fontSize?: string;
@@ -128,8 +127,14 @@ export class Button {
   }
 
   setWidth(width: number): void {
+    this.setSize(width, this.r.height);
+  }
+
+  setSize(width: number, height: number): void {
+    if (this.r.width === width && this.r.height === height) return;
     this.r.width = width;
-    this.box.setSize(width, this.r.height);
+    this.r.height = height;
+    this.box.setSize(width, height);
     this.moveTo(this.r.x, this.r.y);
   }
 
@@ -178,94 +183,5 @@ export class Button {
     const color = this.enabled ? TEXT.button : TEXT.buttonDisabled;
     this.label.setColor(color);
     this.rightLabel?.setColor(color);
-  }
-}
-
-export { STACK_BUTTON_HEIGHT, STACK_BUTTON_WIDTH, STACK_CLOSE_SIZE, STACK_SIZE, type StackSize } from './geometry';
-
-export interface StackItem {
-  text: string;
-  /** Right-aligned second label; leave it out for one centred label. */
-  right?: string;
-  /** Label size; 16px when left out. */
-  fontSize?: string;
-  onClick: () => void;
-  onHover?: (over: boolean) => void;
-}
-
-/**
- * A small popup: buttons stacked vertically on a dark backing, opened beside
- * a point, with an optional square close button ("×") in a column to the
- * right of the stack, at the top. Used by the tower panel. `header`
- * (milestone 25c) leaves that many px above the first button for a caption.
- */
-export class ButtonStack {
-  readonly buttons: Button[];
-  /** The close button, when the stack was made with `onClose`. */
-  readonly close: Button | null;
-  private readonly backing: Phaser.GameObjects.Rectangle;
-  private open = false;
-  readonly width: number;
-  readonly height: number;
-
-  /** Inner padding of the backing (px). */
-  readonly pad = STACK_PAD;
-  /** Room above the first button for a caption line (milestone 25c: the panel's kill count). */
-  readonly header: number;
-
-  private readonly size: StackSize;
-
-  constructor(scene: Phaser.Scene, items: StackItem[], onClose?: () => void, header = 0, size: StackSize = STACK_SIZE, closeFont = '24px') {
-    this.header = header;
-    this.size = size;
-    const box = stackBox(size, items.length, header, onClose !== undefined);
-    this.width = box.width;
-    this.height = box.height;
-    this.backing = scene.add
-      .rectangle(0, 0, this.width, this.height, COLORS.menuBg, 0.92)
-      .setOrigin(0, 0)
-      .setStrokeStyle(1.5, COLORS.menuEdge, 0.8)
-      .setVisible(false);
-    this.buttons = items.map((item) =>
-      new Button(scene, { x: 0, y: 0, width: size.buttonW, height: size.buttonH }, item.text, item.onClick, {
-        fontSize: item.fontSize ?? '16px',
-        right: item.right,
-        onHover: item.onHover,
-      }),
-    );
-    this.close = onClose
-      ? new Button(scene, { x: 0, y: 0, width: size.close, height: size.close }, '\u00d7', onClose, { fontSize: closeFont })
-      : null;
-    for (const b of this.all()) b.setShown(false);
-  }
-
-  private all(): Button[] {
-    return this.close ? [...this.buttons, this.close] : this.buttons;
-  }
-
-  get isOpen(): boolean {
-    return this.open;
-  }
-
-  /** The backing's box while open, else null. Clicks inside it belong to the stack. */
-  get rect(): Rect | null {
-    return this.open ? { x: this.backing.x, y: this.backing.y, width: this.width, height: this.height } : null;
-  }
-
-  /** Show with the backing's top-left corner at (x, y). */
-  show(x: number, y: number): void {
-    this.backing.setPosition(x, y).setVisible(true);
-    this.buttons.forEach((b, i) => {
-      b.moveTo(x + STACK_PAD, y + STACK_PAD + this.header + i * (this.size.buttonH + STACK_GAP));
-    });
-    this.close?.moveTo(x + this.width - STACK_PAD - this.size.close, y + STACK_PAD);
-    for (const b of this.all()) b.setShown(true);
-    this.open = true;
-  }
-
-  hide(): void {
-    this.backing.setVisible(false);
-    for (const b of this.all()) b.setShown(false);
-    this.open = false;
   }
 }

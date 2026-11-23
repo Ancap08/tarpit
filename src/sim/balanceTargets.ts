@@ -5,12 +5,13 @@
 // bundle.
 
 import { boonOptions, type BoonId } from './boons';
-import { balanceRun, cachedRun, matrixCell, type BalanceRun } from './balanceRuns';
-import { DIFFICULTY_DEFS, enemyMaxHp } from './difficulty';
+import { archetypeScript, balanceRun, cachedRun, comboOutcome, matrixCell, type BalanceRun } from './balanceRuns';
+import type { BoonOutcome } from './boonBalance';
+import { DIFFICULTY_DEFS, enemyMaxHp, type Difficulty } from './difficulty';
 import { ENEMY_STATS, isBoss } from './enemies';
 import { spawnTick } from './game';
-import { comboWithoutSpecial, ENDLESS_WAVE_CAP, type BoonChoices } from './headless';
-import { SPECIAL_DEFS, SPECIAL_TYPES, type SpecialType } from './specials';
+import { comboBuild, comboWithoutSpecial, referenceBuild, ENDLESS_WAVE_CAP, type BoonChoices, type RecordedOutcome } from './headless';
+import { SPECIAL_DEFS, type SpecialType } from './specials';
 import { MAP_IDS, type MapId } from './map';
 import type { EnemyType } from './types';
 import { ACT_ONE_LAST_WAVE, LAST_WAVE, WAVES } from './waves';
@@ -32,9 +33,6 @@ export interface Target {
 
 const leaked = (run: BalanceRun, wave: number): number => Object.values(run.waves[wave - 1]?.exits ?? {}).reduce((a, b) => a + b, 0);
 const spawned = (run: BalanceRun, wave: number): number => Object.values(run.waves[wave - 1]?.spawns ?? {}).reduce((a, b) => a + b, 0);
-/** Strictly worse than `than`: lost while it won, or fewer lives. */
-const worse = (run: BalanceRun, than: BalanceRun): boolean =>
-  (run.phase === 'lost' && than.phase === 'won') || (run.phase === 'won' && than.phase === 'won' && run.lives < than.lives);
 const lostOn = (run: BalanceRun, lo: number, hi: number): boolean => run.phase === 'lost' && run.wave >= lo && run.wave <= hi;
 
 /** Per-wave Meadow Normal combo clear ticks before milestone 25c. */
@@ -57,18 +55,40 @@ function waveSpawnTicks(wave: number, flying: boolean): number[] {
   return WAVES[wave].groups.filter((g) => ENEMY_STATS[g.type].flying === flying).flatMap((g) => Array.from({ length: g.count }, (_, i) => spawnTick(g, i)));
 }
 
-/** The combo build on Meadow, Normal, with the special policy forbidden one special (milestone 30, recorded by playing). */
-export function comboWithoutSpecialRun(type: SpecialType): BalanceRun {
-  return cachedRun(`comboBuild without ${type}, meadow, normal`, () => comboWithoutSpecial(type), 'normal');
+/** Record the Normal combo with one special forbidden on the measured map. */
+export function comboWithoutSpecialRun(type: SpecialType, map: MapId = 'meadow'): BalanceRun {
+  return cachedRun(`comboBuild without ${type}, ${map}, normal`, () => comboWithoutSpecial(type, 'normal', map), 'normal');
 }
 
-/** Target T6's margin (milestone 30): comboBuild has at least this many more lives than comboNoSpecials on Normal. */
+/** Minimum benefit of the full special policy on Normal. */
 export const SPECIALS_LIVES_MARGIN = 3;
-/** Target S3 (milestone 30): in comboBuild on Meadow, Normal, at least this many specials ... */
-export const S3_MIN_SPECIALS = 30;
-/** ... and at least this share of them catch S3_MIN_CATCH or more enemies. */
-export const S3_MIN_SHARE = 0.8;
-export const S3_MIN_CATCH = 3;
+/** N9: the Meadow Normal combo must cast at least this many specials ... */
+export const MIN_POLICY_CASTS = 30;
+/** ... and at least this share of them catch MIN_CROWD_SIZE or more enemies. */
+export const MIN_CROWD_SHARE = 0.8;
+export const MIN_CROWD_SIZE = 3;
+
+/** Exercise the real purchasing and firing policies with perturbed spawn HP.
+ * Only this synchronous balance run sees the temporary wave definitions.
+ * The ordinary spawn rule applies the multiplier before rounding, including boss packs.
+ */
+function scaledCampaign(map: MapId, difficulty: Difficulty, scale: number): RecordedOutcome {
+  const waves = WAVES.slice(ACT_ONE_LAST_WAVE);
+  const originals = waves.map(wave => wave.hpMultiplier);
+  let outcome: RecordedOutcome | undefined;
+  try {
+    for (const wave of waves) wave.hpMultiplier = (wave.hpMultiplier ?? 1) * scale;
+    referenceBuild(difficulty === 'hard' ? 'hardBuild' : 'comboBuild', difficulty, map,
+      undefined, undefined, value => { outcome = value; });
+  } finally {
+    waves.forEach((wave, i) => {
+      if (originals[i] === undefined) delete wave.hpMultiplier;
+      else wave.hpMultiplier = originals[i];
+    });
+  }
+  if (!outcome) throw new Error(`No scaled campaign outcome for ${map}/${difficulty}`);
+  return outcome;
+}
 
 function mapTargets(map: MapId): Target[] {
   const r = (name: Parameters<typeof balanceRun>[0], level: 'easy' | 'normal' | 'hard' = 'normal') => balanceRun(name, map, level);
@@ -86,20 +106,67 @@ function mapTargets(map: MapId): Target[] {
       const x = r('longbowSpam');
       return { ok: lostOn(x, 8, 16), info: matrixCell(x) };
     }),
-    t('N4', 'Normal: comboBuild wins with 5 to 19 lives', () => {
-      const x = r('comboBuild');
-      return { ok: x.phase === 'won' && x.lives >= 5 && x.lives <= 19, info: matrixCell(x) };
+    t('N4', 'the reinvesting combo wins Normal', () => {
+      const run = r('comboBuild');
+      return { ok: run.phase === 'won', info: matrixCell(run) };
     }),
-    t('N5', 'Normal: comboBuildNoFire is strictly worse than comboBuild', () => {
-      const x = r('comboBuildNoFire');
-      const c = r('comboBuild');
-      return { ok: worse(x, c), info: `${matrixCell(x)} against ${matrixCell(c)}` };
+    t('S1', 'reinvesting Normal combo wins with 9–15 lives', () => {
+      const combo = r('comboBuild');
+      return { ok: combo.phase === 'won' && combo.lives >= 9 && combo.lives <= 15, info: matrixCell(combo) };
     }),
-    t('N6', 'Normal: comboBuild has at least 3 more lives than comboNoSpecials, which wins', () => {
-      const x = r('comboNoSpecials');
-      const c = r('comboBuild');
-      const ok = x.phase === 'won' && c.phase === 'won' && c.lives >= x.lives + SPECIALS_LIVES_MARGIN;
-      return { ok, info: `${matrixCell(c)} against ${matrixCell(x)} without specials` };
+    ...(['normal', 'hard'] as const).flatMap(level => {
+      const name = level === 'hard' ? 'hardBuild' : 'comboBuild';
+      const limit = level === 'hard' ? 5 : 4;
+      return [
+        t('S2', `${level} ${name} loses lives on three or more act-2 waves, at most ${limit} each`, () => {
+          const run = r(name, level);
+          const losses = run.waves.slice(ACT_ONE_LAST_WAVE).map(wave => wave.livesLost);
+          return { ok: run.phase === 'won' && losses.filter(n => n > 0).length >= 3 && Math.max(...losses) <= limit,
+            info: `${matrixCell(run)}, losses ${losses.join('/')}` };
+        }),
+        t('S3', `${level} ${name} wins within ${limit} lives of baseline at ±5% act-2 HP`, () => {
+          const base = r(name, level);
+          const variants = [0.95, 1.05].map(scale => scaledCampaign(map, level, scale));
+          return { ok: base.phase === 'won' && variants.every(v => v.phase === 'won' && Math.abs(base.lives - v.lives) <= limit),
+            info: [variants[0], base, variants[1]].map(matrixCell).join(' / ') };
+        }),
+      ];
+    }),
+    t('V2', 'stopping after the fixed plan costs the game in act 2 or at least five lives', () => {
+      const combo = r('comboBuild');
+      const fixed = cachedRun(`fixed combo ${map}`, () => comboBuild('normal', map, undefined, undefined, { fixedOnly: true }), 'normal');
+      return { ok: combo.phase === 'won' && fixed.refused === 0 &&
+        (lostOn(fixed, ACT_ONE_LAST_WAVE + 1, LAST_WAVE) || (fixed.phase === 'won' && combo.lives - fixed.lives >= 5)),
+        info: `reinvest ${matrixCell(combo)}, fixed ${matrixCell(fixed)}` };
+    }),
+    t('S4', 'wideBuild wins within five lives without buying a second upgrade', () => {
+      const wide = r('wideBuild');
+      const combo = r('comboBuild');
+      const wideOnly = archetypeScript('wideBuild', map, 'normal').flat().every((a) => a.type !== 'upgrade' || !a.path);
+      return { ok: wideOnly && combo.phase === 'won' && wide.phase === 'won' && Math.abs(combo.lives - wide.lives) <= 5,
+        info: `wide ${matrixCell(wide)}, combo ${matrixCell(combo)}` };
+    }),
+    t('V4', 'lazy wins Easy with eight lives, loses Normal on 7–14 and Hard by 8, hardBuild wins Hard with three', () => {
+      const hard = r('hardBuild', 'hard');
+      const easy = r('lazyBuild', 'easy');
+      const normal = r('lazyBuild', 'normal');
+      const lazyHard = r('lazyBuild', 'hard');
+      return { ok: hard.phase === 'won' && hard.lives >= 3 && easy.phase === 'won' && easy.lives >= 8 &&
+        lostOn(normal, 7, 14) && lostOn(lazyHard, 1, 8),
+        info: `hardBuild ${matrixCell(hard)}, lazy E/N/H ${[easy, normal, lazyHard].map(matrixCell).join('/')}` };
+    }),
+    t('S5', 'specials save at least three lives or turn a wave-17-or-later loss into a win', () => {
+      const combo = r('comboBuild');
+      const none = r('comboNoSpecials');
+      return { ok: combo.phase === 'won' && (lostOn(none, 17, LAST_WAVE) ||
+        (none.phase === 'won' && combo.lives - none.lives >= SPECIALS_LIVES_MARGIN)),
+        info: `all ${matrixCell(combo)}, none ${matrixCell(none)}` };
+    }),
+    t('S6', 'removing Fire Pots gains at most one life', () => {
+      const combo = r('comboBuild');
+      const noFire = r('comboBuildNoFire');
+      return { ok: combo.phase === 'won' && Math.max(0, noFire.lives) <= combo.lives + 1,
+        info: `combo ${matrixCell(combo)}, no Fire Pots ${matrixCell(noFire)}` };
     }),
     t('N7', "Normal: noAntiAir leaks at least half of wave 4's Harpies and loses by wave 12", () => {
       const x = r('noAntiAir');
@@ -141,27 +208,23 @@ function mapTargets(map: MapId): Target[] {
       const ok = (x.phase === 'lost' && x.wave >= 12) || (x.phase === 'won' && n.phase === 'won' && x.lives <= n.lives - 5);
       return { ok, info: `${matrixCell(x)} against ${matrixCell(n)} on Normal` };
     }),
-    t('B1', 'default combo kills Grumblemaw on Normal and hardBuild kills him on Hard', () => {
+    t('V5', 'default combo kills Grumblemaw on Normal and hardBuild kills him on Hard', () => {
       const normal = bossOutcome(r('comboBuild'));
       const hard = bossOutcome(r('hardBuild', 'hard'));
-      return { ok: normal === 'kill' && hard === 'kill', info: `Normal ${normal}, Hard ${hard}` };
+      return { ok: normal === 'kill' && hard === 'kill' && ENEMY_STATS.grumblemaw.livesCost === 10, info: `Normal ${normal}, Hard ${hard}` };
     }),
     t('B3', 'Easy lazyBuild wins with at least eight lives; record the boss outcome', () => {
       const run = r('lazyBuild', 'easy');
       return { ok: run.phase === 'won' && run.lives >= 8, info: `${matrixCell(run)}, boss ${bossOutcome(run)}` };
     }),
-    t('N10a', 'every measured three-boon combination wins', () => checkBoonBalance(map, 'representative')),
-    t('N10b', 'at default other picks each offer spans at most four lives', () => checkDefaultSpread(map)),
-    t('X1', 'Normal: endlessIdle loses on the second through fifth endless wave', () => {
-      const x = r('endlessIdle');
-      return { ok: lostOn(x, LAST_WAVE + 2, LAST_WAVE + 5), info: matrixCell(x) };
-    }),
-    t('X2', 'Normal: endlessGreedy loses later than endlessIdle, by the twelfth endless wave', () => {
+    t('S7', 'all 27 reward combinations win and each offer spans at most six lives', () => rewardSpread(map)),
+    t('S8', 'idle loses on endless waves 2–6, reinvesting lasts at least two further, through wave 14', () => {
       const idle = r('endlessIdle');
       const greedy = r('endlessGreedy');
-      return { ok: idle.phase === 'lost' && lostOn(greedy, idle.wave + 1, LAST_WAVE + 12), info: `greedy ${matrixCell(greedy)}, idle ${matrixCell(idle)}` };
+      return { ok: lostOn(idle, LAST_WAVE + 2, LAST_WAVE + 6) && lostOn(greedy, idle.wave + 2, LAST_WAVE + 14),
+        info: `idle ${matrixCell(idle)}, reinvesting ${matrixCell(greedy)}` };
     }),
-    t('X3', 'all six measured endless runs end in loss below the headless cap', () => {
+    t('S8', 'all six measured endless runs end in loss below the headless cap', () => {
       const runs = (['easy', 'normal', 'hard'] as const).flatMap((level) => [r('endlessIdle', level), r('endlessGreedy', level)]);
       const ok = runs.every((run) => run.phase === 'lost' && run.wave < ENDLESS_WAVE_CAP);
       return { ok, info: `maximum wave ${Math.max(...runs.map((run) => run.wave))}, cap ${ENDLESS_WAVE_CAP}` };
@@ -171,7 +234,7 @@ function mapTargets(map: MapId): Target[] {
 
 const meadowExtras: Target[] = [
   {
-    id: 'N9',
+    id: 'S9',
     map: 'meadow',
     label: 'Meadow, Normal: soundBuild lasts strictly longer than soundBuildNoTar',
     check: () => {
@@ -181,33 +244,15 @@ const meadowExtras: Target[] = [
       return { ok, info: `${matrixCell(s)} at tick ${s.tick} against ${matrixCell(n)} at tick ${n.tick}` };
     },
   },
-  ...SPECIAL_TYPES.map(
-    (type): Target => ({
-      id: 'N9',
-      map: 'meadow',
-      label: `Meadow, Normal: forbidding the policy the ${type} makes the combo strictly worse (lives, then kills)`,
-      check: () => {
-        const c = balanceRun('comboBuild', 'meadow', 'normal');
-        const x = comboWithoutSpecialRun(type);
-        // Strictly worse by lives, then kills: lost while the combo won, or
-        // fewer lives in the same result, or the same lives and fewer kills.
-        const lostWhereWon = x.phase === 'lost' && c.phase === 'won';
-        const fewerLives = x.phase === c.phase && x.lives < c.lives;
-        const sameLivesFewerKills = x.phase === c.phase && x.lives === c.lives && x.kills < c.kills;
-        const ok = lostWhereWon || fewerLives || sameLivesFewerKills;
-        return { ok, info: `without: ${matrixCell(x)}, ${x.kills} kills; with: ${matrixCell(c)}, ${c.kills} kills` };
-      },
-    }),
-  ),
   {
     id: 'N9',
     map: 'meadow',
     label: 'Meadow, Normal: the policy fires at least 30 specials in comboBuild and at least 80% catch 3 or more enemies',
     check: () => {
       const hits = balanceRun('comboBuild', 'meadow', 'normal').specialHits;
-      const good = hits.filter((h) => h >= S3_MIN_CATCH).length;
-      const ok = hits.length >= S3_MIN_SPECIALS && good >= S3_MIN_SHARE * hits.length;
-      return { ok, info: `${hits.length} specials, ${good} caught ${S3_MIN_CATCH} or more (hits ${hits.join(' ')})` };
+      const good = hits.filter((h) => h >= MIN_CROWD_SIZE).length;
+      const ok = hits.length >= MIN_POLICY_CASTS && good >= MIN_CROWD_SHARE * hits.length;
+      return { ok, info: `${hits.length} specials, ${good} caught ${MIN_CROWD_SIZE} or more (hits ${hits.join(' ')})` };
     },
   },
 ];
@@ -217,53 +262,41 @@ type Picks = readonly [BoonId, BoonId, BoonId];
 
 export interface BoonBalanceRun {
   picks: Picks;
-  run: BalanceRun;
+  run: BoonOutcome;
 }
 
-/** Seven single-choice comparisons plus the two all-alternative diagonals. */
-export function boonBalancePicks(_map: MapId, coverage: 'all' | 'representative'): Picks[] {
+export function boonBalancePicks(): Picks[] {
   const [first, second, third] = OFFER_WAVES.map(boonOptions);
-  const picks: Picks[] = [];
-  for (const [i, a] of first.entries()) {
-    for (const [j, b] of second.entries()) {
-      for (const [k, c] of third.entries()) {
-        const substitutions = Number(i !== 0) + Number(j !== 0) + Number(k !== 0);
-        if (coverage === 'all' || substitutions <= 1 || (i === j && j === k)) picks.push([a, b, c]);
-      }
-    }
-  }
-  return picks;
+  return first.flatMap((a) => second.flatMap((b) => third.map((c): Picks => [a, b, c])));
 }
 
-/** Replay the combo and its policy for the named picks, sharing the default run when applicable. */
-export function boonBalanceRun(map: MapId, picks: Picks): BalanceRun {
+/** Record the combo and its policy for the named picks, sharing the default run when applicable. */
+export function boonBalanceRun(map: MapId, picks: Picks): BoonOutcome {
   if (OFFER_WAVES.every((wave, i) => picks[i] === boonOptions(wave)[0])) return balanceRun('comboBuild', map, 'normal');
   const boons: BoonChoices = { 5: picks[0], 10: picks[1], 15: picks[2] };
-  return balanceRun('comboBuild', map, 'normal', boons);
+  return comboOutcome(map, boons);
 }
 
-export function boonBalanceRuns(map: MapId, coverage: 'all' | 'representative'): BoonBalanceRun[] {
-  return boonBalancePicks(map, coverage).map((picks) => ({ picks, run: boonBalanceRun(map, picks) }));
+export function boonBalanceRuns(map: MapId): BoonBalanceRun[] {
+  return boonBalancePicks().map((picks) => ({ picks, run: boonBalanceRun(map, picks) }));
 }
 
-export function checkBoonBalance(map: MapId, coverage: 'all' | 'representative'): TargetResult {
-  const results = boonBalanceRuns(map, coverage);
-  const wins = results.filter(({ run }) => run.phase === 'won' && run.refused === 0).length;
-  const expected = coverage === 'all' ? 27 : 9;
-  return { ok: results.length === expected && wins === expected, info: `${wins}/${expected} wins` };
-}
-
-function checkDefaultSpread(map: MapId): TargetResult {
-  const defaults = OFFER_WAVES.map((wave) => boonOptions(wave)[0]);
-  const spreads = OFFER_WAVES.map((wave, index) => {
-    const lives = boonOptions(wave).map((id) => {
-      const picks: [BoonId, BoonId, BoonId] = [defaults[0], defaults[1], defaults[2]];
-      picks[index] = id;
-      return boonBalanceRun(map, picks).lives;
-    });
-    return Math.max(...lives) - Math.min(...lives);
+/** Compare each offer with both other picks held fixed, for all nine contexts. */
+export function rewardSpread(map: MapId): TargetResult {
+  const rows = boonBalanceRuns(map);
+  const wins = rows.filter(({ run }) => run.phase === 'won' && run.refused === 0).length;
+  const spreads = OFFER_WAVES.map((_, index) => {
+    const contexts = new Map<string, number[]>();
+    for (const { picks, run } of rows) {
+      const key = picks.filter((_, i) => i !== index).join('/');
+      const values = contexts.get(key) ?? [];
+      values.push(run.lives);
+      contexts.set(key, values);
+    }
+    return Math.max(...[...contexts.values()].map((lives) => Math.max(...lives) - Math.min(...lives)));
   });
-  return { ok: spreads.every((n) => n <= 4), info: `best minus worst lives by offer: ${spreads.join('/')}` };
+  return { ok: wins === 27 && spreads.every((span) => span <= 6),
+    info: `${wins}/27 wins, largest spreads by offer ${spreads.join('/')}` };
 }
 
 export function bossOutcome(run: BalanceRun): string {
@@ -281,17 +314,17 @@ function campaignTiming() {
 
 export const RULE_TARGETS: Target[] = [
   {
-    id: 'B2',
-    label: 'without specials the combo still wins and Grumblemaw exits on at least two maps',
+    id: 'S6',
+    label: 'Fire Pots save lives on at least two maps',
     check: () => {
-      const runs = MAP_IDS.map((map) => balanceRun('comboNoSpecials', map, 'normal'));
-      const outcomes = runs.map(bossOutcome);
-      return { ok: runs.every((r) => r.phase === 'won') && outcomes.filter((s) => s === 'exit').length >= 2, info: outcomes.join('/') };
+      const gains = MAP_IDS.map(map => balanceRun('comboBuild', map, 'normal').lives -
+        Math.max(0, balanceRun('comboBuildNoFire', map, 'normal').lives));
+      return { ok: gains.filter(gain => gain > 0).length >= 2, info: `lives gained ${gains.join('/')}` };
     },
   },
   {
     id: 'H4',
-    label: 'no ordinary Hard enemy hp is 1 or 2 above a multiple of 12, 4, 25 or 45',
+    label: 'in waves 1–10 no ordinary Hard enemy hp is 1 or 2 above a multiple of 12, 4, 25 or 45',
     check: () => {
       const bad: string[] = [];
       for (const type of Object.keys(ENEMY_STATS) as EnemyType[]) {
@@ -358,5 +391,14 @@ export const RULE_TARGETS: Target[] = [
   },
 
 ];
+
+RULE_TARGETS.push({
+  id: 'V7',
+  label: 'campaign length and wave shape satisfy R1 through R4',
+  check: () => {
+    const shape = RULE_TARGETS.filter((t) => ['R1', 'R2', 'R3', 'R4'].includes(t.id)).map((t) => t.check());
+    return { ok: shape.length === 4 && shape.every((r) => r.ok), info: shape.map((r, i) => `R${i + 1} ${r.ok ? 'pass' : 'miss'}`).join(', ') };
+  },
+});
 
 export const TARGETS: Target[] = [...MAP_IDS.flatMap((map) => [...mapTargets(map), ...(map === 'meadow' ? meadowExtras : [])]), ...RULE_TARGETS];

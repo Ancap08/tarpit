@@ -14,8 +14,8 @@ import { BOONS, boonScale, type BoonId } from './boons';
 import { applyBurn, applySpecialSlow, enemyPosition, removeDead } from './combat';
 import { cellKey, sameCell, terrainBlock, type Cell } from './grid';
 import { isSpecialUnlocked, SPECIAL_DEFS, SPECIAL_RECHARGE_TICKS, ZONE_LINGER_TICKS, specialRadius, tarLingerTicks, type SpecialType } from './specials';
-import { TOWER_DEFS, towerSellValue } from './towers';
-import type { GameState, Point, TargetingMode, Tower, TowerType } from './types';
+import { TOWER_DEFS, TOWER_PATHS, towerLevel, towerSellValue, towerUndoValue } from './towers';
+import type { GameState, Point, TargetingMode, Tower, TowerType, UpgradePath } from './types';
 
 export type BuildResult =
   | { ok: true; tower: Tower; gold: number }
@@ -23,7 +23,7 @@ export type BuildResult =
 
 export type UpgradeResult =
   | { ok: true; tower: Tower; gold: number }
-  | { ok: false; reason: 'game-over' | 'no-tower' | 'already-upgraded' | 'not-enough-gold' };
+  | { ok: false; reason: 'game-over' | 'no-tower' | 'already-upgraded' | 'not-level-2' | 'invalid-path' | 'max-level' | 'not-enough-gold' };
 
 export type SellResult =
   | { ok: true; refund: number; gold: number }
@@ -91,28 +91,36 @@ export function buildTower(state: GameState, cell: Cell, type: TowerType): Build
   return { ok: true, tower, gold: state.gold };
 }
 
-export function upgradeTower(state: GameState, cell: Cell): UpgradeResult {
+export function upgradeTower(state: GameState, cell: Cell, path?: UpgradePath): UpgradeResult {
   if (isOver(state)) return { ok: false, reason: 'game-over' };
   const tower = towerAt(state, cell);
   if (!tower) return { ok: false, reason: 'no-tower' };
-  if (tower.upgraded) return { ok: false, reason: 'already-upgraded' };
-  const cost = TOWER_DEFS[tower.type].upgradeCost;
+  const level = towerLevel(tower);
+  if (level === 3) return { ok: false, reason: 'max-level' };
+  if (path === undefined && level === 2) return { ok: false, reason: 'already-upgraded' };
+  if (path !== undefined) {
+    if (level !== 2) return { ok: false, reason: 'not-level-2' };
+    if (path !== 'A' && path !== 'B') return { ok: false, reason: 'invalid-path' };
+  }
+  const cost = path === undefined ? TOWER_DEFS[tower.type].upgradeCost : TOWER_PATHS[tower.type].cost;
   if (state.gold < cost) return { ok: false, reason: 'not-enough-gold' };
   state.gold -= cost;
   tower.upgraded = true;
+  if (path !== undefined) tower.path = path;
   tower.spent += cost;
   if (state.phase === 'setup') {
     tower.unlockedSpend += cost;
     tower.upgradedThisPhase = true;
   }
-  state.events.push({ kind: 'upgrade', cell: { col: tower.cell.col, row: tower.cell.row }, tower: tower.type });
+  const event = { kind: 'upgrade', cell: { ...tower.cell }, tower: tower.type } as const;
+  state.events.push(path === undefined ? { ...event, level: 2 } : { ...event, level: 3, path });
   return { ok: true, tower, gold: state.gold };
 }
 
 /**
  * Sell the tower on `cell` for towerSellValue: an unlocked tower (built this
- * setup phase) refunds everything spent on it; a locked one refunds an
- * upgrade bought this setup phase in full plus sellRefund (70%, rounded
+ * setup phase) refunds everything spent on it; a locked one refunds
+ * all upgrades bought this setup phase in full plus sellRefund (70%, rounded
  * down) of the rest, in any phase. One `sell` event, `full` only when the
  * tower was unlocked.
  */
@@ -157,7 +165,7 @@ export function moveTower(state: GameState, from: Cell, to: Cell): MoveResult {
 
 /**
  * Undo an upgrade bought during the current setup phase (milestone 25a):
- * refunds the full upgrade cost and reverts the tower to base. Works on a
+ * refunds the latest upgrade's cost and reverts one level. Works on a
  * locked tower too (the tower stays locked).
  */
 export function undoUpgrade(state: GameState, cell: Cell): UndoUpgradeResult {
@@ -165,13 +173,17 @@ export function undoUpgrade(state: GameState, cell: Cell): UndoUpgradeResult {
   if (state.phase !== 'setup') return { ok: false, reason: 'not-in-setup' };
   const tower = towerAt(state, cell);
   if (!tower) return { ok: false, reason: 'no-tower' };
-  if (!tower.upgraded || !tower.upgradedThisPhase) return { ok: false, reason: 'nothing-to-undo' };
-  const refund = TOWER_DEFS[tower.type].upgradeCost;
+  const refund = towerUndoValue(tower);
+  if (refund === 0) return { ok: false, reason: 'nothing-to-undo' };
   state.gold += refund;
-  tower.upgraded = false;
-  tower.upgradedThisPhase = false;
+  tower.upgraded = towerLevel(tower) === 3;
+  delete tower.path;
   tower.spent -= refund;
   tower.unlockedSpend -= refund;
+  // After removing the path price, setup spend still includes any refundable
+  // first upgrade. For an unlocked tower it also includes the build price.
+  const buildCost = tower.locked ? 0 : TOWER_DEFS[tower.type].cost;
+  tower.upgradedThisPhase = tower.upgraded && tower.unlockedSpend > buildCost;
   state.events.push({ kind: 'undoUpgrade', cell: { col: tower.cell.col, row: tower.cell.row }, tower: tower.type, refund });
   return { ok: true, tower, refund, gold: state.gold };
 }

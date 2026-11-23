@@ -19,7 +19,7 @@ test('a pending reward survives a live turn and a tap chooses once; reload start
   expect(await api(page, (t) => t.pendingBoon())).toEqual(before.pendingBoon);
   await expectOffer(page, 5);
   await press(page, 'reward:warChest', true);
-  expect(await api(page, (t) => t.state())).toMatchObject({ tick: before.tick, wave: 5, gold: before.gold + 100, boons: ['warChest'], pendingBoon: null });
+  expect(await api(page, (t) => t.state())).toMatchObject({ tick: before.tick, wave: 5, gold: before.gold + 80, boons: ['warChest'], pendingBoon: null });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect.poll(() => api(page, (t) => t.layout())).toBe('portrait');
   await press(page, 'boon:warChest', true);

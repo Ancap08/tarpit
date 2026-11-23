@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BOON_EFFECT_WITNESSES, createBoonScenarioMeasurer, evaluateBoonEffects } from './boonBalance';
 import { BOONS } from './boons';
 import { playWithStats } from './balanceRuns';
-import { artilleryBuild, type RecordedOutcome } from './headless';
+import { artilleryBuild, comboBuildNoFire, type RecordedOutcome } from './headless';
 import type { MapId } from './map';
 
 export function boonImpactSuite(map: MapId): void {
@@ -25,14 +25,17 @@ export function boonImpactSuite(map: MapId): void {
       });
     }
     if (map === 'riverbend') {
-      it('counts the same kills and outcome when replaying a recorded plan', () => {
-        let outcome: RecordedOutcome | undefined;
-        const script = artilleryBuild('hard', map, undefined, (recorded) => { outcome = recorded; });
-        const { phase, lives, wave, kills, refused, specialHits } = playWithStats(script, 'hard');
-        expect(specialHits.length).toBeGreaterThan(0);
-        expect(refused).toBe(0);
-        expect(outcome).toEqual({ phase, lives, wave, kills });
-      });
+      it.each([['artilleryBuild', artilleryBuild], ['comboBuildNoFire', comboBuildNoFire]] as const)(
+        'counts the same kills and outcome when replaying %s',
+        (_name, build) => {
+          let outcome: (RecordedOutcome & { refused: number }) | undefined;
+          const script = build('normal', map, undefined, (recorded, refused) => { outcome = { ...recorded, refused }; });
+          const { phase, lives, wave, gold, kills, refused, specialHits } = playWithStats(script, 'normal');
+          expect(specialHits.length).toBeGreaterThan(0);
+          expect(refused).toBe(0);
+          expect(outcome).toEqual({ phase, lives, wave, gold, kills, refused });
+        },
+      );
     }
     if (map === 'meadow') {
       it('covers a strict best result and three distinct build/map pairs for each boon', () => {

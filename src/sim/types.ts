@@ -110,8 +110,8 @@ export interface Enemy {
    */
   specialBurn?: boolean;
   /**
-   * Full hp (milestone 26), set only on enemies of endless waves, whose hp
-   * is scaled by the wave; absent means difficulty.ts enemyMaxHp.
+   * Full hp (milestone 26), stored when the spawn wave scales hp. Without a wave factor,
+   * the difficulty-scaled base gives the same maximum.
    */
   maxHp?: number;
   /** Grumblemaw thresholds already called, after surviving a hit. */
@@ -137,8 +137,10 @@ export interface WaveDef {
 }
 
 export type TowerType = 'musketeer' | 'cannon' | 'tarpit' | 'longbow' | 'mortar' | 'firepot';
+export type TowerLevel = 1 | 2 | 3;
+export type UpgradePath = 'A' | 'B';
 
-/** Stats for one level (base or upgraded) of a tower type. */
+/** Stats for one level of a tower type. */
 export interface TowerLevelStats {
   /** Pixels, measured from the tower's cell centre to the enemy position, inclusive. */
   range: number;
@@ -182,12 +184,15 @@ export interface Tower {
   /** Grid cell the tower stands on. One tower per cell. */
   cell: Cell;
   type: TowerType;
+  /** Chosen at level 3. */
+  path?: UpgradePath;
+  /** True at levels 2 and 3, after the first upgrade. */
   upgraded: boolean;
   /** Targeting mode (milestone 24); 'first' at build, so a sell and rebuild resets it. */
   targeting: TargetingMode;
   /** Ticks until the tower may fire again; 0 means ready. */
   cooldownTicks: number;
-  /** Gold spent on this tower (build plus upgrade); a locked tower sells for 70%. */
+  /** Gold spent on this tower (build plus any upgrades). */
   spent: number;
   /**
    * Planning phase (milestone 25a): false while the tower was built during
@@ -197,11 +202,11 @@ export interface Tower {
   locked: boolean;
   /**
    * Gold spent on this tower during the current setup phase and still
-   * refundable in full: the build (unlocked towers) plus an upgrade bought
+   * refundable in full: the build (unlocked towers) plus any upgrades bought
    * this phase. Zeroed by startWave; building or upgrading mid-wave adds 0.
    */
   unlockedSpend: number;
-  /** The upgrade was bought during the current setup phase (undoable); cleared by startWave. */
+  /** The latest upgrade was bought during the current setup phase; cleared by startWave. */
   upgradedThisPhase: boolean;
   /**
    * Enemies this tower killed (milestone 25c): its shot (splash included)

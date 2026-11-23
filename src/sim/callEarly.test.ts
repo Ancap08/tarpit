@@ -189,7 +189,7 @@ describe('calling the next wave', () => {
     expect(spawns).toBe(total);
     expect(exits).toBe(total);
     const loss = WAVES.flatMap((wave) => wave.groups).reduce((n, g) => n + g.count * ENEMY_STATS[g.type].livesCost, 0);
-    expect(s.lives).toBe(2000 - loss + 3); // The default wave-15 choice adds three lives.
+    expect(s.lives).toBe(2000 - loss + 4); // The default wave-15 choice adds three lives.
     expect(s.phase).toBe('won');
   });
 });

@@ -28,8 +28,11 @@ import type {
   TargetingMode,
   TargetingResult,
   TowerType,
+  Tower,
+  TowerLevel,
   UndoUpgradeResult,
   UpgradeResult,
+  UpgradePath,
 } from '../sim';
 import type { AnimState } from './anim/enemySprites';
 import type { AudioState } from './audio/engine';
@@ -47,7 +50,7 @@ export interface TarpitTestApi {
   /** Key of the active scene: 'title' or 'game'. */
   scene(): string;
   /** The live simulation state (serialized when read through page.evaluate). */
-  state(): GameState;
+  state(): Omit<GameState, 'towers'> & { towers: (Tower & { readonly level: TowerLevel })[] };
   painted(): import('./skin/painted').PaintedState;
   /** Run n simulation ticks, then redraw. */
   step(n: number): void;
@@ -85,7 +88,7 @@ export interface TarpitTestApi {
   spawnHorde(n: number, span?: number): boolean;
   /** Build on grid cell (col, row) through the scene's action (no clicks). */
   buildAt(col: number, row: number, type: TowerType): BuildResult;
-  upgradeAt(col: number, row: number): UpgradeResult;
+  upgradeAt(col: number, row: number, path?: UpgradePath): UpgradeResult;
   sellAt(col: number, row: number): SellResult;
   /** Move the unlocked tower on (fromCol, fromRow) to (toCol, toRow), in setup (milestone 25a). */
   moveAt(fromCol: number, fromRow: number, toCol: number, toRow: number): MoveResult;
@@ -115,8 +118,9 @@ export interface TarpitTestApi {
    * (milestone 32b; in landscape cell (col, row) is at canvas (col * 32 + 16, row * 32 + 16)).
    * Rectangles are in canvas coordinates for the active layout. At the 960x580 test viewport, canvas
    * space equals page space; at other sizes use canvasToPage(). The open
-   * panel also lists `panel:close`. `panel:upgrade` and `panel:sell` keep
-   * their names when they read "Undo upgrade" and "Remove" (milestone 25a).
+   * panel also lists `panel:close`. `panel:undo` appears for an upgrade bought
+   * this setup and `panel:path:A` and `panel:path:B` show at level 2.
+   * `panel:sell` keeps its name when it reads "Remove".
    * Milestone 26: `keepGoing` while the win screen shows.
    * Milestone 25b: `special` (the HUD's Special button) and, while its
    * popup is open, `special:keg`, `special:tarBarrel` and

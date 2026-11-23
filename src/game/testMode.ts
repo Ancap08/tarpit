@@ -26,6 +26,7 @@ import {
   type Phase,
   type TimedAction,
   type WaveScript,
+  towerLevel,
 } from '../sim';
 import type { GameScene } from './GameScene';
 import { highScores } from './highScore';
@@ -75,7 +76,7 @@ function runScript(scene: GameScene, script: WaveScript, untilWave?: number): Ph
       a.type === 'build'
         ? scene.build(a.cell, a.tower)
         : a.type === 'upgrade'
-          ? scene.upgrade(a.cell)
+          ? scene.upgrade(a.cell, a.path)
           : a.type === 'target'
             ? scene.setTargeting(a.cell, a.mode)
             : scene.sell(a.cell);
@@ -201,7 +202,17 @@ export function installGlobal(game: Phaser.Game): void {
   const api: TarpitTestApi = {
     ...always,
     scene: () => game.scene.getScenes(true)[0]?.scene.key ?? '',
-    state: () => scene().state,
+    state: () => {
+      const state = scene().state;
+      // Existing browser fixtures mutate live state. Expose the derived
+      // level as a live getter on each tower in the test surface.
+      for (const tower of state.towers) {
+        if (!Object.hasOwn(tower, 'level')) {
+          Object.defineProperty(tower, 'level', { enumerable: true, get: () => towerLevel(tower) });
+        }
+      }
+      return state as ReturnType<TarpitTestApi['state']>;
+    },
     painted: () => scene().paintedState(),
     step: (n) => scene().advance(n),
     startGame: (difficulty = DEFAULT_DIFFICULTY, map = DEFAULT_MAP) =>
@@ -224,7 +235,7 @@ export function installGlobal(game: Phaser.Game): void {
     bestScore: (difficulty, map = DEFAULT_MAP) => highScores.best(difficulty, map) ?? null,
     spawnHorde: (n, span) => scene().spawnHorde(n, span),
     buildAt: (col, row, type) => scene().build({ col, row }, type),
-    upgradeAt: (col, row) => scene().upgrade({ col, row }),
+    upgradeAt: (col, row, path) => scene().upgrade({ col, row }, path),
     sellAt: (col, row) => scene().sell({ col, row }),
     moveAt: (fromCol, fromRow, toCol, toRow) => scene().move({ col: fromCol, row: fromRow }, { col: toCol, row: toRow }),
     undoUpgradeAt: (col, row) => scene().undoUpgrade({ col, row }),

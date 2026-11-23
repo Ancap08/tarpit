@@ -23,7 +23,7 @@ import {
   trailCellOrder,
 } from './headless';
 import { MAP_IDS, MAPS, pathLength, positionAlongPath, type MapId } from './map';
-import type { Enemy, EnemyType, GameState, MapDef, Point, Rect } from './types';
+import type { Enemy, EnemyType, GameState, MapDef, Point, Rect, TowerLevel, TowerType } from './types';
 import { WAVES } from './waves';
 
 const WAYPOINTS: Record<MapId, number[][]> = {
@@ -393,27 +393,32 @@ describe('E. sim probes on every map', () => {
   for (const id of NEW_MAPS) {
     it(`${id}: the plan uses only buildable, distinct cells across both acts`, () => {
       const plan = COMBO_PLANS[id];
-      expect(plan).toHaveLength(COMBO_PLANS.meadow.length);
-      const roles = COMBO_PLANS.meadow.map((a) => (a.type === 'build' ? a.tower : a.type));
-      // The Switchback opening uses a Musketeer with its rear Longbow.
-      if (id === 'switchback') {
-        roles[0] = 'musketeer';
-        expect(plan.slice(0, 2)).toEqual([
-          { type: 'build', tower: 'musketeer', cell: { col: 13, row: 4 } },
-          { type: 'build', tower: 'longbow', cell: { col: 27, row: 13 } },
-        ]);
-      }
-      expect(plan.map((a) => (a.type === 'build' ? a.tower : a.type))).toEqual(roles);
+      expect(plan.slice(0, 2)).toEqual(id === 'switchback' ? [
+        { type: 'build', tower: 'longbow', cell: { col: 14, row: 7 } },
+        { type: 'build', tower: 'longbow', cell: { col: 18, row: 7 } },
+      ] : [
+        { type: 'build', tower: 'longbow', cell: { col: 10, row: 6 } },
+        { type: 'build', tower: 'longbow', cell: { col: 12, row: 6 } },
+      ]);
+      expect(plan.every((action) => action.type !== 'upgrade' || !action.path)).toBe(true);
       const want = expectedMask(id);
-      const built = new Set<number>();
+      const built = new Map<number, { type: TowerType; level: TowerLevel }>();
+      const specialized = new Set<TowerType>();
       for (const a of [...plan, ...ACT_TWO_PLANS[id]]) {
         const key = a.cell.row * 30 + a.cell.col;
         if (a.type === 'build') {
           expect(want[key], `${a.cell.col},${a.cell.row}`).toBeUndefined();
           expect(built.has(key)).toBe(false);
-          built.add(key);
-        } else expect(built.has(key), `upgrade before build ${a.cell.col},${a.cell.row}`).toBe(true);
+          built.set(key, { type: a.tower, level: 1 });
+        } else if (a.type === 'upgrade') {
+          const tower = built.get(key);
+          expect(tower?.level, `upgrade order at ${a.cell.col},${a.cell.row}`).toBe(a.path ? 2 : 1);
+          if (!tower) throw new Error('upgrade without a tower');
+          tower.level = a.path ? 3 : 2;
+          if (a.path) specialized.add(tower.type);
+        }
       }
+      expect([...specialized].sort()).toEqual(['cannon', 'firepot', 'longbow', 'mortar', 'musketeer', 'tarpit']);
     });
   }
 

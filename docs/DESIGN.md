@@ -1,6 +1,6 @@
 # Tarpit: game design spec
 
-> **Frozen as of milestone 36.** This file states every number and rule the
+> **Frozen as of milestone 37.** This file states every number and rule the
 > game uses. Changing any of them needs a `DECISIONS.md` entry (who decided
 > and why) and the balance pins updated in the same change
 > (`src/sim/balance.suite.ts`, `npm run sim`). Kyle's play notes can reopen
@@ -98,7 +98,7 @@ Buildable counts are of the 450 cells.
   keep going into endless waves, where clearing a wave never wins again.
 - Starting gold and lives depend on the level (see Difficulty).
 - Selling a locked tower returns 70% of the total spent on it (build plus
-  upgrade), rounded down with integer arithmetic (`floor(spent x 7 /
+  both upgrades), rounded down with integer arithmetic (`floor(spent x 7 /
   10)`), plus in full any upgrade bought on it during the current setup
   phase. An unlocked tower (built during the current setup phase) is
   removed for everything spent on it. See Planning phase.
@@ -131,11 +131,10 @@ phase, refundable in full) and `upgradedThisPhase`.
   {from, to, tower}`.
 - **Undo upgrade.** An upgrade bought in setup, on an unlocked or a locked
   tower, adds its cost to `unlockedSpend` and can be undone until Start
-  Wave: `undoUpgrade(state, cell)` refunds the full upgrade cost, reverts
-  the tower to base and reduces `spent` and `unlockedSpend`; a locked tower
+  Wave: `undoUpgrade(state, cell)` refunds the latest upgrade price, lowers
+  the tower by one level and reduces `spent` and `unlockedSpend`; a locked tower
   stays locked. Refused with `game-over`, `not-in-setup`, `no-tower`,
-  `nothing-to-undo`. The panel's Upgrade slot reads "Undo upgrade  +35"
-  (14 px) while this is possible. Event `undoUpgrade {cell, tower,
+  `nothing-to-undo`. Undo upgrade shows the refund. Buying both upgrades in one setup allows two undos, most recent first. Event `undoUpgrade {cell, tower,
   refund}`. An upgrade bought mid-wave adds nothing to `unlockedSpend` and
   cannot be undone.
 - **Drag to place.** Press a build bar button the player can afford and
@@ -168,11 +167,15 @@ Picked on the title menu before each game (Normal preselected);
 | | Easy | Normal | Hard |
 |---|---|---|---|
 | Enemy hp | 0.75x | 1x | 1.2x |
+| Added HP per act-2 wave | 0% | 28% | 21.3% |
 | Start gold | 150 | 100 | 80 |
 | Lives | 35 | 20 | 15 |
 
-An enemy spawns with `round(base hp x multiplier)`, a whole number (half
-rounds up), which is also its full hp for the hp bar and the boss bar.
+Through wave 10, multiply base hp by the difficulty multiplier. Starting on
+wave 11, each wave adds the listed percentage of the enemy’s original difficulty HP. The campaign factor is 1 plus that rate times the number of waves past ten, up to ten steps. Endless carries forward the wave-20 factor.
+Round the product once, half up, for the enemy's starting and maximum hp.
+Scheduled enemies and summoned Wolves use the same rule. The table below
+gives base difficulty hp before wave growth.
 Bounties, speeds, towers, upgrades, specials and waves are the same on
 every level; every Normal number in this file is the base number.
 
@@ -186,7 +189,7 @@ every level; every Normal number in this file is the base number.
 | Grumblefoot (boss) | 3000 | 4000 | 4800 |
 | Grumblemaw (boss) | 4200 | 5600 | 6720 |
 
-**Hard hp rule.** No ordinary enemy's Hard hp sits 1 or 2 points above
+**Hard hp rule (waves 1–10).** No ordinary enemy's Hard hp sits 1 or 2 points above
 a multiple
 of a tower's base damage (Musketeer 12, Longbow and Fire Pot impact 4,
 Cannon 25, Mortar 45; the Tar Pit's 3 is left out, since every whole
@@ -230,7 +233,7 @@ beside it that returns to the title; the win screen also has [Keep going].
 | Harpy | 36 | 90 | 3 | 1 | flying |
 | Shieldbearer | 70 | 45 | 5 | 1 | shield |
 | Grumblefoot, the Troll King | 4000 | 25 | 150 | 5 | boss; slows capped at 30% |
-| Grumblemaw | 5600 | 35 | 300 | 10 | boss; slows capped at 30% |
+| Grumblemaw | 5600 | 14 | 75 | 10 | boss; slows capped at 30% |
 
 - **Flying.** A Harpy flies over the path. Tar Pit, Cannon and Mortar never
   target it, and a Cannon or Mortar splash skips it even when it is inside
@@ -249,7 +252,7 @@ beside it that returns to the title; the win screen also has [Keep going].
   at 65 s (waveTick 3900), 2 s after the last Troll. Grumblemaw is the last
   scheduled spawn of wave 20. Both walk without a shield. Every tower can
   target them. Splash, burn and tar apply, with slows capped at 30% for
-  the effect's full duration. At the cap Grumblefoot walks at 17.5 px/s and Grumblemaw at 24.5 px/s,
+  the effect's full duration. At the cap Grumblefoot walks at 17.5 px/s and Grumblemaw at 9.8 px/s,
   and `slowed` carries the applied 0.3. The wave clears after they and all remaining
   enemies are defeated or exit. `bossSpawn` follows `spawn`, and
   `bossDown` (cause `shot`, `burn`, `special` or `exit`) follows `kill` or
@@ -301,7 +304,7 @@ before the cooldown is rounded.
 | Mortar | 110 | 220 | 70 | 45 | 1/3 | 60 | - | - |
 | Fire Pot | 70 | 100 | - | 4 | 0.8 | - | - | 5/s for 3 s |
 
-One upgrade per tower:
+The first upgrade takes a tower from level 1 to level 2:
 
 | Tower | Upgrade cost | Range | Damage | Splash | Slow | Burn |
 |---|---|---|---|---|---|---|
@@ -312,8 +315,66 @@ One upgrade per tower:
 | Mortar | 80 | 220 | 70 | 70 | - | - |
 | Fire Pot | 50 | 100 | 4 | - | - | 8/s for 4 s |
 
-Slow is strength for seconds; burn is damage per second for seconds. Sell
-refunds after an upgrade (locked): Musketeer 59, Cannon 98, Tar Pit 77, Longbow 49, Mortar 133, Fire Pot 84.
+A newly built tower is level 1. The first upgrade takes it to level 2.
+At level 2 one click or tap buys path A or B for the same price. Its
+full level-3 row replaces the previous stats before rewards apply.
+The Mortar keeps its 70 px minimum range on either path. A level-3 tower
+cannot buy another upgrade. A path request requires a level-2 tower, a
+valid path, enough gold and a game still in progress. A refused purchase
+leaves the tower, gold and events unchanged. The upgrade event records
+the level and, for level 3, the chosen path.
+
+| Tower | Path | Name | Cost | Range | Min range | Damage | Fire rate | Splash | Slow | Burn |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Musketeer | A | Sharpshooter | 85 | 200 | - | 45 | 1 | - | - | - |
+| Musketeer | B | Volley | 85 | 125 | - | 22 | 2.8 | - | - | - |
+| Cannon | A | Heavy Shot | 140 | 105 | - | 40 | 0.5 | 105 | - | - |
+| Cannon | B | Quick Loader | 140 | 105 | - | 40 | 1 | 55 | - | - |
+| Tar Pit | A | Deep Tar | 110 | 105 | - | 3 | 2 | - | 78% for 2 s | - |
+| Tar Pit | B | Wide Tar | 110 | 145 | - | 3 | 2 | - | 64% for 2 s | - |
+| Longbow | A | War Bow | 70 | 170 | - | 16 | 2.5 | - | - | - |
+| Longbow | B | Quick Draw | 70 | 170 | - | 9 | 4.5 | - | - | - |
+| Mortar | A | Siege Shell | 190 | 220 | 70 | 140 | 1/3 | 70 | - | - |
+| Mortar | B | Wide Burst | 190 | 220 | 70 | 80 | 1/3 | 150 | - | - |
+| Fire Pot | A | Inferno | 120 | 125 | - | 4 | 1 | - | - | 17/s for 1 s |
+| Fire Pot | B | Lasting Flames | 120 | 100 | - | 4 | 1 | - | - | 8/s for 8 s |
+
+The slow column gives strength and duration. The burn column gives damage
+per second and duration. A locked level-2 Musketeer, Cannon, Tar Pit,
+Longbow, Mortar and Fire Pot sell for 59, 98, 77, 49, 133 and 84 gold.
+At level 3 their locked refunds are 119, 196, 154, 98, 266 and 168 gold.
+
+The level-2 panel offers two cards. Each shows the path name, its price
+and the change from the level-2 stats. Both show "Not enough gold" when
+the tower's owner cannot afford the upgrade. At level 3 the heading shows
+the path name. Undo appears alongside the cards or the final path while
+the latest purchase is refundable. Target and Sell share a row at levels
+2 and 3. The panel stays inside the map and clears the selected tower.
+Touch targets on the portrait phone measure at least 44 CSS px on both axes.
+
+| Path name | Panel line |
+|---|---|
+| Sharpshooter | Farther, harder shots |
+| Volley | Fires much faster |
+| Heavy Shot | A much bigger blast |
+| Quick Loader | Fires twice as fast |
+| Deep Tar | Slows enemies to a crawl |
+| Wide Tar | Slows from farther away |
+| War Bow | Hits almost twice as hard |
+| Quick Draw | Fires almost twice as fast |
+| Siege Shell | Hits much harder |
+| Wide Burst | Blast reaches twice as far |
+| Inferno | Hotter, shorter burns |
+| Lasting Flames | Burns twice as long |
+
+The first upgrade adds a gold ring. A level-3 tower keeps the ring and
+has a dark-backed badge 10 map px right and 10 px above its centre.
+The same shapes appear in landscape, portrait, test mode and the move preview.
+
+| Path mark | Shape | Color |
+|---|---|---|
+| A | diamond | #f2c94c |
+| B | two dots | #76e6e8 |
 
 **Targeting.** A tower first takes the enemies it may shoot: in range,
 outside a minimum range (the Mortar only targets enemies whose distance is
@@ -348,7 +409,7 @@ applied) and a burn kill counts for the tower on that cell. Special kills,
 including a Fire Arrows burn, count for no tower; a kill by a special's
 burn has kill cause `special` (the enemy carries `specialBurn`). Selling a tower clears
 its burns' ownership, so a tower rebuilt on the cell starts from 0; moving
-and upgrading keep the count. The tower panel (214 x 166) shows it as a
+and upgrading keep the count. The tower panel shows it as a
 13 px "Kills 43" line above its buttons (`names.ts` `KILLS_TEXT`).
 
 ## Boons
@@ -394,14 +455,14 @@ Reloading starts a new run.
 | Boon | ID | After wave | Value | Effect |
 |---|---|---|---|---|
 | Long Barrels | longBarrels | 5 | 1.3 | Cannon and Mortar maximum range multiplier |
-| Keen Arrows | keenArrows | 5 | 1.25 | Longbow damage multiplier |
-| War Chest | warChest | 5 | 100 | Gold gained immediately |
+| Keen Arrows | keenArrows | 5 | 1.11 | Longbow damage multiplier |
+| War Chest | warChest | 5 | 80 | Gold gained immediately |
 | Sticky Tar | stickyTar | 10 | 2 | Tar Pit and Tar Barrel slow duration multiplier |
-| Hot Coals | hotCoals | 10 | 1.8 | Damage multiplier for all burns |
-| Quick Hands | quickHands | 10 | 0.62 | Special recharge time multiplier |
-| Stone Walls | stoneWalls | 15 | 3 | Lives gained immediately |
-| Veteran Crews | veteranCrews | 15 | 1.1 | Tower fire rate multiplier |
-| Bigger Blasts | biggerBlasts | 15 | 1.4 | Cannon, Mortar and Powder Keg splash radius multiplier |
+| Hot Coals | hotCoals | 10 | 2.11 | Damage multiplier for all burns |
+| Quick Hands | quickHands | 10 | 0.57 | Special recharge time multiplier |
+| Stone Walls | stoneWalls | 15 | 4 | Lives gained immediately |
+| Veteran Crews | veteranCrews | 15 | 1.11 | Tower fire rate multiplier |
+| Bigger Blasts | biggerBlasts | 15 | 1.3 | Cannon, Mortar and Powder Keg splash radius multiplier |
 
 ## Special attacks
 
@@ -418,7 +479,7 @@ Reloading starts a new run.
   (Start Wave or an early call) makes it ready at once (1, recharge 0).
   Using a special spends it and starts the recharge: it is ready again
   1200 wave ticks later (20 s, `SPECIAL_RECHARGE_TICKS`). Quick Hands
-  lowers this interval to 744 ticks (12.4 s). The counter runs in step 6
+  lowers this interval to 804 ticks (13.4 s). The counter runs in step 6
   of each wave tick. Wave clear resets the charge and the recharge to 0.
 - **Use.** `useSpecial(state, type, {x, y})` acts at once, between ticks,
   like a build, on every live enemy whose position is within the effective
@@ -524,19 +585,19 @@ enemy `i` of a group spawns on waveTick `round((delay + i x interval) x
 | 8 | 50 Goblin every 1.5 s; 25 Wolf every 1.5 s, delay 6.75 s; 13 Troll every 4.9 s, delay 3 s; 6 Shieldbearer every 6 s, delay 4 s; 14 Harpy every 1.2 s, delay 10 s | 108 | 14924 | 326 | 73.5 s |
 | 9 | 30 Wolf every 1 s; 10 Troll every 2 s, delay 2 s | 40 | 10100 | 140 | 29 s |
 | 10 | 20 Wolf every 1.5 s, delay 4 s; 15 Troll every 4.5 s; 12 Harpy every 1.5 s, delay 6 s; 8 Shieldbearer every 5 s, delay 2.5 s; 1 Grumblefoot (boss), delay 65 s | 56 | 19642 | 386 | 65 s |
-| 11 | 33 Goblin every 0.85 s; 14 Shieldbearer every 1.5 s, delay 5.76 s; 14 Harpy every 1.1 s, delay 11.52 s | 61 | 2243 | 178 | 27.2 s |
-| 12 | 35 Wolf every 1.45 s; 11 Troll every 4 s, delay 5.04 s; 14 Harpy every 2.6 s, delay 12.24 s | 60 | 11654 | 200 | 49.3 s |
-| 13 | 39 Goblin every 0.95 s; 14 Shieldbearer every 2 s, delay 8.64 s; 16 Harpy every 1.9 s, delay 7.2 s | 69 | 2453 | 196 | 36.1 s |
-| 14 | 29 Wolf every 1.85 s; 14 Troll every 3.8 s, delay 3.6 s; 17 Harpy every 2.5 s, delay 11.52 s | 60 | 14492 | 221 | 53 s |
-| 15 | 22 Goblin every 1.75 s; 19 Wolf every 1.7 s, delay 22.79 s; 12 Troll every 4.6 s, delay 3.6 s; 16 Harpy every 2.8 s, delay 9.36 s | 69 | 12862 | 226 | 54.2 s |
-| 16 | 33 Goblin every 1.7 s; 20 Shieldbearer every 2.95 s, delay 2.88 s; 19 Harpy every 2.75 s, delay 7.2 s | 72 | 2843 | 223 | 58.933 s |
-| 17 | 31 Wolf every 1.8 s; 16 Troll every 3.65 s, delay 3.6 s; 20 Harpy every 2.7 s, delay 7.2 s | 67 | 16540 | 250 | 58.5 s |
-| 18 | 36 Goblin every 1.7 s; 18 Troll every 3 s, delay 3.6 s; 11 Shieldbearer every 5 s, delay 2.16 s; 19 Harpy every 2.8 s, delay 7.92 s | 84 | 19382 | 328 | 59.5 s |
-| 19 | 33 Wolf every 1.85 s; 23 Troll every 2.65 s, delay 2.88 s; 21 Harpy every 2.75 s, delay 6.48 s | 77 | 23266 | 313 | 61.483 s |
-| 20 | 20 Wolf every 1.55 s; 15 Shieldbearer every 2 s, delay 4 s; 18 Harpy every 1.65 s, delay 5 s; 12 Troll every 1.7 s, delay 27.5 s; 1 Grumblemaw (boss), delay 48.2 s | 66 | 19098 | 565 | 48.2 s |
+| 11 | 33 Goblin every 0.85 s; 14 Shieldbearer every 1.5 s, delay 5.76 s; 14 Harpy every 1.1 s, delay 11.52 s | 61 | 2861 | 178 | 27.2 s |
+| 12 | 35 Wolf every 0.75 s; 11 Troll every 1.5 s, delay 0.375 s; 14 Harpy every 1 s, delay 5 s | 60 | 18171 | 200 | 25.5 s |
+| 13 | 39 Goblin every 0.75 s; 14 Shieldbearer every 1.5 s, delay 0.375 s; 16 Harpy every 0.75 s, delay 4 s | 69 | 4500 | 196 | 28.5 s |
+| 14 | 29 Wolf every 1.48 s; 14 Troll every 2.6 s, delay 0.375 s; 17 Harpy every 2 s, delay 12 s | 60 | 30706 | 221 | 44 s |
+| 15 | 14 Goblin every 1.5 s, delay 3 s; 19 Wolf every 1.7 s, delay 3 s; 19 Troll every 2 s, delay 8 s; 16 Harpy every 0.75 s, delay 9.36 s | 68 | 46378 | 266 | 44 s |
+| 16 | 33 Goblin every 2 s; 20 Shieldbearer every 2.36 s, delay 2.304 s; 19 Harpy every 2.2 s; 15 Troll every 2.25 s, delay 12 s | 87 | 45820 | 343 | 64 s |
+| 17 | 31 Wolf every 1.44 s; 15 Troll every 1.1 s, delay 2 s; 20 Harpy every 2.16 s | 66 | 46149 | 242 | 43.2 s |
+| 18 | 23 Goblin every 1.7 s; 15 Troll every 1.25 s, delay 8 s; 9 Shieldbearer every 5 s, delay 3 s; 19 Harpy every 2.8 s, delay 8 s | 66 | 52161 | 268 | 58.4 s |
+| 19 | 33 Wolf every 1.85 s; 15 Troll every 2.25 s; 21 Harpy every 2.75 s, delay 4 s | 69 | 55137 | 249 | 59.2 s |
+| 20 | 8 Wolf every 1.55 s; 5 Shieldbearer every 2 s, delay 4 s; 8 Harpy every 1.65 s, delay 5 s; 6 Troll every 1.7 s, delay 9 s; 1 Grumblemaw (boss), delay 19.5 s | 28 | 45974 | 188 | 19.5 s |
 
 Total hp and bounty are on Normal, before pack calls and the 25 clear
-bonus. The twenty waves hold 1209 scheduled enemies. Wave 1 sends one
+bonus. The twenty waves hold 1158 scheduled enemies. Wave 1 sends one
 Goblin every 2.5 s, so a single Musketeer stops all of them on Easy and
 Normal (three shots per Goblin on Hard make it a real wave there). Kyle's
 play notes decide whether it stays this long.
@@ -609,11 +670,15 @@ it reads "Start Wave". `ui().callEarly` reports `{available, bonus}`.
   table). For n >= 21: `k = n - 21`, `cycle = floor(k / 3) + 1`; the
   groups of table wave 18, 19 or 20 for `k % 3` = 0, 1, 2, without the bosses;
   plus one Harpy group of `min(16, 8 + 2 x cycle)` Harpies, one every 0.75
-  s, starting 2 s after the base wave's last spawn; hp multiplier `1.8 ^
-  cycle` (`ENDLESS_HP_GROWTH`). An enemy spawns with `round(base hp x level
-  multiplier x wave multiplier)` (one rounding, half up) and carries it as
-  `maxHp`, which the hp bar uses. Bounties, speeds and lives costs do not
-  change. The 90 s spawn-window rule (R1) does not apply; the spawn-rate
+  s, starting 2 s after the base wave's last spawn. The first cycle adds 5%
+  to wave 20's hp scaling. The multiplier is `1.05 x 1.8 ^ (cycle - 1)`
+  (`ENDLESS_START_HP`, then `ENDLESS_HP_GROWTH` per completed cycle).
+  An enemy spawns with `round(base hp x level
+  multiplier x wave-20 campaign factor x endless multiplier)` (one rounding,
+  half up). If the campaign and endless factors multiply to anything other
+  than 1, the hp bar uses the spawned enemy's `maxHp`. Bounties,
+  speeds and lives costs do not change. The 90 s spawn-window rule (R1)
+  does not apply; the spawn-rate
   rule (R1) does. The Hard hp rule does not apply. `waveDef` throws for n
   < 1 and for a non-integer n. Live play continues while lives remain. Headless runs stop at 200
   (`ENDLESS_WAVE_CAP`).
@@ -626,16 +691,16 @@ it reads "Start Wave". `ui().callEarly` reports `{available, bonus}`.
   20"). Words in `names.ts`: `END_TEXT.keepGoing`, `waveCounterText`,
   `reachedWaveText`, `bestScoreText`.
 
-| Wave | Cycle | Base | Extra Harpies | Enemies | Hp x | Total hp (Normal) | Bounty | Last spawn |
+| Wave | Cycle | Base | Extra Harpies | Enemies | Endless hp x | Total hp (Normal) | Bounty | Last spawn |
 |---|---|---|---|---|---|---|---|---|
-| 21 | 1 | 18 | 10 from 61.5 s | 94 | 1.8 | 35527 | 358 | 68.25 s |
-| 22 | 1 | 19 | 10 from 63.48 s | 87 | 1.8 | 42533 | 343 | 70.233 s |
-| 23 | 1 | 20 | 10 from 48.2 s | 75 | 1.8 | 24950 | 295 | 54.95 s |
-| 24 | 2 | 18 | 12 from 61.5 s | 96 | 3.24 | 64228 | 364 | 69.75 s |
-| 25 | 2 | 19 | 12 from 63.48 s | 89 | 3.24 | 76800 | 349 | 71.733 s |
-| 26 | 2 | 20 | 12 from 48.2 s | 77 | 3.24 | 45151 | 301 | 56.45 s |
+| 21 | 1 | 18 | 10 from 60.4 s | 76 | 1.05 | 65668 | 298 | 67.15 s |
+| 22 | 1 | 19 | 10 from 61.2 s | 79 | 1.05 | 63969 | 279 | 67.95 s |
+| 23 | 1 | 20 | 10 from 19.5 s | 37 | 1.05 | 27373 | 143 | 26.25 s |
+| 24 | 2 | 18 | 12 from 60.4 s | 78 | 1.89 | 118696 | 304 | 68.65 s |
+| 25 | 2 | 19 | 12 from 61.2 s | 81 | 1.89 | 115644 | 285 | 69.45 s |
+| 26 | 2 | 20 | 12 from 19.5 s | 39 | 1.89 | 49785 | 149 | 27.75 s |
 
-Endless hp at cycles 1, 2, 3 (Easy / Normal / Hard): Goblin 31/41/50, 56/75/89, 101/134/161; Troll 1283/1710/2052, 2309/3078/3694, 4155/5540/6648; Harpy 49/65/78, 87/117/140, 157/210/252.
+Endless hp at cycles 1, 2, 3 (Easy / Normal / Hard): Goblin 18/92/91, 33/165/163, 59/297/294; Troll 748/3791/3747, 1347/6823/6744, 2424/12281/12139; Harpy 28/144/142, 51/259/256, 92/465/460.
 
 ## High score
 
@@ -862,7 +927,7 @@ Sounds follow the renderer's events and change no rule, number or outcome
   320 ms flight at 1x) and deep boom 0.56 s; Tar Pit glob 0.13 s and splat
   0.15 s; Fire Pot whoosh 0.24 s and crackle 0.15 s; hit tick 0.02 s;
   death pops 0.09 s (Goblin, Harpy), 0.14 s (Wolf, Shieldbearer), 0.30 s
-  (Troll); exit warning 0.45 s; build 0.21 s, upgrade 0.32 s, sell 0.25 s,
+  (Troll); exit warning 0.45 s; build 0.21 s, first upgrade 0.32 s, second upgrade 0.219 s (G5 then E6), sell 0.25 s,
   refused 0.27 s (two round falling notes), button tap 0.03 s, tower select
   0.13 s; Powder Keg 0.76 s, Tar Barrel 0.35 s, Fire Arrows 0.55 s, charge
   ready 0.36 s; wave start horn 0.70 s, wave clear chime 0.51 s, Call next
@@ -890,7 +955,7 @@ Sounds follow the renderer's events and change no rule, number or outcome
   | Tick | hit | 0.008 to 0.02 | 0.012 |
   | Shot | the six shots | 0.05 to 0.065 | 0.06 (Musketeer 0.055) |
   | Impact | the six impacts, the death pops | 0.068 to 0.11 | 0.09 (Musketeer 0.07, Fire Pot 0.08; deaths 0.08, 0.09, 0.10) |
-  | Action | build, upgrade, sell, refused, tap, select, coin, reward offer and pick | 0.045 to 0.10 | 0.08 (tap 0.05, select 0.07) |
+  | Action | build, both upgrades, sell, refused, tap, select, coin, reward offer and pick | 0.045 to 0.10 | 0.08 (tap 0.05, select 0.07) |
   | Moment | exit, charge ready, wave clear, Call next, wave horn, Act II, pack call | 0.11 to 0.17 | 0.12, 0.12, 0.14, 0.14, 0.165, 0.158, 0.148 |
   | Big | specials, both bosses' arrivals and falls, win, lose | 0.17 to 0.26 | 0.17 to 0.23, with Grumblemaw arrival 0.241 and fall 0.243 |
 
@@ -1012,7 +1077,7 @@ drawn and where touches land differ.
   face the way they move on the screen; Wolves and the boss have only side
   frames, so walking down the screen they show their right-facing side.
 - **Portrait arrangements.** Tower labels are not drawn (a readable label
-  spans two or three cells). The tower panel (220 x 70 buttons, 70 px
+  spans two or three cells). The base tower panel (220 x 70 buttons, 70 px
   close) opens beside the tower inside the map. The special popup opens
   above the controls. While aiming, the instruction replaces the preview
   in the status strip (the main line, then the hint's sentences that fit
@@ -1186,7 +1251,7 @@ game's level and map), `continueEndless()`, `bestScore(difficulty, map?)`,
 special aimed, `aimPoint`, `banner`, `holding`, the landing `labels` and
 the `zones`), `pendingBoon()`, `pickBoon(id)`, `heldBoons()`, `bossOnField()`,
 `uiRects()` (including `reward:<id>`, `boon:<id>` and `gold`, the cheat's tap area),
-`titleReady()`, `step(n)`, `state()`, `events()`, `hudText()`,
+`titleReady()`, `upgradeAt(col, row, path?)`, `step(n)`, `state()`, `events()`, `hudText()`,
 `setSpeed(1 | 2 | 3)`, `speed()` and `cheatGold()`. `spawnHorde` works only with `?test=1` or `?perf=1`; without
 them `window.__tarpit` keeps five read-only hooks.
 
@@ -1204,19 +1269,22 @@ browser's `runScript` replay it.
   order before wave 1, nothing else. It measures wave 1 for a first-time
   player.
 - **lazyBuild**: before each wave, base Musketeers while affordable, on the
-  trail order. Once the first pass is full, it repeats the trail
-  walk with the first pass's cells excluded. **greedyMusket** uses the
+  trail order. When a pass fills, repeat the walk excluding all cells already used. **greedyMusket** uses the
   first pass and upgrades each Musketeer before buying the next.
   **longbowSpam** buys base Longbows on the first pass. The trail order
   walks the path in 96 px steps from 96 px and takes, at each step, the
   nearest free buildable cell within 72 px.
-- **comboBuild** buys the map's 31 opening actions as gold allows and
-  fires specials by the policy below. Meadow opens with a pair of Longbows.
-  Switchback opens with a Musketeer between two lanes at (13,4) and a
-  Longbow by the exit at (27,13). Riverbend opens at (10,6) and (12,6).
-  In act 2 all three upgrade their second Fire Pot and reinforce the exit
-  with an upgraded Cannon and Musketeer. Meadow adds two upgraded Longbows.
-  Riverbend adds six upgraded bows and a seventh base bow.
+- **comboBuild** opens with two Longbows. Meadow buys 31 opening actions,
+  buying its third bow at (15,6) before the first Tar Pit and Fire Pot. Switchback buys 15, with bows at
+  (14,7), (18,7) and (20,7) covering the folded lanes. Riverbend buys 31,
+  with the first Tar Pit at (12,4) and bows at (10,6) and (12,6).
+  The map's act-two queue covers all six tower types. Meadow specializes
+  one of each. Switchback upgrades its second existing Mortar, specializes
+  both Mortars and three bows, and buys its Cannon and Musketeer. Riverbend
+  specializes two bows and two Mortars. Each map spends its branch money
+  as soon as the next purchase is affordable. **wideBuild** follows the
+  same opening and replaces each branch with another level-2 tower of the
+  same type and total cost on a free firing lane.
   **comboBuildNoFire**: its purchases without the Fire Pot cells.
   **comboNoSpecials**: the plan with no specials. **noAntiAir**: the combo
   purchases, selling its Musketeers and Longbows before wave 4 and building
@@ -1228,21 +1296,14 @@ browser's `runScript` replay it.
   Fire Pot and the pair's upgrades, then the rest), plus the special
   policy. The Hard opening uses two Longbows on every map. In act 2 the Meadow
   and Riverbend plans buy one extra Mortar and upgrade it. Switchback
-  already covers the boss approach with its existing Mortars.
-- **endlessIdle**: comboBuild, then Keep going and no more purchases.
-  **endlessGreedy**: the same campaign. In endless setup it buys the
-  cheapest remaining upgrade while affordable, breaking ties by cell
-  order. Once all towers are upgraded, it fills free trail-order cells
-  with Longbows. Both use the special policy through endless.
+  already covers the boss approach with its existing Mortars. Each Hard plan buys Siege Shell for its first Mortar. Riverbend also specializes its Mortar at (17,7) at the start of act 2 and turns to reinvestment after its artillery purchases.
+- **Act-2 spending.** In every setup after the fixed purchases, buy the cheapest affordable second upgrade on an owned level-2 tower (path A for each type, cell order breaks ties). Otherwise upgrade a base tower of the main type or build that type on the next free trail cell. Combo, wide and Hard make one reinvestment purchase per setup until the last campaign setup, when they spend their reserve. The artillery, burn and musket specialists spend up to 180 gold per setup, allowing their first affordable purchase even when it costs more. They also spend their reserve before the boss. After losing at least three combat lives in one wave, the combo, wide and Hard references may spend up to 425 gold in the next setup. The Stone Walls grant is excluded when counting losses. Hard buys Longbows. Combo and wide buy Longbows on Meadow and Switchback. On Riverbend combo buys Tar Pits and wide buys Cannons. Artillery buys Mortars, burn buys Fire Pots and musket buys Musketeers. Wide skips all second upgrades. The fixed-only control stops after the identical fixed plan.
+- **endlessIdle** and **endlessGreedy** play the same reinvesting combo throughout the campaign. Idle stops buying at victory. Greedy invests in Siege Shell Mortars, buying the branch wherever it is available before upgrading or adding another Mortar. Both keep using specials.
 - Meadow only (they throw for another map): **soundBuild** (Musketeers, Cannons and a Tar Pit),
   **soundBuildNoTar** (its Tar Pit cells removed), **comboStrongest**
   (every tower set to Strongest).
-- **artilleryBuild** keeps up to four opening Longbows and spends its
-  second-act money on two upgraded Cannons and two upgraded Mortars.
-  **burnBuild** keeps one opening Mortar and reinforces with two upgraded
-  Tar Pit and Fire Pot pairs. Both choose open sites by path coverage;
-  Fire Pots prefer a cell next to their Tar Pit. Both use the same
-  specials policy as the combo.
+- **artilleryBuild** keeps four opening bows, then buys three Cannons and two Mortars in alternation. **musketBuild** keeps two opening Mortars and adds four Musketeers on Meadow and Switchback, two on Riverbend. Both specialize the first new gun before expanding.
+- **burnBuild** keeps up to three opening Mortars and adds a Fire Pot, Tar Pit and Fire Pot in that order. On Switchback they cover the folded lanes from (9,4), (13,10) and (15,11). All three specialists use the combo's specials policy.
 - **Cluster special** (`clusterSpecial` timed action): fire the first
   unlocked of Fire Arrows, Tar Barrel, Powder Keg at the centroid of the
   densest cluster of live enemies within 70 px of a live enemy.
@@ -1256,9 +1317,9 @@ the Tar Barrel and Fire Arrows take turns (Tar Barrel first; before wave 7
 the Tar Barrel takes every turn), fired at the working point with a big
 one inside. Otherwise, if a point works for the Powder Keg, the keg is
 thrown there. Otherwise it waits. The best point catches the most enemies;
-ties go to the point nearest the exit. A forbidden special is skipped (target
-N9), and in the Tar Barrel and Fire Arrows' turns the other takes its
-place. The headless recorder fires each choice and writes it into the
+ties go to the point nearest the exit. The simulator also measures the combo
+with each special omitted in turn. When it omits Tar Barrel or Fire Arrows,
+the other takes its turn. The headless recorder fires each choice and writes it into the
 script's timed list (`timed`), so `playScripted` and the browser's
 `runScript` replay the same game.
 
@@ -1274,21 +1335,27 @@ Normal, every map unless specified:
 - **N1** noTowers loses by wave 3.
 - **N2** lazyBuild loses on wave 7 to 14.
 - **N3** longbowSpam loses on wave 8 to 16.
-- **N4** comboBuild wins with 5 to 19 lives.
-- **N5** comboBuildNoFire is strictly worse than comboBuild by lives or loss.
-- **N6** comboNoSpecials wins. comboBuild wins with at least 3 more lives.
+- **N4** The reinvesting combo wins Normal.
+- **S1** With default rewards and specials, it wins with 9 to 15 lives.
+- **S2** The combo loses lives on at least three act-2 waves, at most four on any wave. The Hard plan on Hard also loses lives on at least three waves, at most five per wave.
+- **S3** In balance tests, scale act-2 spawn HP by 0.95 and 1.05 before rounding. Both perturbed campaigns must win. Final lives must stay within four of the ordinary Normal combo and within five of the ordinary Hard plan on Hard.
+- **V2** Its fixed plan loses in act 2 or wins with at least five fewer lives.
+- **S4** The reinvesting wide build wins within five lives of the combo and buys no second upgrades.
+- **V4** Lazy wins Easy with at least eight lives, loses Normal in waves 7–14 and loses Hard by wave 8. The Hard plan wins Hard with at least three lives.
+- **V5** The Normal combo and the Hard plan on Hard both kill Grumblemaw. An exit costs ten lives.
+- **S7** All 27 reward combinations win. For each offer, hold the other two picks fixed in each of their nine combinations. The best and worst choices finish within six lives.
+- **V7** Meadow meets all four campaign timing and wave-shape targets.
+- **P1** For each tower, comboBuild and that tower’s specialist compare A and B on all three maps with default rewards and specials on Normal. The paths finish with different lives in at least one of the six comparisons. Each path wins or ties the lives comparison at least once.
+- **P2** Every one of those A/B gaps is at most nine lives.
+- **P3** The two paths trade places between a lone Troll and ten Goblins in the combat examples.
+- **P4** At equal gold each tower has a path that beats another level-2 copy by at least one life, and at least one comparison in which the copy wins or ties.
+- **S5** On each map, comboBuild wins with specials. If comboNoSpecials wins, it finishes at least three lives behind. If it loses, it reaches wave 17 or later.
+- **S6** Removing Fire Pots can gain at most one life per map. Keeping them gives the combo more lives on at least two maps.
 - **N7** noAntiAir lets at least half of wave 4's Harpies exit and loses
   by wave 12.
 - **N8** oneMusket lets at most 6 of wave 1's enemies exit.
-- **N9** On Meadow, soundBuild lasts longer than soundBuildNoTar. Forbidding
-  any one special makes the combo strictly worse by lives and then kills.
-  The policy fires at least 30 specials and at least 80% catch 3 or more
-  enemies.
-- **N10a** comboBuild wins with all 27 combinations on each map. The
-  unit suite runs nine combinations per map: the defaults, each single
-  substitution and the two diagonals of non-default choices.
-- **N10b** For each offer, fixing the other picks at their defaults,
-  the difference between the best and worst final lives is at most four.
+- **S9** On Meadow, soundBuild outlasts soundBuildNoTar, measured in simulation ticks.
+- **N9** On Meadow, the combo fires at least 30 specials and at least 80% catch three or more enemies.
 - **N10c** Each reward is strictly best among its offer on a named build,
   map and difficulty (Normal or Hard), ranked by lives then kills.
 - **N10d** Each reward changes lives or defeat wave for at least three
@@ -1296,10 +1363,6 @@ Normal, every map unless specified:
   Both runs play the same build. The comparison neutralizes just the
   selected effect and keeps the other two picks active. Purchases respond
   to each run’s own gold, and the normal pick action runs in both games.
-- **B1** The default combo kills Grumblemaw on Normal and the Hard plan
-  kills him on Hard, on every map.
-- **B2** The Normal combo without specials wins on all maps and
-  Grumblemaw escapes on at least two.
 - **B3** The Easy lazy build wins on every map with at least eight lives,
   whether the boss dies or escapes.
 - **N11** A Powder Keg kills a Harpy or Wolf in one hit and inflicts at
@@ -1321,28 +1384,19 @@ Hard, every map:
 
 Endless, every map:
 
-- **X1** On Normal, endlessIdle loses on the second through fifth
-  endless wave.
-- **X2** On Normal, endlessGreedy loses on a later endless wave than
-  endlessIdle, by the twelfth endless wave.
-- **X3** The six measured endless runs per map (idle and greedy on Easy,
-  Normal and Hard) end in loss below the headless cap.
+- **S8** After the Normal combo wins, the idle build loses on the second through sixth endless wave. Continued reinvestment lasts at least two waves longer and loses by the fourteenth endless wave. Every measured endless run ends below the safety cap.
 
 The campaign wave rules R1 to R4 hold too.
 
+### Known weaknesses
+
+- The scripted combo often spends its shared charge better on Powder Keg or Fire Arrows. Omitting Tar Barrel raises final lives from 14 to 17 on Meadow, 11 to 12 on Switchback and 14 to 20 on Riverbend.
+- Tar Pit has the widest path gap at nine lives, exactly the P2 limit.
+- The Meadow Normal combo takes 1,316.5 s at 1x, just 3.5 s under the 22-minute limit.
+
 ## Measured matrix
 
-On Meadow Normal the default combo finishes in 21:51.7 of wave time.
-Waves 11–20 take 673.8 seconds, with a 95.6-second longest wave and 21
-enemies alive at peak. It kills Grumblemaw on wave tick 5735. All three
-Normal combos and all three Hard plans kill him. Without specials he
-escapes on Meadow and Riverbend, costing ten lives on each.
-
-All 27 pick combinations win on each map. With the other choices fixed at
-their defaults, the wave 5, 10 and 15 offers span 2, 0 and 3 lives
-respectively on every map. The separate build comparisons exercise all
-nine strict winners. The simulator prints their scores and affected
-build/map pairs.
+The milestone 37 “Closing pass” in DEVLOG records the Normal results.
 
 `npm run sim` ends with this table. “W 13” means a win with 13 lives.
 “L 8” means defeat on wave 8. The endless rows count from campaign wave 1.
@@ -1351,18 +1405,20 @@ build/map pairs.
 |---|---|---|---|---|---|---|---|---|---|
 | noTowers | L 2 | L 1 | L 1 | L 2 | L 1 | L 1 | L 2 | L 1 | L 1 |
 | oneMusket | L 3 | L 2 | L 2 | L 3 | L 2 | L 2 | L 3 | L 2 | L 2 |
-| lazyBuild | W 18 | L 8 | L 2 | W 26 | L 8 | L 2 | W 15 | L 8 | L 2 |
-| greedyMusket | W 22 | L 8 | L 2 | W 27 | L 20 | L 2 | W 23 | L 8 | L 2 |
-| longbowSpam | L 10 | L 8 | L 7 | L 18 | L 8 | L 8 | L 10 | L 8 | L 7 |
-| noAntiAir | L 8 | L 5 | L 5 | L 8 | L 5 | L 4 | L 8 | L 5 | L 5 |
-| comboBuild | W 38 | W 19 | L 20 | W 38 | W 19 | L 20 | W 38 | W 19 | L 20 |
-| comboBuildNoFire | W 38 | W 9 | L 7 | W 37 | W 14 | L 7 | W 36 | W 16 | L 7 |
-| comboNoSpecials | W 38 | W 3 | L 3 | W 38 | W 14 | L 2 | W 37 | W 5 | L 5 |
-| hardBuild | W 38 | W 23 | W 15 | W 38 | W 23 | W 18 | W 38 | W 23 | W 14 |
-| artilleryBuild | W 38 | W 19 | L 20 | W 38 | W 23 | W 13 | W 38 | W 9 | L 10 |
-| burnBuild | W 38 | W 11 | L 20 | W 38 | W 23 | W 5 | W 38 | W 10 | L 10 |
-| endlessIdle | L 28 | L 24 | L 20 | L 28 | L 25 | L 20 | L 28 | L 25 | L 20 |
-| endlessGreedy | L 30 | L 27 | L 20 | L 30 | L 27 | L 20 | L 30 | L 27 | L 20 |
-| soundBuild | L 20 | L 7 | L 2 | - | - | - | - | - | - |
+| lazyBuild | W 33 | L 8 | L 2 | W 37 | L 8 | L 2 | W 31 | L 8 | L 2 |
+| greedyMusket | L 18 | L 8 | L 2 | W 22 | L 12 | L 2 | L 18 | L 8 | L 2 |
+| longbowSpam | L 10 | L 8 | L 7 | L 15 | L 8 | L 8 | L 10 | L 8 | L 7 |
+| noAntiAir | L 8 | L 5 | L 5 | L 8 | L 5 | L 5 | L 7 | L 5 | L 5 |
+| comboBuild | W 39 | W 14 | W 3 | W 39 | W 11 | L 19 | W 39 | W 14 | W 1 |
+| wideBuild | W 39 | W 13 | W 1 | W 39 | W 15 | L 19 | W 39 | W 10 | L 15 |
+| comboBuildNoFire | W 38 | W 13 | L 8 | W 39 | W 11 | L 10 | W 37 | W 12 | L 7 |
+| comboNoSpecials | W 39 | W 8 | L 7 | W 39 | L 18 | L 9 | W 38 | W 3 | L 3 |
+| hardBuild | W 39 | W 20 | W 9 | W 39 | W 21 | W 15 | W 39 | W 21 | W 8 |
+| artilleryBuild | W 39 | W 20 | W 7 | W 39 | W 24 | W 14 | W 39 | W 6 | L 10 |
+| burnBuild | W 39 | W 15 | W 4 | W 39 | W 24 | W 14 | W 39 | W 9 | L 15 |
+| musketBuild | W 39 | L 19 | L 16 | W 39 | W 24 | W 14 | W 39 | L 18 | L 15 |
+| endlessIdle | L 37 | L 25 | L 24 | L 36 | L 24 | L 19 | L 36 | L 25 | L 24 |
+| endlessGreedy | L 40 | L 28 | L 27 | L 40 | L 27 | L 19 | L 38 | L 27 | L 27 |
+| soundBuild | L 15 | L 7 | L 2 | - | - | - | - | - | - |
 | soundBuildNoTar | L 10 | L 7 | L 2 | - | - | - | - | - | - |
-| comboStrongest | W 10 | L 5 | L 2 | - | - | - | - | - | - |
+| comboStrongest | W 14 | L 5 | L 3 | - | - | - | - | - | - |

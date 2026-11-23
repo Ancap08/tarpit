@@ -55,7 +55,7 @@ export interface BossBarInfo {
 export function bossBarInfo(state: GameState): BossBarInfo | null {
   const boss = state.enemies.find(isBoss);
   if (!boss) return null;
-  const max = enemyMaxHp(boss.type, state.difficulty); // 4000 on Normal, scaled by the level (milestone 25)
+  const max = boss.maxHp ?? enemyMaxHp(boss.type, state.difficulty);
   const hp = Math.max(0, boss.hp);
   return { name: ENEMY_NAMES[boss.type], hpText: `${Math.ceil(hp)} / ${max}`, fraction: Math.min(1, hp / max) };
 }

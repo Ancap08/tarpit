@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createGame, ENEMY_STATS, type Enemy } from '../../sim';
-import { BOSS_NAME } from '../names';
+import { BOSS_NAME, GRUMBLEMAW_NAME } from '../names';
 import { BOSS_BAR, BOSS_PILL, bossBarInfo, bossLabel } from './bossBar';
 
 const boss = (hp: number): Enemy => ({ id: 41, type: 'boss', hp, distance: 10, slow: 0, slowTicksLeft: 0 });
@@ -28,6 +28,12 @@ describe('boss bar (milestone 23)', () => {
   it('measures against the level\'s full hp (milestone 25): 3000 on Easy, 4800 on Hard (milestone 25c)', () => {
     expect(bossBarInfo({ ...createGame({ difficulty: 'easy' }), enemies: [boss(3000)] })).toEqual({ name: BOSS_NAME, hpText: '3000 / 3000', fraction: 1 });
     expect(bossBarInfo({ ...createGame({ difficulty: 'hard' }), enemies: [boss(1200)] })).toEqual({ name: BOSS_NAME, hpText: '1200 / 4800', fraction: 0.25 });
+  });
+
+  it('uses the actual spawn maximum of a scaled boss for the text and fill', () => {
+    const enemy = { ...boss(2100), type: 'grumblemaw', maxHp: 4200 } as const;
+    const s = { ...createGame({ difficulty: 'normal' }), wave: 20, enemies: [enemy] };
+    expect(bossBarInfo(s)).toEqual({ name: GRUMBLEMAW_NAME, hpText: '2100 / 4200', fraction: 0.5 });
   });
 
   it('is 300 x 14, centred on the 960 px map, with the name pill above it inside the canvas', () => {

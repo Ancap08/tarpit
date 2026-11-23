@@ -13,7 +13,7 @@
 import { enemyMaxHp } from './difficulty';
 import { cappedSlow, ENEMY_STATS, isBoss, isFlying, isTarred, shotDamage } from './enemies';
 import { cellCenter, sameCell, type Cell } from './grid';
-import { positionAlongPath } from './map';
+import { pathLength, positionAlongPath } from './map';
 import { secondsToTicks, TICKS_PER_SECOND } from './time';
 import { shotCooldown, towerStats } from './towers';
 import type { KillCause } from './events';
@@ -74,15 +74,49 @@ function preferred(mode: TargetingMode, a: Enemy, b: Enemy): boolean {
  * 'strongest' (most hp). Undefined if none qualifies.
  */
 export function findTarget(state: GameState, tower: Tower): Enemy | undefined {
+  return chooseTarget(state, tower, state.enemies);
+}
+
+// Broad-phase targeting. Each bit covers 1/32 of the trail. Mark a section
+// whenever its midpoint could be in reach after walking half its length.
+// Boundary cases are still decided by the exact distance check below.
+const trailLengths = new WeakMap<MapDef, number>();
+const reach = new WeakMap<Tower, { map: MapDef; x: number; y: number; range: number; mask: number }>();
+
+function reachMask(map: MapDef, tower: Tower, range: number, section: number, from: Point): number {
+  const known = reach.get(tower);
+  if (known?.map === map && known.range === range && known.x === from.x && known.y === from.y) return known.mask;
+  let mask = 0;
+  for (let i = 0; i < 32; i++) {
+    const point = positionAlongPath(map, section * (i + 0.5));
+    if (dist(from, point) <= range + section / 2 + 1e-8) mask |= 1 << i;
+  }
+  reach.set(tower, { map, range, x: from.x, y: from.y, mask });
+  return mask;
+}
+
+interface EnemyPositions {
+  points: Point[];
+  bits: number[];
+  occupied: number;
+  section: number;
+}
+
+function chooseTarget(state: GameState, tower: Tower, enemies: readonly Enemy[], positions?: EnemyPositions): Enemy | undefined {
   const from = towerPosition(tower);
   const { range, minRange } = towerStats(tower, state.boons);
+  const mask = positions ? reachMask(state.map, tower, range, positions.section, from) : -1;
+  if (positions && !(positions.occupied & mask)) return undefined;
   const mode = tower.targeting ?? 'first';
+  const groundOnly = GROUND_ONLY.has(tower.type);
   let best: Enemy | undefined;
-  for (const enemy of state.enemies) {
-    if (isDead(enemy) || !canTarget(tower.type, enemy)) continue;
+  for (let i = 0; i < enemies.length; i++) {
+    if (positions && !(positions.bits[i] & mask)) continue;
+    const enemy = enemies[i];
+    if (isDead(enemy) || (groundOnly && isFlying(enemy))) continue;
     // A less preferred candidate cannot replace a target already in range.
     if (best && !preferred(mode, enemy, best)) continue;
-    const position = enemyPosition(enemy, state.map);
+    const position = positions ? positions.points[i] : enemyPosition(enemy, state.map);
     const dx = Math.abs(from.x - position.x);
     const dy = Math.abs(from.y - position.y);
     // A coordinate already outside the outer circle rules out the point.
@@ -176,9 +210,11 @@ export function burnEnemies(state: GameState): void {
  * kill counts for no tower.
  */
 export function removeDead(state: GameState, cause: KillCause, killer?: Tower): void {
-  const alive: Enemy[] = [];
-  for (const enemy of state.enemies) {
+  let alive: Enemy[] | undefined;
+  for (let i = 0; i < state.enemies.length; i++) {
+    const enemy = state.enemies[i];
     if (isDead(enemy)) {
+      alive ??= state.enemies.slice(0, i);
       // Milestone 30: a burn kill from a special's burn is a special kill.
       const why: KillCause = cause === 'burn' && enemy.specialBurn ? 'special' : cause;
       const credited = why === 'shot' ? killer : why === 'burn' ? burnOwnerTower(state, enemy) : undefined;
@@ -189,10 +225,10 @@ export function removeDead(state: GameState, cause: KillCause, killer?: Tower): 
       if (isBoss(enemy)) state.events.push({ kind: 'bossDown', enemyId: enemy.id, enemyType: enemy.type, cause: why });
     } else {
       if (enemy.type === 'grumblemaw') checkPackCalls(state, enemy);
-      alive.push(enemy);
+      alive?.push(enemy);
     }
   }
-  state.enemies = alive;
+  if (alive) state.enemies = alive;
 }
 
 /** The tower standing on the cell whose burn is on this enemy, if any. */
@@ -203,10 +239,10 @@ function burnOwnerTower(state: GameState, enemy: Enemy): Tower | undefined {
 }
 
 /** One tower's step: count down, then fire if ready and a target is in range. */
-function towerStep(state: GameState, tower: Tower): void {
+function towerStep(state: GameState, tower: Tower, enemies: readonly Enemy[], positions: EnemyPositions): void {
   if (tower.cooldownTicks > 0) tower.cooldownTicks -= 1;
   if (tower.cooldownTicks > 0) return;
-  const target = findTarget(state, tower);
+  const target = chooseTarget(state, tower, enemies, positions);
   if (!target) return;
   const stats = towerStats(tower, state.boons);
   const shot: Shot = {
@@ -247,7 +283,22 @@ function towerStep(state: GameState, tower: Tower): void {
 
 /** Every tower takes its step, in cellKey order; kills resolve between towers. */
 export function fireTowers(state: GameState): void {
-  for (const tower of state.towers) towerStep(state, tower);
+  // Enemies do not move between tower shots. Keep each position once and
+  // let target selection skip enemies killed by an earlier tower this tick.
+  const enemies = state.enemies;
+  let section = trailLengths.get(state.map);
+  if (section === undefined) {
+    section = pathLength(state.map) / 32 || 1;
+    trailLengths.set(state.map, section);
+  }
+  const positions: EnemyPositions = { points: [], bits: [], occupied: 0, section };
+  for (const enemy of enemies) {
+    const bit = 1 << Math.min(31, Math.max(0, Math.floor(enemy.distance / section)));
+    positions.occupied |= bit;
+    positions.bits.push(bit);
+    positions.points.push(enemyPosition(enemy, state.map));
+  }
+  for (const tower of state.towers) towerStep(state, tower, enemies, positions);
 }
 
 export const PACK_SIZE = 8;
