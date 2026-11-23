@@ -2,7 +2,7 @@ import { useSpecial } from './actions';
 import { balanceRun } from './balanceRuns';
 import { BARRICADE_END_EXCLUSION, guardsPlacement } from './blockers';
 import { createGame, startWave, tick } from './game';
-import { comboGuards, playScripted } from './headless';
+import { comboGuards, type RecordedOutcome } from './headless';
 import { MAPS, pathLength, positionAlongPath, type MapId } from './map';
 import { SPECIAL_DEFS } from './specials';
 import type { Difficulty } from './difficulty';
@@ -13,7 +13,7 @@ const LAST_SOLO_WAVE = 8;
 const GUARDS_UNLOCK = SPECIAL_DEFS.guards.unlockWave;
 
 /** Use the Barricade sweep grid, filtering by the actual squad placement rule. */
-function guardPoints(map: MapId) {
+export function guardPoints(map: MapId) {
   const terrain = MAPS[map];
   const length = pathLength(terrain);
   const points: { distance: number; point: Point }[] = [];
@@ -41,18 +41,31 @@ function guardsOnly(map: MapId, level: Difficulty, point: Point, fromUnlock: boo
   return state;
 }
 
+/** G2 compares the run that records the adaptive combo, with no second replay. */
+export function measureGuardPoint(map: MapId, level: 'normal' | 'hard', distance: number) {
+  const terrain = MAPS[map];
+  const point = positionAlongPath(terrain, distance);
+  if (!guardsPlacement(terrain, point).ok) throw new Error(`Illegal Guards sweep point: ${map}/${distance}`);
+  const baseline = balanceRun('comboBuild', map, level);
+  let run: RecordedOutcome | undefined;
+  comboGuards(level, map, point, (outcome, refused) => {
+    if (refused) throw new Error(`Refused sweep action: ${map}/${level}/${distance}`);
+    run = outcome;
+  });
+  if (run?.phase !== 'won' && run?.phase !== 'lost') {
+    throw new Error(`Unresolved Guards run: ${map}/${level}/${distance} on wave ${run?.wave}`);
+  }
+  return { gain: run.lives - baseline.lives, hardWinFromLoss: level === 'hard' && baseline.phase === 'lost' && run.phase === 'won' };
+}
+
 /** G2, adaptive combo towers and the same ready-charge policy at each legal point. */
 export function sweepGuards(map: MapId, level: 'normal' | 'hard') {
-  const baseline = balanceRun('comboBuild', map, level);
   const points = guardPoints(map);
   let best: { distance: number; gain: number } | undefined;
   let hardWinsFromLoss = 0;
-  for (const { distance, point } of points) {
-    const { state, log } = playScripted(comboGuards(level, map, point), undefined, level);
-    if (log.some(step => 'result' in step && !step.result.ok)) throw new Error(`Refused sweep action: ${map}/${level}/${distance}`);
-    if (state.phase !== 'won' && state.phase !== 'lost') throw new Error(`Unresolved Guards run: ${map}/${level}/${distance} on wave ${state.wave}`);
-    if (level === 'hard' && baseline.phase === 'lost' && state.phase === 'won') hardWinsFromLoss++;
-    const gain = state.lives - baseline.lives;
+  for (const { distance } of points) {
+    const { gain, hardWinFromLoss } = measureGuardPoint(map, level, distance);
+    if (hardWinFromLoss) hardWinsFromLoss++;
     if (!best || gain > best.gain) best = { distance, gain };
   }
   if (!best) throw new Error(`No completed Guards campaigns: ${map}/${level}`);

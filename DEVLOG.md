@@ -9094,3 +9094,9 @@ numbers stay fixed.
 Generation can reuse the same records and gate. A generator still needs
 a candidate sampler, a declared feature to remove for L3, and an ordered
 campaign context for the slope and length checks.
+
+The first integrated unit run exposed three existing Guards placement tests
+over five seconds. Each legal placement now has its own result check. The
+sweep reads the adaptive recorder's outcome directly, saving a second
+simulation at every point. The checks retain all 190 placements, the six
+pinned gains and tie-breaking distances, and the Hard loss restriction.
