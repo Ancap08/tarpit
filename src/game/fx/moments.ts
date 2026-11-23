@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import { ACT_ONE_LAST_WAVE, SPECIAL_DEFS, type GameEvent, type MapDef } from '../../sim';
+import { ACT_ONE_LAST_WAVE, SPECIAL_DEFS, specialAllowed, type GameState, type GameEvent, type MapDef } from '../../sim';
 import { sound } from '../audio/engine';
 import { fontPx, type Layout } from '../layout';
 import { ACT_TWO_TEXT, BARRICADE_UNLOCKED, BARRICADE_UNLOCK_HINT, BOON_NAMES, BOSS_BANNER_SUB, GRUMBLEMAW_SUB, GUARDS_UNLOCKED, GUARDS_UNLOCK_HINT, ENEMY_NAMES, PACK_CALL_TEXT, REWARD_PICKED_TEXT, waveStartBanner, waveClearBanner, bonusGoldText } from '../names';
@@ -38,7 +38,7 @@ export class Moments {
     return this.layout.map.x + this.layout.map.width / 2;
   }
 
-  onEvents(events: readonly GameEvent[], now: number, live: boolean): void {
+  onEvents(events: readonly GameEvent[], now: number, live: boolean, state: GameState): void {
     for (const e of events) {
       switch (e.kind) {
         case 'boonOffered':
@@ -53,10 +53,10 @@ export class Moments {
           if (e.wave === ACT_ONE_LAST_WAVE + 1) {
             this.banners.push({ text: ACT_TWO_TEXT, sub: waveStartBanner(e.wave), big: false }, now);
             sound.play('act2');
-          } else if (e.wave === SPECIAL_DEFS.barricade.unlockWave && !showedBarricadeUnlock) {
+          } else if (e.wave === SPECIAL_DEFS.barricade.unlockWave && specialAllowed(state, 'barricade') && !showedBarricadeUnlock) {
             showedBarricadeUnlock = true;
             this.banners.push({ text: BARRICADE_UNLOCKED, sub: BARRICADE_UNLOCK_HINT, big: false }, now);
-          } else if (e.wave === SPECIAL_DEFS.guards.unlockWave && !showedGuardsUnlock) {
+          } else if (e.wave === SPECIAL_DEFS.guards.unlockWave && specialAllowed(state, 'guards') && !showedGuardsUnlock) {
             showedGuardsUnlock = true;
             this.banners.push({ text: GUARDS_UNLOCKED, sub: GUARDS_UNLOCK_HINT, big: false }, now);
           } else if (live) this.banners.push({ text: waveStartBanner(e.wave), sub: '', big: false }, now);

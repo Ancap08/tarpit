@@ -51,12 +51,12 @@ export const TOWER_DEFS: Readonly<Record<TowerType, TowerDef>> = {
 
 const TOWERS = Object.keys(TOWER_DEFS) as TowerType[];
 
-export function allowedTowers(state: Pick<GameState, 'level'>): readonly TowerType[] {
-  return state.level?.allowedTowers ?? TOWERS;
+export function allowedTowers(state: Pick<GameState, 'level' | 'cheated'>): readonly TowerType[] {
+  return state.level && !state.cheated ? state.level.allowedTowers : TOWERS;
 }
 
-export function maxTowerLevel(state: Pick<GameState, 'level'>): TowerLevel {
-  return state.level?.maxTowerLevel ?? 3;
+export function maxTowerLevel(state: Pick<GameState, 'level' | 'cheated'>): TowerLevel {
+  return state.level && !state.cheated ? state.level.maxTowerLevel : 3;
 }
 
 /** The two complete level-3 stat rows and their common price per tower. */

@@ -1355,3 +1355,28 @@ can change it; "Kyle" means Kyle decided.
   (844x390) buttons are 35 to 37 px tall, under the 44 px the portrait
   layout keeps.
 - **No unlock-all cheat** (Fable): not asked for.
+
+## 2026-11-23, milestone 42 (first-visit tips, and a cheat that opens things)
+
+- **Tips before a level, the first time.** Up to three short lines per
+  level on how to use what is new, shown when Play is first pressed, with
+  Got it and Back; afterwards the card has a Tips control. Kyle ("How can
+  we add instructions before each round starts for the first time the user
+  is seeing that level?"), Fable (shape), Codex (build and wording),
+  Sonnet (checked every line against the rules).
+- **Tips say "click" or "tap" to match the input in use.** The first
+  wording was wrong for both: a mouse builds on one click, touch needs two
+  taps. Sonnet found it by trying both.
+- **A cheated campaign win opens the next level and saves no stars,** and
+  the cheat makes that run's locked towers, upgrades and specials usable.
+  Kyle ("Yes we can add that to cheat, can the cheat also unlock the
+  locked weapons? If that's complicated then we skip it"). It was a small
+  rules change (about 14 lines), so it went in. Bots and the gate cannot
+  reach it; the balance report is byte-identical.
+- **Found by Sonnet and fixed:** a quick second press on Play landed on
+  Got it and skipped the tips unread (the panel now ignores presses for
+  400 ms and the button moved); level 5's tip spoke of walls it does not
+  have; and, older than this milestone, level 1 announced "Barricade
+  unlocked" at wave 3 with no Barricade to use.
+- **Difficulty left alone.** Kyle after levels 1 to 5: "a little easy but
+  not enough to change right now."

@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import { MAPS, type LevelDef } from '../../sim';
 import { drawMapThumbnail } from '../draw/map';
-import { CAMPAIGN_TEXT, LEVEL_NAMES, LEVEL_NEW, MAP_NAMES, TITLE_TEXT, levelNumberText } from '../names';
+import { CAMPAIGN_TEXT, LEVEL_NAMES, LEVEL_NEW, levelTips, tipsHeading, MAP_NAMES, TITLE_TEXT, levelNumberText } from '../names';
 import { COLORS, FONT, TEXT } from '../palette';
 import type { Rect } from '../input';
 import type { CampaignStop } from './campaignMap';
@@ -70,7 +70,7 @@ export function drawCampaignMap(
 
 export function drawLevelCard(
   scene: Phaser.Scene, portrait: boolean, level: LevelDef, stars: number,
-  action: Action, play: () => void, back: () => void,
+  action: Action, play: () => void, back: () => void, tips?: () => void,
 ): Button {
   const cx = scene.scale.width / 2;
   const panel = portrait ? { x: 24, y: 132, width: 432, height: 866 } : { x: 145, y: 32, width: 670, height: 512 };
@@ -107,9 +107,41 @@ export function drawLevelCard(
   const gap = 12;
   caption.setX(cx - (rowWidth + gap) / 2);
   row.setX(cx + (caption.width + gap) / 2);
-  const playButton = action('title:play', portrait ? { x: 106, y: 894, width: 268, height: 78 }
-    : { x: 487, y: 466, width: 194, height: 54 }, TITLE_TEXT.play, play, 26);
+  const yButton = portrait ? 894 : 466;
+  const height = portrait ? 78 : 54;
+  if (tips) {
+    action('title:tips', { x: portrait ? 58 : 382, y: yButton, width: portrait ? 142 : 150, height },
+      CAMPAIGN_TEXT.tips, tips);
+  }
+  const playRect = portrait ? { x: tips ? 215 : 106, width: tips ? 207 : 268 }
+    : { x: tips ? 545 : 487, width: tips ? 180 : 194 };
+  const playButton = action('title:play', { ...playRect, y: yButton, height }, TITLE_TEXT.play, play, 26);
   if (portrait) backButton(true, action, back);
-  else action('title:back', { x: 279, y: 466, width: 194, height: 54 }, CAMPAIGN_TEXT.back, back);
+  else action('title:back', { x: tips ? 235 : 279, y: yButton, width: tips ? 134 : 194, height }, CAMPAIGN_TEXT.back, back);
   return playButton;
+}
+
+export function drawLevelTips(
+  scene: Phaser.Scene, portrait: boolean, level: LevelDef, touch: boolean,
+  action: Action, accept: () => void, back?: () => void,
+): Button {
+  const cx = scene.scale.width / 2;
+  const panel = portrait ? { x: 18, y: 148, width: 444, height: 852 } : { x: 72, y: 42, width: 816, height: 486 };
+  const g = scene.add.graphics();
+  g.fillStyle(COLORS.endPanel).fillRoundedRect(panel.x, panel.y, panel.width, panel.height, 18);
+  g.lineStyle(2, COLORS.endPanelEdge).strokeRoundedRect(panel.x, panel.y, panel.width, panel.height, 18);
+  const heading = label(scene, cx, panel.y + (portrait ? 83 : 60), tipsHeading(level.id), portrait ? 40 : 36, TEXT.title);
+  const lines = levelTips(level.id, touch).map(line => label(scene, cx, 0, line, portrait ? 28 : 26, TEXT.button, panel.width - 52));
+  const width = portrait ? 180 : 200;
+  const rect = { x: back ? cx + 8 : cx - width / 2, y: portrait ? 804 : 402, width, height: portrait ? 78 : 58 };
+  if (back) action('title:back', { ...rect, x: cx - width - 8 }, CAMPAIGN_TEXT.back, back);
+  const top = heading.y + heading.height / 2;
+  const gap = (rect.y - top - lines.reduce((height, line) => height + line.height, 0)) / (lines.length + 1);
+  let y = top;
+  for (const line of lines) {
+    y += gap;
+    line.setY(y + line.height / 2);
+    y += line.height;
+  }
+  return action('title:gotIt', rect, CAMPAIGN_TEXT.gotIt, accept, 26);
 }

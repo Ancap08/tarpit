@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  allowedTowers, maxTowerLevel, TOWER_DEFS, availableSpecials, buildTower, callNextWave, continueEndless, createGame, lastWave, levelStars,
+  allowedTowers, maxTowerLevel, TOWER_DEFS, availableSpecials, grantCheatGold, buildTower, callNextWave, continueEndless, createGame, lastWave, levelStars,
   MAPS, unlockedLevel, nextWavePreview, pickBoon, startWave, tick, upgradeTower, useSpecial, type GameState, type LevelDef,
 } from '.';
 
@@ -20,11 +20,11 @@ function finishWave(state: GameState): void {
 
 describe('campaign level rules', () => {
   it('reports a custom level’s tower list and upgrade ceiling, and every choice in Free play', () => {
-    const custom = { level: { ...level, allowedTowers: ['mortar'] as const, maxTowerLevel: 1 as const } };
+    const custom = { cheated: false, level: { ...level, allowedTowers: ['mortar'] as const, maxTowerLevel: 1 as const } };
     expect(allowedTowers(custom)).toEqual(['mortar']);
     expect(maxTowerLevel(custom)).toBe(1);
-    expect(allowedTowers({})).toEqual(Object.keys(TOWER_DEFS));
-    expect(maxTowerLevel({})).toBe(3);
+    expect(allowedTowers({ cheated: false })).toEqual(Object.keys(TOWER_DEFS));
+    expect(maxTowerLevel({ cheated: false })).toBe(3);
   });
 
   it('opens only a contiguous prefix when saved stars have gaps', () => {
@@ -129,6 +129,24 @@ describe('campaign level rules', () => {
     expect(useSpecial(state, 'guards', { x: 192, y: 96 }).ok).toBe(true);
   });
 
+  it('lifts tower and upgrade locks only for the cheated run and keeps special wave and charge limits', () => {
+    const state = createGame({ level });
+    const cell = { col: 5, row: 0 };
+    expect(grantCheatGold(state).ok).toBe(true);
+    expect(buildTower(state, cell, 'cannon').ok).toBe(true);
+    expect(upgradeTower(state, cell).ok).toBe(true);
+    expect(upgradeTower(state, cell, 'B').ok).toBe(true);
+    expect(availableSpecials(state)).toEqual([]);
+    startWave(state);
+    expect(availableSpecials(state)).toEqual(['keg', 'guards']);
+    state.wave = 4;
+    expect(availableSpecials(state)).toEqual(['keg', 'barricade', 'tarBarrel', 'guards']);
+    expect(useSpecial(state, 'tarBarrel', { x: 192, y: 96 }).ok).toBe(true);
+    grantCheatGold(state);
+    expect(useSpecial(state, 'keg', { x: 192, y: 96 })).toEqual({ ok: false, reason: 'no-charge' });
+    expect(buildTower(createGame({ level }), cell, 'cannon')).toEqual({ ok: false, reason: 'tower-locked' });
+  });
+
   it('does not grant a charge to a level with no specials', () => {
     const state = createGame({ level: { ...level, allowedSpecials: [] } });
     startWave(state);
@@ -181,9 +199,9 @@ describe('campaign level rules', () => {
   });
 
   it('gives one star for a win and includes the exact two- and three-star thresholds', () => {
-    expect([0, 1, 11, 12, 17, 18, 20].map((lives) => levelStars({ level, phase: 'won', lives })))
+    expect([0, 1, 11, 12, 17, 18, 20].map((lives) => levelStars({ cheated: false, level, phase: 'won', lives })))
       .toEqual([0, 1, 1, 2, 2, 3, 3]);
-    expect(levelStars({ level, phase: 'lost', lives: 9 })).toBe(0);
-    expect(levelStars({ phase: 'won', lives: 9 })).toBe(0);
+    expect(levelStars({ cheated: false, level, phase: 'lost', lives: 9 })).toBe(0);
+    expect(levelStars({ cheated: false, phase: 'won', lives: 9 })).toBe(0);
   });
 });

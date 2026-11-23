@@ -24,6 +24,35 @@ async function barAppearance(page: Page) {
 }
 
 export function campaignPurchaseCase(touch: boolean) {
+  test('the gold cheat lifts the level locks on the build bar, upgrades and specials', async ({ page }) => {
+    await openCampaign(page, touch);
+    await api(page, t => t.startLevel(1));
+    const cannon = async () => (await barAppearance(page)).find(slot => slot.type === 'cannon');
+    expect(await cannon()).toMatchObject({ locked: true });
+    await press(page, 'bar:cannon', touch);
+    await mapPress(page, 7, 1, touch);
+    expect(await api(page, t => t.ui().pick)).toBeNull();
+    expect(await api(page, t => t.state().towers)).toHaveLength(0);
+    expect(await api(page, t => t.buildAt(7, 1, 'cannon'))).toMatchObject({ ok: false, reason: 'tower-locked' });
+
+    for (let i = 0; i < 5; i++) await press(page, 'gold', touch);
+    expect(await cannon()).toMatchObject({ locked: false });
+    await press(page, 'bar:cannon', touch);
+    await mapPress(page, 7, 1, touch);
+    if (touch) await mapPress(page, 7, 1, true);
+    expect(await api(page, t => t.state().towers)).toMatchObject([{ type: 'cannon', cell: { col: 7, row: 1 } }]);
+    await mapPress(page, 7, 1, touch);
+    await press(page, 'panel:upgrade', touch);
+    await press(page, 'panel:path:A', touch);
+    expect(await api(page, t => t.state().towers[0])).toMatchObject({ upgraded: true, path: 'A' });
+    await press(page, 'panel:close', touch);
+
+    await api(page, t => { t.state().wave = 2; t.startWave(); });
+    await press(page, 'special', touch);
+    expect(await api(page, t => Object.keys(t.uiRects()).filter(key => key.startsWith('special:'))))
+      .toEqual(['special:keg', 'special:barricade']);
+  });
+
   test('purchase controls follow the level loadout in their original slots', async ({ page }) => {
     await openCampaign(page, touch);
     let freeSlots;

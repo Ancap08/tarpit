@@ -479,6 +479,48 @@ new); a result screen with stars and Next; both layouts and both looks.
 Generated levels, a story, new enemies or towers, the castle, longer
 trails, more than ten levels.
 
+## Milestone 42: first-visit tips, and a cheat that opens things
+
+Kyle (2026-11-23, after playing levels 1 to 5): "How can we add
+instructions before each round starts for the first time the user is
+seeing that level?" and, on the gold cheat: "Yes we can add that to cheat,
+can the cheat also unlock the locked weapons? If that's complicated then
+we skip it, the cheat isn't important."
+
+- **Tips.** Each level has up to three short lines that say how to use
+  what the level brings in (level 1 covers the basics: place a tower,
+  start a wave, use a special). The first time a player opens a level they
+  are shown before it starts; after that the level card has a control to
+  see them again. Which levels have been seen is kept in the browser.
+  Words only, large, in `names.ts`. Free play has none.
+- **Cheat.** A campaign win with the gold cheat opens the next level and
+  still saves no stars; the result screen says so and offers Next level.
+  In a campaign level the cheat also makes that run's locked towers,
+  upgrades and specials usable. If that second part needs more than a
+  small change to the rules, it is left out and reported. Bots and the
+  gate never cheat.
+
+Not in this milestone: pictures or animated tutorials, tips in Free play,
+changes to any level.
+
+## Milestone 43: the painted look on every map
+
+Kyle (2026-11-23): "The one thing I've noticed is that I need to make a
+more definitive theme and improve the images and graphics", wanted by the
+next evening to show others. The painted look covers Meadow only, so a
+campaign played in Painted falls back to Classic on seven of ten levels.
+This part does not depend on the theme, which Kyle is still choosing.
+
+- Painted ground, trail and scenery for Switchback and Riverbend (with its
+  river), from the same Blender scripts and style as Meadow. Painted then
+  works on all three maps, in Free play and the campaign, in both layouts.
+- Fewer, packed files so the first painted load is quick on a phone
+  (today 54 files, 10 to 14 s on mobile data).
+- Classic stays the default until Kyle says otherwise.
+
+Not in this milestone: new names, new characters, a themed HUD (the theme
+pass, next).
+
 ## Later milestones (order agreed, detail to come)
 
 | # | Milestone | Idea |

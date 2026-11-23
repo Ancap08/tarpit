@@ -2,6 +2,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { TitleUiState } from '../src/game/TitleScene';
 import type { TarpitTestApi } from '../src/game/testGlobal';
+import { CAMPAIGN_END } from '../src/game/names';
 import { api, press } from './campaign';
 import { useTallFontMetrics } from './campaignFont';
 import { waitForFirstScreen } from './title';
@@ -144,7 +145,7 @@ export function campaignVerifierSuite(touch: boolean, rotated: boolean) {
     expect(await textProblems(page)).toEqual([]);
   });
 
-  test('a cheated campaign win saves nothing and offers no Next: what the player sees', async ({ page }, info) => {
+  test('a cheated campaign win opens the next level with no stars', async ({ page }, info) => {
     await open(page);
     await click(page, 'title:campaign');
     await onScreen(page, 'levelMap');
@@ -162,18 +163,28 @@ export function campaignVerifierSuite(touch: boolean, rotated: boolean) {
     });
     info.annotations.push({ type: 'cheated-win-screen', description: JSON.stringify(seen) });
     expect(seen.cheated).toBe(true);
-    expect(seen.progress).toEqual({});
-    expect(seen.result).toMatchObject({ stars: 0, slots: '☆☆☆', nextId: null, hint: 'Gold cheat used: stars not saved' });
-    expect(seen.texts).toEqual(expect.arrayContaining(['☆☆☆', 'Gold cheat used: stars not saved']));
+    expect(seen.progress).toEqual({ 1: 0 });
+    expect(seen.result).toMatchObject({ stars: 0, slots: '☆☆☆', nextId: 2, hint: CAMPAIGN_END.cheated });
+    expect(seen.texts).toEqual(expect.arrayContaining(['☆☆☆', CAMPAIGN_END.cheated, CAMPAIGN_END.next]));
     if (process.env.VERIFY_SHOT) await page.screenshot({ path: `${process.env.VERIFY_SHOT}-${info.project.name}.png` });
     expect(await textProblems(page)).toEqual([]);
     await rotate(page, 'result');
     expect(await textProblems(page)).toEqual([]);
     if (process.env.VERIFY_SHOT) await page.screenshot({ path: `${process.env.VERIFY_SHOT}-${info.project.name}-turned.png` });
-    expect(await api(page, (t) => t.campaignResult())).toMatchObject({ slots: '☆☆☆', nextId: null });
-    // An uncheated win is unchanged.
-    await click(page, 'menu');
+    expect(await api(page, (t) => t.campaignResult())).toMatchObject({ slots: '☆☆☆', nextId: 2 });
+    await click(page, 'nextLevel');
+    await onScreen(page, 'levelCard');
+    expect(await api(page, t => t.ui<TitleUiState>().levelId)).toBe(2);
+    await click(page, 'title:back');
     await onScreen(page, 'levelMap');
+    expect(await api(page, t => t.levelStops().slice(0, 3))).toMatchObject([
+      { id: 1, open: true, stars: 0, next: false }, { id: 2, open: true, stars: 0, next: true }, { id: 3, open: false },
+    ]);
+    if (process.env.M42_REVIEW_DIR && info.project.name === 'chromium') {
+      await rotate(page, 'levelMap');
+      await page.screenshot({ path: `${process.env.M42_REVIEW_DIR}/landscape-map-cheat.jpg`, quality: 85, scale: 'css' });
+    }
+    // A later honest win earns its usual stars.
     await click(page, 'title:stop:1');
     await onScreen(page, 'levelCard');
     await click(page, 'title:play');
@@ -203,7 +214,14 @@ export function campaignVerifierSuite(touch: boolean, rotated: boolean) {
       await rotate(page, 'levelCard');
       expect(await api(page, (t) => t.ui<TitleUiState>().levelId)).toBe(3);
       expect(await textProblems(page)).toEqual([]);
+      await api(page, t => t.setTipsEnabled(true));
       await click(page, 'title:play');
+      await onScreen(page, 'levelTips');
+      await rotate(page, 'levelTips');
+      expect(await textProblems(page)).toEqual([]);
+      await rotate(page, 'levelTips');
+      expect(await textProblems(page)).toEqual([]);
+      await click(page, 'title:gotIt');
       await onScreen(page, 'game');
       // Mid-level: build, spend, start the wave, then turn twice.
       await api(page, (t) => { t.buildAt(10, 5, 'musketeer'); t.startWave(); t.step(300); });
@@ -255,6 +273,15 @@ export function campaignVerifierSuite(touch: boolean, rotated: boolean) {
           await click(page, `title:stop:${id}`);
           await onScreen(page, 'levelCard');
           await record(`${v} card ${id}`);
+          if (id === 7) {
+            await api(page, t => t.setTipsEnabled(true));
+            await click(page, 'title:play');
+            await onScreen(page, 'levelTips');
+            await record(`${v} tips ${id}`);
+            await page.keyboard.press('Escape');
+            await onScreen(page, 'levelCard');
+            await api(page, t => t.setTipsEnabled(false));
+          }
           await click(page, 'title:back');
           await onScreen(page, 'levelMap');
         }

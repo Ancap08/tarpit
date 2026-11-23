@@ -14,7 +14,7 @@ describe('verifier: campaign progress store', () => {
     } as StorageLike & { data: Map<string, string> };
   }
 
-  it('store keeps best, ignores zero stars, survives throwing getStorage, getItem and setItem', () => {
+  it('store keeps best, records zero-star wins, survives throwing getStorage, getItem and setItem', () => {
     const ok = storage();
     const store = new CampaignProgressStore(() => ok);
     expect(store.record(1, 2)).toBe(true);
@@ -37,7 +37,8 @@ describe('verifier: campaign progress store', () => {
       expect(s.table()).toEqual({ 1: 2 });
       expect(s.record(1, 3)).toBe(true);
       expect(s.table()).toEqual({ 1: 3 });
-      expect(s.record(2, 0)).toBe(false);
+      expect(s.record(2, 0)).toBe(true);
+      expect(unlockedLevel(s.table(), 3)).toBe(true);
       expect(unlockedLevel(s.table(), 2)).toBe(true);
     }
     const garbage = storage();

@@ -27,10 +27,10 @@ describe('tower upgrade choices', () => {
   it('offers both paths at level two and explains unaffordability for each', () => {
     for (const type of Object.keys(TOWER_DEFS) as TowerType[]) {
       const price = TOWER_PATHS[type].cost;
-      expect(getPathChoices({ type, upgraded: false }, { gold: price })).toEqual([]);
-      expect(getPathChoices({ type, upgraded: true, path: 'A' }, { gold: price })).toEqual([]);
+      expect(getPathChoices({ type, upgraded: false }, { cheated: false, gold: price })).toEqual([]);
+      expect(getPathChoices({ type, upgraded: true, path: 'A' }, { cheated: false, gold: price })).toEqual([]);
       const tower = { type, upgraded: true };
-      const choices = getPathChoices(tower, { gold: price });
+      const choices = getPathChoices(tower, { cheated: false, gold: price });
       expect(choices.map(({ name }) => name)).toEqual([PATH_NAMES[type].A, PATH_NAMES[type].B]);
       expect(new Set(choices.map(({ description }) => description)).size).toBe(2);
       for (const choice of choices) {
@@ -39,7 +39,7 @@ describe('tower upgrade choices', () => {
         expect(choice.description).not.toMatch(/[%\n]/);
         expect(towerPanelTitle(type, 3, choice.path)).toBe(`${choice.name} · Level 3`);
       }
-      expect(getPathChoices(tower, { gold: price - 1 }).map(({ disabledReason }) => disabledReason))
+      expect(getPathChoices(tower, { cheated: false, gold: price - 1 }).map(({ disabledReason }) => disabledReason))
         .toEqual([PANEL_TEXT.notEnoughGold, PANEL_TEXT.notEnoughGold]);
     }
   });
@@ -47,7 +47,8 @@ describe('tower upgrade choices', () => {
   it('offers paths only when the campaign allows another upgrade', () => {
     const tower = { type: 'longbow', upgraded: true } as const;
     for (const level of LEVELS) {
-      expect(getPathChoices(tower, { level, gold: 1000 })).toHaveLength(level.maxTowerLevel === 3 ? 2 : 0);
+      expect(getPathChoices(tower, { level, cheated: false, gold: 1000 })).toHaveLength(level.maxTowerLevel === 3 ? 2 : 0);
+      expect(getPathChoices(tower, { level, cheated: true, gold: 1000 })).toHaveLength(2);
     }
   });
 

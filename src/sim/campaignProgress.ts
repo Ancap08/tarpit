@@ -2,19 +2,19 @@ import { THREE_STAR_LIVES, TWO_STAR_LIVES } from './levelTypes';
 import type { GameState } from './types';
 
 export type Stars = 0 | 1 | 2 | 3;
-type WinStars = Exclude<Stars, 0>;
-export type CampaignProgress = Partial<Record<number, WinStars>>;
+/** Each entry is a win; a cheated win can have zero stars. */
+export type CampaignProgress = Partial<Record<number, Stars>>;
 
-const PROGRESS_VERSION = 1;
+const PROGRESS_VERSION = 2;
 
-export function levelStars(state: Pick<GameState, 'level' | 'lives' | 'phase'>): Stars {
-  if (!state.level || state.phase !== 'won' || state.lives <= 0) return 0;
+export function levelStars(state: Pick<GameState, 'level' | 'lives' | 'phase' | 'cheated'>): Stars {
+  if (!state.level || state.cheated || state.phase !== 'won' || state.lives <= 0) return 0;
   if (state.lives >= THREE_STAR_LIVES) return 3;
   return state.lives >= TWO_STAR_LIVES ? 2 : 1;
 }
 
-function isWinStars(value: unknown): value is WinStars {
-  return value === 1 || value === 2 || value === 3;
+function isStars(value: unknown): value is Stars {
+  return value === 0 || value === 1 || value === 2 || value === 3;
 }
 
 function isLevelId(id: number): boolean {
@@ -24,13 +24,13 @@ function isLevelId(id: number): boolean {
 export function unlockedLevel(progress: CampaignProgress, id: number): boolean {
   if (!isLevelId(id)) return false;
   for (let previous = 1; previous < id; previous++) {
-    if (!isWinStars(progress[previous])) return false;
+    if (!isStars(progress[previous])) return false;
   }
   return true;
 }
 
 export function mergeProgress(progress: CampaignProgress, id: number, stars: number): CampaignProgress {
-  if (!isLevelId(id) || !isWinStars(stars) || stars <= (progress[id] ?? 0)) return progress;
+  if (!isLevelId(id) || !isStars(stars) || stars <= (progress[id] ?? -1)) return progress;
   return { ...progress, [id]: stars };
 }
 
@@ -46,11 +46,11 @@ export function parseProgress(raw: string | null | undefined): CampaignProgress 
   } catch {
     return {};
   }
-  if (!isRecord(data) || data.v !== PROGRESS_VERSION || !isRecord(data.stars)) return {};
+  if (!isRecord(data) || (data.v !== 1 && data.v !== PROGRESS_VERSION) || !isRecord(data.stars)) return {};
   const progress: CampaignProgress = {};
   for (const [key, stars] of Object.entries(data.stars)) {
     const id = Number(key);
-    if (String(id) === key && isLevelId(id) && isWinStars(stars)) progress[id] = stars;
+    if (String(id) === key && isLevelId(id) && isStars(stars) && (data.v !== 1 || stars > 0)) progress[id] = stars;
   }
   return progress;
 }

@@ -106,7 +106,7 @@ const burn = (s: string): [number, number] => {
 
 describe('docs/DESIGN.md matches the code', () => {
   it('has the frozen banner', () => {
-    expect(md).toMatch(/^# Tarpit: game design spec\n\n> \*\*Frozen as of milestone 41a\.\*\*/);
+    expect(md).toMatch(/^# Tarpit: game design spec\n\n> \*\*Frozen as of milestone 42\.\*\*/);
   });
 
   it('uses one starting life count and star rule across the campaign', () => {

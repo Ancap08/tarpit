@@ -54,6 +54,7 @@ export interface TarpitTestApi {
   screen(): TitleUiState['screen'] | 'game' | 'result' | null;
   campaignLabels(): (Rect & { text: string })[];
   levelStops(): TitleUiState['stops'];
+  setTipsEnabled(enabled: boolean): void;
   /** Replace saved campaign progress in a frozen test session. */
   setCampaignProgress(table: CampaignProgress): void;
   campaignResult(): ReturnType<GameScene['campaignResult']>;
