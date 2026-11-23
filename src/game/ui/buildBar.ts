@@ -53,7 +53,7 @@ export class BuildBar {
     const rects = barRects(layout, top);
     this.buttons = BAR_TYPES.map((type, i) =>
       portrait
-        ? new Button(scene, rects[i], String(TOWER_DEFS[type].cost), () => onClick(type), { fontSize: '18px', labelY: COST_Y })
+        ? new Button(scene, rects[i], String(TOWER_DEFS[type].cost), () => onClick(type), { fontSize: '20px', labelY: COST_Y })
         : new Button(scene, rects[i], TOWER_NAMES[type], () => onClick(type), {
           fontSize: painted ? '14px' : '16px',
           right: String(TOWER_DEFS[type].cost),

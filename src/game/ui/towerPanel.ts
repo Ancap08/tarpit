@@ -15,7 +15,8 @@ import {
 import { placeBeside, type Rect } from '../input';
 import { fontPx, type Layout } from '../layout';
 import { killsLabel, PANEL_TEXT, targetingButtonText, towerPanelTitle } from '../names';
-import { COLORS, FONT, TEXT } from '../palette';
+import { FONT, TEXT } from '../palette';
+import { ink, panel, THEME } from './theme';
 import { Button } from './button';
 import { STACK_GAP, STACK_PAD } from './geometry';
 import { getPathChoices, towerPanelSize, UPGRADE_PATHS, type PathChoice } from './towerPanelModel';
@@ -35,7 +36,7 @@ interface Row {
 }
 
 export class TowerPanel {
-  private readonly backing: Phaser.GameObjects.Rectangle;
+  private readonly backing: Phaser.GameObjects.Graphics;
   private readonly upgrade: Button;
   private readonly undo: Button;
   private readonly sell: Button;
@@ -56,11 +57,10 @@ export class TowerPanel {
     private readonly layout: Layout,
     handlers: TowerPanelHandlers,
   ) {
-    const f = (px: number) => fontPx(layout, px);
+    const f = (px: number) => fontPx(layout, layout.kind === 'portrait' ? Math.max(20, px) : px);
     const rect = { x: 0, y: 0, width: 1, height: 1 };
     const portrait = layout.kind === 'portrait';
-    this.backing = scene.add.rectangle(0, 0, 1, 1, COLORS.menuBg, 0.92)
-      .setOrigin(0, 0).setStrokeStyle(1.5, COLORS.menuEdge, 0.8).setVisible(false);
+    this.backing = scene.add.graphics().setVisible(false);
     this.upgrade = new Button(scene, rect, PANEL_TEXT.upgrade, () => handlers.onUpgrade(), { fontSize: f(16), right: '' });
     this.undo = new Button(scene, rect, PANEL_TEXT.undoUpgrade, handlers.onUndoUpgrade, { fontSize: f(14), right: '' });
     this.sell = new Button(scene, rect, PANEL_TEXT.sell, handlers.onSell, { fontSize: f(16), right: '' });
@@ -79,11 +79,11 @@ export class TowerPanel {
     const caption = (size: string, color: string, fontStyle = 'normal') => scene.add.text(0, 0, '', {
       fontFamily: FONT, fontSize: size, color, fontStyle,
     }).setOrigin(0, 0.5).setVisible(false);
-    this.titleText = caption(portrait ? '22px' : '17px', TEXT.button, 'bold');
-    this.killsText = caption(f(13), TEXT.hudDim, 'bold');
+    this.titleText = caption(portrait ? '22px' : '17px', ink, 'bold');
+    this.killsText = caption(f(14), ink, 'bold');
     const pathCaption = () => ({
       description: caption(portrait ? '20px' : '15px', TEXT.button),
-      reason: caption(portrait ? '19px' : '14px', TEXT.buttonDisabled),
+      reason: caption(portrait ? '20px' : '14px', TEXT.buttonDisabled),
     });
     this.pathText = { A: pathCaption(), B: pathCaption() };
   }
@@ -154,7 +154,7 @@ export class TowerPanel {
     if (this.placed?.width !== width || this.placed.height !== height) {
       const location = placeBeside(this.layout.cellCenter(this.at), width, height, state.map, this.layout);
       this.placed = { ...location, width, height };
-      this.backing.setPosition(location.x, location.y).setSize(width, height).setVisible(true);
+      panel(this.backing.clear().setVisible(true), this.placed, THEME.paper);
     }
     const { x, y } = this.placed;
     const left = x + STACK_PAD;

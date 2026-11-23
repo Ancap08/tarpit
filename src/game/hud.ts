@@ -34,6 +34,7 @@
 // 42 x 42 at x 904 (the build bar narrowed to make room); in portrait it
 // ends controls row 2, 70 x 70 (ui/geometry.ts portraitRow2).
 
+import { coin, panel, THEME } from './ui/theme';
 import Phaser from 'phaser';
 import {
   callEarlyStatus,
@@ -70,7 +71,7 @@ import {
   START_WAVE_TEXT,
   waveCounterText,
 } from './names';
-import { COLORS, FONT, TEXT } from './palette';
+import { COLORS, FONT, HUD_FONT, TEXT } from './palette';
 import { BossBar } from './ui/bossBar';
 import { BuildBar } from './ui/buildBar';
 import { Button } from './ui/button';
@@ -79,7 +80,6 @@ import {
   LANDSCAPE,
   PORTRAIT_CONTROLS_Y,
   PORTRAIT_HEIGHT,
-  PORTRAIT_MIN_FONT,
   PORTRAIT_ROW1_Y,
   PORTRAIT_STRIP_H,
   PORTRAIT_WIDTH,
@@ -327,7 +327,7 @@ export const LANDSCAPE_HUD: HudMetrics = {
 
 export const PORTRAIT_HUD: HudMetrics = (() => {
   const { special, start, speed, mute } = portraitRow2();
-  const size = `${PORTRAIT_MIN_FONT}px`;
+  const size = '20px';
   return {
     portrait: true,
     bands: [
@@ -387,7 +387,15 @@ export class Hud {
   constructor(scene: Phaser.Scene, handlers: HudHandlers, layout: Layout = LANDSCAPE, painted?: PaintedSkin) {
     const m = hudMetrics(layout);
     this.m = m;
-    for (const b of m.bands) scene.add.rectangle(b.x, b.y, b.width, b.height, COLORS.hudBar).setOrigin(0, 0);
+    const counter = scene.add.graphics();
+    for (const band of m.bands) {
+      panel(counter, band, THEME.wood);
+      // Fine horizontal grain follows the counter, clear of the printed labels.
+      for (const offset of [3, 5, band.height - 5]) {
+        counter.lineStyle(1, THEME.brass, 0.22)
+          .lineBetween(band.x + 5, band.y + offset, band.x + band.width - 5, band.y + offset);
+      }
+    }
     for (const l of m.lines) scene.add.rectangle(l.x, l.y, l.width, l.height, COLORS.hudLine).setOrigin(0, 0);
 
     const stat = (x: number, size = m.statSize, color: string = TEXT.hud) =>
@@ -396,11 +404,12 @@ export class Hud {
       const descent = Math.ceil(size / 5);
       const height = size + descent;
       return scene.add.text(x, m.statY, '', {
-        fontFamily: FONT, fontSize: size, fontStyle: 'bold', color, fixedHeight: height,
+        fontFamily: HUD_FONT, fontSize: size, fontStyle: 'bold', color, fixedHeight: height,
         metrics: { ascent: size, descent, fontSize: height },
       }).setOrigin(0, 0.5);
     };
     const statSize = Number.parseInt(m.statSize, 10);
+    if (!m.portrait) coin(counter, 8, m.statY, 5);
     this.gold = fixedStat(m.goldX, statSize, TEXT.hud);
     this.lives = fixedStat(LIVES_X, statSize, TEXT.hud);
     this.wave = fixedStat(238, statSize, TEXT.hud);
@@ -425,7 +434,7 @@ export class Hud {
       .setVisible(false);
     // Milestone 33: Start Wave's own sound is the horn (or Call next's), so its click plays no tap.
     this.startButton = new Button(scene, m.start, START_WAVE_TEXT, handlers.onStartWave, m.portrait ? { fontSize: m.startFont, sound: null } : { sound: null });
-    this.speedButton = new Button(scene, m.speed, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress });
+    this.speedButton = new Button(scene, m.speed, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress, fontSize: m.portrait ? m.statSize : undefined });
     this.specialMenu = new SpecialMenu(scene, m.menu.left, m.menu.top, handlers.onSpecialPick, layout.map.y, m.menu.size, m.menu.font);
     this.bar = new BuildBar(scene, m.barTop, handlers.onPick, layout, painted);
     this.bossBar = new BossBar(scene, layout);
@@ -474,7 +483,7 @@ export class Hud {
       if (m.portrait) {
         this.next.setWordWrapWidth(width, true).setText(preview).setColor(aimText === null ? TEXT.hudDim : TEXT.aimBanner);
         const availableHeight = PORTRAIT_STRIP_H - 2 - m.preview.y;
-        for (const size of [18, 16, 14, 13, 12]) {
+        for (const size of [20, 19, 18, 16, 14]) {
           this.next.setFontSize(size);
           if (this.next.height <= availableHeight && this.next.width <= width) break;
         }

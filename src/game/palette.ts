@@ -138,8 +138,8 @@ export const COLORS = {
   fxDark: 0x14161a,
 
   // HUD
-  hudBar: 0x1b1f24,
-  hudLine: 0x3a414a,
+  hudBar: 0x352216,
+  hudLine: 0xc79955,
   button: 0x503524,
   buttonHover: 0x66472e,
   buttonPressed: 0x322117,
@@ -174,7 +174,7 @@ export const COLORS = {
   specialPipEmpty: 0x6a6e76,
   // Milestone 30: the Special button's recharge fill, the aim banner's
   // backing, the keg's scorch mark, and the zones (tar puddle, fire patch).
-  rechargeFill: 0x7a5a1c,
+  rechargeFill: 0x473215,
   aimBanner: 0x14161a,
   aimCrossDark: 0x14161a,
   scorch: 0x1e1a16,
@@ -203,8 +203,10 @@ export const COLORS = {
 } as const;
 
 export const TEXT = {
+  paperDefeat: '#832e23',
+  paperGold: '#825515',
   hud: '#f2e6c9',
-  hudDim: '#a89f8a',
+  hudDim: '#e7cea2',
   button: '#fff4dc',
   // 4.83:1 against COLORS.buttonDisabled (0x3a3d42); enabled text is 9.98:1.
   buttonDisabled: '#ddd2bf',
@@ -231,6 +233,6 @@ export const TEXT = {
   waveBanner: '#f2e6c9',
   waveBannerSub: '#f2c94c',
   bossBanner: '#e0473a',
-  livesFlash: '#e0473a',
+  livesFlash: '#ff9780',
   fxStroke: '#14161a',
 } as const;
