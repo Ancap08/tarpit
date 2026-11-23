@@ -79,6 +79,15 @@ export function themeSuite(touch: boolean) {
         const hudRow = phone ? { x: 0, y: 0, width: 480, height: 76 } : { x: 0, y: 480, width: 960, height: 53 };
         const status = await api(page, t => t.hudText());
         await checkLabels(page, [status.gold, status.lives, status.wave, preview], hudRow, /^(special|startWave|speed|boon:)/);
+        if (phone) {
+          const cssSize = await api(page, t => {
+            const scene = t.game.scene.getScene('game');
+            const label = scene.children.list.find(child => child.type === 'Text' &&
+              (child as Phaser.GameObjects.Text).text === t.hudText().next) as Phaser.GameObjects.Text;
+            return Number.parseFloat(label.style.fontSize) * label.scaleY / scene.scale.displayScale.y;
+          });
+          expect(cssSize).toBeGreaterThanOrEqual(14);
+        }
         await shot(campaign ? 'level-9-preview' : 'free-play-wave-20');
         const spawn = lastSpawnTick(wave, campaign ? { level: LEVELS[8] } : undefined);
         await page.evaluate(spawn => {

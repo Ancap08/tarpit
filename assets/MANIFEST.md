@@ -1,9 +1,9 @@
 # Asset manifest
 
 Every file under `assets/`, `docs/art/` and `public/icons/` is listed here
-with its source, author and license. Only CC0, or CC-BY with a credit line
-in Notes (`Credit: ...`), may be committed (docs/SCOPE-v3.md, "Hard
-rules"). Repo-generated work carries MIT. Libre Caslon Text carries SIL OFL
+with its source, author and license. Third-party art uses CC0 or CC-BY
+with a credit line in Notes (`Credit: ...`) as specified in docs/SCOPE-v3.md.
+Repo-generated work carries MIT. Libre Caslon Text carries SIL OFL
 1.1. Its rows pin each downloaded file by SHA-256 and name the bundled license.
 `npm run check:assets` (scripts/check-asset-manifest.ts) fails CI if a file
 is missing from the table, carries another license, or a row points at no

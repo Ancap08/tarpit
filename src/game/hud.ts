@@ -342,7 +342,7 @@ export const PORTRAIT_HUD: HudMetrics = (() => {
     statSize: size,
     goldX: 6,
     flowGap: 14,
-    preview: { x: 6, y: 29, width: PORTRAIT_WIDTH - 12, originY: 0 },
+    preview: { x: 6, y: 28, width: PORTRAIT_WIDTH - 12, originY: 0 },
     cheat: { x: PORTRAIT_WIDTH - 6, y: 15, size, originX: 1 },
     gold: { x: 0, y: 0, width: 120, height: 30 },
     special,
@@ -484,7 +484,12 @@ export class Hud {
         this.next.setWordWrapWidth(width, true).setText(preview).setColor(aimText === null ? TEXT.hudDim : TEXT.aimBanner);
         const availableHeight = PORTRAIT_STRIP_H - 2 - m.preview.y;
         for (const size of [20, 19, 18, 16, 14]) {
-          this.next.setFontSize(size);
+          // At 20 px the actual Caslon glyphs in previews and aim hints occupy
+          // 17 px above the baseline and 6 below it. Courier fits inside both.
+          // Two 23 px lines exactly fill the space between the stats and frame.
+          const ascent = Math.ceil(17 * size / 20);
+          const descent = Math.ceil(6 * size / 20);
+          this.next.setStyle({ fontSize: size, metrics: { ascent, descent, fontSize: ascent + descent } });
           if (this.next.height <= availableHeight && this.next.width <= width) break;
         }
       } else this.next.setFontSize(previewSize(preview)).setText(preview);

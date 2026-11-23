@@ -9335,3 +9335,9 @@ figures retain the typewriter advances. Both weights must load before the
 two-second deadline to prevent a late change in measured label widths.
 The browser checks exercise a blocked font through a purchase and wave,
 tall fallback metrics in both menus and the HUD, and cached fonts offline.
+
+The browser suite caught three-digit refunds crowding Remove. Moving the
+paired labels four pixels toward each edge recovered the gap. A phone
+measurement also caught the longest preview shrinking to 12.7 CSS px.
+Measured glyph bounds allowed two 23 px lines at the full 20 px canvas
+size, including when the font request is blocked.

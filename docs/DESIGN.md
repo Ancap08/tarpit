@@ -1227,7 +1227,7 @@ drawn and where touches land differ.
   each the tower's map shape over its cost, because a name at 18 px does
   not fit 75 px) and a row with Special (130 x 70), Start Wave (214 x 70)
   and speed (114 x 70); milestone 33 narrowed Start Wave to 170 and speed
-  to 82 for the 70 x 70 mute button at the row's end ("Sound"). The tower buttons are 4 px apart and the second row's 6 px; both rows start 5 px from the edge. The main portrait controls use 20 px type. The next-wave preview fits two lines in the remaining strip height.
+  to 82 for the 70 x 70 mute button at the row's end ("Sound"). The tower buttons are 4 px apart and the second row's 6 px; both rows start 5 px from the edge. The main portrait controls use 20 px type. The next-wave preview starts at y=28. Two 23 px lines fit above the brass edge at y=74. At 390 × 844 the 20 px type reads at 14.1 CSS px and a 70 px button measures 49.5 CSS px.
   On a 390 x 763 CSS px phone (standalone, inside the safe areas) the
   canvas fits at 0.639: buttons are 44.7 CSS px, 20 px text 12.8 CSS px and a
   map cell 20.5 CSS px. With Safari's bars (390 x 664) the scale is 0.556:
@@ -1766,7 +1766,7 @@ panel with Back or Escape keeps it available on the next Play. Free play skips
 this panel. Test mode follows the same rules unless a test calls
 `setTipsEnabled(false)` to skip first-visit tips.
 
-The build bar keeps every tower in its usual slot. Towers unavailable in
+The paired Remove/Sell label and refund use a 6 px inset to separate three-digit amounts. The build bar keeps every tower in its usual slot. Towers unavailable in
 this level appear dimmed with a lock and cannot be selected. The tower
 panel offers upgrades up to the level’s tier limit. At a campaign cap
 below tier three, it shows “Max for this level” beside the kill count. From wave one, the specials menu lists the level’s specials. Wave unlock

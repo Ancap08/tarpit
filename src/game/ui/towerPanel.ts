@@ -16,7 +16,7 @@ import { placeBeside, type Rect } from '../input';
 import { fontPx, type Layout } from '../layout';
 import { killsLabel, PANEL_TEXT, targetingButtonText, towerPanelTitle } from '../names';
 import { FONT, TEXT } from '../palette';
-import { ink, panel, THEME } from './theme';
+import { ink, THEME } from './theme';
 import { Button } from './button';
 import { STACK_GAP, STACK_PAD } from './geometry';
 import { getPathChoices, towerPanelSize, UPGRADE_PATHS, type PathChoice } from './towerPanelModel';
@@ -36,7 +36,7 @@ interface Row {
 }
 
 export class TowerPanel {
-  private readonly backing: Phaser.GameObjects.Graphics;
+  private readonly backing: Phaser.GameObjects.Rectangle;
   private readonly upgrade: Button;
   private readonly undo: Button;
   private readonly sell: Button;
@@ -60,10 +60,11 @@ export class TowerPanel {
     const f = (px: number) => fontPx(layout, layout.kind === 'portrait' ? Math.max(20, px) : px);
     const rect = { x: 0, y: 0, width: 1, height: 1 };
     const portrait = layout.kind === 'portrait';
-    this.backing = scene.add.graphics().setVisible(false);
+    this.backing = scene.add.rectangle(0, 0, 1, 1, THEME.paper)
+      .setOrigin(0).setStrokeStyle(2, THEME.brass).setVisible(false);
     this.upgrade = new Button(scene, rect, PANEL_TEXT.upgrade, () => handlers.onUpgrade(), { fontSize: f(16), right: '' });
     this.undo = new Button(scene, rect, PANEL_TEXT.undoUpgrade, handlers.onUndoUpgrade, { fontSize: f(14), right: '' });
-    this.sell = new Button(scene, rect, PANEL_TEXT.sell, handlers.onSell, { fontSize: f(16), right: '' });
+    this.sell = new Button(scene, rect, PANEL_TEXT.sell, handlers.onSell, { fontSize: f(16), right: '', labelInset: 6 });
     this.target = new Button(scene, rect, targetingButtonText('first'), () => handlers.onTarget(nextMode(this.mode)), { fontSize: f(13) });
     this.closeButton = new Button(scene, rect, '×', handlers.onClose, { fontSize: portrait ? '30px' : '24px' });
     const pathButton = (path: UpgradePath) => new Button(scene, rect, '', () => handlers.onUpgrade(path), {
@@ -154,7 +155,7 @@ export class TowerPanel {
     if (this.placed?.width !== width || this.placed.height !== height) {
       const location = placeBeside(this.layout.cellCenter(this.at), width, height, state.map, this.layout);
       this.placed = { ...location, width, height };
-      panel(this.backing.clear().setVisible(true), this.placed, THEME.paper);
+      this.backing.setPosition(location.x, location.y).setSize(width, height).setVisible(true);
     }
     const { x, y } = this.placed;
     const left = x + STACK_PAD;

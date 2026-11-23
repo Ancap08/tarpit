@@ -15,6 +15,8 @@ import { COLORS, HUD_FONT, TEXT } from '../palette';
 
 export interface ButtonOptions {
   fontSize?: string;
+  /** Horizontal inset for paired labels. */
+  labelInset?: number;
   /** Right-aligned second label; makes the main label left-aligned. */
   right?: string;
   /** Called with true when the pointer enters and false when it leaves (or the button hides). */
@@ -27,8 +29,6 @@ export interface ButtonOptions {
   sound?: SoundName | null;
 }
 
-const PAD_X = 10;
-
 export class Button {
   private readonly box: Phaser.GameObjects.Rectangle;
   private readonly trim: Phaser.GameObjects.Graphics;
@@ -36,6 +36,7 @@ export class Button {
   private readonly rightLabel: Phaser.GameObjects.Text | null;
   private readonly onHover?: (over: boolean) => void;
   private readonly labelY?: number;
+  private readonly labelInset: number;
   private r: Rect;
   private enabled = true;
   private hover = false;
@@ -54,6 +55,7 @@ export class Button {
     this.r = { ...rect };
     this.onHover = options.onHover;
     this.labelY = options.labelY;
+    this.labelInset = options.labelInset ?? 10;
     const style = { fontFamily: HUD_FONT, fontSize: options.fontSize ?? '18px', fontStyle: 'bold', color: TEXT.button };
     this.box = scene.add.rectangle(0, 0, rect.width, rect.height, COLORS.button).setOrigin(0, 0);
     this.trim = scene.add.graphics();
@@ -162,8 +164,8 @@ export class Button {
     }
     const mid = y + (this.labelY ?? this.r.height / 2);
     if (this.rightLabel) {
-      this.label.setPosition(x + PAD_X, mid);
-      this.rightLabel.setPosition(x + this.r.width - PAD_X, mid);
+      this.label.setPosition(x + this.labelInset, mid);
+      this.rightLabel.setPosition(x + this.r.width - this.labelInset, mid);
     } else {
       this.label.setPosition(x + this.r.width / 2, mid);
     }
