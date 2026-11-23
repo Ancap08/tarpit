@@ -6,6 +6,7 @@ import { fingerFor, liftPage, rectPage, rectPageSize, tap, tapCell, ui, worldPag
 import { GRUMBLEFOOT_STEPS, beginVisualWave, finalBossFrame } from './visualCampaign';
 import { expectOffer, visibleTexts } from './campaign';
 import { midwave as paintedMidwave, openPainted } from './painted';
+import { holdingFrame } from './barricade-crowd';
 import { waitForTitle } from './title';
 import { choiceVisual } from './upgradeChoice';
 
@@ -269,3 +270,4 @@ test('painted Meadow midwave in portrait', async ({ page }) => {
   await paintedMidwave(page);
   await expect(page.locator('canvas')).toHaveScreenshot('phone-painted-midwave.png');
 });
+test('phone-barricade-holding with fifteen walkers and the count beside the hp bar', async ({ page }) => holdingFrame(page, true));

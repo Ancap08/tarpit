@@ -37,6 +37,7 @@
 // through Effects: onEvents() acts at once, as before.
 
 import Phaser from 'phaser';
+import type { BlockedPosition, BlockedPositions } from '../draw/barricade';
 import { effectiveSlow, ENEMY_STATS, enemyPosition, isBoss, isTarred, positionAlongPath, type Enemy, type EnemyType, type GameEvent, type GameState, type MapDef } from '../../sim';
 import { bobOffset, DEATH_MS, burnPulse, FLAME_EVERY, HIT_FLASH_MS, Particles, statusTint, TINT } from './effects';
 import { awayFrom, deathPuff, KNOCK_MS, knockPx, knockShare } from '../fx/fxMath';
@@ -59,6 +60,9 @@ export const SHIELD_DY = 3;
 
 /** What the test hook animState(enemyId) reports. */
 export interface AnimState {
+  /** Actual sprite centre in canvas pixels. */
+  x: number;
+  y: number;
   texture: EnemyType;
   /** The walk animation key for the current facing (frozen in test mode). */
   anim: string;
@@ -67,6 +71,7 @@ export interface AnimState {
   facing: Facing;
   flipX: boolean;
   scale: number;
+  blockerLunge: number;
   flags: { hit: boolean; burning: boolean; slowed: boolean; dying: boolean };
 }
 
@@ -106,6 +111,7 @@ interface View {
   knockY: number;
   knockAt: number;
   redraws: number;
+  blockerLunge: number;
 }
 
 /** Load every enemy sheet (call from a scene's preload). */
@@ -286,11 +292,13 @@ export class EnemySprites {
   }
 
   /** Match the sprites to the live enemies: create, move, face, animate and tint. */
-  sync(state: GameState, timeScale: number): void {
+  sync(state: GameState, timeScale: number, stopped?: BlockedPositions): void {
     const live = new Set<number>();
     for (const enemy of state.enemies) {
       live.add(enemy.id);
-      this.update(this.views.get(enemy.id) ?? this.create(enemy, state.map), enemy, state.map, timeScale);
+      const view = this.views.get(enemy.id) ?? this.create(enemy, state.map);
+      const position = stopped?.get(enemy.id);
+      this.update(view, enemy, state.map, timeScale, position);
     }
     // An enemy gone without a kill or exit event (a test hook, a restart): drop it.
     for (const [id, v] of this.views) {
@@ -302,6 +310,7 @@ export class EnemySprites {
 
   /** A doomed sprite walks on along the trail at its last speed until its shot lands (play only). */
   private walkOn(v: View, map: MapDef, timeScale: number): void {
+    if (v.stepPx === 0) return; // A walker killed against the wall stays there until the shot lands.
     const ticks = ((this.scene.time.now - v.doomedAt) / (1000 / 60)) * timeScale;
     const distance = v.distance + v.stepPx * ticks;
     const { x, y } = this.layout.toScreen(positionAlongPath(map, distance));
@@ -371,6 +380,7 @@ export class EnemySprites {
       knockY: 0,
       knockAt: -1,
       redraws: 0,
+      blockerLunge: 0,
     };
     this.views.set(enemy.id, view);
     this.setFacing(view, facingAt(map, enemy.distance, this.step(enemy), this.layout), true);
@@ -416,8 +426,9 @@ export class EnemySprites {
     else v.sprite.anims.play(walkAnimKey(v.type, facing), true);
   }
 
-  private update(v: View, enemy: Enemy, map: MapDef, timeScale: number): void {
-    const { x, y } = this.layout.toScreen(enemyPosition(enemy, map));
+  private update(v: View, enemy: Enemy, map: MapDef, timeScale: number, stoppedAt?: BlockedPosition): void {
+    const { x, y } = this.layout.toScreen(stoppedAt ?? enemyPosition(enemy, map));
+    v.blockerLunge = stoppedAt?.lunge ?? 0;
     const lift = this.lift(v.type);
     const bob = v.flying && !this.frozen ? bobOffset(this.scene.time.now, enemy.id) : 0;
     if (v.knockAt >= 0 && this.scene.time.now - v.knockAt >= KNOCK_MS) v.knockAt = -1;
@@ -427,25 +438,26 @@ export class EnemySprites {
     } else {
       v.sprite.setPosition(x, y - lift + bob);
     }
-    v.sprite.setDepth(y);
-    v.crown?.setPosition(v.sprite.x, v.sprite.y - 41).setDepth(y + 1);
+    const depth = stoppedAt?.depth ?? y;
+    v.sprite.setDepth(depth);
+    v.crown?.setPosition(v.sprite.x, v.sprite.y - 41).setDepth(depth + 1);
     if (v.shield) {
       v.shield.setPosition(x + SHIELD_DX, y + SHIELD_DY);
-      // Just in front of its own sprite, behind any walker lower on screen.
-      v.shield.setDepth(y + 0.5);
+      // Keep the shield just in front of its owner.
+      v.shield.setDepth(depth + 0.5);
     }
-    this.setFacing(v, facingAt(map, enemy.distance, this.step(enemy), this.layout), false, enemy.distance);
+    this.setFacing(v, facingAt(map, stoppedAt?.distance ?? enemy.distance, this.step(enemy), this.layout), false, enemy.distance);
     v.shadow?.setPosition(x, y);
-    v.sprite.anims.timeScale = timeScale;
+    v.sprite.anims.timeScale = stoppedAt ? 0 : timeScale;
     v.distance = enemy.distance;
-    v.stepPx = this.step(enemy);
+    v.stepPx = stoppedAt ? 0 : this.step(enemy);
     v.burning = (enemy.burnTicksLeft ?? 0) > 0;
     v.slowed = isTarred(enemy);
     v.redraws += 1;
 
     const hit = this.isHit(v);
     if (v.flash) {
-      v.flash.setPosition(x, y - lift).setDepth(y + 0.1).setVisible(hit);
+      v.flash.setPosition(x, y - lift).setDepth(depth + 0.1).setVisible(hit);
     }
     if (this.painted) v.sprite.setBlendMode(hit ? Phaser.BlendModes.ADD : Phaser.BlendModes.NORMAL);
     if (hit && !v.flash) {
@@ -474,12 +486,15 @@ export class EnemySprites {
     const current = s.anims.currentAnim;
     const frame = this.frozen || !current || !s.anims.currentFrame ? 0 : current.frames.indexOf(s.anims.currentFrame);
     return {
+      x: s.x,
+      y: s.y,
       texture: SHEETS[v.type].key,
       anim,
       frame: this.painted ? Number(s.frame.name) % 4 : Math.max(0, frame),
       facing: v.facing,
       flipX: s.flipX,
       scale: s.scaleX,
+      blockerLunge: v.blockerLunge,
       flags: { hit: this.isHit(v), burning: v.burning, slowed: v.slowed, dying: v.dying },
     };
   }

@@ -44,7 +44,7 @@ const kinds = (events: GameEvent[], ...k: GameEvent['kind'][]) => events.filter(
 describe('boss stats (docs/SCOPE-v4.md)', () => {
   it('4000 hp, 25 px/s, 150 gold, 5 lives on exit, slows capped at 30%, walks, no shield', () => {
     expect(BOSS_TYPE).toBe('boss');
-    expect(ENEMY_STATS.boss).toEqual({ hp: 4000, speed: 25, bounty: 150, flying: false, shield: false, livesCost: 5, slowCap: 0.3 });
+    expect(ENEMY_STATS.boss).toEqual({ blockerDps: 300, hp: 4000, speed: 25, bounty: 150, flying: false, shield: false, livesCost: 5, slowCap: 0.3 });
   });
 
   it('every other enemy costs 1 life and has no slow cap', () => {

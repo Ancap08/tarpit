@@ -334,6 +334,63 @@ idea in its simplest form: an upgraded tower looks different.
 - Rewards, specials, waves, bosses and maps do not change shape; their
   numbers may move in the balance pass.
 
+## Milestone 38: the painted look, behind a switch
+
+Kyle chose the painted-miniature look from the art spike (2026-11-23) and
+said to wire it in so he can see the game in it. The art was made by
+script in Blender (`scripts/art/`, `assets/art-painted/`): the Meadow
+ground, six towers, seven enemies, scenery and projectiles.
+
+- **A switch, off by default.** A "Look" choice on the title screen
+  (Classic or Painted), remembered like the mute setting. Classic is
+  today's game, unchanged. Painted applies on maps that have painted art
+  (Meadow first); other maps stay Classic until their art exists.
+- **Painted mode draws** the painted ground, towers that turn to aim,
+  enemies that walk in four directions, painted scenery in place of the
+  code-drawn trees, and painted projectiles. Pieces stand on their cells,
+  nearer ones in front. Everything the game draws on top stays as it is:
+  health bars, status rings, range circles, the placement highlight, the
+  magnifier, effects, banners, the HUD.
+- **Same game.** No rule, number, hit area or layout changes. Both
+  layouts. Sharp art on sharp screens, normal art elsewhere; the painted
+  files load only when Painted is on.
+- **Honest limits:** only Meadow; tower levels and upgrade paths show
+  through the existing marks, not through new art; the HUD is not
+  repainted.
+
+Kyle's phone decides whether the look goes on to the other maps.
+
+## Milestone 39: the Barricade, and the rule it needs
+
+Kyle (2026-11-23) wants a wall special "that holds them until it's
+destroyed", later a short burst of troops, and one day a castle wall as a
+last defence. All three need one rule the game does not have: something
+on the trail with hp that enemies stop at and hit. This milestone adds
+that rule in its smallest form and the Barricade as its first use. Troops
+and the castle come later on the same rule.
+
+- **The rule.** A blocker stands at a point on the trail and has hp.
+  Walking enemies that reach it stop and attack it; each enemy type has an
+  attack strength. When its hp is gone it breaks and they walk on. Flyers
+  pass over. Stopped enemies can still be shot, slowed and burned, so a
+  blocker bunches a crowd for splash. Bosses break blockers quickly.
+- **The Barricade** is a fourth special on the shared charge, unlocked at
+  wave 3. The player aims it at the trail; it snaps onto the trail and
+  stands there until destroyed. One at a time: a new one replaces the
+  old. It does no damage.
+- **On screen:** a wooden barricade across the trail with its own hp bar,
+  enemies visibly hitting it, a crash when it breaks, sounds for placing
+  and breaking, in both layouts. In the Painted look it is drawn in code
+  until painted art exists.
+- **Balance:** the reference builds do not use the Barricade, so the
+  matrix does not move. Separate checks: a build that uses it at a choke
+  beside splash towers does better than the same build without it, but
+  not overwhelmingly; walls alone do not win; bosses are not stalled for
+  long.
+- Simple and slim: one new idea (a blocker), one number per enemy (its
+  attack), one new special. No pathfinding, no enemy collision, no new
+  tower.
+
 ## Later milestones (order agreed, detail to come)
 
 | # | Milestone | Idea |
@@ -362,30 +419,3 @@ difficulty, tower unlocks, a pause button and an enemy card.
 
 New towers, enemies or maps; a second upgrade tier; sound and new art;
 saving a game in progress; any change to waves, call early or endless.
-
-## Milestone 38: the painted look, behind a switch
-
-Kyle chose the painted-miniature look from the art spike (2026-11-23) and
-said to wire it in so he can see the game in it. The art was made by
-script in Blender (`scripts/art/`, `assets/art-painted/`): the Meadow
-ground, six towers, seven enemies, scenery and projectiles.
-
-- **A switch, off by default.** A "Look" choice on the title screen
-  (Classic or Painted), remembered like the mute setting. Classic is
-  today's game, unchanged. Painted applies on maps that have painted art
-  (Meadow first); other maps stay Classic until their art exists.
-- **Painted mode draws** the painted ground, towers that turn to aim,
-  enemies that walk in four directions, painted scenery in place of the
-  code-drawn trees, and painted projectiles. Pieces stand on their cells,
-  nearer ones in front. Everything the game draws on top stays as it is:
-  health bars, status rings, range circles, the placement highlight, the
-  magnifier, effects, banners, the HUD.
-- **Same game.** No rule, number, hit area or layout changes. Both
-  layouts. Sharp art on sharp screens, normal art elsewhere; the painted
-  files load only when Painted is on.
-- **Honest limits:** only Meadow; tower levels and upgrade paths show
-  through the existing marks, not through new art; the HUD is not
-  repainted.
-
-Kyle's phone decides whether the look goes on to the other maps.
-

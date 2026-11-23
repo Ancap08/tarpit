@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { deathSound, EXIT_THIN_MS, LEVEL_TIERS, levelTier, LOW_SOUNDS, RECIPES, recipeLength, SMALL_THIN_MS, SOUND_NAMES, type SoundName } from './recipes';
+import { BUDGET_PRIORITY } from './mixer';
+import { BLOCKER_HIT_THIN_MS, deathSound, EXIT_THIN_MS, LEVEL_TIERS, levelTier, LOW_SOUNDS, RECIPES, recipeLength, SMALL_THIN_MS, SOUND_NAMES, type SoundName } from './recipes';
 
 /** The stated length limits (docs/DESIGN.md "Sound"): 0.6 s unless noted. */
 const LIMIT: Partial<Record<SoundName, number>> = {
@@ -54,10 +55,13 @@ describe('recipes', () => {
     for (const n of ['grumblemawArrive', 'grumblemawFall'] as const) expect(levelTier(n)).toBe('big');
   });
 
-  it('the smallest sounds and the exit warning thin over a longer window', () => {
+  it('quiet repeat sounds and the exit warning thin over a longer window', () => {
     for (const n of ['hit', 'impact.musketeer', 'death.small'] as const) expect(RECIPES[n].thin).toBe(SMALL_THIN_MS);
     expect(RECIPES.exit.thin).toBe(EXIT_THIN_MS);
-    expect(SOUND_NAMES.filter((n) => RECIPES[n].thin !== undefined).sort()).toEqual(['death.small', 'exit', 'hit', 'impact.musketeer']);
+    expect(RECIPES.blockerHit.thin).toBe(BLOCKER_HIT_THIN_MS);
+    expect(RECIPES.blockerHit.priority).toBeLessThanOrEqual(BUDGET_PRIORITY);
+    expect(levelTier('blockerHit')).toBe('tick');
+    expect(SOUND_NAMES.filter((n) => RECIPES[n].thin !== undefined).sort()).toEqual(['blockerHit', 'death.small', 'exit', 'hit', 'impact.musketeer']);
   });
 
   it('every low sound has a mid layer (200 to 900 Hz) for small speakers', () => {

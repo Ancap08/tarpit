@@ -51,7 +51,11 @@ export type GameEvent =
    * events with cause 'special'. `zoneId` (milestone 30): the id of the
    * zone it left (Tar Barrel and Fire Arrows).
    */
-  | { kind: 'special'; type: SpecialType; x: number; y: number; radius: number; hits: number; zoneId?: number }
+  | { kind: 'special'; type: SpecialType; x: number; y: number; radius: number; hits: number; zoneId?: number; angle?: number }
+  /** A walking enemy damaged the blocker this tick. */
+  | { kind: 'blockerHit'; enemyId: number; x: number; y: number; damage: number }
+  /** The blocker was destroyed by enemies. */
+  | { kind: 'blockerBreak'; x: number; y: number; angle: number }
   /** The gold cheat was used (milestone 30): `gold` was added. */
   | { kind: 'cheat'; gold: number }
   /** A tower's targeting mode was set (milestone 24). */

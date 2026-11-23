@@ -6,6 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ACT_TWO_HP_GROWTH, DIFFICULTIES, DIFFICULTY_DEFS, campaignHpFactor, enemyMaxHp } from './difficulty';
+import { BARRICADE_END_EXCLUSION, BARRICADE_HP, BARRICADE_SNAP_RADIUS } from './blockers';
 import { BOONS } from './boons';
 import { PACK_INTERVAL_TICKS, PACK_SIZE } from './combat';
 import { ENEMY_STATS, isBoss } from './enemies';
@@ -73,7 +74,7 @@ const TOWER_NAMES: Record<string, TowerType> = {
   Mortar: 'mortar',
   'Fire Pot': 'firepot',
 };
-const SPECIAL_NAMES: Record<string, SpecialType> = { 'Powder Keg': 'keg', 'Tar Barrel': 'tarBarrel', 'Fire Arrows': 'fireArrows' };
+const SPECIAL_NAMES: Record<string, SpecialType> = { 'Powder Keg': 'keg', Barricade: 'barricade', 'Tar Barrel': 'tarBarrel', 'Fire Arrows': 'fireArrows' };
 const MAP_NAMES: Record<string, MapId> = { Meadow: 'meadow', Switchback: 'switchback', Riverbend: 'riverbend' };
 
 /** "1/3" or "2.5" as a number. */
@@ -100,7 +101,7 @@ const burn = (s: string): [number, number] => {
 
 describe('docs/DESIGN.md matches the code', () => {
   it('has the frozen banner', () => {
-    expect(md).toMatch(/^# Tarpit: game design spec\n\n> \*\*Frozen as of milestone 37\.\*\*/);
+    expect(md).toMatch(/^# Tarpit: game design spec\n\n> \*\*Frozen as of milestone 39\.\*\*/);
   });
 
   it('maps: waypoints, path length and buildable cells', () => {
@@ -135,9 +136,10 @@ describe('docs/DESIGN.md matches the code', () => {
   it('enemy stats: hp, speed, bounty, lives cost, flying and shield', () => {
     const rows = table('Enemies', 'Type');
     expect(rows.map((r) => ENEMY_NAMES[r[0]]).sort()).toEqual(Object.keys(ENEMY_STATS).sort());
-    for (const [name, hp, speed, bounty, lives, notes] of rows) {
+    for (const [name, hp, speed, bounty, lives, dps, notes] of rows) {
       const s = ENEMY_STATS[ENEMY_NAMES[name]];
       expect([Number(hp), Number(speed), Number(bounty), Number(lives)], name).toEqual([s.hp, s.speed, s.bounty, s.livesCost]);
+      expect(Number(dps), name).toBe(s.blockerDps);
       expect(/flying/.test(notes), name).toBe(s.flying);
       expect(/shield/.test(notes), name).toBe(s.shield);
       if (s.slowCap !== undefined) expect(notes, name).toContain(`slows capped at ${s.slowCap * 100}%`);
@@ -220,15 +222,19 @@ describe('docs/DESIGN.md matches the code', () => {
 
   it('specials: unlock wave, radius, damage, slow, burn, zone ticks', () => {
     const rows = table('Special attacks', 'Special');
-    expect(rows.map((r) => SPECIAL_NAMES[r[0]])).toEqual(['keg', 'tarBarrel', 'fireArrows']);
+    expect(rows.map((r) => SPECIAL_NAMES[r[0]])).toEqual(['keg', 'barricade', 'tarBarrel', 'fireArrows']);
     for (const [name, unlock, radius, damage, sl, burnDps, zoneTicks] of rows) {
       expect({ unlockWave: Number(unlock), radius: Number(radius), damage: opt(damage), slow: opt(sl), burnDps: opt(burnDps), zoneTicks: opt(zoneTicks) }, name).toEqual(
         SPECIAL_DEFS[SPECIAL_NAMES[name]],
       );
     }
+    expect(table('Special attacks', 'Blocker')).toEqual([
+      ['Barricade', String(BARRICADE_HP), String(BARRICADE_SNAP_RADIUS), String(BARRICADE_END_EXCLUSION)],
+    ]);
     // The prose numbers: the recharge, the linger, the policy's look interval, threshold and spacing, the cheat.
     const flat = section('Special attacks').replace(/\s+/g, ' ');
     expect(flat).toContain(`${SPECIAL_RECHARGE_TICKS} wave ticks`);
+    expect(flat).toContain(`${Math.round(SPECIAL_RECHARGE_TICKS * BOONS.quickHands.value)} ticks (11.4 s)`);
     expect(flat).toContain(`${ZONE_LINGER_TICKS} ticks after`);
     const arche = section('Archetypes').replace(/\s+/g, ' ');
     expect(arche).toContain(`every ${POLICY_CHECK_TICKS} wave ticks`);
@@ -271,7 +277,7 @@ describe('docs/DESIGN.md matches the code', () => {
   it('balance targets: every target label the suite asserts is in the spec, and no other', () => {
     const text = section('Balance targets') + section('Waves');
     const inDoc = new Set([...text.matchAll(/\*\*([A-Z]+\d+[a-z]?)\b/g)].map((m) => m[1]));
-    const separateChecks = ['N10c', 'N10d', 'P1', 'P2', 'P3', 'P4'];
+    const separateChecks = ['N10c', 'N10d', 'P1', 'P2', 'P3', 'P4', 'K1', 'K2', 'K3', 'K4', 'K5', 'K6', 'K7'];
     expect([...inDoc].sort()).toEqual([...new Set([...TARGETS.map((t) => t.id), ...separateChecks])].sort());
   });
 

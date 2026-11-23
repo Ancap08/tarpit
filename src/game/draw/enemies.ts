@@ -17,6 +17,7 @@ import type { PaintedBody } from '../anim/enemySprites';
 import { SHEETS } from '../anim/sheets';
 import { LANDSCAPE, type Layout } from '../layout';
 import { COLORS } from '../palette';
+import type { BlockedPositions } from './barricade';
 
 /** Status ring base radius per type: just outside the sprite's body. */
 export const RING_RADIUS: Record<EnemyType, number> = { goblin: 14, wolf: 12, troll: 21, harpy: 14, shieldbearer: 14, boss: 38, grumblemaw: 57 };
@@ -54,12 +55,12 @@ export function shadowOf(type: EnemyType): typeof SHADOW | typeof BOSS_SHADOW | 
 }
 
 /** Ground shadows for every flying enemy and the boss, drawn on the ground under all sprites. */
-export function drawShadows(g: Phaser.GameObjects.Graphics, state: GameState, layout: Layout = LANDSCAPE): void {
+export function drawShadows(g: Phaser.GameObjects.Graphics, state: GameState, layout: Layout = LANDSCAPE, stopped?: BlockedPositions): void {
   // `g` is world-space (milestone 32b): the offset is down the screen and the ellipse wide on screen in any layout.
   for (const enemy of state.enemies) {
     const shadow = shadowOf(enemy.type);
     if (!shadow) continue;
-    const { x, y } = layout.offset(enemyPosition(enemy, state.map), 0, shadow.offsetY);
+    const { x, y } = layout.offset(stopped?.get(enemy.id) ?? enemyPosition(enemy, state.map), 0, shadow.offsetY);
     for (const e of [shadow.outer, shadow.inner]) {
       const size = layout.ellipse(e.w, e.h);
       g.fillStyle(COLORS.shadow, e.alpha);
@@ -102,10 +103,10 @@ export function statusRings(
  * px up). Towers never tar or burn a flyer, but a special can (milestone
  * 25b), so a Harpy shows the rings when its state says so.
  */
-export function drawStatusRings(g: Phaser.GameObjects.Graphics, state: GameState, layout: Layout = LANDSCAPE): void {
+export function drawStatusRings(g: Phaser.GameObjects.Graphics, state: GameState, layout: Layout = LANDSCAPE, stopped?: BlockedPositions): void {
   // `g` is world-space (milestone 32b): the lift is up the screen in any layout.
   for (const enemy of state.enemies) {
-    const { x, y } = layout.offset(enemyPosition(enemy, state.map), 0, -spriteLift(enemy.type));
+    const { x, y } = layout.offset(stopped?.get(enemy.id) ?? enemyPosition(enemy, state.map), 0, -spriteLift(enemy.type));
     for (const ring of statusRings(enemy)) {
       g.lineStyle(3, ring.color, 1);
       g.strokeCircle(x, y, RING_RADIUS[enemy.type] + ring.offset);
@@ -167,7 +168,7 @@ function paintedBars(g: Phaser.GameObjects.Graphics, state: GameState, layout: L
 
 /** Hp bars for hurt enemies, drawn over the sprites. Not for the boss: the HUD boss bar shows his. */
 export function drawHpBars(g: Phaser.GameObjects.Graphics, state: GameState, layout: Layout = LANDSCAPE,
-  bodyTop?: (id: number) => PaintedBody | undefined): void {
+  stopped?: BlockedPositions, bodyTop?: (id: number) => PaintedBody | undefined): void {
   if (bodyTop) return paintedBars(g, state, layout, bodyTop);
   // `g` is screen-space (milestone 32b): a bar stays level above its sprite in any layout.
   for (const enemy of state.enemies) {
@@ -175,11 +176,18 @@ export function drawHpBars(g: Phaser.GameObjects.Graphics, state: GameState, lay
     // endless wave's enemy carries its own (milestone 26).
     const maxHp = enemy.maxHp ?? enemyMaxHp(enemy.type, state.difficulty);
     if (enemy.hp < maxHp && !isBoss(enemy)) {
-      const { x, y } = layout.toScreen(enemyPosition(enemy, state.map));
+      const held = stopped?.get(enemy.id);
+      const { x, y } = layout.toScreen(held ?? enemyPosition(enemy, state.map));
       const fraction = Math.max(0, enemy.hp) / maxHp;
-      const left = Math.round(x - BAR_WIDTH / 2);
-      const top = Math.round(y - spriteLift(enemy.type) - spriteHalfHeight(enemy.type) - BAR_GAP - BAR_HEIGHT - 1);
-      drawBar(g, left, top, fraction);
+      // In a rank, tuck a shorter bar against the top of its own body.
+      const width = held ? Math.min(BAR_WIDTH, RING_RADIUS[enemy.type] + 4) : BAR_WIDTH;
+      const above = held ? RING_RADIUS[enemy.type] + 1 : spriteHalfHeight(enemy.type) + BAR_GAP + BAR_HEIGHT + 1;
+      const left = Math.round(x - width / 2);
+      const top = Math.round(y - spriteLift(enemy.type) - above);
+      g.fillStyle(COLORS.hpBorder, 1);
+      g.fillRect(left - 1, top - 1, width + 2, BAR_HEIGHT + 2);
+      g.fillStyle(hpColor(fraction), 1);
+      g.fillRect(left, top, Math.max(1, Math.round(width * fraction)), BAR_HEIGHT);
     }
   }
 }
