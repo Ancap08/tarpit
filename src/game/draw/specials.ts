@@ -84,6 +84,7 @@ export class SpecialEffects {
     private readonly scene: Phaser.Scene,
     private readonly frozen: boolean,
     private readonly layout: Layout = LANDSCAPE,
+    private readonly painted = false,
   ) {}
 
   /** A special landed: its `special` event. */
@@ -164,7 +165,7 @@ export class SpecialEffects {
   private drawZone(g: Phaser.GameObjects.Graphics, z: Zone): void {
     const fade = Math.min(1, z.ticksLeft / ZONE_FADE_TICKS);
     if (z.type === 'tarBarrel') {
-      g.fillStyle(COLORS.tarPuddle, 0.5 * fade);
+      g.fillStyle(COLORS.tarPuddle, (this.painted ? 0.7 : 0.5) * fade);
       g.fillCircle(z.x, z.y, z.radius);
       g.fillStyle(COLORS.tarPuddle, 0.45 * fade);
       for (let i = 0; i < BLOBS; i++) {
@@ -195,6 +196,10 @@ export class SpecialEffects {
     }
     g.fillStyle(COLORS.firePatch, 0.3 * fade);
     g.fillCircle(z.x, z.y, z.radius);
+    if (this.painted) {
+      g.lineStyle(6, COLORS.tarPuddle, 0.9 * fade);
+      g.strokeCircle(z.x, z.y, z.radius);
+    }
     g.lineStyle(3, COLORS.fireFlame, 0.85 * fade);
     g.strokeCircle(z.x, z.y, z.radius);
     for (let i = 0; i < FLAMES; i++) {

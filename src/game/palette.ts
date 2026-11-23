@@ -150,6 +150,9 @@ export const COLORS = {
   // Build UI: placement cell highlight, selection ring, range circles, panel backing
   cellOk: 0x5fd35f,
   cellBad: 0xe0473a,
+  paintedCellEdge: 0x10130f,
+  paintedCellLight: 0xfff6db,
+  paintedCellBlocked: 0xff9a7d,
   selectRing: 0xfff2a8,
   // Range circles (selected tower and hover preview): pale yellow, reads on grass and path.
   range: 0xfff2a8,

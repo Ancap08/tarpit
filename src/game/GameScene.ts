@@ -117,7 +117,6 @@ import {
   buildTower,
   callEarlyStatus,
   callNextWave,
-  CELL,
   continueEndless,
   cellCenter,
   createGame,
@@ -180,6 +179,7 @@ import { TowerLabels } from './draw/labels';
 import { LivingMap, type DecorState } from './decor/livingMap';
 import { BarricadeEffects, drawBarricadeAim } from './draw/barricade';
 import { GuardEffects, drawGuardsAim, guardFoot, type DrawnGuard } from './draw/guards';
+import { drawPlacementCell } from './draw/placement';
 import { ShotEffects } from './draw/shots';
 import { SpecialEffects } from './draw/specials';
 import { Aim, drawTowerShape, drawTowers } from './draw/towers';
@@ -364,9 +364,6 @@ const GHOST_ALPHA = 0.6;
 /** A drag's ghost over a blocked cell (milestone 25a follow-up): faint, under a red wash of this opacity. */
 const BLOCKED_GHOST_ALPHA = 0.35;
 const BLOCKED_GHOST_TINT = 0.3;
-/** Placement cell highlight: fill opacity and outline width. */
-const CELL_FILL_ALPHA = 0.25;
-const CELL_LINE = 2;
 /** The touch drag's finger-to-ghost line width (milestone 25a). */
 const DRAG_LINE = 1.5;
 /** Milestone 35: the snap mark, a line and a ring from the lifted point to the snapped cell. */
@@ -545,7 +542,7 @@ export class GameScene extends Phaser.Scene {
     this.speed = 1;
     this.accMs = resume?.accMs ?? 0;
     this.shots = new ShotEffects();
-    this.specialFx = new SpecialEffects(this, isTestMode(), this.layout);
+    this.specialFx = new SpecialEffects(this, isTestMode(), this.layout, !!this.paintedAssets);
     this.speedPress = null;
     this.speedHoldLost = false;
     this.goldTaps = [];
@@ -1713,13 +1710,7 @@ export class GameScene extends Phaser.Scene {
     const moved = drag?.kind === 'move' && drag.from !== null ? towerAt(this.state, drag.from) : undefined;
     const ghostType = moved ? moved.type : this.pick;
     if (ghostType !== null && hover !== null) {
-      // Inset by half the outline so the 2 px edge stays inside the cell.
-      const r = cellRect(hover);
-      const color = hoverBuildable ? COLORS.cellOk : COLORS.cellBad;
-      g.fillStyle(color, CELL_FILL_ALPHA);
-      g.fillRect(r.x, r.y, CELL, CELL);
-      g.lineStyle(CELL_LINE, color, 1);
-      g.strokeRect(r.x + CELL_LINE / 2, r.y + CELL_LINE / 2, CELL - CELL_LINE, CELL - CELL_LINE);
+      drawPlacementCell(g, cellRect(hover), hoverBuildable, !!this.painted);
       const upgraded = moved?.upgraded ?? false;
       const angle = this.aim.angle(moved ? moved.cell : hover);
       if (hoverBuildable) {

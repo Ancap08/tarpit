@@ -982,7 +982,7 @@ default. The game stores the choice as `tarpit.look` on this browser.
   files. On Meadow the 1× target is under five seconds at 1.6 Mbps down
   and 150 ms latency.
 - All three grounds use the same trail width and simulation path. Meadow
-  has flowering pasture, Switchback has dry grass and low shale shelves,
+  has flowering pasture, Switchback has a pale trail with a dark cut edge through dry grass and low shale shelves,
   and Riverbend has reed-lined water and a timber deck on its upper trail.
   The Riverbend spring fills the 40 water cells. The grass between its
   head and the timber deck remains buildable under the usual trail rule.
@@ -1026,8 +1026,13 @@ default. The game stores the choice as `tarpit.look` on this browser.
   11 px right and 22 px above the cottage anchor in either layout.
   Test mode and reduced motion hold the open eyes and smoke at time zero.
   Painted omits cloud shadows to keep the ground shading visible.
-  Status rings, range circles, placement highlights, magnifier, effects,
-  simulation and input geometry are shared with Classic.
+- A valid Painted placement has an ivory fill and rail inside a charcoal rim.
+  A blocked cell has a coral fill and rail with a charcoal X. The magnifier
+  shows the same marker. Painted tar uses a 70% base fill and the fire zone
+  has a 6 px dark stroke beneath its 3 px flame-coloured rim.
+- During the 80 ms hit flash, the enemy's current Painted pose mixes 28% white
+  into each coloured pixel and keeps its original opacity. Both poses brighten
+  during a turn. In test mode the hit flag still lasts one tick.
 
 ## Sound
 

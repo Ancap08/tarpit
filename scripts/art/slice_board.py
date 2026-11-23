@@ -120,7 +120,7 @@ def painted_surface(map_id):
     pigment = calc("ADD", calc("MULTIPLY", glaze, .80), calc("MULTIPLY", brush,.20))
     palettes = {
         "meadow": ("354F42", "7E8D54", "436748", "5B7A4A", "6C8551"),
-        "switchback": ("4C5245", "9A9364", "626E50", "788257", "8C8960"),
+        "switchback": ("424A3D", "868258", "525F45", "637148", "777B50"),
         "riverbend": ("2F5549", "70945F", "3C6952", "537D58", "66885A"),
     }
     grass = colors(pigment, list(zip((.20,.84,.39,.55,.68), palettes[map_id])))
@@ -129,8 +129,10 @@ def painted_surface(map_id):
     flecks = noise(calc("MULTIPLY", position, (1.1,1.45,1), True), 12, 1.5, .3)
     fleck_opacity = calc("MULTIPLY", calc("MAXIMUM", 0,
                          calc("SUBTRACT", flecks, .49)), .72)
-    earth = colors(noise(dragged, 1.6, 3, .35),
-                   [(.20,"B69366"),(.80,"C8A77A"),(.48,"C1A071")])
+    road_stops = [(.20,"B69366"),(.80,"C8A77A"),(.48,"C1A071")]
+    if map_id == "switchback":
+        road_stops = [(.20,"C5A47C"),(.80,"D7BF95"),(.48,"CDB38B")]
+    earth = colors(noise(dragged, 1.6, 3, .35), road_stops)
     granules = noise(position, 9, 2)
     sand = calc("MINIMUM", .21, calc("MAXIMUM", 0, calc("MULTIPLY",
                calc("SUBTRACT", noise(position, 19, 1, .1), .57), 1.2)))
@@ -148,7 +150,10 @@ def painted_surface(map_id):
     # shoulder. The original 40-pixel field of travel stays in the same place.
     grass = mix(calc("MULTIPLY", fleck_opacity, smooth_edge(.73, 1.36, distance)),
                 grass, swatch("9EA275"))
-    soil = mix(smooth_edge(.565, .624), earth, swatch("786244"))
+    if map_id == "switchback":
+        soil = mix(smooth_edge(.51, .595), earth, swatch("574A39"))
+    else:
+        soil = mix(smooth_edge(.565, .624), earth, swatch("786244"))
     color = mix(smooth_edge(.669, .705), soil, grass)
     if map_id == "riverbend":
         # The spring occupies the simulation's 4 by 10 blocked cells. Ripple

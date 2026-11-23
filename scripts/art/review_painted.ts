@@ -1,4 +1,4 @@
-// Generate the twelve milestone 43 review JPEGs from a production preview.
+// Generate the milestone 43 review JPEGs from a production preview.
 // PW_PORT=4373 node --experimental-strip-types scripts/art/review_painted.ts
 import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
@@ -32,6 +32,15 @@ try {
             t.startWave();
             t.step(1440);
             const s = t.state();
+            if (s.map.id === 'switchback') {
+              for (const [type, x, y] of [['tarBarrel', 204, 96], ['fireArrows', 424, 288]] as const) {
+                s.specialCharges = 1;
+                const cast = t.useSpecialAt(type, x, y);
+                if (!cast.ok) throw Error(`Could not stage ${type}: ${cast.reason}`);
+                t.step(1);
+              }
+              t.step(90);
+            }
             return { wave: s.wave, towers: s.towers.length, enemies: s.enemies.length };
           });
           assert.ok(frame.wave === 7 && frame.towers >= 3 && frame.enemies >= 7, JSON.stringify(frame));
@@ -44,6 +53,27 @@ try {
         await page.screenshot({
           path: `${output}/${map}-${layout}-${shot}.jpg`, scale: 'css', quality: 86,
         });
+      }
+      if (map === 'switchback' && !phone) {
+        const button = await page.evaluate(() => {
+          const t = window.__tarpit as TarpitTestApi;
+          t.state().gold = 1000;
+          t.step(1);
+          const r = t.uiRects()['bar:musketeer'];
+          return t.canvasToPage(r.x + r.width / 2, r.y + r.height / 2);
+        });
+        await page.mouse.click(button.x, button.y);
+        for (const [label, row] of [['valid', 5], ['invalid', 3]] as const) {
+          const point = await page.evaluate(row => (window.__tarpit as TarpitTestApi).cellToPage(3, row), row);
+          await page.mouse.move(point.x, point.y);
+          await page.waitForFunction(row => {
+            const ui = (window.__tarpit as TarpitTestApi).ui();
+            return ui.pick === 'musketeer' && ui.hoverCell?.col === 3 && ui.hoverCell.row === row;
+          }, row);
+          const hasGhostRange = await page.evaluate(() => (window.__tarpit as TarpitTestApi).ui().rangeRadius !== null);
+          assert.equal(hasGhostRange, label === 'valid');
+          await page.screenshot({ path: `${output}/switchback-landscape-${label}.jpg`, quality: 86 });
+        }
       }
     }
     await page.close();

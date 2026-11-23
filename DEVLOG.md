@@ -9257,3 +9257,7 @@ Verdict: fix first, but only for stale words. Nothing in the game or art blocks 
 - New spec `e2e/painted-maps-verifier.spec.ts` pins the cell checks, campaign
   levels 3 and 5 to a win, layout switch mid-wave, frozen and silent test
   mode, Classic default and the 3 or 4 request counts.
+
+### Fixes after verification
+
+Painted is documented for all three maps and the three stale-copy tests now pass normally. A charcoal edge frames the ivory valid cell and a dark X marks a blocked cell. Against grass at (7,5), valid-edge contrast rose from 1.82 to 4.19:1 on Meadow, 1.92 to 3.97:1 on Switchback and 1.78 to 4.29:1 on Riverbend. Across Switchback’s four straight lanes, mean trail-to-grass luma difference rose from 36.84 to 65.68 out of 255, and trail-to-edge from 46.67 to 96.46. The new ground ships at 50,296 / 101,244 bytes (1× / 2×). Tar has a denser fill, fire has a dark rim, and a hit brightens the same painted pose for 80 ms. The refreshed Switchback captures show both zones and both placement states.

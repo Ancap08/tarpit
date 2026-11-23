@@ -7,7 +7,7 @@ for (const mapId of MAP_IDS) {
     const path = MAPS[mapId].path;
     for (const density of [1, 2]) {
       const file = await readFile(`assets/art-painted/packed/${mapId}-${density}x.webp`);
-      const errors = await page.evaluate(async ({ path, density, data }) => {
+      const errors = await page.evaluate(async ({ mapId, path, density, data }) => {
         const image = new Image();
         image.src = 'data:image/webp;base64,' + data;
         await image.decode();
@@ -24,7 +24,17 @@ for (const mapId of MAP_IDS) {
           const k = 4 * (Math.floor(y * density) * board.width + Math.floor(x * density));
           return pixels[k] - pixels[k + 1];
         }
+        function luma(x: number, y: number) {
+          const k = 4 * (Math.floor(y * density) * board.width + Math.floor(x * density));
+          return .2126 * pixels[k] + .7152 * pixels[k + 1] + .0722 * pixels[k + 2];
+        }
         function check(x: number, y: number, nx: number, ny: number) {
+          if (mapId === 'switchback') {
+            const trail = luma(x, y);
+            if (trail - luma(x + 27 * nx, y + 27 * ny) < 40 ||
+                trail - luma(x + 20 * nx, y + 20 * ny) < 75)
+              errors.push(`Low contrast at (${x},${y}) toward (${nx},${ny})`);
+          }
           // The Meadow review samples the 40 px strip at 16 px (earth)
           // and 27 px (grass). Compare hues to include the timber crossing.
           const verge = warmth(x + 27 * nx, y + 27 * ny);
@@ -47,7 +57,7 @@ for (const mapId of MAP_IDS) {
           }
         }
         return errors;
-      }, { data: file.toString('base64'), path, density });
+      }, { data: file.toString('base64'), mapId, path, density });
       expect(errors, `${density}x trail samples`).toEqual([]);
     }
   });

@@ -37,9 +37,10 @@ cloud shadows and the odd bird or butterfly, all still under reduced motion.
    The title’s **Look** switch starts on **Classic**. Choose **Painted** to
    see the miniature art on any map in Free play or the campaign.
    The game remembers your choice.
-2. **Build.** Drag a tower from the build bar under the map onto a green
-   cell: a ghost shows the tower and its range, and red means it cannot go
-   there. You can also click a tower on the bar and then click cells; the
+2. **Build.** Drag a tower from the build bar under the map onto an open
+   cell. A ghost shows the tower and its range. In Painted, an ivory frame
+   marks an open cell and a crossed frame marks a blocked one. In Classic,
+   green marks an open cell and red marks a blocked one. You can also click a tower on the bar and then click cells; the
    pick stays until you click the button again, press Escape, click a
    tower, or can no longer afford it. The six
    towers: Musketeer (single target), Cannon (splash), Tar Pit (slows),
