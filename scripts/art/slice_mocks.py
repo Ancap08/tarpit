@@ -8,10 +8,11 @@ import sys
 from functools import lru_cache
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont, ImageChops
+from PIL import Image, ImageDraw, ImageChops
 
 sys.dont_write_bytecode = True
-from build_slice import ROUTE
+from build_slice import ROUTE, SCRATCH
+from review_fonts import review_font
 from slice_sheets import BEARINGS, ENEMIES, PROJECTILES, SCENERY, TOWERS
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -273,8 +274,7 @@ def board(load, cell, active, portrait=False):
     if not portrait:
         legends = Image.new("RGBA", page.size)
         pen = ImageDraw.Draw(legends)
-        face = ImageFont.truetype("/System/Library/Fonts/Supplemental/Courier New Bold.ttf",
-                                  round(12*map_ratio))
+        face = review_font("mono-bold", round(12*map_ratio))
         for (_, (x, y), _), name in zip(BATTERY, SHORT_NAMES):
             cx, cy = x*map_ratio, (y+30)*map_ratio
             w = round((pen.textlength(name, font=face)+6*map_ratio)/2)
@@ -285,16 +285,8 @@ def board(load, cell, active, portrait=False):
     return page
 
 
-@lru_cache(maxsize=None)
-def font(size):
-    path = Path("/System/Library/Fonts/Supplemental/Arial.ttf")
-    if path.exists():
-        return ImageFont.truetype(str(path), size)
-    return ImageFont.load_default(size=size)
-
-
 def label(draw, xy, message, size, fill=INK, anchor=None):
-    draw.text(xy, message, font=font(size), fill=fill, anchor=anchor)
+    draw.text(xy, message, font=review_font("sans", size), fill=fill, anchor=anchor)
 
 
 def display_frame(ground, density, portrait, active):
@@ -462,6 +454,7 @@ def save(frame, path):
 
 def main():
     OUTPUT.mkdir(parents=True, exist_ok=True)
+    SCRATCH.mkdir(parents=True, exist_ok=True)
 
     @lru_cache(maxsize=None)
     def load(kind, density):
@@ -473,14 +466,14 @@ def main():
             if density == 2:
                 with Image.open(ASSETS / "meadow-2x.png") as ground:
                     view = indexed_map(view, ground)
-            save(view, OUTPUT / f"meadow-{state}-map-{density}x.png")
+            save(view, SCRATCH / f"meadow-{state}-map-{density}x.png")
             frame = display_frame(view, density, False, active)
-            save(frame, OUTPUT / f"meadow-{state}-{density}x.png")
+            save(frame, SCRATCH / f"meadow-{state}-{density}x.png")
             if active and density == 1:
                 save(comparison(BASELINE, frame), OUTPUT / "meadow-comparison.png")
         portrait = board(load, CELL*2, active, portrait=True)
         frame = display_frame(portrait, 1, True, active)
-        save(frame, OUTPUT / f"meadow-{state}-phone.png")
+        save(frame, SCRATCH / f"meadow-{state}-phone.png")
         if active:
             save(comparison(PHONE, frame), OUTPUT / "meadow-comparison-phone.png")
 

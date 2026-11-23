@@ -12,12 +12,13 @@ from mathutils import Vector
 sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+from art_paths import SCRATCH_ROOT
 import meadow
 from cannon import build_cannon
 from goblin import build_goblin
 
-SCRATCH = Path("/private/tmp/tarpit-art-scratch")
-OUT = HERE.parents[1] / "docs/art/spike-v5"
+SCRATCH = SCRATCH_ROOT
+OUT = SCRATCH / "spike-v5"
 
 
 def linear(channel):
@@ -200,9 +201,8 @@ def main():
     p.add_argument("--engine",choices=["CYCLES","BLENDER_EEVEE_NEXT"])
     p.add_argument("--density",type=int,default=64)
     args=p.parse_args(sys.argv[sys.argv.index("--")+1:])
-    SCRATCH.mkdir(exist_ok=True)
+    SCRATCH.mkdir(parents=True, exist_ok=True)
     (SCRATCH/"frames").mkdir(exist_ok=True)
-    OUT.mkdir(exist_ok=True,parents=True)
     sprite=args.task in ("sprites","cost")
     if args.engine is None:
         args.engine="BLENDER_EEVEE_NEXT" if sprite else "CYCLES"
@@ -220,6 +220,7 @@ def main():
             scene.camera.data.dof.use_dof=args.look=="clay"
             scene.camera.data.dof.focus_distance=15
             scene.camera.data.dof.aperture_fstop=6.3
+            OUT.mkdir(parents=True, exist_ok=True)
             render(scene,OUT/f"{args.look}-detail.png",800,426,f"{args.look}-detail")
             return
         for angle,tag in [(65,"tilt"),(90,"top")]:

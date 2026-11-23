@@ -1,7 +1,7 @@
 """Pack RGBA sprite frames and lay out the Tarpit art comparison.
 
-Run with the Mac's existing Python 3 and Pillow, or use Blender's --python
-entry point to forward to that Python. Rendered inputs stay under /private/tmp.
+Run with Python 3 and Pillow, or use Blender's --python entry point to
+forward to the host Python. Rendered inputs stay in the art scratch folder.
 """
 
 import argparse
@@ -10,12 +10,14 @@ import subprocess
 import sys
 from tempfile import TemporaryDirectory
 
+# Blender's -P entry point does not add the script's folder to sys.path.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from art_paths import FFMPEG, SCRATCH_ROOT
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRATCH = Path("/private/tmp/tarpit-art-scratch")
+SCRATCH = SCRATCH_ROOT
+PLATES = SCRATCH / "spike-v5"
 BASELINE = ROOT / "e2e/__screenshots__/visual.spec.ts/new-towers.png"
-FFMPEG = "/opt/homebrew/bin/ffmpeg"
-FONT_ROOT = Path("/System/Library/Fonts/Supplemental")
 CROP_SIZE = (640, 448)
 FRAME_SIZE = (64, 64)
 PHONE_SIZE = (200, 140)
@@ -76,7 +78,7 @@ def pack_sprites(Image, args):
                     sheets[size].paste(cell, (col_index * size, row_index * size))
                     bounds[size].append((bbox[2] - bbox[0], bbox[3] - bbox[1]))
 
-        for size, path in ((64, args.output / f"{name}-2x.png"), (32, args.scratch / f"{name}-1x.png")):
+        for size, path in ((64, PLATES / f"{name}-2x.png"), (32, args.scratch / f"{name}-1x.png")):
             sheet = sheets[size]
             sheet.save(path, optimize=True)
             widths, heights = zip(*bounds[size])
@@ -108,7 +110,9 @@ def composite_panels(page, panels, output, scratch):
         subprocess.run(command, check=True)
 
 
-def comparison(Image, ImageDraw, ImageFont, args):
+def comparison(Image, ImageDraw, args):
+    from review_fonts import review_font
+
     current = open_image(Image, BASELINE, mode="RGB").crop((0, 64, 320, 288))
     all_views = [
         current.resize(CROP_SIZE, Image.Resampling.NEAREST),
@@ -131,11 +135,11 @@ def comparison(Image, ImageDraw, ImageFont, args):
     page = Image.new("RGB", (width, height), paper)
     panels = []
     draw = ImageDraw.Draw(page)
-    title = ImageFont.truetype(str(FONT_ROOT / "Georgia.ttf"), 75)
-    heading = ImageFont.truetype(str(FONT_ROOT / "Georgia Bold.ttf"), 38)
-    caption = ImageFont.truetype(str(FONT_ROOT / "Arial.ttf"), 23)
-    label = ImageFont.truetype("/System/Library/Fonts/Menlo.ttc", 20)
-    bold = ImageFont.truetype(str(FONT_ROOT / "Arial Bold.ttf"), 22)
+    title = review_font("serif", 75)
+    heading = review_font("serif-bold", 38)
+    caption = review_font("sans", 23)
+    label = review_font("mono", 20)
+    bold = review_font("sans-bold", 22)
 
     def text(x, y, message, font, fill=ink, anchor="lt"):
         draw.text((x, y), message, font=font, fill=fill, anchor=anchor)
@@ -178,7 +182,7 @@ def comparison(Image, ImageDraw, ImageFont, args):
             (345, "cannon-turn", "Cannon turn", "Clockwise from north"),
         ):
             y = alternate_top + offset
-            sheet = open_image(Image, args.output / f"{name}-2x.png")
+            sheet = open_image(Image, PLATES / f"{name}-2x.png")
             strip = sheet.crop((0, 64, 256, 128)) if name == "goblin-walk" else sheet
             sprite_base = Image.new("RGBA", strip.size, "#d7d1be")
             sprite_base.alpha_composite(strip)
@@ -188,18 +192,26 @@ def comparison(Image, ImageDraw, ImageFont, args):
 
     path = args.output / "comparison.png"
     composite_panels(page, panels, path, args.scratch)
+    with Image.open(path) as source:
+        art = source.convert("RGB")
+    text_palette = page.quantize(64).getpalette()[:64 * 3]
+    art_palette = art.quantize(192).getpalette()[:192 * 3]
+    palette = Image.new("P", (1, 1))
+    palette.putpalette(text_palette + art_palette)
+    art.quantize(palette=palette, dither=Image.Dither.NONE).save(path, optimize=True)
     print(f"{path}: {width}×{height}, {path.stat().st_size:,} bytes")
 
 
 def main():
-    from PIL import Image, ImageDraw, ImageFont
+    from PIL import Image, ImageDraw
 
     args = parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     args.scratch.mkdir(parents=True, exist_ok=True)
+    PLATES.mkdir(parents=True, exist_ok=True)
     pack_sprites(Image, args)
     if not args.sprites_only:
-        comparison(Image, ImageDraw, ImageFont, args)
+        comparison(Image, ImageDraw, args)
 
 
 if __name__ == "__main__":

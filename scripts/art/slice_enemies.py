@@ -103,11 +103,11 @@ def wolf(phase):
 
 
 def harpy(phase):
-    plum, russet, coral, cream = "#3E204D", "#A32760", "#EB6089", "#FFF1B7"
+    plum, russet, coral, cream = "#492343", "#A73263", "#F07191", "#FFF1B7"
     bob = (.010, .046, .012, .029)[phase]
     root_height = .60 + bob
-    pebble("Wine-red feathered body", (0, -.043, root_height), (.166, .212, .136), plum)
-    pebble("Coral breast", (0, .055, root_height + .047), (.125, .125, .106), coral)
+    pebble("Wine-red feathered body", (0, -.035, root_height), (.181, .228, .144), plum)
+    pebble("Pale throat and breast", (0, .084, root_height + .078), (.114, .157, .096), cream)
     for side in (-1, 1):
         lift = (0, .081, .018, .049)[phase] + side * .009
         ankle = (side * .078, -.047, .418 + lift)
@@ -116,31 +116,31 @@ def harpy(phase):
         for offset in (-.028, .028):
             taper("Hooked talon", ankle, (ankle[0] + offset, .056, ankle[2] - .036),
                   .021, .007, cream, 8)
-        shoulder = (side * .096, .021, root_height + .052)
-        flap = (.065, .255, -.064, .133)[phase]
-        span = (.252, .220, .240, .242)[phase]
-        wrist = (side * span, -.027, root_height + .06 + flap * .46)
-        tip = (side * (span + .131), -.213, root_height + .048 + flap)
-        limb("Wing shoulder", shoulder, wrist, .066, .064, russet)
-        limb("Wing leading edge", wrist, tip, .049, .045, russet)
+        shoulder = (side * .093, .010, root_height + .064)
+        flap = (.022, .234, -.121, .106)[phase]
+        span = (.331, .277, .323, .310)[phase]
+        wrist = (side * span, .030, root_height + .074 + flap * .58)
+        limb("Broad wing shoulder", shoulder, wrist, .111, .084, russet)
+        # Primaries form a stepped edge with much less sweep than the old swept V.
         for i in range(5):
-            base = Vector(shoulder).lerp(Vector(tip), .31 + i * .155)
-            end = (base.x + side * (.125 - i * .009),
-                   base.y - (.225 - i * .017), base.z + flap * .15 - .022)
-            limb("Vermilion flight feather", base, end, .055, .034, plum if i == 4 else russet)
-            limb("Painted feather shaft", (base.x, base.y, base.z + .018),
-                 Vector(end).lerp(base, .25) + Vector((0, 0, .020)), .019, .009,
-                 plum if i == 4 else coral)
+            base = Vector(shoulder).lerp(Vector(wrist), .13 + i * .21)
+            end = (base.x + side * (.028 + i * .020),
+                   base.y - (.222 - i * .027),
+                   base.z + flap * (.08 + i * .08) - .032)
+            limb("Plum-edged flight feather", base, end, .062, .030, plum)
+            limb("Painted flight feather", base + Vector((0, 0, .025)),
+                 Vector(end).lerp(base, .21) + Vector((0, 0, .024)),
+                 .047, .020, russet if i % 2 else coral)
     for x in (-.056, 0, .056):
         limb("Split plum tail", (x * .4, -.131, root_height),
              (x, -.311 - (.028 if x == 0 else 0), root_height - .035), .037, .025, plum)
-    pebble("Harpy head", (0, .070, root_height + .165), (.123, .118, .103), coral)
-    pebble("Gold hooked beak", (0, .162, root_height + .162), (.056, .096, .050), GOLD)
+    pebble("Harpy head", (0, .107, root_height + .178), (.126, .123, .106), coral)
+    pebble("Gold hooked beak", (0, .207, root_height + .168), (.071, .111, .057), GOLD)
     for side in (-1, 1):
         taper("Crest feather", (side * .039, .047, root_height + .208),
               (side * .097, -.044, root_height + .328), .047, .004, plum)
-        pebble("Bright eye mask", (side * .052, .133, root_height + .217), (.037, .033, .027), cream)
-        pebble("Black eye", (side * .052, .156, root_height + .224), (.016, .018, .015), INK)
+        pebble("Bright eye mask", (side * .052, .181, root_height + .229), (.040, .035, .028), cream)
+        pebble("Black eye", (side * .052, .204, root_height + .233), (.018, .019, .016), INK)
 
 
 def shieldbearer(phase):
@@ -180,7 +180,7 @@ def shieldbearer(phase):
 
 def troll(phase, rank=0):
     skin, stone, shadow, cloth = (
-        ("#6E9A45", "#B9D177", "#31491F", "#7B4532"),
+        ("#A5353C", "#DC756A", "#54232C", "#5B3A38"),
         ("#DB693B", "#FFC869", "#702F3B", "#68304A"),
         ("#817493", "#BAB1CB", "#594468", "#AE3E56"),
     )[rank]
@@ -190,8 +190,8 @@ def troll(phase, rank=0):
     pebble("Wide shoulder ridge", (roll, -.029, .601 + bob), (.300, .162, .134), skin)
     if rank == 0:
         pebble("Dark stone backplate", (roll, -.144, .654 + bob), (.202, .139, .083), shadow)
-        pebble("Moss on backplate", (roll + .024, -.140, .720 + bob),
-               (.115, .086, .025), stone)
+        pebble("Pale slate backplate", (roll + .024, -.140, .720 + bob),
+               (.115, .086, .025), "#C7B4A5")
     elif rank == 1:
         pebble("Wine-red mantle", (roll, -.136, .635 + bob), (.261, .177, .124), cloth)
     pebble("Painted knee-length hide apron", (0, -.003, .335 + bob), (.215, .157, .101), cloth)

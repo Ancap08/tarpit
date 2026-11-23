@@ -139,34 +139,7 @@ the checker looks for it.
 | `assets/art-painted/wolf-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
 | `assets/art-painted/wolf-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
 | `assets/art-painted/wolf-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
-| `docs/art/slice-meadow/camera-study.png` | `scripts/art/build_slice.py` | Tarpit agents | MIT | Painted Meadow review |
-| `docs/art/slice-meadow/meadow-before-1x.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review with HUD from the tracked game capture. |
-| `docs/art/slice-meadow/meadow-before-2x.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review with HUD from the tracked game capture. |
-| `docs/art/slice-meadow/meadow-before-map-1x.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review |
-| `docs/art/slice-meadow/meadow-before-map-2x.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review |
-| `docs/art/slice-meadow/meadow-before-phone.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review with HUD from the tracked game capture. |
 | `docs/art/slice-meadow/meadow-comparison-phone.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review with tracked game capture. Original Goblin sprite by Pixel-boy and AAA (Ninja Adventure), CC0 1.0. |
 | `docs/art/slice-meadow/meadow-comparison.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review with tracked game capture. Original Goblin sprite by Pixel-boy and AAA (Ninja Adventure), CC0 1.0. |
 | `docs/art/slice-meadow/meadow-contact.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review |
-| `docs/art/slice-meadow/meadow-mid-wave-1x.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review with HUD from the tracked game capture. |
-| `docs/art/slice-meadow/meadow-mid-wave-2x.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review with HUD from the tracked game capture. |
-| `docs/art/slice-meadow/meadow-mid-wave-map-1x.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review |
-| `docs/art/slice-meadow/meadow-mid-wave-map-2x.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review |
-| `docs/art/slice-meadow/meadow-mid-wave-phone.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review with HUD from the tracked game capture. |
-| `docs/art/spike-v5/cannon-turn-2x.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
-| `docs/art/spike-v5/clay-detail.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
-| `docs/art/spike-v5/clay-tilt-20.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
-| `docs/art/spike-v5/clay-tilt-32.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
-| `docs/art/spike-v5/clay-tilt-64.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
-| `docs/art/spike-v5/clay-top-20.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
-| `docs/art/spike-v5/clay-top-32.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
-| `docs/art/spike-v5/clay-top-64.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
 | `docs/art/spike-v5/comparison.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study with tracked game capture. Original game sprites by Pixel-boy and AAA (Ninja Adventure), CC0 1.0. |
-| `docs/art/spike-v5/goblin-walk-2x.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
-| `docs/art/spike-v5/painted-detail.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
-| `docs/art/spike-v5/painted-tilt-20.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
-| `docs/art/spike-v5/painted-tilt-32.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
-| `docs/art/spike-v5/painted-tilt-64.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
-| `docs/art/spike-v5/painted-top-20.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
-| `docs/art/spike-v5/painted-top-32.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |
-| `docs/art/spike-v5/painted-top-64.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study |

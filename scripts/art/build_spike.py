@@ -9,26 +9,28 @@ from pathlib import Path
 
 from PIL import Image
 
+from art_paths import BLENDER, SCRATCH_ROOT
+
 ROOT = Path(__file__).resolve().parents[2]
 ART = ROOT / "docs/art/spike-v5"
 SCRIPTS = ROOT / "scripts/art"
-SCRATCH = Path("/private/tmp/tarpit-art-scratch")
-BLENDER = "/Applications/Blender.app/Contents/MacOS/Blender"
+SCRATCH = SCRATCH_ROOT
+PLATES = SCRATCH / "spike-v5"
 
 
 def project_views():
     for look in ("clay", "painted"):
         for camera in ("tilt", "top"):
             source = SCRATCH / f"{look}-{camera}-64.png"
-            shutil.copyfile(source, ART / source.name)
+            shutil.copyfile(source, PLATES / source.name)
             with Image.open(source) as board:
                 board.resize((384,272),Image.Resampling.LANCZOS).save(
-                    ART / f"{look}-{camera}-32.png", optimize=True)
+                    PLATES / f"{look}-{camera}-32.png", optimize=True)
                 crop = board.crop((64,48,704,496))
                 suffix = "-alt" if camera=="top" else ""
                 crop.save(SCRATCH / f"cmp-{look}{suffix}.png")
                 crop.resize((200,140),Image.Resampling.LANCZOS).save(
-                    ART / f"{look}-{camera}-20.png", optimize=True)
+                    PLATES / f"{look}-{camera}-20.png", optimize=True)
 
 
 def compressed_bytes(image):
@@ -42,7 +44,7 @@ def estimate():
     # Opaque backgrounds in the stamp proxies make this a planning allowance.
     with Image.open(SCRATCH/"cmp-painted-alt.png") as board:
         for size in (32,64):
-            tree = ART if size==64 else SCRATCH/"sheets"
+            tree = PLATES if size==64 else SCRATCH/"sheets"
             density = "2x" if size==64 else "1x"
             cannon = (tree/f"cannon-turn-{density}.png").stat().st_size
             goblin = (tree/f"goblin-walk-{density}.png").stat().st_size
@@ -65,7 +67,7 @@ def main():
     parser.add_argument("--pack-only", action="store_true", help="reuse the scratch renders")
     args=parser.parse_args()
     ART.mkdir(parents=True,exist_ok=True)
-    SCRATCH.mkdir(exist_ok=True)
+    PLATES.mkdir(parents=True, exist_ok=True)
     if not args.pack_only:
         for look in ("clay","painted"):
             for task in ("board","detail","sprites"):

@@ -1,4 +1,4 @@
-"""Rebuild the painted Meadow slice. Run with the Mac's installed Python/Pillow."""
+"""Rebuild the painted Meadow slice with Blender and the host Python/Pillow."""
 
 import json
 import subprocess
@@ -6,12 +6,12 @@ import sys
 import time
 from pathlib import Path
 
+from art_paths import BLENDER, SCRATCH_ROOT
+
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 OUT = ROOT / "assets/art-painted"
-REVIEW = ROOT / "docs/art/slice-meadow"
-SCRATCH = Path("/private/tmp/tarpit-art-scratch/slice")
-BLENDER = "/Applications/Blender.app/Contents/MacOS/Blender"
+SCRATCH = SCRATCH_ROOT / "slice"
 ROUTE = [(0,240), (160,240), (160,96), (420,96), (420,384),
          (680,384), (680,192), (960,192)]
 STUDY = [
@@ -39,13 +39,13 @@ def pack_ground():
 
 
 def proof():
-    from PIL import Image, ImageDraw, ImageFont
-    REVIEW.mkdir(parents=True, exist_ok=True)
+    from PIL import Image, ImageDraw
+    from review_fonts import review_font
     with Image.open(OUT/"meadow-1x.png") as source:
         patch = source.crop((32,48,320,272)).convert("RGBA")
     page = Image.new("RGB", (928,274), "#eae4d5")
     pen = ImageDraw.Draw(page)
-    font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf",16)
+    font = review_font("sans-bold", 16)
     for x,angle,label in [(16,90,"90°  /  overhead"), (320,65,"65°  /  enemies and scenery"),
                           (624,48,"48°  /  towers")]:
         pen.text((x,12),label,font=font,fill="#282a23")
@@ -55,7 +55,7 @@ def proof():
                 small = sprite.resize((96,96), Image.Resampling.BOX)
                 sample.alpha_composite(small, (px-32-48,py-48-48))
         page.paste(sample,(x,38))
-    page.quantize(192, dither=Image.Dither.NONE).save(REVIEW/"camera-study.png", optimize=True)
+    page.quantize(192, dither=Image.Dither.NONE).save(SCRATCH/"camera-study.png", optimize=True)
 
 
 def run_stage(name, command):

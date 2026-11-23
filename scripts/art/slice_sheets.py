@@ -13,8 +13,12 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(HERE))
+from art_paths import SCRATCH_ROOT
+
 OUT = HERE.parents[1] / "assets/art-painted"
-SCRATCH = Path("/private/tmp/tarpit-art-scratch/slice-frames")
+SCRATCH = SCRATCH_ROOT / "slice-frames"
 TOWER_ELEVATION = 48
 ELEVATION = 65
 TILT = math.radians(90 - ELEVATION)
@@ -408,8 +412,6 @@ def main(args):
         for kind in kinds:
             pack(kind)
         return
-    sys.dont_write_bytecode = True
-    sys.path.insert(0, str(HERE))
     for kind in kinds:
         render_cells(kind)
         subprocess.run(["python3", str(Path(__file__).resolve()), "--pack-only", kind], check=True)
