@@ -49,9 +49,9 @@ describe('P3: the two branches favor different encounters', () => {
     // Both land three impacts and burn for 149 ticks; Inferno does 17 burn damage/s, Lasting Flames does 8.
     expect(result.lone[0]).toBeCloseTo(12 + 149 * 17 / 60);
     expect(result.lone[1]).toBeCloseTo(12 + 149 * 8 / 60);
-    // Both firing windows are narrower than 60 px. Goblins spaced 90 px apart take one hit each.
-    // Inferno leaves 23-4-17=2 HP. Lasting Flames has 8 s to deal the remaining 19 HP.
-    expect(result.pack).toEqual([0, 10]);
+    // The expanded Inferno range catches five passing Goblins for long enough
+    // to finish them. Lasting Flames burns down all ten after they leave range.
+    expect(result.pack).toEqual([5, 10]);
     expect(result.ok).toBe(true);
   });
 });

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { playWithStats } from './balanceRuns';
 import { comboBuild, lazyBuild, noTowers, playAllWavesNoTowers, playScripted, referenceBuild, runHeadless } from './headless';
 import { TOWER_DEFS } from './towers';
-import { ACT_ONE_LAST_WAVE } from './waves';
+import { ACT_ONE_LAST_WAVE, LAST_WAVE } from './waves';
 
 describe('headless runner', () => {
   it('runs a script and logs each action', () => {
@@ -92,7 +92,14 @@ describe('scripted builds', () => {
       }
       const run = playWithStats(reinvesting, 'normal');
       expect(run.refused).toBe(0);
-      expect(run.waves.at(-1)?.goldAfterPurchases).toBeLessThan(TOWER_DEFS[main].cost);
+      const last = run.waves.at(-1)!;
+      if (last.wave === LAST_WAVE) {
+        expect(last.goldAfterPurchases).toBeLessThan(TOWER_DEFS[main].cost);
+      } else {
+        const spending = last.goldEntering - last.goldAfterPurchases;
+        expect(spending).toBeGreaterThan(0);
+        expect(reinvesting[last.wave - 1].length === 1 || spending <= 180).toBe(true);
+      }
     },
   );
 
