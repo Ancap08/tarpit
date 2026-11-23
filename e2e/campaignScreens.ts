@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { TitleUiState } from '../src/game/TitleScene';
 import type { TarpitTestApi } from '../src/game/testGlobal';
-import { CAMPAIGN_TEXT, TITLE_TEXT } from '../src/game/names';
+import { CAMPAIGN_TEXT, levelTips, TITLE_TEXT } from '../src/game/names';
 import { api, press } from './campaign';
 import { paintedAsset, settle } from './painted';
 import { useTallFontMetrics } from './campaignFont';
@@ -109,11 +109,23 @@ export function campaignScreenSuite(touch: boolean) {
         await press(page, `title:stop:${id}`, touch);
         await onScreen(page, 'levelCard');
         await checkSpacing(page);
+        const play = await api(page, t => t.uiRects()['title:play']);
         await press(page, 'title:play', touch);
         await onScreen(page, 'levelTips');
+        const gotIt = await api(page, t => t.uiRects()['title:gotIt']);
+        expect(Math.max(play.x - gotIt.x - gotIt.width, gotIt.x - play.x - play.width,
+          play.y - gotIt.y - gotIt.height, gotIt.y - play.y - play.height), 'Got it clears Play').toBeGreaterThanOrEqual(0);
+        expect(await api(page, t => t.campaignLabels().map(label => label.text))).toEqual(expect.arrayContaining([...levelTips(id, touch)]));
         await checkSpacing(page);
+        // Tablet and phone cover both touch layouts. Turn the desktop viewport for mouse wording.
+        if (!touch) {
+          await rotate(page, 'levelTips');
+          await checkSpacing(page);
+          expect(await api(page, t => t.campaignLabels().map(label => label.text))).toEqual(expect.arrayContaining([...levelTips(id, touch)]));
+        }
         await page.keyboard.press('Escape');
         await onScreen(page, 'levelCard');
+        if (!touch) await rotate(page, 'levelCard');
         await press(page, 'title:back', touch);
         await onScreen(page, 'levelMap');
       }

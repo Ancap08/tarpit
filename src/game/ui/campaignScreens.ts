@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import { MAPS, type LevelDef } from '../../sim';
 import { drawMapThumbnail } from '../draw/map';
-import { CAMPAIGN_TEXT, LEVEL_NAMES, LEVEL_NEW, LEVEL_TIPS, tipsHeading, MAP_NAMES, TITLE_TEXT, levelNumberText } from '../names';
+import { CAMPAIGN_TEXT, LEVEL_NAMES, LEVEL_NEW, levelTips, tipsHeading, MAP_NAMES, TITLE_TEXT, levelNumberText } from '../names';
 import { COLORS, FONT, TEXT } from '../palette';
 import type { Rect } from '../input';
 import type { CampaignStop } from './campaignMap';
@@ -121,15 +121,20 @@ export function drawLevelCard(
   return playButton;
 }
 
-export function drawLevelTips(scene: Phaser.Scene, portrait: boolean, level: LevelDef, action: Action, accept: () => void): Button {
+export function drawLevelTips(
+  scene: Phaser.Scene, portrait: boolean, level: LevelDef, touch: boolean,
+  action: Action, accept: () => void, back?: () => void,
+): Button {
   const cx = scene.scale.width / 2;
   const panel = portrait ? { x: 18, y: 148, width: 444, height: 852 } : { x: 72, y: 42, width: 816, height: 486 };
   const g = scene.add.graphics();
   g.fillStyle(COLORS.endPanel).fillRoundedRect(panel.x, panel.y, panel.width, panel.height, 18);
   g.lineStyle(2, COLORS.endPanelEdge).strokeRoundedRect(panel.x, panel.y, panel.width, panel.height, 18);
   const heading = label(scene, cx, panel.y + (portrait ? 83 : 60), tipsHeading(level.id), portrait ? 40 : 36, TEXT.title);
-  const lines = LEVEL_TIPS[level.id].map(line => label(scene, cx, 0, line, portrait ? 28 : 26, TEXT.button, panel.width - 52));
-  const rect = portrait ? { x: cx - 115, y: 872, width: 230, height: 78 } : { x: cx - 100, y: 432, width: 200, height: 58 };
+  const lines = levelTips(level.id, touch).map(line => label(scene, cx, 0, line, portrait ? 28 : 26, TEXT.button, panel.width - 52));
+  const width = portrait ? 180 : 200;
+  const rect = { x: back ? cx + 8 : cx - width / 2, y: portrait ? 804 : 402, width, height: portrait ? 78 : 58 };
+  if (back) action('title:back', { ...rect, x: cx - width - 8 }, CAMPAIGN_TEXT.back, back);
   const top = heading.y + heading.height / 2;
   const gap = (rect.y - top - lines.reduce((height, line) => height + line.height, 0)) / (lines.length + 1);
   let y = top;

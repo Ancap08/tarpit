@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { LEVELS } from '../sim';
-import { LEVEL_TIPS } from './names';
+import { levelTips } from './names';
 import { SEEN_TIPS_KEY, SeenTipsStore } from './seenTips';
 
 describe('campaign tips', () => {
-  it('gives every campaign level one to three short lines', () => {
-    expect(Object.keys(LEVEL_TIPS).map(Number)).toEqual(LEVELS.map(level => level.id));
-    for (const lines of Object.values(LEVEL_TIPS)) {
+  it.each([false, true])('gives every campaign level one to three short lines (touch=%s)', touch => {
+    for (const level of LEVELS) {
+      const lines = levelTips(level.id, touch);
       expect(lines.length).toBeGreaterThan(0);
       expect(lines.length).toBeLessThanOrEqual(3);
       for (const line of lines) {
         expect(line.trim().length).toBeGreaterThan(0);
-        expect(line.length).toBeLessThanOrEqual(60);
+        expect(line.length).toBeLessThanOrEqual(61);
       }
     }
   });

@@ -399,15 +399,22 @@ export const starSlots = (stars: number): string => '★'.repeat(stars) + '☆'.
 
 export const tipsHeading = (id: number): string => `Level ${id} tips`;
 
-export const LEVEL_TIPS: Readonly<Record<number, readonly string[]>> = {
-  1: ['Pick a tower. Click a green square by the trail (tap twice).', 'Press Start Wave to let the Goblins in.', 'Tap Special, then tap the trail to hit a pack.'],
-  2: ['Build a Cannon beside a bend.', 'Each blast hits Goblins that stand close together.'],
-  3: ['Put a Tar Pit beside the trail to slow fast Wolves.', 'Build towers nearby to hit them as they slow down.'],
-  4: ['Slow the Shieldbearers with a Tar Pit.', 'Put a Fire Pot nearby. Tar makes the fire burn harder.'],
-  5: ['Harpies fly over walls. Longbows and Musketeers hit them.', 'Fire Pots can hit Harpies, but the fire won’t stick.', 'Drop a Tar Barrel on a crowd to slow it down.'],
-  6: ['A Mortar shoots far but takes time between shots.', 'Use it against slow Trolls. Keep bows for the Harpies.'],
-  7: ['Tap Special and choose Barricade.', 'Tap the trail ahead of a pack, near your towers.', 'The wall holds walkers still while your towers fire.'],
-  8: ['Send Guards ahead of a pack of Shieldbearers.', 'Place them on the trail where your towers can help.', 'Drop Fire Arrows on a crowd to burn it.'],
-  9: ['Tap a tower you have upgraded once.', 'Choose one of its two upgrades before Grumblefoot comes.'],
-  10: ['Grumblemaw calls Wolves. Save a Powder Keg for the pack.', 'Slow Grumblemaw with tar, then hit him with fire.'],
-};
+function campaignTips(touch: boolean): Readonly<Record<number, readonly string[]>> {
+  const action = touch ? 'Tap' : 'Click';
+  return {
+    1: [touch ? 'Tap a tower, then tap a square by the trail twice.' : 'Click a tower, then click a square by the trail.', 'Press Start Wave to let the Goblins in.', `${action} Special, then ${action.toLowerCase()} the trail to hit a pack.`],
+    2: ['Build a Cannon beside a bend.', 'Each blast hits Goblins that stand close together.'],
+    3: ['Put a Tar Pit beside the trail to slow fast Wolves.', 'Build towers nearby to hit them as they slow down.'],
+    4: ['Slow the Shieldbearers with a Tar Pit.', 'Put a Fire Pot nearby. Tar makes the fire burn harder.'],
+    5: ['Harpies fly over the trail. Longbows and Musketeers hit them.', 'Fire Pots can hit Harpies, but the fire won’t stick.', 'Drop a Tar Barrel on a crowd to slow it down.'],
+    6: ['A Mortar shoots far but takes time between shots.', 'Use it against slow Trolls. Keep bows for the Harpies.', 'It cannot hit enemies right beside it.'],
+    7: [`${action} Special and choose Barricade.`, `${action} the trail ahead of a pack, near your towers.`, 'The wall holds walkers still while your towers fire.'],
+    8: ['Send Guards ahead of a pack of Shieldbearers.', 'Place them on the trail where your towers can help.', 'Drop Fire Arrows on a crowd to burn it.'],
+    9: [`${action} a tower you have upgraded once.`, 'Choose one of its two upgrades before Grumblefoot comes.'],
+    10: ['Grumblemaw calls Wolves. Save a Powder Keg for the pack.', 'Slow Grumblemaw with tar, then hit him with fire.'],
+  };
+}
+
+const mouseTips = campaignTips(false);
+const touchTips = campaignTips(true);
+export const levelTips = (id: number, touch: boolean): readonly string[] => (touch ? touchTips : mouseTips)[id];

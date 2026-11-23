@@ -9203,3 +9203,11 @@ At 1.5× font metrics the old landscape wave counter overlapped the level tag by
 - Not a defect, worth knowing: the first-visit panel has no Back on touch
   (Escape only); a progress file written as version 2 reads as empty in a build
   from before this change.
+
+### Fixes after verification
+
+The first-visit panel keeps Got it clear of Play, waits for pointer release
+and a 400 ms guard, and offers Back without marking the level seen. Tips
+now use mouse or touch wording, describe the Harpies on level 5, and explain
+the Mortar’s minimum range on level 6. Wave hints follow the specials
+available in the current run, including those opened by the cheat.

@@ -1698,20 +1698,26 @@ for earned slots and outlines for empty slots. The first open level without a wi
 Tapping any lock names the first open level still to win. Back returns to
 the first screen. An open stop shows a card with the level name, map,
 twist, new equipment or enemies, and best stars. On the first Play for
-each level, a tips panel shows up to three short instructions. Got it
-starts the level. On later visits Play starts the level directly and Tips
+each level, a tips panel shows up to three short instructions. Action words
+match the input used to open the panel. A mouse builds with one click on
+the square. Touch arms the square with the first tap and builds with the
+second. Panel buttons ignore pointer presses until the opening pointer has
+been released and at least 400 ms have elapsed since opening. Got it sits
+clear of the card’s Play button in both layouts and starts the level. On later visits Play starts the level directly and Tips
 reopens the instructions. Got it on a reopened panel returns to the card.
 Escape returns to the card from either panel. Enter and Space activate
 the selected button. Turning the device keeps the panel and its action.
 Got it marks the level seen under `tarpit.seenTips`. Leaving the first
-panel with Escape keeps it available on the next Play. Free play skips
+panel with Back or Escape keeps it available on the next Play. Free play skips
 this panel. Test mode follows the same rules unless a test calls
 `setTipsEnabled(false)` to skip first-visit tips.
 
 The build bar keeps every tower in its usual slot. Towers unavailable in
 this level appear dimmed with a lock and cannot be selected. The tower
 panel offers upgrades up to the level’s tier limit. At a campaign cap
-below tier three, it shows “Max for this level” beside the kill count. From wave one, the specials menu lists the level’s specials.
+below tier three, it shows “Max for this level” beside the kill count. From wave one, the specials menu lists the level’s specials. Wave unlock
+hints appear only for specials available in that run, including extras
+made available by the gold cheat.
 
 The game shows the level number and counts waves against the level's own
 length. A win shows this run's stars and lives. A gold-cheat win shows

@@ -161,6 +161,8 @@ export class TitleScene extends Phaser.Scene {
   private page: TitleScreen = 'first';
   private card?: LevelDef;
   private replayTips = false;
+  private touchTips = false;
+  private tipsAcceptAt = 0;
   tipsEnabled = true;
   private mapStops: CampaignStop[] = [];
   private lockedMessage: string | null = null;
@@ -285,17 +287,27 @@ export class TitleScene extends Phaser.Scene {
       const start = () => this.startGame({ difficulty: DEFAULT_DIFFICULTY, map: level.map, level });
       const toCard = () => this.visit('levelCard', level.id);
       if (this.page === 'levelTips') {
-        this.playButton = drawLevelTips(this, portrait, level, this.action, () => {
+        // Play activates on pointerup, so the opening press has already ended.
+        // A press that begins during the guard must stay ignored on release.
+        const delay = this.tipsAcceptAt - performance.now();
+        if (delay > 0) {
+          this.input.enabled = false;
+          this.time.delayedCall(delay, () => { this.input.enabled = true; });
+        }
+        this.playButton = drawLevelTips(this, portrait, level, this.touchTips, this.action, () => {
+          if (!this.input.enabled) return;
           if (this.replayTips) return toCard();
           seenTips.mark(level.id);
           start();
-        });
-        this.bindMenuKeys(['gotIt']);
-        this.input.keyboard?.on('keydown-ESC', toCard);
+        }, this.replayTips ? undefined : toCard);
+        this.bindMenuKeys(this.replayTips ? ['gotIt'] : ['back', 'gotIt'], this.replayTips ? 0 : 1);
+        if (this.replayTips) this.input.keyboard?.on('keydown-ESC', toCard);
       } else {
         const seen = seenTips.has(level.id);
         const showTips = (replay: boolean) => {
           this.replayTips = replay;
+          this.touchTips = this.input.activePointer.wasTouch;
+          this.tipsAcceptAt = performance.now() + 400;
           this.visit('levelTips', level.id);
         };
         const review = seen ? () => showTips(true) : undefined;
@@ -510,14 +522,14 @@ export class TitleScene extends Phaser.Scene {
         : { text: line.text, rect: { x: line.x - line.width / 2, y: line.y - line.height / 2, width: line.width, height: line.height } };
     return {
       screen: this.page, stops: this.mapStops, lockedMessage: this.lockedMessage, levelId: this.card?.id ?? null,
-      scene: 'title', difficulty: this.selected, map: this.selectedMap, ready: this.ready,
+      scene: 'title', difficulty: this.selected, map: this.selectedMap, ready: this.isReady,
       look: this.lookStore.get(), loading: this.progress, bestLine,
     };
   }
 
   /** Whether the menu has been drawn and its buttons take clicks. */
   get isReady(): boolean {
-    return this.ready;
+    return this.ready && this.input.enabled;
   }
 
   /**
@@ -527,7 +539,7 @@ export class TitleScene extends Phaser.Scene {
    */
   rects(): Record<string, Rect> {
     const out: Record<string, Rect> = {};
-    if (!this.ready) return out;
+    if (!this.isReady) return out;
     for (const [key, button] of this.campaignButtons) out[key] = button.rect;
     for (const [l, b] of this.levelButtons) out[`title:${l}`] = b.rect;
     for (const [m, b] of this.mapButtons) out[`title:map:${m}`] = b.rect;

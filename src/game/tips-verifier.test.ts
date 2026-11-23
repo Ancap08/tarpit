@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { LEVELS, createGame } from '../sim';
 import { allowedTowers, availableSpecials, maxTowerLevel } from '../sim';
-import { LEVEL_TIPS } from './names';
+import { levelTips } from './names';
 import { campaignResultText } from './ui/endText';
 
 const level = (id: number) => LEVELS.find(l => l.id === id)!;
@@ -43,6 +43,18 @@ describe('milestone 42 tips use only gear the level allows', () => {
     expect(open(9).tier).toBe(3);
     expect(open(10).specials).toContain('keg');
     expect(open(10).towers).toEqual(expect.arrayContaining(['tarpit', 'firepot']));
-    expect(Object.keys(LEVEL_TIPS)).toHaveLength(LEVELS.length);
+  });
+
+  it.each([false, true])('describes the build and special controls for the active pointer (touch=%s)', touch => {
+    const action = touch ? 'Tap' : 'Click';
+    const basics = levelTips(1, touch);
+    expect(basics[0]).toBe(touch ? 'Tap a tower, then tap a square by the trail twice.' : 'Click a tower, then click a square by the trail.');
+    expect(basics[2]).toBe(`${action} Special, then ${action.toLowerCase()} the trail to hit a pack.`);
+    expect(levelTips(7, touch).slice(0, 2)).toEqual([
+      `${action} Special and choose Barricade.`, `${action} the trail ahead of a pack, near your towers.`,
+    ]);
+    expect(levelTips(9, touch)[0]).toBe(`${action} a tower you have upgraded once.`);
+    expect(levelTips(5, touch)[0]).toBe('Harpies fly over the trail. Longbows and Musketeers hit them.');
+    expect(levelTips(6, touch)[2]).toBe('It cannot hit enemies right beside it.');
   });
 });

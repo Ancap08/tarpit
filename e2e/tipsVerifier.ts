@@ -40,7 +40,7 @@ export function tipsVerifierSuite(touch: boolean) {
     else await page.mouse.click(x, y);
   };
 
-  test('placing a tower takes one click with a mouse and two taps on touch (level 1 tip says click, tap twice)', async ({ page }) => {
+  test('placing a tower takes one click with a mouse and two taps on touch', async ({ page }) => {
     await page.goto('/?test=1');
     await waitForFirstScreen(page);
     await api(page, (t) => t.startLevel(1));
@@ -56,9 +56,7 @@ export function tipsVerifierSuite(touch: boolean) {
   });
 
   test('a quick second press on Play in portrait must not skip the first-visit tips', async ({ page }) => {
-    // Pins a defect: in portrait the Got it button sits under the Play button, so a double press
-    // starts the level and marks its tips as seen. Remove test.fail when fixed.
-    test.fail();
+    await page.clock.install();
     await page.goto('/?test=1');
     await waitForFirstScreen(page, { showTips: true });
     await rotateToPortrait(page);
@@ -71,11 +69,33 @@ export function tipsVerifierSuite(touch: boolean) {
       const r = t.uiRects()['title:play'];
       return t.canvasToPage(r.x + r.width / 2, r.y + r.height / 2);
     });
+    // Freeze just before Play so a slow test runner still presses inside the guard.
+    await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 1000));
     await tap(page, play.x, play.y);
-    await page.waitForTimeout(100);
+    await page.clock.runFor(100);
     await tap(page, play.x, play.y);
-    await page.waitForTimeout(500);
+    const accept = await page.evaluate(() => {
+      const t = window.__tarpit as TarpitTestApi;
+      const label = t.campaignLabels().find(label => label.text === 'Got it')!;
+      return t.canvasToPage(label.x + label.width / 2, label.y + label.height / 2);
+    });
+    await page.clock.runFor(200);
+    await page.keyboard.press('Enter');
+    if (touch) {
+      await tap(page, accept.x, accept.y);
+      await page.clock.runFor(200);
+    } else {
+      // A press that starts early must still be ignored when released after the guard.
+      await page.mouse.move(accept.x, accept.y);
+      await page.mouse.down();
+      await page.clock.runFor(200);
+      await page.mouse.up();
+    }
     expect(await api(page, (t) => t.screen())).toBe('levelTips');
+    expect(await stored(page, 'tarpit.seenTips')).toBeNull();
+    await press(page, 'title:back', touch);
+    await page.clock.runFor(50);
+    expect(await api(page, (t) => t.screen())).toBe('levelCard');
     expect(await stored(page, 'tarpit.seenTips')).toBeNull();
   });
 
