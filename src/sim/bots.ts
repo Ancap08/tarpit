@@ -1,14 +1,14 @@
 // Generic headless players. Setup decisions use the same next-wave preview as
 // the HUD. Fight decisions look at enemies already on the map.
 import { barricadePlacement, guardsPlacement } from './blockers';
-import { BOONS, type BoonId } from './boons';
+import { BOONS, boonScale, type BoonId } from './boons';
 import { ENEMY_STATS } from './enemies';
 import { tick } from './game';
 import { buildableCells, cellCenter, cellFromKey, cellKey } from './grid';
 import { applyAction, trailCellOrder, type BuildAction, type HeadlessStepResult, type SpecialAction } from './headless';
 import { pathLength, positionAlongPath } from './map';
-import { BIG_ENEMIES, POLICY_CHECK_TICKS, POLICY_MIN_HITS, policyCandidates, policyChoice } from './specialPolicy';
-import { availableSpecials, type SpecialType } from './specials';
+import { BIG_ENEMIES, POLICY_CHECK_TICKS, POLICY_MIN_HITS, chooseCrowdSpecial, policyCandidates } from './specialPolicy';
+import { availableSpecials, SPECIAL_RECHARGE_TICKS, type SpecialType } from './specials';
 import { TICKS_PER_SECOND } from './time';
 import { TOWER_DEFS, TOWER_PATHS, towerLevel, towerStats } from './towers';
 import type { GameState, MapDef, Point, TowerLevelStats, TowerType, UpgradePath } from './types';
@@ -31,6 +31,7 @@ export interface BotPolicy {
 
 export interface BotRun {
   peakAlive: number;
+  waveOneLives: number;
   state: GameState;
   log: HeadlessStepResult[];
   refused: number;
@@ -110,7 +111,7 @@ function towerPower(type: TowerType, stats: TowerLevelStats, profile: ReturnType
   return { ground: direct * splash, air: air ? direct : 0, burn: stats.burnDps, slow: stats.slow };
 }
 
-function goodPurchase(state: GameState): BuildAction | undefined {
+function goodPurchase(state: GameState, rotate = false): BuildAction | undefined {
   if (state.phase !== 'setup' || state.pendingBoon) return undefined;
   const { cells, samples } = trailGeometry(state.map);
   const budget = state.gold - (state.wave === 0 ? 0 : SETUP_RESERVE);
@@ -136,6 +137,7 @@ function goodPurchase(state: GameState): BuildAction | undefined {
 
   let best: BuildAction | undefined;
   let bestScore = 0;
+  const placements = new Map<TowerType, { score: number; action: BuildAction }[]>();
   const effectiveGround = (ground: number, burn: number, slow: number) =>
     (ground + burn * (slow > 0 ? 2 : 1)) / (1 - slow * 0.65);
   function benefit(type: TowerType, stats: TowerLevelStats, distances: readonly number[], previous?: TowerLevelStats): number {
@@ -180,6 +182,11 @@ function goodPurchase(state: GameState): BuildAction | undefined {
           || (type === 'tarpit' && support)
           || (type === 'firepot' && support && counts.has('tarpit'));
         const score = benefit(type, stats, distances) * (mix ? 2 : 1) / (cost * variety);
+        if (rotate && score > 0) {
+          const choices = placements.get(type) ?? [];
+          choices.push({ score, action: { type: 'build', cell, tower: type } });
+          placements.set(type, choices);
+        }
         if (score > bestScore) {
           bestScore = score;
           best = { type: 'build', cell, tower: type };
@@ -201,6 +208,11 @@ function goodPurchase(state: GameState): BuildAction | undefined {
         best = path ? { type: 'upgrade', cell, path } : { type: 'upgrade', cell };
       }
     }
+  }
+  if (rotate && best?.type === 'build') {
+    const choices = placements.get(best.tower)!;
+    choices.sort((a, b) => b.score - a.score);
+    return choices[state.towers.length % Math.min(3, choices.length)].action;
   }
   return best;
 }
@@ -231,8 +243,12 @@ function goodReward(state: GameState): BoonId | undefined {
 function goodSpecial(state: GameState, lastZone?: SpecialType): SpecialAction | undefined {
   if (state.phase !== 'wave' || state.specialCharges <= 0 || state.lastSpecialTick === state.tick
     || state.waveTick % POLICY_CHECK_TICKS !== 0 || state.enemies.length === 0) return undefined;
+  return chooseSpecial(state, lastZone, policyCandidates(state.map));
+}
+
+function chooseSpecial(state: GameState, lastZone: SpecialType | undefined, points: readonly Point[], minHits = POLICY_MIN_HITS): SpecialAction | undefined {
   const available = availableSpecials(state);
-  const burst = policyChoice(state, lastZone, { allow: available });
+  const burst = chooseCrowdSpecial(state, lastZone, { allow: available, points, minHits });
   let best = burst ? { type: 'special' as const, special: burst.special, x: burst.x, y: burst.y, atWaveTick: state.waveTick } : undefined;
   let bestScore = burst?.hits ?? 0;
   const ground = state.enemies.filter((enemy) => !ENEMY_STATS[enemy.type].flying);
@@ -240,7 +256,7 @@ function goodSpecial(state: GameState, lastZone?: SpecialType): SpecialAction | 
     if (!available.includes(special)) continue;
     const kind = special === 'barricade' ? 'barricade' : 'guard';
     if (state.blockers.some((blocker) => blocker.kind === kind)) continue;
-    for (const point of policyCandidates(state.map)) {
+    for (const point of points) {
       const placement = special === 'barricade' ? barricadePlacement(state.map, point) : guardsPlacement(state.map, point);
       if (!placement.ok) continue;
       const approaching = ground.filter((enemy) => placement.point.distance - enemy.distance >= BLOCK_AHEAD
@@ -264,6 +280,56 @@ function goodSpecial(state: GameState, lastZone?: SpecialType): SpecialAction | 
 
 export const botGood: BotPolicy = { purchase: goodPurchase, reward: goodReward, special: goodSpecial };
 
+export const PERSON_LOOK_TICKS = 3 * TICKS_PER_SECOND;
+export const PERSON_REACTION_TICKS = 1.5 * TICKS_PER_SECOND;
+export const PERSON_AIM_GRID = 48;
+const coarseAims = new WeakMap<MapDef, readonly Point[]>();
+
+function personAims(map: MapDef): readonly Point[] {
+  const cached = coarseAims.get(map);
+  if (cached) return cached;
+  const points = new Map<string, Point>();
+  for (const point of policyCandidates(map)) {
+    const snap = (coordinate: number, limit: number) =>
+      Math.min(Math.floor(coordinate / PERSON_AIM_GRID), Math.floor(limit / PERSON_AIM_GRID) - 1) * PERSON_AIM_GRID + PERSON_AIM_GRID / 2;
+    const x = snap(point.x, map.width);
+    const y = snap(point.y, map.height);
+    points.set(`${x},${y}`, { x, y });
+  }
+  const aims = [...points.values()];
+  coarseAims.set(map, aims);
+  return aims;
+}
+
+function personSpecial(state: GameState, lastZone?: SpecialType): SpecialAction | undefined {
+  if (state.phase !== 'wave' || state.specialCharges <= 0) return undefined;
+  const waveStart = state.tick - state.waveTick;
+  const previousCast = state.lastSpecialTick ?? -Infinity;
+  const recharge = Math.round(boonScale(SPECIAL_RECHARGE_TICKS, state.boons, 'quickHands'));
+  const ready = previousCast >= waveStart ? previousCast + recharge : waveStart;
+  if (state.tick !== ready + PERSON_REACTION_TICKS || (previousCast >= waveStart && state.tick - previousCast < PERSON_LOOK_TICKS)) return undefined;
+  const aims = personAims(state.map);
+  const choice = chooseSpecial(state, lastZone, aims) ?? chooseSpecial(state, lastZone, aims, 1);
+  if (choice) return choice;
+  // The deadline also applies to an empty trail or a level with only blockers.
+  const available = availableSpecials(state);
+  for (const special of available) {
+    const point = [...aims].reverse().find((aim) => {
+      if (special === 'guards') return guardsPlacement(state.map, aim).ok;
+      if (special === 'barricade') return barricadePlacement(state.map, aim).ok;
+      return true;
+    });
+    if (point) return { type: 'special', special, ...point, atWaveTick: state.waveTick };
+  }
+  return undefined;
+}
+
+export const botPerson: BotPolicy = {
+  purchase: (state) => goodPurchase(state, true),
+  reward: goodReward,
+  special: personSpecial,
+};
+
 /** Run to a terminal state or stop between waves at the optional wave cap. */
 export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity, maxTicks = 60 * 60 * TICKS_PER_SECOND): BotRun {
   const log: HeadlessStepResult[] = [];
@@ -274,6 +340,7 @@ export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity,
   }
 
   let peakAlive = state.enemies.length;
+  let waveOneLives = state.lives;
   let lastZone: SpecialType | undefined;
   const endTick = state.tick + maxTicks;
   while (state.tick < endTick && (state.phase === 'wave' || (state.phase === 'setup' && state.wave < throughWave))) {
@@ -293,7 +360,8 @@ export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity,
       lastZone = special.special;
     }
     tick(state);
+    if (state.wave === 1) waveOneLives = state.lives;
     peakAlive = Math.max(peakAlive, state.enemies.length);
   }
-  return { state, log, peakAlive, refused: log.filter((step) => 'result' in step && !step.result.ok).length };
+  return { state, log, peakAlive, waveOneLives, refused: log.filter((step) => 'result' in step && !step.result.ok).length };
 }

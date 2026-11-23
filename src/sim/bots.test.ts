@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildTower, upgradeTower, useSpecial } from './actions';
-import { botBeginner, botGood, runBot } from './bots';
-import { createGame, startWave } from './game';
+import { botBeginner, botGood, botPerson, runBot } from './bots';
+import { createGame, startWave, tick } from './game';
 import { trailCellOrder } from './headless';
 import type { LevelDef } from './levelTypes';
 import type { EnemyType, MapDef } from './types';
@@ -211,5 +211,41 @@ describe('capable policy', () => {
     expect(runBot(afterFirst.state, botGood).state).toMatchObject({ phase: 'won', wave: 2 });
     const timedOut = runBot(createGame({ level: twoWaves }), botGood, Infinity, 1);
     expect(timedOut.state).toMatchObject({ phase: 'wave', tick: 1 });
+  });
+});
+
+describe('person policy', () => {
+  it('rotates through three placement ranks, then takes the best cell again', () => {
+    const state = createGame({ level: { ...level, startGold: 1000, maxTowerLevel: 1, allowedTowers: ['longbow'] } });
+    for (const [col, row] of [[9, 4], [8, 5], [9, 6], [9, 5]]) {
+      const choice = botPerson.purchase(state);
+      expect(choice).toEqual({ type: 'build', tower: 'longbow', cell: { col, row } });
+      if (choice?.type !== 'build') throw new Error('expected a placement');
+      expect(buildTower(state, choice.cell, choice.tower).ok).toBe(true);
+    }
+  });
+
+  it('spends each charge within 90 ticks on a cell centre and spaces fight decisions by at least 180 ticks', () => {
+    const state = createGame({ level: { ...level, waves: [{ groups: [
+      { type: 'goblin', count: 2, interval: 3000, delay: 0 },
+    ] }] } });
+    expect(startWave(state).ok).toBe(true);
+    let readyAt = 0;
+    const fired: number[] = [];
+    while (state.waveTick < 1500) {
+      const action = botPerson.special(state);
+      if (action) {
+        expect(action.x % 48).toBe(24);
+        expect(action.y % 48).toBe(24);
+        expect(state.tick - readyAt).toBe(90);
+        expect(useSpecial(state, action.special, action).ok).toBe(true);
+        fired.push(state.tick);
+      }
+      const charging = state.specialCharges === 0;
+      tick(state);
+      if (charging && state.specialCharges > 0) readyAt = state.tick;
+    }
+    expect(fired).toHaveLength(2);
+    expect(fired[1] - fired[0]).toBeGreaterThanOrEqual(180);
   });
 });

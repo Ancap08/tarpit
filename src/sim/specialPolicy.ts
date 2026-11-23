@@ -35,6 +35,9 @@ export const POLICY_POINT_SPACING = 30;
 export interface PolicyOptions {
   /** Custom level specials, available from the first wave. */
   allow?: readonly SpecialType[];
+  /** Optional aim points and minimum hits for a player with limited aim or a cast deadline. */
+  points?: readonly Point[];
+  minHits?: number;
   /** A special the policy never fires (target S2 forbids each in turn). */
   forbid?: SpecialType;
   /** Opt in to placing a Barricade at this point whenever there is no wall. */
@@ -85,10 +88,10 @@ export function zoneTurn(wave: number, lastZone: SpecialType | undefined, option
 }
 
 /** The best working point for a radius (most enemies, ties nearest the exit), optionally only points with a big one inside. */
-function bestPoint(state: GameState, pos: readonly { p: Point; big: boolean }[], special: SpecialType, needBig: boolean): PolicyChoice | undefined {
+function bestPoint(state: GameState, pos: readonly { p: Point; big: boolean }[], special: SpecialType, needBig: boolean, options: PolicyOptions): PolicyChoice | undefined {
   const r = specialRadius(special, state.boons);
   let best: PolicyChoice | undefined;
-  for (const c of policyCandidates(state.map)) {
+  for (const c of options.points ?? policyCandidates(state.map)) {
     let hits = 0;
     let big = false;
     for (const q of pos) {
@@ -100,7 +103,7 @@ function bestPoint(state: GameState, pos: readonly { p: Point; big: boolean }[],
         big ||= q.big;
       }
     }
-    if (hits >= POLICY_MIN_HITS && (big || !needBig) && (!best || hits > best.hits)) best = { special, x: c.x, y: c.y, hits };
+    if (hits >= (options.minHits ?? POLICY_MIN_HITS) && (big || !needBig) && (!best || hits > best.hits)) best = { special, x: c.x, y: c.y, hits };
   }
   return best;
 }
@@ -122,12 +125,17 @@ export function policyChoice(state: GameState, lastZone: SpecialType | undefined
     return { special: 'barricade', ...options.barricadePoint, hits: 0 };
   }
   if (state.waveTick % POLICY_CHECK_TICKS !== 0) return undefined;
-  if (state.enemies.length < POLICY_MIN_HITS) return undefined;
+  return chooseCrowdSpecial(state, lastZone, options);
+}
+
+/** Choose among the visible enemies after the caller has decided when to look. */
+export function chooseCrowdSpecial(state: GameState, lastZone: SpecialType | undefined, options: PolicyOptions): PolicyChoice | undefined {
+  if (state.enemies.length < (options.minHits ?? POLICY_MIN_HITS)) return undefined;
   const pos = state.enemies.map((e) => ({ p: enemyPosition(e, state.map), big: BIG_ENEMIES.has(e.type) }));
   const zone = zoneTurn(state.wave, lastZone, options);
   if (zone && pos.some((q) => q.big)) {
-    const choice = bestPoint(state, pos, zone, true);
+    const choice = bestPoint(state, pos, zone, true, options);
     if (choice) return choice;
   }
-  return allowed('keg', state.wave, options) ? bestPoint(state, pos, 'keg', false) : undefined;
+  return allowed('keg', state.wave, options) ? bestPoint(state, pos, 'keg', false, options) : undefined;
 }
