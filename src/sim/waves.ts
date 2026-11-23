@@ -122,16 +122,27 @@ export function waveDef(n: number): WaveDef {
   return def;
 }
 
+export function lastWave(state: Pick<GameState, 'level'>): number {
+  return state.level?.waves.length ?? LAST_WAVE;
+}
+
 /**
  * Whether a wave follows the current one (milestone 26): always in an
  * endless game, otherwise until the last wave of the table.
  */
-export function hasNextWave(state: Pick<GameState, 'wave' | 'endless'>): boolean {
-  return state.endless || state.wave < LAST_WAVE;
+export function hasNextWave(state: Pick<GameState, 'wave' | 'endless' | 'level'>): boolean {
+  return (!state.level && state.endless) || state.wave < lastWave(state);
+}
+
+export function gameWaveDef(state: Pick<GameState, 'level'>, wave: number): WaveDef {
+  if (!state.level) return waveDef(wave);
+  const def = state.level.waves[wave - 1];
+  if (!def) throw new RangeError(`No wave ${wave} in level ${state.level.id}`);
+  return def;
 }
 
 /** Each group of the next wave as {type, count}; empty after the last wave unless the game is endless. */
 export function nextWavePreview(state: GameState): WavePreviewEntry[] {
   if (!hasNextWave(state)) return [];
-  return waveDef(state.wave + 1).groups.map((grp) => ({ type: grp.type, count: grp.count }));
+  return gameWaveDef(state, state.wave + 1).groups.map((grp) => ({ type: grp.type, count: grp.count }));
 }

@@ -12,6 +12,8 @@ export const BOONS = {
   biggerBlasts: { id: 'biggerBlasts', wave: 15, value: 1.3 },
 } as const;
 
+export const BOON_OFFER_WAVES = [...new Set(Object.values(BOONS).map((boon) => boon.wave))];
+
 export type BoonId = keyof typeof BOONS;
 export interface BoonOffer {
   wave: number;
