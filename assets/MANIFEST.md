@@ -83,6 +83,10 @@ the checker looks for it.
 | `assets/art-painted/grumblemaw-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
 | `assets/art-painted/grumblemaw-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
 | `assets/art-painted/grumblemaw-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/guard-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/guard-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
+| `assets/art-painted/guard-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
+| `assets/art-painted/guard-2x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
 | `assets/art-painted/harpy-1x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
 | `assets/art-painted/harpy-1x.png` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Generated painted sprite atlas |
 | `assets/art-painted/harpy-2x.json` | `scripts/art/slice_sheets.py` | Tarpit agents | MIT | Frame layout |
