@@ -326,3 +326,30 @@ difficulty, tower unlocks, a pause button and an enemy card.
 
 New towers, enemies or maps; a second upgrade tier; sound and new art;
 saving a game in progress; any change to waves, call early or endless.
+
+## Milestone 38: the painted look, behind a switch
+
+Kyle chose the painted-miniature look from the art spike (2026-11-23) and
+said to wire it in so he can see the game in it. The art was made by
+script in Blender (`scripts/art/`, `assets/art-painted/`): the Meadow
+ground, six towers, seven enemies, scenery and projectiles.
+
+- **A switch, off by default.** A "Look" choice on the title screen
+  (Classic or Painted), remembered like the mute setting. Classic is
+  today's game, unchanged. Painted applies on maps that have painted art
+  (Meadow first); other maps stay Classic until their art exists.
+- **Painted mode draws** the painted ground, towers that turn to aim,
+  enemies that walk in four directions, painted scenery in place of the
+  code-drawn trees, and painted projectiles. Pieces stand on their cells,
+  nearer ones in front. Everything the game draws on top stays as it is:
+  health bars, status rings, range circles, the placement highlight, the
+  magnifier, effects, banners, the HUD.
+- **Same game.** No rule, number, hit area or layout changes. Both
+  layouts. Sharp art on sharp screens, normal art elsewhere; the painted
+  files load only when Painted is on.
+- **Honest limits:** only Meadow; tower levels and upgrade paths show
+  through the existing marks, not through new art; the HUD is not
+  repainted.
+
+Kyle's phone decides whether the look goes on to the other maps.
+
