@@ -33,6 +33,8 @@ export const POLICY_MIN_HITS = 3;
 export const POLICY_POINT_SPACING = 30;
 
 export interface PolicyOptions {
+  /** Custom level specials, available from the first wave. */
+  allow?: readonly SpecialType[];
   /** A special the policy never fires (target S2 forbids each in turn). */
   forbid?: SpecialType;
   /** Opt in to placing a Barricade at this point whenever there is no wall. */
@@ -69,7 +71,7 @@ export function policyCandidates(map: MapDef): readonly Point[] {
 /** Enemy types the policy counts as big (rule 1). */
 export const BIG_ENEMIES: ReadonlySet<EnemyType> = new Set<EnemyType>(['troll', 'boss', 'grumblemaw']);
 
-const allowed = (type: SpecialType, wave: number, options: PolicyOptions): boolean => type !== options.forbid && isSpecialUnlocked(type, wave);
+const allowed = (type: SpecialType, wave: number, options: PolicyOptions): boolean => type !== options.forbid && (options.allow?.includes(type) ?? isSpecialUnlocked(type, wave));
 
 /**
  * Rule 1's special on `wave`: the Tar Barrel and Fire Arrows take turns, so
