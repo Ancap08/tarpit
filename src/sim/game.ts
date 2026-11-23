@@ -67,7 +67,7 @@
 
 import { boonScale, boonOptions } from './boons';
 import { burnEnemies, fireTowers, PACK_INTERVAL_TICKS } from './combat';
-import { DEFAULT_DIFFICULTY, DIFFICULTY_DEFS, enemyMaxHp, type Difficulty } from './difficulty';
+import { DEFAULT_DIFFICULTY, DIFFICULTY_DEFS, campaignHpFactor, enemyMaxHp, type Difficulty } from './difficulty';
 import { effectiveSlow, ENEMY_STATS, isBoss } from './enemies';
 import { pathLength, resolveMap, type MapId } from './map';
 import { applyBurn, applySpecialSlow, enemyPosition } from './combat';
@@ -295,7 +295,7 @@ function zonesStep(state: GameState): void {
     applyZone(state, zone);
     zone.ticksLeft -= 1;
   }
-  state.zones = state.zones.filter((z) => z.ticksLeft > 0);
+  if (state.zones.some((z) => z.ticksLeft <= 0)) state.zones = state.zones.filter((z) => z.ticksLeft > 0);
 }
 
 /** Apply one zone's slow or burn to every live enemy inside it (also used by useSpecial when the zone lands). */
@@ -329,17 +329,17 @@ function moveEnemies(state: GameState): void {
 
 function removeExitedEnemies(state: GameState): void {
   const exit = pathLength(state.map);
-  const remaining: GameState['enemies'] = [];
+  let kept = 0;
   for (const e of state.enemies) {
     if (e.distance < exit) {
-      remaining.push(e);
+      state.enemies[kept++] = e;
       continue;
     }
     state.lives -= ENEMY_STATS[e.type].livesCost;
     state.events.push({ kind: 'exit', enemyId: e.id });
     if (isBoss(e)) state.events.push({ kind: 'bossDown', enemyId: e.id, enemyType: e.type, cause: 'exit' });
   }
-  state.enemies = remaining;
+  state.enemies.length = kept;
 }
 
 function spawnDueEnemies(state: GameState): void {
@@ -353,7 +353,7 @@ function spawnDueEnemies(state: GameState): void {
   });
   for (const pack of state.packs) {
     if (pack.nextTick !== state.waveTick) continue;
-    spawnEnemy(state, 'wolf');
+    spawnEnemy(state, 'wolf', def.hpMultiplier);
     pack.remaining -= 1;
     pack.nextTick += PACK_INTERVAL_TICKS;
   }
@@ -361,12 +361,13 @@ function spawnDueEnemies(state: GameState): void {
 }
 
 function spawnEnemy(state: GameState, type: EnemyType, multiplier?: number): void {
-  const hp = enemyMaxHp(type, state.difficulty, multiplier);
+  const factor = campaignHpFactor(state.wave, state.difficulty) * (multiplier ?? 1);
+  const hp = enemyMaxHp(type, state.difficulty, factor);
   const id = state.nextEnemyId++;
   const enemy = {
     id, type, hp, distance: 0, slow: 0, slowTicksLeft: 0, specialSlow: 0, specialSlowTicksLeft: 0,
     burnDps: 0, burnTicksLeft: 0,
-    ...(multiplier === undefined ? {} : { maxHp: hp }),
+    ...(factor === 1 ? {} : { maxHp: hp }),
   };
   state.enemies.push(enemy);
   state.events.push({ kind: 'spawn', enemyId: id, enemyType: type });

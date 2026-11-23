@@ -4,6 +4,7 @@
 // before milestone 25: multiplier 1, 100 gold, 20 lives.
 
 import { ENEMY_STATS } from './enemies';
+import { ACT_ONE_LAST_WAVE, LAST_WAVE } from './waves';
 import type { EnemyType } from './types';
 
 export type Difficulty = 'easy' | 'normal' | 'hard';
@@ -14,7 +15,7 @@ export const DIFFICULTIES: readonly Difficulty[] = ['easy', 'normal', 'hard'];
 export const DEFAULT_DIFFICULTY: Difficulty = 'normal';
 
 export interface DifficultyDef {
-  /** Enemy hp at spawn is round(base hp x this). */
+  /** Base HP multiplier, before wave and endless growth. */
   hpMultiplier: number;
   startGold: number;
   startLives: number;
@@ -30,14 +31,15 @@ export const DIFFICULTY_DEFS: Readonly<Record<Difficulty, DifficultyDef>> = {
   hard: { hpMultiplier: 1.2, startGold: 80, startLives: 15 },
 };
 
-/**
- * An enemy's hp at spawn (and so its full hp) on this level: the base hp
- * times the level's multiplier, rounded to a whole number (Goblin 23:
- * Easy 17, Normal 23, Hard 28). Endless waves (milestone 26) pass their
- * `waveMultiplier` (1.8 ^ cycle), applied before the one rounding:
- * round(base x level x wave), so a Normal wave 21 Goblin has
- * round(23 x 1.8) = 41.
- */
+/** Each act-two wave gains another power. Endless carries all ten powers forward. */
+export const ACT_TWO_HP_GROWTH: Readonly<Record<Difficulty, number>> = { easy: 1, normal: 1.13, hard: 1.12 };
+
+export function campaignHpFactor(wave: number, difficulty: Difficulty): number {
+  const steps = Math.max(0, Math.min(wave, LAST_WAVE) - ACT_ONE_LAST_WAVE);
+  return ACT_TWO_HP_GROWTH[difficulty] ** steps;
+}
+
+/** All factors apply before rounding the final spawn hp once, half up. */
 export function enemyMaxHp(type: EnemyType, difficulty: Difficulty = DEFAULT_DIFFICULTY, waveMultiplier = 1): number {
   return Math.round(ENEMY_STATS[type].hp * DIFFICULTY_DEFS[difficulty].hpMultiplier * waveMultiplier);
 }

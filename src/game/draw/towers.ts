@@ -11,6 +11,14 @@ import { CELL, cellCenter, cellKey, nearestPathPoint, positionAlongPath, type Ce
 import { LANDSCAPE, type Layout } from '../layout';
 import { COLORS } from '../palette';
 
+export const PATH_MARKS = {
+  centerX: 10,
+  centerY: -10,
+  radius: 8,
+  A: { shape: 'diamond', color: COLORS.towerPathA, halfSize: 6 },
+  B: { shape: 'two dots', color: COLORS.towerPathB, offset: 4, radius: 3 },
+} as const;
+
 /** Barrel length from the tower centre; shot tracers start at the muzzle. */
 export const BARREL_LENGTH = 22;
 
@@ -180,16 +188,19 @@ export function drawTowerShape(
   }
 
   if (path) {
-    const center = at(10, -10);
-    g.fillStyle(COLORS.towerPathEdge, alpha).fillCircle(center.x, center.y, 8);
-    if (path === 'A') {
-      const [top, right, bottom, left] = [at(10, -16), at(16, -10), at(10, -4), at(4, -10)];
-      g.fillStyle(COLORS.towerPathA, alpha)
-        .fillTriangle(top.x, top.y, right.x, right.y, bottom.x, bottom.y)
+    const { centerX: x, centerY: y, radius } = PATH_MARKS;
+    const center = at(x, y);
+    g.fillStyle(COLORS.towerPathEdge, alpha).fillCircle(center.x, center.y, radius);
+    const mark = PATH_MARKS[path];
+    g.fillStyle(mark.color, alpha);
+    if (mark.shape === 'diamond') {
+      const half = mark.halfSize;
+      const [top, right, bottom, left] = [at(x, y - half), at(x + half, y), at(x, y + half), at(x - half, y)];
+      g.fillTriangle(top.x, top.y, right.x, right.y, bottom.x, bottom.y)
         .fillTriangle(top.x, top.y, bottom.x, bottom.y, left.x, left.y);
     } else {
-      const [left, right] = [at(6, -10), at(14, -10)];
-      g.fillStyle(COLORS.towerPathB, alpha).fillCircle(left.x, left.y, 3).fillCircle(right.x, right.y, 3);
+      const [left, right] = [at(x - mark.offset, y), at(x + mark.offset, y)];
+      g.fillCircle(left.x, left.y, mark.radius).fillCircle(right.x, right.y, mark.radius);
     }
   }
 }

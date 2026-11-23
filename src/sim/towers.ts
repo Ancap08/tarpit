@@ -53,18 +53,18 @@ export const TOWER_DEFS: Readonly<Record<TowerType, TowerDef>> = {
 export const TOWER_PATHS: Readonly<Record<TowerType, { cost: number } & Record<UpgradePath, TowerLevelStats>>> = {
   musketeer: {
     cost: 85,
-    A: { ...PLAIN, range: 155, damage: 35, fireRate: 1 },
-    B: { ...PLAIN, range: 125, damage: 22, fireRate: 2 },
+    A: { ...PLAIN, range: 200, damage: 45, fireRate: 1 },
+    B: { ...PLAIN, range: 125, damage: 22, fireRate: 2.8 },
   },
   cannon: {
     cost: 140,
-    A: { ...PLAIN, range: 105, damage: 40, fireRate: 0.5, splashRadius: 85 },
+    A: { ...PLAIN, range: 105, damage: 40, fireRate: 0.5, splashRadius: 105 },
     B: { ...PLAIN, range: 105, damage: 40, fireRate: 1, splashRadius: 55 },
   },
   tarpit: {
     cost: 110,
-    A: { ...PLAIN, range: 105, damage: 3, fireRate: 2, slow: 0.8, slowDuration: 2 },
-    B: { ...PLAIN, range: 155, damage: 3, fireRate: 2, slow: 0.6, slowDuration: 2 },
+    A: { ...PLAIN, range: 105, damage: 3, fireRate: 2, slow: 0.78, slowDuration: 2 },
+    B: { ...PLAIN, range: 145, damage: 3, fireRate: 2, slow: 0.64, slowDuration: 2 },
   },
   longbow: {
     cost: 70,
@@ -73,13 +73,13 @@ export const TOWER_PATHS: Readonly<Record<TowerType, { cost: number } & Record<U
   },
   mortar: {
     cost: 190,
-    A: { ...PLAIN, range: 220, minRange: 70, damage: 120, fireRate: 1 / 3, splashRadius: 70 },
-    B: { ...PLAIN, range: 220, minRange: 70, damage: 70, fireRate: 1 / 3, splashRadius: 140 },
+    A: { ...PLAIN, range: 220, minRange: 70, damage: 140, fireRate: 1 / 3, splashRadius: 70 },
+    B: { ...PLAIN, range: 220, minRange: 70, damage: 80, fireRate: 1 / 3, splashRadius: 150 },
   },
   firepot: {
     cost: 120,
-    A: { ...PLAIN, range: 100, damage: 4, fireRate: 0.8, burnDps: 15, burnDuration: 4 },
-    B: { ...PLAIN, range: 100, damage: 4, fireRate: 0.8, burnDps: 8, burnDuration: 8 },
+    A: { ...PLAIN, range: 104, damage: 4, fireRate: 1, burnDps: 17, burnDuration: 1 },
+    B: { ...PLAIN, range: 100, damage: 4, fireRate: 1, burnDps: 8, burnDuration: 8 },
   },
 };
 

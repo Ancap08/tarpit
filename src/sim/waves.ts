@@ -40,21 +40,21 @@ export const WAVES: readonly WaveDef[] = [
     ],
   },
   { groups: [g('goblin', 33, 0.85), g('shieldbearer', 14, 1.5, 5.76), g('harpy', 14, 1.1, 11.52)] },
-  { groups: [g('wolf', 35, 1.45), g('troll', 11, 4, 5.04), g('harpy', 14, 2.6, 12.24)] },
+  { groups: [g('wolf', 35, 1.16), g('troll', 11, 3.2, 4.032), g('harpy', 14, 2.08, 9.792)] },
   { groups: [g('goblin', 39, 0.95), g('shieldbearer', 14, 2, 8.64), g('harpy', 16, 1.9, 7.2)] },
-  { groups: [g('wolf', 29, 1.85), g('troll', 14, 3.8, 3.6), g('harpy', 17, 2.5, 11.52)] },
+  { groups: [g('wolf', 29, 1.48), g('troll', 14, 3.04, 2.88), g('harpy', 17, 2, 9.216)] },
   { groups: [g('goblin', 22, 1.75), g('wolf', 19, 1.7, 22.79), g('troll', 12, 4.6, 3.6), g('harpy', 16, 2.8, 9.36)] },
-  { groups: [g('goblin', 33, 1.7), g('shieldbearer', 20, 2.95, 2.88), g('harpy', 19, 2.75, 7.2)] },
-  { groups: [g('wolf', 31, 1.8), g('troll', 16, 3.65, 3.6), g('harpy', 20, 2.7, 7.2)] },
-  { groups: [g('goblin', 36, 1.7), g('troll', 18, 3, 3.6), g('shieldbearer', 11, 5, 2.16), g('harpy', 19, 2.8, 7.92)] },
-  { groups: [g('wolf', 33, 1.85), g('troll', 23, 2.65, 2.88), g('harpy', 21, 2.75, 6.48)] },
+  { groups: [g('goblin', 33, 1.36), g('shieldbearer', 20, 2.36, 2.304), g('harpy', 19, 2.2, 5.76)] },
+  { groups: [g('wolf', 31, 1.44), g('troll', 16, 2.92, 2.88), g('harpy', 20, 2.16, 5.76)] },
+  { groups: [g('goblin', 36, 1.7), g('troll', 34, 1), g('shieldbearer', 11, 5, 2.16), g('harpy', 19, 2.8, 9)] },
+  { groups: [g('wolf', 33, 1.85), g('troll', 27, 0.9, 3), g('harpy', 21, 2.75, 6.48)] },
   {
     groups: [
-      g('wolf', 20, 1.55),
-      g('shieldbearer', 15, 2, 4),
-      g('harpy', 18, 1.65, 5),
-      g('troll', 12, 1.7, 27.5),
-      g('grumblemaw', 1, 0, 48.2),
+      g('wolf', 8, 1.55),
+      g('shieldbearer', 5, 2, 4),
+      g('harpy', 8, 1.65, 5),
+      g('troll', 6, 1.7, 9),
+      g('grumblemaw', 1, 0, 19.5),
     ],
   },
 ];
@@ -98,7 +98,7 @@ const endlessCache = new Map<number, WaveDef>();
  * of table wave 18, 19 or 20 (k % 3 = 0, 1, 2) without either boss, plus one
  * Harpy group of min(16, 8 + 2 x cycle) Harpies, one every 0.75 s,
  * starting 2 s after the base wave's last spawn; `hpMultiplier` is
- * ENDLESS_HP_GROWTH ^ cycle (1.8 ^ cycle), applied at spawn on top of the level's multiplier.
+ * ENDLESS_HP_GROWTH ^ cycle (1.8 ^ cycle), applied at spawn on top of the difficulty multiplier and wave 20 campaign growth.
  * Bounties, speeds and lives cost do not change. Pure and deterministic.
  */
 export function waveDef(n: number): WaveDef {

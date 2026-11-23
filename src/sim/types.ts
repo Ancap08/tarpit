@@ -110,8 +110,8 @@ export interface Enemy {
    */
   specialBurn?: boolean;
   /**
-   * Full hp (milestone 26), set only on enemies of endless waves, whose hp
-   * is scaled by the wave; absent means difficulty.ts enemyMaxHp.
+   * Full hp (milestone 26), stored when the spawn wave scales hp. Without a wave factor,
+   * the difficulty-scaled base gives the same maximum.
    */
   maxHp?: number;
   /** Grumblemaw thresholds already called, after surviving a hit. */
