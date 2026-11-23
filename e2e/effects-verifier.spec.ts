@@ -135,7 +135,7 @@ for (const exitKind of ['playAgain', 'menu', 'keepGoing']) {
 
 // D: leaks. Play for many waves at 3x in real time, then Play again.
 test('ten waves at 3x then Play again: idle counts, nothing from the old game', async ({ page }) => {
-  // About 2.5 minutes of real time: run with VERIFIER_LONG=1 (the verifier's own run did, and passed).
+  // Run the real-time effects and particle counters only for the opt-in leak check.
   test.skip(!process.env.VERIFIER_LONG, 'set VERIFIER_LONG=1 for the ten-wave leak run');
   test.setTimeout(280_000);
   await startPlay(page);
@@ -182,6 +182,10 @@ test('ten waves at 3x then Play again: idle counts, nothing from the old game', 
       m.parts = Math.max(m.parts, parts);
       for (const e of s.state.enemies) if (e.type === 'boss') e.hp = Math.min(e.hp, 1);
       if (s.state.phase === 'setup' || s.state.phase === 'cleared') {
+        if (s.state.pendingBoon?.wave === 10) {
+          w.halt = true; // The test clicks the wave-10 reward before restarting.
+          return;
+        }
         const id = s.state.pendingBoon?.options[0];
         if (id) s.pickBoon(id);
         s.startWave();
@@ -190,20 +194,21 @@ test('ten waves at 3x then Play again: idle counts, nothing from the old game', 
     };
     requestAnimationFrame(frame);
   });
-  for (let i = 0; i < 100; i++) {
-    const st = await page.evaluate(() => ({ w: window.__sc().state.wave, p: window.__sc().state.phase, n: window.__sc().state.enemies.length }));
-    if (i % 5 === 0) console.log('progress', JSON.stringify(st), (await page.evaluate(() => (window as any).err)));
-    if (st.w >= 10 || ['won', 'lost'].includes(st.p)) break;
-    await page.waitForTimeout(2000);
-  }
-  const mid = await page.evaluate(() => ({ wave: window.__sc().state.wave, phase: window.__sc().state.phase, bossDeaths: window.__tarpit!.fx()!.bossDeaths, max: (window as any).maxima }));
-  console.log('after waves', JSON.stringify(mid));
-  // Let the pending effects drain, then compare gold.
-  await page.evaluate(() => ((window as any).halt = true, (window.__sc().state.phase = 'lost'), undefined));
+  await page.waitForFunction(() => (window as any).halt || (window as any).err || ['won', 'lost'].includes(window.__sc().state.phase),
+    undefined, { timeout: 260_000, polling: 250 });
+  expect(await page.evaluate(() => (window as any).err)).toBeUndefined();
+  expect(await page.evaluate(() => window.__sc().state.pendingBoon?.wave)).toBe(10);
+  await click(page, (await rects(page))['reward:stickyTar']);
+  expect(await page.evaluate(() => window.__sc().state.boons)).toEqual(['longBarrels', 'stickyTar']);
+  // Drain the boss fall and reward effects in planning, then compare gold before Play again.
   await page.waitForTimeout(3000);
   const g = await page.evaluate(() => ({ bounty: (window as any).bounty, labelGold: (window as any).labelGold, f: window.__tarpit!.fx() }));
   console.log('gold', g.bounty, g.labelGold, JSON.stringify(g.f));
   expect(g.labelGold).toBe(g.bounty);
+  expect(g.f).toMatchObject({ bossEntrances: 1, bossDeaths: 1 });
+  console.log('effect maxima', await page.evaluate(() => (window as any).maxima));
+  await page.evaluate(() => { window.__sc().state.phase = 'lost'; });
+  await page.waitForFunction(() => window.__tarpit!.uiRects().playAgain !== undefined);
   const r = await rects(page);
   await click(page, r.playAgain);
   await page.waitForTimeout(500);
