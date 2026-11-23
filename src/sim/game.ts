@@ -71,16 +71,17 @@
 // distance speed/60 * n after the tick with waveTick k + n.
 
 import { moveEnemies } from './movement';
-import { boonScale, boonOptions } from './boons';
+import { BOON_OFFER_WAVES, boonScale, boonOptions } from './boons';
 import { burnEnemies, fireTowers, PACK_INTERVAL_TICKS, removeDead } from './combat';
-import { DEFAULT_DIFFICULTY, DIFFICULTY_DEFS, campaignHpFactor, enemyMaxHp, type Difficulty } from './difficulty';
+import { ACT_TWO_HP_GROWTH, DEFAULT_DIFFICULTY, DIFFICULTY_DEFS, campaignHpFactor, enemyMaxHp, type Difficulty } from './difficulty';
 import { ENEMY_STATS, isBoss } from './enemies';
+import { CAMPAIGN_START_LIVES, type LevelDef } from './levelTypes';
 import { pathLength, resolveMap, type MapId } from './map';
 import { applyBurn, applySpecialSlow, enemyPosition } from './combat';
 import { SPECIAL_DEFS, ZONE_LINGER_TICKS, tarLingerTicks } from './specials';
 import { secondsToTicks, TICKS_PER_SECOND } from './time';
 import type { EnemyType, GameState, GroupDef, Guard, MapDef } from './types';
-import { hasNextWave, LAST_WAVE, waveDef } from './waves';
+import { gameWaveDef, hasNextWave, lastWave, waveDef } from './waves';
 
 export { secondsToTicks, TICKS_PER_SECOND };
 /** Normal's starting gold and lives (difficulty.ts has every level's). */
@@ -97,21 +98,30 @@ export interface CreateGameOptions {
   difficulty?: Difficulty;
   /** The map (milestone 27): a MAPS id, or a test's own MapDef; Meadow when left out. */
   map?: MapId | MapDef;
+  /** Campaign rules take precedence over Free play map and difficulty. */
+  level?: LevelDef;
 }
 
 export function createGame(options: CreateGameOptions = {}): GameState {
-  const difficulty = options.difficulty ?? DEFAULT_DIFFICULTY;
+  const { level } = options;
+  if (level && (
+    level.rewardWaves.length > BOON_OFFER_WAVES.length ||
+    level.rewardWaves.some((wave, index) => !Number.isInteger(wave) || wave > level.waves.length
+      || wave <= (level.rewardWaves[index - 1] ?? 0))
+  )) throw new RangeError(`Invalid reward waves in level ${level.id}`);
+  const difficulty = level ? DEFAULT_DIFFICULTY : options.difficulty ?? DEFAULT_DIFFICULTY;
   const def = DIFFICULTY_DEFS[difficulty];
   return {
-    map: resolveMap(options.map),
+    map: resolveMap(level?.map ?? options.map),
+    ...(level ? { level } : {}),
     difficulty,
     endless: false,
     boons: [],
     pendingBoon: null,
     packs: [],
     phase: 'setup',
-    gold: def.startGold,
-    lives: def.startLives,
+    gold: level?.startGold ?? def.startGold,
+    lives: level ? CAMPAIGN_START_LIVES : def.startLives,
     wave: 0,
     specialCharges: 0,
     specialRechargeTicks: 0,
@@ -147,9 +157,9 @@ export function startWave(state: GameState): StartWaveResult {
   state.wave += 1;
   state.phase = 'wave';
   state.waveTick = 0;
-  state.spawnedPerGroup = waveDef(state.wave).groups.map(() => 0);
+  state.spawnedPerGroup = gameWaveDef(state, state.wave).groups.map(() => 0);
   // The special charge is ready at every wave start (milestone 30).
-  state.specialCharges = 1;
+  state.specialCharges = state.level?.allowedSpecials.length === 0 ? 0 : 1;
   state.specialRechargeTicks = 0;
   // Planning phase ends (milestone 25a): everything bought so far locks.
   for (const tower of state.towers) {
@@ -168,8 +178,16 @@ export type CallEarlyStatus = { ok: true; bonus: number } | { ok: false; reason:
 export type CallNextWaveResult = { ok: true; wave: number; bonus: number; gold: number } | { ok: false; reason: CallEarlyRefusal };
 
 /** waveTick on which the last enemy of wave `wave` (1-based) spawns. */
-export function lastSpawnTick(wave: number): number {
-  return Math.max(...waveDef(wave).groups.map((g) => spawnTick(g, g.count - 1)));
+export function lastSpawnTick(wave: number, state?: Pick<GameState, 'level'>): number {
+  const def = state ? gameWaveDef(state, wave) : waveDef(wave);
+  return Math.max(...def.groups.map((g) => spawnTick(g, g.count - 1)));
+}
+
+function rewardsForWave(state: GameState, wave: number) {
+  if (state.endless) return [];
+  if (!state.level) return boonOptions(wave);
+  const offerWave = BOON_OFFER_WAVES[state.level.rewardWaves.indexOf(wave)];
+  return offerWave === undefined ? [] : boonOptions(offerWave);
 }
 
 /**
@@ -189,11 +207,11 @@ export function lastSpawnTick(wave: number): number {
 export function callEarlyStatus(state: GameState): CallEarlyStatus {
   if (state.phase === 'won' || state.phase === 'lost') return { ok: false, reason: 'game-over' };
   if (state.phase !== 'wave') return { ok: false, reason: 'not-in-wave' };
-  if (!state.endless && (boonOptions(state.wave).length || boonOptions(state.wave + 1).length)) return { ok: false, reason: 'boon-wave' };
-  if (!hasNextWave(state) || waveDef(state.wave + 1).groups.some((g) => isBoss(g))) return { ok: false, reason: 'last-wave' };
-  const groups = waveDef(state.wave).groups;
+  if (rewardsForWave(state, state.wave).length || rewardsForWave(state, state.wave + 1).length) return { ok: false, reason: 'boon-wave' };
+  if (!hasNextWave(state) || gameWaveDef(state, state.wave + 1).groups.some((g) => isBoss(g))) return { ok: false, reason: 'last-wave' };
+  const groups = gameWaveDef(state, state.wave).groups;
   if (!groups.every((g, gi) => state.spawnedPerGroup[gi] >= g.count)) return { ok: false, reason: 'still-spawning' };
-  const elapsedTicks = state.waveTick - (lastSpawnTick(state.wave) + 1);
+  const elapsedTicks = state.waveTick - (lastSpawnTick(state.wave, state) + 1);
   const remaining = Math.max(0, EARLY_CALL_GRACE_SECONDS - elapsedTicks / TICKS_PER_SECOND);
   return { ok: true, bonus: Math.min(EARLY_CALL_MAX_BONUS, Math.ceil(remaining)) };
 }
@@ -216,17 +234,19 @@ export function callNextWave(state: GameState): CallNextWaveResult {
   const cleared = state.wave;
   state.gold += WAVE_CLEAR_BONUS + status.bonus;
   state.events.push({ kind: 'waveClear', wave: cleared, bonus: WAVE_CLEAR_BONUS });
+  // Pending boss summons keep their remaining delay across the wave clock reset.
+  for (const pack of state.packs) pack.nextTick -= state.waveTick;
   state.wave += 1;
   state.waveTick = 0;
-  state.spawnedPerGroup = waveDef(state.wave).groups.map(() => 0);
-  state.specialCharges = 1;
+  state.spawnedPerGroup = gameWaveDef(state, state.wave).groups.map(() => 0);
+  state.specialCharges = state.level?.allowedSpecials.length === 0 ? 0 : 1;
   state.specialRechargeTicks = 0;
   state.events.push({ kind: 'earlyCall', wave: state.wave, bonus: status.bonus });
   state.events.push({ kind: 'waveStart', wave: state.wave });
   return { ok: true, wave: state.wave, bonus: status.bonus, gold: state.gold };
 }
 
-export type ContinueEndlessResult = { ok: true; wave: number } | { ok: false; reason: 'not-won' };
+export type ContinueEndlessResult = { ok: true; wave: number } | { ok: false; reason: 'not-won' | 'campaign-level' };
 
 /**
  * Keep going after the win (milestone 26), between ticks. Allowed only when
@@ -240,6 +260,7 @@ export type ContinueEndlessResult = { ok: true; wave: number } | { ok: false; re
  */
 export function continueEndless(state: GameState): ContinueEndlessResult {
   if (state.phase !== 'won') return { ok: false, reason: 'not-won' };
+  if (state.level) return { ok: false, reason: 'campaign-level' };
   state.endless = true;
   state.phase = 'setup';
   state.events.push({ kind: 'endlessStart' });
@@ -362,10 +383,9 @@ function removeExitedEnemies(state: GameState): void {
 }
 
 function spawnDueEnemies(state: GameState): void {
-  const def = waveDef(state.wave);
+  const def = gameWaveDef(state, state.wave);
   def.groups.forEach((group, gi) => {
-    const index = state.spawnedPerGroup[gi];
-    if (index < group.count && spawnTick(group, index) === state.waveTick) {
+    for (let index = state.spawnedPerGroup[gi]; index < group.count && spawnTick(group, index) === state.waveTick; index++) {
       spawnEnemy(state, group.type, def.hpMultiplier);
       state.spawnedPerGroup[gi] = index + 1;
     }
@@ -380,7 +400,12 @@ function spawnDueEnemies(state: GameState): void {
 }
 
 function spawnEnemy(state: GameState, type: EnemyType, multiplier?: number): void {
-  const factor = campaignHpFactor(state.wave, state.difficulty) * (multiplier ?? 1);
+  const level = state.level;
+  const growth = level?.hpGrowthStart == null ? 0 : Math.max(0, state.wave - level.hpGrowthStart + 1);
+  const scale = level
+    ? level.hpScale * (1 + ACT_TWO_HP_GROWTH.normal * growth)
+    : campaignHpFactor(state.wave, state.difficulty);
+  const factor = scale * (multiplier ?? 1);
   const hp = enemyMaxHp(type, state.difficulty, factor);
   const id = state.nextEnemyId++;
   const enemy = {
@@ -395,7 +420,7 @@ function spawnEnemy(state: GameState, type: EnemyType, multiplier?: number): voi
 
 function checkWaveClear(state: GameState): void {
   if (state.enemies.length || state.packs.length) return;
-  const groups = waveDef(state.wave).groups;
+  const groups = gameWaveDef(state, state.wave).groups;
   const allSpawned = groups.every((grp, gi) => state.spawnedPerGroup[gi] >= grp.count);
   if (!allSpawned) return;
   state.gold += WAVE_CLEAR_BONUS;
@@ -406,13 +431,11 @@ function checkWaveClear(state: GameState): void {
   state.zones = [];
   state.events.push({ kind: 'waveClear', wave: state.wave, bonus: WAVE_CLEAR_BONUS });
   // An endless game (milestone 26) never wins again: it ends only by losing.
-  state.phase = !state.endless && state.wave >= LAST_WAVE && state.lives > 0 ? 'won' : 'setup';
+  state.phase = !state.endless && state.wave >= lastWave(state) && state.lives > 0 ? 'won' : 'setup';
   if (state.phase === 'won') state.events.push({ kind: 'won' });
-  if (!state.endless) {
-    const options = boonOptions(state.wave);
-    if (options.length) {
-      state.pendingBoon = { wave: state.wave, options };
-      state.events.push({ kind: 'boonOffered', wave: state.wave, options: [...options] });
-    }
+  const options = rewardsForWave(state, state.wave);
+  if (options.length) {
+    state.pendingBoon = { wave: state.wave, options };
+    state.events.push({ kind: 'boonOffered', wave: state.wave, options: [...options] });
   }
 }

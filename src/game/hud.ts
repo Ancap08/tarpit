@@ -40,11 +40,11 @@ import {
   hasNextWave,
   isBoss,
   boonScale,
-  LAST_WAVE,
+  lastWave,
   SPECIAL_RECHARGE_TICKS,
   TICKS_PER_SECOND,
   nextWavePreview,
-  unlockedSpecials,
+  availableSpecials,
   type Difficulty,
   type EnemyType,
   type GameState,
@@ -59,6 +59,7 @@ import {
   BOSS_WAVE_NEXT_TEXT,
   LAST_WAVE_TEXT,
   callEarlyLabel,
+  levelNumberText,
   blockedWaveLabel,
   CHEAT_MARK,
   DIFFICULTY_LABELS,
@@ -126,8 +127,8 @@ export function difficultyTag(difficulty: Difficulty): string {
 }
 
 /** The wave counter's y shift and the tag's y offset from row 1's centre when a tag shows. */
-export const WAVE_TAG_SHIFT = -7;
-export const TAG_OFFSET = 11;
+export const WAVE_TAG_SHIFT = -9;
+export const TAG_OFFSET = 12;
 export const TAG_SIZE = 12;
 
 /**
@@ -391,10 +392,20 @@ export class Hud {
 
     const stat = (x: number, size = m.statSize, color: string = TEXT.hud) =>
       scene.add.text(x, m.statY, '', { fontFamily: FONT, fontSize: size, fontStyle: 'bold', color }).setOrigin(0, 0.5);
-    this.gold = stat(m.goldX);
-    this.lives = stat(LIVES_X);
-    this.wave = stat(238);
-    this.tag = m.portrait ? stat(0, m.statSize, TEXT.hudDim) : stat(238, `${TAG_SIZE}px`, TEXT.hudDim).setY(MID + TAG_OFFSET);
+    const fixedStat = (x: number, size: number, color: string) => {
+      const descent = Math.ceil(size / 5);
+      const height = size + descent;
+      return scene.add.text(x, m.statY, '', {
+        fontFamily: FONT, fontSize: size, fontStyle: 'bold', color, fixedHeight: height,
+        metrics: { ascent: size, descent, fontSize: height },
+      }).setOrigin(0, 0.5);
+    };
+    const statSize = Number.parseInt(m.statSize, 10);
+    this.gold = fixedStat(m.goldX, statSize, TEXT.hud);
+    this.lives = fixedStat(LIVES_X, statSize, TEXT.hud);
+    this.wave = fixedStat(238, statSize, TEXT.hud);
+    this.tag = fixedStat(238, m.portrait ? statSize : TAG_SIZE, TEXT.hudDim);
+    if (!m.portrait) this.tag.setY(MID + TAG_OFFSET);
     this.next = m.portrait
       ? stat(m.preview.x, m.statSize, TEXT.hudDim).setY(m.preview.y).setOrigin(0, m.preview.originY).setWordWrapWidth(m.preview.width, true)
       : stat(PREVIEW_X, `${PREVIEW_SIZE}px`, TEXT.hudDim).setWordWrapWidth(PREVIEW_WIDTH, true);
@@ -439,8 +450,8 @@ export class Hud {
     this.cheatMark.setVisible(state.cheated);
     // The sim lets lives go below 0 (the boss's exit costs 5); the HUD shows 0.
     set(this.lives, `Lives ${Math.max(0, state.lives)}`);
-    set(this.wave, waveCounterText(state.wave, state.endless, LAST_WAVE));
-    const tag = difficultyTag(state.difficulty);
+    set(this.wave, waveCounterText(state.wave, state.endless, lastWave(state)));
+    const tag = state.level ? levelNumberText(state.level.id) : difficultyTag(state.difficulty);
     set(this.tag, tag);
     if (m.portrait) {
       // One row: each stat starts after the one before it; the cheat mark is right-aligned.
@@ -449,6 +460,8 @@ export class Hud {
       this.lives.setX(this.livesX + dx);
       this.wave.setX(this.livesX + this.lives.width + m.flowGap);
       this.tag.setX(this.wave.x + this.wave.width + m.flowGap / 2);
+      const rightEdge = state.cheated ? this.cheatMark.x - this.cheatMark.width - 4 : PORTRAIT_WIDTH;
+      this.tag.setVisible(this.tag.x + this.tag.width <= rightEdge);
     } else {
       this.gold.setY(state.cheated ? MID - 6 : MID);
       this.wave.setY(tag ? MID + WAVE_TAG_SHIFT : MID);
@@ -467,7 +480,7 @@ export class Hud {
     let reason: string | null = null;
     if (state.pendingBoon) reason = BOON_PENDING_TEXT;
     else if (!call.ok && call.reason === 'boon-wave') reason = BOON_WAVE_TEXT;
-    else if (!call.ok && call.reason === 'last-wave') reason = state.wave < LAST_WAVE ? BOSS_WAVE_NEXT_TEXT : LAST_WAVE_TEXT;
+    else if (!call.ok && call.reason === 'last-wave') reason = state.wave < lastWave(state) ? BOSS_WAVE_NEXT_TEXT : LAST_WAVE_TEXT;
     this.startButton.setFontSize(call.ok || reason ? m.callFont : m.startFont);
     if (reason) this.startButton.set(blockedWaveLabel(!!state.pendingBoon, reason), false);
     else if (call.ok) this.startButton.set(callEarlyLabel(call.bonus), true);
@@ -498,7 +511,7 @@ export class Hud {
         this.rechargeFill.fillStyle(COLORS.rechargeFill, 1).fillRect(sb.x, sb.y, fillWidth, sb.height);
       } else this.pip.lineStyle(1.5, COLORS.specialPipEmpty, 1).strokeCircle(cx, cy, PIP_RADIUS - 0.75);
     }
-    this.specialMenu.update(special.menuOpen && ready ? unlockedSpecials(state.wave) : []);
+    this.specialMenu.update(special.menuOpen && ready ? availableSpecials(state) : []);
     this.bar.update(state, pick);
     this.bossBar.update(state);
   }

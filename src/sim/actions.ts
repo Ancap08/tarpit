@@ -17,13 +17,13 @@ import {
 import { BOONS, boonScale, type BoonId } from './boons';
 import { applyBurn, applySpecialSlow, enemyPosition, removeDead } from './combat';
 import { cellKey, sameCell, terrainBlock, type Cell } from './grid';
-import { isSpecialUnlocked, SPECIAL_DEFS, SPECIAL_RECHARGE_TICKS, ZONE_LINGER_TICKS, specialRadius, tarLingerTicks, type SpecialType } from './specials';
-import { TOWER_DEFS, TOWER_PATHS, towerLevel, towerSellValue, towerUndoValue } from './towers';
+import { specialAllowed, SPECIAL_DEFS, SPECIAL_RECHARGE_TICKS, ZONE_LINGER_TICKS, specialRadius, tarLingerTicks, type SpecialType } from './specials';
+import { TOWER_DEFS, TOWER_PATHS, allowedTowers, maxTowerLevel, towerLevel, towerSellValue, towerUndoValue } from './towers';
 import type { GameState, Guard, Point, TargetingMode, Tower, TowerType, UpgradePath } from './types';
 
 export type BuildResult =
   | { ok: true; tower: Tower; gold: number }
-  | { ok: false; reason: 'game-over' | 'not-buildable' | 'water' | 'cell-occupied' | 'not-enough-gold' };
+  | { ok: false; reason: 'game-over' | 'tower-locked' | 'not-buildable' | 'water' | 'cell-occupied' | 'not-enough-gold' };
 
 export type UpgradeResult =
   | { ok: true; tower: Tower; gold: number }
@@ -70,6 +70,7 @@ export function towerAt(state: GameState, cell: Cell): Tower | undefined {
  */
 export function buildTower(state: GameState, cell: Cell, type: TowerType): BuildResult {
   if (isOver(state)) return { ok: false, reason: 'game-over' };
+  if (!allowedTowers(state).includes(type)) return { ok: false, reason: 'tower-locked' };
   const block = terrainRefusal(state, cell);
   if (block) return { ok: false, reason: block };
   if (towerAt(state, cell)) return { ok: false, reason: 'cell-occupied' };
@@ -100,7 +101,7 @@ export function upgradeTower(state: GameState, cell: Cell, path?: UpgradePath): 
   const tower = towerAt(state, cell);
   if (!tower) return { ok: false, reason: 'no-tower' };
   const level = towerLevel(tower);
-  if (level === 3) return { ok: false, reason: 'max-level' };
+  if (level >= maxTowerLevel(state)) return { ok: false, reason: 'max-level' };
   if (path === undefined && level === 2) return { ok: false, reason: 'already-upgraded' };
   if (path !== undefined) {
     if (level !== 2) return { ok: false, reason: 'not-level-2' };
@@ -228,7 +229,7 @@ export function setTargeting(state: GameState, cell: Cell, mode: TargetingMode):
 export function useSpecial(state: GameState, type: SpecialType, point: Point): SpecialResult {
   if (isOver(state)) return { ok: false, reason: 'game-over' };
   if (state.phase !== 'wave') return { ok: false, reason: 'not-in-wave' };
-  if (!isSpecialUnlocked(type, state.wave)) return { ok: false, reason: 'locked' };
+  if (!specialAllowed(state, type)) return { ok: false, reason: 'locked' };
   if (state.specialCharges <= 0 || state.lastSpecialTick === state.tick) {
     return { ok: false, reason: 'no-charge' };
   }

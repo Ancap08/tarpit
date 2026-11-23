@@ -2,6 +2,7 @@ import type Phaser from 'phaser';
 import {
   TARGETING_MODES,
   TOWER_DEFS,
+  maxTowerLevel,
   towerAt,
   towerLevel,
   towerSellValue,
@@ -123,12 +124,13 @@ export class TowerPanel {
     const level = towerLevel(tower);
     const undo = state.phase === 'setup' ? towerUndoValue(tower) : 0;
     const rows: Row[] = [];
-    if (level === 1) {
+    if (level === 1 && level < maxTowerLevel(state)) {
       const cost = TOWER_DEFS[tower.type].upgradeCost;
       this.upgrade.set(PANEL_TEXT.upgrade, state.gold >= cost, String(cost));
       rows.push({ key: 'upgrade', button: this.upgrade });
     }
-    for (const path of getPathChoices(tower, state.gold)) {
+    const paths = getPathChoices(tower, state);
+    for (const path of paths) {
       const button = this.pathButtons[path.path];
       button.set(path.name, path.disabledReason === null, String(path.price));
       rows.push({ key: `path:${path.path}`, button, path });
@@ -148,7 +150,7 @@ export class TowerPanel {
       ? Math.max(this.scene.scale.displayScale.x, this.scene.scale.displayScale.y)
       : 0;
     const { close, rowHeight, pathHeight, header, width, height, buttonWidth } =
-      towerPanelSize(this.layout, level, rows.length, scale);
+      towerPanelSize(this.layout, level, rows.length, paths.length, scale);
     if (this.placed?.width !== width || this.placed.height !== height) {
       const location = placeBeside(this.layout.cellCenter(this.at), width, height, state.map, this.layout);
       this.placed = { ...location, width, height };
@@ -163,7 +165,7 @@ export class TowerPanel {
     const title = towerPanelTitle(tower.type, level, tower.path);
     if (this.titleText.text !== title) this.titleText.setText(title);
     this.titleText.setPosition(left, y + STACK_PAD + (portrait ? 13 : 9)).setVisible(level > 1);
-    const kills = killsLabel(tower.kills ?? 0);
+    const kills = killsLabel(tower.kills ?? 0, !!state.level && level >= maxTowerLevel(state));
     if (this.killsText.text !== kills) this.killsText.setText(kills);
     this.killsText.setPosition(left, y + STACK_PAD + (level > 1 ? (portrait ? 39 : 29) : header / 2 - 2)).setVisible(true);
 

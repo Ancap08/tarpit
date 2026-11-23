@@ -1,6 +1,7 @@
 // Data shapes for the simulation. Pure data: no classes, no methods.
 
 import type { BoonId, BoonOffer } from './boons';
+import type { LevelDef } from './levelTypes';
 import type { Difficulty } from './difficulty';
 import type { GameEvent } from './events';
 import type { Cell } from './grid';
@@ -273,6 +274,8 @@ export interface GameState {
    * starting gold and lives and scales every enemy's hp at spawn.
    */
   difficulty: Difficulty;
+  /** The finite campaign rules, when playing a level. */
+  level?: LevelDef;
   /**
    * Endless mode (milestone 26): false until the player presses Keep going
    * after winning wave 20 (game.ts continueEndless). In an endless game

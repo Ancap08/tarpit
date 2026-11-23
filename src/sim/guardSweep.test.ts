@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { expect, it } from 'vitest';
 import { playWithStats } from './balanceRuns';
-import { sweepGuards, sweepGuardsOnly } from './guardSweep';
+import { guardPoints, measureGuardPoint, sweepGuardsOnly } from './guardSweep';
 import { comboBuild, comboGuards, playScripted } from './headless';
 import { MAP_IDS, MAPS, positionAlongPath } from './map';
 import { SPECIAL_DEFS } from './specials';
@@ -29,16 +29,32 @@ it.each([
   expect(createHash('sha256').update(JSON.stringify(originalFields)).digest('hex')).toBe(sha);
 });
 
-it.each([
+const bestPlacements = [
   ['meadow', 'normal', 31, 784, 1],
   ['switchback', 'normal', 34, 784, 1],
   ['riverbend', 'normal', 30, 352, 3],
   ['meadow', 'hard', 31, 64, -3],
   ['switchback', 'hard', 34, 64, 0],
   ['riverbend', 'hard', 30, 64, -1],
-] as const)('G2 pins the best of all legal placements on %s/%s', (map, level, points, distance, gain) => {
-  expect(sweepGuards(map, level)).toEqual({ points, best: { distance, gain }, hardWinsFromLoss: 0, ok: true });
-}, 60_000);
+] as const;
+
+for (const [map, level, count, bestDistance, bestGain] of bestPlacements) {
+  const points = guardPoints(map);
+  it(`G2 covers all ${count} legal placements on ${map}/${level}`, () => {
+    expect(points).toHaveLength(count);
+    expect(points.some(({ distance }) => distance === bestDistance)).toBe(true);
+  });
+  for (const { distance } of points) {
+    it(`G2 balance on ${map}/${level} at ${distance} px`, () => {
+      const { gain, hardWinFromLoss } = measureGuardPoint(map, level, distance);
+      expect(hardWinFromLoss).toBe(false);
+      expect(gain).toBeLessThanOrEqual(5);
+      if (distance < bestDistance) expect(gain).toBeLessThan(bestGain);
+      else if (distance === bestDistance) expect(gain).toBe(bestGain);
+      else expect(gain).toBeLessThanOrEqual(bestGain);
+    });
+  }
+}
 
 it.each(MAP_IDS)('G3 loses with Guards alone on %s', (map) => {
   for (const level of ['easy', 'normal', 'hard'] as const) {

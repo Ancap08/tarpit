@@ -7,6 +7,7 @@
 
 import type Phaser from 'phaser';
 import type {
+  CampaignProgress,
   BoonChoices,
   BoonId,
   BoonOffer,
@@ -40,7 +41,7 @@ import type { audioLab } from './audio/lab';
 import type { FxState } from './fx/effects';
 import type { DecorState } from './decor/livingMap';
 import type { PageLockState } from './pageLock';
-import type { UiState } from './GameScene';
+import type { GameScene, UiState } from './GameScene';
 import type { HudStrings, Rect } from './hud';
 import type { ScriptName } from './testMode';
 import type { TitleUiState } from './TitleScene';
@@ -49,6 +50,13 @@ export interface TarpitTestApi {
   game: Phaser.Game;
   /** Key of the active scene: 'title' or 'game'. */
   scene(): string;
+  /** Visible screen, including the title's campaign pages and terminal results. */
+  screen(): TitleUiState['screen'] | 'game' | 'result' | null;
+  campaignLabels(): (Rect & { text: string })[];
+  levelStops(): TitleUiState['stops'];
+  /** Replace saved campaign progress in a frozen test session. */
+  setCampaignProgress(table: CampaignProgress): void;
+  campaignResult(): ReturnType<GameScene['campaignResult']>;
   /** The live simulation state (serialized when read through page.evaluate). */
   state(): Omit<GameState, 'towers'> & { towers: (Tower & { readonly level: TowerLevel })[] };
   painted(): import('./skin/painted').PaintedState;
@@ -61,6 +69,11 @@ export interface TarpitTestApi {
    * has been created. Does nothing if GameScene is already running.
    */
   startGame(difficulty?: Difficulty, map?: MapId): Promise<void>;
+  startLevel(id: number): Promise<void>;
+  levelStars(): 0 | 1 | 2 | 3;
+  progress(): CampaignProgress;
+  levelOpen(id: number): boolean;
+  runBot(name: 'botGood' | 'botBeginner', throughWave?: number): Phase;
   /** The running game's level (milestone 25). */
   difficulty(): Difficulty;
   pendingBoon(): BoonOffer | null;

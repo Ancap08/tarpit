@@ -418,6 +418,67 @@ die off". Second use of the blocking rule from milestone 39.
   not move. Strength is checked by a sweep over trail points as for the
   Barricade: useful, bounded, and troops alone do not win.
 
+## Milestone 41: a campaign of levels
+
+Kyle (2026-11-23) wants, in time, "100's of levels with varying challenges
+along the way so that it's new and hard along the way", different
+challenges for different areas "with them all being available towards the
+end", and one day a story mode. He agreed the order: levels as data and a
+campaign first, so that many levels become possible. Nobody can balance
+hundreds of levels by hand, so the structure comes with bots that prove
+each level can be won. Built in two parts on one branch: 41a the rules,
+levels and bots; 41b the screens.
+
+### A level is data (41a)
+
+- One small record per level: its name, its map, its waves, starting gold,
+  how tough enemies are, which towers and specials the player
+  may use, whether rewards are offered, one line describing its twist,
+  and what it takes to earn two and three stars.
+- A game can be started from a level. Everything a level does not change
+  works as it does today. Today's game (pick a map and difficulty, 20
+  waves, endless) stays exactly as it is and is called **Free play**.
+- **Ten levels to start**, short (five to ten waves, about four to nine
+  minutes), across the three maps. Each brings in one new thing, so the
+  player meets the game a piece at a time:
+
+| # | Map | New this level | Working name |
+|---|---|---|---|
+| 1 | Meadow | Musketeer and Longbow, Powder Keg | First Watch |
+| 2 | Meadow | Cannon, against crowds | Pack Trail |
+| 3 | Switchback | Tar Pit, against fast Wolves | The Switchback |
+| 4 | Switchback | Fire Pot, tar and fire together, Shieldbearers | Burn Line |
+| 5 | Riverbend | Harpies in the air, Tar Barrel | Wings Over the River |
+| 6 | Riverbend | Mortar, against Trolls | Heavy Feet |
+| 7 | Meadow | Barricade, against a horde | Hold the Bend |
+| 8 | Switchback | Guards and Fire Arrows | Stand Fast |
+| 9 | Riverbend | The second upgrade, and Grumblefoot | The Troll King |
+| 10 | Meadow | Everything, and Grumblemaw | Last Light |
+
+- **Stars:** every level starts with 20 lives; one star for winning, two
+  for winning with at least 12 lives, three with at least 18. The same
+  rule on every level (the first build had lives and thresholds per level;
+  changed, see DECISIONS). Progress (stars, which levels are open) is
+  kept in the browser like the best scores. Winning a level opens the
+  next.
+- **Bots prove every level.** A capable bot (places sensibly, upgrades,
+  uses specials, limited to what the level allows) must win every level
+  with at least two stars; a beginner bot (cheapest tower, first cells,
+  no specials) must win the first three and must not three-star the later
+  ones. A level that fails this cannot be added. This is the gate that
+  later lets levels be generated instead of written.
+
+### The screens (41b)
+
+A first screen offering Campaign and Free play; a level map with ten
+stops, stars and locks; a short card before a level (name, twist, what is
+new); a result screen with stars and Next; both layouts and both looks.
+
+### Not in this milestone
+
+Generated levels, a story, new enemies or towers, the castle, longer
+trails, more than ten levels.
+
 ## Later milestones (order agreed, detail to come)
 
 | # | Milestone | Idea |

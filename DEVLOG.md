@@ -9069,3 +9069,103 @@ contact. Browser tests measure the feet along and across the trail in both
 layouts and looks. At phone size all four helmets and shields can be picked
 out during contact. The 64 px cave clearance already fits the 36 px squad,
 and a Shieldbearer takes full guard damage.
+
+## 2026-11-23: milestone 41a, levels, bots and the gate
+
+Ten finite level records share the Free play simulation. The test hook can
+start a level, play it with either bot, and read the saved stars. Player entry
+points still go through the existing title menu.
+
+The first Pack Trail schedules let Longbows cover individually spaced Goblins
+as well as Cannons. Sweeps with packs of four yielded a six-wave level on
+which removing Cannon costs eleven lives and a star. Good clears the ten
+levels in 75.89 minutes. Beginner wins the first three and loses the next
+seven. On Normal Free play both Beginner and lazyBuild lose on wave 8 on
+all maps. Good wins with 20 lives on all three, compared with comboBuild's
+14 on Meadow, 11 on Switchback and 14 on Riverbend.
+
+Three candidate mutations exercised the gate. Raising First Watch's HP
+scale to 25 failed L1, L2 and L5. Giving Wings Over the River 600 gold and
+a 0.3 HP scale failed L2. Lowering The Switchback's HP scale to 0.8 erased
+the Tar Pit advantage and failed L3. The three trials use copies of the
+records and are covered by regression tests. Existing combat and economy
+numbers stay fixed.
+
+Generation can reuse the same records and gate. A generator still needs
+a candidate sampler, a declared feature to remove for L3, and an ordered
+campaign context for the slope and length checks.
+
+The first integrated unit run exposed three existing Guards placement tests
+over five seconds. Each legal placement now has its own result check. The
+sweep reads the adaptive recorder's outcome directly, saving a second
+simulation at every point. The checks retain all 190 placements, the six
+pinned gains and tie-breaking distances, and the Hard loss restriction.
+
+**Second pass.** All ten levels now start with 20 lives. A win earns two stars at 12 lives and three at 18. Pack Trail opens with eight packs of six Goblins, giving Cannon a useful crowd to hit while leaving Beginner a two-life win. All other wave schedules stayed in place. With revised starting gold and HP, Good averages 20 lives on the first three levels and 14.67 on the last three, and wins Last Light with 13. Beginner earns one star on Heavy Feet. The new L8 check enforces the average drop and finale range. The Normal Free play comparison checks win or loss on each map; Good's nine-life lead over comboBuild on Switchback is recorded in DESIGN.md.
+
+**Third pass.** First Watch now sends 324 base-HP Goblins, Wings Over the River sends Harpies in flights, and Heavy Feet sends 42 full-HP Trolls. Hold the Bend leads the campaign in both total enemies (865) and peak alive (31). Both bosses enter last. The gate measures peak enemies each tick and caps it at 40. Eight levels fit the 0.85–1.35 HP band. Pack Trail (1.979) and The Switchback (1.375) needed the next whole hit point for Cannon and Tar Pit to affect surviving lives in the tested schedules. The campaign takes 75.27 minutes.
+
+**Fourth pass.** Person’s placement rotation, coarse aim and timed decisions now set the player target. Across the ten levels Person keeps every opening life, wins with at least two stars and finishes at most four lives behind Good. Without specials it wins the first six and also levels 8 and 9. Both early HP exceptions are gone. Each introduction passes its nominal and four perturbed removal trials for both bots. Good’s total combat time is 72.70 minutes. Level contexts now carry difficulty and introductions, and ordered campaigns check length, slope and repeated introductions. Tests exercise a twelve-level campaign, sparse saved progress, trivial closing waves and missing bosses.
+
+### Verifier notes (41a)
+
+Checked at 33f2309 by Claude Sonnet. Bounds hold: nothing pushed, no dependency or asset change, trailers name Codex (the one scope commit is the coordinator's), the browser suite passes unchanged on chromium, tablet and phone (765 passed, 8 skipped as before), and `npm run sim` output on origin/main is a byte-identical prefix of the branch's. Suite: 2272 tests in 44 s, `npm run sim` 2 min 20 s. Added `src/sim/campaign-verifier.test.ts` and `src/game/campaignStore-verifier.test.ts` (hp by hand on five levels, every restriction, rewards, star boundaries, hostile progress input, throwing storage; all pass) and two `it.fails` pins for gate gaps.
+
+- Both bots read only the board, gold, boons, lives, the next-wave preview counts and live enemy type and position. They run no simulation ahead and read no later wave. Both are deterministic; the slowest level takes 76 ms to play.
+- Good equals the hand-written Hard plan and beats comboBuild by 6 to 9 Normal lives (20 against 14, 11, 14). On Hard it gets 13, 15, 9 against hardBuild 9, 15, 8. Its special aim is exact: every 0.5 s it counts enemies in every circle along the trail. Without specials it loses Burn Line, Hold the Bend and Last Light and wins The Switchback with 2 lives; with a look every 3 s it loses 4 to 7 lives on Burn Line, Hold the Bend and The Troll King. Stars are therefore set for a faster and more exact special user than most people.
+- L3 is a knife edge on more than the two documented levels. At hp +-2% or gold +-10, L3 fails on levels 2, 3, 4, 8 and 9; levels 5, 6, 7 and 10 pass every variant. On The Troll King the capable bot does better with the new thing removed (17 lives against 14 at hp -2%).
+- The gate accepts a last wave of one Goblin (levels 5, 7, 8) and the finale with Grumblemaw removed. It is tied to the ten ids (L1 and L2 star bands, feature table, hp exceptions, finale, L8 cohorts, 60 to 80 minute total), so a candidate level 11 cannot be checked as it stands.
+- At 80% starting gold Good loses levels 3, 6, 8, 9 and 10.
+
+
+## 2026-11-23: milestone 41b, campaign screens
+
+The campaign now has a player route from the first screen through the
+level map and card to the game and its result. Free play keeps its map
+and difficulty picker. Campaign screens use the existing button, palette,
+map drawing and end-screen components. The trail changes its row length
+when the device turns.
+
+The old browser helper assumed the first rendered title was the Free play
+picker. It now enters that picker for existing specs. Tests of the first
+gesture and first rendered frame start on the new first screen.
+
+The tall-font guard reserves 1.20 em above the baseline and 0.45 em below it on every machine. The level card and result title reserve separate rows with space for the stars and wrapped text.
+
+### Verifier notes (41b and the fourth pass of 41a)
+
+Checked at 5712392 by Claude Sonnet. Added `src/sim/gate-verifier.test.ts`, `src/sim/progress-verifier.test.ts`, `e2e/campaignVerifier.ts` with its three specs, and two pins (one `it.fails`, one `test.fail`).
+
+- Unit 2391 passed plus 1 expected fail; lint, typecheck and build clean. Browser suite, merged tree, `PW_PORT=4273`: 776 passed, 8 skipped, 0 failed (480 chromium, 119 tablet, 177 phone). Locally `ignoreSnapshots` is on, so the screenshot specs pass and write no PNG. The 29 failures Codex saw in a full run do not appear.
+- `npm run sim` here, against the same command in a `git archive main` extract: main's 410 lines are an exact prefix; the branch adds 31 lines. No existing sim number changed. Two shared-code edits outside the numbers: `callNextWave` now shifts pending summon times by the wave clock, and `spawnDueEnemies` can spawn several of one group on a tick when the interval is 0. Neither moved a printed number.
+- The ten-level table reproduces exactly from an independent run (Good, Person, Beginner and Person without specials): 3/20, 3/20, 3/20, 2/13, 3/20, 2/15, 2/16, 2/12, 3/20, 2/16 for Good. Free play Normal: Person 20, 20, 19 against comboBuild 14, 11, 14 (lead of 9 on Switchback).
+- Why Person beats comboBuild and, on Burn Line, Good (16 against 13 lives): Person buys with Good's own scoring, only rotating its cell among the top three, so it is a competent optimizer with slow hands, not a weak player. Swapping parts on Burn Line: Good's buying with Person's casting gives 14, Person's buying with Good's casting gives 16. The layout, not the special timing, makes the difference; Good's greedy layout is not a ceiling. P1 limits how far Person falls behind Good (6 lives), not how far it may be ahead, so the stars mean "a good builder with slow hands", and Beginner is the only weak-player measure.
+- Margins (lives gained by the new thing, Good / Person) at hp x0.98, hp x1.02, gold -10, gold +10: Pack Trail 4,4,4,4 / 1,1,1,1 (Person sits on the minimum of 1 everywhere); The Switchback 12 / 3 on all four; Stand Fast 3,3,5,6 / 1,3,1,6 (Person has margin 1 at hp x0.98 and gold -10, where it ends on 10 and 4 lives); The Troll King 2,2,6,6 / 7,6,2,14 (Good has margin 2, the minimum, at both hp changes).
+- Stand Fast ends on exactly 12 lives for both bots. At hp x0.98, hp x1.02 and gold -10, Good drops to one star (9, 10 and 10 lives). L3 and L6 allow a one-star drop (L6 only forbids a two-star move or a loss), so nothing in the gate holds the second star: it is one nudge from failing L1. Pinned with an `it.fails` in `gate-verifier.test.ts`.
+- The gate rejects, with the real bots: a useless Cannon, an unavailable Mortar, a last wave of one Goblin, a boss level without its boss, an opening of 70 enemies, a late-band level the Beginner three-stars, and Person 10 lives behind Good (Hold the Bend at hp 1.2, gold 150). A level Person loses uses a recorded loss (no scratch level was found where Good wins and Person loses). `checkLevel`, `bots.ts` and the contexts name no level ids and never import `levels.ts`. `checkCampaign` accepts one and two levels and the twelve-level list, and rejects a repeated introduction, a flat run, empty lists, mismatched contexts and repeated ids. Limit: L3 trusts the declared introduction. A context that declares nothing new passes a useless Cannon.
+- Saved progress: gaps open only a prefix, a later fill opens the rest, best stars never drop, and hostile input (prototype keys, `01`, `1e0`, negatives, wrong version, arrays) parses without a throw or a bogus level.
+- A cheated campaign win saves nothing and offers no Next, and the player is not told. The result screen shows three stars and "Lives left: 20" with Play again and Level map; only the small "cheat used" mark behind the veil hints at why, and the map afterwards shows level 1 unwon. It reads as a bug. Not changed.
+- A lock tap names the previous level, not the first one still to win: with levels 1 and 2 won, stop 5 says "Win level 4 first" though 4 is itself shut and 3 is the open level.
+- Keyboard: Enter and Space started a game from the old title. The new first screen registers no keys (they sit after its early return) and the map and card have none. Pinned with `test.fail`.
+- Touch targets: no control is under 44 px on the tablet in either layout or on the phone in portrait. A phone turned to landscape (844 x 390) gives 35 to 37 px tall buttons on the map, card and result screens (and the pre-existing 28 px Look and mute). Desktop Look and mute are 42 px, as on main.
+- Rotation on every campaign screen and mid-level keeps the screen, level, gold, wave and tick, with one scene running. No clipped or overlapping text on any of ten cards, the map and eight result variants in both layouts. 41b holds no copy of the star rule or unlock rule (it calls `levelStars`, `unlockedLevel`, `mergeProgress`), no strings outside `names.ts`, and one end screen component.
+
+### Fixes after verification
+
+Gold-cheat wins show empty stars and explain why the run saved none. The
+campaign screens support keyboard travel, and a locked stop names the open
+level to win next. L1m checks Good’s band minimum under four small HP or gold
+changes. Stand Fast was the only level that needed tuning. The campaign gate
+now checks every first appearance against its level context, including the
+opening kit. Known layout issue: at 844 × 390, the existing landscape scaling
+leaves campaign buttons 35–37 px tall.
+
+**Recheck at db84bd9 (Claude Sonnet).** Cheated win, keyboard, lock message, L1m and undeclared first appearances all hold. Added to `gate-verifier.test.ts`: the pre-fix Stand Fast data (gold 285, hp 1.3) fails exactly L1m; the ten levels reject a missing declaration for a tower, special, tower tier and enemy; the old twelve-level fixture (five extra Trolls, full gold) fails L1m, so Codex changed the fixture to fit the new rule and did not loosen any rule. Added to `campaignVerifier.ts`: listener counts stay equal across screens and turns, keys do nothing in a level, and a cheated result has no overlap in both layouts while an uncheated win is unchanged. Stand Fast is still fragile one step further out: Good drops to one star at hp x0.96 (10 lives), hp x1.04 (11) and gold -20 (11); Person is also at one star at gold -10. `checkLevel` alone does not enforce declarations (only `checkCampaign` does). Unit 2412 passed; browser suite 803 passed, 8 skipped, 0 failed.
+
+Linux Chromium drew the map’s star glyphs tall enough to overlap the stop
+numbers. The map, card and result now draw stars as shapes, and each stop
+reserves space between its number and stars. The build bar and tower panel
+now use the simulation’s level restrictions when offering purchases. Locked
+towers keep their slots, and upgrades end at the level’s tier limit.
+
+At 1.5× font metrics the old landscape wave counter overlapped the level tag by 4.06 px on Mac Chromium. Fixed-height HUD labels and a lower first-screen subtitle clear the stricter guard, which now also checks the running HUD after each rotation.

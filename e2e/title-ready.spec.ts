@@ -10,9 +10,9 @@ import { expect, test } from '@playwright/test';
 //
 // Each case hooks the page before the game boots: at the title's create it
 // checks that the title is not ready yet (and that Phaser has not listed the
-// Play button, the cause), then at the title's first render, the earliest
-// moment titleReady() is true, it clicks Play with DOM mouse events in the
-// same task. The game must start.
+// Campaign button, the cause), then at the title's first render, the earliest
+// moment titleReady() is true, it clicks Campaign with DOM mouse events in the
+// same task. The level map must appear.
 
 type Probe = {
   atCreate?: { ready: boolean; rects: string[]; listed: boolean; pending: boolean };
@@ -21,14 +21,14 @@ type Probe = {
 };
 
 for (const url of ['/?renderer=canvas', '/?test=1']) {
-  test(`a click on Play at the title's first ready frame starts the game (${url})`, async ({ page }) => {
+  test(`a click on Campaign at the first ready frame opens the map (${url})`, async ({ page }) => {
     await page.addInitScript(() => {
       type Rect = { x: number; y: number; width: number; height: number };
       // Phaser's private input lists are read on purpose: they show the cause.
       type Emitter = { once(event: string, f: () => void): void };
       type Title = {
         events: Emitter;
-        playButton: { box: unknown };
+        campaignButtons: Map<string, { box: unknown }>;
         input: { _list: unknown[]; _pendingInsertion: unknown[] };
       };
       type Game = { scene: { getScene(key: string): Title | null }; events: Emitter; canvas: HTMLCanvasElement; loop: { frame: number } };
@@ -46,7 +46,7 @@ for (const url of ['/?renderer=canvas', '/?test=1']) {
           const hook = () => {
             const title = game.scene.getScene('title')!;
             title.events.once('create', () => {
-              const box = title.playButton.box;
+              const box = title.campaignButtons.get('title:campaign')!.box;
               w.__probe.atCreate = {
                 ready: api.titleReady(),
                 rects: titleKeys(api),
@@ -56,7 +56,7 @@ for (const url of ['/?renderer=canvas', '/?test=1']) {
               // Registered after TitleScene's own render listener, so ready is already set when this runs.
               title.events.once('render', () => {
                 w.__probe.atRender = { ready: api.titleReady(), rects: titleKeys(api) };
-                const r = api.uiRects()['title:play'];
+                const r = api.uiRects()['title:campaign'];
                 const c = game.canvas.getBoundingClientRect();
                 const x = c.left + r.x + r.width / 2;
                 const y = c.top + r.y + r.height / 2;
@@ -75,14 +75,14 @@ for (const url of ['/?renderer=canvas', '/?test=1']) {
     await page.goto(url);
     await page.waitForFunction(() => (window as unknown as { __probe: Probe }).__probe.clickedAt !== undefined);
     const probe = await page.evaluate(() => (window as unknown as { __probe: Probe }).__probe);
-    // At create: not ready, no title buttons listed; Phaser has the Play button pending, not hit-testable.
+    // At create: not ready, no title buttons listed; Phaser has the Campaign button pending, not hit-testable.
     expect(probe.atCreate).toEqual({ ready: false, rects: [], listed: false, pending: true });
     // At the first render: ready, every button listed (milestone 27: the map thumbnails too).
     expect(probe.atRender).toEqual({
       ready: true,
-      rects: ['title:easy', 'title:normal', 'title:hard', 'title:map:meadow', 'title:map:switchback', 'title:map:riverbend', 'title:play', 'title:mute', 'title:look:classic', 'title:look:painted'].sort(),
+      rects: ['title:campaign', 'title:freePlay', 'title:mute', 'title:look:classic', 'title:look:painted'].sort(),
     });
-    // The click at that moment started the game.
-    await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game'), undefined, { timeout: 5000 });
+    // The click at that moment opened the level map.
+    await page.waitForFunction(() => !!window.__tarpit?.uiRects()['title:stop:1'], undefined, { timeout: 5000 });
   });
 }

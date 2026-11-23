@@ -1,7 +1,7 @@
 // Words on the win and lose screens. No Phaser, so it is unit tested.
 
-import { LAST_WAVE, type GameState } from '../../sim';
-import { END_TEXT, heldBoonsText, reachedWaveText } from '../names';
+import { LEVELS, TWO_STAR_LIVES, THREE_STAR_LIVES, lastWave, levelStars, unlockedLevel, type CampaignProgress, type GameState } from '../../sim';
+import { CAMPAIGN_END, END_TEXT, heldBoonsText, livesLeftText, reachedWaveText, starGoalText, starSlots } from '../names';
 
 export type EndKind = 'won' | 'lost';
 
@@ -15,5 +15,29 @@ export function endScreenText(kind: EndKind, state: GameState): { title: string;
   if (kind === 'won') {
     return { title: END_TEXT.wonTitle, lines: [`${END_TEXT.wonLives} ${state.lives}`, `${END_TEXT.wonGold} ${state.gold}`], boons };
   }
-  return { title: END_TEXT.lostTitle, lines: [reachedWaveText(state.wave, state.endless, LAST_WAVE)], boons };
+  return { title: END_TEXT.lostTitle, lines: [reachedWaveText(state.wave, state.endless, lastWave(state))], boons };
 }
+
+export function campaignResultText(state: GameState, progress: CampaignProgress) {
+  const kind = endKind(state);
+  if (!kind || !state.level) return null;
+  const won = kind === 'won';
+  const credited = won && !state.cheated;
+  const stars = credited ? levelStars(state) : 0;
+  const lives = Math.max(0, state.lives);
+  const levelId = state.level.id;
+  const next = LEVELS.find(level => level.id === levelId + 1);
+  const nextId = credited && next && unlockedLevel(progress, next.id) ? next.id : null;
+  const hint = won && state.cheated ? CAMPAIGN_END.cheated : stars === 1 ? starGoalText(TWO_STAR_LIVES, 2) : stars === 2 ? starGoalText(THREE_STAR_LIVES, 3) : '';
+  const slots = won ? starSlots(stars) : '';
+  const complete = credited && !next ? CAMPAIGN_END.complete : '';
+  return {
+    kind, levelId, stars, lives, nextId, slots, hint, complete,
+    title: won ? END_TEXT.wonTitle : END_TEXT.lostTitle,
+    details: won ? [livesLeftText(lives), hint, complete].filter(Boolean)
+      : [reachedWaveText(state.wave, false, lastWave(state))],
+    buttons: [...(nextId ? [CAMPAIGN_END.next] : []), won ? END_TEXT.playAgain : CAMPAIGN_END.retry, CAMPAIGN_END.map],
+  };
+}
+
+export type CampaignResult = NonNullable<ReturnType<typeof campaignResultText>>;

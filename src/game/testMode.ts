@@ -10,6 +10,12 @@ import { sound } from './audio/engine';
 import { audioLab } from './audio/lab';
 import {
   bestUnlockedSpecial,
+  LEVELS,
+  levelStars,
+  unlockedLevel,
+  runBot,
+  botGood,
+  botBeginner,
   comboBuild,
   DEFAULT_DIFFICULTY,
   DEFAULT_MAP,
@@ -29,8 +35,10 @@ import {
   towerLevel,
 } from '../sim';
 import type { GameScene } from './GameScene';
+import { campaignProgress } from './campaignProgress';
 import { highScores } from './highScore';
 import { pageLockState } from './pageLock';
+import { STAR_ROW } from './ui/starRow';
 import { currentLayout } from './layoutSwitch';
 import type { TarpitTestApi } from './testGlobal';
 import type { TitleScene } from './TitleScene';
@@ -202,6 +210,12 @@ export function installGlobal(game: Phaser.Game): void {
   const api: TarpitTestApi = {
     ...always,
     scene: () => game.scene.getScenes(true)[0]?.scene.key ?? '',
+    screen: (): ReturnType<TarpitTestApi['screen']> => {
+      if (game.scene.isActive('title')) return titleScene(game).uiState().screen;
+      if (!game.scene.isActive('game')) return null;
+      const phase = (game.scene.getScene('game') as GameScene).state.phase;
+      return phase === 'lost' || phase === 'won' ? 'result' : 'game';
+    },
     state: () => {
       const state = scene().state;
       // Existing browser fixtures mutate live state. Expose the derived
@@ -224,6 +238,55 @@ export function installGlobal(game: Phaser.Game): void {
         game.scene.getScene('game').events.once('create', () => resolve());
         titleScene(game).play(difficulty, map);
       }),
+    startLevel: (id) => {
+      const level = LEVELS.find(entry => entry.id === id);
+      if (!level) throw new RangeError(`Unknown campaign level ${id}`);
+      return new Promise<void>(resolve => {
+        const target = game.scene.getScene('game');
+        target.events.once('create', resolve);
+        if (game.scene.isActive('game')) target.scene.restart({ level });
+        else titleScene(game).scene.start('game', { level });
+      });
+    },
+    levelStars: () => levelStars(scene().state),
+    progress: () => campaignProgress.table(),
+    campaignLabels: () => {
+      const active = game.scene.isActive('title') ? titleScene(game) : scene();
+      return active.children.list.flatMap(node => {
+        let text: string;
+        let bounds: Phaser.Geom.Rectangle;
+        if (node.type === 'Text') {
+          const label = node as Phaser.GameObjects.Text;
+          if (!label.visible || !label.text) return [];
+          text = label.text;
+          bounds = label.getBounds();
+        } else if (node.name === STAR_ROW) {
+          const row = node as Phaser.GameObjects.Container;
+          if (!row.visible) return [];
+          const stars = row.list as Phaser.GameObjects.Star[];
+          text = stars.filter(star => star.visible).map(star => star.isFilled ? '★' : '☆').join('');
+          // Shape.getBounds() covers the path; its stroke straddles the boundary.
+          bounds = row.getBounds();
+          const stroke = stars[0].lineWidth;
+          bounds.setTo(bounds.x - stroke / 2, bounds.y - stroke / 2, bounds.width + stroke, bounds.height + stroke);
+        } else return [];
+        const { x, y, width, height } = bounds;
+        return [{ text, x, y, width, height }];
+      });
+    },
+    levelStops: () => game.scene.isActive('title') ? titleScene(game).uiState().stops : [],
+    setCampaignProgress: table => {
+      campaignProgress.replaceForTest(table);
+      if (game.scene.isActive('title')) titleScene(game).refreshProgress();
+    },
+    campaignResult: () => game.scene.isActive('game') ? scene().campaignResult() : null,
+    levelOpen: id => unlockedLevel(campaignProgress.table(), id),
+    runBot: (name, throughWave) => {
+      const current = scene();
+      const { state } = runBot(current.state, name === 'botGood' ? botGood : botBeginner, throughWave);
+      current.advance(0);
+      return state.phase;
+    },
     difficulty: () => scene().state.difficulty,
     pendingBoon: () => scene().state.pendingBoon,
     heldBoons: () => [...scene().state.boons],

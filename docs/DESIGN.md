@@ -1,6 +1,6 @@
 # Tarpit: game design spec
 
-> **Frozen as of milestone 40.** This file states every number and rule the
+> **Frozen as of milestone 41a.** This file states every number and rule the
 > game uses. Changing any of them needs a `DECISIONS.md` entry (who decided
 > and why) and the balance pins updated in the same change
 > (`src/sim/balance.suite.ts`, `npm run sim`). Kyle's play notes can reopen
@@ -218,8 +218,11 @@ buttons in `uiRects()`) from its first rendered frame, because Phaser makes
 the buttons hit-testable only from the scene's next update after
 `create()`; specs wait with `e2e/title.ts` `waitForTitle`.
 
-On Easy and Hard the HUD shows the level's name in small muted text under
-the wave counter (which moves up 7 px); on Normal there is no tag. The end
+In landscape, the campaign level or Easy/Hard tag sits below the wave
+counter. The 18 px counter moves up 9 px and the 12 px tag sits 12 px
+below row centre. Their fixed heights (22 and 15 px) leave a 2.5 px gap.
+Portrait keeps both labels at 18 px on one line with a 7 px gap.
+Normal Free play has no tag. The end
 screens have [Play again] (same level and map) and a 100 x 42 [Menu]
 beside it that returns to the title; the win screen also has [Keep going].
 
@@ -1563,3 +1566,147 @@ The milestone 37 “Closing pass” in DEVLOG records the Normal results.
 | soundBuild | L 15 | L 7 | L 2 | - | - | - | - | - | - |
 | soundBuildNoTar | L 10 | L 7 | L 2 | - | - | - | - | - | - |
 | comboStrongest | W 14 | L 5 | L 3 | - | - | - | - | - | - |
+
+## Levels and campaign
+
+A level has a numeric id, map id, a finite list of wave groups, starting gold
+(100–300), enemy HP scale, first HP growth wave (or none), allowed towers,
+maximum tower level, allowed specials and reward waves.
+Names and twist lines are keyed by id in `src/game/names.ts`. Combat, enemy
+stats, prices, upgrade paths, reward effects and special effects are shared
+with Free play. HP uses the Normal base. Starting at the first growth wave,
+each successive wave adds another 28% of that scaled base. The campaign gate
+checks nominal HP before varying it in the L3 and L6 trials. Each wave uses the
+level’s HP rule with no separate wave multiplier.
+
+Up to three ascending reward waves use the three existing reward menus in order.
+An allowed special opens on wave 1. Tower, upgrade and special restrictions
+are checked before a purchase or cast changes the game. Clearing the last
+wave wins. Every level starts with the same life count. A loss earns zero stars.
+A win earns one star, or the highest award whose minimum is met.
+
+| Starting lives | Minimum lives for two stars | Minimum lives for three stars |
+|---:|---:|---:|
+| 20 | 12 | 18 |
+
+Level 1 starts open. Open levels form a contiguous prefix. A saved win beyond a gap counts toward unlocking the following level after the player fills that gap. Replay keeps the best stars. The browser
+stores campaign stars under `tarpit.campaign`; if storage fails, it keeps
+them for the page session. Free play keeps its own score table.
+
+### Bot decisions
+
+- All three bots buy between waves, use the live gold balance, and start each wave normally. None sells, calls early or reads a later wave.
+- **Good** scores affordable placements and upgrades by the extra damage and slowing they provide per gold along the trail, sampled every 24 px. It uses the next preview's counts of flyers, small walkers and heavy enemies. It favors earlier coverage, overlaps for splash and tar/fire, and new air coverage where little exists. After two towers it favors the first Cannon against crowds, Mortar against heavies, Tar Pit, and Fire Pot alongside tar. Repeated types receive a diminishing placement score. It compares both second-upgrade paths. Good spends its opening gold and keeps 30 gold in later setups.
+- Good scores each offered reward and takes the first highest score. On menu one it counts two points per Cannon or Mortar for Long Barrels, one per Longbow for Keen Arrows, and four for War Chest. On menu two it counts slowing towers plus Tar Barrel for Sticky Tar, twice the number of burning towers plus two for Fire Arrows for Hot Coals, and three for Quick Hands if a special is available. On menu three Stone Walls scores five (twelve at four lives or fewer), Veteran Crews scores one third of the tower count, and Bigger Blasts scores the artillery count plus one for Powder Keg.
+- Every 30 wave ticks Good applies the existing crowd policy for keg and zones, limited to available specials. It also checks for at least three walkers approaching a legal blocker position 50–140 px ahead, covered by a tower. A splash tower adds one to the blocker score. A blocker must beat the current cast's hit count, and its kind must be absent from the trail. Guards get the first blocker tie.
+- **Person** uses Good’s purchase scores and reward choices. For the chosen tower type, successive placements rotate through the first, second and third highest-scoring cells. During combat it makes at most one decision per three seconds. It acts 1.5 seconds after each charge becomes ready, including the opening charge. If the next wave opens before another look is due, it repeats the previous opening cast at the charge deadline. Its candidate points are centres of 48 px cells along the trail. It prefers Good’s qualifying cast, then a cast covering fewer enemies, then a legal cast even on an empty trail.
+
+- **Beginner** spends on the cheapest allowed tower in the map's trail-cell order. When it cannot place another, it can buy one affordable upgrade, taking path A at the second upgrade. It takes the first reward and uses no specials.
+
+In Normal Free play, Good must win or lose on each map the same way as
+comboBuild. Both win on all three maps. Good finishes with 20 lives on each.
+ComboBuild finishes with 14 on Meadow, 11 on Switchback and 14 on Riverbend,
+so Good's largest lead is nine lives on Switchback.
+
+Person also wins all three Normal maps, with 20, 20 and 19 lives respectively.
+Campaign stars are calibrated to a capable builder with slow hands. Person uses
+Good’s purchase optimiser and finishes Burn Line with 16 lives to Good’s 13.
+Beginner is the only measure of weak play. Real players decide whether the
+star targets feel right.
+
+### Acceptance
+
+The level record can declare an ending boss. A separate context names the introduced mechanic and the difficulty band. Each band sets the acceptable star counts and whether Person must win with specials disabled.
+
+| Band | Good minimum | Person minimum | Beginner minimum | Beginner maximum | Win without specials |
+|---|---:|---:|---:|---:|---|
+| intro | 3 | 2 | 1 | 3 | yes |
+| middle | 2 | 2 | 0 | 2 | yes |
+| transition | 2 | 1 | 0 | 1 | yes |
+| late | 2 | 1 | 0 | 1 | no |
+| finale | 2 | 1 | 0 | 1 | no |
+
+| Gate measure | Accepted values |
+|---|---|
+| Level duration (minutes) | 4–9 |
+| Campaign average (minutes per level) | 6–8 |
+| Waves per level | 5–10 |
+| Nominal HP scale | 0.85–1.35 |
+| Starting gold | 100–300 |
+| Finale lives | 12–16 |
+| Last scheduled spawn (seconds), maximum | 90 |
+| Enemies alive, maximum | 40 |
+| Opening enemies, maximum | 60 |
+| Closing enemies without a boss, minimum | 20 |
+| Person deficit behind Good, maximum lives | 6 |
+| Feature advantage for Good, minimum lives or a star | 2 |
+| Feature advantage for Person, minimum lives | 1 |
+| Mean lives drop, minimum | 3 |
+| L3 HP factors | 0.98–1.02 |
+| L3 starting gold offsets | -10–10 |
+| L6 HP factors | 0.95–1.05 |
+| L6 starting gold factors | 0.85–1.15 |
+
+- P1 checks Person’s stars and surviving lives against Good. P2 runs Person with an empty list of allowed specials. The two bands that allow a loss still report that run.
+- L1 and L2 apply the Good and Beginner star limits in the band table. L1m requires Good to keep its band minimum at HP ×0.98, HP ×1.02, starting gold −10 and starting gold +10, varying one input at a time on every level.
+- L3 checks the feature advantage at nominal settings and at each endpoint of the two L3 ranges, varying one input at a time. In campaign order the controls remove Cannon, Tar Pit, Fire Pot, all anti-air towers, Mortar, Barricade, Guards and Fire Arrows together, the second upgrade, then all specials. Both boss encounters keep their boss during these trials. Good must lose the nominal anti-air control. Each context declares every tower, special, tower tier and scheduled enemy type that first appears at that stop, including the opening kit. The removal trials measure the featured mechanic. A campaign fails L3 for a missing, unavailable or repeated introduction.
+- L4 allows Beginner to rise at most one star between adjacent levels. Good’s lives may rise only once in succession.
+- L5 checks durations at 1× without early calls. Good must stay within the peak count. R1 allows six walkers and four flyers in each sliding three-second window. Person must keep all opening lives. The closing wave must meet the enemy minimum or contain a boss, and must include any declared ending boss.
+- L6 varies HP and starting gold separately at the listed endpoints, rounding scaled gold to the nearest integer. Good and Person may each move at most one star. Both must still win intro and middle levels.
+- L7 checks the record and requires terminal runs with no refused actions.
+- L8 checks Good’s finale lives and the difference between the first and last thirds’ mean lives. Each cohort contains the campaign length divided by three, rounded down, with at least one level. A single-level list has no mean-drop comparison.
+
+### Campaign measurements
+
+Stars/lives give each bot’s highest award and surviving lives. Time counts Good’s combat ticks at 60 Hz. Enemies includes summons. Peak is the greatest number alive after any tick.
+
+| ID | Name | Map | Waves | Enemies | Gold | HP scale | Growth from | Max tier | Reward waves | Good | Person | Beginner | Minutes | Peak alive | Wave 1 |
+|---|---|---|---:|---:|---:|---:|---:|---:|---|---|---|---|---:|---:|---:|
+| 1 | First Watch | Meadow | 6 | 324 | 100 | 1 | — | 2 | — | 3/20 | 3/20 | 3/20 | 5.79 | 6 | 44 |
+| 2 | Pack Trail | Meadow | 6 | 225 | 100 | 1.25 | 1 | 2 | — | 3/20 | 3/20 | 1/3 | 4.51 | 17 | 6 |
+| 3 | The Switchback | Switchback | 7 | 572 | 160 | 1.14 | 2 | 2 | — | 3/20 | 3/20 | 2/16 | 6.97 | 10 | 47 |
+| 4 | Burn Line | Switchback | 7 | 206 | 285 | 1.35 | 3 | 2 | — | 2/13 | 2/16 | 0/0 | 6.54 | 21 | 13 |
+| 5 | Wings Over the River | Riverbend | 7 | 656 | 180 | 1.27 | — | 2 | — | 3/20 | 3/20 | 1/2 | 7.79 | 12 | 25 |
+| 6 | Heavy Feet | Riverbend | 7 | 331 | 270 | 1 | — | 2 | — | 2/15 | 2/14 | 0/0 | 8.41 | 10 | 56 |
+| 7 | Hold the Bend | Meadow | 8 | 738 | 245 | 1.3 | — | 2 | — | 2/16 | 2/12 | 0/0 | 8.13 | 28 | 53 |
+| 8 | Stand Fast | Switchback | 7 | 517 | 295 | 1.28 | — | 2 | — | 2/12 | 2/13 | 0/0 | 8.08 | 30 | 36 |
+| 9 | The Troll King | Riverbend | 7 | 535 | 255 | 1 | 6 | 3 | 5 | 3/20 | 3/20 | 0/0 | 7.57 | 17 | 42 |
+| 10 | Last Light | Meadow | 7 | 633 | 280 | 0.925 | 5 | 3 | 5 | 2/16 | 2/13 | 0/0 | 8.89 | 19 | 36 |
+
+Good clears the campaign in 72.70 minutes. Its mean surviving lives drop by 4.00 from the first third to the last.
+
+Pack Trail builds up from three-Goblin ranks to groups of six. Heavy Feet ends with a column of 20 Trolls, which Mortars can hit on Riverbend beyond the reach of the installed short-range towers. Hold the Bend has the most spawns. Stand Fast combines shielded ground formations with air pressure. The Troll King sends upgraded towers against Trolls and a shielded escort before Grumblefoot. Last Light closes with Grumblemaw.
+
+## Campaign screens
+
+The first screen offers **Campaign** and **Free play**. Its subtitle sits
+20 px below the Free play picker’s subtitle position. Free play opens the
+map and difficulty picker. Its best scores belong to the selected map and
+difficulty. Campaign opens the level map and reads the saved campaign stars.
+
+The trail crosses five stops and returns across five in landscape. In
+portrait it winds down five rows of two. Each stop shows its level number
+and three star slots. The number has a fixed-height box with at least 4 px
+of clearance above the stars. The map, card and result draw filled stars
+for earned slots and outlines for empty slots. The first open level without a win is highlighted.
+Tapping any lock names the first open level still to win. Back returns to
+the first screen. An open stop shows a card with the level name, map,
+twist, new equipment or enemies, and best stars. Play starts that level.
+
+The build bar keeps every tower in its usual slot. Towers unavailable in
+this level appear dimmed with a lock and cannot be selected. The tower
+panel offers upgrades up to the level’s tier limit. At a campaign cap
+below tier three, it shows “Max for this level” beside the kill count. From wave one, the specials menu lists the level’s specials.
+
+The game shows the level number and counts waves against the level's own
+length. A win shows this run's stars and lives. A gold-cheat win shows empty star slots and explains that stars were not saved. It opens no level and offers no Next. Below three stars it gives
+the life target for the next award. Next level opens the next card. Winning
+level ten shows the campaign-complete message. Play again restarts the
+same level, and Level map shows the player's saved bests. A loss offers
+Try again and Level map. Turning the device keeps the current screen and
+level selection. Both looks use the same campaign controls.
+
+Arrow keys move the highlight, Enter or Space activates it, and Escape goes
+back. The first screen opens on Campaign, the map on the next unwon open
+stop, the card on Play, and the result on its first button. On the map the
+arrow keys visit only open stops.

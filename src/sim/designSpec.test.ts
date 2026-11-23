@@ -10,8 +10,13 @@ import { BARRICADE_END_EXCLUSION, BARRICADE_HP, BARRICADE_SNAP_RADIUS, GUARD_COU
 import { BOONS } from './boons';
 import { PACK_INTERVAL_TICKS, PACK_SIZE } from './combat';
 import { ENEMY_STATS, isBoss } from './enemies';
-import { lastSpawnTick } from './game';
+import { createGame, lastSpawnTick } from './game';
 import { buildableCells } from './grid';
+import { LEVELS } from './levels';
+import { CAMPAIGN_START_LIVES, TWO_STAR_LIVES, THREE_STAR_LIVES } from './levelTypes';
+import { BAND_RULES, GATE_LIMITS } from './checkLevel';
+import { botGood, botPerson, botBeginner, runBot } from './bots';
+import { levelStars } from './campaignProgress';
 import { MAPS, pathLength, type MapId } from './map';
 import { SPECIAL_DEFS, SPECIAL_RECHARGE_TICKS, ZONE_LINGER_TICKS, type SpecialType } from './specials';
 import { POLICY_CHECK_TICKS, POLICY_MIN_HITS, POLICY_POINT_SPACING } from './specialPolicy';
@@ -24,7 +29,7 @@ import { TARGETS } from './balanceTargets';
 
 // This spec alone compares documentation with both the UI and the simulation.
 // eslint-disable-next-line no-restricted-imports
-import { PATH_NAMES, pathDescription } from '../game/names';
+import { LEVEL_NAMES, MAP_NAMES as MAP_LABELS, PATH_NAMES, pathDescription } from '../game/names';
 // eslint-disable-next-line no-restricted-imports
 import { PATH_MARKS } from '../game/draw/towers';
 
@@ -101,7 +106,42 @@ const burn = (s: string): [number, number] => {
 
 describe('docs/DESIGN.md matches the code', () => {
   it('has the frozen banner', () => {
-    expect(md).toMatch(/^# Tarpit: game design spec\n\n> \*\*Frozen as of milestone 40\.\*\*/);
+    expect(md).toMatch(/^# Tarpit: game design spec\n\n> \*\*Frozen as of milestone 41a\.\*\*/);
+  });
+
+  it('uses one starting life count and star rule across the campaign', () => {
+    expect(table('Levels and campaign', 'Starting lives')).toEqual([
+      [CAMPAIGN_START_LIVES, TWO_STAR_LIVES, THREE_STAR_LIVES].map(String),
+    ]);
+  });
+
+  it('matches campaign difficulty bands and gate limits', () => {
+    expect(table('Levels and campaign', 'Band')).toEqual(Object.entries(BAND_RULES)
+      .map(([band, [good, person, floor, cap, noSpecials]]) =>
+        [band, good, person, floor, cap, noSpecials ? 'yes' : 'no'].map(String)));
+    const limits = GATE_LIMITS;
+    expect(table('Levels and campaign', 'Gate measure').map(row => row[1])).toEqual([
+      limits.levelMinutes, limits.averageMinutes, limits.waveCount, limits.hpScale, limits.startGold,
+      limits.finaleLives, limits.lastSpawnSeconds, limits.peakAlive, limits.openingCount, limits.closingCount,
+      limits.maxPersonDeficit, limits.goodFeatureLives, limits.personFeatureLives, limits.meanLivesDrop,
+      limits.featureHp, limits.featureGold, limits.sensitivityHp, limits.sensitivityGold,
+    ].map(value => Array.isArray(value) ? value.join('–') : String(value)));
+  });
+
+  it('lists exactly the campaign stops in order', () => {
+    expect(table('Levels and campaign', 'ID').map(row => Number(row[0]))).toEqual(LEVELS.map(level => level.id));
+  });
+
+  it.each(LEVELS)('campaign level $id matches its printed rules and measured outcomes', level => {
+    const row = table('Levels and campaign', 'ID').find(row => Number(row[0]) === level.id);
+    const [good, person, beginner] = [botGood, botPerson, botBeginner].map(bot => runBot(createGame({ level }), bot));
+    expect(row).toEqual([level.id, LEVEL_NAMES[level.id].name, MAP_LABELS[level.map], level.waves.length, good.state.nextEnemyId,
+      level.startGold, level.hpScale, level.hpGrowthStart ?? '—', level.maxTowerLevel,
+      level.rewardWaves.join(', ') || '—',
+      `${levelStars(good.state)}/${good.state.lives}`, `${levelStars(person.state)}/${person.state.lives}`,
+      `${levelStars(beginner.state)}/${Math.max(0, beginner.state.lives)}`,
+      (good.state.tick / 3600).toFixed(2), good.peakAlive,
+      level.waves[0].groups.reduce((sum, group) => sum + group.count, 0)].map(String));
   });
 
   it('maps: waypoints, path length and buildable cells', () => {

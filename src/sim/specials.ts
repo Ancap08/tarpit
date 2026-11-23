@@ -10,6 +10,7 @@
 // position, inclusive.
 
 import { boonScale, type BoonId } from './boons';
+import type { GameState } from './types';
 
 export type SpecialType = 'keg' | 'barricade' | 'tarBarrel' | 'guards' | 'fireArrows';
 
@@ -68,6 +69,15 @@ export function isSpecialUnlocked(type: SpecialType, wave: number): boolean {
 /** The specials unlocked on `wave`, in unlock order. */
 export function unlockedSpecials(wave: number): SpecialType[] {
   return SPECIAL_TYPES.filter((type) => isSpecialUnlocked(type, wave));
+}
+
+/** A campaign level grants its entire special list from wave 1. */
+export function specialAllowed(state: Pick<GameState, 'level' | 'wave'>, type: SpecialType): boolean {
+  return state.level ? state.wave >= 1 && state.level.allowedSpecials.includes(type) : isSpecialUnlocked(type, state.wave);
+}
+
+export function availableSpecials(state: Pick<GameState, 'level' | 'wave'>): SpecialType[] {
+  return SPECIAL_TYPES.filter((type) => specialAllowed(state, type));
 }
 
 /** Effective radius for both the actual impact and the headless player's aim. */

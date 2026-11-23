@@ -175,8 +175,8 @@ export function callEarlyLabel(bonus: number): string {
 }
 
 /** The tower panel's kill count line: "Kills 43". */
-export function killsLabel(kills: number): string {
-  return `${KILLS_TEXT} ${kills}`;
+export function killsLabel(kills: number, atCampaignCap = false): string {
+  return `${KILLS_TEXT} ${kills}${atCampaignCap ? ' · Max for this level' : ''}`;
 }
 
 /** Special attack names (milestone 25b): the HUD popup's buttons. */
@@ -337,3 +337,59 @@ export function boonDescription(id: BoonId): string {
 export function blockedWaveLabel(pending: boolean, reason: string): string {
   return pending ? `${START_WAVE_TEXT}\n${BOON_PENDING_TEXT}` : `${CALL_EARLY_TEXT}\n${reason}`;
 }
+
+export const CAMPAIGN_END = {
+  cheated: 'Gold cheat used: stars not saved',
+  next: 'Next level',
+  map: 'Level map',
+  retry: 'Try again',
+  complete: 'Campaign complete!',
+} as const;
+
+export function livesLeftText(lives: number): string {
+  return `Lives left: ${lives}`;
+}
+
+export function starGoalText(lives: number, stars: 2 | 3): string {
+  return `Finish with ${lives} lives for ${stars === 2 ? 'two' : 'three'} stars`;
+}
+
+/** Campaign cards and twist lines, keyed by the saved level id. */
+export const LEVEL_NAMES: Readonly<Record<number, { name: string; twist: string }>> = {
+  1: { name: 'First Watch', twist: 'Cover the trail with Musketeers and Longbows.' },
+  2: { name: 'Pack Trail', twist: 'Use Cannon fire to thin the crowds.' },
+  3: { name: 'The Switchback', twist: 'Slow the Wolves at the bends.' },
+  4: { name: 'Burn Line', twist: 'Set the tar alight as Shieldbearers march through.' },
+  5: { name: 'Wings Over the River', twist: 'Keep the sky covered as Harpies cross the river.' },
+  6: { name: 'Heavy Feet', twist: 'Give the Mortar a clear shot at the Trolls.' },
+  7: { name: 'Hold the Bend', twist: 'Raise a Barricade within reach of your towers.' },
+  8: { name: 'Stand Fast', twist: 'Meet the crowds with Guards and Fire Arrows.' },
+  9: { name: 'The Troll King', twist: 'Choose a second upgrade before Grumblefoot arrives.' },
+  10: { name: 'Last Light', twist: 'Bring every special to the fight with Grumblemaw.' },
+};
+
+export const CAMPAIGN_TEXT = {
+  campaign: 'Campaign',
+  freePlay: 'Free play',
+  levelMap: 'Level map',
+  back: 'Back',
+  bestStars: 'Best stars',
+  newThisLevel: 'New this level',
+} as const;
+
+export const LEVEL_NEW: Readonly<Record<number, string>> = {
+  1: 'Musketeer, Longbow and Powder Keg',
+  2: 'Cannon',
+  3: 'Tar Pit',
+  4: 'Fire Pot and Shieldbearers',
+  5: 'Harpies and Tar Barrel',
+  6: 'Mortar and Trolls',
+  7: 'Barricade',
+  8: 'Guards and Fire Arrows',
+  9: 'Second upgrades and Grumblefoot',
+  10: 'The full arsenal and Grumblemaw',
+};
+
+export const levelNumberText = (id: number): string => `Level ${id}`;
+export const lockedLevelText = (id: number): string => `Win level ${id} first`;
+export const starSlots = (stars: number): string => '★'.repeat(stars) + '☆'.repeat(3 - stars);

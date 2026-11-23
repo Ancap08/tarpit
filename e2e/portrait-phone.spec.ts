@@ -64,7 +64,7 @@ test('the title in portrait: pick a level and a map by tap, then Play', async ({
   expect(await page.evaluate(() => window.__tarpit!.layout())).toBe('portrait');
   expect(await page.evaluate(() => [window.__tarpit!.game.scale.gameSize.width, window.__tarpit!.game.scale.gameSize.height])).toEqual([480, 1194]);
   const names = Object.keys(await rects(page));
-  expect(names.sort()).toEqual(['title:easy', 'title:hard', 'title:look:classic', 'title:look:painted', 'title:map:meadow', 'title:map:riverbend', 'title:map:switchback', 'title:mute', 'title:normal', 'title:play']);
+  expect(names.sort()).toEqual(['title:back', 'title:easy', 'title:hard', 'title:look:classic', 'title:look:painted', 'title:map:meadow', 'title:map:riverbend', 'title:map:switchback', 'title:mute', 'title:normal', 'title:play']);
   for (const n of names) {
     const r = (await rects(page))[n];
     expect(r.x).toBeGreaterThanOrEqual(0);

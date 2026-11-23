@@ -42,7 +42,14 @@ export class Button {
   private shown = true;
   private picked = false;
 
+  private readonly click: () => void;
+
   constructor(scene: Phaser.Scene, rect: Rect, text: string, onClick: () => void, options: ButtonOptions = {}) {
+    this.click = () => {
+      const cue = options.sound === undefined ? 'tap' : options.sound;
+      if (cue !== null) sound.play(cue);
+      onClick();
+    };
     this.r = { ...rect };
     this.onHover = options.onHover;
     this.labelY = options.labelY;
@@ -73,12 +80,12 @@ export class Button {
       const wasPressed = this.pressed;
       this.pressed = false;
       this.refresh();
-      if (wasPressed && this.enabled && this.shown) {
-        const cue = options.sound === undefined ? 'tap' : options.sound;
-        if (cue !== null) sound.play(cue);
-        onClick();
-      }
+      if (wasPressed) this.activate();
     });
+  }
+
+  activate(): void {
+    if (this.enabled && this.shown) this.click();
   }
 
   get rect(): Rect {
