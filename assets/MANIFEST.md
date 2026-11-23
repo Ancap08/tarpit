@@ -185,6 +185,21 @@ the checker looks for it.
 | `docs/art/slice-meadow/meadow-comparison.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review with tracked game capture. Original Goblin sprite by Pixel-boy and AAA (Ninja Adventure), CC0 1.0. |
 | `docs/art/slice-meadow/meadow-contact.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review |
 | `docs/art/spike-v5/comparison.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study with tracked game capture. Original game sprites by Pixel-boy and AAA (Ninja Adventure), CC0 1.0. |
+| `docs/art/theme/assessor.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b painted character review |
+| `docs/art/theme/characters.jpg` | `scripts/art/theme_sheet.py` | Tarpit agents | MIT | Milestone 44b painted character review |
+| `docs/art/theme/king.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b painted character review |
+| `docs/art/theme/meadow-landscape.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b painted character review |
+| `docs/art/theme/meadow-phone.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b painted character review |
+| `docs/art/theme/riverbend-landscape.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b painted character review |
+| `docs/art/theme/riverbend-phone.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b painted character review |
+| `docs/art/theme/switchback-landscape.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b painted character review |
+| `docs/art/theme/switchback-phone.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b painted character review |
+| `docs/art/theme/verifier/hound-beside-squad.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b verifier capture: Hound and the four Guards in a phone crop |
+| `docs/art/theme/verifier/meadow-landscape-1x.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b verifier capture: Meadow staged crowd, landscape 1x |
+| `docs/art/theme/verifier/riverbend-landscape-1x.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b verifier capture: Riverbend staged crowd, landscape 1x |
+| `docs/art/theme/verifier/riverbend-phone-1x.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b verifier capture: Riverbend staged crowd, phone 1x |
+| `docs/art/theme/verifier/switchback-landscape-1x.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b verifier capture: Switchback staged crowd, landscape 1x |
+| `docs/art/theme/verifier/tar-burn-main-over-branch.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b verifier capture: Tar and burn tints, main (top) over 44b (bottom) |
 | `assets/fonts/OFL.txt` | https://github.com/google/fonts/blob/main/ofl/librecaslontext/OFL.txt | The Libre Caslon Text Project Authors | SIL OFL 1.1 | License file: assets/fonts/OFL.txt; SHA-256: a294245c822c5aa9fd9a9f3189418e99415428be5fecadf797793d5d8f6a3ad3 |
 | `assets/fonts/LibreCaslonText-Bold-latin.woff2` | https://fonts.gstatic.com/s/librecaslontext/v5/DdT578IGsGw1aF1JU10PUbTvNNaDMfID8vdkPx6esdPs.woff2 | The Libre Caslon Text Project Authors | SIL OFL 1.1 | License file: assets/fonts/OFL.txt; SHA-256: 7dc7dc90fb6e140dcdfbfd85aae2bab1f368a448be129fecb953a8290501cef8 |
 | `assets/fonts/LibreCaslonText-Regular-latin.woff2` | https://fonts.gstatic.com/s/librecaslontext/v5/DdT878IGsGw1aF1JU10PUbTvNNaDMfq41-JJHRO0.woff2 | The Libre Caslon Text Project Authors | SIL OFL 1.1 | License file: assets/fonts/OFL.txt; SHA-256: 1471d8a9f22ba5c42c597c2dc582030297027d3e4c3b59a55aec81678f80485b |

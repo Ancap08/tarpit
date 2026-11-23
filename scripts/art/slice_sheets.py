@@ -39,7 +39,8 @@ def frame_layout(kind):
     if kind in TOWERS:
         return 8, [(label, 22.5 * index, 0) for index, label in enumerate(BEARINGS)]
     if kind == "guard":
-        return 2, [(f"{label}-{pose}", 90 * heading, phase)
+        return 8, [(f"{role}-{label}-{pose}", 90 * heading, 2 * index + phase)
+                   for index, role in enumerate(("axeman", "swordsman", "archer", "captain"))
                    for heading, label in enumerate(BEARINGS[::4])
                    for phase, pose in enumerate(("idle", "strike"))]
     if kind in ENEMIES:
@@ -251,6 +252,13 @@ BODY_HEIGHT = {"guard": 38, "goblin": 38, "wolf": 38, "shieldbearer": 38, "harpy
                "troll": 56, "grumblefoot": 84, "grumblemaw": 92}
 CONTACT_WIDTH = {"guard": 24, "goblin": 24, "wolf": 28, "shieldbearer": 27,
               "troll": 36, "grumblefoot": 52, "grumblemaw": 58}
+# Mirrors the shipped 2× cells. Costumes share the original ground pivot.
+CHARACTER_CELLS = {
+    "guard": (180, 100, 90, 86), "goblin": (104, 100, 52, 86),
+    "wolf": (116, 100, 58, 86), "harpy": (92, 100, 46, 94),
+    "shieldbearer": (112, 100, 56, 86), "troll": (152, 140, 76, 122),
+    "grumblefoot": (216, 200, 108, 178), "grumblemaw": (220, 218, 110, 194),
+}
 INK = (30, 28, 30)
 
 
@@ -290,6 +298,10 @@ def actor_frames(kind, frames, raw):
         if tower:
             sx = max(sx, 28 * 2 / (box[2] - box[0]))
         sx = min(sx, max_width * 2 / (box[2] - box[0]))
+        if kind in CHARACTER_CELLS:
+            width, _, pivot, _ = CHARACTER_CELLS[kind]
+            sx = min(sx, (pivot - 5) / max(1, pivot_x - box[0]),
+                     (width - pivot - 5) / max(1, box[2] - pivot_x))
         # The Harpy's separate trail shadow stays at the ground anchor.
         foot_y = 4 if tower else -10 if kind == "harpy" else 0
         crop = image.crop(box)
@@ -309,6 +321,9 @@ def actor_frames(kind, frames, raw):
     ay = 2 * math.ceil((5 - top) / 2)
     size = (ax + 2 * math.ceil((right + 5) / 2),
             ay + 2 * math.ceil((contact_h / 2 + 6) / 2))
+    if kind in CHARACTER_CELLS:
+        w, h, ax, ay = CHARACTER_CELLS[kind]
+        size = (w, h)
     images = []
     body_bounds = []
     for body, x, y in placements:

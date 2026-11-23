@@ -7,26 +7,98 @@
     45,
     43
   ],
-  "columns": 2,
+  "columns": 8,
   "frameOrder": [
-    "N-idle",
-    "N-strike",
-    "E-idle",
-    "E-strike",
-    "S-idle",
-    "S-strike",
-    "W-idle",
-    "W-strike"
+    "axeman-N-idle",
+    "axeman-N-strike",
+    "axeman-E-idle",
+    "axeman-E-strike",
+    "axeman-S-idle",
+    "axeman-S-strike",
+    "axeman-W-idle",
+    "axeman-W-strike",
+    "swordsman-N-idle",
+    "swordsman-N-strike",
+    "swordsman-E-idle",
+    "swordsman-E-strike",
+    "swordsman-S-idle",
+    "swordsman-S-strike",
+    "swordsman-W-idle",
+    "swordsman-W-strike",
+    "archer-N-idle",
+    "archer-N-strike",
+    "archer-E-idle",
+    "archer-E-strike",
+    "archer-S-idle",
+    "archer-S-strike",
+    "archer-W-idle",
+    "archer-W-strike",
+    "captain-N-idle",
+    "captain-N-strike",
+    "captain-E-idle",
+    "captain-E-strike",
+    "captain-S-idle",
+    "captain-S-strike",
+    "captain-W-idle",
+    "captain-W-strike"
   ],
   "bodyBounds": [
     [
-      28,
+      29,
       7,
+      73,
+      43
+    ],
+    [
+      29,
+      3,
+      74,
+      43
+    ],
+    [
+      36,
+      6,
+      62,
+      43
+    ],
+    [
+      36,
+      4,
+      80,
+      43
+    ],
+    [
+      16,
+      7,
+      60,
+      43
+    ],
+    [
+      16,
+      3,
       61,
       43
     ],
     [
       28,
+      3,
+      54,
+      43
+    ],
+    [
+      11,
+      7,
+      54,
+      43
+    ],
+    [
+      25,
+      7,
+      61,
+      43
+    ],
+    [
+      25,
       3,
       61,
       43
@@ -34,37 +106,133 @@
     [
       36,
       5,
-      71,
+      64,
       43
     ],
     [
       36,
       5,
-      87,
+      84,
       43
     ],
     [
       29,
       7,
-      62,
+      65,
       43
     ],
     [
       29,
       3,
-      62,
+      65,
       43
     ],
     [
-      19,
+      26,
       3,
       54,
       43
     ],
     [
-      2,
+      6,
       7,
       54,
+      43
+    ],
+    [
+      29,
+      7,
+      60,
+      43
+    ],
+    [
+      29,
+      3,
+      60,
+      43
+    ],
+    [
+      24,
+      5,
+      56,
+      43
+    ],
+    [
+      24,
+      5,
+      70,
+      43
+    ],
+    [
+      30,
+      6,
+      60,
+      43
+    ],
+    [
+      30,
+      4,
+      60,
+      43
+    ],
+    [
+      34,
+      4,
+      66,
+      43
+    ],
+    [
+      20,
+      6,
+      66,
+      43
+    ],
+    [
+      32,
+      7,
+      64,
+      43
+    ],
+    [
+      32,
+      3,
+      64,
+      43
+    ],
+    [
+      35,
+      5,
+      63,
+      43
+    ],
+    [
+      35,
+      5,
+      82,
+      43
+    ],
+    [
+      26,
+      7,
+      58,
+      43
+    ],
+    [
+      26,
+      3,
+      58,
+      43
+    ],
+    [
+      27,
+      3,
+      56,
+      43
+    ],
+    [
+      9,
+      7,
+      56,
       43
     ]
   ]

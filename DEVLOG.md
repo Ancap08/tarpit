@@ -9339,6 +9339,56 @@ timeout first). Observations, none blocking: the preview says "Harpy" and
 table); Level 9 uses a straight apostrophe, the tips use curly ones; comments
 in hud.ts still show old names.
 
+## 2026-11-24: milestone 44b, the characters re-dressed
+
+The five ordinary collectors, both bosses and the four townsfolk are Blender
+miniatures. The two painted densities share the same four walk headings and
+the existing ground pivots. Guard frames are grouped by squad slot, then
+heading and idle/strike pose. The Archer carries a bow and strikes with a
+knife. The exit cottage carries the town's gold coin on a blue pennon.
+
+At first the hound's ears hid the collar, the axe blade looked narrow and
+the Assessor's ledger looked like a block. The revised collar crosses the
+shoulders, the axe has a flared bit and the ledger has a title panel and
+spine. The front-facing contact sheet also showed that the Redcoat's shield
+badge was upside down and the Harpy's circlet covered its face. The shield
+now shows an upright crown in that view and the circlet is an open band.
+The satchel and circlet are secondary details at phone scale.
+
+The [contact sheet](docs/art/theme/characters.jpg) compares native 1× and
+2× frames with the packed textures from 188a487. The six map views in
+[the review folder](docs/art/theme/) stage all seven enemy types, Guards
+and a Barricade together. They include a four-walker pile so its health
+bars and held count can be inspected. The boss crops show each in context.
+
+The shared 1× WebP is 391,328 bytes with 7,706 bytes of frame data. At 2×
+the files are 1,003,276 and 8,063 bytes. With the Meadow ground, a 1× load
+grew from 412,201 to 450,948 bytes (9.4%). The full 2× load grew from
+1,013,421 to 1,115,469 bytes. The three-request path and the four-request
+speed-probe path use the existing loader.
+
+Cold Meadow Play with the service worker blocked on the shaped 1.6 Mbps,
+150 ms link took 2.470 s before and 2.568 s after at 1×. At 2× it took
+5.691 s before and 5.924 s after. Each measurement fetched three art files.
+
+Verifier notes (44b):
+- Checked on a clean tree: lint, typecheck, `npm test` (112 files, 2,447 tests), build, `check:size` (3.24 MB of 20), `check:assets` (every `assets/art-painted` file listed, every generator script exists), and the full browser suite on chromium, tablet and phone with `PW_PORT=4473` (863 passed, 8 skipped as before, none failed; the skips are the existing "frame for a person" and perf cases). `git diff 188a487..HEAD -- src/sim` is empty, and `npm run sim` output is byte-identical to a detached 188a487 worktree (compared with `diff`).
+- Sprite mechanics, measured from the shipped sheets against 188a487: frame size, anchor, column count and frame order are unchanged for all seven re-dressed sprites at both densities (only the guard sheet changed, 8 to 32 frames, as documented). Feet sit at the same offset from the anchor in every frame. No frame has opaque pixels on its border. `bodyBounds` still contain the opaque pixels to within the same 2-3 px margin as main, so health bars sit where they did. A Guard's outfit is `id % 4`, which is the slot that already set its position.
+- `e2e/theme-verifier.spec.ts` pins the Guard outfit through a fight, 3x, a blur, a portrait/landscape switch, two squads, and a squad cut to three, and checks Classic still reports no outfit frame.
+- Cold Meadow load, `scripts/art/measure_painted.ts --baseline` (service worker blocked by the script; shaped 1.6 Mbps, 150 ms), three runs each: 1x main 2,260 ms (2,253 to 2,267), 44b 2,468 ms (2,467 to 2,484), +9.2%; 2x main 5,357 ms, 44b 5,885 ms, +9.9%. Three painted requests in each case. The DEVLOG above says "with the production service worker"; the script blocks the worker, so the numbers are for the plain network path.
+- Reading at game size: see the six captures in `docs/art/theme/verifier/`. The Hound is the one enemy that stayed blue, and it now shares the Guards' hue; the Redcoat's grey helmet beside the Swordsman's pale blue one is the closest pair inside a melee.
+
+**Fixes after verification.** The Revenue Hound has a grey-brown coat, pale
+muzzle and wider red collar. At phone 1× it reads as a runner beside the
+Switchback Guards. On Riverbend the collar and back distinguish it from the
+squad, though the Archer hides its head and legs at full overlap. The orange
+Assessor has horns beside his wig, a short maroon coat, a ledger and a square,
+tusked jaw. The Toll Troll also has tusks. The refreshed contact sheet, six map
+views and two boss crops show the shipped art. Reducing shared WebP quality
+from 95 to 94 kept the atlases at 376,434 and 925,220 bytes (+6.5% and +2.6%
+over main). Across three cold Meadow runs per build with the worker blocked,
+median 1× Play time rose from 2,278 to 2,374 ms (+4.2%), with three art requests.
+
 ## 2026-11-24: milestone 44c, the font and the themed screens
 
 The first screen is a tavern broadside, the battle controls sit on a wood

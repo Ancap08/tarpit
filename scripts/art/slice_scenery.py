@@ -212,6 +212,14 @@ def cottage():
     for x in (-.235, -.174):
         box("Door board seam", (x, -.480, .261), (.010, .011, .249), "#385653", .003)
     peb("Brass latch", (-.155, -.487, .271), (.024, .019, .021), "#F4B05A")
+    # The town pennon hangs outside the front gable, in the cottage's own cell.
+    twig("Town flagstaff", (-.60,-.49,.015), (-.60,-.49,1.49), .022,.019, umber)
+    peb("Brass pole finial", (-.60,-.49,1.51), (.037,.037,.043), "#F9BB52")
+    corners = [(-.59,-.50,1.12),(-.40,-.54,1.14),(-.20,-.50,1.11),
+               (-.29,-.57,.979),(-.20,-.61,.852),(-.40,-.65,.891),(-.59,-.61,.865)]
+    meadow.mesh("Town's blue swallowtail", [(x,y,z+.33) for x,y,z in corners], [(0,1,5,6),(1,2,3,5),(3,4,5)], "#235BA2")
+    coin = peb("Town coin on blue", (-.445,-.602,1.34), (.066,.022,.070), "#FFD169")
+    coin.rotation_euler.x = -.38
     box("Carved doorstep", (-.204, -.484, .045), (.294, .156, .088), "#A8A18C", .023)
     box("Window surround", (.239, -.430, .352), (.261, .061, .208), umber, .020)
     box("Honey window light", (.238, -.464, .354), (.187, .020, .135), "#F6BA59", .005)
