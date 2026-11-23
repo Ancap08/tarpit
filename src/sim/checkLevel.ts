@@ -33,6 +33,8 @@ const NEW_FEATURE: Readonly<Partial<Record<number, LevelFeature>>> = {
 };
 
 export interface LevelScore {
+  readonly peakAlive: number;
+  readonly spawned: number;
   readonly phase: GameState['phase'];
   readonly lives: number;
   readonly tick: number;
@@ -59,6 +61,11 @@ const MIN_WAVES = 5;
 const MAX_WAVES = 10;
 const LAST_SPAWN_SECONDS = 90;
 const HEALTH_VARIANTS = [0.95, 1.05] as const;
+const MAX_PEAK_ALIVE = 40;
+const MIN_HP_SCALE = 0.85;
+const DEFAULT_MAX_HP_SCALE = 1.35;
+// Only these authored encounters have a measured exception to the default band.
+const HP_SCALE_EXCEPTIONS: Readonly<Partial<Record<number, number>>> = { 2: 1.979, 3: 1.375 };
 const START_GOLD_MIN = 100;
 const START_GOLD_MAX = 300;
 const FINALE = 10;
@@ -67,22 +74,18 @@ const EARLY_LEVELS = [1, 2, 3];
 const LATE_LEVELS = [8, 9, FINALE];
 const MIN_MEAN_LIVES_DROP = 3;
 
-function positive(value: number): boolean {
-  return Number.isFinite(value) && value > 0;
-}
-
 function whole(value: number, min: number, max: number = Number.MAX_SAFE_INTEGER): boolean {
   return Number.isSafeInteger(value) && value >= min && value <= max;
 }
 
 function validLevel(level: LevelDef): boolean {
   return whole(level.id, 1) && MAP_IDS.includes(level.map) &&
-    whole(level.startGold, START_GOLD_MIN, START_GOLD_MAX) && positive(level.hpScale) &&
+    whole(level.startGold, START_GOLD_MIN, START_GOLD_MAX) &&
+    Number.isFinite(level.hpScale) && level.hpScale >= MIN_HP_SCALE && level.hpScale <= (HP_SCALE_EXCEPTIONS[level.id] ?? DEFAULT_MAX_HP_SCALE) &&
     (level.hpGrowthStart === null || whole(level.hpGrowthStart, 1, level.waves.length)) &&
     whole(level.waves.length, MIN_WAVES, MAX_WAVES) &&
     level.waves.every(wave =>
-      positive(wave.hpMultiplier ?? 1) &&
-      positive(level.hpScale * (wave.hpMultiplier ?? 1) * 1.05 * 4 * ENEMY_STATS.grumblemaw.hp) &&
+      (wave.hpMultiplier ?? 1) === 1 &&
       wave.groups.length > 0 && wave.groups.every(group =>
         Object.hasOwn(ENEMY_STATS, group.type) && whole(group.count, 1) &&
         Number.isFinite(group.delay) && group.delay >= 0 &&
@@ -135,9 +138,9 @@ function measure(level: LevelDef, variant = level, beginner = false): LevelScore
   const variantKey = beginner ? 'beginner' : JSON.stringify(variant);
   const previous = cached.results.get(variantKey);
   if (previous) return previous;
-  const { state, refused } = runBot(createGame({ level: variant }), beginner ? botBeginner : botGood, Infinity, 2 * MAX_LEVEL_MINUTES * MINUTE);
+  const { state, refused, peakAlive } = runBot(createGame({ level: variant }), beginner ? botBeginner : botGood, Infinity, 2 * MAX_LEVEL_MINUTES * MINUTE);
   const { phase, lives, tick } = state;
-  const result = { phase, lives, tick, refused, stars: levelStars(state) };
+  const result = { phase, lives, tick, refused, peakAlive, spawned: state.nextEnemyId, stars: levelStars(state) };
   cached.results.set(variantKey, result);
   return result;
 }
@@ -180,7 +183,7 @@ export function checkLevel(level: LevelDef, feature = NEW_FEATURE[level.id], cam
   if (level.id <= 3 ? beginner.stars === 0 : beginner.stars > (level.id <= 5 ? 2 : 1)) failed.push('L2');
   if (level.id !== 1 && (!forbidden || compareScores(good, forbidden) <= 0 ||
     (feature && 'mustLose' in feature && feature.mustLose && forbidden.phase !== 'lost'))) failed.push('L3');
-  if (good.tick < MIN_LEVEL_MINUTES * MINUTE || good.tick > MAX_LEVEL_MINUTES * MINUTE) failed.push('L5');
+  if (good.peakAlive > MAX_PEAK_ALIVE || good.tick < MIN_LEVEL_MINUTES * MINUTE || good.tick > MAX_LEVEL_MINUTES * MINUTE) failed.push('L5');
   if ([lowerHp, higherHp].some(score => Math.abs(score.stars - good.stars) > 1 ||
     (level.id <= 5 && good.phase === 'won' && score.phase !== 'won'))) failed.push('L6');
   if (![good, beginner, lowerHp, higherHp, ...(forbidden ? [forbidden] : [])].every(finished)) failed.push('L7');

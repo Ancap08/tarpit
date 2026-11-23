@@ -210,12 +210,12 @@ try {
   const minutes = (ticks: number) => (ticks / TICKS_PER_SECOND / 60).toFixed(2);
   const score = (run?: Gate.LevelScore) => run ? `${run.stars}/${run.lives}` : '—';
   console.log('\nCampaign gate (stars/lives)');
-  console.log('id  waves  gold  HP scale  Good  Beginner  Forbidden  HP−5%  HP+5%  minutes  gate');
+  console.log('id  waves  enemies  gold  HP scale  Good  Beginner  Forbidden  HP−5%  HP+5%  minutes  peak alive  gate');
   campaign.levels.forEach((row, index) => {
     const level = LEVELS[index];
-    console.log([level.id, level.waves.length, level.startGold, level.hpScale,
+    console.log([level.id, level.waves.length, row.good?.spawned ?? '—', level.startGold, level.hpScale,
       score(row.good), score(row.beginner), score(row.forbidden),
-      score(row.lowerHp), score(row.higherHp), row.good ? minutes(row.good.tick) : '—',
+      score(row.lowerHp), score(row.higherHp), row.good ? minutes(row.good.tick) : '—', row.good?.peakAlive ?? '—',
       row.ok ? 'pass' : row.failed.join(',')].join('  '));
   });
   console.log(`Campaign: ${minutes(campaign.totalTicks)} minutes. ${campaign.ok ? 'L1–L8 pass' : 'MISS ' + campaign.failed.join(', ')}`);

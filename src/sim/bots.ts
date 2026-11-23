@@ -30,6 +30,7 @@ export interface BotPolicy {
 }
 
 export interface BotRun {
+  peakAlive: number;
   state: GameState;
   log: HeadlessStepResult[];
   refused: number;
@@ -272,6 +273,7 @@ export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity,
     return !('result' in step) || step.result.ok;
   }
 
+  let peakAlive = state.enemies.length;
   let lastZone: SpecialType | undefined;
   const endTick = state.tick + maxTicks;
   while (state.tick < endTick && (state.phase === 'wave' || (state.phase === 'setup' && state.wave < throughWave))) {
@@ -291,6 +293,7 @@ export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity,
       lastZone = special.special;
     }
     tick(state);
+    peakAlive = Math.max(peakAlive, state.enemies.length);
   }
-  return { state, log, refused: log.filter((step) => 'result' in step && !step.result.ok).length };
+  return { state, log, peakAlive, refused: log.filter((step) => 'result' in step && !step.result.ok).length };
 }

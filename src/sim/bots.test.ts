@@ -195,6 +195,15 @@ describe('capable policy', () => {
     expect(first.state.phase).toBe('won');
   });
 
+  it('remembers a simultaneous pack after all its members have left the field', () => {
+    const game = createGame({ level: { ...level, startGold: 0, waves: [
+      { groups: [{ type: 'goblin', count: 6, interval: 0, delay: 0 }] },
+    ] } });
+    const run = runBot(game, botBeginner);
+    expect(run.state).toMatchObject({ phase: 'won', lives: 14, enemies: [] });
+    expect(run.peakAlive).toBe(6);
+  });
+
   it('stops at a finished-wave cap or an elapsed-tick cap', () => {
     const twoWaves = { ...level, waves: [...level.waves, ...level.waves] };
     const afterFirst = runBot(createGame({ level: twoWaves }), botGood, 1);

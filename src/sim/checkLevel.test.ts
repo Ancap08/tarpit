@@ -22,7 +22,7 @@ function stubBots(livesFor: (level: LevelDef, beginner: boolean) => number): voi
     state.lives = lives;
     state.phase = lives > 0 ? 'won' : 'lost';
     state.tick = 6 * 60 * 60;
-    return { state, log: [], refused: 0 };
+    return { state, log: [], refused: 0, peakAlive: 1 };
   });
 }
 
@@ -47,16 +47,33 @@ describe('campaign acceptance gate', () => {
     expect(result.levels.map(row => row.failed)).toEqual(LEVELS.map(() => []));
     expect(result.failed).toEqual([]);
     expect(result.ok).toBe(true);
+    const horde = result.levels[6].good!;
+    for (const [i, row] of result.levels.entries()) {
+      if (i !== 6) expect(horde.spawned).toBeGreaterThan(row.good!.spawned);
+    }
+  });
+
+  it('schedules each boss after its escort on the last wave', () => {
+    for (const [level, boss] of [[LEVELS[8], 'boss'], [LEVELS[9], 'grumblemaw']] as const) {
+      const groups = level.waves.at(-1)!.groups;
+      const leader = groups.find(group => group.type === boss)!;
+      expect(leader.count).toBe(1);
+      for (const group of groups.filter(group => group !== leader)) {
+        expect(leader.delay).toBeGreaterThan(group.delay + (group.count - 1) * group.interval);
+      }
+    }
   });
 
   it('rejects a first level whose enemies are much too strong', () => {
-    const result = checkLevel({ ...LEVELS[0], startGold: 100, hpScale: 25 });
+    const result = checkLevel({ ...LEVELS[0], waves: [
+      { groups: [{ type: 'troll', count: 30, interval: 2, delay: 0 }] }, ...LEVELS[0].waves.slice(1),
+    ] });
     expect(result.failed).toEqual(['L1', 'L2', 'L5']);
     expect(result.good?.phase).toBe('lost');
   });
 
   it('L2 rejects a trivial later level', () => {
-    const result = checkLevel({ ...LEVELS[4], hpScale: 0.3, startGold: 300 });
+    const result = checkLevel({ ...LEVELS[4], hpScale: 1, startGold: 300 });
     expect(result.failed).toEqual(['L2']);
     expect(result.beginner?.stars).toBe(3);
   });
@@ -76,7 +93,9 @@ describe('campaign acceptance gate', () => {
   });
 
   it('L3 rejects a level when removing its featured tower makes no difference', () => {
-    const result = checkLevel({ ...LEVELS[2], hpScale: 0.8 });
+    const result = checkLevel({ ...LEVELS[2], hpScale: 1, startGold: 250,
+      waves: Array.from({ length: 6 }, () => ({ groups: [{ type: 'wolf', count: 20, interval: 2.8, delay: 0 }] })),
+    });
     expect(result.failed).toEqual(['L3']);
     expect(result.good?.lives).toBe(result.forbidden?.lives);
     expect(result.good?.stars).toBe(result.forbidden?.stars);
@@ -114,6 +133,17 @@ describe('campaign acceptance gate', () => {
     }
   });
 
+  it('L5 includes a peak of 40 and rejects 41 even if the level is eventually cleared', () => {
+    for (const peakAlive of [40, 41]) {
+      vi.spyOn(bots, 'runBot').mockImplementation(state => {
+        state.phase = 'won';
+        state.tick = 6 * 3600;
+        return { state, log: [], refused: 0, peakAlive };
+      });
+      expect(checkLevel({ ...base }).failed.includes('L5')).toBe(peakAlive === 41);
+    }
+  });
+
   it('L5 rejects a campaign context with too little total play time', () => {
     expect(checkLevel(base, undefined, [base]).failed).toEqual(['L5']);
   });
@@ -128,7 +158,9 @@ describe('campaign acceptance gate', () => {
 
   it('L7 rejects malformed data and starting gold outside 100–300', () => {
     for (const candidate of [
-      { ...base, hpScale: Infinity }, { ...base, waves: [] },
+      { ...base, hpScale: Infinity }, { ...base, hpScale: 0.849 }, { ...base, hpScale: 1.351 },
+      { ...base, id: 2, hpScale: 1.98 }, { ...base, id: 3, hpScale: 1.376 },
+      { ...base, waves: [] }, { ...base, waves: base.waves.map(wave => ({ ...wave, hpMultiplier: 2 })) },
       { ...base, startGold: 99 }, { ...base, startGold: 301 },
     ]) {
       const result = checkLevel(candidate);
