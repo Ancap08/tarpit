@@ -1,62 +1,72 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as bots from './bots';
-import { checkCampaign, checkLevel } from './checkLevel';
+import { CAMPAIGN_CONTEXTS } from './campaignContexts';
+import { checkCampaign, checkLevel, type LevelContext } from './checkLevel';
 import type { LevelDef } from './levelTypes';
 import { LEVELS } from './levels';
 
 const base: LevelDef = {
-  id: 1, map: 'meadow', startGold: 100, hpScale: 1, hpGrowthStart: null,
+  id: 101, map: 'meadow', startGold: 100, hpScale: 1, hpGrowthStart: null,
   allowedTowers: ['musketeer', 'longbow'], maxTowerLevel: 2, allowedSpecials: ['keg'], rewardWaves: [],
   waves: Array.from({ length: 6 }, () => ({ groups: [{ type: 'goblin', count: 24, interval: 2.5, delay: 0 }] })),
 };
-const withTarPit = { ...base, id: 3, allowedTowers: [...base.allowedTowers, 'tarpit' as const] };
-const specialFeature = { specials: ['keg'] } as const;
-
+const intro: LevelContext = { band: 'intro', introduces: null };
+const late: LevelContext = { band: 'late', introduces: null };
+const fresh = (id = 101): LevelDef => ({ ...base, id });
 afterEach(() => vi.restoreAllMocks());
 
-/** Fix outcomes for acceptance boundary tests while retaining level validation. */
-function stubBots(livesFor: (level: LevelDef, beginner: boolean) => number): void {
+/** Boundary tests use recorded outcomes. Shipped and additional levels run the actual bots. */
+function stubBots(livesFor: (level: LevelDef, policy: bots.BotPolicy) => number, minutes = 6, peakAlive = 1, waveOneLives = 20): void {
   vi.spyOn(bots, 'runBot').mockImplementation((state, bot) => {
-    const level = state.level!;
-    const lives = livesFor(level, bot === bots.botBeginner);
-    state.lives = lives;
-    state.phase = lives > 0 ? 'won' : 'lost';
-    state.tick = 6 * 60 * 60;
-    return { state, log: [], refused: 0, peakAlive: 1 };
+    state.lives = livesFor(state.level!, bot);
+    state.phase = state.lives > 0 ? 'won' : 'lost';
+    state.tick = minutes * 3600;
+    return { state, log: [], refused: 0, peakAlive, waveOneLives };
   });
-}
-
-function stubCampaign(lives: readonly number[]): LevelDef[] {
-  stubBots((level, beginner) => {
-    if (beginner) return level.id <= 3 ? 4 : 0;
-    if (!level.allowedSpecials.includes('keg')) return 0;
-    return lives[level.id - 1] + (level.startGold - 100);
-  });
-  return Array.from({ length: 10 }, (_, i) => ({ ...base, id: i + 1, startGold: 100 }));
 }
 
 describe('campaign acceptance gate', () => {
-  it.each(LEVELS)('accepts shipped level $id', (level) => {
-    const result = checkLevel(level);
-    expect(result.failed).toEqual([]);
-    expect(result.ok).toBe(true);
-  });
+  it.each(LEVELS.map((level, i) => ({ level, context: CAMPAIGN_CONTEXTS[i], id: level.id })))(
+    'accepts shipped level $id', ({ level, context }) => {
+      expect(checkLevel(level, context).failed).toEqual([]);
+    },
+  );
 
-  it('accepts the combined length and difficulty slope of the ten levels', () => {
-    const result = checkCampaign(LEVELS);
-    expect(result.levels.map(row => row.failed)).toEqual(LEVELS.map(() => []));
+  it('accepts the combined duration and slope of the ten levels', () => {
+    const result = checkCampaign(LEVELS, CAMPAIGN_CONTEXTS);
     expect(result.failed).toEqual([]);
-    expect(result.ok).toBe(true);
     const horde = result.levels[6].good!;
     for (const [i, row] of result.levels.entries()) {
       if (i !== 6) expect(horde.spawned).toBeGreaterThan(row.good!.spawned);
     }
   });
 
+  it('judges two new stops independently and as part of a twelve-level campaign', () => {
+    const standFast = LEVELS[7];
+    const lastLight = LEVELS[9];
+    function reinforce(wave: LevelDef['waves'][number], extra: number) {
+      return { groups: wave.groups.map((g, i) => i === 0 ? { ...g, count: g.count + extra } : g) };
+    }
+    // The Switchback rematch adds a Shieldbearer to the second wave's formation.
+    const extraLate = { ...standFast, id: 11, waves: standFast.waves.map((w, i) => i === 1 ? reinforce(w, 1) : w) };
+    // The Meadow finale tightens the opening cadence and adds five mid-level Trolls.
+    const extraFinale = { ...lastLight, id: 12, waves: lastLight.waves.map((w, i) => {
+      if (i === 0) return { groups: w.groups.map(g => ({ ...g, interval: g.interval * 0.85 })) };
+      return i === 3 ? reinforce(w, 5) : w;
+    }) };
+    const finale: LevelContext = { band: 'finale', introduces: null };
+    expect(checkLevel(extraLate, late).failed).toEqual([]);
+    expect(checkLevel(extraFinale, finale).failed).toEqual([]);
+    const levels = [...LEVELS, extraLate, extraFinale];
+    const contexts = [...CAMPAIGN_CONTEXTS, late, finale];
+    expect(checkCampaign(levels, contexts).failed).toEqual([]);
+  });
+
   it('schedules each boss after its escort on the last wave', () => {
     for (const [level, boss] of [[LEVELS[8], 'boss'], [LEVELS[9], 'grumblemaw']] as const) {
       const groups = level.waves.at(-1)!.groups;
       const leader = groups.find(group => group.type === boss)!;
+      expect(level.endingBoss).toEqual(boss);
       expect(leader.count).toBe(1);
       for (const group of groups.filter(group => group !== leader)) {
         expect(leader.delay).toBeGreaterThan(group.delay + (group.count - 1) * group.interval);
@@ -67,134 +77,164 @@ describe('campaign acceptance gate', () => {
   it('rejects a first level whose enemies are much too strong', () => {
     const result = checkLevel({ ...LEVELS[0], waves: [
       { groups: [{ type: 'troll', count: 30, interval: 2, delay: 0 }] }, ...LEVELS[0].waves.slice(1),
-    ] });
-    expect(result.failed).toEqual(['L1', 'L2', 'L5']);
+    ] }, intro);
+    expect(result.failed).toEqual(expect.arrayContaining(['L1', 'L2', 'L5', 'P1', 'P2']));
     expect(result.good?.phase).toBe('lost');
   });
 
   it('L2 rejects a trivial later level', () => {
-    const result = checkLevel({ ...LEVELS[4], hpScale: 1, startGold: 300 });
-    expect(result.failed).toEqual(['L2']);
+    const result = checkLevel({ ...LEVELS[4], hpScale: 1, startGold: 300 }, CAMPAIGN_CONTEXTS[4]);
+    expect(result.failed).toContain('L2');
     expect(result.beginner?.stars).toBe(3);
-  });
-
-  it.each([4, 5])('L2 permits a Beginner loss or two-star win on level %i', (id) => {
-    stubBots((level, beginner) => beginner ? level.startGold - 100 : 18);
-    for (const gold of [100, 112, 117]) {
-      expect(checkLevel({ ...base, id, startGold: gold }).failed).not.toContain('L2');
-    }
-    expect(checkLevel({ ...base, id, startGold: 118 }).failed).toContain('L2');
-  });
-
-  it.each([6, 10])('L2 limits Beginner to one star on level %i', (id) => {
-    stubBots((level, beginner) => beginner ? level.startGold - 100 : 15);
-    expect(checkLevel({ ...base, id, startGold: 111 }).failed).not.toContain('L2');
-    expect(checkLevel({ ...base, id, startGold: 112 }).failed).toContain('L2');
   });
 
   it('L3 rejects a level when removing its featured tower makes no difference', () => {
     const result = checkLevel({ ...LEVELS[2], hpScale: 1, startGold: 250,
       waves: Array.from({ length: 6 }, () => ({ groups: [{ type: 'wolf', count: 20, interval: 2.8, delay: 0 }] })),
-    });
-    expect(result.failed).toEqual(['L3']);
+    }, CAMPAIGN_CONTEXTS[2]);
+    expect(result.failed).toContain('L3');
     expect(result.good?.lives).toBe(result.forbidden?.lives);
     expect(result.good?.stars).toBe(result.forbidden?.stars);
   });
 
-  it('L3 requires an explicit feature for additional campaign stops', () => {
-    stubBots((level, beginner) => beginner ? 3 : level.allowedTowers.includes('tarpit') ? 17 : 15);
-    const candidate = { ...withTarPit, id: 11 };
-    expect(checkLevel(candidate).failed).toEqual(['L3']);
-    expect(checkLevel(candidate, { towers: ['tarpit'] }).failed).toEqual([]);
+  it('judges P1 and P2 independently for each band', () => {
+    stubBots((level, policy) => policy === bots.botPerson ? level.allowedSpecials.length ? 11 : 0 : 18);
+    for (const band of ['intro', 'middle', 'transition', 'late', 'finale'] as const) {
+      const failed = checkLevel(fresh(), { band, introduces: null }).failed;
+      expect(failed).toContain('P1');
+      expect(failed.includes('P2')).toBe(['intro', 'middle', 'transition'].includes(band));
+    }
+    stubBots((_, policy) => policy === bots.botPerson ? 12 : 18);
+    expect(checkLevel(fresh(), intro).failed).not.toContain('P1');
   });
 
-  it('L4 rejects a jump of more than one beginner star', () => {
-    stubBots((level, beginner) => beginner ? level.id === 1 ? 12 : 0 : 18);
-    const first = { ...base, id: 1 };
-    expect(checkLevel(first, undefined, [{ ...base, id: 4 }, first]).failed).toContain('L4');
+  it.each([['middle', 17, 18], ['transition', 11, 12], ['late', 11, 12]] as const)(
+    'applies the beginner star cap for %s independently of ID', (band, pass, fail) => {
+      const ctx = { band, introduces: null };
+      for (const lives of [0, pass, fail]) {
+        stubBots((_, policy) => policy === bots.botBeginner ? lives : 18);
+        expect(checkLevel(fresh(), ctx).failed.includes('L2')).toBe(lives === fail);
+      }
+    },
+  );
+
+  it('L3 checks the feature at each small perturbation for each bot', () => {
+    const context = { ...late, introduces: { specials: ['keg'] as const } };
+    for (const policy of [bots.botGood, bots.botPerson]) {
+      stubBots((level, bot) => level.allowedSpecials.length ? 16 :
+        level.startGold === 110 && bot === policy ? (bot === bots.botGood ? 15 : 16) : 14);
+      const result = checkLevel(fresh(), context);
+      expect(result.failed).toContain('L3');
+      expect(result.featureTrials).toHaveLength(5);
+    }
   });
 
-  it('L4 rejects two consecutive increases in the capable bot’s lives, including a contextual replacement', () => {
-    const entries = stubCampaign([18, 18, 18, 15, 16, 17, 17, 15, 15, 15]).slice(3, 6);
-    const features = Object.fromEntries(entries.map(level => [level.id, specialFeature]));
-    const result = checkCampaign(entries, features);
-    expect(result.levels.map(row => row.failed)).toEqual([[], [], ['L4']]);
-    expect(checkLevel(entries[1], specialFeature, entries).failed).toContain('L4');
+  it('L3 accepts a one-life Good margin only when it also earns another star', () => {
+    const ctx: LevelContext = { ...late, introduces: { specials: ['keg'] } };
+    for (const lives of [17, 18]) {
+      stubBots(level => level.allowedSpecials.length ? lives : lives - 1);
+      expect(checkLevel(fresh(), ctx).failed.includes('L3')).toBe(lives === 17);
+    }
+  });
+
+  it('L3 requires each declared capability to exist in the candidate', () => {
+    stubBots(level => level.allowedSpecials.length ? 16 : 12);
+    for (const introduces of [
+      { specials: ['keg', 'guards'] }, { towers: ['cannon'] }, { maxTowerLevel: 2 },
+      { enemy: 'harpy', control: { specials: ['keg'] } },
+    ] as const) {
+      expect(checkLevel(fresh(), { ...late, introduces }).failed).toContain('L3');
+    }
+  });
+
+  it('L3 rejects introducing a capability that an earlier level already allowed', () => {
+    const levels = [fresh(), fresh(202)];
+    const withKeg: LevelContext = { ...late, introduces: { specials: ['keg'] } };
+    stubBots(level => level.allowedSpecials.length ? 16 : 12);
+    expect(checkLevel(levels[1], withKeg).failed).not.toContain('L3');
+    expect(checkCampaign(levels, [late, withKeg]).failed).toContain('L3');
+    expect(checkCampaign(levels, [withKeg, withKeg]).failed).toContain('L3');
+  });
+
+  it('L4 rejects a two-star beginner jump or two consecutive Good lives increases', () => {
+    const levels = [fresh(90), fresh(19), fresh(76)];
+    stubBots((level, policy) => policy === bots.botBeginner ? level.id === 19 ? 12 : 0 : 16);
+    expect(checkCampaign(levels, levels.map(() => late)).failed).toContain('L4');
+    stubBots(level => level.id === 90 ? 14 : level.id === 19 ? 15 : 16);
+    expect(checkCampaign(levels.map(level => ({ ...level })), levels.map(() => late)).failed).toContain('L4');
   });
 
   it('L5 rejects schedules over the spawn rate or last spawn limit before running bots', () => {
-    const check = (count: number, interval: number, delay = 0) => checkLevel({
-      ...base,
-      waves: [{ groups: [{ type: 'goblin', count, interval, delay }] }, ...base.waves.slice(1)],
-    });
-    for (const result of [check(7, 0.49), check(2, 60, 31)]) {
+    for (const [count, interval, delay] of [[7, 0.49, 0], [2, 60, 31]]) {
+      const result = checkLevel({ ...base, waves: [
+        { groups: [{ type: 'goblin', count, interval, delay }] }, ...base.waves.slice(1),
+      ] }, intro);
       expect(result.failed).toEqual(['L5']);
+      expect(result.scheduleIssue).toEqual(count === 7
+        ? { wave: 1, quantity: 'walkersIn3s', actual: 7, limit: 6 }
+        : { wave: 1, quantity: 'lastSpawnTick', actual: 5460, limit: 5400 });
       expect(result.good).toBeUndefined();
     }
   });
 
-  it('L5 includes a peak of 40 and rejects 41 even if the level is eventually cleared', () => {
-    for (const peakAlive of [40, 41]) {
-      vi.spyOn(bots, 'runBot').mockImplementation(state => {
-        state.phase = 'won';
-        state.tick = 6 * 3600;
-        return { state, log: [], refused: 0, peakAlive };
-      });
-      expect(checkLevel({ ...base }).failed.includes('L5')).toBe(peakAlive === 41);
+  it('L5 accepts 40 alive or 60 in the opening, rejecting one more', () => {
+    for (const [peak, count, pass] of [[40, 60, true], [41, 60, false], [40, 61, false]] as const) {
+      stubBots(() => 20, 6, peak);
+      const candidate: LevelDef = { ...base, waves: [
+        { groups: [{ type: 'goblin', count, interval: 1, delay: 0 }] }, ...base.waves.slice(1),
+      ] };
+      expect(checkLevel(candidate, intro).failed.includes('L5')).toBe(!pass);
     }
   });
 
-  it('L5 rejects a campaign context with too little total play time', () => {
-    expect(checkLevel(base, undefined, [base]).failed).toEqual(['L5']);
+  it('L5 rejects one life lost in the opening even when Person wins', () => {
+    stubBots(() => 19, 6, 2, 19);
+    const result = checkLevel(fresh(), intro);
+    expect(result.failed).toContain('L5');
+    expect(result.person?.waveOneLives).toBe(19);
   });
 
-  it('L6 rejects a five-percent HP increase that costs Good two stars', () => {
-    stubBots((level, beginner) => beginner ? 1 : level.hpScale > 1 ? 11 : 18);
-    const result = checkLevel({ ...base, hpScale: 1 });
-    expect(result.failed).toEqual(['L6']);
-    expect(result.good?.stars).toBe(3);
-    expect(result.higherHp?.stars).toBe(1);
+  it('L5 checks 6–8 minutes per stop independently of campaign length', () => {
+    for (const minutes of [5.99, 6, 8, 8.01]) {
+      stubBots(() => 19, minutes);
+      expect(checkCampaign([fresh()], [intro]).failed.includes('L5')).toBe(minutes < 6 || minutes > 8);
+    }
+  });
+
+  it('L6 exercises both bots at all four gold and HP extremes', () => {
+    for (const policy of [bots.botGood, bots.botPerson]) {
+      for (const extreme of [(l: LevelDef) => l.hpScale >= 1.05, (l: LevelDef) => l.hpScale <= 0.95,
+        (l: LevelDef) => l.startGold === 85, (l: LevelDef) => l.startGold === 115]) {
+        stubBots((level, bot) => bot === policy && extreme(level) ? 11 : 18);
+        expect(checkLevel(fresh(), intro).failed).toContain('L6');
+      }
+    }
   });
 
   it('L7 rejects malformed data and starting gold outside 100–300', () => {
     for (const candidate of [
       { ...base, hpScale: Infinity }, { ...base, hpScale: 0.849 }, { ...base, hpScale: 1.351 },
-      { ...base, id: 2, hpScale: 1.98 }, { ...base, id: 3, hpScale: 1.376 },
       { ...base, waves: [] }, { ...base, waves: base.waves.map(wave => ({ ...wave, hpMultiplier: 2 })) },
       { ...base, startGold: 99 }, { ...base, startGold: 301 },
     ]) {
-      const result = checkLevel(candidate);
-      expect(result.failed).toEqual(['L7']);
-      expect(result.good).toBeUndefined();
+      expect(checkLevel(candidate, intro).failed).toEqual(['L7']);
     }
-    for (const startGold of [100, 300]) {
-      expect(checkLevel({ ...base, startGold }).good).toBeDefined();
-    }
+    stubBots(() => 20);
+    for (const startGold of [100, 300]) expect(checkLevel({ ...base, startGold }, intro).good).toBeDefined();
   });
 
   it.each([[0, false], [11, false], [12, true], [16, true], [17, false]] as const)(
-    'L8 accepts finale Good lives %i = %s',
-    (lives, accepted) => {
-      stubBots((level, beginner) => beginner || !level.allowedSpecials.includes('keg') ? 0 : lives);
-      const result = checkLevel({ ...base, id: 10, allowedSpecials: ['keg'] });
-      expect(result.failed.includes('L8')).toBe(!accepted);
-      expect(result.good?.lives).toBe(lives);
+    'L8 accepts finale Good lives %i = %s', (lives, accepted) => {
+      stubBots(() => lives);
+      expect(checkLevel(fresh(), { ...late, band: 'finale' }).failed.includes('L8')).toBe(!accepted);
     },
   );
 
-  it('L8 accepts exactly three fewer average lives and checks contextual replacements', () => {
-    const entries = stubCampaign([20, 19, 18, 17, 17, 17, 16, 16, 16, 16]);
-    expect(checkCampaign(entries).failed).not.toContain('L8');
-    const candidate = { ...entries[7], startGold: 101 };
-    expect(checkLevel(candidate, specialFeature).failed).not.toContain('L8');
-    expect(checkLevel(candidate, specialFeature, entries).failed).toContain('L8');
-    const replacement = entries.map(level => level.id === candidate.id ? candidate : level);
-    expect(checkCampaign(replacement).failed).toContain('L8');
-  });
-
-  it('L8 rejects a full campaign with a missing cohort level', () => {
-    const entries = stubCampaign([20, 19, 18, 17, 17, 17, 16, 16, 16, 16]);
-    entries[7] = { ...entries[7], id: 11 };
-    expect(checkCampaign(entries).failed).toContain('L8');
+  it('L8 checks the first and last thirds by position, for a three-life mean drop', () => {
+    for (const last of [16, 17]) {
+      stubBots(level => level.id >= 600 ? last : 19);
+      const levels = [511, 65, 4, 3, 777, 666].map(fresh);
+      expect(checkCampaign(levels, levels.map(() => late)).failed.includes('L8')).toBe(last > 16);
+    }
   });
 });

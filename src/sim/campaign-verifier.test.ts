@@ -8,6 +8,7 @@ import {
   TOWER_DEFS, unlockedLevel, upgradeTower, useSpecial, type GameState, type LevelDef, type TowerType,
 } from '.';
 
+import { CAMPAIGN_CONTEXTS } from './campaignContexts';
 import { checkLevel } from './checkLevel';
 
 const TOWER_TYPES = Object.keys(TOWER_DEFS) as TowerType[];
@@ -41,10 +42,10 @@ describe('verifier: level economy and hp by hand', () => {
     expect(state.endless).toBe(false);
   });
 
-  it('hp: Pack Trail Goblin 23 x 1.979 = 45.5 -> 46; Switchback Wolf 20 x 1.375 = 27.5 -> 28', () => {
-    expect(spawnHp(levelOf(2), 1, 'goblin')).toBe(46);
-    expect(spawnHp(levelOf(2), 6, 'goblin')).toBe(46);
-    expect(spawnHp(levelOf(3), 2, 'wolf')).toBe(28);
+  it('applies the scaled base HP and growth step to Pack Trail Goblins and Switchback Wolves', () => {
+    expect(spawnHp(levelOf(2), 1, 'goblin')).toBe(37); // 23 × 1.25 × 1.28
+    expect(spawnHp(levelOf(2), 6, 'goblin')).toBe(77); // 23 × 1.25 × 2.68
+    expect(spawnHp(levelOf(3), 2, 'wolf')).toBe(29); // 20 × 1.14 × 1.28
   });
 
   it('hp with growth: Last Light (scale 0.925, growth from wave 5, +28% per wave)', () => {
@@ -217,19 +218,17 @@ describe('verifier: Free play never consults level data', () => {
   });
 });
 
-// Gate gaps found by the verifier (41a). These are not in DESIGN.md's L1-L8 text, so
-// they are findings, not spec breaks: the tests state what a generator would need.
-describe('verifier: gate gaps (it.fails = known, unfixed)', () => {
-  it.fails('rejects a level whose last wave is a single Goblin (gate accepts it today)', () => {
+describe('verifier: gate rejections', () => {
+  it('rejects a level whose last wave is a single Goblin', () => {
     const level = levelOf(7);
     const trivial = { ...level, waves: [...level.waves.slice(0, -1), { groups: [{ type: 'goblin' as const, count: 1, interval: 0, delay: 0 }] }] };
-    expect(checkLevel(trivial).ok).toBe(false);
+    expect(checkLevel(trivial, CAMPAIGN_CONTEXTS[6]).failed).toContain('L5');
   });
 
-  it.fails('rejects the finale with its boss removed (gate accepts it today)', () => {
+  it('rejects the finale with its boss removed', () => {
     const level = levelOf(10);
     const waves = level.waves.map((wave, i) => i === level.waves.length - 1
       ? { groups: wave.groups.filter((g) => g.type !== 'grumblemaw') } : wave);
-    expect(checkLevel({ ...level, waves }).ok).toBe(false);
+    expect(checkLevel({ ...level, waves }, CAMPAIGN_CONTEXTS[9]).failed).toContain('L5');
   });
 });

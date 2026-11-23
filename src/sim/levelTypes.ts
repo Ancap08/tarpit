@@ -9,6 +9,7 @@ export const THREE_STAR_LIVES = 18;
 export interface LevelDef {
   readonly id: number;
   readonly map: MapId;
+  readonly endingBoss?: 'boss' | 'grumblemaw';
   readonly waves: readonly WaveDef[];
   readonly startGold: number;
   readonly hpScale: number;

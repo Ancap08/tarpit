@@ -8,6 +8,7 @@ import type * as GuardSweeps from '../src/sim/guardSweep';
 import type * as Bots from '../src/sim/bots';
 import type * as Game from '../src/sim/game';
 import type * as Levels from '../src/sim/levels';
+import type * as Contexts from '../src/sim/campaignContexts';
 import type * as Gate from '../src/sim/checkLevel';
 import type * as Balance from '../src/sim/balanceRuns';
 import type * as Targets from '../src/sim/balanceTargets';
@@ -187,7 +188,7 @@ try {
   console.log(`${improvedMaps >= 2 ? 'ok' : 'MISS'}  G2 Normal improved by at least one life on ${improvedMaps} maps`);
   if (improvedMaps < 2) process.exitCode = 1;
 
-  const { botGood, botBeginner, runBot } = await server.ssrLoadModule('/src/sim/bots.ts') as typeof Bots;
+  const { botGood, botPerson, botBeginner, runBot } = await server.ssrLoadModule('/src/sim/bots.ts') as typeof Bots;
   const { createGame, TICKS_PER_SECOND } = await server.ssrLoadModule('/src/sim/game.ts') as typeof Game;
   console.log('\nFree play bots (W lives left, L wave lost)');
   console.log('map         difficulty  botGood  comboBuild  botBeginner  lazyBuild');
@@ -204,21 +205,29 @@ try {
     console.log([map.padEnd(10), difficulty.padEnd(10), ...cells.map(cell => cell.padStart(8))].join('  '));
   }
 
+  console.log('\nNormal Free play: Person and comboBuild (lives left)');
+  for (const map of MAP_IDS) {
+    const person = runBot(createGame({ map, difficulty: 'normal' }), botPerson);
+    const combo = balance.balanceRun('comboBuild', map, 'normal');
+    console.log(`${map.padEnd(10)}  ${balance.matrixCell(person.state)}  ${balance.matrixCell(combo)}`);
+    if (person.refused) process.exitCode = 1;
+  }
+
   const { LEVELS } = await server.ssrLoadModule('/src/sim/levels.ts') as typeof Levels;
   const { checkCampaign } = await server.ssrLoadModule('/src/sim/checkLevel.ts') as typeof Gate;
-  const campaign = checkCampaign(LEVELS);
+  const { CAMPAIGN_CONTEXTS } = await server.ssrLoadModule('/src/sim/campaignContexts.ts') as typeof Contexts;
+  const campaign = checkCampaign(LEVELS, CAMPAIGN_CONTEXTS);
   const minutes = (ticks: number) => (ticks / TICKS_PER_SECOND / 60).toFixed(2);
   const score = (run?: Gate.LevelScore) => run ? `${run.stars}/${run.lives}` : '—';
   console.log('\nCampaign gate (stars/lives)');
-  console.log('id  waves  enemies  gold  HP scale  Good  Beginner  Forbidden  HP−5%  HP+5%  minutes  peak alive  gate');
+  console.log('id  waves  enemies  gold  HP scale  Good  Person  Beginner  Person(no specials)  wave 1  minutes  peak alive  gate');
   campaign.levels.forEach((row, index) => {
     const level = LEVELS[index];
     console.log([level.id, level.waves.length, row.good?.spawned ?? '—', level.startGold, level.hpScale,
-      score(row.good), score(row.beginner), score(row.forbidden),
-      score(row.lowerHp), score(row.higherHp), row.good ? minutes(row.good.tick) : '—', row.good?.peakAlive ?? '—',
+      score(row.good), score(row.person), score(row.beginner), score(row.noSpecials), row.openingCount, row.good ? minutes(row.good.tick) : '—', row.good?.peakAlive ?? '—',
       row.ok ? 'pass' : row.failed.join(',')].join('  '));
   });
-  console.log(`Campaign: ${minutes(campaign.totalTicks)} minutes. ${campaign.ok ? 'L1–L8 pass' : 'MISS ' + campaign.failed.join(', ')}`);
+  console.log(`Campaign: ${minutes(campaign.totalTicks)} minutes. ${campaign.ok ? 'P1–P2 and L1–L8 pass' : 'MISS ' + campaign.failed.join(', ')}`);
   if (!campaign.ok) process.exitCode = 1;
 } finally {
   await server.close();

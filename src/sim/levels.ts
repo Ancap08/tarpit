@@ -16,10 +16,6 @@ function formation(type: GroupDef['type'], total: number, width: number, interva
     g(type, Math.ceil((total - i) / width), interval, i * stagger));
 }
 
-function goblinPacks(count: number, interval: number, packSize = 4): WaveDef {
-  return w(...formation('goblin', count * packSize, packSize, interval, 0.025));
-}
-
 const bowsAndGuns = ['musketeer', 'longbow'] as const;
 const artillery = [...bowsAndGuns, 'cannon'] as const;
 const slow = [...artillery, 'tarpit'] as const;
@@ -41,20 +37,23 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
-    id: 2, map: 'meadow', startGold: 150, hpScale: 1.979, hpGrowthStart: null,
+    id: 2, map: 'meadow', startGold: 100, hpScale: 1.25, hpGrowthStart: 1,
     allowedTowers: artillery, maxTowerLevel: 2, allowedSpecials: keg, rewardWaves: [],
     waves: [
-      w(...formation('goblin', 48, 3, 3.3, 0.025)), w(...formation('goblin', 48, 6, 3, 0)), goblinPacks(19, 3.35),
-      goblinPacks(19, 3.3), goblinPacks(20, 3.2), goblinPacks(20, 3.15),
+      w(...formation('goblin', 6, 3, 7, 0.025)),
+      w(...formation('goblin', 18, 3, 7, 0.025)),
+      w(...formation('goblin', 21, 3, 7, 0.025)),
+      w(...formation('goblin', 42, 6, 3, 0), g('goblin', 3, 1.6, 34)),
+      w(...formation('goblin', 60, 4, 4.75, 0.025)),
+      w(...formation('goblin', 75, 5, 3.8, 0.025)),
     ],
   },
   {
-    id: 3, map: 'switchback', startGold: 220, hpScale: 1.375, hpGrowthStart: null,
+    id: 3, map: 'switchback', startGold: 160, hpScale: 1.14, hpGrowthStart: 2,
     allowedTowers: slow, maxTowerLevel: 2, allowedSpecials: keg, rewardWaves: [],
     waves: [
-      w(g('wolf', 17, 3.03), g('wolf', 17, 3.03, 0.95), g('wolf', 17, 3.03, 0.47),
-        g('wolf', 17, 3.03, 0.9), g('wolf', 16, 3.03, 1.6), g('wolf', 17, 3.03, 2.16)),
-      w(g('wolf', 56, 1)),
+      w(g('wolf', 47, 0.55)),
+      w(g('wolf', 126, 0.5)),
       w(g('wolf', 49, 1.25)),
       w(g('wolf', 60, 1.05)),
       w(g('wolf', 74, 0.85)),
@@ -63,16 +62,16 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
-    id: 4, map: 'switchback', startGold: 270, hpScale: 1.33, hpGrowthStart: null,
+    id: 4, map: 'switchback', startGold: 285, hpScale: 1.35, hpGrowthStart: 3,
     allowedTowers: burn, maxTowerLevel: 2, allowedSpecials: keg, rewardWaves: [],
     waves: [
-      w(g('shieldbearer', 16, 2.8)),
-      w(g('shieldbearer', 50, 1.1)),
-      w(g('shieldbearer', 27, 1.8), g('wolf', 31, 1.6, 0.3)),
-      w(g('shieldbearer', 31, 1.6), g('wolf', 37, 1.35, 0.3)),
-      w(g('shieldbearer', 36, 1.35), g('wolf', 43, 1.15, 0.3)),
-      w(g('shieldbearer', 42, 1.15), g('wolf', 48, 1.05, 0.3)),
-      w(g('shieldbearer', 51, 1), g('wolf', 50, 1, 0.3)),
+      w(g('goblin', 13, 2.4)),
+      w(g('shieldbearer', 11, 2.92)),
+      w(g('wolf', 33, 1.48)),
+      w(g('shieldbearer', 23, 2)),
+      w(g('shieldbearer', 37, 1.125)),
+      w(g('wolf', 20, 2.05, 0.4), g('shieldbearer', 21, 2.7)),
+      w(g('wolf', 24, 2.05, 0.4), g('shieldbearer', 24, 2.35)),
     ],
   },
   {
@@ -89,26 +88,26 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
-    id: 6, map: 'riverbend', startGold: 280, hpScale: 1, hpGrowthStart: null,
+    id: 6, map: 'riverbend', startGold: 270, hpScale: 1, hpGrowthStart: null,
     allowedTowers: allTowers, maxTowerLevel: 2, allowedSpecials: barrel, rewardWaves: [],
     waves: [
-      w(g('goblin', 48, 1.2), g('troll', 1, 0, 20)),
-      w(g('troll', 2, 0.55), g('troll', 2, 0.55, 51), g('goblin', 25, 2.2, 0.25)),
-      w(g('troll', 5, 11), g('shieldbearer', 29, 1.8, 1)),
+      w(g('goblin', 56, 1.19)),
+      w(...formation('troll', 4, 2, 20, 0.06), g('goblin', 15, 3.71, 0.7)),
+      w(g('troll', 4, 8), g('shieldbearer', 29, 1.8, 1)),
       w(g('troll', 6, 8.5), g('goblin', 40, 1.4, 1)),
-      w(g('troll', 7, 7.5), g('harpy', 40, 1.4, 1)),
+      w(g('troll', 8, 7), g('harpy', 48, 1.17, 1)),
       w(g('troll', 8, 6.5), g('shieldbearer', 41, 1.4, 1)),
-      w(g('troll', 11, 5.5), g('wolf', 52, 1.1, 1)),
+      w(g('troll', 20, 3.2), g('wolf', 52, 1.1, 1)),
     ],
   },
   {
-    id: 7, map: 'meadow', startGold: 145, hpScale: 1.3, hpGrowthStart: null,
+    id: 7, map: 'meadow', startGold: 245, hpScale: 1.3, hpGrowthStart: null,
     allowedTowers: allTowers, maxTowerLevel: 2, allowedSpecials: wall, rewardWaves: [],
     waves: [
-      w(g('goblin', 165, 0.5)),
-      w(g('wolf', 78, 0.68)),
-      w(g('goblin', 105, 0.5)),
-      w(g('shieldbearer', 52, 1.06)),
+      w(g('goblin', 53, 0.84)),
+      w(...formation('shieldbearer', 100, 5, 3.5, 0.06)),
+      w(...formation('wolf', 72, 6, 3.5, 0.06)),
+      w(g('troll', 8, 5), g('shieldbearer', 40, 1.4)),
       w(g('goblin', 106, 0.5)),
       w(g('wolf', 108, 0.5)),
       w(g('goblin', 109, 0.5)),
@@ -116,39 +115,39 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
-    id: 8, map: 'switchback', startGold: 300, hpScale: 1.3, hpGrowthStart: null,
+    id: 8, map: 'switchback', startGold: 285, hpScale: 1.3, hpGrowthStart: null,
     allowedTowers: allTowers, maxTowerLevel: 2, allowedSpecials: allSpecials, rewardWaves: [],
     waves: [
-      w(g('shieldbearer', 40, 1.7), g('wolf', 45, 1.5)),
-      w(g('troll', 6, 9.22), g('goblin', 68, 0.8, 0.29)),
-      w(g('shieldbearer', 68, 0.76), g('harpy', 35, 1.47)),
+      w(g('wolf', 36, 1.23)),
+      w(...formation('shieldbearer', 30, 3, 3.4, 0.06), g('harpy', 30, 1.97, 0.4)),
+      w(...formation('wolf', 36, 3, 3.4, 0.06), g('harpy', 32, 1.87, 0.4)),
       w(g('wolf', 76, 0.67), g('harpy', 36, 1.41)),
-      w(g('troll', 12, 4.71), g('shieldbearer', 50, 1.1, 0.4)),
-      w(g('shieldbearer', 86, 0.6), g('harpy', 45, 1.17)),
+      w(g('troll', 30, 2.3), g('shieldbearer', 42, 1.4, 0.4)),
+      w(...formation('shieldbearer', 90, 5, 3.3, 0.06)),
       w(g('troll', 20, 3.35), g('wolf', 59, 1.1, 0.4)),
     ],
   },
   {
-    id: 9, map: 'riverbend', startGold: 285, hpScale: 1, hpGrowthStart: 6,
+    id: 9, map: 'riverbend', startGold: 255, hpScale: 1, hpGrowthStart: 6, endingBoss: 'boss',
     allowedTowers: allTowers, maxTowerLevel: 3, allowedSpecials: allSpecials, rewardWaves: [5],
     waves: [
-      w(g('wolf', 34, 1.67), g('shieldbearer', 19, 3.07)),
-      w(g('troll', 8, 8.23), g('harpy', 35, 1.62)),
-      w(g('shieldbearer', 86, 0.66), g('harpy', 42, 1.32)),
-      w(g('troll', 12, 5.14), g('wolf', 72, 0.85, 0.34)),
-      w(g('troll', 17, 3.62), g('shieldbearer', 61, 1, 0.4)),
-      w(g('wolf', 114, 0.5), g('harpy', 59, 1.01)),
-      w(g('shieldbearer', 108, 0.68), g('harpy', 64, 1.12), g('boss', 1, 0, 75)),
+      w(g('goblin', 30, 1.66), g('harpy', 12, 4.09, 0.4)),
+      w(g('goblin', 31, 1.83), g('harpy', 40, 1.41)),
+      w(g('shieldbearer', 42, 1.34), g('harpy', 50, 1.18, 0.4)),
+      w(g('wolf', 43, 1.14), g('harpy', 36, 1.57)),
+      w(g('troll', 18, 3.53), g('shieldbearer', 43, 1.36, 0.3)),
+      w(...formation('harpy', 60, 4, 3.7, 0.06), g('troll', 16, 3)),
+      w(...formation('harpy', 60, 4, 3.2, 0.06), g('shieldbearer', 40, 1.49), g('troll', 13, 3.7, 1), g('boss', 1, 0, 78)),
     ],
   },
   {
-    id: 10, map: 'meadow', startGold: 300, hpScale: 0.925, hpGrowthStart: 5,
+    id: 10, map: 'meadow', startGold: 280, hpScale: 0.925, hpGrowthStart: 5, endingBoss: 'grumblemaw',
     allowedTowers: allTowers, maxTowerLevel: 3, allowedSpecials: allSpecials, rewardWaves: [5],
     waves: [
-      w(g('wolf', 66, 1.05), g('shieldbearer', 47, 1.5)),
-      w(g('troll', 9, 6.48), g('goblin', 73, 0.72, 0.26)),
-      w(g('shieldbearer', 85, 0.6), g('harpy', 44, 1.21)),
-      w(g('troll', 14, 4), g('wolf', 68, 0.76, 0.27)),
+      w(g('shieldbearer', 36, 1.74)),
+      w(g('troll', 7, 6), g('goblin', 49, 1.17, 0.26)),
+      w(...formation('shieldbearer', 42, 3, 3.3, 0.06), g('harpy', 33, 1.66, 0.21)),
+      w(g('troll', 20, 2.1), g('wolf', 33, 1.69, 0.42)),
       w(g('troll', 17, 3.3), g('shieldbearer', 56, 0.93, 0.33)),
       w(g('wolf', 104, 0.5), g('harpy', 66, 0.8)),
       w(g('shieldbearer', 88, 0.7), g('harpy', 65, 0.94), g('grumblemaw', 1, 0, 63)),

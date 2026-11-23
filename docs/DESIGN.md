@@ -1573,7 +1573,7 @@ Names and twist lines are keyed by id in `src/game/names.ts`. Combat, enemy
 stats, prices, upgrade paths, reward effects and special effects are shared
 with Free play. HP uses the Normal base. Starting at the first growth wave,
 each successive wave adds another 28% of that scaled base. The campaign gate
-checks nominal HP before its ±5% smoothness trials. Each wave uses the
+checks nominal HP before varying it in the L3 and L6 trials. Each wave uses the
 level’s HP rule with no separate wave multiplier.
 
 Up to three ascending reward waves use the three existing reward menus in order.
@@ -1586,17 +1586,18 @@ A win earns one star, or the highest award whose minimum is met.
 |---:|---:|---:|
 | 20 | 12 | 18 |
 
-Level 1 starts open.
-Winning opens the next id, and replay keeps the best stars. The browser
+Level 1 starts open. Open levels form a contiguous prefix. A saved win beyond a gap counts toward unlocking the following level after the player fills that gap. Replay keeps the best stars. The browser
 stores campaign stars under `tarpit.campaign`; if storage fails, it keeps
 them for the page session. Free play keeps its own score table.
 
 ### Bot decisions
 
-- Both bots buy between waves, use the live gold balance, and start each wave normally. Neither sells, calls early or reads a later wave.
+- All three bots buy between waves, use the live gold balance, and start each wave normally. None sells, calls early or reads a later wave.
 - **Good** scores affordable placements and upgrades by the extra damage and slowing they provide per gold along the trail, sampled every 24 px. It uses the next preview's counts of flyers, small walkers and heavy enemies. It favors earlier coverage, overlaps for splash and tar/fire, and new air coverage where little exists. After two towers it favors the first Cannon against crowds, Mortar against heavies, Tar Pit, and Fire Pot alongside tar. Repeated types receive a diminishing placement score. It compares both second-upgrade paths. Good spends its opening gold and keeps 30 gold in later setups.
 - Good scores each offered reward and takes the first highest score. On menu one it counts two points per Cannon or Mortar for Long Barrels, one per Longbow for Keen Arrows, and four for War Chest. On menu two it counts slowing towers plus Tar Barrel for Sticky Tar, twice the number of burning towers plus two for Fire Arrows for Hot Coals, and three for Quick Hands if a special is available. On menu three Stone Walls scores five (twelve at four lives or fewer), Veteran Crews scores one third of the tower count, and Bigger Blasts scores the artillery count plus one for Powder Keg.
 - Every 30 wave ticks Good applies the existing crowd policy for keg and zones, limited to available specials. It also checks for at least three walkers approaching a legal blocker position 50–140 px ahead, covered by a tower. A splash tower adds one to the blocker score. A blocker must beat the current cast's hit count, and its kind must be absent from the trail. Guards get the first blocker tie.
+- **Person** uses Good’s purchase scores and reward choices. For the chosen tower type, successive placements rotate through the first, second and third highest-scoring cells. During combat it makes at most one decision per three seconds. It acts 1.5 seconds after each charge becomes ready, including the opening charge. If the next wave opens before another look is due, it repeats the previous opening cast at the charge deadline. Its candidate points are centres of 48 px cells along the trail. It prefers Good’s qualifying cast, then a cast covering fewer enemies, then a legal cast even on an empty trail.
+
 - **Beginner** spends on the cheapest allowed tower in the map's trail-cell order. When it cannot place another, it can buy one affordable upgrade, taking path A at the second upgrade. It takes the first reward and uses no specials.
 
 In Normal Free play, Good must win or lose on each map the same way as
@@ -1604,36 +1605,67 @@ comboBuild. Both win on all three maps. Good finishes with 20 lives on each.
 ComboBuild finishes with 14 on Meadow, 11 on Switchback and 14 on Riverbend,
 so Good's largest lead is nine lives on Switchback.
 
+Person also wins all three Normal maps, with 20, 20 and 19 lives respectively.
+
 ### Acceptance
 
-- L1. Good wins every level with at least two stars and earns three on levels 1–3.
-- L2. Beginner wins levels 1–3. On levels 4–5 it may lose or earn one or two stars. On levels 6–10 it may lose or earn one star.
-- L3. Removing the introduced capability must lower Good's stars or surviving lives, or cause a loss. In order from level 2, remove Cannon, Tar Pit, Fire Pot, all towers that can target Harpies, Mortar, Barricade, both Guards and Fire Arrows, the second upgrade, then all specials. The anti-air control must lose. Both boss encounters stay intact.
-- L4. Beginner may gain at most one star between adjacent levels. Good's surviving share of starting lives may not rise across three consecutive levels.
-- L5. Each level contains five to ten waves, with 4–9 minutes of Good wave time at 1× and no early calls. The ten together take 60–80 minutes. Every wave obeys R1's 180-tick sliding windows and 90-second last spawn. During Good's nominal run, at most 40 enemies may be alive at once, including summons.
-- L6. At 95% and 105% of each level's HP scale, Good moves at most one star and still wins levels 1–5.
-- L7. The gate runs the finite game to a terminal result. See `checkLevel` and `checkCampaign` for candidate and campaign checks.
-- L8. Good wins level 10 with 12–16 lives inclusive. Its mean remaining lives on levels 8–10 must be at least three below its mean on levels 1–3.
+The level record can declare an ending boss. A separate context names the introduced mechanic and the difficulty band. Each band sets the acceptable star counts and whether Person must win with specials disabled.
+
+| Band | Good minimum | Person minimum | Beginner minimum | Beginner maximum | Win without specials |
+|---|---:|---:|---:|---:|---|
+| intro | 3 | 2 | 1 | 3 | yes |
+| middle | 2 | 2 | 0 | 2 | yes |
+| transition | 2 | 1 | 0 | 1 | yes |
+| late | 2 | 1 | 0 | 1 | no |
+| finale | 2 | 1 | 0 | 1 | no |
+
+| Gate measure | Accepted values |
+|---|---|
+| Level duration (minutes) | 4–9 |
+| Campaign average (minutes per level) | 6–8 |
+| Waves per level | 5–10 |
+| Nominal HP scale | 0.85–1.35 |
+| Starting gold | 100–300 |
+| Finale lives | 12–16 |
+| Last scheduled spawn (seconds), maximum | 90 |
+| Enemies alive, maximum | 40 |
+| Opening enemies, maximum | 60 |
+| Closing enemies without a boss, minimum | 20 |
+| Person deficit behind Good, maximum lives | 6 |
+| Feature advantage for Good, minimum lives or a star | 2 |
+| Feature advantage for Person, minimum lives | 1 |
+| Mean lives drop, minimum | 3 |
+| L3 HP factors | 0.98–1.02 |
+| L3 starting gold offsets | -10–10 |
+| L6 HP factors | 0.95–1.05 |
+| L6 starting gold factors | 0.85–1.15 |
+
+- P1 checks Person’s stars and surviving lives against Good. P2 runs Person with an empty list of allowed specials. The two bands that allow a loss still report that run.
+- L1 and L2 apply the Good and Beginner star limits in the band table.
+- L3 checks the feature advantage at nominal settings and at each endpoint of the two L3 ranges, varying one input at a time. In campaign order the controls remove Cannon, Tar Pit, Fire Pot, all anti-air towers, Mortar, Barricade, Guards and Fire Arrows together, the second upgrade, then all specials. Both boss encounters keep their boss during these trials. Good must lose the nominal anti-air control. Each declared introduction occurs once per campaign.
+- L4 allows Beginner to rise at most one star between adjacent levels. Good’s lives may rise only once in succession.
+- L5 checks durations at 1× without early calls. Good must stay within the peak count. R1 allows six walkers and four flyers in each sliding three-second window. Person must keep all opening lives. The closing wave must meet the enemy minimum or contain a boss, and must include any declared ending boss.
+- L6 varies HP and starting gold separately at the listed endpoints, rounding scaled gold to the nearest integer. Good and Person may each move at most one star. Both must still win intro and middle levels.
+- L7 checks the record and requires terminal runs with no refused actions.
+- L8 checks Good’s finale lives and the difference between the first and last thirds’ mean lives. Each cohort contains the campaign length divided by three, rounded down, with at least one level. A single-level list has no mean-drop comparison.
 
 ### Campaign measurements
 
-Good and Beginner results show stars/lives. Time counts combat ticks at 60 Hz and excludes setup. Enemies counts every spawn during Good’s run, including summoned Wolves. Peak alive is the largest number on the field after any simulation tick.
+Stars/lives give each bot’s highest award and surviving lives. Time counts Good’s combat ticks at 60 Hz. Enemies includes summons. Peak is the greatest number alive after any tick.
 
-| ID | Name | Map | Waves | Enemies | Gold | HP scale | Growth from | Max tier | Reward waves | Good | Beginner | Minutes | Peak alive |
-|---|---|---|---:|---:|---:|---:|---:|---:|---|---|---|---:|---:|
-| 1 | First Watch | Meadow | 6 | 324 | 100 | 1 | — | 2 | — | 3/20 | 3/20 | 5.79 | 6 |
-| 2 | Pack Trail | Meadow | 6 | 408 | 150 | 1.979 | — | 2 | — | 3/20 | 1/9 | 5.44 | 16 |
-| 3 | The Switchback | Switchback | 7 | 556 | 220 | 1.375 | — | 2 | — | 3/20 | 1/6 | 7.29 | 15 |
-| 4 | Burn Line | Switchback | 7 | 462 | 270 | 1.33 | — | 2 | — | 2/15 | 0/0 | 7.04 | 23 |
-| 5 | Wings Over the River | Riverbend | 7 | 656 | 180 | 1.27 | — | 2 | — | 3/20 | 1/2 | 7.79 | 12 |
-| 6 | Heavy Feet | Riverbend | 7 | 317 | 280 | 1 | — | 2 | — | 2/17 | 1/3 | 7.92 | 11 |
-| 7 | Hold the Bend | Meadow | 8 | 865 | 145 | 1.3 | — | 2 | — | 2/16 | 0/0 | 8.34 | 31 |
-| 8 | Stand Fast | Switchback | 7 | 646 | 300 | 1.3 | — | 2 | — | 2/17 | 0/0 | 8.55 | 22 |
-| 9 | The Troll King | Riverbend | 7 | 732 | 285 | 1 | 6 | 3 | 5 | 2/14 | 0/0 | 8.62 | 11 |
-| 10 | Last Light | Meadow | 7 | 819 | 300 | 0.925 | 5 | 3 | 5 | 2/13 | 0/0 | 8.48 | 22 |
+| ID | Name | Map | Waves | Enemies | Gold | HP scale | Growth from | Max tier | Reward waves | Good | Person | Beginner | Minutes | Peak alive | Wave 1 |
+|---|---|---|---:|---:|---:|---:|---:|---:|---|---|---|---|---:|---:|---:|
+| 1 | First Watch | Meadow | 6 | 324 | 100 | 1 | — | 2 | — | 3/20 | 3/20 | 3/20 | 5.79 | 6 | 44 |
+| 2 | Pack Trail | Meadow | 6 | 225 | 100 | 1.25 | 1 | 2 | — | 3/20 | 3/20 | 1/3 | 4.51 | 17 | 6 |
+| 3 | The Switchback | Switchback | 7 | 572 | 160 | 1.14 | 2 | 2 | — | 3/20 | 3/20 | 2/16 | 6.97 | 10 | 47 |
+| 4 | Burn Line | Switchback | 7 | 206 | 285 | 1.35 | 3 | 2 | — | 2/13 | 2/16 | 0/0 | 6.54 | 21 | 13 |
+| 5 | Wings Over the River | Riverbend | 7 | 656 | 180 | 1.27 | — | 2 | — | 3/20 | 3/20 | 1/2 | 7.79 | 12 | 25 |
+| 6 | Heavy Feet | Riverbend | 7 | 331 | 270 | 1 | — | 2 | — | 2/15 | 2/14 | 0/0 | 8.41 | 10 | 56 |
+| 7 | Hold the Bend | Meadow | 8 | 738 | 245 | 1.3 | — | 2 | — | 2/16 | 2/12 | 0/0 | 8.13 | 28 | 53 |
+| 8 | Stand Fast | Switchback | 7 | 517 | 285 | 1.3 | — | 2 | — | 2/12 | 2/12 | 0/0 | 8.09 | 32 | 36 |
+| 9 | The Troll King | Riverbend | 7 | 535 | 255 | 1 | 6 | 3 | 5 | 3/20 | 3/20 | 0/0 | 7.57 | 17 | 42 |
+| 10 | Last Light | Meadow | 7 | 633 | 280 | 0.925 | 5 | 3 | 5 | 2/16 | 2/13 | 0/0 | 8.89 | 19 | 36 |
 
-Total wave time is **75.27 minutes**. Good averages 20.00 lives on levels 1–3 and 14.67 on levels 8–10.
+Good clears the campaign in 72.70 minutes. Its mean surviving lives drop by 4.00 from the first third to the last.
 
-First Watch opens with four-Goblin ranks. Its 100 gold buys two Longbows. Pack Trail sends tight packs through Cannon range. Fast Wolves test Tar Pit coverage on The Switchback, and Shieldbearers lead into mixed waves on Burn Line. Harpies cross Riverbend in flights of up to four. Heavy Feet sends 42 full-HP Trolls, starting with one behind the first wave of Goblins. Hold the Bend sends the largest horde, 865 walkers. Stand Fast mixes shielded walkers and flyers with Trolls for Guards and Fire Arrows. Stand Fast and Last Light use 300 gold to fund their opening defenses. Grumblefoot and Grumblemaw are the last scheduled enemies of their levels.
-
-The gate accepts nominal HP scales from 0.85 to 1.35, with two measured exceptions. Pack Trail uses 1.979 (46 HP per Goblin). At 1.978 the same packs leave Good with 20 lives even without Cannon. At 1.979 removing Cannon costs one life. The Switchback uses 1.375 (28 HP per Wolf). At 1.374 removing Tar Pit costs nothing, and at 1.375 it costs three lives. These were the lowest passing scales found in sweeps of pack size, timing and starting gold.
+Pack Trail builds up from three-Goblin ranks to groups of six. Heavy Feet ends with a column of 20 Trolls, which Mortars can hit on Riverbend beyond the reach of the installed short-range towers. Hold the Bend has the most spawns. Stand Fast combines shielded ground formations with air pressure. The Troll King sends upgraded towers against Trolls and a shielded escort before Grumblefoot. Last Light closes with Grumblemaw.
