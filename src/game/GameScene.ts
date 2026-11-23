@@ -124,6 +124,7 @@ import {
   DEFAULT_DIFFICULTY,
   DEFAULT_MAP,
   barricadePlacement,
+  guardsPlacement,
   isFlying,
   enemyMaxHp,
   pathLength,
@@ -177,6 +178,7 @@ import { drawHpBars, drawShadows, drawStatusRings } from './draw/enemies';
 import { TowerLabels } from './draw/labels';
 import { LivingMap, type DecorState } from './decor/livingMap';
 import { BarricadeEffects, drawBarricadeAim } from './draw/barricade';
+import { GuardEffects, drawGuardsAim, guardFoot, type DrawnGuard } from './draw/guards';
 import { ShotEffects } from './draw/shots';
 import { SpecialEffects } from './draw/specials';
 import { Aim, drawTowerShape, drawTowers } from './draw/towers';
@@ -298,6 +300,8 @@ export interface UiState {
     barricadeAim: { point: { x: number; y: number }; valid: boolean; reason: string | null } | null;
     blocker: { point: { x: number; y: number }; hp: number; maxHp: number; attackers: number[]; shake: number } | null;
     barricadeCrash: { x: number; y: number } | null;
+    guardsAim: (NonNullable<UiState['special']['barricadeAim']> & { marks: { x: number; y: number }[] }) | null;
+    guards: DrawnGuard[];
     /** Milestone 30: the charge is ready now (a wave runs and it is not refilling). */
     ready: boolean;
     /** Milestone 30: wave ticks until the charge is ready again; 0 when ready or not refilling. */
@@ -382,6 +386,7 @@ export const SPECIAL_COLORS: Readonly<Record<SpecialType, number>> = {
   tarBarrel: COLORS.specialTar,
   fireArrows: COLORS.specialFire,
   barricade: COLORS.cellOk,
+  guards: COLORS.cellOk,
 };
 
 /**
@@ -448,6 +453,7 @@ export class GameScene extends Phaser.Scene {
   private shots = new ShotEffects();
   private specialFx!: SpecialEffects;
   private barricadeFx!: BarricadeEffects;
+  private guardFx!: GuardEffects;
   /** The aim circle's centre cross, above the sprites (milestone 30 follow-up). */
   private aimCross!: Phaser.GameObjects.Graphics;
   /** Ground layer over the map (milestone 30): zones and scorch marks. */
@@ -576,6 +582,7 @@ export class GameScene extends Phaser.Scene {
     this.enemySprites = new EnemySprites(this, isTestMode(), this.layout, this.painted);
     this.shotFx = world();
     this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx), this.layout) : null;
+    this.guardFx = new GuardEffects(this, this.layout, this.enemySprites.layer, this.painted);
     this.bars = this.add.graphics();
     this.barricadeFx = new BarricadeEffects(this, this.layout, this.painted);
     this.labels = new TowerLabels(this, this.layout);
@@ -890,11 +897,12 @@ export class GameScene extends Phaser.Scene {
     this.redraw();
   }
 
-  /** Fire at a canvas point. A refused Barricade stays aimed so the player can adjust. */
+  /** Fire at a canvas point. A refused trail placement stays aimed so the player can adjust. */
   private fireSpecial(type: SpecialType, point: { x: number; y: number }): SpecialResult {
     const at = this.layout.toWorld(point);
-    if (type === 'barricade') {
-      const placement = barricadePlacement(this.state.map, at);
+    if (type === 'barricade' || type === 'guards') {
+      const place = type === 'barricade' ? barricadePlacement : guardsPlacement;
+      const placement = place(this.state.map, at);
       if (!placement.ok) {
         this.specialFx.addLabel(at, BARRICADE_AIM_REASONS[placement.reason], false);
         this.touchAim = null;
@@ -911,10 +919,18 @@ export class GameScene extends Phaser.Scene {
     return { pointer, placement: barricadePlacement(this.state.map, pointer) };
   }
 
+  private guardsAim(centre = this.aimCentre()) {
+    if (this.aiming !== 'guards' || centre === null) return null;
+    const pointer = this.layout.toWorld(centre);
+    const placement = guardsPlacement(this.state.map, pointer);
+    const marks = placement.ok ? placement.points.map((p, i) => guardFoot(p, this.state.nextGuardId + i)) : [];
+    return { pointer, placement, marks };
+  }
+
   private aimBanner() {
     if (this.aiming === null) return null;
     const text = aimBannerText(this.aiming, this.touch);
-    const preview = this.barricadeAim()?.placement;
+    const preview = this.barricadeAim()?.placement ?? this.guardsAim()?.placement;
     const reason = preview?.ok === false ? BARRICADE_AIM_REASONS[preview.reason] : null;
     return reason === null ? text : { ...text, main: reason };
   }
@@ -1198,7 +1214,7 @@ export class GameScene extends Phaser.Scene {
           };
         })(),
         blocker: (() => {
-          const blocker = this.state.blocker;
+          const blocker = this.state.blockers.find((b) => b.kind === 'barricade') ?? null;
           if (!blocker) return null;
           return {
             point: this.layout.toScreen(blocker),
@@ -1209,6 +1225,18 @@ export class GameScene extends Phaser.Scene {
           };
         })(),
         barricadeCrash: this.barricadeFx.crash ? this.layout.toScreen(this.barricadeFx.crash) : null,
+        guardsAim: (() => {
+          const aim = this.guardsAim();
+          if (!aim) return null;
+          const { placement, pointer } = aim;
+          return {
+            point: this.layout.toScreen(placement.ok ? placement.point : pointer),
+            valid: placement.ok,
+            reason: placement.ok ? null : BARRICADE_AIM_REASONS[placement.reason],
+            marks: aim.marks.map(p => this.layout.toScreen(p)),
+          };
+        })(),
+        guards: this.guardFx.snapshot(),
         banner: this.aimBanner(),
         holding: this.aimPress?.active ?? false,
         labels: this.specialFx.labelInfo(),
@@ -1268,6 +1296,7 @@ export class GameScene extends Phaser.Scene {
       // Effects age in real time in play (milestone 30), so a label lasts 1.5 s at any speed.
       this.specialFx.advance(delta);
       this.barricadeFx.advance(delta);
+      this.guardFx.advance(delta);
     }
     this.redraw();
   }
@@ -1288,6 +1317,7 @@ export class GameScene extends Phaser.Scene {
       if (!this.autoTick) {
         this.specialFx.advance(1000 / 60);
         this.barricadeFx.advance(1000 / 60);
+        this.guardFx.advance(1000 / 60);
         this.frozenMs += 1000 / 60;
         this.moments.advance(this.frozenMs);
       }
@@ -1331,6 +1361,7 @@ export class GameScene extends Phaser.Scene {
     const { events, newTick } = this.eventCursor.take(this.state);
     if (newTick) this.enemySprites.newTick();
     this.barricadeFx.onEvents(events);
+    this.guardFx.onEvents(events);
     if (this.fx) this.fx.onEvents(events);
     else {
       this.enemySprites.onEvents(events);
@@ -1517,7 +1548,7 @@ export class GameScene extends Phaser.Scene {
     fx?.update(this.state);
     const pose = fx ? (cell: Cell, type: TowerType) => fx.towerPose(cell, type) : undefined;
     drawTowers(g, this.state, this.aim, moving, pose, this.layout, this.painted?.towerBody);
-    const blocker = this.state.blocker;
+    const blocker = this.state.blockers.find((b) => b.kind === 'barricade') ?? null;
     const motion = this.barricadeMotion;
     const stopped = this.barricadeFx.stoppedPositions(this.state, motion);
     drawStatusRings(g, this.state, this.layout, stopped);
@@ -1534,6 +1565,7 @@ export class GameScene extends Phaser.Scene {
     this.bars.clear();
     drawHpBars(this.bars, this.state, this.layout, stopped, this.painted ? id => this.enemySprites.paintedBar(id) : undefined);
     this.barricadeFx.drawHp(this.bars, blocker, this.layout, stopped?.size ?? 0);
+    this.guardFx.draw(this.bars, this.state, motion);
     if (!this.painted) this.labels.update(this.state);
     this.syncEndScreen();
     this.redrawUi();
@@ -1634,6 +1666,7 @@ export class GameScene extends Phaser.Scene {
     const hoverBuildable = hover !== null && (isBuildable(this.state, hover) || backHome);
     const aimAt = this.aimCentre();
     const barricade = this.barricadeAim(aimAt);
+    const guards = this.guardsAim(aimAt);
     if (drag !== null) this.setCursor('grabbing');
     else if (aimAt !== null) this.setCursor('crosshair');
     else this.setCursor(hoverTower || (this.pick !== null && hoverBuildable) ? 'pointer' : 'default');
@@ -1686,6 +1719,8 @@ export class GameScene extends Phaser.Scene {
       const w = this.layout.toWorld(aimAt);
       if (barricade) {
         drawBarricadeAim(this.aimCross, w, barricade.placement.ok ? barricade.placement.point : null);
+      } else if (guards) {
+        drawGuardsAim(this.aimCross, w, guards.marks);
       } else {
         const color = SPECIAL_COLORS[this.aiming];
         const r = specialRadius(this.aiming, this.state.boons);
@@ -1737,7 +1772,7 @@ export class GameScene extends Phaser.Scene {
       g.lineBetween(f.x, f.y, c.x, c.y);
       g.strokeCircle(f.x, f.y, SNAP_RING);
     }
-    const snapAim = barricade?.placement;
+    const snapAim = barricade?.placement ?? guards?.placement;
     this.updateMagnifier(drag, snapAim?.ok ? this.layout.toScreen(snapAim.point) : aimAt);
   }
 

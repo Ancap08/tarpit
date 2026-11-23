@@ -331,7 +331,9 @@ export class Effects {
     const early = events.some((e) => e.kind === 'earlyCall');
     const ended = events.some((e) => e.kind === 'won' || e.kind === 'lost');
     // Damage reports are per attacker. Offer one sound per tick to the shared mixer.
-    if (events.some((e) => e.kind === 'blockerHit')) sound.play('blockerHit');
+    if (events.some((e) => e.kind === 'blockerHit' && e.guardId === undefined)) sound.play('blockerHit');
+    if (events.some((e) => e.kind === 'guardStrike')) sound.play('guardStrike');
+    if (events.some((e) => e.kind === 'guardDown')) sound.play('guardDown');
     for (const e of events) {
       switch (e.kind) {
         case 'hit': {
@@ -388,6 +390,9 @@ export class Effects {
           break;
         case 'blockerBreak':
           sound.play('blockerBreak');
+          break;
+        case 'squadGone':
+          if (e.reason !== 'destroyed') sound.play('guardLeave');
           break;
         case 'special':
           sound.play(`special.${e.type}`);

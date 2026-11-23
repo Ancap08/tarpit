@@ -977,6 +977,11 @@ export function comboBarricade(difficulty?: Difficulty, map: MapId = DEFAULT_MAP
   });
 }
 
+/** The combo purchase policy, spending every ready charge on Guards from their unlock. */
+export function comboGuards(difficulty: Difficulty, map: MapId, guardsPoint: Point): WaveScript {
+  return recordScript(followComboPlan(map), { difficulty, map, specials: { guardsPoint } });
+}
+
 /**
  * The combo build with the special policy forbidden one special (milestone
  * 30), recorded by playing (the specials change the gold, so the purchases

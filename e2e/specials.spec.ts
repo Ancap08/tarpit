@@ -155,7 +155,7 @@ test('Fire Arrows on wave 7: a Harpy in the circle burns at 26/s and the burning
   const harpy = (await state(page)).enemies.find((e) => e.type === 'harpy');
   expect(harpy).toBeTruthy();
   await click(page, 'special');
-  expect(Object.keys(await rects(page)).filter((k) => k.startsWith('special:'))).toEqual(['special:keg', 'special:barricade', 'special:tarBarrel', 'special:fireArrows']);
+  expect(Object.keys(await rects(page)).filter((k) => k.startsWith('special:'))).toEqual(['special:keg', 'special:barricade', 'special:tarBarrel', 'special:guards', 'special:fireArrows']);
   await click(page, 'special:fireArrows');
   const at = round(pos(harpy!));
   await page.mouse.move(at.x, at.y);

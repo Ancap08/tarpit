@@ -74,6 +74,8 @@ cloud shadows and the odd bird or butterfly, all still under reduced motion.
    many it caught, and the button shows the seconds until the next one.
    From wave 3, place a Barricade across the trail beside a Cannon or Mortar.
    Walkers stop and attack it, Harpies fly over it, and bosses break it quickly.
+   From wave 6, aim Guards at the trail to deploy a short line of soldiers.
+   Each holds walkers and strikes one at a time. Survivors leave after 12 seconds.
 9. **Call next.** Once every enemy of a wave has come out of the cave
    (some may still be walking), Start Wave reads "Call
    next +N". Press it to send the next wave now: you get the wave's clear

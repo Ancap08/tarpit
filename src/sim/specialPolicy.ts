@@ -39,6 +39,8 @@ export interface PolicyOptions {
   barricadePoint?: Point;
   /** In the placement sweep, spend each recharge even if its wall is still standing. */
   refreshBarricade?: boolean;
+  /** Placement sweep: spend each ready charge on Guards once they unlock. */
+  guardsPoint?: Point;
 }
 
 export interface PolicyChoice {
@@ -110,7 +112,11 @@ function bestPoint(state: GameState, pos: readonly { p: Point; big: boolean }[],
  */
 export function policyChoice(state: GameState, lastZone: SpecialType | undefined, options: PolicyOptions = {}): PolicyChoice | undefined {
   if (state.phase !== 'wave' || state.specialCharges <= 0) return undefined;
-  if (options.barricadePoint && (!state.blocker || options.refreshBarricade) && allowed('barricade', state.wave, options)) {
+  if (options.guardsPoint && allowed('guards', state.wave, options)) {
+    return { special: 'guards', ...options.guardsPoint, hits: 0 };
+  }
+  if (options.barricadePoint && (options.refreshBarricade || !state.blockers.some(({ kind }) => kind === 'barricade'))
+    && allowed('barricade', state.wave, options)) {
     return { special: 'barricade', ...options.barricadePoint, hits: 0 };
   }
   if (state.waveTick % POLICY_CHECK_TICKS !== 0) return undefined;

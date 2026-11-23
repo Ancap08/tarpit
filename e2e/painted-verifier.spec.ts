@@ -134,7 +134,7 @@ test('D5 Painted at device pixel ratio 1 requests exactly one density (1x), ever
   expect(s).toMatchObject({ active: true, density: 1 });
   expect(requests.filter((u) => u.includes('-2x-'))).toEqual([]);
   expect(new Set(requests).size).toBe(requests.length);
-  expect(requests.length).toBe(54);
+  expect(requests.length).toBe(56);
 });
 
 test('D5 a large window at device pixel ratio 1 (canvas scale 1.7) asks for 2x only', async ({ page }) => {
@@ -146,7 +146,7 @@ test('D5 a large window at device pixel ratio 1 (canvas scale 1.7) asks for 2x o
   await play(page);
   expect(await livePainted(page)).toMatchObject({ active: true, density: 2 });
   expect(requests.filter((u) => u.includes('-1x-'))).toEqual([]);
-  expect(requests.length).toBe(54);
+  expect(requests.length).toBe(56);
 });
 
 test.describe('device pixel ratio 2', () => {
@@ -159,7 +159,7 @@ test.describe('device pixel ratio 2', () => {
     await play(page);
     expect(await livePainted(page)).toMatchObject({ active: true, density: 2 });
     expect(requests.filter((u) => u.includes('-1x-'))).toEqual([]);
-    expect(requests.length).toBe(54);
+    expect(requests.length).toBe(56);
     const filters = await page.evaluate(() => {
       const t = window.__tarpit!.game.textures;
       return t.getTextureKeys().filter((k) => k.startsWith('painted:')).map((k) => t.get(k).source[0].scaleMode);
@@ -177,7 +177,7 @@ test.describe('device pixel ratio 2', () => {
     await waitForTitle(page);
     await play(page);
     expect(await livePainted(page)).toMatchObject({ active: true, density: 1 });
-    expect(requests).toHaveLength(54);
+    expect(requests).toHaveLength(56);
     expect(requests.every((url) => url.includes('-1x-'))).toBe(true);
 
     await context.setOffline(true);
@@ -211,8 +211,8 @@ test.describe('device pixel ratio 2', () => {
       await waitForGame(page);
       expect(await livePainted(page)).toMatchObject({ active: true, density: delayed ? 1 : 2 });
       expect(requests[0]).toMatch(/meadow-1x-.*\.png$/);
-      expect(requests.filter((url) => url.includes('-1x-'))).toHaveLength(delayed ? 54 : 1);
-      expect(requests.filter((url) => url.includes('-2x-'))).toHaveLength(delayed ? 0 : 54);
+      expect(requests.filter((url) => url.includes('-1x-'))).toHaveLength(delayed ? 56 : 1);
+      expect(requests.filter((url) => url.includes('-2x-'))).toHaveLength(delayed ? 0 : 56);
       expect(new Set(requests).size).toBe(requests.length);
     });
   }
@@ -300,7 +300,7 @@ test('D7 service worker leaves painted files out of the precache; one Painted ga
     for (const name of await caches.keys()) for (const r of await (await caches.open(name)).keys()) out.push(new URL(r.url).pathname);
     return out;
   });
-  expect(after.filter((p) => p.includes('/assets/painted/')).length).toBe(54);
+  expect(after.filter((p) => p.includes('/assets/painted/')).length).toBe(56);
   await context.setOffline(true);
   await page.reload();
   await waitForTitle(page);

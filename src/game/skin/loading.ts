@@ -6,7 +6,7 @@ const FRAME_COUNTS = {
   meadow: 1, cave: 4, cottage: 1, oak: 4, spruce: 1, birch: 1, bush: 1, 'berry-bush': 1,
   musketeer: 16, cannon: 16, 'tar-pit': 16, longbow: 16, mortar: 16, 'fire-pot': 16,
   goblin: 16, wolf: 16, troll: 16, harpy: 16, shieldbearer: 16, grumblefoot: 16, grumblemaw: 16,
-  'harpy-shadow': 1, arrow: 1, cannonball: 1, 'tar-glob': 1, 'mortar-shell': 1, flame: 1,
+  guard: 8, 'harpy-shadow': 1, arrow: 1, cannonball: 1, 'tar-glob': 1, 'mortar-shell': 1, flame: 1,
 } as const;
 
 export type PaintedName = keyof typeof FRAME_COUNTS;
@@ -111,7 +111,7 @@ function validateSheet(
     image.naturalWidth !== width * columns || image.naturalHeight !== height * rows) {
     throw new Error(`Invalid painted sheet dimensions: ${name}`);
   }
-  if ((frames === 16 || bodyBounds !== undefined) &&
+  if ((frames === 16 || name === 'guard' || bodyBounds !== undefined) &&
     (!Array.isArray(bodyBounds) || bodyBounds.length !== frames ||
       bodyBounds.some((b) => !integers(b, 4) || b[0] >= b[2] || b[1] >= b[3] || b[2] > width || b[3] > height))) {
     throw new Error(`Invalid painted body bounds: ${name}`);

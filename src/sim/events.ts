@@ -13,7 +13,7 @@
 import type { BoonId, BoonOffer } from './boons';
 import type { Cell } from './grid';
 import type { SpecialType } from './specials';
-import type { EnemyType, TargetingMode, TowerType, UpgradePath } from './types';
+import type { EnemyType, Guard, TargetingMode, TowerType, UpgradePath } from './types';
 
 /** What killed an enemy: a tower shot, a burn tick, or a special attack (milestone 25b). */
 export type KillCause = 'shot' | 'burn' | 'special';
@@ -53,9 +53,13 @@ export type GameEvent =
    */
   | { kind: 'special'; type: SpecialType; x: number; y: number; radius: number; hits: number; zoneId?: number; angle?: number }
   /** A walking enemy damaged the blocker this tick. */
-  | { kind: 'blockerHit'; enemyId: number; x: number; y: number; damage: number }
+  | { kind: 'blockerHit'; enemyId: number; x: number; y: number; damage: number; guardId?: number }
   /** The blocker was destroyed by enemies. */
   | { kind: 'blockerBreak'; x: number; y: number; angle: number }
+  | { kind: 'squadPlaced'; guards: readonly Guard[] }
+  | { kind: 'guardStrike'; guardId: number; enemyId: number; x: number; y: number; damage: number }
+  | { kind: 'guardDown'; guardId: number; x: number; y: number; angle: number }
+  | { kind: 'squadGone'; guards: readonly Guard[]; reason: 'destroyed' | 'expired' | 'replaced' }
   /** The gold cheat was used (milestone 30): `gold` was added. */
   | { kind: 'cheat'; gold: number }
   /** A tower's targeting mode was set (milestone 24). */

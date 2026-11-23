@@ -24,6 +24,7 @@ export class SpecialMenu {
   private shownTypes: SpecialType[] = [];
   private box: Rect | null = null;
   private buttonH = 0;
+  private columns = 1;
 
   /** `left` is the popup's left edge; `hudTop` the y it sits above. */
   constructor(
@@ -31,6 +32,7 @@ export class SpecialMenu {
     private readonly left: number,
     private readonly hudTop: number,
     onPick: (type: SpecialType) => void,
+    private readonly mapTop: number,
     /** Milestone 32b: portrait passes larger buttons and text. */
     private readonly size: StackSize = STACK_SIZE,
     fontSize = '16px',
@@ -44,7 +46,7 @@ export class SpecialMenu {
       new Button(scene, { x: 0, y: 0, width: size.buttonW, height: size.buttonH }, SPECIAL_NAMES[type], () => onPick(type), {
         fontSize,
       });
-    this.buttons = { keg: make('keg'), tarBarrel: make('tarBarrel'), fireArrows: make('fireArrows'), barricade: make('barricade') };
+    this.buttons = { keg: make('keg'), tarBarrel: make('tarBarrel'), fireArrows: make('fireArrows'), barricade: make('barricade'), guards: make('guards') };
     for (const b of Object.values(this.buttons)) b.setShown(false);
   }
 
@@ -55,13 +57,17 @@ export class SpecialMenu {
 
   /** Show the popup listing `types` (the unlocked specials), or hide it with an empty list. */
   update(types: readonly SpecialType[]): void {
-    const heightLeft = this.hudTop - MENU_GAP_ABOVE_HUD - 2 * PAD - (types.length - 1) * GAP;
-    const buttonH = types.length === 0 ? 0 : Math.min(
-      Math.floor(heightLeft / types.length),
-      Math.max(this.size.buttonH, Math.ceil(MIN_TARGET_CSS * this.scene.scale.displayScale.y)),
-    );
-    if (buttonH === this.buttonH && types.length === this.shownTypes.length && types.every((t, i) => t === this.shownTypes[i])) return;
+    const room = this.hudTop - this.mapTop - MENU_GAP_ABOVE_HUD - 2 * PAD;
+    const fullHeight = Math.max(this.size.buttonH, Math.ceil(MIN_TARGET_CSS * this.scene.scale.displayScale.y));
+    // Keep full-size targets on squat screens by splitting the new five-item menu.
+    const fullRows = Math.max(1, Math.floor((room + GAP) / (fullHeight + GAP)));
+    const maxColumns = Math.floor((this.scene.scale.width - 2 * PAD + GAP) / (this.size.buttonW + GAP));
+    const columns = types.includes('guards') ? Math.min(maxColumns, Math.max(1, Math.ceil(types.length / fullRows))) : 1;
+    const rows = Math.ceil(types.length / columns);
+    const buttonH = rows === 0 ? 0 : Math.min(Math.floor((room - (rows - 1) * GAP) / rows), fullHeight);
+    if (buttonH === this.buttonH && columns === this.columns && types.length === this.shownTypes.length && types.every((t, i) => t === this.shownTypes[i])) return;
     this.buttonH = buttonH;
+    this.columns = columns;
     this.shownTypes = [...types];
     if (types.length === 0) {
       this.box = null;
@@ -69,17 +75,19 @@ export class SpecialMenu {
       for (const b of Object.values(this.buttons)) b.setShown(false);
       return;
     }
-    const height = 2 * PAD + types.length * buttonH + (types.length - 1) * GAP;
+    const height = 2 * PAD + rows * buttonH + (rows - 1) * GAP;
+    const width = 2 * PAD + columns * this.size.buttonW + (columns - 1) * GAP;
     const top = this.hudTop - MENU_GAP_ABOVE_HUD - height;
-    this.box = { x: this.left, y: top, width: this.size.buttonW + 2 * PAD, height };
-    this.backing.setPosition(this.left, top).setSize(this.box.width, height).setVisible(true);
+    const left = Math.min(this.left, this.scene.scale.width - width);
+    this.box = { x: left, y: top, width, height };
+    this.backing.setPosition(left, top).setSize(width, height).setVisible(true);
     for (const type of SPECIAL_TYPES) {
       const i = types.indexOf(type);
       const b = this.buttons[type];
       if (i < 0) b.setShown(false);
       else {
         b.setSize(this.size.buttonW, buttonH);
-        b.moveTo(this.left + PAD, top + PAD + i * (buttonH + GAP));
+        b.moveTo(left + PAD + (i % columns) * (this.size.buttonW + GAP), top + PAD + Math.floor(i / columns) * (buttonH + GAP));
         b.setShown(true);
       }
     }

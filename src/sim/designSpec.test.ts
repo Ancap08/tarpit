@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ACT_TWO_HP_GROWTH, DIFFICULTIES, DIFFICULTY_DEFS, campaignHpFactor, enemyMaxHp } from './difficulty';
-import { BARRICADE_END_EXCLUSION, BARRICADE_HP, BARRICADE_SNAP_RADIUS } from './blockers';
+import { BARRICADE_END_EXCLUSION, BARRICADE_HP, BARRICADE_SNAP_RADIUS, GUARD_COUNT, GUARD_HP, GUARD_ATTACK_DPS, GUARD_LIFETIME_TICKS, GUARD_SPACING } from './blockers';
 import { BOONS } from './boons';
 import { PACK_INTERVAL_TICKS, PACK_SIZE } from './combat';
 import { ENEMY_STATS, isBoss } from './enemies';
@@ -74,7 +74,7 @@ const TOWER_NAMES: Record<string, TowerType> = {
   Mortar: 'mortar',
   'Fire Pot': 'firepot',
 };
-const SPECIAL_NAMES: Record<string, SpecialType> = { 'Powder Keg': 'keg', Barricade: 'barricade', 'Tar Barrel': 'tarBarrel', 'Fire Arrows': 'fireArrows' };
+const SPECIAL_NAMES: Record<string, SpecialType> = { 'Powder Keg': 'keg', Barricade: 'barricade', Guards: 'guards', 'Tar Barrel': 'tarBarrel', 'Fire Arrows': 'fireArrows' };
 const MAP_NAMES: Record<string, MapId> = { Meadow: 'meadow', Switchback: 'switchback', Riverbend: 'riverbend' };
 
 /** "1/3" or "2.5" as a number. */
@@ -101,7 +101,7 @@ const burn = (s: string): [number, number] => {
 
 describe('docs/DESIGN.md matches the code', () => {
   it('has the frozen banner', () => {
-    expect(md).toMatch(/^# Tarpit: game design spec\n\n> \*\*Frozen as of milestone 39\.\*\*/);
+    expect(md).toMatch(/^# Tarpit: game design spec\n\n> \*\*Frozen as of milestone 40\.\*\*/);
   });
 
   it('maps: waypoints, path length and buildable cells', () => {
@@ -222,7 +222,7 @@ describe('docs/DESIGN.md matches the code', () => {
 
   it('specials: unlock wave, radius, damage, slow, burn, zone ticks', () => {
     const rows = table('Special attacks', 'Special');
-    expect(rows.map((r) => SPECIAL_NAMES[r[0]])).toEqual(['keg', 'barricade', 'tarBarrel', 'fireArrows']);
+    expect(rows.map((r) => SPECIAL_NAMES[r[0]])).toEqual(['keg', 'barricade', 'tarBarrel', 'guards', 'fireArrows']);
     for (const [name, unlock, radius, damage, sl, burnDps, zoneTicks] of rows) {
       expect({ unlockWave: Number(unlock), radius: Number(radius), damage: opt(damage), slow: opt(sl), burnDps: opt(burnDps), zoneTicks: opt(zoneTicks) }, name).toEqual(
         SPECIAL_DEFS[SPECIAL_NAMES[name]],
@@ -231,8 +231,14 @@ describe('docs/DESIGN.md matches the code', () => {
     expect(table('Special attacks', 'Blocker')).toEqual([
       ['Barricade', String(BARRICADE_HP), String(BARRICADE_SNAP_RADIUS), String(BARRICADE_END_EXCLUSION)],
     ]);
+    expect(table('Special attacks', 'Squad')).toEqual([
+      ['Guards', ...[GUARD_COUNT, GUARD_HP, GUARD_ATTACK_DPS, GUARD_LIFETIME_TICKS, GUARD_SPACING].map(String)],
+    ]);
     // The prose numbers: the recharge, the linger, the policy's look interval, threshold and spacing, the cheat.
     const flat = section('Special attacks').replace(/\s+/g, ' ');
+    expect(flat).toContain(`The squad spans ${(GUARD_COUNT - 1) * GUARD_SPACING} trail px.`);
+    expect(flat).toContain(`The shared ${BARRICADE_END_EXCLUSION} px cave clearance`);
+    expect(flat).toContain('Shields do not reduce guard damage.');
     expect(flat).toContain(`${SPECIAL_RECHARGE_TICKS} wave ticks`);
     expect(flat).toContain(`${Math.round(SPECIAL_RECHARGE_TICKS * BOONS.quickHands.value)} ticks (11.4 s)`);
     expect(flat).toContain(`${ZONE_LINGER_TICKS} ticks after`);
@@ -277,7 +283,7 @@ describe('docs/DESIGN.md matches the code', () => {
   it('balance targets: every target label the suite asserts is in the spec, and no other', () => {
     const text = section('Balance targets') + section('Waves');
     const inDoc = new Set([...text.matchAll(/\*\*([A-Z]+\d+[a-z]?)\b/g)].map((m) => m[1]));
-    const separateChecks = ['N10c', 'N10d', 'P1', 'P2', 'P3', 'P4', 'K1', 'K2', 'K3', 'K4', 'K5', 'K6', 'K7'];
+    const separateChecks = ['N10c', 'N10d', 'P1', 'P2', 'P3', 'P4', 'K1', 'K2', 'K3', 'K4', 'K5', 'K6', 'K7', 'G1', 'G2', 'G3', 'G4', 'G5', 'G6'];
     expect([...inDoc].sort()).toEqual([...new Set([...TARGETS.map((t) => t.id), ...separateChecks])].sort());
   });
 

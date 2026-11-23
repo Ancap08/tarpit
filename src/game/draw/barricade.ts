@@ -100,7 +100,7 @@ export class BarricadeEffects {
       if (e.kind === 'special' && e.type === 'barricade') {
         this.hitAt = -Infinity;
         this.strikes.clear();
-      } else if (e.kind === 'blockerHit') {
+      } else if (e.kind === 'blockerHit' && e.guardId === undefined) {
         this.hitAt = this.age;
         this.strikes.set(e.enemyId, this.age);
       } else if (e.kind === 'blockerBreak') {
@@ -111,7 +111,7 @@ export class BarricadeEffects {
 
   /** Render anchors for stopped walkers. All combat still uses their simulation coordinates. */
   stoppedPositions(state: GameState, motion: boolean): BlockedPositions | undefined {
-    const wall = state.blocker;
+    const wall = state.blockers.find((b) => b.kind === 'barricade');
     if (!wall) return undefined;
     const stopped = new Map<number, BlockedPosition>();
     const held = state.enemies.filter(e => !isFlying(e) && e.distance === wall.distance);

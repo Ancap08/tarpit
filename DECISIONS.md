@@ -1236,3 +1236,37 @@ can change it; "Kyle" means Kyle decided.
   were downloaded to a scratch folder with Kyle's approval, as style
   references only. Nothing from them is in the repo. Kyle (approved),
   Fable.
+
+## 2026-11-23, milestone 40 (Guards, a short burst of troops)
+
+- **Guards: a fifth special on the shared charge, unlocked at wave 6.**
+  Four guards on the trail, each a blocker that hits back: 72 hp, 10
+  damage a second to one enemy in contact, gone after 12 seconds. A
+  Barricade and a squad can stand together. Kyle ("weak-ish inf troops
+  that do a little damage, take a little damage and then die off"), Fable
+  (rule), Codex (build and numbers), Sonnet (30 hand-computed cases).
+- **The blocking rule grew by exactly what this needed:** a list of
+  blockers, a blocker that damages one enemy in contact, a blocker with a
+  lifetime. One special per tick now applies to every special. Fable.
+- **Reference builds do not use Guards;** the balance report is
+  byte-identical. Strength is checked by a sweep over trail points.
+- **Known, from the verifier's own sweep with sensible timing:** worth 3
+  to 6 lives on Normal when cast as a crowd arrives (weak if fired the
+  moment the charge is ready), and with the Barricade a skilled player can
+  win Hard on Switchback with the Normal plan. Accepted (Fable): aiming
+  specials well should be rewarded; play notes decide.
+- **Guards are drawn at Goblin size, staggered across the trail,** within
+  6 px along and 10 px across of where they really stand, with a test
+  tying that to the smallest blast radius. The first version drew them at
+  half a Goblin's height in one clump. Fable (saw it), Codex.
+- **A real bug fixed on the way:** after a turn from portrait to
+  landscape a quick tap could miss, because the canvas was fitted to the
+  old size. Codex (found and fixed), Sonnet (confirmed: 6 of 12 failures
+  without it, none with it).
+- **The disk filled during this milestone** and cut Codex's run off before
+  its report; the work was complete and committed. The space was Codex's
+  own history folder (24 GB across all of Kyle's projects), not this
+  project's temp files. With Kyle's approval the coordinator deleted this
+  project's 73 Codex session logs (262 MB) and the art worktree's
+  installed dependencies. Briefs now tell agents to keep scratch output
+  small, delete it, and leave no wait loops running. Fable.

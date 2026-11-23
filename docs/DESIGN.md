@@ -1,6 +1,6 @@
 # Tarpit: game design spec
 
-> **Frozen as of milestone 39.** This file states every number and rule the
+> **Frozen as of milestone 40.** This file states every number and rule the
 > game uses. Changing any of them needs a `DECISIONS.md` entry (who decided
 > and why) and the balance pins updated in the same change
 > (`src/sim/balance.suite.ts`, `npm run sim`). Kyle's play notes can reopen
@@ -473,11 +473,13 @@ Reloading starts a new run.
 | Powder Keg | 1 | 90 | 60 | - | - | - |
 | Barricade | 3 | 0 | - | - | - | - |
 | Tar Barrel | 4 | 100 | - | 0.5 | - | 660 |
+| Guards | 6 | 0 | - | - | - | - |
 | Fire Arrows | 7 | 90 | - | - | 26 | 660 |
 
-- **Charge.** One charge shared by all four specials. `state.specialCharges`
+- **Charge.** One charge shared by all five specials. `state.specialCharges`
   is 0 or 1 and `state.specialRechargeTicks` counts the refill. A wave start
   (Start Wave or an early call) makes it ready at once (1, recharge 0).
+  Only one special can fire in one simulation tick, including across an early-call refill.
   Using a special spends it and starts the recharge: it is ready again
   1200 wave ticks later (20 s, `SPECIAL_RECHARGE_TICKS`). Quick Hands
   lowers this interval to 684 ticks (11.4 s). The counter runs in step 6
@@ -501,7 +503,27 @@ Reloading starts a new run.
 |---|---|---|---|
 | Barricade | 324 | 40 | 64 |
 
-- **Contact.** A walker reaching or crossing a live blocker stops exactly
+- **Guards.** Use the same snap, end clearances and refusals as the wall.
+  The first guard stands on the snap point. Place the rest at equal trail
+  distances back toward the cave, following the trail around corners.
+  The squad spans 36 trail px. The shared 64 px cave clearance therefore
+  leaves room for all four guards at every legal anchor. Shields do not
+  reduce guard damage. A new squad replaces every surviving guard.
+  It can share the trail with a Barricade.
+  The only reward affecting deployment is Quick Hands on the shared charge.
+
+| Squad | Number | HP each | Damage per second | Lifetime in ticks | Spacing in trail px |
+|---|---|---|---|---|---|
+| Guards | 4 | 72 | 10 | 720 | 12 |
+
+- **Contact.** The state holds one list of blockers, each tagged as a wall or
+  a guard. At identical
+  distances the wall takes contact first. Each guard strikes one walker in
+  contact, choosing the earliest arrival tick and then the lowest enemy id.
+  Each kill pays the enemy bounty and counts as a special kill.
+  Placement emits `squadPlaced`, each strike emits `guardStrike`, a fallen guard emits `guardDown`, and the last death,
+  expiry or replacement emits `squadGone`.
+  A walker reaching or crossing the first live blocker stops exactly
   at it, including on the breaking tick. Walkers may stack. Each contributes
   its enemy type's blocker damage/s divided by 60. Difficulty, act-two hp
   growth and slows leave attack strength unchanged. A walker already past
@@ -564,6 +586,18 @@ Reloading starts a new run.
   or the finger is on the Special button. There is no second confirming tap. Escape, the Special button
   again or any other press on the HUD cancels; a cancel spends nothing.
   Aiming and the tower pick or panel never coexist.
+- **Guards on screen.** The five unlocked choices fit above the controls
+  with full-size touch targets. The Guards preview marks every foot position.
+  On a refused cast, the aim stays open with a plain-language reason. The
+  soldiers face upstream, stand about as tall as Goblins and use enemy-size
+  hp bars. Their feet alternate sides of the trail, within 10 px across
+  and 6 px along the trail from each simulation point. At contact the
+  lower figure draws in front. Live contact animates
+  the spear, a death drops the soldier, and expiry cues a salute and departure.
+  Test mode and reduced motion use still poses. The four sounds distinguish
+  arrival, striking, falling and departure. Strike sounds share the horde budget.
+  Wave 6 shows the unlock hint once per visit. Painted Meadow uses four
+  bearings with idle and strike poses. Other maps use the Classic drawing.
 - **Barricade aiming and impact.** The pointer circle and touch magnifier
   show the placement area. A bar across the trail marks the snap point.
   An invalid aim marks the pointer and explains how to move it. The placed
@@ -772,8 +806,12 @@ changing with either selection; no line when that pair has no score.
 Builds, upgrades, sells, moves, reward picks, specials and early calls act between
 ticks. Inside one wave tick: (1) enemies move at `(1 - effectiveSlow)`,
 stopping at the first live blocker their step reaches. All walkers attack
-from the same starting set of blockers. Remove broken blockers after all
-walkers have moved. They can advance again on the next tick. Both slow
+from the same starting set of blockers. After every walker has moved,
+resolve the guards' return strikes and the walkers' combined damage.
+Both sides can land their last blow. Pay guard kills as special kills,
+remove broken blockers, then remove guards whose last lifetime tick has
+elapsed. Their lifetime also counts down on setup ticks and freezes at
+the win or loss screen. They can advance again on the next tick. Both slow
 timers count down as usual; (2) enemies at the exit are removed and
 cost their lives (at 0 lives the game is lost at once and nothing else
 happens that tick); (2b) each zone, oldest first, slows or burns the live
@@ -1480,6 +1518,15 @@ Barricade checks:
 - **K5** Ten Goblins arriving together deal one hp per tick and break the wall on tick 324.
 - **K6** A Harpy takes the same number of ticks to reach the exit with or without a wall.
 - **K7** A wall spends the shared charge. Quick Hands shortens recharge. A second placement in the same tick is refused.
+
+Guards checks:
+
+- **G1** Every existing simulator report line is byte-identical to the milestone 39 report. All nine final comboBuild game states match after accounting for the new blocker state representation.
+- **G2** Play a separate campaign at each legal point on the Barricade's 48 px trail grid. Follow the comboBuild tower plan and use every ready charge for Guards from wave 6. On Normal and Hard, no point may gain more than five lives over comboBuild or turn a Hard loss into a win. On at least two Normal maps, a point must gain at least one life.
+- **G3** With no towers, squads must lose by wave 8 on every difficulty, including a fresh full-lives start at the unlock.
+- **G4** Check the exact ticks and remaining hp for lone Goblin, Wolf and Troll fights, a crowd of ten Goblins, and expiry during contact. Neither boss may lose more than 180 ticks crossing a squad.
+- **G5** Flyers keep their original travel time. With both a squad and a wall on the trail, the first blocker reached takes the contact.
+- **G6** Guards spend the shared charge. Quick Hands changes only recharge. Even an early call cannot fund two casts on one tick.
 
 ### Known weaknesses
 

@@ -46,6 +46,9 @@ export function installLayoutSwitch(game: Phaser.Game): void {
     const next = layoutFor(s.width, s.height);
     if (next === currentLayout()) return;
     current = next;
+    // setGameSize immediately fits using Phaser's cached parent size.
+    // Read the resized parent first so the scene and taps share one fit.
+    game.scale.getParentBounds();
     game.scale.setGameSize(next.width, next.height);
     for (const scene of game.scene.getScenes(true)) (scene as Relayable).relayout?.();
   };

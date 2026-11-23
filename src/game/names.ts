@@ -185,18 +185,21 @@ export const SPECIAL_NAMES: Readonly<Record<SpecialType, string>> = {
   tarBarrel: 'Tar Barrel',
   fireArrows: 'Fire Arrows',
   barricade: 'Barricade',
+  guards: 'Guards',
 };
 
 /** The HUD's special button label (milestone 25b). */
 export const SPECIAL_BUTTON_TEXT = 'Special';
 
 /** The verb in the aim banner per special (milestone 30). */
-const SPECIAL_VERBS: Readonly<Record<SpecialType, string>> = { keg: 'throw', tarBarrel: 'drop', fireArrows: 'shoot', barricade: 'place' };
+const SPECIAL_VERBS: Readonly<Record<SpecialType, string>> = { keg: 'throw', tarBarrel: 'drop', fireArrows: 'shoot', barricade: 'place', guards: 'send' };
 
 export const BARRICADE_UNLOCKED = 'Barricade unlocked';
 export function heldCountText(count: number): string {
   return `x${count}`;
 }
+export const GUARDS_UNLOCKED = 'Guards unlocked';
+export const GUARDS_UNLOCK_HINT = 'Use Special to send four guards.';
 export const BARRICADE_UNLOCK_HINT = 'Use Special to block the trail.';
 export const BARRICADE_AIM_REASONS = {
   'off-trail': 'Aim closer to the trail.',
@@ -212,7 +215,7 @@ export const BARRICADE_AIM_REASONS = {
  */
 export function aimBannerText(type: SpecialType, touch: boolean): { main: string; hint: string } {
   return {
-    main: `${touch ? 'Tap' : 'Click'} the trail to ${SPECIAL_VERBS[type]} the ${SPECIAL_NAMES[type]}`,
+    main: `${touch ? 'Tap' : 'Click'} the trail to ${SPECIAL_VERBS[type]} ${type === 'guards' ? 'guards' : `the ${SPECIAL_NAMES[type]}`}`,
     hint: touch ? 'Or hold to aim and lift to let go. Special again cancels.' : 'Esc or Special again cancels.',
   };
 }

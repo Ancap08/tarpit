@@ -28,7 +28,8 @@ TOWERS = ("musketeer", "cannon", "tar-pit", "longbow", "mortar", "fire-pot")
 ENEMIES = ("goblin", "wolf", "troll", "harpy", "shieldbearer", "grumblefoot", "grumblemaw")
 SCENERY = ("cave", "cottage", "spruce", "oak", "birch", "bush", "berry-bush")
 PROJECTILES = ("cannonball", "arrow", "mortar-shell", "tar-glob", "flame")
-KINDS = TOWERS + ENEMIES + PROJECTILES + ("harpy-shadow",) + SCENERY
+ACTORS = TOWERS + ENEMIES + ("guard",)
+KINDS = ACTORS + PROJECTILES + ("harpy-shadow",) + SCENERY
 BEARINGS = ("N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
             "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW")
 
@@ -37,6 +38,10 @@ def frame_layout(kind):
     """Return (label, clockwise degrees, phase) for each row-major cell."""
     if kind in TOWERS:
         return 8, [(label, 22.5 * index, 0) for index, label in enumerate(BEARINGS)]
+    if kind == "guard":
+        return 2, [(f"{label}-{pose}", 90 * heading, phase)
+                   for heading, label in enumerate(BEARINGS[::4])
+                   for phase, pose in enumerate(("idle", "strike"))]
     if kind in ENEMIES:
         return 4, [(f"{label}-{phase}", 90 * heading, phase)
                    for heading, label in enumerate(BEARINGS[::4]) for phase in range(4)]
@@ -192,7 +197,7 @@ def render_cells(kind):
     vertices = {}
     base_yaws = {}
     if kind != "harpy-shadow":
-        if kind in ENEMIES:
+        if kind in ENEMIES or kind == "guard":
             from slice_enemies import build
         elif kind in SCENERY:
             from slice_scenery import build
@@ -206,7 +211,7 @@ def render_cells(kind):
             for child in root.children_recursive:
                 child.hide_render = True
 
-    actor = kind in ENEMIES + TOWERS
+    actor = kind in ACTORS
     resolution = 192 if actor else DENSITY
     elevation = TOWER_ELEVATION if kind in TOWERS else ELEVATION
     tilt = math.radians(90 - elevation)
@@ -242,9 +247,9 @@ def render_cells(kind):
 
 # Opaque body height in logical pixels. Fit all four walk phases together
 # so walking moves the limbs without making the entire figure pulse.
-BODY_HEIGHT = {"goblin": 38, "wolf": 38, "shieldbearer": 38, "harpy": 38,
+BODY_HEIGHT = {"guard": 38, "goblin": 38, "wolf": 38, "shieldbearer": 38, "harpy": 38,
                "troll": 56, "grumblefoot": 84, "grumblemaw": 92}
-CONTACT_WIDTH = {"goblin": 24, "wolf": 28, "shieldbearer": 27,
+CONTACT_WIDTH = {"guard": 24, "goblin": 24, "wolf": 28, "shieldbearer": 27,
               "troll": 36, "grumblefoot": 52, "grumblemaw": 58}
 INK = (30, 28, 30)
 
@@ -254,7 +259,7 @@ def actor_frames(kind, frames, raw):
 
     tower = kind in TOWERS
     target = BODY_HEIGHT.get(kind, 40) * 2
-    groupsize = 1 if tower else 4
+    groupsize = 1 if tower else 2 if kind == "guard" else 4
     boxes = [frame.getchannel("A").point(lambda a: 255 if a >= 128 else 0).getbbox()
              for frame in frames]
     # A common horizontal scale preserves the broadside of a weapon or wings.
@@ -364,7 +369,7 @@ def pack(kind):
             if list(source.size) != meta["frameSize"]:
                 raise ValueError(f"{kind} {label} has the wrong size")
             frames.append(source.convert("RGBA"))
-    actor = kind in TOWERS + ENEMIES
+    actor = kind in ACTORS
     if actor:
         meta, frames = actor_frames(kind, frames, meta)
     cols = meta["columns"]

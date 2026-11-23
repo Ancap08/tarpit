@@ -132,6 +132,23 @@ export function positionAlongPath(map: MapDef, distance: number): Point {
   return { x: end.x, y: end.y };
 }
 
+/** Point and tangent at a known trail distance, using the incoming tangent at corners. */
+export function trailPointAt(map: MapDef, distance: number): TrailPoint {
+  let start = 0;
+  for (let i = 1; i < map.path.length; i++) {
+    const a = map.path[i - 1];
+    const b = map.path[i];
+    const length = segmentLength(a, b);
+    if (length === 0) continue;
+    if (distance <= start + length) {
+      const t = (distance - start) / length;
+      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, distance, angle: Math.atan2(b.y - a.y, b.x - a.x) };
+    }
+    start += length;
+  }
+  return { ...map.path[map.path.length - 1], distance, angle: 0 };
+}
+
 /** Nearest point along a polyline, preferring the first segment on a tie. */
 export function projectOntoTrail(map: MapDef, point: Point): TrailPoint {
   let best: TrailPoint = { ...map.path[0], distance: 0, angle: 0 };

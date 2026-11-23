@@ -1,3 +1,4 @@
+import { frame as guardFrame } from './guards';
 import { expect, test, type Page } from '@playwright/test';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { GRUMBLEMAW_NAME } from '../src/game/names';
@@ -271,3 +272,5 @@ test('painted Meadow midwave in portrait', async ({ page }) => {
   await expect(page.locator('canvas')).toHaveScreenshot('phone-painted-midwave.png');
 });
 test('phone-barricade-holding with fifteen walkers and the count beside the hp bar', async ({ page }) => holdingFrame(page, true));
+
+test('phone-guards-holding', async ({ page }) => guardFrame(page, 'phone'));
