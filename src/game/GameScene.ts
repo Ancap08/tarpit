@@ -523,7 +523,6 @@ export class GameScene extends Phaser.Scene {
     this.accMs = resume?.accMs ?? 0;
     this.shots = new ShotEffects();
     this.specialFx = new SpecialEffects(this, isTestMode(), this.layout);
-    this.barricadeFx = new BarricadeEffects();
     this.speedPress = null;
     this.speedHoldLost = false;
     this.goldTaps = [];
@@ -565,6 +564,7 @@ export class GameScene extends Phaser.Scene {
     this.shotFx = world();
     this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx), this.layout) : null;
     this.bars = this.add.graphics();
+    this.barricadeFx = new BarricadeEffects(this, this.layout);
     this.labels = new TowerLabels(this, this.layout);
     // Flyers (Harpies) draw above every walker and label, below the HUD.
     this.enemySprites.setAirLayer(this.add.layer());
@@ -1513,7 +1513,7 @@ export class GameScene extends Phaser.Scene {
     this.barricadeFx.drawCrash(this.shotFx, this.layout, motion);
     this.bars.clear();
     drawHpBars(this.bars, this.state, this.layout, stopped);
-    if (blocker) this.barricadeFx.drawHp(this.bars, blocker, this.layout);
+    this.barricadeFx.drawHp(this.bars, blocker, this.layout, stopped?.size ?? 0);
     this.labels.update(this.state);
     this.syncEndScreen();
     this.redrawUi();

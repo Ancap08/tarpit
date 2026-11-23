@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { aimBarricade, aimCases, castAt, hintAndRestart, startBarricadeWave } from './barricade';
 import type { GameScene } from '../src/game/GameScene';
+import { BARRICADE_HP } from '../src/sim/blockers';
 import { api, openCampaign, press } from './campaign';
 import { ui } from './phone';
 
@@ -19,16 +20,16 @@ test('walkers hit the wall, a Harpy passes and the crowd walks on after the brea
     }));
     t.step(200);
   });
-  expect((await ui(page)).special.blocker).toMatchObject({ hp: 200, maxHp: 400 });
+  expect((await ui(page)).special.blocker).toMatchObject({ hp: BARRICADE_HP - 200, maxHp: BARRICADE_HP });
   expect(await api(page, t => t.state().enemies.map(e => e.distance))).toEqual([...Array(10).fill(100), 399]);
-  await api(page, t => t.step(200));
+  await page.evaluate(n => window.__tarpit!.step!(n), BARRICADE_HP - 200);
   expect((await ui(page)).special.blocker).toBeNull();
   expect(await api(page, t => t.events().some(e => e.kind === 'blockerBreak'))).toBe(true);
   await api(page, t => t.step(1));
   expect(await api(page, t => t.state().enemies[0].distance)).toBe(101);
   await press(page, 'special');
   expect((await ui(page)).special).toMatchObject({ menuOpen: false, ready: false });
-  await api(page, t => t.step(799));
+  await page.evaluate(n => window.__tarpit!.step!(n), 1200 - BARRICADE_HP - 1);
   await press(page, 'special');
   await press(page, 'special:keg');
   await castAt(page, { x: 450, y: 385 });
@@ -57,7 +58,7 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
         const wall = special.blocker;
         if (wall) {
           seen.contact ||= wall.attackers.includes(id);
-          seen.hpFell ||= wall.hp < 400;
+          seen.hpFell ||= wall.hp < wall.maxHp;
           seen.shake ||= Math.abs(wall.shake) > 0.01;
           seen.lunge ||= (t.animState(id)?.blockerLunge ?? 0) > 0.01;
         }

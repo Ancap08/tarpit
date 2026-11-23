@@ -5,7 +5,7 @@ import { MAP_IDS } from '../src/sim/map';
 import { fingerFor, liftPage, rectPage, rectPageSize, tap, tapCell, ui, worldPage } from './phone';
 import { GRUMBLEFOOT_STEPS, beginVisualWave, finalBossFrame } from './visualCampaign';
 import { expectOffer, visibleTexts } from './campaign';
-import { holdingFrame } from './barricade';
+import { holdingFrame } from './barricade-crowd';
 import { waitForTitle } from './title';
 import { choiceVisual } from './upgradeChoice';
 

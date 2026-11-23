@@ -37,8 +37,8 @@
 // through Effects: onEvents() acts at once, as before.
 
 import Phaser from 'phaser';
-import type { BlockedPositions } from '../draw/barricade';
-import { effectiveSlow, ENEMY_STATS, enemyPosition, isBoss, isTarred, positionAlongPath, type Enemy, type EnemyType, type GameEvent, type GameState, type MapDef, type Point } from '../../sim';
+import type { BlockedPosition, BlockedPositions } from '../draw/barricade';
+import { effectiveSlow, ENEMY_STATS, enemyPosition, isBoss, isTarred, positionAlongPath, type Enemy, type EnemyType, type GameEvent, type GameState, type MapDef } from '../../sim';
 import { bobOffset, DEATH_MS, burnPulse, FLAME_EVERY, HIT_FLASH_MS, Particles, statusTint, TINT } from './effects';
 import { awayFrom, deathPuff, KNOCK_MS, knockPx, knockShare } from '../fx/fxMath';
 import { facingAt } from './facing';
@@ -58,6 +58,9 @@ export const SHIELD_DY = 3;
 
 /** What the test hook animState(enemyId) reports. */
 export interface AnimState {
+  /** Actual sprite centre in canvas pixels. */
+  x: number;
+  y: number;
   texture: EnemyType;
   /** The walk animation key for the current facing (frozen in test mode). */
   anim: string;
@@ -356,7 +359,7 @@ export class EnemySprites {
     else v.sprite.anims.play(walkAnimKey(v.type, facing), true);
   }
 
-  private update(v: View, enemy: Enemy, map: MapDef, timeScale: number, stoppedAt?: Point & { lunge: number }): void {
+  private update(v: View, enemy: Enemy, map: MapDef, timeScale: number, stoppedAt?: BlockedPosition): void {
     const { x, y } = this.layout.toScreen(stoppedAt ?? enemyPosition(enemy, map));
     v.blockerLunge = stoppedAt?.lunge ?? 0;
     const lift = SHEETS[v.type].lift ?? 0;
@@ -375,7 +378,7 @@ export class EnemySprites {
       // Just in front of its own sprite, behind any walker lower on screen.
       v.shield.setDepth(y + 0.5);
     }
-    this.setFacing(v, facingAt(map, enemy.distance, this.step(enemy), this.layout));
+    this.setFacing(v, facingAt(map, stoppedAt?.distance ?? enemy.distance, this.step(enemy), this.layout));
     v.sprite.anims.timeScale = stoppedAt ? 0 : timeScale;
     v.distance = enemy.distance;
     v.stepPx = stoppedAt ? 0 : this.step(enemy);
@@ -413,6 +416,8 @@ export class EnemySprites {
     const current = s.anims.currentAnim;
     const frame = this.frozen || !current || !s.anims.currentFrame ? 0 : current.frames.indexOf(s.anims.currentFrame);
     return {
+      x: s.x,
+      y: s.y,
       texture: SHEETS[v.type].key,
       anim,
       frame: Math.max(0, frame),

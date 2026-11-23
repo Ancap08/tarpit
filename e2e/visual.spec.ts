@@ -9,7 +9,8 @@ import { api, expectOffer, openCampaign, press, visibleTexts } from './campaign'
 import { choices, choiceVisual } from './upgradeChoice';
 import { cellPage, rectPage, rectPageSize } from './phone';
 import { FIRST_PACK_FRAME, FIRST_PACK_STEPS, GRUMBLEFOOT_STEPS, beginVisualWave, finalBossFrame } from './visualCampaign';
-import { holdingFrame } from './barricade';
+import { aimFrame } from './barricade';
+import { holdingFrame } from './barricade-crowd';
 import { waitForTitle } from './title';
 
 // Milestone 25b frames (see the special tests below).
@@ -1004,6 +1005,6 @@ test('m37-midwave', async ({ page }) => {
   }
 });
 
-test('barricade-aim', async ({ page }) => holdingFrame(page, false, true));
+test('barricade-aim', async ({ page }) => aimFrame(page));
 
 test('barricade-holding', async ({ page }) => holdingFrame(page, false));

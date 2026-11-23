@@ -499,7 +499,7 @@ Reloading starts a new run.
 
 | Blocker | HP | Maximum snap distance (px) | Minimum distance from either end (trail px) |
 |---|---|---|---|
-| Barricade | 400 | 40 | 64 |
+| Barricade | 324 | 40 | 64 |
 
 - **Contact.** A walker reaching or crossing a live blocker stops exactly
   at it, including on the breaking tick. Walkers may stack. Each contributes
@@ -507,6 +507,7 @@ Reloading starts a new run.
   growth and slows leave attack strength unchanged. A walker already past
   the blocker continues. Harpies fly over it. Target order, burn, slow,
   tower hits, kill credit and bounty all use the usual rules at that position.
+  A blocker placed at the exit would hold nobody. Walkers at the exit distance count as out, so a castle wall there will need the exit check moved.
 - **Powder Keg.** 60 damage to each enemy inside, shields ignored. No zone.
 - **Zones.** The Tar Barrel and Fire Arrows act on the enemies inside at
   once and leave a zone at the point (`state.zones`, each with an id, its
@@ -566,8 +567,11 @@ Reloading starts a new run.
 - **Barricade aiming and impact.** The pointer circle and touch magnifier
   show the placement area. A bar across the trail marks the snap point.
   An invalid aim marks the pointer and explains how to move it. The placed
-  timber wall carries an hp bar. Its attackers lunge, the wood shakes, and
-  broken beams scatter. Reduced motion and test mode hold the impact still.
+  timber wall carries an hp bar and shows a count beside it when more than
+  three walkers are held. Held walkers form ranks back along the trail.
+  Larger enemies take more space, and each walker's hp bar follows its
+  sprite. Attackers lunge, the wood shakes, and broken beams scatter.
+  Reduced motion and test mode hold the impact still.
   The hit sound is limited to one request per tick and one start per 260 ms
   under the shared horde budget. Placing and breaking have separate sounds. Wave 3 shows
   the unlock hint once per visit.
@@ -1400,9 +1404,9 @@ Barricade checks:
 
 - **K1** The complete existing simulator report matches the pre-Barricade output byte for byte.
 - **K2** On Normal the Barricade combo gains at least one life on two maps and loses at most two on any map.
-- **K3** The gain is at most six lives on every map and difficulty. Walls alone lose by wave 4, including a full-lives start at their unlock wave.
+- **K3** On each map, run one campaign per legal trail distance on a 48 px grid starting 64 px from spawn. Use comboBuild's tower plan on Normal and Hard and place a Barricade at that campaign's point whenever the shared charge is ready from wave 3, even if a wall still stands. The best point gains at most six ending lives over comboBuild. No point turns a Hard loss into a win. Walls alone lose by wave 4, including a full-lives start at their unlock wave.
 - **K4** Each lone boss destroys a full wall within 120 ticks. In a paired continuation from actual Grumblemaw contact, the wall delays his exit by at most 300 ticks. Both branches retain all towers and recorded casts and let him survive lethal damage so the exit can be timed.
-- **K5** Ten Goblins arriving together deal one hp per tick and break the wall on tick 400.
+- **K5** Ten Goblins arriving together deal one hp per tick and break the wall on tick 324.
 - **K6** A Harpy takes the same number of ticks to reach the exit with or without a wall.
 - **K7** A wall spends the shared charge. Quick Hands shortens recharge. A second placement in the same tick is refused.
 
@@ -1411,6 +1415,7 @@ Barricade checks:
 - The scripted combo often spends its shared charge better on Powder Keg or Fire Arrows. Omitting Tar Barrel raises final lives from 14 to 17 on Meadow, 11 to 12 on Switchback and 14 to 20 on Riverbend.
 - Tar Pit has the widest path gap at nine lives, exactly the P2 limit.
 - The Meadow Normal combo takes 1,316.5 s at 1x, just 3.5 s under the 22-minute limit.
+- A player who replaces a broken Barricade and spends spare charges on other specials can still win Switchback Hard with comboBuild's tower plan. At trail distance 1168 this policy finishes with eight lives. K3 measures spending every available charge on the wall from wave 3.
 
 ## Measured matrix
 

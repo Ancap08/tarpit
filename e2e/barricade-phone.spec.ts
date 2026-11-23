@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { aimBarricade, aimCases, castAt, startBarricadeWave } from './barricade';
+import { BARRICADE_HP } from '../src/sim/blockers';
 import { api } from './campaign';
 import { ui, worldPage, toPage } from './phone';
 
@@ -10,7 +11,7 @@ test('a tap places the wall and turning the phone keeps it across the trail', as
   await aimBarricade(page, true);
   await castAt(page, { x: 170, y: 130 }, true);
   const before = await api(page, t => t.state().blocker);
-  expect(before).toMatchObject({ x: 160, hp: 400 });
+  expect(before).toMatchObject({ x: 160, hp: BARRICADE_HP });
   for (const portrait of [true, false]) {
     if (!portrait) {
       await page.setViewportSize({ width: 844, height: 390 });

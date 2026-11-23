@@ -8517,7 +8517,8 @@ Grumblefoot 300, Grumblemaw 400 and Harpy 0. It uses the existing 1,200
 tick recharge. Quick Hands was already 684 ticks in code. Corrected the
 old 804-tick figure in the design prose.
 
-K1 compared the complete 28,614-byte simulator output with main at
+K1 compared the complete simulator output (28,501 bytes without the npm
+banner, 28,614 with it) with main at
 `d326cf1`. Both files have SHA-256
 `9655a1473235fddab8322b17f35a2a635ebeac37358db6d54354d1b16c8bb50d`.
 The report also checks its own output before the npm banner is included.
@@ -8616,3 +8617,40 @@ Independent check by Claude Sonnet of branch `m39-barricade` at `da2a91c`.
   `M39_FRAMES` is set) ran twice: 681 passed and 8 skipped both times, the
   skips being the existing environment-gated frame and perf cases. No new skip,
   fixme or miss pin from the branch.
+
+### Follow-up
+
+Lowered Barricade hp from 400 to 324 and kept the 64 px clearance at both
+ends. Ten Goblins now break it on contact tick 324. Grumblefoot breaks it
+on tick 65 and Grumblemaw on tick 49. At the original Meadow Hard witness
+(trail distance 1360), replacing a broken wall and spending spare charges
+on attacks now finishes with 7 lives against comboBuild's 3 (previously 10).
+
+For K3, each campaign spends every ready charge from wave 3 on a wall at
+one trail point, including when the wall still stands. The 48 px grid
+starts at the first legal point, 64 px from spawn. The table gives the
+first distance with the highest ending lives. A permanent hold has no
+ending lives. The sweep checks for an identical game state on consecutive
+refreshes after the last spawn before reporting one.
+
+| Map | Difficulty | Points | Before: trail px / gain | After: trail px / gain | Permanent holds before → after |
+|---|---|---:|---:|---:|---:|
+| Meadow | Normal | 31 | 352 / +6 | 448 / +4 | 3 → 3 |
+| Meadow | Hard | 31 | 64 / −3 | 64 / −3 | 0 → 0 |
+| Switchback | Normal | 34 | 448 / +2 | 448 / +3 | 5 → 4 |
+| Switchback | Hard | 34 | 256 / 0 | 208 / 0 | 5 → 4 |
+| Riverbend | Normal | 30 | 448 / +5 | 400 / 0 | 4 → 3 |
+| Riverbend | Hard | 30 | 64 / −1 | 64 / −1 | 0 → 0 |
+
+Both recharge sweeps met the six-life limit and had zero Hard loss-to-win
+flips. At the three fixed K2 points, comboBarricade still spends spare
+charges on attacks. Its Normal results are Meadow 14 → 16, Switchback
+11 → 14 and Riverbend 14 → 20. That mixed strategy can beat the recharge
+sweep elsewhere. At 324 hp it wins Switchback Hard with 8 lives at
+distance 1168 and Meadow Hard with 10 at distance 1408 (+7).
+
+Held walkers now form two staggered files that follow the trail around
+corners. Trolls and bosses take a full rank, wounded walkers carry their
+own hp bars, and the wall shows the count from four walkers onward.
+The desktop and phone specs read actual sprite centres for each crowd
+size from 1 through 20. Both review frames show 15 held walkers.

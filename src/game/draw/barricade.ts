@@ -1,8 +1,10 @@
 import type Phaser from 'phaser';
-import { isBoss, isFlying, type GameEvent, type GameState, type Point } from '../../sim';
-import type { Layout } from '../layout';
+import { isFlying, positionAlongPath, type GameEvent, type GameState, type Point } from '../../sim';
+import { fontPx, type Layout } from '../layout';
+import { heldCountText } from '../names';
+import { COLORS, FONT, TEXT } from '../palette';
+import { RING_RADIUS } from './enemies';
 import { PATH_WIDTH } from './map';
-import { COLORS } from '../palette';
 
 const WOOD = 0x986338;
 const LIGHT_WOOD = 0xe2b779;
@@ -17,8 +19,8 @@ const ATTACK_BEAT_MS = 480;
 type Spot = Point & { angle: number };
 type Break = Extract<GameEvent, { kind: 'blockerBreak' }>;
 type BlockerView = Spot & { hp: number; maxHp: number };
-export type BlockedPositions = ReadonlyMap<number, Point & { lunge: number }>;
-const CROWD_COLUMNS = [0, -15, 15];
+export type BlockedPosition = Point & { distance: number; lunge: number };
+export type BlockedPositions = ReadonlyMap<number, BlockedPosition>;
 
 function acrossBarricade(p: Spot, side: number, along = 0): Point {
   const dx = Math.cos(p.angle);
@@ -51,10 +53,18 @@ export function drawBarricadeAim(g: Phaser.GameObjects.Graphics, pointer: Point,
 }
 
 export class BarricadeEffects {
+  private readonly count: Phaser.GameObjects.Text;
   private age = 0;
   private hitAt = -Infinity;
   private strikes = new Map<number, number>();
   private broken: { at: number; spot: Break } | null = null;
+
+  constructor(scene: Phaser.Scene, layout: Layout) {
+    this.count = scene.add.text(0, 0, '', {
+      fontFamily: FONT, fontStyle: 'bold', fontSize: fontPx(layout, 14),
+      color: TEXT.towerLabel, backgroundColor: TEXT.towerLabelBg, padding: { x: 3, y: 1 },
+    }).setOrigin(0, 0.5).setVisible(false);
+  }
 
   advance(ms: number): void {
     this.age += ms;
@@ -80,15 +90,33 @@ export class BarricadeEffects {
   stoppedPositions(state: GameState, motion: boolean): BlockedPositions | undefined {
     const wall = state.blocker;
     if (!wall) return undefined;
-    const stopped = new Map<number, Point & { lunge: number }>();
-    for (const enemy of state.enemies) {
-      if (isFlying(enemy) || enemy.distance !== wall.distance) continue;
-      // Three short ranks keep the silhouettes clear where walkers reach the same point.
-      const slot = stopped.size % 9;
-      const side = CROWD_COLUMNS[slot % CROWD_COLUMNS.length];
-      const lunge = motion ? 7 * this.strike(enemy.id) : 0;
-      const back = (isBoss(enemy) ? 27 : 15) + 13 * Math.floor(slot / CROWD_COLUMNS.length);
-      stopped.set(enemy.id, { ...acrossBarricade(wall, side, lunge - back), lunge });
+    const stopped = new Map<number, BlockedPosition>();
+    const held = state.enemies.filter(e => !isFlying(e) && e.distance === wall.distance);
+    let depth = 6;
+    const ranks = held.map((enemy, i) => {
+      // Stagger ordinary walkers in two files; a Troll or boss takes a full rank.
+      const radius = RING_RADIUS[enemy.type];
+      const wide = radius >= PATH_WIDTH / 2;
+      const halfDepth = wide ? radius : radius * 0.75;
+      const back = depth + halfDepth;
+      depth = back + halfDepth;
+      const side = wide || held.length === 1 ? 0 : (i % 2 === 0 ? -12 : 12);
+      return { id: enemy.id, back, side };
+    });
+    // Close ranks if there is too little trail behind the wall. Clamping
+    // individual ranks to the spawn would stack the end of a long queue.
+    const fit = Math.min(1, wall.distance / depth);
+    for (const { id, back, side } of ranks) {
+      const lunge = motion ? 7 * this.strike(id) * fit : 0;
+      const distance = wall.distance - back * fit + lunge;
+      const p = positionAlongPath(state.map, distance);
+      // Average the trail direction across one trail width. The two files
+      // turn gradually around corners and stay within 12 px of the trail.
+      const before = positionAlongPath(state.map, distance - PATH_WIDTH / 2);
+      const after = positionAlongPath(state.map, distance + PATH_WIDTH / 2);
+      const x = p.x - (after.y - before.y) * side / PATH_WIDTH;
+      const y = p.y + (after.x - before.x) * side / PATH_WIDTH;
+      stopped.set(id, { x, y, distance, lunge });
     }
     return stopped;
   }
@@ -142,17 +170,29 @@ export class BarricadeEffects {
     }
   }
 
-  drawHp(g: Phaser.GameObjects.Graphics, wall: BlockerView, layout: Layout): void {
+  drawHp(g: Phaser.GameObjects.Graphics, wall: BlockerView | null, layout: Layout, held: number): void {
+    this.count.setVisible(held > 3 && wall !== null);
+    if (!wall) return;
+    if (this.count.visible) this.count.setText(heldCountText(held));
     const { x, y } = layout.toScreen(wall);
     const width = 42;
+    const badgeWidth = this.count.visible ? this.count.width + 4 : 0;
+    const totalWidth = width + badgeWidth;
     const along = layout.screenDir(Math.cos(wall.angle), Math.sin(wall.angle));
     const vertical = Math.abs(along.y) > Math.abs(along.x);
     const mapLeft = layout.map.x + 4;
-    const mapRight = layout.map.x + layout.map.width - width - 4;
-    const side = x - 49 - width / 2 >= mapLeft ? -1 : 1;
-    const ideal = x + (vertical ? side * 49 : 0) - width / 2;
-    const left = Math.max(mapLeft, Math.min(mapRight, ideal));
-    const top = Math.max(layout.map.y + 4, y - (vertical ? 20 : 46));
+    const mapRight = layout.map.x + layout.map.width - totalWidth - 4;
+    // Along a horizontal stretch, extend the count toward the exit so a
+    // queue turning behind the wall cannot run straight under the badge.
+    const placeLeft = vertical ? x - 28 - totalWidth >= mapLeft : along.x < 0;
+    const side = placeLeft ? -1 : 1;
+    const offset = vertical ? 28 : -width / 2;
+    const ideal = placeLeft ? x - offset - totalWidth : x + offset;
+    const groupLeft = Math.max(mapLeft, Math.min(mapRight, ideal));
+    const left = groupLeft + (placeLeft ? badgeWidth : 0);
+    const margin = this.count.visible ? this.count.height / 2 : 4;
+    const top = Math.max(layout.map.y + margin, y - (vertical ? 20 : 46));
+    if (this.count.visible) this.count.setPosition(placeLeft ? groupLeft : left + width + 4, top + 3);
     if (vertical) {
       const edge = x + side * (HALF_WIDTH - 2);
       beam(g, { x: edge, y: y - 12 }, { x: side < 0 ? left + width : left, y: top + 3 }, 2, DARK_WOOD);

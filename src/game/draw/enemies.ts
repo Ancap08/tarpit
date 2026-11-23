@@ -121,14 +121,18 @@ export function drawHpBars(g: Phaser.GameObjects.Graphics, state: GameState, lay
     // endless wave's enemy carries its own (milestone 26).
     const maxHp = enemy.maxHp ?? enemyMaxHp(enemy.type, state.difficulty);
     if (enemy.hp < maxHp && !isBoss(enemy)) {
-      const { x, y } = layout.toScreen(stopped?.get(enemy.id) ?? enemyPosition(enemy, state.map));
+      const held = stopped?.get(enemy.id);
+      const { x, y } = layout.toScreen(held ?? enemyPosition(enemy, state.map));
       const fraction = Math.max(0, enemy.hp) / maxHp;
-      const left = Math.round(x - BAR_WIDTH / 2);
-      const top = Math.round(y - spriteLift(enemy.type) - spriteHalfHeight(enemy.type) - BAR_GAP - BAR_HEIGHT - 1);
+      // In a rank, tuck a shorter bar against the top of its own body.
+      const width = held ? Math.min(BAR_WIDTH, RING_RADIUS[enemy.type] + 4) : BAR_WIDTH;
+      const above = held ? RING_RADIUS[enemy.type] + 1 : spriteHalfHeight(enemy.type) + BAR_GAP + BAR_HEIGHT + 1;
+      const left = Math.round(x - width / 2);
+      const top = Math.round(y - spriteLift(enemy.type) - above);
       g.fillStyle(COLORS.hpBorder, 1);
-      g.fillRect(left - 1, top - 1, BAR_WIDTH + 2, BAR_HEIGHT + 2);
+      g.fillRect(left - 1, top - 1, width + 2, BAR_HEIGHT + 2);
       g.fillStyle(hpColor(fraction), 1);
-      g.fillRect(left, top, Math.max(1, Math.round(BAR_WIDTH * fraction)), BAR_HEIGHT);
+      g.fillRect(left, top, Math.max(1, Math.round(width * fraction)), BAR_HEIGHT);
     }
   }
 }

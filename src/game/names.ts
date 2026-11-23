@@ -184,6 +184,9 @@ export const SPECIAL_BUTTON_TEXT = 'Special';
 const SPECIAL_VERBS: Readonly<Record<SpecialType, string>> = { keg: 'throw', tarBarrel: 'drop', fireArrows: 'shoot', barricade: 'place' };
 
 export const BARRICADE_UNLOCKED = 'Barricade unlocked';
+export function heldCountText(count: number): string {
+  return `x${count}`;
+}
 export const BARRICADE_UNLOCK_HINT = 'Use Special to block the trail.';
 export const BARRICADE_AIM_REASONS = {
   'off-trail': 'Aim closer to the trail.',

@@ -1,5 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 import { BARRICADE_AIM_REASONS, BARRICADE_UNLOCKED, BARRICADE_UNLOCK_HINT } from '../src/game/names';
+import { BARRICADE_HP } from '../src/sim/blockers';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { api, openCampaign, press, visibleTexts } from './campaign';
 import { waitForTitle } from './title';
@@ -77,7 +78,7 @@ export async function aimCases(page: Page, touch: boolean, phone = false): Promi
     expect((await ui(page)).special.barricadeAim).toMatchObject({ valid: true });
     await castAt(page, target);
   }
-  expect(await api(page, t => t.state().blocker)).toMatchObject({ x: 420, y: 96, distance: 564, hp: 400 });
+  expect(await api(page, t => t.state().blocker)).toMatchObject({ x: 420, y: 96, distance: 564, hp: BARRICADE_HP });
   expect((await ui(page)).special).toMatchObject({ charges: 0, rechargeTicks: 1200 });
 }
 
@@ -95,7 +96,7 @@ export async function hintAndRestart(page: Page): Promise<void> {
   for (const key of ['playAgain', 'menu']) {
     await aimBarricade(page);
     await castAt(page, { x: 300, y: 96 });
-    expect(await api(page, t => t.state().blocker)).toMatchObject({ hp: 400 });
+    expect(await api(page, t => t.state().blocker)).toMatchObject({ hp: BARRICADE_HP });
     await api(page, t => {
       // Force a real exit with one life remaining to get the two end-screen buttons.
       const s = t.state();
@@ -116,8 +117,8 @@ export async function hintAndRestart(page: Page): Promise<void> {
   }
 }
 
-export async function holdingFrame(page: Page, phone: boolean, aimOnly = false): Promise<void> {
-  await startBarricadeWave(page, 7, phone);
+export async function aimFrame(page: Page): Promise<void> {
+  await startBarricadeWave(page, 7);
   await api(page, t => {
     const s = t.state();
     s.spawnedPerGroup.fill(9999);
@@ -131,26 +132,11 @@ export async function holdingFrame(page: Page, phone: boolean, aimOnly = false):
     }));
     t.step(1);
   });
-  await aimBarricade(page, phone);
-  const spot = { x: 456, y: 312 }; // snaps to the southbound segment at distance 780
-  const p = await worldPage(page, spot);
-  if (aimOnly) {
-    await page.mouse.move(p.x, p.y);
-    expect((await ui(page)).special.barricadeAim).toMatchObject({ valid: true, point: { x: 420, y: 312 } });
-  } else {
-    await castAt(page, spot, phone);
-    await api(page, t => t.step(100));
-    const state = await api(page, t => t.state());
-    expect(state.blocker!.hp).toBeLessThan(400);
-    expect(Math.abs(state.blocker!.distance - 780)).toBeLessThan(2);
-    expect(state.enemies.filter(e => e.distance === state.blocker!.distance).length).toBeGreaterThanOrEqual(3);
-    expect(state.enemies.some(e => e.distance < 765)).toBe(true);
-  }
+  await aimBarricade(page);
+  const p = await worldPage(page, { x: 456, y: 312 });
+  await page.mouse.move(p.x, p.y);
+  expect((await ui(page)).special.barricadeAim).toMatchObject({ valid: true, point: { x: 420, y: 312 } });
   await page.evaluate(() => document.fonts.ready.then(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))));
-  const name = aimOnly ? 'barricade-aim' : phone ? 'phone-barricade-holding' : 'barricade-holding';
-  await expect(page.locator('canvas')).toHaveScreenshot(name + '.png');
-  if (process.env.M39_FRAMES) {
-    const file = phone ? 'phone' : aimOnly ? 'aim' : 'holding';
-    await page.locator('canvas').screenshot({ path: process.env.M39_FRAMES + '/m39-barricade-' + file + '.png' });
-  }
+  await expect(page.locator('canvas')).toHaveScreenshot('barricade-aim.png');
+  if (process.env.M39_FRAMES) await page.locator('canvas').screenshot({ path: process.env.M39_FRAMES + '/m39-barricade-aim.png' });
 }
