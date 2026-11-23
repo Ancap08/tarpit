@@ -1,9 +1,10 @@
 import type Phaser from 'phaser';
 import { isFlying, positionAlongPath, type GameEvent, type GameState, type Point } from '../../sim';
+import { knockPx } from '../fx/fxMath';
 import { fontPx, type Layout } from '../layout';
 import { heldCountText } from '../names';
 import { COLORS, FONT, TEXT } from '../palette';
-import { RING_RADIUS } from './enemies';
+import { RING_RADIUS, spriteLift } from './enemies';
 import { PATH_WIDTH } from './map';
 
 const WOOD = 0x986338;
@@ -11,6 +12,8 @@ const LIGHT_WOOD = 0xe2b779;
 const DARK_WOOD = 0x42291c;
 const IRON = 0x343438;
 const BOLT = 0xd9d2b8;
+export const HELD_DRAW_CAP = 36;
+const CROWD_COLUMNS = [0, -16, 16];
 const HALF_WIDTH = PATH_WIDTH / 2 + 3;
 const HIT_MS = 180;
 const CRASH_MS = 520;
@@ -19,7 +22,7 @@ const ATTACK_BEAT_MS = 480;
 type Spot = Point & { angle: number };
 type Break = Extract<GameEvent, { kind: 'blockerBreak' }>;
 type BlockerView = Spot & { hp: number; maxHp: number };
-export type BlockedPosition = Point & { distance: number; lunge: number };
+export type BlockedPosition = Point & { distance: number; lunge: number; depth: number };
 export type BlockedPositions = ReadonlyMap<number, BlockedPosition>;
 
 function acrossBarricade(p: Spot, side: number, along = 0): Point {
@@ -59,7 +62,7 @@ export class BarricadeEffects {
   private strikes = new Map<number, number>();
   private broken: { at: number; spot: Break } | null = null;
 
-  constructor(scene: Phaser.Scene, layout: Layout) {
+  constructor(scene: Phaser.Scene, private readonly layout: Layout) {
     this.count = scene.add.text(0, 0, '', {
       fontFamily: FONT, fontStyle: 'bold', fontSize: fontPx(layout, 14),
       color: TEXT.towerLabel, backgroundColor: TEXT.towerLabelBg, padding: { x: 3, y: 1 },
@@ -92,31 +95,22 @@ export class BarricadeEffects {
     if (!wall) return undefined;
     const stopped = new Map<number, BlockedPosition>();
     const held = state.enemies.filter(e => !isFlying(e) && e.distance === wall.distance);
-    let depth = 6;
-    const ranks = held.map((enemy, i) => {
-      // Stagger ordinary walkers in two files; a Troll or boss takes a full rank.
-      const radius = RING_RADIUS[enemy.type];
-      const wide = radius >= PATH_WIDTH / 2;
-      const halfDepth = wide ? radius : radius * 0.75;
-      const back = depth + halfDepth;
-      depth = back + halfDepth;
-      const side = wide || held.length === 1 ? 0 : (i % 2 === 0 ? -12 : 12);
-      return { id: enemy.id, back, side };
-    });
-    // Close ranks if there is too little trail behind the wall. Clamping
-    // individual ranks to the spawn would stack the end of a long queue.
-    const fit = Math.min(1, wall.distance / depth);
-    for (const { id, back, side } of ranks) {
-      const lunge = motion ? 7 * this.strike(id) * fit : 0;
-      const distance = wall.distance - back * fit + lunge;
-      const p = positionAlongPath(state.map, distance);
-      // Average the trail direction across one trail width. The two files
-      // turn gradually around corners and stay within 12 px of the trail.
-      const before = positionAlongPath(state.map, distance - PATH_WIDTH / 2);
-      const after = positionAlongPath(state.map, distance + PATH_WIDTH / 2);
-      const x = p.x - (after.y - before.y) * side / PATH_WIDTH;
-      const y = p.y + (after.x - before.x) * side / PATH_WIDTH;
-      stopped.set(id, { x, y, distance, lunge });
+    held.sort((a, b) => RING_RADIUS[b.type] - RING_RADIUS[a.type]);
+    const wallY = this.layout.toScreen(wall).y;
+    for (const [i, enemy] of held.entries()) {
+      // Fill the three front places first. Extra walkers share the rear rank.
+      const side = CROWD_COLUMNS[i % CROWD_COLUMNS.length];
+      const lunge = motion ? 7 * this.strike(enemy.id) : 0;
+      const distance = wall.distance - (i < CROWD_COLUMNS.length ? 12 : 28) + lunge;
+      const rank = positionAlongPath(state.map, distance);
+      const angle = Math.atan2(wall.y - rank.y, wall.x - rank.x);
+      const foot = acrossBarricade({ ...rank, angle }, side);
+      // Bound the visible centre, including boss lift and room for hit recoil.
+      // Portrait rotates world offsets without changing their length.
+      const lift = spriteLift(enemy.type);
+      const roomForLift = HELD_DRAW_CAP - knockPx(enemy.type) - Math.hypot(foot.x - wall.x, foot.y - wall.y);
+      const anchor = this.layout.offset(foot, 0, Math.max(0, lift - roomForLift));
+      stopped.set(enemy.id, { ...anchor, distance, lunge, depth: wallY + RING_RADIUS[enemy.type] });
     }
     return stopped;
   }
@@ -182,8 +176,8 @@ export class BarricadeEffects {
     const vertical = Math.abs(along.y) > Math.abs(along.x);
     const mapLeft = layout.map.x + 4;
     const mapRight = layout.map.x + layout.map.width - totalWidth - 4;
-    // Along a horizontal stretch, extend the count toward the exit so a
-    // queue turning behind the wall cannot run straight under the badge.
+    // Along a horizontal stretch, extend the count toward the exit so the
+    // badge stays clear of the crowd.
     const placeLeft = vertical ? x - 28 - totalWidth >= mapLeft : along.x < 0;
     const side = placeLeft ? -1 : 1;
     const offset = vertical ? 28 : -width / 2;

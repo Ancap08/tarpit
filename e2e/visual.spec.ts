@@ -1007,4 +1007,4 @@ test('m37-midwave', async ({ page }) => {
 
 test('barricade-aim', async ({ page }) => aimFrame(page));
 
-test('barricade-holding', async ({ page }) => holdingFrame(page, false));
+test('barricade-holding with fifteen walkers and the count beside the hp bar', async ({ page }) => holdingFrame(page, false));

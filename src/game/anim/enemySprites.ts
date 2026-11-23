@@ -371,12 +371,13 @@ export class EnemySprites {
     } else {
       v.sprite.setPosition(x, y - lift + bob);
     }
-    v.sprite.setDepth(y);
-    v.crown?.setPosition(v.sprite.x, v.sprite.y - 41).setDepth(y + 1);
+    const depth = stoppedAt?.depth ?? y;
+    v.sprite.setDepth(depth);
+    v.crown?.setPosition(v.sprite.x, v.sprite.y - 41).setDepth(depth + 1);
     if (v.shield) {
       v.shield.setPosition(x + SHIELD_DX, y + SHIELD_DY);
-      // Just in front of its own sprite, behind any walker lower on screen.
-      v.shield.setDepth(y + 0.5);
+      // Keep the shield just in front of its owner.
+      v.shield.setDepth(depth + 0.5);
     }
     this.setFacing(v, facingAt(map, stoppedAt?.distance ?? enemy.distance, this.step(enemy), this.layout));
     v.sprite.anims.timeScale = stoppedAt ? 0 : timeScale;
@@ -388,7 +389,7 @@ export class EnemySprites {
 
     const hit = this.isHit(v);
     if (v.flash) {
-      v.flash.setPosition(x, y - lift).setDepth(y + 0.1).setVisible(hit);
+      v.flash.setPosition(x, y - lift).setDepth(depth + 0.1).setVisible(hit);
     }
     if (hit && !v.flash) {
       v.sprite.setTintFill(TINT.flash);

@@ -1,4 +1,4 @@
 import { test } from '@playwright/test';
 import { crowd } from './barricade-crowd';
 
-test('one to twenty held walkers occupy distinct screen positions (phone)', async ({ page }) => crowd(page, true));
+test('held walkers stay within 36 px and the wall shows the crowd count (phone)', async ({ page }) => crowd(page, true));

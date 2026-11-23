@@ -568,9 +568,12 @@ Reloading starts a new run.
   show the placement area. A bar across the trail marks the snap point.
   An invalid aim marks the pointer and explains how to move it. The placed
   timber wall carries an hp bar and shows a count beside it when more than
-  three walkers are held. Held walkers form ranks back along the trail.
-  Larger enemies take more space, and each walker's hp bar follows its
-  sprite. Attackers lunge, the wood shakes, and broken beams scatter.
+  three walkers are held. Held walkers overlap in two short ranks across the
+  trail, with larger walkers and bosses in front. Every held sprite centre
+  stays within 36 game pixels of the wall point in both layouts, so even
+  the smallest splash aimed at a held sprite reaches the whole crowd.
+  Each wounded walker's hp bar follows its sprite. Attackers lunge, the
+  wood shakes, and broken beams scatter.
   Reduced motion and test mode hold the impact still.
   The hit sound is limited to one request per tick and one start per 260 ms
   under the shared horde budget. Placing and breaking have separate sounds. Wave 3 shows

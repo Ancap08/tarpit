@@ -8654,3 +8654,11 @@ corners. Trolls and bosses take a full rank, wounded walkers carry their
 own hp bars, and the wall shows the count from four walkers onward.
 The desktop and phone specs read actual sprite centres for each crowd
 size from 1 through 20. Both review frames show 15 held walkers.
+
+**Review fix.** The rear ranks could appear about 310 px from the wall, so
+a Powder Keg aimed at a visible Goblin could spend its charge and miss.
+Held walkers now share two short ranks, with every sprite centre within
+36 px of the wall. The count beside the hp bar gives the total. Desktop
+and phone specs check the count and the cap, allowing overlap after six
+distinct positions. A mouse test aims at the farthest of fifteen held
+Goblins and checks that the keg hits all fifteen.

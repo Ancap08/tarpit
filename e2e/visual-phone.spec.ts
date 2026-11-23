@@ -264,4 +264,4 @@ test('portrait Grumblemaw keeps his bar and effects on wave 20', async ({ page }
 
 choiceVisual(true, 'phone-upgrade-choice');
 
-test('phone-barricade-holding', async ({ page }) => holdingFrame(page, true));
+test('phone-barricade-holding with fifteen walkers and the count beside the hp bar', async ({ page }) => holdingFrame(page, true));

@@ -36,6 +36,35 @@ test('walkers hit the wall, a Harpy passes and the crowd walks on after the brea
   expect((await ui(page)).special).toMatchObject({ rechargeTicks: 1200, charges: 0 });
 });
 
+test('a Powder Keg aimed at the farthest drawn Goblin hits all fifteen held Goblins', async ({ page }) => {
+  await startBarricadeWave(page, 3);
+  await aimBarricade(page);
+  await castAt(page, { x: 420, y: 164 });
+  const target = await api(page, t => {
+    const s = t.state();
+    const wall = s.blocker!;
+    s.spawnedPerGroup.fill(9999);
+    s.enemies = Array.from({ length: 15 }, () => ({
+      id: s.nextEnemyId++, type: 'goblin', distance: wall.distance - 1, hp: 23, slow: 0, slowTicksLeft: 0,
+    }));
+    s.specialCharges = 1;
+    t.step(1);
+    const held = s.enemies.filter(e => e.distance === wall.distance);
+    const positions = held.map(e => t.animState(e.id)!);
+    const gap = (p: { x: number; y: number }) => Math.hypot(p.x - wall.x, p.y - wall.y);
+    const farthest = positions.reduce((a, b) => gap(a) >= gap(b) ? a : b);
+    return { x: farthest.x, y: farthest.y, held: held.length, gap: gap(farthest) };
+  });
+  expect(target.held).toBe(15);
+  expect(target.gap).toBeGreaterThan(0);
+  await press(page, 'special');
+  await press(page, 'special:keg');
+  await castAt(page, target);
+  expect(await api(page, t => t.events().find(e => e.kind === 'special' && e.type === 'keg')))
+    .toMatchObject({ x: target.x, y: target.y, hits: 15 });
+  expect(await api(page, t => t.state().enemies.length)).toBe(0);
+});
+
 for (const reducedMotion of ['reduce', 'no-preference'] as const) {
   test(`Grumblemaw hits and smashes the wall in live play (${reducedMotion})`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion });
