@@ -14,15 +14,15 @@ A portfolio project. The point is how a human steered AI agents to build a
 real game from an empty folder; the playable game is the proof. It was made
 for Kyle and his nieces and nephews.
 
-The game today (v4): three maps, ten waves and then endless waves, six
+The game has three maps, twenty campaign waves and then endless waves, six
 towers you can build on any free grass cell (not on the path, the river or
 the cottage), five enemy types (one of
-them flies, one carries a shield) and a boss, three difficulty levels, three
+them flies, one carries a shield) and two bosses, three difficulty levels, three
 special attacks, and play on a tablet. The enemies are placeholder pixel
 sprites; towers and the HUD are simple shapes with labels, and the maps are
 drawn in code, until the art pass (see Status). Shots fly as musket balls, arrows,
 cannonballs, mortar shells, tar globs and gouts of fire; towers turn and
-kick back, kills drop floating gold, and waves and the boss get banners.
+kick back, kills drop floating gold, and banners mark new waves and boss arrivals.
 The maps are alive: textured grass and a worn dirt trail, trees and bushes
 that clear when you build on them, a flowing river, chimney smoke, drifting
 cloud shadows and the odd bird or butterfly, all still under reduced motion.
@@ -62,23 +62,31 @@ cloud shadows and the odd bird or butterfly, all still under reduced motion.
    Start Wave), pick a special if more than one is unlocked, and click the
    trail where the circle covers the enemies; a banner says what to do, and
    Escape or Special again cancels. Powder Keg (from wave 1) blasts them, Tar
-   Barrel (from wave 4) leaves a puddle that slows everything in it for 8 s,
-   Fire Arrows (from wave 7) leave a burning patch for 8 s. A label shows how
+   Barrel (from wave 4) leaves a puddle that slows everything in it for 11 s,
+   Fire Arrows (from wave 7) leave a burning patch for 11 s. A label shows how
    many it caught, and the button shows the seconds until the next one.
 9. **Call next.** Once every enemy of a wave has come out of the cave
    (some may still be walking), Start Wave reads "Call
    next +N". Press it to send the next wave now: you get the wave's clear
-   bonus at once plus up to 20 gold. Wave 9 cannot call the boss wave.
-10. **The boss.** Grumblefoot, the Troll King, comes at the end of wave 10
-    with a health bar at the top of the map. He costs 5 lives if he gets
-    through.
-11. **Win, then keep going.** Survive wave 10 to win. The win screen offers
-    Keep going: endless waves that get tougher, until you lose. Your best
-    score (waves cleared) is saved in the browser per map and difficulty.
+   bonus at once plus up to 20 gold. In the campaign, early calls are
+   blocked into and out of waves 5, 10, 15 and 20.
+10. **Pick a boon.** After waves 5, 10 and 15, pick one of three cards
+    by click, tap or the 1, 2 and 3 keys before starting the next wave. Its effect lasts for the run, including
+    endless. The HUD shows the boons you've picked. Turning your device
+    keeps your run and any pending pick. Reloading starts a new run.
+11. **Two bosses.** Grumblefoot, the Troll King, arrives at the end of
+    wave 10 and costs 5 lives if he gets through. Act II begins on wave 11.
+    Grumblemaw arrives at the end of wave 20 and costs 10 lives if he gets
+    through. When his health falls past two thirds and one third, he calls
+    Wolves from the cave. The health bar shows which boss is on the trail.
+12. **Win, then keep going.** Survive wave 20 to win. Choose Keep going,
+    then press Start Wave to play wave 21. Endless waves get tougher until
+    you lose. Your browser saves your best score (waves cleared) per map
+    and difficulty.
     Tap the speed button for 1x or 2x; hold it for 3x while held. Tap the
     Gold number five times quickly for 500 gold (that game then saves no
     best score).
-12. **Phone or iPad.** Hold it either way: a tall screen turns the map so
+13. **Phone or iPad.** Hold it either way: a tall screen turns the map so
     the trail runs top to bottom with the buttons under it in thumb reach,
     and turning the device mid-game keeps the game. Tap a cell once to aim,
     tap it again to build; when you drag, the ghost floats above your
@@ -97,7 +105,7 @@ The speaker button on the title and in the game, or the M key, mutes it; the cho
 
 ![Riverbend in wave 7: the river runs down the middle of the arch-shaped path; Longbows, Mortars, a Tar Pit and a Fire Pot stand beside it, and Trolls, Wolves and Harpies come up the left side and over the top](docs/media/tarpit-riverbend.png)
 
-![Wave 10 on Meadow: Grumblefoot, the Troll King, with his health bar at 3331 of 4000, tarred and burning under a Mortar splash](docs/media/tarpit-boss.png)
+![Wave 10 on Meadow: Grumblefoot, the Troll King, with his health bar at 3525 of 4000, tarred and burning under a Mortar splash](docs/media/tarpit-boss.png)
 
 ## How it was built
 

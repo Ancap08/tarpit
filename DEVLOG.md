@@ -7644,3 +7644,134 @@ Verifier: Claude Sonnet. Verdict: go on to the screen work. Own replay (not the 
 - Builds: both new archetypes are playable purchase plans, but they were added to give boons something to win. At default picks `comboBuild` shows spreads of only 2 / 0 / 3 lives, so for a person who plays the combo the wave-10 offer is worth nothing.
 - Length (Meadow Normal comboBuild): 1311.7 s (21:51.7), act 2 673.8 s, longest act-2 wave 95.6 s (per-wave: 51.8 34.7 28.7 43.4 87.7 51.8 101.7 90.3 44.3 103.6 29.9 64.8 38.1 72.5 71.5 60.3 78.9 77.7 84.6 95.6). Waves 7 and 10 in act 1 still run over 100 s (not limited by the target).
 - On a bound: comboBuild Normal wins with 19 lives on every map (N4 ceiling is 19); X1 idle loses on wave 25 on Switchback and Riverbend (ceiling); R3 total 8.3 s under 22 min; B2 Meadow no-specials wins with 3 lives; N9 Keg margin is one life (18 against 19). N6 leads are 16 / 5 / 14 (min 3).
+
+## 2026-11-23: milestone 36b, the longer game (screen)
+
+The wave 5, 10 and 15 offers now interrupt planning with three cards. Each
+card has its own drawn emblem, name and one effect line calculated from
+`BOONS`. Click, tap or press 1–3 to choose. The map ignores selection,
+placement and drags until the pick. The disabled Start Wave button explains
+why. The pick names the boon in a banner. Rotation rebuilds the panel from
+the same game state, while reloading opens the title for a new game.
+
+Held boons sit next to the build buttons in landscape and beside the preview
+in portrait. Hovering or tapping shows the name and effect. The end screens
+list the names. Range circles for selected, moved and new towers use the
+held boons, as do the keg aim radius and the special recharge fill. The
+HUD measures its preview against the remaining space and shows why Call
+next is disabled at a reward boundary, before the final boss, or on wave 20.
+
+Wave 11 starts with “Act II” over “Wave 11”. The existing one-banner queue
+handles the pick, act, bosses and pack calls. Grumblemaw has the shared
+boss sheet at 3x, a crown, a larger shadow and status rings, and his own
+named HP bar. His arrival and fall use the boss effects with stronger
+shakes and larger death rings. Each pack call signals the cave as Wolves
+emerge. Reduced motion suppresses shakes, darkening and the full-screen
+flash. Six new synthesized recipes cover the offer, pick, act, pack,
+arrival and fall. The two Grumblemaw sounds have the highest measured
+50 ms RMS in the game. All 41 recipes meet the offline render limits.
+
+The renderer celebrates the win at 20 and Keep going preserves the towers,
+boons and score for wave 21. A campaign loss names the wave out of 20. Endless
+losses omit the denominator. The existing per-map/level score store accepts
+older scores without a migration. The test hooks expose the offer, picking,
+held boons, the live boss and the drawn UI. The script runner applies the
+recorded pick before shopping for the next wave and accepts the headless
+archetype's optional pick choices.
+
+### Presentation numbers and frame checks
+
+No gameplay values or simulation files changed from 3644e43. The display
+total goes from 10 to 20 and the first endless wave from 11 to 21 to match
+36a. New reward cards are 296 × 168 px in landscape and 448 × 112 px in
+portrait, with 14/12 px gaps, 23/24 px names and 13/17 px effect lines.
+Held slots are 40/36 px wide, 42 px high and 3 px apart. Once earned they
+narrow the six landscape tower buttons from 140 to 118 px and their text
+from 16 to 14 px. In portrait the preview width goes from 468 to 348 px;
+it tries 18, 16, 14 and 13 px type to fit two lines. Tooltips last 2.8 s.
+End lists use 14/18 px. The canvases retain their previous dimensions.
+
+The wave-20 boss goes from the 36a placeholder at 2x scale/30 px lift to
+3x/45 px. His status ring radius goes from 38 to 57 px. His shadow's
+ellipses are 108 × 30 and 78 × 21 px. His shakes use 1.3x the old force
+and his death rings use 1.4x the old radii. Sparks/dust/smoke go from
+110/40/24 for Grumblefoot to 120/55/32 for Grumblemaw. Each pack cue
+lasts 1.1 s. The Sound table in DESIGN records the six new durations and
+level targets. Grumblemaw's arrival/fall measured 0.241/0.243 RMS against
+0.227 for the loudest other cue.
+
+The local comparison rendered all 41 previous visual cases from cecdce4
+and the equivalent current cases on the same browser. Four images matched
+pixel for pixel: title, title-hard, title-best and phone-title. The
+following 37 differed (names below are PNG stems).
+
+| Existing frames | What changed |
+|---|---|
+| map-wave0, mid-wave, placing, placing-invalid, tower-selected, planning, riverbend-placing-invalid, map-switchback-wave0, map-riverbend-wave0, map-switchback-midwave, map-riverbend-midwave, tablet-map-wave0 | HUD denominator. The pixel changes are confined to the digits. |
+| phone-meadow-wave0, phone-switchback-wave0, phone-riverbend-wave0, phone-midwave, phone-panel, phone-placing, phone-magnifier, phone-snap | The same digit change in the portrait strip. |
+| enemies, harpies, new-towers, special-aim, special-fired, special-tar-zone, special-fire-zone, special-recharging, phone-aim, phone-tar-zone | The 36a wave groups, impacts, cooldown/zone state and next-wave or call-button text where applicable. The fixed wave-4 aim and keg frames now include different enemies. |
+| boss, phone-boss | Replayed to tick 5263, previously 5361. One burning, slowed Grumblefoot, 3525/4000 HP at (403,96), hit by a Mortar two ticks earlier. The earned boon is in the HUD. |
+| lost, phone-lost | Both the loss line and the HUD read out of 20. |
+| won, phone-won | Wave 20, 19 lives, 2847 gold, three held boons and the expanded defense. |
+| endless-hud | Wave 21 replaces wave 11. The preview and field reflect the new endless cycle and held boons. |
+
+The new visual cases use actual wave clears. The hand-stepped wave 5
+clears on step 5219 and wave 10 on 6256 (earlier waves use the combo's
+recorded specials). The wave-20 boss frame is step 4290, alone, slowed,
+burning and at 4722/5600 HP, with a Mortar hit two ticks earlier. The
+first pack is called on step 4546. Step 4586 shows two Wolves and
+3592/5600 HP. These hand-stepped wave-20 checkpoints omit its timed
+specials; the 36a balance run includes them.
+
+| Owner frame | Visual review |
+|---|---|
+| m36-boon-pick.png | Three clear choices, single-line effects, visible number keys and an unobscured HUD. The small effect type is secondary to the card names. |
+| m36-boon-pick-phone.png | Each choice is a full-width row. The icons and names are easy to distinguish. The darkened field leaves generous empty space above and below. |
+| m36-boon-icons.png | Three separate icons fit before mute. Stone Walls opens above the HUD with its exact effect. The middle tar emblem benefits most from the tooltip. |
+| m36-act2.png | Both act and wave are legible against the busy trail. The compact banner briefly covers part of the field. |
+| m36-grumblemaw.png | The crown and larger silhouette are obvious, even under the Mortar splash. The separate bar remains readable. |
+| m36-grumblemaw-phone.png | The crowned boss stays upright on the turned trail. The bar has its own space beneath the HUD; the combat effects crowd the sprite slightly. |
+| m36-pack-call.png | The banner and cave rings point to the two emerging Wolves. The cave cuts off the left half of the rings at the edge, and tower labels cross part of the boss. |
+| m36-won.png | The result, lives, gold, three boon names and Keep going read in order. The boon line is smaller than the result but fits. |
+
+The README demo needed re-recording: its old boss HP assertion and the
+Riverbend still's enemy count fail under 36a. The 25 s GIF and three
+stills were regenerated. Riverbend wave 7 at step 1440 has 14 enemies
+(previously 16), nine towers and 18 lives. The README overview and the
+boss still's alt text were reconciled with How to play. The By the
+numbers table was preserved.
+
+### Existing test migrations
+
+All browser names below refer to files in `e2e/`. The new campaign specs
+add real input, non-default scripted picks, reduced motion, event sound
+counts, layout change, restart/exit, preview bounds and visual coverage.
+
+| Existing test | Reason for its updated assertions |
+|---|---|
+| boss.spec.ts | Grumblefoot's kill and exit events now carry his type. The kill at manual step 6256 opens the second reward and returns to setup. |
+| boss-verifier.spec.ts | The new opening changes the first hit to step 5024 and the HP at step 5721 to 2165, giving 162 red pixels on the same 300 px bar. The flash, fill and kill checks remain. |
+| difficulty-verifier.spec.ts | The winning Easy run now has 38 lives and 2929 gold. Check difficulty-tag clearance through wave 20. |
+| effects-verifier.spec.ts | Pick the required boon in the long 3x run so it can reach the original ten-wave leak checkpoint. |
+| end-screens.spec.ts, end-screens-verifier.spec.ts | Update fresh/lost counters and victory HUD to the actual 20-wave game, including the winning resources. |
+| endless.spec.ts | The win records 20 clears. Wave 21's Goblin starts at 41 HP; sample the spawn before the established defense kills it. Idle Meadow loses on 24 and records 23. Check retained boons, the loss list and reset. |
+| endless-touch.spec.ts, endless-verifier-touch.spec.ts | Real tablet taps keep going after 20 and start 21. Preserve size, spacing and double-tap checks. |
+| endless-verifier.spec.ts | Seed the actual last wave for selection cleanup, inspect the winning button row, the new endless preview and campaign/endless loss wording. |
+| horde-verifier.spec.ts | Exercise the entire 20-to-0 early bonus on callable wave 6 instead of reward wave 5. First peak of 22 live enemies on combo wave 8 moves from tick 1261 to 1396. |
+| maps.spec.ts, maps-touch.spec.ts, play-wave.spec.ts | Preserve board/input, combat and clear checks; expect the 20-wave denominator. |
+| maps-verifier.spec.ts | The Switchback idle run loses on wave 25 and stores 24 only for Switchback Normal. |
+| new-enemies.spec.ts | Use the actual 105 px Cannon range and remeasure its wave-4 shots while Harpies are in range. The first Musketeer hit and zero Cannon hits on Harpies are still checked. |
+| new-enemies-verifier.spec.ts | At wave-8 tick 1680 there are 40 enemies including six Trolls. The layer ordering check covers the new crowd. |
+| sound.spec.ts, sound-render.spec.ts | Trigger the win sound at wave 20. Measure the six additional recipes, Grumblemaw's two loudest cues and his arrival/call/fall in the busy mix. |
+| specials.spec.ts | Tar and fire zones last 660 ticks. The fire text and damage expectation follow 26 DPS. |
+| specials-verifier.spec.ts | Measure preview clearance on all 20 waves and on their mid-wave counterparts. |
+| specials-rework-verifier.spec.ts | Check zone pixels near tick 651 and after expiry at 661, instead of 471/481. Exercise speed hold, cheat and score suppression at the real win boundary and an actual Keep going. |
+| visual.spec.ts, visual-phone.spec.ts | Recompute the aim, splash, zone, boss, win and endless receipts listed above; the title and touch coordinate helpers run through the current layout. New cases cover the rewards, icons, act, boss and pack call. |
+| src/game/ui/endText.test.ts | Replace the three stale results: victory 16/420 → 19/2847, loss “of 10” → “of 20”, and endless defeat 16 → 24. Check chosen names in the win and loss results. |
+| src/game/audio/recipes.test.ts | Include the six new recipes in duration, tier and low-sound checks while preserving the existing limits. |
+
+The initial full browser integration pass exposed old Harpy/range, crowd
+and zone-pixel pins, plus a visual assertion reading held boons from the
+wrong hook. The corrected focused run passed 69 tests, with one optional
+capture disabled. The local snapshot-generating pass passed 48 visual
+cases. CI owns the tracked PNG baselines.

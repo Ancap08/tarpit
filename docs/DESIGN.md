@@ -256,7 +256,8 @@ beside it that returns to the title; the win screen also has [Keep going].
   `exit`. Both boss events carry `enemyType` and `enemyId`. A boss has a
   wide ground shadow and a named HUD bar showing current and maximum hp.
   Grumblefoot uses a 2x sprite (100 px frame), above walkers and below
-  shots, hp bars, labels and Harpies.
+  shots, hp bars, labels and Harpies. Grumblemaw uses the same sheet at
+  3x (150 px frame), lifted 45 px, with a drawn gold crown.
 - **Grumblemaw's pack calls.** Crossing two thirds or one third of full
   hp emits `packCall` with the crossed threshold (numerator 2 or 1 over
   3) and schedules 8 Wolves from the cave. The first Wolf spawns in
@@ -363,6 +364,23 @@ and `boon-not-offered` when the id is outside the offer. Start Wave is
 refused with `boon-pending` until the player chooses. The simulation
 emits `boonOffered` with the cleared wave and options. Picking clears the
 offer and emits `boonPicked` with the wave and selected id.
+
+The reward panel shows three cards in offer order, each with a drawn icon,
+name and one-line effect. The cards sit in a row in landscape (296 x 168 px,
+14 px gap) and a column in portrait (448 x 112 px, 12 px gap).
+Click or tap a card, or use 1, 2 or 3 on a keyboard. The HUD
+shows one icon per held boon in pick order, in the build row in landscape
+and the preview row in portrait. Once the first boon is held, the six
+landscape build buttons narrow from 140 px to 118 px and their text from
+16 px to 14 px. Held icons use 40 x 42 px slots there and 36 x 42 px in
+portrait, with 3 px gaps. The portrait preview then wraps in 348 px and
+steps down from 18 to 16, 14 or 13 px as needed to stay within two lines. Hover or tap an icon to read its name
+and effect for up to 2.8 s. The win and loss screens list the held names in 14 px text in
+landscape and 18 px text in portrait. The portrait list wraps above the
+buttons. A pending reward and the chosen boons survive a layout switch
+with the rest of the run. The open panel blocks map placement and selection.
+Start Wave shows “Pick a boon”. After a pick, a short banner names it.
+Reloading starts a new run.
 
 | Boon | ID | After wave | Value | Effect |
 |---|---|---|---|---|
@@ -692,12 +710,17 @@ depends on them (`npm run sim` is unchanged). The maths is in
   56 px and 350 ms share one label. Wave start ("Wave 3") and clear
   ("Wave 3 cleared", "+N gold") banners show for 1.5 s above the map's
   middle, under the HUD, take no input, and never stack: a new banner cuts
-  the current one to 250 ms and replaces any waiting one. The boss
+  the current one to 250 ms and replaces any waiting one. Grumblefoot
   arrives with his name, the map darkening to 45% for 1.4 s and a 5 px
-  shake for 0.4 s. His death is the biggest effect in the game: three
-  rings (80, 120 and 160 px) starting 160 ms apart and lasting 0.9 s
+  shake for 0.4 s. His fall has three rings (80, 120 and 160 px) starting 160 ms apart and lasting 0.9 s
   each, 110 sparks with dust and smoke, a large "+150" that never groups
   with other kills, a 220 ms white flash and an 8 px shake for 0.6 s.
+  Act II opens on wave 11 with an “Act II” banner above “Wave 11”.
+  Grumblemaw uses his own named bar and entrance banner. Each pack call
+  shows a banner and three expanding rings at the cave for 1.1 s. His
+  entrance and fall shakes are 1.3x as strong as Grumblefoot's, and his
+  three fall rings are 1.4x as wide. His burst has up to 120 sparks,
+  55 dust and 32 smoke particles, with a separate “+300” bounty.
   An enemy getting through flashes the cottage red and the Lives number
   red, shaking it 3 px, for 0.6 s.
 - **Shakes** move only the map (boss entrance, boss death, and the Powder
@@ -710,9 +733,10 @@ depends on them (`npm run sim` is unchanged). The maths is in
 - **Reduced motion.** When `prefers-reduced-motion: reduce` matches there
   are no camera shakes (the Powder Keg's included), no darkening or
   full-screen flash and no Lives shake; everything else stays.
-- **Test mode.** `?test=1` creates no effects: shots are the old fading
-  tracers, barrels snap to each shot, and hits and kills react at once, so
-  the screenshot baselines are unchanged.
+- **Test mode.** `?test=1` skips live effects such as particles and shake.
+  Shots are fading tracers, barrels snap to each shot, and hits and kills
+  react at once. The reward, Act II, Grumblemaw's entrance and pack-call
+  cues are available for frozen browser frames.
 
 ## Map decoration
 
@@ -780,8 +804,9 @@ drawing in `src/game/decor/livingMap.ts` and `src/game/draw/map.ts`.
 
 ## Sound
 
-Milestone 33 (with its follow-up). Every sound is made in code with the
-Web Audio API: no audio files, no samples, no music, no volume slider.
+Milestone 33 (with its follow-up and six new cues in milestone 36).
+Every sound is synthesized with the Web Audio API. The game has no audio
+files, samples, music or volume slider.
 Sounds follow the renderer's events and change no rule, number or outcome
 (`npm run sim` is unchanged). Code: `src/game/audio/`.
 
@@ -802,15 +827,19 @@ Sounds follow the renderer's events and change no rule, number or outcome
   refused 0.27 s (two round falling notes), button tap 0.03 s, tower select
   0.13 s; Powder Keg 0.76 s, Tar Barrel 0.35 s, Fire Arrows 0.55 s, charge
   ready 0.36 s; wave start horn 0.70 s, wave clear chime 0.51 s, Call next
-  0.35 s; the boss's arrival 1.40 s and fall 1.41 s; win 1.76 s and lose
+  0.35 s; Grumblefoot's arrival 1.40 s and fall 1.41 s; win 1.76 s and lose
   1.93 s; the gold cheat's coin 0.42 s (triangles with a low-passed edge).
+  The boon offer is a descending chime (0.468 s) and the pick a rising
+  pair (0.363 s). Act II starts with three brass notes (0.615 s).
+  Grumblemaw's pack call is a two-part howl (0.510 s), his arrival a
+  rising roar (1.298 s) and his fall a descending rumble (1.444 s).
 - **Small speakers.** Phones and tablets barely play below about 150 Hz,
   so every low sound (Cannon thump and boom, Mortar boom, Troll death,
-  exit warning, Powder Keg, Tar Barrel, the boss's drone, stomps and fall:
+  exit warning, Powder Keg, Tar Barrel, both bosses' arrivals and falls:
   `LOW_SOUNDS`) has a mid layer between 200 and 900 Hz: a triangle body an
   octave or two above the thump and a band-passed noise crack. Through the
   phone stand-in (a 200 Hz high-pass, 24 dB/octave) each keeps at least
-  half its RMS (0.56 to 0.78; before the mid layers the Cannon boom kept
+  half its RMS (0.56 to 0.81; before the mid layers the Cannon boom kept
   0.19, the Mortar boom 0.16, the Keg 0.30).
 - **Levels.** Each sound's short-term loudness (the RMS of its loudest
   50 ms, before the master chain) is set to sit in its tier's band
@@ -822,18 +851,25 @@ Sounds follow the renderer's events and change no rule, number or outcome
   | Tick | hit | 0.008 to 0.02 | 0.012 |
   | Shot | the six shots | 0.05 to 0.065 | 0.06 (Musketeer 0.055) |
   | Impact | the six impacts, the death pops | 0.068 to 0.11 | 0.09 (Musketeer 0.07, Fire Pot 0.08; deaths 0.08, 0.09, 0.10) |
-  | Action | build, upgrade, sell, refused, tap, select, coin | 0.045 to 0.10 | 0.08 (tap 0.05, select 0.07) |
-  | Moment | exit, charge ready, wave clear, Call next, wave horn | 0.11 to 0.17 | 0.12, 0.12, 0.14, 0.14, 0.165 |
-  | Big | specials, boss arrival and fall, win, lose | 0.17 to 0.26 | 0.17 to 0.23 |
+  | Action | build, upgrade, sell, refused, tap, select, coin, boon offer and pick | 0.045 to 0.10 | 0.08 (tap 0.05, select 0.07) |
+  | Moment | exit, charge ready, wave clear, Call next, wave horn, Act II, pack call | 0.11 to 0.17 | 0.12, 0.12, 0.14, 0.14, 0.165, 0.158, 0.148 |
+  | Big | specials, both bosses' arrivals and falls, win, lose | 0.17 to 0.26 | 0.17 to 0.23, with Grumblemaw arrival 0.241 and fall 0.243 |
 
-  In the 10 s busy wave the mix gets 5.0 dB louder when the wave horn
-  sounds and 5.3 dB when the Powder Keg does (at least 3 dB is tested).
+  In the scripted 10 s busy wave the mix gets 5.0 dB louder when the
+  wave horn sounds and 5.3 dB when the Powder Keg does. Grumblemaw's
+  arrival, pack call and fall lift the mix by 6.9, 3.2 and 5.8 dB.
+  The test requires at least 3 dB per cue. Grumblemaw's arrival and fall
+  are the loudest two cues by 50 ms RMS.
 - **Triggers.** `fx/effects.ts` plays the sounds of the events it routes:
   a shot when the tower fires; its impact, the hit tick and the death pop
   when the drawn projectile lands (the effects' own arrival); a kill
   without a projectile (burn, special) at once; the boss's fall with his
   burst (no death pop for him). An early call plays Call next instead of
   the horn; the win or lose jingle replaces the last wave's chime.
+  The reward offer chime takes the place of the usual clear chime, and
+  the Act II fanfare takes the place of the wave 11 horn. A boon pick
+  and pack call each have a cue. Grumblemaw uses his own arrival and fall
+  sounds.
   `GameScene` adds a tower select, a refused action (a failed build,
   upgrade, sell, move, undo or special, or a click or tap on a blocked
   cell with a pick) and the charge becoming ready (the recharge reaching
@@ -1103,11 +1139,12 @@ continue into endless waves, next-wave preview, and a headless runner (`headless
 a scripted set of actions for tests and balance work.
 
 Test hooks (`window.__tarpit`, `?test=1`) include `startGame(difficulty?,
-map?)`, `runScript(name, untilWave?)` (an archetype recorded on the running
+map?)`, `runScript(name, untilWave?, boons?)` (an archetype recorded on the running
 game's level and map), `continueEndless()`, `bestScore(difficulty, map?)`,
 `ui()` (with `ui().special`: the charge, `ready`, `rechargeTicks`, the
 special aimed, `aimPoint`, `banner`, `holding`, the landing `labels` and
-the `zones`), `uiRects()` (with `gold`, the cheat's tap area),
+the `zones`), `pendingBoon()`, `pickBoon(id)`, `heldBoons()`, `bossOnField()`,
+`uiRects()` (including `reward:<id>`, `boon:<id>` and `gold`, the cheat's tap area),
 `titleReady()`, `step(n)`, `state()`, `events()`, `hudText()`,
 `setSpeed(1 | 2 | 3)`, `speed()` and `cheatGold()`. `spawnHorde` works only with `?test=1` or `?perf=1`; without
 them `window.__tarpit` keeps five read-only hooks.
