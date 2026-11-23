@@ -7366,3 +7366,17 @@ The only production renderer edits are the display name in `src/game/names.ts`, 
 - `src/sim/verifier.test.ts`
 - `src/sim/waves.test.ts`
 - `src/sim/waves.ts`
+
+### Verifier notes
+
+Verifier: Claude Sonnet, on commit 227ef95. Added `src/sim/longer-game-verifier.test.ts` (36 tests, all pass, about 10 s). No source file changed; no `it.fails` was needed.
+
+- Suite: lint, check:assets, typecheck, build and check:size pass. `npm test` has exactly the 3 known `endText.test.ts` failures (33.7 s). `test:slow` reports 2 tests over 3 s (4.4 s and 3.0 s). `npm run sim` takes 91 s and all labels are ok. No `it.fails`, `skip`, `todo` or `fixme` was added.
+- Rules probed and found as documented: wave 10 clear leaves setup with a pick pending; wave 20 wins once; Keep going starts wave 21; hand-computed boon effects for all nine (including tick rounding); refusals change nothing (deep compare); every call into or out of a reward wave is refused; Grumblemaw spawn tick 5337, hp 10125 / 13500 / 16200, slow cap 0.3 alone and together, burn doubling; pack calls at hp 9000 and 4500 exactly, both on one hit, wolves 30 ticks apart, the wave waits for a queued pack, a boss exit with a pack queued; endless waves 21 to 24 and 60 by hand; conservation (spawned = killed + exited, gold, lives) and determinism on 3 maps x 3 levels.
+- Finding 1 (design, not a bug): on Normal and Hard the reference comboBuild never kills Grumblemaw on any map. He leaves with about 3,300 hp (Meadow Normal) and costs 6 lives. The win depends on lives left at wave 20. Only Easy kills him.
+- Finding 2: the boon check (N10) is weak. Its representative set includes one hand-picked "contrasting pair" per map, and "a different outcome per offer" is met by one group out of nine. With the scripted builds, Long Barrels, Sticky Tar, Quick Hands and Bigger Blasts change lives in almost no scenario (Meadow, Switchback, Riverbend; combo Normal, hardBuild Hard, combo Hard). Stone Walls is +5 lives and Keen Arrows is +6 or +7 on Switchback and Riverbend; those two dominate their offers. All 27 combinations are enforced only by `npm run sim`, not by `npm test`.
+- Finding 3 (low): a hit that crosses a threshold and kills calls the pack anyway (documented in DESIGN.md). 16 Wolves can arrive after the boss is dead.
+- Finding 4 (low): hand-computed endless wave tests (waves 11, 13, 14, 20, 40) were replaced by tests derived from the code; the verifier file restores them for 21, 22, 23, 24 and 60. Exact lives and gold pins and the Grumblefoot kill-tick pins were also loosened; conservation tests, the balance suite and boss-frame cover the same rules.
+- Finding 5 (low): `findTarget` squared-distance and `segmentLength` axis changes in `src/sim` were not asked for. They are disclosed in this log, and no test result changed.
+- Finding 6: `e2e/visual.spec.ts` BOSS_STEPS is still 5361 while the sim reference moved to 5215 (36b work).
+- Time: Meadow Normal comboBuild takes 1526 s (25 min 26 s) at 1x; act 2 is 895 s against the 900 s R3 ceiling.
