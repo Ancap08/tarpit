@@ -297,11 +297,47 @@ banner after wave 10; the second boss with his bar, entrance, pack call
 and fall; sounds for the new moments; win and endless flow; README, demo
 and docs.
 
+## Milestone 37: a second upgrade with a choice
+
+Kyle approved this as the next build (2026-11-23) and asked that Codex
+keep building, held to high standards, on "the simplest paths" so the game
+stays "simple and slim". It folds in the old "towers with personality"
+idea in its simplest form: an upgraded tower looks different.
+
+- **Today** a tower has one upgrade. **New:** an upgraded tower can be
+  upgraded once more, and that second upgrade is a choice between two
+  paths. The choice is final for that tower (in the planning phase it can
+  be undone like any upgrade bought that round).
+- **Twelve paths, two per tower, each one plain idea** made only from
+  numbers the game already has (range, damage, fire rate, splash, slow,
+  burn). No new mechanics. Working names and ideas, numbers set in the
+  balance pass:
+
+| Tower | Path A | Path B |
+|---|---|---|
+| Musketeer | Sharpshooter: longer range, harder hits | Volley: fires much faster |
+| Cannon | Heavy Shot: bigger blast | Quick Loader: fires faster |
+| Tar Pit | Deep Tar: stronger slow | Wide Tar: longer reach |
+| Longbow | War Bow: harder hits | Quick Draw: fires faster |
+| Mortar | Siege Shell: much more damage | Wide Burst: much bigger blast |
+| Fire Pot | Inferno: hotter burn | Lasting Flames: burns longer |
+
+- **On screen:** the tower panel shows the two paths as two buttons, each
+  with its name, price and one plain line; picking one is one tap. A
+  tower shows its level and path at a glance (a small mark drawn in code,
+  different per path), in both layouts. The first-upgrade look stays.
+- **Balance:** the second upgrade must matter in act 2, both paths of
+  every tower must be worth taking for some build, and Normal should ask a
+  little more of a good player than it does now (the scripted reference
+  build finishes with 19 of 20 lives today). Targets are in the brief and
+  pinned as before.
+- Rewards, specials, waves, bosses and maps do not change shape; their
+  numbers may move in the balance pass.
+
 ## Later milestones (order agreed, detail to come)
 
 | # | Milestone | Idea |
 |---|---|---|
-| 35 | Towers with personality | Upgrades that change the look |
 | 36 | Tabletop-art spike | One tower, one enemy and one patch of map in the stop-motion tabletop style, rendered off the Mac, for Kyle to judge before any full art pass |
 | 37 | Themed HUD | Replace the placeholder bar and panels |
 

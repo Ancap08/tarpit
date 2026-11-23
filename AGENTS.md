@@ -20,6 +20,9 @@ sections of `DECISIONS.md`. Then read only the code your brief points at.
   input and sound live in `src/game`. Every display string comes from
   `src/game/names.ts`.
 - Do not edit `DECISIONS.md`, `docs/SCOPE*.md`, `CLAUDE.md` or this file.
+  The coordinator maintains them, in commits of its own on the same branch
+  (they carry a Claude trailer), so a pull request normally contains both
+  your implementation commits and the coordinator's record commits.
 - Do not push, open a pull request, comment on GitHub, change repository
   settings, add a dependency, or commit screenshot baseline PNGs
   (`e2e/__screenshots__`; CI generates them).
