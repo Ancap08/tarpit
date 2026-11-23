@@ -128,7 +128,7 @@ test('menu geometry: three level buttons and Play, 42 px tall (map thumbnails 72
   await page.goto('/?test=1');
   await waitForTitle(page);
   const r = await page.evaluate(() => (window.__tarpit as TarpitTestApi).uiRects());
-  expect(Object.keys(r).sort()).toEqual(['title:easy', 'title:hard', 'title:look:classic', 'title:look:painted', 'title:map:meadow', 'title:map:riverbend', 'title:map:switchback', 'title:mute', 'title:normal', 'title:play']);
+  expect(Object.keys(r).sort()).toEqual(['title:back', 'title:easy', 'title:hard', 'title:look:classic', 'title:look:painted', 'title:map:meadow', 'title:map:riverbend', 'title:map:switchback', 'title:mute', 'title:normal', 'title:play']);
   for (const [name, rect] of Object.entries(r)) {
     // Milestone 27: the map thumbnails are taller buttons.
     expect(rect.height).toBe(name.startsWith('title:map:') ? 72 : 42);

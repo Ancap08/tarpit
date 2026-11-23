@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { audio, contexts, countContexts, onScene, press } from './sound';
-import { waitForTitle } from './title';
+import { waitForFirstScreen, waitForTitle } from './title';
 
 // Milestone 33 verifier (Claude Sonnet): start, stop, failure, triggers and
 // leaks, run in all three projects through audio-verifier.spec.ts (mouse),
@@ -10,7 +10,7 @@ const URL = '/?renderer=canvas&perf=1';
 
 async function toGame(page: Page, touch: boolean): Promise<void> {
   await page.goto(URL);
-  await waitForTitle(page);
+  await waitForFirstScreen(page);
   await press(page, 'title:play', touch);
   await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game') && window.__tarpit!.fx() !== null);
 }
@@ -26,7 +26,7 @@ export function suite(touch: boolean): void {
   test('no AudioContext before the first gesture (title and game); exactly one after, through restarts, layout switches, Menu and Play again', async ({ page }) => {
     await countContexts(page);
     await page.goto(URL);
-    await waitForTitle(page);
+    await waitForFirstScreen(page);
     await page.waitForTimeout(300);
     expect(await contexts(page)).toBe(0);
     // In the game with no gesture at all.
@@ -35,10 +35,12 @@ export function suite(touch: boolean): void {
     await page.waitForTimeout(300);
     expect(await contexts(page), 'in the game, before a gesture').toBe(0);
     expect((await audio(page)).context).toBe('none');
-    // First gesture: the title's Play after a reload.
+    // The first gesture opens Free play after a reload.
     await page.reload();
     await waitForTitle(page);
     expect(await contexts(page)).toBe(0);
+    await press(page, 'title:freePlay', touch);
+    await waitForTitle(page);
     await press(page, 'title:play', touch);
     await page.waitForFunction(() => window.__tarpit!.audio().context === 'running');
     expect(await contexts(page)).toBe(1);
