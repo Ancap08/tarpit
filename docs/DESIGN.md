@@ -617,7 +617,7 @@ Reloading starts a new run.
   hp bars. Their feet alternate sides of the trail, within 10 px across
   and 6 px along the trail from each simulation point. At contact the
   lower figure draws in front. Live contact animates
-  the spear, a death drops the soldier, and expiry cues a salute and departure.
+  the held weapon, a death drops the soldier, and expiry cues a salute and departure.
   Test mode and reduced motion use still poses. The four sounds distinguish
   arrival, striking, falling and departure. Strike sounds share the horde budget.
   Wave 6 shows the unlock hint once per visit. Painted uses four
@@ -1000,8 +1000,8 @@ The title screen offers Classic and Painted. Painted is the default for a fresh 
   from the click, then the percentage of the selected files ready.
   Worker startup, the speed check and all files share one 25-second limit.
   A failure or timeout starts Classic and shows a banner until wave 1.
-  Packed art loads on demand. A cold start requests at most eight painted
-  files. On Meadow the 1× target is under five seconds at 1.6 Mbps down
+  Packed art loads on demand. A cold start requests three painted files, or four when it probes
+  the 1× ground before loading 2×. On Meadow the 1× target is under five seconds at 1.6 Mbps down
   and 150 ms latency.
 - All three grounds use the same trail width and simulation path. Meadow
   has flowering pasture, Switchback has a pale trail with a dark cut edge through dry grass and low shale shelves,
@@ -1031,6 +1031,18 @@ The title screen offers Classic and Painted. Painted is the default for a fresh 
   names and prices use 14 px text, or 13 px in the compact bar. Buttons
   retain their price and hit area. The tower panel, reward icons and special icons are shared
   with Classic.
+- The King's collectors wear red and gold. The green goblin wears a tricorn
+  and carries a coin satchel. The grey-brown hound has a pale muzzle and a
+  red studded collar. The Redcoat carries a crown shield, the Harpy carries
+  a sealed writ, and the Toll Troll has tusks and swings a striped gate bar.
+  The orange Assessor wears a
+  short maroon coat and carries a ledger. His horns flank his powdered wig,
+  and two tusks rise from his square jaw. The King wears a crown and
+  fur-edged cape and carries a sceptre. A blue coin banner flies beside the
+  exit cottage on every map.
+- Each painted squad keeps its four blue-clad townsfolk in squad order
+  throughout the fight: Axeman, Swordsman, hooded Archer and Captain.
+  All four strike within arm's reach. Classic uses its original guard drawing.
 - Ground enemies use a feathered contact shadow. Towers stand on discs.
   In play, a turning walker blends its old and new compass views over
   100 ms with both views on the same stride. The Harpy spans at most

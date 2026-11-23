@@ -71,11 +71,20 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
       const id = s.nextEnemyId++;
       s.enemies = [{ id, type: 'boss', distance: 62, hp: 4000, maxHp: 4000, slow: 0, slowTicksLeft: 0 }];
       const cast = scene.useSpecialAt('guards', 100, 240);
+      const roles = new Map(scene.uiState().special.guards.map((guard, slot) => [guard.id, slot]));
+      const wrongRoles: number[] = [];
+      const checkRoles = () => {
+        for (const guard of scene.uiState().special.guards) {
+          if (guard.frame === null || Math.floor(guard.frame / 8) !== roles.get(guard.id)) wrongRoles.push(guard.id);
+        }
+      };
+      checkRoles();
       const seen = { contact: false, strike: false, wounded: false, fall: false, cleared: false };
       const limit = performance.now() + 8000;
       do {
         await new Promise(requestAnimationFrame);
         const draw = scene.uiState().special.guards;
+        checkRoles();
         seen.contact ||= s.blockers.some(b => b.distance === s.enemies[0]?.distance);
         seen.strike ||= draw.some(g => g.animation === 'strike' && g.frame! % 2 === 1);
         seen.wounded ||= draw.some(g => g.hpBar && g.hp < g.maxHp && g.hpBar.fillWidth < g.hpBar.width - 2);
@@ -93,9 +102,11 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
       const saluting = scene.uiState().special.guards.filter(g => g.animation === 'leave').length;
       scene.update(0, 800);
       const afterLeave = guardImages();
-      return { cast, seen, second, afterFalls, standing, saluting, afterLeave, sounds: t.audio().requested };
+      return { cast, seen, roleCount: roles.size, wrongRoles, second, afterFalls, standing, saluting, afterLeave, sounds: t.audio().requested };
     });
     expect(result.cast.ok).toBe(true);
+    expect(result.roleCount).toBe(GUARD_COUNT);
+    expect(result.wrongRoles).toEqual([]);
     expect(result.seen).toEqual({ contact: true, strike: reducedMotion === 'no-preference', wounded: true, fall: true, cleared: true });
     expect(result).toMatchObject({ second: { ok: true }, afterFalls: 0, standing: GUARD_COUNT, saluting: GUARD_COUNT, afterLeave: 0 });
     expect(result.sounds.guardLeave).toBe(1);

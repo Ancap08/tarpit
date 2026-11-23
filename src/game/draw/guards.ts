@@ -189,7 +189,8 @@ export class GuardEffects {
     if (this.painted) {
       const image = obj as Image;
       const bearing = (Math.round(Math.atan2(facing.x, -facing.y) / (Math.PI / 2)) + 4) % 4;
-      this.painted.pose(image, 'guard', bearing * 2 + (pose === 'strike' || (motion && salute) ? 1 : 0));
+      const outfit = guard.id % GUARD_COUNT;
+      this.painted.pose(image, 'guard', outfit * 8 + bearing * 2 + (pose === 'strike' || (motion && salute) ? 1 : 0));
       image.setRotation(pose === 'fall' ? (motion ? Math.min(1, t * 2.5) : 1) * 1.28 : 0);
       texture = image.texture.key;
       frame = Number(image.frame.name);

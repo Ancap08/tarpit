@@ -185,3 +185,18 @@ the checker looks for it.
 | `docs/art/slice-meadow/meadow-comparison.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review with tracked game capture. Original Goblin sprite by Pixel-boy and AAA (Ninja Adventure), CC0 1.0. |
 | `docs/art/slice-meadow/meadow-contact.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review |
 | `docs/art/spike-v5/comparison.png` | `scripts/art/build_spike.py` | Tarpit agents | MIT | Generated Blender art study with tracked game capture. Original game sprites by Pixel-boy and AAA (Ninja Adventure), CC0 1.0. |
+| `docs/art/theme/assessor.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b painted character review |
+| `docs/art/theme/characters.jpg` | `scripts/art/theme_sheet.py` | Tarpit agents | MIT | Milestone 44b painted character review |
+| `docs/art/theme/king.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b painted character review |
+| `docs/art/theme/meadow-landscape.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b painted character review |
+| `docs/art/theme/meadow-phone.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b painted character review |
+| `docs/art/theme/riverbend-landscape.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b painted character review |
+| `docs/art/theme/riverbend-phone.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b painted character review |
+| `docs/art/theme/switchback-landscape.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b painted character review |
+| `docs/art/theme/switchback-phone.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b painted character review |
+| `docs/art/theme/verifier/hound-beside-squad.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b verifier capture: Hound and the four Guards in a phone crop |
+| `docs/art/theme/verifier/meadow-landscape-1x.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b verifier capture: Meadow staged crowd, landscape 1x |
+| `docs/art/theme/verifier/riverbend-landscape-1x.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b verifier capture: Riverbend staged crowd, landscape 1x |
+| `docs/art/theme/verifier/riverbend-phone-1x.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b verifier capture: Riverbend staged crowd, phone 1x |
+| `docs/art/theme/verifier/switchback-landscape-1x.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b verifier capture: Switchback staged crowd, landscape 1x |
+| `docs/art/theme/verifier/tar-burn-main-over-branch.jpg` | `scripts/art/review_theme.ts` | Tarpit agents | MIT | Milestone 44b verifier capture: Tar and burn tints, main (top) over 44b (bottom) |
