@@ -9343,7 +9343,7 @@ grew from 412,201 to 450,948 bytes (9.4%). The full 2× load grew from
 1,013,421 to 1,115,469 bytes. The three-request path and the four-request
 speed-probe path use the existing loader.
 
-Cold Meadow Play with the production service worker on the shaped 1.6 Mbps,
+Cold Meadow Play with the service worker blocked on the shaped 1.6 Mbps,
 150 ms link took 2.470 s before and 2.568 s after at 1×. At 2× it took
 5.691 s before and 5.924 s after. Each measurement fetched three art files.
 
@@ -9353,3 +9353,14 @@ Verifier notes (44b):
 - `e2e/theme-verifier.spec.ts` pins the Guard outfit through a fight, 3x, a blur, a portrait/landscape switch, two squads, and a squad cut to three, and checks Classic still reports no outfit frame.
 - Cold Meadow load, `scripts/art/measure_painted.ts --baseline` (service worker blocked by the script; shaped 1.6 Mbps, 150 ms), three runs each: 1x main 2,260 ms (2,253 to 2,267), 44b 2,468 ms (2,467 to 2,484), +9.2%; 2x main 5,357 ms, 44b 5,885 ms, +9.9%. Three painted requests in each case. The DEVLOG above says "with the production service worker"; the script blocks the worker, so the numbers are for the plain network path.
 - Reading at game size: see the six captures in `docs/art/theme/verifier/`. The Hound is the one enemy that stayed blue, and it now shares the Guards' hue; the Redcoat's grey helmet beside the Swordsman's pale blue one is the closest pair inside a melee.
+
+**Fixes after verification.** The Revenue Hound has a grey-brown coat, pale
+muzzle and wider red collar. At phone 1× it reads as a runner beside the
+Switchback Guards. On Riverbend the collar and back distinguish it from the
+squad, though the Archer hides its head and legs at full overlap. The orange
+Assessor has horns beside his wig, a short maroon coat, a ledger and a square,
+tusked jaw. The Toll Troll also has tusks. The refreshed contact sheet, six map
+views and two boss crops show the shipped art. Reducing shared WebP quality
+from 95 to 94 kept the atlases at 376,434 and 925,220 bytes (+6.5% and +2.6%
+over main). Across three cold Meadow runs per build with the worker blocked,
+median 1× Play time rose from 2,278 to 2,374 ms (+4.2%), with three art requests.

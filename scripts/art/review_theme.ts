@@ -15,7 +15,7 @@ try {
     const phone = layout === 'phone';
     const page = await browser.newPage({
       viewport: phone ? { width: 390, height: 844 } : { width: 960, height: 580 },
-      deviceScaleFactor: phone ? 3 : 1, isMobile: phone, hasTouch: phone,
+      deviceScaleFactor: 1, isMobile: phone, hasTouch: phone,
     });
     for (const map of ['meadow', 'switchback', 'riverbend'] as const) {
       await page.goto(`http://localhost:${process.env.PW_PORT}/?test=1&look=painted`);
@@ -50,7 +50,7 @@ try {
         // Space the cast along the road with two congested encounters at the blockers.
         const cast = [
           ['goblin', .08], ['wolf', .13], ['shieldbearer', .19], ['harpy', .24],
-          ['troll', .30], ['boss', .41], ['wolf', .47], ['shieldbearer', .51],
+          ['troll', .30], ['boss', .41], ['wolf', .55], ['shieldbearer', .48],
           ['goblin', .60], ['harpy', .64], ['grumblemaw', .74],
           ['goblin', .82], ['troll', .83], ['shieldbearer', .85], ['wolf', .86],
         ] as const;
@@ -58,6 +58,7 @@ try {
           id: state.nextEnemyId++, type, hp: i === 1 ? 650 : 950, maxHp: 950,
           distance: fraction * total, slow: 0, slowTicksLeft: 0,
         }));
+        const [, squadHound] = state.enemies.filter(e => e.type === 'wolf');
         for (const [special, fraction] of [['guards', .55], ['barricade', .86]] as const) {
           state.specialCharges = 1;
           state.specialRechargeTicks = 0;
@@ -66,7 +67,10 @@ try {
           if (!result.ok) throw Error(`${map} ${special}: ${result.reason}`);
           a.step(1);
         }
-        // The Barricade stops ground walkers only once they cross it.
+        // Stage one Hound meeting the squad and four walkers meeting the Barricade.
+        const guards = state.blockers.filter(b => b.kind === 'guard');
+        const guardDistance = Math.min(...guards.map(g => g.distance));
+        squadHound.distance = guardDistance - .1;
         const barrier = state.blockers.find(b => b.kind === 'barricade')!;
         for (const enemy of state.enemies.slice(-4)) enemy.distance = barrier.distance - .1;
         Object.assign(state.enemies.at(-2)!, { specialSlow: .4, specialSlowTicksLeft: 120 });
@@ -75,7 +79,8 @@ try {
         const snapshot = a.painted();
         const held = state.enemies.filter(e => e.type !== 'harpy' && e.distance === barrier.distance);
         if (held.length !== 4) throw Error(`Expected four held walkers on ${map}`);
-        if (!snapshot.active || state.map.id !== map || new Set(state.enemies.map(e => e.type)).size !== 7
+        if (squadHound.distance !== guardDistance) throw Error(`Hound missed the squad on ${map}`);
+        if (!snapshot.active || snapshot.density !== 1 || state.map.id !== map || new Set(state.enemies.map(e => e.type)).size !== 7
             || a.ui().special.guards.length !== 4) throw Error(`Incomplete review scene: ${map}`);
       }, map);
       await page.evaluate(async () => {
@@ -83,20 +88,20 @@ try {
         await new Promise<void>(ready => requestAnimationFrame(() => requestAnimationFrame(() => ready())));
       });
       await page.screenshot({ path: `${output}/${map}-${layout}.jpg`, quality: 89, scale: 'css' });
-      if (map === 'meadow' && !phone) {
-        for (const boss of ['boss', 'grumblemaw'] as const) {
-          const rect = await page.evaluate(type => {
-            const a = window.__tarpit as TarpitTestApi;
-            const key = type === 'boss' ? 'grumblefoot' : 'grumblemaw';
-            const sprite = a.painted().sprites.find(s => s.visible && s.key.includes(':' + key + ':'))!;
-            return a.canvasToPage(sprite.x, sprite.y);
-          }, boss);
-          const width = 320, height = 210;
-          const x = Math.max(0, Math.min(960 - width, Math.round(rect.x - width/2)));
-          const y = Math.max(0, Math.min(580 - height, Math.round(rect.y - height * .65)));
-          await page.screenshot({ path: `${output}/${boss === 'boss' ? 'assessor' : 'king'}.jpg`,
-            clip: { x, y, width, height }, quality: 93, scale: 'css' });
-        }
+      // Each boss faces the camera at this bend on its respective map.
+      if (!phone && (map === 'meadow' || map === 'riverbend')) {
+        const boss = map === 'meadow' ? 'boss' : 'grumblemaw';
+        const rect = await page.evaluate(type => {
+          const a = window.__tarpit as TarpitTestApi;
+          const key = type === 'boss' ? 'grumblefoot' : 'grumblemaw';
+          const sprite = a.painted().sprites.find(s => s.visible && s.key.includes(':' + key + ':'))!;
+          return a.canvasToPage(sprite.x, sprite.y);
+        }, boss);
+        const width = 320, height = 210;
+        const x = Math.max(0, Math.min(960 - width, Math.round(rect.x - width/2)));
+        const y = Math.max(0, Math.min(580 - height, Math.round(rect.y - height * .65)));
+        await page.screenshot({ path: `${output}/${boss === 'boss' ? 'assessor' : 'king'}.jpg`,
+          clip: { x, y, width, height }, quality: 93, scale: 'css' });
       }
       assert.equal(await page.evaluate(() => window.__tarpit!.scene!()), 'game');
     }
