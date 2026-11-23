@@ -141,6 +141,7 @@ export interface GameStartData {
   /** The map (milestone 27); Meadow when left out. */
   map?: MapId;
   painted?: PaintedAssets;
+  paintedFallback?: boolean;
 }
 
 export class TitleScene extends Phaser.Scene {
@@ -154,6 +155,7 @@ export class TitleScene extends Phaser.Scene {
   private lookButtons = new Map<Look, Button>();
   private prompt: Phaser.GameObjects.Text | null = null;
   private progress: number | null = null;
+  private paintedLoad?: AbortController;
   private playButton: Button | null = null;
   /** Milestone 33: the mute button in the top right corner. */
   private muteButton: MuteButton | null = null;
@@ -188,6 +190,12 @@ export class TitleScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(COLORS.titleBg);
     this.restartPending = false;
     this.starting = this.progress !== null;
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      if (this.restartPending) return;
+      this.paintedLoad?.abort();
+      this.paintedLoad = undefined;
+      this.progress = null;
+    });
     this.ready = false;
     this.events.once(Phaser.Scenes.Events.RENDER, () => {
       this.ready = true;
@@ -294,6 +302,7 @@ export class TitleScene extends Phaser.Scene {
     if (this.starting) return;
     this.selectedMap = map;
     this.refreshPicks();
+    this.refreshLook();
   }
 
   private refreshPicks(): void {
@@ -311,11 +320,14 @@ export class TitleScene extends Phaser.Scene {
   private refreshLook(): void {
     const look = this.lookStore.get();
     for (const [option, button] of this.lookButtons) button.setPicked(option === look);
-    this.prompt?.setText(look === 'painted' ? TITLE_TEXT.paintedPrompt : TITLE_TEXT.prompt);
+    this.prompt?.setText(look === 'painted' && this.selectedMap !== 'meadow' ? TITLE_TEXT.paintedPrompt : TITLE_TEXT.prompt);
   }
 
   private refreshLoading(): void {
     const progress = this.progress;
+    const portrait = currentLayout().kind === 'portrait';
+    const playFont = portrait ? PORTRAIT_TITLE.playFont : LANDSCAPE_TITLE.playFont;
+    this.playButton?.setFontSize(progress === null ? playFont : portrait ? '17px' : '13px');
     this.playButton?.set(progress === null ? TITLE_TEXT.play : paintedLoadingText(progress), progress === null);
   }
 
@@ -343,12 +355,15 @@ export class TitleScene extends Phaser.Scene {
     this.selectedMap = map;
     this.selected = level;
     this.refreshPicks();
+    this.refreshLook();
     this.starting = true;
     const data: GameStartData = { difficulty: level, map };
     if (map !== 'meadow' || this.lookStore.get() !== 'painted') {
       this.scene.start('game', data);
       return;
     }
+    const request = new AbortController();
+    this.paintedLoad = request;
     this.progress = 0;
     this.refreshLoading();
     const canvasScale = this.game.canvas.getBoundingClientRect().width / this.scale.gameSize.width;
@@ -356,9 +371,11 @@ export class TitleScene extends Phaser.Scene {
     void loadPainted(this.textures, density, (progress) => {
       this.progress = progress;
       this.refreshLoading();
-    }).then((painted) => {
+    }, request.signal).then((painted) => {
+      if (this.paintedLoad !== request) return;
+      this.paintedLoad = undefined;
       this.progress = null;
-      this.scene.start('game', { ...data, painted });
+      this.scene.start('game', { ...data, painted, paintedFallback: !painted });
     });
   }
 

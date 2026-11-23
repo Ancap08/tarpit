@@ -45,14 +45,18 @@ async function getAsset(url: string, signal: AbortSignal): Promise<Response> {
   return response;
 }
 
-async function decodeImage(response: Response): Promise<HTMLImageElement> {
+async function decodeImage(response: Response, signal: AbortSignal): Promise<HTMLImageElement> {
   const url = URL.createObjectURL(await response.blob());
+  const image = new Image();
+  const cancel = () => image.removeAttribute('src');
   try {
-    const image = new Image();
+    signal.throwIfAborted();
+    signal.addEventListener('abort', cancel, { once: true });
     image.src = url;
     await image.decode();
     return image;
   } finally {
+    signal.removeEventListener('abort', cancel);
     URL.revokeObjectURL(url);
   }
 }
@@ -100,31 +104,41 @@ function validateSheet(
 // falls back as a whole and a later play can retry without partial textures.
 export async function loadPainted(
   textures: Phaser.Textures.TextureManager, density: PaintedDensity, onProgress: (progress: number) => void,
+  cancellation: AbortSignal,
 ): Promise<PaintedAssets | undefined> {
+  if (cancellation.aborted) return undefined;
   const existing = loaded.get(textures);
   const cached = existing?.get(density);
   if (cached) return cached;
 
-  // An uncontrolled fetch during first install would miss the offline cache.
-  if (!(await waitForWorkerControl(LOAD_TIMEOUT_MS))) return undefined;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), LOAD_TIMEOUT_MS);
+  const signal = controller.signal;
+  const cancel = () => controller.abort();
+  cancellation.addEventListener('abort', cancel, { once: true });
+  const timer = setTimeout(cancel, LOAD_TIMEOUT_MS);
+  const aborted = new Promise<never>((_, reject) => {
+    signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+  });
   const registered: string[] = [];
   let complete = 0;
   const markComplete = <T>(value: T): T => {
-    if (!controller.signal.aborted) onProgress(++complete / (2 * SHEET_NAMES.length));
+    if (!signal.aborted) onProgress(++complete / (2 * SHEET_NAMES.length));
     return value;
   };
   try {
-    const pairs = await Promise.all(SHEET_NAMES.map(async (name) => {
+    // During first install, wait for the worker so downloads can populate its offline cache.
+    await Promise.race([waitForWorkerControl(), aborted]);
+    signal.throwIfAborted();
+    const pairs = await Promise.race([aborted, Promise.all(SHEET_NAMES.map(async (name) => {
       const path = `../../../assets/art-painted/${name}-${density}x`;
       const [image, metadata] = await Promise.all([
-        getAsset(ART[`${path}.png`], controller.signal).then(decodeImage).then(markComplete),
-        getAsset(ART[`${path}.json`], controller.signal).then((r) => r.json()).then(markComplete),
+        getAsset(ART[`${path}.png`], signal).then((r) => decodeImage(r, signal)).then(markComplete),
+        getAsset(ART[`${path}.json`], signal).then((r) => r.json()).then(markComplete),
       ]);
       const sheet = validateSheet(name, `painted:${name}:${density}x`, metadata, image);
       return { name, sheet, image };
-    }));
+    }))]);
+    signal.throwIfAborted();
     for (const { sheet, image } of pairs) {
       const texture = textures.addImage(sheet.key, image);
       if (!texture) throw new Error(`Could not register ${sheet.key}`);
@@ -147,5 +161,6 @@ export async function loadPainted(
     return undefined;
   } finally {
     clearTimeout(timer);
+    cancellation.removeEventListener('abort', cancel);
   }
 }

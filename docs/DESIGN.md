@@ -891,9 +891,11 @@ their next game on Meadow.
   failed painted asset load falls back to Classic for the run. Atlas
   dimensions and anchors are in texture pixels and are divided by
   density for drawing in game coordinates. The service worker caches
-  painted files on their first successful fetch. On first install, loading
-  allows up to 12 seconds for worker control, then up to 12 seconds for
-  the requested files. A timeout starts Classic.
+  painted files on their first successful fetch. Play shows “Loading
+  painted art” while waiting for the worker, then the percentage of files
+  loaded. Worker startup and files share one 12-second limit. A failure or
+  timeout starts Classic and shows a banner until the player starts wave 1.
+  The Meadow-only note appears when the player chooses Painted on another map.
 - Towers use 16 clockwise headings from north. Enemies walk in four
   directions, advancing one of four poses per 6 game pixels walked. Test
   mode holds the first pose for each direction. The ground turns with the
@@ -901,8 +903,9 @@ their next game on Meadow.
   quarter turn. The ground anchor sets both placement and draw order, so
   a piece nearer the bottom of the screen covers one behind it. Flyers
   draw above walkers.
-- Level 2 and level 3 show the existing gold upgrade ring over the painted
-  base. Level 3 also shows the path's diamond or paired dots. Placed towers
+- Painted omits the name label and its “+” on placed towers. A gold ring
+  over the base marks levels 2 and 3. At level 3, a gold diamond marks
+  path A and paired cyan dots mark path B. Placed towers
   turn to aim. The six build buttons and the placement ghost show the
   same southeast bearing (atlas frame 6) in both layouts. Build images fit
   within 32 × 22 px in landscape and 46 × 38 px in portrait. Landscape

@@ -71,7 +71,7 @@ for (const map of ['switchback', 'riverbend'] as const) {
   });
 }
 
-test('a failed Painted asset load starts a playable Classic Meadow', async ({ page }) => {
+test('a failed Painted load starts a playable Classic Meadow and can retry on the same visit', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   let failed = false;
@@ -89,8 +89,22 @@ test('a failed Painted asset load starts a playable Classic Meadow', async ({ pa
   const registered = await page.evaluate(() => window.__tarpit!.game.textures.getTextureKeys());
   expect(registered.filter((key) => key.startsWith('painted:'))).toEqual([]);
   expect(errors).toEqual([]);
+  const gameTexts = () => page.evaluate(() => window.__tarpit!.game.scene.getScene('game').children.list
+    .flatMap((child) => 'text' in child ? [child.text] : []));
+  const notice = 'Painted art could not load. Playing Classic.';
+  expect(await gameTexts()).toContain(notice);
   await click(page, 'startWave');
   expect((await state(page)).wave).toBe(1);
+  expect(await gameTexts()).not.toContain(notice);
+
+  await api(page, (a) => a.step(6000));
+  expect(await api(page, (a) => a.endScreen())).toBe('lost');
+  await click(page, 'menu');
+  await waitForTitle(page);
+  expect(await titleLook(page)).toBe('painted');
+  await play(page);
+  expect(await painted(page)).toMatchObject({ active: true });
+  expect(await gameTexts()).not.toContain(notice);
 });
 
 test('play wave one with painted scenery, upgrading, selling and a Powder Keg kill', async ({ page }) => {

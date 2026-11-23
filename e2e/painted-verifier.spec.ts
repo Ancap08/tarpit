@@ -113,6 +113,7 @@ for (const map of ['switchback', 'riverbend'] as const) {
     page.on('request', (r) => { if (r.url().includes('/assets/painted/')) requests.push(r.url()); });
     await page.goto('/?look=painted');
     await waitForTitle(page);
+    expect((await titleTexts(page)).some((t) => /Meadow only/i.test(t))).toBe(false);
     await clickRect(page, `title:map:${map}`);
     const texts = await titleTexts(page);
     expect(texts.some((t) => /Meadow only/i.test(t)), texts.join(' | ')).toBe(true);
@@ -203,19 +204,29 @@ test.describe('painted file failures (service worker blocked so page.route sees 
     expect(problems).toEqual([]);
   });
 
-  test('D6 a hung sheet (never answers) starts Classic after the 12 s limit, and Play shows progress meanwhile', async ({ page }) => {
+  test('D6 worker and a hung sheet share a 12 s limit, with Play progress as files arrive', async ({ page }) => {
     test.setTimeout(60_000);
+    await page.addInitScript(() => {
+      ServiceWorkerContainer.prototype.register = async () => {
+        await new Promise<void>((resolve) =>
+          window.addEventListener('release-worker-registration', () => resolve(), { once: true }));
+        throw new Error('Service worker blocked for this test');
+      };
+    });
     await page.route('**/assets/painted/troll-1x-*.png', () => undefined);
     await page.goto('/?look=painted');
     await waitForTitle(page);
     const t0 = Date.now();
     await clickRect(page, 'title:play');
-    await page.waitForFunction(() => (window.__tarpit!.game.scene.getScene('title') as TitleScene).uiState().loading !== null);
-    await page.waitForTimeout(2000);
-    const loadingLabel = await titleTexts(page);
-    console.log('D6 hung: title texts while loading:', JSON.stringify(loadingLabel.filter((t) => /Load|Play/.test(t))));
+    await expect.poll(() => titleState(page).then((s) => s.loading)).toBe(0);
+    expect((await titleTexts(page)).filter((t) => t.startsWith('Loading'))).toEqual(['Loading painted art']);
+    await page.waitForTimeout(4000);
+    await page.evaluate(() => window.dispatchEvent(new Event('release-worker-registration')));
+    await expect.poll(async () => (await titleState(page)).loading ?? 0).toBeGreaterThan(0);
+    expect((await titleTexts(page)).some((t) => /^Loading painted art [1-9]\d?%$/.test(t))).toBe(true);
     await waitForGame(page);
-    console.log(`D6 hung: Classic after ${Date.now() - t0} ms`);
+    expect(Date.now() - t0).toBeGreaterThanOrEqual(11_500);
+    expect(Date.now() - t0).toBeLessThan(15_000);
     expect((await livePainted(page)).active).toBe(false);
   });
 });

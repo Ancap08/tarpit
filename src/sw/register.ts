@@ -10,17 +10,8 @@ const swOn = typeof __TARPIT_SW__ === 'undefined' ? true : __TARPIT_SW__;
 let firstControl: Promise<void> | undefined;
 
 /** Give the first worker time to claim a Painted visit so it can cache the art. */
-export async function waitForWorkerControl(timeoutMs: number): Promise<boolean> {
-  if (!firstControl || navigator.serviceWorker.controller) return true;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<boolean>((resolve) => {
-    timer = setTimeout(() => resolve(false), timeoutMs);
-  });
-  try {
-    return await Promise.race([firstControl.then(() => true), timeout]);
-  } finally {
-    clearTimeout(timer);
-  }
+export function waitForWorkerControl(): Promise<void> {
+  return firstControl ?? Promise.resolve();
 }
 
 /**
