@@ -13,3 +13,4 @@ export * from './towers';
 export * from './combat';
 export * from './actions';
 export * from './specials';
+export * from './blockers';

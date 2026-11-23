@@ -8493,3 +8493,172 @@ back as a real check. The wave 200 hp-overflow informational test was removed.
 The designSpec guard catches the act-2 rate, any path row and the endless hp
 line; it does not guard target wording (P2 edit passed) or the Known weaknesses
 list.
+
+## 2026-11-23: milestone 39, the Barricade
+
+Wave 3 unlocks the fourth special on the existing charge. Aim near the
+trail to preview the wooden wall across it. Walkers stop and attack,
+crowds pile up in splash range, and Harpies pass overhead. The wall hp
+bar, placement and impact sounds, crash, hold-to-aim magnifier and
+once-per-visit unlock hint work in the landscape and portrait layouts.
+
+The new movement step accepts any number of blockers. It finds the first
+live blocker each walker would cross and totals all attacks before
+removing broken blockers. Barricade placement supplies one blocker and
+replaces the old wall. Troops and a castle wall can use the same movement
+and contact rules.
+
+### Numbers and balance
+
+All proposed gameplay numbers were retained. The new wall has 400 hp,
+snaps from up to 40 px away, and needs 64 px of trail on each side.
+Blocker damage per second is Goblin 6, Wolf 8, Shieldbearer 12, Troll 45,
+Grumblefoot 300, Grumblemaw 400 and Harpy 0. It uses the existing 1,200
+tick recharge. Quick Hands was already 684 ticks in code. Corrected the
+old 804-tick figure in the design prose.
+
+K1 compared the complete simulator output (28,501 bytes without the npm
+banner, 28,614 with it) with main at
+`d326cf1`. Both files have SHA-256
+`9655a1473235fddab8322b17f35a2a635ebeac37358db6d54354d1b16c8bb50d`.
+The report also checks its own output before the npm banner is included.
+The fixed placement points below sit in the combo's Mortar and Fire Pot
+coverage. All nine variant replays accepted every action.
+
+| Map and point | Easy lives, combo → wall | Normal | Hard |
+|---|---:|---:|---:|
+| Meadow (420,312) | 39 → 39 | 14 → 17 | 3 → 3 |
+| Switchback (368,288) | 39 → 39 | 11 → 14 | loss on wave 19, 0 → win with 1 |
+| Riverbend (322,96) | 39 → 39 | 14 → 19 | 1 → 5 |
+
+- **K2 and K3.** Normal gains 3, 3 and 5 lives. The largest gain at any
+  difficulty is 5. Without towers, every ordinary game ends before the
+  unlock. A separate no-tower game starting wave 3 at full lives placed
+  walls, took real hits and lost on wave 4 on Easy and wave 3 on Normal
+  and Hard on every map.
+- **K4.** Grumblefoot and Grumblemaw alone broke fresh walls on contact
+  ticks 80 and 60. Across all 243 map, difficulty and legal reward
+  combinations at the selected points, 200 campaigns killed Grumblemaw
+  and 43 ended before his wave. There is no ordinary campaign exit to
+  time. The paired test starts at real contact, removes just that wall in
+  one branch, replays the same casts, and preserves both bosses at 1 hp
+  on each otherwise lethal hit. Meadow took 3,901 ticks to exit without
+  the wall and 3,960 with it. Riverbend took 4,897 and 4,957. The
+  wall-retaining runs reproduced the ordinary first lethal ticks of
+  5,229 and 6,767. The measured delays are 59 and 60 ticks under this
+  survival condition.
+- **K5.** Ten Goblins together deal one hp per tick. The 400th tick
+  breaks the wall, and all ten advance on tick 401.
+- **K6.** A Harpy traversed the 960 px test trail in 640 ticks in both runs.
+- **K7.** One placement consumed the charge for 1,200 ticks, or 684 with
+  Quick Hands. Even a legal early call between two placement attempts in
+  the same tick preserved the refill for the next tick.
+
+### Screen evidence
+
+The three visual cases are in the existing desktop and phone snapshot
+specs used by CI. The review GIF runs the live renderer with a staged
+group on Meadow. A Cannon hits the pile, an early wave call refills the
+shared charge, and the Powder Keg hits three enemies before the wall
+breaks. Seven enemies were stopped at once. On the first review the wall
+hp bar overlapped attacking walkers and their own bars did not follow
+their displayed positions. The wall bar now clears the approach and
+the walkers' hp bars and status marks follow their bodies. Individual
+walkers still overlap in a dense pile, particularly on the phone.
+
+### Verifier notes
+
+Independent check by Claude Sonnet of branch `m39-barricade` at `da2a91c`.
+
+- **K1 holds.** `npm run sim` on a clean worktree of `origin/main` (`d326cf1`)
+  and on the branch gives byte-identical reports (28,501 bytes without the npm
+  banner; the 28,614 in the section above counts the banner). A stronger check
+  replayed `comboBuild` on all nine map and difficulty pairs on both trees and
+  hashed the whole state every 7 ticks, every tick's events, and the final
+  state, leaving out only the new fields (`blocker`, `lastBarricadeTick`): all
+  nine equal. No wall placed means no change.
+- **The rule checks out by hand.** `src/sim/barricade-verifier.test.ts` (new,
+  27 tests) works the numbers out independently: exact stop at the point at
+  normal and slowed speed, clamped wolf, staggered arrivals, break ticks (lone
+  Troll 534, ten Goblins 400, Troll with two Goblins and a Shieldbearer 348,
+  Grumblefoot 80, Grumblemaw 60, lone Goblin 4000, lone Wolf 3000), release on
+  the tick after the break, an enemy exactly on the point held and one past it
+  free, flyers, timers, bounty, targeting, replacement, a wall carried across
+  wave clear, a win and Keep going (documented in DESIGN.md), and a brute-force
+  nearest-point oracle over a 6 px grid of aims on all three maps (verdict,
+  point, arc distance and angle).
+- **Finding, K3.** The three fixed points are conservative. On Meadow a wall
+  at trail distance 1360 (about 224 px before the exit) takes Hard from 3 to 10
+  lives (+7) and Normal from 14 to 20 (+6). DESIGN.md K3 says at most six on
+  every map and difficulty. A sweep of 48 to 128 px steps on the other maps
+  found at most +5 on Normal; Switchback Hard flips a loss on wave 19 into a
+  win when the wall is anywhere from 704 to 960 or 1344 to 1472. Recorded as
+  `it.fails` in the verifier test. Either state K3 for the fixed points only,
+  or move a number (hp 400 to 300, or a larger end exclusion).
+- **Finding, a crowd is a blob.** Fifteen walkers held at the wall (six
+  Goblins, three Wolves, three Shieldbearers, two Trolls, one Harpy overhead)
+  draw as three or four overlapping sprites; the count and the types cannot be
+  read. The code fans a crowd over 9 slots (three columns, three ranks, 15 px
+  and 13 px apart), so the tenth walker lands on the first. A drawing-only fix:
+  more ranks and wider spacing, or a small count badge beside the wall bar.
+- **Held for ever.** A lone Goblin, Wolf or Shieldbearer is held indefinitely
+  by placing a fresh wall on every recharge (0.1, 0.133 and 0.2 hp per tick
+  against 1200 ticks). A lone Troll breaks it in 534 ticks. Nothing misbehaves:
+  the wave does not clear and call early still works. No gold or lives gain.
+- **Reuse.** The movement rule takes a list of blockers, so several at once
+  need only a list in `GameState`. A blocker at the exit would not hold anyone:
+  the walker is clamped to the exit distance and `removeExitedEnemies` counts
+  `distance >= exit` as out. Damage back and healing need new steps after the
+  attack pass, which does not keep who touched which blocker.
+- **Checks.** Lint, assets, typecheck, build, size and `npm run sim` pass.
+  `npm test`: 92 files, 1841 passed and 1 expected fail (the K3 finding above),
+  about 41 to 48 s. Browser suite (chromium, tablet, phone; 689 tests with the
+  two new crowd specs, which print the held crowd and write frames when
+  `M39_FRAMES` is set) ran twice: 681 passed and 8 skipped both times, the
+  skips being the existing environment-gated frame and perf cases. No new skip,
+  fixme or miss pin from the branch.
+
+### Follow-up
+
+Lowered Barricade hp from 400 to 324 and kept the 64 px clearance at both
+ends. Ten Goblins now break it on contact tick 324. Grumblefoot breaks it
+on tick 65 and Grumblemaw on tick 49. At the original Meadow Hard witness
+(trail distance 1360), replacing a broken wall and spending spare charges
+on attacks now finishes with 7 lives against comboBuild's 3 (previously 10).
+
+For K3, each campaign spends every ready charge from wave 3 on a wall at
+one trail point, including when the wall still stands. The 48 px grid
+starts at the first legal point, 64 px from spawn. The table gives the
+first distance with the highest ending lives. A permanent hold has no
+ending lives. The sweep checks for an identical game state on consecutive
+refreshes after the last spawn before reporting one.
+
+| Map | Difficulty | Points | Before: trail px / gain | After: trail px / gain | Permanent holds before → after |
+|---|---|---:|---:|---:|---:|
+| Meadow | Normal | 31 | 352 / +6 | 448 / +4 | 3 → 3 |
+| Meadow | Hard | 31 | 64 / −3 | 64 / −3 | 0 → 0 |
+| Switchback | Normal | 34 | 448 / +2 | 448 / +3 | 5 → 4 |
+| Switchback | Hard | 34 | 256 / 0 | 208 / 0 | 5 → 4 |
+| Riverbend | Normal | 30 | 448 / +5 | 400 / 0 | 4 → 3 |
+| Riverbend | Hard | 30 | 64 / −1 | 64 / −1 | 0 → 0 |
+
+Both recharge sweeps met the six-life limit and had zero Hard loss-to-win
+flips. At the three fixed K2 points, comboBarricade still spends spare
+charges on attacks. Its Normal results are Meadow 14 → 16, Switchback
+11 → 14 and Riverbend 14 → 20. That mixed strategy can beat the recharge
+sweep elsewhere. At 324 hp it wins Switchback Hard with 8 lives at
+distance 1168 and Meadow Hard with 10 at distance 1408 (+7).
+
+Held walkers now form two staggered files that follow the trail around
+corners. Trolls and bosses take a full rank, wounded walkers carry their
+own hp bars, and the wall shows the count from four walkers onward.
+The desktop and phone specs read actual sprite centres for each crowd
+size from 1 through 20. Both review frames show 15 held walkers.
+
+**Review fix.** The rear ranks could appear about 310 px from the wall, so
+a Powder Keg aimed at a visible Goblin could spend its charge and miss.
+Held walkers now share two short ranks, with every sprite centre within
+36 px of the wall. The count beside the hp bar gives the total. Desktop
+and phone specs check the count and the cap, allowing overlap after six
+distinct positions. A mouse test aims at the farthest of fifteen held
+Goblins and checks that the keg hits all fifteen.

@@ -334,6 +334,37 @@ idea in its simplest form: an upgraded tower looks different.
 - Rewards, specials, waves, bosses and maps do not change shape; their
   numbers may move in the balance pass.
 
+## Milestone 39: the Barricade, and the rule it needs
+
+Kyle (2026-11-23) wants a wall special "that holds them until it's
+destroyed", later a short burst of troops, and one day a castle wall as a
+last defence. All three need one rule the game does not have: something
+on the trail with hp that enemies stop at and hit. This milestone adds
+that rule in its smallest form and the Barricade as its first use. Troops
+and the castle come later on the same rule.
+
+- **The rule.** A blocker stands at a point on the trail and has hp.
+  Walking enemies that reach it stop and attack it; each enemy type has an
+  attack strength. When its hp is gone it breaks and they walk on. Flyers
+  pass over. Stopped enemies can still be shot, slowed and burned, so a
+  blocker bunches a crowd for splash. Bosses break blockers quickly.
+- **The Barricade** is a fourth special on the shared charge, unlocked at
+  wave 3. The player aims it at the trail; it snaps onto the trail and
+  stands there until destroyed. One at a time: a new one replaces the
+  old. It does no damage.
+- **On screen:** a wooden barricade across the trail with its own hp bar,
+  enemies visibly hitting it, a crash when it breaks, sounds for placing
+  and breaking, in both layouts. In the Painted look it is drawn in code
+  until painted art exists.
+- **Balance:** the reference builds do not use the Barricade, so the
+  matrix does not move. Separate checks: a build that uses it at a choke
+  beside splash towers does better than the same build without it, but
+  not overwhelmingly; walls alone do not win; bosses are not stalled for
+  long.
+- Simple and slim: one new idea (a blocker), one number per enemy (its
+  attack), one new special. No pathfinding, no enemy collision, no new
+  tower.
+
 ## Later milestones (order agreed, detail to come)
 
 | # | Milestone | Idea |

@@ -124,8 +124,8 @@ test('Tar Barrel on wave 4: the popup, a zone that slows while it lasts and is g
     a.step(420);
   });
   await click(page, 'special');
-  expect((await ui(page)).special).toMatchObject({ menuOpen: true, aiming: null, unlocked: ['keg', 'tarBarrel'] });
-  expect(Object.keys(await rects(page)).filter((k) => k.startsWith('special:'))).toEqual(['special:keg', 'special:tarBarrel']);
+  expect((await ui(page)).special).toMatchObject({ menuOpen: true, aiming: null, unlocked: ['keg', 'barricade', 'tarBarrel'] });
+  expect(Object.keys(await rects(page)).filter((k) => k.startsWith('special:'))).toEqual(['special:keg', 'special:barricade', 'special:tarBarrel']);
   await click(page, 'special:tarBarrel');
   expect((await ui(page)).special).toMatchObject({ menuOpen: false, aiming: 'tarBarrel', banner: { main: 'Click the trail to drop the Tar Barrel' } });
 
@@ -155,7 +155,7 @@ test('Fire Arrows on wave 7: a Harpy in the circle burns at 26/s and the burning
   const harpy = (await state(page)).enemies.find((e) => e.type === 'harpy');
   expect(harpy).toBeTruthy();
   await click(page, 'special');
-  expect(Object.keys(await rects(page)).filter((k) => k.startsWith('special:'))).toEqual(['special:keg', 'special:tarBarrel', 'special:fireArrows']);
+  expect(Object.keys(await rects(page)).filter((k) => k.startsWith('special:'))).toEqual(['special:keg', 'special:barricade', 'special:tarBarrel', 'special:fireArrows']);
   await click(page, 'special:fireArrows');
   const at = round(pos(harpy!));
   await page.mouse.move(at.x, at.y);

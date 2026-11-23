@@ -1,4 +1,4 @@
-import type { MapDef, Point, Rect } from './types';
+import type { MapDef, Point, Rect, TrailPoint } from './types';
 
 /** Every map is 960 x 480 px (a 30 x 15 grid of 32 px cells). */
 export const MAP_WIDTH = 960;
@@ -130,4 +130,29 @@ export function positionAlongPath(map: MapDef, distance: number): Point {
   }
   const end = path[path.length - 1];
   return { x: end.x, y: end.y };
+}
+
+/** Nearest point along a polyline, preferring the first segment on a tie. */
+export function projectOntoTrail(map: MapDef, point: Point): TrailPoint {
+  let best: TrailPoint = { ...map.path[0], distance: 0, angle: 0 };
+  let bestGap = Infinity;
+  let distance = 0;
+  for (let i = 1; i < map.path.length; i++) {
+    const a = map.path[i - 1];
+    const b = map.path[i];
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const length = segmentLength(a, b);
+    if (length === 0) continue;
+    const t = Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / (dx * dx + dy * dy)));
+    const x = a.x + t * dx;
+    const y = a.y + t * dy;
+    const gap = (point.x - x) ** 2 + (point.y - y) ** 2;
+    if (gap < bestGap) {
+      best = { x, y, distance: distance + t * length, angle: Math.atan2(dy, dx) };
+      bestGap = gap;
+    }
+    distance += length;
+  }
+  return best;
 }

@@ -1,10 +1,12 @@
 import type Phaser from 'phaser';
-import { ACT_ONE_LAST_WAVE, type GameEvent, type MapDef } from '../../sim';
+import { ACT_ONE_LAST_WAVE, SPECIAL_DEFS, type GameEvent, type MapDef } from '../../sim';
 import { sound } from '../audio/engine';
 import { fontPx, type Layout } from '../layout';
-import { ACT_TWO_TEXT, BOON_NAMES, BOSS_BANNER_SUB, GRUMBLEMAW_SUB, ENEMY_NAMES, PACK_CALL_TEXT, REWARD_PICKED_TEXT, waveStartBanner, waveClearBanner, bonusGoldText } from '../names';
+import { ACT_TWO_TEXT, BARRICADE_UNLOCKED, BARRICADE_UNLOCK_HINT, BOON_NAMES, BOSS_BANNER_SUB, GRUMBLEMAW_SUB, ENEMY_NAMES, PACK_CALL_TEXT, REWARD_PICKED_TEXT, waveStartBanner, waveClearBanner, bonusGoldText } from '../names';
 import { COLORS, FONT, TEXT } from '../palette';
 import { BannerQueue } from './fxMath';
+
+let showedBarricadeUnlock = false;
 
 /** The same single banner queue and cave signal in play and frozen browser frames. */
 export class Moments {
@@ -50,6 +52,9 @@ export class Moments {
           if (e.wave === ACT_ONE_LAST_WAVE + 1) {
             this.banners.push({ text: ACT_TWO_TEXT, sub: waveStartBanner(e.wave), big: false }, now);
             sound.play('act2');
+          } else if (e.wave === SPECIAL_DEFS.barricade.unlockWave && !showedBarricadeUnlock) {
+            showedBarricadeUnlock = true;
+            this.banners.push({ text: BARRICADE_UNLOCKED, sub: BARRICADE_UNLOCK_HINT, big: false }, now);
           } else if (live) this.banners.push({ text: waveStartBanner(e.wave), sub: '', big: false }, now);
           break;
         case 'waveClear':

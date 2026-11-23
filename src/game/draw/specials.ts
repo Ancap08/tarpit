@@ -20,7 +20,7 @@ import { specialResultText } from '../names';
 import { COLORS, FONT, TEXT } from '../palette';
 
 /** How long each part lasts, in ms. */
-export const BLAST_MS: Readonly<Record<SpecialType, number>> = { keg: 400, tarBarrel: 300, fireArrows: 400 };
+export const BLAST_MS: Readonly<Record<Exclude<SpecialType, 'barricade'>, number>> = { keg: 400, tarBarrel: 300, fireArrows: 400 };
 export const SCORCH_MS = 2000;
 export const LABEL_MS = 1500;
 /** Ages are sums of 1000/60 in test mode: compare with this slack so 90 ticks is exactly 1.5 s. */
@@ -40,7 +40,7 @@ const SHEEN_ARCS = 9;
 const BLOBS = 5;
 
 interface Blast {
-  type: SpecialType;
+  type: Exclude<SpecialType, 'barricade'>;
   x: number;
   y: number;
   radius: number;
@@ -88,23 +88,31 @@ export class SpecialEffects {
 
   /** A special landed: its `special` event. */
   add(e: Extract<GameEvent, { kind: 'special' }>): void {
+    if (e.type === 'barricade') return;
     this.blasts.push({ type: e.type, x: e.x, y: e.y, radius: e.radius, ageMs: 0 });
     if (e.type === 'keg') this.scorches.push({ x: e.x, y: e.y, radius: e.radius * 0.7, ageMs: 0 });
-    // The label is upright text on the screen (milestone 32b): placed through the layout, rising up the screen.
-    const at = this.layout.toScreen({ x: e.x, y: e.y });
+    this.addLabel(e, specialResultText(e.hits), e.hits > 0);
+  }
+
+  /** A result stays upright and inside the map, including refusals near its edges. */
+  addLabel(world: { x: number; y: number }, message: string, good: boolean): void {
+    const p = this.layout.toScreen(world);
+    const map = this.layout.map;
     const text = this.scene.add
-      .text(at.x, at.y, specialResultText(e.hits), {
+      .text(p.x, p.y, message, {
         fontFamily: FONT,
         fontSize: '18px',
         fontStyle: 'bold',
-        color: e.hits > 0 ? TEXT.specialHit : TEXT.specialMiss,
+        color: good ? TEXT.specialHit : TEXT.specialMiss,
         stroke: '#14161a',
         strokeThickness: 4,
       })
       .setOrigin(0.5, 1)
       .setDepth(5);
-    this.labels.push({ text, y0: at.y - 6, ageMs: 0 });
-    text.setY(at.y - 6);
+    const half = text.width / 2 + 6;
+    const y0 = Math.max(map.y + text.height + 24, p.y - 6);
+    text.setPosition(Math.max(map.x + half, Math.min(map.x + map.width - half, p.x)), y0);
+    this.labels.push({ text, y0, ageMs: 0 });
   }
 
   /** Let `ms` pass: in play once per frame with the frame time; in test mode 1000/60 per tick. */

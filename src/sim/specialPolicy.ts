@@ -35,6 +35,10 @@ export const POLICY_POINT_SPACING = 30;
 export interface PolicyOptions {
   /** A special the policy never fires (target S2 forbids each in turn). */
   forbid?: SpecialType;
+  /** Opt in to placing a Barricade at this point whenever there is no wall. */
+  barricadePoint?: Point;
+  /** In the placement sweep, spend each recharge even if its wall is still standing. */
+  refreshBarricade?: boolean;
 }
 
 export interface PolicyChoice {
@@ -99,11 +103,17 @@ function bestPoint(state: GameState, pos: readonly { p: Point; big: boolean }[],
 
 /**
  * What the policy fires now, or undefined: not a check tick, not in a
- * wave, no charge, or no rule applies. `lastZone` is the last Tar Barrel or
- * Fire Arrows the policy fired in this game.
+ * wave, no charge, or no rule applies. An opted-in Barricade can go on
+ * any tick when the charge is ready. The fixed build waits until its wall
+ * breaks. The sweep refreshes a standing wall.
+ * `lastZone` is the last Tar Barrel or Fire Arrows the policy fired.
  */
 export function policyChoice(state: GameState, lastZone: SpecialType | undefined, options: PolicyOptions = {}): PolicyChoice | undefined {
-  if (state.phase !== 'wave' || state.specialCharges <= 0 || state.waveTick % POLICY_CHECK_TICKS !== 0) return undefined;
+  if (state.phase !== 'wave' || state.specialCharges <= 0) return undefined;
+  if (options.barricadePoint && (!state.blocker || options.refreshBarricade) && allowed('barricade', state.wave, options)) {
+    return { special: 'barricade', ...options.barricadePoint, hits: 0 };
+  }
+  if (state.waveTick % POLICY_CHECK_TICKS !== 0) return undefined;
   if (state.enemies.length < POLICY_MIN_HITS) return undefined;
   const pos = state.enemies.map((e) => ({ p: enemyPosition(e, state.map), big: BIG_ENEMIES.has(e.type) }));
   const zone = zoneTurn(state.wave, lastZone, options);

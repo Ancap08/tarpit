@@ -11,7 +11,7 @@
 
 import { boonScale, type BoonId } from './boons';
 
-export type SpecialType = 'keg' | 'tarBarrel' | 'fireArrows';
+export type SpecialType = 'keg' | 'barricade' | 'tarBarrel' | 'fireArrows';
 
 export interface SpecialDef {
   /** The first wave (1-based, state.wave) on which this special can be used. */
@@ -51,12 +51,13 @@ export const SPECIAL_RECHARGE_TICKS = 1200;
  */
 export const SPECIAL_DEFS: Readonly<Record<SpecialType, SpecialDef>> = {
   keg: { unlockWave: 1, radius: 90, damage: 60, slow: 0, burnDps: 0, zoneTicks: 0 },
+  barricade: { unlockWave: 3, radius: 0, damage: 0, slow: 0, burnDps: 0, zoneTicks: 0 },
   tarBarrel: { unlockWave: 4, radius: 100, damage: 0, slow: 0.5, burnDps: 0, zoneTicks: 660 },
   fireArrows: { unlockWave: 7, radius: 90, damage: 0, slow: 0, burnDps: 26, zoneTicks: 660 },
 };
 
 /** Every special, in unlock order (the HUD popup lists them in this order). */
-export const SPECIAL_TYPES: readonly SpecialType[] = ['keg', 'tarBarrel', 'fireArrows'];
+export const SPECIAL_TYPES: readonly SpecialType[] = ['keg', 'barricade', 'tarBarrel', 'fireArrows'];
 
 /** Whether `type` is unlocked on `wave` (the current or last wave, state.wave). */
 export function isSpecialUnlocked(type: SpecialType, wave: number): boolean {

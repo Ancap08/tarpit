@@ -10,6 +10,7 @@
 // move, undoUpgrade, special, cheat) to state.events, where it stays until the next tick
 // clears the list.
 
+import { BARRICADE_HP, barricadePlacement, type BarricadePlacementRefusal } from './blockers';
 import { BOONS, boonScale, type BoonId } from './boons';
 import { applyBurn, applySpecialSlow, enemyPosition, removeDead } from './combat';
 import { cellKey, sameCell, terrainBlock, type Cell } from './grid';
@@ -41,7 +42,7 @@ export type UndoUpgradeResult =
 
 export type SpecialResult =
   | { ok: true; hits: number; kills: number; gold: number }
-  | { ok: false; reason: 'game-over' | 'not-in-wave' | 'locked' | 'no-charge' | 'out-of-bounds' };
+  | { ok: false; reason: 'game-over' | 'not-in-wave' | 'locked' | 'no-charge' | BarricadePlacementRefusal };
 
 function isOver(state: GameState): boolean {
   return state.phase === 'won' || state.phase === 'lost';
@@ -207,7 +208,9 @@ export function setTargeting(state: GameState, cell: Cell, mode: TargetingMode):
  * milestone 30). Refused, checked in this order, when the game is over,
  * outside a wave ('not-in-wave'), when `type` is not unlocked on this wave
  * ('locked'), when the charge is not ready ('no-charge'), or when the point
- * is outside the map, 0..960 x 0..480 inclusive ('out-of-bounds').
+ * is outside the map ('out-of-bounds'). A Barricade must also pass the trail
+ * snap and endpoint checks. It replaces the blocker and affects no enemies
+ * until contact in a tick.
  * Otherwise it spends the charge, starts the recharge
  * (SPECIAL_RECHARGE_TICKS wave ticks) and acts at once on every live enemy
  * whose position is within the special's radius of the point (inclusive),
@@ -223,18 +226,32 @@ export function useSpecial(state: GameState, type: SpecialType, point: Point): S
   if (isOver(state)) return { ok: false, reason: 'game-over' };
   if (state.phase !== 'wave') return { ok: false, reason: 'not-in-wave' };
   if (!isSpecialUnlocked(type, state.wave)) return { ok: false, reason: 'locked' };
-  if (state.specialCharges <= 0) return { ok: false, reason: 'no-charge' };
+  if (state.specialCharges <= 0 || (type === 'barricade' && state.lastBarricadeTick === state.tick)) {
+    return { ok: false, reason: 'no-charge' };
+  }
   const { x, y } = point;
-  if (!(x >= 0 && x <= state.map.width && y >= 0 && y <= state.map.height)) return { ok: false, reason: 'out-of-bounds' };
+  const placement = type === 'barricade' ? barricadePlacement(state.map, point) : undefined;
+  if (placement) {
+    if (!placement.ok) return { ok: false, reason: placement.reason };
+  } else if (!(x >= 0 && x <= state.map.width && y >= 0 && y <= state.map.height)) {
+    return { ok: false, reason: 'out-of-bounds' };
+  }
   state.specialCharges = 0;
   state.specialRechargeTicks = Math.round(boonScale(SPECIAL_RECHARGE_TICKS, state.boons, 'quickHands'));
+  if (placement) {
+    const { point: trail } = placement;
+    state.lastBarricadeTick = state.tick;
+    state.blocker = { ...trail, hp: BARRICADE_HP, maxHp: BARRICADE_HP };
+    state.events.push({ kind: 'special', type, x: trail.x, y: trail.y, angle: trail.angle, radius: 0, hits: 0 });
+    return { ok: true, hits: 0, kills: 0, gold: state.gold };
+  }
   const def = SPECIAL_DEFS[type];
   const radius = specialRadius(type, state.boons);
   const inside = state.enemies.filter((enemy) => {
     const p = enemyPosition(enemy, state.map);
     return Math.hypot(p.x - x, p.y - y) <= radius;
   });
-  const zoneId = def.zoneTicks > 0 && type !== 'keg' ? state.nextZoneId : undefined;
+  const zoneId = def.zoneTicks > 0 && type !== 'keg' && type !== 'barricade' ? state.nextZoneId : undefined;
   state.events.push({ kind: 'special', type, x, y, radius, hits: inside.length, ...(zoneId === undefined ? {} : { zoneId }) });
   for (const enemy of inside) {
     if (def.damage > 0) enemy.hp -= def.damage;
@@ -245,7 +262,7 @@ export function useSpecial(state: GameState, type: SpecialType, point: Point): S
     }
     if (def.burnDps > 0) applyBurn(enemy, boonScale(def.burnDps, state.boons, 'hotCoals'), ZONE_LINGER_TICKS, 'special');
   }
-  if (zoneId !== undefined && type !== 'keg') {
+  if (zoneId !== undefined && type !== 'keg' && type !== 'barricade') {
     state.zones.push({ id: zoneId, type, x, y, radius, ticksLeft: def.zoneTicks });
     state.nextZoneId += 1;
   }

@@ -28,12 +28,14 @@ test('a spawned Goblin is a goblin sprite facing right on frame 0', async ({ pag
   });
   expect(a.events).toEqual([{ kind: 'spawn', enemyId: 0, enemyType: 'goblin' }]);
   expect(a.anim).toEqual({
+    x: 0, y: 240,
     texture: 'goblin',
     anim: 'goblin-walk-right',
     frame: 0,
     facing: 'right',
     flipX: false,
     scale: 2,
+    blockerLunge: 0,
     flags: { hit: false, burning: false, slowed: false, dying: false },
   });
   expect(a.none).toBeNull();
