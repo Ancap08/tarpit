@@ -148,9 +148,9 @@ for (const [wave, listed] of [
   [1, []],
   [3, ['special:keg', 'special:barricade']],
   [4, ['special:keg', 'special:barricade', 'special:tarBarrel']],
-  [6, ['special:keg', 'special:barricade', 'special:tarBarrel']],
-  [7, ['special:keg', 'special:barricade', 'special:tarBarrel', 'special:fireArrows']],
-  [10, ['special:keg', 'special:barricade', 'special:tarBarrel', 'special:fireArrows']],
+  [6, ['special:keg', 'special:barricade', 'special:tarBarrel', 'special:guards']],
+  [7, ['special:keg', 'special:barricade', 'special:tarBarrel', 'special:guards', 'special:fireArrows']],
+  [10, ['special:keg', 'special:barricade', 'special:tarBarrel', 'special:guards', 'special:fireArrows']],
 ] as const) {
   test(`(f) wave ${wave}: the popup lists ${listed.length ? listed.join(', ') : 'nothing (the keg is selected directly)'}`, async ({ page }) => {
     await inWave(page, wave, 30);

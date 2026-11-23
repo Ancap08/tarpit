@@ -20,7 +20,7 @@ import { specialResultText } from '../names';
 import { COLORS, FONT, TEXT } from '../palette';
 
 /** How long each part lasts, in ms. */
-export const BLAST_MS: Readonly<Record<Exclude<SpecialType, 'barricade'>, number>> = { keg: 400, tarBarrel: 300, fireArrows: 400 };
+export const BLAST_MS: Readonly<Record<Exclude<SpecialType, 'barricade' | 'guards'>, number>> = { keg: 400, tarBarrel: 300, fireArrows: 400 };
 export const SCORCH_MS = 2000;
 export const LABEL_MS = 1500;
 /** Ages are sums of 1000/60 in test mode: compare with this slack so 90 ticks is exactly 1.5 s. */
@@ -40,7 +40,7 @@ const SHEEN_ARCS = 9;
 const BLOBS = 5;
 
 interface Blast {
-  type: Exclude<SpecialType, 'barricade'>;
+  type: Exclude<SpecialType, 'barricade' | 'guards'>;
   x: number;
   y: number;
   radius: number;
@@ -88,7 +88,7 @@ export class SpecialEffects {
 
   /** A special landed: its `special` event. */
   add(e: Extract<GameEvent, { kind: 'special' }>): void {
-    if (e.type === 'barricade') return;
+    if (e.type === 'barricade' || e.type === 'guards') return;
     this.blasts.push({ type: e.type, x: e.x, y: e.y, radius: e.radius, ageMs: 0 });
     if (e.type === 'keg') this.scorches.push({ x: e.x, y: e.y, radius: e.radius * 0.7, ageMs: 0 });
     this.addLabel(e, specialResultText(e.hits), e.hits > 0);

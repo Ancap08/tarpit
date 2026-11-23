@@ -30,7 +30,7 @@ export async function castAt(page: Page, world: Point, touch = false): Promise<v
 export async function aimCases(page: Page, touch: boolean, phone = false): Promise<void> {
   await startBarricadeWave(page, 7, touch);
   await press(page, 'special', touch);
-  for (const type of ['keg', 'barricade', 'tarBarrel', 'fireArrows']) {
+  for (const type of ['keg', 'barricade', 'tarBarrel', 'guards', 'fireArrows']) {
     const size = await rectPageSize(page, 'special:' + type);
     expect(Math.min(size.width, size.height), type).toBeGreaterThanOrEqual(44);
   }
@@ -78,7 +78,7 @@ export async function aimCases(page: Page, touch: boolean, phone = false): Promi
     expect((await ui(page)).special.barricadeAim).toMatchObject({ valid: true });
     await castAt(page, target);
   }
-  expect(await api(page, t => t.state().blocker)).toMatchObject({ x: 420, y: 96, distance: 564, hp: BARRICADE_HP });
+  expect(await api(page, t => t.state().blockers.find(b => b.kind === 'barricade'))).toMatchObject({ x: 420, y: 96, distance: 564, hp: BARRICADE_HP });
   expect((await ui(page)).special).toMatchObject({ charges: 0, rechargeTicks: 1200 });
 }
 
@@ -96,7 +96,7 @@ export async function hintAndRestart(page: Page): Promise<void> {
   for (const key of ['playAgain', 'menu']) {
     await aimBarricade(page);
     await castAt(page, { x: 300, y: 96 });
-    expect(await api(page, t => t.state().blocker)).toMatchObject({ hp: BARRICADE_HP });
+    expect(await api(page, t => t.state().blockers.find(b => b.kind === 'barricade'))).toMatchObject({ hp: BARRICADE_HP });
     await api(page, t => {
       // Force a real exit with one life remaining to get the two end-screen buttons.
       const s = t.state();

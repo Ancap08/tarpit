@@ -28,7 +28,7 @@ async function stageCrowd(page: Page, phone: boolean, size: number, painted = fa
   });
   await page.evaluate(walkers => {
     const s = window.__tarpit!.state!();
-    const wall = s.blocker!;
+    const wall = s.blockers.find(b => b.kind === 'barricade')!;
     s.spawnedPerGroup.fill(9999);
     s.towers[0].cooldownTicks = 120;
     s.enemies = walkers.map(({ type, hp, behind }) => ({
@@ -40,7 +40,8 @@ async function stageCrowd(page: Page, phone: boolean, size: number, painted = fa
 
 async function expectHeldCrowd(page: Page, phone: boolean, n: number): Promise<void> {
   const { wall, positions } = await api(page, t => {
-    const { blocker, enemies } = t.state();
+    const { blockers, enemies } = t.state();
+    const blocker = blockers.find(b => b.kind === 'barricade');
     const held = enemies.filter(e => e.type !== 'harpy' && e.distance === blocker!.distance);
     return { wall: blocker!, positions: held.map(e => {
       const { x, y } = t.animState(e.id)!;
@@ -64,7 +65,7 @@ export async function crowd(page: Page, phone: boolean): Promise<void> {
     await api(page, t => t.step(1));
     await expectHeldCrowd(page, phone, n);
   }
-  expect(await api(page, t => t.state().enemies.find(e => e.type === 'harpy')!.distance > t.state().blocker!.distance)).toBe(true);
+  expect(await api(page, t => t.state().enemies.find(e => e.type === 'harpy')!.distance > t.state().blockers.find(b => b.kind === 'barricade')!.distance)).toBe(true);
   await stageBossCrowd(page, phone);
 }
 
@@ -76,7 +77,7 @@ async function stageBossCrowd(page: Page, phone: boolean): Promise<void> {
     if (!t.useSpecialAt('barricade', 64, 240).ok) throw new Error('wall at the cave clearance');
     s.enemies = Array.from({ length: 40 }, (_, i) => ({
       id: s.nextEnemyId++, type: i === 0 ? 'grumblemaw' : i === 1 ? 'boss' : 'goblin',
-      hp: 23, distance: s.blocker!.distance, slow: 0, slowTicksLeft: 0,
+      hp: 23, distance: s.blockers.find(b => b.kind === 'barricade')!.distance, slow: 0, slowTicksLeft: 0,
     }));
     t.step(1);
   });
@@ -87,7 +88,7 @@ export async function holdingFrame(page: Page, phone: boolean): Promise<void> {
   await stageCrowd(page, phone, 15);
   await api(page, t => t.step(35));
   await expectHeldCrowd(page, phone, 15);
-  const blocker = await api(page, t => t.state().blocker);
+  const blocker = await api(page, t => t.state().blockers.find(b => b.kind === 'barricade'));
   expect(blocker!.hp).toBeLessThan(blocker!.maxHp);
   await page.evaluate(() => document.fonts.ready.then(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))));
   const canvas = page.locator('canvas');

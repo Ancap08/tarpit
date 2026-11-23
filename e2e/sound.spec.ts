@@ -140,6 +140,7 @@ test('the specials and the charge becoming ready sound', async ({ page }) => {
       scene.state.specialCharges = 1;
       scene.state.specialRechargeTicks = 0;
       scene.useSpecialAt(type, 300, 240);
+      scene.advance(1);
     }
     scene.state.specialCharges = 0;
     scene.state.specialRechargeTicks = 3;

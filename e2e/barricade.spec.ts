@@ -43,7 +43,7 @@ test('a Powder Keg aimed at the farthest drawn Goblin hits all fifteen held Gobl
   await castAt(page, { x: 420, y: 164 });
   const target = await api(page, t => {
     const s = t.state();
-    const wall = s.blocker!;
+    const wall = s.blockers.find(b => b.kind === 'barricade')!;
     s.spawnedPerGroup.fill(9999);
     s.enemies = Array.from({ length: 15 }, () => ({
       id: s.nextEnemyId++, type: 'goblin', distance: wall.distance - 1, hp: 23, slow: 0, slowTicksLeft: 0,

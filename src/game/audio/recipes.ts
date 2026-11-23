@@ -82,6 +82,7 @@ export interface Recipe {
 export const SMALL_THIN_MS = 120;
 export const EXIT_THIN_MS = 400;
 export const BLOCKER_HIT_THIN_MS = 260;
+export const GUARD_STRIKE_THIN_MS = 410;
 
 /** The most a sound alone may peak, before the limiter (measured offline). */
 export const HEADROOM = 0.9;
@@ -115,6 +116,10 @@ export const SOUND_NAMES = [
   'special.tarBarrel',
   'special.fireArrows',
   'special.barricade',
+  'special.guards',
+  'guardStrike',
+  'guardDown',
+  'guardLeave',
   'blockerHit',
   'blockerBreak',
   'chargeReady',
@@ -397,6 +402,40 @@ export const RECIPES: Readonly<Record<SoundName, Recipe>> = {
       tone('triangle', 380, 240, { a: 0.003, d: 0.09 }, 0.25, { at: 0.062 }),
     ],
   },
+  'special.guards': {
+    gain: 0.7,
+    priority: PRIORITY.ui,
+    layers: [
+      tone('triangle', 360, 335, { a: 0.003, d: 0.10 }, 0.35),
+      tone('triangle', 510, 435, { a: 0.003, d: 0.17 }, 0.35, { at: 0.075 }),
+      noise({ type: 'lowpass', f0: 750, f1: 360 }, { a: 0.003, d: 0.13 }, 0.21, 0.04),
+    ],
+  },
+  guardStrike: {
+    gain: 0.49,
+    priority: PRIORITY.tick,
+    thin: GUARD_STRIKE_THIN_MS,
+    layers: [
+      tone('triangle', 690, 340, { a: 0.001, d: 0.035 }, 0.13),
+      noise({ type: 'bandpass', f0: 1500, f1: 700, q: 1 }, { a: 0.001, d: 0.055 }, 0.11),
+    ],
+  },
+  guardDown: {
+    gain: 0.95,
+    priority: PRIORITY.impact,
+    layers: [
+      tone('triangle', 230, 102, { a: 0.004, d: 0.16 }, 0.31),
+      noise({ type: 'bandpass', f0: 1200, f1: 430 }, { a: 0.003, d: 0.15 }, 0.23),
+    ],
+  },
+  guardLeave: {
+    gain: 1.30,
+    priority: PRIORITY.moment,
+    layers: [
+      tone('triangle', 440, 396, { a: 0.006, d: 0.10 }, 0.37),
+      tone('triangle', 330, 290, { a: 0.007, d: 0.15 }, 0.36, { at: 0.085 }),
+    ],
+  },
   blockerHit: {
     gain: 0.68,
     priority: PRIORITY.tick,
@@ -586,11 +625,11 @@ export const LEVEL_TIERS: Readonly<Record<LevelTier, readonly [number, number]>>
 
 /** A sound's level tier: hit ticks, shots, impacts and deaths, player actions, wave moments (with the exit and the charge), big moments. */
 export function levelTier(name: SoundName): LevelTier {
-  if (name === 'hit' || name === 'blockerHit') return 'tick';
+  if (name === 'hit' || name === 'blockerHit' || name === 'guardStrike') return 'tick';
   if (name.startsWith('shot.')) return 'shot';
-  if (name.startsWith('impact.') || name.startsWith('death.')) return 'impact';
-  if (['build', 'upgrade', 'upgradePath', 'sell', 'refuse', 'tap', 'select', 'coin', 'boonOffer', 'boonPick', 'special.barricade'].includes(name)) return 'action';
-  if (['exit', 'chargeReady', 'waveStart', 'waveClear', 'callNext', 'act2', 'packCall', 'blockerBreak'].includes(name)) return 'moment';
+  if (name.startsWith('impact.') || name.startsWith('death.') || name === 'guardDown') return 'impact';
+  if (['build', 'upgrade', 'upgradePath', 'sell', 'refuse', 'tap', 'select', 'coin', 'boonOffer', 'boonPick', 'special.barricade', 'special.guards'].includes(name)) return 'action';
+  if (['exit', 'chargeReady', 'waveStart', 'waveClear', 'callNext', 'act2', 'packCall', 'blockerBreak', 'guardLeave'].includes(name)) return 'moment';
   return 'big';
 }
 

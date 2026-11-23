@@ -5,7 +5,7 @@ import { HELD_DRAW_CAP } from './barricade';
 
 it('a blast or zone centred on any held sprite reaches its simulation position', () => {
   const specialRadii = Object.entries(SPECIAL_DEFS)
-    .filter(([type]) => type !== 'barricade')
+    .filter(([, special]) => special.radius > 0)
     .map(([, special]) => special.radius);
   const splashRadii = (['cannon', 'mortar'] as const).flatMap(type => [
     TOWER_DEFS[type].base, TOWER_DEFS[type].upgraded, TOWER_PATHS[type].A, TOWER_PATHS[type].B,

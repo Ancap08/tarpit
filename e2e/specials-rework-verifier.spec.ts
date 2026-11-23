@@ -74,7 +74,7 @@ test('aim banner names the right special; the unlocked popup lists them; text co
   await quietWave(page, 7);
   await clickRect(page, 'special');
   expect((await ui(page)).special.menuOpen).toBe(true);
-  expect((await ui(page)).special.unlocked).toEqual(['keg', 'barricade', 'tarBarrel', 'fireArrows']);
+  expect((await ui(page)).special.unlocked).toEqual(['keg', 'barricade', 'tarBarrel', 'guards', 'fireArrows']);
   for (const type of ['keg', 'tarBarrel', 'fireArrows'] as const) {
     if (!(await ui(page)).special.menuOpen) await clickRect(page, 'special');
     await clickRect(page, `special:${type}`);

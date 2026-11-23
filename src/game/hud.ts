@@ -415,7 +415,7 @@ export class Hud {
     // Milestone 33: Start Wave's own sound is the horn (or Call next's), so its click plays no tap.
     this.startButton = new Button(scene, m.start, START_WAVE_TEXT, handlers.onStartWave, m.portrait ? { fontSize: m.startFont, sound: null } : { sound: null });
     this.speedButton = new Button(scene, m.speed, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress });
-    this.specialMenu = new SpecialMenu(scene, m.menu.left, m.menu.top, handlers.onSpecialPick, m.menu.size, m.menu.font);
+    this.specialMenu = new SpecialMenu(scene, m.menu.left, m.menu.top, handlers.onSpecialPick, layout.map.y, m.menu.size, m.menu.font);
     this.bar = new BuildBar(scene, m.barTop, handlers.onPick, layout, painted);
     this.bossBar = new BossBar(scene, layout);
     this.muteButton = new MuteButton(scene, m.mute);

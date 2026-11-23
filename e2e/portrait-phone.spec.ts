@@ -212,7 +212,9 @@ test('a special by tap, then by hold and release near each map edge', async ({ p
     });
   const recharge = () =>
     page.evaluate(() => {
-      const s = (window.__tarpit as TarpitTestApi).state();
+      const t = window.__tarpit as TarpitTestApi;
+      t.step(1);
+      const s = t.state();
       s.specialCharges = 1;
       s.specialRechargeTicks = 0;
     });

@@ -1,3 +1,4 @@
+import { frame as guardFrame } from './guards';
 import { expect, test, type Page } from '@playwright/test';
 import { ACT_TWO_TEXT, BOSS_NAME, GRUMBLEMAW_NAME, PACK_CALL_TEXT, PANEL_TEXT, bestScoreText } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
@@ -1039,3 +1040,9 @@ test('m37-midwave', async ({ page }) => {
 test('barricade-aim', async ({ page }) => aimFrame(page));
 
 test('barricade-holding with fifteen walkers and the count beside the hp bar', async ({ page }) => holdingFrame(page, false));
+
+test('guards-aim', async ({ page }) => guardFrame(page, 'aim'));
+
+test('guards-holding', async ({ page }) => guardFrame(page, 'holding'));
+
+test('painted-guards-holding', async ({ page }) => guardFrame(page, 'painted'));

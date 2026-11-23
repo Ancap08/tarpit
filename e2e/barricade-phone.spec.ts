@@ -11,7 +11,7 @@ test('a tap places the wall and turning the phone keeps it across the trail', as
   await startBarricadeWave(page, 7, true);
   await aimBarricade(page, true);
   await castAt(page, { x: 170, y: 130 }, true);
-  const before = await api(page, t => t.state().blocker);
+  const before = await api(page, t => t.state().blockers.find(b => b.kind === 'barricade'));
   expect(before).toMatchObject({ x: 160, hp: BARRICADE_HP });
   for (const portrait of [true, false]) {
     if (!portrait) {
@@ -21,7 +21,7 @@ test('a tap places the wall and turning the phone keeps it across the trail', as
     const wall = (await ui(page)).special.blocker!;
     const screen = await toPage(page, wall.point);
     expect(screen).toEqual(await worldPage(page, before!));
-    expect(await api(page, t => t.state().blocker)).toEqual(before);
+    expect(await api(page, t => t.state().blockers.find(b => b.kind === 'barricade'))).toEqual(before);
   }
 });
 

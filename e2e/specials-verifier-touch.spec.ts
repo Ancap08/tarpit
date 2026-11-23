@@ -215,7 +215,7 @@ test('(j) row 1 buttons and the popup buttons are at least 44 CSS px tall on the
   await inWave(page, 7);
   await tap(page, mid((await rects(page)).special));
   const r = await rects(page);
-  const names = ['special', 'startWave', 'speed', 'special:keg', 'special:barricade', 'special:tarBarrel', 'special:fireArrows'];
+  const names = ['special', 'startWave', 'speed', 'special:keg', 'special:barricade', 'special:tarBarrel', 'special:guards', 'special:fireArrows'];
   for (const name of names) {
     const b = r[name];
     expect(b, name).toBeTruthy();

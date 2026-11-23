@@ -649,7 +649,9 @@ for (const [w, h] of [[390, 844], [390, 664], [768, 1024]] as const) {
     });
     for (const wp of [{ x: 12, y: 240 }, { x: 948, y: 240 }, { x: 480, y: 12 }, { x: 480, y: 468 }]) {
       await page.evaluate(() => {
-        const s = (window.__tarpit as TarpitTestApi).state();
+        const t = window.__tarpit as TarpitTestApi;
+        t.step(1);
+        const s = t.state();
         s.specialCharges = 1;
         s.specialRechargeTicks = 0;
       });
@@ -664,7 +666,9 @@ for (const [w, h] of [[390, 844], [390, 664], [768, 1024]] as const) {
     }
     // A press that starts on the controls cancels aiming and fires nothing.
     await page.evaluate(() => {
-      const s = (window.__tarpit as TarpitTestApi).state();
+      const t = window.__tarpit as TarpitTestApi;
+      t.step(1);
+      const s = t.state();
       s.specialCharges = 1;
       s.specialRechargeTicks = 0;
     });
