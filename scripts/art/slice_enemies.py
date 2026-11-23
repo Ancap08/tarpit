@@ -59,15 +59,15 @@ def guard(striking):
         x, y = .077 * side, .046 * side
         limb("Braced leg", (x, 0, .27), (x, y, .08), .050, .046, "#364455")
         pebble("Boot", (x, y + .018, .060), (.061, .082, .049), LEATHER)
-    pebble("Red wool coat", (0, 0, .329), (.148, .094, .169), red)
+    pebble("Red wool coat", (0, 0, .329), (.162, .103, .169), red)
     taper("Buff crossbelt", (.09, .065, .434), (-.08, .068, .252), .025, .024, ivory)
     pebble("Face", (0, .018, .518), (.105, .094, .098), "#C58A61")
     pebble("Helmet brim", (0, 0, .562), (.152, .130, .029), "#554F46")
     pebble("Brass helmet", (0, -.006, .586), (.120, .105, .085), gold)
-    pebble("Scarlet crest", (0, -.028, .670), (.039, .106, .036), red)
+    pebble("Scarlet crest", (0, -.028, .670), (.054, .114, .044), "#D33832")
     # Shield angled upward toward the high camera, with a visible enamel field.
     cx, cy = -.137, .102
-    for name, size, dz, paint in [("Brass rim", 1, 0, gold), ("Ivory field", .81, .022, ivory)]:
+    for name, size, dz, paint in [("Brass rim", 1.18, 0, gold), ("Ivory field", .91, .022, ivory)]:
         blade(name, [(cx + x * size, cy + y * size, .385 + y * .55 + dz)
                      for x, y in ((-.095,.084),(.095,.084),(.095,-.025),(0,-.15),(-.095,-.025))],
               paint, .027)
@@ -78,7 +78,7 @@ def guard(striking):
     direction = Vector((.08, .96 if striking else .64, .27 if striking else .76)).normalized()
     grip = Vector(hand)
     throat = grip + .365 * direction
-    taper("Ash shaft", grip - .19 * direction, throat, .017, .017, "#8D5B35")
+    taper("Ash shaft", grip - .19 * direction, throat, .022, .022, "#8D5B35")
     taper("Leaf spear base", throat, throat + .046 * direction, .021, .050, STEEL, 6)
     taper("Bright spear point", throat + .046 * direction, throat + .178 * direction, .050, .002, ivory, 6)
 

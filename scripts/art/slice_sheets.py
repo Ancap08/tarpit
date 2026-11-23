@@ -247,9 +247,9 @@ def render_cells(kind):
 
 # Opaque body height in logical pixels. Fit all four walk phases together
 # so walking moves the limbs without making the entire figure pulse.
-BODY_HEIGHT = {"guard": 26, "goblin": 38, "wolf": 38, "shieldbearer": 38, "harpy": 38,
+BODY_HEIGHT = {"guard": 38, "goblin": 38, "wolf": 38, "shieldbearer": 38, "harpy": 38,
                "troll": 56, "grumblefoot": 84, "grumblemaw": 92}
-CONTACT_WIDTH = {"guard": 15, "goblin": 24, "wolf": 28, "shieldbearer": 27,
+CONTACT_WIDTH = {"guard": 24, "goblin": 24, "wolf": 28, "shieldbearer": 27,
               "troll": 36, "grumblefoot": 52, "grumblemaw": 58}
 INK = (30, 28, 30)
 

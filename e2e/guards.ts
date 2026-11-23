@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import type Phaser from 'phaser';
 import { BARRICADE_AIM_REASONS } from '../src/game/names';
 import { LANDSCAPE, PORTRAIT } from '../src/game/layout';
 import { GUARD_COUNT } from '../src/sim/blockers';
@@ -25,7 +26,11 @@ export async function expectStanding(page: Page, painted = false): Promise<void>
   for (const guard of state) {
     const figure = draw.find(g => g.id === guard.id)!;
     const target = layout.toScreen(guard);
-    expect(Math.hypot(figure.point.x - target.x, figure.point.y - target.y)).toBeLessThanOrEqual(6);
+    const dir = layout.screenDir(Math.cos(guard.angle), Math.sin(guard.angle));
+    const dx = figure.point.x - target.x, dy = figure.point.y - target.y;
+    expect(Math.abs(dx * dir.x + dy * dir.y)).toBeLessThanOrEqual(6);
+    expect(Math.abs(dy * dir.x - dx * dir.y)).toBeLessThanOrEqual(10);
+    expect(figure.hpBar).toMatchObject({ width: 32, height: 6 });
     expect(figure.hp).toBe(guard.hp);
     expect(figure.maxHp).toBe(guard.maxHp);
     expect(figure.hpBar!.fillWidth).toBeGreaterThan(0);
@@ -110,11 +115,11 @@ export async function frame(page: Page, mode: 'aim' | 'holding' | 'phone' | 'pai
   // Use a horizontal file on each screen so the holding frame shows the individual spears.
   const spot = phone ? { x: 420, y: 282 } : { x: 505, y: 384 };
   const leadDistance = phone ? 750 : 937;
-  await page.evaluate(distance => {
+  await page.evaluate(({ distance, cannonRow }) => {
     const t = window.__tarpit as import('../src/game/testGlobal').TarpitTestApi;
     const s = t.state();
     s.gold = 200;
-    if (!t.buildAt(15, 9, 'cannon').ok) throw new Error('Guard frame tower');
+    if (!t.buildAt(15, cannonRow, 'cannon').ok) throw new Error('Guard frame tower');
     s.towers[0].cooldownTicks = 300;
     s.spawnedPerGroup.fill(9999);
     s.enemies = Array.from({ length: 9 }, (_, i) => ({
@@ -122,7 +127,7 @@ export async function frame(page: Page, mode: 'aim' | 'holding' | 'phone' | 'pai
       hp: i % 3 === 0 ? 70 : 23, distance: distance - 80 - 19 * i, slow: 0, slowTicksLeft: 0,
     }));
     t.step(1);
-  }, leadDistance);
+  }, { distance: leadDistance, cannonRow: phone ? 9 : 8 });
   await chooseGuards(page, phone);
   if (mode === 'aim') {
     const p = await worldPage(page, { x: spot.x, y: spot.y - 26 });
@@ -135,6 +140,29 @@ export async function frame(page: Page, mode: 'aim' | 'holding' | 'phone' | 'pai
     const guards = (await ui(page)).special.guards;
     expect(guards.some(g => g.hpBar && g.hp < g.maxHp)).toBe(true);
     expect(await api(page, t => t.events().some(e => e.kind === 'guardStrike'))).toBe(true);
+    // Read the actual Phaser draw list once it has rendered the holding frame.
+    await settle(page);
+    const order = await api(page, t => {
+      const scene = t.game.scene.getScene('game') as unknown as {
+        guardFx: { bodies: Map<number, Phaser.GameObjects.Image | Phaser.GameObjects.Graphics> };
+        enemySprites: { views: Map<number, { sprite: Phaser.GameObjects.Sprite }> };
+      };
+      const lead = t.state().enemies.reduce((a, b) => a.distance >= b.distance ? a : b);
+      const sprite = scene.enemySprites.views.get(lead.id)!.sprite;
+      const list = sprite.displayList;
+      return Array.from(scene.guardFx.bodies.values(), body => ({
+        sameLayer: body.displayList === list,
+        lower: body.y > sprite.y,
+        drawnLater: list.getIndex(body) > list.getIndex(sprite),
+      }));
+    });
+    expect(order).toHaveLength(GUARD_COUNT);
+    expect(order.map(g => g.lower)).toContain(true);
+    expect(order.map(g => g.lower)).toContain(false);
+    for (const g of order) {
+      expect(g.sameLayer).toBe(true);
+      expect(g.drawnLater).toBe(g.lower);
+    }
   }
   await settle(page);
   const canvas = page.locator('canvas');

@@ -1,5 +1,5 @@
 // Milestone 40 verifier. Independent of guards.spec.ts: the drawn position of
-// each guard is measured from pixels (hide the guard bodies, diff the page),
+// each guard is measured from its rendered silhouette in canvas pixels,
 // not from the position the drawing reports about itself.
 import { expect, test } from '@playwright/test';
 import { GUARDS_UNLOCK_HINT, GUARDS_UNLOCKED } from '../src/game/names';
@@ -76,8 +76,8 @@ test('a fight: bars match hp, a guard falls, enemies stand where it is drawn', a
   const live = (await ui(page)).special.guards;
   const hp = await api(page, (t) => t.state().blockers.filter((b) => b.kind === 'guard').map((b) => [b.id, b.hp]));
   for (const g of live.filter((x) => x.hpBar)) {
-    const want = (g.hpBar!.width - 2) * g.hp / g.maxHp;
-    expect(Math.abs(g.hpBar!.fillWidth - want)).toBeLessThan(0.5);
+    const want = Math.max(1, Math.round((g.hpBar!.width - 2) * g.hp / g.maxHp));
+    expect(g.hpBar!.fillWidth).toBe(want);
     expect(hp.some(([id, v]) => id === g.id && v === g.hp)).toBe(true);
   }
   expect(live.filter((g) => g.hpBar)).toHaveLength(4);

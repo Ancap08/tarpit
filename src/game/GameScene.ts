@@ -178,7 +178,7 @@ import { drawHpBars, drawShadows, drawStatusRings } from './draw/enemies';
 import { TowerLabels } from './draw/labels';
 import { LivingMap, type DecorState } from './decor/livingMap';
 import { BarricadeEffects, drawBarricadeAim } from './draw/barricade';
-import { GuardEffects, drawGuardsAim, type DrawnGuard } from './draw/guards';
+import { GuardEffects, drawGuardsAim, guardFoot, type DrawnGuard } from './draw/guards';
 import { ShotEffects } from './draw/shots';
 import { SpecialEffects } from './draw/specials';
 import { Aim, drawTowerShape, drawTowers } from './draw/towers';
@@ -582,7 +582,7 @@ export class GameScene extends Phaser.Scene {
     this.enemySprites = new EnemySprites(this, isTestMode(), this.layout, this.painted);
     this.shotFx = world();
     this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx), this.layout) : null;
-    this.guardFx = new GuardEffects(this, this.layout, this.painted);
+    this.guardFx = new GuardEffects(this, this.layout, this.enemySprites.layer, this.painted);
     this.bars = this.add.graphics();
     this.barricadeFx = new BarricadeEffects(this, this.layout, this.painted);
     this.labels = new TowerLabels(this, this.layout);
@@ -922,7 +922,9 @@ export class GameScene extends Phaser.Scene {
   private guardsAim(centre = this.aimCentre()) {
     if (this.aiming !== 'guards' || centre === null) return null;
     const pointer = this.layout.toWorld(centre);
-    return { pointer, placement: guardsPlacement(this.state.map, pointer) };
+    const placement = guardsPlacement(this.state.map, pointer);
+    const marks = placement.ok ? placement.points.map((p, i) => guardFoot(p, this.state.nextGuardId + i)) : [];
+    return { pointer, placement, marks };
   }
 
   private aimBanner() {
@@ -1231,7 +1233,7 @@ export class GameScene extends Phaser.Scene {
             point: this.layout.toScreen(placement.ok ? placement.point : pointer),
             valid: placement.ok,
             reason: placement.ok ? null : BARRICADE_AIM_REASONS[placement.reason],
-            marks: placement.ok ? placement.points.map((p) => this.layout.toScreen(p)) : [],
+            marks: aim.marks.map(p => this.layout.toScreen(p)),
           };
         })(),
         guards: this.guardFx.snapshot(),
@@ -1718,7 +1720,7 @@ export class GameScene extends Phaser.Scene {
       if (barricade) {
         drawBarricadeAim(this.aimCross, w, barricade.placement.ok ? barricade.placement.point : null);
       } else if (guards) {
-        drawGuardsAim(this.aimCross, w, guards.placement.ok ? guards.placement.points : []);
+        drawGuardsAim(this.aimCross, w, guards.marks);
       } else {
         const color = SPECIAL_COLORS[this.aiming];
         const r = specialRadius(this.aiming, this.state.boons);

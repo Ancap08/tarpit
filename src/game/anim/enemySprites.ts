@@ -145,7 +145,7 @@ function ensureAnims(scene: Phaser.Scene): void {
 
 export class EnemySprites {
   private readonly views = new Map<number, View>();
-  private readonly layer: Phaser.GameObjects.Layer;
+  readonly layer: Phaser.GameObjects.Layer;
   /** The boss's layer: above the walkers, below everything added after this class. */
   private readonly bossLayer: Phaser.GameObjects.Layer;
   /** Flyers' layer, above the labels (setAirLayer); the walkers' layer until set. */
@@ -437,6 +437,16 @@ export class EnemySprites {
       v.sprite.setPosition(x + v.knockX * k, y - lift + bob + v.knockY * k);
     } else {
       v.sprite.setPosition(x, y - lift + bob);
+    }
+    // A Classic boss normally stands above the walkers. At a guard, put all
+    // parts of its sprite in the formation so the nearer combatant draws last.
+    if (!this.painted && isBoss(enemy)) {
+      const layer = enemy.guardContact ? this.layer : this.bossLayer;
+      if (v.sprite.displayList !== layer) {
+        layer.add(v.sprite);
+        if (v.flash) layer.add(v.flash);
+        if (v.crown) layer.add(v.crown);
+      }
     }
     const depth = stoppedAt?.depth ?? y;
     v.sprite.setDepth(depth);

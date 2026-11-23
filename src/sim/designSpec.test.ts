@@ -236,6 +236,9 @@ describe('docs/DESIGN.md matches the code', () => {
     ]);
     // The prose numbers: the recharge, the linger, the policy's look interval, threshold and spacing, the cheat.
     const flat = section('Special attacks').replace(/\s+/g, ' ');
+    expect(flat).toContain(`The squad spans ${(GUARD_COUNT - 1) * GUARD_SPACING} trail px.`);
+    expect(flat).toContain(`The shared ${BARRICADE_END_EXCLUSION} px cave clearance`);
+    expect(flat).toContain('Shields do not reduce guard damage.');
     expect(flat).toContain(`${SPECIAL_RECHARGE_TICKS} wave ticks`);
     expect(flat).toContain(`${Math.round(SPECIAL_RECHARGE_TICKS * BOONS.quickHands.value)} ticks (11.4 s)`);
     expect(flat).toContain(`${ZONE_LINGER_TICKS} ticks after`);

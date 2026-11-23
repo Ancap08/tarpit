@@ -9060,3 +9060,12 @@ Added `src/sim/guards-verifier.test.ts` (30 tests, hand-worked numbers),
   report: hide the bodies, show one, diff the page. Feet within 3 px of the
   simulation point and bodies centred within 6 px in Classic and Painted,
   landscape and portrait, after a turn and back, and across a corner.
+
+**Follow-up.** Classic guards grew from 26 to about 37 px from foot to helmet.
+The Painted guard uses the Goblin’s 38 px art target, ink rim and 24 px contact
+shadow. Both looks use 32 × 6 px outlined hp bars. The soldiers stand on
+alternating sides of the trail and sort with the walkers by screen height at
+contact. Browser tests measure the feet along and across the trail in both
+layouts and looks. At phone size all four helmets and shields can be picked
+out during contact. The 64 px cave clearance already fits the 36 px squad,
+and a Shieldbearer takes full guard damage.

@@ -70,8 +70,8 @@ export function drawShadows(g: Phaser.GameObjects.Graphics, state: GameState, la
 }
 
 // Hp bar: a 30 x 4 fill inside a 1 px dark border, above the enemy, only when hurt.
-const BAR_WIDTH = 30;
-const BAR_HEIGHT = 4;
+export const BAR_WIDTH = 30;
+export const BAR_HEIGHT = 4;
 const BAR_GAP = 4;
 
 /** Green at half or more, orange below half, red below a quarter. */

@@ -1,46 +1,12 @@
 // Helpers for the milestone 40 verifier specs: the drawn position of each
-// guard is measured from pixels (hide the guard bodies, diff the page).
-import { expect, test, type Page } from '@playwright/test';
+// guard is measured from its rendered silhouette in native canvas pixels.
+import { expect, type Page } from '@playwright/test';
+import type Phaser from 'phaser';
 import { api, press } from './campaign';
 import { castAt, startBarricadeWave } from './barricade';
 import { settle } from './painted';
 import { LANDSCAPE, PORTRAIT } from '../src/game/layout';
-import { rectPageSize, rects, ui, worldPage } from './phone';
-
-type Bbox = { minX: number; maxX: number; minY: number; maxY: number } | null;
-
-/** Show only guard `id` (or none) and settle one frame. */
-async function only(page: Page, id: number | null): Promise<Buffer> {
-  await page.evaluate(async (id) => {
-    const scene = window.__tarpit!.game.scene.getScene('game') as unknown as { guardFx: { bodies: Map<number, { setVisible(v: boolean): void }> } };
-    for (const [gid, body] of scene.guardFx.bodies) body.setVisible(gid === id);
-    await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
-  }, id);
-  return page.screenshot({ scale: 'css' });
-}
-
-/** Bounding box of the pixels that differ between two page screenshots, decoded in the page. */
-function diffBox(page: Page, a: Buffer, b: Buffer): Promise<Bbox> {
-  return page.evaluate(async ([x, y]) => {
-    const load = async (s: string) => {
-      const bmp = await createImageBitmap(await (await fetch('data:image/png;base64,' + s)).blob());
-      const c = new OffscreenCanvas(bmp.width, bmp.height);
-      const g = c.getContext('2d')!;
-      g.drawImage(bmp, 0, 0);
-      return g.getImageData(0, 0, bmp.width, bmp.height);
-    };
-    const A = await load(x);
-    const B = await load(y);
-    let box: { minX: number; maxX: number; minY: number; maxY: number } | null = null;
-    for (let py = 0; py < A.height; py++) for (let px = 0; px < A.width; px++) {
-      const i = (py * A.width + px) * 4;
-      if (Math.abs(A.data[i] - B.data[i]) + Math.abs(A.data[i + 1] - B.data[i + 1]) + Math.abs(A.data[i + 2] - B.data[i + 2]) > 40) {
-        box = box ? { minX: Math.min(box.minX, px), maxX: Math.max(box.maxX, px), minY: Math.min(box.minY, py), maxY: Math.max(box.maxY, py) } : { minX: px, maxX: px, minY: py, maxY: py };
-      }
-    }
-    return box;
-  }, [a.toString('base64'), b.toString('base64')] as const);
-}
+import { rectPageSize, rects, ui } from './phone';
 
 /** A standing squad frozen in time (lifetime pinned), no enemies. */
 export async function standSquad(page: Page, at: { x: number; y: number }, touch: boolean): Promise<void> {
@@ -57,18 +23,63 @@ export async function standSquad(page: Page, at: { x: number; y: number }, touch
 export async function measure(page: Page, portrait: boolean): Promise<void> {
   const guards = await api(page, (t) => t.state().blockers.filter((b) => b.kind === 'guard'));
   expect(guards).toHaveLength(4);
-  const none = await only(page, null);
-  for (const g of guards) {
-    const box = await diffBox(page, none, await only(page, g.id));
-    expect(box, `guard ${g.id} is visible`).not.toBeNull();
-    const target = await worldPage(page, { x: g.x, y: g.y });
-    const cx = (box!.minX + box!.maxX) / 2;
-    test.info().annotations.push({ type: 'box', description: `guard ${g.id} box ${JSON.stringify(box)} target ${JSON.stringify(target)}` });
-    // Feet at the simulation position: the figure stands on it, horizontally centred within 6 px.
-    expect(Math.abs(cx - target.x), `guard ${g.id} x ${cx} vs ${target.x}`).toBeLessThanOrEqual(6 + (portrait ? 4 : 0));
-    expect(box!.maxY, `guard ${g.id} feet`).toBeGreaterThanOrEqual(target.y - 6);
-    expect(box!.maxY, `guard ${g.id} feet`).toBeLessThanOrEqual(target.y + 8);
-    expect(box!.maxY - box!.minY, `guard ${g.id} height`).toBeGreaterThan(12);
+  const layout = portrait ? PORTRAIT : LANDSCAPE;
+  let lastSide = 0;
+  for (const guard of guards) {
+    const target = layout.toScreen(guard);
+    // Compare the same silhouette at its live position and at the simulation foot.
+    // This cancels the off-centre spear, the contact shadow, and each bearing's
+    // different shape. Read native canvas pixels before phone FIT scaling.
+    const { actual, reference } = await page.evaluate(async ({ id, target }) => {
+      type Display = Phaser.GameObjects.Graphics | Phaser.GameObjects.Image;
+      const game = window.__tarpit!.game;
+      const scene = game.scene.getScene('game');
+      const fx = (scene as unknown as { guardFx: { bodies: Map<number, Display> } }).guardFx;
+      const body = fx.bodies.get(id)!;
+      const layer = body.displayList;
+      const ctx = game.canvas.getContext('2d')!;
+      const x = Math.round(target.x) - 64;
+      const y = Math.round(target.y) - 64;
+      const capture = (atSimulationFoot: boolean) => new Promise<ImageData>((resolve) => {
+        game.events.once('prerender', () => {
+          // Isolate one figure on a uniform background for both readings.
+          const others = [...scene.children.list, ...layer.list]
+            .filter(o => !Object.is(o, layer) && o !== body && 'visible' in o && o.visible) as Display[];
+          for (const o of others) o.setVisible(false);
+          const foot = { x: body.x, y: body.y };
+          if (atSimulationFoot) body.setPosition(target.x, target.y);
+          game.events.once('postrender', () => {
+            const pixels = ctx.getImageData(x, y, 128, 128);
+            body.setPosition(foot.x, foot.y);
+            for (const o of others) o.setVisible(true);
+            resolve(pixels);
+          });
+        });
+      });
+      function bounds(image: ImageData) {
+        const { data, width, height } = image;
+        let left = width, right = -1, top = height, bottom = -1;
+        for (let py = 0; py < height; py++) for (let px = 0; px < width; px++) {
+          const i = (py * width + px) * 4;
+          if (Math.abs(data[i] - data[0]) + Math.abs(data[i + 1] - data[1]) + Math.abs(data[i + 2] - data[2]) < 50) continue;
+          left = Math.min(left, px); right = Math.max(right, px);
+          top = Math.min(top, py); bottom = Math.max(bottom, py);
+        }
+        return { left, right, top, bottom };
+      }
+      return { actual: bounds(await capture(false)), reference: bounds(await capture(true)) };
+    }, { id: guard.id, target });
+    expect(actual.bottom - actual.top + 1, 'soldier height in native pixels').toBeGreaterThanOrEqual(28);
+    expect(Math.abs(reference.bottom - 64), 'boots stand at the reference foot').toBeLessThanOrEqual(6);
+    const dx = actual.left - reference.left, dy = actual.bottom - reference.bottom;
+    const dir = layout.screenDir(Math.cos(guard.angle), Math.sin(guard.angle));
+    const along = dx * dir.x + dy * dir.y;
+    const across = dy * dir.x - dx * dir.y;
+    expect(Math.abs(along), `guard ${guard.id} along trail`).toBeLessThanOrEqual(6);
+    expect(Math.abs(across), `guard ${guard.id} across trail`).toBeLessThanOrEqual(10);
+    expect(across * lastSide, 'successive guards stand on opposite sides').toBeLessThanOrEqual(0);
+    expect(Math.sign(across)).not.toBe(0);
+    lastSide = Math.sign(across);
   }
 }
 

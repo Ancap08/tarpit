@@ -1,5 +1,7 @@
 import type Phaser from 'phaser';
 import type { GameEvent, GameState, Point } from '../../sim';
+import { GUARD_COUNT } from '../../sim/blockers';
+import { BAR_HEIGHT, BAR_WIDTH } from './enemies';
 import type { Layout } from '../layout';
 import { COLORS } from '../palette';
 import type { PaintedSkin } from '../skin/painted';
@@ -26,8 +28,19 @@ const STRIKE_MS = 145;
 const STRIKE_BEAT_MS = 410;
 const FALL_MS = 410;
 const LEAVE_MS = 590;
-const HP_WIDTH = 10;
-const HP_HEIGHT = 4;
+export const GUARD_ACROSS_OFFSET = 10;
+export const GUARD_ALONG_OFFSET = 5;
+const CLASSIC_SCALE = 1.35;
+
+/** A stable slot for all poses, including after another guard falls. */
+export function guardFoot(p: Point & { angle: number }, id: number): Point {
+  const slot = id % GUARD_COUNT;
+  const across = (slot % 2 === 0 ? -1 : 1) * GUARD_ACROSS_OFFSET;
+  const along = GUARD_ALONG_OFFSET * (1 - 2 * slot / (GUARD_COUNT - 1));
+  const dx = Math.cos(p.angle);
+  const dy = Math.sin(p.angle);
+  return { x: p.x + dx * along - dy * across, y: p.y + dy * along + dx * across };
+}
 const PALETTE = {
   edge: 0x252727, metal: 0xe3dbbd, body: 0x3c7895, shield: 0x416b96, shaft: 0xb38b59,
 };
@@ -67,6 +80,7 @@ function soldier(g: Graphics, p: Point, facing: Point, pose: Pose, t: number, mo
   g.fillStyle(PALETTE.body).fillEllipse(x, y - h * 0.58, 12, 13);
   g.fillStyle(PALETTE.edge).fillCircle(x, y - h, 6);
   g.fillStyle(PALETTE.metal).fillCircle(x + 0.9 * facing.x, y - h - 1, 4.5);
+  g.fillStyle(0xb83d38).fillEllipse(x, y - h - 5, 4, 5);
   line(g, x - 4, y - h + 1, x + 4, y - h + 1, PALETTE.edge, 2);
   const side = Math.abs(facing.x) < 0.25 ? (mirror ? -1 : 1) : Math.sign(facing.x);
   const reach = pose === 'strike' ? 8 : 0;
@@ -77,7 +91,12 @@ function soldier(g: Graphics, p: Point, facing: Point, pose: Pose, t: number, mo
   if (!fall) {
     line(g, sx - facing.x * 8, sy - facing.y * 6 + 4, tipX, tipY, PALETTE.edge, 4);
     line(g, sx - facing.x * 8, sy - facing.y * 6 + 4, tipX, tipY, PALETTE.shaft, 2);
-    g.fillStyle(PALETTE.metal).fillCircle(tipX, tipY, 2.4);
+    const angle = Math.atan2(tipY - sy, tipX - sx);
+    const dx = Math.cos(angle);
+    const dy = Math.sin(angle);
+    g.fillStyle(PALETTE.metal).fillTriangle(tipX + 3 * dx, tipY + 3 * dy,
+      tipX - 2 * dx - 2.5 * dy, tipY - 2 * dy + 2.5 * dx,
+      tipX - 2 * dx + 2.5 * dy, tipY - 2 * dy - 2.5 * dx);
   }
   const shieldX = x - 6 * side;
   g.fillStyle(PALETTE.edge).fillEllipse(shieldX, sy + 2, 11, 14);
@@ -85,22 +104,20 @@ function soldier(g: Graphics, p: Point, facing: Point, pose: Pose, t: number, mo
   g.fillStyle(PALETTE.metal).fillCircle(shieldX, sy + 1, 2);
 }
 
-/** Render a live guard at its simulation foot. Only departed figures may move off that foot. */
+/** Live guards hold their formation. Only departing figures walk out of their slot. */
 export class GuardEffects {
   private age = 0;
   private readonly strikes = new Map<number, number>();
   private readonly departing = new Map<number, { guard: GuardSpot; pose: 'fall' | 'leave'; start: number }>();
   private readonly bodies = new Map<number, Graphics | Image>();
-  private readonly layer: Phaser.GameObjects.Layer;
   private drawn: DrawnGuard[] = [];
 
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly layout: Layout,
+    private readonly layer: Phaser.GameObjects.Layer,
     private readonly painted?: PaintedSkin,
-  ) {
-    this.layer = painted?.standing ?? scene.add.layer();
-  }
+  ) {}
 
   advance(ms: number): void {
     this.age += ms;
@@ -155,20 +172,20 @@ export class GuardEffects {
     const salute = pose === 'leave' && (!motion || t < 0.27);
     const sign = pose === 'leave' && !salute ? 1 : -1;
     const facing = this.layout.screenDir(sign * Math.cos(guard.angle), sign * Math.sin(guard.angle));
-    const p = this.layout.toScreen(guard);
+    const p = this.layout.toScreen(guardFoot(guard, guard.id));
     const walk = pose === 'leave' && motion ? 30 * Math.max(0, (t - 0.27) / 0.73) : 0;
     const at = { x: p.x + walk * facing.x, y: p.y + walk * facing.y };
     const alpha = live ? 1 : motion ? Math.min(1, 2 * (1 - t)) : 0.7;
     let obj = this.bodies.get(guard.id);
     if (!obj) {
-      obj = this.painted ? this.painted.image('guard') : this.scene.add.graphics();
+      obj = this.painted ? this.painted.image('guard') : this.scene.add.graphics().setScale(CLASSIC_SCALE);
       this.layer.add(obj);
       this.bodies.set(guard.id, obj);
     }
-    obj.setPosition(at.x, at.y).setDepth(at.y + 1).setAlpha(alpha);
+    obj.setPosition(at.x, at.y).setDepth(at.y).setAlpha(alpha);
     let texture: string | null = null;
     let frame: number | null = null;
-    let barLift = 29;
+    let barLift = Math.ceil(28 * CLASSIC_SCALE) + BAR_HEIGHT + 3;
     if (this.painted) {
       const image = obj as Image;
       const bearing = (Math.round(Math.atan2(facing.x, -facing.y) / (Math.PI / 2)) + 4) % 4;
@@ -177,21 +194,27 @@ export class GuardEffects {
       texture = image.texture.key;
       frame = Number(image.frame.name);
       const sheet = this.painted.assets.sheets.guard;
-      barLift = Math.ceil((sheet.anchor[1] - sheet.bodyBounds![frame][1]) / this.painted.assets.density) + 5;
+      barLift = Math.ceil((sheet.anchor[1] - sheet.bodyBounds![frame][1]) / this.painted.assets.density) + BAR_HEIGHT + 3;
     } else {
       soldier((obj as Graphics).clear(), ORIGIN, facing, pose, motion ? t : 0, motion, guard.id % 2 === 0);
     }
     const point = { x: obj.x, y: obj.y };
-    // An overhead bar would cover the next guard on a vertical screen trail.
-    const sideBar = Math.abs(facing.x) < Math.abs(facing.y);
-    const barX = sideBar ? point.x + (guard.id % 2 === 0 ? 14 : -14 - HP_WIDTH) : point.x - HP_WIDTH / 2;
+    // Keep the bars outside both files, so a foreground bar cannot cover a rear helmet.
+    const centre = this.layout.toScreen(guard);
+    const vertical = Math.abs(facing.x) < Math.abs(facing.y);
+    const width = BAR_WIDTH + 2;
+    // Give same-side bars a visible gap on a horizontal trail.
+    const barCentreX = point.x + (point.x - centre.x) / 2;
+    const left = vertical ? point.x + (point.x > centre.x ? 13 : -13 - width) : barCentreX - width / 2;
+    const top = vertical ? point.y - 21 : point.y > centre.y ? point.y + 5 : point.y - barLift;
     const bar = live ? {
-      x: barX, y: point.y - (sideBar ? 19 : barLift),
-      width: HP_WIDTH, height: HP_HEIGHT, fillWidth: (HP_WIDTH - 2) * live.hp / live.maxHp,
+      x: Math.max(0, Math.min(this.layout.width - width, Math.round(left))),
+      y: Math.max(this.layout.map.y, Math.min(this.layout.map.y + this.layout.map.height - BAR_HEIGHT - 2, Math.round(top))),
+      width, height: BAR_HEIGHT + 2, fillWidth: Math.max(1, Math.round(BAR_WIDTH * live.hp / live.maxHp)),
     } : null;
     if (bar) {
       bars.fillStyle(PALETTE.edge).fillRect(bar.x, bar.y, bar.width, bar.height);
-      bars.fillStyle(COLORS.cellOk).fillRect(bar.x + 1, bar.y + 1, bar.fillWidth, bar.height - 2);
+      bars.fillStyle(COLORS.cellOk).fillRect(bar.x + 1, bar.y + 1, bar.fillWidth, BAR_HEIGHT);
     }
     this.drawn.push({ id: guard.id, point, hp: live?.hp ?? 0, maxHp: live?.maxHp ?? 0, hpBar: bar, animation: pose, texture, frame });
   }

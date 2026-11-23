@@ -506,8 +506,10 @@ Reloading starts a new run.
 - **Guards.** Use the same snap, end clearances and refusals as the wall.
   The first guard stands on the snap point. Place the rest at equal trail
   distances back toward the cave, following the trail around corners.
-  Refuse the cast if the line would pass the trail start. A new squad
-  replaces every surviving guard. It can share the trail with a Barricade.
+  The squad spans 36 trail px. The shared 64 px cave clearance therefore
+  leaves room for all four guards at every legal anchor. Shields do not
+  reduce guard damage. A new squad replaces every surviving guard.
+  It can share the trail with a Barricade.
   The only reward affecting deployment is Quick Hands on the shared charge.
 
 | Squad | Number | HP each | Damage per second | Lifetime in ticks | Spacing in trail px |
@@ -518,9 +520,8 @@ Reloading starts a new run.
   a guard. At identical
   distances the wall takes contact first. Each guard strikes one walker in
   contact, choosing the earliest arrival tick and then the lowest enemy id.
-  Guard damage bypasses shields. Each kill pays the enemy bounty and counts
-  as a special kill. Placement emits `squadPlaced`, each strike emits
-  `guardStrike`, a fallen guard emits `guardDown`, and the last death,
+  Each kill pays the enemy bounty and counts as a special kill.
+  Placement emits `squadPlaced`, each strike emits `guardStrike`, a fallen guard emits `guardDown`, and the last death,
   expiry or replacement emits `squadGone`.
   A walker reaching or crossing the first live blocker stops exactly
   at it, including on the breaking tick. Walkers may stack. Each contributes
@@ -588,7 +589,10 @@ Reloading starts a new run.
 - **Guards on screen.** The five unlocked choices fit above the controls
   with full-size touch targets. The Guards preview marks every foot position.
   On a refused cast, the aim stays open with a plain-language reason. The
-  soldiers face upstream and carry separate hp bars. Live contact animates
+  soldiers face upstream, stand about as tall as Goblins and use enemy-size
+  hp bars. Their feet alternate sides of the trail, within 10 px across
+  and 6 px along the trail from each simulation point. At contact the
+  lower figure draws in front. Live contact animates
   the spear, a death drops the soldier, and expiry cues a salute and departure.
   Test mode and reduced motion use still poses. The four sounds distinguish
   arrival, striking, falling and departure. Strike sounds share the horde budget.
