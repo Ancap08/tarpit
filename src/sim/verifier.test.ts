@@ -9,13 +9,13 @@ function enemy(over: Partial<Enemy> & { id: number }): Enemy {
   return { type: 'goblin', hp: 30, distance: 0, slow: 0, slowTicksLeft: 0, ...over };
 }
 
-/** A wave-10 state with every enemy already spawned, as if mid-wave. */
-function wave10AllSpawned(lives: number, enemies: Enemy[]): GameState {
+/** A wave-20 state with every enemy already spawned, as if mid-wave. */
+function wave20AllSpawned(lives: number, enemies: Enemy[]): GameState {
   const s = createGame();
   s.phase = 'wave';
-  s.wave = 10;
+  s.wave = 20;
   s.lives = lives;
-  s.spawnedPerGroup = WAVES[9].groups.map((g) => g.count);
+  s.spawnedPerGroup = WAVES[19].groups.map((g) => g.count);
   s.enemies = enemies;
   s.nextEnemyId = 1000;
   return s;
@@ -83,20 +83,20 @@ describe('verifier: edge cases', () => {
     expect(s.enemies[1].distance).toBe(1);
   });
 
-  it('clearing wave 10 with lives left is won, pays the bonus, and clearing wave 9 is not won', () => {
-    const s = wave10AllSpawned(3, []);
+  it('clearing wave 20 with lives left is won, pays the bonus, and clearing wave 9 is not won', () => {
+    const s = wave20AllSpawned(3, []);
     tick(s);
     expect(s.phase).toBe('won');
     expect(s.gold).toBe(125);
-    const nine = wave10AllSpawned(3, []);
+    const nine = wave20AllSpawned(3, []);
     nine.wave = 9;
     nine.spawnedPerGroup = WAVES[8].groups.map((g) => g.count);
     tick(nine);
     expect(nine.phase).toBe('setup');
   });
 
-  it('the last enemy of wave 10 exiting with lives 1 is a loss, not a win, and pays no bonus', () => {
-    const s = wave10AllSpawned(1, [enemy({ id: 0, distance: 1583 })]);
+  it('the last enemy of wave 20 exiting with lives 1 is a loss, not a win, and pays no bonus', () => {
+    const s = wave20AllSpawned(1, [enemy({ id: 0, distance: 1583 })]);
     tick(s);
     expect(s.lives).toBe(0);
     expect(s.phase).toBe('lost');

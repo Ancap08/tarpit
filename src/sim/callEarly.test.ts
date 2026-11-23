@@ -15,8 +15,8 @@ import {
   tick,
   WAVE_CLEAR_BONUS,
 } from './game';
-import { isBoss } from './enemies';
-import { comboBuild, playScripted, type TimedAction, type WaveScript } from './headless';
+import { ENEMY_STATS, isBoss } from './enemies';
+import { applyScriptBoon, comboBuild, playScripted, type TimedAction, type WaveScript } from './headless';
 import type { GameState } from './types';
 import { WAVES } from './waves';
 
@@ -61,14 +61,14 @@ describe('refusals, in order', () => {
   it('the last wave cannot call, and the wave before the boss wave cannot call it (the boss is never called early)', () => {
     const bossWave = WAVES.findIndex((w) => w.groups.some((g) => isBoss(g))) + 1;
     expect(bossWave).toBe(10);
-    expect(callNextWave(afterLastSpawn(10))).toEqual({ ok: false, reason: 'last-wave' });
-    expect(callNextWave(afterLastSpawn(9))).toEqual({ ok: false, reason: 'last-wave' });
-    // Even while wave 9 is still spawning, last-wave comes first.
+    expect(callNextWave(afterLastSpawn(20))).toEqual({ ok: false, reason: 'last-wave' });
+    expect(callNextWave(afterLastSpawn(19))).toEqual({ ok: false, reason: 'last-wave' });
+    // Even while wave 19 is still spawning, last-wave comes first.
     const s = createGame();
-    s.wave = 8;
+    s.wave = 18;
     startWave(s);
     expect(callEarlyStatus(s)).toEqual({ ok: false, reason: 'last-wave' });
-    expect(callEarlyStatus(afterLastSpawn(8)).ok).toBe(true);
+    expect(callEarlyStatus(afterLastSpawn(18)).ok).toBe(true);
   });
 
   it('a refusal changes nothing', () => {
@@ -156,16 +156,17 @@ describe('calling the next wave', () => {
     expect(s.towers.map((t) => t.locked)).toEqual([true, true]);
   });
 
-  it('survivors still exit and cost lives; each wave pays its clear bonus once; the game is won only after wave 10', () => {
-    // No towers, lives too high to lose: call every wave from 1 to 8 as soon as it may.
+  it('survivors still exit and cost lives; each wave pays its clear bonus once; the game is won only after wave 20', () => {
+    // No towers, lives too high to lose: call every eligible wave as soon as it may.
     const s = createGame();
-    s.lives = 1000;
+    s.lives = 2000;
     const clears: number[] = [];
     let calls = 0;
     let exits = 0;
     let spawns = 0;
     const running = () => s.phase === 'wave';
-    for (let w = 1; w <= 10 && s.phase === 'setup'; w++) {
+    for (let w = 1; w <= 20 && s.phase === 'setup'; w++) {
+      applyScriptBoon(s);
       startWave(s);
       while (running()) {
         if (callEarlyStatus(s).ok) {
@@ -182,22 +183,23 @@ describe('calling the next wave', () => {
         }
       }
     }
-    expect(calls).toBe(8);
-    expect(clears).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(calls).toBe(12);
+    expect(clears).toEqual(Array.from({ length: 20 }, (_, i) => i + 1));
     const total = WAVES.reduce((n, w) => n + w.groups.reduce((m, g) => m + g.count, 0), 0);
     expect(spawns).toBe(total);
     expect(exits).toBe(total);
-    // Every exit cost its lives (the boss 5).
-    expect(s.lives).toBe(1000 - (total - 1) - 5);
+    const loss = WAVES.flatMap((wave) => wave.groups).reduce((n, g) => n + g.count * ENEMY_STATS[g.type].livesCost, 0);
+    expect(s.lives).toBe(2000 - loss + 3); // The default wave-15 choice adds three lives.
     expect(s.phase).toBe('won');
   });
 });
 
 describe('headless: timed callEarly', () => {
-  /** comboBuild with a callEarly at the last spawn tick + 1 of waves 1 to 8. */
+  /** comboBuild with a callEarly after the last spawn of each eligible wave. */
   function comboCalling(): WaveScript {
-    const timed: TimedAction[][] = WAVES.map((_, i) => (i < 8 ? [{ type: 'callEarly', atWaveTick: lastSpawnTick(i + 1) + 1 }] : []));
-    return Object.assign([...comboBuild()], { timed });
+    const timed: TimedAction[][] = WAVES.map((_, i) => ([1, 2, 3, 6, 7, 8, 11, 12, 13, 16, 17, 18].includes(i + 1) ? [{ type: 'callEarly', atWaveTick: lastSpawnTick(i + 1) + 1 }] : []));
+    const script = comboBuild();
+    return Object.assign([...script], { timed, boons: script.boons });
   }
 
   it('calls fire at their wave tick and are accepted; a call before the last spawn is refused still-spawning', () => {
@@ -221,12 +223,13 @@ describe('headless: timed callEarly', () => {
 
   it('kills + exits = spawns over a tick-by-tick replay with calls', () => {
     const s = createGame();
-    s.lives = 1000;
+    s.lives = 2000;
     const script = comboBuild();
     const seen = new Set<number>();
     let gone = 0;
     const running = () => s.phase === 'wave';
-    for (let w = 0; w < 10 && s.phase === 'setup'; w++) {
+    for (let w = 0; w < 20 && s.phase === 'setup'; w++) {
+      applyScriptBoon(s, script);
       for (const a of script[w] ?? []) if (a.type === 'build') buildTower(s, a.cell, a.tower);
       startWave(s);
       while (running()) {

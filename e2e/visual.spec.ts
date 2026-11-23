@@ -1,24 +1,28 @@
 import { expect, test, type Page } from '@playwright/test';
-import { BOSS_NAME, PANEL_TEXT, bestScoreText } from '../src/game/names';
+import { ACT_TWO_TEXT, BOSS_NAME, GRUMBLEMAW_NAME, PACK_CALL_TEXT, PANEL_TEXT, bestScoreText } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { TowerType } from '../src/sim/types';
 import type { TitleUiState } from '../src/game/TitleScene';
 import { MAPS, positionAlongPath } from '../src/sim/map';
 import { SPECIAL_DEFS } from '../src/sim/specials';
+import { expectOffer, visibleTexts } from './campaign';
+import { cellPage, rectPage, rectPageSize } from './phone';
+import { ACT_TWO_STEPS, FIRST_PACK_FRAME, FIRST_PACK_STEPS, FIRST_REWARD_STEPS, GRUMBLEFOOT_STEPS, beginVisualWave, finalBossFrame } from './visualCampaign';
+import { waitForTitle } from './title';
 
 // Milestone 25b frames (see the special tests below).
 // Milestone 25c (second pass): recomputed headlessly on the longer waves.
 const AIM_EXPECT = {
   wave: 4,
-  aim: { x: 160, y: 191 },
-  enemies: 9,
-  inside: ['goblin 3', 'goblin 4', 'harpy 5', 'goblin 6', 'harpy 7', 'goblin 8'],
+  aim: { x: 160, y: 131 },
+  enemies: 12,
+  inside: ['goblin 4', 'harpy 5', 'goblin 6', 'harpy 7'],
 };
 // Milestone 30: the zone frames on wave 7 at step 900, both aimed at (160,132) on the first climb.
 const TAR_ZONE_EXPECT = {
   at: { x: 160, y: 132 },
   hits: 7,
-  zones: ['tarBarrel 420'],
+  zones: ['tarBarrel 600'],
   slowed: 8,
   burning: 0,
   labels: ['7 hit'],
@@ -27,23 +31,23 @@ const TAR_ZONE_EXPECT = {
 };
 const FIRE_ZONE_EXPECT = {
   at: { x: 160, y: 132 },
-  hits: 6,
-  zones: ['fireArrows 420'],
+  hits: 7,
+  zones: ['fireArrows 600'],
   slowed: 0,
   burning: 6,
-  labels: ['6 hit'],
+  labels: ['7 hit'],
   rechargeTicks: 1140,
   hud: 'Wait 19s',
 };
-// Milestone 30 (keg 30 damage, 90 px): the keg at (160,191) hits 7 and kills the 4 Goblins.
+// Milestone 30 (keg frame, now with 60 damage): the keg hits 7, killing 4 Goblins and 2 Harpies.
 const FIRED_EXPECT = {
   aim: { x: 160, y: 191 },
   ok: true,
   hits: 7,
-  kills: 4,
+  kills: 6,
   before: 15,
-  after: 11,
-  hurt: ['goblin 5 11', 'troll 13 920', 'harpy 14 6', 'harpy 16 6'],
+  after: 9,
+  hurt: ['goblin 5 11', 'troll 13 890'],
   charges: 0,
   labels: ['7 hit'],
 };
@@ -54,7 +58,7 @@ const FIRED_EXPECT = {
 
 async function open(page: Page): Promise<void> {
   await page.goto('/?test=1');
-  await page.waitForFunction(() => window.__tarpit?.scene?.() === 'title');
+  await waitForTitle(page);
   // Let the first frame paint (and web fonts settle) before capturing.
   await page.evaluate(() => document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => r(null)))));
 }
@@ -191,15 +195,15 @@ test('wave 8 with all five enemy types', async ({ page }) => {
       harpies: of('harpy').length,
     };
   }, ENEMIES_STEPS);
-  expect(counts).toEqual({ wave: 8, goblins: 9, wolves: 8, trolls: 5, hurtTrolls: 2, slowed: 2, shieldbearers: 4, harpies: 13 });
+  expect(counts).toEqual({ wave: 8, goblins: 9, wolves: 8, trolls: 6, hurtTrolls: 2, slowed: 2, shieldbearers: 4, harpies: 13 });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('enemies.png');
 });
 
 /** Click the centre of a named rectangle from uiRects(). */
 async function click(page: Page, name: string): Promise<void> {
-  const r = await page.evaluate((n) => (window.__tarpit as TarpitTestApi).uiRects()[n], name);
-  await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+  const { x, y } = await rectPage(page, name);
+  await page.mouse.click(x, y);
 }
 
 const ui = (page: Page) => page.evaluate(() => (window.__tarpit as TarpitTestApi).ui());
@@ -355,7 +359,8 @@ test('new towers upgraded, Mortar selected, splash and burning tarred Trolls', a
     { fire: MORTAR_FIRE_TICK, steps: NEW_TOWERS_STEPS },
   );
   expect(counts).toEqual({ wave: 5, upgraded: 4, mortarShots: 1, enemies: 13, slowedAndBurning: 1, harpies: 0 });
-  await page.mouse.click(17 * 32 + 16, 6 * 32 + 16); // select the Mortar
+  const mortar = await cellPage(page, { col: 17, row: 6 });
+  await page.mouse.click(mortar.x, mortar.y);
   await page.mouse.move(900, 440); // empty grass: no hover tint
   expect(await ui(page)).toMatchObject({ pick: null, selectedCell: { col: 17, row: 6 }, panelOpen: true });
   await settle(page);
@@ -424,14 +429,16 @@ test('wave 4 Harpies: a Cannon splash ignores one, a Musketeer shoots one', asyn
   }, HARPIES_STEPS);
   expect(r).toEqual({
     wave: 4,
-    shots: ['197 musketeer harpy 1', '257 musketeer harpy 1', '302 cannon goblin 4'],
+    shots: ['197 musketeer harpy 1', '257 musketeer harpy 1', '302 cannon goblin 6'],
     harpies: [
       { id: 1, hp: 12 },
       { id: 2, hp: 36 },
+      { id: 3, hp: 36 },
       { id: 5, hp: 36 },
+      { id: 7, hp: 36 },
     ],
     wolves: 0,
-    textures: ['harpy', 'harpy', 'harpy'],
+    textures: ['harpy', 'harpy', 'harpy', 'harpy', 'harpy'],
   });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('harpies.png');
@@ -459,7 +466,7 @@ test('wave 4 Harpies: a Cannon splash ignores one, a Musketeer shoots one', asyn
 // on step 5359, no hit on this step (src/sim/boss-frame.test.ts pins it).
 // Milestone 30 (the special policy): the same step still meets the rules,
 // at (420,108) with 3331 hp.
-const BOSS_STEPS = 5361;
+// Milestone 36: the wave 5 range boon and changed special policy give tick 5263.
 
 test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splash', async ({ page }) => {
   await open(page);
@@ -469,7 +476,8 @@ test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splas
     t.runScript('comboBuild', 10);
     t.startWave();
     t.step(steps - 2);
-    const mortarHitOnBoss = t.events().filter((e) => e.kind === 'hit' && e.tower === 'mortar').length;
+    const bossId = t.state().enemies.find((e) => e.type === 'boss')?.id;
+    const mortarHitOnBoss = t.events().filter((e) => e.kind === 'hit' && e.tower === 'mortar' && e.enemyId === bossId).length;
     t.step(2);
     const e = t.state().enemies;
     const boss = e.find((x) => x.type === 'boss');
@@ -483,7 +491,7 @@ test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splas
       bar: t.hudText().boss,
       texture: boss ? t.animState(boss.id)?.texture : null,
     };
-  }, BOSS_STEPS);
+  }, GRUMBLEFOOT_STEPS);
   expect(r).toEqual({
     wave: 10,
     enemies: 1,
@@ -491,7 +499,7 @@ test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splas
     slowed: true,
     hitNow: false,
     mortarHitOnBoss: 1,
-    bar: `${BOSS_NAME} 3331 / 4000`,
+    bar: `${BOSS_NAME} 3525 / 4000`,
     texture: 'boss',
   });
   await settle(page);
@@ -703,9 +711,9 @@ test('win screen after the combo build', async ({ page }) => {
     const t = window.__tarpit as TarpitTestApi;
     await t.startGame();
     const phase = t.runScript('comboBuild');
-    return { phase, screen: t.endScreen(), lives: t.state().lives, gold: t.state().gold };
+    return { phase, screen: t.endScreen(), wave: t.state().wave, lives: t.state().lives, gold: t.state().gold };
   });
-  expect(end).toEqual({ phase: 'won', screen: 'won', lives: 16, gold: 420 }); // milestone 30: the special policy
+  expect(end).toEqual({ phase: 'won', screen: 'won', wave: 20, lives: 19, gold: 2847 });
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('won.png');
 });
@@ -720,24 +728,23 @@ test('title with a best score', async ({ page }) => {
   await expect(page.locator('canvas')).toHaveScreenshot('title-best.png');
 });
 
-// Milestone 26: endless wave 11 running. The endless idle script wins with
-// the combo build and presses Keep going (untilWave 11 stops in setup), then
-// Start Wave and 900 ticks: the HUD reads "Wave 11" and previews wave 12.
-test('endless wave 11 HUD', async ({ page }) => {
+// Milestone 36: the endless idle script wins and enters endless. Start the
+// first endless wave manually so the snapshot is fixed at tick 900.
+test('endless wave 21 HUD', async ({ page }) => {
   test.setTimeout(90_000);
   await open(page);
   const r = await page.evaluate(async () => {
     const t = window.__tarpit as TarpitTestApi;
     await t.startGame();
-    const phase = t.runScript('endlessIdle', 11);
+    const phase = t.runScript('endlessIdle', 21);
     t.startWave();
     t.step(900);
     return { phase, wave: t.state().wave, endless: t.state().endless, hud: t.hudText(), screen: t.endScreen() };
   });
-  expect(r).toMatchObject({ phase: 'setup', wave: 11, endless: true, screen: null });
-  expect(r.hud.wave).toBe('Wave 11');
+  expect(r).toMatchObject({ phase: 'setup', wave: 21, endless: true, screen: null });
+  expect(r.hud.wave).toBe('Wave 21');
   expect(r.hud.boss).toBeNull();
-  expect(r.hud.next).toBe('Next: 30 Wolf, 10 Troll, 10 Harpy');
+  expect(r.hud.next).toBe('Next: 33 Wolf, 23 Troll, 31 Harpy');
   await settle(page);
   await expect(page.locator('canvas')).toHaveScreenshot('endless-hud.png');
 });
@@ -828,4 +835,107 @@ test('riverbend placing invalid: a drag held over the river', async ({ page }) =
   await expect(page.locator('canvas')).toHaveScreenshot('riverbend-placing-invalid.png');
   await page.mouse.up();
   expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).state().towers)).toEqual([]);
+});
+
+test('wave 5 shows three reward cards and lets the player pick one', async ({ page }) => {
+  await open(page);
+  const reward = await beginVisualWave(page, 5, FIRST_REWARD_STEPS);
+  expect(reward).toMatchObject({
+    wave: 5,
+    pending: { wave: 5, options: ['longBarrels', 'keenArrows', 'warChest'] },
+    lives: 18,
+    gold: 145,
+  });
+  await expectOffer(page, 5);
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('boon-pick.png');
+
+  await click(page, 'reward:longBarrels');
+  expect(await page.evaluate(() => (window.__tarpit as TarpitTestApi).state().boons)).toEqual(['longBarrels']);
+});
+
+test('all three held boons remain in the HUD after the third reward', async ({ page }) => {
+  await open(page);
+  const boons = await page.evaluate(async () => {
+    const t = window.__tarpit as TarpitTestApi;
+    await t.startGame();
+    t.runScript('comboBuild', 16);
+    t.step(100);
+    return t.state().boons;
+  });
+  expect(boons).toEqual(['longBarrels', 'stickyTar', 'stoneWalls']);
+  for (const id of boons) {
+    const size = await rectPageSize(page, `boon:${id}`);
+    expect(Math.min(size.width, size.height)).toBeGreaterThanOrEqual(44);
+  }
+  const icon = await rectPage(page, 'boon:stoneWalls');
+  await page.mouse.move(icon.x, icon.y);
+  expect((await ui(page)).boonTooltip).toBe('stoneWalls');
+  expect(await visibleTexts(page)).toContain('3 more lives');
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('boon-icons.png');
+});
+
+test('after the second reward, wave 11 opens with Act II', async ({ page }) => {
+  await open(page);
+  const reward = await beginVisualWave(page, 10, ACT_TWO_STEPS);
+  expect(reward).toMatchObject({
+    wave: 10,
+    pending: { wave: 10, options: ['stickyTar', 'hotCoals', 'quickHands'] },
+    lives: 16,
+    gold: 420,
+  });
+  await expectOffer(page, 10);
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('reward-pick-wave10.png');
+  await click(page, 'reward:stickyTar');
+  // Let the boon-pick banner finish, then advance the act banner through its fade-in.
+  await page.evaluate(() => (window.__tarpit as TarpitTestApi).step(100));
+  await click(page, 'startWave');
+  await page.evaluate(() => (window.__tarpit as TarpitTestApi).step(13));
+  expect((await ui(page)).momentBanner).toBe(ACT_TWO_TEXT);
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('act2.png');
+});
+
+test('wave 20 shows Grumblemaw under a Mortar splash', async ({ page }) => {
+  await open(page);
+  expect(await finalBossFrame(page)).toEqual({
+    wave: 20,
+    enemies: 1,
+    bar: `${GRUMBLEMAW_NAME} 4722 / 5600`,
+    texture: 'boss',
+    slowed: true,
+    burning: true,
+    mortar: true,
+    hitNow: false,
+  });
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('grumblemaw.png');
+});
+
+test('wave 20 shows Grumblemaw’s first pack call and two Wolves', async ({ page }) => {
+  await open(page);
+  await beginVisualWave(page, 20, FIRST_PACK_STEPS);
+  const frame = await page.evaluate((steps) => {
+    const t = window.__tarpit as TarpitTestApi;
+    const call = t.events().find((e) => e.kind === 'packCall');
+    t.step(steps);
+    return {
+      call,
+      cue: t.ui().packCue,
+      banner: t.ui().momentBanner,
+      bar: t.hudText().boss,
+      enemies: t.state().enemies.map((e) => e.type),
+    };
+  }, FIRST_PACK_FRAME - FIRST_PACK_STEPS);
+  expect(frame).toEqual({
+    call: expect.objectContaining({ kind: 'packCall', threshold: 2 }),
+    cue: true,
+    banner: PACK_CALL_TEXT,
+    bar: `${GRUMBLEMAW_NAME} 3592 / 5600`,
+    enemies: ['grumblemaw', 'wolf', 'wolf'],
+  });
+  await settle(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('pack-call.png');
 });

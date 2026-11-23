@@ -61,12 +61,13 @@ function startLabel(page: Page): Promise<{ label: Box; fontSize: string; button:
 test('the call-early label fits the 130 px button for every bonus from 20 down to 0, then reads Start Wave again after the clear', async ({ page }) => {
   const errors = watchErrors(page);
   await startGame(page);
-  // Wave 5 with no towers: its two Trolls keep the wave alive past the 20 s grace.
+  // Wave 6 with no towers remains alive past the 20 s grace and permits an early call.
   await api(page, (a) => {
-    a.state().wave = 4;
+    a.state().wave = 5;
+    a.state().lives = 1000;
     a.startWave();
   });
-  const last = lastSpawnTick(5);
+  const last = lastSpawnTick(6);
   await step(page, last + 1);
   let widest = 0;
   for (let k = 0; k <= 20; k++) {
@@ -90,16 +91,16 @@ test('the call-early label fits the 130 px button for every bonus from 20 down t
   await step(page, 300);
   expect((await hud(page)).startWave).toBe(callEarlyLabel(0));
   for (let i = 0; i < 80 && (await state(page)).phase === 'wave'; i++) await step(page, 60);
-  expect(await state(page)).toMatchObject({ phase: 'setup', wave: 5 });
+  expect(await state(page)).toMatchObject({ phase: 'setup', wave: 6 });
   const after = await startLabel(page);
   expect(after.text).toBe('Start Wave');
   expect(after.fontSize).toBe('18px');
   expect(after.label.x).toBeGreaterThanOrEqual(after.button.x);
   expect(after.label.x + after.label.width).toBeLessThanOrEqual(after.button.x + after.button.width);
   expect((await ui(page)).callEarly).toEqual({ available: false, bonus: 0 });
-  // And it starts wave 6 as before.
+  // And it starts wave 7.
   await click(page, 'startWave');
-  expect(await state(page)).toMatchObject({ phase: 'wave', wave: 6 });
+  expect(await state(page)).toMatchObject({ phase: 'wave', wave: 7 });
   expect(errors).toEqual([]);
 });
 
@@ -199,10 +200,9 @@ test('kills and moves: a tower that has kills is locked and cannot be moved; an 
   expect((await ui(page)).killsLabel).toBe(killsLabel(kills));
 });
 
-// Milestone 25c second pass: the densest moment of wave 8 was wave tick 1576, 22 enemies.
-// Milestone 28: with the stored special list (wave 8's Fire Arrows come at 4620, after it)
-// it is wave tick 1261, 22 enemies.
-test('frame: comboBuild, wave 8 at its densest moment (wave tick 1261, 22 enemies on the map)', async ({ page }, testInfo) => {
+// Replaying the 36a combo build to wave 8 and ticking it without a
+// special first reaches a peak of 22 live enemies at step 1396.
+test('frame: comboBuild, wave 8 at its densest moment (wave tick 1396, 22 enemies on the map)', async ({ page }, testInfo) => {
   test.setTimeout(60_000);
   const errors = watchErrors(page);
   await page.goto('/?test=1');
@@ -214,9 +214,9 @@ test('frame: comboBuild, wave 8 at its densest moment (wave tick 1261, 22 enemie
     t.startWave();
   });
   expect(await state(page)).toMatchObject({ phase: 'wave', wave: 8, lives: 16 });
-  await step(page, 1261);
+  await step(page, 1396);
   const s = await state(page);
-  expect(s.waveTick).toBe(1261);
+  expect(s.waveTick).toBe(1396);
   expect(s.enemies.length).toBe(22);
   await page.screenshot({ path: testInfo.outputPath('wave8-densest.png') });
   expect(errors).toEqual([]);

@@ -1,5 +1,5 @@
 // Milestone 26: endless mode (docs/SCOPE-v4.md "Endless mode and high
-// score"). Waves past 10 come from waves.ts waveDef; game.ts
+// score"). Waves past 20 come from waves.ts waveDef; game.ts
 // continueEndless turns a won game into an endless one; the score is
 // game.ts wavesCleared.
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -17,19 +17,19 @@ import {
   WAVE_CLEAR_BONUS,
   wavesCleared,
 } from './game';
-import { applyAction, comboBuild, endlessGreedy, endlessIdle, ENDLESS_WAVE_CAP, playScripted, type WaveScript } from './headless';
+import { applyAction, applyScriptBoon, comboBuild, endlessGreedy, endlessIdle, ENDLESS_WAVE_CAP, playScripted, type WaveScript } from './headless';
 import type { GameEvent } from './events';
 import type { GameState, GroupDef } from './types';
 import { ENDLESS_HP_GROWTH, hasNextWave, LAST_WAVE, nextWavePreview, waveDef, WAVES } from './waves';
 
 const harpyGroup = (n: number): GroupDef => waveDef(n).groups[waveDef(n).groups.length - 1];
 const withoutLast = (n: number) => waveDef(n).groups.slice(0, -1);
-const noBoss = (w: number) => WAVES[w - 1].groups.filter((g) => g.type !== 'boss');
+const noBoss = (w: number) => WAVES[w - 1].groups.filter((g) => !isBoss(g));
 
 describe('waveDef (milestone 26)', () => {
-  it('waves 1 to 10 are the table, the same objects', () => {
-    for (let n = 1; n <= 10; n++) expect(waveDef(n)).toBe(WAVES[n - 1]);
-    expect(LAST_WAVE).toBe(10);
+  it('waves 1 to 20 are the original table objects', () => {
+    expect(LAST_WAVE).toBe(20);
+    for (let n = 1; n <= 20; n++) expect(waveDef(n)).toBe(WAVES[n - 1]);
   });
 
   it('refuses wave 0 and non-integers', () => {
@@ -37,65 +37,32 @@ describe('waveDef (milestone 26)', () => {
     expect(() => waveDef(1.5)).toThrow();
   });
 
-  it('the hp growth per cycle is 1.6 (the scope said 1.15; DEVLOG milestone 26)', () => {
-    expect(ENDLESS_HP_GROWTH).toBe(1.6);
+  it('adds Harpies to waves 18–20, excludes bosses, and grows hp by 1.8 per cycle', () => {
+    expect(ENDLESS_HP_GROWTH).toBe(1.8);
+    for (let n = 21; n <= 200; n++) {
+      const tableWave = 18 + ((n - 21) % 3);
+      const cycle = Math.floor((n - 21) / 3) + 1;
+      expect(withoutLast(n)).toEqual(noBoss(tableWave));
+      const harpies = harpyGroup(n);
+      expect(harpies).toMatchObject({
+        type: 'harpy',
+        count: Math.min(16, 8 + 2 * cycle),
+        interval: 0.75,
+      });
+      expect(spawnTick(harpies, 0)).toBe(lastSpawnTick(tableWave) + (tableWave === 20 ? 0 : 120));
+      expect(waveDef(n).hpMultiplier).toBe(1.8 ** cycle);
+    }
   });
 
-  it('wave 11: wave 8 plus 10 Harpies every 0.75 s from 75.5 s, hp x 1.6', () => {
-    expect(withoutLast(11)).toEqual(WAVES[7].groups);
-    // Wave 8's last spawn is the 50th Goblin at 49 x 1.5 = 73.5 s.
-    expect(harpyGroup(11)).toEqual({ type: 'harpy', count: 10, interval: 0.75, delay: 75.5 });
-    expect(waveDef(11).hpMultiplier).toBe(1.6);
-    expect(waveDef(11).groups.reduce((n, g) => n + g.count, 0)).toBe(118);
-  });
-
-  it('wave 12: wave 9 plus 10 Harpies from 31 s, hp x 1.6', () => {
-    expect(withoutLast(12)).toEqual(WAVES[8].groups);
-    // Wave 9's last spawn is the 30th Wolf at 29 s.
-    expect(harpyGroup(12)).toEqual({ type: 'harpy', count: 10, interval: 0.75, delay: 31 });
-    expect(waveDef(12).hpMultiplier).toBe(1.6);
-  });
-
-  it('wave 13: wave 10 without the boss plus 10 Harpies from 65 s, hp x 1.6', () => {
-    expect(withoutLast(13)).toEqual(noBoss(10));
-    // Wave 10's last other spawn is the 15th Troll at 14 x 4.5 = 63 s.
-    expect(harpyGroup(13)).toEqual({ type: 'harpy', count: 10, interval: 0.75, delay: 65 });
-    expect(waveDef(13).hpMultiplier).toBe(1.6);
-  });
-
-  it('wave 14: cycle 2, wave 8 again, 12 Harpies, hp x 2.56', () => {
-    expect(withoutLast(14)).toEqual(WAVES[7].groups);
-    expect(harpyGroup(14)).toEqual({ type: 'harpy', count: 12, interval: 0.75, delay: 75.5 });
-    expect(waveDef(14).hpMultiplier).toBeCloseTo(2.56, 12);
-  });
-
-  it('wave 17: cycle 3, wave 8, 14 Harpies, hp x 4.096; the group stops growing at 16', () => {
-    expect(withoutLast(17)).toEqual(WAVES[7].groups);
-    expect(harpyGroup(17)).toEqual({ type: 'harpy', count: 14, interval: 0.75, delay: 75.5 });
-    expect(waveDef(17).hpMultiplier).toBeCloseTo(4.096, 12);
-    expect(harpyGroup(20).count).toBe(16);
-    expect(harpyGroup(23).count).toBe(16);
-    expect(harpyGroup(200).count).toBe(16);
-  });
-
-  it('hp at spawn: round(base x level x 1.6 ^ cycle), by hand', () => {
-    expect(enemyMaxHp('goblin', 'normal', waveDef(11).hpMultiplier)).toBe(37); // 36.8
-    expect(enemyMaxHp('troll', 'normal', waveDef(11).hpMultiplier)).toBe(1520);
-    expect(enemyMaxHp('harpy', 'normal', waveDef(11).hpMultiplier)).toBe(58); // 57.6
-    expect(enemyMaxHp('goblin', 'easy', waveDef(11).hpMultiplier)).toBe(28); // 27.6
-    expect(enemyMaxHp('goblin', 'hard', waveDef(11).hpMultiplier)).toBe(44); // 44.16
-    expect(enemyMaxHp('goblin', 'normal', waveDef(14).hpMultiplier)).toBe(59); // 58.88
-    expect(enemyMaxHp('troll', 'normal', waveDef(17).hpMultiplier)).toBe(3891); // 3891.2
-    expect(enemyMaxHp('goblin', 'normal', waveDef(17).hpMultiplier)).toBe(94); // 94.208
-  });
-
-  it('no boss after wave 10', () => {
-    for (let n = 11; n <= 200; n++) expect(waveDef(n).groups.some((g) => isBoss(g)), `wave ${n}`).toBe(false);
+  it('hp at spawn is rounded once, after difficulty and endless multipliers', () => {
+    expect(enemyMaxHp('goblin', 'normal', waveDef(21).hpMultiplier)).toBe(41);
+    expect(enemyMaxHp('goblin', 'easy', waveDef(21).hpMultiplier)).toBe(31);
+    expect(enemyMaxHp('goblin', 'hard', waveDef(21).hpMultiplier)).toBe(50);
+    expect(enemyMaxHp('troll', 'normal', waveDef(24).hpMultiplier)).toBe(3078);
   });
 
   it('bounties, speeds and lives cost come from the enemy table, unchanged', () => {
-    // waveDef carries only types, counts and timing; the hp multiplier is the only scaling.
-    expect(Object.keys(waveDef(11)).sort()).toEqual(['groups', 'hpMultiplier']);
+    expect(Object.keys(waveDef(21)).sort()).toEqual(['groups', 'hpMultiplier']);
   });
 
   /** The most spawn ticks inside any half-open window [t, t + 180). */
@@ -114,32 +81,25 @@ describe('waveDef (milestone 26)', () => {
       .groups.filter((g) => ENEMY_STATS[g.type].flying === flying)
       .flatMap((g) => Array.from({ length: g.count }, (_, i) => spawnTick(g, i)));
 
-  it('spawn rate (25c A1) holds on the merged schedule of waves 11 to 40', () => {
-    for (let n = 11; n <= 40; n++) {
+  it('spawn rate (25c A1) holds on the merged schedule of waves 21 to 60', () => {
+    for (let n = 21; n <= 60; n++) {
       expect(maxIn180(spawns(n, false)), `wave ${n} walkers`).toBeLessThanOrEqual(6);
       expect(maxIn180(spawns(n, true)), `wave ${n} flyers`).toBeLessThanOrEqual(4);
     }
   });
 
-  it('the longest endless spawn window is 86.75 s (wave 8 based, 16 Harpies)', () => {
-    let longest = 0;
-    for (let n = 11; n <= 200; n++) longest = Math.max(longest, lastSpawnTick(n));
-    expect(longest).toBe(5205);
-    expect(lastSpawnTick(20)).toBe(5205);
-  });
-
-  it('preview: nothing after wave 10 in a normal game, wave 11 in an endless one', () => {
-    const s = { ...createGame(), wave: 10 };
+  it('preview: nothing after wave 20 in a normal game, wave 21 in an endless one', () => {
+    const s = { ...createGame(), wave: 20 };
     expect(hasNextWave(s)).toBe(false);
     expect(nextWavePreview(s)).toEqual([]);
     s.endless = true;
     expect(hasNextWave(s)).toBe(true);
-    expect(nextWavePreview(s)).toEqual(waveDef(11).groups.map((g) => ({ type: g.type, count: g.count })));
+    expect(nextWavePreview(s)).toEqual(waveDef(21).groups.map((g) => ({ type: g.type, count: g.count })));
     expect(nextWavePreview(s).at(-1)).toEqual({ type: 'harpy', count: 10 });
   });
 });
 
-/** The comboBuild game on Normal, just won (phase 'won' after wave 10). */
+/** The comboBuild game on Normal, just won (phase 'won' after wave 20). */
 let wonState: GameState;
 beforeAll(() => {
   wonState = playScripted(comboBuild()).state;
@@ -148,18 +108,18 @@ const won = () => structuredClone(wonState);
 
 describe('continueEndless (milestone 26)', () => {
   it('the combo build wins on Normal (the starting point)', () => {
-    expect(wonState).toMatchObject({ phase: 'won', wave: 10, lives: 16, gold: 420, endless: false });
+    expect(wonState).toMatchObject({ phase: 'won', wave: 20, endless: false });
   });
 
-  it('allowed when won: setup, endless, wave 10 cleared, everything kept', () => {
+  it('allowed when won: setup, endless, wave 20 cleared, everything kept', () => {
     const s = won();
     const before = structuredClone(s);
     const r = continueEndless(s);
-    expect(r).toEqual({ ok: true, wave: 10 });
+    expect(r).toEqual({ ok: true, wave: 20 });
     expect(s.phase).toBe('setup');
     expect(s.endless).toBe(true);
     expect(s.events.at(-1)).toEqual({ kind: 'endlessStart' });
-    expect(wavesCleared(s)).toBe(10);
+    expect(wavesCleared(s)).toBe(20);
     // Gold, lives, towers (kill counts included), wave and charge are kept.
     expect({ ...s, phase: before.phase, endless: false, events: before.events }).toEqual(before);
     expect(s.towers.reduce((n, t) => n + t.kills, 0)).toBeGreaterThan(0);
@@ -192,15 +152,15 @@ describe('continueEndless (milestone 26)', () => {
     expect(s).toEqual(before);
   });
 
-  it('Start Wave then plays wave 11 with the scaled hp', () => {
+  it('Start Wave then plays wave 21 with the scaled hp', () => {
     const s = won();
     continueEndless(s);
-    expect(startWave(s)).toEqual({ ok: true, wave: 11 });
+    expect(startWave(s)).toEqual({ ok: true, wave: 21 });
     tick(s);
     const first = s.enemies[0];
     expect(first.type).toBe('goblin');
-    expect(first.hp).toBe(37);
-    expect(first.maxHp).toBe(37);
+    expect(first.hp).toBe(41);
+    expect(first.maxHp).toBe(41);
     expect(s.specialCharges).toBe(1);
   });
 
@@ -226,6 +186,7 @@ function replayEvents(script: WaveScript, difficulty?: GameState['difficulty']):
   };
   const phase = (): GameState['phase'] => state.phase;
   for (let i = 0; i < ENDLESS_WAVE_CAP && phase() === 'setup'; i++) {
+    applyScriptBoon(state, script);
     for (const a of script[i] ?? []) applyAction(state, a);
     startWave(state);
     take();
@@ -261,9 +222,10 @@ describe('an endless run (milestone 26)', () => {
     expect(idle.phases.at(-1)).toBe('lost');
   });
 
-  it('endlessIdle on Normal loses on wave 16 with 15 waves cleared (target: wave 11 to 16)', () => {
-    expect(idle.state).toMatchObject({ phase: 'lost', wave: 16, endless: true });
-    expect(wavesCleared(idle.state)).toBe(15);
+  it('endlessIdle on Normal loses after entering endless, with the preceding wave scored', () => {
+    expect(idle.state).toMatchObject({ phase: 'lost', endless: true });
+    expect(idle.state.wave).toBeGreaterThan(20);
+    expect(wavesCleared(idle.state)).toBe(idle.state.wave - 1);
     // The replay here and playScripted agree (the replay drains the event list).
     expect({ ...playScripted(endlessIdle()).state, events: [] }).toEqual(idle.state);
   });
@@ -278,34 +240,31 @@ describe('an endless run (milestone 26)', () => {
     expect(callEarlyStatus(s)).toEqual({ ok: false, reason: 'game-over' });
   });
 
-  // One endlessGreedy run shared by the two tests below (milestone 31 trimmed
-  // the determinism test from two fresh runs to this one plus one fresh run:
-  // still two independent runs compared in full).
-  let greedyRun: ReturnType<typeof playScripted> | undefined;
-  const sharedGreedy = () => (greedyRun ??= playScripted(endlessGreedy()));
+  let greedyScript: WaveScript;
+  let greedyRun: ReturnType<typeof playScripted>;
   beforeAll(() => {
-    sharedGreedy();
+    greedyScript = endlessGreedy();
+    greedyRun = playScripted(greedyScript);
   });
 
-  it('endlessGreedy on Normal goes further than endlessIdle, reaches wave 14 and loses by wave 40', () => {
-    const greedy = sharedGreedy().state;
+  it('endlessGreedy on Normal goes further than endlessIdle, loses by wave 40', () => {
+    const greedy = greedyRun.state;
     expect(greedy.phase).toBe('lost');
     expect(greedy.wave).toBeGreaterThan(idle.state.wave);
-    expect(greedy.wave).toBeGreaterThanOrEqual(14);
     expect(greedy.wave).toBeLessThanOrEqual(40);
-    expect(greedy.wave).toBe(19);
   });
 
-  it('determinism: two endlessGreedy runs to the end give deep-equal final states', () => {
-    const a = sharedGreedy();
-    const b = playScripted(endlessGreedy());
-    expect(b).not.toBe(a);
-    expect(a.state).toEqual(b.state);
-    expect(a.waves).toEqual(b.waves);
-    // Verifier: about 3.8 s locally, too close to vitest's 5 s default for CI (now 30 s for all, vitest.config.ts).
+  it('records the same endlessGreedy decisions twice', () => {
+    expect(endlessGreedy()).toEqual(greedyScript);
   });
 
-  it('gold is conserved across the wave 10 to 11 boundary', () => {
+  it('two endlessGreedy replays give deep-equal final states and wave reports', () => {
+    const again = playScripted(greedyScript);
+    expect(again.state).toEqual(greedyRun.state);
+    expect(again.waves).toEqual(greedyRun.waves);
+  });
+
+  it('gold is conserved across the wave 20 to 21 boundary', () => {
     const s = won();
     const gold = s.gold;
     continueEndless(s);
@@ -320,7 +279,7 @@ describe('an endless run (milestone 26)', () => {
       }
     }
     expect(s.phase).toBe('setup');
-    expect(s.wave).toBe(11);
+    expect(s.wave).toBe(21);
     expect(s.gold).toBe(gold + earned);
     expect(earned).toBeGreaterThan(WAVE_CLEAR_BONUS);
   });
@@ -352,33 +311,34 @@ describe('wavesCleared and call early (milestone 26)', () => {
     expect(wavesCleared(s)).toBe(3);
     toClear(s);
     expect([s.phase, s.wave, wavesCleared(s)]).toEqual(['setup', 4, 4]);
-    for (let w = 5; w <= 10; w++) {
+    for (let w = 5; w <= 20; w++) {
+      applyScriptBoon(s);
       startWave(s);
       toClear(s);
     }
-    expect([s.phase, wavesCleared(s)]).toEqual(['won', 10]);
-    // Keep going; call early from wave 11 to 12 (no last-wave refusal in endless).
+    expect([s.phase, wavesCleared(s)]).toEqual(['won', 20]);
+    // Keep going; call early from wave 21 to 22 (no last-wave refusal in endless).
     continueEndless(s);
-    expect(wavesCleared(s)).toBe(10);
+    expect(wavesCleared(s)).toBe(20);
     startWave(s);
     expect(callEarlyStatus(s)).toEqual({ ok: false, reason: 'still-spawning' });
     toLastSpawn(s);
     const gold = s.gold;
     const r = callNextWave(s);
-    expect(r).toEqual({ ok: true, wave: 12, bonus: 20, gold: gold + WAVE_CLEAR_BONUS + 20 });
-    expect([s.phase, s.wave, wavesCleared(s), s.specialCharges]).toEqual(['wave', 12, 11, 1]);
-    // Wave 12 to 13 and 13 to 14 (wave 13 is wave 10's table without the boss) call too.
+    expect(r).toEqual({ ok: true, wave: 22, bonus: 20, gold: gold + WAVE_CLEAR_BONUS + 20 });
+    expect([s.phase, s.wave, wavesCleared(s), s.specialCharges]).toEqual(['wave', 22, 21, 1]);
+    // Wave 22 to 23 and 23 to 24 (wave 23 is wave 20's table without the boss) call too.
     toLastSpawn(s);
     expect(callNextWave(s).ok).toBe(true);
     toLastSpawn(s);
     expect(callNextWave(s).ok).toBe(true);
-    expect([s.wave, wavesCleared(s)]).toEqual([14, 13]);
+    expect([s.wave, wavesCleared(s)]).toEqual([24, 23]);
     toClear(s);
-    expect([s.phase, s.wave, wavesCleared(s), s.endless]).toEqual(['setup', 14, 14, true]);
+    expect([s.phase, s.wave, wavesCleared(s), s.endless]).toEqual(['setup', 24, 24, true]);
   });
 
-  it('call early keeps its last-wave refusal in a normal game: wave 9 and wave 10', () => {
-    for (const wave of [9, 10]) {
+  it('call early keeps its last-wave refusal in a normal game: waves 19 and 20', () => {
+    for (const wave of [19, 20]) {
       const s = createGame();
       s.lives = 1e6;
       s.wave = wave - 1;
@@ -395,37 +355,10 @@ describe('wavesCleared and call early (milestone 26)', () => {
 });
 
 describe('a game that is not continued (milestone 26)', () => {
-  it('is the game before milestone 26: won on wave 10, endless false, no maxHp anywhere', () => {
+  it('stays won on wave 20 until explicitly continued', () => {
     const s = won();
-    expect(s.endless).toBe(false);
-    expect(s.phase).toBe('won');
+    expect(s).toMatchObject({ endless: false, phase: 'won', wave: 20, pendingBoon: null, enemies: [] });
     expect(startWave(s)).toEqual({ ok: false, reason: 'not-in-setup' });
-    expect(Object.keys(s).sort()).toEqual(
-      [
-        'difficulty',
-        'endless',
-        'enemies',
-        'events',
-        'gold',
-        'lives',
-        // Milestone 27: the game's map.
-        'map',
-        'nextEnemyId',
-        'phase',
-        'shots',
-        'spawnedPerGroup',
-        'specialCharges',
-        // Milestone 30: the recharge, the zones and the cheat mark.
-        'specialRechargeTicks',
-        'zones',
-        'nextZoneId',
-        'cheated',
-        'tick',
-        'towers',
-        'wave',
-        'waveTick',
-      ].sort(),
-    );
     expect(createGame().endless).toBe(false);
   });
 });

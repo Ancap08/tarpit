@@ -1049,3 +1049,53 @@ can change it; "Kyle" means Kyle decided.
   implementer** for heavy work, run by the coordinator from this session;
   Claude Sonnet still verifies and Fable still coordinates. Kyle, to save
   Claude usage. An `AGENTS.md` carrying the repo's rules is added for it.
+
+## 2026-11-23, milestone 36 (the longer game) and Codex as implementer
+
+- **Codex (gpt-6.2-astra, with gpt-6.2-sol subagents) implemented this
+  milestone; Claude Sonnet verified it; Fable coordinated.** Kyle, to
+  spend Codex usage instead of Claude usage until his Claude usage
+  resets, then back to all Claude. The coordinator runs Codex from this
+  session with a written brief; `AGENTS.md` carries the repo's rules for
+  it. The rules half ran sandboxed to the project folder (it could not
+  commit, so the coordinator committed its work under its name); the
+  screen half ran with full access, approved by Kyle, so it could commit
+  and run the browser tests. It pushed nothing and changed nothing
+  outside the repository (checked by the verifier).
+- **Twenty waves in two acts.** Beating wave 10 no longer wins;
+  Grumblefoot is the mid-boss; waves 11 to 20 are new; a second boss,
+  Grumblemaw, ends wave 20; endless starts at wave 21. Kyle (ask), Fable
+  (shape), Codex (tables and numbers).
+- **A reward after waves 5, 10 and 15: one of three, the same every game.**
+  Kyle ("getting something while you complete more levels"), Fable (the
+  nine rewards and what each does), Codex (numbers). Final numbers: Long
+  Barrels range +30%, Keen Arrows damage +25%, War Chest 100 gold; Sticky
+  Tar slows twice as long, Hot Coals burn +80%, Quick Hands recharge x0.62;
+  Stone Walls 3 lives, Veteran Crews fire rate +10%, Bigger Blasts radius
+  +40%. Waves 5, 10 and 15 cannot be called over.
+- **The first version of the rules went back.** It met every target, but
+  the verifier found the final boss was never killed on Normal or Hard (he
+  walked out, cost 6 lives, and the game was "won"), four rewards changed
+  almost nothing while two were close to mandatory, and a game took 25 and
+  a half minutes. The coordinator's targets had allowed all three. New
+  targets: a good build kills him; each reward is the best pick for some
+  build and no offer has a runaway winner; a game is at most 22 minutes at
+  1x. Sonnet (findings), Fable (targets), Codex (fix).
+- **Grumblemaw:** 5,600 hp on Normal, 35 px a second, 10 lives if he
+  exits, a pack of 8 Wolves at two thirds and one third hp; a killing blow
+  calls no pack. Codex, within Fable's targets.
+- **Stronger specials** (Kyle: "a little more" damage, "last a little
+  longer"): Powder Keg 30 to 60, zones 8 s to 11 s, Fire Arrows burn 20 to
+  26. The anti-air lesson target was relaxed to "leaks at least half of
+  wave 4's Harpies" because the stronger keg kills Harpies. Fable.
+- **Harder endless** (Kyle): hp grows 1.8 times a cycle, was 1.6; the
+  reference build with no new purchases loses within 5 endless waves.
+- **On screen:** the pick is three cards (click, tap or keys 1 to 3); the
+  player sees the word "reward", never "boon" (the game is for children;
+  Fable); each card says what it does in a plain sentence built from the
+  real numbers; rewards held show as icons. Codex.
+- **Known, for Kyle's play notes:** the reference build wins Normal with
+  19 of 20 lives on every map, so Normal may be easy for a strong player;
+  the wave 10 offer changes little for a bow and mortar build; Longbows
+  and Mortars do most of the damage in act 2 in that build; waves 7 and 10
+  still pass 100 s. Sonnet (findings), Fable (held for play notes).

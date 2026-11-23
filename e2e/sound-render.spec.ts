@@ -20,7 +20,7 @@ const TAIL_MAX = 0.01;
  * it keeps its shape and is still recognisable.
  */
 const PHONE_KEEP = 0.5;
-/** The busy wave must get at least this much louder (dB) when the horn or a special sounds. */
+/** The busy wave must get at least this much louder (dB) when an important cue sounds. */
 const STANDS_OUT_DB = 3;
 /** The limiter only catches peaks: at most this much gain reduction (dB) in the worst case. */
 const MAX_REDUCTION_DB = 3;
@@ -51,6 +51,11 @@ test('every sound renders, is audible, does not clip, has its length, ends in si
   console.log(rows.join('\n'));
   // Each tower's impact is louder than its shot.
   for (const t of ['musketeer', 'longbow', 'cannon', 'mortar', 'tarpit', 'firepot']) expect(loud[`impact.${t}`], t).toBeGreaterThan(loud[`shot.${t}`]);
+  // Grumblemaw's entrance and fall are the loudest cues in the campaign.
+  const finalBoss = ['grumblemawArrive', 'grumblemawFall'];
+  const otherCues = SOUND_NAMES.filter((name) => !finalBoss.includes(name));
+  const otherPeak = Math.max(...otherCues.map((name) => loud[name]));
+  for (const name of finalBoss) expect(loud[name], name).toBeGreaterThan(otherPeak);
 });
 
 test('the low sounds keep their shape through a 200 Hz high-pass (the phone stand-in)', async ({ page }) => {
@@ -64,10 +69,10 @@ test('the low sounds keep their shape through a 200 Hz high-pass (the phone stan
   for (const name of LOW_SOUNDS) expect(keep[name], name).toBeGreaterThanOrEqual(PHONE_KEEP);
 });
 
-test('the busy wave does not bury the wave horn or the Powder Keg', async ({ page }) => {
+test('the busy wave does not bury the horn, Powder Keg or Grumblemaw cues', async ({ page }) => {
   const r = await page.evaluate(() => window.__tarpit!.audioLab.busyAudibility());
   console.log(r.map((x) => `${x.name} at ${x.at} s: the mix gets ${x.gainDb.toFixed(1)} dB louder`).join('\n'));
-  expect(r.map((x) => x.name)).toEqual(['waveStart', 'special.keg']);
+  expect(r.map((x) => x.name)).toEqual(['grumblemawArrive', 'waveStart', 'packCall', 'special.keg', 'grumblemawFall']);
   for (const x of r) expect(x.gainDb, x.name).toBeGreaterThanOrEqual(STANDS_OUT_DB);
 });
 

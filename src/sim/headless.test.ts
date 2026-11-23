@@ -58,12 +58,12 @@ describe('headless runner', () => {
 });
 
 describe('scripted builds', () => {
-  it('comboBuild wins all 10 waves with every action accepted', () => {
+  it('comboBuild wins all 20 waves with every action accepted', () => {
     const run = playScripted(comboBuild());
     const refused = run.log.filter((l) => 'result' in l && !l.result.ok);
     expect(refused).toEqual([]);
     expect(run.state.phase).toBe('won');
-    expect(run.waves.map((w) => w.wave)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(run.waves.map((w) => w.wave)).toEqual(Array.from({ length: 20 }, (_, i) => i + 1));
     // Exact pins of the balance outcome live in balance.test.ts.
   });
 

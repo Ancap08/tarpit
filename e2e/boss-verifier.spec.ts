@@ -140,16 +140,9 @@ test('(b) he has a two-ellipse ground shadow on the path under his feet', async 
 // (c) Hit flash, (d) the HUD label before and after, (e) the bar fill. The
 // combo build through wave 9, then wave 10: the label is null until his
 // spawn tick, then "Grumblefoot 4000 / 4000" with a full 300 px red fill.
-// Stepping one tick at a time, the first hit on him shows the flash sprite
-// (texture boss-hit, frame 0) over him and animState flags hit; a later
-// tick with no hit hides it. At tick 3562 (the boss.png frame) the red run
-// along the bar's middle row is round(300 x hp / 4000) px wide. After his
-// death the label is null again. Milestone 25c: the boss.png frame is tick
-// 3230 (hp 2487.0000000000828, so 187 px); in the second pass 5664 (hp
-// 2428.0x, 182 px) with the first hit by the Longbow at (9,4) at step
-// 5085. Before that, the first hit on him was the
-// Tar Pit at (11,4) at step 2629 (with a Longbow on the same tick; the Tar
-// Pit fires first in cell order).
+// Stepping one tick at a time, the first hit from the Fire Pot at (10,4)
+// shows the hit sprite. The next non-hit tick hides it. At step 5721 the
+// 300 px bar's red fill is proportional to Grumblefoot's remaining HP.
 test('(c)(d)(e) flash on a hit tick, label null before spawn and after death, fill proportional', async ({ page }) => {
   await startGame(page);
   const r = await page.evaluate((spawnTick) => {
@@ -193,13 +186,11 @@ test('(c)(d)(e) flash on a hit tick, label null before spawn and after death, fi
   expect(r.bossBefore).toBeNull();
   expect(r.bossAtSpawnMinus1).toBeNull();
   expect(r.labelAtSpawn).toBe(`${BOSS_NAME} 4000 / 4000`);
-  expect(r.firstHit).toMatchObject({ tower: 'longbow', flash: true, texture: 'boss-hit', frame: 0, flagHit: true, dx: 0, dy: 0 });
-  expect(r.firstHit!.tick).toBeGreaterThan(BOSS_SPAWN_TICK + 1000);
+  expect(r.firstHit).toMatchObject({ tower: 'firepot', flash: true, texture: 'boss-hit', frame: 0, flagHit: true, dx: 0, dy: 0 });
+  expect(r.firstHit!.tick).toBe(5024);
   expect(r.afterHit).toMatchObject({ tick: r.firstHit!.tick + 1, flash: false, flagHit: false });
 
-  // Fill width at the spawn tick's full bar is read from a fresh game below;
-  // here, read it at tick 5721 (milestone 28; 5664 before, the old boss.png
-  // frame): hp 2212.x -> 166 px, the hp text clear of the fill. Milestone 30: hp 2177.x -> 163 px.
+  // The sampled frame has 2164.08 HP, rounded up in the label.
   const fill = await page.evaluate(
     async ({ bar, red, bg, id, now }) => {
       const t = window.__tarpit as TarpitTestApi;
@@ -218,9 +209,9 @@ test('(c)(d)(e) flash on a hit tick, label null before spawn and after death, fi
     { bar: BAR, red: rgb(COLORS.bossBarFill), bg: rgb(COLORS.bossBarBg), id: r.id, now: r.ticks },
   );
   expect(fill.waveTick).toBe(5721);
-  expect(fill.label).toBe(`${BOSS_NAME} 2178 / 4000`);
+  expect(fill.label).toBe(`${BOSS_NAME} 2165 / 4000`);
   const want = Math.round((BAR.width * fill.hp) / 4000);
-  expect(want).toBe(163);
+  expect(want).toBe(162);
   expect(Math.abs(fill.redRun - want), `red run ${fill.redRun}, want ${want}`).toBeLessThanOrEqual(2);
   // The trough continues past the fill until the right-aligned hp text (37 px at the milestone 25c frame; was over 40 at 178 px).
   expect(fill.bgAfter).toBeGreaterThan(20);
@@ -234,7 +225,7 @@ test('(c)(d)(e) flash on a hit tick, label null before spawn and after death, fi
     }
     return { down, boss: t.hudText().boss, phase: t.state().phase, sprite: t.animState(id) };
   }, r.id);
-  expect(end).toMatchObject({ down: true, boss: null, phase: 'won', sprite: null });
+  expect(end).toMatchObject({ down: true, boss: null, phase: 'setup', sprite: null });
 });
 
 // (f) The wave 10 preview. In setup before wave 10 the HUD's preview text
@@ -243,7 +234,7 @@ test('(c)(d)(e) flash on a hit tick, label null before spawn and after death, fi
 // to exactly two lines through Phaser's word wrap (getWrappedText), the
 // second ending with the boss name; before wave 1 the preview is one 16 px
 // line. The pill and the bar sit inside the map (y 4 to 39).
-test('(f) the wave 10 preview ends with the boss name and wraps to two 13 px lines; the wave 1 preview is one 16 px line', async ({ page }) => {
+test('(f) the wave 10 preview ends with the boss name and wraps to two 11 px lines; the wave 1 preview is one 16 px line', async ({ page }) => {
   await startGame(page);
   const r = await page.evaluate(() => {
     const t = window.__tarpit as TarpitTestApi;

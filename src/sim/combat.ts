@@ -10,6 +10,7 @@
 // fireTowers once per wave tick, after movement and exit removal, before
 // spawns.
 
+import { enemyMaxHp } from './difficulty';
 import { cappedSlow, ENEMY_STATS, isBoss, isFlying, isTarred, shotDamage } from './enemies';
 import { cellCenter, sameCell, type Cell } from './grid';
 import { positionAlongPath } from './map';
@@ -74,14 +75,22 @@ function preferred(mode: TargetingMode, a: Enemy, b: Enemy): boolean {
  */
 export function findTarget(state: GameState, tower: Tower): Enemy | undefined {
   const from = towerPosition(tower);
-  const { range, minRange } = towerStats(tower);
+  const { range, minRange } = towerStats(tower, state.boons);
   const mode = tower.targeting ?? 'first';
   let best: Enemy | undefined;
   for (const enemy of state.enemies) {
     if (isDead(enemy) || !canTarget(tower.type, enemy)) continue;
-    const d = dist(from, enemyPosition(enemy, state.map));
-    if (d > range || d < minRange) continue;
-    if (!best || preferred(mode, enemy, best)) best = enemy;
+    // A less preferred candidate cannot replace a target already in range.
+    if (best && !preferred(mode, enemy, best)) continue;
+    const position = enemyPosition(enemy, state.map);
+    const dx = Math.abs(from.x - position.x);
+    const dy = Math.abs(from.y - position.y);
+    // A coordinate already outside the outer circle rules out the point.
+    // Leave rounding near the boundary to the original Euclidean check.
+    if (dx > range + 1e-9 || dy > range + 1e-9) continue;
+    const distance = Math.hypot(dx, dy);
+    if (distance > range || distance < minRange) continue;
+    best = enemy;
   }
   return best;
 }
@@ -177,8 +186,11 @@ export function removeDead(state: GameState, cause: KillCause, killer?: Tower): 
       const bounty = ENEMY_STATS[enemy.type].bounty;
       state.gold += bounty;
       state.events.push({ kind: 'kill', enemyId: enemy.id, enemyType: enemy.type, bounty, cause: why });
-      if (isBoss(enemy)) state.events.push({ kind: 'bossDown', enemyId: enemy.id, cause: why });
-    } else alive.push(enemy);
+      if (isBoss(enemy)) state.events.push({ kind: 'bossDown', enemyId: enemy.id, enemyType: enemy.type, cause: why });
+    } else {
+      if (enemy.type === 'grumblemaw') checkPackCalls(state, enemy);
+      alive.push(enemy);
+    }
   }
   state.enemies = alive;
 }
@@ -196,7 +208,7 @@ function towerStep(state: GameState, tower: Tower): void {
   if (tower.cooldownTicks > 0) return;
   const target = findTarget(state, tower);
   if (!target) return;
-  const stats = towerStats(tower);
+  const stats = towerStats(tower, state.boons);
   const shot: Shot = {
     cell: { col: tower.cell.col, row: tower.cell.row },
     tower: tower.type,
@@ -236,4 +248,18 @@ function towerStep(state: GameState, tower: Tower): void {
 /** Every tower takes its step, in cellKey order; kills resolve between towers. */
 export function fireTowers(state: GameState): void {
   for (const tower of state.towers) towerStep(state, tower);
+}
+
+export const PACK_SIZE = 8;
+export const PACK_INTERVAL_TICKS = 30;
+
+/** A surviving Grumblemaw calls each crossed threshold, including between-tick specials. */
+function checkPackCalls(state: GameState, boss: Enemy): void {
+  const fullHp = boss.maxHp ?? enemyMaxHp(boss.type, state.difficulty);
+  for (const threshold of [2, 1] as const) {
+    if ((boss.packCalls ?? 0) >= 3 - threshold || boss.hp * 3 > fullHp * threshold) continue;
+    boss.packCalls = 3 - threshold;
+    state.packs.push({ nextTick: state.waveTick, remaining: PACK_SIZE });
+    state.events.push({ kind: 'packCall', enemyId: boss.id, threshold });
+  }
 }

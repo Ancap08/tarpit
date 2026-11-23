@@ -1,7 +1,7 @@
 // End screen: shown once the simulation's phase is 'won' or 'lost'. A
 // translucent veil covers the map area (the HUD below stays visible with the
 // final numbers) and a centred panel, translucent enough that the map shows
-// through faintly, holds a title, one or two lines, a [Play again] button
+// through faintly, holds a title, one or two stat lines, the held boons and a [Play again] button
 // (same level) and, beside it, a smaller [Menu] button back to the title
 // menu (milestone 25). The scene ignores map clicks and hover while it shows.
 // Milestone 26: the win screen widens to 520 px and adds [Keep going] as
@@ -50,6 +50,7 @@ const P_GAP = 12;
 /** From the panel's top: the title's centre, the lines' centre and the first button's top. */
 const P_TITLE_Y = 52;
 const P_LINES_Y = 124;
+const P_BOONS_TOP = 150;
 const P_BUTTONS_Y = 178;
 const P_PAD_BOTTOM = 24;
 
@@ -58,6 +59,7 @@ export class EndScreen {
   private readonly panel: Phaser.GameObjects.Rectangle;
   private readonly title: Phaser.GameObjects.Text;
   private readonly lines: Phaser.GameObjects.Text;
+  private readonly boons: Phaser.GameObjects.Text;
   private readonly button: Button;
   private readonly menu: Button;
   private readonly keepGoing: Button;
@@ -97,6 +99,15 @@ export class EndScreen {
         lineSpacing: 8,
       })
       .setOrigin(0.5);
+    this.boons = scene.add
+      .text(cx, top + 148, '', {
+        fontFamily: FONT,
+        fontSize: this.portrait ? '18px' : '14px',
+        color: TEXT.endLine,
+        align: 'center',
+        wordWrap: this.portrait ? { width: P_PANEL_W - 32 } : undefined,
+      })
+      .setOrigin(0.5, this.portrait ? 0 : 0.5);
     // The pair is centred on the panel: [Play again] then [Menu].
     const left = cx - (BUTTON_W + BUTTON_GAP + MENU_W) / 2;
     const y = top + PANEL_H - BUTTON_H - 22;
@@ -128,9 +139,10 @@ export class EndScreen {
   show(kind: EndKind, state: GameState): void {
     if (this.shown !== null) return;
     this.shown = kind;
-    const { title, lines } = endScreenText(kind, state);
+    const { title, lines, boons } = endScreenText(kind, state);
     this.title.setText(title).setColor(kind === 'won' ? TEXT.victory : TEXT.defeat);
     this.lines.setText(lines.join('\n'));
+    this.boons.setText(boons);
     this.layout(kind);
     this.setVisible(true);
   }
@@ -154,12 +166,16 @@ export class EndScreen {
     const won = kind === 'won';
     if (this.portrait) {
       const column = won ? [this.keepGoing, this.button, this.menu] : [this.button, this.menu];
-      const h = P_BUTTONS_Y + column.length * P_BUTTON_H + (column.length - 1) * P_GAP + P_PAD_BOTTOM;
+      const buttonsY = this.boons.text
+        ? Math.max(P_BUTTONS_Y, P_BOONS_TOP + this.boons.height + 10)
+        : P_BUTTONS_Y;
+      const h = buttonsY + column.length * P_BUTTON_H + (column.length - 1) * P_GAP + P_PAD_BOTTOM;
       const top = this.cy - h / 2;
       this.panel.setSize(P_PANEL_W, h).setDisplayOrigin(P_PANEL_W / 2, h / 2);
       this.title.setY(top + P_TITLE_Y);
       this.lines.setY(top + P_LINES_Y);
-      column.forEach((b, i) => b.moveTo(this.cx - P_BUTTON_W / 2, top + P_BUTTONS_Y + i * (P_BUTTON_H + P_GAP)));
+      this.boons.setY(top + P_BOONS_TOP);
+      column.forEach((b, i) => b.moveTo(this.cx - P_BUTTON_W / 2, top + buttonsY + i * (P_BUTTON_H + P_GAP)));
       return;
     }
     this.panel.setSize(won ? PANEL_W_WON : PANEL_W, PANEL_H);
@@ -173,7 +189,7 @@ export class EndScreen {
   }
 
   private setVisible(visible: boolean): void {
-    for (const o of [this.veil, this.panel, this.title, this.lines]) o.setVisible(visible);
+    for (const o of [this.veil, this.panel, this.title, this.lines, this.boons]) o.setVisible(visible);
     this.button.setShown(visible);
     this.menu.setShown(visible);
     this.keepGoing.setShown(visible && this.shown === 'won');

@@ -21,7 +21,7 @@ const Q: Cell = { col: 7, row: 7 };
 const R: Cell = { col: 6, row: 8 };
 
 function enemy(id: number, distance: number, over: Partial<Enemy> = {}, type: EnemyType = 'goblin'): Enemy {
-  const fullHp = ({ goblin: 30, wolf: 28, troll: 500, harpy: 40, shieldbearer: 120, boss: 4000 } as const)[type];
+  const fullHp = ({ goblin: 30, wolf: 28, troll: 500, harpy: 40, shieldbearer: 120, boss: 4000, grumblemaw: 5600 } as const)[type];
   return { id, type, hp: fullHp, distance, slow: 0, slowTicksLeft: 0, burnDps: 0, burnTicksLeft: 0, ...over };
 }
 const troll = (id: number, distance: number) => enemy(id, distance, {}, 'troll');

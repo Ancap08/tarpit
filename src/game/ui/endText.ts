@@ -1,7 +1,7 @@
 // Words on the win and lose screens. No Phaser, so it is unit tested.
 
 import { LAST_WAVE, type GameState } from '../../sim';
-import { END_TEXT, reachedWaveText } from '../names';
+import { END_TEXT, heldBoonsText, reachedWaveText } from '../names';
 
 export type EndKind = 'won' | 'lost';
 
@@ -10,10 +10,10 @@ export function endKind(state: GameState): EndKind | null {
   return state.phase === 'won' || state.phase === 'lost' ? state.phase : null;
 }
 
-export function endScreenText(kind: EndKind, state: GameState): { title: string; lines: string[] } {
+export function endScreenText(kind: EndKind, state: GameState): { title: string; lines: string[]; boons: string } {
+  const boons = heldBoonsText(state.boons);
   if (kind === 'won') {
-    return { title: END_TEXT.wonTitle, lines: [`${END_TEXT.wonLives} ${state.lives}`, `${END_TEXT.wonGold} ${state.gold}`] };
+    return { title: END_TEXT.wonTitle, lines: [`${END_TEXT.wonLives} ${state.lives}`, `${END_TEXT.wonGold} ${state.gold}`], boons };
   }
-  // Milestone 26: an endless game has no last wave, so no "of 10".
-  return { title: END_TEXT.lostTitle, lines: [reachedWaveText(state.wave, state.endless, LAST_WAVE)] };
+  return { title: END_TEXT.lostTitle, lines: [reachedWaveText(state.wave, state.endless, LAST_WAVE)], boons };
 }

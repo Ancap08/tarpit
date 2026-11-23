@@ -10,9 +10,10 @@
 // move, undoUpgrade, special, cheat) to state.events, where it stays until the next tick
 // clears the list.
 
+import { BOONS, boonScale, type BoonId } from './boons';
 import { applyBurn, applySpecialSlow, enemyPosition, removeDead } from './combat';
 import { cellKey, sameCell, terrainBlock, type Cell } from './grid';
-import { isSpecialUnlocked, SPECIAL_DEFS, SPECIAL_RECHARGE_TICKS, ZONE_LINGER_TICKS, type SpecialType } from './specials';
+import { isSpecialUnlocked, SPECIAL_DEFS, SPECIAL_RECHARGE_TICKS, ZONE_LINGER_TICKS, specialRadius, tarLingerTicks, type SpecialType } from './specials';
 import { TOWER_DEFS, towerSellValue } from './towers';
 import type { GameState, Point, TargetingMode, Tower, TowerType } from './types';
 
@@ -214,24 +215,26 @@ export function useSpecial(state: GameState, type: SpecialType, point: Point): S
   const { x, y } = point;
   if (!(x >= 0 && x <= state.map.width && y >= 0 && y <= state.map.height)) return { ok: false, reason: 'out-of-bounds' };
   state.specialCharges = 0;
-  state.specialRechargeTicks = SPECIAL_RECHARGE_TICKS;
+  state.specialRechargeTicks = Math.round(boonScale(SPECIAL_RECHARGE_TICKS, state.boons, 'quickHands'));
   const def = SPECIAL_DEFS[type];
+  const radius = specialRadius(type, state.boons);
   const inside = state.enemies.filter((enemy) => {
     const p = enemyPosition(enemy, state.map);
-    return Math.hypot(p.x - x, p.y - y) <= def.radius;
+    return Math.hypot(p.x - x, p.y - y) <= radius;
   });
   const zoneId = def.zoneTicks > 0 && type !== 'keg' ? state.nextZoneId : undefined;
-  state.events.push({ kind: 'special', type, x, y, radius: def.radius, hits: inside.length, ...(zoneId === undefined ? {} : { zoneId }) });
+  state.events.push({ kind: 'special', type, x, y, radius, hits: inside.length, ...(zoneId === undefined ? {} : { zoneId }) });
   for (const enemy of inside) {
     if (def.damage > 0) enemy.hp -= def.damage;
     if (def.slow > 0) {
-      const applied = applySpecialSlow(enemy, def.slow, ZONE_LINGER_TICKS);
-      if (applied !== null) state.events.push({ kind: 'slowed', enemyId: enemy.id, slow: applied, ticks: ZONE_LINGER_TICKS });
+      const ticks = tarLingerTicks(state.boons);
+      const applied = applySpecialSlow(enemy, def.slow, ticks);
+      if (applied !== null) state.events.push({ kind: 'slowed', enemyId: enemy.id, slow: applied, ticks });
     }
-    if (def.burnDps > 0) applyBurn(enemy, def.burnDps, ZONE_LINGER_TICKS, 'special');
+    if (def.burnDps > 0) applyBurn(enemy, boonScale(def.burnDps, state.boons, 'hotCoals'), ZONE_LINGER_TICKS, 'special');
   }
   if (zoneId !== undefined && type !== 'keg') {
-    state.zones.push({ id: zoneId, type, x, y, radius: def.radius, ticksLeft: def.zoneTicks });
+    state.zones.push({ id: zoneId, type, x, y, radius, ticksLeft: def.zoneTicks });
     state.nextZoneId += 1;
   }
   const before = state.enemies.length;
@@ -256,4 +259,16 @@ export function grantCheatGold(state: GameState): CheatResult {
   state.cheated = true;
   state.events.push({ kind: 'cheat', gold: CHEAT_GOLD });
   return { ok: true, gold: state.gold };
+}
+
+export function pickBoon(state: GameState, id: BoonId): { ok: true } | { ok: false; reason: 'no-boon-pending' | 'boon-not-offered' } {
+  const offer = state.pendingBoon;
+  if (!offer) return { ok: false, reason: 'no-boon-pending' };
+  if (!offer.options.includes(id)) return { ok: false, reason: 'boon-not-offered' };
+  state.boons = [...state.boons, id];
+  if (id === 'warChest') state.gold += BOONS.warChest.value;
+  if (id === 'stoneWalls') state.lives += BOONS.stoneWalls.value;
+  state.pendingBoon = null;
+  state.events.push({ kind: 'boonPicked', wave: offer.wave, id });
+  return { ok: true };
 }

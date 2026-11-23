@@ -1,14 +1,14 @@
 // Archetype rules and the balance pins that are not cells of the matrix.
 // The matrix (every archetype on every map and level, exact) and every
-// balance target (T, E, H, R labels) are in balance.suite.ts, run by
+// balance target (N, E, H, R and X labels) are in balance.suite.ts, run by
 // balance-meadow.test.ts and its two siblings. This file keeps what the
 // matrix does not say: how the archetypes are built (trail order, the plan
 // actions bought, the specials they fire, the anti-air sells), the
 // per-wave clear ticks and peaks on Meadow, and that a replay is the same
 // game (the boss's death tick is in boss-verifier.test.ts). Runs come from balanceRuns.ts, cached, so each
 // game is recorded once in this file.
-import { describe, expect, it } from 'vitest';
-import { archetypeScript, balanceRun, MATRIX_ARCHETYPES, playWithStats } from './balanceRuns';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { archetypeScript, balanceRun, MATRIX_ARCHETYPES } from './balanceRuns';
 import { comboWithoutSpecialRun } from './balanceTargets';
 import { ENEMY_STATS } from './enemies';
 import { buildableCells, cellCenter, cellKey } from './grid';
@@ -25,57 +25,71 @@ import {
   trailCellOrder,
 } from './headless';
 import { MAPS, pathLength, positionAlongPath } from './map';
+import { WAVES } from './waves';
 
 const combo = () => archetypeScript('comboBuild', 'meadow', 'normal');
 
 describe('every archetype (Meadow, Normal)', () => {
-  it('the matrix covers every archetype, informational and endless script but endlessGreedy', () => {
-    const all = [...Object.keys(ARCHETYPES), ...Object.keys(INFORMATIONAL), ...Object.keys(ENDLESS_ARCHETYPES)].filter((n) => n !== 'endlessGreedy');
+  it('the matrix covers every archetype, informational and endless script', () => {
+    const all = [...Object.keys(ARCHETYPES), ...Object.keys(INFORMATIONAL), ...Object.keys(ENDLESS_ARCHETYPES)];
     expect([...MATRIX_ARCHETYPES].sort()).toEqual(all.sort());
   });
 
   for (const name of MATRIX_ARCHETYPES) {
-    it(`${name}: a replay with playScripted is the game the matrix counted, twice`, () => {
-      const script = archetypeScript(name, 'meadow', 'normal');
-      const a = playScripted(script);
-      const b = playScripted(script);
-      expect(a.log.filter((l) => 'result' in l && !l.result.ok)).toEqual([]);
-      expect(['won', 'lost']).toContain(a.state.phase);
-      expect(b.state).toEqual(a.state);
-      expect(b.log).toEqual(a.log);
-      const run = balanceRun(name, 'meadow', 'normal');
-      expect({ phase: run.phase, wave: run.wave, lives: run.lives, gold: run.gold, tick: run.tick }).toEqual({
-        phase: a.state.phase,
-        wave: a.state.wave,
-        lives: a.state.lives,
-        gold: a.state.gold,
-        tick: a.state.tick,
+    describe(name, () => {
+      const runScript = () => playScripted(archetypeScript(name, 'meadow', 'normal'));
+      let replay: ReturnType<typeof playScripted>;
+      beforeAll(() => {
+        replay = runScript();
       });
-      expect(run.waves.map((w) => [w.wave, w.lives, w.gold, w.ticks])).toEqual(a.waves.map((w) => [w.wave, w.lives, w.gold, w.ticks]));
+      it('the replay is the game the matrix counted', () => {
+        expect(replay.log.filter((l) => 'result' in l && !l.result.ok)).toEqual([]);
+        expect(['won', 'lost']).toContain(replay.state.phase);
+        const run = balanceRun(name, 'meadow', 'normal');
+        expect({ phase: run.phase, wave: run.wave, lives: run.lives, gold: run.gold, tick: run.tick }).toEqual({
+          phase: replay.state.phase,
+          wave: replay.state.wave,
+          lives: replay.state.lives,
+          gold: replay.state.gold,
+          tick: replay.state.tick,
+        });
+        expect(run.waves.map((w) => [w.wave, w.lives, w.gold, w.ticks])).toEqual(replay.waves.map((w) => [w.wave, w.lives, w.gold, w.ticks]));
+      });
+      it('playing the recorded script again produces the same state and log', () => {
+        const again = runScript();
+        expect(again.state).toEqual(replay.state);
+        expect(again.log).toEqual(replay.log);
+      });
     });
   }
 });
 
 describe('comboBuild on Meadow, Normal', () => {
-  it('buys 29 of the 31 COMBO_PLAN actions (the tail is a gold sink)', () => {
-    expect(combo().flat()).toHaveLength(29);
+  it('buys 40 actions through both acts', () => {
+    expect(combo().flat()).toHaveLength(40);
   });
 
-  it('fires the 28 specials the policy recorded (milestone 30), every one accepted', () => {
+  it('fires the 59 specials the policy recorded, every one accepted', () => {
     const script = combo();
     const recorded = script.timed!.flat();
-    expect(recorded).toHaveLength(28);
+    expect(recorded).toHaveLength(59);
     const run = playScripted(script);
     const fired = run.log.filter((l) => l.action === 'special');
-    expect(fired).toHaveLength(28);
+    expect(fired).toHaveLength(59);
     for (const f of fired) expect(f).toMatchObject({ result: { ok: true } });
   });
 
-  // The 25c wave rules on these numbers are R5 in balance.suite.ts; the exact ticks are pinned here.
-  it('clear ticks and the most enemies alive per wave, no early calls (R5 exact)', () => {
+  // R3 and R4 constrain the timing and crowding bands.
+  it('exact clear ticks and peak enemies alive per wave with no early calls', () => {
     const run = balanceRun('comboBuild', 'meadow', 'normal');
-    expect(run.waves.map((w) => w.ticks)).toEqual([3105, 2081, 1722, 2601, 4924, 3156, 5939, 5665, 2951, 6446]);
-    expect(run.waves.map((w) => w.peak)).toEqual([2, 9, 17, 16, 18, 21, 16, 22, 15, 14]);
+    expect(run.waves.map((w) => w.ticks)).toEqual([
+      3105, 2081, 1722, 2604, 5260, 3106, 6101, 5419, 2659, 6214,
+      1792, 3890, 2284, 4347, 4293, 3615, 4734, 4660, 5077, 5736,
+    ]);
+    expect(run.waves.map((w) => w.peak)).toEqual([
+      2, 9, 17, 15, 19, 19, 16, 26, 14, 14,
+      11, 10, 8, 13, 11, 5, 13, 21, 16, 10,
+    ]);
   });
 });
 
@@ -151,11 +165,12 @@ describe('archetype rules', () => {
     }
   });
 
-  it('lazyBuild only builds base Musketeers, in trail order', () => {
+  it('lazyBuild fills the first trail pass with base Musketeers before adding distinct second-pass cells', () => {
     const actions = archetypeScript('lazyBuild', 'meadow', 'normal').flat();
     expect(actions.length).toBeGreaterThan(0);
     expect(actions.every((a) => a.type === 'build' && a.tower === 'musketeer')).toBe(true);
-    expect(actions.map((a) => a.cell)).toEqual(TRAIL_CELL_ORDER.slice(0, actions.length));
+    expect(actions.slice(0, TRAIL_CELL_ORDER.length).map((a) => a.cell)).toEqual(TRAIL_CELL_ORDER);
+    expect(new Set(actions.map((a) => cellKey(a.cell))).size).toBe(actions.length);
   });
 
   it('greedyMusket alternates buy and upgrade, Musketeers only, in trail order', () => {
@@ -178,10 +193,13 @@ describe('boss (milestone 23)', () => {
     }
   });
 
-  it('playWithStats counts the boss as an enemy of wave 10 (one spawn, no exit for the combo)', () => {
-    const w10 = playWithStats(combo()).waves[9];
-    expect(w10.spawns.boss).toBe(1);
-    expect(w10.exits.boss).toBeUndefined();
+  it('playWithStats counts both bosses and the 16 extra Wolves', () => {
+    const { waves } = balanceRun('comboBuild', 'meadow', 'normal');
+    expect(waves[9].spawns.boss).toBe(1);
+    expect(waves[9].exits.boss).toBeUndefined();
+    expect(waves[19].spawns.grumblemaw).toBe(1);
+    expect(waves[19].spawns.wolf).toBe(36);
+    expect(waves[19].exits.grumblemaw).toBeUndefined();
   });
 });
 
@@ -199,30 +217,28 @@ describe('verifier (milestone 28)', () => {
     expect(run.phase).toBe('won');
     const spawned = run.waves.reduce((n, w) => n + sum(w.spawns), 0);
     const exits = run.waves.reduce((n, w) => n + sum(w.exits), 0);
-    expect(spawned).toBe(524);
+    const scheduled = WAVES.flatMap((wave) => wave.groups).reduce((n, group) => n + group.count, 0);
+    expect(scheduled).toBe(1209);
+    expect(spawned).toBe(scheduled + 16);
     expect(run.kills + exits).toBe(spawned);
   });
 
-  // S2 is a band (strictly worse by lives, then kills); the measured values
-  // (milestone 30): the combo on Meadow, Normal wins with 16 lives; with the
-  // policy forbidden the keg 12, the Tar Barrel 13, the Fire Arrows 12.
-  it('S2 measured: without the keg, the Tar Barrel or the Fire Arrows the combo wins with 12, 13 and 12 lives, with all three 16', () => {
+  // N9 checks the comparison. Pin the campaign results and conservation
+  // for each policy variant, including kills by the retained specials.
+  it.each([
+    ['keg', 18, 1220],
+    ['tarBarrel', 10, 1221],
+    ['fireArrows', 15, 1217],
+  ] as const)('without %s the combo wins with %i lives and %i kills', (type, lives, kills) => {
     const combo = balanceRun('comboBuild', 'meadow', 'normal');
-    expect([combo.phase, combo.lives]).toEqual(['won', 16]);
-    for (const [type, lives] of [
-      ['keg', 12],
-      ['tarBarrel', 13],
-      ['fireArrows', 12],
-    ] as const) {
-      const without = comboWithoutSpecialRun(type);
-      expect([without.phase, without.lives], type).toEqual(['won', lives]);
-      const spawned = without.waves.reduce((n, w) => n + sum(w.spawns), 0);
-      expect(without.kills + without.waves.reduce((n, w) => n + sum(w.exits), 0)).toBe(spawned);
-    }
+    expect([combo.phase, combo.lives, combo.kills]).toEqual(['won', 19, 1221]);
+    const without = comboWithoutSpecialRun(type);
+    expect([without.phase, without.lives, without.kills]).toEqual(['won', lives, kills]);
+    const spawned = without.waves.reduce((n, w) => n + sum(w.spawns), 0);
+    expect(without.kills + without.waves.reduce((n, w) => n + sum(w.exits), 0)).toBe(spawned);
   });
 
-  // The targets assert bands; these are the exact measures behind T7, T8,
-  // E3, H2 and T9, which the matrix cells (result and gold) do not hold.
+  // Exact measures behind N7, N8, E3 and H2, plus gold entering the mid-boss.
   it('exact measures behind the bands: wave 1 leaks, wave 4 Harpies, lives after wave 1 on Hard, gold entering wave 10', () => {
     const maps = ['meadow', 'switchback', 'riverbend'] as const;
     const leak1 = (level: 'easy' | 'normal') => maps.map((m) => sum(balanceRun('oneMusket', m, level).waves[0].exits));
@@ -231,9 +247,9 @@ describe('verifier (milestone 28)', () => {
       [0, 0, 0],
     ]);
     expect(maps.map((m) => balanceRun('noAntiAir', m, 'normal').waves[3]).map((w) => [w.exits.harpy, w.spawns.harpy, w.lives])).toEqual([
-      [10, 10, 7],
-      [9, 10, 8],
-      [10, 10, 6],
+      [7, 10, 11],
+      [8, 10, 11],
+      [8, 10, 9],
     ]);
     expect(maps.map((m) => balanceRun('lazyBuild', m, 'hard').waves[0].lives)).toEqual([8, 6, 6]);
     expect(balanceRun('comboBuild', 'meadow', 'normal').waves[9].goldEntering).toBe(199);

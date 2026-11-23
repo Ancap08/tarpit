@@ -1,0 +1,61 @@
+import type { Rect } from '../../sim';
+import type { Layout } from '../layout';
+
+const COUNT = 3;
+
+export function rewardLayout(layout: Layout) {
+  const portrait = layout.kind === 'portrait';
+  const width = portrait ? 448 : 296;
+  const height = portrait ? 112 : 168;
+  const gap = portrait ? 12 : 14;
+  const rowWidth = portrait ? width : COUNT * width + (COUNT - 1) * gap;
+  const rowHeight = portrait ? COUNT * height + (COUNT - 1) * gap : height;
+  const centerX = layout.map.x + layout.map.width / 2;
+  const top = layout.map.y + (layout.map.height - rowHeight) / 2 + 18;
+  const left = centerX - rowWidth / 2;
+  return {
+    title: { x: centerX, y: top - 42 },
+    cards: Array.from({ length: COUNT }, (_, i): Rect => ({
+      x: left + (portrait ? 0 : i * (width + gap)),
+      y: top + (portrait ? i * (height + gap) : 0),
+      width,
+      height,
+    })),
+    icon: portrait ? { x: 43, y: 56, scale: 1.5 } : { x: width / 2, y: 48, scale: 1.75 },
+    name: portrait ? { x: 80, y: 30, font: 24 } : { x: width / 2, y: 99, font: 23 },
+    description: portrait ? { x: 80, y: 76, font: 22 } : { x: width / 2, y: 138, font: 18 },
+    textWidth: portrait ? width - 90 : width - 16,
+  };
+}
+
+type Size = { width: number; height: number };
+
+/** Use the landscape build row when it fits, otherwise a rail beside the game. */
+export function heldBoonLayout(layout: Layout, parent: Size) {
+  const portrait = layout.kind === 'portrait';
+  const inRow = !portrait && parent.width >= layout.width && parent.height >= layout.height;
+  const gap = 3;
+  // FIT can be limited by height or by width. In the latter case the rail
+  // itself widens the canvas: size * parent.width / (layout.width + 2*gap + size) >= 45.
+  // One spare CSS pixel accommodates rounding in the browser's canvas bounds.
+  const target = 45;
+  const size = inRow ? 46 : Math.ceil(Math.max(
+    target * layout.height / Math.max(1, parent.height),
+    target * (layout.width + 2 * gap) / Math.max(1, parent.width - target),
+  ));
+  const left = inRow ? 758 : layout.width + gap;
+  const top = inRow ? 531 : portrait ? gap : layout.height - COUNT * (size + gap);
+  return {
+    canvasWidth: inRow ? layout.width : layout.width + size + 2 * gap,
+    slots: Array.from({ length: COUNT }, (_, i): Rect => ({
+      x: left + (inRow ? i * (size + gap) : 0),
+      y: top + (inRow ? 0 : i * (size + gap)),
+      width: size,
+      height: size,
+    })),
+    tooltip: portrait
+      ? { x: 58, y: layout.map.y + 62, width: 416, height: 84 }
+      : { x: 534, y: layout.map.height - 68, width: 362, height: 68 },
+    descriptionFont: portrait ? 18 : 14,
+  };
+}

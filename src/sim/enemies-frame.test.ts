@@ -12,7 +12,7 @@ import { ENEMY_STATS } from './enemies';
 import { createGame, startWave, tick } from './game';
 
 describe('enemies.png frame content', () => {
-  it('has 9 Goblins, 8 Wolves, 5 Trolls, 2 hurt Trolls, 2 slowed enemies, 4 Shieldbearers and 13 Harpies at tick 1680 of wave 8', () => {
+  it('has 9 Goblins, 8 Wolves, 6 Trolls, 2 hurt Trolls, 2 slowed enemies, 4 Shieldbearers and 13 Harpies at tick 1680 of wave 8', () => {
     const s = createGame();
     s.gold = 1000;
     s.wave = 7;
@@ -32,6 +32,6 @@ describe('enemies.png frame content', () => {
       slowed: s.enemies.filter((e) => e.slowTicksLeft > 0).length,
       shieldbearers: of('shieldbearer').length,
       harpies: of('harpy').length,
-    }).toEqual({ wave: 8, goblins: 9, wolves: 8, trolls: 5, hurtTrolls: 2, slowed: 2, shieldbearers: 4, harpies: 13 });
+    }).toEqual({ wave: 8, goblins: 9, wolves: 8, trolls: 6, hurtTrolls: 2, slowed: 2, shieldbearers: 4, harpies: 13 });
   });
 });

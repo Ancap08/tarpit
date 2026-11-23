@@ -89,14 +89,14 @@ for (const map of ['meadow', 'switchback', 'riverbend'] as const) {
     const s = await state(page);
     expect(s.map.id).toBe(map);
     expect((await api(page, (a) => a.ui())).map).toBe(map);
-    expect(await api(page, (a) => a.hudText())).toMatchObject({ gold: 'Gold 100', lives: 'Lives 20', wave: 'Wave 0/10' });
+    expect(await api(page, (a) => a.hudText())).toMatchObject({ gold: 'Gold 100', lives: 'Lives 20', wave: 'Wave 0/20' });
 
     await drag(page, await rectCentre(page, 'bar:longbow'), centre(BOW[map]));
     expect((await state(page)).towers).toEqual([expect.objectContaining({ cell: BOW[map], type: 'longbow' })]);
     await click(page, 'startWave');
     expect((await state(page)).phase).toBe('wave');
     expect(await stepUntilKill(page, BOW[map])).toBeGreaterThan(0);
-    expect((await api(page, (a) => a.hudText())).wave).toBe('Wave 1/10');
+    expect((await api(page, (a) => a.hudText())).wave).toBe('Wave 1/20');
   });
 }
 

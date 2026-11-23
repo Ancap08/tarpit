@@ -67,7 +67,7 @@ function fourWay(): Record<Facing, WalkCycle> {
   return { down: cycle(0), up: cycle(1), left: cycle(2), right: cycle(3) };
 }
 
-export const SHEETS: Readonly<Record<EnemyType, SheetLayout>> = {
+const baseSheets: Readonly<Record<Exclude<EnemyType, 'grumblemaw'>, SheetLayout>> = {
   // GreenPig: 64x112, 7 rows of 16x16. Rows 0-3 walk; row 4 attack, row 5
   // jump (1 frame per facing each); row 6: dead (col 0, identical to
   // SeparateAnim/Dead.png), item, special 1, special 2.
@@ -138,11 +138,18 @@ export const SHEETS: Readonly<Record<EnemyType, SheetLayout>> = {
   },
 };
 
+// Both bosses use the same six frames. Grumblemaw stands taller on the trail.
+export const SHEETS: Readonly<Record<EnemyType, SheetLayout>> = {
+  ...baseSheets,
+  grumblemaw: { ...baseSheets.boss, scale: 3, lift: 45 },
+};
+
 /** Walk animation frame rate in play unless a sheet sets `fps` (test mode freezes frame 0). */
 export const WALK_FPS = 10;
 
 /** Phaser animation key for a type's walk cycle in one facing. */
 export function walkAnimKey(type: EnemyType, facing: Facing): string {
   // Side-only sheets have one cycle; the facing changes only the mirroring.
-  return SHEETS[type].sideOnly ? `${type}-walk` : `${type}-walk-${facing}`;
+  const sheet = SHEETS[type];
+  return sheet.sideOnly ? `${sheet.key}-walk` : `${sheet.key}-walk-${facing}`;
 }

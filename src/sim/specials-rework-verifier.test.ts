@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { CHEAT_GOLD, grantCheatGold, useSpecial } from './actions';
 import type { GameEvent } from './events';
 import { callNextWave, continueEndless, createGame, startWave, tick } from './game';
-import { applyAction, comboBuild, endlessIdle, type WaveScript } from './headless';
+import { applyAction, applyScriptBoon, comboBuild, endlessIdle, type WaveScript } from './headless';
 import { SPECIAL_RECHARGE_TICKS } from './specials';
 import type { Enemy, EnemyType, GameState, MapDef } from './types';
 import { WAVES } from './waves';
@@ -100,18 +100,18 @@ describe('verifier: zones', () => {
     expect(slowTicks[slowTicks.length - 1]).toBe(0);
   });
 
-  it('a zone expiring with enemies inside lets the slow lapse 60 ticks later', () => {
-    const s = arena(4, [enemy(0, 'troll', 300, 1e9)]);
-    s.map = LINE;
-    s.enemies[0].distance = 300;
-    useSpecial(s, 'tarBarrel', P);
-    // Pin the troll in place by giving it a huge specialSlow? Instead, just run 480 ticks: troll walks.
-    ticks(s, 479);
-    expect(s.zones.length).toBe(1);
+  it('a tar zone refreshes its linger through its last tick, then expires', () => {
+    const s = arena(4, [enemy(0, 'troll', 130, 1e9)]);
+    useSpecial(s, 'tarBarrel', { x: 225, y: 240 });
+    ticks(s, 659);
+    expect(s.zones[0]?.ticksLeft).toBe(1);
     tick(s);
     expect(s.zones.length).toBe(0);
-    const left = s.enemies[0].specialSlowTicksLeft ?? 0;
-    expect(left).toBeLessThanOrEqual(60);
+    expect(s.enemies[0].specialSlowTicksLeft).toBe(60);
+    ticks(s, 59);
+    expect(s.enemies[0].specialSlowTicksLeft).toBe(1);
+    tick(s);
+    expect(s.enemies[0].specialSlowTicksLeft).toBe(0);
   });
 
   it('two overlapping zones of one kind do not stack; tar and fire together burn double', () => {
@@ -127,8 +127,8 @@ describe('verifier: zones', () => {
     tick(s);
     const e = s.enemies[0];
     expect(e.specialSlow).toBe(0.5); // two tar zones: still 0.5, not stacked
-    // Burn 20/s doubled by tar = 40/s -> 40/60 hp per tick (floating: compare loosely).
-    expect(hp0 - e.hp).toBeCloseTo(40 / 60, 6);
+    // Burn 26/s doubled by tar = 52/s -> 52/60 hp per tick (floating: compare loosely).
+    expect(hp0 - e.hp).toBeCloseTo(52 / 60, 6);
   });
 
   it('the boss slow stays capped at 0.3 under overlapping tar zones', () => {
@@ -191,6 +191,7 @@ function play(script: WaveScript, endlessTo = 0) {
     }
   };
   for (let i = 0; i < 40 && s.phase === 'setup'; i++) {
+    applyScriptBoon(s, script);
     for (const a of script[i] ?? []) applyAction(s, a);
     startWave(s);
     const timed = script.timed?.[i] ?? [];
@@ -239,16 +240,16 @@ describe('verifier: conservation over a whole comboBuild game (Meadow, Normal)',
   });
 });
 
-describe('verifier: the wave 10 to 11 endless boundary', () => {
-  it('zones and charge are clean entering wave 11, and wave 11 starts with the charge ready', () => {
-    const run = play(endlessIdle(), 10);
+describe('verifier: the wave 20 to 21 endless boundary', () => {
+  it('zones and charge are clean entering wave 21, and wave 21 starts with the charge ready', () => {
+    const run = play(endlessIdle(), 20);
     expect(run.invariants).toEqual([]);
     const s = run.s;
     expect(s.phase).toBe('won');
     continueEndless(s);
     expect([s.zones.length, s.specialCharges, s.specialRechargeTicks]).toEqual([0, 0, 0]);
     expect(startWave(s).ok).toBe(true);
-    expect([s.wave, s.specialCharges, s.specialRechargeTicks]).toEqual([11, 1, 0]);
+    expect([s.wave, s.specialCharges, s.specialRechargeTicks]).toEqual([21, 1, 0]);
     expect(useSpecial(s, 'fireArrows', { x: 100, y: 100 }).ok).toBe(true);
     expect(s.zones.length).toBe(1);
   });

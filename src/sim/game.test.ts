@@ -163,9 +163,9 @@ describe('startWave and wave clear', () => {
     expect(s.phase).toBe('wave');
   });
 
-  it('clearing wave 10 with lives left wins; startWave then fails', () => {
+  it('clearing wave 20 with lives left wins; startWave then fails', () => {
     const s = createGame();
-    s.wave = 9;
+    s.wave = 19;
     s.lives = 1000;
     startWave(s);
     runWave(s);
@@ -174,8 +174,8 @@ describe('startWave and wave clear', () => {
     expect(startWave(s)).toEqual({ ok: false, reason: 'not-in-setup' });
   });
 
-  it('startWave fails with no-more-waves if wave 10 is done but phase is setup', () => {
-    const s = { ...createGame(), wave: 10 };
+  it('startWave fails with no-more-waves if wave 20 is done but phase is setup', () => {
+    const s = { ...createGame(), wave: 20 };
     expect(startWave(s)).toEqual({ ok: false, reason: 'no-more-waves' });
   });
 });

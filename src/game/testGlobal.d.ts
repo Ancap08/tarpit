@@ -7,6 +7,11 @@
 
 import type Phaser from 'phaser';
 import type {
+  BoonChoices,
+  BoonId,
+  BoonOffer,
+  EnemyType,
+  pickBoon,
   BuildResult,
   CallNextWaveResult,
   ContinueEndlessResult,
@@ -54,6 +59,10 @@ export interface TarpitTestApi {
   startGame(difficulty?: Difficulty, map?: MapId): Promise<void>;
   /** The running game's level (milestone 25). */
   difficulty(): Difficulty;
+  pendingBoon(): BoonOffer | null;
+  heldBoons(): BoonId[];
+  pickBoon(id: BoonId): ReturnType<typeof pickBoon>;
+  bossOnField(): EnemyType | null;
   startWave(): StartWaveResult;
   /** Call the next wave early through the scene's action (milestone 25c). */
   callNextWave(): CallNextWaveResult;
@@ -157,9 +166,9 @@ export interface TarpitTestApi {
    * With `untilWave`, stops in setup before that wave (its build actions
    * applied, the wave not started). Milestone 26: endlessIdle and
    * endlessGreedy press Keep going after the win and play on until lost,
-   * so `untilWave` may be past 10.
+   * so `untilWave` may be past 20.
    */
-  runScript(name: ScriptName, untilWave?: number): Phase;
+  runScript(name: ScriptName, untilWave?: number, boons?: BoonChoices): Phase;
   /**
    * An enemy sprite's animation state, or null if that enemy has no sprite
    * (never spawned, gone, or before GameScene runs). `frame` is the position

@@ -22,7 +22,7 @@
 
 import { enemyPosition } from './combat';
 import { pathLength, positionAlongPath } from './map';
-import { isSpecialUnlocked, SPECIAL_DEFS, type SpecialType } from './specials';
+import { isSpecialUnlocked, specialRadius, type SpecialType } from './specials';
 import type { EnemyType, GameState, MapDef, Point } from './types';
 
 /** Wave ticks between two looks (0.5 s), so headless runs stay fast. */
@@ -61,7 +61,7 @@ export function policyCandidates(map: MapDef): readonly Point[] {
 }
 
 /** Enemy types the policy counts as big (rule 1). */
-export const BIG_ENEMIES: ReadonlySet<EnemyType> = new Set<EnemyType>(['troll', 'boss']);
+export const BIG_ENEMIES: ReadonlySet<EnemyType> = new Set<EnemyType>(['troll', 'boss', 'grumblemaw']);
 
 const allowed = (type: SpecialType, wave: number, options: PolicyOptions): boolean => type !== options.forbid && isSpecialUnlocked(type, wave);
 
@@ -78,7 +78,7 @@ export function zoneTurn(wave: number, lastZone: SpecialType | undefined, option
 
 /** The best working point for a radius (most enemies, ties nearest the exit), optionally only points with a big one inside. */
 function bestPoint(state: GameState, pos: readonly { p: Point; big: boolean }[], special: SpecialType, needBig: boolean): PolicyChoice | undefined {
-  const r = SPECIAL_DEFS[special].radius;
+  const r = specialRadius(special, state.boons);
   let best: PolicyChoice | undefined;
   for (const c of policyCandidates(state.map)) {
     let hits = 0;

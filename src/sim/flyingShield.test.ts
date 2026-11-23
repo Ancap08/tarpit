@@ -21,7 +21,7 @@ const MORTAR_OK = 224;
 // Arena hp: the milestone 22 values, fixed so the damage arithmetic below
 // stays as written; no rule here depends on an enemy's full hp (milestone
 // 25c lowered ENEMY_STATS, pinned in the stats test).
-const ARENA_HP: Record<EnemyType, number> = { goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000 };
+const ARENA_HP: Record<EnemyType, number> = { goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000, grumblemaw: 5600 };
 
 function enemy(id: number, distance: number, type: EnemyType, hp = ARENA_HP[type]): Enemy {
   return { id, type, hp, distance, slow: 0, slowTicksLeft: 0, burnDps: 0, burnTicksLeft: 0 };

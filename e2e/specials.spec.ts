@@ -117,7 +117,7 @@ test('a keg on empty ground shows "Missed"', async ({ page }) => {
   expect((await ui(page)).special.labels).toEqual([expect.objectContaining({ text: 'Missed' })]);
 });
 
-test('Tar Barrel on wave 4: the popup, a zone that slows while it lasts and is gone after 480 ticks', async ({ page }) => {
+test('Tar Barrel on wave 4: the popup, a zone that slows while it lasts and is gone after 660 ticks', async ({ page }) => {
   await startGame(page, 4);
   await api(page, (a) => {
     a.startWave();
@@ -138,15 +138,15 @@ test('Tar Barrel on wave 4: the popup, a zone that slows while it lasts and is g
     const inside = dist(pos(e), at) <= SPECIAL_DEFS.tarBarrel.radius;
     if (inside) expect([e.specialSlow, e.specialSlowTicksLeft], `enemy ${e.id}`).toEqual([0.5, ZONE_LINGER_TICKS]);
   }
-  expect((await ui(page)).special.zones).toEqual([{ id: 0, type: 'tarBarrel', x: at.x, y: at.y, ticksLeft: 480 }]);
-  await api(page, (a) => a.step(479));
+  expect((await ui(page)).special.zones).toEqual([{ id: 0, type: 'tarBarrel', x: at.x, y: at.y, ticksLeft: 660 }]);
+  await api(page, (a) => a.step(659));
   s = await state(page);
   expect(s.zones.map((z) => z.ticksLeft)).toEqual([1]);
   await api(page, (a) => a.step(1));
   expect((await ui(page)).special.zones).toEqual([]);
 });
 
-test('Fire Arrows on wave 7: a Harpy in the circle burns at 20/s and the burning patch stays', async ({ page }) => {
+test('Fire Arrows on wave 7: a Harpy in the circle burns at 26/s and the burning patch stays', async ({ page }) => {
   await startGame(page, 7);
   await api(page, (a) => {
     a.startWave();

@@ -18,6 +18,7 @@ import {
   endlessGreedy,
   endlessIdle,
   lazyBuild,
+  isBoss,
   soundBuild,
   WAVES,
   type Archetype,
@@ -64,8 +65,8 @@ const MAX_TICKS_PER_WAVE = 60 * 600;
  * which the wave tick counter reaches their atWaveTick, as in playScripted;
  * a cluster special aims at densestCluster of the live state, and a wave
  * called early starts without Start Wave. An endless script (milestone 26)
- * presses Keep going (the scene's continueEndless) when wave 10 is won and
- * plays on, so `untilWave` may be past 10 (11 stops in setup right after
+ * presses Keep going (the scene's continueEndless) when wave 20 is won and
+ * plays on, so `untilWave` may be past 20 (21 stops in setup right after
  * Keep going).
  */
 function runScript(scene: GameScene, script: WaveScript, untilWave?: number): Phase {
@@ -100,6 +101,11 @@ function runScript(scene: GameScene, script: WaveScript, untilWave?: number): Ph
   const limit = script.endless ? ENDLESS_WAVE_CAP : WAVES.length;
   if (script.endless && phase() === 'won') scene.continueEndless();
   while ((phase() === 'setup' || called) && scene.state.wave < limit) {
+    const offer = scene.state.pendingBoon;
+    if (offer) {
+      const result = scene.pickBoon(script.boons?.[offer.wave] ?? offer.options[0]);
+      if (!result.ok) throw new Error(`runScript: pickBoon refused: ${result.reason}`);
+    }
     const index = called ? scene.state.wave - 1 : scene.state.wave;
     for (const action of script[index] ?? []) apply(action);
     if (!called) {
@@ -207,6 +213,10 @@ export function installGlobal(game: Phaser.Game): void {
         titleScene(game).play(difficulty, map);
       }),
     difficulty: () => scene().state.difficulty,
+    pendingBoon: () => scene().state.pendingBoon,
+    heldBoons: () => [...scene().state.boons],
+    pickBoon: (id) => scene().pickBoon(id),
+    bossOnField: () => scene().state.enemies.find(isBoss)?.type ?? null,
     startWave: () => scene().startWave(),
     callNextWave: () => scene().callNextWave(),
     continueEndless: () => scene().continueEndless(),
@@ -231,7 +241,11 @@ export function installGlobal(game: Phaser.Game): void {
     endScreen: () => scene().endScreenKind(),
     events: () => scene().simEvents(),
     // The archetype records its script on the running game's level (milestone 25) and map (27).
-    runScript: (name, untilWave) => runScript(scene(), SCRIPTS[name](scene().state.difficulty, scene().mapId), untilWave),
+    runScript: (name, untilWave, boons) => {
+      const gameScene = scene();
+      const script = SCRIPTS[name](gameScene.state.difficulty, gameScene.mapId, boons);
+      return runScript(gameScene, script, untilWave);
+    },
   };
   window.__tarpit = api;
 }

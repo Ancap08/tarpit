@@ -31,8 +31,8 @@ describe('new-towers frame, sim side', () => {
     expect(mortarTicks.slice(-3)).toEqual([1836, 2016, 2196]);
     expect(ENEMY_STATS.troll.hp).toBe(950);
     expect(s.enemies.map((e) => `${e.type} ${e.id} ${Math.round(e.hp)}`)).toEqual([
-      'troll 13 425', 'troll 29 932', 'goblin 38 5', 'troll 39 950', 'goblin 41 5', 'goblin 42 14',
-      'goblin 43 23', 'goblin 44 23', 'goblin 45 23', 'goblin 46 23', 'goblin 47 23', 'goblin 48 23', 'goblin 49 23',
+      'troll 13 425', 'troll 32 932', 'goblin 38 23', 'goblin 40 5', 'goblin 41 14', 'goblin 42 23',
+      'troll 43 950', 'goblin 44 23', 'goblin 45 23', 'goblin 46 23', 'goblin 47 23', 'goblin 48 23', 'goblin 49 23',
     ]);
     const sb = s.enemies.filter((e) => e.slowTicksLeft > 0 && (e.burnTicksLeft ?? 0) > 0);
     expect(sb.map((e) => e.id)).toEqual([13]);

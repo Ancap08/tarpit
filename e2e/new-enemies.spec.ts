@@ -13,24 +13,16 @@ async function startGame(page: Page): Promise<void> {
   await page.evaluate(() => (window.__tarpit as TarpitTestApi).startGame());
 }
 
-const CANNON = { x: 240, y: 240, range: 90 }; // cell (7,7)
+const CANNON = { x: 240, y: 240, range: 105 }; // cell (7,7)
 const MUSKET = { x: 240, y: 176, range: 110 }; // cell (7,5)
 const inRange = (d: number, t: { x: number; y: number; range: number }) => {
   const p = positionAlongPath(MAPS.meadow, d);
   return Math.hypot(p.x - t.x, p.y - t.y) <= t.range;
 };
 
-// Wave 4 with a Cannon at (7,7) and a Musketeer at (7,5). The first Harpy
-// (id 4) is inside both ranges from tick 222; the Cannon fires at Wolf 8 on
-// tick 316 while Harpy 7 is inside its range; the Musketeer first hits a
-// Harpy (id 7) on tick 497. The test steps one tick at a time to tick 500
-// and reads events() and the Harpies' path distances after each step.
-// Milestone 25c (wave 4 sends its 10 Harpies first, Wolves from 3 s;
-// headless scan): a Harpy is inside both ranges from tick 102, where the
-// Musketeer first hits one; the Cannon fires with a Harpy in its range on
-// ticks 256 and 496; all 10 Harpies spawn within the 500 ticks. Second pass
-// (10 Harpies 1.5 s apart, then Goblins): the window grows to 1200 ticks;
-// the Cannon fires with a Harpy in range on ticks 571 and 931.
+// The first Harpy enters both firing circles at step 102, where the
+// Musketeer hits it. At steps 316, 436, 556 and 676, the Cannon fires at a
+// ground target with at least one Harpy in its 105 px range.
 test('wave 4: a Cannon never hits a Harpy, a Musketeer does; the HUD names the Harpy', async ({ page }) => {
   await startGame(page);
   const r = await page.evaluate(() => {
@@ -68,10 +60,10 @@ test('wave 4: a Cannon never hits a Harpy, a Musketeer does; the HUD names the H
   const tickOf = (i: number) => i + 1;
   const firstInBoth = r.ticks.findIndex((x) => x.harpyDistances.some((d) => inRange(d, CANNON) && inRange(d, MUSKET)));
   expect(tickOf(firstInBoth)).toBe(102);
-  // No Cannon hit on any Harpy over all 500 ticks, though it fires while one is in its range.
+  // No Cannon hit on any Harpy over 1200 ticks, including shots with Harpies in range.
   expect(r.ticks.filter((x) => x.cannonHarpy > 0)).toEqual([]);
   const cannonWithHarpyInRange = r.ticks.flatMap((x, i) => (x.cannonShots > 0 && x.harpyDistances.some((d) => inRange(d, CANNON)) ? [tickOf(i)] : []));
-  expect(cannonWithHarpyInRange).toEqual([556, 916]); // milestone 30: Cannon range 105 (571 and 931 at 90)
+  expect(cannonWithHarpyInRange).toEqual([316, 436, 556, 676]);
   const musketOnHarpy = r.ticks.flatMap((x, i) => (x.musketHarpy > 0 ? [tickOf(i)] : []));
   expect(musketOnHarpy.length).toBeGreaterThanOrEqual(1);
   expect(musketOnHarpy[0]).toBe(102);

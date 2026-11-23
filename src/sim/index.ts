@@ -1,4 +1,5 @@
 // Public surface of the simulation. src/game imports from here only.
+export * from './boons';
 export * from './types';
 export * from './events';
 export * from './map';

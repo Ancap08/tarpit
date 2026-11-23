@@ -7,14 +7,14 @@
 // 64 px straight below B: inside every base range (Cannon 90, Tar Pit 90,
 // Longbow 150). Walking right from there to distance 115 ((115,240)) B is
 // sqrt(35^2 + 64^2) = 72.9 px away, still inside the upgraded Tar Pit's 105.
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { buildTower, upgradeTower } from './actions';
 import { findTarget } from './combat';
 import { ENEMY_STATS } from './enemies';
 import type { GameEvent } from './events';
 import { createGame, spawnTick, startWave, tick } from './game';
 import { cellCenter, type Cell } from './grid';
-import { applyAction, comboBuild, comboBuildNoFire, type WaveScript } from './headless';
+import { applyAction, applyScriptBoon, comboBuild, comboBuildNoFire, type WaveScript } from './headless';
 import { MAPS, pathLength, positionAlongPath } from './map';
 import { TOWER_DEFS } from './towers';
 import type { Enemy, EnemyType, GameState, TowerType } from './types';
@@ -110,7 +110,7 @@ describe('(c) exit: 5 lives, one exit and one bossDown event', () => {
       expect(s.lives).toBe(left);
       expect(s.phase).toBe(phase);
       expect(of(s.events, 'exit')).toEqual([{ kind: 'exit', enemyId: 1 }]);
-      expect(of(s.events, 'bossDown')).toEqual([{ kind: 'bossDown', enemyId: 1, cause: 'exit' }]);
+      expect(of(s.events, 'bossDown')).toEqual([{ kind: 'bossDown', enemyId: 1, enemyType: 'boss', cause: 'exit' }]);
       expect(of(s.events, 'kill', 'won')).toEqual([]);
       expect(of(s.events, 'lost')).toHaveLength(phase === 'lost' ? 1 : 0);
       expect(s.enemies.map((e) => e.id)).toEqual([2]);
@@ -126,7 +126,7 @@ describe('(d) a burn kill pays 150 once, with kill and bossDown (burn)', () => {
     tick(s);
     expect(s.gold).toBe(150);
     expect(of(s.events, 'kill')).toEqual([{ kind: 'kill', enemyId: 1, enemyType: 'boss', bounty: 150, cause: 'burn' }]);
-    expect(of(s.events, 'bossDown')).toEqual([{ kind: 'bossDown', enemyId: 1, cause: 'burn' }]);
+    expect(of(s.events, 'bossDown')).toEqual([{ kind: 'bossDown', enemyId: 1, enemyType: 'boss', cause: 'burn' }]);
     expect(of(s.events, 'exit', 'waveClear')).toEqual([]);
     expect(s.enemies.map((e) => e.id)).toEqual([2]);
     for (let i = 0; i < 60; i++) tick(s);
@@ -154,12 +154,13 @@ describe('(e) wave 10 does not clear while he lives', () => {
     expect(s.enemies).toHaveLength(1);
   });
 
-  it('the same state without him clears and wins on the next tick', () => {
+  it('the same state without him clears and offers a boon on the next tick', () => {
     const s = wave10Alone();
     s.enemies = [];
     tick(s);
-    expect(s.phase).toBe('won');
-    expect(of(s.events, 'waveClear', 'won').map((e) => e.kind)).toEqual(['waveClear', 'won']);
+    expect(s.phase).toBe('setup');
+    expect(s.pendingBoon?.wave).toBe(10);
+    expect(of(s.events, 'waveClear', 'won').map((e) => e.kind)).toEqual(['waveClear']);
   });
 });
 
@@ -188,45 +189,67 @@ describe('(f) he walks and has no shield', () => {
 });
 
 describe('(g) the combo builds against him', () => {
-  /** Play a script to its end; the wave 10 tick of every boss event. */
-  function run(script: WaveScript) {
+  /** Replay through the requested wave and record boss events from ticks and specials. */
+  function run(script: WaveScript, lastWave: number) {
     const s = createGame();
-    const boss: { waveTick: number; kind: string; cause?: string }[] = [];
+    const boss: { wave: number; waveTick: number; kind: string; cause?: string; threshold?: number }[] = [];
     const running = () => s.phase === 'wave';
-    for (let w = 0; w < WAVES.length && s.phase === 'setup'; w++) {
+    const recordBossEvents = (events: GameEvent[], waveTick: number) => {
+      for (const e of events) {
+        if (e.kind === 'bossSpawn') boss.push({ wave: s.wave, waveTick, kind: e.kind });
+        if (e.kind === 'bossDown') boss.push({ wave: s.wave, waveTick, kind: e.kind, cause: e.cause });
+        if (e.kind === 'packCall') boss.push({ wave: s.wave, waveTick, kind: e.kind, threshold: e.threshold });
+      }
+    };
+    let midpoint: Pick<GameState, 'phase' | 'wave' | 'gold' | 'lives' | 'pendingBoon'> | undefined;
+    for (let w = 0; w < lastWave && s.phase === 'setup'; w++) {
+      applyScriptBoon(s, script);
       for (const a of script[w] ?? []) expect(applyAction(s, a)).toMatchObject({ result: { ok: true } });
       expect(startWave(s).ok).toBe(true);
       for (let t = 0; running() && t < 60 * 600; t++) {
-        // Milestone 25c: the combo builds fire their specials (28: the stored list).
-        for (const a of script.timed?.[w] ?? []) if (a.atWaveTick === s.waveTick) applyAction(s, a);
         const waveTick = s.waveTick;
-        tick(s);
-        for (const e of s.events) {
-          if (e.kind === 'bossSpawn') boss.push({ waveTick, kind: e.kind });
-          if (e.kind === 'bossDown') boss.push({ waveTick, kind: e.kind, cause: e.cause });
+        for (const a of script.timed?.[w] ?? []) {
+          if (a.atWaveTick !== waveTick) continue;
+          const firstEvent = s.events.length;
+          applyAction(s, a);
+          recordBossEvents(s.events.slice(firstEvent), waveTick);
         }
+        tick(s);
+        recordBossEvents(s.events, waveTick);
+      }
+      if (s.wave === 10) {
+        const { phase, wave, gold, lives, pendingBoon } = s;
+        midpoint = { phase, wave, gold, lives, pendingBoon };
       }
     }
-    return { s, boss };
+    return { s, boss, midpoint };
   }
 
-  it('comboBuild: one bossSpawn at 3900, one bossDown at 6445, won with 16 lives and 420 gold (milestone 30)', () => {
-    const { s, boss } = run(comboBuild());
-    expect(boss.map((b) => b.kind)).toEqual(['bossSpawn', 'bossDown']);
-    expect(boss[0].waveTick).toBe(3900);
-    expect(boss[1]).toEqual({ waveTick: 6445, kind: 'bossDown', cause: 'shot' });
-    expect(s).toMatchObject({ phase: 'won', wave: 10, lives: 16, gold: 420 });
+  let combo: ReturnType<typeof run>;
+  beforeAll(() => {
+    combo = run(comboBuild(), 20);
   });
 
-  // Milestone 30: with its own policy specials, comboBuildNoFire now kills
-  // him 83 ticks sooner than the combo build (6411, 153 later, in 28); it
-  // still loses more lives overall (T5).
-  it('comboBuildNoFire kills him at 6362, won with 11 lives', () => {
-    const combo = run(comboBuild()).boss[1].waveTick;
-    const { s, boss } = run(comboBuildNoFire());
-    expect(boss[1]).toEqual({ waveTick: 6362, kind: 'bossDown', cause: 'shot' });
-    expect(boss[1].waveTick - combo).toBe(6362 - 6445);
-    expect(s).toMatchObject({ phase: 'won', lives: 11 });
+  it.each([
+    [comboBuild, 6213, 16, 420],
+    [comboBuildNoFire, 6369, 16, 610],
+  ] as const)('%s defeats Grumblefoot at tick %i, ending act 1 with %i lives and %i gold', (record, killTick, lives, gold) => {
+    const replay = record === comboBuild ? combo : run(record(), 10);
+    expect(replay.boss.filter((e) => e.wave <= 10)).toEqual([
+      { wave: 10, waveTick: 3900, kind: 'bossSpawn' },
+      { wave: 10, waveTick: killTick, kind: 'bossDown', cause: 'shot' },
+    ]);
+    expect(replay.midpoint).toMatchObject({ phase: 'setup', wave: 10, lives, gold, pendingBoon: { wave: 10 } });
+  });
+
+  it('Normal combo kills Grumblemaw at tick 5735, winning with 19 lives and 2847 gold', () => {
+    expect(combo.boss.filter((e) => e.wave === 20)).toEqual([
+      { wave: 20, waveTick: 2892, kind: 'bossSpawn' },
+      { wave: 20, waveTick: 4421, kind: 'packCall', threshold: 2 },
+      { wave: 20, waveTick: 4938, kind: 'packCall', threshold: 1 },
+      { wave: 20, waveTick: 5735, kind: 'bossDown', cause: 'shot' },
+    ]);
+    expect(combo.s).toMatchObject({ phase: 'won', wave: 20, lives: 19, gold: 2847 });
   });
 });
 

@@ -7,6 +7,9 @@ const LIMIT: Partial<Record<SoundName, number>> = {
   'special.keg': 0.8,
   bossArrive: 1.5,
   bossFall: 1.5,
+  grumblemawArrive: 1.5,
+  grumblemawFall: 1.5,
+  act2: 0.75,
   win: 2,
   lose: 2,
 };
@@ -29,7 +32,7 @@ describe('recipes', () => {
 
   it('the boss sounds and jingles are the longest', () => {
     const len = (n: SoundName) => recipeLength(RECIPES[n]);
-    const others = SOUND_NAMES.filter((n) => !['bossArrive', 'bossFall', 'win', 'lose'].includes(n));
+    const others = SOUND_NAMES.filter((n) => !['bossArrive', 'bossFall', 'grumblemawArrive', 'grumblemawFall', 'win', 'lose'].includes(n));
     for (const n of others) expect(len(n)).toBeLessThan(len('bossFall'));
   });
 
@@ -46,6 +49,9 @@ describe('recipes', () => {
     expect(levelTier('waveStart')).toBe('moment');
     expect(levelTier('special.keg')).toBe('big');
     expect(levelTier('bossFall')).toBe('big');
+    for (const n of ['boonOffer', 'boonPick'] as const) expect(levelTier(n)).toBe('action');
+    for (const n of ['act2', 'packCall'] as const) expect(levelTier(n)).toBe('moment');
+    for (const n of ['grumblemawArrive', 'grumblemawFall'] as const) expect(levelTier(n)).toBe('big');
   });
 
   it('the smallest sounds and the exit warning thin over a longer window', () => {

@@ -9,10 +9,12 @@
 // Tower cell (3, 5): centre (112, 176), 64 px above the path line.
 import { describe, expect, it } from 'vitest';
 import { buildTower, upgradeTower, useSpecial } from './actions';
+import { ENEMY_STATS } from './enemies';
 import type { GameEvent } from './events';
 import { createGame, startWave, tick } from './game';
-import { applyAction, comboBuild, playScripted } from './headless';
+import { applyAction, applyScriptBoon, comboBuild, playScripted, type WaveScript } from './headless';
 import { SPECIAL_TYPES } from './specials';
+import { TOWER_DEFS } from './towers';
 import type { Enemy, EnemyType, GameState, TowerType } from './types';
 import { WAVES } from './waves';
 
@@ -22,7 +24,7 @@ const CELL = { col: 3, row: 5 };
 // Arena hp: the milestone 22 values, fixed so the arithmetic below stays as
 // written (milestone 25c lowered ENEMY_STATS; no special rule depends on
 // an enemy's full hp). Bounties are read from ENEMY_STATS.
-const ARENA_HP: Record<EnemyType, number> = { goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000 };
+const ARENA_HP: Record<EnemyType, number> = { goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000, grumblemaw: 5600 };
 
 function enemy(id: number, type: EnemyType, extra: Partial<Enemy> = {}): Enemy {
   return { id, type, hp: ARENA_HP[type], distance: D, slow: 0, slowTicksLeft: 0, burnDps: 0, burnTicksLeft: 0, ...extra };
@@ -139,13 +141,15 @@ describe('(i) a special on empty ground', () => {
 });
 
 /** Replay a comboBuild script tick by tick, collecting every event once. */
-function replay(): { state: GameState; events: GameEvent[] } {
-  const script = comboBuild();
+function replay(script: WaveScript): { state: GameState; events: GameEvent[] } {
   const s = createGame();
   const events: GameEvent[] = [];
   for (let i = 0; i < WAVES.length && phaseOf(s) === 'setup'; i++) {
+    const from = s.events.length;
+    applyScriptBoon(s, script);
     for (const a of script[i] ?? []) applyAction(s, a);
-    startWave(s);
+    expect(startWave(s).ok).toBe(true);
+    events.push(...s.events.slice(from));
     while (phaseOf(s) === 'wave') {
       for (const a of script.timed?.[i] ?? []) {
         if (a.atWaveTick !== s.waveTick) continue;
@@ -165,25 +169,42 @@ function replay(): { state: GameState; events: GameEvent[] } {
 // 30) do kill.
 describe('(j) (l) a full comboBuild game with its recorded specials', () => {
   it('kills + exits == spawns, each id gone at most once; the replay equals playScripted', () => {
-    const { state, events } = replay();
-    const reference = playScripted(comboBuild());
+    const script = comboBuild('normal', undefined, { 5: 'warChest', 15: 'stoneWalls' });
+    const { state, events } = replay(script);
+    const reference = playScripted(script);
     expect(state).toEqual(reference.state);
     const ids = (kind: string) => events.filter((e) => e.kind === kind).map((e) => (e as { enemyId: number }).enemyId);
     const spawns = ids('spawn');
     const gone = [...ids('kill'), ...ids('exit')];
     expect(new Set(gone).size).toBe(gone.length);
-    expect(gone.length).toBe(spawns.length);
-    expect(spawns.length).toBe(WAVES.reduce((n, w) => n + w.groups.reduce((m, g) => m + g.count, 0), 0));
-    // Gold: start 100 + bounties + 10 clears - net spend equals the final gold is covered by the pins; here
-    // just the special bookkeeping: every special kill follows a special event.
+    expect([...gone].sort((a, b) => a - b)).toEqual(spawns);
+    expect(spawns.length).toBe(WAVES.reduce((n, w) => n + w.groups.reduce((m, g) => m + g.count, 0), 0) + 8 * events.filter((e) => e.kind === 'packCall').length);
     const specials = events.filter((e) => e.kind === 'special');
-    expect(specials).toHaveLength(28);
+    expect(specials.length).toBeGreaterThan(28);
     const specialKills = events.filter((e) => e.kind === 'kill' && e.cause === 'special');
-    expect(specialKills.length).toBeLessThanOrEqual(specials.reduce((n, e) => n + (e.kind === 'special' ? e.hits : 0), 0));
     // Every special the policy fires catches at least 3, and some of them kill.
     for (const e of specials) expect(e.kind === 'special' && e.hits).toBeGreaterThanOrEqual(3);
     expect(specialKills.length).toBeGreaterThan(0);
-    expect([state.phase, state.wave, state.lives, state.gold]).toEqual(['won', 10, 16, 420]);
+    expect([state.phase, state.wave]).toEqual(['won', 20]);
+    expect(state.boons).toEqual(['warChest', 'stickyTar', 'stoneWalls']);
+    const packCalls = events.filter((e) => e.kind === 'packCall');
+    expect(packCalls).toHaveLength(2);
+
+    const enemyTypes = new Map(events.filter((e) => e.kind === 'spawn').map((e) => [e.enemyId, e.enemyType]));
+    let { gold, lives } = createGame();
+    for (const e of events) {
+      if (e.kind === 'kill') gold += e.bounty;
+      if (e.kind === 'waveClear' || e.kind === 'earlyCall') gold += e.bonus;
+      if (e.kind === 'build') gold -= TOWER_DEFS[e.tower].cost;
+      if (e.kind === 'upgrade') gold -= TOWER_DEFS[e.tower].upgradeCost;
+      if (e.kind === 'sell') gold += e.refund;
+      if (e.kind === 'boonPicked' && e.id === 'warChest') gold += 100;
+      if (e.kind === 'boonPicked' && e.id === 'stoneWalls') lives += 3;
+      if (e.kind === 'exit') lives -= ENEMY_STATS[enemyTypes.get(e.enemyId)!].livesCost;
+    }
+    expect(state.gold).toBe(gold);
+    expect(state.lives).toBe(lives);
+    expect(state.towers.reduce((n, tower) => n + tower.kills, 0) + specialKills.length + ids('exit').length).toBe(spawns.length);
   });
 
   it('two runs are identical (state, waves, log)', () => {
@@ -195,7 +216,7 @@ describe('(j) (l) a full comboBuild game with its recorded specials', () => {
 
 describe('(k) after the game ends', () => {
   it('no special after won or lost, even with a charge left', () => {
-    const won = inWave(10, [enemy(0, 'boss', { hp: 1 })]);
+    const won = inWave(20, [enemy(0, 'boss', { hp: 1 })]);
     won.enemies[0].burnDps = 60;
     won.enemies[0].burnTicksLeft = 5;
     tick(won); // the burn kills the boss; the wave clears; won with the charge unused

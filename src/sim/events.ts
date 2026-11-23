@@ -10,6 +10,7 @@
 // the renderer reads the new entries after every action and after every
 // tick (GameScene does both, see EventCursor in src/game/anim/effects.ts).
 
+import type { BoonId, BoonOffer } from './boons';
 import type { Cell } from './grid';
 import type { SpecialType } from './specials';
 import type { EnemyType, TargetingMode, TowerType } from './types';
@@ -30,9 +31,12 @@ export type GameEvent =
   /** The enemy reached the exit and cost its livesCost (1, or 5 for the boss). */
   | { kind: 'exit'; enemyId: number }
   /** The boss spawned (milestone 23); follows its 'spawn' event. */
-  | { kind: 'bossSpawn'; enemyId: number }
+  | { kind: 'bossSpawn'; enemyId: number; enemyType: EnemyType }
   /** The boss is gone (milestone 23); follows its 'kill' or 'exit' event. */
-  | { kind: 'bossDown'; enemyId: number; cause: KillCause | 'exit' }
+  | { kind: 'bossDown'; enemyId: number; enemyType: EnemyType; cause: KillCause | 'exit' }
+  | { kind: 'packCall'; enemyId: number; threshold: 1 | 2 }
+  | ({ kind: 'boonOffered' } & BoonOffer)
+  | { kind: 'boonPicked'; wave: number; id: BoonId }
   | { kind: 'build'; cell: Cell; tower: TowerType }
   | { kind: 'upgrade'; cell: Cell; tower: TowerType }
   /** A tower was sold; `full` when it was unlocked and refunded everything (milestone 25a). */

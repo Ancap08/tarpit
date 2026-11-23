@@ -130,10 +130,10 @@ import {
   sellTower,
   setTargeting,
   grantCheatGold,
-  SPECIAL_DEFS,
+  pickBoon,
+  specialRadius,
   startWave,
   tick,
-  TOWER_DEFS,
   towerAt,
   towerStats,
   undoUpgrade,
@@ -143,6 +143,7 @@ import {
   wavesCleared,
 } from '../sim';
 import type {
+  BoonId,
   BuildResult,
   CallNextWaveResult,
   ContinueEndlessResult,
@@ -165,6 +166,8 @@ import type {
 } from '../sim';
 import { EventCursor } from './anim/effects';
 import { sound } from './audio/engine';
+import { Moments } from './fx/moments';
+import { BoonReward, HeldBoons } from './ui/boons';
 import { Effects, type FxState } from './fx/effects';
 import { EnemySprites, type AnimState } from './anim/enemySprites';
 import { drawHpBars, drawShadows, drawStatusRings } from './draw/enemies';
@@ -175,7 +178,7 @@ import { SpecialEffects } from './draw/specials';
 import { Aim, drawTowerShape, drawTowers } from './draw/towers';
 import { highScores } from './highScore';
 import { callEarlyInfo, CHEAT_TAPS, CHEAT_WINDOW_MS, Hud, specialReady, specialRecharge } from './hud';
-import { AIM_BANNER, aimBannerText } from './names';
+import { AIM_BANNER, aimBannerText, REWARD_KEYS } from './names';
 import {
   cellAt,
   cellRect,
@@ -218,9 +221,15 @@ export type Speed = 1 | 2 | 3;
 export const SPEED_HOLD_MS = 300;
 /** A touch press while aiming held this long, unmoved, becomes a hold: the lifted circle shows (milestone 30). */
 export const AIM_HOLD_MS = 300;
+/** Ignore the map half of a double tap when the first tap closes the reward panel. */
+const REWARD_MAP_GUARD_MS = 300;
 
 /** Build UI state, as the test hook ui() reports it. */
 export interface UiState {
+  rangeRadius: number | null;
+  boonTooltip: BoonId | null;
+  momentBanner: string | null;
+  packCue: boolean;
   /** The build bar's active pick, or null. */
   pick: TowerType | null;
   /**
@@ -395,6 +404,12 @@ export class GameScene extends Phaser.Scene {
   private labels!: TowerLabels;
   private overlay!: Phaser.GameObjects.Graphics;
   private hud!: Hud;
+  private reward!: BoonReward;
+  private mapBlockedUntil = 0;
+  private held!: HeldBoons;
+  private moments!: Moments;
+  private frozenMs = 0;
+  private drawnRange: number | null = null;
   private panel!: TowerPanel;
   private endScreen!: EndScreen;
   /** The build bar's active pick, or null. */
@@ -490,6 +505,7 @@ export class GameScene extends Phaser.Scene {
     this.leaving = false;
     this.resume = null;
     this.state = resume?.state ?? createGame({ difficulty: this.difficulty, map: this.currentMap });
+    if (!resume) this.mapBlockedUntil = 0;
     this.recordedCleared = resume?.recordedCleared ?? 0;
     this.speed = 1;
     this.accMs = resume?.accMs ?? 0;
@@ -542,7 +558,8 @@ export class GameScene extends Phaser.Scene {
     // The aim banner (milestone 30): over the map's top edge, under the HUD and panels.
     // The aim circle's centre cross (milestone 30 follow-up), above every sprite.
     // Milestone 31: the boss veil, gold labels and wave banners, under the HUD.
-    this.fx?.createOverlays();
+    this.frozenMs = 0;
+    this.moments = this.fx?.createOverlays() ?? new Moments(this, this.layout, this.state.map);
     this.aimCross = world();
     this.bannerBg = this.add.graphics().setDepth(4);
     const bannerTop = this.layout.map.y + BANNER_Y;
@@ -581,6 +598,8 @@ export class GameScene extends Phaser.Scene {
         if (this.panel.cell !== null) this.setTargeting(this.panel.cell, next);
       },
     });
+    this.held = new HeldBoons(this, this.layout);
+    this.reward = new BoonReward(this, this.layout, (id) => this.pickBoon(id));
     this.endScreen = new EndScreen(
       this,
       this.layout,
@@ -592,6 +611,9 @@ export class GameScene extends Phaser.Scene {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       this.press = null;
       this.aimPress = null;
+      if (this.state.pendingBoon || this.held.contains(p.x, p.y)) return;
+      if (this.layout.onMap(p.x, p.y) && performance.now() < this.mapBlockedUntil) return;
+      this.held.dismiss();
       if (contains(this.hud.rects().gold, p.x, p.y)) this.goldTap();
       if (this.specialPointerDown(p.x, p.y, p.wasTouch)) return;
       if (p.wasTouch) this.onTap(p.x, p.y);
@@ -655,6 +677,11 @@ export class GameScene extends Phaser.Scene {
       canvas.removeEventListener('touchcancel', lost);
       window.removeEventListener('blur', lost);
       document.removeEventListener('visibilitychange', hidden);
+    });
+    this.input.keyboard?.on('keydown', (key: KeyboardEvent) => {
+      if (key.repeat || key.altKey || key.ctrlKey || key.metaKey) return;
+      const id = this.state.pendingBoon?.options[REWARD_KEYS.indexOf(key.key)];
+      if (id) this.pickBoon(id);
     });
     this.input.keyboard?.on('keydown-ESC', () => this.closeUi());
     this.redraw();
@@ -1066,6 +1093,10 @@ export class GameScene extends Phaser.Scene {
   uiState(): UiState {
     return {
       layout: this.layout.kind,
+      rangeRadius: this.drawnRange,
+      boonTooltip: this.held.tooltip,
+      momentBanner: this.moments.text,
+      packCue: this.moments.packCue,
       lift: this.lift,
       snap: this.currentSnap(),
       magnifier:
@@ -1115,7 +1146,7 @@ export class GameScene extends Phaser.Scene {
 
   /** Every clickable rectangle by name: HUD and bar buttons, the open panel's buttons, and `playAgain` and `menu`. */
   uiRects(): Record<string, Rect> {
-    return { ...this.hud.rects(), ...this.panel.rects(), ...this.endScreen.rects() };
+    return { ...this.hud.rects(), ...this.reward.rects(), ...this.held.rects(), ...this.panel.rects(), ...this.endScreen.rects() };
   }
 
   /** The end screen showing, or null. */
@@ -1180,7 +1211,11 @@ export class GameScene extends Phaser.Scene {
       for (const shot of this.state.shots) this.aim.pointAt(shot.cell, shot.to);
       this.shots.afterTick(this.state.shots);
       // In test mode effects age by tick (milestone 30), so step(n) frames are always the same.
-      if (!this.autoTick) this.specialFx.advance(1000 / 60);
+      if (!this.autoTick) {
+        this.specialFx.advance(1000 / 60);
+        this.frozenMs += 1000 / 60;
+        this.moments.advance(this.frozenMs);
+      }
       // Milestone 30: a sprite for every enemy spawned this tick, before its
       // events, so a hit or kill on the next tick of the same frame is not lost.
       this.enemySprites.addNew(this.state);
@@ -1220,8 +1255,16 @@ export class GameScene extends Phaser.Scene {
     if (!this.enemySprites) return;
     const { events, newTick } = this.eventCursor.take(this.state);
     if (newTick) this.enemySprites.newTick();
-    if (this.fx) this.fx.onEvents(events, this.state);
-    else this.enemySprites.onEvents(events);
+    if (this.fx) this.fx.onEvents(events);
+    else {
+      this.enemySprites.onEvents(events);
+      this.moments.onEvents(events, this.frozenMs, false);
+    }
+    if (events.some((event) => event.kind === 'boonOffered')) {
+      this.clearPickAndPanel();
+      this.cancelSpecial();
+      this.held.dismiss();
+    }
   }
 
   /** Test hook: the current simulation events. */
@@ -1247,6 +1290,14 @@ export class GameScene extends Phaser.Scene {
   /** Test hook: an enemy sprite's animation state, or null if it has none. */
   animState(enemyId: number): AnimState | null {
     return this.enemySprites?.animState(enemyId) ?? null;
+  }
+
+  pickBoon(id: BoonId): ReturnType<typeof pickBoon> {
+    const result = pickBoon(this.state, id);
+    if (result.ok) this.mapBlockedUntil = performance.now() + REWARD_MAP_GUARD_MS;
+    this.takeEvents();
+    this.redraw();
+    return result;
   }
 
   startWave(): StartWaveResult {
@@ -1399,6 +1450,9 @@ export class GameScene extends Phaser.Scene {
     this.redrawUi();
     const banner = this.aiming === null ? null : aimBannerText(this.aiming, this.touch);
     this.hud.update(this.state, this.speed, this.pick, { menuOpen: this.specialMenuOpen, aiming: this.aiming, banner }, this.autoTick ? this.time.now : undefined);
+    this.moments.draw(this.autoTick ? this.time.now : this.frozenMs);
+    this.reward.update(this.state.pendingBoon);
+    this.held.update(this.state.boons);
     this.drawBanner();
   }
 
@@ -1475,7 +1529,7 @@ export class GameScene extends Phaser.Scene {
 
     const panelRect = this.panel.rect;
     const p = this.pointer;
-    if (this.endScreen.kind !== null) this.hoverCell = null;
+    if (this.endScreen.kind !== null || this.state.pendingBoon) this.hoverCell = null;
     else if (drag !== null) this.hoverCell = drag.cell;
     else if (this.touch) this.hoverCell = this.tapCell;
     else this.hoverCell = p === null || (panelRect !== null && contains(panelRect, p.x, p.y)) ? null : cellAt(p.x, p.y, this.layout);
@@ -1493,9 +1547,10 @@ export class GameScene extends Phaser.Scene {
     g.clear();
     this.aimCross.clear();
 
+    this.drawnRange = null;
     const selected = this.panel.cell === null ? undefined : towerAt(this.state, this.panel.cell);
     if (selected) {
-      this.rangeCircles(selected.cell, towerStats(selected));
+      this.rangeCircles(selected.cell, towerStats(selected, this.state.boons));
       const s = cellCenter(selected.cell);
       g.lineStyle(3, COLORS.selectRing, 1);
       g.strokeCircle(s.x, s.y, 22);
@@ -1515,7 +1570,7 @@ export class GameScene extends Phaser.Scene {
       const upgraded = moved?.upgraded ?? false;
       const angle = this.aim.angle(moved ? moved.cell : hover);
       if (hoverBuildable) {
-        this.rangeCircles(hover, moved ? towerStats(moved) : TOWER_DEFS[ghostType].base);
+        this.rangeCircles(hover, towerStats(moved ?? { type: ghostType, upgraded: false }, this.state.boons));
         drawTowerShape(g, ghostType, cellCenter(hover), angle, upgraded, GHOST_ALPHA, 0, this.layout);
       } else if (drag !== null) {
         // During a drag a blocked cell also shows a faint red-tinted ghost,
@@ -1531,7 +1586,7 @@ export class GameScene extends Phaser.Scene {
     // finger line to its lifted centre.
     if (this.aiming !== null && aimAt !== null) {
       const color = SPECIAL_COLORS[this.aiming];
-      const r = SPECIAL_DEFS[this.aiming].radius;
+      const r = specialRadius(this.aiming, this.state.boons);
       // The overlay and cross layers are world-space (milestone 32b): the canvas aim point and finger go through the layout.
       const w = this.layout.toWorld(aimAt);
       g.fillStyle(color, AIM_FILL_ALPHA);
@@ -1663,6 +1718,7 @@ export class GameScene extends Phaser.Scene {
    * muted-red circle at that minimum.
    */
   private rangeCircles(cell: Cell, stats: TowerLevelStats): void {
+    this.drawnRange = stats.range;
     const s = cellCenter(cell);
     const g = this.overlay;
     g.fillStyle(COLORS.range, 0.12);

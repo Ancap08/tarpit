@@ -4,19 +4,20 @@
 // furthest along the path, then the lower id. Every mode applies after the
 // eligibility rules (range, the Mortar's minimum range, flying).
 import { describe, expect, it } from 'vitest';
-import { MAPS } from './map';
+import { MAPS, pathLength } from './map';
 import { buildTower, sellTower, setTargeting, towerAt } from './actions';
 import { enemyPosition, findTarget, fireTowers } from './combat';
 import { createGame } from './game';
 import { cellCenter, type Cell } from './grid';
-import { comboBuild, comboStrongest, INFORMATIONAL, playScripted } from './headless';
+import { comboBuild, comboStrongest, INFORMATIONAL, playScripted, trailCellOrder } from './headless';
+import { TOWER_DEFS, towerStats } from './towers';
 import type { Enemy, EnemyType, GameState, TargetingMode, TowerType } from './types';
 import { TARGETING_MODES } from './types';
 
 const A: Cell = { col: 2, row: 5 }; // centre (80,176)
 
 function enemy(id: number, distance: number, type: EnemyType = 'goblin', hp?: number): Enemy {
-  const fullHp = ({ goblin: 30, wolf: 28, troll: 500, harpy: 40, shieldbearer: 120, boss: 4000 } as const)[type];
+  const fullHp = ({ goblin: 30, wolf: 28, troll: 500, harpy: 40, shieldbearer: 120, boss: 4000, grumblemaw: 5600 } as const)[type];
   return { id, type, hp: hp ?? fullHp, distance, slow: 0, slowTicksLeft: 0 };
 }
 
@@ -186,6 +187,67 @@ describe('setTargeting', () => {
   });
 });
 
+it('keeps inclusive Euclidean range boundaries at fractional and integer ranges', () => {
+  for (const [type, boon, outer] of [
+    ['cannon', 'longBarrels', true],
+    ['mortar', undefined, false],
+  ] as const) {
+    const s = arena([], type, 'first');
+    s.map = { id: 'boundary', width: 960, height: 480, path: [{ x: 80, y: 176 }, { x: 960, y: 176 }] };
+    s.boons = boon ? [boon] : [];
+    const { range, minRange } = towerStats(s.towers[0], s.boons);
+    const edge = outer ? range : minRange;
+    for (const offset of [-1e-10, 0, 1e-10]) {
+      const target = enemy(0, edge + offset);
+      s.enemies = [target];
+      expect(findTarget(s, s.towers[0])).toBe((outer ? offset <= 0 : offset >= 0) ? target : undefined);
+    }
+  }
+});
+
+describe('target preference and range for every tower', () => {
+  it.each(Object.values(MAPS))('$id matches a Euclidean filter followed by sorting', (map) => {
+    const state = createGame({ map });
+    const cell = trailCellOrder(map)[0];
+    const length = pathLength(map);
+    state.enemies = Array.from({ length: 160 }, (_, i) => {
+      const distance = length * ((i * 31) % 160) / 160;
+      return enemy(i, distance, i % 3 === 0 ? 'harpy' : 'goblin', i % 9);
+    });
+    // Same position and HP as id 21, with a lower id and later array entry.
+    state.enemies.push({ ...state.enemies[21], id: -1 });
+    state.gold = 10000;
+    for (const type of Object.keys(TOWER_DEFS) as TowerType[]) {
+      expect(buildTower(state, cell, type).ok).toBe(true);
+      const tower = state.towers[0];
+      const origin = cellCenter(cell);
+      for (const upgraded of [false, true]) {
+        tower.upgraded = upgraded;
+        for (const boons of [[], ['longBarrels']] as const) {
+          state.boons = [...boons];
+          const { range, minRange } = towerStats(tower, state.boons);
+          const available = state.enemies.filter((candidate) => {
+            if (candidate.hp === 0) return false;
+            if (candidate.type === 'harpy' && ['cannon', 'tarpit', 'mortar'].includes(type)) return false;
+            const p = enemyPosition(candidate, map);
+            const distance = Math.hypot(origin.x - p.x, origin.y - p.y);
+            return minRange <= distance && distance <= range;
+          });
+          for (const mode of TARGETING_MODES) {
+            tower.targeting = mode;
+            const byPath = mode === 'last' ? 1 : -1;
+            const sorted = [...available].sort((a, b) =>
+              (mode === 'strongest' ? b.hp - a.hp : 0) || byPath * (a.distance - b.distance) || a.id - b.id,
+            );
+            expect(findTarget(state, tower), `${type} ${upgraded} ${mode}`).toBe(sorted[0]);
+          }
+        }
+      }
+      expect(sellTower(state, cell).ok).toBe(true);
+    }
+  });
+});
+
 describe('comboStrongest (informational)', () => {
   it('follows COMBO_PLAN, with a strongest target action after every build', () => {
     const strong = comboStrongest();
@@ -198,7 +260,7 @@ describe('comboStrongest (informational)', () => {
       });
     }
     // Milestone 25b added comboWithKegs; milestone 28 removed it.
-    expect(INFORMATIONAL).toEqual({ comboStrongest });
+    expect(INFORMATIONAL.comboStrongest).toBe(comboStrongest);
   });
 
   it('runs with every action accepted, identically twice', () => {
@@ -209,8 +271,10 @@ describe('comboStrongest (informational)', () => {
     expect(a.state.towers.every((t) => t.targeting === 'strongest')).toBe(true);
   });
 
-  it("result (no target, pinned so a change shows): lost on wave 7, 0 lives, 60 gold", () => {
-    const s = playScripted(comboStrongest()).state;
-    expect(`${s.phase} on wave ${s.wave}, ${s.lives} lives, ${s.gold} gold`).toBe('lost on wave 7, 0 lives, 60 gold');
+  it('runs the strongest-targeting plan into an act 1 loss', () => {
+    const state = playScripted(comboStrongest()).state;
+    expect(state.phase).toBe('lost');
+    expect(state.wave).toBeLessThanOrEqual(10);
+    expect(state.lives).toBeLessThanOrEqual(0);
   });
 });

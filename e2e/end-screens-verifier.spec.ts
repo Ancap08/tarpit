@@ -111,9 +111,9 @@ test('(d) win screen HUD text', async ({ page }) => {
   await api(page, (a) => a.runScript('comboBuild'));
   expect(await endScreen(page)).toBe('won');
   expect(await api(page, (a) => a.hudText())).toMatchObject({
-    gold: 'Gold 420', // milestone 28 (476 in 25c, 497 in milestone 23)
-    lives: 'Lives 16',
-    wave: 'Wave 10/10',
+    gold: 'Gold 2847',
+    lives: 'Lives 19',
+    wave: 'Wave 20/20',
     next: 'Next: none',
   });
 });

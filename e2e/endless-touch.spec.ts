@@ -15,7 +15,7 @@ async function tap(page: Page, name: string): Promise<void> {
   await page.touchscreen.tap(p.x, p.y);
 }
 
-test('win, tap Keep going: three buttons at least 44 px on screen; wave 11 starts, "Wave 11", no boss bar', async ({ page }) => {
+test('win, tap Keep going: three buttons at least 44 px on screen; wave 21 starts, "Wave 21", no boss bar', async ({ page }) => {
   test.setTimeout(90_000);
   await page.goto('/?test=1');
   await page.waitForFunction(() => window.__tarpit?.scene?.() === 'title');
@@ -29,11 +29,11 @@ test('win, tap Keep going: three buttons at least 44 px on screen; wave 11 start
   }
   await tap(page, 'keepGoing');
   expect(await api(page, (a) => a.endScreen())).toBeNull();
-  expect(await api(page, (a) => a.state())).toMatchObject({ phase: 'setup', endless: true, wave: 10 });
+  expect(await api(page, (a) => a.state())).toMatchObject({ phase: 'setup', endless: true, wave: 20 });
   await tap(page, 'startWave');
-  expect(await api(page, (a) => a.state())).toMatchObject({ phase: 'wave', wave: 11 });
+  expect(await api(page, (a) => a.state())).toMatchObject({ phase: 'wave', wave: 21 });
   await api(page, (a) => a.step(300));
   const hud = await api(page, (a) => a.hudText());
-  expect(hud.wave).toBe('Wave 11');
+  expect(hud.wave).toBe('Wave 21');
   expect(hud.boss).toBeNull();
 });

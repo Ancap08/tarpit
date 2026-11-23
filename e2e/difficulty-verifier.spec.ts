@@ -169,7 +169,7 @@ test('(d) [Menu] from the win screen: the title with the played level selected; 
   expect(await api(page, (a) => a.runScript('comboBuild'))).toBe('won');
   expect(await api(page, (a) => a.endScreen())).toBe('won');
   const won = await state(page);
-  expect(won).toMatchObject({ difficulty: 'easy', wave: 10, lives: 35, gold: 422 });
+  expect(won).toMatchObject({ difficulty: 'easy', wave: 20, lives: 38, gold: 2929 });
   expect(won.towers.length).toBeGreaterThan(0);
   await click(page, 'menu');
   await onTitle(page);
@@ -230,16 +230,16 @@ test('(f) HUD tag: none on Normal; the level name on Easy and Hard, clear of the
     await click(page, `title:${level}`);
     await click(page, 'title:play');
     await freshGame(page);
-    // Wave 0/10 (preview of wave 1), then wave 9/10 in setup (the longest
-    // preview, with "+ Grumblefoot"), then 10/10.
-    for (const wave of [0, 9, 10]) {
+    // Wave 0/20 (preview of wave 1), then wave 9/20 in setup (the longest
+    // preview, with "+ Grumblefoot"), then 19/20 and 20/20 at the end of the campaign.
+    for (const wave of [0, 9, 19, 20]) {
       await page.evaluate((w) => {
         const a = window.__tarpit as TarpitTestApi;
         a.state().wave = w;
         a.step(0);
       }, wave);
       const h = await hud(page);
-      expect(h.wave).toBe(`Wave ${wave}/10`);
+      expect(h.wave).toBe(`Wave ${wave}/20`);
       expect(h.difficulty).toBe(DIFFICULTY_LABELS[level]);
       const b = await hudBounds(page);
       expect(b.tag, `${level} wave ${wave}`).not.toBeNull();

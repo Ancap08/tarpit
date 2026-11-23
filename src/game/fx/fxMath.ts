@@ -120,7 +120,7 @@ export function popScale(kind: PopKind, ms: number): number {
 /** Hit knock: px away from the shot, fading over KNOCK_MS (real ms). */
 export const KNOCK_MS = 120;
 export function knockPx(type: EnemyType): number {
-  return type === 'boss' || type === 'troll' ? 1 : 2;
+  return type === 'boss' || type === 'grumblemaw' || type === 'troll' ? 1 : 2;
 }
 /** The knock offset `ms` after a hit, as a share of its full size. */
 export function knockShare(ms: number): number {
@@ -138,6 +138,8 @@ export function awayFrom(from: Point, to: Point): Point {
 /** Death puff per enemy: particle count and size (the boss also gets the big burst). */
 export function deathPuff(type: EnemyType): { count: number; scale: number } {
   switch (type) {
+    case 'grumblemaw':
+      return { count: 32, scale: 3 };
     case 'boss':
       return { count: 24, scale: 2.4 };
     case 'troll':

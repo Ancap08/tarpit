@@ -3,10 +3,11 @@
 // is an edit here (plus regenerated screenshot baselines). Tests that check a
 // display string build it from these tables, so a rename changes no test.
 
-import type { Difficulty, EnemyType, MapId, SpecialType, TargetingMode, TowerType } from '../sim';
+import { BOONS, type BoonId, type Difficulty, type EnemyType, type MapId, type SpecialType, type TargetingMode, type TowerType } from '../sim';
 
 /** The wave 10 boss (docs/SCOPE-v4.md, milestone 23): the HUD boss bar and the wave 10 preview. */
 export const BOSS_NAME = 'Grumblefoot';
+export const GRUMBLEMAW_NAME = 'Grumblemaw';
 
 /** Enemy names, as in the HUD's next-wave preview ("Next: 8 Goblin"). */
 export const ENEMY_NAMES: Readonly<Record<EnemyType, string>> = {
@@ -16,6 +17,7 @@ export const ENEMY_NAMES: Readonly<Record<EnemyType, string>> = {
   harpy: 'Harpy',
   shieldbearer: 'Shieldbearer',
   boss: BOSS_NAME,
+  grumblemaw: GRUMBLEMAW_NAME,
 };
 
 /** Tower names, as on the build bar ("Musketeer  50"). */
@@ -88,12 +90,12 @@ export const END_TEXT = {
   keepGoing: 'Keep going',
 } as const;
 
-/** The HUD's wave counter: "Wave 3/10", or "Wave 11" in an endless game (milestone 26). */
+/** The HUD's wave counter: "Wave 3/20", or "Wave 21" in an endless game (milestone 26). */
 export function waveCounterText(wave: number, endless: boolean, lastWave: number): string {
   return endless ? `Wave ${wave}` : `Wave ${wave}/${lastWave}`;
 }
 
-/** The lose screen's line: "Reached wave 7 of 10", or "Reached wave 14" in an endless game (milestone 26). */
+/** The lose screen's line: "Reached wave 7 of 20", or "Reached wave 24" in an endless game (milestone 26). */
 export function reachedWaveText(wave: number, endless: boolean, lastWave: number): string {
   return endless ? `${END_TEXT.lostWave} ${wave}` : `${END_TEXT.lostWave} ${wave} of ${lastWave}`;
 }
@@ -231,3 +233,54 @@ export const MUTE_TEXT = {
   off: 'Sound off',
   hint: 'M turns the sound on or off',
 } as const;
+
+/** The intermission reward, its held icons and the campaign's new moments. */
+export const BOON_NAMES: Readonly<Record<BoonId, string>> = {
+  longBarrels: 'Long Barrels',
+  keenArrows: 'Keen Arrows',
+  warChest: 'War Chest',
+  stickyTar: 'Sticky Tar',
+  hotCoals: 'Hot Coals',
+  quickHands: 'Quick Hands',
+  stoneWalls: 'Stone Walls',
+  veteranCrews: 'Veteran Crews',
+  biggerBlasts: 'Bigger Blasts',
+};
+
+export const REWARD_KEYS: readonly string[] = ['1', '2', '3'];
+export const BOON_PENDING_TEXT = 'Pick a reward';
+export const BOON_WAVE_TEXT = 'Reward wave';
+export const REWARD_PICKED_TEXT = 'Reward picked';
+export const LAST_WAVE_TEXT = 'Last wave';
+export const BOSS_WAVE_NEXT_TEXT = 'Boss wave next';
+export const ACT_TWO_TEXT = 'Act II';
+export const PACK_CALL_TEXT = 'Wolves at the cave!';
+export const GRUMBLEMAW_SUB = 'is here';
+
+export function rewardTitle(wave: number): string {
+  return `Wave ${wave} reward`;
+}
+
+export function heldBoonsText(boons: readonly BoonId[]): string {
+  return boons.length === 0 ? '' : `Rewards: ${boons.map((id) => BOON_NAMES[id]).join(' · ')}`;
+}
+
+export function boonDescription(id: BoonId): string {
+  const value = BOONS[id].value;
+  const gain = Math.round((value - 1) * 100);
+  switch (id) {
+    case 'longBarrels': return `Cannons and Mortars reach ${gain}% farther`;
+    case 'keenArrows': return `Longbows hit ${gain}% harder`;
+    case 'warChest': return `${value} gold right now`;
+    case 'stickyTar': return `Tar slows enemies ${value === 2 ? 'twice as long' : `${gain}% longer`}`;
+    case 'hotCoals': return `Fire burns ${gain}% hotter`;
+    case 'quickHands': return `Specials come back ${-gain}% sooner`;
+    case 'stoneWalls': return `${value} more lives`;
+    case 'veteranCrews': return `Every tower fires ${gain}% faster`;
+    case 'biggerBlasts': return `Explosions are ${gain}% bigger`;
+  }
+}
+
+export function blockedWaveLabel(pending: boolean, reason: string): string {
+  return pending ? `${START_WAVE_TEXT}\n${BOON_PENDING_TEXT}` : `${CALL_EARLY_TEXT}\n${reason}`;
+}

@@ -34,9 +34,9 @@ export const DIFFICULTY_DEFS: Readonly<Record<Difficulty, DifficultyDef>> = {
  * An enemy's hp at spawn (and so its full hp) on this level: the base hp
  * times the level's multiplier, rounded to a whole number (Goblin 23:
  * Easy 17, Normal 23, Hard 28). Endless waves (milestone 26) pass their
- * `waveMultiplier` (1.6 ^ cycle), applied before the one rounding:
- * round(base x level x wave), so a Normal wave 11 Goblin has
- * round(23 x 1.6) = 37.
+ * `waveMultiplier` (1.8 ^ cycle), applied before the one rounding:
+ * round(base x level x wave), so a Normal wave 21 Goblin has
+ * round(23 x 1.8) = 41.
  */
 export function enemyMaxHp(type: EnemyType, difficulty: Difficulty = DEFAULT_DIFFICULTY, waveMultiplier = 1): number {
   return Math.round(ENEMY_STATS[type].hp * DIFFICULTY_DEFS[difficulty].hpMultiplier * waveMultiplier);

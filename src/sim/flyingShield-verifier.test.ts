@@ -25,7 +25,7 @@ const B: Cell = { col: 2, row: 5 };
 // Arena hp: the milestone 22 values, fixed so the arithmetic below stays as
 // written; no rule probed here depends on an enemy's full hp (milestone 25c
 // lowered ENEMY_STATS).
-const ARENA_HP: Record<EnemyType, number> = { goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000 };
+const ARENA_HP: Record<EnemyType, number> = { goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000, grumblemaw: 5600 };
 
 function enemy(id: number, type: EnemyType, distance: number, hp = ARENA_HP[type]): Enemy {
   return { id, type, hp, distance, slow: 0, slowTicksLeft: 0, burnDps: 0, burnTicksLeft: 0 };
@@ -216,7 +216,7 @@ describe('(g) wave spawns by type', () => {
 
   it('Harpy and Shieldbearer groups come in waves 4 to 8 and 10 only (milestone 22 placement; 25c sends wave 4\'s Harpies first)', () => {
     const isNew = (t: EnemyType) => t === 'harpy' || t === 'shieldbearer';
-    const m22 = WAVES.map((w) => w.groups.filter((x) => x.type !== 'boss'));
+    const m22 = WAVES.slice(0, 10).map((w) => w.groups.filter((x) => x.type !== 'boss'));
     expect(m22.map((groups) => groups.filter((x) => isNew(x.type)).length)).toEqual([0, 0, 0, 1, 1, 1, 1, 2, 0, 2]);
     // Every wave except 4 still lists them after the older types.
     m22.forEach((groups, i) => {

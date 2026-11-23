@@ -155,7 +155,7 @@ describe('firing order', () => {
 });
 
 describe('lazy archetype order', () => {
-  it('TRAIL_CELL_ORDER matches an independent recomputation, and lazyBuild buys its prefix', () => {
+  it('TRAIL_CELL_ORDER matches an independent recomputation, and lazyBuild buys the prefix of two consecutive passes', () => {
     const mask = buildableCells(MAPS.meadow);
     // Own walk along the path: the point at distance d, by segment lengths.
     const pointAt = (d: number): Point => {
@@ -172,19 +172,24 @@ describe('lazy archetype order', () => {
     let total = 0;
     for (let i = 0; i + 1 < MAPS.meadow.path.length; i++) total += Math.hypot(MAPS.meadow.path[i + 1].x - MAPS.meadow.path[i].x, MAPS.meadow.path[i + 1].y - MAPS.meadow.path[i].y);
     const used = new Set<number>();
-    const mine: number[] = [];
-    for (let d = 96; d <= total; d += 96) {
-      const p = pointAt(d);
-      const pick = [...Array(450).keys()]
-        .filter((k) => mask[k] && !used.has(k))
-        .map((k) => ({ k, dist: Math.hypot((k % 30) * 32 + 16 - p.x, Math.floor(k / 30) * 32 + 16 - p.y) }))
-        .filter((c) => c.dist <= 72)
-        .sort((a, b) => a.dist - b.dist || a.k - b.k)[0];
-      if (pick) {
-        used.add(pick.k);
-        mine.push(pick.k);
+    const walk = () => {
+      const cells: number[] = [];
+      for (let d = 96; d <= total; d += 96) {
+        const p = pointAt(d);
+        const pick = [...Array(450).keys()]
+          .filter((k) => mask[k] && !used.has(k))
+          .map((k) => ({ k, dist: Math.hypot((k % 30) * 32 + 16 - p.x, Math.floor(k / 30) * 32 + 16 - p.y) }))
+          .filter((c) => c.dist <= 72)
+          .sort((a, b) => a.dist - b.dist || a.k - b.k)[0];
+        if (pick) {
+          used.add(pick.k);
+          cells.push(pick.k);
+        }
       }
-    }
+      return cells;
+    };
+    const mine = walk();
+    const second = walk();
     expect(TRAIL_CELL_ORDER.map(cellKey)).toEqual(mine);
     const first6 = TRAIL_CELL_ORDER.slice(0, 6);
     expect(first6).toEqual([
@@ -196,9 +201,9 @@ describe('lazy archetype order', () => {
       { col: 14, row: 3 },
     ]);
     const bought = lazyBuild().flat().filter((a) => a.type === 'build').map((a) => a.cell);
-    expect(bought.length).toBeGreaterThan(0);
-    expect(bought).toEqual(TRAIL_CELL_ORDER.slice(0, bought.length));
-    // Milestone 12 fixed the milestone 8 left-edge problem: only the first cell sits at x < 96.
-    expect(bought.filter((c) => c.col * 32 + 16 < 96)).toHaveLength(1);
+    expect(bought.length).toBeGreaterThan(mine.length);
+    expect(bought.map(cellKey)).toEqual([...mine, ...second].slice(0, bought.length));
+    // In the first pass only the first cell sits at x < 96.
+    expect(bought.slice(0, mine.length).filter((c) => c.col * 32 + 16 < 96)).toHaveLength(1);
   });
 });

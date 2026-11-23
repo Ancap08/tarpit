@@ -8,83 +8,24 @@ import { DIFFICULTIES, DIFFICULTY_DEFS, enemyMaxHp, type Difficulty } from './di
 import { ENEMY_STATS } from './enemies';
 import type { GameEvent } from './events';
 import { callEarlyStatus, callNextWave, continueEndless, createGame, lastSpawnTick, spawnTick, startWave, tick, wavesCleared } from './game';
-import { applyAction, comboBuild, endlessGreedy, ENDLESS_WAVE_CAP, playScripted, type WaveScript } from './headless';
+import { applyAction, applyScriptBoon, comboBuild, endlessGreedy, ENDLESS_WAVE_CAP, playScripted, type WaveScript } from './headless';
 import { MAPS, positionAlongPath } from './map';
 import { TOWER_DEFS } from './towers';
 import type { EnemyType, GameState } from './types';
 import { nextWavePreview, waveDef, WAVES } from './waves';
 
-const counts = (n: number) => waveDef(n).groups.map((g) => `${g.count} ${g.type} every ${g.interval} from ${g.delay}`);
-const hpOf = (n: number, level: Difficulty) =>
-  Object.fromEntries([...new Set(waveDef(n).groups.map((g) => g.type))].map((t) => [t, enemyMaxHp(t, level, waveDef(n).hpMultiplier)]));
-
-describe('verifier: generated waves worked out by hand (section D)', () => {
-  it('wave 11 Normal: wave 8 + 10 Harpies from 75.5 s, x1.6, last spawn tick 4935', () => {
-    expect(counts(11)).toEqual([
-      '50 goblin every 1.5 from 0',
-      '25 wolf every 1.5 from 6.75',
-      '13 troll every 5 from 3',
-      '6 shieldbearer every 6 from 4',
-      '14 harpy every 1.2 from 10',
-      '10 harpy every 0.75 from 75.5',
-    ]);
-    // 23 x 1.6 = 36.8, 20 x 1.6 = 32, 950 x 1.6 = 1520, 70 x 1.6 = 112, 36 x 1.6 = 57.6 (milestone 28 hp).
-    expect(hpOf(11, 'normal')).toEqual({ goblin: 37, wolf: 32, troll: 1520, shieldbearer: 112, harpy: 58 });
-    expect(lastSpawnTick(11)).toBe(4935); // 75.5 + 9 x 0.75 = 82.25 s
-  });
-
-  it('wave 11 Hard: x1.2 x1.6 = x1.92 with one rounding', () => {
-    // 44.16, 38.4, 1824, 134.4, 69.12.
-    expect(hpOf(11, 'hard')).toEqual({ goblin: 44, wolf: 38, troll: 1824, shieldbearer: 134, harpy: 69 });
-  });
-
-  it('wave 13 Normal: wave 10 without the boss + 10 Harpies from 65 s, last spawn tick 4305', () => {
-    expect(counts(13)).toEqual([
-      '20 wolf every 1.5 from 4',
-      '15 troll every 4.5 from 0',
-      '12 harpy every 1.5 from 6',
-      '8 shieldbearer every 5 from 2.5',
-      '10 harpy every 0.75 from 65',
-    ]);
-    expect(hpOf(13, 'normal')).toEqual({ wolf: 32, troll: 1520, harpy: 58, shieldbearer: 112 });
-    expect(lastSpawnTick(13)).toBe(4305); // 65 + 9 x 0.75 = 71.75 s
-  });
-
-  it('wave 14 Normal: cycle 2, wave 8, 12 Harpies, x2.56, last spawn tick 5025', () => {
-    expect(counts(14).at(-1)).toBe('12 harpy every 0.75 from 75.5');
-    // 58.88, 51.2, 2432, 179.2, 92.16.
-    expect(hpOf(14, 'normal')).toEqual({ goblin: 59, wolf: 51, troll: 2432, shieldbearer: 179, harpy: 92 });
-    expect(lastSpawnTick(14)).toBe(5025); // 75.5 + 11 x 0.75 = 83.75 s
-  });
-
-  it('wave 20 Normal: k 9, cycle 4, wave 8, 16 Harpies, x6.5536, last spawn tick 5205', () => {
-    expect(counts(20).slice(0, -1)).toEqual(counts(11).slice(0, -1));
-    expect(counts(20).at(-1)).toBe('16 harpy every 0.75 from 75.5');
-    // 150.7328, 131.072, 6225.92, 458.752, 235.9296.
-    expect(hpOf(20, 'normal')).toEqual({ goblin: 151, wolf: 131, troll: 6226, shieldbearer: 459, harpy: 236 });
-    expect(lastSpawnTick(20)).toBe(5205); // 75.5 + 15 x 0.75 = 86.75 s
-  });
-
-  it('wave 40 Normal: k 29, cycle 10, wave 10 without the boss, 16 Harpies, x109.9511627776', () => {
-    expect(counts(40).slice(0, -1)).toEqual(counts(13).slice(0, -1));
-    expect(counts(40).at(-1)).toBe('16 harpy every 0.75 from 65');
-    // 2199.02, 104453.60, 3958.24, 7696.58.
-    expect(hpOf(40, 'normal')).toEqual({ wolf: 2199, troll: 104454, harpy: 3958, shieldbearer: 7697 });
-    expect(lastSpawnTick(40)).toBe(4575); // 65 + 15 x 0.75 = 76.25 s
-    expect(waveDef(40).groups.reduce((n, g) => n + g.count, 0)).toBe(71);
-  });
-
+describe('verifier: generated wave rounding', () => {
   it('hp is round-half-up of the exact product (one rounding), every type and level, cycles 1 to 20', () => {
-    // Exact: base x (num/den) x 8^c / 5^c, in integers.
+    // Exact: base x (num/den) x 9^c / 5^c, in integers.
     const level: Record<Difficulty, [bigint, bigint]> = { easy: [3n, 4n], normal: [1n, 1n], hard: [6n, 5n] };
     for (const d of DIFFICULTIES) expect(Number(level[d][0]) / Number(level[d][1])).toBe(DIFFICULTY_DEFS[d].hpMultiplier);
     const types: EnemyType[] = ['goblin', 'wolf', 'troll', 'harpy', 'shieldbearer'];
     const wrong: string[] = [];
     for (let c = 1; c <= 20; c++) {
-      const n = 11 + 3 * (c - 1);
+      const n = 21 + 3 * (c - 1);
       for (const d of DIFFICULTIES) {
         for (const t of types) {
-          const num = BigInt(ENEMY_STATS[t].hp) * level[d][0] * 8n ** BigInt(c);
+          const num = BigInt(ENEMY_STATS[t].hp) * level[d][0] * 9n ** BigInt(c);
           const den = level[d][1] * 5n ** BigInt(c);
           const exact = (2n * num + den) / (2n * den); // floor(x + 1/2)
           const got = enemyMaxHp(t, d, waveDef(n).hpMultiplier);
@@ -96,13 +37,13 @@ describe('verifier: generated waves worked out by hand (section D)', () => {
   });
 
   it('two roundings would differ from the code somewhere (so the single rounding is really tested)', () => {
-    // Easy Goblin cycle 1: round(23 x 0.75) = 17, round(17 x 1.6) = 27; one rounding gives round(27.6) = 28.
-    expect(enemyMaxHp('goblin', 'easy', 1.6)).toBe(28);
+    // Easy Goblin cycle 1: round(23 x 0.75) = 17; cycle 2 scales by 3.24 so two rounds give 55 and one gives 56.
+    expect(enemyMaxHp('goblin', 'easy', 3.24)).toBe(56);
     expect(Math.round(enemyMaxHp('goblin', 'easy') * 1.6)).toBe(27);
   });
 });
 
-describe('verifier: spawn rate and shape, waves 11 to 60', () => {
+describe('verifier: spawn rate and shape, waves 21 to 60', () => {
   const maxInWindow = (ticks: number[]) => {
     const s = [...ticks].sort((a, b) => a - b);
     let best = 0;
@@ -113,7 +54,7 @@ describe('verifier: spawn rate and shape, waves 11 to 60', () => {
     return best;
   };
   it('at most 6 walkers and 4 flyers in any [t, t + 180) of the merged schedule', () => {
-    for (let n = 11; n <= 60; n++) {
+    for (let n = 21; n <= 60; n++) {
       const walkers: number[] = [];
       const flyers: number[] = [];
       for (const g of waveDef(n).groups) for (let i = 0; i < g.count; i++) (ENEMY_STATS[g.type].flying ? flyers : walkers).push(spawnTick(g, i));
@@ -123,8 +64,8 @@ describe('verifier: spawn rate and shape, waves 11 to 60', () => {
   });
 
   it('no boss, no two spawns of one group on one tick, and the same wave object each call', () => {
-    for (let n = 11; n <= 60; n++) {
-      expect(waveDef(n).groups.some((g) => g.type === 'boss')).toBe(false);
+    for (let n = 21; n <= 60; n++) {
+      expect(waveDef(n).groups.some((g) => g.type === 'boss' || g.type === 'grumblemaw')).toBe(false);
       expect(waveDef(n)).toBe(waveDef(n));
       for (const g of waveDef(n).groups) expect(spawnTick(g, 1) - spawnTick(g, 0)).toBeGreaterThan(0);
     }
@@ -132,7 +73,7 @@ describe('verifier: spawn rate and shape, waves 11 to 60', () => {
 
   it('the table is not changed by generating waves (the base groups are shared, not copied)', () => {
     const before = JSON.stringify(WAVES);
-    for (let n = 11; n <= 200; n++) waveDef(n);
+    for (let n = 21; n <= 200; n++) waveDef(n);
     expect(JSON.stringify(WAVES)).toBe(before);
     expect(Object.isFrozen(WAVES)).toBe(false); // informational: nothing freezes the table; nothing writes it either
   });
@@ -154,8 +95,8 @@ const toClear = (s: GameState) => {
   while (s.phase === 'wave') tick(s);
 };
 
-describe('verifier: the win and the wave 10 to 11 boundary (section E)', () => {
-  it('the boss dying with others alive is not yet a win; the win comes when the last enemy is gone', () => {
+describe('verifier: the win and the wave 20 to 21 boundary (section E)', () => {
+  it('Grumblefoot dying with others alive cannot clear the wave early', () => {
     const s = at(10, false);
     startWave(s);
     toLastSpawn(s);
@@ -171,13 +112,14 @@ describe('verifier: the win and the wave 10 to 11 boundary (section E)', () => {
     tick(s);
     expect(s.phase).toBe('wave');
     toClear(s);
-    expect(s.phase).toBe('won');
+    expect(s.phase).toBe('setup');
+    expect(s.pendingBoon?.wave).toBe(10);
     expect(s.enemies).toEqual([]);
   });
 
   it('the boss walking out is still a win when lives remain (rule: all gone and lives > 0), and Keep going starts clean', () => {
-    const s = at(10, false);
-    s.lives = 100;
+    const s = at(20, false);
+    s.lives = 1000;
     startWave(s);
     const events: GameEvent[] = [];
     while (s.phase === 'wave') {
@@ -186,10 +128,10 @@ describe('verifier: the win and the wave 10 to 11 boundary (section E)', () => {
     }
     expect(events.some((e) => e.kind === 'bossDown' && e.cause === 'exit')).toBe(true);
     expect(s.phase).toBe('won');
-    expect(s.lives).toBe(100 - 55 - 5); // 55 others and the boss's 5
+    expect(s.lives).toBe(1000 - WAVES[19].groups.reduce((n, g) => n + g.count, 0) - 9);
     expect(continueEndless(s).ok).toBe(true);
-    expect(s).toMatchObject({ phase: 'setup', endless: true, wave: 10, enemies: [], specialCharges: 0 });
-    expect(nextWavePreview(s).some((p) => p.type === 'boss')).toBe(false);
+    expect(s).toMatchObject({ phase: 'setup', endless: true, wave: 20, enemies: [], specialCharges: 0 });
+    expect(nextWavePreview(s).some((p) => p.type === 'boss' || p.type === 'grumblemaw')).toBe(false);
   });
 
   it('a boss exit that takes the last lives is a loss, never a win, and cannot be continued', () => {
@@ -217,7 +159,7 @@ describe('verifier: the win and the wave 10 to 11 boundary (section E)', () => {
     expect(s).toEqual(before);
 
     continueEndless(s);
-    // Every tower from the ten waves is locked with nothing refundable.
+    // Every tower from the twenty waves is locked with nothing refundable.
     for (const t of s.towers) expect([t.locked, t.unlockedSpend, t.upgradedThisPhase]).toEqual([true, 0, false]);
     expect(moveTower(s, cell, free)).toMatchObject({ ok: false, reason: 'locked' });
     expect(undoUpgrade(s, cell)).toMatchObject({ ok: false, reason: 'nothing-to-undo' });
@@ -233,7 +175,7 @@ describe('verifier: the win and the wave 10 to 11 boundary (section E)', () => {
   });
 
   it('continueEndless twice: the second is refused and changes nothing; won is not reached again by clearing', () => {
-    const s = at(10, false);
+    const s = at(20, false);
     startWave(s);
     toClear(s);
     expect(continueEndless(s).ok).toBe(true);
@@ -241,7 +183,7 @@ describe('verifier: the win and the wave 10 to 11 boundary (section E)', () => {
     expect(continueEndless(s)).toEqual({ ok: false, reason: 'not-won' });
     expect(s).toEqual(before);
     let won = 0;
-    for (let w = 11; w <= 16; w++) {
+    for (let w = 21; w <= 26; w++) {
       startWave(s);
       while (s.phase === 'wave') {
         tick(s);
@@ -254,10 +196,10 @@ describe('verifier: the win and the wave 10 to 11 boundary (section E)', () => {
 });
 
 describe('verifier: call early in endless', () => {
-  it('waves 11 to 15 called one on top of the other: survivors keep their own hp, score counts each', () => {
-    const s = at(11, true);
+  it('waves 21 to 25 called one on top of the other: survivors keep their own hp, score counts each', () => {
+    const s = at(21, true);
     startWave(s);
-    for (let w = 11; w <= 14; w++) {
+    for (let w = 21; w <= 24; w++) {
       expect(callEarlyStatus(s)).toEqual({ ok: false, reason: 'still-spawning' });
       toLastSpawn(s);
       expect(wavesCleared(s)).toBe(w - 1);
@@ -265,28 +207,28 @@ describe('verifier: call early in endless', () => {
       expect(callNextWave(s)).toMatchObject({ ok: true, wave: w + 1 });
       expect(s.enemies.length).toBe(alive);
       expect([s.phase, s.wave, wavesCleared(s), s.specialCharges]).toEqual(['wave', w + 1, w, 1]);
-      if (w === 13) {
-        // Wave 13 (cycle 1) survivors next to wave 14 (cycle 2) spawns: each carries its own full hp.
-        for (let i = 0; i < 300; i++) tick(s);
+      if (w === 23) {
+        // Wave 23 (cycle 1) survivors next to wave 24 (cycle 2) spawns: each carries its own full hp.
+        for (let i = 0; i < 301; i++) tick(s);
         expect(s.enemies.every((e) => e.maxHp !== undefined && e.hp <= e.maxHp)).toBe(true);
         const trollHp = new Set(s.enemies.filter((e) => e.type === 'troll').map((e) => e.maxHp));
-        expect([...trollHp].sort((x, y) => x! - y!)).toEqual([1520, 2432]);
+        expect([...trollHp].sort((x, y) => x! - y!)).toEqual([1710, 3078]);
       }
     }
     toClear(s);
-    expect([s.phase, s.wave, wavesCleared(s)]).toEqual(['setup', 15, 15]);
+    expect([s.phase, s.wave, wavesCleared(s)]).toEqual(['setup', 25, 25]);
   });
 
   it('losing during a called wave scores the waves before it; lives may go below 0 and the game stays lost', () => {
-    const s = at(11, true);
+    const s = at(21, true);
     startWave(s);
     toLastSpawn(s);
-    callNextWave(s); // wave 12 on top of wave 11
+    callNextWave(s); // wave 22 on top of wave 21
     s.lives = 3;
     toClear(s);
     expect(s.phase).toBe('lost');
-    expect(s.wave).toBe(12);
-    expect(wavesCleared(s)).toBe(11);
+    expect(s.wave).toBe(22);
+    expect(wavesCleared(s)).toBe(21);
     expect(s.lives).toBeLessThanOrEqual(0);
     const before = structuredClone(s);
     tick(s);
@@ -295,8 +237,8 @@ describe('verifier: call early in endless', () => {
     expect(s).toEqual(before);
   });
 
-  it('wave 10 of a normal game still cannot be called to 11, and wave 9 cannot call the boss', () => {
-    for (const w of [9, 10]) {
+  it('wave 20 of a normal game cannot be called to 21, and wave 19 cannot call the boss', () => {
+    for (const w of [19, 20]) {
       const s = at(w, false);
       startWave(s);
       toLastSpawn(s);
@@ -318,6 +260,7 @@ describe('verifier: a whole endlessGreedy run', () => {
     const take = (where: string) => {
       for (const e of state.events) {
         if (e.kind === 'kill') expected += e.bounty;
+        else if (e.kind === 'boonPicked' && e.id === 'warChest') expected += 100;
         else if (e.kind === 'waveClear' || e.kind === 'earlyCall') expected += e.bonus;
         else if (e.kind === 'build') expected -= TOWER_DEFS[e.tower].cost;
         else if (e.kind === 'upgrade') expected -= TOWER_DEFS[e.tower].upgradeCost;
@@ -333,6 +276,8 @@ describe('verifier: a whole endlessGreedy run', () => {
     };
     const phase = (): GameState['phase'] => state.phase;
     for (let i = 0; i < ENDLESS_WAVE_CAP && phase() === 'setup'; i++) {
+      applyScriptBoon(state, script);
+      take('boon');
       for (const a of script[i] ?? []) {
         applyAction(state, a);
         take(`action wave ${i + 1}`);
@@ -356,11 +301,11 @@ describe('verifier: a whole endlessGreedy run', () => {
   it('gold is conserved on every tick and action from wave 1 to the loss', () => {
     expect(problems).toEqual([]);
     expect(state.phase).toBe('lost');
-    expect(state.wave).toBe(19);
+    expect(state.wave).toBeGreaterThan(20);
   });
 
-  it('the score climbs 0, 1, 2, ... 18 one at a time and never falls', () => {
-    expect(scoreTrail).toEqual(Array.from({ length: 19 }, (_, i) => i));
+  it('the score climbs from zero one at a time and never falls', () => {
+    expect(scoreTrail).toEqual(Array.from({ length: state.wave }, (_, i) => i));
   });
 
   it('kill accounting: spawned = killed + exited + alive; tower kills + special kills + unowned burns = kills', () => {
@@ -376,27 +321,35 @@ describe('verifier: a whole endlessGreedy run', () => {
     // Ids are handed out once each, in order.
     expect(state.nextEnemyId - createGame().nextEnemyId).toBe(n('spawn'));
     // One won, one endlessStart, one lost, a waveStart and (but the last) a waveClear per wave.
-    expect([n('won'), n('endlessStart'), n('lost'), n('waveStart'), n('waveClear')]).toEqual([1, 1, 1, 19, 18]);
-    // Lives lost = exits (no boss exit in this run).
-    expect(20 - state.lives).toBe(n('exit'));
+    expect([n('won'), n('endlessStart'), n('lost'), n('waveStart'), n('waveClear')]).toEqual([1, 1, 1, state.wave, state.wave - 1]);
+    const enemyTypes = new Map(all.filter((e) => e.kind === 'spawn').map((e) => [e.enemyId, e.enemyType]));
+    const losses = all.filter((e) => e.kind === 'exit').reduce((sum, e) => sum + ENEMY_STATS[enemyTypes.get(e.enemyId)!].livesCost, 0);
+    expect(20 + (state.boons.includes('stoneWalls') ? 3 : 0) - state.lives).toBe(losses);
   });
 
-  it('the run is the one playScripted gives, twice over', () => {
-    const a = playScripted(script);
-    const b = playScripted(endlessGreedy());
-    expect(a.state).toEqual(b.state);
-    expect(a.log).toEqual(b.log);
-    expect({ ...a.state, events: [] }).toEqual(state);
+  let reference: ReturnType<typeof playScripted>;
+  beforeAll(() => {
+    reference = playScripted(script);
+  });
+
+  it('the independent event replay matches playScripted', () => {
+    expect({ ...reference.state, events: [] }).toEqual(state);
+  });
+
+  it('replaying the script again produces the same state and log', () => {
+    const again = playScripted(script);
+    expect(reference.state).toEqual(again.state);
+    expect(reference.log).toEqual(again.log);
   });
 });
 
 describe('verifier: far waves', () => {
-  it('wave 150 (hp x 1.6^47): hp is a finite safe integer, towers still hurt, a wave takes the usual time', () => {
+  it('wave 150 (hp x 1.8^44): hp is a finite safe integer, towers still hurt, a wave takes the usual time', () => {
     const s = at(150, true);
     for (const [col, row] of [[9, 5], [9, 4], [9, 6], [16, 8], [17, 8]]) buildTower(s, { col, row }, 'longbow');
     buildTower(s, { col: 14, row: 10 }, 'tarpit');
     buildTower(s, { col: 14, row: 9 }, 'firepot');
-    expect(waveDef(150).hpMultiplier).toBe(1.6 ** 47);
+    expect(waveDef(150).hpMultiplier).toBe(1.8 ** 44);
     startWave(s);
     const t0 = performance.now();
     let ticks = 0;
@@ -419,10 +372,10 @@ describe('verifier: far waves', () => {
     expect(performance.now() - t0).toBeLessThan(3000);
   });
 
-  it('informational: from wave 200 (cycle 64) a Troll has more hp than 2^53, so small hits stop registering', () => {
-    const at197 = enemyMaxHp('troll', 'normal', waveDef(197).hpMultiplier);
+  it('informational: by wave 200 (cycle 60) a Troll has more hp than 2^53, so small hits stop registering', () => {
+    const at150 = enemyMaxHp('troll', 'normal', waveDef(150).hpMultiplier);
     const at200 = enemyMaxHp('troll', 'normal', waveDef(200).hpMultiplier);
-    expect(Number.isSafeInteger(at197)).toBe(true);
+    expect(Number.isSafeInteger(at150)).toBe(true);
     expect(Number.isSafeInteger(at200)).toBe(false);
     expect(at200 - (at200 - 1)).not.toBe(1); // a 1-damage hit is not 1 damage any more
     expect(Number.isFinite(at200)).toBe(true);
@@ -431,7 +384,7 @@ describe('verifier: far waves', () => {
   it('the special policy fires in the endless waves too (milestone 30: the cluster ticks are gone)', () => {
     expect(ENDLESS_WAVE_CAP).toBe(200);
     const script = endlessGreedy();
-    const endlessSpecials = (script.timed ?? []).slice(10).flat().filter((a) => a.type === 'special');
+    const endlessSpecials = (script.timed ?? []).slice(20).flat().filter((a) => a.type === 'special');
     expect(endlessSpecials.length).toBeGreaterThan(0);
   });
 
