@@ -7775,3 +7775,72 @@ and zone-pixel pins, plus a visual assertion reading held boons from the
 wrong hook. The corrected focused run passed 69 tests, with one optional
 capture disabled. The local snapshot-generating pass passed 48 visual
 cases. CI owns the tracked PNG baselines.
+
+### Verifier notes (36b)
+
+Verdict: merge. No blocking defect found. Checked by a different model from
+the implementer (Claude Sonnet, Codex wrote it).
+
+Bounds: `src/sim` diff empty; `npm run sim` output byte-identical to 3644e43
+(temporary worktree, removed); no dependency, image or audio file added
+(only `docs/media`); no baseline PNG; nothing pushed; no path outside the
+repo in code or tests; AGENTS.md, CLAUDE.md, DECISIONS.md and the scope
+files untouched; all three trailers name Codex.
+
+Suite at 78db27f: lint, check:assets, typecheck, 1535 unit tests, build and
+check:size pass. `PW_PORT=4273 npm run test:e2e` twice: 600 passed, 8 skipped
+both times, no flake. The 8 skips are the 4 env-gated frame/leak tests, the
+shake-click fixme, the phone spread perf case and two tablet frame tests, all
+present before. No new fixme, skip, fails or todo in the implementer's commits.
+The ten-wave leak test (VERIFIER_LONG=1) passes, but it now stops at the start
+of wave 10, so it no longer plays Grumblefoot's fall (bossDeaths 0): the
+boss-fall leak coverage went with it. My own three-game probe (Play again,
+Play again, Menu, through two offers each and a wave-20 win) showed equal
+object, camera, listener, texture and voice counts after every game.
+
+Changed tests: every removed or changed assertion still has a check. The
+boss frame was re-derived from the simulation: the first wave-10 step that
+is lone, slowed, burning, 30 to 90 percent HP, with a Mortar hit two ticks
+earlier and no hit now is 5263 (next 5316), 3525 of 4000. The two tests
+that used to win at wave 10 now use a seeded last wave or the 20-wave combo
+build; the `test.skip(phase !== 'won')` escape was removed, which is a gain.
+Loosened: the wave-10 preview font went from 13 to 11 px (the boon icons
+take room), still at the 11 px floor.
+
+Reward flow, probed with `e2e/longer-game-verifier*.spec.ts` (desktop,
+tablet, phone): a bar drag still held when the offer opens builds nothing;
+special, aim and menu are cleared; keys 4, 0, Enter, Space, Q, F1, Escape and
+arrows leave the offer open; gold cheat taps do nothing; the offer opens at
+3x. While the panel is open the Speed and Mute buttons still work (settings,
+not a defect; Special does not open). A layout switch keeps the pick pending.
+A game cannot end while a pick is open, so Play again and Menu cannot be
+pressed with the panel up; leaving through the title leaves nothing. Card
+text comes from `BOONS` (changing 1.3 to 1.5 and 0.62 to 0.5 changed the
+text); Long Barrels range, Stone Walls lives, War Chest gold and Quick
+Hands (recharge 1200 to 744 ticks, HUD "Wait 19s" to "Wait 12s") are
+visible in play. All 41 recipes pass my own offline render (not silent,
+peak at most 0.86, tail below 4e-4, nothing after their length).
+
+Findings (all low):
+1. The held-boon icons are 40 by 42 canvas px (36 by 42 in portrait): 25 by
+   30 CSS px on the phone and 42.7 wide on the tablet, under the 44 px of
+   every other control, and they take taps for the tooltip.
+   `L4` in `e2e/longer-game-verifier-phone.spec.ts` is a `test.fixme`.
+2. A double tap on a phone card picks once, but the second tap lands on the
+   map the card just left and selects the tower beneath it. `V3`, phone
+   only, is a `test.fixme`.
+3. The leak test no longer reaches the boss fall (above).
+4. Smallest text in CSS px: 13 (card effect lines, landscape 960 by 580),
+   13.9 on the tablet, 12.0 on the phone. Nothing under 11. Real safe-area
+   insets could not be emulated in Playwright; the card layout was measured
+   in the page without them.
+
+For a child: the effect lines are the smallest text on the screen and read
+as grey print on the cards; "boon" and "Pick a boon" on Start Wave are not
+child words (the word "reward" in the card title is); the Sticky Tar icon
+(a dark drop on brown) is unclear without its tooltip and Quick Hands is a
+lightning bolt with no obvious meaning.
+
+Could not check: two fingers on a card at once (Playwright has one touch
+point; a two-finger tap on a real device); real device safe-area insets;
+listening to the sounds.
