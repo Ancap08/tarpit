@@ -31,6 +31,6 @@ test('D phone: touch picks Painted, it is remembered, 3x device ratio asks for 2
   const s = await page.evaluate(() => (window.__tarpit!.game.scene.getScene('game') as unknown as { paintedState(): { active: boolean; density: number } }).paintedState());
   expect(s).toMatchObject({ active: true, density: 2 });
   expect(requests.filter((u) => u.includes('-1x-'))).toEqual([]);
-  expect(requests.length).toBe(56);
+  expect(requests.length).toBe(3);
   void painted;
 });

@@ -107,7 +107,7 @@ test('D3 URL values apply for one visit and do not change the stored choice', as
 });
 
 for (const map of ['switchback', 'riverbend'] as const) {
-  test(`D4 Painted chosen with ${map} gives Classic and the title says so`, async ({ page }) => {
+  test(`D4 Painted on ${map} loads only the selected ground and shared pieces`, async ({ page }) => {
     const problems = watch(page);
     const requests: string[] = [];
     page.on('request', (r) => { if (r.url().includes('/assets/painted/')) requests.push(r.url()); });
@@ -116,10 +116,12 @@ for (const map of ['switchback', 'riverbend'] as const) {
     expect((await titleTexts(page)).some((t) => /Meadow only/i.test(t))).toBe(false);
     await clickRect(page, `title:map:${map}`);
     const texts = await titleTexts(page);
-    expect(texts.some((t) => /Meadow only/i.test(t)), texts.join(' | ')).toBe(true);
+    expect(texts.some((t) => /Meadow only/i.test(t)), texts.join(' | ')).toBe(false);
     await play(page);
-    expect((await livePainted(page)).active).toBe(false);
-    expect(requests).toEqual([]);
+    expect((await livePainted(page)).active).toBe(true);
+    expect(requests).toHaveLength(3);
+    expect(requests.filter(url => !url.includes('/shared-')).map(url => new URL(url).pathname))
+      .toEqual([expect.stringContaining('/' + map + '-1x-')]);
     expect(problems).toEqual([]);
   });
 }
@@ -134,7 +136,7 @@ test('D5 Painted at device pixel ratio 1 requests exactly one density (1x), ever
   expect(s).toMatchObject({ active: true, density: 1 });
   expect(requests.filter((u) => u.includes('-2x-'))).toEqual([]);
   expect(new Set(requests).size).toBe(requests.length);
-  expect(requests.length).toBe(56);
+  expect(requests.length).toBe(3);
 });
 
 test('D5 a large window at device pixel ratio 1 (canvas scale 1.7) asks for 2x only', async ({ page }) => {
@@ -146,7 +148,7 @@ test('D5 a large window at device pixel ratio 1 (canvas scale 1.7) asks for 2x o
   await play(page);
   expect(await livePainted(page)).toMatchObject({ active: true, density: 2 });
   expect(requests.filter((u) => u.includes('-1x-'))).toEqual([]);
-  expect(requests.length).toBe(56);
+  expect(requests.length).toBe(3);
 });
 
 test.describe('device pixel ratio 2', () => {
@@ -159,7 +161,7 @@ test.describe('device pixel ratio 2', () => {
     await play(page);
     expect(await livePainted(page)).toMatchObject({ active: true, density: 2 });
     expect(requests.filter((u) => u.includes('-1x-'))).toEqual([]);
-    expect(requests.length).toBe(56);
+    expect(requests.length).toBe(3);
     const filters = await page.evaluate(() => {
       const t = window.__tarpit!.game.textures;
       return t.getTextureKeys().filter((k) => k.startsWith('painted:')).map((k) => t.get(k).source[0].scaleMode);
@@ -177,7 +179,7 @@ test.describe('device pixel ratio 2', () => {
     await waitForTitle(page);
     await play(page);
     expect(await livePainted(page)).toMatchObject({ active: true, density: 1 });
-    expect(requests).toHaveLength(56);
+    expect(requests).toHaveLength(3);
     expect(requests.every((url) => url.includes('-1x-'))).toBe(true);
 
     await context.setOffline(true);
@@ -195,7 +197,7 @@ test.describe('device pixel ratio 2', () => {
       let release!: () => void;
       const gate = new Promise<void>((resolve) => { release = resolve; });
       if (delayed) {
-        await page.route('**/assets/painted/meadow-1x-*.png', async (route) => {
+        await page.route('**/assets/painted/meadow-1x-*.webp', async (route) => {
           await gate;
           await route.continue();
         });
@@ -210,9 +212,9 @@ test.describe('device pixel ratio 2', () => {
       }
       await waitForGame(page);
       expect(await livePainted(page)).toMatchObject({ active: true, density: delayed ? 1 : 2 });
-      expect(requests[0]).toMatch(/meadow-1x-.*\.png$/);
-      expect(requests.filter((url) => url.includes('-1x-'))).toHaveLength(delayed ? 56 : 1);
-      expect(requests.filter((url) => url.includes('-2x-'))).toHaveLength(delayed ? 0 : 56);
+      expect(requests[0]).toMatch(/meadow-1x-.*\.webp$/);
+      expect(requests.filter((url) => url.includes('-1x-'))).toHaveLength(delayed ? 3 : 1);
+      expect(requests.filter((url) => url.includes('-2x-'))).toHaveLength(delayed ? 0 : 3);
       expect(new Set(requests).size).toBe(requests.length);
     });
   }
@@ -220,7 +222,7 @@ test.describe('device pixel ratio 2', () => {
 
 test.describe('painted file failures (service worker blocked so page.route sees the fetches)', () => {
   test.use({ serviceWorkers: 'block' });
-  for (const failing of ['troll-1x.json', 'meadow-1x.png', 'flame-1x.png', 'cave-1x.json']) {
+  for (const failing of ['shared-1x.json', 'meadow-1x.webp', 'shared-1x.webp']) {
     test(`D6 ${failing} aborted: Classic starts, no game console error, a later visit paints`, async ({ page }) => {
       const problems = watch(page);
       const [name, ext] = failing.split('.');
@@ -246,7 +248,7 @@ test.describe('painted file failures (service worker blocked so page.route sees 
 
   test('D6 a corrupt sheet (wrong JSON) falls back to Classic quietly', async ({ page }) => {
     const problems = watch(page);
-    await page.route('**/assets/painted/goblin-1x-*.json', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '{"frameSize":[1,1]}' }));
+    await page.route('**/assets/painted/shared-1x-*.json', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '{"frameSize":[1,1]}' }));
     await page.goto('/?look=painted');
     await waitForTitle(page);
     await play(page);
@@ -263,7 +265,7 @@ test.describe('painted file failures (service worker blocked so page.route sees 
         throw new Error('Service worker blocked for this test');
       };
     });
-    await page.route('**/assets/painted/troll-1x-*.png', () => undefined);
+    await page.route('**/assets/painted/shared-1x-*.webp', () => undefined);
     await page.goto('/?look=painted');
     await waitForTitle(page);
     const t0 = Date.now();
@@ -300,7 +302,7 @@ test('D7 service worker leaves painted files out of the precache; one Painted ga
     for (const name of await caches.keys()) for (const r of await (await caches.open(name)).keys()) out.push(new URL(r.url).pathname);
     return out;
   });
-  expect(after.filter((p) => p.includes('/assets/painted/')).length).toBe(56);
+  expect(after.filter((p) => p.includes('/assets/painted/')).length).toBe(3);
   await context.setOffline(true);
   await page.reload();
   await waitForTitle(page);

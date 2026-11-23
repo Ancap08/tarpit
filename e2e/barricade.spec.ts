@@ -1,4 +1,7 @@
 import { expect, test } from '@playwright/test';
+import type { TarpitTestApi } from '../src/game/testGlobal';
+import { waitForTitle } from './title';
+import { waitForGame } from './painted';
 import { paintedHolding } from './barricade-crowd';
 import { aimBarricade, aimCases, castAt, hintAndRestart, startBarricadeWave } from './barricade';
 import type { GameScene } from '../src/game/GameScene';
@@ -107,3 +110,43 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
 }
 
 test('Painted Barricade shows its aim, refusal and counted pile', async ({ page }) => paintedHolding(page, false));
+
+for (const [map, wall, squad] of [
+  ['switchback', { x: 445, y: 192 }, { x: 420, y: 288 }],
+  ['riverbend', { x: 480, y: 96 }, { x: 660, y: 260 }],
+] as const) {
+  test(`painted ${map} keeps the held pile on the wall and guard health beside the squad`, async ({ page }) => {
+    await page.goto('/?test=1&look=painted');
+    await waitForTitle(page);
+    await press(page, `title:map:${map}`);
+    await press(page, 'title:play');
+    await waitForGame(page);
+    expect(await api(page, t => t.painted().active)).toBe(true);
+    await page.evaluate(({ wall, squad }) => {
+      const t = window.__tarpit as TarpitTestApi;
+      const s = t.state();
+      s.wave = 6;
+      if (!t.startWave().ok || !t.useSpecialAt('barricade', wall.x, wall.y).ok) throw Error('wall fixture');
+      t.step(1); // Two specials cannot be cast on the same simulation tick.
+      s.specialCharges = 1;
+      if (!t.useSpecialAt('guards', squad.x, squad.y).ok) throw Error('squad fixture');
+      const blocker = s.blockers.find(b => b.kind === 'barricade')!;
+      s.spawnedPerGroup.fill(9999);
+      s.enemies = Array.from({ length: 8 }, () => ({
+        id: s.nextEnemyId++, type: 'goblin', hp: 12, distance: blocker.distance - 1, slow: 0, slowTicksLeft: 0,
+      }));
+      t.step(10);
+    }, { wall, squad });
+    const { blocker, guards } = (await ui(page)).special;
+    expect(blocker?.point).toEqual(wall);
+    expect(blocker?.attackers).toHaveLength(8);
+    const pile = await api(page, t => t.state().enemies.map(e => t.animState(e.id)!));
+    for (const p of pile) expect(Math.hypot(p.x - wall.x, p.y - wall.y)).toBeLessThanOrEqual(36);
+    expect(guards).toHaveLength(4);
+    for (const g of guards) {
+      expect(g.texture).toBe('painted:guard:1x');
+      expect(g.hpBar).not.toBeNull();
+      expect(Math.hypot(g.hpBar!.x - g.point.x, g.hpBar!.y - g.point.y)).toBeLessThan(65);
+    }
+  });
+}

@@ -1,4 +1,4 @@
-"""Rebuild the painted Meadow slice with Blender and the host Python/Pillow."""
+"""Rebuild the Meadow slice, or pass a map ID to render only its two grounds."""
 
 import json
 import subprocess
@@ -14,6 +14,12 @@ OUT = ROOT / "assets/art-painted"
 SCRATCH = SCRATCH_ROOT / "slice"
 ROUTE = [(0,240), (160,240), (160,96), (420,96), (420,384),
          (680,384), (680,192), (960,192)]
+ROUTES = {
+    "meadow": ROUTE,
+    "switchback": [(0,96), (560,96), (560,192), (320,192), (320,288),
+                   (560,288), (560,384), (960,384)],
+    "riverbend": [(0,384), (300,384), (300,96), (660,96), (660,384), (960,384)],
+}
 STUDY = [
     ("cannon", 112, 176, 135), ("longbow", 208, 144, 315),
     ("tar-pit", 208, 240, 45), ("wolf", 160, 135, 0),
@@ -22,19 +28,19 @@ STUDY = [
 ]
 
 
-def pack_ground():
+def pack_ground(map_id="meadow"):
     from PIL import Image, ImageFilter
     OUT.mkdir(parents=True, exist_ok=True)
-    with Image.open(SCRATCH/"meadow.png") as source:
+    with Image.open(SCRATCH/f"{map_id}.png") as source:
         for density in (1,2):
             ground = source.convert("RGB").resize((960*density,480*density),
                                                   Image.Resampling.LANCZOS)
-            path = OUT / f"meadow-{density}x.png"
+            path = OUT / f"{map_id}-{density}x.png"
             # Keep a common restrained palette for the large review plates.
             ground = ground.filter(ImageFilter.GaussianBlur(.65 * density))
-            ground.quantize(40, dither=Image.Dither.NONE).save(path, optimize=True)
+            ground.quantize(40 if map_id == "meadow" else 80, dither=Image.Dither.NONE).save(path, optimize=True)
             data = dict(frameSize=list(ground.size), anchor=[0,0], columns=1,
-                        frameOrder=["meadow"], pixelsPerCell=32*density)
+                        frameOrder=[map_id], pixelsPerCell=32*density)
             path.with_suffix(".json").write_text(json.dumps(data, indent=2)+"\n")
 
 
@@ -66,6 +72,12 @@ def run_stage(name, command):
 
 def main():
     SCRATCH.mkdir(parents=True, exist_ok=True)
+    if len(sys.argv) == 2 and sys.argv[1] in ROUTES:
+        map_id = sys.argv[1]
+        run_stage(map_id, [BLENDER, "-b", "--python-exit-code", "1", "-P",
+                           str(HERE/"slice_board.py"), "--", map_id])
+        pack_ground(map_id)
+        return
     for task in ("study", "ground"):
         run_stage(task, [BLENDER, "-b", "--python-exit-code", "1", "-P",
                         str(HERE/"slice_board.py"), "--", task])

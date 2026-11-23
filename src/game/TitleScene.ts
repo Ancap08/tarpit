@@ -451,7 +451,6 @@ export class TitleScene extends Phaser.Scene {
   private refreshLook(): void {
     const look = this.lookStore.get();
     for (const [option, button] of this.lookButtons) button.setPicked(option === look);
-    this.prompt?.setText(look === 'painted' && this.selectedMap !== 'meadow' ? TITLE_TEXT.paintedPrompt : TITLE_TEXT.prompt);
   }
 
   private refreshLoading(): void {
@@ -493,7 +492,7 @@ export class TitleScene extends Phaser.Scene {
   private startGame(data: GameStartData): void {
     if (this.starting || this.restartPending) return;
     this.starting = true;
-    if (data.map !== 'meadow' || this.lookStore.get() !== 'painted') {
+    if (this.lookStore.get() !== 'painted') {
       this.scene.start('game', data);
       return;
     }
@@ -503,7 +502,7 @@ export class TitleScene extends Phaser.Scene {
     this.refreshLoading();
     const canvasScale = this.game.canvas.getBoundingClientRect().width / this.scale.gameSize.width;
     const density = paintedDensity(canvasScale, window.devicePixelRatio);
-    void loadPainted(this.textures, density, (progress) => {
+    void loadPainted(this.textures, data.map ?? DEFAULT_MAP, density, (progress) => {
       this.progress = progress;
       this.refreshLoading();
     }, request.signal).then((painted) => {

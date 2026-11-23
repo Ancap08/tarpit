@@ -47,7 +47,7 @@ export class PaintedSkin {
   private ghost?: Image;
 
   constructor(private readonly scene: Phaser.Scene, readonly assets: PaintedAssets, private readonly layout: Layout, private readonly map: MapDef, private readonly testMode: boolean) {
-    this.ground = layout.placeWorld(this.image('meadow'));
+    this.ground = layout.placeWorld(scene.add.image(0, 0, assets.groundKey, 0).setOrigin(0).setScale(1 / assets.density));
     this.shadows = scene.add.layer();
     this.standing = scene.add.layer();
     this.air = scene.add.layer();
@@ -60,7 +60,6 @@ export class PaintedSkin {
     };
     const spawn = map.path[0];
     this.cave = place('cave', { x: spawn.x + 22, y: spawn.y }, layout.turned ? 1 : 0);
-    // Painted art exists only for Meadow, with one cottage at the exit.
     const box = map.landmarks![0];
     const cottage = place('cottage', { x: box.x + box.width / 2, y: box.y + box.height / 2 });
     // Centre of the chimney opening in the 1x frame, relative to its ground anchor.

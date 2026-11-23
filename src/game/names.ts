@@ -78,7 +78,6 @@ export const TITLE_TEXT = {
   painted: 'Painted',
   play: 'Play',
   prompt: 'Pick a difficulty and a map, then press Play',
-  paintedPrompt: 'Painted art is available on Meadow only',
 } as const;
 
 export function paintedLoadingText(progress: number): string {

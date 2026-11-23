@@ -1,0 +1,15 @@
+{
+  "frameSize": [
+    1920,
+    960
+  ],
+  "anchor": [
+    0,
+    0
+  ],
+  "columns": 1,
+  "frameOrder": [
+    "switchback"
+  ],
+  "pixelsPerCell": 64
+}

@@ -3,7 +3,7 @@ import type { GameScene } from '../src/game/GameScene';
 import type { TitleScene, TitleUiState } from '../src/game/TitleScene';
 import { api, cellPage, state, ui, worldPage } from './phone';
 import { click, expectMeadowDirections, openPainted, painted, paintedAsset, paintedBar, settle, stageMeadowDirections, waitForGame } from './painted';
-import { waitForTitle } from './title';
+import { waitForFirstScreen, waitForTitle } from './title';
 
 const livePainted = (page: Page) => page.evaluate(() => {
   const scene = window.__tarpit!.game.scene.getScene('game') as GameScene;
@@ -55,11 +55,11 @@ test('fresh Classic visit, lazy Painted assets, mouse and keyboard Look, and URL
 });
 
 for (const map of ['switchback', 'riverbend'] as const) {
-  test(`Painted preference leaves ${map} Classic without requesting painted art`, async ({ page }) => {
+  test(`failed ${map} ground falls back to a playable Classic game`, async ({ page }) => {
     const requests: string[] = [];
     await page.route(paintedAsset, (route) => {
       requests.push(route.request().url());
-      return route.abort();
+      return route.request().url().includes('/' + map + '-') ? route.abort() : route.continue();
     });
     await page.goto('/?test=1&look=painted');
     await waitForTitle(page);
@@ -67,7 +67,28 @@ for (const map of ['switchback', 'riverbend'] as const) {
     await play(page);
     expect((await state(page)).map.id).toBe(map);
     expect(await painted(page)).toMatchObject({ active: false });
-    expect(requests).toEqual([]);
+    expect(requests.some(url => url.includes('/' + map + '-'))).toBe(true);
+    await click(page, 'startWave');
+    expect((await state(page)).wave).toBe(1);
+  });
+}
+
+for (const [level, map] of [[3, 'switchback'], [5, 'riverbend']] as const) {
+  test(`campaign level ${level} runs in Painted on ${map}`, async ({ page }) => {
+    await page.goto('/?test=1&look=painted');
+    await waitForFirstScreen(page);
+    await api(page, a => a.setCampaignProgress({ 1: 1, 2: 1, 3: 1, 4: 1 }));
+    await click(page, 'title:campaign');
+    await page.waitForFunction(level => !!window.__tarpit?.uiRects()[`title:stop:${level}`], level);
+    await click(page, `title:stop:${level}`);
+    await page.waitForFunction(() => !!window.__tarpit?.uiRects()['title:play']);
+    await click(page, 'title:play');
+    await waitForGame(page);
+    expect((await state(page)).level?.id).toBe(level);
+    expect((await state(page)).map.id).toBe(map);
+    expect(await painted(page)).toMatchObject({ active: true });
+    await click(page, 'startWave');
+    expect((await state(page)).wave).toBe(1);
   });
 }
 
@@ -278,6 +299,27 @@ test('reuse loaded art after Play again and Menu', async ({ page }) => {
   expect(requests).toHaveLength(loaded);
 });
 
+test('changing maps reuses shared pieces and fetches just the new ground', async ({ page }) => {
+  const requests: string[] = [];
+  await page.route(paintedAsset, route => {
+    requests.push(new URL(route.request().url()).pathname);
+    return route.continue();
+  });
+  await openPainted(page);
+  const goblin = await page.evaluateHandle(() => window.__tarpit!.game.textures.get('painted:goblin:1x'));
+  for (const map of ['switchback', 'riverbend'] as const) {
+    await api(page, a => { a.startWave(); a.step(6000); });
+    await click(page, 'menu');
+    await waitForTitle(page);
+    await click(page, `title:map:${map}`);
+    requests.length = 0;
+    await play(page);
+    expect(await painted(page)).toMatchObject({ active: true, density: 1 });
+    expect(requests).toEqual([expect.stringContaining('/' + map + '-1x-')]);
+    expect(await goblin.evaluate(texture => texture === window.__tarpit!.game.textures.get('painted:goblin:1x'))).toBe(true);
+  }
+});
+
 test('offline Meadow falls back when cold and opens Painted after its first online game', async ({ page, context }) => {
   await page.goto('/');
   await waitForTitle(page);
@@ -350,4 +392,43 @@ test('Classic sprites use nearest filtering and Painted sheets use linear filter
     { loaded: true, mode: 0 }, // Phaser LINEAR
     { loaded: true, mode: 0 },
   ]);
+});
+
+test('a Painted hit brightens the same pose, preserves its detail and clears next tick', async ({ page }) => {
+  await openPainted(page);
+  const result = await api(page, (a) => {
+    a.buildAt(7, 5, 'musketeer');
+    a.startWave();
+    a.step(1);
+    a.state().enemies[0].hp = 30;
+    a.step(151);
+    const scene = a.game.scene.getScene('game') as unknown as {
+      enemySprites: { views: Map<number, { sprite: Phaser.GameObjects.Sprite }> };
+    };
+    const sprite = scene.enemySprites.views.get(0)!.sprite;
+    const hit = a.animState(0)!.flags.hit;
+    const hitFrame = sprite.frame;
+    const tintFill = sprite.tintFill;
+    const blend = sprite.blendMode;
+    a.step(1);
+    const normal = sprite.frame;
+    const source = normal.source.image as HTMLCanvasElement;
+    const ctx = source.getContext('2d')!;
+    const pixels = (f: Phaser.Textures.Frame) => ctx.getImageData(f.cutX, f.cutY, f.cutWidth, f.cutHeight).data;
+    const before = pixels(normal);
+    const after = pixels(hitFrame);
+    let opaque = 0, errors = 0;
+    for (let i = 0; i < before.length; i += 4) {
+      if (before[i + 3] !== after[i + 3]) errors++;
+      if (before[i + 3] !== 255) continue;
+      opaque++;
+      for (let c = 0; c < 3; c++) {
+        const expected = before[i + c] * 0.72 + 255 * 0.28;
+        if (Math.abs(after[i + c] - expected) > 2) errors++;
+      }
+    }
+    return { hit, cleared: !a.animState(0)!.flags.hit, tintFill, blend, errors, opaque };
+  });
+  expect(result).toMatchObject({ hit: true, cleared: true, tintFill: false, blend: 0, errors: 0 });
+  expect(result.opaque).toBeGreaterThan(40);
 });

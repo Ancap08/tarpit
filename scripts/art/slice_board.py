@@ -1,4 +1,4 @@
-"""Blender renders for the Meadow ground and the matched-angle study."""
+"""Blender renders for the three painted grounds and matched-angle Meadow study."""
 
 import math
 import random
@@ -16,7 +16,7 @@ import render
 import slice_enemies
 import slice_towers
 
-from build_slice import ROUTE, SCRATCH, STUDY
+from build_slice import ROUTES, SCRATCH, STUDY
 
 
 def studio(engine, transparent):
@@ -60,8 +60,8 @@ def swatch(hex_color):
     return tuple(render.linear(int(hex_color[i:i+2], 16)) for i in (0,2,4)) + (1,)
 
 
-def painted_surface():
-    """One flat material. The trail is the union of seven 20-pixel capsules."""
+def painted_surface(map_id):
+    """The trail is the union of 20-pixel-radius capsules along the map route."""
     material = bpy.data.materials.new("Painted pasture, earth and worn verge")
     material.use_nodes = True
     nodes, links = material.node_tree.nodes, material.node_tree.links
@@ -103,7 +103,7 @@ def painted_surface():
             connect(sock, value)
         return node.outputs[0]
 
-    points = [(x/32, 15-y/32) for x,y in ROUTE]
+    points = [(x/32, 15-y/32) for x,y in ROUTES[map_id]]
     distance = None
     for (ax,ay),(bx,by) in zip(points,points[1:]):
         lo = (min(ax,bx), min(ay,by), 0)
@@ -118,15 +118,21 @@ def painted_surface():
     glaze = noise(dragged, .37, 2.3, .65)
     brush = noise(dragged, 4.8, 2, .75)
     pigment = calc("ADD", calc("MULTIPLY", glaze, .80), calc("MULTIPLY", brush,.20))
-    grass = colors(pigment, [(.20,"354F42"),(.84,"7E8D54"),(.39,"436748"),
-                             (.55,"5B7A4A"),(.68,"6C8551")])
+    palettes = {
+        "meadow": ("354F42", "7E8D54", "436748", "5B7A4A", "6C8551"),
+        "switchback": ("424A3D", "868258", "525F45", "637148", "777B50"),
+        "riverbend": ("2F5549", "70945F", "3C6952", "537D58", "66885A"),
+    }
+    grass = colors(pigment, list(zip((.20,.84,.39,.55,.68), palettes[map_id])))
     # Stipple from a short, dry brush. Keep tiny distinct flecks inside
     # the broad green washes, mirroring the painted finish on the figures.
     flecks = noise(calc("MULTIPLY", position, (1.1,1.45,1), True), 12, 1.5, .3)
     fleck_opacity = calc("MULTIPLY", calc("MAXIMUM", 0,
                          calc("SUBTRACT", flecks, .49)), .72)
-    earth = colors(noise(dragged, 1.6, 3, .35),
-                   [(.20,"B69366"),(.80,"C8A77A"),(.48,"C1A071")])
+    road_stops = [(.20,"B69366"),(.80,"C8A77A"),(.48,"C1A071")]
+    if map_id == "switchback":
+        road_stops = [(.20,"C5A47C"),(.80,"D7BF95"),(.48,"CDB38B")]
+    earth = colors(noise(dragged, 1.6, 3, .35), road_stops)
     granules = noise(position, 9, 2)
     sand = calc("MINIMUM", .21, calc("MAXIMUM", 0, calc("MULTIPLY",
                calc("SUBTRACT", noise(position, 19, 1, .1), .57), 1.2)))
@@ -144,8 +150,33 @@ def painted_surface():
     # shoulder. The original 40-pixel field of travel stays in the same place.
     grass = mix(calc("MULTIPLY", fleck_opacity, smooth_edge(.73, 1.36, distance)),
                 grass, swatch("9EA275"))
-    soil = mix(smooth_edge(.565, .624), earth, swatch("786244"))
+    if map_id == "switchback":
+        soil = mix(smooth_edge(.51, .595), earth, swatch("574A39"))
+    else:
+        soil = mix(smooth_edge(.565, .624), earth, swatch("786244"))
     color = mix(smooth_edge(.669, .705), soil, grass)
+    if map_id == "riverbend":
+        # The spring occupies the simulation's 4 by 10 blocked cells. Ripple
+        # patterns, shallows and banks all remain inside its actual edges.
+        xyz = nodes.new("ShaderNodeSeparateXYZ")
+        connect(xyz.inputs[0], position)
+        x,y = xyz.outputs["X"],xyz.outputs["Y"]
+        bank = calc("MINIMUM", calc("MINIMUM", calc("SUBTRACT", x, 13),
+                                    calc("SUBTRACT", 17, x)), calc("SUBTRACT", 10, y))
+        # Curve the head of the spring and vary the banks by a few pixels.
+        # Even at the widest point, the shallows stay within the water box.
+        corner_x = calc("MAXIMUM", 0, calc("SUBTRACT", calc("ABSOLUTE",
+                        calc("SUBTRACT", x, 15), 0), 1.58))
+        corner_y = calc("MAXIMUM", 0, calc("SUBTRACT", y, 9.58))
+        radius = calc("SQRT", calc("ADD", calc("MULTIPLY", corner_x, corner_x),
+                                  calc("MULTIPLY", corner_y, corner_y)), 0)
+        bank = calc("MINIMUM", bank, calc("SUBTRACT", .42, radius))
+        bank = calc("SUBTRACT", bank, calc("MULTIPLY", noise(position,1.35,2), .14))
+        current = noise(calc("MULTIPLY", position, (1.1,3.7,1), True), 1.1, 2, .7)
+        water = colors(current, [(.23,"356B76"),(.79,"47858A"),(.50,"387A82")])
+        water = mix(smooth_edge(.075,.35,bank), swatch("70978A"), water)
+        water = mix(smooth_edge(.025,.10,bank), swatch("415E52"), water)
+        color = mix(smooth_edge(-.004,.018,bank), color, water)
     shader = nodes.get("Principled BSDF")
     connect(shader.inputs["Base Color"], color)
     shader.inputs["Roughness"].default_value = .93
@@ -157,9 +188,9 @@ def painted_surface():
     return material
 
 
-def scatter_details():
+def scatter_details(map_id):
     """Batch low painted relief into one mesh; there are no scenery sprites here."""
-    rng = random.Random(734)
+    rng = random.Random({"meadow":734, "switchback":421, "riverbend":1708}[map_id])
     vertices, faces, materials, index = [], [], {}, []
     def shape(points, polygons, color):
         base = len(vertices)
@@ -187,8 +218,10 @@ def scatter_details():
                point(length,0,height),point(length*.52,-width,height*.48),
                point(length*.47,0,height*.70)], [(0,4,1),(1,4,2),(2,4,3),(3,4,0)],color)
 
-    points = [(x/32,15-y/32) for x,y in ROUTE]
+    points = [(x/32,15-y/32) for x,y in ROUTES[map_id]]
     def on_grass(x,y,margin=.07):
+        if map_id == "riverbend" and 12.92 < x < 17.08 and y < 10.08:
+            return False
         for (ax,ay),(bx,by) in zip(points,points[1:]):
             dx = x-min(max(x,min(ax,bx)),max(ax,bx))
             dy = y-min(max(y,min(ay,by)),max(ay,by))
@@ -197,7 +230,7 @@ def scatter_details():
         return True
 
     # Tufts follow patches rather than a regular jittered tile grid.
-    for _ in range(146):
+    for _ in range(78 if map_id == "switchback" else 146):
         cx,cy = rng.uniform(-.2,30.2), rng.uniform(-.2,15.2)
         wind = rng.uniform(0,math.tau)
         for _ in range(rng.randrange(2,10)):
@@ -209,6 +242,8 @@ def scatter_details():
                          rng.choice(("5B8053","63865A","829D63","9DAA72")))
     beds = [(1.8,4.1),(2.1,12.1),(5.9,1.4),(8.2,7.1),(11.15,14.25),
             (16.6,6.45),(18,1.0),(20.8,12.6),(23.7,4.35),(26,13.3),(28.7,1.45)]
+    if map_id == "switchback":
+        beds = beds[::4]
     for j,(cx,cy) in enumerate(beds):
         for _ in range(rng.randrange(7,14)):
             x,y = rng.gauss(cx,.37),rng.gauss(cy,.21)
@@ -239,7 +274,7 @@ def scatter_details():
                     l*.60, l*.44, a, .020, rng.choice(("728E54","739452","88A164")))
                 leaf(x,y,l*.83,.009,a,.040,"9DA772")
     # Flat lichen-flecked stones in outcrops, small enough to build over.
-    for _ in range(26):
+    for _ in range(72 if map_id == "switchback" else 26):
         cx,cy = rng.uniform(0,30),rng.uniform(0,15)
         for i in range(rng.randint(2,5)):
             x,y = cx+rng.gauss(0,.17),cy+rng.gauss(0,.12)
@@ -266,6 +301,78 @@ def scatter_details():
             size=rng.uniform(.018,.044)
             dab(x,y,.006,size,size*.68,angle+rng.uniform(-1.1,1.1),size*.38,
                 rng.choice(("B4916D","D2B68E","A79378","CBAF89")),6)
+    if map_id == "switchback":
+        # Weathered, low shelves with a split crest and small downhill scree.
+        # They sit flush enough with the grass to keep tower pads readable.
+        for cx,cy in [(1.3,2),(3.8,13.65),(7.9,5.6),(12,1.3),(22.4,10.7),
+                      (24.6,13.6),(26.7,5.4),(29.9,9.2)]:
+            for _ in range(14):
+                x,y = rng.gauss(cx,.63),rng.gauss(cy,.26)
+                size = rng.uniform(.12,.43)
+                if on_grass(x,y,.6):
+                    dab(x,y,.010,size,size*.44,.31,size*.27,
+                        rng.choice(("8B8B78","A2A18A","9B9983","8E927F")),6)
+                    dab(x-.02,y+.025,.025,size*.48,size*.15,.31,size*.25,"999984",5)
+    if map_id == "riverbend":
+        # Broken brush arcs catch the water's light in small groups. A few
+        # clusters of reeds lean inward from the banks, away from tower cells.
+        for _ in range(53):
+            x,y = rng.uniform(13.35,16.65), rng.uniform(0,9.75)
+            width = rng.uniform(.12,.36)
+            for shift in (0, .09) if rng.random() < .28 else (0,):
+                strip=[]
+                for i in range(9):
+                    t=i/8
+                    px=x+(t-.5)*width*2
+                    py=y+shift+.043*math.sin(t*math.pi)
+                    strip.extend([(px,py,.009),(px,py+.035*math.sin(t*math.pi),.009)])
+                shape(strip,[(2*i,2*i+1,2*i+3,2*i+2) for i in range(8)],
+                      rng.choice(("A4C7BD","82AEAB","9EC3B9")))
+        for side in (13.14,16.86):
+            for _ in range(39):
+                x=side+rng.uniform(-.07,.07)
+                y=rng.uniform(0,9.62)
+                size=rng.uniform(.045,.13)
+                dab(x,y,.009,size,size*.72,rng.uniform(0,3),size*.28,
+                    rng.choice(("798C79","82917D","647F71")),7)
+        for x,y,side in [(13.05,1.8,1),(13.07,5.8,1),(13.10,9.65,1),
+                         (16.9,3.3,-1),(16.94,8.2,-1)]:
+            for _ in range(26):
+                bx=x+side*rng.uniform(0,.21)
+                by=y+rng.uniform(-.35,.29)
+                a=(0 if side==1 else math.pi)+rng.uniform(-1.05,1.05)
+                leaf(bx,by,rng.uniform(.095,.35),.027,a,rng.uniform(.08,.24),
+                     rng.choice(("708957","849358","9E9E69","527957")))
+        # Timber road deck above the head of the spring. No extra water or
+        # implied side path is painted into buildable ground.
+        shape([(13.18,11.35,.022),(16.82,11.35,.022),(16.82,12.65,.022),
+               (13.18,12.65,.022)],[(0,1,2,3)],"6E5845")
+        for i in range(14):
+            x=13.25+i*.25
+            shade=rng.choice(("A57F55","AE885C","A7835C","AD8A63"))
+            shape([(x,11.43,.028),(x+.235,11.43,.028),(x+.235,12.57,.028),
+                   (x,12.57,.028)],[(0,1,2,3)],shade)
+            for j in range(2):
+                gx=x+rng.uniform(.035,.18)
+                gy=rng.uniform(11.6,12.38)
+                dab(gx,gy,.033,rng.uniform(.08,.23),.012,math.pi/2,.003,"92724E",5)
+        for y in (11.36,12.50):
+            shape([(13.20,y,.039),(16.8,y,.039),(16.8,y+.12,.039),
+                   (13.20,y+.12,.039)],[(0,1,2,3)],"72573B")
+            for x in (13.20,15,16.8):
+                dab(x,y+.055,.042,.098,.088,.4,.07,"6A513E",8)
+                dab(x,y+.055,.105,.074,.065,.4,.01,"BC9C71",8)
+        # Stone culvert at the spring head explains the raised road on the
+        # bank above it. The opening faces downstream, inside the water.
+        for i in range(13):
+            a=math.pi*i/12
+            x=15+.59*math.cos(a)
+            y=9.76+.21*math.sin(a)
+            dab(x,y,.021,.11,.13,a,rng.uniform(.07,.12),
+                rng.choice(("78887C","879283","9A9C86")),6)
+        for i in range(3):
+            y=9.65-i*.10
+            dab(15,y,.015,.34+i*.09,.020,0,.008,"85AEA3",9)
     mesh = bpy.data.meshes.new("Pasture brushwork")
     mesh.from_pydata(vertices, [], faces)
     mesh.update()
@@ -277,17 +384,17 @@ def scatter_details():
     mesh.polygons.foreach_set("material_index", index)
 
 
-def ground():
+def ground(map_id="meadow"):
     scene = studio("CYCLES",False)
     bpy.ops.mesh.primitive_plane_add(size=2, location=(15,7.5,0))
     plane = bpy.context.object
     plane.scale = (15.1,7.6,1)
-    plane.data.materials.append(painted_surface())
-    scatter_details()
+    plane.data.materials.append(painted_surface(map_id))
+    scatter_details(map_id)
     render.camera(scene,(15,7.5,0),90,30,"painted",False)
-    render.render(scene,SCRATCH/"meadow.png",1920,960,"slice-ground")
+    render.render(scene,SCRATCH/f"{map_id}.png",1920,960,f"{map_id}-ground")
 
 
 if __name__ == "__main__":
     SCRATCH.mkdir(parents=True, exist_ok=True)
-    camera_study() if sys.argv[-1] == "study" else ground()
+    camera_study() if sys.argv[-1] == "study" else ground(sys.argv[-1] if sys.argv[-1] in ROUTES else "meadow")

@@ -1,8 +1,8 @@
 // The offline service worker (milestone 32a), built to <base>sw.js by
 // scripts/sw-build.ts with this build's version and file list.
 //
-// - Install: cache the core files of this build (fetched past the HTTP
-//   cache) into the cache named for this build, then skipWaiting. Painted
+// - Install: cache the core files in this build’s cache, then skipWaiting.
+//   First install reuses content-hashed files already fetched by the page. Painted
 //   files use the on-demand cache-first route for hashed assets.
 // - Activate: delete this copy's caches from other builds (never another
 //   site's or another copy's: rules.ts cachePrefix), then clients.claim.
@@ -35,7 +35,7 @@ interface FetchEvent extends ExtendableEvent {
   respondWith(r: Response | Promise<Response>): void;
 }
 interface WorkerScope {
-  registration: { scope: string };
+  registration: { scope: string; active: ServiceWorker | null };
   skipWaiting(): Promise<void>;
   clients: { claim(): Promise<void> };
   addEventListener(type: 'install' | 'activate', fn: (e: ExtendableEvent) => void): void;
@@ -50,7 +50,10 @@ sw.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(CACHE)
-      .then((cache) => cache.addAll(__SW_PRECACHE__.map((p) => new Request(new URL(p, scope).href, { cache: 'reload' }))))
+      .then((cache) => cache.addAll(__SW_PRECACHE__.map((path) => {
+        const reuse = !sw.registration.active && path.startsWith('assets/');
+        return new Request(new URL(path, scope).href, { cache: reuse ? 'force-cache' : 'reload' });
+      })))
       .then(() => sw.skipWaiting()),
   );
 });

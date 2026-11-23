@@ -9211,3 +9211,106 @@ and a 400 ms guard, and offers Back without marking the level seen. Tips
 now use mouse or touch wording, describe the Harpies on level 5, and explain
 the Mortar’s minimum range on level 6. Wave hints follow the specials
 available in the current run, including those opened by the cheat.
+
+## 2026-11-23: milestone 43, painted maps
+
+Free play and campaign level cards load the selected Painted map. Switchback
+uses dry grass and low shale shelves between its folded lanes. Riverbend has
+a rippled blue-green spring, reeds and a timber deck on the upper trail. The
+simulation leaves 64 px between the trail centre and the headwater. The
+grassy strip there still accepts a tower wherever the normal path rule allows.
+The cave, cottage, units and effects share Meadow's scale and lighting.
+
+Rebuild a ground with `python3 scripts/art/build_slice.py switchback` or
+`riverbend` as its argument, then run `python3 scripts/art/pack_painted.py`.
+The runtime loads the selected map's WebP, one shared WebP and its frame
+data. It can make a fourth request for the existing connection-speed probe.
+A second map at the same density needs only its ground. These are file
+bytes in the build, including the shared frame data in each game total.
+
+| Painted game | Ground 1× | Game 1× | Ground 2× | Game 2× |
+| --- | ---: | ---: | ---: | ---: |
+| Meadow | 51,914 | 412,201 | 104,130 | 1,013,421 |
+| Switchback | 40,170 | 400,457 | 77,512 | 986,803 |
+| Riverbend | 55,718 | 416,005 | 110,090 | 1,019,381 |
+
+The milestone 38 notes described 54 requests. The starting commit includes
+the guard sheet, bringing Meadow to 56 requests per density and 586,721 /
+1,669,666 transferred body bytes at 1× / 2×. A fresh production install
+also downloaded the content-hashed game bundle twice. The worker now reuses
+hashed core assets from the HTTP cache on its first install. Worker updates
+still reload the core and each build retains its own offline cache.
+
+On a fresh Chromium profile per density, `measure_painted_worker.ts` gave the
+page and service worker one shared 1.6 Mbit/s download link with 150 ms
+latency. From Play to the game scene, Meadow went from 11.534 to 2.472 s
+at 1× and from 16.952 to 5.646 s at 2×, with three art requests. The density
+hint in the benchmark permits both resolutions over the same connection.
+The separate CDP run with the worker blocked measured 3.435 to 2.245 s and
+8.857 to 5.308 s. Run the worker benchmark against a built dist with
+`PW_PORT=4373 node --experimental-strip-types scripts/art/measure_painted_worker.ts`
+and the CDP benchmark against a running preview on that port.
+
+Looking at the ground renders led to three changes. The first Switchback
+shale was bright enough to draw attention from the tower positions. The first
+Riverbend deck looked like a striped crossing, and the water texture broke
+into patches. The revisions lowered the shale highlights, added side beams
+and post caps to the timber, and separated the ripple highlights from the
+bank. The 12 JPEGs in `docs/art/painted-maps/` show setup and wave 7 in both
+layouts. Crowded bends can still put a flyer over a walker. The trail test
+checks the delivered WebP at both densities against the simulation path,
+sampling 16 px inside the strip and 27 px out from the centreline.
+
+### Verifier notes (milestone 43, Claude Sonnet, tip b777ae0)
+
+Verdict: fix first, but only for stale words. Nothing in the game or art blocks the merge.
+
+- Checked from the production build in Chromium (landscape 960x580 and phone
+  390x844): on all three maps no buildable cell is painted as water or trail
+  (sampled from the ground texture, and again from rendered phone screenshots
+  at every cell centre in portrait). Riverbend's 40 water cells are all water
+  in both layouts. Buildable by the sim and painted open agree everywhere.
+- Same rule as Meadow, not new: 12 Switchback, 11 Meadow and 2 Riverbend cells
+  are refused ("path" clearance 36 px) although under 15% of them is trail, so
+  they look like open grass. The two cells under each cottage are also blocked
+  (the cottage covers them). Riverbend's deck sits 64 px short of the spring, so it
+  bridges grass, not water.
+- Stale words: `README.md` still says Painted is for Meadow and that
+  "Switchback and Riverbend use Classic art" (How to play step 1, and the v5
+  status paragraph). `names.ts` keeps the unused `paintedPrompt` "available on
+  Meadow only". Pinned in `src/game/skin/paintedMaps-verifier.test.ts` with
+  `it.fails`; delete the three `.fails` when the words are fixed.
+- Load, own shaped link (one 200,000 B/s pipe, 150 ms per request, gzip text,
+  fresh profile, worker installed before Play): Play to game scene, Meadow 1x
+  2.40 s, 2x 5.38 s (3 art requests); Riverbend 1x 2.28 s; Switchback and
+  Meadow 2x with no `navigator.connection` (Safari) 5.57 s and 5.83 s with 4
+  requests. The page and script before Play took about 2.8 s more on this
+  link, which the 2.45 s and 5.66 s claims leave out.
+- Failure: a stalled ground starts Classic at 25.05 to 25.13 s with the
+  banner and no painted textures left; a 500 on the ground, shared image or
+  shared frame data starts Classic at once; a later attempt downloads only the
+  missing file and paints. Offline after one game: all three loaded maps
+  reload and play Painted.
+- Hit flash silhouettes (white blobs) hide the unit under them on every map,
+  and the 1 px green placement outline is faint on green grass. Both predate
+  this milestone. Switchback is the weakest map: olive ground, pale trail and
+  a dark Tar Barrel puddle have the least contrast. See
+  `docs/art/painted-maps/verifier/` and `scripts/art/verifier_painted_maps.ts`.
+- New spec `e2e/painted-maps-verifier.spec.ts` pins the cell checks, campaign
+  levels 3 and 5 to a win, layout switch mid-wave, frozen and silent test
+  mode, Classic default and the 3 or 4 request counts.
+
+### Fixes after verification
+
+Painted is documented for all three maps and the three stale-copy tests now pass normally. A charcoal edge frames the ivory valid cell and a dark X marks a blocked cell. Against grass at (7,5), valid-edge contrast rose from 1.82 to 4.19:1 on Meadow, 1.58 to 3.97:1 on Switchback and 1.78 to 4.29:1 on Riverbend. Across Switchback’s four straight lanes, mean trail-to-grass luma difference rose from 36.84 to 65.68 out of 255, and trail-to-edge from 46.67 to 96.46. The new ground ships at 50,296 / 101,244 bytes (1× / 2×). Tar has a denser fill, fire has a dark rim, and a hit brightens the same painted pose for 80 ms. The refreshed Switchback captures show both zones and both placement states.
+
+Verifier recheck (5190edd): the README and `names.ts` wording is fixed and the
+three pins now pass as plain tests. Placement frames read plainly on all three
+grounds in both layouts, by hover and by touch, including in the magnifier;
+rim-to-grass contrast measured 3.8 to 4.0:1 (Classic about 2:1, unchanged).
+Switchback's re-rendered trail still matches the sim cells in both layouts.
+Hit poses were observed for all five walkers and both bosses at 3x, never
+stuck after a layout switch, no ADD blend, no boss overlay in Painted. Still
+stale: `docs/DESIGN.md` line 602 says "Painted Meadow uses four bearings ...
+Other maps use the Classic drawing" (the Guards section), and the README
+credits line says "Painted Meadow art".
