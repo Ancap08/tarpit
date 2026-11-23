@@ -826,9 +826,12 @@ their next game on Meadow.
   failed painted asset load falls back to Classic for the run. Atlas
   dimensions and anchors are in texture pixels and are divided by
   density for drawing in game coordinates. The service worker caches
-  painted files on their first successful fetch.
+  painted files on their first successful fetch. On first install, loading
+  allows up to 12 seconds for worker control, then up to 12 seconds for
+  the requested files. A timeout starts Classic.
 - Towers use 16 clockwise headings from north. Enemies walk in four
-  directions with four phases per direction. The ground turns with the
+  directions, advancing one of four poses per 6 game pixels walked. Test
+  mode holds the first pose for each direction. The ground turns with the
   portrait map and the pieces stay upright, with their headings turned a
   quarter turn. The ground anchor sets both placement and draw order, so
   a piece nearer the bottom of the screen covers one behind it. Flyers

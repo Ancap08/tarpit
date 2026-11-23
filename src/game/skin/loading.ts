@@ -76,7 +76,7 @@ function validateSheet(
   const [width, height] = frameSize;
   const [anchorX, anchorY] = anchor;
   const rows = Math.ceil(frames / columns);
-  if (width < 1 || height < 1 || anchorX > width || anchorY > height ||
+  if (width < 1 || height < 1 || anchorX >= width || anchorY >= height ||
     image.naturalWidth !== width * columns || image.naturalHeight !== height * rows) {
     throw new Error(`Invalid painted sheet dimensions: ${name}`);
   }
@@ -105,7 +105,8 @@ export async function loadPainted(
   const cached = existing?.get(density);
   if (cached) return cached;
 
-  await waitForWorkerControl();
+  // An uncontrolled fetch during first install would miss the offline cache.
+  if (!(await waitForWorkerControl(LOAD_TIMEOUT_MS))) return undefined;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LOAD_TIMEOUT_MS);
   const registered: string[] = [];

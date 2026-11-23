@@ -7893,12 +7893,20 @@ still requires a separate manifest row for each file, rejects duplicate
 and missing rows, and requires attribution for CC-BY assets. MIT is
 accepted only for repo-script sources.
 
+The first offline reload could miss the JavaScript module even though
+it appeared in the install cache. The preview server sends
+`Vary: Origin` and a module request carries an Origin header that the
+install request lacks. For same-origin hashed files the worker now
+matches the full URL across those header variants. The first Painted
+start waits for worker control before it fetches its sheets. A stalled
+first install falls back to Classic.
+
 The simulation output matched `main` byte for byte (21,510 bytes).
 Of the 50 existing screenshots replayed in the same browser on this
 Mac, 46 matched pixel for pixel. The three desktop title screenshots
 and the portrait title screenshot changed only in the Look row. The
-candidate build used 3,680,177 bytes, including 2,224,541 bytes of
-painted files. The core was 1,455,636 bytes, compared with 1,434,562
+candidate build used 3,680,231 bytes, including 2,224,541 bytes of
+painted files. The core was 1,455,690 bytes, compared with 1,434,562
 bytes on `main`.
 
 The live desktop and emulated portrait captures used actual Wave 8

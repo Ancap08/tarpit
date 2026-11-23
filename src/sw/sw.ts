@@ -93,7 +93,10 @@ async function networkFirst(req: Request, fallbackUrl: string): Promise<Response
 
 async function cacheFirst(req: Request): Promise<Response> {
   const cache = await caches.open(CACHE);
-  const hit = await cache.match(req);
+  // A module request can carry a different Origin header than install's
+  // precache request (Vite serves Vary: Origin). These same-origin static
+  // files are identified by their full, content-hashed URL.
+  const hit = await cache.match(req, { ignoreVary: true });
   if (hit) return hit;
   const res = await fetch(req);
   if (res.ok) await cache.put(req, res.clone());

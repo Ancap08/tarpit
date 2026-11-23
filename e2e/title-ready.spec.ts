@@ -35,7 +35,7 @@ for (const url of ['/?renderer=canvas', '/?test=1']) {
       type Api = { game: Game; titleReady(): boolean; uiRects(): Record<string, Rect> };
       const w = window as unknown as { __probe: Probe; __api?: Api; __tarpit?: Api };
       w.__probe = {};
-      const titleKeys = (api: Api) => Object.keys(api.uiRects()).filter((k) => k.startsWith('title:'));
+      const titleKeys = (api: Api) => Object.keys(api.uiRects()).filter((k) => k.startsWith('title:')).sort();
       // window.__tarpit is set right after the game is created (main.ts); hook the title from there.
       Object.defineProperty(window, '__tarpit', {
         configurable: true,
@@ -80,7 +80,7 @@ for (const url of ['/?renderer=canvas', '/?test=1']) {
     // At the first render: ready, every button listed (milestone 27: the map thumbnails too).
     expect(probe.atRender).toEqual({
       ready: true,
-      rects: ['title:easy', 'title:normal', 'title:hard', 'title:map:meadow', 'title:map:switchback', 'title:map:riverbend', 'title:play', 'title:mute', 'title:look:classic', 'title:look:painted'],
+      rects: ['title:easy', 'title:normal', 'title:hard', 'title:map:meadow', 'title:map:switchback', 'title:map:riverbend', 'title:play', 'title:mute', 'title:look:classic', 'title:look:painted'].sort(),
     });
     // The click at that moment started the game.
     await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game'), undefined, { timeout: 5000 });

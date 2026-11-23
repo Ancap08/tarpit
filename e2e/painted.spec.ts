@@ -268,6 +268,11 @@ test('an immediate first Painted game warms the offline cache while the worker i
     const scene = window.__tarpit!.game.scene.getScene('title') as TitleScene;
     return scene.uiState().loading === 0;
   });
+  // Hold the first install past the former three-second race. No art should
+  // escape the worker while it is still installing the offline shell.
+  await page.waitForTimeout(3200);
+  expect(await page.evaluate(() => performance.getEntriesByType('resource')
+    .filter(entry => entry.name.includes('/assets/painted/')).length)).toBe(0);
   await page.evaluate(() => window.dispatchEvent(new Event('release-worker-registration')));
   await waitForGame(page);
   expect(await livePainted(page)).toBe(true);
