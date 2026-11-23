@@ -1012,11 +1012,14 @@ default. The game stores the choice as `tarpit.look` on this browser.
   retain their price and hit area. The tower panel, reward icons and special icons are shared
   with Classic.
 - The King's collectors wear red and gold. The green goblin wears a tricorn
-  and carries a coin satchel. The hound wears a studded collar, the Redcoat
-  carries a crown shield, the Harpy carries a sealed writ, and the Toll
-  Troll swings a striped gate bar. The Assessor wears a powdered wig and
-  carries a ledger. The King wears a crown and fur-edged cape and carries
-  a sceptre. A blue coin banner flies beside the exit cottage on every map.
+  and carries a coin satchel. The grey-brown hound has a pale muzzle and a
+  red studded collar. The Redcoat carries a crown shield, the Harpy carries
+  a sealed writ, and the Toll Troll has tusks and swings a striped gate bar.
+  The orange Assessor wears a
+  short maroon coat and carries a ledger. His horns flank his powdered wig,
+  and two tusks rise from his square jaw. The King wears a crown and
+  fur-edged cape and carries a sceptre. A blue coin banner flies beside the
+  exit cottage on every map.
 - Each painted squad keeps its four blue-clad townsfolk in squad order
   throughout the fight: Axeman, Swordsman, hooded Archer and Captain.
   All four strike within arm's reach. Classic uses its original guard drawing.

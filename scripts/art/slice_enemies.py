@@ -131,10 +131,10 @@ def guard(role, striking):
 
 
 def wolf(phase):
-    coal, fur, grey, ivory = "#243343", "#5189AD", "#99CAE1", "#FFEECE"
+    coal, fur, grey, ivory = "#332C2B", "#665850", "#A79A88", "#FFEECE"
     bob = BOB[phase] / 2
     pebble("Dark saddle", (0, -.039, .360 + bob), (.173, .251, .124), coal)
-    pebble("High slate shoulders", (0, .090, .404 + bob), (.180, .164, .145), fur)
+    pebble("High brindled shoulders", (0, .090, .404 + bob), (.180, .164, .145), fur)
     pebble("Pale chest", (0, .150, .339 + bob), (.124, .103, .115), ivory)
     pebble("Lean haunch", (0, -.190, .327 + bob), (.128, .126, .117), fur)
     for index, side in enumerate((-1, 1)):
@@ -151,7 +151,7 @@ def wolf(phase):
             pebble("Dark paw", (ankle[0], ankle[1] + .030, .039 + lift), (.052, .064, .039), coal)
 
     # The broad scarlet band sits behind the ears, above the pale ruff.
-    pebble("Scarlet hunt collar", (0, -.027, .466 + bob), (.178, .089, .113), "#B21F37")
+    pebble("Scarlet hunt collar", (0, -.027, .466 + bob), (.181, .099, .116), "#C22538")
     for side in (-1, 1):
         pebble("Brass collar stud", (side * .115, -.038, .553 + bob),
                (.041, .037, .027), GOLD)
@@ -287,8 +287,8 @@ def troll(phase, rank=0):
         pebble("Pale slate backplate", (roll + .024, -.140, .720 + bob),
                (.115, .086, .025), "#C7B4A5")
     elif rank == 1:
-        pebble("Short oxblood frock coat", (roll, -.125, .603 + bob),
-               (.270, .195, .169), "#AC3440")
+        pebble("Short maroon frock coat", (roll, -.125, .603 + bob),
+               (.270, .195, .169), cloth)
         for side in (-1, 1):
             limb("Buff turned lapel", (roll + side*.185, .014, .693+bob),
                  (roll + side*.092, .100, .476+bob), .043, .032, BONE)
@@ -362,15 +362,22 @@ def troll(phase, rank=0):
                  Vector(elbow).lerp(Vector(fist), .46), .105, .094, "#AF723D")
         if rank:
             pebble("Shoulder pauldron", (shoulder[0], -.048, .635 + bob),
-                   (.139, .138, .090), "#D49252" if rank == 2 else "#843243")
+                   (.139, .138, .090), "#D49252" if rank == 2 else cloth)
             pebble("Pauldron rivet", (shoulder[0], .013, .699 + bob),
                    (.039, .035, .022), GOLD)
 
     face_y = .103 + (0, .028, .005, -.019)[phase]
     pebble("Forward-lumped skull", (roll, face_y, .696 + bob), (.188, .169, .137), skin)
-    pebble("Broad lower jaw", (roll, face_y + .079, .636 + bob), (.160, .111, .073), stone)
-    pebble("Mouth crease", (roll, face_y + .161, .662 + bob), (.105, .027, .025), INK)
-    pebble("Hammer nose", (roll, face_y + .135, .726 + bob), (.064, .070, .048), stone)
+    if rank == 2:
+        pebble("Broad lower jaw", (roll, face_y + .079, .636 + bob), (.160, .111, .073), stone)
+        pebble("Mouth crease", (roll, face_y + .161, .662 + bob), (.105, .027, .025), INK)
+        pebble("Hammer nose", (roll, face_y + .135, .726 + bob), (.064, .070, .048), stone)
+    else:
+        # Project the underbite forward so its top plane shows from overhead.
+        meadow.box("Squared underbite", (roll, face_y + .154, .639 + bob),
+                   (.250, .171, .100), stone, .035)
+        pebble("Flat bridge", (roll, face_y + .136, .721 + bob),
+               (.069, .052, .033), skin)
     for side in (-1, 1):
         pebble("Troll ear", (roll + side * .158, face_y - .013, .706 + bob),
                (.061, .069, .047), shadow)
@@ -378,11 +385,21 @@ def troll(phase, rank=0):
                (.066, .063, .030), shadow).rotation_euler.y = side * .28
         pebble("Amber eyes", (roll + side * .082, face_y + .126, .749 + bob),
                (.038, .033, .028), BONE)
-        taper("Curved ivory tusk", (roll + side * .100, face_y + .156, .630 + bob),
-              (roll + side * .115, face_y + .170, .709 + bob), .031, .007, BONE)
+        if rank == 2:
+            taper("Curved ivory tusk", (roll + side * .100, face_y + .156, .630 + bob),
+                  (roll + side * .115, face_y + .170, .709 + bob), .031, .007, BONE)
+        else:
+            root = Vector((roll + side * .098, face_y + .206, .654 + bob))
+            tip = root + Vector((side * .034, .033, .119))
+            taper("Upturned jaw tusk", root, tip, .041, .005, "#FFF0CE")
     if rank == 1:
         # Broad centre part and paired banks of rolled, powdered hair.
         for side in (-1, 1):
+            base = Vector((roll + side * .143, face_y - .058, .804 + bob))
+            bend = base + Vector((side * .091, -.065, .058))
+            tip = bend + Vector((side * .068, .010, .106))
+            taper("Ridged horn root", base, bend, .060, .049, "#96613E")
+            taper("Ochre horn tip", bend, tip, .050, .006, "#EAC081")
             pebble("Parted powdered wig", (roll+side*.074, face_y-.047, .826+bob),
                    (.091,.140,.066), "#F5E6CF")
             for i in range(3):

@@ -36,7 +36,7 @@ def shared(density):
     atlas = Image.new("RGBA", (width, y + shelf_height))
     for name, _, image in sheets:
         atlas.paste(image, tuple(layout[name]["offset"]))
-    atlas.save(PACKED / f"shared-{density}x.webp", quality=95, method=6)
+    atlas.save(PACKED / f"shared-{density}x.webp", quality=94, method=6)
     (PACKED / f"shared-{density}x.json").write_text(json.dumps(layout, separators=(",", ":")) + "\n")
 
 
