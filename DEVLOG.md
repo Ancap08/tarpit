@@ -8670,3 +8670,56 @@ have mean RGB differences of at most 0.002 of 255 and equal alpha.
 
 **Not checked.** A physical phone; WebGL under throttling (headless software
 GL); the gif's turn pops and foot slide beyond the sampled frames.
+
+### Closing pass
+
+Placed Painted towers omit their name and “+”. At the Wave 8 bend the
+level 2 gold ring and both level 3 path marks were visible in each layout.
+DESIGN records that choice. The fresh 960 × 580 and 390 × 844 CSS viewport
+captures show the live 1× game at the same stretch, with six built towers
+and 26 enemies from all five ordinary types. The crimson Troll stands out
+from the green Goblin. The pink V shapes were Harpies. A broader feathered
+wing, darker body and larger beak are visible in the phone capture. The
+blue-grey Wolf and both bosses retain their earlier art. The Harpy still
+spans at most 42 game pixels. Crowded figures can still cover one another.
+The phone check used Chromium device emulation.
+
+Play now shows “Loading painted art” until the first file is ready, then
+reports the percentage of 54 files decoded or parsed. The loading label
+uses 13 px on desktop and 17 px in portrait to fit the Play button. The
+Meadow-only note appears on Switchback and Riverbend with Painted selected.
+One 12-second deadline covers worker startup and files. A failed load opens
+Classic with “Painted art could not load. Playing Classic.” in the field of
+play until wave 1. A corrupt sheet showed the banner in both layouts with
+zero page or console errors.
+
+Cold-cache browser timings below are from Play to game. Each build used
+the same local server, with 1.6 Mbps shared across requests and 562 ms
+latency per request, including worker traffic. The verifier's original
+measurements were 12.4 s and 17.6 s. The title itself took about 9.2 s in
+the repeat. On this link the worker took about eight seconds of the art
+budget before the first sheet file was ready.
+
+| Viewport | Before, 6538cd7 | Closing pass | Last displayed percentage |
+|---|---:|---:|---:|
+| Desktop, 1× art | 13.93 s, Painted | 12.18 s, Classic with banner | 66% |
+| Portrait phone, 2× art | 17.03 s, Painted | 12.08 s, Classic with banner | 40% |
+
+Two verifier definitions changed, both in `e2e/painted-verifier.spec.ts`.
+The D4 map cases check that Meadow starts without the map restriction
+note before selecting Switchback or Riverbend. D6 holds worker registration
+for four seconds and then hangs one sheet, checking the initial Play text,
+a real percentage, and the single deadline. The original Painted gameplay
+spec also checks banner dismissal and a successful retry from Menu.
+
+The manifest now checks each claimed script against regular files under
+`scripts/`. A unit case covers missing Python and TypeScript names. The
+art scripts accept `TARPIT_ART_SCRATCH` with the existing default and use
+Pillow's default font if the preferred fonts are unavailable. The two art
+READMEs give the commands for regenerating the standalone plates in scratch.
+
+The 31 branch review PNGs occupied 11,998,278 bytes. The spike comparison,
+two Meadow comparisons and contact sheet now occupy 2,185,183 bytes in
+total. All 27 removed plates were regenerated in scratch. Including the
+shipped Painted PNGs, this branch adds 4,399,607 image bytes to main. With
+metadata, a player loads 589,433 bytes at 1× or 1,657,924 bytes at 2×.
