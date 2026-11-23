@@ -206,7 +206,7 @@ import { PaintedSkin, type PaintedState } from './skin/painted';
 import type { PaintedAssets } from './skin/loading';
 import type { GameStartData as TitleStartData } from './TitleScene';
 import { ticksDue } from './loop';
-import { BAR_TYPES, canPick } from './ui/buildBar';
+import { BAR_TYPES, canPick } from './ui/buildBarModel';
 import { EndScreen } from './ui/endScreen';
 import { campaignResultText, endKind, type EndKind } from './ui/endText';
 import { TowerPanel } from './ui/towerPanel';

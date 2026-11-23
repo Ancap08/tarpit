@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAPS, MAP_IDS, TOWER_DEFS, TOWER_PATHS, buildableCells, cellFromKey, type TowerLevelStats, type TowerType, type UpgradePath } from '../../sim';
+import { LEVELS, MAPS, MAP_IDS, TOWER_DEFS, TOWER_PATHS, buildableCells, cellFromKey, type TowerLevelStats, type TowerType, type UpgradePath } from '../../sim';
 import { placeBeside } from '../input';
 import { LANDSCAPE, PORTRAIT } from '../layout';
 import { PANEL_TEXT, PATH_NAMES, pathDescription, towerPanelTitle } from '../names';
@@ -27,10 +27,10 @@ describe('tower upgrade choices', () => {
   it('offers both paths at level two and explains unaffordability for each', () => {
     for (const type of Object.keys(TOWER_DEFS) as TowerType[]) {
       const price = TOWER_PATHS[type].cost;
-      expect(getPathChoices({ type, upgraded: false }, price)).toEqual([]);
-      expect(getPathChoices({ type, upgraded: true, path: 'A' }, price)).toEqual([]);
+      expect(getPathChoices({ type, upgraded: false }, { gold: price })).toEqual([]);
+      expect(getPathChoices({ type, upgraded: true, path: 'A' }, { gold: price })).toEqual([]);
       const tower = { type, upgraded: true };
-      const choices = getPathChoices(tower, price);
+      const choices = getPathChoices(tower, { gold: price });
       expect(choices.map(({ name }) => name)).toEqual([PATH_NAMES[type].A, PATH_NAMES[type].B]);
       expect(new Set(choices.map(({ description }) => description)).size).toBe(2);
       for (const choice of choices) {
@@ -39,8 +39,15 @@ describe('tower upgrade choices', () => {
         expect(choice.description).not.toMatch(/[%\n]/);
         expect(towerPanelTitle(type, 3, choice.path)).toBe(`${choice.name} · Level 3`);
       }
-      expect(getPathChoices(tower, price - 1).map(({ disabledReason }) => disabledReason))
+      expect(getPathChoices(tower, { gold: price - 1 }).map(({ disabledReason }) => disabledReason))
         .toEqual([PANEL_TEXT.notEnoughGold, PANEL_TEXT.notEnoughGold]);
+    }
+  });
+
+  it('offers paths only when the campaign allows another upgrade', () => {
+    const tower = { type: 'longbow', upgraded: true } as const;
+    for (const level of LEVELS) {
+      expect(getPathChoices(tower, { level, gold: 1000 })).toHaveLength(level.maxTowerLevel === 3 ? 2 : 0);
     }
   });
 
@@ -74,7 +81,7 @@ describe('tower upgrade choices', () => {
       { layout: PORTRAIT, scale: 1194 / 664 },
     ];
     for (const { layout, scale } of cases) {
-      const size = towerPanelSize(layout, 2, 5, scale);
+      const size = towerPanelSize(layout, 2, 5, 2, scale);
       for (const side of [size.buttonWidth, size.close, size.rowHeight, size.pathHeight]) {
         expect(side / scale).toBeGreaterThanOrEqual(44);
       }

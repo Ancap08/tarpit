@@ -10,11 +10,10 @@ import { pathLength, positionAlongPath } from './map';
 import { BIG_ENEMIES, POLICY_CHECK_TICKS, POLICY_MIN_HITS, chooseCrowdSpecial, policyCandidates } from './specialPolicy';
 import { availableSpecials, SPECIAL_RECHARGE_TICKS, type SpecialType } from './specials';
 import { TICKS_PER_SECOND } from './time';
-import { TOWER_DEFS, TOWER_PATHS, towerLevel, towerStats } from './towers';
+import { TOWER_DEFS, TOWER_PATHS, allowedTowers, maxTowerLevel, towerLevel, towerStats } from './towers';
 import type { GameState, MapDef, Point, TowerLevelStats, TowerType, UpgradePath } from './types';
 import { nextWavePreview } from './waves';
 
-const TOWERS = Object.keys(TOWER_DEFS) as TowerType[];
 const PATHS: readonly UpgradePath[] = ['A', 'B'];
 const TRAIL_SAMPLE_SPACING = 24;
 const BLOCK_AHEAD = 50;
@@ -35,14 +34,6 @@ export interface BotRun {
   state: GameState;
   log: HeadlessStepResult[];
   refused: number;
-}
-
-function allowedTowers(state: GameState): readonly TowerType[] {
-  return state.level?.allowedTowers ?? TOWERS;
-}
-
-function maxTowerLevel(state: GameState): number {
-  return state.level?.maxTowerLevel ?? 3;
 }
 
 // Fills trail cells with the cheapest allowed tower, then makes one fallback upgrade.

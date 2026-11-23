@@ -1,6 +1,6 @@
 import { boonScale, type BoonId } from './boons';
 import { TICKS_PER_SECOND } from './time';
-import type { Tower, TowerDef, TowerLevel, TowerLevelStats, TowerType, UpgradePath } from './types';
+import type { GameState, Tower, TowerDef, TowerLevel, TowerLevelStats, TowerType, UpgradePath } from './types';
 
 /** No minimum range, splash, slow or burn: fields a level overrides as needed. */
 const PLAIN = { minRange: 0, splashRadius: 0, slow: 0, slowDuration: 0, burnDps: 0, burnDuration: 0 } as const;
@@ -48,6 +48,16 @@ export const TOWER_DEFS: Readonly<Record<TowerType, TowerDef>> = {
     upgraded: { ...PLAIN, range: 100, damage: 4, fireRate: 0.8, burnDps: 8, burnDuration: 4 },
   },
 };
+
+const TOWERS = Object.keys(TOWER_DEFS) as TowerType[];
+
+export function allowedTowers(state: Pick<GameState, 'level'>): readonly TowerType[] {
+  return state.level?.allowedTowers ?? TOWERS;
+}
+
+export function maxTowerLevel(state: Pick<GameState, 'level'>): TowerLevel {
+  return state.level?.maxTowerLevel ?? 3;
+}
 
 /** The two complete level-3 stat rows and their common price per tower. */
 export const TOWER_PATHS: Readonly<Record<TowerType, { cost: number } & Record<UpgradePath, TowerLevelStats>>> = {

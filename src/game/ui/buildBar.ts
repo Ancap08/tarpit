@@ -4,17 +4,16 @@
 // highlighted. The bar only reports clicks; GameScene owns the pick.
 
 import type Phaser from 'phaser';
-import { TOWER_DEFS, type GameState, type TowerType } from '../../sim';
+import { TOWER_DEFS, allowedTowers, type GameState, type TowerType } from '../../sim';
 import type { Rect } from '../input';
 import { drawTowerShape } from '../draw/towers';
 import { LANDSCAPE, type Layout } from '../layout';
 import type { PaintedSkin } from '../skin/painted';
 import { portraitBarRects } from './geometry';
 import { TOWER_NAMES } from '../names';
+import { makeLock } from './lock';
+import { BAR_TYPES, canPick } from './buildBarModel';
 import { Button } from './button';
-
-// All six towers (milestone 11): the three v1 towers, then the v2 three.
-export const BAR_TYPES: readonly TowerType[] = ['musketeer', 'cannon', 'tarpit', 'longbow', 'mortar', 'firepot'];
 
 /**
  * Bar button geometry (milestone 11, 42 px tall from milestone 14): six 140 x 42 buttons, 8 px apart from
@@ -28,7 +27,6 @@ export const BAR_BUTTON_HEIGHT = 42;
 export const BAR_LEFT = 16;
 export const BAR_GAP = 8;
 
-/** True when the player can pick `type` now: enough gold and the game is not over. */
 /** Where a portrait button's icon centre and cost centre sit, in px from its top (milestone 32b, geometry.ts). */
 const ICON_Y = 27;
 const COST_Y = 56;
@@ -41,15 +39,12 @@ export function barRects(layout: Layout, top: number): Rect[] {
   return BAR_TYPES.map((_, i) => ({ x: BAR_LEFT + i * (BAR_BUTTON_WIDTH + BAR_GAP), y: top, width: BAR_BUTTON_WIDTH, height: BAR_BUTTON_HEIGHT }));
 }
 
-export function canPick(state: GameState, type: TowerType): boolean {
-  return !state.pendingBoon && state.phase !== 'won' && state.phase !== 'lost' && state.gold >= TOWER_DEFS[type].cost;
-}
-
 export class BuildBar {
   private readonly buttons: Button[];
   /** The Classic portrait icons and the enabled flags they were drawn for. */
   private readonly classicIcons?: Phaser.GameObjects.Graphics;
   private readonly paintedIcons?: Phaser.GameObjects.Image[];
+  private readonly locks: Phaser.GameObjects.Graphics[];
   private iconKey = '';
   private compact = false;
 
@@ -74,6 +69,8 @@ export class BuildBar {
     } else if (portrait) {
       this.classicIcons = scene.add.graphics();
     }
+    this.locks = BAR_TYPES.map(type => makeLock(scene)
+      .setName(`bar-lock:${type}`).setScale(portrait ? 1 : 0.7).setVisible(false));
   }
 
   /** Grey what cannot be picked and highlight the pick. Call on every redraw. */
@@ -94,8 +91,15 @@ export class BuildBar {
     BAR_TYPES.forEach((type, i) => {
       const b = this.buttons[i];
       const enabled = canPick(state, type);
-      b.set(portrait ? String(TOWER_DEFS[type].cost) : TOWER_NAMES[type], enabled);
+      const locked = !allowedTowers(state).includes(type);
+      const cost = String(TOWER_DEFS[type].cost);
+      const lockReplacesCost = locked && !portrait && !this.paintedIcons;
+      b.set(portrait ? cost : TOWER_NAMES[type], enabled, lockReplacesCost ? '' : cost);
       b.setPicked(pick === type);
+      const { x, y, width, height } = b.rect;
+      const lockX = x + width - 14;
+      const lockY = y + (lockReplacesCost ? height / 2 - 2 : portrait ? 12 : 8);
+      this.locks[i].setPosition(lockX, lockY).setVisible(locked);
       this.paintedIcons?.[i].setAlpha(enabled ? 1 : 0.4);
     });
     const g = this.classicIcons;

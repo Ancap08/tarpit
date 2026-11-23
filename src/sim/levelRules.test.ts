@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  availableSpecials, buildTower, callNextWave, continueEndless, createGame, lastWave, levelStars,
+  allowedTowers, maxTowerLevel, TOWER_DEFS, availableSpecials, buildTower, callNextWave, continueEndless, createGame, lastWave, levelStars,
   MAPS, unlockedLevel, nextWavePreview, pickBoon, startWave, tick, upgradeTower, useSpecial, type GameState, type LevelDef,
 } from '.';
 
@@ -19,6 +19,14 @@ function finishWave(state: GameState): void {
 }
 
 describe('campaign level rules', () => {
+  it('reports a custom level’s tower list and upgrade ceiling, and every choice in Free play', () => {
+    const custom = { level: { ...level, allowedTowers: ['mortar'] as const, maxTowerLevel: 1 as const } };
+    expect(allowedTowers(custom)).toEqual(['mortar']);
+    expect(maxTowerLevel(custom)).toBe(1);
+    expect(allowedTowers({})).toEqual(Object.keys(TOWER_DEFS));
+    expect(maxTowerLevel({})).toBe(3);
+  });
+
   it('opens only a contiguous prefix when saved stars have gaps', () => {
     const saved = { 1: 3, 3: 2 } as const;
     expect([1, 2, 3, 4].map(id => unlockedLevel(saved, id))).toEqual([true, true, false, false]);

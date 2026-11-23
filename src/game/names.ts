@@ -175,8 +175,8 @@ export function callEarlyLabel(bonus: number): string {
 }
 
 /** The tower panel's kill count line: "Kills 43". */
-export function killsLabel(kills: number): string {
-  return `${KILLS_TEXT} ${kills}`;
+export function killsLabel(kills: number, atCampaignCap = false): string {
+  return `${KILLS_TEXT} ${kills}${atCampaignCap ? ' · Max for this level' : ''}`;
 }
 
 /** Special attack names (milestone 25b): the HUD popup's buttons. */
