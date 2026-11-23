@@ -13,7 +13,7 @@ export interface PathChoice {
   disabledReason: string | null;
 }
 
-export function getPathChoices(tower: Pick<Tower, 'type' | 'upgraded' | 'path'>, state: Pick<GameState, 'level' | 'gold'>): PathChoice[] {
+export function getPathChoices(tower: Pick<Tower, 'type' | 'upgraded' | 'path'>, state: Pick<GameState, 'level' | 'gold' | 'cheated'>): PathChoice[] {
   if (towerLevel(tower) !== 2 || maxTowerLevel(state) <= 2) return [];
   const price = TOWER_PATHS[tower.type].cost;
   return UPGRADE_PATHS.map((path) => ({

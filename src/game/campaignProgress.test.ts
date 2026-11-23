@@ -12,14 +12,25 @@ describe('campaign progress', () => {
     expect(unlockedLevel(progress, 3)).toBe(false);
     expect(empty).toEqual({});
     expect(mergeProgress(progress, 1, 1)).toEqual({ 1: 2 });
-    expect(mergeProgress(progress, 2, 0)).toEqual({ 1: 2 });
+    expect(mergeProgress(progress, 2, 0)).toEqual({ 1: 2, 2: 0 });
     expect(mergeProgress(progress, 1, 3)).toEqual({ 1: 3 });
     expect(parseProgress(serializeProgress(progress))).toEqual(progress);
   });
 
+  it('round-trips a zero-star win, opens only a prefix and keeps a later honest award', () => {
+    const won = mergeProgress({}, 1, 0);
+    const saved = parseProgress(serializeProgress({ ...won, 3: 0 }));
+    expect(saved).toEqual({ 1: 0, 3: 0 });
+    expect([1, 2, 3, 4].map(id => unlockedLevel(saved, id))).toEqual([true, true, false, false]);
+    expect(unlockedLevel(mergeProgress(saved, 2, 0), 4)).toBe(true);
+    const replay = mergeProgress(saved, 1, 3);
+    expect(replay[1]).toBe(3);
+    expect(mergeProgress(replay, 1, 0)).toBe(replay);
+  });
+
   it('ignores corrupt records, unreadable JSON and unknown versions', () => {
     expect(parseProgress('oops')).toEqual({});
-    expect(parseProgress('{"v":2,"stars":{"1":3}}')).toEqual({});
+    expect(parseProgress('{"v":3,"stars":{"1":3}}')).toEqual({});
     expect(parseProgress('{"v":1,"stars":[1,2,3]}')).toEqual({});
     expect(parseProgress('{"v":1,"stars":{"01":3,"1":2,"0":3,"2":"3","3":4,"4":0,"5":1.5,"__proto__":3}}'))
       .toEqual({ 1: 2 });

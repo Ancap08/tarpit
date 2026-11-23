@@ -15,7 +15,7 @@ export function campaignStops(portrait: boolean, progress: CampaignProgress): Ca
   const width = portrait ? 100 : 106;
   const height = portrait ? 86 : 72;
   const columns = portrait ? 2 : 5;
-  const next = LEVELS.find(level => unlockedLevel(progress, level.id) && !progress[level.id]);
+  const next = LEVELS.find(level => unlockedLevel(progress, level.id) && progress[level.id] === undefined);
   return LEVELS.map(({ id }, index) => {
     const row = Math.floor(index / columns);
     const offset = index % columns;

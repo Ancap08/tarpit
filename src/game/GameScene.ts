@@ -1354,14 +1354,12 @@ export class GameScene extends Phaser.Scene {
    * run too.
    */
   private recordScore(): void {
-    // Milestone 30: a cheated game saves no best score (the stored best stays as it was).
-    if (this.state.cheated) return;
     const cleared = wavesCleared(this.state);
     if (cleared <= this.recordedCleared) return;
     this.recordedCleared = cleared;
     if (this.state.level) {
       if (this.state.phase === 'won') campaignProgress.record(this.state.level.id, levelStars(this.state));
-    } else {
+    } else if (!this.state.cheated) {
       highScores.record(this.state.difficulty, cleared, this.currentMap);
     }
   }
@@ -1382,10 +1380,10 @@ export class GameScene extends Phaser.Scene {
     if (newTick) this.enemySprites.newTick();
     this.barricadeFx.onEvents(events);
     this.guardFx.onEvents(events);
-    if (this.fx) this.fx.onEvents(events);
+    if (this.fx) this.fx.onEvents(events, this.state);
     else {
       this.enemySprites.onEvents(events);
-      this.moments.onEvents(events, this.frozenMs, false);
+      this.moments.onEvents(events, this.frozenMs, false, this.state);
     }
     if (events.some((event) => event.kind === 'boonOffered')) {
       this.clearPickAndPanel();

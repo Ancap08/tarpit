@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { TitleUiState } from '../src/game/TitleScene';
 import type { TarpitTestApi } from '../src/game/testGlobal';
-import { CAMPAIGN_TEXT, TITLE_TEXT } from '../src/game/names';
+import { CAMPAIGN_TEXT, levelTips, TITLE_TEXT } from '../src/game/names';
 import { api, press } from './campaign';
 import { paintedAsset, settle } from './painted';
 import { useTallFontMetrics } from './campaignFont';
@@ -38,14 +38,14 @@ async function finish(page: Page, win: boolean) {
 
 /** Compare the Phaser text bounds and live hit targets in canvas coordinates. */
 async function checkSpacing(page: Page) {
-  const items = await page.evaluate(({ back, play }) => {
+  const items = await page.evaluate(({ back, play, tips, gotIt }) => {
     const t = window.__tarpit as TarpitTestApi;
     const result = t.campaignResult();
     const labels = t.campaignLabels();
     const keys = result ? ['playAgain', 'menu', ...(result.nextId ? ['nextLevel'] : [])]
       : Object.keys(t.uiRects()).filter(key => key.startsWith('title:'));
     const boxes = keys.map(key => ({ key, owner: '', button: true, ...t.uiRects()[key] }));
-    const owners = new Map([[back, 'title:back'], [play, 'title:play']] as [string, string][]);
+    const owners = new Map([[back, 'title:back'], [play, 'title:play'], [tips, 'title:tips'], [gotIt, 'title:gotIt']] as [string, string][]);
     if (result) {
       const buttons = result.nextId ? ['nextLevel', 'playAgain', 'menu'] : ['playAgain', 'menu'];
       result.buttons.forEach((label, index) => owners.set(label, buttons[index]));
@@ -73,7 +73,7 @@ async function checkSpacing(page: Page) {
       boxes.push({ key: label.text, owner, button: false, x, y, width, height });
     }
     return boxes;
-  }, { back: CAMPAIGN_TEXT.back, play: TITLE_TEXT.play });
+  }, { back: CAMPAIGN_TEXT.back, play: TITLE_TEXT.play, tips: CAMPAIGN_TEXT.tips, gotIt: CAMPAIGN_TEXT.gotIt });
   expect(items.length).toBeGreaterThan(3);
   for (const [index, a] of items.entries()) {
     for (const b of items.slice(index + 1)) {
@@ -97,7 +97,7 @@ export function campaignScreenSuite(touch: boolean) {
     test(`campaign labels and buttons have separate space${tall ? ' (tall metrics)' : ''}`, async ({ page }) => {
       if (tall) await useTallFontMetrics(page);
       await page.goto('/?test=1');
-      await waitForFirstScreen(page);
+      await waitForFirstScreen(page, { showTips: true });
       await press(page, 'title:campaign', touch);
       await onScreen(page, 'levelMap');
       await press(page, 'title:stop:10', touch);
@@ -109,6 +109,23 @@ export function campaignScreenSuite(touch: boolean) {
         await press(page, `title:stop:${id}`, touch);
         await onScreen(page, 'levelCard');
         await checkSpacing(page);
+        const play = await api(page, t => t.uiRects()['title:play']);
+        await press(page, 'title:play', touch);
+        await onScreen(page, 'levelTips');
+        const gotIt = await api(page, t => t.uiRects()['title:gotIt']);
+        expect(Math.max(play.x - gotIt.x - gotIt.width, gotIt.x - play.x - play.width,
+          play.y - gotIt.y - gotIt.height, gotIt.y - play.y - play.height), 'Got it clears Play').toBeGreaterThanOrEqual(0);
+        expect(await api(page, t => t.campaignLabels().map(label => label.text))).toEqual(expect.arrayContaining([...levelTips(id, touch)]));
+        await checkSpacing(page);
+        // Tablet and phone cover both touch layouts. Turn the desktop viewport for mouse wording.
+        if (!touch) {
+          await rotate(page, 'levelTips');
+          await checkSpacing(page);
+          expect(await api(page, t => t.campaignLabels().map(label => label.text))).toEqual(expect.arrayContaining([...levelTips(id, touch)]));
+        }
+        await page.keyboard.press('Escape');
+        await onScreen(page, 'levelCard');
+        if (!touch) await rotate(page, 'levelCard');
         await press(page, 'title:back', touch);
         await onScreen(page, 'levelMap');
       }
@@ -129,6 +146,64 @@ export function campaignScreenSuite(touch: boolean) {
       }
     });
   }
+
+  test('first visit shows tips, replay remembers them, and the card can show them again', async ({ page }, info) => {
+    const click = (key: string) => press(page, key, touch);
+    const card = async () => {
+      await waitForFirstScreen(page, { showTips: true });
+      await click('title:campaign');
+      await onScreen(page, 'levelMap');
+      await click('title:stop:1');
+      await onScreen(page, 'levelCard');
+    };
+    const capture = async (id: number) => {
+      if (process.env.M42_REVIEW_DIR && info.project.name !== 'tablet') {
+        const layout = await api(page, t => t.layout());
+        await settle(page);
+        await page.screenshot({ path: `${process.env.M42_REVIEW_DIR}/${layout === 'portrait' ? 'phone' : 'landscape'}-tips-${id}.jpg`, quality: 85, scale: 'css' });
+      }
+    };
+    await page.goto('/?test=1');
+    await card();
+    expect(await api(page, t => Object.keys(t.uiRects()))).not.toContain('title:tips');
+    await click('title:play');
+    await onScreen(page, 'levelTips');
+    expect(await api(page, t => t.campaignLabels().map(l => l.text))).toContain(CAMPAIGN_TEXT.gotIt);
+    await capture(1);
+    await rotate(page, 'levelTips');
+    await page.keyboard.press('Escape');
+    await onScreen(page, 'levelCard');
+    await page.keyboard.press('Space');
+    await onScreen(page, 'levelTips');
+    await click('title:gotIt');
+    await onScreen(page, 'game');
+    expect(await api(page, t => t.state().level?.id)).toBe(1);
+
+    await page.reload();
+    await card();
+    await checkSpacing(page);
+    await click('title:tips');
+    await onScreen(page, 'levelTips');
+    await rotate(page, 'levelTips');
+    await page.keyboard.press('Enter');
+    await onScreen(page, 'levelCard');
+    await click('title:play');
+    await onScreen(page, 'game');
+
+    await finish(page, false);
+    await click('menu');
+    await onScreen(page, 'levelMap');
+    await api(page, t => t.setCampaignProgress({ 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1 }));
+    await onScreen(page, 'levelMap');
+    await click('title:stop:7');
+    await onScreen(page, 'levelCard');
+    await click('title:play');
+    await onScreen(page, 'levelTips');
+    await capture(7);
+    await page.keyboard.press('Space');
+    await onScreen(page, 'game');
+    expect(await api(page, t => t.state().level?.id)).toBe(7);
+  });
 
   test('campaign trail, card, level, results and saved progress through real buttons', async ({ page }) => {
     const click = (key: string) => press(page, key, touch);

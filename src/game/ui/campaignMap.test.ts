@@ -19,6 +19,13 @@ it.each([false, true])('fits ten separate stops on one screen (portrait=%s)', po
   }
 });
 
+it('shows a passed zero-star stop and points at the following open stop', () => {
+  const stops = campaignStops(false, { 1: 0 });
+  expect(stops.slice(0, 3).map(({ open, next, stars }) => ({ open, next, stars }))).toEqual([
+    { open: true, next: false, stars: 0 }, { open: true, next: true, stars: 0 }, { open: false, next: false, stars: 0 },
+  ]);
+});
+
 it('tells the player which open level to win', () => {
   expect(lockedLevelText(1)).toBe('Win level 1 first');
   expect(lockedLevelText(9)).toBe('Win level 9 first');

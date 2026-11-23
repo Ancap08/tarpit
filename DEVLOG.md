@@ -9170,6 +9170,48 @@ towers keep their slots, and upgrades end at the level’s tier limit.
 
 At 1.5× font metrics the old landscape wave counter overlapped the level tag by 4.06 px on Mac Chromium. Fixed-height HUD labels and a lower first-screen subtitle clear the stricter guard, which now also checks the running HUD after each rotation.
 
+## 2026-11-23: milestone 42, tips and the cheat
+
+- Each campaign card introduces its level with short tips on the first Play.
+  A returning player can play immediately or read the tips again. Seen tips
+  have their own browser record, so clearing them keeps the player's stars.
+- A gold-cheat win passes the level and opens the next card. The map shows
+  three empty slots until an honest win earns stars. A cheated replay keeps
+  any stars already earned.
+- Using the gold cheat lifts the campaign equipment restrictions for that
+  run. Extra specials open on their usual waves and share the existing
+  charge. Starting another run restores the level's usual equipment.
+
+### Verifier notes (milestone 42, Claude Sonnet)
+
+- Verdict: fix first (three small items below: the portrait double press, level 1 line 1, level 5 line 1); nothing else blocks the merge.
+  Whole tree at bca0b86: lint, typecheck, build clean; `npm test` 2424 passed;
+  `PW_PORT=4273 npx playwright test` 821 passed, 8 skipped (all earlier
+  skips), 0 failed, on all three projects. `npm run sim` output is
+  byte-identical to `main` (442 lines, 139 ok, no MISS, campaign gate line
+  included); the only caller of `grantCheatGold` is the game scene.
+- Defect (phone, portrait): on a first visit a quick second press on Play
+  (tested at 30 to 300 ms) lands on Got it, which sits over Play, so the level
+  starts and its tips are marked seen unread. Landscape misses by 3 px.
+  Pinned with `test.fail` in `e2e/tipsVerifier.ts`.
+- Tip wording: level 1 line 1 says "Click ... (tap twice)". A mouse builds on
+  one click; touch needs two taps (first arms, second builds). Level 5 line 1
+  says "fly over walls" but level 5 has no walls and no Barricade. Other lines
+  are true against the sim (`src/sim/tips-cheat-verifier.test.ts`).
+- Pre-existing, found on the way: level 1 shows "Barricade unlocked" at wave 3
+  although it has no Barricade (`fx/moments.ts`). Pinned with `test.fail`.
+- Not a defect, worth knowing: the first-visit panel has no Back on touch
+  (Escape only); a progress file written as version 2 reads as empty in a build
+  from before this change.
+
+### Fixes after verification
+
+The first-visit panel keeps Got it clear of Play, waits for pointer release
+and a 400 ms guard, and offers Back without marking the level seen. Tips
+now use mouse or touch wording, describe the Harpies on level 5, and explain
+the Mortar’s minimum range on level 6. Wave hints follow the specials
+available in the current run, including those opened by the cheat.
+
 ## 2026-11-23: milestone 43, painted maps
 
 Free play and campaign level cards load the selected Painted map. Switchback
