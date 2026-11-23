@@ -189,12 +189,12 @@ export const BOON_EFFECT_WITNESSES: readonly BoonEffectWitness[] = [
     best: 'veteranCrews', changed: ['stoneWalls', 'veteranCrews', 'biggerBlasts'],
   },
   {
-    scenario: { build: 'wideBuild', map: 'meadow', difficulty: 'normal', wave: 10, picks: defaultBoonPicks() },
-    best: 'hotCoals', changed: ['stickyTar', 'hotCoals', 'quickHands'],
+    scenario: { build: 'hardBuild', map: 'riverbend', difficulty: 'normal', wave: 5, picks: defaultBoonPicks() },
+    best: 'longBarrels', changed: ['longBarrels', 'keenArrows', 'warChest'],
   },
   {
-    scenario: { build: 'comboBuildNoFire', map: 'meadow', difficulty: 'normal', wave: 5, picks: defaultBoonPicks() },
-    best: 'longBarrels', changed: ['longBarrels', 'keenArrows', 'warChest'],
+    scenario: { build: 'wideBuild', map: 'meadow', difficulty: 'normal', wave: 10, picks: defaultBoonPicks() },
+    best: 'hotCoals', changed: ['stickyTar', 'hotCoals', 'quickHands'],
   },
   {
     scenario: { build: 'musketBuild', map: 'meadow', difficulty: 'normal', wave: 5, picks: defaultBoonPicks() },

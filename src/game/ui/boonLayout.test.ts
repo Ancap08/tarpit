@@ -73,7 +73,7 @@ describe('boon UI', () => {
       'Longbows hit 11% harder',
       '80 gold right now',
       'Tar slows enemies twice as long',
-      'Fire burns 110% hotter',
+      'Fire burns 111% hotter',
       'Specials come back 43% sooner',
       '4 more lives',
       'Every tower fires 11% faster',

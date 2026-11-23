@@ -132,7 +132,7 @@ describe('boon effects on existing and later towers', () => {
   it.each([
     [5, 'keenArrows', 'longbow', 'damage', 1.11],
     [10, 'stickyTar', 'tarpit', 'slowDuration', 2],
-    [10, 'hotCoals', 'firepot', 'burnDps', 2.1],
+    [10, 'hotCoals', 'firepot', 'burnDps', 2.11],
     [15, 'biggerBlasts', 'cannon', 'splashRadius', 1.3],
     [15, 'biggerBlasts', 'mortar', 'splashRadius', 1.3],
   ] as const)('%s reward %s changes %s %s at both levels', (wave, id, type, key, scale) => {
@@ -203,9 +203,9 @@ describe('boon effects on specials', () => {
       expect(state.enemies[0].specialSlowTicksLeft).toBe(120);
     }
     if (id === 'hotCoals') {
-      expect(state.enemies[0].burnDps).toBeCloseTo(54.6);
+      expect(state.enemies[0].burnDps).toBeCloseTo(54.86);
       tick(state);
-      expect(state.enemies[0].hp).toBeCloseTo(1000 - 54.6 / 60);
+      expect(state.enemies[0].hp).toBeCloseTo(1000 - 54.86 / 60);
     }
     if (id === 'quickHands') {
       expect(state.specialRechargeTicks).toBe(684);

@@ -111,7 +111,7 @@ const ROWS = [
   ['tarpit', 'A', 105, 0, 3, 30, 0, 0.78, 0, 0], ['tarpit', 'B', 145, 0, 3, 30, 0, 0.64, 0, 0],
   ['longbow', 'A', 170, 0, 16, 24, 0, 0, 0, 0], ['longbow', 'B', 170, 0, 9, 13, 0, 0, 0, 0],
   ['mortar', 'A', 220, 70, 140, 180, 70, 0, 0, 0], ['mortar', 'B', 220, 70, 80, 180, 150, 0, 0, 0],
-  ['firepot', 'A', 104, 0, 4, 60, 0, 0, 17, 60], ['firepot', 'B', 100, 0, 4, 60, 0, 0, 8, 480],
+  ['firepot', 'A', 125, 0, 4, 60, 0, 0, 17, 60], ['firepot', 'B', 100, 0, 4, 60, 0, 0, 8, 480],
 ] as const;
 
 describe('twelve rows in combat', () => {
@@ -180,8 +180,8 @@ describe('rewards on top of level 3', () => {
     expect(shot('cannon', 'A', ['biggerBlasts'], 105).s.shots[0].splashRadius).toBe(136.5);
     expect(shot('mortar', 'B', ['biggerBlasts'], 220).s.shots[0].splashRadius).toBe(195);
   });
-  it('Hot Coals on Inferno 17 x 2.1 = 35.7; Sticky Tar on Deep Tar 2 s x 2 = 240 ticks', () => {
-    expect(shot('firepot', 'A', ['hotCoals'], 104).e.burnDps).toBeCloseTo(35.7);
+  it('Hot Coals on Inferno 17 x 2.11 = 35.87; Sticky Tar on Deep Tar 2 s x 2 = 240 ticks', () => {
+    expect(shot('firepot', 'A', ['hotCoals'], 125).e.burnDps).toBeCloseTo(35.87);
     expect(shot('tarpit', 'A', ['stickyTar'], 105).e.slowTicksLeft).toBe(240);
   });
 });

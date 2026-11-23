@@ -78,7 +78,7 @@ export const TOWER_PATHS: Readonly<Record<TowerType, { cost: number } & Record<U
   },
   firepot: {
     cost: 120,
-    A: { ...PLAIN, range: 104, damage: 4, fireRate: 1, burnDps: 17, burnDuration: 1 },
+    A: { ...PLAIN, range: 125, damage: 4, fireRate: 1, burnDps: 17, burnDuration: 1 },
     B: { ...PLAIN, range: 100, damage: 4, fireRate: 1, burnDps: 8, burnDuration: 8 },
   },
 };

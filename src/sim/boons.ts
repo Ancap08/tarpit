@@ -5,7 +5,7 @@ export const BOONS = {
   keenArrows: { id: 'keenArrows', wave: 5, value: 1.11 },
   warChest: { id: 'warChest', wave: 5, value: 80 },
   stickyTar: { id: 'stickyTar', wave: 10, value: 2 },
-  hotCoals: { id: 'hotCoals', wave: 10, value: 2.1 },
+  hotCoals: { id: 'hotCoals', wave: 10, value: 2.11 },
   quickHands: { id: 'quickHands', wave: 10, value: 0.57 },
   stoneWalls: { id: 'stoneWalls', wave: 15, value: 4 },
   veteranCrews: { id: 'veteranCrews', wave: 15, value: 1.11 },

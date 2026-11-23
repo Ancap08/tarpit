@@ -283,15 +283,15 @@ describe('verifier 36a: boons by hand', () => {
     expect(tarLingerTicks([])).toBe(60);
   });
 
-  it('Hot Coals: Fire Pot burn 5 -> 10.5 and 8 -> 16.8; Fire Arrows 26 -> 54.6, doubled under tar', () => {
+  it('Hot Coals: Fire Pot burn 5 -> 10.55 and 8 -> 16.88; Fire Arrows 26 -> 54.86, doubled under tar', () => {
     const s = withBoon('hotCoals');
-    expect(stats(s, 'firepot', false).burnDps).toBeCloseTo(10.5, 9);
-    expect(stats(s, 'firepot', true).burnDps).toBeCloseTo(16.8, 9);
+    expect(stats(s, 'firepot', false).burnDps).toBeCloseTo(10.55, 9);
+    expect(stats(s, 'firepot', true).burnDps).toBeCloseTo(16.88, 9);
     const w = inWave(7, [enemy(0, 'troll', { hp: 1e6 })]);
     w.boons = ['hotCoals'];
     w.specialCharges = 1;
     useSpecial(w, 'fireArrows', { x: 100, y: 240 });
-    expect(w.enemies[0].burnDps).toBeCloseTo(54.6, 9);
+    expect(w.enemies[0].burnDps).toBeCloseTo(54.86, 9);
   });
 
   it('Quick Hands: recharge 1200 -> 684 for the next use; a recharge cannot be running at a pick (wave clear resets it)', () => {

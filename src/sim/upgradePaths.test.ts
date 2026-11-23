@@ -142,7 +142,7 @@ describe('level 3 combat on each of the twelve paths', () => {
     ['longbow',   'B', 170, 0, 9, 13, 0, 0, 0, 0],
     ['mortar',    'A', 220, 70, 140, 180, 70, 0, 0, 0],
     ['mortar',    'B', 220, 70, 80, 180, 150, 0, 0, 0],
-    ['firepot',   'A', 104, 0, 4, 60, 0, 0, 17, 60],
+    ['firepot',   'A', 125, 0, 4, 60, 0, 0, 17, 60],
     ['firepot',   'B', 100, 0, 4, 60, 0, 0, 8, 480],
   ] as const)('%s path %s uses its full stat row', (type, path, range, minimum, damage, cooldown, splash, slow, dps, duration) => {
     const { state, tower } = combat(type, path);
@@ -206,7 +206,7 @@ describe('level 3 combat on each of the twelve paths', () => {
     ['tarpit', 'A', ['stickyTar'], 105, 0, 3, 30, 240, 0],
     ['longbow', 'A', ['keenArrows', 'veteranCrews'], 170, 0, 17.76, 22, 0, 0],
     ['mortar', 'B', ['longBarrels', 'biggerBlasts'], 286, 195, 80, 180, 0, 0],
-    ['firepot', 'A', ['hotCoals'], 104, 0, 4, 60, 0, 35.7],
+    ['firepot', 'A', ['hotCoals'], 125, 0, 4, 60, 0, 35.87],
   ] as const)('%s %s applies rewards after selecting the path row', (type, path, boons, range, radius, damage, cooldown, slowTicks, dps) => {
     const { state, tower } = combat(type, path);
     state.boons = [...boons] satisfies BoonId[];

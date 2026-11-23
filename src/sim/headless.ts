@@ -59,7 +59,7 @@ import {
   type TargetingResult,
   type UpgradeResult,
 } from './actions';
-import type { BoonId } from './boons';
+import { BOONS, type BoonId } from './boons';
 import type { Difficulty } from './difficulty';
 import { callNextWave, continueEndless, createGame, startWave, tick, wavesCleared, type CallNextWaveResult, type StartWaveResult } from './game';
 import { enemyPosition } from './combat';
@@ -909,20 +909,25 @@ function reinvest(main: TowerType, paths: false | Readonly<Partial<Record<TowerT
   };
 }
 
-/** Allow one extra purchase per setup, or a specialist's spending allowance. Spend the bank before the boss. */
+/** After a costly wave, spend more of the reserve in the next setup. Spend it all before the boss. */
 function paceReinvestment(buy: Decide, allowance = 0): Decide {
   let wave = -1;
   let spent = 0;
+  let previousLives: number | undefined;
+  let budget = allowance;
   return (state) => {
     if (state.wave === LAST_WAVE - 1) return buy(state);
     if (wave !== state.wave) {
       wave = state.wave;
       spent = 0;
+      const lives = state.lives - (state.boons.includes('stoneWalls') ? BOONS.stoneWalls.value : 0);
+      budget = allowance === 0 && previousLives !== undefined && previousLives - lives >= 3 ? 425 : allowance;
+      previousLives = lives;
     }
     const action = buy(state);
     if (!action) return undefined;
     const cost = actionCost(state, action);
-    if (spent > 0 && spent + cost > allowance) return undefined;
+    if (spent > 0 && spent + cost > budget) return undefined;
     spent += cost;
     return action;
   };

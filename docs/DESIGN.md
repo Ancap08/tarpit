@@ -336,7 +336,7 @@ the level and, for level 3, the chosen path.
 | Longbow | B | Quick Draw | 70 | 170 | - | 9 | 4.5 | - | - | - |
 | Mortar | A | Siege Shell | 190 | 220 | 70 | 140 | 1/3 | 70 | - | - |
 | Mortar | B | Wide Burst | 190 | 220 | 70 | 80 | 1/3 | 150 | - | - |
-| Fire Pot | A | Inferno | 120 | 104 | - | 4 | 1 | - | - | 17/s for 1 s |
+| Fire Pot | A | Inferno | 120 | 125 | - | 4 | 1 | - | - | 17/s for 1 s |
 | Fire Pot | B | Lasting Flames | 120 | 100 | - | 4 | 1 | - | - | 8/s for 8 s |
 
 The slow column gives strength and duration. The burn column gives damage
@@ -458,7 +458,7 @@ Reloading starts a new run.
 | Keen Arrows | keenArrows | 5 | 1.11 | Longbow damage multiplier |
 | War Chest | warChest | 5 | 80 | Gold gained immediately |
 | Sticky Tar | stickyTar | 10 | 2 | Tar Pit and Tar Barrel slow duration multiplier |
-| Hot Coals | hotCoals | 10 | 2.1 | Damage multiplier for all burns |
+| Hot Coals | hotCoals | 10 | 2.11 | Damage multiplier for all burns |
 | Quick Hands | quickHands | 10 | 0.57 | Special recharge time multiplier |
 | Stone Walls | stoneWalls | 15 | 4 | Lives gained immediately |
 | Veteran Crews | veteranCrews | 15 | 1.11 | Tower fire rate multiplier |
@@ -1265,7 +1265,7 @@ browser's `runScript` replay it.
   policy. The Hard opening uses two Longbows on every map. In act 2 the Meadow
   and Riverbend plans buy one extra Mortar and upgrade it. Switchback
   already covers the boss approach with its existing Mortars. Each Hard plan buys Siege Shell for its first Mortar. Riverbend also specializes its Mortar at (17,7) at the start of act 2 and turns to reinvestment after its artillery purchases.
-- **Act-2 spending.** In every setup after the fixed purchases, buy the cheapest affordable second upgrade on an owned level-2 tower (path A for each type, cell order breaks ties). Otherwise upgrade a base tower of the main type or build that type on the next free trail cell. Combo, wide and Hard make one reinvestment purchase per setup until the last campaign setup, when they spend their reserve. The artillery, burn and musket specialists spend up to 180 gold per setup, allowing their first affordable purchase even when it costs more. They also spend their reserve before the boss. Hard buys Longbows. Combo and wide buy Longbows on Meadow and Switchback. On Riverbend combo buys Tar Pits and wide buys Cannons. Artillery buys Mortars, burn buys Fire Pots and musket buys Musketeers. Wide skips all second upgrades. The fixed-only control stops after the identical fixed plan.
+- **Act-2 spending.** In every setup after the fixed purchases, buy the cheapest affordable second upgrade on an owned level-2 tower (path A for each type, cell order breaks ties). Otherwise upgrade a base tower of the main type or build that type on the next free trail cell. Combo, wide and Hard make one reinvestment purchase per setup until the last campaign setup, when they spend their reserve. The artillery, burn and musket specialists spend up to 180 gold per setup, allowing their first affordable purchase even when it costs more. They also spend their reserve before the boss. After losing at least three combat lives in one wave, the combo, wide and Hard references may spend up to 425 gold in the next setup. The Stone Walls grant is excluded when counting losses. Hard buys Longbows. Combo and wide buy Longbows on Meadow and Switchback. On Riverbend combo buys Tar Pits and wide buys Cannons. Artillery buys Mortars, burn buys Fire Pots and musket buys Musketeers. Wide skips all second upgrades. The fixed-only control stops after the identical fixed plan.
 - **endlessIdle** and **endlessGreedy** play the same reinvesting combo throughout the campaign. Idle stops buying at victory. Greedy invests in Siege Shell Mortars, buying the branch wherever it is available before upgrading or adding another Mortar. Both keep using specials.
 - Meadow only (they throw for another map): **soundBuild** (Musketeers, Cannons and a Tar Pit),
   **soundBuildNoTar** (its Tar Pit cells removed), **comboStrongest**
@@ -1374,10 +1374,10 @@ The milestone 37 Third pass in DEVLOG records the measured campaign and remainin
 | comboBuild | W 39 | W 14 | W 3 | W 39 | W 11 | L 19 | W 39 | W 14 | W 1 |
 | wideBuild | W 39 | W 13 | W 1 | W 39 | W 15 | L 19 | W 39 | W 10 | L 15 |
 | comboBuildNoFire | W 38 | W 13 | L 8 | W 39 | W 11 | L 10 | W 37 | W 12 | L 7 |
-| comboNoSpecials | W 39 | L 19 | L 7 | W 39 | L 18 | L 9 | W 38 | L 19 | L 3 |
-| hardBuild | W 39 | W 18 | W 8 | W 39 | W 21 | W 15 | W 39 | W 17 | W 4 |
-| artilleryBuild | W 39 | W 20 | W 7 | W 39 | W 24 | W 14 | W 39 | W 7 | L 10 |
-| burnBuild | W 39 | W 14 | W 3 | W 39 | W 24 | W 14 | W 39 | W 9 | L 15 |
+| comboNoSpecials | W 39 | W 8 | L 7 | W 39 | L 18 | L 9 | W 38 | W 3 | L 3 |
+| hardBuild | W 39 | W 20 | W 9 | W 39 | W 21 | W 15 | W 39 | W 21 | W 8 |
+| artilleryBuild | W 39 | W 20 | W 7 | W 39 | W 24 | W 14 | W 39 | W 6 | L 10 |
+| burnBuild | W 39 | W 15 | W 4 | W 39 | W 24 | W 14 | W 39 | W 9 | L 15 |
 | musketBuild | W 39 | L 19 | L 16 | W 39 | W 24 | W 14 | W 39 | L 18 | L 15 |
 | endlessIdle | L 37 | L 25 | L 24 | L 36 | L 24 | L 19 | L 36 | L 25 | L 24 |
 | endlessGreedy | L 40 | L 28 | L 27 | L 40 | L 27 | L 19 | L 38 | L 27 | L 27 |

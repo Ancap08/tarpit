@@ -8363,3 +8363,55 @@ The slope passes all six S2 and S3 checks in this configuration. Normal wins wit
 A specialist that has finished its fixed queue may now spend 180 gold per setup, or make its first affordable purchase if that purchase alone exceeds 180. The last campaign setup still spends the reserve. The same cap applies to both adaptive path comparisons. All 36 scenario pairs made their intended purchases. On the unchanged level-three rows, this recovered Musketeer P1 and reduced the Mortar maximum gap from ten lives to seven.
 
 Four nondefault rewards brought all 81 combinations back to a win. Keen Arrows went from 1.25× to 1.11×, Hot Coals from 1.80× to 2.10×, Quick Hands from 0.67× to 0.57× recharge time (804 to 684 ticks), and Veteran Crews from 1.10× to 1.11×. The three offer spreads became 4/5/6 on Meadow, 4/4/6 on Switchback and 11/6/5 on Riverbend. With Quick Hands and Stone Walls held fixed on Riverbend, Long Barrels won with 16 lives against 5 for each alternative. All three killed the boss. From wave 15 they owned the same towers and upgrades. On wave 18 the three builds lost 0/6/6 lives to Trolls.
+
+#### Retained settings and results
+
+To close the remaining Riverbend reward spread, the combo, wide and Hard references can spend 425 gold in the setup after losing at least three lives in a wave. Stone Walls' grant does not count toward the life change. The specialist references keep their 180-gold allowance. Hot Coals moved from the provisional 2.10× to 2.11×. With Keen Arrows and Stone Walls fixed, Riverbend now ends with 18, 13 and 12 lives across the three middle offers. Inferno range increased from 104 to 125 px. This recovered both the Fire Pot equal-gold comparison and the Mortar six-life limit. The branch prices, panel lines, boss exit cost, and base and level-two tower rows retain their previous values.
+
+| Measured target | Meadow | Switchback | Riverbend |
+|---|---:|---:|---:|
+| S1 Normal combo, lives | 14 | 11 | 14 |
+| S2 Normal lives lost on waves 11 through 20 | 0/0/0/0/0/0/2/1/1/0 | 0/0/0/0/1/0/0/2/4/0 | 0/0/0/0/1/0/0/1/3/0 |
+| S2 Hard lives lost on waves 11 through 20 | 0/0/0/0/0/2/1/3/1/0 | 0/0/0/0/0/1/0/1/2/0 | 0/0/0/0/0/1/3/0/3/0 |
+| S3 Normal lives at 95% / 100% / 105% act-two HP | 15/14/14 | 15/11/11 | 17/14/15 |
+| S3 Hard lives at 95% / 100% / 105% act-two HP | 11/9/7 | 17/15/15 | 11/8/12 |
+| S4 wide / combo | 13/14 | 15/11 | 10/14 |
+| S5 all / none | W14/W8 | W11/L18 | W14/W3 |
+| S5 omit Keg / Tar Barrel / Fire Arrows | W15/W17/W11 | W16/W12/W10 | W15/W20/W11 |
+| S6 with / without Fire Pots | 14/13 | 11/11 | 14/12 |
+| S7 wins and maximum spread by offer | 27/27, 4/5/4 | 27/27, 5/5/6 | 27/27, 6/6/5 |
+| S8 idle / continued buying, defeat wave after victory | 5/8 | 4/7 | 5/7 |
+| S9 sound / no Tar, defeat tick on wave 7 | 23,009/21,700 | — | — |
+
+All 36 branch comparisons bought the intended paths and equal-cost packages. P1 passes for Musketeer and Mortar. The largest A/B gap for Tar Pit is nine lives, three above P2. P3 and P4 pass for every tower. The fixed combo loses on wave 20 on Meadow and Switchback and wins with two lives on Riverbend. Both reference builds kill Grumblemaw on their respective difficulties on every map. The Normal Switchback slope and HP-sensitivity margins are both exactly four, several reward spreads are exactly six, and the Riverbend endless advantage is exactly two waves.
+
+#### Wave edits from 107832a
+
+The larger late Troll trains were split into smaller groups across multiple waves. Earlier waves were shortened to leave room for those fights within the campaign time limit. Each row below contains the edited groups only. Waves 1–11 and 20 retain their original group tables.
+
+| Wave | Scheduled group changes (count × interval in seconds, delay in seconds) |
+|---:|---|
+| 12 | wolf 35 × 1.16, delay 0 → 35 × 0.75, delay 0<br>troll 11 × 3.2, delay 4.032 → 11 × 1.5, delay 0.375<br>harpy 14 × 2.08, delay 9.792 → 14 × 1, delay 5 |
+| 13 | goblin 39 × 0.95, delay 0 → 39 × 0.75, delay 0<br>shieldbearer 14 × 2, delay 8.64 → 14 × 1.5, delay 0.375<br>harpy 16 × 1.9, delay 7.2 → 16 × 0.75, delay 4 |
+| 14 | troll 14 × 3.04, delay 2.88 → 14 × 2.6, delay 0.375<br>harpy 17 × 2, delay 9.216 → 17 × 2, delay 12 |
+| 15 | goblin 22 × 1.75, delay 0 → 14 × 1.5, delay 3<br>wolf 19 × 1.7, delay 22.79 → 19 × 1.7, delay 3<br>troll 12 × 4.6, delay 3.6 → 19 × 2, delay 8<br>harpy 16 × 2.8, delay 9.36 → 16 × 0.75, delay 9.36 |
+| 16 | goblin 33 × 1.36, delay 0 → 33 × 2, delay 0<br>harpy 19 × 2.2, delay 5.76 → 19 × 2.2, delay 0<br>troll added 15 × 2.25, delay 12 |
+| 17 | troll 16 × 2.92, delay 2.88 → 15 × 1.1, delay 2<br>harpy 20 × 2.16, delay 5.76 → 20 × 2.16, delay 0 |
+| 18 | goblin 36 × 1.7, delay 0 → 23 × 1.7, delay 0<br>troll 34 × 1, delay 0 → 15 × 1.25, delay 8<br>shieldbearer 11 × 5, delay 2.16 → 9 × 5, delay 3<br>harpy 19 × 2.8, delay 9 → 19 × 2.8, delay 8 |
+| 19 | troll 27 × 0.9, delay 3 → 15 × 2.25, delay 0<br>harpy 21 × 2.75, delay 6.48 → 21 × 2.75, delay 4 |
+
+#### Reversions and unresolved comparisons
+
+With the other retained settings in place, restoring the old wave table makes the Normal combo lose on waves 19/18/19. Restoring the old exponential growth alone gives 18/18/19 lives and restoring unlimited reinvestment gives 18/18/18. Removing the 425-gold response restores the 11-life Riverbend reward spread. Restoring immediate 1.8× endless growth makes both builds lose on wave 22 on Switchback and 24 on Riverbend. Restoring the campaign tower choice for continued endless buying leaves only a one-wave advantage on Switchback. The five-factor table and failing S2/S3 negative controls are above.
+
+Restoring each nondefault reward independently also broke S7. The worst spread rose to seven on Meadow and Riverbend with the previous Keen Arrows, seven on Switchback with the previous Hot Coals, eight on Switchback and Riverbend with the previous Quick Hands, and seven on Riverbend with the previous Veteran Crews.
+
+No single configuration tested satisfied the entire brief. The following controlled alternatives explain the stop.
+
+- **Preserve all 24 path checks.** Starting from commit `cce5bb6`, set Deep Tar slow to 0.76, Wide Tar range/slow to 150/0.68, Quick Draw range to 145, and Inferno range to 90. This passed P1–P4 for every tower with valid purchases. Riverbend Normal then lost lives only on waves 18 and 19 (4/3), and finished 17/12/9 under the S3 perturbations. Switchback reward spreads widened to 12/6/8. One Riverbend reward combination lost. The Fire Pot benefit was positive on Meadow only and Meadow missed the time limit. Keeping the same path configuration and moving wave 15 Harpies from 9.36 to 6.36 seconds restored Riverbend's third leaky wave and the Fire Pot benefit. Meadow then lost lives on one act-two wave and finished with 17.
+- **Make every individual special helpful.** Requiring an act-two Keg to kill two enemies and redistributing the last three ordinary waves produced an S5 pass on every map. In that configuration, Hard Switchback lost lives on two waves and finished 18/15/8 under the HP perturbations. Riverbend also lost six reward combinations and got no endless extension from continued spending. The retained reference still gains from owning all specials compared with using none. Its choice of an individual special remains unsolved.
+- **Earlier source of the Tar Barrel result.** On Riverbend, the ordinary combo enters act two with 15 lives. The no-Tar-Barrel variant enters with 19. On Switchback the ordinary and no-Keg opening both end on 14 lives with 1,014 gold. Their eventual difference comes from act two. These two map results have different causes.
+
+The outstanding gates are S5 on three maps, P1 on four towers, and P2 on Tar Pit. Each fails the unit suite and simulator directly. This is a local balance candidate for a coordinator decision.
+
+Verifier updates included the per-map matrix in `balance.suite.ts`, `balance.test.ts`, the boon witnesses in `boonBalance.ts`, `boons.test.ts`, `boonLayout.test.ts`, `boss-verifier.test.ts`, `designSpec.test.ts`, `difficulty-verifier.test.ts`, both endless simulation tests, `longer-game-verifier.test.ts`, both level-three upgrade tests and the full Meadow combo state fixture. Browser expectations moved in the campaign boss, endless and desktop/phone visual checks and their shared frame helper.
