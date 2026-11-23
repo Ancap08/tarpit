@@ -58,6 +58,7 @@ import { drawCampaignMap, drawLevelCard, drawLevelTips } from './ui/campaignScre
 import { CAMPAIGN_TEXT, lockedLevelText, bestScoreText, DIFFICULTY_LABELS, MAP_NAMES, paintedLoadingText, TITLE_TEXT } from './names';
 import { COLORS, FONT, TEXT } from './palette';
 import { currentLayout } from './layoutSwitch';
+import { broadside, ink, ribbon, rule, town } from './ui/theme';
 import { Button } from './ui/button';
 import { menuKeys } from './ui/menuKeys';
 import { PORTRAIT_TITLE, titleRects, type TitleGeometry } from './ui/geometry';
@@ -322,12 +323,20 @@ export class TitleScene extends Phaser.Scene {
     }
     const first = this.page === 'first';
     const titleY = first && !portrait ? 124 : geo.titleY;
-    this.add
-      .text(cx, titleY, TITLE_TEXT.title, { fontFamily: FONT, fontSize: '72px', fontStyle: 'bold', color: TEXT.title })
-      .setOrigin(0.5);
-    const subtitleStyle = { fontFamily: FONT, fontSize: '24px', color: TEXT.subtitle };
+    const paper = this.add.graphics();
+    broadside(paper, width, this.scale.height);
     if (first) {
-      this.add.text(cx, portrait ? 300 : 212, TITLE_TEXT.slogan, subtitleStyle).setOrigin(0.5);
+      rule(paper, cx, titleY - 49, portrait ? 354 : 480);
+      rule(paper, cx, titleY + 48, portrait ? 354 : 480);
+      ribbon(paper, cx, portrait ? 300 : 210, 308, 44);
+      town(paper, cx, portrait ? 938 : 493);
+    }
+    this.add
+      .text(cx, titleY, first ? TITLE_TEXT.title.toUpperCase() : TITLE_TEXT.title, { fontFamily: FONT, fontSize: '72px', fontStyle: 'bold', color: ink })
+      .setOrigin(0.5);
+    const subtitleStyle = { fontFamily: FONT, fontSize: '24px', color: ink };
+    if (first) {
+      this.add.text(cx, portrait ? 300 : 210, TITLE_TEXT.slogan, { ...subtitleStyle, fontSize: '28px', fontStyle: 'bold', color: TEXT.button }).setOrigin(0.5);
       this.add.text(cx, portrait ? 352 : 254, TITLE_TEXT.story, { ...subtitleStyle, fontSize: '20px' }).setOrigin(0.5);
     } else {
       this.add.text(cx, geo.subtitleY, TITLE_TEXT.subtitle, subtitleStyle).setOrigin(0.5);
@@ -340,7 +349,7 @@ export class TitleScene extends Phaser.Scene {
     const lookHeight = portrait ? geo.levelH : MENU_BUTTON_H;
     const lookX = cx - (captionWidth + lookWidth * 2 + geo.gap) / 2;
     this.add
-      .text(lookX, 14 + lookHeight / 2, TITLE_TEXT.look, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: TEXT.subtitle })
+      .text(lookX, 14 + lookHeight / 2, TITLE_TEXT.look, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: ink })
       .setOrigin(0, 0.5);
     LOOKS.forEach((look, index) => {
       const rect = { x: lookX + captionWidth + index * (lookWidth + geo.gap), y: 14, width: lookWidth, height: lookHeight };
@@ -374,7 +383,7 @@ export class TitleScene extends Phaser.Scene {
     this.action('title:back', portrait ? { x: 130, y: 1020, width: 220, height: 74 }
       : { x: 28, y: 496, width: 120, height: MENU_BUTTON_H }, CAMPAIGN_TEXT.back, () => this.visit('first'));
     this.add
-      .text(cx, geo.levelCaptionY, TITLE_TEXT.difficulty, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: TEXT.subtitle })
+      .text(cx, geo.levelCaptionY, TITLE_TEXT.difficulty, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: ink })
       .setOrigin(0.5);
     const rects = titleRects(geo, cx);
     DIFFICULTIES.forEach((level, i) => {
@@ -384,7 +393,7 @@ export class TitleScene extends Phaser.Scene {
 
     // The map row (milestone 27): a caption, then a thumbnail button per map.
     this.add
-      .text(cx, geo.mapCaptionY, TITLE_TEXT.map, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: TEXT.subtitle })
+      .text(cx, geo.mapCaptionY, TITLE_TEXT.map, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: ink })
       .setOrigin(0.5);
     MAP_IDS.forEach((map, i) => {
       const rect = rects.maps[i];
@@ -400,7 +409,7 @@ export class TitleScene extends Phaser.Scene {
     });
 
     this.bestLine = this.add
-      .text(cx, geo.bestY, '', { fontFamily: FONT, fontSize: `${BEST_LINE_SIZE}px`, fontStyle: 'bold', color: TEXT.subtitle })
+      .text(cx, geo.bestY, '', { fontFamily: FONT, fontSize: `${BEST_LINE_SIZE}px`, fontStyle: 'bold', color: ink })
       .setOrigin(0.5);
 
     this.playButton = new Button(
@@ -412,7 +421,7 @@ export class TitleScene extends Phaser.Scene {
     );
 
     this.prompt = this.add
-      .text(cx, geo.promptY, TITLE_TEXT.prompt, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: TEXT.prompt })
+      .text(cx, geo.promptY, TITLE_TEXT.prompt, { fontFamily: FONT, fontSize: '18px', fontStyle: 'bold', color: ink })
       .setOrigin(0.5);
     if (geo.promptWrap > 0) this.prompt.setAlign('center').setWordWrapWidth(geo.promptWrap, true);
 

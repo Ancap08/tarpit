@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 import { swEnabled, writeServiceWorker } from './scripts/sw-build.ts';
@@ -11,6 +12,9 @@ function serviceWorker(): Plugin {
     apply: 'build',
     configResolved(config) {
       outDir = resolve(config.root, config.build.outDir);
+    },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'assets/fonts/OFL.txt', source: readFileSync('assets/fonts/OFL.txt') });
     },
     async closeBundle(error?: Error) {
       if (error) return;

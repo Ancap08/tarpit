@@ -5,6 +5,7 @@
 // pure (checkManifest, parseManifest) and tested in
 // check-asset-manifest.test.ts; the file walk runs only when this file is
 // the entry point.
+import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -35,8 +36,9 @@ export function isIgnored(path: string): boolean {
  * 'mit' is the repo's own license; checkManifest allows it only for files a
  * repo script drew.
  */
-export function licenseKind(license: string): 'cc0' | 'cc-by' | 'mit' | null {
+export function licenseKind(license: string): 'cc0' | 'cc-by' | 'mit' | 'ofl' | null {
   const l = license.trim().toUpperCase();
+  if (l === 'SIL OFL 1.1') return 'ofl';
   if (l === 'MIT') return 'mit';
   if (/^CC0(\s|$)/.test(l)) return 'cc0';
   if (/^CC-BY(\s+\d(\.\d)?)?$/.test(l)) return 'cc-by';
@@ -91,7 +93,7 @@ export function hasCredit(row: ManifestRow): boolean {
  * manifest rows: unlisted files, disallowed licenses, CC-BY without a credit
  * line, and rows that point at no file. Empty means the check passes.
  */
-export function checkManifest(files: string[], rows: ManifestRow[], scripts: ReadonlySet<string> = new Set()): string[] {
+export function checkManifest(files: string[], rows: ManifestRow[], scripts: ReadonlySet<string> = new Set(), hashes: ReadonlyMap<string, string> = new Map()): string[] {
   const problems: string[] = [];
   const checked = files.filter((f) => CHECKED_DIRS.some((d) => f.startsWith(d)) && !isIgnored(f)).sort();
   const byPath = new Map<string, ManifestRow>();
@@ -106,7 +108,14 @@ export function checkManifest(files: string[], rows: ManifestRow[], scripts: Rea
       continue;
     }
     const kind = licenseKind(row.license);
-    if (kind === null) problems.push(`${f}: license "${row.license}" is not allowed (only CC0 or CC-BY)`);
+    if (kind === null) problems.push(`${f}: license "${row.license}" is not allowed`);
+    if (kind === 'ofl') {
+      const licenseFile = /License file: ([^; ]+)/.exec(row.notes)?.[1];
+      if (!licenseFile || !checked.includes(licenseFile) || !licenseFile.endsWith('/OFL.txt'))
+        problems.push(`${f}: OFL needs its bundled license file`);
+      const digest = /SHA-256: ([0-9a-f]{64})\b/.exec(row.notes)?.[1];
+      if (!digest || digest !== hashes.get(f)) problems.push(`${f}: SHA-256 missing or different from manifest`);
+    }
     const script = sourceScript(row);
     if (script && !scripts.has(script)) problems.push(`${f}: source script "${script}" does not exist in the repo`);
     if (kind === 'mit' && !script)
@@ -137,7 +146,11 @@ function main(): void {
   const rows = parseManifest(readFileSync(manifestPath, 'utf8'));
   const files = CHECKED_DIRS.flatMap((d) => walk(root, join(root, d)));
   const scripts = walk(root, join(root, 'scripts')).filter((path) => lstatSync(join(root, path)).isFile());
-  const problems = checkManifest(files, rows, new Set(scripts));
+  const oflPaths = new Set(rows.filter((row) => licenseKind(row.license) === 'ofl').map((row) => row.path));
+  const hashes = new Map(files.filter((path) => oflPaths.has(path)).map((path) =>
+    [path, createHash('sha256').update(readFileSync(join(root, path))).digest('hex')],
+  ));
+  const problems = checkManifest(files, rows, new Set(scripts), hashes);
   if (problems.length > 0) {
     console.error(`check:assets: ${problems.length} problem(s) with assets/MANIFEST.md:`);
     for (const p of problems) console.error(`  - ${p}`);

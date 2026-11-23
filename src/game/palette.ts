@@ -1,7 +1,10 @@
 // Every colour the renderer uses, in one place. Numbers are 0xRRGGBB for
 // Graphics; CSS strings are for Text objects.
 
-export const FONT = '"Courier New", monospace';
+export const CASLON = 'Libre Caslon Text';
+export const HUD_CASLON = 'Tarpit HUD Caslon';
+export const FONT = `"${CASLON}", "Courier New", monospace`;
+export const HUD_FONT = `"${HUD_CASLON}", "Courier New", monospace`;
 
 export const COLORS = {
   // Map
@@ -137,14 +140,14 @@ export const COLORS = {
   // HUD
   hudBar: 0x1b1f24,
   hudLine: 0x3a414a,
-  button: 0x6b4a2b,
-  buttonHover: 0x86603a,
-  buttonPressed: 0x4f361f,
-  buttonDisabled: 0x3a3d42,
+  button: 0x503524,
+  buttonHover: 0x66472e,
+  buttonPressed: 0x322117,
+  buttonDisabled: 0x4d4640,
   buttonEdge: 0xd9b77e,
   buttonEdgeDisabled: 0x5a5e66,
   // The build bar's active pick: brighter fill, pale-yellow edge.
-  buttonPicked: 0xa0743f,
+  buttonPicked: 0x254a57,
   buttonEdgePicked: 0xfff2a8,
 
   // Build UI: placement cell highlight, selection ring, range circles, panel backing
@@ -204,7 +207,7 @@ export const TEXT = {
   hudDim: '#a89f8a',
   button: '#fff4dc',
   // 4.83:1 against COLORS.buttonDisabled (0x3a3d42); enabled text is 9.98:1.
-  buttonDisabled: '#a8adb5',
+  buttonDisabled: '#ddd2bf',
   title: '#f2e6c9',
   subtitle: '#a89f8a',
   prompt: '#e8c37a',

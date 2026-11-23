@@ -78,6 +78,18 @@ describe('checkManifest', () => {
     expect(checkManifest(['assets/a.png'], [row('assets/a.png', 'CC-BY 4.0', 'Credit: Jane Doe, opengameart.org')])).toEqual([]);
   });
 
+  it('requires the bundled OFL and the pinned hash for every font file', () => {
+    const license = 'assets/fonts/OFL.txt';
+    const font = 'assets/fonts/a.woff2';
+    const digest = 'a'.repeat(64);
+    const rows = [font, license].map((path) => row(path, 'SIL OFL 1.1', `License file: ${license}; SHA-256: ${digest}`));
+    const hashes = new Map([[font, digest], [license, digest]]);
+    expect(checkManifest([font, license], rows, new Set(), hashes)).toEqual([]);
+    expect(checkManifest([font], rows, new Set(), hashes)).toContain(`${font}: OFL needs its bundled license file`);
+    hashes.set(font, 'b'.repeat(64));
+    expect(checkManifest([font, license], rows, new Set(), hashes)).toEqual([`${font}: SHA-256 missing or different from manifest`]);
+  });
+
   it('flags rows for missing files and duplicate rows', () => {
     expect(checkManifest([], [row('assets/gone.png')])).toEqual([expect.stringMatching(/no such file/)]);
     expect(checkManifest(['assets/a.png'], [row('assets/a.png'), row('assets/a.png')])).toEqual([

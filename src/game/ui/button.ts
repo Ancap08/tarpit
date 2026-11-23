@@ -11,7 +11,7 @@ import Phaser from 'phaser';
 import { sound } from '../audio/engine';
 import type { SoundName } from '../audio/recipes';
 import type { Rect } from '../input';
-import { COLORS, FONT, TEXT } from '../palette';
+import { COLORS, HUD_FONT, TEXT } from '../palette';
 
 export interface ButtonOptions {
   fontSize?: string;
@@ -31,6 +31,7 @@ const PAD_X = 10;
 
 export class Button {
   private readonly box: Phaser.GameObjects.Rectangle;
+  private readonly trim: Phaser.GameObjects.Graphics;
   private readonly label: Phaser.GameObjects.Text;
   private readonly rightLabel: Phaser.GameObjects.Text | null;
   private readonly onHover?: (over: boolean) => void;
@@ -53,8 +54,9 @@ export class Button {
     this.r = { ...rect };
     this.onHover = options.onHover;
     this.labelY = options.labelY;
-    const style = { fontFamily: FONT, fontSize: options.fontSize ?? '18px', fontStyle: 'bold', color: TEXT.button };
+    const style = { fontFamily: HUD_FONT, fontSize: options.fontSize ?? '18px', fontStyle: 'bold', color: TEXT.button };
     this.box = scene.add.rectangle(0, 0, rect.width, rect.height, COLORS.button).setOrigin(0, 0);
+    this.trim = scene.add.graphics();
     if (options.right === undefined) {
       this.label = scene.add.text(0, 0, text, style).setOrigin(0.5).setAlign('center');
       this.rightLabel = null;
@@ -149,6 +151,15 @@ export class Button {
     this.r.x = x;
     this.r.y = y;
     this.box.setPosition(x, y);
+    const { width, height } = this.r;
+    const edge = this.trim.clear();
+    edge.lineStyle(1, COLORS.buttonEdge, 0.65).strokeRect(x + 4, y + 4, width - 8, height - 8);
+    if (height >= 70 && width >= 180) {
+      edge.fillStyle(COLORS.buttonEdge);
+      for (const dx of [8, width - 8]) {
+        for (const dy of [8, height - 8]) edge.fillCircle(x + dx, y + dy, 2);
+      }
+    }
     const mid = y + (this.labelY ?? this.r.height / 2);
     if (this.rightLabel) {
       this.label.setPosition(x + PAD_X, mid);
@@ -161,7 +172,7 @@ export class Button {
   setShown(shown: boolean): void {
     if (this.shown === shown) return;
     this.shown = shown;
-    for (const o of [this.box, this.label, this.rightLabel]) o?.setVisible(shown);
+    for (const o of [this.box, this.trim, this.label, this.rightLabel]) o?.setVisible(shown);
     if (this.box.input) this.box.input.enabled = shown;
     if (!shown) {
       // A hidden button gets no pointerout, so clear hover and press here.
