@@ -9314,3 +9314,35 @@ stuck after a layout switch, no ADD blend, no boss overlay in Painted. Still
 stale: `docs/DESIGN.md` line 602 says "Painted Meadow uses four bearings ...
 Other maps use the Classic drawing" (the Guards section), and the README
 credits line says "Painted Meadow art".
+
+## 2026-11-24: milestone 44b, the characters re-dressed
+
+The five ordinary collectors, both bosses and the four townsfolk are Blender
+miniatures. The two painted densities share the same four walk headings and
+the existing ground pivots. Guard frames are grouped by squad slot, then
+heading and idle/strike pose. The Archer carries a bow and strikes with a
+knife. The exit cottage carries the town's gold coin on a blue pennon.
+
+At first the hound's ears hid the collar, the axe blade looked narrow and
+the Assessor's ledger looked like a block. The revised collar crosses the
+shoulders, the axe has a flared bit and the ledger has a title panel and
+spine. The front-facing contact sheet also showed that the Redcoat's shield
+badge was upside down and the Harpy's circlet covered its face. The shield
+now shows an upright crown in that view and the circlet is an open band.
+The satchel and circlet are secondary details at phone scale.
+
+The [contact sheet](docs/art/theme/characters.jpg) compares native 1× and
+2× frames with the packed textures from 188a487. The six map views in
+[the review folder](docs/art/theme/) stage all seven enemy types, Guards
+and a Barricade together. They include a four-walker pile so its health
+bars and held count can be inspected. The boss crops show each in context.
+
+The shared 1× WebP is 391,328 bytes with 7,706 bytes of frame data. At 2×
+the files are 1,003,276 and 8,063 bytes. With the Meadow ground, a 1× load
+grew from 412,201 to 450,948 bytes (9.4%). The full 2× load grew from
+1,013,421 to 1,115,469 bytes. The three-request path and the four-request
+speed-probe path use the existing loader.
+
+Cold Meadow Play with the production service worker on the shaped 1.6 Mbps,
+150 ms link took 2.470 s before and 2.568 s after at 1×. At 2× it took
+5.691 s before and 5.924 s after. Each measurement fetched three art files.
