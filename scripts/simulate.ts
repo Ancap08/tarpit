@@ -27,9 +27,8 @@ try {
   console.log('Balance targets');
   for (const target of targets.TARGETS) {
     const result = target.check();
-    const pinned = !result.ok && targets.isPinnedBalanceMiss(target, result);
-    console.log(`${result.ok ? 'ok  ' : pinned ? 'MISS (pinned)' : 'MISS'}  ${target.id.padEnd(3)} ${(target.map ?? '').padEnd(10)} ${target.label}: ${result.info}`);
-    if (!result.ok && !pinned) process.exitCode = 1;
+    console.log(`${result.ok ? 'ok  ' : 'MISS'}  ${target.id.padEnd(3)} ${(target.map ?? '').padEnd(10)} ${target.label}: ${result.info}`);
+    if (!result.ok) process.exitCode = 1;
   }
 
   for (const map of MAP_IDS) {

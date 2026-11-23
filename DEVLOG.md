@@ -8317,3 +8317,37 @@ Older verifier pins moved with their owning numbers. Grumblemaw arrival/pack/pac
 | B2 | all | unresolved/unresolved/kill |
 
 Without specials, two Normal plans die before the final boss; Riverbend kills him. Disabling Tar Barrel on Meadow improves the result because the policy also changes the sequence of other casts. The idle and spending endless builds both die on the first 1.8× cycle. Giving the spender different purchases in scratch did not restore a later survival wave. These are old target regressions alongside the two V6 misses.
+
+
+### Third pass
+
+#### Baseline at 107832a
+
+With the original wave tables, Normal HP growth from 1.00 through 1.10 produced no act-2 exits on any map. At 1.13 all the act-2 exits were Trolls from wave 18, which sent 34 at one-second intervals. Peak population alone did not predict a leak. Riverbend held 40 at growth 1.10 with zero losses and leaked six at 1.13 with a peak of 37.
+
+Each cell lists the Normal spawn HP factor before rounding, then **lives lost / peak alive** for Meadow, Switchback and Riverbend in that order. Lives lost excludes the wave-15 Stone Walls grant. All runs used the same reinvesting combo, default rewards and specials.
+
+| Wave | 1.00 | 1.04 | 1.07 | 1.10 | 1.13 |
+|---:|---|---|---|---|---|
+| 1 | 1.000 · 0/2, 0/4, 0/3 | 1.000 · 0/2, 0/4, 0/3 | 1.000 · 0/2, 0/4, 0/3 | 1.000 · 0/2, 0/4, 0/3 | 1.000 · 0/2, 0/4, 0/3 |
+| 2 | 1.000 · 0/9, 0/13, 0/11 | 1.000 · 0/9, 0/13, 0/11 | 1.000 · 0/9, 0/13, 0/11 | 1.000 · 0/9, 0/13, 0/11 | 1.000 · 0/9, 0/13, 0/11 |
+| 3 | 1.000 · 0/15, 0/16, 0/16 | 1.000 · 0/15, 0/16, 0/16 | 1.000 · 0/15, 0/16, 0/16 | 1.000 · 0/15, 0/16, 0/16 | 1.000 · 0/15, 0/16, 0/16 |
+| 4 | 1.000 · 1/14, 0/14, 0/14 | 1.000 · 1/14, 0/14, 0/14 | 1.000 · 1/14, 0/14, 0/14 | 1.000 · 1/14, 0/14, 0/14 | 1.000 · 1/14, 0/14, 0/14 |
+| 5 | 1.000 · 2/19, 1/19, 2/19 | 1.000 · 2/19, 1/19, 2/19 | 1.000 · 2/19, 1/19, 2/19 | 1.000 · 2/19, 1/19, 2/19 | 1.000 · 2/19, 1/19, 2/19 |
+| 6 | 1.000 · 0/18, 0/14, 0/13 | 1.000 · 0/18, 0/14, 0/13 | 1.000 · 0/18, 0/14, 0/13 | 1.000 · 0/18, 0/14, 0/13 | 1.000 · 0/18, 0/14, 0/13 |
+| 7 | 1.000 · 3/16, 0/16, 3/15 | 1.000 · 3/16, 0/16, 3/15 | 1.000 · 3/16, 0/16, 3/15 | 1.000 · 3/16, 0/16, 3/15 | 1.000 · 3/16, 0/16, 3/15 |
+| 8 | 1.000 · 0/26, 0/27, 0/23 | 1.000 · 0/26, 0/27, 0/23 | 1.000 · 0/26, 0/27, 0/23 | 1.000 · 0/26, 0/27, 0/23 | 1.000 · 0/26, 0/27, 0/23 |
+| 9 | 1.000 · 0/15, 0/15, 0/14 | 1.000 · 0/15, 0/15, 0/14 | 1.000 · 0/15, 0/15, 0/14 | 1.000 · 0/15, 0/15, 0/14 | 1.000 · 0/15, 0/15, 0/14 |
+| 10 | 1.000 · 0/15, 5/16, 0/14 | 1.000 · 0/15, 5/16, 0/14 | 1.000 · 0/15, 5/16, 0/14 | 1.000 · 0/15, 5/16, 0/14 | 1.000 · 0/15, 5/16, 0/14 |
+| 11 | 1.000 · 0/9, 0/18, 0/9 | 1.040 · 0/10, 0/18, 0/10 | 1.070 · 0/10, 0/18, 0/10 | 1.100 · 0/10, 0/18, 0/10 | 1.130 · 0/10, 0/19, 0/10 |
+| 12 | 1.000 · 0/14, 0/13, 0/12 | 1.082 · 0/14, 0/14, 0/12 | 1.145 · 0/14, 0/14, 0/12 | 1.210 · 0/14, 0/14, 0/13 | 1.277 · 0/14, 0/14, 0/13 |
+| 13 | 1.000 · 0/9, 0/15, 0/7 | 1.125 · 0/9, 0/15, 0/7 | 1.225 · 0/9, 0/15, 0/7 | 1.331 · 0/9, 0/15, 0/7 | 1.443 · 0/9, 0/15, 0/7 |
+| 14 | 1.000 · 0/17, 0/14, 0/11 | 1.170 · 0/17, 0/15, 0/14 | 1.311 · 0/19, 0/15, 0/15 | 1.464 · 0/20, 0/17, 0/15 | 1.630 · 0/20, 0/17, 0/16 |
+| 15 | 1.000 · 0/11, 0/12, 0/12 | 1.217 · 0/12, 0/12, 0/12 | 1.403 · 0/13, 0/12, 0/12 | 1.611 · 0/13, 0/13, 0/12 | 1.842 · 0/14, 0/13, 0/13 |
+| 16 | 1.000 · 0/5, 0/3, 0/5 | 1.265 · 0/5, 0/4, 0/5 | 1.501 · 0/5, 0/5, 0/6 | 1.772 · 0/5, 0/5, 0/6 | 2.082 · 0/6, 0/7, 0/7 |
+| 17 | 1.000 · 0/12, 0/12, 0/9 | 1.316 · 0/14, 0/12, 0/12 | 1.606 · 0/15, 0/13, 0/14 | 1.949 · 0/17, 0/14, 0/17 | 2.353 · 0/18, 0/16, 0/18 |
+| 18 | 1.000 · 0/25, 0/29, 0/25 | 1.369 · 0/29, 0/32, 0/25 | 1.718 · 0/33, 0/35, 0/29 | 2.144 · 0/36, 0/38, 0/40 | 2.658 · 8/40, 5/41, 6/37 |
+| 19 | 1.000 · 0/22, 0/19, 0/20 | 1.423 · 0/24, 0/23, 0/21 | 1.838 · 0/26, 0/29, 0/25 | 2.358 · 0/29, 0/30, 0/24 | 3.004 · 0/31, 0/32, 0/30 |
+| 20 | 1.000 · 0/7, 0/6, 0/9 | 1.480 · 0/8, 0/9, 0/9 | 1.967 · 0/8, 0/9, 0/9 | 2.594 · 0/9, 0/9, 0/8 | 3.395 · 0/9, 0/9, 0/9 |
+
+Replaying the unchanged 1.13 Normal and 1.12 Hard factors through the new assertions provided the negative control. S2 failed on all six reference campaigns. For S3, Meadow Normal finished with 17, 10 and 10 lives at 95%, 100% and 105% act-2 HP. Meadow Hard finished with 6 lives, 4 lives and defeat on wave 19. Riverbend Hard also lost on wave 19 at 105%.

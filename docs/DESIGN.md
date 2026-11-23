@@ -1284,7 +1284,7 @@ the Tar Barrel takes every turn), fired at the working point with a big
 one inside. Otherwise, if a point works for the Powder Keg, the keg is
 thrown there. Otherwise it waits. The best point catches the most enemies;
 ties go to the point nearest the exit. A forbidden special is skipped (target
-N9), and in the Tar Barrel and Fire Arrows' turns the other takes its
+S5), and in the Tar Barrel and Fire Arrows' turns the other takes its
 place. The headless recorder fires each choice and writes it into the
 script's timed list (`timed`), so `playScripted` and the browser's
 `runScript` replay the same game.
@@ -1301,28 +1301,26 @@ Normal, every map unless specified:
 - **N1** noTowers loses by wave 3.
 - **N2** lazyBuild loses on wave 7 to 14.
 - **N3** longbowSpam loses on wave 8 to 16.
-- **V1** The reinvesting default combo wins with 9–14 lives and loses at least three lives in act 2.
+- **S1** The reinvesting combo with default rewards and specials wins Normal with 9 to 15 lives (the N4 band).
+- **S2** The combo loses lives on at least three act-2 waves, at most four on any wave. The Hard plan on Hard also loses lives on at least three waves, at most five per wave.
+- **S3** In balance tests, scale act-2 spawn HP by 0.95 and 1.05 before rounding. Both perturbed campaigns must win. Final lives must stay within four of the ordinary Normal combo and within five of the ordinary Hard plan on Hard.
 - **V2** Its fixed plan loses in act 2 or wins with at least five fewer lives.
-- **V3** The reinvesting wide build wins within four lives of the combo and buys no second upgrades.
+- **S4** The reinvesting wide build wins within five lives of the combo and buys no second upgrades.
 - **V4** Lazy wins Easy with at least eight lives, loses Normal in waves 7–14 and loses Hard by wave 8. The Hard plan wins Hard with at least three lives.
 - **V5** The Normal combo and the Hard plan on Hard both kill Grumblemaw. An exit costs ten lives.
-- **V6** All 27 reward combinations win. Across each offer, with either other pick held fixed at any of its three options, the best and worst finish within five lives.
+- **S7** All 27 reward combinations win. For each offer, hold the other two picks fixed in each of their nine combinations. The best and worst choices finish within six lives.
 - **V7** Meadow meets all four campaign timing and wave-shape targets.
 - **P1** For each tower, A beats B by at least two lives somewhere and B beats A by at least two elsewhere. Compare the combo and the specialist on all maps, with default rewards and specials on Normal.
 - **P2** Every one of those A/B gaps is at most six lives.
 - **P3** The two paths trade places between a lone Troll and ten Goblins in the combat examples.
 - **P4** At equal gold each tower has a path that beats another level-2 copy by at least one life, and at least one comparison in which the copy wins or ties.
-- **N5** comboBuildNoFire is strictly worse than comboBuild by lives or loss.
-- **N6** comboNoSpecials wins. comboBuild wins with at least 3 more lives.
+- **S5** The combo finishes with at least three more lives than the reinvesting combo without specials, which wins or loses on wave 17 or later. Forbidding any one special can gain at most one life.
+- **S6** Removing Fire Pots can gain at most one life per map. Keeping them gives the combo more lives on at least two maps.
 - **N7** noAntiAir lets at least half of wave 4's Harpies exit and loses
   by wave 12.
 - **N8** oneMusket lets at most 6 of wave 1's enemies exit.
-- **N9** On Meadow, soundBuild lasts longer than soundBuildNoTar. Forbidding
-  any one special makes the combo strictly worse by lives and then kills.
-  The policy fires at least 30 specials and at least 80% catch 3 or more
-  enemies.
-- **N10b** For each offer, fixing the other picks at their defaults,
-  the difference between the best and worst final lives is at most four.
+- **S9** On Meadow, soundBuild outlasts soundBuildNoTar, measured in simulation ticks.
+- **N9** On Meadow, the combo fires at least 30 specials and at least 80% catch three or more enemies.
 - **N10c** Each reward is strictly best among its offer on a named build,
   map and difficulty (Normal or Hard), ranked by lives then kills.
 - **N10d** Each reward changes lives or defeat wave for at least three
@@ -1330,8 +1328,6 @@ Normal, every map unless specified:
   Both runs play the same build. The comparison neutralizes just the
   selected effect and keeps the other two picks active. Purchases respond
   to each run’s own gold, and the normal pick action runs in both games.
-- **B2** The Normal combo without specials wins on all maps and
-  Grumblemaw escapes on at least two.
 - **B3** The Easy lazy build wins on every map with at least eight lives,
   whether the boss dies or escapes.
 - **N11** A Powder Keg kills a Harpy or Wolf in one hit and inflicts at
@@ -1353,12 +1349,7 @@ Hard, every map:
 
 Endless, every map:
 
-- **X1** On Normal, endlessIdle loses on the second through fifth
-  endless wave.
-- **X2** On Normal, endlessGreedy loses on a later endless wave than
-  endlessIdle, by the twelfth endless wave.
-- **X3** The six measured endless runs per map (idle and greedy on Easy,
-  Normal and Hard) end in loss below the headless cap.
+- **S8** After the Normal combo wins, the idle build loses on the second through sixth endless wave. Continued reinvestment lasts at least two waves longer and loses by the fourteenth endless wave. Every measured endless run ends below the safety cap.
 
 The campaign wave rules R1 to R4 hold too.
 

@@ -11,7 +11,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { archetypeScript, balanceRun, matrixCell, MATRIX_ARCHETYPES, runsOn, type MatrixArchetype } from './balanceRuns';
-import { boonBalancePicks, boonBalanceRun, isPinnedBalanceMiss, TARGETS } from './balanceTargets';
+import { boonBalancePicks, boonBalanceRun, TARGETS } from './balanceTargets';
 import type { Difficulty } from './difficulty';
 import type { MapId } from './map';
 import { playScripted } from './headless';
@@ -252,7 +252,7 @@ export function describeBalance(map: MapId): void {
 
   describe(`all 27 reward combinations on ${map}`, () => {
     for (const picks of boonBalancePicks()) {
-      it(`V6: combo wins with ${picks.join(' / ')}`, () => {
+      it(`S7: combo wins with ${picks.join(' / ')}`, () => {
         const run = boonBalanceRun(map, picks);
         expect(run.phase).toBe('won');
         expect(run.refused).toBe(0);
@@ -266,7 +266,7 @@ export function describeBalance(map: MapId): void {
       if (!mine) continue;
       it(`${target.id}: ${target.label}`, () => {
         const result = target.check();
-        expect(result.ok || isPinnedBalanceMiss(target, result), result.info).toBe(true);
+        expect(result.ok, result.info).toBe(true);
       });
     }
   });
