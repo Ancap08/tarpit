@@ -127,6 +127,7 @@ for (const [map, wall, squad] of [
       const s = t.state();
       s.wave = 6;
       if (!t.startWave().ok || !t.useSpecialAt('barricade', wall.x, wall.y).ok) throw Error('wall fixture');
+      t.step(1); // Two specials cannot be cast on the same simulation tick.
       s.specialCharges = 1;
       if (!t.useSpecialAt('guards', squad.x, squad.y).ok) throw Error('squad fixture');
       const blocker = s.blockers.find(b => b.kind === 'barricade')!;
