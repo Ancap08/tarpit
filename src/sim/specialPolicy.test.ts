@@ -93,6 +93,10 @@ describe('the rule', () => {
     state.waveTick = 30;
     state.specialCharges = 1;
     expect(policyChoice(state, 'tarBarrel', options)?.special).toBe('fireArrows');
+    state.waveTick = 31;
+    expect(policyChoice(state, 'tarBarrel', { ...options, refreshBarricade: true })).toEqual({
+      special: 'barricade', ...barricadePoint, hits: 0,
+    });
   });
 });
 

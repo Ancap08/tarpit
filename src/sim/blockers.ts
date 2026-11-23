@@ -1,7 +1,7 @@
 import { pathLength, projectOntoTrail } from './map';
 import type { MapDef, Point, TrailPoint } from './types';
 
-export const BARRICADE_HP = 400;
+export const BARRICADE_HP = 324;
 export const BARRICADE_SNAP_RADIUS = 40;
 export const BARRICADE_END_EXCLUSION = 64;
 

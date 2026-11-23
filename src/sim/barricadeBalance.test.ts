@@ -29,12 +29,12 @@ function campaignGain(map: MapId, level: Difficulty): number {
 }
 
 describe('Barricade campaign balance', () => {
-  it('gains at least one Normal life on two maps, loses at most two, and gains at most six (K2, K3)', () => {
+  it('at the fixed chokes, gains at least one Normal life on two maps and loses at most two (K2)', () => {
     const gains = MAP_IDS.map((map) => campaignGain(map, 'normal'));
     expect(gains.filter((gain) => gain >= 1).length).toBeGreaterThanOrEqual(2);
   });
 
-  it.each(MAP_IDS)('gains at most six Easy or Hard lives on %s (K3)', (map) => {
+  it.each(MAP_IDS)('at the fixed choke on %s, gains at most six Easy or Hard lives', (map) => {
     campaignGain(map, 'easy');
     campaignGain(map, 'hard');
   });

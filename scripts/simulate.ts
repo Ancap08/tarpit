@@ -3,6 +3,7 @@
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
+import type * as Sweeps from '../src/sim/barricadeSweep';
 import type * as Balance from '../src/sim/balanceRuns';
 import type * as Targets from '../src/sim/balanceTargets';
 import type * as Maps from '../src/sim/map';
@@ -148,6 +149,16 @@ try {
   if (actual !== expected) {
     console.error(`Reference balance report changed: expected SHA-256 ${expected}, got ${actual}`);
     process.exitCode = 1;
+  }
+
+  // Report the placement sweep separately so stdout stays byte-identical to main.
+  const { sweepBarricades } = await server.ssrLoadModule('/src/sim/barricadeSweep.ts') as typeof Sweeps;
+  for (const map of MAP_IDS) {
+    for (const level of ['normal', 'hard'] as const) {
+      const { best, points, held, hardWinsFromLoss, ok } = sweepBarricades(map, level);
+      console.error(`${ok ? 'ok' : 'MISS'}  K3 ${map}/${level}: best at ${best.distance} px, gain ${best.gain}, ${points} points, ${held} permanent holds, ${hardWinsFromLoss} Hard losses turned into wins`);
+      if (!ok) process.exitCode = 1;
+    }
   }
 } finally {
   await server.close();

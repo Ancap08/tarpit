@@ -3,10 +3,11 @@
 import { describe, expect, it } from 'vitest';
 import { buildTower, useSpecial } from './actions';
 import { BARRICADE_END_EXCLUSION, BARRICADE_HP, BARRICADE_SNAP_RADIUS, barricadePlacement } from './blockers';
+import { measureBarricadePoint } from './barricadeSweep';
 import { applyBurn, applySpecialSlow, findTarget } from './combat';
 import { ENEMY_STATS } from './enemies';
 import { balanceRun, playWithStats } from './balanceRuns';
-import { COMBO_BARRICADE_POINTS, comboBarricade } from './headless';
+import { comboBarricade } from './headless';
 import { callNextWave, continueEndless, createGame, lastSpawnTick, startWave, tick } from './game';
 import { MAP_IDS, MAPS, pathLength, positionAlongPath } from './map';
 import type { Enemy, EnemyType, GameState, MapDef, Point } from './types';
@@ -84,24 +85,24 @@ describe('the blocking rule, by hand', () => {
     run(s, 9);
     expect(s.blocker!.hp).toBe(BARRICADE_HP);
     run(s, 1);
-    expect(s.blocker!.hp).toBeCloseTo(399.9, 9);
+    expect(s.blocker!.hp).toBeCloseTo(323.9, 9);
     run(s, 20);
-    expect(s.blocker!.hp).toBeCloseTo(400 - 3.3, 9);
+    expect(s.blocker!.hp).toBeCloseTo(324 - 3.3, 9);
   });
 
   it('break ticks, worked out by hand', () => {
-    // Troll 45/60 = 0.75 per tick: 533 ticks leave 0.25, the 534th breaks it.
-    expect(breakTick([mk(1, 'troll', AT)])).toBe(534);
-    // Ten Goblins 1.0 per tick: tick 400 (K5).
-    expect(breakTick(Array.from({ length: 10 }, (_, i) => mk(i + 1, 'goblin', AT)))).toBe(400);
-    // Troll + 2 Goblins + Shieldbearer: (45+6+6+12)/60 = 1.15 per tick; 347 ticks = 399.05, 348 breaks.
-    expect(breakTick([mk(1, 'troll', AT), mk(2, 'goblin', AT), mk(3, 'goblin', AT), mk(4, 'shieldbearer', AT)])).toBe(348);
-    // Grumblefoot 300/60 = 5 per tick: 80. Grumblemaw 400/60: 60.
-    expect(breakTick([mk(1, 'boss', AT)])).toBe(80);
-    expect(breakTick([mk(1, 'grumblemaw', AT)])).toBe(60);
-    // Lone Goblin 0.1 per tick: 4000 ticks. Lone Wolf 8/60: 3000 ticks.
-    expect(breakTick([mk(1, 'goblin', AT)])).toBe(4000);
-    expect(breakTick([mk(1, 'wolf', AT)])).toBe(3000);
+    // Troll 45/60 = 0.75 per tick: 431 ticks leave 0.75, the 432nd breaks it.
+    expect(breakTick([mk(1, 'troll', AT)])).toBe(432);
+    // Ten Goblins 1.0 per tick: tick 324 (K5).
+    expect(breakTick(Array.from({ length: 10 }, (_, i) => mk(i + 1, 'goblin', AT)))).toBe(324);
+    // Troll + 2 Goblins + Shieldbearer: (45+6+6+12)/60 = 1.15 per tick; 281 ticks = 323.15, 282 breaks.
+    expect(breakTick([mk(1, 'troll', AT), mk(2, 'goblin', AT), mk(3, 'goblin', AT), mk(4, 'shieldbearer', AT)])).toBe(282);
+    // Grumblefoot 300/60 = 5 per tick: 65. Grumblemaw 400/60: 49.
+    expect(breakTick([mk(1, 'boss', AT)])).toBe(65);
+    expect(breakTick([mk(1, 'grumblemaw', AT)])).toBe(49);
+    // Lone Goblin 0.1 per tick: 3240 ticks. Lone Wolf 8/60: 2430 ticks.
+    expect(breakTick([mk(1, 'goblin', AT)])).toBe(3240);
+    expect(breakTick([mk(1, 'wolf', AT)])).toBe(2430);
     // A Harpy does nothing.
     const h = arena([mk(1, 'harpy', 100)]);
     useSpecial(h, 'barricade', { x: AT, y: 240 });
@@ -111,10 +112,10 @@ describe('the blocking rule, by hand', () => {
   });
 
   it('enemies walk on the tick after the break, and every enemy was clamped on the break tick', () => {
-    // Boss 5 + Goblin 0.1 = 5.1 per tick: 78 ticks = 397.8, 79 ticks = 402.9 -> breaks on tick 79.
+    // Boss 5 + Goblin 0.1 = 5.1 per tick: 63 ticks = 321.3, 64 ticks = 326.4 -> breaks on tick 64.
     const s = arena([mk(1, 'boss', AT), mk(2, 'goblin', AT - 0.5)]);
     useSpecial(s, 'barricade', { x: AT, y: 240 });
-    run(s, 79);
+    run(s, 64);
     expect(s.blocker).toBeNull();
     expect(s.enemies.map((e) => e.distance)).toEqual([AT, AT]);
     expect(s.events.filter((e) => e.kind === 'blockerBreak')).toHaveLength(1);
@@ -129,7 +130,7 @@ describe('the blocking rule, by hand', () => {
     tick(s);
     expect(s.enemies[0].distance).toBeCloseTo(AT + 1.001, 9);
     expect(s.enemies[1].distance).toBe(AT);
-    expect(s.blocker!.hp).toBeCloseTo(399.9, 9);
+    expect(s.blocker!.hp).toBeCloseTo(323.9, 9);
   });
 
   it('flyers pass; ground walkers behind a flyer still stop', () => {
@@ -184,7 +185,7 @@ describe('the blocking rule, by hand', () => {
     s.specialRechargeTicks = 0;
     const r = useSpecial(s, 'barricade', { x: 300, y: 240 });
     expect(r.ok).toBe(true);
-    expect(s.blocker).toMatchObject({ distance: 300, hp: 400 });
+    expect(s.blocker).toMatchObject({ distance: 300, hp: 324 });
     run(s, 140);
     expect(s.enemies.map((e) => e.distance)).toEqual([300, 300, 300, 300]);
   });
@@ -312,7 +313,7 @@ describe('boss break times and rewards', () => {
     const s = arena([]);
     s.boons = ['quickHands', 'hotCoals', 'tarLinger'] as never;
     useSpecial(s, 'barricade', { x: AT, y: 240 });
-    expect(s.blocker).toMatchObject({ hp: 400, maxHp: 400 });
+    expect(s.blocker).toMatchObject({ hp: 324, maxHp: 324 });
     expect(s.specialRechargeTicks).toBe(684);
   });
 });
@@ -322,7 +323,7 @@ describe('reuse and abuse probes', () => {
     // movement.ts clamps to blocker.distance, but removeExitedEnemies treats distance >= exit as out.
     // A castle wall at the exit would need that rule changed (the Barricade itself is kept 64 px away).
     const s = arena([mk(1, 'goblin', 959)]);
-    s.blocker = { x: 960, y: 240, distance: 960, angle: 0, hp: 400, maxHp: 400 };
+    s.blocker = { x: 960, y: 240, distance: 960, angle: 0, hp: 324, maxHp: 324 };
     const lives = s.lives;
     tick(s);
     expect(s.lives).toBe(lives - 1);
@@ -354,20 +355,30 @@ describe('reuse and abuse probes', () => {
   });
 });
 
-describe('K3 at a point the reference build does not use', () => {
-  // VERIFIER FINDING: DESIGN.md K3 says the gain is at most six lives on every map and difficulty.
-  // It holds at the three fixed points, but a wall 224 px before the Meadow exit (trail distance 1360)
-  // takes Hard from 3 lives to 10 (+7) and Normal from 14 to 20 (+6, a full house). The test states
-  // the K3 limit and is expected to fail until the number or the claim is changed.
-  it.fails('Meadow Hard gains at most six lives with the wall at trail distance 1360', () => {
-    const saved = COMBO_BARRICADE_POINTS.meadow;
-    (COMBO_BARRICADE_POINTS as Record<string, unknown>).meadow = positionAlongPath(MAPS.meadow, 1360);
-    try {
-      const run = playWithStats(comboBarricade('hard', 'meadow'), 'hard');
-      expect(run.phase).toBe('won');
-      expect(run.lives - balanceRun('comboBuild', 'meadow', 'hard').lives).toBeLessThanOrEqual(6);
-    } finally {
-      (COMBO_BARRICADE_POINTS as Record<string, unknown>).meadow = saved;
-    }
+describe('K3 placement regressions', () => {
+  // First best completed point on each 48 px grid. npm run sim checks every point.
+  it.each([
+    ['meadow', 'normal', 448, 'won', 4], ['meadow', 'hard', 64, 'lost', -3],
+    ['switchback', 'normal', 448, 'won', 3], ['switchback', 'hard', 208, 'lost', 0],
+    ['riverbend', 'normal', 400, 'won', 0], ['riverbend', 'hard', 64, 'lost', -1],
+  ] as const)('%s %s at trail distance %i', (map, level, distance, phase, expectedGain) => {
+    const baseline = balanceRun('comboBuild', map, level);
+    const run = measureBarricadePoint(map, level, distance);
+    expect(run.phase).toBe(phase);
+    if (run.phase === 'held') throw new Error('Expected a completed campaign');
+    const gain = run.lives - baseline.lives;
+    expect(gain).toBe(expectedGain);
+    expect(gain).toBeLessThanOrEqual(6);
+    if (level === 'hard' && baseline.phase === 'lost') expect(run.phase).toBe('lost');
+  });
+
+  it('also fixes the original Meadow Hard gain of seven under the mixed-special policy', () => {
+    const barricadePoint = positionAlongPath(MAPS.meadow, 1360);
+    const script = comboBarricade('hard', 'meadow', undefined, undefined, { barricadePoint });
+    const run = playWithStats(script, 'hard');
+    expect(run.refused).toBe(0);
+    expect(run.phase).toBe('won');
+    expect(run.lives).toBe(7);
+    expect(run.lives - balanceRun('comboBuild', 'meadow', 'hard').lives).toBeLessThanOrEqual(6);
   });
 });

@@ -970,8 +970,11 @@ export const COMBO_BARRICADE_POINTS: Readonly<Record<MapId, Point>> = {
 };
 
 /** The combo purchase policy, with Barricades placed beside its splash towers. */
-export function comboBarricade(difficulty?: Difficulty, map: MapId = DEFAULT_MAP, boons?: BoonChoices, report?: RecordReporter): WaveScript {
-  return recordScript(followComboPlan(map), { difficulty, map, boons, specials: { barricadePoint: COMBO_BARRICADE_POINTS[map] }, report });
+export function comboBarricade(difficulty?: Difficulty, map: MapId = DEFAULT_MAP, boons?: BoonChoices, report?: RecordReporter,
+  specials: Pick<PolicyOptions, 'barricadePoint' | 'refreshBarricade'> = {}): WaveScript {
+  return recordScript(followComboPlan(map), {
+    difficulty, map, boons, report, specials: { barricadePoint: COMBO_BARRICADE_POINTS[map], ...specials },
+  });
 }
 
 /**

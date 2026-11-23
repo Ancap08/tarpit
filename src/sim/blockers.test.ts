@@ -112,7 +112,7 @@ describe('Barricade placement', () => {
     expect(state.enemies).toEqual(before.enemies);
     expect(state.zones).toEqual([]);
     expect(state.gold).toBe(before.gold);
-    expect(state.blocker).toEqual({ ...WALL, distance: WALL.x, angle: 0, hp: 400, maxHp: 400 });
+    expect(state.blocker).toEqual({ ...WALL, distance: WALL.x, angle: 0, hp: BARRICADE_HP, maxHp: BARRICADE_HP });
     expect(state.events.slice(before.events.length)).toEqual([
       { kind: 'special', type: 'barricade', ...WALL, radius: 0, hits: 0, angle: 0 },
     ]);
@@ -122,15 +122,15 @@ describe('Barricade placement', () => {
     const pair = arena([enemy(0, 'goblin'), enemy(1, 'troll', 260)]);
     expect(useSpecial(pair, 'barricade', WALL).ok).toBe(true);
     tick(pair);
-    expect(pair.blocker?.hp).toBeCloseTo(399.9, 10);
+    expect(pair.blocker?.hp).toBeCloseTo(BARRICADE_HP - 0.1, 10);
     expect(callNextWave(pair).ok).toBe(true);
-    expect(pair.blocker?.hp).toBeCloseTo(399.9, 10);
+    expect(pair.blocker?.hp).toBeCloseTo(BARRICADE_HP - 0.1, 10);
     expect(useSpecial(pair, 'barricade', { x: 200, y: 240 }).ok).toBe(true);
-    expect(pair.blocker).toEqual({ x: 200, y: 240, angle: 0, distance: 200, hp: 400, maxHp: 400 });
+    expect(pair.blocker).toEqual({ x: 200, y: 240, angle: 0, distance: 200, hp: BARRICADE_HP, maxHp: BARRICADE_HP });
     expect(pair.events.some((e) => e.kind === 'blockerBreak')).toBe(false);
     tick(pair);
     expect(pair.enemies.slice(0, 2).map((e) => e.distance)).toEqual([161, (260 + 35 / 60) + 35 / 60]);
-    expect(pair.blocker?.hp).toBe(400);
+    expect(pair.blocker?.hp).toBe(BARRICADE_HP);
   });
 });
 
@@ -143,7 +143,7 @@ describe('enemy contact and combat', () => {
     expect(useSpecial(state, 'barricade', WALL).ok).toBe(true);
     tick(state);
     expect(state.enemies.map((e) => e.distance)).toEqual([160, 160, 160, 160, 161.01, 160.5]);
-    expect(state.blocker?.hp).toBeCloseTo(400 - (6 + 8 + 12 + 45) / 60, 10);
+    expect(state.blocker?.hp).toBeCloseTo(BARRICADE_HP - (6 + 8 + 12 + 45) / 60, 10);
     expect(state.events).toEqual([
       { kind: 'blockerHit', enemyId: 0, ...WALL, damage: 6 / 60 },
       { kind: 'blockerHit', enemyId: 1, ...WALL, damage: 8 / 60 },
@@ -200,7 +200,7 @@ describe('enemy contact and combat', () => {
     tick(state);
     expect(state.enemies[0]).toMatchObject({ distance: 160, slowTicksLeft: 119, burnTicksLeft: 179 });
     expect(state.enemies[0].hp).toBeCloseTo(268 - 10 / 60, 10);
-    expect(state.blocker?.hp).toBeCloseTo(399.6, 10);
+    expect(state.blocker?.hp).toBeCloseTo(BARRICADE_HP - 0.4, 10);
     // Put both within a known splash kill, with no intervening competing shots.
     for (const e of state.enemies) e.hp = 20;
     if (!cannon.ok) throw new Error('Cannon build failed');
@@ -215,7 +215,7 @@ describe('enemy contact and combat', () => {
     expect(state.gold).toBe(gold + 2 + 2 + 25);
     expect(state.phase).toBe('setup');
     const survivingWall = structuredClone(state.blocker);
-    expect(survivingWall?.hp).toBeCloseTo(399.4, 10);
+    expect(survivingWall?.hp).toBeCloseTo(BARRICADE_HP - 0.6, 10);
     ticks(state, 600);
     expect(state.blocker).toEqual(survivingWall);
     expect(state.gold).toBe(gold + 29);
@@ -224,12 +224,12 @@ describe('enemy contact and combat', () => {
   });
 
   it.each([
-    ['boss', 10, 80], ['grumblemaw', 20, 60],
+    ['boss', 10, 65], ['grumblemaw', 20, 49],
   ] as const)('K4: a solo %s in wave %i breaks a fresh wall on contact tick %i', (type, wave, breakTick) => {
     const state = arena([enemy(0, type)], wave);
     expect(useSpecial(state, 'barricade', WALL).ok).toBe(true);
     ticks(state, breakTick - 1);
-    expect(state.blocker?.hp).toBeCloseTo(400 / breakTick, 10);
+    expect(state.blocker?.hp).toBeCloseTo(BARRICADE_HP - (breakTick - 1) * ENEMY_STATS[type].blockerDps / 60, 10);
     tick(state);
     expect(state.blocker).toBeNull();
     expect(state.enemies[0]).toMatchObject({ distance: WALL.x, hp: ENEMY_STATS[type].hp });
@@ -239,10 +239,10 @@ describe('enemy contact and combat', () => {
     expect(state.enemies[0].distance).toBeCloseTo(WALL.x + ENEMY_STATS[type].speed / 60, 10);
   });
 
-  it('K5: ten Goblins hold for all 400 ticks, including the break tick, then all resume', () => {
+  it('K5: ten Goblins hold for all 324 ticks, including the break tick, then all resume', () => {
     const state = arena(Array.from({ length: 10 }, (_, id) => enemy(id, 'goblin', 159)));
     expect(useSpecial(state, 'barricade', WALL).ok).toBe(true);
-    ticks(state, 399);
+    ticks(state, 323);
     expect(state.blocker?.hp).toBe(1);
     tick(state);
     expect(state.enemies.map((e) => e.distance)).toEqual(Array(10).fill(160));
@@ -266,7 +266,7 @@ describe('enemy contact and combat', () => {
     expect(bare.events[0]).toEqual({ kind: 'exit', enemyId: 0 });
     expect(walled.events).toEqual(bare.events);
     expect(walled.lives).toBe(bare.lives);
-    expect(walled.blocker?.hp).toBe(400);
+    expect(walled.blocker?.hp).toBe(BARRICADE_HP);
   });
 
   it.each(['easy', 'normal', 'hard'] as const)('uses the same blocker HP and damage on %s in act 2 with rewards', (difficulty) => {
@@ -274,7 +274,7 @@ describe('enemy contact and combat', () => {
     state.boons = ['stickyTar', 'hotCoals', 'biggerBlasts'];
     expect(useSpecial(state, 'barricade', WALL).ok).toBe(true);
     tick(state);
-    expect(state.blocker?.hp).toBe(399.25);
+    expect(state.blocker?.hp).toBe(BARRICADE_HP - 0.75);
   });
 });
 
