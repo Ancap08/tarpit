@@ -391,6 +391,33 @@ and the castle come later on the same rule.
   attack), one new special. No pathfinding, no enemy collision, no new
   tower.
 
+## Milestone 40: Guards, a short burst of troops
+
+Kyle (2026-11-23): "a short troops burst, something that has like
+weak-ish inf troops that do a little damage, take a little damage and then
+die off". Second use of the blocking rule from milestone 39.
+
+- **Guards** are a fifth special on the shared charge, unlocked at wave 6.
+  The player aims at the trail; a squad of four guards appears there,
+  standing in a short line across and along the trail.
+- **Each guard is a blocker that hits back.** Walking enemies stop at the
+  first guard they reach and attack it; the guard strikes one enemy in
+  contact at a time for a little damage. A guard has little hp. Guards
+  leave after a short time if they are still alive (starting numbers: 4
+  guards, 60 hp each, 10 damage a second, 12 seconds). Flyers pass over.
+  A Barricade and a squad can stand at the same time; a new squad replaces
+  the old one.
+- **Rule changes needed and no more:** several blockers at once; a blocker
+  that deals damage to an enemy in contact; a blocker with a lifetime.
+  Guards' kills pay bounty and count as special kills.
+- **On screen:** four small soldiers drawn where they really stand, each
+  with a small hp bar, a strike animation, and they fall or march off at
+  the end; sounds; both layouts; in the Painted look a painted guard made
+  by the art scripts.
+- **Balance:** the reference builds do not use Guards, so the matrix does
+  not move. Strength is checked by a sweep over trail points as for the
+  Barricade: useful, bounded, and troops alone do not win.
+
 ## Later milestones (order agreed, detail to come)
 
 | # | Milestone | Idea |
