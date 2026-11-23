@@ -10,8 +10,8 @@ function w(...groups: GroupDef[]): WaveDef {
   return { groups };
 }
 
-function goblinPacks(count: number, interval: number): WaveDef {
-  return w(...[0, 0.025, 0.05, 0.075].map(delay => g('goblin', count, interval, delay)));
+function goblinPacks(count: number, interval: number, packSize = 4): WaveDef {
+  return w(...Array.from({ length: packSize }, (_, i) => g('goblin', count, interval, i * 0.025)));
 }
 
 const bowsAndGuns = ['musketeer', 'longbow'] as const;
@@ -34,10 +34,10 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
-    id: 2, map: 'meadow', startGold: 240, hpScale: 4, hpGrowthStart: null,
+    id: 2, map: 'meadow', startGold: 270, hpScale: 3.3, hpGrowthStart: null,
     allowedTowers: artillery, maxTowerLevel: 2, allowedSpecials: keg, rewardWaves: [],
     waves: [
-      goblinPacks(15, 3.6), goblinPacks(18, 3.4), goblinPacks(19, 3.35),
+      goblinPacks(8, 4.2, 6), goblinPacks(18, 3.4), goblinPacks(19, 3.35),
       goblinPacks(19, 3.3), goblinPacks(20, 3.2), goblinPacks(20, 3.15),
     ],
   },
@@ -55,7 +55,7 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
-    id: 4, map: 'switchback', startGold: 380, hpScale: 1.7, hpGrowthStart: null,
+    id: 4, map: 'switchback', startGold: 270, hpScale: 1.33, hpGrowthStart: null,
     allowedTowers: burn, maxTowerLevel: 2, allowedSpecials: keg, rewardWaves: [],
     waves: [
       w(g('shieldbearer', 16, 2.8)),
@@ -81,7 +81,7 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
-    id: 6, map: 'riverbend', startGold: 400, hpScale: 0.7, hpGrowthStart: null,
+    id: 6, map: 'riverbend', startGold: 300, hpScale: 0.55, hpGrowthStart: null,
     allowedTowers: allTowers, maxTowerLevel: 2, allowedSpecials: barrel, rewardWaves: [],
     waves: [
       w(g('troll', 4, 12), g('goblin', 28, 1.7, 1)),
@@ -94,7 +94,7 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
-    id: 7, map: 'meadow', startGold: 180, hpScale: 2, hpGrowthStart: null,
+    id: 7, map: 'meadow', startGold: 160, hpScale: 2, hpGrowthStart: null,
     allowedTowers: allTowers, maxTowerLevel: 2, allowedSpecials: wall, rewardWaves: [],
     waves: [
       w(g('goblin', 80, 0.65)),
@@ -108,7 +108,7 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
-    id: 8, map: 'switchback', startGold: 300, hpScale: 1.15, hpGrowthStart: null,
+    id: 8, map: 'switchback', startGold: 300, hpScale: 1.3, hpGrowthStart: null,
     allowedTowers: allTowers, maxTowerLevel: 2, allowedSpecials: allSpecials, rewardWaves: [],
     waves: [
       w(g('shieldbearer', 40, 1.7), g('wolf', 45, 1.5)),
@@ -121,7 +121,7 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
-    id: 9, map: 'riverbend', startGold: 300, hpScale: 1, hpGrowthStart: 6,
+    id: 9, map: 'riverbend', startGold: 285, hpScale: 1, hpGrowthStart: 6,
     allowedTowers: allTowers, maxTowerLevel: 3, allowedSpecials: allSpecials, rewardWaves: [5],
     waves: [
       w(g('wolf', 34, 1.67), g('shieldbearer', 19, 3.07)),
@@ -134,7 +134,7 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
-    id: 10, map: 'meadow', startGold: 300, hpScale: 1, hpGrowthStart: 5,
+    id: 10, map: 'meadow', startGold: 300, hpScale: 0.925, hpGrowthStart: 5,
     allowedTowers: allTowers, maxTowerLevel: 3, allowedSpecials: allSpecials, rewardWaves: [5],
     waves: [
       w(g('wolf', 66, 1.05), g('shieldbearer', 47, 1.5)),

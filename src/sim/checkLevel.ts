@@ -6,14 +6,14 @@ import { canTarget } from './combat';
 import { botBeginner, botGood, runBot } from './bots';
 import { ENEMY_STATS } from './enemies';
 import { createGame, spawnTick } from './game';
-import type { LevelDef } from './levelTypes';
+import { TWO_STAR_LIVES, type LevelDef } from './levelTypes';
 import { MAP_IDS } from './map';
 import { SPECIAL_DEFS, type SpecialType } from './specials';
 import { TICKS_PER_SECOND } from './time';
 import { TOWER_DEFS } from './towers';
 import type { GameState, TowerType } from './types';
 
-type GateLabel = 'L1' | 'L2' | 'L3' | 'L4' | 'L5' | 'L6' | 'L7';
+type GateLabel = 'L1' | 'L2' | 'L3' | 'L4' | 'L5' | 'L6' | 'L7' | 'L8';
 
 export type LevelFeature =
   | { readonly towers: readonly TowerType[]; readonly mustLose?: boolean }
@@ -59,6 +59,13 @@ const MIN_WAVES = 5;
 const MAX_WAVES = 10;
 const LAST_SPAWN_SECONDS = 90;
 const HEALTH_VARIANTS = [0.95, 1.05] as const;
+const START_GOLD_MIN = 100;
+const START_GOLD_MAX = 300;
+const FINALE = 10;
+const FINALE_LIVES_MAX = 16;
+const EARLY_LEVELS = [1, 2, 3];
+const LATE_LEVELS = [8, 9, FINALE];
+const MIN_MEAN_LIVES_DROP = 3;
 
 function positive(value: number): boolean {
   return Number.isFinite(value) && value > 0;
@@ -70,7 +77,7 @@ function whole(value: number, min: number, max: number = Number.MAX_SAFE_INTEGER
 
 function validLevel(level: LevelDef): boolean {
   return whole(level.id, 1) && MAP_IDS.includes(level.map) &&
-    whole(level.startGold, 0) && whole(level.startLives, 1) && positive(level.hpScale) &&
+    whole(level.startGold, START_GOLD_MIN, START_GOLD_MAX) && positive(level.hpScale) &&
     (level.hpGrowthStart === null || whole(level.hpGrowthStart, 1, level.waves.length)) &&
     whole(level.waves.length, MIN_WAVES, MAX_WAVES) &&
     level.waves.every(wave =>
@@ -84,8 +91,7 @@ function validLevel(level: LevelDef): boolean {
     level.allowedTowers.length > 0 && level.allowedTowers.every(type => Object.hasOwn(TOWER_DEFS, type)) &&
     level.allowedSpecials.every(type => Object.hasOwn(SPECIAL_DEFS, type)) &&
     level.rewardWaves.length <= BOON_OFFER_WAVES.length &&
-    level.rewardWaves.every((wave, i) => whole(wave, (level.rewardWaves[i - 1] ?? 0) + 1, level.waves.length)) &&
-    whole(level.stars.two, 2, level.startLives) && whole(level.stars.three, level.stars.two + 1, level.startLives);
+    level.rewardWaves.every((wave, i) => whole(wave, (level.rewardWaves[i - 1] ?? 0) + 1, level.waves.length));
 }
 
 function validSchedule(level: LevelDef): boolean {
@@ -153,9 +159,12 @@ export function checkLevel(level: LevelDef, feature = NEW_FEATURE[level.id], cam
     const failed = new Set(row.failed);
     // A candidate can finish one streak and be part of either of the next two.
     for (let end = slot + 1; end < Math.min(slot + 3, entries.length); end++) {
-      if (breaksSlope(checked.levels, entries, end, slot)) failed.add('L4');
+      if (breaksSlope(checked.levels, end, slot)) failed.add('L4');
     }
     if (!validTotal(checked.totalTicks)) failed.add('L5');
+    if ((EARLY_LEVELS.includes(level.id) || LATE_LEVELS.includes(level.id)) && breaksMeanDrop(checked.levels, entries)) {
+      failed.add('L8');
+    }
     return { ...row, ok: failed.size === 0, failed: [...failed].sort() };
   }
   if (!validLevel(level)) return { ok: false, failed: ['L7'] };
@@ -176,6 +185,8 @@ export function checkLevel(level: LevelDef, feature = NEW_FEATURE[level.id], cam
     (level.id <= 5 && good.phase === 'won' && score.phase !== 'won'))) failed.push('L6');
   if (![good, beginner, lowerHp, higherHp, ...(forbidden ? [forbidden] : [])].every(finished)) failed.push('L7');
 
+  if (level.id === FINALE && (good.phase !== 'won' || !whole(good.lives, TWO_STAR_LIVES, FINALE_LIVES_MAX))) failed.push('L8');
+
   return { ok: failed.length === 0, failed, good, beginner, forbidden, lowerHp, higherHp };
 }
 
@@ -190,7 +201,7 @@ export interface CampaignCheck {
   totalTicks: number;
 }
 
-function breaksSlope(checks: readonly LevelCheck[], levels: readonly LevelDef[], end: number, candidate = end): boolean {
+function breaksSlope(checks: readonly LevelCheck[], end: number, candidate = end): boolean {
   const current = checks[end];
   const previous = checks[end - 1];
   const earlier = checks[end - 2];
@@ -198,20 +209,31 @@ function breaksSlope(checks: readonly LevelCheck[], levels: readonly LevelDef[],
     current.beginner.stars > previous.beginner.stars + 1) return true;
   if (candidate < end - 2 || !earlier?.good || !previous.good || !current.good) return false;
 
-  const firstShare = earlier.good.lives / levels[end - 2].startLives;
-  const middleShare = previous.good.lives / levels[end - 1].startLives;
-  const lastShare = current.good.lives / levels[end].startLives;
-  return firstShare < middleShare && middleShare < lastShare;
+  return earlier.good.lives < previous.good.lives && previous.good.lives < current.good.lives;
+}
+
+function breaksMeanDrop(checks: readonly LevelCheck[], levels: readonly LevelDef[]): boolean {
+  const ids = levels.map(level => level.id);
+  const cases = [...EARLY_LEVELS, ...LATE_LEVELS];
+  if (cases.some(id => ids.indexOf(id) !== ids.lastIndexOf(id))) return true;
+  if (cases.some(id => !ids.includes(id))) return levels.length >= FINALE;
+  const lives = cases.map(id => checks[ids.indexOf(id)].good?.lives);
+  if (lives.some(value => value === undefined)) return false;
+  const sum = (group: readonly (number | undefined)[]) => group.reduce<number>((total, value) => total + (value ?? 0), 0);
+  const early = sum(lives.slice(0, EARLY_LEVELS.length));
+  const late = sum(lives.slice(EARLY_LEVELS.length));
+  return late > early - MIN_MEAN_LIVES_DROP * EARLY_LEVELS.length;
 }
 
 /** In campaign order, also check the progression and combined running time. */
 export function checkCampaign(levels: readonly LevelDef[], features: Readonly<Partial<Record<number, LevelFeature>>> = {}): CampaignCheck {
   const local = levels.map(level => checkLevel(level, features[level.id]));
-  const checked = local.map((row, i) => breaksSlope(local, levels, i)
+  const checked = local.map((row, i) => breaksSlope(local, i)
     ? { ...row, ok: false, failed: [...row.failed, 'L4' as const] }
     : row);
   const totalTicks = checked.reduce((sum, row) => sum + (row.good?.tick ?? 0), 0);
   const failed = new Set(checked.flatMap(row => row.failed));
   if (!validTotal(totalTicks)) failed.add('L5');
+  if (breaksMeanDrop(checked, levels)) failed.add('L8');
   return { ok: failed.size === 0, failed: [...failed].sort(), levels: checked, totalTicks };
 }

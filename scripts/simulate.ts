@@ -194,7 +194,12 @@ try {
   for (const { map, level: difficulty } of columns) {
     const [good, beginner] = [botGood, botBeginner].map(policy => runBot(createGame({ map, difficulty }), policy));
     if (good.refused || beginner.refused) process.exitCode = 1;
-    const cells = [good.state, balance.balanceRun('comboBuild', map, difficulty),
+    const combo = balance.balanceRun('comboBuild', map, difficulty);
+    if (difficulty === 'normal' && good.state.phase !== combo.phase) {
+      console.error(`MISS  Normal ${map}: botGood ${good.state.phase}, comboBuild ${combo.phase}`);
+      process.exitCode = 1;
+    }
+    const cells = [good.state, combo,
       beginner.state, balance.balanceRun('lazyBuild', map, difficulty)].map(balance.matrixCell);
     console.log([map.padEnd(10), difficulty.padEnd(10), ...cells.map(cell => cell.padStart(8))].join('  '));
   }
@@ -205,15 +210,15 @@ try {
   const minutes = (ticks: number) => (ticks / TICKS_PER_SECOND / 60).toFixed(2);
   const score = (run?: Gate.LevelScore) => run ? `${run.stars}/${run.lives}` : '—';
   console.log('\nCampaign gate (stars/lives)');
-  console.log('id  waves  gold  lives  2★/3★  Good  Beginner  Forbidden  HP−5%  HP+5%  minutes  gate');
+  console.log('id  waves  gold  HP scale  Good  Beginner  Forbidden  HP−5%  HP+5%  minutes  gate');
   campaign.levels.forEach((row, index) => {
     const level = LEVELS[index];
-    console.log([level.id, level.waves.length, level.startGold, level.startLives,
-      `${level.stars.two}/${level.stars.three}`, score(row.good), score(row.beginner), score(row.forbidden),
+    console.log([level.id, level.waves.length, level.startGold, level.hpScale,
+      score(row.good), score(row.beginner), score(row.forbidden),
       score(row.lowerHp), score(row.higherHp), row.good ? minutes(row.good.tick) : '—',
       row.ok ? 'pass' : row.failed.join(',')].join('  '));
   });
-  console.log(`Campaign: ${minutes(campaign.totalTicks)} minutes. ${campaign.ok ? 'L1–L7 pass' : 'MISS ' + campaign.failed.join(', ')}`);
+  console.log(`Campaign: ${minutes(campaign.totalTicks)} minutes. ${campaign.ok ? 'L1–L8 pass' : 'MISS ' + campaign.failed.join(', ')}`);
   if (!campaign.ok) process.exitCode = 1;
 } finally {
   await server.close();

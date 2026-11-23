@@ -9100,3 +9100,5 @@ over five seconds. Each legal placement now has its own result check. The
 sweep reads the adaptive recorder's outcome directly, saving a second
 simulation at every point. The checks retain all 190 placements, the six
 pinned gains and tie-breaking distances, and the Hard loss restriction.
+
+**Second pass.** All ten levels now start with 20 lives. A win earns two stars at 12 lives and three at 18. Pack Trail opens with eight packs of six Goblins, giving Cannon a useful crowd to hit while leaving Beginner a two-life win. All other wave schedules stayed in place. With revised starting gold and HP, Good averages 20 lives on the first three levels and 14.67 on the last three, and wins Last Light with 13. Beginner earns one star on Heavy Feet. The new L8 check enforces the average drop and finale range. The Normal Free play comparison checks win or loss on each map; Good's nine-life lead over comboBuild on Switchback is recorded in DESIGN.md.

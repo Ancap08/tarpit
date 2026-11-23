@@ -13,6 +13,7 @@ import { ENEMY_STATS, isBoss } from './enemies';
 import { createGame, lastSpawnTick } from './game';
 import { buildableCells } from './grid';
 import { LEVELS } from './levels';
+import { CAMPAIGN_START_LIVES, TWO_STAR_LIVES, THREE_STAR_LIVES } from './levelTypes';
 import { botGood, botBeginner, runBot } from './bots';
 import { levelStars } from './campaignProgress';
 import { MAPS, pathLength, type MapId } from './map';
@@ -107,6 +108,12 @@ describe('docs/DESIGN.md matches the code', () => {
     expect(md).toMatch(/^# Tarpit: game design spec\n\n> \*\*Frozen as of milestone 41a\.\*\*/);
   });
 
+  it('uses one starting life count and star rule across the campaign', () => {
+    expect(table('Levels and campaign', 'Starting lives')).toEqual([
+      [CAMPAIGN_START_LIVES, TWO_STAR_LIVES, THREE_STAR_LIVES].map(String),
+    ]);
+  });
+
   it('lists exactly the campaign stops in order', () => {
     expect(table('Levels and campaign', 'ID').map(row => Number(row[0]))).toEqual(LEVELS.map(level => level.id));
   });
@@ -115,8 +122,8 @@ describe('docs/DESIGN.md matches the code', () => {
     const row = table('Levels and campaign', 'ID').find(row => Number(row[0]) === level.id);
     const [good, beginner] = [botGood, botBeginner].map(bot => runBot(createGame({ level }), bot).state);
     expect(row).toEqual([level.id, LEVEL_NAMES[level.id].name, MAP_LABELS[level.map], level.waves.length,
-      level.startGold, level.startLives, level.hpScale, level.hpGrowthStart ?? '—', level.maxTowerLevel,
-      level.rewardWaves.join(', ') || '—', `${level.stars.two}/${level.stars.three}`,
+      level.startGold, level.hpScale, level.hpGrowthStart ?? '—', level.maxTowerLevel,
+      level.rewardWaves.join(', ') || '—',
       `${levelStars(good)}/${good.lives}`, `${levelStars(beginner)}/${beginner.lives}`,
       (good.tick / 3600).toFixed(2)].map(String));
   });
