@@ -6,6 +6,7 @@ import type * as Balance from '../src/sim/balanceRuns';
 import type * as Targets from '../src/sim/balanceTargets';
 import type * as Maps from '../src/sim/map';
 import type * as Boons from '../src/sim/boonBalance';
+import type * as Specials from '../src/sim/specials';
 import type * as Paths from '../src/sim/pathBalance';
 import type * as Encounters from '../src/sim/pathEncounter';
 
@@ -31,6 +32,15 @@ try {
     if (!result.ok) process.exitCode = 1;
   }
 
+  const { SPECIAL_TYPES } = await server.ssrLoadModule('/src/sim/specials.ts') as typeof Specials;
+  console.log('\nNormal comboBuild with one special omitted (information only)');
+  console.log('map         ' + ['all', ...SPECIAL_TYPES.map(type => `without ${type}`)].map(label => label.padStart(18)).join(''));
+  for (const map of MAP_IDS) {
+    const all = balance.balanceRun('comboBuild', map, 'normal');
+    const singles = SPECIAL_TYPES.map(type => targets.comboWithoutSpecialRun(type, map));
+    console.log(map.padEnd(12) + [all, ...singles].map(run => balance.matrixCell(run).padStart(18)).join(''));
+  }
+
   for (const map of MAP_IDS) {
     console.log(`\n${map}, Normal: boon matrix (lives, kills, gold)`);
     for (const { picks, run } of targets.boonBalanceRuns(map)) {
@@ -47,8 +57,8 @@ try {
   }
   for (const s of paths.summarizePathBalance(rows)) {
     const checks = [
-      ['P1', s.p1.a && s.p1.b, `A minus B: ${s.ab.join('/')}`],
-      ['P2', s.p2, `largest A/B gap: ${Math.max(...s.ab.map(Math.abs))}`],
+      ['P1', s.p1, `A minus B: ${s.ab.join('/')}`],
+      ['P2', s.p2, `largest A/B gap: ${s.largestGap}`],
       ['P4', (s.p4.aWin || s.p4.bWin) && (s.p4.aCopy || s.p4.bCopy), `A minus copy: ${s.ac.join('/')}, B minus copy: ${s.bc.join('/')}`],
     ] as const;
     for (const [id, passed, evidence] of checks) {

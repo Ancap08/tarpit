@@ -1285,9 +1285,9 @@ the Tar Barrel and Fire Arrows take turns (Tar Barrel first; before wave 7
 the Tar Barrel takes every turn), fired at the working point with a big
 one inside. Otherwise, if a point works for the Powder Keg, the keg is
 thrown there. Otherwise it waits. The best point catches the most enemies;
-ties go to the point nearest the exit. A forbidden special is skipped (target
-S5), and in the Tar Barrel and Fire Arrows' turns the other takes its
-place. The headless recorder fires each choice and writes it into the
+ties go to the point nearest the exit. The simulator also measures the combo
+with each special omitted in turn. When it omits Tar Barrel or Fire Arrows,
+the other takes its turn. The headless recorder fires each choice and writes it into the
 script's timed list (`timed`), so `playScripted` and the browser's
 `runScript` replay the same game.
 
@@ -1313,11 +1313,11 @@ Normal, every map unless specified:
 - **V5** The Normal combo and the Hard plan on Hard both kill Grumblemaw. An exit costs ten lives.
 - **S7** All 27 reward combinations win. For each offer, hold the other two picks fixed in each of their nine combinations. The best and worst choices finish within six lives.
 - **V7** Meadow meets all four campaign timing and wave-shape targets.
-- **P1** For each tower, A beats B by at least two lives somewhere and B beats A by at least two elsewhere. Compare the combo and the specialist on all maps, with default rewards and specials on Normal.
-- **P2** Every one of those A/B gaps is at most six lives.
+- **P1** For each tower, comboBuild and that tower’s specialist compare A and B on all three maps with default rewards and specials on Normal. The paths finish with different lives in at least one of the six comparisons. Each path wins or ties the lives comparison at least once.
+- **P2** Every one of those A/B gaps is at most nine lives.
 - **P3** The two paths trade places between a lone Troll and ten Goblins in the combat examples.
 - **P4** At equal gold each tower has a path that beats another level-2 copy by at least one life, and at least one comparison in which the copy wins or ties.
-- **S5** The combo finishes with at least three more lives than the reinvesting combo without specials, which wins or loses on wave 17 or later. Forbidding any one special can gain at most one life.
+- **S5** On each map, comboBuild wins with specials. If comboNoSpecials wins, it finishes at least three lives behind. If it loses, it reaches wave 17 or later.
 - **S6** Removing Fire Pots can gain at most one life per map. Keeping them gives the combo more lives on at least two maps.
 - **N7** noAntiAir lets at least half of wave 4's Harpies exit and loses
   by wave 12.
@@ -1356,9 +1356,15 @@ Endless, every map:
 
 The campaign wave rules R1 to R4 hold too.
 
+### Known weaknesses
+
+- The scripted combo often spends its shared charge better on Powder Keg or Fire Arrows. Omitting Tar Barrel raises final lives from 14 to 17 on Meadow, 11 to 12 on Switchback and 14 to 20 on Riverbend.
+- Tar Pit has the widest path gap at nine lives, exactly the P2 limit.
+- The Meadow Normal combo takes 1,316.5 s at 1x, just 3.5 s under the 22-minute limit.
+
 ## Measured matrix
 
-The milestone 37 Third pass in DEVLOG records the measured campaign and remaining misses. The live simulator prints the current measurements.
+The milestone 37 “Closing pass” in DEVLOG records the Normal results.
 
 `npm run sim` ends with this table. “W 13” means a win with 13 lives.
 “L 8” means defeat on wave 8. The endless rows count from campaign wave 1.

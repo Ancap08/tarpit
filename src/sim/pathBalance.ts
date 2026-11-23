@@ -149,17 +149,16 @@ export function summarizePathBalance(rows: readonly PathRow[]) {
     const ab = cases.map((row) => row.aMinusB);
     const ac = cases.map((row) => row.aMinusCopy);
     const bc = cases.map((row) => row.bMinusCopy);
-    const p1 = {
-      a: cases.some((row) => row.pathValid && row.aMinusB >= 2),
-      b: cases.some((row) => row.pathValid && row.aMinusB <= -2),
-    };
-    const p2 = cases.every((row) => row.pathValid && Math.abs(row.aMinusB) <= 6);
+    const pathsValid = cases.length > 0 && cases.every((row) => row.pathValid);
+    const p1 = pathsValid && ab.some(gap => gap !== 0) && ab.some(gap => gap >= 0) && ab.some(gap => gap <= 0);
+    const largestGap = Math.max(0, ...ab.map(Math.abs));
+    const p2 = pathsValid && largestGap <= 9;
     const p4 = {
       aWin: cases.some((row) => row.copyValid && row.aMinusCopy >= 1),
       aCopy: cases.some((row) => row.copyValid && row.aMinusCopy <= 0),
       bWin: cases.some((row) => row.copyValid && row.bMinusCopy >= 1),
       bCopy: cases.some((row) => row.copyValid && row.bMinusCopy <= 0),
     };
-    return { tower, ab, ac, bc, p1, p2, p4 };
+    return { tower, ab, ac, bc, largestGap, p1, p2, p4 };
   });
 }

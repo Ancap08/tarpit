@@ -11,7 +11,7 @@ import { DIFFICULTY_DEFS, enemyMaxHp, type Difficulty } from './difficulty';
 import { ENEMY_STATS, isBoss } from './enemies';
 import { spawnTick } from './game';
 import { comboBuild, comboWithoutSpecial, referenceBuild, ENDLESS_WAVE_CAP, type BoonChoices, type RecordedOutcome } from './headless';
-import { SPECIAL_DEFS, SPECIAL_TYPES, type SpecialType } from './specials';
+import { SPECIAL_DEFS, type SpecialType } from './specials';
 import { MAP_IDS, type MapId } from './map';
 import type { EnemyType } from './types';
 import { ACT_ONE_LAST_WAVE, LAST_WAVE, WAVES } from './waves';
@@ -155,14 +155,12 @@ function mapTargets(map: MapId): Target[] {
         lostOn(normal, 7, 14) && lostOn(lazyHard, 1, 8),
         info: `hardBuild ${matrixCell(hard)}, lazy E/N/H ${[easy, normal, lazyHard].map(matrixCell).join('/')}` };
     }),
-    t('S5', 'all specials save three lives, forbidding any one gains at most one', () => {
+    t('S5', 'specials save at least three lives or turn a wave-17-or-later loss into a win', () => {
       const combo = r('comboBuild');
       const none = r('comboNoSpecials');
-      const singles = SPECIAL_TYPES.map(type => comboWithoutSpecialRun(type, map));
-      return { ok: combo.phase === 'won' && (none.phase === 'won' || lostOn(none, 17, LAST_WAVE)) &&
-        combo.lives >= Math.max(0, none.lives) + SPECIALS_LIVES_MARGIN &&
-        singles.every(run => Math.max(0, run.lives) <= combo.lives + 1 && run.refused === 0),
-        info: `all ${matrixCell(combo)}, none ${matrixCell(none)}, without ${SPECIAL_TYPES.join('/')} ${singles.map(matrixCell).join('/')}` };
+      return { ok: combo.phase === 'won' && (lostOn(none, 17, LAST_WAVE) ||
+        (none.phase === 'won' && combo.lives - none.lives >= SPECIALS_LIVES_MARGIN)),
+        info: `all ${matrixCell(combo)}, none ${matrixCell(none)}` };
     }),
     t('S6', 'removing Fire Pots gains at most one life', () => {
       const combo = r('comboBuild');

@@ -8415,3 +8415,31 @@ No single configuration tested satisfied the entire brief. The following control
 The outstanding gates are S5 on three maps, P1 on four towers, and P2 on Tar Pit. Each fails the unit suite and simulator directly. This is a local balance candidate for a coordinator decision.
 
 Verifier updates included the per-map matrix in `balance.suite.ts`, `balance.test.ts`, the boon witnesses in `boonBalance.ts`, `boons.test.ts`, `boonLayout.test.ts`, `boss-verifier.test.ts`, `designSpec.test.ts`, `difficulty-verifier.test.ts`, both endless simulation tests, `longer-game-verifier.test.ts`, both level-three upgrade tests, the Fire Pot encounter in `pathEncounter.test.ts`, the setup spending check in `headless.test.ts`, and the full Meadow combo state fixture. Browser expectations moved in the campaign boss, endless and desktop/phone visual checks and their shared frame helper.
+
+### Closing pass
+
+The coordinator restated S5, P1 and P2 for the scripted builds and retained the game at `49b710c`. S5 requires the full special policy to win on every Normal map. The combo without specials either wins at least three lives behind or loses on wave 17 or later. The simulator reports each single-special omission for comparison. P1 requires at least one difference in final lives across each tower’s six Normal comparisons, with each path leading or tying at least once. P2 caps the largest gap at nine lives, up from six. P3 and P4 keep their existing checks.
+
+Normal matrix from the closing pass. W gives lives at victory. L gives the defeat wave, counting from the start of the campaign.
+
+| Archetype | Meadow | Switchback | Riverbend |
+|---|---:|---:|---:|
+| noTowers | L 1 | L 1 | L 1 |
+| oneMusket | L 2 | L 2 | L 2 |
+| lazyBuild | L 8 | L 8 | L 8 |
+| greedyMusket | L 8 | L 12 | L 8 |
+| longbowSpam | L 8 | L 8 | L 8 |
+| noAntiAir | L 5 | L 5 | L 5 |
+| comboBuild | W 14 | W 11 | W 14 |
+| wideBuild | W 13 | W 15 | W 10 |
+| comboBuildNoFire | W 13 | W 11 | W 12 |
+| comboNoSpecials | W 8 | L 18 | W 3 |
+| hardBuild | W 20 | W 21 | W 21 |
+| artilleryBuild | W 20 | W 24 | W 6 |
+| burnBuild | W 15 | W 24 | W 9 |
+| musketBuild | L 19 | W 24 | L 18 |
+| endlessIdle | L 25 | L 24 | L 25 |
+| endlessGreedy | L 28 | L 27 | L 27 |
+| soundBuild | L 7 | - | - |
+| soundBuildNoTar | L 7 | - | - |
+| comboStrongest | L 5 | - | - |
