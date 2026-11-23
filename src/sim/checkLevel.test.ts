@@ -49,10 +49,10 @@ describe('campaign acceptance gate', () => {
     }
     // The Switchback rematch adds a Shieldbearer to the second wave's formation.
     const extraLate = { ...standFast, id: 11, waves: standFast.waves.map((w, i) => i === 1 ? reinforce(w, 1) : w) };
-    // The Meadow finale tightens the opening cadence and adds five mid-level Trolls.
+    // The Meadow finale tightens the opening cadence and adds one mid-level Troll.
     const extraFinale = { ...lastLight, id: 12, waves: lastLight.waves.map((w, i) => {
       if (i === 0) return { groups: w.groups.map(g => ({ ...g, interval: g.interval * 0.85 })) };
-      return i === 3 ? reinforce(w, 5) : w;
+      return i === 3 ? reinforce(w, 1) : w;
     }) };
     const finale: LevelContext = { band: 'finale', introduces: null };
     expect(checkLevel(extraLate, late).failed).toEqual([]);
@@ -81,6 +81,14 @@ describe('campaign acceptance gate', () => {
     expect(result.failed).toEqual(expect.arrayContaining(['L1', 'L2', 'L5', 'P1', 'P2']));
     expect(result.good?.phase).toBe('lost');
   });
+
+  it.each([{ hpScale: 0.98 }, { hpScale: 1.02 }, { startGold: 90 }, { startGold: 110 }])(
+    'L1m checks the intro band minimum at %o without an introduction', variant => {
+      stubBots((level, policy) => policy === bots.botGood &&
+        (level.hpScale === variant.hpScale || level.startGold === variant.startGold) ? 17 : 20);
+      expect(checkLevel(fresh(), intro).failed).toEqual(['L1m']);
+    },
+  );
 
   it('L2 rejects a trivial later level', () => {
     const result = checkLevel({ ...LEVELS[4], hpScale: 1, startGold: 300 }, CAMPAIGN_CONTEXTS[4]);

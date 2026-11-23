@@ -7,16 +7,16 @@ import { TOWER_DEFS } from './towers';
 import type { TowerType } from './types';
 
 export const CAMPAIGN_CONTEXTS: readonly LevelContext[] = [
-  { band: 'intro', introduces: null },
+  { band: 'intro', introduces: null, alsoIntroduces: ['musketeer', 'longbow', 'keg', 1, 2, 'goblin'] },
   { band: 'intro', introduces: { towers: ['cannon'] } },
-  { band: 'intro', introduces: { towers: ['tarpit'] } },
-  { band: 'middle', introduces: { towers: ['firepot'] } },
+  { band: 'intro', introduces: { towers: ['tarpit'] }, alsoIntroduces: ['wolf'] },
+  { band: 'middle', introduces: { towers: ['firepot'] }, alsoIntroduces: ['shieldbearer'] },
   { band: 'middle', introduces: { enemy: 'harpy', mustLose: true, control: {
     towers: (Object.keys(TOWER_DEFS) as TowerType[]).filter(type => canTarget(type, { type: 'harpy' })),
-  } } },
-  { band: 'transition', introduces: { towers: ['mortar'] } },
+  } }, alsoIntroduces: ['tarBarrel'] },
+  { band: 'transition', introduces: { towers: ['mortar'] }, alsoIntroduces: ['troll'] },
   { band: 'late', introduces: { specials: ['barricade'] } },
   { band: 'late', introduces: { specials: ['guards', 'fireArrows'] } },
-  { band: 'late', introduces: { maxTowerLevel: 2 } },
+  { band: 'late', introduces: { maxTowerLevel: 2 }, alsoIntroduces: ['boss'] },
   { band: 'finale', introduces: { enemy: 'grumblemaw', control: { specials: Object.keys(SPECIAL_DEFS) as SpecialType[] } } },
 ];

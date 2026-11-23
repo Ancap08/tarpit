@@ -115,7 +115,7 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
-    id: 8, map: 'switchback', startGold: 285, hpScale: 1.3, hpGrowthStart: null,
+    id: 8, map: 'switchback', startGold: 295, hpScale: 1.28, hpGrowthStart: null,
     allowedTowers: allTowers, maxTowerLevel: 2, allowedSpecials: allSpecials, rewardWaves: [],
     waves: [
       w(g('wolf', 36, 1.23)),

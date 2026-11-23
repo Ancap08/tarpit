@@ -1606,6 +1606,10 @@ ComboBuild finishes with 14 on Meadow, 11 on Switchback and 14 on Riverbend,
 so Good's largest lead is nine lives on Switchback.
 
 Person also wins all three Normal maps, with 20, 20 and 19 lives respectively.
+Campaign stars are calibrated to a capable builder with slow hands. Person uses
+Good’s purchase optimiser and finishes Burn Line with 16 lives to Good’s 13.
+Beginner is the only measure of weak play. Real players decide whether the
+star targets feel right.
 
 ### Acceptance
 
@@ -1641,8 +1645,8 @@ The level record can declare an ending boss. A separate context names the introd
 | L6 starting gold factors | 0.85–1.15 |
 
 - P1 checks Person’s stars and surviving lives against Good. P2 runs Person with an empty list of allowed specials. The two bands that allow a loss still report that run.
-- L1 and L2 apply the Good and Beginner star limits in the band table.
-- L3 checks the feature advantage at nominal settings and at each endpoint of the two L3 ranges, varying one input at a time. In campaign order the controls remove Cannon, Tar Pit, Fire Pot, all anti-air towers, Mortar, Barricade, Guards and Fire Arrows together, the second upgrade, then all specials. Both boss encounters keep their boss during these trials. Good must lose the nominal anti-air control. Each declared introduction occurs once per campaign.
+- L1 and L2 apply the Good and Beginner star limits in the band table. L1m requires Good to keep its band minimum at HP ×0.98, HP ×1.02, starting gold −10 and starting gold +10, varying one input at a time on every level.
+- L3 checks the feature advantage at nominal settings and at each endpoint of the two L3 ranges, varying one input at a time. In campaign order the controls remove Cannon, Tar Pit, Fire Pot, all anti-air towers, Mortar, Barricade, Guards and Fire Arrows together, the second upgrade, then all specials. Both boss encounters keep their boss during these trials. Good must lose the nominal anti-air control. Each context declares every tower, special, tower tier and scheduled enemy type that first appears at that stop, including the opening kit. The removal trials measure the featured mechanic. A campaign fails L3 for a missing, unavailable or repeated introduction.
 - L4 allows Beginner to rise at most one star between adjacent levels. Good’s lives may rise only once in succession.
 - L5 checks durations at 1× without early calls. Good must stay within the peak count. R1 allows six walkers and four flyers in each sliding three-second window. Person must keep all opening lives. The closing wave must meet the enemy minimum or contain a boss, and must include any declared ending boss.
 - L6 varies HP and starting gold separately at the listed endpoints, rounding scaled gold to the nearest integer. Good and Person may each move at most one star. Both must still win intro and middle levels.
@@ -1662,7 +1666,7 @@ Stars/lives give each bot’s highest award and surviving lives. Time counts Goo
 | 5 | Wings Over the River | Riverbend | 7 | 656 | 180 | 1.27 | — | 2 | — | 3/20 | 3/20 | 1/2 | 7.79 | 12 | 25 |
 | 6 | Heavy Feet | Riverbend | 7 | 331 | 270 | 1 | — | 2 | — | 2/15 | 2/14 | 0/0 | 8.41 | 10 | 56 |
 | 7 | Hold the Bend | Meadow | 8 | 738 | 245 | 1.3 | — | 2 | — | 2/16 | 2/12 | 0/0 | 8.13 | 28 | 53 |
-| 8 | Stand Fast | Switchback | 7 | 517 | 285 | 1.3 | — | 2 | — | 2/12 | 2/12 | 0/0 | 8.09 | 32 | 36 |
+| 8 | Stand Fast | Switchback | 7 | 517 | 295 | 1.28 | — | 2 | — | 2/12 | 2/13 | 0/0 | 8.08 | 30 | 36 |
 | 9 | The Troll King | Riverbend | 7 | 535 | 255 | 1 | 6 | 3 | 5 | 3/20 | 3/20 | 0/0 | 7.57 | 17 | 42 |
 | 10 | Last Light | Meadow | 7 | 633 | 280 | 0.925 | 5 | 3 | 5 | 2/16 | 2/13 | 0/0 | 8.89 | 19 | 36 |
 
@@ -1679,14 +1683,19 @@ difficulty. Campaign opens the level map and reads the saved campaign stars.
 The trail crosses five stops and returns across five in landscape. In
 portrait it winds down five rows of two. Each stop shows its level number
 and three star slots. The first open level without a win is highlighted.
-Tapping a lock gives the number of the level to win first. Back returns to
+Tapping any lock names the first open level still to win. Back returns to
 the first screen. An open stop shows a card with the level name, map,
 twist, new equipment or enemies, and best stars. Play starts that level.
 
 The game shows the level number and counts waves against the level's own
-length. A win shows this run's stars and lives. Below three stars it gives
+length. A win shows this run's stars and lives. A gold-cheat win shows empty star slots and explains that stars were not saved. It opens no level and offers no Next. Below three stars it gives
 the life target for the next award. Next level opens the next card. Winning
 level ten shows the campaign-complete message. Play again restarts the
 same level, and Level map shows the player's saved bests. A loss offers
 Try again and Level map. Turning the device keeps the current screen and
 level selection. Both looks use the same campaign controls.
+
+Arrow keys move the highlight, Enter or Space activates it, and Escape goes
+back. The first screen opens on Campaign, the map on the next unwon open
+stop, the card on Play, and the result on its first button. On the map the
+arrow keys visit only open stops.

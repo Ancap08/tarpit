@@ -10,9 +10,9 @@ import { MAP_IDS } from './map';
 import { SPECIAL_DEFS, type SpecialType } from './specials';
 import { TICKS_PER_SECOND } from './time';
 import { TOWER_DEFS } from './towers';
-import type { EnemyType, GameState, TowerType } from './types';
+import type { EnemyType, GameState, TowerLevel, TowerType } from './types';
 
-type GateLabel = 'P1' | 'P2' | 'L1' | 'L2' | 'L3' | 'L4' | 'L5' | 'L6' | 'L7' | 'L8';
+type GateLabel = 'P1' | 'P2' | 'L1' | 'L1m' | 'L2' | 'L3' | 'L4' | 'L5' | 'L6' | 'L7' | 'L8';
 
 export type LevelFeature =
   | { readonly towers: readonly TowerType[] }
@@ -21,9 +21,13 @@ export type LevelFeature =
 
 type Introduction = LevelFeature | { readonly enemy: EnemyType; readonly control: LevelFeature; readonly mustLose?: boolean };
 
+type Capability = TowerType | SpecialType | EnemyType | TowerLevel;
+
 export interface LevelContext {
   band: 'intro' | 'middle' | 'transition' | 'late' | 'finale';
   introduces: Introduction | null;
+  /** Other first appearances alongside the mechanic measured by the removal trial. */
+  alsoIntroduces?: readonly Capability[];
 }
 
 export interface LevelScore {
@@ -175,18 +179,18 @@ function finished(score: LevelScore): boolean {
     Number.isFinite(score.tick) && Number.isFinite(score.lives);
 }
 
-function featureKeys(feature: Introduction | null): string[] {
+function featureKeys(feature: Introduction | null): Capability[] {
   if (!feature) return [];
   if ('enemy' in feature) return [feature.enemy];
   if ('towers' in feature) return [...feature.towers];
   if ('specials' in feature) return [...feature.specials];
-  return ['tier' + (feature.maxTowerLevel + 1)];
+  return [feature.maxTowerLevel === 1 ? 2 : 3];
 }
 
-function capabilities(level: LevelDef): Set<string> {
+function capabilities(level: LevelDef): Set<Capability> {
   return new Set([
     ...level.allowedTowers, ...level.allowedSpecials,
-    ...[1, 2, 3].filter(tier => tier <= level.maxTowerLevel).map(tier => 'tier' + tier),
+    ...([1, 2, 3] as const).filter(tier => tier <= level.maxTowerLevel),
     ...level.waves.flatMap(wave => wave.groups.map(group => group.type)),
   ]);
 }
@@ -218,23 +222,24 @@ export function checkLevel(level: LevelDef, context: LevelContext): LevelCheck {
   const feature = context.introduces;
   const featureTrials: FeatureTrial[] = [];
   const runs = [good, person, beginner, noSpecials];
-  if (feature) {
-    const control = 'enemy' in feature ? feature.control : feature;
-    const available = capabilities(level);
-    if (featureKeys(feature).some(key => !available.has(key))) failed.add('L3');
-    const changes = [
-      ['base', level], ['hp-2%', { ...level, hpScale: level.hpScale * GATE_LIMITS.featureHp[0] }],
-      ['hp+2%', { ...level, hpScale: level.hpScale * GATE_LIMITS.featureHp[1] }],
-      ['gold-10', { ...level, startGold: level.startGold + GATE_LIMITS.featureGold[0] }],
-      ['gold+10', { ...level, startGold: level.startGold + GATE_LIMITS.featureGold[1] }],
-    ] as const;
-    for (const [variant, test] of changes) {
-      const removed = withoutFeature(test, control);
-      const full = measure(level, test, botGood);
+  const available = capabilities(level);
+  if (featureKeys(feature).some(key => !available.has(key))) failed.add('L3');
+  const marginChanges = [
+    ['base', level], ['hp-2%', { ...level, hpScale: level.hpScale * GATE_LIMITS.featureHp[0] }],
+    ['hp+2%', { ...level, hpScale: level.hpScale * GATE_LIMITS.featureHp[1] }],
+    ['gold-10', { ...level, startGold: level.startGold + GATE_LIMITS.featureGold[0] }],
+    ['gold+10', { ...level, startGold: level.startGold + GATE_LIMITS.featureGold[1] }],
+  ] as const;
+  for (const [variant, test] of marginChanges) {
+    const full = measure(level, test, botGood);
+    runs.push(full);
+    if (variant !== 'base' && full.stars < goodMin) failed.add('L1m');
+    if (feature) {
+      const removed = withoutFeature(test, 'enemy' in feature ? feature.control : feature);
       const goodWithout = measure(level, removed, botGood);
       const player = measure(level, test, botPerson);
       const personWithout = measure(level, removed, botPerson);
-      runs.push(full, goodWithout, player, personWithout);
+      runs.push(goodWithout, player, personWithout);
       featureTrials.push({ variant, good: full, goodWithout, person: player, personWithout });
       if ((full.lives - goodWithout.lives < GATE_LIMITS.goodFeatureLives && full.stars <= goodWithout.stars) ||
         player.lives - personWithout.lives < GATE_LIMITS.personFeatureLives ||
@@ -281,12 +286,18 @@ export function checkCampaign(levels: readonly LevelDef[], contexts: readonly Le
   if (!levels.length || contexts.length !== levels.length) return { ok: false, failed: ['L7'], levels: [], totalTicks: 0 };
   const checked = levels.map((level, i) => checkLevel(level, contexts[i]));
   const failed = new Set(checked.flatMap(row => row.failed));
-  const introduced = new Set<string>();
+  const introduced = new Set<Capability>();
   for (const [i, row] of checked.entries()) {
-    for (const key of featureKeys(contexts[i].introduces)) {
-      if (introduced.has(key)) failed.add('L3');
+    const context = contexts[i];
+    const declared = new Set([...featureKeys(context.introduces), ...context.alsoIntroduces ?? []]);
+    const available = capabilities(levels[i]);
+    for (const key of declared) {
+      if (introduced.has(key) || !available.has(key)) failed.add('L3');
     }
-    for (const key of capabilities(levels[i])) introduced.add(key);
+    for (const key of available) {
+      if (!introduced.has(key) && !declared.has(key)) failed.add('L3');
+      introduced.add(key);
+    }
     const prev = checked[i - 1];
     const earlier = checked[i - 2];
     if ((prev?.beginner && row.beginner && row.beginner.stars > prev.beginner.stars + 1) ||

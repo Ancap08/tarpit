@@ -9147,3 +9147,13 @@ Checked at 5712392 by Claude Sonnet. Added `src/sim/gate-verifier.test.ts`, `src
 - Keyboard: Enter and Space started a game from the old title. The new first screen registers no keys (they sit after its early return) and the map and card have none. Pinned with `test.fail`.
 - Touch targets: no control is under 44 px on the tablet in either layout or on the phone in portrait. A phone turned to landscape (844 x 390) gives 35 to 37 px tall buttons on the map, card and result screens (and the pre-existing 28 px Look and mute). Desktop Look and mute are 42 px, as on main.
 - Rotation on every campaign screen and mid-level keeps the screen, level, gold, wave and tick, with one scene running. No clipped or overlapping text on any of ten cards, the map and eight result variants in both layouts. 41b holds no copy of the star rule or unlock rule (it calls `levelStars`, `unlockedLevel`, `mergeProgress`), no strings outside `names.ts`, and one end screen component.
+
+### Fixes after verification
+
+Gold-cheat wins show empty stars and explain why the run saved none. The
+campaign screens support keyboard travel, and a locked stop names the open
+level to win next. L1m checks Good’s band minimum under four small HP or gold
+changes. Stand Fast was the only level that needed tuning. The campaign gate
+now checks every first appearance against its level context, including the
+opening kit. Known layout issue: at 844 × 390, the existing landscape scaling
+leaves campaign buttons 35–37 px tall.

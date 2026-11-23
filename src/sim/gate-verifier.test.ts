@@ -26,9 +26,9 @@ describe('gate rejects bad candidates (real bots, scratch levels)', () => {
     expect(result.ok).toBe(false);
   });
 
-  it('limit: the same useless Cannon passes when the context declares nothing new (L3 trusts the declaration)', () => {
+  it('rejects a scratch campaign that adds the useless Cannon without declaring it', () => {
     const level: LevelDef = { ...LEVELS[0], id: 210, allowedTowers: LEVELS[1].allowedTowers };
-    expect(checkLevel(level, { band: 'intro', introduces: null }).failed).toEqual([]);
+    expect(checkCampaign([LEVELS[0], level], [CAMPAIGN_CONTEXTS[0], { band: 'intro', introduces: null }]).failed).toContain('L3');
   });
 
   it('rejects a new thing the level does not even allow', () => {
@@ -108,16 +108,26 @@ describe('gate source is not keyed to the shipped levels', () => {
 
 describe('checkCampaign on other lengths', () => {
   const two = [LEVELS[2], LEVELS[9]];
-  const twoContexts = [CAMPAIGN_CONTEXTS[2], CAMPAIGN_CONTEXTS[9]];
+  // In this shorter campaign the first stop supplies the starting kit and the second adds the rest.
+  const twoContexts: LevelContext[] = [
+    { ...CAMPAIGN_CONTEXTS[2], alsoIntroduces: ['wolf', 'musketeer', 'longbow', 'cannon', 'keg', 1, 2] },
+    { ...CAMPAIGN_CONTEXTS[9], alsoIntroduces: ['firepot', 'mortar', 'tarBarrel', 'barricade', 'guards',
+      'fireArrows', 3, 'goblin', 'troll', 'shieldbearer', 'harpy'] },
+  ];
 
   it('accepts a one-level and a two-level campaign', () => {
-    expect(checkCampaign([LEVELS[2]], [CAMPAIGN_CONTEXTS[2]]).failed).toEqual([]);
+    expect(checkCampaign([LEVELS[2]], [twoContexts[0]]).failed).toEqual([]);
     expect(checkCampaign(two, twoContexts).failed).toEqual([]);
+  });
+
+  it.each(['musketeer', 'keg', 2, 'wolf'] as const)('rejects an undeclared opening capability: %s', missing => {
+    const context = { ...twoContexts[0], alsoIntroduces: twoContexts[0].alsoIntroduces!.filter(key => key !== missing) };
+    expect(checkCampaign([LEVELS[2]], [context]).failed).toEqual(['L3']);
   });
 
   it('rejects a campaign that introduces the same tower twice', () => {
     const copy: LevelDef = { ...LEVELS[2], id: 301 };
-    const result = checkCampaign([LEVELS[2], copy], [CAMPAIGN_CONTEXTS[2], CAMPAIGN_CONTEXTS[2]]);
+    const result = checkCampaign([LEVELS[2], copy], [twoContexts[0], CAMPAIGN_CONTEXTS[2]]);
     expect(result.failed).toContain('L3');
   });
 
@@ -136,19 +146,12 @@ describe('checkCampaign on other lengths', () => {
   });
 });
 
-describe('Stand Fast sits exactly on the two-star line', () => {
-  const stars = (level: LevelDef) => {
-    const run = bots.runBot(createGame({ level }), bots.botGood);
-    return { stars: levelStars(run.state), lives: run.state.lives };
-  };
-  it('nominal: Good ends on exactly 12 lives', () => {
-    expect(stars(LEVELS[7])).toEqual({ stars: 2, lives: 12 });
-  });
-  // Pinned defect: a 2% change in enemy HP or 10 gold less takes Good (and Person) to one star. L3 and L6
-  // tolerate that drop, so nothing in the gate keeps Stand Fast's second star stable.
-  it.fails('keeps two stars for Good at hp x0.98, hp x1.02 and gold -10', () => {
-    for (const variant of [{ hpScale: LEVELS[7].hpScale * 0.98 }, { hpScale: LEVELS[7].hpScale * 1.02 }, { startGold: LEVELS[7].startGold - 10 }]) {
-      expect(stars({ ...LEVELS[7], ...variant }).stars).toBeGreaterThanOrEqual(2);
+describe('Stand Fast keeps its two-star margin', () => {
+  it('keeps two stars for Good at both HP and starting gold margins', () => {
+    const level = LEVELS[7];
+    for (const variant of [{ hpScale: level.hpScale * 0.98 }, { hpScale: level.hpScale * 1.02 },
+      { startGold: level.startGold - 10 }, { startGold: level.startGold + 10 }]) {
+      expect(levelStars(bots.runBot(createGame({ level: { ...level, ...variant } }), bots.botGood).state)).toBeGreaterThanOrEqual(2);
     }
   });
 });
