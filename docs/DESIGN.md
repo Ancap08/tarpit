@@ -1,6 +1,6 @@
 # Tarpit: game design spec
 
-> **Frozen as of milestone 41a.** This file states every number and rule the
+> **Frozen as of milestone 42.** This file states every number and rule the
 > game uses. Changing any of them needs a `DECISIONS.md` entry (who decided
 > and why) and the balance pins updated in the same change
 > (`src/sim/balance.suite.ts`, `npm run sim`). Kyle's play notes can reopen
@@ -630,8 +630,10 @@ Reloading starts a new run.
 
 `grantCheatGold(state)` adds 500 gold (`CHEAT_GOLD`), sets `state.cheated`
 and emits `cheat {gold}`; it works in setup and during a wave and is
-refused with `game-over` once the game is won or lost. Nothing else in the
-simulation reads `cheated`. On screen, five presses on the Gold readout
+refused with `game-over` once the game is won or lost. In campaign levels
+the mark lifts the tower and upgrade limits for that run. The level’s own
+specials still open on wave 1. Additional specials open on their usual Free
+play waves and use the same charge. On screen, five presses on the Gold readout
 (the area x 8 to 112 of HUD row 1) within 2 s call it; four, or presses
 spread over more than 2 s, do not. A cheated game shows "cheat used" in
 small type under the Gold number and saves no best score for the rest of
@@ -1583,14 +1585,14 @@ Up to three ascending reward waves use the three existing reward menus in order.
 An allowed special opens on wave 1. Tower, upgrade and special restrictions
 are checked before a purchase or cast changes the game. Clearing the last
 wave wins. Every level starts with the same life count. A loss earns zero stars.
-A win earns one star, or the highest award whose minimum is met.
+An uncheated win earns one star, or the highest award whose minimum is met.
 
 | Starting lives | Minimum lives for two stars | Minimum lives for three stars |
 |---:|---:|---:|
 | 20 | 12 | 18 |
 
-Level 1 starts open. Open levels form a contiguous prefix. A saved win beyond a gap counts toward unlocking the following level after the player fills that gap. Replay keeps the best stars. The browser
-stores campaign stars under `tarpit.campaign`; if storage fails, it keeps
+Level 1 starts open. Open levels form a contiguous prefix. A saved win beyond a gap counts toward unlocking the following level after the player fills that gap. A gold-cheat win counts as a pass with zero stars. Replay keeps the best stars, including after a cheated win. The browser
+stores campaign passes and stars under `tarpit.campaign`; if storage fails, it keeps
 them for the page session. Free play keeps its own score table.
 
 ### Bot decisions
@@ -1691,7 +1693,14 @@ of clearance above the stars. The map, card and result draw filled stars
 for earned slots and outlines for empty slots. The first open level without a win is highlighted.
 Tapping any lock names the first open level still to win. Back returns to
 the first screen. An open stop shows a card with the level name, map,
-twist, new equipment or enemies, and best stars. Play starts that level.
+twist, new equipment or enemies, and best stars. On the first Play for
+each level, a tips panel shows up to three short instructions. Got it
+starts the level. On later visits Play starts the level directly and Tips
+reopens the instructions. Got it on a reopened panel returns to the card.
+Escape returns to the card from either panel. Enter and Space activate
+the selected button. Turning the device keeps the panel and its action.
+Seen levels are saved separately from campaign progress. Free play skips
+this panel.
 
 The build bar keeps every tower in its usual slot. Towers unavailable in
 this level appear dimmed with a lock and cannot be selected. The tower
@@ -1699,9 +1708,12 @@ panel offers upgrades up to the level’s tier limit. At a campaign cap
 below tier three, it shows “Max for this level” beside the kill count. From wave one, the specials menu lists the level’s specials.
 
 The game shows the level number and counts waves against the level's own
-length. A win shows this run's stars and lives. A gold-cheat win shows empty star slots and explains that stars were not saved. It opens no level and offers no Next. Below three stars it gives
-the life target for the next award. Next level opens the next card. Winning
-level ten shows the campaign-complete message. Play again restarts the
+length. A win shows this run's stars and lives. A gold-cheat win shows
+three empty slots and explains that it saved no stars. Passing opens the
+next level and offers Next level when another level exists. An uncheated
+win below three stars gives the life target for the next award. Next
+level opens the next card. Winning level ten shows the campaign-complete
+message. Play again restarts the
 same level, and Level map shows the player's saved bests. A loss offers
 Try again and Level map. Turning the device keeps the current screen and
 level selection. Both looks use the same campaign controls.

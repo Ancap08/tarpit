@@ -9169,3 +9169,15 @@ now use the simulation’s level restrictions when offering purchases. Locked
 towers keep their slots, and upgrades end at the level’s tier limit.
 
 At 1.5× font metrics the old landscape wave counter overlapped the level tag by 4.06 px on Mac Chromium. Fixed-height HUD labels and a lower first-screen subtitle clear the stricter guard, which now also checks the running HUD after each rotation.
+
+## 2026-11-23: milestone 42, tips and the cheat
+
+- Each campaign card introduces its level with short tips on the first Play.
+  A returning player can play immediately or read the tips again. Seen tips
+  have their own browser record, so clearing them keeps the player's stars.
+- A gold-cheat win passes the level and opens the next card. The map shows
+  three empty slots until an honest win earns stars. A cheated replay keeps
+  any stars already earned.
+- Using the gold cheat lifts the campaign equipment restrictions for that
+  run. Extra specials open on their usual waves and share the existing
+  charge. Starting another run restores the level's usual equipment.
