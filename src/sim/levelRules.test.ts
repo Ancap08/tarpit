@@ -7,10 +7,10 @@ import {
 const goblins = { groups: [{ type: 'goblin', count: 1, interval: 1, delay: 0 }] } as const;
 const wolves = { groups: [{ type: 'wolf', count: 1, interval: 1, delay: 0 }] } as const;
 const level: LevelDef = {
-  id: 1, map: 'switchback', waves: [goblins, wolves], startGold: 200, startLives: 9,
+  id: 1, map: 'switchback', waves: [goblins, wolves], startGold: 200,
   hpScale: 1.25, hpGrowthStart: null,
   allowedTowers: ['musketeer'], maxTowerLevel: 2,
-  allowedSpecials: ['keg', 'guards'], rewardWaves: [], stars: { two: 6, three: 8 },
+  allowedSpecials: ['keg', 'guards'], rewardWaves: [],
 };
 
 function finishWave(state: GameState): void {
@@ -22,7 +22,7 @@ describe('campaign level rules', () => {
   it('takes map, economy and wave definitions from the level and wins after its last wave', () => {
     const state = createGame({ level, map: 'meadow', difficulty: 'hard' });
     expect(state.map).toBe(MAPS.switchback);
-    expect(state).toMatchObject({ gold: 200, lives: 9 });
+    expect(state).toMatchObject({ gold: 200, lives: 20 });
     expect(lastWave(state)).toBe(2);
     expect(nextWavePreview(state)).toEqual([{ type: 'goblin', count: 1 }]);
     expect(startWave(state)).toEqual({ ok: true, wave: 1 });
@@ -30,7 +30,7 @@ describe('campaign level rules', () => {
     expect(state.enemies[0]).toMatchObject({ hp: 29, maxHp: 29 });
     expect(nextWavePreview(state)).toEqual([{ type: 'wolf', count: 1 }]);
     finishWave(state);
-    expect(state).toMatchObject({ phase: 'setup', lives: 8, gold: 225 });
+    expect(state).toMatchObject({ phase: 'setup', lives: 19, gold: 225 });
     expect(startWave(state)).toEqual({ ok: true, wave: 2 });
     tick(state);
     expect(state.enemies[0]).toMatchObject({ hp: 25, maxHp: 25 });
@@ -38,9 +38,9 @@ describe('campaign level rules', () => {
     expect(callNextWave(state)).toEqual({ ok: false, reason: 'last-wave' });
     expect(state).toEqual(lastWaveBefore);
     finishWave(state);
-    expect(state).toMatchObject({ phase: 'won', wave: 2, lives: 7, gold: 250 });
+    expect(state).toMatchObject({ phase: 'won', wave: 2, lives: 18, gold: 250 });
     expect(nextWavePreview(state)).toEqual([]);
-    expect(levelStars(state)).toBe(2);
+    expect(levelStars(state)).toBe(3);
     const wonBefore = structuredClone(state);
     expect(continueEndless(state)).toEqual({ ok: false, reason: 'campaign-level' });
     expect(state).toEqual(wonBefore);
@@ -58,7 +58,7 @@ describe('campaign level rules', () => {
         expect(state.spawnedPerGroup).toEqual([count]);
       }
       finishWave(state);
-      expect(state).toMatchObject({ phase: 'won', lives: 6 });
+      expect(state).toMatchObject({ phase: 'won', lives: 17 });
     },
   );
 
@@ -167,7 +167,7 @@ describe('campaign level rules', () => {
   });
 
   it('gives one star for a win and includes the exact two- and three-star thresholds', () => {
-    expect([0, 1, 5, 6, 7, 8, 9].map((lives) => levelStars({ level, phase: 'won', lives })))
+    expect([0, 1, 11, 12, 17, 18, 20].map((lives) => levelStars({ level, phase: 'won', lives })))
       .toEqual([0, 1, 1, 2, 2, 3, 3]);
     expect(levelStars({ level, phase: 'lost', lives: 9 })).toBe(0);
     expect(levelStars({ phase: 'won', lives: 9 })).toBe(0);

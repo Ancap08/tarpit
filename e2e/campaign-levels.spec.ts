@@ -10,7 +10,9 @@ test('each campaign level starts its own first wave and enforces its loadout', a
     const result = await page.evaluate(async ({ id, towers, specials }) => {
       const api = window.__tarpit as TarpitTestApi;
       await api.startLevel(id);
-      const level = api.state().level!;
+      const initial = api.state();
+      const level = initial.level!;
+      const startingLives = initial.lives;
       const deniedTowers = towers.filter(tower => !level.allowedTowers.includes(tower));
       const buildings = deniedTowers.map(tower => api.buildAt(0, 0, tower));
       const phase = api.runBot('botGood', 1);
@@ -21,10 +23,10 @@ test('each campaign level starts its own first wave and enforces its loadout', a
       const started = api.startWave();
       const deniedSpecials = specials.filter(special => !level.allowedSpecials.includes(special));
       const casts = deniedSpecials.map(special => api.useSpecialAt(special, 100, 240));
-      return { id: level.id, phase, wave, started, buildings, casts,
+      return { id: level.id, startingLives, phase, wave, started, buildings, casts,
         towers: level.allowedTowers, specials: level.allowedSpecials };
     }, { id, towers, specials: [...SPECIAL_TYPES] });
-    expect(result).toMatchObject({ id, phase: 'setup', wave: 1, started: { ok: true, wave: 2 } });
+    expect(result).toMatchObject({ id, startingLives: 20, phase: 'setup', wave: 1, started: { ok: true, wave: 2 } });
     if (id >= 6) expect([...result.towers].sort()).toEqual([...towers].sort());
     else expect(result.buildings.length).toBeGreaterThan(0);
     if (id >= 8) expect([...result.specials].sort()).toEqual([...SPECIAL_TYPES].sort());

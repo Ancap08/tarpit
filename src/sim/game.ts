@@ -75,7 +75,7 @@ import { BOON_OFFER_WAVES, boonScale, boonOptions } from './boons';
 import { burnEnemies, fireTowers, PACK_INTERVAL_TICKS, removeDead } from './combat';
 import { ACT_TWO_HP_GROWTH, DEFAULT_DIFFICULTY, DIFFICULTY_DEFS, campaignHpFactor, enemyMaxHp, type Difficulty } from './difficulty';
 import { ENEMY_STATS, isBoss } from './enemies';
-import type { LevelDef } from './levelTypes';
+import { CAMPAIGN_START_LIVES, type LevelDef } from './levelTypes';
 import { pathLength, resolveMap, type MapId } from './map';
 import { applyBurn, applySpecialSlow, enemyPosition } from './combat';
 import { SPECIAL_DEFS, ZONE_LINGER_TICKS, tarLingerTicks } from './specials';
@@ -121,7 +121,7 @@ export function createGame(options: CreateGameOptions = {}): GameState {
     packs: [],
     phase: 'setup',
     gold: level?.startGold ?? def.startGold,
-    lives: level?.startLives ?? def.startLives,
+    lives: level ? CAMPAIGN_START_LIVES : def.startLives,
     wave: 0,
     specialCharges: 0,
     specialRechargeTicks: 0,

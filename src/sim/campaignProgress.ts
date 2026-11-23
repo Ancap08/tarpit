@@ -1,3 +1,4 @@
+import { THREE_STAR_LIVES, TWO_STAR_LIVES } from './levelTypes';
 import type { GameState } from './types';
 
 export type Stars = 0 | 1 | 2 | 3;
@@ -8,8 +9,8 @@ const PROGRESS_VERSION = 1;
 
 export function levelStars(state: Pick<GameState, 'level' | 'lives' | 'phase'>): Stars {
   if (!state.level || state.phase !== 'won' || state.lives <= 0) return 0;
-  if (state.lives >= state.level.stars.three) return 3;
-  return state.lives >= state.level.stars.two ? 2 : 1;
+  if (state.lives >= THREE_STAR_LIVES) return 3;
+  return state.lives >= TWO_STAR_LIVES ? 2 : 1;
 }
 
 function isWinStars(value: unknown): value is WinStars {

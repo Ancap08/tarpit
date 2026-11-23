@@ -7,9 +7,9 @@ import type { LevelDef } from './levelTypes';
 import type { EnemyType, MapDef } from './types';
 
 const level: LevelDef = {
-  id: 1, map: 'meadow', startGold: 85, startLives: 20, hpScale: 1, hpGrowthStart: null,
+  id: 1, map: 'meadow', startGold: 85, hpScale: 1, hpGrowthStart: null,
   allowedTowers: ['longbow', 'musketeer'], maxTowerLevel: 2,
-  allowedSpecials: ['keg'], rewardWaves: [], stars: { two: 10, three: 15 },
+  allowedSpecials: ['keg'], rewardWaves: [],
   waves: [{ groups: [{ type: 'goblin', count: 10, interval: 2, delay: 0 }] }],
 };
 const lane: MapDef = {
