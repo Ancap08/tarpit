@@ -49,10 +49,10 @@ describe('campaign acceptance gate', () => {
     }
     // The Switchback rematch adds a Shieldbearer to the second wave's formation.
     const extraLate = { ...standFast, id: 11, waves: standFast.waves.map((w, i) => i === 1 ? reinforce(w, 1) : w) };
-    // The Meadow finale tightens the opening cadence and adds one mid-level Troll.
-    const extraFinale = { ...lastLight, id: 12, waves: lastLight.waves.map((w, i) => {
+    // The Meadow finale tightens the opening cadence and adds two mid-level Trolls with ten less starting gold.
+    const extraFinale = { ...lastLight, id: 12, startGold: lastLight.startGold - 10, waves: lastLight.waves.map((w, i) => {
       if (i === 0) return { groups: w.groups.map(g => ({ ...g, interval: g.interval * 0.85 })) };
-      return i === 3 ? reinforce(w, 1) : w;
+      return i === 3 ? reinforce(w, 2) : w;
     }) };
     const finale: LevelContext = { band: 'finale', introduces: null };
     expect(checkLevel(extraLate, late).failed).toEqual([]);
