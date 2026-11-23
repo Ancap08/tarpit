@@ -13,7 +13,9 @@
 
 King Grumblemaw sends his collectors to take the town's gold. The next-wave
 preview uses short names and the existing count style. Boss bars and entrance
-banners use full names. The simulation and balance report retain their original
+banners use full names. The portrait preview fits its measured text into the
+remaining HUD strip. Boss labels scale down when their measured height exceeds
+the name pill or health bar. The simulation and balance report retain their original
 identifiers and labels.
 
 | Id | Display name | Short name |

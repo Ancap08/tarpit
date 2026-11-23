@@ -187,6 +187,6 @@ test('runScript stops in setup right after Keep going with untilWave 21', async 
     };
     return { text: next.text, lines: next.getWrappedText().length, size: next.style.fontSize };
   });
-  expect(fit.text).toBe('Next: 23 Goblin, 15 Troll, 9 Shieldbearer, 29 Harpy');
+  expect(fit.text).toBe('Next: 23 Collector, 15 Toll Troll, 9 Redcoat, 29 Harpy');
   expect(fit.lines).toBeLessThanOrEqual(2);
 });

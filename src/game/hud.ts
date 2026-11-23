@@ -63,7 +63,7 @@ import {
   blockedWaveLabel,
   CHEAT_MARK,
   DIFFICULTY_LABELS,
-  ENEMY_NAMES,
+  ENEMY_SHORT_NAMES,
   rechargeText,
   SPECIAL_BUTTON_TEXT,
   speedLabel,
@@ -132,9 +132,9 @@ export const TAG_OFFSET = 12;
 export const TAG_SIZE = 12;
 
 /**
- * "Next: 8 Goblin", "Next: 8 Goblin, 5 Wolf" (names from ENEMY_NAMES), or
+ * "Next: 8 Collector", "Next: 8 Collector, 5 Hound" (names from ENEMY_SHORT_NAMES), or
  * "Next: none" after the last wave. A wave with the boss lists its other
- * groups, then " + Grumblefoot" (BOSS_NAME), with no count.
+ * groups, then " + Grumblefoot", with no count.
  */
 export function previewText(state: GameState): string {
   const groups = nextWavePreview(state);
@@ -144,8 +144,8 @@ export function previewText(state: GameState): string {
   const counts = new Map<EnemyType, number>();
   for (const g of groups) if (!isBoss(g)) counts.set(g.type, (counts.get(g.type) ?? 0) + g.count);
   const bossGroup = groups.find(isBoss);
-  const boss = bossGroup ? ` + ${ENEMY_NAMES[bossGroup.type]}` : '';
-  return `Next: ${[...counts].map(([type, count]) => `${count} ${ENEMY_NAMES[type]}`).join(', ')}${boss}`;
+  const boss = bossGroup ? ` + ${ENEMY_SHORT_NAMES[bossGroup.type]}` : '';
+  return `Next: ${[...counts].map(([type, count]) => `${count} ${ENEMY_SHORT_NAMES[type]}`).join(', ')}${boss}`;
 }
 
 /** Row 1 buttons (milestone 25b): Special, Start Wave and the speed toggle, 8 px apart, 14 px from the right edge. */
@@ -472,8 +472,12 @@ export class Hud {
     if (this.next.text !== preview) {
       const width = m.preview.width;
       if (m.portrait) {
-        const size = [18, 16, 14].find((px) => previewLines(preview, px, width) <= 2) ?? 13;
-        this.next.setWordWrapWidth(width, true).setFontSize(size).setText(preview).setColor(aimText === null ? TEXT.hudDim : TEXT.aimBanner);
+        this.next.setWordWrapWidth(width, true).setText(preview).setColor(aimText === null ? TEXT.hudDim : TEXT.aimBanner);
+        const availableHeight = PORTRAIT_STRIP_H - 2 - m.preview.y;
+        for (const size of [18, 16, 14, 13, 12]) {
+          this.next.setFontSize(size);
+          if (this.next.height <= availableHeight && this.next.width <= width) break;
+        }
       } else this.next.setFontSize(previewSize(preview)).setText(preview);
     }
     const call = callEarlyStatus(state);

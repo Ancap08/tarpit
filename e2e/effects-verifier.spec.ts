@@ -324,9 +324,9 @@ test.describe('reduced motion', () => {
     await startPlay(page);
     await page.evaluate(() => window.__sc().build({ col: 2, row: 5 }, 'musketeer'));
     await bossArrives(page);
-    await page.waitForFunction(() => window.__tarpit!.fx()!.banner === 'Grumblefoot', undefined, { timeout: 3000 });
+    await page.waitForFunction(() => window.__tarpit!.fx()!.banner === 'Assessor Grumblefoot', undefined, { timeout: 3000 });
     let f = await fx(page);
-    expect(f).toMatchObject({ reducedMotion: true, darkenings: 0, shakes: 0, bossEntrances: 1, banner: 'Grumblefoot' });
+    expect(f).toMatchObject({ reducedMotion: true, darkenings: 0, shakes: 0, bossEntrances: 1, banner: 'Assessor Grumblefoot' });
     expect(f.darken).toBe(0);
     await page.evaluate(() => window.__sc().fx.shakeKeg());
     await page.evaluate(() => {

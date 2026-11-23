@@ -109,15 +109,21 @@ export class BossBar {
       this.setVisible(false);
       return;
     }
-    if (this.name.text !== info.name) this.name.setText(info.name);
-    if (this.hp.text !== info.hpText) this.hp.setText(info.hpText);
+    if (this.name.text !== info.name) {
+      this.name.setText(info.name);
+      this.name.setScale(Math.min(1, this.geo.pill.height / this.name.height));
+    }
+    if (this.hp.text !== info.hpText) {
+      this.hp.setText(info.hpText);
+      this.hp.setScale(Math.min(1, this.geo.bar.height / this.hp.height));
+    }
     const { x, y, width, height } = this.geo.bar;
     const BOSS_PILL = this.geo.pill;
     const g = this.g;
     g.clear();
     // Name pill, sized to the name.
     g.fillStyle(COLORS.bossNamePill, 0.85);
-    g.fillRoundedRect(x, BOSS_PILL.y, Math.ceil(this.name.width) + 2 * BOSS_PILL.padX, BOSS_PILL.height, 5);
+    g.fillRoundedRect(x, BOSS_PILL.y, Math.ceil(this.name.displayWidth) + 2 * BOSS_PILL.padX, BOSS_PILL.height, 5);
     // Border, trough, fill.
     g.fillStyle(COLORS.bossBarEdge, 1);
     g.fillRect(x - 1, y - 1, width + 2, height + 2);

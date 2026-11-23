@@ -1,5 +1,5 @@
 import { expect, type Page } from '@playwright/test';
-import { BOON_NAMES, boonDescription, GRUMBLEMAW_NAME, rewardTitle } from '../src/game/names';
+import { BOON_NAMES, boonDescription, ENEMY_SHORT_NAMES, rewardTitle } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { lastSpawnTick, type BoonId } from '../src/sim';
 import { waitForTitle } from './title';
@@ -155,7 +155,7 @@ export async function expectActTwoPreviewsFit(page: Page): Promise<void> {
     }, wave);
     expect(result, `wave ${wave} preview`).not.toBeNull();
     expect(result!.text).toMatch(/^Next: \d+/);
-    if (wave === 20) expect(result!.text).toContain(GRUMBLEMAW_NAME);
+    if (wave === 20) expect(result!.text).toContain(ENEMY_SHORT_NAMES.grumblemaw);
     expect(result!.lines).toBeLessThanOrEqual(2);
     expect(result!.top.x).toBeGreaterThanOrEqual(0);
     expect(result!.top.y).toBeGreaterThanOrEqual(0);

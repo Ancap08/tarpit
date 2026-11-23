@@ -32,7 +32,7 @@ async function startTest(page: Page, map: MapId = 'meadow'): Promise<void> {
 
 /** Start a game in play (real time) by clicking Play on the title. */
 async function startPlay(page: Page, map: MapId = 'meadow'): Promise<void> {
-  await page.goto('/');
+  await page.goto('/?look=classic');
   await waitForTitle(page);
   await page.evaluate((m) => {
     const title = window.__tarpit!.game.scene.getScene('title') as unknown as { play(d: string, m: string): void };
