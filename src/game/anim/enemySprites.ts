@@ -37,7 +37,8 @@
 // through Effects: onEvents() acts at once, as before.
 
 import Phaser from 'phaser';
-import { effectiveSlow, ENEMY_STATS, enemyPosition, isBoss, isTarred, positionAlongPath, type Enemy, type EnemyType, type GameEvent, type GameState, type MapDef } from '../../sim';
+import type { BlockedPositions } from '../draw/barricade';
+import { effectiveSlow, ENEMY_STATS, enemyPosition, isBoss, isTarred, positionAlongPath, type Enemy, type EnemyType, type GameEvent, type GameState, type MapDef, type Point } from '../../sim';
 import { bobOffset, DEATH_MS, burnPulse, FLAME_EVERY, HIT_FLASH_MS, Particles, statusTint, TINT } from './effects';
 import { awayFrom, deathPuff, KNOCK_MS, knockPx, knockShare } from '../fx/fxMath';
 import { facingAt } from './facing';
@@ -65,6 +66,7 @@ export interface AnimState {
   facing: Facing;
   flipX: boolean;
   scale: number;
+  blockerLunge: number;
   flags: { hit: boolean; burning: boolean; slowed: boolean; dying: boolean };
 }
 
@@ -95,6 +97,7 @@ interface View {
   knockY: number;
   knockAt: number;
   redraws: number;
+  blockerLunge: number;
 }
 
 /** Load every enemy sheet (call from a scene's preload). */
@@ -250,11 +253,13 @@ export class EnemySprites {
   }
 
   /** Match the sprites to the live enemies: create, move, face, animate and tint. */
-  sync(state: GameState, timeScale: number): void {
+  sync(state: GameState, timeScale: number, stopped?: BlockedPositions): void {
     const live = new Set<number>();
     for (const enemy of state.enemies) {
       live.add(enemy.id);
-      this.update(this.views.get(enemy.id) ?? this.create(enemy, state.map), enemy, state.map, timeScale);
+      const view = this.views.get(enemy.id) ?? this.create(enemy, state.map);
+      const position = stopped?.get(enemy.id);
+      this.update(view, enemy, state.map, timeScale, position);
     }
     // An enemy gone without a kill or exit event (a test hook, a restart): drop it.
     for (const [id, v] of this.views) {
@@ -266,6 +271,7 @@ export class EnemySprites {
 
   /** A doomed sprite walks on along the trail at its last speed until its shot lands (play only). */
   private walkOn(v: View, map: MapDef, timeScale: number): void {
+    if (v.stepPx === 0) return; // A walker killed against the wall stays there until the shot lands.
     const ticks = ((this.scene.time.now - v.doomedAt) / (1000 / 60)) * timeScale;
     const { x, y } = this.layout.toScreen(positionAlongPath(map, v.distance + v.stepPx * ticks));
     const lift = SHEETS[v.type].lift ?? 0;
@@ -327,6 +333,7 @@ export class EnemySprites {
       knockY: 0,
       knockAt: -1,
       redraws: 0,
+      blockerLunge: 0,
     };
     this.views.set(enemy.id, view);
     this.setFacing(view, facingAt(map, enemy.distance, this.step(enemy), this.layout), true);
@@ -349,8 +356,9 @@ export class EnemySprites {
     else v.sprite.anims.play(walkAnimKey(v.type, facing), true);
   }
 
-  private update(v: View, enemy: Enemy, map: MapDef, timeScale: number): void {
-    const { x, y } = this.layout.toScreen(enemyPosition(enemy, map));
+  private update(v: View, enemy: Enemy, map: MapDef, timeScale: number, stoppedAt?: Point & { lunge: number }): void {
+    const { x, y } = this.layout.toScreen(stoppedAt ?? enemyPosition(enemy, map));
+    v.blockerLunge = stoppedAt?.lunge ?? 0;
     const lift = SHEETS[v.type].lift ?? 0;
     const bob = v.flying && !this.frozen ? bobOffset(this.scene.time.now, enemy.id) : 0;
     if (v.knockAt >= 0 && this.scene.time.now - v.knockAt >= KNOCK_MS) v.knockAt = -1;
@@ -368,9 +376,9 @@ export class EnemySprites {
       v.shield.setDepth(y + 0.5);
     }
     this.setFacing(v, facingAt(map, enemy.distance, this.step(enemy), this.layout));
-    v.sprite.anims.timeScale = timeScale;
+    v.sprite.anims.timeScale = stoppedAt ? 0 : timeScale;
     v.distance = enemy.distance;
-    v.stepPx = this.step(enemy);
+    v.stepPx = stoppedAt ? 0 : this.step(enemy);
     v.burning = (enemy.burnTicksLeft ?? 0) > 0;
     v.slowed = isTarred(enemy);
     v.redraws += 1;
@@ -411,6 +419,7 @@ export class EnemySprites {
       facing: v.facing,
       flipX: s.flipX,
       scale: SHEETS[v.type].scale,
+      blockerLunge: v.blockerLunge,
       flags: { hit: this.isHit(v), burning: v.burning, slowed: v.slowed, dying: v.dying },
     };
   }

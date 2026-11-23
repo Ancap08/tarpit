@@ -174,13 +174,23 @@ export const SPECIAL_NAMES: Readonly<Record<SpecialType, string>> = {
   keg: 'Powder Keg',
   tarBarrel: 'Tar Barrel',
   fireArrows: 'Fire Arrows',
+  barricade: 'Barricade',
 };
 
 /** The HUD's special button label (milestone 25b). */
 export const SPECIAL_BUTTON_TEXT = 'Special';
 
 /** The verb in the aim banner per special (milestone 30). */
-const SPECIAL_VERBS: Readonly<Record<SpecialType, string>> = { keg: 'throw', tarBarrel: 'drop', fireArrows: 'shoot' };
+const SPECIAL_VERBS: Readonly<Record<SpecialType, string>> = { keg: 'throw', tarBarrel: 'drop', fireArrows: 'shoot', barricade: 'place' };
+
+export const BARRICADE_UNLOCKED = 'Barricade unlocked';
+export const BARRICADE_UNLOCK_HINT = 'Use Special to block the trail.';
+export const BARRICADE_AIM_REASONS = {
+  'off-trail': 'Aim closer to the trail.',
+  'out-of-bounds': 'Aim inside the map.',
+  'near-spawn': 'Too close to the cave.',
+  'near-exit': 'Too close to the exit.',
+} as const;
 
 /**
  * The aim banner over the map while a special is aimed (milestone 30):

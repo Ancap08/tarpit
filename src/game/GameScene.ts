@@ -123,6 +123,8 @@ import {
   createGame,
   DEFAULT_DIFFICULTY,
   DEFAULT_MAP,
+  barricadePlacement,
+  isFlying,
   enemyMaxHp,
   pathLength,
   isBuildable,
@@ -174,12 +176,13 @@ import { EnemySprites, type AnimState } from './anim/enemySprites';
 import { drawHpBars, drawShadows, drawStatusRings } from './draw/enemies';
 import { TowerLabels } from './draw/labels';
 import { LivingMap, type DecorState } from './decor/livingMap';
+import { BarricadeEffects, drawBarricadeAim } from './draw/barricade';
 import { ShotEffects } from './draw/shots';
 import { SpecialEffects } from './draw/specials';
 import { Aim, drawTowerShape, drawTowers } from './draw/towers';
 import { highScores } from './highScore';
 import { callEarlyInfo, CHEAT_TAPS, CHEAT_WINDOW_MS, Hud, specialReady, specialRecharge } from './hud';
-import { AIM_BANNER, aimBannerText, REWARD_KEYS } from './names';
+import { AIM_BANNER, aimBannerText, BARRICADE_AIM_REASONS, REWARD_KEYS } from './names';
 import {
   cellAt,
   cellRect,
@@ -290,6 +293,9 @@ export interface UiState {
     unlocked: SpecialType[];
     menuOpen: boolean;
     aimPoint: { x: number; y: number } | null;
+    barricadeAim: { point: { x: number; y: number }; valid: boolean; reason: string | null } | null;
+    blocker: { point: { x: number; y: number }; hp: number; maxHp: number; attackers: number[]; shake: number } | null;
+    barricadeCrash: { x: number; y: number } | null;
     /** Milestone 30: the charge is ready now (a wave runs and it is not refilling). */
     ready: boolean;
     /** Milestone 30: wave ticks until the charge is ready again; 0 when ready or not refilling. */
@@ -372,6 +378,7 @@ export const SPECIAL_COLORS: Readonly<Record<SpecialType, number>> = {
   keg: COLORS.specialKeg,
   tarBarrel: COLORS.specialTar,
   fireArrows: COLORS.specialFire,
+  barricade: COLORS.cellOk,
 };
 
 /**
@@ -437,6 +444,7 @@ export class GameScene extends Phaser.Scene {
   private press: Press | null = null;
   private shots = new ShotEffects();
   private specialFx!: SpecialEffects;
+  private barricadeFx!: BarricadeEffects;
   /** The aim circle's centre cross, above the sprites (milestone 30 follow-up). */
   private aimCross!: Phaser.GameObjects.Graphics;
   /** Ground layer over the map (milestone 30): zones and scorch marks. */
@@ -515,6 +523,7 @@ export class GameScene extends Phaser.Scene {
     this.accMs = resume?.accMs ?? 0;
     this.shots = new ShotEffects();
     this.specialFx = new SpecialEffects(this, isTestMode(), this.layout);
+    this.barricadeFx = new BarricadeEffects();
     this.speedPress = null;
     this.speedHoldLost = false;
     this.goldTaps = [];
@@ -868,13 +877,37 @@ export class GameScene extends Phaser.Scene {
     this.redraw();
   }
 
-  /** Fire `type` at canvas `point` (its world point, through the layout) and end aiming (whether or not the sim accepts it). */
+  /** Fire at a canvas point. A refused Barricade stays aimed so the player can adjust. */
   private fireSpecial(type: SpecialType, point: { x: number; y: number }): SpecialResult {
-    this.aiming = null;
-    this.touchAim = null;
-    this.aimPress = null;
     const at = this.layout.toWorld(point);
+    if (type === 'barricade') {
+      const placement = barricadePlacement(this.state.map, at);
+      if (!placement.ok) {
+        this.specialFx.addLabel(at, BARRICADE_AIM_REASONS[placement.reason], false);
+        this.touchAim = null;
+        return this.useSpecialAt(type, at.x, at.y);
+      }
+    }
+    this.cancelSpecial();
     return this.useSpecialAt(type, at.x, at.y);
+  }
+
+  private barricadeAim(centre = this.aimCentre()) {
+    if (this.aiming !== 'barricade' || centre === null) return null;
+    const pointer = this.layout.toWorld(centre);
+    return { pointer, placement: barricadePlacement(this.state.map, pointer) };
+  }
+
+  private aimBanner() {
+    if (this.aiming === null) return null;
+    const text = aimBannerText(this.aiming, this.touch);
+    const preview = this.barricadeAim()?.placement;
+    const reason = preview?.ok === false ? BARRICADE_AIM_REASONS[preview.reason] : null;
+    return reason === null ? text : { ...text, main: reason };
+  }
+
+  private get barricadeMotion(): boolean {
+    return !!this.fx && !this.fx.reducedMotion;
   }
 
   /** The HUD's Special button: cancel aiming or the popup if either is on, else select the only special or open the popup. */
@@ -1142,7 +1175,28 @@ export class GameScene extends Phaser.Scene {
         })(),
         ready: specialReady(this.state),
         rechargeTicks: specialRecharge(this.state) === null ? 0 : this.state.specialRechargeTicks,
-        banner: this.aiming === null ? null : aimBannerText(this.aiming, this.touch),
+        barricadeAim: (() => {
+          const aim = this.barricadeAim();
+          if (!aim) return null;
+          return {
+            point: this.layout.toScreen(aim.placement.ok ? aim.placement.point : aim.pointer),
+            valid: aim.placement.ok,
+            reason: aim.placement.ok ? null : BARRICADE_AIM_REASONS[aim.placement.reason],
+          };
+        })(),
+        blocker: (() => {
+          const blocker = this.state.blocker;
+          if (!blocker) return null;
+          return {
+            point: this.layout.toScreen(blocker),
+            hp: blocker.hp,
+            maxHp: blocker.maxHp,
+            attackers: this.state.enemies.filter((e) => !isFlying(e) && e.distance === blocker.distance).map((e) => e.id),
+            shake: this.barricadeFx.wallShake(this.barricadeMotion),
+          };
+        })(),
+        barricadeCrash: this.barricadeFx.crash ? this.layout.toScreen(this.barricadeFx.crash) : null,
+        banner: this.aimBanner(),
         holding: this.aimPress?.active ?? false,
         labels: this.specialFx.labelInfo(),
         zones: this.state.zones.map((z) => ({ id: z.id, type: z.type, x: z.x, y: z.y, ticksLeft: z.ticksLeft })),
@@ -1200,6 +1254,7 @@ export class GameScene extends Phaser.Scene {
       this.advance(ticks, false);
       // Effects age in real time in play (milestone 30), so a label lasts 1.5 s at any speed.
       this.specialFx.advance(delta);
+      this.barricadeFx.advance(delta);
     }
     this.redraw();
   }
@@ -1219,6 +1274,7 @@ export class GameScene extends Phaser.Scene {
       // In test mode effects age by tick (milestone 30), so step(n) frames are always the same.
       if (!this.autoTick) {
         this.specialFx.advance(1000 / 60);
+        this.barricadeFx.advance(1000 / 60);
         this.frozenMs += 1000 / 60;
         this.moments.advance(this.frozenMs);
       }
@@ -1261,6 +1317,7 @@ export class GameScene extends Phaser.Scene {
     if (!this.enemySprites) return;
     const { events, newTick } = this.eventCursor.take(this.state);
     if (newTick) this.enemySprites.newTick();
+    this.barricadeFx.onEvents(events);
     if (this.fx) this.fx.onEvents(events);
     else {
       this.enemySprites.onEvents(events);
@@ -1442,19 +1499,25 @@ export class GameScene extends Phaser.Scene {
     const fx = this.fx;
     fx?.update(this.state);
     drawTowers(g, this.state, this.aim, moving, fx ? (cell, type) => fx.towerPose(cell, type) : undefined, this.layout);
-    drawStatusRings(g, this.state, this.layout);
-    drawShadows(g, this.state, this.layout);
-    this.enemySprites.sync(this.state, this.speed);
+    const blocker = this.state.blocker;
+    const motion = this.barricadeMotion;
+    const stopped = this.barricadeFx.stoppedPositions(this.state, motion);
+    drawStatusRings(g, this.state, this.layout, stopped);
+    drawShadows(g, this.state, this.layout, stopped);
+    this.enemySprites.sync(this.state, this.speed, stopped);
     this.shotFx.clear();
     if (fx) fx.draw(this.shotFx);
     else this.shots.draw(this.shotFx);
     this.specialFx.draw(this.shotFx);
+    if (blocker) this.barricadeFx.drawWall(this.shotFx, blocker, this.layout, motion);
+    this.barricadeFx.drawCrash(this.shotFx, this.layout, motion);
     this.bars.clear();
-    drawHpBars(this.bars, this.state, this.layout);
+    drawHpBars(this.bars, this.state, this.layout, stopped);
+    if (blocker) this.barricadeFx.drawHp(this.bars, blocker, this.layout);
     this.labels.update(this.state);
     this.syncEndScreen();
     this.redrawUi();
-    const banner = this.aiming === null ? null : aimBannerText(this.aiming, this.touch);
+    const banner = this.aimBanner();
     this.hud.update(this.state, this.speed, this.pick, { menuOpen: this.specialMenuOpen, aiming: this.aiming, banner }, this.autoTick ? this.time.now : undefined);
     this.moments.draw(this.autoTick ? this.time.now : this.frozenMs);
     this.reward.update(this.state.pendingBoon);
@@ -1478,9 +1541,9 @@ export class GameScene extends Phaser.Scene {
   /** The aim banner (milestone 30): shown while aiming, with what to do and how to cancel. */
   private drawBanner(): void {
     // Portrait (32b follow-up): the instruction is in the status strip (Hud), nothing over the map.
-    const text = this.aiming === null || this.layout.kind === 'portrait' ? null : aimBannerText(this.aiming, this.touch);
+    const text = this.layout.kind === 'portrait' ? null : this.aimBanner();
     const main = text?.main ?? '';
-    if (this.bannerMain.text !== main) {
+    if (this.bannerMain.text !== main || this.bannerHint.text !== (text?.hint ?? '')) {
       this.bannerMain.setText(main);
       this.bannerHint.setText(text?.hint ?? '');
       this.bannerBg.clear();
@@ -1545,6 +1608,7 @@ export class GameScene extends Phaser.Scene {
     const backHome = drag?.kind === 'move' && drag.from !== null && hover !== null && sameCell(drag.from, hover);
     const hoverBuildable = hover !== null && (isBuildable(this.state, hover) || backHome);
     const aimAt = this.aimCentre();
+    const barricade = this.barricadeAim(aimAt);
     if (drag !== null) this.setCursor('grabbing');
     else if (aimAt !== null) this.setCursor('crosshair');
     else this.setCursor(hoverTower || (this.pick !== null && hoverBuildable) ? 'pointer' : 'default');
@@ -1591,26 +1655,30 @@ export class GameScene extends Phaser.Scene {
     // The special's aim circle (milestone 25b), and on a touch drag the
     // finger line to its lifted centre.
     if (this.aiming !== null && aimAt !== null) {
-      const color = SPECIAL_COLORS[this.aiming];
-      const r = specialRadius(this.aiming, this.state.boons);
-      // The overlay and cross layers are world-space (milestone 32b): the canvas aim point and finger go through the layout.
       const w = this.layout.toWorld(aimAt);
-      g.fillStyle(color, AIM_FILL_ALPHA);
-      g.fillCircle(w.x, w.y, r);
-      // A pale outer edge under the coloured one, so the dark tar circle reads on the path too.
-      g.lineStyle(AIM_LINE + 2, COLORS.dragLine, 0.7);
-      g.strokeCircle(w.x, w.y, r);
-      g.lineStyle(AIM_LINE, color, 1);
-      g.strokeCircle(w.x, w.y, r);
-      // The landing point: a light cross with a dark outline at the centre,
-      // drawn on the cross layer above the sprites (milestone 30 follow-up).
-      const c = this.aimCross;
-      c.lineStyle(6, COLORS.aimCrossDark, 0.9);
-      c.lineBetween(w.x - AIM_CROSS - 1, w.y, w.x + AIM_CROSS + 1, w.y);
-      c.lineBetween(w.x, w.y - AIM_CROSS - 1, w.x, w.y + AIM_CROSS + 1);
-      c.lineStyle(2.5, COLORS.dragLine, 1);
-      c.lineBetween(w.x - AIM_CROSS, w.y, w.x + AIM_CROSS, w.y);
-      c.lineBetween(w.x, w.y - AIM_CROSS, w.x, w.y + AIM_CROSS);
+      if (barricade) {
+        drawBarricadeAim(this.aimCross, w, barricade.placement.ok ? barricade.placement.point : null);
+      } else {
+        const color = SPECIAL_COLORS[this.aiming];
+        const r = specialRadius(this.aiming, this.state.boons);
+        // The overlay and cross layers are world-space (milestone 32b): the canvas aim point and finger go through the layout.
+        g.fillStyle(color, AIM_FILL_ALPHA);
+        g.fillCircle(w.x, w.y, r);
+        // A pale outer edge under the coloured one, so the dark tar circle reads on the path too.
+        g.lineStyle(AIM_LINE + 2, COLORS.dragLine, 0.7);
+        g.strokeCircle(w.x, w.y, r);
+        g.lineStyle(AIM_LINE, color, 1);
+        g.strokeCircle(w.x, w.y, r);
+        // The landing point: a light cross with a dark outline at the centre,
+        // drawn on the cross layer above the sprites (milestone 30 follow-up).
+        const c = this.aimCross;
+        c.lineStyle(6, COLORS.aimCrossDark, 0.9);
+        c.lineBetween(w.x - AIM_CROSS - 1, w.y, w.x + AIM_CROSS + 1, w.y);
+        c.lineBetween(w.x, w.y - AIM_CROSS - 1, w.x, w.y + AIM_CROSS + 1);
+        c.lineStyle(2.5, COLORS.dragLine, 1);
+        c.lineBetween(w.x - AIM_CROSS, w.y, w.x + AIM_CROSS, w.y);
+        c.lineBetween(w.x, w.y - AIM_CROSS, w.x, w.y + AIM_CROSS);
+      }
       const ap = this.aimPress;
       if (ap?.active) {
         const f = this.layout.toWorld(ap);
@@ -1641,7 +1709,8 @@ export class GameScene extends Phaser.Scene {
       g.lineBetween(f.x, f.y, c.x, c.y);
       g.strokeCircle(f.x, f.y, SNAP_RING);
     }
-    this.updateMagnifier(drag, aimAt);
+    const snapAim = barricade?.placement;
+    this.updateMagnifier(drag, snapAim?.ok ? this.layout.toScreen(snapAim.point) : aimAt);
   }
 
   /** The snap's barriers and finger direction (milestone 35 follow-up): this map, and the screen's bottom in world terms. */

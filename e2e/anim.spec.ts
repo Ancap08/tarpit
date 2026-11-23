@@ -34,6 +34,7 @@ test('a spawned Goblin is a goblin sprite facing right on frame 0', async ({ pag
     facing: 'right',
     flipX: false,
     scale: 2,
+    blockerLunge: 0,
     flags: { hit: false, burning: false, slowed: false, dying: false },
   });
   expect(a.none).toBeNull();

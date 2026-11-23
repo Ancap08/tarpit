@@ -14,6 +14,7 @@ import { STACK_SIZE, type StackSize } from './geometry';
 
 const PAD = 6;
 const GAP = 4;
+const MIN_TARGET_CSS = 44;
 /** Gap between the popup's bottom edge and the top of the HUD. */
 export const MENU_GAP_ABOVE_HUD = 4;
 
@@ -22,10 +23,11 @@ export class SpecialMenu {
   private readonly buttons: Record<SpecialType, Button>;
   private shownTypes: SpecialType[] = [];
   private box: Rect | null = null;
+  private buttonH = 0;
 
   /** `left` is the popup's left edge; `hudTop` the y it sits above. */
   constructor(
-    scene: Phaser.Scene,
+    private readonly scene: Phaser.Scene,
     private readonly left: number,
     private readonly hudTop: number,
     onPick: (type: SpecialType) => void,
@@ -42,7 +44,7 @@ export class SpecialMenu {
       new Button(scene, { x: 0, y: 0, width: size.buttonW, height: size.buttonH }, SPECIAL_NAMES[type], () => onPick(type), {
         fontSize,
       });
-    this.buttons = { keg: make('keg'), tarBarrel: make('tarBarrel'), fireArrows: make('fireArrows') };
+    this.buttons = { keg: make('keg'), tarBarrel: make('tarBarrel'), fireArrows: make('fireArrows'), barricade: make('barricade') };
     for (const b of Object.values(this.buttons)) b.setShown(false);
   }
 
@@ -53,7 +55,13 @@ export class SpecialMenu {
 
   /** Show the popup listing `types` (the unlocked specials), or hide it with an empty list. */
   update(types: readonly SpecialType[]): void {
-    if (types.length === this.shownTypes.length && types.every((t, i) => t === this.shownTypes[i])) return;
+    const heightLeft = this.hudTop - MENU_GAP_ABOVE_HUD - 2 * PAD - (types.length - 1) * GAP;
+    const buttonH = types.length === 0 ? 0 : Math.min(
+      Math.floor(heightLeft / types.length),
+      Math.max(this.size.buttonH, Math.ceil(MIN_TARGET_CSS * this.scene.scale.displayScale.y)),
+    );
+    if (buttonH === this.buttonH && types.length === this.shownTypes.length && types.every((t, i) => t === this.shownTypes[i])) return;
+    this.buttonH = buttonH;
     this.shownTypes = [...types];
     if (types.length === 0) {
       this.box = null;
@@ -61,7 +69,7 @@ export class SpecialMenu {
       for (const b of Object.values(this.buttons)) b.setShown(false);
       return;
     }
-    const height = 2 * PAD + types.length * this.size.buttonH + (types.length - 1) * GAP;
+    const height = 2 * PAD + types.length * buttonH + (types.length - 1) * GAP;
     const top = this.hudTop - MENU_GAP_ABOVE_HUD - height;
     this.box = { x: this.left, y: top, width: this.size.buttonW + 2 * PAD, height };
     this.backing.setPosition(this.left, top).setSize(this.box.width, height).setVisible(true);
@@ -70,7 +78,8 @@ export class SpecialMenu {
       const b = this.buttons[type];
       if (i < 0) b.setShown(false);
       else {
-        b.moveTo(this.left + PAD, top + PAD + i * (this.size.buttonH + GAP));
+        b.setSize(this.size.buttonW, buttonH);
+        b.moveTo(this.left + PAD, top + PAD + i * (buttonH + GAP));
         b.setShown(true);
       }
     }

@@ -201,17 +201,19 @@ test('enemy sprites sit on the turned path, face the way they move on screen, on
     const kinds = new Set<string>();
     let checked = 0;
     for (let t = 0; t < 120; t++) {
-      await api(page, (a) => a.step(15));
-      const snap = await page.evaluate(() => {
+      const { phase, snap } = await page.evaluate(() => {
+        const t = window.__tarpit as TarpitTestApi;
+        t.step(15);
         const g = window.__tarpit!.game.scene.getScene('game') as unknown as {
-          state: { enemies: { id: number; type: string; distance: number; hp: number }[] };
+          state: { phase: string; enemies: { id: number; type: string; distance: number; hp: number }[] };
           enemySprites: { views: Map<number, { sprite: { x: number; y: number; flipX: boolean } }> };
         };
-        return g.state.enemies.map((e) => {
+        const snap = g.state.enemies.map((e) => {
           const v = g.enemySprites.views.get(e.id);
           const a = window.__tarpit!.animState(e.id);
           return { id: e.id, type: e.type, distance: e.distance, sx: v?.sprite.x, sy: v?.sprite.y, facing: a?.facing };
         });
+        return { phase: g.state.phase, snap };
       });
       for (const e of snap) {
         kinds.add(e.type);
@@ -235,7 +237,7 @@ test('enemy sprites sit on the turned path, face the way they move on screen, on
         }
         checked++;
       }
-      if ((await state(page)).phase !== 'wave') break;
+      if (phase !== 'wave') break;
     }
     expect(checked, map).toBeGreaterThan(50);
     expect([...kinds].length, `${map} kinds ${[...kinds]}`).toBeGreaterThanOrEqual(2);

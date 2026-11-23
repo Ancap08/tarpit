@@ -9,6 +9,7 @@ import { api, expectOffer, openCampaign, press, visibleTexts } from './campaign'
 import { choices, choiceVisual } from './upgradeChoice';
 import { cellPage, rectPage, rectPageSize } from './phone';
 import { FIRST_PACK_FRAME, FIRST_PACK_STEPS, GRUMBLEFOOT_STEPS, beginVisualWave, finalBossFrame } from './visualCampaign';
+import { holdingFrame } from './barricade';
 import { waitForTitle } from './title';
 
 // Milestone 25b frames (see the special tests below).
@@ -553,7 +554,7 @@ test('special aim: Tar Barrel circle over a cluster on wave 4', async ({ page })
   await click(page, 'special:tarBarrel');
   await page.mouse.move(aim.x, aim.y);
   const u = await ui(page);
-  expect(u.special).toMatchObject({ charges: 1, aiming: 'tarBarrel', unlocked: ['keg', 'tarBarrel'], menuOpen: false, aimPoint: aim, ready: true });
+  expect(u.special).toMatchObject({ charges: 1, aiming: 'tarBarrel', unlocked: ['keg', 'barricade', 'tarBarrel'], menuOpen: false, aimPoint: aim, ready: true });
   // Milestone 30: the banner says what to do.
   expect(u.special.banner).toEqual({ main: 'Click the trail to drop the Tar Barrel', hint: 'Esc or Special again cancels.' });
   await settle(page);
@@ -1002,3 +1003,7 @@ test('m37-midwave', async ({ page }) => {
     await page.locator('canvas').screenshot({ path: `${process.env.M37_FRAMES}/m37-midwave.png` });
   }
 });
+
+test('barricade-aim', async ({ page }) => holdingFrame(page, false, true));
+
+test('barricade-holding', async ({ page }) => holdingFrame(page, false));

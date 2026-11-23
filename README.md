@@ -68,6 +68,8 @@ cloud shadows and the odd bird or butterfly, all still under reduced motion.
    Barrel (from wave 4) leaves a puddle that slows everything in it for 11 s,
    Fire Arrows (from wave 7) leave a burning patch for 11 s. A label shows how
    many it caught, and the button shows the seconds until the next one.
+   From wave 3, place a Barricade across the trail beside a Cannon or Mortar.
+   Walkers stop and attack it, Harpies fly over it, and bosses break it quickly.
 9. **Call next.** Once every enemy of a wave has come out of the cave
    (some may still be walking), Start Wave reads "Call
    next +N". Press it to send the next wave now: you get the wave's clear

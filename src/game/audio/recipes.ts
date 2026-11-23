@@ -81,6 +81,7 @@ export interface Recipe {
 /** Thinning windows (ms): the smallest, most frequent sounds and the exit warning repeat less often. */
 export const SMALL_THIN_MS = 120;
 export const EXIT_THIN_MS = 400;
+export const BLOCKER_HIT_THIN_MS = 260;
 
 /** The most a sound alone may peak, before the limiter (measured offline). */
 export const HEADROOM = 0.9;
@@ -113,6 +114,9 @@ export const SOUND_NAMES = [
   'special.keg',
   'special.tarBarrel',
   'special.fireArrows',
+  'special.barricade',
+  'blockerHit',
+  'blockerBreak',
   'chargeReady',
   'waveStart',
   'waveClear',
@@ -384,6 +388,33 @@ export const RECIPES: Readonly<Record<SoundName, Recipe>> = {
       ...[0.3, 0.36, 0.44, 0.51].map((at, i) => noise({ type: 'highpass', f0: 2400 + i * 300 }, { a: 0.001, d: 0.04 }, 0.3, at)),
     ],
   },
+  'special.barricade': {
+    gain: 0.75,
+    priority: PRIORITY.ui,
+    layers: [
+      tone('triangle', 260, 175, { a: 0.003, d: 0.12 }, 0.32),
+      noise({ type: 'bandpass', f0: 900, f1: 420, q: 1 }, { a: 0.001, d: 0.11 }, 0.18),
+      tone('triangle', 380, 240, { a: 0.003, d: 0.09 }, 0.25, { at: 0.062 }),
+    ],
+  },
+  blockerHit: {
+    gain: 0.68,
+    priority: PRIORITY.tick,
+    thin: BLOCKER_HIT_THIN_MS,
+    layers: [
+      tone('triangle', 390, 245, { a: 0.001, d: 0.06 }, 0.11),
+      noise({ type: 'bandpass', f0: 1100, f1: 550, q: 1 }, { a: 0.001, d: 0.06 }, 0.086),
+    ],
+  },
+  blockerBreak: {
+    gain: 1.04,
+    priority: PRIORITY.moment,
+    layers: [
+      tone('triangle', 245, 95, { a: 0.004, d: 0.28 }, 0.4),
+      noise({ type: 'bandpass', f0: 2200, f1: 500, q: 0.8 }, { a: 0.001, d: 0.31 }, 0.38),
+      noise({ type: 'lowpass', f0: 1800, f1: 300 }, { a: 0.002, d: 0.2 }, 0.26, 0.08),
+    ],
+  },
   chargeReady: {
     gain: 0.535,
     priority: PRIORITY.moment,
@@ -555,11 +586,11 @@ export const LEVEL_TIERS: Readonly<Record<LevelTier, readonly [number, number]>>
 
 /** A sound's level tier: hit ticks, shots, impacts and deaths, player actions, wave moments (with the exit and the charge), big moments. */
 export function levelTier(name: SoundName): LevelTier {
-  if (name === 'hit') return 'tick';
+  if (name === 'hit' || name === 'blockerHit') return 'tick';
   if (name.startsWith('shot.')) return 'shot';
   if (name.startsWith('impact.') || name.startsWith('death.')) return 'impact';
-  if (['build', 'upgrade', 'upgradePath', 'sell', 'refuse', 'tap', 'select', 'coin', 'boonOffer', 'boonPick'].includes(name)) return 'action';
-  if (['exit', 'chargeReady', 'waveStart', 'waveClear', 'callNext', 'act2', 'packCall'].includes(name)) return 'moment';
+  if (['build', 'upgrade', 'upgradePath', 'sell', 'refuse', 'tap', 'select', 'coin', 'boonOffer', 'boonPick', 'special.barricade'].includes(name)) return 'action';
+  if (['exit', 'chargeReady', 'waveStart', 'waveClear', 'callNext', 'act2', 'packCall', 'blockerBreak'].includes(name)) return 'moment';
   return 'big';
 }
 
@@ -572,6 +603,7 @@ export const LOW_SOUNDS: readonly SoundName[] = [
   'exit',
   'special.keg',
   'special.tarBarrel',
+  'blockerBreak',
   'bossArrive',
   'bossFall',
   'grumblemawArrive',
