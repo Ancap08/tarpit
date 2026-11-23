@@ -960,18 +960,16 @@ drawing in `src/game/decor/livingMap.ts` and `src/game/draw/map.ts`.
 
 ## Looks
 
-Milestone 38. The title screen offers Classic and Painted. Classic is the
+The title screen offers Classic and Painted. Classic is the
 default. The game stores the choice as `tarpit.look` on this browser.
-`?look=classic` and `?look=painted` set the look for a visit. Switchback
-and Riverbend use Classic art and retain the player's preference for
-their next game on Meadow.
+`?look=classic` and `?look=painted` set the look for a visit. The choice applies to all three maps in Free play and the campaign.
 
-- Painted Meadow uses the Blender ground, tower, enemy, scenery and
-  projectile art in `assets/art-painted/`. On Play it selects 2× when the
+- Painted loads one ground image for the selected map and a shared atlas
+  of towers, enemies, scenery and effects with its frame data. On Play it selects 2× when the
   device pixel ratio times the displayed canvas scale reaches 1.5 and 1×
   otherwise. A cold load uses 1× on a data-saving connection, on 3G or
   slower, or with an estimated downlink of 2 Mbps or less. A browser
-  without a speed estimate tries the 1× Meadow ground first when the
+  without a speed estimate tries the selected map’s 1× ground first when the
   screen calls for 2×. If the ground takes at least two seconds, the rest
   loads at 1×. Otherwise the high-density screen gets 2×.
   Atlas dimensions and anchors are in texture pixels and are divided by
@@ -980,7 +978,14 @@ their next game on Meadow.
   from the click, then the percentage of the selected files ready.
   Worker startup, the speed check and all files share one 25-second limit.
   A failure or timeout starts Classic and shows a banner until wave 1.
-  The Meadow-only note appears when the player chooses Painted on another map.
+  Packed art loads on demand. A cold start requests at most eight painted
+  files. On Meadow the 1× target is under five seconds at 1.6 Mbps down
+  and 150 ms latency.
+- All three grounds use the same trail width and simulation path. Meadow
+  has flowering pasture, Switchback has dry grass and low shale shelves,
+  and Riverbend has reed-lined water and a timber deck on its upper trail.
+  The Riverbend spring fills the 40 water cells. The grass between its
+  head and the timber deck remains buildable under the usual trail rule.
 - The code-drawn Barricade sits across the painted trail in either layout.
   Held enemies use their painted sprites, grouped within 36 game pixels of
   the wall. Larger walkers draw in front of smaller ones. The wall and pile
@@ -1319,8 +1324,10 @@ only and never under `?test=1` or `?perf=1`. Cache rules:
   shared by the whole origin (other project sites on `github.io`, another
   copy of the game under another path), so the game only ever deletes
   caches with its own scope's prefix and only unregisters the registration
-  whose scope is exactly its base. Install fetches the core build files
-  past the HTTP cache, then calls `skipWaiting`; activate deletes every
+  whose scope is exactly its base. On first install, the worker reuses
+  content-hashed core assets already in the HTTP cache. It fetches fresh
+  copies of the other core files and reloads all core files on update.
+  Install then calls `skipWaiting`. Activate deletes every
   other cache with this scope's prefix, then calls `clients.claim`.
 - The page (navigations, the scope root, `index.html`): network first
   (`no-cache`, so it revalidates). A 2xx answer is served, so a new deploy

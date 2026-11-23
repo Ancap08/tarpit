@@ -9169,3 +9169,52 @@ now use the simulation’s level restrictions when offering purchases. Locked
 towers keep their slots, and upgrades end at the level’s tier limit.
 
 At 1.5× font metrics the old landscape wave counter overlapped the level tag by 4.06 px on Mac Chromium. Fixed-height HUD labels and a lower first-screen subtitle clear the stricter guard, which now also checks the running HUD after each rotation.
+
+## 2026-11-23: milestone 43, painted maps
+
+Free play and campaign level cards load the selected Painted map. Switchback
+uses dry grass and low shale shelves between its folded lanes. Riverbend has
+a rippled blue-green spring, reeds and a timber deck on the upper trail. The
+simulation leaves 64 px between the trail centre and the headwater. The
+grassy strip there still accepts a tower wherever the normal path rule allows.
+The cave, cottage, units and effects share Meadow's scale and lighting.
+
+Rebuild a ground with `python3 scripts/art/build_slice.py switchback` or
+`riverbend` as its argument, then run `python3 scripts/art/pack_painted.py`.
+The runtime loads the selected map's WebP, one shared WebP and its frame
+data. It can make a fourth request for the existing connection-speed probe.
+A second map at the same density needs only its ground. These are file
+bytes in the build, including the shared frame data in each game total.
+
+| Painted game | Ground 1× | Game 1× | Ground 2× | Game 2× |
+| --- | ---: | ---: | ---: | ---: |
+| Meadow | 51,914 | 412,201 | 104,130 | 1,013,421 |
+| Switchback | 40,170 | 400,457 | 77,512 | 986,803 |
+| Riverbend | 55,718 | 416,005 | 110,090 | 1,019,381 |
+
+The milestone 38 notes described 54 requests. The starting commit includes
+the guard sheet, bringing Meadow to 56 requests per density and 586,721 /
+1,669,666 transferred body bytes at 1× / 2×. A fresh production install
+also downloaded the content-hashed game bundle twice. The worker now reuses
+hashed core assets from the HTTP cache on its first install. Worker updates
+still reload the core and each build retains its own offline cache.
+
+On a fresh Chromium profile per density, `measure_painted_worker.ts` gave the
+page and service worker one shared 1.6 Mbit/s download link with 150 ms
+latency. From Play to the game scene, Meadow went from 11.534 to 2.472 s
+at 1× and from 16.952 to 5.646 s at 2×, with three art requests. The density
+hint in the benchmark permits both resolutions over the same connection.
+The separate CDP run with the worker blocked measured 3.435 to 2.245 s and
+8.857 to 5.308 s. Run the worker benchmark against a built dist with
+`PW_PORT=4373 node --experimental-strip-types scripts/art/measure_painted_worker.ts`
+and the CDP benchmark against a running preview on that port.
+
+Looking at the ground renders led to three changes. The first Switchback
+shale was bright enough to draw attention from the tower positions. The first
+Riverbend deck looked like a striped crossing, and the water texture broke
+into patches. The revisions lowered the shale highlights, added side beams
+and post caps to the timber, and separated the ripple highlights from the
+bank. The 12 JPEGs in `docs/art/painted-maps/` show setup and wave 7 in both
+layouts. Crowded bends can still put a flyer over a walker. The trail test
+checks the delivered WebP at both densities against the simulation path,
+sampling 16 px inside the strip and 27 px out from the centreline.
