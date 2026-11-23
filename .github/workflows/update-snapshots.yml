@@ -40,6 +40,11 @@ jobs:
       - run: npx playwright test e2e/visual.spec.ts e2e/visual-tablet.spec.ts e2e/visual-phone.spec.ts --update-snapshots=${{ inputs.all && 'all' || 'changed' }}
         env:
           CI: '1'
+      # Milestone 41b: the campaign screens keep their screenshot case beside their
+      # other cases, so it is picked out by name here.
+      - run: npx playwright test e2e/campaign-screens.spec.ts e2e/campaign-screens-phone.spec.ts -g "campaign screen screenshots" --update-snapshots=${{ inputs.all && 'all' || 'changed' }}
+        env:
+          CI: '1'
       - name: Commit changed baselines
         env:
           REF: ${{ inputs.ref }}
