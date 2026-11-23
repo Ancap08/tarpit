@@ -1591,9 +1591,13 @@ An uncheated win earns one star, or the highest award whose minimum is met.
 |---:|---:|---:|
 | 20 | 12 | 18 |
 
-Level 1 starts open. Open levels form a contiguous prefix. A saved win beyond a gap counts toward unlocking the following level after the player fills that gap. A gold-cheat win counts as a pass with zero stars. Replay keeps the best stars, including after a cheated win. The browser
-stores campaign passes and stars under `tarpit.campaign`; if storage fails, it keeps
-them for the page session. Free play keeps its own score table.
+Level 1 starts open. Open levels form a contiguous prefix. A saved win
+beyond a gap counts toward unlocking the following level after the player
+fills the gap. A gold-cheat win counts as a pass with zero stars. Replay
+keeps the best stars, including after a cheated win. The browser stores
+passes and stars in version 2 of `tarpit.campaign`. It also reads stars
+earned in version 1. If storage fails, progress lasts for the page session.
+Free play keeps its own score table.
 
 ### Bot decisions
 
@@ -1699,8 +1703,10 @@ starts the level. On later visits Play starts the level directly and Tips
 reopens the instructions. Got it on a reopened panel returns to the card.
 Escape returns to the card from either panel. Enter and Space activate
 the selected button. Turning the device keeps the panel and its action.
-Seen levels are saved separately from campaign progress. Free play skips
-this panel.
+Got it marks the level seen under `tarpit.seenTips`. Leaving the first
+panel with Escape keeps it available on the next Play. Free play skips
+this panel. Test mode follows the same rules unless a test calls
+`setTipsEnabled(false)` to skip first-visit tips.
 
 The build bar keeps every tower in its usual slot. Towers unavailable in
 this level appear dimmed with a lock and cannot be selected. The tower
