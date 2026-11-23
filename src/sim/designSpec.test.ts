@@ -120,12 +120,12 @@ describe('docs/DESIGN.md matches the code', () => {
 
   it.each(LEVELS)('campaign level $id matches its printed rules and measured outcomes', level => {
     const row = table('Levels and campaign', 'ID').find(row => Number(row[0]) === level.id);
-    const [good, beginner] = [botGood, botBeginner].map(bot => runBot(createGame({ level }), bot).state);
-    expect(row).toEqual([level.id, LEVEL_NAMES[level.id].name, MAP_LABELS[level.map], level.waves.length,
+    const [good, beginner] = [botGood, botBeginner].map(bot => runBot(createGame({ level }), bot));
+    expect(row).toEqual([level.id, LEVEL_NAMES[level.id].name, MAP_LABELS[level.map], level.waves.length, good.state.nextEnemyId,
       level.startGold, level.hpScale, level.hpGrowthStart ?? '—', level.maxTowerLevel,
       level.rewardWaves.join(', ') || '—',
-      `${levelStars(good)}/${good.lives}`, `${levelStars(beginner)}/${beginner.lives}`,
-      (good.tick / 3600).toFixed(2)].map(String));
+      `${levelStars(good.state)}/${good.state.lives}`, `${levelStars(beginner.state)}/${beginner.state.lives}`,
+      (good.state.tick / 3600).toFixed(2), good.peakAlive].map(String));
   });
 
   it('maps: waypoints, path length and buildable cells', () => {
