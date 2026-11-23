@@ -9341,3 +9341,28 @@ paired labels four pixels toward each edge recovered the gap. A phone
 measurement also caught the longest preview shrinking to 12.7 CSS px.
 Measured glyph bounds allowed two 23 px lines at the full 20 px canvas
 size, including when the font request is blocked.
+
+Verifier notes (44c, independent run on 5de4694, baseline 6f5d8fd):
+- Layout: 360 control rectangles compared across 12 screens and states, three
+  projects, Classic and Painted. None moved or shrank (uiRects(); 0 changes).
+  The only phone control under 44 CSS px is the Gold cheat tap area (21 CSS px
+  at the true 0.707 fit), unchanged from before. Layout switches keep the
+  place and one running scene on every screen.
+- Contrast measured from screenshots (declared colour against the sampled
+  surface): lowest 6.35:1 (disabled Start Wave), highest 13.1:1 on 25 distinct
+  pairs. The unit table (4.90 to 16.44) matches the code. Disabled text now
+  measures 6.4:1 against 10.3:1 enabled, so disabled controls differ from
+  enabled ones by hue and brightness only (see
+  `docs/review/m44c/verifier/phone-disabled-controls-main-left-themed-right.jpg`).
+- Font: every request stays on the origin. Blocked, 404 and a 5 s hold all
+  give a playable fallback without overlap or clipping on three projects; the
+  5 s hold starts the game at 2.1 s and the title width never changes after.
+  Stars (U+2605, U+2606) are not in Caslon and draw from the fallback; pinned
+  in `src/game/font-verifier.test.ts`. `e2e/font-verifier.spec.ts` pins the
+  origin, the 2 s limit and equal digit advances.
+- Found: `e2e/install-verifier.spec.ts:103` now fails every time. Its wait
+  (`cacheNames` has length 1) is met by the old cache before the new worker
+  has swapped; the three extra precache files slow the swap. With the wait
+  changed to "the one cache is not A's" the test passes. The product behaves.
+- Found: the landscape coin sits on the brass frame and touches the G of
+  Gold (`docs/review/m44c/verifier/desktop-hud-coin-touches-gold.jpg`).
