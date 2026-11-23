@@ -811,6 +811,33 @@ drawing in `src/game/decor/livingMap.ts` and `src/game/draw/map.ts`.
   smoke where time 0 puts them, the ripples, eyes open, no bird, no
   butterfly, no puffs), so every run is identical.
 
+## Looks
+
+Milestone 38. The title screen offers Classic and Painted. Classic is the
+default. The game stores the choice as `tarpit.look` on this browser.
+`?look=classic` and `?look=painted` set the look for a visit. Switchback
+and Riverbend use Classic art and retain the player's preference for
+their next game on Meadow.
+
+- Painted Meadow uses the Blender ground, tower, enemy, scenery and
+  projectile art in `assets/art-painted/`. It loads one density on
+  demand. It uses 2× art when device pixel ratio times displayed canvas
+  scale reaches 1.5 device pixels per game pixel and 1× otherwise. A
+  failed painted asset load falls back to Classic for the run. Atlas
+  dimensions and anchors are in texture pixels and are divided by
+  density for drawing in game coordinates. The service worker caches
+  painted files on their first successful fetch.
+- Towers use 16 clockwise headings from north. Enemies walk in four
+  directions with four phases per direction. The ground turns with the
+  portrait map and the pieces stay upright, with their headings turned a
+  quarter turn. The ground anchor sets both placement and draw order, so
+  a piece nearer the bottom of the screen covers one behind it. Flyers
+  draw above walkers.
+- Painted mode keeps the existing tower upgrade marks, health bars,
+  status rings, range circles, placement highlights, magnifier, effects,
+  banners and HUD. Its painted scenery is still. The simulation and input
+  geometry are shared with Classic.
+
 ## Sound
 
 Milestone 33 (with its follow-up and six new cues in milestone 36).
@@ -1106,8 +1133,8 @@ only and never under `?test=1` or `?perf=1`. Cache rules:
   shared by the whole origin (other project sites on `github.io`, another
   copy of the game under another path), so the game only ever deletes
   caches with its own scope's prefix and only unregisters the registration
-  whose scope is exactly its base. Install fills it with every file of the build
-  (past the HTTP cache), then calls `skipWaiting`; activate deletes every
+  whose scope is exactly its base. Install fetches the core build files
+  past the HTTP cache, then calls `skipWaiting`; activate deletes every
   other cache with this scope's prefix, then calls `clients.claim`.
 - The page (navigations, the scope root, `index.html`): network first
   (`no-cache`, so it revalidates). A 2xx answer is served, so a new deploy
@@ -1118,7 +1145,9 @@ only and never under `?test=1` or `?perf=1`. Cache rules:
   written to the cache.
 - `assets/` (content-hashed names): cache first. A miss (for example an old
   tab asking for the previous build's file) goes to the network, and its
-  answer is returned as it is; a 2xx answer is kept.
+  answer is returned as it is; a 2xx answer is kept. Painted art is
+  fetched this way at the density in use and is then available offline
+  for that density in this build.
 - Other files in scope (manifest, icons): as the page, with their own
   cached copies as the fallback.
 - Anything else (not GET, another origin, outside the scope, `sw.js`) is

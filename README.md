@@ -33,6 +33,8 @@ cloud shadows and the odd bird or butterfly, all still under reduced motion.
    gold and lives) and a map (Meadow, Switchback or Riverbend), then press
    Play (Enter or Space also work). The title shows your best score for that
    map and difficulty once you have one.
+   Look starts on Classic. Choose Painted to see the miniature art on Meadow.
+   Your choice is remembered. Switchback and Riverbend use Classic art.
 2. **Build.** Drag a tower from the build bar under the map onto a green
    cell: a ghost shows the tower and its range, and red means it cannot go
    there. You can also click a tower on the bar and then click cells; the

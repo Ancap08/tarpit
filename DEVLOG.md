@@ -7875,3 +7875,48 @@ listening to the sounds.
   Sticky Tar, checks both rewards and requires one boss death before it
   drains effects and checks Play again. It remains gated by
   `VERIFIER_LONG=1`.
+
+## 2026-11-23: milestone 38, the painted look behind a switch
+
+Painted Meadow loads one texture density when play begins. Classic,
+Switchback and Riverbend use the original drawing path. A failed
+painted file restores the entire Classic view for that run. The
+painted scenery follows the existing growth recipe. Cloud shadows,
+chimney smoke, cave eyes, swaying tufts, birds and butterflies are
+omitted in Painted. The shot, hit and kill effects remain.
+
+The manifest lists 108 generated PNG and JSON files under
+`assets/art-painted/` and 155 assets in all. The validator was extended
+in the art work to recognize a source under `scripts/` ending in `.py`
+as well as `.ts`. The extension must end the source token. The check
+still requires a separate manifest row for each file, rejects duplicate
+and missing rows, and requires attribution for CC-BY assets. MIT is
+accepted only for repo-script sources.
+
+The simulation output matched `main` byte for byte (21,510 bytes).
+Of the 50 existing screenshots replayed in the same browser on this
+Mac, 46 matched pixel for pixel. The three desktop title screenshots
+and the portrait title screenshot changed only in the Look row. The
+candidate build used 3,680,177 bytes, including 2,224,541 bytes of
+painted files. The core was 1,455,636 bytes, compared with 1,434,562
+bytes on `main`.
+
+The live desktop and emulated portrait captures used actual Wave 8
+enemies from all five ordinary types. The scene was advanced to the
+busy stretch and then ran at 1×. The 10-second clip captured 596 live
+ticks in 9.93 seconds. The trail is easy to follow and the HUD remains
+legible. In the crowded bends, larger bodies hide smaller figures
+and nearby HP bars overlap. Turns show a visible jump between bearings.
+The clip samples eight frames a second. Play on a physical phone
+remains unverified.
+
+One five-second Canvas measurement per look at 390 × 844 CSS px used
+120 enemies packed into the first 120 game pixels and 25 towers.
+Painted used 2× assets.
+
+| CPU throttle | Look | Frames | Median frame | 95th percentile | Sim ticks |
+|---|---|---:|---:|---:|---:|
+| 6× | Classic | 264 | 16.7 ms | 33.4 ms | 283 |
+| 6× | Painted | 231 | 16.7 ms | 33.4 ms | 266 |
+| 20× | Classic | 60 | 83.3 ms | 133.3 ms | 61 |
+| 20× | Painted | 68 | 66.7 ms | 100.0 ms | 69 |

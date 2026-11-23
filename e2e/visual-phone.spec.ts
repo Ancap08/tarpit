@@ -5,6 +5,7 @@ import { MAP_IDS } from '../src/sim/map';
 import { fingerFor, liftPage, rectPage, rectPageSize, tap, tapCell, ui, worldPage } from './phone';
 import { FIRST_REWARD_STEPS, GRUMBLEFOOT_STEPS, beginVisualWave, finalBossFrame } from './visualCampaign';
 import { expectOffer, visibleTexts } from './campaign';
+import { midwave as paintedMidwave, openPainted } from './painted';
 import { waitForTitle } from './title';
 
 // Milestone 32b: portrait screenshot baselines for the phone project
@@ -258,4 +259,10 @@ test('portrait Grumblemaw keeps his bar and effects on wave 20', async ({ page }
   });
   await settle(page);
   await shot(page, 'phone-grumblemaw.png');
+});
+
+test('painted Meadow midwave in portrait', async ({ page }) => {
+  await openPainted(page);
+  await paintedMidwave(page);
+  await expect(page.locator('canvas')).toHaveScreenshot('phone-painted-midwave.png');
 });

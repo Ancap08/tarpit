@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import type { GameScene } from '../src/game/GameScene';
 import { waitForTitle } from './title';
 
 // Milestone 25c performance floor (docs/SCOPE-v4.md 25c): 120 enemies and 25
@@ -32,18 +33,23 @@ async function clickTitlePlay(page: Page): Promise<void> {
   await page.mouse.click(p.x, p.y);
 }
 
-for (const [name, span] of [
-  ['spread along the path', undefined],
-  ['packed into the first 120 px', 120],
+for (const [name, span, usePainted] of [
+  ['spread along the path', undefined, false],
+  ['packed into the first 120 px', 120, false],
+  ['packed into the first 120 px, Painted Meadow', 120, true],
 ] as const) {
   test(`120 enemies (${name}) and 25 towers keep the median frame under 33 ms`, async ({ page }, testInfo) => {
     // Milestone 32b: the phone project (portrait) runs the packed case only.
     test.skip(testInfo.project.name === 'phone' && span === undefined, 'the phone project runs the packed case only');
     test.setTimeout(60_000);
-    await page.goto(URL);
+    await page.goto(usePainted ? URL + '&look=painted' : URL);
     await waitForTitle(page);
     await clickTitlePlay(page);
     await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game'));
+
+    if (usePainted) {
+      expect(await page.evaluate(() => (window.__tarpit!.game.scene.getScene('game') as GameScene).paintedState().active)).toBe(true);
+    }
 
     const setup = await page.evaluate(
       ({ towers, enemies, span }) => {
