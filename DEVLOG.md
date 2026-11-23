@@ -9323,6 +9323,22 @@ Level 9 is The King's Assessor. Both first-screen layouts introduce the King's
 demand for the town's gold. New players start in Painted. A saved choice or
 visit override still applies, and a fresh test-mode visit starts in Classic.
 
+Verifier notes (milestone 44a, Claude Sonnet): merge. No bare old enemy name is
+left in any string a player reads (src/game literals, README), and the new
+`src/game/names-verifier.test.ts` pins that beyond names.ts. `npm run sim` is
+byte-identical to 188a487 (same sha1 of the full output); the src/sim diff is
+one test-table entry. Wave previews for Free play waves 1-24 and campaign
+levels 1-10 waves 1-12 fit on 960x580, 1024x768 and 390x844, also with tall
+font metrics; the longest is "Next: 50 Collector, 25 Hound, 13 Toll Troll, 6
+Redcoat, 14 Harpy" (Free play wave 8). Level cards and tips, and the King
+Grumblemaw boss banner, fit. Default look: fresh profile starts in Painted;
+stored and `?look=` choices win; `?test=1` is Classic; blocked or hung painted
+art falls back to Classic with a notice (the hung case waits the 25 s load
+timeout first). Observations, none blocking: the preview says "Harpy" and
+"Grumblemaw" where cards say "Royal Harpy" and "King Grumblemaw" (approved
+table); Level 9 uses a straight apostrophe, the tips use curly ones; comments
+in hud.ts still show old names.
+
 ## 2026-11-24: milestone 44c, the font and the themed screens
 
 The first screen is a tavern broadside, the battle controls sit on a wood
