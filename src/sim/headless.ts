@@ -64,7 +64,7 @@ import type { Difficulty } from './difficulty';
 import { callNextWave, continueEndless, createGame, startWave, tick, wavesCleared, type CallNextWaveResult, type StartWaveResult } from './game';
 import { enemyPosition } from './combat';
 import { isSpecialUnlocked, type SpecialType } from './specials';
-import type { GameState, MapDef, TargetingMode, TowerType, UpgradePath } from './types';
+import type { GameState, MapDef, Point, TargetingMode, TowerType, UpgradePath } from './types';
 import { buildableCells, cellCenter, cellFromKey, cellKey, type Cell } from './grid';
 import { DEFAULT_MAP, MAPS, pathLength, positionAlongPath, type MapId } from './map';
 import { TOWER_DEFS, TOWER_PATHS } from './towers';
@@ -429,7 +429,7 @@ function policyStep(state: GameState, policy: PolicyRecorder): void {
   const action: SpecialAction = { type: 'special', special: choice.special, x: choice.x, y: choice.y, atWaveTick: state.waveTick };
   const step = applyAction(state, action);
   if (step.action !== 'special' || !step.result.ok) throw new Error(`policyStep: ${JSON.stringify(step)}`);
-  if (choice.special !== 'keg') policy.lastZone = choice.special;
+  if (choice.special === 'tarBarrel' || choice.special === 'fireArrows') policy.lastZone = choice.special;
   (policy.fired[state.wave - 1] ??= []).push(action);
 }
 
@@ -960,6 +960,18 @@ export function wideBuild(difficulty?: Difficulty, map?: MapId, boons?: BoonChoi
  */
 export function comboBuild(difficulty?: Difficulty, map?: MapId, boons?: BoonChoices, report?: RecordReporter, options?: ReinvestmentOptions): WaveScript {
   return recordScript(followComboPlan(map, false, options), { difficulty, map, boons, specials: {}, report });
+}
+
+/** On each trail, within the combo plan's Mortar and Fire Pot coverage. */
+export const COMBO_BARRICADE_POINTS: Readonly<Record<MapId, Point>> = {
+  meadow: { x: 420, y: 312 },
+  switchback: { x: 368, y: 288 },
+  riverbend: { x: 322, y: 96 },
+};
+
+/** The combo purchase policy, with Barricades placed beside its splash towers. */
+export function comboBarricade(difficulty?: Difficulty, map: MapId = DEFAULT_MAP, boons?: BoonChoices, report?: RecordReporter): WaveScript {
+  return recordScript(followComboPlan(map), { difficulty, map, boons, specials: { barricadePoint: COMBO_BARRICADE_POINTS[map] }, report });
 }
 
 /**

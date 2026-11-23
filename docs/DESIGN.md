@@ -1,6 +1,6 @@
 # Tarpit: game design spec
 
-> **Frozen as of milestone 37.** This file states every number and rule the
+> **Frozen as of milestone 39.** This file states every number and rule the
 > game uses. Changing any of them needs a `DECISIONS.md` entry (who decided
 > and why) and the balance pins updated in the same change
 > (`src/sim/balance.suite.ts`, `npm run sim`). Kyle's play notes can reopen
@@ -225,21 +225,21 @@ beside it that returns to the title; the win screen also has [Keep going].
 
 ## Enemies
 
-| Type | HP | Speed | Bounty | Lives cost | Notes |
-|---|---|---|---|---|---|
-| Goblin | 23 | 60 | 2 | 1 | two Musketeer shots on Easy and Normal, three on Hard |
-| Wolf | 20 | 120 | 2 | 1 | fast |
-| Troll | 950 | 35 | 8 | 1 | tanky |
-| Harpy | 36 | 90 | 3 | 1 | flying |
-| Shieldbearer | 70 | 45 | 5 | 1 | shield |
-| Grumblefoot, the Troll King | 4000 | 25 | 150 | 5 | boss; slows capped at 30% |
-| Grumblemaw | 5600 | 14 | 75 | 10 | boss; slows capped at 30% |
+| Type | HP | Speed | Bounty | Lives cost | Blocker damage/s | Notes |
+|---|---|---|---|---|---|---|
+| Goblin | 23 | 60 | 2 | 1 | 6 | two Musketeer shots on Easy and Normal, three on Hard |
+| Wolf | 20 | 120 | 2 | 1 | 8 | fast |
+| Troll | 950 | 35 | 8 | 1 | 45 | tanky |
+| Harpy | 36 | 90 | 3 | 1 | 0 | flying |
+| Shieldbearer | 70 | 45 | 5 | 1 | 12 | shield |
+| Grumblefoot, the Troll King | 4000 | 25 | 150 | 5 | 300 | boss; slows capped at 30% |
+| Grumblemaw | 5600 | 14 | 75 | 10 | 400 | boss; slows capped at 30% |
 
 - **Flying.** A Harpy flies over the path. Tar Pit, Cannon and Mortar never
   target it, and a Cannon or Mortar splash skips it even when it is inside
   the radius. A Fire Pot targets it and its impact hits (4 damage), but the
-  burn does not stick. Musketeer and Longbow hit it normally. Specials hit
-  it (it can be slowed and burned by a special). On screen a Harpy flies
+  burn does not stick. Musketeer and Longbow hit it normally. The keg and zones hit
+  it. Harpies fly straight over a Barricade. On screen a Harpy flies
   16 px above its path position with a soft ground shadow, above every
   other enemy and the tower labels.
 - **Shield.** A Shieldbearer takes half damage from any shot whose effective
@@ -471,22 +471,42 @@ Reloading starts a new run.
 | Special | Unlock wave | Radius | Damage | Slow | Burn per s | Zone ticks |
 |---|---|---|---|---|---|---|
 | Powder Keg | 1 | 90 | 60 | - | - | - |
+| Barricade | 3 | 0 | - | - | - | - |
 | Tar Barrel | 4 | 100 | - | 0.5 | - | 660 |
 | Fire Arrows | 7 | 90 | - | - | 26 | 660 |
 
-- **Charge.** One charge shared by the three specials. `state.specialCharges`
+- **Charge.** One charge shared by all four specials. `state.specialCharges`
   is 0 or 1 and `state.specialRechargeTicks` counts the refill. A wave start
   (Start Wave or an early call) makes it ready at once (1, recharge 0).
   Using a special spends it and starts the recharge: it is ready again
   1200 wave ticks later (20 s, `SPECIAL_RECHARGE_TICKS`). Quick Hands
-  lowers this interval to 804 ticks (13.4 s). The counter runs in step 6
+  lowers this interval to 684 ticks (11.4 s). The counter runs in step 6
   of each wave tick. Wave clear resets the charge and the recharge to 0.
 - **Use.** `useSpecial(state, type, {x, y})` acts at once, between ticks,
-  like a build, on every live enemy whose position is within the effective
-  radius of the aimed point (inclusive), flyers included.
+  like a build. The keg and zones affect every live enemy inside their
+  effective radius (inclusive), flyers included.
   Refused, in this order, with `game-over`, `not-in-wave` (setup), `locked`
   (`state.wave` < the unlock wave), `no-charge`, `out-of-bounds` (the point
   must be inside 0..960 x 0..480, edges included). A refusal changes nothing.
+- **Barricade.** Snap to the nearest point on the trail centreline. Measure
+  the end clearances along the trail. Exact limits are legal. Equally near
+  segments use the first in path order. An invalid aim keeps the charge and
+  the standing wall. A successful placement replaces the previous Barricade
+  at full hp. Even an early-call refill cannot place a second wall in the same tick.
+  The wall persists across wave transitions until destroyed or
+  replaced. It deals no damage and has the same hp on every difficulty and
+  with every reward.
+
+| Blocker | HP | Maximum snap distance (px) | Minimum distance from either end (trail px) |
+|---|---|---|---|
+| Barricade | 400 | 40 | 64 |
+
+- **Contact.** A walker reaching or crossing a live blocker stops exactly
+  at it, including on the breaking tick. Walkers may stack. Each contributes
+  its enemy type's blocker damage/s divided by 60. Difficulty, act-two hp
+  growth and slows leave attack strength unchanged. A walker already past
+  the blocker continues. Harpies fly over it. Target order, burn, slow,
+  tower hits, kill credit and bounty all use the usual rules at that position.
 - **Powder Keg.** 60 damage to each enemy inside, shields ignored. No zone.
 - **Zones.** The Tar Barrel and Fire Arrows act on the enemies inside at
   once and leave a zone at the point (`state.zones`, each with an id, its
@@ -512,6 +532,9 @@ Reloading starts a new run.
 - **Event.** `special {type, x, y, radius, hits, zoneId?}` (`zoneId` for the
   Tar Barrel and Fire Arrows), then `slowed` for each slow applied on
   landing, then the kills.
+- Barricade placement emits the usual `special` event with its snapped
+  coordinates, trail angle, zero radius and zero hits. Each attack emits
+  `blockerHit`. Destruction emits one `blockerBreak`.
 - **On screen.** Row 1 of the HUD has a 100 x 42 Special button at x 630,
   left of Start Wave (x 738, 130 wide) and the speed button (x 876, 70
   wide); the next-wave preview runs from x 356 to 620. While a wave runs
@@ -540,6 +563,14 @@ Reloading starts a new run.
   or the finger is on the Special button. There is no second confirming tap. Escape, the Special button
   again or any other press on the HUD cancels; a cancel spends nothing.
   Aiming and the tower pick or panel never coexist.
+- **Barricade aiming and impact.** The pointer circle and touch magnifier
+  show the placement area. A bar across the trail marks the snap point.
+  An invalid aim marks the pointer and explains how to move it. The placed
+  timber wall carries an hp bar. Its attackers lunge, the wood shakes, and
+  broken beams scatter. Reduced motion and test mode hold the impact still.
+  The hit sound is limited to one request per tick and one start per 260 ms
+  under the shared horde budget. Placing and breaking have separate sounds. Wave 3 shows
+  the unlock hint once per visit.
 - **Landing.** The keg: a flash and a ring expanding to the radius
   (0.4 s), a short camera shake (220 ms) and a scorch mark that fades over
   2 s. The Tar Barrel: a splash ring (0.3 s), then a tar puddle drawn from
@@ -733,7 +764,10 @@ changing with either selection; no line when that pair has no score.
 
 Builds, upgrades, sells, moves, reward picks, specials and early calls act between
 ticks. Inside one wave tick: (1) enemies move at `(1 - effectiveSlow)`,
-then both slow timers count down; (2) enemies at the exit are removed and
+stopping at the first live blocker their step reaches. All walkers attack
+from the same starting set of blockers. Remove broken blockers after all
+walkers have moved. They can advance again on the next tick. Both slow
+timers count down as usual; (2) enemies at the exit are removed and
 cost their lives (at 0 lives the game is lost at once and nothing else
 happens that tick); (2b) each zone, oldest first, slows or burns the live
 enemies inside it for the linger duration, then counts down and is
@@ -1276,6 +1310,12 @@ browser's `runScript` replay it.
   unlocked of Fire Arrows, Tar Barrel, Powder Keg at the centroid of the
   densest cluster of live enemies within 70 px of a live enemy.
 
+The check-only **comboBarricade** buys from the same plan as comboBuild.
+With the charge ready and no wall standing from wave 3, it places a wall
+on Meadow at (420,312), Switchback at (368,288) or Riverbend at (322,96).
+These chokes lie in reach of the plan's splash weapons. Otherwise it uses
+the existing firing policy. All original archetypes use their original specials.
+
 **The special policy** (`src/sim/specialPolicy.ts`): how every archetype
 that fires specials fires them, on every map and level, the way a person
 would. It looks every 30 wave ticks while the charge is ready. Candidate
@@ -1355,6 +1395,16 @@ Endless, every map:
 - **S8** After the Normal combo wins, the idle build loses on the second through sixth endless wave. Continued reinvestment lasts at least two waves longer and loses by the fourteenth endless wave. Every measured endless run ends below the safety cap.
 
 The campaign wave rules R1 to R4 hold too.
+
+Barricade checks:
+
+- **K1** The complete existing simulator report matches the pre-Barricade output byte for byte.
+- **K2** On Normal the Barricade combo gains at least one life on two maps and loses at most two on any map.
+- **K3** The gain is at most six lives on every map and difficulty. Walls alone lose by wave 4, including a full-lives start at their unlock wave.
+- **K4** Each lone boss destroys a full wall within 120 ticks. In a paired continuation from actual Grumblemaw contact, the wall delays his exit by at most 300 ticks. Both branches retain all towers and recorded casts and let him survive lethal damage so the exit can be timed.
+- **K5** Ten Goblins arriving together deal one hp per tick and break the wall on tick 400.
+- **K6** A Harpy takes the same number of ticks to reach the exit with or without a wall.
+- **K7** A wall spends the shared charge. Quick Hands shortens recharge. A second placement in the same tick is refused.
 
 ### Known weaknesses
 

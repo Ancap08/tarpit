@@ -60,7 +60,7 @@ export interface BalanceRun {
  * script) and count what the balance targets read. An early call (not used
  * by the archetypes) throws.
  */
-export function playWithStats(script: WaveScript, difficulty?: Difficulty): BalanceRun {
+export function playWithStats(script: WaveScript, difficulty?: Difficulty, beforeTick?: (state: Readonly<GameState>) => void): BalanceRun {
   const state = createGame({ difficulty, map: script.mapId });
   const waves: WaveStats[] = [];
   let refused = 0;
@@ -111,6 +111,7 @@ export function playWithStats(script: WaveScript, difficulty?: Difficulty): Bala
           else if (e.kind === 'special') specialHits.push(e.hits);
         }
       }
+      beforeTick?.(state);
       tick(state);
       w.ticks += 1;
       for (const e of state.events) {

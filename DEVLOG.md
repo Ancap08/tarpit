@@ -8493,3 +8493,74 @@ back as a real check. The wave 200 hp-overflow informational test was removed.
 The designSpec guard catches the act-2 rate, any path row and the endless hp
 line; it does not guard target wording (P2 edit passed) or the Known weaknesses
 list.
+
+## 2026-11-23: milestone 39, the Barricade
+
+Wave 3 unlocks the fourth special on the existing charge. Aim near the
+trail to preview the wooden wall across it. Walkers stop and attack,
+crowds pile up in splash range, and Harpies pass overhead. The wall hp
+bar, placement and impact sounds, crash, hold-to-aim magnifier and
+once-per-visit unlock hint work in the landscape and portrait layouts.
+
+The new movement step accepts any number of blockers. It finds the first
+live blocker each walker would cross and totals all attacks before
+removing broken blockers. Barricade placement supplies one blocker and
+replaces the old wall. Troops and a castle wall can use the same movement
+and contact rules.
+
+### Numbers and balance
+
+All proposed gameplay numbers were retained. The new wall has 400 hp,
+snaps from up to 40 px away, and needs 64 px of trail on each side.
+Blocker damage per second is Goblin 6, Wolf 8, Shieldbearer 12, Troll 45,
+Grumblefoot 300, Grumblemaw 400 and Harpy 0. It uses the existing 1,200
+tick recharge. Quick Hands was already 684 ticks in code. Corrected the
+old 804-tick figure in the design prose.
+
+K1 compared the complete 28,614-byte simulator output with main at
+`d326cf1`. Both files have SHA-256
+`9655a1473235fddab8322b17f35a2a635ebeac37358db6d54354d1b16c8bb50d`.
+The report also checks its own output before the npm banner is included.
+The fixed placement points below sit in the combo's Mortar and Fire Pot
+coverage. All nine variant replays accepted every action.
+
+| Map and point | Easy lives, combo → wall | Normal | Hard |
+|---|---:|---:|---:|
+| Meadow (420,312) | 39 → 39 | 14 → 17 | 3 → 3 |
+| Switchback (368,288) | 39 → 39 | 11 → 14 | loss on wave 19, 0 → win with 1 |
+| Riverbend (322,96) | 39 → 39 | 14 → 19 | 1 → 5 |
+
+- **K2 and K3.** Normal gains 3, 3 and 5 lives. The largest gain at any
+  difficulty is 5. Without towers, every ordinary game ends before the
+  unlock. A separate no-tower game starting wave 3 at full lives placed
+  walls, took real hits and lost on wave 4 on Easy and wave 3 on Normal
+  and Hard on every map.
+- **K4.** Grumblefoot and Grumblemaw alone broke fresh walls on contact
+  ticks 80 and 60. Across all 243 map, difficulty and legal reward
+  combinations at the selected points, 200 campaigns killed Grumblemaw
+  and 43 ended before his wave. There is no ordinary campaign exit to
+  time. The paired test starts at real contact, removes just that wall in
+  one branch, replays the same casts, and preserves both bosses at 1 hp
+  on each otherwise lethal hit. Meadow took 3,901 ticks to exit without
+  the wall and 3,960 with it. Riverbend took 4,897 and 4,957. The
+  wall-retaining runs reproduced the ordinary first lethal ticks of
+  5,229 and 6,767. The measured delays are 59 and 60 ticks under this
+  survival condition.
+- **K5.** Ten Goblins together deal one hp per tick. The 400th tick
+  breaks the wall, and all ten advance on tick 401.
+- **K6.** A Harpy traversed the 960 px test trail in 640 ticks in both runs.
+- **K7.** One placement consumed the charge for 1,200 ticks, or 684 with
+  Quick Hands. Even a legal early call between two placement attempts in
+  the same tick preserved the refill for the next tick.
+
+### Screen evidence
+
+The three visual cases are in the existing desktop and phone snapshot
+specs used by CI. The review GIF runs the live renderer with a staged
+group on Meadow. A Cannon hits the pile, an early wave call refills the
+shared charge, and the Powder Keg hits three enemies before the wall
+breaks. Seven enemies were stopped at once. On the first review the wall
+hp bar overlapped attacking walkers and their own bars did not follow
+their displayed positions. The wall bar now clears the approach and
+the walkers' hp bars and status marks follow their bodies. Individual
+walkers still overlap in a dense pile, particularly on the phone.

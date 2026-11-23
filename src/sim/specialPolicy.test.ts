@@ -1,6 +1,7 @@
 // The special policy (milestone 30, specialPolicy.ts): the scripted players
 // fire specials the way a person would. One rule per test.
 import { describe, expect, it } from 'vitest';
+import { useSpecial } from './actions';
 import { createGame, startWave } from './game';
 import { comboBuild, comboWithoutSpecial, playScripted } from './headless';
 import { MAPS, pathLength } from './map';
@@ -77,6 +78,21 @@ describe('the rule', () => {
     const small = inWave(7, [enemy(1, 'goblin', 510), enemy(2, 'goblin', 520), enemy(3, 'goblin', 530)]);
     expect(policyChoice(small, undefined, { forbid: 'keg' })).toBeUndefined();
     expect(zoneTurn(3, undefined)).toBeUndefined();
+  });
+
+  it('only opts into the wall while unlocked and absent, then resumes the usual zone turn', () => {
+    const barricadePoint = { x: 560, y: 240 };
+    const options = { barricadePoint };
+    expect(policyChoice(inWave(2, []), undefined, options)).toBeUndefined();
+    const state = inWave(7, [enemy(0, 'troll', 500), enemy(1, 'goblin', 510), enemy(2, 'goblin', 520)]);
+    state.waveTick = 29;
+    expect(policyChoice(state, 'tarBarrel')).toBeUndefined();
+    expect(policyChoice(state, 'tarBarrel', options)).toEqual({ special: 'barricade', ...barricadePoint, hits: 0 });
+    expect(useSpecial(state, 'barricade', barricadePoint).ok).toBe(true);
+    expect(policyChoice(state, 'tarBarrel', options)).toBeUndefined();
+    state.waveTick = 30;
+    state.specialCharges = 1;
+    expect(policyChoice(state, 'tarBarrel', options)?.special).toBe('fireArrows');
   });
 });
 
