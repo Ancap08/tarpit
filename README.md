@@ -20,7 +20,7 @@ the cottage), five enemy types (one of
 them flies, one carries a shield) and two bosses, three difficulty levels, three
 special attacks, and play on a tablet. Classic uses placeholder pixel sprites
 for enemies, simple shapes and labels for towers and HUD, and maps drawn in
-code. The optional Painted look gives Meadow Blender-rendered miniature
+code. The optional Painted look gives all three maps Blender-rendered miniature
 towers, enemies, scenery and projectiles. Shots fly as musket balls, arrows,
 cannonballs, mortar shells, tar globs and gouts of fire; towers turn and
 kick back, kills drop floating gold, and banners mark new waves and boss arrivals.
@@ -35,8 +35,8 @@ cloud shadows and the odd bird or butterfly, all still under reduced motion.
    Play (Enter or Space also work). The title shows your best score for that
    map and difficulty once you have one.
    The title’s **Look** switch starts on **Classic**. Choose **Painted** to
-   see the miniature art on Meadow.
-   Your choice is remembered. Switchback and Riverbend use Classic art.
+   see the miniature art on any map in Free play or the campaign.
+   The game remembers your choice.
 2. **Build.** Drag a tower from the build bar under the map onto a green
    cell: a ghost shows the tower and its range, and red means it cannot go
    there. You can also click a tower on the bar and then click cells; the
@@ -343,9 +343,8 @@ wave 1, whether calling early should carry risk, the endless growth rate,
 long late waves, and how much Hard leans on well-aimed specials) are listed
 in [DECISIONS.md](DECISIONS.md), "milestone 28".
 
-v5 is the presentation pass that was moved out of v3. Milestone 38 adds the
-optional Painted look for Meadow. Classic remains the default and is used on
-Switchback and Riverbend. Painted supports both screen orientations and
+v5 is the presentation pass that was moved out of v3. Milestone 43 extends the
+optional Painted look to all three maps. Classic remains the default. Painted supports both screen orientations and
 loads one art density on demand. The HUD and tower upgrade marks are shared.
 See the [Painted Meadow review](docs/art/slice-meadow/README.md) for the
 desktop and phone comparisons, contact sheet and rebuild instructions.
