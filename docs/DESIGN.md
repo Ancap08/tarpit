@@ -515,14 +515,14 @@ Reloading starts a new run.
 | Guards | 4 | 72 | 10 | 720 | 12 |
 
 - **Contact.** The state holds one list of blockers, each tagged as a wall or
-  a guard. A walker stops at the first live blocker it reaches. At identical
+  a guard. At identical
   distances the wall takes contact first. Each guard strikes one walker in
   contact, choosing the earliest arrival tick and then the lowest enemy id.
   Guard damage bypasses shields. Each kill pays the enemy bounty and counts
   as a special kill. Placement emits `squadPlaced`, each strike emits
   `guardStrike`, a fallen guard emits `guardDown`, and the last death,
   expiry or replacement emits `squadGone`.
-  A walker reaching or crossing a live blocker stops exactly
+  A walker reaching or crossing the first live blocker stops exactly
   at it, including on the breaking tick. Walkers may stack. Each contributes
   its enemy type's blocker damage/s divided by 60. Difficulty, act-two hp
   growth and slows leave attack strength unchanged. A walker already past
@@ -585,6 +585,15 @@ Reloading starts a new run.
   or the finger is on the Special button. There is no second confirming tap. Escape, the Special button
   again or any other press on the HUD cancels; a cancel spends nothing.
   Aiming and the tower pick or panel never coexist.
+- **Guards on screen.** The five unlocked choices fit above the controls
+  with full-size touch targets. The Guards preview marks every foot position.
+  On a refused cast, the aim stays open with a plain-language reason. The
+  soldiers face upstream and carry separate hp bars. Live contact animates
+  the spear, a death drops the soldier, and expiry cues a salute and departure.
+  Test mode and reduced motion use still poses. The four sounds distinguish
+  arrival, striking, falling and departure. Strike sounds share the horde budget.
+  Wave 6 shows the unlock hint once per visit. Painted Meadow uses four
+  bearings with idle and strike poses. Other maps use the Classic drawing.
 - **Barricade aiming and impact.** The pointer circle and touch magnifier
   show the placement area. A bar across the trail marks the snap point.
   An invalid aim marks the pointer and explains how to move it. The placed

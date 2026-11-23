@@ -8913,3 +8913,81 @@ Held walkers now share two short ranks, with every sprite centre within
 and phone specs check the count and the cap, allowing overlap after six
 distinct positions. A mouse test aims at the farthest of fifteen held
 Goblins and checks that the keg hits all fifteen.
+
+## 2026-11-23: milestone 40, Guards
+
+Wave 6 unlocks a squad on the shared Special charge. Four marks preview the
+soldiers' actual trail positions, including around a bend. Each guard has
+its own health bar, shield and spear. Classic draws the soldiers in code.
+Painted Meadow uses a Blender miniature with idle and strike poses in
+four directions, exported at both densities. The Barricade and a squad
+can stand at the same time.
+
+### Contact and fights
+
+Walkers meet the first live blocker they cross. Guards choose the first
+walker to arrive, using the lower enemy id for a tie. Both sides strike
+on the breaking tick. An expiring guard also holds and attacks for its
+whole last tick. He releases the walker for the next movement step.
+Guard kills pay normal bounty and count toward special kills.
+
+- **G4.** A lone Normal Goblin dies on contact tick 138 with 58.2 guard hp
+  left. A Wolf dies on tick 120 with 56 guard hp left. A Troll breaks the
+  guard on tick 96 with 934 of its 950 hp left. Ten Goblins reaching the
+  line together break guards on ticks 72, 156, 247 and 342. Two Goblins
+  die on ticks 149 and 309, paying four gold. The remaining eight advance
+  on tick 343. A Shieldbearer held through expiry on tick 720 resumes on
+  721. Grumblefoot takes 2,065 ticks to exit the straight test trail,
+  against 2,007 without Guards. Grumblemaw takes 3,626 against 3,584.
+- **G5.** A Harpy traverses the test trail in 640 ticks with or without
+  the wall and squad. Both wall-first and squad-first placements stop the
+  walkers at the first blocker in their path.
+- **G6.** Deployment starts the ordinary 1,200-tick recharge, or 684 with
+  Quick Hands. An early wave call can refill the charge between casts.
+  The second cast must wait for the next tick, including across different
+  special types.
+
+### Campaign sweep
+
+**G1.** The 28,501-byte original stdout prefix and 650-byte Barricade
+stderr report match main at `d6a714b`. The nine full combo end states
+also match when accounting for the blocker list, next guard id and
+shared cast tick. Each comparison checks that no reference squad was
+created and that its block list is empty.
+
+**G2.** At the proposed 60 hp, the best Normal gains were −1, 0 and +2
+in map order. Raising each guard to 72 hp gave all three maps a useful
+point. Count (4), attack (10 per second), lifetime (720 ticks) and trail
+spacing (12 px) stayed at their starting values. In each campaign the
+combo buys from its own gold, uses its usual casts before wave 6, and
+spends every ready charge from wave 6 on the same point, even if the
+previous squad is still standing. Distances are in pixels from the cave.
+The table gives the first point tied for the best ending lives.
+
+| Map | Difficulty | Points | Best distance | Combo lives | Guards lives | Gain |
+|---|---|---:|---:|---:|---:|---:|
+| Meadow | Normal | 31 | 784 | 14 | 15 | +1 |
+| Switchback | Normal | 34 | 784 | 11 | 12 | +1 |
+| Riverbend | Normal | 30 | 352 | 14 | 17 | +3 |
+| Meadow | Hard | 31 | 64 | 3 | 0 | −3 |
+| Switchback | Hard | 34 | 64 | 0 | 0 | 0 |
+| Riverbend | Hard | 30 | 64 | 1 | 0 | −1 |
+
+None of the 190 placements turned a Hard loss into a win.
+**G3.** With no towers, every map loses on wave 2 on Easy and wave 1 on
+Normal and Hard. Starting fresh at full lives on wave 6, Guards alone
+lose on wave 6 at every tested point on every map and difficulty.
+
+### Screen evidence
+
+The four review frames cover aiming, Classic contact, portrait contact and
+Painted contact. The horizontal file makes four shields and their bars
+visible together. At phone size the guard at the head of the line partly
+overlaps the first walker. The eight-second clip follows six approaching
+Goblins through three guard deaths and the surviving guard's departure.
+Compared on the same Mac, all 57 existing Classic visual baselines and all
+five pre-existing Painted baselines matched main pixel for pixel.
+
+A castle wall placed at the exit still needs the exit step to distinguish
+a walker held on the threshold from a walker who has passed it. Today's
+exit check removes any walker at the exit distance.
