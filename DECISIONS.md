@@ -1330,6 +1330,20 @@ can change it; "Kyle" means Kyle decided.
 - **Keyboard:** arrows, Enter or Space, and Escape work on every campaign
   screen. The first build lost Enter and Space on the first screen
   (Sonnet found it against main).
+- **Stars are drawn shapes, not text characters.** CI on Linux failed
+  five browser cases that passed on the Mac for Codex and for Sonnet: the
+  star characters are taller in other systems' fonts and ran into the stop
+  numbers. Players on Android and Windows would have seen it. The overlap
+  cases now run a second time with font metrics 20% taller, so the next
+  one fails on any machine. Fable (cause, rule), Codex (fix).
+- **The controls offer only what the level allows.** The first build let
+  a player pick a tower the level forbids and then refused to place it,
+  and showed second-upgrade buttons that could not work. Found by the
+  automated Codex review on the pull request; missed by the coordinator,
+  who had a capture showing all six towers lit on level 4, and by Sonnet.
+  Locked towers now sit dimmed with a lock; a tower at the level's limit
+  reads "Max for this level". The baseline workflow also skipped the new
+  campaign screenshots until it was told about them. Fable.
 - **Not fixed, older than this milestone:** on a phone held sideways
   (844x390) buttons are 35 to 37 px tall, under the 44 px the portrait
   layout keeps.
