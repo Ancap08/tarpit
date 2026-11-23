@@ -132,7 +132,7 @@ export async function holdingFrame(page: Page, phone: boolean, aimOnly = false):
     t.step(1);
   });
   await aimBarricade(page, phone);
-  const spot = { x: 440, y: 312 }; // snaps to the southbound segment at distance 780
+  const spot = { x: 456, y: 312 }; // snaps to the southbound segment at distance 780
   const p = await worldPage(page, spot);
   if (aimOnly) {
     await page.mouse.move(p.x, p.y);

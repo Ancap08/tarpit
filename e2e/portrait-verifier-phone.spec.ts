@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import { expect, test, type Page } from '@playwright/test';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { facingOf } from '../src/game/anim/facing';
@@ -220,10 +221,9 @@ test('enemy sprites sit on the turned path, face the way they move on screen, on
         const w = positionAlongPath(MAPS[map], e.distance);
         const sx = 480 - w.y;
         const sy = 76 + w.x;
-        expect(e.sx, `${map} ${e.type} x at d=${e.distance}`).toBeCloseTo(sx, 0);
+        assert(e.sx !== undefined && Math.abs(e.sx - sx) < 0.5, `${map} ${e.type} x at d=${e.distance}: ${e.sx}, expected ${sx}`);
         // The sprite is lifted up (smaller y) or level, never below its ground point by more than a pixel.
-        expect(e.sy!, `${map} ${e.type} y at d=${e.distance}`).toBeLessThanOrEqual(sy + 1);
-        expect(e.sy!, `${map} ${e.type} y at d=${e.distance}`).toBeGreaterThan(sy - 90);
+        assert(e.sy !== undefined && e.sy <= sy + 1 && e.sy > sy - 90, `${map} ${e.type} y at d=${e.distance}: ${e.sy}, ground ${sy}`);
         // Facing where the path is straight over a stretch both sides.
         if (e.distance > 14) {
           const a = positionAlongPath(MAPS[map], e.distance - 12);
@@ -232,7 +232,7 @@ test('enemy sprites sit on the turned path, face the way they move on screen, on
           const straight = Math.abs((b.x - c.x) * (c.y - a.y) - (b.y - c.y) * (c.x - a.x)) < 1;
           if (straight) {
             const want = facingOf(-(c.y - a.y), c.x - a.x);
-            expect(e.facing, `${map} ${e.type} facing at d=${e.distance}`).toBe(want);
+            assert.equal(e.facing, want, `${map} ${e.type} facing at d=${e.distance}`);
           }
         }
         checked++;
