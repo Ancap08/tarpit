@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { ENEMY_NAMES } from '../src/game/names';
+import { ENEMY_SHORT_NAMES } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { MAPS, positionAlongPath } from '../src/sim/map';
 
@@ -56,7 +56,7 @@ test('wave 4: a Cannon never hits a Harpy, a Musketeer does; the HUD names the H
     }
     return { next, ticks, textures: [...textures], harpies: harpies.size };
   });
-  expect(r.next).toBe(`Next: 10 ${ENEMY_NAMES.harpy}, 30 ${ENEMY_NAMES.goblin}`);
+  expect(r.next).toBe(`Next: 10 ${ENEMY_SHORT_NAMES.harpy}, 30 ${ENEMY_SHORT_NAMES.goblin}`);
   const tickOf = (i: number) => i + 1;
   const firstInBoth = r.ticks.findIndex((x) => x.harpyDistances.some((d) => inRange(d, CANNON) && inRange(d, MUSKET)));
   expect(tickOf(firstInBoth)).toBe(102);

@@ -445,7 +445,7 @@ test.describe('reduced motion and real mode: what moves', () => {
     for (const reduced of [false, true]) {
       const ctx = await browser.newContext({ viewport: { width: 960, height: 580 }, reducedMotion: reduced ? 'reduce' : 'no-preference' });
       const page = await ctx.newPage();
-      await page.goto('/');
+      await page.goto('/?look=classic');
       await waitForTitle(page);
       await page.evaluate(() => (window.__tarpit!.game.scene.getScene('title') as unknown as { play(d: string, m: string): void }).play('normal', 'riverbend'));
       await page.waitForFunction(() => window.__tarpit!.game.scene.isActive('game') && window.__tarpit!.decor() !== null);

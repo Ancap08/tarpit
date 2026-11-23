@@ -42,14 +42,12 @@ for (const [name, span, usePainted] of [
     // Milestone 32b: the phone project (portrait) runs the packed case only.
     test.skip(testInfo.project.name === 'phone' && span === undefined, 'the phone project runs the packed case only');
     test.setTimeout(60_000);
-    await page.goto(usePainted ? URL + '&look=painted' : URL);
+    await page.goto(URL + (usePainted ? '&look=painted' : '&look=classic'));
     await waitForTitle(page);
     await clickTitlePlay(page);
     await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game'));
 
-    if (usePainted) {
-      expect(await page.evaluate(() => (window.__tarpit!.game.scene.getScene('game') as GameScene).paintedState().active)).toBe(true);
-    }
+    expect(await page.evaluate(() => (window.__tarpit!.game.scene.getScene('game') as GameScene).paintedState().active)).toBe(usePainted);
 
     const setup = await page.evaluate(
       ({ towers, enemies, span }) => {

@@ -6,19 +6,32 @@
 import { BOONS, type BoonId, type Difficulty, type EnemyType, type MapId, type SpecialType, type TargetingMode, type TowerLevel, type TowerType, type UpgradePath } from '../sim';
 
 /** The wave 10 boss (docs/SCOPE-v4.md, milestone 23): the HUD boss bar and the wave 10 preview. */
-export const BOSS_NAME = 'Grumblefoot';
-export const GRUMBLEMAW_NAME = 'Grumblemaw';
+export const BOSS_NAME = 'Assessor Grumblefoot';
+export const GRUMBLEMAW_NAME = 'King Grumblemaw';
 
-/** Enemy names, as in the HUD's next-wave preview ("Next: 8 Goblin"). */
+/** Full names for cards, tips and boss introductions. */
 export const ENEMY_NAMES: Readonly<Record<EnemyType, string>> = {
-  goblin: 'Goblin',
-  wolf: 'Wolf',
-  troll: 'Troll',
-  harpy: 'Harpy',
-  shieldbearer: 'Shieldbearer',
+  goblin: 'Goblin Collector',
+  wolf: 'Revenue Hound',
+  troll: 'Toll Troll',
+  harpy: 'Royal Harpy',
+  shieldbearer: 'Redcoat Shieldbearer',
   boss: BOSS_NAME,
   grumblemaw: GRUMBLEMAW_NAME,
 };
+
+/** Compact names for the HUD's counted list and its uncounted boss suffix. */
+export const ENEMY_SHORT_NAMES: Readonly<Record<EnemyType, string>> = {
+  goblin: 'Collector',
+  wolf: 'Hound',
+  troll: 'Toll Troll',
+  harpy: 'Harpy',
+  shieldbearer: 'Redcoat',
+  boss: 'Grumblefoot',
+  grumblemaw: 'Grumblemaw',
+};
+
+export const GUARD_NAMES = ['Axeman', 'Swordsman', 'Archer', 'Captain'] as const;
 
 /** Tower names, as on the build bar ("Musketeer  50"). */
 export const TOWER_NAMES: Readonly<Record<TowerType, string>> = {
@@ -69,6 +82,8 @@ export const MAP_NAMES: Readonly<Record<MapId, string>> = {
 /** The title menu's words (TitleScene.ts, milestone 25). */
 export const TITLE_TEXT = {
   title: 'Tarpit',
+  slogan: 'Taxation is theft',
+  story: 'The King wants your gold. Keep it.',
   subtitle: 'a tower defense game',
   difficulty: 'Difficulty',
   /** The map row's caption (milestone 27). */
@@ -306,7 +321,7 @@ export const REWARD_PICKED_TEXT = 'Reward picked';
 export const LAST_WAVE_TEXT = 'Last wave';
 export const BOSS_WAVE_NEXT_TEXT = 'Boss wave next';
 export const ACT_TWO_TEXT = 'Act II';
-export const PACK_CALL_TEXT = 'Wolves at the cave!';
+export const PACK_CALL_TEXT = 'Revenue Hounds at the cave!';
 export const GRUMBLEMAW_SUB = 'is here';
 
 export function rewardTitle(wave: number): string {
@@ -358,14 +373,14 @@ export function starGoalText(lives: number, stars: 2 | 3): string {
 export const LEVEL_NAMES: Readonly<Record<number, { name: string; twist: string }>> = {
   1: { name: 'First Watch', twist: 'Cover the trail with Musketeers and Longbows.' },
   2: { name: 'Pack Trail', twist: 'Use Cannon fire to thin the crowds.' },
-  3: { name: 'The Switchback', twist: 'Slow the Wolves at the bends.' },
-  4: { name: 'Burn Line', twist: 'Set the tar alight as Shieldbearers march through.' },
-  5: { name: 'Wings Over the River', twist: 'Keep the sky covered as Harpies cross the river.' },
-  6: { name: 'Heavy Feet', twist: 'Give the Mortar a clear shot at the Trolls.' },
+  3: { name: 'The Switchback', twist: 'Slow the Revenue Hounds at the bends.' },
+  4: { name: 'Burn Line', twist: 'Ignite the tar under Redcoat Shieldbearers.' },
+  5: { name: 'Wings Over the River', twist: 'Cover the sky as Royal Harpies cross the river.' },
+  6: { name: 'Heavy Feet', twist: 'Give the Mortar a clear shot at the Toll Trolls.' },
   7: { name: 'Hold the Bend', twist: 'Raise a Barricade within reach of your towers.' },
   8: { name: 'Stand Fast', twist: 'Meet the crowds with Guards and Fire Arrows.' },
-  9: { name: 'The Troll King', twist: 'Choose a second upgrade before Grumblefoot arrives.' },
-  10: { name: 'Last Light', twist: 'Bring every special to the fight with Grumblemaw.' },
+  9: { name: "The King's Assessor", twist: 'Face Assessor Grumblefoot with a second upgrade.' },
+  10: { name: 'Last Light', twist: 'Bring every special to face King Grumblemaw.' },
 };
 
 export const CAMPAIGN_TEXT = {
@@ -383,13 +398,13 @@ export const LEVEL_NEW: Readonly<Record<number, string>> = {
   1: 'Musketeer, Longbow and Powder Keg',
   2: 'Cannon',
   3: 'Tar Pit',
-  4: 'Fire Pot and Shieldbearers',
-  5: 'Harpies and Tar Barrel',
-  6: 'Mortar and Trolls',
+  4: 'Fire Pot and Redcoat Shieldbearers',
+  5: 'Royal Harpies and Tar Barrel',
+  6: 'Mortar and Toll Trolls',
   7: 'Barricade',
   8: 'Guards and Fire Arrows',
-  9: 'Second upgrades and Grumblefoot',
-  10: 'The full arsenal and Grumblemaw',
+  9: 'Second upgrades and Assessor Grumblefoot',
+  10: 'The full arsenal and King Grumblemaw',
 };
 
 export const levelNumberText = (id: number): string => `Level ${id}`;
@@ -401,16 +416,16 @@ export const tipsHeading = (id: number): string => `Level ${id} tips`;
 function campaignTips(touch: boolean): Readonly<Record<number, readonly string[]>> {
   const action = touch ? 'Tap' : 'Click';
   return {
-    1: [touch ? 'Tap a tower, then tap a square by the trail twice.' : 'Click a tower, then click a square by the trail.', 'Press Start Wave to let the Goblins in.', `${action} Special, then ${action.toLowerCase()} the trail to hit a pack.`],
-    2: ['Build a Cannon beside a bend.', 'Each blast hits Goblins that stand close together.'],
-    3: ['Put a Tar Pit beside the trail to slow fast Wolves.', 'Build towers nearby to hit them as they slow down.'],
-    4: ['Slow the Shieldbearers with a Tar Pit.', 'Put a Fire Pot nearby. Tar makes the fire burn harder.'],
-    5: ['Harpies fly over the trail. Longbows and Musketeers hit them.', 'Fire Pots can hit Harpies, but the fire won’t stick.', 'Drop a Tar Barrel on a crowd to slow it down.'],
-    6: ['A Mortar shoots far but takes time between shots.', 'Use it against slow Trolls. Keep bows for the Harpies.', 'It cannot hit enemies right beside it.'],
+    1: [touch ? 'Tap a tower, then tap a square by the trail twice.' : 'Click a tower, then click a square by the trail.', 'Press Start Wave to let the Goblin Collectors in.', `${action} Special, then ${action.toLowerCase()} the trail to hit a pack.`],
+    2: ['Build a Cannon beside a bend.', 'Each blast hits Goblin Collectors that stand close together.'],
+    3: ['Put a Tar Pit beside the trail to slow fast Revenue Hounds.', 'Build towers nearby to hit them as they slow down.'],
+    4: ['Slow the Redcoat Shieldbearers with a Tar Pit.', 'Put a Fire Pot nearby. Tar makes the fire burn harder.'],
+    5: ['Longbows and Musketeers can hit flying Royal Harpies.', 'Fire Pots can hit Royal Harpies, but the fire won’t stick.', 'Drop a Tar Barrel on a crowd to slow it down.'],
+    6: ['A Mortar shoots far but takes time between shots.', 'Aim at slow Toll Trolls. Keep bows for Royal Harpies.', 'It cannot hit enemies right beside it.'],
     7: [`${action} Special and choose Barricade.`, `${action} the trail ahead of a pack, near your towers.`, 'The wall holds walkers still while your towers fire.'],
-    8: ['Send Guards ahead of a pack of Shieldbearers.', 'Place them on the trail where your towers can help.', 'Drop Fire Arrows on a crowd to burn it.'],
-    9: [`${action} a tower you have upgraded once.`, 'Choose one of its two upgrades before Grumblefoot comes.'],
-    10: ['Grumblemaw calls Wolves. Save a Powder Keg for the pack.', 'Slow Grumblemaw with tar, then hit him with fire.'],
+    8: ['Send Guards ahead of a pack of Redcoat Shieldbearers.', 'Place them on the trail where your towers can help.', 'Drop Fire Arrows on a crowd to burn it.'],
+    9: [`${action} a tower you have upgraded once.`, 'Pick an upgrade before Assessor Grumblefoot arrives.'],
+    10: ['King Grumblemaw calls Revenue Hounds. Save a Powder Keg.', 'Slow King Grumblemaw with tar, then hit him with fire.'],
   };
 }
 

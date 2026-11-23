@@ -1408,3 +1408,36 @@ can change it; "Kyle" means Kyle decided.
 - **Not done (Fable):** Riverbend's timber deck stands 64 px short of the
   river head, because the grass between is buildable and cannot be painted
   as water.
+
+## 2026-11-24, milestone 44 (a theme: the King's collectors)
+
+- **The theme is a fantasy 1776: the King's collectors march on a
+  frontier town, and the player keeps the town's gold.** Kyle ("a cross
+  between medieval and colonial/1776 ... adding in a 'taxation is theft'
+  vibe"; "Yes, go" to the coordinator's table). Kyle had also floated
+  borrowing an existing franchise as a stand-in; the coordinator declined
+  (Fable): it will not build with another work's characters, names or art,
+  and a public repository would invite a takedown. Original designs from
+  common archetypes only.
+- **Names (44a):** Goblin Collector, Revenue Hound, Redcoat Shieldbearer,
+  Royal Harpy, Toll Troll, Assessor Grumblefoot, King Grumblemaw, with
+  short forms in the wave preview. Towers and specials keep their names;
+  the four Guards are an Axeman, a Swordsman, an Archer and a Captain.
+  Ids, rules and numbers are unchanged; the balance report is
+  byte-identical. Level 9 became "The King's Assessor". Codex (build),
+  Sonnet (every string and tip checked; verdict merge).
+- **Painted is the default look for new players** (Fable; Kyle was asked
+  twice and answered only the theme, and the look is what he is showing).
+  Classic is one tap away and a stored choice is kept. Tests keep Classic
+  as their default. Known cost (Sonnet): on a connection that hangs, a new
+  player's first Play waits the full 25 s before falling back to Classic.
+- **A theme swap is cheap in names and dear in art** (Fable, answering
+  Kyle): every string is in one file, under an hour; a full set of
+  character and map art is about a day of agent time. So one theme is
+  chosen and kept, not swapped in for a few days.
+- **One font file family is shipped: Libre Caslon Text,** Regular and
+  Bold, Latin subset, 34 KB, SIL Open Font License, from Google Fonts.
+  Kyle ("Yes, add a font"). The project's first third-party asset that is
+  not CC0. Chosen over IM Fell English (Fable): Caslon is the typeface of
+  the period's printing and stays readable small. It goes in with the
+  themed screens (44c).

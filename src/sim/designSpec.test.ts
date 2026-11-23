@@ -66,7 +66,7 @@ const ENEMY_NAMES: Record<string, EnemyType> = {
   Troll: 'troll',
   Harpy: 'harpy',
   Shieldbearer: 'shieldbearer',
-  'Grumblefoot, the Troll King': 'boss',
+  'Assessor Grumblefoot': 'boss',
   'Grumblefoot (boss)': 'boss',
   Grumblemaw: 'grumblemaw',
   'Grumblemaw (boss)': 'grumblemaw',
