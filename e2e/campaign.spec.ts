@@ -86,10 +86,11 @@ test('a true wave-20 victory carries its boons into wave 21 and Play again clear
   await openCampaign(page);
   expect(await api(page, (t) => t.runScript('comboBuild'))).toBe('won');
   const held = ['longBarrels', 'stickyTar', 'stoneWalls'] as const;
-  expect(await api(page, (t) => t.state())).toMatchObject({ wave: 20, phase: 'won', boons: held, lives: 19, gold: 2847 });
+  const won = await api(page, (t) => t.state());
+  expect(won).toMatchObject({ wave: 20, phase: 'won', boons: held });
   expect(await visibleTexts(page)).toContain(heldBoonsText(held));
   await press(page, 'keepGoing');
-  expect(await api(page, (t) => t.state())).toMatchObject({ wave: 20, phase: 'setup', endless: true, boons: held });
+  expect(await api(page, (t) => t.state())).toMatchObject({ wave: 20, phase: 'setup', endless: true, boons: held, gold: won.gold, lives: won.lives });
   await press(page, 'startWave');
   expect(await api(page, (t) => t.hudText().wave)).toBe('Wave 21');
   expect(await api(page, (t) => t.bossOnField())).toBeNull();

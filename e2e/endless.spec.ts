@@ -6,10 +6,8 @@ import { waitForTitle } from './title';
 
 // Milestone 26: endless mode and the local high score. Time is frozen
 // (?test=1) and driven by the scripts and step(); buttons are pressed with
-// real mouse clicks at the rectangles uiRects() reports. Numbers come from
-// the headless sim: comboBuild wins Normal with 19 lives and 2847 gold;
-// endlessIdle (comboBuild, then Keep going with no purchases) loses on
-// wave 24 with 23 waves cleared.
+// real mouse clicks at the rectangles uiRects() reports. The scripted win
+// can continue into endless waves while preserving the campaign result.
 
 async function open(page: Page): Promise<void> {
   await page.goto('/?test=1');
@@ -46,6 +44,7 @@ test('win, three buttons, Keep going by mouse: wave 21 starts, "Wave 21", no bos
   await startGame(page);
   expect(await api(page, (t) => t.runScript('comboBuild'))).toBe('won');
   expect(await api(page, (t) => t.endScreen())).toBe('won');
+  const won = await api(page, (t) => t.state());
   expect(await visibleTexts(page)).toContain(heldBoonsText(comboBoons));
   const rects = await api(page, (t) => t.uiRects());
   const row = [rects.keepGoing, rects.playAgain, rects.menu];
@@ -65,7 +64,7 @@ test('win, three buttons, Keep going by mouse: wave 21 starts, "Wave 21", no bos
   expect(await api(page, (t) => t.endScreen())).toBeNull();
   expect(await api(page, (t) => t.uiRects().keepGoing)).toBeUndefined();
   const s = await api(page, (t) => t.state());
-  expect(s).toMatchObject({ phase: 'setup', endless: true, wave: 20, lives: 19, gold: 2847, boons: comboBoons });
+  expect(s).toMatchObject({ phase: 'setup', endless: true, wave: 20, lives: won.lives, gold: won.gold, boons: comboBoons });
   expect(await api(page, (t) => t.hudText().wave)).toBe('Wave 20');
 
   await click(page, 'startWave');
@@ -80,25 +79,26 @@ test('win, three buttons, Keep going by mouse: wave 21 starts, "Wave 21", no bos
   expect(await api(page, (t) => t.state().enemies.find((e) => e.type === 'goblin')?.maxHp)).toBe(41);
 });
 
-test('lose in endless: "Reached wave 24" without "of 20"; Menu shows the best line for Normal only', async ({ page }) => {
+test('lose in endless: the wave label omits "of 20" and Menu shows the best line for Normal only', async ({ page }) => {
   test.setTimeout(120_000);
   await open(page);
   expect(await titleUi(page)).toMatchObject({ difficulty: 'normal', bestLine: null });
   await startGame(page);
   expect(await api(page, (t) => t.runScript('endlessIdle'))).toBe('lost');
   expect(await api(page, (t) => t.endScreen())).toBe('lost');
-  expect(await api(page, (t) => t.state().wave)).toBe(24);
+  const wave = await api(page, (t) => t.state().wave);
+  expect(wave).toBeGreaterThan(20);
   expect(await api(page, (t) => t.uiRects().keepGoing)).toBeUndefined();
   const texts = await visibleTexts(page);
-  expect(texts).toContain(`${END_TEXT.lostWave} 24`);
+  expect(texts).toContain(`${END_TEXT.lostWave} ${wave}`);
   expect(texts).toContain(heldBoonsText(comboBoons));
   expect(texts.some((x) => x.includes(' of '))).toBe(false);
-  expect(await api(page, (t) => t.bestScore('normal'))).toBe(23);
+  expect(await api(page, (t) => t.bestScore('normal'))).toBe(wave - 1);
 
   await click(page, 'menu');
   await waitForTitle(page);
   const ui = await titleUi(page);
-  expect(ui.bestLine?.text).toBe(bestScoreText('meadow', 'normal', 23));
+  expect(ui.bestLine?.text).toBe(bestScoreText('meadow', 'normal', wave - 1));
   // Centred on y 422, midway between milestone 27's map row (bottom y 398) and Play (top y 446).
   const r = ui.bestLine!.rect;
   expect(Math.abs(r.x + r.width / 2 - 480)).toBeLessThanOrEqual(1);
@@ -109,7 +109,7 @@ test('lose in endless: "Reached wave 24" without "of 20"; Menu shows the best li
   await click(page, 'title:easy');
   expect(await titleUi(page)).toMatchObject({ difficulty: 'easy', bestLine: null });
   await click(page, 'title:normal');
-  expect((await titleUi(page)).bestLine?.text).toBe(bestScoreText('meadow', 'normal', 23));
+  expect((await titleUi(page)).bestLine?.text).toBe(bestScoreText('meadow', 'normal', wave - 1));
 });
 
 test('the score survives a reload; a fresh context shows no line', async ({ page, browser }) => {

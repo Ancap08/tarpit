@@ -2,31 +2,29 @@ import type { Page } from '@playwright/test';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 
 /** See src/sim/boss-frame.test.ts for the simulation frame receipt. */
-export const GRUMBLEFOOT_STEPS = 5263;
+export const GRUMBLEFOOT_STEPS = 5316;
 /** The first lone, burning and slowed Grumblemaw with a Mortar hit two ticks
  * earlier and no hit on the frame, playing wave 20 without timed specials. */
-const GRUMBLEMAW_STEPS = 4290;
-export const FIRST_PACK_STEPS = 4546;
-export const FIRST_PACK_FRAME = 4586;
-export const FIRST_REWARD_STEPS = 5219;
-export const ACT_TWO_STEPS = 6256;
+const GRUMBLEMAW_STEPS = 4245;
+export const FIRST_PACK_STEPS = 4366;
+export const FIRST_PACK_FRAME = 4406;
 
-/** Play the normal script up to this wave, then advance the requested ticks by hand. */
-export async function beginVisualWave(page: Page, wave: number, steps: number) {
+/** Play the normal script up to this wave, then step it by hand. Omit steps to reach its reward. */
+export async function beginVisualWave(page: Page, wave: number, steps?: number) {
   return page.evaluate(async ({ wave, steps }) => {
     const t = window.__tarpit as TarpitTestApi;
     await t.startGame();
-    const phase = t.runScript('comboBuild', wave);
+    t.runScript('comboBuild', wave);
     t.startWave();
-    t.step(steps);
+    if (steps === undefined) {
+      for (let i = 0; i < 600 && t.state().phase === 'wave'; i++) t.step(60);
+    } else {
+      t.step(steps);
+    }
     const state = t.state();
     return {
-      phase,
       wave: state.wave,
-      tick: state.waveTick,
       pending: state.pendingBoon,
-      lives: state.lives,
-      gold: state.gold,
     };
   }, { wave, steps });
 }

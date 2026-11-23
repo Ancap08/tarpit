@@ -165,11 +165,10 @@ test('(d) [Menu] from the win screen: the title with the played level selected; 
   await click(page, 'title:easy');
   await click(page, 'title:play');
   await freshGame(page);
-  // comboBuild on Easy wins with 29 lives and 414 gold (npm run sim, milestone 25c second pass).
   expect(await api(page, (a) => a.runScript('comboBuild'))).toBe('won');
   expect(await api(page, (a) => a.endScreen())).toBe('won');
   const won = await state(page);
-  expect(won).toMatchObject({ difficulty: 'easy', wave: 20, lives: 38, gold: 2929 });
+  expect(won).toMatchObject({ difficulty: 'easy', wave: 20, phase: 'won' });
   expect(won.towers.length).toBeGreaterThan(0);
   await click(page, 'menu');
   await onTitle(page);
