@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { MAP_HEIGHT, MAP_WIDTH, type MapId } from '../../sim';
+import { ENEMY_STATS, MAP_HEIGHT, MAP_WIDTH, type EnemyType, type MapId } from '../../sim';
+import { enemyArt } from './frames';
 import { waitForWorkerControl } from '../../sw/register';
 import type { PaintedDensity } from './look';
 
@@ -12,6 +13,7 @@ const FRAME_COUNTS = {
 
 export type PaintedName = keyof typeof FRAME_COUNTS;
 
+const enemySheets = new Set<PaintedName>((Object.keys(ENEMY_STATS) as EnemyType[]).map(enemyArt));
 const SHEET_NAMES = Object.keys(FRAME_COUNTS) as PaintedName[];
 const ART = import.meta.glob<string>('../../../assets/art-painted/packed/*.{webp,json}', {
   eager: true,
@@ -138,20 +140,33 @@ function registerSheets(textures: Phaser.Textures.TextureManager, atlas: HTMLIma
   if (!layout || typeof layout !== 'object') throw new Error('Invalid painted atlas layout');
   const sheets = SHEET_NAMES.map(name => validateSheet(name, `painted:${name}:${density}x`,
     (layout as Record<string, unknown>)[name], atlas));
-  for (const sheet of sheets) {
+  for (const [index, sheet] of sheets.entries()) {
     const [width, height] = sheet.frameSize;
     const canvas = document.createElement('canvas');
     canvas.width = width * sheet.columns;
-    canvas.height = height * sheet.rows;
+    const sheetHeight = height * sheet.rows;
+    const hasHitFrames = enemySheets.has(SHEET_NAMES[index]);
+    canvas.height = hasHitFrames ? 2 * sheetHeight : sheetHeight;
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Could not unpack painted atlas');
-    context.drawImage(atlas, ...sheet.offset, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
+    context.drawImage(atlas, ...sheet.offset, canvas.width, sheetHeight, 0, 0, canvas.width, sheetHeight);
+    if (hasHitFrames) {
+      // Bake a second set of poses locally for both renderers. Source-atop
+      // preserves the exact alpha mask and 72% of the painted colour detail.
+      context.drawImage(canvas, 0, 0, canvas.width, sheetHeight, 0, sheetHeight, canvas.width, sheetHeight);
+      context.globalCompositeOperation = 'source-atop';
+      context.fillStyle = 'rgba(255,255,255,0.28)';
+      context.fillRect(0, sheetHeight, canvas.width, sheetHeight);
+    }
     const texture = textures.create(sheet.key, canvas);
     if (!texture) throw new Error(`Could not register ${sheet.key}`);
     registered.push(sheet.key);
     texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
     for (let frame = 0; frame < sheet.frames; frame++) {
-      texture.add(frame, 0, (frame % sheet.columns) * width, Math.floor(frame / sheet.columns) * height, width, height);
+      const x = (frame % sheet.columns) * width;
+      const y = Math.floor(frame / sheet.columns) * height;
+      texture.add(frame, 0, x, y, width, height);
+      if (hasHitFrames) texture.add(sheet.frames + frame, 0, x, y + sheetHeight, width, height);
     }
   }
   return Object.fromEntries(SHEET_NAMES.map((name, index) => [name, sheets[index]])) as Record<PaintedName, PaintedSheet>;

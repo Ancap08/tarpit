@@ -393,3 +393,42 @@ test('Classic sprites use nearest filtering and Painted sheets use linear filter
     { loaded: true, mode: 0 },
   ]);
 });
+
+test('a Painted hit brightens the same pose, preserves its detail and clears next tick', async ({ page }) => {
+  await openPainted(page);
+  const result = await api(page, (a) => {
+    a.buildAt(7, 5, 'musketeer');
+    a.startWave();
+    a.step(1);
+    a.state().enemies[0].hp = 30;
+    a.step(151);
+    const scene = a.game.scene.getScene('game') as unknown as {
+      enemySprites: { views: Map<number, { sprite: Phaser.GameObjects.Sprite }> };
+    };
+    const sprite = scene.enemySprites.views.get(0)!.sprite;
+    const hit = a.animState(0)!.flags.hit;
+    const hitFrame = sprite.frame;
+    const tintFill = sprite.tintFill;
+    const blend = sprite.blendMode;
+    a.step(1);
+    const normal = sprite.frame;
+    const source = sprite.texture.getSourceImage() as HTMLCanvasElement;
+    const ctx = source.getContext('2d')!;
+    const pixels = (f: Phaser.Textures.Frame) => ctx.getImageData(f.cutX, f.cutY, f.cutWidth, f.cutHeight).data;
+    const before = pixels(normal);
+    const after = pixels(hitFrame);
+    let opaque = 0, errors = 0;
+    for (let i = 0; i < before.length; i += 4) {
+      if (before[i + 3] !== after[i + 3]) errors++;
+      if (before[i + 3] !== 255) continue;
+      opaque++;
+      for (let c = 0; c < 3; c++) {
+        const expected = before[i + c] * 0.72 + 255 * 0.28;
+        if (Math.abs(after[i + c] - expected) > 2) errors++;
+      }
+    }
+    return { hit, cleared: !a.animState(0)!.flags.hit, tintFill, blend, errors, opaque };
+  });
+  expect(result).toMatchObject({ hit: true, cleared: true, tintFill: false, blend: 0, errors: 0 });
+  expect(result.opaque).toBeGreaterThan(40);
+});

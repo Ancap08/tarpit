@@ -224,7 +224,7 @@ export class EnemySprites {
     if (!this.painted || !v) return;
     const { density, sheets } = this.painted.assets;
     const sheet = sheets[enemyArt(v.type)];
-    const bounds = sheet.bodyBounds?.[Number(v.sprite.frame.name)];
+    const bounds = sheet.bodyBounds?.[Number(v.sprite.frame.name) % sheet.frames];
     if (bounds) return { x: v.sprite.x + ((bounds[0] + bounds[2]) / 2 - sheet.anchor[0]) / density,
       y: v.sprite.y + (bounds[1] - sheet.anchor[1]) / density,
       width: (bounds[2] - bounds[0]) / density, height: (bounds[3] - bounds[1]) / density,
@@ -251,6 +251,7 @@ export class EnemySprites {
     v.sprite.setAlpha(1);
     v.sprite.anims.stop();
     const dead = SHEETS[v.type].deadFrame;
+    if (this.painted) v.sprite.setFrame(Number(v.sprite.frame.name) % this.painted.assets.sheets[enemyArt(v.type)].frames);
     if (!this.painted && dead !== undefined) v.sprite.setFrame(dead);
     v.sprite.clearTint().setBlendMode(Phaser.BlendModes.NORMAL);
     v.shadow?.setVisible(false);
@@ -396,6 +397,7 @@ export class EnemySprites {
   private setFacing(v: View, facing: Facing, force = false, distance = v.distance): void {
     if (this.painted) {
       const now = this.scene.time.now;
+      const hitOffset = this.isHit(v) ? this.painted.assets.sheets[enemyArt(v.type)].frames : 0;
       if (!force && !this.frozen && !v.flying && facing !== v.facing) {
         const previous = v.turn?.previous ?? this.painted.image(enemyArt(v.type));
         this.layer.add(previous);
@@ -409,11 +411,11 @@ export class EnemySprites {
           v.turn = undefined;
         } else {
           v.turn.previous.setPosition(v.sprite.x, v.sprite.y).setDepth(v.sprite.depth)
-            .setFrame(walkFrame(v.turn.facing, distance, false)).setAlpha(1 - fade);
+            .setFrame(hitOffset + walkFrame(v.turn.facing, distance, false)).setAlpha(1 - fade);
         }
       }
       v.facing = facing;
-      const index = walkFrame(facing, distance, this.frozen);
+      const index = hitOffset + walkFrame(facing, distance, this.frozen);
       if (Number(v.sprite.frame.name) !== index) v.sprite.setFrame(index);
       return;
     }
@@ -469,8 +471,9 @@ export class EnemySprites {
     if (v.flash) {
       v.flash.setPosition(x, y - lift).setDepth(depth + 0.1).setVisible(hit);
     }
-    if (this.painted) v.sprite.setBlendMode(hit ? Phaser.BlendModes.ADD : Phaser.BlendModes.NORMAL);
-    if (hit && !v.flash) {
+    if (hit && this.painted) {
+      v.sprite.clearTint();
+    } else if (hit && !v.flash) {
       v.sprite.setTintFill(TINT.flash);
     } else {
       // Flyers too: a special can tar or burn a Harpy (milestone 25b).
