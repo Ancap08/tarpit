@@ -9261,3 +9261,14 @@ Verdict: fix first, but only for stale words. Nothing in the game or art blocks 
 ### Fixes after verification
 
 Painted is documented for all three maps and the three stale-copy tests now pass normally. A charcoal edge frames the ivory valid cell and a dark X marks a blocked cell. Against grass at (7,5), valid-edge contrast rose from 1.82 to 4.19:1 on Meadow, 1.58 to 3.97:1 on Switchback and 1.78 to 4.29:1 on Riverbend. Across Switchback’s four straight lanes, mean trail-to-grass luma difference rose from 36.84 to 65.68 out of 255, and trail-to-edge from 46.67 to 96.46. The new ground ships at 50,296 / 101,244 bytes (1× / 2×). Tar has a denser fill, fire has a dark rim, and a hit brightens the same painted pose for 80 ms. The refreshed Switchback captures show both zones and both placement states.
+
+Verifier recheck (5190edd): the README and `names.ts` wording is fixed and the
+three pins now pass as plain tests. Placement frames read plainly on all three
+grounds in both layouts, by hover and by touch, including in the magnifier;
+rim-to-grass contrast measured 3.8 to 4.0:1 (Classic about 2:1, unchanged).
+Switchback's re-rendered trail still matches the sim cells in both layouts.
+Hit poses were observed for all five walkers and both bosses at 3x, never
+stuck after a layout switch, no ADD blend, no boss overlay in Painted. Still
+stale: `docs/DESIGN.md` line 602 says "Painted Meadow uses four bearings ...
+Other maps use the Classic drawing" (the Guards section), and the README
+credits line says "Painted Meadow art".
