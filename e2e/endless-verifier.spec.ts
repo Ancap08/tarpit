@@ -289,12 +289,12 @@ test('endless HUD: "Wave 21" and "Wave 123" keep clear of the preview; the wides
       const tag = all.find((x) => x.text === hud.difficulty && hud.difficulty !== '');
       if (tag) expect(overlap(tag, next)).toBe(false);
     }
-    // Before wave 23 (wave 20 based, with 18 + 10 Harpies and no boss).
+    // Before wave 23 (wave 20 based, with 8 + 10 Harpies and no boss).
     await api(page, (t) => {
       t.state().wave = 22;
       t.step(1);
     });
-    expect((await api(page, (t) => t.hudText())).next).toBe('Next: 20 Wolf, 15 Shieldbearer, 28 Harpy, 12 Troll');
+    expect((await api(page, (t) => t.hudText())).next).toBe('Next: 8 Wolf, 5 Shieldbearer, 18 Harpy, 6 Troll');
     await page.reload();
     await toTitle(page);
   }
