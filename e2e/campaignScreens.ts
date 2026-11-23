@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { TitleUiState } from '../src/game/TitleScene';
 import type { TarpitTestApi } from '../src/game/testGlobal';
+import { CAMPAIGN_TEXT, TITLE_TEXT } from '../src/game/names';
 import { api, press } from './campaign';
 import { paintedAsset, settle } from './painted';
 import { waitForFirstScreen } from './title';
@@ -34,7 +35,90 @@ async function finish(page: Page, win: boolean) {
   await onScreen(page, 'result');
 }
 
+/** Compare the Phaser text bounds and live hit targets in canvas coordinates. */
+async function checkSpacing(page: Page) {
+  const items = await page.evaluate(({ back, play }) => {
+    const t = window.__tarpit as TarpitTestApi;
+    const result = t.campaignResult();
+    const nodes = t.game.scene.getScene(t.scene()).children.list;
+    const labels = nodes.filter((node): node is Phaser.GameObjects.Text =>
+      node.type === 'Text' && (node as Phaser.GameObjects.Text).visible && !!(node as Phaser.GameObjects.Text).text);
+    const keys = result ? ['playAgain', 'menu', ...(result.nextId ? ['nextLevel'] : [])]
+      : Object.keys(t.uiRects()).filter(key => key.startsWith('title:'));
+    const boxes = keys.map(key => ({ key, owner: '', button: true, ...t.uiRects()[key] }));
+    const owners = new Map([[back, 'title:back'], [play, 'title:play']] as [string, string][]);
+    if (result) {
+      const buttons = result.nextId ? ['nextLevel', 'playAgain', 'menu'] : ['playAgain', 'menu'];
+      result.buttons.forEach((label, index) => owners.set(label, buttons[index]));
+    }
+    const expected = result ? [result.title, result.slots, ...result.details, ...result.buttons].filter(Boolean) : [];
+    const texts = result ? expected.map(value => {
+      const label = labels.find(node => node.text === value);
+      if (!label) throw new Error(`Missing separate result line: ${value}`);
+      return label;
+    }) : labels;
+    let stop = '';
+    for (const label of texts) {
+      const { x, y, width, height } = label.getBounds();
+      let owner = owners.get(label.text) ?? '';
+      if (t.screen() === 'levelMap') {
+        if (/^\d+$/.test(label.text)) stop = `title:stop:${label.text}`;
+        if (/^[★☆]+$|^\d+$/.test(label.text)) owner = stop;
+      }
+      boxes.push({ key: label.text, owner, button: false, x, y, width, height });
+    }
+    return boxes;
+  }, { back: CAMPAIGN_TEXT.back, play: TITLE_TEXT.play });
+  expect(items.length).toBeGreaterThan(3);
+  for (const [index, a] of items.entries()) {
+    for (const b of items.slice(index + 1)) {
+      if (a.button && b.owner === a.key) {
+        expect(b.x >= a.x && b.y >= a.y && b.x + b.width <= a.x + a.width &&
+          b.y + b.height <= a.y + a.height, `${b.key} fits ${a.key}`).toBe(true);
+        continue;
+      }
+      const gapX = Math.max(a.x - b.x - b.width, b.x - a.x - a.width);
+      const gapY = Math.max(a.y - b.y - b.height, b.y - a.y - a.height);
+      expect(Math.max(gapX, gapY), `${a.key} overlaps ${b.key}`).toBeGreaterThanOrEqual(0);
+    }
+  }
+}
+
 export function campaignScreenSuite(touch: boolean) {
+  test('campaign labels and buttons have separate space', async ({ page }) => {
+    await page.goto('/?test=1');
+    await waitForFirstScreen(page);
+    await press(page, 'title:campaign', touch);
+    await onScreen(page, 'levelMap');
+    await press(page, 'title:stop:10', touch);
+    await checkSpacing(page);
+    await api(page, t => t.setCampaignProgress(Object.fromEntries(Array.from({ length: 10 }, (_, i) => [i + 1, 3]))));
+    await onScreen(page, 'levelMap');
+    await checkSpacing(page);
+    for (let id = 1; id <= 10; id++) {
+      await press(page, `title:stop:${id}`, touch);
+      await onScreen(page, 'levelCard');
+      await checkSpacing(page);
+      await press(page, 'title:back', touch);
+      await onScreen(page, 'levelMap');
+    }
+    for (const id of [1, 10]) {
+      for (const lives of [0, 11, 12, 20]) {
+        await page.evaluate(async ({ id, lives }) => {
+          const t = window.__tarpit as TarpitTestApi;
+          await t.startLevel(id);
+          const state = t.state();
+          state.wave = state.level!.waves.length;
+          state.lives = lives;
+          state.phase = lives ? 'won' : 'lost';
+          t.step(0);
+        }, { id, lives });
+        await onScreen(page, 'result');
+        await checkSpacing(page);
+      }
+    }
+  });
+
   test('campaign trail, card, level, results and saved progress through real buttons', async ({ page }) => {
     const click = (key: string) => press(page, key, touch);
     await page.goto('/?test=1');

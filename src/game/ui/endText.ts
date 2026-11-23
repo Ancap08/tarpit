@@ -33,8 +33,8 @@ export function campaignResultText(state: GameState, progress: CampaignProgress)
   return {
     kind, levelId, stars, lives, nextId, slots, hint, complete,
     title: won ? END_TEXT.wonTitle : END_TEXT.lostTitle,
-    details: won ? [livesLeftText(lives), hint, complete].filter(Boolean).join('\n')
-      : reachedWaveText(state.wave, false, lastWave(state)),
+    details: won ? [livesLeftText(lives), hint, complete].filter(Boolean)
+      : [reachedWaveText(state.wave, false, lastWave(state))],
     buttons: [...(nextId ? [CAMPAIGN_END.next] : []), won ? END_TEXT.playAgain : CAMPAIGN_END.retry, CAMPAIGN_END.map],
   };
 }

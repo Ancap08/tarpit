@@ -60,6 +60,7 @@ export class EndScreen {
   private readonly title: Phaser.GameObjects.Text;
   private readonly lines: Phaser.GameObjects.Text;
   private readonly boons: Phaser.GameObjects.Text;
+  private detailRows: Phaser.GameObjects.Text[] = [];
   private readonly button: Button;
   private readonly menu: Button;
   private readonly keepGoing: Button;
@@ -152,7 +153,10 @@ export class EndScreen {
     if (campaign) {
       this.title.setText(campaign.title);
       this.lines.setText(campaign.slots).setFontSize(32).setColor(TEXT.victory);
-      this.boons.setText(campaign.details).setFontSize(18);
+      this.detailRows = campaign.details.map(text => this.boons.scene.add.text(this.cx, 0, text, {
+        fontFamily: FONT, fontSize: '18px', color: TEXT.endLine, align: 'center',
+        wordWrap: { width: (this.portrait ? P_PANEL_W : 560) - 32 },
+      }).setOrigin(0.5, 0));
       this.button.set(kind === 'won' ? END_TEXT.playAgain : CAMPAIGN_END.retry, true);
       this.menu.set(CAMPAIGN_END.map, true);
       this.keepGoing.set(CAMPAIGN_END.next, true);
@@ -172,6 +176,8 @@ export class EndScreen {
 
   /** Hide the screen (milestone 26: after Keep going); a later show() works again. */
   hide(): void {
+    for (const row of this.detailRows) row.destroy();
+    this.detailRows = [];
     this.shown = null;
     this.campaign = null;
     this.setVisible(false);
@@ -188,8 +194,36 @@ export class EndScreen {
   /** The panel width and the button row for this screen: two buttons, or three on the win screen (milestone 26). */
   private layout(): void {
     const buttons = this.hasAdvance ? [this.keepGoing, this.button, this.menu] : [this.button, this.menu];
+    if (this.campaign) {
+      const titleY = this.portrait ? P_TITLE_Y : 36;
+      const starsY = this.portrait ? P_LINES_Y : 82;
+      const rowGap = 8;
+      let cursor = this.lines.text
+        ? starsY + this.lines.height / 2 + rowGap
+        : starsY;
+      for (const row of this.detailRows) {
+        row.setY(cursor);
+        cursor += row.height + rowGap;
+      }
+      const buttonsY = cursor - rowGap + (this.portrait ? 16 : 22);
+      const buttonHeight = this.portrait
+        ? buttons.length * P_BUTTON_H + (buttons.length - 1) * P_GAP
+        : this.button.rect.height;
+      const h = buttonsY + buttonHeight + (this.portrait ? P_PAD_BOTTOM : 22);
+      const top = this.cy - h / 2;
+      this.panel.setSize(this.portrait ? P_PANEL_W : 560, h);
+      this.title.setY(top + titleY);
+      this.lines.setY(top + starsY);
+      for (const row of this.detailRows) row.setY(top + row.y);
+      if (this.portrait) {
+        buttons.forEach((b, i) => b.moveTo(this.cx - P_BUTTON_W / 2, top + buttonsY + i * (P_BUTTON_H + P_GAP)));
+      } else {
+        this.buttonRow(buttons, top + buttonsY);
+      }
+      return;
+    }
     if (this.portrait) {
-      const detailsY = this.campaign?.kind === 'lost' ? P_LINES_Y : P_BOONS_TOP;
+      const detailsY = P_BOONS_TOP;
       const buttonsY = this.boons.text
         ? Math.max(P_BUTTONS_Y, detailsY + this.boons.height + 10)
         : P_BUTTONS_Y;
@@ -202,21 +236,11 @@ export class EndScreen {
       buttons.forEach((b, i) => b.moveTo(this.cx - P_BUTTON_W / 2, top + buttonsY + i * (P_BUTTON_H + P_GAP)));
       return;
     }
-    let y = this.buttonY;
-    if (this.campaign) {
-      this.boons.setOrigin(0.5, 0);
-      const detailsY = this.lines.text ? 112 : 82;
-      const buttonsY = detailsY + this.boons.height + 22;
-      const h = buttonsY + this.button.rect.height + 22;
-      const top = this.cy - h / 2;
-      this.panel.setSize(560, h);
-      this.title.setY(top + 36);
-      this.lines.setY(top + 82);
-      this.boons.setY(top + detailsY);
-      y = top + buttonsY;
-    } else {
-      this.panel.setSize(this.hasAdvance ? PANEL_W_WON : PANEL_W, PANEL_H);
-    }
+    this.panel.setSize(this.hasAdvance ? PANEL_W_WON : PANEL_W, PANEL_H);
+    this.buttonRow(buttons, this.buttonY);
+  }
+
+  private buttonRow(buttons: Button[], y: number): void {
     const total = buttons.reduce((n, b) => n + b.rect.width, 0) + (buttons.length - 1) * BUTTON_GAP;
     let x = this.cx - total / 2;
     for (const b of buttons) {
