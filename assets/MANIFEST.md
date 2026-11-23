@@ -171,6 +171,8 @@ the checker looks for it.
 | `docs/art/painted-maps/riverbend-phone-midwave.jpg` | `scripts/art/review_painted.ts` | Tarpit agents | MIT | Painted game capture |
 | `docs/art/painted-maps/switchback-landscape-empty.jpg` | `scripts/art/review_painted.ts` | Tarpit agents | MIT | Painted game capture |
 | `docs/art/painted-maps/switchback-landscape-midwave.jpg` | `scripts/art/review_painted.ts` | Tarpit agents | MIT | Painted game capture |
+| `docs/art/painted-maps/switchback-landscape-valid.jpg` | `scripts/art/review_painted.ts` | Tarpit agents | MIT | Painted game capture |
+| `docs/art/painted-maps/switchback-landscape-invalid.jpg` | `scripts/art/review_painted.ts` | Tarpit agents | MIT | Painted game capture |
 | `docs/art/painted-maps/switchback-phone-empty.jpg` | `scripts/art/review_painted.ts` | Tarpit agents | MIT | Painted game capture |
 | `docs/art/painted-maps/switchback-phone-midwave.jpg` | `scripts/art/review_painted.ts` | Tarpit agents | MIT | Painted game capture |
 | `docs/art/painted-maps/verifier/meadow-landscape-guards-wave8.jpg` | `scripts/art/verifier_painted_maps.ts` | Tarpit agents | MIT | Verifier capture of the painted game (milestone 43) |
