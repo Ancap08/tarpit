@@ -356,7 +356,7 @@ question. No dates are set.
 ## Credits
 
 Classic placeholder enemy sprites: [Ninja Adventure](https://pixel-boy.itch.io/ninja-adventure-asset-pack)
-by Pixel-boy and AAA, CC0 (attribution appreciated, not required). Painted Meadow art is generated in Blender by this project. Every
+by Pixel-boy and AAA, CC0 (attribution appreciated, not required). Painted art is generated in Blender by this project. Every
 asset file and its license is listed in [assets/MANIFEST.md](assets/MANIFEST.md).
 
 Further reading: [docs/SCOPE-v4.md](docs/SCOPE-v4.md),

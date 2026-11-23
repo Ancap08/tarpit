@@ -599,8 +599,8 @@ Reloading starts a new run.
   the spear, a death drops the soldier, and expiry cues a salute and departure.
   Test mode and reduced motion use still poses. The four sounds distinguish
   arrival, striking, falling and departure. Strike sounds share the horde budget.
-  Wave 6 shows the unlock hint once per visit. Painted Meadow uses four
-  bearings with idle and strike poses. Other maps use the Classic drawing.
+  Wave 6 shows the unlock hint once per visit. Painted uses four
+  bearings with idle and strike poses on every map.
 - **Barricade aiming and impact.** The pointer circle and touch magnifier
   show the placement area. A bar across the trail marks the snap point.
   An invalid aim marks the pointer and explains how to move it. The placed
