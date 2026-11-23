@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
 import type * as Sweeps from '../src/sim/barricadeSweep';
+import type * as GuardSweeps from '../src/sim/guardSweep';
 import type * as Balance from '../src/sim/balanceRuns';
 import type * as Targets from '../src/sim/balanceTargets';
 import type * as Maps from '../src/sim/map';
@@ -160,6 +161,27 @@ try {
       if (!ok) process.exitCode = 1;
     }
   }
+
+  const { sweepGuards, sweepGuardsOnly } = await server.ssrLoadModule('/src/sim/guardSweep.ts') as typeof GuardSweeps;
+  console.log('\nGuards');
+  let improvedMaps = 0;
+  for (const map of MAP_IDS) {
+    for (const level of ['normal', 'hard'] as const) {
+      const { best, points, hardWinsFromLoss, ok } = sweepGuards(map, level);
+      console.log(`${ok ? 'ok' : 'MISS'}  G2 ${map}/${level}: best at ${best.distance} px, gain ${best.gain}, ${points} points, ${hardWinsFromLoss} Hard losses turned into wins`);
+      if (level === 'normal' && best.gain >= 1) improvedMaps++;
+      if (!ok) process.exitCode = 1;
+    }
+    for (const level of levels) {
+      const { campaign, unlock, ok } = sweepGuardsOnly(map, level);
+      const loss = ({ latest, survived }: typeof unlock) => survived
+        ? `${survived} placements did not lose by wave 8` : `loss by wave ${latest}`;
+      console.log(`${ok ? 'ok' : 'MISS'}  G3 ${map}/${level}: wave 1 start ${loss(campaign)}, full-lives wave 6 start ${loss(unlock)}`);
+      if (!ok) process.exitCode = 1;
+    }
+  }
+  console.log(`${improvedMaps >= 2 ? 'ok' : 'MISS'}  G2 Normal improved by at least one life on ${improvedMaps} maps`);
+  if (improvedMaps < 2) process.exitCode = 1;
 } finally {
   await server.close();
 }

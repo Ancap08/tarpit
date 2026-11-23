@@ -42,7 +42,7 @@ function breakTick(enemies: Enemy[]): number {
   expect(useSpecial(s, 'barricade', { x: AT, y: 240 }).ok).toBe(true);
   for (let n = 1; n < 20000; n++) {
     tick(s);
-    if (s.blocker === null) return n;
+    if (s.blockers.length === 0) return n;
   }
   throw new Error('wall never broke');
 }
@@ -83,11 +83,11 @@ describe('the blocking rule, by hand', () => {
     const s = arena([mk(1, 'goblin', 150), mk(2, 'goblin', 140), mk(3, 'goblin', 130)]);
     useSpecial(s, 'barricade', { x: AT, y: 240 });
     run(s, 9);
-    expect(s.blocker!.hp).toBe(BARRICADE_HP);
+    expect(s.blockers.find((blocker) => blocker.kind === 'barricade')!.hp).toBe(BARRICADE_HP);
     run(s, 1);
-    expect(s.blocker!.hp).toBeCloseTo(323.9, 9);
+    expect(s.blockers.find((blocker) => blocker.kind === 'barricade')!.hp).toBeCloseTo(323.9, 9);
     run(s, 20);
-    expect(s.blocker!.hp).toBeCloseTo(324 - 3.3, 9);
+    expect(s.blockers.find((blocker) => blocker.kind === 'barricade')!.hp).toBeCloseTo(324 - 3.3, 9);
   });
 
   it('break ticks, worked out by hand', () => {
@@ -107,7 +107,7 @@ describe('the blocking rule, by hand', () => {
     const h = arena([mk(1, 'harpy', 100)]);
     useSpecial(h, 'barricade', { x: AT, y: 240 });
     run(h, 200);
-    expect(h.blocker!.hp).toBe(BARRICADE_HP);
+    expect(h.blockers.find((blocker) => blocker.kind === 'barricade')!.hp).toBe(BARRICADE_HP);
     expect(h.enemies[0].distance).toBeGreaterThan(AT);
   });
 
@@ -116,7 +116,7 @@ describe('the blocking rule, by hand', () => {
     const s = arena([mk(1, 'boss', AT), mk(2, 'goblin', AT - 0.5)]);
     useSpecial(s, 'barricade', { x: AT, y: 240 });
     run(s, 64);
-    expect(s.blocker).toBeNull();
+    expect(s.blockers).toEqual([]);
     expect(s.enemies.map((e) => e.distance)).toEqual([AT, AT]);
     expect(s.events.filter((e) => e.kind === 'blockerBreak')).toHaveLength(1);
     tick(s);
@@ -130,7 +130,7 @@ describe('the blocking rule, by hand', () => {
     tick(s);
     expect(s.enemies[0].distance).toBeCloseTo(AT + 1.001, 9);
     expect(s.enemies[1].distance).toBe(AT);
-    expect(s.blocker!.hp).toBeCloseTo(323.9, 9);
+    expect(s.blockers.find((blocker) => blocker.kind === 'barricade')!.hp).toBeCloseTo(323.9, 9);
   });
 
   it('flyers pass; ground walkers behind a flyer still stop', () => {
@@ -185,7 +185,7 @@ describe('the blocking rule, by hand', () => {
     s.specialRechargeTicks = 0;
     const r = useSpecial(s, 'barricade', { x: 300, y: 240 });
     expect(r.ok).toBe(true);
-    expect(s.blocker).toMatchObject({ distance: 300, hp: 324 });
+    expect(s.blockers.find((blocker) => blocker.kind === 'barricade')).toMatchObject({ distance: 300, hp: 324 });
     run(s, 140);
     expect(s.enemies.map((e) => e.distance)).toEqual([300, 300, 300, 300]);
   });
@@ -203,14 +203,14 @@ describe('the blocking rule, by hand', () => {
     applyBurn(s.enemies[0], 3600, 60, 'special');
     tick(s);
     expect(s.phase).toBe('setup');
-    expect(s.blocker).not.toBeNull();
+    expect(s.blockers).toHaveLength(1);
     const w20 = arena([], 20);
     useSpecial(w20, 'barricade', { x: AT, y: 240 });
     tick(w20);
     expect(w20.phase).toBe('won');
-    expect(w20.blocker).not.toBeNull();
+    expect(w20.blockers).toHaveLength(1);
     expect(continueEndless(w20).ok).toBe(true);
-    expect(w20.blocker).not.toBeNull();
+    expect(w20.blockers).toHaveLength(1);
   });
 
   it('a wall placed during an early-called wave works and a refill never double-places in one tick', () => {
@@ -313,7 +313,7 @@ describe('boss break times and rewards', () => {
     const s = arena([]);
     s.boons = ['quickHands', 'hotCoals', 'tarLinger'] as never;
     useSpecial(s, 'barricade', { x: AT, y: 240 });
-    expect(s.blocker).toMatchObject({ hp: 324, maxHp: 324 });
+    expect(s.blockers.find((blocker) => blocker.kind === 'barricade')).toMatchObject({ hp: 324, maxHp: 324 });
     expect(s.specialRechargeTicks).toBe(684);
   });
 });
@@ -323,7 +323,7 @@ describe('reuse and abuse probes', () => {
     // movement.ts clamps to blocker.distance, but removeExitedEnemies treats distance >= exit as out.
     // A castle wall at the exit would need that rule changed (the Barricade itself is kept 64 px away).
     const s = arena([mk(1, 'goblin', 959)]);
-    s.blocker = { x: 960, y: 240, distance: 960, angle: 0, hp: 324, maxHp: 324 };
+    s.blockers = [{ kind: 'barricade', x: 960, y: 240, distance: 960, angle: 0, hp: 324, maxHp: 324 }];
     const lives = s.lives;
     tick(s);
     expect(s.lives).toBe(lives - 1);

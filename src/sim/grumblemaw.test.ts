@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildTower, useSpecial } from './actions';
+import { applyBurn } from './combat';
 import { campaignHpFactor, enemyMaxHp } from './difficulty';
 import { cappedSlow, ENEMY_STATS, isBoss } from './enemies';
 import type { GameEvent } from './events';
@@ -171,11 +172,8 @@ describe('Grumblemaw', () => {
         { kind: 'packCall', enemyId: 0, threshold: 2 },
         { kind: 'packCall', enemyId: 0, threshold: 1 },
       ]);
-      // This kills the boss before either queued pack has spawned.
-      state.specialCharges = 1;
-      expect(useSpecial(state, 'keg', { x: 80, y: 240 })).toMatchObject({ hits: 1, kills: 1 });
-      expect(packCalls(state)).toHaveLength(2);
-      expect(state.enemies).toEqual([]);
+      // A burn tick is lethal before the spawn step processes either pack.
+      applyBurn(boss, 900, 1, 'special');
       expect(state.phase).toBe('wave');
       const events = [...state.events];
       const spawnTimes: number[] = [];
@@ -188,6 +186,9 @@ describe('Grumblemaw', () => {
         }
       }
       expect(spawnTimes).toEqual([0, 0, 30, 30, 60, 60, 90, 90, 120, 120, 150, 150, 180, 180, 210, 210]);
+      const bossKill = events.findIndex((e) => e.kind === 'kill' && e.enemyType === 'grumblemaw');
+      expect(bossKill).toBeGreaterThan(-1);
+      expect(bossKill).toBeLessThan(events.findIndex((e) => e.kind === 'spawn'));
       expect(events.filter((e) => e.kind === 'exit')).toHaveLength(16);
       expect(new Set(wolfSpawns(events).map((e) => e.enemyId)).size).toBe(16);
       expect(events.filter((e) => e.kind === 'packCall')).toHaveLength(2);

@@ -118,6 +118,8 @@ export interface Enemy {
   maxHp?: number;
   /** Grumblemaw thresholds already called, after surviving a hit. */
   packCalls?: number;
+  /** The guard this walker reached, and that guard's lifetime remaining on arrival. */
+  guardContact?: { guardId: number; arrivedWithTicksLeft: number };
 }
 
 export interface GroupDef {
@@ -247,6 +249,19 @@ export interface Blocker extends TrailPoint {
   maxHp: number;
 }
 
+export interface Barricade extends Blocker {
+  kind: 'barricade';
+}
+
+export interface Guard extends Blocker {
+  kind: 'guard';
+  id: number;
+  attackDps: number;
+  ticksLeft: number;
+}
+
+export type TrailBlocker = Barricade | Guard;
+
 export interface GameState {
   /**
    * The map this game is played on (milestone 27), fixed at createGame.
@@ -289,9 +304,10 @@ export interface GameState {
   specialRechargeTicks: number;
   /** Milestone 30: the live ground zones of the Tar Barrel and Fire Arrows, oldest first. */
   zones: Zone[];
-  blocker: Blocker | null;
-  /** The last Barricade cast tick, preventing a second cast across an early call. */
-  lastBarricadeTick?: number;
+  blockers: TrailBlocker[];
+  nextGuardId: number;
+  /** The last special cast tick, preventing a second cast across an early call. */
+  lastSpecialTick?: number;
   /** Id for the next zone. */
   nextZoneId: number;
   /** Milestone 30: the gold cheat was used in this game (grantCheatGold). */

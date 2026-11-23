@@ -16,7 +16,7 @@ function repeatsAtRefresh(state: GameState, point: Point): boolean {
     for (let left = state.specialRechargeTicks; left > 0; left--) tick(state);
     if (!useSpecial(state, 'barricade', point).ok) return undefined;
     // The last cast was this tick in both states. Absolute clocks can no longer trigger spawns.
-    return JSON.stringify({ ...state, tick: 0, waveTick: 0, lastBarricadeTick: 0, shots: [], events: [] });
+    return JSON.stringify({ ...state, tick: 0, waveTick: 0, lastSpecialTick: 0, shots: [], events: [] });
   }
   const first = refresh();
   return first !== undefined && first === refresh();

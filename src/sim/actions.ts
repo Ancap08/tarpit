@@ -10,13 +10,16 @@
 // move, undoUpgrade, special, cheat) to state.events, where it stays until the next tick
 // clears the list.
 
-import { BARRICADE_HP, barricadePlacement, type BarricadePlacementRefusal } from './blockers';
+import {
+  BARRICADE_HP, GUARD_ATTACK_DPS, GUARD_HP, GUARD_LIFETIME_TICKS,
+  barricadePlacement, guardsPlacement, type BarricadePlacementRefusal,
+} from './blockers';
 import { BOONS, boonScale, type BoonId } from './boons';
 import { applyBurn, applySpecialSlow, enemyPosition, removeDead } from './combat';
 import { cellKey, sameCell, terrainBlock, type Cell } from './grid';
 import { isSpecialUnlocked, SPECIAL_DEFS, SPECIAL_RECHARGE_TICKS, ZONE_LINGER_TICKS, specialRadius, tarLingerTicks, type SpecialType } from './specials';
 import { TOWER_DEFS, TOWER_PATHS, towerLevel, towerSellValue, towerUndoValue } from './towers';
-import type { GameState, Point, TargetingMode, Tower, TowerType, UpgradePath } from './types';
+import type { GameState, Guard, Point, TargetingMode, Tower, TowerType, UpgradePath } from './types';
 
 export type BuildResult =
   | { ok: true; tower: Tower; gold: number }
@@ -207,10 +210,10 @@ export function setTargeting(state: GameState, cell: Cell, mode: TargetingMode):
  * Use a special attack aimed at `point` (milestone 25b; reworked in
  * milestone 30). Refused, checked in this order, when the game is over,
  * outside a wave ('not-in-wave'), when `type` is not unlocked on this wave
- * ('locked'), when the charge is not ready ('no-charge'), or when the point
- * is outside the map ('out-of-bounds'). A Barricade must also pass the trail
- * snap and endpoint checks. It replaces the blocker and affects no enemies
- * until contact in a tick.
+ * ('locked'), when the charge is not ready or a special already fired this
+ * tick ('no-charge'), or when the point is outside the map ('out-of-bounds').
+ * Barricade and Guards must also pass their trail snap and endpoint checks.
+ * Each replaces blockers from its own prior cast and affects enemies on contact.
  * Otherwise it spends the charge, starts the recharge
  * (SPECIAL_RECHARGE_TICKS wave ticks) and acts at once on every live enemy
  * whose position is within the special's radius of the point (inclusive),
@@ -226,11 +229,12 @@ export function useSpecial(state: GameState, type: SpecialType, point: Point): S
   if (isOver(state)) return { ok: false, reason: 'game-over' };
   if (state.phase !== 'wave') return { ok: false, reason: 'not-in-wave' };
   if (!isSpecialUnlocked(type, state.wave)) return { ok: false, reason: 'locked' };
-  if (state.specialCharges <= 0 || (type === 'barricade' && state.lastBarricadeTick === state.tick)) {
+  if (state.specialCharges <= 0 || state.lastSpecialTick === state.tick) {
     return { ok: false, reason: 'no-charge' };
   }
   const { x, y } = point;
-  const placement = type === 'barricade' ? barricadePlacement(state.map, point) : undefined;
+  const squad = type === 'guards' ? guardsPlacement(state.map, point) : undefined;
+  const placement = type === 'barricade' ? barricadePlacement(state.map, point) : squad;
   if (placement) {
     if (!placement.ok) return { ok: false, reason: placement.reason };
   } else if (!(x >= 0 && x <= state.map.width && y >= 0 && y <= state.map.height)) {
@@ -238,11 +242,23 @@ export function useSpecial(state: GameState, type: SpecialType, point: Point): S
   }
   state.specialCharges = 0;
   state.specialRechargeTicks = Math.round(boonScale(SPECIAL_RECHARGE_TICKS, state.boons, 'quickHands'));
+  state.lastSpecialTick = state.tick;
   if (placement) {
     const { point: trail } = placement;
-    state.lastBarricadeTick = state.tick;
-    state.blocker = { ...trail, hp: BARRICADE_HP, maxHp: BARRICADE_HP };
     state.events.push({ kind: 'special', type, x: trail.x, y: trail.y, angle: trail.angle, radius: 0, hits: 0 });
+    if (squad?.ok) {
+      const replaced = state.blockers.filter((blocker) => blocker.kind === 'guard');
+      if (replaced.length) state.events.push({ kind: 'squadGone', guards: replaced, reason: 'replaced' });
+      const guards = squad.points.map((point): Guard => ({
+        ...point, kind: 'guard', id: state.nextGuardId++, hp: GUARD_HP, maxHp: GUARD_HP,
+        attackDps: GUARD_ATTACK_DPS, ticksLeft: GUARD_LIFETIME_TICKS,
+      }));
+      state.blockers = [...state.blockers.filter((blocker) => blocker.kind !== 'guard'), ...guards];
+      state.events.push({ kind: 'squadPlaced', guards: guards.map((guard) => ({ ...guard })) });
+    } else {
+      state.blockers = state.blockers.filter((blocker) => blocker.kind !== 'barricade');
+      state.blockers.push({ ...trail, kind: 'barricade', hp: BARRICADE_HP, maxHp: BARRICADE_HP });
+    }
     return { ok: true, hits: 0, kills: 0, gold: state.gold };
   }
   const def = SPECIAL_DEFS[type];
@@ -251,7 +267,8 @@ export function useSpecial(state: GameState, type: SpecialType, point: Point): S
     const p = enemyPosition(enemy, state.map);
     return Math.hypot(p.x - x, p.y - y) <= radius;
   });
-  const zoneId = def.zoneTicks > 0 && type !== 'keg' && type !== 'barricade' ? state.nextZoneId : undefined;
+  const zoneType = type === 'tarBarrel' || type === 'fireArrows' ? type : undefined;
+  const zoneId = zoneType !== undefined && def.zoneTicks > 0 ? state.nextZoneId : undefined;
   state.events.push({ kind: 'special', type, x, y, radius, hits: inside.length, ...(zoneId === undefined ? {} : { zoneId }) });
   for (const enemy of inside) {
     if (def.damage > 0) enemy.hp -= def.damage;
@@ -262,8 +279,8 @@ export function useSpecial(state: GameState, type: SpecialType, point: Point): S
     }
     if (def.burnDps > 0) applyBurn(enemy, boonScale(def.burnDps, state.boons, 'hotCoals'), ZONE_LINGER_TICKS, 'special');
   }
-  if (zoneId !== undefined && type !== 'keg' && type !== 'barricade') {
-    state.zones.push({ id: zoneId, type, x, y, radius, ticksLeft: def.zoneTicks });
+  if (zoneId !== undefined && zoneType !== undefined) {
+    state.zones.push({ id: zoneId, type: zoneType, x, y, radius, ticksLeft: def.zoneTicks });
     state.nextZoneId += 1;
   }
   const before = state.enemies.length;

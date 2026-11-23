@@ -17,8 +17,11 @@
 //   1. Move live enemies by speed / 60 times (1 - effectiveSlow): the
 //      stronger of the active tower slow and the active special slow
 //      (milestone 25c), boss cap applied. Walking enemies stop on contact
-//      with a blocker and damage it. After all movement, a broken blocker is
-//      removed, and enemies resume moving next tick. Both slow timers count down.
+//      with the first blocker and damage it. Each contacted guard strikes
+//      once, even on its breaking or expiry tick. After all contacts are
+//      resolved, pay guard kills as special kills and remove broken or
+//      expired blockers. Held survivors resume moving next tick. Both
+//      slow timers count down.
 //   2. Remove enemies at or past the exit; each costs its livesCost (1, or
 //      5 for the boss, milestone 23).
 //      Lives <= 0 -> phase 'lost' at once, nothing else happens this tick.
@@ -50,7 +53,7 @@
 //      the game is endless, milestone 26).
 //
 // Towers only act during wave ticks; in 'setup' cooldowns stay where they
-// are. Build, upgrade and sell (actions.ts) happen between ticks, and so
+// are, but guard lifetimes still count down. Build, upgrade and sell (actions.ts) happen between ticks, and so
 // does useSpecial (milestone 25b): its damage, slow and burn apply at once
 // and its kills are removed and paid before the next tick; a Tar Barrel or
 // Fire Arrows also leaves a zone (milestone 30). startWave makes the special
@@ -69,14 +72,14 @@
 
 import { moveEnemies } from './movement';
 import { boonScale, boonOptions } from './boons';
-import { burnEnemies, fireTowers, PACK_INTERVAL_TICKS } from './combat';
+import { burnEnemies, fireTowers, PACK_INTERVAL_TICKS, removeDead } from './combat';
 import { DEFAULT_DIFFICULTY, DIFFICULTY_DEFS, campaignHpFactor, enemyMaxHp, type Difficulty } from './difficulty';
 import { ENEMY_STATS, isBoss } from './enemies';
 import { pathLength, resolveMap, type MapId } from './map';
 import { applyBurn, applySpecialSlow, enemyPosition } from './combat';
 import { SPECIAL_DEFS, ZONE_LINGER_TICKS, tarLingerTicks } from './specials';
 import { secondsToTicks, TICKS_PER_SECOND } from './time';
-import type { EnemyType, GameState, GroupDef, MapDef } from './types';
+import type { EnemyType, GameState, GroupDef, Guard, MapDef } from './types';
 import { hasNextWave, LAST_WAVE, waveDef } from './waves';
 
 export { secondsToTicks, TICKS_PER_SECOND };
@@ -113,7 +116,8 @@ export function createGame(options: CreateGameOptions = {}): GameState {
     specialCharges: 0,
     specialRechargeTicks: 0,
     zones: [],
-    blocker: null,
+    blockers: [],
+    nextGuardId: 0,
     nextZoneId: 0,
     cheated: false,
     tick: 0,
@@ -264,13 +268,14 @@ export function tick(state: GameState): void {
   state.shots = [];
   state.events = [];
   if (state.phase === 'setup') {
+    ageBlockers(state);
     state.tick += 1;
     return;
   }
 
-  const blocker = state.blocker;
-  moveEnemies(state.enemies, state.events, blocker ? [blocker] : undefined);
-  if (blocker && blocker.hp === 0) state.blocker = null;
+  const guardsStruck = moveEnemies(state.enemies, state.events, state.blockers);
+  if (guardsStruck) removeDead(state, 'special');
+  ageBlockers(state);
   removeExitedEnemies(state);
   if (state.lives <= 0) {
     state.phase = 'lost';
@@ -288,6 +293,30 @@ export function tick(state: GameState): void {
     if (state.specialRechargeTicks === 0) state.specialCharges = 1;
   }
   checkWaveClear(state);
+}
+
+/** Remove dead blockers and give surviving guards their last full contact tick. */
+function ageBlockers(state: GameState): void {
+  let fallen: Guard[] | undefined;
+  let expired: Guard[] | undefined;
+  let remove = false;
+  for (const blocker of state.blockers) {
+    if (blocker.hp <= 0) {
+      remove = true;
+      if (blocker.kind === 'guard') (fallen ??= []).push(blocker);
+    } else if (blocker.kind === 'guard' && --blocker.ticksLeft <= 0) {
+      remove = true;
+      (expired ??= []).push(blocker);
+    }
+  }
+  if (remove) {
+    state.blockers = state.blockers.filter((blocker) =>
+      blocker.hp > 0 && (blocker.kind === 'barricade' || blocker.ticksLeft > 0));
+  }
+  if (expired) state.events.push({ kind: 'squadGone', guards: expired, reason: 'expired' });
+  else if (fallen && !state.blockers.some((blocker) => blocker.kind === 'guard')) {
+    state.events.push({ kind: 'squadGone', guards: fallen, reason: 'destroyed' });
+  }
 }
 
 /**

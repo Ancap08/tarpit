@@ -118,8 +118,10 @@ describe('verifier: zones', () => {
     const s = arena(7, [enemy(0, 'troll', 300, 1e9)]);
     useSpecial(s, 'tarBarrel', P);
     useSpecial(s, 'fireArrows', P); // refused: no charge. Reset the charge as a recharge would.
+    tick(s);
     s.specialCharges = 1;
     useSpecial(s, 'tarBarrel', P);
+    tick(s);
     s.specialCharges = 1;
     expect(useSpecial(s, 'fireArrows', P).ok).toBe(true);
     expect(s.zones.map((z) => z.type)).toEqual(['tarBarrel', 'tarBarrel', 'fireArrows']);
@@ -134,6 +136,7 @@ describe('verifier: zones', () => {
   it('the boss slow stays capped at 0.3 under overlapping tar zones', () => {
     const s = arena(4, [enemy(0, 'boss', 300, 1e9)]);
     useSpecial(s, 'tarBarrel', P);
+    tick(s);
     s.specialCharges = 1;
     useSpecial(s, 'tarBarrel', P);
     ticks(s, 30);

@@ -151,20 +151,24 @@ describe('verifier 36a: Grumblemaw pack calls', () => {
     expect(a.enemies[0].hp).toBe(twoThirds + 1);
     expect(ofKind(a, 'packCall')).toEqual([]);
 
+    tick(a);
     a.enemies[0].hp = twoThirds + kegDamage;
     a.specialCharges = 1;
     keg(a);
     expect(a.enemies[0].hp).toBe(twoThirds);
     expect(ofKind(a, 'packCall')).toEqual([{ kind: 'packCall', enemyId: 0, threshold: 2 }]);
+    tick(a);
     a.specialCharges = 1;
     keg(a);
-    expect(ofKind(a, 'packCall')).toHaveLength(1);
+    expect(ofKind(a, 'packCall')).toHaveLength(0);
 
+    tick(a);
     a.enemies[0].hp = oneThird + kegDamage;
     a.specialCharges = 1;
     keg(a);
     expect(a.enemies[0].hp).toBe(oneThird);
-    expect(ofKind(a, 'packCall').map((e) => e.threshold)).toEqual([2, 1]);
+    expect(ofKind(a, 'packCall')).toEqual([{ kind: 'packCall', enemyId: 0, threshold: 1 }]);
+    tick(a);
     a.specialCharges = 1;
     keg(a);
     for (let i = 0; i < 400; i++) tick(a);

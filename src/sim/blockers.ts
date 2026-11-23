@@ -1,9 +1,14 @@
-import { pathLength, projectOntoTrail } from './map';
+import { pathLength, projectOntoTrail, trailPointAt } from './map';
 import type { MapDef, Point, TrailPoint } from './types';
 
 export const BARRICADE_HP = 324;
 export const BARRICADE_SNAP_RADIUS = 40;
 export const BARRICADE_END_EXCLUSION = 64;
+export const GUARD_COUNT = 4;
+export const GUARD_HP = 72;
+export const GUARD_ATTACK_DPS = 10;
+export const GUARD_LIFETIME_TICKS = 720;
+export const GUARD_SPACING = 12;
 
 export type BarricadePlacementRefusal = 'out-of-bounds' | 'off-trail' | 'near-spawn' | 'near-exit';
 
@@ -23,4 +28,21 @@ export function barricadePlacement(map: MapDef, aim: Point): BarricadePlacement 
   if (point.distance < BARRICADE_END_EXCLUSION) return { ok: false, reason: 'near-spawn', point };
   if (pathLength(map) - point.distance < BARRICADE_END_EXCLUSION) return { ok: false, reason: 'near-exit', point };
   return { ok: true, point };
+}
+
+type GuardsPlacement =
+  | { ok: true; point: TrailPoint; points: TrailPoint[] }
+  | Extract<BarricadePlacement, { ok: false }>;
+
+/** Shared snap rules, with enough trail before the anchor to fit every guard. */
+export function guardsPlacement(map: MapDef, aim: Point): GuardsPlacement {
+  const placement = barricadePlacement(map, aim);
+  if (!placement.ok) return placement;
+  const { point } = placement;
+  if (point.distance < (GUARD_COUNT - 1) * GUARD_SPACING) return { ok: false, reason: 'near-spawn', point };
+  const points = [point];
+  for (let i = 1; i < GUARD_COUNT; i++) {
+    points.push(trailPointAt(map, point.distance - i * GUARD_SPACING));
+  }
+  return { ok: true, point, points };
 }

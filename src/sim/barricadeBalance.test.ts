@@ -52,7 +52,7 @@ describe('Barricade campaign balance', () => {
       while (state.phase === 'setup' && state.wave < 4) {
         expect(startWave(state).ok, difficulty).toBe(true);
         for (let step = 0; (state.phase as GameState['phase']) === 'wave' && step < 60 * TICKS_PER_SECOND; step++) {
-          if (state.specialCharges > 0 && !state.blocker) {
+          if (state.specialCharges > 0 && !state.blockers.some(({ kind }) => kind === 'barricade')) {
             expect(useSpecial(state, 'barricade', COMBO_BARRICADE_POINTS[map]).ok, difficulty).toBe(true);
           }
           tick(state);
@@ -71,10 +71,12 @@ function actualContact(map: MapId, difficulty: Difficulty) {
   let beforeContact: GameState | undefined;
   const script = comboBarricade(difficulty, map);
   const run = playWithStats(script, difficulty, (state) => {
-    if (beforeContact || state.wave !== LAST_WAVE || !state.blocker) return;
+    if (beforeContact || state.wave !== LAST_WAVE) return;
+    const wall = state.blockers.find(({ kind }) => kind === 'barricade');
+    if (!wall) return;
     const boss = state.enemies.find((enemy) => enemy.type === 'grumblemaw');
     if (!boss) return;
-    const remaining = state.blocker.distance - boss.distance;
+    const remaining = wall.distance - boss.distance;
     if (remaining < 0 || remaining > ENEMY_STATS.grumblemaw.speed / TICKS_PER_SECOND) return;
     const probe = structuredClone(state);
     tick(probe);
@@ -92,7 +94,7 @@ function actualContact(map: MapId, difficulty: Difficulty) {
 /** Keep the live board and casts in both arms. Override only lethal boss damage. */
 function bossExit(snapshot: GameState, timed: readonly TimedAction[], keepWall: boolean) {
   const state = structuredClone(snapshot);
-  if (!keepWall) state.blocker = null;
+  if (!keepWall) state.blockers = state.blockers.filter(({ kind }) => kind !== 'barricade');
 
   const boss = state.enemies.find((enemy) => enemy.type === 'grumblemaw');
   if (!boss) throw new Error('Contact state did not contain Grumblemaw');

@@ -53,7 +53,7 @@ const ticks = (s: GameState, n: number) => {
 
 describe('the specials table (milestone 30)', () => {
   it('keg wave 1, 90 px, 60 damage; Tar Barrel wave 4, 100 px, slow 0.5, zone 660; Fire Arrows wave 7, 90 px, burn 26/s, zone 660; recharge 1200, linger 60', () => {
-    expect(SPECIAL_TYPES).toEqual(['keg', 'barricade', 'tarBarrel', 'fireArrows']);
+    expect(SPECIAL_TYPES).toEqual(['keg', 'barricade', 'tarBarrel', 'guards', 'fireArrows']);
     expect(SPECIAL_DEFS.barricade).toEqual({ unlockWave: 3, radius: 0, damage: 0, slow: 0, burnDps: 0, zoneTicks: 0 });
     expect(SPECIAL_DEFS.keg).toEqual({ unlockWave: 1, radius: 90, damage: 60, slow: 0, burnDps: 0, zoneTicks: 0 });
     expect(SPECIAL_DEFS.tarBarrel).toEqual({ unlockWave: 4, radius: 100, damage: 0, slow: 0.5, burnDps: 0, zoneTicks: 660 });
@@ -64,9 +64,9 @@ describe('the specials table (milestone 30)', () => {
       ['keg'],
       ['keg', 'barricade'],
       ['keg', 'barricade', 'tarBarrel'],
-      ['keg', 'barricade', 'tarBarrel'],
-      ['keg', 'barricade', 'tarBarrel', 'fireArrows'],
-      ['keg', 'barricade', 'tarBarrel', 'fireArrows'],
+      ['keg', 'barricade', 'tarBarrel', 'guards'],
+      ['keg', 'barricade', 'tarBarrel', 'guards', 'fireArrows'],
+      ['keg', 'barricade', 'tarBarrel', 'guards', 'fireArrows'],
     ]);
   });
 });
@@ -168,8 +168,10 @@ describe('zones (step 2b of the tick)', () => {
   it('two overlapping zones: tar and fire on one enemy burn at 26/s doubled (52/s); two tar zones do not stack', () => {
     const s = inWave(7, [enemy(0, 'troll', 300, 1000)], LINE);
     useSpecial(s, 'tarBarrel', { x: 300, y: 240 });
-    s.specialCharges = 1; // test setup: a second charge at once
+    tick(s);
+    s.specialCharges = 1; // Test setup: refill while the first zone is still live.
     useSpecial(s, 'fireArrows', { x: 320, y: 240 });
+    tick(s);
     s.specialCharges = 1;
     useSpecial(s, 'tarBarrel', { x: 280, y: 240 });
     expect(s.zones.map((z) => [z.id, z.type])).toEqual([
@@ -177,15 +179,18 @@ describe('zones (step 2b of the tick)', () => {
       [1, 'fireArrows'],
       [2, 'tarBarrel'],
     ]);
+    const hp = s.enemies[0].hp;
+    const distance = s.enemies[0].distance;
     ticks(s, 60);
-    expect(1000 - s.enemies[0].hp).toBeCloseTo(52, 9);
+    expect(hp - s.enemies[0].hp).toBeCloseTo(52, 9);
     // 35 px/s at 0.5 for 60 ticks: 17.5 px, not less.
-    expect(s.enemies[0].distance).toBeCloseTo(317.5, 9);
+    expect(s.enemies[0].distance - distance).toBeCloseTo(17.5, 9);
   });
 
   it('a flyer in a fire zone burns and in a tar zone is slowed', () => {
     const s = inWave(7, [enemy(0, 'harpy', 300, 1000)], LINE);
     useSpecial(s, 'fireArrows', { x: 300, y: 240 });
+    tick(s);
     s.specialCharges = 1;
     useSpecial(s, 'tarBarrel', { x: 300, y: 240 });
     tick(s);
@@ -241,8 +246,8 @@ describe('radius', () => {
   it('Tar Barrel 100 and Fire Arrows 90, in the zone too', () => {
     const s = inWave(7, [enemy(0, 'troll', 400, 1000), enemy(1, 'troll', 400.01, 1000)], LINE);
     expect(useSpecial(s, 'tarBarrel', { x: 300, y: 240 })).toMatchObject({ hits: 1 });
-    s.specialCharges = 1;
-    expect(useSpecial(s, 'fireArrows', { x: 310, y: 240 })).toMatchObject({ hits: 1 });
+    const fire = inWave(7, [enemy(0, 'troll', 400, 1000), enemy(1, 'troll', 400.01, 1000)], LINE);
+    expect(useSpecial(fire, 'fireArrows', { x: 310, y: 240 })).toMatchObject({ hits: 1 });
   });
 });
 
