@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   availableSpecials, buildTower, callNextWave, continueEndless, createGame, lastWave, levelStars,
-  MAPS, nextWavePreview, pickBoon, startWave, tick, upgradeTower, useSpecial, type GameState, type LevelDef,
+  MAPS, unlockedLevel, nextWavePreview, pickBoon, startWave, tick, upgradeTower, useSpecial, type GameState, type LevelDef,
 } from '.';
 
 const goblins = { groups: [{ type: 'goblin', count: 1, interval: 1, delay: 0 }] } as const;
@@ -19,6 +19,12 @@ function finishWave(state: GameState): void {
 }
 
 describe('campaign level rules', () => {
+  it('opens only a contiguous prefix when saved stars have gaps', () => {
+    const saved = { 1: 3, 3: 2 } as const;
+    expect([1, 2, 3, 4].map(id => unlockedLevel(saved, id))).toEqual([true, true, false, false]);
+    expect(unlockedLevel({ ...saved, 2: 1 }, 4)).toBe(true);
+  });
+
   it('takes map, economy and wave definitions from the level and wins after its last wave', () => {
     const state = createGame({ level, map: 'meadow', difficulty: 'hard' });
     expect(state.map).toBe(MAPS.switchback);

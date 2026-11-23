@@ -22,7 +22,11 @@ function isLevelId(id: number): boolean {
 }
 
 export function unlockedLevel(progress: CampaignProgress, id: number): boolean {
-  return isLevelId(id) && (id === 1 || isWinStars(progress[id - 1]));
+  if (!isLevelId(id)) return false;
+  for (let previous = 1; previous < id; previous++) {
+    if (!isWinStars(progress[previous])) return false;
+  }
+  return true;
 }
 
 export function mergeProgress(progress: CampaignProgress, id: number, stars: number): CampaignProgress {
