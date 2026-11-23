@@ -159,7 +159,7 @@ export function startWave(state: GameState): StartWaveResult {
   state.waveTick = 0;
   state.spawnedPerGroup = gameWaveDef(state, state.wave).groups.map(() => 0);
   // The special charge is ready at every wave start (milestone 30).
-  state.specialCharges = state.level?.allowedSpecials.length === 0 ? 0 : 1;
+  state.specialCharges = state.level?.allowedSpecials.length === 0 && !state.cheated ? 0 : 1;
   state.specialRechargeTicks = 0;
   // Planning phase ends (milestone 25a): everything bought so far locks.
   for (const tower of state.towers) {
@@ -239,7 +239,7 @@ export function callNextWave(state: GameState): CallNextWaveResult {
   state.wave += 1;
   state.waveTick = 0;
   state.spawnedPerGroup = gameWaveDef(state, state.wave).groups.map(() => 0);
-  state.specialCharges = state.level?.allowedSpecials.length === 0 ? 0 : 1;
+  state.specialCharges = state.level?.allowedSpecials.length === 0 && !state.cheated ? 0 : 1;
   state.specialRechargeTicks = 0;
   state.events.push({ kind: 'earlyCall', wave: state.wave, bonus: status.bonus });
   state.events.push({ kind: 'waveStart', wave: state.wave });

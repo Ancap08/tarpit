@@ -152,14 +152,14 @@ describe('verifier: reward waves', () => {
 
 describe('verifier: star boundaries', () => {
   const stars = (lives: number, phase: GameState['phase'] = 'won') =>
-    levelStars({ level: LEVELS[0], lives, phase });
+    levelStars({ cheated: false, level: LEVELS[0], lives, phase });
   it('11/12 and 17/18 lives, a win at 1 life, a loss, an unfinished game, no level', () => {
     expect([stars(11), stars(12), stars(17), stars(18), stars(20), stars(1)]).toEqual([1, 2, 2, 3, 3, 1]);
     expect(stars(0, 'lost')).toBe(0);
     expect(stars(20, 'lost')).toBe(0);
     expect(stars(20, 'wave')).toBe(0);
     expect(stars(20, 'setup')).toBe(0);
-    expect(levelStars({ level: undefined, lives: 20, phase: 'won' })).toBe(0);
+    expect(levelStars({ cheated: false, level: undefined, lives: 20, phase: 'won' })).toBe(0);
   });
 });
 
@@ -174,7 +174,7 @@ describe('verifier: progress parsing and storage', () => {
     p = mergeProgress(p, 1, 3);
     expect(p[1]).toBe(3);
     expect(mergeProgress(p, 1, 1)).toBe(p);
-    expect(mergeProgress(p, 2, 0)).toBe(p);
+    expect(mergeProgress(p, 2, 0)).toEqual({ 1: 3, 2: 0 });
     expect(mergeProgress(p, 2, 4)).toBe(p);
     expect(mergeProgress(p, 2, Number.NaN)).toBe(p);
   });
@@ -183,7 +183,7 @@ describe('verifier: progress parsing and storage', () => {
     expect(parseProgress(serializeProgress({ 1: 3, 2: 1 }))).toEqual({ 1: 3, 2: 1 });
     const hostile: (string | null | undefined)[] = [
       '', '{', 'null', '[]', '1', '"x"', 'true', '{"v":1}', '{"v":1,"stars":null}', '{"v":1,"stars":[1,2,3]}',
-      '{"v":2,"stars":{"1":3}}', '{"v":"1","stars":{"1":3}}', '{"stars":{"1":3}}', undefined, null,
+      '{"v":3,"stars":{"1":3}}', '{"v":"1","stars":{"1":3}}', '{"stars":{"1":3}}', undefined, null,
       good({ __proto__: { 2: 3 } }), '{"v":1,"stars":{"__proto__":{"2":3},"constructor":3,"toString":3}}',
       good({ '0': 3, '-1': 3, '1.5': 3, '01': 3, '1e0': 3, '+1': 3, ' 1': 3, '0x2': 3, 'NaN': 3, 'Infinity': 3 }),
       good({ '99999999999999999999': 3, '9007199254740993': 3, '1e21': 3 }),

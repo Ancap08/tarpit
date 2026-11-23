@@ -297,8 +297,7 @@ export type CheatResult = { ok: true; gold: number } | { ok: false; reason: 'gam
 /**
  * The gold cheat (milestone 30), between ticks: +CHEAT_GOLD gold, sets
  * `state.cheated` and emits `cheat`. Refused with 'game-over' once the game
- * is won or lost; a refusal changes nothing. Nothing else in the
- * simulation reads `cheated`.
+ * is won or lost; a refusal changes nothing. The mark lifts campaign locks.
  */
 export function grantCheatGold(state: GameState): CheatResult {
   if (isOver(state)) return { ok: false, reason: 'game-over' };

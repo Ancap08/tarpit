@@ -13,7 +13,7 @@ describe('campaign progress, hostile cases', () => {
     expect(open({ 2: 3 })).toEqual([1]);
   });
 
-  it('never lowers best stars and ignores losses and invalid stars', () => {
+  it('never lowers best stars and ignores invalid stars', () => {
     let progress: CampaignProgress = { 1: 2 };
     for (const stars of [1, 0, -1, 4, NaN, 2.5, Infinity]) progress = mergeProgress(progress, 1, stars);
     expect(progress).toEqual({ 1: 2 });
@@ -24,7 +24,7 @@ describe('campaign progress, hostile cases', () => {
   });
 
   it.each([
-    'not json', '', '{', 'null', '[]', '1', '"x"', '{"v":2,"stars":{"1":3}}', '{"v":1}', '{"v":1,"stars":[3]}',
+    'not json', '', '{', 'null', '[]', '1', '"x"', '{"v":3,"stars":{"1":3}}', '{"v":1}', '{"v":1,"stars":[3]}',
     '{"v":1,"stars":null}', '{"v":1,"stars":{"__proto__":3,"constructor":2,"1":"3","2":0,"3":4,"01":3,"1e0":3,"-1":3,"0":3}}',
   ])('parses %s without throwing and never grants a bogus level', (raw) => {
     const progress = parseProgress(raw);
