@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildTower, upgradeTower } from './actions';
+import { buildTower, upgradeTower, useSpecial } from './actions';
 import { botBeginner, botGood, runBot } from './bots';
 import { createGame, startWave } from './game';
 import { trailCellOrder } from './headless';
@@ -104,12 +104,54 @@ describe('capable policy', () => {
     expect(botGood.purchase(state)).toMatchObject({ type: 'build', tower: 'cannon' });
   });
 
+  it.each([
+    ['tarpit', 'goblin', 'longbow', 'longbow'],
+    ['firepot', 'goblin', 'longbow', 'tarpit'],
+    ['mortar', 'troll', 'longbow', 'longbow'],
+  ] as const)('adds %s to an established opening against %s', (choice, enemy, first, second) => {
+    const state = createGame({ level: {
+      ...level, startGold: 300, allowedTowers: [...new Set([first, second, choice])],
+      waves: [{ groups: [{ type: enemy, count: 10, interval: 2, delay: 0 }] }],
+    } });
+    const opening = [{ col: 3, row: 5 }, { col: 7, row: 4 }];
+    for (const [index, tower] of [first, second].entries()) {
+      expect(buildTower(state, opening[index], tower).ok).toBe(true);
+      expect(upgradeTower(state, opening[index]).ok).toBe(true);
+    }
+    expect(botGood.purchase(state)).toMatchObject({ type: 'build', tower: choice });
+  });
+
   it('prefers matching artillery range to the gold reward when it has enough artillery', () => {
     const state = createGame({ level: { ...level, startGold: 500, allowedTowers: ['cannon'] } });
     state.pendingBoon = { wave: 5, options: ['longBarrels', 'keenArrows', 'warChest'] };
     expect(botGood.reward(state)).toBe('warChest');
     for (const cell of trailCellOrder(state.map).slice(0, 3)) expect(buildTower(state, cell, 'cannon').ok).toBe(true);
     expect(botGood.reward(state)).toBe('longBarrels');
+  });
+
+  it('takes faster recharges with an ordinary special and Hot Coals with Fire Pots and Fire Arrows', () => {
+    const state = createGame({ level: {
+      ...level, startGold: 150, allowedTowers: ['firepot'], allowedSpecials: ['keg', 'fireArrows'],
+    } });
+    state.pendingBoon = { wave: 10, options: ['stickyTar', 'hotCoals', 'quickHands'] };
+    expect(botGood.reward(state)).toBe('quickHands');
+    expect(buildTower(state, { col: 7, row: 4 }, 'firepot').ok).toBe(true);
+    expect(botGood.reward(state)).toBe('hotCoals');
+  });
+
+  it('takes the first reward on a tie and prioritizes Stone Walls when lives are low', () => {
+    const state = createGame({ level: {
+      ...level, startGold: 320, allowedTowers: ['cannon'],
+    } });
+    state.pendingBoon = { wave: 15, options: ['stoneWalls', 'veteranCrews', 'biggerBlasts'] };
+    for (const cell of trailCellOrder(state.map).slice(0, 4)) expect(buildTower(state, cell, 'cannon').ok).toBe(true);
+    expect(botGood.reward(state)).toBe('stoneWalls');
+    state.pendingBoon.options.reverse();
+    expect(botGood.reward(state)).toBe('biggerBlasts');
+    state.lives = 4;
+    expect(botGood.reward(state)).toBe('stoneWalls');
+    state.pendingBoon = null;
+    expect(botGood.reward(state)).toBeUndefined();
   });
 
   function withCrowd(allowedSpecials: LevelDef['allowedSpecials'], type: EnemyType = 'goblin') {
@@ -133,8 +175,16 @@ describe('capable policy', () => {
   it.each(['barricade', 'guards'] as const)('puts %s in the way of a crowd in cannon range', (special) => {
     const state = withCrowd([special]);
     expect(botGood.special(state)).toMatchObject({ special, x: 160, y: 130 });
-    state.enemies.forEach((enemy) => { enemy.type = 'harpy'; });
+    expect(useSpecial(state, special, { x: 160, y: 130 }).ok).toBe(true);
+    state.specialCharges = 1;
+    state.tick = state.waveTick = 30;
     expect(botGood.special(state)).toBeUndefined();
+
+    const uncovered = withCrowd([special]);
+    uncovered.towers.length = 0;
+    expect(botGood.special(uncovered)).toBeUndefined();
+    const flying = withCrowd([special], 'harpy');
+    expect(botGood.special(flying)).toBeUndefined();
   });
 
   it('repeats the same action log and full state, with no refusals', () => {

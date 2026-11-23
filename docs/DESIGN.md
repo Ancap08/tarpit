@@ -1,6 +1,6 @@
 # Tarpit: game design spec
 
-> **Frozen as of milestone 40.** This file states every number and rule the
+> **Frozen as of milestone 41a.** This file states every number and rule the
 > game uses. Changing any of them needs a `DECISIONS.md` entry (who decided
 > and why) and the balance pins updated in the same change
 > (`src/sim/balance.suite.ts`, `npm run sim`). Kyle's play notes can reopen
@@ -1563,3 +1563,59 @@ The milestone 37 “Closing pass” in DEVLOG records the Normal results.
 | soundBuild | L 15 | L 7 | L 2 | - | - | - | - | - | - |
 | soundBuildNoTar | L 10 | L 7 | L 2 | - | - | - | - | - | - |
 | comboStrongest | W 14 | L 5 | L 3 | - | - | - | - | - | - |
+
+## Levels and campaign
+
+A level has a numeric id, map id, a finite list of wave groups, starting gold
+and lives, enemy HP scale, first HP growth wave (or none), allowed towers,
+maximum tower level, allowed specials, reward waves and two lives thresholds.
+Names and twist lines are keyed by id in `src/game/names.ts`. Combat, enemy
+stats, prices, upgrade paths, reward effects and special effects are shared
+with Free play. HP uses the Normal base. Starting at the first growth wave,
+each successive wave adds another 28% of that scaled base.
+
+Up to three ascending reward waves use the three existing reward menus in order.
+An allowed special opens on wave 1. Tower, upgrade and special restrictions
+are checked before a purchase or cast changes the game. Clearing the last
+wave wins. A loss earns zero stars. A win earns one, two or three by comparing
+remaining lives with the two thresholds, inclusively. Level 1 starts open.
+Winning opens the next id, and replay keeps the best stars. The browser
+stores campaign stars under `tarpit.campaign`; if storage fails, it keeps
+them for the page session. Free play keeps its own score table.
+
+### Bot decisions
+
+- Both bots buy between waves, use the live gold balance, and start each wave normally. Neither sells, calls early or reads a later wave.
+- **Good** scores affordable placements and upgrades by the extra damage and slowing they provide per gold along the trail, sampled every 24 px. It uses the next preview's counts of flyers, small walkers and heavy enemies. It favors earlier coverage, overlaps for splash and tar/fire, and new air coverage where little exists. After two towers it favors the first Cannon against crowds, Mortar against heavies, Tar Pit, and Fire Pot alongside tar. Repeated types receive a diminishing placement score. It compares both second-upgrade paths. Good spends its opening gold and keeps 30 gold in later setups.
+- Good scores each offered reward and takes the first highest score. On menu one it counts two points per Cannon or Mortar for Long Barrels, one per Longbow for Keen Arrows, and four for War Chest. On menu two it counts slowing towers plus Tar Barrel for Sticky Tar, twice the number of burning towers plus two for Fire Arrows for Hot Coals, and three for Quick Hands if a special is available. On menu three Stone Walls scores five (twelve at four lives or fewer), Veteran Crews scores one third of the tower count, and Bigger Blasts scores the artillery count plus one for Powder Keg.
+- Every 30 wave ticks Good applies the existing crowd policy for keg and zones, limited to available specials. It also checks for at least three walkers approaching a legal blocker position 50–140 px ahead, covered by a tower. A splash tower adds one to the blocker score. A blocker must beat the current cast's hit count, and its kind must be absent from the trail. Guards get the first blocker tie.
+- **Beginner** spends on the cheapest allowed tower in the map's trail-cell order. When it cannot place another, it can buy one affordable upgrade, taking path A at the second upgrade. It takes the first reward and uses no specials.
+
+### Acceptance
+
+- L1. Good wins every level with at least two stars and earns three on levels 1–3.
+- L2. Beginner wins levels 1–3, earns at most two stars thereafter and at most one on levels 6–10.
+- L3. Removing the introduced capability must lower Good's stars or surviving lives, or cause a loss. In order from level 2, remove Cannon, Tar Pit, Fire Pot, all towers that can target Harpies, Mortar, Barricade, both Guards and Fire Arrows, the second upgrade, then all specials. The anti-air control must lose. Both boss encounters stay intact.
+- L4. Beginner may gain at most one star between adjacent levels. Good's surviving share of starting lives may not rise across three consecutive levels.
+- L5. Each level contains five to ten waves, with 4–9 minutes of Good wave time at 1× and no early calls. The ten together take 60–80 minutes. Every wave obeys R1's 180-tick sliding windows and 90-second last spawn.
+- L6. At 95% and 105% of each level's HP scale, Good moves at most one star and still wins levels 1–5.
+- L7. The gate runs the finite game to a terminal result. See `checkLevel` and `checkCampaign` for candidate and campaign checks.
+
+### Campaign measurements
+
+Good and Beginner results show stars/lives. Time counts combat ticks at 60 Hz and excludes setup.
+
+| ID | Name | Map | Waves | Gold | Lives | HP scale | Growth from | Max tier | Reward waves | 2★ / 3★ | Good | Beginner | Minutes |
+|---|---|---|---:|---:|---:|---:|---:|---:|---|---|---|---|---:|
+| 1 | First Watch | Meadow | 6 | 100 | 18 | 1 | — | 2 | — | 10/15 | 3/18 | 3/18 | 6.04 |
+| 2 | Pack Trail | Meadow | 6 | 240 | 56 | 4 | — | 2 | — | 27/54 | 3/55 | 1/2 | 6.40 |
+| 3 | The Switchback | Switchback | 7 | 250 | 30 | 4.1 | — | 2 | — | 16/27 | 3/30 | 2/23 | 7.53 |
+| 4 | Burn Line | Switchback | 7 | 380 | 24 | 1.7 | — | 2 | — | 14/23 | 2/21 | 0/0 | 7.01 |
+| 5 | Wings Over the River | Riverbend | 7 | 180 | 22 | 1.4 | — | 2 | — | 14/21 | 3/22 | 0/0 | 7.83 |
+| 6 | Heavy Feet | Riverbend | 7 | 400 | 24 | 0.7 | — | 2 | — | 14/24 | 2/23 | 0/0 | 7.64 |
+| 7 | Hold the Bend | Meadow | 8 | 180 | 34 | 2 | — | 2 | — | 14/29 | 2/20 | 0/0 | 7.92 |
+| 8 | Stand Fast | Switchback | 7 | 300 | 24 | 1.15 | — | 2 | — | 14/23 | 2/22 | 0/0 | 8.43 |
+| 9 | The Troll King | Riverbend | 7 | 300 | 38 | 1 | 6 | 3 | 5 | 16/35 | 2/22 | 0/0 | 8.49 |
+| 10 | Last Light | Meadow | 7 | 300 | 22 | 1 | 5 | 3 | 5 | 12/21 | 2/13 | 0/0 | 8.60 |
+
+Total wave time is **75.89 minutes**.

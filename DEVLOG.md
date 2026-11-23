@@ -9069,3 +9069,28 @@ contact. Browser tests measure the feet along and across the trail in both
 layouts and looks. At phone size all four helmets and shields can be picked
 out during contact. The 64 px cave clearance already fits the 36 px squad,
 and a Shieldbearer takes full guard damage.
+
+## 2026-11-23: milestone 41a, levels, bots and the gate
+
+Ten finite level records share the Free play simulation. The test hook can
+start a level, play it with either bot, and read the saved stars. Player entry
+points still go through the existing title menu.
+
+The first Pack Trail schedules let Longbows cover individually spaced Goblins
+as well as Cannons. Sweeps with packs of four yielded a six-wave level on
+which removing Cannon costs eleven lives and a star. Good clears the ten
+levels in 75.89 minutes. Beginner wins the first three and loses the next
+seven. On Normal Free play both Beginner and lazyBuild lose on wave 8 on
+all maps. Good wins with 20 lives on all three, compared with comboBuild's
+14 on Meadow, 11 on Switchback and 14 on Riverbend.
+
+Three candidate mutations exercised the gate. Raising First Watch's HP
+scale to 25 failed L1, L2 and L5. Giving Wings Over the River 600 gold and
+a 0.3 HP scale failed L2. Lowering The Switchback's HP scale to 0.8 erased
+the Tar Pit advantage and failed L3. The three trials use copies of the
+records and are covered by regression tests. Existing combat and economy
+numbers stay fixed.
+
+Generation can reuse the same records and gate. A generator still needs
+a candidate sampler, a declared feature to remove for L3, and an ordered
+campaign context for the slope and length checks.

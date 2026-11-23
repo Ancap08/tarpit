@@ -50,7 +50,7 @@ export function enemyPosition(enemy: Enemy, map: MapDef): Point {
 const GROUND_ONLY: ReadonlySet<TowerType> = new Set<TowerType>(['tarpit', 'cannon', 'mortar']);
 
 /** Whether this tower type may select this enemy as its target. */
-export function canTarget(tower: TowerType, enemy: Enemy): boolean {
+export function canTarget(tower: TowerType, enemy: Pick<Enemy, 'type'>): boolean {
   return !(isFlying(enemy) && GROUND_ONLY.has(tower));
 }
 

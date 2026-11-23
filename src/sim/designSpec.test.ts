@@ -10,8 +10,11 @@ import { BARRICADE_END_EXCLUSION, BARRICADE_HP, BARRICADE_SNAP_RADIUS, GUARD_COU
 import { BOONS } from './boons';
 import { PACK_INTERVAL_TICKS, PACK_SIZE } from './combat';
 import { ENEMY_STATS, isBoss } from './enemies';
-import { lastSpawnTick } from './game';
+import { createGame, lastSpawnTick } from './game';
 import { buildableCells } from './grid';
+import { LEVELS } from './levels';
+import { botGood, botBeginner, runBot } from './bots';
+import { levelStars } from './campaignProgress';
 import { MAPS, pathLength, type MapId } from './map';
 import { SPECIAL_DEFS, SPECIAL_RECHARGE_TICKS, ZONE_LINGER_TICKS, type SpecialType } from './specials';
 import { POLICY_CHECK_TICKS, POLICY_MIN_HITS, POLICY_POINT_SPACING } from './specialPolicy';
@@ -24,7 +27,7 @@ import { TARGETS } from './balanceTargets';
 
 // This spec alone compares documentation with both the UI and the simulation.
 // eslint-disable-next-line no-restricted-imports
-import { PATH_NAMES, pathDescription } from '../game/names';
+import { LEVEL_NAMES, MAP_NAMES as MAP_LABELS, PATH_NAMES, pathDescription } from '../game/names';
 // eslint-disable-next-line no-restricted-imports
 import { PATH_MARKS } from '../game/draw/towers';
 
@@ -101,7 +104,21 @@ const burn = (s: string): [number, number] => {
 
 describe('docs/DESIGN.md matches the code', () => {
   it('has the frozen banner', () => {
-    expect(md).toMatch(/^# Tarpit: game design spec\n\n> \*\*Frozen as of milestone 40\.\*\*/);
+    expect(md).toMatch(/^# Tarpit: game design spec\n\n> \*\*Frozen as of milestone 41a\.\*\*/);
+  });
+
+  it('lists exactly the campaign stops in order', () => {
+    expect(table('Levels and campaign', 'ID').map(row => Number(row[0]))).toEqual(LEVELS.map(level => level.id));
+  });
+
+  it.each(LEVELS)('campaign level $id matches its printed rules and measured outcomes', level => {
+    const row = table('Levels and campaign', 'ID').find(row => Number(row[0]) === level.id);
+    const [good, beginner] = [botGood, botBeginner].map(bot => runBot(createGame({ level }), bot).state);
+    expect(row).toEqual([level.id, LEVEL_NAMES[level.id].name, MAP_LABELS[level.map], level.waves.length,
+      level.startGold, level.startLives, level.hpScale, level.hpGrowthStart ?? '—', level.maxTowerLevel,
+      level.rewardWaves.join(', ') || '—', `${level.stars.two}/${level.stars.three}`,
+      `${levelStars(good)}/${good.lives}`, `${levelStars(beginner)}/${beginner.lives}`,
+      (good.tick / 3600).toFixed(2)].map(String));
   });
 
   it('maps: waypoints, path length and buildable cells', () => {

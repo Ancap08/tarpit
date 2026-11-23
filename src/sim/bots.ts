@@ -43,6 +43,7 @@ function maxTowerLevel(state: GameState): number {
   return state.level?.maxTowerLevel ?? 3;
 }
 
+// Fills trail cells with the cheapest allowed tower, then makes one fallback upgrade.
 export const botBeginner: BotPolicy = {
   upgradesPerSetup: 1,
   purchase(state) {
