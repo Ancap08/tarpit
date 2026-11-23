@@ -39,6 +39,7 @@ export function campaignScreenSuite(touch: boolean) {
     const click = (key: string) => press(page, key, touch);
     await page.goto('/?test=1');
     await waitForFirstScreen(page);
+    await rotate(page, 'first');
     await click('title:campaign');
     await onScreen(page, 'levelMap');
     await rotate(page, 'levelMap');
@@ -51,8 +52,10 @@ export function campaignScreenSuite(touch: boolean) {
     expect(await api(page, (t) => t.ui<TitleUiState>().levelId)).toBe(1);
     await click('title:play');
     await onScreen(page, 'game');
+    await rotate(page, 'game');
     expect(await api(page, (t) => t.state().level?.id)).toBe(1);
     await finish(page, true);
+    await rotate(page, 'result');
     expect(await api(page, (t) => t.campaignResult())).toMatchObject({ stars: 2, lives: 12, nextId: 2 });
     await click('nextLevel');
     await onScreen(page, 'levelCard');
@@ -60,6 +63,7 @@ export function campaignScreenSuite(touch: boolean) {
     await click('title:play');
     await onScreen(page, 'game');
     await finish(page, false);
+    await rotate(page, 'result');
     await click('menu');
     await onScreen(page, 'levelMap');
     expect(await api(page, (t) => t.levelStops().slice(0, 3))).toMatchObject([
@@ -76,6 +80,7 @@ export function campaignScreenSuite(touch: boolean) {
     await onScreen(page, 'freePlay');
     await click('title:hard');
     await click('title:map:riverbend');
+    await rotate(page, 'freePlay');
     await click('title:play');
     await onScreen(page, 'game');
     expect(await api(page, (t) => t.state())).toMatchObject({ difficulty: 'hard', map: { id: 'riverbend' } });

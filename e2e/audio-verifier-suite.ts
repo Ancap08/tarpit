@@ -10,7 +10,7 @@ const URL = '/?renderer=canvas&perf=1';
 
 async function toGame(page: Page, touch: boolean): Promise<void> {
   await page.goto(URL);
-  await waitForFirstScreen(page);
+  await waitForTitle(page);
   await press(page, 'title:play', touch);
   await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game') && window.__tarpit!.fx() !== null);
 }
@@ -37,7 +37,7 @@ export function suite(touch: boolean): void {
     expect((await audio(page)).context).toBe('none');
     // The first gesture opens Free play after a reload.
     await page.reload();
-    await waitForTitle(page);
+    await waitForFirstScreen(page);
     expect(await contexts(page)).toBe(0);
     await press(page, 'title:freePlay', touch);
     await waitForTitle(page);
