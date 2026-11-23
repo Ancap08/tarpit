@@ -287,6 +287,19 @@ def troll(phase, rank=0):
                (.115, .086, .025), "#C7B4A5")
     elif rank == 1:
         pebble("Wine-red mantle", (roll, -.136, .635 + bob), (.261, .177, .124), cloth)
+    else:
+        # Sweep the cape behind the feet. Its scalloped ermine hem shows in all four headings.
+        outline = ((-.16, .015, .695), (.16, .015, .695), (.29, -.22, .50),
+                   (.26, -.38, .36), (.08, -.41, .34), (-.12, -.39, .35),
+                   (-.28, -.36, .37), (-.29, -.21, .50))
+        blade("King's velvet train", [(roll+x,y,z+bob) for x,y,z in outline], "#B3293C", .046)
+        for x in range(-2, 3):
+            dx = x * .104
+            pebble("Ermine cape hem", (roll+dx, -.391+abs(dx)*.18, .353+bob+abs(dx)*.10),
+                   (.069,.048,.036), "#F6DFBA")
+        for side in (-1,1):
+            limb("Cape fold", (roll+side*.12,-.036,.682+bob),
+                 (roll+side*.18,-.363,.397+bob), .049,.028, "#D9404C")
     pebble("Painted knee-length hide apron", (0, -.003, .335 + bob), (.215, .157, .101), cloth)
     pebble("Broad leather belt", (0, .011, .406 + bob), (.226, .163, .046), LEATHER)
     pebble("Belt buckle", (0, .166, .403 + bob), (.054, .022, .042), GOLD if rank else BONE)
@@ -330,6 +343,12 @@ def troll(phase, rank=0):
                     taper("Painted toll bar", start.lerp(tip,i/5), start.lerp(tip,(i+1)/5),
                           .057,.057, "#F7DFC0" if i % 2 else "#A32A3B", 8)
         elif rank == 2:
+            if side == 1:
+                grip = Vector(fist)
+                tip = grip + Vector((.018, .273, .348))
+                taper("Regal sceptre haft", grip-Vector((0,.073,.090)), tip, .029,.035, "#824734")
+                pebble("Sceptre gold orb", tip, (.075,.075,.075), GOLD)
+                taper("Sceptre ruby finial", tip, tip+Vector((0,.028,.104)), .051,.009, "#CA374B")
             limb("Bronze gauntlet cuff", elbow,
                  Vector(elbow).lerp(Vector(fist), .46), .105, .094, "#AF723D")
         if rank:
