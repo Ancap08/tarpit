@@ -79,8 +79,13 @@ export function drawLevelCard(
   g.lineStyle(2, COLORS.endPanelEdge).strokeRoundedRect(panel.x, panel.y, panel.width, panel.height, 18);
   const words = LEVEL_NAMES[level.id];
   const wrap = portrait ? 384 : 620;
-  label(scene, cx, portrait ? 196 : 69, levelNumberText(level.id), 22, TEXT.prompt);
-  label(scene, cx, portrait ? 281 : 114, words.name, portrait ? 36 : 38, TEXT.title, wrap);
+  // Centre the two labels in separate rows above the thumbnail.
+  const numberTop = portrait ? 176 : 40;
+  const numberHeight = 38;
+  const nameTop = numberTop + numberHeight + (portrait ? 37 : 5);
+  const nameHeight = portrait ? 60 : 64;
+  label(scene, cx, numberTop + numberHeight / 2, levelNumberText(level.id), 22, TEXT.prompt);
+  label(scene, cx, nameTop + nameHeight / 2, words.name, portrait ? 36 : 38, TEXT.title, wrap);
   const mapWidth = portrait ? 222 : 160;
   const y = portrait ? 370 : 151;
   const x = cx - mapWidth / 2;
@@ -88,8 +93,13 @@ export function drawLevelCard(
   g.lineStyle(1, COLORS.buttonEdge).strokeRect(x, y, mapWidth, mapWidth / 2);
   label(scene, cx, y + mapWidth / 2 + 17, MAP_NAMES[level.map], 18, TEXT.subtitle);
   label(scene, cx, portrait ? 582 : 288, words.twist, portrait ? 23 : 20, TEXT.title, wrap);
-  label(scene, cx, portrait ? 687 : 349, CAMPAIGN_TEXT.newThisLevel, 18, TEXT.subtitle);
-  label(scene, cx, portrait ? 738 : 380, LEVEL_NEW[level.id], portrait ? 23 : 20, TEXT.button, wrap);
+  const headingTop = portrait ? 666 : 328;
+  const headingHeight = 30;
+  const contentTop = headingTop + headingHeight + 6;
+  // Reserve two wrapped lines on the phone and one on the wider card.
+  const contentHeight = portrait ? 76 : 34;
+  label(scene, cx, headingTop + headingHeight / 2, CAMPAIGN_TEXT.newThisLevel, 18, TEXT.subtitle);
+  label(scene, cx, contentTop + contentHeight / 2, LEVEL_NEW[level.id], portrait ? 23 : 20, TEXT.button, wrap);
   const starsY = portrait ? 833 : 429;
   const caption = label(scene, cx, starsY, CAMPAIGN_TEXT.bestStars, 22, TEXT.prompt);
   const row = drawStarRow(scene, cx, starsY, stars, 20, TEXT.prompt);

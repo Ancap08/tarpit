@@ -6,9 +6,10 @@ export async function useTallFontMetrics(page: Page) {
     const measure = CanvasRenderingContext2D.prototype.measureText;
     CanvasRenderingContext2D.prototype.measureText = function (text) {
       const metrics = measure.call(this, text);
+      const size = Number(/([\d.]+)px/.exec(this.font)![1]);
       Object.defineProperties(metrics, {
-        actualBoundingBoxAscent: { value: metrics.actualBoundingBoxAscent * 1.5 },
-        actualBoundingBoxDescent: { value: metrics.actualBoundingBoxDescent * 1.5 },
+        actualBoundingBoxAscent: { value: size * 1.20 },
+        actualBoundingBoxDescent: { value: size * 0.45 },
       });
       return metrics;
     };

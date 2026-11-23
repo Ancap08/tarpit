@@ -9130,6 +9130,8 @@ The old browser helper assumed the first rendered title was the Free play
 picker. It now enters that picker for existing specs. Tests of the first
 gesture and first rendered frame start on the new first screen.
 
+The tall-font guard reserves 1.20 em above the baseline and 0.45 em below it on every machine. The level card and result title reserve separate rows with space for the stars and wrapped text.
+
 ### Verifier notes (41b and the fourth pass of 41a)
 
 Checked at 5712392 by Claude Sonnet. Added `src/sim/gate-verifier.test.ts`, `src/sim/progress-verifier.test.ts`, `e2e/campaignVerifier.ts` with its three specs, and two pins (one `it.fails`, one `test.fail`).

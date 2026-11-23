@@ -204,8 +204,12 @@ export class EndScreen {
     if (this.campaign) {
       this.handleKey = menuKeys(buttons, 0, this.menu);
       const titleY = this.portrait ? P_TITLE_Y : 36;
-      const starsY = this.portrait ? P_LINES_Y : 82;
       const rowGap = 8;
+      const titleHeight = 66;
+      const starHeight = 28;
+      const starsY = this.portrait ? P_LINES_Y : this.starRow
+        ? titleY + titleHeight / 2 + rowGap + starHeight / 2
+        : 82;
       let cursor = this.starRow
         ? starsY + this.starRow.getBounds().height / 2 + 1 + rowGap
         : starsY;
