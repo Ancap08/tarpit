@@ -7875,3 +7875,272 @@ listening to the sounds.
   Sticky Tar, checks both rewards and requires one boss death before it
   drains effects and checks Play again. It remains gated by
   `VERIFIER_LONG=1`.
+
+## 2026-11-23: milestone 37, a second upgrade with a choice
+
+The second upgrade offers two paths on each of the six towers. Both paths
+cost the same as buying another level-2 tower of that type. One click or
+tap buys a path. A level-3 tower keeps it for the rest of the game unless
+the player undoes that setup purchase. Buying both upgrades during one
+setup allows two refunds, newest first. The original full refund on an
+unlocked tower and 70% rounded-down refund on locked spend still apply.
+Targeting, movement, kill counts, reward modifiers and the Mortar minimum
+range still go through the existing rules.
+
+### Path stats and payment
+
+The base and level-2 rows stay as before. Here are the complete level-3
+rows before rewards.
+
+| Tower | Path | Name | Cost | Range | Min range | Damage | Fire rate | Splash | Slow | Burn |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Musketeer | A | Sharpshooter | 85 | 155 | - | 35 | 1 | - | - | - |
+| Musketeer | B | Volley | 85 | 125 | - | 22 | 2 | - | - | - |
+| Cannon | A | Heavy Shot | 140 | 105 | - | 40 | 0.5 | 85 | - | - |
+| Cannon | B | Quick Loader | 140 | 105 | - | 40 | 1 | 55 | - | - |
+| Tar Pit | A | Deep Tar | 110 | 105 | - | 3 | 2 | - | 80% for 2 s | - |
+| Tar Pit | B | Wide Tar | 110 | 155 | - | 3 | 2 | - | 60% for 2 s | - |
+| Longbow | A | War Bow | 70 | 170 | - | 16 | 2.5 | - | - | - |
+| Longbow | B | Quick Draw | 70 | 170 | - | 9 | 4.5 | - | - | - |
+| Mortar | A | Siege Shell | 190 | 220 | 70 | 120 | 1/3 | 70 | - | - |
+| Mortar | B | Wide Burst | 190 | 220 | 70 | 70 | 1/3 | 140 | - | - |
+| Fire Pot | A | Inferno | 120 | 100 | - | 4 | 0.8 | - | - | 15/s for 4 s |
+| Fire Pot | B | Lasting Flames | 120 | 100 | - | 4 | 0.8 | - | - | 8/s for 8 s |
+
+Compared with level 2, Sharpshooter gains 30 px of range and 13 damage.
+Volley doubles the firing rate from 1 to 2 shots per second. Heavy Shot
+adds 30 px of splash radius. Quick Loader goes from 0.5 to 1 shot per
+second. Deep Tar slows by 80% instead of 60% for the same two seconds.
+Wide Tar gains 50 px of range. War Bow gains 7 damage and Quick Draw goes
+from 2.5 to 4.5 shots per second. Siege Shell goes from 70 to 120 damage.
+Wide Burst doubles splash radius from 70 to 140 px. Inferno goes from
+8 to 15 burn damage per second. Lasting Flames doubles burn duration from
+4 to 8 seconds. During tuning, Siege Shell moved from 130 to 120 damage
+and Wide Burst from 105 to 140 px to find strict wins for both Mortar
+paths without adding any combat mechanics.
+
+The draft level-3 prices of 55, 85, 70, 50, 120 and 75 became 85, 140,
+110, 70, 190 and 120, in tower-bar order. The new costs make each branch
+an equal-gold alternative to another built and upgraded tower. A player
+can spend the budget on more coverage or improve the towers already in
+place.
+
+Grumblemaw's speed went from 35 to 38 px/s and his leak from 10 to 6
+lives. His 5,600 Normal HP, pack calls and 30% slow cap stay as before.
+The faster boss makes specials count in the final fight. The lower leak
+cost leaves a winning no-specials route on maps where he gets through.
+No pre-boss wave timings, enemy HP, rewards, specials, or map shapes
+changed.
+
+### Screen and feedback
+
+The level-2 panel shows the two path names, prices and short effects
+computed from the tower rows. An unaffordable card gives the reason.
+Undo can sit under the choices, and the level-3 heading shows the chosen
+path. Sell and Target share a row at levels 2 and 3. The expanded panel
+stays over the map and clear of the selected tower. Phone controls size
+to at least 44 CSS px on both axes at the tested viewports.
+
+The gold level-2 ring stays. A gold diamond identifies A and two cyan
+dots identify B, on the map and on a tower being moved. Both marks are
+visible in test mode. The captures show the two choice cards with Undo
+in landscape and portrait, all twelve upgraded tower and mark
+combinations in a lineup, and the upgrades during wave 17. The second
+upgrade has its own G5–E6 cue (0.219 s) and uses the existing upgrade
+pop and spark effect. The browser hook can buy a path and report the
+live tower level and path. In the portrait capture the card takes up
+much of the small map and leaves the bottom controls clear. The gallery
+makes the two shapes easy to tell apart. The mid-wave marks are visible
+beside the combat, though tower labels are small in the overview.
+These captures and touch checks used browser emulation.
+
+### Plans, cuts and verification
+
+Meadow moved its later Longbow from (17,8) to (15,6). Riverbend moved
+its first Tar Pit from (11,4) to (10,1). Switchback opens with Longbows
+at (14,7) and (18,7), uses (20,7) on the rear lane and carries its first
+15 purchases into act two. The three tails specialize every tower type.
+Riverbend buys a second bow and Mortar path. Switchback buys three bow
+paths and two Mortar paths. The Hard plans put Siege Shell on their first
+Mortar for the boss approach. Lazy builds plain Musketeers on its two
+trail circuits and keeps any gold left. The one new specialist, musketBuild,
+gives repeated Musketeer purchases a home.
+
+We dropped the old one-upgrade panel branch and reused the upgrade event,
+effect, combat resolver and setup spend. The two new marks are drawing
+commands. Matched variants use one reference plan. We kept the copy
+placement logic in the headless runner so the game needs no new targeting
+or placement rules. To keep the checks short, repeated reinforcements
+share their position ranking inside a plan, the special policy skips
+distant candidates, and the wave-clear check waits for an empty field.
+
+Early trials that added Trolls or compressed waves changed when waves
+ended without fixing the boss and special-use targets together. Restoring
+the original waves and changing just the final boss resolved both. A
+verifier should first try the portrait choices, compare both branch marks
+during combat, then replay the two no-specials boss escapes. The U6 ties
+in the table are exact. They do not show that both alternatives have a
+strict scoring advantage in a different build.
+
+### Campaign results
+
+The Normal build wins Meadow, Switchback and Riverbend with 17, 17 and
+16 lives (U1). Each plan actually buys 6, 9 and 8 branch upgrades,
+respectively. Removing only those purchases gives 11, 11 and 10 lives
+(U2). Spending the same budgets on level-2 towers gives 17, 17 and 16
+lives on Normal and 38, 38 and 37 on Easy (U3). Every one-type path
+swap buys the same branches on the same cells and wins with the
+original lives (U5). The separate matched comparisons below cover all
+12 path directions and all six equal-price tower choices (U4, U6).
+
+The Hard specialists kill Grumblemaw and win with 15, 18 and 14 lives.
+Lazy loses Hard in wave 2 on every map and wins Easy with 22, 29 and
+19 lives (U7). The Normal combo loses Hard in wave 20 on all three maps.
+The original wave-shape checks R1–R4 pass (U8). Meadow's act two takes
+667.3 s, with a longest wave of 89.0 s and peak of 23 enemies. The full
+Meadow campaign takes 1,306.9 s, 13.1 s below the 22-minute cap. Wave
+length here is measured in the second act, as R3 specifies.
+
+The combo wins without either Fire Pots or specials, but has fewer
+lives on all maps in both cases. Without Fire Pots it wins with 9, 16
+and 14 lives. With no specials it wins with 4, 9 and 2. Grumblemaw
+escapes on Meadow and Riverbend in the no-special runs and dies on
+Switchback. All three default Normal runs kill him. The Normal
+anti-air removal loses at wave 5 on every map with 7, 8 and 8 of the
+10 wave-four Harpies leaking. One Musketeer lets none through in the
+tested first-wave Easy and Normal runs.
+
+On Meadow, the complete Normal combo scores 17 lives and 1,219 kills.
+Forbidding Powder Keg, Tar Barrel or Fire Arrows gives 15/1,217,
+12/1,219 and 13/1,215. All 60 special casts catch at least three enemies.
+The original sound build still outlasts its no-Tar-Pit version.
+All 27 reward picks win on every map. Holding the other rewards fixed
+at their defaults, offers span 4/0/3 lives on Meadow, 0/0/3 on
+Switchback and 3/0/3 on Riverbend, in wave order. Every reward retains
+a strict best result on a named build and affects at least three
+distinct build/map pairs when individually neutralized. Normal endless
+idle loses on waves 25/24/25. Greedy reaches 28/27/27. No measured
+endless run gets past wave 30. The Keg still deals 60 damage and kills
+a Normal Harpy or Wolf in one shot. The Hard HP check passes at the
+existing 1.2 multiplier.
+
+### U4 and U6 campaign witnesses
+
+These deterministic comparisons use the normal purchasing policy and the same special-use rules in both runs. Each row buys the same nonzero number of path upgrades or complete level-2 copies at the same unit cost. The selected tower type is kept fixed within each comparison. Scores give ending lives and kills, ranked in that order. All rows use the first reward in each offer unless picks are listed. In a targeting variant the selected towers take that mode and specialize before other act-two reinforcements. The Musketeer plan keeps at most one Mortar from the paired-Longbow opening and reinforces with six level-2 Musketeers in act two.
+
+**U4**
+
+| Tower | Build, map and difficulty | Reward picks, targeting and special use if changed | Compared | Score (lives / kills) | Purchases each |
+|---|---|---|---|---|---:|
+| Musketeer | comboBuild, Meadow, Normal | War Chest / Quick Hands / Stone Walls and Last | A > B | 20 / 1222 vs 14 / 1221 | 1 |
+| Musketeer | musketBuild, Riverbend, Hard | War Chest / Sticky Tar / Veteran Crews | B > A | -5 / 1214 vs -5 / 1206 | 6 |
+| Cannon | comboBuild, Riverbend, Normal | Keen Arrows / Sticky Tar / Stone Walls and Last | A > B | 19 / 1221 vs 13 / 1220 | 1 |
+| Cannon | artilleryBuild, Meadow, Hard | Keen Arrows / Sticky Tar / Veteran Crews and Strongest | B > A | 6 / 1216 vs 0 / 1215 | 3 |
+| Tar Pit | burnBuild, Riverbend, Normal | Defaults | A > B | 14 / 1221 vs 14 / 1213 | 4 |
+| Tar Pit | burnBuild, Switchback, Hard | War Chest / Quick Hands / Stone Walls and Last | B > A | 10 / 1222 vs 10 / 1214 | 4 |
+| Longbow | artilleryBuild, Switchback, Normal | Keen Arrows / Sticky Tar / Veteran Crews and Strongest | A > B | 18 / 1223 vs 14 / 1219 | 4 |
+| Longbow | artilleryBuild, Switchback, Hard | Keen Arrows / Sticky Tar / Veteran Crews and Strongest | B > A | 0 / 1100 vs 0 / 1049 | 4 |
+| Mortar | artilleryBuild, Meadow, Hard | Defaults | A > B | 8 / 1215 vs 2 / 1214 | 5 |
+| Mortar | burnBuild, Meadow, Normal | No specials | B > A | 9 / 1216 vs 7 / 1214 | 1 |
+| Fire Pot | burnBuild, Meadow, Hard | Long Barrels / Hot Coals / Stone Walls | A > B | 2 / 1214 vs 2 / 1206 | 3 |
+| Fire Pot | burnBuild, Switchback, Hard | Last and No specials | B > A | 2 / 1214 vs 2 / 1206 | 3 |
+
+**U6**
+
+| Tower | Build, map and difficulty | Reward picks, targeting and special use if changed | Compared | Score (lives / kills) | Purchases each |
+|---|---|---|---|---|---:|
+| Musketeer | musketBuild, Meadow, Normal | Defaults | A = copy | 15 / 1222 vs 15 / 1222 | 6 |
+| Cannon | artilleryBuild, Meadow, Hard | Defaults | A = copy | 2 / 1214 vs 2 / 1214 | 3 |
+| Cannon | artilleryBuild, Riverbend, Normal | War Chest / Hot Coals / Bigger Blasts | B > copy | 18 / 1223 vs 12 / 1222 | 3 |
+| Tar Pit | burnBuild, Riverbend, Normal | Defaults | A = copy | 14 / 1221 vs 14 / 1221 | 4 |
+| Longbow | artilleryBuild, Meadow, Normal | Defaults | A = copy | 19 / 1221 vs 19 / 1221 | 4 |
+| Mortar | artilleryBuild, Riverbend, Hard | War Chest / Hot Coals / Bigger Blasts | A = copy | -5 / 1214 vs -5 / 1214 | 5 |
+| Fire Pot | burnBuild, Meadow, Normal | Defaults | A = copy | 15 / 1222 vs 15 / 1222 | 3 |
+
+### Upgrade balance sensitivity checks
+
+Each check restored one level-3 stat to its level-2 value in an isolated simulation. Both U4 witnesses for that tower were replayed, then the level-3 value was restored. The scores remain ranked by lives, then kills.
+
+| Tower | Path | Stat | Level 3 → level 2 | A witness | B witness |
+|---|---|---|---:|---|---|
+| Musketeer | A | Range | 155 → 125 | Fail (tie) | Pass (wins) |
+| Musketeer | A | Damage | 35 → 22 | Fail (tie) | Pass (wins) |
+| Musketeer | B | Shots per second | 2 → 1 | Pass (wins) | Fail (loses) |
+| Cannon | A | Blast radius | 85 → 55 | Fail (tie) | Pass (wins) |
+| Cannon | B | Shots per second | 1 → 0.5 | Pass (wins) | Fail (tie) |
+| Tar Pit | A | Slow strength | 0.8 → 0.6 | Pass (wins) | Pass (wins) |
+| Tar Pit | B | Range | 155 → 105 | Fail (tie) | Fail (tie) |
+| Longbow | A | Damage | 16 → 9 | Fail (loses) | Pass (wins) |
+| Longbow | B | Shots per second | 4.5 → 2.5 | Pass (wins) | Fail (loses) |
+| Mortar | A | Damage | 120 → 70 | Fail (tie) | Pass (wins) |
+| Mortar | B | Blast radius | 140 → 70 | Pass (wins) | Pass (wins) |
+| Fire Pot | A | Burn damage per second | 15 → 8 | Fail (tie) | Pass (wins) |
+| Fire Pot | B | Burn duration | 8 → 4 | Pass (wins) | Fail (tie) |
+
+Restoring one number invalidated at least one U4 witness in 11 of the 13 checks. The two exceptions are Deep Tar slow and Wide Burst splash radius. The combat tests separately check those exact effects. Equalizing A and B made all 12 U4 witnesses tie while every scenario still made matching purchases.
+
+Restoring the original proposed level-3 prices invalidated every equal-budget comparison. These sample rows all made the same number of purchases, but spent different amounts on them. No live rule table or source file was changed for either control.
+
+| Tower | Branch price | Level-2 copy price | Purchases each | Branch gold | Copy gold |
+|---|---:|---:|---:|---:|---:|
+| Musketeer | 55 | 85 | 6 | 330 | 510 |
+| Cannon | 85 | 140 | 3 | 255 | 420 |
+| Tar Pit | 70 | 110 | 4 | 280 | 440 |
+| Longbow | 50 | 70 | 4 | 200 | 280 |
+| Mortar | 120 | 190 | 5 | 600 | 950 |
+| Fire Pot | 75 | 120 | 3 | 225 | 360 |
+
+### Matched reversions and margins
+
+With all level-3 stats temporarily restored to level 2, the Meadow
+combo still pays for six level-3 purchases and wins with 11 lives.
+The run that skips them also wins with 11, so U2 fails under a
+combat-only revert. In a U5 control, the unmodified Meadow combo wins
+with 17 lives and flipping to a zero-damage Mortar B wins with 11.
+Zero-damage Longbow controls also fail the path-swap margin. These
+controls used isolated runs and left the real stat rows in place.
+
+With only Grumblemaw's speed reverted from 38 to 35 px/s, keeping the
+six-life toll, all three no-specials runs kill him and B2 fails. With
+only the toll reverted from 6 to 10, keeping speed 38, the Meadow
+and Riverbend no-specials runs lose at wave 20. The Meadow and
+Riverbend default-other-reward spreads become 8/0/3 and 7/0/3, outside
+the four-life cap in N10b. Both boss numbers were restored after the
+checks.
+
+Several margins are narrow. Meadow and Switchback finish on the
+17-life U1 ceiling. Meadow’s first reward spans the full four lives
+that N10b allows. Switchback wins with one fewer life without Fire
+Pots, and the Riverbend no-specials game has two lives left. A prior
+Hard sensitivity check raised base Wolf HP from 20 to 21 in scratch.
+The Hard Meadow combo then lost in wave 8 with zero lives and 337 gold
+instead of losing in wave 20. The dedicated Hard plan still won.
+Wolf HP remains 20. These differences are worth retesting if a later
+change moves an enemy or tower breakpoint.
+
+### Measured matrix
+
+W gives lives left on a win. L gives the defeat wave. Endless numbers
+count from campaign wave 1. A dash marks a Meadow-only plan.
+
+| Archetype | Meadow easy | Meadow normal | Meadow hard | Switchback easy | Switchback normal | Switchback hard | Riverbend easy | Riverbend normal | Riverbend hard |
+|---|---|---|---|---|---|---|---|---|---|
+| noTowers | L 2 | L 1 | L 1 | L 2 | L 1 | L 1 | L 2 | L 1 | L 1 |
+| oneMusket | L 3 | L 2 | L 2 | L 3 | L 2 | L 2 | L 3 | L 2 | L 2 |
+| lazyBuild | W 22 | L 8 | L 2 | W 29 | L 8 | L 2 | W 19 | L 8 | L 2 |
+| greedyMusket | W 26 | L 8 | L 2 | W 30 | L 20 | L 2 | W 27 | L 8 | L 2 |
+| longbowSpam | L 10 | L 8 | L 7 | L 18 | L 8 | L 8 | L 10 | L 8 | L 7 |
+| noAntiAir | L 8 | L 5 | L 5 | L 8 | L 5 | L 5 | L 7 | L 5 | L 5 |
+| comboBuild | W 38 | W 17 | L 20 | W 38 | W 17 | L 20 | W 37 | W 16 | L 20 |
+| wideBuild | W 38 | W 17 | W 4 | W 38 | W 17 | W 4 | W 37 | W 16 | L 20 |
+| comboBuildNoFire | W 37 | W 9 | L 7 | W 38 | W 16 | L 10 | W 36 | W 14 | L 7 |
+| comboNoSpecials | W 38 | W 4 | L 3 | W 38 | W 9 | L 9 | W 37 | W 2 | L 3 |
+| hardBuild | W 38 | W 23 | W 15 | W 38 | W 23 | W 18 | W 38 | W 23 | W 14 |
+| artilleryBuild | W 38 | W 13 | W 2 | W 38 | W 23 | W 13 | W 38 | W 13 | L 10 |
+| burnBuild | W 32 | W 15 | W 2 | W 38 | W 17 | W 9 | W 38 | W 14 | L 10 |
+| musketBuild | W 38 | W 15 | W 2 | W 38 | W 23 | W 9 | W 38 | W 14 | L 10 |
+| endlessIdle | L 28 | L 25 | L 20 | L 27 | L 24 | L 20 | L 28 | L 25 | L 20 |
+| endlessGreedy | L 30 | L 28 | L 20 | L 30 | L 27 | L 20 | L 30 | L 27 | L 20 |
+| soundBuild | L 20 | L 7 | L 2 | - | - | - | - | - | - |
+| soundBuildNoTar | L 10 | L 7 | L 2 | - | - | - | - | - | - |
+| comboStrongest | W 13 | L 5 | L 2 | - | - | - | - | - | - |
