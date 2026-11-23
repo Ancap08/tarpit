@@ -1155,3 +1155,37 @@ can change it; "Kyle" means Kyle decided.
   military, the second medieval and close to the theme). The painted
   Meadow is wired in behind a Look switch on a separate branch (milestone
   38). Kyle (choices), Fable, Codex.
+
+## 2026-11-23, milestone 39 (the Barricade and the blocking rule)
+
+- **One new rule: a blocker on the trail with hp that walking enemies
+  stop at and hit.** Each enemy type has an attack (Goblin 6 a second,
+  Wolf 8, Shieldbearer 12, Troll 45, Grumblefoot 300, Grumblemaw 400);
+  flyers pass over; stopped enemies can still be shot. Kyle's wall
+  special, troop burst and castle wall all need it; it is built once, in
+  its smallest form. Kyle (ideas), Fable (rule), Codex (build), Sonnet
+  (checked to the tick by hand).
+- **The Barricade:** a fourth special on the shared charge, unlocked at
+  wave 3, 324 hp, snapped onto the trail from up to 40 px, not within
+  64 px of the cave or exit, one at a time, no damage. Bosses break it in
+  about a second. Fable (design), Codex (numbers).
+- **The reference builds do not use it,** so the balance matrix is
+  byte-identical. A separate build that does gains 2 to 6 lives on Normal
+  at its fixed points. Fable.
+- **The strength check became a sweep after the verifier broke the first
+  one.** "At most 6 lives better" held at the three points Codex chose and
+  failed at others (7 lives on Meadow Hard; a Hard loss turned into a win
+  on Switchback). The check now re-places a wall at every point on a 48 px
+  grid; hp dropped from 400 to 324 until it held (largest gain 4). Sonnet
+  (finding), Fable (restated), Codex.
+- **Known:** a player who also spends spare charges on attacks while the
+  wall stands can still gain 7 lives on Meadow Hard and win Switchback
+  Hard; re-placing walls can hold the last small enemy for as long as the
+  player likes (the wave just does not end; nothing is gained). Accepted
+  (Fable); play notes decide.
+- **A held crowd fans out in ranks behind the wall, with a count beside
+  the wall's hp bar.** Drawing only. The first version stacked fifteen
+  enemies on one spot. Fable and Sonnet (saw it), Codex.
+- **For later:** troops need a contact list so a blocker can hit back; a
+  castle wall at the exit needs the exit check moved, because a walker at
+  the exit counts as out before it can be held. Sonnet (read the code).
