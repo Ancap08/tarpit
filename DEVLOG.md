@@ -9218,3 +9218,42 @@ bank. The 12 JPEGs in `docs/art/painted-maps/` show setup and wave 7 in both
 layouts. Crowded bends can still put a flyer over a walker. The trail test
 checks the delivered WebP at both densities against the simulation path,
 sampling 16 px inside the strip and 27 px out from the centreline.
+
+### Verifier notes (milestone 43, Claude Sonnet, tip b777ae0)
+
+Verdict: fix first, but only for stale words. Nothing in the game or art blocks the merge.
+
+- Checked from the production build in Chromium (landscape 960x580 and phone
+  390x844): on all three maps no buildable cell is painted as water or trail
+  (sampled from the ground texture, and again from rendered phone screenshots
+  at every cell centre in portrait). Riverbend's 40 water cells are all water
+  in both layouts. Buildable by the sim and painted open agree everywhere.
+- Same rule as Meadow, not new: 12 Switchback, 11 Meadow and 2 Riverbend cells
+  are refused ("path" clearance 36 px) although under 15% of them is trail, so
+  they look like open grass. The two cells under each cottage are also blocked
+  (the cottage covers them). Riverbend's deck sits 64 px short of the spring, so it
+  bridges grass, not water.
+- Stale words: `README.md` still says Painted is for Meadow and that
+  "Switchback and Riverbend use Classic art" (How to play step 1, and the v5
+  status paragraph). `names.ts` keeps the unused `paintedPrompt` "available on
+  Meadow only". Pinned in `src/game/skin/paintedMaps-verifier.test.ts` with
+  `it.fails`; delete the three `.fails` when the words are fixed.
+- Load, own shaped link (one 200,000 B/s pipe, 150 ms per request, gzip text,
+  fresh profile, worker installed before Play): Play to game scene, Meadow 1x
+  2.40 s, 2x 5.38 s (3 art requests); Riverbend 1x 2.28 s; Switchback and
+  Meadow 2x with no `navigator.connection` (Safari) 5.57 s and 5.83 s with 4
+  requests. The page and script before Play took about 2.8 s more on this
+  link, which the 2.45 s and 5.66 s claims leave out.
+- Failure: a stalled ground starts Classic at 25.05 to 25.13 s with the
+  banner and no painted textures left; a 500 on the ground, shared image or
+  shared frame data starts Classic at once; a later attempt downloads only the
+  missing file and paints. Offline after one game: all three loaded maps
+  reload and play Painted.
+- Hit flash silhouettes (white blobs) hide the unit under them on every map,
+  and the 1 px green placement outline is faint on green grass. Both predate
+  this milestone. Switchback is the weakest map: olive ground, pale trail and
+  a dark Tar Barrel puddle have the least contrast. See
+  `docs/art/painted-maps/verifier/` and `scripts/art/verifier_painted_maps.ts`.
+- New spec `e2e/painted-maps-verifier.spec.ts` pins the cell checks, campaign
+  levels 3 and 5 to a win, layout switch mid-wave, frozen and silent test
+  mode, Classic default and the 3 or 4 request counts.

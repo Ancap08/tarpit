@@ -173,6 +173,12 @@ the checker looks for it.
 | `docs/art/painted-maps/switchback-landscape-midwave.jpg` | `scripts/art/review_painted.ts` | Tarpit agents | MIT | Painted game capture |
 | `docs/art/painted-maps/switchback-phone-empty.jpg` | `scripts/art/review_painted.ts` | Tarpit agents | MIT | Painted game capture |
 | `docs/art/painted-maps/switchback-phone-midwave.jpg` | `scripts/art/review_painted.ts` | Tarpit agents | MIT | Painted game capture |
+| `docs/art/painted-maps/verifier/meadow-landscape-guards-wave8.jpg` | `scripts/art/verifier_painted_maps.ts` | Tarpit agents | MIT | Verifier capture of the painted game (milestone 43) |
+| `docs/art/painted-maps/verifier/riverbend-landscape-fire-arrows-wave8.jpg` | `scripts/art/verifier_painted_maps.ts` | Tarpit agents | MIT | Verifier capture of the painted game (milestone 43) |
+| `docs/art/painted-maps/verifier/riverbend-phone-barricade-wave8.jpg` | `scripts/art/verifier_painted_maps.ts` | Tarpit agents | MIT | Verifier capture of the painted game (milestone 43) |
+| `docs/art/painted-maps/verifier/riverbend-phone-magnifier-trail-and-grass.jpg` | `scripts/art/verifier_painted_maps.ts` | Tarpit agents | MIT | Verifier capture of the painted game (milestone 43) |
+| `docs/art/painted-maps/verifier/switchback-landscape-tar-barrel-wave8.jpg` | `scripts/art/verifier_painted_maps.ts` | Tarpit agents | MIT | Verifier capture of the painted game (milestone 43) |
+| `docs/art/painted-maps/verifier/switchback-phone-fire-arrows-wave8.jpg` | `scripts/art/verifier_painted_maps.ts` | Tarpit agents | MIT | Verifier capture of the painted game (milestone 43) |
 | `docs/art/slice-meadow/meadow-comparison-phone.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review with tracked game capture. Original Goblin sprite by Pixel-boy and AAA (Ninja Adventure), CC0 1.0. |
 | `docs/art/slice-meadow/meadow-comparison.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review with tracked game capture. Original Goblin sprite by Pixel-boy and AAA (Ninja Adventure), CC0 1.0. |
 | `docs/art/slice-meadow/meadow-contact.png` | `scripts/art/slice_mocks.py` | Tarpit agents | MIT | Painted Meadow review |
