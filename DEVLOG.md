@@ -9444,3 +9444,5 @@ preloads both font weights and shows “Loading” on parchment during the
 one-second wait. Campaign screens draw their stars, and both font files
 must cover every printable character used in game strings. Updated review
 captures include the Assessor’s entrance in portrait.
+
+Linux CI caught a 5 px three-digit Remove gap. With HUD figures widened 12%, the Mac reproduced 2 px before the fix and 22 px after it. The compact build bar’s tightest gap went from −1 to 15 px in the same check.

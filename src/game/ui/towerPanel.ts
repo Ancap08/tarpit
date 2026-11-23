@@ -170,13 +170,15 @@ export class TowerPanel {
     if (this.killsText.text !== kills) this.killsText.setText(kills);
     this.killsText.setPosition(left, y + STACK_PAD + (level > 1 ? (portrait ? 39 : 29) : header / 2 - 2)).setVisible(true);
 
+    // Below Close, Sell and Target can share the panel's full inner width.
+    const innerWidth = width - 2 * STACK_PAD;
+    const split = level > 1 ? Math.round(innerWidth * 0.43) : 0;
     let top = y + STACK_PAD + header;
     for (const { key, button, path } of rows) {
       const h = path ? pathHeight : rowHeight;
-      const split = level > 1 ? Math.round(buttonWidth * 0.43) : 0;
       const isSell = split > 0 && key === 'sell';
       const isTarget = split > 0 && key === 'target';
-      button.setSize(isSell ? split : isTarget ? buttonWidth - split - STACK_GAP : buttonWidth, h);
+      button.setSize(isSell ? split : isTarget ? innerWidth - split - STACK_GAP : buttonWidth, h);
       button.moveTo(isTarget ? left + split + STACK_GAP : left, top);
       if (path) {
         const { description, reason } = this.pathText[path.path];

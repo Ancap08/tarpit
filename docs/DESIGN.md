@@ -404,7 +404,10 @@ and the change from the level-2 stats. Both show "Not enough gold" when
 the tower's owner cannot afford the upgrade. At level 3 the heading shows
 the path name. Undo appears alongside the cards or the final path while
 the latest purchase is refundable. Target and Sell share a row at levels
-2 and 3. The panel stays inside the map and clears the selected tower.
+2 and 3, using the full inner width below Close. Tower actions and landscape
+build buttons leave at least 12 px between the name and amount on the
+reference Mac layout. Build button names and costs sit 6 px from their edges.
+The panel stays inside the map and clears the selected tower.
 Touch targets on the portrait phone measure at least 44 CSS px on both axes.
 
 | Path name | Panel line |
@@ -497,8 +500,9 @@ a tower underneath the card. HUD buttons remain usable.
 Held rewards appear in pick order. Each icon has its own hit area of at
 least 44 x 44 CSS px. When the landscape canvas fits at full size, the
 icons share the build row with the six tower buttons. Once the first
-reward is held, those buttons narrow from 140 to 116 px and their labels
-from 16 to 14 px. In portrait and smaller landscape windows the icons sit
+reward is held, the Musketeer button narrows from 140 to 124 px and the
+others to 116 px, with 6 px between buttons. Classic labels go from 16 to
+14 px. In portrait and smaller landscape windows the icons sit
 in a column beside the board. The portrait preview keeps its full 468 px.
 Hover or tap an icon to read its name and effect for up to 2.8 s.
 

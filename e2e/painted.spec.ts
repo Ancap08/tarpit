@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { useTallFontMetrics } from './campaignFont';
 import type { GameScene } from '../src/game/GameScene';
 import type { TitleScene, TitleUiState } from '../src/game/TitleScene';
 import { api, cellPage, state, ui, worldPage } from './phone';
@@ -184,7 +185,29 @@ test('a painted Musketeer turns from the path to the first shot', async ({ page 
   expect(await musketeer()).toMatchObject({ frame: 10 }); // Aims southwest at the Goblin.
 });
 
+function expectBarLabelGaps(bar: Awaited<ReturnType<typeof paintedBar>>) {
+  for (const { name, labels: [nameLabel, priceLabel], rect } of bar) {
+    expect(nameLabel.left, name).toBeGreaterThan(rect.x);
+    expect(priceLabel.left - nameLabel.right, name).toBeGreaterThanOrEqual(6);
+    expect(priceLabel.right, name).toBeLessThan(rect.x + rect.width);
+  }
+}
+
+test('Classic landscape bar separates names and costs before and after a reward', async ({ page }) => {
+  await useTallFontMetrics(page, false);
+  await page.goto('/?test=1&look=classic');
+  await waitForTitle(page);
+  await api(page, a => a.startGame());
+  expectBarLabelGaps(await paintedBar(page));
+  await api(page, a => {
+    a.state().boons = ['longBarrels'];
+    a.step(0);
+  });
+  expectBarLabelGaps(await paintedBar(page));
+});
+
 test('painted landscape bar keeps every label in its button and the ghost faces the same way at each cell', async ({ page }) => {
+  await useTallFontMetrics(page, false);
   await openPainted(page);
   await api(page, (a) => {
     const state = a.state();
@@ -204,11 +227,7 @@ test('painted landscape bar keeps every label in its button and the ghost faces 
   expect(bar.map(({ labels }) => labels.map(({ text }) => text))).toEqual([
     ['Musketeer', '50'], ['Cannon', '80'], ['Tar Pit', '60'], ['Longbow', '40'], ['Mortar', '110'], ['Fire Pot', '70'],
   ]);
-  for (const { name, labels: [nameLabel, priceLabel], rect } of bar) {
-    expect(nameLabel.left, name).toBeGreaterThan(rect.x);
-    expect(nameLabel.right, name).toBeLessThan(priceLabel.left);
-    expect(priceLabel.right, name).toBeLessThan(rect.x + rect.width);
-  }
+  expectBarLabelGaps(bar);
   await click(page, 'bar:musketeer');
   for (const cell of [{ col: 7, row: 5 }, { col: 3, row: 5 }]) {
     const position = await cellPage(page, cell);
