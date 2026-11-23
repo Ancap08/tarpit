@@ -9159,3 +9159,9 @@ opening kit. Known layout issue: at 844 × 390, the existing landscape scaling
 leaves campaign buttons 35–37 px tall.
 
 **Recheck at db84bd9 (Claude Sonnet).** Cheated win, keyboard, lock message, L1m and undeclared first appearances all hold. Added to `gate-verifier.test.ts`: the pre-fix Stand Fast data (gold 285, hp 1.3) fails exactly L1m; the ten levels reject a missing declaration for a tower, special, tower tier and enemy; the old twelve-level fixture (five extra Trolls, full gold) fails L1m, so Codex changed the fixture to fit the new rule and did not loosen any rule. Added to `campaignVerifier.ts`: listener counts stay equal across screens and turns, keys do nothing in a level, and a cheated result has no overlap in both layouts while an uncheated win is unchanged. Stand Fast is still fragile one step further out: Good drops to one star at hp x0.96 (10 lives), hp x1.04 (11) and gold -20 (11); Person is also at one star at gold -10. `checkLevel` alone does not enforce declarations (only `checkCampaign` does). Unit 2412 passed; browser suite 803 passed, 8 skipped, 0 failed.
+
+Linux Chromium drew the map’s star glyphs tall enough to overlap the stop
+numbers. The map, card and result now draw stars as shapes, and each stop
+reserves space between its number and stars. The build bar and tower panel
+now use the simulation’s level restrictions when offering purchases. Locked
+towers keep their slots, and upgrades end at the level’s tier limit.

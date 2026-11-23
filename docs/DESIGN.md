@@ -1682,10 +1682,18 @@ difficulty. Campaign opens the level map and reads the saved campaign stars.
 
 The trail crosses five stops and returns across five in landscape. In
 portrait it winds down five rows of two. Each stop shows its level number
-and three star slots. The first open level without a win is highlighted.
+and three star slots. The number has a fixed-height box with at least 4 px
+of clearance above the stars. The map, card and result draw filled stars
+for earned slots and outlines for empty slots. The first open level without a win is highlighted.
 Tapping any lock names the first open level still to win. Back returns to
 the first screen. An open stop shows a card with the level name, map,
 twist, new equipment or enemies, and best stars. Play starts that level.
+
+The build bar keeps every tower in its usual slot. Towers unavailable in
+this level appear dimmed with a lock. Taps, clicks and shortcut keys can
+select only allowed towers. The tower panel offers upgrades up to the
+level’s tier limit and shows the tower as fully upgraded once it reaches
+that limit. From wave one, the specials menu lists the level’s specials.
 
 The game shows the level number and counts waves against the level's own
 length. A win shows this run's stars and lives. A gold-cheat win shows empty star slots and explains that stars were not saved. It opens no level and offers no Next. Below three stars it gives
