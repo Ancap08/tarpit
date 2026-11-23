@@ -39,7 +39,8 @@ def frame_layout(kind):
     if kind in TOWERS:
         return 8, [(label, 22.5 * index, 0) for index, label in enumerate(BEARINGS)]
     if kind == "guard":
-        return 2, [(f"{label}-{pose}", 90 * heading, phase)
+        return 8, [(f"{role}-{label}-{pose}", 90 * heading, 2 * index + phase)
+                   for index, role in enumerate(("axeman", "swordsman", "archer", "captain"))
                    for heading, label in enumerate(BEARINGS[::4])
                    for phase, pose in enumerate(("idle", "strike"))]
     if kind in ENEMIES:
