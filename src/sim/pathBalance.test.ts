@@ -30,6 +30,8 @@ describe('U4: both paths of every tower have a strict win', () => {
       const result = measurePathWitness(witness!);
       const note = JSON.stringify({ witness, ...result });
       expect(result.valid, note).toBe(true);
+      expect(result.winnerCount, note).toBe(result.winnerBuilt);
+      expect(result.otherCount, note).toBe(result.otherBuilt);
       expect(result.delta, note).toBeGreaterThan(0);
     }
   });

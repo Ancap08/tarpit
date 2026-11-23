@@ -1231,20 +1231,28 @@ function referencePlan(build: ChoiceBuild, map: MapId): [readonly BuildAction[],
   return [opening, reinforcementPlan(map, opening, reinforcements)];
 }
 
-/** Finish the reference purchases, then specialize every level-2 tower of one
- * type, or spend its price on another level-2 copy on an open firing lane. */
+/** Bring each focal tower to level two, then specialize it or
+ * spend the same gold on another level-2 copy on an open firing lane. */
 export function compareTowerPlan(build: ChoiceBuild, map: MapId, difficulty: Difficulty, tower: TowerType,
   choice: UpgradePath | 'copy', report?: RecordReporter, boons?: BoonChoices, targeting?: TargetingMode, useSpecials = true): WaveScript {
   const [opening, reinforcements] = referencePlan(build, map);
   const plan = [...opening, ...reinforcements];
-  const cells = new Set(plan.flatMap((a) => a.type === 'build' && a.tower === tower ? [cellKey(a.cell)] : []));
-  const upgrades = plan.filter((a) => a.type === 'upgrade' && !a.path && cells.has(cellKey(a.cell)));
+  const focal = plan.filter((action) => action.type === 'build' && action.tower === tower);
+  const cells = new Set(focal.map(({ cell }) => cellKey(cell)));
+  const upgrades = plan.filter((action) =>
+    action.type === 'upgrade' && !action.path && cells.has(cellKey(action.cell)),
+  );
+  const upgraded = new Set(upgrades.map(({ cell }) => cellKey(cell)));
+  const firstUpgrades = focal.filter(({ cell }) => !upgraded.has(cellKey(cell)))
+    .map(({ cell }): BuildAction => ({ type: 'upgrade', cell }));
   const rest = reinforcements.filter((a) => !(a.type === 'upgrade' && a.path && cells.has(cellKey(a.cell))));
-  const choices = choice === 'copy' ? reinforcementPlan(map, plan, upgrades.map(() => tower))
-    : upgrades.map(({ cell }): BuildAction => ({ type: 'upgrade', cell, path: choice }));
-  const actTwo = targeting === undefined ? [...rest, ...choices] : [
+  const destinations = [...upgrades, ...firstUpgrades];
+  const choices = choice === 'copy' ? reinforcementPlan(map, plan, destinations.map(() => tower))
+    : destinations.map(({ cell }): BuildAction => ({ type: 'upgrade', cell, path: choice }));
+  const actTwo = targeting === undefined ? [...rest, ...firstUpgrades, ...choices] : [
     ...rest.filter((action) => cells.has(cellKey(action.cell))),
-    ...upgrades.map(({ cell }): BuildAction => ({ type: 'target', cell, mode: targeting })),
+    ...firstUpgrades,
+    ...destinations.map(({ cell }): BuildAction => ({ type: 'target', cell, mode: targeting })),
     ...choices,
     ...rest.filter((action) => !cells.has(cellKey(action.cell))),
   ];

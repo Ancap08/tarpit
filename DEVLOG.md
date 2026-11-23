@@ -8026,7 +8026,7 @@ existing 1.2 multiplier.
 
 ### U4 and U6 campaign witnesses
 
-These deterministic comparisons use the normal purchasing policy and the same special-use rules in both runs. Each row buys the same nonzero number of path upgrades or complete level-2 copies at the same unit cost. The selected tower type is kept fixed within each comparison. Scores give ending lives and kills, ranked in that order. All rows use the first reward in each offer unless picks are listed. In a targeting variant the selected towers take that mode and specialize before other act-two reinforcements. The Musketeer plan keeps at most one Mortar from the paired-Longbow opening and reinforces with six level-2 Musketeers in act two.
+These deterministic comparisons use the normal purchasing policy and the same special-use rules in both runs. Each row buys the same nonzero number of path upgrades or complete level-2 copies at the same unit cost. The selected tower type is kept fixed within each comparison. Both runs first upgrade any focal tower still at base to level 2. U4 requires every unique focal cell to buy its branch on both sides. Scores give ending lives and kills, ranked in that order. All rows use the first reward in each offer unless picks are listed. In a targeting variant the selected towers take that mode and specialize before other act-two reinforcements. The Musketeer plan keeps at most one Mortar from the paired-Longbow opening and reinforces with six level-2 Musketeers in act two.
 
 **U4**
 
@@ -8042,8 +8042,8 @@ These deterministic comparisons use the normal purchasing policy and the same sp
 | Longbow | artilleryBuild, Switchback, Hard | Keen Arrows / Sticky Tar / Veteran Crews and Strongest | B > A | 0 / 1100 vs 0 / 1049 | 4 |
 | Mortar | artilleryBuild, Meadow, Hard | Defaults | A > B | 8 / 1215 vs 2 / 1214 | 5 |
 | Mortar | burnBuild, Meadow, Normal | No specials | B > A | 9 / 1216 vs 7 / 1214 | 1 |
-| Fire Pot | burnBuild, Meadow, Hard | Long Barrels / Hot Coals / Stone Walls | A > B | 2 / 1214 vs 2 / 1206 | 3 |
-| Fire Pot | burnBuild, Switchback, Hard | Last and No specials | B > A | 2 / 1214 vs 2 / 1206 | 3 |
+| Fire Pot | burnBuild, Meadow, Hard | Long Barrels / Hot Coals / Stone Walls | A > B | 2 / 1214 vs 2 / 1206 | 4 |
+| Fire Pot | burnBuild, Switchback, Hard | Last and No specials | B > A | 2 / 1214 vs 2 / 1206 | 4 |
 
 **U6**
 
@@ -8055,7 +8055,18 @@ These deterministic comparisons use the normal purchasing policy and the same sp
 | Tar Pit | burnBuild, Riverbend, Normal | Defaults | A = copy | 14 / 1221 vs 14 / 1221 | 4 |
 | Longbow | artilleryBuild, Meadow, Normal | Defaults | A = copy | 19 / 1221 vs 19 / 1221 | 4 |
 | Mortar | artilleryBuild, Riverbend, Hard | War Chest / Hot Coals / Bigger Blasts | A = copy | -5 / 1214 vs -5 / 1214 | 5 |
-| Fire Pot | burnBuild, Meadow, Normal | Defaults | A = copy | 15 / 1222 vs 15 / 1222 | 3 |
+| Fire Pot | burnBuild, Meadow, Normal | Defaults | A = copy | 15 / 1222 vs 15 / 1222 | 4 |
+| Musketeer | musketBuild, Riverbend, Hard | War Chest / Sticky Tar / Veteran Crews | copy > A | -5 / 1214 vs -5 / 1206 | 6 |
+| Tar Pit | burnBuild, Riverbend, Normal | Defaults | copy > B | 14 / 1221 vs 14 / 1213 | 4 |
+| Mortar | burnBuild, Meadow, Normal | No specials | B > copy | 9 / 1216 vs 8 / 1215 | 1 |
+| Mortar | burnBuild, Meadow, Normal | No specials | copy > A | 8 / 1215 vs 7 / 1214 | 1 |
+| Fire Pot | burnBuild, Meadow, Hard | Long Barrels / Hot Coals / Stone Walls | A > copy | 2 / 1214 vs 2 / 1206 | 4 |
+
+Every tower has a matched tie. Among the pinned strict examples, paths
+outscore copies for Cannon, Mortar and Fire Pot. Copies outscore paths
+for Musketeer, Tar Pit and Mortar. The same Meadow build puts a second
+level-2 Mortar between the two Mortar paths. The Longbow comparison
+demonstrates parity at equal gold.
 
 ### Upgrade balance sensitivity checks
 
@@ -8088,7 +8099,7 @@ Restoring the original proposed level-3 prices invalidated every equal-budget co
 | Tar Pit | 70 | 110 | 4 | 280 | 440 |
 | Longbow | 50 | 70 | 4 | 200 | 280 |
 | Mortar | 120 | 190 | 5 | 600 | 950 |
-| Fire Pot | 75 | 120 | 3 | 225 | 360 |
+| Fire Pot | 75 | 120 | 4 | 300 | 480 |
 
 ### Matched reversions and margins
 
