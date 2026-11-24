@@ -441,7 +441,9 @@ Longbow, Mortar and Fire Pot sell for 59, 98, 77, 49, 133 and 84 gold.
 At level 3 their locked refunds are 119, 196, 154, 98, 266 and 168 gold.
 
 The level-2 panel offers two cards. Each shows the path name, its price
-and the change from the level-2 stats. Both show "Not enough gold" when
+and the change from the level-2 stats. The description starts at least 2 CSS px
+below the path name. The card grows to fit wrapped text and the price stays
+on the title row. Both show "Not enough gold" when
 the tower's owner cannot afford the upgrade. At level 3 the heading shows
 the path name. Undo appears alongside the cards or the final path while
 the latest purchase is refundable. Target and Sell share a row at levels
