@@ -1659,3 +1659,12 @@ can change it; "Kyle" means Kyle decided.
 - **A feather-leaning bot is added to the gate (R6)** because the existing
   bots rarely pick path B or the barrel, so the gate could pass while a
   person who uses feathers walks through the levels.
+- **Target R2 was wrong and is replaced by R2a, R2b and R2c** (coordinator).
+  Codex measured first and stopped: R2 needed 17 and 20 lives on Meadow and
+  Riverbend where the Free play window allows 15. The new targets ask that
+  the barrel is worth casting, that the standard run is no worse, and that
+  the barrel is the best zone special on at least one map. The window stays.
+- **Known and left:** Fire Arrows on every turn beats the Free play window on
+  Meadow and Riverbend (17 and 20 lives). It was hidden because the standard
+  policy alternates the two zone specials. A Fire Arrows change is a
+  balance decision for Kyle, outside this milestone.
