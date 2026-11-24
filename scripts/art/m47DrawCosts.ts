@@ -133,7 +133,7 @@ await run(async browser => {
       scene.state.enemies.length = 0;
       scene.state.phase = 'won';
       scene.redraw();
-      show.battle.salute.draw(true, scene.game.loop.now + 1450, 2, false);
+      show.battle.salute.draw(true, scene.showpieceState()!.timeMs + 1450, 2, false);
       groups.victory = [show.battle.victoryLayer];
       for (let i = 0; i < 4; i++) one();
       for (let i = 0; i < pairs; i++) pair('victory', i);

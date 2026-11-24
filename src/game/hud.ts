@@ -381,7 +381,7 @@ export class Hud {
   /** The Lives readout's left edge now (portrait: after the gold), for the exit shake. */
   private livesX = LIVES_X;
 
-  constructor(scene: Phaser.Scene, handlers: HudHandlers, layout: Layout = LANDSCAPE, painted?: PaintedSkin) {
+  constructor(scene: Phaser.Scene, handlers: HudHandlers, layout: Layout = LANDSCAPE, painted?: PaintedSkin, private readonly pauseOnResult = false) {
     const m = hudMetrics(layout);
     this.m = m;
     const counter = scene.add.graphics();
@@ -512,8 +512,8 @@ export class Hud {
     else this.startButton.set(START_WAVE_TEXT, canStartWave(state));
     // Once the game is over the speed toggle is inert (greyed, ignores clicks).
     const playable = state.phase !== 'won' && state.phase !== 'lost';
-    this.pauseButton.setShown(playable);
-    this.pauseIcon.setVisible(playable);
+    this.pauseButton.setShown(playable || this.pauseOnResult);
+    this.pauseIcon.setVisible(playable || this.pauseOnResult);
     this.speedButton.set(speedLabel(speed), playable);
     const ready = specialReady(state);
     const recharge = specialRecharge(state);

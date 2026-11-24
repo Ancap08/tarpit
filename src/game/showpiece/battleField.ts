@@ -1,5 +1,6 @@
 import type Phaser from 'phaser';
 import { isFlying, pathLength, trailPointAt, type GameState, type Point } from '../../sim';
+import type { GameClock } from '../loop';
 import type { Layout } from '../layout';
 import { INK_KEY, type ObjectInk } from './battleArt';
 
@@ -53,7 +54,7 @@ export class BattleField {
   private animateUntil = 0;
   private detail = -1;
 
-  constructor(private readonly scene: Phaser.Scene, private readonly layout: Layout, private readonly layer: Phaser.GameObjects.Layer) {}
+  constructor(private readonly scene: Phaser.Scene, private readonly layout: Layout, private readonly layer: Phaser.GameObjects.Layer, private readonly clock: GameClock) {}
 
   private attach(state: GameState): void {
     if (this.state === state) return;
@@ -73,7 +74,7 @@ export class BattleField {
       x: Math.max(m.x + 5, Math.min(m.x + m.width - 5, screen.x + drift)),
       y: Math.max(m.y + 6, Math.min(m.y + m.height - 4, screen.y + (toss ? 4 + seed % 6 : 0))),
     };
-    const born = this.scene.game.loop.now;
+    const born = this.clock.nowMs;
     const duration = toss && !calm ? (victory ? 1200 : 480 + seed % 170) : 0;
     this.memory.add({
       kind, start: this.layout.toWorld(screen), end: this.layout.toWorld(end), born,
@@ -84,7 +85,7 @@ export class BattleField {
 
   draw(state: GameState, tier: number, calm: boolean, placing: boolean): void {
     this.attach(state);
-    const now = this.scene.game.loop.now;
+    const now = this.clock.nowMs;
     if (this.detail !== tier || this.memory.revision !== this.lastRevision || this.animateUntil > 0) {
       for (let i = 0; i < this.memory.marks.length; ++i) {
         const mark = this.memory.marks[i];

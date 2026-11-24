@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import type { EnemyType, GameState, Point, Shot } from '../../sim';
+import type { GameClock } from '../loop';
 import type { Layout } from '../layout';
 import { INK_KEY, battleTexture } from './battleArt';
 import { GunCrews } from './battleCrew';
@@ -28,7 +29,7 @@ export class ShowpieceBattle implements BattleObserver {
   private state?: GameState;
   private victoryKill = false;
 
-  constructor(private readonly scene: Phaser.Scene, private readonly layout: Layout, zones: Phaser.GameObjects.Graphics, private readonly frozen: boolean) {
+  constructor(private readonly scene: Phaser.Scene, private readonly layout: Layout, zones: Phaser.GameObjects.Graphics, private readonly frozen: boolean, private readonly clock: GameClock) {
     battleTexture(scene);
     const belowZones = () => {
       const layer = scene.add.layer();
@@ -38,14 +39,14 @@ export class ShowpieceBattle implements BattleObserver {
     this.fieldLayer = belowZones();
     this.crewLayer = belowZones();
     this.victoryLayer = belowZones();
-    this.field = new BattleField(scene, layout, this.fieldLayer);
+    this.field = new BattleField(scene, layout, this.fieldLayer, clock);
     this.crew = new GunCrews(scene, layout, this.crewLayer);
     this.salute = new VictorySalute(scene, layout, this.victoryLayer);
   }
 
   onTick(shots: readonly Shot[]): void {
     for (const shot of shots) {
-      this.crew.fire(shot, this.scene.game.loop.now);
+      this.crew.fire(shot, this.clock.nowMs);
       // Test stepping shows the game's instant-hit tracers and still stamps.
       if (this.frozen) this.onImpact(shot);
     }
@@ -98,7 +99,7 @@ export class ShowpieceBattle implements BattleObserver {
     this.state = state;
     this.tier = tier;
     this.calm = calm;
-    const now = this.scene.game.loop.now;
+    const now = this.clock.nowMs;
     let start = this.profile ? performance.now() : 0;
     this.field.draw(state, tier, calm, placing);
     if (this.profile) {

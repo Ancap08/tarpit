@@ -5,6 +5,7 @@ export type Detail = 0 | 1 | 2;
 export class DetailGovernor {
   tier: Detail;
   private last?: number;
+  private warmupFrames = 0;
   private elapsed = 0;
   private frames = 0;
   private headroomMs = 0;
@@ -15,7 +16,8 @@ export class DetailGovernor {
     this.tier = pinned ?? 2;
   }
 
-  resetWindow(): void {
+  resetWindow(warmupFrames = 0): void {
+    this.warmupFrames = warmupFrames;
     this.last = undefined;
     this.elapsed = this.frames = this.headroomMs = 0;
   }
@@ -23,6 +25,10 @@ export class DetailGovernor {
   sample(now: number): void {
     const gap = this.last === undefined ? 0 : now - this.last;
     this.last = now;
+    if (this.warmupFrames > 0) {
+      this.warmupFrames--;
+      return;
+    }
     if (this.pinned !== undefined || gap <= 0) return;
     this.elapsed += gap;
     this.frames++;

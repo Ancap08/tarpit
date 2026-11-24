@@ -601,7 +601,7 @@ export class GameScene extends Phaser.Scene {
     this.shotFx = world();
     this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx), this.layout, this.clock) : null;
     if (this.showpieceType && this.paintedAssets) {
-      this.showpiece = new this.showpieceType(this, this.layout, this.paintedAssets.density, this.ground, !this.autoTick);
+      this.showpiece = new this.showpieceType(this, this.layout, this.paintedAssets.density, this.ground, !this.autoTick, this.clock);
       if (this.fx) this.fx.showpiece = this.showpiece.battle;
       this.events.once('shutdown', () => {
         if (this.fx) this.fx.showpiece = undefined;
@@ -637,7 +637,7 @@ export class GameScene extends Phaser.Scene {
       onPick: (type) => this.togglePick(type),
       onSpecial: () => this.onSpecialButton(),
       onSpecialPick: (type) => this.selectSpecial(type),
-    }, this.layout, this.painted);
+    }, this.layout, this.painted, !!this.showpiece);
     this.panel = new TowerPanel(this, this.layout, {
       onUpgrade: (path) => {
         if (this.panel.cell !== null) this.upgrade(this.panel.cell, path);
@@ -768,12 +768,12 @@ export class GameScene extends Phaser.Scene {
       if (handled.has(key)) return;
       handled.add(key);
       if (key.repeat || key.altKey || key.ctrlKey || key.metaKey) return;
-      if (this.endScreen.handleKey) return this.endScreen.handleKey(key);
-      if (key.key.toLowerCase() === 'p' || (this.paused && key.key === 'Escape')) {
+      if ((key.key.toLowerCase() === 'p' && (!this.endScreen.handleKey || this.showpiece)) || (this.paused && key.key === 'Escape')) {
         this.setPaused(!this.paused);
         return;
       }
       if (this.paused) return this.pausePanel.handleKey(key);
+      if (this.endScreen.handleKey) return this.endScreen.handleKey(key);
       if (key.key === 'Escape') return this.closeUi();
       const id = this.state.pendingBoon?.options[REWARD_KEYS.indexOf(key.key)];
       if (id) this.pickBoon(id);
@@ -793,7 +793,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   setPaused(paused: boolean): void {
-    if (paused === this.paused || this.leaving || !this.pausePanel || endKind(this.state)) return;
+    if (paused === this.paused || this.leaving || !this.pausePanel || (!this.showpiece && endKind(this.state))) return;
     this.clock.paused = paused;
     this.time.paused = paused;
     sound.setPaused(paused);
@@ -808,6 +808,7 @@ export class GameScene extends Phaser.Scene {
       this.pointer = null;
       this.freezePlay();
     } else {
+      this.showpiece?.resumed();
       // Discard the tween manager's wall time since its last running frame.
       this.tweens.getDelta(true);
       this.tweens.resumeAll();
@@ -1411,12 +1412,12 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     if (this.paused || this.leaving) return;
-    this.showpiece?.frame(performance.now(), delta);
     this.checkSpeedHold();
     this.checkAimHold();
     if (this.autoTick) {
       // Ticks beyond the cap are dropped (see loop.ts for why).
       const ticks = this.clock.frame(delta, this.speed, this.game.loop.rawDelta);
+      this.showpiece?.frame();
       delta = this.clock.deltaMs;
       this.fx?.advanceClock(delta, this.speed);
       this.advance(ticks, false);

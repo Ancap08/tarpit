@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+import { GameClock } from '../loop';
 import { DetailGovernor } from './governor';
 
 function trace() {
@@ -64,4 +65,29 @@ it('ignores the first gap after resuming and still sheds detail within two slow 
   expect(quality.tier).toBe(2);
   frames(2, 1200);
   expect(quality.tier).toBe(0);
+});
+
+it('excludes a long pause from recovery and skips the first two frames on resume', () => {
+  let wall = 0;
+  const clock = new GameClock(() => wall);
+  const quality = new DetailGovernor();
+  const frame = (ms: number) => {
+    wall += ms;
+    clock.frame(ms, 1);
+    quality.sample(clock.nowMs);
+  };
+  frame(0);
+  frame(750);
+  expect(quality.tier).toBe(1);
+  clock.paused = true;
+  wall += 60_000;
+  clock.paused = false;
+  quality.resetWindow(2);
+  frame(1);
+  frame(1000);
+  expect(quality.tier).toBe(1);
+  for (let i = 0; i < 700; i++) frame(15);
+  expect(quality.tier).toBe(1);
+  for (let i = 0; i < 1300; i++) frame(15);
+  expect(quality.tier).toBe(2);
 });

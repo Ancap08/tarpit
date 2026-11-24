@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { GameScene } from '../src/game/GameScene';
-import { waitForTitle } from './title';
+import { press } from './campaign';
+import { waitForGame } from './painted';
+import { waitForFirstScreen, waitForTitle } from './title';
 
 // Milestone 47 verifier: the experimental look must leave the simulation
 // alone. The same scripted Free play Meadow game is stepped in frozen test
@@ -46,3 +48,52 @@ for (const chunk of [1, 3]) {
     }
   });
 }
+
+test('a complete First Watch reaches the Painted result at every tier with or without pauses', async ({ page }) => {
+  test.setTimeout(180_000);
+  const play = async (look: string, withPauses: boolean) => {
+    await page.goto('/?test=1&perf=1&look=' + look);
+    await waitForFirstScreen(page);
+    await press(page, 'title:campaign');
+    await page.waitForFunction(() => !!window.__tarpit!.uiRects()['title:stop:1']);
+    await press(page, 'title:stop:1');
+    await page.waitForFunction(() => !!window.__tarpit!.uiRects()['title:play']);
+    await press(page, 'title:play');
+    await waitForGame(page);
+    return page.evaluate(withPauses => {
+      const a = window.__tarpit! as Required<NonNullable<typeof window.__tarpit>>;
+      const state = a.state();
+      const cells = [[2,5],[6,6],[3,3],[7,1],[10,1],[14,3],[14,6],[14,9],
+        [13,13],[16,10],[19,10],[22,10],[22,7],[22,4],[25,4],[28,7]];
+      let pauses = 0;
+      for (let w = 0; w < 6; w++) {
+        if (state.phase !== 'setup') throw Error('Expected setup before wave ' + (w + 1));
+        for (const [col,row] of cells.slice(state.towers.length)) {
+          if (!a.buildAt(col, row, state.towers.length % 2 ? 'musketeer' : 'longbow').ok) break;
+        }
+        a.startWave();
+        a.step(120);
+        if (withPauses) {
+          const tick = state.tick;
+          a.pause();
+          a.step(600);
+          if (!a.paused() || state.tick !== tick) throw Error('Pause advanced wave ' + state.wave);
+          a.resume();
+          pauses++;
+        }
+        // Keep drawing during combat, including each tier's crew and field effects.
+        for (let frame = 0; frame < 600 && a.state().phase === 'wave'; frame++) a.step(60);
+      }
+      return { state: JSON.stringify(state), tier: a.showpiece?.()?.tier, phase: state.phase, pauses };
+    }, withPauses);
+  };
+  const straight = await play('painted', false);
+  expect(straight.phase).toBe('won');
+  for (const withPauses of [false, true]) {
+    if (withPauses) expect((await play('painted', true)).state).toBe(straight.state);
+    for (const tier of [0, 1, 2]) {
+      const shown = await play('showpiece&showpieceTier=' + tier, withPauses);
+      expect(shown).toEqual({ state: straight.state, tier, phase: 'won', pauses: withPauses ? 6 : 0 });
+    }
+  }
+});
