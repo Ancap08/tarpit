@@ -52,11 +52,11 @@ const ticks = (s: GameState, n: number) => {
 };
 
 describe('the specials table (milestone 30)', () => {
-  it('keg wave 1, 90 px, 60 damage; Tar Barrel wave 4, 100 px, slow 0.5, zone 660; Fire Arrows wave 7, 90 px, burn 26/s, zone 660; recharge 1200, linger 60', () => {
+  it('keg wave 1, 90 px, 60 damage; Tar Barrel wave 4, 120 px, slow 0.4, zone 540; Fire Arrows wave 7, 90 px, burn 26/s, zone 660; recharge 1200, linger 60', () => {
     expect(SPECIAL_TYPES).toEqual(['keg', 'barricade', 'tarBarrel', 'guards', 'fireArrows']);
     expect(SPECIAL_DEFS.barricade).toEqual({ unlockWave: 3, radius: 0, damage: 0, slow: 0, burnDps: 0, zoneTicks: 0 });
     expect(SPECIAL_DEFS.keg).toEqual({ unlockWave: 1, radius: 90, damage: 60, slow: 0, burnDps: 0, zoneTicks: 0 });
-    expect(SPECIAL_DEFS.tarBarrel).toEqual({ unlockWave: 4, radius: 100, damage: 0, slow: 0.5, burnDps: 0, zoneTicks: 660 });
+    expect(SPECIAL_DEFS.tarBarrel).toEqual({ unlockWave: 4, radius: 120, damage: 0, slow: 0.4, burnDps: 0, zoneTicks: 540 });
     expect(SPECIAL_DEFS.fireArrows).toEqual({ unlockWave: 7, radius: 90, damage: 0, slow: 0, burnDps: 26, zoneTicks: 660 });
     expect(SPECIAL_RECHARGE_TICKS).toBe(1200);
     expect(ZONE_LINGER_TICKS).toBe(60);
@@ -88,18 +88,18 @@ describe('Powder Keg', () => {
 });
 
 describe('Tar Barrel landing', () => {
-  it('slows a Goblin, a Harpy and a Shieldbearer by 0.5 and the boss by his 0.3 cap, for the linger, and leaves a zone', () => {
+  it('slows a Goblin, a Harpy and a Shieldbearer by 0.4 and the boss by his 0.3 cap, for the linger, and leaves a zone', () => {
     const s = inWave(4, FOUR.map((type, i) => enemy(i, type)));
     expect(useSpecial(s, 'tarBarrel', POINT)).toMatchObject({ ok: true, hits: 4, kills: 0 });
     expect(s.enemies.map((e) => [e.type, e.specialSlow, e.specialSlowTicksLeft, e.slowTicksLeft])).toEqual([
-      ['goblin', 0.5, 60, 0],
-      ['harpy', 0.5, 60, 0],
-      ['shieldbearer', 0.5, 60, 0],
+      ['goblin', 0.4, 60, 0],
+      ['harpy', 0.4, 60, 0],
+      ['shieldbearer', 0.4, 60, 0],
       ['boss', 0.3, 60, 0],
     ]);
-    expect(s.events[0]).toEqual({ kind: 'special', type: 'tarBarrel', x: AT, y: 240, radius: 100, hits: 4, zoneId: 0 });
-    expect(s.events.filter((e) => e.kind === 'slowed')).toEqual(FOUR.map((type, i) => ({ kind: 'slowed', enemyId: i, slow: type === 'boss' ? 0.3 : 0.5, ticks: 60 })));
-    expect(s.zones).toEqual([{ id: 0, type: 'tarBarrel', x: AT, y: 240, radius: 100, ticksLeft: 660 }]);
+    expect(s.events[0]).toEqual({ kind: 'special', type: 'tarBarrel', x: AT, y: 240, radius: 120, hits: 4, zoneId: 0 });
+    expect(s.events.filter((e) => e.kind === 'slowed')).toEqual(FOUR.map((type, i) => ({ kind: 'slowed', enemyId: i, slow: type === 'boss' ? 0.3 : 0.4, ticks: 60 })));
+    expect(s.zones).toEqual([{ id: 0, type: 'tarBarrel', x: AT, y: 240, radius: 120, ticksLeft: 540 }]);
     expect(s.nextZoneId).toBe(1);
     expect(s.enemies.map((e) => e.hp)).toEqual(FOUR.map((type) => ARENA_HP[type]));
   });
@@ -127,36 +127,39 @@ describe('Fire Arrows landing', () => {
 
 describe('zones (step 2b of the tick)', () => {
   it('enter: a Wolf is slowed on the tick it reaches the zone edge, not before', () => {
-    // Zone at (300, 240), 100 px: the Wolf (2 px a tick) at 196 reaches 200 on the second tick.
-    const s = inWave(4, [enemy(0, 'wolf', 196, 1000)], LINE);
+    // Zone at (300, 240), 120 px: the Wolf (2 px a tick) at 176 reaches 180 on the second tick.
+    const s = inWave(4, [enemy(0, 'wolf', 176, 1000)], LINE);
     useSpecial(s, 'tarBarrel', { x: 300, y: 240 });
     tick(s);
-    expect([s.enemies[0].distance, s.enemies[0].specialSlowTicksLeft ?? 0]).toEqual([198, 0]);
+    expect([s.enemies[0].distance, s.enemies[0].specialSlowTicksLeft ?? 0]).toEqual([178, 0]);
     tick(s);
-    expect([s.enemies[0].distance, s.enemies[0].specialSlow, s.enemies[0].specialSlowTicksLeft]).toEqual([200, 0.5, 60]);
-    // Stay: refreshed to the linger every tick while inside, at half speed.
+    expect([s.enemies[0].distance, s.enemies[0].specialSlow, s.enemies[0].specialSlowTicksLeft]).toEqual([180, 0.4, 60]);
+    // Stay: refreshed to the linger every tick while inside, at 60% speed.
     tick(s);
-    expect([s.enemies[0].distance, s.enemies[0].specialSlowTicksLeft]).toEqual([201, 60]);
+    expect([s.enemies[0].distance, s.enemies[0].specialSlowTicksLeft]).toEqual([181.2, 60]);
   });
 
   it('leave: the slow lasts the linger after the last tick inside, then full speed', () => {
-    // At 390, inside, so the landing slows it: 1 px a tick to 400 (inside, the edge) on tick 10.
-    const s = inWave(4, [{ ...enemy(0, 'wolf', 390, 1000), feathered: true }], LINE);
+    // Start just inside the far edge. Two slowed steps of 1.2 px take it outside.
+    const s = inWave(4, [{ ...enemy(0, 'wolf', 418, 1000), feathered: true }], LINE);
     useSpecial(s, 'tarBarrel', { x: 300, y: 240 });
-    ticks(s, 10);
-    expect([s.enemies[0].distance, s.enemies[0].specialSlowTicksLeft]).toEqual([400, 60]);
-    tick(s); // 401: outside, not refreshed
-    expect([s.enemies[0].distance, s.enemies[0].specialSlowTicksLeft]).toEqual([401, 59]);
-    ticks(s, 59);
-    expect([s.enemies[0].distance, s.enemies[0].specialSlowTicksLeft, s.enemies[0].specialSlow]).toEqual([460, 0, 0]);
     tick(s);
-    expect(s.enemies[0].distance).toBe(462);
+    expect(s.enemies[0].distance).toBeCloseTo(419.2, 9);
+    expect(s.enemies[0].specialSlowTicksLeft).toBe(60);
+    tick(s);
+    expect(s.enemies[0].distance).toBeCloseTo(420.4, 9);
+    expect(s.enemies[0].specialSlowTicksLeft).toBe(59);
+    ticks(s, 59);
+    expect(s.enemies[0].distance).toBeCloseTo(491.2, 9);
+    expect([s.enemies[0].specialSlowTicksLeft, s.enemies[0].specialSlow]).toEqual([0, 0]);
+    tick(s);
+    expect(s.enemies[0].distance).toBeCloseTo(493.2, 9);
   });
 
-  it('expiry: a zone acts for 660 ticks and is then removed; an enemy on the spot afterwards is not slowed', () => {
+  it('expiry: a zone acts for 540 ticks and is then removed; an enemy on the spot afterwards is not slowed', () => {
     const s = inWave(4, [enemy(0, 'troll', 0, 100000)], LINE);
     useSpecial(s, 'tarBarrel', { x: 900, y: 240 });
-    ticks(s, 659);
+    ticks(s, 539);
     expect(s.zones.map((z) => z.ticksLeft)).toEqual([1]);
     tick(s);
     expect(s.zones).toEqual([]);
@@ -183,8 +186,8 @@ describe('zones (step 2b of the tick)', () => {
     const distance = s.enemies[0].distance;
     ticks(s, 60);
     expect(hp - s.enemies[0].hp).toBeCloseTo(52, 9);
-    // 35 px/s at 0.5 for 60 ticks: 17.5 px, not less.
-    expect(s.enemies[0].distance - distance).toBeCloseTo(17.5, 9);
+    // 35 px/s at 60% speed for 60 ticks covers 21 px.
+    expect(s.enemies[0].distance - distance).toBeCloseTo(21, 9);
   });
 
   it('a flyer in a fire zone burns and in a tar zone is slowed', () => {
@@ -194,7 +197,7 @@ describe('zones (step 2b of the tick)', () => {
     s.specialCharges = 1;
     useSpecial(s, 'tarBarrel', { x: 300, y: 240 });
     tick(s);
-    expect([s.enemies[0].burnDps, s.enemies[0].specialSlow]).toEqual([26, 0.5]);
+    expect([s.enemies[0].burnDps, s.enemies[0].specialSlow]).toEqual([26, 0.4]);
   });
 
   it('the boss in a tar zone is slowed by his 0.3 cap, never more', () => {
@@ -243,8 +246,8 @@ describe('radius', () => {
     expect(at(90.01)).toMatchObject({ ok: true, hits: 0 });
   });
 
-  it('Tar Barrel 100 and Fire Arrows 90, in the zone too', () => {
-    const s = inWave(7, [enemy(0, 'troll', 400, 1000), enemy(1, 'troll', 400.01, 1000)], LINE);
+  it('Tar Barrel 120 and Fire Arrows 90, in the zone too', () => {
+    const s = inWave(7, [enemy(0, 'troll', 420, 1000), enemy(1, 'troll', 420.01, 1000)], LINE);
     expect(useSpecial(s, 'tarBarrel', { x: 300, y: 240 })).toMatchObject({ hits: 1 });
     const fire = inWave(7, [enemy(0, 'troll', 400, 1000), enemy(1, 'troll', 400.01, 1000)], LINE);
     expect(useSpecial(fire, 'fireArrows', { x: 310, y: 240 })).toMatchObject({ hits: 1 });

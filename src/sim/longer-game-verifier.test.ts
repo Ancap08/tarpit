@@ -328,7 +328,7 @@ describe('verifier 36a: boons by hand', () => {
     expect(stats(s, 'mortar', false).splashRadius).toBeCloseTo(78, 9);
     expect(stats(s, 'mortar', true).splashRadius).toBeCloseTo(91, 9);
     expect(specialRadius('keg', s.boons)).toBeCloseTo(117, 9);
-    expect(specialRadius('tarBarrel', s.boons)).toBe(100);
+    expect(specialRadius('tarBarrel', s.boons)).toBe(120);
     expect(specialRadius('fireArrows', s.boons)).toBe(90);
   });
 

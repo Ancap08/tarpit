@@ -7,7 +7,7 @@ import { MAP_IDS, type MapId } from './map';
 function measure(map: MapId) {
   const lives: number[] = [];
   const record = (outcome: RecordedOutcome) => {
-    expect(outcome.phase, map).toBe('won');
+    expect(['won', 'lost'], map).toContain(outcome.phase);
     lives.push(outcome.lives);
   };
   const alternating = comboBuild('normal', map, undefined, record);

@@ -361,7 +361,7 @@ and flinching.
 
 | Run ticks | Run speed (trail px/s) | Flinch ticks |
 |---:|---:|---:|
-| 60 | 90 | 18 |
+| 15 | 40 | 5 |
 
 A runner follows the same trail backward at the listed speed. It passes
 through Guards and Barricades without either side attacking, and leaves
@@ -375,7 +375,10 @@ A runner that reaches or passes another enemy on the trail makes it flinch
 once in its life. The crossing uses both enemies' start and end distances
 from the same tick. Tied enemies must move past each other. On the following
 ticks a flinching enemy halts and neither fights nor holds a guard's attention.
-A run timer continues counting down during a flinch.
+A run timer continues counting down during a flinch. In every look, body
+feathers remain after the 380 ms puff. The sprite faces back along the road
+while it runs and leans 15 degrees during a flinch. Each batch of feather
+hits plays one 0.165 s synthesized puff.
 
 ## Towers
 
@@ -424,7 +427,7 @@ the level and, for level 3, the chosen path.
 | Cannon | A | Heavy Shot | 140 | 105 | - | 40 | 0.5 | 105 | - | - |
 | Cannon | B | Quick Loader | 140 | 105 | - | 40 | 1 | 55 | - | - |
 | Tar Pit | A | Deep Tar | 110 | 105 | - | 3 | 2 | - | 78% for 2 s | - |
-| Tar Pit | B | Feathers | 110 | 145 | - | 3 | 2 | - | 64% for 2 s | - |
+| Tar Pit | B | Feathers | 110 | 130 | - | 3 | 2.8 | - | 76% for 2 s | - |
 | Longbow | A | War Bow | 70 | 170 | - | 16 | 2.5 | - | - | - |
 | Longbow | B | Quick Draw | 70 | 170 | - | 9 | 4.5 | - | - | - |
 | Mortar | A | Siege Shell | 190 | 220 | 70 | 140 | 1/3 | 70 | - | - |
@@ -570,7 +573,7 @@ Reloading starts a new run.
 |---|---|---|---|---|---|---|
 | Powder Keg | 1 | 90 | 60 | - | - | - |
 | Barricade | 3 | 0 | - | - | - | - |
-| Tar Barrel | 4 | 100 | - | 0.5 | - | 660 |
+| Tar Barrel | 4 | 120 | - | 0.4 | - | 540 |
 | Guards | 6 | 0 | - | - | - | - |
 | Fire Arrows | 7 | 90 | - | - | 26 | 660 |
 
@@ -631,14 +634,15 @@ Reloading starts a new run.
 - **Powder Keg.** 60 damage to each enemy inside, shields ignored. No zone.
 - **Zones.** The Tar Barrel and Fire Arrows act on the enemies inside at
   once and leave a zone at the point (`state.zones`, each with an id, its
-  type, point, radius and `ticksLeft`) for 660 ticks (11 s). Every wave
+  type, point, radius and `ticksLeft`). Tar lasts 540 ticks (9 s) and Fire
+  Arrows lasts 660 ticks (11 s). Every wave
   tick, in step 2b, each zone (oldest first) gives every live enemy inside
   it, flyers included, its effect, then counts down and is removed at 0.
   The effect stays for 60 ticks after an enemy leaves
   (`ZONE_LINGER_TICKS`). Sticky Tar extends the slow linger to 120 ticks.
   Several zones can exist at once; they do not stack (the slow and burn rules below decide). The wave
   clear removes every zone.
-- **Effects.** The Tar Barrel slows by 0.5 through the special slot
+- **Effects.** The Tar Barrel slows by 0.4 through the special slot
   (capped at 0.3 on either boss; a weaker special slow does not replace a
   stronger active one; tower slows neither block nor shorten it). Fire
   Arrows burn at 26 per second through the normal burn (`applyBurn`, as a
@@ -1711,7 +1715,10 @@ one inside. Otherwise, if a point works for the Powder Keg, the keg is
 thrown there. Otherwise it waits. The best point catches the most enemies;
 ties go to the point nearest the exit. The simulator also measures the combo
 with each special omitted in turn. When it omits Tar Barrel or Fire Arrows,
-the other takes its turn. The headless recorder fires each choice and writes it into the
+the other takes its turn. The R2a control instead skips the barrel when
+the standard policy would cast it and waits its full recharge, ending the
+wait on the next wave. This advances the zone rotation without firing
+another special on the skipped turn. The headless recorder fires each choice and writes it into the
 script's timed list (`timed`), so `playScripted` and the browser's
 `runScript` replay the same game.
 
@@ -1801,10 +1808,10 @@ Guards checks:
 
 ### Known weaknesses
 
-- The scripted combo often spends its shared charge better on Powder Keg or Fire Arrows. Omitting Tar Barrel raises final lives from 14 to 17 on Meadow, 11 to 12 on Switchback and 14 to 20 on Riverbend.
-- Tar Pit has the widest path gap at nine lives, exactly the P2 limit.
-- The Meadow Normal combo takes 1,316.5 s at 1x, just 3.5 s under the 22-minute limit.
-- A player who replaces a broken Barricade and spends spare charges on other specials can still win Switchback Hard with comboBuild's tower plan. At trail distance 1168 this policy finishes with eight lives. K3 measures spending every available charge on the wall from wave 3.
+- Giving every zone turn to Fire Arrows earns 17 lives on Meadow and 20 on Riverbend. The alternating policy earns 14 and 15. On Switchback, giving every zone turn to the barrel earns 17 lives against 13 for Fire Arrows.
+- In the milestone 49 trial, each Tar Pit path wins an adaptive comparison and the maximum gap is three lives. The trial still fails other Free play targets and the campaign gate. DEVLOG records the results. The reference matrix below remains the last accepted lock.
+- The Meadow Normal combo takes 1,299.3 s at 1x in the trial.
+- Before milestone 49, a player who replaced a broken Barricade and spent spare charges on other specials could win Switchback Hard with comboBuild's tower plan. At trail distance 1168 this policy finishes with eight lives. K3 measures spending every available charge on the wall from wave 3.
 
 ## Measured matrix
 

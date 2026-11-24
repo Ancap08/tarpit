@@ -22,8 +22,8 @@ describe('P3: the two branches favor different encounters', () => {
 
   it('Deep Tar slows the lone Troll more, Feathers reaches outlying Goblins', () => {
     const result = measured.tarpit;
-    expect(result.lone).toEqual([0.78, 0.64]);
-    // All ten are beyond 105 px, within path B’s reach. Feathers slows the front Goblin.
+    expect(result.lone).toEqual([0.78, 0.76]);
+    // The pack spans 125–134 px. Only Feathers reaches it and slows its foremost target in range.
     expect(result.pack).toEqual([0, 1]);
     expect(result.ok).toBe(true);
   });

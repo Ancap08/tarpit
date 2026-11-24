@@ -53,7 +53,7 @@ export const SPECIAL_RECHARGE_TICKS = 1200;
 export const SPECIAL_DEFS: Readonly<Record<SpecialType, SpecialDef>> = {
   keg: { unlockWave: 1, radius: 90, damage: 60, slow: 0, burnDps: 0, zoneTicks: 0 },
   barricade: { unlockWave: 3, radius: 0, damage: 0, slow: 0, burnDps: 0, zoneTicks: 0 },
-  tarBarrel: { unlockWave: 4, radius: 100, damage: 0, slow: 0.5, burnDps: 0, zoneTicks: 660 },
+  tarBarrel: { unlockWave: 4, radius: 120, damage: 0, slow: 0.4, burnDps: 0, zoneTicks: 540 },
   guards: { unlockWave: 6, radius: 0, damage: 0, slow: 0, burnDps: 0, zoneTicks: 0 },
   fireArrows: { unlockWave: 7, radius: 90, damage: 0, slow: 0, burnDps: 26, zoneTicks: 660 },
 };
