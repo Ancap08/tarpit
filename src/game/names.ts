@@ -231,6 +231,8 @@ export const SPECIAL_NAMES: Readonly<Record<SpecialType, string>> = {
   guards: 'Guards',
 };
 
+export const TAR_BARREL_DESCRIPTION = 'Tar and feathers. Enemies caught run back.';
+
 /** The HUD's special button label (milestone 25b). */
 export const SPECIAL_BUTTON_TEXT = 'Special';
 
@@ -603,7 +605,7 @@ function campaignTips(touch: boolean): Readonly<Record<number, readonly string[]
     2: ['Build a Cannon beside a bend.', 'Each blast hits Goblin Collectors that stand close together.'],
     3: ['Put a Tar Pit beside the trail to slow fast Revenue Hounds.', 'Build towers nearby to hit them as they slow down.'],
     4: ['Slow the Redcoat Shieldbearers with a Tar Pit.', 'Put a Fire Pot nearby. Tar makes the fire burn harder.'],
-    5: ['Longbows and Musketeers can hit flying Royal Harpies.', 'Fire Pots can hit Royal Harpies, but the fire won’t stick.', 'Drop a Tar Barrel on a crowd to slow it down.'],
+    5: ['Longbows and Musketeers can hit flying Royal Harpies.', 'Fire Pots can hit Royal Harpies, but the fire won’t stick.', 'Drop a Tar Barrel on a crowd and they run back.'],
     6: ['A Mortar shoots far but takes time between shots.', 'Aim at slow Toll Trolls. Keep bows for Royal Harpies.', 'It cannot hit enemies right beside it.'],
     7: [`${action} ${SPECIAL_BUTTON_TEXT} and choose Barricade.`, `${action} the trail ahead of a pack, near your towers.`, 'The wall holds walkers still while your towers fire.'],
     8: ['Send Guards ahead of a pack of Redcoat Shieldbearers.', 'Place them on the trail where your towers can help.', 'Drop Fire Arrows on a crowd to burn it.'],

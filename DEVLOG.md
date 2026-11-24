@@ -10585,3 +10585,16 @@ The pre-retune Barricade sweep K3 passes all six map/difficulty combinations. Be
 | C6 | Same untuned build | Both forced players finish level 7 at 3/20 against Good's 2/16 |
 | C7 | Add one gold to barrel-locked level 1 | The definition digest changes from d4f745… to ca3137… |
 | C8 | Set level 10 HP scale to 1.35 | Good loses all 16 reference lives, against a tolerance of two |
+
+### Crowd rendering and capture checks
+
+The eleven captures in `docs/review/m50/` show eight Collectors at impact. By the mid-run frame each has retreated 37 path pixels. Assessor Grumblefoot stays unmarked and advances 33.54 px in the tar. Painted was inspected at 390×844 and 960×580, with the same mid-run frame also checked in Classic and showpiece. Frozen test mode draws steady body marks. Live play produces a puff for each newly feathered enemy and a single impact sound for the cast.
+
+In local Chromium Canvas at 390×844, Painted with `?perf=1`, six fresh casts each landed on 30 enemies on both builds. The first cast warmed the renderer. The next five yielded 180 requestAnimationFrame intervals per build. Milestone 49 recorded 0 new featherings per cast and milestone 50 recorded 30. Both samples measured 16.7 ms median, 16.8 ms p95 and 16.8 ms maximum. This is a local comparison on the same machine.
+
+With no Free play retune, 64 of 78 local screenshot frames were pixel-identical to milestone 49. Fourteen changed in two baseline specs. The comparison used decoded local RGBA on both sides. No CI baseline files were updated.
+
+- `e2e/visual.spec.ts` (10) — act2.png, boon-icons.png, boss.png, endless-hud.png, grumblemaw.png, pack-call.png, painted-boss.png, reward-pick-wave10.png, special-tar-zone.png, won.png.
+- `e2e/visual-phone.spec.ts` (4) — phone-boss.png, phone-grumblemaw.png, phone-tar-zone.png, phone-won.png.
+
+The Grumblefoot frame retains the original selection criteria (alone, tarred and burning, with a Mortar hit two ticks earlier). It now occurs on tick 5226 instead of 5316, at (385,96) instead of (420,98), with 3418 instead of 3400 HP and 17 instead of 14 player lives. The level 5 tip uses 47 of the allowed 61 characters. The barrel line fits at normal and six-percent-wider text metrics on both viewports.

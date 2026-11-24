@@ -152,7 +152,7 @@ test('portrait boss: Grumblefoot with his bar on wave 10', async ({ page }) => {
       return t.hudText().boss;
     });
   }, GRUMBLEFOOT_STEPS);
-  expect(bar).toMatch(/^Assessor Grumblefoot 3400 \/ 4000$/);
+  expect(bar).toMatch(/^Assessor Grumblefoot 3418 \/ 4000$/);
   await settle(page);
   await shot(page, 'phone-boss.png');
 });
@@ -255,7 +255,7 @@ test('portrait Grumblemaw keeps his bar and effects on wave 20', async ({ page }
   await open(page);
   expect(await finalBossFrame(page)).toMatchObject({
     wave: 20,
-    bar: `${GRUMBLEMAW_NAME} 16810 / 21280`,
+    bar: `${GRUMBLEMAW_NAME} 16794 / 21280`,
     texture: 'boss',
     slowed: true,
     burning: true,
