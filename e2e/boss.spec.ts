@@ -4,7 +4,7 @@ import type { TarpitTestApi } from '../src/game/testGlobal';
 
 // Grumblefoot spawns during wave-10 tick 3900. With the current combo
 // build but without its timed wave-10 special, the first damage is from a
-// Longbow at step 5029 and Grumblefoot falls at step 6152.
+// Fire Pot at step 5069 and Grumblefoot falls at step 6256.
 
 const BOSS_SPAWN_STEPS = 3901;
 
@@ -71,9 +71,9 @@ test('the combo build meets Grumblefoot in wave 10: preview, bar, hp drop, kill,
   expect(end).toEqual({
     down: { kind: 'bossDown', enemyId: spawn.bossId, enemyType: 'boss', cause: 'shot' },
     phase: 'setup',
-    lives: 17,
+    lives: 13,
     pending: { wave: 10, options: ['stickyTar', 'hotCoals', 'quickHands'] },
-    tick: 6152,
+    tick: 6256,
     screen: null,
     boss: null,
   });

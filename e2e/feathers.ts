@@ -70,6 +70,20 @@ export function featherLabels(phone: boolean) {
     await checkLabel(page, 'special', waitLabel(BARREL_RECHARGE_TICKS));
     await page.evaluate(ticks => (window.__tarpit as TarpitTestApi).step(ticks), TICKS_PER_SECOND);
     await checkLabel(page, 'special', waitLabel(BARREL_RECHARGE_TICKS - TICKS_PER_SECOND));
+    const phase = await api(page, t => {
+      t.state().spawnedPerGroup.fill(999);
+      t.state().enemies = [];
+      t.step(1);
+      return t.state().phase;
+    });
+    expect(phase).toBe('setup');
+    const setupTicks = BARREL_RECHARGE_TICKS - TICKS_PER_SECOND - 1;
+    await checkLabel(page, 'special', waitLabel(setupTicks));
+    await page.evaluate(ticks => (window.__tarpit as TarpitTestApi).step(ticks), TICKS_PER_SECOND);
+    await checkLabel(page, 'special', waitLabel(setupTicks));
+    expect(await api(page, t => t.startWave().ok)).toBe(true);
+    await page.evaluate(ticks => (window.__tarpit as TarpitTestApi).step(ticks), TICKS_PER_SECOND);
+    await checkLabel(page, 'special', waitLabel(setupTicks - TICKS_PER_SECOND));
   });
 
   for (const [level, tip] of [

@@ -71,7 +71,7 @@ describe('boss.png frame content', () => {
     });
     // M50: the complete frame state after the crowd barrel, including shots and events.
     expect(createHash('sha256').update(JSON.stringify(s)).digest('hex')).toBe(
-      'b7af8f3384f8639addcf559acf43d1d5efc7a4f81c0b950372daeada0de01105',
+      '036a275f96e0e5087567c6fbb91ba64b9065c246d1e4ec3e236d9c230593ae77',
     );
   });
 });
