@@ -9698,3 +9698,37 @@ The five entries in each sequence are nominal, HP ×0.98, HP ×1.02, gold −10 
 | 18 | Two Hound groups arrive at different intervals | 12/12/12/12/12 | 1/6 | 7 lives | musketeer 1/8 | rationing 6/5/6/6/5, forcedMarch 4/4/4/4/3 | 13/14/13/13/14 |
 | 19 | Shorter reach and a stronger mixed ground assault | 13/14/13/13/13 | 1/11 | 3 builds | musketeer 1/5 | windowTax 5/3/6/5/6, curfew 5/4/6/5/5 | 14/15/13/14/14 |
 | 20 | Redcoats before the Harpies, later Assessor | 13/13/13/13/12 | 1/8 | 5 lives | all 0/0 | frozenPurse 7/7/7/5/7, curfew 6/6/5/5/6 | 13/13/13/15/13 |
+
+Verifier recheck (Claude Sonnet, independent run on d2edf89): merge, with the
+caveats below.
+
+- Levers: levels 1 to 10 byte for byte, 20 lives, star lines, every tower, enemy,
+  special and Free play number unchanged. The retune touched `src/sim` only in
+  levels, bots, campaign contexts and the gate (no rule code). HP scales 0.85 to
+  1.14, Window 5% and 8.5%, March 20% and 18%, Curfew 10 to 20%, No Loitering 8 s.
+  `npm run sim` is prefix-identical to main (441 lines, `cmp`). The 8.5% Window
+  Tax prices every tower exactly to 40 builds (pinned).
+- The table for levels 11 to 20 (three bots) and per level F1 at five settings,
+  F2, F3, V1's best single type, T1, T2 and S1 (15.33 to 13.70, handover +1, largest
+  drop 1) reproduce with my own runs: no cell differs. Second act 61.6 Good minutes.
+- Rules as stated. L1m on new levels is stricter than on levels 1 to 10: the old
+  rule only asks Good to keep its stars at a nudge; the new one also asks 13 lives
+  (one spare) from Good, and from taxed Person, at each nudge. Nominal has no spare
+  life rule (ordinary runs are 13 to 20). F2 and F3 are in `checkLevel` alone; the
+  campaign accidental-feat rule is gone. Not a penny has no F3 and ordinary Good
+  earns it on 13 and 14 (3/20 at all five settings): the rule as written allows it
+  and Person leaks 6 lives there, so it is Good-level play, not a Person feat.
+  V1 tries every allowed tower with `botGood`, which still upgrades (9 to 26
+  upgrades) and casts (4 to 22 specials) on one type.
+- Feats are worth earning. Person pursuing its feat ends 1/3 to 2/14, so every
+  feat costs a person a star. Reachability caveats: the feat-mode run sits on the
+  two-star line (12 lives, no spare) on 15, 16 and 18; levels 12, 17 and 19 need
+  22, 19 and 16 well-timed casts from a bot that aims to the tick; levels 13 and 14
+  need zero leaks across 6 to 7 waves.
+- Sound-count test: `e2e/sound.spec.ts` "a shot sounds when fired and its impact
+  only when the drawn projectile lands" measures real-time frame gaps. 10 runs
+  alone: 10 of 10 pass; 10 runs at 10 workers on a loaded machine: 2 fail on the
+  gap assertion; the full suite passed it. The file and the audio code are
+  untouched by this branch: a timing flake under load, not a real defect.
+- Checks: lint, typecheck, build pass; `npm test` 2687 passed in 80 s (two sim runs
+  alongside); full browser suite on three projects, 1016 passed, 8 skipped, 0 failed.

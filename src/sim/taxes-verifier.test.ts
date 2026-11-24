@@ -436,3 +436,21 @@ describe('feats: a life lost and regained', () => {
     expect(levelStars(s)).toBe(2);
   });
 });
+
+describe('the shipped Window Tax rates', () => {
+  it('every shipped rate (5% and 8.5%) prices every tower exactly (integer half-up on thousandths) up to 40 builds', () => {
+    const bad: string[] = [];
+    for (const level of LEVELS) {
+      const rate = level.taxes?.windowTax;
+      if (rate === undefined) continue;
+      const thousandths = Math.round(rate * 1000);
+      for (const type of TYPES) for (let n = 0; n < 40; n++) {
+        const s = createGame({ level });
+        s.towersBuilt = n;
+        const want = BASE_COST[type] + Math.floor((BASE_COST[type] * thousandths * n + 500) / 1000);
+        if (towerBuildCost(s, type) !== want) bad.push(`L${level.id} ${type} n=${n}`);
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+});
