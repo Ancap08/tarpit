@@ -2010,10 +2010,12 @@ twenty levels. The twenty-level L8 compares the first and last six stops.
 
 ### Campaign measurements
 
-This table records the accepted milestone 49 campaign. Milestone 50 uses
-HP scale 0.987 on level 9, The King's Assessor. Ordinary Good and Good
-forced to use the Feathers tower path each finish with 20 lives and three
-stars. The other milestone 50 measurements and gate results are in `DEVLOG.md`.
+Level 9 records the milestone 50 health adjustment from 1 to 0.987.
+Ordinary Good and Good forced to use the Feathers tower path each finish
+with 20 lives and three stars. Its milestone 49 measurements were 3/20,
+3/20 and 0/0 over 7.57 minutes, with 17 enemies alive at peak.
+The other rows record the accepted milestone 49 campaign. `DEVLOG.md`
+gives the complete milestone 50 measurements and gate results.
 
 Stars/lives give each bot’s highest award and surviving lives. Time counts Good’s combat ticks at 60 Hz. Enemies includes summons. Peak is the greatest number alive after any tick.
 
@@ -2027,7 +2029,7 @@ Stars/lives give each bot’s highest award and surviving lives. Time counts Goo
 | 6 | Heavy Feet | Riverbend | 7 | 331 | 270 | 1 | — | 2 | — | 2/15 | 2/14 | 0/0 | 8.41 | 10 | 56 |
 | 7 | Hold the Bend | Meadow | 8 | 738 | 245 | 1.3 | — | 2 | — | 2/16 | 2/12 | 0/0 | 8.13 | 28 | 53 |
 | 8 | Stand Fast | Switchback | 7 | 517 | 295 | 1.28 | — | 2 | — | 2/12 | 2/13 | 0/0 | 8.08 | 30 | 36 |
-| 9 | The King's Assessor | Riverbend | 7 | 535 | 255 | 1 | 6 | 3 | 5 | 3/20 | 3/20 | 0/0 | 7.57 | 17 | 42 |
+| 9 | The King's Assessor | Riverbend | 7 | 535 | 255 | 0.987 | 6 | 3 | 5 | 3/20 | 3/18 | 0/0 | 7.62 | 16 | 42 |
 | 10 | Last Light | Meadow | 7 | 633 | 280 | 0.925 | 5 | 3 | 5 | 2/16 | 2/13 | 0/0 | 8.89 | 19 | 36 |
 | 11 | Window Money | Riverbend | 6 | 326 | 245 | 0.91 | — | 3 | 1 | 2/20 | 2/14 | 0/0 | 5.91 | 23 | 21 |
 | 12 | The Quickstep | Switchback | 7 | 466 | 260 | 1.14 | — | 3 | 1 | 2/19 | 2/15 | 0/0 | 6.73 | 30 | 38 |

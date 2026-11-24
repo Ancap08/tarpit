@@ -997,7 +997,7 @@ export function comboWithoutSpecial(type: SpecialType, difficulty?: Difficulty, 
   return recordScript(followComboPlan(map), { difficulty, map, boons, specials: { forbid: type }, report });
 }
 
-/** C2 control: leave each barrel opportunity idle through its normal recharge. */
+/** The C2 control spends each barrel turn and its full wait without applying the barrel. */
 export function comboIdleBarrel(map: MapId, report?: RecordReporter): WaveScript {
   return recordScript(followComboPlan(map), { difficulty: 'normal', map, specials: { leaveBarrelUnused: true }, report });
 }
