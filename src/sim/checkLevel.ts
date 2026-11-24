@@ -372,6 +372,7 @@ export interface CampaignCheck {
   levels: readonly LevelCheck[];
   totalTicks: number;
   meanLivesDrop?: number;
+  stepUp?: { previousMean: number; secondMean: number; handover: number; largestDrop: number };
 }
 
 /** Combine local checks in play order. Each cohort has floor(N/3) levels. */
@@ -402,14 +403,20 @@ export function checkCampaign(levels: readonly LevelDef[], contexts: readonly Le
     if ((prev?.beginner && row.beginner && row.beginner.stars > prev.beginner.stars + 1) ||
       (earlier?.good && prev.good && row.good && earlier.good.lives < prev.good.lives && prev.good.lives < row.good.lives)) failed.add('L4');
   }
+  let stepUp: CampaignCheck['stepUp'];
   const boundary = contexts.findIndex(context => !context.frozenFirstAct);
   if (boundary >= GATE_LIMITS.priorStops && checked.every(row => row.person)) {
     const lives = checked.map(row => row.person!.lives);
     const second = lives.slice(boundary);
     const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
-    if (second[0] < lives[boundary - 1] ||
-      mean(lives.slice(boundary - GATE_LIMITS.priorStops, boundary)) - mean(second) < GATE_LIMITS.actMeanDrop ||
-      second.some((value, i) => i > 0 && second[i - 1] - value > GATE_LIMITS.maxPersonCliff)) failed.add('S1');
+    stepUp = {
+      previousMean: mean(lives.slice(boundary - GATE_LIMITS.priorStops, boundary)),
+      secondMean: mean(second),
+      handover: second[0] - lives[boundary - 1],
+      largestDrop: Math.max(0, ...second.slice(1).map((value, i) => second[i] - value)),
+    };
+    if (stepUp.handover < 0 || stepUp.previousMean - stepUp.secondMean < GATE_LIMITS.actMeanDrop ||
+      stepUp.largestDrop > GATE_LIMITS.maxPersonCliff) failed.add('S1');
   }
   if (new Set(levels.map(level => level.id)).size !== levels.length) failed.add('L7');
   const totalTicks = checked.reduce((sum, row) => sum + (row.good?.tick ?? 0), 0);
@@ -422,5 +429,5 @@ export function checkCampaign(levels: readonly LevelDef[], contexts: readonly Le
     meanLivesDrop = mean(checked.slice(0, cohort)) - mean(checked.slice(-cohort));
     if (meanLivesDrop < GATE_LIMITS.meanLivesDrop) failed.add('L8');
   }
-  return { ok: failed.size === 0, failed: [...failed], levels: checked, totalTicks, meanLivesDrop };
+  return { ok: failed.size === 0, failed: [...failed], levels: checked, totalTicks, meanLivesDrop, stepUp };
 }

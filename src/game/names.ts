@@ -3,8 +3,9 @@
 // is an edit here (plus regenerated screenshot baselines). Tests that check a
 // display string build it from these tables, so a rename changes no test.
 
+import { LEVELS } from '../sim/levels.ts';
 import { BOONS } from '../sim/boons.ts';
-import type { BoonId, Difficulty, EnemyType, LevelFeat, LevelTaxes, MapId, SpecialType, TargetingMode, TaxKind, TowerLevel, TowerType, UpgradePath } from '../sim';
+import type { BoonId, Difficulty, EnemyType, LevelDef, LevelFeat, LevelTaxes, MapId, SpecialType, TargetingMode, TaxKind, TowerLevel, TowerType, UpgradePath } from '../sim';
 
 /** The wave 10 boss (docs/SCOPE-v4.md, milestone 23): the HUD boss bar and the wave 10 preview. */
 export const BOSS_NAME = 'Assessor Grumblefoot';
@@ -396,6 +397,26 @@ export function starGoalText(lives: number, stars: 2 | 3): string {
   return `Finish with ${lives} lives for ${stars === 2 ? 'two' : 'three'} stars`;
 }
 
+const numberWords = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+const countWord = (n: number) => numberWords[n] ?? String(n);
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+const secondAct = LEVELS.filter(level => level.taxes);
+const permits = (id: number) => countWord(LEVELS.find(level => level.id === id)!.taxes!.rationing!);
+
+export function royalTaxNotice(level: LevelDef): string {
+  const t = level.taxes ?? {};
+  const lines: string[] = [];
+  const percent = (rate: number) => Number((rate * 100).toFixed(6));
+  if (t.windowTax !== undefined) lines.push(`Each tower built adds ${percent(t.windowTax)}% of base price to the next.`);
+  if (t.frozenPurse !== undefined) lines.push(`No kill money. ${t.frozenPurse} gold per wave cleared.`);
+  if (t.forcedMarch !== undefined) lines.push(`My collectors shall march ${percent(t.forcedMarch)}% faster.`);
+  if (t.curfew !== undefined) lines.push(`Every tower shall shoot ${percent(t.curfew)}% less far.`);
+  if (t.noLoitering !== undefined) lines.push(`${capitalize(countWord(t.noLoitering))} seconds between waves, save the first and last.`);
+  if (t.rationing !== undefined) lines.push(`I issue ${countWord(t.rationing)} tower permits.`);
+  if (level.endingBoss === 'grumblemaw') lines.push('I shall inspect them myself.');
+  return lines.join(' ');
+}
+
 /** Campaign cards and twist lines, keyed by the saved level id. */
 export const LEVEL_NAMES: Readonly<Record<number, { name: string; twist: string }>> = {
   1: { name: 'First Watch', twist: 'Cover the trail with Musketeers and Longbows.' },
@@ -413,9 +434,9 @@ export const LEVEL_NAMES: Readonly<Record<number, { name: string; twist: string 
   13: { name: 'Eight Bells', twist: 'Choose your next purchase before the bell.' },
   14: { name: 'Short Measure', twist: 'Cover the bends with overlapping fields of fire.' },
   15: { name: 'Pay Day', twist: 'Make each wave payment last.' },
-  16: { name: 'Three Permits', twist: 'Hold the trail with three towers standing.' },
+  16: { name: `${capitalize(permits(16))} Permits`, twist: `Hold the trail with ${permits(16)} towers standing.` },
   17: { name: 'Closing Time', twist: 'Find nearby targets before the next bell.' },
-  18: { name: 'Three at the Gate', twist: 'Give three towers time to stop a faster column.' },
+  18: { name: `${capitalize(permits(18))} at the Gate`, twist: `Give ${permits(18)} towers time to stop a faster column.` },
   19: { name: 'The Sash Levy', twist: 'Choose the site before paying for the windows.' },
   20: { name: 'The Last Writ', twist: 'Hold the river until the King arrives.' },
 };
@@ -434,6 +455,19 @@ export const STORY_TEXT = {
   continue: 'Continue',
 } as const;
 
+const SECOND_ACT_REPLIES: Readonly<Record<number, string>> = {
+  11: 'We put the money into the roof.',
+  12: 'Quick trip home, too.',
+  13: 'We built a tower before the bell stopped ringing.',
+  14: 'Stand a little closer, Your Majesty.',
+  15: 'Count it again. We earned every piece.',
+  16: 'We added a floor. Same permit.',
+  17: 'Our clock runs fine. How is yours?',
+  18: `${capitalize(permits(18))} were plenty.`,
+  19: 'We saved you a seat by the window.',
+  20: 'You had your look. The gold stays here.',
+};
+
 export const LEVEL_STORY: Readonly<Record<number, { notice: string; reply: string }>> = {
   1: { notice: 'A tax on doors. Collectors will call at yours.', reply: 'We kept the doors. And the gold.' },
   2: { notice: 'A tax on wheels, carts and anything that rolls.', reply: 'Our cannonballs roll. Collect those.' },
@@ -445,16 +479,9 @@ export const LEVEL_STORY: Readonly<Record<number, { notice: string; reply: strin
   8: { notice: 'A tax on neighbours helping neighbours.', reply: 'The neighbours say no.' },
   9: { notice: 'The Assessor will now count your gold. Personally.', reply: 'He lost count.' },
   10: { notice: 'Enough. The King is coming for the lot.', reply: endingLead },
-  11: { notice: 'For each tower you have built, add 5% of the base price to your next tower.', reply: 'We put the money into the roof.' },
-  12: { notice: 'Quick march. My collectors shall travel one fifth faster.', reply: 'Quick trip home, too.' },
-  13: { notice: 'Eight seconds between waves. I grant you time before the first and last.', reply: 'We built a tower before the bell stopped ringing.' },
-  14: { notice: 'By royal measure, every tower shall shoot 15% less far.', reply: 'Stand a little closer, Your Majesty.' },
-  15: { notice: 'No coin for a fallen collector. You may have 35 gold per wave cleared.', reply: 'Count it again. We earned every piece.' },
-  16: { notice: 'I issue three tower permits. Take one tower down to put another up.', reply: 'We added a floor. Same permit.' },
-  17: { notice: 'Towers shall reach one fifth less far. Eight seconds between waves, save the first and last.', reply: 'Our clock runs fine. How is yours?' },
-  18: { notice: 'Three towers may stand. My collectors shall march 15% faster.', reply: 'Three were plenty.' },
-  19: { notice: 'Each tower built adds 5% of base price to the next. All towers shoot a tenth less far.', reply: 'We saved you a seat by the window.' },
-  20: { notice: 'No kill money. Ninety gold per clear. Towers reach one fifth less far. I shall inspect them myself.', reply: 'You had your look. The gold stays here.' },
+  ...Object.fromEntries(secondAct.map(level => [level.id, {
+    notice: royalTaxNotice(level), reply: SECOND_ACT_REPLIES[level.id],
+  }])),
 };
 
 export const CAMPAIGN_TEXT = {
@@ -479,16 +506,9 @@ export const LEVEL_NEW: Readonly<Record<number, string>> = {
   8: 'Guards and Fire Arrows',
   9: 'Second upgrades and Assessor Grumblefoot',
   10: 'The full arsenal and King Grumblemaw',
-  11: 'Window Tax',
-  12: 'Forced March',
-  13: 'No Loitering',
-  14: 'Curfew',
-  15: 'Frozen Purse',
-  16: 'Rationing',
-  17: 'Curfew and No Loitering',
-  18: 'Forced March and Rationing',
-  19: 'Window Tax and Curfew',
-  20: 'Frozen Purse and Curfew',
+  ...Object.fromEntries(secondAct.map(level => [level.id,
+    (Object.keys(TAX_NAMES) as TaxKind[]).filter(key => level.taxes![key] !== undefined).map(key => TAX_NAMES[key]).join(' and '),
+  ])),
 };
 
 export function levelFeatText(feat: LevelFeat): string {
@@ -524,8 +544,8 @@ function campaignTips(touch: boolean): Readonly<Record<number, readonly string[]
     14: ['Check the ring before you build.', 'Keep the Mortar back. Its inner ring stays put.'],
     15: ['Kills pay nothing. Budget for the next wave.', 'Calling early still earns its bonus.'],
     16: ['Upgrades take no permit. Selling frees one.', `${action} a tower to see its upgrades.`],
-    17: ['Pick a bend where a short shot covers two turns.', 'Buy before the countdown ends.'],
-    18: ['Place your three towers where their rings overlap.', 'Upgrade them to keep up with the faster packs.'],
+    17: ['Pick a bend where a short shot covers both sides of the turn.', 'Buy before the countdown ends.'],
+    18: [`Place your ${permits(18)} towers where their rings overlap.`, 'Upgrade them to keep up with the faster packs.'],
     19: ['Check the shorter ring before you buy.', 'An upgrade costs the usual price.'],
     20: ['Keep bows near the trail to cover Royal Harpies.', 'Save part of each payment for the King.'],
   };

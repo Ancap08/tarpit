@@ -9679,3 +9679,22 @@ matches. Four gate and design findings below; none changes a shipped result.
   it; the tally and refusal at the cap; no tax line, tally or changed price in Free
   play or levels 1 to 10. The full suite on three projects: 1016 passed, 8 skipped,
   none failed. `npm test`: 54 s on a quiet machine, 117 s under load 9 to 17.
+
+### Second pass
+
+Across all five settings, Good earned every feat and ordinary Good and Person kept their required stars. At nominal, Person missed all ten feats both in ordinary play and when pursuing them. No single tower type earned two stars on a new stop. Person went from 13 lives at Last Light to 14 at Window Money. The mean fell from 15.33 on the preceding three stops to 13.70 in the second act, a 1.63-life drop, with a largest adjacent drop of one life. The three-permit levels passed with mixed defenses. All three capable runs on The Last Writ killed King Grumblemaw with tower fire. In the frozen first act, Longbows alone get two stars on seven stops. Cannon or Mortar adds an eighth at Hold the Bend.
+
+The five entries in each sequence are nominal, HP ×0.98, HP ×1.02, gold −10 and gold +10. F1 gives deliberate Good lives, all worth three stars. F2 gives deliberate Person stars/lives. F3 gives lives saved by casting or extra towers built above the feat limit. V1 gives the strongest single-type run. T1 gives the lives gained by removing each named tax independently. T2 gives ordinary Person lives under tax.
+
+| Stop | Level change | F1 | F2 | F3 | V1 | T1 | T2 |
+|---:|---|---|---|---|---|---|---|
+| 11 | More Redcoats and a tighter Troll escort | 15/16/14/13/15 | 1/7 | 7 lives | musketeer 1/7 | windowTax 6/4/7/6/6 | 14/16/13/14/14 |
+| 12 | Trolls and Redcoats ahead of the last Hound pack | 13/12/13/12/13 | 1/10 | 5 builds | musketeer 1/11 | forcedMarch 5/4/5/4/5 | 15/16/15/16/15 |
+| 13 | Goblin bounty before a heavier Troll finish | 20/20/20/20/20 | 2/14 | — | longbow 1/7 | noLoitering 5/5/5/4/6 | 14/15/14/14/14 |
+| 14 | A mixed Redcoat, Harpy and Troll finish | 20/20/20/20/20 | 2/14 | — | musketeer 1/8 | curfew 6/3/6/6/6 | 14/17/14/14/14 |
+| 15 | Delayed Harpies, then massed Redcoats | 12/12/12/12/13 | 1/10 | 3 lives | musketeer 1/10 | frozenPurse 7/7/7/6/7 | 13/13/13/13/13 |
+| 16 | Hounds reach the defense ahead of the Trolls | 12/12/12/12/12 | 1/8 | 5 lives | musketeer 1/8 | rationing 7/7/7/7/7 | 13/13/13/13/13 |
+| 17 | A dense Redcoat opening, then air pressure | 14/14/14/14/14 | 1/3 | 7 builds | musketeer 1/8 | noLoitering 6/6/6/6/6, curfew 6/6/6/6/6 | 14/14/14/14/14 |
+| 18 | Two Hound groups arrive at different intervals | 12/12/12/12/12 | 1/6 | 7 lives | musketeer 1/8 | rationing 6/5/6/6/5, forcedMarch 4/4/4/4/3 | 13/14/13/13/14 |
+| 19 | Shorter reach and a stronger mixed ground assault | 13/14/13/13/13 | 1/11 | 3 builds | musketeer 1/5 | windowTax 5/3/6/5/6, curfew 5/4/6/5/5 | 14/15/13/14/14 |
+| 20 | Redcoats before the Harpies, later Assessor | 13/13/13/13/12 | 1/8 | 5 lives | all 0/0 | frozenPurse 7/7/7/5/7, curfew 6/6/5/5/6 | 13/13/13/15/13 |

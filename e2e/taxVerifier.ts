@@ -44,14 +44,15 @@ const cellsOf = (level: LevelDef) => buildableCells(MAPS[level.map]).flatMap((ok
 export function taxVerifierSuite(touch: boolean) {
   test('Window Tax: every plaque equals the hand price and the gold taken, for 8 builds with sells between', async ({ page }) => {
     test.setTimeout(90_000);
-    const level = LEVELS[10]; // level 11, Window Tax 5%
+    const level = LEVELS[10];
+    const basisPoints = Math.round(level.taxes!.windowTax! * 10_000);
     await open(page, level);
     const cells = cellsOf(level);
     await api(page, t => t.cheatGold());
     for (let n = 0; n < 8; n++) {
       const seen = await plaques(page);
       for (const type of TYPES) {
-        const want = BASE[type] + Math.floor((BASE[type] * 5 * n + 50) / 100);
+        const want = BASE[type] + Math.floor((BASE[type] * basisPoints * n + 5000) / 10_000);
         expect(seen[type], `${type} plaque before build ${n + 1}`).toEqual([want]);
       }
       const type = TYPES[n % 6];
@@ -151,23 +152,27 @@ export function taxVerifierSuite(touch: boolean) {
     await waitForFirstScreen(page);
     await api(page, t => t.startLevel!(16));
     const cells = cellsOf(LEVELS[15]);
-    const [a, b, c, d] = cells;
+    const cap = LEVELS[15].taxes!.rationing!;
+    const occupied = cells.slice(0, cap);
+    const freed = occupied[cap - 1];
+    const spare = cells[cap];
+    await api(page, t => t.cheatGold());
     const text = () => page.evaluate(() => {
       const scene = window.__tarpit!.game.scene.getScene('game');
       return scene.children.list.filter(x => x.type === 'Text' && (x as Phaser.GameObjects.Text).visible).map(x => (x as Phaser.GameObjects.Text).text)
         .filter(s => /towers/.test(s) || /Rationing/.test(s));
     });
-    expect(await text()).toEqual(expect.arrayContaining(['0/3 towers', 'Rationing']));
-    for (const cell of [a, b, c]) expect((await page.evaluate(([x, y]) => window.__tarpit!.buildAt!(x, y, 'longbow'), [cell.col, cell.row] as const)).ok).toBe(true);
-    expect(await text()).toEqual(expect.arrayContaining(['3/3 towers', 'Rationing (full)']));
+    expect(await text()).toEqual(expect.arrayContaining([`0/${cap} towers`, 'Rationing']));
+    for (const cell of occupied) expect((await page.evaluate(([x, y]) => window.__tarpit!.buildAt!(x, y, 'longbow'), [cell.col, cell.row] as const)).ok).toBe(true);
+    expect(await text()).toEqual(expect.arrayContaining([`${cap}/${cap} towers`, 'Rationing (full)']));
     await press(page, 'bar:musketeer', touch);
     expect(await api(page, t => t.ui().pick)).toBeNull();
-    await mapPress(page, d.col, d.row, touch);
-    expect(await api(page, t => t.state().towers.length)).toBe(3);
-    expect((await page.evaluate(([x, y]) => window.__tarpit!.buildAt!(x, y, 'longbow'), [d.col, d.row] as const))).toMatchObject({ ok: false, reason: 'tower-cap' });
-    await page.evaluate(([x, y]) => window.__tarpit!.sellAt!(x, y), [c.col, c.row] as const);
-    expect(await text()).toEqual(expect.arrayContaining(['2/3 towers']));
-    expect((await page.evaluate(([x, y]) => window.__tarpit!.buildAt!(x, y, 'longbow'), [d.col, d.row] as const)).ok).toBe(true);
+    await mapPress(page, spare.col, spare.row, touch);
+    expect(await api(page, t => t.state().towers.length)).toBe(cap);
+    expect((await page.evaluate(([x, y]) => window.__tarpit!.buildAt!(x, y, 'longbow'), [spare.col, spare.row] as const))).toMatchObject({ ok: false, reason: 'tower-cap' });
+    await page.evaluate(([x, y]) => window.__tarpit!.sellAt!(x, y), [freed.col, freed.row] as const);
+    expect(await text()).toEqual(expect.arrayContaining([`${cap - 1}/${cap} towers`]));
+    expect((await page.evaluate(([x, y]) => window.__tarpit!.buildAt!(x, y, 'longbow'), [spare.col, spare.row] as const)).ok).toBe(true);
   });
 
   test('Free play and levels 1 to 10 show no tax line, no tally and the printed base prices', async ({ page }) => {
