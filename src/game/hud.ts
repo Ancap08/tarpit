@@ -83,6 +83,7 @@ import {
   PORTRAIT,
   PORTRAIT_GAP,
   TAXED_PORTRAIT,
+  TAXED_HUD_FONT_SIZE,
   PORTRAIT_STRIP_H,
   PORTRAIT_WIDTH,
   type Layout,
@@ -325,7 +326,7 @@ export const LANDSCAPE_HUD: HudMetrics = {
 function portraitHud(layout: Layout): HudMetrics {
   const { special, start, speed, mute, pause } = portraitRow2(1, layout);
   const taxed = layout === TAXED_PORTRAIT;
-  const size = taxed ? '21px' : '20px';
+  const size = taxed ? `${TAXED_HUD_FONT_SIZE}px` : '20px';
   const stripHeight = layout.map.y;
   const controlsY = stripHeight + layout.map.height;
   return {
@@ -338,7 +339,7 @@ function portraitHud(layout: Layout): HudMetrics {
       { x: 0, y: stripHeight - 2, width: PORTRAIT_WIDTH, height: 2 },
       { x: 0, y: controlsY, width: PORTRAIT_WIDTH, height: 2 },
     ],
-    statY: 15,
+    statY: taxed ? 14 : 15,
     statSize: size,
     goldX: 6,
     flowGap: taxed ? 8 : 14,
@@ -352,8 +353,8 @@ function portraitHud(layout: Layout): HudMetrics {
     pause,
     specialFont: '23px',
     startFont: '23px',
-    callFont: taxed ? '21px' : '23px',
-    menu: { left: special.x, top: controlsY, size: PORTRAIT_STACK, font: size },
+    callFont: '23px',
+    menu: { left: special.x, top: controlsY, size: PORTRAIT_STACK, font: taxed ? '21px' : '20px' },
     barTop: controlsY + PORTRAIT_GAP,
   };
 }
@@ -442,18 +443,23 @@ export class Hud {
       .text(m.cheat.x, m.cheat.y, CHEAT_MARK, { fontFamily: FONT, fontSize: m.cheat.size, fontStyle: 'bold', color: TEXT.cheatMark })
       .setOrigin(m.cheat.originX, 0.5)
       .setVisible(false);
-    if (layout === TAXED_PORTRAIT) {
-      this.cheatMark.setStyle({ metrics: { ascent: statSize, descent: 4, fontSize: statSize + 4 } });
-      this.next.setStyle({ metrics: { ascent: 18, descent: 6, fontSize: 24 } });
-    }
     // Milestone 33: Start Wave's own sound is the horn (or Call next's), so its click plays no tap.
     this.startButton = new Button(scene, m.start, START_WAVE_TEXT, handlers.onStartWave, m.portrait ? { fontSize: m.startFont, sound: null } : { sound: null });
+    const startWrapWidth = m.start.width - 6;
     if (m.portrait) {
-      // Reserve two lines inside the wave plaque, including ascenders and descenders.
-      // Wrap at the tall phone's width; a narrower plaque scales the same two lines.
+      // Fixed metrics reserve two lines, including ascenders and descenders.
       this.startButton.labelObjects[0]
         .setStyle({ metrics: { ascent: 23, descent: 6, fontSize: 29 } })
-        .setWordWrapWidth(m.start.width - 6, true);
+        .setWordWrapWidth(startWrapWidth, true);
+    }
+    if (layout === TAXED_PORTRAIT) {
+      // Keep wide fallback text inside the plaques and the two-line preview.
+      for (const label of [this.gold, this.lives, this.wave, this.tag, this.next,
+        this.specialButton.labelObjects[0], this.startButton.labelObjects[0]]) {
+        label.setLetterSpacing(-1);
+      }
+      this.cheatMark.setStyle({ metrics: { ascent: statSize, descent: 4, fontSize: statSize + 4 } });
+      this.next.setStyle({ metrics: { ascent: 18, descent: 6, fontSize: 24 } });
     }
     this.speedButton = new Button(scene, m.speed, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress, fontSize: m.portrait ? m.startFont : undefined });
     this.specialMenu = new SpecialMenu(scene, m.menu.left, m.menu.top, handlers.onSpecialPick, layout.map.y, m.menu.size, m.menu.font);
@@ -479,6 +485,7 @@ export class Hud {
         if (row.pause.width !== m.pause.width) {
           Object.assign(m, row);
           this.startButton.setWidth(row.start.width);
+          if (layout === TAXED_PORTRAIT) this.startButton.labelObjects[0].setWordWrapWidth(Math.min(startWrapWidth, row.start.width), true);
           this.speedButton.moveTo(row.speed.x, row.speed.y);
           this.muteButton.setRect(row.mute);
           this.pauseButton.setSize(row.pause.width, row.pause.height);

@@ -101,7 +101,7 @@ async function checkHud(page: Page, level: LevelDef, phase: 'setup' | 'wave' | '
     expect.soft(label.visible && !!label.text, detail + ' visible').toBe(true);
     expect.soft(label.padding, detail + ' inside its panel or plaque').toBeGreaterThanOrEqual(0);
     expect.soft(label.uniform, detail + ' keeps glyph proportions').toBe(true);
-    const minimum = height === 844 || ['taxLine', 'tally', 'speed'].includes(label.id) ? 12 : 11.1;
+    const minimum = height === 844 || ['taxLine', 'tally', 'speed'].includes(label.id) ? 12 : 11.6;
     expect.soft(label.size, detail + ' CSS px').toBeGreaterThanOrEqual(minimum);
     test.info().annotations.push({ type: 'font', description: height + ' ' + detail + ' ' + label.size.toFixed(2) });
   }

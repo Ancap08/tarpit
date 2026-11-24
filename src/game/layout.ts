@@ -158,6 +158,7 @@ export const PORTRAIT = new Layout(
 // Taxed games reserve another line above the map. The two control rows gain
 // 3 px each to keep their physical targets when FIT scales the taller board.
 export const TAXED_CONTROL_H = 73;
+export const TAXED_HUD_FONT_SIZE = 22;
 export const TAXED_PORTRAIT = new Layout(
   'portrait',
   { width: PORTRAIT_WIDTH, height: PORTRAIT_HEIGHT + 32 + 2 * (TAXED_CONTROL_H - PORTRAIT_BUTTON_H) },

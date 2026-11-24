@@ -7,7 +7,7 @@ import type Phaser from 'phaser';
 import { TOWER_DEFS, towerBuildCost, allowedTowers, type GameState, type TowerType } from '../../sim';
 import type { Rect } from '../input';
 import { drawTowerShape } from '../draw/towers';
-import { LANDSCAPE, TAXED_PORTRAIT, type Layout } from '../layout';
+import { LANDSCAPE, TAXED_HUD_FONT_SIZE, TAXED_PORTRAIT, type Layout } from '../layout';
 import type { PaintedSkin } from '../skin/painted';
 import { portraitBarRects } from './geometry';
 import { TOWER_NAMES, towerCountText } from '../names';
@@ -52,7 +52,7 @@ export class BuildBar {
   constructor(scene: Phaser.Scene, top: number, onClick: (type: TowerType) => void, private readonly layout: Layout = LANDSCAPE, painted?: PaintedSkin) {
     const portrait = layout.kind === 'portrait';
     const rects = barRects(layout, top);
-    const priceSize = layout === TAXED_PORTRAIT ? 21 : 20;
+    const priceSize = layout === TAXED_PORTRAIT ? TAXED_HUD_FONT_SIZE : 20;
     this.buttons = BAR_TYPES.map((type, i) =>
       portrait
         ? new Button(scene, rects[i], String(TOWER_DEFS[type].cost), () => onClick(type), { fontSize: `${priceSize}px`, labelY: COST_Y })

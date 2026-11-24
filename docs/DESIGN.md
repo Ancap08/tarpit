@@ -1379,7 +1379,7 @@ drawn and where touches land differ.
 - **Taxed portrait levels** use a 480 × 1232 canvas. The 108 px status strip
   has a row for gold, lives, wave and level, a row for taxes and the cheat
   mark, then two 24 px preview lines starting at y=58. Stats, previews and
-  tower prices use 21 px type. The tax names and tower tally use 23 px.
+  tower prices use 22 px type. The stat row is centred at y=14. The tax names and tower tally use 23 px.
   When the cheat mark is visible, the tax row lists names only and the build
   bar shows the permit count. Aiming uses the preview space for the action and
   its touch or mouse hint. The map still measures 480 × 960. Both control
@@ -1387,7 +1387,12 @@ drawn and where touches land differ.
   wide with 4 px gaps. The lower plaques have 2 px gaps, a 115 px Special
   and a 73 px speed button. The two icon buttons grow from 73 to 82 px at
   the shorter phone height. The wave plaque takes the remaining width.
-  The boss name and HP use 21 px type in 28 px boxes. On a feat result,
+  All wave-button states use 23 px type with a fixed 29 px line height. The
+  label wraps to the available plaque width on the shorter phone. The stats,
+  preview, Special and wave button use −1 px letter spacing. The boss name
+  and HP use 22 px type in 28 px boxes. At 390 × 664 the HUD labels measure
+  at least 11.6 CSS px, with 12 CSS px for taxes, the tally and speed. At
+  390 × 844 every HUD label measures at least 12 CSS px. On a feat result,
   23 px text and 82 px buttons keep the controls readable and tappable
   at the shorter height.
 - **The transform.** `src/game/layout.ts` owns every world-to-screen and

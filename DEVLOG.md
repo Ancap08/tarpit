@@ -10033,3 +10033,17 @@ and containment at both heights with one or two taxes, through combat,
 planning and results, in normal type and both fixed font modes.
 
 The second-act cards now use the retuned level records with the commissioned notices. Three Permits tells the player to use the permits and leave specials unused. Closing Time recommends upgrading after the second build. The layout checks cover every tax combination and both feat verdicts on every second-act stop, in landscape and at both phone heights with normal and fixed font metrics. The refreshed result captures show Bare hands earned on level 16 and Few hands missed on level 17. The Showpiece isolation reference is the rules-and-screens merge `818e86d`. All 72 Painted and Classic canvas comparisons matched that build, and 12 cold starts made no Showpiece requests. The phone comparison also checks both roads and the taxed Meadow game against Painted.
+
+**Short phone HUD, CI fix 1.** Linux measured “Boss wave next” at 11.022
+CSS px. With only the 390 × 664 floor raised from 11.1 to 11.6, the taxed
+label spec failed seven cases on the Mac at `7c06ab5`. The six tall-phone
+cases passed. The normal and fixed Caslon boss previews measured 11.318
+CSS px and fixed fallback measured 11.119. Stats, previews, prices and
+boss labels also fell below the new floor.
+
+The taxed wave button now uses one 23 px font through every state. This
+keeps its fixed two-line metrics when the wording changes. Narrower
+letter spacing and wrapping at the short plaque's width make room for the
+label. “Boss wave next” measured 11.866 CSS px in all three modes. Across
+all ten taxed levels the smallest short-phone HUD text measured 11.857 CSS
+px. The full map and both control rows fit within the existing frame.
