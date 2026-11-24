@@ -9764,3 +9764,16 @@ Recovery needs ten seconds of headroom and a 30-second cooldown that doubles
 on each further drop in the level. Farm details fade between tiers. Holding
 a tower ghosts the scenery to 12%. Cancelling restores it. Building on a piece
 fades it out over 300 ms with a dust puff, and freeing the cell brings it back.
+
+After integrating milestones 45 and 46, the pasture, crews, falling spoils,
+camera and fireworks use the town's pausable clock. The governor skips the
+first two frames after Resume and measures its recovery in active play time.
+The exit town shares Meadow's daylight. Its residents supply the tossed hats
+and its flag replaces the victory pole in the earlier cost table. The farm
+buildings clear the town in both layouts. Landscape fireworks now open in
+the side margins of the wider result sheet. The refreshed films run 39 seconds
+and weigh 3.59 MB in landscape and 2.34 MB on phone. Against the pause tip
+`2fb9fc0` (the CI baseline update to `a9b67a1`), all 72 Painted and Classic canvas comparisons matched, and 12
+cold starts requested no showpiece assets. First Watch finished in the
+same full state in Painted and at each showpiece tier, both uninterrupted
+and with a pause in each of its six waves.
