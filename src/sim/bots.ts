@@ -276,18 +276,6 @@ function chooseSpecial(state: GameState, lastZone: SpecialType | undefined, poin
 
 export const botGood: BotPolicy = { purchase: goodPurchase, purchaseTicks: POLICY_CHECK_TICKS, reward: goodReward, special: goodSpecial };
 
-/** An opt-in run that obeys the public third-star condition. */
-export const botGoodFeat: BotPolicy = {
-  ...botGood,
-  purchase(state) {
-    const feat = state.level?.feat;
-    return goodPurchase(state, false, feat?.kind === 'maxTowers' ? feat.limit : Infinity);
-  },
-  special(state, lastZone) {
-    return state.level?.feat?.kind === 'noSpecials' ? undefined : goodSpecial(state, lastZone);
-  },
-};
-
 export const PERSON_LOOK_TICKS = 3 * TICKS_PER_SECOND;
 export const PERSON_REACTION_TICKS = 1.5 * TICKS_PER_SECOND;
 export const PERSON_AIM_GRID = 48;
@@ -353,6 +341,23 @@ export const botPerson: BotPolicy = {
   reward: goodReward,
   special: personSpecial,
 };
+
+/** Keep the player's placement, reward and timing policy while pursuing the public feat. */
+function pursueFeat(player: BotPolicy, rotatePlacements: boolean): BotPolicy {
+  return {
+    ...player,
+    purchase(state) {
+      const feat = state.level?.feat;
+      return feat?.kind === 'maxTowers' ? goodPurchase(state, rotatePlacements, feat.limit) : player.purchase(state);
+    },
+    special(state, lastZone) {
+      return state.level?.feat?.kind === 'noSpecials' ? undefined : player.special(state, lastZone);
+    },
+  };
+}
+
+export const botGoodFeat = pursueFeat(botGood, false);
+export const botPersonFeat = pursueFeat(botPerson, true);
 
 /** Run to a terminal state or stop between waves at the optional wave cap. */
 export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity, maxTicks = 60 * 60 * TICKS_PER_SECOND): BotRun {

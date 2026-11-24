@@ -233,7 +233,7 @@ try {
   const campaign = checkCampaign(LEVELS, CAMPAIGN_CONTEXTS);
   console.log('\nSecond act (stars/lives)');
   campaign.levels.slice(10).forEach((row, index) => printLevel(row, index + 10));
-  console.log(`Twenty levels: ${minutes(campaign.totalTicks)} minutes. ${campaign.ok ? 'P1–P2, L1–L8, T1–T3 and F1 pass' : 'MISS ' + campaign.failed.join(', ')}`);
+  console.log(`Twenty levels: ${minutes(campaign.totalTicks)} minutes. ${campaign.ok ? 'P1–P2, L1–L8, T1–T3, F1–F3, V1 and S1 pass' : 'MISS ' + campaign.failed.join(', ')}`);
   if (!firstAct.ok || !campaign.ok) process.exitCode = 1;
 } finally {
   await server.close();

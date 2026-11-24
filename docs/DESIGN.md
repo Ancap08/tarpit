@@ -1824,7 +1824,7 @@ On feat-bearing or taxed levels, after the opening, Good spends 0.5 seconds
 per purchase and Person and Beginner spend 3 seconds. A wave can start while
 they are deciding. Each starts manually once shopping finishes. Tax removal
 trials keep this same clock. With Frozen Purse the capable bots spend available
-funds without holding the usual 30 gold in reserve. Feat-mode Good forgoes
+funds without holding the usual 30 gold in reserve. In feat mode each bot keeps its usual timing, aim, reward and placement choices. It forgoes
 specials for Bare hands, stops new builds at the Few hands limit, and uses
 its ordinary leak-prevention strategy for Not a penny.
 
@@ -1861,6 +1861,13 @@ The level record can declare an ending boss. A separate context names the introd
 | L6 HP factors | 0.95–1.05 |
 | L6 starting gold factors | 0.85–1.15 |
 | T1 minimum lives gained by removing one tax, or one more star | 3 |
+| F3 minimum lives saved by specials on Bare hands | 3 |
+| F3 minimum extra builds above the Few hands limit | 3 |
+| V1 maximum stars with one tower type | 1 |
+| L1m new-level minimum spare lives above the two-star line at a nudge | 1 |
+| S1 comparison stops before the second act | 3 |
+| S1 minimum drop in Person’s mean lives | 1.5 |
+| S1 maximum drop in Person’s lives between adjacent second-act stops | 5 |
 
 - P1 checks Person’s stars and surviving lives against Good. P2 runs Person with an empty list of allowed specials. The two bands that allow a loss still report that run.
 - L1 and L2 apply the Good and Beginner star limits in the band table. L1m requires Good to keep its band minimum at HP ×0.98, HP ×1.02, starting gold −10 and starting gold +10, varying one input at a time on every level.
@@ -1878,7 +1885,12 @@ twenty levels. The twenty-level L8 compares the first and last six stops.
 - T1 removes each tax separately, leaving the other tax, feat, waves and economy in place. Person must gain at least three lives or one star at nominal and under each of the four L1m nudges.
 - T2 requires Person to earn at least two stars under the taxes at nominal, and at least one at each nudge.
 - T3 compares first appearances with the declared tax introduction in campaign order. A new tax must appear alone.
-- F1 requires Good in feat mode to earn three stars on each feat level. Beginner can never earn three on these levels. Across the feat levels, at most half may yield the third star to either ordinary Good or Person.
+- F1 requires three stars for feat-mode Good at nominal and each of the four L1m nudges. Beginner must miss the third star at nominal.
+- F2 rejects a level if ordinary Person or feat-mode Person earns three stars at nominal. No campaign stop may award Person an accidental feat. Ordinary Good can earn Not a penny because leak prevention is already its normal strategy.
+- F3 compares ordinary Person with the same player pursuing Bare hands. Specials must save at least three lives. For Few hands, ordinary Person must build at least three towers beyond the feat limit. Not a penny has no additional F3 test.
+- V1 runs Good once per permitted tower type in late and finale bands, keeping the full special and upgrade options. Each single-type run must finish below two stars. The frozen first act is exempt to preserve its shipped levels, scores and saved-star meaning. Before the retune, Musketeers or Longbows alone earned two stars on eight of its ten levels.
+- L1m also applies to each new level. At each nudge Good must retain its required stars. A required two-star finish for Good or taxed Person must have at least one life to spare. Nominal star awards use the original thresholds.
+- S1 compares Person’s nominal lives across the second act against the final three stops of the first act. The first new stop must leave at least as many lives as the preceding finale. The second-act mean must drop by at least 1.5 lives and no adjacent second-act drop may exceed five.
 
 ### Campaign measurements
 

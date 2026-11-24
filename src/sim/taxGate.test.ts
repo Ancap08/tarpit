@@ -30,12 +30,12 @@ describe('tax gate rejection witnesses', () => {
     expect(result.failed).toContain('F1');
   }, 60_000);
 
-  it('F1 rejects a campaign where normal play earns more than half the feats by accident', () => {
+  it('F2 rejects an accidental feat both alone and in a campaign', () => {
     const result = checkCampaign([easy], [{ ...late, introducesTax: 'rationing' }]);
     const [row] = result.levels;
     expect([row.good?.stars, row.person?.stars, row.featGood?.stars, row.beginner?.stars]).toEqual([3, 3, 3, 2]);
-    expect(row.failed).not.toContain('F1');
-    expect(result.failed).toContain('F1');
+    expect(row.failed).toContain('F2');
+    expect(result.failed).toContain('F2');
   }, 60_000);
 
   it('T3 rejects a first appearance beside a second tax, and undeclared or repeated introductions', () => {
