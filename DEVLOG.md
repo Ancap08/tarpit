@@ -10656,3 +10656,36 @@ The following eight edits were tested together in memory, after measuring the un
 | 20 | 2/14 | 2/13 | 0/0 | 2/15 | 2/14 | pass |
 
 Seventeen levels pass locally. Both C6 policies pass on all twenty. C8 scores are 20/14/14 against 20/16/13. Level 7 still fails L3 at −2% HP. Good ties the Barricade-removal control and needs two more lives or a better star. Level 8 fails L3. Level 19 still fails F2. The first-act Good mean drop reaches exactly 3 lives over 72.20 combat minutes. Across twenty levels it is 2.33 against 3 (four additional lives of total separation between the two six-level cohorts would suffice). S1 passes, with Person at 16.67 and 14.30 lives, an even handover and a largest drop of three. Total combat time is 133.03 minutes.
+
+### Stop at Stand Fast (level 8)
+
+C5 cannot pass with the authorized levers. L3 requires Good to gain two lives or a star by having Guards and Fire Arrows available. Person must gain at least one life. Both comparisons must hold at the nominal settings, HP ×0.98, HP ×1.02, starting gold −10 and starting gold +10. Removing the two specials keeps the barrel. At today's settings Good changes from 5 barrels, 5 Fire Arrows and 17 lives to 10 barrels, no Fire Arrows and 18 lives. Its nominal gain is −1 against +2 required. Person changes from 5 barrels and 16 lives to 10 barrels and 15 lives.
+
+Level 8 has fixed HP and no growth-start wave. Its 295 starting gold and 1.28 HP scale, the ±15% rule and the existing L7 limits admit the 50 integer gold values 251–300 and HP scale 1.088–1.35. The waves contain only Wolves, Harpies, Shieldbearers and Trolls. Spawn HP is rounded once from base HP 20, 36, 70 and 950 respectively. There is no boss, growth wave or reward on this level.
+
+The search split the full HP interval at every half-integer spawn-HP boundary for the nominal and both nudged HP factors. It evaluated the endpoints, immediately adjacent floating-point values and interval interiors, grouping identical HP vectors. This gives 280 nominal HP vectors and 833 distinct combinations of nominal and nudged vectors. All 833 × 50 = 41,650 combinations were screened with the ordinary bots. Runs with the same HP vector shared a score across adjacent gold values only while every affordability comparison in every purchase retained the same result. Held-out full gate runs at individual settings reproduced the comparisons.
+
+No combination passed the six Good/Person comparisons at nominal, −10 and +10 gold, even before requiring the two HP nudges. The four search partitions covered 10,400, 10,400, 10,400 and 10,450 combinations, using 2,432, 2,457, 2,968 and 3,072 measured bot runs. Repeated simulations of identical behavior are excluded from these run counts.
+
+For a concrete near miss, HP 1.226 and gold 293 passes both players at nominal and at 283 gold, 20 lives with the specials versus 18 without. At 303 gold, Good finishes 17 versus 19, four lives short of the required advantage. Person finishes 13 versus 13, one short. At −2% HP, both players tie 20–20. At +2% HP, Good finishes 19 versus 20 and Person finishes 20 versus 18. This is a measured near case, with other local gate labels passing.
+
+Second-act wave changes and Free play health changes cannot repair the level 8 comparison. A decision to keep crowd feathering and the existing gate would have to open an additional first-act lever. The narrowest proposed change of scope is permission to retune level 8 wave contents. No first-act waves or star lines were edited. The branch keeps the barrel and the measurement tools, with all shipped level numbers, both difficulty tables and the accepted report digest intact. The tables above preserve the joint trial so that future work can reproduce it.
+
+### Verification of the retained branch
+
+| Target | Branch | Measured result |
+|---|---|---|
+| C1 | Pass | Eight eligible enemies, including a Harpy and an enemy on the circle boundary, emit eight feather events. The repeat emits zero. Both bosses and the enemy outside stay unmarked. |
+| C2 | Pass | Standard gains 11/6/12 lives over skipping its barrel turns. |
+| C3 | Pass | Meadow all-barrel wins 20–17 over all-Fire-Arrows. |
+| C4 | Fail | 15 of the 91 core target rows miss before the path, boon, blocker and report-lock checks. The measured digest was retained as evidence and the accepted digest was preserved. |
+| C5 | Fail | 11/20 local passes on the branch and 17/20 in the combined campaign trial. Level 8 exhausts the allowed first-act levers. |
+| C6 | Fail | Both forced bots earn a third star on level 7 against ordinary Good's two. The combined trial passes on all twenty. The independent path-only verifier pins pass on the branch. |
+| C7 | Pass | All twenty original level definitions match. The complete no-barrel output of Good, Person and Beginner matches all twenty reference digests. |
+| C8 | Pass | Good on levels 9/10/20 finishes 20/17/14 against 20/16/13. |
+
+Lint, typecheck, production build, 219 asset checks and size checks pass. The build contains 3,768,184 bytes across 30 files against the 20 MB budget. Vitest passes 2,643 of 2,829 tests in 130 files; 186 assertions fail in 18 files. Failures include live balance bands, campaign gates, old matrix values, boss/fixture outcomes, and historical end-state/report locks. The failing reference values were left visible. The focused feather tests, including the verifier's independent four-life cap, pass.
+
+The full Playwright run on port 4373 took 14.1 minutes across Chromium, tablet and phone. It passed 1,157 tests, skipped eight and failed seven. Wave 8's crowd frame had 17 opening lives instead of 14. An independent scan still found its first peak of 22 enemies on tick 1396. The other six failures were two unchanged scene-restart checks on all three projects. The new barrel makes the existing lazy feather textures reachable in these playthroughs. Both texture keys survived a scene restart; the creating scene now releases them on shutdown. The rebuilt preview passed all seven failures in a focused rerun. Port 4373 was released. All 10 focused animation unit tests passed.
+
+The retained branch's complete `npm run sim` exited 1. It measured 132.89 combat minutes across twenty levels and reported R6, L3, L8, T1, F2, L6 and L4. The two extra C6 diagnostics both occur on level 7. The Free play report digest matches the pre-retune measurement above.
