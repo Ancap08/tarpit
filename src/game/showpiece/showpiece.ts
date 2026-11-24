@@ -2,6 +2,7 @@
 // Play on a qualifying Meadow visit. The regular game retains Painted's UI.
 import type Phaser from 'phaser';
 import type { GameState, Shot } from '../../sim';
+import type { GameScene } from '../GameScene';
 import type { Layout } from '../layout';
 import { SHOWPIECE_DETAIL } from '../names';
 import { DetailGovernor, type Detail } from './governor';
@@ -10,6 +11,9 @@ import { loadPasture, Pasture } from './pasture';
 import { ShowpieceBattle } from './battle';
 
 export { loadPasture };
+
+// Rotation rebuilds the display around the same level. Play again creates a new state.
+const governors = new WeakMap<GameState, DetailGovernor>();
 
 export class Showpiece {
   readonly battle: ShowpieceBattle;
@@ -23,11 +27,13 @@ export class Showpiece {
   private time = 0;
   private labelTier = -1;
 
-  constructor(scene: Phaser.Scene, layout: Layout, density: 1 | 2, zones: Phaser.GameObjects.Graphics, private readonly frozen: boolean) {
+  constructor(scene: GameScene, layout: Layout, density: 1 | 2, zones: Phaser.GameObjects.Graphics, private readonly frozen: boolean) {
     const query = new URLSearchParams(location.search);
     const perf = query.get('perf') === '1';
     const pin = perf ? query.get('showpieceTier') : null;
-    this.quality = new DetailGovernor(pin !== null && /^[012]$/.test(pin) ? Number(pin) as Detail : undefined);
+    this.quality = governors.get(scene.state) ?? new DetailGovernor(pin !== null && /^[012]$/.test(pin) ? Number(pin) as Detail : undefined);
+    this.quality.resetWindow();
+    governors.set(scene.state, this.quality);
     this.camera = new MeadowCamera(scene, layout);
     this.pasture = new Pasture(scene, layout, density, zones);
     this.battle = new ShowpieceBattle(scene, layout, zones, frozen);

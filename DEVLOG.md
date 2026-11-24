@@ -9645,3 +9645,11 @@ detached build of 5a24b12.
 - Whole tree: lint, typecheck, `npm test` (118 files, 2,499 tests),
   build, `check:assets`, `check:size`, and Playwright 903 passed, 8 skipped (all
   skips pre-existing), none failed. The recordings are 3.6 MB and 2.4 MB.
+
+### Fixes after verification
+
+The two-minute boundary trace now changes tier once, from high to medium.
+Recovery needs ten seconds of headroom and a 30-second cooldown that doubles
+on each further drop in the level. Farm details fade between tiers. Holding
+a tower ghosts the scenery to 12%. Cancelling restores it. Building on a piece
+fades it out over 300 ms with a dust puff, and freeing the cell brings it back.
