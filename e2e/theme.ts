@@ -6,6 +6,7 @@ import { LANDSCAPE, PORTRAIT } from '../src/game/layout';
 import { bossBarGeometry } from '../src/game/ui/bossBar';
 import { api, press } from './campaign';
 import { useTallFontMetrics } from './campaignFont';
+import { hudButtonSuite } from './hudButtonLabels';
 import { momentBannerSuite } from './momentBanners';
 import { settle } from './painted';
 import { waitForFirstScreen, waitForTitle } from './title';
@@ -34,6 +35,7 @@ async function checkLabels(page: Page, wanted: string[], area: Rect, controls?: 
 
 export function themeSuite(touch: boolean) {
   momentBannerSuite(touch);
+  hudButtonSuite();
   for (const fallback of [false, true]) {
     test(`pause plaque and panel fit with tall metrics and wide digits (${fallback ? 'fallback' : 'Caslon'})`, async ({ page }) => {
       await useTallFontMetrics(page, fallback);
@@ -49,14 +51,18 @@ export function themeSuite(touch: boolean) {
       const boxes = await api(page, t => t.uiRects());
       const labels = await api(page, t => t.campaignLabels());
       const pause = boxes.pause;
-      expect(labels.filter(label => overlap(label, pause)).map(label => label.text)).toEqual(['Pause']);
+      const portrait = await api(page, t => t.layout() === 'portrait');
+      const pauseLabels = labels.filter(label => overlap(label, pause));
+      expect(pauseLabels.map(label => label.text)).toEqual(portrait ? [] : ['Pause']);
+      if (!portrait) expect(contained(pauseLabels[0], pause)).toBe(true);
+      await expect(page.getByRole('button', { name: 'Pause', exact: true })).toHaveCount(1);
       for (const [name, r] of Object.entries(boxes)) {
         if (name !== 'pause') expect(overlap(pause, r), name).toBe(false);
       }
       const start = labels.find(label => label.text === 'Start Wave')!;
       expect(contained(start, boxes.startWave)).toBe(true);
-      expect(contained(labels.find(label => label.text === 'Pause')!, pause)).toBe(true);
-      await api(page, t => t.pause());
+      await page.getByRole('button', { name: 'Pause', exact: true }).press('Enter');
+      expect(await api(page, t => t.paused())).toBe(true);
       const map = await api(page, t => t.layout()) === 'portrait' ? PORTRAIT.map : LANDSCAPE.map;
       for (const restartLabel of ['Restart', 'Confirm restart']) {
         if (restartLabel === 'Confirm restart') await press(page, 'pause:restart', touch);

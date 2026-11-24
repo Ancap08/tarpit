@@ -16,10 +16,8 @@ const CROSS = 0xff8a7a;
 export class MuteButton {
   private readonly button: Button;
   private readonly icon: Phaser.GameObjects.Graphics;
-  private readonly rect: Rect;
 
   constructor(scene: Phaser.Scene, rect: Rect) {
-    this.rect = { ...rect };
     this.button = new Button(scene, rect, '', () => sound.toggleMute(), { sound: null });
     this.icon = scene.add.graphics();
     const off = sound.onChange(() => this.draw());
@@ -31,10 +29,16 @@ export class MuteButton {
     return this.button.rect;
   }
 
+  setRect(rect: Rect): void {
+    this.button.setSize(rect.width, rect.height);
+    this.button.moveTo(rect.x, rect.y);
+    this.draw();
+  }
+
   /** The speaker: a box and a cone, then two arcs (on) or a cross (muted). */
   private draw(): void {
     const g = this.icon.clear();
-    const r = this.rect;
+    const r = this.bounds;
     const s = Math.min(r.width, r.height) / 42;
     const cx = r.x + r.width / 2 - 5 * s;
     const cy = r.y + r.height / 2;

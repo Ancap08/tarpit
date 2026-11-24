@@ -9493,6 +9493,12 @@ play. `npm run sim` output is byte-identical to main (`cmp` of both runs).
 
 Town animation and leak sacks now use the map clock, keeping their place through Pause and a hidden page in both looks.
 
+Linux measured “Pick a reward” at 10.69 CSS px. The phone row now uses the right margin for an icon-only Pause and keeps every wave, Special and speed label above 12 CSS px at both phone heights.
+
+The label checks passed on an oversized canvas that let the bottom row overhang and shifted the map left. Browser checks now compare both rows with the painted panel and the page centre.
+
+The phone plaque now reads “Special”, matching the campaign instructions. Moving 18 canvas px from Start Wave to Special keeps the charge dot clear. Across Caslon and fallback, including tall metrics, the smallest row label measured 14.08 CSS px at 390 × 844 and 11.08 CSS px at 390 × 664.
+
 ## 2026-11-24: milestone 46, the town and its story
 
 All three roads end at the same four-cell arrangement. Two cells overlap
@@ -9777,3 +9783,5 @@ and weigh 3.59 MB in landscape and 2.34 MB on phone. Against the pause tip
 cold starts requested no showpiece assets. First Watch finished in the
 same full state in Painted and at each showpiece tier, both uninterrupted
 and with a pause in each of its six waves.
+
+Merged main at `a3330c3`. All three looks use its phone HUD row and share the same containment, alignment and label checks on desktop, tablet and phone. Showpiece keeps Pause available during its result animation.

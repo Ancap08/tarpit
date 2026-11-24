@@ -190,8 +190,8 @@ export const CALL_EARLY_TEXT = 'Call next';
 export const KILLS_TEXT = 'Kills';
 
 /** The Start Wave button's label while a call is possible: "Call next  +14". */
-export function callEarlyLabel(bonus: number): string {
-  return `${CALL_EARLY_TEXT}  +${bonus}`;
+export function callEarlyLabel(bonus: number, stacked = false): string {
+  return `${CALL_EARLY_TEXT}${stacked ? '\n' : '  '}+${bonus}`;
 }
 
 /** The tower panel's kill count line: "Kills 43". */
@@ -219,8 +219,8 @@ export function heldCountText(count: number): string {
   return `x${count}`;
 }
 export const GUARDS_UNLOCKED = 'Guards unlocked';
-export const GUARDS_UNLOCK_HINT = 'Use Special to send four guards.';
-export const BARRICADE_UNLOCK_HINT = 'Use Special to block the trail.';
+export const GUARDS_UNLOCK_HINT = `Use ${SPECIAL_BUTTON_TEXT} to send four guards.`;
+export const BARRICADE_UNLOCK_HINT = `Use ${SPECIAL_BUTTON_TEXT} to block the trail.`;
 export const BARRICADE_AIM_REASONS = {
   'off-trail': 'Aim closer to the trail.',
   'out-of-bounds': 'Aim inside the map.',
@@ -236,7 +236,7 @@ export const BARRICADE_AIM_REASONS = {
 export function aimBannerText(type: SpecialType, touch: boolean): { main: string; hint: string } {
   return {
     main: `${touch ? 'Tap' : 'Click'} the trail to ${SPECIAL_VERBS[type]} ${type === 'guards' ? 'guards' : `the ${SPECIAL_NAMES[type]}`}`,
-    hint: touch ? 'Or hold to aim and lift to let go. Special again cancels.' : 'Esc or Special again cancels.',
+    hint: touch ? `Or hold to aim and lift to let go. ${SPECIAL_BUTTON_TEXT} again cancels.` : `Esc or ${SPECIAL_BUTTON_TEXT} again cancels.`,
   };
 }
 
@@ -269,8 +269,8 @@ export function specialResultText(hits: number): string {
 }
 
 /** The Special button's label while it recharges (milestone 30): whole seconds left, rounded up ("Wait 12s"). */
-export function rechargeText(ticksLeft: number, ticksPerSecond: number): string {
-  return `Wait ${Math.ceil(ticksLeft / ticksPerSecond)}s`;
+export function rechargeText(ticksLeft: number, ticksPerSecond: number, compact = false): string {
+  return `${compact ? '' : 'Wait '}${Math.ceil(ticksLeft / ticksPerSecond)}s`;
 }
 
 /** The speed button's label while it is held for 3x (milestone 30); 1x and 2x read "1x" and "2x". */
@@ -447,13 +447,13 @@ export const tipsHeading = (id: number): string => `Level ${id} tips`;
 function campaignTips(touch: boolean): Readonly<Record<number, readonly string[]>> {
   const action = touch ? 'Tap' : 'Click';
   return {
-    1: [touch ? 'Tap a tower, then tap a square by the trail twice.' : 'Click a tower, then click a square by the trail.', 'Press Start Wave to let the Goblin Collectors in.', `${action} Special, then ${action.toLowerCase()} the trail to hit a pack.`],
+    1: [touch ? 'Tap a tower, then tap a square by the trail twice.' : 'Click a tower, then click a square by the trail.', `Press ${START_WAVE_TEXT} to let the Goblin Collectors in.`, `${action} ${SPECIAL_BUTTON_TEXT}, then ${action.toLowerCase()} the trail to hit a pack.`],
     2: ['Build a Cannon beside a bend.', 'Each blast hits Goblin Collectors that stand close together.'],
     3: ['Put a Tar Pit beside the trail to slow fast Revenue Hounds.', 'Build towers nearby to hit them as they slow down.'],
     4: ['Slow the Redcoat Shieldbearers with a Tar Pit.', 'Put a Fire Pot nearby. Tar makes the fire burn harder.'],
     5: ['Longbows and Musketeers can hit flying Royal Harpies.', 'Fire Pots can hit Royal Harpies, but the fire won’t stick.', 'Drop a Tar Barrel on a crowd to slow it down.'],
     6: ['A Mortar shoots far but takes time between shots.', 'Aim at slow Toll Trolls. Keep bows for Royal Harpies.', 'It cannot hit enemies right beside it.'],
-    7: [`${action} Special and choose Barricade.`, `${action} the trail ahead of a pack, near your towers.`, 'The wall holds walkers still while your towers fire.'],
+    7: [`${action} ${SPECIAL_BUTTON_TEXT} and choose Barricade.`, `${action} the trail ahead of a pack, near your towers.`, 'The wall holds walkers still while your towers fire.'],
     8: ['Send Guards ahead of a pack of Redcoat Shieldbearers.', 'Place them on the trail where your towers can help.', 'Drop Fire Arrows on a crowd to burn it.'],
     9: [`${action} a tower you have upgraded once.`, 'Pick an upgrade before Assessor Grumblefoot arrives.'],
     10: ['King Grumblemaw calls Revenue Hounds. Save a Powder Keg.', 'Slow King Grumblemaw with tar, then hit him with fire.'],

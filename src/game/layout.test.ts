@@ -205,7 +205,7 @@ describe('portrait controls and title arithmetic', () => {
   });
 
   it('preserves a 44 CSS px pause target with the phone browser bars showing', () => {
-    const { pause } = portraitRow2();
+    const { pause } = portraitRow2(664 / PORTRAIT_HEIGHT);
     expect(Math.min(pause.width, pause.height) * 664 / PORTRAIT_HEIGHT).toBeGreaterThanOrEqual(44);
   });
 

@@ -60,16 +60,24 @@ export function portraitBarRects(): Rect[] {
   }));
 }
 
-/** Pause uses the last 80 px, including the spare height below the tower row. */
-export function portraitRow2() {
-  const y = PORTRAIT_ROW2_Y;
+/** Both rows share the same inset and gap. Only the wave plaque takes the spare width. */
+export function portraitRow2(cssScale = 1) {
   const height = PORTRAIT_BUTTON_H;
+  // The space between the tower row and canvas bottom can fit an 80 px square.
+  const icon = Math.min(80, Math.max(height, Math.ceil(44 / cssScale)));
+  const innerWidth = PORTRAIT_WIDTH - 2 * PORTRAIT_BAR_LEFT;
+  const specialWidth = 108;
+  const speedWidth = height;
+  const startWidth = innerWidth - 4 * PORTRAIT_BAR_GAP - specialWidth - speedWidth - 2 * icon;
+  let x = PORTRAIT_BAR_LEFT;
+  const plaque = (width: number, h = height): Rect => {
+    const r = { x, y: PORTRAIT_ROW2_Y + (height - h) / 2, width, height: h };
+    x += width + PORTRAIT_BAR_GAP;
+    return r;
+  };
   return {
-    special: { x: 4, y, width: 110, height },
-    start: { x: 118, y, width: 126, height },
-    speed: { x: 248, y, width: 70, height },
-    mute: { x: 322, y, width: 70, height },
-    pause: { x: 396, y: y - 5, width: 80, height: 80 },
+    special: plaque(specialWidth), start: plaque(startWidth), speed: plaque(speedWidth),
+    mute: plaque(icon, icon), pause: plaque(icon, icon),
   };
 }
 
