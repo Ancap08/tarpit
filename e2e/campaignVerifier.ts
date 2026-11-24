@@ -2,7 +2,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { TitleUiState } from '../src/game/TitleScene';
 import type { TarpitTestApi } from '../src/game/testGlobal';
-import { CAMPAIGN_END } from '../src/game/names';
+import { CAMPAIGN_END, STORY_TEXT } from '../src/game/names';
 import { api, press } from './campaign';
 import { useTallFontMetrics } from './campaignFont';
 import { waitForFirstScreen } from './title';
@@ -128,7 +128,7 @@ export function campaignVerifierSuite(touch: boolean, rotated: boolean) {
     expect(await api(page, (t) => t.levelStops().slice(0, 4).map((s) => [s.open, s.stars]))).toEqual([[true, 3], [true, 2], [true, 0], [false, 0]]);
   });
 
-  test('level ten shows the complete line and no Next', async ({ page }) => {
+  test('level ten closes Act One and offers Next', async ({ page }) => {
     await open(page);
     await api(page, (t) => t.setCampaignProgress(JSON.parse('{"1":3,"2":3,"3":3,"4":3,"5":3,"6":3,"7":3,"8":3,"9":3}')));
     await click(page, 'title:campaign');
@@ -140,8 +140,8 @@ export function campaignVerifierSuite(touch: boolean, rotated: boolean) {
     await end(page, true, 16);
     await onScreen(page, 'result');
     const result = await api(page, (t) => t.campaignResult());
-    expect(result).toMatchObject({ levelId: 10, nextId: null, complete: 'Campaign complete!' });
-    expect(result!.buttons).not.toContain('Next level');
+    expect(result).toMatchObject({ levelId: 10, nextId: 11, actClose: STORY_TEXT.firstActClose, complete: '' });
+    expect(result!.buttons).toContain('Next level');
     expect(await textProblems(page)).toEqual([]);
   });
 
@@ -264,10 +264,11 @@ export function campaignVerifierSuite(touch: boolean, rotated: boolean) {
         if (turn) await rotate(page, 'first');
         const v = viewportLabel();
         await record(`${v} first`);
+        await api(page, t => t.setCampaignProgress({}));
         await click(page, 'title:campaign');
         await onScreen(page, 'levelMap');
         await record(`${v} map`);
-        await api(page, (t) => t.setCampaignProgress(JSON.parse('{"1":3,"2":3,"3":3,"4":3,"5":3,"6":3,"7":3,"8":3,"9":3,"10":3}')));
+        await api(page, (t) => t.setCampaignProgress(JSON.parse('{"1":3,"2":3,"3":3,"4":3,"5":3,"6":3,"7":3,"8":3,"9":3}')));
         await onScreen(page, 'levelMap');
         for (let id = 1; id <= 10; id++) {
           await click(page, `title:stop:${id}`);

@@ -365,7 +365,7 @@ export function townSuite(touch: boolean) {
     await page.waitForFunction(() => !!window.__tarpit?.uiRects()['title:play']);
     await checkPause('levelCard');
     await review(page, info, 'level-1-notice');
-    await page.evaluate(() => window.__tarpit!.startLevel!(10));
+    await page.evaluate(() => window.__tarpit!.startLevel!(20));
     await stageResult(page, 20);
     await checkPause('result');
     await press(page, 'menu', touch);

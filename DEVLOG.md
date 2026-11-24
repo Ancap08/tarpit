@@ -9612,3 +9612,39 @@ Good all kill King Grumblemaw with tower fire.
 
 The first-act gate and Free play output remain the prefix of the sim report.
 The new block reports the second act and then the twenty-level gate.
+
+## 2026-11-24: milestone 48c, screens for twenty levels
+
+The parchment road now has ten stops per act. The other act has a named
+plaque beside Back. Right from 10 crosses to 11 after a win, and Left from
+11 crosses back. A four-pointed third star marks a feat on the second road.
+Entering from the title or a result finds the next unwon open stop. Back
+from a card keeps the browsed act. With all twenty passed, the map opens
+on Act Two.
+
+The first visit to Act Two posts the King's notice and the town's reply.
+Continue remembers whether the player asked for the map or for level 11
+from Next level. Both the act notice and the Ending survive rotation.
+The same ending receipt covers earlier versions, so a player who read the
+Ending at level 10 gets the completion message at 20 and can carry on.
+
+The new cards measure their notice, tax list, feat and map notes. If they
+need a second page, Map notes turns the card over. Best stars and Play
+stay in place. At 390 × 664 the 26-pixel body type measures over 14 CSS
+pixels. Reading the level 16 capture exposed competing instructions:
+the tax permits three towers, but the feat allows only two builds. Its
+tactical note now suggests upgrading before spending every permit.
+The exact notices for 13 and 17 describe the timer. Their tips explain
+that the opening and last waves wait for Start Wave. Rule amounts, including
+fractions and written-out counts, come from the level records.
+
+The result reads the stars awarded by the simulation. A cheated win
+opens the next stop with zero stars and a missed feat. No simulation
+change or additional run counter was needed.
+
+Review captures in `docs/review/m48c/` show both maps before and after
+progress, both new story transitions, three cards, a feat earned and
+missed, and the Ending in landscape and portrait. The browser cases use
+saved progress to reach late levels and step the final wave clear to test
+the result and save paths. They check the two phone heights with normal
+type and fixed tall metrics for both Caslon and the fallback face.
