@@ -216,19 +216,25 @@ try {
   const { LEVELS } = await server.ssrLoadModule('/src/sim/levels.ts') as typeof Levels;
   const { checkCampaign } = await server.ssrLoadModule('/src/sim/checkLevel.ts') as typeof Gate;
   const { CAMPAIGN_CONTEXTS } = await server.ssrLoadModule('/src/sim/campaignContexts.ts') as typeof Contexts;
-  const campaign = checkCampaign(LEVELS, CAMPAIGN_CONTEXTS);
+  const firstAct = checkCampaign(LEVELS.slice(0, 10), CAMPAIGN_CONTEXTS.slice(0, 10));
   const minutes = (ticks: number) => (ticks / TICKS_PER_SECOND / 60).toFixed(2);
   const score = (run?: Gate.LevelScore) => run ? `${run.stars}/${run.lives}` : '—';
-  console.log('\nCampaign gate (stars/lives)');
-  console.log('id  waves  enemies  gold  HP scale  Good  Person  Beginner  Person(no specials)  wave 1  minutes  peak alive  gate');
-  campaign.levels.forEach((row, index) => {
+  function printLevel(row: Gate.LevelCheck, index: number): void {
     const level = LEVELS[index];
     console.log([level.id, level.waves.length, row.good?.spawned ?? '—', level.startGold, level.hpScale,
       score(row.good), score(row.person), score(row.beginner), score(row.noSpecials), row.openingCount, row.good ? minutes(row.good.tick) : '—', row.good?.peakAlive ?? '—',
       row.ok ? 'pass' : row.failed.join(',')].join('  '));
-  });
-  console.log(`Campaign: ${minutes(campaign.totalTicks)} minutes. ${campaign.ok ? 'P1–P2 and L1–L8 pass' : 'MISS ' + campaign.failed.join(', ')}`);
-  if (!campaign.ok) process.exitCode = 1;
+  }
+  console.log('\nCampaign gate (stars/lives)');
+  console.log('id  waves  enemies  gold  HP scale  Good  Person  Beginner  Person(no specials)  wave 1  minutes  peak alive  gate');
+  firstAct.levels.forEach(printLevel);
+  console.log(`Campaign: ${minutes(firstAct.totalTicks)} minutes. ${firstAct.ok ? 'P1–P2 and L1–L8 pass' : 'MISS ' + firstAct.failed.join(', ')}`);
+
+  const campaign = checkCampaign(LEVELS, CAMPAIGN_CONTEXTS);
+  console.log('\nSecond act (stars/lives)');
+  campaign.levels.slice(10).forEach((row, index) => printLevel(row, index + 10));
+  console.log(`Twenty levels: ${minutes(campaign.totalTicks)} minutes. ${campaign.ok ? 'P1–P2, L1–L8, T1–T3 and F1 pass' : 'MISS ' + campaign.failed.join(', ')}`);
+  if (!firstAct.ok || !campaign.ok) process.exitCode = 1;
 } finally {
   await server.close();
 }

@@ -1756,7 +1756,7 @@ Up to three ascending reward waves use the three existing reward menus in order.
 An allowed special opens on wave 1. Tower, upgrade and special restrictions
 are checked before a purchase or cast changes the game. Clearing the last
 wave wins. Every level starts with the same life count. A loss earns zero stars.
-An uncheated win earns one star, or the highest award whose minimum is met.
+The first act awards the highest star count whose life minimum is met.
 
 | Starting lives | Minimum lives for two stars | Minimum lives for three stars |
 |---:|---:|---:|
@@ -1769,6 +1769,35 @@ keeps the best stars, including after a cheated win. The browser stores
 passes and stars in version 2 of `tarpit.campaign`. It also reads stars
 earned in version 1. If storage fails, progress lasts for the page session.
 Free play keeps its own score table.
+
+### Taxes and skill stars
+
+Levels 11–20 use the full arsenal at tier 3, all five specials, 20 starting
+lives and a fixed HP scale. Each has one or two taxes. Free play and the first
+ten levels use their original rules.
+
+| Tax | Rule |
+|---|---|
+| Window Tax | Pay the base price plus the nearest whole gold to base × rate × previous towers built. Sold towers still count. Upgrades and moves are exempt. |
+| Frozen Purse | Kills pay zero. Each cleared wave pays the listed lump in place of the standard clear payment. Calling early still pays the lump and the early-call bonus. |
+| Forced March | Multiply every collector’s movement speed by 1 + rate, including flyers, bosses and summoned packs. Slows and blockers operate as usual. |
+| Curfew | Multiply maximum reach by 1 − rate, including both upgrade paths and range boons. The Mortar keeps its 70 px minimum. |
+| No Loitering | After a clear, the next wave starts when the stated number of seconds of setup has elapsed. The clock waits for a reward choice. Players can start sooner and can still call a wave early during combat. Both the opening and the final wave wait for the player. |
+| Rationing | The cap counts towers standing. A sale frees a place. Upgrading uses no place. |
+
+| Tunable rate or delay | Minimum | Maximum |
+|---|---:|---:|
+| Window Tax | 0.05 | 0.1 |
+| Forced March | 0.15 | 0.25 |
+| Curfew | 0.1 | 0.2 |
+| No Loitering (seconds) | 8 | 15 |
+
+A win earns one star and finishing with at least 12 lives earns two. A third
+star on a feat level also requires the named feat. **Not a penny** requires
+zero escaped enemies, including before any Stone Walls reward. **Bare hands**
+requires zero successful special casts. **Few hands** limits successful tower
+builds across the whole run, including towers later sold. Moves and upgrades
+are exempt. Saved stars keep their previous meaning and the best result wins.
 
 ### Bot decisions
 
@@ -1790,6 +1819,14 @@ Campaign stars are calibrated to a capable builder with slow hands. Person uses
 Good’s purchase optimiser and finishes Burn Line with 16 lives to Good’s 13.
 Beginner is the only measure of weak play. Real players decide whether the
 star targets feel right.
+
+On feat-bearing or taxed levels, after the opening, Good spends 0.5 seconds
+per purchase and Person and Beginner spend 3 seconds. A wave can start while
+they are deciding. Each starts manually once shopping finishes. Tax removal
+trials keep this same clock. With Frozen Purse the capable bots spend available
+funds without holding the usual 30 gold in reserve. Feat-mode Good forgoes
+specials for Bare hands, stops new builds at the Few hands limit, and uses
+its ordinary leak-prevention strategy for Not a penny.
 
 ### Acceptance
 
@@ -1823,6 +1860,7 @@ The level record can declare an ending boss. A separate context names the introd
 | L3 starting gold offsets | -10–10 |
 | L6 HP factors | 0.95–1.05 |
 | L6 starting gold factors | 0.85–1.15 |
+| T1 minimum lives gained by removing one tax, or one more star | 3 |
 
 - P1 checks Person’s stars and surviving lives against Good. P2 runs Person with an empty list of allowed specials. The two bands that allow a loss still report that run.
 - L1 and L2 apply the Good and Beginner star limits in the band table. L1m requires Good to keep its band minimum at HP ×0.98, HP ×1.02, starting gold −10 and starting gold +10, varying one input at a time on every level.
@@ -1832,6 +1870,15 @@ The level record can declare an ending boss. A separate context names the introd
 - L6 varies HP and starting gold separately at the listed endpoints, rounding scaled gold to the nearest integer. Good and Person may each move at most one star. Both must still win intro and middle levels.
 - L7 checks the record and requires terminal runs with no refused actions.
 - L8 checks Good’s finale lives and the difference between the first and last thirds’ mean lives. Each cohort contains the campaign length divided by three, rounded down, with at least one level. A single-level list has no mean-drop comparison.
+
+The second act uses the late band through level 19 and the finale band on
+level 20. The original level 10 keeps its finale check. L4 and L8 span all
+twenty levels. The twenty-level L8 compares the first and last six stops.
+
+- T1 removes each tax separately, leaving the other tax, feat, waves and economy in place. Person must gain at least three lives or one star at nominal and under each of the four L1m nudges.
+- T2 requires Person to earn at least two stars under the taxes at nominal, and at least one at each nudge.
+- T3 compares first appearances with the declared tax introduction in campaign order. A new tax must appear alone.
+- F1 requires Good in feat mode to earn three stars on each feat level. Beginner can never earn three on these levels. Across the feat levels, at most half may yield the third star to either ordinary Good or Person.
 
 ### Campaign measurements
 
@@ -1849,8 +1896,36 @@ Stars/lives give each bot’s highest award and surviving lives. Time counts Goo
 | 8 | Stand Fast | Switchback | 7 | 517 | 295 | 1.28 | — | 2 | — | 2/12 | 2/13 | 0/0 | 8.08 | 30 | 36 |
 | 9 | The King's Assessor | Riverbend | 7 | 535 | 255 | 1 | 6 | 3 | 5 | 3/20 | 3/20 | 0/0 | 7.57 | 17 | 42 |
 | 10 | Last Light | Meadow | 7 | 633 | 280 | 0.925 | 5 | 3 | 5 | 2/16 | 2/13 | 0/0 | 8.89 | 19 | 36 |
+| 11 | Window Money | Riverbend | 6 | 300 | 195 | 1 | — | 3 | 1 | 2/19 | 2/16 | 0/0 | 5.68 | 11 | 54 |
+| 12 | The Quickstep | Switchback | 7 | 394 | 270 | 1.16 | — | 3 | 2 | 2/17 | 2/16 | 0/0 | 6.48 | 16 | 38 |
+| 13 | Eight Bells | Riverbend | 7 | 319 | 245 | 0.88 | — | 3 | 1 | 3/20 | 2/15 | 0/0 | 6.00 | 15 | 31 |
+| 14 | Short Measure | Meadow | 6 | 305 | 240 | 0.88 | — | 3 | — | 3/20 | 2/17 | 0/0 | 5.09 | 12 | 27 |
+| 15 | Pay Day | Riverbend | 6 | 310 | 145 | 1.08 | — | 3 | 1 | 2/13 | 2/13 | 0/0 | 5.95 | 8 | 32 |
+| 16 | Three Permits | Meadow | 7 | 406 | 270 | 1.16 | — | 3 | 2 | 2/12 | 2/12 | 1/11 | 7.45 | 17 | 39 |
+| 17 | Closing Time | Switchback | 7 | 406 | 220 | 0.94 | — | 3 | 1 | 2/20 | 2/16 | 0/0 | 6.43 | 16 | 43 |
+| 18 | Three at the Gate | Meadow | 6 | 323 | 220 | 0.94 | — | 3 | 2 | 2/14 | 2/14 | 1/9 | 5.38 | 10 | 29 |
+| 19 | The Sash Levy | Meadow | 6 | 348 | 245 | 0.94 | — | 3 | 1 | 2/14 | 2/14 | 0/0 | 5.49 | 31 | 47 |
+| 20 | The Last Writ | Riverbend | 8 | 491 | 245 | 0.94 | — | 3 | — | 2/15 | 2/13 | 0/0 | 8.68 | 9 | 53 |
 
-Good clears the campaign in 72.70 minutes. Its mean surviving lives drop by 4.00 from the first third to the last.
+Good clears the first ten stops in 72.70 combat minutes, with a 4.00-life
+mean drop. Across all twenty stops Good takes 135.33 combat minutes.
+Mean surviving lives drop from 18.00 on levels 1–6 to 14.67 on levels 15–20.
+
+Fractions below are shares of the base price, speed or range. The purse pays
+gold, the delay counts seconds at 1×, and the cap counts towers standing.
+
+| Stop | Window Tax | Frozen Purse | Forced March | Curfew | No Loitering | Rationing | Feat | Build limit | Feat Good |
+|---:|---:|---:|---:|---:|---:|---:|---|---:|---|
+| 11 | 0.05 | — | — | — | — | — | noSpecials | — | 3/15 |
+| 12 | — | — | 0.2 | — | — | — | maxTowers | 10 | 3/17 |
+| 13 | — | — | — | — | 8 | — | noLeaks | — | 3/20 |
+| 14 | — | — | — | 0.15 | — | — | noLeaks | — | 3/20 |
+| 15 | — | 35 | — | — | — | — | noSpecials | — | 3/13 |
+| 16 | — | — | — | — | — | 3 | maxTowers | 2 | 3/12 |
+| 17 | — | — | — | 0.2 | 8 | — | maxTowers | 6 | 3/20 |
+| 18 | — | — | 0.15 | — | — | 3 | noSpecials | — | 3/14 |
+| 19 | 0.05 | — | — | 0.1 | — | — | maxTowers | 6 | 3/14 |
+| 20 | — | 90 | — | 0.2 | — | — | noSpecials | — | 3/13 |
 
 Pack Trail builds up from three-Goblin ranks to groups of six. Heavy Feet ends with a column of 20 Trolls, which Mortars can hit on Riverbend beyond the reach of the installed short-range towers. Hold the Bend has the most spawns. Stand Fast combines shielded ground formations with air pressure. The King's Assessor sends upgraded towers against Trolls and a shielded escort before Grumblefoot. Last Light closes with Grumblemaw.
 

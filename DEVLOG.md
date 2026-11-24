@@ -9563,3 +9563,52 @@ Verifier notes (milestone 46, independent check of 73d872b):
   the `step()` test hook); (3) the level 6 notice says "Troll" where the game
   names the enemy "Toll Troll" (approved copy); (4) a cheated level 10 win
   also plays the ending.
+
+## 2026-11-24: milestone 48a and 48b, taxes and the second act
+
+Added levels 11–20 with the original 20 lives, a fixed Normal HP scale, all
+tower tiers and all five specials. Levels 11–16 introduce Window Tax, Forced
+March, No Loitering, Curfew, Frozen Purse and Rationing in that order. The
+next four stops combine them. DESIGN.md lists the tax values, starting gold,
+HP scale, reward waves, feats and measured bot outcomes for each stop.
+
+The original bots completed a shopping phase instantaneously. Even an
+eight-second deadline would give exactly the same result as unlimited time.
+The new levels give each purchase its ordinary decision time, including in
+the copies with taxes removed. The early schedules also exposed purchases
+that a ten-gold nudge could undo. We kept schedules only after removing
+each tax independently at all five settings and running the older checks.
+No enemy growth steps or wave multipliers were used in the new levels.
+
+Each five-number sequence below is nominal, HP ×0.98, HP ×1.02, gold −10,
+gold +10. T1 numbers are extra Person lives with just the named tax removed.
+T2 gives Person's taxed lives. The last columns give nominal stars/lives.
+
+| Level | Tax order | T1 lives for each tax | T2 lives | Feat Good | Good | Person | Beginner |
+|---:|---|---|---|---|---|---|---|
+| 11 | windowTax | 4 / 5 / 4 / 6 / 4 | 16, 15, 16, 14, 16 | 3/15 | 2/19 | 2/16 | 0/0 |
+| 12 | forcedMarch | 3 / 4 / 7 / 3 / 3 | 16, 16, 12, 16, 16 | 3/17 | 2/17 | 2/16 | 0/0 |
+| 13 | noLoitering | 5 / 5 / 6 / 5 / 5 | 15, 15, 14, 15, 15 | 3/20 | 3/20 | 2/15 | 0/0 |
+| 14 | curfew | 3 / 3 / 3 / 3 / 3 | 17, 17, 17, 17, 17 | 3/20 | 3/20 | 2/17 | 0/0 |
+| 15 | frozenPurse | 7 / 6 / 7 / 7 / 7 | 13, 14, 13, 13, 13 | 3/13 | 2/13 | 2/13 | 0/0 |
+| 16 | rationing | 8 / 8 / 8 / 8 / 5 | 12, 12, 12, 12, 15 | 3/12 | 2/12 | 2/12 | 1/11 |
+| 17 | noLoitering, curfew | 4 / 4 / 4 / 4 / 4; 4 / 4 / 4 / 4 / 4 | 16, 16, 16, 16, 16 | 3/20 | 2/20 | 2/16 | 0/0 |
+| 18 | forcedMarch, rationing | 4 / 4 / 3 / 4 / 4; 6 / 6 / 6 / 4 / 6 | 14, 14, 14, 14, 14 | 3/14 | 2/14 | 2/14 | 1/9 |
+| 19 | windowTax, curfew | 5 / 3 / 6 / 5 / 6; 5 / 4 / 6 / 5 / 5 | 14, 15, 13, 14, 14 | 3/14 | 2/14 | 2/14 | 0/0 |
+| 20 | frozenPurse, curfew | 7 / 7 / 7 / 7 / 6; 6 / 6 / 6 / 7 / 6 | 13, 13, 13, 13, 14 | 3/13 | 2/15 | 2/13 | 0/0 |
+
+The smallest T1 gain is three lives. Every feat run earns three stars.
+The two Not a penny levels also award ordinary Good the third star. The
+map still shows ten stops. The existing test hook starts all twenty by id.
+The opening and final waves wait for Start, and the No Loitering clock
+waits for reward choices. The build bar counts standing towers for permits.
+The window levy and the Few hands feat remember all constructions, including
+towers sold during planning. The Mortar retains its 70 px dead zone.
+
+Person averages 16.8 lives in the first act and 14.6 in the second.
+Window Money uses the smallest permitted levy and eases Person from 13
+lives at Last Light to 16. On The Last Writ, Good, Person and feat-mode
+Good all kill King Grumblemaw with tower fire.
+
+The first-act gate and Free play output remain the prefix of the sim report.
+The new block reports the second act and then the twenty-level gate.

@@ -4,7 +4,7 @@
 // display string build it from these tables, so a rename changes no test.
 
 import { BOONS } from '../sim/boons.ts';
-import type { BoonId, Difficulty, EnemyType, MapId, SpecialType, TargetingMode, TowerLevel, TowerType, UpgradePath } from '../sim';
+import type { BoonId, Difficulty, EnemyType, LevelFeat, LevelTaxes, MapId, SpecialType, TargetingMode, TaxKind, TowerLevel, TowerType, UpgradePath } from '../sim';
 
 /** The wave 10 boss (docs/SCOPE-v4.md, milestone 23): the HUD boss bar and the wave 10 preview. */
 export const BOSS_NAME = 'Assessor Grumblefoot';
@@ -176,6 +176,27 @@ const PATH_DESCRIPTIONS: Readonly<Record<TowerType, Record<UpgradePath, string>>
 /** The upgrade's change from level two. Rewards are applied separately by the sim. */
 export function pathDescription(type: TowerType, path: UpgradePath): string {
   return PATH_DESCRIPTIONS[type][path];
+}
+
+export const TAX_NAMES: Readonly<Record<TaxKind, string>> = {
+  windowTax: 'Window Tax', frozenPurse: 'Frozen Purse', forcedMarch: 'Forced March',
+  curfew: 'Curfew', noLoitering: 'No Loitering', rationing: 'Rationing',
+};
+
+export function taxStatusText(taxes: LevelTaxes | undefined, standing: number): string {
+  if (!taxes) return '';
+  return (Object.keys(TAX_NAMES) as TaxKind[]).filter(key => taxes[key] !== undefined).map(key => {
+    return key === 'rationing' && taxes.rationing !== undefined && standing >= taxes.rationing
+      ? 'Rationing (full)' : TAX_NAMES[key];
+  }).join(' · ');
+}
+
+export function towerCountText(standing: number, cap: number): string {
+  return `${standing}/${cap} towers`;
+}
+
+export function autoWaveText(seconds: number): string {
+  return `Start in ${seconds}s`;
 }
 
 /** The Start Wave button's label (milestone 25c moved it here from hud.ts). */
@@ -387,6 +408,16 @@ export const LEVEL_NAMES: Readonly<Record<number, { name: string; twist: string 
   8: { name: 'Stand Fast', twist: 'Meet the crowds with Guards and Fire Arrows.' },
   9: { name: "The King's Assessor", twist: 'Face Assessor Grumblefoot with a second upgrade.' },
   10: { name: 'Last Light', twist: 'Bring every special to face King Grumblemaw.' },
+  11: { name: 'Window Money', twist: 'Spend on upgrades as new towers grow dearer.' },
+  12: { name: 'The Quickstep', twist: 'Catch the collectors before they round the bend.' },
+  13: { name: 'Eight Bells', twist: 'Choose your next purchase before the bell.' },
+  14: { name: 'Short Measure', twist: 'Cover the bends with overlapping fields of fire.' },
+  15: { name: 'Pay Day', twist: 'Make each wave payment last.' },
+  16: { name: 'Three Permits', twist: 'Hold the trail with three towers standing.' },
+  17: { name: 'Closing Time', twist: 'Find nearby targets before the next bell.' },
+  18: { name: 'Three at the Gate', twist: 'Give three towers time to stop a faster column.' },
+  19: { name: 'The Sash Levy', twist: 'Choose the site before paying for the windows.' },
+  20: { name: 'The Last Writ', twist: 'Hold the river until the King arrives.' },
 };
 
 const endingLead = 'The King went home with empty pockets.';
@@ -396,6 +427,8 @@ export const STORY_TEXT = {
   endingTitle: 'Word from the town',
   openingNotice: 'Hear ye. By order of King Grumblemaw, all gold in this town now belongs to the Crown. Collectors are on their way.',
   openingReply: "We counted it. It's ours.",
+  secondActNotice: 'The King has thought of new taxes.',
+  secondActReply: 'Fetch the ledger. We have a few deductions.',
   ending: `${endingLead} The gold stayed where it was earned. Taxation is theft.`,
   loss: 'The Crown thanks you for your contribution.',
   continue: 'Continue',
@@ -412,6 +445,16 @@ export const LEVEL_STORY: Readonly<Record<number, { notice: string; reply: strin
   8: { notice: 'A tax on neighbours helping neighbours.', reply: 'The neighbours say no.' },
   9: { notice: 'The Assessor will now count your gold. Personally.', reply: 'He lost count.' },
   10: { notice: 'Enough. The King is coming for the lot.', reply: endingLead },
+  11: { notice: 'For each tower you have built, add 5% of the base price to your next tower.', reply: 'We put the money into the roof.' },
+  12: { notice: 'Quick march. My collectors shall travel one fifth faster.', reply: 'Quick trip home, too.' },
+  13: { notice: 'Eight seconds between waves. I grant you time before the first and last.', reply: 'We built a tower before the bell stopped ringing.' },
+  14: { notice: 'By royal measure, every tower shall shoot 15% less far.', reply: 'Stand a little closer, Your Majesty.' },
+  15: { notice: 'No coin for a fallen collector. You may have 35 gold per wave cleared.', reply: 'Count it again. We earned every piece.' },
+  16: { notice: 'I issue three tower permits. Take one tower down to put another up.', reply: 'We added a floor. Same permit.' },
+  17: { notice: 'Towers shall reach one fifth less far. Eight seconds between waves, save the first and last.', reply: 'Our clock runs fine. How is yours?' },
+  18: { notice: 'Three towers may stand. My collectors shall march 15% faster.', reply: 'Three were plenty.' },
+  19: { notice: 'Each tower built adds 5% of base price to the next. All towers shoot a tenth less far.', reply: 'We saved you a seat by the window.' },
+  20: { notice: 'No kill money. Ninety gold per clear. Towers reach one fifth less far. I shall inspect them myself.', reply: 'You had your look. The gold stays here.' },
 };
 
 export const CAMPAIGN_TEXT = {
@@ -436,7 +479,25 @@ export const LEVEL_NEW: Readonly<Record<number, string>> = {
   8: 'Guards and Fire Arrows',
   9: 'Second upgrades and Assessor Grumblefoot',
   10: 'The full arsenal and King Grumblemaw',
+  11: 'Window Tax',
+  12: 'Forced March',
+  13: 'No Loitering',
+  14: 'Curfew',
+  15: 'Frozen Purse',
+  16: 'Rationing',
+  17: 'Curfew and No Loitering',
+  18: 'Forced March and Rationing',
+  19: 'Window Tax and Curfew',
+  20: 'Frozen Purse and Curfew',
 };
+
+export function levelFeatText(feat: LevelFeat): string {
+  switch (feat.kind) {
+    case 'noLeaks': return 'Not a penny. Let no collector through.';
+    case 'noSpecials': return 'Bare hands. Win without using a special.';
+    case 'maxTowers': return `Few hands. Build at most ${feat.limit} towers in all.`;
+  }
+}
 
 export const levelNumberText = (id: number): string => `Level ${id}`;
 export const lockedLevelText = (id: number): string => `Win level ${id} first`;
@@ -457,6 +518,16 @@ function campaignTips(touch: boolean): Readonly<Record<number, readonly string[]
     8: ['Send Guards ahead of a pack of Redcoat Shieldbearers.', 'Place them on the trail where your towers can help.', 'Drop Fire Arrows on a crowd to burn it.'],
     9: [`${action} a tower you have upgraded once.`, 'Pick an upgrade before Assessor Grumblefoot arrives.'],
     10: ['King Grumblemaw calls Revenue Hounds. Save a Powder Keg.', 'Slow King Grumblemaw with tar, then hit him with fire.'],
+    11: ['The first tower goes up at its usual price.', 'Selling a tower still leaves it on the tax roll.'],
+    12: ['Put a Tar Pit where several towers can reach it.', 'Save a special for the pack that gets ahead.'],
+    13: ['Plan your next purchase before the wave ends.', 'The clock waits while you choose a reward.'],
+    14: ['Check the ring before you build.', 'Keep the Mortar back. Its inner ring stays put.'],
+    15: ['Kills pay nothing. Budget for the next wave.', 'Calling early still earns its bonus.'],
+    16: ['Upgrades take no permit. Selling frees one.', `${action} a tower to see its upgrades.`],
+    17: ['Pick a bend where a short shot covers two turns.', 'Buy before the countdown ends.'],
+    18: ['Place your three towers where their rings overlap.', 'Upgrade them to keep up with the faster packs.'],
+    19: ['Check the shorter ring before you buy.', 'An upgrade costs the usual price.'],
+    20: ['Keep bows near the trail to cover Royal Harpies.', 'Save part of each payment for the King.'],
   };
 }
 
