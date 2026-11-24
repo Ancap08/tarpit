@@ -10367,3 +10367,36 @@ The full Playwright suite ran once on the production build at port 4573:
 642 desktop, 214 tablet and 302 phone tests passed, with eight configured
 skips and zero failures. All 78 baseline frames were separately compared
 in local Chromium against the same scenes rendered at `d517ac8`.
+
+## Verifier (Claude Sonnet), milestone 49, independent run on d4a16b4
+
+Verdict: merge. One honest gap in R6, recorded below; nothing in the game code needed fixing.
+
+- R7 re-done from scratch against a clean export of d517ac8 (own script, state hashed every fourth tick plus every
+  event and the result). Free play archetypes: 153 runs, 140 identical, 13 changed, and exactly those 13 buy a
+  path B Tar Pit (all Switchback). Free play bots: 27 runs, 23 identical (14 of them cast the barrel), 4 changed,
+  all Person with path B. Campaign: Good, Person, Beginner, Good-with-feat and Person-with-feat on 20 levels,
+  100 runs, 100 identical, none buys path B. levels.ts, balanceTargets.ts, campaignProgress.ts, enemies.ts,
+  specials.ts, waves.ts and headless.ts are not in the diff. Sim numbers that moved: Tar Pit B slowDuration 2 to
+  2.55 s, FEATHERS runTicks 88 and flinchTicks 16 (new), gate limit maxFeatherAdvantage 3 (new).
+- R6 is a weak guard. The gate's feather bot loses outright on levels 7, 10, 11, 19 and 20, so "no more than 3
+  lives above Good" passes partly because that bot is weak. Honest version, in `feathers-verifier.test.ts`: the
+  ordinary bots with every Tar Pit upgrade forced to path B. Good: no life and no star gained on any of 20
+  levels. Person: no star gained, but level 16 goes from 13 to 18 lives (Good has 14, so 4 above Good), level 11
+  from 14 to 18, level 12 from 15 to 17. The new test pins "within 4 lives of Good"; it is a characterization of
+  a known gap, not a statement that 4 is fine against the written target of 3.
+- Free play with path B forced on the standard builds: the Riverbend Normal combo reaches 16 lives, one above the
+  S1 ceiling of 15 (the standard build, which does not force B, stays at 14). The path comparison is B wins only
+  one of six scenarios (Riverbend combo, by 2); A wins three (3, 2 and 7 lives). R1 passes but B is the weaker path.
+- Mutations (each reverted): feather twice, boss runs, boss flinches, 59-tick run, 10 percent slower run, no
+  entrance clamp, repeat flinch, path A also feathering, path B much worse, path B much better, path B far too
+  strong (gate and Free play windows). Every one turned a test red.
+- Added `src/sim/feathers-verifier.test.ts` (15 tests): targeting under first, last and strongest, flyers, Redcoat
+  shield, a killing shot, a burning runner dying mid-run, 14 path B pits in a row over four waves, determinism, and
+  the forced-path-B bot table with per-tick invariants (no negative distance, no boss marks, no timer overrun, no
+  waiting at the entrance, one feathering per enemy) over 100 bot games.
+- The dark strip with two buttons on the right of `painted-crowd-phone.png` is the held-boons column that appears
+  once a boon is held (wave 11 here). It exists at d517ac8; this branch does not touch boons.ts or the layout. I
+  reproduced it with two boons held and no feathers.
+- Under `?test=1` the clock is frozen at 0, so a feather puff drawn at that moment stays on screen for ever. Real
+  play uses the pausable clock. It is not a defect, but frozen captures show a puff that a player would not.
