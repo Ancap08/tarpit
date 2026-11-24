@@ -1,12 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { GameScene } from '../src/game/GameScene';
 import type { Rect } from '../src/game/input';
-import { BOSS_NAME, CHEAT_MARK, TAX_NAMES } from '../src/game/names';
+import { BOSS_NAME, BOSS_WAVE_NEXT_TEXT, callEarlyLabel, CHEAT_MARK, LAST_WAVE_TEXT, START_WAVE_TEXT, TAX_NAMES } from '../src/game/names';
 import { BAR_TYPES } from '../src/game/ui/buildBarModel';
-import { LEVELS, TICKS_PER_SECOND, WAVES, type LevelDef } from '../src/sim';
+import { EARLY_CALL_MAX_BONUS, LEVELS, TICKS_PER_SECOND, WAVES, type LevelDef } from '../src/sim';
 import { api, press } from './campaign';
 import { checkSize } from './campaignActs';
-import { useTallFontMetrics } from './campaignFont';
+import { useTallFontMetrics, useWideFontMetrics } from './campaignFont';
 import { openPaintedLevel } from './taxHud';
 
 // Free play 8 lists five troop types; 10 has the longest boss preview. Put both
@@ -21,7 +21,10 @@ const levels = [
   LEVELS.find(l => l.taxes?.rationing && Object.keys(l.taxes).length === 2)!,
 ];
 
-async function checkHud(page: Page, level: LevelDef, phase: 'setup' | 'wave' | 'won' | 'lost', preview: string) {
+type Phase = 'setup' | 'wave' | 'won' | 'lost';
+type LabelSize = { id: string; text: string; size: number };
+
+async function checkHud(page: Page, level: LevelDef, phase: Phase, preview: string) {
   const snapshot = await page.evaluate(({ phase, types }) => {
     const t = window.__tarpit!;
     const scene = t.game.scene.getScene('game') as GameScene;
@@ -79,7 +82,8 @@ async function checkHud(page: Page, level: LevelDef, phase: 'setup' | 'wave' | '
       ...labels.filter(l => l.id.startsWith('bar:') || ['special', 'speed', 'startWave', 'tally'].includes(l.id))
         .map(l => inset(l.bounds, controls)));
     const s = t.state!();
-    return { labels, unmeasured, overlaps, framePadding, next: hud['next'].text, phase: s.phase, end: t.endScreen!(),
+    return { labels, unmeasured, overlaps, framePadding, waveLines: hud['startButton'].labelObjects[0].getWrappedText(),
+      next: hud['next'].text, phase: s.phase, end: t.endScreen!(),
       gold: s.gold, lives: s.lives, wave: s.wave, total: s.level!.waves.length, cheated: s.cheated };
   }, { phase, types: BAR_TYPES });
 
@@ -89,6 +93,7 @@ async function checkHud(page: Page, level: LevelDef, phase: 'setup' | 'wave' | '
   const text = Object.fromEntries(snapshot.labels.map(l => [l.id, l.text]));
   expect(text).toMatchObject({ gold: 'Gold ' + snapshot.gold, lives: 'Lives ' + Math.max(0, snapshot.lives),
     wave: `Wave ${snapshot.wave}/${snapshot.total}`, tag: 'Level ' + level.id });
+  if (text.startWave === BOSS_WAVE_NEXT_TEXT) expect.soft(snapshot.waveLines).toEqual(['Boss', 'next']);
   if (snapshot.cheated) expect(text.cheatMark).toBe(CHEAT_MARK);
   for (const [key, name] of Object.entries(TAX_NAMES))
     if (key in level.taxes!) expect(text.taxLine).toContain(name);
@@ -101,54 +106,81 @@ async function checkHud(page: Page, level: LevelDef, phase: 'setup' | 'wave' | '
     expect.soft(label.visible && !!label.text, detail + ' visible').toBe(true);
     expect.soft(label.padding, detail + ' inside its panel or plaque').toBeGreaterThanOrEqual(0);
     expect.soft(label.uniform, detail + ' keeps glyph proportions').toBe(true);
-    const minimum = height === 844 || ['taxLine', 'tally', 'speed'].includes(label.id) ? 12 : 11.6;
+    const minimum = height === 844 || ['taxLine', 'tally', 'speed'].includes(label.id) ? 12 : 11.1;
     expect.soft(label.size, detail + ' CSS px').toBeGreaterThanOrEqual(minimum);
     test.info().annotations.push({ type: 'font', description: height + ' ' + detail + ' ' + label.size.toFixed(2) });
   }
+  return snapshot.labels.map(({ id, text, size }) => ({ id, text, size }));
+}
+
+async function exerciseHud(page: Page, level: LevelDef, fallback: boolean) {
+  const states: LabelSize[][] = [];
+  async function check(phase: Phase, preview: string, waveLabel: string) {
+    const labels = await checkHud(page, level, phase, preview);
+    expect(labels.find(label => label.id === 'startWave')?.text).toBe(waveLabel);
+    states.push(labels);
+  }
+
+  await openPaintedLevel(page, { ...level, waves, rewardWaves: [] });
+  expect(await page.evaluate(() => [...document.fonts].some(f => f.status === 'loaded'))).toBe(!fallback);
+  await api(page, t => { t.state().wave = 10; t.state().gold = 888; t.step(0); });
+  await check('setup', longPreviews[0], START_WAVE_TEXT);
+  await api(page, t => { t.startWave(); t.step(1); });
+  await check('wave', longPreviews[1], BOSS_WAVE_NEXT_TEXT);
+  await api(page, t => {
+    t.state().spawnedPerGroup.fill(99_999);
+    t.state().enemies = [];
+    t.step(1);
+  });
+  await check('setup', longPreviews[1], START_WAVE_TEXT);
+  await api(page, t => { t.startWave(); t.step(1); });
+  // Keep the other troops near the entrance while the Assessor arrives.
+  await page.evaluate(tick => {
+    const t = window.__tarpit!;
+    t.state!().waveTick = tick;
+    t.step!(1);
+  }, WAVES[9].groups.find(g => g.type === 'boss')!.delay * TICKS_PER_SECOND);
+  expect(await api(page, t => t.hudText().boss)).toContain(BOSS_NAME);
+  // Mark the remaining spawns complete, then use the bonus to call the last wave.
+  await api(page, t => { t.state().spawnedPerGroup.fill(99_999); t.step(0); });
+  await check('wave', longPreviews[0], callEarlyLabel(EARLY_CALL_MAX_BONUS, true));
+  expect(await api(page, t => t.callNextWave())).toMatchObject({ ok: true });
+  await check('wave', 'Next: none', LAST_WAVE_TEXT);
+  expect(await api(page, t => t.cheatGold())).toMatchObject({ ok: true });
+  await api(page, t => {
+    const s = t.state();
+    s.enemies = [];
+    s.phase = 'won';
+    t.step(0);
+  });
+  await check('won', 'Next: none', START_WAVE_TEXT);
+  await page.evaluate(id => window.__tarpit!.startLevel!(id), level.id);
+  await api(page, t => { t.state().lives = 0; t.state().phase = 'lost'; t.step(0); });
+  await check('lost', '', START_WAVE_TEXT);
+  await checkSize(page);
+  return states;
 }
 
 for (const height of [844, 664]) {
-  for (const mode of ['normal', 'fixed Caslon', 'fixed fallback']) {
+  for (const mode of ['normal', 'fixed Caslon', 'fixed fallback', 'wide text']) {
     for (const level of levels) {
       test(`taxed HUD labels fit at 390x${height} (${mode}, ${Object.keys(level.taxes!).length} taxes)`, async ({ page }) => {
         test.setTimeout(60_000);
         await page.setViewportSize({ width: 390, height });
-        if (mode !== 'normal') await useTallFontMetrics(page, mode === 'fixed fallback');
-        await openPaintedLevel(page, { ...level, waves, rewardWaves: [] });
-        expect(await page.evaluate(() => [...document.fonts].some(f => f.status === 'loaded'))).toBe(mode !== 'fixed fallback');
-        await api(page, t => { t.state().wave = 10; t.state().gold = 888; t.step(0); });
-        await checkHud(page, level, 'setup', longPreviews[0]);
-        await api(page, t => { t.startWave(); t.step(1); });
-        await checkHud(page, level, 'wave', longPreviews[1]);
-        await api(page, t => {
-          t.state().spawnedPerGroup.fill(99_999);
-          t.state().enemies = [];
-          t.step(1);
-        });
-        await checkHud(page, level, 'setup', longPreviews[1]);
-        await api(page, t => { t.startWave(); t.step(1); });
-        // Advance the spawner's clock to the Assessor's arrival while the other
-        // troops are still at the entrance. Both the boss HUD and preview now show.
-        await page.evaluate(tick => {
-          const t = window.__tarpit!;
-          t.state!().waveTick = tick;
-          t.step!(1);
-        }, WAVES[9].groups.find(g => g.type === 'boss')!.delay * TICKS_PER_SECOND);
-        expect(await api(page, t => t.hudText().boss)).toContain(BOSS_NAME);
-        await checkHud(page, level, 'wave', longPreviews[0]);
-        expect(await api(page, t => t.cheatGold())).toMatchObject({ ok: true });
-        await api(page, t => {
-          const s = t.state();
-          s.enemies = [];
-          s.wave = s.level!.waves.length;
-          s.phase = 'won';
-          t.step(0);
-        });
-        await checkHud(page, level, 'won', 'Next: none');
-        await page.evaluate(id => window.__tarpit!.startLevel!(id), level.id);
-        await api(page, t => { t.state().lives = 0; t.state().phase = 'lost'; t.step(0); });
-        await checkHud(page, level, 'lost', '');
-        await checkSize(page);
+        if (mode === 'fixed Caslon' || mode === 'fixed fallback') await useTallFontMetrics(page, mode === 'fixed fallback');
+        const normal = await exerciseHud(page, level, mode === 'fixed fallback');
+        if (mode !== 'wide text') return;
+
+        await useWideFontMetrics(page);
+        const wide = await exerciseHud(page, level, false);
+        for (const [state, labels] of wide.entries()) {
+          const reference = normal[state];
+          expect(labels.map(l => [l.id, l.text])).toEqual(reference.map(l => [l.id, l.text]));
+          for (const [i, { id, text, size }] of labels.entries()) {
+            const message = `${id} “${text}” normal ${reference[i].size} vs wide ${size} CSS px`;
+            expect.soft(Math.abs(size - reference[i].size), message).toBeLessThanOrEqual(0.01);
+          }
+        }
       });
     }
   }

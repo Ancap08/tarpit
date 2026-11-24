@@ -10034,16 +10034,23 @@ planning and results, in normal type and both fixed font modes.
 
 The second-act cards now use the retuned level records with the commissioned notices. Three Permits tells the player to use the permits and leave specials unused. Closing Time recommends upgrading after the second build. The layout checks cover every tax combination and both feat verdicts on every second-act stop, in landscape and at both phone heights with normal and fixed font metrics. The refreshed result captures show Bare hands earned on level 16 and Few hands missed on level 17. The Showpiece isolation reference is the rules-and-screens merge `818e86d`. All 72 Painted and Classic canvas comparisons matched that build, and 12 cold starts made no Showpiece requests. The phone comparison also checks both roads and the taxed Meadow game against Painted.
 
-**Short phone HUD, CI fix 1.** Linux measured “Boss wave next” at 11.022
-CSS px. With only the 390 × 664 floor raised from 11.1 to 11.6, the taxed
-label spec failed seven cases on the Mac at `7c06ab5`. The six tall-phone
-cases passed. The normal and fixed Caslon boss previews measured 11.318
-CSS px and fixed fallback measured 11.119. Stats, previews, prices and
-boss labels also fell below the new floor.
+**48c phone HUD, CI fix 2.** On the production build from `7c06ab5`,
+increasing every canvas text width by 6% failed all four wide-text cases
+(one and two taxes at both heights). At 390 × 664 the boss warning fell
+from 11.318 to 10.652 CSS px, Last wave from 11.318 to 11.022, and
+Special from 12.395 to 12.129. At 390 × 844 Special fell from 15.756
+to 15.418. The other labels held their sizes.
 
-The taxed wave button now uses one 23 px font through every state. This
-keeps its fixed two-line metrics when the wording changes. Narrower
-letter spacing and wrapping at the short plaque's width make room for the
-label. “Boss wave next” measured 11.866 CSS px in all three modes. Across
-all ten taxed levels the smallest short-phone HUD text measured 11.857 CSS
-px. The full map and both control rows fit within the existing frame.
+The first fix's larger fonts and negative letter spacing were reverted.
+The shared boss warning now reads “Boss next” and the phone stacks its
+two words. Taxed phones also stack “Last wave”, give the fallback call bonus
+1 px of inset per side and let Special use the space up to its status dot.
+The regression compares each label with its normal size in the same state
+and viewport, with a tolerance of 0.01 CSS px. At 390 × 664 both the
+normal and wide runs measured Start Wave at 12.40 CSS px and the three
+call states at 11.32 CSS px. All four wide cases passed.
+
+In the untaxed 390 × 664 control, the 6% wider text shrank Special
+(12.21 to 11.55 CSS px), Call next with +20 (12.79 to 12.57) and
+Last wave (12.04 to 11.37). Every visible label stayed inside its panel.
+The wave counter overlapped the cheat mark on the cheated win in wide mode.

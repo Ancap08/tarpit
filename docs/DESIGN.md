@@ -1366,8 +1366,9 @@ drawn and where touches land differ.
   80 px at 390 × 664 to keep Pause at least 44 CSS px. Start Wave takes
   the remaining 136 or 116 px. Its 23 px label wraps to two lines when
   needed. Call next shows its bonus on the second line. A blocked call
-  shows its reason alone. Tips, unlock hints and cards use the same control
-  names “Special” and “Start Wave” printed on the HUD. Special has a status dot
+  shows its reason alone. The boss warning reads “Boss next” in both layouts,
+  with one word per line on the phone. Tips, unlock hints and cards use the
+  same control names “Special” and “Start Wave” printed on the HUD. Special has a status dot
   and shows the seconds remaining while recharging. At 390 × 844 the row
   labels retain at least 12 CSS px. At 390 × 664 Special and wave labels
   retain at least 11 CSS px and speed retains at least 12 CSS px.
@@ -1379,7 +1380,7 @@ drawn and where touches land differ.
 - **Taxed portrait levels** use a 480 × 1232 canvas. The 108 px status strip
   has a row for gold, lives, wave and level, a row for taxes and the cheat
   mark, then two 24 px preview lines starting at y=58. Stats, previews and
-  tower prices use 22 px type. The stat row is centred at y=14. The tax names and tower tally use 23 px.
+  tower prices use 21 px type. The tax names and tower tally use 23 px.
   When the cheat mark is visible, the tax row lists names only and the build
   bar shows the permit count. Aiming uses the preview space for the action and
   its touch or mouse hint. The map still measures 480 × 960. Both control
@@ -1387,12 +1388,12 @@ drawn and where touches land differ.
   wide with 4 px gaps. The lower plaques have 2 px gaps, a 115 px Special
   and a 73 px speed button. The two icon buttons grow from 73 to 82 px at
   the shorter phone height. The wave plaque takes the remaining width.
-  All wave-button states use 23 px type with a fixed 29 px line height. The
-  label wraps to the available plaque width on the shorter phone. The stats,
-  preview, Special and wave button use −1 px letter spacing. The boss name
-  and HP use 22 px type in 28 px boxes. At 390 × 664 the HUD labels measure
-  at least 11.6 CSS px, with 12 CSS px for taxes, the tally and speed. At
-  390 × 844 every HUD label measures at least 12 CSS px. On a feat result,
+  Blocked calls and call bonuses use 21 px type with at least 1 px at each
+  side. “Last wave” also takes two lines. Special reserves 19 px for its
+  left inset and status dot. At 390 × 664 all HUD labels measure at least
+  11.1 CSS px, with 12 CSS px for taxes, the tally and speed. At 390 × 844
+  the minimum is 12 CSS px.
+  The boss name and HP use 21 px type in 28 px boxes. On a feat result,
   23 px text and 82 px buttons keep the controls readable and tappable
   at the shorter height.
 - **The transform.** `src/game/layout.ts` owns every world-to-screen and

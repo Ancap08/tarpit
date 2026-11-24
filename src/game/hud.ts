@@ -83,7 +83,6 @@ import {
   PORTRAIT,
   PORTRAIT_GAP,
   TAXED_PORTRAIT,
-  TAXED_HUD_FONT_SIZE,
   PORTRAIT_STRIP_H,
   PORTRAIT_WIDTH,
   type Layout,
@@ -326,7 +325,7 @@ export const LANDSCAPE_HUD: HudMetrics = {
 function portraitHud(layout: Layout): HudMetrics {
   const { special, start, speed, mute, pause } = portraitRow2(1, layout);
   const taxed = layout === TAXED_PORTRAIT;
-  const size = taxed ? `${TAXED_HUD_FONT_SIZE}px` : '20px';
+  const size = taxed ? '21px' : '20px';
   const stripHeight = layout.map.y;
   const controlsY = stripHeight + layout.map.height;
   return {
@@ -339,7 +338,7 @@ function portraitHud(layout: Layout): HudMetrics {
       { x: 0, y: stripHeight - 2, width: PORTRAIT_WIDTH, height: 2 },
       { x: 0, y: controlsY, width: PORTRAIT_WIDTH, height: 2 },
     ],
-    statY: taxed ? 14 : 15,
+    statY: 15,
     statSize: size,
     goldX: 6,
     flowGap: taxed ? 8 : 14,
@@ -353,8 +352,8 @@ function portraitHud(layout: Layout): HudMetrics {
     pause,
     specialFont: '23px',
     startFont: '23px',
-    callFont: '23px',
-    menu: { left: special.x, top: controlsY, size: PORTRAIT_STACK, font: taxed ? '21px' : '20px' },
+    callFont: taxed ? '21px' : '23px',
+    menu: { left: special.x, top: controlsY, size: PORTRAIT_STACK, font: size },
     barTop: controlsY + PORTRAIT_GAP,
   };
 }
@@ -443,23 +442,22 @@ export class Hud {
       .text(m.cheat.x, m.cheat.y, CHEAT_MARK, { fontFamily: FONT, fontSize: m.cheat.size, fontStyle: 'bold', color: TEXT.cheatMark })
       .setOrigin(m.cheat.originX, 0.5)
       .setVisible(false);
-    // Milestone 33: Start Wave's own sound is the horn (or Call next's), so its click plays no tap.
-    this.startButton = new Button(scene, m.start, START_WAVE_TEXT, handlers.onStartWave, m.portrait ? { fontSize: m.startFont, sound: null } : { sound: null });
-    const startWrapWidth = m.start.width - 6;
-    if (m.portrait) {
-      // Fixed metrics reserve two lines, including ascenders and descenders.
-      this.startButton.labelObjects[0]
-        .setStyle({ metrics: { ascent: 23, descent: 6, fontSize: 29 } })
-        .setWordWrapWidth(startWrapWidth, true);
-    }
     if (layout === TAXED_PORTRAIT) {
-      // Keep wide fallback text inside the plaques and the two-line preview.
-      for (const label of [this.gold, this.lives, this.wave, this.tag, this.next,
-        this.specialButton.labelObjects[0], this.startButton.labelObjects[0]]) {
-        label.setLetterSpacing(-1);
-      }
       this.cheatMark.setStyle({ metrics: { ascent: statSize, descent: 4, fontSize: statSize + 4 } });
       this.next.setStyle({ metrics: { ascent: 18, descent: 6, fontSize: 24 } });
+    }
+    // Milestone 33: Start Wave's own sound is the horn (or Call next's), so its click plays no tap.
+    this.startButton = new Button(scene, m.start, START_WAVE_TEXT, handlers.onStartWave, m.portrait ? { fontSize: m.startFont, sound: null } : { sound: null });
+    if (m.portrait) {
+      // Stack the boss warning by word and give the taxed last-wave notice the same room.
+      const wrapWidth = m.start.width - 6;
+      this.startButton.labelObjects[0]
+        .setStyle({ metrics: { ascent: 23, descent: 6, fontSize: 29 } })
+        .setWordWrapCallback((text, label) => {
+          if (text === BOSS_WAVE_NEXT_TEXT || (layout === TAXED_PORTRAIT && text === LAST_WAVE_TEXT))
+            return text.split(' ');
+          return label.advancedWordWrap(text, label.context, wrapWidth);
+        });
     }
     this.speedButton = new Button(scene, m.speed, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress, fontSize: m.portrait ? m.startFont : undefined });
     this.specialMenu = new SpecialMenu(scene, m.menu.left, m.menu.top, handlers.onSpecialPick, layout.map.y, m.menu.size, m.menu.font);
@@ -485,7 +483,6 @@ export class Hud {
         if (row.pause.width !== m.pause.width) {
           Object.assign(m, row);
           this.startButton.setWidth(row.start.width);
-          if (layout === TAXED_PORTRAIT) this.startButton.labelObjects[0].setWordWrapWidth(Math.min(startWrapWidth, row.start.width), true);
           this.speedButton.moveTo(row.speed.x, row.speed.y);
           this.muteButton.setRect(row.mute);
           this.pauseButton.setSize(row.pause.width, row.pause.height);
@@ -593,7 +590,8 @@ export class Hud {
       this.startButton.set(autoWaveText(Math.ceil(state.autoWaveTicks / TICKS_PER_SECOND)), canStartWave(state));
     else this.startButton.set(START_WAVE_TEXT, canStartWave(state));
     const label = this.startButton.labelObjects[0];
-    const availableWidth = m.start.width - 4;
+    // A two-digit call bonus in the fallback face uses all but one pixel at either edge.
+    const availableWidth = m.start.width - (this.layout === TAXED_PORTRAIT ? 2 : 4);
     const fitX = Math.min(1, availableWidth / label.width);
     const fitY = Math.min(1, (m.start.height - 2) / label.height);
     if (this.layout === TAXED_PORTRAIT) label.setScale(Math.min(fitX, fitY));
@@ -612,7 +610,9 @@ export class Hud {
     this.specialButton.set(recharge ? rechargeText(state.specialRechargeTicks, TICKS_PER_SECOND, m.portrait) : SPECIAL_BUTTON_TEXT, ready);
     if (m.portrait) {
       const specialLabel = this.specialButton.labelObjects[0];
-      const fit = Math.min(1, (m.special.width - (recharge ? 7 : 24)) / specialLabel.width);
+      // On the taxed plaque the label can use the space up to the status dot.
+      const reserved = this.layout === TAXED_PORTRAIT ? 4 + 10 + PIP_RADIUS : 24;
+      const fit = Math.min(1, (m.special.width - (recharge ? 7 : reserved)) / specialLabel.width);
       specialLabel.setScale(fit, this.layout === TAXED_PORTRAIT ? fit : 1);
     }
     this.specialButton.setPicked(ready && (special.menuOpen || special.aiming !== null));
