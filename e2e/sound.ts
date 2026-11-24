@@ -76,7 +76,7 @@ export interface SceneLike {
     specialRechargeTicks: number;
   };
   build(c: { col: number; row: number }, t: string): { ok: boolean };
-  upgrade(c: { col: number; row: number }): { ok: boolean };
+  upgrade(c: { col: number; row: number }, path?: 'A' | 'B'): { ok: boolean };
   sell(c: { col: number; row: number }): { ok: boolean };
   startWave(): { ok: boolean };
   callNextWave(): { ok: boolean };

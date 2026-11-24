@@ -38,7 +38,7 @@
 
 import Phaser from 'phaser';
 import type { BlockedPosition, BlockedPositions } from '../draw/barricade';
-import { effectiveSlow, FEATHERS, ENEMY_STATS, enemyPosition, isBoss, isTarred, positionAlongPath, type Enemy, type EnemyType, type GameEvent, type GameState, type MapDef } from '../../sim';
+import { effectiveSlow, ENEMY_STATS, enemyPosition, isBoss, isTarred, positionAlongPath, type Enemy, type EnemyType, type GameEvent, type GameState, type MapDef } from '../../sim';
 import { bobOffset, DEATH_MS, burnPulse, FLAME_EVERY, HIT_FLASH_MS, Particles, statusTint, TINT } from './effects';
 import { awayFrom, deathPuff, KNOCK_MS, knockPx, knockShare } from '../fx/fxMath';
 import { enemyArt, walkFrame } from '../skin/frames';
@@ -402,7 +402,7 @@ export class EnemySprites {
 
   /** Pixels this enemy moved on its last tick. */
   private step(enemy: Enemy): number {
-    if (enemy.runTicksLeft) return -FEATHERS.speed / 60;
+    if (enemy.runTicksLeft) return -ENEMY_STATS[enemy.type].speed / 60;
     const slow = effectiveSlow(enemy);
     return (ENEMY_STATS[enemy.type].speed * (1 - slow)) / 60;
   }

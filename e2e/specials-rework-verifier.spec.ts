@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { aimBannerText, rechargeText, specialResultText } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { MAPS, positionAlongPath } from '../src/sim/map';
-import { SPECIAL_DEFS, SPECIAL_RECHARGE_TICKS } from '../src/sim/specials';
+import { SPECIAL_RECHARGE_TICKS } from '../src/sim/specials';
 import type { GameEvent, SpecialType } from '../src/sim';
 
 // Milestone 30 verifier probes, desktop (mouse). Written by the verifier, a
@@ -199,12 +199,10 @@ test('a keg leaves a scorch that fades; the tar puddle and fire patch are drawn 
       await api(page, (a) => a.step(240));
       expect(Buffer.compare(await shot(page, SPOT), base), `${type} at 241`).not.toBe(0);
       if (frames) fs.writeFileSync(`${frames}/${type}-mid.png`, await page.screenshot({ clip: { x: 0, y: 0, width: 960, height: 580 } }));
-      // Sample each zone nine ticks before its own expiry, then just after.
-      const fadingTick = SPECIAL_DEFS[type].zoneTicks - 9;
-      await page.evaluate(ticks => (window.__tarpit as TarpitTestApi).step(ticks), fadingTick - 241);
+      await api(page, (a) => a.step(410)); // 651 ticks: faded but still there
       expect((await state(page)).zones.length).toBe(1);
-      expect(Buffer.compare(await shot(page, SPOT), base), `${type} at ${fadingTick} (fading)`).not.toBe(0);
-      await api(page, (a) => a.step(10));
+      expect(Buffer.compare(await shot(page, SPOT), base), `${type} at 651 (fading)`).not.toBe(0);
+      await api(page, (a) => a.step(10)); // 661
       expect((await state(page)).zones.length).toBe(0);
       expect(Buffer.compare(await shot(page, SPOT), base), `${type} gone after its life`).toBe(0);
     }

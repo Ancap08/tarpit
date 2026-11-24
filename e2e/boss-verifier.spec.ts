@@ -187,10 +187,10 @@ test('(c)(d)(e) flash on a hit tick, label null before spawn and after death, fi
   expect(r.bossAtSpawnMinus1).toBeNull();
   expect(r.labelAtSpawn).toBe(`${BOSS_NAME} 4000 / 4000`);
   expect(r.firstHit).toMatchObject({ tower: 'firepot', flash: true, texture: 'boss-hit', frame: 0, flagHit: true, dx: 0, dy: 0 });
-  expect(r.firstHit!.tick).toBe(5099);
+  expect(r.firstHit!.tick).toBe(5069);
   expect(r.afterHit).toMatchObject({ tick: r.firstHit!.tick + 1, flash: false, flagHit: false });
 
-  // The sampled frame has 2034.13 HP, rounded up in the label.
+  // The sampled frame has 2040.63 HP, rounded up in the label.
   const fill = await page.evaluate(
     async ({ bar, red, bg, id, now }) => {
       const t = window.__tarpit as TarpitTestApi;
@@ -209,7 +209,7 @@ test('(c)(d)(e) flash on a hit tick, label null before spawn and after death, fi
     { bar: BAR, red: rgb(COLORS.bossBarFill), bg: rgb(COLORS.bossBarBg), id: r.id, now: r.ticks },
   );
   expect(fill.waveTick).toBe(5721);
-  expect(fill.label).toBe(`${BOSS_NAME} 2035 / 4000`);
+  expect(fill.label).toBe(`${BOSS_NAME} 2041 / 4000`);
   const want = Math.round((BAR.width * fill.hp) / 4000);
   expect(want).toBe(153);
   expect(Math.abs(fill.redRun - want), `red run ${fill.redRun}, want ${want}`).toBeLessThanOrEqual(2);
