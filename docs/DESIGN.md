@@ -13,8 +13,8 @@
 
 King Grumblemaw sends his collectors to take the town's gold. The next-wave
 preview uses short names and the existing count style. Boss bars and entrance
-banners use full names. The portrait preview fits its measured text into the
-remaining HUD strip. Boss labels scale down when their measured height exceeds
+banners use full names. The portrait preview wraps across the status strip. Taxed levels give it
+two full lines below the tax names. Boss labels scale down when their measured height exceeds
 the name pill or health bar. The simulation and balance report retain their original
 identifiers and labels.
 
@@ -1313,7 +1313,7 @@ drawn and where touches land differ.
   speed sits above mute, each 42 × 42 at x=828. Special and Start Wave
   keep their 100 and 130 px widths at x=586 and x=692. Landscape tower
   buttons start at x=6 and measure 132 × 42 with 4 px gaps.
-- **Portrait** uses a centred 480 x 1194 canvas. A held reward adds the side rail described above. From the top: a 76 px status strip
+- **Portrait** uses a centred 480 x 1194 canvas in Free play and untaxed levels. A held reward adds the side rail described above. From the top: a 76 px status strip
   (gold, lives, wave and level tag in one row, "cheat used" at its right
   end, the next-wave preview on up to two lines under them), the map
   turned a quarter turn clockwise (480 x 960, spawn at the top, cottage at
@@ -1336,9 +1336,23 @@ drawn and where touches land differ.
   canvas fits at 0.639: buttons are 44.7 CSS px, 20 px text 12.8 CSS px and a
   map cell 20.5 CSS px. With Safari's bars (390 x 664) the scale is 0.556:
   buttons 38.9, text 11.1 and cells 17.8 CSS px.
+- **Taxed portrait levels** use a 480 × 1232 canvas. The 108 px status strip
+  has a row for gold, lives, wave and level, a row for taxes and the cheat
+  mark, then two 24 px preview lines starting at y=58. Stats, previews and
+  tower prices use 21 px type. The tax names and tower tally use 23 px.
+  When the cheat mark is visible, the tax row lists names only and the build
+  bar shows the permit count. Aiming uses the preview space for the action and
+  its touch or mouse hint. The map still measures 480 × 960. Both control
+  rows are 73 px tall with 2 px outer margins. Tower plaques are 76 px
+  wide with 4 px gaps. The lower plaques have 2 px gaps, a 115 px Special
+  and a 73 px speed button. The two icon buttons grow from 73 to 82 px at
+  the shorter phone height. The wave plaque takes the remaining width.
+  The boss name and HP use 21 px type in 28 px boxes. On a feat result,
+  23 px text and 82 px buttons keep the controls readable and tappable
+  at the shorter height.
 - **The transform.** `src/game/layout.ts` owns every world-to-screen and
   screen-to-world conversion. Portrait: screen x = 480 - world y, screen
-  y = 76 + world x (world x runs down the screen, world y right to left).
+  y = status strip height + world x (world x runs down the screen, world y right to left).
   Landscape is the identity. World-space Graphics (map, zones, towers,
   range circles, ghost, projectiles, impacts) take the transform whole;
   sprites, text, hp bars, particles and banners are placed through it and
@@ -1951,7 +1965,8 @@ all twenty wins it opens Act Two. Back from a card keeps the act being browsed.
 Each stop shows its level number
 and three star slots. The number has a fixed-height box with at least 4 px
 of clearance above the stars. The map, card and result draw filled stars
-for earned slots and outlines for empty slots. The first open level without a win is highlighted.
+for earned slots and outlines for empty slots. On a feat level, the third slot
+has four points in all three views. The first open level without a win is highlighted.
 Tapping a locked stop names the first open level still to win. Back returns to
 the first screen. An open stop shows a card with the King's notice, level name, map,
 twist, new equipment or enemies, and best stars. Act Two cards list each
@@ -1988,12 +2003,13 @@ length. A win shows this run's stars and lives. A gold-cheat win shows
 three empty slots and explains that it saved no stars. Passing opens the
 next level and offers Next level when another level exists. An uncheated
 win gives the life target when lives alone determine the next award.
-Act Two results show all three slots and name the earned feat or the
+Act Two wins show all three slots and name the earned feat or the
 requirement for a missed feat. A cheated run earns zero stars and misses
 the feat. Next level opens the next card. Winning level 20 shows the
 campaign-complete message. Play again restarts the same level. Level map
 shows the player’s saved bests. A loss offers
-Try again and Level map. Turning the device keeps the current screen and
+Try again and Level map, with the loss reply and no feat verdict or star row.
+Turning the device keeps the current screen and
 level selection. Both looks use the same campaign controls.
 
 Arrow keys move the highlight, Enter or Space activates it, and Escape goes

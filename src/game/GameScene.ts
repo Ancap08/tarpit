@@ -202,7 +202,7 @@ import {
   pastDragThreshold,
   type Rect,
 } from './input';
-import { LANDSCAPE, type Layout, type LayoutKind } from './layout';
+import { LANDSCAPE, TAXED_PORTRAIT, type Layout, type LayoutKind } from './layout';
 import { COLORS, FONT, TEXT } from './palette';
 import { currentLayout } from './layoutSwitch';
 import { isPerfMode, isTestMode } from './testMode';
@@ -417,6 +417,7 @@ export class GameScene extends Phaser.Scene {
   speed: Speed = 1;
   /** Milestone 32b: where the map and controls sit; every map conversion goes through it. */
   private layout: Layout = LANDSCAPE;
+  get boardLayout(): Layout { return this.layout; }
   /** The level this game runs on (set in init from the start data). */
   private difficulty: Difficulty = DEFAULT_DIFFICULTY;
   /** The map this game runs on (milestone 27; set in init from the start data). */
@@ -541,13 +542,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.layout = currentLayout();
     // Only a relayout's restart resumes; Play again, the title and a first start begin a new game.
     const resume = this.restartPending ? this.resume : null;
     this.restartPending = false;
     this.leaving = false;
     this.resume = null;
     this.state = resume?.state ?? createGame({ difficulty: this.difficulty, map: this.currentMap, level: this.campaignLevel });
+    const base = currentLayout();
+    this.layout = base.turned && this.state.level?.taxes ? TAXED_PORTRAIT : base;
+    if (this.scale.height !== this.layout.height) this.scale.setGameSize(this.layout.width, this.layout.height);
     if (!resume) this.mapBlockedUntil = 0;
     this.recordedCleared = resume?.recordedCleared ?? 0;
     this.speed = 1;
@@ -741,6 +744,10 @@ export class GameScene extends Phaser.Scene {
     window.addEventListener('pagehide', pageAway);
     document.addEventListener('visibilitychange', hidden);
     this.events.once('shutdown', () => {
+      if (this.layout === TAXED_PORTRAIT && this.scale.height === this.layout.height) {
+        const next = currentLayout();
+        this.scale.setGameSize(next.width, next.height);
+      }
       canvas.removeEventListener('pointercancel', lost);
       canvas.removeEventListener('touchcancel', lost);
       window.removeEventListener('blur', lost);
@@ -1021,7 +1028,7 @@ export class GameScene extends Phaser.Scene {
 
   private aimBanner() {
     if (this.aiming === null) return null;
-    const text = aimBannerText(this.aiming, this.touch);
+    const text = aimBannerText(this.aiming, this.touch, this.layout === TAXED_PORTRAIT);
     const preview = this.barricadeAim()?.placement ?? this.guardsAim()?.placement;
     const reason = preview?.ok === false ? BARRICADE_AIM_REASONS[preview.reason] : null;
     return reason === null ? text : { ...text, main: reason };
@@ -1391,7 +1398,7 @@ export class GameScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     // Self-check (32b follow-up): a scene drawn for another layout than the window's rebuilds.
-    if (this.layout !== currentLayout() && !this.leaving) {
+    if (this.layout.kind !== currentLayout().kind && !this.leaving) {
       this.relayout();
       return;
     }

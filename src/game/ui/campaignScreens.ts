@@ -134,9 +134,9 @@ export function drawStoryBroadside(
     STORY_TEXT.continue, proceed, 26);
 }
 
-function drawBestStars(scene: Phaser.Scene, x: number, y: number, stars: number, labelSize: number, starSize: number) {
+function drawBestStars(scene: Phaser.Scene, x: number, y: number, stars: number, labelSize: number, starSize: number, feat: boolean) {
   const caption = label(scene, x, y, CAMPAIGN_TEXT.bestStars, labelSize, ink);
-  const row = drawStarRow(scene, x, y, stars, starSize, TEXT.paperGold);
+  const row = drawStarRow(scene, x, y, stars, starSize, TEXT.paperGold, feat);
   const gap = 12;
   const rowWidth = row.getBounds().width + 2;
   caption.setX(x - (rowWidth + gap) / 2);
@@ -219,7 +219,7 @@ function drawTaxCard(
     mapName.destroy();
     twist.destroy();
   }
-  drawBestStars(scene, cx, bestY, stars, bodySize, portrait ? 26 : 22);
+  drawBestStars(scene, cx, bestY, stars, bodySize, portrait ? 26 : 22, !!level.feat);
 
   const buttons: { key: string; text: string; click: () => void }[] = [
     { key: 'back', text: CAMPAIGN_TEXT.back, click: back },
@@ -283,7 +283,7 @@ export function drawLevelCard(
   twist.setY(textTop + twist.height / 2);
   heading.setY(textTop + twist.height + gap + heading.height / 2);
   equipment.setY(heading.y + heading.height / 2 + 5 + equipment.height / 2);
-  drawBestStars(scene, cx, starsY, stars, 22, 20);
+  drawBestStars(scene, cx, starsY, stars, 22, 20, !!level.feat);
   const yButton = portrait ? 894 : 466;
   const height = portrait ? 78 : 54;
   if (tips) {

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import type { GameScene } from '../src/game/GameScene';
 import type { TitleScene } from '../src/game/TitleScene';
 import { TAX_NAMES } from '../src/game/names';
 import { buildableCells, cellFromKey, MAPS, LEVELS, type LevelDef, type LevelTaxes } from '../src/sim';
@@ -16,7 +17,7 @@ async function fixture(page: Page, taxes: LevelTaxes) {
   await openPaintedLevel(page, level);
 }
 
-async function openPaintedLevel(page: Page, level: LevelDef) {
+export async function openPaintedLevel(page: Page, level: LevelDef) {
   await page.goto('/?test=1&look=painted');
   await waitForFirstScreen(page);
   await page.evaluate(level => {
@@ -35,7 +36,7 @@ async function openPaintedLevel(page: Page, level: LevelDef) {
 async function checkTaxLine(page: Page, expected: string, count = false) {
   const line = await page.evaluate(count => {
     const t = window.__tarpit!;
-    const scene = t.game.scene.getScene('game');
+    const scene = t.game.scene.getScene('game') as GameScene;
     const label = scene.children.getByName(count ? 'build-bar-count' : 'active-taxes') as Phaser.GameObjects.Text;
     if (!label.visible) return null;
     const b = label.getBounds();
@@ -51,7 +52,7 @@ async function checkTaxLine(page: Page, expected: string, count = false) {
     const first = t.uiRects()['bar:musketeer'];
     const second = t.uiRects()['bar:cannon'];
     const region = count ? { left: first.x, right: second.x + second.width, top: first.y, bottom: first.y + first.height }
-      : { left: 0, right: portrait ? 480 : 960, top: portrait ? 0 : 480, bottom: portrait ? 76 : 533 };
+      : { left: 0, right: portrait ? 480 : 960, top: portrait ? 0 : 480, bottom: portrait ? scene['layout'].map.y : 533 };
     return { text: label.text, readable: cssPixels >= 12, fits: b.left >= region.left && b.right <= region.right
       && b.top >= region.top && b.bottom <= region.bottom, overlaps: overlaps.map(other => other.text) };
   }, count);

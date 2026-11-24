@@ -7,7 +7,7 @@ import type Phaser from 'phaser';
 import { TOWER_DEFS, towerBuildCost, allowedTowers, type GameState, type TowerType } from '../../sim';
 import type { Rect } from '../input';
 import { drawTowerShape } from '../draw/towers';
-import { LANDSCAPE, type Layout } from '../layout';
+import { LANDSCAPE, TAXED_PORTRAIT, type Layout } from '../layout';
 import type { PaintedSkin } from '../skin/painted';
 import { portraitBarRects } from './geometry';
 import { TOWER_NAMES, towerCountText } from '../names';
@@ -35,7 +35,7 @@ const PAINTED_WIDE_LABEL_Y = 30;
 
 /** The bar's button rectangles for `layout`, in BAR_TYPES order. */
 export function barRects(layout: Layout, top: number): Rect[] {
-  if (layout.kind === 'portrait') return portraitBarRects();
+  if (layout.kind === 'portrait') return portraitBarRects(layout);
   return BAR_TYPES.map((_, i) => ({ x: BAR_LEFT + i * (BAR_BUTTON_WIDTH + BAR_GAP), y: top, width: BAR_BUTTON_WIDTH, height: BAR_BUTTON_HEIGHT }));
 }
 
@@ -52,9 +52,10 @@ export class BuildBar {
   constructor(scene: Phaser.Scene, top: number, onClick: (type: TowerType) => void, private readonly layout: Layout = LANDSCAPE, painted?: PaintedSkin) {
     const portrait = layout.kind === 'portrait';
     const rects = barRects(layout, top);
+    const priceSize = layout === TAXED_PORTRAIT ? 21 : 20;
     this.buttons = BAR_TYPES.map((type, i) =>
       portrait
-        ? new Button(scene, rects[i], String(TOWER_DEFS[type].cost), () => onClick(type), { fontSize: '20px', labelY: COST_Y })
+        ? new Button(scene, rects[i], String(TOWER_DEFS[type].cost), () => onClick(type), { fontSize: `${priceSize}px`, labelY: COST_Y })
         : new Button(scene, rects[i], TOWER_NAMES[type], () => onClick(type), {
           fontSize: painted ? '14px' : '16px',
           right: String(TOWER_DEFS[type].cost),
@@ -67,7 +68,7 @@ export class BuildBar {
       // tower plaque so a browser with tall font metrics cannot spill its
       // cost onto the controls below.
       for (const button of this.buttons) button.labelObjects[0].setStyle({
-        fixedHeight: 24, metrics: { ascent: 20, descent: 4, fontSize: 24 },
+        fixedHeight: priceSize + 4, metrics: { ascent: priceSize, descent: 4, fontSize: priceSize + 4 },
       });
     }
     if (painted) {
@@ -79,7 +80,7 @@ export class BuildBar {
     } else if (portrait) {
       this.classicIcons = scene.add.graphics();
     }
-    const countSize = portrait ? 22 : 14;
+    const countSize = layout === TAXED_PORTRAIT ? 23 : portrait ? 22 : 14;
     this.count = scene.add.text(0, 0, '', {
       fontFamily: HUD_FONT, fontSize: countSize, fontStyle: 'bold', color: TEXT.hud,
       fixedHeight: countSize + 4, metrics: { ascent: countSize, descent: 4, fontSize: countSize + 4 },

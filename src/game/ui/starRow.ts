@@ -2,8 +2,8 @@ import type Phaser from 'phaser';
 
 export const STAR_ROW = 'campaignStars';
 
-/** Three slots, with a four-pointed spark for a feat when shown on the road map. */
-export function drawStarRow(scene: Phaser.Scene, x: number, y: number, earned: number, size: number, cssColor: string, feat = false) {
+/** A feat level uses the four-pointed spark for its third slot, filled or empty. */
+export function drawStarRow(scene: Phaser.Scene, x: number, y: number, earned: number, size: number, cssColor: string, feat: boolean) {
   const row = scene.add.container(x, y).setName(STAR_ROW);
   const color = parseInt(cssColor.slice(1), 16);
   const radius = size / 2 - 1;

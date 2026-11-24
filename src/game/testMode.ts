@@ -181,11 +181,11 @@ export function installGlobal(game: Phaser.Game): void {
     // Milestone 32b: the layout, and map points in page coordinates through it.
     layout: () => currentLayout().kind,
     cellToPage: (col: number, row: number) => {
-      const c = currentLayout().cellCenter({ col, row });
+      const c = (activeGame()?.boardLayout ?? currentLayout()).cellCenter({ col, row });
       return canvasToPage(game, c.x, c.y);
     },
     worldToPage: (x: number, y: number) => {
-      const c = currentLayout().toScreen({ x, y });
+      const c = (activeGame()?.boardLayout ?? currentLayout()).toScreen({ x, y });
       return canvasToPage(game, c.x, c.y);
     },
     titleReady: () => game.scene.isActive('title') && titleScene(game).isReady,

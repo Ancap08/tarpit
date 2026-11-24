@@ -29,8 +29,8 @@ export function campaignResultText(state: GameState, progress: CampaignProgress)
   const nextId = won && unlockedLevel(progress, levelId + 1) ? levelId + 1 : null;
   const cheatHint = nextId ? CAMPAIGN_END.cheated : CAMPAIGN_END.cheatedLast;
   const hint = won && state.cheated ? cheatHint : stars === 1 ? starGoalText(TWO_STAR_LIVES, 2) : stars === 2 && !state.level.feat ? starGoalText(THREE_STAR_LIVES, 3) : '';
-  const feat = state.level.feat ? featResultText(state.level.feat, stars === 3) : '';
-  const slots = won || feat ? starSlots(stars) : '';
+  const feat = won && state.level.feat ? featResultText(state.level.feat, stars === 3) : '';
+  const slots = won ? starSlots(stars) : '';
   const actClose = won && levelId === ACT_ONE_LAST_LEVEL ? STORY_TEXT.firstActClose : '';
   const complete = won && levelId === LEVELS.at(-1)?.id ? CAMPAIGN_END.complete : '';
   return {

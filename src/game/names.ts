@@ -185,10 +185,10 @@ export const TAX_NAMES: Readonly<Record<TaxKind, string>> = {
   curfew: 'Curfew', noLoitering: 'No Loitering', rationing: 'Rationing',
 };
 
-export function taxStatusText(taxes: LevelTaxes | undefined, standing: number): string {
+export function taxStatusText(taxes: LevelTaxes | undefined, standing?: number): string {
   if (!taxes) return '';
   return (Object.keys(TAX_NAMES) as TaxKind[]).filter(key => taxes[key] !== undefined).map(key => {
-    return key === 'rationing' && taxes.rationing !== undefined && standing >= taxes.rationing
+    return key === 'rationing' && taxes.rationing !== undefined && standing !== undefined && standing >= taxes.rationing
       ? 'Rationing (full)' : TAX_NAMES[key];
   }).join(' · ');
 }
@@ -256,7 +256,11 @@ export const BARRICADE_AIM_REASONS = {
  * the main line ("Tap the trail to drop the Tar Barrel"), then a smaller
  * hint saying how to cancel (and, on touch, how to hold and aim).
  */
-export function aimBannerText(type: SpecialType, touch: boolean): { main: string; hint: string } {
+export function aimBannerText(type: SpecialType, touch: boolean, compact = false): { main: string; hint: string } {
+  if (compact) return {
+    main: `${touch ? 'Tap' : 'Click'} the trail to ${SPECIAL_VERBS[type]} ${SPECIAL_NAMES[type]}`,
+    hint: touch ? `Hold, aim, lift. ${SPECIAL_BUTTON_TEXT} cancels.` : `Esc or ${SPECIAL_BUTTON_TEXT} again cancels.`,
+  };
   return {
     main: `${touch ? 'Tap' : 'Click'} the trail to ${SPECIAL_VERBS[type]} ${type === 'guards' ? 'guards' : `the ${SPECIAL_NAMES[type]}`}`,
     hint: touch ? `Or hold to aim and lift to let go. ${SPECIAL_BUTTON_TEXT} again cancels.` : `Esc or ${SPECIAL_BUTTON_TEXT} again cancels.`,

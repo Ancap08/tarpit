@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import type { CampaignProgress } from '../src/sim';
 import { api, press } from './campaign';
 import { useTallFontMetrics } from './campaignFont';
@@ -10,38 +10,66 @@ import { waitForFirstScreen } from './title';
 
 const won = (n: number): CampaignProgress => Object.fromEntries(Array.from({ length: n }, (_, i) => [i + 1, 2]));
 
-test('a feat level result draws the same four-pointed third star as its map plaque', async ({ page }) => {
-  test.setTimeout(60_000);
-  // DEFECT (verifier, 48c): the result and the card's "Best stars" row call drawStarRow
-  // without the feat flag, so the third slot is five-pointed there and four-pointed on the map.
-  test.fail();
+const starRows = (page: Page) => api(page, t => t.game.scene.getScene(t.scene()).children.list
+  .filter(node => node.name === 'campaignStars')
+  .map(node => ((node as Phaser.GameObjects.Container).list as Phaser.GameObjects.Star[])
+    .map(star => ({ points: star.points, filled: star.isFilled }))));
+
+for (const { id, stars, lives, points } of [
+  { id: 1, stars: 3, lives: 20, points: 5 },
+  { id: 11, stars: 1, lives: 1, points: 4 },
+  { id: 11, stars: 3, lives: 16, points: 4 },
+] as const) {
+  test(`map, card and result draw the same ${stars} earned stars at level ${id}`, async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.goto('/?test=1');
+    await waitForFirstScreen(page);
+    await page.evaluate(progress => window.__tarpit!.setCampaignProgress!(progress), { ...won(id - 1), [id]: stars });
+    await press(page, 'title:campaign');
+    await onScreen(page, 'levelMap');
+    const row = [5, 5, points].map((points, i) => ({ points, filled: i < stars }));
+    // Levels 1 and 11 are each the first plaque in their act.
+    expect((await starRows(page))[0]).toEqual(row);
+    await press(page, `title:stop:${id}`);
+    await onScreen(page, 'levelCard');
+    expect(await starRows(page)).toEqual([row]);
+    await press(page, 'title:play');
+    await onScreen(page, 'game');
+    await page.evaluate(lives => {
+      const t = window.__tarpit!;
+      const s = t.state!();
+      s.wave = s.level!.waves.length;
+      s.lives = lives;
+      s.phase = 'won';
+      t.step!(0);
+    }, lives);
+    await onScreen(page, 'result');
+    expect(await starRows(page)).toEqual([row]);
+  });
+}
+
+test('a lost feat level shows the defeat without a feat verdict or star row', async ({ page }) => {
   await page.goto('/?test=1');
   await waitForFirstScreen(page);
-  await page.evaluate(progress => window.__tarpit!.setCampaignProgress!(progress), won(10));
   await page.evaluate(() => window.__tarpit!.startLevel!(11));
   await onScreen(page, 'game');
   await page.evaluate(() => {
     const t = window.__tarpit!;
     const s = t.state!();
-    s.wave = s.level!.waves.length;
-    s.lives = 16;
-    s.phase = 'won';
+    s.lives = 0;
+    s.phase = 'lost';
     t.step!(0);
   });
   await onScreen(page, 'result');
-  const shapes = await api(page, t => t.game.scene.getScene('game').children.list
-    .filter(node => node.name === 'campaignStars')
-    .map(node => (node as Phaser.GameObjects.Container).list.map(star => (star as Phaser.GameObjects.Star).points)));
-  expect(shapes).toEqual([[5, 5, 4]]);
+  const words = await api(page, t => t.campaignLabels().map(label => label.text));
+  expect(words).toContain('Try again');
+  expect(words.filter(line => /^(Earned:|Missed )/.test(line))).toEqual([]);
+  expect(await starRows(page)).toEqual([]);
 });
 
 for (const height of [844, 664]) {
   test(`the next-wave preview stays readable beside a tax line at 390x${height}`, async ({ page }) => {
     test.setTimeout(60_000);
-    // DEFECT (verifier, 48c): with a tax line showing, hud.ts squashes the preview
-    // (setScale(1, ...)); it measures 9.9 CSS px at 844 and 7.8 at 664. Untaxed level 10
-    // reads 12+ at 844 and 11.1 at 664, and taxHud.ts checks only the tax line itself.
-    test.fail();
     await page.setViewportSize({ width: 390, height });
     await page.goto('/?test=1');
     await waitForFirstScreen(page);
@@ -53,7 +81,7 @@ for (const height of [844, 664]) {
       const next = scene.children.list.find(n => n.type === 'Text' && (n as Phaser.GameObjects.Text).text.startsWith('Next:')) as Phaser.GameObjects.Text;
       return parseFloat(String(next.style.fontSize)) * Math.min(next.scaleX, next.scaleY) * scale;
     });
-    expect(css).toBeGreaterThanOrEqual(height === 664 ? 11 : 12);
+    expect(css).toBeGreaterThanOrEqual(height === 664 ? 11.1 : 12);
   });
 }
 

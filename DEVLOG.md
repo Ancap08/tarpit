@@ -9679,3 +9679,13 @@ Few hands: ..." and an empty "0 of 3 stars" row, where level 1 prints neither.
 Suggested wording: leave the feat line off a loss. The empty gap on the phone
 level 20 card at 844 is centring, not hidden content (nothing moved to the back
 with normal metrics).
+
+**Fixes after verification.** The map, card and winning result now draw a
+four-pointed third slot on feat levels, filled or outlined. A loss shows
+the town's defeat with no star row or feat verdict. Taxed phone games give
+the tax names their own row and the preview two full lines. The status strip
+grew from 76 to 108 game pixels. Both phones have side margins, so the
+480 × 1232 board fits the full map below the taller strip. Twelve browser
+cases failed on the verifier's build and now check HUD text size, spacing
+and containment at both heights with one or two taxes, through combat,
+planning and results, in normal type and both fixed font modes.

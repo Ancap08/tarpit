@@ -155,6 +155,15 @@ export const PORTRAIT = new Layout(
   { x: 0, y: PORTRAIT_STRIP_H, width: MAP_HEIGHT, height: MAP_WIDTH },
 );
 
+// Taxed games reserve another line above the map. The two control rows gain
+// 3 px each to keep their physical targets when FIT scales the taller board.
+export const TAXED_CONTROL_H = 73;
+export const TAXED_PORTRAIT = new Layout(
+  'portrait',
+  { width: PORTRAIT_WIDTH, height: PORTRAIT_HEIGHT + 32 + 2 * (TAXED_CONTROL_H - PORTRAIT_BUTTON_H) },
+  { ...PORTRAIT.map, y: PORTRAIT_STRIP_H + 32 },
+);
+
 /** Portrait text is at least this size, so it reads at 11 CSS px or more on a 390 x 763 phone. */
 export const PORTRAIT_MIN_FONT = 18;
 

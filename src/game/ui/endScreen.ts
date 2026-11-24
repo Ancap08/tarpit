@@ -7,7 +7,7 @@
 import type Phaser from 'phaser';
 import type { GameState } from '../../sim';
 import type { Rect } from '../input';
-import type { Layout } from '../layout';
+import { TAXED_PORTRAIT, type Layout } from '../layout';
 import { COLORS, FONT, TEXT } from '../palette';
 import { ink, panel as drawPanel, rule } from './theme';
 import { Button } from './button';
@@ -60,14 +60,15 @@ export class EndScreen {
   private readonly cy: number;
 
   /** `layout` (milestone 32b): the veil covers its map box and the panel is centred on it. */
-  constructor(scene: Phaser.Scene, layout: Layout, onPlayAgain: () => void, onMenu: () => void, onKeepGoing: () => void) {
-    const MAP_AREA = layout.map;
+  constructor(scene: Phaser.Scene, private readonly board: Layout, onPlayAgain: () => void, onMenu: () => void, onKeepGoing: () => void) {
+    const MAP_AREA = board.map;
     const cx = MAP_AREA.x + MAP_AREA.width / 2;
     const cy = MAP_AREA.y + MAP_AREA.height / 2;
-    this.portrait = layout.kind === 'portrait';
+    this.portrait = board.turned;
     this.cy = cy;
     const bw = this.portrait ? P_BUTTON_W : BUTTON_W;
     const bh = this.portrait ? P_BUTTON_H : BUTTON_H;
+    const buttonFont = board === TAXED_PORTRAIT ? '23px' : '22px';
 
     this.veil = scene.add
       .rectangle(MAP_AREA.x, MAP_AREA.y, MAP_AREA.width, MAP_AREA.height, COLORS.endVeil, 0.38)
@@ -103,17 +104,17 @@ export class EndScreen {
     const y = 0; // Positioned from measured content when shown.
     this.cx = cx;
     this.button = new Button(scene, { x: left, y, width: bw, height: bh }, END_TEXT.playAgain, onPlayAgain, {
-      fontSize: this.portrait ? '22px' : '20px',
+      fontSize: this.portrait ? buttonFont : '20px',
     });
     this.menu = new Button(
       scene,
       { x: left + BUTTON_W + BUTTON_GAP, y, width: this.portrait ? P_BUTTON_W : MENU_W, height: bh },
       END_TEXT.menu,
       onMenu,
-      { fontSize: this.portrait ? '22px' : '18px' },
+      { fontSize: this.portrait ? buttonFont : '18px' },
     );
     this.keepGoing = new Button(scene, { x: 0, y, width: this.portrait ? P_BUTTON_W : KEEP_GOING_W, height: bh }, END_TEXT.keepGoing, onKeepGoing, {
-      fontSize: this.portrait ? '22px' : '20px',
+      fontSize: this.portrait ? buttonFont : '20px',
     });
     this.keepGoing.setPicked(true);
     this.setVisible(false);
@@ -142,10 +143,11 @@ export class EndScreen {
     this.story.setColor(kind === 'lost' ? TEXT.paperDefeat : '#254a57');
     if (campaign) {
       this.title.setText(campaign.title);
-      const actResult = Boolean(campaign.actClose || campaign.feat);
-      const detailSize = this.portrait ? (actResult ? '22px' : '20px') : '18px';
+      const actResult = Boolean(campaign.actClose || state.level?.feat);
+      const actFont = this.board === TAXED_PORTRAIT ? '23px' : '22px';
+      const detailSize = this.portrait ? (actResult ? actFont : '20px') : '18px';
       if (actResult) {
-        this.story.setFontSize(this.portrait ? '22px' : '19px');
+        this.story.setFontSize(this.portrait ? actFont : '19px');
         this.story.setWordWrapWidth((this.portrait ? PORTRAIT_WIDTH : LANDSCAPE_WIDTH) - 44);
         if (campaign.actClose) {
           this.close = this.story.scene.add.text(this.cx, 0, campaign.actClose, {
@@ -154,7 +156,7 @@ export class EndScreen {
           }).setOrigin(0.5, 0);
         }
       }
-      if (campaign.slots) this.starRow = drawStarRow(this.title.scene, this.cx, 0, campaign.stars, 28, TEXT.paperGold);
+      if (campaign.slots) this.starRow = drawStarRow(this.title.scene, this.cx, 0, campaign.stars, 28, TEXT.paperGold, !!state.level?.feat);
       this.detailRows = campaign.details.map(text => this.boons.scene.add.text(this.cx, 0, text, {
         fontFamily: FONT, fontSize: detailSize, color: ink, align: 'center',
         wordWrap: { width: this.portrait ? PORTRAIT_WIDTH - 40 : 442 },
@@ -163,7 +165,7 @@ export class EndScreen {
       this.menu.set(CAMPAIGN_END.map, true);
       this.keepGoing.set(CAMPAIGN_END.next, true);
       for (const b of [this.keepGoing, this.button, this.menu]) {
-        if (this.portrait && actResult) b.setSize(P_BUTTON_W, 80);
+        if (this.portrait && actResult) b.setSize(P_BUTTON_W, this.board === TAXED_PORTRAIT ? 82 : 80);
         if (!this.portrait) b.setSize(160, actResult ? 66 : 52);
       }
     } else {

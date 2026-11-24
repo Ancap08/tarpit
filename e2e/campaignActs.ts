@@ -56,7 +56,7 @@ async function readCard(page: Page, id: number) {
 }
 
 /** Read the rendered font and hit target at the fitted scale, including Safari's shorter viewport. */
-async function checkSize(page: Page) {
+export async function checkSize(page: Page) {
   const issues = await api(page, t => {
     const scene = t.game.scene.getScene(t.scene());
     const scale = (t.canvasToPage(100, 0).x - t.canvasToPage(0, 0).x) / 100;

@@ -80,9 +80,9 @@ import { Button } from './ui/button';
 import { PORTRAIT_STACK, portraitRow2, STACK_SIZE, stripAimText, type StackSize } from './ui/geometry';
 import {
   LANDSCAPE,
-  PORTRAIT_CONTROLS_Y,
-  PORTRAIT_HEIGHT,
-  PORTRAIT_ROW1_Y,
+  PORTRAIT,
+  PORTRAIT_GAP,
+  TAXED_PORTRAIT,
   PORTRAIT_STRIP_H,
   PORTRAIT_WIDTH,
   type Layout,
@@ -322,25 +322,28 @@ export const LANDSCAPE_HUD: HudMetrics = {
   barTop: ROW2_BUTTON_Y,
 };
 
-export const PORTRAIT_HUD: HudMetrics = (() => {
-  const { special, start, speed, mute, pause } = portraitRow2();
-  const size = '20px';
+function portraitHud(layout: Layout): HudMetrics {
+  const { special, start, speed, mute, pause } = portraitRow2(1, layout);
+  const taxed = layout === TAXED_PORTRAIT;
+  const size = taxed ? '21px' : '20px';
+  const stripHeight = layout.map.y;
+  const controlsY = stripHeight + layout.map.height;
   return {
     portrait: true,
     bands: [
-      { x: 0, y: 0, width: PORTRAIT_WIDTH, height: PORTRAIT_STRIP_H },
-      { x: 0, y: PORTRAIT_CONTROLS_Y, width: PORTRAIT_WIDTH, height: PORTRAIT_HEIGHT - PORTRAIT_CONTROLS_Y },
+      { x: 0, y: 0, width: PORTRAIT_WIDTH, height: stripHeight },
+      { x: 0, y: controlsY, width: PORTRAIT_WIDTH, height: layout.height - controlsY },
     ],
     lines: [
-      { x: 0, y: PORTRAIT_STRIP_H - 2, width: PORTRAIT_WIDTH, height: 2 },
-      { x: 0, y: PORTRAIT_CONTROLS_Y, width: PORTRAIT_WIDTH, height: 2 },
+      { x: 0, y: stripHeight - 2, width: PORTRAIT_WIDTH, height: 2 },
+      { x: 0, y: controlsY, width: PORTRAIT_WIDTH, height: 2 },
     ],
     statY: 15,
     statSize: size,
     goldX: 6,
-    flowGap: 14,
-    preview: { x: 6, y: 28, width: PORTRAIT_WIDTH - 12, originY: 0 },
-    cheat: { x: PORTRAIT_WIDTH - 6, y: 15, size, originX: 1 },
+    flowGap: taxed ? 8 : 14,
+    preview: { x: 6, y: taxed ? 58 : 28, width: PORTRAIT_WIDTH - 12, originY: 0 },
+    cheat: { x: PORTRAIT_WIDTH - 6, y: taxed ? 42 : 15, size, originX: 1 },
     gold: { x: 0, y: 0, width: 120, height: 30 },
     special,
     start,
@@ -349,14 +352,17 @@ export const PORTRAIT_HUD: HudMetrics = (() => {
     pause,
     specialFont: '23px',
     startFont: '23px',
-    callFont: '23px',
-    menu: { left: special.x, top: PORTRAIT_CONTROLS_Y, size: PORTRAIT_STACK, font: size },
-    barTop: PORTRAIT_ROW1_Y,
+    callFont: taxed ? '21px' : '23px',
+    menu: { left: special.x, top: controlsY, size: PORTRAIT_STACK, font: size },
+    barTop: controlsY + PORTRAIT_GAP,
   };
-})();
+}
+
+export const PORTRAIT_HUD = portraitHud(PORTRAIT);
 
 export function hudMetrics(layout: Layout): HudMetrics {
-  return layout.kind === 'portrait' ? PORTRAIT_HUD : LANDSCAPE_HUD;
+  if (layout === TAXED_PORTRAIT) return portraitHud(layout);
+  return layout.turned ? PORTRAIT_HUD : LANDSCAPE_HUD;
 }
 
 export class Hud {
@@ -385,7 +391,7 @@ export class Hud {
   /** The Lives readout's left edge now (portrait: after the gold), for the exit shake. */
   private livesX = LIVES_X;
 
-  constructor(scene: Phaser.Scene, handlers: HudHandlers, layout: Layout = LANDSCAPE, painted?: PaintedSkin) {
+  constructor(scene: Phaser.Scene, handlers: HudHandlers, private readonly layout: Layout = LANDSCAPE, painted?: PaintedSkin) {
     const m = { ...hudMetrics(layout) };
     this.m = m;
     const counter = scene.add.graphics();
@@ -415,8 +421,8 @@ export class Hud {
     this.lives = fixedStat(LIVES_X, statSize, TEXT.hud);
     this.wave = fixedStat(238, statSize, TEXT.hud);
     this.tag = fixedStat(238, m.portrait ? statSize : TAG_SIZE, TEXT.hudDim);
-    this.taxLine = fixedStat(m.portrait ? 6 : 8, m.portrait ? 22 : 14, TEXT.hud)
-      .setName('active-taxes').setY(m.portrait ? 61 : MID + 14).setVisible(false);
+    this.taxLine = fixedStat(m.portrait ? 6 : 8, m.portrait ? 23 : 14, TEXT.hud)
+      .setName('active-taxes').setY(m.portrait ? 42 : MID + 14).setVisible(false);
     if (!m.portrait) this.tag.setY(MID + TAG_OFFSET);
     this.next = m.portrait
       ? stat(m.preview.x, m.statSize, TEXT.hudDim).setY(m.preview.y).setOrigin(0, m.preview.originY).setWordWrapWidth(m.preview.width, true)
@@ -436,6 +442,10 @@ export class Hud {
       .text(m.cheat.x, m.cheat.y, CHEAT_MARK, { fontFamily: FONT, fontSize: m.cheat.size, fontStyle: 'bold', color: TEXT.cheatMark })
       .setOrigin(m.cheat.originX, 0.5)
       .setVisible(false);
+    if (layout === TAXED_PORTRAIT) {
+      this.cheatMark.setStyle({ metrics: { ascent: statSize, descent: 4, fontSize: statSize + 4 } });
+      this.next.setStyle({ metrics: { ascent: 18, descent: 6, fontSize: 24 } });
+    }
     // Milestone 33: Start Wave's own sound is the horn (or Call next's), so its click plays no tap.
     this.startButton = new Button(scene, m.start, START_WAVE_TEXT, handlers.onStartWave, m.portrait ? { fontSize: m.startFont, sound: null } : { sound: null });
     if (m.portrait) {
@@ -465,7 +475,7 @@ export class Hud {
     const fitControls = () => {
       const { canvasBounds: b, displayScale: s } = scene.scale;
       if (m.portrait) {
-        const row = portraitRow2(1 / Math.max(s.x, s.y));
+        const row = portraitRow2(1 / Math.max(s.x, s.y), layout);
         if (row.pause.width !== m.pause.width) {
           Object.assign(m, row);
           this.startButton.setWidth(row.start.width);
@@ -511,21 +521,27 @@ export class Hud {
     set(this.wave, waveCounterText(state.wave, state.endless, lastWave(state)));
     const tag = state.level ? levelNumberText(state.level.id) : difficultyTag(state.difficulty);
     set(this.tag, tag);
-    const taxes = taxStatusText(state.level?.taxes, state.towers.length);
+    // The build bar carries the permit count. On a cheated portrait run, keep
+    // this line for the tax names and the mark that the run cannot earn stars.
+    const namesOnly = this.layout === TAXED_PORTRAIT && state.cheated;
+    const taxes = taxStatusText(state.level?.taxes, namesOnly ? undefined : state.towers.length);
     set(this.taxLine, taxes);
     this.taxLine.setVisible(!!taxes);
-    if (taxes) {
-      const room = m.portrait ? PORTRAIT_WIDTH - 12 : this.tag.x - this.taxLine.x - 4;
+    if (taxes && !m.portrait) {
+      const room = this.tag.x - this.taxLine.x - 4;
       this.taxLine.setScale(Math.min(1, room / this.taxLine.width), 1);
     }
     if (m.portrait) {
       // One row: each stat starts after the one before it; the cheat mark is right-aligned.
       const dx = this.lives.x - this.livesX;
-      this.livesX = this.gold.x + this.gold.width + m.flowGap;
+      const used = this.gold.x + this.gold.width + this.lives.width + this.wave.width + this.tag.width;
+      const gap = this.layout === TAXED_PORTRAIT
+        ? Math.min(m.flowGap, Math.max(0, (PORTRAIT_WIDTH - 4 - used) / 2.5)) : m.flowGap;
+      this.livesX = this.gold.x + this.gold.width + gap;
       this.lives.setX(this.livesX + dx);
-      this.wave.setX(this.livesX + this.lives.width + m.flowGap);
-      this.tag.setX(this.wave.x + this.wave.width + m.flowGap / 2);
-      const rightEdge = state.cheated ? this.cheatMark.x - this.cheatMark.width - 4 : PORTRAIT_WIDTH;
+      this.wave.setX(this.livesX + this.lives.width + gap);
+      this.tag.setX(this.wave.x + this.wave.width + gap / 2);
+      const rightEdge = state.cheated && this.layout !== TAXED_PORTRAIT ? this.cheatMark.x - this.cheatMark.width - 4 : PORTRAIT_WIDTH;
       this.tag.setVisible(this.tag.x + this.tag.width <= rightEdge);
     } else {
       this.gold.setY(taxes ? MID + WAVE_TAG_SHIFT : state.cheated ? MID - 6 : MID);
@@ -539,9 +555,11 @@ export class Hud {
     const preview = aimText ?? (state.phase === 'lost' ? '' : previewText(state));
     if (this.next.text !== preview) {
       const width = m.preview.width;
-      if (m.portrait) {
+      if (this.layout === TAXED_PORTRAIT) {
+        this.next.setText(preview).setColor(aimText === null ? TEXT.hudDim : TEXT.aimBanner);
+      } else if (m.portrait) {
         this.next.setWordWrapWidth(width, true).setText(preview).setColor(aimText === null ? TEXT.hudDim : TEXT.aimBanner);
-        const availableHeight = (taxes ? this.taxLine.getBounds().top - 1 : PORTRAIT_STRIP_H - 2) - m.preview.y;
+        const availableHeight = PORTRAIT_STRIP_H - 2 - m.preview.y;
         for (const size of [20, 19, 18, 16, 14]) {
           // At 20 px the actual Caslon glyphs in previews and aim hints occupy
           // 17 px above the baseline and 6 below it. Courier fits inside both.
@@ -551,7 +569,6 @@ export class Hud {
           this.next.setStyle({ fontSize: size, metrics: { ascent, descent, fontSize: ascent + descent } });
           if (this.next.height <= availableHeight && this.next.width <= width) break;
         }
-        if (taxes) this.next.setScale(1, Math.min(1, availableHeight / this.next.height));
       } else {
         this.next.setFontSize(previewSize(preview)).setText(preview);
         this.next.setScale(Math.min(1, width / this.next.width), Math.min(1, BUTTON_H / this.next.height));
@@ -570,7 +587,10 @@ export class Hud {
     else this.startButton.set(START_WAVE_TEXT, canStartWave(state));
     const label = this.startButton.labelObjects[0];
     const availableWidth = m.start.width - 4;
-    label.setScale(Math.min(1, availableWidth / label.width), Math.min(1, (m.start.height - 2) / label.height));
+    const fitX = Math.min(1, availableWidth / label.width);
+    const fitY = Math.min(1, (m.start.height - 2) / label.height);
+    if (this.layout === TAXED_PORTRAIT) label.setScale(Math.min(fitX, fitY));
+    else label.setScale(fitX, fitY);
     // Once the game is over the speed toggle is inert (greyed, ignores clicks).
     const playable = state.phase !== 'won' && state.phase !== 'lost';
     this.pauseButton.setShown(playable);
@@ -584,7 +604,8 @@ export class Hud {
     this.specialButton.set(recharge ? rechargeText(state.specialRechargeTicks, TICKS_PER_SECOND, m.portrait) : SPECIAL_BUTTON_TEXT, ready);
     if (m.portrait) {
       const specialLabel = this.specialButton.labelObjects[0];
-      specialLabel.setScale(Math.min(1, (m.special.width - (recharge ? 7 : 24)) / specialLabel.width), 1);
+      const fit = Math.min(1, (m.special.width - (recharge ? 7 : 24)) / specialLabel.width);
+      specialLabel.setScale(fit, this.layout === TAXED_PORTRAIT ? fit : 1);
     }
     this.specialButton.setPicked(ready && (special.menuOpen || special.aiming !== null));
     // The fill grows in whole pixels, so it redraws at most once per pixel.

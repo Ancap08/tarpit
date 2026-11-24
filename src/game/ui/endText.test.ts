@@ -83,7 +83,7 @@ describe('campaign result', () => {
     });
   });
 
-  it('prints this run’s feat, including missed, lost and cheated finishes', () => {
+  it('prints this run’s feat on earned, missed and cheated wins', () => {
     const state = createGame({ level: LEVELS[10] });
     state.phase = 'won';
     const progress = Object.fromEntries(LEVELS.slice(0, 11).map(level => [level.id, 3] as const));
@@ -96,8 +96,12 @@ describe('campaign result', () => {
     delete state.lastSpecialTick;
     state.cheated = true;
     expect(campaignResultText(state, progress)).toMatchObject({ stars: 0, feat: missed, hint: CAMPAIGN_END.cheated, nextId: 12 });
+  });
+
+  it.each(LEVELS)('omits the feat and star slots on a loss at level $id', level => {
+    const state = createGame({ level });
     state.phase = 'lost';
-    expect(campaignResultText(state, progress)).toMatchObject({ slots: '0 of 3 stars', feat: missed, story: STORY_TEXT.loss, nextId: null });
+    expect(campaignResultText(state, {})).toMatchObject({ slots: '', feat: '', story: STORY_TEXT.loss, nextId: null });
   });
 
   it('offers Next after a cheated win and tells the truth on the last level', () => {
