@@ -12,12 +12,13 @@ import { waitForFirstScreen, waitForTitle } from './title';
 const states = [[18, 'untouched'], [17, 'scuffed'], [12, 'scuffed'], [11, 'battered'],
   [1, 'battered'], [0, 'taken']] as const;
 
-async function openMap(page: Page, map: MapId, look: 'painted' | 'classic') {
+async function openMap(page: Page, map: MapId, look: 'painted' | 'classic' | 'showpiece') {
   await page.goto(`/?test=1&look=${look}`);
   await waitForTitle(page);
   await page.evaluate(map => window.__tarpit!.startGame!('normal', map), map);
   await waitForGame(page);
-  expect(await page.evaluate(() => window.__tarpit!.painted!().active)).toBe(look === 'painted');
+  expect(await page.evaluate(() => window.__tarpit!.painted!().active)).toBe(look !== 'classic');
+  if (look === 'showpiece') expect(await page.evaluate(() => window.__tarpit!.showpiece?.())).toBeTruthy();
 }
 
 /** Capture the game with and without these actual display objects, through the main
@@ -189,8 +190,8 @@ export function townSuite(touch: boolean) {
     expect(result.darker).toBeGreaterThan(result.foreground * 0.7);
   });
 
-  for (const look of ['painted', 'classic'] as const) {
-    for (const map of MAP_IDS) {
+  for (const look of ['painted', 'classic', 'showpiece'] as const) {
+    for (const map of look === 'showpiece' ? ['meadow'] as const : MAP_IDS) {
       test(`${look} ${map}: town boundaries and rendered pixels in every cell`, async ({ page }, info) => {
         test.setTimeout(120_000);
         await openMap(page, map, look);
@@ -322,53 +323,55 @@ export function townSuite(touch: boolean) {
       expect.arrayContaining(['playAgain', 'menu', 'keepGoing']));
   });
 
-  test('live hats move and the red banner climbs while the result buttons are available', async ({ page }) => {
-    test.setTimeout(120_000);
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    for (const outcome of ['won', 'lost'] as const) {
-      await page.goto('/?look=painted&renderer=canvas');
-      await waitForTitle(page);
-      await press(page, 'title:play', touch);
-      await waitForGame(page);
-      const motion = await page.evaluate(async outcome => {
-        const api = window.__tarpit!;
-        const scene = api.game.scene.getScene('game') as GameScene;
-        const town = scene.children.list.find(node => node.type === 'Container' &&
-          (node as Phaser.GameObjects.Container).getByName('town:map')) as Phaser.GameObjects.Container;
-        scene.state.phase = outcome;
-        scene.state.lives = outcome === 'won' ? 13 : 0;
-        scene.advance(0);
-        const ready = !!api.uiRects().playAgain;
-        const frames = new Set<string>();
-        function sample() {
-          if (outcome === 'won') {
-            const hats = town.list.filter(node => node.name === 'town:cheer');
-            frames.add(JSON.stringify(hats.map(node => {
-              if (node.type === 'Graphics') return (node as Phaser.GameObjects.Graphics).commandBuffer;
-              const image = node as Phaser.GameObjects.Image;
-              return [image.visible, image.frame.name, image.x, image.y, image.rotation];
-            })));
-          } else {
-            const banner = town.list.find(node => node.type === 'Image' &&
-              (node as Phaser.GameObjects.Image).visible &&
-              (node as Phaser.GameObjects.Image).texture.key.includes('royal-hoist') &&
-              Number((node as Phaser.GameObjects.Image).frame.name) % 2 === 1) as Phaser.GameObjects.Image | undefined;
-            if (banner) frames.add(String(banner.y));
+  for (const look of ['painted', 'showpiece'] as const) {
+    test(`${look}: live hats move and the red banner climbs while the result buttons are available`, async ({ page }) => {
+      test.setTimeout(120_000);
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
+      for (const outcome of ['won', 'lost'] as const) {
+        await page.goto(`/?look=${look}&renderer=canvas`);
+        await waitForTitle(page);
+        await press(page, 'title:play', touch);
+        await waitForGame(page);
+        const motion = await page.evaluate(async outcome => {
+          const api = window.__tarpit!;
+          const scene = api.game.scene.getScene('game') as GameScene;
+          const town = scene.children.list.find(node => node.type === 'Container' &&
+            (node as Phaser.GameObjects.Container).getByName('town:map')) as Phaser.GameObjects.Container;
+          scene.state.phase = outcome;
+          scene.state.lives = outcome === 'won' ? 13 : 0;
+          scene.advance(0);
+          const ready = !!api.uiRects().playAgain;
+          const frames = new Set<string>();
+          function sample() {
+            if (outcome === 'won') {
+              const hats = town.list.filter(node => node.name === 'town:cheer');
+              frames.add(JSON.stringify(hats.map(node => {
+                if (node.type === 'Graphics') return (node as Phaser.GameObjects.Graphics).commandBuffer;
+                const image = node as Phaser.GameObjects.Image;
+                return [image.visible, image.frame.name, image.x, image.y, image.rotation];
+              })));
+            } else {
+              const banner = town.list.find(node => node.type === 'Image' &&
+                (node as Phaser.GameObjects.Image).visible &&
+                (node as Phaser.GameObjects.Image).texture.key.includes('royal-hoist') &&
+                Number((node as Phaser.GameObjects.Image).frame.name) % 2 === 1) as Phaser.GameObjects.Image | undefined;
+              if (banner) frames.add(String(banner.y));
+            }
           }
+          sample();
+          scene.events.on('postupdate', sample);
+          await new Promise<void>(resolve => scene.time.delayedCall(1000, resolve));
+          scene.events.off('postupdate', sample);
+          return { ready, samples: [...frames] };
+        }, outcome);
+        expect(motion.ready, 'the first result frame has clickable actions').toBe(true);
+        expect(motion.samples.length, 'several distinct poses').toBeGreaterThan(1);
+        if (outcome === 'lost') {
+          expect(Number(motion.samples[0]) - Number(motion.samples.at(-1)), 'banner rises').toBeGreaterThan(4);
         }
-        sample();
-        scene.events.on('postupdate', sample);
-        await new Promise<void>(resolve => scene.time.delayedCall(1000, resolve));
-        scene.events.off('postupdate', sample);
-        return { ready, samples: [...frames] };
-      }, outcome);
-      expect(motion.ready, 'the first result frame has clickable actions').toBe(true);
-      expect(motion.samples.length, 'several distinct poses').toBeGreaterThan(1);
-      if (outcome === 'lost') {
-        expect(Number(motion.samples[0]) - Number(motion.samples.at(-1)), 'banner rises').toBeGreaterThan(4);
       }
-    }
-  });
+    });
+  }
 
   test('reduced-motion play holds a visible win and loss on the map', async ({ page }) => {
     test.setTimeout(120_000);
