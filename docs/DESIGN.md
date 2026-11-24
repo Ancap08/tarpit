@@ -1316,14 +1316,16 @@ drawn and where touches land differ.
   each the tower's map shape over its cost, because a name at 18 px does
   not fit 75 px) and a lower row with Special, Start Wave, speed, mute and Pause.
   Both rows have 5 px outer margins and 4 px gaps. Of the 470 px inner
-  width, Special uses 90 px and speed uses 70 px. Mute and Pause are
+  width, Special uses 108 px and speed uses 70 px. Mute and Pause are
   matching squares centred on the row. They use 70 px at 390 × 844 and
   80 px at 390 × 664 to keep Pause at least 44 CSS px. Start Wave takes
-  the remaining 154 or 134 px. Its 23 px label wraps to two lines when
+  the remaining 136 or 116 px. Its 23 px label wraps to two lines when
   needed. Call next shows its bonus on the second line. A blocked call
-  shows its reason alone. Special reads “Cast” beside its status dot
-  and shows the seconds remaining while recharging. Wave, Special and
-  speed labels retain at least 12 CSS px at both heights.
+  shows its reason alone. Tips, unlock hints and cards use the same control
+  names “Special” and “Start Wave” printed on the HUD. Special has a status dot
+  and shows the seconds remaining while recharging. At 390 × 844 the row
+  labels retain at least 12 CSS px. At 390 × 664 Special and wave labels
+  retain at least 11 CSS px and speed retains at least 12 CSS px.
   The next-wave preview starts at y=28. Two 23 px lines fit above the brass edge at y=74. At 390 × 844 the 20 px type reads at 14.1 CSS px and a 70 px button measures 49.5 CSS px.
   On a 390 x 763 CSS px phone (standalone, inside the safe areas) the
   canvas fits at 0.639: buttons are 44.7 CSS px, 20 px text 12.8 CSS px and a

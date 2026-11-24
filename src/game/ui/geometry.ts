@@ -66,7 +66,7 @@ export function portraitRow2(cssScale = 1) {
   // The space between the tower row and canvas bottom can fit an 80 px square.
   const icon = Math.min(80, Math.max(height, Math.ceil(44 / cssScale)));
   const innerWidth = PORTRAIT_WIDTH - 2 * PORTRAIT_BAR_LEFT;
-  const specialWidth = 90;
+  const specialWidth = 108;
   const speedWidth = height;
   const startWidth = innerWidth - 4 * PORTRAIT_BAR_GAP - specialWidth - speedWidth - 2 * icon;
   let x = PORTRAIT_BAR_LEFT;

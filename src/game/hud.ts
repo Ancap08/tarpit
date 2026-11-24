@@ -67,7 +67,6 @@ import {
   rechargeText,
   PAUSE_TEXT,
   SPECIAL_BUTTON_TEXT,
-  SPECIAL_SHORT_TEXT,
   speedLabel,
   START_WAVE_TEXT,
   waveCounterText,
@@ -436,7 +435,10 @@ export class Hud {
     this.startButton = new Button(scene, m.start, START_WAVE_TEXT, handlers.onStartWave, m.portrait ? { fontSize: m.startFont, sound: null } : { sound: null });
     if (m.portrait) {
       // Reserve two lines inside the wave plaque, including ascenders and descenders.
-      this.startButton.labelObjects[0].setStyle({ metrics: { ascent: 23, descent: 6, fontSize: 29 } });
+      // Wrap at the tall phone's width; a narrower plaque scales the same two lines.
+      this.startButton.labelObjects[0]
+        .setStyle({ metrics: { ascent: 23, descent: 6, fontSize: 29 } })
+        .setWordWrapWidth(m.start.width - 6, true);
     }
     this.speedButton = new Button(scene, m.speed, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress, fontSize: m.portrait ? m.startFont : undefined });
     this.specialMenu = new SpecialMenu(scene, m.menu.left, m.menu.top, handlers.onSpecialPick, layout.map.y, m.menu.size, m.menu.font);
@@ -467,7 +469,6 @@ export class Hud {
           this.pauseButton.setSize(row.pause.width, row.pause.height);
           this.pauseButton.moveTo(row.pause.x, row.pause.y);
         }
-        this.startButton.labelObjects[0].setWordWrapWidth(m.start.width - 6, true);
       }
       this.pauseIcon.setPosition(m.pause.x + m.pause.width / 2,
         m.pause.y + (m.portrait ? (m.pause.height - iconHeight) / 2 : 16));
@@ -563,8 +564,7 @@ export class Hud {
     const ready = specialReady(state);
     const recharge = specialRecharge(state);
     // Milestone 30 follow-up: while the charge refills the label is the countdown ("Wait 15s").
-    const specialText = m.portrait ? SPECIAL_SHORT_TEXT : SPECIAL_BUTTON_TEXT;
-    this.specialButton.set(recharge ? rechargeText(state.specialRechargeTicks, TICKS_PER_SECOND, m.portrait) : specialText, ready);
+    this.specialButton.set(recharge ? rechargeText(state.specialRechargeTicks, TICKS_PER_SECOND, m.portrait) : SPECIAL_BUTTON_TEXT, ready);
     if (m.portrait) {
       const specialLabel = this.specialButton.labelObjects[0];
       specialLabel.setScale(Math.min(1, (m.special.width - (recharge ? 7 : 24)) / specialLabel.width), 1);
