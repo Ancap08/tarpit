@@ -861,6 +861,12 @@ barrel back and retunes the levels to fit it.
 
 ### What may move, in this order
 
+0. **The barrel's own cost, first** (added after the first build): how long
+   the shared charge takes to come back after a Tar Barrel, from today's
+   refill up to three times as long; and the length of the run a barrel
+   causes, from 88 ticks down to the 60-tick floor. A big moment that comes
+   round less often is the intended shape. The wait already shows on the
+   special's button.
 1. Per-level numbers on levels that allow the barrel: starting gold, health
    scale, and where health growth starts. Each stays within 15% of today's
    value.
@@ -888,6 +894,14 @@ lines, the Free play target windows, the 20 lives.
 
 If these cannot all be met inside the levers above, the implementer stops
 and reports the closest result.
+
+**First build (no level numbers committed):** the crowd barrel at full
+strength and today's refill lifted Free play's standard run from 14, 11 and
+14 lives to 21, 15 and 22, with 64 casts feathering 338 enemies. The best
+bounded retune passed 17 of 20 levels; level 8 could not pass at any legal
+gold and health, because with its own specials removed the bot wins on
+barrels alone. Fifteen of 91 Free play targets missed. Hence lever 0: the
+barrel was simply too cheap for what it now does.
 
 ### Look
 

@@ -1715,3 +1715,12 @@ can change it; "Kyle" means Kyle decided.
 - **The fairness check uses the ordinary bots with feathers forced (C6),**
   not the feather bot alone, after the milestone 49 verifier showed that
   bot was too weak to guard anything.
+- **The crowd barrel pays with a longer wait, before any level moves**
+  (coordinator, after the first build). At today's refill the barrel was
+  cast 20 to 23 times a game and lifted Free play by up to 8 lives; no
+  bounded retune passed (17 of 20 levels at best, level 8 impossible, 15 of
+  91 Free play targets missed). A slower refill after a barrel and, if
+  needed, a shorter barrel run (never under the one-second floor) cut its
+  power at the source and move fewer of the levels Kyle has played. Codex
+  proposed opening level 8's waves instead; not taken yet, because the
+  first act's waves are the last thing to move.
