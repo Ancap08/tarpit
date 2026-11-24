@@ -57,12 +57,12 @@ describe('verifier: level economy and hp by hand', () => {
     expect(spawnHp(last, 7, 'grumblemaw')).toBe(Math.round(5600 * 0.925 * 1.84)); // 9531
   });
 
-  it('hp with growth: The Troll King (scale 1, growth from wave 6)', () => {
-    const king = levelOf(9);
-    expect(spawnHp(king, 5, 'troll')).toBe(950);
-    expect(spawnHp(king, 6, 'harpy')).toBe(46); // 36 x 1.28
-    expect(spawnHp(king, 7, 'shieldbearer')).toBe(109); // 70 x 1.56 = 109.2
-    expect(spawnHp(king, 7, 'boss')).toBe(6240); // 4000 x 1.56
+  it('level 9 spawn HP uses scale 0.987 and starts growing on wave 6', () => {
+    const assessor = levelOf(9);
+    expect(spawnHp(assessor, 5, 'troll')).toBe(938); // 950 x 0.987
+    expect(spawnHp(assessor, 6, 'harpy')).toBe(45); // 36 x 0.987 x 1.28
+    expect(spawnHp(assessor, 7, 'shieldbearer')).toBe(108); // 70 x 0.987 x 1.56
+    expect(spawnHp(assessor, 7, 'boss')).toBe(6159); // 4000 x 0.987 x 1.56
   });
 
   it('hp without growth stays fixed for every wave of a level with no growth', () => {
