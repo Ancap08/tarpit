@@ -49,6 +49,8 @@ export interface BalanceRun {
   refused: number;
   /** Milestone 30: per special fired, in order, the enemies it caught when it landed. */
   specialHits: number[];
+  barrelCasts: number;
+  barrelFeathered: number;
   /** Wave-local, zero-based fight ticks; HP samples are taken every 10 s. */
   bossFight: { tick: number; event: 'spawn' | 'kill' | 'exit' | 'pack 2/3' | 'pack 1/3' | 'hp'; hp?: number }[];
   waves: WaveStats[];
@@ -66,6 +68,8 @@ export function playWithStats(script: WaveScript, difficulty?: Difficulty, befor
   let refused = 0;
   let kills = 0;
   const specialHits: number[] = [];
+  let barrelCasts = 0;
+  let barrelFeathered = 0;
   const bossFight: BalanceRun['bossFight'] = [];
   function recordBossEvent(event: GameEvent, waveTick: number): void {
     if (event.kind === 'packCall') {
@@ -108,7 +112,10 @@ export function playWithStats(script: WaveScript, difficulty?: Difficulty, befor
         for (const e of state.events.slice(from)) {
           if (state.wave === LAST_WAVE) recordBossEvent(e, state.waveTick);
           if (e.kind === 'kill') w.kills += 1;
-          else if (e.kind === 'special') specialHits.push(e.hits);
+          else if (e.kind === 'special') {
+            specialHits.push(e.hits);
+            if (e.type === 'tarBarrel') barrelCasts++;
+          } else if (e.kind === 'feathered') barrelFeathered++;
         }
       }
       beforeTick?.(state);
@@ -135,7 +142,7 @@ export function playWithStats(script: WaveScript, difficulty?: Difficulty, befor
     waves.push(w);
     if (script.endless && (state.phase as GameState['phase']) === 'won') continueEndless(state);
   }
-  return { phase: state.phase, wave: state.wave, lives: state.lives, gold: state.gold, tick: state.tick, kills, refused, specialHits, bossFight, waves };
+  return { phase: state.phase, wave: state.wave, lives: state.lives, gold: state.gold, tick: state.tick, kills, refused, specialHits, barrelCasts, barrelFeathered, bossFight, waves };
 }
 
 /** "W 13" for a win with 13 lives, "L 8" for a loss on wave 8 (an endless run: the wave it was lost on). */

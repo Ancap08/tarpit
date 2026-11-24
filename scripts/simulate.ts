@@ -16,6 +16,8 @@ import type * as Maps from '../src/sim/map';
 import type * as Boons from '../src/sim/boonBalance';
 import type * as Specials from '../src/sim/specials';
 import type * as Paths from '../src/sim/pathBalance';
+import type * as Headless from '../src/sim/headless';
+import type * as Progress from '../src/sim/campaignProgress';
 import type * as Encounters from '../src/sim/pathEncounter';
 
 const server = await createServer({
@@ -158,6 +160,23 @@ try {
     process.exitCode = 1;
   }
 
+  const { comboIdleBarrel } = await server.ssrLoadModule('/src/sim/headless.ts') as typeof Headless;
+  console.log('\nNormal Free play barrel controls (remaining lives)');
+  console.log('map         standard  unused  all barrel  all arrows  feathered / casts  average');
+  let barrelWins = 0;
+  for (const map of MAP_IDS) {
+    const standard = balance.balanceRun('comboBuild', map, 'normal');
+    const unused = balance.cachedRun(`unused barrel ${map}`, () => comboIdleBarrel(map), 'normal');
+    const allBarrel = targets.comboWithoutSpecialRun('fireArrows', map);
+    const allArrows = targets.comboWithoutSpecialRun('tarBarrel', map);
+    const lives = [standard, unused, allBarrel, allArrows].map(run => Math.max(0, run.lives));
+    const average = standard.barrelCasts ? standard.barrelFeathered / standard.barrelCasts : 0;
+    console.log(map.padEnd(10), lives.join('       '), `      ${standard.barrelFeathered} / ${standard.barrelCasts}          ${average.toFixed(2)}`);
+    if (lives[0] - lives[1] < (map === 'switchback' ? 3 : 4)) process.exitCode = 1;
+    if (lives[2] > lives[3]) barrelWins++;
+  }
+  if (!barrelWins) process.exitCode = 1;
+
   // Report the placement sweep separately so stdout stays byte-identical to main.
   const { sweepBarricades } = await server.ssrLoadModule('/src/sim/barricadeSweep.ts') as typeof Sweeps;
   for (const map of MAP_IDS) {
@@ -189,7 +208,7 @@ try {
   console.log(`${improvedMaps >= 2 ? 'ok' : 'MISS'}  G2 Normal improved by at least one life on ${improvedMaps} maps`);
   if (improvedMaps < 2) process.exitCode = 1;
 
-  const { botGood, botPerson, botBeginner, runBot } = await server.ssrLoadModule('/src/sim/bots.ts') as typeof Bots;
+  const { botGood, botPerson, botBeginner, preferFeathers, runBot } = await server.ssrLoadModule('/src/sim/bots.ts') as typeof Bots;
   const { createGame, TICKS_PER_SECOND } = await server.ssrLoadModule('/src/sim/game.ts') as typeof Game;
   console.log('\nFree play bots (W lives left, L wave lost)');
   console.log('map         difficulty  botGood  comboBuild  botBeginner  lazyBuild');
@@ -220,15 +239,26 @@ try {
   const firstAct = checkCampaign(LEVELS.slice(0, 10), CAMPAIGN_CONTEXTS.slice(0, 10));
   const minutes = (ticks: number) => (ticks / TICKS_PER_SECOND / 60).toFixed(2);
   const score = (run?: Gate.LevelScore) => run ? `${run.stars}/${run.lives}` : '—';
+  const { levelStars } = await server.ssrLoadModule('/src/sim/campaignProgress.ts') as typeof Progress;
   function printLevel(row: Gate.LevelCheck, index: number): void {
     const level = LEVELS[index];
+    const forced = [botGood, botPerson].map(bot => {
+      const { state, refused } = runBot(createGame({ level }), preferFeathers(bot));
+      const lives = Math.max(0, state.lives);
+      const stars = levelStars(state);
+      if (refused || !row.good || lives > row.good.lives + 4 || (stars === 3 && row.good.stars < 3)) {
+        console.error(`MISS C6 level ${level.id}, ${bot === botGood ? 'Good' : 'Person'} forced: ${stars}/${lives}, Good: ${score(row.good)}`);
+        process.exitCode = 1;
+      }
+      return `${stars}/${lives}`;
+    });
     console.log([level.id, level.waves.length, row.good?.spawned ?? '—', level.startGold, level.hpScale,
-      score(row.good), score(row.person), score(row.beginner), score(row.feathers), row.feathers?.featherUse?.pathBTowers ?? '—',
+      score(row.good), score(row.person), score(row.beginner), ...forced, score(row.feathers), row.feathers?.featherUse?.pathBTowers ?? '—',
       row.feathers?.featherUse?.barrelCasts ?? '—', row.feathers?.featherUse?.feathered ?? '—', score(row.noSpecials), row.openingCount, row.good ? minutes(row.good.tick) : '—', row.good?.peakAlive ?? '—',
       row.ok ? 'pass' : row.failed.join(',')].join('  '));
   }
   console.log('\nCampaign gate (stars/lives)');
-  console.log('id  waves  enemies  gold  HP scale  Good  Person  Beginner  Feathers  path B pits  barrels  enemies feathered  Person(no specials)  wave 1  minutes  peak alive  gate');
+  console.log('id  waves  enemies  gold  HP scale  Good  Person  Beginner  Good(forced)  Person(forced)  Feathers  path B pits  barrels  enemies feathered  Person(no specials)  wave 1  minutes  peak alive  gate');
   firstAct.levels.forEach(printLevel);
   console.log(`Campaign: ${minutes(firstAct.totalTicks)} minutes. ${firstAct.ok ? 'P1–P2, L1–L8 and R6 pass' : 'MISS ' + firstAct.failed.join(', ')}`);
 
