@@ -41,7 +41,7 @@ describe('campaign acceptance gate', () => {
     }
   });
 
-  it('judges two new stops independently and as part of a twelve-level campaign', () => {
+  it('rechecks the historical twelve-level candidates against the new margins', () => {
     const standFast = LEVELS[7];
     const lastLight = LEVELS[9];
     function reinforce(wave: LevelDef['waves'][number], extra: number) {
@@ -55,12 +55,12 @@ describe('campaign acceptance gate', () => {
       return i === 3 ? reinforce(w, 2) : w;
     }) };
     const finale: LevelContext = { band: 'finale', introduces: null };
-    expect(checkLevel(extraLate, late).failed).toEqual([]);
-    expect(checkLevel(extraFinale, finale).failed).toEqual([]);
+    expect(checkLevel(extraLate, late).failed).toEqual(['L1m']);
+    expect(checkLevel(extraFinale, finale).failed).toEqual(['L1m']);
     const levels = [...LEVELS.slice(0, 10), extraLate, extraFinale];
     const contexts = [...CAMPAIGN_CONTEXTS.slice(0, 10), late, finale];
-    expect(checkCampaign(levels, contexts).failed).toEqual([]);
-  }, 60_000);
+    expect(checkCampaign(levels, contexts).failed).toContain('L1m');
+  }, 120_000);
 
   it('schedules each boss after its escort on the last wave', () => {
     for (const [level, boss] of [[LEVELS[8], 'boss'], [LEVELS[9], 'grumblemaw']] as const) {
@@ -171,20 +171,61 @@ describe('campaign acceptance gate', () => {
     }
   });
 
-  it('F1 counts an accidental three-star level once and accepts exactly half', () => {
+  it('F1 rejects a feat lost at any one nudge while ordinary Good keeps two stars', () => {
     const feat = { kind: 'noSpecials' } as const;
-    const candidates = [918, 345, 764, 271].map(id => ({ ...fresh(id), feat }));
-    vi.spyOn(bots, 'runBot').mockImplementation((state, bot) => {
-      state.lives = bot === bots.botBeginner ? 0 : 16;
-      state.phase = state.lives ? 'won' : 'lost';
-      state.tick = 6 * 3600;
-      const id = state.level!.id;
-      // Both normal bots succeed on one stop. Only Person succeeds on the other.
-      if (bot !== bots.botGoodFeat && id !== 918 && !(id === 345 && bot === bots.botPerson)) state.lastSpecialTick = 90;
-      return { state, log: [], refused: 0, setupTicks: 0, peakAlive: 1, waveOneLives: 20 };
-    });
-    expect(checkCampaign(candidates, candidates.map(() => late)).failed).not.toContain('F1');
-    expect(checkCampaign(candidates.slice(0, 3), candidates.slice(0, 3).map(() => late)).failed).toContain('F1');
+    for (const miss of [(l: LevelDef) => l.hpScale === 0.98, (l: LevelDef) => l.hpScale === 1.02,
+      (l: LevelDef) => l.startGold === 90, (l: LevelDef) => l.startGold === 110]) {
+      stubBots((level, bot) => bot === bots.botGoodFeat && miss(level) ? 11 : 16);
+      const row = checkLevel({ ...fresh(), feat }, late);
+      expect(row.featGood?.stars).toBe(3);
+      expect(row.featTrials?.filter(trial => trial.good.stars !== 3)).toHaveLength(1);
+      expect(row.failed).toContain('F1');
+    }
+  });
+
+  it('F2 and F3 reject a Bare hands feat Person earns by giving up ineffective casts', () => {
+    const row = checkLevel({ ...LEVELS[0], feat: { kind: 'noSpecials' } }, late);
+    expect(row.person?.stars).toBe(2);
+    expect(row.featPerson?.stars).toBe(3);
+    expect(row.person!.lives - row.featPerson!.lives).toBeLessThan(3);
+    expect(row.failed).toEqual(expect.arrayContaining(['F2', 'F3']));
+  }, 60_000);
+
+  it('V1 rejects a single-type winner in either advanced band', () => {
+    for (const band of ['late', 'finale'] as const) {
+      const row = checkLevel(fresh(), { band, introduces: null });
+      expect(row.singleTowerTrials?.map(trial => trial.tower)).toEqual(base.allowedTowers);
+      expect(row.singleTowerTrials?.some(trial => trial.good.stars >= 2)).toBe(true);
+      expect(row.failed).toContain('V1');
+    }
+  }, 60_000);
+
+  it('L1m rejects Good or taxed Person on the two-star line at a nudge', () => {
+    for (const player of [bots.botPerson, bots.botGood]) {
+      stubBots((level, bot) => level.startGold === 90 && player === bot ? 12 : 13);
+      expect(checkLevel({ ...fresh(), taxes: { curfew: 0.1 } }, late).failed).toContain('L1m');
+    }
+  });
+
+  it('S1 rejects a second act that repeats an easy opening', () => {
+    const repeat = { ...LEVELS[0], id: 743 };
+    const result = checkCampaign([...LEVELS.slice(0, 3), repeat], [...CAMPAIGN_CONTEXTS.slice(0, 3), late]);
+    expect(result.levels.map(row => row.person?.lives)).toEqual([20, 20, 20, 20]);
+    expect(result.failed).toContain('S1');
+  }, 90_000);
+
+  it('S1 measures the handover, mean drop and largest cliff separately in play order', () => {
+    // The preceding three stops average 16. The last of the three has 13 lives.
+    for (const [second, accepted] of [
+      [[13, 16], true], [[13, 17], false], [[12, 13], false], [[18, 12, 12], false],
+      [[18, 13, 12], true],
+    ] as const) {
+      const lives = [16, 19, 13, ...second];
+      const levels = lives.map((_, i) => fresh(710 - i));
+      stubBots(level => lives[levels.findIndex(l => l.id === level.id)]);
+      const contexts = lives.map((_, i) => ({ ...late, frozenFirstAct: i < 3 }));
+      expect(checkCampaign(levels, contexts).failed.includes('S1')).toBe(!accepted);
+    }
   });
 
   it('L3 requires each declared capability to exist in the candidate', () => {

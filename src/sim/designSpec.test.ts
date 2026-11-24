@@ -125,6 +125,8 @@ describe('docs/DESIGN.md matches the code', () => {
       limits.finaleLives, limits.lastSpawnSeconds, limits.peakAlive, limits.openingCount, limits.closingCount,
       limits.maxPersonDeficit, limits.goodFeatureLives, limits.personFeatureLives, limits.meanLivesDrop,
       limits.featureHp, limits.featureGold, limits.sensitivityHp, limits.sensitivityGold, limits.taxBiteLives,
+      limits.featSpecialLives, limits.featExtraBuilds, limits.singleTowerMaxStars, limits.twoStarHeadroom,
+      limits.priorStops, limits.actMeanDrop, limits.maxPersonCliff,
     ].map(value => Array.isArray(value) ? value.join('–') : String(value)));
   });
 
