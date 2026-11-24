@@ -122,6 +122,7 @@ import {
   cellCenter,
   createGame,
   levelStars,
+  ENEMY_STATS,
   DEFAULT_DIFFICULTY,
   DEFAULT_MAP,
   barricadePlacement,
@@ -1382,6 +1383,11 @@ export class GameScene extends Phaser.Scene {
     if (!this.enemySprites) return;
     const { events, newTick } = this.eventCursor.take(this.state);
     if (newTick) this.enemySprites.newTick();
+    for (const event of events) {
+      if (event.kind !== 'exit') continue;
+      const spot = this.enemySprites.spot(event.enemyId);
+      if (spot) this.town.sacks.release(ENEMY_STATS[spot.type].livesCost, this.autoTick ? this.time.now : this.frozenMs);
+    }
     this.barricadeFx.onEvents(events);
     this.guardFx.onEvents(events);
     if (this.fx) this.fx.onEvents(events, this.state);

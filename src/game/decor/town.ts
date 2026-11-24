@@ -3,6 +3,7 @@ import type { GameState, MapDef, Rect } from '../../sim';
 import type { Layout } from '../layout';
 import { COLORS } from '../palette';
 import type { PaintedSkin } from '../skin/painted';
+import { CoinSacks } from './coinSacks';
 import { smokePuff } from './motion';
 import { TOWN_CONDITIONS, townCondition, type TownCondition } from './townCondition';
 
@@ -22,6 +23,7 @@ export class Town {
   readonly bounds: Rect;
   private readonly image?: Phaser.GameObjects.Image;
   private readonly classic?: Graphics;
+  readonly sacks: CoinSacks;
   private readonly smoke: Graphics;
   private readonly reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   private condition?: TownCondition;
@@ -43,13 +45,15 @@ export class Town {
     }
     this.smoke = scene.add.graphics().setName('town:smoke');
     this.layer.add(this.smoke);
+    this.sacks = new CoinSacks(scene, this.layer, painted);
   }
 
   snapshot() {
-    return { condition: this.condition, bounds: this.bounds };
+    return { condition: this.condition, sacks: this.sacks.snapshot(), bounds: this.bounds };
   }
 
   update(state: GameState, now: number): void {
+    this.sacks.draw(this.bounds, this.layout.turned, now, this.reduced.matches);
     const condition = townCondition(state);
     const changed = condition !== this.condition;
     if (changed) {

@@ -207,3 +207,7 @@ the checker looks for it.
 | `assets/art-painted/town-1x.json` | `scripts/art/town.py` | Tarpit agents | MIT | Centered frame layout |
 | `assets/art-painted/town-2x.png` | `scripts/art/town.py` | Tarpit agents | MIT | Original painted exit miniatures in two layouts |
 | `assets/art-painted/town-2x.json` | `scripts/art/town.py` | Tarpit agents | MIT | Centered frame layout |
+| `assets/art-painted/sack-1x.png` | `scripts/art/town_sack.py` | Tarpit agents | MIT | Original painted buckskin purse with coin seal |
+| `assets/art-painted/sack-1x.json` | `scripts/art/town_sack.py` | Tarpit agents | MIT | Centered frame layout |
+| `assets/art-painted/sack-2x.png` | `scripts/art/town_sack.py` | Tarpit agents | MIT | Original painted buckskin purse with coin seal |
+| `assets/art-painted/sack-2x.json` | `scripts/art/town_sack.py` | Tarpit agents | MIT | Centered frame layout |

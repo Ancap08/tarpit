@@ -1124,6 +1124,10 @@ Normal, and 14 and 9 on Hard. Zero or fewer lives always means taken.
 
 Classic uses a flat cottage, coloured window, raised or lowered flag and
 state-dependent smoke. Crossing a boundary raises a brief puff of dust.
+A collector that reaches the road end carries a coin sack out of the
+town square. Its diameter is 10 + 4 × √(lives cost) game pixels and its
+flight lasts 720 ms. Reduced motion shows the purse at a fixed point on
+the route. Sacks draw below enemy health bars and remain inside the map.
 These drawings read the simulation without changing placement or combat.
 
 ## Sound

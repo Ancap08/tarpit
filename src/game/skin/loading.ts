@@ -5,7 +5,7 @@ import { waitForWorkerControl } from '../../sw/register';
 import type { PaintedDensity } from './look';
 
 const FRAME_COUNTS = {
-  cave: 4, cottage: 1, town: 14, oak: 4, spruce: 1, birch: 1, bush: 1, 'berry-bush': 1,
+  cave: 4, cottage: 1, town: 14, sack: 1, oak: 4, spruce: 1, birch: 1, bush: 1, 'berry-bush': 1,
   musketeer: 16, cannon: 16, 'tar-pit': 16, longbow: 16, mortar: 16, 'fire-pot': 16,
   goblin: 16, wolf: 16, troll: 16, harpy: 16, shieldbearer: 16, grumblefoot: 16, grumblemaw: 16,
   guard: 32, 'harpy-shadow': 1, arrow: 1, cannonball: 1, 'tar-glob': 1, 'mortar-shell': 1, flame: 1,
