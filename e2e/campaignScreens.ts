@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { TitleUiState } from '../src/game/TitleScene';
 import type { TarpitTestApi } from '../src/game/testGlobal';
-import { CAMPAIGN_TEXT, levelTips, TITLE_TEXT } from '../src/game/names';
+import { CAMPAIGN_TEXT, LEVEL_NAMES, LEVEL_STORY, levelTips, STORY_TEXT, TITLE_TEXT } from '../src/game/names';
 import { api, press } from './campaign';
 import { paintedAsset, settle } from './painted';
 import { useTallFontMetrics } from './campaignFont';
@@ -38,19 +38,19 @@ async function finish(page: Page, win: boolean) {
 
 /** Compare the Phaser text bounds and live hit targets in canvas coordinates. */
 async function checkSpacing(page: Page) {
-  const items = await page.evaluate(({ back, play, tips, gotIt }) => {
+  const items = await page.evaluate(({ back, play, tips, gotIt, proceed }) => {
     const t = window.__tarpit as TarpitTestApi;
     const result = t.campaignResult();
     const labels = t.campaignLabels();
     const keys = result ? ['playAgain', 'menu', ...(result.nextId ? ['nextLevel'] : [])]
       : Object.keys(t.uiRects()).filter(key => key.startsWith('title:'));
     const boxes = keys.map(key => ({ key, owner: '', button: true, ...t.uiRects()[key] }));
-    const owners = new Map([[back, 'title:back'], [play, 'title:play'], [tips, 'title:tips'], [gotIt, 'title:gotIt']] as [string, string][]);
+    const owners = new Map([[back, 'title:back'], [play, 'title:play'], [tips, 'title:tips'], [gotIt, 'title:gotIt'], [proceed, 'title:continue']] as [string, string][]);
     if (result) {
       const buttons = result.nextId ? ['nextLevel', 'playAgain', 'menu'] : ['playAgain', 'menu'];
       result.buttons.forEach((label, index) => owners.set(label, buttons[index]));
     }
-    const expected = result ? [result.title, result.slots, ...result.details, ...result.buttons].filter(Boolean) : [];
+    const expected = result ? [result.title, result.slots, result.story, ...result.details, ...result.buttons].filter(Boolean) : [];
     const texts = result ? expected.map(value => {
       const label = labels.find(node => node.text === value);
       if (!label) throw new Error(`Missing separate result line: ${value}`);
@@ -74,7 +74,7 @@ async function checkSpacing(page: Page) {
       boxes.push({ key: label.text, owner, button: false, x, y, width, height });
     }
     return boxes;
-  }, { back: CAMPAIGN_TEXT.back, play: TITLE_TEXT.play, tips: CAMPAIGN_TEXT.tips, gotIt: CAMPAIGN_TEXT.gotIt });
+  }, { back: CAMPAIGN_TEXT.back, play: TITLE_TEXT.play, tips: CAMPAIGN_TEXT.tips, gotIt: CAMPAIGN_TEXT.gotIt, proceed: STORY_TEXT.continue });
   expect(items.length).toBeGreaterThan(3);
   for (const [index, a] of items.entries()) {
     for (const b of items.slice(index + 1)) {
@@ -96,6 +96,7 @@ async function checkSpacing(page: Page) {
 export function campaignScreenSuite(touch: boolean) {
   for (const tall of [false, true]) {
     test(`campaign labels and buttons have separate space${tall ? ' (tall metrics)' : ''}`, async ({ page }) => {
+      test.setTimeout(120_000);
       if (tall) await useTallFontMetrics(page);
       await page.goto('/?test=1');
       await waitForFirstScreen(page, { showTips: true });
@@ -109,6 +110,9 @@ export function campaignScreenSuite(touch: boolean) {
       for (let id = 1; id <= 10; id++) {
         await press(page, `title:stop:${id}`, touch);
         await onScreen(page, 'levelCard');
+        expect(await api(page, t => t.campaignLabels().map(label => label.text))).toEqual(expect.arrayContaining([
+          LEVEL_STORY[id].notice, LEVEL_NAMES[id].twist,
+        ]));
         await checkSpacing(page);
         const play = await api(page, t => t.uiRects()['title:play']);
         await press(page, 'title:play', touch);
@@ -145,6 +149,55 @@ export function campaignScreenSuite(touch: boolean) {
           await checkSpacing(page);
         }
       }
+    });
+  }
+
+  for (const tall of [false, true]) {
+    test(`the notices open once and remember where Continue leads${tall ? ' (tall metrics)' : ''}`, async ({ page }) => {
+      test.setTimeout(75_000);
+      if (tall) await useTallFontMetrics(page);
+      const click = (key: string) => press(page, key, touch);
+      const words = () => api(page, t => t.campaignLabels().map(label => label.text));
+      const first = () => waitForFirstScreen(page, { showStory: true });
+      await page.goto('/?test=1');
+      await first();
+      await click('title:campaign');
+      await onScreen(page, 'opening');
+      expect(await words()).toEqual(expect.arrayContaining([STORY_TEXT.openingNotice, STORY_TEXT.openingReply]));
+      await checkSpacing(page);
+      await click('title:continue');
+      await onScreen(page, 'levelMap');
+      await page.reload();
+      await first();
+      await click('title:campaign');
+      await onScreen(page, 'levelMap');
+      for (const id of [2, 7, 9, 10]) {
+        await page.evaluate(id => (window.__tarpit as TarpitTestApi).startLevel(id), id);
+        await onScreen(page, 'game');
+        await finish(page, true);
+        expect(await words()).toContain(LEVEL_STORY[id].reply);
+      }
+      // Follow both result choices, including replay through a layout change.
+      await click(tall ? 'playAgain' : 'menu');
+      await onScreen(page, 'ending');
+      expect(await words()).toContain(STORY_TEXT.ending);
+      await checkSpacing(page);
+      await rotate(page, 'ending');
+      await checkSpacing(page);
+      await click('title:continue');
+      await onScreen(page, tall ? 'game' : 'levelMap');
+      if (tall) expect(await api(page, t => t.state().level?.id)).toBe(10);
+      await page.reload();
+      await first();
+      await api(page, t => t.startLevel(10));
+      await onScreen(page, 'game');
+      await finish(page, true);
+      await click('menu');
+      await onScreen(page, 'levelMap');
+      await api(page, t => t.startLevel(10));
+      await onScreen(page, 'game');
+      await finish(page, false);
+      expect(await words()).toContain(STORY_TEXT.loss);
     });
   }
 

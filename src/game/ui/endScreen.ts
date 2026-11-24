@@ -15,7 +15,7 @@ import { drawStarRow } from './starRow';
 import { townCondition } from '../decor/townCondition';
 import { townPortrait } from './townPortrait';
 import { menuKeys } from './menuKeys';
-import { CAMPAIGN_END, END_TEXT } from '../names';
+import { CAMPAIGN_END, END_TEXT, STORY_TEXT } from '../names';
 import { endScreenText, type CampaignResult, type EndKind } from './endText';
 
 export type { EndKind };
@@ -42,6 +42,7 @@ export class EndScreen {
   private readonly veil: Phaser.GameObjects.Rectangle;
   private readonly panel: Phaser.GameObjects.Graphics;
   private readonly title: Phaser.GameObjects.Text;
+  private readonly story: Phaser.GameObjects.Text;
   private readonly lines: Phaser.GameObjects.Text;
   private readonly boons: Phaser.GameObjects.Text;
   private starRow?: Phaser.GameObjects.Container;
@@ -74,6 +75,9 @@ export class EndScreen {
     this.title = scene.add
       .text(cx, 0, '', { fontFamily: FONT, fontSize: '40px', fontStyle: 'bold', color: TEXT.paperGold })
       .setOrigin(0.5);
+    this.story = scene.add.text(cx, 0, '', {
+      fontFamily: FONT, fontSize: this.portrait ? '20px' : '19px', color: ink, align: 'center',
+    }).setOrigin(0.5, 0);
     this.lines = scene.add
       .text(cx, 0, '', {
         fontFamily: FONT,
@@ -133,6 +137,8 @@ export class EndScreen {
     this.shown = kind;
     this.picture = townPortrait(this.title.scene, townCondition(state));
     this.campaign = campaign;
+    this.story.setText(campaign?.story ?? (kind === 'lost' ? STORY_TEXT.loss : ''));
+    this.story.setColor(kind === 'lost' ? TEXT.paperDefeat : '#254a57');
     if (campaign) {
       this.title.setText(campaign.title);
       if (kind === 'won') this.starRow = drawStarRow(this.title.scene, this.cx, 0, campaign.stars, 28, TEXT.paperGold);
@@ -196,7 +202,9 @@ export class EndScreen {
     const textH = (starH ? starH + gap : 0) + content.reduce((h, row) => h + row.height + gap, -gap);
     const bodyH = portrait ? imageH + gap + textH : Math.max(imageH, textH);
     const buttonsH = portrait ? buttons.length * P_BUTTON_H + (buttons.length - 1) * P_GAP : this.button.rect.height;
-    const h = afterTitle + bodyH + 16 + buttonsH + pad;
+    this.story.setScale(Math.min(1, (w - 2 * pad) / Math.max(1, this.story.width)));
+    const storyH = this.story.text ? this.story.displayHeight + gap : 0;
+    const h = afterTitle + bodyH + storyH + 16 + buttonsH + pad;
     const top = this.cy - h / 2;
     this.paper(w, h, titleY);
     this.title.setY(top + titleY);
@@ -212,7 +220,8 @@ export class EndScreen {
       row.setOrigin(0.5, 0).setPosition(textX, y);
       y += row.height + gap;
     }
-    const buttonsY = top + afterTitle + bodyH + 16;
+    this.story.setPosition(this.cx, top + afterTitle + bodyH + gap);
+    const buttonsY = top + afterTitle + bodyH + storyH + 16;
     if (portrait) {
       buttons.forEach((b, i) => b.moveTo(this.cx - P_BUTTON_W / 2, buttonsY + i * (P_BUTTON_H + P_GAP)));
     } else {
@@ -242,7 +251,7 @@ export class EndScreen {
   }
 
   private setVisible(visible: boolean): void {
-    for (const o of [this.veil, this.panel, this.title, this.lines, this.boons]) o.setVisible(visible);
+    for (const o of [this.veil, this.panel, this.title, this.lines, this.boons, this.story]) o.setVisible(visible);
     this.button.setShown(visible);
     this.menu.setShown(visible);
     this.keepGoing.setShown(visible && this.hasAdvance);

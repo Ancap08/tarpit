@@ -51,11 +51,11 @@ import { loadEnemySheets } from './anim/enemySprites';
 import { drawMapThumbnail } from './draw/map';
 import type { Rect } from './input';
 import { highScores } from './highScore';
-import { seenTips } from './seenTips';
+import { seenTips, seenBroadsides, type Broadside } from './seenTips';
 import { campaignProgress } from './campaignProgress';
 import { campaignStops, type CampaignStop } from './ui/campaignMap';
-import { drawCampaignMap, drawLevelCard, drawLevelTips } from './ui/campaignScreens';
-import { CAMPAIGN_TEXT, lockedLevelText, bestScoreText, DIFFICULTY_LABELS, MAP_NAMES, paintedLoadingText, TITLE_TEXT } from './names';
+import { drawCampaignMap, drawLevelCard, drawLevelTips, drawStoryBroadside } from './ui/campaignScreens';
+import { CAMPAIGN_TEXT, lockedLevelText, bestScoreText, DIFFICULTY_LABELS, MAP_NAMES, paintedLoadingText, STORY_TEXT, TITLE_TEXT } from './names';
 import { COLORS, FONT, TEXT } from './palette';
 import { currentLayout } from './layoutSwitch';
 import { broadside, ink, ribbon, rule, town } from './ui/theme';
@@ -127,8 +127,8 @@ const LANDSCAPE_TITLE: TitleGeometry = {
   promptWrap: 0,
 };
 
-export type TitleScreen = 'first' | 'freePlay' | 'levelMap' | 'levelCard' | 'levelTips';
-interface TitleVisit { screen?: TitleScreen; levelId?: number }
+export type TitleScreen = 'first' | 'freePlay' | 'levelMap' | 'levelCard' | 'levelTips' | Broadside;
+interface TitleVisit { screen?: TitleScreen; levelId?: number; replayLevel?: boolean }
 
 export interface TitleUiState {
   screen: TitleScreen;
@@ -162,6 +162,7 @@ export class TitleScene extends Phaser.Scene {
   private page: TitleScreen = 'first';
   private card?: LevelDef;
   private replayTips = false;
+  private replayLevel = false;
   private touchTips = false;
   private tipsAcceptAt = 0;
   tipsEnabled = true;
@@ -203,7 +204,7 @@ export class TitleScene extends Phaser.Scene {
     if ((this.starting && this.progress === null) || this.restartPending) return;
     this.restartPending = true;
     this.ready = false;
-    this.scene.restart({ screen: this.page, levelId: this.card?.id });
+    this.scene.restart({ screen: this.page, levelId: this.card?.id, replayLevel: this.replayLevel });
   }
 
   refreshProgress(): void {
@@ -214,6 +215,7 @@ export class TitleScene extends Phaser.Scene {
 
   init(visit?: TitleVisit): void {
     this.page = visit?.screen ?? 'first';
+    this.replayLevel = this.page === 'ending' && !!visit?.replayLevel;
     const needsLevel = this.page === 'levelCard' || this.page === 'levelTips';
     this.card = needsLevel ? LEVELS.find(level => level.id === visit?.levelId) : undefined;
     if (needsLevel && !this.card) this.page = 'levelMap';
@@ -268,6 +270,21 @@ export class TitleScene extends Phaser.Scene {
     this.mapStops = [];
     const portrait = currentLayout().kind === 'portrait';
 
+    if (this.page === 'opening' || this.page === 'ending') {
+      const which = this.page;
+      this.events.once(Phaser.Scenes.Events.RENDER, () => seenBroadsides.mark(which));
+      const proceed = () => {
+        if (which === 'ending' && this.replayLevel) {
+          const level = LEVELS[LEVELS.length - 1];
+          this.startGame({ difficulty: DEFAULT_DIFFICULTY, map: level.map, level });
+        } else this.visit('levelMap');
+      };
+      this.playButton = drawStoryBroadside(this, portrait, which, this.action, proceed);
+      this.bindMenuKeys(['continue']);
+      this.input.keyboard?.on('keydown-ESC', proceed);
+      if (this.progress !== null) this.refreshLoading();
+      return;
+    }
     if (this.page === 'levelMap') {
       this.mapStops = campaignStops(portrait, campaignProgress.table());
       this.lockLabel = drawCampaignMap(this, portrait, this.mapStops, this.lockedMessage, this.action, stop => {
@@ -373,7 +390,7 @@ export class TitleScene extends Phaser.Scene {
       const w = portrait ? 330 : 264;
       const h = portrait ? 106 : 84;
       this.action('title:campaign', { x: portrait ? cx - w / 2 : cx - w - 12, y: portrait ? 452 : 286,
-        width: w, height: h }, CAMPAIGN_TEXT.campaign, () => this.visit('levelMap'), 32);
+        width: w, height: h }, CAMPAIGN_TEXT.campaign, () => this.visit(seenBroadsides.has('opening') ? 'levelMap' : 'opening'), 32);
       this.action('title:freePlay', { x: portrait ? cx - w / 2 : cx + 12, y: portrait ? 584 : 286,
         width: w, height: h }, CAMPAIGN_TEXT.freePlay, () => this.visit('freePlay'), 32);
       this.bindMenuKeys(['campaign', 'freePlay']);
@@ -478,7 +495,8 @@ export class TitleScene extends Phaser.Scene {
       this.playButton.labelObjects[0].setWordWrapWidth(progress === null ? 0 : this.playButton.rect.width - 12);
     }
     this.playButton?.setFontSize(progress === null ? playFont : portrait ? '20px' : '16px');
-    this.playButton?.set(progress === null ? (this.page === 'levelTips' ? CAMPAIGN_TEXT.gotIt : TITLE_TEXT.play) : paintedLoadingText(progress), progress === null);
+    const idleText = this.page === 'ending' ? STORY_TEXT.continue : this.page === 'levelTips' ? CAMPAIGN_TEXT.gotIt : TITLE_TEXT.play;
+    this.playButton?.set(progress === null ? idleText : paintedLoadingText(progress), progress === null);
   }
 
   /** The high-score line for the selected map and level, or no line when they have no score. */
@@ -563,7 +581,7 @@ export class TitleScene extends Phaser.Scene {
     for (const [l, b] of this.levelButtons) out[`title:${l}`] = b.rect;
     for (const [m, b] of this.mapButtons) out[`title:map:${m}`] = b.rect;
     for (const [look, button] of this.lookButtons) out[`title:look:${look}`] = button.rect;
-    if (this.playButton && this.page !== 'levelTips') out['title:play'] = this.playButton.rect;
+    if (this.playButton && (this.page === 'freePlay' || this.page === 'levelCard')) out['title:play'] = this.playButton.rect;
     if (this.muteButton) out['title:mute'] = this.muteButton.bounds;
     return out;
   }

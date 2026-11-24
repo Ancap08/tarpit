@@ -1,8 +1,10 @@
 import type { Page } from '@playwright/test';
 
 /** Phaser registers a scene's buttons on its first rendered frame. */
-export async function waitForFirstScreen(page: Page, { showTips = false } = {}): Promise<void> {
+export async function waitForFirstScreen(page: Page, { showTips = false, showStory = false } = {}): Promise<void> {
   await page.waitForFunction(() => window.__tarpit?.titleReady?.() && !!window.__tarpit.uiRects()['title:freePlay']);
+  // Tests targeting later screens start as returning readers. Story tests keep real storage.
+  if (!showStory) await page.evaluate(() => localStorage.setItem('tarpit.seenBroadsides', JSON.stringify(['opening', 'ending'])));
   if (!showTips) await page.evaluate(() => window.__tarpit?.setTipsEnabled?.(false));
 }
 

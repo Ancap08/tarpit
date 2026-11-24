@@ -186,6 +186,7 @@ import { drawPlacementCell } from './draw/placement';
 import { ShotEffects } from './draw/shots';
 import { SpecialEffects } from './draw/specials';
 import { Aim, drawTowerShape, drawTowers } from './draw/towers';
+import { seenBroadsides } from './seenTips';
 import { campaignProgress } from './campaignProgress';
 import { highScores } from './highScore';
 import { callEarlyInfo, CHEAT_TAPS, CHEAT_WINDOW_MS, Hud, specialReady, specialRecharge } from './hud';
@@ -1279,7 +1280,7 @@ export class GameScene extends Phaser.Scene {
 
   /** Start a brand-new game in a fresh scene, on the same level and map. */
   playAgain(): void {
-    if (this.leaving) return;
+    if (this.leaving || this.openEnding(true)) return;
     this.leaving = true;
     this.restartPending = false;
     this.resume = null;
@@ -1289,10 +1290,17 @@ export class GameScene extends Phaser.Scene {
 
   /** Back to the title menu (milestone 25), which still shows the level and (milestone 27) map just played. */
   toMenu(): void {
+    if (this.openEnding(false)) return;
     this.leaveForTitle({ screen: this.state.level ? 'levelMap' : 'freePlay' });
   }
 
-  private leaveForTitle(destination: { screen: 'levelMap' | 'freePlay' | 'levelCard'; levelId?: number }): void {
+  private openEnding(replayLevel: boolean): boolean {
+    if (!this.campaignResult()?.complete || seenBroadsides.has('ending')) return false;
+    this.leaveForTitle({ screen: 'ending', replayLevel });
+    return true;
+  }
+
+  private leaveForTitle(destination: { screen: 'levelMap' | 'freePlay' | 'levelCard' | 'ending'; levelId?: number; replayLevel?: boolean }): void {
     if (this.leaving) return;
     this.leaving = true;
     this.restartPending = false;
