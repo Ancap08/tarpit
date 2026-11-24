@@ -3,8 +3,8 @@
 // Starting: no AudioContext exists until the player's first tap, click or
 // key press (a capture listener on window for pointerdown, pointerup,
 // touchend, click and keydown creates it, or resumes it later, as phones
-// require). Hidden page: every voice stops and the context suspends; it
-// resumes when the page shows again (or at the next gesture). Without Web
+// require). Hiding the page or pausing a run stops every voice and suspends
+// the context. It can resume once the page is visible and play resumes. Without Web
 // Audio, or if creating the context fails, the game runs silent and play()
 // does nothing. Test mode (?test=1): install() is called disabled, so no
 // context is ever created and nothing plays; the mute setting and the M key
@@ -57,6 +57,7 @@ export class SoundEngine {
   private enabled = false;
   private installed = false;
   private failed = false;
+  private paused = false;
   private muted: boolean;
   private ctx: AudioContext | null = null;
   private bus: ReturnType<typeof masterChain> | null = null;
@@ -83,12 +84,12 @@ export class SoundEngine {
     if (!this.enabled) return;
     const unlock = () => this.unlock();
     for (const type of GESTURES) window.addEventListener(type, unlock, { capture: true, passive: true });
-    document.addEventListener('visibilitychange', () => this.onVisibility());
+    document.addEventListener('visibilitychange', () => this.syncContext());
   }
 
   /** A gesture: create the context, or resume it. Any failure leaves the game silent. */
   private unlock(): void {
-    if (!this.enabled || this.failed || document.hidden) return;
+    if (!this.enabled || this.failed || this.paused || document.hidden) return;
     try {
       if (this.ctx === null) {
         const Ctor = audioContextClass()!;
@@ -105,10 +106,17 @@ export class SoundEngine {
     }
   }
 
-  private onVisibility(): void {
+  /** An explicit pause survives visibility changes and unlock gestures. */
+  setPaused(paused: boolean): void {
+    if (this.paused === paused) return;
+    this.paused = paused;
+    this.syncContext();
+  }
+
+  private syncContext(): void {
     const ctx = this.ctx;
     if (ctx === null) return;
-    if (document.hidden) {
+    if (this.paused || document.hidden) {
       this.stopAll(true);
       ctx.suspend().catch(() => undefined);
     } else {
@@ -143,7 +151,7 @@ export class SoundEngine {
 
   /** Play a sound now, unless muted, silent, hidden, thinned or capped. */
   play(name: SoundName): void {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.bump(this.counts.requested, name);
     const ctx = this.ctx;
     if (this.muted || ctx === null || this.bus === null || ctx.state !== 'running' || document.hidden) return;

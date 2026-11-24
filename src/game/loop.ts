@@ -48,3 +48,43 @@ export function ticksDue(accMs: number, speed: number, cap: number = MAX_TICKS_P
   const left = Math.max(0, accMs - steps * STEP_MS);
   return { ticks: Math.min(steps * speed, cap), accMs: left };
 }
+
+/** One run's clock. Paused frames consume neither simulation time nor the
+ * unscaled time used to draw banners, sprites and scenery. */
+export class GameClock {
+  private stopped = false;
+  private resumedAt: number | null = null;
+  accMs = 0;
+  nowMs = 0;
+  deltaMs = 0;
+
+  constructor(private readonly realNow = () => performance.now()) {}
+
+  get paused(): boolean {
+    return this.stopped;
+  }
+
+  set paused(value: boolean) {
+    if (this.stopped === value) return;
+    this.stopped = value;
+    this.deltaMs = 0;
+    this.resumedAt = value ? null : this.realNow();
+  }
+
+  frame(deltaMs: number, speed: number, realDeltaMs = deltaMs): number {
+    if (this.paused) return 0;
+    // The first frame may span a hidden tab or a lock. Count only its
+    // visible, running tail, retaining any sub-tick left at Pause.
+    if (this.resumedAt !== null) {
+      const activeMs = Math.max(0, this.realNow() - this.resumedAt);
+      deltaMs = Math.min(deltaMs, activeMs);
+      realDeltaMs = Math.min(realDeltaMs, activeMs);
+      this.resumedAt = null;
+    }
+    this.deltaMs = deltaMs;
+    this.nowMs += realDeltaMs;
+    const due = ticksDue(this.accMs + deltaMs, speed);
+    this.accMs = due.accMs;
+    return due.ticks;
+  }
+}

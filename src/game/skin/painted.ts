@@ -7,6 +7,7 @@ import { decorFor, hiddenGrowth, type Growth } from '../decor/recipe';
 import type { TowerPose } from '../draw/towers';
 import { arcHeight, arcPosition } from '../fx/fxMath';
 import type { Layout } from '../layout';
+import type { GameClock } from '../loop';
 import { bearingFrame, footDepth, TOWER_PREVIEW_FRAME, towerArt } from './frames';
 import type { PaintedAssets, PaintedName } from './loading';
 
@@ -46,7 +47,14 @@ export class PaintedSkin {
   private alpha = 1;
   private ghost?: Image;
 
-  constructor(private readonly scene: Phaser.Scene, readonly assets: PaintedAssets, private readonly layout: Layout, private readonly map: MapDef, private readonly testMode: boolean) {
+  constructor(
+    private readonly scene: Phaser.Scene,
+    readonly assets: PaintedAssets,
+    private readonly layout: Layout,
+    private readonly map: MapDef,
+    private readonly testMode: boolean,
+    private readonly clock: GameClock,
+  ) {
     this.ground = layout.placeWorld(scene.add.image(0, 0, assets.groundKey, 0).setOrigin(0).setScale(1 / assets.density));
     this.shadows = scene.add.layer();
     this.standing = scene.add.layer();
@@ -91,7 +99,7 @@ export class PaintedSkin {
   }
 
   update(state: GameState, placing: boolean): void {
-    const t = this.testMode || this.reducedMotion.matches ? STILL_T : this.scene.time.now;
+    const t = this.testMode || this.reducedMotion.matches ? STILL_T : this.clock.nowMs;
     if (t !== this.drawnTime) {
       this.drawnTime = t;
       this.cave.setFrame((this.layout.turned ? 1 : 0) + (blinking(t) ? 2 : 0));

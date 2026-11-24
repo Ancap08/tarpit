@@ -44,8 +44,9 @@ import { awayFrom, deathPuff, KNOCK_MS, knockPx, knockShare } from '../fx/fxMath
 import { enemyArt, walkFrame } from '../skin/frames';
 import type { PaintedSkin } from '../skin/painted';
 import { facingAt } from './facing';
-import { LANDSCAPE, type Layout } from '../layout';
+import type { Layout } from '../layout';
 import { COLORS } from '../palette';
+import type { GameClock } from '../loop';
 import { FACINGS, SHEETS, walkAnimKey, WALK_FPS, type Facing } from './sheets';
 
 /**
@@ -156,8 +157,9 @@ export class EnemySprites {
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly frozen: boolean,
-    private readonly layout: Layout = LANDSCAPE,
-    private readonly painted?: PaintedSkin,
+    private readonly layout: Layout,
+    private readonly painted: PaintedSkin | undefined,
+    private readonly clock: GameClock,
   ) {
     if (!painted) ensureAnims(scene);
     this.layer = painted?.standing ?? scene.add.layer();
@@ -194,13 +196,13 @@ export class EnemySprites {
     const v = this.views.get(id);
     if (!v || v.dying) return;
     v.hitThisTick = true;
-    v.hitUntil = this.scene.time.now + HIT_FLASH_MS;
+    v.hitUntil = this.clock.nowMs + HIT_FLASH_MS;
     if (from && !this.frozen) {
       const d = awayFrom(this.layout.toScreen(from), { x: v.sprite.x, y: v.sprite.y });
       const px = knockPx(v.type);
       v.knockX = d.x * px;
       v.knockY = d.y * px;
-      v.knockAt = this.scene.time.now;
+      v.knockAt = this.clock.nowMs;
     }
   }
 
@@ -209,7 +211,7 @@ export class EnemySprites {
     const v = this.views.get(id);
     if (v && !v.dying && !v.doomed) {
       v.doomed = true;
-      v.doomedAt = this.scene.time.now;
+      v.doomedAt = this.clock.nowMs;
     }
   }
 
@@ -312,7 +314,7 @@ export class EnemySprites {
   /** A doomed sprite walks on along the trail at its last speed until its shot lands (play only). */
   private walkOn(v: View, map: MapDef, timeScale: number): void {
     if (v.stepPx === 0) return; // A walker killed against the wall stays there until the shot lands.
-    const ticks = ((this.scene.time.now - v.doomedAt) / (1000 / 60)) * timeScale;
+    const ticks = ((this.clock.nowMs - v.doomedAt) / (1000 / 60)) * timeScale;
     const distance = v.distance + v.stepPx * ticks;
     const { x, y } = this.layout.toScreen(positionAlongPath(map, distance));
     v.shadow?.setPosition(x, y);
@@ -396,7 +398,7 @@ export class EnemySprites {
 
   private setFacing(v: View, facing: Facing, force = false, distance = v.distance): void {
     if (this.painted) {
-      const now = this.scene.time.now;
+      const now = this.clock.nowMs;
       const hitOffset = this.isHit(v) ? this.painted.assets.sheets[enemyArt(v.type)].frames : 0;
       if (!force && !this.frozen && !v.flying && facing !== v.facing) {
         const previous = v.turn?.previous ?? this.painted.image(enemyArt(v.type));
@@ -432,10 +434,10 @@ export class EnemySprites {
     const { x, y } = this.layout.toScreen(stoppedAt ?? enemyPosition(enemy, map));
     v.blockerLunge = stoppedAt?.lunge ?? 0;
     const lift = this.lift(v.type);
-    const bob = v.flying && !this.frozen ? bobOffset(this.scene.time.now, enemy.id) : 0;
-    if (v.knockAt >= 0 && this.scene.time.now - v.knockAt >= KNOCK_MS) v.knockAt = -1;
+    const bob = v.flying && !this.frozen ? bobOffset(this.clock.nowMs, enemy.id) : 0;
+    if (v.knockAt >= 0 && this.clock.nowMs - v.knockAt >= KNOCK_MS) v.knockAt = -1;
     if (v.knockAt >= 0) {
-      const k = knockShare(this.scene.time.now - v.knockAt);
+      const k = knockShare(this.clock.nowMs - v.knockAt);
       v.sprite.setPosition(x + v.knockX * k, y - lift + bob + v.knockY * k);
     } else {
       v.sprite.setPosition(x, y - lift + bob);
@@ -477,7 +479,7 @@ export class EnemySprites {
       v.sprite.setTintFill(TINT.flash);
     } else {
       // Flyers too: a special can tar or burn a Harpy (milestone 25b).
-      const tint = statusTint(v.burning, v.slowed, this.frozen ? 1 : burnPulse(this.scene.time.now));
+      const tint = statusTint(v.burning, v.slowed, this.frozen ? 1 : burnPulse(this.clock.nowMs));
       if (tint === null) v.sprite.clearTint();
       else v.sprite.setTint(tint);
     }
@@ -487,7 +489,7 @@ export class EnemySprites {
   }
 
   private isHit(v: View): boolean {
-    return this.frozen ? v.hitThisTick : this.scene.time.now < v.hitUntil;
+    return this.frozen ? v.hitThisTick : this.clock.nowMs < v.hitUntil;
   }
 
   /** Test hook: the sprite state for an enemy id, or null if it has no sprite. */
