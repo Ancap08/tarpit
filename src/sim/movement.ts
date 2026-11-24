@@ -28,13 +28,13 @@ function contactBetween(blockers: readonly Blocker[], from: number, to: number):
 }
 
 /** Resolve every contact before any damage, allowing both sides to deal a lethal blow. */
-export function moveEnemies(enemies: Enemy[], events: GameEvent[], blockers?: readonly Blocker[]): boolean {
+export function moveEnemies(enemies: Enemy[], events: GameEvent[], blockers?: readonly Blocker[], speedFactor = 1): boolean {
   const attacks = blockers?.length ? new Map<Blocker, number>() : undefined;
   let guardTargets: Map<Guard, { enemy: Enemy; arrival: number }> | undefined;
   for (const enemy of enemies) {
     const stats = ENEMY_STATS[enemy.type];
     const slow = effectiveSlow(enemy);
-    const next = enemy.distance + (stats.speed * (1 - slow)) / TICKS_PER_SECOND;
+    const next = enemy.distance + (stats.speed * speedFactor * (1 - slow)) / TICKS_PER_SECOND;
     const blocker = blockers?.length && !stats.flying ? contactBetween(blockers, enemy.distance, next) : undefined;
     const guard = isGuard(blocker) ? blocker : undefined;
     if (guard) {

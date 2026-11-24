@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildTower, upgradeTower, useSpecial } from './actions';
-import { botBeginner, botGood, botPerson, runBot } from './bots';
+import { botBeginner, botGood, botGoodFeat, botPerson, runBot } from './bots';
 import { createGame, startWave, tick } from './game';
 import { trailCellOrder } from './headless';
 import type { LevelDef } from './levelTypes';
@@ -264,5 +264,62 @@ describe('person policy', () => {
     }
     expect(fired).toHaveLength(2);
     expect(fired[1] - fired[0]).toBeGreaterThanOrEqual(180);
+  });
+});
+
+describe('taxed setup and deliberate feats', () => {
+  it('prices the next build and prefers an upgrade once the standing cap is full', () => {
+    for (const bot of [botBeginner, botPerson, botGood]) {
+      const state = createGame({ level: { ...level, startGold: 80, allowedTowers: ['longbow'],
+        taxes: { windowTax: 0.1 }, maxTowerLevel: 1 } });
+      expect(buildTower(state, trailCellOrder(state.map)[0], 'longbow').ok).toBe(true);
+      expect(bot.purchase(state)).toBeUndefined(); // 40 left, next Longbow costs 44.
+      const capped = createGame({ level: { ...level, startGold: 200, allowedTowers: ['longbow'], taxes: { rationing: 1 } } });
+      const cell = trailCellOrder(capped.map)[0];
+      expect(buildTower(capped, cell, 'longbow').ok).toBe(true);
+      expect(bot.purchase(capped)).toEqual({ type: 'upgrade', cell });
+    }
+  });
+
+  it('spends the last affordable wave-clear gold with Frozen Purse', () => {
+    for (const bot of [botGood, botPerson]) {
+      const state = createGame({ level: { ...level, startGold: 40, allowedTowers: ['longbow'], taxes: { frozenPurse: 40 } } });
+      state.wave = 1;
+      expect(bot.purchase(state)).toMatchObject({ type: 'build', tower: 'longbow' });
+    }
+  });
+
+  it('completes only purchases whose planning time fits before automatic dispatch', () => {
+    const base: LevelDef = { ...level, startGold: 200, waves: [...level.waves, ...level.waves, ...level.waves],
+      feat: { kind: 'noSpecials' }, maxTowerLevel: 1, allowedTowers: ['longbow'] };
+    function fromFirstClear(timed: boolean) {
+      const state = createGame({ level: timed ? { ...base, taxes: { noLoitering: 8 } } : base });
+      state.wave = 1;
+      if (timed) state.autoWaveTicks = 480;
+      return runBot(state, botPerson, 2);
+    }
+    const automatic = fromFirstClear(true);
+    const control = fromFirstClear(false);
+    expect(automatic.setupTicks).toBe(480);
+    expect(control.setupTicks).toBe(720);
+    expect(automatic.state.towers).toHaveLength(2);
+    expect(control.state.towers).toHaveLength(4);
+    expect(automatic.log.some(step => step.action === 'startWave')).toBe(false);
+    expect(automatic.refused).toBe(0);
+    expect(automatic.state.phase).toBe('setup');
+    expect(automatic.state.autoWaveTicks).toBeUndefined(); // The final wave waits for the player.
+  });
+
+  it('keeps feat-mode buying and casting separate from normal Good', () => {
+    const capped = createGame({ level: { ...level, startGold: 300, maxTowerLevel: 1, feat: { kind: 'maxTowers', limit: 1 } } });
+    const cell = trailCellOrder(capped.map)[0];
+    expect(buildTower(capped, cell, 'longbow').ok).toBe(true);
+    expect(botGoodFeat.purchase(capped)).toBeUndefined();
+    expect(botGood.purchase(capped)).toMatchObject({ type: 'build' });
+    const hands = createGame({ level: { ...level, feat: { kind: 'noSpecials' } } });
+    expect(startWave(hands).ok).toBe(true);
+    hands.enemies = [120, 121, 122].map((distance, id) => ({ id, distance, type: 'goblin', hp: 10, slow: 0, slowTicksLeft: 0 }));
+    expect(botGood.special(hands)).toMatchObject({ special: 'keg' });
+    expect(botGoodFeat.special(hands)).toBeUndefined();
   });
 });

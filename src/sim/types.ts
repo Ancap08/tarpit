@@ -276,6 +276,12 @@ export interface GameState {
   difficulty: Difficulty;
   /** The finite campaign rules, when playing a level. */
   level?: LevelDef;
+  /** Successful constructions, including sold towers, on levels with taxes or feats. */
+  towersBuilt?: number;
+  /** Number of collectors that exited on a no-leaks level, including bosses. */
+  leaks?: number;
+  /** During timed setup only. A pending boon holds the full countdown. */
+  autoWaveTicks?: number;
   /**
    * Endless mode (milestone 26): false until the player presses Keep going
    * after winning wave 20 (game.ts continueEndless). In an endless game

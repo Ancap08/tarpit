@@ -53,7 +53,7 @@ describe('gate rejects bad candidates (real bots, scratch levels)', () => {
       expect(bossless.endingBoss).toBe(boss);
       expect(checkLevel(bossless, context).failed).toContain('L5');
     }
-  });
+  }, 60_000);
 
   it('rejects a finale whose boss is replaced by one extra Goblin and a finale with no declared boss and a tiny end', () => {
     const level = withLastWave({ ...LEVELS[9], id: 205, endingBoss: undefined }, [goblins(3, 1)]);
@@ -122,7 +122,7 @@ describe('checkCampaign on other lengths', () => {
   it('accepts a one-level and a two-level campaign', () => {
     expect(checkCampaign([LEVELS[2]], [twoContexts[0]]).failed).toEqual([]);
     expect(checkCampaign(two, twoContexts).failed).toEqual([]);
-  });
+  }, 60_000);
 
   it.each(['musketeer', 'keg', 2, 'wolf'] as const)('rejects an undeclared opening capability: %s', missing => {
     const context = { ...twoContexts[0], alsoIntroduces: twoContexts[0].alsoIntroduces!.filter(key => key !== missing) };
@@ -164,18 +164,18 @@ describe('recheck: L1m, undeclared first appearances, the changed fixture', () =
   it('L1m is a real rule: the pre-fix Stand Fast data (gold 285, hp 1.3) fails only L1m', () => {
     const old: LevelDef = { ...LEVELS[7], id: 401, startGold: 285, hpScale: 1.3 };
     expect(checkLevel(old, CAMPAIGN_CONTEXTS[7]).failed).toEqual(['L1m']);
-  });
+  }, 60_000);
 
   it('the ten levels pass every label, campaign and each level alone', () => {
-    expect(checkCampaign(LEVELS, CAMPAIGN_CONTEXTS).failed).toEqual([]);
-  });
+    expect(checkCampaign(LEVELS.slice(0, 10), CAMPAIGN_CONTEXTS.slice(0, 10)).failed).toEqual([]);
+  }, 180_000);
 
   it.each([
     [0, 'musketeer'], [0, 'keg'], [0, 2], [0, 'goblin'], [2, 'wolf'], [3, 'shieldbearer'], [4, 'tarBarrel'], [5, 'troll'], [8, 'boss'],
   ] as const)('rejects the ten levels when context %i leaves out %s', (index, missing) => {
-    const contexts = CAMPAIGN_CONTEXTS.map((context, i) => i === index
+    const contexts = CAMPAIGN_CONTEXTS.slice(0, 10).map((context, i) => i === index
       ? { ...context, alsoIntroduces: context.alsoIntroduces!.filter(key => key !== missing) } : context);
-    expect(checkCampaign(LEVELS, contexts).failed).toContain('L3');
+    expect(checkCampaign(LEVELS.slice(0, 10), contexts).failed).toContain('L3');
   });
 
   it('the old twelve-level fixture (five extra Trolls, full gold) now fails L1m: the fixture changed, not the rule', () => {

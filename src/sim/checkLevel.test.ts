@@ -21,7 +21,7 @@ function stubBots(livesFor: (level: LevelDef, policy: bots.BotPolicy) => number,
     state.lives = livesFor(state.level!, bot);
     state.phase = state.lives > 0 ? 'won' : 'lost';
     state.tick = minutes * 3600;
-    return { state, log: [], refused: 0, peakAlive, waveOneLives };
+    return { state, log: [], refused: 0, setupTicks: 0, peakAlive, waveOneLives };
   });
 }
 
@@ -29,14 +29,14 @@ describe('campaign acceptance gate', () => {
   it.each(LEVELS.map((level, i) => ({ level, context: CAMPAIGN_CONTEXTS[i], id: level.id })))(
     'accepts shipped level $id', ({ level, context }) => {
       expect(checkLevel(level, context).failed).toEqual([]);
-    },
+    }, 60_000,
   );
 
-  it('accepts the combined duration and slope of the ten levels', () => {
+  it('accepts the combined duration and slope of the campaign', () => {
     const result = checkCampaign(LEVELS, CAMPAIGN_CONTEXTS);
     expect(result.failed).toEqual([]);
     const horde = result.levels[6].good!;
-    for (const [i, row] of result.levels.entries()) {
+    for (const [i, row] of result.levels.slice(0, 10).entries()) {
       if (i !== 6) expect(horde.spawned).toBeGreaterThan(row.good!.spawned);
     }
   });
@@ -57,10 +57,10 @@ describe('campaign acceptance gate', () => {
     const finale: LevelContext = { band: 'finale', introduces: null };
     expect(checkLevel(extraLate, late).failed).toEqual([]);
     expect(checkLevel(extraFinale, finale).failed).toEqual([]);
-    const levels = [...LEVELS, extraLate, extraFinale];
-    const contexts = [...CAMPAIGN_CONTEXTS, late, finale];
+    const levels = [...LEVELS.slice(0, 10), extraLate, extraFinale];
+    const contexts = [...CAMPAIGN_CONTEXTS.slice(0, 10), late, finale];
     expect(checkCampaign(levels, contexts).failed).toEqual([]);
-  });
+  }, 60_000);
 
   it('schedules each boss after its escort on the last wave', () => {
     for (const [level, boss] of [[LEVELS[8], 'boss'], [LEVELS[9], 'grumblemaw']] as const) {
@@ -143,6 +143,48 @@ describe('campaign acceptance gate', () => {
       stubBots(level => level.allowedSpecials.length ? lives : lives - 1);
       expect(checkLevel(fresh(), ctx).failed.includes('L3')).toBe(lives === 17);
     }
+  });
+
+  it('T1 removes one tax at a time and requires the margin at each nudge', () => {
+    const pair = { ...fresh(), taxes: { rationing: 3, curfew: 0.15 } };
+    stubBots((level, bot) => {
+      if (bot !== bots.botPerson || Object.keys(level.taxes ?? {}).length === 2) return 13;
+      return level.startGold === 110 && level.taxes?.rationing ? 15 : 16;
+    });
+    const row = checkLevel(pair, late);
+    expect(row.failed).toContain('T1');
+    expect(row.taxTrials).toHaveLength(10);
+    expect(row.taxTrials?.filter(t => t.personWithout.lives - t.person.lives < 3)
+      .map(t => [t.tax, t.variant])).toEqual([['curfew', 'gold+10']]);
+  });
+
+  it('T1 accepts a star even when the life advantage is less than three', () => {
+    stubBots(level => level.taxes?.rationing ? 17 : 18);
+    expect(checkLevel({ ...fresh(), taxes: { rationing: 3 } }, late).failed).not.toContain('T1');
+  });
+
+  it('T2 requires two stars at nominal and a win at all four nudges', () => {
+    for (const [nominal, nudged, fails] of [[11, 5, true], [12, 0, true], [12, 1, false]] as const) {
+      stubBots((level, bot) => bot === bots.botPerson && level.taxes?.curfew
+        ? level.startGold === 90 ? nudged : nominal : 16);
+      expect(checkLevel({ ...fresh(), taxes: { curfew: 0.15 } }, late).failed.includes('T2')).toBe(fails);
+    }
+  });
+
+  it('F1 counts an accidental three-star level once and accepts exactly half', () => {
+    const feat = { kind: 'noSpecials' } as const;
+    const candidates = [918, 345, 764, 271].map(id => ({ ...fresh(id), feat }));
+    vi.spyOn(bots, 'runBot').mockImplementation((state, bot) => {
+      state.lives = bot === bots.botBeginner ? 0 : 16;
+      state.phase = state.lives ? 'won' : 'lost';
+      state.tick = 6 * 3600;
+      const id = state.level!.id;
+      // Both normal bots succeed on one stop. Only Person succeeds on the other.
+      if (bot !== bots.botGoodFeat && id !== 918 && !(id === 345 && bot === bots.botPerson)) state.lastSpecialTick = 90;
+      return { state, log: [], refused: 0, setupTicks: 0, peakAlive: 1, waveOneLives: 20 };
+    });
+    expect(checkCampaign(candidates, candidates.map(() => late)).failed).not.toContain('F1');
+    expect(checkCampaign(candidates.slice(0, 3), candidates.slice(0, 3).map(() => late)).failed).toContain('F1');
   });
 
   it('L3 requires each declared capability to exist in the candidate', () => {

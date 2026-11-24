@@ -2,17 +2,17 @@
 import { maxIn3s } from './balanceTargets';
 import { BOON_OFFER_WAVES } from './boons';
 import { levelStars } from './campaignProgress';
-import { botBeginner, botGood, botPerson, runBot, type BotPolicy } from './bots';
+import { botBeginner, botGood, botGoodFeat, botPerson, runBot, type BotPolicy } from './bots';
 import { ENEMY_STATS } from './enemies';
 import { createGame, spawnTick } from './game';
-import { CAMPAIGN_START_LIVES, TWO_STAR_LIVES, type LevelDef } from './levelTypes';
+import { CAMPAIGN_START_LIVES, TWO_STAR_LIVES, type LevelDef, type TaxKind } from './levelTypes';
 import { MAP_IDS } from './map';
 import { SPECIAL_DEFS, type SpecialType } from './specials';
 import { TICKS_PER_SECOND } from './time';
 import { TOWER_DEFS } from './towers';
 import type { EnemyType, GameState, TowerLevel, TowerType } from './types';
 
-type GateLabel = 'P1' | 'P2' | 'L1' | 'L1m' | 'L2' | 'L3' | 'L4' | 'L5' | 'L6' | 'L7' | 'L8';
+type GateLabel = 'P1' | 'P2' | 'L1' | 'L1m' | 'L2' | 'L3' | 'L4' | 'L5' | 'L6' | 'L7' | 'L8' | 'T1' | 'T2' | 'T3' | 'F1';
 
 export type LevelFeature =
   | { readonly towers: readonly TowerType[] }
@@ -28,6 +28,7 @@ export interface LevelContext {
   introduces: Introduction | null;
   /** Other first appearances alongside the mechanic measured by the removal trial. */
   alsoIntroduces?: readonly Capability[];
+  introducesTax?: TaxKind;
 }
 
 export interface LevelScore {
@@ -50,6 +51,8 @@ export interface LevelCheck {
   person?: LevelScore;
   noSpecials?: LevelScore;
   featureTrials?: readonly FeatureTrial[];
+  taxTrials?: readonly TaxTrial[];
+  featGood?: LevelScore;
   sensitivity?: readonly SensitivityTrial[];
   openingCount: number;
   endingCount: number;
@@ -66,6 +69,13 @@ interface FeatureTrial {
   personWithout: LevelScore;
 }
 
+interface TaxTrial {
+  tax: TaxKind;
+  variant: string;
+  person: LevelScore;
+  personWithout: LevelScore;
+}
+
 interface SensitivityTrial {
   variant: string;
   good: LevelScore;
@@ -78,6 +88,7 @@ export const GATE_LIMITS = {
   hpScale: [0.85, 1.35], startGold: [100, 300], finaleLives: [TWO_STAR_LIVES, 16],
   lastSpawnSeconds: 90, peakAlive: 40, openingCount: 60, closingCount: 20,
   maxPersonDeficit: 6, goodFeatureLives: 2, personFeatureLives: 1, meanLivesDrop: 3,
+  taxBiteLives: 3,
   featureHp: [0.98, 1.02], featureGold: [-10, 10], sensitivityHp: [0.95, 1.05], sensitivityGold: [0.85, 1.15],
 } as const;
 
@@ -91,8 +102,33 @@ function whole(value: number, min: number, max: number = Number.MAX_SAFE_INTEGER
   return Number.isSafeInteger(value) && value >= min && value <= max;
 }
 
+function taxKinds(level: LevelDef): TaxKind[] {
+  return Object.keys(level.taxes ?? {}) as TaxKind[];
+}
+
+export const TAX_RANGES = {
+  windowTax: [0.05, 0.10], forcedMarch: [0.15, 0.25], curfew: [0.10, 0.20], noLoitering: [8, 15],
+} as const;
+
+function validTax(level: LevelDef, key: TaxKind): boolean {
+  const value = level.taxes?.[key];
+  if (value === undefined || !Number.isFinite(value)) return false;
+  if (key === 'rationing') return whole(value, 1);
+  if (key === 'frozenPurse') return whole(value, 0);
+  const range = TAX_RANGES[key];
+  return range !== undefined && value >= range[0] && value <= range[1];
+}
+
+function validTaxesAndFeat(level: LevelDef): boolean {
+  const keys = taxKinds(level);
+  if (keys.length > 2 || !keys.every(key => validTax(level, key))) return false;
+  const feat = level.feat;
+  return !feat || feat.kind === 'noLeaks' || feat.kind === 'noSpecials' ||
+    (feat.kind === 'maxTowers' && whole(feat.limit, 0));
+}
+
 function validLevel(level: LevelDef): boolean {
-  return whole(level.id, 1) && MAP_IDS.includes(level.map) &&
+  return whole(level.id, 1) && MAP_IDS.includes(level.map) && validTaxesAndFeat(level) &&
     whole(level.startGold, ...GATE_LIMITS.startGold) &&
     Number.isFinite(level.hpScale) && level.hpScale >= GATE_LIMITS.hpScale[0] && level.hpScale <= GATE_LIMITS.hpScale[1] &&
     (level.hpGrowthStart === null || whole(level.hpGrowthStart, 1, level.waves.length)) &&
@@ -162,12 +198,13 @@ function measure(level: LevelDef, variant: LevelDef, policy: BotPolicy): LevelSc
     cached = { key, results: new Map() };
     scores.set(level, cached);
   }
-  const bot = policy === botGood ? 'good' : policy === botPerson ? 'person' : 'beginner';
+  const bot = policy === botGood ? 'good' : policy === botPerson ? 'person' : policy === botGoodFeat ? 'feat' : 'beginner';
   const variantKey = bot + JSON.stringify(variant);
   const previous = cached.results.get(variantKey);
   if (previous) return previous;
-  const { state, refused, peakAlive, waveOneLives } = runBot(createGame({ level: variant }), policy, Infinity, 2 * GATE_LIMITS.levelMinutes[1] * MINUTE);
-  const { phase, tick } = state;
+  const { state, refused, peakAlive, waveOneLives, setupTicks } = runBot(createGame({ level: variant }), policy, Infinity, 2 * GATE_LIMITS.levelMinutes[1] * MINUTE);
+  const { phase } = state;
+  const tick = state.tick - setupTicks;
   const lives = Math.max(0, state.lives);
   const result = { phase, lives, tick, refused, peakAlive, waveOneLives, spawned: state.nextEnemyId, stars: levelStars(state) };
   cached.results.set(variantKey, result);
@@ -219,9 +256,16 @@ export function checkLevel(level: LevelDef, context: LevelContext): LevelCheck {
   if (good.stars < goodMin) failed.add('L1');
   if (!whole(beginner.stars, beginnerMin, beginnerMax)) failed.add('L2');
 
+  const taxes = taxKinds(level);
+  const taxTrials: TaxTrial[] = [];
+  if (context.introducesTax && (taxes.length !== 1 || taxes[0] !== context.introducesTax)) failed.add('T3');
+  const featGood = level.feat ? measure(level, level, botGoodFeat) : undefined;
+  if (featGood && (featGood.stars !== 3 || beginner.stars === 3)) failed.add('F1');
+
   const feature = context.introduces;
   const featureTrials: FeatureTrial[] = [];
   const runs = [good, person, beginner, noSpecials];
+  if (featGood) runs.push(featGood);
   const available = capabilities(level);
   if (featureKeys(feature).some(key => !available.has(key))) failed.add('L3');
   const marginChanges = [
@@ -234,6 +278,19 @@ export function checkLevel(level: LevelDef, context: LevelContext): LevelCheck {
     const full = measure(level, test, botGood);
     runs.push(full);
     if (variant !== 'base' && full.stars < goodMin) failed.add('L1m');
+    if (taxes.length) {
+      const player = measure(level, test, botPerson);
+      runs.push(player);
+      if (player.stars < (variant === 'base' ? 2 : 1)) failed.add('T2');
+      for (const tax of taxes) {
+        const remaining = { ...test.taxes };
+        delete remaining[tax];
+        const control = measure(level, { ...test, taxes: remaining }, botPerson);
+        taxTrials.push({ variant, tax, person: player, personWithout: control });
+        runs.push(control);
+        if (control.lives - player.lives < GATE_LIMITS.taxBiteLives && control.stars <= player.stars) failed.add('T1');
+      }
+    }
     if (feature) {
       const removed = withoutFeature(test, 'enemy' in feature ? feature.control : feature);
       const goodWithout = measure(level, removed, botGood);
@@ -270,7 +327,7 @@ export function checkLevel(level: LevelDef, context: LevelContext): LevelCheck {
   if (!runs.every(finished)) failed.add('L7');
   if (context.band === 'finale' && !whole(good.lives, ...GATE_LIMITS.finaleLives)) failed.add('L8');
   return { ...structure, ok: failed.size === 0, failed: [...failed], good, beginner, person, noSpecials,
-    forbidden: featureTrials[0]?.goodWithout, featureTrials, sensitivity };
+    forbidden: featureTrials[0]?.goodWithout, featureTrials, taxTrials, featGood, sensitivity };
 }
 
 export interface CampaignCheck {
@@ -287,8 +344,14 @@ export function checkCampaign(levels: readonly LevelDef[], contexts: readonly Le
   const checked = levels.map((level, i) => checkLevel(level, contexts[i]));
   const failed = new Set(checked.flatMap(row => row.failed));
   const introduced = new Set<Capability>();
+  const introducedTaxes = new Set<TaxKind>();
   for (const [i, row] of checked.entries()) {
     const context = contexts[i];
+    const taxes = taxKinds(levels[i]);
+    const freshTaxes = taxes.filter(tax => !introducedTaxes.has(tax));
+    if (freshTaxes.length !== (context.introducesTax ? 1 : 0) ||
+      (freshTaxes.length && (taxes.length !== 1 || freshTaxes[0] !== context.introducesTax))) failed.add('T3');
+    for (const tax of taxes) introducedTaxes.add(tax);
     const declared = new Set([...featureKeys(context.introduces), ...context.alsoIntroduces ?? []]);
     const available = capabilities(levels[i]);
     for (const key of declared) {
@@ -303,6 +366,9 @@ export function checkCampaign(levels: readonly LevelDef[], contexts: readonly Le
     if ((prev?.beginner && row.beginner && row.beginner.stars > prev.beginner.stars + 1) ||
       (earlier?.good && prev.good && row.good && earlier.good.lives < prev.good.lives && prev.good.lives < row.good.lives)) failed.add('L4');
   }
+  const feats = checked.filter((_, i) => levels[i].feat);
+  const accidental = feats.filter(row => row.good?.stars === 3 || row.person?.stars === 3);
+  if (accidental.length * 2 > feats.length) failed.add('F1');
   if (new Set(levels.map(level => level.id)).size !== levels.length) failed.add('L7');
   const totalTicks = checked.reduce((sum, row) => sum + (row.good?.tick ?? 0), 0);
   const minutesPerLevel = totalTicks / (MINUTE * levels.length);
