@@ -9446,3 +9446,151 @@ must cover every printable character used in game strings. Updated review
 captures include the Assessor’s entrance in portrait.
 
 Linux CI caught a 5 px three-digit Remove gap. With HUD figures widened 12%, the Mac reproduced 2 px before the fix and 22 px after it. The compact build bar’s tightest gap went from −1 to 15 px in the same check.
+
+## 2026-11-24: milestone 47, a showpiece level
+
+Open `?look=showpiece` and choose campaign level 1 or Free play Meadow.
+The mill sails turn above the wheat. Two farmhands abandon their chores
+when the collectors appear. Firing a cannon sends perched birds up and
+startles a row of sheep in succession. Watch the hives near the striped
+cart in the morning and the cottage windows late in the fight. The smoke,
+wheat, laundry and willow share the wind. Crews load alongside their
+towers. When a shot lands, the field starts to collect arrows, gouges,
+money and hats. The last hat hangs in the air while the results become
+available. Seven salutes and a tricorn on a pole close the level.
+
+[Landscape recording](docs/art/showpiece/landscape.mp4) ·
+[Phone recording](docs/art/showpiece/phone.mp4) ·
+[Six gameplay stills](docs/art/showpiece/)
+
+### What a busy field costs
+
+Each cell below is measured FPS / longest frame in milliseconds. The
+workload follows the existing perf fixture: 25 towers and 120 collectors,
+replenished in the first 120 px of the trail. The live renderer had one
+second to warm up before each five-second sample. The phone profile is
+390 × 844 at DPR 3, touch and mobile enabled. CDP slows the CPU. Headless
+Chromium's phone project reported the SwiftShader software WebGL renderer.
+The desktop run used full Chromium, 960 × 580 at DPR 1 and ANGLE Metal
+on the Apple M4. These are emulation and Mac measurements. We did not
+measure a physical phone or sustained battery use.
+
+| Renderer and CPU | Painted | Low | Medium | High |
+| --- | ---: | ---: | ---: | ---: |
+| Phone profile, 1× | 60.0 / 16.8 | 59.2 / 66.6 | 58.0 / 33.4 | 51.0 / 33.4 |
+| Phone profile, 4× | 60.0 / 16.8 | 60.0 / 16.8 | 51.8 / 83.3 | 43.7 / 33.5 |
+| Phone profile, 6× | 60.0 / 16.8 | 58.8 / 33.4 | 48.4 / 33.4 | 37.1 / 50.1 |
+| Mac landscape, Metal, 1× | 60.0 / 16.8 | 60.0 / 16.8 | 60.0 / 16.8 | 60.0 / 16.8 |
+
+The phone lost about 22 FPS going from low to high at 6×. This informed
+the governor's 20 ms downshift threshold. Low keeps the farm, day, crews
+and recorded landings. It draws fewer animals and props, skips clouds and
+the extra camera pass, and updates scenery less often. At high detail the
+whole pasture took 0.188 ms of JavaScript updates per displayed frame at
+6×. Combat decoration took 0.126 ms. These counters exclude draw submission
+and rasterization, which contribute to the frame results above.
+
+### Which details travel well
+
+The frame column is the median *paired* change in render time when that
+group is visible. Nine pairs alternate test order, two draws per condition.
+The 6× phone profile draws the same high-detail dusk pose in software WebGL.
+Each sample finishes GPU work and reads back a pixel. The camera sample
+uses its active blast viewport. Victory uses its own result-screen pose.
+The intervals are the middle half of the paired differences. These are
+incremental costs on this renderer, not a budget that adds up to frame time.
+Run `PW_PORT=4373 node --experimental-strip-types scripts/art/m47DrawCosts.ts`.
+
+| Idea | Added draw ms (middle half) | Attributable bytes at 1× / 2× | Judgment |
+| --- | ---: | ---: | --- |
+| Working mill, apiary, wheat, laundry, smoke, clouds and gusts | 0.95 (0.05–1.25) | 17,216 / 41,042 art | Adapt one local landmark per map. Reuse the wind clock. |
+| Farmhands retreat, sheep startle, hens peck, cat watches, birds scatter | 0.10 (−0.30–0.25) | 3,428 / 7,346 art | Roll out. Their cost was below the measurement noise. |
+| Morning through dusk, moving shadows, lit windows, bees and fireflies | 5.50 (4.95–6.20) | 8,308 / 22,576 art | Adapt windows and shadows. Reserve the full-field light passes for high detail. |
+| Working crews, recoil accents, muzzle bloom, heat wisps and tar bubbles | 0.60 (0.45–0.75) | ~1,356 shared JS | Roll out the crews. Reserve the extra gunner and light for higher tiers. |
+| Collector spoils, Hound skids, arrows, craters and worn grass | 0.95 (0.65–1.65) | ~1,357 shared JS | Roll out the bounded field with a density cap. |
+| First arrival and artillery camera | 12.90 (12.80–14.05) while moving | ~585 shared JS | Showpiece only. A second view nearly doubled the draw time. |
+| Victory shells, thrown hats, trophy pole and last falling hat | 1.65 (1.30–2.00) on the result screen | ~976 shared JS | Roll out. The player can still use the result buttons immediately. |
+
+Image estimates come from blanking that group's atlas rectangles and
+re-encoding the original pixels with the same WebP settings. Structures
+and crop rows account for 15,158 / 34,130 B in a separate run, grass,
+smoke and weather for 2,114 / 6,852 B. Compression makes marginal
+figures non-additive. The three scenery groups share a ~4,386 B renderer.
+Combat groups share a ~2,294 B procedural atlas generator and a ~1,026 B
+event/render adapter. JS estimates use Vite's Oxc transform and module
+minifier followed by gzip for each module independently. The crop and
+module estimates share code and pixels; actual HTTP totals follow.
+
+### Download, memory and recordings
+
+We timed Play pointer-down to the first game post-render using M43's
+cold CDP path, an empty cache, 1.6 Mbit/s down and 150 ms latency. The
+worker was blocked. A density hint selected 1× and 2× without a ground
+probe on the same link. The title and common game boot precede this clock.
+
+| Density | Painted → Showpiece requests | Extra HTTP body bytes | Painted → Showpiece first frame |
+| --- | ---: | ---: | ---: |
+| 1× | 3 → 5 | 42,095 | 2.393 → 2.925 s (+0.532 s) |
+| 2× | 3 → 5 | 86,271 | 5.468 → 6.243 s (+0.775 s) |
+
+The two extra bodies are the 11,535 B compressed renderer and one
+30,560 / 74,736 B WebP. The normal boot bundle grew 1,278 B gzip
+against 5a24b12. Ordinary visitors fetch zero showpiece bodies. In eight
+same-browser canvas comparisons against that commit, both looks matched
+pixel for pixel at setup and in a wave, in both orientations.
+
+Both films show excerpts of a complete campaign win with all 324
+collectors stopped and 20 lives left. Landscape runs 39.40 s / 3,625,443 B.
+Portrait runs 41.28 s / 2,385,152 B. Five stills are from level 1. The
+landscape crossfire still stages wave 8 in Free play to show the other
+crews and collectors. The films use WebGL on the Apple M4 at high detail.
+The first encoding made the fireworks hard to see through the end-screen
+veil. The shipped salute draws above that veil and below the result panel.
+
+The portrait recording's post-GC JS heap measured 9,917,732 B at setup,
+10,643,872 B after victory and 10,966,256 B after Play again. The field
+went from 64 marks and eight worn stretches to zero of each. Six further
+fill-and-replay cycles on phone Canvas returned to 99 textures and 150
+scene children each time. After GC, weak references to every prior game's
+state and mark array were empty. Heap readings exclude GPU and browser
+memory. The generated combat sheet contains 1,179,648 uncompressed RGBA
+bytes before renderer copies.
+
+### Readability and limits
+
+The farm and combat illustration sit beneath zones, actors and bars.
+Scenery in tower footprints disappears and the farm fades during placement.
+The camera changes only the map. Two adjacent towers made a useful check:
+while the first-arrival push was active, one tower's visible edge occupied
+its neighbour's original cell. The first test found undefined scroll
+coordinates before any shell had landed. Both a real mouse click and a
+portrait touch now select the visible tower there. The static HUD remains
+available throughout.
+
+Free play can show all six towers, hounds on tar and artillery-startled
+birds. Campaign level 1 allows only the Longbow and Musketeer, and sends
+goblins. We kept that roster. A collector's hat comes off when Painted
+removes the body. The Hound leaves a skid at a real tar hit. We left out
+a live collector turning to look back and a sliding enemy pose, which
+would make facing or position ambiguous. The Fire Pot's WebGL shimmer is
+a local rising wisp. Grading, vignette and flash halos stay off health bars
+and placement frames. The last-kill slowdown applies to the dropped object.
+Test mode freezes time and keeps sound silent. Reduced motion retains
+grounded props and the lighting for the current wave.
+
+The switch excludes campaign levels 2, 7 and 10 even though they also
+use Meadow. The ordinary service-worker install fetches neither the
+experimental chunk nor its atlas. A failed experimental download or decode
+starts the already-loaded Painted game. A cold request for shared Painted
+art retains its existing Classic recovery. The 64 mark slots and 40 wear
+segments belong to a game and preserve world coordinates over rotation.
+A new game starts with clean ground.
+
+Reproduce the phone matrix and shaped loads with
+`PW_PORT=4373 node --experimental-strip-types scripts/art/m47Costs.ts`.
+Use the argument `mac` for the Metal landscape case. For the two complete
+campaign runs, set `M47_SCRATCH` to a disposable directory and run
+`PW_PORT=4373 node --experimental-strip-types scripts/art/m47Media.ts`.
+The recorder buys with earned gold and plays at the normal 3× setting.
+Its excerpts cover the six waves and victory. All benchmark tiers are
+pinned for comparisons. Ordinary play selects its own tier.

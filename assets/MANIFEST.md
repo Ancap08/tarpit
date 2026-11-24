@@ -206,7 +206,7 @@ the checker looks for it.
 | `assets/art-showpiece/showpiece-pasture-1x.webp` | `scripts/art/showpiece_pasture.py` | Tarpit agents | MIT | Original Meadow scenery atlas at 1× |
 | `assets/art-showpiece/showpiece-pasture-2x.webp` | `scripts/art/showpiece_pasture.py` | Tarpit agents | MIT | Original Meadow scenery atlas at 2× |
 | `assets/art-showpiece/showpiece-pasture.json` | `scripts/art/showpiece_pasture.py` | Tarpit agents | MIT | Scenery frame bounds and pivots |
-| `docs/art/showpiece/landscape-crossfire.jpg` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 landscape crossfire capture |
+| `docs/art/showpiece/landscape-crossfire.jpg` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Free play Meadow, mixed towers and collectors in wave 8 |
 | `docs/art/showpiece/landscape-dusk.jpg` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 landscape dusk capture |
 | `docs/art/showpiece/landscape-morning.jpg` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 landscape morning capture |
 | `docs/art/showpiece/landscape.mp4` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 landscape recording |
