@@ -9612,3 +9612,70 @@ Good all kill King Grumblemaw with tower fire.
 
 The first-act gate and Free play output remain the prefix of the sim report.
 The new block reports the second act and then the twenty-level gate.
+
+Verifier notes (milestone 48a and 48b, Claude Sonnet, independent run on 07b7c17,
+baseline a3330c3): merge. No game number or rule moved that was not allowed to,
+every tax does exactly what the notice says, and every number I could reproduce
+matches. Four gate and design findings below; none changes a shipped result.
+
+- Levers. Twenty lives, the 12 and 18 star lines, every tower, enemy, special and
+  Free play number are unchanged (`git diff` touches no table). Levels 1 to 10
+  are byte for byte (the only removed line in levels.ts is a comment). HP scales
+  are 0.88 to 1.16; taxes are inside their ranges (Window 5%, March 15 to 20%,
+  Curfew 10 to 20%, No Loitering 8 s). `npm run sim` on main and here: the first
+  441 lines are byte identical (`cmp`), the new block only adds after them. The
+  src/sim changes that are not a tax, feat or bot support are the shared
+  wave-clear payment, the speed factor 1, the star function, and the unlock cap
+  at the last level. A state comparison of 78 scripted games, run on both trees
+  (30 bot games on levels 1 to 10, 9 Free play bot games, 39 random action
+  games), gave identical digests. The random games lose early, so the bot games
+  carry the weight.
+- Taxes, by hand against the sim (`taxes-verifier.test.ts`): Window Tax prices
+  for builds 1 to 8 of every tower at 5 to 10% with sells between, and a float
+  check of every half-gold case to 40 builds, match integer half-up arithmetic.
+  Sold towers count, and the level 11 tip says so. Frozen Purse, Forced March on
+  every enemy including the boss, a summoned pack and the exit tick, Curfew on
+  every tower, path and Long Barrels (+30%, applied before the cut) with the
+  Mortar's 70 px, Rationing, and No Loitering to the tick (the 480th setup tick,
+  held by a reward, cleared by Start or an early call, nothing before the first
+  or at the last wave) all match. Same game twice gives the same state.
+- Gate. The twenty-level table reproduced with my own bot runs: no cell differs.
+  T1 and T2 at nominal and the four nudges: no number differs from the table
+  above. The gate rejects a tax that does not bite (Rationing 50: T1), an
+  unwinnable tax (T2), a feat Good cannot earn (F1), two introductions (T3) and
+  out-of-range taxes (reported as the generic L7). Frozen Purse and Rationing
+  have no range, by design.
+- Gap 1 (pinned `it.fails`, featGate-verifier.test.ts). F1 measures the deliberate
+  run at nominal only. Level 15 at 10 less starting gold: 1 star, 5 lives.
+  Level 13 at HP x1.02: 2 stars, 18 lives. Levels 1 to 10 get the nudges (L1m).
+- Gap 2 (pinned `it.fails`). The level check accepts a feat that ordinary Good and
+  Person both earn: level 4 with "at most 1000 towers" gives failed = [].
+  Only checkCampaign's half rule counts such feats.
+- Finding 3, the feats are nearly free. Bare hands (11, 15, 18, 20): Person with
+  no casts gets 3/15, 3/13, 3/13, 3/13 against 2/16, 2/13, 2/14, 2/13 with casts;
+  the specials are worth at most one life. Few hands (12, 16, 17, 19): Person held
+  to the limit earns 3 stars at 16, 12, 16, 14 lives, the same as unlimited. Only
+  Not a penny costs anything: ordinary Good earns it on 13 and 14, Person leaks 5
+  and 3 (Person with instant shopping is 3/20 on 13 and still leaks 3 on 14).
+- Finding 4, one tower type. Musketeer alone or Longbow alone wins two stars on 8 of
+  the 10 second-act levels (8 of 10 in the first act too). Level 18 Musketeers
+  alone: 2/20, against 2/14 for the full-arsenal Good. Harpies are 31 to 68% of
+  the second act (first act 0 to 33%), which leaves only the bows able to hit them.
+- Level 10 to 11. Person 13 lives then 16; Person across levels 11 to 20 averages
+  14.6 with only level 16 below 13. Good 16 then a mean of 16.4. Enemy counts are
+  300 to 491 against 633. The second act is level with the first, not above it.
+  Level 16 sits on the two-star line (12 lives) at four of five nudges.
+- Decision time. The No Loitering levels depend on the bots' modelled 3 seconds a
+  purchase: Person is 3/20 on level 13 and 2/20 on 17 with instant shopping, 2/15
+  and 2/16 as shipped.
+- Notices. Every number in the levels 11 to 20 notices, twists and tips is typed
+  (the 5%, fifth, tenth, eight seconds, 35 and 90 gold, and "three towers" at
+  16 and 18). They all match now; `taxNotices-verifier.test.ts` fails on a retune
+  that does not touch the text. The feat line derives its limit from the data.
+- Browser, desktop, tablet and phone (`taxVerifier.ts`): every plaque equals the hand
+  price and the gold taken for 8 builds; the placement ring, the selected ring and
+  the farthest real shot agree for every tower under Curfew; the countdown label
+  is right on each of the 480 ticks and the wave starts when it ends; pause held
+  it; the tally and refusal at the cap; no tax line, tally or changed price in Free
+  play or levels 1 to 10. The full suite on three projects: 1016 passed, 8 skipped,
+  none failed. `npm test`: 54 s on a quiet machine, 117 s under load 9 to 17.
