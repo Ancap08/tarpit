@@ -376,7 +376,7 @@ once in its life. The crossing uses both enemies' start and end distances
 from the same tick. Tied enemies must move past each other. On the following
 ticks a flinching enemy halts and neither fights nor holds a guard's attention.
 A flinch pauses the run timer until movement resumes. In every look, body
-feathers remain after the 380 ms puff. The sprite faces back along the road
+feathers remain after the 520 ms puff. The sprite faces back along the road
 while it runs and leans 15 degrees during a flinch. Each batch of feather
 hits plays one 0.165 s synthesized puff.
 
