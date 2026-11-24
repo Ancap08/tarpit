@@ -10354,3 +10354,16 @@ ending gold. The three Switchback combo state hashes also changed.
 For Normal Guards the first best position moved from 784 px (+1 life)
 to 448 px (+0). For Normal Barricades it moved from 448 px (+3) to
 784 px (+1). Neither Hard sweep turned a loss into a win.
+
+### Checks on the retained build
+
+All 2,771 unit tests passed in 129 files. The full simulator matched the
+new report lock and passed all twenty campaign levels, including every
+feat and R6. Lint, typecheck, the 219-row asset manifest, production build
+and size check passed. The build contains 30 files totaling 3,765,530 bytes
+against a 20 MB limit.
+
+The full Playwright suite ran once on the production build at port 4573:
+642 desktop, 214 tablet and 302 phone tests passed, with eight configured
+skips and zero failures. All 78 baseline frames were separately compared
+in local Chromium against the same scenes rendered at `d517ac8`.
