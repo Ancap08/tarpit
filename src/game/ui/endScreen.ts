@@ -1,14 +1,3 @@
-// End screen: shown once the simulation's phase is 'won' or 'lost'. A
-// translucent veil covers the map area (the HUD below stays visible with the
-// final numbers) and a centred panel, translucent enough that the map shows
-// through faintly, holds a title, one or two stat lines, the held boons and a [Play again] button
-// (same level) and, beside it, a smaller [Menu] button back to the title
-// menu (milestone 25). The scene ignores map clicks and hover while it shows.
-// Milestone 26: the win screen widens to 520 px and adds [Keep going] as
-// the primary button (highlighted, on the left): [Keep going] [Play again]
-// [Menu], 42 px tall and 16 px apart. Pressing it turns the game endless
-// and hides the screen. The lose screen is unchanged.
-//
 // The veil is deliberately not interactive. Phaser orders overlapping
 // interactive objects by the camera's last render list; a click that lands
 // before the first frame showing the end screen would find neither the veil
@@ -20,6 +9,7 @@ import type { GameState } from '../../sim';
 import type { Rect } from '../input';
 import type { Layout } from '../layout';
 import { COLORS, FONT, TEXT } from '../palette';
+import { ink, panel as drawPanel, rule } from './theme';
 import { Button } from './button';
 import { drawStarRow } from './starRow';
 import { menuKeys } from './menuKeys';
@@ -58,7 +48,7 @@ const P_PAD_BOTTOM = 24;
 
 export class EndScreen {
   private readonly veil: Phaser.GameObjects.Rectangle;
-  private readonly panel: Phaser.GameObjects.Rectangle;
+  private readonly panel: Phaser.GameObjects.Graphics;
   private readonly title: Phaser.GameObjects.Text;
   private readonly lines: Phaser.GameObjects.Text;
   private readonly boons: Phaser.GameObjects.Text;
@@ -89,18 +79,16 @@ export class EndScreen {
     this.veil = scene.add
       .rectangle(MAP_AREA.x, MAP_AREA.y, MAP_AREA.width, MAP_AREA.height, COLORS.endVeil, 0.62)
       .setOrigin(0, 0);
-    this.panel = scene.add
-      .rectangle(cx, cy, PANEL_W, PANEL_H, COLORS.endPanel, 0.85)
-      .setStrokeStyle(2, COLORS.endPanelEdge, 0.9);
+    this.panel = scene.add.graphics();
     this.title = scene.add
-      .text(cx, top + 44, '', { fontFamily: FONT, fontSize: '40px', fontStyle: 'bold', color: TEXT.victory })
+      .text(cx, top + 44, '', { fontFamily: FONT, fontSize: '40px', fontStyle: 'bold', color: TEXT.paperGold })
       .setOrigin(0.5);
     this.lines = scene.add
       .text(cx, top + 112, '', {
         fontFamily: FONT,
-        fontSize: '18px',
+        fontSize: this.portrait ? '20px' : '18px',
         fontStyle: 'bold',
-        color: TEXT.endLine,
+        color: ink,
         align: 'center',
         lineSpacing: 8,
       })
@@ -108,8 +96,8 @@ export class EndScreen {
     this.boons = scene.add
       .text(cx, top + 148, '', {
         fontFamily: FONT,
-        fontSize: this.portrait ? '18px' : '14px',
-        color: TEXT.endLine,
+        fontSize: this.portrait ? '20px' : '14px',
+        color: ink,
         align: 'center',
         wordWrap: this.portrait ? { width: P_PANEL_W - 32 } : undefined,
       })
@@ -156,9 +144,9 @@ export class EndScreen {
     this.campaign = campaign;
     if (campaign) {
       this.title.setText(campaign.title);
-      if (kind === 'won') this.starRow = drawStarRow(this.title.scene, this.cx, 0, campaign.stars, 28, TEXT.victory);
+      if (kind === 'won') this.starRow = drawStarRow(this.title.scene, this.cx, 0, campaign.stars, 28, TEXT.paperGold);
       this.detailRows = campaign.details.map(text => this.boons.scene.add.text(this.cx, 0, text, {
-        fontFamily: FONT, fontSize: '18px', color: TEXT.endLine, align: 'center',
+        fontFamily: FONT, fontSize: this.portrait ? '20px' : '18px', color: ink, align: 'center',
         wordWrap: { width: (this.portrait ? P_PANEL_W : 560) - 32 },
       }).setOrigin(0.5, 0));
       this.button.set(kind === 'won' ? END_TEXT.playAgain : CAMPAIGN_END.retry, true);
@@ -173,7 +161,7 @@ export class EndScreen {
       this.lines.setText(lines.join('\n'));
       this.boons.setText(boons);
     }
-    this.title.setColor(kind === 'won' ? TEXT.victory : TEXT.defeat);
+    this.title.setColor(kind === 'won' ? ink : TEXT.paperDefeat);
     this.layout();
     this.setVisible(true);
   }
@@ -223,7 +211,7 @@ export class EndScreen {
         : this.button.rect.height;
       const h = buttonsY + buttonHeight + (this.portrait ? P_PAD_BOTTOM : 22);
       const top = this.cy - h / 2;
-      this.panel.setSize(this.portrait ? P_PANEL_W : 560, h);
+      this.paper(this.portrait ? P_PANEL_W : 560, h, titleY);
       this.title.setY(top + titleY);
       this.starRow?.setY(top + starsY);
       for (const row of this.detailRows) row.setY(top + row.y);
@@ -241,15 +229,26 @@ export class EndScreen {
         : P_BUTTONS_Y;
       const h = buttonsY + buttons.length * P_BUTTON_H + (buttons.length - 1) * P_GAP + P_PAD_BOTTOM;
       const top = this.cy - h / 2;
-      this.panel.setSize(P_PANEL_W, h).setDisplayOrigin(P_PANEL_W / 2, h / 2);
+      this.paper(P_PANEL_W, h, P_TITLE_Y);
       this.title.setY(top + P_TITLE_Y);
       this.lines.setY(top + P_LINES_Y);
       this.boons.setY(top + detailsY);
       buttons.forEach((b, i) => b.moveTo(this.cx - P_BUTTON_W / 2, top + buttonsY + i * (P_BUTTON_H + P_GAP)));
       return;
     }
-    this.panel.setSize(this.hasAdvance ? PANEL_W_WON : PANEL_W, PANEL_H);
+    this.paper(this.hasAdvance ? PANEL_W_WON : PANEL_W, PANEL_H, 44);
     this.buttonRow(buttons, this.buttonY);
+  }
+
+  private paper(width: number, height: number, titleY: number): void {
+    const x = this.cx - width / 2, y = this.cy - height / 2;
+    this.panel.clear();
+    drawPanel(this.panel, { x, y, width, height });
+    const side = (width - this.title.width) / 2 - 36;
+    if (side >= 28) {
+      rule(this.panel, x + 18 + side / 2, y + titleY, side);
+      rule(this.panel, x + width - 18 - side / 2, y + titleY, side);
+    }
   }
 
   private buttonRow(buttons: Button[], y: number): void {

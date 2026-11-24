@@ -1455,3 +1455,26 @@ can change it; "Kyle" means Kyle decided.
   close to a famous game character. He has his own maroon and orange,
   horns and tusks again. The rule for all art: original designs, no
   resemblance to any particular existing character.
+- **Themed screens and HUD (44c):** one kit for every screen: parchment
+  panels with dark ink, a dark wood HUD with brass edges, the King's red
+  and gold, the town's blue for the player's own choices. A re-dress, not
+  a re-layout: Sonnet compared 360 control areas with the plain version
+  and none moved or shrank. Codex (build), Sonnet (verdict "fix first"
+  for one broken test and five small things; all fixed by Codex).
+- **The font is loaded from the game's own files, never from Google at
+  run time,** with a 1 s limit and the old font as fallback; changing HUD
+  numbers stay in equal-width digits so they do not jitter. The manifest
+  check now accepts a third-party file only with its licence beside it
+  and a matching hash.
+- **Disabled must look disabled.** The first themed buttons kept so much
+  contrast when disabled (6.4:1) that they looked usable; the plain grey
+  version had been clearer (Sonnet). Disabled plaques are flat grey with
+  dim text again (3.5:1), on purpose below the reading threshold.
+- **A defect was shipped knowingly for about two hours (Fable):** the
+  names build went live with "Assessor Grumblefoot" clipped in its
+  entrance banner on a phone in portrait, found by the automated review
+  after CI passed. Merging it unblocked the art and screens branches; the
+  fix and the missing banner test came with the screens.
+- **Not re-verified by a second model (Fable, for time):** the fix passes
+  on 44b and 44c after Sonnet's verdicts. Each fix has its own guard and
+  the full suite ran in CI before each merge.

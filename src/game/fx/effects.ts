@@ -46,8 +46,8 @@ import { deathSound } from '../audio/recipes';
 import { STEP_MS } from '../loop';
 import { goldGainText } from '../names';
 import { Moments } from './moments';
-import { LANDSCAPE, PORTRAIT_MIN_FONT, type Layout } from '../layout';
-import { COLORS, FONT, TEXT } from '../palette';
+import { LANDSCAPE, type Layout } from '../layout';
+import { COLORS, HUD_FONT, TEXT } from '../palette';
 import { Aim, drawTowerScaled, MUZZLE, type TowerPose } from '../draw/towers';
 import {
   arcHeight,
@@ -264,7 +264,7 @@ export class Effects {
     for (let i = 0; i < CAPS.goldLabels; i++) {
       this.goldTexts.push(
         this.scene.add
-          .text(0, 0, '', { fontFamily: FONT, fontSize: '15px', fontStyle: 'bold', color: TEXT.goldGain, stroke: TEXT.fxStroke, strokeThickness: 3 })
+          .text(0, 0, '', { fontFamily: HUD_FONT, fontSize: '15px', fontStyle: 'bold', color: TEXT.goldGain, stroke: TEXT.fxStroke, strokeThickness: 3 })
           .setOrigin(0.5, 1)
           .setVisible(false),
       );
@@ -464,7 +464,7 @@ export class Effects {
     const label = this.gold.labels[slot]!;
     const t = this.goldTexts[slot];
     if (!t) return;
-    if (!merged) t.setFontSize(big ? 34 : this.layout.kind === 'portrait' ? PORTRAIT_MIN_FONT : 17).setStroke(TEXT.fxStroke, big ? 6 : 4);
+    if (!merged) t.setFontSize(big ? 34 : this.layout.kind === 'portrait' ? 20 : 17).setStroke(TEXT.fxStroke, big ? 6 : 4);
     t.setText(goldGainText(label.amount)).setVisible(true);
   }
 

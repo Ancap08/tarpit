@@ -3,7 +3,8 @@
 // is an edit here (plus regenerated screenshot baselines). Tests that check a
 // display string build it from these tables, so a rename changes no test.
 
-import { BOONS, type BoonId, type Difficulty, type EnemyType, type MapId, type SpecialType, type TargetingMode, type TowerLevel, type TowerType, type UpgradePath } from '../sim';
+import { BOONS } from '../sim/boons.ts';
+import type { BoonId, Difficulty, EnemyType, MapId, SpecialType, TargetingMode, TowerLevel, TowerType, UpgradePath } from '../sim';
 
 /** The wave 10 boss (docs/SCOPE-v4.md, milestone 23): the HUD boss bar and the wave 10 preview. */
 export const BOSS_NAME = 'Assessor Grumblefoot';
@@ -82,6 +83,7 @@ export const MAP_NAMES: Readonly<Record<MapId, string>> = {
 /** The title menu's words (TitleScene.ts, milestone 25). */
 export const TITLE_TEXT = {
   title: 'Tarpit',
+  loading: 'Loading',
   slogan: 'Taxation is theft',
   story: 'The King wants your gold. Keep it.',
   subtitle: 'a tower defense game',
@@ -409,7 +411,7 @@ export const LEVEL_NEW: Readonly<Record<number, string>> = {
 
 export const levelNumberText = (id: number): string => `Level ${id}`;
 export const lockedLevelText = (id: number): string => `Win level ${id} first`;
-export const starSlots = (stars: number): string => '★'.repeat(stars) + '☆'.repeat(3 - stars);
+export const starSlots = (earned: number, total = 3): string => `${earned} of ${total} stars`;
 
 export const tipsHeading = (id: number): string => `Level ${id} tips`;
 

@@ -124,7 +124,7 @@ export const PORTRAIT_TITLE: TitleGeometry = {
   thumbH: 60,
   thumbTop: 8,
   thumbNameY: 92,
-  mapNameSize: '18px',
+  mapNameSize: '20px',
   levelFont: '22px',
   bestY: 720,
   playW: 260,

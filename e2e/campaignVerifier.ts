@@ -164,14 +164,14 @@ export function campaignVerifierSuite(touch: boolean, rotated: boolean) {
     info.annotations.push({ type: 'cheated-win-screen', description: JSON.stringify(seen) });
     expect(seen.cheated).toBe(true);
     expect(seen.progress).toEqual({ 1: 0 });
-    expect(seen.result).toMatchObject({ stars: 0, slots: '☆☆☆', nextId: 2, hint: CAMPAIGN_END.cheated });
-    expect(seen.texts).toEqual(expect.arrayContaining(['☆☆☆', CAMPAIGN_END.cheated, CAMPAIGN_END.next]));
+    expect(seen.result).toMatchObject({ stars: 0, slots: '0 of 3 stars', nextId: 2, hint: CAMPAIGN_END.cheated });
+    expect(seen.texts).toEqual(expect.arrayContaining(['0 of 3 stars', CAMPAIGN_END.cheated, CAMPAIGN_END.next]));
     if (process.env.VERIFY_SHOT) await page.screenshot({ path: `${process.env.VERIFY_SHOT}-${info.project.name}.png` });
     expect(await textProblems(page)).toEqual([]);
     await rotate(page, 'result');
     expect(await textProblems(page)).toEqual([]);
     if (process.env.VERIFY_SHOT) await page.screenshot({ path: `${process.env.VERIFY_SHOT}-${info.project.name}-turned.png` });
-    expect(await api(page, (t) => t.campaignResult())).toMatchObject({ slots: '☆☆☆', nextId: 2 });
+    expect(await api(page, (t) => t.campaignResult())).toMatchObject({ slots: '0 of 3 stars', nextId: 2 });
     await click(page, 'nextLevel');
     await onScreen(page, 'levelCard');
     expect(await api(page, t => t.ui<TitleUiState>().levelId)).toBe(2);

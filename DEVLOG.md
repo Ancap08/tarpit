@@ -9388,3 +9388,61 @@ views and two boss crops show the shipped art. Reducing shared WebP quality
 from 95 to 94 kept the atlases at 376,434 and 925,220 bytes (+6.5% and +2.6%
 over main). Across three cold Meadow runs per build with the worker blocked,
 median 1× Play time rose from 2,278 to 2,374 ms (+4.2%), with three art requests.
+
+## 2026-11-24: milestone 44c, the font and the themed screens
+
+The first screen is a tavern broadside, the battle controls sit on a wood
+counter, and the campaign road, cards and rewards are printed on parchment.
+Both looks share the furniture. Review JPEGs cover nine views in landscape
+and portrait under `docs/review/m44c/`.
+
+The approved local Caslon weights use proportional figures. Running HUD
+figures retain the typewriter advances. Both weights must load before the
+two-second deadline to prevent a late change in measured label widths.
+The browser checks exercise a blocked font through a purchase and wave,
+tall fallback metrics in both menus and the HUD, and cached fonts offline.
+
+The browser suite caught three-digit refunds crowding Remove. Moving the
+paired labels four pixels toward each edge recovered the gap. A phone
+measurement also caught the longest preview shrinking to 12.7 CSS px.
+Measured glyph bounds allowed two 23 px lines at the full 20 px canvas
+size, including when the font request is blocked.
+
+Verifier notes (44c, independent run on 5de4694, baseline 6f5d8fd):
+- Layout: 360 control rectangles compared across 12 screens and states, three
+  projects, Classic and Painted. None moved or shrank (uiRects(); 0 changes).
+  The only phone control under 44 CSS px is the Gold cheat tap area (21 CSS px
+  at the true 0.707 fit), unchanged from before. Layout switches keep the
+  place and one running scene on every screen.
+- Contrast measured from screenshots (declared colour against the sampled
+  surface): lowest 6.35:1 (disabled Start Wave), highest 13.1:1 on 25 distinct
+  pairs. The unit table (4.90 to 16.44) matches the code. Disabled text now
+  measures 6.4:1 against 10.3:1 enabled, so disabled controls differ from
+  enabled ones by hue and brightness only (see
+  `docs/review/m44c/verifier/phone-disabled-controls-main-left-themed-right.jpg`).
+- Font: every request stays on the origin. Blocked, 404 and a 5 s hold all
+  give a playable fallback without overlap or clipping on three projects; the
+  5 s hold starts the game at 2.1 s and the title width never changes after.
+  Stars (U+2605, U+2606) are not in Caslon and draw from the fallback; pinned
+  in `src/game/font-verifier.test.ts`. `e2e/font-verifier.spec.ts` pins the
+  origin, the 2 s limit and equal digit advances.
+- Found: `e2e/install-verifier.spec.ts:103` now fails every time. Its wait
+  (`cacheNames` has length 1) is met by the old cache before the new worker
+  has swapped; the three extra precache files slow the swap. With the wait
+  changed to "the one cache is not A's" the test passes. The product behaves.
+- Found: the landscape coin sits on the brass frame and touches the G of
+  Gold (`docs/review/m44c/verifier/desktop-hud-coin-touches-gold.jpg`).
+
+**Fixes after verification.** The update test waits until build B owns the sole
+cache, then reloads B offline. Boss and wave banners now fit each visible line
+to the map. Browser checks measure both boss entrances and the longest wave
+messages in Caslon and fallback, with normal and tall metrics on all three
+projects. Disabled and unaffordable plaques lose their brass edge and use
+3.46:1 text contrast beside 10.25:1 on ready controls. Locked choices retain
+their lock. The landscape coin clears both the frame and Gold. The page
+preloads both font weights and shows “Loading” on parchment during the
+one-second wait. Campaign screens draw their stars, and both font files
+must cover every printable character used in game strings. Updated review
+captures include the Assessor’s entrance in portrait.
+
+Linux CI caught a 5 px three-digit Remove gap. With HUD figures widened 12%, the Mac reproduced 2 px before the fix and 22 px after it. The compact build bar’s tightest gap went from −1 to 15 px in the same check.

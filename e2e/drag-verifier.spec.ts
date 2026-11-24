@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { useTallFontMetrics } from './campaignFont';
 import { PANEL_TEXT } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { TOWER_DEFS } from '../src/sim/towers';
@@ -305,6 +306,7 @@ async function expectFits(page: Page, slot: 'panel:undo' | 'panel:sell', left: s
 for (const type of TYPES) {
   test(`panel, ${type}: Remove shows everything spent, Undo the upgrade cost, then Sell at 70% after Start Wave`, async ({ page }) => {
     const { cost, upgradeCost } = TOWER_DEFS[type];
+    await useTallFontMetrics(page, false);
     await startGame(page);
     await setGold(page, 1000);
     await page.evaluate((t) => (window.__tarpit as TarpitTestApi).buildAt(7, 5, t), type);

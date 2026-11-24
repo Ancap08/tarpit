@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
+import { TITLE_TEXT } from './src/game/names.ts';
 import { swEnabled, writeServiceWorker } from './scripts/sw-build.ts';
 import { PAINTED_ASSET_DIR } from './src/sw/rules.ts';
 
@@ -11,6 +13,9 @@ function serviceWorker(): Plugin {
     apply: 'build',
     configResolved(config) {
       outDir = resolve(config.root, config.build.outDir);
+    },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'assets/fonts/OFL.txt', source: readFileSync('assets/fonts/OFL.txt') });
     },
     async closeBundle(error?: Error) {
       if (error) return;
@@ -28,13 +33,20 @@ export default defineConfig({
     chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
-        assetFileNames: ({ originalFileNames }) => originalFileNames.some((path) => path.startsWith('assets/art-painted/'))
-          ? `${PAINTED_ASSET_DIR}[name]-[hash][extname]`
-          : 'assets/[name]-[hash][extname]',
+        assetFileNames: ({ originalFileNames }) => {
+          if (originalFileNames.some((path) => path.startsWith('assets/art-painted/')))
+            return `${PAINTED_ASSET_DIR}[name]-[hash][extname]`;
+          if (originalFileNames.some((path) => path.startsWith('assets/fonts/')))
+            return 'assets/fonts/[name]-[hash][extname]';
+          return 'assets/[name]-[hash][extname]';
+        },
       },
     },
   },
   // TARPIT_SW=off builds a deploy that retires the worker (scripts/sw-build.ts).
-  define: { __TARPIT_SW__: JSON.stringify(swEnabled()) },
+  define: {
+    __TARPIT_SW__: JSON.stringify(swEnabled()),
+    'import.meta.env.LOADING_TEXT': JSON.stringify(TITLE_TEXT.loading),
+  },
   plugins: [serviceWorker()],
 });

@@ -56,6 +56,6 @@ export function heldBoonLayout(layout: Layout, parent: Size) {
     tooltip: portrait
       ? { x: 58, y: layout.map.y + 62, width: 416, height: 84 }
       : { x: 534, y: layout.map.height - 68, width: 362, height: 68 },
-    descriptionFont: portrait ? 18 : 14,
+    descriptionFont: portrait ? 20 : 14,
   };
 }

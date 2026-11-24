@@ -2,20 +2,41 @@ import type Phaser from 'phaser';
 import { MAPS, type LevelDef } from '../../sim';
 import { drawMapThumbnail } from '../draw/map';
 import { CAMPAIGN_TEXT, LEVEL_NAMES, LEVEL_NEW, levelTips, tipsHeading, MAP_NAMES, TITLE_TEXT, levelNumberText } from '../names';
-import { COLORS, FONT, TEXT } from '../palette';
+import { FONT, TEXT } from '../palette';
 import type { Rect } from '../input';
 import type { CampaignStop } from './campaignMap';
 import { drawStarRow } from './starRow';
-import { makeLock } from './lock';
+import { boards, ink, lock, panel as drawPanel, rule, THEME } from './theme';
 import type { Button } from './button';
 
 type Action = (key: string, rect: Rect, label: string, click: () => void, size?: number) => Button;
 
-function label(scene: Phaser.Scene, x: number, y: number, value: string, size: number, color: string, wrap = 0) {
+function label(scene: Phaser.Scene, x: number, y: number, value: string, size: number, color: string, wrap = 0, bold = true) {
   return scene.add.text(x, y, value, {
-    fontFamily: FONT, fontSize: `${size}px`, fontStyle: 'bold', color, align: 'center',
+    fontFamily: FONT, fontSize: `${size}px`, fontStyle: bold ? 'bold' : 'normal', color, align: 'center',
     wordWrap: wrap ? { width: wrap } : undefined,
   }).setOrigin(0.5);
+}
+
+/** Small engraved stands and ridgelines, placed in the empty parts of the chart. */
+function terrain(g: Phaser.GameObjects.Graphics, x: number, y: number, hills: boolean) {
+  g.lineStyle(1.5, THEME.ink, 0.42);
+  if (hills) {
+    for (const [dx, dy, size] of [[-14, 2, 12], [0, -2, 17], [17, 3, 10]]) {
+      g.beginPath().moveTo(x + dx - size, y + dy + 6).lineTo(x + dx, y + dy - size / 2)
+        .lineTo(x + dx + size, y + dy + 6).strokePath();
+      g.lineBetween(x + dx, y + dy - size / 2 + 3, x + dx + 2, y + dy + 2);
+    }
+  } else {
+    for (const [dx, dy, h] of [[-10, 2, 14], [1, -2, 18], [12, 4, 13]]) {
+      const tx = x + dx, ty = y + dy;
+      g.lineBetween(tx, ty + 6, tx, ty - h / 2);
+      for (const rise of [0, 5]) {
+        g.beginPath().moveTo(tx - 5, ty + 2 - rise).lineTo(tx, ty - 4 - rise)
+          .lineTo(tx + 5, ty + 2 - rise).strokePath();
+      }
+    }
+  }
 }
 
 function backButton(portrait: boolean, action: Action, back: () => void) {
@@ -29,16 +50,19 @@ export function drawCampaignMap(
   action: Action, select: (stop: CampaignStop) => void, back: () => void,
 ): Phaser.GameObjects.Text {
   const width = scene.scale.width;
-  label(scene, width / 2, portrait ? 103 : 52, CAMPAIGN_TEXT.levelMap, portrait ? 48 : 42, TEXT.title);
-  const field = portrait ? { x: 23, y: 178, width: 434, height: 776 } : { x: 54, y: 111, width: 852, height: 304 };
   const g = scene.add.graphics();
-  g.fillStyle(COLORS.grassDark);
-  g.fillRoundedRect(field.x, field.y, field.width, field.height, 22);
-  g.lineStyle(2, COLORS.buttonEdge, 0.8);
-  g.strokeRoundedRect(field.x, field.y, field.width, field.height, 22);
-  // A continuous ribbon with rounded joins follows the same centres as the hit targets.
+  boards(g, scene.scale.width, scene.scale.height);
+  const field = portrait ? { x: 14, y: 35, width: 452, height: 984 } : { x: 34, y: 8, width: 892, height: 470 };
+  drawPanel(g, field);
+  label(scene, width / 2, portrait ? 103 : 52, CAMPAIGN_TEXT.levelMap, portrait ? 48 : 42, ink);
+  rule(g, width / 2, portrait ? 162 : 96, portrait ? 332 : 610);
+  const landmarks = portrait
+    ? [[80, 340], [270, 514], [101, 639], [372, 727], [207, 905]]
+    : [[239, 144], [517, 270], [820, 264], [167, 389], [641, 393]];
+  landmarks.forEach(([x, y], i) => terrain(g, x, y, i % 2 === 0));
+  // Two inked verges enclose a sandy road through the milestones.
   const points = stops.map(({ rect }) => ({ x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }));
-  for (const [thickness, color] of [[22, COLORS.pathEdge], [16, COLORS.pathLight]]) {
+  for (const [thickness, color] of [[19, THEME.brass], [13, 0xd5b277]]) {
     g.lineStyle(thickness, color);
     g.strokePoints(points, false);
     g.fillStyle(color);
@@ -49,6 +73,7 @@ export function drawCampaignMap(
     const cx = rect.x + rect.width / 2;
     const cy = rect.y + rect.height / 2;
     const button = action(`title:stop:${stop.id}`, rect, '', () => select(stop));
+    button.setLocked(!stop.open);
     button.setPicked(stop.next);
     const fontSize = portrait ? 32 : 28;
     const numberHeight = fontSize + 4;
@@ -60,12 +85,12 @@ export function drawCampaignMap(
       fontFamily: FONT, fontSize, fontStyle: 'bold', color: stop.open ? TEXT.button : TEXT.buttonDisabled,
       fixedHeight: numberHeight, metrics: { ascent: fontSize, descent: 4, fontSize: numberHeight },
     }).setOrigin(0.5);
-    if (!stop.open) makeLock(scene).setPosition(cx - (stop.id < 10 ? 14 : 21), numberY - 3);
+    if (!stop.open) lock(scene.add.graphics(), cx - (stop.id < 10 ? 14 : 21), numberY, 14);
     drawStarRow(scene, cx, top + numberHeight + gap + starSize / 2, stop.stars, starSize,
       stop.open ? TEXT.victory : TEXT.buttonDisabled);
   }
   backButton(portrait, action, back);
-  return label(scene, width / 2, portrait ? 988 : 450, lockedMessage ?? '', portrait ? 22 : 20, TEXT.prompt);
+  return label(scene, width / 2, portrait ? 988 : 450, lockedMessage ?? '', portrait ? 22 : 20, ink);
 }
 
 export function drawLevelCard(
@@ -75,8 +100,8 @@ export function drawLevelCard(
   const cx = scene.scale.width / 2;
   const panel = portrait ? { x: 24, y: 132, width: 432, height: 866 } : { x: 145, y: 32, width: 670, height: 512 };
   const g = scene.add.graphics();
-  g.fillStyle(COLORS.endPanel).fillRoundedRect(panel.x, panel.y, panel.width, panel.height, 18);
-  g.lineStyle(2, COLORS.endPanelEdge).strokeRoundedRect(panel.x, panel.y, panel.width, panel.height, 18);
+  boards(g, scene.scale.width, scene.scale.height);
+  drawPanel(g, panel);
   const words = LEVEL_NAMES[level.id];
   const wrap = portrait ? 384 : 620;
   // Centre the two labels in separate rows above the thumbnail.
@@ -84,25 +109,26 @@ export function drawLevelCard(
   const numberHeight = 38;
   const nameTop = numberTop + numberHeight + (portrait ? 37 : 5);
   const nameHeight = portrait ? 60 : 64;
-  label(scene, cx, numberTop + numberHeight / 2, levelNumberText(level.id), 22, TEXT.prompt);
-  label(scene, cx, nameTop + nameHeight / 2, words.name, portrait ? 36 : 38, TEXT.title, wrap);
+  label(scene, cx, numberTop + numberHeight / 2, levelNumberText(level.id), 22, ink);
+  label(scene, cx, nameTop + nameHeight / 2, words.name, portrait ? 36 : 38, ink, wrap);
+  rule(g, cx, portrait ? 337 : 144, portrait ? 254 : 278);
   const mapWidth = portrait ? 222 : 160;
   const y = portrait ? 370 : 151;
   const x = cx - mapWidth / 2;
   drawMapThumbnail(g, MAPS[level.map], x, y, mapWidth, mapWidth / 2);
-  g.lineStyle(1, COLORS.buttonEdge).strokeRect(x, y, mapWidth, mapWidth / 2);
-  label(scene, cx, y + mapWidth / 2 + 17, MAP_NAMES[level.map], 18, TEXT.subtitle);
-  label(scene, cx, portrait ? 582 : 288, words.twist, portrait ? 23 : 20, TEXT.title, wrap);
+  g.lineStyle(1, THEME.ink).strokeRect(x, y, mapWidth, mapWidth / 2);
+  label(scene, cx, y + mapWidth / 2 + 17, MAP_NAMES[level.map], portrait ? 20 : 18, ink);
+  label(scene, cx, portrait ? 582 : 288, words.twist, portrait ? 23 : 20, ink, wrap, false);
   const headingTop = portrait ? 666 : 328;
   const headingHeight = 30;
   const contentTop = headingTop + headingHeight + 6;
   // Reserve two wrapped lines on the phone and one on the wider card.
   const contentHeight = portrait ? 76 : 34;
-  label(scene, cx, headingTop + headingHeight / 2, CAMPAIGN_TEXT.newThisLevel, 18, TEXT.subtitle);
-  label(scene, cx, contentTop + contentHeight / 2, LEVEL_NEW[level.id], portrait ? 23 : 20, TEXT.button, wrap);
+  label(scene, cx, headingTop + headingHeight / 2, CAMPAIGN_TEXT.newThisLevel, portrait ? 20 : 18, ink);
+  label(scene, cx, contentTop + contentHeight / 2, LEVEL_NEW[level.id], portrait ? 23 : 20, ink, wrap, false);
   const starsY = portrait ? 833 : 429;
-  const caption = label(scene, cx, starsY, CAMPAIGN_TEXT.bestStars, 22, TEXT.prompt);
-  const row = drawStarRow(scene, cx, starsY, stars, 20, TEXT.prompt);
+  const caption = label(scene, cx, starsY, CAMPAIGN_TEXT.bestStars, 22, ink);
+  const row = drawStarRow(scene, cx, starsY, stars, 20, TEXT.paperGold);
   const rowWidth = row.getBounds().width + 2;
   const gap = 12;
   caption.setX(cx - (rowWidth + gap) / 2);
@@ -128,10 +154,11 @@ export function drawLevelTips(
   const cx = scene.scale.width / 2;
   const panel = portrait ? { x: 18, y: 148, width: 444, height: 852 } : { x: 72, y: 42, width: 816, height: 486 };
   const g = scene.add.graphics();
-  g.fillStyle(COLORS.endPanel).fillRoundedRect(panel.x, panel.y, panel.width, panel.height, 18);
-  g.lineStyle(2, COLORS.endPanelEdge).strokeRoundedRect(panel.x, panel.y, panel.width, panel.height, 18);
-  const heading = label(scene, cx, panel.y + (portrait ? 83 : 60), tipsHeading(level.id), portrait ? 40 : 36, TEXT.title);
-  const lines = levelTips(level.id, touch).map(line => label(scene, cx, 0, line, portrait ? 28 : 26, TEXT.button, panel.width - 52));
+  boards(g, scene.scale.width, scene.scale.height);
+  drawPanel(g, panel);
+  const heading = label(scene, cx, panel.y + (portrait ? 83 : 60), tipsHeading(level.id), portrait ? 40 : 36, ink);
+  rule(g, cx, heading.y + heading.height / 2 + 9, portrait ? 204 : 312);
+  const lines = levelTips(level.id, touch).map(line => label(scene, cx, 0, line, portrait ? 28 : 26, ink, panel.width - 52, false));
   const width = portrait ? 180 : 200;
   const rect = { x: back ? cx + 8 : cx - width / 2, y: portrait ? 804 : 402, width, height: portrait ? 78 : 58 };
   if (back) action('title:back', { ...rect, x: cx - width - 8 }, CAMPAIGN_TEXT.back, back);

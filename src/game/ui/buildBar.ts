@@ -18,9 +18,7 @@ import { Button } from './button';
 /**
  * Bar button geometry (milestone 11, 42 px tall from milestone 14): six 140 x 42 buttons, 8 px apart from
  * x 16, so 6 * 140 + 5 * 8 = 880 px, ending at x 896 (milestone 33: 148
- * px wide before, narrowed for the mute button at x 904, hud.ts). The 16 px
- * label stays: "Musketeer" plus "50" uses about 106 of the 120 px inside
- * the padding.
+ * px wide before, narrowed for the mute button at x 904, hud.ts).
  */
 export const BAR_BUTTON_WIDTH = 140;
 export const BAR_BUTTON_HEIGHT = 42;
@@ -53,10 +51,11 @@ export class BuildBar {
     const rects = barRects(layout, top);
     this.buttons = BAR_TYPES.map((type, i) =>
       portrait
-        ? new Button(scene, rects[i], String(TOWER_DEFS[type].cost), () => onClick(type), { fontSize: '18px', labelY: COST_Y })
+        ? new Button(scene, rects[i], String(TOWER_DEFS[type].cost), () => onClick(type), { fontSize: '20px', labelY: COST_Y })
         : new Button(scene, rects[i], TOWER_NAMES[type], () => onClick(type), {
           fontSize: painted ? '14px' : '16px',
           right: String(TOWER_DEFS[type].cost),
+          labelInset: 6,
           labelY: painted ? PAINTED_WIDE_LABEL_Y : undefined,
         }),
     );
@@ -79,10 +78,13 @@ export class BuildBar {
     const compact = !portrait && state.boons.length > 0;
     if (this.compact !== compact) {
       this.compact = compact;
-      const width = compact ? 116 : BAR_BUTTON_WIDTH;
+      let x = BAR_LEFT;
       this.buttons.forEach((button, i) => {
+        const compactWidth = BAR_TYPES[i] === 'musketeer' ? 124 : 116;
+        const width = compact ? compactWidth : BAR_BUTTON_WIDTH;
         button.setWidth(width);
-        button.moveTo(BAR_LEFT + i * (width + BAR_GAP), button.rect.y);
+        button.moveTo(x, button.rect.y);
+        x += width + (compact ? 6 : BAR_GAP);
         button.setFontSize(this.paintedIcons ? (compact ? '13px' : '14px') : (compact ? '14px' : '16px'));
         const r = button.rect;
         this.paintedIcons?.[i].setX(r.x + r.width / 2);

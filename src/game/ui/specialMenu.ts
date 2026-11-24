@@ -8,7 +8,7 @@ import type Phaser from 'phaser';
 import { SPECIAL_TYPES, type SpecialType } from '../../sim';
 import type { Rect } from '../input';
 import { SPECIAL_NAMES } from '../names';
-import { COLORS } from '../palette';
+import { panel, THEME } from './theme';
 import { Button } from './button';
 import { STACK_SIZE, type StackSize } from './geometry';
 
@@ -19,7 +19,7 @@ const MIN_TARGET_CSS = 44;
 export const MENU_GAP_ABOVE_HUD = 4;
 
 export class SpecialMenu {
-  private readonly backing: Phaser.GameObjects.Rectangle;
+  private readonly backing: Phaser.GameObjects.Graphics;
   private readonly buttons: Record<SpecialType, Button>;
   private shownTypes: SpecialType[] = [];
   private box: Rect | null = null;
@@ -37,11 +37,7 @@ export class SpecialMenu {
     private readonly size: StackSize = STACK_SIZE,
     fontSize = '16px',
   ) {
-    this.backing = scene.add
-      .rectangle(0, 0, size.buttonW + 2 * PAD, 10, COLORS.menuBg, 0.92)
-      .setOrigin(0, 0)
-      .setStrokeStyle(1.5, COLORS.menuEdge, 0.8)
-      .setVisible(false);
+    this.backing = scene.add.graphics().setVisible(false);
     const make = (type: SpecialType) =>
       new Button(scene, { x: 0, y: 0, width: size.buttonW, height: size.buttonH }, SPECIAL_NAMES[type], () => onPick(type), {
         fontSize,
@@ -80,7 +76,7 @@ export class SpecialMenu {
     const top = this.hudTop - MENU_GAP_ABOVE_HUD - height;
     const left = Math.min(this.left, this.scene.scale.width - width);
     this.box = { x: left, y: top, width, height };
-    this.backing.setPosition(left, top).setSize(width, height).setVisible(true);
+    panel(this.backing.clear().setVisible(true), this.box, THEME.paper);
     for (const type of SPECIAL_TYPES) {
       const i = types.indexOf(type);
       const b = this.buttons[type];

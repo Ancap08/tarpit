@@ -6,6 +6,7 @@ import { LANDSCAPE, PORTRAIT } from '../src/game/layout';
 import { bossBarGeometry } from '../src/game/ui/bossBar';
 import { api, press } from './campaign';
 import { useTallFontMetrics } from './campaignFont';
+import { momentBannerSuite } from './momentBanners';
 import { settle } from './painted';
 import { waitForFirstScreen, waitForTitle } from './title';
 
@@ -32,6 +33,7 @@ async function checkLabels(page: Page, wanted: string[], area: Rect, controls?: 
 }
 
 export function themeSuite(touch: boolean) {
+  momentBannerSuite(touch);
   for (const tall of [false, true]) {
     test(`theme copy clears title controls, longest previews and both boss bars${tall ? ' (tall metrics)' : ''}`, async ({ page }, info) => {
       if (tall) await useTallFontMetrics(page);
@@ -46,7 +48,12 @@ export function themeSuite(touch: boolean) {
       await waitForFirstScreen(page);
       const canvas = { x: 0, y: 0, width: phone ? 480 : 960, height: phone ? 1194 : 580 };
       await checkLabels(page, ['Taxation is theft', 'The King wants your gold. Keep it.'], canvas);
+      await checkLabels(page, ['TARPIT'], canvas);
       await shot('first');
+      await waitForTitle(page);
+      await checkLabels(page, ['Tarpit', 'a tower defense game', 'Difficulty', 'Map'], canvas);
+      await page.goto(url);
+      await waitForFirstScreen(page);
       await press(page, 'title:campaign', touch);
       await api(page, t => t.setCampaignProgress(Object.fromEntries(Array.from({ length: 8 }, (_, i) => [i + 1, 3]))));
       await page.waitForFunction(() => window.__tarpit!.titleReady());
@@ -72,7 +79,17 @@ export function themeSuite(touch: boolean) {
         const preview = campaign ? 'Next: 60 Harpy, 40 Redcoat, 13 Toll Troll + Grumblefoot'
           : 'Next: 8 Hound, 5 Redcoat, 8 Harpy, 6 Toll Troll + Grumblemaw';
         const hudRow = phone ? { x: 0, y: 0, width: 480, height: 76 } : { x: 0, y: 480, width: 960, height: 53 };
-        await checkLabels(page, [preview], hudRow, /^(special|startWave|speed|boon:)/);
+        const status = await api(page, t => t.hudText());
+        await checkLabels(page, [status.gold, status.lives, status.wave, preview], hudRow, /^(special|startWave|speed|boon:)/);
+        if (phone) {
+          const cssSize = await api(page, t => {
+            const scene = t.game.scene.getScene('game');
+            const label = scene.children.list.find(child => child.type === 'Text' &&
+              (child as Phaser.GameObjects.Text).text === t.hudText().next) as Phaser.GameObjects.Text;
+            return Number.parseFloat(String(label.style.fontSize)) * label.scaleY / scene.scale.displayScale.y;
+          });
+          expect(cssSize).toBeGreaterThanOrEqual(14);
+        }
         await shot(campaign ? 'level-9-preview' : 'free-play-wave-20');
         const spawn = lastSpawnTick(wave, campaign ? { level: LEVELS[8] } : undefined);
         await page.evaluate(spawn => {

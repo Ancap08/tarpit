@@ -15,7 +15,8 @@ import {
 import { placeBeside, type Rect } from '../input';
 import { fontPx, type Layout } from '../layout';
 import { killsLabel, PANEL_TEXT, targetingButtonText, towerPanelTitle } from '../names';
-import { COLORS, FONT, TEXT } from '../palette';
+import { FONT, TEXT } from '../palette';
+import { ink, THEME } from './theme';
 import { Button } from './button';
 import { STACK_GAP, STACK_PAD } from './geometry';
 import { getPathChoices, towerPanelSize, UPGRADE_PATHS, type PathChoice } from './towerPanelModel';
@@ -56,14 +57,14 @@ export class TowerPanel {
     private readonly layout: Layout,
     handlers: TowerPanelHandlers,
   ) {
-    const f = (px: number) => fontPx(layout, px);
+    const f = (px: number) => fontPx(layout, layout.kind === 'portrait' ? Math.max(20, px) : px);
     const rect = { x: 0, y: 0, width: 1, height: 1 };
     const portrait = layout.kind === 'portrait';
-    this.backing = scene.add.rectangle(0, 0, 1, 1, COLORS.menuBg, 0.92)
-      .setOrigin(0, 0).setStrokeStyle(1.5, COLORS.menuEdge, 0.8).setVisible(false);
+    this.backing = scene.add.rectangle(0, 0, 1, 1, THEME.paper)
+      .setOrigin(0).setStrokeStyle(2, THEME.brass).setVisible(false);
     this.upgrade = new Button(scene, rect, PANEL_TEXT.upgrade, () => handlers.onUpgrade(), { fontSize: f(16), right: '' });
     this.undo = new Button(scene, rect, PANEL_TEXT.undoUpgrade, handlers.onUndoUpgrade, { fontSize: f(14), right: '' });
-    this.sell = new Button(scene, rect, PANEL_TEXT.sell, handlers.onSell, { fontSize: f(16), right: '' });
+    this.sell = new Button(scene, rect, PANEL_TEXT.sell, handlers.onSell, { fontSize: f(16), right: '', labelInset: 6 });
     this.target = new Button(scene, rect, targetingButtonText('first'), () => handlers.onTarget(nextMode(this.mode)), { fontSize: f(13) });
     this.closeButton = new Button(scene, rect, '×', handlers.onClose, { fontSize: portrait ? '30px' : '24px' });
     const pathButton = (path: UpgradePath) => new Button(scene, rect, '', () => handlers.onUpgrade(path), {
@@ -79,11 +80,11 @@ export class TowerPanel {
     const caption = (size: string, color: string, fontStyle = 'normal') => scene.add.text(0, 0, '', {
       fontFamily: FONT, fontSize: size, color, fontStyle,
     }).setOrigin(0, 0.5).setVisible(false);
-    this.titleText = caption(portrait ? '22px' : '17px', TEXT.button, 'bold');
-    this.killsText = caption(f(13), TEXT.hudDim, 'bold');
+    this.titleText = caption(portrait ? '22px' : '17px', ink, 'bold');
+    this.killsText = caption(f(14), ink, 'bold');
     const pathCaption = () => ({
       description: caption(portrait ? '20px' : '15px', TEXT.button),
-      reason: caption(portrait ? '19px' : '14px', TEXT.buttonDisabled),
+      reason: caption(portrait ? '20px' : '14px', TEXT.buttonDisabled),
     });
     this.pathText = { A: pathCaption(), B: pathCaption() };
   }
@@ -169,18 +170,22 @@ export class TowerPanel {
     if (this.killsText.text !== kills) this.killsText.setText(kills);
     this.killsText.setPosition(left, y + STACK_PAD + (level > 1 ? (portrait ? 39 : 29) : header / 2 - 2)).setVisible(true);
 
+    // Below Close, Sell and Target can share the panel's full inner width.
+    const innerWidth = width - 2 * STACK_PAD;
+    const split = level > 1 ? Math.round(innerWidth * 0.43) : 0;
     let top = y + STACK_PAD + header;
     for (const { key, button, path } of rows) {
       const h = path ? pathHeight : rowHeight;
-      const split = level > 1 ? Math.round(buttonWidth * 0.43) : 0;
       const isSell = split > 0 && key === 'sell';
       const isTarget = split > 0 && key === 'target';
-      button.setSize(isSell ? split : isTarget ? buttonWidth - split - STACK_GAP : buttonWidth, h);
+      button.setSize(isSell ? split : isTarget ? innerWidth - split - STACK_GAP : buttonWidth, h);
       button.moveTo(isTarget ? left + split + STACK_GAP : left, top);
       if (path) {
         const { description, reason } = this.pathText[path.path];
         const hint = path.disabledReason ?? '';
         if (description.text !== path.description) description.setText(path.description);
+        const color = button.isEnabled ? TEXT.button : TEXT.buttonDisabled;
+        if (description.style.color !== color) description.setColor(color);
         if (reason.text !== hint) reason.setText(hint);
         description.setPosition(left + 10, top + (portrait ? 46 : 35));
         reason.setPosition(left + 10, top + (portrait ? 73 : 54));

@@ -1,7 +1,10 @@
 // Every colour the renderer uses, in one place. Numbers are 0xRRGGBB for
 // Graphics; CSS strings are for Text objects.
 
-export const FONT = '"Courier New", monospace';
+export const CASLON = 'Libre Caslon Text';
+export const HUD_CASLON = 'Tarpit HUD Caslon';
+export const FONT = `"${CASLON}", "Courier New", monospace`;
+export const HUD_FONT = `"${HUD_CASLON}", "Courier New", monospace`;
 
 export const COLORS = {
   // Map
@@ -135,16 +138,15 @@ export const COLORS = {
   fxDark: 0x14161a,
 
   // HUD
-  hudBar: 0x1b1f24,
-  hudLine: 0x3a414a,
-  button: 0x6b4a2b,
-  buttonHover: 0x86603a,
-  buttonPressed: 0x4f361f,
-  buttonDisabled: 0x3a3d42,
+  hudBar: 0x352216,
+  hudLine: 0xc79955,
+  button: 0x503524,
+  buttonHover: 0x66472e,
+  buttonPressed: 0x322117,
+  buttonDisabled: 0x494847,
   buttonEdge: 0xd9b77e,
-  buttonEdgeDisabled: 0x5a5e66,
   // The build bar's active pick: brighter fill, pale-yellow edge.
-  buttonPicked: 0xa0743f,
+  buttonPicked: 0x254a57,
   buttonEdgePicked: 0xfff2a8,
 
   // Build UI: placement cell highlight, selection ring, range circles, panel backing
@@ -171,7 +173,7 @@ export const COLORS = {
   specialPipEmpty: 0x6a6e76,
   // Milestone 30: the Special button's recharge fill, the aim banner's
   // backing, the keg's scorch mark, and the zones (tar puddle, fire patch).
-  rechargeFill: 0x7a5a1c,
+  rechargeFill: 0x363534,
   aimBanner: 0x14161a,
   aimCrossDark: 0x14161a,
   scorch: 0x1e1a16,
@@ -181,13 +183,15 @@ export const COLORS = {
   tarSheen: 0xe6d3ae,
   firePatch: 0xd0471c,
   fireFlame: 0xffb43a,
+  rewardHover: 0xffe8b7,
+  rewardPressed: 0xe4c58d,
   menuBg: 0x1b1f24,
   menuEdge: 0xd9b77e,
 
   // Boss bar (milestone 23): dark trough, red fill, 1 px cream border, dark name pill.
   bossBarBg: 0x15171a,
-  bossBarFill: 0xd0392e,
-  bossBarEdge: 0xf2e6c9,
+  bossBarFill: 0x89382b,
+  bossBarEdge: 0xd3ac63,
   bossNamePill: 0x14161a,
 
   // End screens: dark veil over the map, centred panel
@@ -200,11 +204,13 @@ export const COLORS = {
 } as const;
 
 export const TEXT = {
+  paperDefeat: '#832e23',
+  paperGold: '#825515',
   hud: '#f2e6c9',
-  hudDim: '#a89f8a',
+  hudDim: '#e7cea2',
   button: '#fff4dc',
-  // 4.83:1 against COLORS.buttonDisabled (0x3a3d42); enabled text is 9.98:1.
-  buttonDisabled: '#a8adb5',
+  // Contrast against each button surface is checked in ui/themeContrast.test.ts.
+  buttonDisabled: '#a29f99',
   title: '#f2e6c9',
   subtitle: '#a89f8a',
   prompt: '#e8c37a',
@@ -227,7 +233,7 @@ export const TEXT = {
   goldGain: '#f2c94c',
   waveBanner: '#f2e6c9',
   waveBannerSub: '#f2c94c',
-  bossBanner: '#e0473a',
-  livesFlash: '#e0473a',
+  bossBanner: '#ffedcd',
+  livesFlash: '#ff9780',
   fxStroke: '#14161a',
 } as const;

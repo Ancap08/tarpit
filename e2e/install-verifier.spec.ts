@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { GRID_COLS, GRID_ROWS, isBuildableTerrain, MAPS } from '../src/sim';
+import { swManifest } from '../scripts/sw-build';
+import { cacheName } from '../src/sw/rules';
 import { waitForTitle } from './title';
 
 // Milestone 32a verifier probes (independent of install.spec.ts): update path
@@ -108,15 +110,17 @@ test.describe('update path with a real second build', () => {
     await tab1.goto(`${srv.origin}/`);
     await tab1.evaluate(() => localStorage.setItem('tarpit.best', 'x'));
     await waitActive(tab1);
-    const [cacheA] = await cacheNames(tab1);
+    const cacheA = cacheName(srv.origin, swManifest(A).version);
+    expect(await cacheNames(tab1)).toEqual([cacheA]);
     expect(await build(tab1)).toBe('A');
 
     site.dir = B; // deploy B
     const tab2 = await context.newPage();
     await tab2.goto(`${srv.origin}/`);
     expect(await build(tab2)).toBe('B'); // next online open shows B
-    await expect.poll(() => cacheNames(tab2)).toHaveLength(1);
-    expect((await cacheNames(tab2))[0]).not.toBe(cacheA);
+    const cacheB = cacheName(srv.origin, swManifest(B).version);
+    expect(cacheB).not.toBe(cacheA);
+    await expect.poll(() => cacheNames(tab2)).toEqual([cacheB]);
 
     // tab1 is still the A page, now under B's worker. What does an old hashed file give?
     const r = await tab1.evaluate(async (u) => fetch(u).then((x) => x.status).catch(() => 'error'), `/assets/${jsA}`);

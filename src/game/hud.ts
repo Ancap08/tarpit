@@ -34,6 +34,7 @@
 // 42 x 42 at x 904 (the build bar narrowed to make room); in portrait it
 // ends controls row 2, 70 x 70 (ui/geometry.ts portraitRow2).
 
+import { coin, panel, THEME } from './ui/theme';
 import Phaser from 'phaser';
 import {
   callEarlyStatus,
@@ -70,7 +71,7 @@ import {
   START_WAVE_TEXT,
   waveCounterText,
 } from './names';
-import { COLORS, FONT, TEXT } from './palette';
+import { COLORS, FONT, HUD_FONT, TEXT } from './palette';
 import { BossBar } from './ui/bossBar';
 import { BuildBar } from './ui/buildBar';
 import { Button } from './ui/button';
@@ -79,7 +80,6 @@ import {
   LANDSCAPE,
   PORTRAIT_CONTROLS_Y,
   PORTRAIT_HEIGHT,
-  PORTRAIT_MIN_FONT,
   PORTRAIT_ROW1_Y,
   PORTRAIT_STRIP_H,
   PORTRAIT_WIDTH,
@@ -269,6 +269,7 @@ export interface HudHandlers {
 
 /** The Lives readout's left edge. */
 const LIVES_X = 126;
+const GOLD_LABEL_X = 24;
 
 /**
  * Where everything in the HUD goes (milestone 32b). Landscape: the
@@ -309,10 +310,10 @@ export const LANDSCAPE_HUD: HudMetrics = {
   lines: [{ x: 0, y: HUD_TOP, width: 960, height: 2 }],
   statY: MID,
   statSize: '18px',
-  goldX: 14,
+  goldX: GOLD_LABEL_X,
   flowGap: 0,
   preview: { x: PREVIEW_X, y: MID, width: PREVIEW_WIDTH, originY: 0.5 },
-  cheat: { x: GOLD_RECT.x + 6, y: MID + 12, size: '11px', originX: 0 },
+  cheat: { x: GOLD_LABEL_X, y: MID + 12, size: '11px', originX: 0 },
   gold: { ...GOLD_RECT },
   special: { ...SPECIAL_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H },
   start: { ...START_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H },
@@ -327,7 +328,7 @@ export const LANDSCAPE_HUD: HudMetrics = {
 
 export const PORTRAIT_HUD: HudMetrics = (() => {
   const { special, start, speed, mute } = portraitRow2();
-  const size = `${PORTRAIT_MIN_FONT}px`;
+  const size = '20px';
   return {
     portrait: true,
     bands: [
@@ -342,7 +343,7 @@ export const PORTRAIT_HUD: HudMetrics = (() => {
     statSize: size,
     goldX: 6,
     flowGap: 14,
-    preview: { x: 6, y: 29, width: PORTRAIT_WIDTH - 12, originY: 0 },
+    preview: { x: 6, y: 28, width: PORTRAIT_WIDTH - 12, originY: 0 },
     cheat: { x: PORTRAIT_WIDTH - 6, y: 15, size, originX: 1 },
     gold: { x: 0, y: 0, width: 120, height: 30 },
     special,
@@ -387,7 +388,15 @@ export class Hud {
   constructor(scene: Phaser.Scene, handlers: HudHandlers, layout: Layout = LANDSCAPE, painted?: PaintedSkin) {
     const m = hudMetrics(layout);
     this.m = m;
-    for (const b of m.bands) scene.add.rectangle(b.x, b.y, b.width, b.height, COLORS.hudBar).setOrigin(0, 0);
+    const counter = scene.add.graphics();
+    for (const band of m.bands) {
+      panel(counter, band, THEME.wood);
+      // Fine horizontal grain follows the counter, clear of the printed labels.
+      for (const offset of [3, 5, band.height - 5]) {
+        counter.lineStyle(1, THEME.brass, 0.22)
+          .lineBetween(band.x + 5, band.y + offset, band.x + band.width - 5, band.y + offset);
+      }
+    }
     for (const l of m.lines) scene.add.rectangle(l.x, l.y, l.width, l.height, COLORS.hudLine).setOrigin(0, 0);
 
     const stat = (x: number, size = m.statSize, color: string = TEXT.hud) =>
@@ -396,11 +405,12 @@ export class Hud {
       const descent = Math.ceil(size / 5);
       const height = size + descent;
       return scene.add.text(x, m.statY, '', {
-        fontFamily: FONT, fontSize: size, fontStyle: 'bold', color, fixedHeight: height,
+        fontFamily: HUD_FONT, fontSize: size, fontStyle: 'bold', color, fixedHeight: height,
         metrics: { ascent: size, descent, fontSize: height },
       }).setOrigin(0, 0.5);
     };
     const statSize = Number.parseInt(m.statSize, 10);
+    if (!m.portrait) coin(counter, 13, m.statY, 5);
     this.gold = fixedStat(m.goldX, statSize, TEXT.hud);
     this.lives = fixedStat(LIVES_X, statSize, TEXT.hud);
     this.wave = fixedStat(238, statSize, TEXT.hud);
@@ -425,7 +435,7 @@ export class Hud {
       .setVisible(false);
     // Milestone 33: Start Wave's own sound is the horn (or Call next's), so its click plays no tap.
     this.startButton = new Button(scene, m.start, START_WAVE_TEXT, handlers.onStartWave, m.portrait ? { fontSize: m.startFont, sound: null } : { sound: null });
-    this.speedButton = new Button(scene, m.speed, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress });
+    this.speedButton = new Button(scene, m.speed, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress, fontSize: m.portrait ? m.statSize : undefined });
     this.specialMenu = new SpecialMenu(scene, m.menu.left, m.menu.top, handlers.onSpecialPick, layout.map.y, m.menu.size, m.menu.font);
     this.bar = new BuildBar(scene, m.barTop, handlers.onPick, layout, painted);
     this.bossBar = new BossBar(scene, layout);
@@ -464,6 +474,7 @@ export class Hud {
       this.tag.setVisible(this.tag.x + this.tag.width <= rightEdge);
     } else {
       this.gold.setY(state.cheated ? MID - 6 : MID);
+      this.gold.setScale(Math.min(1, (LIVES_X - m.goldX - 4) / this.gold.width), 1);
       this.wave.setY(tag ? MID + WAVE_TAG_SHIFT : MID);
     }
     // After a loss there is no next wave to play, so the preview goes blank.
@@ -474,8 +485,13 @@ export class Hud {
       if (m.portrait) {
         this.next.setWordWrapWidth(width, true).setText(preview).setColor(aimText === null ? TEXT.hudDim : TEXT.aimBanner);
         const availableHeight = PORTRAIT_STRIP_H - 2 - m.preview.y;
-        for (const size of [18, 16, 14, 13, 12]) {
-          this.next.setFontSize(size);
+        for (const size of [20, 19, 18, 16, 14]) {
+          // At 20 px the actual Caslon glyphs in previews and aim hints occupy
+          // 17 px above the baseline and 6 below it. Courier fits inside both.
+          // Two 23 px lines exactly fill the space between the stats and frame.
+          const ascent = Math.ceil(17 * size / 20);
+          const descent = Math.ceil(6 * size / 20);
+          this.next.setStyle({ fontSize: size, metrics: { ascent, descent, fontSize: ascent + descent } });
           if (this.next.height <= availableHeight && this.next.width <= width) break;
         }
       } else this.next.setFontSize(previewSize(preview)).setText(preview);
