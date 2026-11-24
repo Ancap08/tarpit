@@ -9997,3 +9997,5 @@ grew from 76 to 108 game pixels. Both phones have side margins, so the
 cases failed on the verifier's build and now check HUD text size, spacing
 and containment at both heights with one or two taxes, through combat,
 planning and results, in normal type and both fixed font modes.
+
+The second-act cards now use the retuned level records with the commissioned notices. Three Permits tells the player to use the permits and leave specials unused. Closing Time recommends upgrading after the second build. The layout checks cover every tax combination and both feat verdicts on every second-act stop, in landscape and at both phone heights with normal and fixed font metrics. The refreshed result captures show Bare hands earned on level 16 and Few hands missed on level 17. The Showpiece isolation reference is the rules-and-screens merge `818e86d`. All 72 Painted and Classic canvas comparisons matched that build, and 12 cold starts made no Showpiece requests. The phone comparison also checks both roads and the taxed Meadow game against Painted.

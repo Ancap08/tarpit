@@ -156,7 +156,7 @@ export function taxVerifierSuite(touch: boolean) {
     const occupied = cells.slice(0, cap);
     const freed = occupied[cap - 1];
     const spare = cells[cap];
-    await api(page, t => t.cheatGold());
+    // The starting purse covers these Longbows. Keep the normal player HUD for the cap check.
     const text = () => page.evaluate(() => {
       const scene = window.__tarpit!.game.scene.getScene('game');
       return scene.children.list.filter(x => x.type === 'Text' && (x as Phaser.GameObjects.Text).visible).map(x => (x as Phaser.GameObjects.Text).text)

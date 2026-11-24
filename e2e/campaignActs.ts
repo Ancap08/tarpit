@@ -1,13 +1,14 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { LEVELS, type CampaignProgress } from '../src/sim';
 import {
-  CAMPAIGN_TEXT, LEVEL_NAMES, LEVEL_STORY, STORY_TEXT, cardFeatText, featResultText, levelTaxLines, levelTips,
+  CAMPAIGN_TEXT, LEVEL_NAMES, LEVEL_STORY, STORY_TEXT, cardFeatText, featResultText, levelTaxLines, levelTips, taxStatusText,
 } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { api, press } from './campaign';
 import { useTallFontMetrics } from './campaignFont';
 import { checkSpacing, onScreen, rotate } from './campaignScreens';
 import { paintedAsset, settle } from './painted';
+import { checkTaxLine } from './taxHud';
 import { waitForFirstScreen } from './title';
 
 const mixedStars = [0, 1, 2, 3] as const;
@@ -304,10 +305,29 @@ export function campaignActSuite(touch: boolean, phone = false) {
           await click('title:back');
           await onScreen(page, 'levelMap');
         }
-        for (const id of [10, 11, 16, 20]) {
-          await page.evaluate(id => window.__tarpit!.startLevel!(id), id);
-          await finish(page, true);
-          await inspect();
+        await api(page, t => t.startLevel(10));
+        await finish(page);
+        await inspect();
+        for (const level of LEVELS.slice(10)) {
+          for (const earned of [true, false]) {
+            await page.evaluate(id => window.__tarpit!.startLevel!(id), level.id);
+            if (earned) await checkTaxLine(page, taxStatusText(level.taxes, 0));
+            await page.evaluate(earned => {
+              const t = window.__tarpit!;
+              const s = t.state!();
+              const feat = s.level!.feat!;
+              s.wave = s.level!.waves.length;
+              s.lives = earned ? 20 : 16;
+              s.leaks = earned ? 0 : 4;
+              if (!earned && feat.kind === 'noSpecials') s.lastSpecialTick = s.tick;
+              if (!earned && feat.kind === 'maxTowers') s.towersBuilt = feat.limit + 1;
+              s.phase = 'won';
+              t.step!(0);
+            }, earned);
+            await onScreen(page, 'result');
+            expect(await words(page)).toContain(featResultText(level.feat!, earned));
+            await inspect();
+          }
         }
         await click('menu');
         await onScreen(page, 'ending');

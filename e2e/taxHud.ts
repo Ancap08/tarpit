@@ -33,7 +33,7 @@ export async function openPaintedLevel(page: Page, level: LevelDef) {
 }
 
 // Read visible Phaser labels and their real bounds, including font fallbacks.
-async function checkTaxLine(page: Page, expected: string, count = false) {
+export async function checkTaxLine(page: Page, expected: string, count = false) {
   const line = await page.evaluate(count => {
     const t = window.__tarpit!;
     const scene = t.game.scene.getScene('game') as GameScene;
