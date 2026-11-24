@@ -1698,3 +1698,9 @@ can change it; "Kyle" means Kyle decided.
   - **Feather marks are small on a phone** and the level 9 tip was cryptic.
     Both sent back to Codex: larger marks and a longer puff, and a tip that
     says what feathers do.
+- **The Feathers card line is "Tarred enemies run back."** (coordinator,
+  after the first CI run on the milestone 49 pull request). The longer line
+  wrapped to three rows on the phone card on Linux with text 6% wider and
+  ran into the title. The new line is the same length as Deep Tar's, which
+  fits. The wide-text check for this card now uses a larger factor on the
+  Mac, so the local run sees what Linux sees.
