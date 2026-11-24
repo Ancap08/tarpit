@@ -213,7 +213,7 @@ test('frame: comboBuild, wave 8 at its densest moment (wave tick 1396, 22 enemie
     t.runScript('comboBuild', 8);
     t.startWave();
   });
-  expect(await state(page)).toMatchObject({ phase: 'wave', wave: 8, lives: 17 });
+  expect(await state(page)).toMatchObject({ phase: 'wave', wave: 8, lives: 13 });
   await step(page, 1396);
   const s = await state(page);
   expect(s.waveTick).toBe(1396);

@@ -21,7 +21,7 @@ import { positionAlongPath, MAPS } from './map';
 const BOSS_STEPS = 5226;
 
 describe('boss.png frame content', () => {
-  it(`at tick ${BOSS_STEPS} of wave 10 he is alone at (385,96), tarred, burning, 3418 hp on the bar, Mortar hit 2 ticks before, no hit now`, () => {
+  it(`at tick ${BOSS_STEPS} of wave 10 he is alone at (392,96), tarred, burning, 3567 hp on the bar, Mortar hit 2 ticks before, no hit now`, () => {
     const s = createGame();
     const script = comboBuild();
     for (let w = 0; w < 9; w++) {
@@ -60,18 +60,18 @@ describe('boss.png frame content', () => {
       waveTick: BOSS_STEPS,
       enemies: 1,
       type: 'boss',
-      pos: { x: 385, y: 96 },
+      pos: { x: 392, y: 96 },
       burning: true,
       slowed: true,
       slow: 0.3,
-      hpOnBar: 3418,
+      hpOnBar: 3567,
       mortarHits2Before: 1,
       hitNow: false,
-      lives: 17,
+      lives: 13,
     });
     // M50: the complete frame state after the crowd barrel, including shots and events.
     expect(createHash('sha256').update(JSON.stringify(s)).digest('hex')).toBe(
-      '9da91028009fcd8e9ee165fae59e7578e607fc3021e3d93c21cd76abba4b6416',
+      'b7af8f3384f8639addcf559acf43d1d5efc7a4f81c0b950372daeada0de01105',
     );
   });
 });

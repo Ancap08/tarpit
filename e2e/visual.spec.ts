@@ -473,7 +473,7 @@ test('wave 4 Harpies: a Cannon splash ignores one, a Musketeer shoots one', asyn
 // Milestone 30 (the special policy): the same step still meets the rules,
 // at (420,108) with 3331 hp.
 // Milestone 36: the wave 5 range boon and changed special policy give tick 5263.
-// The crowd barrel changes the opening. The qualifying frame is tick 5226 at (385,96), 3418 HP.
+// The longer barrel refill gives tick 5226 at (392,96), 3567 HP.
 
 test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splash', async ({ page }) => {
   await open(page);
@@ -506,7 +506,7 @@ test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splas
     slowed: true,
     hitNow: false,
     mortarHitOnBoss: 1,
-    bar: `${BOSS_NAME} 3418 / 4000`,
+    bar: `${BOSS_NAME} 3567 / 4000`,
     texture: 'boss',
   });
   await settle(page);
@@ -906,7 +906,7 @@ test('wave 20 shows Grumblemaw under a Mortar splash', async ({ page }) => {
   expect(await finalBossFrame(page)).toEqual({
     wave: 20,
     enemies: 1,
-    bar: `${GRUMBLEMAW_NAME} 16794 / 21280`,
+    bar: `${GRUMBLEMAW_NAME} 16810 / 21280`,
     texture: 'boss',
     slowed: true,
     burning: true,
@@ -936,7 +936,7 @@ test('wave 20 shows Grumblemaw’s first pack call and two Wolves', async ({ pag
     call: expect.objectContaining({ kind: 'packCall', threshold: 2 }),
     cue: true,
     banner: PACK_CALL_TEXT,
-    bar: `${GRUMBLEMAW_NAME} 13777 / 21280`,
+    bar: `${GRUMBLEMAW_NAME} 13793 / 21280`,
     enemies: ['grumblemaw', 'wolf', 'wolf'],
   });
   await settle(page);
