@@ -181,7 +181,7 @@ describe('Curfew, by hand', () => {
   // The frozen reach table (docs/DESIGN.md), typed here, with Long Barrels (+30%) on the artillery only.
   const RAW: Record<TowerType, Record<'base' | 'up' | 'A' | 'B', number>> = {
     musketeer: { base: 110, up: 125, A: 200, B: 125 }, cannon: { base: 105, up: 105, A: 105, B: 105 },
-    tarpit: { base: 90, up: 105, A: 105, B: 130 }, longbow: { base: 150, up: 170, A: 170, B: 170 },
+    tarpit: { base: 90, up: 105, A: 105, B: 145 }, longbow: { base: 150, up: 170, A: 170, B: 170 },
     mortar: { base: 220, up: 220, A: 220, B: 220 }, firepot: { base: 100, up: 100, A: 125, B: 100 },
   };
   it('every tower, level and path; Long Barrels before the cut; the Mortar keeps 70', () => {

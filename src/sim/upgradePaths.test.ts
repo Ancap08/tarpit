@@ -137,7 +137,7 @@ describe('level 3 combat on each of the twelve paths', () => {
     ['cannon',    'A', 105, 0, 40, 120, 105, 0, 0, 0],
     ['cannon',    'B', 105, 0, 40, 60, 55, 0, 0, 0],
     ['tarpit',    'A', 105, 0, 3, 30, 0, 0.78, 0, 0],
-    ['tarpit',    'B', 130, 0, 3, 21, 0, 0.76, 0, 0],
+    ['tarpit',    'B', 145, 0, 3, 30, 0, 0.64, 0, 0],
     ['longbow',   'A', 170, 0, 16, 24, 0, 0, 0, 0],
     ['longbow',   'B', 170, 0, 9, 13, 0, 0, 0, 0],
     ['mortar',    'A', 220, 70, 140, 180, 70, 0, 0, 0],
@@ -172,7 +172,8 @@ describe('level 3 combat on each of the twelve paths', () => {
       expect(state.enemies[3].hp).toBe(500);
     }
     expect(target.slow).toBe(slow);
-    expect(target.slowTicksLeft).toBe(slow ? 120 : 0);
+    const slowTicks = path === 'B' ? 153 : 120;
+    expect(target.slowTicksLeft).toBe(slow ? slowTicks : 0);
     expect(target.burnDps ?? 0).toBe(dps);
     expect(target.burnTicksLeft ?? 0).toBe(duration);
     if (dps) {
