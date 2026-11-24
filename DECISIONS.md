@@ -1682,3 +1682,19 @@ can change it; "Kyle" means Kyle decided.
   loses only to Fire Arrows used every turn.
 - **A floor on the effect (R8)** so tuning cannot shrink it out of sight
   again: at least one second of running at the enemy's own pace.
+- **Verifier (Sonnet): merge.** Runs without a Feathers pit are byte for
+  byte unchanged (280 runs rebuilt independently); every target's test was
+  made to fail by a wrong change. Findings and what was done:
+  - **The fairness guard (R6) was weaker than it read.** The gate's feather
+    bot loses outright on five levels. Measured honestly, the person-like
+    bot with its Tar Pits on Feathers ends 4 lives above the good bot on
+    level 16 (18 against 14) and gains 2 to 4 lives on levels 11 and 12; it
+    wins no extra star, and the good bot gains nothing. Accepted by the
+    coordinator: the upgrade helps an ordinary player a little and hands out
+    no star. The verifier's test pins the 4-life figure so it cannot grow
+    unseen. Kyle's play decides whether act two is now too easy.
+  - **Feathers is the weaker path in 5 of 6 Free play comparisons** and
+    wins one by 2 lives. R1 passes, thinly. Left as is.
+  - **Feather marks are small on a phone** and the level 9 tip was cryptic.
+    Both sent back to Codex: larger marks and a longer puff, and a tip that
+    says what feathers do.
