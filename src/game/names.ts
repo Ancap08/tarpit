@@ -607,7 +607,7 @@ function campaignTips(touch: boolean): Readonly<Record<number, readonly string[]
     6: ['A Mortar shoots far but takes time between shots.', 'Aim at slow Toll Trolls. Keep bows for Royal Harpies.', 'It cannot hit enemies right beside it.'],
     7: [`${action} ${SPECIAL_BUTTON_TEXT} and choose Barricade.`, `${action} the trail ahead of a pack, near your towers.`, 'The wall holds walkers still while your towers fire.'],
     8: ['Send Guards ahead of a pack of Redcoat Shieldbearers.', 'Place them on the trail where your towers can help.', 'Drop Fire Arrows on a crowd to burn it.'],
-    9: [`${action} a tower you have upgraded once.`, 'Pick an upgrade before Assessor Grumblefoot arrives.', 'Bosses are too proud to run.'],
+    9: [`${action} a tower you have upgraded once.`, 'Pick an upgrade before Assessor Grumblefoot arrives.', 'Feathers make tarred enemies run back. Bosses are too proud.'],
     10: ['King Grumblemaw calls Revenue Hounds. Save a Powder Keg.', 'Slow King Grumblemaw with tar, then hit him with fire.'],
     11: ['Your opening tower goes up at its usual price.', 'Selling a tower still leaves it on the tax roll.'],
     12: ['Put a Tar Pit where several towers can reach it.', 'Save a special for the pack that gets ahead.'],

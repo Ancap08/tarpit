@@ -1,9 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { FEATHERS } from '../src/sim/feathers';
-import { mapPress } from './campaign';
+import { api, mapPress, press } from './campaign';
 import { useWideFontMetrics } from './campaignFont';
-import { waitForTitle } from './title';
+import { checkSpacing, onScreen } from './campaignScreens';
+import { waitForFirstScreen, waitForTitle } from './title';
 
 async function start(page: Page, look: string) {
   await page.goto('/?test=1&look=' + look);
@@ -36,18 +37,20 @@ export function featherLooks(look: string, phone: boolean) {
       const turn = s.enemies.find(e => e.id === front)!.distance;
       t.step(1); // The runner passes the other walker.
       const view = t.game.scene.getScene('game') as unknown as {
-        enemySprites: { views: Map<number, { sprite: { angle: number }; plumage?: { visible: boolean } }> };
+        featherPuffs: { bursts: unknown[] };
+        enemySprites: { views: Map<number, { sprite: { angle: number }; plumage?: { visible: boolean }; trail?: unknown }> };
       };
       const runner = s.enemies.find(e => e.id === front)!;
       return { before, after: t.animState(front)!.facing, hits: cast.ok ? cast.hits : 0, barrelFeathered,
         active: (runner.runTicksLeft ?? 0) === ticks - 1, gotBack: runner.distance < turn,
         plumage: view.enemySprites.views.get(front)?.plumage?.visible,
+        puffs: view.featherPuffs.bursts.length, trail: !!view.enemySprites.views.get(front)?.trail,
         flinching: (s.enemies.find(e => e.id === back)?.flinchTicksLeft ?? 0) > 0,
         angle: view.enemySprites.views.get(back)?.sprite.angle,
         showpiece: !!t.showpiece?.(), painted: t.painted().active };
     }, FEATHERS.runTicks);
     expect(frame).toMatchObject({ before: phone ? 'down' : 'right', after: phone ? 'up' : 'left',
-      hits: 2, barrelFeathered: false, active: true, gotBack: true, plumage: true, flinching: true,
+      hits: 2, barrelFeathered: false, active: true, gotBack: true, plumage: true, puffs: 0, trail: false, flinching: true,
       showpiece: look === 'showpiece', painted: look !== 'classic' });
     expect(Math.abs(frame.angle!)).toBeGreaterThan(0);
     const canvas = page.locator('canvas').first();
@@ -56,6 +59,22 @@ export function featherLooks(look: string, phone: boolean) {
 }
 
 export function featherLabels(phone: boolean) {
+  test('the level 9 feather tip fits with six percent wider text', async ({ page }) => {
+    await useWideFontMetrics(page);
+    await page.goto('/?test=1');
+    await waitForFirstScreen(page, { showTips: true });
+    await api(page, t => t.setCampaignProgress(Object.fromEntries(Array.from({ length: 8 }, (_, i) => [i + 1, 3]))));
+    await press(page, 'title:campaign', phone);
+    await onScreen(page, 'levelMap');
+    await press(page, 'title:stop:9', phone);
+    await onScreen(page, 'levelCard');
+    await press(page, 'title:play', phone);
+    await onScreen(page, 'levelTips');
+    expect(await api(page, t => t.campaignLabels().map(label => label.text)))
+      .toContain('Feathers make tarred enemies run back. Bosses are too proud.');
+    await checkSpacing(page);
+  });
+
   test('the Feathers description fits its card with six percent wider text', async ({ page }) => {
     await useWideFontMetrics(page);
     await start(page, 'painted');

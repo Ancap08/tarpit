@@ -1509,8 +1509,10 @@ export class GameScene extends Phaser.Scene {
     let puff = false;
     for (const event of events) {
       if (event.kind === 'feathered') {
-        const point = this.layout.toScreen(event);
-        this.featherPuffs.add({ x: point.x, y: point.y - 10 }, this.animationTime);
+        if (this.autoTick) {
+          const point = this.layout.toScreen(event);
+          this.featherPuffs.add({ x: point.x, y: point.y - 10 }, this.clock.nowMs);
+        }
         puff = true;
       }
       if (event.kind !== 'exit') continue;
@@ -1747,7 +1749,7 @@ export class GameScene extends Phaser.Scene {
     this.barricadeFx.drawWall(this.shotFx, blocker, this.layout, motion);
     this.barricadeFx.drawCrash(this.shotFx, this.layout, motion);
     this.bars.clear();
-    this.featherPuffs.draw(this.bars, this.animationTime);
+    this.featherPuffs.draw(this.bars, this.clock.nowMs);
     drawHpBars(this.bars, this.state, this.layout, stopped, this.painted ? id => this.enemySprites.paintedBar(id) : undefined);
     this.barricadeFx.drawHp(this.bars, blocker, this.layout, stopped?.size ?? 0);
     this.guardFx.draw(this.bars, this.state, motion);
