@@ -59,8 +59,10 @@ export function featherLooks(look: string, phone: boolean) {
 }
 
 export function featherLabels(phone: boolean) {
-  test('the level 9 feather tip fits with six percent wider text', async ({ page }) => {
-    await useWideFontMetrics(page);
+  // Linux draws the bundled font about 2.6% wider than macOS before scaling.
+  const factor = process.platform === 'darwin' ? 1.09 : 1.06;
+  test('the level 9 feather tip fits with wider text', async ({ page }) => {
+    await useWideFontMetrics(page, factor);
     await page.goto('/?test=1');
     await waitForFirstScreen(page, { showTips: true });
     await api(page, t => t.setCampaignProgress(Object.fromEntries(Array.from({ length: 8 }, (_, i) => [i + 1, 3]))));
@@ -75,8 +77,8 @@ export function featherLabels(phone: boolean) {
     await checkSpacing(page);
   });
 
-  test('the Feathers description fits its card with six percent wider text', async ({ page }) => {
-    await useWideFontMetrics(page);
+  test('the Feathers description fits its card with wider text', async ({ page }) => {
+    await useWideFontMetrics(page, factor);
     await start(page, 'painted');
     await page.evaluate(() => {
       const t = window.__tarpit as TarpitTestApi;
@@ -86,7 +88,7 @@ export function featherLabels(phone: boolean) {
       t.state().gold = 0;
     });
     await mapPress(page, 7, 5, phone);
-    const text = 'Feathers tarred enemies. They run back.';
+    const text = 'Tarred enemies run back.';
     const label = await page.evaluate(text => {
       const t = window.__tarpit as TarpitTestApi;
       const box = t.uiRects()['panel:path:B'];

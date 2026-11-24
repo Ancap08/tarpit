@@ -458,7 +458,7 @@ Touch targets on the portrait phone measure at least 44 CSS px on both axes.
 | Heavy Shot | A much bigger blast |
 | Quick Loader | Fires twice as fast |
 | Deep Tar | Slows enemies to a crawl |
-| Feathers | Feathers tarred enemies. They run back. |
+| Feathers | Tarred enemies run back. |
 | War Bow | Hits almost twice as hard |
 | Quick Draw | Fires almost twice as fast |
 | Siege Shell | Hits much harder |

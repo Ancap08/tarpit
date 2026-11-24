@@ -169,7 +169,7 @@ export function towerPanelTitle(type: TowerType, level: TowerLevel, path?: Upgra
 const PATH_DESCRIPTIONS: Readonly<Record<TowerType, Record<UpgradePath, string>>> = {
   musketeer: { A: 'Farther, harder shots', B: 'Fires much faster' },
   cannon: { A: 'A much bigger blast', B: 'Fires twice as fast' },
-  tarpit: { A: 'Slows enemies to a crawl', B: 'Feathers tarred enemies. They run back.' },
+  tarpit: { A: 'Slows enemies to a crawl', B: 'Tarred enemies run back.' },
   longbow: { A: 'Hits almost twice as hard', B: 'Fires almost twice as fast' },
   mortar: { A: 'Hits much harder', B: 'Blast reaches twice as far' },
   firepot: { A: 'Hotter, shorter burns', B: 'Burns twice as long' },
