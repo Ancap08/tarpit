@@ -209,7 +209,7 @@ export function upgradeChoiceChecks(touch: boolean) {
         pointerdown: scene.input.listenerCount('pointerdown'),
         pointermove: scene.input.listenerCount('pointermove'),
         pointerup: scene.input.listenerCount('pointerup'),
-        keyboard: scene.input.keyboard?.listenerCount('keydown-ESC'),
+        keyboard: scene.input.keyboard?.listenerCount('keydown'),
       };
     });
     await expect.poll(() => api(page, (t) => t.audio().voices)).toBe(0);

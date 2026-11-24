@@ -41,7 +41,7 @@ test('live loop ticks, spawns enemies, and 2x runs faster', async ({ page }) => 
     });
 
   expect(await read()).toMatchObject({ phase: 'setup' });
-  // Test mode is off, so only the read-only hooks are there besides `game`.
+  // Live pages expose the pause and mute controls alongside the inspection hooks.
   expect(await page.evaluate(() => Object.keys(window.__tarpit ?? {}).sort())).toEqual([
     'animState',
     // Milestone 33: the sound engine's state, the mute setting and offline rendering.
@@ -57,6 +57,9 @@ test('live loop ticks, spawns enemies, and 2x runs faster', async ({ page }) => 
     'game',
     'layout',
     'pageLock',
+    'pause',
+    'paused',
+    'resume',
     'setMuted',
     'titleReady',
     'towerAngle',
