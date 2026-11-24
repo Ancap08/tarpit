@@ -9446,3 +9446,68 @@ must cover every printable character used in game strings. Updated review
 captures include the Assessor’s entrance in portrait.
 
 Linux CI caught a 5 px three-digit Remove gap. With HUD figures widened 12%, the Mac reproduced 2 px before the fix and 22 px after it. The compact build bar’s tightest gap went from −1 to 15 px in the same check.
+
+## 2026-11-24: milestone 46, the town and its story
+
+All three roads end at the same four-cell arrangement. Two cells overlap
+the cottage landmark alone and two also touch the road. Separate upright
+compositions fit a cottage, a short fence, a flag and two neighbours, with
+the last 22 game pixels to the centreline clear in either layout. The
+simulation and placement mask keep their existing values.
+
+The scuffed fence alone was hard to distinguish on a phone. The blue
+sailcloth roof repair now reads at game size. Battered has a low flag,
+shutter and smoke, and taken has the King's red crown banner. Each exit
+uses the departing sprite's type to size its sack. The win tosses two
+painted hats, and the loss hoists the actual cloth independently of the
+cottage. The 38% result veil lets those poses show through. Frozen and
+reduced-motion outcomes hold the completed picture.
+
+The larger result plate has a neighbouring cottage, market stall, cat and
+cart. Each of the four plates loads when its condition appears. The
+printed town stays on the paper if that first request is offline. The ten
+notices accompany the tactical twists. Level ten uses the first sentence
+of the Ending as its reply, then prints the entire Ending on the once-only
+broadside after the result action. All commissioned sentences fit.
+
+On a cold Meadow load with 1.6 Mbps throughput and 150 ms latency, click
+to game measured 2.384 to 2.531 s at 1× and 5.455 to 5.910 s at 2×
+(worker blocked, forced density, three requests). The packed files grew by
+30,346 and 90,536 bytes. Separate result plates are 27,828–30,194 bytes.
+The map footprint check compares the actual game frame with the town
+hidden and shown, pixel by pixel in every cell. The review captures are
+in `docs/review/m46/`.
+
+The full suite exposed portrait textures left in Phaser after a replay.
+The result now releases both its fallback and colour textures when it
+closes. The decoded browser image can be reused on the next visit. The
+Free play checks measure the visible paper below its buttons, and the
+request check accounts for the single on-demand plate after a loss.
+
+Verifier notes (milestone 46, independent check of 73d872b):
+
+- Rules: `git diff 5a24b12..HEAD -- src/sim scripts/simulate.ts` is empty.
+  The buildable mask (count and sha1 per map) was read from the sim on
+  5a24b12 and on the tip and is identical; the numbers are pinned in
+  `src/game/town-verifier.test.ts`, which also checks the 62 x 42 town strip
+  touches no buildable cell on all three maps.
+- Lives bands on Easy (35), Normal (20), Hard (15) and campaign were checked
+  for every lives value from start to 0 against the exact 18/20 and 12/20
+  fractions. All ten notices, replies, the loss line, opening and ending
+  match the scope table word for word (level 10's reply is the ending's
+  first sentence).
+- Whole tree: lint, typecheck, 2509 unit tests, build, check:assets and
+  check:size pass. The browser suite on all three projects passed (933
+  passed, 8 skipped, none failed) with `PW_PORT=4673`.
+- By hand: the town sits first in the display list in Painted and Classic
+  (towers, enemies, bars and placement all draw over it); no texture growth
+  over 20 replays (97 keys at each result, 95 after); a blocked or slow plate
+  leaves the printed vignette and the buttons ready at once; offline the
+  result shows the vignette because plates live in `assets/painted/`, which
+  the service worker caches only after first use.
+- Observed, not fixed: (1) a Free play loss prints the King's line, while the
+  checklist for this check expected no story in Free play; (2) a leak with no
+  frame drawn since the enemy appeared makes no sack (only reachable through
+  the `step()` test hook); (3) the level 6 notice says "Troll" where the game
+  names the enemy "Toll Troll" (approved copy); (4) a cheated level 10 win
+  also plays the ending.

@@ -134,8 +134,8 @@ Buildable counts are of the 450 cells.
 - **Drawing.** `draw/map.ts` draws any map from its data: grass, the path,
   water (flat blue filling its box, a 3 px darker bank, top corners
   rounded by 12 px when it runs off the bottom edge, a few pale ripple
-  strokes), the cave at the spawn and a cottage in each landmark box. No
-  image assets.
+  strokes) and the cave at the spawn. The upright town is a separate layer
+  on the refused cells beside the exit.
 
 ## Economy and lives
 
@@ -954,8 +954,7 @@ depends on them (`npm run sim` is unchanged). The maths is in
 
 ## Map decoration
 
-Milestone 34. Drawing only: no rule, number or map data changes, no art
-files; `npm run sim` is unchanged. The recipe is in
+Milestone 34. The Classic terrain is drawn in code; `npm run sim` is unchanged. The recipe is in
 `src/game/decor/recipe.ts`, the motion in `src/game/decor/motion.ts`, the
 drawing in `src/game/decor/livingMap.ts` and `src/game/draw/map.ts`.
 
@@ -992,7 +991,7 @@ drawing in `src/game/decor/livingMap.ts` and `src/game/draw/map.ts`.
   blocked.
 - **What moves** (in play): on Riverbend 14 little wave crests (short
   shallow arches lying across the flow) drifting downstream at 14 px/s,
-  and 3 glints; 4 chimney smoke puffs, each rising 26 px over 4.8 s; tree
+  and 3 glints; chimney smoke from the town (below); tree
   tops and the swaying tufts move up to 1.5 px on a 3.4 s cycle, each with
   its own phase; 2 cloud shadows (300 x 180 px, at most about 5% darker)
   drift at 5 to 7 px/s and wrap round; a bird crosses high once every 23 s
@@ -1073,8 +1072,7 @@ The title screen offers Classic and Painted. Painted is the default for a fresh 
   The orange Assessor wears a
   short maroon coat and carries a ledger. His horns flank his powdered wig,
   and two tusks rise from his square jaw. The King wears a crown and
-  fur-edged cape and carries a sceptre. A blue coin banner flies beside the
-  exit cottage on every map.
+  fur-edged cape and carries a sceptre. The exit town flies its blue coin flag until it is taken.
 - Each painted squad keeps its four blue-clad townsfolk in squad order
   throughout the fight: Axeman, Swordsman, hooded Archer and Captain.
   All four strike within arm's reach. Classic uses its original guard drawing.
@@ -1091,8 +1089,7 @@ The title screen offers Classic and Painted. Painted is the default for a fresh 
   Boss health stays in the HUD.
 - The painted cave sits 22 px along the trail from the spawn, opening to
   the right in landscape and down in portrait. Its two golden eyes blink
-  on the living map's clock. Four smoke puffs rise from the chimney,
-  11 px right and 22 px above the cottage anchor in either layout.
+  on the living map's clock. The town chimney emits four puffs on a 4.8-second cycle.
   Test mode and reduced motion hold the open eyes and smoke at time zero.
   Painted omits cloud shadows to keep the ground shading visible.
 - A valid Painted placement has an ivory fill and rail inside a charcoal rim.
@@ -1102,6 +1099,58 @@ The title screen offers Classic and Painted. Painted is the default for a fresh 
 - During the 80 ms hit flash, the enemy's current Painted pose mixes 28% white
   into each coloured pixel and keeps its original opacity. Both poses brighten
   during a turn. In test mode the hit flag still lasts one tick.
+
+## The town and the story
+
+The town occupies part of the four cells already refused beside the exit.
+All three maps use columns 28–29 (zero-based). Meadow uses rows 4–5,
+Switchback and Riverbend rows 10–11. The last 22 px beside the road's
+centreline stay clear. A cottage, fence, flag and residents fit in 62 × 42
+game pixels in landscape. In portrait they stand upright in a separate
+42 × 62 arrangement. The town draws below towers, walkers and health bars.
+
+Campaign conditions use the star boundaries. In Free play the boundaries
+are 18/20 (90%) and 12/20 (60%) of starting lives, rounded up to a whole
+life. The high and middle boundaries are 32 and 21 on Easy, 18 and 12 on
+Normal, and 14 and 9 on Hard. Zero or fewer lives always means taken.
+
+| Condition | Painted town |
+|---|---|
+| Untouched | Tall blue coin flag, intact fence, lit windows, residents outside, light chimney smoke |
+| Scuffed | Broken rail, blue sailcloth roof patch, one neighbour outside, dusty smoke |
+| Battered | Blue flag at half height, damaged fence, shuttered window, residents indoors, thick smoke |
+| Taken | Red crown banner over the battered town |
+
+Classic uses a flat cottage, coloured window, raised or lowered flag and
+state-dependent smoke. Crossing a boundary raises a brief puff of dust.
+A collector that reaches the road end carries a coin sack out of the
+town square. Its diameter is 10 + 4 × √(lives cost) game pixels and its
+flight lasts 720 ms. Reduced motion shows the purse at a fixed point on
+the route. Sacks draw below enemy health bars and remain inside the map.
+On a win, the people come outside with hats in the air and the blue flag
+at full height, even when the fence needs mending. On a loss, the red
+crown banner rises. The result appears immediately. Test mode and reduced
+motion hold the finished pose. These drawings read the simulation without
+changing placement or combat.
+
+The result paper has a dedicated 2:1 illustration of the condition in
+which the town finished. Its 480 × 240 colour plate loads on demand. A
+printed silhouette fills the space immediately and stays available offline.
+The picture sits to the left of the results in landscape and above them
+in portrait. A 38% veil keeps the town on the battlefield visible.
+
+The ten campaign cards print the King's notices alongside the tactical
+twists. Wins print the corresponding reply in town blue, losses the
+Crown's thanks in red. The opening proclamation and its reply precede
+the first campaign map. Level ten uses the first sentence of the Ending
+on its result. The full Ending follows the player's choice of Level map
+or Play again, and Continue carries out that choice.
+
+Each broadside has one button. Its first rendered frame records
+`opening` or `ending` in `tarpit.seenBroadsides`, beside the tips record.
+A denied write falls back to the current session. Rotation preserves the
+page and the destination.
+
 
 ## Sound
 
@@ -1653,7 +1702,7 @@ The milestone 37 “Closing pass” in DEVLOG records the Normal results.
 A level has a numeric id, map id, a finite list of wave groups, starting gold
 (100–300), enemy HP scale, first HP growth wave (or none), allowed towers,
 maximum tower level, allowed specials and reward waves.
-Names and twist lines are keyed by id in `src/game/names.ts`. Combat, enemy
+Names, notices, town replies and twist lines are keyed by id in `src/game/names.ts`. Combat, enemy
 stats, prices, upgrade paths, reward effects and special effects are shared
 with Free play. HP uses the Normal base. Starting at the first growth wave,
 each successive wave adds another 28% of that scaled base. The campaign gate
@@ -1767,7 +1816,8 @@ Pack Trail builds up from three-Goblin ranks to groups of six. Heavy Feet ends w
 The first screen offers **Campaign** and **Free play**. Under the title it reads “Taxation is theft” and
 “The King wants your gold. Keep it.” Free play opens the
 map and difficulty picker. Its best scores belong to the selected map and
-difficulty. Campaign opens the level map and reads the saved campaign stars.
+difficulty. Campaign shows the opening broadside on the first visit, then
+opens the level map and reads the saved campaign stars.
 
 The trail crosses five stops and returns across five in landscape. In
 portrait it winds down five rows of two. Each stop shows its level number
@@ -1775,7 +1825,7 @@ and three star slots. The number has a fixed-height box with at least 4 px
 of clearance above the stars. The map, card and result draw filled stars
 for earned slots and outlines for empty slots. The first open level without a win is highlighted.
 Tapping any lock names the first open level still to win. Back returns to
-the first screen. An open stop shows a card with the level name, map,
+the first screen. An open stop shows a card with the King's notice, level name, map,
 twist, new equipment or enemies, and best stars. On the first Play for
 each level, a tips panel shows up to three short instructions. Action words
 match the input used to open the panel. A mouse builds with one click on

@@ -12,7 +12,7 @@ import { expect, test } from '@playwright/test';
 // checks that the title is not ready yet (and that Phaser has not listed the
 // Campaign button, the cause), then at the title's first render, the earliest
 // moment titleReady() is true, it clicks Campaign with DOM mouse events in the
-// same task. The level map must appear.
+// same task. The first Campaign visit must open the royal notice.
 
 type Probe = {
   atCreate?: { ready: boolean; rects: string[]; listed: boolean; pending: boolean };
@@ -21,7 +21,7 @@ type Probe = {
 };
 
 for (const url of ['/?renderer=canvas', '/?test=1']) {
-  test(`a click on Campaign at the first ready frame opens the map (${url})`, async ({ page }) => {
+  test(`a click on Campaign at the first ready frame opens the royal notice (${url})`, async ({ page }) => {
     await page.addInitScript(() => {
       type Rect = { x: number; y: number; width: number; height: number };
       // Phaser's private input lists are read on purpose: they show the cause.
@@ -82,7 +82,7 @@ for (const url of ['/?renderer=canvas', '/?test=1']) {
       ready: true,
       rects: ['title:campaign', 'title:freePlay', 'title:mute', 'title:look:classic', 'title:look:painted'].sort(),
     });
-    // The click at that moment opened the level map.
-    await page.waitForFunction(() => !!window.__tarpit?.uiRects()['title:stop:1'], undefined, { timeout: 5000 });
+    // The click reached the first-visit proclamation.
+    await page.waitForFunction(() => !!window.__tarpit?.uiRects()['title:continue'], undefined, { timeout: 5000 });
   });
 }

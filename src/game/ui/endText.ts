@@ -1,7 +1,7 @@
 // Words on the win and lose screens. No Phaser, so it is unit tested.
 
 import { LEVELS, TWO_STAR_LIVES, THREE_STAR_LIVES, lastWave, levelStars, unlockedLevel, type CampaignProgress, type GameState } from '../../sim';
-import { CAMPAIGN_END, END_TEXT, heldBoonsText, livesLeftText, reachedWaveText, starGoalText, starSlots } from '../names';
+import { CAMPAIGN_END, END_TEXT, LEVEL_STORY, STORY_TEXT, heldBoonsText, livesLeftText, reachedWaveText, starGoalText, starSlots } from '../names';
 
 export type EndKind = 'won' | 'lost';
 
@@ -33,6 +33,7 @@ export function campaignResultText(state: GameState, progress: CampaignProgress)
   const complete = won && !next ? CAMPAIGN_END.complete : '';
   return {
     kind, levelId, stars, lives, nextId, slots, hint, complete,
+    story: won ? LEVEL_STORY[levelId].reply : STORY_TEXT.loss,
     title: won ? END_TEXT.wonTitle : END_TEXT.lostTitle,
     details: won ? [livesLeftText(lives), hint, complete].filter(Boolean)
       : [reachedWaveText(state.wave, false, lastWave(state))],

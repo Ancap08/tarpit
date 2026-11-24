@@ -569,6 +569,92 @@ Three parts:
 Not in this milestone: new towers, enemies, rules or levels; a story
 mode; Classic art changes; a new font file unless Kyle approves one.
 
+## Direction after the theme (Kyle, 2026-11-24)
+
+Kyle played the themed build on his phone ("it all works the way we wanted
+it to"; "a good base, now I need to improve it visual and gameplay wise")
+and agreed the coordinator's order: the town and story first; then level
+variety and skill-based difficulty together; then talk through a hero the
+player controls and the castle wall. He added: "I'd like to see what the
+limits are on graphics ... how comically in-depth we could be with this,
+like maybe just a level."
+
+## Milestone 46: the town and its story
+
+The player defends "lives" and one cottage. Make it a town people care
+about, and tell the story in the game's own printed voice, without adding
+taps for children to get through.
+
+- **The town on the map.** At the exit, a small cluster (the cottage, the
+  flag, a fence, a few townsfolk, one or two small buildings if the cells
+  allow) drawn only on cells that are already unbuildable or as scenery
+  that blocks nothing. The rules and the buildable grid do not change.
+- **The town shows the stakes.** Four states tied to the star rule: 18 or
+  more lives, untouched; 12 to 17, scuffed (a broken fence, a little
+  smoke); 1 to 11, battered (more smoke, the flag at half height, people
+  indoors); 0, taken (the King's banner up). Free play uses the same
+  fractions of its starting lives. Each collector that gets through takes
+  something visible: a sack of coin leaves the town.
+- **Winning and losing look like it.** On a win the townsfolk come out and
+  cheer; on a loss the collectors' banner goes up.
+- **A picture of the town on the result screen** in the state the player
+  left it, so the result is felt as well as counted.
+- **The story, in notices.** The King posts a notice for each level and
+  the town answers when it is won. No new screens in the normal flow: the
+  King's notice is the heading text on the level card, the town's reply
+  is one line on the win screen, the King gloats in one line on a loss.
+  One short broadside the first time Campaign is opened, and one after
+  level 10. Draft copy (the coordinator's; Kyle may change any line):
+
+| Level | The King's notice | The town's reply |
+|---|---|---|
+| Opening | Hear ye. By order of King Grumblemaw, all gold in this town now belongs to the Crown. Collectors are on their way. | We counted it. It's ours. |
+| 1 | A tax on doors. Collectors will call at yours. | We kept the doors. And the gold. |
+| 2 | A tax on wheels, carts and anything that rolls. | Our cannonballs roll. Collect those. |
+| 3 | A tax on running. The Hounds will show you how. | They ran. Slowly. Sorry about the tar. |
+| 4 | A tax on firewood, payable to the Redcoats at once. | We burned it ourselves, thanks. |
+| 5 | A tax on the sky. The Royal Harpies own it now. | The sky is still free. Mind the feathers. |
+| 6 | A toll on this road: one Troll per traveller. | Toll paid. In mortar shells. |
+| 7 | A tax on standing still. Move along, all of you. | We built a wall. It stood very still. |
+| 8 | A tax on neighbours helping neighbours. | The neighbours say no. |
+| 9 | The Assessor will now count your gold. Personally. | He lost count. |
+| 10 | Enough. The King is coming for the lot. | (the ending) |
+| Ending | | The King went home with empty pockets. The gold stayed where it was earned. Taxation is theft. |
+| Any loss | The Crown thanks you for your contribution. | |
+
+- Painted gets the art. Classic gets a plain version of the four states
+  (smoke and the flag) and all of the words.
+
+Not in this milestone: new rules, new levels, cut-scenes, voices, a
+change to what a life is worth.
+
+## Milestone 47: a showpiece level (a spike)
+
+Kyle wants to see how far the graphics can be pushed, "comically
+in-depth", on one level. This is a spike, like milestone 38's: it lives
+behind a hidden switch (`?look=showpiece`, Meadow, level 1 and Free play
+Meadow), changes nothing for anyone who does not use the switch, and its
+purpose is to learn what is possible and what it costs on a phone.
+
+- Everything is for the eye only. The rules, positions and timing do not
+  change; nothing may misstate where an enemy is or whether it was hit;
+  the fight must stay as readable as in Painted.
+- Go far: a living place (wind, clouds, animals, people at their chores
+  who run inside when the collectors come), a day that moves from morning
+  to dusk across the waves, tower crews that load and fire, collectors
+  who lose hats and spill coin, a field that keeps the marks of the
+  battle, a camera that reacts, a victory worth watching, and whatever
+  light and colour effects the browser allows.
+- Measure it: frames a second on a phone-class device, memory, download
+  size, and what each effect costs, with quality stepping down on its own
+  when the device cannot keep up.
+- Deliver a build Kyle can open on his phone, a short recording, and a
+  table of what each idea cost and whether it is worth rolling into the
+  whole game.
+
+Not in this milestone: showpiece art for other maps, sound, any change to
+Painted or Classic.
+
 ## Later milestones (order agreed, detail to come)
 
 | # | Milestone | Idea |

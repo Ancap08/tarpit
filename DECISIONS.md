@@ -1478,3 +1478,31 @@ can change it; "Kyle" means Kyle decided.
 - **Not re-verified by a second model (Fable, for time):** the fix passes
   on 44b and 44c after Sonnet's verdicts. Each fix has its own guard and
   the full suite ran in CI before each merge.
+
+## 2026-11-24, direction after the theme, and milestone 46 (the town and its story)
+
+- **Direction (Kyle, after playing the themed build on his phone: "it all
+  works the way we wanted it to ... a good base"):** the town and story
+  first; then level variety and skill-based stars together; then talk
+  through a hero the player controls and the castle wall. Also: one level
+  pushed as far as the graphics will go, to see the limit (milestone 47).
+  The coordinator proposed the order; Kyle agreed it.
+- **The town shows the stakes, tied to the stars:** untouched at 18 or
+  more lives, scuffed at 12 to 17, battered below, taken at zero; a sack
+  of coin leaves with each collector that gets through; a cheer on a win,
+  the King's banner on a loss. Fable (shape), Codex (art and code), Sonnet
+  (verdict merge, no defects).
+- **The town on the map is small on purpose.** Only four cells at each
+  exit are outside the buildable grid, and a bigger town would change the
+  rules and the balance. The detail went into the picture of the town on
+  the result screen. Fable.
+- **The story adds no screens to the normal flow:** the King's notice sits
+  on each level card, the town's reply on the win screen, one line on a
+  loss, and one broadside each at the start and the end of the campaign.
+  The copy is the coordinator's draft, used word for word; Kyle may change
+  any line.
+- **Kept as built (Fable):** a Free play loss also shows the King's line
+  ("The Crown thanks you for your contribution"); the theme is the game's,
+  not only the campaign's. The level 6 notice says "one Troll per
+  traveller" where the enemy is the Toll Troll; the short form is the
+  joke.
