@@ -87,23 +87,23 @@ describe('verifier: the charge', () => {
 
 describe('verifier: zones', () => {
   it('slows while inside and for the linger after leaving, then stops; flyer included', () => {
-    const s = arena(4, [enemy(0, 'wolf', 170, 1e9), enemy(1, 'harpy', 170, 1e9)]);
+    const s = arena(4, [enemy(0, 'wolf', 190, 1e9), enemy(1, 'harpy', 190, 1e9)]);
     useSpecial(s, 'tarBarrel', { x: 300, y: 240 });
     const slowTicks: number[] = [];
     for (let i = 0; i < 400; i++) {
       tick(s);
       slowTicks.push(s.enemies[1].specialSlowTicksLeft ?? 0);
     }
-    expect(s.enemies[1].distance).toBeGreaterThan(420); // harpy left the circle
+    expect(s.enemies[1].distance).toBeGreaterThan(400); // harpy left the circle
     // Harpy was slowed at some point, and by the end (zone left behind it) the slow expired.
     expect(Math.max(...slowTicks)).toBe(60);
     expect(slowTicks[slowTicks.length - 1]).toBe(0);
   });
 
   it('a tar zone refreshes its linger through its last tick, then expires', () => {
-    const s = arena(4, [{ ...enemy(0, 'troll', 130, 1e9), feathered: true }]);
+    const s = arena(4, [enemy(0, 'troll', 130, 1e9)]);
     useSpecial(s, 'tarBarrel', { x: 225, y: 240 });
-    ticks(s, 539);
+    ticks(s, 659);
     expect(s.zones[0]?.ticksLeft).toBe(1);
     tick(s);
     expect(s.zones.length).toBe(0);
@@ -128,7 +128,7 @@ describe('verifier: zones', () => {
     const hp0 = s.enemies[0].hp;
     tick(s);
     const e = s.enemies[0];
-    expect(e.specialSlow).toBe(0.4); // Overlapping tar zones apply one 40% slow.
+    expect(e.specialSlow).toBe(0.5); // two tar zones: still 0.5, not stacked
     // Burn 26/s doubled by tar = 52/s -> 52/60 hp per tick (floating: compare loosely).
     expect(hp0 - e.hp).toBeCloseTo(52 / 60, 6);
   });

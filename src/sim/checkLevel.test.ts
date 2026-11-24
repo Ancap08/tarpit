@@ -48,7 +48,7 @@ describe('campaign acceptance gate', () => {
     }
   });
 
-  it('exercises both feather sources wherever the shipped campaign offers them', () => {
+  it('uses the barrel where offered and feathers enemies only on levels with path B', () => {
     const result = checkCampaign(LEVELS, CAMPAIGN_CONTEXTS);
     for (const [i, row] of result.levels.entries()) {
       const level = LEVELS[i];
@@ -57,7 +57,7 @@ describe('campaign acceptance gate', () => {
       const barrel = level.allowedSpecials.includes('tarBarrel');
       expect(use.pathBTowers > 0, `level ${level.id} path B`).toBe(tower);
       expect(use.barrelCasts > 0, `level ${level.id} barrel`).toBe(barrel);
-      expect(use.feathered > 0, `level ${level.id} enemies feathered`).toBe(tower || barrel);
+      expect(use.feathered > 0, `level ${level.id} enemies feathered`).toBe(tower);
     }
   }, 120_000);
 

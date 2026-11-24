@@ -519,7 +519,7 @@ function movedAt(s: GameState, e: Enemy): number {
   return Math.round((1 - (e.distance - before) / full) * 1e6) / 1e6 + 0;
 }
 
-describe('E6. special slow channel through a real Tar Pit and the independent special slot', () => {
+describe('E6. special slow channel through a real Tar Pit and a real Tar Barrel', () => {
   // The combo's Tar Pit cell (14,10), centre (464, 336); the path point at
   // distance 804 is (420, 336), 44 px away, inside the upgraded 105 px range.
   const PIT: Cell = { col: 14, row: 10 };
@@ -537,15 +537,15 @@ describe('E6. special slow channel through a real Tar Pit and the independent sp
   // covers the zone). These probes keep the channel's rules against a real
   // Tar Pit with one 210-tick special slow written straight to the channel.
   const barrel = (_s: GameState, e: Enemy) => {
-    expect(applySpecialSlow(e, 0.4, 210)).toBe(cappedSlow(e, 0.4));
+    expect(applySpecialSlow(e, 0.5, 210)).toBe(cappedSlow(e, 0.5));
   };
 
-  it('Tar Pit first, then the barrel: the barrel lands (not wasted), 0.6 wins while both last, and after the Pit is sold the barrel\'s 0.4 runs to tick 210 exactly', () => {
+  it('Tar Pit first, then the barrel: the barrel lands (not wasted), 0.6 wins while both last, and after the Pit is sold the barrel\'s 0.5 runs to tick 210 exactly', () => {
     const { s, e } = withPit('troll');
     tick(s); // the Pit fires: 0.6 for 120 ticks
     expect([e.slow, e.slowTicksLeft]).toEqual([0.6, 120]);
     barrel(s, e);
-    expect([e.specialSlow, e.specialSlowTicksLeft]).toEqual([0.4, 210]);
+    expect([e.specialSlow, e.specialSlowTicksLeft]).toEqual([0.5, 210]);
     expect([e.slow, e.slowTicksLeft]).toEqual([0.6, 120]);
     const seen: number[] = [];
     for (let i = 0; i < 60; i++) seen.push(movedAt(s, e));
@@ -557,7 +557,7 @@ describe('E6. special slow channel through a real Tar Pit and the independent sp
     const barrelLeft = e.specialSlowTicksLeft!;
     expect(barrelLeft).toBe(210 - 60 - towerLeft);
     expect(barrelLeft).toBeGreaterThan(0);
-    for (let i = 0; i < barrelLeft; i++) expect(movedAt(s, e), `barrel tick ${i}`).toBe(0.4);
+    for (let i = 0; i < barrelLeft; i++) expect(movedAt(s, e), `barrel tick ${i}`).toBe(0.5);
     expect(movedAt(s, e)).toBe(0);
     expect(isTarred(e)).toBe(false);
   });
@@ -565,28 +565,28 @@ describe('E6. special slow channel through a real Tar Pit and the independent sp
   it('the barrel first, then the Tar Pit: the Pit\'s 0.6 takes over at once, does not shorten the barrel, and the barrel is back when the Pit\'s slow ends', () => {
     const { s, e } = arena('troll', D);
     barrel(s, e);
-    for (let i = 0; i < 30; i++) expect(movedAt(s, e)).toBe(0.4);
+    for (let i = 0; i < 30; i++) expect(movedAt(s, e)).toBe(0.5);
     expect(buildTower(s, PIT, 'tarpit').ok).toBe(true);
     expect(upgradeTower(s, PIT).ok).toBe(true);
-    expect(movedAt(s, e)).toBe(0.4); // the Pit fires during this tick, after movement
+    expect(movedAt(s, e)).toBe(0.5); // the Pit fires during this tick, after movement
     expect([e.slow, e.slowTicksLeft]).toEqual([0.6, 120]);
     expect(e.specialSlowTicksLeft).toBe(210 - 31);
     expect(movedAt(s, e)).toBe(0.6);
     expect(sellTower(s, PIT).ok).toBe(true);
     for (let i = 0; i < 119; i++) expect(movedAt(s, e)).toBe(0.6);
-    // 31 + 1 + 119 = 151 ticks of the barrel used; 59 left at 0.4.
+    // 31 + 1 + 119 = 151 ticks of the barrel used; 59 left at 0.5.
     expect(e.specialSlowTicksLeft).toBe(59);
-    for (let i = 0; i < 59; i++) expect(movedAt(s, e)).toBe(0.4);
+    for (let i = 0; i < 59; i++) expect(movedAt(s, e)).toBe(0.5);
     expect(movedAt(s, e)).toBe(0);
   });
 
-  it('a weaker tower slow under the barrel: 0.4 while the barrel lasts, then the tower slot\'s 0.25 still applies', () => {
+  it('a weaker tower slow under the barrel: 0.5 while the barrel lasts, then the tower slot\'s 0.4 still applies', () => {
     const { s, e } = arena('troll', D);
     barrel(s, e);
     for (let i = 0; i < 200; i++) movedAt(s, e);
-    expect(applySlow(e, 0.25, 120)).toBe(0.25);
-    for (let i = 0; i < 10; i++) expect(movedAt(s, e)).toBe(0.4);
-    for (let i = 0; i < 110; i++) expect(movedAt(s, e)).toBe(0.25);
+    expect(applySlow(e, 0.4, 120)).toBe(0.4);
+    for (let i = 0; i < 10; i++) expect(movedAt(s, e)).toBe(0.5);
+    for (let i = 0; i < 110; i++) expect(movedAt(s, e)).toBe(0.4);
     expect(movedAt(s, e)).toBe(0);
   });
 
@@ -609,13 +609,13 @@ describe('E6. special slow channel through a real Tar Pit and the independent sp
     expect(effectiveSlow(e)).toBe(0.3);
   });
 
-  it('the barrel reaches 120 px and not 120.01, with a 0.4 slow for the 60-tick linger', () => {
-    expect(SPECIAL_DEFS.tarBarrel).toMatchObject({ radius: 120, slow: 0.4, zoneTicks: 540 });
+  it('the barrel reaches 100 px and not 100.01, and is the DESIGN.md 0.5 for the 60-tick linger (milestone 30)', () => {
+    expect(SPECIAL_DEFS.tarBarrel).toMatchObject({ radius: 100, slow: 0.5, zoneTicks: 660 });
     const a = arena('goblin', 100);
-    expect(useSpecial(a.s, 'tarBarrel', { x: 100, y: 240 + 120.01 })).toMatchObject({ ok: true });
+    expect(useSpecial(a.s, 'tarBarrel', { x: 100, y: 240 + 100.01 })).toMatchObject({ ok: true });
     expect(a.e.specialSlowTicksLeft ?? 0).toBe(0);
     const b = arena('goblin', 100);
-    expect(useSpecial(b.s, 'tarBarrel', { x: 100, y: 240 + 120 })).toMatchObject({ ok: true });
+    expect(useSpecial(b.s, 'tarBarrel', { x: 100, y: 240 + 100 })).toMatchObject({ ok: true });
     expect(b.e.specialSlowTicksLeft).toBe(60);
   });
 });
