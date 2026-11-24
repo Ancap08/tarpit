@@ -10,6 +10,7 @@ import { BARRICADE_END_EXCLUSION, BARRICADE_HP, BARRICADE_SNAP_RADIUS, GUARD_COU
 import { BOONS } from './boons';
 import { PACK_INTERVAL_TICKS, PACK_SIZE } from './combat';
 import { ENEMY_STATS, isBoss } from './enemies';
+import { FEATHERS } from './feathers';
 import { createGame, lastSpawnTick } from './game';
 import { buildableCells } from './grid';
 import { LEVELS } from './levels';
@@ -126,7 +127,7 @@ describe('docs/DESIGN.md matches the code', () => {
       limits.maxPersonDeficit, limits.goodFeatureLives, limits.personFeatureLives, limits.meanLivesDrop,
       limits.featureHp, limits.featureGold, limits.sensitivityHp, limits.sensitivityGold, limits.taxBiteLives,
       limits.featSpecialLives, limits.featExtraBuilds, limits.singleTowerMaxStars, limits.twoStarHeadroom,
-      limits.priorStops, limits.actMeanDrop, limits.maxPersonCliff,
+      limits.priorStops, limits.actMeanDrop, limits.maxPersonCliff, limits.maxFeatherAdvantage,
     ].map(value => Array.isArray(value) ? value.join('–') : String(value)));
   });
 
@@ -200,6 +201,12 @@ describe('docs/DESIGN.md matches the code', () => {
       expect(/shield/.test(notes), name).toBe(s.shield);
       if (s.slowCap !== undefined) expect(notes, name).toContain(`slows capped at ${s.slowCap * 100}%`);
     }
+  });
+
+  it('feathers: run duration and speed, flinch duration', () => {
+    expect(table('Enemies', 'Run ticks')).toEqual([
+      [FEATHERS.runTicks, FEATHERS.speed, FEATHERS.flinchTicks].map(String),
+    ]);
   });
 
   it('Grumblemaw packs: size and spawn interval', () => {

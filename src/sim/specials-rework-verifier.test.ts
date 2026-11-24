@@ -101,7 +101,7 @@ describe('verifier: zones', () => {
   });
 
   it('a tar zone refreshes its linger through its last tick, then expires', () => {
-    const s = arena(4, [enemy(0, 'troll', 130, 1e9)]);
+    const s = arena(4, [{ ...enemy(0, 'troll', 130, 1e9), feathered: true }]);
     useSpecial(s, 'tarBarrel', { x: 225, y: 240 });
     ticks(s, 659);
     expect(s.zones[0]?.ticksLeft).toBe(1);

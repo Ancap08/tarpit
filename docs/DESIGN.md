@@ -350,6 +350,33 @@ beside it that returns to the title; the win screen also has [Keep going].
 - **Hp.** Hp can be fractional (burn, shields); an enemy counts as dead at
   hp <= 1e-9, which absorbs floating point error.
 
+### Feathers
+
+A tarred enemy can be feathered once in its life. The barrel
+feathers every enemy it tars on impact, including Harpies. Later arrivals
+receive only the zone's slow. A path B Tar Pit shot feathers a surviving
+tarred target. On any shot that cannot feather its target, the tower applies
+its usual slow. Both bosses keep their slow cap and are immune to feathers
+and flinching.
+
+| Run ticks | Run speed (trail px/s) | Flinch ticks |
+|---:|---:|---:|
+| 60 | 90 | 18 |
+
+A runner follows the same trail backward at the listed speed. It passes
+through Guards and Barricades without either side attacking, and leaves
+any previous guard contact. Slows and Forced March affect forward walking
+only. Slow timers, zones, burns, tar's burn multiplier and tower shots
+keep operating. At the entrance the runner stops at distance zero and
+ends its run immediately. After its last run tick it walks forward,
+meeting blockers as usual. Its feathers remain after the run.
+
+A runner that reaches or passes another enemy on the trail makes it flinch
+once in its life. The crossing uses both enemies' start and end distances
+from the same tick. Tied enemies must move past each other. On the following
+ticks a flinching enemy halts and neither fights nor holds a guard's attention.
+A run timer continues counting down during a flinch.
+
 ## Towers
 
 Hits are instant in the simulation (the renderer draws the shot). A tower
@@ -397,7 +424,7 @@ the level and, for level 3, the chosen path.
 | Cannon | A | Heavy Shot | 140 | 105 | - | 40 | 0.5 | 105 | - | - |
 | Cannon | B | Quick Loader | 140 | 105 | - | 40 | 1 | 55 | - | - |
 | Tar Pit | A | Deep Tar | 110 | 105 | - | 3 | 2 | - | 78% for 2 s | - |
-| Tar Pit | B | Wide Tar | 110 | 145 | - | 3 | 2 | - | 64% for 2 s | - |
+| Tar Pit | B | Feathers | 110 | 145 | - | 3 | 2 | - | 64% for 2 s | - |
 | Longbow | A | War Bow | 70 | 170 | - | 16 | 2.5 | - | - | - |
 | Longbow | B | Quick Draw | 70 | 170 | - | 9 | 4.5 | - | - | - |
 | Mortar | A | Siege Shell | 190 | 220 | 70 | 140 | 1/3 | 70 | - | - |
@@ -428,7 +455,7 @@ Touch targets on the portrait phone measure at least 44 CSS px on both axes.
 | Heavy Shot | A much bigger blast |
 | Quick Loader | Fires twice as fast |
 | Deep Tar | Slows enemies to a crawl |
-| Wide Tar | Slows from farther away |
+| Feathers | Feathers tarred enemies. They run back. |
 | War Bow | Hits almost twice as hard |
 | Quick Draw | Fires almost twice as fast |
 | Siege Shell | Hits much harder |
@@ -449,7 +476,8 @@ The same shapes appear in landscape, portrait, test mode and the move preview.
 outside a minimum range (the Mortar only targets enemies whose distance is
 in [70, 220], both inclusive; its splash still hits enemies inside the
 minimum range), and not flying for Tar Pit, Cannon and Mortar. Among those
-it picks by its targeting mode, shown and cycled on the tower panel's
+the Feathers upgrade prefers enemies without feathers. Within that preference,
+and for every other tower, it picks by its targeting mode, shown and cycled on the tower panel's
 "Target" button (first, last, strongest, first again):
 
 - **First** (the default): furthest along the path. Ties go to the lower
@@ -624,7 +652,8 @@ Reloading starts a new run.
   the next tick as usual.
 - **Event.** `special {type, x, y, radius, hits, zoneId?}` (`zoneId` for the
   Tar Barrel and Fire Arrows), then `slowed` for each slow applied on
-  landing, then the kills.
+  landing. A first feathering emits `feathered {enemyId, x, y}` at the enemy's
+  impact position immediately after its slow. Kills follow.
 - Barricade placement emits the usual `special` event with its snapped
   coordinates, trail angle, zero radius and zero hits. Each attack emits
   `blockerHit`. Destruction emits one `blockerBreak`.
@@ -877,7 +906,8 @@ changing with either selection; no line when that pair has no score.
 ## Tick order
 
 Builds, upgrades, sells, moves, reward picks, specials and early calls act between
-ticks. Inside one wave tick: (1) enemies move at `(1 - effectiveSlow)`,
+ticks. Inside one wave tick: (1) runners and flinches move as described under
+Enemies. Other enemies move at `(1 - effectiveSlow)`,
 stopping at the first live blocker their step reaches. All walkers attack
 from the same starting set of blockers. After every walker has moved,
 resolve the guards' return strikes and the walkers' combined damage.
@@ -1933,6 +1963,7 @@ The level record can declare an ending boss. A separate context names the introd
 | S1 comparison stops before the second act | 3 |
 | S1 minimum drop in Person’s mean lives | 1.5 |
 | S1 maximum drop in Person’s lives between adjacent second-act stops | 5 |
+| R6 maximum extra lives for the feather bot over Good | 3 |
 
 - P1 checks Person’s stars and surviving lives against Good. P2 runs Person with an empty list of allowed specials. The two bands that allow a loss still report that run.
 - L1 and L2 apply the Good and Beginner star limits in the band table. L1m requires Good to keep its band minimum at HP ×0.98, HP ×1.02, starting gold −10 and starting gold +10, varying one input at a time on every level.
@@ -1956,6 +1987,8 @@ twenty levels. The twenty-level L8 compares the first and last six stops.
 - V1 runs Good once per permitted tower type in late and finale bands, keeping the full special and upgrade options. Each single-type run must finish below two stars. The frozen first act is exempt to preserve its shipped levels, scores and saved-star meaning. A single type earns at least two stars on eight first-act levels. Longbows pass seven, and either Cannon or Mortar passes Hold the Bend.
 - L1m also applies to each new level. At each nudge Good must retain its required stars. A required two-star finish for Good or taxed Person must have at least one life to spare. Nominal star awards use the original thresholds.
 - S1 compares Person’s nominal lives across the second act against the final three stops of the first act. The first new stop must leave at least as many lives as the preceding finale. The second-act mean must drop by at least 1.5 lives and no adjacent second-act drop may exceed five.
+
+- R6 runs the feather bot at nominal settings. It uses Good’s opening until two upgraded damage towers are standing, reserving the last Rationing slot for a Tar Pit if necessary. Where the third tier is available, it buys a Tar Pit on a useful firing lane and saves for path B. Further Tar Pits also take path B. A ready barrel goes to a crowd of at least three enemies still eligible for feathers. The bot otherwise uses Good’s decisions. It may finish up to three lives above Good and may earn a third star only on a level where ordinary Good earns one. The gate reports path B towers, barrel casts and successful featherings.
 
 ### Campaign measurements
 

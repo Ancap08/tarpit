@@ -31,6 +31,14 @@ export function testPathBalance(towers: readonly TowerType[]) {
       expect(summary.p1, JSON.stringify(summary)).toBe(true);
     });
 
+    if (tower === 'tarpit') {
+      it('R1: Feathers and Deep Tar each win a comparison outright', () => {
+        const gaps = scores().ab;
+        expect(Math.min(...gaps), JSON.stringify(gaps)).toBeLessThan(0);
+        expect(Math.max(...gaps), JSON.stringify(gaps)).toBeGreaterThan(0);
+      });
+    }
+
     it('P2: neither path loses by more than nine lives', () => {
       const summary = scores();
       expect(summary.p2, JSON.stringify(summary)).toBe(true);
