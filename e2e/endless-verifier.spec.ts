@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { END_TEXT, bestScoreText } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { TitleUiState } from '../src/game/TitleScene';
+import { resultPaper } from './resultPaper';
 import { waitForTitle } from './title';
 
 // Milestone 26 verifier probes (independent of endless.spec.ts): storage
@@ -207,7 +208,7 @@ test('win screen: three buttons apart and inside the panel, labels inside their 
   expect(await api(page, (t) => t.runScript('comboBuild'))).toBe('won');
   const rects = await api(page, (t) => t.uiRects());
   const row: Rect[] = [rects.keepGoing, rects.playAgain, rects.menu];
-  const panel = { x: 220, y: 125, width: 520, height: 230 };
+  const panel = await resultPaper(page);
   for (const [i, r] of row.entries()) {
     expect(r.height).toBeGreaterThanOrEqual(42);
     expect(r.x).toBeGreaterThanOrEqual(panel.x + 8);

@@ -315,7 +315,8 @@ test('reuse loaded art after Play again and Menu', async ({ page }) => {
   await play(page);
   expect(await painted(page)).toMatchObject({ active: true });
   await expectReuse();
-  expect(requests).toHaveLength(loaded);
+  expect(requests.slice(loaded)).toHaveLength(1);
+  expect(new URL(requests[loaded]).pathname).toMatch(/\/taken-[^/]+\.webp$/);
 });
 
 test('changing maps reuses shared pieces and fetches just the new ground', async ({ page }) => {

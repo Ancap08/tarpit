@@ -12,16 +12,16 @@ import { COLORS, FONT, TEXT } from '../palette';
 import { ink, panel as drawPanel, rule } from './theme';
 import { Button } from './button';
 import { drawStarRow } from './starRow';
+import { townCondition } from '../decor/townCondition';
+import { townPortrait } from './townPortrait';
 import { menuKeys } from './menuKeys';
 import { CAMPAIGN_END, END_TEXT } from '../names';
 import { endScreenText, type CampaignResult, type EndKind } from './endText';
 
 export type { EndKind };
 
-const PANEL_W = 460;
-/** The win screen's panel (milestone 26): wide enough for three buttons. */
-const PANEL_W_WON = 520;
-const PANEL_H = 230;
+const LANDSCAPE_WIDTH = 750;
+const PORTRAIT_WIDTH = 440;
 const BUTTON_W = 180;
 /** [Keep going] (milestone 26). */
 const KEEP_GOING_W = 170;
@@ -35,17 +35,9 @@ const BUTTON_GAP = 16;
  * thumb size, so they stack, 280 x 70 and 12 px apart, under the title and
  * lines in a 440 px panel centred on the map.
  */
-const P_PANEL_W = 440;
 const P_BUTTON_W = 280;
 const P_BUTTON_H = 70;
 const P_GAP = 12;
-/** From the panel's top: the title's centre, the lines' centre and the first button's top. */
-const P_TITLE_Y = 52;
-const P_LINES_Y = 124;
-const P_BOONS_TOP = 150;
-const P_BUTTONS_Y = 178;
-const P_PAD_BOTTOM = 24;
-
 export class EndScreen {
   private readonly veil: Phaser.GameObjects.Rectangle;
   private readonly panel: Phaser.GameObjects.Graphics;
@@ -59,7 +51,7 @@ export class EndScreen {
   private readonly keepGoing: Button;
   private campaign: CampaignResult | null = null;
   handleKey?: (event: KeyboardEvent) => void;
-  private readonly buttonY: number;
+  private picture?: Phaser.GameObjects.Image;
   private readonly cx: number;
   private shown: EndKind | null = null;
   private readonly portrait: boolean;
@@ -74,17 +66,16 @@ export class EndScreen {
     this.cy = cy;
     const bw = this.portrait ? P_BUTTON_W : BUTTON_W;
     const bh = this.portrait ? P_BUTTON_H : BUTTON_H;
-    const top = cy - PANEL_H / 2;
 
     this.veil = scene.add
-      .rectangle(MAP_AREA.x, MAP_AREA.y, MAP_AREA.width, MAP_AREA.height, COLORS.endVeil, 0.62)
+      .rectangle(MAP_AREA.x, MAP_AREA.y, MAP_AREA.width, MAP_AREA.height, COLORS.endVeil, 0.38)
       .setOrigin(0, 0);
     this.panel = scene.add.graphics();
     this.title = scene.add
-      .text(cx, top + 44, '', { fontFamily: FONT, fontSize: '40px', fontStyle: 'bold', color: TEXT.paperGold })
+      .text(cx, 0, '', { fontFamily: FONT, fontSize: '40px', fontStyle: 'bold', color: TEXT.paperGold })
       .setOrigin(0.5);
     this.lines = scene.add
-      .text(cx, top + 112, '', {
+      .text(cx, 0, '', {
         fontFamily: FONT,
         fontSize: this.portrait ? '20px' : '18px',
         fontStyle: 'bold',
@@ -94,18 +85,17 @@ export class EndScreen {
       })
       .setOrigin(0.5);
     this.boons = scene.add
-      .text(cx, top + 148, '', {
+      .text(cx, 0, '', {
         fontFamily: FONT,
         fontSize: this.portrait ? '20px' : '14px',
         color: ink,
         align: 'center',
-        wordWrap: this.portrait ? { width: P_PANEL_W - 32 } : undefined,
+        wordWrap: { width: this.portrait ? PORTRAIT_WIDTH - 40 : 442 },
       })
       .setOrigin(0.5, this.portrait ? 0 : 0.5);
     // The pair is centred on the panel: [Play again] then [Menu].
     const left = cx - (BUTTON_W + BUTTON_GAP + MENU_W) / 2;
-    const y = top + PANEL_H - BUTTON_H - 22;
-    this.buttonY = y;
+    const y = 0; // Positioned from measured content when shown.
     this.cx = cx;
     this.button = new Button(scene, { x: left, y, width: bw, height: bh }, END_TEXT.playAgain, onPlayAgain, {
       fontSize: this.portrait ? '22px' : '20px',
@@ -141,13 +131,14 @@ export class EndScreen {
   show(kind: EndKind, state: GameState, campaign: CampaignResult | null): void {
     if (this.shown !== null) return;
     this.shown = kind;
+    this.picture = townPortrait(this.title.scene, townCondition(state));
     this.campaign = campaign;
     if (campaign) {
       this.title.setText(campaign.title);
       if (kind === 'won') this.starRow = drawStarRow(this.title.scene, this.cx, 0, campaign.stars, 28, TEXT.paperGold);
       this.detailRows = campaign.details.map(text => this.boons.scene.add.text(this.cx, 0, text, {
         fontFamily: FONT, fontSize: this.portrait ? '20px' : '18px', color: ink, align: 'center',
-        wordWrap: { width: (this.portrait ? P_PANEL_W : 560) - 32 },
+        wordWrap: { width: this.portrait ? PORTRAIT_WIDTH - 40 : 442 },
       }).setOrigin(0.5, 0));
       this.button.set(kind === 'won' ? END_TEXT.playAgain : CAMPAIGN_END.retry, true);
       this.menu.set(CAMPAIGN_END.map, true);
@@ -168,6 +159,8 @@ export class EndScreen {
 
   /** Hide the screen (milestone 26: after Keep going); a later show() works again. */
   hide(): void {
+    this.picture?.destroy();
+    this.picture = undefined;
     for (const row of this.detailRows) row.destroy();
     this.detailRows = [];
     this.starRow?.destroy();
@@ -189,55 +182,43 @@ export class EndScreen {
   /** The panel width and the button row for this screen: two buttons, or three on the win screen (milestone 26). */
   private layout(): void {
     const buttons = this.hasAdvance ? [this.keepGoing, this.button, this.menu] : [this.button, this.menu];
-    if (this.campaign) {
-      this.handleKey = menuKeys(buttons, 0, this.menu);
-      const titleY = this.portrait ? P_TITLE_Y : 36;
-      const rowGap = 8;
-      const titleHeight = 66;
-      const starHeight = 28;
-      const starsY = this.portrait ? P_LINES_Y : this.starRow
-        ? titleY + titleHeight / 2 + rowGap + starHeight / 2
-        : 82;
-      let cursor = this.starRow
-        ? starsY + this.starRow.getBounds().height / 2 + 1 + rowGap
-        : starsY;
-      for (const row of this.detailRows) {
-        row.setY(cursor);
-        cursor += row.height + rowGap;
-      }
-      const buttonsY = cursor - rowGap + (this.portrait ? 16 : 22);
-      const buttonHeight = this.portrait
-        ? buttons.length * P_BUTTON_H + (buttons.length - 1) * P_GAP
-        : this.button.rect.height;
-      const h = buttonsY + buttonHeight + (this.portrait ? P_PAD_BOTTOM : 22);
-      const top = this.cy - h / 2;
-      this.paper(this.portrait ? P_PANEL_W : 560, h, titleY);
-      this.title.setY(top + titleY);
-      this.starRow?.setY(top + starsY);
-      for (const row of this.detailRows) row.setY(top + row.y);
-      if (this.portrait) {
-        buttons.forEach((b, i) => b.moveTo(this.cx - P_BUTTON_W / 2, top + buttonsY + i * (P_BUTTON_H + P_GAP)));
-      } else {
-        this.buttonRow(buttons, top + buttonsY);
-      }
-      return;
+    const picture = this.picture!;
+    const portrait = this.portrait;
+    const w = portrait ? PORTRAIT_WIDTH : LANDSCAPE_WIDTH;
+    const pad = 22, gap = 8;
+    const titleY = pad + this.title.height / 2;
+    const imageW = portrait ? 302 : 240;
+    const imageH = imageW / 2;
+    const afterTitle = titleY + this.title.height / 2 + gap;
+    const textX = this.cx + (portrait ? 0 : (imageW + 12) / 2);
+    const content = this.campaign ? this.detailRows : [this.lines, this.boons].filter(row => row.text);
+    const starH = this.starRow ? this.starRow.getBounds().height + 2 : 0;
+    const textH = (starH ? starH + gap : 0) + content.reduce((h, row) => h + row.height + gap, -gap);
+    const bodyH = portrait ? imageH + gap + textH : Math.max(imageH, textH);
+    const buttonsH = portrait ? buttons.length * P_BUTTON_H + (buttons.length - 1) * P_GAP : this.button.rect.height;
+    const h = afterTitle + bodyH + 16 + buttonsH + pad;
+    const top = this.cy - h / 2;
+    this.paper(w, h, titleY);
+    this.title.setY(top + titleY);
+    picture.setDisplaySize(imageW, imageH).setPosition(
+      portrait ? this.cx : this.cx - w / 2 + pad + imageW / 2,
+      top + afterTitle + (portrait ? imageH : bodyH) / 2);
+    let y = top + afterTitle + (portrait ? imageH + gap : (bodyH - textH) / 2);
+    if (this.starRow) {
+      this.starRow.setPosition(textX, y + starH / 2);
+      y += starH + gap;
     }
-    if (this.portrait) {
-      const detailsY = P_BOONS_TOP;
-      const buttonsY = this.boons.text
-        ? Math.max(P_BUTTONS_Y, detailsY + this.boons.height + 10)
-        : P_BUTTONS_Y;
-      const h = buttonsY + buttons.length * P_BUTTON_H + (buttons.length - 1) * P_GAP + P_PAD_BOTTOM;
-      const top = this.cy - h / 2;
-      this.paper(P_PANEL_W, h, P_TITLE_Y);
-      this.title.setY(top + P_TITLE_Y);
-      this.lines.setY(top + P_LINES_Y);
-      this.boons.setY(top + detailsY);
-      buttons.forEach((b, i) => b.moveTo(this.cx - P_BUTTON_W / 2, top + buttonsY + i * (P_BUTTON_H + P_GAP)));
-      return;
+    for (const row of content) {
+      row.setOrigin(0.5, 0).setPosition(textX, y);
+      y += row.height + gap;
     }
-    this.paper(this.hasAdvance ? PANEL_W_WON : PANEL_W, PANEL_H, 44);
-    this.buttonRow(buttons, this.buttonY);
+    const buttonsY = top + afterTitle + bodyH + 16;
+    if (portrait) {
+      buttons.forEach((b, i) => b.moveTo(this.cx - P_BUTTON_W / 2, buttonsY + i * (P_BUTTON_H + P_GAP)));
+    } else {
+      this.buttonRow(buttons, buttonsY);
+    }
+    if (this.campaign) this.handleKey = menuKeys(buttons, 0, this.menu);
   }
 
   private paper(width: number, height: number, titleY: number): void {

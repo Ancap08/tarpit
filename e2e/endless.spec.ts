@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { END_TEXT, bestScoreText, heldBoonsText } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { TitleUiState } from '../src/game/TitleScene';
+import { resultPaper } from './resultPaper';
 import { waitForTitle } from './title';
 
 // Milestone 26: endless mode and the local high score. Time is frozen
@@ -49,14 +50,15 @@ test('win, three buttons, Keep going by mouse: wave 21 starts, "Wave 21", no bos
   expect(await visibleTexts(page)).toContain(heldBoonsText(comboBoons));
   const rects = await api(page, (t) => t.uiRects());
   const row = [rects.keepGoing, rects.playAgain, rects.menu];
+  const panel = await resultPaper(page);
   for (const r of row) {
     expect(r).toBeTruthy();
     expect(r.height).toBeGreaterThanOrEqual(42);
-    // Inside the 520 px win panel centred on the map (x 220..740, y 125..355).
-    expect(r.x).toBeGreaterThanOrEqual(220);
-    expect(r.x + r.width).toBeLessThanOrEqual(740);
-    expect(r.y).toBeGreaterThanOrEqual(125);
-    expect(r.y + r.height).toBeLessThanOrEqual(355);
+    // The illustrated panel grows to fit the result.
+    expect(r.x).toBeGreaterThanOrEqual(panel.x);
+    expect(r.x + r.width).toBeLessThanOrEqual(panel.x + panel.width);
+    expect(r.y).toBeGreaterThanOrEqual(panel.y);
+    expect(r.y + r.height).toBeLessThanOrEqual(panel.y + panel.height);
   }
   // Keep going first (the primary, on the left), then Play again and Menu, 8 px or more apart.
   for (let i = 1; i < row.length; i++) expect(row[i].x - (row[i - 1].x + row[i - 1].width)).toBeGreaterThanOrEqual(8);

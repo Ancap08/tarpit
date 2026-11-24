@@ -1134,6 +1134,13 @@ crown banner rises. The result appears immediately. Test mode and reduced
 motion hold the finished pose. These drawings read the simulation without
 changing placement or combat.
 
+The result paper has a dedicated 2:1 illustration of the condition in
+which the town finished. Its 480 × 240 colour plate loads on demand. A
+printed silhouette fills the space immediately and stays available offline.
+The picture sits to the left of the results in landscape and above them
+in portrait. A 38% veil keeps the town on the battlefield visible.
+
+
 ## Sound
 
 Milestone 33 (with its follow-up and six new cues in milestone 36).

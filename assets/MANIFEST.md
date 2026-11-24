@@ -219,3 +219,7 @@ the checker looks for it.
 | `assets/art-painted/tossed-hat-1x.json` | `scripts/art/town.py` | Tarpit agents | MIT | Centered frame layout |
 | `assets/art-painted/tossed-hat-2x.png` | `scripts/art/town.py` | Tarpit agents | MIT | Separate painted felt hats tossed by the townsfolk |
 | `assets/art-painted/tossed-hat-2x.json` | `scripts/art/town.py` | Tarpit agents | MIT | Centered frame layout |
+| `assets/art-painted/town-portraits/untouched.webp` | `scripts/art/town_portraits.py` | Tarpit agents | MIT | Original result-page town in its untouched condition |
+| `assets/art-painted/town-portraits/scuffed.webp` | `scripts/art/town_portraits.py` | Tarpit agents | MIT | Original result-page town in its scuffed condition |
+| `assets/art-painted/town-portraits/battered.webp` | `scripts/art/town_portraits.py` | Tarpit agents | MIT | Original result-page town in its battered condition |
+| `assets/art-painted/town-portraits/taken.webp` | `scripts/art/town_portraits.py` | Tarpit agents | MIT | Original result-page town in its taken condition |
