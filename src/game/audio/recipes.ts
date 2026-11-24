@@ -98,6 +98,7 @@ export const SOUND_NAMES = [
   'impact.mortar',
   'shot.tarpit',
   'impact.tarpit',
+  'impact.feathers',
   'shot.firepot',
   'impact.firepot',
   'hit',
@@ -253,6 +254,14 @@ export const RECIPES: Readonly<Record<SoundName, Recipe>> = {
     layers: [
       tone('sine', 210, 520, { a: 0.006, d: 0.12 }, 0.55, { filter: { type: 'lowpass', f0: 1200 } }),
       noise({ type: 'bandpass', f0: 800, q: 1 }, { a: 0.003, d: 0.06 }, 0.2),
+    ],
+  },
+  'impact.feathers': {
+    gain: 0.60,
+    priority: PRIORITY.impact,
+    layers: [
+      noise({ type: 'bandpass', f0: 2600, f1: 820, q: 0.65 }, { a: 0.012, h: 0.018, d: 0.135 }, 0.7),
+      tone('sine', 580, 340, { a: 0.009, d: 0.085 }, 0.22),
     ],
   },
   'impact.tarpit': {

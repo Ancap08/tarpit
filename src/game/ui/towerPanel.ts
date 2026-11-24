@@ -83,7 +83,8 @@ export class TowerPanel {
     this.titleText = caption(portrait ? '22px' : '17px', ink, 'bold');
     this.killsText = caption(f(14), ink, 'bold');
     const pathCaption = () => ({
-      description: caption(portrait ? '20px' : '15px', TEXT.button),
+      description: caption(portrait ? '20px' : '15px', TEXT.button).setWordWrapCallback((line, label) =>
+        label.basicWordWrap(line.replace('. ', '.\n'), label.context, label.style.wordWrapWidth ?? Infinity)),
       reason: caption(portrait ? '20px' : '14px', TEXT.buttonDisabled),
     });
     this.pathText = { A: pathCaption(), B: pathCaption() };
@@ -150,8 +151,17 @@ export class TowerPanel {
     const scale = portrait || this.scene.sys.game.device.input.touch
       ? Math.max(this.scene.scale.displayScale.x, this.scene.scale.displayScale.y)
       : 0;
-    const { close, rowHeight, pathHeight, header, width, height, buttonWidth } =
+    const { close, rowHeight, pathHeight, header, width, height: baseHeight, buttonWidth } =
       towerPanelSize(this.layout, level, rows.length, paths.length, scale);
+    // Long path descriptions can use a second line at the full caption size.
+    const lineExtras = { A: 0, B: 0 };
+    for (const choice of paths) {
+      const { description } = this.pathText[choice.path];
+      if (description.style.wordWrapWidth !== buttonWidth - 20) description.setWordWrapWidth(buttonWidth - 20);
+      if (description.text !== choice.description) description.setText(choice.description);
+      lineExtras[choice.path] = description.height - description.getTextMetrics().fontSize;
+    }
+    const height = baseHeight + lineExtras.A + lineExtras.B;
     if (this.placed?.width !== width || this.placed.height !== height) {
       const location = placeBeside(this.layout.cellCenter(this.at), width, height, state.map, this.layout);
       this.placed = { ...location, width, height };
@@ -175,7 +185,7 @@ export class TowerPanel {
     const split = level > 1 ? Math.round(innerWidth * 0.43) : 0;
     let top = y + STACK_PAD + header;
     for (const { key, button, path } of rows) {
-      const h = path ? pathHeight : rowHeight;
+      const h = path ? pathHeight + lineExtras[path.path] : rowHeight;
       const isSell = split > 0 && key === 'sell';
       const isTarget = split > 0 && key === 'target';
       button.setSize(isSell ? split : isTarget ? innerWidth - split - STACK_GAP : buttonWidth, h);
@@ -183,12 +193,11 @@ export class TowerPanel {
       if (path) {
         const { description, reason } = this.pathText[path.path];
         const hint = path.disabledReason ?? '';
-        if (description.text !== path.description) description.setText(path.description);
         const color = button.isEnabled ? TEXT.button : TEXT.buttonDisabled;
         if (description.style.color !== color) description.setColor(color);
         if (reason.text !== hint) reason.setText(hint);
-        description.setPosition(left + 10, top + (portrait ? 46 : 35));
-        reason.setPosition(left + 10, top + (portrait ? 73 : 54));
+        description.setPosition(left + 10, top + (portrait ? 46 : 35) + lineExtras[path.path] / 2);
+        reason.setPosition(left + 10, top + (portrait ? 73 : 54) + lineExtras[path.path]);
       }
       if (!isSell) top += h + STACK_GAP;
     }

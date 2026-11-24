@@ -152,7 +152,7 @@ test('portrait boss: Grumblefoot with his bar on wave 10', async ({ page }) => {
       return t.hudText().boss;
     });
   }, GRUMBLEFOOT_STEPS);
-  expect(bar).toMatch(/^Assessor Grumblefoot 3400 \/ 4000$/);
+  expect(bar).toMatch(/^Assessor Grumblefoot 3416 \/ 4000$/);
   await settle(page);
   await shot(page, 'phone-boss.png');
 });

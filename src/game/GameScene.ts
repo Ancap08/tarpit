@@ -176,6 +176,7 @@ import { Moments } from './fx/moments';
 import { BoonReward, HeldBoons } from './ui/boons';
 import { Effects, type FxState } from './fx/effects';
 import { EnemySprites, type AnimState } from './anim/enemySprites';
+import { FeatherPuffs } from './draw/feathers';
 import { drawHpBars, drawShadows, drawStatusRings } from './draw/enemies';
 import { TowerLabels } from './draw/labels';
 import { Town } from './decor/town';
@@ -440,6 +441,7 @@ export class GameScene extends Phaser.Scene {
   private mapBlockedUntil = 0;
   private held!: HeldBoons;
   private moments!: Moments;
+  private featherPuffs = new FeatherPuffs();
   private frozenMs = 0;
   private drawnRange: number | null = null;
   private panel!: TowerPanel;
@@ -624,6 +626,7 @@ export class GameScene extends Phaser.Scene {
     // The aim circle's centre cross (milestone 30 follow-up), above every sprite.
     // Milestone 31: the boss veil, gold labels and wave banners, under the HUD.
     this.frozenMs = 0;
+    this.featherPuffs = new FeatherPuffs();
     this.moments = this.fx?.createOverlays() ?? new Moments(this, this.layout, this.state.map);
     this.aimCross = world();
     this.bannerBg = this.add.graphics().setDepth(4);
@@ -1503,11 +1506,18 @@ export class GameScene extends Phaser.Scene {
     if (!this.enemySprites) return;
     const { events, newTick } = this.eventCursor.take(this.state);
     if (newTick) this.enemySprites.newTick();
+    let puff = false;
     for (const event of events) {
+      if (event.kind === 'feathered') {
+        const point = this.layout.toScreen(event);
+        this.featherPuffs.add({ x: point.x, y: point.y - 10 }, this.animationTime);
+        puff = true;
+      }
       if (event.kind !== 'exit') continue;
       const spot = this.enemySprites.spot(event.enemyId);
       if (spot) this.town.sacks.release(ENEMY_STATS[spot.type].livesCost, this.animationTime);
     }
+    if (puff) sound.play('impact.feathers');
     this.barricadeFx.onEvents(events);
     this.guardFx.onEvents(events);
     if (this.fx) this.fx.onEvents(events, this.state);
@@ -1737,6 +1747,7 @@ export class GameScene extends Phaser.Scene {
     this.barricadeFx.drawWall(this.shotFx, blocker, this.layout, motion);
     this.barricadeFx.drawCrash(this.shotFx, this.layout, motion);
     this.bars.clear();
+    this.featherPuffs.draw(this.bars, this.animationTime);
     drawHpBars(this.bars, this.state, this.layout, stopped, this.painted ? id => this.enemySprites.paintedBar(id) : undefined);
     this.barricadeFx.drawHp(this.bars, blocker, this.layout, stopped?.size ?? 0);
     this.guardFx.draw(this.bars, this.state, motion);

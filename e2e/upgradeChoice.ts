@@ -8,7 +8,7 @@ import { cellPage, fingerFor, touchDrag } from './phone';
 export const choices = [
   ['musketeer', 'Sharpshooter', 'Volley'],
   ['cannon', 'Heavy Shot', 'Quick Loader'],
-  ['tarpit', 'Deep Tar', 'Wide Tar'],
+  ['tarpit', 'Deep Tar', 'Feathers'],
   ['longbow', 'War Bow', 'Quick Draw'],
   ['mortar', 'Siege Shell', 'Wide Burst'],
   ['firepot', 'Inferno', 'Lasting Flames'],

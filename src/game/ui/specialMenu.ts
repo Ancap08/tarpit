@@ -7,7 +7,7 @@
 import type Phaser from 'phaser';
 import { SPECIAL_TYPES, type SpecialType } from '../../sim';
 import type { Rect } from '../input';
-import { SPECIAL_NAMES } from '../names';
+import { SPECIAL_NAMES, TAR_BARREL_DESCRIPTION } from '../names';
 import { panel, THEME } from './theme';
 import { Button } from './button';
 import { STACK_SIZE, type StackSize } from './geometry';
@@ -23,6 +23,7 @@ export class SpecialMenu {
   private readonly buttons: Record<SpecialType, Button>;
   private shownTypes: SpecialType[] = [];
   private box: Rect | null = null;
+  private readonly barrelCaption: Phaser.GameObjects.Text;
   private buttonH = 0;
   private columns = 1;
 
@@ -43,6 +44,10 @@ export class SpecialMenu {
         fontSize,
       });
     this.buttons = { keg: make('keg'), tarBarrel: make('tarBarrel'), fireArrows: make('fireArrows'), barricade: make('barricade'), guards: make('guards') };
+    this.barrelCaption = scene.add.text(0, 0, TAR_BARREL_DESCRIPTION, {
+      fontFamily: this.buttons.tarBarrel.labelObjects[0].style.fontFamily, fontSize,
+      color: this.buttons.tarBarrel.labelObjects[0].style.color, align: 'center',
+    }).setOrigin(0.5, 0).setVisible(false);
     for (const b of Object.values(this.buttons)) b.setShown(false);
   }
 
@@ -55,12 +60,19 @@ export class SpecialMenu {
   update(types: readonly SpecialType[]): void {
     const room = this.hudTop - this.mapTop - MENU_GAP_ABOVE_HUD - 2 * PAD;
     const fullHeight = Math.max(this.size.buttonH, Math.ceil(MIN_TARGET_CSS * this.scene.scale.displayScale.y));
+    const barrel = types.indexOf('tarBarrel');
+    // The barrel card carries an instruction below its name, in the menu's normal type.
+    const cardWidth = barrel < 0 ? this.size.buttonW : this.size.buttonW + 100;
+    this.barrelCaption.setVisible(barrel >= 0);
+    if (barrel >= 0 && this.barrelCaption.style.wordWrapWidth !== cardWidth - 16)
+      this.barrelCaption.setWordWrapWidth(cardWidth - 16);
+    const extra = barrel >= 0 ? this.barrelCaption.height + 4 : 0;
     // Keep full-size targets on squat screens by splitting the new five-item menu.
-    const fullRows = Math.max(1, Math.floor((room + GAP) / (fullHeight + GAP)));
-    const maxColumns = Math.floor((this.scene.scale.width - 2 * PAD + GAP) / (this.size.buttonW + GAP));
+    const fullRows = Math.max(1, Math.floor((room - extra + GAP) / (fullHeight + GAP)));
+    const maxColumns = Math.floor((this.scene.scale.width - 2 * PAD + GAP) / (cardWidth + GAP));
     const columns = types.includes('guards') ? Math.min(maxColumns, Math.max(1, Math.ceil(types.length / fullRows))) : 1;
     const rows = Math.ceil(types.length / columns);
-    const buttonH = rows === 0 ? 0 : Math.min(Math.floor((room - (rows - 1) * GAP) / rows), fullHeight);
+    const buttonH = rows === 0 ? 0 : Math.min(Math.floor((room - extra - (rows - 1) * GAP) / rows), fullHeight);
     if (buttonH === this.buttonH && columns === this.columns && types.length === this.shownTypes.length && types.every((t, i) => t === this.shownTypes[i])) return;
     this.buttonH = buttonH;
     this.columns = columns;
@@ -71,8 +83,8 @@ export class SpecialMenu {
       for (const b of Object.values(this.buttons)) b.setShown(false);
       return;
     }
-    const height = 2 * PAD + rows * buttonH + (rows - 1) * GAP;
-    const width = 2 * PAD + columns * this.size.buttonW + (columns - 1) * GAP;
+    const height = 2 * PAD + extra + rows * buttonH + (rows - 1) * GAP;
+    const width = 2 * PAD + columns * cardWidth + (columns - 1) * GAP;
     const top = this.hudTop - MENU_GAP_ABOVE_HUD - height;
     const left = Math.min(this.left, this.scene.scale.width - width);
     this.box = { x: left, y: top, width, height };
@@ -82,9 +94,16 @@ export class SpecialMenu {
       const b = this.buttons[type];
       if (i < 0) b.setShown(false);
       else {
-        b.setSize(this.size.buttonW, buttonH);
-        b.moveTo(left + PAD + (i % columns) * (this.size.buttonW + GAP), top + PAD + Math.floor(i / columns) * (buttonH + GAP));
+        const row = Math.floor(i / columns);
+        const rowY = top + PAD + row * (buttonH + GAP) + (row > Math.floor(barrel / columns) ? extra : 0);
+        const x = left + PAD + (i % columns) * (cardWidth + GAP);
+        b.setSize(cardWidth, buttonH + (row === Math.floor(barrel / columns) ? extra : 0));
+        b.moveTo(x, rowY);
         b.setShown(true);
+        if (i === barrel) {
+          b.labelObjects[0].setY(rowY + buttonH / 2);
+          this.barrelCaption.setPosition(x + cardWidth / 2, rowY + buttonH - 3);
+        }
       }
     }
   }

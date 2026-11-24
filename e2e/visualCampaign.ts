@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 
 /** See src/sim/boss-frame.test.ts for the simulation frame receipt. */
-export const GRUMBLEFOOT_STEPS = 5316;
+export const GRUMBLEFOOT_STEPS = 5291;
 /** The first lone, burning and slowed Grumblemaw with a Mortar hit two ticks
  * earlier and no hit on the frame, playing wave 20 without timed specials. */
 const GRUMBLEMAW_STEPS = 3006;

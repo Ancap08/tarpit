@@ -18,8 +18,8 @@ export function facingOf(dx: number, dy: number): Facing {
  */
 export function facingAt(map: MapDef, distance: number, step: number, layout: Layout = LANDSCAPE): Facing {
   const now = positionAlongPath(map, distance);
-  const from = distance > 0 ? positionAlongPath(map, Math.max(0, distance - step)) : now;
-  const to = distance > 0 ? now : positionAlongPath(map, 1);
+  const from = positionAlongPath(map, Math.max(0, distance - step));
+  const to = distance === 0 && step >= 0 ? positionAlongPath(map, 1) : now;
   // Milestone 32b: the facing is the way the enemy moves on the screen, so a turned map turns it.
   const d = layout.screenDir(to.x - from.x, to.y - from.y);
   return facingOf(d.x, d.y);

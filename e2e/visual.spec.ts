@@ -21,13 +21,13 @@ const AIM_EXPECT = {
   wave: 4,
   aim: { x: 160, y: 131 },
   enemies: 12,
-  inside: ['goblin 4', 'harpy 5', 'goblin 6', 'harpy 7'],
+  inside: ['harpy 3', 'goblin 4', 'harpy 5', 'goblin 6', 'harpy 7', 'goblin 8', 'harpy 9'],
 };
-// Milestone 30: the zone frames on wave 7 at step 900, both aimed at (160,132) on the first climb.
+// The wave 7 zone frames at step 900, each aimed at its own largest cluster.
 const TAR_ZONE_EXPECT = {
-  at: { x: 160, y: 132 },
+  at: { x: 305, y: 96 },
   hits: 7,
-  zones: ['tarBarrel 600'],
+  zones: ['tarBarrel 480'],
   slowed: 8,
   burning: 0,
   labels: ['7 hit'],
@@ -505,7 +505,7 @@ test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splas
     slowed: true,
     hitNow: false,
     mortarHitOnBoss: 1,
-    bar: `${BOSS_NAME} 3400 / 4000`,
+    bar: `${BOSS_NAME} 3416 / 4000`,
     texture: 'boss',
   });
   await settle(page);
@@ -550,7 +550,7 @@ test('special aim: Tar Barrel circle over a cluster on wave 4', async ({ page })
   const aim = { x: Math.round(at.x), y: Math.round(at.y) };
   const inside = r.enemies.filter((e) => {
     const p = positionAlongPath(MAPS.meadow, e.distance);
-    return Math.hypot(p.x - aim.x, p.y - aim.y) <= 100; // milestone 30: the Tar Barrel's radius (90 before)
+    return Math.hypot(p.x - aim.x, p.y - aim.y) <= SPECIAL_DEFS.tarBarrel.radius;
   });
   expect({ wave: r.wave, aim, enemies: r.enemies.length, inside: inside.map((e) => `${e.type} ${e.id}`) }).toEqual(AIM_EXPECT);
   await click(page, 'special');

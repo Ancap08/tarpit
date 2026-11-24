@@ -17,7 +17,7 @@ type ComparisonBand = keyof typeof comparisonBands;
 const descriptionStats = {
   musketeer: { A: { range: 'more', damage: 'more' }, B: { fireRate: 'much' } },
   cannon: { A: { splashRadius: 'much' }, B: { fireRate: 'twice' } },
-  tarpit: { A: { slow: 'more' }, B: { range: 'more' } },
+  tarpit: { A: { slow: 'more' }, B: {} },
   longbow: { A: { damage: 'almost twice' }, B: { fireRate: 'almost twice' } },
   mortar: { A: { damage: 'much' }, B: { splashRadius: 'twice' } },
   firepot: { A: { burnDps: 'more', burnDuration: 'shorter' }, B: { burnDuration: 'twice' } },
@@ -59,6 +59,10 @@ describe('tower upgrade choices', () => {
         const after = TOWER_PATHS[type][path];
         const description = pathDescription(type, path);
         const comparisons = Object.entries(descriptionStats[type][path]) as [keyof TowerLevelStats, ComparisonBand][];
+        if (type === 'tarpit' && path === 'B') {
+          expect(description).toBe('Feathers tarred enemies. They run back.');
+          continue;
+        }
         const claimedBand = description.match(/\balmost twice\b|\btwice\b|\bmuch\b/)?.[0] ?? 'more';
         expect(comparisons.map(([, band]) => band)).toContain(claimedBand);
         for (const [stat, band] of comparisons) {
