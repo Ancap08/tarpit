@@ -10054,3 +10054,75 @@ In the untaxed 390 × 664 control, the 6% wider text shrank Special
 (12.21 to 11.55 CSS px), Call next with +20 (12.79 to 12.57) and
 Last wave (12.04 to 11.37). Every visible label stayed inside its panel.
 The wave counter overlapped the cheat mark on the cheated win in wide mode.
+
+## Milestone 49, 2026-11-24 — baseline and incompatible targets
+
+Measured on `m49-tar-feathers` at `d517ac8`, before any implementation.
+R1 uses the adaptive A/B results from `measurePathScenario` on Normal.
+Each of the six rows passed its branch-purchase and equal-cost controls.
+A zero in this table means the run lost.
+
+| Map | comboBuild A | comboBuild B | burnBuild A | burnBuild B |
+|---|---:|---:|---:|---:|
+| Meadow | 14 | 12 | 15 | 10 |
+| Switchback | 13 | 11 | 24 | 24 |
+| Riverbend | 14 | 12 | 9 | 0 |
+
+A leads in five runs and ties in one. B has no winning map. The largest
+gap is nine lives.
+
+R2 uses Normal `comboBuild` and `comboWithoutSpecial('tarBarrel')`.
+Checked the recorded purchases by cell and the timed casts in each control.
+
+| Map | With barrel | Without barrel | Difference | Tar Pit A/B purchases without barrel | Barrel casts without barrel |
+|---|---:|---:|---:|---:|---:|
+| Meadow | 14 | 17 | −3 | 2/0 | 0 |
+| Switchback | 11 | 12 | −1 | 0/1 | 0 |
+| Riverbend | 14 | 20 | −6 | 6/0 | 0 |
+
+R4 includes the existing Free play S1 window of 9–15 lives on **the same
+with-barrel run** on each map. The Meadow and Riverbend controls never use
+the barrel or a path B Tar Pit. Their fixed purchases and path A
+reinvestment do not consult path B's stats, and the aiming policy skips
+the forbidden barrel before reading its radius. R7 preserves their 17
+and 20 lives. Even a barrel tuned to hit the S1 ceiling exactly would
+miss R2 by two and five lives respectively. Switchback's control does
+buy a path B Tar Pit, so its baseline is not a fixed bound.
+
+**Twenty-level baseline.** Stars/lives come from the campaign gate at
+nominal settings. All twenty levels and the cross-level checks passed.
+Good used 483,499 combat ticks (134.31 minutes). The feather bot did not
+exist at this revision.
+
+| Level | Good | Person | Beginner |
+|---:|---:|---:|---:|
+| 1 | 3/20 | 3/20 | 3/20 |
+| 2 | 3/20 | 3/20 | 1/3 |
+| 3 | 3/20 | 3/20 | 2/16 |
+| 4 | 2/13 | 2/16 | 0/0 |
+| 5 | 3/20 | 3/20 | 1/2 |
+| 6 | 2/15 | 2/14 | 0/0 |
+| 7 | 2/16 | 2/12 | 0/0 |
+| 8 | 2/12 | 2/13 | 0/0 |
+| 9 | 3/20 | 3/20 | 0/0 |
+| 10 | 2/16 | 2/13 | 0/0 |
+| 11 | 2/20 | 2/14 | 0/0 |
+| 12 | 2/19 | 2/15 | 0/0 |
+| 13 | 3/20 | 2/14 | 0/0 |
+| 14 | 3/20 | 2/14 | 0/0 |
+| 15 | 2/14 | 2/13 | 0/0 |
+| 16 | 2/14 | 2/13 | 0/0 |
+| 17 | 2/20 | 2/14 | 0/0 |
+| 18 | 2/14 | 2/13 | 0/0 |
+| 19 | 2/14 | 2/14 | 0/0 |
+| 20 | 2/13 | 2/13 | 0/0 |
+
+**Control verification.** Byte comparison against the exported simulation at
+`d517ac8` matched the serialized state, log and wave results for Meadow
+(34,381 bytes) and Riverbend (32,306 bytes). Three existing frame states
+also matched. A focused run of the maps verifier, midwave frame, enemies
+frame, new-towers headless and boss frame suites passed 98 tests across
+five files. These are baseline measurements.
+
+Work stopped at measurement. Resolving the conflict requires a decision
+about the acceptance criteria before implementing or tuning feathers.
