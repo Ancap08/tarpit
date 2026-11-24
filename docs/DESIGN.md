@@ -2010,8 +2010,10 @@ twenty levels. The twenty-level L8 compares the first and last six stops.
 
 ### Campaign measurements
 
-This table records the accepted milestone 49 campaign. The milestone 50
-measurements and failed gate labels are in `DEVLOG.md`.
+This table records the accepted milestone 49 campaign. Milestone 50 uses
+HP scale 0.987 on level 9, The King's Assessor. Ordinary Good and Good
+forced to use the Feathers tower path each finish with 20 lives and three
+stars. The other milestone 50 measurements and gate results are in `DEVLOG.md`.
 
 Stars/lives give each bot’s highest award and surviving lives. Time counts Good’s combat ticks at 60 Hz. Enemies includes summons. Peak is the greatest number alive after any tick.
 

@@ -128,7 +128,7 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
-    id: 9, map: 'riverbend', startGold: 255, hpScale: 1, hpGrowthStart: 6, endingBoss: 'boss',
+    id: 9, map: 'riverbend', startGold: 255, hpScale: 0.987, hpGrowthStart: 6, endingBoss: 'boss',
     allowedTowers: allTowers, maxTowerLevel: 3, allowedSpecials: allSpecials, rewardWaves: [5],
     waves: [
       w(g('goblin', 30, 1.66), g('harpy', 12, 4.09, 0.4)),

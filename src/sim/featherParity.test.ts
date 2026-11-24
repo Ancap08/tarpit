@@ -31,7 +31,9 @@ const original = [
 ] as const;
 
 type LevelChange = { id: number; field: 'hpScale' | 'startGold' | 'hpGrowthStart'; from: number; to: number };
-const changes: readonly LevelChange[] = [];
+const changes: readonly LevelChange[] = [
+  { id: 9, field: 'hpScale', from: 1, to: 0.987 },
+];
 
 function digest(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
