@@ -10400,3 +10400,173 @@ Verdict: merge. One honest gap in R6, recorded below; nothing in the game code n
   reproduced it with two boons held and no feathers.
 - Under `?test=1` the clock is frozen at 0, so a feather puff drawn at that moment stays on screen for ever. Real
   play uses the pausable clock. It is not a defect, but frozen captures show a puff that a player would not.
+
+
+## Milestone 50 — crowd impact before level tuning
+
+The barrel retains its 100 px radius, 50% slow and 660-tick puddle. On landing it calls the same once-per-enemy feather rule as the tower. The original 88-tick run, walking speed, 16-tick flinch, tower stats and boss immunities apply.
+
+### Free play before tuning
+
+Each entry gives the ending lives in Normal. The unused-turn control consumes the entire barrel opportunity, including its recharge. Both single-zone controls keep the Powder Keg. Featherings count events from impact, so an already marked enemy contributes zero.
+
+| Map | Standard | Barrel unused | All barrel | All Fire Arrows | Newly feathered / standard barrel casts |
+|---|---:|---:|---:|---:|---:|
+| Meadow | 21 | 10 | 20 | 17 | 123 / 21 |
+| Switchback | 15 | 9 | 10 | 14 | 90 / 23 |
+| Riverbend | 22 | 10 | 16 | 20 | 125 / 20 |
+
+C2 margins are 11, 6 and 12. Meadow wins C3 by three. The 64 casts feathered 338 enemies, averaging 5.28 per cast, range 0–11. Replaying the milestone 49 tar-only rule with the same controls gave standard/unused/all-barrel/all-arrows results of 14/10/11/17, 11/9/10/14 and 14/10/11/20. The reproduced Switchback margin is two. C2 retains the specified three.
+
+The unchanged Free play targets below report their measured values. The Free play table through the matrix hashed to `24afa82a0a61178582eef72a3122f6d514b4f89e98d3d36bf3f73530583926e2`. The accepted milestone 49 digest remains locked.
+
+```text
+ok    N1  meadow     Normal: noTowers loses by wave 3: L 1
+ok    N2  meadow     Normal: lazyBuild loses on wave 7 to 14: L 8
+ok    N3  meadow     Normal: longbowSpam loses on wave 8 to 16: L 8
+ok    N4  meadow     the reinvesting combo wins Normal: W 21
+MISS  S1  meadow     reinvesting Normal combo wins with 9–15 lives: W 21
+MISS  S2  meadow     normal comboBuild loses lives on three or more act-2 waves, at most 4 each: W 21, losses 0/0/0/0/0/0/0/0/0/0
+ok    S3  meadow     normal comboBuild wins within 4 lives of baseline at ±5% act-2 HP: W 21 / W 21 / W 21
+MISS  S2  meadow     hard hardBuild loses lives on three or more act-2 waves, at most 5 each: W 16, losses 0/0/0/0/0/0/0/0/0/0
+ok    S3  meadow     hard hardBuild wins within 5 lives of baseline at ±5% act-2 HP: W 16 / W 16 / W 13
+ok    V2  meadow     stopping after the fixed plan costs the game in act 2 or at least five lives: reinvest W 21, fixed W 10
+ok    S4  meadow     wideBuild wins within five lives without buying a second upgrade: wide W 19, combo W 21
+ok    V4  meadow     lazy wins Easy with eight lives, loses Normal on 7–14 and Hard by 8, hardBuild wins Hard with three: hardBuild W 16, lazy E/N/H W 33/L 8/L 2
+ok    S5  meadow     specials save at least three lives or turn a wave-17-or-later loss into a win: all W 21, none W 8
+ok    S6  meadow     removing Fire Pots gains at most one life: combo W 21, no Fire Pots W 17
+ok    N7  meadow     Normal: noAntiAir leaks at least half of wave 4's Harpies and loses by wave 12: 7 of 10 Harpies out, 11 lives after wave 4, L 5
+ok    N8  meadow     Normal: oneMusket leaks at most 6 of wave 1's enemies: 0 of 20 leak
+ok    E1  meadow     Easy: lazyBuild wins with at least 8 lives: W 33
+ok    E2  meadow     Easy: noTowers loses: L 2
+ok    E3  meadow     Easy: oneMusket leaks at most 3 on wave 1: 0 of 20 leak
+ok    H1  meadow     Hard: hardBuild wins: W 16
+ok    H2  meadow     Hard: lazyBuild loses on wave 2 to 8: 8 lives after wave 1, L 2
+ok    H3  meadow     Hard: comboBuild has at least 5 fewer lives than on Normal, or loses on wave 12 or later: W 10 against W 21 on Normal
+ok    V5  meadow     default combo kills Grumblemaw on Normal and hardBuild kills him on Hard: Normal kill, Hard kill
+ok    B3  meadow     Easy lazyBuild wins with at least eight lives; record the boss outcome: W 33, boss kill
+ok    S7  meadow     all 27 reward combinations win and each offer spans at most six lives: 27/27 wins, largest spreads by offer 3/3/4
+MISS  S8  meadow     idle loses on endless waves 2–6, reinvesting lasts at least two further, through wave 14: idle L 28, reinvesting L 30
+ok    S8  meadow     all six measured endless runs end in loss below the headless cap: maximum wave 40, cap 200
+ok    S9  meadow     Meadow, Normal: soundBuild lasts strictly longer than soundBuildNoTar: L 7 at tick 23009 against L 7 at tick 21700
+ok    N9  meadow     Meadow, Normal: the policy fires at least 30 specials in comboBuild and at least 80% catch 3 or more enemies: 59 specials, 59 caught 3 or more (hits 3 5 3 6 3 4 3 7 5 3 6 6 3 6 3 3 3 10 8 5 4 3 9 3 7 3 3 3 11 3 15 4 9 3 8 8 3 4 8 5 7 3 9 12 8 3 11 12 3 11 16 8 3 8 10 4 3 6 3)
+ok    N1  switchback Normal: noTowers loses by wave 3: L 1
+ok    N2  switchback Normal: lazyBuild loses on wave 7 to 14: L 8
+ok    N3  switchback Normal: longbowSpam loses on wave 8 to 16: L 8
+ok    N4  switchback the reinvesting combo wins Normal: W 15
+ok    S1  switchback reinvesting Normal combo wins with 9–15 lives: W 15
+MISS  S2  switchback normal comboBuild loses lives on three or more act-2 waves, at most 4 each: W 15, losses 0/0/0/0/0/0/0/2/6/0
+MISS  S3  switchback normal comboBuild wins within 4 lives of baseline at ±5% act-2 HP: W 20 / W 15 / W 16
+MISS  S2  switchback hard hardBuild loses lives on three or more act-2 waves, at most 5 each: W 19, losses 0/0/0/0/0/0/0/0/0/0
+ok    S3  switchback hard hardBuild wins within 5 lives of baseline at ±5% act-2 HP: W 19 / W 19 / W 19
+ok    V2  switchback stopping after the fixed plan costs the game in act 2 or at least five lives: reinvest W 15, fixed L 20
+MISS  S4  switchback wideBuild wins within five lives without buying a second upgrade: wide W 23, combo W 15
+ok    V4  switchback lazy wins Easy with eight lives, loses Normal on 7–14 and Hard by 8, hardBuild wins Hard with three: hardBuild W 19, lazy E/N/H W 37/L 8/L 2
+ok    S5  switchback specials save at least three lives or turn a wave-17-or-later loss into a win: all W 15, none L 18
+ok    S6  switchback removing Fire Pots gains at most one life: combo W 15, no Fire Pots W 8
+ok    N7  switchback Normal: noAntiAir leaks at least half of wave 4's Harpies and loses by wave 12: 8 of 10 Harpies out, 11 lives after wave 4, L 5
+ok    N8  switchback Normal: oneMusket leaks at most 6 of wave 1's enemies: 0 of 20 leak
+ok    E1  switchback Easy: lazyBuild wins with at least 8 lives: W 37
+ok    E2  switchback Easy: noTowers loses: L 2
+ok    E3  switchback Easy: oneMusket leaks at most 3 on wave 1: 0 of 20 leak
+ok    H1  switchback Hard: hardBuild wins: W 19
+ok    H2  switchback Hard: lazyBuild loses on wave 2 to 8: 6 lives after wave 1, L 2
+ok    H3  switchback Hard: comboBuild has at least 5 fewer lives than on Normal, or loses on wave 12 or later: W 2 against W 15 on Normal
+ok    V5  switchback default combo kills Grumblemaw on Normal and hardBuild kills him on Hard: Normal kill, Hard kill
+ok    B3  switchback Easy lazyBuild wins with at least eight lives; record the boss outcome: W 37, boss kill
+MISS  S7  switchback all 27 reward combinations win and each offer spans at most six lives: 27/27 wins, largest spreads by offer 11/5/4
+ok    S8  switchback idle loses on endless waves 2–6, reinvesting lasts at least two further, through wave 14: idle L 25, reinvesting L 27
+ok    S8  switchback all six measured endless runs end in loss below the headless cap: maximum wave 39, cap 200
+ok    N1  riverbend  Normal: noTowers loses by wave 3: L 1
+ok    N2  riverbend  Normal: lazyBuild loses on wave 7 to 14: L 8
+ok    N3  riverbend  Normal: longbowSpam loses on wave 8 to 16: L 8
+ok    N4  riverbend  the reinvesting combo wins Normal: W 22
+MISS  S1  riverbend  reinvesting Normal combo wins with 9–15 lives: W 22
+MISS  S2  riverbend  normal comboBuild loses lives on three or more act-2 waves, at most 4 each: W 22, losses 0/0/0/0/0/0/0/0/0/0
+ok    S3  riverbend  normal comboBuild wins within 4 lives of baseline at ±5% act-2 HP: W 22 / W 22 / W 19
+MISS  S2  riverbend  hard hardBuild loses lives on three or more act-2 waves, at most 5 each: W 14, losses 0/0/0/0/0/0/0/0/0/0
+ok    S3  riverbend  hard hardBuild wins within 5 lives of baseline at ±5% act-2 HP: W 14 / W 14 / W 11
+ok    V2  riverbend  stopping after the fixed plan costs the game in act 2 or at least five lives: reinvest W 22, fixed W 8
+ok    S4  riverbend  wideBuild wins within five lives without buying a second upgrade: wide W 18, combo W 22
+ok    V4  riverbend  lazy wins Easy with eight lives, loses Normal on 7–14 and Hard by 8, hardBuild wins Hard with three: hardBuild W 14, lazy E/N/H W 31/L 8/L 2
+ok    S5  riverbend  specials save at least three lives or turn a wave-17-or-later loss into a win: all W 22, none W 3
+ok    S6  riverbend  removing Fire Pots gains at most one life: combo W 22, no Fire Pots W 18
+ok    N7  riverbend  Normal: noAntiAir leaks at least half of wave 4's Harpies and loses by wave 12: 8 of 10 Harpies out, 8 lives after wave 4, L 5
+ok    N8  riverbend  Normal: oneMusket leaks at most 6 of wave 1's enemies: 0 of 20 leak
+ok    E1  riverbend  Easy: lazyBuild wins with at least 8 lives: W 31
+ok    E2  riverbend  Easy: noTowers loses: L 2
+ok    E3  riverbend  Easy: oneMusket leaks at most 3 on wave 1: 0 of 20 leak
+ok    H1  riverbend  Hard: hardBuild wins: W 14
+ok    H2  riverbend  Hard: lazyBuild loses on wave 2 to 8: 6 lives after wave 1, L 2
+MISS  H3  riverbend  Hard: comboBuild has at least 5 fewer lives than on Normal, or loses on wave 12 or later: L 8 against W 22 on Normal
+ok    V5  riverbend  default combo kills Grumblemaw on Normal and hardBuild kills him on Hard: Normal kill, Hard kill
+ok    B3  riverbend  Easy lazyBuild wins with at least eight lives; record the boss outcome: W 31, boss kill
+MISS  S7  riverbend  all 27 reward combinations win and each offer spans at most six lives: 27/27 wins, largest spreads by offer 7/3/4
+MISS  S8  riverbend  idle loses on endless waves 2–6, reinvesting lasts at least two further, through wave 14: idle L 27, reinvesting L 28
+ok    S8  riverbend  all six measured endless runs end in loss below the headless cap: maximum wave 37, cap 200
+ok    S6             Fire Pots save lives on at least two maps: lives gained 4/7/4
+ok    H4             in waves 1–10 no ordinary Hard enemy hp is 1 or 2 above a multiple of 12, 4, 25 or 45: Hard x1.2
+ok    N11            a Powder Keg kills a Harpy or Wolf in one hit and strips at least 5% of a Troll’s hp: 60 damage; Harpy 36, Wolf 20, Troll 6.3%
+ok    R1             every campaign wave spawns at most 6 walkers and 4 flyers in any 3 s and ends spawning within 90 s: 2/0 at 47.5s 4/0 at 27.9s 5/0 at 21s 3/3 at 32s 4/3 at 39s 6/0 at 44s 3/3 at 53.8s 6/3 at 73.5s 5/0 at 29s 4/2 at 65s 6/3 at 27.2s 6/3 at 25.5s 6/4 at 28.5s 5/2 at 44s 6/4 at 44s 6/2 at 64s 6/2 at 43.2s 6/2 at 58.4s 4/2 at 59.2s 6/2 at 19.5s
+ok    R2             act 2 schedules 1.2 to 2 times as many enemies as act 1: 634/524 = 1.21
+ok    R3  meadow     Meadow, Normal, comboBuild: act 2 takes 560 to 720 s, each wave at most 100 s, at most 40 alive and the campaign at most 22 minutes: act 2 632.6 s, longest wave 86.6 s, peak 36, campaign 1260.6 s
+ok    R4  meadow     Meadow, Normal, comboBuild: act 1 still meets the milestone 28 timing rules: clear 3105 2081 1674 2462 5241 2939 6129 5376 2563 6112; 628.0 s; peak 30
+ok    V7             campaign length and wave shape satisfy R1 through R4: R1 pass, R2 pass, R3 pass, R4 pass
+ok  P1 musketeer: A minus B: 0/-6/0/0/0/7
+ok  P2 musketeer: largest A/B gap: 7
+ok  P4 musketeer: A minus copy: 0/0/0/0/0/0, B minus copy: -1/0/0/2/0/0
+ok  P1 cannon: A minus B: 0/0/0/0/0/-1
+ok  P2 cannon: largest A/B gap: 1
+ok  P4 cannon: A minus copy: 5/0/0/0/-1/0, B minus copy: 8/0/0/0/-4/0
+ok  P1 tarpit: A minus B: 5/5/8/0/2/16
+MISS  P2 tarpit: largest A/B gap: 16
+ok  P4 tarpit: A minus copy: 0/3/1/0/-10/8, B minus copy: -3/-3/-11/-7/-15/0
+ok  P1 longbow: A minus B: 0/0/1/0/0/0
+ok  P2 longbow: largest A/B gap: 1
+MISS  P4 longbow: A minus copy: 0/0/-2/0/0/-1, B minus copy: 0/0/-2/0/0/0
+ok  P1 mortar: A minus B: 3/0/-6/0/4/10
+MISS  P2 mortar: largest A/B gap: 10
+ok  P4 mortar: A minus copy: 0/0/-2/0/3/11, B minus copy: -10/-10/3/0/0/-1
+MISS  P1 firepot: A minus B: 0/0/0/0/0/0
+ok  P2 firepot: largest A/B gap: 0
+ok  P4 firepot: A minus copy: 0/0/-5/0/-2/0, B minus copy: 0/0/-5/2/-1/0
+ok  P3 musketeer: lone Troll damage 45/0, ten Goblins kills 5/6
+ok  P3 cannon: lone Troll damage 80/120, ten Goblins kills 10/7
+ok  P3 tarpit: lone Troll slow 0.78/0.64, ten Goblins slowed 0/1
+ok  P3 longbow: lone Troll damage 16/9, ten Goblins kills 2/3
+ok  P3 mortar: lone Troll damage 140/80, ten Goblins kills 6/10
+ok  P3 firepot: lone Troll damage 54.21666666666215/31.866666666665537, ten Goblins kills 5/10
+MISS  N10c  longBarrels 2 strict best results, keenArrows 0 strict best results, warChest 0 strict best results, stickyTar 1 strict best results, hotCoals 1 strict best results, quickHands 0 strict best results, stoneWalls 2 strict best results, veteranCrews 0 strict best results, biggerBlasts 0 strict best results
+MISS  N10d  longBarrels 2 build/map pairs, keenArrows 3 build/map pairs, warChest 2 build/map pairs, stickyTar 3 build/map pairs, hotCoals 3 build/map pairs, quickHands 3 build/map pairs, stoneWalls 3 build/map pairs, veteranCrews 1 build/map pairs, biggerBlasts 1 build/map pairs
+```
+
+The Tar Pit's stricter path check also fails. Deep Tar minus Feathers is 5/5/8/0/2/16 lives across the six comparisons. Fixed Barricade placements (K2) gain −3, +6 and −2 lives. K2 requires at least two maps with a gain and no loss greater than two.
+
+### Twenty-level gate before tuning
+
+Scores are stars/lives. The forced bots use their ordinary purchases with Feathers on every Tar Pit path purchase. When the barrel is available, they prefer eligible enemies within its radius using their own cast timing and aim resolution.
+
+| Level | Good | Person | Beginner | Good forced | Person forced | Local gate misses |
+|---:|---:|---:|---:|---:|---:|---|
+| 1 | 3/20 | 3/20 | 3/20 | 3/20 | 3/20 | pass |
+| 2 | 3/20 | 3/20 | 1/3 | 3/20 | 3/20 | pass |
+| 3 | 3/20 | 3/20 | 2/16 | 3/20 | 3/20 | pass |
+| 4 | 2/13 | 2/16 | 0/0 | 2/13 | 2/16 | pass |
+| 5 | 3/20 | 3/20 | 1/2 | 3/20 | 3/20 | pass |
+| 6 | 2/17 | 2/16 | 0/0 | 2/17 | 2/16 | pass |
+| 7 | 2/16 | 2/12 | 0/0 | 3/20 | 3/20 | R6 |
+| 8 | 2/17 | 2/16 | 0/0 | 2/14 | 2/13 | L3 |
+| 9 | 3/20 | 3/20 | 0/0 | 3/20 | 2/12 | L3 |
+| 10 | 2/17 | 3/18 | 0/0 | 2/16 | 2/16 | L8 |
+| 11 | 2/20 | 2/20 | 0/0 | 2/20 | 2/16 | T1 |
+| 12 | 2/19 | 2/20 | 0/0 | 2/17 | 2/17 | F2, T1 |
+| 13 | 3/20 | 2/17 | 0/0 | 3/20 | 3/20 | T1, L6 |
+| 14 | 3/20 | 2/14 | 0/0 | 3/20 | 3/20 | pass |
+| 15 | 2/15 | 2/14 | 0/0 | 2/15 | 2/13 | pass |
+| 16 | 2/15 | 2/15 | 0/0 | 2/13 | 1/11 | pass |
+| 17 | 2/20 | 2/14 | 0/0 | 2/20 | 0/0 | F2 |
+| 18 | 2/15 | 2/14 | 0/0 | 2/12 | 1/7 | pass |
+| 19 | 2/17 | 2/15 | 0/0 | 2/17 | 1/10 | F2 |
+| 20 | 2/14 | 2/13 | 0/0 | 2/15 | 2/14 | pass |
+
+Eleven levels pass locally. C6 also fails on level 7, where both forced bots win a third star that ordinary Good misses. Across levels, L4 fails and L8's three-life drop is only 2.00 in the first act and 2.33 over all twenty. S1 passes with Person's mean falling from 18.0 to 15.6, handover +2 and largest drop 3. Good finishes the three C8 levels at 20, 17 and 14 against the milestone 49 reference of 20, 16 and 13.

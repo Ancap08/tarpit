@@ -54,9 +54,9 @@ describe('R3: tar and feathers use the trail and end after one run', () => {
     expect(state.shots.at(-1)?.targetId).toBe(back.id);
     expect(isTarred(back)).toBe(true);
 
-    // An impact can tar both again. Only another path B shot feathers the second.
+    // The barrel catches the second walker. Neither later shots nor tar can restart a run.
     barrel(state, 210);
-    expect(back.feathered).toBeUndefined();
+    expect(back.feathered).toBe(true);
     for (let i = 0; i < 3; i++) {
       tower.cooldownTicks = 0;
       fireTowers(state);
@@ -65,13 +65,35 @@ describe('R3: tar and feathers use the trail and end after one run', () => {
     expect(back.runTicksLeft).toBe(FEATHERS.runTicks);
   });
 
-  it('a barrel impact tars the whole crowd without starting a retreat', () => {
-    const crowd = [...groundTypes, 'harpy', 'boss', 'grumblemaw'] as const;
-    const state = arena(crowd.map((type, i) => enemy(i, type, 200 + i)));
-    barrel(state, 205);
-    expect(state.enemies.every(isTarred)).toBe(true);
-    expect(state.enemies.some(e => e.feathered || e.runTicksLeft)).toBe(false);
-    expect(state.events.some(e => e.kind === 'feathered')).toBe(false);
+  it('C1: one barrel feathers every eligible enemy through the radius edge, once per life', () => {
+    const types = [...groundTypes, 'harpy', 'goblin', 'wolf', 'troll'] as const;
+    const crowd = types.map((type, i) => enemy(i, type, 300 + i * 10));
+    crowd[0].distance = 200; // Exactly 100 px from the landing point.
+    const marked = Object.assign(enemy(8, 'wolf', 290), { feathered: true as const, runTicksLeft: 11 });
+    const bosses = [enemy(9, 'boss', 320), enemy(10, 'grumblemaw', 330)];
+    const outside = enemy(11, 'harpy', 400.01);
+    const state = arena([...crowd, marked, ...bosses, outside]);
+    barrel(state, 300);
+    const events = () => state.events.filter(e => e.kind === 'feathered').map(e => e.enemyId);
+    expect(events()).toEqual(crowd.map(e => e.id));
+    for (const hit of crowd) {
+      expect(isTarred(hit)).toBe(true);
+      expect(hit.runTicksLeft).toBe(FEATHERS.runTicks);
+    }
+    for (const boss of bosses) {
+      expect(boss.specialSlow).toBe(0.3);
+      expect(boss.feathered).toBeUndefined();
+    }
+    expect(isTarred(outside)).toBe(false);
+    expect(outside.feathered).toBeUndefined();
+    expect(marked.runTicksLeft).toBe(11);
+
+    tick(state);
+    const remaining = crowd.map(e => e.runTicksLeft);
+    state.specialCharges = 1;
+    barrel(state, 300);
+    expect(events()).toEqual([]);
+    expect(crowd.map(e => e.runTicksLeft)).toEqual(remaining);
   });
 
   it('zone entrants are tarred, and a tower can feather one on its first shot', () => {
@@ -92,7 +114,7 @@ describe('R3: tar and feathers use the trail and end after one run', () => {
       const walker = enemy(0, type, ENEMY_STATS[type].speed / TICKS_PER_SECOND / 2);
       const state = arena([walker], true, 0);
       barrel(state, 0);
-      expect(walker.feathered).toBeUndefined();
+      expect(walker.feathered).toBe(true);
       fireTowers(state);
       expect(walker.feathered).toBe(true);
       tick(state);

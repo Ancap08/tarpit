@@ -141,7 +141,7 @@ describe('zones (step 2b of the tick)', () => {
 
   it('leave: the slow lasts the linger after the last tick inside, then full speed', () => {
     // At 390, inside, so the landing slows it: 1 px a tick to 400 (inside, the edge) on tick 10.
-    const s = inWave(4, [enemy(0, 'wolf', 390, 1000)], LINE);
+    const s = inWave(4, [{ ...enemy(0, 'wolf', 390, 1000), feathered: true }], LINE);
     useSpecial(s, 'tarBarrel', { x: 300, y: 240 });
     ticks(s, 10);
     expect([s.enemies[0].distance, s.enemies[0].specialSlowTicksLeft]).toEqual([400, 60]);
@@ -166,7 +166,7 @@ describe('zones (step 2b of the tick)', () => {
   });
 
   it('two overlapping zones: tar and fire on one enemy burn at 26/s doubled (52/s); two tar zones do not stack', () => {
-    const s = inWave(7, [enemy(0, 'troll', 300, 1000)], LINE);
+    const s = inWave(7, [{ ...enemy(0, 'troll', 300, 1000), feathered: true }], LINE);
     useSpecial(s, 'tarBarrel', { x: 300, y: 240 });
     tick(s);
     s.specialCharges = 1; // Test setup: refill while the first zone is still live.

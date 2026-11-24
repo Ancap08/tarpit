@@ -352,12 +352,12 @@ beside it that returns to the title; the win screen also has [Keep going].
 
 ### Feathers
 
-Only a path B Tar Pit shot can feather an enemy. A shot feathers a surviving
-ground target once in its life if either its tower slow or its Tar Barrel
-slow is active. This includes enemies tarred on impact or after entering
-the barrel's zone. A shot that cannot feather its target applies its usual
+A Tar Barrel tars the enemies inside its radius on impact and immediately
+feathers each eligible enemy, including Harpies. Enemies that enter the
+puddle later receive the slow. A path B Tar Pit shot feathers a surviving
+ground target if either its tower slow or its Tar Barrel slow is active. A shot that cannot feather its target applies its usual
 slow. Both bosses keep their slow cap and are immune to feathers and flinching.
-Each successful shot emits `feathered {enemyId, x, y}` at the impact position.
+Each enemy emits one `feathered {enemyId, x, y}` event at the start of its only retreat.
 
 | Run ticks | Flinch ticks |
 |---:|---:|
@@ -655,7 +655,7 @@ Reloading starts a new run.
   the next tick as usual.
 - **Event.** `special {type, x, y, radius, hits, zoneId?}` (`zoneId` for the
   Tar Barrel and Fire Arrows), then `slowed` for each slow applied on
-  landing, then the kills.
+  landing and a `feathered` event for each newly feathered enemy, then the kills.
 - Barricade placement emits the usual `special` event with its snapped
   coordinates, trail angle, zero radius and zero hits. Each attack emits
   `blockerHit`. Destruction emits one `blockerBreak`.

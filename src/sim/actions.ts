@@ -16,6 +16,7 @@ import {
 } from './blockers';
 import { BOONS, boonScale, type BoonId } from './boons';
 import { applyBurn, applySpecialSlow, enemyPosition, removeDead } from './combat';
+import { featherEnemy } from './feathers';
 import { cellKey, sameCell, terrainBlock, type Cell } from './grid';
 import { specialAllowed, SPECIAL_DEFS, SPECIAL_RECHARGE_TICKS, ZONE_LINGER_TICKS, specialRadius, tarLingerTicks, type SpecialType } from './specials';
 import { TOWER_DEFS, TOWER_PATHS, allowedTowers, atTowerCap, towerBuildCost, maxTowerLevel, towerLevel, towerSellValue, towerUndoValue } from './towers';
@@ -280,6 +281,7 @@ export function useSpecial(state: GameState, type: SpecialType, point: Point): S
       const applied = applySpecialSlow(enemy, def.slow, ticks);
       if (applied !== null) state.events.push({ kind: 'slowed', enemyId: enemy.id, slow: applied, ticks });
     }
+    if (type === 'tarBarrel') featherEnemy(state, enemy);
     if (def.burnDps > 0) applyBurn(enemy, boonScale(def.burnDps, state.boons, 'hotCoals'), ZONE_LINGER_TICKS, 'special');
   }
   if (zoneId !== undefined && zoneType !== undefined) {
