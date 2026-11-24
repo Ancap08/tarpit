@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildTower, upgradeTower, useSpecial } from './actions';
 import { botBeginner, botGood, botGoodFeat, botPerson, runBot } from './bots';
 import { callNextWave, createGame, startWave, tick } from './game';
-import { BARREL_RECHARGE_TICKS, SPECIAL_RECHARGE_TICKS } from './specials';
+import { BARREL_RECHARGE_TICKS } from './specials';
 import { trailCellOrder } from './headless';
 import type { LevelDef } from './levelTypes';
 import type { EnemyType, MapDef } from './types';
@@ -251,7 +251,7 @@ describe('person policy', () => {
     expect(useSpecial(state, 'tarBarrel', { x: 300, y: 240 }).ok).toBe(true);
     state.spawnedPerGroup = [2];
     expect(callNextWave(state).ok).toBe(true);
-    const wait = BARREL_RECHARGE_TICKS - SPECIAL_RECHARGE_TICKS;
+    const wait = BARREL_RECHARGE_TICKS;
     for (let elapsed = 0; elapsed < wait + 90; elapsed++) {
       expect(botPerson.special(state)).toBeUndefined();
       tick(state);

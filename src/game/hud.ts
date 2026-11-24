@@ -224,12 +224,12 @@ export function specialReady(state: GameState): boolean {
 }
 
 /**
- * The Special button's recharge (milestone 30): while a wave runs and the
- * charge refills, the share refilled (0 just fired, near 1 almost ready)
- * and the whole seconds left; null otherwise (ready, or not in a wave).
+ * The Special button shows the share refilled and the whole seconds left.
+ * A barrel wait remains visible and stationary during setup.
  */
 export function specialRecharge(state: GameState): { progress: number; seconds: number } | null {
-  if (state.phase !== 'wave' || state.specialCharges > 0 || state.specialRechargeTicks <= 0) return null;
+  const pausedWait = state.phase === 'setup' && state.barrelRecharge;
+  if ((state.phase !== 'wave' && !pausedWait) || state.specialCharges > 0 || state.specialRechargeTicks <= 0) return null;
   return {
     progress: 1 - state.specialRechargeTicks / (state.barrelRecharge?.totalTicks ?? ordinaryRechargeTicks(state.boons)),
     seconds: Math.ceil(state.specialRechargeTicks / TICKS_PER_SECOND),

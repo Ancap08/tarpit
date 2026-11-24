@@ -250,19 +250,17 @@ describe('verifier: conservation over a whole comboBuild game (Meadow, Normal)',
 });
 
 describe('verifier: the wave 20 to 21 endless boundary', () => {
-  it('endless keeps a paused wait and credits the ordinary refill on wave 21', () => {
+  it('endless keeps a paused barrel wait through the start of wave 21', () => {
     const run = play(endlessIdle(), 20);
     expect(run.invariants).toEqual([]);
     const s = run.s;
     expect(s.phase).toBe('won');
     const remaining = s.specialRechargeTicks;
-    const credit = s.boons.includes('quickHands') ? 684 : 1200;
     continueEndless(s);
     expect([s.zones.length, s.specialCharges, s.specialRechargeTicks]).toEqual([0, 0, remaining]);
     expect(startWave(s).ok).toBe(true);
-    const afterCredit = Math.max(0, remaining - credit);
-    expect([s.wave, s.specialCharges, s.specialRechargeTicks]).toEqual([21, Number(afterCredit === 0), afterCredit]);
-    ticks(s, afterCredit);
+    expect([s.wave, s.specialCharges, s.specialRechargeTicks]).toEqual([21, Number(remaining === 0), remaining]);
+    ticks(s, remaining);
     expect(useSpecial(s, 'fireArrows', { x: 100, y: 100 }).ok).toBe(true);
     expect(s.zones.length).toBe(1);
   });

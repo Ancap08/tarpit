@@ -1,7 +1,7 @@
 // Special attacks (milestone 25b, reworked in milestone 30,
 // docs/SCOPE-v5.md "Specials rework").
-// One shared charge, recharging in wave time. Every new wave credits an
-// ordinary refill toward the wait. It does not recharge in setup. The player aims a
+// One shared charge, recharging in wave time. A barrel wait carries across
+// waves and pauses in setup. Other specials refill at a wave start. The player aims a
 // special at a map point; it acts at once, between ticks, like a build. The
 // Tar Barrel and Fire Arrows also leave a ground zone at the point for
 // `zoneTicks` (game.ts zonesStep). Specials hit flying enemies and ignore
@@ -38,7 +38,7 @@ export const ZONE_LINGER_TICKS = 60;
 
 /** Wave ticks for an ordinary refill and for the longer wait after a barrel. */
 export const SPECIAL_RECHARGE_TICKS = 1200;
-export const BARREL_RECHARGE_TICKS = 3300;
+export const BARREL_RECHARGE_TICKS = 3034;
 
 export function ordinaryRechargeTicks(held: readonly BoonId[]): number {
   return Math.round(boonScale(SPECIAL_RECHARGE_TICKS, held, 'quickHands'));
@@ -50,19 +50,19 @@ export function spendSpecialCharge(state: GameState, type: SpecialType): void {
   state.lastSpecialTick = state.tick;
   if (type === 'tarBarrel') {
     state.specialRechargeTicks = Math.round(boonScale(BARREL_RECHARGE_TICKS, state.boons, 'quickHands'));
-    state.barrelRecharge = { totalTicks: state.specialRechargeTicks, waveCredit: ordinaryRechargeTicks(state.boons) };
+    state.barrelRecharge = { totalTicks: state.specialRechargeTicks };
   } else {
     state.specialRechargeTicks = ordinaryRechargeTicks(state.boons);
     delete state.barrelRecharge;
   }
 }
 
-/** A wave start, early or ordinary, pays one ordinary refill toward the shared charge. */
+/** An outstanding barrel wait carries into the new wave on every kind of start. */
 export function refillAtWaveStart(state: GameState): void {
-  state.specialRechargeTicks = state.barrelRecharge ? Math.max(0, state.specialRechargeTicks - state.barrelRecharge.waveCredit) : 0;
-  const allowed = state.level?.allowedSpecials.length !== 0 || state.cheated;
-  state.specialCharges = allowed && state.specialRechargeTicks === 0 ? 1 : 0;
-  if (state.specialRechargeTicks === 0) delete state.barrelRecharge;
+  if (state.barrelRecharge && state.specialRechargeTicks > 0) return;
+  state.specialRechargeTicks = 0;
+  state.specialCharges = state.level?.allowedSpecials.length === 0 && !state.cheated ? 0 : 1;
+  delete state.barrelRecharge;
 }
 
 /**

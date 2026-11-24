@@ -306,7 +306,7 @@ export interface GameState {
   tick: number;
   /**
    * The shared special charge (milestone 25b; a timer from milestone 30): 0
-   * or 1. Every new wave credits one ordinary refill; useSpecial
+   * or 1. New waves refill ordinary charges and carry any outstanding barrel wait; useSpecial
    * spends it and starts the recharge; a wave clear sets 0.
    */
   specialCharges: number;
@@ -316,8 +316,8 @@ export interface GameState {
    * of a wave tick; reaching 0 sets specialCharges to 1.
    */
   specialRechargeTicks: number;
-  /** Barrel wait and wave-start credit at cast time, plus the tick of a natural refill for the Person bot. */
-  barrelRecharge?: { totalTicks: number; waveCredit: number; readyTick?: number };
+  /** Barrel wait at cast time, plus the tick of a natural refill for the Person bot. */
+  barrelRecharge?: { totalTicks: number; readyTick?: number };
   /** Milestone 30: the live ground zones of the Tar Barrel and Fire Arrows, oldest first. */
   zones: Zone[];
   blockers: TrailBlocker[];

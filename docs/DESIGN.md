@@ -361,7 +361,7 @@ Each enemy emits one `feathered {enemyId, x, y}` event at the start of its only 
 
 | Tower run ticks | Barrel run ticks | Flinch ticks |
 |---:|---:|---:|
-| 88 | 72 | 16 |
+| 88 | 63 | 16 |
 
 A runner follows the same trail backward at its own walking speed from the enemy table. It passes
 through Guards and Barricades without either side attacking, and leaves
@@ -578,18 +578,16 @@ Reloading starts a new run.
 | Fire Arrows | 7 | 90 | - | - | 26 | 660 |
 
 - **Charge.** All five specials share one charge. A Tar Barrel spends it for
-  3300 wave ticks (55 s). Each other special spends it for 1200 wave ticks
-  (20 s). Quick Hands scales the wait at cast time to 1881 ticks (31.35 s)
+  3034 wave ticks (about 50.57 s). Each other special spends it for 1200 wave ticks
+  (20 s). Quick Hands scales the wait at cast time to 1729 ticks (about 28.82 s)
   after a barrel or 684 ticks (11.4 s) after another special.
-  Each wave start grants one ordinary refill, including an early call,
-  automatic dispatch and the first endless wave. It makes an ordinary
-  charge ready and subtracts 1200 ticks from a barrel wait, or 684 if
-  Quick Hands was held when the barrel landed. Credit stops at ready.
-  The remaining barrel wait pauses during setup. Picking a reward during
-  setup leaves that wait and its wave-start credit in place. Only one special
-  can fire in a simulation tick, even across an early call. During a wave
-  the button counts down the remaining seconds, rounded up, and its fill
-  shows the fraction of the original wait already paid.
+  A barrel's remaining wait carries in full across an early call, Start Wave,
+  automatic dispatch and the first endless wave. The timer pauses during setup
+  and resumes on the next combat tick. A reward chosen during setup first applies
+  to a subsequent cast. Every other special refills when the next wave starts.
+  Only one special can fire in a simulation tick, even across an early call.
+  The button shows remaining seconds rounded up and fills as the wait elapses.
+  During setup it shows the paused barrel wait.
 - **Use.** `useSpecial(state, type, {x, y})` acts at once, between ticks,
   like a build. The keg and zones affect every live enemy inside their
   effective radius (inclusive), flyers included.
@@ -672,7 +670,7 @@ Reloading starts a new run.
   amber fill grows from its left edge under the label as the recharge runs,
   and the label is the countdown in whole seconds ("Wait 12s", in place of
   "Special"). In setup and after the game
-  it is greyed with an empty pip. It is highlighted while its popup is open
+  it is greyed with an empty pip. Setup retains the countdown and fill for a pending barrel wait. It is highlighted while its popup is open
   or a special is aimed. Pressing it with one special unlocked selects it;
   with more it opens a popup above it listing the unlocked specials.
 - **Aiming.** While a special is aimed a banner over the top of the map
@@ -824,8 +822,8 @@ later tick adds 1/60 s, so the bonus is 19 from 60 ticks later and 0 from
 1200 ticks later (a call is still allowed at 0). Enemies still alive stay
 on the field: they move, exit, cost lives and pay bounties as usual, and
 the called wave's clear check waits for them too. The next wave starts its
-spawn schedule from waveTick 0 (the wave counter goes up), credits one
-ordinary special refill, then emits `earlyCall {wave, bonus}` (the new wave)
+spawn schedule from waveTick 0 (the wave counter goes up), carries any
+outstanding barrel wait or refills the charge, then emits `earlyCall {wave, bonus}` (the new wave)
 followed by `waveStart`. Each wave pays its clear bonus once. On screen, Start Wave
 reads "Call next  +14" (`names.ts` `callEarlyLabel`, 14 px) with the
 current bonus while a call would succeed, and pressing it calls; otherwise
@@ -1718,7 +1716,7 @@ one inside. Otherwise, if a point works for the Powder Keg, the keg is
 thrown there. Otherwise it waits. The best point catches the most enemies;
 ties go to the point nearest the exit. The simulator also measures the combo
 with each special omitted in turn. The unused-barrel control spends the full
-barrel recharge at every barrel opportunity, with the same wave-start credit,
+barrel recharge at every barrel opportunity, carries the wait across waves,
 and advances the alternating turn. During the shared wait the policy holds
 its next turn. It checks the crowd again on its first eligible look.
 When the policy omits Tar Barrel or Fire Arrows,

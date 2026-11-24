@@ -7,8 +7,9 @@ import { buildTower, CHEAT_GOLD, grantCheatGold, pickBoon, useSpecial } from './
 import { enemyPosition } from './combat';
 import { ENEMY_STATS } from './enemies';
 import type { GameEvent } from './events';
-import { callNextWave, createGame, lastSpawnTick, startWave, tick } from './game';
+import { callNextWave, continueEndless, createGame, lastSpawnTick, startWave, tick } from './game';
 import { playScripted } from './headless';
+import { LEVELS } from './levels';
 import { MAPS } from './map';
 import { BARREL_RECHARGE_TICKS, SPECIAL_DEFS, SPECIAL_RECHARGE_TICKS, SPECIAL_TYPES, unlockedSpecials, ZONE_LINGER_TICKS, type SpecialType } from './specials';
 import type { Enemy, EnemyType, GameState, MapDef } from './types';
@@ -288,19 +289,19 @@ describe('the charge (milestone 30: ready at a wave start, recharges in wave tim
     expect(useSpecial(state, 'keg', point).ok).toBe(true);
   });
 
-  it.each([false, true])('C9: an early call credits one ordinary refill (Quick Hands %s)', quick => {
+  it.each([false, true])('C9: an early call preserves the full remaining barrel wait (Quick Hands %s)', quick => {
     const state = inWave(7, [enemy(0, 'troll')], LINE);
     if (quick) state.boons = ['quickHands'];
     expect(useSpecial(state, 'tarBarrel', POINT).ok).toBe(true);
     const duration = Math.round(BARREL_RECHARGE_TICKS * (quick ? 0.57 : 1));
     expect(state.specialRechargeTicks).toBe(duration);
+    ticks(state, 30);
     expect(callNextWave(state).ok).toBe(true);
-    const left = Math.max(0, duration - (quick ? 684 : 1200));
-    expect([state.specialCharges, state.specialRechargeTicks]).toEqual([Number(left === 0), left]);
+    expect([state.specialCharges, state.specialRechargeTicks]).toEqual([0, duration - 30]);
     expect(useSpecial(state, 'keg', POINT)).toEqual({ ok: false, reason: 'no-charge' });
   });
 
-  it('C9: setup pauses a barrel wait and a reward pick preserves its original wave credit', () => {
+  it('C9: setup and a reward pick preserve a barrel wait until the next combat tick', () => {
     const state = inWave(10, [], LINE);
     expect(useSpecial(state, 'tarBarrel', POINT).ok).toBe(true);
     tick(state);
@@ -309,7 +310,37 @@ describe('the charge (milestone 30: ready at a wave start, recharges in wave tim
     ticks(state, 2000);
     expect([state.specialCharges, state.specialRechargeTicks]).toEqual([0, BARREL_RECHARGE_TICKS - 1]);
     expect(startWave(state).ok).toBe(true);
-    expect(state.specialRechargeTicks).toBe(Math.max(0, BARREL_RECHARGE_TICKS - 1 - SPECIAL_RECHARGE_TICKS));
+    expect([state.specialCharges, state.specialRechargeTicks]).toEqual([0, BARREL_RECHARGE_TICKS - 1]);
+    tick(state);
+    expect(state.specialRechargeTicks).toBe(BARREL_RECHARGE_TICKS - 2);
+  });
+
+  it('C9: automatic dispatch carries the paused wait into its first combat tick', () => {
+    const wave = { groups: [{ type: 'goblin' as const, count: 1, interval: 1, delay: 0 }] };
+    const state = createGame({ level: { ...LEVELS[0], waves: [wave, wave, wave],
+      allowedSpecials: ['tarBarrel'], taxes: { noLoitering: 1 }, rewardWaves: [] } });
+    startWave(state);
+    tick(state);
+    expect(useSpecial(state, 'tarBarrel', POINT).ok).toBe(true);
+    state.enemies = [];
+    tick(state);
+    expect(state.phase).toBe('setup');
+    ticks(state, 60);
+    expect([state.phase, state.wave, state.specialCharges, state.specialRechargeTicks])
+      .toEqual(['wave', 2, 0, BARREL_RECHARGE_TICKS - 1]);
+    tick(state);
+    expect(state.specialRechargeTicks).toBe(BARREL_RECHARGE_TICKS - 2);
+  });
+
+  it('C9: a barrel spent on the last wave still has to refill in endless', () => {
+    const state = inWave(20, [], LINE);
+    expect(useSpecial(state, 'tarBarrel', POINT).ok).toBe(true);
+    tick(state);
+    expect(state.phase).toBe('won');
+    expect(continueEndless(state).ok).toBe(true);
+    expect(startWave(state).ok).toBe(true);
+    expect([state.wave, state.specialCharges, state.specialRechargeTicks]).toEqual([21, 0, BARREL_RECHARGE_TICKS - 1]);
+    expect(useSpecial(state, 'keg', POINT)).toEqual({ ok: false, reason: 'no-charge' });
   });
 
   it('a refused second use changes nothing', () => {

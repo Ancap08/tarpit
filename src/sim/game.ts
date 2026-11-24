@@ -60,8 +60,8 @@
 // are, but guard lifetimes still count down. Build, upgrade and sell (actions.ts) happen between ticks, and so
 // does useSpecial (milestone 25b): its damage, slow and burn apply at once
 // and its kills are removed and paid before the next tick; a Tar Barrel or
-// Fire Arrows also leaves a zone (milestone 30). Each new wave credits one
-// ordinary refill. useSpecial spends the charge and starts the timer for its
+// Fire Arrows also leaves a zone (milestone 30). Each new wave restores an
+// ordinary charge and preserves an outstanding barrel wait. useSpecial spends the charge and starts the timer for its
 // special, counted in wave ticks only; the wave clear in step 7 takes an
 // unused charge away and removes the zones.
 // callNextWave (milestone 25c) also acts between ticks: once every enemy of
@@ -229,7 +229,7 @@ export function callEarlyStatus(state: GameState): CallEarlyStatus {
  * and pay bounties as usual), and the next wave's clear check waits for
  * them too: it clears only when its own enemies have all spawned and the
  * field is empty. Then the next wave starts its spawn schedule from waveTick 0 on
- * top of them: advance the wave, credit one ordinary refill, then emit
+ * top of them: advance the wave, refill unless a barrel wait remains, then emit
  * `earlyCall {wave, bonus}` (the new wave) and `waveStart`. Towers are already locked mid-wave.
  */
 export function callNextWave(state: GameState): CallNextWaveResult {
