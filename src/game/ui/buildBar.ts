@@ -21,6 +21,11 @@ export const BAR_BUTTON_HEIGHT = 42;
 export const BAR_LEFT = 6;
 export const BAR_GAP = 4;
 
+/** Widths beside held rewards, with room for the name and price in both fonts. */
+const REWARD_ROW_WIDTH: Record<TowerType, number> = {
+  musketeer: 118, cannon: 103, tarpit: 103, longbow: 113, mortar: 103, firepot: 103,
+};
+
 /** Where a portrait button's icon centre and cost centre sit, in px from its top (milestone 32b, geometry.ts). */
 const ICON_Y = 27;
 const COST_Y = 56;
@@ -84,8 +89,7 @@ export class BuildBar {
       this.compact = compact;
       let x = BAR_LEFT;
       this.buttons.forEach((button, i) => {
-        const compactWidth = BAR_TYPES[i] === 'musketeer' ? 118 : 103;
-        const width = compact ? compactWidth : BAR_BUTTON_WIDTH;
+        const width = compact ? REWARD_ROW_WIDTH[BAR_TYPES[i]] : BAR_BUTTON_WIDTH;
         button.setWidth(width);
         button.moveTo(x, button.rect.y);
         x += width + BAR_GAP;

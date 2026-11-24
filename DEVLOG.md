@@ -9463,7 +9463,9 @@ aim or speed hold, so releasing a finger after Resume cannot finish an old
 action. Tall-font checks also caught the Fire Pot price touching Pause.
 Giving the portrait tower prices a 24 px digit box keeps each price
 inside its plaque. The Playwright phone measured the Pause target at
-56.55 CSS px on a 390 × 844 viewport.
+56.55 CSS px on a 390 × 844 viewport. In Classic landscape, giving
+Longbow 10 px more of the compact row leaves 13 px between its name
+and widened price after a reward.
 
 The game clock keeps partial ticks and excludes time spent paused,
 including a phone lock with no intervening frames. The deterministic

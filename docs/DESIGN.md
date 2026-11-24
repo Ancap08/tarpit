@@ -510,8 +510,8 @@ a tower underneath the card. HUD buttons remain usable.
 Held rewards appear in pick order. Each icon has its own hit area of at
 least 44 x 44 CSS px. When the landscape canvas fits at full size, the
 icons share the build row with the six tower buttons. Once the first
-reward is held, the 132 px tower buttons narrow to 118 px for the Musketeer
-and 103 px for the others, with 4 px gaps. The reward icons start at x=678. Classic labels go from 16 to
+reward is held, the 132 px tower buttons narrow to 118 px for the Musketeer,
+113 px for Longbow and 103 px for the others, with 4 px gaps. The reward icons start at x=678. Classic labels go from 16 to
 14 px. In portrait and smaller landscape windows the icons sit
 in a column beside the board. The portrait preview keeps its full 468 px.
 Hover or tap an icon to read its name and effect for up to 2.8 s.
