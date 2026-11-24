@@ -4,7 +4,7 @@ import type { StorageLike } from './highScore';
 export const SEEN_TIPS_KEY = 'tarpit.seenTips';
 
 export const SEEN_BROADSIDES_KEY = 'tarpit.seenBroadsides';
-export type Broadside = 'opening' | 'ending';
+export type Broadside = 'opening' | 'secondAct' | 'ending';
 
 class SeenStore<T extends number | string> {
   private unsaved = new Set<T>();
@@ -55,7 +55,7 @@ export class SeenTipsStore extends SeenStore<number> {
 
 export class SeenBroadsidesStore extends SeenStore<Broadside> {
   constructor(storage: () => StorageLike | undefined) {
-    super(SEEN_BROADSIDES_KEY, ['opening', 'ending'], storage);
+    super(SEEN_BROADSIDES_KEY, ['opening', 'secondAct', 'ending'], storage);
   }
 }
 

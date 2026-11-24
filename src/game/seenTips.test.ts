@@ -68,6 +68,16 @@ describe('campaign broadsides', () => {
     expect(values.has(SEEN_TIPS_KEY)).toBe(false);
   });
 
+  it('opens the second act for a returning reader and remembers the identical ending from level ten', () => {
+    let raw = '["opening","ending"]';
+    const storage = () => ({ getItem: () => raw, setItem: (_key: string, value: string) => { raw = value; } });
+    const old = new SeenBroadsidesStore(storage);
+    expect(old.has('secondAct')).toBe(false);
+    old.mark('secondAct');
+    const next = new SeenBroadsidesStore(storage);
+    for (const page of ['opening', 'secondAct', 'ending'] as const) expect(next.has(page)).toBe(true);
+  });
+
   it('remembers a displayed broadside through a storage failure', () => {
     const store = new SeenBroadsidesStore(() => { throw new Error('unavailable'); });
     store.mark('ending');

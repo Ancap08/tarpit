@@ -43,6 +43,7 @@ export class EndScreen {
   private readonly panel: Phaser.GameObjects.Graphics;
   private readonly title: Phaser.GameObjects.Text;
   private readonly story: Phaser.GameObjects.Text;
+  private close?: Phaser.GameObjects.Text;
   private readonly lines: Phaser.GameObjects.Text;
   private readonly boons: Phaser.GameObjects.Text;
   private starRow?: Phaser.GameObjects.Container;
@@ -141,16 +142,29 @@ export class EndScreen {
     this.story.setColor(kind === 'lost' ? TEXT.paperDefeat : '#254a57');
     if (campaign) {
       this.title.setText(campaign.title);
-      if (kind === 'won') this.starRow = drawStarRow(this.title.scene, this.cx, 0, campaign.stars, 28, TEXT.paperGold);
+      const actResult = Boolean(campaign.actClose || campaign.feat);
+      const detailSize = this.portrait ? (actResult ? '22px' : '20px') : '18px';
+      if (actResult) {
+        this.story.setFontSize(this.portrait ? '22px' : '19px');
+        this.story.setWordWrapWidth((this.portrait ? PORTRAIT_WIDTH : LANDSCAPE_WIDTH) - 44);
+        if (campaign.actClose) {
+          this.close = this.story.scene.add.text(this.cx, 0, campaign.actClose, {
+            fontFamily: FONT, fontSize: this.story.style.fontSize, color: ink, align: 'center',
+            wordWrap: { width: (this.portrait ? PORTRAIT_WIDTH : LANDSCAPE_WIDTH) - 44 },
+          }).setOrigin(0.5, 0);
+        }
+      }
+      if (campaign.slots) this.starRow = drawStarRow(this.title.scene, this.cx, 0, campaign.stars, 28, TEXT.paperGold);
       this.detailRows = campaign.details.map(text => this.boons.scene.add.text(this.cx, 0, text, {
-        fontFamily: FONT, fontSize: this.portrait ? '20px' : '18px', color: ink, align: 'center',
+        fontFamily: FONT, fontSize: detailSize, color: ink, align: 'center',
         wordWrap: { width: this.portrait ? PORTRAIT_WIDTH - 40 : 442 },
       }).setOrigin(0.5, 0));
       this.button.set(kind === 'won' ? END_TEXT.playAgain : CAMPAIGN_END.retry, true);
       this.menu.set(CAMPAIGN_END.map, true);
       this.keepGoing.set(CAMPAIGN_END.next, true);
-      if (!this.portrait) {
-        for (const b of [this.keepGoing, this.button, this.menu]) b.setSize(160, 52);
+      for (const b of [this.keepGoing, this.button, this.menu]) {
+        if (this.portrait && actResult) b.setSize(P_BUTTON_W, 80);
+        if (!this.portrait) b.setSize(160, actResult ? 66 : 52);
       }
     } else {
       const { title, lines, boons } = endScreenText(kind, state);
@@ -165,6 +179,8 @@ export class EndScreen {
 
   /** Hide the screen (milestone 26: after Keep going); a later show() works again. */
   hide(): void {
+    this.close?.destroy();
+    this.close = undefined;
     this.picture?.destroy();
     this.picture = undefined;
     for (const row of this.detailRows) row.destroy();
@@ -201,10 +217,12 @@ export class EndScreen {
     const starH = this.starRow ? this.starRow.getBounds().height + 2 : 0;
     const textH = (starH ? starH + gap : 0) + content.reduce((h, row) => h + row.height + gap, -gap);
     const bodyH = portrait ? imageH + gap + textH : Math.max(imageH, textH);
-    const buttonsH = portrait ? buttons.length * P_BUTTON_H + (buttons.length - 1) * P_GAP : this.button.rect.height;
+    const buttonH = this.button.rect.height;
+    const buttonsH = portrait ? buttons.length * buttonH + (buttons.length - 1) * P_GAP : this.button.rect.height;
     this.story.setScale(Math.min(1, (w - 2 * pad) / Math.max(1, this.story.width)));
     const storyH = this.story.text ? this.story.displayHeight + gap : 0;
-    const h = afterTitle + bodyH + storyH + 16 + buttonsH + pad;
+    const closeH = this.close ? this.close.height + gap : 0;
+    const h = afterTitle + bodyH + storyH + closeH + 16 + buttonsH + pad;
     const top = this.cy - h / 2;
     this.paper(w, h, titleY);
     this.title.setY(top + titleY);
@@ -221,9 +239,10 @@ export class EndScreen {
       y += row.height + gap;
     }
     this.story.setPosition(this.cx, top + afterTitle + bodyH + gap);
-    const buttonsY = top + afterTitle + bodyH + storyH + 16;
+    this.close?.setY(this.story.y + storyH);
+    const buttonsY = top + afterTitle + bodyH + storyH + closeH + 16;
     if (portrait) {
-      buttons.forEach((b, i) => b.moveTo(this.cx - P_BUTTON_W / 2, buttonsY + i * (P_BUTTON_H + P_GAP)));
+      buttons.forEach((b, i) => b.moveTo(this.cx - P_BUTTON_W / 2, buttonsY + i * (buttonH + P_GAP)));
     } else {
       this.buttonRow(buttons, buttonsY);
     }

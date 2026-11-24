@@ -3,8 +3,9 @@
 // is an edit here (plus regenerated screenshot baselines). Tests that check a
 // display string build it from these tables, so a rename changes no test.
 
+import { LEVELS } from '../sim/levels.ts';
 import { BOONS } from '../sim/boons.ts';
-import type { BoonId, Difficulty, EnemyType, LevelFeat, LevelTaxes, MapId, SpecialType, TargetingMode, TaxKind, TowerLevel, TowerType, UpgradePath } from '../sim';
+import type { BoonId, Difficulty, EnemyType, LevelDef, LevelFeat, LevelTaxes, MapId, SpecialType, TargetingMode, TaxKind, TowerLevel, TowerType, UpgradePath } from '../sim';
 
 /** The wave 10 boss (docs/SCOPE-v4.md, milestone 23): the HUD boss bar and the wave 10 preview. */
 export const BOSS_NAME = 'Assessor Grumblefoot';
@@ -97,8 +98,9 @@ export const TITLE_TEXT = {
   prompt: 'Pick a difficulty and a map, then press Play',
 } as const;
 
-export function paintedLoadingText(progress: number): string {
-  return `Loading painted art ${Math.floor(progress * 100)}%`;
+export function paintedLoadingText(progress: number, compact = false): string {
+  const amount = `${Math.floor(progress * 100)}%`;
+  return compact ? `Loading\n${amount}` : `Loading painted art ${amount}`;
 }
 
 export const PAINTED_FALLBACK = 'Painted art could not load. Playing Classic.';
@@ -396,6 +398,57 @@ export function starGoalText(lives: number, stars: 2 | 3): string {
   return `Finish with ${lives} lives for ${stars === 2 ? 'two' : 'three'} stars`;
 }
 
+const smallNumbers = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
+  'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
+const numberWord = (n: number) => smallNumbers[n] ?? String(n);
+const capitalized = (word: string) => word[0].toUpperCase() + word.slice(1);
+const percent = (rate: number) => `${Number((rate * 100).toFixed(8))}%`;
+const spokenShare = (rate: number) => rate === 0.2 ? 'one fifth' : rate === 0.1 ? 'a tenth' : percent(rate);
+
+function taxValue(level: LevelDef, key: TaxKind): number {
+  const value = level.taxes?.[key];
+  if (value === undefined) throw new Error(`Level ${level.id} has no ${key} for its notice`);
+  return value;
+}
+
+function levelTaxWord(id: number, key: TaxKind): string {
+  return numberWord(taxValue(LEVELS.find(level => level.id === id)!, key));
+}
+
+/** Commissioned wording with the amounts read from the same record as combat. */
+export function secondActNotice(level: LevelDef): string {
+  const tax = (key: TaxKind) => taxValue(level, key);
+  switch (level.id) {
+    case 11: return `A tax on windows. Each tower you build adds ${percent(tax('windowTax'))} to the price of the next.`;
+    case 12: return `Quick march! My collectors now travel ${spokenShare(tax('forcedMarch'))} faster.`;
+    case 13: return `No loitering. The next wave comes ${numberWord(tax('noLoitering'))} seconds after the last, ready or not.`;
+    case 14: return `By royal measure, every tower now shoots ${percent(tax('curfew'))} less far.`;
+    case 15: return `Your purse is frozen. Nothing for a fallen collector; ${tax('frozenPurse')} gold for each wave cleared.`;
+    case 16: return `${capitalized(numberWord(tax('rationing')))} tower permits, no more. Take one down to put another up.`;
+    case 17: return `Curfew, and no loitering. Towers reach ${spokenShare(tax('curfew'))} less far; waves come ${numberWord(tax('noLoitering'))} seconds apart.`;
+    case 18: return `${capitalized(numberWord(tax('rationing')))} permits, and my collectors march ${percent(tax('forcedMarch'))} faster.`;
+    case 19: return `Windows again, and a curfew. Each tower adds ${percent(tax('windowTax'))} to the next; all shoot ${spokenShare(tax('curfew'))} less far.`;
+    case 20: return `Purse frozen: ${tax('frozenPurse')} gold a wave, nothing for kills. Towers reach ${spokenShare(tax('curfew'))} less far. I am coming myself.`;
+    default: throw new Error(`No second-act notice for level ${level.id}`);
+  }
+}
+
+const taxRules: Record<TaxKind, (value: number) => string> = {
+  windowTax: v => `each tower adds ${percent(v)} to the next`,
+  frozenPurse: v => `${v} gold per wave, none for kills`,
+  forcedMarch: v => `collectors move ${percent(v)} faster`,
+  curfew: v => `towers reach ${percent(v)} less far`,
+  noLoitering: v => `${v} seconds between waves`,
+  rationing: v => `${v} towers at most`,
+};
+
+export function levelTaxLines(taxes: LevelTaxes): string[] {
+  return (Object.keys(TAX_NAMES) as TaxKind[]).flatMap(key => {
+    const value = taxes[key];
+    return value === undefined ? [] : [`${TAX_NAMES[key]}: ${taxRules[key](value)}`];
+  });
+}
+
 /** Campaign cards and twist lines, keyed by the saved level id. */
 export const LEVEL_NAMES: Readonly<Record<number, { name: string; twist: string }>> = {
   1: { name: 'First Watch', twist: 'Cover the trail with Musketeers and Longbows.' },
@@ -410,12 +463,12 @@ export const LEVEL_NAMES: Readonly<Record<number, { name: string; twist: string 
   10: { name: 'Last Light', twist: 'Bring every special to face King Grumblemaw.' },
   11: { name: 'Window Money', twist: 'Spend on upgrades as new towers grow dearer.' },
   12: { name: 'The Quickstep', twist: 'Catch the collectors before they round the bend.' },
-  13: { name: 'Eight Bells', twist: 'Choose your next purchase before the bell.' },
+  13: { name: `${capitalized(levelTaxWord(13, 'noLoitering'))} Bells`, twist: 'Choose your next purchase before the bell.' },
   14: { name: 'Short Measure', twist: 'Cover the bends with overlapping fields of fire.' },
   15: { name: 'Pay Day', twist: 'Make each wave payment last.' },
-  16: { name: 'Three Permits', twist: 'Hold the trail with three towers standing.' },
+  16: { name: `${capitalized(levelTaxWord(16, 'rationing'))} Permits`, twist: `Try upgrading before you use all ${levelTaxWord(16, 'rationing')} permits.` },
   17: { name: 'Closing Time', twist: 'Find nearby targets before the next bell.' },
-  18: { name: 'Three at the Gate', twist: 'Give three towers time to stop a faster column.' },
+  18: { name: `${capitalized(levelTaxWord(18, 'rationing'))} at the Gate`, twist: `Give ${levelTaxWord(18, 'rationing')} towers time to stop a faster column.` },
   19: { name: 'The Sash Levy', twist: 'Choose the site before paying for the windows.' },
   20: { name: 'The Last Writ', twist: 'Hold the river until the King arrives.' },
 };
@@ -427,12 +480,26 @@ export const STORY_TEXT = {
   endingTitle: 'Word from the town',
   openingNotice: 'Hear ye. By order of King Grumblemaw, all gold in this town now belongs to the Crown. Collectors are on their way.',
   openingReply: "We counted it. It's ours.",
+  firstActClose: 'He will be back with new ideas.',
   secondActNotice: 'The King has thought of new taxes.',
   secondActReply: 'Fetch the ledger. We have a few deductions.',
   ending: `${endingLead} The gold stayed where it was earned. Taxation is theft.`,
   loss: 'The Crown thanks you for your contribution.',
   continue: 'Continue',
 } as const;
+
+const secondActReplies: Readonly<Record<number, string>> = {
+  11: 'We put the money into the roof.',
+  12: 'Quick trip home, too.',
+  13: 'We built a tower before the bell stopped ringing.',
+  14: 'Stand a little closer, Your Majesty.',
+  15: 'Count it again. We earned every piece.',
+  16: 'We added a floor. Same permit.',
+  17: 'Our clock runs fine. How is yours?',
+  18: `${capitalized(levelTaxWord(18, 'rationing'))} were plenty.`,
+  19: 'We saved you a seat by the window.',
+  20: 'You had your look. The gold stays here.',
+};
 
 export const LEVEL_STORY: Readonly<Record<number, { notice: string; reply: string }>> = {
   1: { notice: 'A tax on doors. Collectors will call at yours.', reply: 'We kept the doors. And the gold.' },
@@ -445,22 +512,21 @@ export const LEVEL_STORY: Readonly<Record<number, { notice: string; reply: strin
   8: { notice: 'A tax on neighbours helping neighbours.', reply: 'The neighbours say no.' },
   9: { notice: 'The Assessor will now count your gold. Personally.', reply: 'He lost count.' },
   10: { notice: 'Enough. The King is coming for the lot.', reply: endingLead },
-  11: { notice: 'For each tower you have built, add 5% of the base price to your next tower.', reply: 'We put the money into the roof.' },
-  12: { notice: 'Quick march. My collectors shall travel one fifth faster.', reply: 'Quick trip home, too.' },
-  13: { notice: 'Eight seconds between waves. I grant you time before the first and last.', reply: 'We built a tower before the bell stopped ringing.' },
-  14: { notice: 'By royal measure, every tower shall shoot 15% less far.', reply: 'Stand a little closer, Your Majesty.' },
-  15: { notice: 'No coin for a fallen collector. You may have 35 gold per wave cleared.', reply: 'Count it again. We earned every piece.' },
-  16: { notice: 'I issue three tower permits. Take one tower down to put another up.', reply: 'We added a floor. Same permit.' },
-  17: { notice: 'Towers shall reach one fifth less far. Eight seconds between waves, save the first and last.', reply: 'Our clock runs fine. How is yours?' },
-  18: { notice: 'Three towers may stand. My collectors shall march 15% faster.', reply: 'Three were plenty.' },
-  19: { notice: 'Each tower built adds 5% of base price to the next. All towers shoot a tenth less far.', reply: 'We saved you a seat by the window.' },
-  20: { notice: 'No kill money. Ninety gold per clear. Towers reach one fifth less far. I shall inspect them myself.', reply: 'You had your look. The gold stays here.' },
+  ...Object.fromEntries(LEVELS.filter(level => level.feat).map(level => [
+    level.id, { notice: secondActNotice(level), reply: secondActReplies[level.id] },
+  ])),
 };
 
 export const CAMPAIGN_TEXT = {
   campaign: 'Campaign',
   freePlay: 'Free play',
   levelMap: 'Level map',
+  actOne: 'Act One',
+  actTwo: 'Act Two',
+  featStar: 'Third star: level feat',
+  inForce: 'In force',
+  mapNotes: 'Map notes',
+  notice: 'Notice',
   back: 'Back',
   tips: 'Tips',
   gotIt: 'Got it',
@@ -491,19 +557,31 @@ export const LEVEL_NEW: Readonly<Record<number, string>> = {
   20: 'Frozen Purse and Curfew',
 };
 
-export function levelFeatText(feat: LevelFeat): string {
+const featNames: Record<LevelFeat['kind'], string> = { noLeaks: 'Not a penny', noSpecials: 'Bare hands', maxTowers: 'Few hands' };
+
+function featMeaning(feat: LevelFeat): string {
   switch (feat.kind) {
-    case 'noLeaks': return 'Not a penny. Let no collector through.';
-    case 'noSpecials': return 'Bare hands. Win without using a special.';
-    case 'maxTowers': return `Few hands. Build at most ${feat.limit} towers in all.`;
+    case 'noLeaks': return 'let no collector through.';
+    case 'noSpecials': return 'win without using a special.';
+    case 'maxTowers': return `build at most ${feat.limit} towers in all.`;
   }
 }
+
+export function levelFeatText(feat: LevelFeat): string {
+  return `${featNames[feat.kind]}: ${featMeaning(feat)}`;
+}
+
+export const cardFeatText = (feat: LevelFeat): string => `Third star, ${levelFeatText(feat)}`;
+export const featResultText = (feat: LevelFeat, earned: boolean): string =>
+  earned ? `Earned: ${featNames[feat.kind]}.` : `Missed ${levelFeatText(feat)}`;
 
 export const levelNumberText = (id: number): string => `Level ${id}`;
 export const lockedLevelText = (id: number): string => `Win level ${id} first`;
 export const starSlots = (earned: number, total = 3): string => `${earned} of ${total} stars`;
 
 export const tipsHeading = (id: number): string => `Level ${id} tips`;
+
+const manualWaveTip = `The first and last waves wait for ${START_WAVE_TEXT}.`;
 
 function campaignTips(touch: boolean): Readonly<Record<number, readonly string[]>> {
   const action = touch ? 'Tap' : 'Click';
@@ -520,12 +598,12 @@ function campaignTips(touch: boolean): Readonly<Record<number, readonly string[]
     10: ['King Grumblemaw calls Revenue Hounds. Save a Powder Keg.', 'Slow King Grumblemaw with tar, then hit him with fire.'],
     11: ['The first tower goes up at its usual price.', 'Selling a tower still leaves it on the tax roll.'],
     12: ['Put a Tar Pit where several towers can reach it.', 'Save a special for the pack that gets ahead.'],
-    13: ['Plan your next purchase before the wave ends.', 'The clock waits while you choose a reward.'],
+    13: ['Plan your next purchase before the wave ends.', 'The clock waits while you choose a reward.', manualWaveTip],
     14: ['Check the ring before you build.', 'Keep the Mortar back. Its inner ring stays put.'],
     15: ['Kills pay nothing. Budget for the next wave.', 'Calling early still earns its bonus.'],
     16: ['Upgrades take no permit. Selling frees one.', `${action} a tower to see its upgrades.`],
-    17: ['Pick a bend where a short shot covers two turns.', 'Buy before the countdown ends.'],
-    18: ['Place your three towers where their rings overlap.', 'Upgrade them to keep up with the faster packs.'],
+    17: ['Pick a bend where a short shot covers nearby turns.', 'Buy before the countdown ends.', manualWaveTip],
+    18: [`Place your ${levelTaxWord(18, 'rationing')} towers where their rings overlap.`, 'Upgrade them to keep up with the faster packs.'],
     19: ['Check the shorter ring before you buy.', 'An upgrade costs the usual price.'],
     20: ['Keep bows near the trail to cover Royal Harpies.', 'Save part of each payment for the King.'],
   };

@@ -53,8 +53,9 @@ have different advances. Star awards and locks are drawn shapes.
 The HUD is a wooden counter. The landscape coin has 5 px of clearance from
 the brass frame and 6 px from the Gold label. Large balances leave at least
 4 px before Lives. The level
-map traces a road between ten plaques, with brass locks, star slots and a
-blue next stop. Cards and results use dark type on paper. The reward offer
+map traces a road between ten plaques on each act’s parchment sheet, with
+brass locks, star slots and a blue next stop. A four-pointed star marks the
+feat slot on a second-act plaque. Cards and results use dark type on paper. The reward offer
 uses the same paper for each choice. Wave and boss banners use blue and red
 respectively. Each banner line fits inside 24 px of horizontal padding, and
 the plaque leaves at least 8 px at either map edge. Tall text expands the
@@ -1150,17 +1151,21 @@ printed silhouette fills the space immediately and stays available offline.
 The picture sits to the left of the results in landscape and above them
 in portrait. A 38% veil keeps the town on the battlefield visible.
 
-The ten campaign cards print the King's notices alongside the tactical
-twists. Wins print the corresponding reply in town blue, losses the
-Crown's thanks in red. The opening proclamation and its reply precede
-the first campaign map. Level ten uses the first sentence of the Ending
-on its result. The full Ending follows the player's choice of Level map
-or Play again, and Continue carries out that choice.
+All twenty campaign cards print the King's notice. Wins print the town's
+reply in blue. Losses print the Crown's thanks in red. The opening
+proclamation and reply precede the first map. Winning level 10 keeps
+“The King went home with empty pockets.” and adds “He will be back with
+new ideas.” The first visit to Act Two shows the King's new-tax notice
+and the town's reply. Continue opens the requested map or level card.
 
-Each broadside has one button. Its first rendered frame records
-`opening` or `ending` in `tarpit.seenBroadsides`, beside the tips record.
-A denied write falls back to the current session. Rotation preserves the
-page and the destination.
+The full Ending follows a level 20 win when the player chooses Level map
+or Play again. Continue carries out that choice. The first rendered frame
+of each broadside records `opening`, `secondAct` or `ending` in
+`tarpit.seenBroadsides`, beside the tips record. A returning player who saw
+the same Ending at level 10 keeps that receipt. Level 20 still shows
+“Campaign complete!” and goes straight to the chosen destination. A denied
+write falls back to the current session. Rotation preserves the page and
+the destination.
 
 
 ## Sound
@@ -1937,15 +1942,27 @@ map and difficulty picker. Its best scores belong to the selected map and
 difficulty. Campaign shows the opening broadside on the first visit, then
 opens the level map and reads the saved campaign stars.
 
-The trail crosses five stops and returns across five in landscape. In
-portrait it winds down five rows of two. Each stop shows its level number
+Each act fits on one map without scrolling. Its trail crosses five stops
+and returns across five in landscape. In portrait it winds down five rows
+of two. The plaque beside Back names the other act. Act Two unlocks after
+level 10, including a gold-cheat pass. Pressing its lock says “Win level
+10 first”. A fresh visit opens the act of the next open, unwon level. After
+all twenty wins it opens Act Two. Back from a card keeps the act being browsed.
+Each stop shows its level number
 and three star slots. The number has a fixed-height box with at least 4 px
 of clearance above the stars. The map, card and result draw filled stars
 for earned slots and outlines for empty slots. The first open level without a win is highlighted.
-Tapping any lock names the first open level still to win. Back returns to
+Tapping a locked stop names the first open level still to win. Back returns to
 the first screen. An open stop shows a card with the King's notice, level name, map,
-twist, new equipment or enemies, and best stars. On the first Play for
-each level, a tips panel shows up to three short instructions. Action words
+twist, new equipment or enemies, and best stars. Act Two cards list each
+tax name and amount under “In force” and print the name and task for
+the third star. Notices, tax amounts and build limits read the level record.
+The card measures the printed lines. If there is insufficient room for the
+map and tactics, “Map notes” turns the card over and “Notice” turns it
+back. Play and best stars stay available on both pages. Portrait card body
+type is 26 game pixels, at least 14 CSS pixels on the 390 × 664 phone.
+
+The first Play on each level opens a tips panel with up to three short instructions. Action words
 match the input used to open the panel. A mouse builds with one click on
 the square. Touch arms the square with the first tap and builds with the
 second. Panel buttons ignore pointer presses until the opening pointer has
@@ -1970,14 +1987,17 @@ The game shows the level number and counts waves against the level's own
 length. A win shows this run's stars and lives. A gold-cheat win shows
 three empty slots and explains that it saved no stars. Passing opens the
 next level and offers Next level when another level exists. An uncheated
-win below three stars gives the life target for the next award. Next
-level opens the next card. Winning level ten shows the campaign-complete
-message. Play again restarts the
-same level, and Level map shows the player's saved bests. A loss offers
+win gives the life target when lives alone determine the next award.
+Act Two results show all three slots and name the earned feat or the
+requirement for a missed feat. A cheated run earns zero stars and misses
+the feat. Next level opens the next card. Winning level 20 shows the
+campaign-complete message. Play again restarts the same level. Level map
+shows the player’s saved bests. A loss offers
 Try again and Level map. Turning the device keeps the current screen and
 level selection. Both looks use the same campaign controls.
 
 Arrow keys move the highlight, Enter or Space activates it, and Escape goes
 back. The first screen opens on Campaign, the map on the next unwon open
 stop, the card on Play, and the result on its first button. On the map the
-arrow keys visit only open stops.
+arrow keys visit open stops. Right from stop 10 crosses to 11 once unlocked.
+Left from 11 returns to 10. Rotating keeps the focused stop.
