@@ -391,7 +391,7 @@ export class Hud {
   /** The Lives readout's left edge now (portrait: after the gold), for the exit shake. */
   private livesX = LIVES_X;
 
-  constructor(scene: Phaser.Scene, handlers: HudHandlers, private readonly layout: Layout = LANDSCAPE, painted?: PaintedSkin) {
+  constructor(scene: Phaser.Scene, handlers: HudHandlers, private readonly layout: Layout = LANDSCAPE, painted?: PaintedSkin, private readonly pauseOnResult = false) {
     const m = { ...hudMetrics(layout) };
     this.m = m;
     const counter = scene.add.graphics();
@@ -593,9 +593,10 @@ export class Hud {
     else label.setScale(fitX, fitY);
     // Once the game is over the speed toggle is inert (greyed, ignores clicks).
     const playable = state.phase !== 'won' && state.phase !== 'lost';
-    this.pauseButton.setShown(playable);
-    this.pauseIcon.setVisible(playable);
-    const hideAction = !playable || this.pauseIcon.scene.time.paused;
+    const canPause = playable || this.pauseOnResult;
+    this.pauseButton.setShown(canPause);
+    this.pauseIcon.setVisible(canPause);
+    const hideAction = !canPause || this.pauseIcon.scene.time.paused;
     if (this.pauseAction.hidden !== hideAction) this.pauseAction.hidden = hideAction;
     this.speedButton.set(speedLabel(speed), playable);
     const ready = specialReady(state);

@@ -7,6 +7,8 @@ import { settle } from './painted';
 
 for (const look of ['classic', 'painted'] as const) {
   test(look + ': guards are drawn on their simulation positions in portrait and after turning', async ({ page }) => {
+    // Pixel comparisons capture 24 actual rendered frames across two viewport changes.
+    test.setTimeout(90_000);
     if (look === 'painted') await page.addInitScript(() => localStorage.setItem('tarpit.look', 'painted'));
     await standSquad(page, { x: 420, y: 250 }, true);
     await measure(page, true);

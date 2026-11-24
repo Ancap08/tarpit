@@ -12,6 +12,7 @@ function parseLook(value: string | null | undefined): Look | undefined {
 
 export class LookStore {
   private choice: Look | undefined;
+  readonly showpieceRequested: boolean;
   private readonly defaultLook: Look;
 
   constructor(
@@ -19,7 +20,8 @@ export class LookStore {
     search: string,
   ) {
     const params = new URLSearchParams(search);
-    this.choice = parseLook(params.get('look'));
+    this.showpieceRequested = params.get('look') === 'showpiece';
+    this.choice = this.showpieceRequested ? 'painted' : parseLook(params.get('look'));
     this.defaultLook = params.get('test') === '1' ? 'classic' : 'painted';
   }
 

@@ -24,7 +24,7 @@ function townFrame(page: Page) {
   });
 }
 
-for (const look of ['painted', 'classic'] as const) {
+for (const look of ['painted', 'classic', 'showpiece'] as const) {
   test(`${look} town holds the leak tick and the sack in flight through manual and hidden-page pause`, async ({ page }) => {
     const start = new Date('2030-01-01T12:00:00Z');
     await page.clock.install({ time: start });
@@ -46,7 +46,8 @@ for (const look of ['painted', 'classic'] as const) {
       scene.setPaused(true);
       return scene.paintedState().active;
     }, pathLength(MAPS.meadow) - 0.01);
-    expect(activeLook).toBe(look === 'painted');
+    expect(activeLook).toBe(look !== 'classic');
+    if (look === 'showpiece') expect(await page.evaluate(() => window.__tarpit!.showpiece?.())).toBeTruthy();
     expect(await page.evaluate(() => window.__tarpit!.paused())).toBe(true);
     const leak = await townFrame(page);
     expect(leak.town.condition).toBe('scuffed');

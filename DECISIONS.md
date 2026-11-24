@@ -1519,10 +1519,21 @@ can change it; "Kyle" means Kyle decided.
 - **Pause changes nothing:** live games with a boss, Guards, a Barricade
   and Fire Arrows, paused up to eight times, ended identical to unpaused
   ones at 1x, 2x and 3x (Sonnet).
-- **Room was made for it:** on the phone Start Wave went from 120 to 89 px
-  wide and Special and speed narrowed; in landscape the tower plaques
+- **Room was made for it:** on the phone Pause is an icon-only square
+  beside mute, Start Wave went from 120 to 96 px wide with its label on
+  two lines, and Special from 92 to 76; in landscape the tower plaques
   went from 140 to 132 px. Pause sits 3 px from mute on the phone;
   accepted, a stray tap only pauses or mutes.
+- **Three tries at the phone row, and three new checks.** The first
+  build narrowed Start Wave until its longest label fell under the
+  minimum text size on Linux (CI caught it). The fix made the row 31 px
+  wider than the HUD, hanging out of the frame, with every test green
+  (Fable caught it in the capture). The next fix renamed Special to
+  "Cast" to save width, while every tip says "Tap Special" (Fable, same
+  way). Now checked: every HUD control sits inside the HUD and lines up
+  with the row above; labels keep a margin over the minimum size; any
+  control a tip names is shown under that name. Lesson: look at the
+  capture before sending anything to CI, every time.
 - **Switching windows on a computer does not pause;** hiding the page or
   locking the phone does. As built; accepted (Fable).
 - **A gap caught at the merge:** pause was built before the town existed,
@@ -1531,3 +1542,37 @@ can change it; "Kyle" means Kyle decided.
   town on the pausable clock and added the test. Rule for parallel
   branches: when one adds a clock or a global stop, the later merge
   checks every animated thing the other added.
+
+## 2026-11-24, milestone 47 (a showpiece level, a spike)
+
+- **One level pushed as far as it will go, behind a hidden switch.** Kyle
+  ("I'd like to see what the limits are on graphics ... how comically
+  in-depth we could be with this, like maybe just a level").
+  `?look=showpiece` on Meadow: a working mill and farm, animals,
+  farmhands who run indoors, a day that passes into dusk, crews at their
+  guns, hats and coin left on the field, a camera that reacts, fireworks.
+  Fable (frame and limits), Codex (everything in it), Sonnet (verdict:
+  safe to merge behind the switch).
+- **It cannot affect the normal game:** without the switch no showpiece
+  file is requested and 72 fixed screens in Classic and Painted are
+  pixel-identical to before; games in the showpiece end in the same state
+  as in Painted at every detail tier (Sonnet). That is why a spike is on
+  main: so Kyle can open it on his own phone.
+- **What it costs is half the result.** On an emulated, slowed phone,
+  high detail ran at 26 to 44 frames a second across two sets of
+  measurements where Painted holds 60; low detail holds 55 to 60. It adds
+  42 KB and about half a second to the first load. No real phone has been
+  measured yet.
+- **What travels to the whole game, by cost (Codex's table, in DEVLOG):**
+  animals and farmhands are nearly free; crews, field marks and the
+  victory scene are cheap; the full day-to-dusk lighting is dear; the
+  moving camera nearly doubles draw time and stays showpiece only. Kyle
+  decides what to roll out after seeing it on his phone.
+- **Fixed after verification:** the quality governor changed tier 31
+  times in two minutes on a boundary trace and now changes once; scenery
+  on buildable cells fades to a ghost while a tower is held.
+- **Combined with the town and pause before merging:** all showpiece
+  motion runs on the pausable clock; the duplicate victory pole and hats
+  were removed in favour of the town's own cheer. Not re-verified by a
+  second model after that merge; the isolation and same-state cases were
+  re-run against the new base.

@@ -156,6 +156,7 @@ export interface GameStartData {
   map?: MapId;
   painted?: PaintedAssets;
   paintedFallback?: boolean;
+  showpiece?: typeof import('./showpiece/showpiece').Showpiece;
 }
 
 export class TitleScene extends Phaser.Scene {
@@ -586,11 +587,29 @@ export class TitleScene extends Phaser.Scene {
     void loadPainted(this.textures, data.map ?? DEFAULT_MAP, density, (progress) => {
       this.progress = progress;
       this.refreshLoading();
-    }, request.signal).then((painted) => {
+    }, request.signal).then(async (painted) => {
+      let showpiece: GameStartData['showpiece'];
+      if (painted && this.lookStore.showpieceRequested && (data.map ?? DEFAULT_MAP) === 'meadow' && (!data.level || data.level.id === 1)) {
+        // Bound both the optional code fetch and art decode. A broken
+        // experiment must still let the player into their Painted game.
+        const timer = setTimeout(() => request.abort(), 8000);
+        try {
+          const signal = request.signal;
+          showpiece = await Promise.race([
+            import('./showpiece/showpiece').then(async module =>
+              await module.loadPasture(this.textures, painted.density, signal) ? module.Showpiece : undefined),
+            new Promise<undefined>(resolve => {
+              if (signal.aborted) resolve(undefined);
+              else signal.addEventListener('abort', () => resolve(undefined), { once: true });
+            }),
+          ]);
+        } catch { /* The complete Painted scene is already ready. */ }
+        finally { clearTimeout(timer); }
+      }
       if (this.paintedLoad !== request) return;
       this.paintedLoad = undefined;
       this.progress = null;
-      this.scene.start('game', { ...data, painted, paintedFallback: !painted });
+      this.scene.start('game', { ...data, painted, showpiece, paintedFallback: !painted });
     });
   }
 

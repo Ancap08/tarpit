@@ -1,5 +1,6 @@
 // Verifier (milestone 41b): behaviour of the campaign screens in a real browser, shared by the three projects.
 import { expect, test, type Page } from '@playwright/test';
+import type { UiState } from '../src/game/GameScene';
 import type { TitleUiState } from '../src/game/TitleScene';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { CAMPAIGN_END, STORY_TEXT } from '../src/game/names';
@@ -19,10 +20,13 @@ async function onScreen(page: Page, screen: Screen) {
 async function rotate(page: Page, screen: Screen) {
   const { width, height } = page.viewportSize()!;
   await page.setViewportSize({ width: height, height: width });
-  await page.waitForFunction((layout) => window.__tarpit?.layout() === layout, height > width ? 'landscape' : 'portrait');
+  // Canvas resize precedes the game scene's queued restart. Measure controls
+  // only once the scene has rebuilt them for the requested orientation.
+  await page.waitForFunction(layout => {
+    const t = window.__tarpit as TarpitTestApi;
+    return t.layout() === layout && (t.scene() === 'game' ? t.ui<UiState>().layout === layout : t.titleReady());
+  }, height > width ? 'landscape' : 'portrait');
   await onScreen(page, screen);
-  // Let a queued restart finish: the title keeps its screen, and one scene runs.
-  await page.waitForFunction(() => { const t = window.__tarpit as TarpitTestApi; return t.scene() !== 'title' || t.titleReady(); });
   expect(await api(page, (t) => t.game.scene.getScenes(true).map((s) => s.scene.key))).toHaveLength(1);
 }
 

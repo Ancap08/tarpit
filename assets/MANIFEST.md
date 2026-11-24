@@ -223,3 +223,14 @@ the checker looks for it.
 | `assets/art-painted/town-portraits/scuffed.webp` | `scripts/art/town_portraits.py` | Tarpit agents | MIT | Original result-page town in its scuffed condition |
 | `assets/art-painted/town-portraits/battered.webp` | `scripts/art/town_portraits.py` | Tarpit agents | MIT | Original result-page town in its battered condition |
 | `assets/art-painted/town-portraits/taken.webp` | `scripts/art/town_portraits.py` | Tarpit agents | MIT | Original result-page town in its taken condition |
+| `assets/art-showpiece/showpiece-pasture-1x.webp` | `scripts/art/showpiece_pasture.py` | Tarpit agents | MIT | Original Meadow scenery atlas at 1× |
+| `assets/art-showpiece/showpiece-pasture-2x.webp` | `scripts/art/showpiece_pasture.py` | Tarpit agents | MIT | Original Meadow scenery atlas at 2× |
+| `assets/art-showpiece/showpiece-pasture.json` | `scripts/art/showpiece_pasture.py` | Tarpit agents | MIT | Scenery frame bounds and pivots |
+| `docs/art/showpiece/landscape-crossfire.jpg` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Free play Meadow, mixed towers and collectors in wave 8 |
+| `docs/art/showpiece/landscape-dusk.jpg` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 landscape dusk capture |
+| `docs/art/showpiece/landscape-morning.jpg` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 landscape morning capture |
+| `docs/art/showpiece/landscape.mp4` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 landscape recording |
+| `docs/art/showpiece/phone-crossfire.jpg` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 phone crossfire capture |
+| `docs/art/showpiece/phone-dusk.jpg` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 phone dusk capture |
+| `docs/art/showpiece/phone-morning.jpg` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 phone morning capture |
+| `docs/art/showpiece/phone.mp4` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 phone recording |

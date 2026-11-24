@@ -164,6 +164,7 @@ const SPARK_KEY = 'fx-spark';
 export type LivesFx = (flash: number, dx: number) => void;
 
 export class Effects {
+  showpiece?: import('../showpiece/battle').BattleObserver;
   /** Game clock: real ms times the speed, capped per frame like the tick loop. */
   private gameMs = 0;
   private readonly projectiles: (Projectile | null)[];
@@ -341,6 +342,7 @@ export class Effects {
           const s = this.tickShots.get(cellKey(e.cell));
           if (s === undefined) {
             this.sprites.hit(e.enemyId, cellCenter(e.cell));
+            this.showpiece?.onHit(e.enemyId, this.sprites.spot(e.enemyId));
             sound.play('hit');
             break;
           }
@@ -455,6 +457,7 @@ export class Effects {
     // Milestone 33: a pop pitched by size; the boss's fall has its own sound (bossDeath).
     if (type !== 'boss' && type !== 'grumblemaw') sound.play(deathSound(type));
     const spot = this.sprites.spot(id);
+    if (spot) this.showpiece?.onKill(id, spot);
     this.sprites.kill(id);
     if (spot && bounty > 0) this.addGold(spot.x, spot.y - 10, bounty, spot.type === 'boss' || spot.type === 'grumblemaw');
   }
@@ -568,6 +571,7 @@ export class Effects {
 
   /** A projectile arrived: its impact. */
   private land(shot: Shot): void {
+    this.showpiece?.onImpact(shot);
     const { x, y } = shot.to;
     sound.play(`impact.${shot.tower}`);
     switch (shot.tower) {
@@ -607,6 +611,7 @@ export class Effects {
         if (d.kind === 'impact') this.land(d.shot);
         else if (d.kind === 'hit') {
           this.sprites.hit(d.id, d.from);
+          this.showpiece?.onHit(d.id, this.sprites.spot(d.id));
           sound.play('hit');
         } else if (d.kind === 'kill') this.killNow(d.id, d.bounty, d.type);
         else this.bossDeath(d.id, d.large);

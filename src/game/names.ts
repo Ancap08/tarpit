@@ -625,3 +625,6 @@ function campaignTips(touch: boolean): Readonly<Record<number, readonly string[]
 const mouseTips = campaignTips(false);
 const touchTips = campaignTips(true);
 export const levelTips = (id: number, touch: boolean): readonly string[] => (touch ? touchTips : mouseTips)[id];
+
+/** Hidden Meadow benchmark readout, ordered from lowest to highest detail. */
+export const SHOWPIECE_DETAIL = ['Detail · Low', 'Detail · Medium', 'Detail · High'] as const;

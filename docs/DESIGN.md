@@ -1167,6 +1167,46 @@ the same Ending at level 10 keeps that receipt. Level 20 still shows
 write falls back to the current session. Rotation preserves the page and
 the destination.
 
+## Showpiece (experimental)
+
+Open `?look=showpiece` and play campaign level 1 or Free play Meadow. The
+title still offers Classic and Painted. Other levels and maps use Painted.
+The optional renderer and one matching-density farm atlas load on Play.
+An unavailable experiment gives way to the already-loaded Painted field
+after at most eight additional seconds. The URL leaves the saved Look alone.
+
+The mill, apiary and pasture change from morning to lamplight over the
+waves. Workers head inside when the collectors arrive. Crews follow their
+tower's firing cycle. Spent arrows, craters and dropped finery share 64
+reusable marks. Traffic darkens 40 short stretches of the trail. These
+layers yield to placement, zones, combatants and health bars. The first
+arrival draws the map up to 4.8% closer for 2.3 seconds. Artillery gives
+a short kick. The HUD stays still and map input follows the displayed view.
+During tower placement, scenery fades to 12% opacity. It returns when the
+pick or drag ends. A piece overlapping a new tower fades out with a dust
+puff, and returns when the footprint is free. These fades take 300 ms.
+Reduced motion and frozen test mode show the settled state immediately.
+
+The pasture's daylight also falls on the exit town, its people, sacks and
+banner. The townsfolk toss their hats while fireworks open over the field.
+All showpiece motion uses the map's unscaled play clock. The show's result
+screen keeps Pause available for the celebration and the banner hoist.
+Resume continues the same pose. The detail governor excludes paused time
+from its cooldown and skips the first two frames after Resume.
+
+Detail starts high. A 750 ms window averaging over 20 ms per frame lowers
+it one tier. To gain a tier, consecutive windows must average under 17.5 ms
+for at least 10 seconds. The first drop also blocks recovery for 30 seconds.
+Each further drop in the same game doubles that wait, including after a
+rotation. Farm details fade across each tier boundary over 300 ms.
+Scenery normally refreshes once per 120, 65 or 32 ms at low, medium or
+high detail. Fades refresh at 32 ms. Building or changing waves triggers
+an immediate update.
+Test mode holds the scene still. Reduced motion keeps the lighting cues
+and grounded poses. With the switch, `window.__tarpit.showpiece()` reports
+the active tier (0–2) and mark count. Adding `&perf=1` displays the tier
+and records drawing costs. Benchmarks can add `&showpieceTier=0`, `1`
+or `2` to hold that tier.
 
 ## Sound
 
@@ -1400,7 +1440,7 @@ drawn and where touches land differ.
   While the panel is open, only its actions and mute accept input.
   Pause puts away a reward offer and restores the same choices on Resume.
   A boss banner continues from the time at which it paused. The tips and
-  result screens keep their own controls and ignore P.
+  ordinary result screens keep their own controls and ignore P.
 
 ## Touch and phones
 
