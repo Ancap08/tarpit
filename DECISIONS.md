@@ -1698,3 +1698,20 @@ can change it; "Kyle" means Kyle decided.
   - **Feather marks are small on a phone** and the level 9 tip was cryptic.
     Both sent back to Codex: larger marks and a longer puff, and a tip that
     says what feathers do.
+
+## 2026-11-24, milestone 50 (the barrel feathers a crowd)
+
+- **The Tar Barrel feathers whole crowds and the levels are retuned to fit.**
+  Decided by Kyle ("Yes, retune levels"), after being told the crowd version
+  failed 12 of 20 levels at the gate with level data fixed.
+- **What may move and how far** is the coordinator's: per-level gold and
+  health within 15%, wave contents on levels 11 to 20 only, Free play health
+  scales; never the target windows or star lines. Reason: Kyle has played
+  the first act and called it good, so its waves and maps stay and its
+  numbers move as little as the gate allows.
+- **The barrel keeps its slow, radius and tar time.** Milestone 49's trial
+  traded slow for feathers and level 10 fell from 16 lives to 5, because
+  bosses do not run.
+- **The fairness check uses the ordinary bots with feathers forced (C6),**
+  not the feather bot alone, after the milestone 49 verifier showed that
+  bot was too weak to guard anything.

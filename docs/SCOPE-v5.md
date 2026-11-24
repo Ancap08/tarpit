@@ -834,6 +834,73 @@ makes its sounds in code; no audio files.
 New towers, enemies, maps or levels; a new special; a hero; the castle
 wall; the Daily Writ; turncoats; gold-stealing collectors; a level editor.
 
+## Milestone 50: the barrel feathers a crowd
+
+Kyle chose this on 2026-11-24 ("Yes, retune levels"). Milestone 49's first
+build had the Tar Barrel feather whole crowds and passed only 8 of 20
+levels at the gate with level data fixed. This milestone brings that
+barrel back and retunes the levels to fit it.
+
+### The rule
+
+- The Tar Barrel tars **and feathers** every enemy it lands on that can be
+  feathered: one cast, a whole crowd runs back. It still leaves its tar.
+- Everything else from milestone 49 holds: once per enemy, the same run and
+  flinch, bosses never run, a Feathers tower feathers enemies standing in
+  the barrel's tar.
+- The barrel keeps today's radius, slow and tar time. Milestone 49's trial
+  paid for feathers by weakening the slow, and the boss levels collapsed,
+  because bosses do not run. The barrel gets stronger; the levels answer.
+
+### Words (coordinator)
+
+| Where | Text |
+|---|---|
+| Tar Barrel, line | Tar and feathers. Enemies caught run back. |
+| Level 5 tip that names the barrel | Drop a Tar Barrel on a crowd and they run back. |
+
+### What may move, in this order
+
+1. Per-level numbers on levels that allow the barrel: starting gold, health
+   scale, and where health growth starts. Each stays within 15% of today's
+   value.
+2. Wave contents on levels 11 to 20 only, if 1 is not enough. Levels 1 to
+   10 keep their waves, maps, towers, specials, star lines and lives.
+3. Free play: enemy health growth or the difficulty health scales. Not wave
+   contents, not the target windows.
+
+Not to move: path A and path B of the Tar Pit, every other tower, enemy and
+special, the run and flinch numbers, the taxes' and feats' rules, star
+lines, the Free play target windows, the 20 lives.
+
+### Targets (each a test that can fail)
+
+| Label | Target |
+|---|---|
+| C1 | One barrel on a crowd feathers every enemy in its radius that is not a boss and not already feathered; none twice |
+| C2 | Worth casting: the standard special policy ends at least 4, 3 and 4 lives above the same policy with the barrel's turns unused (today's margins) on Meadow, Switchback and Riverbend |
+| C3 | Best somewhere: giving Fire Arrows' turns to the barrel beats giving the barrel's turns to Fire Arrows on at least one map |
+| C4 | Every Free play target passes with its windows unchanged; the report is re-locked |
+| C5 | The campaign gate passes on all twenty levels, every label, including feats, taxes, variety, the second-act step and the margin rule |
+| C6 | Fair for a person: the person-like bot and the good bot, each with every Tar Pit on Feathers and the barrel preferred, end no more than 4 lives above the unmodified good bot on any level and win no third star it does not |
+| C7 | Bounded: every changed level number is listed old and new and is within 15%; levels that do not allow the barrel, and any run on an unchanged level that never casts it, are byte for byte as before |
+| C8 | Boss levels hold: on levels 9, 10 and 20 the good bot's result is within 2 lives of today's |
+
+If these cannot all be met inside the levers above, the implementer stops
+and reports the closest result.
+
+### Look
+
+The crowd moment is the point: one puff per enemy, the whole crowd turning,
+readable at 390 px wide. Captures of a crowd of eight or more, before, at
+the puff, and mid-run, on phone and desktop.
+
+### Not in this milestone
+
+A Fire Arrows change (it still beats the Free play window when used every
+turn); new towers, enemies, maps or levels; the hero; the castle wall; the
+Daily Writ; turncoats; gold-stealing collectors; a level editor.
+
 ## Later milestones (order agreed, detail to come)
 
 | # | Milestone | Idea |
