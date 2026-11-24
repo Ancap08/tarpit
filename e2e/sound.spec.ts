@@ -3,6 +3,7 @@ import { MAX_VOICES } from '../src/game/audio/mixer';
 import { TRAVEL_MS } from '../src/game/fx/fxMath';
 import { MUTE_TEXT } from '../src/game/names';
 import { audio, buildNearSpawn, contexts, count, countContexts, muteRoundTrip, onScene, rectCentre, startPlay } from './sound';
+import { setPageHidden } from './pause';
 import { waitForFirstScreen, waitForTitle } from './title';
 
 /** The horde measurement's length, and the most sound starts per second it may show (DESIGN.md, "Sound"). */
@@ -239,19 +240,17 @@ test('blocked storage never throws: the mute holds for the session', async ({ pa
   expect(errors).toEqual([]);
 });
 
-test('hiding the page suspends the context and showing it resumes', async ({ page }) => {
-  await startPlay(page);
-  const setHidden = (hidden: boolean) =>
-    page.evaluate((h) => {
-      Object.defineProperty(document, 'hidden', { configurable: true, get: () => h });
-      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => (h ? 'hidden' : 'visible') });
-      document.dispatchEvent(new Event('visibilitychange'));
-    }, hidden);
-  await setHidden(true);
+test('hiding the title suspends its context and showing the title resumes it', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.goto('/?renderer=canvas');
+  await waitForTitle(page);
+  await page.waitForFunction(() => window.__tarpit!.audio().context === 'running');
+  await setPageHidden(page, true);
   await page.waitForFunction(() => window.__tarpit!.audio().context === 'suspended');
   expect((await audio(page)).voices).toBe(0);
-  await setHidden(false);
+  await setPageHidden(page, false);
   await page.waitForFunction(() => window.__tarpit!.audio().context === 'running');
+  expect(await page.evaluate(() => window.__tarpit!.paused())).toBe(false);
 });
 
 for (const speed of [1, 3]) {
