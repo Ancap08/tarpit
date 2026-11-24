@@ -58,6 +58,8 @@ import {
   BOON_WAVE_TEXT,
   BOSS_WAVE_NEXT_TEXT,
   LAST_WAVE_TEXT,
+  autoWaveText,
+  taxStatusText,
   callEarlyLabel,
   levelNumberText,
   blockedWaveLabel,
@@ -363,6 +365,7 @@ export class Hud {
   private readonly wave: Phaser.GameObjects.Text;
   private readonly next: Phaser.GameObjects.Text;
   private readonly tag: Phaser.GameObjects.Text;
+  private readonly taxLine: Phaser.GameObjects.Text;
   private readonly startButton: Button;
   private readonly speedButton: Button;
   private readonly specialButton: Button;
@@ -412,6 +415,8 @@ export class Hud {
     this.lives = fixedStat(LIVES_X, statSize, TEXT.hud);
     this.wave = fixedStat(238, statSize, TEXT.hud);
     this.tag = fixedStat(238, m.portrait ? statSize : TAG_SIZE, TEXT.hudDim);
+    this.taxLine = fixedStat(m.portrait ? 6 : 8, m.portrait ? 22 : 14, TEXT.hud)
+      .setName('active-taxes').setY(m.portrait ? 61 : MID + 14).setVisible(false);
     if (!m.portrait) this.tag.setY(MID + TAG_OFFSET);
     this.next = m.portrait
       ? stat(m.preview.x, m.statSize, TEXT.hudDim).setY(m.preview.y).setOrigin(0, m.preview.originY).setWordWrapWidth(m.preview.width, true)
@@ -506,6 +511,13 @@ export class Hud {
     set(this.wave, waveCounterText(state.wave, state.endless, lastWave(state)));
     const tag = state.level ? levelNumberText(state.level.id) : difficultyTag(state.difficulty);
     set(this.tag, tag);
+    const taxes = taxStatusText(state.level?.taxes, state.towers.length);
+    set(this.taxLine, taxes);
+    this.taxLine.setVisible(!!taxes);
+    if (taxes) {
+      const room = m.portrait ? PORTRAIT_WIDTH - 12 : this.tag.x - this.taxLine.x - 4;
+      this.taxLine.setScale(Math.min(1, room / this.taxLine.width), 1);
+    }
     if (m.portrait) {
       // One row: each stat starts after the one before it; the cheat mark is right-aligned.
       const dx = this.lives.x - this.livesX;
@@ -516,7 +528,9 @@ export class Hud {
       const rightEdge = state.cheated ? this.cheatMark.x - this.cheatMark.width - 4 : PORTRAIT_WIDTH;
       this.tag.setVisible(this.tag.x + this.tag.width <= rightEdge);
     } else {
-      this.gold.setY(state.cheated ? MID - 6 : MID);
+      this.gold.setY(taxes ? MID + WAVE_TAG_SHIFT : state.cheated ? MID - 6 : MID);
+      this.lives.setY(taxes ? MID + WAVE_TAG_SHIFT : MID);
+      this.cheatMark.setX(taxes ? this.tag.x + this.tag.width + 4 : m.cheat.x);
       this.gold.setScale(Math.min(1, (LIVES_X - m.goldX - 4) / this.gold.width), 1);
       this.wave.setY(tag ? MID + WAVE_TAG_SHIFT : MID);
     }
@@ -527,7 +541,7 @@ export class Hud {
       const width = m.preview.width;
       if (m.portrait) {
         this.next.setWordWrapWidth(width, true).setText(preview).setColor(aimText === null ? TEXT.hudDim : TEXT.aimBanner);
-        const availableHeight = PORTRAIT_STRIP_H - 2 - m.preview.y;
+        const availableHeight = (taxes ? this.taxLine.getBounds().top - 1 : PORTRAIT_STRIP_H - 2) - m.preview.y;
         for (const size of [20, 19, 18, 16, 14]) {
           // At 20 px the actual Caslon glyphs in previews and aim hints occupy
           // 17 px above the baseline and 6 below it. Courier fits inside both.
@@ -537,6 +551,7 @@ export class Hud {
           this.next.setStyle({ fontSize: size, metrics: { ascent, descent, fontSize: ascent + descent } });
           if (this.next.height <= availableHeight && this.next.width <= width) break;
         }
+        if (taxes) this.next.setScale(1, Math.min(1, availableHeight / this.next.height));
       } else {
         this.next.setFontSize(previewSize(preview)).setText(preview);
         this.next.setScale(Math.min(1, width / this.next.width), Math.min(1, BUTTON_H / this.next.height));
@@ -550,6 +565,8 @@ export class Hud {
     this.startButton.setFontSize(call.ok || reason ? m.callFont : m.startFont);
     if (reason) this.startButton.set(m.portrait ? reason : blockedWaveLabel(!!state.pendingBoon, reason), false);
     else if (call.ok) this.startButton.set(callEarlyLabel(call.bonus, m.portrait), true);
+    else if (state.autoWaveTicks !== undefined)
+      this.startButton.set(autoWaveText(Math.ceil(state.autoWaveTicks / TICKS_PER_SECOND)), canStartWave(state));
     else this.startButton.set(START_WAVE_TEXT, canStartWave(state));
     const label = this.startButton.labelObjects[0];
     const availableWidth = m.start.width - 4;

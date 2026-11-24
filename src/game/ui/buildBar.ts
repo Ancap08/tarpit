@@ -4,13 +4,14 @@
 // highlighted. The bar only reports clicks; GameScene owns the pick.
 
 import type Phaser from 'phaser';
-import { TOWER_DEFS, allowedTowers, type GameState, type TowerType } from '../../sim';
+import { TOWER_DEFS, towerBuildCost, allowedTowers, type GameState, type TowerType } from '../../sim';
 import type { Rect } from '../input';
 import { drawTowerShape } from '../draw/towers';
 import { LANDSCAPE, type Layout } from '../layout';
 import type { PaintedSkin } from '../skin/painted';
 import { portraitBarRects } from './geometry';
-import { TOWER_NAMES } from '../names';
+import { TOWER_NAMES, towerCountText } from '../names';
+import { HUD_FONT, TEXT } from '../palette';
 import { makeLock } from './lock';
 import { BAR_TYPES, canPick } from './buildBarModel';
 import { Button } from './button';
@@ -43,6 +44,7 @@ export class BuildBar {
   /** The Classic portrait icons and the enabled flags they were drawn for. */
   private readonly classicIcons?: Phaser.GameObjects.Graphics;
   private readonly paintedIcons?: Phaser.GameObjects.Image[];
+  private readonly count: Phaser.GameObjects.Text;
   private readonly locks: Phaser.GameObjects.Graphics[];
   private iconKey = '';
   private compact = false;
@@ -77,6 +79,11 @@ export class BuildBar {
     } else if (portrait) {
       this.classicIcons = scene.add.graphics();
     }
+    const countSize = portrait ? 22 : 14;
+    this.count = scene.add.text(0, 0, '', {
+      fontFamily: HUD_FONT, fontSize: countSize, fontStyle: 'bold', color: TEXT.hud,
+      fixedHeight: countSize + 4, metrics: { ascent: countSize, descent: 4, fontSize: countSize + 4 },
+    }).setOrigin(0.5).setName('build-bar-count').setVisible(false);
     this.locks = BAR_TYPES.map(type => makeLock(scene)
       .setName(`bar-lock:${type}`).setScale(portrait ? 1 : 0.7).setVisible(false));
   }
@@ -98,15 +105,37 @@ export class BuildBar {
         this.paintedIcons?.[i].setX(r.x + r.width / 2);
       });
     }
+    const cap = state.level?.taxes?.rationing;
+    if (portrait && cap !== undefined && !this.count.visible) {
+      for (const icon of this.paintedIcons?.slice(0, 2) ?? []) icon.setScale(icon.scaleX * 0.60);
+    }
+    this.count.setVisible(cap !== undefined);
+    if (cap !== undefined) {
+      const first = this.buttons[0].rect;
+      const text = towerCountText(state.towers.length, cap);
+      if (this.count.text !== text) this.count.setText(text);
+      this.count.setPosition(first.x + first.width + BAR_GAP / 2, first.y + (portrait ? 14 : 9));
+    }
     BAR_TYPES.forEach((type, i) => {
       const b = this.buttons[i];
       const enabled = canPick(state, type);
       const locked = !allowedTowers(state).includes(type);
-      const cost = String(TOWER_DEFS[type].cost);
+      const cost = String(towerBuildCost(state, type));
       const lockReplacesCost = locked && !portrait && !this.paintedIcons;
       b.set(portrait ? cost : TOWER_NAMES[type], enabled, lockReplacesCost ? '' : cost);
+      if (!portrait && state.level?.taxes?.windowTax) {
+        const [name, price] = b.labelObjects;
+        name.setScale(Math.min(1, (price.x - price.width - name.x - 3) / name.width), 1);
+      }
       b.setPicked(pick === type);
       const { x, y, width, height } = b.rect;
+      // The tally spans the two upper inside corners. Keep their icons
+      // toward the opposite edges and leave every price and hit area in place.
+      if (cap !== undefined && i < 2) {
+        const xOffset = (i === 0 ? -1 : 1) * width / 4;
+        this.paintedIcons?.[i].setPosition(x + width / 2 + xOffset, y + (portrait ? 37 : PAINTED_WIDE_ICON_Y));
+        if (!portrait) for (const label of b.labelObjects) label.setY(y + Math.min(PAINTED_WIDE_LABEL_Y, height - label.height / 2));
+      }
       const lockX = x + width - 14;
       const lockY = y + (lockReplacesCost ? height / 2 - 2 : portrait ? 12 : 8);
       this.locks[i].setPosition(lockX, lockY).setVisible(locked);
@@ -121,7 +150,8 @@ export class BuildBar {
     BAR_TYPES.forEach((type, i) => {
       const r = this.buttons[i].rect;
       // Barrels point up the screen; a tower the player cannot afford is faint, as its greyed cost.
-      drawTowerShape(g, type, { x: r.x + r.width / 2, y: r.y + ICON_Y }, -Math.PI / 2, false, canPick(state, type) ? 1 : 0.4);
+      const offset = cap !== undefined && i < 2 ? (i === 0 ? -1 : 1) * r.width / 4 : 0;
+      drawTowerShape(g, type, { x: r.x + r.width / 2 + offset, y: r.y + (offset ? 32 : ICON_Y) }, -Math.PI / 2, false, canPick(state, type) ? 1 : 0.4);
     });
   }
 

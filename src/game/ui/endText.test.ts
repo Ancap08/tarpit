@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createGame, LEVELS, playAllWavesNoTowers } from '../../sim';
+import { MAPPED_LEVELS } from './campaignMap';
 import { BOON_NAMES, CAMPAIGN_END, END_TEXT } from '../names';
 import { campaignResultText, endKind, endScreenText } from './endText';
 
@@ -65,7 +66,7 @@ describe('campaign result', () => {
   });
 
   it('celebrates the last level and has no next button', () => {
-    const state = createGame({ level: LEVELS[LEVELS.length - 1] });
+    const state = createGame({ level: MAPPED_LEVELS.at(-1)! });
     state.phase = 'won';
     expect(campaignResultText(state, {})).toMatchObject({
       levelId: 10, complete: 'Campaign complete!', nextId: null, buttons: ['Play again', 'Level map'],
@@ -79,7 +80,7 @@ describe('campaign result', () => {
     expect(campaignResultText(state, { 1: 0 })).toMatchObject({
       stars: 0, slots: '0 of 3 stars', hint: CAMPAIGN_END.cheated, nextId: 2, buttons: ['Next level', 'Play again', 'Level map'],
     });
-    const last = { ...state, level: LEVELS[LEVELS.length - 1] };
+    const last = { ...state, level: MAPPED_LEVELS.at(-1)! };
     expect(campaignResultText(last, {})).toMatchObject({ hint: CAMPAIGN_END.cheatedLast, nextId: null, complete: CAMPAIGN_END.complete });
   });
 

@@ -8,7 +8,7 @@ import { api, postSpawn } from './campaign';
 import { useTallFontMetrics } from './campaignFont';
 import { waitForFirstScreen } from './title';
 
-async function checkLabel(page: Page, key: string, text: string) {
+export async function checkLabel(page: Page, key: string, text: string) {
   const label = await page.evaluate(({ key, text }) => {
     const t = window.__tarpit!;
     const rect = t.uiRects()[key];

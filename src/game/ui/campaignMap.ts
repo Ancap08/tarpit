@@ -1,6 +1,9 @@
 import { LEVELS, unlockedLevel, type CampaignProgress } from '../../sim';
 import type { Rect } from '../input';
 
+// The current map and ending cover act one until the two-act screens land.
+export const MAPPED_LEVELS = LEVELS.slice(0, 10);
+
 export interface CampaignStop {
   id: number;
   open: boolean;
@@ -15,8 +18,8 @@ export function campaignStops(portrait: boolean, progress: CampaignProgress): Ca
   const width = portrait ? 100 : 106;
   const height = portrait ? 86 : 72;
   const columns = portrait ? 2 : 5;
-  const next = LEVELS.find(level => unlockedLevel(progress, level.id) && progress[level.id] === undefined);
-  return LEVELS.map(({ id }, index) => {
+  const next = MAPPED_LEVELS.find(level => unlockedLevel(progress, level.id) && progress[level.id] === undefined);
+  return MAPPED_LEVELS.map(({ id }, index) => {
     const row = Math.floor(index / columns);
     const offset = index % columns;
     const column = row % 2 === 0 ? offset : columns - 1 - offset;

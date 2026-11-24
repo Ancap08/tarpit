@@ -53,7 +53,7 @@ import type { Rect } from './input';
 import { highScores } from './highScore';
 import { seenTips, seenBroadsides, type Broadside } from './seenTips';
 import { campaignProgress } from './campaignProgress';
-import { campaignStops, type CampaignStop } from './ui/campaignMap';
+import { MAPPED_LEVELS, campaignStops, type CampaignStop } from './ui/campaignMap';
 import { drawCampaignMap, drawLevelCard, drawLevelTips, drawStoryBroadside } from './ui/campaignScreens';
 import { CAMPAIGN_TEXT, lockedLevelText, bestScoreText, DIFFICULTY_LABELS, MAP_NAMES, paintedLoadingText, STORY_TEXT, TITLE_TEXT } from './names';
 import { COLORS, FONT, TEXT } from './palette';
@@ -275,7 +275,7 @@ export class TitleScene extends Phaser.Scene {
       this.events.once(Phaser.Scenes.Events.RENDER, () => seenBroadsides.mark(which));
       const proceed = () => {
         if (which === 'ending' && this.replayLevel) {
-          const level = LEVELS[LEVELS.length - 1];
+          const level = MAPPED_LEVELS[MAPPED_LEVELS.length - 1];
           this.startGame({ difficulty: DEFAULT_DIFFICULTY, map: level.map, level });
         } else this.visit('levelMap');
       };

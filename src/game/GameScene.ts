@@ -1818,7 +1818,7 @@ export class GameScene extends Phaser.Scene {
     this.drawnRange = null;
     const selected = this.panel.cell === null ? undefined : towerAt(this.state, this.panel.cell);
     if (selected) {
-      this.rangeCircles(selected.cell, towerStats(selected, this.state.boons));
+      this.rangeCircles(selected.cell, towerStats(selected, this.state.boons, this.state.level));
       const s = cellCenter(selected.cell);
       g.lineStyle(3, COLORS.selectRing, 1);
       g.strokeCircle(s.x, s.y, 22);
@@ -1832,7 +1832,7 @@ export class GameScene extends Phaser.Scene {
       const upgraded = moved?.upgraded ?? false;
       const angle = this.aim.angle(moved ? moved.cell : hover);
       if (hoverBuildable) {
-        this.rangeCircles(hover, towerStats(moved ?? { type: ghostType, upgraded: false }, this.state.boons));
+        this.rangeCircles(hover, towerStats(moved ?? { type: ghostType, upgraded: false }, this.state.boons, this.state.level));
         if (this.painted) this.painted.drawGhost(ghostType, cellCenter(hover), GHOST_ALPHA);
         drawTowerShape(g, this.painted ? null : ghostType, cellCenter(hover), angle, upgraded, GHOST_ALPHA, 0, this.layout, moved?.path);
       } else if (drag !== null) {
