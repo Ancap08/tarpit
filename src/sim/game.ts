@@ -14,7 +14,7 @@
 //
 // Order of work inside one wave tick (move, exit, zones, burn, combat,
 // spawn, counters, clear check):
-//   1. A feathered runner moves backward at its fixed speed, stopping
+//   1. A feathered runner moves backward at its own walking speed, stopping
 //      at the entrance. A flinch holds position. A runner crossing an
 //      enemy triggers its one flinch for subsequent ticks. Neither fights
 //      blockers during those movements. Other enemies move forward

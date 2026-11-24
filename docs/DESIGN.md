@@ -352,18 +352,18 @@ beside it that returns to the title; the win screen also has [Keep going].
 
 ### Feathers
 
-A tarred enemy can be feathered once in its life. The barrel
-feathers every enemy it tars on impact, including Harpies. Later arrivals
-receive only the zone's slow. A path B Tar Pit shot feathers a surviving
-tarred target. On any shot that cannot feather its target, the tower applies
-its usual slow. Both bosses keep their slow cap and are immune to feathers
-and flinching.
+Only a path B Tar Pit shot can feather an enemy. A shot feathers a surviving
+ground target once in its life if either its tower slow or its Tar Barrel
+slow is active. This includes enemies tarred on impact or after entering
+the barrel's zone. A shot that cannot feather its target applies its usual
+slow. Both bosses keep their slow cap and are immune to feathers and flinching.
+Each successful shot emits `feathered {enemyId, x, y}` at the impact position.
 
-| Run ticks | Run speed (trail px/s) | Flinch ticks |
-|---:|---:|---:|
-| 15 | 40 | 5 |
+| Run ticks | Flinch ticks |
+|---:|---:|
+| 72 | 6 |
 
-A runner follows the same trail backward at the listed speed. It passes
+A runner follows the same trail backward at its own walking speed from the enemy table. It passes
 through Guards and Barricades without either side attacking, and leaves
 any previous guard contact. Slows and Forced March affect forward walking
 only. Slow timers, zones, burns, tar's burn multiplier and tower shots
@@ -375,7 +375,7 @@ A runner that reaches or passes another enemy on the trail makes it flinch
 once in its life. The crossing uses both enemies' start and end distances
 from the same tick. Tied enemies must move past each other. On the following
 ticks a flinching enemy halts and neither fights nor holds a guard's attention.
-A run timer continues counting down during a flinch. In every look, body
+A flinch pauses the run timer until movement resumes. In every look, body
 feathers remain after the 380 ms puff. The sprite faces back along the road
 while it runs and leans 15 degrees during a flinch. Each batch of feather
 hits plays one 0.165 s synthesized puff.
@@ -573,7 +573,7 @@ Reloading starts a new run.
 |---|---|---|---|---|---|---|
 | Powder Keg | 1 | 90 | 60 | - | - | - |
 | Barricade | 3 | 0 | - | - | - | - |
-| Tar Barrel | 4 | 120 | - | 0.4 | - | 540 |
+| Tar Barrel | 4 | 100 | - | 0.5 | - | 660 |
 | Guards | 6 | 0 | - | - | - | - |
 | Fire Arrows | 7 | 90 | - | - | 26 | 660 |
 
@@ -634,15 +634,14 @@ Reloading starts a new run.
 - **Powder Keg.** 60 damage to each enemy inside, shields ignored. No zone.
 - **Zones.** The Tar Barrel and Fire Arrows act on the enemies inside at
   once and leave a zone at the point (`state.zones`, each with an id, its
-  type, point, radius and `ticksLeft`). Tar lasts 540 ticks (9 s) and Fire
-  Arrows lasts 660 ticks (11 s). Every wave
+  type, point, radius and `ticksLeft`) for 660 ticks (11 s). Every wave
   tick, in step 2b, each zone (oldest first) gives every live enemy inside
   it, flyers included, its effect, then counts down and is removed at 0.
   The effect stays for 60 ticks after an enemy leaves
   (`ZONE_LINGER_TICKS`). Sticky Tar extends the slow linger to 120 ticks.
   Several zones can exist at once; they do not stack (the slow and burn rules below decide). The wave
   clear removes every zone.
-- **Effects.** The Tar Barrel slows by 0.4 through the special slot
+- **Effects.** The Tar Barrel slows by 0.5 through the special slot
   (capped at 0.3 on either boss; a weaker special slow does not replace a
   stronger active one; tower slows neither block nor shorten it). Fire
   Arrows burn at 26 per second through the normal burn (`applyBurn`, as a
@@ -656,8 +655,7 @@ Reloading starts a new run.
   the next tick as usual.
 - **Event.** `special {type, x, y, radius, hits, zoneId?}` (`zoneId` for the
   Tar Barrel and Fire Arrows), then `slowed` for each slow applied on
-  landing. A first feathering emits `feathered {enemyId, x, y}` at the enemy's
-  impact position immediately after its slow. Kills follow.
+  landing, then the kills.
 - Barricade placement emits the usual `special` event with its snapped
   coordinates, trail angle, zero radius and zero hits. Each attack emits
   `blockerHit`. Destruction emits one `blockerBreak`.
@@ -1715,10 +1713,7 @@ one inside. Otherwise, if a point works for the Powder Keg, the keg is
 thrown there. Otherwise it waits. The best point catches the most enemies;
 ties go to the point nearest the exit. The simulator also measures the combo
 with each special omitted in turn. When it omits Tar Barrel or Fire Arrows,
-the other takes its turn. The R2a control instead skips the barrel when
-the standard policy would cast it and waits its full recharge, ending the
-wait on the next wave. This advances the zone rotation without firing
-another special on the skipped turn. The headless recorder fires each choice and writes it into the
+the other takes its turn. The headless recorder fires each choice and writes it into the
 script's timed list (`timed`), so `playScripted` and the browser's
 `runScript` replay the same game.
 

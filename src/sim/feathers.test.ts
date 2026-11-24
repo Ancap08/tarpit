@@ -10,16 +10,16 @@ import type { Enemy, EnemyType, GameState, MapDef } from './types';
 import { waveDef } from './waves';
 
 const LINE: MapDef = { id: 'line', width: 960, height: 480, path: [{ x: 0, y: 240 }, { x: 960, y: 240 }] };
-const step = FEATHERS.speed / TICKS_PER_SECOND;
+const groundTypes = ['goblin', 'wolf', 'troll', 'shieldbearer'] as const;
 
 function enemy(id: number, type: EnemyType, distance: number): Enemy {
   return { id, type, distance, hp: ENEMY_STATS[type].hp, slow: 0, slowTicksLeft: 0 };
 }
 
-function arena(enemies: Enemy[], tower = false): GameState {
+function arena(enemies: Enemy[], tower = false, col = 6): GameState {
   const state = createGame({ map: LINE });
   if (tower) {
-    const cell = { col: 6, row: 5 };
+    const cell = { col, row: 5 };
     state.gold = 1000;
     expect(buildTower(state, cell, 'tarpit').ok).toBe(true);
     expect(upgradeTower(state, cell).ok).toBe(true);
@@ -54,10 +54,24 @@ describe('R3: tar and feathers use the trail and end after one run', () => {
     expect(state.shots.at(-1)?.targetId).toBe(back.id);
     expect(isTarred(back)).toBe(true);
 
-    // All targets are now tarred. A barrel feathers only the second one.
+    // An impact can tar both again. Only another path B shot feathers the second.
     barrel(state, 210);
+    expect(back.feathered).toBeUndefined();
+    for (let i = 0; i < 3; i++) {
+      tower.cooldownTicks = 0;
+      fireTowers(state);
+    }
     expect(state.events.filter((event) => event.kind === 'feathered').map((event) => event.enemyId)).toEqual([0, 1]);
     expect(back.runTicksLeft).toBe(FEATHERS.runTicks);
+  });
+
+  it('a barrel impact tars the whole crowd without starting a retreat', () => {
+    const crowd = [...groundTypes, 'harpy', 'boss', 'grumblemaw'] as const;
+    const state = arena(crowd.map((type, i) => enemy(i, type, 200 + i)));
+    barrel(state, 205);
+    expect(state.enemies.every(isTarred)).toBe(true);
+    expect(state.enemies.some(e => e.feathered || e.runTicksLeft)).toBe(false);
+    expect(state.events.some(e => e.kind === 'feathered')).toBe(false);
   });
 
   it('zone entrants are tarred, and a tower can feather one on its first shot', () => {
@@ -73,11 +87,13 @@ describe('R3: tar and feathers use the trail and end after one run', () => {
     expect(flyer.feathered).toBeUndefined();
   });
 
-  it.each(['goblin', 'wolf', 'troll', 'harpy', 'shieldbearer'] as const)(
+  it.each(groundTypes)(
     'a %s hit at the entrance turns once and completes the wave at the far exit', (type) => {
-      const walker = enemy(0, type, step / 2);
-      const state = arena([walker]);
+      const walker = enemy(0, type, ENEMY_STATS[type].speed / TICKS_PER_SECOND / 2);
+      const state = arena([walker], true, 0);
       barrel(state, 0);
+      expect(walker.feathered).toBeUndefined();
+      fireTowers(state);
       expect(walker.feathered).toBe(true);
       tick(state);
       expect([walker.distance, walker.runTicksLeft]).toEqual([0, 0]);
@@ -86,7 +102,10 @@ describe('R3: tar and feathers use the trail and end after one run', () => {
       state.specialCharges = 1;
       barrel(state, 0);
       expect(state.events.filter((event) => event.kind === 'feathered')).toHaveLength(0);
+      state.towers[0].cooldownTicks = 0;
+      fireTowers(state);
       expect(walker.runTicksLeft).toBe(0);
+      state.towers.length = 0; // Let this survivor walk the full trail.
       const lives = state.lives;
       // All zone slows expire after their zone and linger, even on a very short road.
       const bound = state.zones.reduce((ticks, z) => ticks + z.ticksLeft, 0)
@@ -100,9 +119,12 @@ describe('R3: tar and feathers use the trail and end after one run', () => {
 
   it.each(['boss', 'grumblemaw'] as const)('%s is tarred but never runs or flinches', (type) => {
     const boss = enemy(0, type, 205);
-    const runner = enemy(1, 'goblin', 205 + step / 2);
+    const runner = enemy(1, 'goblin', 205.5);
     const state = arena([runner, boss], true);
     barrel(state, 205);
+    fireTowers(state);
+    expect(runner.feathered).toBe(true);
+    state.towers[0].cooldownTicks = 0;
     tick(state); // runner crossed the boss, and the tower shot the tarred boss
     expect(isTarred(boss)).toBe(true);
     expect([boss.feathered, boss.runTicksLeft, boss.flinchTicksLeft]).toEqual([undefined, undefined, undefined]);
@@ -112,8 +134,10 @@ describe('R3: tar and feathers use the trail and end after one run', () => {
 
   it.each([false, true])('crossing halts a walker once, independent of array order (reversed %s)', (reversed) => {
     const runner = enemy(0, 'troll', 205);
-    const state = arena([runner]);
+    const state = arena([runner], true);
     barrel(state, 205);
+    fireTowers(state);
+    const step = ENEMY_STATS.troll.speed / TICKS_PER_SECOND;
     const walker = enemy(1, 'wolf', 205 - step - 1); // crosses after both move
     state.enemies.push(walker);
     if (reversed) state.enemies.reverse();
@@ -134,10 +158,10 @@ describe('R3: tar and feathers use the trail and end after one run', () => {
   });
 
   it('runs through an occupied guard and wall at fixed speed, then resumes normal combat', () => {
-    const total = step * FEATHERS.runTicks;
+    const total = ENEMY_STATS.troll.speed / TICKS_PER_SECOND * FEATHERS.runTicks;
     const start = total + 150;
     const walker = enemy(0, 'troll', start);
-    const state = arena([walker]);
+    const state = arena([walker], true);
     walker.slow = 0.7;
     walker.slowTicksLeft = FEATHERS.runTicks + 8;
     walker.burnDps = 6;
@@ -148,6 +172,9 @@ describe('R3: tar and feathers use the trail and end after one run', () => {
     walker.guardContact = { guardId: guard.id, arrivedWithTicksLeft: 300 };
     state.blockers = [guard, wall];
     barrel(state, start);
+    fireTowers(state);
+    expect(walker.feathered).toBe(true);
+    const beforeBurn = walker.hp;
     for (let i = 0; i < FEATHERS.runTicks; i++) {
       moveEnemies(state.enemies, state.events, state.blockers, 1.5);
       burnEnemies(state);
@@ -155,12 +182,39 @@ describe('R3: tar and feathers use the trail and end after one run', () => {
     expect(walker.distance).toBeCloseTo(150, 8);
     expect(walker.slowTicksLeft).toBe(8);
     expect(walker.burnTicksLeft).toBe(8);
-    expect(walker.hp).toBeCloseTo(ENEMY_STATS.troll.hp - 12 * FEATHERS.runTicks / TICKS_PER_SECOND, 8);
+    expect(walker.hp).toBeCloseTo(beforeBurn - 12 * FEATHERS.runTicks / TICKS_PER_SECOND, 8);
     expect(walker.guardContact).toBeUndefined();
     expect(state.events.some((event) => event.kind === 'blockerHit' || event.kind === 'guardStrike')).toBe(false);
     moveEnemies(state.enemies, state.events, state.blockers, 1.5);
     expect(walker.distance).toBe(wall.distance);
     expect(wall.hp).toBeLessThan(wall.maxHp);
     expect(guard.hp).toBe(guard.maxHp);
+  });
+});
+
+describe('R8: retreat lasts at least a second at the walking pace of each enemy', () => {
+  it.each(groundTypes)('%s takes at least 60 backward steps at its own speed', type => {
+    const walker = enemy(0, type, 500);
+    const state = arena([walker], true, 15);
+    barrel(state, 500);
+    fireTowers(state);
+    expect(walker.feathered).toBe(true);
+    const minimumStep = ENEMY_STATS[type].speed / TICKS_PER_SECOND;
+    for (let i = 0; i < 60; i++) {
+      const before = walker.distance;
+      moveEnemies(state.enemies, state.events);
+      expect(before - walker.distance + 1e-9, `backward step ${i + 1}`).toBeGreaterThanOrEqual(minimumStep);
+    }
+  });
+
+  it('a flinch during a retreat preserves the remaining backward steps', () => {
+    const walker = enemy(0, 'goblin', 220);
+    const state = arena([walker], true);
+    barrel(state, 220);
+    fireTowers(state);
+    walker.flinchTicksLeft = FEATHERS.flinchTicks;
+    for (let i = 0; i < FEATHERS.flinchTicks; i++) moveEnemies(state.enemies, state.events);
+    expect(walker.distance).toBe(220);
+    expect(walker.runTicksLeft).toBe(FEATHERS.runTicks);
   });
 });

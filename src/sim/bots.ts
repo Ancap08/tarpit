@@ -31,7 +31,7 @@ export interface BotPolicy {
 }
 
 export interface BotRun {
-  /** Hits recorded for the feather-policy trial, including between-tick barrel casts. */
+  /** Successful featherings from path B shots during this bot’s trial. */
   feathered?: number;
   peakAlive: number;
   waveOneLives: number;
@@ -407,15 +407,8 @@ export const botPersonFeat = pursueFeat(botPerson, true);
 export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity, maxTicks = 60 * 60 * TICKS_PER_SECOND): BotRun {
   const log: HeadlessStepResult[] = [];
   let feathered = 0;
-  function countFeathers(from: number) {
-    for (let i = from; i < state.events.length; i++) {
-      if (state.events[i].kind === 'feathered') feathered++;
-    }
-  }
   function apply(action: Parameters<typeof applyAction>[1]): boolean {
-    const cursor = state.events.length;
     const step = applyAction(state, action);
-    if (bot === botFeathers) countFeathers(cursor);
     log.push(step);
     return !('result' in step) || step.result.ok;
   }
@@ -454,7 +447,9 @@ export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity,
       lastZone = special.special;
     }
     tick(state);
-    if (bot === botFeathers) countFeathers(0);
+    if (bot === botFeathers) {
+      for (const event of state.events) if (event.kind === 'feathered') feathered++;
+    }
     if (state.wave === 1) waveOneLives = state.lives;
     peakAlive = Math.max(peakAlive, state.enemies.length);
   }

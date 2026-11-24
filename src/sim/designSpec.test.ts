@@ -203,9 +203,9 @@ describe('docs/DESIGN.md matches the code', () => {
     }
   });
 
-  it('feathers: run duration and speed, flinch duration', () => {
+  it('feathers: run and flinch durations', () => {
     expect(table('Enemies', 'Run ticks')).toEqual([
-      [FEATHERS.runTicks, FEATHERS.speed, FEATHERS.flinchTicks].map(String),
+      [FEATHERS.runTicks, FEATHERS.flinchTicks].map(String),
     ]);
   });
 

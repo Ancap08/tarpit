@@ -44,11 +44,11 @@ export function moveEnemies(enemies: Enemy[], events: GameEvent[], blockers?: re
     if (flinchTicks > 0) {
       enemy.flinchTicksLeft = flinchTicks - 1;
     } else if (runTicks > 0) {
-      next = Math.max(0, next - FEATHERS.speed / TICKS_PER_SECOND);
+      next = Math.max(0, next - stats.speed / TICKS_PER_SECOND);
+      enemy.runTicksLeft = next === 0 ? 0 : runTicks - 1;
     } else {
       next += (stats.speed * speedFactor * (1 - effectiveSlow(enemy))) / TICKS_PER_SECOND;
     }
-    if (runTicks > 0) enemy.runTicksLeft = next === 0 ? 0 : runTicks - 1;
     const blocker = blockers?.length && runTicks === 0 && flinchTicks === 0 && !stats.flying
       ? contactBetween(blockers, enemy.distance, next) : undefined;
     const guard = isGuard(blocker) ? blocker : undefined;

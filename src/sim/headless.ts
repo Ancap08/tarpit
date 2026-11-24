@@ -59,11 +59,11 @@ import {
   type TargetingResult,
   type UpgradeResult,
 } from './actions';
-import { BOONS, boonScale, type BoonId } from './boons';
+import { BOONS, type BoonId } from './boons';
 import type { Difficulty } from './difficulty';
 import { callNextWave, continueEndless, createGame, startWave, tick, wavesCleared, type CallNextWaveResult, type StartWaveResult } from './game';
 import { enemyPosition } from './combat';
-import { isSpecialUnlocked, SPECIAL_RECHARGE_TICKS, type SpecialType } from './specials';
+import { isSpecialUnlocked, type SpecialType } from './specials';
 import type { GameState, MapDef, Point, TargetingMode, TowerType, UpgradePath } from './types';
 import { buildableCells, cellCenter, cellFromKey, cellKey, type Cell } from './grid';
 import { DEFAULT_MAP, MAPS, pathLength, positionAlongPath, type MapId } from './map';
@@ -419,20 +419,13 @@ function countKills(events: GameState['events'], start: number): number {
 export interface PolicyRecorder {
   options: PolicyOptions;
   lastZone?: SpecialType;
-  unusedBarrel?: { wave: number; readyAt: number };
   fired: SpecialAction[][];
 }
 
 /** One policy look before a tick: fire and record its choice, if any (specialPolicy.ts). */
 function policyStep(state: GameState, policy: PolicyRecorder): void {
-  if (policy.unusedBarrel?.wave === state.wave && state.waveTick < policy.unusedBarrel.readyAt) return;
   const choice = policyChoice(state, policy.lastZone, policy.options);
   if (!choice) return;
-  if (policy.options.leaveBarrelUnused && choice.special === 'tarBarrel') {
-    policy.lastZone = 'tarBarrel';
-    policy.unusedBarrel = { wave: state.wave, readyAt: state.waveTick + Math.round(boonScale(SPECIAL_RECHARGE_TICKS, state.boons, 'quickHands')) };
-    return;
-  }
   const action: SpecialAction = { type: 'special', special: choice.special, x: choice.x, y: choice.y, atWaveTick: state.waveTick };
   const step = applyAction(state, action);
   if (step.action !== 'special' || !step.result.ok) throw new Error(`policyStep: ${JSON.stringify(step)}`);
@@ -995,13 +988,8 @@ export function comboGuards(difficulty: Difficulty, map: MapId, guardsPoint: Poi
  * can differ). Target N9 on Meadow, Normal: forbidding any one of the three
  * makes the combo strictly worse.
  */
-export function comboWithoutSpecial(type: SpecialType, difficulty?: Difficulty, map?: MapId, boons?: BoonChoices, report?: RecordReporter): WaveScript {
-  return recordScript(followComboPlan(map), { difficulty, map, boons, specials: { forbid: type }, report });
-}
-
-/** R2a control: leave each barrel opportunity idle through its normal recharge. */
-export function comboIdleBarrel(map: MapId, report?: RecordReporter): WaveScript {
-  return recordScript(followComboPlan(map), { difficulty: 'normal', map, specials: { leaveBarrelUnused: true }, report });
+export function comboWithoutSpecial(type: SpecialType, difficulty?: Difficulty, map?: MapId, boons?: BoonChoices): WaveScript {
+  return recordScript(followComboPlan(map), { difficulty, map, boons, specials: { forbid: type } });
 }
 
 /**
