@@ -9472,3 +9472,21 @@ including a phone lock with no intervening frames. The deterministic
 test paused a scripted Musketeer and Powder Keg run at ticks 0, 1, 31,
 299, 950 and 3,000. It reached the same complete state and active frame
 count as the uninterrupted run.
+
+Verifier notes (Claude Sonnet, milestone 45): no game defect found. Live play
+(no `?test=1`), Free play Meadow at wave 10 with 12 towers, Fire Arrows,
+Guards and a Barricade: pausing at wave ticks 61 to 3,600 for 3 s each at 1x,
+2x and 3x, and a 100-toggle P burst, left the sim state byte-identical to an
+unpaused run at the same wave tick (`state.tick` differs by the setup ticks
+before Start Wave, so compare `waveTick`). Nothing drawn, no animation,
+effect, audio count or tween moved during a pause. Mouse, touch and every
+key were ignored while paused except Enter, Space, Escape and P (resume) and
+the panel and mute. Pausing clears the tower pick, tower panel, special aim
+and drag; a drag released while paused builds nothing. Pause is refused on
+the win or loss tick (the end screen shows). Window blur alone does not
+pause, as DESIGN says. Hit areas: on 390 x 844 every moved control stays at
+49.5 CSS px or more high (Pause 56.5); on 390 x 664 Pause is 44.5 but Special,
+Start Wave, speed and mute are 38.9 high (unchanged from main) and speed is
+now 38.9 wide (was 45.6). Pause sits 2.8 CSS px from mute on the phone.
+`e2e/pause-verifier.spec.ts` pins the paused-equals-unpaused result in live
+play. `npm run sim` output is byte-identical to main (`cmp` of both runs).
