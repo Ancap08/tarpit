@@ -55,6 +55,14 @@ export class BuildBar {
           labelY: painted ? PAINTED_WIDE_LABEL_Y : undefined,
         }),
     );
+    if (portrait) {
+      // These labels contain digits only. Reserve the lower 24 px of the
+      // tower plaque so a browser with tall font metrics cannot spill its
+      // cost onto the controls below.
+      for (const button of this.buttons) button.labelObjects[0].setStyle({
+        fixedHeight: 24, metrics: { ascent: 20, descent: 4, fontSize: 24 },
+      });
+    }
     if (painted) {
       this.paintedIcons = BAR_TYPES.map((type, i) => {
         const r = rects[i];
