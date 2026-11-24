@@ -674,6 +674,78 @@ purpose is to learn what is possible and what it costs on a phone.
 Not in this milestone: showpiece art for other maps, sound, any change to
 Painted or Classic.
 
+## Milestone 48: the King's new taxes (level variety and skill stars)
+
+Kyle agreed (2026-11-24) to do these two together after the town and
+story: "make levels different, not just harder" and "fix 'a little easy'
+with skill, not bigger numbers". The idea that joins them to the theme:
+**each new tax is a rule of the level.** The King's notice on the card is
+no longer only a joke; it says what is different this time.
+
+### Taxes (48a): a level may carry one or two
+
+Each is a small field on the level record. Free play has none. Draft
+names and numbers are the coordinator's; the numbers are for the gate and
+the bots to settle, inside the stated ranges.
+
+| Tax | What it does | Range to tune in |
+|---|---|---|
+| Window Tax | Each tower costs more than the one before it, by a fixed share of its base price | 5% to 10% a tower |
+| Frozen Purse | Kills pay no gold; each wave cleared pays a lump sum | the lump is the level's to set |
+| Forced March | Collectors move faster | 15% to 25% |
+| Curfew | Towers reach less far | 10% to 20% |
+| No Loitering | The next wave starts by itself a short time after the last one ends; it can still be called early | 8 to 15 seconds |
+| Rationing | At most so many towers may stand at once (upgrades are free of the limit) | the limit is the level's to set |
+
+A tax changes nothing else: the same towers, enemies, specials, 20 lives.
+The HUD shows the taxes in force in a few words, and any number a tax
+changes is shown changed where the player reads it (a tower's price, its
+range ring, the countdown to the next wave, towers standing out of the
+limit).
+
+### Ten more levels (48b): the second act
+
+Levels 11 to 20, across the three maps, five to ten waves each. Levels 11
+to 16 bring in one tax each; 17 to 20 carry two together and no new rule.
+The towers, specials and enemies are all available from level 11. Every
+level passes the gate before it is added, and the gate learns to judge a
+tax: it must bite (the level is measurably harder with it than without)
+and stay fair (the person-like bot still wins with two stars).
+
+### Skill stars (48b): the third star is a feat, on the new levels
+
+Levels 1 to 10 keep the rule they have (a win; 12 lives; 18 lives), so no
+saved star changes. On levels 11 to 20 the first two stars are the same
+and the third is a named feat, earned together with two stars:
+
+| Feat | Meaning |
+|---|---|
+| Not a penny | No collector gets through (all 20 lives) |
+| Bare hands | Win without using a special |
+| Few hands | Win with at most so many towers ever built (the number is the level's) |
+
+The capable bot must be able to earn each level's feat; the beginner bot
+must not. The card names the feat; the result says whether it was earned.
+
+### Screens for twenty levels (48c)
+
+The level map shows two acts (ten stops each) without scrolling inside an
+act; the second opens when level 10 is won, with a short broadside ("The
+King has thought of new taxes."). The level card shows the taxes in force
+and the feat; the result shows the feat. The campaign's ending moves to
+level 20; level 10 keeps its reply and closes the first act.
+
+### Two known weak spots (48d)
+
+Tar Barrel is weak and the Tar Pit's second upgrade path never beats the
+first (recorded in DESIGN.md since milestone 37). Fix both with numbers,
+re-lock the Free play balance report, and re-run the gate on all twenty
+levels. Done last, on its own, because it moves the frozen balance.
+
+Not in this milestone: new enemies, towers or maps; two entry points; a
+hero; the castle wall; generated levels (the gate is being made ready for
+them, not used for them yet).
+
 ## Later milestones (order agreed, detail to come)
 
 | # | Milestone | Idea |
