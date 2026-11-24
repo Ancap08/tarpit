@@ -10,6 +10,7 @@ import type { Browser } from '@playwright/test';
 import type { GameScene } from '../../src/game/GameScene';
 import { landscape, phone, press, run, start } from './m47Browser.ts';
 
+const filmsOnly = process.argv.includes('--films');
 const output = 'docs/art/showpiece';
 const scratch = process.env.M47_SCRATCH;
 assert.ok(scratch, 'Set M47_SCRATCH to an existing scratch directory.');
@@ -40,7 +41,7 @@ async function take(browser: Browser, layout: 'phone' | 'landscape', work: strin
     assert.equal((await state()).detail?.tier,2);
     const startHeap = await heap();
     const dawn = seconds();
-    await still('morning');
+    if (!filmsOnly) await still('morning');
     await delay(2600);
     clips.push([dawn,seconds()]);
     // The first 16 cells in Meadow's existing trailCellOrder (the beginner bot's sites).
@@ -63,7 +64,7 @@ async function take(browser: Browser, layout: 'phone' | 'landscape', work: strin
         undefined,{timeout:60_000});
       const from = wave === 1 ? opening : seconds();
       await delay(2400);
-      if (wave === 3 || wave === 6) await still(wave === 3 ? 'crossfire' : 'dusk');
+      if (!filmsOnly && (wave === 3 || wave === 6)) await still(wave === 3 ? 'crossfire' : 'dusk');
       await delay(2700);
       clips.push([from,seconds()]);
       await page.waitForFunction(() => (window.__tarpit!.game.scene.getScene('game') as GameScene).state.phase !== 'wave',
@@ -131,6 +132,6 @@ await run(async browser => {
     const layouts = ['phone','landscape'] as const;
     const results = await Promise.allSettled(layouts.map(layout => take(browser,layout,work)));
     for (const result of results) if (result.status === 'rejected') throw result.reason;
-    await crossfire(browser);
+    if (!filmsOnly) await crossfire(browser);
   } finally { await rm(work,{recursive:true,force:true}); }
 }, {channel:'chromium',args:['--enable-gpu','--use-angle=metal']});
