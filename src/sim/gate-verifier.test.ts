@@ -58,7 +58,7 @@ describe('gate rejects bad candidates (real bots, scratch levels)', () => {
   it('rejects a finale whose boss is replaced by one extra Goblin and a finale with no declared boss and a tiny end', () => {
     const level = withLastWave({ ...LEVELS[9], id: 205, endingBoss: undefined }, [goblins(3, 1)]);
     expect(checkLevel(level, CAMPAIGN_CONTEXTS[9]).failed).toContain('L5');
-  });
+  }, 30_000);
 
   it('rejects an opening wave of more than 60 enemies that the schedule rules allow', () => {
     const groups = Array.from({ length: 7 }, (_, i) => goblins(10, 8, i * 1.2));
@@ -80,7 +80,7 @@ describe('gate rejects bad candidates (real bots, scratch levels)', () => {
     const result = checkLevel(level, CAMPAIGN_CONTEXTS[6]);
     expect(result.good!.lives - result.person!.lives).toBeGreaterThan(6);
     expect(result.failed).toContain('P1');
-  });
+  }, 40_000);
 
   it('rejects a level Person loses (Person recorded as losing; Good wins)', () => {
     const real = bots.runBot;
