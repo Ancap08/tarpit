@@ -411,9 +411,9 @@ export function royalTaxNotice(level: LevelDef): string {
   if (t.frozenPurse !== undefined) lines.push(`No kill money. ${t.frozenPurse} gold per wave cleared.`);
   if (t.forcedMarch !== undefined) lines.push(`My collectors shall march ${percent(t.forcedMarch)}% faster.`);
   if (t.curfew !== undefined) lines.push(`Every tower shall shoot ${percent(t.curfew)}% less far.`);
-  if (t.noLoitering !== undefined) lines.push(`${capitalize(countWord(t.noLoitering))} seconds between waves, save the first and last.`);
+  if (t.noLoitering !== undefined) lines.push(`${capitalize(countWord(t.noLoitering))} seconds between waves, save the opening and closing waves.`);
   if (t.rationing !== undefined) lines.push(`I issue ${countWord(t.rationing)} tower permits.`);
-  if (level.endingBoss === 'grumblemaw') lines.push('I shall inspect them myself.');
+  if (level.endingBoss && ENEMY_NAMES[level.endingBoss] === GRUMBLEMAW_NAME) lines.push('I shall inspect them myself.');
   return lines.join(' ');
 }
 
@@ -538,12 +538,12 @@ function campaignTips(touch: boolean): Readonly<Record<number, readonly string[]
     8: ['Send Guards ahead of a pack of Redcoat Shieldbearers.', 'Place them on the trail where your towers can help.', 'Drop Fire Arrows on a crowd to burn it.'],
     9: [`${action} a tower you have upgraded once.`, 'Pick an upgrade before Assessor Grumblefoot arrives.'],
     10: ['King Grumblemaw calls Revenue Hounds. Save a Powder Keg.', 'Slow King Grumblemaw with tar, then hit him with fire.'],
-    11: ['The first tower goes up at its usual price.', 'Selling a tower still leaves it on the tax roll.'],
+    11: ['Your opening tower goes up at its usual price.', 'Selling a tower still leaves it on the tax roll.'],
     12: ['Put a Tar Pit where several towers can reach it.', 'Save a special for the pack that gets ahead.'],
     13: ['Plan your next purchase before the wave ends.', 'The clock waits while you choose a reward.'],
     14: ['Check the ring before you build.', 'Keep the Mortar back. Its inner ring stays put.'],
     15: ['Kills pay nothing. Budget for the next wave.', 'Calling early still earns its bonus.'],
-    16: ['Upgrades take no permit. Selling frees one.', `${action} a tower to see its upgrades.`],
+    16: ['Upgrades take no permit. Selling frees a permit.', `${action} a tower to see its upgrades.`],
     17: ['Pick a bend where a short shot covers both sides of the turn.', 'Buy before the countdown ends.'],
     18: [`Place your ${permits(18)} towers where their rings overlap.`, 'Upgrade them to keep up with the faster packs.'],
     19: ['Check the shorter ring before you buy.', 'An upgrade costs the usual price.'],
