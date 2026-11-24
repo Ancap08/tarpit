@@ -1,0 +1,17 @@
+{
+  "frameSize": [
+    64,
+    64
+  ],
+  "anchor": [
+    32,
+    32
+  ],
+  "columns": 4,
+  "frameOrder": [
+    "landscape-bare",
+    "landscape-cloth",
+    "portrait-bare",
+    "portrait-cloth"
+  ]
+}

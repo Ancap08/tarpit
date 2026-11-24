@@ -1128,7 +1128,11 @@ A collector that reaches the road end carries a coin sack out of the
 town square. Its diameter is 10 + 4 × √(lives cost) game pixels and its
 flight lasts 720 ms. Reduced motion shows the purse at a fixed point on
 the route. Sacks draw below enemy health bars and remain inside the map.
-These drawings read the simulation without changing placement or combat.
+On a win, the people come outside with hats in the air and the blue flag
+at full height, even when the fence needs mending. On a loss, the red
+crown banner rises. The result appears immediately. Test mode and reduced
+motion hold the finished pose. These drawings read the simulation without
+changing placement or combat.
 
 ## Sound
 

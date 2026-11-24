@@ -189,7 +189,42 @@ def render_maps():
             (RAW / f"{arrangement}-chimney.json").write_text(json.dumps([chimney.x*256,(1-chimney.y)*256]))
             scene.render.filepath = str(RAW / f"{arrangement}-{label}.png")
             bpy.ops.render.render(write_still=True)
+            if i >= 4:
+                # Preserve the full silhouette for the common camera fit. The
+                # win scene moves each felt hat independently of its owner.
+                residents = [obj for obj in root.children if obj.name.startswith("Neighbour")]
+                hats = [[part for part in resident.children if part.name.startswith(
+                    ("Broad felt brim", "Pinched felt crown"))] for resident in residents]
+                for hat in hats:
+                    for part in hat:
+                        part.hide_render = True
+                scene.render.filepath = str(RAW / f"{arrangement}-{label}-bare.png")
+                bpy.ops.render.render(write_still=True)
+                if i == 4:
+                    for n,hat in enumerate(hats):
+                        for obj in root.children_recursive:
+                            if obj.type == "MESH":
+                                obj.hide_render = obj not in hat
+                        scene.render.filepath = str(RAW / f"{arrangement}-hat-{n}.png")
+                        bpy.ops.render.render(write_still=True)
             clear_model(root)
+
+
+def frame_fit(arrangement, density):
+    """Shared crop and placement for base towns and their animated parts."""
+    from PIL import Image
+    boxes = []
+    for pose in POSES:
+        with Image.open(RAW / f"{arrangement}-{pose}.png") as frame:
+            boxes.append(frame.getchannel("A").getbbox())
+    box = (min(b[0] for b in boxes), min(b[1] for b in boxes),
+           max(b[2] for b in boxes), max(b[3] for b in boxes))
+    width, height = box[2] - box[0], box[3] - box[1]
+    max_width, max_height = (42, 62) if arrangement == "portrait" else (62, 42)
+    factor = min(max_width / width, max_height / height) * density
+    size = (round(width * factor), round(height * factor))
+    cell = 64 * density
+    return box, factor, size, (cell - size[0]) // 2, (cell - size[1]) // 2
 
 
 def pack():
@@ -198,21 +233,26 @@ def pack():
         cell = 64*density
         atlas = Image.new("RGBA",(7*cell,2*cell))
         labels = []
+        tossed = Image.new("RGBA", (4*cell,cell))
+        hat_labels = []
         for row,arrangement in enumerate(("landscape","portrait")):
-            images = [Image.open(RAW/f"{arrangement}-{label}.png").convert("RGBA") for label in POSES]
-            boxes = [im.getchannel("A").getbbox() for im in images]
-            box = (min(b[0] for b in boxes),min(b[1] for b in boxes),
-                   max(b[2] for b in boxes),max(b[3] for b in boxes))
-            w,h = box[2]-box[0],box[3]-box[1]
-            maxw,maxh = (42,62) if row else (62,42)
-            factor = min(maxw/w,maxh/h)*density
-            size = (round(w*factor),round(h*factor))
-            ox,oy = (cell-size[0])//2,(cell-size[1])//2
+            images = [Image.open(RAW / f"{arrangement}-{label}{'-bare' if 'cheer' in label else ''}.png")
+                      .convert("RGBA") for label in POSES]
+            box, factor, size, ox, oy = frame_fit(arrangement, density)
             for i,(im,label) in enumerate(zip(images,POSES)):
                 atlas.paste(im.crop(box).resize(size,Image.Resampling.LANCZOS),(i*cell+ox,row*cell+oy))
                 labels.append(f"{arrangement}-{label}")
+            for hat in (0,1):
+                with Image.open(RAW / f"{arrangement}-hat-{hat}.png") as image:
+                    piece = image.convert("RGBA").crop(box).resize(size,Image.Resampling.LANCZOS)
+                    tossed.paste(piece, (len(hat_labels)*cell+ox,oy))
+                hat_labels.append(f"{arrangement}-hat-{hat}")
             cx,cy = json.loads((RAW/f"{arrangement}-chimney.json").read_text())
             print(f"{density}x {arrangement}: extent {size}, chimney at {round(ox+(cx-box[0])*factor)},{round(oy+(cy-box[1])*factor)}")
+        hat_path = OUT / f"tossed-hat-{density}x.png"
+        tossed.save(hat_path,optimize=True)
+        hat_path.with_suffix(".json").write_text(json.dumps(dict(frameSize=[cell,cell],anchor=[cell//2]*2,
+            columns=4,frameOrder=hat_labels), indent=2)+"\n")
         path = OUT / f"town-{density}x.png"
         atlas.save(path,optimize=True)
         path.with_suffix(".json").write_text(json.dumps(dict(frameSize=[cell,cell],anchor=[cell//2]*2,

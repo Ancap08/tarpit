@@ -211,3 +211,11 @@ the checker looks for it.
 | `assets/art-painted/sack-1x.json` | `scripts/art/town_sack.py` | Tarpit agents | MIT | Centered frame layout |
 | `assets/art-painted/sack-2x.png` | `scripts/art/town_sack.py` | Tarpit agents | MIT | Original painted buckskin purse with coin seal |
 | `assets/art-painted/sack-2x.json` | `scripts/art/town_sack.py` | Tarpit agents | MIT | Centered frame layout |
+| `assets/art-painted/royal-hoist-1x.png` | `scripts/art/royal_hoist.py` | Tarpit agents | MIT | Separate town and royal cloth for the banner hoist |
+| `assets/art-painted/royal-hoist-1x.json` | `scripts/art/royal_hoist.py` | Tarpit agents | MIT | Centered frame layout |
+| `assets/art-painted/royal-hoist-2x.png` | `scripts/art/royal_hoist.py` | Tarpit agents | MIT | Separate town and royal cloth for the banner hoist |
+| `assets/art-painted/royal-hoist-2x.json` | `scripts/art/royal_hoist.py` | Tarpit agents | MIT | Centered frame layout |
+| `assets/art-painted/tossed-hat-1x.png` | `scripts/art/town.py` | Tarpit agents | MIT | Separate painted felt hats tossed by the townsfolk |
+| `assets/art-painted/tossed-hat-1x.json` | `scripts/art/town.py` | Tarpit agents | MIT | Centered frame layout |
+| `assets/art-painted/tossed-hat-2x.png` | `scripts/art/town.py` | Tarpit agents | MIT | Separate painted felt hats tossed by the townsfolk |
+| `assets/art-painted/tossed-hat-2x.json` | `scripts/art/town.py` | Tarpit agents | MIT | Centered frame layout |
