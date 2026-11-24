@@ -10126,3 +10126,96 @@ five files. These are baseline measurements.
 
 Work stopped at measurement. Resolving the conflict requires a decision
 about the acceptance criteria before implementing or tuning feathers.
+
+
+## Milestone 49 continued — tar and feathers balance trial, November 24
+
+**Stop at R4 and R5.** The retained trial meets R1, R2a, R2b, R2c, R3 and R6. Eleven R7 byte comparisons match. All three maps meet the standard-policy life window. Other Free play targets fail, and 12 of the 20 campaign levels miss an existing gate. The accepted Free play report and matrix are still locked to their previous values.
+
+### Free play measurements
+
+Each path cell gives A/B lives. A tie does not count as a win. These are the existing adaptive comparisons with their original shopping plans.
+
+| Map | Combo before | Combo trial | Burn before | Burn trial |
+|---|---:|---:|---:|---:|
+| Meadow | 14/12 | 14/15 | 15/10 | 22/19 |
+| Switchback | 13/11 | 16/15 | 24/24 | 24/24 |
+| Riverbend | 14/12 | 15/16 | 9/0 | 10/7 |
+
+The largest gap fell from nine lives to three. Feathers wins two comparisons, Deep Tar wins three, and one ties.
+
+Each cell below gives lives at `d517ac8` → lives in the trial. The unused control still chooses the barrel under the standard aim rule. When it would cast one it advances the rotation and leaves the charge alone for the entire recharge interval, unless the wave ends first. The single-zone controls use the original forbidden-special policy. Powder Keg keeps its usual turns throughout.
+
+| Map | Standard | Barrel turn unused | All zone turns to barrel | All zone turns to Fire Arrows | Standard gain over unused |
+|---|---:|---:|---:|---:|---:|
+| Meadow | 14 → 14 | 10 → 10 | 11 → 11 | 17 → 17 | 4 → 4 |
+| Switchback | 11 → 15 | 8 → 12 | 10 → 17 | 12 → 13 | 3 → 3 |
+| Riverbend | 14 → 15 | 10 → 13 | 11 → 13 | 20 → 20 | 4 → 2 |
+
+The retained path B range moved from 145 to 130 px, its rate from 2 to 2.8 shots/s, and its slow from 64% to 76%. Faster follow-up shots help it feather the same target while the shorter reach leaves Deep Tar winning the burn comparisons. The barrel radius moved from 100 to 120 px, slow from 50% to 40%, and zone time from 660 to 540 ticks. More enemies can receive the initial feathers, and late arrivals face a weaker, shorter zone. New run and flinch settings are 15 ticks at 40 px/s (up to 10 px backward) and 5 ticks stopped. The starting experiment was 60 ticks at 90 px/s and 18 ticks stopped; the standard combo then won Meadow and Riverbend with 22 lives.
+
+Slows and Forced March affect forward walking. A runner can cross Guards or a Barricade without contact damage. Burns, tower attacks, status timers and zones continue. A flinch starts on the tick after two paths cross, once per enemy. Both bosses are immune. Retreat ends at the entrance or at the time limit, followed by forward walking.
+
+### Campaign gate
+
+Stars/lives are nominal. The first three columns compare the previous build and the retained trial. The feather bot is new. Its use column counts actual path B pits, barrel casts and enemies feathered. A level can miss a gate under an HP, gold, feat or feature-removal trial even when its nominal stars hold.
+
+| Level | Good | Person | Beginner | Feathers | Pits/casts/feathered | Gate misses |
+|---:|---|---|---|---:|---:|---|
+| 1 | 3/20 → 3/20 | 3/20 → 3/20 | 3/20 → 3/20 | 3/20 | 0/0/0 | pass |
+| 2 | 3/20 → 3/20 | 3/20 → 3/20 | 1/3 → 1/3 | 3/20 | 0/0/0 | pass |
+| 3 | 3/20 → 3/20 | 3/20 → 3/20 | 2/16 → 2/16 | 3/20 | 0/0/0 | pass |
+| 4 | 2/13 → 2/13 | 2/16 → 2/16 | 0/0 → 0/0 | 2/13 | 0/0/0 | pass |
+| 5 | 3/20 → 3/20 | 3/20 → 3/20 | 1/2 → 1/2 | 3/20 | 0/26/128 | pass |
+| 6 | 2/15 → 2/15 | 2/14 → 2/14 | 0/0 → 0/0 | 2/16 | 0/19/66 | L3 |
+| 7 | 2/16 → 2/16 | 2/12 → 2/12 | 0/0 → 0/0 | 0/0 | 0/8/70 | pass |
+| 8 | 2/12 → 2/14 | 2/13 → 2/13 | 0/0 → 0/0 | 1/6 | 0/21/127 | L1m,L3 |
+| 9 | 3/20 → 3/20 | 3/20 → 2/17 | 0/0 → 0/0 | 2/14 | 2/12/182 | pass |
+| 10 | 2/16 → 1/5 | 2/13 → 1/5 | 0/0 → 0/0 | 0/0 | 1/17/181 | L1,L1m,L5,L8 |
+| 11 | 2/20 → 2/20 | 2/14 → 2/15 | 0/0 → 0/0 | 0/0 | 1/4/72 | F1,L1m,T1,L6 |
+| 12 | 2/19 → 2/19 | 2/15 → 1/11 | 0/0 → 0/0 | 0/0 | 1/18/156 | P1,V1,F1,T2,L1m,L6 |
+| 13 | 3/20 → 2/18 | 2/14 → 2/17 | 0/0 → 0/0 | 2/13 | 1/12/92 | F1,T1 |
+| 14 | 3/20 → 3/20 | 2/14 → 2/14 | 0/0 → 0/0 | 3/20 | 1/13/110 | L6 |
+| 15 | 2/14 → 2/14 | 2/13 → 2/13 | 0/0 → 0/0 | 2/14 | 1/11/119 | pass |
+| 16 | 2/14 → 1/11 | 2/13 → 1/10 | 0/0 → 0/0 | 1/8 | 1/12/124 | L1,F1,T2,L1m |
+| 17 | 2/20 → 2/20 | 2/14 → 2/14 | 0/0 → 0/0 | 2/20 | 2/19/106 | F1 |
+| 18 | 2/14 → 2/13 | 2/13 → 2/15 | 0/0 → 0/0 | 2/12 | 1/14/136 | F1,T1 |
+| 19 | 2/14 → 2/14 | 2/14 → 2/14 | 0/0 → 0/0 | 0/0 | 1/3/46 | T1,L1m,L6 |
+| 20 | 2/13 → 2/13 | 2/13 → 2/13 | 0/0 → 0/0 | 0/0 | 1/10/44 | L1m |
+
+The previous gate passed 20/20. The trial passes 8/20. On level 10 Good finishes seven lives below the two-star line. On level 12 Musketeers alone earn two stars against a one-star ceiling. In the reduced-gold trial the feat bot earns one star with six lives. Across levels 8–10 Person averages 11.67 lives, and across act two 13.60. The required drop of 1.50 misses by 3.43 lives. The feather bot buys 14 path B pits and casts 219 barrels for 1,759 successful featherings. Its largest lead is one life, on level 6, and it earns no extra third star.
+
+### Tuning and guard checks
+
+The short-run grid tested 162 combinations. A broader search sampled 1,600 combinations of the nine permitted parameters, followed by path B variations on barrel settings that met the Meadow and Riverbend life limits. A separate Free play search screened 4,000 barrel/run settings and 814 nearby combinations against the Meadow and Riverbend life windows, late-wave losses, Meadow timing and Hard outcomes. None cleared those screens together. A campaign-first search screened 516 settings, finding three that passed levels 1–8. Each still missed a gate on level 9 or 10 with stock path B. For example, a 15-tick run at 35 px/s, 6-tick flinch, 119 px barrel, 37% slow and 660-tick zone passed 1–8 but ended Meadow on 12 lives, two below R2b. These are measured attempts, not a proof that no combination can pass.
+
+The retained Normal combo leaks on two, one and two late waves by map, against three required. On Meadow and Switchback the Hard combo loses on waves 8 and 10, against wave 12 or later. Riverbend’s wide build finishes nine lives behind the combo against a maximum of five. Riverbend reward spreads reach 14 and 10 lives on the first two offers against a maximum of six. Paths for Cannon and Fire Pot no longer beat an equal-price copy in any P4 scenario. The idle/reinvesting endless runs lost on waves 27/28, 25/25 and 27/28. None gained the required two waves. N10c found no strict-best scenario for War Chest, Quick Hands or Stone Walls. N10d found changes on only two distinct build/map pairs for Keen Arrows, War Chest and Sticky Tar against a minimum of three.
+
+Deliberate failures on isolated copies:
+
+- The old rules failed strict R1 (five A wins, one tie) and R2c (barrel lost all three comparisons). A barrel that consumed its turn but did nothing gave R2a an advantage of zero on every map. The initial 22-life trial failed R2b on two maps.
+- R3 caught a second feather event for the same enemy, a running or flinching boss, a repeat flinch, a flyer feathered on late zone entry, a path B shot aimed at the already-feathered front enemy, and a runner that fought a blocker or took the Forced March multiplier. Removing the entrance clamp produced negative distance. Retaining the run timer at the entrance left the enemy at zero with time still on its clock.
+- R6 rejected a four-life lead and a third star that Good missed even with a one-life lead. A real trial gave Feathers 3/20 against Good’s 2/18 on level 14.
+- Eleven raw JSON comparisons against a clean export of `d517ac8` matched all 121,583 bytes. They cover the Meadow and Riverbend no-barrel campaigns, no-tower and lazy runs on all maps, Meadow’s sound build, and the midwave and five-enemy frames. The campaign comparisons include state, action log and waves. Starting enemy IDs at 1 instead of 0 broke both permanent campaign hash guards. The boss frame uses barrels on the way to wave 10 and falls outside R7.
+
+The review captures in `docs/review/m49/` show the same crowd across looks, the 390×844 Painted phone, both upgrade panels and the boss in tar. The boss frame’s first matching tick moved from 5316 to 5291, its position from (420,98) to (415,96), and its displayed HP from 3400 to 3416. It still shows the Mortar hit two ticks earlier.
+
+### Review and verification
+
+The Mac Chromium comparison rendered 78 existing screenshot frames against `d517ac8` in memory. Sixty-one matched. Seventeen changed in two specs:
+
+- `e2e/visual.spec.ts` — `act2.png`, `boon-icons.png`, `boss.png`, `endless-hud.png`, `grumblemaw.png`, `m37-midwave.png`, `pack-call.png`, `painted-boss.png`, `special-aim.png`, `special-tar-zone.png`, `towers-level3.png`, `won.png`.
+- `e2e/visual-phone.spec.ts` — `phone-aim.png`, `phone-boss.png`, `phone-grumblemaw.png`, `phone-tar-zone.png`, `phone-won.png`.
+
+The level 5 tip is a separate copy decision. The required wording is 66 characters against an existing limit of 61. It renders inside the card in all four measurements. Its closest clearance from the Got it button was 37.77 CSS px. The shorter candidate is “A Tar Barrel sends crowds running back.” (39 characters). The trial uses the required wording at full type size.
+
+| Viewport | Text metrics | Required tip, CSS px | Shorter candidate, CSS px | Type, CSS px |
+|---|---|---|---|---:|
+| Desktop 960×580 | Normal | 756×63.44, two lines | 496×31.72, one line | 26 |
+| Desktop 960×580 | 6% wider | 749×63.44, two lines | 526×31.72, one line | 26 |
+| Phone 390×844 | Normal | 277.08×72.44, three lines | 250.22×48.29, two lines | 19.79 |
+| Phone 390×844 | 6% wider | 248.10×72.44, three lines | 265.06×48.29, two lines | 19.79 |
+
+The unit suite passed 2,561 of 2,767 tests across 128 files. All 206 failures were assertions. Two were the level 5 character count on mouse and touch. Other failures include balance targets, the campaign gate, and historical result locks for runs that use the changed features. Lint, typecheck, build, all 219 asset manifest entries, and the size check passed (3,766,524 bytes in 30 files against 20 MB). The full simulator finished all twenty levels and returned failure. Its measured Free play digest was `1cb64e8312cb0033351e3f9a50d3c48b33337c5c027afbd5a784c48a870b57fb`.
+
+The single full Playwright run covered Chromium desktop, tablet and phone on port 4573. It passed 1,156 tests, skipped eight and failed two historical frame expectations. The first Fire Pot hit on the boss moved from tick 5069 to 5099; at tick 5721 displayed HP moved from 2041 to 2035 and the fill remained 153 px. The second check sampled a 540-tick tar zone at tick 651. It now samples each zone nine ticks before its expiry and one tick after. Both corrected checks passed together on the production build. No screenshot baselines were written.
