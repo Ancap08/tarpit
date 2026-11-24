@@ -1519,10 +1519,21 @@ can change it; "Kyle" means Kyle decided.
 - **Pause changes nothing:** live games with a boss, Guards, a Barricade
   and Fire Arrows, paused up to eight times, ended identical to unpaused
   ones at 1x, 2x and 3x (Sonnet).
-- **Room was made for it:** on the phone Start Wave went from 120 to 89 px
-  wide and Special and speed narrowed; in landscape the tower plaques
+- **Room was made for it:** on the phone Pause is an icon-only square
+  beside mute, Start Wave went from 120 to 96 px wide with its label on
+  two lines, and Special from 92 to 76; in landscape the tower plaques
   went from 140 to 132 px. Pause sits 3 px from mute on the phone;
   accepted, a stray tap only pauses or mutes.
+- **Three tries at the phone row, and three new checks.** The first
+  build narrowed Start Wave until its longest label fell under the
+  minimum text size on Linux (CI caught it). The fix made the row 31 px
+  wider than the HUD, hanging out of the frame, with every test green
+  (Fable caught it in the capture). The next fix renamed Special to
+  "Cast" to save width, while every tip says "Tap Special" (Fable, same
+  way). Now checked: every HUD control sits inside the HUD and lines up
+  with the row above; labels keep a margin over the minimum size; any
+  control a tip names is shown under that name. Lesson: look at the
+  capture before sending anything to CI, every time.
 - **Switching windows on a computer does not pause;** hiding the page or
   locking the phone does. As built; accepted (Fable).
 - **A gap caught at the merge:** pause was built before the town existed,
