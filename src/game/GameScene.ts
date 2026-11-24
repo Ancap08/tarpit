@@ -768,6 +768,10 @@ export class GameScene extends Phaser.Scene {
     hidden();
   }
 
+  private get animationTime(): number {
+    return this.autoTick ? this.clock.nowMs : this.frozenMs;
+  }
+
   get paused(): boolean {
     return this.clock.paused;
   }
@@ -1473,7 +1477,7 @@ export class GameScene extends Phaser.Scene {
     for (const event of events) {
       if (event.kind !== 'exit') continue;
       const spot = this.enemySprites.spot(event.enemyId);
-      if (spot) this.town.sacks.release(ENEMY_STATS[spot.type].livesCost, this.autoTick ? this.time.now : this.frozenMs);
+      if (spot) this.town.sacks.release(ENEMY_STATS[spot.type].livesCost, this.animationTime);
     }
     this.barricadeFx.onEvents(events);
     this.guardFx.onEvents(events);
@@ -1670,7 +1674,7 @@ export class GameScene extends Phaser.Scene {
     if (!this.dynamic) return;
     this.aim.prune(this.state);
     // Milestone 34: growth on a tower's cell hides; all of it fades while a tower is being placed (a pick or a drag).
-    this.town.update(this.state, this.autoTick ? this.time.now : this.frozenMs);
+    this.town.update(this.state, this.animationTime);
     this.living?.update(this.state, this.pick !== null || this.press?.active === true);
     this.ground.clear();
     this.specialFx.drawGround(this.ground, this.state);
@@ -1704,7 +1708,7 @@ export class GameScene extends Phaser.Scene {
     this.redrawUi();
     const banner = this.aimBanner();
     this.hud.update(this.state, this.speed, this.pick, { menuOpen: this.specialMenuOpen, aiming: this.aiming, banner }, this.autoTick ? this.clock.nowMs : undefined);
-    this.moments.draw(this.autoTick ? this.clock.nowMs : this.frozenMs);
+    this.moments.draw(this.animationTime);
     this.reward.update(this.paused ? null : this.state.pendingBoon);
     this.held.update(this.state.boons);
     this.drawBanner();

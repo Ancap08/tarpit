@@ -9491,6 +9491,8 @@ now 38.9 wide (was 45.6). Pause sits 2.8 CSS px from mute on the phone.
 `e2e/pause-verifier.spec.ts` pins the paused-equals-unpaused result in live
 play. `npm run sim` output is byte-identical to main (`cmp` of both runs).
 
+Town animation and leak sacks now use the map clock, keeping their place through Pause and a hidden page in both looks.
+
 ## 2026-11-24: milestone 46, the town and its story
 
 All three roads end at the same four-cell arrangement. Two cells overlap
