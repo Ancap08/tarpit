@@ -1182,6 +1182,13 @@ pick or drag ends. A piece overlapping a new tower fades out with a dust
 puff, and returns when the footprint is free. These fades take 300 ms.
 Reduced motion and frozen test mode show the settled state immediately.
 
+The pasture's daylight also falls on the exit town, its people, sacks and
+banner. The townsfolk toss their hats while fireworks open over the field.
+All showpiece motion uses the map's unscaled play clock. The show's result
+screen keeps Pause available for the celebration and the banner hoist.
+Resume continues the same pose. The detail governor excludes paused time
+from its cooldown and skips the first two frames after Resume.
+
 Detail starts high. A 750 ms window averaging over 20 ms per frame lowers
 it one tier. To gain a tier, consecutive windows must average under 17.5 ms
 for at least 10 seconds. The first drop also blocks recovery for 30 seconds.
@@ -1406,7 +1413,7 @@ drawn and where touches land differ.
   While the panel is open, only its actions and mute accept input.
   Pause puts away a reward offer and restores the same choices on Resume.
   A boss banner continues from the time at which it paused. The tips and
-  result screens keep their own controls and ignore P.
+  ordinary result screens keep their own controls and ignore P.
 
 ## Touch and phones
 

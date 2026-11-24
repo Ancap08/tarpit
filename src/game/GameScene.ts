@@ -601,6 +601,8 @@ export class GameScene extends Phaser.Scene {
     this.shotFx = world();
     this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx), this.layout, this.clock) : null;
     if (this.showpieceType && this.paintedAssets) {
+      // Put the entire town, including its sack and flag, under the pasture daylight.
+      this.children.moveBelow(this.town.layer, this.ground);
       this.showpiece = new this.showpieceType(this, this.layout, this.paintedAssets.density, this.ground, !this.autoTick, this.clock);
       if (this.fx) this.fx.showpiece = this.showpiece.battle;
       this.events.once('shutdown', () => {

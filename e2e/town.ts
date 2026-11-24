@@ -138,6 +138,57 @@ async function picture(page: Page, condition: string) {
 }
 
 export function townSuite(touch: boolean) {
+  test('showpiece daylight reaches the town and its farm buildings clear the exit', async ({ page }) => {
+    await page.goto('/?test=1&look=showpiece');
+    await waitForTitle(page);
+    await page.evaluate(() => window.__tarpit!.startGame!('normal', 'meadow'));
+    await waitForGame(page);
+    const result = await page.evaluate(async () => {
+      const api = window.__tarpit as TarpitTestApi;
+      const scene = api.game.scene.getScene('game') as GameScene;
+      const { x, y, width, height } = scene.townState().bounds;
+      const town = scene.children.list.find(node => node.type === 'Container' &&
+        (node as Phaser.GameObjects.Container).getByName('town:map')) as Phaser.GameObjects.Container;
+      const children: (Phaser.GameObjects.GameObject | Phaser.GameObjects.Layer)[] = scene.children.list;
+      const layers = children.filter((node): node is Phaser.GameObjects.Layer => node.type === 'Layer');
+      const atmosphere = ['vignette', 'sunwash', 'cloud', 'shade', 'smoke', 'lamp'];
+      const farm = layers.flatMap(layer => layer.list)
+        .filter((node): node is Phaser.GameObjects.Image => node.type === 'Image')
+        .filter(image => image.visible && image.texture.key.startsWith('showpiece:pasture:')
+          && !atmosphere.includes(String(image.frame.name)));
+      const overlaps = farm.filter(image => {
+        const box = image.getBounds();
+        return box.left < x + width && box.right > x && box.top < y + height && box.bottom > y;
+      });
+      const pixels = async () => {
+        await new Promise<void>(resolve => api.game.events.once('postrender', resolve));
+        return api.game.canvas.getContext('2d')!.getImageData(x, y, width, height).data;
+      };
+      const morning = await pixels();
+      town.setVisible(false);
+      const backdrop = await pixels();
+      town.setVisible(true);
+      scene.state.wave = 20;
+      api.step(0);
+      const dusk = await pixels();
+      let foreground = 0, darker = 0;
+      for (let i = 0; i < morning.length; i += 4) {
+        // Exclude grass and barely opaque edges. Measure the red channel of
+        // the same visible town pixels under the morning and dusk skies.
+        const contrast = Math.abs(morning[i] - backdrop[i]) + Math.abs(morning[i + 1] - backdrop[i + 1])
+          + Math.abs(morning[i + 2] - backdrop[i + 2]);
+        if (contrast < 60) continue;
+        foreground++;
+        if (morning[i] - dusk[i] > 15) darker++;
+      }
+      return { farm: farm.map(image => image.frame.name), overlaps: overlaps.map(image => image.frame.name), foreground, darker };
+    });
+    expect(result.farm).toEqual(expect.arrayContaining(['cottage', 'mill', 'sails', 'hives', 'honeyCart', 'fence', 'wheat', 'laundry']));
+    expect(result.overlaps).toEqual([]);
+    expect(result.foreground).toBeGreaterThan(100);
+    expect(result.darker).toBeGreaterThan(result.foreground * 0.7);
+  });
+
   for (const look of ['painted', 'classic'] as const) {
     for (const map of MAP_IDS) {
       test(`${look} ${map}: town boundaries and rendered pixels in every cell`, async ({ page }, info) => {

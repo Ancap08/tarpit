@@ -9,7 +9,7 @@ export const TILE = 48;
 const RES = 2;
 const COLUMNS = 8;
 const poses = ['musket', 'gunner', 'archer'] as const;
-const objects = ['hat', 'coin', 'page', 'crater', 'ash', 'arrow', 'wear', 'skid', 'glow', 'bubble', 'ripple', 'pole'] as const;
+const objects = ['hat', 'coin', 'page', 'crater', 'ash', 'arrow', 'wear', 'skid', 'glow', 'bubble', 'ripple'] as const;
 export type ObjectInk = typeof objects[number];
 
 function shape(c: Ink, fill: string, points: Pair[], edge?: string) {
@@ -164,12 +164,6 @@ function paintObject(c: Ink, kind: ObjectInk) {
     case 'bubble':
       oval(c, 0, 0, 2.2, 1.7, '#474839');
       line(c, '#b3ab7b', 0.8, [-1.5, 0], [-1, -1.1], [0.2, -1.2]);
-      break;
-    case 'pole':
-      line(c, '#58412f', 2.8, [0, 13], [1, -10]);
-      line(c, '#c0995f', 0.9, [-0.6, 12], [0.1, -9]);
-      c.translate(0, -10);
-      tricorn(c);
       break;
   }
 }
