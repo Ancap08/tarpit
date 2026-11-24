@@ -67,6 +67,7 @@ import {
   rechargeText,
   PAUSE_TEXT,
   SPECIAL_BUTTON_TEXT,
+  SPECIAL_SHORT_TEXT,
   speedLabel,
   START_WAVE_TEXT,
   waveCounterText,
@@ -75,7 +76,7 @@ import { COLORS, FONT, HUD_FONT, TEXT } from './palette';
 import { BossBar } from './ui/bossBar';
 import { BuildBar } from './ui/buildBar';
 import { Button } from './ui/button';
-import { PORTRAIT_ROW_WIDTH, PORTRAIT_STACK, portraitRow2, STACK_SIZE, stripAimText, type StackSize } from './ui/geometry';
+import { PORTRAIT_STACK, portraitRow2, STACK_SIZE, stripAimText, type StackSize } from './ui/geometry';
 import {
   LANDSCAPE,
   PORTRAIT_CONTROLS_Y,
@@ -327,8 +328,7 @@ export const PORTRAIT_HUD: HudMetrics = (() => {
     portrait: true,
     bands: [
       { x: 0, y: 0, width: PORTRAIT_WIDTH, height: PORTRAIT_STRIP_H },
-      { x: 0, y: PORTRAIT_CONTROLS_Y, width: PORTRAIT_WIDTH, height: pause.y - PORTRAIT_CONTROLS_Y },
-      { x: 0, y: pause.y, width: PORTRAIT_ROW_WIDTH, height: PORTRAIT_HEIGHT - pause.y },
+      { x: 0, y: PORTRAIT_CONTROLS_Y, width: PORTRAIT_WIDTH, height: PORTRAIT_HEIGHT - PORTRAIT_CONTROLS_Y },
     ],
     lines: [
       { x: 0, y: PORTRAIT_STRIP_H - 2, width: PORTRAIT_WIDTH, height: 2 },
@@ -384,9 +384,8 @@ export class Hud {
   private livesX = LIVES_X;
 
   constructor(scene: Phaser.Scene, handlers: HudHandlers, layout: Layout = LANDSCAPE, painted?: PaintedSkin) {
-    const m = hudMetrics(layout);
+    const m = { ...hudMetrics(layout) };
     this.m = m;
-    if (m.portrait) scene.cameras.main.setBackgroundColor(THEME.paper);
     const counter = scene.add.graphics();
     for (const band of m.bands) {
       panel(counter, band, THEME.wood);
@@ -438,7 +437,6 @@ export class Hud {
     if (m.portrait) {
       // Reserve two lines inside the wave plaque, including ascenders and descenders.
       this.startButton.labelObjects[0].setStyle({ metrics: { ascent: 23, descent: 6, fontSize: 29 } });
-      this.specialButton.labelObjects[0].setLetterSpacing(-0.75);
     }
     this.speedButton = new Button(scene, m.speed, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress, fontSize: m.portrait ? m.startFont : undefined });
     this.specialMenu = new SpecialMenu(scene, m.menu.left, m.menu.top, handlers.onSpecialPick, layout.map.y, m.menu.size, m.menu.font);
@@ -449,26 +447,39 @@ export class Hud {
       fontSize: '18px', labelY: 57, sound: null,
     });
     this.pauseIcon = scene.add.graphics().fillStyle(COLORS.buttonEdgePicked);
-    const cx = m.pause.x + m.pause.width / 2;
-    const iconY = m.pause.y + (m.portrait ? (m.pause.height - 26) / 2 : 16);
-    for (const x of [cx - 11, cx + 4]) this.pauseIcon.fillRect(x, iconY, 7, m.portrait ? 26 : 21);
+    const iconHeight = m.portrait ? 26 : 21;
+    for (const x of [-11, 4]) this.pauseIcon.fillRect(x, 0, 7, iconHeight);
     // Put the native accessibility target over the plaque. Phaser handles pointer input.
     this.pauseAction = document.createElement('button');
     this.pauseAction.textContent = PAUSE_TEXT.button;
     this.pauseAction.onclick = handlers.onPause;
     this.pauseAction.className = 'pause-action';
     scene.game.canvas.after(this.pauseAction);
-    const fitAction = () => {
+    const fitControls = () => {
       const { canvasBounds: b, displayScale: s } = scene.scale;
+      if (m.portrait) {
+        const row = portraitRow2(1 / Math.max(s.x, s.y));
+        if (row.pause.width !== m.pause.width) {
+          Object.assign(m, row);
+          this.startButton.setWidth(row.start.width);
+          this.speedButton.moveTo(row.speed.x, row.speed.y);
+          this.muteButton.setRect(row.mute);
+          this.pauseButton.setSize(row.pause.width, row.pause.height);
+          this.pauseButton.moveTo(row.pause.x, row.pause.y);
+        }
+        this.startButton.labelObjects[0].setWordWrapWidth(m.start.width - 6, true);
+      }
+      this.pauseIcon.setPosition(m.pause.x + m.pause.width / 2,
+        m.pause.y + (m.portrait ? (m.pause.height - iconHeight) / 2 : 16));
       Object.assign(this.pauseAction.style, {
         left: (b.x + m.pause.x / s.x) + 'px', top: (b.y + m.pause.y / s.y) + 'px',
         width: (m.pause.width / s.x) + 'px', height: (m.pause.height / s.y) + 'px',
       });
     };
-    fitAction();
-    scene.scale.on('resize', fitAction);
+    fitControls();
+    scene.scale.on('resize', fitControls);
     scene.events.once('shutdown', () => {
-      scene.scale.off('resize', fitAction);
+      scene.scale.off('resize', fitControls);
       this.pauseAction.remove();
     });
   }
@@ -535,18 +546,12 @@ export class Hud {
     if (state.pendingBoon) reason = BOON_PENDING_TEXT;
     else if (!call.ok && call.reason === 'boon-wave') reason = BOON_WAVE_TEXT;
     else if (!call.ok && call.reason === 'last-wave') reason = state.wave < lastWave(state) ? BOSS_WAVE_NEXT_TEXT : LAST_WAVE_TEXT;
-    const previousText = this.startButton.text;
     this.startButton.setFontSize(call.ok || reason ? m.callFont : m.startFont);
-    if (reason) this.startButton.set(blockedWaveLabel(!!state.pendingBoon, reason), false);
-    else if (call.ok) this.startButton.set(callEarlyLabel(call.bonus), true);
+    if (reason) this.startButton.set(m.portrait ? reason : blockedWaveLabel(!!state.pendingBoon, reason), false);
+    else if (call.ok) this.startButton.set(callEarlyLabel(call.bonus, m.portrait), true);
     else this.startButton.set(START_WAVE_TEXT, canStartWave(state));
     const label = this.startButton.labelObjects[0];
     const availableWidth = m.start.width - 4;
-    if (m.portrait && label.text !== previousText) {
-      // Keep normal spacing on shorter labels and tighten only lines that need it.
-      label.setLetterSpacing(0);
-      if (label.width > availableWidth) label.setLetterSpacing(-2);
-    }
     label.setScale(Math.min(1, availableWidth / label.width), Math.min(1, (m.start.height - 2) / label.height));
     // Once the game is over the speed toggle is inert (greyed, ignores clicks).
     const playable = state.phase !== 'won' && state.phase !== 'lost';
@@ -558,7 +563,8 @@ export class Hud {
     const ready = specialReady(state);
     const recharge = specialRecharge(state);
     // Milestone 30 follow-up: while the charge refills the label is the countdown ("Wait 15s").
-    this.specialButton.set(recharge ? rechargeText(state.specialRechargeTicks, TICKS_PER_SECOND) : SPECIAL_BUTTON_TEXT, ready);
+    const specialText = m.portrait ? SPECIAL_SHORT_TEXT : SPECIAL_BUTTON_TEXT;
+    this.specialButton.set(recharge ? rechargeText(state.specialRechargeTicks, TICKS_PER_SECOND, m.portrait) : specialText, ready);
     if (m.portrait) {
       const specialLabel = this.specialButton.labelObjects[0];
       specialLabel.setScale(Math.min(1, (m.special.width - (recharge ? 7 : 24)) / specialLabel.width), 1);

@@ -189,7 +189,7 @@ test('portrait switches to the portrait layout and keeps ticking the same game; 
   await tap(page, 'startWave');
   await page.setViewportSize({ width: 768, height: 1024 });
   await page.waitForFunction(() => window.__tarpit!.layout() === 'portrait');
-  await expect.poll(size).toEqual([520, 1194]);
+  await expect.poll(size).toEqual([480, 1194]);
   await expect(page.locator('#rotate-card')).toHaveCount(0);
   const t0 = await tick();
   await page.waitForTimeout(500);

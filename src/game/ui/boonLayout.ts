@@ -1,6 +1,5 @@
 import type { Rect } from '../../sim';
 import type { Layout } from '../layout';
-import { PORTRAIT_ROW_WIDTH } from './geometry';
 
 const COUNT = 3;
 
@@ -35,7 +34,6 @@ type Size = { width: number; height: number };
 export function heldBoonLayout(layout: Layout, parent: Size) {
   const portrait = layout.kind === 'portrait';
   const inRow = !portrait && parent.width >= layout.width && parent.height >= layout.height;
-  const hudWidth = portrait ? PORTRAIT_ROW_WIDTH : layout.width;
   const gap = 3;
   // FIT can be limited by height or by width. In the latter case the rail
   // itself widens the canvas: size * parent.width / (layout.width + 2*gap + size) >= 45.
@@ -43,14 +41,12 @@ export function heldBoonLayout(layout: Layout, parent: Size) {
   const target = 45;
   const size = inRow ? 46 : Math.ceil(Math.max(
     target * layout.height / Math.max(1, parent.height),
-    target * hudWidth / Math.max(1, parent.width),
     target * (layout.width + 2 * gap) / Math.max(1, parent.width - target),
   ));
   const left = inRow ? 678 : layout.width + gap;
   const top = inRow ? 531 : portrait ? gap : layout.height - COUNT * (size + gap);
   return {
-    hudWidth,
-    canvasWidth: inRow ? hudWidth : Math.max(hudWidth, layout.width + size + 2 * gap),
+    canvasWidth: inRow ? layout.width : layout.width + size + 2 * gap,
     slots: Array.from({ length: COUNT }, (_, i): Rect => ({
       x: left + (inRow ? i * (size + gap) : 0),
       y: top + (inRow ? 0 : i * (size + gap)),

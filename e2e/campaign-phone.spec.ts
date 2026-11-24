@@ -1,6 +1,6 @@
 import { campaignPurchaseCase } from './campaignPurchases';
 import { expect, test } from '@playwright/test';
-import { blockedWaveLabel, BOON_PENDING_TEXT, BOON_WAVE_TEXT, BOSS_WAVE_NEXT_TEXT, LAST_WAVE_TEXT } from '../src/game/names';
+import { BOON_PENDING_TEXT, BOON_WAVE_TEXT, BOSS_WAVE_NEXT_TEXT, LAST_WAVE_TEXT } from '../src/game/names';
 import { api, clearToOffer, expectActTwoPreviewsFit, expectOffer, expectStartLabelFits, mapPress, openCampaign, pickEachPosition, postSpawn, press } from './campaign';
 import { waitForTitle } from './title';
 
@@ -10,7 +10,7 @@ test('a pending reward survives a live turn and a tap chooses once; reload start
   await clearToOffer(page, 5);
   await expectOffer(page, 5);
   const before = await api(page, (t) => t.state());
-  await expectStartLabelFits(page, blockedWaveLabel(true, BOON_PENDING_TEXT));
+  await expectStartLabelFits(page, BOON_PENDING_TEXT);
   await press(page, 'startWave', true);
   await press(page, 'bar:cannon', true);
   await mapPress(page, 7, 5, true);
@@ -45,7 +45,7 @@ test('Call next displays each refusal inside the phone button', async ({ page })
   await openCampaign(page, true);
   for (const [wave, reason] of [[4, BOON_WAVE_TEXT], [19, BOSS_WAVE_NEXT_TEXT], [20, LAST_WAVE_TEXT]] as const) {
     await postSpawn(page, wave);
-    await expectStartLabelFits(page, blockedWaveLabel(false, reason));
+    await expectStartLabelFits(page, reason);
     await press(page, 'startWave', true);
     expect(await api(page, (t) => t.state())).toMatchObject({ phase: 'wave', wave });
   }

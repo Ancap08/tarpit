@@ -449,7 +449,7 @@ test('a burst of ten alternating resizes ends in the window\'s shape with the ga
     // Ten resizes with no wait between them; the last one is `end`.
     const sizes = Array.from({ length: 10 }, (_, i) => ((i % 2 === 0) === (end === 'portrait') ? [844, 390] : [390, 844]));
     for (const [w, h] of sizes) await page.setViewportSize({ width: w, height: h });
-    const want = end === 'portrait' ? [520, 1194] : [960, 580];
+    const want = end === 'portrait' ? [480, 1194] : [960, 580];
     await page.waitForFunction((k) => {
       const t = window.__tarpit as TarpitTestApi;
       return t.scene() === 'game' && t.ui().layout === k;

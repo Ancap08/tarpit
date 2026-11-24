@@ -331,8 +331,14 @@ export function suite(touch: boolean): void {
       expect(rects[n].height, `${n} height`).toBeGreaterThanOrEqual(portrait ? 70 : 42);
       expect(rects[n].width, `${n} width`).toBeGreaterThanOrEqual(portrait ? 70 : 42);
     }
-    expect(rects.startWave.width).toBeGreaterThanOrEqual(portrait ? 168 : 130);
-    if (!portrait) for (const n of names.filter((k) => k.startsWith('bar:'))) expect(rects[n].width).toBeGreaterThanOrEqual(132);
+    if (portrait) {
+      for (const n of ['special', 'speed', 'mute', 'pause']) {
+        expect(rects.startWave.width, 'Start Wave has the largest share').toBeGreaterThan(rects[n].width);
+      }
+    } else {
+      expect(rects.startWave.width).toBeGreaterThanOrEqual(130);
+      for (const n of names.filter(k => k.startsWith('bar:'))) expect(rects[n].width).toBeGreaterThanOrEqual(132);
+    }
     for (const a of names)
       for (const b of names)
         if (a < b) {

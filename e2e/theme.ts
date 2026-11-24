@@ -6,7 +6,7 @@ import { LANDSCAPE, PORTRAIT } from '../src/game/layout';
 import { bossBarGeometry } from '../src/game/ui/bossBar';
 import { api, press } from './campaign';
 import { useTallFontMetrics } from './campaignFont';
-import { hudButtonLabelSuite } from './hudButtonLabels';
+import { hudButtonSuite } from './hudButtonLabels';
 import { momentBannerSuite } from './momentBanners';
 import { settle } from './painted';
 import { waitForFirstScreen, waitForTitle } from './title';
@@ -35,7 +35,7 @@ async function checkLabels(page: Page, wanted: string[], area: Rect, controls?: 
 
 export function themeSuite(touch: boolean) {
   momentBannerSuite(touch);
-  hudButtonLabelSuite();
+  hudButtonSuite();
   for (const fallback of [false, true]) {
     test(`pause plaque and panel fit with tall metrics and wide digits (${fallback ? 'fallback' : 'Caslon'})`, async ({ page }) => {
       await useTallFontMetrics(page, fallback);

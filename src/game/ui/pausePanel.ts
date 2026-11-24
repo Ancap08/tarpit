@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import { hudMetrics } from '../hud';
 import { contains, type Rect } from '../input';
 import type { Layout } from '../layout';
 import { CAMPAIGN_END, END_TEXT, PAUSE_TEXT } from '../names';
@@ -9,6 +8,7 @@ import { menuKeys } from './menuKeys';
 import { ink, panel, rule } from './theme';
 
 interface Actions {
+  muteBounds(): Rect;
   onResume(): void;
   onRestart(): void;
   onMenu(): void;
@@ -25,7 +25,7 @@ export class PausePanel {
 
   constructor(private readonly scene: Phaser.Scene, layout: Layout, campaign: boolean, actions: Actions) {
     const depth = 20; // Above reward cards, held boons and the boss banner.
-    const mute = hudMetrics(layout).mute;
+    let mute = actions.muteBounds();
     this.shade = scene.add.graphics().setDepth(depth);
     // The scene's input layer can include a rail to the right of the map. Leave
     // a hole for the real mute button, including after a same-layout refit.
@@ -33,6 +33,7 @@ export class PausePanel {
       .setInteractive(new Phaser.Geom.Rectangle(), (_area: unknown, x: number, y: number) =>
         !contains(mute, x, y) && !this.buttons.some(button => contains(button.rect, x, y)));
     const fitShade = () => {
+      mute = actions.muteBounds();
       const { width, height } = scene.scale;
       this.blocker.setSize(width, height);
       const right = mute.x + mute.width, bottom = mute.y + mute.height;

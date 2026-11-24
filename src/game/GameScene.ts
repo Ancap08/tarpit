@@ -662,6 +662,7 @@ export class GameScene extends Phaser.Scene {
     );
 
     this.pausePanel = new PausePanel(this, this.layout, !!this.state.level, {
+      muteBounds: () => this.hud.rects().mute,
       onResume: () => this.setPaused(false),
       onRestart: () => this.playAgain(),
       onMenu: () => this.toMenu(),

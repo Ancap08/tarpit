@@ -1278,7 +1278,7 @@ Sounds follow the renderer's events and change no rule, number or outcome
   created and nothing plays (the mute setting and M still work).
 - **Mute.** A speaker drawn in code (two waves when on, a red cross when
   muted). Mute sits beside Pause during play, 42 × 42 in landscape
-  and 80 × 80 in portrait. In the title’s top right corner it is 42 × 42
+  and 70–80 px square in portrait to keep Pause at least 44 CSS px at both tested heights. In the title’s top right corner it is 42 × 42
   in landscape and 70 × 70 in portrait. The M key toggles it anywhere (in the README and
   `audio().hint`; no hint is drawn on the button, where it was too small
   to read). Muting sets the mute gain to 0 at once and stops every voice;
@@ -1308,19 +1308,22 @@ drawn and where touches land differ.
   speed sits above mute, each 42 × 42 at x=828. Special and Start Wave
   keep their 100 and 130 px widths at x=586 and x=692. Landscape tower
   buttons start at x=6 and measure 132 × 42 with 4 px gaps.
-- **Portrait** uses a 480 x 1194 title canvas. During play the bottom row
-  extends into the right margin, making the canvas at least 520 px wide. From the top: a 76 px status strip
+- **Portrait** uses a centred 480 x 1194 canvas. A held reward adds the side rail described above. From the top: a 76 px status strip
   (gold, lives, wave and level tag in one row, "cheat used" at its right
   end, the next-wave preview on up to two lines under them), the map
   turned a quarter turn clockwise (480 x 960, spawn at the top, cottage at
   the bottom), then the controls: a row of the six tower buttons (75 x 70,
   each the tower's map shape over its cost, because a name at 18 px does
   not fit 75 px) and a lower row with Special, Start Wave, speed, mute and Pause.
-  The plaques are 112, 168, 70, 80 and 80 px wide, starting at x=1
-  with 2 px gaps. Mute and Pause are 80 × 80 icon buttons at y=1113.
-  The other three are 70 px tall on the same centre line. Their labels use
-  23 px type and retain at least 12 CSS px at both 390 × 844 and 390 × 664.
-  Pause measures 56.5 and 44.5 CSS px respectively.
+  Both rows have 5 px outer margins and 4 px gaps. Of the 470 px inner
+  width, Special uses 90 px and speed uses 70 px. Mute and Pause are
+  matching squares centred on the row. They use 70 px at 390 × 844 and
+  80 px at 390 × 664 to keep Pause at least 44 CSS px. Start Wave takes
+  the remaining 154 or 134 px. Its 23 px label wraps to two lines when
+  needed. Call next shows its bonus on the second line. A blocked call
+  shows its reason alone. Special reads “Cast” beside its status dot
+  and shows the seconds remaining while recharging. Wave, Special and
+  speed labels retain at least 12 CSS px at both heights.
   The next-wave preview starts at y=28. Two 23 px lines fit above the brass edge at y=74. At 390 × 844 the 20 px type reads at 14.1 CSS px and a 70 px button measures 49.5 CSS px.
   On a 390 x 763 CSS px phone (standalone, inside the safe areas) the
   canvas fits at 0.639: buttons are 44.7 CSS px, 20 px text 12.8 CSS px and a

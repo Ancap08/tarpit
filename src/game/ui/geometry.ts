@@ -60,19 +60,24 @@ export function portraitBarRects(): Rect[] {
   }));
 }
 
-/** The bottom row extends into the same right margin as the held-reward rail. */
-export const PORTRAIT_ROW_WIDTH = 520;
-
-export function portraitRow2() {
-  const y = PORTRAIT_ROW2_Y;
+/** Both rows share the same inset and gap. Only the wave plaque takes the spare width. */
+export function portraitRow2(cssScale = 1) {
   const height = PORTRAIT_BUTTON_H;
-  const icon = { y: y - 5, width: 80, height: 80 };
+  // The space between the tower row and canvas bottom can fit an 80 px square.
+  const icon = Math.min(80, Math.max(height, Math.ceil(44 / cssScale)));
+  const innerWidth = PORTRAIT_WIDTH - 2 * PORTRAIT_BAR_LEFT;
+  const specialWidth = 90;
+  const speedWidth = height;
+  const startWidth = innerWidth - 4 * PORTRAIT_BAR_GAP - specialWidth - speedWidth - 2 * icon;
+  let x = PORTRAIT_BAR_LEFT;
+  const plaque = (width: number, h = height): Rect => {
+    const r = { x, y: PORTRAIT_ROW2_Y + (height - h) / 2, width, height: h };
+    x += width + PORTRAIT_BAR_GAP;
+    return r;
+  };
   return {
-    special: { x: 1, y, width: 112, height },
-    start: { x: 115, y, width: 168, height },
-    speed: { x: 285, y, width: 70, height },
-    mute: { x: 357, ...icon },
-    pause: { x: 439, ...icon },
+    special: plaque(specialWidth), start: plaque(startWidth), speed: plaque(speedWidth),
+    mute: plaque(icon, icon), pause: plaque(icon, icon),
   };
 }
 

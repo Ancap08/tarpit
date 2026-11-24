@@ -190,8 +190,8 @@ export const CALL_EARLY_TEXT = 'Call next';
 export const KILLS_TEXT = 'Kills';
 
 /** The Start Wave button's label while a call is possible: "Call next  +14". */
-export function callEarlyLabel(bonus: number): string {
-  return `${CALL_EARLY_TEXT}  +${bonus}`;
+export function callEarlyLabel(bonus: number, stacked = false): string {
+  return `${CALL_EARLY_TEXT}${stacked ? '\n' : '  '}+${bonus}`;
 }
 
 /** The tower panel's kill count line: "Kills 43". */
@@ -210,6 +210,7 @@ export const SPECIAL_NAMES: Readonly<Record<SpecialType, string>> = {
 
 /** The HUD's special button label (milestone 25b). */
 export const SPECIAL_BUTTON_TEXT = 'Special';
+export const SPECIAL_SHORT_TEXT = 'Cast';
 
 /** The verb in the aim banner per special (milestone 30). */
 const SPECIAL_VERBS: Readonly<Record<SpecialType, string>> = { keg: 'throw', tarBarrel: 'drop', fireArrows: 'shoot', barricade: 'place', guards: 'send' };
@@ -269,8 +270,8 @@ export function specialResultText(hits: number): string {
 }
 
 /** The Special button's label while it recharges (milestone 30): whole seconds left, rounded up ("Wait 12s"). */
-export function rechargeText(ticksLeft: number, ticksPerSecond: number): string {
-  return `Wait ${Math.ceil(ticksLeft / ticksPerSecond)}s`;
+export function rechargeText(ticksLeft: number, ticksPerSecond: number, compact = false): string {
+  return `${compact ? '' : 'Wait '}${Math.ceil(ticksLeft / ticksPerSecond)}s`;
 }
 
 /** The speed button's label while it is held for 3x (milestone 30); 1x and 2x read "1x" and "2x". */

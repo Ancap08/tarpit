@@ -9495,6 +9495,8 @@ Town animation and leak sacks now use the map clock, keeping their place through
 
 Linux measured “Pick a reward” at 10.69 CSS px. The phone row now uses the right margin for an icon-only Pause and keeps every wave, Special and speed label above 12 CSS px at both phone heights.
 
+The label checks passed on an oversized canvas that let the bottom row overhang and shifted the map left. Browser checks now compare both rows with the painted panel and the page centre.
+
 ## 2026-11-24: milestone 46, the town and its story
 
 All three roads end at the same four-cell arrangement. Two cells overlap
