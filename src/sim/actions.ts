@@ -222,8 +222,8 @@ export function setTargeting(state: GameState, cell: Cell, mode: TargetingMode):
  * (SPECIAL_RECHARGE_TICKS wave ticks) and acts at once on every live enemy
  * whose position is within the special's radius of the point (inclusive),
  * flying or not: the keg's damage at full strength (shields ignored); the
- * Tar Barrel's special slow and the Fire Arrows' special burn for
- * ZONE_LINGER_TICKS, as a zone tick would. The Tar Barrel and Fire Arrows
+ * Tar Barrel's special slow or the Fire Arrows' special burn. A Tar Barrel
+ * feathers eligible enemies on impact. The Tar Barrel and Fire Arrows
  * then leave a zone at the point for `zoneTicks` (game.ts step 2b). Emits
  * one `special` event with the number of enemies hit (and the zone's id),
  * then `slowed` events for applied slows, then a `kill` (cause 'special')

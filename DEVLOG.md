@@ -10571,6 +10571,8 @@ Scores are stars/lives. The forced bots use their ordinary purchases with Feathe
 
 Eleven levels pass locally. C6 also fails on level 7, where both forced bots win a third star that ordinary Good misses. Across levels, L4 fails and L8's three-life drop is only 2.00 in the first act and 2.33 over all twenty. S1 passes with Person's mean falling from 18.0 to 15.6, handover +2 and largest drop 3. Good finishes the three C8 levels at 20, 17 and 14 against the milestone 49 reference of 20, 16 and 13.
 
+K1 fails the locked report digest above. G1 fails all nine historical combo end-state hashes. The 24 blocker unit cases and 33 Guards unit cases pass, including the isolated K4–K7 and G4–G6 checks. Both campaign K4 boss-contact comparisons pass.
+
 The pre-retune Barricade sweep K3 passes all six map/difficulty combinations. Best Normal gains are −3/−3/−8 and Hard gains are −10/−2/0. The Guards sweep G2 meets each point ceiling, with best Normal gains −3/−4/−5 and Hard gains −10/−2/0. Its aggregate gain fails on all three maps against a required two. G3 passes all nine map/difficulty combinations, including full-lives starts at the unlock.
 
 ### Checks against wrong builds

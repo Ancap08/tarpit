@@ -355,8 +355,8 @@ beside it that returns to the title; the win screen also has [Keep going].
 A Tar Barrel tars the enemies inside its radius on impact and immediately
 feathers each eligible enemy, including Harpies. Enemies that enter the
 puddle later receive the slow. A path B Tar Pit shot feathers a surviving
-ground target if either its tower slow or its Tar Barrel slow is active. A shot that cannot feather its target applies its usual
-slow. Both bosses keep their slow cap and are immune to feathers and flinching.
+ground target if either its tower slow or its Tar Barrel slow is active. A
+shot that cannot feather its target applies its usual slow. Both bosses keep their slow cap and are immune to feathers and flinching.
 Each enemy emits one `feathered {enemyId, x, y}` event at the start of its only retreat.
 
 | Run ticks | Flinch ticks |
@@ -1712,7 +1712,9 @@ the Tar Barrel takes every turn), fired at the working point with a big
 one inside. Otherwise, if a point works for the Powder Keg, the keg is
 thrown there. Otherwise it waits. The best point catches the most enemies;
 ties go to the point nearest the exit. The simulator also measures the combo
-with each special omitted in turn. When it omits Tar Barrel or Fire Arrows,
+with each special omitted in turn. The unused-barrel control spends the full
+recharge at every barrel opportunity and advances the alternating turn.
+When the policy omits Tar Barrel or Fire Arrows,
 the other takes its turn. The headless recorder fires each choice and writes it into the
 script's timed list (`timed`), so `playScripted` and the browser's
 `runScript` replay the same game.
@@ -1802,6 +1804,9 @@ Guards checks:
 - **G6** Guards spend the shared charge. Quick Hands changes only recharge. Even an early call cannot fund two casts on one tick.
 
 ### Known weaknesses
+
+The following observations and measured matrix are the accepted milestone 49
+reference. Milestone 50 measurements are in `DEVLOG.md` under “Milestone 50”.
 
 - Giving every zone turn to Fire Arrows earns 17 lives on Meadow and 20 on Riverbend. The alternating policy earns 14 on each map.
 - The largest Tar Pit path gap is seven lives. Deep Tar leads the Riverbend burn build 9 to 2. Feathers leads the Riverbend combo build 16 to 14.
@@ -1904,6 +1909,12 @@ are exempt. Saved stars keep their previous meaning and the best result wins.
 - Every 30 wave ticks Good applies the existing crowd policy for keg and zones, limited to available specials. It also checks for at least three walkers approaching a legal blocker position 50–140 px ahead, covered by a tower. A splash tower adds one to the blocker score. A blocker must beat the current cast's hit count, and its kind must be absent from the trail. Guards get the first blocker tie.
 - **Person** uses Good’s purchase scores and reward choices. For the chosen tower type, successive placements rotate through the first, second and third highest-scoring cells. During combat it makes at most one decision per three seconds. It acts 1.5 seconds after each charge becomes ready, including the opening charge. If the next wave opens before another look is due, it repeats the previous opening cast at the charge deadline. Its candidate points are centres of 48 px cells along the trail. It prefers Good’s qualifying cast, then a cast covering fewer enemies, then a legal cast even on an empty trail.
 
+- **Feathers-forced Good and Person** keep the ordinary player’s shopping,
+  cast opportunities and aim grid. Each buys Feathers whenever it buys a Tar
+  Pit path. Where the barrel is available, it aims for the largest eligible
+  crowd at that opportunity. C6 compares each outcome with ordinary Good
+  and permits at most four additional lives and no additional third star.
+
 - **Beginner** spends on the cheapest allowed tower in the map's trail-cell order. When it cannot place another, it can buy one affordable upgrade, taking path A at the second upgrade. It takes the first reward and uses no specials.
 
 In Normal Free play, Good must win or lose on each map the same way as
@@ -1993,6 +2004,9 @@ twenty levels. The twenty-level L8 compares the first and last six stops.
 - R6 runs the feather bot at nominal settings. It uses Good’s opening until two upgraded damage towers are standing, reserving the last Rationing slot for a Tar Pit if necessary. Where the third tier is available, it buys a Tar Pit on a useful firing lane and saves for path B. Further Tar Pits also take path B. A ready barrel goes to a crowd of at least three enemies still eligible for feathers. The bot otherwise uses Good’s decisions. It may finish up to three lives above Good and may earn a third star only on a level where ordinary Good earns one. The gate reports path B towers, barrel casts and successful featherings.
 
 ### Campaign measurements
+
+This table records the accepted milestone 49 campaign. The milestone 50
+measurements and failed gate labels are in `DEVLOG.md`.
 
 Stars/lives give each bot’s highest award and surviving lives. Time counts Good’s combat ticks at 60 Hz. Enemies includes summons. Peak is the greatest number alive after any tick.
 
