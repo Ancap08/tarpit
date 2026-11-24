@@ -494,6 +494,8 @@ export class GameScene extends Phaser.Scene {
   /** Milestone 34: the map's ground, growth and moving things. */
   private living: LivingMap | PaintedSkin | null = null;
   private paintedAssets?: PaintedAssets;
+  private showpieceType?: GameStartData['showpiece'];
+  private showpiece?: import('./showpiece/showpiece').Showpiece;
   private paintedFallback = false;
   private painted?: PaintedSkin;
 
@@ -506,6 +508,7 @@ export class GameScene extends Phaser.Scene {
     this.campaignLevel = data?.level;
     this.currentMap = this.campaignLevel?.map ?? data?.map ?? DEFAULT_MAP;
     this.paintedAssets = data?.painted;
+    this.showpieceType = data?.showpiece;
     this.paintedFallback = data?.paintedFallback ?? false;
   }
 
@@ -524,7 +527,7 @@ export class GameScene extends Phaser.Scene {
     if (this.restartPending) return;
     this.restartPending = true;
     const data: GameStartData = {
-      difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets,
+      difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, showpiece: this.showpieceType,
       paintedFallback: this.paintedFallback,
     };
     this.scene.restart(data);
@@ -586,6 +589,15 @@ export class GameScene extends Phaser.Scene {
     this.enemySprites = new EnemySprites(this, isTestMode(), this.layout, this.painted);
     this.shotFx = world();
     this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx), this.layout) : null;
+    if (this.showpieceType && this.paintedAssets) {
+      this.showpiece = new this.showpieceType(this, this.layout, this.paintedAssets.density, this.ground, !this.autoTick);
+      if (this.fx) this.fx.showpiece = this.showpiece.battle;
+      this.events.once('shutdown', () => {
+        if (this.fx) this.fx.showpiece = undefined;
+        this.showpiece?.destroy();
+        this.showpiece = undefined;
+      });
+    }
     this.guardFx = new GuardEffects(this, this.layout, this.enemySprites.layer, this.painted);
     this.bars = this.add.graphics();
     this.barricadeFx = new BarricadeEffects(this, this.layout, this.painted);
@@ -650,18 +662,20 @@ export class GameScene extends Phaser.Scene {
     );
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      const { x, y } = this.showpiece?.camera.mapInput(p) ?? p;
       this.press = null;
       this.aimPress = null;
-      if (this.state.pendingBoon || this.held.contains(p.x, p.y)) return;
-      if (this.layout.onMap(p.x, p.y) && performance.now() < this.mapBlockedUntil) return;
+      if (this.state.pendingBoon || this.held.contains(x, y)) return;
+      if (this.layout.onMap(x, y) && performance.now() < this.mapBlockedUntil) return;
       this.held.dismiss();
-      if (contains(this.hud.rects().gold, p.x, p.y)) this.goldTap();
-      if (this.specialPointerDown(p.x, p.y, p.wasTouch)) return;
-      if (p.wasTouch) this.onTap(p.x, p.y);
-      else this.onPointerDown(p.x, p.y);
-      this.beginPress(p.x, p.y, p.wasTouch);
+      if (contains(this.hud.rects().gold, x, y)) this.goldTap();
+      if (this.specialPointerDown(x, y, p.wasTouch)) return;
+      if (p.wasTouch) this.onTap(x, y);
+      else this.onPointerDown(x, y);
+      this.beginPress(x, y, p.wasTouch);
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      const { x, y } = this.showpiece?.camera.mapInput(p) ?? p;
       // A mouse press whose button was released unseen (mouseup outside the
       // page) cancels, so the drag does not stick to the pointer.
       if (this.press !== null && !this.press.touch && !p.wasTouch && mouseDragLost(p.isDown, p.buttons)) {
@@ -670,20 +684,21 @@ export class GameScene extends Phaser.Scene {
       // The same for a 3x speed hold (PR review): its release was lost, so it ends here.
       if (this.speedPress !== null && !p.wasTouch && mouseDragLost(p.isDown, p.buttons)) this.releaseLostHolds();
       if (this.aimPress !== null && p.wasTouch) {
-        this.aimMove(p.x, p.y);
+        this.aimMove(x, y);
         return;
       }
       if (this.press !== null && this.press.touch === p.wasTouch) {
-        this.dragMove(p.x, p.y);
+        this.dragMove(x, y);
         if (p.wasTouch) return;
       }
       // A finger has no hover: touch moves change nothing else.
-      if (!p.wasTouch) this.onPointerMove({ x: p.x, y: p.y });
+      if (!p.wasTouch) this.onPointerMove({ x, y });
     });
     this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
+      const { x, y } = this.showpiece?.camera.mapInput(p) ?? p;
       this.endSpeedPress();
-      if (this.aimPress !== null) this.endAimPress(p.x, p.y);
-      else this.endPress(p.x, p.y, true);
+      if (this.aimPress !== null) this.endAimPress(x, y);
+      else this.endPress(x, y, true);
     });
     this.input.on('pointerupoutside', () => {
       this.endSpeedPress();
@@ -1279,7 +1294,7 @@ export class GameScene extends Phaser.Scene {
     this.leaving = true;
     this.restartPending = false;
     this.resume = null;
-    const data: GameStartData = { difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, paintedFallback: this.paintedFallback };
+    const data: GameStartData = { difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, showpiece: this.showpieceType, paintedFallback: this.paintedFallback };
     this.scene.restart(data);
   }
 
@@ -1302,6 +1317,7 @@ export class GameScene extends Phaser.Scene {
       this.relayout();
       return;
     }
+    this.showpiece?.frame(performance.now(), delta);
     this.checkSpeedHold();
     this.checkAimHold();
     if (this.autoTick) {
@@ -1328,6 +1344,7 @@ export class GameScene extends Phaser.Scene {
       // Milestone 33: the spent charge became ready again (a wave start's fresh charge has the horn).
       if (recharging && this.state.specialRechargeTicks === 0 && this.state.specialCharges > 0) sound.play('chargeReady');
       this.fx?.onTick(this.state.shots);
+      if (this.state.shots.length) this.showpiece?.shots(this.state.shots);
       for (const shot of this.state.shots) this.aim.pointAt(shot.cell, shot.to);
       this.shots.afterTick(this.state.shots);
       // In test mode effects age by tick (milestone 30), so step(n) frames are always the same.
@@ -1411,6 +1428,12 @@ export class GameScene extends Phaser.Scene {
   /** Test hook (milestone 31, play only): the drawn barrel angle of the tower on `cell`, or null. */
   towerAngle(cell: Cell): number | null {
     return this.fx?.towerAngle(cell) ?? null;
+  }
+
+  showpieceState() { return this.showpiece?.snapshot() ?? null; }
+
+  displayedMapPoint(p: { x: number; y: number }) {
+    return this.showpiece?.camera.displayed(p) ?? p;
   }
 
   paintedState(): PaintedState {
@@ -1555,6 +1578,8 @@ export class GameScene extends Phaser.Scene {
 
   redraw(): void {
     if (!this.dynamic) return;
+    this.showpiece?.draw(this.state, this.pick !== null || this.press?.active === true,
+      !this.press?.active && !this.aimPress?.active && !this.panel?.cell && !this.state.pendingBoon && !this.specialMenuOpen && !this.held?.tooltip);
     this.aim.prune(this.state);
     // Milestone 34: growth on a tower's cell hides; all of it fades while a tower is being placed (a pick or a drag).
     this.living?.update(this.state, this.pick !== null || this.press?.active === true);

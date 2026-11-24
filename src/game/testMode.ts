@@ -169,7 +169,11 @@ function canvasToPage(game: Phaser.Game, x: number, y: number): { x: number; y: 
 }
 
 export function installGlobal(game: Phaser.Game): void {
+  const showpieceVisit = new URLSearchParams(location.search).get('look') === 'showpiece';
+  const displayed = (p: { x: number; y: number }) => showpieceVisit && game.scene.isActive('game')
+    ? (game.scene.getScene('game') as GameScene).displayedMapPoint(p) : p;
   const always = {
+    ...(showpieceVisit ? { showpiece: () => game.scene.isActive('game') ? (game.scene.getScene('game') as GameScene).showpieceState() : null } : {}),
     game,
     uiRects: () => uiRectsOf(game),
     animState: (enemyId: number) => (game.scene.isActive('game') ? (game.scene.getScene('game') as GameScene).animState(enemyId) : null),
@@ -177,11 +181,11 @@ export function installGlobal(game: Phaser.Game): void {
     // Milestone 32b: the layout, and map points in page coordinates through it.
     layout: () => currentLayout().kind,
     cellToPage: (col: number, row: number) => {
-      const c = currentLayout().cellCenter({ col, row });
+      const c = displayed(currentLayout().cellCenter({ col, row }));
       return canvasToPage(game, c.x, c.y);
     },
     worldToPage: (x: number, y: number) => {
-      const c = currentLayout().toScreen({ x, y });
+      const c = displayed(currentLayout().toScreen({ x, y }));
       return canvasToPage(game, c.x, c.y);
     },
     titleReady: () => game.scene.isActive('title') && titleScene(game).isReady,

@@ -1103,6 +1103,32 @@ The title screen offers Classic and Painted. Painted is the default for a fresh 
   into each coloured pixel and keeps its original opacity. Both poses brighten
   during a turn. In test mode the hit flag still lasts one tick.
 
+## Showpiece (experimental)
+
+Open `?look=showpiece` and play campaign level 1 or Free play Meadow. The
+title still offers Classic and Painted. Other levels and maps use Painted.
+The optional renderer and one matching-density farm atlas load on Play.
+An unavailable experiment gives way to the already-loaded Painted field
+after at most eight additional seconds. The URL leaves the saved Look alone.
+
+The mill, apiary and pasture change from morning to lamplight over the
+waves. Workers head inside when the collectors arrive. Crews follow their
+tower's firing cycle. Spent arrows, craters and dropped finery share 64
+reusable marks. Traffic darkens 40 short stretches of the trail. These
+layers yield to placement, zones, combatants and health bars. The first
+arrival draws the map up to 4.8% closer for 2.3 seconds. Artillery gives
+a short kick. The HUD stays still and map input follows the displayed view.
+
+Detail starts high. A 750 ms window averaging over 23 ms per frame lowers
+it one tier. Five consecutive windows below 18.5 ms restore one tier.
+Scenery refreshes at most once per 120, 65 or 32 ms at low, medium or high
+detail, with immediate updates when the player builds or the wave changes.
+Test mode holds the scene still. Reduced motion keeps the lighting cues
+and grounded poses. With the switch, `window.__tarpit.showpiece()` reports
+the active tier (0–2) and mark count. Adding `&perf=1` displays the tier
+and records drawing costs. Benchmarks can add `&showpieceTier=0`, `1`
+or `2` to hold that tier.
+
 ## Sound
 
 Milestone 33 (with its follow-up and six new cues in milestone 36).

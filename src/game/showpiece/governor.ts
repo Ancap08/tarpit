@@ -13,15 +13,15 @@ export class DetailGovernor {
     this.tier = pinned ?? 2;
   }
 
+  resetWindow(): void {
+    this.last = undefined;
+    this.elapsed = this.frames = this.healthy = 0;
+  }
+
   sample(now: number): void {
     const gap = this.last === undefined ? 0 : now - this.last;
     this.last = now;
     if (this.pinned !== undefined || gap <= 0) return;
-    // Discard the interrupted window after putting the tab to sleep.
-    if (gap >= 1000) {
-      this.elapsed = this.frames = this.healthy = 0;
-      return;
-    }
     this.elapsed += gap;
     this.frames++;
     if (this.elapsed < 750) return;

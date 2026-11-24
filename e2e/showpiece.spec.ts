@@ -122,3 +122,23 @@ test('Free play Meadow holds the painted field and every new layer still and sil
   expect(await showpiece(page)).toMatchObject({ calm: true, zoom: 1, timeMs: 0 });
   expect(await page.evaluate(() => localStorage.getItem('tarpit.look'))).toBeNull();
 });
+
+test('spent arrows stay bounded through a crowded wave and a layout change', async ({ page }) => {
+  test.setTimeout(80_000);
+  await page.goto('/?test=1&look=showpiece');
+  await waitForTitle(page);
+  await click(page, 'title:play');
+  await waitForGame(page);
+  await page.evaluate(() => {
+    const a = window.__tarpit!;
+    a.state!().gold = 10000;
+    for (let row = 1; row < 14; row += 2)
+      for (let col = 1; col < 25; col += 2) a.buildAt!(col, row, 'longbow');
+    a.spawnHorde!(240);
+    a.step!(420);
+  });
+  expect(await showpiece(page)).toMatchObject({ marks: 64, markCap: 64 });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForFunction(() => window.__tarpit?.layout() === 'portrait' && window.__tarpit?.showpiece?.()?.marks === 64);
+  expect(await showpiece(page)).toMatchObject({ marks: 64, markCap: 64 });
+});

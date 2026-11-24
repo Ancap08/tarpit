@@ -203,3 +203,14 @@ the checker looks for it.
 | `assets/fonts/OFL.txt` | https://github.com/google/fonts/blob/main/ofl/librecaslontext/OFL.txt | The Libre Caslon Text Project Authors | SIL OFL 1.1 | License file: assets/fonts/OFL.txt; SHA-256: a294245c822c5aa9fd9a9f3189418e99415428be5fecadf797793d5d8f6a3ad3 |
 | `assets/fonts/LibreCaslonText-Bold-latin.woff2` | https://fonts.gstatic.com/s/librecaslontext/v5/DdT578IGsGw1aF1JU10PUbTvNNaDMfID8vdkPx6esdPs.woff2 | The Libre Caslon Text Project Authors | SIL OFL 1.1 | License file: assets/fonts/OFL.txt; SHA-256: 7dc7dc90fb6e140dcdfbfd85aae2bab1f368a448be129fecb953a8290501cef8 |
 | `assets/fonts/LibreCaslonText-Regular-latin.woff2` | https://fonts.gstatic.com/s/librecaslontext/v5/DdT878IGsGw1aF1JU10PUbTvNNaDMfq41-JJHRO0.woff2 | The Libre Caslon Text Project Authors | SIL OFL 1.1 | License file: assets/fonts/OFL.txt; SHA-256: 1471d8a9f22ba5c42c597c2dc582030297027d3e4c3b59a55aec81678f80485b |
+| `assets/art-showpiece/showpiece-pasture-1x.webp` | `scripts/art/showpiece_pasture.py` | Tarpit agents | MIT | Original Meadow scenery atlas at 1× |
+| `assets/art-showpiece/showpiece-pasture-2x.webp` | `scripts/art/showpiece_pasture.py` | Tarpit agents | MIT | Original Meadow scenery atlas at 2× |
+| `assets/art-showpiece/showpiece-pasture.json` | `scripts/art/showpiece_pasture.py` | Tarpit agents | MIT | Scenery frame bounds and pivots |
+| `docs/art/showpiece/landscape-crossfire.jpg` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 landscape crossfire capture |
+| `docs/art/showpiece/landscape-dusk.jpg` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 landscape dusk capture |
+| `docs/art/showpiece/landscape-morning.jpg` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 landscape morning capture |
+| `docs/art/showpiece/landscape.mp4` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 landscape recording |
+| `docs/art/showpiece/phone-crossfire.jpg` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 phone crossfire capture |
+| `docs/art/showpiece/phone-dusk.jpg` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 phone dusk capture |
+| `docs/art/showpiece/phone-morning.jpg` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 phone morning capture |
+| `docs/art/showpiece/phone.mp4` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 phone recording |
