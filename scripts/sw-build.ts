@@ -14,7 +14,7 @@ import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'vite';
-import { PAINTED_ASSET_DIR } from '../src/sw/rules.ts';
+import { PAINTED_ASSET_DIR, SHOWPIECE_ASSET_DIR } from '../src/sw/rules.ts';
 
 function walk(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
@@ -58,7 +58,7 @@ export function swManifest(outDir: string): { version: string; precache: string[
   const hash = createHash('sha256');
   for (const f of files) hash.update(f).update('\0').update(readFileSync(join(outDir, f))).update('\0');
   const precache = files
-    .filter((f) => !f.startsWith(PAINTED_ASSET_DIR))
+    .filter((f) => !f.startsWith(PAINTED_ASSET_DIR) && !f.startsWith(SHOWPIECE_ASSET_DIR))
     .map((f) => (f === 'index.html' ? './' : f));
   return { version: hash.digest('hex').slice(0, 12), precache };
 }

@@ -63,6 +63,7 @@ export interface TarpitTestApi {
   campaignResult(): ReturnType<GameScene['campaignResult']>;
   /** The live simulation state (serialized when read through page.evaluate). */
   state(): Omit<GameState, 'towers'> & { towers: (Tower & { readonly level: TowerLevel })[] };
+  showpiece?(): ReturnType<GameScene['showpieceState']>;
   painted(): import('./skin/painted').PaintedState;
   /** Run n simulation ticks, then redraw. */
   step(n: number): void;

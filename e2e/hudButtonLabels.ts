@@ -36,14 +36,26 @@ async function checkLabel(page: Page, key: string, text: string) {
 }
 
 export function hudButtonSuite() {
+  for (const look of ['painted', 'classic', 'showpiece'] as const) {
+    test.describe(look, () => hudButtonCases(look));
+  }
+}
+
+function hudButtonCases(look: 'painted' | 'classic' | 'showpiece') {
+  async function startMeadow(page: Page) {
+    await page.goto('/?test=1&look=' + look);
+    await waitForFirstScreen(page);
+    await api(page, t => t.startGame('normal', 'meadow'));
+    expect(await api(page, t => t.painted().active)).toBe(look !== 'classic');
+    expect(await api(page, t => !!t.showpiece?.())).toBe(look === 'showpiece');
+  }
+
   for (const height of [844, 664]) {
     for (const mode of ['normal', 'fixed Caslon', 'fixed fallback']) {
       test(`phone HUD fits the game frame at 390x${height} (${mode})`, async ({ page }) => {
         if (mode !== 'normal') await useTallFontMetrics(page, mode === 'fixed fallback');
         await page.setViewportSize({ width: 390, height });
-        await page.goto('/?test=1&look=painted');
-        await waitForFirstScreen(page);
-        await api(page, t => t.startGame());
+        await startMeadow(page);
         const { canvas, panels, controls, mapLeft, mapRight, pageWidth, pageHeight } = await page.evaluate(mapHeight => {
           const t = window.__tarpit!;
           const scene = t.game.scene.getScene('game') as GameScene;
@@ -101,10 +113,8 @@ export function hudButtonSuite() {
       const sizes = info.project.name === 'phone' ? [{ width: 390, height: 844 }, { width: 390, height: 664 }] : [page.viewportSize()!];
       for (const viewport of sizes) {
         await page.setViewportSize(viewport);
-        await page.goto('/?test=1&look=painted');
-        await waitForFirstScreen(page);
+        await startMeadow(page);
         expect(await page.evaluate(() => [...document.fonts].some(face => face.status === 'loaded'))).toBe(!mode.endsWith('fallback'));
-        await api(page, t => t.startGame());
         const phone = info.project.name === 'phone';
         if (phone) {
           const pause = await rectPageSize(page, 'pause');
