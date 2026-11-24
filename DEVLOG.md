@@ -9594,3 +9594,54 @@ campaign runs, set `M47_SCRATCH` to a disposable directory and run
 The recorder buys with earned gold and plays at the normal 3× setting.
 Its excerpts cover the six waves and victory. All benchmark tiers are
 pinned for comparisons. Ordinary play selects its own tier.
+
+### Verifier notes (milestone 47, independent run on 6ff5bab)
+
+Verdict: safe to merge behind the switch. No isolation or correctness defect
+found; the notes below are measurements and soft spots. Compared against a
+detached build of 5a24b12.
+
+- No effect without the switch: 12 cold-context runs (no `look`, `look=painted`,
+  `look=classic`; Meadow Free play and level 1, Switchback, Riverbend) made zero
+  requests containing "showpiece". With `?look=showpiece`: Switchback, Riverbend
+  and Classic requested none and had no showpiece state; Meadow Free play and
+  level 1 loaded it; the title offers only Classic and Painted; no run stored
+  "showpiece" (the stored look stays null, or what the player clicked).
+- Painted and Classic canvases: 72 `?test=1` states (landscape and phone,
+  both looks, three maps, six states from setup to a horde and a late wave)
+  hashed identical against 5a24b12. Boot bundle gzip: +1,305 B (default level)
+  or +1,318 B (-9); DEVLOG says 1,278 B.
+- No existing assertion changed: the diff touches no test file that existed
+  before. `src/sim` diff is empty; `npm run sim` output byte-identical.
+- Same state, same tick: scripted level 1 (to the win) and ten-wave Free play
+  Meadow, 1 and 3 ticks a step, Painted and tiers 0, 1, 2 pinned: identical
+  full-state hash in all 16 runs. This is frozen test mode (draws every step);
+  real-time play was not compared tick for tick because state hooks are absent
+  there. `e2e/showpiece-verifier.spec.ts` pins a shorter version.
+- Input during the push-in (zoom 1.03): mouse and touch select, cast a Tar
+  Barrel (landed 1.4 px and 0.3 px from the enemy's drawn spot), place by
+  mouse: all land on what is drawn. Readable at wave 19 dusk at all three
+  tiers, landscape and phone: bars, rings, placement frame stay on top.
+- The mill, cottage, willow, hives and cart stand on buildable cells and look
+  like obstacles. A tower may be built there and the scenery under its
+  footprint disappears (the whole mill vanishes when a tower is built on a
+  mill cell). Honest in effect, but a player can read the mill as blocked.
+- Fallback: aborted chunk, aborted atlas, 404, corrupt atlas: Painted game in
+  150-220 ms, no page error. A hung atlas: Painted after 8.2 s.
+- Governor: on the phone profile under 6x throttle it sits at tier 0; back at
+  1x it climbs to 1 and 2 and falls again within seconds (detail pops about
+  every 4 to 8 s while the device is near the boundary).
+- Bounds: marks reach their cap of 64 and traffic bins 40; a rotation keeps
+  them. Twenty Play-again cycles on the phone profile: scene children 167 and
+  textures 113 every time, heap after forced GC 17.2 to 19.1 MB. A 4-minute
+  3x game: children flat, heap 22 to 34 MB without forced GC. A literal ten
+  minutes was not played.
+- Costs, phone profile, this Mac, FPS / worst frame ms, Codex in brackets:
+  1x Low 58.0/83 [59.2/67], High 46.6/33 [51.0/33]; 4x Low 59.4/33 [60.0/17],
+  High 30.7/200 [43.7/34]; 6x Low 55.2/33 [58.8/33], High 25.5/150 [37.1/50].
+  Same order and shape, but High is 5 to 12 FPS lower here (busy shared
+  machine). Load: +0.55 s at 1x [+0.53], +0.75 s at 2x [+0.78]; extra bodies
+  match to the byte (11,535 + 30,560 / 74,736).
+- Whole tree: lint, typecheck, `npm test` (118 files, 2,499 tests),
+  build, `check:assets`, `check:size`, and Playwright 903 passed, 8 skipped (all
+  skips pre-existing), none failed. The recordings are 3.6 MB and 2.4 MB.
