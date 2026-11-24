@@ -4,7 +4,7 @@ import { comboBuild, comboIdleBarrel, comboWithoutSpecial, playScripted, type Re
 import { botBeginner, runBot } from './bots';
 import { createGame } from './game';
 import { DIFFICULTIES } from './difficulty';
-import { SPECIAL_RECHARGE_TICKS } from './specials';
+import { BARREL_RECHARGE_TICKS } from './specials';
 import { MAP_IDS, type MapId } from './map';
 
 function measure(map: MapId) {
@@ -26,7 +26,7 @@ function measure(map: MapId) {
   expect(idle.timed![wave].filter(a => a.atWaveTick < firstBarrel.atWaveTick))
     .toEqual(alternating.timed![wave].filter(a => a.atWaveTick < firstBarrel.atWaveTick));
   expect(idle.timed![wave].some(a => a.atWaveTick >= firstBarrel.atWaveTick &&
-    a.atWaveTick < firstBarrel.atWaveTick + SPECIAL_RECHARGE_TICKS)).toBe(false);
+    a.atWaveTick < firstBarrel.atWaveTick + BARREL_RECHARGE_TICKS)).toBe(false);
   expect(casts(idle)).not.toContain('tarBarrel');
   expect(casts(idle)).toContain('fireArrows');
   expect(casts(barrels)).toContain('tarBarrel');

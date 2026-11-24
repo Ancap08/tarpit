@@ -62,7 +62,7 @@ describe('R3: tar and feathers use the trail and end after one run', () => {
       fireTowers(state);
     }
     expect(state.events.filter((event) => event.kind === 'feathered').map((event) => event.enemyId)).toEqual([0, 1]);
-    expect(back.runTicksLeft).toBe(FEATHERS.runTicks);
+    expect(back.runTicksLeft).toBe(FEATHERS.barrelRunTicks);
   });
 
   it('C1: one barrel feathers every eligible enemy through the radius edge, once per life', () => {
@@ -78,7 +78,7 @@ describe('R3: tar and feathers use the trail and end after one run', () => {
     expect(events()).toEqual(crowd.map(e => e.id));
     for (const hit of crowd) {
       expect(isTarred(hit)).toBe(true);
-      expect(hit.runTicksLeft).toBe(FEATHERS.runTicks);
+      expect(hit.runTicksLeft).toBe(FEATHERS.barrelRunTicks);
     }
     for (const boss of bosses) {
       expect(boss.specialSlow).toBe(0.3);
@@ -180,14 +180,14 @@ describe('R3: tar and feathers use the trail and end after one run', () => {
   });
 
   it('runs through an occupied guard and wall at fixed speed, then resumes normal combat', () => {
-    const total = ENEMY_STATS.troll.speed / TICKS_PER_SECOND * FEATHERS.runTicks;
+    const total = ENEMY_STATS.troll.speed / TICKS_PER_SECOND * FEATHERS.barrelRunTicks;
     const start = total + 150;
     const walker = enemy(0, 'troll', start);
     const state = arena([walker], true);
     walker.slow = 0.7;
-    walker.slowTicksLeft = FEATHERS.runTicks + 8;
+    walker.slowTicksLeft = FEATHERS.barrelRunTicks + 8;
     walker.burnDps = 6;
-    walker.burnTicksLeft = FEATHERS.runTicks + 8;
+    walker.burnTicksLeft = FEATHERS.barrelRunTicks + 8;
     // Put the wall behind the guard. The returning walker meets the wall first.
     const wall = { kind: 'barricade' as const, x: 150 + 0.1, y: 240, angle: 0, distance: 150 + 0.1, hp: 40, maxHp: 40 };
     const guard = { ...wall, kind: 'guard' as const, id: 0, x: start, distance: start, attackDps: 10, ticksLeft: 300 };
@@ -197,14 +197,14 @@ describe('R3: tar and feathers use the trail and end after one run', () => {
     fireTowers(state);
     expect(walker.feathered).toBe(true);
     const beforeBurn = walker.hp;
-    for (let i = 0; i < FEATHERS.runTicks; i++) {
+    for (let i = 0; i < FEATHERS.barrelRunTicks; i++) {
       moveEnemies(state.enemies, state.events, state.blockers, 1.5);
       burnEnemies(state);
     }
     expect(walker.distance).toBeCloseTo(150, 8);
     expect(walker.slowTicksLeft).toBe(8);
     expect(walker.burnTicksLeft).toBe(8);
-    expect(walker.hp).toBeCloseTo(beforeBurn - 12 * FEATHERS.runTicks / TICKS_PER_SECOND, 8);
+    expect(walker.hp).toBeCloseTo(beforeBurn - 12 * FEATHERS.barrelRunTicks / TICKS_PER_SECOND, 8);
     expect(walker.guardContact).toBeUndefined();
     expect(state.events.some((event) => event.kind === 'blockerHit' || event.kind === 'guardStrike')).toBe(false);
     moveEnemies(state.enemies, state.events, state.blockers, 1.5);
@@ -237,6 +237,6 @@ describe('R8: retreat lasts at least a second at the walking pace of each enemy'
     walker.flinchTicksLeft = FEATHERS.flinchTicks;
     for (let i = 0; i < FEATHERS.flinchTicks; i++) moveEnemies(state.enemies, state.events);
     expect(walker.distance).toBe(220);
-    expect(walker.runTicksLeft).toBe(FEATHERS.runTicks);
+    expect(walker.runTicksLeft).toBe(FEATHERS.barrelRunTicks);
   });
 });

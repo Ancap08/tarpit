@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { buildTower, upgradeTower, useSpecial } from './actions';
 import { botBeginner, botGood, botGoodFeat, botPerson, runBot } from './bots';
-import { createGame, startWave, tick } from './game';
+import { callNextWave, createGame, startWave, tick } from './game';
+import { BARREL_RECHARGE_TICKS, SPECIAL_RECHARGE_TICKS } from './specials';
 import { trailCellOrder } from './headless';
 import type { LevelDef } from './levelTypes';
 import type { EnemyType, MapDef } from './types';
@@ -239,6 +240,23 @@ describe('person policy', () => {
     }));
     expect(botPerson.special(state)).toEqual(first);
     expect(botPerson.special({ ...state })).not.toEqual(first);
+  });
+
+  it('reacts 90 ticks after a barrel wait ends across an early call', () => {
+    const groups = [{ type: 'goblin' as const, count: 2, interval: 3000, delay: 0 }];
+    const state = createGame({ level: { ...level, allowedSpecials: ['tarBarrel', 'keg'],
+      waves: [{ groups }, { groups }, { groups }] } });
+    expect(startWave(state).ok).toBe(true);
+    tick(state);
+    expect(useSpecial(state, 'tarBarrel', { x: 300, y: 240 }).ok).toBe(true);
+    state.spawnedPerGroup = [2];
+    expect(callNextWave(state).ok).toBe(true);
+    const wait = BARREL_RECHARGE_TICKS - SPECIAL_RECHARGE_TICKS;
+    for (let elapsed = 0; elapsed < wait + 90; elapsed++) {
+      expect(botPerson.special(state)).toBeUndefined();
+      tick(state);
+    }
+    expect(botPerson.special(state)).toMatchObject({ type: 'special', atWaveTick: wait + 90 });
   });
 
   it('spends each charge within 90 ticks on a cell centre and spaces fight decisions by at least 180 ticks', () => {

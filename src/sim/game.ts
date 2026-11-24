@@ -60,9 +60,9 @@
 // are, but guard lifetimes still count down. Build, upgrade and sell (actions.ts) happen between ticks, and so
 // does useSpecial (milestone 25b): its damage, slow and burn apply at once
 // and its kills are removed and paid before the next tick; a Tar Barrel or
-// Fire Arrows also leaves a zone (milestone 30). startWave makes the special
-// charge ready; useSpecial spends it and starts SPECIAL_RECHARGE_TICKS of
-// recharge, counted in wave ticks only; the wave clear in step 7 takes an
+// Fire Arrows also leaves a zone (milestone 30). Each new wave credits one
+// ordinary refill. useSpecial spends the charge and starts the timer for its
+// special, counted in wave ticks only; the wave clear in step 7 takes an
 // unused charge away and removes the zones.
 // callNextWave (milestone 25c) also acts between ticks: once every enemy of
 // the current wave has spawned it clears that wave at once and starts the
@@ -82,7 +82,7 @@ import { ENEMY_STATS, isBoss } from './enemies';
 import { CAMPAIGN_START_LIVES, type LevelDef } from './levelTypes';
 import { pathLength, resolveMap, type MapId } from './map';
 import { applyBurn, applySpecialSlow, enemyPosition } from './combat';
-import { SPECIAL_DEFS, ZONE_LINGER_TICKS, tarLingerTicks } from './specials';
+import { SPECIAL_DEFS, ZONE_LINGER_TICKS, refillAtWaveStart, tarLingerTicks } from './specials';
 import { secondsToTicks, TICKS_PER_SECOND } from './time';
 import type { EnemyType, GameState, GroupDef, Guard, MapDef } from './types';
 import { gameWaveDef, hasNextWave, lastWave, waveDef } from './waves';
@@ -165,9 +165,7 @@ export function startWave(state: GameState): StartWaveResult {
   state.phase = 'wave';
   state.waveTick = 0;
   state.spawnedPerGroup = gameWaveDef(state, state.wave).groups.map(() => 0);
-  // The special charge is ready at every wave start (milestone 30).
-  state.specialCharges = state.level?.allowedSpecials.length === 0 && !state.cheated ? 0 : 1;
-  state.specialRechargeTicks = 0;
+  refillAtWaveStart(state);
   // Planning phase ends (milestone 25a): everything bought so far locks.
   for (const tower of state.towers) {
     tower.locked = true;
@@ -231,9 +229,8 @@ export function callEarlyStatus(state: GameState): CallEarlyStatus {
  * and pay bounties as usual), and the next wave's clear check waits for
  * them too: it clears only when its own enemies have all spawned and the
  * field is empty. Then the next wave starts its spawn schedule from waveTick 0 on
- * top of them: the wave counter goes up, the special charge is set to 1
- * (an unused one does not carry over), and `earlyCall {wave, bonus}` (the
- * new wave) and `waveStart` follow. Towers are already locked mid-wave.
+ * top of them: advance the wave, credit one ordinary refill, then emit
+ * `earlyCall {wave, bonus}` (the new wave) and `waveStart`. Towers are already locked mid-wave.
  */
 export function callNextWave(state: GameState): CallNextWaveResult {
   const status = callEarlyStatus(state);
@@ -246,8 +243,7 @@ export function callNextWave(state: GameState): CallNextWaveResult {
   state.wave += 1;
   state.waveTick = 0;
   state.spawnedPerGroup = gameWaveDef(state, state.wave).groups.map(() => 0);
-  state.specialCharges = state.level?.allowedSpecials.length === 0 && !state.cheated ? 0 : 1;
-  state.specialRechargeTicks = 0;
+  refillAtWaveStart(state);
   state.events.push({ kind: 'earlyCall', wave: state.wave, bonus: status.bonus });
   state.events.push({ kind: 'waveStart', wave: state.wave });
   return { ok: true, wave: state.wave, bonus: status.bonus, gold: state.gold };
@@ -319,7 +315,10 @@ export function tick(state: GameState): void {
   state.tick += 1;
   if (state.specialRechargeTicks > 0) {
     state.specialRechargeTicks -= 1;
-    if (state.specialRechargeTicks === 0) state.specialCharges = 1;
+    if (state.specialRechargeTicks === 0) {
+      state.specialCharges = 1;
+      if (state.barrelRecharge) state.barrelRecharge.readyTick = state.tick;
+    }
   }
   checkWaveClear(state);
 }
@@ -441,7 +440,10 @@ function checkWaveClear(state: GameState): void {
   // An unused special charge does not carry over (milestone 25b), and the
   // zones end with the wave (milestone 30).
   state.specialCharges = 0;
-  state.specialRechargeTicks = 0;
+  if (!state.barrelRecharge || state.specialRechargeTicks === 0) {
+    state.specialRechargeTicks = 0;
+    delete state.barrelRecharge;
+  }
   state.zones = [];
   payWaveClear(state, state.wave);
   // An endless game (milestone 26) never wins again: it ends only by losing.

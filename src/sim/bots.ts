@@ -1,14 +1,14 @@
 // Generic headless players. Setup decisions use the same next-wave preview as
 // the HUD. Fight decisions look at enemies already on the map.
 import { barricadePlacement, guardsPlacement } from './blockers';
-import { BOONS, boonScale, type BoonId } from './boons';
+import { BOONS, type BoonId } from './boons';
 import { ENEMY_STATS, isBoss } from './enemies';
 import { tick } from './game';
 import { buildableCells, cellCenter, cellFromKey, cellKey } from './grid';
 import { applyAction, densestCluster, trailCellOrder, type BuildAction, type HeadlessStepResult, type SpecialAction } from './headless';
 import { pathLength, positionAlongPath } from './map';
 import { BIG_ENEMIES, POLICY_CHECK_TICKS, POLICY_MIN_HITS, chooseCrowdSpecial, chooseFeatherBarrel, policyCandidates } from './specialPolicy';
-import { availableSpecials, specialRadius, SPECIAL_RECHARGE_TICKS, type SpecialType } from './specials';
+import { availableSpecials, specialRadius, ordinaryRechargeTicks, type SpecialType } from './specials';
 import { TICKS_PER_SECOND } from './time';
 import { TOWER_DEFS, TOWER_PATHS, allowedTowers, atTowerCap, towerBuildCost, maxTowerLevel, towerLevel, towerStats } from './towers';
 import type { GameState, MapDef, Point, TowerLevelStats, TowerType, UpgradePath } from './types';
@@ -349,8 +349,8 @@ function personSpecial(state: GameState, lastZone?: SpecialType): SpecialAction 
   if (state.phase !== 'wave' || state.specialCharges <= 0) return undefined;
   const waveStart = state.tick - state.waveTick;
   const previousCast = state.lastSpecialTick ?? -Infinity;
-  const recharge = Math.round(boonScale(SPECIAL_RECHARGE_TICKS, state.boons, 'quickHands'));
-  const ready = previousCast >= waveStart ? previousCast + recharge : waveStart;
+  const ready = state.barrelRecharge?.readyTick ??
+    (previousCast >= waveStart ? previousCast + ordinaryRechargeTicks(state.boons) : waveStart);
   if (state.tick !== ready + PERSON_REACTION_TICKS) return undefined;
   const previous = personLooks.get(state);
   if (previous?.tick === state.tick) return previous.choice;

@@ -5,7 +5,8 @@ import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { TowerType } from '../src/sim/types';
 import type { TitleUiState } from '../src/game/TitleScene';
 import { MAPS, positionAlongPath } from '../src/sim/map';
-import { SPECIAL_DEFS } from '../src/sim/specials';
+import { BARREL_RECHARGE_TICKS, SPECIAL_DEFS } from '../src/sim/specials';
+import { TICKS_PER_SECOND } from '../src/sim/time';
 import { api, expectOffer, openCampaign, press, visibleTexts } from './campaign';
 import { choices, choiceVisual } from './upgradeChoice';
 import { cellPage, rectPage, rectPageSize } from './phone';
@@ -31,8 +32,8 @@ const TAR_ZONE_EXPECT = {
   slowed: 7,
   burning: 0,
   labels: ['7 hit'],
-  rechargeTicks: 1140,
-  hud: 'Wait 19s',
+  rechargeTicks: BARREL_RECHARGE_TICKS - TICKS_PER_SECOND,
+  hud: `Wait ${Math.ceil(BARREL_RECHARGE_TICKS / TICKS_PER_SECOND) - 1}s`,
 };
 const FIRE_ZONE_EXPECT = {
   at: { x: 160, y: 132 },

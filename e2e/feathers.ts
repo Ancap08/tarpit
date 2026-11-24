@@ -1,7 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { FEATHERS } from '../src/sim/feathers';
-import { SPECIAL_DEFS } from '../src/sim/specials';
+import { BARREL_RECHARGE_TICKS, SPECIAL_DEFS } from '../src/sim/specials';
+import { TICKS_PER_SECOND } from '../src/sim/time';
+import { checkLabel } from './hudButtonLabels';
 import { api, mapPress, press } from './campaign';
 import { useWideFontMetrics } from './campaignFont';
 import { checkSpacing, onScreen } from './campaignScreens';
@@ -45,7 +47,7 @@ export function featherLooks(look: string, phone: boolean) {
         flinching: (s.enemies.find(e => e.id === back)?.flinchTicksLeft ?? 0) > 0,
         angle: view.enemySprites.views.get(back)?.sprite.angle,
         showpiece: !!t.showpiece?.(), painted: t.painted().active };
-    }, { radius: SPECIAL_DEFS.tarBarrel.radius, ticks: FEATHERS.runTicks });
+    }, { radius: SPECIAL_DEFS.tarBarrel.radius, ticks: FEATHERS.barrelRunTicks });
     expect(frame).toMatchObject({ before: phone ? 'down' : 'right', after: phone ? 'up' : 'left',
       hits: 8, marked: 8, active: true, gotBack: true, plumage: true, puffs: 0, trail: false, flinching: true,
       showpiece: look === 'showpiece', painted: look !== 'classic' });
@@ -56,6 +58,20 @@ export function featherLooks(look: string, phone: boolean) {
 }
 
 export function featherLabels(phone: boolean) {
+  test('C9: the Special button counts down the barrel’s longer refill', async ({ page }) => {
+    await start(page, 'painted');
+    const cast = await api(page, t => {
+      t.state().wave = 3;
+      t.startWave();
+      return t.useSpecialAt('tarBarrel', 160, 96);
+    });
+    expect(cast.ok).toBe(true);
+    const waitLabel = (ticks: number) => (phone ? '' : 'Wait ') + Math.ceil(ticks / TICKS_PER_SECOND) + 's';
+    await checkLabel(page, 'special', waitLabel(BARREL_RECHARGE_TICKS));
+    await page.evaluate(ticks => (window.__tarpit as TarpitTestApi).step(ticks), TICKS_PER_SECOND);
+    await checkLabel(page, 'special', waitLabel(BARREL_RECHARGE_TICKS - TICKS_PER_SECOND));
+  });
+
   for (const [level, tip] of [
     [5, 'Drop a Tar Barrel on a crowd and they run back.'],
     [9, 'Feathers make tarred enemies run back. Bosses are too proud.'],

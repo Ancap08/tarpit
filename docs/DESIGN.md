@@ -359,9 +359,9 @@ ground target if either its tower slow or its Tar Barrel slow is active. A
 shot that cannot feather its target applies its usual slow. Both bosses keep their slow cap and are immune to feathers and flinching.
 Each enemy emits one `feathered {enemyId, x, y}` event at the start of its only retreat.
 
-| Run ticks | Flinch ticks |
-|---:|---:|
-| 88 | 16 |
+| Tower run ticks | Barrel run ticks | Flinch ticks |
+|---:|---:|---:|
+| 88 | 72 | 16 |
 
 A runner follows the same trail backward at its own walking speed from the enemy table. It passes
 through Guards and Barricades without either side attacking, and leaves
@@ -577,14 +577,19 @@ Reloading starts a new run.
 | Guards | 6 | 0 | - | - | - | - |
 | Fire Arrows | 7 | 90 | - | - | 26 | 660 |
 
-- **Charge.** One charge shared by all five specials. `state.specialCharges`
-  is 0 or 1 and `state.specialRechargeTicks` counts the refill. A wave start
-  (Start Wave or an early call) makes it ready at once (1, recharge 0).
-  Only one special can fire in one simulation tick, including across an early-call refill.
-  Using a special spends it and starts the recharge: it is ready again
-  1200 wave ticks later (20 s, `SPECIAL_RECHARGE_TICKS`). Quick Hands
-  lowers this interval to 684 ticks (11.4 s). The counter runs in step 6
-  of each wave tick. Wave clear resets the charge and the recharge to 0.
+- **Charge.** All five specials share one charge. A Tar Barrel spends it for
+  3300 wave ticks (55 s). Each other special spends it for 1200 wave ticks
+  (20 s). Quick Hands scales the wait at cast time to 1881 ticks (31.35 s)
+  after a barrel or 684 ticks (11.4 s) after another special.
+  Each wave start grants one ordinary refill, including an early call,
+  automatic dispatch and the first endless wave. It makes an ordinary
+  charge ready and subtracts 1200 ticks from a barrel wait, or 684 if
+  Quick Hands was held when the barrel landed. Credit stops at ready.
+  The remaining barrel wait pauses during setup. Picking a reward during
+  setup leaves that wait and its wave-start credit in place. Only one special
+  can fire in a simulation tick, even across an early call. During a wave
+  the button counts down the remaining seconds, rounded up, and its fill
+  shows the fraction of the original wait already paid.
 - **Use.** `useSpecial(state, type, {x, y})` acts at once, between ticks,
   like a build. The keg and zones affect every live enemy inside their
   effective radius (inclusive), flyers included.
@@ -819,9 +824,9 @@ later tick adds 1/60 s, so the bonus is 19 from 60 ticks later and 0 from
 1200 ticks later (a call is still allowed at 0). Enemies still alive stay
 on the field: they move, exit, cost lives and pay bounties as usual, and
 the called wave's clear check waits for them too. The next wave starts its
-spawn schedule from waveTick 0 (the wave counter goes up), the special
-charge is made ready (1, recharge 0), event `earlyCall {wave, bonus}` (the new wave) and then
-`waveStart`. Each wave pays its clear bonus once. On screen, Start Wave
+spawn schedule from waveTick 0 (the wave counter goes up), credits one
+ordinary special refill, then emits `earlyCall {wave, bonus}` (the new wave)
+followed by `waveStart`. Each wave pays its clear bonus once. On screen, Start Wave
 reads "Call next  +14" (`names.ts` `callEarlyLabel`, 14 px) with the
 current bonus while a call would succeed, and pressing it calls; otherwise
 it reads "Start Wave". `ui().callEarly` reports `{available, bonus}`.
@@ -835,8 +840,8 @@ it reads "Start Wave". `ui().callEarly` reports `{available, bonus}`.
   going] calls `continueEndless(state)`: allowed only in phase `won`,
   refused with `not-won` otherwise; a refusal changes nothing. It sets
   `state.endless = true` and the phase to `setup` with wave 20 cleared;
-  gold, lives, towers, kill counts, rewards and the special charge (0, not
-  refilling) are kept.
+  gold, lives, towers, kill counts, rewards and any remaining barrel wait
+  are kept.
   Event `endlessStart`.
 - **After that** Start Wave plays wave 21, 22, and so on. Clearing a wave
   pays the 25 bonus and returns to setup; it never sets `won`, so the game
@@ -929,7 +934,7 @@ owner); (5) due enemies, including called Wolves, spawn at distance 0
 and first move or take damage on a later tick; (6) the tick counters advance and the special recharge counts
 down (at 0 the charge is ready); (7) if all scheduled enemies and called
 Wolves have spawned and none are alive, the game pays the clear bonus,
-resets the charge and recharge, removes the zones, and goes to `setup`
+clears the charge, retains any outstanding barrel wait, removes the zones, and goes to `setup`
 (or `won` after campaign wave 20). Campaign waves 5, 10 and 15 also
 offer a reward. A slow or
 burn set in step 4 first acts on the next tick; a zone's burn acts in
@@ -1713,7 +1718,9 @@ one inside. Otherwise, if a point works for the Powder Keg, the keg is
 thrown there. Otherwise it waits. The best point catches the most enemies;
 ties go to the point nearest the exit. The simulator also measures the combo
 with each special omitted in turn. The unused-barrel control spends the full
-recharge at every barrel opportunity and advances the alternating turn.
+barrel recharge at every barrel opportunity, with the same wave-start credit,
+and advances the alternating turn. During the shared wait the policy holds
+its next turn. It checks the crowd again on its first eligible look.
 When the policy omits Tar Barrel or Fire Arrows,
 the other takes its turn. The headless recorder fires each choice and writes it into the
 script's timed list (`timed`), so `playScripted` and the browser's

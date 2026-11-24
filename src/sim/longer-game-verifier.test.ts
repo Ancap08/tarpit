@@ -298,7 +298,7 @@ describe('verifier 36a: boons by hand', () => {
     expect(w.enemies[0].burnDps).toBeCloseTo(54.86, 9);
   });
 
-  it('Quick Hands: recharge 1200 -> 684 for the next use; a recharge cannot be running at a pick (wave clear resets it)', () => {
+  it('Quick Hands: ordinary recharge 1200 -> 684 for the next use; wave clear resets the keg wait', () => {
     const w = inWave(3, [enemy(0, 'troll', { hp: 1e6 })]);
     w.boons = ['quickHands'];
     w.specialCharges = 1;

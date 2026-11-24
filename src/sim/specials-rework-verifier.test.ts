@@ -186,8 +186,11 @@ function play(script: WaveScript, endlessTo = 0) {
   let towerKills = 0;
   let goldGained = 0;
   const invariants: string[] = [];
+  let lastCastWasBarrel = false;
+  let remainingAtClear = 0;
   const count = (events: GameEvent[]) => {
     for (const e of events) {
+      if (e.kind === 'special') lastCastWasBarrel = e.type === 'tarBarrel';
       if (e.kind === 'spawn') spawned += 1;
       else if (e.kind === 'exit') exits += 1;
       else if (e.kind === 'kill') kills[e.cause] = (kills[e.cause] ?? 0) + 1;
@@ -205,10 +208,13 @@ function play(script: WaveScript, endlessTo = 0) {
         applyAction(s, a);
         count(s.events.slice(from));
       }
+      remainingAtClear = lastCastWasBarrel ? Math.max(0, s.specialRechargeTicks - 1) : 0;
       tick(s);
       count(s.events);
     }
-    if (s.zones.length !== 0 || s.specialCharges !== 0 || s.specialRechargeTicks !== 0) invariants.push(`wave ${s.wave} end: zones ${s.zones.length} charge ${s.specialCharges}`);
+    if (s.zones.length !== 0 || s.specialCharges !== 0 || s.specialRechargeTicks !== remainingAtClear) {
+      invariants.push(`wave ${s.wave} end: zones ${s.zones.length}, charge ${s.specialCharges}, wait ${s.specialRechargeTicks} (expected ${remainingAtClear})`);
+    }
     if ((s.phase as GameState['phase']) === 'won') {
       tick(s);
       if (s.shots.length !== 0) invariants.push('shots after win tick');
@@ -244,15 +250,19 @@ describe('verifier: conservation over a whole comboBuild game (Meadow, Normal)',
 });
 
 describe('verifier: the wave 20 to 21 endless boundary', () => {
-  it('zones and charge are clean entering wave 21, and wave 21 starts with the charge ready', () => {
+  it('endless keeps a paused wait and credits the ordinary refill on wave 21', () => {
     const run = play(endlessIdle(), 20);
     expect(run.invariants).toEqual([]);
     const s = run.s;
     expect(s.phase).toBe('won');
+    const remaining = s.specialRechargeTicks;
+    const credit = s.boons.includes('quickHands') ? 684 : 1200;
     continueEndless(s);
-    expect([s.zones.length, s.specialCharges, s.specialRechargeTicks]).toEqual([0, 0, 0]);
+    expect([s.zones.length, s.specialCharges, s.specialRechargeTicks]).toEqual([0, 0, remaining]);
     expect(startWave(s).ok).toBe(true);
-    expect([s.wave, s.specialCharges, s.specialRechargeTicks]).toEqual([21, 1, 0]);
+    const afterCredit = Math.max(0, remaining - credit);
+    expect([s.wave, s.specialCharges, s.specialRechargeTicks]).toEqual([21, Number(afterCredit === 0), afterCredit]);
+    ticks(s, afterCredit);
     expect(useSpecial(s, 'fireArrows', { x: 100, y: 100 }).ok).toBe(true);
     expect(s.zones.length).toBe(1);
   });

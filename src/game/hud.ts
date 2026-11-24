@@ -39,9 +39,8 @@ import {
   callEarlyStatus,
   hasNextWave,
   isBoss,
-  boonScale,
+  ordinaryRechargeTicks,
   lastWave,
-  SPECIAL_RECHARGE_TICKS,
   TICKS_PER_SECOND,
   nextWavePreview,
   availableSpecials,
@@ -232,7 +231,7 @@ export function specialReady(state: GameState): boolean {
 export function specialRecharge(state: GameState): { progress: number; seconds: number } | null {
   if (state.phase !== 'wave' || state.specialCharges > 0 || state.specialRechargeTicks <= 0) return null;
   return {
-    progress: 1 - state.specialRechargeTicks / Math.round(boonScale(SPECIAL_RECHARGE_TICKS, state.boons, 'quickHands')),
+    progress: 1 - state.specialRechargeTicks / (state.barrelRecharge?.totalTicks ?? ordinaryRechargeTicks(state.boons)),
     seconds: Math.ceil(state.specialRechargeTicks / TICKS_PER_SECOND),
   };
 }

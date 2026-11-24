@@ -59,11 +59,11 @@ import {
   type TargetingResult,
   type UpgradeResult,
 } from './actions';
-import { BOONS, boonScale, type BoonId } from './boons';
+import { BOONS, type BoonId } from './boons';
 import type { Difficulty } from './difficulty';
 import { callNextWave, continueEndless, createGame, startWave, tick, wavesCleared, type CallNextWaveResult, type StartWaveResult } from './game';
 import { enemyPosition } from './combat';
-import { isSpecialUnlocked, SPECIAL_RECHARGE_TICKS, type SpecialType } from './specials';
+import { isSpecialUnlocked, spendSpecialCharge, type SpecialType } from './specials';
 import type { GameState, MapDef, Point, TargetingMode, TowerType, UpgradePath } from './types';
 import { buildableCells, cellCenter, cellFromKey, cellKey, type Cell } from './grid';
 import { DEFAULT_MAP, MAPS, pathLength, positionAlongPath, type MapId } from './map';
@@ -419,18 +419,16 @@ function countKills(events: GameState['events'], start: number): number {
 export interface PolicyRecorder {
   options: PolicyOptions;
   lastZone?: SpecialType;
-  unusedBarrel?: { wave: number; readyAt: number };
   fired: SpecialAction[][];
 }
 
 /** One policy look before a tick: fire and record its choice, if any (specialPolicy.ts). */
 function policyStep(state: GameState, policy: PolicyRecorder): void {
-  if (policy.unusedBarrel?.wave === state.wave && state.waveTick < policy.unusedBarrel.readyAt) return;
   const choice = policyChoice(state, policy.lastZone, policy.options);
   if (!choice) return;
   if (policy.options.leaveBarrelUnused && choice.special === 'tarBarrel') {
     policy.lastZone = 'tarBarrel';
-    policy.unusedBarrel = { wave: state.wave, readyAt: state.waveTick + Math.round(boonScale(SPECIAL_RECHARGE_TICKS, state.boons, 'quickHands')) };
+    spendSpecialCharge(state, 'tarBarrel');
     return;
   }
   const action: SpecialAction = { type: 'special', special: choice.special, x: choice.x, y: choice.y, atWaveTick: state.waveTick };

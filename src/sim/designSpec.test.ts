@@ -19,7 +19,7 @@ import { BAND_RULES, GATE_LIMITS, TAX_RANGES } from './checkLevel';
 import { botGood, botPerson, botBeginner, botGoodFeat, runBot } from './bots';
 import { levelStars } from './campaignProgress';
 import { MAPS, pathLength, type MapId } from './map';
-import { SPECIAL_DEFS, SPECIAL_RECHARGE_TICKS, ZONE_LINGER_TICKS, type SpecialType } from './specials';
+import { BARREL_RECHARGE_TICKS, SPECIAL_DEFS, SPECIAL_RECHARGE_TICKS, ZONE_LINGER_TICKS, type SpecialType } from './specials';
 import { POLICY_CHECK_TICKS, POLICY_MIN_HITS, POLICY_POINT_SPACING } from './specialPolicy';
 import { TOWER_DEFS, TOWER_PATHS } from './towers';
 import type { EnemyType, TowerLevelStats, TowerType } from './types';
@@ -204,8 +204,8 @@ describe('docs/DESIGN.md matches the code', () => {
   });
 
   it('feathers: run and flinch durations', () => {
-    expect(table('Enemies', 'Run ticks')).toEqual([
-      [FEATHERS.runTicks, FEATHERS.flinchTicks].map(String),
+    expect(table('Enemies', 'Tower run ticks')).toEqual([
+      [FEATHERS.runTicks, FEATHERS.barrelRunTicks, FEATHERS.flinchTicks].map(String),
     ]);
   });
 
@@ -303,6 +303,7 @@ describe('docs/DESIGN.md matches the code', () => {
     expect(flat).toContain(`The shared ${BARRICADE_END_EXCLUSION} px cave clearance`);
     expect(flat).toContain('Shields do not reduce guard damage.');
     expect(flat).toContain(`${SPECIAL_RECHARGE_TICKS} wave ticks`);
+    expect(flat).toContain(`${BARREL_RECHARGE_TICKS} wave ticks`);
     expect(flat).toContain(`${Math.round(SPECIAL_RECHARGE_TICKS * BOONS.quickHands.value)} ticks (11.4 s)`);
     expect(flat).toContain(`${ZONE_LINGER_TICKS} ticks after`);
     const arche = section('Archetypes').replace(/\s+/g, ' ');
