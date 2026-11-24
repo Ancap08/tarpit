@@ -1622,3 +1622,22 @@ can change it; "Kyle" means Kyle decided.
 - **Left for 48d:** Tar Barrel and the Tar Pit's second path. Left alone:
   the first act fails the new variety rule (one tower type wins 8 of its
   10 levels); its levels are frozen and it is where players learn.
+- **The wave button's boss warning reads "Boss next"** (was "Boss wave
+  next"), in every layout. Decided by the coordinator after the first CI run
+  on the milestone 48 pull request. On a taxed level at 390x664 the old label
+  measured 11.32 CSS px on the Mac and 11.02 on Linux, under the 11.1 line,
+  because Linux draws the bundled font about 2.6% wider and the label shrinks
+  to fit its plaque. A first fix that raised the type to 23 px fell to 10.1 px
+  with text 3% wider, so it was not sent to CI. A nine-letter line does not fit
+  that plaque at 11 px with slack; a shorter label does. Kyle can ask for the
+  old wording back.
+- **A label's size must not depend on how wide a machine draws text.** The
+  taxed phone HUD spec has a "wide text" mode: every measured width times
+  1.06, and every label must keep its normal size within 0.01 CSS px. It fails
+  on the commit that failed CI. The coordinator's brief for the first fix
+  quoted the wrong Mac measurement (11.12 for 11.318), which hid the real gap;
+  measurements in a brief are now copied from the failing log and the local
+  run, not from memory.
+- **Known, not fixed:** in the untaxed phone HUD with text 6% wider, the wave
+  counter overlaps the cheat mark on a cheated win, and "Special" and "Last
+  wave" shrink but stay above 11 px. Linux CI passes these today.
