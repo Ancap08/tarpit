@@ -1641,3 +1641,21 @@ can change it; "Kyle" means Kyle decided.
 - **Known, not fixed:** in the untaxed phone HUD with text 6% wider, the wave
   counter overlaps the cheat mark on a cheated win, and "Special" and "Last
   wave" shrink but stay above 11 px. Linux CI passes these today.
+
+## 2026-11-24, milestone 49 (tar and feathers)
+
+- **The tar fix becomes "tar and feathers", not a numbers-only change.**
+  Decided by Kyle ("Yes, tar and feathers") from a list of ideas the
+  coordinator put to him. It replaces part 48d.
+- **Shape of the rule** (coordinator, under Kyle's "I trust you" for detail
+  calls): the Tar Pit's second path becomes Feathers and the Tar Barrel tars
+  and feathers what it lands on; a feathered enemy runs back once in its
+  life; bosses never run; enemies it passes flinch once. Words are in
+  `docs/SCOPE-v5.md`.
+- **Level data and Free play target windows are off limits for this
+  milestone.** If the gate cannot pass by tuning tar and feather numbers,
+  the implementer stops and reports. Reason: milestone 48's first build met
+  weak targets by moving the wrong levers.
+- **A feather-leaning bot is added to the gate (R6)** because the existing
+  bots rarely pick path B or the barrel, so the gate could pass while a
+  person who uses feathers walks through the levels.

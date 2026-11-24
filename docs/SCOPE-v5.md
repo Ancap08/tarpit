@@ -735,7 +735,7 @@ King has thought of new taxes."). The level card shows the taxes in force
 and the feat; the result shows the feat. The campaign's ending moves to
 level 20; level 10 keeps its reply and closes the first act.
 
-### Two known weak spots (48d)
+### Two known weak spots (48d, replaced by milestone 49)
 
 Tar Barrel is weak and the Tar Pit's second upgrade path never beats the
 first (recorded in DESIGN.md since milestone 37). Fix both with numbers,
@@ -745,6 +745,78 @@ levels. Done last, on its own, because it moves the frozen balance.
 Not in this milestone: new enemies, towers or maps; two entry points; a
 hero; the castle wall; generated levels (the gate is being made ready for
 them, not used for them yet).
+
+## Milestone 49: tar and feathers
+
+Kyle chose this on 2026-11-24 in place of the numbers-only fix planned as
+48d. It makes tar the game's signature move and fixes the two known weak
+spots (the Tar Barrel, and the Tar Pit's second path) in one change.
+
+### The rule
+
+- **Tarred** means an enemy is under a tar slow, from a Tar Pit shot or from
+  standing in a Tar Barrel's tar.
+- **Feathered:** a tarred enemy that is hit with feathers turns round and
+  runs back along the road for a short, fixed time, then turns again and
+  walks on. It keeps its feathers for the rest of its life and cannot be
+  feathered twice.
+- **Flinch:** an enemy that a running, feathered enemy passes stops for a
+  moment. Once per enemy.
+- **Bosses** (Assessor Grumblefoot, King Grumblemaw) are too proud to run:
+  they are never feathered and never flinch.
+- Everything is deterministic: fixed ticks, no randomness.
+
+### Where feathers come from
+
+| Source | Today | After |
+|---|---|---|
+| Tar Pit, path B | Wide Tar: a weaker slow from farther away | **Feathers**: a shot tars an untarred enemy and feathers a tarred one. It aims at enemies without feathers first |
+| Tar Barrel (special) | Slows a crowd and leaves tar | Tars and feathers everything it lands on, and still leaves its tar. Enemies who walk into the tar later are tarred, so a Feathers tower can feather them at once |
+
+Path A (Deep Tar) and the other specials keep their rules. Numbers are the
+implementer's to tune inside the targets below.
+
+### Words (coordinator)
+
+| Where | Text |
+|---|---|
+| Tar Pit path B, name | Feathers |
+| Tar Pit path B, line | Feathers tarred enemies. They run back. |
+| Tar Barrel, line | Tar and feathers. Enemies caught run back. |
+| Tip that names the Tar Barrel (level 5) | Drop a Tar Barrel on a crowd. Tarred and feathered, they run back. |
+| One new tip line where a level first offers path B or the barrel alongside a boss | Bosses are too proud to run. |
+
+Tone is comic: a puff of feathers, an enemy running the wrong way. Nothing
+is hurt by feathers.
+
+### Targets (each must be a test that can fail)
+
+| Label | Target |
+|---|---|
+| R1 | Tar Pit path B beats path A on at least one Free play map and A beats B on at least one, by the existing path-balance measure; the gap between them is 9 lives or fewer. The recorded exception for the Tar Pit is removed |
+| R2 | The special policy that uses the Tar Barrel ends with at least as many lives as the same policy without it on all three maps, and more on at least one (today 14, 11, 14 against 17, 12, 20) |
+| R3 | An enemy is feathered at most once, a boss never; no run of the simulation has an enemy leave by the entrance or wait there for ever |
+| R4 | Every Free play balance target passes with its target windows unchanged; the report is re-locked |
+| R5 | The campaign gate passes on all twenty levels with level data unchanged, including the feat rules |
+| R6 | A bot that leans on feathers (Tar Pits on path B plus the barrel where allowed) does not beat the good bot by more than 3 lives on any campaign level, and wins no third star the good bot does not |
+| R7 | Any run that uses neither path B nor the Tar Barrel is byte for byte what it was before |
+
+If R4, R5 or R6 cannot be met by tuning tar and feather numbers alone, the
+implementer stops and reports; level data and target windows are not moved
+to make this pass.
+
+### Look and sound
+
+A feathered enemy shows it in all three looks (Classic, Painted, and the
+showpiece switch): feathers on the body, a puff when it happens, and the
+sprite facing the way it runs. A flinch is visible. All motion is on the
+pausable clock. One short synthesized sound for the puff if the sound code
+makes its sounds in code; no audio files.
+
+### Not in this milestone
+
+New towers, enemies, maps or levels; a new special; a hero; the castle
+wall; the Daily Writ; turncoats; gold-stealing collectors; a level editor.
 
 ## Later milestones (order agreed, detail to come)
 
