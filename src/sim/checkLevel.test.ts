@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as bots from './bots';
+import { levelStars } from './campaignProgress';
+import { createGame } from './game';
 import { CAMPAIGN_CONTEXTS } from './campaignContexts';
 import { checkCampaign, checkLevel, type LevelContext } from './checkLevel';
 import type { LevelDef } from './levelTypes';
@@ -32,7 +34,7 @@ describe('campaign acceptance gate', () => {
     }, 60_000,
   );
 
-  it('accepts the combined duration and slope of the campaign', () => {
+  it('C5: accepts all twenty levels and the combined campaign checks', () => {
     const result = checkCampaign(LEVELS, CAMPAIGN_CONTEXTS);
     expect(result.failed).toEqual([]);
     const horde = result.levels[6].good!;
@@ -41,6 +43,29 @@ describe('campaign acceptance gate', () => {
     }
   });
 
+  it.each(LEVELS)('C6: both ordinary players favoring feathers on level $id', level => {
+    const ordinary = bots.runBot(createGame({ level }), bots.botGood).state;
+    for (const [name, player] of [['Good', bots.botGood], ['Person', bots.botPerson]] as const) {
+      const { state, log, refused } = bots.runBot(createGame({ level }), bots.preferFeathers(player));
+      const label = `level ${level.id} ${name}`;
+      expect(['won', 'lost'], label).toContain(state.phase);
+      expect(refused, label).toBe(0);
+      expect(state.towers.some(tower => tower.type === 'tarpit' && tower.path === 'A'), label).toBe(false);
+      if (level.allowedSpecials.includes('tarBarrel')) {
+        const casts = log.filter(step => step.action === 'special').map(step => step.special);
+        expect([...new Set(casts)], label).toEqual(['tarBarrel']);
+      }
+      expect(Math.max(0, state.lives) - Math.max(0, ordinary.lives), label).toBeLessThanOrEqual(4);
+      expect(levelStars(state) === 3 && levelStars(ordinary) < 3, label + ' extra third star').toBe(false);
+    }
+  }, 90_000);
+
+  it.each([[9, 20], [10, 16], [20, 13]])('C8: boss level %i stays within two lives of %i', (id, before) => {
+    const level = LEVELS[id - 1];
+    const { state } = bots.runBot(createGame({ level }), bots.botGood);
+    expect(Math.abs(state.lives - before)).toBeLessThanOrEqual(2);
+  }, 30_000);
+
   it('R6 accepts three extra lives, rejects four, and rejects a third star even inside the life limit', () => {
     for (const [good, feathers, acceptable] of [[12, 15, true], [12, 16, false], [17, 18, false], [18, 20, true]] as const) {
       stubBots((_, policy) => policy === bots.botFeathers ? feathers : good);
@@ -48,7 +73,7 @@ describe('campaign acceptance gate', () => {
     }
   });
 
-  it('uses the barrel where offered and feathers enemies only on levels with path B', () => {
+  it('uses the barrel where offered and feathers enemies with either source', () => {
     const result = checkCampaign(LEVELS, CAMPAIGN_CONTEXTS);
     for (const [i, row] of result.levels.entries()) {
       const level = LEVELS[i];
@@ -57,7 +82,7 @@ describe('campaign acceptance gate', () => {
       const barrel = level.allowedSpecials.includes('tarBarrel');
       expect(use.pathBTowers > 0, `level ${level.id} path B`).toBe(tower);
       expect(use.barrelCasts > 0, `level ${level.id} barrel`).toBe(barrel);
-      expect(use.feathered > 0, `level ${level.id} enemies feathered`).toBe(tower);
+      expect(use.feathered > 0, `level ${level.id} enemies feathered`).toBe(tower || barrel);
     }
   }, 120_000);
 

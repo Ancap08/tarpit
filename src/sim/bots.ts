@@ -7,7 +7,7 @@ import { tick } from './game';
 import { buildableCells, cellCenter, cellFromKey, cellKey } from './grid';
 import { applyAction, densestCluster, trailCellOrder, type BuildAction, type HeadlessStepResult, type SpecialAction } from './headless';
 import { pathLength, positionAlongPath } from './map';
-import { BIG_ENEMIES, POLICY_CHECK_TICKS, POLICY_MIN_HITS, chooseCrowdSpecial, policyCandidates } from './specialPolicy';
+import { BIG_ENEMIES, POLICY_CHECK_TICKS, POLICY_MIN_HITS, chooseCrowdSpecial, chooseFeatherBarrel, policyCandidates } from './specialPolicy';
 import { availableSpecials, specialRadius, SPECIAL_RECHARGE_TICKS, type SpecialType } from './specials';
 import { TICKS_PER_SECOND } from './time';
 import { TOWER_DEFS, TOWER_PATHS, allowedTowers, atTowerCap, towerBuildCost, maxTowerLevel, towerLevel, towerStats } from './towers';
@@ -31,7 +31,7 @@ export interface BotPolicy {
 }
 
 export interface BotRun {
-  /** Successful featherings from path B shots during this bot’s trial. */
+  /** Successful featherings during the feather bot’s trial. */
   feathered?: number;
   peakAlive: number;
   waveOneLives: number;
@@ -386,6 +386,28 @@ export const botPerson: BotPolicy = {
   special: personSpecial,
 };
 
+/** Keep the ordinary player's aim, timing and purchases while favoring feathers. */
+export function preferFeathers(player: BotPolicy): BotPolicy {
+  return {
+    ...player,
+    purchase(state) {
+      const action = player.purchase(state);
+      if (action?.type === 'upgrade' && action.path && state.towers.some(tower =>
+        tower.type === 'tarpit' && cellKey(tower.cell) === cellKey(action.cell))) {
+        return { ...action, path: 'B' };
+      }
+      return action;
+    },
+    special(state, lastZone) {
+      const action = player.special(state, lastZone);
+      if (!action || !availableSpecials(state).includes('tarBarrel')) return action;
+      const points = player === botPerson ? personAims(state.map) : policyCandidates(state.map);
+      const aim = chooseFeatherBarrel(state, points) ?? action;
+      return { ...action, special: 'tarBarrel', x: aim.x, y: aim.y };
+    },
+  };
+}
+
 /** Keep the player's placement, reward and timing policy while pursuing the public feat. */
 function pursueFeat(player: BotPolicy, rotatePlacements: boolean): BotPolicy {
   return {
@@ -443,8 +465,12 @@ export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity,
       if (state.phase === 'setup' && !apply({ type: 'startWave' })) break;
     }
     const special = bot.special(state, lastZone);
+    const eventsBeforeCast = state.events.length;
     if (special && apply(special) && (special.special === 'tarBarrel' || special.special === 'fireArrows')) {
       lastZone = special.special;
+    }
+    if (bot === botFeathers && special?.special === 'tarBarrel') {
+      for (const event of state.events.slice(eventsBeforeCast)) if (event.kind === 'feathered') feathered++;
     }
     tick(state);
     if (bot === botFeathers) {

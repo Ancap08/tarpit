@@ -10570,3 +10570,18 @@ Scores are stars/lives. The forced bots use their ordinary purchases with Feathe
 | 20 | 2/14 | 2/13 | 0/0 | 2/15 | 2/14 | pass |
 
 Eleven levels pass locally. C6 also fails on level 7, where both forced bots win a third star that ordinary Good misses. Across levels, L4 fails and L8's three-life drop is only 2.00 in the first act and 2.33 over all twenty. S1 passes with Person's mean falling from 18.0 to 15.6, handover +2 and largest drop 3. Good finishes the three C8 levels at 20, 17 and 14 against the milestone 49 reference of 20, 16 and 13.
+
+The pre-retune Barricade sweep K3 passes all six map/difficulty combinations. Best Normal gains are −3/−3/−8 and Hard gains are −10/−2/0. The Guards sweep G2 meets each point ceiling, with best Normal gains −3/−4/−5 and Hard gains −10/−2/0. Its aggregate gain fails on all three maps against a required two. G3 passes all nine map/difficulty combinations, including full-lives starts at the unlock.
+
+### Checks against wrong builds
+
+| Target | Wrong build | Observed rejection |
+|---|---|---|
+| C1 | Remove the barrel’s feather call | No feather events for the eight eligible enemy IDs expected on impact |
+| C2 | Let the barrel spend its turn without affecting enemies | Standard minus unused is 0/0/0 against 4/3/4 |
+| C3 | Restore milestone 49's tar-only impact | All-barrel loses all three comparisons, 11–17, 10–14 and 11–20 |
+| C4 | Enable crowd impact without a retune | Meadow and Riverbend exceed the 15-life ceiling by six and seven, and the report digest changes |
+| C5 | Same untuned build | Nine local gates fail, plus cross-level L4 and L8 |
+| C6 | Same untuned build | Both forced players finish level 7 at 3/20 against Good's 2/16 |
+| C7 | Add one gold to barrel-locked level 1 | The definition digest changes from d4f745… to ca3137… |
+| C8 | Set level 10 HP scale to 1.35 | Good loses all 16 reference lives, against a tolerance of two |

@@ -260,7 +260,7 @@ export function describeBalance(map: MapId): void {
     }
   });
 
-  describe(`balance targets on ${map}`, () => {
+  describe(`C4: unchanged Free play balance targets on ${map}`, () => {
     for (const target of TARGETS) {
       const mine = map === 'meadow' ? target.map === undefined || target.map === 'meadow' : target.map === map;
       if (!mine) continue;
