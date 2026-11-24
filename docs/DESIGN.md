@@ -361,7 +361,7 @@ Each successful shot emits `feathered {enemyId, x, y}` at the impact position.
 
 | Run ticks | Flinch ticks |
 |---:|---:|
-| 72 | 6 |
+| 88 | 16 |
 
 A runner follows the same trail backward at its own walking speed from the enemy table. It passes
 through Guards and Barricades without either side attacking, and leaves
@@ -427,7 +427,7 @@ the level and, for level 3, the chosen path.
 | Cannon | A | Heavy Shot | 140 | 105 | - | 40 | 0.5 | 105 | - | - |
 | Cannon | B | Quick Loader | 140 | 105 | - | 40 | 1 | 55 | - | - |
 | Tar Pit | A | Deep Tar | 110 | 105 | - | 3 | 2 | - | 78% for 2 s | - |
-| Tar Pit | B | Feathers | 110 | 130 | - | 3 | 2.8 | - | 76% for 2 s | - |
+| Tar Pit | B | Feathers | 110 | 145 | - | 3 | 2 | - | 64% for 2.55 s | - |
 | Longbow | A | War Bow | 70 | 170 | - | 16 | 2.5 | - | - | - |
 | Longbow | B | Quick Draw | 70 | 170 | - | 9 | 4.5 | - | - | - |
 | Mortar | A | Siege Shell | 190 | 220 | 70 | 140 | 1/3 | 70 | - | - |
@@ -1739,7 +1739,7 @@ Normal, every map unless specified:
 - **V5** The Normal combo and the Hard plan on Hard both kill Grumblemaw. An exit costs ten lives.
 - **S7** All 27 reward combinations win. For each offer, hold the other two picks fixed in each of their nine combinations. The best and worst choices finish within six lives.
 - **V7** Meadow meets all four campaign timing and wave-shape targets.
-- **P1** For each tower, comboBuild and that tower’s specialist compare A and B on all three maps with default rewards and specials on Normal. The paths finish with different lives in at least one of the six comparisons. Each path wins or ties the lives comparison at least once.
+- **P1** For each tower, comboBuild and that tower’s specialist compare A and B on all three maps with default rewards and specials on Normal. The paths finish with different lives in at least one of the six comparisons. Each path wins or ties the lives comparison at least once. For the Tar Pit, each path must win outright on a different map (milestone 49 R1).
 - **P2** Every one of those A/B gaps is at most nine lives.
 - **P3** The two paths trade places between a lone Troll and ten Goblins in the combat examples.
 - **P4** At equal gold each tower has a path that beats another level-2 copy by at least one life, and at least one comparison in which the copy wins or ties.
@@ -1784,7 +1784,7 @@ The campaign wave rules R1 to R4 hold too.
 
 Barricade checks:
 
-- **K1** The complete existing simulator report matches the pre-Barricade output byte for byte.
+- **K1** The original Barricade change preserved the Free play report byte for byte. Milestone 49 re-locks the report for the new Tar Pit path B.
 - **K2** On Normal the Barricade combo gains at least one life on two maps and loses at most two on any map.
 - **K3** On each map, run one campaign per legal trail distance on a 48 px grid starting 64 px from spawn. Use comboBuild's tower plan on Normal and Hard and place a Barricade at that campaign's point whenever the shared charge is ready from wave 3, even if a wall still stands. The best point gains at most six ending lives over comboBuild. No point turns a Hard loss into a win. Walls alone lose by wave 4, including a full-lives start at their unlock wave.
 - **K4** Each lone boss destroys a full wall within 120 ticks. In a paired continuation from actual Grumblemaw contact, the wall delays his exit by at most 300 ticks. Both branches retain all towers and recorded casts and let him survive lethal damage so the exit can be timed.
@@ -1794,7 +1794,7 @@ Barricade checks:
 
 Guards checks:
 
-- **G1** Every existing simulator report line is byte-identical to the milestone 39 report. All nine final comboBuild game states match after accounting for the new blocker state representation.
+- **G1** The original Guards change preserved the milestone 39 report and all nine comboBuild end states after accounting for the new blocker representation. Milestone 49 retains the six Meadow and Riverbend state locks and re-locks the three Switchback states that bought a path B Tar Pit.
 - **G2** Play a separate campaign at each legal point on the Barricade's 48 px trail grid. Follow the comboBuild tower plan and use every ready charge for Guards from wave 6. On Normal and Hard, no point may gain more than five lives over comboBuild or turn a Hard loss into a win. On at least two Normal maps, a point must gain at least one life.
 - **G3** With no towers, squads must lose by wave 8 on every difficulty, including a fresh full-lives start at the unlock.
 - **G4** Check the exact ticks and remaining hp for lone Goblin, Wolf and Troll fights, a crowd of ten Goblins, and expiry during contact. Neither boss may lose more than 180 ticks crossing a squad.
@@ -1803,9 +1803,9 @@ Guards checks:
 
 ### Known weaknesses
 
-- Giving every zone turn to Fire Arrows earns 17 lives on Meadow and 20 on Riverbend. The alternating policy earns 14 and 15. On Switchback, giving every zone turn to the barrel earns 17 lives against 13 for Fire Arrows.
-- In the milestone 49 trial, each Tar Pit path wins an adaptive comparison and the maximum gap is three lives. The trial still fails other Free play targets and the campaign gate. DEVLOG records the results. The reference matrix below remains the last accepted lock.
-- The Meadow Normal combo takes 1,299.3 s at 1x in the trial.
+- Giving every zone turn to Fire Arrows earns 17 lives on Meadow and 20 on Riverbend. The alternating policy earns 14 on each map.
+- The largest Tar Pit path gap is seven lives. Deep Tar leads the Riverbend burn build 9 to 2. Feathers leads the Riverbend combo build 16 to 14.
+- The Meadow Normal combo takes 1,316.5 s at 1x, just 3.5 s under the 22-minute limit.
 - Before milestone 49, a player who replaced a broken Barricade and spent spare charges on other specials could win Switchback Hard with comboBuild's tower plan. At trail distance 1168 this policy finishes with eight lives. K3 measures spending every available charge on the wall from wave 3.
 
 ## Measured matrix
@@ -1825,14 +1825,14 @@ The milestone 37 “Closing pass” in DEVLOG records the Normal results.
 | noAntiAir | L 8 | L 5 | L 5 | L 8 | L 5 | L 5 | L 7 | L 5 | L 5 |
 | comboBuild | W 39 | W 14 | W 3 | W 39 | W 11 | L 19 | W 39 | W 14 | W 1 |
 | wideBuild | W 39 | W 13 | W 1 | W 39 | W 15 | L 19 | W 39 | W 10 | L 15 |
-| comboBuildNoFire | W 38 | W 13 | L 8 | W 39 | W 11 | L 10 | W 37 | W 12 | L 7 |
+| comboBuildNoFire | W 38 | W 13 | L 8 | W 39 | W 10 | L 10 | W 37 | W 12 | L 7 |
 | comboNoSpecials | W 39 | W 8 | L 7 | W 39 | L 18 | L 9 | W 38 | W 3 | L 3 |
 | hardBuild | W 39 | W 20 | W 9 | W 39 | W 21 | W 15 | W 39 | W 21 | W 8 |
 | artilleryBuild | W 39 | W 20 | W 7 | W 39 | W 24 | W 14 | W 39 | W 6 | L 10 |
 | burnBuild | W 39 | W 15 | W 4 | W 39 | W 24 | W 14 | W 39 | W 9 | L 15 |
 | musketBuild | W 39 | L 19 | L 16 | W 39 | W 24 | W 14 | W 39 | L 18 | L 15 |
-| endlessIdle | L 37 | L 25 | L 24 | L 36 | L 24 | L 19 | L 36 | L 25 | L 24 |
-| endlessGreedy | L 40 | L 28 | L 27 | L 40 | L 27 | L 19 | L 38 | L 27 | L 27 |
+| endlessIdle | L 37 | L 25 | L 24 | L 36 | L 25 | L 19 | L 36 | L 25 | L 24 |
+| endlessGreedy | L 40 | L 28 | L 27 | L 39 | L 27 | L 19 | L 38 | L 27 | L 27 |
 | soundBuild | L 15 | L 7 | L 2 | - | - | - | - | - | - |
 | soundBuildNoTar | L 10 | L 7 | L 2 | - | - | - | - | - | - |
 | comboStrongest | W 14 | L 5 | L 3 | - | - | - | - | - | - |

@@ -6,7 +6,7 @@ import { comboWithoutSpecial, playScripted } from './headless';
 it.each([
   ['meadow', 'b8279e170cf541bbd446e3392bf1d5fe5b2b9a18ea8f8de7c3c6172d237bb0ca'],
   ['riverbend', 'ff38761eaeb51449bcd22e18a5c328d6760a2ff2e6209812415d624ae3f942f0'],
-] as const)('R7: a complete %s campaign without feathers keeps its original bytes', (map, hash) => {
+] as const)('R7: a complete %s Free play run without feathers keeps its original bytes', (map, hash) => {
   const script = comboWithoutSpecial('tarBarrel', 'normal', map);
   const tarCells = new Set(script.flat().filter(a => a.type === 'build' && a.tower === 'tarpit').map(a => JSON.stringify(a.cell)));
   expect(script.flat().some(a => a.type === 'upgrade' && a.path === 'B' && tarCells.has(JSON.stringify(a.cell)))).toBe(false);

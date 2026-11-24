@@ -3,7 +3,7 @@ import { positionAlongPath } from './map';
 import type { Enemy, GameState } from './types';
 
 /** A runner retreats at its own walking speed for this many moving ticks. */
-export const FEATHERS = { runTicks: 72, flinchTicks: 6 } as const;
+export const FEATHERS = { runTicks: 88, flinchTicks: 16 } as const;
 
 export function featherEnemy(state: GameState, enemy: Enemy): boolean {
   if (enemy.feathered || isBoss(enemy) || !isTarred(enemy)) return false;
