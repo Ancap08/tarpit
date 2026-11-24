@@ -26,8 +26,9 @@ const server = await createServer({
 });
 
 try {
-  // M39 K1: the pre-Barricade report from main, excluding npm's launcher banner.
-  const expected = 'ba27661ca58b79742b7311e37c3a721bab1dd119afcc89257547c0c5ce1808c3';
+  // Free play report through the matrix, excluding npm's launcher banner.
+  // Milestone 49 re-locks the path B runs against the original balance windows.
+  const expected = '0474f58c24e06d371fab9c9123ba1a8cd72f8bd9bd82fab4b259f7f86239195b';
   const report = createHash('sha256');
   function print(message: string): void {
     const line = message + '\n';

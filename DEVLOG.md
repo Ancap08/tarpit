@@ -10219,3 +10219,138 @@ The level 5 tip is a separate copy decision. The required wording is 66 characte
 The unit suite passed 2,561 of 2,767 tests across 128 files. All 206 failures were assertions. Two were the level 5 character count on mouse and touch. Other failures include balance targets, the campaign gate, and historical result locks for runs that use the changed features. Lint, typecheck, build, all 219 asset manifest entries, and the size check passed (3,766,524 bytes in 30 files against 20 MB). The full simulator finished all twenty levels and returned failure. Its measured Free play digest was `1cb64e8312cb0033351e3f9a50d3c48b33337c5c027afbd5a784c48a870b57fb`.
 
 The single full Playwright run covered Chromium desktop, tablet and phone on port 4573. It passed 1,156 tests, skipped eight and failed two historical frame expectations. The first Fire Pot hit on the boss moved from tick 5069 to 5099; at tick 5721 displayed HP moved from 2041 to 2035 and the fill remained 153 px. The second check sampled a 540-tick tar zone at tick 651. It now samples each zone nine ticks before its expiry and one tick after. Both corrected checks passed together on the production build. No screenshot baselines were written.
+
+
+## Milestone 49, third pass — Feathers from the Tar Pit
+
+The Tar Barrel implementation and numbers match `d517ac8`. Its impact and
+zone apply the original special slow. The level 5 tip and barrel menu match
+the same revision. A path B Tar Pit can feather a surviving tarred ground
+enemy on its first shot in the puddle. Against an untarred enemy, it has to
+tar first. Level 9 adds “Bosses are too proud to run.”
+
+### Tuning and Free play
+
+| Setting | Before milestone 49 | Barrel-feather trial | Tar Pit only |
+|---|---:|---:|---:|
+| Path B range (px) | 145 | 130 | 145 |
+| Path B shots/s | 2 | 2.8 | 2 |
+| Path B slow | 64% | 76% | 64% |
+| Path B slow duration (ticks) | 120 | 120 | 153 |
+| Retreat (moving ticks) | — | 15 | 88 |
+| Retreat speed (px/s) | — | 40 | Enemy walking speed: 35, 45, 60 or 120 |
+| Flinch (ticks) | — | 5 | 16 |
+| Barrel radius (px), slow, zone (ticks) | 100, 50%, 660 | 120, 40%, 540 | 100, 50%, 660 |
+
+The original range, rate and slow preserve the inputs the legacy bots
+use to evaluate a purchase. Two tuning grids tested 1,302 combinations
+of slow duration, run duration and flinch at those three settings.
+The selected durations let each path win outright while keeping the
+Switchback reward spreads at 6/4/4 lives and its endless loss waves at
+25/27 (idle/reinvesting). A 90-tick run with a 150-tick slow and an
+18-tick flinch had an eight-life spread against a six-life ceiling.
+
+A full retreat takes 1.47 s and covers 51⅓ px for a Troll, 66 px for a
+Shieldbearer, 88 px for a Goblin or 176 px for a Wolf. A flinch pauses the
+run timer. An enemy still turns at the entrance, and both bosses are
+immune. The R8 test measures each backward step. In an isolated copy a
+59-tick retreat failed for all four types at step 60. A 1% speed cut
+failed all four on the first step.
+
+The following cells give A/B remaining lives under the adaptive shopping
+plans. Zero means defeat. The largest gap fell from nine to seven lives.
+
+| Map | Combo at d517ac8 | Combo now | Burn at d517ac8 | Burn now |
+|---|---:|---:|---:|---:|
+| Meadow | 14/12 | 14/14 | 15/10 | 15/12 |
+| Switchback | 13/11 | 13/11 | 24/24 | 24/24 |
+| Riverbend | 14/12 | 14/16 | 9/0 | 9/2 |
+
+### Campaign and bot parity
+
+The three original bots kept their complete outputs on every level.
+The feather bot built 14 path B pits, cast 209 barrels and feathered
+828 enemies. Its only lead was one life on level 6, where a barrel is
+available and path B is still locked. The complete campaign retained
+483,499 Good combat ticks. Person averaged 15.33 lives over levels 8–10
+and 13.70 over act two, a 1.63-life drop against the 1.50 minimum.
+
+| Level | Good | Person | Beginner | Feather bot | Path B pits | Barrels | Feathered |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 3/20 | 3/20 | 3/20 | 3/20 | 0 | 0 | 0 |
+| 2 | 3/20 | 3/20 | 1/3 | 3/20 | 0 | 0 | 0 |
+| 3 | 3/20 | 3/20 | 2/16 | 3/20 | 0 | 0 | 0 |
+| 4 | 2/13 | 2/16 | 0/0 | 2/13 | 0 | 0 | 0 |
+| 5 | 3/20 | 3/20 | 1/2 | 3/20 | 0 | 26 | 0 |
+| 6 | 2/15 | 2/14 | 0/0 | 2/16 | 0 | 18 | 0 |
+| 7 | 2/16 | 2/12 | 0/0 | 0/0 | 0 | 9 | 0 |
+| 8 | 2/12 | 2/13 | 0/0 | 1/7 | 0 | 21 | 0 |
+| 9 | 3/20 | 3/20 | 0/0 | 3/20 | 1 | 11 | 117 |
+| 10 | 2/16 | 2/13 | 0/0 | 0/0 | 1 | 17 | 143 |
+| 11 | 2/20 | 2/14 | 0/0 | 0/0 | 1 | 5 | 67 |
+| 12 | 2/19 | 2/15 | 0/0 | 2/14 | 2 | 21 | 97 |
+| 13 | 3/20 | 2/14 | 0/0 | 3/20 | 1 | 6 | 62 |
+| 14 | 3/20 | 2/14 | 0/0 | 3/20 | 1 | 12 | 36 |
+| 15 | 2/14 | 2/13 | 0/0 | 2/13 | 1 | 10 | 65 |
+| 16 | 2/14 | 2/13 | 0/0 | 1/8 | 1 | 11 | 87 |
+| 17 | 2/20 | 2/14 | 0/0 | 2/20 | 2 | 17 | 24 |
+| 18 | 2/14 | 2/13 | 0/0 | 1/11 | 1 | 12 | 91 |
+| 19 | 2/14 | 2/14 | 0/0 | 0/0 | 1 | 3 | 36 |
+| 20 | 2/13 | 2/13 | 0/0 | 0/0 | 1 | 10 | 3 |
+
+Raw serialized output comparisons against a clean export of `d517ac8`:
+
+| Unchanged inputs without a path B purchase | Matches | Bytes compared |
+|---|---:|---:|
+| Good, Person and Beginner on their 20 campaign levels each | 60/60 | 702,748 |
+| Good, Person and Beginner across the Free play map/difficulty grid | 23/23 eligible | 464,140 |
+| Midwave, enemies, new towers and boss frame states | 4/4 | 17,923 |
+| Free play reference runs with state, log and wave results | 140/140 eligible | 3,056,931 |
+| Detailed balance reports for the same 140 runs | 140/140 | 446,296 |
+
+All 4,688,038 compared bytes matched. The run logs included 1,848
+successful barrel casts. The other four of 27 Free play bot runs bought a
+path B pit in both versions: Person on all three Switchback difficulties
+and on Riverbend Normal. Their ending lives stayed at 35/20/15 and 19.
+The other 13 of 153 matrix runs also bought path B in both versions, all
+on Switchback. Ordinary campaign, Free play and frame hashes now guard
+the no-B outputs. A deliberate change to the barrel slow from 50% to 40%
+kept Good on 15 lives on level 6, but changed its ending tick from 30,277
+to 30,343 and failed the byte comparison.
+
+### Review frames
+
+All four crowd captures show Meadow wave 11 at tick 1,146, with four
+enemies in retreat. Collector 544 had 58 of its 88 moving ticks left.
+It faces left on desktop and up on the rotated phone. The three-frame
+Painted sequence follows one Revenue Hound on wave 7 at ticks 341, 371
+and 401, retreating from trail distance 461.6 to 401.6 to 341.6 px.
+The two upgrade panels show the affordable 110-gold choice. Grumblefoot
+took a path B shot inside a barrel at tick 5,635 and was still walking
+forward at tick 5,650. Captures are in `docs/review/m49/`.
+
+The local Chromium comparison against `d517ac8` matched 76/78 baseline
+frames. Only `e2e/visual.spec.ts` changed: `towers-level3.png` labels
+the upgraded pit “Feathers”, and `m37-midwave.png` runs a combat scene
+with a path B pit. The phone and tablet baseline frames all matched.
+
+### Free play report lock
+
+A clean `d517ac8` simulation reproduced SHA-256
+`ba27661ca58b79742b7311e37c3a721bab1dd119afcc89257547c0c5ce1808c3`.
+The Tar Pit-only report is
+`0474f58c24e06d371fab9c9123ba1a8cd72f8bd9bd82fab4b259f7f86239195b`.
+Both hashes were independently recomputed from the report bytes between
+“Balance targets” and the last matrix row. Of 382 lines, 68 changed,
+including path comparisons and the Switchback special, reward, wave and
+endless results. The target windows, level data and star rules still
+match `d517ac8`.
+
+Eight Switchback cells changed in the 153-entry result-and-gold lock.
+The Normal combo without Fire Pots won with 10 lives (was 11), Normal
+endless idle lost on wave 25 (was 24), and Easy endless reinvestment
+lost on wave 39 (was 40). The five remaining entries changed only in
+ending gold. The three Switchback combo state hashes also changed.
+For Normal Guards the first best position moved from 784 px (+1 life)
+to 448 px (+0). For Normal Barricades it moved from 448 px (+3) to
+784 px (+1). Neither Hard sweep turned a loss into a win.
