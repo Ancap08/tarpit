@@ -1506,3 +1506,28 @@ can change it; "Kyle" means Kyle decided.
   not only the campaign's. The level 6 notice says "one Troll per
   traveller" where the enemy is the Toll Troll; the short form is the
   joke.
+
+## 2026-11-24, milestone 45 (a pause button)
+
+- **A Pause control and the P key.** Kyle, after playing on his phone ("I
+  saw that there is no pause button though"). Pause stops everything,
+  including sound, recharge and effects; a panel offers Resume, Restart
+  (with a confirm) and Level map or Menu; the game pauses itself when the
+  page is hidden. Codex (build), Sonnet (verdict merge, no defects).
+- **Nothing can be built while paused** (Fable): building is already
+  untimed between waves, and Kyle finds the game a little easy.
+- **Pause changes nothing:** live games with a boss, Guards, a Barricade
+  and Fire Arrows, paused up to eight times, ended identical to unpaused
+  ones at 1x, 2x and 3x (Sonnet).
+- **Room was made for it:** on the phone Start Wave went from 120 to 89 px
+  wide and Special and speed narrowed; in landscape the tower plaques
+  went from 140 to 132 px. Pause sits 3 px from mute on the phone;
+  accepted, a stray tap only pauses or mutes.
+- **Switching windows on a computer does not pause;** hiding the page or
+  locking the phone does. As built; accepted (Fable).
+- **A gap caught at the merge:** pause was built before the town existed,
+  so the town's smoke, flag and departing sacks would have kept moving
+  while paused. The conflict in the game scene showed it; Codex put the
+  town on the pausable clock and added the test. Rule for parallel
+  branches: when one adds a clock or a global stop, the later merge
+  checks every animated thing the other added.

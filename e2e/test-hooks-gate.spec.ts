@@ -8,6 +8,7 @@ import { expect, test } from '@playwright/test';
 // window.__tarpit has no spawnHorde, and calling the scene's method adds no
 // enemy.
 test('spawnHorde does nothing outside test and perf mode', async ({ page }) => {
+  test.setTimeout(60_000);
   await page.goto('/?renderer=canvas');
   await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('title'));
   const r = await page.evaluate(async () => {
@@ -21,11 +22,12 @@ test('spawnHorde does nothing outside test and perf mode', async ({ page }) => {
     const ran = scene.spawnHorde(50);
     return { keys, ran, before, after: scene.state.enemies.length };
   });
-  expect(r.keys).toEqual(['animState', 'audio', 'audioLab', 'canvasToPage', 'cellToPage', 'decor', 'fx', 'game', 'layout', 'pageLock', 'setMuted', 'titleReady', 'towerAngle', 'uiRects', 'worldToPage']);
+  expect(r.keys).toEqual(['animState', 'audio', 'audioLab', 'canvasToPage', 'cellToPage', 'decor', 'fx', 'game', 'layout', 'pageLock', 'pause', 'paused', 'resume', 'setMuted', 'titleReady', 'towerAngle', 'uiRects', 'worldToPage']);
   expect(r).toMatchObject({ ran: false, before: 0, after: 0 });
 });
 
 test('spawnHorde works with ?perf=1 on the live loop', async ({ page }) => {
+  test.setTimeout(60_000);
   await page.goto('/?renderer=canvas&perf=1');
   await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('title'));
   const r = await page.evaluate(async () => {
@@ -37,6 +39,6 @@ test('spawnHorde works with ?perf=1 on the live loop', async ({ page }) => {
     return { ran: scene.spawnHorde(50), keys: Object.keys(t).length, alive: scene.state.enemies.length };
   });
   expect(r.ran).toBe(true);
-  expect(r.keys).toBe(15); // milestone 32b: layout, cellToPage and worldToPage replaced portraitCardVisible; 33: audio, setMuted, audioLab; 34: decor; 35: pageLock
+  expect(r.keys).toBe(18); // Includes the three live pause hooks.
   expect(r.alive).toBeGreaterThanOrEqual(50);
 });

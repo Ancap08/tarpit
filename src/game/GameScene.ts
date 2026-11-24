@@ -209,7 +209,8 @@ import { isPerfMode, isTestMode } from './testMode';
 import { PaintedSkin, type PaintedState } from './skin/painted';
 import type { PaintedAssets } from './skin/loading';
 import type { GameStartData as TitleStartData } from './TitleScene';
-import { ticksDue } from './loop';
+import { GameClock } from './loop';
+import { PausePanel } from './ui/pausePanel';
 import { BAR_TYPES, canPick } from './ui/buildBarModel';
 import { EndScreen } from './ui/endScreen';
 import { campaignResultText, endKind, type EndKind } from './ui/endText';
@@ -229,6 +230,9 @@ import {
 
 const sameCell = (a: Cell, b: Cell): boolean => a.col === b.col && a.row === b.row;
 
+
+const PAUSED = { ok: false, reason: 'paused' } as const;
+export type PlayAction<T> = T | typeof PAUSED;
 
 export type Speed = 1 | 2 | 3;
 
@@ -418,7 +422,9 @@ export class GameScene extends Phaser.Scene {
   /** The map this game runs on (milestone 27; set in init from the start data). */
   private currentMap: MapId = DEFAULT_MAP;
   private campaignLevel?: GameState['level'];
-  private accMs = 0;
+  private clock = new GameClock();
+  private pausePanel!: PausePanel;
+  private readonly autoPause = !isTestMode() || new URLSearchParams(window.location.search).get('autoPause') === '1';
   private dynamic!: Phaser.GameObjects.Graphics;
   private enemySprites!: EnemySprites;
   /** Shot effects, over the enemy sprites. */
@@ -485,7 +491,7 @@ export class GameScene extends Phaser.Scene {
   private aimPress: AimPress | null = null;
   private aim!: Aim;
   /** Milestone 32b: the game a relayout() carries into the restarted scene, until create() takes it. */
-  private resume: { state: GameState; recordedCleared: number; accMs: number } | null = null;
+  private resume: { state: GameState; recordedCleared: number; clock: GameClock } | null = null;
   /** A relayout's restart is queued and its create() has not run yet. */
   private restartPending = false;
   /** Play again or Menu was requested: this scene is going, so a layout switch leaves it alone. */
@@ -524,7 +530,7 @@ export class GameScene extends Phaser.Scene {
     // reads the newest layout, so a burst of resizes ends on the window's final shape.
     // A scene already leaving (Menu, Play again) is not brought back: the next scene reads the layout itself.
     if (this.leaving) return;
-    this.resume = { state: this.state, recordedCleared: this.recordedCleared, accMs: this.accMs };
+    this.resume = { state: this.state, recordedCleared: this.recordedCleared, clock: this.clock };
     if (this.restartPending) return;
     this.restartPending = true;
     const data: GameStartData = {
@@ -545,7 +551,7 @@ export class GameScene extends Phaser.Scene {
     if (!resume) this.mapBlockedUntil = 0;
     this.recordedCleared = resume?.recordedCleared ?? 0;
     this.speed = 1;
-    this.accMs = resume?.accMs ?? 0;
+    this.clock = resume?.clock ?? new GameClock();
     this.shots = new ShotEffects();
     this.specialFx = new SpecialEffects(this, isTestMode(), this.layout, !!this.paintedAssets);
     this.speedPress = null;
@@ -581,16 +587,16 @@ export class GameScene extends Phaser.Scene {
     // Milestone 32b: world-space layers take the layout's transform (placeWorld); the rest is placed through it.
     const world = () => this.layout.placeWorld(this.add.graphics());
     // Milestone 34: the living map (decor/livingMap.ts): the baked ground, trees and bushes, and the moving things, under everything else.
-    this.painted = this.paintedAssets ? new PaintedSkin(this, this.paintedAssets, this.layout, this.state.map, isTestMode()) : undefined;
-    this.living = this.painted ?? new LivingMap(this, this.state.map, this.layout, isTestMode());
+    this.painted = this.paintedAssets ? new PaintedSkin(this, this.paintedAssets, this.layout, this.state.map, isTestMode(), this.clock) : undefined;
+    this.living = this.painted ?? new LivingMap(this, this.state.map, this.layout, isTestMode(), this.clock);
     this.town = new Town(this, this.state.map, this.layout, isTestMode(), this.painted);
     this.ground = world();
     this.painted?.placeGround(this.ground);
     this.overlay = world();
     this.dynamic = world();
-    this.enemySprites = new EnemySprites(this, isTestMode(), this.layout, this.painted);
+    this.enemySprites = new EnemySprites(this, isTestMode(), this.layout, this.painted, this.clock);
     this.shotFx = world();
-    this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx), this.layout) : null;
+    this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx), this.layout, this.clock) : null;
     this.guardFx = new GuardEffects(this, this.layout, this.enemySprites.layer, this.painted);
     this.bars = this.add.graphics();
     this.barricadeFx = new BarricadeEffects(this, this.layout, this.painted);
@@ -613,6 +619,7 @@ export class GameScene extends Phaser.Scene {
     this.hud = new Hud(this, {
       // Milestone 25c: mid-wave, Start Wave reads "Call next  +N" and calls the next wave.
       onStartWave: () => (callEarlyStatus(this.state).ok ? this.callNextWave() : this.startWave()),
+      onPause: () => this.setPaused(true),
       onToggleSpeed: () => this.onSpeedClick(),
       onSpeedPress: () => this.onSpeedPress(),
       onPick: (type) => this.togglePick(type),
@@ -654,7 +661,15 @@ export class GameScene extends Phaser.Scene {
       },
     );
 
+    this.pausePanel = new PausePanel(this, this.layout, !!this.state.level, {
+      muteBounds: () => this.hud.rects().mute,
+      onResume: () => this.setPaused(false),
+      onRestart: () => this.playAgain(),
+      onMenu: () => this.toMenu(),
+    });
+
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      if (this.paused) return;
       this.press = null;
       this.aimPress = null;
       if (this.state.pendingBoon || this.held.contains(p.x, p.y)) return;
@@ -667,6 +682,7 @@ export class GameScene extends Phaser.Scene {
       this.beginPress(p.x, p.y, p.wasTouch);
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      if (this.paused) return;
       // A mouse press whose button was released unseen (mouseup outside the
       // page) cancels, so the drag does not stick to the pointer.
       if (this.press !== null && !this.press.touch && !p.wasTouch && mouseDragLost(p.isDown, p.buttons)) {
@@ -686,11 +702,13 @@ export class GameScene extends Phaser.Scene {
       if (!p.wasTouch) this.onPointerMove({ x: p.x, y: p.y });
     });
     this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
+      if (this.paused) return;
       this.endSpeedPress();
       if (this.aimPress !== null) this.endAimPress(p.x, p.y);
       else this.endPress(p.x, p.y, true);
     });
     this.input.on('pointerupoutside', () => {
+      if (this.paused) return;
       this.endSpeedPress();
       // A touch aim released outside the canvas fires nothing.
       this.aimPress = null;
@@ -700,38 +718,98 @@ export class GameScene extends Phaser.Scene {
       this.redraw();
     });
     this.input.on('gameout', () => {
+      if (this.paused) return;
       if (this.press?.active) this.press.cell = null;
       // The pointer left the canvas with no button down: a speed hold has lost its release.
       if (this.speedPress !== null && this.input.activePointer.buttons === 0) this.releaseLostHolds();
       this.onPointerMove(null);
     });
-    // Holds whose release may never come (PR review): a cancelled touch, a
-    // hidden page or a window that lost focus end the speed hold (back to
-    // the speed before it) and the touch aim hold (aiming stays on, so a
-    // tap still fires), and drop a drag in progress.
+    // A cancelled touch or lost focus ends the press. Leaving the visible
+    // page pauses the run, even if no animation frame follows the event.
     const lost = () => this.releaseLostHolds();
+    const pageAway = () => {
+      if (this.autoPause) this.setPaused(true);
+      else lost();
+    };
     const hidden = () => {
-      if (document.hidden) lost();
+      if (document.hidden || document.visibilityState === 'hidden') pageAway();
     };
     const canvas = this.game.canvas;
     canvas.addEventListener('pointercancel', lost);
     canvas.addEventListener('touchcancel', lost);
     window.addEventListener('blur', lost);
+    window.addEventListener('pagehide', pageAway);
     document.addEventListener('visibilitychange', hidden);
     this.events.once('shutdown', () => {
       canvas.removeEventListener('pointercancel', lost);
       canvas.removeEventListener('touchcancel', lost);
       window.removeEventListener('blur', lost);
+      window.removeEventListener('pagehide', pageAway);
+      if (!this.restartPending) sound.setPaused(false);
       document.removeEventListener('visibilitychange', hidden);
     });
+    const handled = new WeakSet<KeyboardEvent>();
     this.input.keyboard?.on('keydown', (key: KeyboardEvent) => {
+      if (handled.has(key)) return;
+      handled.add(key);
       if (key.repeat || key.altKey || key.ctrlKey || key.metaKey) return;
       if (this.endScreen.handleKey) return this.endScreen.handleKey(key);
+      if (key.key.toLowerCase() === 'p' || (this.paused && key.key === 'Escape')) {
+        this.setPaused(!this.paused);
+        return;
+      }
+      if (this.paused) return this.pausePanel.handleKey(key);
+      if (key.key === 'Escape') return this.closeUi();
       const id = this.state.pendingBoon?.options[REWARD_KEYS.indexOf(key.key)];
       if (id) this.pickBoon(id);
     });
-    this.input.keyboard?.on('keydown-ESC', () => this.closeUi());
+    this.time.paused = this.paused;
+    if (this.paused) this.freezePlay();
     this.redraw();
+    hidden();
+  }
+
+  private get animationTime(): number {
+    return this.autoTick ? this.clock.nowMs : this.frozenMs;
+  }
+
+  get paused(): boolean {
+    return this.clock.paused;
+  }
+
+  setPaused(paused: boolean): void {
+    if (paused === this.paused || this.leaving || !this.pausePanel || endKind(this.state)) return;
+    this.clock.paused = paused;
+    this.time.paused = paused;
+    sound.setPaused(paused);
+    if (paused) {
+      if (this.speedPress) this.speed = this.speedPress.before;
+      this.speedHoldLost = this.speedPress !== null;
+      this.speedPress = null;
+      this.goldTaps = [];
+      this.clearPickAndPanel();
+      this.cancelSpecial();
+      this.held.dismiss();
+      this.pointer = null;
+      this.freezePlay();
+    } else {
+      // Discard the tween manager's wall time since its last running frame.
+      this.tweens.getDelta(true);
+      this.tweens.resumeAll();
+      const list = this.sys.updateList;
+      this.events.on(Phaser.Scenes.Events.UPDATE, list.sceneUpdate, list);
+      this.pausePanel.setShown(false);
+    }
+    this.redraw();
+  }
+
+  private freezePlay(): void {
+    // The scene keeps receiving menu input. Stop the Phaser systems that
+    // independently advance sprite frames, particle emitters and fades.
+    const list = this.sys.updateList;
+    this.events.off(Phaser.Scenes.Events.UPDATE, list.sceneUpdate, list);
+    this.tweens.pauseAll();
+    this.pausePanel.setShown(true);
   }
 
   private onPointerDown(x: number, y: number): void {
@@ -912,7 +990,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Fire at a canvas point. A refused trail placement stays aimed so the player can adjust. */
-  private fireSpecial(type: SpecialType, point: { x: number; y: number }): SpecialResult {
+  private fireSpecial(type: SpecialType, point: { x: number; y: number }): PlayAction<SpecialResult> {
     const at = this.layout.toWorld(point);
     if (type === 'barricade' || type === 'guards') {
       const place = type === 'barricade' ? barricadePlacement : guardsPlacement;
@@ -955,7 +1033,7 @@ export class GameScene extends Phaser.Scene {
 
   /** The HUD's Special button: cancel aiming or the popup if either is on, else select the only special or open the popup. */
   private onSpecialButton(): void {
-    if (this.endScreen.kind || !specialReady(this.state)) return;
+    if (this.paused || this.endScreen.kind || !specialReady(this.state)) return;
     if (this.aiming !== null || this.specialMenuOpen) {
       this.cancelSpecial();
       this.redraw();
@@ -973,7 +1051,7 @@ export class GameScene extends Phaser.Scene {
 
   /** Start aiming `type` (from the popup, or directly with one special unlocked); clears the tower pick and panel. */
   private selectSpecial(type: SpecialType): void {
-    if (this.endScreen.kind || !specialReady(this.state)) return;
+    if (this.paused || this.endScreen.kind || !specialReady(this.state)) return;
     this.clearPickAndPanel();
     this.specialMenuOpen = false;
     this.aiming = type;
@@ -1008,7 +1086,7 @@ export class GameScene extends Phaser.Scene {
 
   /** A press started on the speed button: it may become a 3x hold (milestone 30). */
   private onSpeedPress(): void {
-    if (this.endScreen.kind) return;
+    if (this.paused || this.endScreen.kind) return;
     this.speedHoldLost = false;
     this.speedPress = { t0: this.time.now, before: this.speed, holding: false };
   }
@@ -1041,6 +1119,7 @@ export class GameScene extends Phaser.Scene {
 
   /** End every hold whose release was lost: the speed hold, the touch aim hold and a drag (see create()). */
   releaseLostHolds(): void {
+    if (this.paused) return;
     if (this.speedPress?.holding) this.speedHoldLost = true;
     this.endSpeedPress();
     this.aimPress = null;
@@ -1059,7 +1138,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** The gold cheat through the sim (milestone 30); also the test hook. */
-  cheatGold(): ReturnType<typeof grantCheatGold> {
+  cheatGold(): PlayAction<ReturnType<typeof grantCheatGold>> {
+    if (this.paused) return PAUSED;
     const result = grantCheatGold(this.state);
     this.takeEvents();
     this.redraw();
@@ -1068,7 +1148,7 @@ export class GameScene extends Phaser.Scene {
 
   /** A build bar click: pick that type, or clear the pick if it is already active. */
   private togglePick(type: TowerType): void {
-    if (this.endScreen.kind) return;
+    if (this.paused || this.endScreen.kind) return;
     // The release of a drag that ended back on its bar button is not a click.
     if (this.press?.active) return;
     this.cancelSpecial();
@@ -1261,6 +1341,7 @@ export class GameScene extends Phaser.Scene {
 
   /** Every clickable rectangle by name: HUD and bar buttons, the open panel's buttons, and `playAgain` and `menu`. */
   uiRects(): Record<string, Rect> {
+    if (this.paused) return { mute: this.hud.rects().mute, ...this.pausePanel.rects() };
     return { ...this.hud.rects(), ...this.reward.rects(), ...this.held.rects(), ...this.panel.rects(), ...this.endScreen.rects() };
   }
 
@@ -1314,12 +1395,13 @@ export class GameScene extends Phaser.Scene {
       this.relayout();
       return;
     }
+    if (this.paused || this.leaving) return;
     this.checkSpeedHold();
     this.checkAimHold();
     if (this.autoTick) {
       // Ticks beyond the cap are dropped (see loop.ts for why).
-      const { ticks, accMs } = ticksDue(this.accMs + delta, this.speed);
-      this.accMs = accMs;
+      const ticks = this.clock.frame(delta, this.speed, this.game.loop.rawDelta);
+      delta = this.clock.deltaMs;
       this.fx?.advanceClock(delta, this.speed);
       this.advance(ticks, false);
       // Effects age in real time in play (milestone 30), so a label lasts 1.5 s at any speed.
@@ -1332,6 +1414,7 @@ export class GameScene extends Phaser.Scene {
 
   /** Run `n` simulation ticks, feeding each tick's shots and events to the effects. */
   advance(n: number, redraw = true): void {
+    if (this.paused) return;
     for (let i = 0; i < n; i++) {
       // Milestone 30: once won or lost nothing ticks, so nothing replays after the win.
       if (this.state.phase === 'won' || this.state.phase === 'lost') break;
@@ -1378,7 +1461,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Keep going after the win (milestone 26): the game turns endless and the end screen goes away. */
-  continueEndless(): ContinueEndlessResult {
+  continueEndless(): PlayAction<ContinueEndlessResult> {
+    if (this.paused) return PAUSED;
     const result = continueEndless(this.state);
     if (result.ok) this.endScreen.hide();
     this.takeEvents();
@@ -1394,7 +1478,7 @@ export class GameScene extends Phaser.Scene {
     for (const event of events) {
       if (event.kind !== 'exit') continue;
       const spot = this.enemySprites.spot(event.enemyId);
-      if (spot) this.town.sacks.release(ENEMY_STATS[spot.type].livesCost, this.autoTick ? this.time.now : this.frozenMs);
+      if (spot) this.town.sacks.release(ENEMY_STATS[spot.type].livesCost, this.animationTime);
     }
     this.barricadeFx.onEvents(events);
     this.guardFx.onEvents(events);
@@ -1445,7 +1529,8 @@ export class GameScene extends Phaser.Scene {
     return this.enemySprites?.animState(enemyId) ?? null;
   }
 
-  pickBoon(id: BoonId): ReturnType<typeof pickBoon> {
+  pickBoon(id: BoonId): PlayAction<ReturnType<typeof pickBoon>> {
+    if (this.paused) return PAUSED;
     const result = pickBoon(this.state, id);
     if (result.ok) this.mapBlockedUntil = performance.now() + REWARD_MAP_GUARD_MS;
     this.takeEvents();
@@ -1453,7 +1538,8 @@ export class GameScene extends Phaser.Scene {
     return result;
   }
 
-  startWave(): StartWaveResult {
+  startWave(): PlayAction<StartWaveResult> {
+    if (this.paused) return PAUSED;
     const result = startWave(this.state);
     this.takeEvents();
     this.redraw();
@@ -1471,7 +1557,7 @@ export class GameScene extends Phaser.Scene {
    * into the first `span` px: the pile-up case.
    */
   spawnHorde(n: number, span?: number): boolean {
-    if (!isTestMode() && !isPerfMode()) return false;
+    if (this.paused || (!isTestMode() && !isPerfMode())) return false;
     if (this.state.phase === 'setup') startWave(this.state);
     const length = Math.min(span ?? pathLength(this.state.map), pathLength(this.state.map));
     for (let i = 0; i < n; i++) {
@@ -1494,7 +1580,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Call the next wave early (milestone 25c). */
-  callNextWave(): CallNextWaveResult {
+  callNextWave(): PlayAction<CallNextWaveResult> {
+    if (this.paused) return PAUSED;
     const result = callNextWave(this.state);
     this.takeEvents();
     this.recordScore();
@@ -1503,11 +1590,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   setSpeed(speed: Speed): void {
+    if (this.paused) return;
     this.speed = speed;
     this.redraw();
   }
 
-  build(cell: Cell, type: TowerType): BuildResult {
+  build(cell: Cell, type: TowerType): PlayAction<BuildResult> {
+    if (this.paused) return PAUSED;
     const result = buildTower(this.state, cell, type);
     if (!result.ok) sound.play('refuse');
     this.takeEvents();
@@ -1515,7 +1604,8 @@ export class GameScene extends Phaser.Scene {
     return result;
   }
 
-  upgrade(cell: Cell, path?: UpgradePath): UpgradeResult {
+  upgrade(cell: Cell, path?: UpgradePath): PlayAction<UpgradeResult> {
+    if (this.paused) return PAUSED;
     const result = upgradeTower(this.state, cell, path);
     if (!result.ok) sound.play('refuse');
     this.takeEvents();
@@ -1523,7 +1613,8 @@ export class GameScene extends Phaser.Scene {
     return result;
   }
 
-  sell(cell: Cell): SellResult {
+  sell(cell: Cell): PlayAction<SellResult> {
+    if (this.paused) return PAUSED;
     const result = sellTower(this.state, cell);
     if (!result.ok) sound.play('refuse');
     this.takeEvents();
@@ -1532,7 +1623,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Move an unlocked tower in setup (milestone 25a). */
-  move(from: Cell, to: Cell): MoveResult {
+  move(from: Cell, to: Cell): PlayAction<MoveResult> {
+    if (this.paused) return PAUSED;
     const result = moveTower(this.state, from, to);
     if (!result.ok) sound.play('refuse');
     this.takeEvents();
@@ -1541,7 +1633,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Undo an upgrade bought this setup phase (milestone 25a). */
-  undoUpgrade(cell: Cell): UndoUpgradeResult {
+  undoUpgrade(cell: Cell): PlayAction<UndoUpgradeResult> {
+    if (this.paused) return PAUSED;
     const result = undoUpgrade(this.state, cell);
     if (!result.ok) sound.play('refuse');
     this.takeEvents();
@@ -1550,7 +1643,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Use a special aimed at (x, y) through the sim (milestone 25b); a success starts its effects (30: and the keg shakes the camera). */
-  useSpecialAt(type: SpecialType, x: number, y: number): SpecialResult {
+  useSpecialAt(type: SpecialType, x: number, y: number): PlayAction<SpecialResult> {
+    if (this.paused) return PAUSED;
     const from = this.state.events.length;
     const result = useSpecial(this.state, type, { x, y });
     if (!result.ok) sound.play('refuse');
@@ -1565,7 +1659,8 @@ export class GameScene extends Phaser.Scene {
     return result;
   }
 
-  setTargeting(cell: Cell, mode: TargetingMode): TargetingResult {
+  setTargeting(cell: Cell, mode: TargetingMode): PlayAction<TargetingResult> {
+    if (this.paused) return PAUSED;
     const result = setTargeting(this.state, cell, mode);
     this.takeEvents();
     this.redraw();
@@ -1580,7 +1675,7 @@ export class GameScene extends Phaser.Scene {
     if (!this.dynamic) return;
     this.aim.prune(this.state);
     // Milestone 34: growth on a tower's cell hides; all of it fades while a tower is being placed (a pick or a drag).
-    this.town.update(this.state, this.autoTick ? this.time.now : this.frozenMs);
+    this.town.update(this.state, this.animationTime);
     this.living?.update(this.state, this.pick !== null || this.press?.active === true);
     this.ground.clear();
     this.specialFx.drawGround(this.ground, this.state);
@@ -1613,9 +1708,9 @@ export class GameScene extends Phaser.Scene {
     this.syncEndScreen();
     this.redrawUi();
     const banner = this.aimBanner();
-    this.hud.update(this.state, this.speed, this.pick, { menuOpen: this.specialMenuOpen, aiming: this.aiming, banner }, this.autoTick ? this.time.now : undefined);
-    this.moments.draw(this.autoTick ? this.time.now : this.frozenMs);
-    this.reward.update(this.state.pendingBoon);
+    this.hud.update(this.state, this.speed, this.pick, { menuOpen: this.specialMenuOpen, aiming: this.aiming, banner }, this.autoTick ? this.clock.nowMs : undefined);
+    this.moments.draw(this.animationTime);
+    this.reward.update(this.paused ? null : this.state.pendingBoon);
     this.held.update(this.state.boons);
     this.drawBanner();
   }

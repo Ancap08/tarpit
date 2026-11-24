@@ -5,6 +5,7 @@ import type { Layout } from '../layout';
 import { BOON_NAMES, REWARD_KEYS, boonDescription, rewardTitle } from '../names';
 import { COLORS, FONT, TEXT } from '../palette';
 import { ink, panel, THEME } from './theme';
+import { CANCEL_UI_PRESS } from './button';
 import { drawBoonIcon } from './boonIcons';
 import { heldBoonLayout, rewardLayout } from './boonLayout';
 
@@ -55,6 +56,7 @@ export class BoonReward {
         this.view.add([keycap, key]);
       }
       let pressed = false;
+      scene.input.on(CANCEL_UI_PRESS, () => { pressed = false; });
       card.on('pointerover', () => panel(print.clear(), r, COLORS.rewardHover));
       card.on('pointerout', () => {
         pressed = false;
@@ -124,6 +126,7 @@ export class HeldBoons {
       view.add([box, icon]);
       if (box.input) box.input.enabled = false;
       let pressed = false;
+      scene.input.on(CANCEL_UI_PRESS, () => { pressed = false; });
       box.on('pointerover', (pointer: Phaser.Input.Pointer) => {
         if (pointer.wasTouch) return;
         this.hovered = this.ids[i] ?? null;

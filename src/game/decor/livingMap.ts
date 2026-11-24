@@ -22,6 +22,7 @@ import type Phaser from 'phaser';
 import type { GameState, MapDef, Point } from '../../sim';
 import { drawMap, drawTuft } from '../draw/map';
 import type { Layout } from '../layout';
+import type { GameClock } from '../loop';
 import { COLORS } from '../palette';
 import { birdAt, blinking, butterflyAt, CLOUD, cloudAt, glint, ripple, MOTION_COUNTS, puffLook, STILL_T, sway } from './motion';
 import { BUSH_R, decorFor, hiddenGrowth, TREE_EXTENT, TREE_SHAPES, type Decor, type Growth, type TreeShape } from './recipe';
@@ -182,11 +183,12 @@ export class LivingMap {
   private last: DecorState['moving'] = { clouds: [], smoke: [], flow: null, bird: null, butterfly: null, eyesOpen: true, sway: 0 };
 
   constructor(
-    private readonly scene: Phaser.Scene,
+    scene: Phaser.Scene,
     private readonly map: MapDef,
     private readonly layout: Layout,
     /** Test mode: everything holds the fixed frame and no puffs. */
     private readonly testMode: boolean,
+    private readonly clock: GameClock,
   ) {
     this.decor = decorFor(map);
     makeTextures(scene);
@@ -218,7 +220,7 @@ export class LivingMap {
 
   /** Bring the map up to date: hidden growth, the placing fade and (in play) the moving things. */
   update(state: GameState, placing: boolean): void {
-    const now = this.scene.time.now;
+    const now = this.clock.nowMs;
     const hidden = new Set(hiddenGrowth(this.decor.growth, state.towers.map((t) => t.cell)));
     let changed = false;
     for (const id of hidden) {

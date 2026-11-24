@@ -43,7 +43,7 @@ export function heldBoonLayout(layout: Layout, parent: Size) {
     target * layout.height / Math.max(1, parent.height),
     target * (layout.width + 2 * gap) / Math.max(1, parent.width - target),
   ));
-  const left = inRow ? 758 : layout.width + gap;
+  const left = inRow ? 678 : layout.width + gap;
   const top = inRow ? 531 : portrait ? gap : layout.height - COUNT * (size + gap);
   return {
     canvasWidth: inRow ? layout.width : layout.width + size + 2 * gap,

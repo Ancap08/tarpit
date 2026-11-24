@@ -350,18 +350,27 @@ export function townSuite(touch: boolean) {
     test.setTimeout(120_000);
     await page.goto('/?test=1&look=painted');
     await waitForFirstScreen(page, { showStory: true });
+    const checkPause = async (screen: string) => {
+      expect(await page.evaluate(() => window.__tarpit!.uiRects())).not.toHaveProperty('pause');
+      await page.keyboard.press('p');
+      expect(await page.evaluate(() => [window.__tarpit!.screen!(), window.__tarpit!.paused()])).toEqual([screen, false]);
+    };
     await press(page, 'title:campaign', touch);
     await page.waitForFunction(() => window.__tarpit?.screen?.() === 'opening' && !!window.__tarpit.uiRects()['title:continue']);
+    await checkPause('opening');
     await review(page, info, 'opening');
     await press(page, 'title:continue', touch);
     await page.waitForFunction(() => !!window.__tarpit?.uiRects()['title:stop:1']);
     await press(page, 'title:stop:1', touch);
     await page.waitForFunction(() => !!window.__tarpit?.uiRects()['title:play']);
+    await checkPause('levelCard');
     await review(page, info, 'level-1-notice');
     await page.evaluate(() => window.__tarpit!.startLevel!(10));
     await stageResult(page, 20);
+    await checkPause('result');
     await press(page, 'menu', touch);
     await page.waitForFunction(() => window.__tarpit?.screen?.() === 'ending' && !!window.__tarpit.uiRects()['title:continue']);
+    await checkPause('ending');
     await review(page, info, 'ending');
     await press(page, 'title:continue', touch);
     await page.waitForFunction(() => !!window.__tarpit?.uiRects()['title:stop:1']);

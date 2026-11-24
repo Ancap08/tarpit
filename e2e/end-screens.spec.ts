@@ -42,7 +42,7 @@ const leakProbe = (page: Page) =>
     return {
       pointerdown: scene.input.listenerCount('pointerdown'),
       pointermove: scene.input.listenerCount('pointermove'),
-      escape: scene.input.keyboard?.listenerCount('keydown-ESC') ?? 0,
+      keyboard: scene.input.keyboard?.listenerCount('keydown') ?? 0,
       objects: scene.children.length,
     };
   });

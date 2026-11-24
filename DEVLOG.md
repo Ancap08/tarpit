@@ -9447,6 +9447,58 @@ captures include the Assessor’s entrance in portrait.
 
 Linux CI caught a 5 px three-digit Remove gap. With HUD figures widened 12%, the Mac reproduced 2 px before the fix and 22 px after it. The compact build bar’s tightest gap went from −1 to 15 px in the same check.
 
+## 2026-11-24: milestone 45, pause
+
+Pause sits under the right thumb at the end of the HUD in both layouts.
+Landscape keeps the stat positions and original wave-preview wrap. The
+tower plaques move closer together, speed sits above mute, and Pause spans
+the two rows. Portrait keeps the six tower buttons in place and fits Pause
+beside mute by narrowing Special, Start Wave and speed. The four Painted
+captures in `docs/review/m45/` show the playing field and pause panel.
+
+The first browser pass caught a fast Restart tap hitting the panel's input
+shield before Phaser drew the panel. The shield now leaves a hole for
+each action and for mute. Pausing cancels a pending press as well as a drag,
+aim or speed hold, so releasing a finger after Resume cannot finish an old
+action. Tall-font checks also caught the Fire Pot price touching Pause.
+Giving the portrait tower prices a 24 px digit box keeps each price
+inside its plaque. The Playwright phone measured the Pause target at
+56.55 CSS px on a 390 × 844 viewport. In Classic landscape, giving
+Longbow 10 px more of the compact row leaves 13 px between its name
+and widened price after a reward.
+
+The game clock keeps partial ticks and excludes time spent paused,
+including a phone lock with no intervening frames. The deterministic
+test paused a scripted Musketeer and Powder Keg run at ticks 0, 1, 31,
+299, 950 and 3,000. It reached the same complete state and active frame
+count as the uninterrupted run.
+
+Verifier notes (Claude Sonnet, milestone 45): no game defect found. Live play
+(no `?test=1`), Free play Meadow at wave 10 with 12 towers, Fire Arrows,
+Guards and a Barricade: pausing at wave ticks 61 to 3,600 for 3 s each at 1x,
+2x and 3x, and a 100-toggle P burst, left the sim state byte-identical to an
+unpaused run at the same wave tick (`state.tick` differs by the setup ticks
+before Start Wave, so compare `waveTick`). Nothing drawn, no animation,
+effect, audio count or tween moved during a pause. Mouse, touch and every
+key were ignored while paused except Enter, Space, Escape and P (resume) and
+the panel and mute. Pausing clears the tower pick, tower panel, special aim
+and drag; a drag released while paused builds nothing. Pause is refused on
+the win or loss tick (the end screen shows). Window blur alone does not
+pause, as DESIGN says. Hit areas: on 390 x 844 every moved control stays at
+49.5 CSS px or more high (Pause 56.5); on 390 x 664 Pause is 44.5 but Special,
+Start Wave, speed and mute are 38.9 high (unchanged from main) and speed is
+now 38.9 wide (was 45.6). Pause sits 2.8 CSS px from mute on the phone.
+`e2e/pause-verifier.spec.ts` pins the paused-equals-unpaused result in live
+play. `npm run sim` output is byte-identical to main (`cmp` of both runs).
+
+Town animation and leak sacks now use the map clock, keeping their place through Pause and a hidden page in both looks.
+
+Linux measured “Pick a reward” at 10.69 CSS px. The phone row now uses the right margin for an icon-only Pause and keeps every wave, Special and speed label above 12 CSS px at both phone heights.
+
+The label checks passed on an oversized canvas that let the bottom row overhang and shifted the map left. Browser checks now compare both rows with the painted panel and the page centre.
+
+The phone plaque now reads “Special”, matching the campaign instructions. Moving 18 canvas px from Start Wave to Special keeps the charge dot clear. Across Caslon and fallback, including tall metrics, the smallest row label measured 14.08 CSS px at 390 × 844 and 11.08 CSS px at 390 × 664.
+
 ## 2026-11-24: milestone 46, the town and its story
 
 All three roads end at the same four-cell arrangement. Two cells overlap

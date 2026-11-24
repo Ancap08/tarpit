@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_TICKS_PER_FRAME, STEP_MS, ticksDue } from './loop';
+import { buildTower, createGame, startWave, tick, useSpecial } from '../sim';
+import { GameClock, MAX_TICKS_PER_FRAME, STEP_MS, ticksDue } from './loop';
 
 describe('ticksDue', () => {
   it('caps at 20 ticks a frame', () => {
@@ -59,5 +60,59 @@ describe('ticksDue', () => {
       total += r.ticks;
     }
     expect(total).toBe(600); // 10 s at 60 ticks/s
+  });
+});
+
+describe('the pause clock', () => {
+  it('keeps the fractional step and excludes paused time even when no frames arrive until Resume', () => {
+    let wall = 0;
+    const clock = new GameClock(() => wall);
+    expect(clock.frame(11, 2, 20)).toBe(0);
+    clock.paused = true;
+    wall += 500;
+    expect(clock.frame(500, 3)).toBe(0);
+    expect([clock.nowMs, clock.accMs, clock.deltaMs]).toEqual([20, 11, 0]);
+    wall += 80_000;
+    clock.paused = false;
+    wall += 9;
+    clock.paused = false; // A second Resume must keep the same active interval.
+    expect(clock.frame(100, 2, 80_009)).toBe(2);
+    expect(clock.nowMs).toBe(29);
+    expect(clock.deltaMs).toBe(9);
+    expect(clock.accMs).toBeCloseTo(20 - STEP_MS);
+  });
+
+  it('plays a scripted Free play run to the exact same last tick and state across several pauses', () => {
+    function play(pauseTicks: number[]) {
+      let wall = 0;
+      const clock = new GameClock(() => wall);
+      const state = createGame();
+      expect(buildTower(state, { col: 2, row: 5 }, 'musketeer').ok).toBe(true);
+      const frame = (ms: number) => {
+        wall += ms;
+        const due = clock.frame(ms, 1);
+        for (let i = 0; i < due; i++) tick(state);
+      };
+      const stops = new Set(pauseTicks);
+      let frames = 0;
+      for (; frames < 60_000 && state.phase !== 'lost' && state.phase !== 'won'; frames++) {
+        if (stops.delete(state.tick)) {
+          clock.paused = true;
+          const before = structuredClone(state);
+          frame(4);
+          frame(75_000);
+          expect(state).toEqual(before);
+          clock.paused = false;
+        }
+        if (state.phase === 'setup') expect(startWave(state).ok).toBe(true);
+        if (state.waveTick === 30) expect(useSpecial(state, 'keg', state.map.path[0]).ok).toBe(true);
+        frame(STEP_MS);
+      }
+      expect(stops.size).toBe(0);
+      expect(state.phase).toBe('lost');
+      return { frames, state };
+    }
+    const uninterrupted = play([]);
+    expect(play([0, 1, 31, 299, 950, 3000])).toEqual(uninterrupted);
   });
 });

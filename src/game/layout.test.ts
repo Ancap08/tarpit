@@ -204,6 +204,11 @@ describe('portrait controls and title arithmetic', () => {
     expect(PORTRAIT_STACK.close * phone).toBeGreaterThanOrEqual(44);
   });
 
+  it('preserves a 44 CSS px pause target with the phone browser bars showing', () => {
+    const { pause } = portraitRow2(664 / PORTRAIT_HEIGHT);
+    expect(Math.min(pause.width, pause.height) * 664 / PORTRAIT_HEIGHT).toBeGreaterThanOrEqual(44);
+  });
+
   it('keeps the controls inside the canvas, under the map and apart', () => {
     controls.forEach((r, i) => {
       expect(inside(r, canvas)).toBe(true);

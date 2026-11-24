@@ -30,9 +30,8 @@
 // button reads "3x" while held. The Gold readout is a tap target
 // (GOLD_RECT, for the gold cheat) and shows CHEAT_MARK under it once the
 // cheat was used.
-// Milestone 33: a mute button (ui/muteButton.ts) at row 2's right end,
-// 42 x 42 at x 904 (the build bar narrowed to make room); in portrait it
-// ends controls row 2, 70 x 70 (ui/geometry.ts portraitRow2).
+// Milestone 45: Pause occupies the right end of the counter. In landscape
+// speed sits above mute beside it; in portrait mute sits to its left.
 
 import { coin, panel, THEME } from './ui/theme';
 import Phaser from 'phaser';
@@ -66,6 +65,7 @@ import {
   DIFFICULTY_LABELS,
   ENEMY_SHORT_NAMES,
   rechargeText,
+  PAUSE_TEXT,
   SPECIAL_BUTTON_TEXT,
   speedLabel,
   START_WAVE_TEXT,
@@ -148,16 +148,11 @@ export function previewText(state: GameState): string {
   return `Next: ${[...counts].map(([type, count]) => `${count} ${ENEMY_SHORT_NAMES[type]}`).join(', ')}${boss}`;
 }
 
-/** Row 1 buttons (milestone 25b): Special, Start Wave and the speed toggle, 8 px apart, 14 px from the right edge. */
-export const SPECIAL_BUTTON = { x: 630, width: 100 } as const;
-export const START_BUTTON = { x: 738, width: 130 } as const;
-export const SPEED_BUTTON = { x: 876, width: 70 } as const;
-/**
- * Milestone 33: the mute button at row 2's right end, under the speed
- * button and right-aligned with it (x 904..946); the build bar's buttons
- * narrowed from 148 to 140 px to make room (ui/buildBar.ts).
- */
-export const MUTE_BUTTON = { x: 904, width: 42 } as const;
+/** Wave controls and mute sit beside the pause plaque at the end of the counter. */
+export const SPECIAL_BUTTON = { x: 586, width: 100 } as const;
+export const START_BUTTON = { x: 692, width: 130 } as const;
+export const SPEED_BUTTON = { x: 828, width: 42 } as const;
+export const MUTE_BUTTON = { x: 828, width: 42 } as const;
 /** The Special button's charge pip: radius, and its centre's distance from the button's right edge. */
 export const PIP_RADIUS = 5;
 export const PIP_INSET = 14;
@@ -167,11 +162,7 @@ export const GOLD_RECT = { x: 8, y: HUD_TOP + 4, width: 104, height: 42 } as con
 export const CHEAT_TAPS = 5;
 export const CHEAT_WINDOW_MS = 2000;
 
-/**
- * The preview's room: from x 356 (10 px after "Wave 10/10" at 18 px ends)
- * to 10 px before the Special button at x 630 (milestone 25b; it was x 366
- * to 716 before the button).
- */
+/** Keep the original line breaks and fit the longest lines beside Special. */
 export const PREVIEW_X = 356;
 export const PREVIEW_WIDTH = 264;
 export const PREVIEW_SIZE = 16;
@@ -256,6 +247,7 @@ export interface HudSpecial {
 export interface HudHandlers {
   /** Start Wave was pressed: starts the wave in setup, or calls the next one early (milestone 25c). */
   onStartWave: () => void;
+  onPause: () => void;
   onToggleSpeed: () => void;
   /** A press started on the speed button (milestone 30: held 300 ms it runs 3x). */
   onSpeedPress?: () => void;
@@ -297,6 +289,7 @@ export interface HudMetrics {
   speed: Rect;
   /** Milestone 33: the mute button. */
   mute: Rect;
+  pause: Rect;
   specialFont: string;
   startFont: string;
   callFont: string;
@@ -312,13 +305,14 @@ export const LANDSCAPE_HUD: HudMetrics = {
   statSize: '18px',
   goldX: GOLD_LABEL_X,
   flowGap: 0,
-  preview: { x: PREVIEW_X, y: MID, width: PREVIEW_WIDTH, originY: 0.5 },
+  preview: { x: PREVIEW_X, y: MID, width: SPECIAL_BUTTON.x - PREVIEW_X - 8, originY: 0.5 },
   cheat: { x: GOLD_LABEL_X, y: MID + 12, size: '11px', originX: 0 },
   gold: { ...GOLD_RECT },
   special: { ...SPECIAL_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H },
   start: { ...START_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H },
   speed: { ...SPEED_BUTTON, y: ROW1_BUTTON_Y, height: BUTTON_H },
   mute: { ...MUTE_BUTTON, y: ROW2_BUTTON_Y, height: BUTTON_H },
+  pause: { x: 876, y: HUD_TOP + 10, width: 80, height: 80 },
   specialFont: '16px',
   startFont: START_LABEL_SIZE,
   callFont: CALL_LABEL_SIZE,
@@ -327,7 +321,7 @@ export const LANDSCAPE_HUD: HudMetrics = {
 };
 
 export const PORTRAIT_HUD: HudMetrics = (() => {
-  const { special, start, speed, mute } = portraitRow2();
+  const { special, start, speed, mute, pause } = portraitRow2();
   const size = '20px';
   return {
     portrait: true,
@@ -350,9 +344,10 @@ export const PORTRAIT_HUD: HudMetrics = (() => {
     start,
     speed,
     mute,
-    specialFont: size,
-    startFont: size,
-    callFont: size,
+    pause,
+    specialFont: '23px',
+    startFont: '23px',
+    callFont: '23px',
     menu: { left: special.x, top: PORTRAIT_CONTROLS_Y, size: PORTRAIT_STACK, font: size },
     barTop: PORTRAIT_ROW1_Y,
   };
@@ -379,14 +374,16 @@ export class Hud {
   private pipKey = '';
   private readonly bar: BuildBar;
   private readonly bossBar: BossBar;
-  /** Milestone 33: the mute button (row 2's right end in landscape, row 2's right end in portrait). */
+  private readonly pauseAction: HTMLButtonElement;
+  private readonly pauseIcon: Phaser.GameObjects.Graphics;
+  private readonly pauseButton: Button;
   private readonly muteButton: MuteButton;
   private readonly m: HudMetrics;
   /** The Lives readout's left edge now (portrait: after the gold), for the exit shake. */
   private livesX = LIVES_X;
 
   constructor(scene: Phaser.Scene, handlers: HudHandlers, layout: Layout = LANDSCAPE, painted?: PaintedSkin) {
-    const m = hudMetrics(layout);
+    const m = { ...hudMetrics(layout) };
     this.m = m;
     const counter = scene.add.graphics();
     for (const band of m.bands) {
@@ -423,6 +420,7 @@ export class Hud {
     // The Special label is left-aligned (an empty right label) so the pip fits on its right.
     this.specialButton = new Button(scene, m.special, SPECIAL_BUTTON_TEXT, handlers.onSpecial, {
       fontSize: m.specialFont,
+      labelInset: m.portrait ? 4 : undefined,
       right: '',
     });
     // The recharge fill sits over the button's box and under its label.
@@ -435,11 +433,56 @@ export class Hud {
       .setVisible(false);
     // Milestone 33: Start Wave's own sound is the horn (or Call next's), so its click plays no tap.
     this.startButton = new Button(scene, m.start, START_WAVE_TEXT, handlers.onStartWave, m.portrait ? { fontSize: m.startFont, sound: null } : { sound: null });
-    this.speedButton = new Button(scene, m.speed, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress, fontSize: m.portrait ? m.statSize : undefined });
+    if (m.portrait) {
+      // Reserve two lines inside the wave plaque, including ascenders and descenders.
+      // Wrap at the tall phone's width; a narrower plaque scales the same two lines.
+      this.startButton.labelObjects[0]
+        .setStyle({ metrics: { ascent: 23, descent: 6, fontSize: 29 } })
+        .setWordWrapWidth(m.start.width - 6, true);
+    }
+    this.speedButton = new Button(scene, m.speed, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress, fontSize: m.portrait ? m.startFont : undefined });
     this.specialMenu = new SpecialMenu(scene, m.menu.left, m.menu.top, handlers.onSpecialPick, layout.map.y, m.menu.size, m.menu.font);
     this.bar = new BuildBar(scene, m.barTop, handlers.onPick, layout, painted);
     this.bossBar = new BossBar(scene, layout);
     this.muteButton = new MuteButton(scene, m.mute);
+    this.pauseButton = new Button(scene, m.pause, m.portrait ? '' : PAUSE_TEXT.button, handlers.onPause, {
+      fontSize: '18px', labelY: 57, sound: null,
+    });
+    this.pauseIcon = scene.add.graphics().fillStyle(COLORS.buttonEdgePicked);
+    const iconHeight = m.portrait ? 26 : 21;
+    for (const x of [-11, 4]) this.pauseIcon.fillRect(x, 0, 7, iconHeight);
+    // Put the native accessibility target over the plaque. Phaser handles pointer input.
+    this.pauseAction = document.createElement('button');
+    this.pauseAction.textContent = PAUSE_TEXT.button;
+    this.pauseAction.onclick = handlers.onPause;
+    this.pauseAction.className = 'pause-action';
+    scene.game.canvas.after(this.pauseAction);
+    const fitControls = () => {
+      const { canvasBounds: b, displayScale: s } = scene.scale;
+      if (m.portrait) {
+        const row = portraitRow2(1 / Math.max(s.x, s.y));
+        if (row.pause.width !== m.pause.width) {
+          Object.assign(m, row);
+          this.startButton.setWidth(row.start.width);
+          this.speedButton.moveTo(row.speed.x, row.speed.y);
+          this.muteButton.setRect(row.mute);
+          this.pauseButton.setSize(row.pause.width, row.pause.height);
+          this.pauseButton.moveTo(row.pause.x, row.pause.y);
+        }
+      }
+      this.pauseIcon.setPosition(m.pause.x + m.pause.width / 2,
+        m.pause.y + (m.portrait ? (m.pause.height - iconHeight) / 2 : 16));
+      Object.assign(this.pauseAction.style, {
+        left: (b.x + m.pause.x / s.x) + 'px', top: (b.y + m.pause.y / s.y) + 'px',
+        width: (m.pause.width / s.x) + 'px', height: (m.pause.height / s.y) + 'px',
+      });
+    };
+    fitControls();
+    scene.scale.on('resize', fitControls);
+    scene.events.once('shutdown', () => {
+      scene.scale.off('resize', fitControls);
+      this.pauseAction.remove();
+    });
   }
 
   /**
@@ -494,7 +537,10 @@ export class Hud {
           this.next.setStyle({ fontSize: size, metrics: { ascent, descent, fontSize: ascent + descent } });
           if (this.next.height <= availableHeight && this.next.width <= width) break;
         }
-      } else this.next.setFontSize(previewSize(preview)).setText(preview);
+      } else {
+        this.next.setFontSize(previewSize(preview)).setText(preview);
+        this.next.setScale(Math.min(1, width / this.next.width), Math.min(1, BUTTON_H / this.next.height));
+      }
     }
     const call = callEarlyStatus(state);
     let reason: string | null = null;
@@ -502,15 +548,27 @@ export class Hud {
     else if (!call.ok && call.reason === 'boon-wave') reason = BOON_WAVE_TEXT;
     else if (!call.ok && call.reason === 'last-wave') reason = state.wave < lastWave(state) ? BOSS_WAVE_NEXT_TEXT : LAST_WAVE_TEXT;
     this.startButton.setFontSize(call.ok || reason ? m.callFont : m.startFont);
-    if (reason) this.startButton.set(blockedWaveLabel(!!state.pendingBoon, reason), false);
-    else if (call.ok) this.startButton.set(callEarlyLabel(call.bonus), true);
+    if (reason) this.startButton.set(m.portrait ? reason : blockedWaveLabel(!!state.pendingBoon, reason), false);
+    else if (call.ok) this.startButton.set(callEarlyLabel(call.bonus, m.portrait), true);
     else this.startButton.set(START_WAVE_TEXT, canStartWave(state));
+    const label = this.startButton.labelObjects[0];
+    const availableWidth = m.start.width - 4;
+    label.setScale(Math.min(1, availableWidth / label.width), Math.min(1, (m.start.height - 2) / label.height));
     // Once the game is over the speed toggle is inert (greyed, ignores clicks).
-    this.speedButton.set(speedLabel(speed), state.phase !== 'won' && state.phase !== 'lost');
+    const playable = state.phase !== 'won' && state.phase !== 'lost';
+    this.pauseButton.setShown(playable);
+    this.pauseIcon.setVisible(playable);
+    const hideAction = !playable || this.pauseIcon.scene.time.paused;
+    if (this.pauseAction.hidden !== hideAction) this.pauseAction.hidden = hideAction;
+    this.speedButton.set(speedLabel(speed), playable);
     const ready = specialReady(state);
     const recharge = specialRecharge(state);
     // Milestone 30 follow-up: while the charge refills the label is the countdown ("Wait 15s").
-    this.specialButton.set(recharge ? rechargeText(state.specialRechargeTicks, TICKS_PER_SECOND) : SPECIAL_BUTTON_TEXT, ready);
+    this.specialButton.set(recharge ? rechargeText(state.specialRechargeTicks, TICKS_PER_SECOND, m.portrait) : SPECIAL_BUTTON_TEXT, ready);
+    if (m.portrait) {
+      const specialLabel = this.specialButton.labelObjects[0];
+      specialLabel.setScale(Math.min(1, (m.special.width - (recharge ? 7 : 24)) / specialLabel.width), 1);
+    }
     this.specialButton.setPicked(ready && (special.menuOpen || special.aiming !== null));
     // The fill grows in whole pixels, so it redraws at most once per pixel.
     const sb = m.special;
@@ -519,7 +577,7 @@ export class Hud {
     const key = `${ready}:${recharge ? fillWidth : -1}:${pulse}`;
     if (this.pipKey !== key) {
       this.pipKey = key;
-      const cx = sb.x + sb.width - PIP_INSET;
+      const cx = sb.x + sb.width - (m.portrait ? 10 : PIP_INSET);
       const cy = sb.y + sb.height / 2;
       this.pip.clear();
       this.rechargeFill.clear();
@@ -567,6 +625,7 @@ export class Hud {
       startWave: { ...this.startButton.rect },
       speed: { ...this.speedButton.rect },
       mute: { ...this.muteButton.bounds },
+      ...(this.pauseIcon.visible ? { pause: this.pauseButton.rect } : {}),
       special: { ...this.specialButton.rect },
       ...this.bar.rects(),
       ...this.specialMenu.rects(),

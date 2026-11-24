@@ -43,10 +43,10 @@ import {
 import type { EnemySprites } from '../anim/enemySprites';
 import { sound } from '../audio/engine';
 import { deathSound } from '../audio/recipes';
-import { STEP_MS } from '../loop';
+import { STEP_MS, type GameClock } from '../loop';
 import { goldGainText } from '../names';
 import { Moments } from './moments';
-import { LANDSCAPE, type Layout } from '../layout';
+import type { Layout } from '../layout';
 import { COLORS, HUD_FONT, TEXT } from '../palette';
 import { Aim, drawTowerScaled, MUZZLE, type TowerPose } from '../draw/towers';
 import {
@@ -207,7 +207,8 @@ export class Effects {
     private readonly map: MapDef,
     private readonly livesFx: LivesFx,
     /** Milestone 32b: world-space drawing goes on Graphics the scene placed with it; particles and text are placed through it. */
-    private readonly layout: Layout = LANDSCAPE,
+    private readonly layout: Layout,
+    private readonly clock: GameClock,
   ) {
     this.projectiles = new Array<Projectile | null>(CAPS.projectiles).fill(null);
     this.impacts = new Array<Impact | null>(CAPS.impacts).fill(null);
@@ -284,7 +285,7 @@ export class Effects {
   }
 
   private get realMs(): number {
-    return this.scene.time.now;
+    return this.clock.nowMs;
   }
 
   /** Let a frame pass: `deltaMs` of real time at `speed`, capped as the tick loop caps it. */
