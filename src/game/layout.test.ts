@@ -8,7 +8,7 @@ import { arcPosition } from './fx/fxMath';
 import { DRAG_LIFT, dragTargetCell, LIFT_CSS, liftPx, placeBeside } from './input';
 import { aimBannerText } from './names';
 import { LANDSCAPE, layoutFor, PORTRAIT, PORTRAIT_HEIGHT, PORTRAIT_MIN_FONT, PORTRAIT_WIDTH, type Layout } from './layout';
-import { panelGeometry, PORTRAIT_STACK, PORTRAIT_TITLE, portraitBarRects, portraitRow2, stackBox, STRIP_LINE_CHARS, stripAimText, titleRects } from './ui/geometry';
+import { panelGeometry, PORTRAIT_ROW_WIDTH, PORTRAIT_STACK, PORTRAIT_TITLE, portraitBarRects, portraitRow2, stackBox, STRIP_LINE_CHARS, stripAimText, titleRects } from './ui/geometry';
 
 const allCells: Cell[] = [];
 for (let col = 0; col < GRID_COLS; col++) for (let row = 0; row < GRID_ROWS; row++) allCells.push({ col, row });
@@ -211,7 +211,7 @@ describe('portrait controls and title arithmetic', () => {
 
   it('keeps the controls inside the canvas, under the map and apart', () => {
     controls.forEach((r, i) => {
-      expect(inside(r, canvas)).toBe(true);
+      expect(inside(r, { ...canvas, width: PORTRAIT_ROW_WIDTH })).toBe(true);
       expect(r.y).toBeGreaterThanOrEqual(PORTRAIT.map.y + PORTRAIT.map.height);
       controls.slice(i + 1).forEach((q) => expect(overlaps(r, q)).toBe(false));
     });

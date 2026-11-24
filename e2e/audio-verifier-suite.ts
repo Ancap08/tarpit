@@ -321,15 +321,17 @@ export function suite(touch: boolean): void {
 
   test('no HUD button overlaps another or is smaller than its minimum beside the mute button', async ({ page }) => {
     await toGame(page, touch);
-    const rects = await page.evaluate(() => window.__tarpit!.uiRects() as Record<string, { x: number; y: number; width: number; height: number }>);
-    const portrait = rects.mute.width === 70;
+    const { rects, portrait } = await page.evaluate(() => {
+      const t = window.__tarpit!;
+      return { rects: t.uiRects(), portrait: t.layout() === 'portrait' };
+    });
     const names = Object.keys(rects).filter((k) => k.startsWith('bar:') || ['startWave', 'speed', 'special', 'mute', 'pause'].includes(k));
     expect(names.length).toBe(11);
     for (const n of names) {
       expect(rects[n].height, `${n} height`).toBeGreaterThanOrEqual(portrait ? 70 : 42);
       expect(rects[n].width, `${n} width`).toBeGreaterThanOrEqual(portrait ? 70 : 42);
     }
-    expect(rects.startWave.width).toBeGreaterThanOrEqual(portrait ? 126 : 130);
+    expect(rects.startWave.width).toBeGreaterThanOrEqual(portrait ? 168 : 130);
     if (!portrait) for (const n of names.filter((k) => k.startsWith('bar:'))) expect(rects[n].width).toBeGreaterThanOrEqual(132);
     for (const a of names)
       for (const b of names)

@@ -60,16 +60,19 @@ export function portraitBarRects(): Rect[] {
   }));
 }
 
-/** Pause uses the last 80 px, including the spare height below the tower row. */
+/** The bottom row extends into the same right margin as the held-reward rail. */
+export const PORTRAIT_ROW_WIDTH = 520;
+
 export function portraitRow2() {
   const y = PORTRAIT_ROW2_Y;
   const height = PORTRAIT_BUTTON_H;
+  const icon = { y: y - 5, width: 80, height: 80 };
   return {
-    special: { x: 4, y, width: 110, height },
-    start: { x: 118, y, width: 126, height },
-    speed: { x: 248, y, width: 70, height },
-    mute: { x: 322, y, width: 70, height },
-    pause: { x: 396, y: y - 5, width: 80, height: 80 },
+    special: { x: 1, y, width: 112, height },
+    start: { x: 115, y, width: 168, height },
+    speed: { x: 285, y, width: 70, height },
+    mute: { x: 357, ...icon },
+    pause: { x: 439, ...icon },
   };
 }
 

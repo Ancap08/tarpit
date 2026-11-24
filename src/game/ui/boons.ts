@@ -165,6 +165,7 @@ export class HeldBoons {
     this.effect = label(scene, this.geo.descriptionFont, ink).setOrigin(0, 0.5).setPosition(14, r.height * 0.68)
       .setWordWrapWidth(r.width - 28, true);
     this.detail = scene.add.container(r.x, r.y, [bg, this.name, this.effect]).setDepth(HELD_DEPTH).setVisible(false);
+    this.fit();
     scene.scale.on('resize', this.fit, this);
     scene.events.once('shutdown', () => {
       scene.scale.off('resize', this.fit, this);
@@ -225,7 +226,7 @@ export class HeldBoons {
       box.setSize(r.width, r.height);
       icon.setPosition(r.width / 2, r.height / 2).setScale(r.width / 46);
     });
-    const width = this.ids.length > 0 ? geo.canvasWidth : this.layout.width;
+    const width = this.ids.length ? geo.canvasWidth : geo.hudWidth;
     if (scale.width !== width) scale.setGameSize(width, this.layout.height);
   }
 
