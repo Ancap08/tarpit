@@ -10600,3 +10600,59 @@ With no Free play retune, 64 of 78 local screenshot frames were pixel-identical 
 - `e2e/visual-phone.spec.ts` (4) — phone-boss.png, phone-grumblemaw.png, phone-tar-zone.png, phone-won.png.
 
 The Grumblefoot frame retains the original selection criteria (alone, tarred and burning, with a Mortar hit two ticks earlier). It now occurs on tick 5226 instead of 5316, at (385,96) instead of (420,98), with 3418 instead of 3400 HP and 17 instead of 14 player lives. The level 5 tip uses 47 of the allowed 61 characters. The barrel line fits at normal and six-percent-wider text metrics on both viewports.
+
+### Free play health trials
+
+After the campaign gold/HP trials and second-act wave trials, the Free play sensitivity measurements used isolated simulation inputs. These alternatives did not change a campaign level, the accepted report hash or the checked-in difficulty definitions.
+
+The following trial brought all three Normal standard runs inside 9–15, preserved C2 and C3, and met the Hard plan’s late-wave loss distribution on all three maps. Normal base HP was 0.96 (was 1), with growth 0.43 (was 0.28). Hard base HP was 1.0133233300411522 (was 1.2), with growth 0.4326953125 (was 0.213). Easy kept its original settings. A zero in the table is a defeat.
+
+| Map | Standard | Barrel unused | All barrel | All Fire Arrows |
+|---|---:|---:|---:|---:|
+| Meadow | 12 | 6 | 14 | 8 |
+| Switchback | 9 | 0 | 0 | 7 |
+| Riverbend | 15 | 4 | 2 | 9 |
+
+Sixteen of 91 ordinary target rows still miss. Meadow misses S3, S5, S7, R3 and Hard H3. Switchback misses S2, S3, S5 and S7. Riverbend misses S2, S3, S4, S5 and S7 on Normal and S3 on Hard. V7 also fails. On Riverbend only 9/27 Normal reward combinations win. At −5%/nominal/+5% late-wave HP, Hard ends at 3 lives, 13 lives and defeat on wave 20.
+
+Additional misses include the Tar Pit's outright path win and nine-life gap (15 observed), Musketeer P4, Cannon P2/P4, Mortar P2, Fire Pot P1/P2/P4 and a Fire Pot purchase control, plus N10c, N10d, K2 and aggregate G2. All isolated P3 encounters, six K3 sweeps and nine G3 sweeps pass. The survey tested 619 distinct Normal base/growth combinations across the three maps, plus 200 further Riverbend screens. None of the sampled settings put Riverbend inside 9–15 with losses on three late waves and at most four lives lost on each. Those Free play samples establish a remaining balance problem. They do not exhaust the continuous growth range.
+
+### Combined campaign trial
+
+The following eight edits were tested together in memory, after measuring the unmodified levels. The second-act wave edits followed unsuccessful single-field and joint gold/HP trials. Counts, timing and enemy type outside the listed groups were preserved.
+
+| Level | Trial field | Old | New | Change | Gate it addressed |
+|---:|---|---:|---:|---:|---|
+| 7 | HP scale | 1.3 | 1.239 | −4.69% | Restores ordinary Good’s third star and passes R6/C6 |
+| 9 | HP scale | 1 | 1.025 | +2.50% | Restores the tier-three advantage, L3 |
+| 10 | HP scale | 0.925 | 0.895 | −3.24% | With starting gold, keeps the finale inside C8 and allows the level 11 handover |
+| 10 | Starting gold | 280 | 250 | −10.71% | Same joint finale trial |
+| 11 | Wave 4, first group of 20 | Wolves | Shieldbearers | Same count | Restores the Window Tax removal margin, T1 |
+| 12 | Wave 1, first group of 38 | Shieldbearers | Goblins | Same count | Restores F2 and the Forced March tax bite |
+| 13 | Starting gold | 285 | 249 | −12.63% | Restores the tax and sensitivity checks, T1/L6 |
+| 17 | Wave 5 Harpies | 36 | 39 | +8.33% | Keeps the max-towers feat out of reach of Person, F2 |
+
+| Level | Good | Person | Beginner | Good forced | Person forced | Local gate misses |
+|---:|---:|---:|---:|---:|---:|---|
+| 1 | 3/20 | 3/20 | 3/20 | 3/20 | 3/20 | pass |
+| 2 | 3/20 | 3/20 | 1/3 | 3/20 | 3/20 | pass |
+| 3 | 3/20 | 3/20 | 2/16 | 3/20 | 3/20 | pass |
+| 4 | 2/13 | 2/16 | 0/0 | 2/13 | 2/16 | pass |
+| 5 | 3/20 | 3/20 | 1/2 | 3/20 | 3/20 | pass |
+| 6 | 2/17 | 2/16 | 0/0 | 2/17 | 2/16 | pass |
+| 7 | 3/20 | 2/16 | 0/0 | 3/20 | 3/20 | L3 |
+| 8 | 2/17 | 2/16 | 0/0 | 2/14 | 2/13 | L3 |
+| 9 | 3/20 | 3/20 | 0/0 | 3/18 | 1/3 | pass |
+| 10 | 2/14 | 2/14 | 0/0 | 2/16 | 2/16 | pass |
+| 11 | 2/20 | 2/14 | 0/0 | 2/20 | 2/13 | pass |
+| 12 | 2/16 | 2/13 | 0/0 | 1/9 | 2/16 | pass |
+| 13 | 3/20 | 2/17 | 0/0 | 2/15 | 2/18 | pass |
+| 14 | 3/20 | 2/14 | 0/0 | 3/20 | 3/20 | pass |
+| 15 | 2/15 | 2/14 | 0/0 | 2/15 | 2/13 | pass |
+| 16 | 2/15 | 2/15 | 0/0 | 2/13 | 1/11 | pass |
+| 17 | 2/20 | 2/14 | 0/0 | 2/20 | 0/0 | pass |
+| 18 | 2/15 | 2/14 | 0/0 | 2/12 | 1/7 | pass |
+| 19 | 2/17 | 2/15 | 0/0 | 2/17 | 1/10 | F2 |
+| 20 | 2/14 | 2/13 | 0/0 | 2/15 | 2/14 | pass |
+
+Seventeen levels pass locally. Both C6 policies pass on all twenty. C8 scores are 20/14/14 against 20/16/13. Level 7 still fails L3 at −2% HP. Good ties the Barricade-removal control and needs two more lives or a better star. Level 8 fails L3. Level 19 still fails F2. The first-act Good mean drop reaches exactly 3 lives over 72.20 combat minutes. Across twenty levels it is 2.33 against 3 (four additional lives of total separation between the two six-level cohorts would suffice). S1 passes, with Person at 16.67 and 14.30 lives, an even handover and a largest drop of three. Total combat time is 133.03 minutes.

@@ -1,6 +1,9 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { comboBuild, comboIdleBarrel, comboWithoutSpecial, playScripted, type RecordedOutcome } from './headless';
+import { botBeginner, runBot } from './bots';
+import { createGame } from './game';
+import { DIFFICULTIES } from './difficulty';
 import { SPECIAL_RECHARGE_TICKS } from './specials';
 import { MAP_IDS, type MapId } from './map';
 
@@ -61,3 +64,15 @@ it.each([
   expect(script.timed?.flat().some(a => a.type === 'special' && a.special === 'tarBarrel')).toBe(false);
   expect(createHash('sha256').update(JSON.stringify(playScripted(script, undefined, 'normal'))).digest('hex')).toBe(hash);
 });
+
+// Beginner never uses specials. This complete Free play lock still applies at the
+// milestone 49 difficulty settings, independently of the new barrel behavior.
+it('preserves all nine no-special Beginner Free play runs', () => {
+  const hash = createHash('sha256');
+  for (const map of MAP_IDS) {
+    for (const difficulty of DIFFICULTIES) {
+      hash.update(JSON.stringify(runBot(createGame({ map, difficulty }), botBeginner)));
+    }
+  }
+  expect(hash.digest('hex')).toBe('9a058a4a3f753964b3aa7fa3da6f8c605d00bda93f9f578e2d0daf203e1364c1');
+}, 120_000);

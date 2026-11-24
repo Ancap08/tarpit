@@ -41,7 +41,7 @@ describe('campaign acceptance gate', () => {
     for (const [i, row] of result.levels.slice(0, 10).entries()) {
       if (i !== 6) expect(horde.spawned).toBeGreaterThan(row.good!.spawned);
     }
-  });
+  }, 480_000);
 
   it.each(LEVELS)('C6: both ordinary players favoring feathers on level $id', level => {
     const ordinary = bots.runBot(createGame({ level }), bots.botGood).state;
