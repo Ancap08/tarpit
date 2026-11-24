@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
 import { cellKey, type Tower, type GameState, type MapDef, type Point, type TowerType } from '../../sim';
-import { blinking, MOTION_COUNTS, smokePuff, STILL_T } from '../decor/motion';
-import { COLORS } from '../palette';
+import { blinking, STILL_T } from '../decor/motion';
 import { PLACING_ALPHA, type DecorState } from '../decor/livingMap';
 import { decorFor, hiddenGrowth, type Growth } from '../decor/recipe';
 import type { TowerPose } from '../draw/towers';
@@ -33,8 +32,6 @@ export class PaintedSkin {
   readonly shadows: Phaser.GameObjects.Layer;
   private readonly ground: Image;
   private readonly cave: Image;
-  private readonly chimney: Point;
-  private readonly smoke: Phaser.GameObjects.Graphics;
   private readonly reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   private drawnTime = Number.NaN;
   private readonly growth: { g: Growth; image: Image }[];
@@ -60,16 +57,14 @@ export class PaintedSkin {
     };
     const spawn = map.path[0];
     this.cave = place('cave', { x: spawn.x + 22, y: spawn.y }, layout.turned ? 1 : 0);
-    const box = map.landmarks![0];
-    const cottage = place('cottage', { x: box.x + box.width / 2, y: box.y + box.height / 2 });
-    // Centre of the chimney opening in the 1x frame, relative to its ground anchor.
-    this.chimney = { x: cottage.x + 11, y: cottage.y - 22 };
-    this.smoke = scene.add.graphics().setDepth(cottage.depth + 0.1);
-    this.standing.add(this.smoke);
     this.growth = decorFor(map).growth.map(g => {
       const name = growthArt(g);
       return { g, image: place(name, g, name === 'oak' ? g.id % 4 : 0) };
     });
+  }
+
+  placeTown(layer: Phaser.GameObjects.Container): void {
+    this.scene.children.moveTo(layer, this.scene.children.getIndex(this.ground) + 1);
   }
 
   /** Put zones over the board, and under its shadows and standing pieces. */
@@ -95,12 +90,7 @@ export class PaintedSkin {
     if (t !== this.drawnTime) {
       this.drawnTime = t;
       this.cave.setFrame((this.layout.turned ? 1 : 0) + (blinking(t) ? 2 : 0));
-      this.smoke.clear();
-      for (let i = 0; i < MOTION_COUNTS.smokePuffs; i++) {
-        const puff = smokePuff(i, t);
-        this.smoke.fillStyle(COLORS.chimneySmoke, puff.alpha);
-        this.smoke.fillCircle(this.chimney.x + puff.dx, this.chimney.y + puff.dy, 6 * puff.scale);
-      }
+
     }
     const occupied = new Set(state.towers.map(t => cellKey(t.cell)));
     for (const [id, image] of this.towers) {
@@ -120,7 +110,7 @@ export class PaintedSkin {
       still: this.testMode || this.reducedMotion.matches, t: this.drawnTime,
       moving: {
         clouds: [], flow: null, bird: null, butterfly: null, sway: 0,
-        smoke: Array.from({ length: MOTION_COUNTS.smokePuffs }, (_, i) => smokePuff(i, this.drawnTime).alpha),
+        smoke: [],
         eyesOpen: !blinking(this.drawnTime),
       },
     };
