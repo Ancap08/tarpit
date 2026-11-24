@@ -4,7 +4,7 @@
 // nor the buttons in that list and could hand the click to the veil. With the
 // buttons the only interactive objects there, a click always reaches one.
 
-import type Phaser from 'phaser';
+import Phaser from 'phaser';
 import type { GameState } from '../../sim';
 import type { Rect } from '../input';
 import type { Layout } from '../layout';
@@ -66,7 +66,7 @@ export class EndScreen {
   private readonly cy: number;
 
   /** `layout` (milestone 32b): the veil covers its map box and the panel is centred on it. */
-  constructor(scene: Phaser.Scene, layout: Layout, onPlayAgain: () => void, onMenu: () => void, onKeepGoing: () => void) {
+  constructor(scene: Phaser.Scene, layout: Layout, onPlayAgain: () => void, onMenu: () => void, onKeepGoing: () => void, salute?: Phaser.GameObjects.Layer) {
     const MAP_AREA = layout.map;
     const cx = MAP_AREA.x + MAP_AREA.width / 2;
     const cy = MAP_AREA.y + MAP_AREA.height / 2;
@@ -79,6 +79,11 @@ export class EndScreen {
     this.veil = scene.add
       .rectangle(MAP_AREA.x, MAP_AREA.y, MAP_AREA.width, MAP_AREA.height, COLORS.endVeil, 0.62)
       .setOrigin(0, 0);
+    if (salute) {
+      // The evening salute shines through the open field around the paper.
+      // Keep the panel, labels and every control above it.
+      Phaser.Utils.Array.BringToTop(scene.children.list, salute);
+    }
     this.panel = scene.add.graphics();
     this.title = scene.add
       .text(cx, top + 44, '', { fontFamily: FONT, fontSize: '40px', fontStyle: 'bold', color: TEXT.paperGold })

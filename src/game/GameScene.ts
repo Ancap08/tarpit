@@ -659,6 +659,7 @@ export class GameScene extends Phaser.Scene {
         if (next) this.leaveForTitle({ screen: 'levelCard', levelId: next });
         else this.continueEndless();
       },
+      this.showpiece?.battle.victoryLayer,
     );
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {

@@ -16,7 +16,7 @@ export class ShowpieceBattle implements BattleObserver {
   blast?: () => void;
   private readonly fieldLayer: Phaser.GameObjects.Layer;
   private readonly crewLayer: Phaser.GameObjects.Layer;
-  private readonly victoryLayer: Phaser.GameObjects.Layer;
+  readonly victoryLayer: Phaser.GameObjects.Layer;
   private readonly field: BattleField;
   private readonly crew: GunCrews;
   private readonly salute: VictorySalute;
