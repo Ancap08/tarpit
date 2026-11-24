@@ -308,5 +308,5 @@ for (const speed of [1, 3]) {
 
 test('the mute buttons (960 x 580, mouse): 42 px, overlapping nothing, on the title and in the HUD', async ({ page }) => {
   await muteRoundTrip(page, false, 42);
-  expect(await page.evaluate(() => window.__tarpit!.uiRects().mute)).toEqual({ x: 904, y: 533, width: 42, height: 42 });
+  expect(await page.evaluate(() => window.__tarpit!.uiRects().mute)).toEqual({ x: 828, y: 533, width: 42, height: 42 });
 });

@@ -5,7 +5,7 @@ import type { GameEvent } from '../src/sim';
 // Verifier probes for milestone 25b (Claude Fable 5.2), desktop project,
 // real mouse. At the 960x580 viewport canvas space is page space. Time is
 // frozen (?test=1). Numbers are the spec's, written out here: map 960x480,
-// HUD below y 480, Special button x 630, 100 wide.
+// HUD below y 480, Special button x 586, 100 wide.
 
 type Point = { x: number; y: number };
 type Rect = { x: number; y: number; width: number; height: number };
@@ -190,7 +190,7 @@ test('(g) the Special button looks greyed in setup and after the game ends, show
   await page.waitForFunction(() => window.__tarpit?.scene?.() === 'title');
   await page.evaluate(() => (window.__tarpit as TarpitTestApi).startGame());
   const r = (await rects(page)).special;
-  expect(r).toEqual({ x: 630, y: 484, width: 100, height: 42 });
+  expect(r).toEqual({ x: 586, y: 484, width: 100, height: 42 });
   await page.mouse.move(100, 100);
   const setup = await shot(page, r);
   await click(page, 'special');
@@ -308,11 +308,11 @@ test('(j) the wave preview never reaches the Special button, in setup and mid-wa
     }
   }
   expect(out.length).toBeGreaterThanOrEqual(39);
-  // Row 1 buttons: 8 px apart, 14 px from the right edge, none overlapping.
+  // Wave controls have 6 px gaps before sound and pause.
   const r = await rects(page);
   expect([r.special, r.startWave, r.speed].map((q) => [q.x, q.width, q.y, q.height])).toEqual([
-    [630, 100, 484, 42],
-    [738, 130, 484, 42],
-    [876, 70, 484, 42],
+    [586, 100, 484, 42],
+    [692, 130, 484, 42],
+    [828, 42, 484, 42],
   ]);
 });

@@ -54,7 +54,7 @@ describe('boon UI', () => {
       expect(Math.min(slot.width, slot.height) * scale).toBeGreaterThanOrEqual(44);
       if (inRow) {
         expect(slot.y).toBeGreaterThan(layout.map.height);
-        expect(slot.x + slot.width).toBeLessThan(904); // mute
+        expect(slot.x + slot.width).toBeLessThan(828); // mute
         if (i > 0) expect(slot.x).toBeGreaterThan(geo.slots[i - 1].x + geo.slots[i - 1].width);
       } else {
         expect(slot.x).toBeGreaterThan(layout.width); // clear of the map and every control

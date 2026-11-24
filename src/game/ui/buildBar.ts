@@ -15,15 +15,11 @@ import { makeLock } from './lock';
 import { BAR_TYPES, canPick } from './buildBarModel';
 import { Button } from './button';
 
-/**
- * Bar button geometry (milestone 11, 42 px tall from milestone 14): six 140 x 42 buttons, 8 px apart from
- * x 16, so 6 * 140 + 5 * 8 = 880 px, ending at x 896 (milestone 33: 148
- * px wide before, narrowed for the mute button at x 904, hud.ts).
- */
-export const BAR_BUTTON_WIDTH = 140;
+/** Keep the six full-size landscape plaques inside the pause column. */
+export const BAR_BUTTON_WIDTH = 132;
 export const BAR_BUTTON_HEIGHT = 42;
-export const BAR_LEFT = 16;
-export const BAR_GAP = 8;
+export const BAR_LEFT = 6;
+export const BAR_GAP = 4;
 
 /** Where a portrait button's icon centre and cost centre sit, in px from its top (milestone 32b, geometry.ts). */
 const ICON_Y = 27;
@@ -80,11 +76,11 @@ export class BuildBar {
       this.compact = compact;
       let x = BAR_LEFT;
       this.buttons.forEach((button, i) => {
-        const compactWidth = BAR_TYPES[i] === 'musketeer' ? 124 : 116;
+        const compactWidth = BAR_TYPES[i] === 'musketeer' ? 118 : 103;
         const width = compact ? compactWidth : BAR_BUTTON_WIDTH;
         button.setWidth(width);
         button.moveTo(x, button.rect.y);
-        x += width + (compact ? 6 : BAR_GAP);
+        x += width + BAR_GAP;
         button.setFontSize(this.paintedIcons ? (compact ? '13px' : '14px') : (compact ? '14px' : '16px'));
         const r = button.rect;
         this.paintedIcons?.[i].setX(r.x + r.width / 2);

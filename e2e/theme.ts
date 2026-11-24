@@ -34,6 +34,47 @@ async function checkLabels(page: Page, wanted: string[], area: Rect, controls?: 
 
 export function themeSuite(touch: boolean) {
   momentBannerSuite(touch);
+  for (const fallback of [false, true]) {
+    test(`pause plaque and panel fit with tall metrics and wide digits (${fallback ? 'fallback' : 'Caslon'})`, async ({ page }) => {
+      await useTallFontMetrics(page, fallback);
+      await page.goto('/?test=1');
+      await waitForFirstScreen(page);
+      await api(page, t => t.startLevel(9));
+      await api(page, t => {
+        t.state().boons = ['longBarrels', 'stickyTar', 'stoneWalls'];
+        t.state().wave = 6;
+        t.state().gold = 99999;
+        t.step(0);
+      });
+      const boxes = await api(page, t => t.uiRects());
+      const labels = await api(page, t => t.campaignLabels());
+      const pause = boxes.pause;
+      expect(labels.filter(label => overlap(label, pause)).map(label => label.text)).toEqual(['Pause']);
+      for (const [name, r] of Object.entries(boxes)) {
+        if (name !== 'pause') expect(overlap(pause, r), name).toBe(false);
+      }
+      const start = labels.find(label => label.text === 'Start Wave')!;
+      expect(contained(start, boxes.startWave)).toBe(true);
+      expect(contained(labels.find(label => label.text === 'Pause')!, pause)).toBe(true);
+      await api(page, t => t.pause());
+      const map = await api(page, t => t.layout()) === 'portrait' ? PORTRAIT.map : LANDSCAPE.map;
+      for (const restartLabel of ['Restart', 'Confirm restart']) {
+        if (restartLabel === 'Confirm restart') await press(page, 'pause:restart', touch);
+        const controls = await api(page, t => t.uiRects());
+        const copy = await api(page, t => t.campaignLabels());
+        const heading = copy.find(label => label.text === 'Paused')!;
+        expect(contained(heading, map)).toBe(true);
+        const rows = [['pause:resume', 'Resume'], ['pause:restart', restartLabel], ['pause:menu', 'Level map']];
+        for (const [key, text] of rows) {
+          const r = controls[key];
+          expect(contained(r, map), key).toBe(true);
+          expect(contained(copy.find(label => label.text === text)!, r), text).toBe(true);
+          expect(overlap(r, heading), key).toBe(false);
+          for (const [other] of rows) if (other !== key) expect(overlap(r, controls[other]), key).toBe(false);
+        }
+      }
+    });
+  }
   for (const tall of [false, true]) {
     test(`theme copy clears title controls, longest previews and both boss bars${tall ? ' (tall metrics)' : ''}`, async ({ page }, info) => {
       if (tall) await useTallFontMetrics(page);
@@ -80,7 +121,7 @@ export function themeSuite(touch: boolean) {
           : 'Next: 8 Hound, 5 Redcoat, 8 Harpy, 6 Toll Troll + Grumblemaw';
         const hudRow = phone ? { x: 0, y: 0, width: 480, height: 76 } : { x: 0, y: 480, width: 960, height: 53 };
         const status = await api(page, t => t.hudText());
-        await checkLabels(page, [status.gold, status.lives, status.wave, preview], hudRow, /^(special|startWave|speed|boon:)/);
+        await checkLabels(page, [status.gold, status.lives, status.wave, preview], hudRow, /^(special|startWave|speed|pause|mute|boon:)/);
         if (phone) {
           const cssSize = await api(page, t => {
             const scene = t.game.scene.getScene('game');

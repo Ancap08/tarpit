@@ -103,6 +103,10 @@ export function paintedLoadingText(progress: number): string {
 
 export const PAINTED_FALLBACK = 'Painted art could not load. Playing Classic.';
 
+export const PAUSE_TEXT = {
+  button: 'Pause', title: 'Paused', resume: 'Resume', restart: 'Restart', confirm: 'Confirm restart',
+} as const;
+
 /** The end screens' words (endText.ts and the end screen's buttons). */
 export const END_TEXT = {
   playAgain: 'Play again',

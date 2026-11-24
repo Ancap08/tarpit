@@ -13,6 +13,9 @@ import type { SoundName } from '../audio/recipes';
 import type { Rect } from '../input';
 import { COLORS, HUD_FONT, TEXT } from '../palette';
 
+/** Emitted on the scene input plugin when a pause cancels any unfinished click. */
+export const CANCEL_UI_PRESS = 'cancel-ui-press';
+
 export interface ButtonOptions {
   fontSize?: string;
   /** Horizontal inset for paired labels. */
@@ -70,6 +73,10 @@ export class Button {
     this.moveTo(rect.x, rect.y);
     this.refresh();
 
+    scene.input.on(CANCEL_UI_PRESS, () => {
+      this.pressed = false;
+      this.setHover(false);
+    });
     this.box.setInteractive({ useHandCursor: true });
     this.box.on('pointerover', () => this.setHover(true));
     this.box.on('pointerout', () => {
@@ -177,6 +184,10 @@ export class Button {
     } else {
       this.label.setPosition(x + this.r.width / 2, mid);
     }
+  }
+
+  setDepth(depth: number): void {
+    for (const object of [this.box, this.trim, this.label, this.rightLabel]) object?.setDepth(depth);
   }
 
   setShown(shown: boolean): void {
