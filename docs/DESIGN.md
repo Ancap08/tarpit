@@ -61,11 +61,21 @@ the plaque leaves at least 8 px at either map edge. Tall text expands the
 plaque vertically and leaves at least 2 px between lines. Changing the look
 changes the battlefield art.
 
+During a campaign level or Free play, the Pause plaque and P open a
+parchment panel over the dimmed battlefield. Resume is selected first.
+Arrows select an action and Enter or Space activates it. P, Escape and
+Resume return to play. Restart changes to “Confirm restart” on its first
+activation. The second starts the same level, or the same Free play map
+and difficulty, from the beginning. Level map returns to the campaign
+road. Menu returns to the Free play picker. Mute still works on the HUD
+and from M.
+
 ## Space and time
 
 - The canvas is 960 x 580 px. The map uses the top 960 x 480; the HUD uses
   the bottom 100 px in two rows: stats, the next-wave preview and the
-  Special, Start Wave and speed buttons, then the build bar.
+  Special, Start Wave and speed buttons, then the build bar and mute. Pause
+  spans both rows at the right edge.
 - Positions are in pixels. Speeds are pixels per second.
 - The simulation runs at a fixed 60 ticks per second (`dt = 1/60 s`). It
   has no randomness: a given sequence of actions always produces the same
@@ -134,8 +144,8 @@ Buildable counts are of the 450 cells.
 - **Drawing.** `draw/map.ts` draws any map from its data: grass, the path,
   water (flat blue filling its box, a 3 px darker bank, top corners
   rounded by 12 px when it runs off the bottom edge, a few pale ripple
-  strokes), the cave at the spawn and a cottage in each landmark box. No
-  image assets.
+  strokes) and the cave at the spawn. The upright town is a separate layer
+  on the refused cells beside the exit.
 
 ## Economy and lives
 
@@ -500,8 +510,8 @@ a tower underneath the card. HUD buttons remain usable.
 Held rewards appear in pick order. Each icon has its own hit area of at
 least 44 x 44 CSS px. When the landscape canvas fits at full size, the
 icons share the build row with the six tower buttons. Once the first
-reward is held, the Musketeer button narrows from 140 to 124 px and the
-others to 116 px, with 6 px between buttons. Classic labels go from 16 to
+reward is held, the 132 px tower buttons narrow to 118 px for the Musketeer,
+113 px for Longbow and 103 px for the others, with 4 px gaps. The reward icons start at x=678. Classic labels go from 16 to
 14 px. In portrait and smaller landscape windows the icons sit
 in a column beside the board. The portrait preview keeps its full 468 px.
 Hover or tap an icon to read its name and effect for up to 2.8 s.
@@ -757,7 +767,8 @@ The next wave can start after any reward pick. During a wave, the button
 calls the next wave when early calls are allowed. The next-wave preview lists each type
 once in first-group order with its counts summed ("Next: 20 Collector"); a
 preview too long for one 16 px line (264 px) wraps to two 13 px lines, or,
-if that takes three lines, to two 11 px lines. The wave 10 preview reads
+if that takes three lines, to two 11 px lines. The landscape counter fits
+this logical wrap into 222 px of display width, leaving 8 px before Special. The wave 10 preview reads
 "Next: 20 Hound, 15 Toll Troll, 12 Harpy, 8 Redcoat + Grumblefoot".
 
 ## Call early
@@ -954,8 +965,7 @@ depends on them (`npm run sim` is unchanged). The maths is in
 
 ## Map decoration
 
-Milestone 34. Drawing only: no rule, number or map data changes, no art
-files; `npm run sim` is unchanged. The recipe is in
+Milestone 34. The Classic terrain is drawn in code; `npm run sim` is unchanged. The recipe is in
 `src/game/decor/recipe.ts`, the motion in `src/game/decor/motion.ts`, the
 drawing in `src/game/decor/livingMap.ts` and `src/game/draw/map.ts`.
 
@@ -992,7 +1002,7 @@ drawing in `src/game/decor/livingMap.ts` and `src/game/draw/map.ts`.
   blocked.
 - **What moves** (in play): on Riverbend 14 little wave crests (short
   shallow arches lying across the flow) drifting downstream at 14 px/s,
-  and 3 glints; 4 chimney smoke puffs, each rising 26 px over 4.8 s; tree
+  and 3 glints; chimney smoke from the town (below); tree
   tops and the swaying tufts move up to 1.5 px on a 3.4 s cycle, each with
   its own phase; 2 cloud shadows (300 x 180 px, at most about 5% darker)
   drift at 5 to 7 px/s and wrap round; a bird crosses high once every 23 s
@@ -1073,8 +1083,7 @@ The title screen offers Classic and Painted. Painted is the default for a fresh 
   The orange Assessor wears a
   short maroon coat and carries a ledger. His horns flank his powdered wig,
   and two tusks rise from his square jaw. The King wears a crown and
-  fur-edged cape and carries a sceptre. A blue coin banner flies beside the
-  exit cottage on every map.
+  fur-edged cape and carries a sceptre. The exit town flies its blue coin flag until it is taken.
 - Each painted squad keeps its four blue-clad townsfolk in squad order
   throughout the fight: Axeman, Swordsman, hooded Archer and Captain.
   All four strike within arm's reach. Classic uses its original guard drawing.
@@ -1091,8 +1100,7 @@ The title screen offers Classic and Painted. Painted is the default for a fresh 
   Boss health stays in the HUD.
 - The painted cave sits 22 px along the trail from the spawn, opening to
   the right in landscape and down in portrait. Its two golden eyes blink
-  on the living map's clock. Four smoke puffs rise from the chimney,
-  11 px right and 22 px above the cottage anchor in either layout.
+  on the living map's clock. The town chimney emits four puffs on a 4.8-second cycle.
   Test mode and reduced motion hold the open eyes and smoke at time zero.
   Painted omits cloud shadows to keep the ground shading visible.
 - A valid Painted placement has an ivory fill and rail inside a charcoal rim.
@@ -1102,6 +1110,57 @@ The title screen offers Classic and Painted. Painted is the default for a fresh 
 - During the 80 ms hit flash, the enemy's current Painted pose mixes 28% white
   into each coloured pixel and keeps its original opacity. Both poses brighten
   during a turn. In test mode the hit flag still lasts one tick.
+
+## The town and the story
+
+The town occupies part of the four cells already refused beside the exit.
+All three maps use columns 28–29 (zero-based). Meadow uses rows 4–5,
+Switchback and Riverbend rows 10–11. The last 22 px beside the road's
+centreline stay clear. A cottage, fence, flag and residents fit in 62 × 42
+game pixels in landscape. In portrait they stand upright in a separate
+42 × 62 arrangement. The town draws below towers, walkers and health bars.
+
+Campaign conditions use the star boundaries. In Free play the boundaries
+are 18/20 (90%) and 12/20 (60%) of starting lives, rounded up to a whole
+life. The high and middle boundaries are 32 and 21 on Easy, 18 and 12 on
+Normal, and 14 and 9 on Hard. Zero or fewer lives always means taken.
+
+| Condition | Painted town |
+|---|---|
+| Untouched | Tall blue coin flag, intact fence, lit windows, residents outside, light chimney smoke |
+| Scuffed | Broken rail, blue sailcloth roof patch, one neighbour outside, dusty smoke |
+| Battered | Blue flag at half height, damaged fence, shuttered window, residents indoors, thick smoke |
+| Taken | Red crown banner over the battered town |
+
+Classic uses a flat cottage, coloured window, raised or lowered flag and
+state-dependent smoke. Crossing a boundary raises a brief puff of dust.
+A collector that reaches the road end carries a coin sack out of the
+town square. Its diameter is 10 + 4 × √(lives cost) game pixels and its
+flight lasts 720 ms. Reduced motion shows the purse at a fixed point on
+the route. Sacks draw below enemy health bars and remain inside the map.
+On a win, the people come outside with hats in the air and the blue flag
+at full height, even when the fence needs mending. On a loss, the red
+crown banner rises. The result appears immediately. Test mode and reduced
+motion hold the finished pose. These drawings read the simulation without
+changing placement or combat.
+
+The result paper has a dedicated 2:1 illustration of the condition in
+which the town finished. Its 480 × 240 colour plate loads on demand. A
+printed silhouette fills the space immediately and stays available offline.
+The picture sits to the left of the results in landscape and above them
+in portrait. A 38% veil keeps the town on the battlefield visible.
+
+The ten campaign cards print the King's notices alongside the tactical
+twists. Wins print the corresponding reply in town blue, losses the
+Crown's thanks in red. The opening proclamation and its reply precede
+the first campaign map. Level ten uses the first sentence of the Ending
+on its result. The full Ending follows the player's choice of Level map
+or Play again, and Continue carries out that choice.
+
+Each broadside has one button. Its first rendered frame records
+`opening` or `ending` in `tarpit.seenBroadsides`, beside the tips record.
+A denied write falls back to the current session. Rotation preserves the
+page and the destination.
 
 ## Showpiece (experimental)
 
@@ -1241,22 +1300,21 @@ Sounds follow the renderer's events and change no rule, number or outcome
 - **Starting and stopping** (`engine.ts`): no `AudioContext` exists until
   the player's first pointerdown, pointerup, touchend, click or keydown
   (capture listeners on `window` create it, or resume it later). A hidden
-  page stops every voice and suspends the context; it resumes when the
-  page shows. Without Web Audio, or if the context fails, the game is
+  page or a paused game stops every voice and suspends the context.
+  The title can resume sound on becoming visible. A hidden game stays silent
+  when it returns, including through mute changes, until the player resumes
+  or leaves the run. Without Web Audio, or if the context fails, the game is
   silent with no error. Phaser's own sound manager is off
   (`audio.noAudio`), so it makes no context. Sounds play only while the
   context runs and the page shows.
 - **Test mode** (`?test=1`): the engine is installed disabled; nothing is
   created and nothing plays (the mute setting and M still work).
 - **Mute.** A speaker drawn in code (two waves when on, a red cross when
-  muted): landscape, 42 x 42 at the right end of HUD row 2 (x 904, under
-  the speed button; the build bar's buttons went from 148 to 140 px) and
-  in the title's top right corner; portrait, 70 x 70 at the end of
-  controls row 2 (Start Wave 170 and speed 82 wide) and in the title's
-  corner. The M key toggles it anywhere (in the README and
+  muted). The 42 × 42 landscape and 70 × 70 portrait mute buttons sit
+  beside Pause during play and in the title's top right corner. The M key toggles it anywhere (in the README and
   `audio().hint`; no hint is drawn on the button, where it was too small
   to read). Muting sets the mute gain to 0 at once and stops every voice;
-  unmuting plays a tap. Stored in `localStorage` under `tarpit.muted` ("1"
+  unmuting during play sounds a tap. Stored in `localStorage` under `tarpit.muted` ("1"
   muted, anything else sound on; default on) with the best scores' care:
   blocked or full storage never throws and the choice holds for the
   session.
@@ -1277,16 +1335,23 @@ drawn and where touches land differ.
   other window (square included) gets the landscape one. Desktop windows
   follow the same rule. The milestone 14 "turn your device" card is gone.
 - **Landscape** is the 960 x 580 canvas as before: the map at the top
-  (960 x 480), the HUD's two rows under it. Its frames did not move.
+  (960 x 480) and two HUD rows underneath. An 80 × 80 Pause plaque at
+  (876, 490) spans the right end of the counter. Immediately to its left,
+  speed sits above mute, each 42 × 42 at x=828. Special and Start Wave
+  keep their 100 and 130 px widths at x=586 and x=692. Landscape tower
+  buttons start at x=6 and measure 132 × 42 with 4 px gaps.
 - **Portrait** is a 480 x 1194 canvas. From the top: a 76 px status strip
   (gold, lives, wave and level tag in one row, "cheat used" at its right
   end, the next-wave preview on up to two lines under them), the map
   turned a quarter turn clockwise (480 x 960, spawn at the top, cottage at
   the bottom), then the controls: a row of the six tower buttons (75 x 70,
   each the tower's map shape over its cost, because a name at 18 px does
-  not fit 75 px) and a row with Special (130 x 70), Start Wave (214 x 70)
-  and speed (114 x 70); milestone 33 narrowed Start Wave to 170 and speed
-  to 82 for the 70 x 70 mute button at the row's end ("Sound"). The tower buttons are 4 px apart and the second row's 6 px; both rows start 5 px from the edge. The main portrait controls use 20 px type. The next-wave preview starts at y=28. Two 23 px lines fit above the brass edge at y=74. At 390 × 844 the 20 px type reads at 14.1 CSS px and a 70 px button measures 49.5 CSS px.
+  not fit 75 px) and a lower row with Special, Start Wave, speed, mute and Pause.
+  These plaques are 110, 126, 70, 70 and 80 px wide, starting at x=4
+  with 4 px gaps. Pause is 80 × 80 at (396, 1113). The other four
+  controls are 70 px tall and aligned on the same centre line. Pause
+  measures 56.5 CSS px on a 390 × 844 phone and 44.5 at 390 × 664.
+  The next-wave preview starts at y=28. Two 23 px lines fit above the brass edge at y=74. At 390 × 844 the 20 px type reads at 14.1 CSS px and a 70 px button measures 49.5 CSS px.
   On a 390 x 763 CSS px phone (standalone, inside the safe areas) the
   canvas fits at 0.639: buttons are 44.7 CSS px, 20 px text 12.8 CSS px and a
   map cell 20.5 CSS px. With Safari's bars (390 x 664) the scale is 0.556:
@@ -1330,6 +1395,18 @@ drawn and where touches land differ.
   coalesce: a burst of resizes queues one restart, which carries the game
   and is drawn for the window's shape when it runs; a scene drawn for
   another layout than the window's rebuilds on its next frame.
+  A paused run carries its paused clock into the rebuilt scene. The panel
+  reopens with Resume selected and a fresh Restart confirmation.
+
+- **Pausing.** Setup and an active wave can both pause. The fixed-step
+  accumulator keeps its remainder. Simulation ticks, recharge, effect clocks,
+  enemy animations, particles, tweens and scene timers freeze. Resume counts
+  only active time. A 3× hold returns to its previous speed. A build pick,
+  tower panel, drag or special aim clears without spending a charge or gold.
+  While the panel is open, only its actions and mute accept input.
+  Pause puts away a reward offer and restores the same choices on Resume.
+  A boss banner continues from the time at which it paused. The tips and
+  result screens keep their own controls and ignore P.
 
 ## Touch and phones
 
@@ -1337,6 +1414,12 @@ Milestone 35 (`src/game/pageLock.ts`, `src/game/touchAssist.ts`). Mouse
 input never goes through any of this: placement and selection with a
 mouse stay exact in every layout.
 
+- **Leaving play.** When the document becomes hidden or the browser sends
+  `pagehide` (including a phone lock), a running game opens Pause. Becoming
+  visible leaves the panel up until the player acts. A window blur with a
+  still-visible page releases interrupted holds. Frozen browser tests can
+  opt into automatic pause with `?test=1&autoPause=1`. Both live play and tests
+  expose `window.__tarpit.paused()`, `pause()` and `resume()`.
 - **Page lock.** `index.html` fixes `html` and `body` (`position: fixed`,
   `overflow: hidden`, `overscroll-behavior: none`) so the document has
   nothing to scroll, and gives `html`, `body`, `#game` and everything in
@@ -1687,7 +1770,7 @@ The milestone 37 “Closing pass” in DEVLOG records the Normal results.
 A level has a numeric id, map id, a finite list of wave groups, starting gold
 (100–300), enemy HP scale, first HP growth wave (or none), allowed towers,
 maximum tower level, allowed specials and reward waves.
-Names and twist lines are keyed by id in `src/game/names.ts`. Combat, enemy
+Names, notices, town replies and twist lines are keyed by id in `src/game/names.ts`. Combat, enemy
 stats, prices, upgrade paths, reward effects and special effects are shared
 with Free play. HP uses the Normal base. Starting at the first growth wave,
 each successive wave adds another 28% of that scaled base. The campaign gate
@@ -1801,7 +1884,8 @@ Pack Trail builds up from three-Goblin ranks to groups of six. Heavy Feet ends w
 The first screen offers **Campaign** and **Free play**. Under the title it reads “Taxation is theft” and
 “The King wants your gold. Keep it.” Free play opens the
 map and difficulty picker. Its best scores belong to the selected map and
-difficulty. Campaign opens the level map and reads the saved campaign stars.
+difficulty. Campaign shows the opening broadside on the first visit, then
+opens the level map and reads the saved campaign stars.
 
 The trail crosses five stops and returns across five in landscape. In
 portrait it winds down five rows of two. Each stop shows its level number
@@ -1809,7 +1893,7 @@ and three star slots. The number has a fixed-height box with at least 4 px
 of clearance above the stars. The map, card and result draw filled stars
 for earned slots and outlines for empty slots. The first open level without a win is highlighted.
 Tapping any lock names the first open level still to win. Back returns to
-the first screen. An open stop shows a card with the level name, map,
+the first screen. An open stop shows a card with the King's notice, level name, map,
 twist, new equipment or enemies, and best stars. On the first Play for
 each level, a tips panel shows up to three short instructions. Action words
 match the input used to open the panel. A mouse builds with one click on

@@ -71,7 +71,7 @@ for (const id of MAP_IDS) {
       s.sys.displayList.depthSort?.();
       const list: Scene[] = s.children.list;
       const L = s.living;
-      const decorObjs = new Set<unknown>([L.ground, L.water, L.low, L.air, ...L.growth.map((v: Scene) => v.top), ...L.smoke, ...L.clouds].filter(Boolean));
+      const decorObjs = new Set<unknown>([L.ground, L.water, L.low, L.air, ...L.growth.map((v: Scene) => v.top), s.town.layer, ...L.clouds].filter(Boolean));
       let maxDecor = -1;
       list.forEach((o, i) => { if (decorObjs.has(o)) maxDecor = i; });
       const before = list.slice(0, maxDecor + 1).filter((o) => !decorObjs.has(o)).map((o) => `${o.type}:${o.texture?.key ?? ''}`);
@@ -400,7 +400,7 @@ test('decoration never takes input: no object is interactive; clicks and drags o
   const interactive = await page.evaluate(() => {
     const s = window.__tarpit!.game.scene.getScene('game') as unknown as Scene;
     const L = s.living;
-    const objs = [L.ground, L.water, L.low, L.air, ...L.growth.map((v: Scene) => v.top), ...L.smoke, ...L.clouds].filter(Boolean);
+    const objs = [L.ground, L.water, L.low, L.air, ...L.growth.map((v: Scene) => v.top), s.town.layer, ...L.clouds].filter(Boolean);
     return objs.filter((o: Scene) => o.input).length;
   });
   expect(interactive).toBe(0);

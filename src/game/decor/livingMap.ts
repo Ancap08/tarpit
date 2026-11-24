@@ -3,9 +3,8 @@
 // draws under the zones, the placement highlight, towers, enemies, shots,
 // hp bars and the HUD.
 //
-// - The ground (grass texture, water, trail, cave, cottage: draw/map.ts) is
-//   drawn once into one RenderTexture placed with the layout (in portrait
-//   the cottage stays upright on its own small Graphics). The scene's
+// - The ground (grass texture, water, trail and cave: draw/map.ts) is
+//   drawn once into one RenderTexture placed with the layout. The scene's
 //   shutdown destroys it and its texture (a layout switch or Play again
 //   restarts the scene).
 // - Trees and bushes are Images (textures made once per game under fixed
@@ -13,25 +12,25 @@
 //   puff in play), and all of them fade while a tower is being placed, so
 //   the placement highlight reads over them.
 // - Moving things (decor/motion.ts, counts in MOTION_COUNTS): river flow
-//   ripples (little wave crests) and glints, chimney smoke, swaying tufts and tree tops, cloud
+//   ripples (little wave crests) and glints, swaying tufts and tree tops, cloud
 //   shadows, a bird, a butterfly and the cave's eyes. In test mode and
 //   under prefers-reduced-motion they hold the fixed frame at t = 0
-//   (STILL_T): no bird or butterfly, eyes open, clouds, smoke and water
+//   (STILL_T): no bird or butterfly, eyes open, clouds and water
 //   where t = 0 puts them.
 
 import type Phaser from 'phaser';
 import type { GameState, MapDef, Point } from '../../sim';
 import { drawMap, drawTuft } from '../draw/map';
 import type { Layout } from '../layout';
+import type { GameClock } from '../loop';
 import { COLORS } from '../palette';
-import { birdAt, blinking, butterflyAt, CLOUD, cloudAt, glint, ripple, MOTION_COUNTS, puffLook, smokePuff, STILL_T, sway } from './motion';
+import { birdAt, blinking, butterflyAt, CLOUD, cloudAt, glint, ripple, MOTION_COUNTS, puffLook, STILL_T, sway } from './motion';
 import { BUSH_R, decorFor, hiddenGrowth, TREE_EXTENT, TREE_SHAPES, type Decor, type Growth, type TreeShape } from './recipe';
 
 /** A tree texture's key: one per shape and size. */
 const treeKey = (shape: TreeShape, v: number) => `decor-tree-${shape}-${v}`;
 const BUSH_KEYS = ['decor-bush-0', 'decor-bush-1', 'decor-bush-2'];
 const CLOUD_KEY = 'decor-cloud';
-const PUFF_KEY = 'decor-puff';
 /** Growth opacity while a tower is being placed (a pick or a drag). */
 export const PLACING_ALPHA = 0.3;
 
@@ -163,10 +162,6 @@ function makeTextures(scene: Phaser.Scene): void {
     g.fillEllipse(CLOUD.w / 2, CLOUD.h / 2, CLOUD.w * k, CLOUD.h * k);
   }
   g.generateTexture(CLOUD_KEY, CLOUD.w, CLOUD.h);
-  g.clear();
-  g.fillStyle(COLORS.chimneySmoke, 1);
-  g.fillCircle(6, 6, 6);
-  g.generateTexture(PUFF_KEY, 12, 12);
   g.destroy();
 }
 
@@ -177,7 +172,6 @@ export class LivingMap {
   /** Swaying tufts and the cave's eyes (world-space). */
   private readonly low: Phaser.GameObjects.Graphics;
   private readonly growth: GrowthView[] = [];
-  private readonly smoke: Phaser.GameObjects.Image[] = [];
   private readonly clouds: Phaser.GameObjects.Image[] = [];
   /** Puffs, the butterfly and the bird (world-space). */
   private readonly air: Phaser.GameObjects.Graphics;
@@ -186,26 +180,24 @@ export class LivingMap {
   private readonly puffs: ({ x: number; y: number; at: number } | null)[] = new Array(MOTION_COUNTS.puffs).fill(null);
   private alpha = 1;
   private drawnT = Number.NaN;
-  private chimney: Point;
   private last: DecorState['moving'] = { clouds: [], smoke: [], flow: null, bird: null, butterfly: null, eyesOpen: true, sway: 0 };
 
   constructor(
-    private readonly scene: Phaser.Scene,
+    scene: Phaser.Scene,
     private readonly map: MapDef,
     private readonly layout: Layout,
     /** Test mode: everything holds the fixed frame and no puffs. */
     private readonly testMode: boolean,
+    private readonly clock: GameClock,
   ) {
     this.decor = decorFor(map);
     makeTextures(scene);
     // The ground, baked once.
     const g = scene.make.graphics({}, false);
-    const upright = layout.turned ? scene.make.graphics({}, false) : undefined;
-    drawMap(g, map, layout, upright, this.decor);
+    drawMap(g, map, this.decor);
     this.ground = layout.placeWorld(scene.add.renderTexture(0, 0, map.width, map.height).setOrigin(0, 0));
     this.ground.draw(g, 0, 0);
     g.destroy();
-    if (upright) scene.add.existing(upright);
     this.water = (map.water ?? []).length > 0 ? layout.placeWorld(scene.add.graphics()) : null;
     this.low = layout.placeWorld(scene.add.graphics());
     for (const gr of this.decor.growth) {
@@ -216,11 +208,6 @@ export class LivingMap {
       const top = scene.add.image(home.x + off, home.y + off, gr.shape === 'bush' ? BUSH_KEYS[gr.variant] : treeKey(gr.shape, gr.variant));
       this.growth.push({ g: gr, top, home: { x: home.x + off, y: home.y + off } });
     }
-    // The chimney's top on the screen (draw/map.ts exitCottage, drawn upright in both layouts).
-    const box = map.landmarks?.[0];
-    const c = box ? layout.toScreen({ x: box.x + box.width / 2, y: box.y + box.height / 2 }) : { x: -100, y: -100 };
-    this.chimney = { x: c.x + 7.5, y: c.y + (box?.height ?? 0) / 2 - 38 };
-    for (let i = 0; i < (box ? MOTION_COUNTS.smokePuffs : 0); i++) this.smoke.push(scene.add.image(0, 0, PUFF_KEY));
     for (let i = 0; i < MOTION_COUNTS.clouds; i++) this.clouds.push(scene.add.image(0, 0, CLOUD_KEY).setRotation(layout.turned ? Math.PI / 2 : 0));
     this.air = layout.placeWorld(scene.add.graphics());
     this.motionQuery = typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
@@ -233,7 +220,7 @@ export class LivingMap {
 
   /** Bring the map up to date: hidden growth, the placing fade and (in play) the moving things. */
   update(state: GameState, placing: boolean): void {
-    const now = this.scene.time.now;
+    const now = this.clock.nowMs;
     const hidden = new Set(hiddenGrowth(this.decor.growth, state.towers.map((t) => t.cell)));
     let changed = false;
     for (const id of hidden) {
@@ -321,12 +308,6 @@ export class LivingMap {
       }
     }
 
-    const smoke: number[] = [];
-    this.smoke.forEach((img, i) => {
-      const p = smokePuff(i, t);
-      smoke.push(p.alpha);
-      img.setPosition(this.chimney.x + p.dx, this.chimney.y + p.dy).setScale(p.scale).setAlpha(p.alpha);
-    });
     const clouds: Point[] = [];
     this.clouds.forEach((img, i) => {
       const s = layout.toScreen(cloudAt(map, i, t));
@@ -371,7 +352,7 @@ export class LivingMap {
     }
     this.last = {
       clouds,
-      smoke,
+      smoke: [],
       flow,
       bird: bird ? { x: bird.x, y: bird.y } : null,
       butterfly: fly ? { x: fly.x, y: fly.y } : null,

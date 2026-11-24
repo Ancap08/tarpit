@@ -569,6 +569,25 @@ Three parts:
 Not in this milestone: new towers, enemies, rules or levels; a story
 mode; Classic art changes; a new font file unless Kyle approves one.
 
+## Milestone 45: a pause button
+
+Kyle (2026-11-24, after playing the themed build on his phone): "I saw
+that there is no pause button though."
+
+- A Pause control in the HUD in both layouts, at least 44 px on the phone,
+  and the P key. Pausing stops the game completely: enemies, towers,
+  specials, timers, effects and sound.
+- While paused a panel shows Resume, Restart, and Level map (campaign) or
+  Menu (Free play), in the theme's kit. Nothing can be built, sold,
+  upgraded or cast while paused (the coordinator's call: building is
+  already untimed between waves, and the game is a little easy).
+- The game pauses itself when the page is hidden or the phone locks, and
+  stays paused until the player resumes.
+- Pause does not change the rules: a paused and resumed game plays out
+  exactly as an unpaused one.
+
+Not in this milestone: saving a game across a reload, a settings screen.
+
 ## Direction after the theme (Kyle, 2026-11-24)
 
 Kyle played the themed build on his phone ("it all works the way we wanted

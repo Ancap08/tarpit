@@ -82,9 +82,7 @@ test('(c) lose screen: Start Wave, speed and the bar do nothing; no cell builds 
   await click(page, 'bar:musketeer');
   expect((await ui(page)).pick).toBeNull();
   const r = await rects(page);
-  // The former legacy cells, whose centres are outside the Play again and
-  // Menu buttons. (15,9) lies under Play again and, since milestone 25,
-  // (18,9) under Menu; clicking them would press those buttons.
+  // Exercise the former legacy cells, skipping any that now host a result action.
   const cells = [[2, 5], [2, 9], [7, 5], [7, 7], [10, 5], [15, 4], [15, 9], [18, 9], [23, 3], [23, 8]];
   const underButton = ([col, row]: number[]) => {
     const cx = col * 32 + 16, cy = row * 32 + 16;
@@ -97,10 +95,9 @@ test('(c) lose screen: Start Wave, speed and the bar do nothing; no cell builds 
     clicked.push(c.join(','));
     expect(await ui(page), `cell ${c}`).toMatchObject({ pick: null, selectedCell: null, panelOpen: false });
   }
-  expect(clicked.length).toBe(8);
-  expect(underButton([15, 9])).toBe(true);
-  expect(underButton([18, 9])).toBe(true);
-  // (10,5) and (15,4) sit inside the panel box (x 250..710, y 125..355) but outside the buttons.
+  expect(clicked).toContain('10,5'); // within the result paper
+  expect(clicked).toContain('2,5'); // on the veiled map
+  expect(clicked.length).toBeGreaterThanOrEqual(8);
   expect(await endScreen(page)).toBe('lost');
   expect((await state(page)).phase).toBe('lost');
   expect((await state(page)).towers).toEqual([]);

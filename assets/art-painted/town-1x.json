@@ -1,0 +1,27 @@
+{
+  "frameSize": [
+    64,
+    64
+  ],
+  "anchor": [
+    32,
+    32
+  ],
+  "columns": 7,
+  "frameOrder": [
+    "landscape-untouched",
+    "landscape-scuffed",
+    "landscape-battered",
+    "landscape-taken",
+    "landscape-untouched-cheer",
+    "landscape-scuffed-cheer",
+    "landscape-battered-cheer",
+    "portrait-untouched",
+    "portrait-scuffed",
+    "portrait-battered",
+    "portrait-taken",
+    "portrait-untouched-cheer",
+    "portrait-scuffed-cheer",
+    "portrait-battered-cheer"
+  ]
+}

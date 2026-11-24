@@ -1,12 +1,13 @@
 import type Phaser from 'phaser';
 import { MAPS, type LevelDef } from '../../sim';
 import { drawMapThumbnail } from '../draw/map';
-import { CAMPAIGN_TEXT, LEVEL_NAMES, LEVEL_NEW, levelTips, tipsHeading, MAP_NAMES, TITLE_TEXT, levelNumberText } from '../names';
+import { CAMPAIGN_TEXT, LEVEL_NAMES, LEVEL_NEW, LEVEL_STORY, STORY_TEXT, levelTips, tipsHeading, MAP_NAMES, TITLE_TEXT, levelNumberText } from '../names';
+import type { Broadside } from '../seenTips';
 import { FONT, TEXT } from '../palette';
 import type { Rect } from '../input';
 import type { CampaignStop } from './campaignMap';
 import { drawStarRow } from './starRow';
-import { boards, ink, lock, panel as drawPanel, rule, THEME } from './theme';
+import { boards, broadside, ink, lock, panel as drawPanel, ribbon, rule, THEME, town } from './theme';
 import type { Button } from './button';
 
 type Action = (key: string, rect: Rect, label: string, click: () => void, size?: number) => Button;
@@ -93,46 +94,80 @@ export function drawCampaignMap(
   return label(scene, width / 2, portrait ? 988 : 450, lockedMessage ?? '', portrait ? 22 : 20, ink);
 }
 
+/** A royal proclamation and a town handbill, set in the same printer's furniture as the title. */
+export function drawStoryBroadside(
+  scene: Phaser.Scene, portrait: boolean, which: Broadside, action: Action, proceed: () => void,
+): Button {
+  const { width, height } = scene.scale;
+  const cx = width / 2;
+  const g = scene.add.graphics();
+  broadside(g, width, height);
+  const opening = which === 'opening';
+  const mastheadY = portrait ? 205 : 92;
+  const heading = label(scene, cx, mastheadY, opening ? STORY_TEXT.openingTitle : STORY_TEXT.endingTitle,
+    portrait ? 36 : 42, ink);
+  rule(g, cx, mastheadY - heading.height / 2 - 12, portrait ? 324 : 560);
+  rule(g, cx, mastheadY + heading.height / 2 + 12, portrait ? 324 : 560);
+  label(scene, cx, portrait ? 464 : 221, opening ? STORY_TEXT.openingNotice : STORY_TEXT.ending,
+    portrait ? 30 : 28, ink, portrait ? 376 : 736, false);
+  if (opening) {
+    const reply = label(scene, cx, portrait ? 701 : 336, STORY_TEXT.openingReply, portrait ? 23 : 24, TEXT.button);
+    ribbon(g, cx, reply.y, reply.width + 28, reply.height + 10);
+  }
+  town(g, cx, portrait ? 893 : 431);
+  const w = portrait ? 246 : 196;
+  return action('title:continue', { x: cx - w / 2, y: portrait ? 977 : 474, width: w, height: portrait ? 78 : 58 },
+    STORY_TEXT.continue, proceed, 26);
+}
+
 export function drawLevelCard(
   scene: Phaser.Scene, portrait: boolean, level: LevelDef, stars: number,
   action: Action, play: () => void, back: () => void, tips?: () => void,
 ): Button {
   const cx = scene.scale.width / 2;
-  const panel = portrait ? { x: 24, y: 132, width: 432, height: 866 } : { x: 145, y: 32, width: 670, height: 512 };
+  const panel = portrait ? { x: 24, y: 94, width: 432, height: 904 } : { x: 100, y: 18, width: 760, height: 526 };
   const g = scene.add.graphics();
   boards(g, scene.scale.width, scene.scale.height);
   drawPanel(g, panel);
   const words = LEVEL_NAMES[level.id];
-  const wrap = portrait ? 384 : 620;
-  // Centre the two labels in separate rows above the thumbnail.
-  const numberTop = portrait ? 176 : 40;
-  const numberHeight = 38;
-  const nameTop = numberTop + numberHeight + (portrait ? 37 : 5);
-  const nameHeight = portrait ? 60 : 64;
-  label(scene, cx, numberTop + numberHeight / 2, levelNumberText(level.id), 22, ink);
-  label(scene, cx, nameTop + nameHeight / 2, words.name, portrait ? 36 : 38, ink, wrap);
-  rule(g, cx, portrait ? 337 : 144, portrait ? 254 : 278);
-  const mapWidth = portrait ? 222 : 160;
-  const y = portrait ? 370 : 151;
-  const x = cx - mapWidth / 2;
-  drawMapThumbnail(g, MAPS[level.map], x, y, mapWidth, mapWidth / 2);
-  g.lineStyle(1, THEME.ink).strokeRect(x, y, mapWidth, mapWidth / 2);
-  label(scene, cx, y + mapWidth / 2 + 17, MAP_NAMES[level.map], portrait ? 20 : 18, ink);
-  label(scene, cx, portrait ? 582 : 288, words.twist, portrait ? 23 : 20, ink, wrap, false);
-  const headingTop = portrait ? 666 : 328;
-  const headingHeight = 30;
-  const contentTop = headingTop + headingHeight + 6;
-  // Reserve two wrapped lines on the phone and one on the wider card.
-  const contentHeight = portrait ? 76 : 34;
-  label(scene, cx, headingTop + headingHeight / 2, CAMPAIGN_TEXT.newThisLevel, portrait ? 20 : 18, ink);
-  label(scene, cx, contentTop + contentHeight / 2, LEVEL_NEW[level.id], portrait ? 23 : 20, ink, wrap, false);
+  const wrap = panel.width - (portrait ? 42 : 58);
+  const number = label(scene, cx, portrait ? 145 : 46, levelNumberText(level.id), 20, ink);
+  const title = label(scene, cx, 0, words.name, portrait ? 33 : 36, ink, wrap);
+  title.setY(number.y + number.height / 2 + title.height / 2 + 4);
+  const lineY = title.y + title.height / 2 + 9;
+  rule(g, cx, lineY, portrait ? 260 : 365);
+  const notice = label(scene, cx, 0, LEVEL_STORY[level.id].notice, portrait ? 25 : 24, '#843629', wrap);
+  notice.setY(lineY + (portrait ? 18 : 8) + notice.height / 2);
+  const mapWidth = portrait ? 176 : 216;
+  const mapX = portrait ? cx : panel.x + 155;
+  const dataX = portrait ? cx : panel.x + 506;
+  const dataWidth = portrait ? wrap : 444;
   const starsY = portrait ? 833 : 429;
+  const top = notice.y + notice.height / 2 + 12;
+  const bottom = starsY - 28;
+  const twist = label(scene, dataX, 0, words.twist, portrait ? 22 : 20, ink, dataWidth, false);
+  const heading = label(scene, dataX, 0, CAMPAIGN_TEXT.newThisLevel, 18, ink);
+  const equipment = label(scene, dataX, 0, LEVEL_NEW[level.id], portrait ? 21 : 20, ink, dataWidth, false);
+  const mapName = label(scene, mapX, 0, MAP_NAMES[level.map], 18, ink);
+  const mapHeight = mapWidth / 2 + 4 + mapName.height;
+  const textHeight = twist.height + heading.height + equipment.height + 5;
+  // Use the measured Caslon or fallback lines. Portrait reads down the page;
+  // landscape sets the thumbnail beside the tactical note and equipment.
+  const gap = portrait ? (bottom - top - textHeight - mapHeight) / 4 : 10;
+  const mapTop = portrait ? top + gap : (top + bottom - mapHeight) / 2;
+  const textTop = portrait ? mapTop + mapHeight + gap : (top + bottom - textHeight - gap) / 2;
+  drawMapThumbnail(g, MAPS[level.map], mapX - mapWidth / 2, mapTop, mapWidth, mapWidth / 2);
+  g.lineStyle(1, THEME.ink).strokeRect(mapX - mapWidth / 2, mapTop, mapWidth, mapWidth / 2);
+  mapName.setY(mapTop + mapWidth / 2 + 4 + mapName.height / 2);
+  twist.setY(textTop + twist.height / 2);
+  heading.setY(textTop + twist.height + gap + heading.height / 2);
+  equipment.setY(heading.y + heading.height / 2 + 5 + equipment.height / 2);
   const caption = label(scene, cx, starsY, CAMPAIGN_TEXT.bestStars, 22, ink);
   const row = drawStarRow(scene, cx, starsY, stars, 20, TEXT.paperGold);
   const rowWidth = row.getBounds().width + 2;
-  const gap = 12;
-  caption.setX(cx - (rowWidth + gap) / 2);
-  row.setX(cx + (caption.width + gap) / 2);
+  const starGap = 12;
+  caption.setX(cx - (rowWidth + starGap) / 2);
+  row.setX(cx + (caption.width + starGap) / 2);
   const yButton = portrait ? 894 : 466;
   const height = portrait ? 78 : 54;
   if (tips) {

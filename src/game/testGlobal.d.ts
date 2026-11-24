@@ -41,13 +41,16 @@ import type { audioLab } from './audio/lab';
 import type { FxState } from './fx/effects';
 import type { DecorState } from './decor/livingMap';
 import type { PageLockState } from './pageLock';
-import type { GameScene, UiState } from './GameScene';
+import type { GameScene, PlayAction, UiState } from './GameScene';
 import type { HudStrings, Rect } from './hud';
 import type { ScriptName } from './testMode';
 import type { TitleUiState } from './TitleScene';
 
 export interface TarpitTestApi {
   game: Phaser.Game;
+  paused(): boolean;
+  pause(): void;
+  resume(): void;
   /** Key of the active scene: 'title' or 'game'. */
   scene(): string;
   /** Visible screen, including the title's campaign pages and terminal results. */
@@ -80,13 +83,13 @@ export interface TarpitTestApi {
   difficulty(): Difficulty;
   pendingBoon(): BoonOffer | null;
   heldBoons(): BoonId[];
-  pickBoon(id: BoonId): ReturnType<typeof pickBoon>;
+  pickBoon(id: BoonId): PlayAction<ReturnType<typeof pickBoon>>;
   bossOnField(): EnemyType | null;
-  startWave(): StartWaveResult;
+  startWave(): PlayAction<StartWaveResult>;
   /** Call the next wave early through the scene's action (milestone 25c). */
-  callNextWave(): CallNextWaveResult;
+  callNextWave(): PlayAction<CallNextWaveResult>;
   /** Keep going after the win through the scene's action, as the win screen's button does (milestone 26). */
-  continueEndless(): ContinueEndlessResult;
+  continueEndless(): PlayAction<ContinueEndlessResult>;
   /**
    * The best waves cleared stored for `difficulty` on `map` (Meadow when
    * left out; milestones 26 and 27, highScore.ts), or null. Works on the
@@ -102,25 +105,25 @@ export interface TarpitTestApi {
    */
   spawnHorde(n: number, span?: number): boolean;
   /** Build on grid cell (col, row) through the scene's action (no clicks). */
-  buildAt(col: number, row: number, type: TowerType): BuildResult;
-  upgradeAt(col: number, row: number, path?: UpgradePath): UpgradeResult;
-  sellAt(col: number, row: number): SellResult;
+  buildAt(col: number, row: number, type: TowerType): PlayAction<BuildResult>;
+  upgradeAt(col: number, row: number, path?: UpgradePath): PlayAction<UpgradeResult>;
+  sellAt(col: number, row: number): PlayAction<SellResult>;
   /** Move the unlocked tower on (fromCol, fromRow) to (toCol, toRow), in setup (milestone 25a). */
-  moveAt(fromCol: number, fromRow: number, toCol: number, toRow: number): MoveResult;
+  moveAt(fromCol: number, fromRow: number, toCol: number, toRow: number): PlayAction<MoveResult>;
   /** Undo the upgrade bought this setup phase on (col, row) (milestone 25a). */
-  undoUpgradeAt(col: number, row: number): UndoUpgradeResult;
+  undoUpgradeAt(col: number, row: number): PlayAction<UndoUpgradeResult>;
   /** Set the targeting mode of the tower on (col, row) through the scene's action (milestone 24). */
-  setTargetingAt(col: number, row: number, mode: TargetingMode): TargetingResult;
+  setTargetingAt(col: number, row: number, mode: TargetingMode): PlayAction<TargetingResult>;
   /**
    * Use a special aimed at canvas point (x, y) through the scene's action
    * (milestone 25b; no clicks, no aiming). In test mode no effect is drawn.
    */
-  useSpecialAt(type: SpecialType, x: number, y: number): SpecialResult;
+  useSpecialAt(type: SpecialType, x: number, y: number): PlayAction<SpecialResult>;
   /** 1x, 2x, or (milestone 30) 3x as while the speed button is held. */
   setSpeed(speed: 1 | 2 | 3): void;
   speed(): 1 | 2 | 3;
   /** The gold cheat through the scene, as five quick taps on Gold do (milestone 30). */
-  cheatGold(): { ok: true; gold: number } | { ok: false; reason: 'game-over' };
+  cheatGold(): ReturnType<GameScene['cheatGold']>;
   /**
    * Canvas-space rectangles of everything clickable, by name: `startWave`,
    * `speed`, `bar:musketeer`, `bar:cannon`, `bar:tarpit`, `bar:longbow`,
@@ -222,7 +225,7 @@ export interface TarpitTestApi {
   audioLab: typeof audioLab;
 }
 
-export type TarpitGlobal = Pick<TarpitTestApi, 'game' | 'uiRects' | 'canvasToPage' | 'layout' | 'cellToPage' | 'worldToPage' | 'animState' | 'titleReady' | 'fx' | 'decor' | 'towerAngle' | 'pageLock' | 'audio' | 'setMuted' | 'audioLab'> &
+export type TarpitGlobal = Pick<TarpitTestApi, 'paused' | 'pause' | 'resume' | 'game' | 'uiRects' | 'canvasToPage' | 'layout' | 'cellToPage' | 'worldToPage' | 'animState' | 'titleReady' | 'fx' | 'decor' | 'towerAngle' | 'pageLock' | 'audio' | 'setMuted' | 'audioLab'> &
   Partial<TarpitTestApi>;
 
 declare global {

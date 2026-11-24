@@ -170,10 +170,14 @@ function canvasToPage(game: Phaser.Game, x: number, y: number): { x: number; y: 
 
 export function installGlobal(game: Phaser.Game): void {
   const showpieceVisit = new URLSearchParams(location.search).get('look') === 'showpiece';
+  const activeGame = () => game.scene.isActive('game') ? game.scene.getScene('game') as GameScene : null;
   const displayed = (p: { x: number; y: number }) => showpieceVisit && game.scene.isActive('game')
     ? (game.scene.getScene('game') as GameScene).displayedMapPoint(p) : p;
   const always = {
     ...(showpieceVisit ? { showpiece: () => game.scene.isActive('game') ? (game.scene.getScene('game') as GameScene).showpieceState() : null } : {}),
+    paused: () => activeGame()?.paused ?? false,
+    pause: () => activeGame()?.setPaused(true),
+    resume: () => activeGame()?.setPaused(false),
     game,
     uiRects: () => uiRectsOf(game),
     animState: (enemyId: number) => (game.scene.isActive('game') ? (game.scene.getScene('game') as GameScene).animState(enemyId) : null),
@@ -290,6 +294,7 @@ export function installGlobal(game: Phaser.Game): void {
     levelOpen: id => unlockedLevel(campaignProgress.table(), id),
     runBot: (name, throughWave) => {
       const current = scene();
+      if (current.paused) return current.state.phase;
       const { state } = runBot(current.state, name === 'botGood' ? botGood : botBeginner, throughWave);
       current.advance(0);
       return state.phase;
@@ -325,6 +330,7 @@ export function installGlobal(game: Phaser.Game): void {
     // The archetype records its script on the running game's level (milestone 25) and map (27).
     runScript: (name, untilWave, boons) => {
       const gameScene = scene();
+      if (gameScene.paused) return gameScene.state.phase;
       const script = SCRIPTS[name](gameScene.state.difficulty, gameScene.mapId, boons);
       return runScript(gameScene, script, untilWave);
     },

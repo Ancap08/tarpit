@@ -9447,6 +9447,117 @@ captures include the Assessor’s entrance in portrait.
 
 Linux CI caught a 5 px three-digit Remove gap. With HUD figures widened 12%, the Mac reproduced 2 px before the fix and 22 px after it. The compact build bar’s tightest gap went from −1 to 15 px in the same check.
 
+## 2026-11-24: milestone 45, pause
+
+Pause sits under the right thumb at the end of the HUD in both layouts.
+Landscape keeps the stat positions and original wave-preview wrap. The
+tower plaques move closer together, speed sits above mute, and Pause spans
+the two rows. Portrait keeps the six tower buttons in place and fits Pause
+beside mute by narrowing Special, Start Wave and speed. The four Painted
+captures in `docs/review/m45/` show the playing field and pause panel.
+
+The first browser pass caught a fast Restart tap hitting the panel's input
+shield before Phaser drew the panel. The shield now leaves a hole for
+each action and for mute. Pausing cancels a pending press as well as a drag,
+aim or speed hold, so releasing a finger after Resume cannot finish an old
+action. Tall-font checks also caught the Fire Pot price touching Pause.
+Giving the portrait tower prices a 24 px digit box keeps each price
+inside its plaque. The Playwright phone measured the Pause target at
+56.55 CSS px on a 390 × 844 viewport. In Classic landscape, giving
+Longbow 10 px more of the compact row leaves 13 px between its name
+and widened price after a reward.
+
+The game clock keeps partial ticks and excludes time spent paused,
+including a phone lock with no intervening frames. The deterministic
+test paused a scripted Musketeer and Powder Keg run at ticks 0, 1, 31,
+299, 950 and 3,000. It reached the same complete state and active frame
+count as the uninterrupted run.
+
+Verifier notes (Claude Sonnet, milestone 45): no game defect found. Live play
+(no `?test=1`), Free play Meadow at wave 10 with 12 towers, Fire Arrows,
+Guards and a Barricade: pausing at wave ticks 61 to 3,600 for 3 s each at 1x,
+2x and 3x, and a 100-toggle P burst, left the sim state byte-identical to an
+unpaused run at the same wave tick (`state.tick` differs by the setup ticks
+before Start Wave, so compare `waveTick`). Nothing drawn, no animation,
+effect, audio count or tween moved during a pause. Mouse, touch and every
+key were ignored while paused except Enter, Space, Escape and P (resume) and
+the panel and mute. Pausing clears the tower pick, tower panel, special aim
+and drag; a drag released while paused builds nothing. Pause is refused on
+the win or loss tick (the end screen shows). Window blur alone does not
+pause, as DESIGN says. Hit areas: on 390 x 844 every moved control stays at
+49.5 CSS px or more high (Pause 56.5); on 390 x 664 Pause is 44.5 but Special,
+Start Wave, speed and mute are 38.9 high (unchanged from main) and speed is
+now 38.9 wide (was 45.6). Pause sits 2.8 CSS px from mute on the phone.
+`e2e/pause-verifier.spec.ts` pins the paused-equals-unpaused result in live
+play. `npm run sim` output is byte-identical to main (`cmp` of both runs).
+
+Town animation and leak sacks now use the map clock, keeping their place through Pause and a hidden page in both looks.
+
+## 2026-11-24: milestone 46, the town and its story
+
+All three roads end at the same four-cell arrangement. Two cells overlap
+the cottage landmark alone and two also touch the road. Separate upright
+compositions fit a cottage, a short fence, a flag and two neighbours, with
+the last 22 game pixels to the centreline clear in either layout. The
+simulation and placement mask keep their existing values.
+
+The scuffed fence alone was hard to distinguish on a phone. The blue
+sailcloth roof repair now reads at game size. Battered has a low flag,
+shutter and smoke, and taken has the King's red crown banner. Each exit
+uses the departing sprite's type to size its sack. The win tosses two
+painted hats, and the loss hoists the actual cloth independently of the
+cottage. The 38% result veil lets those poses show through. Frozen and
+reduced-motion outcomes hold the completed picture.
+
+The larger result plate has a neighbouring cottage, market stall, cat and
+cart. Each of the four plates loads when its condition appears. The
+printed town stays on the paper if that first request is offline. The ten
+notices accompany the tactical twists. Level ten uses the first sentence
+of the Ending as its reply, then prints the entire Ending on the once-only
+broadside after the result action. All commissioned sentences fit.
+
+On a cold Meadow load with 1.6 Mbps throughput and 150 ms latency, click
+to game measured 2.384 to 2.531 s at 1× and 5.455 to 5.910 s at 2×
+(worker blocked, forced density, three requests). The packed files grew by
+30,346 and 90,536 bytes. Separate result plates are 27,828–30,194 bytes.
+The map footprint check compares the actual game frame with the town
+hidden and shown, pixel by pixel in every cell. The review captures are
+in `docs/review/m46/`.
+
+The full suite exposed portrait textures left in Phaser after a replay.
+The result now releases both its fallback and colour textures when it
+closes. The decoded browser image can be reused on the next visit. The
+Free play checks measure the visible paper below its buttons, and the
+request check accounts for the single on-demand plate after a loss.
+
+Verifier notes (milestone 46, independent check of 73d872b):
+
+- Rules: `git diff 5a24b12..HEAD -- src/sim scripts/simulate.ts` is empty.
+  The buildable mask (count and sha1 per map) was read from the sim on
+  5a24b12 and on the tip and is identical; the numbers are pinned in
+  `src/game/town-verifier.test.ts`, which also checks the 62 x 42 town strip
+  touches no buildable cell on all three maps.
+- Lives bands on Easy (35), Normal (20), Hard (15) and campaign were checked
+  for every lives value from start to 0 against the exact 18/20 and 12/20
+  fractions. All ten notices, replies, the loss line, opening and ending
+  match the scope table word for word (level 10's reply is the ending's
+  first sentence).
+- Whole tree: lint, typecheck, 2509 unit tests, build, check:assets and
+  check:size pass. The browser suite on all three projects passed (933
+  passed, 8 skipped, none failed) with `PW_PORT=4673`.
+- By hand: the town sits first in the display list in Painted and Classic
+  (towers, enemies, bars and placement all draw over it); no texture growth
+  over 20 replays (97 keys at each result, 95 after); a blocked or slow plate
+  leaves the printed vignette and the buttons ready at once; offline the
+  result shows the vignette because plates live in `assets/painted/`, which
+  the service worker caches only after first use.
+- Observed, not fixed: (1) a Free play loss prints the King's line, while the
+  checklist for this check expected no story in Free play; (2) a leak with no
+  frame drawn since the enemy appeared makes no sack (only reachable through
+  the `step()` test hook); (3) the level 6 notice says "Troll" where the game
+  names the enemy "Toll Troll" (approved copy); (4) a cheated level 10 win
+  also plays the ending.
+
 ## 2026-11-24: milestone 47, a showpiece level
 
 Open `?look=showpiece` and choose campaign level 1 or Free play Meadow.

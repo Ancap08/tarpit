@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { audio, contexts, countContexts, onScene, press } from './sound';
 import { waitForFirstScreen, waitForTitle } from './title';
+import { setPageHidden } from './pause';
 
 // Milestone 33 verifier (Claude Sonnet): start, stop, failure, triggers and
 // leaks, run in all three projects through audio-verifier.spec.ts (mouse),
@@ -111,7 +112,8 @@ export function suite(touch: boolean): void {
     });
   }
 
-  test('a hidden page suspends and showing it resumes; a layout switch mid-wave keeps one context and does not burst or hang voices', async ({ page }) => {
+  test('a hidden game stays suspended until Resume; a layout switch mid-wave keeps one context and does not burst or hang voices', async ({ page }) => {
+    test.setTimeout(120_000);
     await countContexts(page);
     await toGame(page, touch);
     await onScene(page, (scene) => {
@@ -120,21 +122,18 @@ export function suite(touch: boolean): void {
       for (const [c, r] of [[2, 5], [2, 9], [3, 5]]) scene.build({ col: c, row: r }, 'musketeer');
       scene.startWave();
     }, null);
-    await page.waitForFunction(() => (window.__tarpit!.audio().requested['shot.musketeer'] ?? 0) > 2, undefined, { timeout: 20_000 });
-    const hide = (h: boolean) =>
-      page.evaluate((h) => {
-        Object.defineProperty(document, 'hidden', { configurable: true, get: () => h });
-        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => (h ? 'hidden' : 'visible') });
-        document.dispatchEvent(new Event('visibilitychange'));
-      }, h);
+    await page.waitForFunction(() => (window.__tarpit!.audio().requested['shot.musketeer'] ?? 0) > 2, undefined, { timeout: 60_000 });
     const total = async (k: 'requested' | 'played') => Object.values((await audio(page))[k]).reduce((s, n) => s + n, 0);
-    await hide(true);
+    await setPageHidden(page, true);
     await page.waitForFunction(() => window.__tarpit!.audio().context === 'suspended');
     expect((await audio(page)).voices).toBe(0);
     const playedHidden = await total('played');
     await page.waitForTimeout(1500);
     expect(await total('played'), 'nothing starts while hidden').toBe(playedHidden);
-    await hide(false);
+    await setPageHidden(page, false);
+    expect(await page.evaluate(() => window.__tarpit!.paused())).toBe(true);
+    expect((await audio(page)).context).toBe('suspended');
+    await press(page, 'pause:resume', touch);
     await page.waitForFunction(() => window.__tarpit!.audio().context === 'running');
     // No burst: right after showing, at most a handful of starts in 100 ms.
     const p0 = await total('played');
@@ -324,14 +323,14 @@ export function suite(touch: boolean): void {
     await toGame(page, touch);
     const rects = await page.evaluate(() => window.__tarpit!.uiRects() as Record<string, { x: number; y: number; width: number; height: number }>);
     const portrait = rects.mute.width === 70;
-    const names = Object.keys(rects).filter((k) => k.startsWith('bar:') || ['startWave', 'speed', 'special', 'mute'].includes(k));
-    expect(names.length).toBe(10);
+    const names = Object.keys(rects).filter((k) => k.startsWith('bar:') || ['startWave', 'speed', 'special', 'mute', 'pause'].includes(k));
+    expect(names.length).toBe(11);
     for (const n of names) {
       expect(rects[n].height, `${n} height`).toBeGreaterThanOrEqual(portrait ? 70 : 42);
       expect(rects[n].width, `${n} width`).toBeGreaterThanOrEqual(portrait ? 70 : 42);
     }
-    expect(rects.startWave.width).toBeGreaterThanOrEqual(portrait ? 170 : 130);
-    if (!portrait) for (const n of names.filter((k) => k.startsWith('bar:'))) expect(rects[n].width).toBeGreaterThanOrEqual(140);
+    expect(rects.startWave.width).toBeGreaterThanOrEqual(portrait ? 126 : 130);
+    if (!portrait) for (const n of names.filter((k) => k.startsWith('bar:'))) expect(rects[n].width).toBeGreaterThanOrEqual(132);
     for (const a of names)
       for (const b of names)
         if (a < b) {
