@@ -6,6 +6,7 @@
 // cells: (7,5), (10,5), (18,9), (23,8); src/game/legacySpots.ts), then Start
 // Wave and 1680 ticks (milestone 8: was 1200 with the v1 spots; 1350 until
 // milestone 25c, 1560 in its first pass; see e2e/visual.spec.ts).
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { buildTower } from './actions';
 import { ENEMY_STATS } from './enemies';
@@ -33,5 +34,9 @@ describe('enemies.png frame content', () => {
       shieldbearers: of('shieldbearer').length,
       harpies: of('harpy').length,
     }).toEqual({ wave: 8, goblins: 9, wolves: 8, trolls: 6, hurtTrolls: 2, slowed: 2, shieldbearers: 4, harpies: 13 });
+    // R7: the complete frame state from d517ac8, including shots and events.
+    expect(createHash('sha256').update(JSON.stringify(s)).digest('hex')).toBe(
+      'c29cc3b60706e45195e9d3086131ad1d73ab5e15bfe74cc210f4bafdd4743b0d',
+    );
   });
 });

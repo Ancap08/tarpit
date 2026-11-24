@@ -11,6 +11,7 @@
 // 10 is stepped by hand, so it has none. The browser test reads the Mortar
 // hit from the events of tick BOSS_STEPS - 2 (the splash is 2 ticks into
 // its fade on the frame) and asserts no hit on him on tick BOSS_STEPS.
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { createGame, startWave, tick } from './game';
 import { applyAction, applyScriptBoon, comboBuild } from './headless';
@@ -68,5 +69,9 @@ describe('boss.png frame content', () => {
       hitNow: false,
       lives: 14,
     });
+    // R7: the complete frame state from d517ac8, including shots and events.
+    expect(createHash('sha256').update(JSON.stringify(s)).digest('hex')).toBe(
+      '56c9f4bfbf68c8effeba444e90291c1a5482354df7a1d0c20e73f5f585b3b19c',
+    );
   });
 });

@@ -1,6 +1,7 @@
 // Milestone 8 verifier: the mid-wave frame pin (e2e/visual.spec.ts, tick 848;
 // milestone 25c second pass: wave 1 tick 1160; milestone 28: wave 1 tick
 // 155; milestone 28 follow-up: wave 2 tick 1904; milestone 30: 1880, see the comment there).
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { buildTower } from './actions';
 import { createGame, startWave, tick } from './game';
@@ -41,5 +42,9 @@ describe('mid-wave frame pin', () => {
       lives: s.lives,
     }).toEqual({ enemies: 16, goblins: 16, hurt: 10, tarred: 2, shots: 0, lives: 20 });
     expect([cannon.at(-1), tar.at(-1)]).toEqual([1877, 1878]);
+    // R7: the complete frame state from d517ac8, including shots and events.
+    expect(createHash('sha256').update(JSON.stringify(s)).digest('hex')).toBe(
+      '69febc816f98c5c87fdea50eb7ee519fcbb283d86fda0807b4857cd5d480b96b',
+    );
   });
 });
