@@ -9648,3 +9648,34 @@ missed, and the Ending in landscape and portrait. The browser cases use
 saved progress to reach late levels and step the final wave clear to test
 the result and save paths. They check the two phone heights with normal
 type and fixed tall metrics for both Caslon and the fallback face.
+
+Verifier notes (Claude Sonnet, milestone 48c, tip e2d42fa). Verdict: fix first,
+two small items. Lint, typecheck, 2657 unit tests and the build pass; the full
+browser suite passes on all three projects (1022 passed, 8 skipped by the suite,
+0 failed). `src/sim` is unchanged since 07b7c17. Checked by browser probe at
+960x580 and 390x844 and 390x664, with normal and fixed font metrics: Act Two
+stays shut with "Win level 10 first" by button and by Right from stop 10; it
+opens after a win (a gold-cheat pass too); the first-visit notice shows once
+across Back, reload, corrupt storage (shows once more, then the store is
+rewritten) and survives rotation; Left and Right cross between stops 10 and 11;
+all twenty won opens Act Two with no highlighted stop; every tax number, feat
+and notice on cards 11 to 20 is built from level data (a scratch edit of levels
+16 and 17 moved the card, notice, name, twist and tip text, and the copy guard
+failed where it should). Card text is at least 14.5 CSS px in every layout
+tested. The card flips only under fixed (tall) metrics; with normal metrics no
+card needed Map notes. The back holds the map picture, map name and tactical
+line; the notice, taxes, feat, best stars, Back and Play are on the front or
+stay on both. The flip survives rotation with one scene running.
+Defects, pinned in `e2e/campaign-screens-verifier.spec.ts` with `test.fail`:
+1. The result's third star (and the card's Best stars row) is five-pointed on a
+   feat level; the map plaque draws it four-pointed. `endScreen.ts` and
+   `drawBestStars` call `drawStarRow` without the feat flag.
+2. With a tax line showing, the HUD "Next:" preview is squashed in `hud.ts` to
+   9.9 CSS px at 390x844 and 7.8 at 390x664 (untaxed level 10 reads 12 and 11.1).
+   `taxHud.ts` checks only the tax line, so nothing guards the preview or the
+   result screen.
+Not pinned, a judgement call: a lost run on a feat level still prints "Missed
+Few hands: ..." and an empty "0 of 3 stars" row, where level 1 prints neither.
+Suggested wording: leave the feat line off a loss. The empty gap on the phone
+level 20 card at 844 is centring, not hidden content (nothing moved to the back
+with normal metrics).
