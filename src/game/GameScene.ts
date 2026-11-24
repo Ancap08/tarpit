@@ -122,6 +122,7 @@ import {
   cellCenter,
   createGame,
   levelStars,
+  ENEMY_STATS,
   DEFAULT_DIFFICULTY,
   DEFAULT_MAP,
   barricadePlacement,
@@ -177,6 +178,7 @@ import { Effects, type FxState } from './fx/effects';
 import { EnemySprites, type AnimState } from './anim/enemySprites';
 import { drawHpBars, drawShadows, drawStatusRings } from './draw/enemies';
 import { TowerLabels } from './draw/labels';
+import { Town } from './decor/town';
 import { LivingMap, type DecorState } from './decor/livingMap';
 import { BarricadeEffects, drawBarricadeAim } from './draw/barricade';
 import { GuardEffects, drawGuardsAim, guardFoot, type DrawnGuard } from './draw/guards';
@@ -184,6 +186,7 @@ import { drawPlacementCell } from './draw/placement';
 import { ShotEffects } from './draw/shots';
 import { SpecialEffects } from './draw/specials';
 import { Aim, drawTowerShape, drawTowers } from './draw/towers';
+import { seenBroadsides } from './seenTips';
 import { campaignProgress } from './campaignProgress';
 import { highScores } from './highScore';
 import { callEarlyInfo, CHEAT_TAPS, CHEAT_WINDOW_MS, Hud, specialReady, specialRecharge } from './hud';
@@ -440,6 +443,7 @@ export class GameScene extends Phaser.Scene {
   private drawnRange: number | null = null;
   private panel!: TowerPanel;
   private endScreen!: EndScreen;
+  private town!: Town;
   /** The build bar's active pick, or null. */
   private pick: TowerType | null = null;
   /** Last pointer position over the canvas, or null once it leaves. */
@@ -585,6 +589,7 @@ export class GameScene extends Phaser.Scene {
     // Milestone 34: the living map (decor/livingMap.ts): the baked ground, trees and bushes, and the moving things, under everything else.
     this.painted = this.paintedAssets ? new PaintedSkin(this, this.paintedAssets, this.layout, this.state.map, isTestMode(), this.clock) : undefined;
     this.living = this.painted ?? new LivingMap(this, this.state.map, this.layout, isTestMode(), this.clock);
+    this.town = new Town(this, this.state.map, this.layout, isTestMode(), this.painted);
     this.ground = world();
     this.painted?.placeGround(this.ground);
     this.overlay = world();
@@ -1351,7 +1356,7 @@ export class GameScene extends Phaser.Scene {
 
   /** Start a brand-new game in a fresh scene, on the same level and map. */
   playAgain(): void {
-    if (this.leaving) return;
+    if (this.leaving || this.openEnding(true)) return;
     this.leaving = true;
     this.restartPending = false;
     this.resume = null;
@@ -1361,10 +1366,17 @@ export class GameScene extends Phaser.Scene {
 
   /** Back to the title menu (milestone 25), which still shows the level and (milestone 27) map just played. */
   toMenu(): void {
+    if (this.openEnding(false)) return;
     this.leaveForTitle({ screen: this.state.level ? 'levelMap' : 'freePlay' });
   }
 
-  private leaveForTitle(destination: { screen: 'levelMap' | 'freePlay' | 'levelCard'; levelId?: number }): void {
+  private openEnding(replayLevel: boolean): boolean {
+    if (!this.campaignResult()?.complete || seenBroadsides.has('ending')) return false;
+    this.leaveForTitle({ screen: 'ending', replayLevel });
+    return true;
+  }
+
+  private leaveForTitle(destination: { screen: 'levelMap' | 'freePlay' | 'levelCard' | 'ending'; levelId?: number; replayLevel?: boolean }): void {
     if (this.leaving) return;
     this.leaving = true;
     this.restartPending = false;
@@ -1458,6 +1470,11 @@ export class GameScene extends Phaser.Scene {
     if (!this.enemySprites) return;
     const { events, newTick } = this.eventCursor.take(this.state);
     if (newTick) this.enemySprites.newTick();
+    for (const event of events) {
+      if (event.kind !== 'exit') continue;
+      const spot = this.enemySprites.spot(event.enemyId);
+      if (spot) this.town.sacks.release(ENEMY_STATS[spot.type].livesCost, this.autoTick ? this.time.now : this.frozenMs);
+    }
     this.barricadeFx.onEvents(events);
     this.guardFx.onEvents(events);
     if (this.fx) this.fx.onEvents(events, this.state);
@@ -1484,7 +1501,13 @@ export class GameScene extends Phaser.Scene {
 
   /** Test hook (milestone 34, also in test mode): the map decoration's state. */
   decorState(): DecorState | null {
-    return this.living?.snapshot() ?? null;
+    const decor = this.living?.snapshot();
+    if (!decor) return null;
+    return { ...decor, moving: { ...decor.moving, smoke: [...this.town.smokeAlpha] } };
+  }
+
+  townState() {
+    return this.town.snapshot();
   }
 
   /** Test hook (milestone 31, play only): the drawn barrel angle of the tower on `cell`, or null. */
@@ -1647,6 +1670,7 @@ export class GameScene extends Phaser.Scene {
     if (!this.dynamic) return;
     this.aim.prune(this.state);
     // Milestone 34: growth on a tower's cell hides; all of it fades while a tower is being placed (a pick or a drag).
+    this.town.update(this.state, this.autoTick ? this.time.now : this.frozenMs);
     this.living?.update(this.state, this.pick !== null || this.press?.active === true);
     this.ground.clear();
     this.specialFx.drawGround(this.ground, this.state);

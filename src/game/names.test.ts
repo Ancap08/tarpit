@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { ENEMY_SHORT_NAMES, GUARD_NAMES, LEVEL_NEW, levelTips } from './names';
+import { ENEMY_SHORT_NAMES, GUARD_NAMES, LEVEL_NEW, LEVEL_STORY, STORY_TEXT, levelTips } from './names';
 
 describe('the King’s collectors', () => {
   it('keeps the compact HUD labels and Guard names in their approved forms', () => {
@@ -10,6 +10,22 @@ describe('the King’s collectors', () => {
       troll: 'Toll Troll', boss: 'Grumblefoot', grumblemaw: 'Grumblemaw',
     });
     expect(GUARD_NAMES).toEqual(['Axeman', 'Swordsman', 'Archer', 'Captain']);
+  });
+
+  it('prints the notice and reply for each of the ten levels exactly as commissioned', () => {
+    const scope = readFileSync('docs/SCOPE-v5.md', 'utf8').split('## Milestone 46:')[1].split('## Milestone 47:')[0];
+    const rows = [...scope.matchAll(/^\| (Opening|Ending|Any loss|\d+) \|(.*?)\|(.*?)\|$/gm)]
+      .map(([, id, notice, reply]) => [id, notice.trim(), reply.trim()]);
+    expect(Object.keys(LEVEL_STORY)).toEqual(rows.filter(([id]) => /^\d+$/.test(id)).map(([id]) => id));
+    for (const [id, notice, reply] of rows) {
+      if (id === 'Opening') expect([STORY_TEXT.openingNotice, STORY_TEXT.openingReply]).toEqual([notice, reply]);
+      else if (id === 'Ending') expect(STORY_TEXT.ending).toBe(reply);
+      else if (id === 'Any loss') expect(STORY_TEXT.loss).toBe(notice);
+      else expect(LEVEL_STORY[Number(id)]).toEqual({
+        notice, reply: id === '10' ? STORY_TEXT.ending.split('. ')[0] + '.' : reply,
+      });
+    }
+    expect(rows).toHaveLength(13);
   });
 
   it.each([false, true])('uses plural enemy names in cards and tips (touch=%s)', touch => {
@@ -28,7 +44,9 @@ describe('the King’s collectors', () => {
       // The compact table intentionally contains three historical names. Its exact contents are checked above.
       if (ts.isVariableDeclaration(node) && node.name.getText() === 'ENEMY_SHORT_NAMES') return;
       if (ts.isStringLiteralLike(node) || ts.isTemplateLiteralToken(node)) {
-        expect(node.text.replace(themed, ''), node.text).not.toMatch(stale);
+        // The King's level-six toll bills the player in Trolls, verbatim from the notice.
+        const words = node.text.replace(/^A toll on this road: one Troll per traveller\.$/, '');
+        expect(words.replace(themed, ''), node.text).not.toMatch(stale);
       }
       ts.forEachChild(node, check);
     }

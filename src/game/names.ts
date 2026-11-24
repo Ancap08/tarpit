@@ -389,6 +389,31 @@ export const LEVEL_NAMES: Readonly<Record<number, { name: string; twist: string 
   10: { name: 'Last Light', twist: 'Bring every special to face King Grumblemaw.' },
 };
 
+const endingLead = 'The King went home with empty pockets.';
+
+export const STORY_TEXT = {
+  openingTitle: 'Royal notice',
+  endingTitle: 'Word from the town',
+  openingNotice: 'Hear ye. By order of King Grumblemaw, all gold in this town now belongs to the Crown. Collectors are on their way.',
+  openingReply: "We counted it. It's ours.",
+  ending: `${endingLead} The gold stayed where it was earned. Taxation is theft.`,
+  loss: 'The Crown thanks you for your contribution.',
+  continue: 'Continue',
+} as const;
+
+export const LEVEL_STORY: Readonly<Record<number, { notice: string; reply: string }>> = {
+  1: { notice: 'A tax on doors. Collectors will call at yours.', reply: 'We kept the doors. And the gold.' },
+  2: { notice: 'A tax on wheels, carts and anything that rolls.', reply: 'Our cannonballs roll. Collect those.' },
+  3: { notice: 'A tax on running. The Hounds will show you how.', reply: 'They ran. Slowly. Sorry about the tar.' },
+  4: { notice: 'A tax on firewood, payable to the Redcoats at once.', reply: 'We burned it ourselves, thanks.' },
+  5: { notice: 'A tax on the sky. The Royal Harpies own it now.', reply: 'The sky is still free. Mind the feathers.' },
+  6: { notice: 'A toll on this road: one Troll per traveller.', reply: 'Toll paid. In mortar shells.' },
+  7: { notice: 'A tax on standing still. Move along, all of you.', reply: 'We built a wall. It stood very still.' },
+  8: { notice: 'A tax on neighbours helping neighbours.', reply: 'The neighbours say no.' },
+  9: { notice: 'The Assessor will now count your gold. Personally.', reply: 'He lost count.' },
+  10: { notice: 'Enough. The King is coming for the lot.', reply: endingLead },
+};
+
 export const CAMPAIGN_TEXT = {
   campaign: 'Campaign',
   freePlay: 'Free play',

@@ -8,7 +8,6 @@
 
 import type Phaser from 'phaser';
 import type { MapDef, Point, Rect } from '../../sim';
-import { LANDSCAPE, type Layout } from '../layout';
 import { COLORS } from '../palette';
 import { decorFor, type Decor } from '../decor/recipe';
 
@@ -48,25 +47,6 @@ function spawnMarker(g: Phaser.GameObjects.Graphics, s: Point): void {
   g.beginPath();
   g.arc(s.x, s.y, 14, -Math.PI * 0.4, Math.PI * 0.4);
   g.strokePath();
-}
-
-function exitCottage(g: Phaser.GameObjects.Graphics, box: Rect): void {
-  // A small cottage just above the path's last stretch, near the right edge,
-  // drawn inside the sim's landmark box (map.ts cottageFor; no cell
-  // overlapping it is buildable).
-  const cx = box.x + box.width / 2;
-  const base = box.y + box.height;
-  const w = 28;
-  const h = 20;
-  // Chimney first, so the roof covers its foot.
-  g.fillStyle(COLORS.cottageChimney, 1);
-  g.fillRect(cx + 5, base - h - 17, 5, 11);
-  g.fillStyle(COLORS.cottageWall, 1);
-  g.fillRect(cx - w / 2, base - h, w, h);
-  g.fillStyle(COLORS.cottageRoof, 1);
-  g.fillTriangle(cx - w / 2 - 4, base - h, cx + w / 2 + 4, base - h, cx, base - h - 16);
-  g.fillStyle(COLORS.cottageDoor, 1);
-  g.fillRect(cx - 4, base - 11, 8, 11);
 }
 
 /**
@@ -193,12 +173,8 @@ export function drawMapThumbnail(g: Phaser.GameObjects.Graphics, map: MapDef, x:
   }
 }
 
-/**
- * `g` is world-space (placed with layout.placeWorld). Milestone 32b: on a
- * turned map the cottage would lie on its side, so it is drawn upright on
- * `upright`, a screen-space Graphics over `g`, centred where its box lands.
- */
-export function drawMap(g: Phaser.GameObjects.Graphics, map: MapDef, layout: Layout = LANDSCAPE, upright?: Phaser.GameObjects.Graphics, decor: Decor = decorFor(map)): void {
+/** Bake the terrain. The town stays upright on its own layer in both layouts. */
+export function drawMap(g: Phaser.GameObjects.Graphics, map: MapDef, decor: Decor = decorFor(map)): void {
   g.fillStyle(COLORS.grass, 1);
   g.fillRect(0, 0, map.width, map.height);
   grassTexture(g, decor);
@@ -212,12 +188,4 @@ export function drawMap(g: Phaser.GameObjects.Graphics, map: MapDef, layout: Lay
   thickPath(g, map.path, PATH_WIDTH, COLORS.path);
   trailTexture(g, decor);
   spawnMarker(g, map.path[0]);
-  for (const box of map.landmarks ?? []) {
-    if (!layout.turned || !upright) {
-      exitCottage(g, box);
-      continue;
-    }
-    const c = layout.toScreen({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
-    exitCottage(upright, { x: c.x - box.width / 2, y: c.y - box.height / 2, width: box.width, height: box.height });
-  }
 }

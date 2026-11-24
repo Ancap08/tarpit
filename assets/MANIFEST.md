@@ -203,3 +203,23 @@ the checker looks for it.
 | `assets/fonts/OFL.txt` | https://github.com/google/fonts/blob/main/ofl/librecaslontext/OFL.txt | The Libre Caslon Text Project Authors | SIL OFL 1.1 | License file: assets/fonts/OFL.txt; SHA-256: a294245c822c5aa9fd9a9f3189418e99415428be5fecadf797793d5d8f6a3ad3 |
 | `assets/fonts/LibreCaslonText-Bold-latin.woff2` | https://fonts.gstatic.com/s/librecaslontext/v5/DdT578IGsGw1aF1JU10PUbTvNNaDMfID8vdkPx6esdPs.woff2 | The Libre Caslon Text Project Authors | SIL OFL 1.1 | License file: assets/fonts/OFL.txt; SHA-256: 7dc7dc90fb6e140dcdfbfd85aae2bab1f368a448be129fecb953a8290501cef8 |
 | `assets/fonts/LibreCaslonText-Regular-latin.woff2` | https://fonts.gstatic.com/s/librecaslontext/v5/DdT878IGsGw1aF1JU10PUbTvNNaDMfq41-JJHRO0.woff2 | The Libre Caslon Text Project Authors | SIL OFL 1.1 | License file: assets/fonts/OFL.txt; SHA-256: 1471d8a9f22ba5c42c597c2dc582030297027d3e4c3b59a55aec81678f80485b |
+| `assets/art-painted/town-1x.png` | `scripts/art/town.py` | Tarpit agents | MIT | Original painted exit miniatures in two layouts |
+| `assets/art-painted/town-1x.json` | `scripts/art/town.py` | Tarpit agents | MIT | Centered frame layout |
+| `assets/art-painted/town-2x.png` | `scripts/art/town.py` | Tarpit agents | MIT | Original painted exit miniatures in two layouts |
+| `assets/art-painted/town-2x.json` | `scripts/art/town.py` | Tarpit agents | MIT | Centered frame layout |
+| `assets/art-painted/sack-1x.png` | `scripts/art/town_sack.py` | Tarpit agents | MIT | Original painted buckskin purse with coin seal |
+| `assets/art-painted/sack-1x.json` | `scripts/art/town_sack.py` | Tarpit agents | MIT | Centered frame layout |
+| `assets/art-painted/sack-2x.png` | `scripts/art/town_sack.py` | Tarpit agents | MIT | Original painted buckskin purse with coin seal |
+| `assets/art-painted/sack-2x.json` | `scripts/art/town_sack.py` | Tarpit agents | MIT | Centered frame layout |
+| `assets/art-painted/royal-hoist-1x.png` | `scripts/art/royal_hoist.py` | Tarpit agents | MIT | Separate town and royal cloth for the banner hoist |
+| `assets/art-painted/royal-hoist-1x.json` | `scripts/art/royal_hoist.py` | Tarpit agents | MIT | Centered frame layout |
+| `assets/art-painted/royal-hoist-2x.png` | `scripts/art/royal_hoist.py` | Tarpit agents | MIT | Separate town and royal cloth for the banner hoist |
+| `assets/art-painted/royal-hoist-2x.json` | `scripts/art/royal_hoist.py` | Tarpit agents | MIT | Centered frame layout |
+| `assets/art-painted/tossed-hat-1x.png` | `scripts/art/town.py` | Tarpit agents | MIT | Separate painted felt hats tossed by the townsfolk |
+| `assets/art-painted/tossed-hat-1x.json` | `scripts/art/town.py` | Tarpit agents | MIT | Centered frame layout |
+| `assets/art-painted/tossed-hat-2x.png` | `scripts/art/town.py` | Tarpit agents | MIT | Separate painted felt hats tossed by the townsfolk |
+| `assets/art-painted/tossed-hat-2x.json` | `scripts/art/town.py` | Tarpit agents | MIT | Centered frame layout |
+| `assets/art-painted/town-portraits/untouched.webp` | `scripts/art/town_portraits.py` | Tarpit agents | MIT | Original result-page town in its untouched condition |
+| `assets/art-painted/town-portraits/scuffed.webp` | `scripts/art/town_portraits.py` | Tarpit agents | MIT | Original result-page town in its scuffed condition |
+| `assets/art-painted/town-portraits/battered.webp` | `scripts/art/town_portraits.py` | Tarpit agents | MIT | Original result-page town in its battered condition |
+| `assets/art-painted/town-portraits/taken.webp` | `scripts/art/town_portraits.py` | Tarpit agents | MIT | Original result-page town in its taken condition |
