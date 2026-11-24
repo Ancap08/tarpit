@@ -32,10 +32,11 @@ export function testPathBalance(towers: readonly TowerType[]) {
     });
 
     if (tower === 'tarpit') {
-      it('R1: Feathers and Deep Tar each win a comparison outright', () => {
-        const gaps = scores().ab;
-        expect(Math.min(...gaps), JSON.stringify(gaps)).toBeLessThan(0);
-        expect(Math.max(...gaps), JSON.stringify(gaps)).toBeGreaterThan(0);
+      it('R1: Feathers and Deep Tar win outright on different maps', () => {
+        const results = scenarios.map(measure).map(({ map, build, aMinusB }) => ({ map, build, aMinusB }));
+        const deepTarWins = results.filter(row => row.aMinusB > 0);
+        const featherWins = results.filter(row => row.aMinusB < 0);
+        expect(deepTarWins.some(a => featherWins.some(b => a.map !== b.map)), JSON.stringify(results)).toBe(true);
       });
     }
 
