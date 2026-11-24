@@ -6,7 +6,7 @@ import { SPECIAL_DEFS, type SpecialType } from './specials';
 import { TOWER_DEFS } from './towers';
 import type { TowerType } from './types';
 
-export const CAMPAIGN_CONTEXTS: readonly LevelContext[] = [
+const firstAct: readonly LevelContext[] = [
   { band: 'intro', introduces: null, alsoIntroduces: ['musketeer', 'longbow', 'keg', 1, 2, 'goblin'] },
   { band: 'intro', introduces: { towers: ['cannon'] } },
   { band: 'intro', introduces: { towers: ['tarpit'] }, alsoIntroduces: ['wolf'] },
@@ -19,4 +19,18 @@ export const CAMPAIGN_CONTEXTS: readonly LevelContext[] = [
   { band: 'late', introduces: { specials: ['guards', 'fireArrows'] } },
   { band: 'late', introduces: { maxTowerLevel: 2 }, alsoIntroduces: ['boss'] },
   { band: 'finale', introduces: { enemy: 'grumblemaw', control: { specials: Object.keys(SPECIAL_DEFS) as SpecialType[] } } },
+];
+
+export const CAMPAIGN_CONTEXTS: readonly LevelContext[] = [
+  ...firstAct.map(context => ({ ...context, frozenFirstAct: true })),
+  { band: 'late', introduces: null, introducesTax: 'windowTax' },
+  { band: 'late', introduces: null, introducesTax: 'forcedMarch' },
+  { band: 'late', introduces: null, introducesTax: 'noLoitering' },
+  { band: 'late', introduces: null, introducesTax: 'curfew' },
+  { band: 'late', introduces: null, introducesTax: 'frozenPurse' },
+  { band: 'late', introduces: null, introducesTax: 'rationing' },
+  { band: 'late', introduces: null },
+  { band: 'late', introduces: null },
+  { band: 'late', introduces: null },
+  { band: 'finale', introduces: null },
 ];

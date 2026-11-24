@@ -18,12 +18,12 @@ import { BOONS, boonScale, type BoonId } from './boons';
 import { applyBurn, applySpecialSlow, enemyPosition, removeDead } from './combat';
 import { cellKey, sameCell, terrainBlock, type Cell } from './grid';
 import { specialAllowed, SPECIAL_DEFS, SPECIAL_RECHARGE_TICKS, ZONE_LINGER_TICKS, specialRadius, tarLingerTicks, type SpecialType } from './specials';
-import { TOWER_DEFS, TOWER_PATHS, allowedTowers, maxTowerLevel, towerLevel, towerSellValue, towerUndoValue } from './towers';
+import { TOWER_DEFS, TOWER_PATHS, allowedTowers, atTowerCap, towerBuildCost, maxTowerLevel, towerLevel, towerSellValue, towerUndoValue } from './towers';
 import type { GameState, Guard, Point, TargetingMode, Tower, TowerType, UpgradePath } from './types';
 
 export type BuildResult =
   | { ok: true; tower: Tower; gold: number }
-  | { ok: false; reason: 'game-over' | 'tower-locked' | 'not-buildable' | 'water' | 'cell-occupied' | 'not-enough-gold' };
+  | { ok: false; reason: 'game-over' | 'tower-locked' | 'tower-cap' | 'not-buildable' | 'water' | 'cell-occupied' | 'not-enough-gold' };
 
 export type UpgradeResult =
   | { ok: true; tower: Tower; gold: number }
@@ -74,7 +74,8 @@ export function buildTower(state: GameState, cell: Cell, type: TowerType): Build
   const block = terrainRefusal(state, cell);
   if (block) return { ok: false, reason: block };
   if (towerAt(state, cell)) return { ok: false, reason: 'cell-occupied' };
-  const cost = TOWER_DEFS[type].cost;
+  if (atTowerCap(state)) return { ok: false, reason: 'tower-cap' };
+  const cost = towerBuildCost(state, type);
   if (state.gold < cost) return { ok: false, reason: 'not-enough-gold' };
   state.gold -= cost;
   const setup = state.phase === 'setup';
@@ -90,6 +91,7 @@ export function buildTower(state: GameState, cell: Cell, type: TowerType): Build
     upgradedThisPhase: false,
     kills: 0,
   };
+  if (state.towersBuilt !== undefined) state.towersBuilt++;
   state.towers.push(tower);
   state.towers.sort((a, b) => cellKey(a.cell) - cellKey(b.cell));
   state.events.push({ kind: 'build', cell: { col: cell.col, row: cell.row }, tower: type });

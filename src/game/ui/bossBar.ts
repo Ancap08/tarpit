@@ -10,7 +10,7 @@ import type Phaser from 'phaser';
 import { enemyMaxHp, isBoss, type GameState } from '../../sim';
 import { panel, THEME } from './theme';
 import { ENEMY_NAMES } from '../names';
-import { LANDSCAPE, type Layout } from '../layout';
+import { LANDSCAPE, TAXED_PORTRAIT, type Layout } from '../layout';
 import { COLORS, FONT, HUD_FONT, TEXT } from '../palette';
 
 export const BOSS_BAR = { x: 330, y: 24, width: 300, height: 14 } as const;
@@ -36,11 +36,12 @@ export function bossBarGeometry(layout: Layout): BossBarGeometry {
   if (layout.kind === 'landscape') return { bar: { ...BOSS_BAR }, pill: { ...BOSS_PILL }, nameSize: BOSS_NAME_SIZE, hpSize: BOSS_HP_SIZE };
   const m = layout.map;
   const width = 360;
+  const taxed = layout === TAXED_PORTRAIT;
   return {
-    bar: { x: m.x + (m.width - width) / 2, y: m.y + 34, width, height: 22 },
-    pill: { y: m.y + 6, height: 26, padX: 6 },
-    nameSize: 20,
-    hpSize: 20,
+    bar: { x: m.x + (m.width - width) / 2, y: m.y + (taxed ? 36 : 34), width, height: taxed ? 28 : 22 },
+    pill: { y: m.y + 6, height: taxed ? 28 : 26, padX: 6 },
+    nameSize: taxed ? 21 : 20,
+    hpSize: taxed ? 21 : 20,
   };
 }
 
@@ -94,6 +95,11 @@ export class BossBar {
         color: TEXT.bossHp,
       })
       .setOrigin(1, 0.5);
+    if (layout === TAXED_PORTRAIT) {
+      const metrics = { ascent: 21, descent: 5, fontSize: 26 };
+      this.name.setStyle({ metrics });
+      this.hp.setStyle({ metrics });
+    }
     this.setVisible(false);
   }
 

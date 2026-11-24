@@ -10,14 +10,14 @@ import { waitForFirstScreen } from './title';
 type Screen = ReturnType<TarpitTestApi['screen']>;
 const mixed = { 1: 3, 2: 1, 3: 2 } as const;
 
-async function onScreen(page: Page, screen: Screen) {
+export async function onScreen(page: Page, screen: Screen) {
   await page.waitForFunction((screen) => {
     const api = window.__tarpit as TarpitTestApi | undefined;
     return api?.screen() === screen && (api.scene() !== 'title' || api.titleReady());
   }, screen);
 }
 
-async function rotate(page: Page, screen: Screen) {
+export async function rotate(page: Page, screen: Screen) {
   const { width, height } = page.viewportSize()!;
   await page.setViewportSize({ width: height, height: width });
   await page.waitForFunction((layout) => window.__tarpit?.layout() === layout, height > width ? 'landscape' : 'portrait');
@@ -37,20 +37,21 @@ async function finish(page: Page, win: boolean) {
 }
 
 /** Compare the Phaser text bounds and live hit targets in canvas coordinates. */
-async function checkSpacing(page: Page) {
-  const items = await page.evaluate(({ back, play, tips, gotIt, proceed }) => {
+export async function checkSpacing(page: Page) {
+  const items = await page.evaluate(({ buttons, actOne, actTwo }) => {
     const t = window.__tarpit as TarpitTestApi;
     const result = t.campaignResult();
     const labels = t.campaignLabels();
     const keys = result ? ['playAgain', 'menu', ...(result.nextId ? ['nextLevel'] : [])]
       : Object.keys(t.uiRects()).filter(key => key.startsWith('title:'));
     const boxes = keys.map(key => ({ key, owner: '', button: true, ...t.uiRects()[key] }));
-    const owners = new Map([[back, 'title:back'], [play, 'title:play'], [tips, 'title:tips'], [gotIt, 'title:gotIt'], [proceed, 'title:continue']] as [string, string][]);
+    const owners = new Map(Object.entries(buttons));
+    if (t.screen() === 'levelMap') owners.set(t.levelStops()[0].id === 1 ? actTwo : actOne, 'title:act');
     if (result) {
       const buttons = result.nextId ? ['nextLevel', 'playAgain', 'menu'] : ['playAgain', 'menu'];
       result.buttons.forEach((label, index) => owners.set(label, buttons[index]));
     }
-    const expected = result ? [result.title, result.slots, result.story, ...result.details, ...result.buttons].filter(Boolean) : [];
+    const expected = result ? [result.title, result.slots, result.story, result.actClose, ...result.details, ...result.buttons].filter(Boolean) : [];
     const texts = result ? expected.map(value => {
       const label = labels.find(node => node.text === value);
       if (!label) throw new Error(`Missing separate result line: ${value}`);
@@ -66,15 +67,30 @@ async function checkSpacing(page: Page) {
     let stop = '';
     for (const label of texts) {
       const { x, y, width, height } = label;
-      let owner = owners.get(label.text) ?? '';
+      let owner = /^Loading\n\d+%$/.test(label.text) ? 'title:play' : owners.get(label.text) ?? '';
       if (t.screen() === 'levelMap') {
         if (/^\d+$/.test(label.text)) stop = `title:stop:${label.text}`;
         if (starRow.test(label.text) || /^\d+$/.test(label.text)) owner = stop;
       }
       boxes.push({ key: label.text, owner, button: false, x, y, width, height });
     }
+    if (result) {
+      const picture = t.game.scene.getScene('game').children.list.find(o => o.name.startsWith('town-picture:')) as Phaser.GameObjects.Image;
+      const { x, y, width, height } = picture.getBounds();
+      boxes.push({ key: picture.name, owner: '', button: false, x, y, width, height });
+    }
+    const { width, height } = t.game.canvas;
+    for (const box of boxes) {
+      if (box.x < 0 || box.y < 0 || box.x + box.width > width || box.y + box.height > height)
+        throw new Error(`Outside ${width}x${height}: ${box.key}`);
+    }
     return boxes;
-  }, { back: CAMPAIGN_TEXT.back, play: TITLE_TEXT.play, tips: CAMPAIGN_TEXT.tips, gotIt: CAMPAIGN_TEXT.gotIt, proceed: STORY_TEXT.continue });
+  }, { actOne: CAMPAIGN_TEXT.actOne, actTwo: CAMPAIGN_TEXT.actTwo, buttons: {
+    [CAMPAIGN_TEXT.back]: 'title:back', [TITLE_TEXT.play]: 'title:play',
+    [CAMPAIGN_TEXT.tips]: 'title:tips', [CAMPAIGN_TEXT.gotIt]: 'title:gotIt',
+    [STORY_TEXT.continue]: 'title:continue', [CAMPAIGN_TEXT.notice]: 'title:cardPage',
+    [CAMPAIGN_TEXT.mapNotes]: 'title:cardPage',
+  } as Record<string, string> });
   expect(items.length).toBeGreaterThan(3);
   for (const [index, a] of items.entries()) {
     for (const b of items.slice(index + 1)) {
@@ -104,7 +120,7 @@ export function campaignScreenSuite(touch: boolean) {
       await onScreen(page, 'levelMap');
       await press(page, 'title:stop:10', touch);
       await checkSpacing(page);
-      await api(page, t => t.setCampaignProgress(Object.fromEntries(Array.from({ length: 10 }, (_, i) => [i + 1, 3]))));
+      await api(page, t => t.setCampaignProgress(Object.fromEntries(Array.from({ length: 9 }, (_, i) => [i + 1, 3]))));
       await onScreen(page, 'levelMap');
       await checkSpacing(page);
       for (let id = 1; id <= 10; id++) {
@@ -171,7 +187,7 @@ export function campaignScreenSuite(touch: boolean) {
       await first();
       await click('title:campaign');
       await onScreen(page, 'levelMap');
-      for (const id of [2, 7, 9, 10]) {
+      for (const id of [2, 7, 9, 10, 20]) {
         await page.evaluate(id => (window.__tarpit as TarpitTestApi).startLevel(id), id);
         await onScreen(page, 'game');
         await finish(page, true);
@@ -186,15 +202,15 @@ export function campaignScreenSuite(touch: boolean) {
       await checkSpacing(page);
       await click('title:continue');
       await onScreen(page, tall ? 'game' : 'levelMap');
-      if (tall) expect(await api(page, t => t.state().level?.id)).toBe(10);
+      if (tall) expect(await api(page, t => t.state().level?.id)).toBe(20);
       await page.reload();
       await first();
-      await api(page, t => t.startLevel(10));
+      await api(page, t => t.startLevel(20));
       await onScreen(page, 'game');
       await finish(page, true);
       await click('menu');
       await onScreen(page, 'levelMap');
-      await api(page, t => t.startLevel(10));
+      await api(page, t => t.startLevel(20));
       await onScreen(page, 'game');
       await finish(page, false);
       expect(await words()).toContain(STORY_TEXT.loss);

@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { ENEMY_SHORT_NAMES, GUARD_NAMES, LEVEL_NEW, LEVEL_STORY, STORY_TEXT, levelTips } from './names';
+import { LEVELS } from '../sim/levels';
+import { levelFeatText, ENEMY_SHORT_NAMES, GUARD_NAMES, LEVEL_NEW, LEVEL_STORY, STORY_TEXT, levelTips } from './names';
 
 describe('the King’s collectors', () => {
   it('keeps the compact HUD labels and Guard names in their approved forms', () => {
@@ -16,7 +17,7 @@ describe('the King’s collectors', () => {
     const scope = readFileSync('docs/SCOPE-v5.md', 'utf8').split('## Milestone 46:')[1].split('## Milestone 47:')[0];
     const rows = [...scope.matchAll(/^\| (Opening|Ending|Any loss|\d+) \|(.*?)\|(.*?)\|$/gm)]
       .map(([, id, notice, reply]) => [id, notice.trim(), reply.trim()]);
-    expect(Object.keys(LEVEL_STORY)).toEqual(rows.filter(([id]) => /^\d+$/.test(id)).map(([id]) => id));
+    expect(Object.keys(LEVEL_STORY).slice(0, 10)).toEqual(rows.filter(([id]) => /^\d+$/.test(id)).map(([id]) => id));
     for (const [id, notice, reply] of rows) {
       if (id === 'Opening') expect([STORY_TEXT.openingNotice, STORY_TEXT.openingReply]).toEqual([notice, reply]);
       else if (id === 'Ending') expect(STORY_TEXT.ending).toBe(reply);
@@ -26,6 +27,21 @@ describe('the King’s collectors', () => {
       });
     }
     expect(rows).toHaveLength(13);
+  });
+
+  it('supplies a notice, reply and named feat for every second-act stop', () => {
+    expect(STORY_TEXT.secondActNotice).toBe('The King has thought of new taxes.');
+    expect(STORY_TEXT.secondActReply.length).toBeGreaterThan(0);
+    for (const level of LEVELS.slice(10)) {
+      const { notice, reply } = LEVEL_STORY[level.id];
+      expect(notice.trim().length).toBeGreaterThan(0);
+      expect(reply.trim().length).toBeGreaterThan(0);
+      const feat = level.feat!;
+      expect(levelFeatText(feat)).toContain({
+        noLeaks: 'Not a penny', noSpecials: 'Bare hands', maxTowers: 'Few hands',
+      }[feat.kind]);
+      if (feat.kind === 'maxTowers') expect(levelFeatText(feat)).toContain(String(feat.limit));
+    }
   });
 
   it.each([false, true])('uses plural enemy names in cards and tips (touch=%s)', touch => {

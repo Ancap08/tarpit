@@ -223,12 +223,12 @@ describe('verifier: gate rejections', () => {
     const level = levelOf(7);
     const trivial = { ...level, waves: [...level.waves.slice(0, -1), { groups: [{ type: 'goblin' as const, count: 1, interval: 0, delay: 0 }] }] };
     expect(checkLevel(trivial, CAMPAIGN_CONTEXTS[6]).failed).toContain('L5');
-  });
+  }, 60_000);
 
   it('rejects the finale with its boss removed', () => {
     const level = levelOf(10);
     const waves = level.waves.map((wave, i) => i === level.waves.length - 1
       ? { groups: wave.groups.filter((g) => g.type !== 'grumblemaw') } : wave);
     expect(checkLevel({ ...level, waves }, CAMPAIGN_CONTEXTS[9]).failed).toContain('L5');
-  });
+  }, 60_000);
 });

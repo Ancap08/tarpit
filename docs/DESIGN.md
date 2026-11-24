@@ -13,8 +13,8 @@
 
 King Grumblemaw sends his collectors to take the town's gold. The next-wave
 preview uses short names and the existing count style. Boss bars and entrance
-banners use full names. The portrait preview fits its measured text into the
-remaining HUD strip. Boss labels scale down when their measured height exceeds
+banners use full names. The portrait preview wraps across the status strip. Taxed levels give it
+two full lines below the tax names. Boss labels scale down when their measured height exceeds
 the name pill or health bar. The simulation and balance report retain their original
 identifiers and labels.
 
@@ -53,8 +53,9 @@ have different advances. Star awards and locks are drawn shapes.
 The HUD is a wooden counter. The landscape coin has 5 px of clearance from
 the brass frame and 6 px from the Gold label. Large balances leave at least
 4 px before Lives. The level
-map traces a road between ten plaques, with brass locks, star slots and a
-blue next stop. Cards and results use dark type on paper. The reward offer
+map traces a road between ten plaques on each act’s parchment sheet, with
+brass locks, star slots and a blue next stop. A four-pointed star marks the
+feat slot on a second-act plaque. Cards and results use dark type on paper. The reward offer
 uses the same paper for each choice. Wave and boss banners use blue and red
 respectively. Each banner line fits inside 24 px of horizontal padding, and
 the plaque leaves at least 8 px at either map edge. Tall text expands the
@@ -1150,17 +1151,21 @@ printed silhouette fills the space immediately and stays available offline.
 The picture sits to the left of the results in landscape and above them
 in portrait. A 38% veil keeps the town on the battlefield visible.
 
-The ten campaign cards print the King's notices alongside the tactical
-twists. Wins print the corresponding reply in town blue, losses the
-Crown's thanks in red. The opening proclamation and its reply precede
-the first campaign map. Level ten uses the first sentence of the Ending
-on its result. The full Ending follows the player's choice of Level map
-or Play again, and Continue carries out that choice.
+All twenty campaign cards print the King's notice. Wins print the town's
+reply in blue. Losses print the Crown's thanks in red. The opening
+proclamation and reply precede the first map. Winning level 10 keeps
+“The King went home with empty pockets.” and adds “He will be back with
+new ideas.” The first visit to Act Two shows the King's new-tax notice
+and the town's reply. Continue opens the requested map or level card.
 
-Each broadside has one button. Its first rendered frame records
-`opening` or `ending` in `tarpit.seenBroadsides`, beside the tips record.
-A denied write falls back to the current session. Rotation preserves the
-page and the destination.
+The full Ending follows a level 20 win when the player chooses Level map
+or Play again. Continue carries out that choice. The first rendered frame
+of each broadside records `opening`, `secondAct` or `ending` in
+`tarpit.seenBroadsides`, beside the tips record. A returning player who saw
+the same Ending at level 10 keeps that receipt. Level 20 still shows
+“Campaign complete!” and goes straight to the chosen destination. A denied
+write falls back to the current session. Rotation preserves the page and
+the destination.
 
 ## Showpiece (experimental)
 
@@ -1348,7 +1353,7 @@ drawn and where touches land differ.
   speed sits above mute, each 42 × 42 at x=828. Special and Start Wave
   keep their 100 and 130 px widths at x=586 and x=692. Landscape tower
   buttons start at x=6 and measure 132 × 42 with 4 px gaps.
-- **Portrait** uses a centred 480 x 1194 canvas. A held reward adds the side rail described above. From the top: a 76 px status strip
+- **Portrait** uses a centred 480 x 1194 canvas in Free play and untaxed levels. A held reward adds the side rail described above. From the top: a 76 px status strip
   (gold, lives, wave and level tag in one row, "cheat used" at its right
   end, the next-wave preview on up to two lines under them), the map
   turned a quarter turn clockwise (480 x 960, spawn at the top, cottage at
@@ -1361,8 +1366,9 @@ drawn and where touches land differ.
   80 px at 390 × 664 to keep Pause at least 44 CSS px. Start Wave takes
   the remaining 136 or 116 px. Its 23 px label wraps to two lines when
   needed. Call next shows its bonus on the second line. A blocked call
-  shows its reason alone. Tips, unlock hints and cards use the same control
-  names “Special” and “Start Wave” printed on the HUD. Special has a status dot
+  shows its reason alone. The boss warning reads “Boss next” in both layouts,
+  with one word per line on the phone. Tips, unlock hints and cards use the
+  same control names “Special” and “Start Wave” printed on the HUD. Special has a status dot
   and shows the seconds remaining while recharging. At 390 × 844 the row
   labels retain at least 12 CSS px. At 390 × 664 Special and wave labels
   retain at least 11 CSS px and speed retains at least 12 CSS px.
@@ -1371,9 +1377,28 @@ drawn and where touches land differ.
   canvas fits at 0.639: buttons are 44.7 CSS px, 20 px text 12.8 CSS px and a
   map cell 20.5 CSS px. With Safari's bars (390 x 664) the scale is 0.556:
   buttons 38.9, text 11.1 and cells 17.8 CSS px.
+- **Taxed portrait levels** use a 480 × 1232 canvas. The 108 px status strip
+  has a row for gold, lives, wave and level, a row for taxes and the cheat
+  mark, then two 24 px preview lines starting at y=58. Stats, previews and
+  tower prices use 21 px type. The tax names and tower tally use 23 px.
+  When the cheat mark is visible, the tax row lists names only and the build
+  bar shows the permit count. Aiming uses the preview space for the action and
+  its touch or mouse hint. The map still measures 480 × 960. Both control
+  rows are 73 px tall with 2 px outer margins. Tower plaques are 76 px
+  wide with 4 px gaps. The lower plaques have 2 px gaps, a 115 px Special
+  and a 73 px speed button. The two icon buttons grow from 73 to 82 px at
+  the shorter phone height. The wave plaque takes the remaining width.
+  Blocked calls and call bonuses use 21 px type with at least 1 px at each
+  side. “Last wave” also takes two lines. Special reserves 19 px for its
+  left inset and status dot. At 390 × 664 all HUD labels measure at least
+  11.1 CSS px, with 12 CSS px for taxes, the tally and speed. At 390 × 844
+  the minimum is 12 CSS px.
+  The boss name and HP use 21 px type in 28 px boxes. On a feat result,
+  23 px text and 82 px buttons keep the controls readable and tappable
+  at the shorter height.
 - **The transform.** `src/game/layout.ts` owns every world-to-screen and
   screen-to-world conversion. Portrait: screen x = 480 - world y, screen
-  y = 76 + world x (world x runs down the screen, world y right to left).
+  y = status strip height + world x (world x runs down the screen, world y right to left).
   Landscape is the identity. World-space Graphics (map, zones, towers,
   range circles, ghost, projectiles, impacts) take the transform whole;
   sprites, text, hp bars, particles and banners are placed through it and
@@ -1796,7 +1821,7 @@ Up to three ascending reward waves use the three existing reward menus in order.
 An allowed special opens on wave 1. Tower, upgrade and special restrictions
 are checked before a purchase or cast changes the game. Clearing the last
 wave wins. Every level starts with the same life count. A loss earns zero stars.
-An uncheated win earns one star, or the highest award whose minimum is met.
+The first act awards the highest star count whose life minimum is met.
 
 | Starting lives | Minimum lives for two stars | Minimum lives for three stars |
 |---:|---:|---:|
@@ -1809,6 +1834,35 @@ keeps the best stars, including after a cheated win. The browser stores
 passes and stars in version 2 of `tarpit.campaign`. It also reads stars
 earned in version 1. If storage fails, progress lasts for the page session.
 Free play keeps its own score table.
+
+### Taxes and skill stars
+
+Levels 11–20 use the full arsenal at tier 3, all five specials, 20 starting
+lives and a fixed HP scale. Each has one or two taxes. Free play and the first
+ten levels use their original rules.
+
+| Tax | Rule |
+|---|---|
+| Window Tax | Pay the base price plus the nearest whole gold to base × rate × previous towers built. Sold towers still count. Upgrades and moves are exempt. |
+| Frozen Purse | Kills pay zero. Each cleared wave pays the listed lump in place of the standard clear payment. Calling early still pays the lump and the early-call bonus. |
+| Forced March | Multiply every collector’s movement speed by 1 + rate, including flyers, bosses and summoned packs. Slows and blockers operate as usual. |
+| Curfew | Multiply maximum reach by 1 − rate, including both upgrade paths and range boons. The Mortar keeps its 70 px minimum. |
+| No Loitering | After a clear, the next wave starts when the stated number of seconds of setup has elapsed. The clock waits for a reward choice. Players can start sooner and can still call a wave early during combat. Both the opening and the final wave wait for the player. |
+| Rationing | The cap counts towers standing. A sale frees a place. Upgrading uses no place. |
+
+| Tunable rate or delay | Minimum | Maximum |
+|---|---:|---:|
+| Window Tax | 0.05 | 0.1 |
+| Forced March | 0.15 | 0.25 |
+| Curfew | 0.1 | 0.2 |
+| No Loitering (seconds) | 8 | 15 |
+
+A win earns one star and finishing with at least 12 lives earns two. A third
+star on a feat level also requires the named feat. **Not a penny** requires
+zero escaped enemies, including before any Stone Walls reward. **Bare hands**
+requires zero successful special casts. **Few hands** limits successful tower
+builds across the whole run, including towers later sold. Moves and upgrades
+are exempt. Saved stars keep their previous meaning and the best result wins.
 
 ### Bot decisions
 
@@ -1830,6 +1884,14 @@ Campaign stars are calibrated to a capable builder with slow hands. Person uses
 Good’s purchase optimiser and finishes Burn Line with 16 lives to Good’s 13.
 Beginner is the only measure of weak play. Real players decide whether the
 star targets feel right.
+
+On feat-bearing or taxed levels, after the opening, Good spends 0.5 seconds
+per purchase and Person and Beginner spend 3 seconds. A wave can start while
+they are deciding. Each starts manually once shopping finishes. Tax removal
+trials keep this same clock. With Frozen Purse the capable bots spend available
+funds without holding the usual 30 gold in reserve. In feat mode each bot keeps its usual timing, aim, reward and placement choices. It forgoes
+specials for Bare hands, stops new builds at the Few hands limit, and uses
+its ordinary leak-prevention strategy for Not a penny.
 
 ### Acceptance
 
@@ -1863,6 +1925,14 @@ The level record can declare an ending boss. A separate context names the introd
 | L3 starting gold offsets | -10–10 |
 | L6 HP factors | 0.95–1.05 |
 | L6 starting gold factors | 0.85–1.15 |
+| T1 minimum lives gained by removing one tax, or one more star | 3 |
+| F3 minimum lives saved by specials on Bare hands | 3 |
+| F3 minimum extra builds above the Few hands limit | 3 |
+| V1 maximum stars with one tower type | 1 |
+| L1m new-level minimum spare lives above the two-star line at a nudge | 1 |
+| S1 comparison stops before the second act | 3 |
+| S1 minimum drop in Person’s mean lives | 1.5 |
+| S1 maximum drop in Person’s lives between adjacent second-act stops | 5 |
 
 - P1 checks Person’s stars and surviving lives against Good. P2 runs Person with an empty list of allowed specials. The two bands that allow a loss still report that run.
 - L1 and L2 apply the Good and Beginner star limits in the band table. L1m requires Good to keep its band minimum at HP ×0.98, HP ×1.02, starting gold −10 and starting gold +10, varying one input at a time on every level.
@@ -1872,6 +1942,20 @@ The level record can declare an ending boss. A separate context names the introd
 - L6 varies HP and starting gold separately at the listed endpoints, rounding scaled gold to the nearest integer. Good and Person may each move at most one star. Both must still win intro and middle levels.
 - L7 checks the record and requires terminal runs with no refused actions.
 - L8 checks Good’s finale lives and the difference between the first and last thirds’ mean lives. Each cohort contains the campaign length divided by three, rounded down, with at least one level. A single-level list has no mean-drop comparison.
+
+The second act uses the late band through level 19 and the finale band on
+level 20. The original level 10 keeps its finale check. L4 and L8 span all
+twenty levels. The twenty-level L8 compares the first and last six stops.
+
+- T1 removes each tax separately, leaving the other tax, feat, waves and economy in place. Person must gain at least three lives or one star at nominal and under each of the four L1m nudges.
+- T2 requires Person to earn at least two stars under the taxes at nominal, and at least one at each nudge.
+- T3 compares first appearances with the declared tax introduction in campaign order. A new tax must appear alone.
+- F1 requires three stars for feat-mode Good at nominal and each of the four L1m nudges. Beginner must miss the third star at nominal.
+- F2 rejects a level if ordinary Person or feat-mode Person earns three stars at nominal. No campaign stop may award Person an accidental feat. Ordinary Good can earn Not a penny because leak prevention is already its normal strategy.
+- F3 compares ordinary Person with the same player pursuing Bare hands. Specials must save at least three lives. For Few hands, ordinary Person must build at least three towers beyond the feat limit. Not a penny has no additional F3 test.
+- V1 runs Good once per permitted tower type in late and finale bands, keeping the full special and upgrade options. Each single-type run must finish below two stars. The frozen first act is exempt to preserve its shipped levels, scores and saved-star meaning. A single type earns at least two stars on eight first-act levels. Longbows pass seven, and either Cannon or Mortar passes Hold the Bend.
+- L1m also applies to each new level. At each nudge Good must retain its required stars. A required two-star finish for Good or taxed Person must have at least one life to spare. Nominal star awards use the original thresholds.
+- S1 compares Person’s nominal lives across the second act against the final three stops of the first act. The first new stop must leave at least as many lives as the preceding finale. The second-act mean must drop by at least 1.5 lives and no adjacent second-act drop may exceed five.
 
 ### Campaign measurements
 
@@ -1889,8 +1973,36 @@ Stars/lives give each bot’s highest award and surviving lives. Time counts Goo
 | 8 | Stand Fast | Switchback | 7 | 517 | 295 | 1.28 | — | 2 | — | 2/12 | 2/13 | 0/0 | 8.08 | 30 | 36 |
 | 9 | The King's Assessor | Riverbend | 7 | 535 | 255 | 1 | 6 | 3 | 5 | 3/20 | 3/20 | 0/0 | 7.57 | 17 | 42 |
 | 10 | Last Light | Meadow | 7 | 633 | 280 | 0.925 | 5 | 3 | 5 | 2/16 | 2/13 | 0/0 | 8.89 | 19 | 36 |
+| 11 | Window Money | Riverbend | 6 | 326 | 245 | 0.91 | — | 3 | 1 | 2/20 | 2/14 | 0/0 | 5.91 | 23 | 21 |
+| 12 | The Quickstep | Switchback | 7 | 466 | 260 | 1.14 | — | 3 | 1 | 2/19 | 2/15 | 0/0 | 6.73 | 30 | 38 |
+| 13 | Eight Bells | Riverbend | 7 | 319 | 285 | 0.85 | — | 3 | 1 | 3/20 | 2/14 | 0/0 | 5.63 | 17 | 31 |
+| 14 | Short Measure | Meadow | 6 | 331 | 240 | 0.93 | — | 3 | — | 3/20 | 2/14 | 0/0 | 5.53 | 19 | 27 |
+| 15 | Pay Day | Riverbend | 6 | 285 | 255 | 1.08 | — | 3 | 2 | 2/14 | 2/13 | 0/0 | 5.81 | 9 | 40 |
+| 16 | Three Permits | Meadow | 6 | 292 | 245 | 1 | — | 3 | 1 | 2/14 | 2/13 | 0/0 | 5.72 | 11 | 40 |
+| 17 | Closing Time | Switchback | 7 | 387 | 220 | 0.94 | — | 3 | 1 | 2/20 | 2/14 | 0/0 | 6.33 | 23 | 58 |
+| 18 | Three at the Gate | Meadow | 6 | 280 | 260 | 1 | — | 3 | 3 | 2/14 | 2/13 | 0/0 | 5.14 | 13 | 49 |
+| 19 | The Sash Levy | Meadow | 6 | 350 | 245 | 0.94 | — | 3 | 1 | 2/14 | 2/14 | 0/0 | 5.82 | 31 | 47 |
+| 20 | The Last Writ | Riverbend | 8 | 509 | 245 | 0.925 | — | 3 | — | 2/13 | 2/13 | 0/0 | 8.98 | 12 | 53 |
 
-Good clears the campaign in 72.70 minutes. Its mean surviving lives drop by 4.00 from the first third to the last.
+Good clears the first ten stops in 72.70 combat minutes, with a 4.00-life
+mean drop. Across all twenty stops Good takes 134.31 combat minutes.
+Mean surviving lives drop from 18.00 on levels 1–6 to 14.83 on levels 15–20.
+
+Fractions below are shares of the base price, speed or range. The purse pays
+gold, the delay counts seconds at 1×, and the cap counts towers standing.
+
+| Stop | Window Tax | Frozen Purse | Forced March | Curfew | No Loitering | Rationing | Feat | Build limit | Feat Good |
+|---:|---:|---:|---:|---:|---:|---:|---|---:|---|
+| 11 | 0.085 | — | — | — | — | — | noSpecials | — | 3/15 |
+| 12 | — | — | 0.2 | — | — | — | maxTowers | 5 | 3/13 |
+| 13 | — | — | — | — | 8 | — | noLeaks | — | 3/20 |
+| 14 | — | — | — | 0.15 | — | — | noLeaks | — | 3/20 |
+| 15 | — | 80 | — | — | — | — | noSpecials | — | 3/12 |
+| 16 | — | — | — | — | — | 3 | noSpecials | — | 3/12 |
+| 17 | — | — | — | 0.2 | 8 | — | maxTowers | 2 | 3/14 |
+| 18 | — | — | 0.18 | — | — | 3 | noSpecials | — | 3/12 |
+| 19 | 0.05 | — | — | 0.1 | — | — | maxTowers | 5 | 3/13 |
+| 20 | — | 80 | — | 0.2 | — | — | noSpecials | — | 3/13 |
 
 Pack Trail builds up from three-Goblin ranks to groups of six. Heavy Feet ends with a column of 20 Trolls, which Mortars can hit on Riverbend beyond the reach of the installed short-range towers. Hold the Bend has the most spawns. Stand Fast combines shielded ground formations with air pressure. The King's Assessor sends upgraded towers against Trolls and a shielded escort before Grumblefoot. Last Light closes with Grumblemaw.
 
@@ -1902,15 +2014,28 @@ map and difficulty picker. Its best scores belong to the selected map and
 difficulty. Campaign shows the opening broadside on the first visit, then
 opens the level map and reads the saved campaign stars.
 
-The trail crosses five stops and returns across five in landscape. In
-portrait it winds down five rows of two. Each stop shows its level number
+Each act fits on one map without scrolling. Its trail crosses five stops
+and returns across five in landscape. In portrait it winds down five rows
+of two. The plaque beside Back names the other act. Act Two unlocks after
+level 10, including a gold-cheat pass. Pressing its lock says “Win level
+10 first”. A fresh visit opens the act of the next open, unwon level. After
+all twenty wins it opens Act Two. Back from a card keeps the act being browsed.
+Each stop shows its level number
 and three star slots. The number has a fixed-height box with at least 4 px
 of clearance above the stars. The map, card and result draw filled stars
-for earned slots and outlines for empty slots. The first open level without a win is highlighted.
-Tapping any lock names the first open level still to win. Back returns to
+for earned slots and outlines for empty slots. On a feat level, the third slot
+has four points in all three views. The first open level without a win is highlighted.
+Tapping a locked stop names the first open level still to win. Back returns to
 the first screen. An open stop shows a card with the King's notice, level name, map,
-twist, new equipment or enemies, and best stars. On the first Play for
-each level, a tips panel shows up to three short instructions. Action words
+twist, new equipment or enemies, and best stars. Act Two cards list each
+tax name and amount under “In force” and print the name and task for
+the third star. Notices, tax amounts and build limits read the level record.
+The card measures the printed lines. If there is insufficient room for the
+map and tactics, “Map notes” turns the card over and “Notice” turns it
+back. Play and best stars stay available on both pages. Portrait card body
+type is 26 game pixels, at least 14 CSS pixels on the 390 × 664 phone.
+
+The first Play on each level opens a tips panel with up to three short instructions. Action words
 match the input used to open the panel. A mouse builds with one click on
 the square. Touch arms the square with the first tap and builds with the
 second. Panel buttons ignore pointer presses until the opening pointer has
@@ -1935,14 +2060,18 @@ The game shows the level number and counts waves against the level's own
 length. A win shows this run's stars and lives. A gold-cheat win shows
 three empty slots and explains that it saved no stars. Passing opens the
 next level and offers Next level when another level exists. An uncheated
-win below three stars gives the life target for the next award. Next
-level opens the next card. Winning level ten shows the campaign-complete
-message. Play again restarts the
-same level, and Level map shows the player's saved bests. A loss offers
-Try again and Level map. Turning the device keeps the current screen and
+win gives the life target when lives alone determine the next award.
+Act Two wins show all three slots and name the earned feat or the
+requirement for a missed feat. A cheated run earns zero stars and misses
+the feat. Next level opens the next card. Winning level 20 shows the
+campaign-complete message. Play again restarts the same level. Level map
+shows the player’s saved bests. A loss offers
+Try again and Level map, with the loss reply and no feat verdict or star row.
+Turning the device keeps the current screen and
 level selection. Both looks use the same campaign controls.
 
 Arrow keys move the highlight, Enter or Space activates it, and Escape goes
 back. The first screen opens on Campaign, the map on the next unwon open
 stop, the card on Play, and the result on its first button. On the map the
-arrow keys visit only open stops.
+arrow keys visit open stops. Right from stop 10 crosses to 11 once unlocked.
+Left from 11 returns to 10. Rotating keeps the focused stop.

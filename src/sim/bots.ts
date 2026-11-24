@@ -10,7 +10,7 @@ import { pathLength, positionAlongPath } from './map';
 import { BIG_ENEMIES, POLICY_CHECK_TICKS, POLICY_MIN_HITS, chooseCrowdSpecial, policyCandidates } from './specialPolicy';
 import { availableSpecials, SPECIAL_RECHARGE_TICKS, type SpecialType } from './specials';
 import { TICKS_PER_SECOND } from './time';
-import { TOWER_DEFS, TOWER_PATHS, allowedTowers, maxTowerLevel, towerLevel, towerStats } from './towers';
+import { TOWER_DEFS, TOWER_PATHS, allowedTowers, atTowerCap, towerBuildCost, maxTowerLevel, towerLevel, towerStats } from './towers';
 import type { GameState, MapDef, Point, TowerLevelStats, TowerType, UpgradePath } from './types';
 import { nextWavePreview } from './waves';
 
@@ -24,6 +24,8 @@ export interface BotPolicy {
   purchase(state: GameState): BuildAction | undefined;
   /** Maximum number of upgrade purchases per setup, if limited. */
   upgradesPerSetup?: number;
+  /** Time to choose and carry out one purchase in a timed planning run. */
+  purchaseTicks?: number;
   reward(state: GameState): BoonId | undefined;
   special(state: GameState, lastZone?: SpecialType): SpecialAction | undefined;
 }
@@ -31,6 +33,7 @@ export interface BotPolicy {
 export interface BotRun {
   peakAlive: number;
   waveOneLives: number;
+  setupTicks: number;
   state: GameState;
   log: HeadlessStepResult[];
   refused: number;
@@ -42,7 +45,7 @@ export const botBeginner: BotPolicy = {
   purchase(state) {
     if (state.phase !== 'setup' || state.pendingBoon) return undefined;
     const tower = [...allowedTowers(state)].sort((a, b) => TOWER_DEFS[a].cost - TOWER_DEFS[b].cost)[0];
-    if (tower && TOWER_DEFS[tower].cost <= state.gold) {
+    if (tower && !atTowerCap(state) && towerBuildCost(state, tower) <= state.gold) {
       const cell = trailCellOrder(state.map).find((cell) => !state.towers.some((t) => cellKey(t.cell) === cellKey(cell)));
       if (cell) return { type: 'build', tower, cell };
     }
@@ -102,10 +105,12 @@ function towerPower(type: TowerType, stats: TowerLevelStats, profile: ReturnType
   return { ground: direct * splash, air: air ? direct : 0, burn: stats.burnDps, slow: stats.slow };
 }
 
-function goodPurchase(state: GameState, rotate = false): BuildAction | undefined {
+function goodPurchase(state: GameState, rotate = false, buildLimit = Infinity): BuildAction | undefined {
   if (state.phase !== 'setup' || state.pendingBoon) return undefined;
   const { cells, samples } = trailGeometry(state.map);
-  const budget = state.gold - (state.wave === 0 ? 0 : SETUP_RESERVE);
+  // With a sealed purse the next income arrives only after surviving the wave.
+  const save = state.wave > 0 && state.level?.taxes?.frozenPurse === undefined;
+  const budget = state.gold - (save ? SETUP_RESERVE : 0);
   const profile = threats(state);
   const defense = samples.map(() => ({ ground: 0, air: 0, burn: 0, slow: 0 }));
   const occupied = new Map(state.towers.map((tower) => [cellKey(tower.cell), tower]));
@@ -114,7 +119,7 @@ function goodPurchase(state: GameState, rotate = false): BuildAction | undefined
     const tower = occupied.get(key);
     if (!tower) continue;
     counts.set(tower.type, (counts.get(tower.type) ?? 0) + 1);
-    const stats = towerStats(tower, state.boons);
+    const stats = towerStats(tower, state.boons, state.level);
     const power = towerPower(tower.type, stats, profile);
     for (const [index, distance] of distances.entries()) {
       if (!inRange(distance, stats)) continue;
@@ -155,16 +160,16 @@ function goodPurchase(state: GameState, rotate = false): BuildAction | undefined
     return value;
   }
 
-  const allowed = allowedTowers(state);
+  const allowed = atTowerCap(state) || (state.towersBuilt ?? state.towers.length) >= buildLimit ? [] : allowedTowers(state);
   const limit = maxTowerLevel(state);
   for (const { key, distances } of cells) {
     const cell = cellFromKey(key);
     const tower = occupied.get(key);
     if (!tower) {
       for (const type of allowed) {
-        const { cost } = TOWER_DEFS[type];
+        const cost = towerBuildCost(state, type);
         if (cost > budget) continue;
-        const stats = towerStats({ type, upgraded: false }, state.boons);
+        const stats = towerStats({ type, upgraded: false }, state.boons, state.level);
         const variety = 1 + (counts.get(type) ?? 0) * 0.10;
         const first = !counts.has(type);
         const support = first && occupied.size > 1;
@@ -187,12 +192,12 @@ function goodPurchase(state: GameState, rotate = false): BuildAction | undefined
     }
     const level = towerLevel(tower);
     if (level >= limit) continue;
-    const previous = towerStats(tower, state.boons);
+    const previous = towerStats(tower, state.boons, state.level);
     const cost = level === 1 ? TOWER_DEFS[tower.type].upgradeCost : TOWER_PATHS[tower.type].cost;
     if (cost > budget) continue;
     const paths = level === 1 ? [undefined] : PATHS;
     for (const path of paths) {
-      const stats = towerStats({ type: tower.type, upgraded: true, path }, state.boons);
+      const stats = towerStats({ type: tower.type, upgraded: true, path }, state.boons, state.level);
       const score = benefit(tower.type, stats, distances, previous) / cost;
       if (score > bestScore) {
         bestScore = score;
@@ -213,7 +218,7 @@ function goodReward(state: GameState): BoonId | undefined {
   if (!offer) return undefined;
   const held = state.boons;
   const artillery = state.towers.filter((tower) => tower.type === 'mortar' || tower.type === 'cannon').length;
-  const skills = state.towers.map((tower) => towerStats(tower, held));
+  const skills = state.towers.map((tower) => towerStats(tower, held, state.level));
   const available = availableSpecials({ level: state.level, wave: state.wave + 1 });
   const powers: Record<BoonId, number> = {
     longBarrels: artillery * 2,
@@ -255,10 +260,10 @@ function chooseSpecial(state: GameState, lastZone: SpecialType | undefined, poin
       if (approaching < POLICY_MIN_HITS) continue;
       const coverage = state.towers.filter((tower) => {
         const center = cellCenter(tower.cell);
-        return inRange(Math.hypot(center.x - point.x, center.y - point.y), towerStats(tower, state.boons));
+        return inRange(Math.hypot(center.x - point.x, center.y - point.y), towerStats(tower, state.boons, state.level));
       });
       if (!coverage.length) continue;
-      const splash = coverage.some((tower) => towerStats(tower, state.boons).splashRadius > 0);
+      const splash = coverage.some((tower) => towerStats(tower, state.boons, state.level).splashRadius > 0);
       const score = approaching + Number(splash);
       if (score > bestScore) {
         best = { type: 'special', special, ...point, atWaveTick: state.waveTick };
@@ -269,7 +274,7 @@ function chooseSpecial(state: GameState, lastZone: SpecialType | undefined, poin
   return best;
 }
 
-export const botGood: BotPolicy = { purchase: goodPurchase, reward: goodReward, special: goodSpecial };
+export const botGood: BotPolicy = { purchase: goodPurchase, purchaseTicks: POLICY_CHECK_TICKS, reward: goodReward, special: goodSpecial };
 
 export const PERSON_LOOK_TICKS = 3 * TICKS_PER_SECOND;
 export const PERSON_REACTION_TICKS = 1.5 * TICKS_PER_SECOND;
@@ -332,9 +337,27 @@ function choosePersonCast(state: GameState, lastZone?: SpecialType): SpecialActi
 
 export const botPerson: BotPolicy = {
   purchase: (state) => goodPurchase(state, true),
+  purchaseTicks: PERSON_LOOK_TICKS,
   reward: goodReward,
   special: personSpecial,
 };
+
+/** Keep the player's placement, reward and timing policy while pursuing the public feat. */
+function pursueFeat(player: BotPolicy, rotatePlacements: boolean): BotPolicy {
+  return {
+    ...player,
+    purchase(state) {
+      const feat = state.level?.feat;
+      return feat?.kind === 'maxTowers' ? goodPurchase(state, rotatePlacements, feat.limit) : player.purchase(state);
+    },
+    special(state, lastZone) {
+      return state.level?.feat?.kind === 'noSpecials' ? undefined : player.special(state, lastZone);
+    },
+  };
+}
+
+export const botGoodFeat = pursueFeat(botGood, false);
+export const botPersonFeat = pursueFeat(botPerson, true);
 
 /** Run to a terminal state or stop between waves at the optional wave cap. */
 export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity, maxTicks = 60 * 60 * TICKS_PER_SECOND): BotRun {
@@ -347,6 +370,10 @@ export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity,
 
   let peakAlive = state.enemies.length;
   let waveOneLives = state.lives;
+  let setupTicks = 0;
+  // Run the same clock on both sides of a tax trial, including the untaxed
+  // control. Earlier campaigns and Free play retain their original setup.
+  const paced = Boolean(state.level?.feat || state.level?.taxes);
   let lastZone: SpecialType | undefined;
   const endTick = state.tick + maxTicks;
   while (state.tick < endTick && (state.phase === 'wave' || (state.phase === 'setup' && state.wave < throughWave))) {
@@ -356,10 +383,19 @@ export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity,
       let upgrades = 0;
       for (let action = bot.purchase(state); action; action = bot.purchase(state)) {
         if (action.type === 'upgrade' && upgrades >= (bot.upgradesPerSetup ?? Infinity)) break;
+        if (paced && state.wave > 0) {
+          const readyAt = Math.min(endTick, state.tick + (bot.purchaseTicks ?? PERSON_LOOK_TICKS));
+          while (state.phase === 'setup' && state.tick < readyAt) {
+            tick(state);
+            setupTicks++;
+          }
+          if (state.phase !== 'setup' || state.tick >= endTick) break;
+        }
         if (!apply(action)) break;
         if (action.type === 'upgrade') upgrades++;
       }
-      if (!apply({ type: 'startWave' })) break;
+      if (state.tick >= endTick) break;
+      if (state.phase === 'setup' && !apply({ type: 'startWave' })) break;
     }
     const special = bot.special(state, lastZone);
     if (special && apply(special) && (special.special === 'tarBarrel' || special.special === 'fireArrows')) {
@@ -369,5 +405,5 @@ export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity,
     if (state.wave === 1) waveOneLives = state.lives;
     peakAlive = Math.max(peakAlive, state.enemies.length);
   }
-  return { state, log, peakAlive, waveOneLives, refused: log.filter((step) => 'result' in step && !step.result.ok).length };
+  return { state, log, peakAlive, waveOneLives, setupTicks, refused: log.filter((step) => 'result' in step && !step.result.ok).length };
 }

@@ -114,6 +114,8 @@ export function createGame(options: CreateGameOptions = {}): GameState {
   return {
     map: resolveMap(level?.map ?? options.map),
     ...(level ? { level } : {}),
+    ...(level?.taxes || level?.feat ? { towersBuilt: 0 } : {}),
+    ...(level?.feat?.kind === 'noLeaks' ? { leaks: 0 } : {}),
     difficulty,
     endless: false,
     boons: [],
@@ -154,6 +156,7 @@ export function startWave(state: GameState): StartWaveResult {
   if (state.phase !== 'setup') return { ok: false, reason: 'not-in-setup' };
   if (state.pendingBoon) return { ok: false, reason: 'boon-pending' };
   if (!hasNextWave(state)) return { ok: false, reason: 'no-more-waves' };
+  if (state.autoWaveTicks !== undefined) delete state.autoWaveTicks;
   state.wave += 1;
   state.phase = 'wave';
   state.waveTick = 0;
@@ -232,8 +235,8 @@ export function callNextWave(state: GameState): CallNextWaveResult {
   const status = callEarlyStatus(state);
   if (!status.ok) return status;
   const cleared = state.wave;
-  state.gold += WAVE_CLEAR_BONUS + status.bonus;
-  state.events.push({ kind: 'waveClear', wave: cleared, bonus: WAVE_CLEAR_BONUS });
+  payWaveClear(state, cleared);
+  state.gold += status.bonus;
   // Pending boss summons keep their remaining delay across the wave clock reset.
   for (const pack of state.packs) pack.nextTick -= state.waveTick;
   state.wave += 1;
@@ -290,11 +293,12 @@ export function tick(state: GameState): void {
   state.events = [];
   if (state.phase === 'setup') {
     ageBlockers(state);
+    if (!state.pendingBoon && state.autoWaveTicks !== undefined && --state.autoWaveTicks === 0) startWave(state);
     state.tick += 1;
     return;
   }
 
-  const guardsStruck = moveEnemies(state.enemies, state.events, state.blockers);
+  const guardsStruck = moveEnemies(state.enemies, state.events, state.blockers, 1 + (state.level?.taxes?.forcedMarch ?? 0));
   if (guardsStruck) removeDead(state, 'special');
   ageBlockers(state);
   removeExitedEnemies(state);
@@ -376,6 +380,7 @@ function removeExitedEnemies(state: GameState): void {
       continue;
     }
     state.lives -= ENEMY_STATS[e.type].livesCost;
+    if (state.leaks !== undefined) state.leaks++;
     state.events.push({ kind: 'exit', enemyId: e.id });
     if (isBoss(e)) state.events.push({ kind: 'bossDown', enemyId: e.id, enemyType: e.type, cause: 'exit' });
   }
@@ -418,21 +423,29 @@ function spawnEnemy(state: GameState, type: EnemyType, multiplier?: number): voi
   if (isBoss(enemy)) state.events.push({ kind: 'bossSpawn', enemyId: id, enemyType: type });
 }
 
+function payWaveClear(state: GameState, wave: number): void {
+  const bonus = state.level?.taxes?.frozenPurse ?? WAVE_CLEAR_BONUS;
+  state.gold += bonus;
+  state.events.push({ kind: 'waveClear', wave, bonus });
+}
+
 function checkWaveClear(state: GameState): void {
   if (state.enemies.length || state.packs.length) return;
   const groups = gameWaveDef(state, state.wave).groups;
   const allSpawned = groups.every((grp, gi) => state.spawnedPerGroup[gi] >= grp.count);
   if (!allSpawned) return;
-  state.gold += WAVE_CLEAR_BONUS;
   // An unused special charge does not carry over (milestone 25b), and the
   // zones end with the wave (milestone 30).
   state.specialCharges = 0;
   state.specialRechargeTicks = 0;
   state.zones = [];
-  state.events.push({ kind: 'waveClear', wave: state.wave, bonus: WAVE_CLEAR_BONUS });
+  payWaveClear(state, state.wave);
   // An endless game (milestone 26) never wins again: it ends only by losing.
   state.phase = !state.endless && state.wave >= lastWave(state) && state.lives > 0 ? 'won' : 'setup';
   if (state.phase === 'won') state.events.push({ kind: 'won' });
+  else if (state.level?.taxes?.noLoitering !== undefined && state.wave + 1 < lastWave(state)) {
+    state.autoWaveTicks = secondsToTicks(state.level.taxes.noLoitering);
+  }
   const options = rewardsForWave(state, state.wave);
   if (options.length) {
     state.pendingBoon = { wave: state.wave, options };

@@ -1576,3 +1576,68 @@ can change it; "Kyle" means Kyle decided.
   were removed in favour of the town's own cheer. Not re-verified by a
   second model after that merge; the isolation and same-state cases were
   re-run against the new base.
+
+## 2026-11-24, milestone 48 (the King's new taxes: variety and skill stars)
+
+- **Each new tax is a rule of the level,** and the King's notice on the
+  card is how the player learns it. Six taxes: Window Tax, Frozen Purse,
+  Forced March, Curfew, No Loitering, Rationing. Ten more levels (11 to
+  20) in a second act; 11 to 16 bring in one tax each, 17 to 20 carry two.
+  Kyle agreed the direction ("make levels different, not just harder";
+  "fix 'a little easy' with skill"); Fable (the taxes, feats and gate
+  rules), Codex (rules, levels, screens), Sonnet (three verifications).
+- **The third star on the new levels is a feat:** Not a penny (no
+  collector gets through), Bare hands (no specials), Few hands (at most so
+  many towers built). Levels 1 to 10 keep their star rule, so no saved
+  star changed.
+- **The first build passed every target and still missed the point**
+  (Sonnet): the feats cost nothing (specials were worth one life; tower
+  limits never bound), Musketeers alone won 8 of 10 new levels, and the
+  second act was easier than level 10. The coordinator's targets had
+  allowed it. New gate rules, each with a scratch level that fails it: a
+  feat must not be earned by the person-like bot (F2); specials must be
+  worth 3 lives where the feat forbids them and a tower limit must bind
+  (F3); no single tower type may earn two stars on a late level (V1); the
+  second act must average 1.5 lives harder than levels 8 to 10 with no
+  cliff (S1); feats and stars must hold under small nudges (F1, L1m).
+  The retune passed all of them with no exception.
+- **Known, and probably wrong in one way (Fable):** rule F2 says the
+  person-like bot must not earn a feat. That bot builds exactly as the
+  capable one does and differs only in slower, rougher hands, so the rule
+  ended up asking for better hands, not better decisions. The capable
+  bot's feat runs need up to 22 casts aimed to the tick, and three sit on
+  exactly 12 lives. Shipped as it is because two stars are tuned for a
+  person and third stars are optional. Kyle's play decides; if the third
+  stars are out of reach, F2 becomes "the person-like bot earns it when it
+  plays for it" and the levels are retuned.
+- **Levers were named before tuning this time,** and held on both passes:
+  20 lives, the star lines, every tower, enemy and special number, and
+  levels 1 to 10 byte for byte.
+- **Every number a player reads about a tax comes from the level record,**
+  after Sonnet found all of them typed in. A retune now changes the
+  notice with it.
+- **Screens:** the level map has two acts of ten stops; the card lists
+  the taxes in force and the feat; the ending moved to level 20 and level
+  10 closes the first act. A feat level's third star is four-pointed.
+- **Left for 48d:** Tar Barrel and the Tar Pit's second path. Left alone:
+  the first act fails the new variety rule (one tower type wins 8 of its
+  10 levels); its levels are frozen and it is where players learn.
+- **The wave button's boss warning reads "Boss next"** (was "Boss wave
+  next"), in every layout. Decided by the coordinator after the first CI run
+  on the milestone 48 pull request. On a taxed level at 390x664 the old label
+  measured 11.32 CSS px on the Mac and 11.02 on Linux, under the 11.1 line,
+  because Linux draws the bundled font about 2.6% wider and the label shrinks
+  to fit its plaque. A first fix that raised the type to 23 px fell to 10.1 px
+  with text 3% wider, so it was not sent to CI. A nine-letter line does not fit
+  that plaque at 11 px with slack; a shorter label does. Kyle can ask for the
+  old wording back.
+- **A label's size must not depend on how wide a machine draws text.** The
+  taxed phone HUD spec has a "wide text" mode: every measured width times
+  1.06, and every label must keep its normal size within 0.01 CSS px. It fails
+  on the commit that failed CI. The coordinator's brief for the first fix
+  quoted the wrong Mac measurement (11.12 for 11.318), which hid the real gap;
+  measurements in a brief are now copied from the failing log and the local
+  run, not from memory.
+- **Known, not fixed:** in the untaxed phone HUD with text 6% wider, the wave
+  counter overlaps the cheat mark on a cheated win, and "Special" and "Last
+  wave" shrink but stay above 11 px. Linux CI passes these today.

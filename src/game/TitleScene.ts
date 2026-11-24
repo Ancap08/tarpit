@@ -46,14 +46,14 @@
 // score.
 
 import Phaser from 'phaser';
-import { DEFAULT_DIFFICULTY, DEFAULT_MAP, DIFFICULTIES, LEVELS, MAP_IDS, MAPS, type Difficulty, type MapId, type LevelDef } from '../sim';
+import { DEFAULT_DIFFICULTY, DEFAULT_MAP, DIFFICULTIES, LEVELS, MAP_IDS, MAPS, unlockedLevel, type Difficulty, type MapId, type LevelDef } from '../sim';
 import { loadEnemySheets } from './anim/enemySprites';
 import { drawMapThumbnail } from './draw/map';
 import type { Rect } from './input';
 import { highScores } from './highScore';
 import { seenTips, seenBroadsides, type Broadside } from './seenTips';
 import { campaignProgress } from './campaignProgress';
-import { campaignStops, type CampaignStop } from './ui/campaignMap';
+import { ACT_ONE_LAST_LEVEL, campaignStops, levelAct, openingAct, type CampaignAct, type CampaignStop } from './ui/campaignMap';
 import { drawCampaignMap, drawLevelCard, drawLevelTips, drawStoryBroadside } from './ui/campaignScreens';
 import { CAMPAIGN_TEXT, lockedLevelText, bestScoreText, DIFFICULTY_LABELS, MAP_NAMES, paintedLoadingText, STORY_TEXT, TITLE_TEXT } from './names';
 import { COLORS, FONT, TEXT } from './palette';
@@ -128,7 +128,7 @@ const LANDSCAPE_TITLE: TitleGeometry = {
 };
 
 export type TitleScreen = 'first' | 'freePlay' | 'levelMap' | 'levelCard' | 'levelTips' | Broadside;
-interface TitleVisit { screen?: TitleScreen; levelId?: number; replayLevel?: boolean }
+interface TitleVisit { screen?: TitleScreen; levelId?: number; replayLevel?: boolean; act?: CampaignAct; focusId?: number }
 
 export interface TitleUiState {
   screen: TitleScreen;
@@ -167,6 +167,9 @@ export class TitleScene extends Phaser.Scene {
   private touchTips = false;
   private tipsAcceptAt = 0;
   tipsEnabled = true;
+  private act: CampaignAct = 1;
+  private focusId?: number;
+  private scouting = false;
   private mapStops: CampaignStop[] = [];
   private lockedMessage: string | null = null;
   private lockLabel?: Phaser.GameObjects.Text;
@@ -201,33 +204,50 @@ export class TitleScene extends Phaser.Scene {
 
   /** Milestone 32b: rebuild the menu for the window's new layout, keeping the picks (layoutSwitch.ts). */
   relayout(): void {
-    // One queued restart serves a burst of requests; its create() reads the newest layout.
-    if ((this.starting && this.progress === null) || this.restartPending) return;
-    this.restartPending = true;
-    this.ready = false;
-    this.scene.restart({ screen: this.page, levelId: this.card?.id, replayLevel: this.replayLevel });
+    const focusId = this.mapStops.find(stop => this.campaignButtons.get(`title:stop:${stop.id}`)?.isPicked)?.id;
+    this.restartVisit({ screen: this.page, levelId: this.card?.id, replayLevel: this.replayLevel, act: this.act, focusId });
   }
 
   refreshProgress(): void {
-    if (this.page === 'levelMap' || this.page === 'levelCard') this.relayout();
+    if (this.page === 'levelMap') this.visit('levelMap', undefined, this.act);
+    if (this.page === 'levelCard') this.relayout();
   }
 
   private restartPending = false;
 
   init(visit?: TitleVisit): void {
+    if (!this.restartPending) this.lockedMessage = null;
     this.page = visit?.screen ?? 'first';
     this.replayLevel = this.page === 'ending' && !!visit?.replayLevel;
-    const needsLevel = this.page === 'levelCard' || this.page === 'levelTips';
-    this.card = needsLevel ? LEVELS.find(level => level.id === visit?.levelId) : undefined;
-    if (needsLevel && !this.card) this.page = 'levelMap';
+    this.focusId = visit?.focusId;
+    if (this.card?.id !== visit?.levelId) this.scouting = false;
+    this.card = LEVELS.find(level => level.id === visit?.levelId);
+    if ((this.page === 'levelCard' || this.page === 'levelTips') && !this.card) this.page = 'levelMap';
+    if (this.page === 'levelMap' || this.page === 'levelCard') {
+      const progress = campaignProgress.table();
+      this.act = this.card ? levelAct(this.card.id) : visit?.act ?? openingAct(progress);
+      if (this.act === 2) {
+        if (!unlockedLevel(progress, ACT_ONE_LAST_LEVEL + 1)) {
+          this.act = 1;
+          this.page = 'levelMap';
+          this.card = undefined;
+        } else if (!seenBroadsides.has('secondAct')) this.page = 'secondAct';
+      }
+    }
   }
 
-  private visit(screen: TitleScreen, levelId?: number): void {
+  private restartVisit(visit: TitleVisit): void {
+    // One queued restart serves a burst of requests; create() reads the newest layout.
+    if ((this.starting && this.progress === null) || this.restartPending) return;
+    this.restartPending = true;
+    this.ready = false;
+    this.scene.restart(visit);
+  }
+
+  private visit(screen: TitleScreen, levelId?: number, act?: CampaignAct, focusId?: number): void {
     if (this.starting || this.restartPending) return;
     this.lockedMessage = null;
-    this.page = screen;
-    this.card = LEVELS.find(level => level.id === levelId);
-    this.relayout();
+    this.restartVisit({ screen, levelId, act, focusId });
   }
 
   private action = (key: string, rect: Rect, text: string, click: () => void, size = 22): Button => {
@@ -236,9 +256,9 @@ export class TitleScene extends Phaser.Scene {
     return button;
   };
 
-  private bindMenuKeys(keys: string[], first = 0): void {
+  private bindMenuKeys(keys: string[], first = 0, atEdge?: (direction: -1 | 1) => void): void {
     const buttons = keys.map(key => this.campaignButtons.get(`title:${key}`)!);
-    this.input.keyboard?.on('keydown', menuKeys(buttons, first, this.campaignButtons.get('title:back')));
+    this.input.keyboard?.on('keydown', menuKeys(buttons, first, this.campaignButtons.get('title:back'), atEdge));
   }
 
   create(): void {
@@ -271,14 +291,15 @@ export class TitleScene extends Phaser.Scene {
     this.mapStops = [];
     const portrait = currentLayout().kind === 'portrait';
 
-    if (this.page === 'opening' || this.page === 'ending') {
+    if (this.page === 'opening' || this.page === 'secondAct' || this.page === 'ending') {
       const which = this.page;
       this.events.once(Phaser.Scenes.Events.RENDER, () => seenBroadsides.mark(which));
       const proceed = () => {
         if (which === 'ending' && this.replayLevel) {
           const level = LEVELS[LEVELS.length - 1];
           this.startGame({ difficulty: DEFAULT_DIFFICULTY, map: level.map, level });
-        } else this.visit('levelMap');
+        } else if (which === 'secondAct' && this.card) this.visit('levelCard', this.card.id);
+        else this.visit('levelMap', undefined, which === 'secondAct' ? 2 : undefined);
       };
       this.playButton = drawStoryBroadside(this, portrait, which, this.action, proceed);
       this.bindMenuKeys(['continue']);
@@ -287,18 +308,33 @@ export class TitleScene extends Phaser.Scene {
       return;
     }
     if (this.page === 'levelMap') {
-      this.mapStops = campaignStops(portrait, campaignProgress.table());
-      this.lockLabel = drawCampaignMap(this, portrait, this.mapStops, this.lockedMessage, this.action, stop => {
+      const progress = campaignProgress.table();
+      this.mapStops = campaignStops(portrait, progress, this.act);
+      const secondActOpen = unlockedLevel(progress, ACT_ONE_LAST_LEVEL + 1);
+      const showLock = (id: number) => {
+        this.lockedMessage = lockedLevelText(id);
+        this.lockLabel?.setText(this.lockedMessage);
+      };
+      const switchAct = () => {
+        if (!secondActOpen) showLock(ACT_ONE_LAST_LEVEL);
+        else this.visit('levelMap', undefined, this.act === 1 ? 2 : 1);
+      };
+      this.lockLabel = drawCampaignMap(this, portrait, this.mapStops, this.lockedMessage, this.act, secondActOpen, this.action, stop => {
         if (stop.open) this.visit('levelCard', stop.id);
         else {
           const next = this.mapStops.find(candidate => candidate.next);
-          if (!next) return;
-          this.lockedMessage = lockedLevelText(next.id);
-          this.lockLabel?.setText(this.lockedMessage);
+          if (next) showLock(next.id);
         }
-      }, () => this.visit('first'));
+      }, switchAct, () => this.visit('first'));
       const open = this.mapStops.filter(stop => stop.open);
-      this.bindMenuKeys(open.map(stop => `stop:${stop.id}`), Math.max(0, open.findIndex(stop => stop.next)));
+      const focus = open.find(stop => stop.id === this.focusId) ?? open.find(stop => stop.next) ?? open[open.length - 1];
+      this.bindMenuKeys(open.map(stop => `stop:${stop.id}`), open.indexOf(focus), direction => {
+        if (this.act === 2 && direction < 0) this.visit('levelMap', undefined, 1, ACT_ONE_LAST_LEVEL);
+        if (this.act === 1 && direction > 0 && open.at(-1)?.id === ACT_ONE_LAST_LEVEL) {
+          if (secondActOpen) this.visit('levelMap', undefined, 2, ACT_ONE_LAST_LEVEL + 1);
+          else showLock(ACT_ONE_LAST_LEVEL);
+        }
+      });
       return;
     }
     if ((this.page === 'levelCard' || this.page === 'levelTips') && this.card) {
@@ -331,9 +367,14 @@ export class TitleScene extends Phaser.Scene {
         };
         const review = seen ? () => showTips(true) : undefined;
         this.playButton = drawLevelCard(this, portrait, level, campaignProgress.table()[level.id] ?? 0, this.action,
-          () => this.tipsEnabled && !seen ? showTips(false) : start(), () => this.visit('levelMap'), review);
+          () => this.tipsEnabled && !seen ? showTips(false) : start(), () => this.visit('levelMap', undefined, this.act), review,
+          this.scouting, () => {
+            this.scouting = !this.scouting;
+            this.relayout();
+          });
         const actions = portrait ? ['play', 'back'] : ['back', 'play'];
         if (review) actions.splice(portrait ? 0 : 1, 0, 'tips');
+        if (this.campaignButtons.has('title:cardPage')) actions.unshift('cardPage');
         this.bindMenuKeys(actions, actions.indexOf('play'));
       }
       this.refreshLoading();
@@ -495,9 +536,11 @@ export class TitleScene extends Phaser.Scene {
     if (this.playButton) {
       this.playButton.labelObjects[0].setWordWrapWidth(progress === null ? 0 : this.playButton.rect.width - 12);
     }
-    this.playButton?.setFontSize(progress === null ? playFont : portrait ? '20px' : '16px');
+    const compact = this.page === 'levelCard' && !!this.card?.feat;
+    const loadingFont = portrait ? (compact ? '22px' : '20px') : '16px';
+    this.playButton?.setFontSize(progress === null ? playFont : loadingFont);
     const idleText = this.page === 'ending' ? STORY_TEXT.continue : this.page === 'levelTips' ? CAMPAIGN_TEXT.gotIt : TITLE_TEXT.play;
-    this.playButton?.set(progress === null ? idleText : paintedLoadingText(progress), progress === null);
+    this.playButton?.set(progress === null ? idleText : paintedLoadingText(progress, compact), progress === null);
   }
 
   /** The high-score line for the selected map and level, or no line when they have no score. */

@@ -3,7 +3,7 @@
 
 import type { Rect } from '../../sim';
 import { KILLS_LINE_H } from '../input';
-import { PORTRAIT_BUTTON_H, PORTRAIT_MIN_FONT, PORTRAIT_ROW1_Y, PORTRAIT_ROW2_Y, PORTRAIT_WIDTH, type Layout } from '../layout';
+import { PORTRAIT_BUTTON_H, PORTRAIT_MIN_FONT, PORTRAIT, PORTRAIT_GAP, TAXED_PORTRAIT, TAXED_CONTROL_H, PORTRAIT_WIDTH, type Layout } from '../layout';
 
 export const STACK_GAP = 4;
 export const STACK_PAD = 6;
@@ -51,28 +51,34 @@ const BAR_COUNT = 6;
 const PORTRAIT_BAR_LEFT = (PORTRAIT_WIDTH - BAR_COUNT * PORTRAIT_BAR_W - (BAR_COUNT - 1) * PORTRAIT_BAR_GAP) / 2;
 
 /** The portrait bar's six button rectangles, left to right. */
-export function portraitBarRects(): Rect[] {
+export function portraitBarRects(layout = PORTRAIT): Rect[] {
+  const width = layout === TAXED_PORTRAIT ? 76 : PORTRAIT_BAR_W;
+  const left = (PORTRAIT_WIDTH - BAR_COUNT * width - (BAR_COUNT - 1) * PORTRAIT_BAR_GAP) / 2;
   return Array.from({ length: BAR_COUNT }, (_, i) => ({
-    x: PORTRAIT_BAR_LEFT + i * (PORTRAIT_BAR_W + PORTRAIT_BAR_GAP),
-    y: PORTRAIT_ROW1_Y,
-    width: PORTRAIT_BAR_W,
-    height: PORTRAIT_BUTTON_H,
+    x: left + i * (width + PORTRAIT_BAR_GAP),
+    y: layout.map.y + layout.map.height + PORTRAIT_GAP,
+    width,
+    height: layout === TAXED_PORTRAIT ? TAXED_CONTROL_H : PORTRAIT_BUTTON_H,
   }));
 }
 
-/** Both rows share the same inset and gap. Only the wave plaque takes the spare width. */
-export function portraitRow2(cssScale = 1) {
-  const height = PORTRAIT_BUTTON_H;
-  // The space between the tower row and canvas bottom can fit an 80 px square.
-  const icon = Math.min(80, Math.max(height, Math.ceil(44 / cssScale)));
-  const innerWidth = PORTRAIT_WIDTH - 2 * PORTRAIT_BAR_LEFT;
-  const specialWidth = 108;
+/** Both rows share their outside edges. The wave plaque takes the spare width. */
+export function portraitRow2(cssScale = 1, layout = PORTRAIT) {
+  const taxed = layout === TAXED_PORTRAIT;
+  const height = taxed ? TAXED_CONTROL_H : PORTRAIT_BUTTON_H;
+  const top = layout.height - PORTRAIT_GAP - height;
+  // The two 6 px vertical gaps let the icon squares extend 5 px on each side.
+  const icon = Math.min(height + 10, Math.max(height, Math.ceil(44 / cssScale)));
+  const left = taxed ? 2 : PORTRAIT_BAR_LEFT;
+  const gap = taxed ? 2 : PORTRAIT_BAR_GAP;
+  const innerWidth = PORTRAIT_WIDTH - 2 * left;
+  const specialWidth = taxed ? 115 : 108;
   const speedWidth = height;
-  const startWidth = innerWidth - 4 * PORTRAIT_BAR_GAP - specialWidth - speedWidth - 2 * icon;
-  let x = PORTRAIT_BAR_LEFT;
+  const startWidth = innerWidth - 4 * gap - specialWidth - speedWidth - 2 * icon;
+  let x = left;
   const plaque = (width: number, h = height): Rect => {
-    const r = { x, y: PORTRAIT_ROW2_Y + (height - h) / 2, width, height: h };
-    x += width + PORTRAIT_BAR_GAP;
+    const r = { x, y: top + (height - h) / 2, width, height: h };
+    x += width + gap;
     return r;
   };
   return {

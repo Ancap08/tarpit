@@ -8,7 +8,7 @@ import { api, postSpawn } from './campaign';
 import { useTallFontMetrics } from './campaignFont';
 import { waitForFirstScreen } from './title';
 
-async function checkLabel(page: Page, key: string, text: string) {
+export async function checkLabel(page: Page, key: string, text: string) {
   const label = await page.evaluate(({ key, text }) => {
     const t = window.__tarpit!;
     const rect = t.uiRects()[key];
@@ -21,7 +21,7 @@ async function checkLabel(page: Page, key: string, text: string) {
       const scale = (t.canvasToPage(100, 0).x - t.canvasToPage(0, 0).x) / 100;
       return {
         css: parseFloat(String(label.style.fontSize)) * scale * Math.min(label.scaleX, label.scaleY),
-        lines: label.getWrappedText().length,
+        lines: label.getWrappedText(),
         padding: Math.min(b.left - rect.x, rect.x + rect.width - b.right, b.top - rect.y, rect.y + rect.height - b.bottom),
       };
     }
@@ -31,7 +31,10 @@ async function checkLabel(page: Page, key: string, text: string) {
   test.info().annotations.push({ type: 'font', description: description + ' ' + label!.css.toFixed(2) });
   const shortPhoneLabel = page.viewportSize()!.height === 664 && (key === 'special' || key === 'startWave');
   expect.soft(label!.css, description).toBeGreaterThanOrEqual(shortPhoneLabel ? 11 : 12);
-  if (key === 'startWave') expect.soft(label!.lines, description).toBeLessThanOrEqual(2);
+  if (key === 'startWave') {
+    expect.soft(label!.lines.length, description).toBeLessThanOrEqual(2);
+    if (text === 'Boss next') expect(label!.lines, description).toEqual(['Boss', 'next']);
+  }
   expect.soft(label!.padding, description).toBeGreaterThanOrEqual(0);
 }
 
@@ -162,7 +165,7 @@ function hudButtonCases(look: 'painted' | 'classic' | 'showpiece') {
           await checkLabel(page, 'startWave', callEarlyLabel(EARLY_CALL_MAX_BONUS - elapsed, phone));
           if (elapsed < 20) await checkLabel(page, 'special', (phone ? '' : 'Wait ') + (20 - elapsed) + 's');
         }
-        for (const [wave, reason] of [[4, 'Reward wave'], [19, 'Boss wave next'], [20, 'Last wave']] as const) {
+        for (const [wave, reason] of [[4, 'Reward wave'], [19, 'Boss next'], [20, 'Last wave']] as const) {
           await postSpawn(page, wave);
           await checkLabel(page, 'startWave', phone ? reason : 'Call next\n' + reason);
         }

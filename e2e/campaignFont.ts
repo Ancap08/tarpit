@@ -22,3 +22,15 @@ export async function useTallFontMetrics(page: Page, fallback = true) {
     };
   }, HUD_CASLON);
 }
+
+/** Vary every measured advance while preserving the browser's other font metrics. */
+export async function useWideFontMetrics(page: Page) {
+  await page.addInitScript(() => {
+    const measure = CanvasRenderingContext2D.prototype.measureText;
+    CanvasRenderingContext2D.prototype.measureText = function (text) {
+      const metrics = measure.call(this, text);
+      Object.defineProperty(metrics, 'width', { value: metrics.width * 1.06 });
+      return metrics;
+    };
+  });
+}

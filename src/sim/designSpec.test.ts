@@ -14,8 +14,8 @@ import { createGame, lastSpawnTick } from './game';
 import { buildableCells } from './grid';
 import { LEVELS } from './levels';
 import { CAMPAIGN_START_LIVES, TWO_STAR_LIVES, THREE_STAR_LIVES } from './levelTypes';
-import { BAND_RULES, GATE_LIMITS } from './checkLevel';
-import { botGood, botPerson, botBeginner, runBot } from './bots';
+import { BAND_RULES, GATE_LIMITS, TAX_RANGES } from './checkLevel';
+import { botGood, botPerson, botBeginner, botGoodFeat, runBot } from './bots';
 import { levelStars } from './campaignProgress';
 import { MAPS, pathLength, type MapId } from './map';
 import { SPECIAL_DEFS, SPECIAL_RECHARGE_TICKS, ZONE_LINGER_TICKS, type SpecialType } from './specials';
@@ -124,7 +124,9 @@ describe('docs/DESIGN.md matches the code', () => {
       limits.levelMinutes, limits.averageMinutes, limits.waveCount, limits.hpScale, limits.startGold,
       limits.finaleLives, limits.lastSpawnSeconds, limits.peakAlive, limits.openingCount, limits.closingCount,
       limits.maxPersonDeficit, limits.goodFeatureLives, limits.personFeatureLives, limits.meanLivesDrop,
-      limits.featureHp, limits.featureGold, limits.sensitivityHp, limits.sensitivityGold,
+      limits.featureHp, limits.featureGold, limits.sensitivityHp, limits.sensitivityGold, limits.taxBiteLives,
+      limits.featSpecialLives, limits.featExtraBuilds, limits.singleTowerMaxStars, limits.twoStarHeadroom,
+      limits.priorStops, limits.actMeanDrop, limits.maxPersonCliff,
     ].map(value => Array.isArray(value) ? value.join('–') : String(value)));
   });
 
@@ -140,8 +142,22 @@ describe('docs/DESIGN.md matches the code', () => {
       level.rewardWaves.join(', ') || '—',
       `${levelStars(good.state)}/${good.state.lives}`, `${levelStars(person.state)}/${person.state.lives}`,
       `${levelStars(beginner.state)}/${Math.max(0, beginner.state.lives)}`,
-      (good.state.tick / 3600).toFixed(2), good.peakAlive,
+      ((good.state.tick - good.setupTicks) / 3600).toFixed(2), good.peakAlive,
       level.waves[0].groups.reduce((sum, group) => sum + group.count, 0)].map(String));
+  });
+
+  it('guards the tuning ranges and every tax, feat and deliberate third star', () => {
+    const { windowTax, forcedMarch, curfew, noLoitering } = TAX_RANGES;
+    expect(table('Levels and campaign', 'Tunable rate or delay').map(row => row.slice(1).map(Number)))
+      .toEqual([windowTax, forcedMarch, curfew, noLoitering]);
+    expect(table('Levels and campaign', 'Stop')).toEqual(LEVELS.slice(10).map(level => {
+      const t = level.taxes!;
+      const feat = level.feat!;
+      const { state } = runBot(createGame({ level }), botGoodFeat);
+      return [level.id, t.windowTax, t.frozenPurse, t.forcedMarch, t.curfew, t.noLoitering, t.rationing,
+        feat.kind, feat.kind === 'maxTowers' ? feat.limit : undefined, `${levelStars(state)}/${state.lives}`]
+        .map(value => String(value ?? '—'));
+    }));
   });
 
   it('maps: waypoints, path length and buildable cells', () => {

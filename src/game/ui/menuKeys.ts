@@ -1,7 +1,7 @@
 import type { Button } from './button';
 
 /** Move through a menu in display order. The map follows its numbered trail. */
-export function menuKeys(buttons: Button[], first: number, back?: Button) {
+export function menuKeys(buttons: Button[], first: number, back?: Button, atEdge?: (direction: -1 | 1) => void) {
   let index = first;
   const pick = () => buttons.forEach((button, i) => button.setPicked(i === index));
   pick();
@@ -13,11 +13,13 @@ export function menuKeys(buttons: Button[], first: number, back?: Button) {
     switch (event.key) {
       case 'ArrowLeft':
       case 'ArrowUp':
+        if (index === 0 && event.key === 'ArrowLeft') atEdge?.(-1);
         index = Math.max(0, index - 1);
         pick();
         break;
       case 'ArrowRight':
       case 'ArrowDown':
+        if (index === buttons.length - 1 && event.key === 'ArrowRight') atEdge?.(1);
         index = Math.min(buttons.length - 1, index + 1);
         pick();
         break;

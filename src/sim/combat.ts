@@ -104,7 +104,7 @@ interface EnemyPositions {
 
 function chooseTarget(state: GameState, tower: Tower, enemies: readonly Enemy[], positions?: EnemyPositions): Enemy | undefined {
   const from = towerPosition(tower);
-  const { range, minRange } = towerStats(tower, state.boons);
+  const { range, minRange } = towerStats(tower, state.boons, state.level);
   const mask = positions ? reachMask(state.map, tower, range, positions.section, from) : -1;
   if (positions && !(positions.occupied & mask)) return undefined;
   const mode = tower.targeting ?? 'first';
@@ -219,7 +219,7 @@ export function removeDead(state: GameState, cause: KillCause, killer?: Tower): 
       const why: KillCause = cause === 'burn' && enemy.specialBurn ? 'special' : cause;
       const credited = why === 'shot' ? killer : why === 'burn' ? burnOwnerTower(state, enemy) : undefined;
       if (credited) credited.kills = (credited.kills ?? 0) + 1;
-      const bounty = ENEMY_STATS[enemy.type].bounty;
+      const bounty = state.level?.taxes?.frozenPurse === undefined ? ENEMY_STATS[enemy.type].bounty : 0;
       state.gold += bounty;
       state.events.push({ kind: 'kill', enemyId: enemy.id, enemyType: enemy.type, bounty, cause: why });
       if (isBoss(enemy)) state.events.push({ kind: 'bossDown', enemyId: enemy.id, enemyType: enemy.type, cause: why });
@@ -244,7 +244,7 @@ function towerStep(state: GameState, tower: Tower, enemies: readonly Enemy[], po
   if (tower.cooldownTicks > 0) return;
   const target = chooseTarget(state, tower, enemies, positions);
   if (!target) return;
-  const stats = towerStats(tower, state.boons);
+  const stats = towerStats(tower, state.boons, state.level);
   const shot: Shot = {
     cell: { col: tower.cell.col, row: tower.cell.row },
     tower: tower.type,

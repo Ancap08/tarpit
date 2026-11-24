@@ -1,4 +1,5 @@
 import { THREE_STAR_LIVES, TWO_STAR_LIVES } from './levelTypes';
+import { LEVELS } from './levels';
 import type { GameState } from './types';
 
 export type Stars = 0 | 1 | 2 | 3;
@@ -7,10 +8,18 @@ export type CampaignProgress = Partial<Record<number, Stars>>;
 
 const PROGRESS_VERSION = 2;
 
-export function levelStars(state: Pick<GameState, 'level' | 'lives' | 'phase' | 'cheated'>): Stars {
+type LevelResult = Pick<GameState, 'level' | 'lives' | 'phase' | 'cheated' | 'towersBuilt' | 'leaks' | 'lastSpecialTick'>;
+
+export function levelStars(state: LevelResult): Stars {
   if (!state.level || state.cheated || state.phase !== 'won' || state.lives <= 0) return 0;
-  if (state.lives >= THREE_STAR_LIVES) return 3;
-  return state.lives >= TWO_STAR_LIVES ? 2 : 1;
+  if (state.lives < TWO_STAR_LIVES) return 1;
+  const feat = state.level.feat;
+  if (!feat) return state.lives >= THREE_STAR_LIVES ? 3 : 2;
+  switch (feat.kind) {
+    case 'noLeaks': return state.leaks === 0 ? 3 : 2;
+    case 'noSpecials': return state.lastSpecialTick === undefined ? 3 : 2;
+    case 'maxTowers': return state.towersBuilt !== undefined && state.towersBuilt <= feat.limit ? 3 : 2;
+  }
 }
 
 function isStars(value: unknown): value is Stars {
@@ -22,7 +31,7 @@ function isLevelId(id: number): boolean {
 }
 
 export function unlockedLevel(progress: CampaignProgress, id: number): boolean {
-  if (!isLevelId(id)) return false;
+  if (!isLevelId(id) || id > LEVELS.length) return false;
   for (let previous = 1; previous < id; previous++) {
     if (!isStars(progress[previous])) return false;
   }

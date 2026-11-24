@@ -9785,3 +9785,272 @@ same full state in Painted and at each showpiece tier, both uninterrupted
 and with a pause in each of its six waves.
 
 Merged main at `a3330c3`. All three looks use its phone HUD row and share the same containment, alignment and label checks on desktop, tablet and phone. Showpiece keeps Pause available during its result animation.
+
+## 2026-11-24: milestone 48a and 48b, taxes and the second act
+
+Added levels 11–20 with the original 20 lives, a fixed Normal HP scale, all
+tower tiers and all five specials. Levels 11–16 introduce Window Tax, Forced
+March, No Loitering, Curfew, Frozen Purse and Rationing in that order. The
+next four stops combine them. DESIGN.md lists the tax values, starting gold,
+HP scale, reward waves, feats and measured bot outcomes for each stop.
+
+The original bots completed a shopping phase instantaneously. Even an
+eight-second deadline would give exactly the same result as unlimited time.
+The new levels give each purchase its ordinary decision time, including in
+the copies with taxes removed. The early schedules also exposed purchases
+that a ten-gold nudge could undo. We kept schedules only after removing
+each tax independently at all five settings and running the older checks.
+No enemy growth steps or wave multipliers were used in the new levels.
+
+Each five-number sequence below is nominal, HP ×0.98, HP ×1.02, gold −10,
+gold +10. T1 numbers are extra Person lives with just the named tax removed.
+T2 gives Person's taxed lives. The last columns give nominal stars/lives.
+
+| Level | Tax order | T1 lives for each tax | T2 lives | Feat Good | Good | Person | Beginner |
+|---:|---|---|---|---|---|---|---|
+| 11 | windowTax | 4 / 5 / 4 / 6 / 4 | 16, 15, 16, 14, 16 | 3/15 | 2/19 | 2/16 | 0/0 |
+| 12 | forcedMarch | 3 / 4 / 7 / 3 / 3 | 16, 16, 12, 16, 16 | 3/17 | 2/17 | 2/16 | 0/0 |
+| 13 | noLoitering | 5 / 5 / 6 / 5 / 5 | 15, 15, 14, 15, 15 | 3/20 | 3/20 | 2/15 | 0/0 |
+| 14 | curfew | 3 / 3 / 3 / 3 / 3 | 17, 17, 17, 17, 17 | 3/20 | 3/20 | 2/17 | 0/0 |
+| 15 | frozenPurse | 7 / 6 / 7 / 7 / 7 | 13, 14, 13, 13, 13 | 3/13 | 2/13 | 2/13 | 0/0 |
+| 16 | rationing | 8 / 8 / 8 / 8 / 5 | 12, 12, 12, 12, 15 | 3/12 | 2/12 | 2/12 | 1/11 |
+| 17 | noLoitering, curfew | 4 / 4 / 4 / 4 / 4; 4 / 4 / 4 / 4 / 4 | 16, 16, 16, 16, 16 | 3/20 | 2/20 | 2/16 | 0/0 |
+| 18 | forcedMarch, rationing | 4 / 4 / 3 / 4 / 4; 6 / 6 / 6 / 4 / 6 | 14, 14, 14, 14, 14 | 3/14 | 2/14 | 2/14 | 1/9 |
+| 19 | windowTax, curfew | 5 / 3 / 6 / 5 / 6; 5 / 4 / 6 / 5 / 5 | 14, 15, 13, 14, 14 | 3/14 | 2/14 | 2/14 | 0/0 |
+| 20 | frozenPurse, curfew | 7 / 7 / 7 / 7 / 6; 6 / 6 / 6 / 7 / 6 | 13, 13, 13, 13, 14 | 3/13 | 2/15 | 2/13 | 0/0 |
+
+The smallest T1 gain is three lives. Every feat run earns three stars.
+The two Not a penny levels also award ordinary Good the third star. The
+map still shows ten stops. The existing test hook starts all twenty by id.
+The opening and final waves wait for Start, and the No Loitering clock
+waits for reward choices. The build bar counts standing towers for permits.
+The window levy and the Few hands feat remember all constructions, including
+towers sold during planning. The Mortar retains its 70 px dead zone.
+
+Person averages 16.8 lives in the first act and 14.6 in the second.
+Window Money uses the smallest permitted levy and eases Person from 13
+lives at Last Light to 16. On The Last Writ, Good, Person and feat-mode
+Good all kill King Grumblemaw with tower fire.
+
+The first-act gate and Free play output remain the prefix of the sim report.
+The new block reports the second act and then the twenty-level gate.
+
+Verifier notes (milestone 48a and 48b, Claude Sonnet, independent run on 07b7c17,
+baseline a3330c3): merge. No game number or rule moved that was not allowed to,
+every tax does exactly what the notice says, and every number I could reproduce
+matches. Four gate and design findings below; none changes a shipped result.
+
+- Levers. Twenty lives, the 12 and 18 star lines, every tower, enemy, special and
+  Free play number are unchanged (`git diff` touches no table). Levels 1 to 10
+  are byte for byte (the only removed line in levels.ts is a comment). HP scales
+  are 0.88 to 1.16; taxes are inside their ranges (Window 5%, March 15 to 20%,
+  Curfew 10 to 20%, No Loitering 8 s). `npm run sim` on main and here: the first
+  441 lines are byte identical (`cmp`), the new block only adds after them. The
+  src/sim changes that are not a tax, feat or bot support are the shared
+  wave-clear payment, the speed factor 1, the star function, and the unlock cap
+  at the last level. A state comparison of 78 scripted games, run on both trees
+  (30 bot games on levels 1 to 10, 9 Free play bot games, 39 random action
+  games), gave identical digests. The random games lose early, so the bot games
+  carry the weight.
+- Taxes, by hand against the sim (`taxes-verifier.test.ts`): Window Tax prices
+  for builds 1 to 8 of every tower at 5 to 10% with sells between, and a float
+  check of every half-gold case to 40 builds, match integer half-up arithmetic.
+  Sold towers count, and the level 11 tip says so. Frozen Purse, Forced March on
+  every enemy including the boss, a summoned pack and the exit tick, Curfew on
+  every tower, path and Long Barrels (+30%, applied before the cut) with the
+  Mortar's 70 px, Rationing, and No Loitering to the tick (the 480th setup tick,
+  held by a reward, cleared by Start or an early call, nothing before the first
+  or at the last wave) all match. Same game twice gives the same state.
+- Gate. The twenty-level table reproduced with my own bot runs: no cell differs.
+  T1 and T2 at nominal and the four nudges: no number differs from the table
+  above. The gate rejects a tax that does not bite (Rationing 50: T1), an
+  unwinnable tax (T2), a feat Good cannot earn (F1), two introductions (T3) and
+  out-of-range taxes (reported as the generic L7). Frozen Purse and Rationing
+  have no range, by design.
+- Gap 1 (pinned `it.fails`, featGate-verifier.test.ts). F1 measures the deliberate
+  run at nominal only. Level 15 at 10 less starting gold: 1 star, 5 lives.
+  Level 13 at HP x1.02: 2 stars, 18 lives. Levels 1 to 10 get the nudges (L1m).
+- Gap 2 (pinned `it.fails`). The level check accepts a feat that ordinary Good and
+  Person both earn: level 4 with "at most 1000 towers" gives failed = [].
+  Only checkCampaign's half rule counts such feats.
+- Finding 3, the feats are nearly free. Bare hands (11, 15, 18, 20): Person with
+  no casts gets 3/15, 3/13, 3/13, 3/13 against 2/16, 2/13, 2/14, 2/13 with casts;
+  the specials are worth at most one life. Few hands (12, 16, 17, 19): Person held
+  to the limit earns 3 stars at 16, 12, 16, 14 lives, the same as unlimited. Only
+  Not a penny costs anything: ordinary Good earns it on 13 and 14, Person leaks 5
+  and 3 (Person with instant shopping is 3/20 on 13 and still leaks 3 on 14).
+- Finding 4, one tower type. Musketeer alone or Longbow alone wins two stars on 8 of
+  the 10 second-act levels (8 of 10 in the first act too). Level 18 Musketeers
+  alone: 2/20, against 2/14 for the full-arsenal Good. Harpies are 31 to 68% of
+  the second act (first act 0 to 33%), which leaves only the bows able to hit them.
+- Level 10 to 11. Person 13 lives then 16; Person across levels 11 to 20 averages
+  14.6 with only level 16 below 13. Good 16 then a mean of 16.4. Enemy counts are
+  300 to 491 against 633. The second act is level with the first, not above it.
+  Level 16 sits on the two-star line (12 lives) at four of five nudges.
+- Decision time. The No Loitering levels depend on the bots' modelled 3 seconds a
+  purchase: Person is 3/20 on level 13 and 2/20 on 17 with instant shopping, 2/15
+  and 2/16 as shipped.
+- Notices. Every number in the levels 11 to 20 notices, twists and tips is typed
+  (the 5%, fifth, tenth, eight seconds, 35 and 90 gold, and "three towers" at
+  16 and 18). They all match now; `taxNotices-verifier.test.ts` fails on a retune
+  that does not touch the text. The feat line derives its limit from the data.
+- Browser, desktop, tablet and phone (`taxVerifier.ts`): every plaque equals the hand
+  price and the gold taken for 8 builds; the placement ring, the selected ring and
+  the farthest real shot agree for every tower under Curfew; the countdown label
+  is right on each of the 480 ticks and the wave starts when it ends; pause held
+  it; the tally and refusal at the cap; no tax line, tally or changed price in Free
+  play or levels 1 to 10. The full suite on three projects: 1016 passed, 8 skipped,
+  none failed. `npm test`: 54 s on a quiet machine, 117 s under load 9 to 17.
+
+### Second pass
+
+Across all five settings, Good earned every feat and ordinary Good and Person kept their required stars. At nominal, Person missed all ten feats both in ordinary play and when pursuing them. No single tower type earned two stars on a new stop. Person went from 13 lives at Last Light to 14 at Window Money. The mean fell from 15.33 on the preceding three stops to 13.70 in the second act, a 1.63-life drop, with a largest adjacent drop of one life. The three-permit levels passed with mixed defenses. All three capable runs on The Last Writ killed King Grumblemaw with tower fire. In the frozen first act, Longbows alone get two stars on seven stops. Cannon or Mortar adds an eighth at Hold the Bend. Among scheduled enemies, the first-act Harpy share peaks at 53.7% on Wings Over the River.
+
+The five entries in each sequence are nominal, HP ×0.98, HP ×1.02, gold −10 and gold +10. F1 gives deliberate Good lives, all worth three stars. F2 gives deliberate Person stars/lives. F3 gives lives saved by casting or extra towers built above the feat limit. V1 gives the strongest single-type run. T1 gives the lives gained by removing each named tax independently. T2 gives ordinary Person lives under tax.
+
+| Stop | Level change | F1 | F2 | F3 | V1 | T1 | T2 |
+|---:|---|---|---|---|---|---|---|
+| 11 | More Redcoats and a tighter Troll escort | 15/16/14/13/15 | 1/7 | 7 lives | musketeer 1/7 | windowTax 6/4/7/6/6 | 14/16/13/14/14 |
+| 12 | Trolls and Redcoats ahead of the last Hound pack | 13/12/13/12/13 | 1/10 | 5 builds | musketeer 1/11 | forcedMarch 5/4/5/4/5 | 15/16/15/16/15 |
+| 13 | Goblin bounty before a heavier Troll finish | 20/20/20/20/20 | 2/14 | — | longbow 1/7 | noLoitering 5/5/5/4/6 | 14/15/14/14/14 |
+| 14 | A mixed Redcoat, Harpy and Troll finish | 20/20/20/20/20 | 2/14 | — | musketeer 1/8 | curfew 6/3/6/6/6 | 14/17/14/14/14 |
+| 15 | Delayed Harpies, then massed Redcoats | 12/12/12/12/13 | 1/10 | 3 lives | musketeer 1/10 | frozenPurse 7/7/7/6/7 | 13/13/13/13/13 |
+| 16 | Hounds reach the defense ahead of the Trolls | 12/12/12/12/12 | 1/8 | 5 lives | musketeer 1/8 | rationing 7/7/7/7/7 | 13/13/13/13/13 |
+| 17 | A dense Redcoat opening, then air pressure | 14/14/14/14/14 | 1/3 | 7 builds | musketeer 1/8 | noLoitering 6/6/6/6/6, curfew 6/6/6/6/6 | 14/14/14/14/14 |
+| 18 | Two Hound groups arrive at different intervals | 12/12/12/12/12 | 1/6 | 7 lives | musketeer 1/8 | rationing 6/5/6/6/5, forcedMarch 4/4/4/4/3 | 13/14/13/13/14 |
+| 19 | Shorter reach and a stronger mixed ground assault | 13/14/13/13/13 | 1/11 | 3 builds | musketeer 1/5 | windowTax 5/3/6/5/6, curfew 5/4/6/5/5 | 14/15/13/14/14 |
+| 20 | Redcoats before the Harpies, later Assessor | 13/13/13/13/12 | 1/8 | 5 lives | all 0/0 | frozenPurse 7/7/7/5/7, curfew 6/6/5/5/6 | 13/13/13/15/13 |
+
+Verifier recheck (Claude Sonnet, independent run on d2edf89): merge, with the
+caveats below.
+
+- Levers: levels 1 to 10 byte for byte, 20 lives, star lines, every tower, enemy,
+  special and Free play number unchanged. The retune touched `src/sim` only in
+  levels, bots, campaign contexts and the gate (no rule code). HP scales 0.85 to
+  1.14, Window 5% and 8.5%, March 20% and 18%, Curfew 10 to 20%, No Loitering 8 s.
+  `npm run sim` is prefix-identical to main (441 lines, `cmp`). The 8.5% Window
+  Tax prices every tower exactly to 40 builds (pinned).
+- The table for levels 11 to 20 (three bots) and per level F1 at five settings,
+  F2, F3, V1's best single type, T1, T2 and S1 (15.33 to 13.70, handover +1, largest
+  drop 1) reproduce with my own runs: no cell differs. Second act 61.6 Good minutes.
+- Rules as stated. L1m on new levels is stricter than on levels 1 to 10: the old
+  rule only asks Good to keep its stars at a nudge; the new one also asks 13 lives
+  (one spare) from Good, and from taxed Person, at each nudge. Nominal has no spare
+  life rule (ordinary runs are 13 to 20). F2 and F3 are in `checkLevel` alone; the
+  campaign accidental-feat rule is gone. Not a penny has no F3 and ordinary Good
+  earns it on 13 and 14 (3/20 at all five settings): the rule as written allows it
+  and Person leaks 6 lives there, so it is Good-level play, not a Person feat.
+  V1 tries every allowed tower with `botGood`, which still upgrades (9 to 26
+  upgrades) and casts (4 to 22 specials) on one type.
+- Feats are worth earning. Person pursuing its feat ends 1/3 to 2/14, so every
+  feat costs a person a star. Reachability caveats: the feat-mode run sits on the
+  two-star line (12 lives, no spare) on 15, 16 and 18; levels 12, 17 and 19 need
+  22, 19 and 16 well-timed casts from a bot that aims to the tick; levels 13 and 14
+  need zero leaks across 6 to 7 waves.
+- Sound-count test: `e2e/sound.spec.ts` "a shot sounds when fired and its impact
+  only when the drawn projectile lands" measures real-time frame gaps. 10 runs
+  alone: 10 of 10 pass; 10 runs at 10 workers on a loaded machine: 2 fail on the
+  gap assertion; the full suite passed it. The file and the audio code are
+  untouched by this branch: a timing flake under load, not a real defect.
+- Checks: lint, typecheck, build pass; `npm test` 2687 passed in 80 s (two sim runs
+  alongside); full browser suite on three projects, 1016 passed, 8 skipped, 0 failed.
+
+## 2026-11-24: milestone 48c, screens for twenty levels
+
+The parchment road now has ten stops per act. The other act has a named
+plaque beside Back. Right from 10 crosses to 11 after a win, and Left from
+11 crosses back. A four-pointed third star marks a feat on the second road.
+Entering from the title or a result finds the next unwon open stop. Back
+from a card keeps the browsed act. With all twenty passed, the map opens
+on Act Two.
+
+The first visit to Act Two posts the King's notice and the town's reply.
+Continue remembers whether the player asked for the map or for level 11
+from Next level. Both the act notice and the Ending survive rotation.
+The same ending receipt covers earlier versions, so a player who read the
+Ending at level 10 gets the completion message at 20 and can carry on.
+
+The new cards measure their notice, tax list, feat and map notes. If they
+need a second page, Map notes turns the card over. Best stars and Play
+stay in place. At 390 × 664 the 26-pixel body type measures over 14 CSS
+pixels. Reading the level 16 capture exposed competing instructions:
+the tax permits three towers, but the feat allows only two builds. Its
+tactical note now suggests upgrading before spending every permit.
+The exact notices for 13 and 17 describe the timer. Their tips explain
+that the opening and last waves wait for Start Wave. Rule amounts, including
+fractions and written-out counts, come from the level records.
+
+The result reads the stars awarded by the simulation. A cheated win
+opens the next stop with zero stars and a missed feat. No simulation
+change or additional run counter was needed.
+
+Review captures in `docs/review/m48c/` show both maps before and after
+progress, both new story transitions, three cards, a feat earned and
+missed, and the Ending in landscape and portrait. The browser cases use
+saved progress to reach late levels and step the final wave clear to test
+the result and save paths. They check the two phone heights with normal
+type and fixed tall metrics for both Caslon and the fallback face.
+
+Verifier notes (Claude Sonnet, milestone 48c, tip e2d42fa). Verdict: fix first,
+two small items. Lint, typecheck, 2657 unit tests and the build pass; the full
+browser suite passes on all three projects (1022 passed, 8 skipped by the suite,
+0 failed). `src/sim` is unchanged since 07b7c17. Checked by browser probe at
+960x580 and 390x844 and 390x664, with normal and fixed font metrics: Act Two
+stays shut with "Win level 10 first" by button and by Right from stop 10; it
+opens after a win (a gold-cheat pass too); the first-visit notice shows once
+across Back, reload, corrupt storage (shows once more, then the store is
+rewritten) and survives rotation; Left and Right cross between stops 10 and 11;
+all twenty won opens Act Two with no highlighted stop; every tax number, feat
+and notice on cards 11 to 20 is built from level data (a scratch edit of levels
+16 and 17 moved the card, notice, name, twist and tip text, and the copy guard
+failed where it should). Card text is at least 14.5 CSS px in every layout
+tested. The card flips only under fixed (tall) metrics; with normal metrics no
+card needed Map notes. The back holds the map picture, map name and tactical
+line; the notice, taxes, feat, best stars, Back and Play are on the front or
+stay on both. The flip survives rotation with one scene running.
+Defects, pinned in `e2e/campaign-screens-verifier.spec.ts` with `test.fail`:
+1. The result's third star (and the card's Best stars row) is five-pointed on a
+   feat level; the map plaque draws it four-pointed. `endScreen.ts` and
+   `drawBestStars` call `drawStarRow` without the feat flag.
+2. With a tax line showing, the HUD "Next:" preview is squashed in `hud.ts` to
+   9.9 CSS px at 390x844 and 7.8 at 390x664 (untaxed level 10 reads 12 and 11.1).
+   `taxHud.ts` checks only the tax line, so nothing guards the preview or the
+   result screen.
+Not pinned, a judgement call: a lost run on a feat level still prints "Missed
+Few hands: ..." and an empty "0 of 3 stars" row, where level 1 prints neither.
+Suggested wording: leave the feat line off a loss. The empty gap on the phone
+level 20 card at 844 is centring, not hidden content (nothing moved to the back
+with normal metrics).
+
+**Fixes after verification.** The map, card and winning result now draw a
+four-pointed third slot on feat levels, filled or outlined. A loss shows
+the town's defeat with no star row or feat verdict. Taxed phone games give
+the tax names their own row and the preview two full lines. The status strip
+grew from 76 to 108 game pixels. Both phones have side margins, so the
+480 × 1232 board fits the full map below the taller strip. Twelve browser
+cases failed on the verifier's build and now check HUD text size, spacing
+and containment at both heights with one or two taxes, through combat,
+planning and results, in normal type and both fixed font modes.
+
+The second-act cards now use the retuned level records with the commissioned notices. Three Permits tells the player to use the permits and leave specials unused. Closing Time recommends upgrading after the second build. The layout checks cover every tax combination and both feat verdicts on every second-act stop, in landscape and at both phone heights with normal and fixed font metrics. The refreshed result captures show Bare hands earned on level 16 and Few hands missed on level 17. The Showpiece isolation reference is the rules-and-screens merge `818e86d`. All 72 Painted and Classic canvas comparisons matched that build, and 12 cold starts made no Showpiece requests. The phone comparison also checks both roads and the taxed Meadow game against Painted.
+
+**48c phone HUD, CI fix 2.** On the production build from `7c06ab5`,
+increasing every canvas text width by 6% failed all four wide-text cases
+(one and two taxes at both heights). At 390 × 664 the boss warning fell
+from 11.318 to 10.652 CSS px, Last wave from 11.318 to 11.022, and
+Special from 12.395 to 12.129. At 390 × 844 Special fell from 15.756
+to 15.418. The other labels held their sizes.
+
+The first fix's larger fonts and negative letter spacing were reverted.
+The shared boss warning now reads “Boss next” and the phone stacks its
+two words. Taxed phones also stack “Last wave”, give the fallback call bonus
+1 px of inset per side and let Special use the space up to its status dot.
+The regression compares each label with its normal size in the same state
+and viewport, with a tolerance of 0.01 CSS px. At 390 × 664 both the
+normal and wide runs measured Start Wave at 12.40 CSS px and the three
+call states at 11.32 CSS px. All four wide cases passed.
+
+In the untaxed 390 × 664 control, the 6% wider text shrank Special
+(12.21 to 11.55 CSS px), Call next with +20 (12.79 to 12.57) and
+Last wave (12.04 to 11.37). Every visible label stayed inside its panel.
+The wave counter overlapped the cheat mark on the cheated win in wide mode.

@@ -8,7 +8,7 @@ import { campaignResultText } from './ui/endText';
 const level = (id: number) => LEVELS.find(l => l.id === id)!;
 
 describe('milestone 42 result text', () => {
-  it('the result of a cheated win offers Next level only while a next level exists; level 10 says complete', () => {
+  it('the result of a cheated win offers Next level only when unlocked; level 20 says complete', () => {
     const result = (id: number, phase: 'won' | 'lost', progress = {}) => {
       const state = createGame({ level: level(id) });
       state.phase = phase;
@@ -20,7 +20,8 @@ describe('milestone 42 result text', () => {
     expect(result(1, 'won', {})).toMatchObject({ nextId: null });
     expect(result(1, 'lost')).toMatchObject({ stars: 0, nextId: null });
     expect(result(10, 'won', { 10: 0 })).toMatchObject({ stars: 0, nextId: null });
-    expect(result(10, 'won', { 10: 0 })!.complete).not.toBe('');
+    expect(result(10, 'won', { 10: 0 })!.complete).toBe('');
+    expect(result(20, 'won')!.complete).toBe('Campaign complete!');
   });
 });
 

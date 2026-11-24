@@ -1,4 +1,5 @@
 import { boonScale, type BoonId } from './boons';
+import type { LevelDef } from './levelTypes';
 import { TICKS_PER_SECOND } from './time';
 import type { GameState, Tower, TowerDef, TowerLevel, TowerLevelStats, TowerType, UpgradePath } from './types';
 
@@ -53,6 +54,19 @@ const TOWERS = Object.keys(TOWER_DEFS) as TowerType[];
 
 export function allowedTowers(state: Pick<GameState, 'level' | 'cheated'>): readonly TowerType[] {
   return state.level && !state.cheated ? state.level.allowedTowers : TOWERS;
+}
+
+/** A sale refunds the normal share of the actual purchase. The next price
+ * still counts that construction, even after a full planning-phase refund. */
+export function towerBuildCost(state: Pick<GameState, 'level' | 'towersBuilt'>, type: TowerType): number {
+  const base = TOWER_DEFS[type].cost;
+  const rate = state.level?.taxes?.windowTax ?? 0;
+  return base + Math.round(base * rate * (state.towersBuilt ?? 0));
+}
+
+export function atTowerCap(state: Pick<GameState, 'level' | 'towers'>): boolean {
+  const cap = state.level?.taxes?.rationing;
+  return cap !== undefined && state.towers.length >= cap;
 }
 
 export function maxTowerLevel(state: Pick<GameState, 'level' | 'cheated'>): TowerLevel {
@@ -129,7 +143,26 @@ export function towerUndoValue(tower: Pick<Tower, 'type' | 'upgraded' | 'path' |
 }
 
 /** The stats that apply to a tower at its current level. */
-export function towerStats(tower: Pick<Tower, 'type' | 'upgraded' | 'path'>, held?: readonly BoonId[]): TowerLevelStats {
+const curfewStats = new WeakMap<TowerLevelStats, Map<number, TowerLevelStats>>();
+
+export function towerStats(tower: Pick<Tower, 'type' | 'upgraded' | 'path'>, held?: readonly BoonId[], level?: LevelDef): TowerLevelStats {
+  const stats = statsWithBoons(tower, held);
+  const cut = level?.taxes?.curfew;
+  if (cut === undefined) return stats;
+  let variants = curfewStats.get(stats);
+  if (!variants) {
+    variants = new Map();
+    curfewStats.set(stats, variants);
+  }
+  let adjusted = variants.get(cut);
+  if (!adjusted) {
+    adjusted = { ...stats, range: stats.range * (1 - cut) };
+    variants.set(cut, adjusted);
+  }
+  return adjusted;
+}
+
+function statsWithBoons(tower: Pick<Tower, 'type' | 'upgraded' | 'path'>, held?: readonly BoonId[]): TowerLevelStats {
   const def = TOWER_DEFS[tower.type];
   const base = tower.path ? TOWER_PATHS[tower.type][tower.path] : tower.upgraded ? def.upgraded : def.base;
   if (!held?.length) return base;
