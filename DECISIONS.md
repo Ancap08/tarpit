@@ -1531,3 +1531,37 @@ can change it; "Kyle" means Kyle decided.
   town on the pausable clock and added the test. Rule for parallel
   branches: when one adds a clock or a global stop, the later merge
   checks every animated thing the other added.
+
+## 2026-11-24, milestone 47 (a showpiece level, a spike)
+
+- **One level pushed as far as it will go, behind a hidden switch.** Kyle
+  ("I'd like to see what the limits are on graphics ... how comically
+  in-depth we could be with this, like maybe just a level").
+  `?look=showpiece` on Meadow: a working mill and farm, animals,
+  farmhands who run indoors, a day that passes into dusk, crews at their
+  guns, hats and coin left on the field, a camera that reacts, fireworks.
+  Fable (frame and limits), Codex (everything in it), Sonnet (verdict:
+  safe to merge behind the switch).
+- **It cannot affect the normal game:** without the switch no showpiece
+  file is requested and 72 fixed screens in Classic and Painted are
+  pixel-identical to before; games in the showpiece end in the same state
+  as in Painted at every detail tier (Sonnet). That is why a spike is on
+  main: so Kyle can open it on his own phone.
+- **What it costs is half the result.** On an emulated, slowed phone,
+  high detail ran at 26 to 44 frames a second across two sets of
+  measurements where Painted holds 60; low detail holds 55 to 60. It adds
+  42 KB and about half a second to the first load. No real phone has been
+  measured yet.
+- **What travels to the whole game, by cost (Codex's table, in DEVLOG):**
+  animals and farmhands are nearly free; crews, field marks and the
+  victory scene are cheap; the full day-to-dusk lighting is dear; the
+  moving camera nearly doubles draw time and stays showpiece only. Kyle
+  decides what to roll out after seeing it on his phone.
+- **Fixed after verification:** the quality governor changed tier 31
+  times in two minutes on a boundary trace and now changes once; scenery
+  on buildable cells fades to a ghost while a tower is held.
+- **Combined with the town and pause before merging:** all showpiece
+  motion runs on the pausable clock; the duplicate victory pole and hats
+  were removed in favour of the town's own cheer. Not re-verified by a
+  second model after that merge; the isolation and same-state cases were
+  re-run against the new base.
