@@ -33,6 +33,11 @@ export function makePlumage(scene: Phaser.Scene, layer: Layer, size: number): Ph
     quill(g, 16, 28, 0, 1);
     g.generateTexture(LOOSE, 32, 32);
     g.destroy();
+    // All feather marks and trails share these textures for this scene's lifetime.
+    scene.events.once('shutdown', () => {
+      scene.textures.remove(PLUMAGE);
+      scene.textures.remove(LOOSE);
+    });
   }
   const mark = scene.add.image(0, 0, PLUMAGE).setScale(size / 2);
   layer.add(mark);
