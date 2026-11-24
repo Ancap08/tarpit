@@ -771,7 +771,7 @@ spots (the Tar Barrel, and the Tar Pit's second path) in one change.
 | Source | Today | After |
 |---|---|---|
 | Tar Pit, path B | Wide Tar: a weaker slow from farther away | **Feathers**: a shot tars an untarred enemy and feathers a tarred one. It aims at enemies without feathers first |
-| Tar Barrel (special) | Slows a crowd and leaves tar | Tars and feathers everything it lands on, and still leaves its tar. Enemies who walk into the tar later are tarred, so a Feathers tower can feather them at once |
+| Tar Barrel (special) | Slows a crowd and leaves tar | **Unchanged.** Enemies in its tar are tarred, so a Feathers tower feathers them with its first shot. That is the combination |
 
 Path A (Deep Tar) and the other specials keep their rules. Numbers are the
 implementer's to tune inside the targets below.
@@ -782,9 +782,7 @@ implementer's to tune inside the targets below.
 |---|---|
 | Tar Pit path B, name | Feathers |
 | Tar Pit path B, line | Feathers tarred enemies. They run back. |
-| Tar Barrel, line | Tar and feathers. Enemies caught run back. |
-| Tip that names the Tar Barrel (level 5) | Drop a Tar Barrel on a crowd. Tarred and feathered, they run back. |
-| One new tip line where a level first offers path B or the barrel alongside a boss | Bosses are too proud to run. |
+| One new tip line on the first level that offers path B and has a boss | Bosses are too proud to run. |
 
 Tone is comic: a puff of feathers, an enemy running the wrong way. Nothing
 is hurt by feathers.
@@ -794,14 +792,23 @@ is hurt by feathers.
 | Label | Target |
 |---|---|
 | R1 | Tar Pit path B beats path A on at least one Free play map and A beats B on at least one, by the existing path-balance measure; the gap between them is 9 lives or fewer. The recorded exception for the Tar Pit is removed |
-| R2a | Worth casting: the standard special policy (which uses the Tar Barrel) ends at least 2 lives above the same policy with the barrel's turns left unused, on every map |
-| R2b | No worse than today: the standard policy ends with at least 14, 11 and 14 lives on Meadow, Switchback and Riverbend, inside the Free play window (R4) |
-| R2c | Best somewhere: a policy that gives Fire Arrows' turns to the barrel beats the policy that gives the barrel's turns to Fire Arrows on at least one map |
 | R3 | An enemy is feathered at most once, a boss never; no run of the simulation has an enemy leave by the entrance or wait there for ever |
 | R4 | Every Free play balance target passes with its target windows unchanged; the report is re-locked |
 | R5 | The campaign gate passes on all twenty levels with level data unchanged, including the feat rules |
-| R6 | A bot that leans on feathers (Tar Pits on path B plus the barrel where allowed) does not beat the good bot by more than 3 lives on any campaign level, and wins no third star the good bot does not |
-| R7 | Any run that uses neither path B nor the Tar Barrel is byte for byte what it was before |
+| R6 | A bot that leans on feathers (Tar Pits on path B, and the barrel where allowed) does not beat the good bot by more than 3 lives on any campaign level, and wins no third star the good bot does not |
+| R7 | Any run with no path B Tar Pit is byte for byte what it was before |
+| R8 | It can be seen: a feathered enemy runs back for at least 60 ticks (one second) at no less than its own walking speed |
+
+**Second change, after the first build.** With the barrel feathering whole
+crowds, only 8 of 20 levels still passed the campaign gate and Free play's
+shape targets failed, and the only numbers that came close shrank the run to
+10 px, which nobody would see. So the barrel is left exactly as it is and
+feathers come from the Tar Pit's second path alone. The gate's three bots
+never buy that path, so their runs do not move. The barrel targets (R2a to
+R2c) are dropped: measured, the barrel is already worth casting (4, 3 and 4
+lives better than leaving its turn unused); it only loses to Fire Arrows.
+A barrel that feathers a whole crowd needs the levels retuned, which is
+Kyle's call and a later milestone.
 
 R2 was first written as "the barrel policy matches the policy that skips
 it on every map". That cannot be met: skipping the barrel gives Fire Arrows

@@ -1668,3 +1668,17 @@ can change it; "Kyle" means Kyle decided.
   Meadow and Riverbend (17 and 20 lives). It was hidden because the standard
   policy alternates the two zone specials. A Fire Arrows change is a
   balance decision for Kyle, outside this milestone.
+- **Feathers come from the Tar Pit's second path only; the Tar Barrel is
+  left exactly as it is** (coordinator, after the first build). The barrel
+  version failed 12 of 20 levels at the campaign gate with level data
+  unchanged, and the numbers that came closest cut the run to 10 px. Leaving
+  the barrel alone keeps every existing bot run byte for byte, so the levels
+  Kyle has played do not move. This is less than what the coordinator
+  described to Kyle ("the Tar Barrel now tars and feathers what it lands
+  on"); he is told, and asked whether he wants the crowd version with a
+  level retune.
+- **Correction to what Kyle was told about the barrel:** it is not useless.
+  Casting it is worth 4, 3 and 4 lives over leaving its turn unused. It
+  loses only to Fire Arrows used every turn.
+- **A floor on the effect (R8)** so tuning cannot shrink it out of sight
+  again: at least one second of running at the enemy's own pace.
