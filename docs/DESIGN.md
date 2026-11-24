@@ -61,11 +61,21 @@ the plaque leaves at least 8 px at either map edge. Tall text expands the
 plaque vertically and leaves at least 2 px between lines. Changing the look
 changes the battlefield art.
 
+During a campaign level or Free play, the Pause plaque and P open a
+parchment panel over the dimmed battlefield. Resume is selected first.
+Arrows select an action and Enter or Space activates it. P, Escape and
+Resume return to play. Restart changes to “Confirm restart” on its first
+activation. The second starts the same level, or the same Free play map
+and difficulty, from the beginning. Level map returns to the campaign
+road. Menu returns to the Free play picker. Mute still works on the HUD
+and from M.
+
 ## Space and time
 
 - The canvas is 960 x 580 px. The map uses the top 960 x 480; the HUD uses
   the bottom 100 px in two rows: stats, the next-wave preview and the
-  Special, Start Wave and speed buttons, then the build bar.
+  Special, Start Wave and speed buttons, then the build bar and mute. Pause
+  spans both rows at the right edge.
 - Positions are in pixels. Speeds are pixels per second.
 - The simulation runs at a fixed 60 ticks per second (`dt = 1/60 s`). It
   has no randomness: a given sequence of actions always produces the same
@@ -500,8 +510,8 @@ a tower underneath the card. HUD buttons remain usable.
 Held rewards appear in pick order. Each icon has its own hit area of at
 least 44 x 44 CSS px. When the landscape canvas fits at full size, the
 icons share the build row with the six tower buttons. Once the first
-reward is held, the Musketeer button narrows from 140 to 124 px and the
-others to 116 px, with 6 px between buttons. Classic labels go from 16 to
+reward is held, the 132 px tower buttons narrow to 118 px for the Musketeer
+and 103 px for the others, with 4 px gaps. The reward icons start at x=678. Classic labels go from 16 to
 14 px. In portrait and smaller landscape windows the icons sit
 in a column beside the board. The portrait preview keeps its full 468 px.
 Hover or tap an icon to read its name and effect for up to 2.8 s.
@@ -757,7 +767,8 @@ The next wave can start after any reward pick. During a wave, the button
 calls the next wave when early calls are allowed. The next-wave preview lists each type
 once in first-group order with its counts summed ("Next: 20 Collector"); a
 preview too long for one 16 px line (264 px) wraps to two 13 px lines, or,
-if that takes three lines, to two 11 px lines. The wave 10 preview reads
+if that takes three lines, to two 11 px lines. The landscape counter fits
+this logical wrap into 222 px of display width, leaving 8 px before Special. The wave 10 preview reads
 "Next: 20 Hound, 15 Toll Troll, 12 Harpy, 8 Redcoat + Grumblefoot".
 
 ## Call early
@@ -1207,22 +1218,21 @@ Sounds follow the renderer's events and change no rule, number or outcome
 - **Starting and stopping** (`engine.ts`): no `AudioContext` exists until
   the player's first pointerdown, pointerup, touchend, click or keydown
   (capture listeners on `window` create it, or resume it later). A hidden
-  page stops every voice and suspends the context; it resumes when the
-  page shows. Without Web Audio, or if the context fails, the game is
+  page or a paused game stops every voice and suspends the context.
+  The title can resume sound on becoming visible. A hidden game stays silent
+  when it returns, including through mute changes, until the player resumes
+  or leaves the run. Without Web Audio, or if the context fails, the game is
   silent with no error. Phaser's own sound manager is off
   (`audio.noAudio`), so it makes no context. Sounds play only while the
   context runs and the page shows.
 - **Test mode** (`?test=1`): the engine is installed disabled; nothing is
   created and nothing plays (the mute setting and M still work).
 - **Mute.** A speaker drawn in code (two waves when on, a red cross when
-  muted): landscape, 42 x 42 at the right end of HUD row 2 (x 904, under
-  the speed button; the build bar's buttons went from 148 to 140 px) and
-  in the title's top right corner; portrait, 70 x 70 at the end of
-  controls row 2 (Start Wave 170 and speed 82 wide) and in the title's
-  corner. The M key toggles it anywhere (in the README and
+  muted). The 42 × 42 landscape and 70 × 70 portrait mute buttons sit
+  beside Pause during play and in the title's top right corner. The M key toggles it anywhere (in the README and
   `audio().hint`; no hint is drawn on the button, where it was too small
   to read). Muting sets the mute gain to 0 at once and stops every voice;
-  unmuting plays a tap. Stored in `localStorage` under `tarpit.muted` ("1"
+  unmuting during play sounds a tap. Stored in `localStorage` under `tarpit.muted` ("1"
   muted, anything else sound on; default on) with the best scores' care:
   blocked or full storage never throws and the choice holds for the
   session.
@@ -1243,16 +1253,23 @@ drawn and where touches land differ.
   other window (square included) gets the landscape one. Desktop windows
   follow the same rule. The milestone 14 "turn your device" card is gone.
 - **Landscape** is the 960 x 580 canvas as before: the map at the top
-  (960 x 480), the HUD's two rows under it. Its frames did not move.
+  (960 x 480) and two HUD rows underneath. An 80 × 80 Pause plaque at
+  (876, 490) spans the right end of the counter. Immediately to its left,
+  speed sits above mute, each 42 × 42 at x=828. Special and Start Wave
+  keep their 100 and 130 px widths at x=586 and x=692. Landscape tower
+  buttons start at x=6 and measure 132 × 42 with 4 px gaps.
 - **Portrait** is a 480 x 1194 canvas. From the top: a 76 px status strip
   (gold, lives, wave and level tag in one row, "cheat used" at its right
   end, the next-wave preview on up to two lines under them), the map
   turned a quarter turn clockwise (480 x 960, spawn at the top, cottage at
   the bottom), then the controls: a row of the six tower buttons (75 x 70,
   each the tower's map shape over its cost, because a name at 18 px does
-  not fit 75 px) and a row with Special (130 x 70), Start Wave (214 x 70)
-  and speed (114 x 70); milestone 33 narrowed Start Wave to 170 and speed
-  to 82 for the 70 x 70 mute button at the row's end ("Sound"). The tower buttons are 4 px apart and the second row's 6 px; both rows start 5 px from the edge. The main portrait controls use 20 px type. The next-wave preview starts at y=28. Two 23 px lines fit above the brass edge at y=74. At 390 × 844 the 20 px type reads at 14.1 CSS px and a 70 px button measures 49.5 CSS px.
+  not fit 75 px) and a lower row with Special, Start Wave, speed, mute and Pause.
+  These plaques are 110, 126, 70, 70 and 80 px wide, starting at x=4
+  with 4 px gaps. Pause is 80 × 80 at (396, 1113). The other four
+  controls are 70 px tall and aligned on the same centre line. Pause
+  measures 56.5 CSS px on a 390 × 844 phone and 44.5 at 390 × 664.
+  The next-wave preview starts at y=28. Two 23 px lines fit above the brass edge at y=74. At 390 × 844 the 20 px type reads at 14.1 CSS px and a 70 px button measures 49.5 CSS px.
   On a 390 x 763 CSS px phone (standalone, inside the safe areas) the
   canvas fits at 0.639: buttons are 44.7 CSS px, 20 px text 12.8 CSS px and a
   map cell 20.5 CSS px. With Safari's bars (390 x 664) the scale is 0.556:
@@ -1296,6 +1313,18 @@ drawn and where touches land differ.
   coalesce: a burst of resizes queues one restart, which carries the game
   and is drawn for the window's shape when it runs; a scene drawn for
   another layout than the window's rebuilds on its next frame.
+  A paused run carries its paused clock into the rebuilt scene. The panel
+  reopens with Resume selected and a fresh Restart confirmation.
+
+- **Pausing.** Setup and an active wave can both pause. The fixed-step
+  accumulator keeps its remainder. Simulation ticks, recharge, effect clocks,
+  enemy animations, particles, tweens and scene timers freeze. Resume counts
+  only active time. A 3× hold returns to its previous speed. A build pick,
+  tower panel, drag or special aim clears without spending a charge or gold.
+  While the panel is open, only its actions and mute accept input.
+  Pause puts away a reward offer and restores the same choices on Resume.
+  A boss banner continues from the time at which it paused. The tips and
+  result screens keep their own controls and ignore P.
 
 ## Touch and phones
 
@@ -1303,6 +1332,12 @@ Milestone 35 (`src/game/pageLock.ts`, `src/game/touchAssist.ts`). Mouse
 input never goes through any of this: placement and selection with a
 mouse stay exact in every layout.
 
+- **Leaving play.** When the document becomes hidden or the browser sends
+  `pagehide` (including a phone lock), a running game opens Pause. Becoming
+  visible leaves the panel up until the player acts. A window blur with a
+  still-visible page releases interrupted holds. Frozen browser tests can
+  opt into automatic pause with `?test=1&autoPause=1`. Both live play and tests
+  expose `window.__tarpit.paused()`, `pause()` and `resume()`.
 - **Page lock.** `index.html` fixes `html` and `body` (`position: fixed`,
   `overflow: hidden`, `overscroll-behavior: none`) so the document has
   nothing to scroll, and gives `html`, `body`, `#game` and everything in

@@ -9446,3 +9446,27 @@ must cover every printable character used in game strings. Updated review
 captures include the Assessor’s entrance in portrait.
 
 Linux CI caught a 5 px three-digit Remove gap. With HUD figures widened 12%, the Mac reproduced 2 px before the fix and 22 px after it. The compact build bar’s tightest gap went from −1 to 15 px in the same check.
+
+## 2026-11-24: milestone 45, pause
+
+Pause sits under the right thumb at the end of the HUD in both layouts.
+Landscape keeps the stat positions and original wave-preview wrap. The
+tower plaques move closer together, speed sits above mute, and Pause spans
+the two rows. Portrait keeps the six tower buttons in place and fits Pause
+beside mute by narrowing Special, Start Wave and speed. The four Painted
+captures in `docs/review/m45/` show the playing field and pause panel.
+
+The first browser pass caught a fast Restart tap hitting the panel's input
+shield before Phaser drew the panel. The shield now leaves a hole for
+each action and for mute. Pausing cancels a pending press as well as a drag,
+aim or speed hold, so releasing a finger after Resume cannot finish an old
+action. Tall-font checks also caught the Fire Pot price touching Pause.
+Giving the portrait tower prices a 24 px digit box keeps each price
+inside its plaque. The Playwright phone measured the Pause target at
+56.55 CSS px on a 390 × 844 viewport.
+
+The game clock keeps partial ticks and excludes time spent paused,
+including a phone lock with no intervening frames. The deterministic
+test paused a scripted Musketeer and Powder Keg run at ticks 0, 1, 31,
+299, 950 and 3,000. It reached the same complete state and active frame
+count as the uninterrupted run.

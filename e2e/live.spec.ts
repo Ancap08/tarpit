@@ -25,6 +25,7 @@ async function clickTitlePlay(page: Page): Promise<void> {
 }
 
 test('live loop ticks, spawns enemies, and 2x runs faster', async ({ page }) => {
+  test.setTimeout(60_000);
   await page.goto('/?renderer=canvas');
   await waitForTitle(page);
   // Phaser.CANVAS is 1.

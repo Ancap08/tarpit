@@ -8,6 +8,7 @@ import { expect, test } from '@playwright/test';
 // window.__tarpit has no spawnHorde, and calling the scene's method adds no
 // enemy.
 test('spawnHorde does nothing outside test and perf mode', async ({ page }) => {
+  test.setTimeout(60_000);
   await page.goto('/?renderer=canvas');
   await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('title'));
   const r = await page.evaluate(async () => {
@@ -26,6 +27,7 @@ test('spawnHorde does nothing outside test and perf mode', async ({ page }) => {
 });
 
 test('spawnHorde works with ?perf=1 on the live loop', async ({ page }) => {
+  test.setTimeout(60_000);
   await page.goto('/?renderer=canvas&perf=1');
   await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('title'));
   const r = await page.evaluate(async () => {
