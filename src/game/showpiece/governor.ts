@@ -28,7 +28,7 @@ export class DetailGovernor {
     const mean = this.elapsed / this.frames;
     this.elapsed = this.frames = 0;
     this.healthy = mean < 18.5 ? this.healthy + 1 : 0;
-    if (mean > 23 && this.tier > 0) this.tier = this.tier === 2 ? 1 : 0;
+    if (mean > 20 && this.tier > 0) this.tier = this.tier === 2 ? 1 : 0;
     if (this.healthy >= 5) {
       this.tier = this.tier === 0 ? 1 : 2;
       this.healthy = 0;

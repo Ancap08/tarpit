@@ -24,3 +24,9 @@ it('sheds detail within two slow windows and restores it only after sustained he
   frames(2, 1200);
   expect(quality.tier).toBe(0);
 });
+
+it('drops the rich tier when a sustained frame takes 21 ms', () => {
+  const quality = new DetailGovernor();
+  for (let frame = 0; frame <= 36; frame++) quality.sample(frame * 21);
+  expect(quality.tier).toBe(1);
+});

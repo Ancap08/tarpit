@@ -1119,7 +1119,7 @@ layers yield to placement, zones, combatants and health bars. The first
 arrival draws the map up to 4.8% closer for 2.3 seconds. Artillery gives
 a short kick. The HUD stays still and map input follows the displayed view.
 
-Detail starts high. A 750 ms window averaging over 23 ms per frame lowers
+Detail starts high. A 750 ms window averaging over 20 ms per frame lowers
 it one tier. Five consecutive windows below 18.5 ms restore one tier.
 Scenery refreshes at most once per 120, 65 or 32 ms at low, medium or high
 detail, with immediate updates when the player builds or the wave changes.
