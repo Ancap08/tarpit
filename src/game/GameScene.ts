@@ -179,6 +179,7 @@ import type {
 } from '../sim';
 import { EventCursor } from './anim/effects';
 import { sound } from './audio/engine';
+import { SiegeAudio } from './audio/siegeAudio';
 import { Moments } from './fx/moments';
 import { BoonReward, HeldBoons } from './ui/boons';
 import { Effects, type FxState } from './fx/effects';
@@ -199,7 +200,8 @@ import { highScores } from './highScore';
 import { SiegeView } from './keep/siegeView';
 import { RoadBanners } from './ui/roadBanners';
 import { SiegeControls } from './ui/siegeControls';
-import { drawGateMarker, drawSiegeRoads } from './draw/siege';
+import { drawGateMarker, drawSiegeRoads, SiegeGateEffects, type GateHistory } from './draw/siege';
+import { SiegeActors } from './draw/siegeActors';
 import { callEarlyInfo, CHEAT_TAPS, CHEAT_WINDOW_MS, Hud, specialReady, specialRecharge } from './hud';
 import { AIM_BANNER, aimBannerText, BARRICADE_AIM_REASONS, PAINTED_FALLBACK, REWARD_KEYS } from './names';
 import {
@@ -508,7 +510,7 @@ export class GameScene extends Phaser.Scene {
   private aimPress: AimPress | null = null;
   private aim!: Aim;
   /** Milestone 32b: the game a relayout() carries into the restarted scene, until create() takes it. */
-  private resume: { state: GameState; recordedCleared: number; clock: GameClock } | null = null;
+  private resume: { state: GameState; recordedCleared: number; clock: GameClock; gateHistory?: GateHistory; siegeAudio?: SiegeAudio } | null = null;
   /** A relayout's restart is queued and its create() has not run yet. */
   private restartPending = false;
   /** Play again or Menu was requested: this scene is going, so a layout switch leaves it alone. */
@@ -528,6 +530,9 @@ export class GameScene extends Phaser.Scene {
   private campaignKeep = false;
   private readonly actThree = actThreeEnabled(window.location.search);
   private get siegeScreens(): boolean { return this.actThree && this.state.level?.map === 'keep'; }
+  private siegeActors?: SiegeActors;
+  private siegeGate?: SiegeGateEffects;
+  private siegeAudio?: SiegeAudio;
   private showpieceType?: GameStartData['showpiece'];
   private showpiece?: import('./showpiece/showpiece').Showpiece;
   private paintedFallback = false;
@@ -561,13 +566,14 @@ export class GameScene extends Phaser.Scene {
     // reads the newest layout, so a burst of resizes ends on the window's final shape.
     // A scene already leaving (Menu, Play again) is not brought back: the next scene reads the layout itself.
     if (this.leaving) return;
-    this.resume = { state: this.state, recordedCleared: this.recordedCleared, clock: this.clock };
+    this.resume = { state: this.state, recordedCleared: this.recordedCleared, clock: this.clock,
+      gateHistory: this.siegeGate?.history, siegeAudio: this.siegeAudio };
     if (this.restartPending) return;
     this.restartPending = true;
     const data: GameStartData = {
       difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, showpiece: this.showpieceType, keep: this.keepModule, campaignKeep: this.campaignKeep,
       paintedFallback: this.paintedFallback,
-      keepAssets: this.keepAssets?.id === this.keepModule?.currentKeepPlateSet(this.game, currentLayout().turned, this.campaignLevel).id ? this.keepAssets : undefined,
+      keepAssets: this.keepAssets?.id === this.keepModule?.currentKeepPlateSet(this.game, currentLayout().turned, this.campaignLevel, this.actThree).id ? this.keepAssets : undefined,
     };
     this.keepAssets = data.keepAssets;
     this.scene.restart(data);
@@ -575,12 +581,12 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     if (this.keepModule) {
-      if (this.keepAssets?.id !== this.keepModule.currentKeepPlateSet(this.game, currentLayout().turned, this.campaignLevel).id) {
+      if (this.keepAssets?.id !== this.keepModule.currentKeepPlateSet(this.game, currentLayout().turned, this.campaignLevel, this.actThree).id) {
         this.keepAssets?.release();
         this.keepAssets = undefined;
         this.keepLoading = true;
         const module = this.keepModule;
-        void duringKeepLoad((signal, progress) => module.loadKeep(this.game, currentLayout().turned, signal, progress, this.campaignLevel), () => this.toMenu())
+        void duringKeepLoad((signal, progress) => module.loadKeep(this.game, currentLayout().turned, signal, progress, this.campaignLevel, this.actThree), () => this.toMenu())
           .then(assets => {
             if (!assets) return;
             this.keepAssets = assets;
@@ -609,6 +615,7 @@ export class GameScene extends Phaser.Scene {
     this.recordedCleared = resume?.recordedCleared ?? 0;
     this.speed = 1;
     this.clock = resume?.clock ?? new GameClock();
+    this.siegeAudio = this.siegeScreens && this.autoTick ? resume?.siegeAudio ?? new SiegeAudio(true, true) : undefined;
     this.shots = new ShotEffects();
     this.specialFx = new SpecialEffects(this, isTestMode(), this.layout, !!this.paintedAssets);
     this.speedPress = null;
@@ -653,12 +660,16 @@ export class GameScene extends Phaser.Scene {
       sound.beginSessionMute();
       const assets = this.keepAssets!;
       const refitKeep = () => {
-        if (this.keepAssets?.id !== this.keepModule?.currentKeepPlateSet(this.game, currentLayout().turned, this.campaignLevel).id) this.relayout();
+        if (this.keepAssets?.id !== this.keepModule?.currentKeepPlateSet(this.game, currentLayout().turned, this.campaignLevel, this.actThree).id) this.relayout();
       };
       this.scale.on(Phaser.Scale.Events.RESIZE, refitKeep);
       this.town.layer.setVisible(false);
-      this.keep = new this.keepModule.KeepView(this, this.layout, this.state.map, this.clock, !this.autoTick, DetailGovernor, assets, this.siegeScreens && this.layout.turned);
-      if (this.painted) this.painted.worldTexture = this.keep.light.key;
+      this.keep = new this.keepModule.KeepView(this, this.layout, this.state.map, this.clock, !this.autoTick,
+        DetailGovernor, assets, this.siegeScreens && this.layout.turned, this.siegeScreens);
+      if (this.painted) {
+        this.painted.worldTexture = this.keep.light.key;
+        this.painted.siegeNotices = this.siegeScreens;
+      }
       this.children.moveBelow(this.keep.layer, this.ground);
       this.events.once('shutdown', () => {
         this.scale.off(Phaser.Scale.Events.RESIZE, refitKeep);
@@ -669,7 +680,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.overlay = world();
     this.dynamic = world();
-    this.enemySprites = new EnemySprites(this, isTestMode(), this.layout, this.painted, this.clock);
+    this.enemySprites = new EnemySprites(this, isTestMode(), this.layout, this.painted, this.clock, this.siegeScreens);
     this.shotFx = world();
     this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx), this.layout, this.clock,
       this.keep ? 'rgba(0,0,0,0)' : undefined, this.siegeScreens && this.layout.turned) : null;
@@ -697,7 +708,8 @@ export class GameScene extends Phaser.Scene {
     this.featherPuffs = new FeatherPuffs();
     this.moments = this.fx?.createOverlays() ?? new Moments(this, this.layout, this.state.map);
     this.aimCross = world();
-    const fixed = this.siegeScreens && this.layout.turned ? this.moments.screenObjects : undefined;
+    this.siegeGate = this.siegeScreens ? new SiegeGateEffects(this, this.layout, !this.autoTick, resume?.gateHistory) : undefined;
+    const fixed = this.siegeScreens && this.layout.turned ? [...this.moments.screenObjects, ...this.siegeGate!.fixed] : undefined;
     const field = fixed ? this.children.list.filter(object => !fixed.includes(object)) : undefined;
     this.bannerBg = this.add.graphics().setDepth(4);
     const bannerTop = this.layout.map.y + BANNER_Y;
@@ -709,7 +721,8 @@ export class GameScene extends Phaser.Scene {
     this.hud = new Hud(this, {
       onRepair: this.state.gate ? () => {
         if (this.paused || this.state.pendingBoon) return;
-        repairGate(this.state);
+        const result = repairGate(this.state);
+        if (result.ok) this.siegeAudio?.repair(this.clock.nowMs);
         this.redraw();
       } : undefined,
       // Milestone 25c: mid-wave, Start Wave reads "Call next  +N" and calls the next wave.
@@ -722,14 +735,18 @@ export class GameScene extends Phaser.Scene {
       onSpecialPick: (type) => this.selectSpecial(type),
     }, this.layout, this.painted, this.pauseOnResult, this.siegeScreens);
     this.roadBanners = this.siegeScreens ? new RoadBanners(this, this.layout, this.state) : undefined;
+    this.siegeActors = this.siegeScreens && (this.state.windows || this.state.wallSiteTax)
+      ? new SiegeActors(this, this.layout, this.state, !this.autoTick) : undefined;
     this.siegeControls = this.state.windows || this.state.wallSiteTax
       ? new SiegeControls(this, this.layout, this.state, index => {
         if (this.paused || this.state.pendingBoon || this.state.phase !== 'wave') return;
         const attempt = shakeWindow(this.state, index);
         if (!attempt.ok && attempt.reason === 'empty-window') {
           this.siegeControls?.showEmptyWindow(index, this.state.tick);
+          this.siegeActors?.emptyWindow(index, this.clock.nowMs);
         }
-        this.takeEvents();
+        if (attempt.ok) this.siegeAudio?.pillow(this.clock.nowMs);
+        this.takeEvents(this.siegeScreens && attempt.ok);
         this.redraw();
       }, () => {
         if (this.paused || this.state.pendingBoon) return;
@@ -1520,7 +1537,7 @@ export class GameScene extends Phaser.Scene {
     this.restartPending = false;
     this.resume = null;
     if (this.keepModule) {
-      sound.endSessionMute();
+      if (destination.screen !== 'siegeEnding') sound.endSessionMute();
       this.keepAssets = undefined; // The view releases its set when Phaser shuts it down.
       this.keepLoading = false;
     }
@@ -1544,6 +1561,7 @@ export class GameScene extends Phaser.Scene {
       delta = this.clock.deltaMs;
       this.fx?.advanceClock(delta, this.speed);
       this.advance(ticks, false);
+      this.siegeAudio?.update(this.state, this.clock.nowMs);
       // Effects age in real time in play (milestone 30), so a label lasts 1.5 s at any speed.
       this.specialFx.advance(delta);
       this.barricadeFx.advance(delta);
@@ -1613,7 +1631,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Hand the events not yet seen to the sprites (after every tick and action). */
-  private takeEvents(): void {
+  private takeEvents(silentFeathers = false): void {
     if (!this.enemySprites) return;
     const { events, newTick } = this.eventCursor.take(this.state);
     if (newTick) this.enemySprites.newTick();
@@ -1630,7 +1648,7 @@ export class GameScene extends Phaser.Scene {
       const spot = this.enemySprites.spot(event.enemyId);
       if (spot && !this.keepModule) this.town.sacks.release(ENEMY_STATS[spot.type].livesCost, this.animationTime);
     }
-    if (puff) sound.play('impact.feathers');
+    if (puff && !silentFeathers) sound.play('impact.feathers');
     this.barricadeFx.onEvents(events);
     this.guardFx.onEvents(events);
     if (this.fx) this.fx.onEvents(events, this.state);
@@ -1838,6 +1856,7 @@ export class GameScene extends Phaser.Scene {
   redraw(): void {
     if (!this.dynamic || this.keepLoading) return;
     this.siegeView?.update(this.state.phase, this.clock.nowMs);
+    const project = this.siegeView?.displayed;
     this.keep?.frame(this.pick !== null || this.press !== null || this.aiming !== null || this.specialMenuOpen);
     this.showpiece?.draw(this.state, this.pick !== null || this.press?.active === true,
       !this.press?.active && !this.aimPress?.active && !this.panel?.cell && !this.state.pendingBoon && !this.specialMenuOpen && !this.held?.tooltip);
@@ -1849,6 +1868,10 @@ export class GameScene extends Phaser.Scene {
     if (this.state.map.id === 'keep') {
       if (!this.keep?.outerGate) drawSiegeRoads(this.ground, this.state);
       drawGateMarker(this.ground, this.state.gate, this.layout, this.keep?.outerGate);
+      if (this.siegeGate && this.keep?.outerGate) {
+        this.siegeGate.update(this.state, this.keep.outerGate, this.clock.nowMs, project ?? (p => p),
+          this.state.phase === 'wave' && !this.paused);
+      }
     }
     this.specialFx.drawGround(this.ground, this.state);
     const g = this.dynamic;
@@ -1860,7 +1883,7 @@ export class GameScene extends Phaser.Scene {
     drawTowers(g, this.state, this.aim, moving, pose, this.layout, this.painted?.towerBody);
     const blocker = this.state.blockers.find((b) => b.kind === 'barricade') ?? null;
     const motion = this.barricadeMotion;
-    const stopped = this.barricadeFx.stoppedPositions(this.state, motion);
+    const stopped = this.barricadeFx.stoppedPositions(this.state, motion, !this.siegeScreens);
     drawStatusRings(g, this.state, this.layout, stopped);
     if (!this.painted) drawShadows(g, this.state, this.layout, stopped);
     this.enemySprites.sync(this.state, this.speed, stopped);
@@ -1873,8 +1896,11 @@ export class GameScene extends Phaser.Scene {
     this.barricadeFx.drawWall(this.shotFx, blocker, this.layout, motion);
     this.barricadeFx.drawCrash(this.shotFx, this.layout, motion);
     this.bars.clear();
+    if (this.siegeScreens && (this.aiming !== null || this.panel.cell !== null || this.pick !== null)) {
+      this.enemySprites.drawSiegeFeet(this.bars);
+    }
     this.featherPuffs.draw(this.bars, this.clock.nowMs);
-    drawHpBars(this.bars, this.state, this.layout, stopped, this.painted ? id => this.enemySprites.paintedBar(id) : undefined);
+    drawHpBars(this.bars, this.state, this.layout, stopped, this.painted ? id => this.enemySprites.paintedBar(id) : undefined, this.siegeScreens);
     const held = blocker ? this.state.enemies.filter(enemy =>
       !isFlying(enemy) && enemy.distance === distanceOnRoad(this.state.map, enemy.road, blocker)).length : 0;
     this.barricadeFx.drawHp(this.bars, blocker, this.layout, held);
@@ -1888,6 +1914,8 @@ export class GameScene extends Phaser.Scene {
     }, this.autoTick ? this.clock.nowMs : undefined);
     this.moments.draw(this.animationTime);
     const covered = this.paused || !!this.state.pendingBoon || this.panel.rect !== null || this.aiming !== null || this.specialMenuOpen;
+    this.siegeActors?.update(this.state, this.clock.nowMs, project ?? (p => p),
+      this.state.phase === 'setup' || this.state.phase === 'wave');
     this.siegeControls?.update(this.state, covered, this.siegeView?.verticalScale, this.siegeView?.displayed);
     this.roadBanners?.update(this.state, covered, this.siegeView?.verticalScale, this.siegeView?.displayed);
     this.reward.update(this.paused ? null : this.state.pendingBoon);

@@ -20,7 +20,8 @@
 import { MUTE_TEXT } from '../names';
 import { Mixer } from './mixer';
 import { MuteStore } from './muteSetting';
-import { RECIPES, recipeLength, type SoundName } from './recipes';
+import { RECIPES, recipeLength, type Recipe, type SoundName } from './recipes';
+import { SIEGE_RECIPES, type SiegeSound } from './siegeRecipes';
 import { fadeOut, masterChain, schedule, type Scheduled } from './synth';
 
 /** What window.__tarpit.audio() reports. */
@@ -153,11 +154,19 @@ export class SoundEngine {
 
   /** Play a sound now, unless muted, silent, hidden, thinned or capped. */
   play(name: SoundName): void {
+    this.playRecipe(name, RECIPES[name]);
+  }
+
+  /** Private Act Three cues use the same enable, pause and master mute gates. */
+  playSiege(name: SiegeSound, actThree: boolean): void {
+    if (actThree) this.playRecipe(name, SIEGE_RECIPES[name]);
+  }
+
+  private playRecipe(name: SoundName | SiegeSound, recipe: Recipe): void {
     if (!this.enabled || this.paused) return;
     this.bump(this.counts.requested, name);
     const ctx = this.ctx;
     if (this.muted || ctx === null || this.bus === null || ctx.state !== 'running' || document.hidden) return;
-    const recipe = RECIPES[name];
     const decision = this.mixer.request(name, recipe.priority, recipeLength(recipe) * 1000, this.now(), recipe.thin);
     if (decision.action === 'thin') {
       this.bump(this.counts.thinned, name);

@@ -973,10 +973,12 @@ def blockade():
 
 def gate_atlas(frames,output):
     """Pack the four transparent Blender plates, preserving their registration."""
-    atlas=Image.new('RGBA',(1024,768))
+    with Image.open(frames[0]) as first:
+        width,height=first.size
+    atlas=Image.new('RGBA',(2*width,2*height))
     for i,frame in enumerate(frames):
         with Image.open(frame) as plate:
-            atlas.paste(plate,((i%2)*512,(i//2)*384))
+            atlas.paste(plate,((i%2)*width,(i//2)*height))
     atlas.save(output)
 
 

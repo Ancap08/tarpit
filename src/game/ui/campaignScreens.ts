@@ -1,6 +1,7 @@
 import type Phaser from 'phaser';
 import { resolveMap, type LevelDef } from '../../sim';
 import { drawMapThumbnail } from '../draw/map';
+import { drawSiegeCarriage } from '../draw/siegeActors';
 import { CAMPAIGN_TEXT, cardFeatText, levelTaxLines, siegeRuleLines, LEVEL_NAMES, LEVEL_NEW, LEVEL_STORY, STORY_TEXT, levelTips, tipsHeading, MAP_NAMES, TITLE_TEXT, levelNumberText } from '../names';
 import type { Broadside } from '../seenTips';
 import { FONT, TEXT } from '../palette';
@@ -138,6 +139,7 @@ export function drawCampaignMap(
 /** A royal proclamation and a town handbill, set in the same printer's furniture as the title. */
 export function drawStoryBroadside(
   scene: Phaser.Scene, portrait: boolean, which: Broadside, action: Action, proceed: () => void,
+  siegeScene = false, frozen = false,
 ): Button {
   const { width, height } = scene.scale;
   const cx = width / 2;
@@ -157,7 +159,8 @@ export function drawStoryBroadside(
     const reply = label(scene, cx, portrait ? 701 : 336, replyText, portrait ? 23 : 24, TEXT.button, portrait ? 362 : 760);
     ribbon(g, cx, reply.y, reply.width + 28, reply.height + 10);
   }
-  town(g, cx, portrait ? 893 : 431);
+  if (siegeScene) drawSiegeCarriage(scene, portrait, frozen);
+  else town(g, cx, portrait ? 893 : 431);
   const w = portrait ? 246 : 196;
   return action('title:continue', { x: cx - w / 2, y: portrait ? 977 : 474, width: w, height: portrait ? 82 : 58 },
     STORY_TEXT.continue, proceed, 26);

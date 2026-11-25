@@ -30,6 +30,8 @@ export interface ButtonOptions {
   labelY?: number;
   /** Milestone 33: the sound a click plays: 'tap' when left out, none for null (a button whose action has its own sound). */
   sound?: SoundName | null;
+  /** A separately illustrated control supplies its own background. */
+  bare?: boolean;
 }
 
 export class Button {
@@ -40,6 +42,7 @@ export class Button {
   private readonly onHover?: (over: boolean) => void;
   private readonly labelY?: number;
   private readonly labelInset: number;
+  private readonly bare: boolean;
   private r: Rect;
   private enabled = true;
   private locked = false;
@@ -59,6 +62,7 @@ export class Button {
     this.r = { ...rect };
     this.onHover = options.onHover;
     this.labelY = options.labelY;
+    this.bare = options.bare ?? false;
     this.labelInset = options.labelInset ?? 10;
     const style = { fontFamily: HUD_FONT, fontSize: options.fontSize ?? '18px', fontStyle: 'bold', color: TEXT.button };
     this.box = scene.add.rectangle(0, 0, rect.width, rect.height, COLORS.button).setOrigin(0, 0);
@@ -211,14 +215,14 @@ export class Button {
 
   private refresh(): void {
     const available = this.enabled && !this.locked;
-    this.trim.setVisible(this.shown && available);
+    this.trim.setVisible(this.shown && available && !this.bare);
     let fill: number = COLORS.button;
     if (!available) fill = COLORS.buttonDisabled;
     else if (this.pressed) fill = COLORS.buttonPressed;
     else if (this.picked) fill = COLORS.buttonPicked;
     else if (this.hover) fill = COLORS.buttonHover;
-    this.box.setFillStyle(fill);
-    if (!available) this.box.setStrokeStyle();
+    this.box.setFillStyle(fill, this.bare ? 0 : 1);
+    if (!available || this.bare) this.box.setStrokeStyle();
     else if (this.picked) this.box.setStrokeStyle(3, COLORS.buttonEdgePicked);
     else this.box.setStrokeStyle(2, COLORS.buttonEdge);
     const color = available ? TEXT.button : TEXT.buttonDisabled;

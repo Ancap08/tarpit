@@ -318,3 +318,8 @@ the checker looks for it.
 | `docs/review/m52c2a/gate-sound.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
 | `docs/review/m52c2a/gate-splintered.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
 | `docs/review/m52c2a/level-23-phone.mp4` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `public/assets/act3/siege-actors.webp` | `scripts/art/siege_actors.py` | Tarpit agents | MIT | Bedroom windows, wall sites and dawn carriage |
+| `public/assets/keep/siege-barbican-half.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Half-size joined barbican and its four damage conditions |
+| `public/assets/keep/siege-barbican.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Joined barbican and its four damage conditions |
+| `public/assets/keep/siege-machines-half.webp` | `scripts/art/siege_machines.py` | Tarpit agents | MIT | Half-size notice ram and shell, repair crew and falling timber |
+| `public/assets/keep/siege-machines.webp` | `scripts/art/siege_machines.py` | Tarpit agents | MIT | Notice ram and shell, repair crew and falling timber |

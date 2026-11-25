@@ -24,7 +24,7 @@ if (!existsSync(dist)) {
   process.exit(1);
 }
 const files = walk(dist).sort((a, b) => b.bytes - a.bytes);
-const keepArt = files.filter(file => file.path.startsWith('assets/keep/') && !file.path.endsWith('.js'))
+const keepArt = files.filter(file => (file.path.startsWith('assets/keep/') || file.path.startsWith('assets/act3/')) && !file.path.endsWith('.js'))
   .reduce((sum, file) => sum + file.bytes, 0);
 const keepBudget = 10_000_000;
 console.log(`check:size: Old Keep art ${keepArt} bytes of ${keepBudget}`);

@@ -142,7 +142,7 @@ export const SOUND_NAMES = [
 
 export type SoundName = (typeof SOUND_NAMES)[number];
 
-const tone = (wave: Wave, f0: number, f1: number | undefined, env: Envelope, gain: number, extra: Partial<ToneLayer> = {}): ToneLayer => ({
+export const tone = (wave: Wave, f0: number, f1: number | undefined, env: Envelope, gain: number, extra: Partial<ToneLayer> = {}): ToneLayer => ({
   kind: 'tone',
   wave,
   f0,
@@ -152,7 +152,7 @@ const tone = (wave: Wave, f0: number, f1: number | undefined, env: Envelope, gai
   ...extra,
 });
 
-const noise = (filter: Filter, env: Envelope, gain: number, at = 0): NoiseLayer => ({ kind: 'noise', filter, env, gain, at });
+export const noise = (filter: Filter, env: Envelope, gain: number, at = 0): NoiseLayer => ({ kind: 'noise', filter, env, gain, at });
 
 /** A note of a tune: a triangle with a quiet square an octave down for body. */
 function note(freq: number, at: number, h: number, d: number, gain: number): Layer[] {

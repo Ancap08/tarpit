@@ -832,8 +832,8 @@ def stone_palette():
         pigment(name,swatch,energy)
 
 
-def outer_ward():
-    """An open vault, two flanking drums and shallow stone wings across the road."""
+def outer_ward(expanded=False):
+    """An open vault and two flanking drums across the shared road."""
     yf=0
     shape=arch(1.89,2.26)
     rim=shape[1:]+[shape[0]]
@@ -867,13 +867,46 @@ def outer_ward():
     for side in (-1,1):
         x=side*1.72
         block(side*1.31,.43,-.12,.78,1.1,2.93,"stone")
-        drum(x,.3,-.15,.66,3.55,n=8,windows=1)
-        merlons(x,.3,3.44,.66,8)
-        for z in (.05,1.13,2.91):
+        height=4.36 if expanded else 3.55
+        drum(x,.3,-.15,.66,height,n=8,windows=2 if expanded else 1)
+        merlons(x,.3,4.25 if expanded else 3.44,.66,8)
+        for z in (.05,1.13,3.72 if expanded else 2.91):
             profile(x,.3,[(z,.665),(z+.07,.71),(z+.13,.71),(z+.17,.665)],8,"slate")
         lantern_x=side*1.28
         watch_brazier(lantern_x,-.53,.10)
         render.light(f"Barbican lamp {side}",(lantern_x,-.62,1.16),(x,-.18,1.54),.65,43,(1,.37,.08))
+    if expanded:
+        barbican_wings()
+
+
+def barbican_wings():
+    """Curtain walls run into staggered rock abutments at either shoulder."""
+    for side in (-1,1):
+        for section in range(2):
+            x=side*(2.72+section*.9)
+            y=.49+section*.30
+            h=1.59-section*.31
+            block(x,y,-.31,1.05,.8,h+.31,"stone")
+            block(x,y,h,1.10,.89,.13,"slate")
+            block(x,y-.03,h+.11,1.15,.93,.105,"trim")
+            for offset in (-.34,.15):
+                block(x+offset,y-.30,h+.21,.23,.25,.28,"stone")
+                block(x+offset,y-.31,h+.49,.28,.29,.076,"trim")
+            for course in range(round(h/.24)+1):
+                for j in range(4):
+                    nw=x-.51+j*.25+(course%2)*.08
+                    right=min(nw+.237,x+.508)
+                    if right-nw < .055:
+                        continue
+                    z=course*.22-.16
+                    panel([(nw,y-.407,z),(right,y-.407,z),(right,y-.407,z+.209),
+                           (nw,y-.407,z+.209)],rng.choice(("stone","slate","ash","lichen")))
+        bx=side*4.06
+        for off,z,r in ((-.26,-.28,.40),(.11,-.34,.49),(.31,-.36,.30)):
+            # Faceted bedrock swallows the tails of the wall instead of
+            # leaving a crisp, freestanding end at the crag.
+            profile(bx+side*off,1.08,[(z,r),(z+.30,r*1.09),(z+.72,r*.55)],
+                    5,rng.choice(("rock","deep","slate")),rot=off)
 
 
 def gate_condition(state):
@@ -931,7 +964,7 @@ def write_webp(path,output,size):
                     "-o",str(output/f"{path.stem}-half.webp")],check=True)
 
 
-def render_barbican():
+def render_barbican(expanded=False):
     global layer
     scene=render.studio("painted",True,"BLENDER_EEVEE_NEXT")
     for obj in list(bpy.data.objects):
@@ -939,7 +972,7 @@ def render_barbican():
             bpy.data.objects.remove(obj,do_unlink=True)
     stone_palette()
     layer="barbican"
-    outer_ward()
+    outer_ward(expanded)
     for state in range(4):
         layer=f"door-{state}"
         gate_condition(state)
@@ -949,13 +982,14 @@ def render_barbican():
     render.light("Barbican sunset",(-4,-1,5),(0,0,1),2,280,(1,.54,.27))
     cam=scene.camera
     cam.data.type="ORTHO"
-    cam.data.ortho_scale=5.55
-    cam.location=(2.25,-14,5.4)
+    cam.data.ortho_scale=9.75 if expanded else 5.55
+    cam.location=(1.40,-14,5.4) if expanded else (2.25,-14,5.4)
     cam.rotation_euler=(-cam.location).to_track_quat('-Z','Y').to_euler()
-    cam.data.shift_y=(78/96-.5)*.75
-    scene.view_settings.exposure=-.51
+    cam.data.shift_y=(116/140-.5)*.625 if expanded else (78/96-.5)*.75
+    scene.view_settings.exposure=-.13 if expanded else -.51
     scene.eevee.taa_render_samples=24
-    scene.render.resolution_x,scene.render.resolution_y=(512,384)
+    size=(640,400) if expanded else (512,384)
+    scene.render.resolution_x,scene.render.resolution_y=size
     OUT.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="tarpit-barbican-") as temp:
         frames=[]
@@ -967,9 +1001,9 @@ def render_barbican():
             scene.render.filepath=str(frame)
             bpy.ops.render.render(write_still=True)
             frames.append(str(frame))
-        atlas=Path(temp)/"siege-gates.png"
+        atlas=Path(temp)/("siege-barbican.png" if expanded else "siege-gates.png")
         subprocess.run(["python3",str(HERE/"keep_weather.py"),"--gate-atlas",*frames,str(atlas)],check=True)
-        write_webp(atlas,OUT,(1024,768))
+        write_webp(atlas,OUT,(size[0]*2,size[1]*2))
 
 
 def run():
@@ -1133,7 +1167,7 @@ def run():
 
 
 if __name__=="__main__":
-    if "--siege-gates" in sys.argv:
-        render_barbican()
+    if "--siege-gates" in sys.argv or "--siege-barbican" in sys.argv:
+        render_barbican("--siege-barbican" in sys.argv)
     else:
         run()

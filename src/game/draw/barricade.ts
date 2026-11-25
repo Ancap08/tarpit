@@ -111,9 +111,9 @@ export class BarricadeEffects {
   }
 
   /** Render anchors for stopped walkers. All combat still uses their simulation coordinates. */
-  stoppedPositions(state: GameState, motion: boolean): BlockedPositions | undefined {
+  stoppedPositions(state: GameState, motion: boolean, arrangeGate = true): BlockedPositions | undefined {
     const wall = state.blockers.find((b) => b.kind === 'barricade');
-    const gate = state.map.otherRoads?.length && state.gate && !state.gate.fallen ? state.gate : undefined;
+    const gate = arrangeGate && state.map.otherRoads?.length && state.gate && !state.gate.fallen ? state.gate : undefined;
     if (!wall && !gate) return undefined;
     const stopped = new Map<number, BlockedPosition>();
     if (gate) this.arrangeHeld(state, gate, false, stopped);

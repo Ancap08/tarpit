@@ -1592,6 +1592,27 @@ Sounds follow the renderer's events and change no rule, number or outcome
   busy wave into `m33-sounds.wav`, and the same through the phone
   stand-in into `m33-sounds-phone.wav`, for listening (never committed).
 
+### Act Three siege cues
+
+Act Three adds nine synthesized cues. The siege controller follows the
+pausable presentation clock and starts each cue through the existing
+mixer. The existing mute and test-mode rules apply. The direct Keep
+trials use these cues with `?act3=1`. The ending plays its cue at its
+first showing. Pitch slides and the envelope of a started note retain
+their real-time lengths at every play speed.
+
+| Cue | Trigger and sound | Oscillator Hz | Filtered noise bands, Hz | Length |
+|---|---|---|---|---|
+| Siege drum | A soft skin drum with a dull rim tick, under a wave while the gate stands. The interval in ms is 390 + 590 × remaining health fraction (980 at full, 685 at half, 449 at one tenth). The breach ends the beat. | 165→94 and 285→196 | 420→255 | 176 ms |
+| Creak | A low wooden groan with a gritty finish, when the gate loses a damage stage, including the breach. | 390→175 and 262→118 | 690→275 | 443 ms |
+| Last stand bell | A round toll with two higher, slightly inharmonic partials, struck at 0, 700 and 1,400 ms after the breach. | 349.23, 522.5 and 711 | 800→610 | 867 ms per toll |
+| Pillow thump | A soft, low plop 200 ms after a successful window use, as the pot tips. | 330→167 | 440→270 | 168 ms |
+| Pillow flutter | Three overlapping flaps beginning 390 ms after a successful window use. Their offsets are 0, 88 and 170 ms. | 480→376 | 860→500, 750→560 and 730→425 | 373 ms |
+| Ram roll | A wooden axle and two rolling grains of noise, repeating every 470 ms while the Ram rolls. | 237→181 | 377→230 and 530→380 | 407 ms |
+| Ram knock | A hollow knock with a hard front edge, first at 350 ms after contact and then every 900 ms until it breaks away or the gate falls. | 187→106 and 414→241 | 590→275 | 207 ms |
+| Repair hammer | A bright mallet click with a lower wooden ring, at 0, 250 and 520 ms from a successful repair. | 648→470 and 312→264 | 850→475 | 108 ms per strike |
+| Ending fanfare | Three tidy ascending notes at 0, 190 and 370 ms, then an overconfident top note that droops, a sour harmony and a sputtering bass at 580, 710 and 760 ms. | 261.63, 329.63, 392, 523.25→446, 369.99→291 and 245→157 | Low-pass 685→405 on the bass | 1,225 ms |
+
 ## Layouts
 
 Milestone 32b. No game rule changes: the simulation, its numbers, the maps
@@ -2423,18 +2444,23 @@ Next line. Counts combine repeated groups of the same enemy on that
 road. The Gate panel measures health with a bar. Repair shows the
 current gold quote and the first-repair feat warning on Not a nail
 levels. A breach shows Gate fallen and a whole-second countdown rounded
-up for the remaining Last stand ticks. Windows and wall-site markers
-stay aligned with their world positions. In portrait leaders join the
-tax plaques to their plinths. The lower Survey plaque sits 60 canvas px
-below its plinth before camera scaling, and the upper plaque sits 106 px
-right. The Quartering plaque sits 190 px right and 42 px below its plinth.
+up for the remaining Last stand ticks. In the painted view the portrait
+status strip is 38 canvas px high during ordinary play and expands to the
+full strip for aim instructions. The Survey stakes sit at their closed
+cells. Quartering places the camp on its cell and the sign 43 px right
+and 39 px down in portrait, or 73 px right and 50 px down in landscape.
 The west sign on the west-only level stands beside
 the road at canvas x = 204, clamped to fit. Both leave the barbican visible.
-The outer gate's sill follows the simulation's position. Its timber is
+The outer gate's sill follows the simulation's position, at (112, 144.17)
+in a 224 × 174 logical frame with curtain walls and crag abutments. Its timber is
 sound above two-thirds health, cracked with a sagging bar down to one-third,
 splintered with a slipping banner at one-third or below, and open at zero.
 Repair uses the same thresholds as damage, so the rebuilt timber shows the
-result of a step.
+result of a step. Damage shudders and sheds dust over 540 ms, a stage
+repair shows hammering and a patch over 1,050 ms, and the fallen leaves
+pitch into the yard amid dust over 980 ms. The Last stand sounds and shows
+the bell, flares the towers and repeats the same rounded-up countdown at
+the barbican.
 
 On portrait screens the camera preserves road width and expands the
 vertical view from 1.15× in setup to 1.50× in battle over 1,500 ms on
@@ -2442,9 +2468,10 @@ the game's pausable clock. It returns over the same duration between
 waves. The east mouth stays 24 canvas px above the map's lower edge. The
 cached panorama follows the camera with a CSS transform. The portrait
 castle plate fits a 730 × 475 box for this view. The HUD uses a fixed
-camera, with 108 × 80 window and 132 × 80 wall-site targets anchored
-through the live projection. Landscape keeps its fixed view and uses
-108 × 52 and 132 × 54 targets. In landscape the castle fits a 1,150 × 312
+camera, with 108 × 80 window targets, 112 × 80 Survey targets and a
+100 × 80 Quartering target anchored through the live projection.
+Landscape keeps its fixed view and uses heights of 52 for the windows
+and 54 for the sites, raised as needed to give 44 CSS px. In landscape the castle fits a 1,150 × 312
 box. An eastern deck passes in front of the curtain where the road wraps
 around it. Test mode and reduced motion hold the
 setup framing. The settle replaces the old opening drift and camera
@@ -2467,6 +2494,26 @@ exposure with a hard key and throws spire shadows across the paving.
 Dawn uses the cold sky plate and a lighter grade, with neither rain
 nor lightning. The art inventory is capped at 10 MB, and the decoded
 plate set on a phone is capped at 60 MB.
+
+Night lifts the character, tower and shot plates and adds an upper and
+side rim. Ground crowds use 35 fixed ID-based slots around the sill
+and in the yard. The formation grows across the last 82 road px, with
+up to 1.48× scale about the feet, and settles to 1.28× over the first
+75 px in the yard. The Ram uses a central approach and up to 1.26×.
+Preview tethers show the real road positions while aiming or viewing
+reach. Wounded enemies carry short bars near their own heads.
+
+A usable bedroom window glows and carries a feather. A successful tap
+tips a pot, shakes a pillow from 370 ms and closes the shutters at
+1,250 ms. Six tar drops and twelve feathers land along that window's
+ordinary road interval. An empty tap shakes the townsperson's head for
+540 ms. A paid Redcoat packs in 340 ms and leaves within 1,500 ms. The
+Ram's wood wheels follow the distance it travels, including retreat,
+and its thrust coincides with the knock. Mortar shots retain their arc
+and carry a 34 px wide notice tile. The ending illustration moves the
+tarred carriage along the dawn road over 7,200 ms below the existing
+ending words. Test mode holds static poses and reduced motion removes
+the new animation.
 
 | Level | Name | Roads | Sky | Gold | HP scale | Gate HP | Yard px | Repair HP | Gold per full repair | Third star | Wall-site rule |
 |---:|---|---|---|---:|---:|---:|---:|---:|---:|---|---|

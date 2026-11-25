@@ -60,6 +60,34 @@ test('the painted outer gate follows the blocker through damage, repair and brea
   expect(await gate()).toEqual({ frame: '3', aligned: true });
 });
 
+test('a full two-road gate renders an ID-stable fan at its true contact point', async ({ page }) => {
+  const { map, gate } = createGame({ level: KEEP_LEVELS[2] });
+  const sill = { east: distanceOnRoad(map, 'east', gate!)!, west: distanceOnRoad(map, 'west', gate!)! };
+  await page.goto('/?test=1&act3=1&keep=23');
+  await page.waitForFunction(() => window.__tarpit?.keep?.());
+  const proof = await page.evaluate(sill => {
+    const scene = window.__tarpit!.game.scene.getScene('game') as GameScene;
+    scene.spawnHorde(30);
+    const enemies = scene.state.enemies;
+    for (const enemy of enemies) {
+      const road = enemy.id % 2 ? 'east' : 'west';
+      enemy.road = road;
+      enemy.distance = sill[road];
+    }
+    scene.redraw();
+    const feet = enemies.map(e => scene.animState(e.id)!);
+    enemies.reverse();
+    scene.redraw();
+    const repeat = enemies.map(e => scene.animState(e.id)!).reverse();
+    return {
+      distinct: new Set(feet.map(f => f.x + ':' + f.y)).size,
+      stable: feet.every((f, i) => f.x === repeat[i].x && f.y === repeat[i].y && f.scale === repeat[i].scale),
+      held: enemies.every(e => e.distance === sill[e.road as keyof typeof sill]),
+    };
+  }, sill);
+  expect(proof).toEqual({ distinct: 30, stable: true, held: true });
+});
+
 for (const level of KEEP_LEVELS) {
   test(`private Keep level ${level.id} loads and plays its own waves`, async ({ page }) => {
     test.setTimeout(120_000);

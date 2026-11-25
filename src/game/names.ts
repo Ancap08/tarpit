@@ -708,6 +708,7 @@ export const SIEGE_TEXT = {
   spentWindow: 'Spent',
   quartering: 'Quartered',
   survey: 'Surveyed',
+  condemned: 'CONDEMNED',
   pay: (gold: number) => `Pay ${gold}`,
 } as const;
 

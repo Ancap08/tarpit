@@ -6,11 +6,12 @@ import { keepPlateSet } from './plates';
 import type { KeepSky } from '../../sim/levelTypes';
 
 const DIR = join(process.cwd(), 'public/assets/keep');
+const ACTORS = join(process.cwd(), 'public/assets/act3/siege-actors.webp');
 const files = readdirSync(DIR).filter(f => f.endsWith('.webp')).sort();
 const skies: KeepSky[] = ['dusk', 'night storm', 'dawn'];
 
-function size(file: string): { width: number; height: number } {
-  const d = readFileSync(join(DIR, file));
+function size(file: string, path = join(DIR, file)): { width: number; height: number } {
+  const d = readFileSync(path);
   const kind = d.toString('ascii', 12, 16);
   if (kind === 'VP8X') return { width: d.readUIntLE(24, 3) + 1, height: d.readUIntLE(27, 3) + 1 };
   if (kind === 'VP8L') {
@@ -22,8 +23,23 @@ function size(file: string): { width: number; height: number } {
 
 describe('Old Keep art budget', () => {
   it('stays under the 10 MB art limit on disk', () => {
-    const bytes = files.reduce((sum, f) => sum + readFileSync(join(DIR, f)).length, 0);
+    const bytes = files.reduce((sum, f) => sum + readFileSync(join(DIR, f)).length, readFileSync(ACTORS).length);
     expect(bytes).toBeLessThanOrEqual(10_000_000);
+  });
+
+  it('selects one half-density siege set on even a large DPR phone', () => {
+    const actors = size('siege-actors.webp', ACTORS);
+    for (const weather of skies) for (const turned of [true, false]) {
+      const set = keepPlateSet(turned, 2800, weather, weather === 'dusk', true, true);
+      expect(set.files.some(({ name }) => name === 'siege-gates')).toBe(false);
+      expect(set.files.some(({ name }) => name === 'siege-barbican')).toBe(true);
+      expect(set.files.every(({ file }) => file.endsWith('-half.webp'))).toBe(true);
+      const bytes = set.files.reduce((sum, { file }) => {
+        const { width, height } = size(file);
+        return sum + width * height * 4;
+      }, actors.width * actors.height * 4);
+      expect(bytes).toBeLessThanOrEqual(60_000_000);
+    }
   });
 
   it('caps a DPR 3 phone at 60 MB and keeps the older iPhone texture limit', () => {
@@ -62,6 +78,8 @@ describe('Old Keep art budget', () => {
         expect(files.some(({ name }) => name === 'drift')).toBe(weather !== 'dawn');
       }
       sets.push(...variants);
+      sets.push(keepPlateSet(true, 1170, weather, weather === 'dusk', true),
+        keepPlateSet(false, 2049, weather, weather === 'dusk', true));
     }
     expect([...new Set(sets.flatMap(set => set.files.map(({ file }) => file)))].sort()).toEqual(files);
   });

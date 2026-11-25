@@ -49,6 +49,8 @@ import Phaser from 'phaser';
 import { DEFAULT_DIFFICULTY, DEFAULT_MAP, DIFFICULTIES, LEVELS, MAP_IDS, MAPS, type Difficulty, type MapId, type LevelDef } from '../sim';
 import { loadEnemySheets } from './anim/enemySprites';
 import { drawMapThumbnail } from './draw/map';
+import { loadSiegeActors } from './draw/siegeActors';
+import { sound } from './audio/engine';
 import type { Rect } from './input';
 import { highScores } from './highScore';
 import { tipsFor, seenBroadsides, broadsideStore, type Broadside } from './seenTips';
@@ -67,6 +69,7 @@ import { LOOKS, LookStore, paintedDensity, type Look } from './skin/look';
 import { loadPainted, type PaintedAssets } from './skin/loading';
 import { duringKeepLoad } from './keep/status';
 import { actThreeEnabled, keepSelection } from './keep/switch';
+import { isTestMode } from './testMode';
 
 /** Menu buttons: 42 px tall like every touch target (44.8 px on an iPad in landscape). */
 export const MENU_BUTTON_H = 42;
@@ -207,6 +210,7 @@ export class TitleScene extends Phaser.Scene {
   /** Enemy sprite sheets load once at boot, so GameScene (and its restarts) start with them. */
   preload(): void {
     loadEnemySheets(this);
+    if (this.actThree) loadSiegeActors(this);
   }
 
   /** Milestone 32b: rebuild the menu for the window's new layout, keeping the picks (layoutSwitch.ts). */
@@ -309,8 +313,13 @@ export class TitleScene extends Phaser.Scene {
 
     if (this.page === 'opening' || this.page === 'secondAct' || this.page === 'thirdAct' || this.page === 'ending' || this.page === 'siegeEnding') {
       const which = this.page;
-      this.events.once(Phaser.Scenes.Events.RENDER, () => broadsideStore(which).mark(which));
+      this.events.once(Phaser.Scenes.Events.RENDER, () => {
+        const store = broadsideStore(which);
+        if (which === 'siegeEnding' && !store.has(which)) sound.playSiege('siege.ending', this.actThree);
+        store.mark(which);
+      });
       const proceed = () => {
+        if (which === 'siegeEnding') sound.endSessionMute();
         if (which === 'ending' && this.replayLevel) {
           const level = LEVELS[LEVELS.length - 1];
           this.startGame({ difficulty: DEFAULT_DIFFICULTY, map: level.map, level });
@@ -320,7 +329,7 @@ export class TitleScene extends Phaser.Scene {
           this.visit('levelCard', this.card.id);
         } else this.visit('levelMap', undefined, which === 'secondAct' ? 2 : which === 'thirdAct' ? 3 : undefined, this.focusId);
       };
-      this.playButton = drawStoryBroadside(this, portrait, which, this.action, proceed);
+      this.playButton = drawStoryBroadside(this, portrait, which, this.action, proceed, this.actThree && which === 'siegeEnding', isTestMode());
       this.bindMenuKeys(['continue']);
       this.input.keyboard?.on('keydown-ESC', proceed);
       if (this.progress !== null) this.refreshLoading();
@@ -618,7 +627,7 @@ export class TitleScene extends Phaser.Scene {
           const keepAssets = await keep.loadKeep(this.game, currentLayout().turned, signal, fraction => {
             plates = fraction;
             progress();
-          }, level);
+          }, level, this.actThree);
           if (signal.aborted) {
             keepAssets.release();
             signal.throwIfAborted();

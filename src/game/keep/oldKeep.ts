@@ -13,6 +13,7 @@ import projection from './projection.json';
 import keepSite from '../../sim/keepSite.json';
 import type { DetailGovernor } from '../showpiece/governor';
 import type { KeepSky, LevelDef } from '../../sim/levelTypes';
+import { BARBICAN_SIZE, SIEGE_MACHINE_FRAMES } from '../draw/siegeMachines';
 
 export { createKeep } from '../../sim/oldKeep';
 
@@ -20,9 +21,11 @@ type Image = Phaser.GameObjects.Image;
 const textureKey = (name: Plate) => 'keep:' + name;
 const MAGNIFIER_KEY = 'keep:magnifier';
 
-export function currentKeepPlateSet(game: Phaser.Game, portrait: boolean, level?: LevelDef) {
+export function currentKeepPlateSet(game: Phaser.Game, portrait: boolean, level?: LevelDef, actThree = false) {
   const closedRoad = level?.keepRoads === 'east' || level?.keepRoads === 'west';
-  return keepPlateSet(portrait, Math.ceil(game.canvas.getBoundingClientRect().width * devicePixelRatio), level?.keepSky, closedRoad);
+  const phone = Math.min(window.innerWidth, window.innerHeight) <= 600;
+  return keepPlateSet(portrait, Math.ceil(game.canvas.getBoundingClientRect().width * devicePixelRatio),
+    level?.keepSky, closedRoad, actThree, phone);
 }
 
 export interface KeepAssets {
@@ -32,8 +35,8 @@ export interface KeepAssets {
 }
 
 export async function loadKeep(game: Phaser.Game, portrait: boolean, signal: AbortSignal,
-    onProgress: (fraction: number) => void, level?: LevelDef): Promise<KeepAssets> {
-  const set = currentKeepPlateSet(game, portrait, level);
+    onProgress: (fraction: number) => void, level?: LevelDef, actThree = false): Promise<KeepAssets> {
+  const set = currentKeepPlateSet(game, portrait, level, actThree);
   const images = new Map<Plate, HTMLImageElement>();
   const installed: Plate[] = [];
   let surround: KeepSurround | undefined;
@@ -70,6 +73,7 @@ export async function loadKeep(game: Phaser.Game, portrait: boolean, signal: Abo
     // once into the panorama's cropped canvas layers.
     const textures: Plate[] = ['mist', 'glow', 'plinth'];
     if (images.has('siege-gates')) textures.push('siege-gates');
+    if (images.has('siege-barbican')) textures.push('siege-barbican', 'siege-machines');
     if (images.has('siege-blockade')) textures.push('siege-blockade');
     for (const name of textures) {
       const image = images.get(name)!;
@@ -77,9 +81,13 @@ export async function loadKeep(game: Phaser.Game, portrait: boolean, signal: Abo
       if (!texture) throw new Error(`Could not install keep plate ${name}`);
       installed.push(name);
       texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
-      if (name === 'siege-gates') {
+      if (name === 'siege-gates' || name === 'siege-barbican') {
         const w = image.naturalWidth / 2, h = image.naturalHeight / 2;
         for (let i = 0; i < 4; i++) texture.add(String(i), 0, (i % 2) * w, Math.floor(i / 2) * h, w, h);
+      }
+      if (name === 'siege-machines') {
+        const w = image.naturalWidth / 4, h = image.naturalHeight / 2;
+        for (const [i, frame] of SIEGE_MACHINE_FRAMES.entries()) texture.add(frame, 0, (i % 4) * w, Math.floor(i / 4) * h, w, h);
       }
     }
     return {
@@ -144,7 +152,8 @@ export class KeepView {
   private lastTier = -1;
 
   constructor(private readonly scene: GameScene, private readonly layout: Layout, map: MapDef,
-      private readonly clock: GameClock, private readonly frozen: boolean, Governor: typeof DetailGovernor, assets: KeepAssets, framed = false) {
+      private readonly clock: GameClock, private readonly frozen: boolean, Governor: typeof DetailGovernor, assets: KeepAssets,
+      framed = false, siegeArt = false) {
     this.finishedOpening = framed;
     const query = new URLSearchParams(location.search);
     const perf = query.get('perf') === '1';
@@ -159,7 +168,7 @@ export class KeepView {
     this.castleW = layout.turned ? framed ? 730 : 820 : weather ? 1150 : 1250;
     this.castleH = layout.turned ? framed ? 475 : 660 : weather ? 312 : 335;
     this.anchors = layout.turned ? projection.portrait : projection.landscape;
-    this.light = new KeepLight(scene.textures);
+    this.light = new KeepLight(scene.textures, siegeArt && weather === 'night storm');
     this.surround = assets.panorama(layout,this.gate,
       {width:this.castleW,height:this.castleH},this.anchors.foot, weather);
     this.fieldLight = scene.add.container(x,y);
@@ -170,9 +179,11 @@ export class KeepView {
     this.scenery = scene.add.container(0,0);
     this.layer.add(this.scenery);
     if (weather) {
-      this.outerGate = scene.add.image(0, 0, textureKey('siege-gates'), '0')
-        .setOrigin(.5, 78 / 96).setDisplaySize(128, 96);
-      if (weather === 'night storm') this.outerGate.setTint(0xc8d4e5);
+      this.outerGate = siegeArt
+        ? scene.add.image(0, 0, textureKey('siege-barbican'), '0').setOrigin(.5, BARBICAN_SIZE.sillY / BARBICAN_SIZE.height)
+          .setDisplaySize(BARBICAN_SIZE.width, BARBICAN_SIZE.height)
+        : scene.add.image(0, 0, textureKey('siege-gates'), '0').setOrigin(.5, 78 / 96).setDisplaySize(128, 96);
+      if (weather === 'night storm') this.outerGate.setTint(siegeArt ? 0xddeafa : 0xc8d4e5);
       this.layer.addAt(this.outerGate, 0);
       const roads = scene.state.level?.keepRoads;
       const closed = roads === 'east' ? keepSite.otherRoads[0].approach[2]
