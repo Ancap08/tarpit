@@ -1811,3 +1811,13 @@ can change it; "Kyle" means Kyle decided.
   on where art may come from, and that is Kyle's decision then.
 - **Coordinator's assumptions, stated to Kyle:** the fortress is the
   town's refuge; the tone stays right for children.
+- **First pass of the Old Keep judged by the coordinator: a good model, not
+  yet grand.** It is a detailed, well-lit castle (spires, rose window,
+  clock, buttresses, portcullis) and every limit held (0.89 MB of art
+  against 8 MB; 16.7 ms frames at every tier). Against Kyle's words it
+  falls short in five ways: it is small on the phone and reads as a toy on
+  a lawn; a Toll Troll is nearly as tall as the gate; it sits on flat
+  ground with no crag, ravine or wall running off the screen; the sky is
+  calm; and the enemies and towers are lit for daylight in a dusk scene. A
+  second pass is ordered on those points before Kyle is asked for a
+  verdict. Kyle was sent the first-pass stills and recording as they are.
