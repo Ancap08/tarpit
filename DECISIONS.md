@@ -1920,3 +1920,12 @@ can change it; "Kyle" means Kyle decided.
   the coordinator, kept comic and clean for children, with no real people,
   parties or flags. The Act Three broadside and tips (parts b2 and c1) take
   the same voice. Earlier acts' words are not changed unless Kyle asks.
+- **The coordinator broke the scope file and Sol caught it.** The commit
+  that sharpened the Act Three words (`ddedf7c`) replaced text from the
+  first table headed "The King's notice / The town's reply", which is
+  milestone 46's, not milestone 52's, and so deleted everything between
+  them (milestones 46 to 52). Sol noticed, kept its Act One wording check
+  working from `DESIGN.md`, and reported it. Restored from the commit
+  before, with only the intended table changed, and checked by diff. Edits
+  to the scope by script now anchor inside the milestone's own section and
+  the diff is read before the commit.
