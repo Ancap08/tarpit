@@ -1835,3 +1835,21 @@ can change it; "Kyle" means Kyle decided.
   it gets one small art item first, and larger castle changes wait or go to
   Opus if the quality drops. The earlier rule (Astra at medium for bigger
   builds, Astra at low as the fallback) returns when Kyle says so.
+- **Verifier (Sonnet) on the Old Keep: fix first.** Safe behind its switch
+  (174 bot runs and the sim output identical to main; no keep request with
+  the switch off; saved data untouched; both art scripts reproduce every
+  plate byte for byte). Three things before Kyle opens it on a phone:
+  - **Memory.** All 17 plates for both orientations are decoded at once,
+    248.6 MB at 4 bytes a pixel, of which a portrait phone needs 143.9 MB.
+    On an iPhone with 2 to 3 GB that risks the browser being killed.
+  - **Loading.** About 4.5 MB on a first visit, 21 seconds on a slow
+    connection with a blank dark canvas, and a silent drop to the title if
+    a plate fails.
+  - **The 16.7 ms frame time is a cap, not headroom.** The main thread is
+    70 to 80% busy at native speed and 93 to 98% at a quarter speed, about
+    twice an ordinary painted map, and the quality tiers barely change it.
+    The implementer's numbers were right and the conclusion drawn from
+    them (by the coordinator too) was not.
+  Sent to Sol at high as the first job under the no-Astra rule; it includes
+  a half-size set of plates from the art scripts, which is also Sol's first
+  art item on this project.
