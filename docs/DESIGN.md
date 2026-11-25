@@ -148,6 +148,24 @@ Buildable counts are of the 450 cells.
   strokes) and the cave at the spawn. The upright town is a separate layer
   on the refused cells beside the exit.
 
+### The Old Keep (hidden look spike)
+
+The separate `?keep=1` exhibition opens directly on a Normal field with
+20 lives and 240 gold. It uses the ordinary tower prices, upgrades, enemy
+stats and wave-clear bonus. Its ten tower sites and road share one coordinate
+file, `src/sim/keepSite.json`, with the miniature renderer. The gate is at
+(400, 240). The wall-walk sites are (11, 4) and (11, 10) in portrait and
+(9, 6) and (15, 6) in landscape. The same towers and path survive rotation.
+
+| Wave | Groups (enemy, count, seconds between spawns, start in seconds) |
+| --- | --- |
+| 1 | Goblin, 12, 0.85, 0 |
+| 2 | Wolf, 10, 0.9, 0 · Shieldbearer, 5, 1.7, 3 |
+| 3 | Goblin, 16, 0.6, 0 · Troll, 4, 2.8, 2 · Harpy, 6, 1.3, 4 |
+
+Clearing wave 3 ends the exhibition. Replay starts fresh. The map is absent
+from the campaign, Free play, balance runs and progress stores.
+
 ## Economy and lives
 
 - Each kill pays the enemy's bounty. Clearing a wave pays a 25 gold bonus.

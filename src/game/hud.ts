@@ -61,6 +61,7 @@ import {
   taxStatusText,
   callEarlyLabel,
   levelNumberText,
+  OLD_KEEP_NAME,
   blockedWaveLabel,
   CHEAT_MARK,
   DIFFICULTY_LABELS,
@@ -522,7 +523,7 @@ export class Hud {
     // The sim lets lives go below 0 (the boss's exit costs 5); the HUD shows 0.
     set(this.lives, `Lives ${Math.max(0, state.lives)}`);
     set(this.wave, waveCounterText(state.wave, state.endless, lastWave(state)));
-    const tag = state.level ? levelNumberText(state.level.id) : difficultyTag(state.difficulty);
+    const tag = state.map.id === 'keep' ? OLD_KEEP_NAME : state.level ? levelNumberText(state.level.id) : difficultyTag(state.difficulty);
     set(this.tag, tag);
     // The build bar carries the permit count. On a cheated portrait run, keep
     // this line for the tax names and the mark that the run cannot earn stars.

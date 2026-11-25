@@ -183,13 +183,13 @@ export type CallEarlyStatus = { ok: true; bonus: number } | { ok: false; reason:
 export type CallNextWaveResult = { ok: true; wave: number; bonus: number; gold: number } | { ok: false; reason: CallEarlyRefusal };
 
 /** waveTick on which the last enemy of wave `wave` (1-based) spawns. */
-export function lastSpawnTick(wave: number, state?: Pick<GameState, 'level'>): number {
+export function lastSpawnTick(wave: number, state?: Pick<GameState, 'level' | 'fixedWaves'>): number {
   const def = state ? gameWaveDef(state, wave) : waveDef(wave);
   return Math.max(...def.groups.map((g) => spawnTick(g, g.count - 1)));
 }
 
 function rewardsForWave(state: GameState, wave: number) {
-  if (state.endless) return [];
+  if (state.endless || state.fixedWaves) return [];
   if (!state.level) return boonOptions(wave);
   const offerWave = BOON_OFFER_WAVES[state.level.rewardWaves.indexOf(wave)];
   return offerWave === undefined ? [] : boonOptions(offerWave);
@@ -249,7 +249,7 @@ export function callNextWave(state: GameState): CallNextWaveResult {
   return { ok: true, wave: state.wave, bonus: status.bonus, gold: state.gold };
 }
 
-export type ContinueEndlessResult = { ok: true; wave: number } | { ok: false; reason: 'not-won' | 'campaign-level' };
+export type ContinueEndlessResult = { ok: true; wave: number } | { ok: false; reason: 'not-won' | 'campaign-level' | 'fixed-waves' };
 
 /**
  * Keep going after the win (milestone 26), between ticks. Allowed only when
@@ -264,6 +264,7 @@ export type ContinueEndlessResult = { ok: true; wave: number } | { ok: false; re
 export function continueEndless(state: GameState): ContinueEndlessResult {
   if (state.phase !== 'won') return { ok: false, reason: 'not-won' };
   if (state.level) return { ok: false, reason: 'campaign-level' };
+  if (state.fixedWaves) return { ok: false, reason: 'fixed-waves' };
   state.endless = true;
   state.phase = 'setup';
   state.events.push({ kind: 'endlessStart' });

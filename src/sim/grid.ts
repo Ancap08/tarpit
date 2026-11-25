@@ -117,6 +117,7 @@ function masks(map: MapDef): MapMasks {
         const cell = { col, row };
         let block: TerrainBlock | undefined;
         if (distanceToPath(cellCenter(cell), map) < MIN_PATH_CLEARANCE) block = 'path';
+        else if (map.buildSites && !map.buildSites.some(site => sameCell(site, cell))) block = 'landmark';
         else if ((map.landmarks ?? []).some((r) => cellOverlaps(cell, r))) block = 'landmark';
         else if ((map.water ?? []).some((r) => cellOverlaps(cell, r))) block = 'water';
         blocks[cellKey(cell)] = block;

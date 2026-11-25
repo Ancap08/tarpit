@@ -51,6 +51,7 @@ export class EndScreen {
   private readonly button: Button;
   private readonly menu: Button;
   private readonly keepGoing: Button;
+  private fixedWaves = false;
   private campaign: CampaignResult | null = null;
   handleKey?: (event: KeyboardEvent) => void;
   private picture?: Phaser.GameObjects.Image;
@@ -135,13 +136,14 @@ export class EndScreen {
   }
 
   private get hasAdvance(): boolean {
-    return this.campaign ? this.campaign.nextId !== null : this.shown === 'won';
+    return this.campaign ? this.campaign.nextId !== null : this.shown === 'won' && !this.fixedWaves;
   }
 
   /** Show the screen for `kind`. Calling it again while shown does nothing. */
   show(kind: EndKind, state: GameState, campaign: CampaignResult | null): void {
     if (this.shown !== null) return;
     this.shown = kind;
+    this.fixedWaves = !!state.fixedWaves;
     this.picture = townPortrait(this.title.scene, townCondition(state));
     this.campaign = campaign;
     this.story.setText(campaign?.story ?? (kind === 'lost' ? STORY_TEXT.loss : ''));

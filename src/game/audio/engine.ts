@@ -59,6 +59,8 @@ export class SoundEngine {
   private failed = false;
   private paused = false;
   private muted: boolean;
+  /** A hidden exhibition keeps mute changes in this visit. */
+  sessionMute = false;
   private ctx: AudioContext | null = null;
   private bus: ReturnType<typeof masterChain> | null = null;
   private readonly mixer = new Mixer();
@@ -187,7 +189,7 @@ export class SoundEngine {
   setMuted(muted: boolean): void {
     if (muted === this.muted) return;
     this.muted = muted;
-    this.store.set(muted);
+    if (!this.sessionMute) this.store.set(muted);
     const ctx = this.ctx;
     if (ctx !== null && this.bus !== null) {
       if (muted) this.stopAll();

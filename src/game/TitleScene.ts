@@ -156,6 +156,7 @@ export interface GameStartData {
   map?: MapId;
   painted?: PaintedAssets;
   paintedFallback?: boolean;
+  keep?: typeof import('./keep/oldKeep');
   showpiece?: typeof import('./showpiece/showpiece').Showpiece;
 }
 
@@ -190,6 +191,7 @@ export class TitleScene extends Phaser.Scene {
   private muteButton: MuteButton | null = null;
   private bestLine: Phaser.GameObjects.Text | null = null;
   private starting = false;
+  private enterKeep = new URLSearchParams(window.location.search).get('keep') === '1';
   /** True from the first render after create(); see "Ready" above. */
   private ready = false;
 
@@ -268,6 +270,12 @@ export class TitleScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(COLORS.titleBg);
     this.restartPending = false;
     this.starting = this.progress !== null;
+    if (this.enterKeep) {
+      this.enterKeep = false;
+      this.starting = true;
+      void this.startKeep();
+      return;
+    }
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       if (this.restartPending) return;
       this.paintedLoad?.abort();
@@ -569,6 +577,24 @@ export class TitleScene extends Phaser.Scene {
     this.refreshPicks();
     this.refreshLook();
     this.startGame({ difficulty: level, map });
+  }
+
+  private async startKeep(): Promise<void> {
+    const density = paintedDensity(this.game.canvas.getBoundingClientRect().width / this.scale.gameSize.width, window.devicePixelRatio);
+    const abort = new AbortController();
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => abort.abort());
+    try {
+      const [keep, painted] = await Promise.all([
+        import('./keep/oldKeep').then(async module => {
+          if (!await module.loadKeep(this)) throw new Error('Old Keep artwork unavailable');
+          return module;
+        }),
+        loadPainted(this.textures, DEFAULT_MAP, density, () => {}, abort.signal),
+      ]);
+      if (!abort.signal.aborted) this.scene.start('game', { keep, painted, difficulty: DEFAULT_DIFFICULTY } satisfies GameStartData);
+    } catch {
+      if (!abort.signal.aborted) this.scene.restart({ screen: 'first' });
+    }
   }
 
   private startGame(data: GameStartData): void {

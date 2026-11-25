@@ -32,7 +32,7 @@ export class PaintedSkin {
   readonly air: Phaser.GameObjects.Layer;
   readonly shadows: Phaser.GameObjects.Layer;
   private readonly ground: Image;
-  private readonly cave: Image;
+  private readonly cave?: Image;
   private readonly reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   private drawnTime = Number.NaN;
   private readonly growth: { g: Growth; image: Image }[];
@@ -51,6 +51,7 @@ export class PaintedSkin {
     private readonly map: MapDef,
     private readonly testMode: boolean,
     private readonly clock: GameClock,
+    scenery = true,
   ) {
     this.ground = layout.placeWorld(scene.add.image(0, 0, assets.groundKey, 0).setOrigin(0).setScale(1 / assets.density));
     this.shadows = scene.add.layer();
@@ -64,8 +65,9 @@ export class PaintedSkin {
       return image;
     };
     const spawn = map.path[0];
-    this.cave = place('cave', { x: spawn.x + 22, y: spawn.y }, layout.turned ? 1 : 0);
-    this.growth = decorFor(map).growth.map(g => {
+    this.ground.setVisible(scenery);
+    if (scenery) this.cave = place('cave', { x: spawn.x + 22, y: spawn.y }, layout.turned ? 1 : 0);
+    this.growth = (scenery ? decorFor(map).growth : []).map(g => {
       const name = growthArt(g);
       return { g, image: place(name, g, name === 'oak' ? g.id % 4 : 0) };
     });
@@ -97,7 +99,7 @@ export class PaintedSkin {
     const t = this.testMode || this.reducedMotion.matches ? STILL_T : this.clock.nowMs;
     if (t !== this.drawnTime) {
       this.drawnTime = t;
-      this.cave.setFrame((this.layout.turned ? 1 : 0) + (blinking(t) ? 2 : 0));
+      this.cave?.setFrame((this.layout.turned ? 1 : 0) + (blinking(t) ? 2 : 0));
 
     }
     const occupied = new Set(state.towers.map(t => cellKey(t.cell)));
