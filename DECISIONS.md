@@ -2051,3 +2051,12 @@ can change it; "Kyle" means Kyle decided.
   it is a candidate for the Free play rebalance if that ever happens.
 - This fix pass was not verified by a second model. CI runs the level
   targets and the full browser suite.
+- **The automated review on pull request 63 caught a real bug after CI was
+  green,** and the coordinator's chain stopped before merging because of
+  it. The memory change freed painted art on leaving an Act Three level; a
+  restart (Play again after a win or a loss, or from the pause menu) then
+  drew with freed art, and the Musketeer's build icon came up as a missing
+  texture. Sol reproduced it on the pushed commit, in all three looks, and
+  fixed it: the art is kept through a restart in place and freed on return
+  to the title. Thirty restart cases now run in the browser suite. The
+  memory saving is unchanged. No test restarted a siege level before this.
