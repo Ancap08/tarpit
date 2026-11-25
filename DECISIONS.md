@@ -2108,3 +2108,19 @@ can change it; "Kyle" means Kyle decided.
   (1.09 against 1.06 elsewhere), from the first brief, after the same
   Linux-only label failure hit the Feathers card, the taxed HUD and the
   owner's page in turn.
+- **Second pass of the new interface accepted for a trial behind the
+  switch.** Text is drawn at the phone's real pixel density; the status
+  block has the mock-up's three large numbers; the build bar shows each
+  tower's own art and name; the level card has proper rule rows; tower
+  spots are light outlines. Measured on a quiet machine, three runs each,
+  it is no slower than today's interface (Classic 7.78 to 6.55 ms a frame,
+  Painted 8.06 to 7.78). Still different from the mock-ups: the board
+  keeps side margins on a phone, and the tower drawer can cover a stretch
+  of road while it is open. Two Sol runs, about 1.12 million tokens.
+- **The owner's link and the new interface were built side by side and
+  conflicted on the title screen.** The coordinator's merge chain stopped
+  before pushing. The two document conflicts were the coordinator's to
+  resolve (main's side held nothing this branch lacked); the code conflict
+  went to Sol, who also tested the two switches together for the first
+  time: the title, the owner's page, all 25 stops, a new-style card and
+  result, and entry to level 21, on three screen sizes, no errors.
