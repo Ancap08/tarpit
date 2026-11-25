@@ -2024,33 +2024,33 @@ Stars/lives give each bot’s highest award and surviving lives. Time counts Goo
 | 8 | Stand Fast | Switchback | 7 | 517 | 295 | 1.28 | — | 2 | — | 2/12 | 2/13 | 0/0 | 8.08 | 30 | 36 |
 | 9 | The King's Assessor | Riverbend | 7 | 535 | 255 | 1 | 6 | 3 | 5 | 3/20 | 3/20 | 0/0 | 7.57 | 17 | 42 |
 | 10 | Last Light | Meadow | 7 | 633 | 280 | 0.925 | 5 | 3 | 5 | 2/16 | 2/13 | 0/0 | 8.89 | 19 | 36 |
-| 11 | Window Money | Riverbend | 6 | 326 | 245 | 0.91 | — | 3 | 1 | 2/20 | 2/14 | 0/0 | 5.91 | 23 | 21 |
-| 12 | The Quickstep | Switchback | 7 | 466 | 260 | 1.14 | — | 3 | 1 | 2/19 | 2/15 | 0/0 | 6.73 | 30 | 38 |
-| 13 | Eight Bells | Riverbend | 7 | 319 | 285 | 0.85 | — | 3 | 1 | 3/20 | 2/14 | 0/0 | 5.63 | 17 | 31 |
-| 14 | Short Measure | Meadow | 6 | 331 | 240 | 0.93 | — | 3 | — | 3/20 | 2/14 | 0/0 | 5.53 | 19 | 27 |
+| 11 | Window Money | Riverbend | 6 | 324 | 245 | 0.91 | — | 3 | 1 | 2/20 | 2/14 | 0/0 | 5.91 | 22 | 21 |
+| 12 | The Quickstep | Switchback | 7 | 466 | 265 | 1.14 | — | 3 | 1 | 2/18 | 2/15 | 0/0 | 6.79 | 29 | 38 |
+| 13 | Eight Bells | Riverbend | 7 | 312 | 285 | 0.85 | — | 3 | 1 | 3/20 | 2/15 | 0/0 | 5.56 | 14 | 31 |
+| 14 | Short Measure | Meadow | 6 | 331 | 240 | 0.93 | — | 3 | — | 3/20 | 2/14 | 0/0 | 5.52 | 25 | 27 |
 | 15 | Pay Day | Riverbend | 6 | 285 | 255 | 1.08 | — | 3 | 2 | 2/14 | 2/13 | 0/0 | 5.81 | 9 | 40 |
-| 16 | Three Permits | Meadow | 6 | 292 | 245 | 1 | — | 3 | 1 | 2/14 | 2/13 | 0/0 | 5.72 | 11 | 40 |
-| 17 | Closing Time | Switchback | 7 | 387 | 220 | 0.94 | — | 3 | 1 | 2/20 | 2/14 | 0/0 | 6.33 | 23 | 58 |
-| 18 | Three at the Gate | Meadow | 6 | 280 | 260 | 1 | — | 3 | 3 | 2/14 | 2/13 | 0/0 | 5.14 | 13 | 49 |
-| 19 | The Sash Levy | Meadow | 6 | 350 | 245 | 0.94 | — | 3 | 1 | 2/14 | 2/14 | 0/0 | 5.82 | 31 | 47 |
-| 20 | The Last Writ | Riverbend | 8 | 509 | 245 | 0.925 | — | 3 | — | 2/13 | 2/13 | 0/0 | 8.98 | 12 | 53 |
+| 16 | Three Permits | Meadow | 6 | 292 | 245 | 1 | — | 3 | 1 | 2/14 | 2/14 | 0/0 | 5.72 | 11 | 40 |
+| 17 | Closing Time | Switchback | 7 | 384 | 220 | 0.94 | — | 3 | 1 | 2/20 | 2/14 | 0/0 | 6.39 | 23 | 58 |
+| 18 | Three at the Gate | Meadow | 6 | 280 | 275 | 1 | — | 3 | 3 | 2/15 | 2/13 | 0/0 | 5.20 | 14 | 49 |
+| 19 | The Sash Levy | Meadow | 6 | 350 | 245 | 0.94 | — | 3 | 1 | 2/14 | 2/15 | 0/0 | 5.79 | 31 | 47 |
+| 20 | The Last Writ | Riverbend | 8 | 509 | 270 | 0.925 | — | 3 | — | 2/13 | 2/13 | 0/0 | 8.91 | 12 | 53 |
 
 Good clears the first ten stops in 72.70 combat minutes, with a 4.00-life
-mean drop. Across all twenty stops Good takes 134.31 combat minutes.
-Mean surviving lives drop from 18.00 on levels 1–6 to 14.83 on levels 15–20.
+mean drop. Across all twenty stops Good takes 134.28 combat minutes.
+Mean surviving lives drop from 18.00 on levels 1–6 to 15.00 on levels 15–20.
 
 Fractions below are shares of the base price, speed or range. The purse pays
 gold, the delay counts seconds at 1×, and the cap counts towers standing.
 
 | Stop | Window Tax | Frozen Purse | Forced March | Curfew | No Loitering | Rationing | Feat | Build limit | Feat Good |
 |---:|---:|---:|---:|---:|---:|---:|---|---:|---|
-| 11 | 0.085 | — | — | — | — | — | noSpecials | — | 3/15 |
+| 11 | 0.085 | — | — | — | — | — | noSpecials | — | 3/17 |
 | 12 | — | — | 0.2 | — | — | — | maxTowers | 5 | 3/13 |
 | 13 | — | — | — | — | 8 | — | noLeaks | — | 3/20 |
 | 14 | — | — | — | 0.15 | — | — | noLeaks | — | 3/20 |
 | 15 | — | 80 | — | — | — | — | noSpecials | — | 3/12 |
 | 16 | — | — | — | — | — | 3 | noSpecials | — | 3/12 |
-| 17 | — | — | — | 0.2 | 8 | — | maxTowers | 2 | 3/14 |
+| 17 | — | — | — | 0.2 | 8 | — | maxTowers | 2 | 3/17 |
 | 18 | — | — | 0.18 | — | — | 3 | noSpecials | — | 3/12 |
 | 19 | 0.05 | — | — | 0.1 | — | — | maxTowers | 5 | 3/13 |
 | 20 | — | 80 | — | 0.2 | — | — | noSpecials | — | 3/13 |

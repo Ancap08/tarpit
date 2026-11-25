@@ -1,14 +1,16 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { MATRIX_ARCHETYPES, balanceRun, runsOn } from './balanceRuns';
-import { botBeginner, botFeathers, botGood, botGoodFeat, botPerson, botPersonFeat, runBot } from './bots';
+import { botBeginner, botFeathers, botGood, botGoodFeat, botPerson, botPersonFeat, preferFeathers, runBot } from './bots';
 import { DIFFICULTIES } from './difficulty';
 import { createGame } from './game';
 import { LEVELS } from './levels';
+import type { GroupDef } from './types';
 
 // Captured on main at dca7edf. Hash the raw JSON of each complete result in
 // order, including action logs and terminal state. No fields are projected out.
 const players = [botGood, botPerson, botBeginner, botFeathers, botGoodFeat, botPersonFeat];
+const forcedPlayers = [preferFeathers(botGood), preferFeathers(botPerson)];
 const firstAct = [
   '1a220bf1ca88145ae9e4408bc66f167c557f9ab8a54217026093407b2facfcf7',
   'ead16d2486359333afa0570c21a5e3e7f310a8c259a024242c5043d969b52971',
@@ -22,15 +24,32 @@ const firstAct = [
   '66ee640e5c0eb5fd423a70dd84202b2e753e156d5c9b50f26d44d08f06405902',
 ] as const;
 
+// The two new policy wrappers run against main's engine with the same purchases and aim.
+const firstActForced = [
+  '1b5268d132c020044ff5f7edbed5ee6dce976db4cf975a379a59f555ebba2cce',
+  '16e528e428f267a594924edfad132da2606a3d0f9c5aa43de2b1f925a7b1d8ba',
+  '8ddfde90b1f4365931870334019f94e127eaa560b3a11517bfc541ef66be8440',
+  'd70066e0d0b5976420253a0acf8362c92e5ecf83ef8ea92498507040f140a4a5',
+  'e54169912ed13312de63dac04e521dded8904a83b7ea3d33a054f4d982080fa6',
+  '5c59f1a9466a11f69b65039058acd6db353df2efef63ec49f24cda3b6b3cbde0',
+  '1ac0e8662f2270eec58aec1e65d057bf180ebbce38fd4cf88a62c29a424e14ae',
+  '1b4c9cf761c8b46cbe01ca72e9d019ac59838c36e421c8e42d3319d8decdd5ae',
+  '4de07527e9f568612e695f71f1c2179ff568bb68b180e764d19b948ee04f9e18',
+  'a18505bf38fe5c4dc36657ba0a6f2229550be3c1c3ac460d98fc1a28df481284',
+] as const;
+
 const freePlay = [
   { map: 'meadow',
     bots: '0c640ae4113ad4576fa4485b7df2cd02e15547050aafc3bd7fcdd5078536f983',
+    forced: 'd8cb5266eed042fda8e9ca77ffea8da2000da38bdd836bfd80a904ab44c9def7',
     matrix: 'fde898bc398539297a3daba58b9190c8520f406514b71b61d37ed3df4bdaa366' },
   { map: 'switchback',
     bots: '6718c5be68dc8c56a532bc0abbb41a155616a6ba1fce3b5873a136d41942b2aa',
+    forced: 'ee65684c9e906bbd5789fcbc3abb265e7abaebeec78b02139c9df84b1366abdf',
     matrix: 'cdb3538e39e8486b0fe817e3b80de9c3d5814b36ddbbb4a1262ee22fd1c4d042' },
   { map: 'riverbend',
     bots: 'e14a34242e5fdd5a0cb818d800530d5e1f7438e0edfd971eebfc780e95bc68b9',
+    forced: '16ab5cf3885f550fa2078578fb7f6bd104191c6daf996c0fe4590fb57a9cb1c5',
     matrix: 'f19343b5d2cd388c788d34a44868e189097d38fffadec2f6be1b8c2973ad948c' },
 ] as const;
 
@@ -40,15 +59,19 @@ function digest(values: readonly unknown[]): string {
   return hash.digest('hex');
 }
 
-it.each(LEVELS.slice(0, 10))('C7: all six main bot outputs on level $id match byte for byte', level => {
+it.each(LEVELS.slice(0, 10))('C7: all six main bots and both forced policies on level $id match byte for byte', level => {
   const runs = players.map(bot => runBot(createGame({ level }), bot));
   expect(digest(runs)).toBe(firstAct[level.id - 1]);
+  const forced = forcedPlayers.map(bot => runBot(createGame({ level }), bot));
+  expect(digest(forced)).toBe(firstActForced[level.id - 1]);
 }, 60_000);
 
-describe.each(freePlay)('C4: Free play on $map', ({ map, bots, matrix }) => {
+describe.each(freePlay)('C4: Free play on $map', ({ map, bots, forced, matrix }) => {
   it('keeps the complete runs of every bot on each difficulty', () => {
     const runs = DIFFICULTIES.flatMap(difficulty => players.map(bot => runBot(createGame({ map, difficulty }), bot)));
     expect(digest(runs)).toBe(bots);
+    const forcedRuns = DIFFICULTIES.flatMap(difficulty => forcedPlayers.map(bot => runBot(createGame({ map, difficulty }), bot)));
+    expect(digest(forcedRuns)).toBe(forced);
   }, 120_000);
 
   it('keeps the complete balance matrix on each difficulty', () => {
@@ -83,19 +106,47 @@ const definitions = [
   '438307c4e3aa27f4759c48016fac83193b0281599aad67a8cb88b3d71a59d55a',
 ] as const;
 
-type LevelChange = { id: number; field: 'hpScale' | 'startGold' | 'hpGrowthStart'; from: number; to: number };
-const changes: readonly LevelChange[] = [];
+const goldChanges = [
+  { id: 12, from: 260, to: 265 },
+  { id: 18, from: 260, to: 275 },
+  { id: 20, from: 245, to: 270 },
+];
+
+type WaveChange = {
+  id: number;
+  wave: number;
+  group: number;
+  from: Partial<GroupDef>;
+  to: Partial<GroupDef>;
+};
+const waveChanges: readonly WaveChange[] = [
+  { id: 11, wave: 6, group: 1, from: { count: 21 }, to: { count: 19 } },
+  { id: 12, wave: 1, group: 1, from: { interval: 1.15 }, to: { interval: 1.265 } },
+  { id: 13, wave: 3, group: 2, from: { count: 39 }, to: { count: 34 } },
+  { id: 13, wave: 5, group: 1, from: { count: 15 }, to: { count: 13 } },
+  { id: 17, wave: 2, group: 1, from: { count: 30 }, to: { count: 27 } },
+  { id: 17, wave: 5, group: 2, from: { type: 'harpy' }, to: { type: 'goblin' } },
+  { id: 19, wave: 2, group: 2, from: { interval: 1.08 }, to: { interval: 1.2312 } },
+  { id: 19, wave: 3, group: 1, from: { interval: 1.75 }, to: { interval: 1.61 } },
+  { id: 20, wave: 2, group: 2, from: { type: 'harpy' }, to: { type: 'goblin' } },
+];
 
 it('C7: every changed level number is accounted for', () => {
   expect(LEVELS).toHaveLength(definitions.length);
   for (const level of LEVELS) {
-    const { featherBarrels, ...original } = level;
+    const { featherBarrels, ...original } = structuredClone(level);
     expect(featherBarrels, `level ${level.id}`).toBe(level.id > 10 ? true : undefined);
-    for (const change of changes.filter(row => row.id === level.id)) {
+    for (const change of goldChanges.filter(row => row.id === level.id)) {
       expect(level.id).toBeGreaterThan(10);
-      expect(original[change.field]).toBe(change.to);
+      expect(original.startGold).toBe(change.to);
       expect(Math.abs(change.to - change.from)).toBeLessThanOrEqual(change.from * 0.15);
-      original[change.field] = change.from;
+      original.startGold = change.from;
+    }
+    for (const change of waveChanges.filter(row => row.id === level.id)) {
+      expect(level.id).toBeGreaterThan(10);
+      const group = original.waves[change.wave - 1].groups[change.group - 1];
+      expect(group, `level ${level.id} wave ${change.wave} group ${change.group}`).toMatchObject(change.to);
+      Object.assign(group, change.from);
     }
     expect(digest([original]), `level ${level.id}`).toBe(definitions[level.id - 1]);
   }
