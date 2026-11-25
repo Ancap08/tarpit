@@ -114,6 +114,7 @@
 
 import Phaser from 'phaser';
 import { actThreeEnabled } from './keep/switch';
+import { ownerMode } from './ownerMode';
 import { broadsideStore } from './seenTips';
 import { duringKeepLoad, finishKeepLoad } from './keep/status';
 import { panel, THEME } from './ui/theme';
@@ -541,7 +542,7 @@ export class GameScene extends Phaser.Scene {
   private keepAssets?: GameStartData['keepAssets'];
   private keepLoading = false;
   private campaignKeep = false;
-  private readonly actThree = actThreeEnabled(window.location.search);
+  private readonly actThree = actThreeEnabled(window.location.search, ownerMode);
   private get siegeScreens(): boolean { return this.actThree && this.state.level?.map === 'keep'; }
   private siegeActors?: SiegeActors;
   private siegeGate?: SiegeGateEffects;
@@ -1692,7 +1693,7 @@ export class GameScene extends Phaser.Scene {
     if (cleared <= this.recordedCleared) return;
     this.recordedCleared = cleared;
     if (this.state.level) {
-      if (this.state.phase === 'won') campaignProgress.record(this.state.level.id, levelStars(this.state));
+      if (this.state.phase === 'won') campaignProgress.record(this.state.level.id, levelStars(this.state), ownerMode);
     } else if (!this.state.cheated) {
       highScores.record(this.state.difficulty, cleared, this.currentMap);
     }
@@ -2063,7 +2064,8 @@ export class GameScene extends Phaser.Scene {
     this.pick = null;
     this.press = null;
     this.cancelSpecial();
-    const campaign = this.state.level ? campaignResultText(this.state, campaignProgress.table(), this.actThree && (!this.keepModule || this.campaignKeep)) : null;
+    const campaignVisit = !this.keepModule || this.campaignKeep;
+    const campaign = this.state.level ? campaignResultText(this.state, campaignProgress.table(), this.actThree && campaignVisit, ownerMode && campaignVisit) : null;
     const before = this.siegeView ? new Set(this.children.list) : undefined;
     this.endScreen.show(kind, this.state, campaign);
     if (before) this.siegeView?.fix(this.children.list.filter(object => !before.has(object)));

@@ -2656,3 +2656,26 @@ with one base Fire Pot at (22, 10). Its second run casts a barrel within
 10 trail px of reaching the gate. W15 requires Person to earn two stars
 on level 21 and lose at most four lives in any wave. W16 compares
 Person's lives with and without repair on levels 22 and 24.
+
+## Owner link
+
+`?owner=1` stores owner mode under `tarpit.ownerMode`. `?owner=0` clears it.
+The title reads the same setting after reload or when started at the app's
+normal start URL, including offline. The Owner control is at least 44 CSS
+pixels in both directions at the tested phone, tablet and desktop sizes.
+
+Owner mode opens all 25 map stops and shows Act Three. Wins use the usual
+star and feat rules. The campaign save can hold these bests in `ownerStars`,
+alongside its existing `stars` passes. The normal map opens from the regular
+passes alone. An owner best becomes visible to a regular player after a
+regular win on that level. A regular win always records its own pass, even
+if it earns fewer stars than the owner best.
+
+Owner's page opens the three broadsides, both act closes, both campaign
+endings and all 25 sets of tips. The broadside buttons read “Act 1 broadside”,
+“Act 2 broadside” and “Act 3 broadside”. Every button label, including the
+title's Owner mark, leaves at least 4 canvas px inside the outer outline in
+normal, tall and wide font modes. Opening and leaving a preview does not mark
+it seen. The Owner mark and Back to title button are 46 canvas px tall in
+landscape. The session control starts fresh in-memory seen records for both
+broadsides and tips. Repeat visits use those records until the page reloads.

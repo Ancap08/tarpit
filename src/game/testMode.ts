@@ -44,6 +44,7 @@ import { currentLayout } from './layoutSwitch';
 import type { TarpitTestApi } from './testGlobal';
 import type { TitleScene } from './TitleScene';
 import { actThreeEnabled, keepSelection } from './keep/switch';
+import { ownerMode } from './ownerMode';
 
 export function isTestMode(): boolean {
   return new URLSearchParams(window.location.search).get('test') === '1';
@@ -172,7 +173,7 @@ function canvasToPage(game: Phaser.Game, x: number, y: number): { x: number; y: 
 export function installGlobal(game: Phaser.Game): void {
   const showpieceVisit = new URLSearchParams(location.search).get('look') === 'showpiece';
   const activeGame = () => game.scene.isActive('game') ? game.scene.getScene('game') as GameScene : null;
-  const reframed = showpieceVisit || actThreeEnabled(location.search);
+  const reframed = showpieceVisit || actThreeEnabled(location.search, ownerMode);
   const displayed = (p: { x: number; y: number }) => reframed ? activeGame()?.displayedMapPoint(p) ?? p : p;
   const always = {
     ...(keepSelection(location.search) ? { keep: () => activeGame()?.keepState() ?? null } : {}),
