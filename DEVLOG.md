@@ -11200,7 +11200,7 @@ The complete bot results, including purchases and terminal state, matched
 for eight policies on each of the twenty campaign levels. The existing
 Free play parity tests also cover all public maps and difficulties.
 
-### Frame cost
+### Frame cost (initial three-tier build)
 
 The governor samples average frame time over 750 ms. It drops a tier
 above 20 ms and needs 10 seconds below 17.5 ms plus a recovery cooldown
@@ -11438,3 +11438,22 @@ All 2,869 unit tests, lint, typecheck, build, asset and size checks passed.
 Both simulation streams matched main byte for byte. The switch-off
 comparison matched 36 frozen canvas and state pairs and 18 request
 inventories against main. Phone measurements used emulation.
+
+### Old Keep governor after the Linux CI fix
+
+Medium cost more than high in both Linux samples at 4× CPU throttle.
+The Keep now switches directly between high and low. The governor still
+averages 750 ms windows, drops above 20 ms per frame, and requires 10
+continuous seconds below 17.5 ms per frame plus the 30-second recovery
+cooldown that doubles after each drop.
+
+| Tier (perf pin) | Update interval | Atmospheric work |
+| --- | ---: | --- |
+| High (2) | 15 ms | Moving fittings and idle spire parallax, two cloud veils, three road fog strips, nine castle blooms, seven birds, nine smoke wisps, roof runoff and 76 rain streaks |
+| Low (0) | 96 ms | Cached scenery after the opening drift between flashes, still fittings, one road fog strip and two gate blooms |
+
+Both tiers keep the castle and lightning. The phone battle check compares
+the medians of three 80-frame samples per tier in the same run at 4×
+CPU throttle. Low must cost at least 10% less per frame than high. The
+old Linux samples for these two tiers would pass, with reductions of
+27.3% and 21.8%. The earlier tables record their respective three-tier builds.

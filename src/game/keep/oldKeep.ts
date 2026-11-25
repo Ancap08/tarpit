@@ -10,7 +10,7 @@ import { KeepSurround } from './surround';
 import { KeepLight } from './stoneLight';
 import { drawFittings, type Landmark } from './keepMotion';
 import projection from './projection.json';
-import type { DetailGovernor, Detail } from '../showpiece/governor';
+import type { DetailGovernor } from '../showpiece/governor';
 
 export { createKeep } from '../../sim/oldKeep';
 
@@ -137,7 +137,7 @@ export class KeepView {
     const query = new URLSearchParams(location.search);
     const perf = query.get('perf') === '1';
     const pin = perf ? query.get('keepTier') : null;
-    this.quality = new Governor(pin !== null && /^[012]$/.test(pin) ? Number(pin) as Detail : undefined);
+    this.quality = new Governor(pin === '0' ? 0 : pin === '2' ? 2 : undefined, { medium: false });
     this.quality.resetWindow(8);
     this.stillLightning = frozen && query.get('keepLightning') === '1';
     const { x, y } = layout.map;
@@ -204,10 +204,11 @@ export class KeepView {
     if (this.lastFrame !== ms) this.quality.sample(ms);
     this.lastFrame = ms;
     const tier = this.quality.tier;
+    const high = tier === 2;
     const calm = this.frozen || this.reduced.matches;
     if (interacting || this.scene.state.towers.length || this.scene.state.wave > 0) this.finishedOpening = true;
     const opening = calm || this.finishedOpening ? 0 : Math.max(0,1-ms/3600);
-    if (calm === this.lastCalm && (calm || (ms-this.previous < [96,32,15][tier] && !(this.opening && !opening)))) return;
+    if (calm === this.lastCalm && (calm || (ms-this.previous < (high ? 15 : 96) && !(this.opening && !opening)))) return;
     this.lastCalm = calm;
     this.previous = ms;
     const t = calm ? 0 : ms/1000;
@@ -217,22 +218,22 @@ export class KeepView {
     this.fieldLight.setScale(1+push).setPosition(this.layout.map.x-this.gate.x*push,this.layout.map.y-8*push);
     this.lightning = this.stillLightning ? 1 : calm ? 0 : lightningAt(ms);
     if (this.lightning < .013) this.lightning = 0;
-    this.surround.update(push, this.lightning, Math.floor((ms+7300)/15700)%2, this.opening, t, tier, calm);
+    this.surround.update(push, this.lightning, Math.floor((ms+7300)/15700)%2, this.opening, t, high, calm);
     const {width,height} = this.layout.map;
     this.fog.forEach((im,i) => {
-      im.setVisible(i===0 || tier===2 || (tier===1 && i===1));
+      im.setVisible(i===0 || high);
       if (im.visible) im.setPosition(width*(.14+i*.31) + Math.sin(t*.12+i*2.6)*width*.12,
         this.gate.y+4+i*height*.16+Math.sin(t*.28+i)*2)
         .setDisplaySize(width*(i===0 ? 1.04 : .74),i===0 ? 48 : 28).setAlpha(i===0 ? .47 : .31);
     });
     this.lights.forEach((im,i) => {
       const pulse = .64+Math.sin(t*(i<2 ? 9.4 : 3.4)+i)*.13+Math.sin(t*17.1+i*2.8)*.075;
-      im.setVisible(i<2 || tier>0).setAlpha(pulse*(i<2 ? .9 : .56));
+      im.setVisible(i<2 || high).setAlpha(pulse*(i<2 ? .9 : .56));
     });
-    if (tier === 0) {
+    if (!high) {
       if (this.lastTier !== tier) {
         this.surround.stillFittings(surface => {
-          drawFittings(this.banners, this.at, 0, 0);
+          drawFittings(this.banners, this.at, 0, false);
           this.banners.generateTexture(surface);
           this.banners.clear();
         });
@@ -243,7 +244,7 @@ export class KeepView {
         this.surround.stillFittings();
         this.banners.setVisible(true);
       }
-      drawFittings(this.banners, this.at, t, tier);
+      drawFittings(this.banners, this.at, t, true);
     }
     this.lastTier = tier;
     const reflection = this.reflection.clear();
@@ -259,9 +260,9 @@ export class KeepView {
     }
     this.spill.forEach((lamp,i) => lamp.setAlpha(.19+Math.sin(t*5.1+i)*.034));
     this.rain.clear();
-    if (!calm && tier>0) {
+    if (!calm && high) {
       this.rain.lineStyle(.8,0xb7c7dd,.30+this.lightning*.4).beginPath();
-      for (let i=0;i<(tier===2 ? 76 : 19);i++) {
+      for (let i=0;i<76;i++) {
         const y=(i*133.7+t*(242+i%4*30))%height;
         const x=((i*79.3-t*(47+i%4*6))%width+width)%width;
         this.rain.moveTo(x,y).lineTo(x-3.8,y+12+i%7);

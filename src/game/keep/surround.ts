@@ -1,6 +1,5 @@
 import type { Point } from '../../sim';
 import type { Layout } from '../layout';
-import type { Detail } from '../showpiece/governor';
 import { paintFork } from './keepMotion';
 import type { Plate } from './plates';
 
@@ -160,19 +159,19 @@ export class KeepSurround {
     this.camera.style.translate = `${x}px ${y}px`;
   }
 
-  update(push: number, flash: number, side: number, opening: number, t: number, tier: Detail, calm: boolean): void {
-    this.setStill(tier === 0 && !opening && flash === 0);
+  update(push: number, flash: number, side: number, opening: number, t: number, high: boolean, calm: boolean): void {
+    this.setStill(!high && !opening && flash === 0);
     if (push !== this.lastPush) {
       this.lastPush = push;
       this.camera.style.transform = push ? `scale(${1 + push})` : '';
     }
-    const parallax = tier > 0 && !calm ? Math.sin(t * .19) : 0;
+    const parallax = high && !calm ? Math.sin(t * .19) : 0;
     if (!this.stillActive) this.castle.slice(0, 2).forEach((layer, i) => {
       const depth = 2 - i;
       layer.style.translate = `${depth * (parallax * .7 + opening * 1.2)}px ${depth * opening * 5}px`;
     });
     for (const [i, cloud] of this.clouds.entries()) {
-      cloud.hidden = tier === 0 || (tier === 1 && i === 1);
+      cloud.hidden = !high;
       if (!cloud.hidden) {
         const width = this.layout.map.width;
         const x = width * (i ? .8 : .18) + Math.sin(t * .088 + i) * width * .18;

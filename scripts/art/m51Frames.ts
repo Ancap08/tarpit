@@ -6,7 +6,7 @@ import { origin, phone, run } from './m47Browser.ts';
 const cpuRate = Number(process.env.M51_CPU ?? 1);
 assert.ok(Number.isFinite(cpuRate) && cpuRate >= 1);
 await run(async browser => {
-  for (const tier of [2, 1, 0]) {
+  for (const tier of [2, 0]) {
     const context = await browser.newContext(phone);
     try {
       const page = await context.newPage();

@@ -1,6 +1,5 @@
 import type Phaser from 'phaser';
 import type { Point } from '../../sim';
-import type { Detail } from '../showpiece/governor';
 import projection from './projection.json';
 
 export type Landmark = keyof typeof projection.portrait;
@@ -8,7 +7,7 @@ type Locate = (key: Landmark) => Point;
 type Graphics = Phaser.GameObjects.Graphics;
 
 /** All movable fittings use the same projected 3D mounting points as the stone. */
-export function drawFittings(g: Graphics, at: Locate, t: number, tier: Detail) {
+export function drawFittings(g: Graphics, at: Locate, t: number, high: boolean) {
   g.clear();
   const clock = at('clock'), radius = at('dialRight').x - clock.x;
   for (const [length, angle, weight] of [[.74,t / 9 + .82,1.1],[.52,t / 108 - 1.95,1.7]]) {
@@ -65,9 +64,9 @@ export function drawFittings(g: Graphics, at: Locate, t: number, tier: Detail) {
     const x=p.x+(phase/.65-.5)*radius*.88;
     g.fillStyle(0x483a42,.83).fillCircle(x,p.y,1.4).fillEllipse(x,p.y+3.3,3.4,5);
   }
-  if (tier === 0) return;
+  if (!high) return;
   const roost=at('crownTip');
-  for (let i=0;i<(tier===2 ? 7 : 3);i++) {
+  for (let i=0;i<7;i++) {
     const phase=t*.36+i*.79, x=roost.x+Math.cos(phase)*(65+i*7);
     const y=Math.max(9,roost.y+33)+Math.sin(phase)*12+i*4;
     const wing=Math.sin(t*5.7+i)*2.1;
@@ -75,11 +74,11 @@ export function drawFittings(g: Graphics, at: Locate, t: number, tier: Detail) {
       .lineTo(x+3.7,y+wing-.6).strokePath();
   }
   const chimney=at('chimney');
-  for (let i=0;i<(tier===2 ? 9 : 4);i++) {
+  for (let i=0;i<9;i++) {
     const q=(t*.23+i/9)%1, x=chimney.x+q*34+q*Math.sin(t*.65+q*9)*6;
     g.fillStyle(0x87909c,(1-q)*.14).fillEllipse(x,chimney.y-q*31,3+q*14,2+q*7);
   }
-  if (tier===2) for (const key of ['roofL','roofR'] as const) {
+  for (const key of ['roofL','roofR'] as const) {
     const p=at(key);
     for (let i=0;i<5;i++) {
       const k=(t*1.7+i*.21)%1;

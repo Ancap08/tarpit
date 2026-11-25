@@ -1,9 +1,8 @@
 import { expect, test } from '@playwright/test';
 import type { GameScene } from '../src/game/GameScene';
-import type { Detail } from '../src/game/showpiece/governor';
 
 test('each Old Keep tier reduces the main-thread cost of the same phone battle', async ({ page, context }) => {
-  // Nine 80-frame samples plus transitions. Leave room for each frame to
+  // Six 80-frame samples plus transitions. Leave room for each frame to
   // take four times as long on a runner as it does on the measurement Mac.
   test.setTimeout(120_000);
   await page.goto('/?keep=1&perf=1&keepTier=2');
@@ -30,9 +29,9 @@ test('each Old Keep tier reduces the main-thread cost of the same phone battle',
     requestAnimationFrame(refill);
   });
 
-  const samples: Record<Detail, number[]> = { 0: [], 1: [], 2: [] };
-  // Rotate the order to spread browser warm-up and concurrent CI work.
-  for (const order of [[2, 1, 0], [0, 2, 1], [1, 0, 2]] as const) {
+  const samples: Record<0 | 2, number[]> = { 0: [], 2: [] };
+  // Reverse the order in the middle pair to spread time-dependent effects.
+  for (const order of [[2, 0], [0, 2], [2, 0]] as const) {
     for (const tier of order) {
       await page.evaluate(tier => {
         const s = window.__tarpit!.game.scene.getScene('game') as GameScene;
@@ -63,7 +62,8 @@ test('each Old Keep tier reduces the main-thread cost of the same phone battle',
       samples[tier].push((await busy() - start) * 1000 / 80);
     }
   }
-  const median = (tier: Detail) => samples[tier].sort((a, b) => a - b)[1];
-  expect(median(2), JSON.stringify(samples)).toBeGreaterThan(median(1) * 1.03);
-  expect(median(1), JSON.stringify(samples)).toBeGreaterThan(median(0) * 1.03);
+  const median = (tier: keyof typeof samples) => [...samples[tier]].sort((a, b) => a - b)[1];
+  const measured = JSON.stringify(samples);
+  console.log('Old Keep at 4× CPU, main-thread ms/frame:', measured);
+  expect(median(0), measured).toBeLessThanOrEqual(median(2) * 0.90);
 });

@@ -176,9 +176,14 @@ setting returns when the player leaves for the title.
 The panorama caches the sky, ground, stone exposures and storm exposures
 behind the battle canvas. At low detail a single cached still combines
 the sky, ground and castle between flashes after the opening drift.
-The details update every 15 ms on high, 32 ms on medium or 96 ms on low.
-Low detail holds the fittings still, keeps one road fog strip and the two
-gate blooms, and skips the moving cloud veils and rain. At scene startup
+The Keep has two detail tiers. High (2) updates every 15 ms. Low (0)
+updates every 96 ms, holds the fittings still, keeps one road fog strip
+and the two gate blooms, and skips the moving cloud veils and rain.
+With `?perf=1`, `keepTier=2` or `keepTier=0` pins the corresponding tier.
+The governor starts on high and drops directly to low when a 750 ms
+window averages over 20 ms per frame. Recovery to high requires 10
+continuous seconds of windows averaging below 17.5 ms per frame and a
+cooldown of 30 seconds, which doubles after each drop. At scene startup
 the governor ignores the first eight frame samples so the initial
 composite and texture upload stay outside the measurement window.
 
