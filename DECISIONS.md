@@ -2093,3 +2093,18 @@ can change it; "Kyle" means Kyle decided.
   it on his phone; the old interface is kept until then.
 - **No font or icon set is downloaded.** The in-level type is the
   device's own sans; icons are drawn by the project's code.
+- **First build of the new interface (55a) judged by the coordinator: the
+  right language, short of the mock-ups.** Beside its mock-up the real
+  status block has no hierarchy (gold, lives and wave run together in one
+  small line where the mock-up gives each a large number); the build bar
+  swapped the towers' own art and names for flat line icons, which is
+  harder to read, not easier; text drawn on the canvas is soft where the
+  mock-ups are crisp; the card's rule rows are cramped; and the frame cost
+  was measured while two other jobs ran on the machine and may be worse
+  than today's. A second pass is ordered on those points. Kyle was sent
+  the side-by-sides and recordings as they are. Sol's run used 548,523
+  tokens, the largest so far.
+- **Wide-text tests for any new screen use the larger factor on the Mac**
+  (1.09 against 1.06 elsewhere), from the first brief, after the same
+  Linux-only label failure hit the Feathers card, the taxed HUD and the
+  owner's page in turn.
