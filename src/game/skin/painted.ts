@@ -9,6 +9,7 @@ import type { Layout } from '../layout';
 import type { GameClock } from '../loop';
 import { bearingFrame, footDepth, TOWER_PREVIEW_FRAME, towerArt } from './frames';
 import type { PaintedAssets, PaintedName } from './loading';
+import { SIEGE_MACHINE_KEY } from '../draw/siegeMachines';
 
 type Image = Phaser.GameObjects.Image;
 type Sprite = Phaser.GameObjects.Sprite;
@@ -84,6 +85,7 @@ export class PaintedSkin {
 
   /** Kept separate from UI icons, which show the original paint on every field. */
   worldTexture?: (key: string) => string;
+  siegeNotices = false;
 
   pose<T extends Image | Sprite>(obj: T, name: PaintedName, frame: number, world = true): T {
     const sheet = this.assets.sheets[name];
@@ -195,6 +197,11 @@ export class PaintedSkin {
   projectile(type: TowerType, position: Point, angle: number): void {
     const p = this.layout.toScreen(position);
     const image = this.effect(shots[type]).setPosition(p.x, p.y);
+    if (type === 'mortar' && this.siegeNotices) {
+      image.setTexture(SIEGE_MACHINE_KEY, 'notice').setOrigin(.5).setDisplaySize(34, 34 * 2 / 3)
+        .setRotation(angle + (this.layout.turned ? Math.PI / 2 : 0));
+      return;
+    }
     if (type === 'longbow' || type === 'firepot') image.setRotation(angle + (this.layout.turned ? Math.PI : Math.PI / 2));
   }
 

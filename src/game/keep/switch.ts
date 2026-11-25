@@ -6,3 +6,8 @@ export function keepSelection(search: string) {
   const level = KEEP_LEVELS.find(level => String(level.id) === id);
   return id === '1' || level ? { level } : undefined;
 }
+
+/** Campaign access is independent of the direct links used to test the keep. */
+export function actThreeEnabled(search: string): boolean {
+  return new URLSearchParams(search).get('act3') === '1';
+}

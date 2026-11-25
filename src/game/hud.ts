@@ -403,17 +403,25 @@ export class Hud {
   private readonly gate?: GateHud;
   private readonly pauseAction: HTMLButtonElement;
   private readonly pauseIcon: Phaser.GameObjects.Graphics;
+  private readonly siegeCounter?: Phaser.GameObjects.Graphics;
   private readonly pauseButton: Button;
   private readonly muteButton: MuteButton;
   private readonly m: HudMetrics;
   /** The Lives readout's left edge now (portrait: after the gold), for the exit shake. */
   private livesX = LIVES_X;
+  private siegeExpanded?: boolean;
 
-  constructor(scene: Phaser.Scene, handlers: HudHandlers, private readonly layout: Layout = LANDSCAPE, painted?: PaintedSkin, private readonly pauseOnResult = false) {
+  constructor(scene: Phaser.Scene, handlers: HudHandlers, private readonly layout: Layout = LANDSCAPE, painted?: PaintedSkin, private readonly pauseOnResult = false, private readonly siegeScreens = false) {
     const m = { ...hudMetrics(layout) };
+    if (this.siegeScreens && m.portrait) m.statY = 20;
     this.m = m;
     const counter = scene.add.graphics();
-    for (const band of m.bands) {
+    for (const [i, band] of m.bands.entries()) {
+      if (this.siegeScreens && m.portrait && i === 0) {
+        this.siegeCounter = scene.add.graphics();
+        this.drawSiegeCounter(false);
+        continue;
+      }
       panel(counter, band, THEME.wood);
       // Fine horizontal grain follows the counter, clear of the printed labels.
       for (const offset of [3, 5, band.height - 5]) {
@@ -421,7 +429,10 @@ export class Hud {
           .lineBetween(band.x + 5, band.y + offset, band.x + band.width - 5, band.y + offset);
       }
     }
-    for (const l of m.lines) scene.add.rectangle(l.x, l.y, l.width, l.height, COLORS.hudLine).setOrigin(0, 0);
+    for (const [i, l] of m.lines.entries()) {
+      if (this.siegeCounter && i === 0) continue;
+      scene.add.rectangle(l.x, l.y, l.width, l.height, COLORS.hudLine).setOrigin(0, 0);
+    }
 
     const stat = (x: number, size = m.statSize, color: string = TEXT.hud) =>
       scene.add.text(x, m.statY, '', { fontFamily: FONT, fontSize: size, fontStyle: 'bold', color }).setOrigin(0, 0.5);
@@ -482,7 +493,7 @@ export class Hud {
     this.specialMenu = new SpecialMenu(scene, m.menu.left, m.menu.top, handlers.onSpecialPick, layout.map.y, m.menu.size, m.menu.font);
     this.bar = new BuildBar(scene, m.barTop, handlers.onPick, layout, painted);
     this.bossBar = new BossBar(scene, layout);
-    if (handlers.onRepair) this.gate = new GateHud(scene, layout, handlers.onRepair);
+    if (handlers.onRepair) this.gate = new GateHud(scene, layout, handlers.onRepair, siegeScreens);
     this.muteButton = new MuteButton(scene, m.mute);
     this.pauseButton = new Button(scene, m.pause, m.portrait ? '' : PAUSE_TEXT.button, handlers.onPause, {
       fontSize: '18px', labelY: 57, sound: null,
@@ -522,6 +533,15 @@ export class Hud {
       scene.scale.off('resize', fitControls);
       this.pauseAction.remove();
     });
+  }
+
+  private drawSiegeCounter(expanded: boolean): void {
+    if (!this.siegeCounter || expanded === this.siegeExpanded) return;
+    this.siegeExpanded = expanded;
+    const { x, y, width } = this.layout.map;
+    const height = expanded ? y : 38;
+    panel(this.siegeCounter.clear(), { x, y: 0, width, height }, THEME.wood);
+    this.siegeCounter.lineStyle(1, THEME.brass, .22).lineBetween(x + 5, height - 5, x + width - 5, height - 5);
   }
 
   /**
@@ -576,7 +596,8 @@ export class Hud {
     }
     // After a loss there is no next wave to play, so the preview goes blank.
     const aimText = m.portrait && special.aiming !== null && special.banner ? stripAimText(special.banner) : null;
-    const preview = aimText ?? (state.phase === 'lost' ? '' : previewText(state));
+    this.drawSiegeCounter(aimText !== null);
+    const preview = aimText ?? (state.phase === 'lost' || this.siegeScreens ? '' : previewText(state));
     if (this.next.text !== preview) {
       const siege = !!state.map.otherRoads?.length;
       const previewX = siege && !m.portrait ? 328 : m.preview.x;

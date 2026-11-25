@@ -8,11 +8,85 @@ import { checkLabel } from './hudButtonLabels';
 import { waitForGame } from './painted';
 import { rectPage } from './phone';
 import { waitForTitle } from './title';
+import type { GameScene } from '../src/game/GameScene';
 
 const review = process.env.PW_KEEP_LEVEL_REVIEW;
 async function capture(page: Page, name: string) {
   if (review) await page.screenshot({ path: `${review}/390x844-${name}.png`, scale: 'css' });
 }
+
+test('the painted outer gate follows the blocker through damage, repair and breach', async ({ page }) => {
+  const plates: string[] = [];
+  page.on('request', request => {
+    const name = new URL(request.url()).pathname.split('/').at(-1)!;
+    if (request.url().includes('/assets/keep/') && name.endsWith('.webp')) plates.push(name);
+  });
+  await page.goto('/?test=1&act3=1&keep=23');
+  await page.waitForFunction(() => !!window.__tarpit?.keep?.());
+  expect(plates).toEqual(expect.arrayContaining(['siege-portrait-half.webp', 'sky-night-half.webp', 'strike-half.webp']));
+  expect(plates.every(name => name.endsWith('-half.webp') && !name.includes('-wide'))).toBe(true);
+  const gate = () => page.evaluate(() => {
+    const scene = window.__tarpit!.game.scene.getScene('game') as GameScene;
+    const image = scene['keep']!.outerGate!;
+    const { x, y } = scene.boardLayout.toScreen(scene.state.gate!);
+    return { frame: image.frame.name, aligned: image.x === x - scene.boardLayout.map.x && image.y === y - scene.boardLayout.map.y };
+  });
+  const damage = (fraction: number) => page.evaluate(fraction => {
+    const api = window.__tarpit!, gate = api.state!().gate!;
+    gate.hp = Math.floor(gate.maxHp * fraction);
+    gate.fallen = fraction === 0;
+    api.step!(0);
+  }, fraction);
+
+  expect(await gate()).toEqual({ frame: '0', aligned: true });
+  await damage(.60);
+  expect(await gate()).toEqual({ frame: '1', aligned: true });
+  const repair = await rectPage(page, 'repair');
+  await page.touchscreen.tap(repair.x, repair.y);
+  expect(await gate()).toEqual({ frame: '0', aligned: true });
+  await damage(.24);
+  expect(await gate()).toEqual({ frame: '2', aligned: true });
+  await damage(0);
+  expect(await gate()).toEqual({ frame: '3', aligned: true });
+
+  plates.length = 0;
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.waitForFunction(() => {
+    const scene = window.__tarpit!.game.scene.getScene('game') as GameScene;
+    return !!scene['keep']?.outerGate && !scene.boardLayout.turned;
+  });
+  expect(plates).toEqual(expect.arrayContaining(['siege-wide-half.webp', 'sky-night-half.webp', 'strike-wide-half.webp']));
+  expect(plates.every(name => name.endsWith('-half.webp') && !name.includes('-portrait'))).toBe(true);
+  expect(await gate()).toEqual({ frame: '3', aligned: true });
+});
+
+test('a full two-road gate renders an ID-stable fan at its true contact point', async ({ page }) => {
+  const { map, gate } = createGame({ level: KEEP_LEVELS[2] });
+  const sill = { east: distanceOnRoad(map, 'east', gate!)!, west: distanceOnRoad(map, 'west', gate!)! };
+  await page.goto('/?test=1&act3=1&keep=23');
+  await page.waitForFunction(() => window.__tarpit?.keep?.());
+  const proof = await page.evaluate(sill => {
+    const scene = window.__tarpit!.game.scene.getScene('game') as GameScene;
+    scene.spawnHorde(30);
+    const enemies = scene.state.enemies;
+    for (const enemy of enemies) {
+      const road = enemy.id % 2 ? 'east' : 'west';
+      enemy.road = road;
+      enemy.distance = sill[road];
+    }
+    scene.redraw();
+    const feet = enemies.map(e => scene.animState(e.id)!);
+    enemies.reverse();
+    scene.redraw();
+    const repeat = enemies.map(e => scene.animState(e.id)!).reverse();
+    return {
+      distinct: new Set(feet.map(f => f.x + ':' + f.y)).size,
+      stable: feet.every((f, i) => f.x === repeat[i].x && f.y === repeat[i].y && f.scale === repeat[i].scale),
+      held: enemies.every(e => e.distance === sill[e.road as keyof typeof sill]),
+    };
+  }, sill);
+  expect(proof).toEqual({ distinct: 30, stable: true, held: true });
+});
 
 for (const level of KEEP_LEVELS) {
   test(`private Keep level ${level.id} loads and plays its own waves`, async ({ page }) => {

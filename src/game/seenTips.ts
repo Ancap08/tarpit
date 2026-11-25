@@ -1,10 +1,11 @@
+import { KEEP_LEVELS } from '../sim/keepLevels';
 import { LEVELS } from '../sim';
 import type { StorageLike } from './highScore';
 
 export const SEEN_TIPS_KEY = 'tarpit.seenTips';
 
 export const SEEN_BROADSIDES_KEY = 'tarpit.seenBroadsides';
-export type Broadside = 'opening' | 'secondAct' | 'ending';
+export type Broadside = 'opening' | 'secondAct' | 'thirdAct' | 'ending' | 'siegeEnding';
 
 class SeenStore<T extends number | string> {
   private unsaved = new Set<T>();
@@ -61,3 +62,12 @@ export class SeenBroadsidesStore extends SeenStore<Broadside> {
 
 export const seenBroadsides = new SeenBroadsidesStore(() => window.localStorage);
 export const seenTips = new SeenTipsStore(() => window.localStorage);
+
+// A switch-off visit can still update its original records byte-for-byte.
+const siegeTips = new SeenStore('tarpit.seenSiegeTips', KEEP_LEVELS.map(level => level.id), () => window.localStorage);
+const siegeBroadsides = new SeenStore<Broadside>('tarpit.seenSiegeBroadsides',
+  ['thirdAct', 'siegeEnding'], () => window.localStorage);
+
+export const tipsFor = (level: number) => level > LEVELS.length ? siegeTips : seenTips;
+export const broadsideStore = (which: Broadside) =>
+  which === 'thirdAct' || which === 'siegeEnding' ? siegeBroadsides : seenBroadsides;

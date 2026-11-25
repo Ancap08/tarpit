@@ -143,7 +143,23 @@ function drawBar(g: Phaser.GameObjects.Graphics, left: number, top: number, frac
 }
 
 function paintedBars(g: Phaser.GameObjects.Graphics, state: GameState, layout: Layout,
-  bodyTop: (id: number) => PaintedBody | undefined): void {
+  bodyTop: (id: number) => PaintedBody | undefined, siege: boolean): void {
+  if (siege) {
+    // A gate crowd can occupy one simulated point. Keep each small hurt
+    // bar at its actor's head instead of stacking bars up the whole screen.
+    for (const enemy of state.enemies) {
+      if (isBoss(enemy)) continue;
+      const maxHp = enemy.maxHp ?? enemyMaxHp(enemy.type, state.difficulty);
+      if (enemy.hp >= maxHp) continue;
+      const body = bodyTop(enemy.id);
+      if (!body) continue;
+      const left = Math.max(1, Math.min(layout.width - 21, Math.round(body.x - 10)));
+      const top = Math.max(layout.map.y + 1, Math.round(body.y - 6));
+      g.fillStyle(COLORS.hpBorder).fillRect(left - 1, top - 1, 21, 5);
+      g.fillStyle(hpColor(enemy.hp / maxHp)).fillRect(left, top, Math.max(1, Math.round(19 * enemy.hp / maxHp)), 3);
+    }
+    return;
+  }
   const pieces = state.enemies.flatMap(enemy => {
     const body = bodyTop(enemy.id);
     return body ? [{ enemy, body }] : [];
@@ -169,8 +185,8 @@ function paintedBars(g: Phaser.GameObjects.Graphics, state: GameState, layout: L
 
 /** Hp bars for hurt enemies, drawn over the sprites. Not for the boss: the HUD boss bar shows his. */
 export function drawHpBars(g: Phaser.GameObjects.Graphics, state: GameState, layout: Layout = LANDSCAPE,
-  stopped?: BlockedPositions, bodyTop?: (id: number) => PaintedBody | undefined): void {
-  if (bodyTop) return paintedBars(g, state, layout, bodyTop);
+  stopped?: BlockedPositions, bodyTop?: (id: number) => PaintedBody | undefined, siege = false): void {
+  if (bodyTop) return paintedBars(g, state, layout, bodyTop, siege);
   // `g` is screen-space (milestone 32b): a bar stays level above its sprite in any layout.
   for (const enemy of state.enemies) {
     // Full hp on this level (milestone 25): Easy and Hard scale it; an

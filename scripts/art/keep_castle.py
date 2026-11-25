@@ -819,12 +819,7 @@ def assemble():
         plates.setdefault(group,[]).append(obj)
 
 
-def run():
-    global layer
-    scene=render.studio("painted",True,"BLENDER_EEVEE_NEXT")
-    for obj in list(bpy.data.objects):
-        if obj.type=="LIGHT":
-            bpy.data.objects.remove(obj,do_unlink=True)
+def stone_palette():
     for name,swatch in {
         "stone":"526070","slate":"475565","ash":"62707D","lichen":"536165",
         "trim":"7C8993","bone":"A2AEB3","rock":"464855","wood":"472E2D",
@@ -835,6 +830,189 @@ def run():
     for name,swatch,energy in (("amber","FC8529",1.45),("honey","FFB74B",2.35),
                                ("ruby","C4524D",1.35),("saffron","FFAD51",2),("smoke","BA7948",.75)):
         pigment(name,swatch,energy)
+
+
+def outer_ward(expanded=False):
+    """An open vault and two flanking drums across the shared road."""
+    yf=0
+    shape=arch(1.89,2.26)
+    rim=shape[1:]+[shape[0]]
+    outer=arch(2.45,2.65)
+    trim=outer[1:]+[outer[0]]
+    for i,(a,b) in enumerate(zip(rim,rim[1:])):
+        u,z=a; v,w=b
+        panel([(u,yf,z),(v,yf,w),(v,.94,w),(u,.94,z)],"ink" if i%2 else "slate")
+        aa,bb=trim[i:i+2]
+        if u!=v:
+            panel([(u,yf,z),(v,yf,w),(bb[0],yf,3.01),(aa[0],yf,3.01)],"stone")
+        rod((u,-.029,z),(v,-.029,w),.037,"bone",n=5)
+        A,B=Vector((*aa,0)),Vector((*bb,0))
+        C,D=Vector((*a,0)),Vector((*b,0))
+        courses=max(2,round((B-A).length/.23))
+        for j in range(courses):
+            k=(j+.03)/courses
+            l=(j+.97)/courses
+            stones=[A.lerp(B,k),A.lerp(B,l),C.lerp(D,l),C.lerp(D,k)]
+            panel([(x,-.021,z) for x,z,_ in stones],rng.choice(("ash","slate","trim","stone")))
+    block(0,.42,-.19,2.08,1.45,.19,"slate")
+    for row in range(5):
+        for col in range(7):
+            x=-.88+col*.28+(row%2)*.07
+            block(x,-.24+row*.24,-.025,.26,.22,.032,rng.choice(("slate","ash","rock")))
+    block(0,.45,2.76,2.98,1.12,.27,"stone")
+    block(0,.45,2.91,3.20,1.18,.11,"trim")
+    for x in (-1.21,-.61,0,.61,1.21):
+        block(x,.05,3.02,.38,.27,.28,"stone")
+        block(x,.05,3.27,.44,.32,.07,"trim")
+    for side in (-1,1):
+        x=side*1.72
+        block(side*1.31,.43,-.12,.78,1.1,2.93,"stone")
+        height=4.36 if expanded else 3.55
+        drum(x,.3,-.15,.66,height,n=8,windows=2 if expanded else 1)
+        merlons(x,.3,4.25 if expanded else 3.44,.66,8)
+        for z in (.05,1.13,3.72 if expanded else 2.91):
+            profile(x,.3,[(z,.665),(z+.07,.71),(z+.13,.71),(z+.17,.665)],8,"slate")
+        lantern_x=side*1.28
+        watch_brazier(lantern_x,-.53,.10)
+        render.light(f"Barbican lamp {side}",(lantern_x,-.62,1.16),(x,-.18,1.54),.65,43,(1,.37,.08))
+    if expanded:
+        barbican_wings()
+
+
+def barbican_wings():
+    """Curtain walls run into staggered rock abutments at either shoulder."""
+    for side in (-1,1):
+        for section in range(2):
+            x=side*(2.72+section*.9)
+            y=.49+section*.30
+            h=1.59-section*.31
+            block(x,y,-.31,1.05,.8,h+.31,"stone")
+            block(x,y,h,1.10,.89,.13,"slate")
+            block(x,y-.03,h+.11,1.15,.93,.105,"trim")
+            for offset in (-.34,.15):
+                block(x+offset,y-.30,h+.21,.23,.25,.28,"stone")
+                block(x+offset,y-.31,h+.49,.28,.29,.076,"trim")
+            for course in range(round(h/.24)+1):
+                for j in range(4):
+                    nw=x-.51+j*.25+(course%2)*.08
+                    right=min(nw+.237,x+.508)
+                    if right-nw < .055:
+                        continue
+                    z=course*.22-.16
+                    panel([(nw,y-.407,z),(right,y-.407,z),(right,y-.407,z+.209),
+                           (nw,y-.407,z+.209)],rng.choice(("stone","slate","ash","lichen")))
+        bx=side*4.06
+        for off,z,r in ((-.26,-.28,.40),(.11,-.34,.49),(.31,-.36,.30)):
+            # Faceted bedrock swallows the tails of the wall instead of
+            # leaving a crisp, freestanding end at the crag.
+            profile(bx+side*off,1.08,[(z,r),(z+.30,r*1.09),(z+.72,r*.55)],
+                    5,rng.choice(("rock","deep","slate")),rot=off)
+
+
+def gate_condition(state):
+    if state==3:
+        # Split oak and torn hinges clear the centre of the exposed vault.
+        for i in range(12):
+            side=(-1,1)[i%2]
+            a=(side*(.59+.07*(i%5)),-.08-.08*(i%3),.04+.04*(i%3))
+            b=(a[0]+side*.46,a[1]-.30+(i%5)*.14,a[2]+.09*(i%2))
+            rod(a,b,.09,"wood",.045,n=4)
+            if i%3==0:
+                rod(a,(a[0]+side*.26,a[1]-.06,a[2]+.13),.035,"bronze",n=4)
+        return
+    for i in range(10):
+        x=(i-4.5)*.18
+        h=2.22-abs(x)*.84
+        lean=(.14 if i>4 else -.29) if state==2 else 0
+        heel=.05 if state<2 else .07+(i%4)*.027
+        y=-.087 if state<2 else -.11-(i%3)*.047
+        cap=h-(.25 if state==2 and i in (2,4,5) else 0)
+        panel([(x-.083,y,heel),(x+.083,y,heel),(x+.093+lean,y,cap-.12),
+               (x-.027+lean,y,cap),(x-.08+lean,y,cap-.09)],"wood")
+        rod((x-.055,y-.004,heel+.03),(x-.051+lean,y-.004,cap-.14),.011,"bronze",.005,n=4)
+        if state==2 and i%2==0:
+            rod((x+.06,y-.011,.28),(x-.02+lean,y-.014,cap*.62),.019,"ink",n=4)
+    bars = [[(-.89, .61), (.89, .61)], [(-.89, 1.12), (.89, 1.12)]]
+    if state==1:
+        bars[1]=[(-.89,1.12),(-.09,1.09),(.41,.94),(.89,.88)]
+    if state==2:
+        bars=[[(-.89,.41),(-.22,.50),(-.04,.74)],[(.15,.97),(.42,.72),(.94,.64)]]
+    for bar in bars:
+        for (x,z),(u,v) in zip(bar,bar[1:]):
+            rod((x,-.147,z),(u,-.147,v),.079,"iron",n=4)
+            rod((x,-.181,z+.039),(u,-.181,v+.039),.016,"trim",n=4)
+            for i in range(4):
+                t=(i+.25)/4
+                block(x+(u-x)*t,-.192,z+(v-z)*t,.045,.049,.042,"gold")
+    if state>=1:
+        split=[(.14,1.80),(.09,1.58),(.24,1.36),(.12,1.08),(.19,.84),(.03,.47),(.08,.17)]
+        for (x,z),(u,v) in zip(split,split[1:]):
+            rod((x,-.19,z),(u,-.19,v),.019 if state==1 else .028,"ink",n=4)
+    if state<2:
+        flag(.66,-.18,2.43,.57,.71)
+    else:
+        rod((.39,-.18,2.26),(.92,-.16,1.66),.035,"bronze",n=4)
+        panel([(.45,-.20,2.23),(.86,-.19,1.73),(1.08,-.23,1.13),
+               (.83,-.28,1.27),(.59,-.22,1.73)],"blue")
+        rod((.83,-.29,1.27),(1.08,-.24,1.13),.025,"gold",n=4)
+
+
+def write_webp(path,output,size):
+    encoder=[shutil.which("cwebp") or "/opt/homebrew/bin/cwebp","-quiet","-q","87","-alpha_q","95"]
+    subprocess.run([*encoder,str(path),"-o",str(output/path.with_suffix(".webp").name)],check=True)
+    subprocess.run([*encoder,"-resize",str(size[0]//2),str(size[1]//2),str(path),
+                    "-o",str(output/f"{path.stem}-half.webp")],check=True)
+
+
+def render_barbican(expanded=False):
+    global layer
+    scene=render.studio("painted",True,"BLENDER_EEVEE_NEXT")
+    for obj in list(bpy.data.objects):
+        if obj.type=="LIGHT":
+            bpy.data.objects.remove(obj,do_unlink=True)
+    stone_palette()
+    layer="barbican"
+    outer_ward(expanded)
+    for state in range(4):
+        layer=f"door-{state}"
+        gate_condition(state)
+    assemble()
+    scene.world.node_tree.nodes["Background"].inputs[1].default_value=.29
+    render.light("Barbican sky",(-4,-5,8),(0,0,1),4,840,(.56,.74,1))
+    render.light("Barbican sunset",(-4,-1,5),(0,0,1),2,280,(1,.54,.27))
+    cam=scene.camera
+    cam.data.type="ORTHO"
+    cam.data.ortho_scale=9.75 if expanded else 5.55
+    cam.location=(1.40,-14,5.4) if expanded else (2.25,-14,5.4)
+    cam.rotation_euler=(-cam.location).to_track_quat('-Z','Y').to_euler()
+    cam.data.shift_y=(116/140-.5)*.625 if expanded else (78/96-.5)*.75
+    scene.view_settings.exposure=-.13 if expanded else -.51
+    scene.eevee.taa_render_samples=24
+    size=(640,400) if expanded else (512,384)
+    scene.render.resolution_x,scene.render.resolution_y=size
+    OUT.mkdir(parents=True,exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="tarpit-barbican-") as temp:
+        frames=[]
+        for state in range(4):
+            for i in range(4):
+                for obj in plates[f"door-{i}"]:
+                    obj.hide_render=i!=state
+            frame=Path(temp)/f"door-{state}.png"
+            scene.render.filepath=str(frame)
+            bpy.ops.render.render(write_still=True)
+            frames.append(str(frame))
+        atlas=Path(temp)/("siege-barbican.png" if expanded else "siege-gates.png")
+        subprocess.run(["python3",str(HERE/"keep_weather.py"),"--gate-atlas",*frames,str(atlas)],check=True)
+        write_webp(atlas,OUT,(size[0]*2,size[1]*2))
+
+
+def run():
+    global layer
+    scene=render.studio("painted",True,"BLENDER_EEVEE_NEXT")
+    for obj in list(bpy.data.objects):
+        if obj.type=="LIGHT":
+            bpy.data.objects.remove(obj,do_unlink=True)
+    stone_palette()
     for layer,build in (("far",far),("crown",crown),("gate",gate)):
         build()
         if layer=="crown":
@@ -880,8 +1058,21 @@ def run():
                          (side*xx,yy+.45,1.76),.70,85,(1,.34,.07))
     render.light("Lightning",(9,-7,18),(0,0,4),1.25,17000,(.58,.80,1))
     bolt=bpy.data.objects["Lightning"]
-    preview="--" in sys.argv
-    output=Path(sys.argv[sys.argv.index("--")+1]) if preview else OUT
+    args=sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else []
+    strike=bool(args and args[0]=="--siege-strike")
+    preview=bool(args[1:] if strike else args)
+    output=Path(args[-1]) if preview else OUT
+    if strike:
+        for obj in scene.objects:
+            if obj.type=="LIGHT" and obj!=bolt:
+                obj.data.energy *= .12 if "Fire" not in obj.name else .55
+        scene.world.node_tree.nodes["Background"].inputs[1].default_value=.035
+        bolt.data.type="SUN"
+        bolt.data.angle=math.radians(.32)
+        bolt.data.energy=8.3
+        bolt.data.color=(.69,.83,1)
+        bolt.rotation_euler=Vector((-18,17,-26)).to_track_quat('-Z','Y').to_euler()
+        scene.view_settings.look="AgX - Very High Contrast"
     output.mkdir(parents=True,exist_ok=True)
     from bpy_extras.object_utils import world_to_camera_view
     def projected(point):
@@ -950,7 +1141,8 @@ def run():
                 u,v=projected((xx,yy,zz))
                 points[label]=[round(u*1280,1),round(v*960,1)]
                 print(label,*points[label],flush=True)
-            for name in (("lightning","composite") if preview else ("far","crown","gate","lightning")):
+            exposures=("lightning",) if strike else (("lightning","composite") if preview else ("far","crown","gate","lightning"))
+            for name in exposures:
                 for part,objects in plates.items():
                     for obj in objects:
                         if part=="east-watch":
@@ -960,25 +1152,22 @@ def run():
                             obj.hide_render=part!=wanted or name not in ("gate","lightning","composite")
                         else:
                             obj.hide_render=name not in (part,"lightning","composite")
-                scene.view_settings.exposure=-.32 if name!="lightning" else -.16
+                scene.view_settings.exposure=-.7 if strike else -.32 if name!="lightning" else -.16
                 bolt.hide_render=name!="lightning"
-                path=Path(temp)/f"{name}{suffix}.png"
+                path=Path(temp)/f"{'strike' if strike else name}{suffix}.png"
                 scene.render.filepath=str(path)
                 bpy.ops.render.render(write_still=True)
                 if preview:
                     shutil.copyfile(path,output/path.name)
                     continue
-                webp=path.with_suffix(".webp")
-                encoder=[shutil.which("cwebp") or "/opt/homebrew/bin/cwebp",
-                         "-quiet","-q","87","-alpha_q","95"]
-                subprocess.run([*encoder,str(path),"-o",str(webp)],check=True)
-                shutil.copyfile(webp,output/webp.name)
-                subprocess.run([*encoder,"-resize",
-                                str(size[0]//2),str(size[1]//2),str(path),
-                                "-o",str(output/f"{name}{suffix}-half.webp")],check=True)
+                write_webp(path,output,size)
     registration_file=(output/"projection.json" if preview else HERE.parents[1]/"src/game/keep/projection.json")
-    registration_file.write_text(json.dumps(registration,indent=2)+"\n")
+    if not strike:
+        registration_file.write_text(json.dumps(registration,indent=2)+"\n")
 
 
 if __name__=="__main__":
-    run()
+    if "--siege-gates" in sys.argv or "--siege-barbican" in sys.argv:
+        render_barbican("--siege-barbican" in sys.argv)
+    else:
+        run()

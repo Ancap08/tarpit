@@ -43,7 +43,7 @@ import { STAR_ROW } from './ui/starRow';
 import { currentLayout } from './layoutSwitch';
 import type { TarpitTestApi } from './testGlobal';
 import type { TitleScene } from './TitleScene';
-import { keepSelection } from './keep/switch';
+import { actThreeEnabled, keepSelection } from './keep/switch';
 
 export function isTestMode(): boolean {
   return new URLSearchParams(window.location.search).get('test') === '1';
@@ -172,8 +172,8 @@ function canvasToPage(game: Phaser.Game, x: number, y: number): { x: number; y: 
 export function installGlobal(game: Phaser.Game): void {
   const showpieceVisit = new URLSearchParams(location.search).get('look') === 'showpiece';
   const activeGame = () => game.scene.isActive('game') ? game.scene.getScene('game') as GameScene : null;
-  const displayed = (p: { x: number; y: number }) => showpieceVisit && game.scene.isActive('game')
-    ? (game.scene.getScene('game') as GameScene).displayedMapPoint(p) : p;
+  const reframed = showpieceVisit || actThreeEnabled(location.search);
+  const displayed = (p: { x: number; y: number }) => reframed ? activeGame()?.displayedMapPoint(p) ?? p : p;
   const always = {
     ...(keepSelection(location.search) ? { keep: () => activeGame()?.keepState() ?? null } : {}),
     ...(showpieceVisit ? { showpiece: () => game.scene.isActive('game') ? (game.scene.getScene('game') as GameScene).showpieceState() : null } : {}),

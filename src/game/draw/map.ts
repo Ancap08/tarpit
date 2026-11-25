@@ -162,6 +162,10 @@ export function drawMapThumbnail(g: Phaser.GameObjects.Graphics, map: MapDef, x:
       g.fillCircle(q.x, q.y, width / 2);
     }
   }
+  for (const road of map.otherRoads ?? []) {
+    g.lineStyle(PATH_WIDTH * s, COLORS.path, 1)
+      .strokePoints([...road.approach, map.path[road.joinIndex]].map(px));
+  }
   // The cave mouth as a dot just inside the picture (the full-size cave hangs off the edge).
   const cave = px(map.path[0]);
   g.fillStyle(COLORS.spawn, 1);

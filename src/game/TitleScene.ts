@@ -46,14 +46,16 @@
 // score.
 
 import Phaser from 'phaser';
-import { DEFAULT_DIFFICULTY, DEFAULT_MAP, DIFFICULTIES, LEVELS, MAP_IDS, MAPS, unlockedLevel, type Difficulty, type MapId, type LevelDef } from '../sim';
+import { DEFAULT_DIFFICULTY, DEFAULT_MAP, DIFFICULTIES, LEVELS, MAP_IDS, MAPS, type Difficulty, type MapId, type LevelDef } from '../sim';
 import { loadEnemySheets } from './anim/enemySprites';
 import { drawMapThumbnail } from './draw/map';
+import { loadSiegeActors } from './draw/siegeActors';
+import { sound } from './audio/engine';
 import type { Rect } from './input';
 import { highScores } from './highScore';
-import { seenTips, seenBroadsides, type Broadside } from './seenTips';
+import { tipsFor, seenBroadsides, broadsideStore, type Broadside } from './seenTips';
 import { campaignProgress } from './campaignProgress';
-import { ACT_ONE_LAST_LEVEL, campaignStops, levelAct, openingAct, type CampaignAct, type CampaignStop } from './ui/campaignMap';
+import { ACT_ONE_LAST_LEVEL, ACT_TWO_LAST_LEVEL, campaignLevels, campaignOpen, campaignStops, levelAct, openingAct, type CampaignAct, type CampaignStop } from './ui/campaignMap';
 import { drawCampaignMap, drawLevelCard, drawLevelTips, drawStoryBroadside } from './ui/campaignScreens';
 import { CAMPAIGN_TEXT, lockedLevelText, bestScoreText, DIFFICULTY_LABELS, MAP_NAMES, paintedLoadingText, STORY_TEXT, TITLE_TEXT } from './names';
 import { COLORS, FONT, TEXT } from './palette';
@@ -66,8 +68,8 @@ import { MuteButton } from './ui/muteButton';
 import { LOOKS, LookStore, paintedDensity, type Look } from './skin/look';
 import { loadPainted, type PaintedAssets } from './skin/loading';
 import { duringKeepLoad } from './keep/status';
-import { keepSelection } from './keep/switch';
-import type { KeepLevel } from '../sim/keepLevels';
+import { actThreeEnabled, keepSelection } from './keep/switch';
+import { isTestMode } from './testMode';
 
 /** Menu buttons: 42 px tall like every touch target (44.8 px on an iPad in landscape). */
 export const MENU_BUTTON_H = 42;
@@ -153,6 +155,7 @@ export interface TitleUiState {
 
 /** Data GameScene is started with. */
 export interface GameStartData {
+  campaignKeep?: boolean;
   level?: LevelDef;
   difficulty: Difficulty;
   /** The map (milestone 27); Meadow when left out. */
@@ -195,6 +198,7 @@ export class TitleScene extends Phaser.Scene {
   private muteButton: MuteButton | null = null;
   private bestLine: Phaser.GameObjects.Text | null = null;
   private starting = false;
+  private readonly actThree = actThreeEnabled(window.location.search);
   private enterKeep = keepSelection(window.location.search);
   /** True from the first render after create(); see "Ready" above. */
   private ready = false;
@@ -206,6 +210,7 @@ export class TitleScene extends Phaser.Scene {
   /** Enemy sprite sheets load once at boot, so GameScene (and its restarts) start with them. */
   preload(): void {
     loadEnemySheets(this);
+    if (this.actThree) loadSiegeActors(this);
   }
 
   /** Milestone 32b: rebuild the menu for the window's new layout, keeping the picks (layoutSwitch.ts). */
@@ -224,20 +229,22 @@ export class TitleScene extends Phaser.Scene {
   init(visit?: TitleVisit): void {
     if (!this.restartPending) this.lockedMessage = null;
     this.page = visit?.screen ?? 'first';
-    this.replayLevel = this.page === 'ending' && !!visit?.replayLevel;
+    this.replayLevel = (this.page === 'ending' || this.page === 'siegeEnding') && !!visit?.replayLevel;
     this.focusId = visit?.focusId;
     if (this.card?.id !== visit?.levelId) this.scouting = false;
-    this.card = LEVELS.find(level => level.id === visit?.levelId);
+    this.card = campaignLevels(this.actThree).find(level => level.id === visit?.levelId);
     if ((this.page === 'levelCard' || this.page === 'levelTips') && !this.card) this.page = 'levelMap';
     if (this.page === 'levelMap' || this.page === 'levelCard') {
       const progress = campaignProgress.table();
-      this.act = this.card ? levelAct(this.card.id) : visit?.act ?? openingAct(progress);
-      if (this.act === 2) {
-        if (!unlockedLevel(progress, ACT_ONE_LAST_LEVEL + 1)) {
-          this.act = 1;
+      this.act = this.card ? levelAct(this.card.id) : visit?.act ?? openingAct(progress, this.actThree);
+      if (this.act > 1) {
+        const first = this.act === 2 ? ACT_ONE_LAST_LEVEL + 1 : ACT_TWO_LAST_LEVEL + 1;
+        const broadside = this.act === 2 ? 'secondAct' : 'thirdAct';
+        if (!campaignOpen(progress, first, this.actThree)) {
+          this.act = this.act === 2 ? 1 : openingAct(progress, this.actThree);
           this.page = 'levelMap';
           this.card = undefined;
-        } else if (!seenBroadsides.has('secondAct')) this.page = 'secondAct';
+        } else if (!broadsideStore(broadside).has(broadside)) this.page = broadside;
       }
     }
   }
@@ -304,17 +311,25 @@ export class TitleScene extends Phaser.Scene {
     this.mapStops = [];
     const portrait = currentLayout().kind === 'portrait';
 
-    if (this.page === 'opening' || this.page === 'secondAct' || this.page === 'ending') {
+    if (this.page === 'opening' || this.page === 'secondAct' || this.page === 'thirdAct' || this.page === 'ending' || this.page === 'siegeEnding') {
       const which = this.page;
-      this.events.once(Phaser.Scenes.Events.RENDER, () => seenBroadsides.mark(which));
+      this.events.once(Phaser.Scenes.Events.RENDER, () => {
+        const store = broadsideStore(which);
+        if (which === 'siegeEnding' && !store.has(which)) sound.playSiege('siege.ending', this.actThree);
+        store.mark(which);
+      });
       const proceed = () => {
+        if (which === 'siegeEnding') sound.endSessionMute();
         if (which === 'ending' && this.replayLevel) {
           const level = LEVELS[LEVELS.length - 1];
           this.startGame({ difficulty: DEFAULT_DIFFICULTY, map: level.map, level });
-        } else if (which === 'secondAct' && this.card) this.visit('levelCard', this.card.id);
-        else this.visit('levelMap', undefined, which === 'secondAct' ? 2 : undefined);
+        } else if (which === 'siegeEnding' && this.replayLevel) {
+          this.playKeep(campaignLevels(true).at(-1)!);
+        } else if ((which === 'secondAct' || which === 'thirdAct') && this.card) {
+          this.visit('levelCard', this.card.id);
+        } else this.visit('levelMap', undefined, which === 'secondAct' ? 2 : which === 'thirdAct' ? 3 : undefined, this.focusId);
       };
-      this.playButton = drawStoryBroadside(this, portrait, which, this.action, proceed);
+      this.playButton = drawStoryBroadside(this, portrait, which, this.action, proceed, this.actThree && which === 'siegeEnding', isTestMode());
       this.bindMenuKeys(['continue']);
       this.input.keyboard?.on('keydown-ESC', proceed);
       if (this.progress !== null) this.refreshLoading();
@@ -322,15 +337,17 @@ export class TitleScene extends Phaser.Scene {
     }
     if (this.page === 'levelMap') {
       const progress = campaignProgress.table();
-      this.mapStops = campaignStops(portrait, progress, this.act);
-      const secondActOpen = unlockedLevel(progress, ACT_ONE_LAST_LEVEL + 1);
+      this.mapStops = campaignStops(portrait, progress, this.act, this.actThree);
+      const secondActOpen = campaignOpen(progress, ACT_ONE_LAST_LEVEL + 1, this.actThree);
       const showLock = (id: number) => {
         this.lockedMessage = lockedLevelText(id);
         this.lockLabel?.setText(this.lockedMessage);
       };
-      const switchAct = () => {
-        if (!secondActOpen) showLock(ACT_ONE_LAST_LEVEL);
-        else this.visit('levelMap', undefined, this.act === 1 ? 2 : 1);
+      const thirdActOpen = this.actThree && campaignOpen(progress, ACT_TWO_LAST_LEVEL + 1, true);
+      const switchAct = (act: CampaignAct) => {
+        if (act === 2 && !secondActOpen) showLock(ACT_ONE_LAST_LEVEL);
+        else if (act === 3 && !thirdActOpen) showLock(ACT_TWO_LAST_LEVEL);
+        else if (act !== this.act) this.visit('levelMap', undefined, act);
       };
       this.lockLabel = drawCampaignMap(this, portrait, this.mapStops, this.lockedMessage, this.act, secondActOpen, this.action, stop => {
         if (stop.open) this.visit('levelCard', stop.id);
@@ -338,11 +355,16 @@ export class TitleScene extends Phaser.Scene {
           const next = this.mapStops.find(candidate => candidate.next);
           if (next) showLock(next.id);
         }
-      }, switchAct, () => this.visit('first'));
+      }, switchAct, () => this.visit('first'), this.actThree ? thirdActOpen : undefined);
       const open = this.mapStops.filter(stop => stop.open);
       const focus = open.find(stop => stop.id === this.focusId) ?? open.find(stop => stop.next) ?? open[open.length - 1];
       this.bindMenuKeys(open.map(stop => `stop:${stop.id}`), open.indexOf(focus), direction => {
+        if (this.act === 3 && direction < 0) this.visit('levelMap', undefined, 2, ACT_TWO_LAST_LEVEL);
         if (this.act === 2 && direction < 0) this.visit('levelMap', undefined, 1, ACT_ONE_LAST_LEVEL);
+        if (this.act === 2 && this.actThree && direction > 0 && open.at(-1)?.id === ACT_TWO_LAST_LEVEL) {
+          if (thirdActOpen) this.visit('levelMap', undefined, 3, ACT_TWO_LAST_LEVEL + 1);
+          else showLock(ACT_TWO_LAST_LEVEL);
+        }
         if (this.act === 1 && direction > 0 && open.at(-1)?.id === ACT_ONE_LAST_LEVEL) {
           if (secondActOpen) this.visit('levelMap', undefined, 2, ACT_ONE_LAST_LEVEL + 1);
           else showLock(ACT_ONE_LAST_LEVEL);
@@ -352,7 +374,9 @@ export class TitleScene extends Phaser.Scene {
     }
     if ((this.page === 'levelCard' || this.page === 'levelTips') && this.card) {
       const level = this.card;
-      const start = () => this.startGame({ difficulty: DEFAULT_DIFFICULTY, map: level.map === 'keep' ? DEFAULT_MAP : level.map, level });
+      const start = () => level.map === 'keep' ? this.playKeep(level)
+        : this.startGame({ difficulty: DEFAULT_DIFFICULTY, map: level.map, level });
+      const seenTips = tipsFor(level.id);
       const toCard = () => this.visit('levelCard', level.id);
       if (this.page === 'levelTips') {
         // Play activates on pointerup, so the opening press has already ended.
@@ -584,7 +608,13 @@ export class TitleScene extends Phaser.Scene {
     this.startGame({ difficulty: level, map });
   }
 
-  private async startKeep(level?: KeepLevel): Promise<void> {
+  private playKeep(level: LevelDef): void {
+    if (this.starting || this.restartPending) return;
+    this.starting = true;
+    void this.startKeep(level, true);
+  }
+
+  private async startKeep(level?: LevelDef, campaignKeep = false): Promise<void> {
     const density = paintedDensity(this.game.canvas.getBoundingClientRect().width / this.scale.gameSize.width, window.devicePixelRatio);
     const data = await duringKeepLoad(async (signal, update) => {
       let plates = 0, sprites = 0, script = 0;
@@ -597,7 +627,7 @@ export class TitleScene extends Phaser.Scene {
           const keepAssets = await keep.loadKeep(this.game, currentLayout().turned, signal, fraction => {
             plates = fraction;
             progress();
-          });
+          }, level, this.actThree);
           if (signal.aborted) {
             keepAssets.release();
             signal.throwIfAborted();
@@ -615,7 +645,7 @@ export class TitleScene extends Phaser.Scene {
           return painted;
         }),
       ]);
-      return { ...loaded, painted, difficulty: DEFAULT_DIFFICULTY, level } satisfies GameStartData;
+      return { ...loaded, painted, difficulty: DEFAULT_DIFFICULTY, level, campaignKeep } satisfies GameStartData;
     }, () => this.scene.restart({ screen: 'first' }));
     if (data) this.scene.start('game', data);
   }

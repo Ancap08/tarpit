@@ -5,6 +5,7 @@ Encode both plate sizes from the original paintings.
 import json
 import math
 import random
+import sys
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageOps, ImageFilter, ImageChops
 
@@ -424,7 +425,7 @@ def waylights(p,turned):
         p.line([(x-5,y-35),(x,y-39)],'#b3a99b',.7)
 
 
-def road(p,path):
+def road(p,path,stairs=True,warm=True):
     r=p.rng
     for radius,tone in [(23,(47,45,55)),(20,(69,66,76)),(18,(124,118,123)),(16,(65,70,84))]:
         p.line(path,tone,radius*2)
@@ -460,7 +461,7 @@ def road(p,path):
                 start=min(length,j+r.uniform(0,1.3)); end=min(length,j+4.9)
                 shade=r.uniform(-12,13)
                 c=colour((89,95,112),shade)
-                if i>=len(path)-3: c=rgb(c,(155,123,102),.39)
+                if warm and i>=len(path)-3: c=rgb(c,(155,123,102),.39)
                 p.poly([xy(start+.2,n+.35),xy(start,right-.5),xy(end-.4,right),xy(end,n+.65)],c)
                 if r.random()<.74:
                     p.line([xy(start+.45,n+.5),xy(start+.35,min(right-.3,n+r.uniform(2,6)))],colour(c,r.uniform(12,31)),.65)
@@ -471,7 +472,9 @@ def road(p,path):
                 ss=r.uniform(0,length); t=r.uniform(-14,14)
                 px,py=xy(ss,t)
                 p.line([(px-1.2,py),(px+1.9,py-.25)],'#9b9eaf',.45)
-    # Broad risers and splayed stone cheek walls rise from the barbican to the door.
+    if not stairs:
+        return
+    # Broad risers and splayed stone cheek walls rise to the keep's door.
     a,b=path[-2:]
     dx,dy=b[0]-a[0],b[1]-a[1]
     length=math.hypot(dx,dy); nx,ny=-dy/length,dx/length
@@ -771,6 +774,214 @@ def landscape(turned):
     save(p.image,'portrait' if turned else 'landscape',89)
 
 
+def siege_skies():
+    w,h=900,360
+    for name in ('night','dawn'):
+        r=random.Random(523 if name=='night' else 525)
+        clouds=noise((w,h),(6,12),r)
+        grain=noise((w,h),(73,59),r)
+        image=Image.new('RGB',(w,h))
+        pix=image.load()
+        for y in range(h):
+            v=y/(h-1)
+            for x in range(w):
+                u=x/(w-1)
+                yy=max(0,min(h-1,round(y+26*math.sin(u*4.1+v*1.7))))
+                n=(clouds.getpixel((x,yy))-123)/70
+                texture=(grain.getpixel((x,y))-122)/98
+                if name=='night':
+                    clearing=math.exp(-((u-.72)/.37)**2-((v-.49)/.37)**2)
+                    blue=rgb((9,15,30),(76,110,145),clearing)
+                    shelf=.34+.17*math.cos(u*5.2)-v*.34
+                    shadow=max(0,min(1,(n+shelf)*3.3))
+                    colour_at=rgb(blue,(10,17,33),shadow*.87)
+                    colour_at=rgb(colour_at,(95,128,154),max(0,.33-abs(n+shelf-.06)*2)*clearing)
+                    pix[x,y]=colour(colour_at,texture*5)
+                else:
+                    heat=math.exp(-((u-.09)/.51)**2-((v-.53)/.15)**2)
+                    blue=rgb((34,67,106),(160,186,195),v**.73)
+                    colour_at=rgb(blue,(246,181,123),heat*.91)
+                    wisps=max(0,n-.12)*math.exp(-((v-.51-.11*math.sin(u*3))/.13)**2)
+                    pix[x,y]=colour(rgb(colour_at,(228,205,203),wisps*.52),texture*2)
+        save(image.resize((w*2,h*2),Image.Resampling.BICUBIC),'sky-'+name,91)
+
+
+def distance_to_road(point,path):
+    x,y=point
+    distance=math.inf
+    for (ax,ay),(bx,by) in zip(path,path[1:]):
+        dx,dy=bx-ax,by-ay
+        t=max(0,min(1,((x-ax)*dx+(y-ay)*dy)/(dx*dx+dy*dy)))
+        distance=min(distance,math.hypot(x-ax-t*dx,y-ay-t*dy))
+    return distance
+
+
+def siege_yard(p,foot,paths,sites,turned):
+    """Quarried terraces fan out below the keep, with a dressed centre and loose edges."""
+    r=p.rng
+    fx,fy=foot
+    # Jagged quarry shoulders put the planted wall on a mass of rock.
+    for side in (-1,1):
+        step=19
+        limit=p.w*.52 if turned else 440
+        for i in range(round(limit/step)):
+            x=fx+side*(47+i*step)
+            y=fy-17+16*math.sin(i*.57)+min(i,8)*2.2
+            depth=r.uniform(19,51)*(1-i/(limit/step+12)*.36)
+            base=colour((53,58,71),r.uniform(-10,11))
+            rim=[(x-15,y+2),(x-9,y-10),(x+5,y-14),(x+15,y-5)]
+            toe=[(x+17,y+depth*.69),(x+5,y+depth),(x-13,y+depth*.83)]
+            p.poly(rim+toe,base)
+            p.poly(rim[:3]+[toe[-1]],colour(base,16))
+            p.poly(rim[2:]+toe[:2],colour(base,-17))
+            p.line(rim[1:3],colour(base,38),1)
+            for j in range(8):
+                z=r.uniform(2,depth*.74)
+                p.line([(x-12,y+z),(x+1,y+z-3),(x+10,y+z-2)],colour(base,r.uniform(-16,17)),.8)
+            for _ in range(3):
+                rock(p,x+r.uniform(-15,17),y+depth+r.uniform(-4,5),r.uniform(8,24),r.uniform(4,10),base)
+
+    # Worn flags above the ravine, with alternating joints and exposed shale at the edges.
+    for row in range(26 if turned else 15):
+        y=fy-12+row*(5.7 if turned else 4.9)
+        half=38+row*(3.6 if turned else 5.3)
+        middle=fx+row*(-2.15 if turned else 3.25)
+        for x in range(round(middle-half),round(middle+half),12):
+            if r.random()<(abs(x-middle)/half)**3*.72:
+                continue
+            left=x+(row%2)*6+r.uniform(-1,1)
+            c=colour((77,79,83),r.uniform(-15,15))
+            p.poly([(left,y),(left+11.4,y-.64),(left+12,y+4),(left+.8,y+4.8)],c)
+            p.line([(left+.5,y),(left+10,y-.53)],colour(c,24),.65)
+            if r.random()<.22:
+                p.line([(left+4,y),(left+5.3,y+2.5),(left+4.6,y+4)],colour(c,-26),.65)
+
+    def clear(x,y,padding=0):
+        return (all(distance_to_road((x,y),path)>25+padding for path in paths) and
+                all(math.hypot(x-sx,y-sy)>24+padding for sx,sy in sites))
+
+    # Dark rain basins with fractured reflections. Keep the wheel tracks and plinths clear.
+    for _ in range(84 if turned else 61):
+        x=r.uniform(20,p.w-20); y=r.uniform(fy+28,p.h-8)
+        if not clear(x,y,8) or abs(y-fy-88)<15:
+            continue
+        w=r.uniform(8,28); h=r.uniform(3,8)
+        p.oval(x,y,w,h,(48,51,61))
+        p.oval(x+1,y-.5,w*.9,h*.75,(43,57,72))
+        for j in range(4):
+            yy=y+r.uniform(-h*.61,h*.5)
+            xx=x+r.uniform(-w*.7,w*.35)
+            p.line([(xx,yy),(xx+w*r.uniform(.13,.56),yy-.35)],colour((96,108,117),r.uniform(-28,11)),.55)
+
+    # Place larger props by hand and stop smaller scatter at the playable edges.
+    positions=([(68,674),(245,625),(435,699),(518,818),(331,883),(586,915)] if turned else
+               [(442,363),(536,407),(671,398),(732,447),(897,462),(959,401)])
+    for i,(x,y) in enumerate(positions):
+        if not clear(x,y,9):
+            continue
+        pool(p,x,y,36,12,(24,25,37),155)
+        if i%3==1:
+            wreck(p,x,y,1.35)
+        elif i%3==2:
+            for j in range(6):
+                xx=x+j*6-15; yy=y+j*.6
+                p.line([(xx-2,yy),(xx+3,yy-r.uniform(9,21))],'#75645f',2.2)
+            p.line([(x-15,y-5),(x+17,y-6)],'#544545',2.5)
+        else:
+            pool(p,x,y,40,15,(241,124,49),105)
+            p.poly([(x-4,y),(x+4,y),(x+2,y-10),(x-2,y-10)],'#5d535b')
+            p.oval(x,y-13,8,3,'#8d6761')
+            p.poly([(x-6,y-13),(x-3,y-22),(x-1,y-17),(x+2,y-26),(x+5,y-16),(x+6,y-13)],'#e7914d')
+            p.line([(x-2,y-13),(x+1,y-18),(x+2,y-13)],'#ffe0a0',1.6)
+
+
+def siege_ground(turned):
+    # Portrait includes the margins on the same plate so west-road paving can
+    # straddle the display edge without an obvious seam against the canyon.
+    p=Plate((720,960) if turned else (960,480))
+    def point(q):
+        return (600-q['y'],q['x']) if turned else (q['x'],q['y'])
+    east=list(map(point,SITE['path'][:-1]))
+    branch=SITE['otherRoads'][0]
+    west=list(map(point,branch['approach']))+[east[branch['joinIndex']]]
+    start,following=east[:2]
+    east[0]=tuple(a+(a-b)*.7 for a,b in zip(start,following))
+    # A short continuation runs out past the west spawn without widening the path in play.
+    west.insert(0,(west[0][0]-38,west[0][1]+35) if turned else (west[0][0]-29,west[0][1]+51))
+    sites=[point({'x':s['col']*32+16,'y':s['row']*32+16}) for s in SITE['buildSites']]
+    foot=east[-1]
+    range_ridges(p,foot[1]+12)
+    field(p,foot[1])
+    ravine(p,foot,east[-4] if turned else east[-3])
+    siege_yard(p,foot,[east,west],sites,turned)
+    if not turned:
+        fallen_crossing(p,foot[1]-27)
+        ruins(p,east,False)
+    else:
+        for x,y,w,h in [(12,731,58,52),(512,796,65,51),(24,898,62,49),(600,907,69,47)]:
+            broken_ward(p,x,y,w,h)
+            wreck(p,x+w+13,y+6,1.18)
+            bent_tree(p,x+w-4,y-9,63)
+    # The two decks join as one surface. In wide view the eastern span is a
+    # low, open causeway, with the curtain wall visible between its piers.
+    causeway(p,west[1:],24 if turned else 16)
+    causeway(p,east[:5],24 if turned else 17)
+    causeway(p,east[-6:-1],28 if turned else 18)
+    road(p,west,stairs=False,warm=False)
+    road(p,east)
+    lamps=( [(400,930),(311,830),(329,704),(183,653),(135,734),(275,579),(431,776)]
+            if turned else [(903,184),(925,357),(810,448),(588,460),(677,439),(701,323),(635,347)] )
+    for x,y in lamps:
+        pool(p,x,y,27,11,(239,142,66),110)
+        pool(p,x,y-18,15,14,(255,139,62),100)
+        bollard(p,x,y,True)
+    save(p.image,'siege-portrait' if turned else 'siege-wide',90)
+    if not turned:
+        # Where the road bends around the eastern spur, only the narrow deck
+        # passes in front of the curtain. The old tall retaining arcade is gone.
+        deck=Plate((960,480))
+        causeway(deck,east[:5],12)
+        road(deck,east[:5],stairs=False,warm=False)
+        box=(832*S,96*S,960*S,320*S)
+        over=deck.image.crop(box)
+        alpha=over.getchannel('A')
+        fade=Image.new('L',over.size)
+        for yy in range(over.height):
+            strength=round(255*max(0,min(1,(310-yy/S-96)/49)))
+            ImageDraw.Draw(fade).line([(0,yy),(over.width,yy)],fill=strength)
+        over.putalpha(ImageChops.multiply(alpha,fade))
+        save(over,'siege-east-deck',91)
+
+
+def blockade():
+    """The unused approach ends at a rockfall and a fallen timber cross brace."""
+    p=Plate((128,96))
+    pool(p,64,78,56,15,(18,22,32),177)
+    for j in range(26):
+        xx=p.rng.uniform(35,92); yy=76+p.rng.uniform(-8,8)
+        size=p.rng.uniform(8,23)
+        rock(p,xx,yy,size,size*p.rng.uniform(.42,.69),(87,91,102))
+    for points in [[(40,56),(87,78)],[(41,78),(85,53)]]:
+        p.line(points,'#392e35',8)
+        p.line([(x,y-1.7) for x,y in points],'#ac7956',2.7)
+        a,b=points
+        for t in (.18,.72):
+            xx=a[0]+(b[0]-a[0])*t; yy=a[1]+(b[1]-a[1])*t
+            p.oval(xx,yy,1.4,1.4,'#d5a36f')
+    save(p.image,'siege-blockade',93)
+
+
+def gate_atlas(frames,output):
+    """Pack the four transparent Blender plates, preserving their registration."""
+    with Image.open(frames[0]) as first:
+        width,height=first.size
+    atlas=Image.new('RGBA',(2*width,2*height))
+    for i,frame in enumerate(frames):
+        with Image.open(frame) as plate:
+            atlas.paste(plate,((i%2)*width,(i//2)*height))
+    atlas.save(output)
+
+
 def flats():
     # Uneven spectral bands for fast foreground fog and optically soft cloud veils.
     for name,w,h,freq in [('mist',960,168,(3,4)),('drift',1320,308,(4,6))]:
@@ -821,5 +1032,13 @@ def save(im,name,quality):
 
 
 if __name__=='__main__':
-    OUT.mkdir(parents=True,exist_ok=True)
-    sky(); landscape(True); landscape(False); flats()
+    if '--gate-atlas' in sys.argv:
+        gate_atlas(sys.argv[2:-1],sys.argv[-1])
+    else:
+        OUT.mkdir(parents=True,exist_ok=True)
+        if '--siege' not in sys.argv:
+            sky(); landscape(True); landscape(False); flats()
+        siege_skies()
+        siege_ground(True)
+        siege_ground(False)
+        blockade()

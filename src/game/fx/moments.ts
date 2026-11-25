@@ -36,6 +36,10 @@ export class Moments {
       .setVisible(false);
   }
 
+  get screenObjects(): Phaser.GameObjects.GameObject[] {
+    return [this.bannerBg, this.bannerText, this.bannerSub];
+  }
+
   /** The banners' centre line: the middle of the map on the screen. */
   private get bannerX(): number {
     return this.layout.map.x + this.layout.map.width / 2;

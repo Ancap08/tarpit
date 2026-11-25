@@ -1,7 +1,7 @@
 // Words on the win and lose screens. No Phaser, so it is unit tested.
 
-import { ACT_ONE_LAST_LEVEL } from './campaignMap';
-import { LEVELS, TWO_STAR_LIVES, THREE_STAR_LIVES, earnedFeat, lastWave, levelStars, unlockedLevel, type CampaignProgress, type GameState } from '../../sim';
+import { ACT_ONE_LAST_LEVEL, ACT_TWO_LAST_LEVEL, campaignOpen, campaignLevels } from './campaignMap';
+import { TWO_STAR_LIVES, THREE_STAR_LIVES, earnedFeat, lastWave, levelStars, type CampaignProgress, type GameState } from '../../sim';
 import { CAMPAIGN_END, END_TEXT, LEVEL_STORY, STORY_TEXT, featResultText, heldBoonsText, livesLeftText, reachedWaveText, starGoalText, starSlots } from '../names';
 
 export type EndKind = 'won' | 'lost';
@@ -22,20 +22,21 @@ export function endScreenText(kind: EndKind, state: GameState): { title: string;
   return { title: END_TEXT.lostTitle, lines: [reachedWaveText(state.wave, state.endless, lastWave(state))], boons };
 }
 
-export function campaignResultText(state: GameState, progress: CampaignProgress) {
+export function campaignResultText(state: GameState, progress: CampaignProgress, actThree = false) {
   const kind = endKind(state);
   if (!kind || !state.level) return null;
   const won = kind === 'won';
   const stars = levelStars(state);
   const lives = Math.max(0, state.lives);
   const levelId = state.level.id;
-  const nextId = won && unlockedLevel(progress, levelId + 1) ? levelId + 1 : null;
+  const nextId = won && campaignOpen(progress, levelId + 1, actThree) ? levelId + 1 : null;
   const cheatHint = nextId ? CAMPAIGN_END.cheated : CAMPAIGN_END.cheatedLast;
   const hint = won && state.cheated ? cheatHint : stars === 1 ? starGoalText(TWO_STAR_LIVES, 2) : stars === 2 && !state.level.feat ? starGoalText(THREE_STAR_LIVES, 3) : '';
   const feat = won && state.level.feat ? featResultText(state.level.feat, stars === 3) : '';
   const slots = won ? starSlots(stars) : '';
-  const actClose = won && levelId === ACT_ONE_LAST_LEVEL ? STORY_TEXT.firstActClose : '';
-  const complete = won && levelId === LEVELS.at(-1)?.id ? CAMPAIGN_END.complete : '';
+  const actClose = !won ? '' : levelId === ACT_ONE_LAST_LEVEL ? STORY_TEXT.firstActClose
+    : actThree && levelId === ACT_TWO_LAST_LEVEL ? STORY_TEXT.secondActClose : '';
+  const complete = won && levelId === campaignLevels(actThree).at(-1)?.id ? CAMPAIGN_END.complete : '';
   return {
     kind, levelId, stars, lives, nextId, slots, hint, feat, actClose, complete,
     story: won ? LEVEL_STORY[levelId].reply : STORY_TEXT.loss,

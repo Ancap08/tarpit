@@ -249,7 +249,16 @@ the checker looks for it.
 | `public/assets/keep/plinth-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Marked stone tower footprint |
 | `public/assets/keep/portrait-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Portrait crag, ravine and gate approach |
 | `public/assets/keep/road-wide-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Raised wide approach, barbican and stairs |
+| `public/assets/keep/siege-blockade-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Stone and timber road closure |
+| `public/assets/keep/siege-east-deck-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Thin eastern road deck at the curtain wall |
+| `public/assets/keep/siege-gates-half.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Half-size plate. Barbican and four gate conditions |
+| `public/assets/keep/siege-portrait-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Converging roads, ravine and terraced yard in portrait |
+| `public/assets/keep/siege-wide-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Converging roads, ravine and terraced yard in landscape |
+| `public/assets/keep/sky-dawn-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Cold dawn and first light |
 | `public/assets/keep/sky-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Storm shelf and western light shafts |
+| `public/assets/keep/sky-night-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Night storm sky |
+| `public/assets/keep/strike-half.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Half-size plate. Hard lightning key on the keep in portrait |
+| `public/assets/keep/strike-wide-half.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Half-size plate. Hard lightning key on the keep in landscape |
 | `public/assets/keep/wings-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Portrait scenery beyond the playable field |
 | `public/assets/keep/crown-wide.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Belfry, observatory and inhabited ward in wide perspective |
 | `public/assets/keep/crown.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Belfry, observatory and inhabited ward |
@@ -266,7 +275,16 @@ the checker looks for it.
 | `public/assets/keep/plinth.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Marked stone tower footprint |
 | `public/assets/keep/portrait.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Portrait crag, ravine and gate approach |
 | `public/assets/keep/road-wide.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Raised wide approach, barbican and stairs |
+| `public/assets/keep/siege-blockade.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Stone and timber road closure |
+| `public/assets/keep/siege-east-deck.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Thin eastern road deck at the curtain wall |
+| `public/assets/keep/siege-gates.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Barbican and four gate conditions |
+| `public/assets/keep/siege-portrait.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Converging roads, ravine and terraced yard in portrait |
+| `public/assets/keep/siege-wide.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Converging roads, ravine and terraced yard in landscape |
+| `public/assets/keep/sky-dawn.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Cold dawn and first light |
+| `public/assets/keep/sky-night.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Night storm sky |
 | `public/assets/keep/sky.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Storm shelf and western light shafts |
+| `public/assets/keep/strike-wide.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Hard lightning key on the keep in landscape |
+| `public/assets/keep/strike.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Hard lightning key on the keep in portrait |
 | `public/assets/keep/wings.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Portrait scenery beyond the playable field |
 | `docs/review/m51/keep-1024x768.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Production game capture |
 | `docs/review/m51/keep-390x664.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Production game capture |
@@ -283,3 +301,51 @@ the checker looks for it.
 | `docs/review/m51/keep-loading.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Phone loading progress with one plate pending |
 | `docs/review/m51/keep-load-failed.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Phone recovery screen after a blocked glow request |
 | `docs/review/m51/keep-wall-defence.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Production game capture |
+| `docs/review/m52c2a/1024x768-level-23.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/390x664-level-23.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/390x664-outer-gate-midwave.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/390x844-before.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/390x844-level-21.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/390x844-level-22.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/390x844-level-23.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/390x844-level-24.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/390x844-level-25.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/390x844-lightning.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/390x844-outer-gate-midwave.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/960x580-level-23.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/gate-cracked.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/gate-open.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/gate-sound.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/gate-splintered.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/level-23-phone.mp4` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `public/assets/act3/siege-actors.webp` | `scripts/art/siege_actors.py` | Tarpit agents | MIT | Bedroom windows, wall sites and dawn carriage |
+| `public/assets/keep/siege-barbican-half.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Half-size joined barbican and its four damage conditions |
+| `public/assets/keep/siege-barbican.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Joined barbican and its four damage conditions |
+| `public/assets/keep/siege-machines-half.webp` | `scripts/art/siege_machines.py` | Tarpit agents | MIT | Half-size notice ram and shell, repair crew and falling timber |
+| `public/assets/keep/siege-machines.webp` | `scripts/art/siege_machines.py` | Tarpit agents | MIT | Notice ram and shell, repair crew and falling timber |
+| `docs/review/m52c2b/390x664-gate-crowd-dawn.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x664-gate-crowd-dusk.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x664-gate-crowd-night.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-barbican-and-toll-troll.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-ending.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-gate-crowd-dawn.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-gate-crowd-dusk.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-gate-crowd-night.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-gate-falling.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-gate-repair.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-gate-shudder.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-last-stand.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-notice-shell.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-quartering-before.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-quartering-departing.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-quartering-paid.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-ram-arriving.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-ram-at-gate.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-ram-feathered.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-royal-survey.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-window-lit.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-window-mid-shake.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-window-spent.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/960x580-ending.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/ram-and-the-king.mp4` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege recording |
+| `docs/review/m52c2b/window-on-the-gate-crowd.mp4` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege recording |

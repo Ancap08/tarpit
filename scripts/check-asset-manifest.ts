@@ -20,7 +20,8 @@ export interface ManifestRow {
 }
 
 /** Folders whose files must each be listed in the manifest. */
-export const CHECKED_DIRS = ['assets/', 'docs/art/', 'public/icons/', 'public/assets/keep/', 'docs/review/m51/'];
+export const CHECKED_DIRS = ['assets/', 'docs/art/', 'public/icons/', 'public/assets/keep/', 'public/assets/act3/',
+  'docs/review/m51/', 'docs/review/m52c2a/', 'docs/review/m52c2b/'];
 
 /**
  * Files under the checked folders that are not assets: Markdown docs (the

@@ -36,8 +36,8 @@ function isLevelId(id: number): boolean {
   return Number.isSafeInteger(id) && id >= 1;
 }
 
-export function unlockedLevel(progress: CampaignProgress, id: number): boolean {
-  if (!isLevelId(id) || id > LEVELS.length) return false;
+export function unlockedLevel(progress: CampaignProgress, id: number, lastLevel = LEVELS.length): boolean {
+  if (!isLevelId(id) || id > lastLevel) return false;
   for (let previous = 1; previous < id; previous++) {
     if (!isStars(progress[previous])) return false;
   }

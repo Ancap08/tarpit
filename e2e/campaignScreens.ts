@@ -90,6 +90,7 @@ export async function checkSpacing(page: Page) {
     [CAMPAIGN_TEXT.tips]: 'title:tips', [CAMPAIGN_TEXT.gotIt]: 'title:gotIt',
     [STORY_TEXT.continue]: 'title:continue', [CAMPAIGN_TEXT.notice]: 'title:cardPage',
     [CAMPAIGN_TEXT.mapNotes]: 'title:cardPage',
+    ...Object.fromEntries(CAMPAIGN_TEXT.actTabs.map((name, i) => [name, `title:act:${i + 1}`])),
   } as Record<string, string> });
   expect(items.length).toBeGreaterThan(3);
   for (const [index, a] of items.entries()) {

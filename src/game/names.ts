@@ -513,6 +513,10 @@ export const STORY_TEXT = {
   openingReply: "We counted it. It's ours.",
   firstActClose: 'He will be back with new ideas.',
   secondActNotice: 'The King has thought of new taxes.',
+  secondActClose: 'He will be back, and he is bringing the army.',
+  thirdActNotice: 'No more notices. The King marches on your town with his whole army.',
+  thirdActReply: 'We moved to the Old Keep. The tea went in the moat.',
+  siegeEnding: 'The King rode home in a tarred and feathered carriage, unpaid. The town kept its gold and opened a market with no stamps. Taxation is theft.',
   secondActReply: 'Fetch the ledger. We have a few deductions.',
   ending: `${endingLead} The gold stayed where it was earned. Taxation is theft.`,
   loss: 'The Crown thanks you for your contribution.',
@@ -559,6 +563,9 @@ export const CAMPAIGN_TEXT = {
   levelMap: 'Level map',
   actOne: 'Act One',
   actTwo: 'Act Two',
+  actThree: 'Act Three',
+  actTabs: ['Act I', 'Act II', 'Act III'],
+  gateRule: 'The gate holds walkers. Repair it between waves.',
   featStar: 'Third star: level feat',
   inForce: 'In force',
   townAnswer: "Town's answer: Tar Barrels feather crowds.",
@@ -593,6 +600,8 @@ export const LEVEL_NEW: Readonly<Record<number, string>> = {
 };
 
 export const GATE_TEXT = {
+  label: 'Gate',
+  countdown: (seconds: number) => `Last stand! ${seconds}s`,
   health: (hp: number, max: number) => `Gate ${Math.round(hp * 100 / max)}%`,
   repair: (cost?: number) => cost === undefined ? 'Repair' : `Repair ${cost}`,
   repairWarning: (feat: LevelFeat | undefined, boughtRepair: boolean | undefined) =>
@@ -692,11 +701,14 @@ export function roadName(id: string): string {
 
 export const SIEGE_TEXT = {
   next: 'Next:',
+  road: (id: string) => `${roadName(id)} road`,
+  roadCount: (count: number, type: EnemyType) => `${count} ${ENEMY_SHORT_NAMES[type]}`,
   window: 'Window',
   emptyWindow: 'No targets',
   spentWindow: 'Spent',
   quartering: 'Quartered',
   survey: 'Surveyed',
+  condemned: 'CONDEMNED',
   pay: (gold: number) => `Pay ${gold}`,
 } as const;
 

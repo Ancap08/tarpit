@@ -38,7 +38,7 @@
 
 import Phaser from 'phaser';
 import type { BlockedPosition, BlockedPositions } from '../draw/barricade';
-import { effectiveSlow, ENEMY_STATS, enemyPosition, isBoss, isTarred, positionAlongPath, roadPath, type Enemy, type EnemyType, type GameEvent, type GameState, type MapDef } from '../../sim';
+import { effectiveSlow, ENEMY_STATS, enemyPosition, isBoss, isTarred, positionAlongPath, roadPath, type Enemy, type EnemyType, type GameEvent, type GameState, type MapDef, type Point } from '../../sim';
 import { bobOffset, DEATH_MS, burnPulse, FLAME_EVERY, HIT_FLASH_MS, Particles, statusTint, TINT } from './effects';
 import { awayFrom, deathPuff, KNOCK_MS, knockPx, knockShare } from '../fx/fxMath';
 import { enemyArt, walkFrame } from '../skin/frames';
@@ -49,6 +49,9 @@ import type { Layout } from '../layout';
 import { COLORS } from '../palette';
 import type { GameClock } from '../loop';
 import { FACINGS, SHEETS, walkAnimKey, WALK_FPS, type Facing } from './sheets';
+import { siegeStance, type SiegeStance } from '../draw/siegeFormation';
+import { RAM_ORIGIN_Y, RAM_SIZE, SIEGE_MACHINE_KEY, ramPose } from '../draw/siegeMachines';
+import { ramAtGate } from '../keep/siegeTiming';
 
 /**
  * Shield mark (Shieldbearer): a 6 x 6 rounded rect, radius 2, with a 1 px
@@ -117,6 +120,10 @@ interface View {
   knockAt: number;
   redraws: number;
   blockerLunge: number;
+  nativeScale: number;
+  trueFoot?: Point;
+  ramContact?: number;
+  ramApproach?: Point;
 }
 
 /** Load every enemy sheet (call from a scene's preload). */
@@ -158,6 +165,7 @@ export class EnemySprites {
   private readonly featherLayer: Phaser.GameObjects.Layer;
   private readonly spareTrails: FeatherTrail[] = [];
   private readonly particles: Particles | null;
+  private readonly reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   /** `layout` (milestone 32b) places every sprite on the screen and turns its facing with the map. */
   constructor(
@@ -166,6 +174,7 @@ export class EnemySprites {
     private readonly layout: Layout,
     private readonly painted: PaintedSkin | undefined,
     private readonly clock: GameClock,
+    private readonly siege = false,
   ) {
     if (!painted) ensureAnims(scene);
     this.layer = painted?.standing ?? scene.add.layer();
@@ -237,13 +246,19 @@ export class EnemySprites {
   }
 
   private paintedBarForView(v: View): PaintedBody | undefined {
-    if (!this.painted || v.type === 'ram') return;
-    const { density, sheets } = this.painted.assets;
+    if (!this.painted) return;
+    if (v.type === 'ram') {
+      if (!this.siege) return;
+      const height = v.sprite.displayHeight * .74;
+      return { x: v.sprite.x, y: v.sprite.y - height, height, width: v.sprite.displayWidth * .83, depth: v.sprite.depth };
+    }
+    const { sheets } = this.painted.assets;
+    const scale = v.sprite.scaleX;
     const sheet = sheets[enemyArt(v.type)];
     const bounds = sheet.bodyBounds?.[Number(v.sprite.frame.name) % sheet.frames];
-    if (bounds) return { x: v.sprite.x + ((bounds[0] + bounds[2]) / 2 - sheet.anchor[0]) / density,
-      y: v.sprite.y + (bounds[1] - sheet.anchor[1]) / density,
-      width: (bounds[2] - bounds[0]) / density, height: (bounds[3] - bounds[1]) / density,
+    if (bounds) return { x: v.sprite.x + ((bounds[0] + bounds[2]) / 2 - sheet.anchor[0]) * scale,
+      y: v.sprite.y + (bounds[1] - sheet.anchor[1]) * scale,
+      width: (bounds[2] - bounds[0]) * scale, height: (bounds[3] - bounds[1]) * scale,
       depth: v.flying ? Infinity : v.sprite.depth };
   }
 
@@ -319,13 +334,35 @@ export class EnemySprites {
       live.add(enemy.id);
       const view = this.views.get(enemy.id) ?? this.create(enemy, state.map);
       const position = stopped?.get(enemy.id);
-      this.update(view, enemy, state.map, timeScale, position);
+      const stance = this.siege && !position ? siegeStance(state, enemy) : undefined;
+      if (this.siege && enemy.type === 'ram') {
+        const contact = state.gate && ramAtGate(enemy, state.map, state.gate);
+        view.ramContact = contact ? view.ramContact ?? this.clock.nowMs : undefined;
+        if (contact) view.ramApproach = this.layout.screenDir(Math.cos(state.gate!.angle), Math.sin(state.gate!.angle));
+      }
+      this.update(view, enemy, state.map, timeScale, position, stance);
     }
     // An enemy gone without a kill or exit event (a test hook, a restart): drop it.
     for (const [id, v] of this.views) {
       if (live.has(id) || v.dying) continue;
       if (v.doomed) this.walkOn(v, state.map, timeScale);
       else this.remove(id);
+    }
+  }
+
+  /** During the range and special previews, show the underlying road
+   * position and the connection to the offset actor. */
+  drawSiegeFeet(g: Phaser.GameObjects.Graphics): void {
+    const anchors = new Set<string>();
+    for (const v of this.views.values()) {
+      const p = v.trueFoot;
+      if (!p || v.dying || v.doomed) continue;
+      g.lineStyle(1, 0xe7dfc6, .37).lineBetween(v.sprite.x, v.sprite.y, p.x, p.y);
+      const key = `${Math.round(p.x)}:${Math.round(p.y)}`;
+      if (anchors.has(key)) continue;
+      anchors.add(key);
+      g.fillStyle(0x20232a, .93).fillCircle(p.x, p.y, 4);
+      g.fillStyle(0xffedb1).fillCircle(p.x, p.y, 2);
     }
   }
 
@@ -346,6 +383,10 @@ export class EnemySprites {
   }
 
   private ramSprite(): Phaser.GameObjects.Sprite {
+    if (this.siege) {
+      return this.scene.add.sprite(0, 0, SIEGE_MACHINE_KEY, 'ram0')
+        .setOrigin(.5, RAM_ORIGIN_Y).setDisplaySize(RAM_SIZE.width, RAM_SIZE.height);
+    }
     const key = 'siege-ram';
     if (!this.scene.textures.exists(key)) {
       const drawing = this.scene.add.graphics();
@@ -418,6 +459,7 @@ export class EnemySprites {
       knockAt: -1,
       redraws: 0,
       blockerLunge: 0,
+      nativeScale: sprite.scaleX,
     };
     this.views.set(enemy.id, view);
     this.setFacing(view, facingAt(roadPath(map, enemy.road), enemy.distance, this.step(enemy), this.layout), true);
@@ -453,7 +495,7 @@ export class EnemySprites {
           v.turn = undefined;
         } else {
           v.turn.previous.setPosition(v.sprite.x, v.sprite.y).setDepth(v.sprite.depth)
-            .setFrame(hitOffset + walkFrame(v.turn.facing, distance, false)).setAlpha(1 - fade);
+            .setFrame(hitOffset + walkFrame(v.turn.facing, distance, false)).setScale(v.sprite.scaleX).setAlpha(1 - fade);
         }
       }
       v.facing = facing;
@@ -486,10 +528,26 @@ export class EnemySprites {
       .setAngle(v.sprite.angle);
   }
 
-  private update(v: View, enemy: Enemy, map: MapDef, timeScale: number, stoppedAt?: BlockedPosition): void {
-    const { x, y } = this.layout.toScreen(stoppedAt ?? enemyPosition(enemy, map));
+  private update(v: View, enemy: Enemy, map: MapDef, timeScale: number, stoppedAt?: BlockedPosition, stance?: SiegeStance): void {
+    const foot = this.layout.toScreen(stoppedAt ?? enemyPosition(enemy, map));
+    let x = foot.x + (stance?.x ?? 0);
+    let y = foot.y + (stance?.y ?? 0);
+    v.trueFoot = stance ? foot : undefined;
+    if (this.siege) v.sprite.setScale(v.nativeScale * (stance?.scale ?? 1));
+    if (this.siege && v.type === 'ram') {
+      const ram = ramPose({
+        contactAgeMs: v.ramContact === undefined ? undefined : this.clock.nowMs - v.ramContact,
+        distance: enemy.distance,
+        still: this.frozen || this.reduced.matches,
+        scale: stance?.scale ?? 1,
+        approach: v.ramApproach ?? { x: 0, y: 0 },
+      });
+      v.sprite.setFrame(ram.frame).setScale(v.nativeScale * ram.scaleX, v.nativeScale * ram.scaleY);
+      x += ram.dx;
+      y += ram.dy;
+    }
     v.blockerLunge = stoppedAt?.lunge ?? 0;
-    const lift = this.lift(v.type);
+    const lift = this.siege && v.type === 'ram' ? 0 : this.lift(v.type);
     const bob = v.flying && !this.frozen ? bobOffset(this.clock.nowMs, enemy.id) : 0;
     if (v.knockAt >= 0 && this.clock.nowMs - v.knockAt >= KNOCK_MS) v.knockAt = -1;
     if (v.knockAt >= 0) {

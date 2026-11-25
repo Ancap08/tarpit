@@ -113,6 +113,8 @@
 // which keeps it if it beats the stored best for this map and level.
 
 import Phaser from 'phaser';
+import { actThreeEnabled } from './keep/switch';
+import { broadsideStore } from './seenTips';
 import { duringKeepLoad, finishKeepLoad } from './keep/status';
 import { panel, THEME } from './ui/theme';
 import {
@@ -177,6 +179,7 @@ import type {
 } from '../sim';
 import { EventCursor } from './anim/effects';
 import { sound } from './audio/engine';
+import { SiegeAudio } from './audio/siegeAudio';
 import { Moments } from './fx/moments';
 import { BoonReward, HeldBoons } from './ui/boons';
 import { Effects, type FxState } from './fx/effects';
@@ -192,11 +195,13 @@ import { drawPlacementCell } from './draw/placement';
 import { ShotEffects } from './draw/shots';
 import { SpecialEffects } from './draw/specials';
 import { Aim, drawTowerShape, drawTowers } from './draw/towers';
-import { seenBroadsides } from './seenTips';
 import { campaignProgress } from './campaignProgress';
 import { highScores } from './highScore';
+import { SiegeView } from './keep/siegeView';
+import { RoadBanners } from './ui/roadBanners';
 import { SiegeControls } from './ui/siegeControls';
-import { drawSiegeRoads } from './draw/siege';
+import { drawGateMarker, drawSiegeRoads, SiegeGateEffects, type GateHistory } from './draw/siege';
+import { SiegeActors } from './draw/siegeActors';
 import { callEarlyInfo, CHEAT_TAPS, CHEAT_WINDOW_MS, Hud, specialReady, specialRecharge } from './hud';
 import { AIM_BANNER, aimBannerText, BARRICADE_AIM_REASONS, PAINTED_FALLBACK, REWARD_KEYS } from './names';
 import {
@@ -446,6 +451,8 @@ export class GameScene extends Phaser.Scene {
   private overlay!: Phaser.GameObjects.Graphics;
   private hud!: Hud;
   private siegeControls?: SiegeControls;
+  private siegeView?: SiegeView;
+  private roadBanners?: RoadBanners;
   private reward!: BoonReward;
   private mapBlockedUntil = 0;
   private held!: HeldBoons;
@@ -503,7 +510,7 @@ export class GameScene extends Phaser.Scene {
   private aimPress: AimPress | null = null;
   private aim!: Aim;
   /** Milestone 32b: the game a relayout() carries into the restarted scene, until create() takes it. */
-  private resume: { state: GameState; recordedCleared: number; clock: GameClock } | null = null;
+  private resume: { state: GameState; recordedCleared: number; clock: GameClock; gateHistory?: GateHistory; siegeAudio?: SiegeAudio } | null = null;
   /** A relayout's restart is queued and its create() has not run yet. */
   private restartPending = false;
   /** Play again or Menu was requested: this scene is going, so a layout switch leaves it alone. */
@@ -520,6 +527,12 @@ export class GameScene extends Phaser.Scene {
   private keep?: import('./keep/oldKeep').KeepView;
   private keepAssets?: GameStartData['keepAssets'];
   private keepLoading = false;
+  private campaignKeep = false;
+  private readonly actThree = actThreeEnabled(window.location.search);
+  private get siegeScreens(): boolean { return this.actThree && this.state.level?.map === 'keep'; }
+  private siegeActors?: SiegeActors;
+  private siegeGate?: SiegeGateEffects;
+  private siegeAudio?: SiegeAudio;
   private showpieceType?: GameStartData['showpiece'];
   private showpiece?: import('./showpiece/showpiece').Showpiece;
   private paintedFallback = false;
@@ -537,6 +550,7 @@ export class GameScene extends Phaser.Scene {
     this.paintedAssets = data?.painted;
     this.showpieceType = data?.showpiece;
     this.keepModule = data?.keep;
+    this.campaignKeep = data?.campaignKeep ?? false;
     this.keepAssets = data?.keepAssets;
     this.paintedFallback = data?.paintedFallback ?? false;
   }
@@ -552,13 +566,14 @@ export class GameScene extends Phaser.Scene {
     // reads the newest layout, so a burst of resizes ends on the window's final shape.
     // A scene already leaving (Menu, Play again) is not brought back: the next scene reads the layout itself.
     if (this.leaving) return;
-    this.resume = { state: this.state, recordedCleared: this.recordedCleared, clock: this.clock };
+    this.resume = { state: this.state, recordedCleared: this.recordedCleared, clock: this.clock,
+      gateHistory: this.siegeGate?.history, siegeAudio: this.siegeAudio };
     if (this.restartPending) return;
     this.restartPending = true;
     const data: GameStartData = {
-      difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, showpiece: this.showpieceType, keep: this.keepModule,
+      difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, showpiece: this.showpieceType, keep: this.keepModule, campaignKeep: this.campaignKeep,
       paintedFallback: this.paintedFallback,
-      keepAssets: this.keepAssets?.id === this.keepModule?.currentKeepPlateSet(this.game, currentLayout().turned).id ? this.keepAssets : undefined,
+      keepAssets: this.keepAssets?.id === this.keepModule?.currentKeepPlateSet(this.game, currentLayout().turned, this.campaignLevel, this.actThree).id ? this.keepAssets : undefined,
     };
     this.keepAssets = data.keepAssets;
     this.scene.restart(data);
@@ -566,12 +581,12 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     if (this.keepModule) {
-      if (this.keepAssets?.id !== this.keepModule.currentKeepPlateSet(this.game, currentLayout().turned).id) {
+      if (this.keepAssets?.id !== this.keepModule.currentKeepPlateSet(this.game, currentLayout().turned, this.campaignLevel, this.actThree).id) {
         this.keepAssets?.release();
         this.keepAssets = undefined;
         this.keepLoading = true;
         const module = this.keepModule;
-        void duringKeepLoad((signal, progress) => module.loadKeep(this.game, currentLayout().turned, signal, progress), () => this.toMenu())
+        void duringKeepLoad((signal, progress) => module.loadKeep(this.game, currentLayout().turned, signal, progress, this.campaignLevel, this.actThree), () => this.toMenu())
           .then(assets => {
             if (!assets) return;
             this.keepAssets = assets;
@@ -593,12 +608,14 @@ export class GameScene extends Phaser.Scene {
       ? this.keepModule.createKeep(new URLSearchParams(location.search).get('survey') === '1')
       : createGame({ difficulty: this.difficulty, map: this.currentMap, level: this.campaignLevel }));
     const base = currentLayout();
+    this.siegeView = undefined;
     this.layout = base.turned && this.state.level?.taxes ? TAXED_PORTRAIT : base;
     if (this.scale.height !== this.layout.height) this.scale.setGameSize(this.layout.width, this.layout.height);
     if (!resume) this.mapBlockedUntil = 0;
     this.recordedCleared = resume?.recordedCleared ?? 0;
     this.speed = 1;
     this.clock = resume?.clock ?? new GameClock();
+    this.siegeAudio = this.siegeScreens && this.autoTick ? resume?.siegeAudio ?? new SiegeAudio(true, true) : undefined;
     this.shots = new ShotEffects();
     this.specialFx = new SpecialEffects(this, isTestMode(), this.layout, !!this.paintedAssets);
     this.speedPress = null;
@@ -643,12 +660,16 @@ export class GameScene extends Phaser.Scene {
       sound.beginSessionMute();
       const assets = this.keepAssets!;
       const refitKeep = () => {
-        if (this.keepAssets?.id !== this.keepModule?.currentKeepPlateSet(this.game, currentLayout().turned).id) this.relayout();
+        if (this.keepAssets?.id !== this.keepModule?.currentKeepPlateSet(this.game, currentLayout().turned, this.campaignLevel, this.actThree).id) this.relayout();
       };
       this.scale.on(Phaser.Scale.Events.RESIZE, refitKeep);
       this.town.layer.setVisible(false);
-      this.keep = new this.keepModule.KeepView(this, this.layout, this.state.map, this.clock, !this.autoTick, DetailGovernor, assets);
-      if (this.painted) this.painted.worldTexture = this.keep.light.key;
+      this.keep = new this.keepModule.KeepView(this, this.layout, this.state.map, this.clock, !this.autoTick,
+        DetailGovernor, assets, this.siegeScreens && this.layout.turned, this.siegeScreens);
+      if (this.painted) {
+        this.painted.worldTexture = this.keep.light.key;
+        this.painted.siegeNotices = this.siegeScreens;
+      }
       this.children.moveBelow(this.keep.layer, this.ground);
       this.events.once('shutdown', () => {
         this.scale.off(Phaser.Scale.Events.RESIZE, refitKeep);
@@ -659,10 +680,10 @@ export class GameScene extends Phaser.Scene {
     }
     this.overlay = world();
     this.dynamic = world();
-    this.enemySprites = new EnemySprites(this, isTestMode(), this.layout, this.painted, this.clock);
+    this.enemySprites = new EnemySprites(this, isTestMode(), this.layout, this.painted, this.clock, this.siegeScreens);
     this.shotFx = world();
     this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx), this.layout, this.clock,
-      this.keep ? 'rgba(0,0,0,0)' : undefined) : null;
+      this.keep ? 'rgba(0,0,0,0)' : undefined, this.siegeScreens && this.layout.turned) : null;
     if (this.showpieceType && this.paintedAssets) {
       // Put the entire town, including its sack and flag, under the pasture daylight.
       this.children.moveBelow(this.town.layer, this.ground);
@@ -687,6 +708,9 @@ export class GameScene extends Phaser.Scene {
     this.featherPuffs = new FeatherPuffs();
     this.moments = this.fx?.createOverlays() ?? new Moments(this, this.layout, this.state.map);
     this.aimCross = world();
+    this.siegeGate = this.siegeScreens ? new SiegeGateEffects(this, this.layout, !this.autoTick, resume?.gateHistory) : undefined;
+    const fixed = this.siegeScreens && this.layout.turned ? [...this.moments.screenObjects, ...this.siegeGate!.fixed] : undefined;
+    const field = fixed ? this.children.list.filter(object => !fixed.includes(object)) : undefined;
     this.bannerBg = this.add.graphics().setDepth(4);
     const bannerTop = this.layout.map.y + BANNER_Y;
     const bannerText = (y: number, size: string, color: string) =>
@@ -697,7 +721,8 @@ export class GameScene extends Phaser.Scene {
     this.hud = new Hud(this, {
       onRepair: this.state.gate ? () => {
         if (this.paused || this.state.pendingBoon) return;
-        repairGate(this.state);
+        const result = repairGate(this.state);
+        if (result.ok) this.siegeAudio?.repair(this.clock.nowMs);
         this.redraw();
       } : undefined,
       // Milestone 25c: mid-wave, Start Wave reads "Call next  +N" and calls the next wave.
@@ -708,21 +733,26 @@ export class GameScene extends Phaser.Scene {
       onPick: (type) => this.togglePick(type),
       onSpecial: () => this.onSpecialButton(),
       onSpecialPick: (type) => this.selectSpecial(type),
-    }, this.layout, this.painted, this.pauseOnResult);
+    }, this.layout, this.painted, this.pauseOnResult, this.siegeScreens);
+    this.roadBanners = this.siegeScreens ? new RoadBanners(this, this.layout, this.state) : undefined;
+    this.siegeActors = this.siegeScreens && (this.state.windows || this.state.wallSiteTax)
+      ? new SiegeActors(this, this.layout, this.state, !this.autoTick) : undefined;
     this.siegeControls = this.state.windows || this.state.wallSiteTax
       ? new SiegeControls(this, this.layout, this.state, index => {
         if (this.paused || this.state.pendingBoon || this.state.phase !== 'wave') return;
         const attempt = shakeWindow(this.state, index);
         if (!attempt.ok && attempt.reason === 'empty-window') {
           this.siegeControls?.showEmptyWindow(index, this.state.tick);
+          this.siegeActors?.emptyWindow(index, this.clock.nowMs);
         }
-        this.takeEvents();
+        if (attempt.ok) this.siegeAudio?.pillow(this.clock.nowMs);
+        this.takeEvents(this.siegeScreens && attempt.ok);
         this.redraw();
       }, () => {
         if (this.paused || this.state.pendingBoon) return;
         payQuartering(this.state);
         this.redraw();
-      }) : undefined;
+      }, this.siegeScreens) : undefined;
     this.panel = new TowerPanel(this, this.layout, {
       onUpgrade: (path) => {
         if (this.panel.cell !== null) this.upgrade(this.panel.cell, path);
@@ -766,26 +796,31 @@ export class GameScene extends Phaser.Scene {
       onMenu: () => this.toMenu(),
     });
 
+    if (field) {
+      this.siegeView = new SiegeView(this, this.layout, field, !this.autoTick, this.state.phase, !!resume);
+    }
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (this.paused) return;
-      const { x, y } = this.showpiece?.camera.mapInput(p) ?? p;
+      const { x, y } = this.mapInput(p);
+      const screen = this.siegeView ? p : { x, y };
       this.press = null;
       this.aimPress = null;
-      if (this.state.pendingBoon || this.held.contains(x, y)) return;
+      if (this.state.pendingBoon || this.held.contains(screen.x, screen.y)) return;
       const repair = this.hud.repairRect;
-      if (repair && contains(repair, x, y)) return;
-      if (this.siegeControls && Object.values(this.siegeControls.rects()).some(rect => contains(rect, x, y))) return;
+      if (repair && contains(repair, screen.x, screen.y)) return;
+      if (this.siegeControls && Object.values(this.siegeControls.rects()).some(rect => contains(rect, screen.x, screen.y))) return;
+      if (this.siegeView && this.panel.rect && contains(this.panel.rect, p.x, p.y)) return;
       if (this.layout.onMap(x, y) && performance.now() < this.mapBlockedUntil) return;
       this.held.dismiss();
-      if (contains(this.hud.rects().gold, x, y)) this.goldTap();
-      if (this.specialPointerDown(x, y, p.wasTouch)) return;
+      if (contains(this.hud.rects().gold, screen.x, screen.y)) this.goldTap();
+      if (this.specialPointerDown(x, y, p.wasTouch, screen)) return;
       if (p.wasTouch) this.onTap(x, y);
       else this.onPointerDown(x, y);
-      this.beginPress(x, y, p.wasTouch);
+      this.beginPress(x, y, p.wasTouch, screen);
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
       if (this.paused) return;
-      const { x, y } = this.showpiece?.camera.mapInput(p) ?? p;
+      const { x, y } = this.mapInput(p);
       // A mouse press whose button was released unseen (mouseup outside the
       // page) cancels, so the drag does not stick to the pointer.
       if (this.press !== null && !this.press.touch && !p.wasTouch && mouseDragLost(p.isDown, p.buttons)) {
@@ -806,7 +841,7 @@ export class GameScene extends Phaser.Scene {
     });
     this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
       if (this.paused) return;
-      const { x, y } = this.showpiece?.camera.mapInput(p) ?? p;
+      const { x, y } = this.mapInput(p);
       this.endSpeedPress();
       if (this.aimPress !== null) this.endAimPress(x, y);
       else this.endPress(x, y, true);
@@ -930,7 +965,7 @@ export class GameScene extends Phaser.Scene {
     this.setTouch(false);
     this.pointer = { x, y };
     if (this.endScreen.kind) return; // the veil swallows map clicks
-    const target = classifyClick(x, y, this.panel.rect, this.state, this.layout);
+    const target = classifyClick(x, y, this.siegeView ? null : this.panel.rect, this.state, this.layout);
     switch (target.kind) {
       case 'ui':
         return; // the panel buttons handle it
@@ -963,7 +998,7 @@ export class GameScene extends Phaser.Scene {
   private onTap(x: number, y: number): void {
     this.setTouch(true);
     if (this.endScreen.kind) return;
-    let target = classifyClick(x, y, this.panel.rect, this.state, this.layout);
+    let target = classifyClick(x, y, this.siegeView ? null : this.panel.rect, this.state, this.layout);
     // Milestone 35: with no pick, a tap near a tower (within 0.75 of a cell of its centre) selects the nearest one.
     if (this.pick === null && (target.kind === 'buildable' || target.kind === 'blocked')) {
       const near = nearestTower(this.layout.toWorld({ x, y }), this.state.towers.map((t) => t.cell));
@@ -1038,11 +1073,11 @@ export class GameScene extends Phaser.Scene {
    * mouse press on the map fires at it; a touch press on the map starts an
    * aim press, resolved on release (endAimPress).
    */
-  private specialPointerDown(x: number, y: number, touch: boolean): boolean {
+  private specialPointerDown(x: number, y: number, touch: boolean, screen: { x: number; y: number }): boolean {
     if (this.endScreen.kind) return false;
     const menu = this.hud.specialMenuRect;
-    if (menu !== null && contains(menu, x, y)) return true;
-    const onSpecialButton = contains(this.hud.rects().special, x, y);
+    if (menu !== null && contains(menu, screen.x, screen.y)) return true;
+    const onSpecialButton = contains(this.hud.rects().special, screen.x, screen.y);
     if (!this.layout.inMap(x, y)) {
       if (!onSpecialButton) this.cancelSpecial();
       return false;
@@ -1280,16 +1315,16 @@ export class GameScene extends Phaser.Scene {
    * After a pointerdown: remember a press on an affordable bar button, or in
    * setup on an unlocked tower, so that moving past the threshold drags it.
    */
-  private beginPress(x: number, y: number, touch: boolean): void {
+  private beginPress(x: number, y: number, touch: boolean, screen: { x: number; y: number }): void {
     if (this.endScreen.kind) return;
     const rects = this.hud.rects();
-    const barType = BAR_TYPES.find((type) => contains(rects[`bar:${type}`], x, y));
+    const barType = BAR_TYPES.find((type) => contains(rects[`bar:${type}`], screen.x, screen.y));
     const base = { touch, x0: x, y0: y, x, y, active: false, cell: null, snapFrom: null };
     if (barType !== undefined) {
       if (canPick(this.state, barType)) this.press = { ...base, kind: 'place', tower: barType, from: null };
       return;
     }
-    if (this.panel.rect !== null && contains(this.panel.rect, x, y)) return;
+    if (this.panel.rect !== null && contains(this.panel.rect, screen.x, screen.y)) return;
     const cell = cellAt(x, y, this.layout);
     const tower = cell === null ? undefined : towerAt(this.state, cell);
     if (tower && !tower.locked && this.state.phase === 'setup') {
@@ -1456,7 +1491,7 @@ export class GameScene extends Phaser.Scene {
   /** Every clickable rectangle by name: HUD and bar buttons, the open panel's buttons, and `playAgain` and `menu`. */
   uiRects(): Record<string, Rect> {
     if (this.paused) return { mute: this.hud.rects().mute, ...this.pausePanel.rects() };
-    return { ...this.hud.rects(), ...this.siegeControls?.rects(), ...this.reward.rects(), ...this.held.rects(), ...this.panel.rects(), ...this.endScreen.rects() };
+    return { ...this.hud.rects(), ...this.siegeControls?.rects(), ...this.roadBanners?.rects(), ...this.reward.rects(), ...this.held.rects(), ...this.panel.rects(), ...this.endScreen.rects() };
   }
 
   /** The end screen showing, or null. */
@@ -1479,29 +1514,30 @@ export class GameScene extends Phaser.Scene {
     this.leaving = true;
     this.restartPending = false;
     this.resume = null;
-    const data: GameStartData = { difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, showpiece: this.showpieceType, keep: this.keepModule, keepAssets: this.keepAssets, paintedFallback: this.paintedFallback };
+    const data: GameStartData = { difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, showpiece: this.showpieceType, keep: this.keepModule, campaignKeep: this.campaignKeep, keepAssets: this.keepAssets, paintedFallback: this.paintedFallback };
     this.scene.restart(data);
   }
 
   /** Back to the title menu (milestone 25), which still shows the level and (milestone 27) map just played. */
   toMenu(): void {
     if (this.openEnding(false)) return;
-    this.leaveForTitle({ screen: this.keepModule ? 'first' : this.state.level ? 'levelMap' : 'freePlay' });
+    this.leaveForTitle({ screen: this.keepModule && !this.campaignKeep ? 'first' : this.state.level ? 'levelMap' : 'freePlay' });
   }
 
   private openEnding(replayLevel: boolean): boolean {
-    if (!this.campaignResult()?.complete || seenBroadsides.has('ending')) return false;
-    this.leaveForTitle({ screen: 'ending', replayLevel });
+    const screen = this.campaignKeep ? 'siegeEnding' : 'ending';
+    if (!this.campaignResult()?.complete || broadsideStore(screen).has(screen)) return false;
+    this.leaveForTitle({ screen, replayLevel });
     return true;
   }
 
-  private leaveForTitle(destination: { screen: 'first' | 'levelMap' | 'freePlay' | 'levelCard' | 'ending'; levelId?: number; replayLevel?: boolean }): void {
+  private leaveForTitle(destination: { screen: 'first' | 'levelMap' | 'freePlay' | 'levelCard' | 'ending' | 'siegeEnding'; levelId?: number; replayLevel?: boolean }): void {
     if (this.leaving) return;
     this.leaving = true;
     this.restartPending = false;
     this.resume = null;
     if (this.keepModule) {
-      sound.endSessionMute();
+      if (destination.screen !== 'siegeEnding') sound.endSessionMute();
       this.keepAssets = undefined; // The view releases its set when Phaser shuts it down.
       this.keepLoading = false;
     }
@@ -1525,6 +1561,7 @@ export class GameScene extends Phaser.Scene {
       delta = this.clock.deltaMs;
       this.fx?.advanceClock(delta, this.speed);
       this.advance(ticks, false);
+      this.siegeAudio?.update(this.state, this.clock.nowMs);
       // Effects age in real time in play (milestone 30), so a label lasts 1.5 s at any speed.
       this.specialFx.advance(delta);
       this.barricadeFx.advance(delta);
@@ -1572,7 +1609,7 @@ export class GameScene extends Phaser.Scene {
    * run too.
    */
   private recordScore(): void {
-    if (this.keepModule) return;
+    if (this.keepModule && !this.campaignKeep) return;
     const cleared = wavesCleared(this.state);
     if (cleared <= this.recordedCleared) return;
     this.recordedCleared = cleared;
@@ -1594,7 +1631,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Hand the events not yet seen to the sprites (after every tick and action). */
-  private takeEvents(): void {
+  private takeEvents(silentFeathers = false): void {
     if (!this.enemySprites) return;
     const { events, newTick } = this.eventCursor.take(this.state);
     if (newTick) this.enemySprites.newTick();
@@ -1611,7 +1648,7 @@ export class GameScene extends Phaser.Scene {
       const spot = this.enemySprites.spot(event.enemyId);
       if (spot && !this.keepModule) this.town.sacks.release(ENEMY_STATS[spot.type].livesCost, this.animationTime);
     }
-    if (puff) sound.play('impact.feathers');
+    if (puff && !silentFeathers) sound.play('impact.feathers');
     this.barricadeFx.onEvents(events);
     this.guardFx.onEvents(events);
     if (this.fx) this.fx.onEvents(events, this.state);
@@ -1657,7 +1694,12 @@ export class GameScene extends Phaser.Scene {
   showpieceState() { return this.showpiece?.snapshot() ?? null; }
 
   displayedMapPoint(p: { x: number; y: number }) {
-    return this.showpiece?.camera.displayed(p) ?? p;
+    return this.siegeView?.displayed(p) ?? this.showpiece?.camera.displayed(p) ?? p;
+  }
+
+  private mapInput(p: { x: number; y: number }) {
+    if (this.siegeView && this.layout.onMap(p.x, p.y)) return this.siegeView.input(p);
+    return this.showpiece?.camera.mapInput(p) ?? p;
   }
 
   paintedState(): PaintedState {
@@ -1813,6 +1855,8 @@ export class GameScene extends Phaser.Scene {
 
   redraw(): void {
     if (!this.dynamic || this.keepLoading) return;
+    this.siegeView?.update(this.state.phase, this.clock.nowMs);
+    const project = this.siegeView?.displayed;
     this.keep?.frame(this.pick !== null || this.press !== null || this.aiming !== null || this.specialMenuOpen);
     this.showpiece?.draw(this.state, this.pick !== null || this.press?.active === true,
       !this.press?.active && !this.aimPress?.active && !this.panel?.cell && !this.state.pendingBoon && !this.specialMenuOpen && !this.held?.tooltip);
@@ -1821,7 +1865,14 @@ export class GameScene extends Phaser.Scene {
     if (!this.keepModule) this.town.update(this.state, this.animationTime);
     this.living?.update(this.state, this.pick !== null || this.press?.active === true);
     this.ground.clear();
-    drawSiegeRoads(this.ground, this.state);
+    if (this.state.map.id === 'keep') {
+      if (!this.keep?.outerGate) drawSiegeRoads(this.ground, this.state);
+      drawGateMarker(this.ground, this.state.gate, this.layout, this.keep?.outerGate);
+      if (this.siegeGate && this.keep?.outerGate) {
+        this.siegeGate.update(this.state, this.keep.outerGate, this.clock.nowMs, project ?? (p => p),
+          this.state.phase === 'wave' && !this.paused);
+      }
+    }
     this.specialFx.drawGround(this.ground, this.state);
     const g = this.dynamic;
     g.clear();
@@ -1832,7 +1883,7 @@ export class GameScene extends Phaser.Scene {
     drawTowers(g, this.state, this.aim, moving, pose, this.layout, this.painted?.towerBody);
     const blocker = this.state.blockers.find((b) => b.kind === 'barricade') ?? null;
     const motion = this.barricadeMotion;
-    const stopped = this.barricadeFx.stoppedPositions(this.state, motion);
+    const stopped = this.barricadeFx.stoppedPositions(this.state, motion, !this.siegeScreens);
     drawStatusRings(g, this.state, this.layout, stopped);
     if (!this.painted) drawShadows(g, this.state, this.layout, stopped);
     this.enemySprites.sync(this.state, this.speed, stopped);
@@ -1845,8 +1896,11 @@ export class GameScene extends Phaser.Scene {
     this.barricadeFx.drawWall(this.shotFx, blocker, this.layout, motion);
     this.barricadeFx.drawCrash(this.shotFx, this.layout, motion);
     this.bars.clear();
+    if (this.siegeScreens && (this.aiming !== null || this.panel.cell !== null || this.pick !== null)) {
+      this.enemySprites.drawSiegeFeet(this.bars);
+    }
     this.featherPuffs.draw(this.bars, this.clock.nowMs);
-    drawHpBars(this.bars, this.state, this.layout, stopped, this.painted ? id => this.enemySprites.paintedBar(id) : undefined);
+    drawHpBars(this.bars, this.state, this.layout, stopped, this.painted ? id => this.enemySprites.paintedBar(id) : undefined, this.siegeScreens);
     const held = blocker ? this.state.enemies.filter(enemy =>
       !isFlying(enemy) && enemy.distance === distanceOnRoad(this.state.map, enemy.road, blocker)).length : 0;
     this.barricadeFx.drawHp(this.bars, blocker, this.layout, held);
@@ -1859,7 +1913,11 @@ export class GameScene extends Phaser.Scene {
       menuOpen: this.specialMenuOpen, aiming: this.aiming, banner, paused: this.paused,
     }, this.autoTick ? this.clock.nowMs : undefined);
     this.moments.draw(this.animationTime);
-    this.siegeControls?.update(this.state, this.paused || !!this.state.pendingBoon || this.panel.rect !== null || this.aiming !== null || this.specialMenuOpen);
+    const covered = this.paused || !!this.state.pendingBoon || this.panel.rect !== null || this.aiming !== null || this.specialMenuOpen;
+    this.siegeActors?.update(this.state, this.clock.nowMs, project ?? (p => p),
+      this.state.phase === 'setup' || this.state.phase === 'wave');
+    this.siegeControls?.update(this.state, covered, this.siegeView?.verticalScale, this.siegeView?.displayed);
+    this.roadBanners?.update(this.state, covered, this.siegeView?.verticalScale, this.siegeView?.displayed);
     this.reward.update(this.paused ? null : this.state.pendingBoon);
     this.held.update(this.state.boons);
     this.drawBanner();
@@ -1870,7 +1928,7 @@ export class GameScene extends Phaser.Scene {
    * portrait LIFT_CSS CSS px at the canvas's current fit (input.ts liftPx).
    */
   private get lift(): number {
-    return liftPx(this.layout, this.scale.displayScale.y);
+    return liftPx(this.layout, this.scale.displayScale.y) / (this.siegeView?.verticalScale ?? 1);
   }
 
   /** The aim banner's centre line: the middle of the map on the screen (milestone 32b). */
@@ -1910,8 +1968,10 @@ export class GameScene extends Phaser.Scene {
     this.pick = null;
     this.press = null;
     this.cancelSpecial();
-    const campaign = this.state.level ? campaignResultText(this.state, campaignProgress.table()) : null;
+    const campaign = this.state.level ? campaignResultText(this.state, campaignProgress.table(), this.actThree && (!this.keepModule || this.campaignKeep)) : null;
+    const before = this.siegeView ? new Set(this.children.list) : undefined;
     this.endScreen.show(kind, this.state, campaign);
+    if (before) this.siegeView?.fix(this.children.list.filter(object => !before.has(object)));
   }
 
   private redrawUi(): void {
@@ -2099,7 +2159,7 @@ export class GameScene extends Phaser.Scene {
       this.removeMagnifier();
       return;
     }
-    const box = placeMagnifier(this.layout.map, finger, target, this.mag?.box.side ?? null);
+    const box = placeMagnifier(this.layout.map, this.siegeView?.displayed(finger) ?? finger, this.siegeView?.displayed(target) ?? target, this.mag?.box.side ?? null);
     const centre = magnifierCentre(this.layout.map, target);
     if (this.mag === null) {
       const frame = this.add.graphics().setDepth(1000);
@@ -2107,6 +2167,8 @@ export class GameScene extends Phaser.Scene {
       cam.inputEnabled = false;
       cam.setZoom(MAGNIFIER_ZOOM).setBackgroundColor(this.keep ? '#111418' : COLORS.grass);
       this.keep?.showMagnifiedGround();
+      this.siegeView?.fix([frame]);
+      this.siegeView?.hideFixedFrom(cam, this.children.list);
       cam.ignore([frame, this.bannerBg, this.bannerMain, this.bannerHint]);
       this.mag = { cam, frame, box, centre };
     }

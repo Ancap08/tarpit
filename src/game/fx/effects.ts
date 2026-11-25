@@ -211,6 +211,7 @@ export class Effects {
     private readonly layout: Layout,
     private readonly clock: GameClock,
     private readonly mapBackground: string | number = COLORS.grass,
+    private readonly settledCamera = false,
   ) {
     this.projectiles = new Array<Projectile | null>(CAPS.projectiles).fill(null);
     this.impacts = new Array<Impact | null>(CAPS.impacts).fill(null);
@@ -515,7 +516,7 @@ export class Effects {
    * camera never shows the HUD.
    */
   private shake(s: { ms: number; px: number }, strength = 1): void {
-    if (this.reducedMotion) return;
+    if (this.reducedMotion || this.settledCamera) return;
     this.counts.shakes += 1;
     this.shakeAt = this.realMs;
     this.shakeMs = s.ms;

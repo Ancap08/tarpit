@@ -7,7 +7,7 @@ type Locate = (key: Landmark) => Point;
 type Graphics = Phaser.GameObjects.Graphics;
 
 /** All movable fittings use the same projected 3D mounting points as the stone. */
-export function drawFittings(g: Graphics, at: Locate, t: number, high: boolean) {
+export function drawFittings(g: Graphics, at: Locate, t: number, high: boolean, runoff = true) {
   g.clear();
   const clock = at('clock'), radius = at('dialRight').x - clock.x;
   for (const [length, angle, weight] of [[.74,t / 9 + .82,1.1],[.52,t / 108 - 1.95,1.7]]) {
@@ -78,7 +78,7 @@ export function drawFittings(g: Graphics, at: Locate, t: number, high: boolean) 
     const q=(t*.23+i/9)%1, x=chimney.x+q*34+q*Math.sin(t*.65+q*9)*6;
     g.fillStyle(0x87909c,(1-q)*.14).fillEllipse(x,chimney.y-q*31,3+q*14,2+q*7);
   }
-  for (const key of ['roofL','roofR'] as const) {
+  for (const key of runoff ? ['roofL','roofR'] as const : []) {
     const p=at(key);
     for (let i=0;i<5;i++) {
       const k=(t*1.7+i*.21)%1;
