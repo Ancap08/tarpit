@@ -11126,3 +11126,120 @@ The copy follow-up updated the README recharge description and the third-pass re
 - **Added** `src/sim/featherBarrel-verifier.test.ts` (13 tests): cast on nobody costs the full 3,034 wait, Harpy run back, Feathers tower and barrel never feather the same enemy twice, ordinary barrel on level 5, 10 and Free play, Bare hands forfeited on 11, 15, 16, 18 and 20, gold ledger within 15%, determinism of levels 12 and 14.
 - **Checks.** lint, typecheck, build pass; `npm test` 2,848 of 2,848 before my file (130 files); `npm run sim` exit 0; `PW_PORT=4473 npm run test:e2e` 1,193 passed, 8 skipped.
 - **Stale words.** README line 68 says every special refills in 20 s; the DECISIONS heading still reads "the barrel feathers a crowd"; the DEVLOG third-pass section says C2 and S1 fail, which the last commit superseded.
+
+## 2026-11-24, milestone 51 — the Old Keep
+
+Open `?keep=1` for the three-wave exhibition. Ordinary towers defend ten
+marked sites on the approach and battlements. The road ends at the foot of
+the gate stairs. A fresh visit starts with 20 lives and 240 gold. The wave
+groups and all six spawn intervals are in the Old Keep section of
+[DESIGN](docs/DESIGN.md). Existing levels, tower prices and enemy stats
+keep their milestone 50 values.
+
+[Phone recording](docs/review/m51/keep-phone.mp4) ·
+[390 × 844](docs/review/m51/keep-390x844.png) ·
+[390 × 664](docs/review/m51/keep-390x664.png) ·
+[1024 × 768](docs/review/m51/keep-1024x768.png) ·
+[960 × 580](docs/review/m51/keep-960x580.png) ·
+[Wall crews in action](docs/review/m51/keep-wall-defence.png)
+
+Three transparent Blender plates share the gate foot at native pixel
+(640, 934). The far ward silhouettes the outer spires. The middle ward
+carries the clock, bell stage, tracery, rose and flying buttresses. The
+foreground carries the gate, raised ironwork, stairs, curtain and wall
+decks. A fourth exposure lights the entire model from a storm key. All
+four plates are 1280 × 960 and occupy 463,764 bytes. The two approaches
+are painted from the same road coordinates used by enemy movement.
+Portrait is 960 × 1920 and landscape is 1920 × 960. The sky is 1440 ×
+800. Separate small plates supply the cloud veil, fog, light bloom,
+plinth and projecting gallery. The twelve WebPs together occupy 891,418
+bytes. The ordinary service worker leaves the keep out of its cold install.
+
+[Dusk at native resolution](docs/review/m51/keep-dusk-detail.jpg) ·
+[Lightning at native resolution](docs/review/m51/keep-lightning-detail.jpg) ·
+[Raw layers and dimensions](docs/review/m51/keep-layers.jpg)
+
+The first lighting pass bleached the upper towers and hid the
+portcullis against the door. Lower moon fill, dark iron teeth and warmer
+windows improved both at phone scale. A square clock gable interrupts
+the conical roofs. At native scale two buttresses initially crossed a
+lancet, so their feet moved to the piers. The first in-game screenshot
+also put a tower marker over a roof without visible support. It now
+projects on a stone gallery. The recording shows the opening drift
+followed by ordinary purchases and the first wave at the game's 3×
+speed. The separate action still stages wave three and advances the
+simulation to a Longbow shot about 49 world pixels from the gate, with
+26 collectors on the road.
+
+This is a frontal painted miniature. Portrait gives the spires more
+height. Landscape compresses the castle to fit the road and HUD, and
+the outer roofs still repeat. A deeper side ward or an oblique roofline
+would make the fortress feel larger at close range.
+
+### Switch-off comparison
+
+The comparison build was `655a658`, the milestone 50 merge on
+`origin/main` from which the spike was cut. All 78 baseline frames
+across the five existing screenshot specs matched on the same Mac.
+The 44 desktop, 21 phone and one tablet visual frames plus six desktop
+and six phone campaign frames contain 36,792,976 pixels in all.
+The committed baseline PNGs stayed untouched.
+
+The additional production comparison covered the three Free play maps,
+Classic, Painted and showpiece, portrait and landscape, during setup and
+after 420 ticks. All 36 canvas/state pairs and all 18 HTTP request
+inventories matched (Vite content hashes are normalized for request
+names). The shared boot bundle grew by 853 bytes at gzip level 9. A
+fresh service-worker install made zero keep requests. A
+three-wave keep win preserved an existing storage record exactly.
+
+Both output streams from `npm run sim` matched the M50 build byte for
+byte (35,223 bytes stdout, 650 bytes stderr). SHA-256 of stdout was
+`1b6a72bb61238cab1ef5dd5fbee63100450b5ea38eedfc0c2d4bae4a93a20ef9`.
+The complete bot results, including purchases and terminal state, matched
+for eight policies on each of the twenty campaign levels. The existing
+Free play parity tests also cover all public maps and difficulties.
+
+### Frame cost
+
+The governor samples average frame time over 750 ms. It drops a tier
+above 20 ms and needs 10 seconds below 17.5 ms plus a recovery cooldown
+before stepping up. The first cooldown lasts 30 seconds and doubles
+after each drop. Every tier keeps the castle, banners, torchlight,
+lightning and a strip of road fog.
+
+For the phone measurement, `?keep=1&perf=1&keepTier=0|1|2` pins one
+tier at a time. Four ordinary towers spend 230 of the 240 starting gold. Forty
+Goblins are spread along the road and replacements enter as others die
+or exit. Each five-second sample follows a one-second warm-up. The
+phone profile is 390 × 844, DPR 3, mobile and touch enabled, running
+Chromium software WebGL (SwiftShader) on a Mac. The 4× column uses CDP
+CPU throttling. Neither sample measures a physical handset.
+
+| Tier | Atmospheric work | 1× median / p95 / max ms | 4× median / p95 / max ms |
+| --- | --- | ---: | ---: |
+| High | 15 ms updates, two clouds, three fog strips, five light blooms, 37 rain strokes | 16.7 / 16.7 / 16.8 | 16.7 / 16.8 / 16.8 |
+| Medium | 32 ms updates, one cloud, two fog strips, five light blooms, 11 rain strokes | 16.7 / 16.7 / 16.8 | 16.7 / 16.8 / 33.2 |
+| Low | 96 ms updates, one fog strip, two torch blooms, no moving clouds, rain or idle spire parallax | 16.7 / 16.7 / 16.8 | 16.7 / 16.7 / 16.8 |
+
+The samples contain 300 or 301 measured intervals per tier. Run
+`PW_PORT=4373 node --experimental-strip-types scripts/art/m51Frames.ts`
+after a production build. Add `M51_CPU=4` for the throttled measurement.
+The 390 × 844 H.264 film runs 14.96 seconds. The captures can be
+recreated with `scripts/art/m51Media.ts` on the same port and
+`python3 scripts/art/keep_review.py` for the native plates and contact sheet.
+
+### Verification
+
+Lint, typecheck, asset inventory (240 rows), deterministic simulation,
+build and size checks passed. The production site is 4,669,350 bytes.
+The unit suite passed 2,864 tests across 132 files. One complete
+three-project browser pass selected 1,211 tests. It passed 1,201 and
+skipped eight. Two desktop cases failed on that pass and passed in a
+serial retry on the clean production build. The ordinary audio fixture
+counted a cannon impact before its first observed shot in its 2× sample.
+The install-update check found a mismatch between the worker version
+and the directory hash because I refreshed the build while the suite
+was running and left three superseded chunks. A clean build removed them.
+The four keep-specific browser checks passed again, including winning
+with saved progress intact and pausing the opening with the keyboard.

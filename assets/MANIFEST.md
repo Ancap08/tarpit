@@ -234,3 +234,24 @@ the checker looks for it.
 | `docs/art/showpiece/phone-dusk.jpg` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 phone dusk capture |
 | `docs/art/showpiece/phone-morning.jpg` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 phone morning capture |
 | `docs/art/showpiece/phone.mp4` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 phone recording |
+| `public/assets/keep/crown.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Native Blender castle plate |
+| `public/assets/keep/drift.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Painted approach or atmospheric texture |
+| `public/assets/keep/far.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Native Blender castle plate |
+| `public/assets/keep/gallery.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Painted approach or atmospheric texture |
+| `public/assets/keep/gate.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Native Blender castle plate |
+| `public/assets/keep/glow.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Painted approach or atmospheric texture |
+| `public/assets/keep/landscape.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Painted approach or atmospheric texture |
+| `public/assets/keep/lightning.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Native Blender castle plate |
+| `public/assets/keep/mist.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Painted approach or atmospheric texture |
+| `public/assets/keep/plinth.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Painted approach or atmospheric texture |
+| `public/assets/keep/portrait.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Painted approach or atmospheric texture |
+| `public/assets/keep/sky.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Painted approach or atmospheric texture |
+| `docs/review/m51/keep-1024x768.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Production game capture |
+| `docs/review/m51/keep-390x664.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Production game capture |
+| `docs/review/m51/keep-390x844.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Production game capture |
+| `docs/review/m51/keep-960x580.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Production game capture |
+| `docs/review/m51/keep-dusk-detail.jpg` | `scripts/art/keep_review.py` | Tarpit agents | MIT | Native layer study |
+| `docs/review/m51/keep-layers.jpg` | `scripts/art/keep_review.py` | Tarpit agents | MIT | Native layer study |
+| `docs/review/m51/keep-lightning-detail.jpg` | `scripts/art/keep_review.py` | Tarpit agents | MIT | Native layer study |
+| `docs/review/m51/keep-phone.mp4` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Production game capture |
+| `docs/review/m51/keep-wall-defence.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Production game capture |
