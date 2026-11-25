@@ -10689,3 +10689,325 @@ Lint, typecheck, production build, 219 asset checks and size checks pass. The bu
 The full Playwright run on port 4373 took 14.1 minutes across Chromium, tablet and phone. It passed 1,157 tests, skipped eight and failed seven. Wave 8's crowd frame had 17 opening lives instead of 14. An independent scan still found its first peak of 22 enemies on tick 1396. The other six failures were two unchanged scene-restart checks on all three projects. The new barrel makes the existing lazy feather textures reachable in these playthroughs. Both texture keys survived a scene restart; the creating scene now releases them on shutdown. The rebuilt preview passed all seven failures in a focused rerun. Port 4373 was released. All 10 focused animation unit tests passed.
 
 The retained branch's complete `npm run sim` exited 1. It measured 132.89 combat minutes across twenty levels and reported R6, L3, L8, T1, F2, L6 and L4. The two extra C6 diagnostics both occur on level 7. The Free play report digest matches the pre-retune measurement above.
+
+## Milestone 50, second pass — a longer wait after the crowd barrel
+
+### Which wave-start rule can meet the Free play opening targets?
+
+The search varied only the barrel refill (1201–3600 whole simulation ticks) and barrel retreat (60–88 ticks), with original campaign levels, Free play difficulties, tower data and policies. This gives 69,600 pairs. Every candidate had to put all three standard games inside 9–15 lives, meet C2 on each map and win C3 outright on at least one.
+
+- A full wave-start refill produced zero passes. The four Free play policies choose a special at multiples of 30 wave ticks, have no early calls and use the default rewards without Quick Hands. For a cast on such a check, all waits rounding up to the same next 30-tick check give identical actions until the next wave resets the charge. Testing 80 waits at all 29 run lengths covers the complete range.
+- Crediting one ordinary refill at each wave start also produced zero passes across all 69,600 pairs. To group neighboring waits, the search tracked each policy check that could cast: a rejected opportunity bounds the shortest equivalent wait, and a successful cast bounds the longest. A cached wave was reused only for identical decisions from the same preceding wave history. The full policy replays and underlying source tests independently reproduced the close cases. At 3300/72 the standard scores were 14/12/15, unused 10/8/4, all barrel 11/3/20 and all Fire Arrows 17/14/20. Riverbend tied. At 1950/76 the barrel won Switchback 15–14, but the standard scores were 17/14/19. Neither trial qualified.
+- Carrying the outstanding barrel wait in full across wave starts produced strict wins on Switchback. The retained rule gives the ordinary specials their original wave-start refill. New waves, automatic dispatch and early calls preserve a barrel wait, and setup pauses it. Quick Hands scales the duration at the time of the cast. The HUD shows the remaining wait, and the Person bot takes its usual reaction time from actual readiness. Across the 69,600 pairs, seven qualify: 2524, 2525 and 2526 ticks at a 70-tick retreat; 2959 ticks at 62; and 3032, 3033 and 3034 ticks at 63. No longer refill passes the opening at any permitted retreat length under these three wave-start rules.
+
+### Retained numbers and Free play results
+
+| Rule | Before | Retained | Change |
+|---|---:|---:|---:|
+| Shared refill after a barrel | 1200 ticks (20 s) | 3034 ticks (50.57 s) | +152.83% |
+| Barrel retreat | 88 ticks | 63 ticks (1.05 s) | −28.41% |
+| Barrel refill with Quick Hands | 684 ticks | 1729 ticks (28.82 s) | +152.78% |
+| Ordinary refill / with Quick Hands | 1200 / 684 ticks | 1200 / 684 ticks | 0% |
+| Tower retreat / flinch | 88 / 16 ticks | 88 / 16 ticks | 0% |
+| Barrel radius / slow / tar time | 100 px / 50% / 660 ticks | 100 px / 50% / 660 ticks | 0% |
+
+The barrel sends each eligible enemy back at its own walking speed. Waiting preserves the next turn in the standard rotation. The unused-barrel control spends exactly the same charge and wait without applying the impact. The shared button counts down throughout the wait. In the desktop and phone captures it displays 51 seconds on impact and 50 seconds after 37 ticks.
+
+The left side is the first crowd build at the ordinary refill (b674713). The right side is the retained Free play build with original difficulty data. Scores are finishing lives.
+
+| Map | Standard | Barrel turn unused | All barrel | All Fire Arrows | Casts | Feathered | After, per cast in game order |
+|---|---:|---:|---:|---:|---:|---:|---|
+| Meadow | 21 → 15 | 10 → 10 | 20 → 9 | 17 → 17 | 21 → 12 | 123 → 99 | 7, 7, 3, 5, 3, 11, 7, 8, 11, 14, 15, 8 |
+| Switchback | 15 → 9 | 9 → 4 | 10 → 15 | 14 → 14 | 23 → 15 | 90 → 63 | 8, 6, 3, 7, 5, 4, 10, 5, 7, 8, 0, 0, 0, 0, 0 |
+| Riverbend | 22 → 15 | 10 → 6 | 16 → 18 | 20 → 20 | 20 → 12 | 125 → 102 | 7, 6, 9, 3, 5, 9, 7, 7, 11, 16, 13, 9 |
+
+Across the three games, 64 casts feathered 338 enemies before (5.28 per cast). With the longer wait, 39 casts feathered 264 (6.77 per cast). The three new map averages are 8.25, 4.20 and 8.50. All twelve policy replays completed with zero refused actions. The five empty Switchback casts count toward its average.
+
+### Campaign before and after lever 0, before level tuning
+
+Each cell gives stars/lives on the first crowd build and with lever 0 alone. A single score applies to both builds. The last column gives the local misses before the level 9 repair. The previous section “Twenty-level gate before tuning” lists every first-build miss.
+
+| Level | Good | Person | Beginner | Good, Feathers + barrel | Person, Feathers + barrel | Lever 0 local misses |
+|---:|---|---|---|---|---|---|
+| 1 | 3/20 | 3/20 | 3/20 | 3/20 | 3/20 | pass |
+| 2 | 3/20 | 3/20 | 1/3 | 3/20 | 3/20 | pass |
+| 3 | 3/20 | 3/20 | 2/16 | 3/20 | 3/20 | pass |
+| 4 | 2/13 | 2/16 | 0/0 | 2/13 | 2/16 | pass |
+| 5 | 3/20 | 3/20 | 1/2 | 3/20 | 3/20 | pass |
+| 6 | 2/17 → 2/15 | 2/16 → 2/15 | 0/0 | 2/17 → 2/16 | 2/16 → 2/13 | pass |
+| 7 | 2/16 | 2/12 | 0/0 | 3/20 → 0/0 | 3/20 → 0/0 | pass |
+| 8 | 2/17 → 1/10 | 2/16 → 1/7 | 0/0 | 2/14 → 1/7 | 2/13 → 1/9 | L1, L3, L1m |
+| 9 | 3/20 → 2/17 | 3/20 → 3/19 | 0/0 | 3/20 → 0/0 | 2/12 → 0/0 | L6 |
+| 10 | 2/17 → 1/9 | 3/18 → 1/6 | 0/0 | 2/16 → 1/6 | 2/16 → 1/5 | L1, L1m, L3, L5, L8 |
+| 11 | 2/20 | 2/20 → 2/12 | 0/0 | 2/20 → 1/9 | 2/16 → 1/5 | P1, L1m |
+| 12 | 2/19 → 2/18 | 2/20 → 2/15 | 0/0 | 2/17 → 1/2 | 2/17 → 1/3 | F1, T1, L6 |
+| 13 | 3/20 | 2/17 → 2/13 | 0/0 | 3/20 → 2/13 | 3/20 → 1/2 | P1, L1m, L6 |
+| 14 | 3/20 | 2/14 | 0/0 | 3/20 | 3/20 → 2/13 | pass |
+| 15 | 2/15 → 2/14 | 2/14 → 2/13 | 0/0 | 2/15 → 2/14 | 2/13 → 2/12 | pass |
+| 16 | 2/15 → 2/14 | 2/15 → 2/14 | 0/0 | 2/13 → 1/10 | 1/11 → 1/9 | pass |
+| 17 | 2/20 | 2/14 → 1/10 | 0/0 | 2/20 | 0/0 | P1, F1, T2, L1m |
+| 18 | 2/15 | 2/14 → 1/11 | 0/0 | 2/12 → 1/7 | 1/7 → 1/4 | T2, L1m |
+| 19 | 2/17 → 2/16 | 2/15 → 2/16 | 0/0 | 2/17 → 0/0 | 1/10 → 0/0 | F2, T1 |
+| 20 | 2/14 → 2/13 | 2/13 | 0/0 | 2/15 → 2/13 | 2/14 → 2/13 | T1 |
+
+Ten of twenty levels pass locally. C6 passes on all twenty. The Good boss scores are 17, 9 and 13 against accepted scores of 20, 16 and 13. The first ten levels take 73.07 combat minutes. Their mean lives drop is 8.00. All twenty take 134.47 minutes and their mean drop is 2.67 against a required 3. Person averages 10.67 lives on the preceding cohort and 13.10 in act two, with a +6 handover and a maximum subsequent drop of 4. The across-level failures are L8 and S1.
+
+### Retained level change
+
+| Level | Field | Before | Retained | Change | Evidence |
+|---:|---|---:|---:|---:|---|
+| 9, The King's Assessor | Enemy HP scale | 1 | 0.987 | −1.3% | With lever 0 alone, the independent tower-path verifier saw ordinary Good finish 2/17 and tower-path-only Good finish 3/20. Both now finish 3/20. Ordinary Person finishes 3/18. The local gate and C8 both pass here. |
+
+The branch retains one campaign field. All other campaign tuning below was tested on copies of the level data. The accepted milestone 49 digest still guards all twenty complete definitions after reversing that one recorded change. The no-barrel replays for the nineteen unchanged levels retain their original digests. C6's forced-barrel policy and the independent tower-path-only verifier use different simulations.
+
+### Free play balance at 3034/63
+
+73 of the 91 core rows pass on the retained difficulties. Both standard policies in C2 and C3 are covered separately. The full result for each row follows, with its original window.
+
+<details><summary>All 91 target rows with measured values</summary>
+
+```text
+ok    N1  meadow     Normal: noTowers loses by wave 3: L 1
+ok    N2  meadow     Normal: lazyBuild loses on wave 7 to 14: L 8
+ok    N3  meadow     Normal: longbowSpam loses on wave 8 to 16: L 8
+ok    N4  meadow     the reinvesting combo wins Normal: W 15
+ok    S1  meadow     reinvesting Normal combo wins with 9–15 lives: W 15
+MISS  S2  meadow     normal comboBuild loses lives on three or more act-2 waves, at most 4 each: W 15, losses 0/0/0/0/1/0/0/0/1/0
+ok    S3  meadow     normal comboBuild wins within 4 lives of baseline at ±5% act-2 HP: W 14 / W 15 / W 12
+ok    S2  meadow     hard hardBuild loses lives on three or more act-2 waves, at most 5 each: W 8, losses 0/0/0/0/2/2/0/3/0/0
+ok    S3  meadow     hard hardBuild wins within 5 lives of baseline at ±5% act-2 HP: W 11 / W 8 / W 9
+ok    V2  meadow     stopping after the fixed plan costs the game in act 2 or at least five lives: reinvest W 15, fixed W 2
+ok    S4  meadow     wideBuild wins within five lives without buying a second upgrade: wide W 13, combo W 15
+ok    V4  meadow     lazy wins Easy with eight lives, loses Normal on 7–14 and Hard by 8, hardBuild wins Hard with three: hardBuild W 8, lazy E/N/H W 33/L 8/L 2
+ok    S5  meadow     specials save at least three lives or turn a wave-17-or-later loss into a win: all W 15, none W 8
+ok    S6  meadow     removing Fire Pots gains at most one life: combo W 15, no Fire Pots W 12
+ok    N7  meadow     Normal: noAntiAir leaks at least half of wave 4's Harpies and loses by wave 12: 7 of 10 Harpies out, 11 lives after wave 4, L 5
+ok    N8  meadow     Normal: oneMusket leaks at most 6 of wave 1's enemies: 0 of 20 leak
+ok    E1  meadow     Easy: lazyBuild wins with at least 8 lives: W 33
+ok    E2  meadow     Easy: noTowers loses: L 2
+ok    E3  meadow     Easy: oneMusket leaks at most 3 on wave 1: 0 of 20 leak
+ok    H1  meadow     Hard: hardBuild wins: W 8
+ok    H2  meadow     Hard: lazyBuild loses on wave 2 to 8: 8 lives after wave 1, L 2
+ok    H3  meadow     Hard: comboBuild has at least 5 fewer lives than on Normal, or loses on wave 12 or later: W 2 against W 15 on Normal
+ok    V5  meadow     default combo kills Grumblemaw on Normal and hardBuild kills him on Hard: Normal kill, Hard kill
+ok    B3  meadow     Easy lazyBuild wins with at least eight lives; record the boss outcome: W 33, boss kill
+MISS  S7  meadow     all 27 reward combinations win and each offer spans at most six lives: 27/27 wins, largest spreads by offer 10/11/5
+MISS  S8  meadow     idle loses on endless waves 2–6, reinvesting lasts at least two further, through wave 14: idle L 27, reinvesting L 28
+ok    S8  meadow     all six measured endless runs end in loss below the headless cap: maximum wave 39, cap 200
+ok    S9  meadow     Meadow, Normal: soundBuild lasts strictly longer than soundBuildNoTar: L 7 at tick 23009 against L 7 at tick 21700
+ok    N9  meadow     Meadow, Normal: the policy fires at least 30 specials in comboBuild and at least 80% catch 3 or more enemies: 40 specials, 40 caught 3 or more (hits 3 5 3 6 3 4 3 7 3 6 6 3 7 3 3 5 5 5 3 3 10 3 11 9 3 7 4 8 3 9 11 9 14 9 15 3 8 3 6 3)
+ok    N1  switchback Normal: noTowers loses by wave 3: L 1
+ok    N2  switchback Normal: lazyBuild loses on wave 7 to 14: L 8
+ok    N3  switchback Normal: longbowSpam loses on wave 8 to 16: L 8
+ok    N4  switchback the reinvesting combo wins Normal: W 9
+ok    S1  switchback reinvesting Normal combo wins with 9–15 lives: W 9
+MISS  S2  switchback normal comboBuild loses lives on three or more act-2 waves, at most 4 each: W 9, losses 0/0/0/0/0/6/0/0/3/0
+ok    S3  switchback normal comboBuild wins within 4 lives of baseline at ±5% act-2 HP: W 10 / W 9 / W 10
+MISS  S2  switchback hard hardBuild loses lives on three or more act-2 waves, at most 5 each: W 16, losses 0/0/0/0/0/0/0/0/3/0
+ok    S3  switchback hard hardBuild wins within 5 lives of baseline at ±5% act-2 HP: W 18 / W 16 / W 15
+ok    V2  switchback stopping after the fixed plan costs the game in act 2 or at least five lives: reinvest W 9, fixed L 19
+MISS  S4  switchback wideBuild wins within five lives without buying a second upgrade: wide W 16, combo W 9
+ok    V4  switchback lazy wins Easy with eight lives, loses Normal on 7–14 and Hard by 8, hardBuild wins Hard with three: hardBuild W 16, lazy E/N/H W 37/L 8/L 2
+ok    S5  switchback specials save at least three lives or turn a wave-17-or-later loss into a win: all W 9, none L 18
+ok    S6  switchback removing Fire Pots gains at most one life: combo W 9, no Fire Pots W 6
+ok    N7  switchback Normal: noAntiAir leaks at least half of wave 4's Harpies and loses by wave 12: 8 of 10 Harpies out, 11 lives after wave 4, L 5
+ok    N8  switchback Normal: oneMusket leaks at most 6 of wave 1's enemies: 0 of 20 leak
+ok    E1  switchback Easy: lazyBuild wins with at least 8 lives: W 37
+ok    E2  switchback Easy: noTowers loses: L 2
+ok    E3  switchback Easy: oneMusket leaks at most 3 on wave 1: 0 of 20 leak
+ok    H1  switchback Hard: hardBuild wins: W 16
+ok    H2  switchback Hard: lazyBuild loses on wave 2 to 8: 6 lives after wave 1, L 2
+MISS  H3  switchback Hard: comboBuild has at least 5 fewer lives than on Normal, or loses on wave 12 or later: L 10 against W 9 on Normal
+ok    V5  switchback default combo kills Grumblemaw on Normal and hardBuild kills him on Hard: Normal kill, Hard kill
+ok    B3  switchback Easy lazyBuild wins with at least eight lives; record the boss outcome: W 37, boss kill
+MISS  S7  switchback all 27 reward combinations win and each offer spans at most six lives: 26/27 wins, largest spreads by offer 8/8/6
+MISS  S8  switchback idle loses on endless waves 2–6, reinvesting lasts at least two further, through wave 14: idle L 24, reinvesting L 24
+ok    S8  switchback all six measured endless runs end in loss below the headless cap: maximum wave 39, cap 200
+ok    N1  riverbend  Normal: noTowers loses by wave 3: L 1
+ok    N2  riverbend  Normal: lazyBuild loses on wave 7 to 14: L 8
+ok    N3  riverbend  Normal: longbowSpam loses on wave 8 to 16: L 8
+ok    N4  riverbend  the reinvesting combo wins Normal: W 15
+ok    S1  riverbend  reinvesting Normal combo wins with 9–15 lives: W 15
+MISS  S2  riverbend  normal comboBuild loses lives on three or more act-2 waves, at most 4 each: W 15, losses 0/0/0/0/1/0/0/0/3/0
+ok    S3  riverbend  normal comboBuild wins within 4 lives of baseline at ±5% act-2 HP: W 16 / W 15 / W 11
+MISS  S2  riverbend  hard hardBuild loses lives on three or more act-2 waves, at most 5 each: L 15, losses 0/0/0/0/1
+MISS  S3  riverbend  hard hardBuild wins within 5 lives of baseline at ±5% act-2 HP: L 19 / L 15 / L 15
+ok    V2  riverbend  stopping after the fixed plan costs the game in act 2 or at least five lives: reinvest W 15, fixed W 4
+ok    S4  riverbend  wideBuild wins within five lives without buying a second upgrade: wide W 11, combo W 15
+MISS  V4  riverbend  lazy wins Easy with eight lives, loses Normal on 7–14 and Hard by 8, hardBuild wins Hard with three: hardBuild L 15, lazy E/N/H W 31/L 8/L 2
+ok    S5  riverbend  specials save at least three lives or turn a wave-17-or-later loss into a win: all W 15, none W 3
+ok    S6  riverbend  removing Fire Pots gains at most one life: combo W 15, no Fire Pots W 7
+ok    N7  riverbend  Normal: noAntiAir leaks at least half of wave 4's Harpies and loses by wave 12: 8 of 10 Harpies out, 8 lives after wave 4, L 5
+ok    N8  riverbend  Normal: oneMusket leaks at most 6 of wave 1's enemies: 0 of 20 leak
+ok    E1  riverbend  Easy: lazyBuild wins with at least 8 lives: W 31
+ok    E2  riverbend  Easy: noTowers loses: L 2
+ok    E3  riverbend  Easy: oneMusket leaks at most 3 on wave 1: 0 of 20 leak
+MISS  H1  riverbend  Hard: hardBuild wins: L 15
+ok    H2  riverbend  Hard: lazyBuild loses on wave 2 to 8: 6 lives after wave 1, L 2
+MISS  H3  riverbend  Hard: comboBuild has at least 5 fewer lives than on Normal, or loses on wave 12 or later: L 8 against W 15 on Normal
+MISS  V5  riverbend  default combo kills Grumblemaw on Normal and hardBuild kills him on Hard: Normal kill, Hard unresolved
+ok    B3  riverbend  Easy lazyBuild wins with at least eight lives; record the boss outcome: W 31, boss kill
+MISS  S7  riverbend  all 27 reward combinations win and each offer spans at most six lives: 24/27 wins, largest spreads by offer 14/13/6
+MISS  S8  riverbend  idle loses on endless waves 2–6, reinvesting lasts at least two further, through wave 14: idle L 27, reinvesting L 27
+ok    S8  riverbend  all six measured endless runs end in loss below the headless cap: maximum wave 39, cap 200
+ok    S6             Fire Pots save lives on at least two maps: lives gained 3/3/8
+ok    H4             in waves 1–10 no ordinary Hard enemy hp is 1 or 2 above a multiple of 12, 4, 25 or 45: Hard x1.2
+ok    N11            a Powder Keg kills a Harpy or Wolf in one hit and strips at least 5% of a Troll’s hp: 60 damage; Harpy 36, Wolf 20, Troll 6.3%
+ok    R1             every campaign wave spawns at most 6 walkers and 4 flyers in any 3 s and ends spawning within 90 s: 2/0 at 47.5s 4/0 at 27.9s 5/0 at 21s 3/3 at 32s 4/3 at 39s 6/0 at 44s 3/3 at 53.8s 6/3 at 73.5s 5/0 at 29s 4/2 at 65s 6/3 at 27.2s 6/3 at 25.5s 6/4 at 28.5s 5/2 at 44s 6/4 at 44s 6/2 at 64s 6/2 at 43.2s 6/2 at 58.4s 4/2 at 59.2s 6/2 at 19.5s
+ok    R2             act 2 schedules 1.2 to 2 times as many enemies as act 1: 634/524 = 1.21
+ok    R3  meadow     Meadow, Normal, comboBuild: act 2 takes 560 to 720 s, each wave at most 100 s, at most 40 alive and the campaign at most 22 minutes: act 2 675.1 s, longest wave 90.1 s, peak 30, campaign 1304.0 s
+ok    R4  meadow     Meadow, Normal, comboBuild: act 1 still meets the milestone 28 timing rules: clear 3105 2081 1674 2462 4841 3077 6071 5531 2629 6259; 628.8 s; peak 23
+ok    V7             campaign length and wave shape satisfy R1 through R4: R1 pass, R2 pass, R3 pass, R4 pass
+```
+
+</details>
+
+### Visual verification
+
+All eleven review images in `docs/review/m50/` were inspected at their native 960×580 desktop or 390×844 phone sizes. Eight eligible Collectors receive eight puffs and eight steady marks. After 37 ticks each has retreated 37 pixels along the trail. The boss stays unmarked and advances 33.54 pixels in the tar. The Painted phone and desktop menus both fit the exact barrel line. Classic and showpiece use the same retreat and mark. The wave-5 tip is 47 characters against the 61-character limit.
+
+On a local Chromium phone Canvas with `?perf=1`, six landings on thirty enemies yielded 180 post-warmup frame intervals on each build. Median / p95 / maximum were 16.7 / 16.8 / 16.8 ms on b674713 and 16.7 / 16.7 / 16.8 ms on the longer wait. The resolution of this measurement does not establish a speedup.
+
+Of 78 milestone 49 baseline frames compared as decoded local pixels, 64 match and 14 differ. The ten changes in `e2e/visual.spec.ts` are act2, boon-icons, boss, endless-hud, grumblemaw, pack-call, painted-boss, reward-pick-wave10, special-tar-zone and won. The four in `e2e/visual-phone.spec.ts` are phone-boss, phone-grumblemaw, phone-tar-zone and phone-won. The changed captures and the 30-enemy benchmark use Free play. Editing campaign level 9 changes none of their inputs. Linux CI baseline PNGs were left to CI.
+
+### Wrong-build evidence
+
+The C1–C8 mutation table in the first-pass section records each deliberately wrong build and rejection. For C9, changing the barrel refill back to 1200 produced `expected 1200 to be greater than 1200`. The rendered-button checks on desktop and phone also rejected the ordinary refill. The original path-only verifier caught the real level 9 regression described above.
+
+### Level 10 and the limits of the longest qualifying wait
+
+At 3034/63, Good cannot satisfy the level 10 boss target on the original waves, across the complete allowed level-number range. The milestone 49 result was 16, so C8 requires at least 14. Starting gold 280 admits the 63 integers 238–300 after applying the gate's 300 cap. The 0.925 HP scale admits 0.85–1.06375 after applying the 0.85 gate floor. Growth starts at 5 and remains 5 across the ±15% integer range.
+
+The search simulated the first four waves at every distinguishable health setting. Spawn HP rounds once. The five enemy bases are Shieldbearer 70, Troll 950, Goblin 23, Harpy 36 and Wolf 20. There are 230 distinct rounded HP vectors, including the interval endpoints and either side of each rounding boundary. Every vector was crossed with all 63 gold values. Neighboring gold values shared a run only while every build and upgrade affordability comparison selected the same result. Each half of the search covered 7,245 combinations using 2,530 bot simulations. Across all 14,490 combinations, the highest remaining lives at wave 4 clear was 13. The only reward on this level is the first offer, after wave 5. It has no life-restoring choice.
+
+Plain, uninstrumented full games reproduce that upper bound. At HP 0.85 and 298 gold Good opens the seven waves with 20, 20, 16, 16, 13, 13 and 13 lives, finishing with 13. That case also misses L1m and L3. At the same HP and 289 gold Good opens with 20, 20, 15, 15, 12, 12 and 12 lives. This case passes every local gate and both forced-bot checks, with Good/Person/Beginner/forced Good/forced Person at 2/12, 2/15, 0/0, 2/12 and 1/11. The damage is already done on waves 2 and 4. Every leak in both witnesses is a Troll. At 298 gold, four Trolls escape in wave 2 and three in wave 4. The first escaping wave-4 Troll has 40 HP left. The wave-7 boss adds zero leaks in both witnesses.
+
+A first-act wave change is **not** required to reach C8 at every refill setting. The shorter 2526-tick refill with a 70-tick run qualifies for the opening test, beats Fire Arrows 15–14 on Switchback and reaches 14 on level 10 with HP 0.870 and gold 288. All local gates pass there, including the four margin variants. Good/Person/Beginner/forced Good/forced Person finish 2/14, 2/14, 0/0, 1/7 and 1/11. On level 9 a 0.999 HP scale gives 18 lives and clears its gate, and level 20 has 13 lives. At that shorter refill the original level 6 also starts failing L3/L6. HP 0.964 with original gold fixes level 6. Five of the ten act-two retunes selected for the longer wait fail local gates when replayed at 2526/70. Level 11 misses L1m, level 12 T1/F1, level 13 F1/L6, level 18 L1m and level 19 T1/L1m. The other five pass. These are separate candidates.
+
+Level 8 on the longer wait passes its entire gate with one field: HP 1.28 → 1.151 (−10.08%) at the original 295 gold. In the five feature trials (nominal, HP −2%, HP +2%, gold −10, gold +10), Good with vs. without Guards/Fire Arrows finishes 14/11, 14/10, 13/10, 14/12, 14/11. Person finishes 12/10, 13/10, 12/11, 14/12, 14/10. Both forced bots stay below Good. This resolves the first pass's blocker without opening a level 8 wave.
+
+### Campaign gate in the bounded trial
+
+These ten level definitions together pass the campaign gate and both forced-bot checks on all twenty levels. The first act retains every original wave. The numeric changes below also pass the 15% bound. A species substitution changes the type of the existing group and preserves its count.
+
+| Level | Field | Milestone 49 | Trial | Change |
+|---:|---|---:|---:|---:|
+| 8 | HP scale | 1.28 | 1.151 | -10.08% |
+| 9 | HP scale | 1 | 0.97 | -3.00% |
+| 10 | Starting gold | 280 | 289 | +3.21% |
+| 10 | HP scale | 0.925 | 0.85 | -8.11% |
+| 11 | HP scale | 0.91 | 0.886 | -2.64% |
+| 11 | wave 6, Troll group 1, count | 21 | 19 | -9.52% |
+| 12 | Starting gold | 260 | 265 | +1.92% |
+| 12 | wave 1, Shieldbearer group 1, interval | 1.15 | 1.265 | +10.00% |
+| 13 | wave 3, Harpy group 2, count | 39 | 34 | -12.82% |
+| 13 | wave 5, Troll group 1, count | 15 | 13 | -13.33% |
+| 17 | wave 2, Harpy group 1, count | 30 | 27 | -10.00% |
+| 17 | wave 5, Harpy group 2, type | harpy | goblin | species substitution |
+| 18 | Starting gold | 260 | 275 | +5.77% |
+| 19 | wave 2, Harpy group 2, interval | 1.08 | 1.2312 | +14.00% |
+| 19 | wave 3, Troll group 1, interval | 1.75 | 1.61 | -8.00% |
+| 20 | Starting gold | 245 | 270 | +10.20% |
+| 20 | wave 2, Harpy group 2, type | harpy | goblin | species substitution |
+
+The next table compares the retained branch (including level 9 at 0.987) with the joint trial above. Scores are stars/lives. A single score applies to both. The final column gives the local misses on the retained branch. All twenty trial rows pass. The earlier table gives the first crowd build for the same five bots.
+
+| Level | Good | Person | Beginner | Good, Feathers + barrel | Person, Feathers + barrel | Retained misses |
+|---:|---|---|---|---|---|---|
+| 1 | 3/20 | 3/20 | 3/20 | 3/20 | 3/20 | pass |
+| 2 | 3/20 | 3/20 | 1/3 | 3/20 | 3/20 | pass |
+| 3 | 3/20 | 3/20 | 2/16 | 3/20 | 3/20 | pass |
+| 4 | 2/13 | 2/16 | 0/0 | 2/13 | 2/16 | pass |
+| 5 | 3/20 | 3/20 | 1/2 | 3/20 | 3/20 | pass |
+| 6 | 2/15 | 2/15 | 0/0 | 2/16 | 2/13 | pass |
+| 7 | 2/16 | 2/12 | 0/0 | 0/0 | 0/0 | pass |
+| 8 | 1/10 → 2/14 | 1/7 → 2/12 | 0/0 | 1/7 → 1/9 | 1/9 → 1/11 | L1, L3, L1m |
+| 9 | 3/20 | 3/18 → 3/20 | 0/0 | 2/12 → 2/15 | 0/0 | pass |
+| 10 | 1/9 → 2/12 | 1/6 → 2/15 | 0/0 | 1/6 → 2/12 | 1/5 → 1/11 | L1, L1m, L3, L5, L8 |
+| 11 | 2/20 | 2/12 → 2/15 | 0/0 | 1/9 → 2/17 | 1/5 → 1/9 | P1, L1m |
+| 12 | 2/18 | 2/15 | 0/0 | 1/2 → 1/7 | 1/3 → 0/0 | F1, T1, L6 |
+| 13 | 3/20 | 2/13 → 2/15 | 0/0 | 2/13 → 1/9 | 1/2 → 1/5 | P1, L1m, L6 |
+| 14 | 3/20 | 2/14 | 0/0 | 3/20 | 2/13 | pass |
+| 15 | 2/14 | 2/13 | 0/0 | 2/14 | 2/12 | pass |
+| 16 | 2/14 | 2/14 | 0/0 | 1/10 | 1/9 | pass |
+| 17 | 2/20 | 1/10 → 2/14 | 0/0 | 2/20 | 0/0 → 1/1 | P1, F1, T2, L1m |
+| 18 | 2/15 | 1/11 → 2/13 | 0/0 | 1/7 | 1/4 | T2, L1m |
+| 19 | 2/16 → 2/14 | 2/16 → 2/15 | 0/0 | 0/0 | 0/0 | F2, T1 |
+| 20 | 2/13 | 2/13 | 0/0 | 2/13 | 2/13 → 2/12 | T1 |
+
+The retained branch passes 11/20 levels locally, with campaign-wide S1 and L8 misses. Good on levels 9/10/20 finishes at 20/9/13. The retained first act takes 72.89 minutes and all twenty take 134.29. Across twenty levels Good's mean drop is 2.67 lives and Person's cohort means are 10.33 and 13.10.
+
+The joint trial passes C5 for the first ten and all twenty. Good's mean drop is 4.67 and 3.00 respectively. First-act combat takes 72.30 minutes. The twenty levels take 133.87. Person averages 15.67 lives in the preceding three levels and 14.10 in act two, with handover +0 and a greatest drop of 2 lives. The independent tower-path-only pins also pass. The C8 scores are 20/12/13 against 20/16/13. Level 10 misses its lower bound by two. The branch retains only the independently needed level 9 repair while the joint trial remains below C8.
+
+### Cost of the last tick
+
+Complete twelve-game replays confirmed all seven opening pairs, with no refused actions. At original difficulties, each of 2524/70, 2525/70 and 2526/70 passed 77 of 91 core rows. 2959/62 passed 70. Each of 3032/63, 3033/63 and 3034/63 passed 73. At 3035/63 the standard scores still read 15/9/15, but all-barrel ties Fire Arrows 14–14 on Switchback and loses on both other maps. This is why the retained wait ends at a fractional second.
+
+### Free play health trials after the campaign trials
+
+The closest measured trial kept the 3034-tick wait and the 63-tick run. Four Free play health fields moved on the scratch build. The campaign continued using its original growth constant.
+
+| Free play field | Original | Trial | Change |
+|---|---:|---:|---:|
+| Normal act-two health growth per wave | 0.28 | 0.276 | −1.43% |
+| Hard base health scale | 1.2 | 1.009 | −15.92% |
+| Hard act-two health growth per wave | 0.213 | 0.322 | +51.17% |
+| Endless starting health scale | 1.05 | 1.30 | +23.81% |
+
+All Hard-specific rows pass. The first three changes together passed 83/91. The Endless start change raised this to 84/91, passing all six S8 rows at the original Endless growth factor of 1.8. The idle/reinvest loss waves were 24/27, 22/24 and 25/27. All eighteen map/difficulty/policy combinations finished by wave 38. C2 and C3 still pass. The following counts include casts that hit no eligible enemy.
+
+| Map | Standard | Unused | All barrel | All arrows | Casts | Feathered | Newly feathered at each cast |
+|---|---:|---:|---:|---:|---:|---:|---|
+| Meadow | 12 | 7 | 11 | 17 | 13 | 103 | 7, 7, 3, 5, 3, 11, 7, 8, 11, 14, 12, 10, 5 |
+| Switchback | 12 | 7 | 10 | 11 | 14 | 64 | 8, 6, 3, 7, 5, 4, 10, 5, 7, 8, 0, 0, 1, 0 |
+| Riverbend | 15 | 5 | 18 | 17 | 12 | 102 | 7, 6, 9, 3, 5, 9, 7, 7, 11, 16, 14, 8 |
+
+The three games feather 269 enemies in 39 casts, or 6.90 per cast. The seven remaining core misses are measured below.
+
+| Map | Label | Required | Trial |
+|---|---|---|---|
+| Meadow | S2 | Leak on at least three late waves, at most four lives per wave | Two waves, 1 and 4 lives |
+| Meadow | V2 | Stopping reinvestment costs at least five lives or the game | 12 vs. 9 lives, a difference of three |
+| Meadow | S7 | All 27 reward choices win, each offer spans at most six lives | 27 wins, spans 9/8/6 |
+| Switchback | S2 | Same three-wave rule | Two waves, 4 and 2 lives |
+| Switchback | S7 | Same reward rule | 27 wins, spans 9/8/6 |
+| Riverbend | S2 | Same three-wave rule | Two waves, 1 and 3 lives |
+| Riverbend | S7 | Same reward rule | 24 wins, spans 14/14/8 |
+
+At this opening setting, 522 distinct Normal health scale/growth pairs were sampled. Of the 229 directly checked against the opening controls, 53 preserved them. None of those 53 produced the required Normal S2 shape even on a single map. This samples a continuous health range. It establishes a reproducible near case and does not exhaust every possible health curve.
+
+Supplementary tests on the neighboring Hard scalars 1.0093718 and 0.3218765432098765, with Normal growth at 0.276, also missed Tar Pit P1/R1 (Deep Tar led all six comparisons), Longbow P4 (neither equal-cost path beat the extra tower), and N10c/d. Long Barrels, Hot Coals and Veteran Crews had zero outright best reward cases. Long Barrels and War Chest changed only two build/map pairs against three required. K2 passed. K3 missed Meadow Normal (+8 lives against six), Switchback Hard (three loss-to-win placements) and Riverbend Hard (two). G2 missed all three Hard maps. All Normal G2 rows, its two-map aggregate and all nine G3 rows passed. These supplementary results are from the stated neighboring scalars. The 84/91 count above is from the exact rounded settings.
+
+At 2526/70, Normal growth 0.2801, Hard base 1.009 and growth 0.34 produced 83/91. Riverbend reached Normal S2. Meadow and Switchback still missed S2 and S7. Riverbend missed S3 (20/13/18 lives against a maximum four-life deviation), S7 (27 wins with spans 12/10/6) and S8 (both policies lost on wave 27). Global S6 also missed. This alternative passed C2 and beat all-Arrows on Switchback. Boon checks N10c and N10d still missed. Neither health trial was used to re-lock the reference report.
+
+### Alternative that meets the three boss scores
+
+At the 2526/70 setting, one joint trial passed C8 at all three bosses with scores 18/14/13. From the original data it used HP 0.964 at level 6, HP 1.151 at level 8, HP 0.999 at level 9, and HP 0.870 plus 288 gold at level 10. It used the two listed group-count changes on level 13, 26 wave-2 Harpies plus the listed Goblin substitution on level 17, and the listed gold and Goblin changes on level 20. The other levels used their original definitions. All first-act waves stayed intact.
+
+Fifteen of twenty local gates passed. Level 8 missed L3, level 11 L1m, level 12 T1/F1, level 13 F1/L6 and level 19 T1/L1m. Across-level L4, S1 and L8 also missed. The first ten levels missed only L3. This alternative gives a second route to investigate with the existing first-act authority. At this shorter refill, 16,710 of the 41,650 legal level 8 gold/HP combinations were ruled out, including all 833 HP vectors at the original 295 gold. The closest full check used 282 gold and HP 1.1687306501547985. It passed every local label except L3. At +2% HP, Person tied 7–7 with and without Guards and Fire Arrows, one life short of the required advantage. All other nine feature comparisons passed. The 40.1% coverage leaves the rest of the shorter-refill space open.
+
+### Proposed next opening
+
+For the 3034/63 route, the smallest campaign experiment is the interval of the existing 20-Troll group on **level 10, wave 4**. The existing interval is 2.1 seconds. The full legal level-number search puts Good one life below C8 before the boss even spawns. A separate Free play experiment could vary the timing of one late group, preserving its enemy count and the existing windows, to test whether a third wave can leak while reward choices remain viable. The 84/91 trial leaked only on waves 15 and 19 on Meadow and Riverbend, and 18 and 19 on Switchback. The reward, path and boon checks would have to be replayed. Neither proposed wave experiment was performed.
+
+### C1–C9 and branch verification
+
+| Target | Retained branch | Strongest relevant measurement |
+|---|---|---|
+| C1 | Pass | All eight eligible enemies feather once, including a Harpy and an enemy at the radius edge. Bosses and previously marked enemies receive zero new marks. |
+| C2 | Pass | The standard policy gains 5/5/9 lives over resting on its barrel turns. Required margins are 4/3/4. |
+| C3 | Pass | Switchback all-barrel beats all-Fire-Arrows 15–14. |
+| C4 | Fail | 73/91 core rows pass on the branch and 84/91 in the closest health trial. Further path, boon and historical report checks also miss. |
+| C5 | Fail | The branch passes 11/20 local gates. The bounded ten-level retune passes all twenty and every cross-level label, including S1 and L8. |
+| C6 | Pass | Both Feathers-plus-barrel bots pass every level on the branch and in the ten-level trial. The unchanged independent path-only pins pass too. |
+| C7 | Pass | One retained level field, HP 1 to 0.987. All twenty definition digests reconstruct exactly, and all nineteen unchanged levels reproduce their no-barrel run digests. |
+| C8 | Fail | On branch the boss scores are 20/9/13 against 20/16/13. At the retained wait legal level numbers cap level 10 at 13, one short of the floor. The shorter alternative meets C8. |
+| C9 | Pass | The shared wait after a barrel is 3034 ticks. Each other special waits 1200. Desktop and phone show the actual wait. Restoring the ordinary rate fails the test. |
+
+The full production Playwright suite passed 1,166, skipped eight and failed zero across Chromium, tablet and phone (9.5 minutes, port 4373 released). Lint and typecheck exit successfully. All 219 asset manifest rows pass. The production build and size check pass at 3,768,487 bytes across 30 files against a 20 MB budget.
+
+The full Vitest run passed 2,576 tests and failed 259 across 130 files (114 passing files, 16 failing). The six focused files for crowd behavior, C2/C3, C7, charge rules, both bots and the independent path-only verifier passed all 119 tests. Two separate suites covering blocker rules and level arithmetic passed all 155. These include the wall’s original 1200/684-tick waits followed by a barrel’s 3034/1729-tick waits, and the independently calculated level 9 enemy HP. The level 9 design-table check passed as well. The remaining failures include live Free play and campaign gates, feature comparisons, historical exact outcomes, and the old accepted campaign/report fixtures. The full failure count is reported against their original assertions.
+
+The official `npm run sim` exited 1. The first act took 72.89 combat minutes; the twenty levels took 134.29. All six Barricade placement sweeps K3 pass. All six Guards placement sweeps, the Normal two-map aggregate and all nine G3 unlock checks pass. Outside the 91 core rows, the retained report misses the Riverbend Mortar purchase control, P1 for the Tar Pit and Mortar, P2 for the Mortar, and boon checks N10c/d. Its measured SHA-256 is `45bbbb0fe401a8adf327403188579852c999969e84f2116984ac86b704b05eb7`. The accepted digest remains `0474f58c24e06d371fab9c9123ba1a8cd72f8bd9bd82fab4b259f7f86239195b`. The two full gate tables above give the scores for each bot and every retained local miss.
+
+Implementation and verification commits, in order, were `c881e20`, `7110caf`, `fe560cb`, `25dfbb7`, `4ea15ef`, `ca14760` and `b9d50f9`. No target window, first-act wave, tower path, star line or screenshot baseline changed.
