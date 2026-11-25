@@ -1,8 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { FEATHERS } from '../src/sim/feathers';
-import { api, mapPress, press } from './campaign';
-import { useWideFontMetrics } from './campaignFont';
+import { BARREL_RECHARGE_TICKS, SPECIAL_RECHARGE_TICKS } from '../src/sim/specials';
+import { TICKS_PER_SECOND } from '../src/sim/time';
+import { api, mapPress, press, visibleTexts } from './campaign';
+import { checkLabel } from './hudButtonLabels';
+import { useTallFontMetrics, useWideFontMetrics } from './campaignFont';
 import { checkSpacing, onScreen } from './campaignScreens';
 import { waitForFirstScreen, waitForTitle } from './title';
 
@@ -61,21 +64,70 @@ export function featherLooks(look: string, phone: boolean) {
 export function featherLabels(phone: boolean) {
   // Linux draws the bundled font about 2.6% wider than macOS before scaling.
   const factor = process.platform === 'darwin' ? 1.09 : 1.06;
-  test('the level 9 feather tip fits with wider text', async ({ page }) => {
+  for (const [level, tip] of [
+    [5, 'Drop a Tar Barrel on a crowd to slow it down.'],
+    [9, 'Feathers make tarred enemies run back. Bosses are too proud.'],
+    [11, 'Drop a Tar Barrel on a crowd and they run back.'],
+  ] as const) test(`the level ${level} feather tip fits with wider text`, async ({ page }) => {
+    test.setTimeout(60_000);
     await useWideFontMetrics(page, factor);
     await page.goto('/?test=1');
     await waitForFirstScreen(page, { showTips: true });
-    await api(page, t => t.setCampaignProgress(Object.fromEntries(Array.from({ length: 8 }, (_, i) => [i + 1, 3]))));
+    await page.evaluate(id => window.__tarpit!.setCampaignProgress!(
+      Object.fromEntries(Array.from({ length: id - 1 }, (_, i) => [i + 1, 3]))), level);
     await press(page, 'title:campaign', phone);
     await onScreen(page, 'levelMap');
-    await press(page, 'title:stop:9', phone);
+    await press(page, 'title:stop:' + level, phone);
     await onScreen(page, 'levelCard');
     await press(page, 'title:play', phone);
     await onScreen(page, 'levelTips');
-    expect(await api(page, t => t.campaignLabels().map(label => label.text)))
-      .toContain('Feathers make tarred enemies run back. Bosses are too proud.');
+    expect(await api(page, t => t.campaignLabels().map(label => label.text))).toContain(tip);
     await checkSpacing(page);
   });
+
+  for (const metrics of ['normal', 'fixed Caslon', 'fixed fallback', 'wide']) {
+    test(`C9: the barrel description and wait follow the level rule (${metrics})`, async ({ page }) => {
+      test.setTimeout(90_000);
+      if (metrics === 'wide') await useWideFontMetrics(page, factor);
+      if (metrics.startsWith('fixed')) await useTallFontMetrics(page, metrics === 'fixed fallback');
+      await start(page, 'painted');
+      for (const id of [0, 5, 14]) {
+        if (id) await page.evaluate(id => window.__tarpit!.startLevel!(id), id);
+        await api(page, t => { if (!t.state().level) t.state().wave = 3; t.startWave(); });
+        await press(page, 'special', phone);
+        const caption = 'Tar and feathers. Enemies caught run back.';
+        await checkLabel(page, 'special:tarBarrel', 'Tar Barrel');
+        if (id === 14) {
+          await checkLabel(page, 'special:tarBarrel', caption);
+          const labels = await api(page, t => t.campaignLabels());
+          const name = labels.find(line => line.text === 'Tar Barrel')!;
+          expect(labels.find(line => line.text === caption)!.y).toBeGreaterThan(name.y + name.height);
+        } else expect(await visibleTexts(page)).not.toContain(caption);
+        await press(page, 'special:tarBarrel', phone);
+        await mapPress(page, 1, 7, phone);
+        const ticks = id === 14 ? BARREL_RECHARGE_TICKS : SPECIAL_RECHARGE_TICKS;
+        const wait = (remaining: number) => (phone ? '' : 'Wait ') + Math.ceil(remaining / TICKS_PER_SECOND) + 's';
+        await checkLabel(page, 'special', wait(ticks));
+        await page.evaluate(n => window.__tarpit!.step!(n), TICKS_PER_SECOND);
+        await checkLabel(page, 'special', wait(ticks - TICKS_PER_SECOND));
+        if (id === 14) {
+          expect(await api(page, t => {
+            t.state().spawnedPerGroup.fill(999);
+            t.state().enemies = [];
+            t.step(1);
+            return t.state().phase;
+          })).toBe('setup');
+          const remaining = ticks - TICKS_PER_SECOND - 1;
+          await checkLabel(page, 'special', wait(remaining));
+          await page.evaluate(n => window.__tarpit!.step!(n), TICKS_PER_SECOND);
+          await checkLabel(page, 'special', wait(remaining));
+          expect(await api(page, t => t.startWave().ok)).toBe(true);
+          await page.evaluate(n => window.__tarpit!.step!(n), TICKS_PER_SECOND);
+          await checkLabel(page, 'special', wait(remaining - TICKS_PER_SECOND));
+        }
+      }
+    });
+  }
 
   test('the Feathers description fits its card with wider text', async ({ page }) => {
     await useWideFontMetrics(page, factor);

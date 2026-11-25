@@ -140,7 +140,7 @@ test('(b) he has a two-ellipse ground shadow on the path under his feet', async 
 // (c) Hit flash, (d) the HUD label before and after, (e) the bar fill. The
 // combo build through wave 9, then wave 10: the label is null until his
 // spawn tick, then "Grumblefoot 4000 / 4000" with a full 300 px red fill.
-// Stepping one tick at a time, the first hit from a Fire Pot
+// Stepping one tick at a time, the first hit from the Fire Pot at (10,4)
 // shows the hit sprite. The next non-hit tick hides it. At step 5721 the
 // 300 px bar's red fill is proportional to Grumblefoot's remaining HP.
 test('(c)(d)(e) flash on a hit tick, label null before spawn and after death, fill proportional', async ({ page }) => {
@@ -190,7 +190,7 @@ test('(c)(d)(e) flash on a hit tick, label null before spawn and after death, fi
   expect(r.firstHit!.tick).toBe(5069);
   expect(r.afterHit).toMatchObject({ tick: r.firstHit!.tick + 1, flash: false, flagHit: false });
 
-  // The sampled frame has 2017.83 HP, rounded up in the label.
+  // The sampled frame has 2040.63 HP, rounded up in the label.
   const fill = await page.evaluate(
     async ({ bar, red, bg, id, now }) => {
       const t = window.__tarpit as TarpitTestApi;
@@ -209,9 +209,9 @@ test('(c)(d)(e) flash on a hit tick, label null before spawn and after death, fi
     { bar: BAR, red: rgb(COLORS.bossBarFill), bg: rgb(COLORS.bossBarBg), id: r.id, now: r.ticks },
   );
   expect(fill.waveTick).toBe(5721);
-  expect(fill.label).toBe(`${BOSS_NAME} 2018 / 4000`);
+  expect(fill.label).toBe(`${BOSS_NAME} 2041 / 4000`);
   const want = Math.round((BAR.width * fill.hp) / 4000);
-  expect(want).toBe(151);
+  expect(want).toBe(153);
   expect(Math.abs(fill.redRun - want), `red run ${fill.redRun}, want ${want}`).toBeLessThanOrEqual(2);
   // The trough continues past the fill until the right-aligned hp text (37 px at the milestone 25c frame; was over 40 at 178 px).
   expect(fill.bgAfter).toBeGreaterThan(20);

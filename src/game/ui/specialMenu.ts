@@ -57,10 +57,10 @@ export class SpecialMenu {
   }
 
   /** Show the popup listing `types` (the unlocked specials), or hide it with an empty list. */
-  update(types: readonly SpecialType[]): void {
+  update(types: readonly SpecialType[], featherBarrels: boolean): void {
     const room = this.hudTop - this.mapTop - MENU_GAP_ABOVE_HUD - 2 * PAD;
     const fullHeight = Math.max(this.size.buttonH, Math.ceil(MIN_TARGET_CSS * this.scene.scale.displayScale.y));
-    const barrel = types.indexOf('tarBarrel');
+    const barrel = featherBarrels ? types.indexOf('tarBarrel') : -1;
     // The barrel card carries an instruction below its name, in the menu's normal type.
     const cardWidth = barrel < 0 ? this.size.buttonW : this.size.buttonW + 100;
     this.barrelCaption.setVisible(barrel >= 0);

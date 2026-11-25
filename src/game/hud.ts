@@ -634,7 +634,7 @@ export class Hud {
         this.rechargeFill.fillStyle(COLORS.rechargeFill, 1).fillRect(sb.x, sb.y, fillWidth, sb.height);
       } else this.pip.lineStyle(1.5, COLORS.specialPipEmpty, 1).strokeCircle(cx, cy, PIP_RADIUS - 0.75);
     }
-    this.specialMenu.update(special.menuOpen && ready ? availableSpecials(state) : []);
+    this.specialMenu.update(special.menuOpen && ready ? availableSpecials(state) : [], !!state.level?.featherBarrels);
     this.bar.update(state, pick);
     this.bossBar.update(state);
   }

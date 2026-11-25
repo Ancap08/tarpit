@@ -130,6 +130,8 @@ export function campaignScreenSuite(touch: boolean) {
           LEVEL_STORY[id].notice, LEVEL_NAMES[id].twist,
         ]));
         await checkSpacing(page);
+        expect(await api(page, t => t.campaignLabels().map(label => label.text)), `C10: Act One level ${id}`)
+          .not.toContain("Town's answer: Tar Barrels feather crowds.");
         const play = await api(page, t => t.uiRects()['title:play']);
         await press(page, 'title:play', touch);
         await onScreen(page, 'levelTips');

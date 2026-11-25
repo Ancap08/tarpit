@@ -5,8 +5,7 @@ import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { TowerType } from '../src/sim/types';
 import type { TitleUiState } from '../src/game/TitleScene';
 import { MAPS, positionAlongPath } from '../src/sim/map';
-import { BARREL_RECHARGE_TICKS, SPECIAL_DEFS } from '../src/sim/specials';
-import { TICKS_PER_SECOND } from '../src/sim/time';
+import { SPECIAL_DEFS } from '../src/sim/specials';
 import { api, expectOffer, openCampaign, press, visibleTexts } from './campaign';
 import { choices, choiceVisual } from './upgradeChoice';
 import { cellPage, rectPage, rectPageSize } from './phone';
@@ -29,11 +28,11 @@ const TAR_ZONE_EXPECT = {
   at: { x: 160, y: 132 },
   hits: 7,
   zones: ['tarBarrel 600'],
-  slowed: 7,
+  slowed: 8,
   burning: 0,
   labels: ['7 hit'],
-  rechargeTicks: BARREL_RECHARGE_TICKS - TICKS_PER_SECOND,
-  hud: `Wait ${Math.ceil(BARREL_RECHARGE_TICKS / TICKS_PER_SECOND) - 1}s`,
+  rechargeTicks: 1140,
+  hud: 'Wait 19s',
 };
 const FIRE_ZONE_EXPECT = {
   at: { x: 160, y: 132 },
@@ -473,7 +472,7 @@ test('wave 4 Harpies: a Cannon splash ignores one, a Musketeer shoots one', asyn
 // Milestone 30 (the special policy): the same step still meets the rules,
 // at (420,108) with 3331 hp.
 // Milestone 36: the wave 5 range boon and changed special policy give tick 5263.
-// The longer barrel refill gives tick 5226 at (392,96), 3567 HP.
+// Milestone 37: the revised opening moves this to 5316 at (420,98), 3400 HP.
 
 test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splash', async ({ page }) => {
   await open(page);
@@ -506,7 +505,7 @@ test('wave 10: Grumblefoot with his bar, burning and tarred under a Mortar splas
     slowed: true,
     hitNow: false,
     mortarHitOnBoss: 1,
-    bar: `${BOSS_NAME} 3567 / 4000`,
+    bar: `${BOSS_NAME} 3400 / 4000`,
     texture: 'boss',
   });
   await settle(page);

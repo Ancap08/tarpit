@@ -172,7 +172,9 @@ function drawTaxCard(
   const heading = label(scene, rulesX, 0, CAMPAIGN_TEXT.inForce, bodySize, ink);
   const taxes = levelTaxLines(level.taxes!).map(text => label(scene, rulesX, 0, text, bodySize, ink, rulesWidth, false));
   const feat = label(scene, rulesX, 0, cardFeatText(level.feat!), bodySize, '#254a57', rulesWidth);
-  const rules = [heading, ...taxes, feat];
+  const rules = [heading, ...taxes];
+  if (level.featherBarrels) rules.push(label(scene, rulesX, 0, CAMPAIGN_TEXT.townAnswer, bodySize, '#254a57', rulesWidth));
+  rules.push(feat);
   const noteX = portrait ? cx : 721;
   const noteWidth = portrait ? printWidth : 302;
   const mapWidth = portrait ? 160 : 178;
@@ -187,6 +189,11 @@ function drawTaxCard(
   const contentHeight = portrait ? rulesHeight() + 22 + noteHeight : Math.max(rulesHeight(), noteHeight);
   const paged = bodyTop + contentHeight > bottom;
   const notesOnly = paged && scouting;
+  // On a paged phone card the stars and turn-over control share a footer,
+  // leaving the full sheet height for the notice even with tall fallback text.
+  const turnWidth = 174;
+  const turnX = sheet.x + sheet.width - 8 - turnWidth;
+  const printBottom = portrait && paged ? bestY - 48 : bottom;
   // On the paged sheet the whole measure is available for either column.
   if (paged) {
     for (const text of rules) text.setX(cx).setWordWrapWidth(printWidth);
@@ -197,8 +204,7 @@ function drawTaxCard(
     notice.destroy();
     rules.forEach(text => text.destroy());
   } else {
-    const rulesBottom = paged && portrait ? bottom - 90 : bottom;
-    let y = bodyTop + Math.max(0, (rulesBottom - bodyTop - (paged ? rulesHeight() : contentHeight)) / 2);
+    let y = bodyTop + Math.max(0, (printBottom - bodyTop - (paged ? rulesHeight() : contentHeight)) / 2);
     if (portrait && !paged) y = bodyTop;
     for (const text of rules) {
       text.setY(y + text.height / 2);
@@ -208,8 +214,7 @@ function drawTaxCard(
   if (!paged || notesOnly) {
     const x = paged ? cx : noteX;
     const notesTop = notesOnly ? top : portrait ? bodyTop + rulesHeight() + 22 : bodyTop;
-    const notesBottom = notesOnly && portrait ? bottom - 90 : bottom;
-    let y = notesTop + (notesBottom - notesTop - (mapWidth / 2 + 13 + mapName.height + twist.height)) / 2;
+    let y = notesTop + (printBottom - notesTop - (mapWidth / 2 + 13 + mapName.height + twist.height)) / 2;
     drawMapThumbnail(g, MAPS[level.map], x - mapWidth / 2, y, mapWidth, mapWidth / 2);
     g.lineStyle(1, THEME.ink).strokeRect(x - mapWidth / 2, y, mapWidth, mapWidth / 2);
     y += mapWidth / 2 + 5;
@@ -219,7 +224,8 @@ function drawTaxCard(
     mapName.destroy();
     twist.destroy();
   }
-  drawBestStars(scene, cx, bestY, stars, bodySize, portrait ? 26 : 22, !!level.feat);
+  const starsX = portrait && paged ? (sheet.x + turnX) / 2 : cx;
+  drawBestStars(scene, starsX, bestY, stars, bodySize, portrait ? 26 : 22, !!level.feat);
 
   const buttons: { key: string; text: string; click: () => void }[] = [
     { key: 'back', text: CAMPAIGN_TEXT.back, click: back },
@@ -228,7 +234,7 @@ function drawTaxCard(
   ];
   if (paged) {
     const pageText = scouting ? CAMPAIGN_TEXT.notice : CAMPAIGN_TEXT.mapNotes;
-    if (portrait) action('title:cardPage', { x: cx - 112, y: bestY - 126, width: 224, height: 80 }, pageText, turnPage, bodySize);
+    if (portrait) action('title:cardPage', { x: turnX, y: bestY - 40, width: turnWidth, height: 80 }, pageText, turnPage, bodySize);
     else buttons.unshift({ key: 'cardPage', text: pageText, click: turnPage });
   }
   const buttonWidth = portrait ? 122 : 162;
