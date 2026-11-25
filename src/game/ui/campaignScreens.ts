@@ -182,11 +182,12 @@ function drawTaxCard(
   const twist = label(scene, noteX, 0, words.twist, bodySize, ink, noteWidth, false);
   const noteHeight = mapWidth / 2 + 5 + mapName.height + 8 + twist.height;
   const gap = portrait ? 13 : 8;
-  const rulesHeight = () => rules.reduce((sum, text) => sum + text.height, 0) + gap * (rules.length - 1);
+  const rulesTextHeight = () => rules.reduce((sum, text) => sum + text.height, 0);
+  const rulesHeight = rulesTextHeight() + gap * (rules.length - 1);
   const footY = portrait ? 1052 : 476;
   const bestY = portrait ? 996 : 443;
   const bottom = bestY - (portrait ? 34 : 25);
-  const contentHeight = portrait ? rulesHeight() + 22 + noteHeight : Math.max(rulesHeight(), noteHeight);
+  const contentHeight = portrait ? rulesHeight + 22 + noteHeight : Math.max(rulesHeight, noteHeight);
   const paged = bodyTop + contentHeight > bottom;
   const notesOnly = paged && scouting;
   // On a paged phone card the stars and turn-over control share a footer,
@@ -204,16 +205,20 @@ function drawTaxCard(
     notice.destroy();
     rules.forEach(text => text.destroy());
   } else {
-    let y = bodyTop + Math.max(0, (printBottom - bodyTop - (paged ? rulesHeight() : contentHeight)) / 2);
+    // After wrapping across the full sheet, fit the gaps between the notice and the footer.
+    const textHeight = rulesTextHeight();
+    const rowGap = paged ? Math.max(0, Math.min(gap, (printBottom - bodyTop - textHeight) / (rules.length - 1))) : gap;
+    const blockHeight = paged ? textHeight + rowGap * (rules.length - 1) : contentHeight;
+    let y = bodyTop + Math.max(0, (printBottom - bodyTop - blockHeight) / 2);
     if (portrait && !paged) y = bodyTop;
     for (const text of rules) {
       text.setY(y + text.height / 2);
-      y += text.height + gap;
+      y += text.height + rowGap;
     }
   }
   if (!paged || notesOnly) {
     const x = paged ? cx : noteX;
-    const notesTop = notesOnly ? top : portrait ? bodyTop + rulesHeight() + 22 : bodyTop;
+    const notesTop = notesOnly ? top : portrait ? bodyTop + rulesHeight + 22 : bodyTop;
     let y = notesTop + (printBottom - notesTop - (mapWidth / 2 + 13 + mapName.height + twist.height)) / 2;
     drawMapThumbnail(g, MAPS[level.map], x - mapWidth / 2, y, mapWidth, mapWidth / 2);
     g.lineStyle(1, THEME.ink).strokeRect(x - mapWidth / 2, y, mapWidth, mapWidth / 2);
