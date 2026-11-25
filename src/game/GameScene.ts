@@ -677,7 +677,6 @@ export class GameScene extends Phaser.Scene {
         this.keep?.destroy();
         this.keep = undefined;
         if (this.keepAssets !== assets) assets.release();
-        if (this.leaving && this.siegeScreens) releasePaintedTextures(this.textures);
       });
     }
     this.overlay = world();
@@ -1538,6 +1537,10 @@ export class GameScene extends Phaser.Scene {
     this.leaving = true;
     this.restartPending = false;
     this.resume = null;
+    // The title loads its own sheets. An in-place restart reuses this set.
+    if (this.actThree && this.campaignLevel?.map === 'keep') {
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => releasePaintedTextures(this.textures));
+    }
     if (this.keepModule) {
       if (destination.screen !== 'siegeEnding') sound.endSessionMute();
       this.keepAssets = undefined; // The view releases its set when Phaser shuts it down.

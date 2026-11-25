@@ -7,7 +7,7 @@ import { defineConfig, devices } from '@playwright/test';
 const PORT = Number(process.env.PW_PORT ?? 4173);
 
 /** Release checks shared on desktop and both touch projects. */
-const SHARED_SPECS = [/act-three-off\.spec\.ts$/];
+const SHARED_SPECS = [/act-three-(off|restart)\.spec\.ts$/];
 
 /** Specs that run only in the phone project (milestone 32b): files ending -phone.spec.ts. */
 const PHONE_SPECS = [/-phone\.spec\.ts$/];

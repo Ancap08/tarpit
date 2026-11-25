@@ -2503,9 +2503,10 @@ counts retained Phaser image and canvas sources and the panorama canvases
 at 390 × 844, DPR 3. Combat poses are included after drawing the level's
 roster. Entering the siege drops any previously loaded Painted and
 Showpiece textures and installs only the Painted combat sheets needed for
-the level. The keep's own plates replace the ordinary ground and town. Card
-thumbnails load only on keep cards. The actor atlas loads for windows,
-wall-site taxes and the ending.
+the level. The level keeps those sheets through a restart and releases
+them when returning to the title. The keep's own plates replace the
+ordinary ground and town. Card thumbnails load only on keep cards.
+The actor atlas loads for windows, wall-site taxes and the ending.
 
 Night lifts the character, tower and shot plates and adds an upper and
 side rim. Ground crowds use 35 fixed ID-based slots around the sill
