@@ -17,6 +17,7 @@ import { townPortrait } from './townPortrait';
 import { menuKeys } from './menuKeys';
 import { CAMPAIGN_END, END_TEXT, LEVEL_NAMES, STORY_TEXT, levelNumberText } from '../names';
 import { PRINT, glyph, line, motionClock, rounded, sheet, skinFor, textMetrics } from './newTheme';
+import { uiObject } from './devicePixels';
 import { printedText } from './printCard';
 import { endScreenText, type CampaignResult, type EndKind } from './endText';
 
@@ -179,7 +180,7 @@ export class EndScreen {
           }).setOrigin(0.5, 0);
         }
       }
-      if (campaign.slots) this.starRow = drawStarRow(this.title.scene, this.cx, 0, campaign.stars, 28, TEXT.paperGold, !!state.level?.feat, this.printed);
+      if (campaign.slots) this.starRow = drawStarRow(this.title.scene, this.cx, 0, campaign.stars, this.printed && this.portrait ? 34 : 28, TEXT.paperGold, !!state.level?.feat, this.printed);
       this.detailRows = campaign.details.map(text => this.boons.scene.add.text(this.cx, 0, text, {
         fontFamily: FONT, fontSize: detailSize, color: ink, align: 'center',
         wordWrap: { width: this.portrait ? PORTRAIT_WIDTH - 40 : 442 },
@@ -237,12 +238,12 @@ export class EndScreen {
   /** Lay the sheet over the field. Offsets affect only the rendered objects. */
   private printLayout(state: GameState): void {
     const phone = this.portrait;
-    const width = phone ? 534 : 720;
+    const width = phone ? Math.min(this.cx * 2 - 48, 670) : 720;
     const x = this.cx - width / 2;
     const pad = phone ? 25 : 22;
     const inner = width - 2 * pad;
     const gap = phone ? 16 : 9;
-    const tall = phone ? 25 : 16;
+    const tall = phone ? 26 : 16;
     const scene = this.title.scene;
     const picture = this.picture!;
     const controls = this.hasAdvance ? [this.keepGoing, this.button, this.menu] : [this.button, this.menu];
@@ -251,7 +252,9 @@ export class EndScreen {
       label.setStyle({ color, fontSize: px, fontStyle, align: 'center', metrics: textMetrics(px), wordWrap: { width: wrap }, lineSpacing: 0 })
         .setOrigin(.5, 0).setDepth(11);
     const titleSize = phone ? this.shown === 'won' ? 98 : 70 : 55;
-    paperLabel(this.title, titleSize, inner, this.shown === 'won' ? PRINT.ink : PRINT.red, 'bold');
+    paperLabel(this.title, titleSize, inner, this.shown === 'won' ? PRINT.ink : PRINT.red);
+    // Caslon's display-size descenders extend beyond the small-label line box.
+    this.title.setPadding(0, 0, 0, Math.ceil(titleSize * .12));
     paperLabel(this.story, phone ? 27 : 18, inner, PRINT.muted, 'italic');
     if (this.close) paperLabel(this.close, tall, inner, PRINT.ink);
     details.forEach(row => paperLabel(row, tall, phone ? inner - 38 : 302, PRINT.ink));
@@ -259,7 +262,8 @@ export class EndScreen {
       this.folio = printedText(scene, `${levelNumberText(state.level.id)} · ${LEVEL_NAMES[state.level.id].name}`, tall, inner, PRINT.red, 'bold')
         .setDepth(11);
     }
-    picture.setDepth(11);
+    uiObject(picture.setDepth(11));
+    if (this.starRow) uiObject(this.starRow);
     this.starRow?.setDepth(11).setScale(phone ? 2.04 : 1.3);
     const stars = this.starRow?.getBounds().height ?? 0;
     const photoW = phone ? inner : 306;
@@ -305,7 +309,7 @@ export class EndScreen {
     top += reply;
     if (phone && this.hasAdvance) {
       this.keepGoing.setSize(inner, tapH);
-      this.keepGoing.setFontSize('25px');
+      this.keepGoing.setFontSize('26px');
       this.keepGoing.moveTo(x + pad, top);
       top += tapH + gap;
     }
@@ -313,7 +317,7 @@ export class EndScreen {
     const each = (inner - (row.length - 1) * gap) / row.length;
     row.forEach((button, i) => {
       button.setSize(each, tapH);
-      button.setFontSize(phone ? '25px' : '17px');
+      button.setFontSize(phone ? '26px' : '17px');
       button.moveTo(x + pad + i * (each + gap), top);
     });
     if (this.campaign) this.handleKey = menuKeys(controls, 0, this.menu);

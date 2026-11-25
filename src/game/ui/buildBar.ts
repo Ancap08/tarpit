@@ -15,7 +15,6 @@ import { HUD_FONT, TEXT } from '../palette';
 import { makeLock } from './lock';
 import { BAR_TYPES, canPick } from './buildBarModel';
 import { Button } from './button';
-import { towerGlyph } from './towerGlyph';
 import { BakedPaint, CLEAN, SANS, glyph, skinFor, textMetrics } from './newTheme';
 
 /** Keep the six full-size landscape plaques inside the pause column. */
@@ -53,19 +52,22 @@ export class BuildBar {
   private readonly clean: boolean;
   private readonly names?: Phaser.GameObjects.Text[];
   private readonly icons?: BakedPaint;
+  private readonly portraits?: Phaser.GameObjects.Image[];
 
   constructor(scene: Phaser.Scene, top: number, onClick: (type: TowerType) => void, private readonly layout: Layout = LANDSCAPE, painted?: PaintedSkin) {
     const portrait = layout.kind === 'portrait';
     this.clean = skinFor(scene) === 'battle';
+    const gap = portrait ? 4 : 5;
+    const buttonWidth = (layout.width - 10 - 5 * gap) / BAR_TYPES.length;
     const rects = this.clean ? BAR_TYPES.map((_, i) => ({
-      x: (portrait ? 5 : 16) + i * (portrait ? 92.2 : 98), y: top,
-      width: portrait ? 91 : 93, height: portrait ? 91 : 65,
+      x: portrait ? 5 + i * (buttonWidth + gap) : 16 + i * 98, y: top,
+      width: portrait ? buttonWidth : 93, height: portrait ? 94 : 65,
     })) : barRects(layout, top);
     const priceSize = layout === TAXED_PORTRAIT ? 21 : 20;
     this.buttons = BAR_TYPES.map((type, i) =>
       this.clean
         ? new Button(scene, rects[i], String(TOWER_DEFS[type].cost), () => onClick(type), {
-          fontSize: portrait ? '25px' : '15px', labelY: portrait ? 69 : 51,
+          fontSize: portrait ? '26px' : '15px', labelY: portrait ? 78 : 53,
         })
         : portrait
         ? new Button(scene, rects[i], String(TOWER_DEFS[type].cost), () => onClick(type), { fontSize: `${priceSize}px`, labelY: COST_Y })
@@ -87,10 +89,12 @@ export class BuildBar {
     if (this.clean) {
       this.icons = new BakedPaint(scene, scene.add.graphics());
       this.icons.image.setName('clean-build-icons');
-      this.names = portrait ? undefined : BAR_TYPES.map((type, i) =>
-        scene.add.text(rects[i].x + rects[i].width / 2, top + 34, TOWER_NAMES[type], {
-          fontFamily: SANS, fontSize: '12px', color: CLEAN.subdued, metrics: textMetrics(12),
-        }).setOrigin(.5));
+      const nameSize = portrait ? Math.max(scene.scale.parentSize.height >= 800 ? 20 : 23, Math.ceil(11.15 * scene.scale.displayScale.x)) : 14;
+      this.names = BAR_TYPES.map((type, i) =>
+        scene.add.text(rects[i].x + rects[i].width / 2, top + (portrait ? 49 : 33), TOWER_NAMES[type], {
+          fontFamily: SANS, fontSize: nameSize, color: CLEAN.subdued, metrics: textMetrics(nameSize),
+        }).setOrigin(.5).setName(`bar-name:${type}`));
+      this.portraits = painted ? BAR_TYPES.map(type => painted.towerIcon(type, portrait ? 54 : 40, portrait ? 32 : 24)) : undefined;
     } else if (painted) {
       this.paintedIcons = BAR_TYPES.map((type, i) => {
         const r = rects[i];
@@ -100,7 +104,7 @@ export class BuildBar {
     } else if (portrait) {
       this.classicIcons = scene.add.graphics();
     }
-    const countSize = this.clean ? (portrait ? 25 : 13) : layout === TAXED_PORTRAIT ? 23 : portrait ? 22 : 14;
+    const countSize = this.clean ? (portrait ? 26 : 14) : layout === TAXED_PORTRAIT ? 23 : portrait ? 22 : 14;
     this.count = scene.add.text(0, 0, '', {
       fontFamily: this.clean ? SANS : HUD_FONT, fontSize: countSize, fontStyle: 'bold', color: TEXT.hud,
       fixedHeight: countSize + 4, metrics: { ascent: countSize, descent: 4, fontSize: countSize + 4 },
@@ -189,7 +193,7 @@ export class BuildBar {
     const redraw = key !== this.iconKey;
     const portrait = this.layout.turned;
     const top = this.buttons[0].rect.y;
-    const paint = redraw ? this.icons!.begin({ x: 0, y: top, width: this.layout.width, height: portrait ? 92 : 66 }) : null;
+    const paint = redraw ? this.icons!.begin({ x: 0, y: top, width: this.layout.width, height: portrait ? 95 : 66 }) : null;
     if (redraw) this.iconKey = key;
     for (const [i, type] of BAR_TYPES.entries()) {
       const b = this.buttons[i];
@@ -197,14 +201,24 @@ export class BuildBar {
       b.set(String(towerBuildCost(state, type)), enabled);
       b.setPicked(pick === type);
       if (!redraw) continue;
-      this.names?.[i].setColor(enabled ? CLEAN.ink : CLEAN.subdued);
+      const label = this.names![i];
+      const color = enabled ? CLEAN.ink : CLEAN.subdued;
+      if (label.style.color !== color) label.setColor(color);
       const r = b.rect;
-      const away = cap !== undefined && i < 2 ? (i === 0 ? -1 : 1) * 18 : 0;
+      const away = cap !== undefined && i < 2 ? (i === 0 ? -1 : 1) * 22 : 0;
       const x = r.x + r.width / 2 + away;
-      const y = r.y + (portrait ? 32 : 13);
+      const y = r.y + (portrait ? 21 : 13);
       const g = paint!;
-      towerGlyph(g, type, x, y, portrait ? 57 : 36, enabled ? 1 : .45);
-      if (locked) glyph(g, 'lock', r.x + r.width - 12, r.y + 14, portrait ? 19 : 14, 0xc4ded6);
+      const alpha = locked ? .38 : enabled ? 1 : .62;
+      const image = this.portraits?.[i];
+      if (image) image.setPosition(x, y).setAlpha(alpha);
+      else {
+        const scale = portrait ? .98 : .68;
+        g.save().translateCanvas(x, y).scaleCanvas(scale, scale);
+        drawTowerShape(g, type, { x: 0, y: 0 }, -Math.PI / 2, false, alpha);
+        g.restore();
+      }
+      if (locked) glyph(g, 'lock', r.x + r.width - 13, r.y + 13, portrait ? 20 : 15, 0xc4ded6);
     }
     if (redraw) this.icons!.finish();
     this.count.setVisible(cap !== undefined);

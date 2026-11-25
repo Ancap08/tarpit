@@ -17,10 +17,27 @@ test('the Clean panel and its range are still in frozen play', async ({ page }) 
   const before = await panel();
   expect(before.progress).toBe(1);
   expect(before.rect).not.toBeNull();
+  const settle = () => page.evaluate(() => new Promise<void>(resolve => window.__tarpit!.game.events.once('postrender', resolve)));
+  await settle();
+  const pixels = await page.evaluate(() => {
+    const { game } = window.__tarpit!;
+    const { width, height, left, top } = game.canvas.getBoundingClientRect();
+    const ink = document.querySelector<HTMLCanvasElement>('canvas[data-interface-ink]')!;
+    const nativeWidth = Math.round((left + width) * devicePixelRatio) - Math.round(left * devicePixelRatio);
+    const nativeHeight = Math.round((top + height) * devicePixelRatio) - Math.round(top * devicePixelRatio);
+    const labels = game.scene.getScene('game').children.list.filter(object => object.type === 'Text')
+      .map(object => object as Phaser.GameObjects.Text).filter(text => text.visible && text.text);
+    return {
+      native: ink.width === nativeWidth && ink.height === nativeHeight,
+      matched: labels.every(text => text.style.resolution === ink.width / game.scale.width),
+      scaled: labels.filter(text => text.scaleX !== 1 || text.scaleY !== 1).map(text => text.text),
+    };
+  });
+  expect(pixels).toEqual({ native: true, matched: true, scaled: [] });
   const screenshot = await page.screenshot();
-  await page.evaluate(() => new Promise<void>(resolve => window.__tarpit!.game.events.once('postrender', resolve)));
+  await settle();
   expect(await panel()).toEqual(before);
-  expect(await page.screenshot()).toEqual(screenshot);
+  expect((await page.screenshot()).equals(screenshot), 'frozen frames are byte-identical').toBe(true);
 });
 
 for (const reducedMotion of ['no-preference', 'reduce'] as const) {

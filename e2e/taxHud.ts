@@ -154,9 +154,9 @@ export function taxHudSuite(touch: boolean) {
       return t.useSpecialAt('keg', entry.x, entry.y);
     });
     expect(hit).toMatchObject({ ok: true, kills: 1 });
-    expect(await visibleTexts(page)).toContain('Gold 300');
+    expect(await api(page, t => t.hudText().gold)).toBe('Gold 300');
     await api(page, t => t.step(1));
-    expect(await visibleTexts(page)).toContain('Gold 340');
+    expect(await api(page, t => t.hudText().gold)).toBe('Gold 340');
     await checkLabel(page, 'startWave', 'Start in 8s');
     await api(page, t => t.step(60));
     await checkLabel(page, 'startWave', 'Start in 7s');
@@ -165,7 +165,7 @@ export function taxHudSuite(touch: boolean) {
     await api(page, t => t.step(1));
     await press(page, 'startWave', touch);
     expect(await api(page, t => t.state().wave)).toBe(3);
-    expect(await visibleTexts(page)).toContain('Gold 400');
+    expect(await api(page, t => t.hudText().gold)).toBe('Gold 400');
   });
 }
 

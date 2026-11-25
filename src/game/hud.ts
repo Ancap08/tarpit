@@ -50,7 +50,7 @@ import {
   type SpecialType,
   type TowerType,
 } from '../sim';
-import { contains, type Rect } from './input';
+import type { Rect } from './input';
 import type { PaintedSkin } from './skin/painted';
 import {
   BOON_PENDING_TEXT,
@@ -74,7 +74,7 @@ import {
   SPECIAL_BUTTON_TEXT,
   speedLabel,
   START_WAVE_TEXT,
-  waveCounterText,
+  waveCounterText, waveNumberText, HUD_STAT_LABELS,
 } from './names';
 import { COLORS, FONT, HUD_FONT, TEXT } from './palette';
 import { BossBar } from './ui/bossBar';
@@ -94,7 +94,7 @@ import {
 import { SpecialMenu } from './ui/specialMenu';
 import { MuteButton } from './ui/muteButton';
 import { BakedPaint, CLEAN, SANS, glyph, roundPoints, rounded, sans, skinFor, textMetrics } from './ui/newTheme';
-import { CleanReadouts, cleanHudMetrics } from './ui/cleanHud';
+import { CleanReadouts, cleanHudMetrics, statColumns } from './ui/cleanHud';
 
 export type { Rect };
 
@@ -417,10 +417,11 @@ export class Hud {
   private siegeExpanded?: boolean;
   private readonly clean?: CleanReadouts;
   private modernTag = '';
+  private previewMemo?: { wave: number; endless: boolean; level: GameState['level']; waves: GameState['fixedWaves']; text: string };
   private readonly readyState?: Phaser.GameObjects.Text;
   private readonly taxGlyph?: Phaser.GameObjects.Graphics;
 
-  constructor(scene: Phaser.Scene, handlers: HudHandlers, private readonly layout: Layout = LANDSCAPE, painted?: PaintedSkin, private readonly pauseOnResult = false, private readonly siegeScreens = false) {
+  constructor(scene: Phaser.Scene, handlers: HudHandlers, private readonly layout: Layout = LANDSCAPE, painted?: PaintedSkin, private readonly pauseOnResult = false, private readonly siegeScreens = false, spawn?: { x: number; y: number }) {
     const modern = skinFor(scene) === 'battle';
     const m = modern ? cleanHudMetrics(layout, hudMetrics(layout)) : { ...hudMetrics(layout) };
     if (this.siegeScreens && m.portrait) m.statY = 20;
@@ -441,8 +442,9 @@ export class Hud {
           const g = dock.begin(band);
           g.fillStyle(CLEAN.ground).fillRect(band.x, band.y, band.width, band.height);
           rounded(g, m.portrait
-            ? { x: 2, y: m.barTop - 2, width: 556, height: 92 }
+            ? { x: 2, y: m.barTop - 2, width: layout.width - 4, height: 96 }
             : { x: 12, y: m.barTop - 2, width: 595, height: 69 });
+          dock.image.setName('clean-dock');
           dock.finish();
         }
         continue;
@@ -461,16 +463,17 @@ export class Hud {
 
     if (modern) {
       this.clean = new CleanReadouts(scene, m, counter);
+      backing!.image.setName('clean-status');
       backing!.finish();
     }
     const stat = (x: number, size = m.statSize, color: string = TEXT.hud) =>
       scene.add.text(x, m.statY, '', { fontFamily: modern ? SANS : FONT, fontSize: size, fontStyle: 'bold', color }).setOrigin(0, 0.5);
     const fixedStat = (x: number, size: number, color: string) => {
       const descent = Math.ceil(size / 5);
-      const height = size + descent;
+      const height = modern ? size + 3 : size + descent;
       return scene.add.text(x, m.statY, '', {
         fontFamily: modern ? SANS : HUD_FONT, fontSize: size, fontStyle: 'bold', color, fixedHeight: height,
-        metrics: { ascent: size, descent, fontSize: height },
+        metrics: modern ? textMetrics(size) : { ascent: size, descent, fontSize: height },
       }).setOrigin(0, 0.5);
     };
     const statSize = Number.parseInt(m.statSize, 10);
@@ -487,14 +490,17 @@ export class Hud {
       : stat(PREVIEW_X, `${PREVIEW_SIZE}px`, TEXT.hudDim).setWordWrapWidth(PREVIEW_WIDTH, true);
     this.next.setName('wave-preview');
     if (modern) {
-      this.lives.setX(m.portrait ? 192 : 147);
-      this.wave.setX(m.portrait ? 322 : 254);
+      const [, livesX, waveX] = statColumns(m);
+      this.gold.setColor(CLEAN.gold);
+      this.lives.setX(livesX).setColor(CLEAN.ink);
+      this.wave.setX(waveX).setColor(CLEAN.ink);
       this.tag.setVisible(false);
-      this.taxLine.setPosition(43, m.portrait ? 140 : 103)
-        .setStyle({ fontSize: m.portrait ? 25 : 13, color: CLEAN.subdued, metrics: textMetrics(m.portrait ? 25 : 13) });
-      this.taxLine.setFixedSize(0, m.portrait ? 28 : 16);
+      const size = m.portrait ? 26 : 14;
+      this.taxLine.setPosition(m.preview.x + (m.portrait ? 25 : 17), m.bands[0].y + (m.portrait ? 139 : 16))
+        .setOrigin(0).setStyle({ fontSize: size, color: CLEAN.subdued, metrics: textMetrics(size), fontStyle: 'normal' })
+        .setFixedSize(0, 0).setWordWrapWidth(m.preview.width - (m.portrait ? 25 : 17));
       this.next.setPosition(m.preview.x, m.preview.y).setOrigin(0).setWordWrapWidth(m.preview.width)
-        .setStyle({ fontSize: m.portrait ? 23 : 12, metrics: textMetrics(m.portrait ? 23 : 12), color: CLEAN.subdued });
+        .setStyle({ fontSize: m.portrait ? 24 : 14, metrics: textMetrics(m.portrait ? 24 : 14), color: CLEAN.subdued, fontStyle: 'normal' });
     }
 
     // The Special label is left-aligned (an empty right label) so the pip fits on its right.
@@ -508,9 +514,9 @@ export class Hud {
     const sb = m.special;
     if (modern) {
       this.readyState = sans(scene, sb.x + sb.width / 2 + 14, sb.y + sb.height * .72,
-        PANEL_TEXT.ready, m.portrait ? 24 : 12, '#aaf1d9', true).setOrigin(.5).setVisible(false);
+        PANEL_TEXT.ready, m.portrait ? 25 : 14, '#aaf1d9', true).setOrigin(.5).setVisible(false);
       this.taxGlyph = scene.add.graphics().setVisible(false);
-      glyph(this.taxGlyph, 'window', m.portrait ? 28 : 32, this.taxLine.y, m.portrait ? 23 : 16, CLEAN.rose);
+      glyph(this.taxGlyph, 'window', m.preview.x + 5, this.taxLine.y + (m.portrait ? 13 : 7), m.portrait ? 21 : 14, CLEAN.rose);
     }
     this.rechargeFill = scene.add.graphics();
     scene.children.moveBelow(this.rechargeFill, this.specialButton.labelObjects[0]);
@@ -538,14 +544,14 @@ export class Hud {
           return label.advancedWordWrap(text, label.context, wrapWidth);
         });
     }
-    this.speedButton = new Button(scene, m.speed, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress, fontSize: modern ? m.startFont : m.portrait ? m.startFont : undefined });
+    this.speedButton = new Button(scene, m.speed, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress, fontSize: modern && m.portrait ? '26px' : modern || m.portrait ? m.startFont : undefined });
     this.specialMenu = new SpecialMenu(scene, m.menu.left, m.menu.top, handlers.onSpecialPick, layout.map.y, m.menu.size, m.menu.font);
     this.bar = new BuildBar(scene, m.barTop, handlers.onPick, layout, painted);
-    this.bossBar = new BossBar(scene, layout);
+    this.bossBar = new BossBar(scene, layout, spawn);
     if (handlers.onRepair) this.gate = new GateHud(scene, layout, handlers.onRepair, siegeScreens);
     this.muteButton = new MuteButton(scene, m.mute);
     this.pauseButton = new Button(scene, m.pause, m.portrait ? '' : PAUSE_TEXT.button, handlers.onPause, {
-      bare: modern, fontSize: modern ? '12px' : '18px', labelY: modern ? 34 : 57, sound: null,
+      bare: modern, fontSize: modern ? '14px' : '18px', labelY: modern ? 34 : 57, sound: null,
     });
     this.pauseIcon = scene.add.graphics().fillStyle(COLORS.buttonEdgePicked);
     const iconHeight = m.portrait ? 26 : 21;
@@ -610,11 +616,12 @@ export class Hud {
       if (t.text !== s) t.setText(s);
     };
     const count = (label: Phaser.GameObjects.Text, value: string) => this.clean ? this.clean.count(label, value) : set(label, value);
-    count(this.gold, `Gold ${state.gold}`);
+    count(this.gold, this.clean ? String(state.gold) : `${HUD_STAT_LABELS[0]} ${state.gold}`);
     this.cheatMark.setVisible(state.cheated);
+    if (this.clean && m.portrait && state.cheated) this.cheatMark.setY(this.taxLine.y + this.cheatMark.height / 2);
     // The sim lets lives go below 0 (the boss's exit costs 5); the HUD shows 0.
-    count(this.lives, `Lives ${Math.max(0, state.lives)}`);
-    set(this.wave, waveCounterText(state.wave, state.endless, lastWave(state)));
+    count(this.lives, this.clean ? String(Math.max(0, state.lives)) : `${HUD_STAT_LABELS[1]} ${Math.max(0, state.lives)}`);
+    set(this.wave, (this.clean ? waveNumberText : waveCounterText)(state.wave, state.endless, lastWave(state)));
     const tag = state.map.id === 'keep' ? OLD_KEEP_NAME : state.level ? levelNumberText(state.level.id) : difficultyTag(state.difficulty);
     if (this.clean) {
       this.modernTag = tag;
@@ -656,7 +663,7 @@ export class Hud {
     // After a loss there is no next wave to play, so the preview goes blank.
     const aimText = m.portrait && special.aiming !== null && special.banner ? stripAimText(special.banner) : null;
     this.drawSiegeCounter(aimText !== null);
-    const preview = aimText ?? (state.phase === 'lost' || this.siegeScreens ? '' : previewText(state));
+    const preview = aimText ?? (state.phase === 'lost' || this.siegeScreens ? '' : this.clean ? this.cleanPreview(state) : previewText(state));
     if (this.next.text !== preview) {
       const siege = !!state.map.otherRoads?.length;
       const previewX = siege && !m.portrait ? 328 : m.preview.x;
@@ -689,6 +696,12 @@ export class Hud {
         } else this.next.setFontSize(previewSize(preview)).setText(preview);
         this.next.setScale(Math.min(1, width / this.next.width), Math.min(1, BUTTON_H / this.next.height));
       }
+    }
+    if (this.clean && m.portrait) {
+      const right = m.preview.x + m.preview.width;
+      const canShare = !!taxes && !state.cheated && this.next.height <= this.next.getTextMetrics().fontSize
+        && this.taxLine.x + this.taxLine.width + 16 <= right - this.next.width;
+      this.next.setPosition(canShare ? right - this.next.width : m.preview.x, canShare ? this.taxLine.y : m.preview.y);
     }
     const call = callEarlyStatus(state);
     let reason: string | null = null;
@@ -766,9 +779,13 @@ export class Hud {
     this.gate?.update(state, special.paused ?? false);
   }
 
-  headerControlAt(x: number, y: number): boolean {
-    const m = this.m;
-    return !!this.clean && !m.portrait && (contains(m.gold, x, y) || contains(m.mute, x, y) || contains(m.pause, x, y));
+  private cleanPreview(state: GameState): string {
+    const cached = this.previewMemo;
+    if (cached?.wave === state.wave && cached.endless === state.endless &&
+        cached.level === state.level && cached.waves === state.fixedWaves) return cached.text;
+    const text = previewText(state);
+    this.previewMemo = { wave: state.wave, endless: state.endless, level: state.level, waves: state.fixedWaves, text };
+    return text;
   }
 
   get repairRect(): Rect | undefined {
@@ -782,9 +799,9 @@ export class Hud {
 
   strings(): HudStrings {
     return {
-      gold: this.gold.text,
-      lives: this.lives.text,
-      wave: this.wave.text,
+      gold: this.clean ? `${HUD_STAT_LABELS[0]} ${this.gold.text}` : this.gold.text,
+      lives: this.clean ? `${HUD_STAT_LABELS[1]} ${this.lives.text}` : this.lives.text,
+      wave: this.clean ? `${HUD_STAT_LABELS[2]} ${this.wave.text}` : this.wave.text,
       next: this.next.text,
       startWave: this.startButton.text,
       special: this.specialButton.text,

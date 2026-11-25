@@ -33,20 +33,24 @@ type Size = { width: number; height: number };
 /** Use the landscape build row when it fits, otherwise a rail beside the game. */
 export function heldBoonLayout(layout: Layout, parent: Size, clean = false) {
   const portrait = layout.kind === 'portrait';
-  const inRow = !portrait && parent.width >= layout.width && parent.height >= layout.height;
+  const inRow = !portrait && (clean || parent.width >= layout.width && parent.height >= layout.height);
   const gap = 3;
   // FIT can be limited by height or by width. In the latter case the rail
   // itself widens the canvas: size * parent.width / (layout.width + 2*gap + size) >= 45.
   // One spare CSS pixel accommodates rounding in the browser's canvas bounds.
   const target = 45;
-  const size = inRow ? 46 : Math.ceil(Math.max(
+  const fittedTarget = Math.ceil(target * Math.max(layout.height / parent.height, layout.width / parent.width));
+  const mapRight = layout.map.x + layout.map.width;
+  const margin = layout.width - mapRight;
+  const inMargin = clean && portrait && margin >= fittedTarget + 4;
+  const size = inRow ? clean ? fittedTarget : 46 : inMargin ? fittedTarget : Math.ceil(Math.max(
     target * layout.height / Math.max(1, parent.height),
     target * (layout.width + 2 * gap) / Math.max(1, parent.width - target),
   ));
-  const left = inRow ? (clean ? 798 : 678) : layout.width + gap;
-  const top = inRow ? (clean ? 14 : 531) : portrait ? gap : layout.height - COUNT * (size + gap);
+  const left = inRow ? (clean ? 637 : 678) : inMargin ? mapRight + (margin - size) / 2 : layout.width + gap;
+  const top = inRow ? (clean ? 16 : 531) : inMargin ? layout.map.y + gap : portrait ? gap : layout.height - COUNT * (size + gap);
   return {
-    canvasWidth: inRow ? layout.width : layout.width + size + 2 * gap,
+    canvasWidth: inRow || inMargin ? layout.width : layout.width + size + 2 * gap,
     slots: Array.from({ length: COUNT }, (_, i): Rect => ({
       x: left + (inRow ? i * (size + gap) : 0),
       y: top + (inRow ? 0 : i * (size + gap)),
@@ -55,7 +59,7 @@ export function heldBoonLayout(layout: Layout, parent: Size, clean = false) {
     })),
     tooltip: portrait
       ? { x: 58, y: layout.map.y + 62, width: 416, height: 84 }
-      : { x: 534, y: layout.map.height - 68, width: 362, height: 68 },
+      : { x: 534, y: layout.map.y + layout.map.height - 68, width: 362, height: 68 },
     descriptionFont: portrait ? 20 : 14,
   };
 }

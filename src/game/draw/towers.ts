@@ -190,21 +190,27 @@ export function drawTowerShape(
       break;
   }
 
-  if (path) {
-    const { centerX: x, centerY: y, radius } = PATH_MARKS;
-    const center = at(x, y);
-    g.fillStyle(COLORS.towerPathEdge, alpha).fillCircle(center.x, center.y, radius);
-    const mark = PATH_MARKS[path];
-    g.fillStyle(mark.color, alpha);
-    if (mark.shape === 'diamond') {
-      const half = mark.halfSize;
-      const [top, right, bottom, left] = [at(x, y - half), at(x + half, y), at(x, y + half), at(x - half, y)];
-      g.fillTriangle(top.x, top.y, right.x, right.y, bottom.x, bottom.y)
-        .fillTriangle(top.x, top.y, bottom.x, bottom.y, left.x, left.y);
-    } else {
-      const [left, right] = [at(x - mark.offset, y), at(x + mark.offset, y)];
-      g.fillCircle(left.x, left.y, mark.radius).fillCircle(right.x, right.y, mark.radius);
-    }
+  if (path) drawTowerPathBadge(g, p, layout, path, alpha);
+}
+
+/** The branch badge sits upright above the tower's own silhouette. */
+export function drawTowerPathBadge(
+  g: Phaser.GameObjects.Graphics, p: Point, layout: Layout, path: UpgradePath, alpha: number,
+): void {
+  const at = (dx: number, dy: number) => layout.offset(p, dx, dy);
+  const { centerX: x, centerY: y, radius } = PATH_MARKS;
+  const center = at(x, y);
+  g.fillStyle(COLORS.towerPathEdge, alpha).fillCircle(center.x, center.y, radius);
+  const mark = PATH_MARKS[path];
+  g.fillStyle(mark.color, alpha);
+  if (mark.shape === 'diamond') {
+    const half = mark.halfSize;
+    const [top, right, bottom, left] = [at(x, y - half), at(x + half, y), at(x, y + half), at(x - half, y)];
+    g.fillTriangle(top.x, top.y, right.x, right.y, bottom.x, bottom.y)
+      .fillTriangle(top.x, top.y, bottom.x, bottom.y, left.x, left.y);
+  } else {
+    const [left, right] = [at(x - mark.offset, y), at(x + mark.offset, y)];
+    g.fillCircle(left.x, left.y, mark.radius).fillCircle(right.x, right.y, mark.radius);
   }
 }
 
@@ -293,6 +299,6 @@ export function drawTowers(
       g.lineStyle(tower.locked ? 1 : 2, tower.upgraded ? 0xffda92 : CLEAN.mint, alpha).strokePoints(points, true);
     }
     body?.(tower, p, stance, alpha);
-    drawTowerScaled(g, body ? null : tower.type, p, stance, tower.upgraded && !clean, alpha, layout, tower.path);
+    drawTowerScaled(g, body ? null : tower.type, p, stance, tower.upgraded && !clean, alpha, layout, clean ? undefined : tower.path);
   }
 }

@@ -36,6 +36,7 @@ export interface ButtonOptions {
   skin?: Skin;
   primary?: boolean;
   icon?: Icon;
+  upgradeRow?: boolean;
 }
 
 export class Button {
@@ -50,6 +51,7 @@ export class Button {
   private readonly bare: boolean;
   private readonly skin: Skin;
   private readonly primary: boolean;
+  private readonly upgradeRow: boolean;
   private icon?: Icon;
   private offsetY = 0;
   private readonly clock?: () => number;
@@ -77,6 +79,7 @@ export class Button {
     this.labelInset = options.labelInset ?? 10;
     this.skin = options.skin ?? skinFor(scene);
     this.primary = options.primary ?? false;
+    this.upgradeRow = options.upgradeRow ?? false;
     this.icon = options.icon;
     if (this.skin !== 'legacy') this.clock = motionClock(scene);
     const size = options.fontSize ?? '18px';
@@ -160,11 +163,11 @@ export class Button {
       if (this.clock && this.rightLabel.text) this.rollAt = this.clock();
       this.rightLabel.setText(right);
     }
-    this.updateRoll();
     if (this.enabled !== enabled) {
       this.enabled = enabled;
       this.refresh();
     } else if (changed && this.icon) this.refresh();
+    this.updateRoll();
   }
 
   /** Change the label size (both labels), e.g. for a longer label in the same slot. */
@@ -233,7 +236,8 @@ export class Button {
     const progress = Math.min(1, (this.clock() - this.rollAt) / 130);
     const label = this.rightLabel ?? this.label;
     label.setAlpha(.5 + .5 * progress);
-    label.setAngle(7 * (1 - progress));
+    const middle = this.r.y + this.offsetY + (this.labelY ?? this.r.height / 2);
+    label.setY(middle + (this.pressed && this.enabled ? 2 : 0) + 3 * (1 - progress));
     if (progress === 1) this.rollAt = -Infinity;
   }
 
@@ -263,8 +267,9 @@ export class Button {
     const shift = this.skin !== 'legacy' && this.icon ? Math.min(this.rightLabel ? 24 : 13, this.r.width * .075) : 0;
     const mid = y + this.offsetY + (this.labelY ?? this.r.height / 2);
     if (this.rightLabel) {
-      this.label.setPosition(x + this.labelInset + shift, mid);
-      this.rightLabel.setPosition(x + this.r.width - this.labelInset, mid);
+      const inset = this.upgradeRow ? this.labelInset : this.labelInset + shift;
+      this.label.setPosition(x + inset, mid);
+      this.rightLabel.setPosition(x + this.r.width - (this.upgradeRow ? 12 : this.labelInset), mid);
     } else {
       this.label.setPosition(x + this.r.width / 2 + (this.label.text ? shift : 0), mid);
     }
@@ -334,7 +339,14 @@ export class Button {
       const offset = this.chrome ? 0 : this.offsetY;
       const edge = paper ? active ? PRINT.green : PRINT.edge : this.picked ? CLEAN.mint : CLEAN.edge;
       if (!this.bare) rounded(paint, { x: x + compress, y: y + offset + compress, width: width - 2 * compress, height: height - 2 * compress }, fill, edge, paper ? 12 : 16);
-      if (this.icon) {
+      if (this.upgradeRow && this.icon && this.rightLabel) {
+        const tile = this.labelInset - 20;
+        const tileX = x + 9, tileY = y + offset + height / 2 - tile / 2;
+        rounded(paint, { x: tileX, y: tileY, width: tile, height: tile }, 0x274c47, 0x3f6861, 9);
+        glyph(paint, this.icon, tileX + tile / 2, tileY + tile / 2, tile * .56, CLEAN.mint);
+        const coinX = x + width - 12 - this.rightLabel.width - 12;
+        glyph(paint, 'coin', coinX, y + offset + (this.labelY ?? height / 2), 19, 0xffda92);
+      } else if (this.icon) {
         const label = this.label.text;
         const size = Math.min(28, height * .48);
         const iconX = label ? this.rightLabel ? x + this.labelInset / 1.3 : x + (width - this.label.width) / 2 - size * .35 : x + width / 2;
@@ -343,7 +355,10 @@ export class Button {
     }
     if (this.shown) this.chrome?.finish(this.offsetY);
     this.positionLabels();
-    this.label.setColor(color).setY(this.label.y + compress);
-    this.rightLabel?.setColor(!paper && available ? CLEAN.gold : color).setY((this.rightLabel?.y ?? 0) + compress);
+    if (this.label.style.color !== color) this.label.setColor(color);
+    this.label.setY(this.label.y + compress);
+    const priceColor = !paper && available ? CLEAN.gold : color;
+    if (this.rightLabel && this.rightLabel.style.color !== priceColor) this.rightLabel.setColor(priceColor);
+    if (this.rightLabel) this.rightLabel.setY(this.rightLabel.y + compress);
   }
 }

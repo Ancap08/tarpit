@@ -86,7 +86,7 @@ export async function checkSpacing(page: Page) {
         boxes.push({ key: object.name, owner: '', button: false, x, y, width, height });
       }
     }
-    const { width, height } = t.game.canvas;
+    const { width, height } = t.game.scale;
     for (const box of boxes) {
       if (box.x < 0 || box.y < 0 || box.x + box.width > width || box.y + box.height > height)
         throw new Error(`Outside ${width}x${height}: ${box.key}`);

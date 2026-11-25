@@ -17,7 +17,9 @@ import { fontPx, type Layout } from '../layout';
 import { killsLabel, PANEL_TEXT, TOWER_NAMES, targetingButtonText, towerPanelTitle } from '../names';
 import { FONT, TEXT } from '../palette';
 import { CLEAN, SANS, motionClock, rounded, skinFor, textMetrics } from './newTheme';
-import { towerGlyph } from './towerGlyph';
+import { uiObject } from './devicePixels';
+import { drawTowerShape } from '../draw/towers';
+import type { PaintedSkin } from '../skin/painted';
 import { ink, THEME } from './theme';
 import { Button } from './button';
 import { STACK_GAP, STACK_PAD } from './geometry';
@@ -57,6 +59,8 @@ export class TowerPanel {
   private readonly clean: boolean;
   private readonly paper?: Phaser.GameObjects.Graphics;
   private readonly illustration?: Phaser.GameObjects.Graphics;
+  private readonly portraits?: Map<string, Phaser.GameObjects.Image>;
+  private portrait?: Phaser.GameObjects.Image;
   private readonly pathHeading?: Phaser.GameObjects.Text;
   private readonly clock?: () => number;
   private openedAt = -Infinity;
@@ -67,6 +71,7 @@ export class TowerPanel {
     private readonly scene: Phaser.Scene,
     private readonly layout: Layout,
     handlers: TowerPanelHandlers,
+    private readonly painted?: PaintedSkin,
   ) {
     this.clean = skinFor(scene) === 'battle';
     this.clock = motionClock(scene);
@@ -78,11 +83,14 @@ export class TowerPanel {
     if (this.clean) {
       this.paper = scene.add.graphics().setName('clean-tower-panel').setVisible(false);
       this.illustration = scene.add.graphics().setVisible(false);
+      if (painted) this.portraits = new Map();
     }
     this.upgrade = new Button(scene, rect, PANEL_TEXT.upgrade, () => handlers.onUpgrade(), { fontSize: f(16), right: '', primary: this.clean });
     this.undo = new Button(scene, rect, PANEL_TEXT.undoUpgrade, handlers.onUndoUpgrade, { fontSize: f(14), right: '' });
     this.sell = new Button(scene, rect, PANEL_TEXT.sell, handlers.onSell, { fontSize: f(16), right: '', labelInset: 6 });
-    this.target = new Button(scene, rect, targetingButtonText('first'), () => handlers.onTarget(nextMode(this.mode)), { fontSize: f(13) });
+    this.target = new Button(scene, rect, targetingButtonText('first'), () => handlers.onTarget(nextMode(this.mode)), {
+      fontSize: f(this.clean ? 14 : 13), icon: this.clean ? 'target' : undefined,
+    });
     this.closeButton = new Button(scene, rect, this.clean ? '' : '×', handlers.onClose, {
       fontSize: portrait ? '30px' : '24px', icon: this.clean ? 'close' : undefined,
     });
@@ -91,7 +99,8 @@ export class TowerPanel {
       right: '',
       fontSize: portrait ? (this.clean ? '26px' : '22px') : '17px',
       icon: this.clean ? path === 'A' ? 'target' : 'volley' : undefined,
-      labelInset: this.clean ? 34 : undefined,
+      upgradeRow: this.clean,
+      labelInset: this.clean ? (portrait ? 72 : 58) : undefined,
       labelY: this.pathTitleY,
       sound: null,
     });
@@ -142,6 +151,7 @@ export class TowerPanel {
     this.backing.setVisible(false);
     this.paper?.setVisible(false);
     this.illustration?.setVisible(false);
+    this.portrait?.setVisible(false);
     this.pathHeading?.setVisible(false);
     for (const button of this.allButtons) button.setShown(false);
     this.titleText.setVisible(false);
@@ -178,7 +188,9 @@ export class TowerPanel {
     this.sell.set(tower.locked ? PANEL_TEXT.sell : PANEL_TEXT.remove, true, `+${towerSellValue(tower)}`);
     this.mode = tower.targeting;
     this.target.set(targetingButtonText(tower.targeting), true);
-    rows.push({ key: 'sell', button: this.sell }, { key: 'target', button: this.target });
+    const sell = { key: 'sell', button: this.sell }, target = { key: 'target', button: this.target };
+    if (this.clean) rows.push(target, sell);
+    else rows.push(sell, target);
     this.activeRows = rows;
 
     const portrait = this.layout.kind === 'portrait';
@@ -207,7 +219,7 @@ export class TowerPanel {
     const extraHeight = { A: 0, B: 0 };
     for (const choice of paths) {
       const { description, reason } = this.pathText[choice.path];
-      const wrap = buttonWidth - (this.clean ? 68 : 20);
+      const wrap = buttonWidth - (this.clean ? (portrait ? 83 : 69) : 20);
       if (description.style.wordWrapWidth !== wrap) description.setWordWrapWidth(wrap);
       if (description.text !== choice.description) description.setText(choice.description);
       const contentHeight = descriptionTop + description.height +
@@ -226,17 +238,13 @@ export class TowerPanel {
         : placeBeside(centre, width, height, state.map, this.layout);
       this.placed = { ...location, width, height };
       if (!this.clean) this.backing.setPosition(location.x, location.y).setSize(width, height).setVisible(true);
-      else if (!portrait && location.y < 104 && location.x < 361) {
-        const below = Math.max(109, centre.y + 24);
-        if (below + height < m.height) this.placed.y = below;
-        else this.placed.x = Math.max(368, this.placed.x);
-      }
+
     }
     const { x, y } = this.placed;
     const left = x + pad;
     const offset = this.clean ? 17 * (1 - this.arrival) ** 3 : 0;
     if (this.paper) {
-      const key = `${x}:${y}:${width}:${height}:${tower.type}`;
+      const key = `${x}:${y}:${width}:${height}:${tower.type}:${level}`;
       if (this.paintKey !== key) {
         this.paintKey = key;
         const g = this.paper.clear();
@@ -245,10 +253,21 @@ export class TowerPanel {
         const tile = { x: left, y: y + 24, width: portrait ? 71 : 54, height: portrait ? 62 : 48 };
         const art = this.illustration!.clear();
         rounded(art, tile, CLEAN.raised, CLEAN.raised, 13);
-        towerGlyph(art, tower.type, tile.x + tile.width / 2, tile.y + tile.height / 2, portrait ? 61 : 46);
+        if (!this.painted) drawTowerShape(art, tower.type,
+          { x: tile.x + tile.width / 2, y: tile.y + tile.height / 2 }, -Math.PI / 2, level > 1);
       }
       this.paper.setY(offset).setVisible(true);
       this.illustration!.setY(offset).setVisible(true);
+      if (this.portraits) {
+        this.portrait?.setVisible(false);
+        let image = this.portraits.get(tower.type);
+        if (!image) {
+          image = uiObject(this.painted!.towerIcon(tower.type, portrait ? 61 : 46, portrait ? 51 : 40));
+          this.scene.children.moveAbove(image, this.illustration!);
+          this.portraits.set(tower.type, image);
+        }
+        this.portrait = image.setPosition(left + (portrait ? 35.5 : 27), y + offset + (portrait ? 55 : 48)).setVisible(true);
+      }
       this.pathHeading!.setPosition(left + 4, y + offset + pad + header - 17).setVisible(paths.length > 0);
     }
     this.closeButton.setSize(close, close);
@@ -261,7 +280,8 @@ export class TowerPanel {
     if (this.titleText.text !== title) this.titleText.setText(title);
     const titleX = this.clean ? left + (portrait ? 82 : 65) : left;
     this.titleText.setPosition(titleX, y + pad + (this.clean ? 49 : portrait ? 13 : 9) + offset).setVisible(this.clean || level > 1);
-    if (this.clean) this.titleText.setWordWrapWidth(width - (titleX - x) - close - pad - 5);
+    const titleWidth = width - (titleX - x) - close - pad - 5;
+    if (this.clean && this.titleText.style.wordWrapWidth !== titleWidth) this.titleText.setWordWrapWidth(titleWidth);
     const kills = killsLabel(tower.kills ?? 0, !!state.level && level >= maxTowerLevel(state));
     const meta = this.clean ? PANEL_TEXT.towerMeta(level, kills) : kills;
     if (this.killsText.text !== meta) this.killsText.setText(meta);
@@ -273,10 +293,11 @@ export class TowerPanel {
     let top = y + pad + header;
     for (const { key, button, path } of rows) {
       const h = path ? pathHeight + extraHeight[path.path] : rowHeight;
-      const isSell = split > 0 && key === 'sell';
-      const isTarget = split > 0 && key === 'target';
-      button.setSize(isSell ? split : isTarget ? innerWidth - split - rowGap : buttonWidth, h);
-      button.moveTo(isTarget ? left + split + rowGap : left, top);
+      const isFirst = split > 0 && key === (this.clean ? 'target' : 'sell');
+      const isSecond = split > 0 && key === (this.clean ? 'sell' : 'target');
+      const firstWidth = this.clean ? innerWidth - split - rowGap : split;
+      button.setSize(isFirst ? firstWidth : isSecond ? innerWidth - firstWidth - rowGap : buttonWidth, h);
+      button.moveTo(isSecond ? left + firstWidth + rowGap : left, top);
       button.setVisualOffset(offset);
       if (path) {
         const { description, reason } = this.pathText[path.path];
@@ -284,10 +305,10 @@ export class TowerPanel {
         const color = this.clean ? CLEAN.subdued : button.isEnabled ? TEXT.button : TEXT.buttonDisabled;
         if (description.style.color !== color) description.setColor(color);
         if (reason.text !== hint) reason.setText(hint);
-        description.setPosition(left + (this.clean ? 54 : 10), top + descriptionTop + offset);
-        reason.setPosition(left + (this.clean ? 54 : 10), description.y + description.height + captionGap);
+        description.setPosition(left + (this.clean ? (portrait ? 72 : 58) : 10), top + descriptionTop + offset);
+        reason.setPosition(left + (this.clean ? (portrait ? 72 : 58) : 10), description.y + description.height + captionGap);
       }
-      if (!isSell) top += h + rowGap;
+      if (!isFirst) top += h + rowGap;
     }
     for (const b of this.allButtons) b.setShown(b === this.closeButton || rows.some((row) => row.button === b));
     for (const path of UPGRADE_PATHS) {

@@ -25,7 +25,7 @@ function checkResultActions() {
     expect(await api(page, (a) => a.runScript('comboBuild'))).toBe('won');
     const r = await api(page, (a) => a.uiRects());
     const row = [await pageRect(page, r.keepGoing), await pageRect(page, r.playAgain), await pageRect(page, r.menu)];
-    const canvas = (await page.locator('canvas').boundingBox())!;
+    const canvas = (await page.locator('canvas:not([data-interface-ink])').boundingBox())!;
     for (const [i, b] of row.entries()) {
       expect(b.height).toBeGreaterThanOrEqual(44);
       expect(b.width).toBeGreaterThanOrEqual(44);

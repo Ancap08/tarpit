@@ -110,7 +110,18 @@ const markPixels = (page: Page) => page.evaluate(({ col, row }) => {
   const scale = (edge.x - origin.x) / 100;
   const x = Math.round((point.x - origin.x) / scale);
   const y = Math.round((point.y - origin.y) / scale);
-  const data = t.game.canvas.getContext('2d')!.getImageData(x + 2, y - 18, 17, 17).data;
+  const board = t.game.scale;
+  const source = t.game.canvas;
+  const pixels = document.createElement('canvas');
+  pixels.width = pixels.height = 17;
+  const ctx = pixels.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+  const ink = document.querySelector<HTMLCanvasElement>('canvas[data-interface-ink]');
+  for (const layer of ink ? [source, ink] : [source]) {
+    const sx = layer.width / board.width, sy = layer.height / board.height;
+    ctx.drawImage(layer, (x + 2) * sx, (y - 18) * sy, 17 * sx, 17 * sy, 0, 0, 17, 17);
+  }
+  const data = ctx.getImageData(0, 0, 17, 17).data;
   let gold = 0;
   let cyan = 0;
   for (let i = 0; i < data.length; i += 4) {

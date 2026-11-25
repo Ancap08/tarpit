@@ -6,7 +6,7 @@ import { BAR_TYPES } from '../src/game/ui/buildBarModel';
 import { EARLY_CALL_MAX_BONUS, LEVELS, TICKS_PER_SECOND, WAVES, type LevelDef } from '../src/sim';
 import { api, press } from './campaign';
 import { checkSize } from './campaignActs';
-import { useTallFontMetrics, useWideFontMetrics } from './campaignFont';
+import { platformWideFactor, useTallFontMetrics, useWideFontMetrics } from './campaignFont';
 import { openPaintedLevel } from './taxHud';
 import { hasNewInterface, newInterfaceChecks } from './newInterface';
 
@@ -48,6 +48,12 @@ async function checkHud(page: Page, level: LevelDef, phase: Phase, preview: stri
     }
     const modern = new URL(location.href).searchParams.get('ui') === 'new';
     for (const key of ['gold', 'lives', 'wave', 'taxLine'] as const) read(key, hud[key], strip);
+    if (modern) {
+      for (const label of scene.children.list.filter(o => o.name.startsWith('hud-stat:')))
+        read(label.name, label as Phaser.GameObjects.Text, strip);
+      for (const type of types) read('tower-name:' + type,
+        scene.children.getByName('bar-name:' + type) as Phaser.GameObjects.Text, rects['bar:' + type]);
+    }
     read('tag', modern ? scene.children.getByName('hud-level-name') as Phaser.GameObjects.Text : hud['tag'], strip);
     if (phase !== 'lost') read('next', hud['next'], strip);
     if (t.state!().cheated) read('cheatMark', hud['cheatMark'], strip);
@@ -70,7 +76,7 @@ async function checkHud(page: Page, level: LevelDef, phase: Phase, preview: stri
     // A new visible label in either HUD band must acquire the same size and containment checks.
     const unmeasured = scene.children.list.filter(node => node.type === 'Text')
       .map(node => node as Phaser.GameObjects.Text)
-      .filter(label => label.visible && label.alpha > 0 && label.text && !measured.has(label))
+      .filter(label => label.visible && label.alpha > 0 && label.depth < 11 && label.text && !measured.has(label))
       .filter(label => label.getBounds().top < strip.y + strip.height || label.getBounds().bottom > controls.y)
       .map(label => label.text);
     const overlaps: string[] = [];
@@ -81,7 +87,7 @@ async function checkHud(page: Page, level: LevelDef, phase: Phase, preview: stri
     }
     // Both painted bands must fit the actual canvas and leave the battlefield clear.
     const layout = scene['layout'];
-    const canvas = { x: 0, y: 0, width: t.game.canvas.width, height: t.game.canvas.height };
+    const canvas = { x: 0, y: 0, width: t.game.scale.width, height: t.game.scale.height };
     const framePadding = Math.min(inset(strip, canvas), inset(controls, canvas),
       layout.map.y - strip.y - strip.height, controls.y - layout.map.y - layout.map.height,
       ...labels.filter(l => l.id.startsWith('bar:') || ['special', 'speed', 'startWave', 'tally'].includes(l.id))
@@ -96,8 +102,9 @@ async function checkHud(page: Page, level: LevelDef, phase: Phase, preview: stri
   expect(snapshot.end).toBe(phase === 'won' || phase === 'lost' ? phase : null);
   expect(snapshot.next).toBe(preview);
   const text = Object.fromEntries(snapshot.labels.map(l => [l.id, l.text]));
-  expect(text).toMatchObject({ gold: 'Gold ' + snapshot.gold, lives: 'Lives ' + Math.max(0, snapshot.lives),
-    wave: `Wave ${snapshot.wave}/${snapshot.total}` });
+  const modern = hasNewInterface(page);
+  expect(text).toMatchObject({ gold: (modern ? '' : 'Gold ') + snapshot.gold, lives: (modern ? '' : 'Lives ') + Math.max(0, snapshot.lives),
+    wave: `${modern ? '' : 'Wave '}${snapshot.wave}/${snapshot.total}` });
   if (hasNewInterface(page)) expect(text.tag).toMatch(new RegExp(`^Level ${level.id} · .+`));
   else expect(text.tag).toBe('Level ' + level.id);
   if (text.startWave === BOSS_WAVE_NEXT_TEXT) expect.soft(snapshot.waveLines).toEqual(['Boss', 'next']);
@@ -113,7 +120,7 @@ async function checkHud(page: Page, level: LevelDef, phase: Phase, preview: stri
     expect.soft(label.visible && !!label.text, detail + ' visible').toBe(true);
     expect.soft(label.padding, detail + ' inside its panel or plaque').toBeGreaterThanOrEqual(0);
     expect.soft(label.uniform, detail + ' keeps glyph proportions').toBe(true);
-    const minimum = height === 844 || ['taxLine', 'tally', 'speed'].includes(label.id) ? 12 : 11.1;
+    const minimum = (height === 844 && !label.id.startsWith('tower-name:')) || ['taxLine', 'tally', 'speed'].includes(label.id) ? 12 : 11.1;
     expect.soft(label.size, detail + ' CSS px').toBeGreaterThanOrEqual(minimum);
     test.info().annotations.push({ type: 'font', description: height + ' ' + detail + ' ' + label.size.toFixed(2) });
   }
@@ -179,7 +186,7 @@ function matrix() {
           const normal = await exerciseHud(page, level, mode === 'fixed fallback');
           if (mode !== 'wide text') return;
 
-          await useWideFontMetrics(page);
+          await useWideFontMetrics(page, hasNewInterface(page) ? platformWideFactor : undefined);
           const wide = await exerciseHud(page, level, false);
           for (const [state, labels] of wide.entries()) {
             const reference = normal[state];

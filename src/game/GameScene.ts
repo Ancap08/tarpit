@@ -197,7 +197,7 @@ import { GuardEffects, drawGuardsAim, guardFoot, type DrawnGuard } from './draw/
 import { drawPlacementCell } from './draw/placement';
 import { ShotEffects } from './draw/shots';
 import { SpecialEffects } from './draw/specials';
-import { Aim, drawTowerShape, drawTowers } from './draw/towers';
+import { Aim, DRAG_ORIGIN_ALPHA, drawTowerShape, drawTowerPathBadge, drawTowers } from './draw/towers';
 import { campaignProgress } from './campaignProgress';
 import { highScores } from './highScore';
 import { SiegeView } from './keep/siegeView';
@@ -209,6 +209,7 @@ import { callEarlyInfo, CHEAT_TAPS, CHEAT_WINDOW_MS, Hud, specialReady, specialR
 import { Button } from './ui/button';
 import { PANEL_TEXT } from './names';
 import { HitNumbers } from './ui/hitNumbers';
+import { uiObject } from './ui/devicePixels';
 import { BakedPaint, CLEAN, SANS, newInterface, roundPoints, rounded, skinFor, textMetrics, useInterface } from './ui/newTheme';
 import { AIM_BANNER, aimBannerText, BARRICADE_AIM_REASONS, PAINTED_FALLBACK, REWARD_KEYS } from './names';
 import {
@@ -223,7 +224,7 @@ import {
   type Rect,
 } from './input';
 import { DetailGovernor } from './showpiece/governor';
-import { LANDSCAPE, CLEAN_PORTRAIT, TAXED_PORTRAIT, type Layout, type LayoutKind } from './layout';
+import { LANDSCAPE, CLEAN_LANDSCAPE, cleanPortrait, TAXED_PORTRAIT, type Layout, type LayoutKind } from './layout';
 import { COLORS, FONT, TEXT } from './palette';
 import { currentLayout } from './layoutSwitch';
 import { isPerfMode, isTestMode } from './testMode';
@@ -446,6 +447,8 @@ export class GameScene extends Phaser.Scene {
   private campaignLevel?: GameState['level'];
   private clock = new GameClock();
   private clean = false;
+  private towerBadges?: Phaser.GameObjects.Graphics;
+  private badgeKey = '';
   private hitNumbers?: HitNumbers;
   private buildConfirm?: Button;
   private pausePanel!: PausePanel;
@@ -620,27 +623,21 @@ export class GameScene extends Phaser.Scene {
     const base = currentLayout();
     this.siegeView = undefined;
     const clean = newInterface() && this.state.map.id !== 'keep';
-    this.layout = base.turned && clean ? CLEAN_PORTRAIT : base.turned && this.state.level?.taxes ? TAXED_PORTRAIT : base;
+    this.layout = clean ? (base.turned ? cleanPortrait(this.scale.parentSize) : CLEAN_LANDSCAPE)
+      : base.turned && this.state.level?.taxes ? TAXED_PORTRAIT : base;
     this.clean = clean;
     if (clean) {
       useInterface(this, 'battle', () => this.clock.nowMs);
       if (this.layout.turned) {
         const { x, y, width, height } = this.layout.map;
-        const matte = this.add.graphics().fillStyle(CLEAN.ground);
+        const matte = uiObject(this.add.graphics()).fillStyle(CLEAN.ground);
         const w = this.layout.width;
-        // Leave the opaque status fill to its own plate. Paint only the
-        // gaps and corners so the entire status area is drawn once.
-        matte.fillRect(0, 0, w, 5);
-        matte.fillRect(0, y - 3, w, 3);
-        matte.fillRect(0, 5, 6, y - 8);
-        matte.fillRect(w - 6, 5, 6, y - 8);
-        for (const left of [5, w - 28])
-          for (const top of [4, y - 24]) matte.fillRect(left, top, 23, 23);
+        matte.fillRect(0, 0, w, y);
         matte.fillRect(0, y, x, height);
-        matte.fillRect(x + width, y, x, height);
+        matte.fillRect(x + width, y, w - x - width, height);
       }
     }
-    if (this.scale.height !== this.layout.height) this.scale.setGameSize(this.layout.width, this.layout.height);
+    if (this.scale.width !== this.layout.width || this.scale.height !== this.layout.height) this.scale.setGameSize(this.layout.width, this.layout.height);
     if (!resume) this.mapBlockedUntil = 0;
     this.recordedCleared = resume?.recordedCleared ?? 0;
     this.speed = 1;
@@ -713,9 +710,11 @@ export class GameScene extends Phaser.Scene {
       const square = { x: 0, y: 0, width: 18, height: 18 };
       const spots = plate.begin(square);
       const points = roundPoints(square, 5);
-      spots.fillStyle(CLEAN.ground, .30).fillPoints(points, true);
-      spots.lineStyle(1, CLEAN.mint, .63).strokePoints(points, true);
-      spots.fillStyle(CLEAN.mint, .75).fillRect(8, 8, 2, 2);
+      // A soft outer edge keeps the light outline visible against sunlit
+      // grass as well as the showpiece's dusk plate.
+      spots.lineStyle(2.5, CLEAN.ground, .42).strokePoints(points, true);
+      spots.lineStyle(1.2, CLEAN.mint, .78).strokePoints(points, true);
+      spots.fillStyle(CLEAN.mint, .68).fillCircle(9, 9, 1.15);
       plate.finish();
       plate.image.setVisible(false);
       const sites = buildableCells(this.state.map);
@@ -724,13 +723,16 @@ export class GameScene extends Phaser.Scene {
         const cell = cellFromKey(key);
         if ((cell.col + 2 * cell.row) % 19 !== 0) continue;
         const p = this.layout.cellCenter(cell);
-        this.add.image(p.x, p.y, plate.image.texture).setName('clean-tower-spots');
+        this.add.image(p.x, p.y, plate.image.texture)
+          .setDisplaySize(plate.image.displayWidth, plate.image.displayHeight).setName('clean-tower-spots');
       }
     }
     this.overlay = world();
     this.dynamic = world();
     this.enemySprites = new EnemySprites(this, isTestMode(), this.layout, this.painted, this.clock, this.siegeScreens);
     this.shotFx = world();
+    this.towerBadges = clean ? uiObject(world()) : undefined;
+    this.badgeKey = '';
     this.hitNumbers = clean ? new HitNumbers(this, () => this.animationTime, this.layout.turned) : undefined;
     this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx), this.layout, this.clock,
       this.keep ? 'rgba(0,0,0,0)' : clean ? CLEAN.ground : undefined, this.siegeScreens && this.layout.turned,
@@ -762,6 +764,7 @@ export class GameScene extends Phaser.Scene {
     this.siegeGate = this.siegeScreens ? new SiegeGateEffects(this, this.layout, !this.autoTick, resume?.gateHistory) : undefined;
     const fixed = this.siegeScreens && this.layout.turned ? [...this.moments.screenObjects, ...this.siegeGate!.fixed] : undefined;
     const field = fixed ? this.children.list.filter(object => !fixed.includes(object)) : undefined;
+    const fieldObjects = clean ? new Set(this.children.list) : undefined;
     this.bannerBg = this.add.graphics().setDepth(4);
     const bannerTop = this.layout.map.y + BANNER_Y;
     const bannerText = (y: number, size: string, color: string) =>
@@ -784,7 +787,7 @@ export class GameScene extends Phaser.Scene {
       onPick: (type) => this.togglePick(type),
       onSpecial: () => this.onSpecialButton(),
       onSpecialPick: (type) => this.selectSpecial(type),
-    }, this.layout, this.painted, this.pauseOnResult, this.siegeScreens);
+    }, this.layout, this.painted, this.pauseOnResult, this.siegeScreens, this.state.map.path[0]);
     this.roadBanners = this.siegeScreens ? new RoadBanners(this, this.layout, this.state) : undefined;
     this.siegeActors = this.siegeScreens && (this.state.windows || this.state.wallSiteTax)
       ? new SiegeActors(this, this.layout, this.state, !this.autoTick) : undefined;
@@ -824,7 +827,7 @@ export class GameScene extends Phaser.Scene {
       onTarget: (next) => {
         if (this.panel.cell !== null) this.setTargeting(this.panel.cell, next);
       },
-    });
+    }, this.painted);
     this.buildConfirm = clean ? new Button(this, { x: 0, y: 0, width: 170, height: 91 }, PANEL_TEXT.build,
       () => {
         const type = this.pick, cell = this.armed;
@@ -856,6 +859,10 @@ export class GameScene extends Phaser.Scene {
       onMenu: () => this.toMenu(),
     });
 
+    if (fieldObjects) {
+      for (const object of this.children.list) if (!fieldObjects.has(object)) uiObject(object);
+    }
+
     if (field) {
       this.siegeView = new SiegeView(this, this.layout, field, !this.autoTick, this.state.phase, !!resume);
     }
@@ -867,10 +874,6 @@ export class GameScene extends Phaser.Scene {
       this.aimPress = null;
       if (this.state.pendingBoon || this.held.contains(screen.x, screen.y)) return;
       if (this.buildConfirm && this.armed && contains(this.buildConfirm.rect, screen.x, screen.y)) return;
-      if (this.clean && !this.layout.turned && this.hud.headerControlAt(screen.x, screen.y)) {
-        if (contains(this.hud.rects().gold, screen.x, screen.y)) this.goldTap();
-        return;
-      }
       const repair = this.hud.repairRect;
       if (repair && contains(repair, screen.x, screen.y)) return;
       if (this.siegeControls && Object.values(this.siegeControls.rects()).some(rect => contains(rect, screen.x, screen.y))) return;
@@ -944,8 +947,14 @@ export class GameScene extends Phaser.Scene {
     window.addEventListener('blur', lost);
     window.addEventListener('pagehide', pageAway);
     document.addEventListener('visibilitychange', hidden);
+    const refitClean = () => {
+      if (this.clean && this.layout.turned && currentLayout().turned &&
+        cleanPortrait(this.scale.parentSize).width !== this.layout.width) this.relayout();
+    };
+    if (clean) this.scale.on('resize', refitClean);
     this.events.once('shutdown', () => {
-      if ((this.layout === TAXED_PORTRAIT || this.layout === CLEAN_PORTRAIT) && this.scale.height === this.layout.height) {
+      if (clean) this.scale.off('resize', refitClean);
+      if ((this.layout === TAXED_PORTRAIT || this.clean) && this.scale.height === this.layout.height) {
         const next = currentLayout();
         this.scale.setGameSize(next.width, next.height);
       }
@@ -1954,6 +1963,7 @@ export class GameScene extends Phaser.Scene {
     fx?.update(this.state);
     const pose = fx ? (cell: Cell, type: TowerType) => fx.towerPose(cell, type) : undefined;
     drawTowers(g, this.state, this.aim, moving, pose, this.layout, this.painted?.towerBody, this.clean);
+    this.drawTowerBadges(moving);
     const blocker = this.state.blockers.find((b) => b.kind === 'barricade') ?? null;
     const motion = this.barricadeMotion;
     const stopped = this.barricadeFx.stoppedPositions(this.state, motion, !this.siegeScreens);
@@ -2057,6 +2067,19 @@ export class GameScene extends Phaser.Scene {
     const before = this.siegeView ? new Set(this.children.list) : undefined;
     this.endScreen.show(kind, this.state, campaign);
     if (before) this.siegeView?.fix(this.children.list.filter(object => !before.has(object)));
+  }
+
+  private drawTowerBadges(moving: Cell | null): void {
+    const ink = this.towerBadges;
+    if (!ink) return;
+    const marks = this.state.towers.filter(tower => tower.path);
+    const key = marks.map(({ cell, path }) => `${cell.col}:${cell.row}:${path}:${moving !== null && sameCell(cell, moving)}`).join(';');
+    if (key === this.badgeKey) return;
+    this.badgeKey = key;
+    ink.clear();
+    for (const { cell, path } of marks) {
+      if (path) drawTowerPathBadge(ink, cellCenter(cell), this.layout, path, moving !== null && sameCell(cell, moving) ? DRAG_ORIGIN_ALPHA : 1);
+    }
   }
 
   private redrawUi(): void {

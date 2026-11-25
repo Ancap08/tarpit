@@ -3,14 +3,14 @@ import { resolveMap, type LevelDef } from '../../sim';
 import { drawMapThumbnail } from '../draw/map';
 import {
   CAMPAIGN_TEXT, LEVEL_NAMES, LEVEL_NEW, LEVEL_STORY, MAP_NAMES, TITLE_TEXT,
-  cardFeatText, levelNumberText, levelTaxLines,
+  levelFeatRow, levelNumberText, levelTaxRows,
 } from '../names';
 import { FONT } from '../palette';
 import { mapPlateUrl } from '../skin/loading';
 import type { Rect } from '../input';
 import { levelAct } from './campaignMap';
 import type { Button, ButtonOptions } from './button';
-import { PRINT, glyph, line, motionClock, rounded, sheet, textMetrics } from './newTheme';
+import { PRINT, glyph, line, motionClock, rounded, sheet, textMetrics, type Icon } from './newTheme';
 import { drawStarRow } from './starRow';
 
 export type CardAction = (key: string, rect: Rect, label: string, click: () => void, size?: number, options?: ButtonOptions) => Button;
@@ -89,9 +89,9 @@ export function drawPrintedCard(
   glyph(art, 'crown', cx, sealY, radius + 2, 0xfff9eb);
 
   const words = LEVEL_NAMES[level.id];
-  const title = col(words.name, portrait ? 46 : 37, measure, PRINT.ink, 'bold');
+  const title = col(words.name, portrait ? 56 : 37, measure, PRINT.ink);
   title.setPosition(cx, sealY + radius + (portrait ? 8 : 4));
-  const notice = col(LEVEL_STORY[level.id].notice, portrait ? 25 : 20, measure, PRINT.red);
+  const notice = col(LEVEL_STORY[level.id].notice, portrait ? 25 : 20, measure, PRINT.red, 'italic');
   notice.setPosition(cx, title.y + title.height + 5);
   const top = notice.y + notice.height + (portrait ? 24 : 12);
   const artW = portrait ? measure : Math.round(measure * .46);
@@ -101,20 +101,25 @@ export function drawPrintedCard(
   const artLabel = col(MAP_NAMES[level.map], bodySize, artW, PRINT.ink, 'bold');
   const note = col(words.twist, bodySize, artW, PRINT.muted);
   const gap = portrait ? 15 : 9;
-  const entries = level.feat
+  const inset = portrait ? 61 : 44;
+  const tileSize = portrait ? 43 : 31;
+  const rules: { title: string; description: string; icon: Icon; feat?: boolean }[] = level.feat
     ? [
-        { copy: CAMPAIGN_TEXT.inForce, icon: 'crown', color: PRINT.muted },
-        ...levelTaxLines(level.taxes!).map(copy => ({ copy, icon: 'window', color: PRINT.ink } as const)),
-        { copy: cardFeatText(level.feat), icon: 'sparkle', color: PRINT.ink },
-        ...(level.featherBarrels ? [{ copy: CAMPAIGN_TEXT.townAnswer, icon: 'bolt', color: '#234b40' }] as const : []),
-      ] as const
-    : [{ copy: CAMPAIGN_TEXT.newThisLevel, icon: 'sparkle', color: PRINT.muted },
-      { copy: LEVEL_NEW[level.id], icon: 'bolt', color: PRINT.ink }] as const;
-  const rows = entries.map(entry => ({
-    ...entry,
-    label: col(entry.copy, bodySize, ruleW - (portrait ? 55 : 42), entry.color),
-  }));
-  const rulesH = rows.reduce((sum, { label }) => sum + label.height + gap, 0);
+      ...levelTaxRows(level.taxes ?? {}).map(({ kind, title, description }) => ({
+        title, description, icon: kind === 'windowTax' ? 'window' as const : 'crown' as const,
+      })),
+      { ...levelFeatRow(level.feat), icon: 'sparkle', feat: true },
+    ] : [{ title: CAMPAIGN_TEXT.newThisLevel, description: LEVEL_NEW[level.id], icon: 'sparkle' }];
+  const rows = rules.map(rule => {
+    const heading = col(rule.title, portrait ? 28 : 20, ruleW - inset, PRINT.ink, 'bold').setOrigin(0, 0).setAlign('left');
+    const detail = col(rule.description, bodySize, ruleW - inset, PRINT.muted).setOrigin(0, 0).setAlign('left');
+    const tag = rule.feat ? col(CAMPAIGN_TEXT.thirdStar, portrait ? 22 : 13, ruleW - inset, PRINT.muted).setOrigin(0, .5) : undefined;
+    const tagHeight = tag && heading.width + tag.width + 22 > ruleW - inset ? tag.height + 6 : 0;
+    const height = Math.max(tileSize, heading.height + tagHeight + detail.height + 2) + 2 * gap;
+    return { ...rule, heading, detail, tag, tagHeight, height };
+  });
+  const answer = level.featherBarrels ? col(CAMPAIGN_TEXT.townAnswer, bodySize, ruleW - 46, '#234b40') : undefined;
+  const rulesH = rows.reduce((sum, row) => sum + row.height, 0) + (answer ? gap + answer.height : 0);
   const notesH = artH + artLabel.height + note.height + 12 + 2 * gap;
   const short = scene.scale.parentSize.height < 700;
   const crowded = top + rulesH + notesH > page.y + page.height - 10;
@@ -131,16 +136,38 @@ export function drawPrintedCard(
   }
   if (!(paged && scouting)) {
     let y = top + (portrait && notesFirst ? notesH : 0);
-    for (const { label, icon } of rows) {
+    for (const row of rows) {
+      const { heading, detail, icon, tag, tagHeight, height } = row;
       line(art, rulesX, y, ruleW);
-      label.setOrigin(0, 0).setAlign('left').setPosition(rulesX + (portrait ? 55 : 42), y + gap / 2);
-      const iconX = rulesX + (portrait ? 23 : 17);
-      const iconY = label.y + label.height / 2;
-      art.fillStyle(icon === 'window' ? 0xf2e1d2 : 0xe1eadb).fillCircle(iconX, iconY, portrait ? 19 : 13);
-      glyph(art, icon, iconX, iconY, portrait ? 28 : 20, icon === 'window' ? 0x953c34 : PRINT.green);
-      y += label.height + gap;
+      heading.setPosition(rulesX + inset, y + gap);
+      detail.setPosition(heading.x, heading.y + heading.height + 2 + tagHeight);
+      const tile = { x: rulesX + 2, y: y + gap + 2, width: tileSize, height: tileSize };
+      const warm = icon === 'window' || icon === 'crown';
+      const tileColor = warm ? 0xf2e1d2 : 0xe1eadb;
+      rounded(art, tile, tileColor, tileColor, portrait ? 11 : 8);
+      glyph(art, icon, tile.x + tileSize / 2, tile.y + tileSize / 2, tileSize * .68, warm ? 0x953c34 : PRINT.green);
+      if (tag) {
+        const tagX = tagHeight ? heading.x + 5 : heading.x + heading.width + 13;
+        const tagY = tagHeight ? heading.y + heading.height + tag.height / 2 + 2 : heading.y + heading.height / 2;
+        tag.setPosition(tagX, tagY);
+        rounded(art, { x: tagX - 5, y: tagY - tag.height / 2, width: tag.width + 10, height: tag.height },
+          0xf0ecdb, 0xd4d9c3, 6);
+      }
+      y += height;
     }
-  } else for (const { label } of rows) label.setVisible(false);
+    if (answer) {
+      line(art, rulesX, y, ruleW);
+      answer.setPosition(rulesX + ruleW / 2 + 9, y + gap);
+      glyph(art, 'bolt', answer.x - answer.width / 2 - 13, answer.y + answer.height / 2, portrait ? 21 : 16, PRINT.green);
+    }
+  } else {
+    for (const { heading, detail, tag } of rows) {
+      heading.setVisible(false);
+      detail.setVisible(false);
+      tag?.setVisible(false);
+    }
+    answer?.setVisible(false);
+  }
 
   const best = col(CAMPAIGN_TEXT.bestStars, portrait ? 22 : 15);
   best.setOrigin(0, 0).setPosition(page.x + 4, foot + 4);

@@ -5,7 +5,7 @@ import { MAP_HEIGHT, EARLY_CALL_MAX_BONUS, TICKS_PER_SECOND, TOWER_DEFS } from '
 import { rectPageSize } from './phone';
 import { TOWER_NAMES, callEarlyLabel } from '../src/game/names';
 import { api, postSpawn } from './campaign';
-import { useTallFontMetrics, useWideFontMetrics } from './campaignFont';
+import { platformWideFactor, useTallFontMetrics, useWideFontMetrics } from './campaignFont';
 import { waitForFirstScreen } from './title';
 import { hasNewInterface, newInterfaceChecks } from './newInterface';
 
@@ -44,14 +44,14 @@ export async function checkLabel(page: Page, key: string, text: string) {
 }
 
 export function hudButtonSuite() {
-  const looks = () => {
-    for (const look of ['painted', 'classic', 'showpiece'] as const) test.describe(look, () => hudButtonCases(look));
+  const looks = (fresh: boolean) => {
+    for (const look of ['painted', 'classic', 'showpiece'] as const) test.describe(look, () => hudButtonCases(look, fresh));
   };
-  looks();
-  newInterfaceChecks(looks);
+  looks(false);
+  newInterfaceChecks(() => looks(true));
 }
 
-function hudButtonCases(look: 'painted' | 'classic' | 'showpiece') {
+function hudButtonCases(look: 'painted' | 'classic' | 'showpiece', fresh: boolean) {
   async function startMeadow(page: Page) {
     await page.goto('/?test=1&look=' + look);
     await waitForFirstScreen(page);
@@ -120,7 +120,7 @@ function hudButtonCases(look: 'painted' | 'classic' | 'showpiece') {
   }
   for (const mode of ['Caslon', 'fallback', 'tall Caslon', 'tall fallback', 'wide text']) {
     test('HUD button labels fit with ' + mode, async ({ page }, info) => {
-      if (mode === 'wide text') await useWideFontMetrics(page);
+      if (mode === 'wide text') await useWideFontMetrics(page, fresh ? platformWideFactor : undefined);
       if (mode.startsWith('tall')) await useTallFontMetrics(page, mode === 'tall fallback');
       else if (mode === 'fallback') await page.route('**/*.woff2', route => route.abort());
       const sizes = info.project.name === 'phone' ? [{ width: 390, height: 844 }, { width: 390, height: 664 }] : [page.viewportSize()!];

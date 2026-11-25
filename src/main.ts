@@ -7,6 +7,7 @@ import { registerServiceWorker } from './sw/register';
 import { installGlobal, isTestMode } from './game/testMode';
 import { TitleScene } from './game/TitleScene';
 import { sound } from './game/audio/engine';
+import { useUiCanvasRenderer } from './game/ui/devicePixels';
 import { actThreeEnabled, keepSelection } from './game/keep/switch';
 
 // ?renderer=canvas forces the Canvas renderer in play (time and animations
@@ -16,6 +17,13 @@ import { actThreeEnabled, keepSelection } from './game/keep/switch';
 const query = new URLSearchParams(window.location.search);
 const forceCanvas = query.get('renderer') === 'canvas';
 const keep = !!keepSelection(window.location.search) || actThreeEnabled(window.location.search);
+
+useUiCanvasRenderer((game, canvas) => new Phaser.Renderer.Canvas.CanvasRenderer({
+  canvas,
+  config: { ...game.config, context: null, transparent: true },
+  events: new Phaser.Events.EventEmitter(),
+  textures: new Phaser.Events.EventEmitter(),
+} as unknown as Phaser.Game));
 
 void loadFonts().then(startGame);
 

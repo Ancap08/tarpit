@@ -1,6 +1,7 @@
 import type Phaser from 'phaser';
 import type { Rect } from '../input';
 import { isTestMode } from '../testMode';
+import { invalidateUi, uiDensity, useDevicePixels } from './devicePixels';
 
 export const SANS = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 export const CLEAN = {
@@ -28,6 +29,7 @@ export function newInterface(): boolean {
 export function useInterface(scene: Scene, skin: Skin, now: () => number): void {
   const motion = !isTestMode() && !matchMedia('(prefers-reduced-motion: reduce)').matches;
   skins.set(scene, { skin, now, motion });
+  useDevicePixels(scene, skin === 'paper');
   const previous = document.body.style.backgroundColor;
   document.body.style.backgroundColor = skin === 'battle' ? '#0b1e20' : '#eee7d5';
   scene.events.once('shutdown', () => {
@@ -93,13 +95,22 @@ export class BakedPaint {
   private readonly texture: Phaser.Textures.CanvasTexture;
   private readonly key: string;
   private bounds: Rect = { x: 0, y: 0, width: 1, height: 1 };
+  private offset = 0;
+  private densityX = 0;
+  private densityY = 0;
 
-  constructor(scene: Scene, private readonly ink: Graphics) {
+  constructor(private readonly scene: Scene, private readonly ink: Graphics) {
     this.key = `clean-plate:${scene.sys.settings.key}:${scene.children.getIndex(ink)}`;
     this.texture = scene.textures.createCanvas(this.key, 1, 1)!;
     this.image = scene.add.image(0, 0, this.key).setOrigin(0);
     ink.setVisible(false);
+    const refit = () => {
+      const density = uiDensity(scene);
+      if (ink.scene && this.densityX && (this.densityX !== density.x || this.densityY !== density.y)) this.bake();
+    };
+    scene.scale.on('resize', refit);
     scene.events.once('shutdown', () => {
+      scene.scale.off('resize', refit);
       if (scene.textures.exists(this.key)) scene.textures.remove(this.key);
     });
   }
@@ -113,16 +124,30 @@ export class BakedPaint {
   }
 
   finish(offset = 0): void {
-    const { width, height } = this.bounds;
     this.ink.restore();
-    if (this.texture.width !== width || this.texture.height !== height) this.texture.setSize(width, height);
-    else this.texture.context.clearRect(0, 0, width, height);
-    this.ink.generateTexture(this.key, width, height);
-    this.shift(offset);
+    this.offset = offset;
+    this.bake();
+  }
+
+  private bake(): void {
+    const { scene, bounds, ink, texture } = this;
+    const density = uiDensity(scene);
+    this.densityX = density.x;
+    this.densityY = density.y;
+    const width = Math.ceil(bounds.width * this.densityX);
+    const height = Math.ceil(bounds.height * this.densityY);
+    if (texture.width !== width || texture.height !== height) texture.setSize(width, height);
+    else texture.context.clearRect(0, 0, width, height);
+    ink.setScale(this.densityX, this.densityY).generateTexture(this.key, width, height).setScale(1);
+    this.image.setDisplaySize(width / this.densityX, height / this.densityY);
+    this.shift(this.offset);
+    invalidateUi(scene);
   }
 
   shift(offset: number): void {
-    this.image.setPosition(this.bounds.x, this.bounds.y + offset);
+    this.offset = offset;
+    this.image.setPosition(Math.round(this.bounds.x * this.densityX) / this.densityX,
+      Math.round((this.bounds.y + offset) * this.densityY) / this.densityY);
   }
 }
 
@@ -139,7 +164,10 @@ export function sans(scene: Scene, x: number, y: number, text: string, size: num
 }
 
 export function line(g: Graphics, x: number, y: number, width: number, color: number = PRINT.edge): void {
-  g.lineStyle(1, color).lineBetween(x, y, x + width, y);
+  const density = uiDensity(g.scene).y;
+  const pixels = Math.max(1, Math.round(density));
+  const row = (Math.round(y * density - pixels / 2) + pixels / 2) / density;
+  g.lineStyle(pixels / density, color).lineBetween(x, row, x + width, row);
 }
 
 /** Vectors use a centred 24-unit grid and share the line weights of the mock-up. */

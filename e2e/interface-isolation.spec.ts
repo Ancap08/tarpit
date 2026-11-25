@@ -16,13 +16,16 @@ for (const ui of ['', '&ui=old', '&ui=new']) {
     await page.goto('/?test=1' + ui);
     await waitForFirstScreen(page);
     expect(await drawn()).toEqual([]);
+    await expect(page.locator('canvas[data-interface-ink]')).toHaveCount(0);
     await press(page, 'title:campaign');
     await onScreen(page, 'levelMap');
     await press(page, 'title:stop:1');
     await onScreen(page, 'levelCard');
     expect(await drawn()).toEqual(active ? ['clean-printed-card'] : []);
+    await expect(page.locator('canvas[data-interface-ink]')).toHaveCount(active ? 1 : 0);
     await press(page, 'title:play');
     await onScreen(page, 'game');
+    await expect(page.locator('canvas[data-interface-ink]')).toHaveCount(active ? 1 : 0);
     if (active) expect(await drawn()).toEqual(expect.arrayContaining(['clean-build-icons', 'clean-tower-spots', 'hud-level-name']));
     else expect(await drawn()).toEqual([]);
     await api(page, t => { t.state().phase = 'lost'; t.step(0); });

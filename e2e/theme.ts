@@ -8,6 +8,7 @@ import { api, press } from './campaign';
 import { useTallFontMetrics } from './campaignFont';
 import { hudButtonSuite } from './hudButtonLabels';
 import { momentBannerSuite } from './momentBanners';
+import { newInterfaceChecks } from './newInterface';
 import { settle } from './painted';
 import { waitForFirstScreen, waitForTitle } from './title';
 
@@ -35,6 +36,7 @@ async function checkLabels(page: Page, wanted: string[], area: Rect, controls?: 
 
 export function themeSuite(touch: boolean) {
   momentBannerSuite(touch);
+  newInterfaceChecks(() => momentBannerSuite(touch));
   hudButtonSuite();
   for (const fallback of [false, true]) {
     test(`pause plaque and panel fit with tall metrics and wide digits (${fallback ? 'fallback' : 'Caslon'})`, async ({ page }) => {

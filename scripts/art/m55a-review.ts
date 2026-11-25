@@ -1,4 +1,4 @@
-// PW_PORT=4573 node --experimental-strip-types scripts/art/m55a-review.ts <scratch> [media|cost]
+// PW_PORT=4573 node --experimental-strip-types scripts/art/m55a-review.ts <scratch> [stills|recordings|cost]
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -27,7 +27,13 @@ function ffmpeg(args: string[]): void {
 
 async function capture(page: Page, name: string) {
   await page.evaluate(() => new Promise<void>(resolve => window.__tarpit!.game.events.once('postrender', resolve)));
-  await page.screenshot({ path: join(destination, name + '.png'), scale: 'css' });
+  const size = page.viewportSize()!;
+  const path = join(destination, name + '.png');
+  if (size.width === 390) {
+    const native = join(scratch, name + '-dpr3.png');
+    await page.screenshot({ path: native, scale: 'device' });
+    ffmpeg(['-i', native, '-vf', `scale=${size.width}:${size.height}:flags=lanczos`, '-frames:v', '1', path]);
+  } else await page.screenshot({ path, scale: 'css' });
 }
 
 async function card(page: Page, id: number, touch: boolean, live = false) {
@@ -108,6 +114,7 @@ async function stills(browser: Browser) {
       await play(page, touch);
       await mockBattle(page);
       await capture(page, `battle-${device}`);
+      if (device === 'desktop') await capture(page, 'riverbend-road-desktop');
       if (device === 'phone') {
         await tapCell(page, 7, 10, touch);
         await capture(page, 'upgrade-phone');
@@ -148,17 +155,28 @@ async function stills(browser: Browser) {
       o.type === 'Image' && (o as Phaser.GameObjects.Image).texture.key.startsWith('clean-card-map:')));
     await capture(short, 'card-short-map-notes');
     await play(short, true);
-    await short.evaluate(() => { const t = window.__tarpit!; t.startWave!(); t.step!(230); });
+    await short.evaluate(() => {
+      const t = window.__tarpit!, state = t.state!();
+      let longest = { wave: 0, length: 0 };
+      for (let wave = 1; wave < state.level!.waves.length; wave++) {
+        state.wave = wave;
+        t.step!(0);
+        const length = t.hudText!().next.length;
+        if (length > longest.length) longest = { wave, length };
+      }
+      state.wave = longest.wave - 1;
+      t.startWave!();
+      t.step!(230);
+    });
     await capture(short, 'two-taxes-short');
   } finally { await short.close(); }
 
   const phonePage = await browser.newPage(modes.phone);
   try {
-    await phonePage.goto(origin + '/?test=1&ui=new&look=painted');
-    await waitForFirstScreen(phonePage);
-    await phonePage.evaluate(async () => {
+    await card(phonePage, 1, true);
+    await play(phonePage, true);
+    await phonePage.evaluate(() => {
       const t = window.__tarpit!;
-      await t.startLevel!(1);
       t.state!().gold = 45;
       t.step!(0);
     });
@@ -263,9 +281,9 @@ async function recordings(browser: Browser) {
 async function cost(browser: Browser) {
   // Performance.TaskDuration is cumulative main-thread task time. Divide the
   // elapsed task budget by the number of frames the real game rendered.
-  const raw = [];
-  for (const look of ['painted', 'classic', 'showpiece']) {
-    for (const switched of [false, true, true, false]) {
+  const raw: { look: string; switched: boolean; frames: number; enemies: number; ticks: number; mainMsPerFrame: number }[] = [];
+  for (const look of ['classic', 'painted']) {
+    for (const switched of [false, true, true, false, false, true]) {
       const page = await browser.newPage(phone);
       try {
         await start(page, `perf=1&look=${look}${switched ? '&ui=new' : ''}`);
@@ -302,7 +320,15 @@ async function cost(browser: Browser) {
       } finally { await page.close(); }
     }
   }
-  await writeFile(join(destination, 'frame-cost.json'), JSON.stringify({ cpuThrottle: 4, viewport: phone.viewport, raw }, null, 2) + '\n');
+  const median = (look: string, switched: boolean) => raw.filter(r => r.look === look && r.switched === switched)
+    .map(r => r.mainMsPerFrame).sort((a, b) => a - b)[1];
+  const medians = ['classic', 'painted'].map(look => {
+    const off = median(look, false), on = median(look, true);
+    return { look, off, on, changePercent: (on / off - 1) * 100 };
+  });
+  await writeFile(join(destination, 'frame-cost.json'), JSON.stringify({
+    cpuThrottle: 4, viewport: phone.viewport, deviceScaleFactor: phone.deviceScaleFactor, medians, raw,
+  }, null, 2) + '\n');
 }
 
 await run(async browser => {

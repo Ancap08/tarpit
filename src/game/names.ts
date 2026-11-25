@@ -135,8 +135,14 @@ export const END_TEXT = {
 } as const;
 
 /** The HUD's wave counter: "Wave 3/20", or "Wave 21" in an endless game (milestone 26). */
+export const HUD_STAT_LABELS = ['Gold', 'Lives', 'Wave'] as const;
+
+export function waveNumberText(wave: number, endless: boolean, lastWave: number): string {
+  return endless ? String(wave) : `${wave}/${lastWave}`;
+}
+
 export function waveCounterText(wave: number, endless: boolean, lastWave: number): string {
-  return endless ? `Wave ${wave}` : `Wave ${wave}/${lastWave}`;
+  return `${HUD_STAT_LABELS[2]} ${waveNumberText(wave, endless, lastWave)}`;
 }
 
 /** The lose screen's line: "Reached wave 7 of 20", or "Reached wave 24" in an endless game (milestone 26). */
@@ -473,11 +479,15 @@ const taxRules: Record<TaxKind, (value: number) => string> = {
   rationing: v => `${v} towers at most`,
 };
 
-export function levelTaxLines(taxes: LevelTaxes): string[] {
-  return (Object.keys(TAX_NAMES) as TaxKind[]).flatMap(key => {
-    const value = taxes[key];
-    return value === undefined ? [] : [`${TAX_NAMES[key]}: ${taxRules[key](value)}`];
+export function levelTaxRows(taxes: LevelTaxes) {
+  return (Object.keys(TAX_NAMES) as TaxKind[]).flatMap(kind => {
+    const value = taxes[kind];
+    return value === undefined ? [] : [{ kind, title: TAX_NAMES[kind], description: taxRules[kind](value) }];
   });
+}
+
+export function levelTaxLines(taxes: LevelTaxes): string[] {
+  return levelTaxRows(taxes).map(({ title, description }) => `${title}: ${description}`);
 }
 
 /** Campaign cards and twist lines, keyed by the saved level id. */
@@ -573,6 +583,7 @@ export const CAMPAIGN_TEXT = {
   gateRule: 'The gate holds walkers. Repair it between waves.',
   featStar: 'Third star: level feat',
   inForce: 'In force',
+  thirdStar: 'Third star',
   townAnswer: "Town's answer: Tar Barrels feather crowds.",
   mapNotes: 'Map notes',
   notice: 'Notice',
@@ -629,11 +640,16 @@ function featMeaning(feat: LevelFeat): string {
   }
 }
 
-export function levelFeatText(feat: LevelFeat): string {
-  return `${featNames[feat.kind]}: ${featMeaning(feat)}`;
+export function levelFeatRow(feat: LevelFeat) {
+  return { title: featNames[feat.kind], description: featMeaning(feat) };
 }
 
-export const cardFeatText = (feat: LevelFeat): string => `Third star, ${levelFeatText(feat)}`;
+export function levelFeatText(feat: LevelFeat): string {
+  const { title, description } = levelFeatRow(feat);
+  return `${title}: ${description}`;
+}
+
+export const cardFeatText = (feat: LevelFeat): string => `${CAMPAIGN_TEXT.thirdStar}, ${levelFeatText(feat)}`;
 export const featResultText = (feat: LevelFeat, earned: boolean): string =>
   earned ? `Earned: ${featNames[feat.kind]}.` : `Missed ${levelFeatText(feat)}`;
 

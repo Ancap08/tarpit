@@ -1731,13 +1731,27 @@ drawn and where touches land differ.
 ### Clean and Fine print preview
 
 `?ui=new` selects Clean in ordinary levels and Fine print on their level
-cards and results. The current controls and rules still own play. The
-fitted landscape board remains 960 × 580. The fitted Clean portrait
-board is 560 × 1364, with the same 480 × 960 projection at (40, 210).
-The six 91-unit build targets fit across the bottom, above the three
-wave controls. Mute and Pause sit in the status block. At 390 × 664
-the target size is at least 44 CSS px. The original same-cell second
-tap still builds, and the armed preview also offers a Build button.
+cards and results. The landscape frame measures 960 × 676, including a
+96-unit header above the 960 × 480 map and a 100-unit dock below it.
+The portrait frame is 1388 units tall and at least 560 units wide. Its
+width follows the fitted viewport, with the 480 × 960 map centred at
+y = 230. The map keeps its 1:1 projection. The status header and control
+dock sit outside the map at every supported size.
+
+Gold, Lives and Wave use fixed columns with 40-unit portrait numerals
+and 29-unit landscape numerals. The tax and Next text share a row on
+phone when they fit. A longer preview wraps independently below the
+tax. The six build targets show the current look's tower portraits,
+names, prices and availability. Portrait build and wave controls are
+94 units tall and at least 44 CSS px at 390 × 664. Mute and Pause sit in
+the status block. The original same-cell second tap still builds, and
+the armed preview also offers a Build button.
+
+The game fits the portrait world buffer within the area of 480 × 1032
+pixels and composites the interface on a separate canvas fitted to the
+physical device pixels.
+Text textures match the interface canvas density and draw from snapped
+anchors. Unchanged interface frames reuse the painted layer.
 
 Paper cards use the bundled Libre Caslon. The portrait card has a
 520-unit width, and short two-tax cards use Map notes to turn the sheet.

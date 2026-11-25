@@ -37,7 +37,7 @@ async function checkBanner(page: Page, title: string, caption?: string, capture?
     if (freeze) scene.scene.pause();
     return lines.map(line => {
       const { left, right, top, bottom } = line!.getBounds();
-      return { left, right, top, bottom };
+      return { left, right, top, bottom, scaleX: line!.scaleX, scaleY: line!.scaleY };
     });
   }, { title, caption, freeze: !!capture });
   const lines = (await visible.jsonValue())!;
@@ -46,6 +46,10 @@ async function checkBanner(page: Page, title: string, caption?: string, capture?
     // Leave room for the plaque's 24 px padding on either end.
     expect(line.left, title).toBeGreaterThanOrEqual(24);
     expect(line.right, title).toBeLessThanOrEqual(width - 24);
+    if (new URL(page.url()).searchParams.get('ui') === 'new') {
+      expect(line.scaleX, title).toBe(1);
+      expect(line.scaleY, title).toBe(1);
+    }
   }
   if (caption) expect(lines[1].top, title).toBeGreaterThan(lines[0].bottom);
   if (capture) {

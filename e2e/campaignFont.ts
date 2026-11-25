@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test';
 import { HUD_CASLON } from '../src/game/palette';
 
+export const platformWideFactor = process.platform === 'darwin' ? 1.09 : 1.06;
+
 /** Exercise Phaser's layout with tall text and 12% wider HUD digits and symbols. */
 export async function useTallFontMetrics(page: Page, fallback = true) {
   if (fallback) await page.route('**/*.woff2', route => route.abort());
