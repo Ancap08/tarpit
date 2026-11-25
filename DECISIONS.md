@@ -1912,3 +1912,11 @@ can change it; "Kyle" means Kyle decided.
   roads with the Survey, then Quartering, then the ram and the King. The
   level names, notices and replies are the coordinator's and are in the
   scope.
+- **Kyle agreed the list and the order** ("I agree with your list and your
+  order. The saying's are all fine for now.") and invited a sharper voice:
+  "more angry at the government, think Boston tea party stuff ... lean into
+  taxation is theft too, like a libertarian, Agorist/Anarcho-capitalist
+  vibe". The Act Three notices and replies were rewritten in that voice by
+  the coordinator, kept comic and clean for children, with no real people,
+  parties or flags. The Act Three broadside and tips (parts b2 and c1) take
+  the same voice. Earlier acts' words are not changed unless Kyle asks.
