@@ -2,7 +2,22 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import { LEVELS } from '../sim/levels';
-import { levelFeatText, ENEMY_SHORT_NAMES, GUARD_NAMES, LEVEL_NEW, LEVEL_STORY, STORY_TEXT, levelTips } from './names';
+import { BARREL_RECHARGE_TICKS } from '../sim/specials';
+import { TICKS_PER_SECOND } from '../sim/time';
+import { levelFeatText, ENEMY_SHORT_NAMES, GUARD_NAMES, LEVEL_NEW, LEVEL_STORY, STORY_TEXT, TAR_BARREL_DESCRIPTION, levelTips } from './names';
+
+it('states the approved feather barrel wait in the menu and after the casting tip', () => {
+  const seconds = Math.ceil(BARREL_RECHARGE_TICKS / TICKS_PER_SECOND);
+  expect(TAR_BARREL_DESCRIPTION).toBe(`Feathers a crowd. Next special in ${seconds}s.`);
+  for (const touch of [false, true]) {
+    expect(levelTips(11, touch).slice(-2)).toEqual([
+      'Drop a Tar Barrel on a crowd and they run back.',
+      `After a feather barrel, specials take ${seconds}s to return.`,
+    ]);
+  }
+  // Changing the displayed wait also requires reviewing the commissioned copy.
+  expect(seconds).toBe(51);
+});
 
 describe('the King’s collectors', () => {
   it('keeps the compact HUD labels and Guard names in their approved forms', () => {

@@ -11015,7 +11015,7 @@ Implementation and verification commits, in order, were `c881e20`, `7110caf`, `f
 
 ## Milestone 50, third pass — feather barrels in Act Two
 
-The retained build passes all twenty individual level gates. It misses C2 on four levels and misses S1 in the combined campaign gate (C5). The bounded search ended with the original acceptance thresholds in place.
+The retained build passes all twenty individual level gates and the combined campaign gate (C5), including S1. C2 passes on every Act Two level under the accepted one-life threshold. The level 12 and level 20 wave 6 adjustments closed the remaining S1 and C2 misses.
 
 A feather barrel takes 3,034 combat ticks to refill (50.57 seconds) and causes a 63-tick retreat (1.05 seconds). The control displays 51 seconds immediately after the cast. Ordinary barrels refill in 1,200 ticks and apply tar. The tower retreat remains 88 ticks. Main at `dca7edf` is the before-build for all comparisons below.
 
@@ -11028,6 +11028,8 @@ All ten levels enable the feather-barrel rule. Seven have economy or wave adjust
 | 11 | Wave 6 Troll count | 21 | 19 | −9.52% | Person's score and nudge margin (P1, L1m) |
 | 12 | Starting gold | 260 | 269 | +3.46% | Feat, tax and sensitivity (F1, T1, L6), and the specialist’s Feathers purchase |
 | 12 | Wave 1 Shieldbearer interval, seconds | 1.15 | 1.265 | +10.00% | Same level 12 checks |
+| 12 | Wave 6 Shieldbearer interval, seconds | 0.8 | 0.79 | −1.25% | Act Two difficulty step (S1) |
+| 12 | Wave 6 Troll count | 21 | 22 | +4.76% | Same level 12 check |
 | 13 | Wave 3 Harpy count | 39 | 34 | −12.82% | Person's score, nudge margin and sensitivity (P1, L1m, L6) |
 | 13 | Wave 5 Troll count | 15 | 13 | −13.33% | Same level 13 checks |
 | 17 | Wave 2 Harpy count | 30 | 27 | −10.00% | Person, feat and taxed-player margins (P1, F1, T2, L1m) |
@@ -11037,6 +11039,7 @@ All ten levels enable the feather-barrel rule. Seven have economy or wave adjust
 | 19 | Wave 3 Troll interval, seconds | 1.75 | 1.61 | −8.00% | Same level 19 checks |
 | 20 | Starting gold | 245 | 270 | +10.20% | Finale tax advantage (T1) |
 | 20 | Wave 2 second group, 24 enemies | Harpy | Goblin | Type change | Same level 20 check |
+| 20 | Wave 6 Troll interval, seconds | 3 | 2.85 | −5.00% | Barrel advantage (C2), with the campaign lives drop (L8) preserved |
 
 ### Act Two gate and barrel impact
 
@@ -11045,7 +11048,7 @@ Each cell reads main → retained. A single value applies to both. The forced po
 | Level | Good | Person | Beginner | Forced Good | Forced Person |
 |---:|---|---|---|---|---|
 | 11 | 2/20 | 2/14 | 0/0 | 2/20 → 2/16 | 2/18 → 1/6 |
-| 12 | 2/19 → 2/18 | 2/15 | 0/0 | 2/16 → 1/7 | 0/0 |
+| 12 | 2/19 → 2/17 | 2/15 → 2/13 | 0/0 | 2/16 → 1/6 | 0/0 |
 | 13 | 3/20 | 2/14 → 2/15 | 0/0 | 2/14 → 1/9 | 2/12 → 1/5 |
 | 14 | 3/20 | 2/14 | 0/0 | 3/20 | 3/20 → 2/13 |
 | 15 | 2/14 | 2/13 | 0/0 | 2/14 | 2/13 → 2/12 |
@@ -11053,14 +11056,14 @@ Each cell reads main → retained. A single value applies to both. The forced po
 | 17 | 2/20 | 2/14 | 0/0 | 2/20 | 1/4 → 1/1 |
 | 18 | 2/14 → 2/15 | 2/13 | 0/0 | 1/11 → 1/7 | 1/9 → 1/4 |
 | 19 | 2/14 | 2/14 → 2/15 | 0/0 | 1/4 → 0/0 | 0/0 |
-| 20 | 2/13 | 2/13 | 0/0 | 2/14 → 2/13 | 2/13 → 2/12 |
+| 20 | 2/13 | 2/13 | 0/0 | 2/14 → 2/13 | 2/13 |
 
 Barrel casts/enemies newly feathered by those casts. This count excludes tower featherings.
 
 | Level | Good | Person | Beginner | Forced Good | Forced Person |
 |---:|---|---|---|---|---|
 | 11 | 1/0 → 1/3 | 2/0 → 2/3 | 0/0 | 12/0 → 6/24 | 19/0 → 7/26 |
-| 12 | 3/0 → 2/13 | 3/0 → 2/11 | 0/0 | 22/0 → 9/50 | 20/0 → 8/47 |
+| 12 | 3/0 → 2/12 | 3/0 → 2/11 | 0/0 | 22/0 → 9/54 | 20/0 → 8/47 |
 | 13 | 3/0 → 3/17 | 6/0 → 4/13 | 0/0 | 11/0 → 7/18 | 23/0 → 8/16 |
 | 14 | 4/0 → 3/20 | 4/0 → 3/16 | 0/0 | 14/0 → 7/40 | 19/0 → 7/33 |
 | 15 | 1/0 → 1/3 | 4/0 → 3/2 | 0/0 | 12/0 → 5/20 | 19/0 → 7/15 |
@@ -11068,13 +11071,13 @@ Barrel casts/enemies newly feathered by those casts. This count excludes tower f
 | 17 | 3/0 → 2/8 | 3/0 → 2/4 | 0/0 | 18/0 → 8/25 | 24/0 → 9/31 |
 | 18 | 2/0 → 2/6 | 3/0 → 2/4 | 0/0 | 13/0 → 5/18 | 18/0 → 7/24 |
 | 19 | 4/0 → 3/19 | 4/0 → 3/12 | 0/0 | 15/0 → 3/12 | 9/0 → 3/7 |
-| 20 | 2/0 → 1/4 | 5/0 → 3/1 | 0/0 | 20/0 → 8/25 | 31/0 → 11/24 |
+| 20 | 2/0 → 1/3 | 5/0 → 3/1 | 0/0 | 20/0 → 8/24 | 31/0 → 11/24 |
 
-### Where the search stopped
+### Closing C2 and S1
 
-At 3,034/63 the C2 control leaves the barrel's turn unused but spends the same charge. Good and the control both earned two stars on each miss. On levels 15, 16, 18 and 20 their respective lives were 14/13, 14/13, 15/14 and 13/13. The first three miss by one life and the finale by two. Good still ended the finale on main's 13 lives. Across levels 1–6 versus 15–20, Good's mean dropped exactly 3.00 lives, the L8 minimum.
+At 3,034/63 the C2 control leaves the barrel's turn unused but spends the same charge. Under the original two-life threshold, levels 15, 16, 18 and 20 missed at 14/13, 14/13, 15/14 and 13/13 lives respectively. The coordinator accepted a one-life advantage for C2. With the wave 6 Troll interval at 2.85 s, level 20 now passes 13 to 12. Good still ends the finale on main's 13 lives. Across levels 1–6 versus 15–20, Good's mean drops exactly 3.00 lives, the L8 minimum.
 
-For S1, Person averaged 15⅓ on levels 8–10 and 14.00 on levels 11–20. The drop of 1⅓ misses 1½ by one-sixth. The ten-level total must fall from 140 to 138 or lower. The first Act Two stop adds one life relative to level 10. The greatest adjacent decline in Act Two is two lives, from level 19 to level 20. Both transitions pass.
+For S1, the level 12 wave 6 changes lower Person's Act Two mean from 14.00 to 13.80 lives. The preceding three levels average 15.33, giving a drop of 1.53 against the required 1.50. The first Act Two stop adds one life relative to level 10. The greatest adjacent decline in Act Two is two lives.
 
 The 1,500-tick wait and 88-tick retreat gave every Act Two level the required barrel benefit, including a legal level 20 combination with Good on 14 versus 12 unused. Its remaining local failures were level 13 L6 and level 19 F2, L1m and L6. The combined campaign also missed S1 and L8. At the retained wait, reducing the level 20 wave 6 Troll interval from 3 to 2.5 seconds cleared its C2 comparison but moved Good's six-level mean drop one-sixth below the L8 floor. The 3,000/65, 3,034/65 and 3,034/88 trials each lost local gates at the prior retune. These trials establish tradeoffs for the tested settings. They do not exhaust the permitted wave changes.
 
@@ -11083,9 +11086,9 @@ The 1,500-tick wait and 88-tick retreat gave every Act Two level the required ba
 | Target | What a regression reports |
 |---|---|
 | C1 | Expected eligible enemy IDs versus emitted feather events, including the radius edge, Harpy, bosses, prior marks and the repeat cast. An ordinary cast with a retreat fails on its level or Free play. |
-| C2 | The level and both stars/lives results when the cast gains less than two lives or one star and Good finishes below 20. |
+| C2 | The level and both stars/lives results when the cast gains neither a life nor a star and Good finishes below 20. |
 | C4 | A Free play bot or matrix digest mismatch for its map, or a different report lock. The previous global-barrel build produced a Meadow bot digest beginning `a057568a` against `0c640ae4`. |
-| C5 | Failed labels for the individual level or the combined run. Here the combined result returns S1. |
+| C5 | Failed labels for the individual level or the combined run. |
 | C6 | The level and forced player exceeding a four-life advantage over Good, earning an additional third star, taking the wrong path or refusing an action. Independent path-only pins remain in force. |
 | C7 | A per-level digest mismatch for full runs or the reconstructed main level definition. The previous build produced a level 9 digest beginning `6ef74fe9` against `76a7118f`. |
 | C8 | A finale difference greater than two lives from 13. |
@@ -11100,17 +11103,21 @@ On level 12 the specialist had 106 gold before wave 3 and needed 110 to buy the 
 
 The first production browser run found a real overlap on paged landscape cards. In fixed Caslon and fallback metrics the feat intersected “Best stars” by 8.075 pixels. The layout now measures the rules again after wrapping them to the sheet width and fits the gaps to the available height. Levels 17 and 20 had 7.675 pixels of clearance after the repair. All ten Act Two notices were checked in desktop, tablet and both phone sizes with normal, fixed Caslon, fixed fallback and wide metrics (160 cases).
 
-The fifteen images in `docs/review/m50/` include a level 14 cast on eight enemies at desktop and phone sizes, three two-tax cards for level 17, and the 51-second special button. The eight enemies ran back 37–55.5 pixels. On level 5 three tarred enemies each moved forward 18.5 pixels during the control. On level 20 Grumblemaw advanced 17.64 pixels in tar with zero feather events. The old Showpiece crowd picture was retired because Act Two cannot select that look. The screenshot baseline specs exercise title, Free play or first-act scenes. No baseline spec is expected to change pixels. Local Playwright runs skip Linux pixel comparisons.
+The images in `docs/review/m50/` include a level 14 cast on eight enemies at desktop and phone sizes, three two-tax cards for level 17, and the 51-second special button. The eight enemies ran back 37–55.5 pixels. On level 5 three tarred enemies each moved forward 18.5 pixels during the control. On level 20 Grumblemaw advanced 17.64 pixels in tar with zero feather events. The old Showpiece crowd picture was retired because Act Two cannot select that look. The menu captures show the wait before the cast, and the phone tips capture shows the two barrel instructions on level 11. The screenshot baseline specs exercise title, Free play or first-act scenes. Local Playwright runs skip Linux pixel comparisons.
 
-The full unit suite passed 2,843 of 2,848 tests across 130 files. Five assertions failed, all in the combined gate or the four C2 controls listed above. The independent path-only pins passed. The specialist usage check runs the entire campaign when invoked alone. Its cold run exceeded the old 120-second limit under concurrent load, so it now uses the same 480-second budget as the combined gate.
+Before the closing changes, the full unit suite passed 2,843 of 2,848 tests across 130 files. Five assertions failed in the combined gate and the four original C2 controls. The independent path-only pins passed. The specialist usage check runs the entire campaign when invoked alone. Its cold run exceeded the old 120-second limit under concurrent load, so it now uses the same 480-second budget as the combined gate.
 
 The full three-project Playwright run passed 1,189, skipped eight and caught the four fixed-font desktop/tablet overlaps. On the rebuilt production bundle, all 34 affected card, campaign, tip and countdown cases passed, including the four original failures. The size check measured 3,769,253 bytes across 30 files against the 20 MB budget. Lint, typecheck, the production build and all 219 asset manifest rows passed.
 
-The official simulator exited 1. It passed all twenty level rows and reported only S1 in the combined gate, then identified the four C2 misses. Its 28,495-byte locked report matched main with SHA-256 `0474f58c24e06d371fab9c9123ba1a8cd72f8bd9bd82fab4b259f7f86239195b`. The complete Free play stdout section (30,713 bytes), all 650 Free play stderr bytes and the 1,031-byte Act One gate section matched main byte for byte. The standalone specialist check passed with its cold-cache time budget.
+The official simulator exits 0 after the closing changes. The earlier parity run's 28,495-byte locked report matched main with SHA-256 `0474f58c24e06d371fab9c9123ba1a8cd72f8bd9bd82fab4b259f7f86239195b`. The complete Free play stdout section (30,713 bytes), all 650 Free play stderr bytes and the 1,031-byte Act One gate section matched main byte for byte. The standalone specialist check passed with its cold-cache time budget.
+
+The copy checks compare both displayed waits with the rounded value from the data. A scratch change from 3,034 to 3,094 ticks produces 52s and fails the approved-duration assertion. Freezing either line at 51s with that scratch value fails its own copy assertion.
 
 ## Verifier (Claude Sonnet), milestone 50, independent run on d29ab2c
 
 Verdict: merge, with two record fixes (below). Everything here was measured on `d29ab2c` against a clean export of `dca7edf`.
+
+The copy follow-up updated the README recharge description and the third-pass record above.
 
 - **C4, C7.** My own comparison (not the repo's digests): 6 bots (Beginner, Good, Person, Feathers, Good-feat, Person-feat) on levels 1 to 10, and the same 6 on every Free play map and difficulty, 116 full-run digests over 2,093,163 bytes of JSON. Identical on both trees, and the level 1 to 10 definitions hash the same. Mutations that went red: barrel feathers on every level, barrel feathers bosses, enemy feathered twice, feather barrel refills at 1,200, ordinary barrel refills at 3,034, level 9 hpScale 0.987, level 3 gold +1, a town's-answer line missing on an Act Two card, and the line added to a plain first-act card.
 - **Changed numbers in `src/sim`.** Nine non-test files changed (actions, bots, feathers, game, levelTypes, levels, specialPolicy, specials, types). The levels table above (third pass) is stale. Final changes: L11 wave 6 Troll 21 to 19; L12 gold 260 to 269, wave 1 Shieldbearer interval 1.15 to 1.265, wave 6 Shieldbearer interval 0.8 to 0.79 and Troll 21 to 22; L13 wave 3 Harpy 39 to 34, wave 5 Troll 15 to 13; L17 wave 2 Harpy 30 to 27, wave 5 group 2 Harpy to Goblin; L18 gold 260 to 275; L19 wave 2 Harpy interval 1.08 to 1.2312, wave 3 Troll interval 1.75 to 1.61; L20 gold 245 to 270, wave 2 group 2 Harpy to Goblin, wave 6 Troll interval 3 to 2.85. All gold within 15% (largest +10.2%); no health scale moved. The L12 wave 6 and L20 wave 6 edits came in the last commit, which has no DEVLOG entry; the C7 test does list them.

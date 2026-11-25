@@ -2,10 +2,11 @@ import { expect, test } from '@playwright/test';
 import { count, onScene, startPlay } from './sound';
 import { press } from './campaign';
 import { waitForFirstScreen } from './title';
-import { featherLabels, featherLooks } from './feathers';
+import { featherBarrelLabels, featherLabels, featherLooks } from './feathers';
 
 for (const look of ['classic', 'painted', 'showpiece']) featherLooks(look, false);
 featherLabels(false);
+featherBarrelLabels(false);
 
 test('a barrel is silent for feathers until a path B shot triggers one puff', async ({ page }) => {
   test.setTimeout(60_000);

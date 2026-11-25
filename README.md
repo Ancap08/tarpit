@@ -65,9 +65,10 @@ cloud shadows and the odd bird or butterfly, all still under reduced motion.
    Pit, Cannon and Mortar cannot hit them, and a Fire Pot's burn does not
    stick to them) and Redcoat Shieldbearers (small shots do
    half damage). Each one that reaches the cottage costs a life.
-8. **Specials.** The charge is ready when a wave starts and refills 20 s
-   after each use, so you can fire several in a wave. Press Special (left of
-   Start Wave), pick a special if more than one is unlocked, and click the
+8. **Specials.** Specials share one charge. Normally it refills after 20 s of
+   combat or when the next wave starts. In Act Two, a feather barrel takes
+   about 51 s of combat to refill, and that wait carries across waves. Press
+   Special (left of Start Wave), pick a special if more than one is unlocked, and click the
    trail where the circle covers the enemies; a banner says what to do, and
    Escape or Special again cancels. Powder Keg (from wave 1) blasts them, Tar
    Barrel (from wave 4) leaves a puddle that slows everything in it for 11 s,

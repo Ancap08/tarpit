@@ -2101,8 +2101,11 @@ the first screen. An open stop shows a card with the King's notice, level name, 
 twist, new equipment or enemies, and best stars. Act Two cards list each
 tax name and amount under “In force” and print the name and task for
 the third star. In town blue the notice reads “Town's answer: Tar Barrels feather crowds.”
-The special menu on these levels reads “Tar and feathers. Enemies caught run back.”
-Level 11 teaches “Drop a Tar Barrel on a crowd and they run back.” Notices, tax amounts and build limits read the level record.
+The special menu on these levels reads “Feathers a crowd. Next special in 51s.”
+Level 11 teaches “Drop a Tar Barrel on a crowd and they run back.” The next
+tip reads “After a feather barrel, specials take 51s to return.” Both waits
+use the base barrel recharge from the data and round up like the Special
+button. Notices, tax amounts and build limits read the level record.
 The card measures the printed lines. If there is insufficient room for the
 map and tactics, “Map notes” turns the card over and “Notice” turns it
 back. Play and best stars stay available on both pages. Portrait card body

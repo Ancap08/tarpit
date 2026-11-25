@@ -5,6 +5,8 @@
 
 import { LEVELS } from '../sim/levels.ts';
 import { BOONS } from '../sim/boons.ts';
+import { BARREL_RECHARGE_TICKS } from '../sim/specials.ts';
+import { TICKS_PER_SECOND } from '../sim/time.ts';
 import type { BoonId, Difficulty, EnemyType, LevelDef, LevelFeat, LevelTaxes, MapId, SpecialType, TargetingMode, TaxKind, TowerLevel, TowerType, UpgradePath } from '../sim';
 
 /** The wave 10 boss (docs/SCOPE-v4.md, milestone 23): the HUD boss bar and the wave 10 preview. */
@@ -231,7 +233,8 @@ export const SPECIAL_NAMES: Readonly<Record<SpecialType, string>> = {
   guards: 'Guards',
 };
 
-export const TAR_BARREL_DESCRIPTION = 'Tar and feathers. Enemies caught run back.';
+const featherBarrelWait = rechargeText(BARREL_RECHARGE_TICKS, TICKS_PER_SECOND, true);
+export const TAR_BARREL_DESCRIPTION = `Feathers a crowd. Next special in ${featherBarrelWait}.`;
 
 /** The HUD's special button label (milestone 25b). */
 export const SPECIAL_BUTTON_TEXT = 'Special';
@@ -612,7 +615,11 @@ function campaignTips(touch: boolean): Readonly<Record<number, readonly string[]
     8: ['Send Guards ahead of a pack of Redcoat Shieldbearers.', 'Place them on the trail where your towers can help.', 'Drop Fire Arrows on a crowd to burn it.'],
     9: [`${action} a tower you have upgraded once.`, 'Pick an upgrade before Assessor Grumblefoot arrives.', 'Feathers make tarred enemies run back. Bosses are too proud.'],
     10: ['King Grumblemaw calls Revenue Hounds. Save a Powder Keg.', 'Slow King Grumblemaw with tar, then hit him with fire.'],
-    11: ['Your opening tower goes up at its usual price.', 'Selling a tower still leaves it on the tax roll.', 'Drop a Tar Barrel on a crowd and they run back.'],
+    11: [
+      'First tower is untaxed. Sold towers still count for tax.',
+      'Drop a Tar Barrel on a crowd and they run back.',
+      `After a feather barrel, specials take ${featherBarrelWait} to return.`,
+    ],
     12: ['Put a Tar Pit where several towers can reach it.', 'Save a special for the pack that gets ahead.'],
     13: ['Plan your next purchase before the wave ends.', 'The clock waits while you choose a reward.', manualWaveTip],
     14: ['Check the ring before you build.', 'Keep the Mortar back. Its inner ring stays put.'],
