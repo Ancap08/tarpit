@@ -11537,3 +11537,32 @@ inside a full phone-project run (first samples ran 1.5 to 2 times slow). A note
 is in the spec. Added `siege-verifier.test.ts` (16 tests) and
 `siegeVerifier.ts` with three specs (every Keep site with a panel open, tips
 on, three font modes; pause; switch off).
+
+## Verifier (Claude Sonnet), milestone 52b (b1 and b2), tip c3c9c45
+
+Verdict: fix first (small). Nothing a player reaches without a switch moved;
+the rules hold under my tests; the data and the targets were not pinned in CI.
+
+- W8 proved with my own comparison against a clean export of aacf7de: 300
+  full-state hashes identical (levels 1 to 20 by six bots = 120; Free play,
+  three maps by three difficulties, four bots plus every archetype = 180),
+  `npm run sim` identical (475 lines, exit 0), progress parse/serialize/stars
+  identical on both trees. 27 non-test files changed under `src/sim`; the
+  one-road hot paths (movement, combat targeting, grid, headless, specialPolicy,
+  bots) read as equivalent.
+- `npm test` never runs W1 to W14: only `npm run sim:keep` does, and CI does
+  not. W6, W9 and W12 misses are absent from `npm test`; the 11 passes are not
+  asserted either. Mutations: level 21 gate x100 HP and Quartering price 80 to 1
+  stayed green until my tests; `state.gold <= price` also passed the
+  implementer's tests. Added `checkKeep-verifier.test.ts` (pins the three
+  misses and each bot's stars and lives per level),
+  `siegeRules-verifier.test.ts` (20 tests) and e2e `siege-verifier*.spec.ts`
+  (real levels 21 to 25 at 390x664, 390x844, 1024x768, 960x580, three font
+  modes, mouse and touch).
+- Found: the five-digit "Gate NNNNN / NNNNN" label runs 13 to 14 canvas px off
+  the left edge in fixed-fallback metrics (3 px in wide metrics on 960).
+  Pinned with `test.fail`; remove it when fitted.
+- Eight-plus mutations (12 run) all went red except the two data ones and the
+  gold boundary named above, before my tests.
+- Full runs: lint, typecheck clean; `npm test` 2,971 passed in 140 files; build
+  and size 7.99 MB; e2e 1,346 passed, 8 skipped, plus keep-cost 1 passed.
