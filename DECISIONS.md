@@ -1821,3 +1821,17 @@ can change it; "Kyle" means Kyle decided.
   calm; and the enemies and towers are lit for daylight in a dusk scene. A
   second pass is ordered on those points before Kyle is asked for a
   verdict. Kyle was sent the first-pass stills and recording as they are.
+- **No Astra until Kyle's usage resets, about three days from 2026-11-24**
+  (Kyle: "Astra is now being billed at higher rate so we can use them when
+  the usage resets"). Agreed for that time, on the coordinator's proposal:
+  builds go to `gpt-6.2-sol` at high, in smaller briefs than Astra took
+  (rule, then levels and tuning, then screens and art, each checked before
+  the next); fixes and small items stay on Sol at high; if Sol stops twice
+  on the same piece or misses the same target twice, that piece goes to
+  Claude Opus at medium; Claude Sonnet at medium verifies everything; the
+  coordinator (Fable) plans and reviews and writes no game code. When Opus
+  builds, the automated Codex review on the pull request is the cross-check
+  from the other provider. Sol has not done Blender art on this project:
+  it gets one small art item first, and larger castle changes wait or go to
+  Opus if the quality drops. The earlier rule (Astra at medium for bigger
+  builds, Astra at low as the fallback) returns when Kyle says so.
