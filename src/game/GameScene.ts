@@ -203,6 +203,7 @@ import {
   pastDragThreshold,
   type Rect,
 } from './input';
+import { DetailGovernor } from './showpiece/governor';
 import { LANDSCAPE, TAXED_PORTRAIT, type Layout, type LayoutKind } from './layout';
 import { COLORS, FONT, TEXT } from './palette';
 import { currentLayout } from './layoutSwitch';
@@ -606,7 +607,7 @@ export class GameScene extends Phaser.Scene {
     if (this.keepModule) {
       sound.sessionMute = true;
       this.town.layer.setVisible(false);
-      this.keep = new this.keepModule.KeepView(this, this.layout, this.state.map, this.clock, !this.autoTick);
+      this.keep = new this.keepModule.KeepView(this, this.layout, this.state.map, this.clock, !this.autoTick, DetailGovernor);
       this.children.moveBelow(this.keep.layer, this.ground);
       this.events.once('shutdown', () => {
         sound.sessionMute = false;
