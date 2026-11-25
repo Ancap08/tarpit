@@ -1929,3 +1929,18 @@ can change it; "Kyle" means Kyle decided.
   before, with only the intended table changed, and checked by diff. Edits
   to the scope by script now anchor inside the milestone's own section and
   the diff is read before the commit.
+- **Levels 21 to 25 exist and eight of fourteen targets pass; six do not,
+  and Sol stopped as told.** Open: W1 on level 22, W6 (leaving a road
+  undefended rarely loses the gate), W7 (the person-like bot averages 18
+  lives in Act Three against 13.8 in Act Two; the target is 12.3 or
+  fewer), W9 (a Longbow alone earns two stars on every level), W10 (the
+  windows do not change level 22's score) and W12 (the Royal Survey costs
+  nothing). The coordinator's reading: a standing gate holds every ground
+  enemy, so lives are lost only to flyers or after a breach, and the star
+  lines stop measuring anything; repair is also far too cheap (8,300
+  health for 49 gold). A second level-table pass is ordered with the
+  thresholds held: lives must be at risk from the air while the gate
+  stands, a breach must be a real risk for an ordinary player, and repair
+  must cost about what it saves.
+- **Tips for levels 21 to 25:** Sol's drafts accepted with two changed by
+  the coordinator (the last-stand tip and the second Quartering tip).
