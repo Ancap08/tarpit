@@ -2383,6 +2383,7 @@ back. The first screen opens on Campaign, the map on the next unwon open
 stop, the card on Play, and the result on its first button. On the map the
 arrow keys visit open stops. Right from stop 10 crosses to 11 once unlocked.
 Left from 11 returns to 10. Rotating keeps the focused stop.
+
 ## Private Act Three
 
 Levels 21–25 are separate from the public campaign list. `?keep=21` through

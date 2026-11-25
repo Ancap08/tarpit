@@ -7,7 +7,7 @@ import { canTarget, enemyPosition } from './combat';
 import { createGame, startWave, tick } from './game';
 import { repairGate } from './gate';
 import { cellCenter, isBuildableTerrain } from './grid';
-import { KEEP_LEVELS, type KeepLevel } from './keepLevels';
+import { KEEP_LEVELS } from './keepLevels';
 import { TWO_STAR_LIVES, type LevelDef } from './levelTypes';
 import { LEVELS } from './levels';
 import { projectOntoTrail, resolveMap } from './map';
@@ -130,10 +130,10 @@ export function introductionMatches(level: LevelDef, index: number): boolean {
     final.includes(ram) && final.includes(king) && ram.delay < king.delay && level.endingBoss === 'grumblemaw';
 }
 
-export function checkKeep(previousPersonMean: number, levels: readonly KeepLevel[] = KEEP_LEVELS) {
+export function checkKeep(previousPersonMean: number) {
   const targets: { label: Label; ok: boolean; detail: string }[] = [];
   const add = (label: Label, ok: boolean, detail: string) => targets.push({ label, ok, detail });
-  const rows = levels.map(level => {
+  const rows = KEEP_LEVELS.map(level => {
     const good = score(level, botGood);
     const person = score(level, botPerson);
     const beginner = score(level, botBeginner);
@@ -175,14 +175,13 @@ export function checkKeep(previousPersonMean: number, levels: readonly KeepLevel
   add('W7', previousPersonMean - personMean >= 1.5 && rows.every(({ person }) => person.terminal),
     `Person mean ${previousPersonMean.toFixed(2)} to ${personMean.toFixed(2)} lives`);
 
-  const oldRules = rows.map(({ level }) => {
+  each('W9', rows.map(({ level }) => {
     const review = checkLevel(level, { band: level.endingBoss ? 'finale' : 'late', introduces: null });
     const singles = review.singleTowerTrials?.filter(({ good }) => good.stars >= 2)
       .map(({ tower, good }) => `${tower} ${good.stars}/${good.lives}`);
     const info = [review.failed.join(', '), review.scheduleIssue && JSON.stringify(review.scheduleIssue), singles?.join(', ')].filter(Boolean).join(' / ');
-    return { id: level.id, ok: review.ok, text: info || 'existing level rules pass', review };
-  });
-  each('W9', oldRules);
+    return { id: level.id, ok: review.ok, text: info || 'existing level rules pass' };
+  }));
   const beds = rows[1];
   const noWindows = score(beds.level, { ...botGood, window: undefined });
   add('W10', wins(noWindows) && beds.good.windows.some(hits => hits > 0) && worse(noWindows, beds.good, 2),
