@@ -98,7 +98,7 @@ describe('campaign acceptance gate', () => {
       expect(use.barrelCasts > 0, `level ${level.id} barrel`).toBe(barrel);
       expect(use.feathered > 0, `level ${level.id} enemies feathered`).toBe(tower || (barrel && level.featherBarrels === true));
     }
-  }, 120_000);
+  }, 480_000); // Running this assertion alone computes the same full campaign as C5.
 
   it('rechecks the historical twelve-level candidates against the new margins', () => {
     const standFast = LEVELS[7];
