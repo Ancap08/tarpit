@@ -1,5 +1,8 @@
 # Milestone 52b2 review
 
+This record describes the first pass. The selected table and current
+evidence are in the [second-pass review](second-pass/README.md).
+
 Open `?keep=21` through `?keep=25` to play the corresponding level
 directly. The level map and saved campaign stop at level 20. A private
 win shows the town's reply and this run's stars. The original siege
