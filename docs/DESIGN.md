@@ -2425,8 +2425,9 @@ current gold quote and the first-repair feat warning on Not a nail
 levels. A breach shows Gate fallen and a whole-second countdown rounded
 up for the remaining Last stand ticks. Windows and wall-site markers
 stay aligned with their world positions. In portrait leaders join the
-Survey plaques to their plinths. The lower plaque sits 60 canvas px below
-its plinth before camera scaling, and the upper plaque sits 106 px right.
+tax plaques to their plinths. The lower Survey plaque sits 60 canvas px
+below its plinth before camera scaling, and the upper plaque sits 106 px
+right. The Quartering plaque sits 190 px right and 42 px below its plinth.
 The west sign on the west-only level stands beside
 the road at canvas x = 204, clamped to fit. Both leave the barbican visible.
 The outer gate's sill follows the simulation's position. Its timber is

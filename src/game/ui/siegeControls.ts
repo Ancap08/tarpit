@@ -30,15 +30,16 @@ export class SiegeControls {
     const sites = tax?.kind === 'royalSurvey' ? tax.sites : tax ? [tax.site] : [];
     this.sites = sites.map(site => {
       const cell = layout.cellCenter(site);
-      // The survey still binds the original cell. Leaders leave the door
+      // The tax still binds the original cell. Leaders leave the door
       // and the health plaque legible while the portrait camera settles.
-      const survey = layout.turned && state.level?.keepRoads === 'both' && tax?.kind === 'royalSurvey';
-      const offset = !survey ? { x: 0, y: 0 } : site.row === 13 ? { x: 0, y: 60 } : { x: 106, y: 0 };
+      const siegePortrait = layout.turned && state.level?.keepRoads === 'both';
+      const offset = !siegePortrait ? { x: 0, y: 0 } : tax?.kind === 'quartering' ? { x: 190, y: 42 }
+        : site.row === 13 ? { x: 0, y: 60 } : { x: 106, y: 0 };
       const point = { x: cell.x + offset.x, y: cell.y + offset.y };
       const rect = center(point, framed ? 132 : 136, framed && !layout.turned ? 54 : 80);
       const x = Math.max(0, Math.min(rect.x, scene.scale.width - rect.width));
       const button = make({ ...rect, x }, pay);
-      const leader = survey ? { site: cell, line: scene.add.graphics() } : undefined;
+      const leader = siegePortrait ? { site: cell, line: scene.add.graphics() } : undefined;
       this.anchors.push({ button, point, leader });
       return button;
     });
@@ -59,6 +60,9 @@ export class SiegeControls {
           const site = project(leader.site);
           leader.line.clear().lineStyle(1.4, 0xc3aa77, .84);
           if (point.x === site.x) leader.line.lineBetween(site.x, site.y + 9 * scale, site.x, button.rect.y);
+          else if (p.y > site.y) leader.line.strokePoints([
+            { x: site.x, y: site.y + 9 * scale }, { x: site.x, y: p.y }, { x: button.rect.x, y: p.y },
+          ]);
           else leader.line.lineBetween(site.x + 12, site.y, button.rect.x, site.y);
         }
       }
