@@ -6,7 +6,8 @@ import { botBeginner, botFeathers, botGood, botGoodFeat, botPerson, botPersonFea
 import { ENEMY_STATS } from './enemies';
 import { createGame, spawnTick } from './game';
 import { CAMPAIGN_START_LIVES, TWO_STAR_LIVES, type LevelDef, type TaxKind } from './levelTypes';
-import { MAP_IDS } from './map';
+import { MAP_IDS, resolveMap } from './map';
+import { commonRoadStart, roadIds, roadLength } from './roads';
 import { SPECIAL_DEFS, type SpecialType } from './specials';
 import { TICKS_PER_SECOND } from './time';
 import { TOWER_DEFS } from './towers';
@@ -31,6 +32,8 @@ export interface LevelContext {
   introducesTax?: TaxKind;
   /** The original campaign retains its shipped difficulty contract. */
   frozenFirstAct?: boolean;
+  /** The first siege teaches the gate and is exempt from the single-tower limit. */
+  siegeTeachingLevel?: boolean;
 }
 
 export interface LevelScore {
@@ -43,6 +46,7 @@ export interface LevelScore {
   readonly tick: number;
   readonly stars: 0 | 1 | 2 | 3;
   readonly refused: number;
+  readonly lowestGateHp?: number;
   readonly featherUse?: { pathBTowers: number; barrelCasts: number; feathered: number };
 }
 
@@ -60,6 +64,7 @@ export interface LevelCheck {
   featGood?: LevelScore;
   featPerson?: LevelScore;
   featTrials?: readonly { variant: string; good: LevelScore }[];
+  siegeMargin?: readonly { variant: string; good: LevelScore; person: LevelScore }[];
   singleTowerTrials?: readonly { tower: TowerType; good: LevelScore }[];
   sensitivity?: readonly SensitivityTrial[];
   openingCount: number;
@@ -91,6 +96,8 @@ interface SensitivityTrial {
 }
 
 const MINUTE = 60 * TICKS_PER_SECOND;
+const SIEGE_PERSON_MIN_LIVES = 8;
+const SIEGE_FINALE_GATE_SHARE = [0.05, 0.3] as const;
 export const GATE_LIMITS = {
   levelMinutes: [4, 9], averageMinutes: [6, 8], waveCount: [5, 10],
   hpScale: [0.85, 1.35], startGold: [100, 300], finaleLives: [TWO_STAR_LIVES, 16],
@@ -132,13 +139,22 @@ function validTaxesAndFeat(level: LevelDef): boolean {
   const keys = taxKinds(level);
   if (keys.length > 2 || !keys.every(key => validTax(level, key))) return false;
   const feat = level.feat;
-  return !feat || feat.kind === 'noLeaks' || feat.kind === 'noSpecials' ||
+  return !feat || feat.kind === 'noLeaks' || feat.kind === 'noSpecials' || feat.kind === 'noRepairs' ||
     (feat.kind === 'unbroken' && level.gate !== undefined) ||
     (feat.kind === 'maxTowers' && whole(feat.limit, 0));
 }
 
 function validLevel(level: LevelDef): boolean {
-  return whole(level.id, 1) && MAP_IDS.includes(level.map) && validTaxesAndFeat(level) &&
+  const keep = level.map === 'keep';
+  const map = keep && resolveMap(level.map, level.keepRoads);
+  const gate = level.gate;
+  const validMap = map ? !!gate && !!level.keepRoads && !!level.keepSky &&
+    whole(gate.maxHp, 1) && whole(gate.repairHp, 1, gate.maxHp) && whole(gate.repairCost, 1) &&
+    whole(gate.yardLength, 1, Math.floor(roadLength(map))) && roadIds(map).every(road =>
+      commonRoadStart(map, undefined, road) <= roadLength(map) - gate.yardLength) &&
+    level.waves.every(wave => wave.groups.every(group => group.road !== undefined && roadIds(map).includes(group.road))) :
+    MAP_IDS.some(id => id === level.map);
+  return whole(level.id, 1) && validMap && validTaxesAndFeat(level) &&
     whole(level.startGold, ...GATE_LIMITS.startGold) &&
     Number.isFinite(level.hpScale) && level.hpScale >= GATE_LIMITS.hpScale[0] && level.hpScale <= GATE_LIMITS.hpScale[1] &&
     (level.hpGrowthStart === null || whole(level.hpGrowthStart, 1, level.waves.length)) &&
@@ -217,7 +233,7 @@ function measure(level: LevelDef, variant: LevelDef, policy: BotPolicy): LevelSc
   const variantKey = bot + JSON.stringify(variant);
   const previous = cached.results.get(variantKey);
   if (previous) return previous;
-  const { state, log, refused, peakAlive, waveOneLives, setupTicks, feathered } = runBot(createGame({ level: variant }), policy, Infinity, 2 * GATE_LIMITS.levelMinutes[1] * MINUTE);
+  const { state, log, refused, peakAlive, waveOneLives, setupTicks, feathered, siege } = runBot(createGame({ level: variant }), policy, Infinity, 2 * GATE_LIMITS.levelMinutes[1] * MINUTE);
   const { phase } = state;
   const tick = state.tick - setupTicks;
   const lives = Math.max(0, state.lives);
@@ -226,7 +242,8 @@ function measure(level: LevelDef, variant: LevelDef, policy: BotPolicy): LevelSc
     barrelCasts: log.filter(step => step.action === 'special' && step.special === 'tarBarrel' && step.result.ok).length,
     feathered: feathered ?? 0,
   } : undefined;
-  const result = { ...(featherUse && { featherUse }), phase, lives, towersBuilt: state.towersBuilt ?? state.towers.length, tick, refused, peakAlive, waveOneLives, spawned: state.nextEnemyId, stars: levelStars(state) };
+  const result = { ...(featherUse && { featherUse }), ...(siege && { lowestGateHp: siege.lowestHp }),
+    phase, lives, towersBuilt: state.towersBuilt ?? state.towers.length, tick, refused, peakAlive, waveOneLives, spawned: state.nextEnemyId, stars: levelStars(state) };
   cached.results.set(variantKey, result);
   return result;
 }
@@ -266,6 +283,8 @@ export function checkLevel(level: LevelDef, context: LevelContext): LevelCheck {
   if (issue) return { ...structure, ok: false, failed: ['L5'], scheduleIssue: issue };
 
   const failed = new Set<GateLabel>();
+  const siege = level.map === 'keep';
+  const siegePersonPasses = (score: LevelScore) => score.phase === 'won' && score.lives >= SIEGE_PERSON_MIN_LIVES;
   const [goodMin, personMin, beginnerMin, beginnerMax, needsNoSpecials] = BAND_RULES[context.band];
   const good = measure(level, level, botGood);
   const person = measure(level, level, botPerson);
@@ -274,7 +293,9 @@ export function checkLevel(level: LevelDef, context: LevelContext): LevelCheck {
   if (feathers.lives - good.lives > GATE_LIMITS.maxFeatherAdvantage ||
       (feathers.stars === 3 && good.stars !== 3)) failed.add('R6');
   const noSpecials = measure(level, { ...level, allowedSpecials: [] }, botPerson);
-  if (person.stars < personMin || good.lives - person.lives > GATE_LIMITS.maxPersonDeficit) failed.add('P1');
+  const personPasses = siege ? siegePersonPasses(person) :
+    person.stars >= personMin && good.lives - person.lives <= GATE_LIMITS.maxPersonDeficit;
+  if (!personPasses) failed.add('P1');
   if (needsNoSpecials && noSpecials.stars === 0) failed.add('P2');
   if (good.stars < goodMin) failed.add('L1');
   if (!whole(beginner.stars, beginnerMin, beginnerMax)) failed.add('L2');
@@ -286,16 +307,19 @@ export function checkLevel(level: LevelDef, context: LevelContext): LevelCheck {
   const featureTrials: FeatureTrial[] = [];
   const runs = [good, person, beginner, feathers, noSpecials];
   const featTrials: { variant: string; good: LevelScore }[] = [];
+  const siegeMargin: { variant: string; good: LevelScore; person: LevelScore }[] = [];
   const featPerson = level.feat ? measure(level, level, botPersonFeat) : undefined;
   if (featPerson) {
     runs.push(featPerson);
     if (beginner.stars === 3) failed.add('F1');
-    if (person.stars === 3 || featPerson.stars === 3) failed.add('F2');
+    // Act Three judges the number of Person feats across the act in W5/W13.
+    if (!level.keepRoads && (person.stars === 3 || featPerson.stars === 3)) failed.add('F2');
     if (level.feat?.kind === 'noSpecials' && person.lives - featPerson.lives < GATE_LIMITS.featSpecialLives) failed.add('F3');
     if (level.feat?.kind === 'maxTowers' && person.towersBuilt - level.feat.limit < GATE_LIMITS.featExtraBuilds) failed.add('F3');
   }
   const singleTowerTrials = [];
-  if (!context.frozenFirstAct && (context.band === 'late' || context.band === 'finale')) {
+  if (!context.frozenFirstAct && !(siege && context.siegeTeachingLevel) &&
+    (context.band === 'late' || context.band === 'finale')) {
     for (const tower of level.allowedTowers) {
       const single = measure(level, { ...level, allowedTowers: [tower] }, botGood);
       singleTowerTrials.push({ tower, good: single });
@@ -315,6 +339,12 @@ export function checkLevel(level: LevelDef, context: LevelContext): LevelCheck {
     const full = measure(level, test, botGood);
     runs.push(full);
     const nudged = variant !== 'base';
+    if (siege && nudged) {
+      const player = measure(level, test, botPerson);
+      runs.push(player);
+      siegeMargin.push({ variant, good: full, person: player });
+      if (!siegePersonPasses(player)) failed.add('P1');
+    }
     const marginLives = TWO_STAR_LIVES + GATE_LIMITS.twoStarHeadroom;
     if (nudged && (full.stars < goodMin ||
       (!context.frozenFirstAct && goodMin === 2 && full.lives < marginLives))) failed.add('L1m');
@@ -372,9 +402,16 @@ export function checkLevel(level: LevelDef, context: LevelContext): LevelCheck {
       (personMin >= 2 && (!g.stars || !p.stars))) failed.add('L6');
   }
   if (!runs.every(finished)) failed.add('L7');
-  if (context.band === 'finale' && !whole(good.lives, ...GATE_LIMITS.finaleLives)) failed.add('L8');
+  if (context.band === 'finale') {
+    if (siege) {
+      const share = (good.lowestGateHp ?? 0) / level.gate!.maxHp;
+      const [min, max] = SIEGE_FINALE_GATE_SHARE;
+      if (share < min || share > max) failed.add('L8');
+    } else if (!whole(good.lives, ...GATE_LIMITS.finaleLives)) failed.add('L8');
+  }
   return { ...structure, ok: failed.size === 0, failed: [...failed], good, beginner, person, feathers, noSpecials,
-    forbidden: featureTrials[0]?.goodWithout, featureTrials, taxTrials, featGood: featTrials[0]?.good, featPerson, featTrials, singleTowerTrials, sensitivity };
+    forbidden: featureTrials[0]?.goodWithout, featureTrials, taxTrials, featGood: featTrials[0]?.good, featPerson, featTrials,
+    ...(siege && { siegeMargin }), singleTowerTrials, sensitivity };
 }
 
 export interface CampaignCheck {

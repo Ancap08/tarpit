@@ -16,6 +16,7 @@ import { featherEnemy } from './feathers';
 import { LAST_STAND_FIRE_RATE } from './gate';
 import { cellCenter, sameCell, type Cell } from './grid';
 import { pathLength, positionAlongPath } from './map';
+import { roadPath, roadProgress } from './roads';
 import { secondsToTicks, TICKS_PER_SECOND } from './time';
 import { shotCooldown, towerStatsAt } from './towers';
 import type { KillCause } from './events';
@@ -45,7 +46,7 @@ export function towerPosition(tower: Tower): Point {
 
 /** Enemy position on `map` (milestone 27: the game's map, state.map). */
 export function enemyPosition(enemy: Enemy, map: MapDef): Point {
-  return positionAlongPath(map, enemy.distance);
+  return positionAlongPath(roadPath(map, enemy.road), enemy.distance);
 }
 
 /** Towers that work on the ground and so never target a flying enemy (milestone 22). */
@@ -62,9 +63,10 @@ export function canTarget(tower: TowerType, enemy: Pick<Enemy, 'type'>): boolean
  * more current hp, then further along the path. Remaining ties go to the
  * lower id in every mode.
  */
-function preferred(mode: TargetingMode, a: Enemy, b: Enemy): boolean {
+function preferred(mode: TargetingMode, a: Enemy, b: Enemy, multiRoad?: MapDef): boolean {
   if (mode === 'strongest' && a.hp !== b.hp) return a.hp > b.hp;
-  if (a.distance !== b.distance) return mode === 'last' ? a.distance < b.distance : a.distance > b.distance;
+  const difference = multiRoad ? roadProgress(multiRoad, a) - roadProgress(multiRoad, b) : a.distance - b.distance;
+  if (Math.abs(difference) > (multiRoad ? 1e-10 : 0)) return mode === 'last' ? difference < 0 : difference > 0;
   return a.id < b.id;
 }
 
@@ -109,6 +111,7 @@ function chooseTarget(state: GameState, tower: Tower, enemies: readonly Enemy[],
   const { range, minRange } = towerStatsAt(state, tower);
   const mask = positions ? reachMask(state.map, tower, range, positions.section, from) : -1;
   if (positions && !(positions.occupied & mask)) return undefined;
+  const multiRoad = state.map.otherRoads?.length ? state.map : undefined;
   const mode = tower.targeting ?? 'first';
   const choosesFeathers = tower.type === 'tarpit' && tower.path === 'B';
   const groundOnly = GROUND_ONLY.has(tower.type);
@@ -121,7 +124,7 @@ function chooseTarget(state: GameState, tower: Tower, enemies: readonly Enemy[],
     if (best) {
       if (choosesFeathers && best.feathered !== enemy.feathered) {
         if (enemy.feathered) continue;
-      } else if (!preferred(mode, enemy, best)) continue;
+      } else if (!preferred(mode, enemy, best, multiRoad)) continue;
     }
     const position = positions ? positions.points[i] : enemyPosition(enemy, state.map);
     const dx = Math.abs(from.x - position.x);
@@ -246,7 +249,7 @@ function burnOwnerTower(state: GameState, enemy: Enemy): Tower | undefined {
 }
 
 /** Count down, then fire if ready and a target is in range. */
-function towerStep(state: GameState, tower: Tower, enemies: readonly Enemy[], positions: EnemyPositions, rate: number): void {
+function towerStep(state: GameState, tower: Tower, enemies: readonly Enemy[], positions: EnemyPositions | undefined, rate: number): void {
   if (tower.cooldownTicks > 0) tower.cooldownTicks -= rate;
   if (tower.cooldownTicks > 0) return;
   const target = chooseTarget(state, tower, enemies, positions);
@@ -299,6 +302,12 @@ export function fireTowers(state: GameState): void {
   // Enemies do not move between tower shots. Keep each position once and
   // let target selection skip enemies killed by an earlier tower this tick.
   const enemies = state.enemies;
+  if (state.map.otherRoads?.length) {
+    const rate = (state.gate?.lastStandTicksLeft ?? 0) > 0 ? LAST_STAND_FIRE_RATE : 1;
+    // The single-road bitmask describes only the main road.
+    for (const tower of state.towers) towerStep(state, tower, enemies, undefined, rate);
+    return;
+  }
   let section = trailLengths.get(state.map);
   if (section === undefined) {
     section = pathLength(state.map) / 32 || 1;
@@ -324,7 +333,7 @@ function checkPackCalls(state: GameState, boss: Enemy): void {
   for (const threshold of [2, 1] as const) {
     if ((boss.packCalls ?? 0) >= 3 - threshold || boss.hp * 3 > fullHp * threshold) continue;
     boss.packCalls = 3 - threshold;
-    state.packs.push({ nextTick: state.waveTick, remaining: PACK_SIZE });
+    state.packs.push({ nextTick: state.waveTick, remaining: PACK_SIZE, ...(boss.road === undefined ? {} : { road: boss.road }) });
     state.events.push({ kind: 'packCall', enemyId: boss.id, threshold });
   }
 }

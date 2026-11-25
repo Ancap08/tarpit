@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import type { GameScene } from '../src/game/GameScene';
 import type { TitleScene } from '../src/game/TitleScene';
 import { TAX_NAMES } from '../src/game/names';
-import { buildableCells, cellFromKey, MAPS, LEVELS, type LevelDef, type LevelTaxes } from '../src/sim';
+import { buildableCells, cellFromKey, resolveMap, LEVELS, type LevelDef, type LevelTaxes } from '../src/sim';
 import { api, mapPress, press, visibleTexts } from './campaign';
 import { useTallFontMetrics } from './campaignFont';
 import { checkLabel } from './hudButtonLabels';
@@ -26,7 +26,7 @@ export async function openPaintedLevel(page: Page, level: LevelDef) {
     return new Promise<void>(resolve => {
       game.events.once('create', resolve);
       const title = t.game.scene.getScene('title') as TitleScene;
-      title['startGame']({ level, map: level.map, difficulty: 'normal' });
+      title['startGame']({ level, map: level.map === 'keep' ? undefined : level.map, difficulty: 'normal' });
     });
   }, level);
   expect(await api(page, t => t.painted().active)).toBe(true);
@@ -177,7 +177,7 @@ export function shortPhoneTaxHudSuite() {
       const cap = level.taxes!.rationing!;
       await checkTaxLine(page, 'Forced March · Rationing');
       await checkTaxLine(page, `0/${cap} towers`, true);
-      const cells = buildableCells(MAPS[level.map]).flatMap((open, i) => open ? [cellFromKey(i)] : []).slice(0, cap);
+      const cells = buildableCells(resolveMap(level.map)).flatMap((open, i) => open ? [cellFromKey(i)] : []).slice(0, cap);
       for (const cell of cells)
         expect(await page.evaluate(({ col, row }) => window.__tarpit!.buildAt!(col, row, 'longbow').ok, cell)).toBe(true);
       await checkTaxLine(page, 'Forced March · Rationing (full)');

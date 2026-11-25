@@ -7,7 +7,7 @@
 // outline round their cell. Labels are Text objects (labels.ts).
 
 import type Phaser from 'phaser';
-import { CELL, cellCenter, cellKey, nearestPathPoint, positionAlongPath, type Cell, type GameState, type MapDef, type Point, type Tower, type TowerType, type UpgradePath } from '../../sim';
+import { CELL, cellCenter, cellKey, nearestPathPoint, positionAlongPath, roadPath, type Cell, type GameState, type MapDef, type Point, type Tower, type TowerType, type UpgradePath } from '../../sim';
 import { LANDSCAPE, type Layout } from '../layout';
 import { COLORS } from '../palette';
 
@@ -47,7 +47,8 @@ export class Aim {
     const known = this.angles.get(cellKey(cell));
     if (known !== undefined) return known;
     const p = cellCenter(cell);
-    const q = positionAlongPath(this.map, nearestPathPoint(p, this.map).along);
+    const trail = nearestPathPoint(p, this.map);
+    const q = positionAlongPath(roadPath(this.map, trail.road), trail.along);
     return Math.atan2(q.y - p.y, q.x - p.x);
   }
 

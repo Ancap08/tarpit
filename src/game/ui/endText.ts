@@ -1,7 +1,7 @@
 // Words on the win and lose screens. No Phaser, so it is unit tested.
 
 import { ACT_ONE_LAST_LEVEL } from './campaignMap';
-import { LEVELS, TWO_STAR_LIVES, THREE_STAR_LIVES, lastWave, levelStars, unlockedLevel, type CampaignProgress, type GameState } from '../../sim';
+import { LEVELS, TWO_STAR_LIVES, THREE_STAR_LIVES, earnedFeat, lastWave, levelStars, unlockedLevel, type CampaignProgress, type GameState } from '../../sim';
 import { CAMPAIGN_END, END_TEXT, LEVEL_STORY, STORY_TEXT, featResultText, heldBoonsText, livesLeftText, reachedWaveText, starGoalText, starSlots } from '../names';
 
 export type EndKind = 'won' | 'lost';
@@ -14,7 +14,10 @@ export function endKind(state: GameState): EndKind | null {
 export function endScreenText(kind: EndKind, state: GameState): { title: string; lines: string[]; boons: string } {
   const boons = heldBoonsText(state.boons);
   if (kind === 'won') {
-    return { title: END_TEXT.wonTitle, lines: [`${END_TEXT.wonLives} ${state.lives}`, `${END_TEXT.wonGold} ${state.gold}`], boons };
+    const lines = [`${END_TEXT.wonLives} ${state.lives}`, `${END_TEXT.wonGold} ${state.gold}`];
+    const feat = state.fixedFeat;
+    if (feat) lines.push(featResultText(feat, !state.cheated && state.lives >= TWO_STAR_LIVES && earnedFeat(state, feat)));
+    return { title: END_TEXT.wonTitle, lines, boons };
   }
   return { title: END_TEXT.lostTitle, lines: [reachedWaveText(state.wave, state.endless, lastWave(state))], boons };
 }

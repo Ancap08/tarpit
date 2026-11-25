@@ -1,4 +1,5 @@
 // The campaign stops. All spawn times are in seconds.
+import type { MapId } from './map';
 import type { LevelDef } from './levelTypes';
 import type { GroupDef, WaveDef } from './types';
 
@@ -20,13 +21,13 @@ const bowsAndGuns = ['musketeer', 'longbow'] as const;
 const artillery = [...bowsAndGuns, 'cannon'] as const;
 const slow = [...artillery, 'tarpit'] as const;
 const burn = [...slow, 'firepot'] as const;
-const allTowers = [...burn, 'mortar'] as const;
+export const allTowers = [...burn, 'mortar'] as const;
 const keg = ['keg'] as const;
 const barrel = [...keg, 'tarBarrel'] as const;
 const wall = [...barrel, 'barricade'] as const;
-const allSpecials = [...wall, 'guards', 'fireArrows'] as const;
+export const allSpecials = [...wall, 'guards', 'fireArrows'] as const;
 
-export const LEVELS: readonly LevelDef[] = [
+export const LEVELS: readonly (LevelDef & { map: MapId })[] = [
   {
     id: 1, map: 'meadow', startGold: 100, hpScale: 1, hpGrowthStart: null,
     allowedTowers: bowsAndGuns, maxTowerLevel: 2, allowedSpecials: keg, rewardWaves: [],

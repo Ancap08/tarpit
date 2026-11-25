@@ -17,7 +17,7 @@ import {
 import { BOONS, boonScale, type BoonId } from './boons';
 import { applyBurn, applySpecialSlow, enemyPosition, removeDead } from './combat';
 import { FEATHERS, featherEnemy } from './feathers';
-import { cellKey, sameCell, terrainBlock, type Cell } from './grid';
+import { cellKey, isWallSiteClosed, sameCell, terrainBlock, type Cell } from './grid';
 import { specialAllowed, SPECIAL_DEFS, spendSpecialCharge, ZONE_LINGER_TICKS, specialRadius, tarLingerTicks, type SpecialType } from './specials';
 import { TOWER_DEFS, TOWER_PATHS, allowedTowers, atTowerCap, towerBuildCost, maxTowerLevel, towerLevel, towerSellValue, towerUndoValue } from './towers';
 import type { GameState, Guard, Point, TargetingMode, Tower, TowerType, UpgradePath } from './types';
@@ -54,6 +54,7 @@ function isOver(state: GameState): boolean {
 
 /** The refusal for building on `cell` on the game's map: 'water', 'not-buildable', or undefined for buildable terrain. */
 function terrainRefusal(state: GameState, cell: Cell): 'water' | 'not-buildable' | undefined {
+  if (isWallSiteClosed(state, cell)) return 'not-buildable';
   const block = terrainBlock(cell, state.map);
   if (block === undefined) return undefined;
   return block === 'water' ? 'water' : 'not-buildable';

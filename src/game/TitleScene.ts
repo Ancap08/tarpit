@@ -66,6 +66,8 @@ import { MuteButton } from './ui/muteButton';
 import { LOOKS, LookStore, paintedDensity, type Look } from './skin/look';
 import { loadPainted, type PaintedAssets } from './skin/loading';
 import { duringKeepLoad } from './keep/status';
+import { keepSelection } from './keep/switch';
+import type { KeepLevel } from '../sim/keepLevels';
 
 /** Menu buttons: 42 px tall like every touch target (44.8 px on an iPad in landscape). */
 export const MENU_BUTTON_H = 42;
@@ -193,7 +195,7 @@ export class TitleScene extends Phaser.Scene {
   private muteButton: MuteButton | null = null;
   private bestLine: Phaser.GameObjects.Text | null = null;
   private starting = false;
-  private enterKeep = new URLSearchParams(window.location.search).get('keep') === '1';
+  private enterKeep = keepSelection(window.location.search);
   /** True from the first render after create(); see "Ready" above. */
   private ready = false;
 
@@ -273,9 +275,10 @@ export class TitleScene extends Phaser.Scene {
     this.restartPending = false;
     this.starting = this.progress !== null;
     if (this.enterKeep) {
-      this.enterKeep = false;
+      const { level } = this.enterKeep;
+      this.enterKeep = undefined;
       this.starting = true;
-      void this.startKeep();
+      void this.startKeep(level);
       return;
     }
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -349,7 +352,7 @@ export class TitleScene extends Phaser.Scene {
     }
     if ((this.page === 'levelCard' || this.page === 'levelTips') && this.card) {
       const level = this.card;
-      const start = () => this.startGame({ difficulty: DEFAULT_DIFFICULTY, map: level.map, level });
+      const start = () => this.startGame({ difficulty: DEFAULT_DIFFICULTY, map: level.map === 'keep' ? DEFAULT_MAP : level.map, level });
       const toCard = () => this.visit('levelCard', level.id);
       if (this.page === 'levelTips') {
         // Play activates on pointerup, so the opening press has already ended.
@@ -581,7 +584,7 @@ export class TitleScene extends Phaser.Scene {
     this.startGame({ difficulty: level, map });
   }
 
-  private async startKeep(): Promise<void> {
+  private async startKeep(level?: KeepLevel): Promise<void> {
     const density = paintedDensity(this.game.canvas.getBoundingClientRect().width / this.scale.gameSize.width, window.devicePixelRatio);
     const data = await duringKeepLoad(async (signal, update) => {
       let plates = 0, sprites = 0, script = 0;
@@ -612,7 +615,7 @@ export class TitleScene extends Phaser.Scene {
           return painted;
         }),
       ]);
-      return { ...loaded, painted, difficulty: DEFAULT_DIFFICULTY } satisfies GameStartData;
+      return { ...loaded, painted, difficulty: DEFAULT_DIFFICULTY, level } satisfies GameStartData;
     }, () => this.scene.restart({ screen: 'first' }));
     if (data) this.scene.start('game', data);
   }

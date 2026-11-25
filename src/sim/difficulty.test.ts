@@ -33,6 +33,7 @@ describe('difficulty table (docs/SCOPE-v4.md)', () => {
       shieldbearer: [53, 70, 84],
       boss: [3000, 4000, 4800],
       grumblemaw: [4200, 5600, 6720],
+      ram: [270, 360, 432],
     });
     for (const t of Object.keys(ENEMY_STATS) as EnemyType[]) expect(enemyMaxHp(t)).toBe(ENEMY_STATS[t].hp);
   });

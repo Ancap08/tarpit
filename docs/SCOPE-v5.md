@@ -1035,23 +1035,86 @@ Astra is paused.
   each group in a wave names its road. New rule work: today every map has
   one road.
 - **Stars.** One for winning, two for 12 lives or more, as now. The third
-  star in Act Three is a feat, **Unbroken: win with the gate standing**.
+  star in Act Three is a feat: **Unbroken** (win with the gate standing) on
+  some levels, **Not a nail** (win without repairing) on others, so that
+  repair is not always the answer.
+
+Added on 2026-11-25 from an outside creative review (Claude Opus) that Kyle
+asked for; he took the coordinator's recommended set ("Yes get started on
+those you recommended"):
+
+- **Pillow windows.** On levels that have them, the keep's lit windows are
+  the townsfolk's bedrooms. Tap a window during a wave and a feather pillow
+  is shaken out, after a pot of tar: every enemy on the stretch of road
+  below it is tarred and feathered, by the usual rule (once per enemy,
+  never a boss), as a feather barrel does. Each window works once in the
+  level and then goes dark. (First written as "every tarred enemy"; two
+  windows then feathered seven enemies and changed no score.)
+- **The Final Notice.** One new enemy: a battering ram in the shape of a
+  giant rolled tax notice. Slow, and it does heavy damage to the gate and
+  little else. It can be tarred and feathered like any walker, and when
+  feathered it rolls back down the road.
+- **Two siege taxes,** in the King's voice, at most one on a level:
+  **Quartering** (a Redcoat is billeted on one wall spot, which cannot be
+  built on until the player pays him off) and **Royal Survey** (the wall
+  spots named on the card, one or more, are closed for the whole level;
+  first written as one spot, which the good bot simply built around).
+- **Which road.** Before each wave the player is shown which road each
+  group will take.
 
 ### The levels
 
 Five levels, 21 to 25, all at the Old Keep, opened by winning level 20.
-They differ by which roads are in use, the waves, the sky (dusk, night
-storm, dawn for the last) and the gate's health. Level 25 brings King
-Grumblemaw to the gate. Feather barrels carry over from Act Two. The
-`?keep=1` switch is removed once level 21 exists.
+Feather barrels carry over from Act Two. The `?keep=1` switch is removed
+once level 21 exists. One new thing a level, so nobody has to learn it all
+at once:
+
+| Level | Name | New here | Roads | Sky | Third star |
+|---|---|---|---|---|---|
+| 21 | Rent Overdue | The gate, repair, the last stand, high ground | East | Dusk | Unbroken |
+| 22 | Feather Beds | Pillow windows | West | Dusk | Not a nail |
+| 23 | Both Roads | Two roads, and the Royal Survey | Both | Night storm | Unbroken |
+| 24 | Quartering | Quartering | Both | Night storm | Not a nail |
+| 25 | The Final Notice | The ram, then King Grumblemaw | Both | Dawn | Unbroken |
+
+### Words (coordinator)
+
+The King's notice on each card, and the town's reply on a win:
+
+| Level | The King's notice | The town's reply |
+|---|---|---|
+| 21 | You hide in my grandfather's keep. The rent is overdue. So is the tax on the rent. | We never signed the lease. |
+| 22 | I hear you sleep soundly in there. Sleep is now taxed, by the hour. | No vote, no tax. Have some feathers. |
+| 23 | Who built those roads? I did, with your gold. My surveyor has condemned your wall. | We paid for the roads. Walk home on them. |
+| 24 | A soldier of mine will lodge on your wall. Feed him, and thank me for it. | No quarter without consent. He bunks with the Trolls. |
+| 25 | Final notice. Pay what you owe for the privilege of being ruled. | Taxation is theft. Returned to sender. |
+
+Voice, from Kyle (2026-11-25): angrier at the government, "think Boston tea
+party stuff", leaning into "taxation is theft" with a libertarian, agorist
+vibe. Kept comic and clean for children: the King is pompous and grasping,
+the town is dry and unbowed; consent, votes, who paid for the roads, no
+quartering. No real people, parties or flags. The first versions of these
+lines (milder) are in the git history.
+
+Rule lines on the card ("In force", built from level data where they hold
+a number): `Royal Survey: N wall spots are closed.` (N from level data; `one wall spot is` when N is 1) and
+`Quartering: a Redcoat holds a wall spot until paid NN gold.` The town's
+line where windows exist: `Town's answer: tap a lit window for feathers.`
+Feat lines: `Third star, Unbroken: win with the gate standing.` and
+`Third star, Not a nail: win without a repair.` The ram's name in previews
+is `Ram`; its full name is `The Final Notice`. Tips for each new thing, at
+most three a level and 61 characters each, are the implementer's to draft
+in this voice and the coordinator's to approve.
 
 ### The parts
 
 | Part | What | Checked by |
 |---|---|---|
-| 52a | The gate, repair, the last stand and high ground, on one road, with bots that can repair. Sim and a plain HUD only | Sonnet, then CI |
-| 52b | Roads that meet; levels 21 to 25 as data; the gate extended to Act Three | Sonnet, then CI |
-| 52c | Screens and art: a third sheet on the level map, level cards, a broadside for the act, the gate's damage and breach, the repair and last-stand moments, and the castle's open look items (a starker lightning frame, richer ground, the desktop and tablet composition) | Sonnet, then CI, then Kyle's phone |
+| 52a | The gate, the yard, repair, the last stand and high ground, on one road, with bots that can repair. Sim and a plain HUD only. **Done** | Sonnet, then CI |
+| 52b1 | New rules, each with tests and a plain control: roads that meet; pillow windows; the ram; Quartering and Royal Survey; Not a nail; which road each group takes, as data | CI of its own tests; verified with b2 |
+| 52b2 | Levels 21 to 25 as data, with the words above, tuned against the targets; the level gate extended to Act Three; bots that use windows and pay off the Redcoat | Sonnet, then CI |
+| 52c1 | Screens: a third sheet on the level map, level cards, the act's broadside, road banners before a wave, the gate HUD in its final form, and the view settling lower when a wave starts so the road has the screen | verified with c2 |
+| 52c2 | Art and sound: the gate's damage shown on the gate itself; enemies drawn larger at the gate and in the yard; pillow windows; the ram; the billeted Redcoat; mortar shells on keep levels drawn as rolled notices; the ending in which King Grumblemaw's carriage is tarred and feathered; a siege drum that quickens as the gate weakens, a creak and a bell, made in code; and the castle's open look items (a starker lightning frame, richer ground, the desktop and tablet composition, the painted gatehouse lined up with the gate's place in the rules) | Sonnet, then CI, then Kyle's phone |
 
 ### Targets (each a test that can fail; numbers are the implementer's)
 
@@ -1062,16 +1125,34 @@ Grumblemaw to the gate. Feather barrels carry over from Act Two. The
 | W3 | The last stand is a rescue, not a plan: the good bot wins every level without the gate falling; the person-like bot loses the gate on at least two levels and still wins them |
 | W4 | The sky matters: on every level with Harpies, a build with no tower that can hit flyers loses lives while the gate stands |
 | W5 | Unbroken is earned: the good bot earns it on every level when it plays for it; the person-like bot earns it on at most two |
-| W6 | Each road matters: on a two-road level, leaving either road undefended loses the gate |
+| W6 | Each road matters: on a two-road level, leaving either road undefended loses the gate, or costs the good bot a star or at least 6 lives. (First written as "loses the gate" only. On a gate level an undefended road costs lives before it costs the gate, because flyers go over; the verifier judged the intent met and the wording wrong.) |
 | W7 | Act Three is a step up: the person-like bot's mean lives fall at least 1.5 from Act Two's |
 | W8 | Nothing else moves: levels 1 to 20 and Free play are byte for byte as before for every bot; Act Two's difficulty step is unchanged |
-| W9 | The existing level rules (two-star lines, margins under nudges, variety, fairness for a feathers-leaning player) hold on levels 21 to 25 |
+| W9 | The existing level rules hold on levels 21 to 25 (two-star lines, margins under nudges, feats under nudges, sensitivity, variety, fairness for a feathers-leaning player), with three measures restated for levels that have a gate, because a standing gate holds every ground enemy and lives stop measuring strain: **(a)** the finale band is on the gate, not on lives: on level 25 the good bot's gate falls to between 5% and 30% of its health at its lowest; **(b)** the gap rule is "the person-like bot wins every level with at least 8 lives, also under the nudges", in place of "within 6 lives of the good bot"; **(c)** no single tower type earns more than one star on levels 22 to 25; level 21 is exempt as the act's teaching level, as levels 1 to 10 are |
+| W10 | Windows help and are not needed: on level 22 the good bot ends at least 2 lives or a star better using them than not, and still wins without them |
+| W11 | The ram is a gate problem: on level 25, ignored, it breaks the gate; tarred and feathered in time, it does not |
+| W12 | Each siege tax bites and can be lived with: on its level the good bot ends worse with the tax than without, and still earns two stars |
+| W13 | Not a nail is earned: the good bot earns it when it plays for it, the person-like bot on at most one of its two levels, and repairing forfeits it |
+| W14 | One new thing a level: no level introduces more than the table above says |
+| W15 | A gentle first siege: on level 21 the person-like bot earns two stars, and no single wave costs it more than 4 lives |
+| W16 | No traps: a window tapped with nobody on its stretch to feather stays lit; on a Not a nail level the Repair control says it costs the third star before the first repair; and on those levels declining to repair costs the person-like bot lives, so the choice is real |
+| W17 | The targets are in the test run: `npm test` runs W1 to W16 on levels 21 to 25 and fails if any passing target stops passing; any target still missing is listed by name in one place and the run fails if that list is wrong in either direction |
 
 ### Not in this milestone
 
-The Captain; a full wall-defence mode (version 2); walls or gates in Acts
-One and Two or Free play; new enemies or towers; sound beyond one cue for
-the gate falling and one for a repair, if sounds are made in code.
+The Captain; opening and closing the gate to send troops out (the outside
+review argued for building that before the Captain; Kyle has not decided);
+a full wall-defence mode (version 2); walls or gates in Acts One and Two or
+Free play; new towers; any new enemy other than the ram.
+
+### From the review, kept for later (not scheduled)
+
+Saved runs that replay exactly, as one foundation for tuning stars on real
+children's play, a Play the King mode, the test bots as rivals on the level
+card, a retry of the last wave, and the Daily Writ; a bait purse special;
+naming your town; lightning on a posted timetable; a level where lives are
+gold; the repair price shown in tower terms. Kyle is rereading the full
+list and may add from it.
 
 ## Later milestones (order agreed, detail to come)
 

@@ -20,16 +20,17 @@ import { COLORS } from '../palette';
 import type { BlockedPositions } from './barricade';
 
 /** Status ring base radius per type: just outside the sprite's body. */
-export const RING_RADIUS: Record<EnemyType, number> = { goblin: 14, wolf: 12, troll: 21, harpy: 14, shieldbearer: 14, boss: 38, grumblemaw: 57 };
+export const RING_RADIUS: Record<EnemyType, number> = { goblin: 14, wolf: 12, troll: 21, harpy: 14, shieldbearer: 14, boss: 38, grumblemaw: 57, ram: 18 };
 
 /** Half the sprite's drawn height: the hp bar sits above this. */
 export function spriteHalfHeight(type: EnemyType): number {
+  if (type === 'ram') return 13.5;
   return (SHEETS[type].frameHeight * SHEETS[type].scale) / 2;
 }
 
 /** Pixels a flying sprite is drawn above its path position (sheets.ts lift); 0 for walkers. */
 export function spriteLift(type: EnemyType): number {
-  return SHEETS[type].lift ?? 0;
+  return type === 'ram' ? 8 : SHEETS[type].lift ?? 0;
 }
 
 /**

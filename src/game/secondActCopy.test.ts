@@ -38,7 +38,7 @@ describe('the numbers printed for Act Two', () => {
       const expected = {
         noLeaks: 'Not a penny: let no collector through.',
         noSpecials: 'Bare hands: win without using a special.',
-        unbroken: 'Unbroken: win with the gate standing.',
+        unbroken: 'Unbroken: win with the gate standing.', noRepairs: 'Not a nail: win without a repair.',
         maxTowers: `Few hands: build at most ${feat.kind === 'maxTowers' ? feat.limit : ''} towers in all.`,
       }[feat.kind];
       expect(cardFeatText(feat)).toBe('Third star, ' + expected);

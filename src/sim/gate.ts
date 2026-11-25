@@ -1,5 +1,6 @@
 import type { GateDef } from './levelTypes';
 import { pathLength, trailPointAt } from './map';
+import { commonRoadStart, roadIds } from './roads';
 import { TICKS_PER_SECOND } from './time';
 import type { GameState, Gate, MapDef } from './types';
 
@@ -7,8 +8,12 @@ export const LAST_STAND_TICKS = 6 * TICKS_PER_SECOND;
 export const LAST_STAND_FIRE_RATE = 2;
 
 export function createGate(map: MapDef, def: GateDef): Gate {
+  const distance = pathLength(map) - def.yardLength;
+  if (map.otherRoads?.length && roadIds(map).some(id => commonRoadStart(map, undefined, id) > distance)) {
+    throw new RangeError('Gate must stand on the shared road');
+  }
   return {
-    ...trailPointAt(map, pathLength(map) - def.yardLength),
+    ...trailPointAt(map, distance),
     ...def,
     kind: 'gate',
     hp: def.maxHp,
@@ -39,6 +44,7 @@ export function repairGate(state: GameState):
   if (!status.ok) return { ok: false, reason: status.reason };
   const gate = state.gate!;
   state.gold -= status.cost;
+  state.boughtRepair = true;
   gate.hp = Math.min(gate.maxHp, gate.hp + gate.repairHp);
   return { ok: true, cost: status.cost, hp: gate.hp, gold: state.gold };
 }

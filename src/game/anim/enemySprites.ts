@@ -38,7 +38,7 @@
 
 import Phaser from 'phaser';
 import type { BlockedPosition, BlockedPositions } from '../draw/barricade';
-import { effectiveSlow, ENEMY_STATS, enemyPosition, isBoss, isTarred, positionAlongPath, type Enemy, type EnemyType, type GameEvent, type GameState, type MapDef } from '../../sim';
+import { effectiveSlow, ENEMY_STATS, enemyPosition, isBoss, isTarred, positionAlongPath, roadPath, type Enemy, type EnemyType, type GameEvent, type GameState, type MapDef } from '../../sim';
 import { bobOffset, DEATH_MS, burnPulse, FLAME_EVERY, HIT_FLASH_MS, Particles, statusTint, TINT } from './effects';
 import { awayFrom, deathPuff, KNOCK_MS, knockPx, knockShare } from '../fx/fxMath';
 import { enemyArt, walkFrame } from '../skin/frames';
@@ -96,6 +96,7 @@ interface View {
   /** The boss's hit-flash frame (sheets.ts hitFlash), shown over the sprite while hit; null for other types. */
   flash: Phaser.GameObjects.Sprite | null;
   type: EnemyType;
+  road?: string;
   flying: boolean;
   facing: Facing;
   /** Play: hit flash ends at this scene time. Test: set by a hit, cleared on the next tick. */
@@ -224,6 +225,7 @@ export class EnemySprites {
   }
 
   private lift(type: EnemyType): number {
+    if (type === 'ram') return 8;
     if (this.painted) return ENEMY_STATS[type].flying ? 3 : 0;
     return SHEETS[type].lift ?? 0;
   }
@@ -235,7 +237,7 @@ export class EnemySprites {
   }
 
   private paintedBarForView(v: View): PaintedBody | undefined {
-    if (!this.painted) return;
+    if (!this.painted || v.type === 'ram') return;
     const { density, sheets } = this.painted.assets;
     const sheet = sheets[enemyArt(v.type)];
     const bounds = sheet.bodyBounds?.[Number(v.sprite.frame.name) % sheet.frames];
@@ -264,8 +266,8 @@ export class EnemySprites {
     v.dying = true;
     v.sprite.setAlpha(1);
     v.sprite.anims.stop();
-    const dead = SHEETS[v.type].deadFrame;
-    if (this.painted) v.sprite.setFrame(Number(v.sprite.frame.name) % this.painted.assets.sheets[enemyArt(v.type)].frames);
+    const dead = v.type === 'ram' ? undefined : SHEETS[v.type].deadFrame;
+    if (this.painted && v.type !== 'ram') v.sprite.setFrame(Number(v.sprite.frame.name) % this.painted.assets.sheets[enemyArt(v.type)].frames);
     if (!this.painted && dead !== undefined) v.sprite.setFrame(dead);
     v.sprite.clearTint().setBlendMode(Phaser.BlendModes.NORMAL);
     this.stopTrail(v);
@@ -332,22 +334,36 @@ export class EnemySprites {
     if (v.stepPx === 0) return; // A walker killed against the wall stays there until the shot lands.
     const ticks = ((this.clock.nowMs - v.doomedAt) / (1000 / 60)) * timeScale;
     const distance = Math.max(0, v.distance + v.stepPx * ticks);
-    const { x, y } = this.layout.toScreen(positionAlongPath(map, distance));
+    const { x, y } = this.layout.toScreen(positionAlongPath(roadPath(map, v.road), distance));
     v.shadow?.setPosition(x, y);
     const lift = this.lift(v.type);
     v.sprite.setPosition(x, y - lift).setDepth(y);
-    if (this.painted) this.setFacing(v, facingAt(map, distance, v.stepPx, this.layout), false, distance);
+    if (this.painted) this.setFacing(v, facingAt(roadPath(map, v.road), distance, v.stepPx, this.layout), false, distance);
     this.placePlumage(v);
     v.sprite.anims.timeScale = timeScale;
     v.crown?.setPosition(v.sprite.x, v.sprite.y - 41).setDepth(y + 1);
     v.shield?.setPosition(x + SHIELD_DX, y + SHIELD_DY).setDepth(y + 0.5);
   }
 
+  private ramSprite(): Phaser.GameObjects.Sprite {
+    const key = 'siege-ram';
+    if (!this.scene.textures.exists(key)) {
+      const drawing = this.scene.add.graphics();
+      drawing.fillStyle(0x302419).fillRoundedRect(0, 3, 39, 16, 5)
+        .fillCircle(10, 21, 5).fillCircle(29, 21, 5);
+      drawing.fillStyle(0xe2bc78).fillRoundedRect(2, 5, 35, 12, 4);
+      drawing.fillStyle(0xa83d2e).fillCircle(22, 11, 4);
+      drawing.generateTexture(key, 40, 27);
+      drawing.destroy();
+    }
+    return this.scene.add.sprite(0, 0, key);
+  }
+
   private create(enemy: Enemy, map: MapDef): View {
-    const sheet = SHEETS[enemy.type];
+    const sheet = enemy.type === 'ram' ? undefined : SHEETS[enemy.type];
     const stats = ENEMY_STATS[enemy.type];
     const art = enemyArt(enemy.type);
-    const sprite = this.painted
+    const sprite = !sheet ? this.ramSprite() : this.painted
       ? this.painted.pose(this.scene.add.sprite(0, 0, this.painted.assets.sheets[art].key, 0), art, 0)
       : this.scene.add.sprite(0, 0, sheet.key, sheet.walk.right.frames[0]).setScale(sheet.scale);
     const shadow = this.painted && stats.flying ? this.painted.image('harpy-shadow') : undefined;
@@ -355,7 +371,7 @@ export class EnemySprites {
     const layer = stats.flying ? this.airLayer : isBoss(enemy) ? this.bossLayer : this.layer;
     layer.add(sprite);
     let flash: Phaser.GameObjects.Sprite | null = null;
-    if (!this.painted && sheet.hitFlash) {
+    if (!this.painted && sheet?.hitFlash) {
       flash = this.scene.add.sprite(0, 0, sheet.hitFlash.key, sheet.hitFlash.frame).setScale(sheet.scale).setVisible(false);
       layer.add(flash);
     }
@@ -385,6 +401,7 @@ export class EnemySprites {
       shield,
       flash,
       type: enemy.type,
+      road: enemy.road,
       flying: stats.flying,
       facing: 'right',
       hitUntil: -1,
@@ -403,7 +420,7 @@ export class EnemySprites {
       blockerLunge: 0,
     };
     this.views.set(enemy.id, view);
-    this.setFacing(view, facingAt(map, enemy.distance, this.step(enemy), this.layout), true);
+    this.setFacing(view, facingAt(roadPath(map, enemy.road), enemy.distance, this.step(enemy), this.layout), true);
     return view;
   }
 
@@ -415,6 +432,11 @@ export class EnemySprites {
   }
 
   private setFacing(v: View, facing: Facing, force = false, distance = v.distance): void {
+    if (v.type === 'ram') {
+      v.facing = facing;
+      v.sprite.setFlipX(facing === 'left');
+      return;
+    }
     if (this.painted) {
       const now = this.clock.nowMs;
       const hitOffset = this.isHit(v) ? this.painted.assets.sheets[enemyArt(v.type)].frames : 0;
@@ -494,7 +516,7 @@ export class EnemySprites {
       // Keep the shield just in front of its owner.
       v.shield.setDepth(depth + 0.5);
     }
-    this.setFacing(v, facingAt(map, stoppedAt?.distance ?? enemy.distance, this.step(enemy), this.layout), false, enemy.distance);
+    this.setFacing(v, facingAt(roadPath(map, enemy.road), stoppedAt?.distance ?? enemy.distance, this.step(enemy), this.layout), false, enemy.distance);
     v.shadow?.setPosition(x, y);
     const flinching = !!enemy.flinchTicksLeft;
     v.sprite.anims.timeScale = stoppedAt || flinching ? 0 : timeScale;
@@ -520,7 +542,7 @@ export class EnemySprites {
     if (v.flash) {
       v.flash.setPosition(x, y - lift).setDepth(depth + 0.1).setVisible(hit);
     }
-    if (hit && this.painted) {
+    if (hit && this.painted && v.type !== 'ram') {
       v.sprite.clearTint();
     } else if (hit && !v.flash) {
       v.sprite.setTintFill(TINT.flash);
@@ -544,15 +566,15 @@ export class EnemySprites {
     const v = this.views.get(id);
     if (!v) return null;
     const s = v.sprite;
-    const anim = walkAnimKey(v.type, v.facing);
+    const anim = v.type === 'ram' ? '' : walkAnimKey(v.type, v.facing);
     const current = s.anims.currentAnim;
     const frame = this.frozen || !current || !s.anims.currentFrame ? 0 : current.frames.indexOf(s.anims.currentFrame);
     return {
       x: s.x,
       y: s.y,
-      texture: SHEETS[v.type].key,
+      texture: v.type === 'ram' ? v.type : SHEETS[v.type].key,
       anim,
-      frame: this.painted ? Number(s.frame.name) % 4 : Math.max(0, frame),
+      frame: this.painted && v.type !== 'ram' ? Number(s.frame.name) % 4 : Math.max(0, frame),
       facing: v.facing,
       flipX: s.flipX,
       scale: s.scaleX,

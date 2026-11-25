@@ -24,7 +24,7 @@ const CELL = { col: 3, row: 5 };
 // Arena hp: the milestone 22 values, fixed so the arithmetic below stays as
 // written (milestone 25c lowered ENEMY_STATS; no special rule depends on
 // an enemy's full hp). Bounties are read from ENEMY_STATS.
-const ARENA_HP: Record<EnemyType, number> = { goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000, grumblemaw: 5600 };
+const ARENA_HP: Record<EnemyType, number> = { goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000, grumblemaw: 5600, ram: 360 };
 
 function enemy(id: number, type: EnemyType, extra: Partial<Enemy> = {}): Enemy {
   return { id, type, hp: ARENA_HP[type], distance: D, slow: 0, slowTicksLeft: 0, burnDps: 0, burnTicksLeft: 0, ...extra };

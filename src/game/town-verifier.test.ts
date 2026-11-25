@@ -7,6 +7,7 @@ import {
   type Difficulty,
 } from '../sim';
 import { LEVEL_NAMES, LEVEL_NEW, LEVEL_STORY, STORY_TEXT } from './names';
+import { KEEP_LEVELS } from '../sim/keepLevels';
 import { townCondition } from './decor/townCondition';
 
 // Hashes taken from the buildable masks on 5a24b12 (the scope commit) and
@@ -64,12 +65,12 @@ describe('the town bands, from the sim starting lives', () => {
 });
 
 describe('the story copy', () => {
-  it('has the commissioned opening, loss and ending and a notice and reply for ten levels', () => {
+  it('has the commissioned opening, loss and ending and a notice and reply for each level', () => {
     expect(STORY_TEXT.openingNotice).toBe('Hear ye. By order of King Grumblemaw, all gold in this town now belongs to the Crown. Collectors are on their way.');
     expect(STORY_TEXT.openingReply).toBe("We counted it. It's ours.");
     expect(STORY_TEXT.loss).toBe('The Crown thanks you for your contribution.');
     expect(STORY_TEXT.ending).toBe('The King went home with empty pockets. The gold stayed where it was earned. Taxation is theft.');
-    expect(Object.keys(LEVEL_STORY).map(Number)).toEqual(LEVELS.map(level => level.id));
+    expect(Object.keys(LEVEL_STORY).map(Number)).toEqual([...LEVELS, ...KEEP_LEVELS].map(level => level.id));
   });
 
   it('keeps the tactical twist and the new-this-level line for every level', () => {

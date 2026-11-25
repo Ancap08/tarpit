@@ -1,9 +1,10 @@
 // Data shapes for the simulation. Pure data: no classes, no methods.
 
 import type { BoonId, BoonOffer } from './boons';
-import type { GateDef, LevelDef } from './levelTypes';
+import type { GateDef, LevelDef, LevelFeat, PillowWindowDef, WallSiteTax } from './levelTypes';
 import type { Difficulty } from './difficulty';
 import type { GameEvent } from './events';
+import type { SpecialType } from './specials';
 import type { Cell } from './grid';
 
 export interface Point {
@@ -29,6 +30,10 @@ export interface MapDef {
   height: number;
   /** Polyline from spawn (first point) to exit (last point). */
   path: readonly Point[];
+  /** Name of the main road when groups name their entrances. */
+  mainRoad?: string;
+  /** Each approach ends before a waypoint on the main road and follows its suffix. */
+  otherRoads?: readonly { id: string; approach: readonly Point[]; joinIndex: number }[];
   /** When present, only marked sites accept towers. */
   buildSites?: readonly Cell[];
   /** Marked wall-walk cells: range changes as a tower moves onto or off one. */
@@ -46,7 +51,7 @@ export interface MapDef {
   water?: readonly Rect[];
 }
 
-export type EnemyType = 'goblin' | 'wolf' | 'troll' | 'harpy' | 'shieldbearer' | 'boss' | 'grumblemaw';
+export type EnemyType = 'goblin' | 'wolf' | 'troll' | 'harpy' | 'shieldbearer' | 'boss' | 'grumblemaw' | 'ram';
 
 export interface EnemyStats {
   hp: number;
@@ -55,6 +60,8 @@ export interface EnemyStats {
   bounty: number;
   /** Damage per second to a trail blocker while in contact. */
   blockerDps: number;
+  /** When present, this rate replaces blockerDps against the siege gate. */
+  gateDps?: number;
   /**
    * Flies over the path (Harpy, milestone 22): Tar Pit, Cannon and Mortar
    * never target it and splash skips it; a Fire Pot impact hits it but its
@@ -77,6 +84,7 @@ export interface EnemyStats {
 }
 
 export interface Enemy {
+  road?: string;
   /** Unique for the whole game, assigned in spawn order from 0. */
   id: number;
   type: EnemyType;
@@ -133,6 +141,7 @@ export interface Enemy {
 }
 
 export interface GroupDef {
+  road?: string;
   type: EnemyType;
   count: number;
   /** Seconds between spawns in this group. */
@@ -249,6 +258,7 @@ export type Phase = 'setup' | 'wave' | 'won' | 'lost';
 
 /** A point on the trail and its forward tangent in radians. */
 export interface TrailPoint extends Point {
+  road?: string;
   distance: number;
   angle: number;
 }
@@ -292,8 +302,13 @@ export interface GameState {
   /** The finite campaign rules, when playing a level. */
   level?: LevelDef;
   gate?: Gate;
+  boughtRepair?: true;
+  windows?: (PillowWindowDef & { used: boolean })[];
+  wallSiteTax?: WallSiteTax;
   /** A finite exhibition outside campaign progression and Free play. */
   fixedWaves?: readonly WaveDef[];
+  fixedFeat?: LevelFeat;
+  fixedSpecialUnlocks?: Readonly<Partial<Record<SpecialType, number>>>;
   /** Successful constructions, including sold towers, on levels with taxes or feats. */
   towersBuilt?: number;
   /** Number of collectors that exited on a no-leaks level, including bosses. */
@@ -309,7 +324,7 @@ export interface GameState {
   boons: readonly BoonId[];
   pendingBoon: BoonOffer | null;
   /** Wolf packs keep spawning independently even after their caller dies. */
-  packs: { nextTick: number; remaining: number }[];
+  packs: { nextTick: number; remaining: number; road?: string }[];
   phase: Phase;
   gold: number;
   lives: number;
@@ -382,6 +397,7 @@ export interface Zone {
 }
 
 export interface WavePreviewEntry {
+  road?: string;
   type: EnemyType;
   count: number;
 }

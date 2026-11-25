@@ -1,4 +1,4 @@
-import { THREE_STAR_LIVES, TWO_STAR_LIVES } from './levelTypes';
+import { THREE_STAR_LIVES, TWO_STAR_LIVES, type LevelFeat } from './levelTypes';
 import { LEVELS } from './levels';
 import type { GameState } from './types';
 
@@ -8,18 +8,23 @@ export type CampaignProgress = Partial<Record<number, Stars>>;
 
 const PROGRESS_VERSION = 2;
 
-type LevelResult = Pick<GameState, 'level' | 'lives' | 'phase' | 'cheated' | 'towersBuilt' | 'leaks' | 'lastSpecialTick' | 'gate'>;
+type LevelResult = Pick<GameState, 'level' | 'lives' | 'phase' | 'cheated' | 'towersBuilt' | 'leaks' | 'lastSpecialTick' | 'gate' | 'boughtRepair'>;
 
 export function levelStars(state: LevelResult): Stars {
   if (!state.level || state.cheated || state.phase !== 'won' || state.lives <= 0) return 0;
   if (state.lives < TWO_STAR_LIVES) return 1;
   const feat = state.level.feat;
   if (!feat) return state.lives >= THREE_STAR_LIVES ? 3 : 2;
+  return earnedFeat(state, feat) ? 3 : 2;
+}
+
+export function earnedFeat(state: LevelResult, feat: LevelFeat): boolean {
   switch (feat.kind) {
-    case 'noLeaks': return state.leaks === 0 ? 3 : 2;
-    case 'noSpecials': return state.lastSpecialTick === undefined ? 3 : 2;
-    case 'unbroken': return state.gate && state.gate.hp > 0 && !state.gate.fallen ? 3 : 2;
-    case 'maxTowers': return state.towersBuilt !== undefined && state.towersBuilt <= feat.limit ? 3 : 2;
+    case 'noLeaks': return state.leaks === 0;
+    case 'noSpecials': return state.lastSpecialTick === undefined;
+    case 'noRepairs': return !state.boughtRepair;
+    case 'unbroken': return !!state.gate && state.gate.hp > 0 && !state.gate.fallen;
+    case 'maxTowers': return state.towersBuilt !== undefined && state.towersBuilt <= feat.limit;
   }
 }
 

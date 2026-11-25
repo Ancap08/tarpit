@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import { MAPS, type LevelDef } from '../../sim';
+import { resolveMap, type LevelDef } from '../../sim';
 import { drawMapThumbnail } from '../draw/map';
 import { CAMPAIGN_TEXT, cardFeatText, levelTaxLines, LEVEL_NAMES, LEVEL_NEW, LEVEL_STORY, STORY_TEXT, levelTips, tipsHeading, MAP_NAMES, TITLE_TEXT, levelNumberText } from '../names';
 import type { Broadside } from '../seenTips';
@@ -220,7 +220,7 @@ function drawTaxCard(
     const x = paged ? cx : noteX;
     const notesTop = notesOnly ? top : portrait ? bodyTop + rulesHeight + 22 : bodyTop;
     let y = notesTop + (printBottom - notesTop - (mapWidth / 2 + 13 + mapName.height + twist.height)) / 2;
-    drawMapThumbnail(g, MAPS[level.map], x - mapWidth / 2, y, mapWidth, mapWidth / 2);
+    drawMapThumbnail(g, resolveMap(level.map), x - mapWidth / 2, y, mapWidth, mapWidth / 2);
     g.lineStyle(1, THEME.ink).strokeRect(x - mapWidth / 2, y, mapWidth, mapWidth / 2);
     y += mapWidth / 2 + 5;
     mapName.setY(y + mapName.height / 2);
@@ -288,7 +288,7 @@ export function drawLevelCard(
   const gap = portrait ? (bottom - top - textHeight - mapHeight) / 4 : 10;
   const mapTop = portrait ? top + gap : (top + bottom - mapHeight) / 2;
   const textTop = portrait ? mapTop + mapHeight + gap : (top + bottom - textHeight - gap) / 2;
-  drawMapThumbnail(g, MAPS[level.map], mapX - mapWidth / 2, mapTop, mapWidth, mapWidth / 2);
+  drawMapThumbnail(g, resolveMap(level.map), mapX - mapWidth / 2, mapTop, mapWidth, mapWidth / 2);
   g.lineStyle(1, THEME.ink).strokeRect(mapX - mapWidth / 2, mapTop, mapWidth, mapWidth / 2);
   mapName.setY(mapTop + mapWidth / 2 + 4 + mapName.height / 2);
   twist.setY(textTop + twist.height / 2);

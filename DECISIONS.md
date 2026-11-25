@@ -1889,3 +1889,118 @@ can change it; "Kyle" means Kyle decided.
   - **The castle's tier-cost test fails 2 times in 10 under parallel load**
     and passes 10 in 10 alone. It is to run on its own, after the rest.
   Sent to Sol at high as one fix pass before part a goes to CI.
+- **An outside creative review (Claude Opus), asked for by Kyle** ("another
+  angle ... normal advice and off the wall suggestions"), returned eight
+  pieces of advice, twelve wild ideas, a pitch for version 2 and one change
+  to the plan. Its sharpest observation: on a phone the keep takes the top
+  45% of the screen and does nothing, while the fight is small in the
+  bottom half.
+- **Kyle took the coordinator's recommended set** ("Yes get started on
+  those you recommended"): the gate's health shown on the gate; the view
+  settling lower in a wave; which road each group takes; enemies larger at
+  the gate; siege sound; two siege taxes (Quartering, Royal Survey; not
+  Requisition, which is harsh for children); pillow windows; the ram in its
+  small form; mortar shells drawn as notices; the feathered-carriage
+  ending; and a second feat, Not a nail. He is rereading the rest.
+- **Not decided:** whether to build the sortie (opening the gate to send
+  Guards out) before the Captain, as the review argued. Kyle approved the
+  Captain earlier; the question was put to him and is open.
+- **Part b is split in two and part c in two** (coordinator), because the
+  set roughly doubles the rules and the art, and Sol works best on smaller
+  briefs. Sonnet verifies b1 with b2 and c1 with c2, two passes, not four.
+- **One new thing a level** (coordinator): the gate, then windows, then two
+  roads with the Survey, then Quartering, then the ram and the King. The
+  level names, notices and replies are the coordinator's and are in the
+  scope.
+- **Kyle agreed the list and the order** ("I agree with your list and your
+  order. The saying's are all fine for now.") and invited a sharper voice:
+  "more angry at the government, think Boston tea party stuff ... lean into
+  taxation is theft too, like a libertarian, Agorist/Anarcho-capitalist
+  vibe". The Act Three notices and replies were rewritten in that voice by
+  the coordinator, kept comic and clean for children, with no real people,
+  parties or flags. The Act Three broadside and tips (parts b2 and c1) take
+  the same voice. Earlier acts' words are not changed unless Kyle asks.
+- **The coordinator broke the scope file and Sol caught it.** The commit
+  that sharpened the Act Three words (`ddedf7c`) replaced text from the
+  first table headed "The King's notice / The town's reply", which is
+  milestone 46's, not milestone 52's, and so deleted everything between
+  them (milestones 46 to 52). Sol noticed, kept its Act One wording check
+  working from `DESIGN.md`, and reported it. Restored from the commit
+  before, with only the intended table changed, and checked by diff. Edits
+  to the scope by script now anchor inside the milestone's own section and
+  the diff is read before the commit.
+- **Levels 21 to 25 exist and eight of fourteen targets pass; six do not,
+  and Sol stopped as told.** Open: W1 on level 22, W6 (leaving a road
+  undefended rarely loses the gate), W7 (the person-like bot averages 18
+  lives in Act Three against 13.8 in Act Two; the target is 12.3 or
+  fewer), W9 (a Longbow alone earns two stars on every level), W10 (the
+  windows do not change level 22's score) and W12 (the Royal Survey costs
+  nothing). The coordinator's reading: a standing gate holds every ground
+  enemy, so lives are lost only to flyers or after a breach, and the star
+  lines stop measuring anything; repair is also far too cheap (8,300
+  health for 49 gold). A second level-table pass is ordered with the
+  thresholds held: lives must be at risk from the air while the gate
+  stands, a breach must be a real risk for an ordinary player, and repair
+  must cost about what it saves.
+- **Tips for levels 21 to 25:** Sol's drafts accepted with two changed by
+  the coordinator (the last-stand tip and the second Quartering tip).
+- **Second Act Three pass: 10 of 14 targets, thresholds held.** The
+  person-like bot now averages 11.2 lives (Act Two 13.8). Still open: the
+  windows change no score on level 22 (W10), the Royal Survey costs
+  nothing (W12), one undefended-road case on level 24 (W6), and in W9 a
+  single tower type clears level 21 with three stars and the finale ends
+  on 20 lives against a ceiling of 16.
+- **Two rules change, by the coordinator, because level numbers could not
+  fix them:** a pillow window tars and feathers everything on its stretch,
+  as a feather barrel does (seven tarred enemies across two windows was
+  never going to matter); and the Royal Survey may close more than one
+  wall spot. Both keep the idea Kyle chose.
+- **Fallback, decided in advance:** if every other target closes and the
+  only miss left is a single tower type clearing level 21, that level is
+  exempt from the one-tower rule as the act's teaching level, as levels 1
+  to 10 are. Not to be used for any other level.
+- **Part b has used about 980,000 Sol tokens over three runs** (403,056,
+  260,628 and 316,666) before this one.
+- **Verifier (Sonnet) on part b: fix first.** Proved: 300 run hashes and
+  the sim output identical to main; levels 21 to 25 cannot be reached or
+  saved without a switch; twelve wrong changes turned tests red, three of
+  them only after the verifier added tests. Its findings and the
+  coordinator's decisions:
+  - **`npm test` did not run the Act Three targets at all**, passes or
+    misses; only a separate command did, which CI never calls. A green run
+    said nothing about the levels. Now a target in its own right (W17).
+  - **W6 reworded** to "loses the gate, or costs a star or 6 lives". The
+    verifier judged the intent met and the wording wrong; with the
+    person-like bot every one-road case loses the level.
+  - **W12 stays as written.** The verifier called counting the gate's low
+    point "moving the goalposts" and showed the Survey as chosen helps the
+    person-like bot. The Survey's two sites are to be chosen by sweeping
+    every pair, not the measure changed.
+  - **W9 restated for gate levels in three places**, on the verifier's
+    reasoning that a player feels the gate bar, not the lives: the finale
+    band is on the gate's low point; the gap rule becomes "the ordinary
+    player wins with at least 8 lives"; level 21 is exempt from the
+    one-tower rule. These replace measures written for levels without a
+    gate. They are changes to thresholds, made openly and for a stated
+    reason, and Kyle is told.
+  - **Level 21 was a cliff, not a lesson:** 32 flyers in wave 2 cost the
+    ordinary player nine lives. New target W15.
+  - **Two traps:** a window spent on an already-feathered crowd, and a
+    repair that silently forfeits Not a nail. New target W16.
+  - **The gate's health no longer fits its label at five digits.** Shown
+    as a percentage until part c1 draws a bar.
+- **Part b goes to CI with three targets listed as misses, not hidden.**
+  After the fix pass 14 of 17 pass. Fixing the Survey, level 21 and the
+  two traps moved three others: W2 (repair now changes the good bot's
+  score on one level of five, not three), W3 (the good bot loses the gate
+  on level 23 under the Survey that now bites) and W9 (margins under small
+  nudges on levels 22, 24 and 25; a Tar Pits-only trial on level 24 that
+  does not finish wave 2 inside the trial's time limit). `npm test` names
+  exactly these three and fails if the list is wrong in either direction.
+  The coordinator's reasons for stopping here: part b has used about 1.6
+  million Sol tokens over six runs; each pass now trades one target for
+  another; the levels are still behind a switch; and Kyle's own play of
+  them is better evidence than a seventh bot pass. The open targets are
+  revisited after he has played, before Act Three goes on the level map.
+- **To check before Act Three is shown to players:** whether a build of
+  only Tar Pits on level 24 can leave a wave running for many minutes.

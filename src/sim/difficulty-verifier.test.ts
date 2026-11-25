@@ -29,6 +29,7 @@ const HAND: Record<EnemyType, readonly [number, number, number]> = {
   shieldbearer: [53, 70, 84],
   boss: [3000, 4000, 4800],
   grumblemaw: [4200, 5600, 6720],
+  ram: [270, 360, 432],
 };
 
 function enemy(id: number, type: EnemyType, distance: number, hp: number): Enemy {
@@ -108,8 +109,8 @@ describe('(a) scaled hp, by hand, against spawned enemies', () => {
   LEVELS.forEach((level, i) => {
     it(`${level}: all seven types spawn with the hand-computed hp, at distance 0`, () => {
       const all = spawned(level);
-      // Every type appears, and each boss appears once.
-      expect(new Set(all.map((e) => e.type))).toEqual(new Set(Object.keys(HAND)));
+      // The seven Free play types appear, and each boss appears once.
+      expect(new Set(all.map((e) => e.type))).toEqual(new Set(Object.keys(HAND).filter(type => type !== 'ram')));
       expect(all.filter((e) => e.type === 'boss')).toHaveLength(1);
       expect(all.filter((e) => e.type === 'grumblemaw')).toHaveLength(1);
       for (const e of all) {
@@ -132,6 +133,7 @@ describe('(b) bounty, speed, livesCost and slowCap do not depend on the level', 
       goblin: { blockerDps: 6, hp: 23, speed: 60, bounty: 2, flying: false, shield: false, livesCost: 1 },
       wolf: { blockerDps: 8, hp: 20, speed: 120, bounty: 2, flying: false, shield: false, livesCost: 1 },
       troll: { blockerDps: 45, hp: 950, speed: 35, bounty: 8, flying: false, shield: false, livesCost: 1 },
+      ram: { blockerDps: 4, gateDps: 180, hp: 360, speed: 30, bounty: 12, flying: false, shield: false, livesCost: 1 },
       harpy: { blockerDps: 0, hp: 36, speed: 90, bounty: 3, flying: true, shield: false, livesCost: 1 },
       shieldbearer: { blockerDps: 12, hp: 70, speed: 45, bounty: 5, flying: false, shield: true, livesCost: 1 },
       boss: { blockerDps: 300, hp: 4000, speed: 25, bounty: 150, flying: false, shield: false, livesCost: 5, slowCap: 0.3 },
@@ -148,7 +150,7 @@ describe('(b) bounty, speed, livesCost and slowCap do not depend on the level', 
         // Musketeer (12 damage, full on a shield since 12 > 10) kills a 1 hp enemy on tick 1.
         const s = arena(level, [enemy(1, type, 80, 1), enemy(2, 'goblin', 500, 1e6)], [[B, 'musketeer']]);
         tick(s);
-        expect(s.gold, `${level} ${type}`).toBe([2, 2, 8, 3, 5, 150, 75][Object.keys(HAND).indexOf(type)]);
+        expect(s.gold, `${level} ${type}`).toBe(({ goblin: 2, wolf: 2, troll: 8, harpy: 3, shieldbearer: 5, boss: 150, grumblemaw: 75, ram: 12 })[type]);
       }
     });
 

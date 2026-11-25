@@ -1,3 +1,3 @@
-import { siegeVerifierCases } from './siegeVerifier';
+import { siegeVerifierCases } from './siege-verifier-cases';
 
-siegeVerifierCases([undefined]);
+siegeVerifierCases(false, [undefined]);

@@ -65,7 +65,7 @@ import {
   blockedWaveLabel,
   CHEAT_MARK,
   DIFFICULTY_LABELS,
-  ENEMY_SHORT_NAMES,
+  ENEMY_SHORT_NAMES, roadName, SIEGE_TEXT,
   rechargeText,
   PAUSE_TEXT,
   SPECIAL_BUTTON_TEXT,
@@ -142,6 +142,20 @@ export const TAG_SIZE = 12;
 export function previewText(state: GameState): string {
   const groups = nextWavePreview(state);
   if (groups.length === 0) return 'Next: none';
+  if (groups.some(group => group.road !== undefined)) {
+    const byRoad = new Map<string, Map<EnemyType, number>>();
+    for (const group of groups) {
+      const road = group.road ?? state.map.mainRoad ?? '';
+      const counts = byRoad.get(road) ?? new Map<EnemyType, number>();
+      counts.set(group.type, (counts.get(group.type) ?? 0) + group.count);
+      byRoad.set(road, counts);
+    }
+    const labels = [...byRoad].map(([road, counts]) => {
+      const entries = [...counts].map(([type, count]) => `${count} ${ENEMY_SHORT_NAMES[type]}`);
+      return `${roadName(road)} ${entries.join(', ')}`;
+    });
+    return `${SIEGE_TEXT.next} ${labels.join(' · ')}`;
+  }
   // Milestone 26: one entry per type, in first-group order, counts summed
   // (an endless wave's extra Harpy group joins the base wave's Harpies).
   const counts = new Map<EnemyType, number>();
@@ -431,6 +445,7 @@ export class Hud {
     this.next = m.portrait
       ? stat(m.preview.x, m.statSize, TEXT.hudDim).setY(m.preview.y).setOrigin(0, m.preview.originY).setWordWrapWidth(m.preview.width, true)
       : stat(PREVIEW_X, `${PREVIEW_SIZE}px`, TEXT.hudDim).setWordWrapWidth(PREVIEW_WIDTH, true);
+    this.next.setName('wave-preview');
 
     // The Special label is left-aligned (an empty right label) so the pip fits on its right.
     this.specialButton = new Button(scene, m.special, SPECIAL_BUTTON_TEXT, handlers.onSpecial, {
@@ -563,12 +578,16 @@ export class Hud {
     const aimText = m.portrait && special.aiming !== null && special.banner ? stripAimText(special.banner) : null;
     const preview = aimText ?? (state.phase === 'lost' ? '' : previewText(state));
     if (this.next.text !== preview) {
-      const width = m.preview.width;
+      const siege = !!state.map.otherRoads?.length;
+      const previewX = siege && !m.portrait ? 328 : m.preview.x;
+      const previewY = siege && m.portrait ? m.preview.y + 2 : m.preview.y;
+      const width = m.preview.width + m.preview.x - previewX;
+      this.next.setPosition(previewX, previewY);
       if (this.layout === TAXED_PORTRAIT) {
         this.next.setText(preview).setColor(aimText === null ? TEXT.hudDim : TEXT.aimBanner);
       } else if (m.portrait) {
         this.next.setWordWrapWidth(width, true).setText(preview).setColor(aimText === null ? TEXT.hudDim : TEXT.aimBanner);
-        const availableHeight = PORTRAIT_STRIP_H - 2 - m.preview.y;
+        const availableHeight = PORTRAIT_STRIP_H - 2 - previewY;
         for (const size of [20, 19, 18, 16, 14]) {
           // At 20 px the actual Caslon glyphs in previews and aim hints occupy
           // 17 px above the baseline and 6 below it. Courier fits inside both.
@@ -579,7 +598,13 @@ export class Hud {
           if (this.next.height <= availableHeight && this.next.width <= width) break;
         }
       } else {
-        this.next.setFontSize(previewSize(preview)).setText(preview);
+        if (siege) {
+          this.next.setWordWrapWidth(width, true).setText(preview);
+          for (const size of [14, 13, 12]) {
+            this.next.setStyle({ fontSize: size, metrics: { ascent: size - 2, descent: 4, fontSize: size + 2 } });
+            if (this.next.height <= BUTTON_H && this.next.width <= width) break;
+          }
+        } else this.next.setFontSize(previewSize(preview)).setText(preview);
         this.next.setScale(Math.min(1, width / this.next.width), Math.min(1, BUTTON_H / this.next.height));
       }
     }

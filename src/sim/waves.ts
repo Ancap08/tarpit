@@ -145,5 +145,5 @@ export function gameWaveDef(state: Pick<GameState, 'level' | 'fixedWaves'>, wave
 /** Each group of the next wave as {type, count}; empty after the last wave unless the game is endless. */
 export function nextWavePreview(state: GameState): WavePreviewEntry[] {
   if (!hasNextWave(state)) return [];
-  return gameWaveDef(state, state.wave + 1).groups.map((grp) => ({ type: grp.type, count: grp.count }));
+  return gameWaveDef(state, state.wave + 1).groups.map((grp) => ({ type: grp.type, count: grp.count, ...(grp.road === undefined ? {} : { road: grp.road }) }));
 }

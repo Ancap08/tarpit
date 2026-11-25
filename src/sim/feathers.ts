@@ -1,5 +1,6 @@
 import { isBoss, isTarred } from './enemies';
 import { positionAlongPath } from './map';
+import { roadPath } from './roads';
 import type { Enemy, GameState } from './types';
 
 /** A runner retreats at its own walking speed for this many moving ticks. */
@@ -9,7 +10,7 @@ export function featherEnemy(state: GameState, enemy: Enemy, runTicks: number = 
   if (enemy.feathered || isBoss(enemy) || !isTarred(enemy)) return false;
   enemy.feathered = true;
   enemy.runTicksLeft = runTicks;
-  const { x, y } = positionAlongPath(state.map, enemy.distance);
+  const { x, y } = positionAlongPath(roadPath(state.map, enemy.road), enemy.distance);
   state.events.push({ kind: 'feathered', enemyId: enemy.id, x, y });
   return true;
 }

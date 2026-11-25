@@ -43,6 +43,7 @@ import { STAR_ROW } from './ui/starRow';
 import { currentLayout } from './layoutSwitch';
 import type { TarpitTestApi } from './testGlobal';
 import type { TitleScene } from './TitleScene';
+import { keepSelection } from './keep/switch';
 
 export function isTestMode(): boolean {
   return new URLSearchParams(window.location.search).get('test') === '1';
@@ -174,7 +175,7 @@ export function installGlobal(game: Phaser.Game): void {
   const displayed = (p: { x: number; y: number }) => showpieceVisit && game.scene.isActive('game')
     ? (game.scene.getScene('game') as GameScene).displayedMapPoint(p) : p;
   const always = {
-    ...(new URLSearchParams(location.search).get('keep') === '1' ? { keep: () => activeGame()?.keepState() ?? null } : {}),
+    ...(keepSelection(location.search) ? { keep: () => activeGame()?.keepState() ?? null } : {}),
     ...(showpieceVisit ? { showpiece: () => game.scene.isActive('game') ? (game.scene.getScene('game') as GameScene).showpieceState() : null } : {}),
     paused: () => activeGame()?.paused ?? false,
     pause: () => activeGame()?.setPaused(true),

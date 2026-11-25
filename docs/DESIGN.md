@@ -152,7 +152,7 @@ Buildable counts are of the 450 cells.
 
 The separate `?keep=1` exhibition opens directly on a Normal field with
 20 lives and 240 gold. It uses the ordinary tower prices, upgrades, enemy
-stats and wave-clear bonus. Its ten tower sites and road share one coordinate
+stats and wave-clear bonus. Its ten tower sites and roads share one coordinate
 file, `src/sim/keepSite.json`, with the miniature renderer. The stair foot is at
 (576, 296). Collectors climb the steps to the road's end at the painted
 threshold (551, 272). The siege gate blocks the lower bend of the approach
@@ -189,12 +189,13 @@ cooldown of 30 seconds, which doubles after each drop. At scene startup
 the governor ignores the first eight frame samples so the initial
 composite and texture upload stay outside the measurement window.
 
-| Wave | Groups (enemy, count, seconds between spawns, start in seconds) |
+| Wave | Groups (road, enemy, count, seconds between spawns, start in seconds) |
 | --- | --- |
-| 1 | Goblin, 12, 0.85, 0 |
-| 2 | Wolf, 10, 0.9, 0 · Shieldbearer, 5, 1.7, 3 |
-| 3 | Goblin, 16, 0.6, 0 · Troll, 4, 2.8, 2 · Harpy, 6, 1.3, 4 |
+| 1 | East Goblin, 6, 0.85, 0 · West Goblin, 6, 0.85, 0 |
+| 2 | West Wolf, 10, 0.9, 0 · East Shieldbearer, 5, 1.7, 3 |
+| 3 | West Goblin, 16, 0.6, 0 · East Troll, 4, 2.8, 2 · East Harpy, 6, 1.3, 4 · West Ram, 1, 0, 1 |
 
+The exhibition opens the Tar Barrel on wave 2 and Guards on wave 3.
 Clearing wave 3 ends the exhibition. Replay starts fresh. The map is absent
 from the campaign, Free play, balance runs and progress stores. Its four
 wall-walk sites are high, and its gate uses the Old Keep values below.
@@ -302,6 +303,7 @@ every level; every Normal number in this file is the base number.
 | Shieldbearer | 53 | 70 | 84 |
 | Grumblefoot (boss) | 3000 | 4000 | 4800 |
 | Grumblemaw (boss) | 4200 | 5600 | 6720 |
+| The Final Notice | 270 | 360 | 432 |
 
 **Hard hp rule (waves 1–10).** No ordinary enemy's Hard hp sits 1 or 2 points above
 a multiple
@@ -351,6 +353,7 @@ beside it that returns to the title; the win screen also has [Keep going].
 | Shieldbearer | 70 | 45 | 5 | 1 | 12 | shield |
 | Assessor Grumblefoot | 4000 | 25 | 150 | 5 | 300 | boss; slows capped at 30% |
 | Grumblemaw | 5600 | 14 | 75 | 10 | 400 | boss; slows capped at 30% |
+| The Final Notice | 360 | 30 | 12 | 1 | 4 | 180 damage per second to the siege gate |
 
 - **Flying.** A Harpy flies over the path. Tar Pit, Cannon and Mortar never
   target it, and a Cannon or Mortar splash skips it even when it is inside
@@ -839,9 +842,91 @@ and cooldowns. Last stand can start once per run.
 A tower on a marked high site multiplies its maximum range by 1.1 after
 boons and Curfew. Minimum range and all other tower stats are unchanged.
 The bonus follows the site when a tower moves. During play the HUD shows
-gate HP rounded up, Repair with the actual gold price in setup for a
-damaged standing gate, and Gate fallen with Last stand! for the duration
-of the bonus. At full HP the disabled Repair control has no price.
+gate health rounded to a whole percentage, Repair with the actual gold
+price in setup for a damaged standing gate, and Gate fallen with Last
+stand! for the duration of the bonus. At full HP the disabled Repair
+control has no price.
+
+## Converging roads and siege rules
+
+Each road uses its own distance from its entrance. An alternate approach
+joins a waypoint of the map's main road and follows its suffix to the same
+exit. A gate must stand on the common stretch. A group without a road name
+uses the main road. A Grumblemaw pack starts at the same entrance as the
+caller, even if its caller dies. Early calls preserve the road of each enemy
+already on the field. Preview data keeps each group's road, in wave order.
+The plain Next preview groups the entries under their road names.
+
+- **Targeting.** First has the least trail distance left to the exit. Last
+  has the most. Strongest compares current HP, then uses First. Every
+  remaining tie goes to the lowest enemy id. The Feathers Tar Pit keeps
+  its preference for unfeathered enemies. Eligibility and reach are tested
+  at real map positions, including the Mortar's minimum range. Build
+  clearance uses the nearest centreline on any road.
+- **Blockers.** Snap to the nearest centreline on any road. Ties use map
+  road order, then segment order. Existing snap and end clearances use
+  the selected road. Guards stand at the usual spacing toward the selected
+  entrance. Each blocker can hold enemies from its own approach or from
+  any road sharing the point it occupies. This applies to each guard
+  separately if a squad straddles the join. All ground enemies at the
+  gate attack the same HP pool. Flyers and runners pass as before.
+- **Runners.** A feathered enemy reverses along its own route, uses its own
+  entrance at the fork, and may flinch enemies from either road when passing
+  them on the shared stretch. Enemies still on different approaches do not
+  pass one another. The entrance stops the retreat as before.
+- **Specials and previews.** Area effects and splash count each enemy once
+  by its actual position and radius. The build reach display uses the same
+  circles and ground/air rules as before. Blocker previews use the same
+  cross-road snap and squad positions as the cast.
+- **Leaks and wave end.** Each enemy costs its usual lives only when it
+  reaches the exit on its own road. Both roads must finish all their spawns
+  and clear their live enemies before a wave can end.
+
+| Old Keep 52b1 data | Starting value |
+| --- | --- |
+| Western approach, in map pixels | (564, 480), (584, 435), (610, 444), (664, 473), (719, 475), (790, 478) |
+| Join, main path waypoint index 7 (zero-based) | (800, 416) |
+| West window position and inclusive coverage from the western entrance | (540, 325), 160–390 trail px |
+| East window position and inclusive coverage from the eastern entrance | (564, 170), 290–520 trail px |
+| Quartering price and site | 35 gold at column 13, row 7 |
+| Royal Survey site (hidden `?keep=1&survey=1` variant) | Column 13, row 7 |
+| Window touch area | 116 × 80 canvas px |
+| Wall-site marker touch area | 136 × 80 canvas px |
+
+A lit window can be shaken during combat once in the entire level. A tap
+without an eligible enemy keeps it lit and shows “No targets” for 1.5
+seconds of combat. It tars and feathers live, unfeathered non-bosses
+on the indicated stretch, including enemies from another road after the
+join if the stretch extends there. It applies the barrel's direct tar
+slow and 63 moving ticks of retreat, with the usual 16-tick flinch for
+enemies a runner passes. It leaves no tar zone. Windows have
+separate uses and spend no special charge or gold. A used window goes dark.
+
+A level may have one wall-site tax. Quartering closes one site and Royal
+Survey closes one or more sites listed in level data. Both refuse
+builds and tower moves onto the affected sites. The Survey card uses
+“one wall spot is closed” for one site and the numeric count for more.
+Quartering can be paid off during
+setup, including before wave one, for exactly the listed price, once.
+Survey stays in force for the level. A new play starts with its level's
+site rules and lit windows. The Ram takes tar, burn and feathers normally.
+An exit costs one life. Its 180 gate damage per second is four times the
+Troll's, with 4 damage per second against Guards or a Barricade.
+
+**Not a nail** uses the standard feat threshold of 12 lives in a win.
+A successful Repair purchase forfeits the feat, including a partial
+repair. Failed purchases, Quartering and a fallen gate do not forfeit
+it. The Repair control adds “Costs the third star” before the first
+successful repair. The control is 212 canvas px wide in portrait and
+176 in landscape, with the warning on its own line. The hidden
+exhibition shows the result at a win and saves no stars or progress.
+
+Part c2 can paint the west branch up to the join and reuse the shared road,
+position window light and feather effects at the two window anchors, and
+align gate art to the existing gate line and yard. The scroll on wheels,
+branch trace, gate line and wall-site markers are plain controls or
+placeholders.
+
 
 ## Gold cheat
 
@@ -1317,6 +1402,24 @@ the same Ending at level 10 keeps that receipt. Level 20 still shows
 “Campaign complete!” and goes straight to the chosen destination. A denied
 write falls back to the current session. Rotation preserves the page and
 the destination.
+
+### Act One notices and replies
+
+| Level | The King's notice | The town's reply |
+|---|---|---|
+| Opening | Hear ye. By order of King Grumblemaw, all gold in this town now belongs to the Crown. Collectors are on their way. | We counted it. It's ours. |
+| 1 | A tax on doors. Collectors will call at yours. | We kept the doors. And the gold. |
+| 2 | A tax on wheels, carts and anything that rolls. | Our cannonballs roll. Collect those. |
+| 3 | A tax on running. The Hounds will show you how. | They ran. Slowly. Sorry about the tar. |
+| 4 | A tax on firewood, payable to the Redcoats at once. | We burned it ourselves, thanks. |
+| 5 | A tax on the sky. The Royal Harpies own it now. | The sky is still free. Mind the feathers. |
+| 6 | A toll on this road: one Troll per traveller. | Toll paid. In mortar shells. |
+| 7 | A tax on standing still. Move along, all of you. | We built a wall. It stood very still. |
+| 8 | A tax on neighbours helping neighbours. | The neighbours say no. |
+| 9 | The Assessor will now count your gold. Personally. | He lost count. |
+| 10 | Enough. The King is coming for the lot. | (the ending) |
+| Ending | | The King went home with empty pockets. The gold stayed where it was earned. Taxation is theft. |
+| Any loss | The Crown thanks you for your contribution. | |
 
 ## Showpiece (experimental)
 
@@ -2042,6 +2145,25 @@ keep their previous meaning and the best result wins.
   the gate is at or below 60% HP and the purchase leaves at least 70 gold.
   **Person** buys one before shopping at or below 30% HP when it can pay.
   **Beginner** never repairs. All three follow the setup-only repair rule.
+- With named approaches **Good** and **Person** sample each road at the
+  existing 24 px spacing. They weight samples by each road's next-wave
+  count divided by the busiest road's count, doubling the value of samples
+  that lack damage coverage. Shared ground can cover both roads. Person
+  keeps the three-site rotation. Beginner walks in map road order and
+  skips closed sites.
+- Good checks windows every 30 wave ticks, shaking the one with the highest
+  score of at least 3. Dry and tarred enemies use the same eligibility
+  rule. Each eligible enemy scores 1, with a Ram worth 3.
+  Person looks 90 ticks into each 180-tick interval and needs a score of 4,
+  with a Ram worth 2. Ties use window order. Shaking a window and spending
+  the ordinary special charge are independent decisions.
+- Before shopping Good pays Quartering if the newly open site would be
+  its best affordable build after payment. Person runs the same check
+  with 30 extra gold held back and at least one tower already standing.
+  Beginner neither shakes windows nor pays Quartering. Good and Person
+  forgo repairs when explicitly playing for Not a nail. Their ordinary
+  policies keep the usual repair thresholds.
+
 
 In Normal Free play, Good must win or lose on each map the same way as
 comboBuild. Both win on all three maps. Good finishes with 20 lives on each.
@@ -2270,3 +2392,106 @@ back. The first screen opens on Campaign, the map on the next unwon open
 stop, the card on Play, and the result on its first button. On the map the
 arrow keys visit open stops. Right from stop 10 crosses to 11 once unlocked.
 Left from 11 returns to 10. Rotating keeps the focused stop.
+
+## Private Act Three
+
+Levels 21–25 are separate from the public campaign list. `?keep=21` through
+`?keep=25` open the selected level directly. A win shows that level's reply
+and earned stars for the current run. No result or tip from these levels
+writes to saved progress. The exhibition and its original numbers remain
+available at `?keep=1` for the art and siege rule checks.
+
+All five stops use the Normal difficulty without HP growth, 20 starting
+lives, the full level 20 tower and special lists, tier 3, feather barrels
+and no boon offers. The table gives each level's enemy HP scale. The gate
+starts the yard at the specified trail distance before the exit, on the
+shared stretch when two roads are active. The last stand lasts 360
+combat ticks at 2× fire rate and high ground gives 1.1× maximum range.
+The painted scenes reuse the dusk plates. Dusk has clear weather, night
+storm darkens the sky and uses the existing rain and lightning, and dawn
+warms and lightens the sky.
+
+| Level | Name | Roads | Sky | Gold | HP scale | Gate HP | Yard px | Repair HP | Gold per full repair | Third star | Wall-site rule |
+|---:|---|---|---|---:|---:|---:|---:|---:|---:|---|---|
+| 21 | Rent Overdue | east | dusk | 295 | 1 | 9580 | 275 | 2600 | 90 | Unbroken | — |
+| 22 | Feather Beds | west | dusk | 240 | 1.12 | 4800 | 160 | 1900 | 66 | Not a nail | — |
+| 23 | Both Roads | both | night storm | 275 | 1.08 | 16900 | 330 | 3700 | 72 | Unbroken | Royal Survey at (13, 7) and (23, 13) |
+| 24 | Quartering | both | night storm | 285 | 1 | 21000 | 290 | 4200 | 80 | Not a nail | Quartering, 80 gold at (22, 10) |
+| 25 | The Final Notice | both | dawn | 295 | 1.25 | 16900 | 295 | 4300 | 105 | Unbroken | — |
+
+Level 21 has no pillow windows. Level 22 has west windows at
+(540, 325) covering 572–620 trail px and (564, 170) covering 690–751
+trail px. Levels 23 and 25 have west windows at the same screen positions
+covering 170–420 and 320–510 trail px. Level 24 covers 443–472 and
+510–605 trail px. The Ram keeps 360 base HP, 30 px/s,
+12 bounty, one life on exit and 4 damage/s against other blockers. It
+deals 375 damage/s to the level 25 gate.
+
+Spawn groups are given as road, enemy, count, interval and delay. Both
+timings are in seconds. E is east and W is west. A Harpy flight contains
+four Harpies at 0.2-second intervals. A flight entry gives the number of
+flights, first delay and gap between flight starts. The Next preview sums
+groups of the same enemy type on the same road.
+
+| Level | Wave | Groups |
+|---:|---:|---|
+| 21 | 1 | E Collector, 42, 0.9, 0 |
+| 21 | 2 | E Troll, 8, 5.6, 0 · E Harpy, 16, 2.2, 0 |
+| 21 | 3 | E Redcoat, 43, 0.95, 0 · E Harpy flights ×3, first 8, every 8.2 |
+| 21 | 4 | E Hound, 45, 0.95, 0 · E Harpy flights ×8, first 5, every 5.6 |
+| 21 | 5 | E Troll, 14, 3.5, 0 · E Collector, 20, 2.4, 7 · E Harpy flights ×6, first 8, every 7 |
+| 21 | 6 | E Redcoat, 52, 0.85, 0 · E Troll, 10, 1.2, 43 · E Harpy flights ×10, first 5, every 5.1 |
+| 22 | 1 | W Collector, 28, 1.3, 0 |
+| 22 | 2 | W Redcoat, 34, 1.26, 0 · W Harpy flights ×9, first 7, every 4.45 |
+| 22 | 3 | W Troll, 9, 5.8, 0 · W Hound, 16, 2.8, 8 · W Harpy flights ×8, first 11, every 4.8 |
+| 22 | 4 | W Troll, 6, 4.6, 4 · W Hound, 31, 1.51, 4 · W Harpy, 34, 0.8, 2 |
+| 22 | 5 | W Redcoat, 38, 1.23, 0 · W Troll, 10, 4.8, 3 · W Harpy flights ×5, first 8, every 8.8 |
+| 22 | 6 | W Troll, 6, 0.3, 4 · W Troll, 14, 1.75, 8 · W Redcoat, 22, 1.8, 12 · W Harpy flights ×9, first 7, every 5.35 |
+| 23 | 1 | E Collector, 28, 1.6, 0 · W Collector, 24, 1.9, 2 |
+| 23 | 2 | E Troll, 5, 7, 0 · W Redcoat, 26, 1.6, 0 · W Harpy flights ×8, first 7, every 5.1 |
+| 23 | 3 | E Redcoat, 30, 1.65, 0 · W Troll, 8, 6.1, 0 · E Harpy flights ×9, first 6, every 4.5 |
+| 23 | 4 | E Hound, 30, 1.6, 0 · W Hound, 24, 2.05, 0 · W Harpy flights ×11, first 1, every 4.4 |
+| 23 | 5 | E Troll, 15, 2.7, 0 · W Troll, 14, 2.7, 4 · E Harpy flights ×6, first 9, every 7.2 |
+| 23 | 6 | E Redcoat, 36, 1.46, 0 · W Redcoat, 29, 1.84, 0 · W Harpy flights ×8, first 6, every 6.1 |
+| 24 | 1 | E Collector, 31, 1.5, 0 · W Collector, 24, 1.9, 2 |
+| 24 | 2 | W Troll, 6, 7, 0 · E Redcoat, 33, 1.5, 0 · W Harpy flights ×4, first 16, every 8.3 |
+| 24 | 3 | W Redcoat, 35, 1.45, 0 · E Troll, 9, 5.9, 0 · E Harpy flights ×8, first 10, every 5.1 |
+| 24 | 4 | W Hound, 30, 1.6, 0 · E Hound, 24, 2.05, 0 · W Harpy flights ×8, first 3, every 6.1 |
+| 24 | 5 | E Troll, 11, 4, 0 · W Troll, 15, 3.9, 9 · E Harpy flights ×7, first 6, every 6.8 |
+| 24 | 6 | W Redcoat, 41, 1.55, 0 · E Redcoat, 32, 1.8, 0 · W Troll, 24, 1.75, 9 · E Harpy flights ×9, first 4, every 5.8 |
+| 25 | 1 | E Collector, 31, 1.5, 0 · W Collector, 26, 1.8, 2 |
+| 25 | 2 | E Troll, 7, 6.4, 0 · W Redcoat, 34, 1.51, 0 · W Harpy, 28, 1.08, 4 |
+| 25 | 3 | E Redcoat, 32, 1.58, 0 · W Troll, 9, 5.8, 0 · E Harpy flights ×7, first 6, every 7.3 |
+| 25 | 4 | E Hound, 30, 1.6, 0 · W Hound, 25, 2.05, 0 · W Harpy flights ×8, first 4, every 6.1 |
+| 25 | 5 | E Troll, 10, 4.8, 0 · W Troll, 10, 4.8, 3 · E Harpy flights ×6, first 10, every 8 |
+| 25 | 6 | W Ram, 1, 0, 12 · E Redcoat, 28, 1.8, 0 · W Redcoat, 22, 2.35, 0 · E Harpy flights ×13, first 6, every 4.55 · E King, 1, 0, 24 |
+
+Good and Person value ground coverage one extra time within 24 px of
+a standing gate when they buy towers on these levels. Good gives air
+coverage 4× its usual weight and the first Mortar or Cannon 2.2× its
+unadjusted placement score while the gate stands. Good pursuing Unbroken
+considers repair at or below 80% HP, keeping 70 gold in reserve.
+Ordinary Good and Person keep their existing repair policies. The
+Unbroken and Not a nail trials use the usual two-star line before testing
+the feat.
+
+Run `npm run sim:keep` for W1–W7 and W9–W16. It reports the actual
+outcomes of the control runs and exits nonzero on a miss. The unit suite
+runs these targets with the expected misses listed in
+`src/sim/checkKeep-verifier.test.ts` and checks W8 against the public
+reference runs. The standard simulation report measures the shipped
+public campaign and Free play. The Act Three gate reuses the late and
+finale rules. Good holds between 5% and 30% minimum gate health in the
+finale. Person must win with at least eight lives at nominal and at each
+of the four L1m nudges. All five levels retain the L6 sensitivity trials.
+The one-tower limit applies to levels 22–25. W5 and W13
+apply Act Three's Person feat limits. W6 limits the bot's tower sites,
+special aims and windows to the defended approach using the nearest
+pre-join centreline. Both approaches and their shared yard remain live.
+Each one-road trial must lose the gate, lose a star or cost Good at
+least six lives. W12 compares stars and lives with and without each tax.
+The W11 control isolates the finale's real Ram group on the same board
+with one base Fire Pot at (22, 10). Its second run casts a barrel within
+10 trail px of reaching the gate. W15 requires Person to earn two stars
+on level 21 and lose at most four lives in any wave. W16 compares
+Person's lives with and without repair on levels 22 and 24.

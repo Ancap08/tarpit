@@ -15,6 +15,8 @@ export * from './combat';
 export * from './actions';
 export * from './specials';
 export * from './blockers';
+export * from './roads';
+export * from './siege';
 export * from './gate';
 export * from './levelTypes';
 export * from './campaignProgress';
