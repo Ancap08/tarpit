@@ -22,14 +22,14 @@ export function endScreenText(kind: EndKind, state: GameState): { title: string;
   return { title: END_TEXT.lostTitle, lines: [reachedWaveText(state.wave, state.endless, lastWave(state))], boons };
 }
 
-export function campaignResultText(state: GameState, progress: CampaignProgress, actThree = false) {
+export function campaignResultText(state: GameState, progress: CampaignProgress, actThree = false, owner = false) {
   const kind = endKind(state);
   if (!kind || !state.level) return null;
   const won = kind === 'won';
   const stars = levelStars(state);
   const lives = Math.max(0, state.lives);
   const levelId = state.level.id;
-  const nextId = won && campaignOpen(progress, levelId + 1, actThree) ? levelId + 1 : null;
+  const nextId = won && campaignOpen(progress, levelId + 1, actThree, owner) ? levelId + 1 : null;
   const cheatHint = nextId ? CAMPAIGN_END.cheated : CAMPAIGN_END.cheatedLast;
   const hint = won && state.cheated ? cheatHint : stars === 1 ? starGoalText(TWO_STAR_LIVES, 2) : stars === 2 && !state.level.feat ? starGoalText(THREE_STAR_LIVES, 3) : '';
   const feat = won && state.level.feat ? featResultText(state.level.feat, stars === 3) : '';

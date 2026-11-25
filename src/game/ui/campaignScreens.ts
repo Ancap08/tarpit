@@ -3,7 +3,7 @@ import { resolveMap, type LevelDef } from '../../sim';
 import { drawMapThumbnail } from '../draw/map';
 import { drawKeepThumbnail } from '../draw/keepThumbnail';
 import { drawSiegeCarriage } from '../draw/siegeActors';
-import { CAMPAIGN_TEXT, cardFeatText, levelTaxLines, siegeRuleLines, LEVEL_NAMES, LEVEL_NEW, LEVEL_STORY, STORY_TEXT, levelTips, tipsHeading, MAP_NAMES, TITLE_TEXT, levelNumberText } from '../names';
+import { CAMPAIGN_TEXT, cardFeatText, levelTaxLines, siegeRuleLines, LEVEL_NAMES, LEVEL_NEW, LEVEL_STORY, STORY_TEXT, OWNER_TEXT, levelTips, tipsHeading, MAP_NAMES, TITLE_TEXT, levelNumberText } from '../names';
 import type { Broadside } from '../seenTips';
 import { FONT, TEXT } from '../palette';
 import type { Rect } from '../input';
@@ -174,6 +174,55 @@ export function drawStoryBroadside(
   const w = portrait ? 246 : 196;
   return action('title:continue', { x: cx - w / 2, y: continueY, width: w, height: portrait ? 82 : 58 },
     STORY_TEXT.continue, proceed, 26);
+}
+
+const ownerStories = ['opening', 'secondAct', 'thirdAct', 'firstClose', 'ending', 'secondClose', 'siegeEnding'] as const;
+type OwnerStory = (typeof ownerStories)[number];
+
+export function drawOwnerPage(scene: Phaser.Scene, portrait: boolean, levels: readonly LevelDef[], action: Action,
+  story: (which: OwnerStory) => void, tips: (id: number) => void, reset: () => void, back: () => void): string[] {
+  const { width, height } = scene.scale;
+  const cx = width / 2;
+  const paper = scene.add.graphics();
+  broadside(paper, width, height);
+  label(scene, cx, portrait ? 58 : 45, OWNER_TEXT.title, portrait ? 36 : 34, ink);
+
+  const keys: string[] = [];
+  const button = (key: string, rect: Rect, text: string, click: () => void, size: number) => {
+    keys.push(key);
+    action(`title:${key}`, rect, text, click, size);
+  };
+  const grid = (index: number, columns: number, span: number, y: number, h: number, gap: number): Rect => {
+    const w = (span - gap * (columns - 1)) / columns;
+    return { x: cx - span / 2 + index % columns * (w + gap), y: y + Math.floor(index / columns) * (h + gap), width: w, height: h };
+  };
+  const row = (y: number, width: number, height: number): Rect => ({ x: cx - width / 2, y, width, height });
+  ownerStories.forEach((which, index) => button(`owner:${which}`,
+    grid(index, portrait ? 2 : 4, portrait ? 448 : 888, portrait ? 100 : 78, portrait ? 80 : 48, 8),
+    OWNER_TEXT[which], () => story(which), 18));
+  button('owner:reset', row(portrait ? 452 : 193, 432, portrait ? 80 : 46), OWNER_TEXT.reset, reset, portrait ? 17 : 18);
+  const tipsY = portrait ? 563 : 263;
+  label(scene, cx, tipsY, CAMPAIGN_TEXT.tips, 24, ink);
+  levels.forEach(({ id }, index) => button(`owner:tips:${id}`,
+    grid(index, 5, portrait ? 432 : 580, portrait ? 590 : 285, portrait ? 80 : 44, portrait ? 8 : 4),
+    String(id), () => tips(id), portrait ? 24 : 20));
+  button('back', row(portrait ? 1055 : 524, portrait ? 250 : 208, portrait ? 82 : 46), OWNER_TEXT.back, back, 21);
+  return keys;
+}
+
+export function drawOwnerClose(scene: Phaser.Scene, portrait: boolean, level: number, action: Action, back: () => void): void {
+  const { width, height } = scene.scale;
+  const cx = width / 2;
+  const paper = scene.add.graphics();
+  broadside(paper, width, height);
+  const y = portrait ? 240 : 106;
+  label(scene, cx, y, STORY_TEXT.endingTitle, portrait ? 36 : 42, ink);
+  rule(paper, cx, y + 40, portrait ? 324 : 560);
+  label(scene, cx, portrait ? 430 : 218, LEVEL_STORY[level].reply, portrait ? 30 : 28, ink, portrait ? 376 : 736);
+  const close = level === 10 ? STORY_TEXT.firstActClose : STORY_TEXT.secondActClose;
+  label(scene, cx, portrait ? 590 : 307, close, portrait ? 30 : 28, ink, portrait ? 376 : 736, false);
+  town(paper, cx, portrait ? 893 : 431);
+  backButton(portrait, action, back);
 }
 
 function drawBestStars(scene: Phaser.Scene, x: number, y: number, stars: number, labelSize: number, starSize: number, feat: boolean) {

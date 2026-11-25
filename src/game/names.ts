@@ -523,6 +523,20 @@ export const STORY_TEXT = {
   continue: 'Continue',
 } as const;
 
+export const OWNER_TEXT = {
+  mark: 'Owner',
+  title: "Owner's page",
+  opening: 'Act 1 broadside',
+  secondAct: 'Act 2 broadside',
+  thirdAct: 'Act 3 broadside',
+  firstClose: 'Level 10 close',
+  ending: 'Level 20 ending',
+  secondClose: 'Act Two close',
+  siegeEnding: 'Level 25 ending',
+  reset: 'Show story screens again this session',
+  back: 'Back to title',
+} as const;
+
 const secondActReplies: Readonly<Record<number, string>> = {
   11: 'We put the money into the roof.',
   12: 'Quick trip home, too.',
