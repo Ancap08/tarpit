@@ -11345,3 +11345,37 @@ single-canvas selector when it found the two new panorama canvases.
 The check now compares the entire game area. All five keep cases then
 passed on the same build, including frozen/silent play, a storage-preserving
 win, pause, cold-start isolation and a wall crew retained on rotation.
+
+## 2026-11-24: milestone 51, Verifier (Claude Sonnet)
+
+Checked `12fcab3` against a clean export of `655a658`.
+
+- Switch off: 174 bot runs (120 campaign, 54 Free play, 6 policies) hash
+  identically; `npm run sim` output is identical (479 lines). `MAP_IDS` and
+  `LEVELS` do not contain the keep. Title, level map, Free play and a campaign
+  level request no `/keep/` file, including after the service worker installs.
+- Sim files changed: `game.ts`, `waves.ts`, `types.ts` (a `fixedWaves` field),
+  `grid.ts` (`buildSites` mask, only when a map has it), plus new
+  `oldKeep.ts`, `keepSite.json`, `oldKeep.test.ts`.
+- Saved data is byte-identical after mute, gold cheat, pause, a loss, Play
+  again and Menu, on a fresh and a seeded profile. Offline works after a
+  first keep visit and falls back to the title if the keep was never visited.
+- Provenance: both art scripts rerun in a scratch copy reproduce all 17
+  plates and `projection.json` byte for byte (Blender about 1 minute).
+- Frames agree with the report: 16.7 ms median at every tier, native and 4x.
+  Main-thread busy time is the better signal: 70 to 80 percent native and
+  93 to 98 percent at 4x, against 35 and 47 percent for an ordinary painted
+  Meadow with the same 40 enemies. Tiers barely change it.
+- Memory: `loadKeep` decodes all 17 plates in either orientation. That is
+  248.6 MB of RGBA (portrait needs 143.9, landscape 125.7), on top of the
+  decoded image copies. Real risk on a 2 to 3 GB iPhone; unmeasured on one.
+- No loading state during a slow first load (about 21 s on Fast 3G, 4.3 MB,
+  blank canvas). A failed plate silently returns to the title.
+- Added `src/game/keep/keep-verifier.test.ts` (art budget, plate list,
+  provenance) and `e2e/keep-switch-verifier.spec.ts` (title and level map
+  requests, failed plate, loss/Play again/Menu storage, look switches).
+  Mutations (keep in `MAP_IDS`; an ordinary page fetching a plate) turned the
+  existing isolation tests red.
+- Full run: lint, typecheck, 2,869 unit tests in 133 files, build, size
+  (3,291,554 bytes keep art, site 7,078,820), assets (248 rows), and
+  1,208 browser tests passed with 8 skipped.
