@@ -11566,3 +11566,62 @@ the rules hold under my tests; the data and the targets were not pinned in CI.
   gold boundary named above, before my tests.
 - Full runs: lint, typecheck clean; `npm test` 2,971 passed in 140 files; build
   and size 7.99 MB; e2e 1,346 passed, 8 skipped, plus keep-cost 1 passed.
+
+## Verifier (Claude Sonnet), milestone 52c (c1, c2a, c2b), tip 06a76ec
+
+Verdict: merge behind the switch, with the notes below. Nothing a player can
+reach without `?act3=1` differs from `0bce563`.
+
+- Switch off. My own export of `0bce563` and the candidate gave identical
+  full-state hashes for 96 bot runs (levels 1 to 20 by three bots = 60; Free
+  play three maps by three difficulties by four bots = 36) and identical
+  `npm run sim` output (479 lines). One file under `src/sim` changed:
+  `campaignProgress.ts`, `unlockedLevel` gained a `lastLevel` argument that
+  defaults to the old value. In the browser (phone and 960x580; no save, 19
+  wins, 20 wins; classic, painted, showpiece) 18 sessions gave identical
+  canvas hashes, level map stops, level 20 card and result, saved data and
+  request lists. After the worker installs, 12 files are cached and none is
+  under keep or act3.
+- Saved data. A save written with the switch on (all 25 levels, both Act
+  Three records) loads with the switch off: 20 stops in two acts, no Act
+  Three button, level 20 closes with the old ending and no Next button, all
+  five Act Three stars survive a replay. Old finished save: the broadside
+  shows once and level 21's stars reload. Mid-Act-Two player: level 20 closes
+  with the new line, and "ending" stays unseen for a switch-off visit.
+- View move. Tower spots, windows, Survey and Quartering controls, gate,
+  Repair and road banners are where they are drawn at scale 1.15, 1.32 and
+  1.5, at 390x664 and 390x844. A tap-aimed keg lands within 1 px of the
+  finger at all six. Rotation mid-move: no error, view settles at 1.5 and
+  returns to 1.15 after the wave. At 664 and scale 1.5 on level 23 the
+  CONDEMNED board's tap rect overlaps the Repair rect, but Repair is hidden
+  during a wave and the board is clear of it at rest.
+- Fan-out. The drawn offset reaches about 97 px, more than a keg's 90 px;
+  the rules use the true position. Aiming at the mass still hits the stack
+  (centroid under 45 px away); aiming at the far corner of the drawn crowd
+  misses it. Preview tethers show the true position only during an aim or a
+  range view.
+- Sound. Over 10 minutes (3,022 source nodes) every node ended; live nodes
+  never exceeded 3 and were 0 after settling. A 3 minute run of every cue
+  (8,635 nodes) peaked at 16 live nodes and 5 voices. Nothing plays before
+  the first gesture. The voice cap never binds in my runs.
+- Cost at 390x844, 4x throttle. 40 enemies: High 8.0 to 8.6 ms, Low 5.9 to
+  6.7 ms, no frame over 25 ms. 30 held with a window: High 13.2 ms with 1 to 3
+  frames over 25 ms in 240, Low 10.4 ms with none. At 12x the governor drops to
+  Low and holds 60 fps, and its step back up costs a burst of long frames. The
+  isolated keep cost test passed 5 of 5 (Low/High 0.62 to 0.71).
+- Memory. Art 7,657,132 of 10,000,000 bytes; dist 10.97 of 20 MB. Plate
+  pixels for one sky and orientation on a phone: 30.5 to 35.2 MB. Phaser's
+  texture list stays at 38.0 to 38.1 MB through levels 21, 23, 25, 21 and the
+  count falls back after each exit. The page also holds 36.6 MB of painted
+  sheets, so decoded images altogether are about 70 MB.
+- Mutations. Fourteen run. Red: drum interval, drum at the fall, silent
+  without the live flag, gate damage threshold, formation slot, noRepairs,
+  level 20 close, third broadside record, view input, switch always on, repair
+  price. Survived until my tests: `campaignOpen` ignoring the switch (now red
+  in `siege-verifier.test.ts`). Survived: the engine's own `actThree` guard
+  (redundant, `SiegeAudio` is never built without the switch) and the mixer
+  voice cap (never reached).
+- Added `e2e/act-three-verifier.spec.ts` (3 tests) and
+  `src/game/ui/siege-verifier.test.ts` (10 tests). Full runs: lint,
+  typecheck clean; `npm test` 3,004 passed in 143 files; e2e 1,385 passed,
+  8 skipped, keep-cost 2 passed.
