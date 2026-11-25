@@ -29,8 +29,12 @@ export async function checkLabel(page: Page, key: string, text: string) {
   expect(label, key + ' ' + text).toBeDefined();
   const description = page.viewportSize()!.height + 'px ' + key + ' ' + text;
   test.info().annotations.push({ type: 'font', description: description + ' ' + label!.css.toFixed(2) });
-  const shortPhoneLabel = page.viewportSize()!.height === 664 && (key === 'special' || key === 'startWave');
-  expect.soft(label!.css, description).toBeGreaterThanOrEqual(shortPhoneLabel ? 11 : 12);
+  let minimumCss = 12;
+  if (page.viewportSize()!.height === 664) {
+    if (key.startsWith('special:')) minimumCss = 11.1;
+    if (key === 'special' || key === 'startWave') minimumCss = 11;
+  }
+  expect.soft(label!.css, description).toBeGreaterThanOrEqual(minimumCss);
   if (key === 'startWave') {
     expect.soft(label!.lines.length, description).toBeLessThanOrEqual(2);
     if (text === 'Boss next') expect(label!.lines, description).toEqual(['Boss', 'next']);

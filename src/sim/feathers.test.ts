@@ -4,6 +4,7 @@ import { burnEnemies, fireTowers } from './combat';
 import { ENEMY_STATS, isTarred } from './enemies';
 import { FEATHERS } from './feathers';
 import { createGame, startWave, tick } from './game';
+import { LEVELS } from './levels';
 import { moveEnemies } from './movement';
 import { TICKS_PER_SECOND } from './time';
 import type { Enemy, EnemyType, GameState, MapDef } from './types';
@@ -65,6 +66,40 @@ describe('R3: tar and feathers use the trail and end after one run', () => {
     expect(back.runTicksLeft).toBe(FEATHERS.runTicks);
   });
 
+  it('C1: one barrel feathers every eligible enemy through the radius edge, once per life', () => {
+    const types = [...groundTypes, 'harpy', 'goblin', 'wolf', 'troll'] as const;
+    const crowd = types.map((type, i) => enemy(i, type, 300 + i * 10));
+    crowd[0].distance = 200; // Exactly 100 px from the landing point.
+    const marked = Object.assign(enemy(8, 'wolf', 290), { feathered: true as const, runTicksLeft: 11 });
+    const bosses = [enemy(9, 'boss', 320), enemy(10, 'grumblemaw', 330)];
+    const outside = enemy(11, 'harpy', 400.01);
+    const state = arena([...crowd, marked, ...bosses, outside]);
+    state.level = LEVELS[10];
+    barrel(state, 300);
+    expect(FEATHERS.barrelRunTicks).toBeGreaterThanOrEqual(60);
+    expect(FEATHERS.barrelRunTicks).toBeLessThanOrEqual(FEATHERS.runTicks);
+    const events = () => state.events.filter(e => e.kind === 'feathered').map(e => e.enemyId);
+    expect(events()).toEqual(crowd.map(e => e.id));
+    for (const hit of crowd) {
+      expect(isTarred(hit)).toBe(true);
+      expect(hit.runTicksLeft).toBe(FEATHERS.barrelRunTicks);
+    }
+    for (const boss of bosses) {
+      expect(boss.specialSlow).toBe(0.3);
+      expect(boss.feathered).toBeUndefined();
+    }
+    expect(isTarred(outside)).toBe(false);
+    expect(outside.feathered).toBeUndefined();
+    expect(marked.runTicksLeft).toBe(11);
+
+    tick(state);
+    const remaining = crowd.map(e => e.runTicksLeft);
+    state.specialCharges = 1;
+    barrel(state, 300);
+    expect(events()).toEqual([]);
+    expect(crowd.map(e => e.runTicksLeft)).toEqual(remaining);
+  });
+
   it('a barrel impact tars the whole crowd without starting a retreat', () => {
     const crowd = [...groundTypes, 'harpy', 'boss', 'grumblemaw'] as const;
     const state = arena(crowd.map((type, i) => enemy(i, type, 200 + i)));
@@ -73,6 +108,20 @@ describe('R3: tar and feathers use the trail and end after one run', () => {
     expect(state.enemies.some(e => e.feathered || e.runTicksLeft)).toBe(false);
     expect(state.events.some(e => e.kind === 'feathered')).toBe(false);
   });
+
+  it.each([undefined, ...LEVELS.slice(0, 10)].map(level => ({ name: level?.id ?? 'Free play', level })))(
+    'C1 and C9: ordinary tar and 1200-tick refill on $name', ({ level }) => {
+      const state = arena(groundTypes.map((type, i) => enemy(i, type, 205 + i)));
+      if (level) state.level = level;
+      state.cheated = true; // Also exercise the ordinary barrel where only the cheat unlocks it.
+      barrel(state, 205);
+      expect(state.enemies.every(isTarred)).toBe(true);
+      expect(state.enemies.some(e => e.feathered || e.runTicksLeft)).toBe(false);
+      expect(state.events.some(e => e.kind === 'feathered')).toBe(false);
+      expect(state.specialRechargeTicks).toBe(1200);
+      expect(state.barrelRecharge).toBeUndefined();
+    },
+  );
 
   it('zone entrants are tarred, and a tower can feather one on its first shot', () => {
     const state = arena([], true);

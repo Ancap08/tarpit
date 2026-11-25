@@ -16,6 +16,7 @@ import type * as Maps from '../src/sim/map';
 import type * as Boons from '../src/sim/boonBalance';
 import type * as Specials from '../src/sim/specials';
 import type * as Paths from '../src/sim/pathBalance';
+import type * as Progress from '../src/sim/campaignProgress';
 import type * as Encounters from '../src/sim/pathEncounter';
 
 const server = await createServer({
@@ -189,7 +190,7 @@ try {
   console.log(`${improvedMaps >= 2 ? 'ok' : 'MISS'}  G2 Normal improved by at least one life on ${improvedMaps} maps`);
   if (improvedMaps < 2) process.exitCode = 1;
 
-  const { botGood, botPerson, botBeginner, runBot } = await server.ssrLoadModule('/src/sim/bots.ts') as typeof Bots;
+  const { botGood, botPerson, botBeginner, preferFeathers, runBot } = await server.ssrLoadModule('/src/sim/bots.ts') as typeof Bots;
   const { createGame, TICKS_PER_SECOND } = await server.ssrLoadModule('/src/sim/game.ts') as typeof Game;
   console.log('\nFree play bots (W lives left, L wave lost)');
   console.log('map         difficulty  botGood  comboBuild  botBeginner  lazyBuild');
@@ -219,7 +220,7 @@ try {
   const { CAMPAIGN_CONTEXTS } = await server.ssrLoadModule('/src/sim/campaignContexts.ts') as typeof Contexts;
   const firstAct = checkCampaign(LEVELS.slice(0, 10), CAMPAIGN_CONTEXTS.slice(0, 10));
   const minutes = (ticks: number) => (ticks / TICKS_PER_SECOND / 60).toFixed(2);
-  const score = (run?: Gate.LevelScore) => run ? `${run.stars}/${run.lives}` : '—';
+  const score = (run?: Pick<Gate.LevelScore, 'stars' | 'lives'>) => run ? `${run.stars}/${run.lives}` : '—';
   function printLevel(row: Gate.LevelCheck, index: number): void {
     const level = LEVELS[index];
     console.log([level.id, level.waves.length, row.good?.spawned ?? '—', level.startGold, level.hpScale,
@@ -255,6 +256,31 @@ try {
     console.log(`S1 Person mean ${previousMean.toFixed(2)} to ${secondMean.toFixed(2)}, handover ${handover}, largest drop ${largestDrop} lives.`);
   }
   console.log(`Twenty levels: ${minutes(campaign.totalTicks)} minutes. ${campaign.ok ? 'P1–P2, L1–L8, T1–T3, F1–F3, V1, S1 and R6 pass' : 'MISS ' + campaign.failed.join(', ')}`);
+  const { levelStars } = await server.ssrLoadModule('/src/sim/campaignProgress.ts') as typeof Progress;
+  console.log('\nAct Two barrel controls (stars/lives, barrel casts/newly feathered)');
+  console.log('level  Good  Person  Beginner  Good(forced)  Person(forced)  Good(unused)');
+  for (const level of LEVELS.slice(10)) {
+    const results = [botGood, botPerson, botBeginner, preferFeathers(botGood), preferFeathers(botPerson),
+      { ...botGood, leaveBarrelUnused: true }].map(bot => {
+      const impact = { casts: 0, feathered: 0 };
+      const { state, refused } = runBot(createGame({ level }), bot, undefined, undefined, impact);
+      if (refused) process.exitCode = 1;
+      return { stars: levelStars(state), lives: Math.max(0, state.lives), ...impact };
+    });
+    const [good, , , forcedGood, forcedPerson, unused] = results;
+    console.log(level.id, results.map(r => `${r.stars}/${r.lives},${r.casts}/${r.feathered}`).join('  '));
+    if (level.allowedSpecials.includes('tarBarrel') && good.lives !== 20 &&
+      good.stars <= unused.stars && good.lives <= unused.lives) {
+      console.error(`MISS C2 level ${level.id}: Good ${score(good)}, unused ${score(unused)}`);
+      process.exitCode = 1;
+    }
+    for (const forced of [forcedGood, forcedPerson]) {
+      if (forced.lives > good.lives + 4 || (forced.stars === 3 && good.stars < 3)) {
+        console.error(`MISS C6 level ${level.id}: forced ${score(forced)}, Good ${score(good)}`);
+        process.exitCode = 1;
+      }
+    }
+  }
   if (!firstAct.ok || !campaign.ok) process.exitCode = 1;
 } finally {
   await server.close();

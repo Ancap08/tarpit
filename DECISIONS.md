@@ -1715,3 +1715,76 @@ can change it; "Kyle" means Kyle decided.
   shorter line stays because it fits on one row. The coordinator diagnosed
   from the test's name instead of its failing line; the brief for a CI fix
   now quotes the failing assertion and its values.
+
+## 2026-11-24, milestone 50 (the barrel feathers a crowd; became the town's answer, Act Two only)
+
+- **The Tar Barrel feathers whole crowds and the levels are retuned to fit.**
+  Decided by Kyle ("Yes, retune levels"), after being told the crowd version
+  failed 12 of 20 levels at the gate with level data fixed.
+- **What may move and how far** is the coordinator's: per-level gold and
+  health within 15%, wave contents on levels 11 to 20 only, Free play health
+  scales; never the target windows or star lines. Reason: Kyle has played
+  the first act and called it good, so its waves and maps stay and its
+  numbers move as little as the gate allows.
+- **The barrel keeps its slow, radius and tar time.** Milestone 49's trial
+  traded slow for feathers and level 10 fell from 16 lives to 5, because
+  bosses do not run.
+- **The fairness check uses the ordinary bots with feathers forced (C6),**
+  not the feather bot alone, after the milestone 49 verifier showed that
+  bot was too weak to guard anything.
+- **The crowd barrel pays with a longer wait, before any level moves**
+  (coordinator, after the first build). At today's refill the barrel was
+  cast 20 to 23 times a game and lifted Free play by up to 8 lives; no
+  bounded retune passed (17 of 20 levels at best, level 8 impossible, 15 of
+  91 Free play targets missed). A slower refill after a barrel and, if
+  needed, a shorter barrel run (never under the one-second floor) cut its
+  power at the source and move fewer of the levels Kyle has played. Codex
+  proposed opening level 8's waves instead; not taken yet, because the
+  first act's waves are the last thing to move.
+- **Feather barrels are an Act Two rule only.** Decided by Kyle: "We'll keep
+  it act two for now, if we decide that it should be done later then we can
+  group it in with other items at that time if it makes sense to." Levels 1
+  to 10 and Free play stay exactly as they are; a Free play rebalance for
+  feather barrels everywhere is deferred, not planned.
+- **It is level data, shown on the card as the town's answer** (coordinator).
+  Players already learn a level's rules from its card in Act Two, so a
+  barrel that does more there is stated the same way the taxes are.
+- **The coordinator's two openings Codex proposed (level 10's Troll
+  interval, a Free play group's timing) are not taken.** With the rule
+  confined to Act Two neither is needed.
+- **Which Codex model does what** (Kyle, 2026-11-24): bigger builds run on
+  `gpt-6.2-astra` at medium reasoning effort; fixes and other small items
+  run on `gpt-6.2-sol` at high; if Sol cannot do a small item, Astra at low
+  ("light"). Reason, in Kyle's words: Astra "is a waste at higher levels"
+  and was "running through a week of usage for a basic game". Until now
+  every run was Astra at high (the effort came from the Codex config
+  default, which the coordinator never set or checked). Commit trailers
+  name the model that wrote the change.
+- **C2 asks for 1 life, not 2** (coordinator, after the Act Two build).
+  Levels 15, 16 and 18 gained exactly 1 life from the barrel and all three
+  give their third star for using no specials. The 2 was a guess. Level 20
+  gains nothing from the barrel and still fails, and the gate's own rule S1
+  (Act Two must cost the person-like bot at least 1.5 lives more than Act
+  One; now 1.33) is not waived.
+- **First run under the model rule:** the Act Two build on Astra at medium
+  used 191,132 tokens, against 337,209 and 493,233 for the two passes at
+  high. The remaining tuning goes to Sol at high as a small item.
+- **Verifier (Sonnet): merge.** It rebuilt 116 runs on levels 1 to 10 and in
+  Free play against main: all identical. Nine wrong changes each turned a
+  test red. Findings and what was done:
+  - **The feather barrel punishes a player who casts it at every chance.**
+    The specials share one charge and a feather barrel holds it for 51
+    seconds. Casting it whenever a special is ready, the person-like bot
+    loses levels 12 and 19 and drops a star on 13, 17 and 18; the good bot
+    loses 19. Swapping only the zone specials' turns for it loses no level.
+    The cost was invisible before the cast. Decided by the coordinator: say
+    it where the player chooses, with the number built from the data, in
+    the barrel's line and in a second tip. The rule itself stays; a big
+    move that has to be spent with care is the intended shape.
+  - **The Act Two difficulty step (S1) passes by one life** (1.53 against
+    1.5) and fails under a 2% health nudge on one level. Accepted as it
+    stands; any later change to levels 11 to 20 must re-check it first.
+  - **A feather barrel reaches Royal Harpies**, which no Tar Pit can. It
+    already tarred them before this milestone. Left as is.
+  - Stale records (README's "every special refills in 20 s", DEVLOG's
+    retune table) sent back with the wording change.

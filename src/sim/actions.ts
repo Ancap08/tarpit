@@ -16,8 +16,9 @@ import {
 } from './blockers';
 import { BOONS, boonScale, type BoonId } from './boons';
 import { applyBurn, applySpecialSlow, enemyPosition, removeDead } from './combat';
+import { FEATHERS, featherEnemy } from './feathers';
 import { cellKey, sameCell, terrainBlock, type Cell } from './grid';
-import { specialAllowed, SPECIAL_DEFS, SPECIAL_RECHARGE_TICKS, ZONE_LINGER_TICKS, specialRadius, tarLingerTicks, type SpecialType } from './specials';
+import { specialAllowed, SPECIAL_DEFS, spendSpecialCharge, ZONE_LINGER_TICKS, specialRadius, tarLingerTicks, type SpecialType } from './specials';
 import { TOWER_DEFS, TOWER_PATHS, allowedTowers, atTowerCap, towerBuildCost, maxTowerLevel, towerLevel, towerSellValue, towerUndoValue } from './towers';
 import type { GameState, Guard, Point, TargetingMode, Tower, TowerType, UpgradePath } from './types';
 
@@ -218,11 +219,11 @@ export function setTargeting(state: GameState, cell: Cell, mode: TargetingMode):
  * Barricade and Guards must also pass their trail snap and endpoint checks.
  * Each replaces blockers from its own prior cast and affects enemies on contact.
  * Otherwise it spends the charge, starts the recharge
- * (SPECIAL_RECHARGE_TICKS wave ticks) and acts at once on every live enemy
+ * for that special and acts at once on every live enemy
  * whose position is within the special's radius of the point (inclusive),
  * flying or not: the keg's damage at full strength (shields ignored); the
- * Tar Barrel's special slow and the Fire Arrows' special burn for
- * ZONE_LINGER_TICKS, as a zone tick would. The Tar Barrel and Fire Arrows
+ * Tar Barrel's special slow or the Fire Arrows' special burn. A Tar Barrel
+ * on a feather-barrel level feathers eligible enemies on impact. The Tar Barrel and Fire Arrows
  * then leave a zone at the point for `zoneTicks` (game.ts step 2b). Emits
  * one `special` event with the number of enemies hit (and the zone's id),
  * then `slowed` events for applied slows, then a `kill` (cause 'special')
@@ -243,9 +244,7 @@ export function useSpecial(state: GameState, type: SpecialType, point: Point): S
   } else if (!(x >= 0 && x <= state.map.width && y >= 0 && y <= state.map.height)) {
     return { ok: false, reason: 'out-of-bounds' };
   }
-  state.specialCharges = 0;
-  state.specialRechargeTicks = Math.round(boonScale(SPECIAL_RECHARGE_TICKS, state.boons, 'quickHands'));
-  state.lastSpecialTick = state.tick;
+  spendSpecialCharge(state, type);
   if (placement) {
     const { point: trail } = placement;
     state.events.push({ kind: 'special', type, x: trail.x, y: trail.y, angle: trail.angle, radius: 0, hits: 0 });
@@ -280,6 +279,7 @@ export function useSpecial(state: GameState, type: SpecialType, point: Point): S
       const applied = applySpecialSlow(enemy, def.slow, ticks);
       if (applied !== null) state.events.push({ kind: 'slowed', enemyId: enemy.id, slow: applied, ticks });
     }
+    if (type === 'tarBarrel' && state.level?.featherBarrels) featherEnemy(state, enemy, FEATHERS.barrelRunTicks);
     if (def.burnDps > 0) applyBurn(enemy, boonScale(def.burnDps, state.boons, 'hotCoals'), ZONE_LINGER_TICKS, 'special');
   }
   if (zoneId !== undefined && zoneType !== undefined) {

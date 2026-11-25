@@ -834,6 +834,87 @@ makes its sounds in code; no audio files.
 New towers, enemies, maps or levels; a new special; a hero; the castle
 wall; the Daily Writ; turncoats; gold-stealing collectors; a level editor.
 
+## Milestone 50: the town's answer (feather barrels in Act Two)
+
+Kyle chose a crowd-feathering Tar Barrel on 2026-11-24 ("Yes, retune
+levels") and, after two builds showed it could not fit Free play without
+rebalancing Free play, chose to keep it to Act Two: "We'll keep it act two
+for now, if we decide that it should be done later then we can group it in
+with other items at that time."
+
+### The rule
+
+- On levels 11 to 20 the town has **feather barrels**: a Tar Barrel tars and
+  feathers every enemy it lands on that can be feathered, so a whole crowd
+  runs back. It still leaves its tar.
+- It is a rule of the level, held in level data the way taxes are, and the
+  level card says so. The King has his taxes; this is the town's answer.
+- A feather barrel costs more: the shared special charge takes longer to
+  come back after one, and the run it causes may be shorter than a Feathers
+  tower's (never under the 60-tick floor). The button shows the real wait.
+- Everything else from milestone 49 holds: once per enemy, bosses never
+  run, flinch, a Feathers tower feathers enemies standing in tar.
+- **Levels 1 to 10 and Free play do not change at all.** There the Tar
+  Barrel is exactly what it is today, with today's wait.
+
+### Words (coordinator)
+
+| Where | Text |
+|---|---|
+| Level card, levels with feather barrels, in the town's blue | Town's answer: Tar Barrels feather crowds. |
+| Tar Barrel's line on those levels | Feathers a crowd. Next special in 51s. (The number is built from the wait in the data. First written as "Tar and feathers. Enemies caught run back.", which hid the cost.) |
+| Second tip line on the first Act Two level that allows the barrel | After a feather barrel, specials take 51s to return. (Number from the data.) |
+| Tip on the first Act Two level that allows the barrel | Drop a Tar Barrel on a crowd and they run back. |
+| Tar Barrel's line and the level 5 tip everywhere else | Unchanged |
+
+### What may move
+
+1. The feather barrel's own cost: the wait after it (today's refill up to
+   three times as long) and its run length (60 to 88 ticks).
+2. Levels 11 to 20: starting gold, health scale and health growth within
+   15% of today, then wave contents if needed.
+
+Not to move: anything on levels 1 to 10 (including the 0.987 health scale
+tried on level 9, which goes back to 1), Free play in any form, both Tar
+Pit paths, the Feathers tower's run and flinch, every other tower, enemy
+and special, the rules of taxes and feats, star lines, the 20 lives.
+
+### Targets (each a test that can fail)
+
+| Label | Target |
+|---|---|
+| C1 | On a feather-barrel level one cast feathers every enemy in its radius that is not a boss and not already feathered; none twice. On any other level and in Free play a cast feathers nothing |
+| C2 | Worth casting: on each of levels 11 to 20 that allows the barrel, the good bot ends at least 1 life or a star better than the same play with the barrel's turns unused, or already ends on 20 lives. (First written as 2 lives. Lowered once, by the coordinator: four of the levels that gained 1 give their third star for using no specials, so a barrel worth a little there is right. A barrel worth nothing, as on level 20, still fails.) |
+| C4 | Free play is untouched: every Free play output and the locked report are byte for byte as on main |
+| C5 | The campaign gate passes on all twenty levels, every label |
+| C6 | Fair for a person: the good and person-like bots with every Tar Pit on Feathers and the barrel preferred end no more than 4 lives above the unmodified good bot on any level and win no third star it does not |
+| C7 | Levels 1 to 10 are byte for byte as on main for every bot. Every changed number on levels 11 to 20 is listed old and new |
+| C8 | The finale holds: on level 20 the good bot ends within 2 lives of today |
+| C9 | The wait after a feather barrel is longer than after any other special, the button shows it, and an ordinary Tar Barrel on levels 1 to 10 and in Free play keeps today's wait |
+| C10 | The card says it: every level with feather barrels shows the town's answer line, no other level does, and it fits at 390x664 and 390x844 with one and two taxes, in the fixed-metrics and wide-text modes |
+
+If these cannot all be met, the implementer stops and reports.
+
+### What the first two builds found (kept for the record)
+
+At full strength and today's wait the crowd barrel lifted Free play's
+standard run from 14, 11 and 14 lives to 21, 15 and 22. With a 50-second
+wait and a 63-tick run the campaign could pass on all twenty levels by
+moving ten levels' numbers, with level 10 three lives harder. Free play
+could not: the best trial moved Hard's health by 16% and 51% and still
+missed 7 of 91 targets.
+
+### Later, if Kyle wants it
+
+Feather barrels everywhere, which needs a Free play rebalance. Kyle: group
+it with other items at that time if it makes sense.
+
+### Not in this milestone
+
+A Fire Arrows change; new towers, enemies, maps or levels; the hero; the
+castle wall; the Daily Writ; turncoats; gold-stealing collectors; a level
+editor.
+
 ## Later milestones (order agreed, detail to come)
 
 | # | Milestone | Idea |

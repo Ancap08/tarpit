@@ -21,6 +21,7 @@
 // `timed` list, so a replay is the same game.
 
 import { enemyPosition } from './combat';
+import { isBoss } from './enemies';
 import { pathLength, positionAlongPath } from './map';
 import { isSpecialUnlocked, specialRadius, type SpecialType } from './specials';
 import type { EnemyType, GameState, MapDef, Point } from './types';
@@ -126,6 +127,13 @@ export function policyChoice(state: GameState, lastZone: SpecialType | undefined
   }
   if (state.waveTick % POLICY_CHECK_TICKS !== 0) return undefined;
   return chooseCrowdSpecial(state, lastZone, options);
+}
+
+/** Aim the barrel on the player's ordinary aim grid, favoring enemies still eligible for feathers. */
+export function chooseFeatherBarrel(state: GameState, points: readonly Point[]): PolicyChoice | undefined {
+  const eligible = state.enemies.filter(enemy => !enemy.feathered && !isBoss(enemy));
+  const positions = (eligible.length ? eligible : state.enemies).map(enemy => ({ p: enemyPosition(enemy, state.map), big: false }));
+  return bestPoint(state, positions, 'tarBarrel', false, { points, minHits: 1 });
 }
 
 /** Choose among the visible enemies after the caller has decided when to look. */

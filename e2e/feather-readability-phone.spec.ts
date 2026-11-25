@@ -77,6 +77,7 @@ test('a tarred runner in a crowd shows at least 45 square CSS pixels of bright p
 });
 
 test('loose feathers drift during the run, hold their pose on pause and clear at the end', async ({ page }) => {
+  test.setTimeout(60_000);
   await startPlay(page, '/?renderer=canvas&perf=1&look=painted');
   const result = await page.evaluate(async () => {
     const api = window.__tarpit!;

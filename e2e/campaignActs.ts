@@ -5,7 +5,7 @@ import {
 } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { api, press } from './campaign';
-import { useTallFontMetrics } from './campaignFont';
+import { useTallFontMetrics, useWideFontMetrics } from './campaignFont';
 import { checkSpacing, onScreen, rotate } from './campaignScreens';
 import { paintedAsset, settle } from './painted';
 import { checkTaxLine } from './taxHud';
@@ -53,6 +53,17 @@ async function readCard(page: Page, id: number) {
     LEVEL_STORY[id].notice, CAMPAIGN_TEXT.inForce, ...levelTaxLines(level.taxes!),
     cardFeatText(level.feat!), CAMPAIGN_TEXT.bestStars,
   ]));
+  const answer = await api(page, t => {
+    const node = t.game.scene.getScene('title').children.list.find(o => o.type === 'Text' &&
+      (o as Phaser.GameObjects.Text).visible && (o as Phaser.GameObjects.Text).text === "Town's answer: Tar Barrels feather crowds.");
+    if (!node) return null;
+    const line = node as Phaser.GameObjects.Text;
+    return { color: line.style.color, fontSize: line.style.fontSize, scale: Math.min(line.scaleX, line.scaleY),
+      portrait: t.layout() === 'portrait' };
+  });
+  expect(answer, `C10: town's answer on level ${id}`).toMatchObject({
+    color: '#254a57', fontSize: answer?.portrait ? '26px' : '21px', scale: 1,
+  });
   await checkSpacing(page);
 }
 
@@ -263,6 +274,22 @@ export function campaignActSuite(touch: boolean, phone = false) {
   });
 
   for (const height of phone ? [844, 664] : [0]) {
+    if (height) test(`C10: every Act Two notice fits with wide text at 390x${height}`, async ({ page }) => {
+      test.setTimeout(90_000);
+      await page.setViewportSize({ width: 390, height });
+      await useWideFontMetrics(page, process.platform === 'darwin' ? 1.09 : 1.06);
+      await page.goto('/?test=1');
+      await waitForFirstScreen(page);
+      await seed(page, 19);
+      await press(page, 'title:campaign', touch);
+      for (const level of LEVELS.slice(10)) {
+        await onScreen(page, 'levelMap');
+        await press(page, `title:stop:${level.id}`, touch);
+        await readCard(page, level.id);
+        await checkSize(page);
+        await press(page, 'title:back', touch);
+      }
+    });
     for (const metrics of ['normal', 'fixed Caslon', 'fixed fallback']) {
       test(`act maps, notices, cards and results fit ${height || 'landscape'} with ${metrics}`, async ({ page }) => {
         test.setTimeout(180_000);

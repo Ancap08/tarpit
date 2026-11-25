@@ -1,8 +1,7 @@
 // Special attacks (milestone 25b, reworked in milestone 30,
 // docs/SCOPE-v5.md "Specials rework").
-// One shared charge: it is ready when a wave starts (Start Wave or an early
-// call); after a special is fired it is ready again SPECIAL_RECHARGE_TICKS
-// of wave time later. It does not recharge in setup. The player aims a
+// One shared charge, recharging in wave time. A feather-barrel wait carries across
+// waves and pauses in setup. Other specials refill at a wave start. The player aims a
 // special at a map point; it acts at once, between ticks, like a build. The
 // Tar Barrel and Fire Arrows also leave a ground zone at the point for
 // `zoneTicks` (game.ts zonesStep). Specials hit flying enemies and ignore
@@ -37,8 +36,34 @@ export interface SpecialDef {
  */
 export const ZONE_LINGER_TICKS = 60;
 
-/** Wave ticks from firing a special until the shared charge is ready again (milestone 30). */
+/** Wave ticks for an ordinary refill and for the longer wait after a feather barrel. */
 export const SPECIAL_RECHARGE_TICKS = 1200;
+export const BARREL_RECHARGE_TICKS = 3034;
+
+export function ordinaryRechargeTicks(held: readonly BoonId[]): number {
+  return Math.round(boonScale(SPECIAL_RECHARGE_TICKS, held, 'quickHands'));
+}
+
+/** Shared by real casts and the headless control that rests on the barrel's turn. */
+export function spendSpecialCharge(state: GameState, type: SpecialType): void {
+  state.specialCharges = 0;
+  state.lastSpecialTick = state.tick;
+  if (type === 'tarBarrel' && state.level?.featherBarrels) {
+    state.specialRechargeTicks = Math.round(boonScale(BARREL_RECHARGE_TICKS, state.boons, 'quickHands'));
+    state.barrelRecharge = { totalTicks: state.specialRechargeTicks };
+  } else {
+    state.specialRechargeTicks = ordinaryRechargeTicks(state.boons);
+    delete state.barrelRecharge;
+  }
+}
+
+/** An outstanding barrel wait carries into the new wave on every kind of start. */
+export function refillAtWaveStart(state: GameState): void {
+  if (state.barrelRecharge && state.specialRechargeTicks > 0) return;
+  state.specialRechargeTicks = 0;
+  state.specialCharges = state.level?.allowedSpecials.length === 0 && !state.cheated ? 0 : 1;
+  delete state.barrelRecharge;
+}
 
 /**
  * Milestone 30 numbers. Radii are SCOPE-v5's starting numbers (keg 70 ->

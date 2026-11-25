@@ -352,16 +352,17 @@ beside it that returns to the title; the win screen also has [Keep going].
 
 ### Feathers
 
-Only a path B Tar Pit shot can feather an enemy. A shot feathers a surviving
-ground target once in its life if either its tower slow or its Tar Barrel
-slow is active. This includes enemies tarred on impact or after entering
-the barrel's zone. A shot that cannot feather its target applies its usual
-slow. Both bosses keep their slow cap and are immune to feathers and flinching.
-Each successful shot emits `feathered {enemyId, x, y}` at the impact position.
+A Tar Barrel tars the enemies inside its radius on impact. Levels 11–20 set
+the level rule `featherBarrels`. On these levels the impact also feathers
+each eligible enemy, including Harpies. Free play and levels 1–10 use ordinary tar. Enemies that enter the
+puddle later receive the slow. A path B Tar Pit shot feathers a surviving
+ground target if either its tower slow or its Tar Barrel slow is active. A
+shot that cannot feather its target applies its usual slow. Both bosses keep their slow cap and are immune to feathers and flinching.
+Each enemy emits one `feathered {enemyId, x, y}` event at the start of its only retreat.
 
-| Run ticks | Flinch ticks |
-|---:|---:|
-| 88 | 16 |
+| Tower run ticks | Barrel run ticks | Flinch ticks |
+|---:|---:|---:|
+| 88 | 63 | 16 |
 
 A runner follows the same trail backward at its own walking speed from the enemy table. It passes
 through Guards and Barricades without either side attacking, and leaves
@@ -579,14 +580,17 @@ Reloading starts a new run.
 | Guards | 6 | 0 | - | - | - | - |
 | Fire Arrows | 7 | 90 | - | - | 26 | 660 |
 
-- **Charge.** One charge shared by all five specials. `state.specialCharges`
-  is 0 or 1 and `state.specialRechargeTicks` counts the refill. A wave start
-  (Start Wave or an early call) makes it ready at once (1, recharge 0).
-  Only one special can fire in one simulation tick, including across an early-call refill.
-  Using a special spends it and starts the recharge: it is ready again
-  1200 wave ticks later (20 s, `SPECIAL_RECHARGE_TICKS`). Quick Hands
-  lowers this interval to 684 ticks (11.4 s). The counter runs in step 6
-  of each wave tick. Wave clear resets the charge and the recharge to 0.
+- **Charge.** All five specials share one charge. A feather barrel spends it for
+  3034 wave ticks (about 50.57 s). Ordinary barrels and all other specials spend it for 1200 wave ticks
+  (20 s). Quick Hands scales the wait at cast time to 1729 ticks (about 28.82 s)
+  after a feather barrel or 684 ticks (11.4 s) after another special.
+  A feather barrel's remaining wait carries in full across an early call, Start Wave
+  and automatic dispatch. The timer pauses during setup
+  and resumes on the next combat tick. A reward chosen during setup first applies
+  to a subsequent cast. Ordinary barrels and other specials refill when the next wave starts.
+  Only one special can fire in a simulation tick, even across an early call.
+  The button shows remaining seconds rounded up and fills as the wait elapses.
+  During setup it shows the paused barrel wait.
 - **Use.** `useSpecial(state, type, {x, y})` acts at once, between ticks,
   like a build. The keg and zones affect every live enemy inside their
   effective radius (inclusive), flyers included.
@@ -657,7 +661,7 @@ Reloading starts a new run.
   the next tick as usual.
 - **Event.** `special {type, x, y, radius, hits, zoneId?}` (`zoneId` for the
   Tar Barrel and Fire Arrows), then `slowed` for each slow applied on
-  landing, then the kills.
+  landing and a `feathered` event for each newly feathered enemy, then the kills.
 - Barricade placement emits the usual `special` event with its snapped
   coordinates, trail angle, zero radius and zero hits. Each attack emits
   `blockerHit`. Destruction emits one `blockerBreak`.
@@ -669,7 +673,7 @@ Reloading starts a new run.
   amber fill grows from its left edge under the label as the recharge runs,
   and the label is the countdown in whole seconds ("Wait 12s", in place of
   "Special"). In setup and after the game
-  it is greyed with an empty pip. It is highlighted while its popup is open
+  it is greyed with an empty pip. Setup retains the countdown and fill for a pending barrel wait. It is highlighted while its popup is open
   or a special is aimed. Pressing it with one special unlocked selects it;
   with more it opens a popup above it listing the unlocked specials.
 - **Aiming.** While a special is aimed a banner over the top of the map
@@ -821,9 +825,9 @@ later tick adds 1/60 s, so the bonus is 19 from 60 ticks later and 0 from
 1200 ticks later (a call is still allowed at 0). Enemies still alive stay
 on the field: they move, exit, cost lives and pay bounties as usual, and
 the called wave's clear check waits for them too. The next wave starts its
-spawn schedule from waveTick 0 (the wave counter goes up), the special
-charge is made ready (1, recharge 0), event `earlyCall {wave, bonus}` (the new wave) and then
-`waveStart`. Each wave pays its clear bonus once. On screen, Start Wave
+spawn schedule from waveTick 0 (the wave counter goes up), carries any
+outstanding barrel wait or refills the charge, then emits `earlyCall {wave, bonus}` (the new wave)
+followed by `waveStart`. Each wave pays its clear bonus once. On screen, Start Wave
 reads "Call next  +14" (`names.ts` `callEarlyLabel`, 14 px) with the
 current bonus while a call would succeed, and pressing it calls; otherwise
 it reads "Start Wave". `ui().callEarly` reports `{available, bonus}`.
@@ -931,7 +935,7 @@ owner); (5) due enemies, including called Wolves, spawn at distance 0
 and first move or take damage on a later tick; (6) the tick counters advance and the special recharge counts
 down (at 0 the charge is ready); (7) if all scheduled enemies and called
 Wolves have spawned and none are alive, the game pays the clear bonus,
-resets the charge and recharge, removes the zones, and goes to `setup`
+clears the charge, retains any outstanding barrel wait, removes the zones, and goes to `setup`
 (or `won` after campaign wave 20). Campaign waves 5, 10 and 15 also
 offer a reward. A slow or
 burn set in step 4 first acts on the next tick; a zone's burn acts in
@@ -1906,6 +1910,18 @@ are exempt. Saved stars keep their previous meaning and the best result wins.
 - Every 30 wave ticks Good applies the existing crowd policy for keg and zones, limited to available specials. It also checks for at least three walkers approaching a legal blocker position 50–140 px ahead, covered by a tower. A splash tower adds one to the blocker score. A blocker must beat the current cast's hit count, and its kind must be absent from the trail. Guards get the first blocker tie.
 - **Person** uses Good’s purchase scores and reward choices. For the chosen tower type, successive placements rotate through the first, second and third highest-scoring cells. During combat it makes at most one decision per three seconds. It acts 1.5 seconds after each charge becomes ready, including the opening charge. If the next wave opens before another look is due, it repeats the previous opening cast at the charge deadline. Its candidate points are centres of 48 px cells along the trail. It prefers Good’s qualifying cast, then a cast covering fewer enemies, then a legal cast even on an empty trail.
 
+- **Unused barrel turns.** The Act Two control plays as Good. At each barrel
+  opportunity it spends the charge and advances the alternating turn without
+  creating a zone, slowing enemies or feathering them. C2 requires Good to
+  finish with at least one more life or one more star than this control, or
+  to finish with all 20 lives.
+
+- **Feathers-forced Good and Person** keep the ordinary player’s shopping,
+  cast opportunities and aim grid. Each buys Feathers whenever it buys a Tar
+  Pit path. Where the barrel is available, it aims for the largest eligible
+  crowd at that opportunity. C6 compares each outcome with ordinary Good
+  and permits at most four additional lives and no additional third star.
+
 - **Beginner** spends on the cheapest allowed tower in the map's trail-cell order. When it cannot place another, it can buy one affordable upgrade, taking path A at the second upgrade. It takes the first reward and uses no specials.
 
 In Normal Free play, Good must win or lose on each map the same way as
@@ -2010,36 +2026,54 @@ Stars/lives give each bot’s highest award and surviving lives. Time counts Goo
 | 8 | Stand Fast | Switchback | 7 | 517 | 295 | 1.28 | — | 2 | — | 2/12 | 2/13 | 0/0 | 8.08 | 30 | 36 |
 | 9 | The King's Assessor | Riverbend | 7 | 535 | 255 | 1 | 6 | 3 | 5 | 3/20 | 3/20 | 0/0 | 7.57 | 17 | 42 |
 | 10 | Last Light | Meadow | 7 | 633 | 280 | 0.925 | 5 | 3 | 5 | 2/16 | 2/13 | 0/0 | 8.89 | 19 | 36 |
-| 11 | Window Money | Riverbend | 6 | 326 | 245 | 0.91 | — | 3 | 1 | 2/20 | 2/14 | 0/0 | 5.91 | 23 | 21 |
-| 12 | The Quickstep | Switchback | 7 | 466 | 260 | 1.14 | — | 3 | 1 | 2/19 | 2/15 | 0/0 | 6.73 | 30 | 38 |
-| 13 | Eight Bells | Riverbend | 7 | 319 | 285 | 0.85 | — | 3 | 1 | 3/20 | 2/14 | 0/0 | 5.63 | 17 | 31 |
-| 14 | Short Measure | Meadow | 6 | 331 | 240 | 0.93 | — | 3 | — | 3/20 | 2/14 | 0/0 | 5.53 | 19 | 27 |
+| 11 | Window Money | Riverbend | 6 | 324 | 245 | 0.91 | — | 3 | 1 | 2/20 | 2/14 | 0/0 | 5.91 | 22 | 21 |
+| 12 | The Quickstep | Switchback | 7 | 467 | 269 | 1.14 | — | 3 | 1 | 2/17 | 2/13 | 0/0 | 6.97 | 29 | 38 |
+| 13 | Eight Bells | Riverbend | 7 | 312 | 285 | 0.85 | — | 3 | 1 | 3/20 | 2/15 | 0/0 | 5.56 | 14 | 31 |
+| 14 | Short Measure | Meadow | 6 | 331 | 240 | 0.93 | — | 3 | — | 3/20 | 2/14 | 0/0 | 5.52 | 25 | 27 |
 | 15 | Pay Day | Riverbend | 6 | 285 | 255 | 1.08 | — | 3 | 2 | 2/14 | 2/13 | 0/0 | 5.81 | 9 | 40 |
-| 16 | Three Permits | Meadow | 6 | 292 | 245 | 1 | — | 3 | 1 | 2/14 | 2/13 | 0/0 | 5.72 | 11 | 40 |
-| 17 | Closing Time | Switchback | 7 | 387 | 220 | 0.94 | — | 3 | 1 | 2/20 | 2/14 | 0/0 | 6.33 | 23 | 58 |
-| 18 | Three at the Gate | Meadow | 6 | 280 | 260 | 1 | — | 3 | 3 | 2/14 | 2/13 | 0/0 | 5.14 | 13 | 49 |
-| 19 | The Sash Levy | Meadow | 6 | 350 | 245 | 0.94 | — | 3 | 1 | 2/14 | 2/14 | 0/0 | 5.82 | 31 | 47 |
-| 20 | The Last Writ | Riverbend | 8 | 509 | 245 | 0.925 | — | 3 | — | 2/13 | 2/13 | 0/0 | 8.98 | 12 | 53 |
+| 16 | Three Permits | Meadow | 6 | 292 | 245 | 1 | — | 3 | 1 | 2/14 | 2/14 | 0/0 | 5.72 | 11 | 40 |
+| 17 | Closing Time | Switchback | 7 | 384 | 220 | 0.94 | — | 3 | 1 | 2/20 | 2/14 | 0/0 | 6.39 | 23 | 58 |
+| 18 | Three at the Gate | Meadow | 6 | 280 | 275 | 1 | — | 3 | 3 | 2/15 | 2/13 | 0/0 | 5.20 | 14 | 49 |
+| 19 | The Sash Levy | Meadow | 6 | 350 | 245 | 0.94 | — | 3 | 1 | 2/14 | 2/15 | 0/0 | 5.79 | 31 | 47 |
+| 20 | The Last Writ | Riverbend | 8 | 509 | 270 | 0.925 | — | 3 | — | 2/13 | 2/13 | 0/0 | 8.91 | 12 | 53 |
 
 Good clears the first ten stops in 72.70 combat minutes, with a 4.00-life
-mean drop. Across all twenty stops Good takes 134.31 combat minutes.
-Mean surviving lives drop from 18.00 on levels 1–6 to 14.83 on levels 15–20.
+mean drop. Across all twenty stops Good takes 134.47 combat minutes.
+Mean surviving lives drop from 18.00 on levels 1–6 to 15.00 on levels 15–20.
+
+The Act Two feather-barrel retune uses the following wave groups.
+Intervals are seconds between consecutive enemies in one group.
+
+| Level | Wave | Group | Enemies | Count | Interval |
+|---:|---:|---:|---|---:|---:|
+| 11 | 6 | 1 | Troll | 19 | 1.05 |
+| 12 | 1 | 1 | Shieldbearer | 38 | 1.265 |
+| 12 | 6 | 1 | Shieldbearer | 68 | 0.79 |
+| 12 | 6 | 2 | Troll | 22 | 1.7 |
+| 13 | 3 | 2 | Harpy | 34 | 1.21 |
+| 13 | 5 | 1 | Troll | 13 | 2.1 |
+| 17 | 2 | 1 | Harpy | 27 | 1 |
+| 17 | 5 | 2 | Goblin | 36 | 1.25 |
+| 19 | 2 | 2 | Harpy | 43 | 1.2312 |
+| 19 | 3 | 1 | Troll | 11 | 1.61 |
+| 20 | 2 | 2 | Goblin | 24 | 2.22 |
+| 20 | 6 | 1 | Troll | 5 | 2.85 |
 
 Fractions below are shares of the base price, speed or range. The purse pays
 gold, the delay counts seconds at 1×, and the cap counts towers standing.
 
 | Stop | Window Tax | Frozen Purse | Forced March | Curfew | No Loitering | Rationing | Feat | Build limit | Feat Good |
 |---:|---:|---:|---:|---:|---:|---:|---|---:|---|
-| 11 | 0.085 | — | — | — | — | — | noSpecials | — | 3/15 |
-| 12 | — | — | 0.2 | — | — | — | maxTowers | 5 | 3/13 |
+| 11 | 0.085 | — | — | — | — | — | noSpecials | — | 3/17 |
+| 12 | — | — | 0.2 | — | — | — | maxTowers | 5 | 3/12 |
 | 13 | — | — | — | — | 8 | — | noLeaks | — | 3/20 |
 | 14 | — | — | — | 0.15 | — | — | noLeaks | — | 3/20 |
 | 15 | — | 80 | — | — | — | — | noSpecials | — | 3/12 |
 | 16 | — | — | — | — | — | 3 | noSpecials | — | 3/12 |
-| 17 | — | — | — | 0.2 | 8 | — | maxTowers | 2 | 3/14 |
+| 17 | — | — | — | 0.2 | 8 | — | maxTowers | 2 | 3/17 |
 | 18 | — | — | 0.18 | — | — | 3 | noSpecials | — | 3/12 |
 | 19 | 0.05 | — | — | 0.1 | — | — | maxTowers | 5 | 3/13 |
-| 20 | — | 80 | — | 0.2 | — | — | noSpecials | — | 3/13 |
+| 20 | — | 80 | — | 0.2 | — | — | noSpecials | — | 3/12 |
 
 Pack Trail builds up from three-Goblin ranks to groups of six. Heavy Feet ends with a column of 20 Trolls, which Mortars can hit on Riverbend beyond the reach of the installed short-range towers. Hold the Bend has the most spawns. Stand Fast combines shielded ground formations with air pressure. The King's Assessor sends upgraded towers against Trolls and a shielded escort before Grumblefoot. Last Light closes with Grumblemaw.
 
@@ -2066,7 +2100,12 @@ Tapping a locked stop names the first open level still to win. Back returns to
 the first screen. An open stop shows a card with the King's notice, level name, map,
 twist, new equipment or enemies, and best stars. Act Two cards list each
 tax name and amount under “In force” and print the name and task for
-the third star. Notices, tax amounts and build limits read the level record.
+the third star. In town blue the notice reads “Town's answer: Tar Barrels feather crowds.”
+The special menu on these levels reads “Feathers a crowd. Next special in 51s.”
+Level 11 teaches “Drop a Tar Barrel on a crowd and they run back.” The next
+tip reads “After a feather barrel, specials take 51s to return.” Both waits
+use the base barrel recharge from the data and round up like the Special
+button. Notices, tax amounts and build limits read the level record.
 The card measures the printed lines. If there is insufficient room for the
 map and tactics, “Map notes” turns the card over and “Notice” turns it
 back. Play and best stars stay available on both pages. Portrait card body

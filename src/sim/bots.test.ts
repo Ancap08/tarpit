@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { buildTower, upgradeTower, useSpecial } from './actions';
 import { botBeginner, botGood, botGoodFeat, botPerson, runBot } from './bots';
-import { createGame, startWave, tick } from './game';
+import { callNextWave, createGame, startWave, tick } from './game';
+import { BARREL_RECHARGE_TICKS } from './specials';
 import { trailCellOrder } from './headless';
 import type { LevelDef } from './levelTypes';
 import type { EnemyType, MapDef } from './types';
@@ -239,6 +240,44 @@ describe('person policy', () => {
     }));
     expect(botPerson.special(state)).toEqual(first);
     expect(botPerson.special({ ...state })).not.toEqual(first);
+  });
+
+  it('C2: an unused barrel spends the same turn and wait without placing tar or feathering', () => {
+    const state = createGame({ level: { ...level, featherBarrels: true, allowedSpecials: ['tarBarrel', 'keg'] } });
+    startWave(state);
+    state.enemies.push({ id: 42, type: 'troll', distance: 80, hp: 950, slow: 0, slowTicksLeft: 0 });
+    let nextZone;
+    const run = runBot(state, {
+      ...botGood, leaveBarrelUnused: true,
+      special(s, lastZone) {
+        nextZone = lastZone;
+        if (!s.specialCharges) return undefined;
+        return { type: 'special', special: 'tarBarrel', x: 80, y: 240, atWaveTick: s.waveTick };
+      },
+    }, 1, 2);
+    expect(nextZone).toBe('tarBarrel');
+    expect(state.zones).toEqual([]);
+    expect(state.enemies[0].feathered).toBeUndefined();
+    expect(state.enemies[0].specialSlowTicksLeft).toBeUndefined();
+    expect([state.specialCharges, state.specialRechargeTicks]).toEqual([0, BARREL_RECHARGE_TICKS - 2]);
+    expect(run.log.some(step => step.action === 'special')).toBe(false);
+  });
+
+  it('reacts 90 ticks after a barrel wait ends across an early call', () => {
+    const groups = [{ type: 'goblin' as const, count: 2, interval: 3000, delay: 0 }];
+    const state = createGame({ level: { ...level, featherBarrels: true, allowedSpecials: ['tarBarrel', 'keg'],
+      waves: [{ groups }, { groups }, { groups }] } });
+    expect(startWave(state).ok).toBe(true);
+    tick(state);
+    expect(useSpecial(state, 'tarBarrel', { x: 300, y: 240 }).ok).toBe(true);
+    state.spawnedPerGroup = [2];
+    expect(callNextWave(state).ok).toBe(true);
+    const wait = BARREL_RECHARGE_TICKS;
+    for (let elapsed = 0; elapsed < wait + 90; elapsed++) {
+      expect(botPerson.special(state)).toBeUndefined();
+      tick(state);
+    }
+    expect(botPerson.special(state)).toMatchObject({ type: 'special', atWaveTick: wait + 90 });
   });
 
   it('spends each charge within 90 ticks on a cell centre and spaces fight decisions by at least 180 ticks', () => {

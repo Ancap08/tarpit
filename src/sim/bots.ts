@@ -1,14 +1,14 @@
 // Generic headless players. Setup decisions use the same next-wave preview as
 // the HUD. Fight decisions look at enemies already on the map.
 import { barricadePlacement, guardsPlacement } from './blockers';
-import { BOONS, boonScale, type BoonId } from './boons';
+import { BOONS, type BoonId } from './boons';
 import { ENEMY_STATS, isBoss } from './enemies';
 import { tick } from './game';
 import { buildableCells, cellCenter, cellFromKey, cellKey } from './grid';
 import { applyAction, densestCluster, trailCellOrder, type BuildAction, type HeadlessStepResult, type SpecialAction } from './headless';
 import { pathLength, positionAlongPath } from './map';
-import { BIG_ENEMIES, POLICY_CHECK_TICKS, POLICY_MIN_HITS, chooseCrowdSpecial, policyCandidates } from './specialPolicy';
-import { availableSpecials, specialRadius, SPECIAL_RECHARGE_TICKS, type SpecialType } from './specials';
+import { BIG_ENEMIES, POLICY_CHECK_TICKS, POLICY_MIN_HITS, chooseCrowdSpecial, chooseFeatherBarrel, policyCandidates } from './specialPolicy';
+import { availableSpecials, specialRadius, ordinaryRechargeTicks, spendSpecialCharge, type SpecialType } from './specials';
 import { TICKS_PER_SECOND } from './time';
 import { TOWER_DEFS, TOWER_PATHS, allowedTowers, atTowerCap, towerBuildCost, maxTowerLevel, towerLevel, towerStats } from './towers';
 import type { GameState, MapDef, Point, TowerLevelStats, TowerType, UpgradePath } from './types';
@@ -21,6 +21,8 @@ const BLOCK_APPROACH = 140;
 const SETUP_RESERVE = 30;
 
 export interface BotPolicy {
+  /** Spend a barrel turn and its charge, without applying its effects (C2 control). */
+  leaveBarrelUnused?: boolean;
   purchase(state: GameState): BuildAction | undefined;
   /** Maximum number of upgrade purchases per setup, if limited. */
   upgradesPerSetup?: number;
@@ -31,7 +33,7 @@ export interface BotPolicy {
 }
 
 export interface BotRun {
-  /** Successful featherings from path B shots during this bot’s trial. */
+  /** Successful featherings during the feather bot’s trial. */
   feathered?: number;
   peakAlive: number;
   waveOneLives: number;
@@ -349,8 +351,8 @@ function personSpecial(state: GameState, lastZone?: SpecialType): SpecialAction 
   if (state.phase !== 'wave' || state.specialCharges <= 0) return undefined;
   const waveStart = state.tick - state.waveTick;
   const previousCast = state.lastSpecialTick ?? -Infinity;
-  const recharge = Math.round(boonScale(SPECIAL_RECHARGE_TICKS, state.boons, 'quickHands'));
-  const ready = previousCast >= waveStart ? previousCast + recharge : waveStart;
+  const ready = state.barrelRecharge?.readyTick ??
+    (previousCast >= waveStart ? previousCast + ordinaryRechargeTicks(state.boons) : waveStart);
   if (state.tick !== ready + PERSON_REACTION_TICKS) return undefined;
   const previous = personLooks.get(state);
   if (previous?.tick === state.tick) return previous.choice;
@@ -386,6 +388,28 @@ export const botPerson: BotPolicy = {
   special: personSpecial,
 };
 
+/** Keep the ordinary player's aim, timing and purchases while favoring feathers. */
+export function preferFeathers(player: BotPolicy): BotPolicy {
+  return {
+    ...player,
+    purchase(state) {
+      const action = player.purchase(state);
+      if (action?.type === 'upgrade' && action.path && state.towers.some(tower =>
+        tower.type === 'tarpit' && cellKey(tower.cell) === cellKey(action.cell))) {
+        return { ...action, path: 'B' };
+      }
+      return action;
+    },
+    special(state, lastZone) {
+      const action = player.special(state, lastZone);
+      if (!action || !availableSpecials(state).includes('tarBarrel')) return action;
+      const points = player === botPerson ? personAims(state.map) : policyCandidates(state.map);
+      const aim = chooseFeatherBarrel(state, points) ?? action;
+      return { ...action, special: 'tarBarrel', x: aim.x, y: aim.y };
+    },
+  };
+}
+
 /** Keep the player's placement, reward and timing policy while pursuing the public feat. */
 function pursueFeat(player: BotPolicy, rotatePlacements: boolean): BotPolicy {
   return {
@@ -404,7 +428,7 @@ export const botGoodFeat = pursueFeat(botGood, false);
 export const botPersonFeat = pursueFeat(botPerson, true);
 
 /** Run to a terminal state or stop between waves at the optional wave cap. */
-export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity, maxTicks = 60 * 60 * TICKS_PER_SECOND): BotRun {
+export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity, maxTicks = 60 * 60 * TICKS_PER_SECOND, barrelImpact?: { casts: number; feathered: number }): BotRun {
   const log: HeadlessStepResult[] = [];
   let feathered = 0;
   function apply(action: Parameters<typeof applyAction>[1]): boolean {
@@ -443,8 +467,20 @@ export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity,
       if (state.phase === 'setup' && !apply({ type: 'startWave' })) break;
     }
     const special = bot.special(state, lastZone);
-    if (special && apply(special) && (special.special === 'tarBarrel' || special.special === 'fireArrows')) {
+    const eventsBeforeCast = state.events.length;
+    if (special?.special === 'tarBarrel' && bot.leaveBarrelUnused) {
+      spendSpecialCharge(state, 'tarBarrel');
+      lastZone = 'tarBarrel';
+    } else if (special && apply(special) && (special.special === 'tarBarrel' || special.special === 'fireArrows')) {
       lastZone = special.special;
+      if (special.special === 'tarBarrel' && (barrelImpact || bot === botFeathers)) {
+        const hits = state.events.slice(eventsBeforeCast).filter(event => event.kind === 'feathered').length;
+        feathered += hits;
+        if (barrelImpact) {
+          barrelImpact.casts++;
+          barrelImpact.feathered += hits;
+        }
+      }
     }
     tick(state);
     if (bot === botFeathers) {
