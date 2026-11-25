@@ -7,7 +7,7 @@ import { registerServiceWorker } from './sw/register';
 import { installGlobal, isTestMode } from './game/testMode';
 import { TitleScene } from './game/TitleScene';
 import { sound } from './game/audio/engine';
-import { keepSelection } from './game/keep/switch';
+import { actThreeEnabled, keepSelection } from './game/keep/switch';
 
 // ?renderer=canvas forces the Canvas renderer in play (time and animations
 // stay live). e2e/live.spec.ts uses it so its tick-rate checks do not depend
@@ -15,7 +15,7 @@ import { keepSelection } from './game/keep/switch';
 // software at a few frames a second.
 const query = new URLSearchParams(window.location.search);
 const forceCanvas = query.get('renderer') === 'canvas';
-const keep = !!keepSelection(window.location.search);
+const keep = !!keepSelection(window.location.search) || actThreeEnabled(window.location.search);
 
 void loadFonts().then(startGame);
 

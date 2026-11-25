@@ -113,6 +113,8 @@
 // which keeps it if it beats the stored best for this map and level.
 
 import Phaser from 'phaser';
+import { actThreeEnabled } from './keep/switch';
+import { broadsideStore } from './seenTips';
 import { duringKeepLoad, finishKeepLoad } from './keep/status';
 import { panel, THEME } from './ui/theme';
 import {
@@ -192,11 +194,12 @@ import { drawPlacementCell } from './draw/placement';
 import { ShotEffects } from './draw/shots';
 import { SpecialEffects } from './draw/specials';
 import { Aim, drawTowerShape, drawTowers } from './draw/towers';
-import { seenBroadsides } from './seenTips';
 import { campaignProgress } from './campaignProgress';
 import { highScores } from './highScore';
+import { SiegeView } from './keep/siegeView';
+import { RoadBanners } from './ui/roadBanners';
 import { SiegeControls } from './ui/siegeControls';
-import { drawSiegeRoads } from './draw/siege';
+import { drawGateMarker, drawSiegeRoads } from './draw/siege';
 import { callEarlyInfo, CHEAT_TAPS, CHEAT_WINDOW_MS, Hud, specialReady, specialRecharge } from './hud';
 import { AIM_BANNER, aimBannerText, BARRICADE_AIM_REASONS, PAINTED_FALLBACK, REWARD_KEYS } from './names';
 import {
@@ -446,6 +449,8 @@ export class GameScene extends Phaser.Scene {
   private overlay!: Phaser.GameObjects.Graphics;
   private hud!: Hud;
   private siegeControls?: SiegeControls;
+  private siegeView?: SiegeView;
+  private roadBanners?: RoadBanners;
   private reward!: BoonReward;
   private mapBlockedUntil = 0;
   private held!: HeldBoons;
@@ -520,6 +525,9 @@ export class GameScene extends Phaser.Scene {
   private keep?: import('./keep/oldKeep').KeepView;
   private keepAssets?: GameStartData['keepAssets'];
   private keepLoading = false;
+  private campaignKeep = false;
+  private readonly actThree = actThreeEnabled(window.location.search);
+  private get siegeScreens(): boolean { return this.actThree && this.state.level?.map === 'keep'; }
   private showpieceType?: GameStartData['showpiece'];
   private showpiece?: import('./showpiece/showpiece').Showpiece;
   private paintedFallback = false;
@@ -537,6 +545,7 @@ export class GameScene extends Phaser.Scene {
     this.paintedAssets = data?.painted;
     this.showpieceType = data?.showpiece;
     this.keepModule = data?.keep;
+    this.campaignKeep = data?.campaignKeep ?? false;
     this.keepAssets = data?.keepAssets;
     this.paintedFallback = data?.paintedFallback ?? false;
   }
@@ -556,7 +565,7 @@ export class GameScene extends Phaser.Scene {
     if (this.restartPending) return;
     this.restartPending = true;
     const data: GameStartData = {
-      difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, showpiece: this.showpieceType, keep: this.keepModule,
+      difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, showpiece: this.showpieceType, keep: this.keepModule, campaignKeep: this.campaignKeep,
       paintedFallback: this.paintedFallback,
       keepAssets: this.keepAssets?.id === this.keepModule?.currentKeepPlateSet(this.game, currentLayout().turned).id ? this.keepAssets : undefined,
     };
@@ -593,6 +602,7 @@ export class GameScene extends Phaser.Scene {
       ? this.keepModule.createKeep(new URLSearchParams(location.search).get('survey') === '1')
       : createGame({ difficulty: this.difficulty, map: this.currentMap, level: this.campaignLevel }));
     const base = currentLayout();
+    this.siegeView = undefined;
     this.layout = base.turned && this.state.level?.taxes ? TAXED_PORTRAIT : base;
     if (this.scale.height !== this.layout.height) this.scale.setGameSize(this.layout.width, this.layout.height);
     if (!resume) this.mapBlockedUntil = 0;
@@ -647,7 +657,7 @@ export class GameScene extends Phaser.Scene {
       };
       this.scale.on(Phaser.Scale.Events.RESIZE, refitKeep);
       this.town.layer.setVisible(false);
-      this.keep = new this.keepModule.KeepView(this, this.layout, this.state.map, this.clock, !this.autoTick, DetailGovernor, assets);
+      this.keep = new this.keepModule.KeepView(this, this.layout, this.state.map, this.clock, !this.autoTick, DetailGovernor, assets, this.siegeScreens && this.layout.turned);
       if (this.painted) this.painted.worldTexture = this.keep.light.key;
       this.children.moveBelow(this.keep.layer, this.ground);
       this.events.once('shutdown', () => {
@@ -657,12 +667,17 @@ export class GameScene extends Phaser.Scene {
         if (this.keepAssets !== assets) assets.release();
       });
     }
+    if (this.siegeScreens) {
+      const branches = world();
+      drawSiegeRoads(branches, this.state);
+      this.children.moveBelow(branches, this.ground);
+    }
     this.overlay = world();
     this.dynamic = world();
     this.enemySprites = new EnemySprites(this, isTestMode(), this.layout, this.painted, this.clock);
     this.shotFx = world();
     this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx), this.layout, this.clock,
-      this.keep ? 'rgba(0,0,0,0)' : undefined) : null;
+      this.keep ? 'rgba(0,0,0,0)' : undefined, this.siegeScreens && this.layout.turned) : null;
     if (this.showpieceType && this.paintedAssets) {
       // Put the entire town, including its sack and flag, under the pasture daylight.
       this.children.moveBelow(this.town.layer, this.ground);
@@ -687,6 +702,8 @@ export class GameScene extends Phaser.Scene {
     this.featherPuffs = new FeatherPuffs();
     this.moments = this.fx?.createOverlays() ?? new Moments(this, this.layout, this.state.map);
     this.aimCross = world();
+    const fixed = this.siegeScreens && this.layout.turned ? this.moments.screenObjects : undefined;
+    const field = fixed ? this.children.list.filter(object => !fixed.includes(object)) : undefined;
     this.bannerBg = this.add.graphics().setDepth(4);
     const bannerTop = this.layout.map.y + BANNER_Y;
     const bannerText = (y: number, size: string, color: string) =>
@@ -708,7 +725,8 @@ export class GameScene extends Phaser.Scene {
       onPick: (type) => this.togglePick(type),
       onSpecial: () => this.onSpecialButton(),
       onSpecialPick: (type) => this.selectSpecial(type),
-    }, this.layout, this.painted, this.pauseOnResult);
+    }, this.layout, this.painted, this.pauseOnResult, this.siegeScreens);
+    this.roadBanners = this.siegeScreens ? new RoadBanners(this, this.layout, this.state) : undefined;
     this.siegeControls = this.state.windows || this.state.wallSiteTax
       ? new SiegeControls(this, this.layout, this.state, index => {
         if (this.paused || this.state.pendingBoon || this.state.phase !== 'wave') return;
@@ -722,7 +740,7 @@ export class GameScene extends Phaser.Scene {
         if (this.paused || this.state.pendingBoon) return;
         payQuartering(this.state);
         this.redraw();
-      }) : undefined;
+      }, this.siegeScreens) : undefined;
     this.panel = new TowerPanel(this, this.layout, {
       onUpgrade: (path) => {
         if (this.panel.cell !== null) this.upgrade(this.panel.cell, path);
@@ -766,26 +784,31 @@ export class GameScene extends Phaser.Scene {
       onMenu: () => this.toMenu(),
     });
 
+    if (field) {
+      this.siegeView = new SiegeView(this, this.layout, field, !this.autoTick, this.state.phase, !!resume);
+    }
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (this.paused) return;
-      const { x, y } = this.showpiece?.camera.mapInput(p) ?? p;
+      const { x, y } = this.mapInput(p);
+      const screen = this.siegeView ? p : { x, y };
       this.press = null;
       this.aimPress = null;
-      if (this.state.pendingBoon || this.held.contains(x, y)) return;
+      if (this.state.pendingBoon || this.held.contains(screen.x, screen.y)) return;
       const repair = this.hud.repairRect;
-      if (repair && contains(repair, x, y)) return;
-      if (this.siegeControls && Object.values(this.siegeControls.rects()).some(rect => contains(rect, x, y))) return;
+      if (repair && contains(repair, screen.x, screen.y)) return;
+      if (this.siegeControls && Object.values(this.siegeControls.rects()).some(rect => contains(rect, screen.x, screen.y))) return;
+      if (this.siegeView && this.panel.rect && contains(this.panel.rect, p.x, p.y)) return;
       if (this.layout.onMap(x, y) && performance.now() < this.mapBlockedUntil) return;
       this.held.dismiss();
-      if (contains(this.hud.rects().gold, x, y)) this.goldTap();
-      if (this.specialPointerDown(x, y, p.wasTouch)) return;
+      if (contains(this.hud.rects().gold, screen.x, screen.y)) this.goldTap();
+      if (this.specialPointerDown(x, y, p.wasTouch, screen)) return;
       if (p.wasTouch) this.onTap(x, y);
       else this.onPointerDown(x, y);
-      this.beginPress(x, y, p.wasTouch);
+      this.beginPress(x, y, p.wasTouch, screen);
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
       if (this.paused) return;
-      const { x, y } = this.showpiece?.camera.mapInput(p) ?? p;
+      const { x, y } = this.mapInput(p);
       // A mouse press whose button was released unseen (mouseup outside the
       // page) cancels, so the drag does not stick to the pointer.
       if (this.press !== null && !this.press.touch && !p.wasTouch && mouseDragLost(p.isDown, p.buttons)) {
@@ -806,7 +829,7 @@ export class GameScene extends Phaser.Scene {
     });
     this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
       if (this.paused) return;
-      const { x, y } = this.showpiece?.camera.mapInput(p) ?? p;
+      const { x, y } = this.mapInput(p);
       this.endSpeedPress();
       if (this.aimPress !== null) this.endAimPress(x, y);
       else this.endPress(x, y, true);
@@ -930,7 +953,7 @@ export class GameScene extends Phaser.Scene {
     this.setTouch(false);
     this.pointer = { x, y };
     if (this.endScreen.kind) return; // the veil swallows map clicks
-    const target = classifyClick(x, y, this.panel.rect, this.state, this.layout);
+    const target = classifyClick(x, y, this.siegeView ? null : this.panel.rect, this.state, this.layout);
     switch (target.kind) {
       case 'ui':
         return; // the panel buttons handle it
@@ -963,7 +986,7 @@ export class GameScene extends Phaser.Scene {
   private onTap(x: number, y: number): void {
     this.setTouch(true);
     if (this.endScreen.kind) return;
-    let target = classifyClick(x, y, this.panel.rect, this.state, this.layout);
+    let target = classifyClick(x, y, this.siegeView ? null : this.panel.rect, this.state, this.layout);
     // Milestone 35: with no pick, a tap near a tower (within 0.75 of a cell of its centre) selects the nearest one.
     if (this.pick === null && (target.kind === 'buildable' || target.kind === 'blocked')) {
       const near = nearestTower(this.layout.toWorld({ x, y }), this.state.towers.map((t) => t.cell));
@@ -1038,11 +1061,11 @@ export class GameScene extends Phaser.Scene {
    * mouse press on the map fires at it; a touch press on the map starts an
    * aim press, resolved on release (endAimPress).
    */
-  private specialPointerDown(x: number, y: number, touch: boolean): boolean {
+  private specialPointerDown(x: number, y: number, touch: boolean, screen: { x: number; y: number }): boolean {
     if (this.endScreen.kind) return false;
     const menu = this.hud.specialMenuRect;
-    if (menu !== null && contains(menu, x, y)) return true;
-    const onSpecialButton = contains(this.hud.rects().special, x, y);
+    if (menu !== null && contains(menu, screen.x, screen.y)) return true;
+    const onSpecialButton = contains(this.hud.rects().special, screen.x, screen.y);
     if (!this.layout.inMap(x, y)) {
       if (!onSpecialButton) this.cancelSpecial();
       return false;
@@ -1280,16 +1303,16 @@ export class GameScene extends Phaser.Scene {
    * After a pointerdown: remember a press on an affordable bar button, or in
    * setup on an unlocked tower, so that moving past the threshold drags it.
    */
-  private beginPress(x: number, y: number, touch: boolean): void {
+  private beginPress(x: number, y: number, touch: boolean, screen: { x: number; y: number }): void {
     if (this.endScreen.kind) return;
     const rects = this.hud.rects();
-    const barType = BAR_TYPES.find((type) => contains(rects[`bar:${type}`], x, y));
+    const barType = BAR_TYPES.find((type) => contains(rects[`bar:${type}`], screen.x, screen.y));
     const base = { touch, x0: x, y0: y, x, y, active: false, cell: null, snapFrom: null };
     if (barType !== undefined) {
       if (canPick(this.state, barType)) this.press = { ...base, kind: 'place', tower: barType, from: null };
       return;
     }
-    if (this.panel.rect !== null && contains(this.panel.rect, x, y)) return;
+    if (this.panel.rect !== null && contains(this.panel.rect, screen.x, screen.y)) return;
     const cell = cellAt(x, y, this.layout);
     const tower = cell === null ? undefined : towerAt(this.state, cell);
     if (tower && !tower.locked && this.state.phase === 'setup') {
@@ -1456,7 +1479,7 @@ export class GameScene extends Phaser.Scene {
   /** Every clickable rectangle by name: HUD and bar buttons, the open panel's buttons, and `playAgain` and `menu`. */
   uiRects(): Record<string, Rect> {
     if (this.paused) return { mute: this.hud.rects().mute, ...this.pausePanel.rects() };
-    return { ...this.hud.rects(), ...this.siegeControls?.rects(), ...this.reward.rects(), ...this.held.rects(), ...this.panel.rects(), ...this.endScreen.rects() };
+    return { ...this.hud.rects(), ...this.siegeControls?.rects(), ...this.roadBanners?.rects(), ...this.reward.rects(), ...this.held.rects(), ...this.panel.rects(), ...this.endScreen.rects() };
   }
 
   /** The end screen showing, or null. */
@@ -1479,23 +1502,24 @@ export class GameScene extends Phaser.Scene {
     this.leaving = true;
     this.restartPending = false;
     this.resume = null;
-    const data: GameStartData = { difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, showpiece: this.showpieceType, keep: this.keepModule, keepAssets: this.keepAssets, paintedFallback: this.paintedFallback };
+    const data: GameStartData = { difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, showpiece: this.showpieceType, keep: this.keepModule, campaignKeep: this.campaignKeep, keepAssets: this.keepAssets, paintedFallback: this.paintedFallback };
     this.scene.restart(data);
   }
 
   /** Back to the title menu (milestone 25), which still shows the level and (milestone 27) map just played. */
   toMenu(): void {
     if (this.openEnding(false)) return;
-    this.leaveForTitle({ screen: this.keepModule ? 'first' : this.state.level ? 'levelMap' : 'freePlay' });
+    this.leaveForTitle({ screen: this.keepModule && !this.campaignKeep ? 'first' : this.state.level ? 'levelMap' : 'freePlay' });
   }
 
   private openEnding(replayLevel: boolean): boolean {
-    if (!this.campaignResult()?.complete || seenBroadsides.has('ending')) return false;
-    this.leaveForTitle({ screen: 'ending', replayLevel });
+    const screen = this.campaignKeep ? 'siegeEnding' : 'ending';
+    if (!this.campaignResult()?.complete || broadsideStore(screen).has(screen)) return false;
+    this.leaveForTitle({ screen, replayLevel });
     return true;
   }
 
-  private leaveForTitle(destination: { screen: 'first' | 'levelMap' | 'freePlay' | 'levelCard' | 'ending'; levelId?: number; replayLevel?: boolean }): void {
+  private leaveForTitle(destination: { screen: 'first' | 'levelMap' | 'freePlay' | 'levelCard' | 'ending' | 'siegeEnding'; levelId?: number; replayLevel?: boolean }): void {
     if (this.leaving) return;
     this.leaving = true;
     this.restartPending = false;
@@ -1572,7 +1596,7 @@ export class GameScene extends Phaser.Scene {
    * run too.
    */
   private recordScore(): void {
-    if (this.keepModule) return;
+    if (this.keepModule && !this.campaignKeep) return;
     const cleared = wavesCleared(this.state);
     if (cleared <= this.recordedCleared) return;
     this.recordedCleared = cleared;
@@ -1657,7 +1681,12 @@ export class GameScene extends Phaser.Scene {
   showpieceState() { return this.showpiece?.snapshot() ?? null; }
 
   displayedMapPoint(p: { x: number; y: number }) {
-    return this.showpiece?.camera.displayed(p) ?? p;
+    return this.siegeView?.displayed(p) ?? this.showpiece?.camera.displayed(p) ?? p;
+  }
+
+  private mapInput(p: { x: number; y: number }) {
+    if (this.siegeView && this.layout.onMap(p.x, p.y)) return this.siegeView.input(p);
+    return this.showpiece?.camera.mapInput(p) ?? p;
   }
 
   paintedState(): PaintedState {
@@ -1813,6 +1842,7 @@ export class GameScene extends Phaser.Scene {
 
   redraw(): void {
     if (!this.dynamic || this.keepLoading) return;
+    this.siegeView?.update(this.state.phase, this.clock.nowMs);
     this.keep?.frame(this.pick !== null || this.press !== null || this.aiming !== null || this.specialMenuOpen);
     this.showpiece?.draw(this.state, this.pick !== null || this.press?.active === true,
       !this.press?.active && !this.aimPress?.active && !this.panel?.cell && !this.state.pendingBoon && !this.specialMenuOpen && !this.held?.tooltip);
@@ -1821,7 +1851,8 @@ export class GameScene extends Phaser.Scene {
     if (!this.keepModule) this.town.update(this.state, this.animationTime);
     this.living?.update(this.state, this.pick !== null || this.press?.active === true);
     this.ground.clear();
-    drawSiegeRoads(this.ground, this.state);
+    if (!this.siegeScreens) drawSiegeRoads(this.ground, this.state);
+    if (this.state.map.id === 'keep') drawGateMarker(this.ground, this.state.gate);
     this.specialFx.drawGround(this.ground, this.state);
     const g = this.dynamic;
     g.clear();
@@ -1859,7 +1890,9 @@ export class GameScene extends Phaser.Scene {
       menuOpen: this.specialMenuOpen, aiming: this.aiming, banner, paused: this.paused,
     }, this.autoTick ? this.clock.nowMs : undefined);
     this.moments.draw(this.animationTime);
-    this.siegeControls?.update(this.state, this.paused || !!this.state.pendingBoon || this.panel.rect !== null || this.aiming !== null || this.specialMenuOpen);
+    const covered = this.paused || !!this.state.pendingBoon || this.panel.rect !== null || this.aiming !== null || this.specialMenuOpen;
+    this.siegeControls?.update(this.state, covered, this.siegeView?.verticalScale, this.siegeView?.displayed);
+    this.roadBanners?.update(this.state, covered, this.siegeView?.verticalScale, this.siegeView?.displayed);
     this.reward.update(this.paused ? null : this.state.pendingBoon);
     this.held.update(this.state.boons);
     this.drawBanner();
@@ -1870,7 +1903,7 @@ export class GameScene extends Phaser.Scene {
    * portrait LIFT_CSS CSS px at the canvas's current fit (input.ts liftPx).
    */
   private get lift(): number {
-    return liftPx(this.layout, this.scale.displayScale.y);
+    return liftPx(this.layout, this.scale.displayScale.y) / (this.siegeView?.verticalScale ?? 1);
   }
 
   /** The aim banner's centre line: the middle of the map on the screen (milestone 32b). */
@@ -1910,8 +1943,10 @@ export class GameScene extends Phaser.Scene {
     this.pick = null;
     this.press = null;
     this.cancelSpecial();
-    const campaign = this.state.level ? campaignResultText(this.state, campaignProgress.table()) : null;
+    const campaign = this.state.level ? campaignResultText(this.state, campaignProgress.table(), this.actThree && (!this.keepModule || this.campaignKeep)) : null;
+    const before = this.siegeView ? new Set(this.children.list) : undefined;
     this.endScreen.show(kind, this.state, campaign);
+    if (before) this.siegeView?.fix(this.children.list.filter(object => !before.has(object)));
   }
 
   private redrawUi(): void {
@@ -2099,7 +2134,7 @@ export class GameScene extends Phaser.Scene {
       this.removeMagnifier();
       return;
     }
-    const box = placeMagnifier(this.layout.map, finger, target, this.mag?.box.side ?? null);
+    const box = placeMagnifier(this.layout.map, this.siegeView?.displayed(finger) ?? finger, this.siegeView?.displayed(target) ?? target, this.mag?.box.side ?? null);
     const centre = magnifierCentre(this.layout.map, target);
     if (this.mag === null) {
       const frame = this.add.graphics().setDepth(1000);
@@ -2107,6 +2142,8 @@ export class GameScene extends Phaser.Scene {
       cam.inputEnabled = false;
       cam.setZoom(MAGNIFIER_ZOOM).setBackgroundColor(this.keep ? '#111418' : COLORS.grass);
       this.keep?.showMagnifiedGround();
+      this.siegeView?.fix([frame]);
+      this.siegeView?.hideFixedFrom(cam, this.children.list);
       cam.ignore([frame, this.bannerBg, this.bannerMain, this.bannerHint]);
       this.mag = { cam, frame, box, centre };
     }

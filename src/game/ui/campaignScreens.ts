@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import { resolveMap, type LevelDef } from '../../sim';
 import { drawMapThumbnail } from '../draw/map';
-import { CAMPAIGN_TEXT, cardFeatText, levelTaxLines, LEVEL_NAMES, LEVEL_NEW, LEVEL_STORY, STORY_TEXT, levelTips, tipsHeading, MAP_NAMES, TITLE_TEXT, levelNumberText } from '../names';
+import { CAMPAIGN_TEXT, cardFeatText, levelTaxLines, siegeRuleLines, LEVEL_NAMES, LEVEL_NEW, LEVEL_STORY, STORY_TEXT, levelTips, tipsHeading, MAP_NAMES, TITLE_TEXT, levelNumberText } from '../names';
 import type { Broadside } from '../seenTips';
 import { FONT, TEXT } from '../palette';
 import type { Rect } from '../input';
@@ -49,7 +49,7 @@ function backButton(portrait: boolean, action: Action, back: () => void) {
 export function drawCampaignMap(
   scene: Phaser.Scene, portrait: boolean, stops: CampaignStop[], lockedMessage: string | null,
   act: CampaignAct, secondActOpen: boolean, action: Action, select: (stop: CampaignStop) => void,
-  switchAct: () => void, back: () => void,
+  switchAct: (act: CampaignAct) => void, back: () => void, thirdActOpen?: boolean,
 ): Phaser.GameObjects.Text {
   const width = scene.scale.width;
   const g = scene.add.graphics();
@@ -57,12 +57,26 @@ export function drawCampaignMap(
   const field = portrait ? { x: 14, y: 35, width: 452, height: 984 } : { x: 34, y: 8, width: 892, height: 470 };
   drawPanel(g, field);
   label(scene, width / 2, portrait ? 90 : 49, CAMPAIGN_TEXT.levelMap, portrait ? 44 : 38, ink);
-  label(scene, width / 2, portrait ? 152 : 101, act === 1 ? CAMPAIGN_TEXT.actOne : CAMPAIGN_TEXT.actTwo, 24, ink);
+  label(scene, width / 2, portrait ? 152 : 101, [CAMPAIGN_TEXT.actOne, CAMPAIGN_TEXT.actTwo, CAMPAIGN_TEXT.actThree][act - 1], 24, ink);
   rule(g, width / 2, portrait ? 184 : 129, portrait ? 332 : 610);
   const landmarks = portrait
     ? [[80, 340], [270, 514], [101, 639], [372, 727], [207, 905]]
     : [[239, 144], [517, 270], [820, 264], [167, 389], [641, 393]];
-  landmarks.forEach(([x, y], i) => terrain(g, x, y, i % 2 === 0));
+  if (act === 3) {
+    const [x, y] = portrait ? [240, 210] : [765, 58];
+    // A gatehouse on the high end of the road, inked like the other sheets.
+    g.fillStyle(0xc9a773).fillTriangle(x - 105, y + 67, x - 19, y + 16, x + 67, y + 60);
+    g.fillTriangle(x - 38, y + 62, x + 32, y + 8, x + 105, y + 67);
+    g.fillStyle(THEME.ink, 0.72).fillRect(x - 38, y + 13, 76, 27);
+    for (const dx of [-34, 0, 34]) {
+      g.fillRect(x + dx - 12, y, 24, 40);
+      g.fillTriangle(x + dx - 14, y, x + dx, y - 16, x + dx + 14, y);
+    }
+    g.fillStyle(0xd5b277).fillCircle(x, y + 28, 9).fillRect(x - 9, y + 28, 18, 14);
+    const crags = portrait ? [[111, 456], [341, 560], [103, 699], [302, 860]]
+      : [[167, 420], [353, 376], [523, 338], [688, 270], [824, 237]];
+    crags.forEach(([tx, ty]) => terrain(g, tx, ty, true));
+  } else landmarks.forEach(([x, y], i) => terrain(g, x, y, i % 2 === 0));
   // Two inked verges enclose a sandy road through the milestones.
   const points = stops.map(({ rect }) => ({ x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }));
   for (const [thickness, color] of [[19, THEME.brass], [13, 0xd5b277]]) {
@@ -96,14 +110,28 @@ export function drawCampaignMap(
   const height = portrait ? 82 : 55;
   const buttonWidth = portrait ? 196 : 200;
   const gap = portrait ? 16 : 24;
-  action('title:back', { x: width / 2 - gap / 2 - buttonWidth, y, width: buttonWidth, height }, CAMPAIGN_TEXT.back, back);
-  const target = { x: width / 2 + gap / 2, y, width: buttonWidth, height };
-  const other = action('title:act', target, act === 1 ? CAMPAIGN_TEXT.actTwo : CAMPAIGN_TEXT.actOne, switchAct, 24);
-  if (!secondActOpen) {
-    other.setLocked(true);
-    lock(scene.add.graphics(), target.x + 20, y + height / 2, 16);
+  if (thirdActOpen === undefined) {
+    action('title:back', { x: width / 2 - gap / 2 - buttonWidth, y, width: buttonWidth, height }, CAMPAIGN_TEXT.back, back);
+    const target = { x: width / 2 + gap / 2, y, width: buttonWidth, height };
+    const other = action('title:act', target, act === 1 ? CAMPAIGN_TEXT.actTwo : CAMPAIGN_TEXT.actOne, () => switchAct(act === 1 ? 2 : 1), 24);
+    if (!secondActOpen) {
+      other.setLocked(true);
+      lock(scene.add.graphics(), target.x + 20, y + height / 2, 16);
+    }
+  } else {
+    const w = portrait ? 104 : 140;
+    const gap = 8;
+    const left = (width - 4 * w - 3 * gap) / 2;
+    action('title:back', { x: left, y, width: w, height }, CAMPAIGN_TEXT.back, back, 23);
+    ([1, 2, 3] as const).forEach(target => {
+      const open = target === 1 || (target === 2 ? secondActOpen : thirdActOpen);
+      const tab = action(`title:act:${target}`, { x: left + target * (w + gap), y, width: w, height },
+        CAMPAIGN_TEXT.actTabs[target - 1], () => switchAct(target), 23);
+      tab.setLocked(!open);
+      tab.setPicked(target === act);
+    });
   }
-  const legend = act === 2 ? CAMPAIGN_TEXT.featStar : '';
+  const legend = act > 1 ? CAMPAIGN_TEXT.featStar : '';
   return label(scene, width / 2, portrait ? 973 : 446, lockedMessage ?? legend, 22, ink);
 }
 
@@ -115,16 +143,17 @@ export function drawStoryBroadside(
   const cx = width / 2;
   const g = scene.add.graphics();
   broadside(g, width, height);
-  const notice = which !== 'ending';
+  const notice = which !== 'ending' && which !== 'siegeEnding';
   const mastheadY = portrait ? 205 : 92;
   const heading = label(scene, cx, mastheadY, notice ? STORY_TEXT.openingTitle : STORY_TEXT.endingTitle,
     portrait ? 36 : 42, ink);
   rule(g, cx, mastheadY - heading.height / 2 - 12, portrait ? 324 : 560);
   rule(g, cx, mastheadY + heading.height / 2 + 12, portrait ? 324 : 560);
-  const body = which === 'ending' ? STORY_TEXT.ending : which === 'secondAct' ? STORY_TEXT.secondActNotice : STORY_TEXT.openingNotice;
+  const body = which === 'ending' ? STORY_TEXT.ending : which === 'siegeEnding' ? STORY_TEXT.siegeEnding
+    : which === 'thirdAct' ? STORY_TEXT.thirdActNotice : which === 'secondAct' ? STORY_TEXT.secondActNotice : STORY_TEXT.openingNotice;
   label(scene, cx, portrait ? 464 : 221, body, portrait ? 30 : 28, ink, portrait ? 376 : 736, false);
   if (notice) {
-    const replyText = which === 'secondAct' ? STORY_TEXT.secondActReply : STORY_TEXT.openingReply;
+    const replyText = which === 'thirdAct' ? STORY_TEXT.thirdActReply : which === 'secondAct' ? STORY_TEXT.secondActReply : STORY_TEXT.openingReply;
     const reply = label(scene, cx, portrait ? 701 : 336, replyText, portrait ? 23 : 24, TEXT.button, portrait ? 362 : 760);
     ribbon(g, cx, reply.y, reply.width + 28, reply.height + 10);
   }
@@ -170,10 +199,14 @@ function drawTaxCard(
   const rulesX = portrait ? cx : 319;
   const rulesWidth = portrait ? printWidth : 480;
   const heading = label(scene, rulesX, 0, CAMPAIGN_TEXT.inForce, bodySize, ink);
-  const taxes = levelTaxLines(level.taxes!).map(text => label(scene, rulesX, 0, text, bodySize, ink, rulesWidth, false));
+  const siege = level.map === 'keep';
+  const siegeRules = siege ? siegeRuleLines(level) : [];
+  const answer = level.windows?.length ? siegeRules.pop() : level.featherBarrels ? CAMPAIGN_TEXT.townAnswer : undefined;
+  const ruleLines = siege ? [CAMPAIGN_TEXT.gateRule, ...siegeRules] : levelTaxLines(level.taxes!);
+  const taxes = ruleLines.map(text => label(scene, rulesX, 0, text, bodySize, ink, rulesWidth, false));
   const feat = label(scene, rulesX, 0, cardFeatText(level.feat!), bodySize, '#254a57', rulesWidth);
   const rules = [heading, ...taxes];
-  if (level.featherBarrels) rules.push(label(scene, rulesX, 0, CAMPAIGN_TEXT.townAnswer, bodySize, '#254a57', rulesWidth));
+  if (answer) rules.push(label(scene, rulesX, 0, answer, bodySize, '#254a57', rulesWidth));
   rules.push(feat);
   const noteX = portrait ? cx : 721;
   const noteWidth = portrait ? printWidth : 302;
@@ -220,7 +253,7 @@ function drawTaxCard(
     const x = paged ? cx : noteX;
     const notesTop = notesOnly ? top : portrait ? bodyTop + rulesHeight + 22 : bodyTop;
     let y = notesTop + (printBottom - notesTop - (mapWidth / 2 + 13 + mapName.height + twist.height)) / 2;
-    drawMapThumbnail(g, resolveMap(level.map), x - mapWidth / 2, y, mapWidth, mapWidth / 2);
+    drawMapThumbnail(g, resolveMap(level.map, level.keepRoads), x - mapWidth / 2, y, mapWidth, mapWidth / 2);
     g.lineStyle(1, THEME.ink).strokeRect(x - mapWidth / 2, y, mapWidth, mapWidth / 2);
     y += mapWidth / 2 + 5;
     mapName.setY(y + mapName.height / 2);

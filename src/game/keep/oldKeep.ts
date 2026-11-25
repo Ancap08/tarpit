@@ -134,7 +134,8 @@ export class KeepView {
   private lastTier = -1;
 
   constructor(private readonly scene: GameScene, private readonly layout: Layout, map: MapDef,
-      private readonly clock: GameClock, private readonly frozen: boolean, Governor: typeof DetailGovernor, assets: KeepAssets) {
+      private readonly clock: GameClock, private readonly frozen: boolean, Governor: typeof DetailGovernor, assets: KeepAssets, framed = false) {
+    this.finishedOpening = framed;
     const query = new URLSearchParams(location.search);
     const perf = query.get('perf') === '1';
     const pin = perf ? query.get('keepTier') : null;
@@ -144,8 +145,8 @@ export class KeepView {
     const { x, y } = layout.map;
     const gate = layout.toScreen(map.path[map.path.length-2]);
     this.gate = {x:gate.x-x,y:gate.y-y};
-    this.castleW = layout.turned ? 820 : 1250;
-    this.castleH = layout.turned ? 660 : 335;
+    this.castleW = layout.turned ? framed ? 730 : 820 : 1250;
+    this.castleH = layout.turned ? framed ? 475 : 660 : 335;
     this.anchors = layout.turned ? projection.portrait : projection.landscape;
     this.light = new KeepLight(scene.textures);
     this.surround = assets.panorama(layout,this.gate,
@@ -199,7 +200,9 @@ export class KeepView {
 
   frame(interacting = false): void {
     const camera = this.scene.cameras.main;
-    this.surround.scroll(camera.x - camera.scrollX, camera.y - camera.scrollY);
+    const scaleY = camera.zoomY;
+    const y = camera.y + (this.layout.map.y - camera.scrollY) * scaleY - this.layout.map.y;
+    this.surround.scroll(camera.x - camera.scrollX, y, scaleY);
     if (this.clock.paused && this.previous !== -Infinity) return;
     const ms = this.clock.nowMs;
     if (this.lastFrame !== ms) this.quality.sample(ms);

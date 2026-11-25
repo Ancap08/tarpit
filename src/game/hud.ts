@@ -409,7 +409,7 @@ export class Hud {
   /** The Lives readout's left edge now (portrait: after the gold), for the exit shake. */
   private livesX = LIVES_X;
 
-  constructor(scene: Phaser.Scene, handlers: HudHandlers, private readonly layout: Layout = LANDSCAPE, painted?: PaintedSkin, private readonly pauseOnResult = false) {
+  constructor(scene: Phaser.Scene, handlers: HudHandlers, private readonly layout: Layout = LANDSCAPE, painted?: PaintedSkin, private readonly pauseOnResult = false, private readonly siegeScreens = false) {
     const m = { ...hudMetrics(layout) };
     this.m = m;
     const counter = scene.add.graphics();
@@ -482,7 +482,7 @@ export class Hud {
     this.specialMenu = new SpecialMenu(scene, m.menu.left, m.menu.top, handlers.onSpecialPick, layout.map.y, m.menu.size, m.menu.font);
     this.bar = new BuildBar(scene, m.barTop, handlers.onPick, layout, painted);
     this.bossBar = new BossBar(scene, layout);
-    if (handlers.onRepair) this.gate = new GateHud(scene, layout, handlers.onRepair);
+    if (handlers.onRepair) this.gate = new GateHud(scene, layout, handlers.onRepair, siegeScreens);
     this.muteButton = new MuteButton(scene, m.mute);
     this.pauseButton = new Button(scene, m.pause, m.portrait ? '' : PAUSE_TEXT.button, handlers.onPause, {
       fontSize: '18px', labelY: 57, sound: null,
@@ -576,7 +576,7 @@ export class Hud {
     }
     // After a loss there is no next wave to play, so the preview goes blank.
     const aimText = m.portrait && special.aiming !== null && special.banner ? stripAimText(special.banner) : null;
-    const preview = aimText ?? (state.phase === 'lost' ? '' : previewText(state));
+    const preview = aimText ?? (state.phase === 'lost' || this.siegeScreens ? '' : previewText(state));
     if (this.next.text !== preview) {
       const siege = !!state.map.otherRoads?.length;
       const previewX = siege && !m.portrait ? 328 : m.preview.x;

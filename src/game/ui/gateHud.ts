@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import { repairStatus, type GameState, type Rect } from '../../sim';
+import { repairStatus, TICKS_PER_SECOND, type GameState, type Rect } from '../../sim';
 import type { Layout } from '../layout';
 import { GATE_TEXT } from '../names';
 import { COLORS, HUD_FONT, TEXT } from '../palette';
@@ -13,27 +13,32 @@ export class GateHud {
   private readonly repair: Button;
   private readonly warning: Phaser.GameObjects.Text;
   private readonly repairAction: HTMLButtonElement;
+  private readonly health?: Phaser.GameObjects.Graphics;
+  private lastFraction = -1;
+  private lastBarTop = -1;
+  private readonly portrait: boolean;
 
-  constructor(scene: Phaser.Scene, layout: Layout, onRepair: () => void) {
+  constructor(scene: Phaser.Scene, layout: Layout, onRepair: () => void, private readonly siege = false) {
     // Beside the boss readout in landscape. On phones its bottom edge
     // stays above the wave banner, including when the Repair plaque opens.
-    const portrait = layout.turned;
-    const y = layout.map.y + (portrait ? 58 : 8);
+    const portrait = this.portrait = layout.turned;
+    const y = layout.map.y + (portrait ? siege ? 68 : 58 : 8);
     const width = portrait ? 214 : 196;
-    const height = portrait ? 60 : 62;
+    const height = portrait ? siege ? 68 : 60 : 62;
     const x = portrait ? 8 : 4;
     const repairHeight = portrait ? 80 : height;
     this.bounds = { x, y, width, height };
     this.backing = scene.add.rectangle(x, y, width, height, COLORS.bossBarBg).setOrigin(0);
     this.backing.setStrokeStyle(1, COLORS.bossBarEdge);
+    if (siege) this.health = scene.add.graphics().setName('gate-health');
     const size = portrait ? 22 : 20;
     const style = {
       fontFamily: HUD_FONT, fontSize: `${size}px`, fontStyle: 'bold', color: TEXT.hud,
       metrics: { ascent: size, descent: 5, fontSize: size + 5 },
     };
-    this.status = scene.add.text(x + width / 2, y + height / 2, '', style).setOrigin(0.5);
+    this.status = scene.add.text(x + width / 2, y + height / 2, '', style).setOrigin(0.5).setName('gate-status');
     this.lastStand = scene.add.text(x + width / 2, y + height * 0.75, GATE_TEXT.lastStand, style)
-      .setOrigin(0.5).setColor(TEXT.livesFlash).setVisible(false);
+      .setOrigin(0.5).setName('gate-last-stand').setColor(TEXT.livesFlash).setVisible(false);
     this.repair = new Button(scene, {
       x: x + width + 4, y: y + height - repairHeight, width: portrait ? 212 : 176, height: repairHeight,
     }, '', onRepair, {
@@ -45,7 +50,7 @@ export class GateHud {
     const warningSize = portrait ? 20 : 16;
     this.warning = scene.add.text(rect.x + rect.width / 2, rect.y + rect.height * 0.71, '', {
       ...style, fontSize: `${warningSize}px`, metrics: { ascent: warningSize, descent: 5, fontSize: warningSize + 5 },
-    }).setOrigin(0.5).setVisible(false);
+    }).setOrigin(0.5).setName('gate-repair-warning').setVisible(false);
 
     this.repairAction = document.createElement('button');
     this.repairAction.className = 'repair-action';
@@ -72,15 +77,35 @@ export class GateHud {
     const gate = state.gate!;
     const shown = state.phase === 'setup' || state.phase === 'wave';
     const active = shown && gate.lastStandTicksLeft > 0;
-    const text = gate.fallen ? GATE_TEXT.fallen : GATE_TEXT.health(gate.hp, gate.maxHp);
+    const text = gate.fallen ? GATE_TEXT.fallen : this.siege ? GATE_TEXT.label : GATE_TEXT.health(gate.hp, gate.maxHp);
     const { x, y, width, height } = this.bounds;
     const setup = state.phase === 'setup' && !gate.fallen && !paused;
     const top = setup ? this.repair.rect.y : y;
     const panelHeight = height + y - top;
     if (this.status.text !== text) this.status.setText(text);
-    this.status.setY(top + panelHeight * (active ? 0.25 : 0.5)).setVisible(shown);
+    const upper = active || (this.siege && !gate.fallen);
+    const labelPosition = upper ? (this.siege ? 0.28 : 0.25) : 0.5;
+    this.status.setY(top + panelHeight * labelPosition).setVisible(shown);
     this.backing.setPosition(x, top).setSize(width, panelHeight).setVisible(shown);
     this.lastStand.setVisible(active);
+    if (this.health) {
+      const fraction = Math.max(0, Math.min(1, gate.hp / gate.maxHp));
+      const barTop = top + panelHeight * 0.63;
+      if (fraction !== this.lastFraction || barTop !== this.lastBarTop) {
+        this.lastFraction = fraction;
+        this.lastBarTop = barTop;
+        const inset = 15, barHeight = this.portrait ? 13 : 11;
+        const barWidth = width - 2 * inset;
+        this.health.clear().fillStyle(COLORS.bossBarEdge).fillRect(x + inset - 1, barTop - 1, barWidth + 2, barHeight + 2)
+          .fillStyle(COLORS.hudBar).fillRect(x + inset, barTop, barWidth, barHeight)
+          .fillStyle(fraction > 0.3 ? 0xb99b52 : 0xc76e55).fillRect(x + inset, barTop, barWidth * fraction, barHeight);
+      }
+      this.health.setVisible(shown && !gate.fallen);
+      if (active) {
+        const label = GATE_TEXT.countdown(Math.ceil(gate.lastStandTicksLeft / TICKS_PER_SECOND));
+        if (this.lastStand.text !== label) this.lastStand.setText(label);
+      }
+    }
     const quote = repairStatus(state);
     const repair = GATE_TEXT.repair(quote.cost);
     const warning = GATE_TEXT.repairWarning(state.level?.feat ?? state.fixedFeat, state.boughtRepair);
@@ -93,10 +118,10 @@ export class GateHud {
       this.warning.setScale(warning ? Math.min(1, (rect.width - 12) / this.warning.width) : 1, 1);
     }
     this.warning.setVisible(setup && !!warning);
-    this.repairAction.disabled = !enabled;
+    if (this.repairAction.disabled === enabled) this.repairAction.disabled = !enabled;
     const accessibleLabel = warning ? `${repair}. ${warning}` : repair;
     if (this.repairAction.textContent !== accessibleLabel) this.repairAction.textContent = accessibleLabel;
-    this.repairAction.hidden = !setup;
+    if (this.repairAction.hidden === setup) this.repairAction.hidden = !setup;
     this.repair.setShown(setup);
   }
 

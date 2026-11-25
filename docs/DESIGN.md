@@ -2395,11 +2395,49 @@ Left from 11 returns to 10. Rotating keeps the focused stop.
 
 ## Private Act Three
 
-Levels 21–25 are separate from the public campaign list. `?keep=21` through
-`?keep=25` open the selected level directly. A win shows that level's reply
-and earned stars for the current run. No result or tip from these levels
-writes to saved progress. The exhibition and its original numbers remain
-available at `?keep=1` for the art and siege rule checks.
+`?act3=1` adds levels 21–25 to the campaign, behind level 20's win. The
+three parchment sheets have their own tabs, and Left and Right connect
+stops 20 and 21. The opening sheet follows the next unwon stop. The third
+sheet follows five stops up a crag, all with a four-point feat slot.
+The shared best-stars record keeps its existing format. Direct
+`?keep=21` through `?keep=25` sessions display their run's result and
+save no progress. The exhibition remains at `?keep=1` for art and rule
+checks.
+
+With the campaign switch on, level 20 closes Act Two and advances to
+Act Three. The Act Three broadside appears on the first visit, and the
+campaign ending appears when leaving level 25's winning result for the
+first time. `tarpit.seenSiegeBroadsides` holds the two visit flags.
+`tarpit.seenSiegeTips` holds the tips records for these five levels. The
+old ending and both old visit records keep their original meaning.
+
+The card lists the gate, the level's survey or quartering rules, the
+town's answer and the feat. The map thumbnail follows the active road
+data. Fit the measured text in the shared notice layout and turn to Map
+notes when there is too little space for both. Use the same controls as
+Act Two. Results use the usual reply, stars and feat verdict on a win.
+A loss shows the loss reply and no feat verdict.
+
+During setup a wood sign at each active road's mouth replaces the
+Next line. Counts combine repeated groups of the same enemy on that
+road. The Gate panel measures health with a bar. Repair shows the
+current gold quote and the first-repair feat warning on Not a nail
+levels. A breach shows Gate fallen and a whole-second countdown rounded
+up for the remaining Last stand ticks. Windows and wall-site markers
+stay aligned with their world positions. The gate marker reads the
+simulation's position, angle and condition for the painted gate pass.
+
+On portrait screens the camera preserves road width and expands the
+vertical view from 1.15× in setup to 1.50× in battle over 1,500 ms on
+the game's pausable clock. It returns over the same duration between
+waves. The east mouth stays 24 canvas px above the build bar. The
+cached panorama follows the camera with a CSS transform. The portrait
+castle plate fits a 730 × 475 box for this view. The HUD uses a fixed
+camera, with 108 × 80 window and 132 × 80 wall-site targets anchored
+through the live projection. Landscape keeps its fixed view and uses
+108 × 52 and 132 × 54 targets. Test mode and reduced motion hold the
+setup framing. The settle replaces the old opening drift and camera
+shakes on these portrait levels.
 
 All five stops use the Normal difficulty without HP growth, 20 starting
 lives, the full level 20 tower and special lists, tier 3, feather barrels

@@ -30,6 +30,7 @@ export class KeepSurround {
   private lastSide = -1;
   private lastScrollX = 0;
   private lastScrollY = 0;
+  private lastScaleY = 1;
   private stillActive = false;
   private readonly inset: number;
 
@@ -155,11 +156,16 @@ export class KeepSurround {
     if (this.still) this.still.hidden = !still;
   }
 
-  scroll(x: number, y: number): void {
-    if (x === this.lastScrollX && y === this.lastScrollY) return;
+  scroll(x: number, y: number, scaleY = 1): void {
+    if (x === this.lastScrollX && y === this.lastScrollY && scaleY === this.lastScaleY) return;
     this.lastScrollX = x;
     this.lastScrollY = y;
-    this.camera.style.translate = `${x}px ${y}px`;
+    if (this.lastScaleY !== scaleY) {
+      this.lastScaleY = scaleY;
+      this.camera.style.scale = scaleY === 1 ? '' : `1 ${scaleY}`;
+    }
+    // The existing 8px projection origin is also the CSS scale origin.
+    this.camera.style.translate = `${x}px ${y + (scaleY - 1) * 8}px`;
   }
 
   update(push: number, flash: number, side: number, opening: number, t: number, high: boolean, calm: boolean): void {
