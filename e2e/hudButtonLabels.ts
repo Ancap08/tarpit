@@ -5,8 +5,9 @@ import { MAP_HEIGHT, EARLY_CALL_MAX_BONUS, TICKS_PER_SECOND, TOWER_DEFS } from '
 import { rectPageSize } from './phone';
 import { TOWER_NAMES, callEarlyLabel } from '../src/game/names';
 import { api, postSpawn } from './campaign';
-import { useTallFontMetrics } from './campaignFont';
+import { useTallFontMetrics, useWideFontMetrics } from './campaignFont';
 import { waitForFirstScreen } from './title';
+import { hasNewInterface, newInterfaceChecks } from './newInterface';
 
 export async function checkLabel(page: Page, key: string, text: string) {
   const label = await page.evaluate(({ key, text }) => {
@@ -43,9 +44,11 @@ export async function checkLabel(page: Page, key: string, text: string) {
 }
 
 export function hudButtonSuite() {
-  for (const look of ['painted', 'classic', 'showpiece'] as const) {
-    test.describe(look, () => hudButtonCases(look));
-  }
+  const looks = () => {
+    for (const look of ['painted', 'classic', 'showpiece'] as const) test.describe(look, () => hudButtonCases(look));
+  };
+  looks();
+  newInterfaceChecks(looks);
 }
 
 function hudButtonCases(look: 'painted' | 'classic' | 'showpiece') {
@@ -89,22 +92,24 @@ function hudButtonCases(look: 'painted' | 'classic' | 'showpiece') {
         const bottom = controls.filter(r => ['special', 'startWave', 'speed', 'mute', 'pause'].includes(r.name))
           .sort((a, b) => a.left - b.left);
         expect(towers).toHaveLength(6);
+        const modern = hasNewInterface(page);
         expect(bottom).toHaveLength(5);
         expect.soft(Math.abs(bottom[0].left - towers[0].left), 'left row edges').toBeLessThanOrEqual(1);
         expect.soft(Math.abs(bottom[4].right - towers[5].right), 'right row edges').toBeLessThanOrEqual(1);
         for (const r of [...towers, ...bottom]) {
-          const minimum = height === 844 || r.name === 'pause' ? 44 : 38.9;
+          const minimum = modern || height === 844 || r.name === 'pause' ? 44 : 38.9;
           expect.soft(Math.min(r.right - r.left, r.bottom - r.top), r.name + ' tap size').toBeGreaterThanOrEqual(minimum);
         }
-        const gaps = bottom.slice(1).map((r, i) => r.left - bottom[i].right);
+        const actionRow = modern ? bottom.filter(r => r.name !== 'mute' && r.name !== 'pause') : bottom;
+        const gaps = actionRow.slice(1).map((r, i) => r.left - actionRow[i].right);
         expect.soft(Math.max(...gaps) - Math.min(...gaps), 'even gaps').toBeLessThanOrEqual(1);
         const panel = panels.find(p => contains(p, towers[0]))!;
-        expect.soft(Math.abs(panel.left - mapLeft), 'panel and map left edges').toBeLessThanOrEqual(1);
-        expect.soft(Math.abs(panel.right - mapRight), 'panel and map right edges').toBeLessThanOrEqual(1);
+        if (!modern) expect.soft(Math.abs(panel.left - mapLeft), 'panel and map left edges').toBeLessThanOrEqual(1);
+        if (!modern) expect.soft(Math.abs(panel.right - mapRight), 'panel and map right edges').toBeLessThanOrEqual(1);
         expect.soft(Math.abs((panel.left + panel.right - pageWidth) / 2), 'game frame centre').toBeLessThanOrEqual(1);
         for (const [i, r] of controls.entries()) {
           expect.soft(contains(canvas, r), r.name + ' inside canvas').toBe(true);
-          expect.soft(contains(r.name === 'gold' ? panels[0] : panel, r), r.name + ' inside HUD panel').toBe(true);
+          expect.soft(contains(r.name === 'gold' || modern && ['mute', 'pause'].includes(r.name) ? panels[0] : panel, r), r.name + ' inside HUD panel').toBe(true);
           for (const other of controls.slice(i + 1)) {
             const overlap = r.left < other.right && other.left < r.right && r.top < other.bottom && other.top < r.bottom;
             expect.soft(overlap, r.name + ' overlaps ' + other.name).toBe(false);
@@ -113,8 +118,9 @@ function hudButtonCases(look: 'painted' | 'classic' | 'showpiece') {
       });
     }
   }
-  for (const mode of ['Caslon', 'fallback', 'tall Caslon', 'tall fallback']) {
+  for (const mode of ['Caslon', 'fallback', 'tall Caslon', 'tall fallback', 'wide text']) {
     test('HUD button labels fit with ' + mode, async ({ page }, info) => {
+      if (mode === 'wide text') await useWideFontMetrics(page);
       if (mode.startsWith('tall')) await useTallFontMetrics(page, mode === 'tall fallback');
       else if (mode === 'fallback') await page.route('**/*.woff2', route => route.abort());
       const sizes = info.project.name === 'phone' ? [{ width: 390, height: 844 }, { width: 390, height: 664 }] : [page.viewportSize()!];

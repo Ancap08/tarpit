@@ -3,10 +3,10 @@ import type { Layout } from '../layout';
 
 const COUNT = 3;
 
-export function rewardLayout(layout: Layout) {
+export function rewardLayout(layout: Layout, clean = false) {
   const portrait = layout.kind === 'portrait';
   const width = portrait ? 448 : 296;
-  const height = portrait ? 112 : 168;
+  const height = portrait ? clean ? 126 : 112 : 168;
   const gap = portrait ? 12 : 14;
   const rowWidth = portrait ? width : COUNT * width + (COUNT - 1) * gap;
   const rowHeight = portrait ? COUNT * height + (COUNT - 1) * gap : height;
@@ -21,9 +21,9 @@ export function rewardLayout(layout: Layout) {
       width,
       height,
     })),
-    icon: portrait ? { x: 43, y: 56, scale: 1.5 } : { x: width / 2, y: 48, scale: 1.75 },
+    icon: portrait ? { x: 43, y: height / 2, scale: 1.5 } : { x: width / 2, y: 48, scale: 1.75 },
     name: portrait ? { x: 80, y: 30, font: 24 } : { x: width / 2, y: 99, font: 23 },
-    description: portrait ? { x: 80, y: 76, font: 22 } : { x: width / 2, y: 138, font: 18 },
+    description: portrait ? { x: 80, y: clean ? 84 : 76, font: clean ? 24 : 22 } : { x: width / 2, y: 138, font: 18 },
     textWidth: portrait ? width - 90 : width - 16,
   };
 }
@@ -31,7 +31,7 @@ export function rewardLayout(layout: Layout) {
 type Size = { width: number; height: number };
 
 /** Use the landscape build row when it fits, otherwise a rail beside the game. */
-export function heldBoonLayout(layout: Layout, parent: Size) {
+export function heldBoonLayout(layout: Layout, parent: Size, clean = false) {
   const portrait = layout.kind === 'portrait';
   const inRow = !portrait && parent.width >= layout.width && parent.height >= layout.height;
   const gap = 3;
@@ -43,8 +43,8 @@ export function heldBoonLayout(layout: Layout, parent: Size) {
     target * layout.height / Math.max(1, parent.height),
     target * (layout.width + 2 * gap) / Math.max(1, parent.width - target),
   ));
-  const left = inRow ? 678 : layout.width + gap;
-  const top = inRow ? 531 : portrait ? gap : layout.height - COUNT * (size + gap);
+  const left = inRow ? (clean ? 798 : 678) : layout.width + gap;
+  const top = inRow ? (clean ? 14 : 531) : portrait ? gap : layout.height - COUNT * (size + gap);
   return {
     canvasWidth: inRow ? layout.width : layout.width + size + 2 * gap,
     slots: Array.from({ length: COUNT }, (_, i): Rect => ({

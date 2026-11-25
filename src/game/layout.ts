@@ -176,3 +176,11 @@ export function layoutFor(width: number, height: number): Layout {
 export function fontPx(layout: Layout, px: number): string {
   return `${layout.kind === 'portrait' ? Math.max(px, PORTRAIT_MIN_FONT) : px}px`;
 }
+
+/** The Clean dock fits six 44 CSS px controls at 390 × 664, with the
+ * original 1:1 world projection and the whole road clear of the controls. */
+export const CLEAN_PORTRAIT = new Layout(
+  'portrait',
+  { width: 560, height: 1364 },
+  { ...PORTRAIT.map, x: 40, y: 210 },
+);

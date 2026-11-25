@@ -61,8 +61,10 @@ async function readCard(page: Page, id: number) {
     return { color: line.style.color, fontSize: line.style.fontSize, scale: Math.min(line.scaleX, line.scaleY),
       portrait: t.layout() === 'portrait' };
   });
+  const modern = new URL(page.url()).searchParams.get('ui') === 'new';
   expect(answer, `C10: town's answer on level ${id}`).toMatchObject({
-    color: '#254a57', fontSize: answer?.portrait ? '26px' : '21px', scale: 1,
+    color: modern ? '#234b40' : '#254a57',
+    fontSize: answer?.portrait ? modern ? '23px' : '26px' : modern ? '17px' : '21px', scale: 1,
   });
   await checkSpacing(page);
 }

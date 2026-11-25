@@ -11,7 +11,8 @@ import Phaser from 'phaser';
 import { sound } from '../audio/engine';
 import type { SoundName } from '../audio/recipes';
 import type { Rect } from '../input';
-import { COLORS, HUD_FONT, TEXT } from '../palette';
+import { COLORS, FONT, HUD_FONT, TEXT } from '../palette';
+import { BakedPaint, CLEAN, PRINT, SANS, glyph, motionClock, rounded, skinFor, textMetrics, type Icon, type Skin } from './newTheme';
 
 /** Emitted on the scene input plugin when a pause cancels any unfinished click. */
 export const CANCEL_UI_PRESS = 'cancel-ui-press';
@@ -32,17 +33,27 @@ export interface ButtonOptions {
   sound?: SoundName | null;
   /** A separately illustrated control supplies its own background. */
   bare?: boolean;
+  skin?: Skin;
+  primary?: boolean;
+  icon?: Icon;
 }
 
 export class Button {
   private readonly box: Phaser.GameObjects.Rectangle;
   private readonly trim: Phaser.GameObjects.Graphics;
+  private readonly chrome?: BakedPaint;
   private readonly label: Phaser.GameObjects.Text;
   private readonly rightLabel: Phaser.GameObjects.Text | null;
   private readonly onHover?: (over: boolean) => void;
-  private readonly labelY?: number;
+  private labelY?: number;
   private readonly labelInset: number;
   private readonly bare: boolean;
+  private readonly skin: Skin;
+  private readonly primary: boolean;
+  private icon?: Icon;
+  private offsetY = 0;
+  private readonly clock?: () => number;
+  private rollAt = -Infinity;
   private r: Rect;
   private enabled = true;
   private locked = false;
@@ -64,9 +75,19 @@ export class Button {
     this.labelY = options.labelY;
     this.bare = options.bare ?? false;
     this.labelInset = options.labelInset ?? 10;
-    const style = { fontFamily: HUD_FONT, fontSize: options.fontSize ?? '18px', fontStyle: 'bold', color: TEXT.button };
+    this.skin = options.skin ?? skinFor(scene);
+    this.primary = options.primary ?? false;
+    this.icon = options.icon;
+    if (this.skin !== 'legacy') this.clock = motionClock(scene);
+    const size = options.fontSize ?? '18px';
+    const style = {
+      fontFamily: this.skin === 'paper' ? FONT : this.skin === 'battle' ? SANS : HUD_FONT,
+      fontSize: size, fontStyle: 'bold', color: TEXT.button,
+      ...(this.skin === 'legacy' ? {} : { metrics: textMetrics(parseFloat(size)) }),
+    };
     this.box = scene.add.rectangle(0, 0, rect.width, rect.height, COLORS.button).setOrigin(0, 0);
     this.trim = scene.add.graphics();
+    if (this.skin !== 'legacy' && !this.bare) this.chrome = new BakedPaint(scene, this.trim);
     if (options.right === undefined) {
       this.label = scene.add.text(0, 0, text, style).setOrigin(0.5).setAlign('center');
       this.rightLabel = null;
@@ -130,18 +151,29 @@ export class Button {
 
   /** Update the label(s) and whether the button responds to clicks. */
   set(text: string, enabled: boolean, right?: string): void {
-    if (this.label.text !== text) this.label.setText(text);
-    if (this.rightLabel && right !== undefined && this.rightLabel.text !== right) this.rightLabel.setText(right);
+    const changed = this.label.text !== text;
+    if (changed) {
+      if (this.clock && /^\d+$/.test(text) && this.label.text) this.rollAt = this.clock();
+      this.label.setText(text);
+    }
+    if (this.rightLabel && right !== undefined && this.rightLabel.text !== right) {
+      if (this.clock && this.rightLabel.text) this.rollAt = this.clock();
+      this.rightLabel.setText(right);
+    }
+    this.updateRoll();
     if (this.enabled !== enabled) {
       this.enabled = enabled;
       this.refresh();
-    }
+    } else if (changed && this.icon) this.refresh();
   }
 
   /** Change the label size (both labels), e.g. for a longer label in the same slot. */
   setFontSize(size: string): void {
     for (const t of [this.label, this.rightLabel]) {
-      if (t && t.style.fontSize !== size) t.setFontSize(size);
+      if (t && t.style.fontSize !== size) {
+        if (this.skin === 'legacy') t.setFontSize(size);
+        else t.setStyle({ fontSize: size, metrics: textMetrics(parseFloat(size)) });
+      }
     }
   }
 
@@ -165,13 +197,56 @@ export class Button {
     this.r.width = width;
     this.r.height = height;
     this.box.setSize(width, height);
+    if (this.skin !== 'legacy') {
+      this.positionLabels();
+      this.refresh();
+      return;
+    }
     this.moveTo(this.r.x, this.r.y);
   }
 
+  setLabelCenter(y: number): void {
+    if (y === this.labelY) return;
+    this.labelY = y;
+    this.refresh();
+  }
+
+  setIcon(icon: Icon): void {
+    if (icon === this.icon) return;
+    this.icon = icon;
+    this.positionLabels();
+    this.refresh();
+  }
+
+  /** Visual translation only. The pointer target stays at its final position. */
+  setVisualOffset(y: number): void {
+    if (y === this.offsetY) return;
+    this.offsetY = y;
+    if (this.chrome) {
+      this.chrome.shift(y);
+      this.positionLabels();
+    } else this.refresh();
+  }
+
+  private updateRoll(): void {
+    if (!this.clock || this.rollAt === -Infinity) return;
+    const progress = Math.min(1, (this.clock() - this.rollAt) / 130);
+    const label = this.rightLabel ?? this.label;
+    label.setAlpha(.5 + .5 * progress);
+    label.setAngle(7 * (1 - progress));
+    if (progress === 1) this.rollAt = -Infinity;
+  }
+
   moveTo(x: number, y: number): void {
+    if (this.skin !== 'legacy' && this.r.x === x && this.r.y === y && this.label.x !== 0) return;
     this.r.x = x;
     this.r.y = y;
     this.box.setPosition(x, y);
+    this.positionLabels();
+    if (this.skin !== 'legacy') {
+      this.refresh();
+      return;
+    }
     const { width, height } = this.r;
     const edge = this.trim.clear();
     edge.lineStyle(1, COLORS.buttonEdge, 0.65).strokeRect(x + 4, y + 4, width - 8, height - 8);
@@ -181,23 +256,28 @@ export class Button {
         for (const dy of [8, height - 8]) edge.fillCircle(x + dx, y + dy, 2);
       }
     }
-    const mid = y + (this.labelY ?? this.r.height / 2);
+  }
+
+  private positionLabels(): void {
+    const { x, y } = this.r;
+    const shift = this.skin !== 'legacy' && this.icon ? Math.min(this.rightLabel ? 24 : 13, this.r.width * .075) : 0;
+    const mid = y + this.offsetY + (this.labelY ?? this.r.height / 2);
     if (this.rightLabel) {
-      this.label.setPosition(x + this.labelInset, mid);
+      this.label.setPosition(x + this.labelInset + shift, mid);
       this.rightLabel.setPosition(x + this.r.width - this.labelInset, mid);
     } else {
-      this.label.setPosition(x + this.r.width / 2, mid);
+      this.label.setPosition(x + this.r.width / 2 + (this.label.text ? shift : 0), mid);
     }
   }
 
   setDepth(depth: number): void {
-    for (const object of [this.box, this.trim, this.label, this.rightLabel]) object?.setDepth(depth);
+    for (const object of [this.box, this.trim, this.chrome?.image, this.label, this.rightLabel]) object?.setDepth(depth);
   }
 
   setShown(shown: boolean): void {
     if (this.shown === shown) return;
     this.shown = shown;
-    for (const o of [this.box, this.trim, this.label, this.rightLabel]) o?.setVisible(shown);
+    for (const o of [this.box, this.trim, this.chrome?.image, this.label, this.rightLabel]) o?.setVisible(shown);
     if (this.box.input) this.box.input.enabled = shown;
     if (!shown) {
       // A hidden button gets no pointerout, so clear hover and press here.
@@ -215,6 +295,10 @@ export class Button {
 
   private refresh(): void {
     const available = this.enabled && !this.locked;
+    if (this.skin !== 'legacy') {
+      this.refreshModern(available);
+      return;
+    }
     this.trim.setVisible(this.shown && available && !this.bare);
     let fill: number = COLORS.button;
     if (!available) fill = COLORS.buttonDisabled;
@@ -228,5 +312,38 @@ export class Button {
     const color = available ? TEXT.button : TEXT.buttonDisabled;
     this.label.setColor(color);
     this.rightLabel?.setColor(color);
+  }
+
+  private refreshModern(available: boolean): void {
+    const paper = this.skin === 'paper';
+    const active = this.primary && available;
+    const down = this.pressed && available;
+    const compress = down && this.clock ? 2 : 0;
+    const { x, y, width, height } = this.r;
+    const fill = paper
+      ? active ? (down ? 0x16372f : PRINT.green) : this.picked || this.hover ? PRINT.inset : PRINT.sheet
+      : !available ? CLEAN.panel : active ? (down ? 0x7bc7b1 : CLEAN.mint)
+        : this.picked || this.hover || down ? 0x2b4949 : CLEAN.raised;
+    const color = paper ? active ? '#fff9eb' : PRINT.ink
+      : active ? CLEAN.mintDark : available ? CLEAN.ink : CLEAN.subdued;
+    this.box.setFillStyle();
+    this.trim.setVisible(!this.chrome && this.shown && !!this.icon);
+    this.chrome?.image.setVisible(this.shown);
+    if (this.shown) {
+      const paint = this.chrome ? this.chrome.begin(this.r) : this.trim.clear();
+      const offset = this.chrome ? 0 : this.offsetY;
+      const edge = paper ? active ? PRINT.green : PRINT.edge : this.picked ? CLEAN.mint : CLEAN.edge;
+      if (!this.bare) rounded(paint, { x: x + compress, y: y + offset + compress, width: width - 2 * compress, height: height - 2 * compress }, fill, edge, paper ? 12 : 16);
+      if (this.icon) {
+        const label = this.label.text;
+        const size = Math.min(28, height * .48);
+        const iconX = label ? this.rightLabel ? x + this.labelInset / 1.3 : x + (width - this.label.width) / 2 - size * .35 : x + width / 2;
+        glyph(paint, this.icon, iconX, y + offset + height / 2 + compress, size, Number.parseInt(color.slice(1), 16));
+      }
+    }
+    if (this.shown) this.chrome?.finish(this.offsetY);
+    this.positionLabels();
+    this.label.setColor(color).setY(this.label.y + compress);
+    this.rightLabel?.setColor(!paper && available ? CLEAN.gold : color).setY((this.rightLabel?.y ?? 0) + compress);
   }
 }

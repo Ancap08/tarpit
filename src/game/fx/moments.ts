@@ -5,6 +5,7 @@ import { sound } from '../audio/engine';
 import { fontPx, type Layout } from '../layout';
 import { ACT_TWO_TEXT, BARRICADE_UNLOCKED, BARRICADE_UNLOCK_HINT, BOON_NAMES, BOSS_BANNER_SUB, GRUMBLEMAW_SUB, GUARDS_UNLOCKED, GUARDS_UNLOCK_HINT, ENEMY_NAMES, PACK_CALL_TEXT, REWARD_PICKED_TEXT, waveStartBanner, waveClearBanner, bonusGoldText } from '../names';
 import { COLORS, FONT, TEXT } from '../palette';
+import { SANS, rounded, skinFor, textMetrics } from '../ui/newTheme';
 import { BannerQueue } from './fxMath';
 
 let showedBarricadeUnlock = false;
@@ -24,14 +25,16 @@ export class Moments {
   private now = 0;
 
   constructor(private readonly scene: Phaser.Scene, private readonly layout: Layout, private readonly map: MapDef) {
+    const clean = skinFor(scene) === 'battle';
     this.cave = layout.placeWorld(scene.add.graphics());
     this.bannerBg = this.scene.add.graphics();
     this.bannerText = this.scene.add
-      .text(this.bannerX, 0, '', { fontFamily: FONT, fontSize: '30px', fontStyle: 'bold', color: TEXT.waveBanner })
+      .text(this.bannerX, 0, '', { fontFamily: clean ? SANS : FONT, fontSize: '30px', fontStyle: 'bold', color: TEXT.waveBanner })
       .setOrigin(0.5, 0.5)
       .setVisible(false);
     this.bannerSub = this.scene.add
-      .text(this.bannerX, 0, '', { fontFamily: FONT, fontSize: fontPx(this.layout, 17), fontStyle: 'bold', color: TEXT.waveBannerSub })
+      .text(this.bannerX, 0, '', { fontFamily: clean ? SANS : FONT, fontSize: clean && layout.turned ? '23px' : fontPx(this.layout, 17),
+        ...(clean ? { metrics: textMetrics(layout.turned ? 23 : 17) } : {}), fontStyle: 'bold', color: TEXT.waveBannerSub })
       .setOrigin(0.5, 0.5)
       .setVisible(false);
   }
@@ -145,7 +148,9 @@ export class Moments {
         const top = Math.min(y - 30, y - this.bannerText.displayHeight / 2 - 4);
         const contentBottom = this.bannerSub.visible ? this.bannerSub.y + this.bannerSub.displayHeight / 2 : headingBottom;
         const bottom = Math.max(y - 30 + (b.sub === '' ? 52 : b.big ? 100 : 84), contentBottom + 4);
-        panel(this.bannerBg, { x: this.bannerX - w / 2, y: top, width: w, height: bottom - top }, b.big ? THEME.red : THEME.blue);
+        const rect = { x: this.bannerX - w / 2, y: top, width: w, height: bottom - top };
+        if (skinFor(this.scene) === 'battle') rounded(this.bannerBg, rect);
+        else panel(this.bannerBg, rect, b.big ? THEME.red : THEME.blue);
       }
     }
     if (cur !== null) {

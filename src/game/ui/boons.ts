@@ -7,6 +7,7 @@ import { COLORS, FONT, TEXT } from '../palette';
 import { ink, panel, THEME } from './theme';
 import { CANCEL_UI_PRESS } from './button';
 import { drawBoonIcon } from './boonIcons';
+import { CLEAN, SANS, rounded, skinFor, textMetrics } from './newTheme';
 import { heldBoonLayout, rewardLayout } from './boonLayout';
 
 const HELD_DEPTH = 5;
@@ -14,7 +15,11 @@ const REWARD_DEPTH = 7;
 const DETAIL_MS = 2800;
 
 function label(scene: Phaser.Scene, px: number, color: string, bold = false): Phaser.GameObjects.Text {
-  return scene.add.text(0, 0, '', { fontFamily: FONT, fontSize: `${px}px`, color, fontStyle: bold ? 'bold' : 'normal' });
+  const clean = skinFor(scene) === 'battle';
+  return scene.add.text(0, 0, '', { fontFamily: clean ? SANS : FONT, fontSize: `${px}px`,
+    color: clean ? CLEAN.ink : color, fontStyle: bold ? 'bold' : 'normal',
+    ...(clean ? { metrics: textMetrics(px) } : {}),
+  });
 }
 
 /** A fixed set of reward choices over the map. GameScene owns selection and the simulation. */
@@ -26,8 +31,9 @@ export class BoonReward {
   private offer: BoonOffer | null = null;
 
   constructor(scene: Phaser.Scene, layout: Layout, onPick: (id: BoonId) => void) {
+    const clean = skinFor(scene) === 'battle';
     const m = layout.map;
-    this.geo = rewardLayout(layout);
+    this.geo = rewardLayout(layout, clean);
     this.view = scene.add.container(0, 0).setDepth(REWARD_DEPTH).setVisible(false);
     const veil = scene.add.rectangle(m.x, m.y, m.width, m.height, COLORS.endVeil, 0.8).setOrigin(0);
     this.title = label(scene, 30, TEXT.hud, true).setOrigin(0.5).setPosition(this.geo.title.x, this.geo.title.y);
@@ -38,11 +44,17 @@ export class BoonReward {
       const card = scene.add.rectangle(r.x, r.y, r.width, r.height, THEME.paper).setOrigin(0)
         .setStrokeStyle(2, COLORS.menuEdge).setInteractive({ useHandCursor: true });
       const print = scene.add.graphics();
-      panel(print, r);
+      const paint = (state: 'normal' | 'hover' | 'press' = 'normal') => {
+        print.clear();
+        if (clean) rounded(print, r, state === 'press' ? 0x2b5051 : state === 'hover' ? CLEAN.raised : CLEAN.panel);
+        else panel(print, r, state === 'press' ? COLORS.rewardPressed : state === 'hover' ? COLORS.rewardHover : THEME.paper);
+      };
+      if (clean) card.setFillStyle(0, 0).setStrokeStyle();
+      paint();
       const centerX = r.x + g.x;
       const centerY = r.y + g.y;
-      const tile = scene.add.circle(centerX, centerY, 19 * g.scale, COLORS.button)
-        .setStrokeStyle(1.5, COLORS.menuEdge);
+      const tile = scene.add.circle(centerX, centerY, 19 * g.scale, clean ? CLEAN.raised : COLORS.button)
+        .setStrokeStyle(1.5, clean ? CLEAN.edge : COLORS.menuEdge);
       const icon = scene.add.graphics().setPosition(centerX, centerY).setScale(g.scale);
       const name = label(scene, n.font, ink, true).setOrigin(origin, 0.5).setPosition(r.x + n.x, r.y + n.y);
       const effect = label(scene, d.font, ink).setOrigin(origin, 0.5).setPosition(r.x + d.x, r.y + d.y)
@@ -57,22 +69,22 @@ export class BoonReward {
       }
       let pressed = false;
       scene.input.on(CANCEL_UI_PRESS, () => { pressed = false; });
-      card.on('pointerover', () => panel(print.clear(), r, COLORS.rewardHover));
+      card.on('pointerover', () => paint('hover'));
       card.on('pointerout', () => {
         pressed = false;
-        panel(print.clear(), r);
+        paint();
       });
       card.on('pointerdown', (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
         event.stopPropagation();
         pressed = true;
-        panel(print.clear(), r, COLORS.rewardPressed);
+        paint('press');
       });
       card.on('pointerup', (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
         event.stopPropagation();
         const id = this.offer?.options[i];
         const pick = pressed && id !== undefined;
         pressed = false;
-        panel(print.clear(), r);
+        paint();
         if (pick) onPick(id);
       });
       if (card.input) card.input.enabled = false;
@@ -107,22 +119,30 @@ export class BoonReward {
 /** Held boons stay in the HUD. Hover or tap an icon to briefly see its effect. */
 export class HeldBoons {
   private geo: ReturnType<typeof heldBoonLayout>;
-  private readonly icons: { view: Phaser.GameObjects.Container; icon: Phaser.GameObjects.Graphics; box: Phaser.GameObjects.Rectangle }[];
+  private readonly icons: { view: Phaser.GameObjects.Container; icon: Phaser.GameObjects.Graphics; box: Phaser.GameObjects.Rectangle; backing?: Phaser.GameObjects.Graphics }[];
   private readonly detail: Phaser.GameObjects.Container;
   private readonly name: Phaser.GameObjects.Text;
   private readonly effect: Phaser.GameObjects.Text;
   private ids: readonly BoonId[] = [];
+  private readonly clean: boolean;
   private hovered: BoonId | null = null;
   private tapped: BoonId | null = null;
   private timer: Phaser.Time.TimerEvent | null = null;
 
   constructor(private readonly scene: Phaser.Scene, private readonly layout: Layout) {
-    this.geo = heldBoonLayout(layout, scene.scale.parentSize);
+    this.clean = skinFor(scene) === 'battle';
+    this.geo = heldBoonLayout(layout, scene.scale.parentSize, this.clean);
     this.icons = this.geo.slots.map((r, i) => {
       const view = scene.add.container(r.x, r.y).setDepth(HELD_DEPTH).setVisible(false);
       const box = scene.add.rectangle(0, 0, r.width, r.height, COLORS.button).setOrigin(0)
         .setStrokeStyle(1.5, COLORS.menuEdge).setInteractive({ useHandCursor: true });
       const icon = scene.add.graphics().setPosition(r.width / 2, r.height / 2).setScale(r.width / 46);
+      const backing = this.clean ? scene.add.graphics() : undefined;
+      if (backing) {
+        box.setFillStyle(0, 0).setStrokeStyle();
+        rounded(backing, { ...r, x: 0, y: 0 }, CLEAN.raised);
+        view.add(backing);
+      }
       view.add([box, icon]);
       if (box.input) box.input.enabled = false;
       let pressed = false;
@@ -156,13 +176,14 @@ export class HeldBoons {
         this.refresh();
         this.startTimer(scene);
       });
-      return { view, icon, box };
+      return { view, icon, box, backing };
     });
     const r = this.geo.tooltip;
     const bg = scene.add.graphics();
-    panel(bg, { ...r, x: 0, y: 0 });
-    this.name = label(scene, 20, ink, true).setOrigin(0, 0.5).setPosition(14, r.height * 0.3);
-    this.effect = label(scene, this.geo.descriptionFont, ink).setOrigin(0, 0.5).setPosition(14, r.height * 0.68)
+    if (this.clean) rounded(bg, { ...r, x: 0, y: 0 });
+    else panel(bg, { ...r, x: 0, y: 0 });
+    this.name = label(scene, this.clean && layout.turned ? 24 : 20, ink, true).setOrigin(0, 0.5).setPosition(14, r.height * 0.3);
+    this.effect = label(scene, this.clean && layout.turned ? 23 : this.geo.descriptionFont, ink).setOrigin(0, 0.5).setPosition(14, r.height * 0.68)
       .setWordWrapWidth(r.width - 28, true);
     this.detail = scene.add.container(r.x, r.y, [bg, this.name, this.effect]).setDepth(HELD_DEPTH).setVisible(false);
     scene.scale.on('resize', this.fit, this);
@@ -217,12 +238,13 @@ export class HeldBoons {
   private fit(): void {
     const scale = this.scene.scale;
     if (scale.height !== this.layout.height) return;
-    const geo = heldBoonLayout(this.layout, scale.parentSize);
+    const geo = heldBoonLayout(this.layout, scale.parentSize, this.clean);
     this.geo = geo;
-    this.icons.forEach(({ view, icon, box }, i) => {
+    this.icons.forEach(({ view, icon, box, backing }, i) => {
       const r = geo.slots[i];
       view.setPosition(r.x, r.y);
       box.setSize(r.width, r.height);
+      if (backing) rounded(backing.clear(), { ...r, x: 0, y: 0 }, CLEAN.raised);
       icon.setPosition(r.width / 2, r.height / 2).setScale(r.width / 46);
     });
     const width = this.ids.length > 0 ? geo.canvasWidth : this.layout.width;
@@ -238,6 +260,7 @@ export class HeldBoons {
     const id = this.tooltip;
     this.detail.setVisible(id !== null);
     for (const [i, { box }] of this.icons.entries()) {
+      if (this.clean) continue;
       const active = id !== null && id === this.ids[i];
       box.setFillStyle(active ? COLORS.buttonHover : COLORS.button)
         .setStrokeStyle(1.5, active ? COLORS.buttonEdgePicked : COLORS.menuEdge);

@@ -138,6 +138,8 @@ import {
   shakeWindow,
   payQuartering,
   isBuildable,
+  buildableCells,
+  cellFromKey,
   moveTower,
   sellTower,
   setTargeting,
@@ -204,6 +206,10 @@ import { SiegeControls } from './ui/siegeControls';
 import { drawGateMarker, drawSiegeRoads, SiegeGateEffects, type GateHistory } from './draw/siege';
 import { SiegeActors } from './draw/siegeActors';
 import { callEarlyInfo, CHEAT_TAPS, CHEAT_WINDOW_MS, Hud, specialReady, specialRecharge } from './hud';
+import { Button } from './ui/button';
+import { PANEL_TEXT } from './names';
+import { HitNumbers } from './ui/hitNumbers';
+import { BakedPaint, CLEAN, SANS, newInterface, roundPoints, rounded, skinFor, textMetrics, useInterface } from './ui/newTheme';
 import { AIM_BANNER, aimBannerText, BARRICADE_AIM_REASONS, PAINTED_FALLBACK, REWARD_KEYS } from './names';
 import {
   cellAt,
@@ -217,7 +223,7 @@ import {
   type Rect,
 } from './input';
 import { DetailGovernor } from './showpiece/governor';
-import { LANDSCAPE, TAXED_PORTRAIT, type Layout, type LayoutKind } from './layout';
+import { LANDSCAPE, CLEAN_PORTRAIT, TAXED_PORTRAIT, type Layout, type LayoutKind } from './layout';
 import { COLORS, FONT, TEXT } from './palette';
 import { currentLayout } from './layoutSwitch';
 import { isPerfMode, isTestMode } from './testMode';
@@ -439,6 +445,9 @@ export class GameScene extends Phaser.Scene {
   private currentMap: MapId = DEFAULT_MAP;
   private campaignLevel?: GameState['level'];
   private clock = new GameClock();
+  private clean = false;
+  private hitNumbers?: HitNumbers;
+  private buildConfirm?: Button;
   private pausePanel!: PausePanel;
   private readonly autoPause = !isTestMode() || new URLSearchParams(window.location.search).get('autoPause') === '1';
   private dynamic!: Phaser.GameObjects.Graphics;
@@ -610,7 +619,27 @@ export class GameScene extends Phaser.Scene {
       : createGame({ difficulty: this.difficulty, map: this.currentMap, level: this.campaignLevel }));
     const base = currentLayout();
     this.siegeView = undefined;
-    this.layout = base.turned && this.state.level?.taxes ? TAXED_PORTRAIT : base;
+    const clean = newInterface() && this.state.map.id !== 'keep';
+    this.layout = base.turned && clean ? CLEAN_PORTRAIT : base.turned && this.state.level?.taxes ? TAXED_PORTRAIT : base;
+    this.clean = clean;
+    if (clean) {
+      useInterface(this, 'battle', () => this.clock.nowMs);
+      if (this.layout.turned) {
+        const { x, y, width, height } = this.layout.map;
+        const matte = this.add.graphics().fillStyle(CLEAN.ground);
+        const w = this.layout.width;
+        // Leave the opaque status fill to its own plate. Paint only the
+        // gaps and corners so the entire status area is drawn once.
+        matte.fillRect(0, 0, w, 5);
+        matte.fillRect(0, y - 3, w, 3);
+        matte.fillRect(0, 5, 6, y - 8);
+        matte.fillRect(w - 6, 5, 6, y - 8);
+        for (const left of [5, w - 28])
+          for (const top of [4, y - 24]) matte.fillRect(left, top, 23, 23);
+        matte.fillRect(0, y, x, height);
+        matte.fillRect(x + width, y, x, height);
+      }
+    }
     if (this.scale.height !== this.layout.height) this.scale.setGameSize(this.layout.width, this.layout.height);
     if (!resume) this.mapBlockedUntil = 0;
     this.recordedCleared = resume?.recordedCleared ?? 0;
@@ -679,12 +708,33 @@ export class GameScene extends Phaser.Scene {
         if (this.keepAssets !== assets) assets.release();
       });
     }
+    if (clean) {
+      const plate = new BakedPaint(this, this.add.graphics());
+      const square = { x: 0, y: 0, width: 18, height: 18 };
+      const spots = plate.begin(square);
+      const points = roundPoints(square, 5);
+      spots.fillStyle(CLEAN.ground, .30).fillPoints(points, true);
+      spots.lineStyle(1, CLEAN.mint, .63).strokePoints(points, true);
+      spots.fillStyle(CLEAN.mint, .75).fillRect(8, 8, 2, 2);
+      plate.finish();
+      plate.image.setVisible(false);
+      const sites = buildableCells(this.state.map);
+      for (const [key, open] of sites.entries()) {
+        if (!open) continue;
+        const cell = cellFromKey(key);
+        if ((cell.col + 2 * cell.row) % 19 !== 0) continue;
+        const p = this.layout.cellCenter(cell);
+        this.add.image(p.x, p.y, plate.image.texture).setName('clean-tower-spots');
+      }
+    }
     this.overlay = world();
     this.dynamic = world();
     this.enemySprites = new EnemySprites(this, isTestMode(), this.layout, this.painted, this.clock, this.siegeScreens);
     this.shotFx = world();
+    this.hitNumbers = clean ? new HitNumbers(this, () => this.animationTime, this.layout.turned) : undefined;
     this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx), this.layout, this.clock,
-      this.keep ? 'rgba(0,0,0,0)' : undefined, this.siegeScreens && this.layout.turned) : null;
+      this.keep ? 'rgba(0,0,0,0)' : clean ? CLEAN.ground : undefined, this.siegeScreens && this.layout.turned,
+      this.hitNumbers ? (point, damage) => this.hitNumbers?.hit(point, damage) : undefined) : null;
     if (this.showpieceType && this.paintedAssets) {
       // Put the entire town, including its sack and flag, under the pasture daylight.
       this.children.moveBelow(this.town.layer, this.ground);
@@ -715,7 +765,7 @@ export class GameScene extends Phaser.Scene {
     this.bannerBg = this.add.graphics().setDepth(4);
     const bannerTop = this.layout.map.y + BANNER_Y;
     const bannerText = (y: number, size: string, color: string) =>
-      this.add.text(this.bannerX, y, '', { fontFamily: FONT, fontSize: size, fontStyle: 'bold', color }).setOrigin(0.5, 0.5).setAlign('center').setDepth(4);
+      this.add.text(this.bannerX, y, '', { fontFamily: clean ? SANS : FONT, fontSize: size, fontStyle: 'bold', color, ...(clean ? { metrics: textMetrics(parseInt(size)) } : {}) }).setOrigin(0.5, 0.5).setAlign('center').setDepth(4);
     // Portrait (32b follow-up) shows the aim instruction in the status strip instead (Hud).
     this.bannerMain = bannerText(bannerTop + BANNER_MAIN_Y, `${AIM_BANNER.mainPx}px`, TEXT.aimBanner);
     this.bannerHint = bannerText(bannerTop + 34, `${AIM_BANNER.hintPx}px`, TEXT.aimHint);
@@ -775,6 +825,15 @@ export class GameScene extends Phaser.Scene {
         if (this.panel.cell !== null) this.setTargeting(this.panel.cell, next);
       },
     });
+    this.buildConfirm = clean ? new Button(this, { x: 0, y: 0, width: 170, height: 91 }, PANEL_TEXT.build,
+      () => {
+        const type = this.pick, cell = this.armed;
+        if (!type || !cell || this.paused) return;
+        this.armed = null;
+        this.tapCell = null;
+        this.build(cell, type);
+      }, { fontSize: this.layout.turned ? '24px' : '16px', primary: true }) : undefined;
+    this.buildConfirm?.setShown(false);
     this.held = new HeldBoons(this, this.layout);
     this.reward = new BoonReward(this, this.layout, (id) => this.pickBoon(id));
     this.endScreen = new EndScreen(
@@ -807,6 +866,11 @@ export class GameScene extends Phaser.Scene {
       this.press = null;
       this.aimPress = null;
       if (this.state.pendingBoon || this.held.contains(screen.x, screen.y)) return;
+      if (this.buildConfirm && this.armed && contains(this.buildConfirm.rect, screen.x, screen.y)) return;
+      if (this.clean && !this.layout.turned && this.hud.headerControlAt(screen.x, screen.y)) {
+        if (contains(this.hud.rects().gold, screen.x, screen.y)) this.goldTap();
+        return;
+      }
       const repair = this.hud.repairRect;
       if (repair && contains(repair, screen.x, screen.y)) return;
       if (this.siegeControls && Object.values(this.siegeControls.rects()).some(rect => contains(rect, screen.x, screen.y))) return;
@@ -881,7 +945,7 @@ export class GameScene extends Phaser.Scene {
     window.addEventListener('pagehide', pageAway);
     document.addEventListener('visibilitychange', hidden);
     this.events.once('shutdown', () => {
-      if (this.layout === TAXED_PORTRAIT && this.scale.height === this.layout.height) {
+      if ((this.layout === TAXED_PORTRAIT || this.layout === CLEAN_PORTRAIT) && this.scale.height === this.layout.height) {
         const next = currentLayout();
         this.scale.setGameSize(next.width, next.height);
       }
@@ -1492,7 +1556,7 @@ export class GameScene extends Phaser.Scene {
   /** Every clickable rectangle by name: HUD and bar buttons, the open panel's buttons, and `playAgain` and `menu`. */
   uiRects(): Record<string, Rect> {
     if (this.paused) return { mute: this.hud.rects().mute, ...this.pausePanel.rects() };
-    return { ...this.hud.rects(), ...this.siegeControls?.rects(), ...this.roadBanners?.rects(), ...this.reward.rects(), ...this.held.rects(), ...this.panel.rects(), ...this.endScreen.rects() };
+    return { ...this.hud.rects(), ...this.siegeControls?.rects(), ...this.roadBanners?.rects(), ...this.reward.rects(), ...this.held.rects(), ...this.panel.rects(), ...(this.buildConfirm && this.armed ? { buildConfirm: this.buildConfirm.rect } : {}), ...this.endScreen.rects() };
   }
 
   /** The end screen showing, or null. */
@@ -1648,6 +1712,10 @@ export class GameScene extends Phaser.Scene {
           this.featherPuffs.add({ x: point.x, y: point.y - 10 }, this.clock.nowMs);
         }
         puff = true;
+      }
+      if (this.hitNumbers && !this.fx && event.kind === 'hit') {
+        const spot = this.enemySprites.spot(event.enemyId);
+        if (spot) this.hitNumbers.hit(spot, event.damage);
       }
       if (event.kind !== 'exit') continue;
       const spot = this.enemySprites.spot(event.enemyId);
@@ -1885,7 +1953,7 @@ export class GameScene extends Phaser.Scene {
     const fx = this.fx;
     fx?.update(this.state);
     const pose = fx ? (cell: Cell, type: TowerType) => fx.towerPose(cell, type) : undefined;
-    drawTowers(g, this.state, this.aim, moving, pose, this.layout, this.painted?.towerBody);
+    drawTowers(g, this.state, this.aim, moving, pose, this.layout, this.painted?.towerBody, this.clean);
     const blocker = this.state.blockers.find((b) => b.kind === 'barricade') ?? null;
     const motion = this.barricadeMotion;
     const stopped = this.barricadeFx.stoppedPositions(this.state, motion, !this.siegeScreens);
@@ -1913,13 +1981,15 @@ export class GameScene extends Phaser.Scene {
       }
     }
     this.featherPuffs.draw(this.bars, this.clock.nowMs);
-    drawHpBars(this.bars, this.state, this.layout, stopped, this.painted ? id => this.enemySprites.paintedBar(id) : undefined, this.siegeScreens);
+    drawHpBars(this.bars, this.state, this.layout, stopped, this.painted ? id => this.enemySprites.paintedBar(id) : undefined, this.siegeScreens, this.clean);
+    this.hitNumbers?.draw();
     const held = blocker ? this.state.enemies.filter(enemy =>
       !isFlying(enemy) && enemy.distance === distanceOnRoad(this.state.map, enemy.road, blocker)).length : 0;
     this.barricadeFx.drawHp(this.bars, blocker, this.layout, held);
     this.guardFx.draw(this.bars, this.state, motion);
-    if (!this.painted) this.labels.update(this.state);
+    if (!this.painted && !this.clean) this.labels.update(this.state);
     this.syncEndScreen();
+    this.endScreen.animate(this.clock.nowMs);
     this.redrawUi();
     const banner = this.aimBanner();
     this.hud.update(this.state, this.speed, this.pick, {
@@ -1965,7 +2035,9 @@ export class GameScene extends Phaser.Scene {
         const top = this.layout.map.y + BANNER_Y;
         const h = showFallback ? this.bannerMain.height + BANNER_MAIN_Y : BANNER_H;
         this.bannerMain.setY(top + (showFallback ? h / 2 : BANNER_MAIN_Y));
-        panel(this.bannerBg, { x: this.bannerX - w / 2, y: top, width: w, height: h }, THEME.wood);
+        const rect = { x: this.bannerX - w / 2, y: top, width: w, height: h };
+        if (skinFor(this) === 'battle') rounded(this.bannerBg, rect);
+        else panel(this.bannerBg, rect, THEME.wood);
         if (text !== null) {
           this.bannerBg.fillStyle(SPECIAL_COLORS[this.aiming!]).fillCircle(this.bannerX - w / 2 + 6, top + h / 2, 3);
         }
@@ -2015,6 +2087,20 @@ export class GameScene extends Phaser.Scene {
       this.tapCell = null;
     }
 
+    if (this.buildConfirm) {
+      const show = !!this.armed && !!this.pick && !this.paused && !this.endScreen.kind;
+      if (show) {
+        const map = this.layout.map;
+        const { width, height } = this.buildConfirm.rect;
+        const p = this.layout.cellCenter(this.armed!);
+        const right = p.x + 32;
+        const x = right + width < map.x + map.width ? right : Math.max(map.x + 4, p.x - 32 - width);
+        const y = Math.max(map.y + 4, Math.min(map.y + map.height - height - 4, p.y - height - 23));
+        this.buildConfirm.moveTo(x, y);
+      }
+      this.buildConfirm.setShown(show);
+    }
+
     const panelRect = this.panel.rect;
     const p = this.pointer;
     if (this.endScreen.kind !== null || this.state.pendingBoon) this.hoverCell = null;
@@ -2041,10 +2127,16 @@ export class GameScene extends Phaser.Scene {
     this.drawnRange = null;
     const selected = this.panel.cell === null ? undefined : towerAt(this.state, this.panel.cell);
     if (selected) {
-      this.rangeCircles(selected.cell, towerStatsAt(this.state, selected));
+      this.rangeCircles(selected.cell, towerStatsAt(this.state, selected), this.panel.arrival);
       const s = cellCenter(selected.cell);
-      g.lineStyle(3, COLORS.selectRing, 1);
-      g.strokeCircle(s.x, s.y, 22);
+      if (this.clean) {
+        const points = roundPoints({ x: s.x - 22, y: s.y - 22, width: 44, height: 44 }, 12);
+        g.lineStyle(3, CLEAN.ground).strokePoints(points, true);
+        g.lineStyle(1.5, CLEAN.mint).strokePoints(points, true);
+      } else {
+        g.lineStyle(3, COLORS.selectRing, 1);
+        g.strokeCircle(s.x, s.y, 22);
+      }
     }
 
     // What a ghost would show: the pick, or the tower being moved (its level).
@@ -2217,13 +2309,14 @@ export class GameScene extends Phaser.Scene {
    * and path. A tower with a minimum range (the Mortar) also gets a dashed
    * muted-red circle at that minimum.
    */
-  private rangeCircles(cell: Cell, stats: TowerLevelStats): void {
+  private rangeCircles(cell: Cell, stats: TowerLevelStats, alpha = 1): void {
     this.drawnRange = stats.range;
     const s = cellCenter(cell);
     const g = this.overlay;
-    g.fillStyle(COLORS.range, 0.12);
+    g.fillStyle(this.clean ? CLEAN.mint : COLORS.range, this.clean ? .075 * alpha : .12);
     g.fillCircle(s.x, s.y, stats.range);
-    g.lineStyle(2, COLORS.range, 0.9);
+    if (this.clean) g.lineStyle(3, CLEAN.ground, .58 * alpha).strokeCircle(s.x, s.y, stats.range);
+    g.lineStyle(this.clean ? 1.5 : 2, this.clean ? CLEAN.mint : COLORS.range, .9 * alpha);
     g.strokeCircle(s.x, s.y, stats.range);
     if (stats.minRange > 0) {
       g.lineStyle(2, COLORS.minRange, 1);

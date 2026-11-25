@@ -15,7 +15,9 @@ import { drawStarRow } from './starRow';
 import { townCondition } from '../decor/townCondition';
 import { townPortrait } from './townPortrait';
 import { menuKeys } from './menuKeys';
-import { CAMPAIGN_END, END_TEXT, STORY_TEXT } from '../names';
+import { CAMPAIGN_END, END_TEXT, LEVEL_NAMES, STORY_TEXT, levelNumberText } from '../names';
+import { PRINT, glyph, line, motionClock, rounded, sheet, skinFor, textMetrics } from './newTheme';
+import { printedText } from './printCard';
 import { endScreenText, type CampaignResult, type EndKind } from './endText';
 
 export type { EndKind };
@@ -59,10 +61,17 @@ export class EndScreen {
   private shown: EndKind | null = null;
   private readonly portrait: boolean;
   private readonly cy: number;
+  private readonly printed: boolean;
+  private folio?: Phaser.GameObjects.Text;
+  private arrivalAt = -Infinity;
+  private readonly clock?: () => number;
+  private arrival?: (offset: number) => void;
 
   /** `layout` (milestone 32b): the veil covers its map box and the panel is centred on it. */
   constructor(scene: Phaser.Scene, private readonly board: Layout, onPlayAgain: () => void, onMenu: () => void, onKeepGoing: () => void, salute?: Phaser.GameObjects.Layer) {
-    const MAP_AREA = board.map;
+    this.printed = skinFor(scene) === 'battle';
+    this.clock = this.printed ? motionClock(scene) : undefined;
+    const MAP_AREA = this.printed ? { x: 0, y: 0, width: board.width, height: board.height } : board.map;
     const cx = MAP_AREA.x + MAP_AREA.width / 2;
     const cy = MAP_AREA.y + MAP_AREA.height / 2;
     this.portrait = board.turned;
@@ -72,7 +81,7 @@ export class EndScreen {
     const buttonFont = board === TAXED_PORTRAIT ? '23px' : '22px';
 
     this.veil = scene.add
-      .rectangle(MAP_AREA.x, MAP_AREA.y, MAP_AREA.width, MAP_AREA.height, COLORS.endVeil, 0.38)
+      .rectangle(MAP_AREA.x, MAP_AREA.y, MAP_AREA.width, MAP_AREA.height, this.printed ? 0xc8b99a : COLORS.endVeil, this.printed ? .975 : .38)
       .setOrigin(0, 0);
     if (salute) {
       // The evening salute shines through the open field around the paper.
@@ -80,6 +89,7 @@ export class EndScreen {
       Phaser.Utils.Array.BringToTop(scene.children.list, salute);
     }
     this.panel = scene.add.graphics();
+    if (this.printed) this.panel.setName('clean-printed-result');
     this.title = scene.add
       .text(cx, 0, '', { fontFamily: FONT, fontSize: '40px', fontStyle: 'bold', color: TEXT.paperGold })
       .setOrigin(0.5);
@@ -111,17 +121,23 @@ export class EndScreen {
     this.cx = cx;
     this.button = new Button(scene, { x: left, y, width: bw, height: bh }, END_TEXT.playAgain, onPlayAgain, {
       fontSize: this.portrait ? buttonFont : '20px',
+      ...(this.printed ? { skin: 'paper', icon: 'replay' } as const : {}),
     });
     this.menu = new Button(
       scene,
       { x: left + BUTTON_W + BUTTON_GAP, y, width: this.portrait ? P_BUTTON_W : MENU_W, height: bh },
       END_TEXT.menu,
       onMenu,
-      { fontSize: this.portrait ? buttonFont : '18px' },
+      { fontSize: this.portrait ? buttonFont : '18px', ...(this.printed ? { skin: 'paper', icon: 'map' } as const : {}) },
     );
     this.keepGoing = new Button(scene, { x: 0, y, width: this.portrait ? P_BUTTON_W : KEEP_GOING_W, height: bh }, END_TEXT.keepGoing, onKeepGoing, {
       fontSize: this.portrait ? buttonFont : '20px',
+      ...(this.printed ? { skin: 'paper', primary: true, icon: 'arrow' } as const : {}),
     });
+    if (this.printed) {
+      for (const object of [this.veil, this.panel, this.title, this.story, this.lines, this.boons]) object.setDepth(10);
+      for (const button of [this.button, this.menu, this.keepGoing]) button.setDepth(11);
+    }
     this.keepGoing.setPicked(true);
     this.setVisible(false);
   }
@@ -163,7 +179,7 @@ export class EndScreen {
           }).setOrigin(0.5, 0);
         }
       }
-      if (campaign.slots) this.starRow = drawStarRow(this.title.scene, this.cx, 0, campaign.stars, 28, TEXT.paperGold, !!state.level?.feat);
+      if (campaign.slots) this.starRow = drawStarRow(this.title.scene, this.cx, 0, campaign.stars, 28, TEXT.paperGold, !!state.level?.feat, this.printed);
       this.detailRows = campaign.details.map(text => this.boons.scene.add.text(this.cx, 0, text, {
         fontFamily: FONT, fontSize: detailSize, color: ink, align: 'center',
         wordWrap: { width: this.portrait ? PORTRAIT_WIDTH - 40 : 442 },
@@ -182,12 +198,20 @@ export class EndScreen {
       this.boons.setText(boons);
     }
     this.title.setColor(kind === 'won' ? ink : TEXT.paperDefeat);
-    this.layout();
+    if (this.printed) {
+      document.body.style.backgroundColor = '#c8b99a';
+      this.printLayout(state);
+    }
+    else this.layout();
     this.setVisible(true);
   }
 
   /** Hide the screen (milestone 26: after Keep going); a later show() works again. */
   hide(): void {
+    if (this.printed) document.body.style.backgroundColor = '#0b1e20';
+    this.folio?.destroy();
+    this.folio = undefined;
+    this.arrival = undefined;
     this.close?.destroy();
     this.close = undefined;
     this.picture?.destroy();
@@ -208,6 +232,109 @@ export class EndScreen {
     const out: Record<string, Rect> = { playAgain: this.button.rect, menu: this.menu.rect };
     if (this.hasAdvance) out[this.campaign ? 'nextLevel' : 'keepGoing'] = this.keepGoing.rect;
     return out;
+  }
+
+  /** Lay the sheet over the field. Offsets affect only the rendered objects. */
+  private printLayout(state: GameState): void {
+    const phone = this.portrait;
+    const width = phone ? 534 : 720;
+    const x = this.cx - width / 2;
+    const pad = phone ? 25 : 22;
+    const inner = width - 2 * pad;
+    const gap = phone ? 16 : 9;
+    const tall = phone ? 25 : 16;
+    const scene = this.title.scene;
+    const picture = this.picture!;
+    const controls = this.hasAdvance ? [this.keepGoing, this.button, this.menu] : [this.button, this.menu];
+    const details = this.campaign ? this.detailRows : [this.lines, this.boons].filter(label => label.text);
+    const paperLabel = (label: Phaser.GameObjects.Text, px: number, wrap: number, color: string, fontStyle = 'normal') =>
+      label.setStyle({ color, fontSize: px, fontStyle, align: 'center', metrics: textMetrics(px), wordWrap: { width: wrap }, lineSpacing: 0 })
+        .setOrigin(.5, 0).setDepth(11);
+    const titleSize = phone ? this.shown === 'won' ? 98 : 70 : 55;
+    paperLabel(this.title, titleSize, inner, this.shown === 'won' ? PRINT.ink : PRINT.red, 'bold');
+    paperLabel(this.story, phone ? 27 : 18, inner, PRINT.muted, 'italic');
+    if (this.close) paperLabel(this.close, tall, inner, PRINT.ink);
+    details.forEach(row => paperLabel(row, tall, phone ? inner - 38 : 302, PRINT.ink));
+    if (state.level) {
+      this.folio = printedText(scene, `${levelNumberText(state.level.id)} · ${LEVEL_NAMES[state.level.id].name}`, tall, inner, PRINT.red, 'bold')
+        .setDepth(11);
+    }
+    picture.setDepth(11);
+    this.starRow?.setDepth(11).setScale(phone ? 2.04 : 1.3);
+    const stars = this.starRow?.getBounds().height ?? 0;
+    const photoW = phone ? inner : 306;
+    const photoH = photoW / 2 + (phone ? 12 : 0);
+    const rowsH = details.reduce((sum, row) => sum + row.height + gap, 0);
+    const headline = pad + (this.folio ? this.folio.height + 2 * gap : 0) + this.title.height + gap + (stars ? stars + gap : 0);
+    const body = phone ? photoH + gap + rowsH : Math.max(photoH, rowsH);
+    const reply = (this.story.text ? this.story.height + gap : 0) + (this.close ? this.close.height + gap : 0);
+    const tapH = phone ? Math.max(89, Math.ceil(44 * scene.scale.displayScale.y)) : 49;
+    const actions = phone && this.hasAdvance ? 2 * tapH + gap : tapH;
+    const height = headline + body + reply + actions + gap + 2 * pad;
+    const y = this.cy - height / 2;
+    const g = this.panel.clear();
+    sheet(g, { x, y, width, height });
+    let top = y + pad;
+    if (this.folio) {
+      this.folio.setPosition(this.cx, top);
+      top += this.folio.height + gap;
+      line(g, x + pad, top, inner);
+      top += gap;
+    }
+    this.title.setPosition(this.cx, top);
+    top += this.title.height + gap;
+    if (this.starRow) {
+      this.starRow.setPosition(this.cx, top + stars / 2);
+      top += stars + gap;
+    }
+    const photoX = phone ? x + pad : x + pad + 7;
+    const photoY = top + (phone ? 0 : (body - photoH) / 2);
+    rounded(g, { x: photoX, y: photoY, width: photoW, height: photoH }, PRINT.inset, PRINT.edge, 10);
+    picture.setPosition(photoX + photoW / 2, photoY + photoH / 2).setDisplaySize(photoW - 8, (photoW - 8) / 2);
+    let lineY = top + (phone ? photoH + gap : (body - rowsH) / 2);
+    for (const [i, row] of details.entries()) {
+      const textX = phone ? this.cx : x + width - pad - 166;
+      row.setPosition(textX, lineY);
+      if (i === 0 && this.shown === 'won') glyph(g, 'heart', textX - row.width / 2 - 15, lineY + row.height / 2, phone ? 23 : 16, PRINT.green);
+      lineY += row.height + gap;
+    }
+    top += body + gap;
+    line(g, x + pad, top - gap / 2, inner);
+    this.story.setPosition(this.cx, top);
+    if (this.close) this.close.setPosition(this.cx, top + (this.story.text ? this.story.height + gap : 0));
+    top += reply;
+    if (phone && this.hasAdvance) {
+      this.keepGoing.setSize(inner, tapH);
+      this.keepGoing.setFontSize('25px');
+      this.keepGoing.moveTo(x + pad, top);
+      top += tapH + gap;
+    }
+    const row = phone ? [this.button, this.menu] : controls;
+    const each = (inner - (row.length - 1) * gap) / row.length;
+    row.forEach((button, i) => {
+      button.setSize(each, tapH);
+      button.setFontSize(phone ? '25px' : '17px');
+      button.moveTo(x + pad + i * (each + gap), top);
+    });
+    if (this.campaign) this.handleKey = menuKeys(controls, 0, this.menu);
+    if (this.clock) {
+      const objects = [g, this.title, this.folio, this.starRow, picture, ...details, this.story, this.close]
+        .filter(object => object !== undefined);
+      const origins = objects.map(object => object.y);
+      this.arrival = offset => {
+        objects.forEach((object, i) => object.setY(origins[i] + offset));
+        controls.forEach(button => button.setVisualOffset(offset));
+      };
+      this.arrivalAt = this.clock();
+      this.animate(this.arrivalAt);
+    }
+  }
+
+  animate(now: number): void {
+    if (!this.arrival) return;
+    const t = Math.min(1, (now - this.arrivalAt) / 240);
+    this.arrival(18 * (1 - t) ** 3);
+    if (t === 1) this.arrival = undefined;
   }
 
   /** The panel width and the button row for this screen: two buttons, or three on the win screen (milestone 26). */

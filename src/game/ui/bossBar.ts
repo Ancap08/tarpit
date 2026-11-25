@@ -11,6 +11,7 @@ import { enemyMaxHp, isBoss, type GameState } from '../../sim';
 import { panel, THEME } from './theme';
 import { ENEMY_NAMES } from '../names';
 import { LANDSCAPE, TAXED_PORTRAIT, type Layout } from '../layout';
+import { CLEAN, SANS, rounded, skinFor, textMetrics } from './newTheme';
 import { COLORS, FONT, HUD_FONT, TEXT } from '../palette';
 
 export const BOSS_BAR = { x: 330, y: 24, width: 300, height: 14 } as const;
@@ -73,15 +74,28 @@ export class BossBar {
   private readonly hp: Phaser.GameObjects.Text;
   private info: BossBarInfo | null = null;
   private readonly geo: BossBarGeometry;
+  private readonly clean: boolean;
+  private paintKey = '';
 
   constructor(scene: Phaser.Scene, layout: Layout = LANDSCAPE) {
+    this.clean = skinFor(scene) === 'battle';
+    const modern = this.clean;
     const geo = bossBarGeometry(layout);
+    if (modern) {
+      const phone = layout.turned;
+      geo.bar = { x: phone ? (layout.width - 374) / 2 : 394, y: layout.map.y + (phone ? 40 : 38),
+        width: phone ? 374 : 310, height: phone ? 28 : 22 };
+      geo.pill = { y: layout.map.y + 6, height: phone ? 34 : 32, padX: 9 };
+      geo.nameSize = phone ? 25 : 15;
+      geo.hpSize = phone ? 24 : 13;
+    }
     const { bar: BOSS_BAR, pill: BOSS_PILL } = geo;
     this.geo = geo;
     this.g = scene.add.graphics();
     this.name = scene.add
       .text(BOSS_BAR.x + BOSS_PILL.padX, BOSS_PILL.y + BOSS_PILL.height / 2, '', {
-        fontFamily: FONT,
+        fontFamily: modern ? SANS : FONT,
+        ...(modern ? { metrics: textMetrics(geo.nameSize) } : {}),
         fontSize: `${geo.nameSize}px`,
         fontStyle: 'bold',
         color: TEXT.bossName,
@@ -89,7 +103,8 @@ export class BossBar {
       .setOrigin(0, 0.5);
     this.hp = scene.add
       .text(BOSS_BAR.x + BOSS_BAR.width - 4, BOSS_BAR.y + BOSS_BAR.height / 2, '', {
-        fontFamily: HUD_FONT,
+        fontFamily: modern ? SANS : HUD_FONT,
+        ...(modern ? { metrics: textMetrics(geo.hpSize) } : {}),
         fontSize: `${geo.hpSize}px`,
         fontStyle: 'bold',
         color: TEXT.bossHp,
@@ -127,6 +142,20 @@ export class BossBar {
     const { x, y, width, height } = this.geo.bar;
     const BOSS_PILL = this.geo.pill;
     const g = this.g;
+    if (this.clean) {
+      const fill = Math.round(width * info.fraction);
+      const key = `${info.name}:${fill}`;
+      if (key !== this.paintKey) {
+        this.paintKey = key;
+        g.clear();
+        rounded(g, { x, y: BOSS_PILL.y, width, height: y + height - BOSS_PILL.y }, CLEAN.panel, CLEAN.edge, 12);
+        const length = width - (this.hp.width + 25);
+        g.fillStyle(CLEAN.raised).fillRoundedRect(x + 9, y + height / 2 - 3, length, 6, 3);
+        if (fill > 0) g.fillStyle(CLEAN.rose).fillRoundedRect(x + 9, y + height / 2 - 3, Math.max(2, length * info.fraction), 6, 3);
+      }
+      this.setVisible(true);
+      return;
+    }
     g.clear();
     // Name pill, sized to the name.
     panel(g, { x, y: BOSS_PILL.y, width: Math.ceil(this.name.displayWidth) + 2 * BOSS_PILL.padX, height: BOSS_PILL.height }, THEME.red);

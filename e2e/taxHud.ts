@@ -51,8 +51,12 @@ export async function checkTaxLine(page: Page, expected: string, count = false) 
     const cssPixels = parseFloat(String(label.style.fontSize)) * Math.min(label.scaleX, label.scaleY) * scale;
     const first = t.uiRects()['bar:musketeer'];
     const second = t.uiRects()['bar:cannon'];
+    const modern = new URL(location.href).searchParams.get('ui') === 'new';
     const region = count ? { left: first.x, right: second.x + second.width, top: first.y, bottom: first.y + first.height }
-      : { left: 0, right: portrait ? 480 : 960, top: portrait ? 0 : 480, bottom: portrait ? scene['layout'].map.y : 533 };
+      : modern ? (() => {
+        const r = scene['hud']['m'].bands[0];
+        return { left: r.x, right: r.x + r.width, top: r.y, bottom: r.y + r.height };
+      })() : { left: 0, right: portrait ? 480 : 960, top: portrait ? 0 : 480, bottom: portrait ? scene['layout'].map.y : 533 };
     return { text: label.text, readable: cssPixels >= 12, fits: b.left >= region.left && b.right <= region.right
       && b.top >= region.top && b.bottom <= region.bottom, overlaps: overlaps.map(other => other.text) };
   }, count);

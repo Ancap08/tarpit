@@ -1,3 +1,6 @@
+import { drawPrintedCard } from './ui/printCard';
+import { newInterface, skinFor, useInterface } from './ui/newTheme';
+import type { ButtonOptions } from './ui/button';
 // Title menu (milestone 25): the title and subtitle, a "Difficulty" row of
 // three buttons (Normal preselected, the pick highlighted like the build
 // bar's active tower), a "Map" row of three thumbnail buttons (milestone 27,
@@ -269,8 +272,8 @@ export class TitleScene extends Phaser.Scene {
     this.restartVisit({ screen, levelId, act, focusId });
   }
 
-  private action = (key: string, rect: Rect, text: string, click: () => void, size = 22): Button => {
-    const button = new Button(this, rect, text, click, { fontSize: `${size}px` });
+  private action = (key: string, rect: Rect, text: string, click: () => void, size = 22, options?: ButtonOptions): Button => {
+    const button = new Button(this, rect, text, click, { fontSize: `${size}px`, ...options });
     this.campaignButtons.set(key, button);
     return button;
   };
@@ -409,7 +412,19 @@ export class TitleScene extends Phaser.Scene {
           this.visit('levelTips', level.id);
         };
         const review = seen ? () => showTips(true) : undefined;
-        this.playButton = drawLevelCard(this, portrait, level, campaignProgress.table()[level.id] ?? 0, this.action,
+        const printed = level.map !== 'keep' && newInterface();
+        if (printed) {
+          useInterface(this, 'paper', () => this.time.now);
+          if (portrait) {
+            const normal = currentLayout();
+            this.scale.setGameSize(520, normal.height);
+            this.events.once('shutdown', () => {
+              if (this.scale.width === 520 && this.scale.height === normal.height)
+                this.scale.setGameSize(normal.width, normal.height);
+            });
+          }
+        }
+        this.playButton = (printed ? drawPrintedCard : drawLevelCard)(this, portrait, level, campaignProgress.table()[level.id] ?? 0, this.action,
           () => this.tipsEnabled && !seen ? showTips(false) : start(), () => this.visit('levelMap', undefined, this.act), review,
           this.scouting, () => {
             this.scouting = !this.scouting;
@@ -575,7 +590,8 @@ export class TitleScene extends Phaser.Scene {
   private refreshLoading(): void {
     const progress = this.progress;
     const portrait = currentLayout().kind === 'portrait';
-    const playFont = portrait ? PORTRAIT_TITLE.playFont : LANDSCAPE_TITLE.playFont;
+    const printed = skinFor(this) === 'paper';
+    const playFont = printed ? portrait ? '25px' : '20px' : portrait ? PORTRAIT_TITLE.playFont : LANDSCAPE_TITLE.playFont;
     if (this.playButton) {
       this.playButton.labelObjects[0].setWordWrapWidth(progress === null ? 0 : this.playButton.rect.width - 12);
     }

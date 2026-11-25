@@ -70,7 +70,7 @@ export class PausePanel {
       y: buttonTop + (portrait ? i * (buttonH + gap) : 0),
       width: buttonW, height: buttonH,
     });
-    const options = { fontSize: portrait ? '22px' : '18px', sound: null };
+    const options = { skin: 'legacy' as const, fontSize: portrait ? '22px' : '18px', sound: null };
     this.buttons = [
       new Button(scene, rect(0), PAUSE_TEXT.resume, actions.onResume, options),
       new Button(scene, rect(1), PAUSE_TEXT.restart, () => {

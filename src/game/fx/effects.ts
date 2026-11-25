@@ -48,6 +48,7 @@ import { goldGainText } from '../names';
 import { Moments } from './moments';
 import type { Layout } from '../layout';
 import { COLORS, HUD_FONT, TEXT } from '../palette';
+import { CLEAN, SANS, skinFor } from '../ui/newTheme';
 import { Aim, drawTowerScaled, MUZZLE, type TowerPose } from '../draw/towers';
 import {
   arcHeight,
@@ -109,7 +110,7 @@ interface Impact {
 
 /** Something that happens when a projectile lands (game ms). */
 type Due =
-  | { at: number; kind: 'hit'; id: number; from: Point }
+  | { at: number; kind: 'hit'; id: number; from: Point; damage: number }
   | { at: number; kind: 'kill'; id: number; bounty: number; type: EnemyType }
   | { at: number; kind: 'bossDown'; id: number; large: boolean }
   | { at: number; kind: 'impact'; shot: Shot };
@@ -212,6 +213,7 @@ export class Effects {
     private readonly clock: GameClock,
     private readonly mapBackground: string | number = COLORS.grass,
     private readonly settledCamera = false,
+    private readonly hitNumber?: (point: Point, damage: number) => void,
   ) {
     this.projectiles = new Array<Projectile | null>(CAPS.projectiles).fill(null);
     this.impacts = new Array<Impact | null>(CAPS.impacts).fill(null);
@@ -268,7 +270,7 @@ export class Effects {
     for (let i = 0; i < CAPS.goldLabels; i++) {
       this.goldTexts.push(
         this.scene.add
-          .text(0, 0, '', { fontFamily: HUD_FONT, fontSize: '15px', fontStyle: 'bold', color: TEXT.goldGain, stroke: TEXT.fxStroke, strokeThickness: 3 })
+          .text(0, 0, '', { fontFamily: skinFor(this.scene) === 'battle' ? SANS : HUD_FONT, fontSize: skinFor(this.scene) === 'battle' && this.layout.turned ? '23px' : '15px', fontStyle: 'bold', color: skinFor(this.scene) === 'battle' ? CLEAN.gold : TEXT.goldGain, stroke: TEXT.fxStroke, strokeThickness: 3 })
           .setOrigin(0.5, 1)
           .setVisible(false),
       );
@@ -345,12 +347,16 @@ export class Effects {
           if (s === undefined) {
             this.sprites.hit(e.enemyId, cellCenter(e.cell));
             this.showpiece?.onHit(e.enemyId, this.sprites.spot(e.enemyId));
+            if (this.hitNumber) {
+              const spot = this.sprites.spot(e.enemyId);
+              if (spot) this.hitNumber(spot, e.damage);
+            }
             sound.play('hit');
             break;
           }
           // Splash knocks away from the blast, a direct hit away from the tower.
           const from = s.shot.splashRadius ? s.shot.to : s.shot.from;
-          this.due.push({ at: s.arrive, kind: 'hit', id: e.enemyId, from });
+          this.due.push({ at: s.arrive, kind: 'hit', id: e.enemyId, from, damage: e.damage });
           this.tickHits.set(e.enemyId, Math.max(this.tickHits.get(e.enemyId) ?? 0, s.arrive));
           break;
         }
@@ -614,6 +620,10 @@ export class Effects {
         else if (d.kind === 'hit') {
           this.sprites.hit(d.id, d.from);
           this.showpiece?.onHit(d.id, this.sprites.spot(d.id));
+          if (this.hitNumber) {
+            const spot = this.sprites.spot(d.id);
+            if (spot) this.hitNumber(spot, d.damage);
+          }
           sound.play('hit');
         } else if (d.kind === 'kill') this.killNow(d.id, d.bounty, d.type);
         else this.bossDeath(d.id, d.large);

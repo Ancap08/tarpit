@@ -163,6 +163,11 @@ export const PANEL_TEXT = {
   sell: 'Sell',
   remove: 'Remove',
   notEnoughGold: 'Not enough gold',
+  build: 'Build',
+  chooseUpgrade: 'Choose an upgrade',
+  ready: 'Ready',
+  towerMeta: (level: number, kills: string) => `Level ${level} · ${kills}`,
+  damage: (amount: number) => `−${Math.max(1, Math.round(amount))}`,
 } as const;
 
 export const PATH_NAMES: Readonly<Record<TowerType, Record<UpgradePath, string>>> = {

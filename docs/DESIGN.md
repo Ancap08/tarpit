@@ -1728,6 +1728,24 @@ drawn and where touches land differ.
   A boss banner continues from the time at which it paused. The tips and
   ordinary result screens keep their own controls and ignore P.
 
+### Clean and Fine print preview
+
+`?ui=new` selects Clean in ordinary levels and Fine print on their level
+cards and results. The current controls and rules still own play. The
+fitted landscape board remains 960 × 580. The fitted Clean portrait
+board is 560 × 1364, with the same 480 × 960 projection at (40, 210).
+The six 91-unit build targets fit across the bottom, above the three
+wave controls. Mute and Pause sit in the status block. At 390 × 664
+the target size is at least 44 CSS px. The original same-cell second
+tap still builds, and the armed preview also offers a Build button.
+
+Paper cards use the bundled Libre Caslon. The portrait card has a
+520-unit width, and short two-tax cards use Map notes to turn the sheet.
+The panel glides over 210 ms, paper settles over 240 ms, gold and lives
+change over 145 ms and prices over 130 ms. Live damage numbers rise for
+up to 470 ms. Battle motion uses the pausable clock. Frozen views draw
+the settled geometry and reduced-motion play skips transitions.
+
 ## Touch and phones
 
 Milestone 35 (`src/game/pageLock.ts`, `src/game/touchAssist.ts`). Mouse
