@@ -1,8 +1,8 @@
 """Headless Blender: /Applications/Blender.app/Contents/MacOS/Blender -b --python-exit-code 1 -P scripts/art/keep_castle.py
 
-Model the Old Keep as a painted miniature. Orthographic plates share the gate's
-registration, including a second exposure under a lightning key. No source imagery.
+Model the Old Keep as a painted miniature. Two perspective cameras share the gate's registration, including a second exposure under a lightning key. No source imagery.
 """
+import json
 import math
 import random
 import shutil
@@ -23,7 +23,8 @@ import render
 OUT = HERE.parents[1] / "public/assets/keep"
 rng = random.Random(51)
 TAU = math.tau
-W, H = 1280, 960
+PORTRAIT = (2560, 1920)
+WIDE = (3200, 1200)
 materials = {}
 geometry = defaultdict(lambda: ([], []))
 layer = "far"
@@ -36,7 +37,7 @@ def pigment(name, hexcolor, emission=0, metallic=0):
     material.use_nodes = True
     shader = material.node_tree.nodes.get("Principled BSDF")
     shader.inputs["Base Color"].default_value = (*color, 1)
-    shader.inputs["Roughness"].default_value = .56
+    shader.inputs["Roughness"].default_value = .43 if metallic else .62
     shader.inputs["Metallic"].default_value = metallic
     if emission:
         shader.inputs["Emission Color"].default_value = (*color, 1)
@@ -53,6 +54,11 @@ def pigment(name, hexcolor, emission=0, metallic=0):
             stop.color = (*[min(1, c*scale) for c in color], 1)
         links.new(noise.outputs["Fac"], ramp.inputs[0])
         links.new(ramp.outputs[0], shader.inputs["Base Color"])
+        bump=nodes.new("ShaderNodeBump")
+        bump.inputs["Strength"].default_value=.16
+        bump.inputs["Distance"].default_value=.043
+        links.new(noise.outputs["Fac"],bump.inputs["Height"])
+        links.new(bump.outputs["Normal"],shader.inputs["Normal"])
     materials[name] = material
 
 
@@ -196,6 +202,14 @@ def roof(x,y,z,r,h,n=8,ornate=True,metal="verdigris"):
         pts=[(x+r*s*math.sin(a),y-r*s*math.cos(a),z+t*h) for t,s in rings[1:]]
         for p,b in zip(pts,pts[1:]):
             rod(p,b,max(.008,r*.015),"patina" if ornate else "shingle",n=4)
+    if ornate and h>1.5:
+        for i in range(n):
+            a=TAU*(i-.5)/n
+            for t,rr in ((.14,.793),(.23,.692),(.34,.557),(.53,.385),(.64,.28)):
+                xx=x+rr*r*math.sin(a)
+                yy=y-rr*r*math.cos(a)
+                rod((xx,yy,z+t*h),(xx+.085*r*math.sin(a),yy-.085*r*math.cos(a),z+t*h+.095*r),
+                    .037*r,"patina",.014*r,n=4)
     finial(x,y,z+h,max(.46,r*.7))
 
 
@@ -282,8 +296,7 @@ def clock_gable(x,y,z,w,h,d):
         a=i*TAU/12
         rod((x+.218*math.sin(a),front-.063,cz+.218*math.cos(a)),
             (x+.26*math.sin(a),front-.063,cz+.26*math.cos(a)),.012,"iron",n=4)
-    rod((x,front-.072,cz),(x-.105,front-.072,cz+.12),.022,"iron",n=4)
-    rod((x,front-.072,cz),(x+.155,front-.072,cz+.085),.015,"iron",n=4)
+    # The clock hands are registered to the face in the runtime scene.
     for yy in (front,y+d/2):
         finial(x,yy,z+h,1.20)
 
@@ -294,12 +307,21 @@ def far():
                           (2.38,4.1,.97,8.1,4.05),(4.30,4.35,.54,6.63,2.68),
                           (6.05,3.7,.83,5.76,2.65),(8.17,3.5,.56,4.12,2.07)]:
         spire(x,y,-.5,r,h,cap,7,2,"slate","deep")
+    # The old borough follows the ridge beyond the keep. The lower chapter
+    # roofs leave gaps between groups of slender needles against the sky.
+    for x,y,r,h,cap in [(-12,4,.56,3.4,1.86),(-10.7,4.6,.73,4.75,2.35),
+                          (-9.27,4.1,.46,5.35,2.70),(-8.42,4.7,.35,6.45,2.18),
+                          (8.42,5.4,.61,5.88,3.62),(9.31,5.3,.40,4.85,2.2),
+                          (11.22,5.9,.55,4.10,1.83),(13.49,6.7,.63,3.75,2.12)]:
+        spire(x,y,-.5,r,h,cap,8,2,"slate","deep")
     for x in (-5,-1,2,5):
         block(x,3,0,3.6,1.7,3.18,"slate")
         roof(x,3,3.1,1.52,1.61,4,False,"deep")
 
 
 def crown():
+    global layer
+    layer="lantern"
     # Unequal towers give the keep a recognisable skyline. An open bell stage
     # carries a second little roof and the great lantern's many gabled pinnacles.
     x,y=-.52,.72
@@ -310,7 +332,7 @@ def crown():
     # the tall topmost spire. Each pillar stands clear of the dark bell.
     roof(x,y,9.89,1.38,.93)
     profile(x,y,[(10.39,.83),(10.50,.91),(10.58,.90)],8,"bone")
-    profile(x,y,[(10.55,.42),(10.82,.28),(11.05,.11)],8,"bronze")
+    # The swinging bell is drawn inside this opening on the pausable clock.
     for j in range(8):
         a=TAU*(j-.5)/8
         xx,yy=x+.71*math.sin(a),y-.71*math.cos(a)
@@ -322,10 +344,11 @@ def crown():
         pinnacle(xx,yy,7.85,.22,1.72 if i%2==0 else 1.30)
     # The watch tower is square; the old bell and the rose keep distinct
     # silhouettes against its long slate ridge.
-    drum(-3.36,.41,-.35,1.37,7.06,4,2)
-    clock_gable(-3.36,.41,6.67,2.17,1.93,2.16)
+    layer="crown"
+    drum(-4.36,.41,-.35,1.37,7.06,4,2)
+    clock_gable(-4.36,.41,6.67,2.17,1.93,2.16)
     for side in (-1,1):
-        pinnacle(-3.36+side*.95,-.55,6.53,.22,1.04)
+        pinnacle(-4.36+side*.95,-.55,6.53,.22,1.04)
     for xx,yy,r,h,cap in [(3.61,.77,1.10,6.87,3.34),
                            (-6.52,.86,.68,4.01,2.15),(6.68,.86,.72,4.85,2.3)]:
         spire(xx,yy,-.35,r,h,cap)
@@ -360,12 +383,14 @@ def crown():
         lancet(xx,yy-.02,zz+.03,.26*scale,.65*scale,glow="honey",tracery=False)
         for sign in (-1,1):
             rod((xx+sign*scale*.53,yy-.02,zz),(xx,yy-.02,zz+scale*1.16),.037,"patina")
+    layer="lantern"
     for j in (0,1,7):
         a=TAU*(j-.5)/8
         xx,yy=x+1.46*math.sin(a),y-1.46*math.cos(a)
         rod((xx,yy,3.73),(xx,yy,7.90),.082,"trim",.058,n=5)
+    layer="crown"
     flag(3.61,.77,10.05,.92,.33)
-    flag(-3.36,-.67,8.85,.84,.28)
+    flag(-4.36,-.67,8.85,.84,.28)
 
 
 def ashlar_wall(x1,y1,x2,y2,height):
@@ -407,82 +432,328 @@ def ashlar_wall(x1,y1,x2,y2,height):
         lancet(x,y,z,.15,.71,a,"smoke",False)
 
 
+def statue(x,y,z,scale):
+    """Carved civic mascots. A hooded town surveyor holds a brass plumb bob."""
+    def point(dx,dy,dz):
+        return x+dx*scale,y+dy*scale,z+dz*scale
+    profile(x,y,[(z,.20*scale),(z+.08*scale,.22*scale),(z+.13*scale,.16*scale)],8,"trim")
+    profile(x,y,[(z+.13*scale,.17*scale),(z+.48*scale,.105*scale),
+                 (z+.62*scale,.16*scale),(z+.69*scale,.07*scale)],7,"bone",aspect=.75)
+    profile(x,y,[(z+.65*scale,.065*scale),(z+.76*scale,.125*scale),
+                 (z+.84*scale,.11*scale),(z+.89*scale,.035*scale)],7,"ash")
+    rod(point(-.13,0,.60),point(-.20,-.10,.45),.05*scale,"bone")
+    rod(point(-.20,-.10,.45),point(0,-.17,.51),.04*scale,"trim")
+    rod(point(.14,-.02,.60),point(.19,-.12,.55),.045*scale,"bone")
+    rod(point(.19,-.12,.55),point(.19,-.12,.33),.009*scale,"bronze")
+    profile(x+.19*scale,y-.12*scale,[(z+.24*scale,.004*scale),(z+.31*scale,.042*scale),
+            (z+.33*scale,.016*scale)],5,"gold")
+
+
+def spout(x,y,z,direction=1):
+    """Rain frogs. Round cheeks, silly eyes and a projecting split stone lip."""
+    block(x,y,z,.24,.26,.13,"ash")
+    rod((x,y-.04,z+.09),(x+.05*direction,y-.39,z+.18),.12,"trim",.11)
+    head=x+.05*direction
+    block(head,y-.38,z+.14,.28,.22,.14,"trim")
+    block(head,y-.51,z+.16,.22,.14,.044,"ink")
+    block(head,y-.52,z+.13,.26,.13,.031,"bone")
+    for side in (-1,1):
+        profile(head+side*.092,y-.40,[(z+.24,.044),(z+.29,.062),(z+.32,.027)],7,"bone")
+        block(head+side*.092,y-.45,z+.263,.031,.022,.034,"ink")
+
+
+def watch_brazier(x,y,z):
+    profile(x,y,[(z,.21),(z+.09,.23),(z+.17,.13),(z+.45,.087),
+                 (z+.53,.21),(z+.67,.25),(z+.70,.23)],8,"bronze")
+    for j in range(5):
+        a=TAU*j/5
+        dx,dy=.095*math.cos(a),.095*math.sin(a)
+        profile(x+dx,y+dy,[(z+.62,.045),(z+.79,.087),(z+.97+.09*(j%2),.005)],6,
+                "amber" if j%2 else "honey")
+
+
+def lower_ward():
+    # A terraced row of slate-roofed dwellings fills the gap below the
+    # watchtowers. Three unequal bays and a toothed gable soften the symmetry.
+    for xx,yy,w,eaves,peak in [(-7.0,.4,2.0,3.65,5.15),(-4.95,.05,2.1,4.0,5.45),
+                               (4.58,-.3,1.6,4.18,5.58),(6.37,.5,1.86,3.36,4.77)]:
+        front=yy-1.35
+        block(xx,yy,0,w,2.67,eaves,"slate")
+        verts=[(xx+u,yy+v,h) for v in (-1.42,1.42)
+               for u,h in ((-w*.58,eaves),(w*.58,eaves),(0,peak))]
+        poly(verts,[(0,1,2),(3,5,4),(0,2,5,3),(2,1,4,5)],"shingle")
+        for side in (-1,1):
+            rod((xx+side*w*.58,front-.11,eaves),(xx,front-.11,peak),.068,"trim")
+            for j in range(1,5):
+                q=j/5
+                pinnacle(xx+side*w*.56*(1-q),front-.11,eaves+q*(peak-eaves),.065,.22)
+            lancet(xx+side*w*.22,front-.035,eaves-.92,.37,.79,glow="amber")
+        lancet(xx,front-.12,eaves+.07,.44,.68,glow="honey")
+        for i in range(2):
+            u=xx+w*.26+i*.25
+            block(u,yy+.18,peak-.71,.22,.21,1.22+i*.14,"slate")
+            block(u,yy+.18,peak+.48+i*.14,.27,.25,.12,"trim")
+        finial(xx,front-.11,peak,.73)
+        # Quoins, courses and gallery mouldings give the lower ward human scale.
+        for row in range(12):
+            z=.12+row*.29
+            if z>eaves-.17: break
+            for col in range(5):
+                a=xx-w*.48+col*w/5+(row%2)*w*.07
+                if a+w*.10>xx+w*.48: continue
+                block(a+w*.07,front-.003,z,w*.13,.047,.23,
+                      rng.choice(("slate","ash","lichen","stone")))
+        for z in (eaves-1.07,eaves-.97,eaves-.07):
+            block(xx,front-.036,z,w*1.04,.113,.065,"trim")
+        for i in (-1,0,1):
+            lancet(xx+i*w*.30,front-.07,eaves-2.70,w*.18,1.13,glow="smoke")
+    # A rose set into the broad, octagonal Book Hall overlooks the eastern
+    # stairs. Its west porch bridges to the lantern rather than copying it.
+    xx,yy=4.68,-1.35
+    drum(xx,yy,0,1.53,6.19,8,2,"slate")
+    roof(xx,yy,6.17,1.72,1.35,8)
+    front=yy-1.46
+    rose(xx,front,5.08,.76)
+    for side in (-1,1):
+        pinnacle(xx+side*.90,front+.22,5.85,.21,1.55)
+        for level in (2.96,3.75):
+            flying(xx+side*2.10,yy-.5,level,-side,.98,1.57)
+        drum(xx+side*2.1,yy-.50,0,.24,3.92,6,1)
+        pinnacle(xx+side*2.10,yy-.50,3.81,.28,1.37)
+    # Chisel-faced bridge piers and paired lancets below the rose window.
+    for i in (-1,0,1):
+        lancet(xx+i*.44,front-.025,2.52,.32,1.26,glow="smoke" if i else "amber")
+    for side in (-1,1):
+        xx=side*2.05
+        block(xx,-.68,2.2,.55,.61,2.62,"stone")
+        lancet(xx,-1.0,3.07,.36,1.24,glow="ink",tracery=False)
+        statue(xx,-1.09,3.06,1.16)
+        pinnacle(xx,-.71,4.82,.31,1.62)
+        flying(xx,-.72,3.50,-side,.92,1.20)
+    # The high covered gallery spans the gap between the chapter house and
+    # the eastern archive. Light is visible through the arch-shaped openings.
+    for j in range(5):
+        xx=1.4+j*.53
+        block(xx,-.37,3.42,.12,.57,1.21,"ash")
+        for side in (-1,1):
+            rod((xx,-.66,4.23),(xx+side*.265,-.66,4.56),.067,"trim")
+    block(2.46,-.36,3.38,2.37,.67,.12,"trim")
+    block(2.46,-.36,4.61,2.42,.75,.14,"slate")
+
+
+def wall_rise(x):
+    t=max(0,min(1,(x-5.6)/12.5))
+    return 4.35*t*t*(3-2*t)
+
+
+def escarpment(x1,x2):
+    # The fortress grew out of folded basalt. Continuous serrated strata
+    # recede into the hillside. No straight skirt or dangling isolated piers.
+    stations=[]
+    for j in range(1+round((x2-x1)/.52)):
+        x=x1+(x2-x1)*j/round((x2-x1)/.52)
+        y=-2.96+(abs(x)-2.07)*(.121 if x<0 else .254)
+        stations.append((x,y,rng.uniform(-.26,.18),rng.uniform(-.28,.23),rng.uniform(-.6,.15)))
+    for side in range(len(stations)-1):
+        contours=[]
+        for x,y,dx,dz,bottom in stations[side:side+2]:
+            contours.append([(x,y+.25,.42+dz),(x+dx,y-.22,.02+dz),
+                (x+dx-.15,y-.44,-.54+dz),(x+dx+.16,y-.36,-.83+dz),
+                (x+dx-.05,y-.60,-1.32+bottom),(x+dx-.23,y-.63,-1.63+bottom)])
+        for k in range(5):
+            v=[contours[0][k],contours[1][k],contours[1][k+1],contours[0][k+1]]
+            colors=("rock","lichen","slate") if k%2==0 else ("rock","slate","ink")
+            poly(v,[(0,2,1)],rng.choice(colors))
+            poly(v,[(0,3,2)],rng.choice(colors))
+        if side%3==0:
+            a,b=contours
+            rod(a[3],b[3],.024,"ash",n=4)
+
+
+def gateway(yf):
+    """Build the masonry around an open vault and the diminishing bays behind it."""
+    floor=-.16
+    depth=1.34
+    def contour(width,height,y,lift=floor):
+        shape=arch(width,height)
+        return [(u,y,lift+v) for u,v in [*shape[1:],shape[0]]]
+    front=contour(1.60,2.69,yf)
+    back=contour(.91,1.89,yf+depth,.010)
+    for i,(a,b) in enumerate(zip(front,front[1:])):
+        if abs(a[0]-b[0])>.001:
+            panel([a,b,(b[0],yf,3.22),(a[0],yf,3.22)],"stone")
+        panel([a,back[i],back[i+1],b],"slate" if i in (0,7) else "rock")
+    for side in (-1,1):
+        block(side*1.135,yf+.75,floor,.67,1.5,3.38,"stone")
+    block(0,yf+.74,3.14,2.95,1.48,.10,"stone")
+    for width,height,inner_w,inner_h,relief,stone in (
+            (2.09,3.11,1.85,2.96,.01,"ash"),(1.85,2.96,1.70,2.80,.037,"slate"),
+            (1.70,2.80,1.57,2.69,.053,"trim")):
+        outer=contour(width,height,yf-relief)
+        inner=contour(inner_w,inner_h,yf-relief-.005)
+        for i in range(len(front)-1):
+            a,b=Vector(outer[i]),Vector(outer[i+1])
+            c,d=Vector(inner[i]),Vector(inner[i+1])
+            n=max(1,round((b-a).length/.19))
+            for j in range(n):
+                t1,t2=(j+.018)/n,(j+.982)/n
+                panel([a.lerp(b,t1),a.lerp(b,t2),c.lerp(d,t2),c.lerp(d,t1)],
+                      stone if (j+i)%4 else "trim")
+    for w,h,rr,stone in ((1.86,2.965,.032,"bone"),(1.67,2.79,.022,"bronze")):
+        rib=contour(w,h,yf-.073)
+        for a,b in zip(rib,rib[1:]):
+            rod(a,b,rr,stone,n=6)
+
+    # Receding brick vaults, irregular wet paving and an open postern at the
+    # bend of the passage. The floor is continuous across the threshold.
+    for i in range(4):
+        t=(i+.35)/4
+        ring=[Vector(a).lerp(Vector(b),t) for a,b in zip(front,back)]
+        for a,b in zip(ring,ring[1:]):
+            rod(a,b,.050-.02*t,"ash" if i%2==0 else "lichen",n=5)
+        for side in (-1,1):
+            xx=side*(.735-.36*t)
+            y=yf+depth*t
+            z=1.06-.29*t
+            rod((xx+side*.09,y,z-.14),(xx,y-.055,z-.05),.023,"bronze")
+            profile(xx,y-.055,[(z-.10,.032),(z,.065),(z+.02,.064)],6,"bronze")
+            profile(xx,y-.055,[(z+.012,.041),(z+.072,.042),(z+.132,.005)],6,"honey")
+    for row in range(14):
+        start=row/14
+        end=(row+1)/14-.004
+        width=.84-.36*start
+        for col in range(4):
+            a=-width+width*.5*col
+            b=a+width*.5-.009
+            panel([(a,yf+(depth+.025)*start,floor+.17*start),(b,yf+(depth+.025)*start,floor+.17*start),
+                   (b,yf+(depth+.025)*end,floor+.17*end),(a,yf+(depth+.025)*end,floor+.17*end)],
+                  rng.choice(("slate","rock","lichen","stone")))
+    # A warm side door gives the viewer a scale reference deep inside.
+    end=yf+depth+.025
+    block(0,end+.04,.002,1.13,.08,2.09,"slate")
+    # The bend is open to a dark adjoining court; a small, lit window
+    # and offset masonry jamb sit beside it on the weathered rear wall.
+    for row in range(9):
+        for col in range(4):
+            xx=-.49+col*.255+(row%2)*.055
+            block(xx,end-.008,.026+row*.171,.23,.035,.152,
+                  rng.choice(("rock","slate","lichen")))
+    for w,h,at,mat in ((.74,1.43,.045,"ash"),(.64,1.32,.055,"bronze"),(.57,1.27,.064,"ink")):
+        panel([(-.07+u,end-at,.009+z) for u,z in arch(w,h)],mat)
+    panel([(-.31,end-.069,.03),(.20,end-.069,.03),(.17,end-.069,.095),
+           (-.19,end-.069,.118)],"slate")
+    lancet(.368,end-.046,.48,.14,.39,glow="smoke")
+    for side in (-1,1):
+        block(side*.42,end-.02,.01,.09,.08,1.53,"ash")
+    # The raised grate is iron lattice with rivets. It stops well over a
+    # standing figure's head and throws a real shadow on the first bay.
+    for i in range(-6,7):
+        x=i*.118
+        upper=2.55-.84*(abs(x)/.80)**1.34
+        tip=1.27+.07*abs(x)
+        rod((x,yf+.13,tip+.12),(x,yf+.13,upper),.025,"iron",n=4)
+        rod((x,yf+.13,tip+.14),(x,yf+.13,tip),.046,"iron",.001,n=4)
+    for z,w in ((1.53,1.53),(1.80,1.39),(2.04,1.07),(2.27,.65)):
+        block(0,yf+.12,z,w,.045,.057,"iron")
+        for i in range(-6,7,2):
+            if abs(i*.118)<w*.48:
+                block(i*.118,yf+.083,z+.02,.033,.027,.029,"bronze")
+
+
 def gate():
+    global layer
     # Curtain and grounded rubble. The path continues directly off the centre stair.
     for s in (-1,1):
+        layer="gate"
+        escarpment(*((-25,-1.42) if s<0 else (1.42,25)))
         if s<0:
-            ashlar_wall(-9.38,-1.53,-1.46,-3.03,2.47)
+            ashlar_wall(-23,-.45,-2.07,-3.03,2.47)
         else:
-            ashlar_wall(1.46,-3.03,9.38,-1.53,2.47)
+            ashlar_wall(2.07,-3.03,12,-.5,2.47)
+            ashlar_wall(12,-.5,24,5.5,3.36)
         # Gun platforms occupy the two low salients of the curtain. A short
         # dogleg stair connects each actual walkable deck to the higher wall.
         xx=s*3.87
-        drum(xx,-4.03,-.46,1.0,1.22,8,0)
-        profile(xx,-4.03,[(.73,1.03),(.82,1.13),(.94,1.12)],8,"trim",aspect=.92)
+        # A broad projecting drum carries the crew. Its deck falls away
+        # toward the drain above the centre machicolation; the camera sees
+        # the deck behind the outer parapet even from the foot of the stair.
+        drum(xx,-4.18,-1.33,1.20,2.10,10,0)
+        profile(xx,-4.18,[(-1.56,1.49),(-1.24,1.43),(-1.12,1.33),
+                          (-.97,1.22),(-.88,1.22)],10,"slate")
+        perimeter=[]
         for j in range(10):
             a=TAU*(j+.5)/10
-            if math.cos(a)<-.3:
-                continue
-            bx,by=xx+1.03*math.sin(a),-4.03-.91*math.cos(a)
-            block(bx,by,.94,.23,.20,.17,"ash")
+            dx,dy=1.40*math.sin(a),-1.24*math.cos(a)
+            perimeter.append((xx+dx,-4.03+dy,.94+dy*.45))
+        for j,P in enumerate(perimeter):
+            Q=perimeter[(j+1)%len(perimeter)]
+            L=(P[0],P[1],P[2]-.23)
+            R=(Q[0],Q[1],Q[2]-.23)
+            panel([P,Q,R,L],"ash")
+            panel([P,Q,(xx,-4.03,.94)],"slate" if j%3 else "lichen")
+            rod(P,Q,.058,"trim",n=5)
+            if P[1]>-4.48:
+                block(P[0],P[1],P[2],.19,.17,.20,"stone")
+                block(P[0],P[1],P[2]+.16,.22,.19,.06,"trim")
+        # Low rear battlement leaves the central setting free for a marked
+        # tower site; regularly laid paving makes the working deck legible.
+        for row in range(-3,4):
+            yy=row*.23
+            half=1.24*math.sqrt(max(0,1-(yy/1.13)**2))
+            rod((xx-half,-4.03+yy,.947+yy*.45),(xx+half,-4.03+yy,.947+yy*.45),.010,"ash",n=4)
+            for col in (-1,0,1):
+                dx=col*.49+(row%2)*.23
+                rod((xx+dx,-4.03+yy,.947+yy*.45),(xx+dx,-3.82+yy,1.04+yy*.45),
+                    .008,"ash",n=4)
         for j in range(8):
             block(xx+s*(.23+j*.095),-3.66+j*.15,.32,.77,.22,.58+j*.15,"slate")
             block(xx+s*(.23+j*.095),-3.71+j*.15,.88+j*.15,.79,.12,.05,"trim")
-        for xx in (4.65,8.17):
+        for xx in (4.65,8.17,12.08,16.1,20.48):
             yy=-3.03+(xx-1.46)*.19
             drum(s*xx,yy,.0,.55 if xx<5 else .77,2.49 if xx<5 else 2.87,8,1)
             merlons(s*xx,yy,2.48 if xx<5 else 2.86,.58 if xx<5 else .80,10)
-        spire(s*1.55,-3.05,-.18,.77,3.49,1.56,8,1)
-        for j in range(13):
+        for j in range(10):
+            xx=3.5+j*1.89
+            yy=-3.07+(xx-2.07)*(.122 if s<0 else .254)
+            # Tapered foundations that sink between the fractured faces.
+            profile(s*xx,yy-.25,[(-1.38,.56),(-.99,.52),(.07,.37),(1.71,.19),
+                    (1.86,.24),(1.95,.15)],4,"ash",rot=math.pi/4,aspect=1.8)
+            if j%2==0:
+                watch_brazier(s*xx,yy+.24,2.13)
+                spout(s*xx,yy-.22,1.80,s)
+        layer="portal-tower"
+        spire(s*1.50,-3.05,-.18,.69,3.27,1.04,8,1)
+        for k in range(3):
+            xx=s*(1.38+.14*k)
+            pinnacle(xx,-3.36+k*.16,3.10,.105,.57+.09*k)
+        layer="gate"
+        for j in range(35):
             xx=2.0+j*.59
-            yy=-3.12+(xx-1.46)*.19
+            yy=-3.12+(xx-1.46)*(.121 if s<0 else .254)
             r=rng.uniform(.43,.80)
             profile(s*xx,yy,[(-.62,r*.92),(-.38,r*1.1),(-.11,r*.83),(.04,r*.26)],5,
                     rng.choice(("rock","slate","lichen")),rot=rng.random(),aspect=.65)
-    block(0,-2.91,-.27,2.95,1.5,3.49,"stone")
-    for zz in (2.8,3.15):
-        block(0,-2.91,zz,2.99,1.58,.13,"trim")
+    layer="portal"
+    yf=-3.70
+    gateway(yf)
+    for zz in (3.06,3.18):
+        block(0,-2.91,zz,2.99,1.58,.10,"trim")
     for i in range(7):
         block(-1.30+i*.43,-3.60,3.24,.26,.32,.32,"stone")
-    # Deep recessed pointed doorway, concentric carved ribs and wedge voussoirs.
-    yf=-3.70
-    for w,h,depth,color in [(2.06,3.13,.005,"trim"),(1.83,2.93,.025,"ash"),
-                             (1.63,2.75,.045,"bronze"),(1.54,2.70,.059,"ink"),
-                             (1.35,2.55,.069,"wood")]:
-        panel([(u,yf-depth,v-.16) for u,v in arch(w,h)],color)
     for s in (-1,1):
-        for i in range(8):
-            block(s*.925,yf-.047,-.15+i*.235,.158,.082,.211,"ash" if i%3 else "bone")
-        for i in range(1,5):
-            u=i/5
-            xx=s*(.92*(1-u)+.015)
-            zz=2.01+1.02*(1-(1-u)**1.43)
-            block(xx,yf-.058,zz-.08,.17,.078,.14,"bone")
-    # The shutter is lifted. Its teeth silhouette against the warm wall
-    # inside, the open space underneath stays almost black.
-    panel([(u,yf-.071,v-.16) for u,v in arch(1.31,2.45)],"passage")
-    # A succession of barrel-vault ribs leads the eye through the grille.
-    for w,h,offset,col in ((1.18,2.16,.072,"tunnel"),(.98,1.93,.073,"vault"),
-                           (.84,1.72,.074,"tunnel"),(.69,1.54,.075,"vault"),
-                           (.56,1.36,.076,"tunnel"),(.43,1.17,.077,"embers")):
-        panel([(u,yf-offset,v-.13+(1.3-w)*.16) for u,v in arch(w,h)], col)
-    for i in range(-5,6):
-        xx=i*.113
-        upper=2.28-1.27*abs(xx)**1.55
-        tip=.80+.14*abs(xx)
-        rod((xx,yf-.094,tip+.14),(xx,yf-.094,upper),.036,"iron",n=4)
-        rod((xx,yf-.094,tip+.18),(xx,yf-.094,tip),.063,"iron",.001,n=4)
-    for z,w in ((1.11,1.22),(1.47,1.22),(1.80,1.12)):
-        block(0,yf-.095,z,w,.053,.083,"iron")
-    for i in range(5):
-        block(0,yf-.073,-.13+i*.047,1.25-.17*i,.015,.023,"patina")
-    for s in (-1,1):
+        # Niches flank the vaulted arch. Each statue sits below a projecting
+        # five-sided canopy with a finial and a hood mould.
+        lancet(s*1.16,yf-.024,1.82,.38,.84,glow="ink",tracery=False)
+        statue(s*1.16,yf-.085,1.82,.72)
+        profile(s*1.16,yf-.055,[(2.63,.29),(2.70,.28),(2.86,.11),(2.94,.025)],5,"trim")
+        spout(s*1.31,yf,2.89,s)
         x=s*1.19
         rod((x,yf,1.31),(x,yf-.29,1.63),.049,"iron")
         profile(x,yf-.29,[(1.55,.055),(1.73,.13),(1.78,.13)],8,"bronze")
         profile(x,yf-.29,[(1.73,.065),(1.87,.095),(2.06,.003)],7,"honey")
         # Crossbar for a runtime hanging banner on the gate towers.
         rod((s*1.58-.25,-3.80,2.89),(s*1.58+.25,-3.80,2.89),.027,"gold")
+    layer="portal-stair"
     for i in range(8):
         block(0,-3.72-i*.155,-.58,1.66+i*.065,.17,.47-i*.048,"ash" if i%2 else "trim")
         block(0,-3.796-i*.155,-.152-i*.048,1.69+i*.065,.045,.045,"bone")
@@ -492,14 +763,58 @@ def gate():
             profile(s*(.91+j*.035),-3.77-j*.155,[(-.52,.076),(.18-j*.049,.076)],6,"trim")
 
 
+def watch_gallery(x,y,z,r,hand):
+    """Built-out tower stations, with a rear landing tied into the gate."""
+    drum(x,y,-1.12,r*.74,z+.77,8,1,"slate")
+    profile(x,y,[(-1.27,r*.92),(-1.03,r*.88),(-.93,r*.74)],8,"rock")
+    # Behind the cage the short, barrel-vaulted gallery returns into the wall.
+    block(x,y+.59,z-.29,r*1.28,1.35,.24,"slate")
+    for side in (-1,1):
+        rod((x+side*r*.44,y+.95,z-1.18),(x+side*r*.66,y-.04,z-.21),.09,"trim",.13)
+    ring=[]
+    for j in range(8):
+        a=TAU*(j+.5)/8
+        dx,dy=r*math.sin(a),r*math.cos(a)
+        ring.append((x+dx,y+dy,z+.57*dy))
+    for j,a in enumerate(ring):
+        b=ring[(j+1)%8]
+        panel([a,b,(x,y,z)],"slate" if j%3 else "ash")
+        panel([a,b,(b[0],b[1],b[2]-.22),(a[0],a[1],a[2]-.22)],"ash")
+        rod(a,b,.039,"trim",n=4)
+        if a[1]>y+.19 or (hand*(a[0]-x)>.72*r):
+            block(a[0],a[1],a[2],.15,.12,.15,"slate")
+            block(a[0],a[1],a[2]+.13,.175,.15,.044,"bone")
+    for j in (-2,-1,0,1,2):
+        yy=r*j*.20
+        rod((x-r*.72,y+yy,z+yy*.57+.008),(x+r*.72,y+yy,z+yy*.57+.008),.013,"ash",n=4)
+    for side in (-1,1):
+        dx=side*r*.32
+        rod((x+dx,y-r*.70,z-r*.70*.57+.01),(x+dx,y+r*.70,z+r*.70*.57+.01),.014,"ash",n=4)
+    # A shield and keel corbel anchor the projecting machinery to the pier.
+    front=y-r*.70
+    panel([(x-r*.23,front-.03,z-.68),(x+r*.23,front-.03,z-.68),
+           (x+r*.18,front-.03,z-.90),(x,front-.03,z-1.03),
+           (x-r*.18,front-.03,z-.90)],"blue")
+    rod((x-r*.16,front-.044,z-.79),(x,front-.044,z-.88),.021,"gold")
+    rod((x,front-.044,z-.88),(x+r*.16,front-.044,z-.79),.021,"gold")
+
+
 def assemble():
     for (name,mat),(verts,faces) in geometry.items():
         mesh=bpy.data.meshes.new(name+" "+mat)
+        if name=="gate":
+            verts=[(x,y,z+wall_rise(x)) for x,y,z in verts]
         mesh.from_pydata(verts,[],faces)
         mesh.materials.append(materials[mat])
         obj=bpy.data.objects.new(mesh.name,mesh)
         bpy.context.collection.objects.link(obj)
-        plates.setdefault(name,[]).append(obj)
+        obj["part"]=name
+        if name.startswith("portal"):
+            obj.scale=(1.43,1,2.12)
+        if name in ("far","crown","lantern"):
+            obj.location.z=2.62 if name=="far" else 2.18
+        group="gate" if name.startswith("portal") else "crown" if name=="lantern" else name
+        plates.setdefault(group,[]).append(obj)
 
 
 def run():
@@ -515,57 +830,149 @@ def run():
         "bronze":"9E7841","iron":"161B23","passage":"211B21","ink":"242A38","gold":"DBA755","blue":"347FC1",
     }.items():
         pigment(name,swatch,metallic=.23 if name in ("verdigris","gold","bronze","patina") else 0)
-    # The hallway receives torchlight indirectly. These tiny recessed bands
-    # are hand-painted values, independent of the exterior specular lights.
-    for name,swatch in (("tunnel","281D28"),("vault","653C34"),("embers","B06739")):
-        pigment(name,swatch)
-        material=materials[name]
-        tree=material.node_tree
-        emission=tree.nodes.new("ShaderNodeEmission")
-        emission.inputs["Color"].default_value=tuple(render.linear(int(swatch[i:i+2],16)) for i in (0,2,4))+(1,)
-        tree.links.new(emission.outputs[0],tree.nodes.get("Material Output").inputs["Surface"])
     for name,swatch,energy in (("amber","FC8529",1.45),("honey","FFB74B",2.35),
                                ("ruby","C4524D",1.35),("saffron","FFAD51",2),("smoke","BA7948",.75)):
         pigment(name,swatch,energy)
     for layer,build in (("far",far),("crown",crown),("gate",gate)):
         build()
+        if layer=="crown":
+            lower_ward()
+    # The quarter-turned board puts its remote gate station on a different
+    # flank. These placements project to the actual marked cells at each lens.
+    layer="portrait-gallery"
+    watch_gallery(1.57,-5.0,2.418,.77,1)
+    layer="wide-gallery"
+    watch_gallery(-2.228,-4.75,4.696,.89,-1)
+    watch_gallery(6.675,-2.73,3.504,.91,1)
+    # On the broad hillside the archive has a pair of outlying, ribbed
+    # observatory towers. They stagger down behind its rose-topped chapel.
+    layer="east-watch"
+    spire(7.15,2.36,-.35,.70,8.81,2.89,8,2,"slate","deep")
+    spire(8.27,2.87,-.30,.42,7.26,2.08,8,2,"stone","verdigris")
+    for side in (-1,1):
+        pinnacle(7.15+side*.60,1.99,8.06,.15,1.26)
     assemble()
-    render.camera(scene,(0,0,6.14),9,20.6,"painted",True)
-    scene.render.resolution_x=W
-    scene.render.resolution_y=H
+    cam=scene.camera
+    cam.data.type="PERSP"
+    cam.data.sensor_fit="HORIZONTAL"
+    cam.location=(2.75,-34,2.52)
+    cam.rotation_euler=(math.radians(96),0,math.radians(5.20))
     scene.eevee.taa_render_samples=12
-    scene.world.node_tree.nodes["Background"].inputs[1].default_value=.11
-    render.light("Moon through cloud",(-8,-7,16),(0,0,5),7,850,(.48,.65,1))
-    render.light("Dusk edge",(6,3,11),(0,0,5),3.5,3400,(.64,.83,1))
-    render.light("Last sun",(-10,4,5),(0,0,3),4,1900,(1,.42,.22))
-    render.light("Moon on the curtain",(-6,-9,5),(0,-2,1),8.5,680,(.48,.62,1))
-    render.light("Gate braziers",(0,-6,.7),(0,-1,3),2.6,260,(1,.33,.075))
-    render.light("Rose reflection",(3,-3,3),(0,0,5),2.2,110,(1,.34,.10))
-    render.light("Lightning",(4,-7,14),(0,0,5),3,8700,(.63,.81,1))
+    scene.eevee.shadow_pool_size="1024"
+    scene.world.node_tree.nodes["Background"].inputs[1].default_value=.21
+    render.light("Moon through cloud",(-9,-8,19),(0,0,5),7,2150,(.47,.67,1))
+    render.light("Dusk edge",(8,4,16),(0,0,7),3.2,6700,(.51,.83,1))
+    render.light("Last sun",(-11,4,8),(0,0,4),3.8,5300,(1,.28,.085))
+    render.light("Moon on the curtain",(-6,-12,8),(0,-2,1),7,870,(.49,.69,1))
+    render.light("Gate reflected fire",(0,-7,1.2),(0,-2,4),2.9,270,(1,.29,.055))
+    render.light("First passage lamp",(-.62,-3.43,2.02),(.46,-2.75,.54),.27,14,(1,.41,.10))
+    render.light("Last passage lamp",(.44,-2.78,1.54),(-.25,-2.34,1.01),.24,7,(1,.40,.095))
+    render.light("Rose reflection",(3,-4,5),(0,0,7),2,175,(1,.36,.10))
+    for side in (-1,1):
+        render.light("Door torch "+str(side),(side*1.77,-4.72,3.97),
+                     (side*1.72,-3.2,4.29),.83,60,(1,.29,.034))
+        for j in range(4):
+            xx=3.5+j*3.78
+            yy=-3.07+(xx-2.07)*(.122 if side<0 else .254)
+            render.light(f"Fire {side} {j}",(side*xx,yy-.69,2.76),
+                         (side*xx,yy+.45,1.76),.70,85,(1,.34,.07))
+    render.light("Lightning",(9,-7,18),(0,0,4),1.25,17000,(.58,.80,1))
     bolt=bpy.data.objects["Lightning"]
-    OUT.mkdir(parents=True,exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="tarpit-keep-") as temp:
-        for name in ("far","crown","gate","lightning"):
-            for part,objects in plates.items():
-                for obj in objects:
-                    obj.hide_render=name not in (part,"lightning")
-            scene.view_settings.exposure=-.55 if name!="lightning" else -.15
-            bolt.hide_render=name!="lightning"
-            path=Path(temp)/f"{name}.png"
-            scene.render.filepath=str(path)
-            bpy.ops.render.render(write_still=True)
-            webp = path.with_suffix(".webp")
-            subprocess.run([shutil.which("cwebp") or "/opt/homebrew/bin/cwebp",
-                            "-quiet", "-q", "91", "-alpha_q", "100",
-                            str(path), "-o", str(webp)], check=True)
-            destination = OUT / webp.name
-            if not destination.exists() or destination.read_bytes() != webp.read_bytes():
-                shutil.copyfile(webp, destination)
+    preview="--" in sys.argv
+    output=Path(sys.argv[sys.argv.index("--")+1]) if preview else OUT
+    output.mkdir(parents=True,exist_ok=True)
     from bpy_extras.object_utils import world_to_camera_view
-    for label,point in {"gate":(0,-4.9,-.48),"torch":(1.19,-3.99,1.89),
-                        "banner":(1.58,-3.8,2.89),"wallWalk":(-3.87,-4.03,.94)}.items():
-        p=world_to_camera_view(scene,scene.camera,Vector(point))
-        print(label,round(p.x*W),round((1-p.y)*H))
+    def projected(point):
+        u=world_to_camera_view(scene,cam,Vector(point))
+        return u.x,1-u.y
+    anchors={
+        "foot":(0,-4.88,-.479*2.12),"doorCrown":(0,-3.70,(2.69-.16)*2.12),
+        "torchL":(-1.19*1.43,-3.99,1.89*2.12),"torchR":(1.19*1.43,-3.99,1.89*2.12),
+        "flagL":(-1.58*1.43,-3.8,2.89*2.12),"flagR":(1.58*1.43,-3.8,2.89*2.12),
+        "bell":(-.52,.72,11.08+2.18),"clock":(-4.36,-.76,7.17+2.18),
+        "dialRight":(-4.36+.269,-.76,7.17+2.18),"bellWidth":(-.52+.44,.72,11.08+2.18),
+        "rose":(4.68,-2.87,5.08+2.18),"westWindow":(-4.36,-.57,3.52+2.18),
+        "eastWindow":(3.61,-.32,4.57+2.18),"roofL":(-4.36,-.75,6.72+2.18),
+        "roofR":(3.61,-.30,6.52+2.18),"chimney":(6.37+.49,.68,4.77+.74+2.18),
+        "chainTopL":(-.93*1.43,-3.78,.83*2.12),"chainFootL":(-1.13*1.43,-4.87,-.15*2.12),
+        "chainTopR":(.93*1.43,-3.78,.83*2.12),"chainFootR":(1.13*1.43,-4.87,-.15*2.12),
+        "threshold":(0,-3.70,-.16*2.12),"grilleTip":(0,-3.57,1.27*2.12),
+        "walkL":(-4.5,-2,2.19),"walkR":(4.5,-2,2.19),
+        "platformL":(-3.87,-4.03,.94),"platformR":(3.87,-4.03,.94),
+        "crownTip":(-.52,.72,13.36+2.18)}
+    for side in (-1,1):
+        for j in range(3):
+            xx=3.5+j*3.78
+            yy=-3.07+(xx-2.07)*(.122 if side<0 else .254)
+            anchors[f"brazier{side}_{j}"]=(side*xx,yy+.24,3.03+wall_rise(side*xx))
+    registration={}
+    with tempfile.TemporaryDirectory(prefix="tarpit-keep-") as temp:
+        for suffix,size,lens,recession in [("",PORTRAIT,49,1),("-wide",WIDE,31,.79)]:
+            scene.render.resolution_x,scene.render.resolution_y=size
+            scene.render.resolution_percentage=32 if preview else 100
+            scene.eevee.taa_render_samples=4 if preview else 12
+            cam.data.lens=lens
+            portal_scale=1.26 if suffix else 1
+            # Compact landscape framing retains the open aperture above a
+            # Troll. Its stair and the ground inside the threshold stay put.
+            for obj in plates["gate"]:
+                part=obj["part"]
+                if part in ("portal","portal-tower"):
+                    rise=portal_scale if part=="portal" else 1+(portal_scale-1)*.46
+                    obj.scale.z=2.12*rise
+                    obj.location.z=.16*2.12*(rise-1)
+            lantern_shift=-5.72 if suffix else 0
+            for group in ("far","crown"):
+                for obj in plates[group]:
+                    obj.location.x=lantern_shift if obj["part"]=="lantern" else 0
+                    obj.scale.z=recession
+                    obj.location.z=(2.18 if group=="crown" else 2.62)*recession
+            cam.data.shift_y=0
+            bpy.context.view_layer.update()
+            # Put the toe of the stair at 92% in both camera gates.
+            _,toe=projected(anchors["foot"])
+            cam.data.shift_y=(.92-toe)*size[1]/size[0]
+            bpy.context.view_layer.update()
+            print("REGISTRATION",suffix or "portrait",flush=True)
+            upper={"bell","clock","dialRight","bellWidth","rose","westWindow","eastWindow",
+                   "roofL","roofR","chimney","crownTip"}
+            points={}
+            registration["landscape" if suffix else "portrait"]=points
+            for label,(xx,yy,zz) in anchors.items():
+                if label in ("bell","bellWidth","crownTip"):
+                    xx+=lantern_shift
+                if label in upper:
+                    zz*=recession
+                if label in ("doorCrown","threshold","torchL","torchR","flagL","flagR","grilleTip"):
+                    zz=zz*portal_scale+.16*2.12*(portal_scale-1)
+                u,v=projected((xx,yy,zz))
+                points[label]=[round(u*1280,1),round(v*960,1)]
+                print(label,*points[label],flush=True)
+            for name in (("lightning","composite") if preview else ("far","crown","gate","lightning")):
+                for part,objects in plates.items():
+                    for obj in objects:
+                        if part=="east-watch":
+                            obj.hide_render=not suffix or name not in ("crown","lightning","composite")
+                        elif part.endswith("-gallery"):
+                            wanted="wide-gallery" if suffix else "portrait-gallery"
+                            obj.hide_render=part!=wanted or name not in ("gate","lightning","composite")
+                        else:
+                            obj.hide_render=name not in (part,"lightning","composite")
+                scene.view_settings.exposure=-.32 if name!="lightning" else -.16
+                bolt.hide_render=name!="lightning"
+                path=Path(temp)/f"{name}{suffix}.png"
+                scene.render.filepath=str(path)
+                bpy.ops.render.render(write_still=True)
+                if preview:
+                    shutil.copyfile(path,output/path.name)
+                    continue
+                webp=path.with_suffix(".webp")
+                subprocess.run([shutil.which("cwebp") or "/opt/homebrew/bin/cwebp",
+                                "-quiet","-q","87","-alpha_q","95",
+                                str(path),"-o",str(webp)],check=True)
+                shutil.copyfile(webp,output/webp.name)
+    registration_file=(output/"projection.json" if preview else HERE.parents[1]/"src/game/keep/projection.json")
+    registration_file.write_text(json.dumps(registration,indent=2)+"\n")
 
 
 if __name__=="__main__":

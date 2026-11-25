@@ -76,7 +76,7 @@ test('the keep opens directly, stays frozen in test mode and awards no progress'
     const a = window.__tarpit!;
     const s = a.state!();
     a.setMuted(!a.audio().muted);
-    for (const [col,row] of [[11,10],[15,6],[23,9],[17,10]]) {
+    for (const [col,row] of [[15,4],[22,7],[26,10],[22,10]]) {
       if (!a.buildAt!(col,row,'musketeer').ok) throw Error('Expected a legal marked site');
     }
     for (let wave = 0; wave < 10 && s.phase === 'setup'; wave++) {
@@ -103,4 +103,32 @@ test('pausing holds the opening and storm at the same instant', async ({ page })
   await page.keyboard.press('p');
   await page.waitForFunction(time => (window.__tarpit?.keep?.()?.timeMs ?? 0) > time, pose!.timeMs);
   expect(await page.evaluate(() => window.__tarpit!.keep?.()?.opening)).toBeGreaterThan(0);
+});
+
+test('a wall crew keeps its footing and dusk lighting when the phone turns', async ({page}) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({width:390,height:664});
+  await page.goto('/?keep=1&test=1');
+  await waitForGame(page);
+  const placed = await page.evaluate(() => {
+    const api = window.__tarpit!;
+    const {col,row} = api.state!().map.buildSites![0];
+    return api.buildAt!(col,row,'cannon').ok;
+  });
+  expect(placed).toBe(true);
+  const expectCrew = async () => {
+    const crew = await page.evaluate(() => {
+      const api = window.__tarpit!;
+      const {col,row} = api.state!().towers[0].cell;
+      const actual = api.painted!().sprites.find(s => s.visible && s.key.startsWith('keep:dusk:painted:cannon:'));
+      const expected = api.game.scene.getScene('game') as import('../src/game/GameScene').GameScene;
+      return {actual:actual && [actual.x,actual.y], expected:expected.boardLayout.cellCenter({col,row})};
+    });
+    expect(crew.actual).toEqual([crew.expected.x,crew.expected.y]);
+  };
+  await expectCrew();
+  await page.setViewportSize({width:1024,height:768});
+  await page.waitForFunction(() => window.__tarpit?.game.canvas.width === 960);
+  await settle(page);
+  await expectCrew();
 });

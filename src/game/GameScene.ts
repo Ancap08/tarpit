@@ -1769,6 +1769,7 @@ export class GameScene extends Phaser.Scene {
     if (fx) fx.draw(this.shotFx, this.painted);
     else this.shots.draw(this.shotFx, this.painted);
     this.painted?.endEffects();
+    if (this.keep && this.painted) this.keep.light.apply(this.painted);
     this.specialFx.draw(this.shotFx);
     this.barricadeFx.drawWall(this.shotFx, blocker, this.layout, motion);
     this.barricadeFx.drawCrash(this.shotFx, this.layout, motion);

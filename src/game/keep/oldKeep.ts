@@ -5,11 +5,15 @@ import type { Layout } from '../layout';
 import type { GameScene } from '../GameScene';
 import type { GameClock } from '../loop';
 import { SHOWPIECE_DETAIL } from '../names';
+import { KeepSurround } from './surround';
+import { KeepLight } from './stoneLight';
+import { drawFittings, drawFork, type Landmark } from './keepMotion';
+import projection from './projection.json';
 import type { DetailGovernor, Detail } from '../showpiece/governor';
 
 export { createKeep } from '../../sim/oldKeep';
 
-const plates = ['sky','drift','portrait','landscape','far','crown','gate','lightning','mist','glow','plinth','gallery'] as const;
+const plates = ['sky','drift','portrait','landscape','far','crown','gate','lightning','mist','glow','plinth','far-wide','crown-wide','gate-wide','lightning-wide','road-wide','wings'] as const;
 type Plate = typeof plates[number];
 type Image = Phaser.GameObjects.Image;
 const textureKey = (name: Plate) => 'keep:' + name;
@@ -22,7 +26,7 @@ export async function loadKeep(scene: Phaser.Scene): Promise<boolean> {
       const image = new window.Image();
       image.src = import.meta.env.BASE_URL + 'assets/keep/' + name + '.webp';
       await image.decode();
-      if (!scene.textures.exists(key)) scene.textures.addImage(key,image);
+      if (!scene.textures.exists(key)) scene.textures.addImage(key,image)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
     }));
     return true;
   } catch {
@@ -40,6 +44,12 @@ function lightningAt(ms: number): number {
 /** One world-painted plate per orientation and three registered miniature exposures. */
 export class KeepView {
   readonly layer: Phaser.GameObjects.Container;
+  readonly light: KeepLight;
+  private readonly surround: KeepSurround;
+  private readonly fieldLight: Phaser.GameObjects.Container;
+  private readonly reflection: Phaser.GameObjects.Graphics;
+  private readonly fork: Phaser.GameObjects.Graphics;
+  private readonly spill: Image[];
   private readonly scenery: Phaser.GameObjects.Container;
   private readonly castle: Image[];
   private readonly clouds: Image[];
@@ -54,8 +64,7 @@ export class KeepView {
   private readonly quality: DetailGovernor;
   private readonly reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   private readonly stillLightning: boolean;
-  private readonly buildings = [[566,780],[714,780],[608,429],[431,548],[864,546],[664,570]];
-  private readonly pins = [542,738];
+  private readonly anchors: typeof projection.portrait;
   private previous = -Infinity;
   private lastFrame = -1;
   private lastCalm?: boolean;
@@ -73,10 +82,17 @@ export class KeepView {
     this.quality = new Governor(pin !== null && /^[012]$/.test(pin) ? Number(pin) as Detail : undefined);
     this.stillLightning = frozen && query.get('keepLightning') === '1';
     const { x, y, width, height } = layout.map;
-    const gate = layout.toScreen(map.path[map.path.length-1]);
+    const gate = layout.toScreen(map.path[map.path.length-2]);
     this.gate = {x:gate.x-x,y:gate.y-y};
-    this.castleW = layout.turned ? 495 : 430;
-    this.castleH = layout.turned ? 372 : 243;
+    this.castleW = layout.turned ? 820 : 1250;
+    this.castleH = layout.turned ? 660 : 335;
+    this.anchors = layout.turned ? projection.portrait : projection.landscape;
+    this.light = new KeepLight(scene.textures);
+    this.surround = new KeepSurround(scene.game.canvas,layout,scene.textures,this.gate,
+      {width:this.castleW,height:this.castleH},this.anchors.foot);
+    this.fieldLight = scene.add.container(x,y);
+    this.reflection = scene.add.graphics();
+    this.fieldLight.add(this.reflection);
 
     this.layer = scene.add.container(x,y);
     this.scenery = scene.add.container(0,0);
@@ -86,30 +102,39 @@ export class KeepView {
       this.scenery.add(im);
       return im;
     };
-    const skyline = layout.turned ? 390 : 250;
+    const skyline = this.gate.y + 30;
     add('sky').setDisplaySize(width,skyline);
     this.clouds = Array.from({length:2},() => add('drift').setOrigin(.5));
     this.skyFlash = scene.add.rectangle(0,0,width,skyline,0xd2ddff).setOrigin(0);
     this.scenery.add(this.skyFlash);
+    this.fork = scene.add.graphics();
+    this.scenery.add(this.fork);
     add(layout.turned ? 'portrait' : 'landscape').setDisplaySize(width,height);
-    this.castle = (['far','crown','gate','lightning'] as const).map(name => add(name)
-      .setDisplaySize(this.castleW,this.castleH).setOrigin(.5,934/960).setPosition(this.gate.x,this.gate.y));
-    this.lights = this.buildings.map(([u,v],i) => {
-      const pos = this.native(u,v);
+    const exposures = layout.turned
+      ? ['far','crown','gate','lightning'] as const
+      : ['far-wide','crown-wide','gate-wide','lightning-wide'] as const;
+    const foot = this.anchors.foot;
+    this.castle = exposures.map(name => add(name).setDisplaySize(this.castleW,this.castleH)
+      .setOrigin(foot[0]/1280,foot[1]/960).setPosition(this.gate.x,this.gate.y));
+    if (!layout.turned) add('road-wide').setPosition(512,0).setDisplaySize(448,480);
+    const lamps = ['torchL','torchR','brazier-1_0','brazier1_0','brazier-1_1','brazier1_1',
+      'brazier-1_2','brazier1_2','rose'] as const;
+    this.lights = lamps.map((key,i) => {
+      const pos = this.at(key);
       return add('glow').setOrigin(.5).setPosition(pos.x,pos.y)
-        .setDisplaySize(i<2 ? 32 : 17,i<2 ? 36 : 21);
+        .setDisplaySize(i<2 ? 41 : 28,i<2 ? 55 : 34);
+    });
+    const posts = layout.turned ? [[315,936],[155,796],[210,694]] : [[927,173],[855,393],[714,301]];
+    this.spill = [...posts, [this.gate.x,this.gate.y-8]].map(([px,py],i) => {
+      const im = scene.add.image(px,py-10,textureKey('glow')).setOrigin(.5).setDisplaySize(i===3 ? 93 : 53,39);
+      this.fieldLight.add(im);
+      return im;
     });
     this.banners = scene.add.graphics();
     this.scenery.add(this.banners);
     this.fog = Array.from({length:3},() => add('mist').setOrigin(.5));
     for (const cell of map.buildSites ?? []) {
       const c = layout.cellCenter(cell);
-      const lift = this.gate.y-(c.y-y);
-      if (lift >= 24) {
-        // A high gable gallery projects further than the pair on the curtain walk.
-        const height = lift > 50 ? 51 : 21;
-        add('gallery').setOrigin(.5,0).setDisplaySize(38,height).setPosition(c.x-x,c.y-y+1);
-      }
       add('plinth').setPosition(c.x-x,c.y-y).setOrigin(.5).setDisplaySize(32,25);
     }
     this.rain = scene.add.graphics();
@@ -122,26 +147,10 @@ export class KeepView {
     this.frame();
   }
 
-  private native(x: number, y: number) {
-    return { x:this.gate.x+(x-640)*this.castleW/1280, y:this.gate.y+(y-934)*this.castleH/960 };
-  }
-
-  private hangBanners(t: number): void {
-    const g=this.banners.clear();
-    this.pins.forEach((pin,i) => {
-      const {x,y} = this.native(pin,716);
-      const w = this.castleW*.020, h = this.castleH*.075;
-      const gust = Math.sin(t*2.1+i)*w*.35+Math.sin(t*4.3)*w*.12;
-      const hem = y+h+Math.sin(t*2+i)*.9;
-      g.fillStyle(0x203e51).beginPath().moveTo(x-w*.55,y).lineTo(x+w*.55,y)
-        .lineTo(x+w*.57+gust,hem-h*.12).lineTo(x+w*.1+gust,hem)
-        .lineTo(x-w*.4+gust,hem-h*.11).closePath().fillPath();
-      g.lineStyle(1,0x648a9b).beginPath().moveTo(x-w*.4,y)
-        .lineTo(x-w*.37+gust*.4,y+h*.49).lineTo(x-w*.27+gust,hem-h*.12).strokePath();
-      g.lineStyle(1.4,0xe6bd79).beginPath().moveTo(x-w*.38+gust*.6,y+.65*h)
-        .lineTo(x+gust*.72,y+.75*h).lineTo(x+w*.38+gust*.78,y+.64*h).strokePath();
-    });
-  }
+  private readonly at = (key: Landmark) => {
+    const [u,v] = this.anchors[key], [fx,fy] = this.anchors.foot;
+    return { x:this.gate.x+(u-fx)*this.castleW/1280, y:this.gate.y+(v-fy)*this.castleH/960 };
+  };
 
   frame(interacting = false): void {
     if (this.clock.paused && this.previous !== -Infinity) return;
@@ -157,10 +166,12 @@ export class KeepView {
     this.previous = ms;
     const t = calm ? 0 : ms/1000;
     this.opening = opening*opening*(3-2*opening);
-    const push = this.opening * .36;
+    const push = this.opening * .22;
     this.scenery.setScale(1+push).setPosition(-this.gate.x*push,-8*push);
+    this.fieldLight.setScale(1+push).setPosition(this.layout.map.x-this.gate.x*push,this.layout.map.y-8*push);
     this.lightning = this.stillLightning ? 1 : calm ? 0 : lightningAt(ms);
     if (this.lightning < .013) this.lightning = 0;
+    this.surround.update(push,this.lightning);
     const parallax = tier > 0 && !calm ? Math.sin(t*.19) : 0;
     this.castle.forEach((im,i) => {
       im.x = this.gate.x + (2-Math.min(i,2)) * (parallax*.7+this.opening*1.2);
@@ -184,14 +195,27 @@ export class KeepView {
       const pulse = .64+Math.sin(t*(i<2 ? 9.4 : 3.4)+i)*.13+Math.sin(t*17.1+i*2.8)*.075;
       im.setVisible(i<2 || tier>0).setAlpha(pulse*(i<2 ? .9 : .56));
     });
-    this.hangBanners(t);
+    drawFittings(this.banners,this.at,tier===0 ? 0 : t,tier);
+    drawFork(this.fork,width,this.gate.y,this.lightning,Math.floor((ms+7300)/15700)%2);
+    const reflection = this.reflection.clear();
+    if (this.lightning > 0) {
+      reflection.fillStyle(0xb8d4ff,.22*this.lightning).fillRect(0,0,width,height);
+      // The flash comes from the ridge. Pinnacles cast oblique shadows over wet shale.
+      for (let i=0;i<7;i++) {
+        const px = this.gate.x + (i-3)*this.castleW*.087;
+        const py = this.gate.y + Math.cos(i*2.7)*7;
+        const reach = (i===3 ? 72 : 27+i%3*11);
+        reflection.fillStyle(0x172438,.31*this.lightning).fillTriangle(px-7,py,px+10,py,px-reach,py+reach*.57);
+      }
+    }
+    this.spill.forEach((lamp,i) => lamp.setAlpha(.19+Math.sin(t*5.1+i)*.034));
     this.rain.clear();
     if (!calm && tier>0) {
-      this.rain.lineStyle(.8,0xc7d5e1,.25+this.lightning*.4).beginPath();
-      for (let i=0;i<(tier===2 ? 37 : 11);i++) {
+      this.rain.lineStyle(.8,0xb7c7dd,.30+this.lightning*.4).beginPath();
+      for (let i=0;i<(tier===2 ? 76 : 19);i++) {
         const y=(i*133.7+t*(242+i%4*30))%height;
         const x=((i*79.3-t*(47+i%4*6))%width+width)%width;
-        this.rain.moveTo(x,y).lineTo(x-1.9,y+7+i%4);
+        this.rain.moveTo(x,y).lineTo(x-3.8,y+12+i%7);
       }
       this.rain.strokePath();
     }
@@ -210,5 +234,7 @@ export class KeepView {
 
   destroy(): void {
     this.label?.remove();
+    this.light.destroy();
+    this.surround.destroy();
   }
 }

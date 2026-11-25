@@ -23,7 +23,7 @@ describe('Old Keep exhibition', () => {
     expect(state).toMatchObject({ lives: 20, gold: 240, wave: 0, phase: 'setup' });
     expect(lastWave(state)).toBe(3);
     expect(nextWavePreview(state)).toEqual([{ type: 'goblin', count: 12 }]);
-    for (const [col, row] of [[11, 10], [15, 6], [23, 9], [17, 10]]) {
+    for (const [col, row] of [[15, 4], [22, 7], [26, 10], [22, 10]]) {
       expect(buildTower(state, { col, row }, 'musketeer').ok).toBe(true);
     }
     for (let wave = 1; wave <= 3; wave++) {

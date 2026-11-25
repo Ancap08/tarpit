@@ -37,7 +37,7 @@ export class PaintedSkin {
   private drawnTime = Number.NaN;
   private readonly growth: { g: Growth; image: Image }[];
   private readonly towers = new Map<number, Image>();
-  private readonly effects: Phaser.GameObjects.Layer;
+  readonly effects: Phaser.GameObjects.Layer;
   private readonly pieces: Image[] = [];
   private used = 0;
   private hidden = new Set<number>();

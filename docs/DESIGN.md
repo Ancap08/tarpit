@@ -153,9 +153,9 @@ Buildable counts are of the 450 cells.
 The separate `?keep=1` exhibition opens directly on a Normal field with
 20 lives and 240 gold. It uses the ordinary tower prices, upgrades, enemy
 stats and wave-clear bonus. Its ten tower sites and road share one coordinate
-file, `src/sim/keepSite.json`, with the miniature renderer. The gate is at
-(400, 240). The wall-walk sites are (11, 4) and (11, 10) in portrait and
-(9, 6) and (15, 6) in landscape. The same towers and path survive rotation.
+file, `src/sim/keepSite.json`, with the miniature renderer. The stair foot is at
+(576, 296). Collectors climb the steps to the gate threshold at (551, 272). The wall-walk sites are (15, 13) and (15, 4) in portrait and
+(13, 7) and (22, 7) in landscape. The same towers and path survive rotation.
 
 | Wave | Groups (enemy, count, seconds between spawns, start in seconds) |
 | --- | --- |
