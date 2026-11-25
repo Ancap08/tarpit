@@ -41,8 +41,6 @@ export interface PolicyOptions {
   minHits?: number;
   /** A special the policy never fires (target S2 forbids each in turn). */
   forbid?: SpecialType;
-  /** Measuring control: the recorder rests through every Tar Barrel turn. */
-  leaveBarrelUnused?: boolean;
   /** Opt in to placing a Barricade at this point whenever there is no wall. */
   barricadePoint?: Point;
   /** In the placement sweep, spend each recharge even if its wall is still standing. */

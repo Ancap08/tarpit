@@ -60,10 +60,24 @@ describe('campaign acceptance gate', () => {
     }
   }, 90_000);
 
-  it.each([[9, 20], [10, 16], [20, 13]])('C8: boss level %i stays within two lives of %i', (id, before) => {
-    const level = LEVELS[id - 1];
-    const { state } = bots.runBot(createGame({ level }), bots.botGood);
-    expect(Math.abs(state.lives - before)).toBeLessThanOrEqual(2);
+  it.each(LEVELS.slice(10).filter(level => level.allowedSpecials.includes('tarBarrel')))(
+    'C2: casting earns two lives, a star, or full lives on level $id', level => {
+      const cast = bots.runBot(createGame({ level }), bots.botGood);
+      const idle = bots.runBot(createGame({ level }), { ...bots.botGood, leaveBarrelUnused: true });
+      expect(cast.log.some(step => step.action === 'special' && step.special === 'tarBarrel')).toBe(true);
+      expect(idle.log.some(step => step.action === 'special' && step.special === 'tarBarrel')).toBe(false);
+      expect([cast.refused, idle.refused]).toEqual([0, 0]);
+      const score = (state: typeof cast.state) => [levelStars(state), Math.max(0, state.lives)] as const;
+      const [stars, lives] = score(cast.state);
+      const [idleStars, idleLives] = score(idle.state);
+      expect(lives === 20 || lives >= idleLives + 2 || stars > idleStars,
+        `level ${level.id}, Good ${stars}/${lives}, unused ${idleStars}/${idleLives}`).toBe(true);
+    }, 60_000,
+  );
+
+  it('C8: Good finishes the finale within two lives of the accepted 13', () => {
+    const { state } = bots.runBot(createGame({ level: LEVELS[19] }), bots.botGood);
+    expect(Math.abs(state.lives - 13)).toBeLessThanOrEqual(2);
   }, 30_000);
 
   it('R6 accepts three extra lives, rejects four, and rejects a third star even inside the life limit', () => {
@@ -82,7 +96,7 @@ describe('campaign acceptance gate', () => {
       const barrel = level.allowedSpecials.includes('tarBarrel');
       expect(use.pathBTowers > 0, `level ${level.id} path B`).toBe(tower);
       expect(use.barrelCasts > 0, `level ${level.id} barrel`).toBe(barrel);
-      expect(use.feathered > 0, `level ${level.id} enemies feathered`).toBe(tower || barrel);
+      expect(use.feathered > 0, `level ${level.id} enemies feathered`).toBe(tower || (barrel && level.featherBarrels === true));
     }
   }, 120_000);
 

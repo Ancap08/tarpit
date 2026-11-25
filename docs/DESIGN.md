@@ -352,8 +352,9 @@ beside it that returns to the title; the win screen also has [Keep going].
 
 ### Feathers
 
-A Tar Barrel tars the enemies inside its radius on impact and immediately
-feathers each eligible enemy, including Harpies. Enemies that enter the
+A Tar Barrel tars the enemies inside its radius on impact. Levels 11–20 set
+the level rule `featherBarrels`. On these levels the impact also feathers
+each eligible enemy, including Harpies. Free play and levels 1–10 use ordinary tar. Enemies that enter the
 puddle later receive the slow. A path B Tar Pit shot feathers a surviving
 ground target if either its tower slow or its Tar Barrel slow is active. A
 shot that cannot feather its target applies its usual slow. Both bosses keep their slow cap and are immune to feathers and flinching.
@@ -579,14 +580,14 @@ Reloading starts a new run.
 | Guards | 6 | 0 | - | - | - | - |
 | Fire Arrows | 7 | 90 | - | - | 26 | 660 |
 
-- **Charge.** All five specials share one charge. A Tar Barrel spends it for
-  3034 wave ticks (about 50.57 s). Each other special spends it for 1200 wave ticks
+- **Charge.** All five specials share one charge. A feather barrel spends it for
+  3034 wave ticks (about 50.57 s). Ordinary barrels and all other specials spend it for 1200 wave ticks
   (20 s). Quick Hands scales the wait at cast time to 1729 ticks (about 28.82 s)
-  after a barrel or 684 ticks (11.4 s) after another special.
-  A barrel's remaining wait carries in full across an early call, Start Wave,
-  automatic dispatch and the first endless wave. The timer pauses during setup
+  after a feather barrel or 684 ticks (11.4 s) after another special.
+  A feather barrel's remaining wait carries in full across an early call, Start Wave
+  and automatic dispatch. The timer pauses during setup
   and resumes on the next combat tick. A reward chosen during setup first applies
-  to a subsequent cast. Every other special refills when the next wave starts.
+  to a subsequent cast. Ordinary barrels and other specials refill when the next wave starts.
   Only one special can fire in a simulation tick, even across an early call.
   The button shows remaining seconds rounded up and fills as the wait elapses.
   During setup it shows the paused barrel wait.
@@ -840,8 +841,8 @@ it reads "Start Wave". `ui().callEarly` reports `{available, bonus}`.
   going] calls `continueEndless(state)`: allowed only in phase `won`,
   refused with `not-won` otherwise; a refusal changes nothing. It sets
   `state.endless = true` and the phase to `setup` with wave 20 cleared;
-  gold, lives, towers, kill counts, rewards and any remaining barrel wait
-  are kept.
+  gold, lives, towers, kill counts, rewards and the special charge (0, not
+  refilling) are kept.
   Event `endlessStart`.
 - **After that** Start Wave plays wave 21, 22, and so on. Clearing a wave
   pays the 25 bonus and returns to setup; it never sets `won`, so the game
@@ -1717,11 +1718,7 @@ the Tar Barrel takes every turn), fired at the working point with a big
 one inside. Otherwise, if a point works for the Powder Keg, the keg is
 thrown there. Otherwise it waits. The best point catches the most enemies;
 ties go to the point nearest the exit. The simulator also measures the combo
-with each special omitted in turn. The unused-barrel control spends the full
-barrel recharge at every barrel opportunity, carries the wait across waves,
-and advances the alternating turn. During the shared wait the policy holds
-its next turn. It checks the crowd again on its first eligible look.
-When the policy omits Tar Barrel or Fire Arrows,
+with each special omitted in turn. When it omits Tar Barrel or Fire Arrows,
 the other takes its turn. The headless recorder fires each choice and writes it into the
 script's timed list (`timed`), so `playScripted` and the browser's
 `runScript` replay the same game.
@@ -1811,9 +1808,6 @@ Guards checks:
 - **G6** Guards spend the shared charge. Quick Hands changes only recharge. Even an early call cannot fund two casts on one tick.
 
 ### Known weaknesses
-
-The following observations and measured matrix are the accepted milestone 49
-reference. Milestone 50 measurements are in `DEVLOG.md` under “Milestone 50”.
 
 - Giving every zone turn to Fire Arrows earns 17 lives on Meadow and 20 on Riverbend. The alternating policy earns 14 on each map.
 - The largest Tar Pit path gap is seven lives. Deep Tar leads the Riverbend burn build 9 to 2. Feathers leads the Riverbend combo build 16 to 14.
@@ -1916,6 +1910,10 @@ are exempt. Saved stars keep their previous meaning and the best result wins.
 - Every 30 wave ticks Good applies the existing crowd policy for keg and zones, limited to available specials. It also checks for at least three walkers approaching a legal blocker position 50–140 px ahead, covered by a tower. A splash tower adds one to the blocker score. A blocker must beat the current cast's hit count, and its kind must be absent from the trail. Guards get the first blocker tie.
 - **Person** uses Good’s purchase scores and reward choices. For the chosen tower type, successive placements rotate through the first, second and third highest-scoring cells. During combat it makes at most one decision per three seconds. It acts 1.5 seconds after each charge becomes ready, including the opening charge. If the next wave opens before another look is due, it repeats the previous opening cast at the charge deadline. Its candidate points are centres of 48 px cells along the trail. It prefers Good’s qualifying cast, then a cast covering fewer enemies, then a legal cast even on an empty trail.
 
+- **Unused barrel turns.** The Act Two control plays as Good. At each barrel
+  opportunity it spends the charge and advances the alternating turn without
+  creating a zone, slowing enemies or feathering them.
+
 - **Feathers-forced Good and Person** keep the ordinary player’s shopping,
   cast opportunities and aim grid. Each buys Feathers whenever it buys a Tar
   Pit path. Where the barrel is available, it aims for the largest eligible
@@ -2012,13 +2010,6 @@ twenty levels. The twenty-level L8 compares the first and last six stops.
 
 ### Campaign measurements
 
-Level 9 records the milestone 50 health adjustment from 1 to 0.987.
-Ordinary Good and Good forced to use the Feathers tower path each finish
-with 20 lives and three stars. Its milestone 49 measurements were 3/20,
-3/20 and 0/0 over 7.57 minutes, with 17 enemies alive at peak.
-The other rows record the accepted milestone 49 campaign. `DEVLOG.md`
-gives the complete milestone 50 measurements and gate results.
-
 Stars/lives give each bot’s highest award and surviving lives. Time counts Good’s combat ticks at 60 Hz. Enemies includes summons. Peak is the greatest number alive after any tick.
 
 | ID | Name | Map | Waves | Enemies | Gold | HP scale | Growth from | Max tier | Reward waves | Good | Person | Beginner | Minutes | Peak alive | Wave 1 |
@@ -2031,7 +2022,7 @@ Stars/lives give each bot’s highest award and surviving lives. Time counts Goo
 | 6 | Heavy Feet | Riverbend | 7 | 331 | 270 | 1 | — | 2 | — | 2/15 | 2/14 | 0/0 | 8.41 | 10 | 56 |
 | 7 | Hold the Bend | Meadow | 8 | 738 | 245 | 1.3 | — | 2 | — | 2/16 | 2/12 | 0/0 | 8.13 | 28 | 53 |
 | 8 | Stand Fast | Switchback | 7 | 517 | 295 | 1.28 | — | 2 | — | 2/12 | 2/13 | 0/0 | 8.08 | 30 | 36 |
-| 9 | The King's Assessor | Riverbend | 7 | 535 | 255 | 0.987 | 6 | 3 | 5 | 3/20 | 3/18 | 0/0 | 7.62 | 16 | 42 |
+| 9 | The King's Assessor | Riverbend | 7 | 535 | 255 | 1 | 6 | 3 | 5 | 3/20 | 3/20 | 0/0 | 7.57 | 17 | 42 |
 | 10 | Last Light | Meadow | 7 | 633 | 280 | 0.925 | 5 | 3 | 5 | 2/16 | 2/13 | 0/0 | 8.89 | 19 | 36 |
 | 11 | Window Money | Riverbend | 6 | 326 | 245 | 0.91 | — | 3 | 1 | 2/20 | 2/14 | 0/0 | 5.91 | 23 | 21 |
 | 12 | The Quickstep | Switchback | 7 | 466 | 260 | 1.14 | — | 3 | 1 | 2/19 | 2/15 | 0/0 | 6.73 | 30 | 38 |
@@ -2089,7 +2080,9 @@ Tapping a locked stop names the first open level still to win. Back returns to
 the first screen. An open stop shows a card with the King's notice, level name, map,
 twist, new equipment or enemies, and best stars. Act Two cards list each
 tax name and amount under “In force” and print the name and task for
-the third star. Notices, tax amounts and build limits read the level record.
+the third star. In town blue the notice reads “Town's answer: Tar Barrels feather crowds.”
+The special menu on these levels reads “Tar and feathers. Enemies caught run back.”
+Level 11 teaches “Drop a Tar Barrel on a crowd and they run back.” Notices, tax amounts and build limits read the level record.
 The card measures the printed lines. If there is insufficient room for the
 map and tactics, “Map notes” turns the card over and “Notice” turns it
 back. Play and best stars stay available on both pages. Portrait card body

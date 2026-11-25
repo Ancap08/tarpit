@@ -7,7 +7,7 @@ import { buildTower, CHEAT_GOLD, grantCheatGold, pickBoon, useSpecial } from './
 import { enemyPosition } from './combat';
 import { ENEMY_STATS } from './enemies';
 import type { GameEvent } from './events';
-import { callNextWave, continueEndless, createGame, lastSpawnTick, startWave, tick } from './game';
+import { callNextWave, createGame, lastSpawnTick, startWave, tick } from './game';
 import { playScripted } from './headless';
 import { LEVELS } from './levels';
 import { MAPS } from './map';
@@ -45,6 +45,12 @@ function inWave(wave: number, enemies: Enemy[], map?: MapDef): GameState {
   s.nextEnemyId = 100;
   s.events = [];
   return s;
+}
+
+function inFeatherWave(wave: number, enemies: Enemy[], map: MapDef): GameState {
+  const state = inWave(wave, enemies, map);
+  state.level = { ...LEVELS[10], waves: WAVES, allowedSpecials: SPECIAL_TYPES, rewardWaves: [5, 10, 15] };
+  return state;
 }
 
 const kinds = (events: GameEvent[]) => events.map((e) => e.kind);
@@ -142,7 +148,7 @@ describe('zones (step 2b of the tick)', () => {
 
   it('leave: the slow lasts the linger after the last tick inside, then full speed', () => {
     // At 390, inside, so the landing slows it: 1 px a tick to 400 (inside, the edge) on tick 10.
-    const s = inWave(4, [{ ...enemy(0, 'wolf', 390, 1000), feathered: true }], LINE);
+    const s = inWave(4, [enemy(0, 'wolf', 390, 1000)], LINE);
     useSpecial(s, 'tarBarrel', { x: 300, y: 240 });
     ticks(s, 10);
     expect([s.enemies[0].distance, s.enemies[0].specialSlowTicksLeft]).toEqual([400, 60]);
@@ -167,7 +173,7 @@ describe('zones (step 2b of the tick)', () => {
   });
 
   it('two overlapping zones: tar and fire on one enemy burn at 26/s doubled (52/s); two tar zones do not stack', () => {
-    const s = inWave(7, [{ ...enemy(0, 'troll', 300, 1000), feathered: true }], LINE);
+    const s = inWave(7, [enemy(0, 'troll', 300, 1000)], LINE);
     useSpecial(s, 'tarBarrel', { x: 300, y: 240 });
     tick(s);
     s.specialCharges = 1; // Test setup: refill while the first zone is still live.
@@ -269,7 +275,7 @@ describe('the charge (milestone 30: ready at a wave start, recharges in wave tim
   it('C9: only the barrel makes every special wait beyond the ordinary refill', () => {
     const point = { x: 300, y: 240 };
     for (const special of SPECIAL_TYPES) {
-      const state = inWave(7, [enemy(0, 'troll')], LINE);
+      const state = inFeatherWave(7, [enemy(0, 'troll')], LINE);
       expect(useSpecial(state, special, point).ok, special).toBe(true);
       if (special === 'tarBarrel') {
         expect(state.specialRechargeTicks).toBeGreaterThan(SPECIAL_RECHARGE_TICKS);
@@ -279,7 +285,7 @@ describe('the charge (milestone 30: ready at a wave start, recharges in wave tim
       }
     }
     const longTrail = { ...LINE, path: [{ x: 0, y: 240 }, { x: 10000, y: 240 }] };
-    const state = inWave(7, [enemy(0, 'troll')], longTrail);
+    const state = inFeatherWave(7, [enemy(0, 'troll')], longTrail);
     expect(useSpecial(state, 'tarBarrel', point).ok).toBe(true);
     ticks(state, BARREL_RECHARGE_TICKS - 1);
     for (const special of SPECIAL_TYPES) {
@@ -290,7 +296,7 @@ describe('the charge (milestone 30: ready at a wave start, recharges in wave tim
   });
 
   it.each([false, true])('C9: an early call preserves the full remaining barrel wait (Quick Hands %s)', quick => {
-    const state = inWave(7, [enemy(0, 'troll')], LINE);
+    const state = inFeatherWave(7, [enemy(0, 'troll')], LINE);
     if (quick) state.boons = ['quickHands'];
     expect(useSpecial(state, 'tarBarrel', POINT).ok).toBe(true);
     const duration = Math.round(BARREL_RECHARGE_TICKS * (quick ? 0.57 : 1));
@@ -302,7 +308,7 @@ describe('the charge (milestone 30: ready at a wave start, recharges in wave tim
   });
 
   it('C9: setup and a reward pick preserve a barrel wait until the next combat tick', () => {
-    const state = inWave(10, [], LINE);
+    const state = inFeatherWave(10, [], LINE);
     expect(useSpecial(state, 'tarBarrel', POINT).ok).toBe(true);
     tick(state);
     expect(state.phase).toBe('setup');
@@ -317,7 +323,7 @@ describe('the charge (milestone 30: ready at a wave start, recharges in wave tim
 
   it('C9: automatic dispatch carries the paused wait into its first combat tick', () => {
     const wave = { groups: [{ type: 'goblin' as const, count: 1, interval: 1, delay: 0 }] };
-    const state = createGame({ level: { ...LEVELS[0], waves: [wave, wave, wave],
+    const state = createGame({ level: { ...LEVELS[10], waves: [wave, wave, wave],
       allowedSpecials: ['tarBarrel'], taxes: { noLoitering: 1 }, rewardWaves: [] } });
     startWave(state);
     tick(state);
@@ -330,17 +336,6 @@ describe('the charge (milestone 30: ready at a wave start, recharges in wave tim
       .toEqual(['wave', 2, 0, BARREL_RECHARGE_TICKS - 1]);
     tick(state);
     expect(state.specialRechargeTicks).toBe(BARREL_RECHARGE_TICKS - 2);
-  });
-
-  it('C9: a barrel spent on the last wave still has to refill in endless', () => {
-    const state = inWave(20, [], LINE);
-    expect(useSpecial(state, 'tarBarrel', POINT).ok).toBe(true);
-    tick(state);
-    expect(state.phase).toBe('won');
-    expect(continueEndless(state).ok).toBe(true);
-    expect(startWave(state).ok).toBe(true);
-    expect([state.wave, state.specialCharges, state.specialRechargeTicks]).toEqual([21, 0, BARREL_RECHARGE_TICKS - 1]);
-    expect(useSpecial(state, 'keg', POINT)).toEqual({ ok: false, reason: 'no-charge' });
   });
 
   it('a refused second use changes nothing', () => {

@@ -8,7 +8,7 @@ import { buildableCells, cellCenter, cellFromKey, cellKey } from './grid';
 import { applyAction, densestCluster, trailCellOrder, type BuildAction, type HeadlessStepResult, type SpecialAction } from './headless';
 import { pathLength, positionAlongPath } from './map';
 import { BIG_ENEMIES, POLICY_CHECK_TICKS, POLICY_MIN_HITS, chooseCrowdSpecial, chooseFeatherBarrel, policyCandidates } from './specialPolicy';
-import { availableSpecials, specialRadius, ordinaryRechargeTicks, type SpecialType } from './specials';
+import { availableSpecials, specialRadius, ordinaryRechargeTicks, spendSpecialCharge, type SpecialType } from './specials';
 import { TICKS_PER_SECOND } from './time';
 import { TOWER_DEFS, TOWER_PATHS, allowedTowers, atTowerCap, towerBuildCost, maxTowerLevel, towerLevel, towerStats } from './towers';
 import type { GameState, MapDef, Point, TowerLevelStats, TowerType, UpgradePath } from './types';
@@ -21,6 +21,8 @@ const BLOCK_APPROACH = 140;
 const SETUP_RESERVE = 30;
 
 export interface BotPolicy {
+  /** Spend a barrel turn and its charge, without applying its effects (C2 control). */
+  leaveBarrelUnused?: boolean;
   purchase(state: GameState): BuildAction | undefined;
   /** Maximum number of upgrade purchases per setup, if limited. */
   upgradesPerSetup?: number;
@@ -426,7 +428,7 @@ export const botGoodFeat = pursueFeat(botGood, false);
 export const botPersonFeat = pursueFeat(botPerson, true);
 
 /** Run to a terminal state or stop between waves at the optional wave cap. */
-export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity, maxTicks = 60 * 60 * TICKS_PER_SECOND): BotRun {
+export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity, maxTicks = 60 * 60 * TICKS_PER_SECOND, barrelImpact?: { casts: number; feathered: number }): BotRun {
   const log: HeadlessStepResult[] = [];
   let feathered = 0;
   function apply(action: Parameters<typeof applyAction>[1]): boolean {
@@ -466,11 +468,19 @@ export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity,
     }
     const special = bot.special(state, lastZone);
     const eventsBeforeCast = state.events.length;
-    if (special && apply(special) && (special.special === 'tarBarrel' || special.special === 'fireArrows')) {
+    if (special?.special === 'tarBarrel' && bot.leaveBarrelUnused) {
+      spendSpecialCharge(state, 'tarBarrel');
+      lastZone = 'tarBarrel';
+    } else if (special && apply(special) && (special.special === 'tarBarrel' || special.special === 'fireArrows')) {
       lastZone = special.special;
-    }
-    if (bot === botFeathers && special?.special === 'tarBarrel') {
-      for (const event of state.events.slice(eventsBeforeCast)) if (event.kind === 'feathered') feathered++;
+      if (special.special === 'tarBarrel' && (barrelImpact || bot === botFeathers)) {
+        const hits = state.events.slice(eventsBeforeCast).filter(event => event.kind === 'feathered').length;
+        feathered += hits;
+        if (barrelImpact) {
+          barrelImpact.casts++;
+          barrelImpact.feathered += hits;
+        }
+      }
     }
     tick(state);
     if (bot === botFeathers) {

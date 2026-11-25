@@ -128,7 +128,7 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
-    id: 9, map: 'riverbend', startGold: 255, hpScale: 0.987, hpGrowthStart: 6, endingBoss: 'boss',
+    id: 9, map: 'riverbend', startGold: 255, hpScale: 1, hpGrowthStart: 6, endingBoss: 'boss',
     allowedTowers: allTowers, maxTowerLevel: 3, allowedSpecials: allSpecials, rewardWaves: [5],
     waves: [
       w(g('goblin', 30, 1.66), g('harpy', 12, 4.09, 0.4)),
@@ -154,6 +154,7 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
+    featherBarrels: true,
     id: 11, map: 'riverbend', startGold: 245, hpScale: 0.91, hpGrowthStart: null,
     allowedTowers: allTowers, maxTowerLevel: 3, allowedSpecials: allSpecials, rewardWaves: [1],
     taxes: { windowTax: 0.085 }, feat: { kind: 'noSpecials' },
@@ -168,6 +169,7 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
+    featherBarrels: true,
     id: 12, map: 'switchback', startGold: 260, hpScale: 1.14, hpGrowthStart: null,
     allowedTowers: allTowers, maxTowerLevel: 3, allowedSpecials: allSpecials, rewardWaves: [1],
     taxes: { forcedMarch: 0.2 }, feat: { kind: 'maxTowers', limit: 5 },
@@ -182,6 +184,7 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
+    featherBarrels: true,
     id: 13, map: 'riverbend', startGold: 285, hpScale: 0.85, hpGrowthStart: null,
     allowedTowers: allTowers, maxTowerLevel: 3, allowedSpecials: allSpecials, rewardWaves: [1],
     taxes: { noLoitering: 8 }, feat: { kind: 'noLeaks' },
@@ -196,6 +199,7 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
+    featherBarrels: true,
     id: 14, map: 'meadow', startGold: 240, hpScale: 0.93, hpGrowthStart: null,
     allowedTowers: allTowers, maxTowerLevel: 3, allowedSpecials: allSpecials, rewardWaves: [],
     taxes: { curfew: 0.15 }, feat: { kind: 'noLeaks' },
@@ -209,6 +213,7 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
+    featherBarrels: true,
     id: 15, map: 'riverbend', startGold: 255, hpScale: 1.08, hpGrowthStart: null,
     allowedTowers: allTowers, maxTowerLevel: 3, allowedSpecials: allSpecials, rewardWaves: [2],
     taxes: { frozenPurse: 80 }, feat: { kind: 'noSpecials' },
@@ -223,6 +228,7 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
+    featherBarrels: true,
     id: 16, map: 'meadow', startGold: 245, hpScale: 1, hpGrowthStart: null,
     allowedTowers: allTowers, maxTowerLevel: 3, allowedSpecials: allSpecials, rewardWaves: [1],
     taxes: { rationing: 3 }, feat: { kind: 'noSpecials' },
@@ -237,6 +243,7 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
+    featherBarrels: true,
     id: 17, map: 'switchback', startGold: 220, hpScale: 0.94, hpGrowthStart: null,
     allowedTowers: allTowers, maxTowerLevel: 3, allowedSpecials: allSpecials, rewardWaves: [1],
     taxes: { noLoitering: 8, curfew: 0.2 }, feat: { kind: 'maxTowers', limit: 2 },
@@ -251,6 +258,7 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
+    featherBarrels: true,
     id: 18, map: 'meadow', startGold: 260, hpScale: 1, hpGrowthStart: null,
     allowedTowers: allTowers, maxTowerLevel: 3, allowedSpecials: allSpecials, rewardWaves: [3],
     taxes: { rationing: 3, forcedMarch: 0.18 }, feat: { kind: 'noSpecials' },
@@ -264,6 +272,7 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
+    featherBarrels: true,
     id: 19, map: 'meadow', startGold: 245, hpScale: 0.94, hpGrowthStart: null,
     allowedTowers: allTowers, maxTowerLevel: 3, allowedSpecials: allSpecials, rewardWaves: [1],
     taxes: { windowTax: 0.05, curfew: 0.1 }, feat: { kind: 'maxTowers', limit: 5 },
@@ -277,6 +286,7 @@ export const LEVELS: readonly LevelDef[] = [
     ],
   },
   {
+    featherBarrels: true,
     id: 20, map: 'riverbend', startGold: 245, hpScale: 0.925, hpGrowthStart: null,
     allowedTowers: allTowers, maxTowerLevel: 3, allowedSpecials: allSpecials, rewardWaves: [],
     taxes: { frozenPurse: 80, curfew: 0.2 }, feat: { kind: 'noSpecials' },

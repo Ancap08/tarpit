@@ -223,7 +223,7 @@ export function setTargeting(state: GameState, cell: Cell, mode: TargetingMode):
  * whose position is within the special's radius of the point (inclusive),
  * flying or not: the keg's damage at full strength (shields ignored); the
  * Tar Barrel's special slow or the Fire Arrows' special burn. A Tar Barrel
- * feathers eligible enemies on impact. The Tar Barrel and Fire Arrows
+ * on a feather-barrel level feathers eligible enemies on impact. The Tar Barrel and Fire Arrows
  * then leave a zone at the point for `zoneTicks` (game.ts step 2b). Emits
  * one `special` event with the number of enemies hit (and the zone's id),
  * then `slowed` events for applied slows, then a `kill` (cause 'special')
@@ -279,7 +279,7 @@ export function useSpecial(state: GameState, type: SpecialType, point: Point): S
       const applied = applySpecialSlow(enemy, def.slow, ticks);
       if (applied !== null) state.events.push({ kind: 'slowed', enemyId: enemy.id, slow: applied, ticks });
     }
-    if (type === 'tarBarrel') featherEnemy(state, enemy, FEATHERS.barrelRunTicks);
+    if (type === 'tarBarrel' && state.level?.featherBarrels) featherEnemy(state, enemy, FEATHERS.barrelRunTicks);
     if (def.burnDps > 0) applyBurn(enemy, boonScale(def.burnDps, state.boons, 'hotCoals'), ZONE_LINGER_TICKS, 'special');
   }
   if (zoneId !== undefined && zoneType !== undefined) {

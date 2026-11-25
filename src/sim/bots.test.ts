@@ -242,9 +242,30 @@ describe('person policy', () => {
     expect(botPerson.special({ ...state })).not.toEqual(first);
   });
 
+  it('C2: an unused barrel spends the same turn and wait without placing tar or feathering', () => {
+    const state = createGame({ level: { ...level, featherBarrels: true, allowedSpecials: ['tarBarrel', 'keg'] } });
+    startWave(state);
+    state.enemies.push({ id: 42, type: 'troll', distance: 80, hp: 950, slow: 0, slowTicksLeft: 0 });
+    let nextZone;
+    const run = runBot(state, {
+      ...botGood, leaveBarrelUnused: true,
+      special(s, lastZone) {
+        nextZone = lastZone;
+        if (!s.specialCharges) return undefined;
+        return { type: 'special', special: 'tarBarrel', x: 80, y: 240, atWaveTick: s.waveTick };
+      },
+    }, 1, 2);
+    expect(nextZone).toBe('tarBarrel');
+    expect(state.zones).toEqual([]);
+    expect(state.enemies[0].feathered).toBeUndefined();
+    expect(state.enemies[0].specialSlowTicksLeft).toBeUndefined();
+    expect([state.specialCharges, state.specialRechargeTicks]).toEqual([0, BARREL_RECHARGE_TICKS - 2]);
+    expect(run.log.some(step => step.action === 'special')).toBe(false);
+  });
+
   it('reacts 90 ticks after a barrel wait ends across an early call', () => {
     const groups = [{ type: 'goblin' as const, count: 2, interval: 3000, delay: 0 }];
-    const state = createGame({ level: { ...level, allowedSpecials: ['tarBarrel', 'keg'],
+    const state = createGame({ level: { ...level, featherBarrels: true, allowedSpecials: ['tarBarrel', 'keg'],
       waves: [{ groups }, { groups }, { groups }] } });
     expect(startWave(state).ok).toBe(true);
     tick(state);

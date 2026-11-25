@@ -86,7 +86,7 @@ describe('the barrel is never wasted or cut short by tower slows', () => {
     // Tar Pit at (3,5), centre (112, 176): reaches the first run. Milestone
     // 30: the barrel leaves a zone (100 px) that refreshes the slow to 60
     // ticks every tick while the Goblin is inside.
-    const s = inWave(4, [enemy(0, 'goblin', { hp: 1e6, distance: 60, feathered: true })]);
+    const s = inWave(4, [enemy(0, 'goblin', { hp: 1e6, distance: 60 })]);
     buildTower(s, { col: 3, row: 5 }, 'tarpit');
     useSpecial(s, 'tarBarrel', { x: 60, y: 240 });
     let slowedByPit = 0;

@@ -18,10 +18,10 @@ import { applyAction, applyScriptBoon, comboBuild } from './headless';
 import { positionAlongPath, MAPS } from './map';
 
 /** Simulation reference for the browser frame. */
-const BOSS_STEPS = 5226;
+const BOSS_STEPS = 5316;
 
 describe('boss.png frame content', () => {
-  it(`at tick ${BOSS_STEPS} of wave 10 he is alone at (392,96), tarred, burning, 3567 hp on the bar, Mortar hit 2 ticks before, no hit now`, () => {
+  it(`at tick ${BOSS_STEPS} of wave 10 he is alone at (420,98), tarred, burning, 3400 hp on the bar, Mortar hit 2 ticks before, no hit now`, () => {
     const s = createGame();
     const script = comboBuild();
     for (let w = 0; w < 9; w++) {
@@ -60,18 +60,18 @@ describe('boss.png frame content', () => {
       waveTick: BOSS_STEPS,
       enemies: 1,
       type: 'boss',
-      pos: { x: 392, y: 96 },
+      pos: { x: 420, y: 98 },
       burning: true,
       slowed: true,
       slow: 0.3,
-      hpOnBar: 3567,
+      hpOnBar: 3400,
       mortarHits2Before: 1,
       hitNow: false,
-      lives: 13,
+      lives: 14,
     });
-    // M50: the complete frame state after the crowd barrel, including shots and events.
+    // R7: the complete frame state from d517ac8, including shots and events.
     expect(createHash('sha256').update(JSON.stringify(s)).digest('hex')).toBe(
-      '036a275f96e0e5087567c6fbb91ba64b9065c246d1e4ec3e236d9c230593ae77',
+      '56c9f4bfbf68c8effeba444e90291c1a5482354df7a1d0c20e73f5f585b3b19c',
     );
   });
 });

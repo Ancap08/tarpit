@@ -1,6 +1,6 @@
 // Special attacks (milestone 25b, reworked in milestone 30,
 // docs/SCOPE-v5.md "Specials rework").
-// One shared charge, recharging in wave time. A barrel wait carries across
+// One shared charge, recharging in wave time. A feather-barrel wait carries across
 // waves and pauses in setup. Other specials refill at a wave start. The player aims a
 // special at a map point; it acts at once, between ticks, like a build. The
 // Tar Barrel and Fire Arrows also leave a ground zone at the point for
@@ -36,7 +36,7 @@ export interface SpecialDef {
  */
 export const ZONE_LINGER_TICKS = 60;
 
-/** Wave ticks for an ordinary refill and for the longer wait after a barrel. */
+/** Wave ticks for an ordinary refill and for the longer wait after a feather barrel. */
 export const SPECIAL_RECHARGE_TICKS = 1200;
 export const BARREL_RECHARGE_TICKS = 3034;
 
@@ -48,7 +48,7 @@ export function ordinaryRechargeTicks(held: readonly BoonId[]): number {
 export function spendSpecialCharge(state: GameState, type: SpecialType): void {
   state.specialCharges = 0;
   state.lastSpecialTick = state.tick;
-  if (type === 'tarBarrel') {
+  if (type === 'tarBarrel' && state.level?.featherBarrels) {
     state.specialRechargeTicks = Math.round(boonScale(BARREL_RECHARGE_TICKS, state.boons, 'quickHands'));
     state.barrelRecharge = { totalTicks: state.specialRechargeTicks };
   } else {

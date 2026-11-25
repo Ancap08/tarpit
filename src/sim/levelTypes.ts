@@ -22,6 +22,7 @@ export type LevelFeat =
   | { readonly kind: 'maxTowers'; readonly limit: number };
 
 export interface LevelDef {
+  readonly featherBarrels?: boolean;
   readonly taxes?: LevelTaxes;
   readonly feat?: LevelFeat;
   readonly id: number;

@@ -279,7 +279,7 @@ describe('enemy contact and combat', () => {
 });
 
 describe('recharge, endless and deterministic replay', () => {
-  it.each([[1200, 3034], [684, 1729]])('K7: waits %i ticks after a wall and starts a %i-tick wait after a barrel', (recharge, barrelRecharge) => {
+  it.each([1200, 684])('K7: waits all %i shared recharge ticks before a second cast', (recharge) => {
     const state = arena([enemy(0, 'troll', 200)], 7);
     if (recharge === 684) state.boons = ['quickHands'];
     expect(useSpecial(state, 'barricade', WALL).ok).toBe(true);
@@ -295,7 +295,7 @@ describe('recharge, endless and deterministic replay', () => {
     expect(state.specialCharges).toBe(1);
     expect(state.specialRechargeTicks).toBe(0);
     expect(useSpecial(state, 'tarBarrel', WALL).ok).toBe(true);
-    expect(state.specialRechargeTicks).toBe(barrelRecharge);
+    expect(state.specialRechargeTicks).toBe(recharge);
     expect(useSpecial(state, 'barricade', WALL)).toEqual({ ok: false, reason: 'no-charge' });
   });
 

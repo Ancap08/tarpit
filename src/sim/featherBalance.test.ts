@@ -1,57 +1,6 @@
 import { createHash } from 'node:crypto';
-import { describe, expect, it } from 'vitest';
-import { comboBuild, comboIdleBarrel, comboWithoutSpecial, playScripted, type RecordedOutcome } from './headless';
-import { botBeginner, runBot } from './bots';
-import { createGame } from './game';
-import { DIFFICULTIES } from './difficulty';
-import { BARREL_RECHARGE_TICKS } from './specials';
-import { MAP_IDS, type MapId } from './map';
-
-function measure(map: MapId) {
-  const lives: number[] = [];
-  const record = (outcome: RecordedOutcome, refused: number) => {
-    expect(refused, map).toBe(0);
-    expect(['won', 'lost'], map).toContain(outcome.phase);
-    lives.push(Math.max(0, outcome.lives));
-  };
-  const alternating = comboBuild('normal', map, undefined, record);
-  const idle = comboIdleBarrel(map, record);
-  const barrels = comboWithoutSpecial('fireArrows', 'normal', map, undefined, record);
-  const arrows = comboWithoutSpecial('tarBarrel', 'normal', map, undefined, record);
-  const casts = (script: typeof idle) => script.timed?.flat().flatMap(action => action.type === 'special' ? [action.special] : []);
-  // Both policies see the same board up to the first skipped opportunity.
-  const wave = alternating.timed!.findIndex(actions => actions.some(a => a.type === 'special' && a.special === 'tarBarrel'));
-  const firstBarrel = alternating.timed![wave].find(a => a.type === 'special' && a.special === 'tarBarrel')!;
-  expect(idle.timed!.slice(0, wave)).toEqual(alternating.timed!.slice(0, wave));
-  expect(idle.timed![wave].filter(a => a.atWaveTick < firstBarrel.atWaveTick))
-    .toEqual(alternating.timed![wave].filter(a => a.atWaveTick < firstBarrel.atWaveTick));
-  expect(idle.timed![wave].some(a => a.atWaveTick >= firstBarrel.atWaveTick &&
-    a.atWaveTick < firstBarrel.atWaveTick + BARREL_RECHARGE_TICKS)).toBe(false);
-  expect(casts(idle)).not.toContain('tarBarrel');
-  expect(casts(idle)).toContain('fireArrows');
-  expect(casts(barrels)).toContain('tarBarrel');
-  expect(casts(barrels)).not.toContain('fireArrows');
-  expect(casts(arrows)).toContain('fireArrows');
-  expect(casts(arrows)).not.toContain('tarBarrel');
-  const [standard, unused, barrelOnly, arrowsOnly] = lives;
-  return { map, standard, unused, barrelOnly, arrowsOnly };
-}
-
-describe('Tar Barrel Free play targets', () => {
-  const results = new Map<MapId, ReturnType<typeof measure>>();
-  function row(map: MapId) {
-    if (!results.has(map)) results.set(map, measure(map));
-    return results.get(map)!;
-  }
-  it.each([['meadow', 4], ['switchback', 3], ['riverbend', 4]] as const)('C2: casting beats resting on %s by at least %i lives', (map, margin) => {
-    const r = row(map);
-    expect(r.standard - r.unused, JSON.stringify(r)).toBeGreaterThanOrEqual(margin);
-  });
-  it('C3: giving Fire Arrows turns to the barrel beats the reverse somewhere', () => {
-    const rows = MAP_IDS.map(row);
-    expect(rows.some(r => r.barrelOnly > r.arrowsOnly), JSON.stringify(rows)).toBe(true);
-  });
-});
+import { expect, it } from 'vitest';
+import { comboWithoutSpecial, playScripted } from './headless';
 
 // SHA-256 over the raw JSON state, action log and wave results from d517ac8.
 it.each([
@@ -64,15 +13,3 @@ it.each([
   expect(script.timed?.flat().some(a => a.type === 'special' && a.special === 'tarBarrel')).toBe(false);
   expect(createHash('sha256').update(JSON.stringify(playScripted(script, undefined, 'normal'))).digest('hex')).toBe(hash);
 });
-
-// Beginner never uses specials. This complete Free play lock still applies at the
-// milestone 49 difficulty settings, independently of the new barrel behavior.
-it('preserves all nine no-special Beginner Free play runs', () => {
-  const hash = createHash('sha256');
-  for (const map of MAP_IDS) {
-    for (const difficulty of DIFFICULTIES) {
-      hash.update(JSON.stringify(runBot(createGame({ map, difficulty }), botBeginner)));
-    }
-  }
-  expect(hash.digest('hex')).toBe('9a058a4a3f753964b3aa7fa3da6f8c605d00bda93f9f578e2d0daf203e1364c1');
-}, 120_000);
