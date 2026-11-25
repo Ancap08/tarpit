@@ -1125,15 +1125,18 @@ in this voice and the coordinator's to approve.
 | W3 | The last stand is a rescue, not a plan: the good bot wins every level without the gate falling; the person-like bot loses the gate on at least two levels and still wins them |
 | W4 | The sky matters: on every level with Harpies, a build with no tower that can hit flyers loses lives while the gate stands |
 | W5 | Unbroken is earned: the good bot earns it on every level when it plays for it; the person-like bot earns it on at most two |
-| W6 | Each road matters: on a two-road level, leaving either road undefended loses the gate |
+| W6 | Each road matters: on a two-road level, leaving either road undefended loses the gate, or costs the good bot a star or at least 6 lives. (First written as "loses the gate" only. On a gate level an undefended road costs lives before it costs the gate, because flyers go over; the verifier judged the intent met and the wording wrong.) |
 | W7 | Act Three is a step up: the person-like bot's mean lives fall at least 1.5 from Act Two's |
 | W8 | Nothing else moves: levels 1 to 20 and Free play are byte for byte as before for every bot; Act Two's difficulty step is unchanged |
-| W9 | The existing level rules (two-star lines, margins under nudges, variety, fairness for a feathers-leaning player) hold on levels 21 to 25 |
+| W9 | The existing level rules hold on levels 21 to 25 (two-star lines, margins under nudges, feats under nudges, sensitivity, variety, fairness for a feathers-leaning player), with three measures restated for levels that have a gate, because a standing gate holds every ground enemy and lives stop measuring strain: **(a)** the finale band is on the gate, not on lives: on level 25 the good bot's gate falls to between 5% and 30% of its health at its lowest; **(b)** the gap rule is "the person-like bot wins every level with at least 8 lives, also under the nudges", in place of "within 6 lives of the good bot"; **(c)** no single tower type earns more than one star on levels 22 to 25; level 21 is exempt as the act's teaching level, as levels 1 to 10 are |
 | W10 | Windows help and are not needed: on level 22 the good bot ends at least 2 lives or a star better using them than not, and still wins without them |
 | W11 | The ram is a gate problem: on level 25, ignored, it breaks the gate; tarred and feathered in time, it does not |
 | W12 | Each siege tax bites and can be lived with: on its level the good bot ends worse with the tax than without, and still earns two stars |
 | W13 | Not a nail is earned: the good bot earns it when it plays for it, the person-like bot on at most one of its two levels, and repairing forfeits it |
 | W14 | One new thing a level: no level introduces more than the table above says |
+| W15 | A gentle first siege: on level 21 the person-like bot earns two stars, and no single wave costs it more than 4 lives |
+| W16 | No traps: a window tapped with nobody on its stretch to feather stays lit; on a Not a nail level the Repair control says it costs the third star before the first repair; and on those levels declining to repair costs the person-like bot lives, so the choice is real |
+| W17 | The targets are in the test run: `npm test` runs W1 to W16 on levels 21 to 25 and fails if any passing target stops passing; any target still missing is listed by name in one place and the run fails if that list is wrong in either direction |
 
 ### Not in this milestone
 

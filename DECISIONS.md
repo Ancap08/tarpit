@@ -1961,3 +1961,31 @@ can change it; "Kyle" means Kyle decided.
   to 10 are. Not to be used for any other level.
 - **Part b has used about 980,000 Sol tokens over three runs** (403,056,
   260,628 and 316,666) before this one.
+- **Verifier (Sonnet) on part b: fix first.** Proved: 300 run hashes and
+  the sim output identical to main; levels 21 to 25 cannot be reached or
+  saved without a switch; twelve wrong changes turned tests red, three of
+  them only after the verifier added tests. Its findings and the
+  coordinator's decisions:
+  - **`npm test` did not run the Act Three targets at all**, passes or
+    misses; only a separate command did, which CI never calls. A green run
+    said nothing about the levels. Now a target in its own right (W17).
+  - **W6 reworded** to "loses the gate, or costs a star or 6 lives". The
+    verifier judged the intent met and the wording wrong; with the
+    person-like bot every one-road case loses the level.
+  - **W12 stays as written.** The verifier called counting the gate's low
+    point "moving the goalposts" and showed the Survey as chosen helps the
+    person-like bot. The Survey's two sites are to be chosen by sweeping
+    every pair, not the measure changed.
+  - **W9 restated for gate levels in three places**, on the verifier's
+    reasoning that a player feels the gate bar, not the lives: the finale
+    band is on the gate's low point; the gap rule becomes "the ordinary
+    player wins with at least 8 lives"; level 21 is exempt from the
+    one-tower rule. These replace measures written for levels without a
+    gate. They are changes to thresholds, made openly and for a stated
+    reason, and Kyle is told.
+  - **Level 21 was a cliff, not a lesson:** 32 flyers in wave 2 cost the
+    ordinary player nine lives. New target W15.
+  - **Two traps:** a window spent on an already-feathered crowd, and a
+    repair that silently forfeits Not a nail. New target W16.
+  - **The gate's health no longer fits its label at five digits.** Shown
+    as a percentage until part c1 draws a bar.
