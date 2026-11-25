@@ -11243,3 +11243,105 @@ and the directory hash because I refreshed the build while the suite
 was running and left three superseded chunks. A clean build removed them.
 The four keep-specific browser checks passed again, including winning
 with saved progress intact and pausing the opening with the keyboard.
+
+## 2026-11-24: milestone 51, the Old Keep on the crag
+
+The second pass moves the stair foot to (576, 296). From there collectors
+climb one more segment to (551, 272), inside the door. The first-pass road
+ended at (400, 240). The phone camera puts the toe of the stairs 576 units
+down a 960-unit field. The highest spire reaches the upper edge. Tilted
+perspective replaces the first pass's orthographic camera. The wide view
+has its own camera gate, taller entrance, western belfry and eastern
+observatory. The ten legal sites moved with the approach. The four wall
+positions, road and wave list are in [DESIGN](docs/DESIGN.md#the-old-keep-hidden-look-spike).
+
+| Measurement | First pass | Second pass |
+| --- | ---: | ---: |
+| Portrait architecture on the 480 × 960 board | 495 × 372 | 820 × 660 |
+| Wide architecture on the 960 × 480 board | 430 × 243 | 1250 × 335 |
+| Portrait architecture plate | 1280 × 960 | 2560 × 1920 |
+| Wide architecture plate | Shared portrait exposure | 3200 × 1200 |
+| Portrait / wide approach plates | 960 × 1920 / 1920 × 960 | 1920 × 3840 / 3840 × 1920 |
+| Sky | 1440 × 800 | 2880 × 1600 |
+| Runtime WebPs / bytes | 12 / 891,418 | 17 / 3,291,554 |
+
+Three depth plates and one lightning exposure per orientation account for
+2,004,636 bytes. The other nine plates account for 1,286,918 bytes. They
+supply the sky, two approaches, overscan scenery, the wide foreground
+causeway, scud, fog, amber light and the marked plinth. The curtain
+continues beyond the phone canvas into the side margins. The gate, its two
+salients and the extra gun balconies each have modeled supports. The
+projected distance from threshold to arch crown measures 227.0 phone board
+pixels and 182.8 wide. The tallest painted Troll pose is 58 board pixels.
+
+The bell, clock, window figures, sentries, chains and banners use Blender
+mounting points projected for each camera. Window tracery, roof finials,
+niche statues and long-nosed stone waterspouts remain on the static
+exposures. High detail adds smoke, runoff, seven birds and 76 rain streaks.
+Collectors, pieces and projectiles use their existing poses with cooler
+paint and directional rim light. Torches light the wet approach. A forked
+flash changes the castle exposure, the field light and the shadows together.
+
+[First and second pass on the phone](docs/review/m51/keep-phone-comparison.png) ·
+[15-second phone recording](docs/review/m51/keep-phone.mp4) ·
+[Gate and Troll](docs/review/m51/keep-wall-defence.png) ·
+[Short phone during a wave](docs/review/m51/keep-390x664-midwave.png) ·
+[Magnified details](docs/review/m51/keep-phone-zoom.png) ·
+[Native lightning exposure](docs/review/m51/keep-lightning-detail.jpg) ·
+[Layer inventory](docs/review/m51/keep-layers.jpg)
+
+### Locked-build frame measurements
+
+Chromium SwiftShader, 390 × 844, DPR 3. Four occupied sites and 40
+collectors, replenished during the sample. Each measurement uses a
+one-second warm-up and five measured seconds. Each cell gives mean /
+median / p95 / longest frame in milliseconds. The CPU throttle uses CDP.
+
+| Tier | Visible effects | Native | 4× CPU |
+| --- | --- | --- | --- |
+| High | Two cloud veils, three fog strips, nine castle light blooms, moving fittings, birds, smoke, roof runoff, 76 rain streaks | 16.72 / 16.7 / 16.8 / 33.3 | 17.24 / 16.7 / 16.8 / 33.4 |
+| Medium | One cloud veil, two fog strips, nine castle blooms, moving fittings, three birds, four smoke wisps, 19 streaks | 16.67 / 16.7 / 16.8 / 16.8 | 17.54 / 16.7 / 33.3 / 33.4 |
+| Low | Static fittings, one fog strip, two gate blooms and the storm exposure. Idle parallax, clouds and particles stop | 16.78 / 16.7 / 16.8 / 33.4 | 17.79 / 16.7 / 33.3 / 50.0 |
+
+The intervals measured at high / medium / low were 300 / 301 / 299
+native and 291 / 286 / 282 throttled. The fixed-tier samples do not
+establish a speed ranking. Several throttled frames missed a refresh.
+The governor still uses 750 ms windows, a 20 ms downgrade threshold
+and its existing upgrade hysteresis. The castle remains visible at every
+tier. No physical handset measurement was taken.
+
+The road crosses in front of the eastern curtain in landscape, where it
+conceals part of that wall. Most distant peaks are hidden by the keep on
+the phone. Small inhabitants and carving read best in the magnified and
+native studies. These are registered miniature exposures viewed from two
+fixed cameras.
+
+### Isolation and checks
+
+Against the M50 merge at `655a658`, all 36 ordinary canvas/state pairs
+and 18 normalized request inventories matched. The 160 complete campaign
+bot outcomes and both streams of `npm run sim` matched byte for byte.
+The separate screenshot comparison covered 78 frames and 36,792,976
+pixels across `visual.spec.ts`, `visual-phone.spec.ts`,
+`visual-tablet.spec.ts`, `campaign-screens.spec.ts` and
+`campaign-screens-phone.spec.ts`. The initial parallel capture of
+`visual.spec.ts/guards-holding.png` differed on 609 pixels in one
+creature pose. Independent serial recaptures of both builds matched
+the original M50 frame exactly. No baseline PNG changed.
+
+The two wall placements in the 390 × 844 action frame are on the modeled
+gun decks. The 390 × 664 action frame shows 26 collectors and a wall
+shot. The lowest field margins and the darker ground still allow the road,
+site marks and damaged health bars to be picked out. At that density,
+adjacent Goblins sometimes overlap. The film is H.264 at 390 × 844,
+25 frames per second, 375 frames. The 1024 × 768 view retains a dark
+band below the controls to preserve their height and touch targets.
+
+Lint, typecheck, build, 248 manifest entries, the size check and all
+2,864 unit tests in 132 files passed. The production site is 7,078,820
+bytes. The full three-project browser run selected 1,212 cases, passed
+1,203 and skipped eight. One frozen-scene check stopped at its old
+single-canvas selector when it found the two new panorama canvases.
+The check now compares the entire game area. All five keep cases then
+passed on the same build, including frozen/silent play, a storage-preserving
+win, pause, cold-start isolation and a wall crew retained on rotation.

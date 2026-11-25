@@ -69,9 +69,10 @@ test('the keep opens directly, stays frozen in test mode and awards no progress'
   expect(initial.lives).toBe(20);
   expect(initial.storage).toEqual(saved);
   expect(await page.evaluate(() => window.__tarpit!.audio())).toMatchObject({enabled:false,context:'none',voices:0});
-  const frame = await page.locator('canvas').screenshot();
+  const field = page.locator('#game');
+  const frame = await field.screenshot();
   await settle(page);
-  expect((await page.locator('canvas').screenshot()).equals(frame)).toBe(true);
+  expect((await field.screenshot()).equals(frame)).toBe(true);
   const result = await page.evaluate(() => {
     const a = window.__tarpit!;
     const s = a.state!();
