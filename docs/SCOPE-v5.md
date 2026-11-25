@@ -1006,6 +1006,69 @@ The wall rule, repair, the last stand, converging roads, the Captain, Act
 Three levels on the level map, story text, sound, any change to Acts One
 and Two or Free play.
 
+## Milestone 52: the wall (Act Three, the first siege levels)
+
+**Draft for Kyle's review. Nothing in this section is built until he
+agrees it.** The castle of milestone 51 becomes a place the player defends.
+Built in three parts, each checked before the next, by `gpt-6.2-sol` while
+Astra is paused.
+
+### The rules
+
+- **The gate.** At the end of the road stands the castle gate, with health
+  set by the level. Ground enemies that reach it stop and hit it, using the
+  rule the Barricade already has. While it stands they cost no lives.
+- **Flyers go over.** Royal Harpies ignore the gate and cost lives as they
+  do today, so the sky still has to be defended.
+- **Repair.** Between waves the player may spend gold to mend the gate, in
+  steps, up to full. Not during a wave.
+- **The last stand.** When the gate falls, once in the level, every tower
+  fires faster for a short time. After that enemies pass through the breach
+  and cost lives as today. A fallen gate cannot be rebuilt in that level.
+- **High ground.** Tower spots on the wall-walk give a little more range.
+  That is the first piece of "weapons behind the wall".
+- **Roads that meet at the gate.** A map may have more than one entrance;
+  each group in a wave names its road. New rule work: today every map has
+  one road.
+- **Stars.** One for winning, two for 12 lives or more, as now. The third
+  star in Act Three is a feat, **Unbroken: win with the gate standing**.
+
+### The levels
+
+Five levels, 21 to 25, all at the Old Keep, opened by winning level 20.
+They differ by which roads are in use, the waves, the sky (dusk, night
+storm, dawn for the last) and the gate's health. Level 25 brings King
+Grumblemaw to the gate. Feather barrels carry over from Act Two. The
+`?keep=1` switch is removed once level 21 exists.
+
+### The parts
+
+| Part | What | Checked by |
+|---|---|---|
+| 52a | The gate, repair, the last stand and high ground, on one road, with bots that can repair. Sim and a plain HUD only | Sonnet, then CI |
+| 52b | Roads that meet; levels 21 to 25 as data; the gate extended to Act Three | Sonnet, then CI |
+| 52c | Screens and art: a third sheet on the level map, level cards, a broadside for the act, the gate's damage and breach, the repair and last-stand moments, and the castle's open look items (a starker lightning frame, richer ground, the desktop and tablet composition) | Sonnet, then CI, then Kyle's phone |
+
+### Targets (each a test that can fail; numbers are the implementer's)
+
+| Label | Target |
+|---|---|
+| W1 | The gate matters: with the gate's health halved the good bot ends at least 2 lives or a star worse on every Act Three level |
+| W2 | Repair matters: the good bot with repair forbidden ends worse on at least three of the five levels, and repair is never so cheap that the gate cannot fall |
+| W3 | The last stand is a rescue, not a plan: the good bot wins every level without the gate falling; the person-like bot loses the gate on at least two levels and still wins them |
+| W4 | The sky matters: on every level with Harpies, a build with no tower that can hit flyers loses lives while the gate stands |
+| W5 | Unbroken is earned: the good bot earns it on every level when it plays for it; the person-like bot earns it on at most two |
+| W6 | Each road matters: on a two-road level, leaving either road undefended loses the gate |
+| W7 | Act Three is a step up: the person-like bot's mean lives fall at least 1.5 from Act Two's |
+| W8 | Nothing else moves: levels 1 to 20 and Free play are byte for byte as before for every bot; Act Two's difficulty step is unchanged |
+| W9 | The existing level rules (two-star lines, margins under nudges, variety, fairness for a feathers-leaning player) hold on levels 21 to 25 |
+
+### Not in this milestone
+
+The Captain; a full wall-defence mode (version 2); walls or gates in Acts
+One and Two or Free play; new enemies or towers; sound beyond one cue for
+the gate falling and one for a repair, if sounds are made in code.
+
 ## Later milestones (order agreed, detail to come)
 
 | # | Milestone | Idea |
