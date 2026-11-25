@@ -1014,16 +1014,21 @@ Astra is paused.
 
 ### The rules
 
-- **The gate.** At the end of the road stands the castle gate, with health
-  set by the level. Ground enemies that reach it stop and hit it, using the
+- **The gate.** Near the end of the road stands the castle gate, with
+  health set by the level. Behind it is **the yard**: a last stretch of
+  road, set by the level, up to the keep's door, where the road ends. (Added
+  after part a: with the gate at the very end, everything held at it leaked
+  on the tick after it fell, and the last stand could save nothing.) Ground enemies that reach it stop and hit it, using the
   rule the Barricade already has. While it stands they cost no lives.
 - **Flyers go over.** Royal Harpies ignore the gate and cost lives as they
   do today, so the sky still has to be defended.
 - **Repair.** Between waves the player may spend gold to mend the gate, in
-  steps, up to full. Not during a wave.
+  steps, up to full. Not during a wave. A last step smaller than a full
+  one costs in proportion, and the control shows the price the player will
+  pay.
 - **The last stand.** When the gate falls, once in the level, every tower
-  fires faster for a short time. After that enemies pass through the breach
-  and cost lives as today. A fallen gate cannot be rebuilt in that level.
+  fires faster for a short time, while the enemies that were held cross the
+  yard. Any that reach the keep's door cost lives as today. A fallen gate cannot be rebuilt in that level.
 - **High ground.** Tower spots on the wall-walk give a little more range.
   That is the first piece of "weapons behind the wall".
 - **Roads that meet at the gate.** A map may have more than one entrance;

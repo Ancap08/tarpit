@@ -1871,3 +1871,21 @@ can change it; "Kyle" means Kyle decided.
 - **Kyle had not yet reported on the Old Keep on his phone when this
   started.** Part a is rules only and does not depend on the castle's look;
   the art part (52c) waits for his verdict.
+- **Verifier (Sonnet) on part a: merge.** 261 runs and the sim output
+  identical to main; eight wrong changes each turned a test red; no exploit
+  or dead end found. What it found, and what the coordinator decided:
+  - **The break was a cliff.** With the gate at the very end of the road,
+    a crowd held at it leaked on the tick after it fell (30 goblins end the
+    level in two ticks) and the last stand could save none of them. Decided:
+    the gate stands a set distance before the end, with a yard behind it
+    that the held enemies must cross under the last stand's fire. This
+    refines what Kyle approved ("a gate at the town end") without changing
+    its intent; he is told.
+  - **Gate health was the wrong size.** Three Trolls strip 240, 480 or 960
+    health alike in about four seconds; about 5,200 holds them. Health and
+    the repair step are sized against crowd damage per second in part b.
+  - **Repair charged a full step for one point of health.** Decided: the
+    last step costs in proportion.
+  - **The castle's tier-cost test fails 2 times in 10 under parallel load**
+    and passes 10 in 10 alone. It is to run on its own, after the rest.
+  Sent to Sol at high as one fix pass before part a goes to CI.
