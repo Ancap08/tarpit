@@ -1,0 +1,105 @@
+{
+  "cpuThrottle": 4,
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "raw": [
+    {
+      "look": "painted",
+      "switched": false,
+      "frames": 181,
+      "enemies": 40,
+      "ticks": 181,
+      "mainMsPerFrame": 14.622939226519339
+    },
+    {
+      "look": "painted",
+      "switched": true,
+      "frames": 177,
+      "enemies": 40,
+      "ticks": 178,
+      "mainMsPerFrame": 13.945429378531072
+    },
+    {
+      "look": "painted",
+      "switched": true,
+      "frames": 182,
+      "enemies": 40,
+      "ticks": 182,
+      "mainMsPerFrame": 12.994763736263737
+    },
+    {
+      "look": "painted",
+      "switched": false,
+      "frames": 178,
+      "enemies": 40,
+      "ticks": 180,
+      "mainMsPerFrame": 13.895977528089887
+    },
+    {
+      "look": "classic",
+      "switched": false,
+      "frames": 155,
+      "enemies": 40,
+      "ticks": 178,
+      "mainMsPerFrame": 17.24521935483871
+    },
+    {
+      "look": "classic",
+      "switched": true,
+      "frames": 179,
+      "enemies": 40,
+      "ticks": 179,
+      "mainMsPerFrame": 13.611614525139665
+    },
+    {
+      "look": "classic",
+      "switched": true,
+      "frames": 169,
+      "enemies": 40,
+      "ticks": 175,
+      "mainMsPerFrame": 15.30844970414201
+    },
+    {
+      "look": "classic",
+      "switched": false,
+      "frames": 180,
+      "enemies": 40,
+      "ticks": 180,
+      "mainMsPerFrame": 8.590216666666667
+    },
+    {
+      "look": "showpiece",
+      "switched": false,
+      "frames": 171,
+      "enemies": 40,
+      "ticks": 173,
+      "mainMsPerFrame": 16.384397660818713
+    },
+    {
+      "look": "showpiece",
+      "switched": true,
+      "frames": 124,
+      "enemies": 40,
+      "ticks": 137,
+      "mainMsPerFrame": 24.614217741935484
+    },
+    {
+      "look": "showpiece",
+      "switched": true,
+      "frames": 176,
+      "enemies": 40,
+      "ticks": 176,
+      "mainMsPerFrame": 15.0359375
+    },
+    {
+      "look": "showpiece",
+      "switched": false,
+      "frames": 141,
+      "enemies": 40,
+      "ticks": 149,
+      "mainMsPerFrame": 21.272063829787232
+    }
+  ]
+}
