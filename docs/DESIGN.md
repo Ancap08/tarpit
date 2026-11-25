@@ -154,7 +154,9 @@ The separate `?keep=1` exhibition opens directly on a Normal field with
 20 lives and 240 gold. It uses the ordinary tower prices, upgrades, enemy
 stats and wave-clear bonus. Its ten tower sites and road share one coordinate
 file, `src/sim/keepSite.json`, with the miniature renderer. The stair foot is at
-(576, 296). Collectors climb the steps to the gate threshold at (551, 272). The wall-walk sites are (15, 13) and (15, 4) in portrait and
+(576, 296). Collectors climb the steps to the road's end at the painted
+threshold (551, 272). The siege gate blocks the lower bend of the approach
+near (762, 366). The wall-walk sites are (15, 13) and (15, 4) in portrait and
 (13, 7) and (22, 7) in landscape. The same towers and path survive rotation.
 
 The Keep loads eleven plates for the fitted layout. The fitted canvas
@@ -194,7 +196,8 @@ composite and texture upload stay outside the measurement window.
 | 3 | Goblin, 16, 0.6, 0 · Troll, 4, 2.8, 2 · Harpy, 6, 1.3, 4 |
 
 Clearing wave 3 ends the exhibition. Replay starts fresh. The map is absent
-from the campaign, Free play, balance runs and progress stores.
+from the campaign, Free play, balance runs and progress stores. Its four
+wall-walk sites are high, and its gate uses the Old Keep values below.
 
 ## Economy and lives
 
@@ -684,7 +687,8 @@ Reloading starts a new run.
   growth and slows leave attack strength unchanged. A walker already past
   the blocker continues. Harpies fly over it. Target order, burn, slow,
   tower hits, kill credit and bounty all use the usual rules at that position.
-  A blocker placed at the exit would hold nobody. Walkers at the exit distance count as out, so a castle wall there will need the exit check moved.
+  A temporary blocker cannot be placed at the exit. A level's gate is a
+  permanent blocker before the exit, with the contact and yard rules below.
 - **Powder Keg.** 60 damage to each enemy inside, shields ignored. No zone.
 - **Zones.** The Tar Barrel and Fire Arrows act on the enemies inside at
   once and leave a zone at the point (`state.zones`, each with an id, its
@@ -777,6 +781,67 @@ Reloading starts a new run.
   enemies inside when it landed) or "Missed" (`names.ts`). In play effect
   times are real time, the same at any speed; in test mode they count 1/60 s
   per simulation tick, nothing fades or flickers and there is no shake.
+
+## Siege gate
+
+A level can supply gate maximum HP, the full repair step and price, and
+the length of the yard. The hidden Old Keep exhibition supplies the same
+data without joining the campaign.
+
+| Rule | Value |
+| --- | --- |
+| Old Keep starting and maximum gate HP | 480 |
+| Old Keep HP restored per purchase | 160 |
+| Old Keep gold per full repair step | 30 |
+| Old Keep yard length in trail pixels | 360 |
+| Last stand duration in wave ticks | 360 |
+| Last stand fire rate multiplier | 2 |
+| High ground maximum range multiplier | 1.1 |
+
+The gate stands one yard length before the end of the road. Ground enemies stop on contact and
+stack at the same point. Every attacker contributes its blocker damage per
+second divided by 60, as listed under Enemies. Goblins deal 6/s, Wolves 8/s,
+Shieldbearers 12/s, Trolls 45/s, Assessor Grumblefoot 300/s and King
+Grumblemaw 400/s. A walker still approaching deals no damage until its
+own step reaches the gate. Royal Harpies fly over without dealing gate
+damage, cross the yard and cost a life at the exit.
+
+The first live blocker reached intercepts walkers. Specials, including
+Barricades and Guards, can be placed in the yard even while the gate
+stands, using their normal targeting and placement rules. Tar slows
+the approach and leaves contact damage unchanged. Burn, doubled on
+tarred enemies as usual, and tower fire still affect enemies at the
+gate. A feathered enemy can run back from the gate and stops hitting it
+on every retreat or flinch tick.
+Wave clear waits for gate attackers along with every other live enemy.
+Calling early leaves them in play and goes straight into the next wave.
+
+Repair is a setup action. A purchase adds one step up to full HP.
+The price is the full step price multiplied by the fraction of the step
+restored, rounded up to whole gold with a minimum of 1. A full or fallen
+gate refuses the action.
+
+The first tick that reduces the gate to zero still holds every walker that
+reaches it. From the next tick, the held walkers and those arriving later
+walk the yard and cost their usual lives at the road's end. Towers,
+specials, blockers, slows, burns and feathers work there as on the rest
+of the road. A retreat follows the same road backwards and can cross the
+breach within its usual running time. A fallen gate stays fallen for the
+level.
+
+The first breaking tick starts Last stand before towers fire. On that tick
+and the following 359 combat ticks, every tower advances its cooldown by
+two per tick. If it fires, it carries any excess cooldown progress into
+the next shot, so odd cooldowns also get double the normal rate over time.
+A ready tower with no target stores zero. Setup freezes the remaining time
+and cooldowns. Last stand can start once per run.
+
+A tower on a marked high site multiplies its maximum range by 1.1 after
+boons and Curfew. Minimum range and all other tower stats are unchanged.
+The bonus follows the site when a tower moves. During play the HUD shows
+gate HP rounded up, Repair with the actual gold price in setup for a
+damaged standing gate, and Gate fallen with Last stand! for the duration
+of the bonus. At full HP the disabled Repair control has no price.
 
 ## Gold cheat
 
@@ -961,7 +1026,7 @@ changing with either selection; no line when that pair has no score.
 
 ## Tick order
 
-Builds, upgrades, sells, moves, reward picks, specials and early calls act between
+Builds, upgrades, sells, moves, repairs, reward picks, specials and early calls act between
 ticks. Inside one wave tick: (1) runners and flinches move as described under
 Enemies. Other enemies move at `(1 - effectiveSlow)`,
 stopping at the first live blocker their step reaches. All walkers attack
@@ -1948,7 +2013,8 @@ star on a feat level also requires the named feat. **Not a penny** requires
 zero escaped enemies, including before any Stone Walls reward. **Bare hands**
 requires zero successful special casts. **Few hands** limits successful tower
 builds across the whole run, including towers later sold. Moves and upgrades
-are exempt. Saved stars keep their previous meaning and the best result wins.
+are exempt. **Unbroken** requires a win with a standing gate. Saved stars
+keep their previous meaning and the best result wins.
 
 ### Bot decisions
 
@@ -1971,6 +2037,11 @@ are exempt. Saved stars keep their previous meaning and the best result wins.
   and permits at most four additional lives and no additional third star.
 
 - **Beginner** spends on the cheapest allowed tower in the map's trail-cell order. When it cannot place another, it can buy one affordable upgrade, taking path A at the second upgrade. It takes the first reward and uses no specials.
+
+- On levels with a gate, **Good** buys one repair before shopping when
+  the gate is at or below 60% HP and the purchase leaves at least 70 gold.
+  **Person** buys one before shopping at or below 30% HP when it can pay.
+  **Beginner** never repairs. All three follow the setup-only repair rule.
 
 In Normal Free play, Good must win or lose on each map the same way as
 comboBuild. Both win on all three maps. Good finishes with 20 lives on each.

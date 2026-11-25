@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 import type { GameScene } from '../src/game/GameScene';
 
-test('each Old Keep tier reduces the main-thread cost of the same phone battle', async ({ page, context }) => {
-  // Six 80-frame samples plus transitions. Leave room for each frame to
+test('low detail reduces the main-thread cost of the same Old Keep phone battle', { tag: '@keep-cost' }, async ({ page, context }) => {
+  // Seven 80-frame samples plus transitions. Leave room for each frame to
   // take four times as long on a runner as it does on the measurement Mac.
   test.setTimeout(120_000);
   await page.goto('/?keep=1&perf=1&keepTier=2');
@@ -29,37 +29,37 @@ test('each Old Keep tier reduces the main-thread cost of the same phone battle',
     requestAnimationFrame(refill);
   });
 
+  const frames = (count: number) => page.evaluate(count => new Promise<void>(resolve => {
+    let remaining = count;
+    function frame() {
+      if (--remaining === 0) resolve();
+      else requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }), count);
+  async function sample(tier: 0 | 2) {
+    await page.evaluate(tier => {
+      const s = window.__tarpit!.game.scene.getScene('game') as GameScene;
+      const keep = s['keep']!;
+      keep['quality'].tier = tier;
+      // Begin each sample in the same dry interval, outside the opening
+      // and before the next flash. The battle and sim continue normally.
+      s['clock'].nowMs = 8_000;
+      keep['previous'] = -Infinity;
+    }, tier);
+    await frames(16);
+    const start = await busy();
+    await frames(80);
+    return (await busy() - start) * 1000 / 80;
+  }
+
+  // Discard the initial high-tier sample while the battle warms up.
+  await sample(2);
   const samples: Record<0 | 2, number[]> = { 0: [], 2: [] };
   // Reverse the order in the middle pair to spread time-dependent effects.
   for (const order of [[2, 0], [0, 2], [2, 0]] as const) {
     for (const tier of order) {
-      await page.evaluate(tier => {
-        const s = window.__tarpit!.game.scene.getScene('game') as GameScene;
-        const keep = s['keep']!;
-        keep['quality'].tier = tier;
-        // Begin each sample in the same dry interval, outside the opening
-        // and before the next flash. The battle and sim continue normally.
-        s['clock'].nowMs = 8_000;
-        keep['previous'] = -Infinity;
-        return new Promise<void>(resolve => {
-          let remaining = 16;
-          function frame() {
-            if (--remaining === 0) resolve();
-            else requestAnimationFrame(frame);
-          }
-          requestAnimationFrame(frame);
-        });
-      }, tier);
-      const start = await busy();
-      await page.evaluate(() => new Promise<void>(resolve => {
-        let remaining = 80;
-        function frame() {
-          if (--remaining === 0) resolve();
-          else requestAnimationFrame(frame);
-        }
-        requestAnimationFrame(frame);
-      }));
-      samples[tier].push((await busy() - start) * 1000 / 80);
+      samples[tier].push(await sample(tier));
     }
   }
   const median = (tier: keyof typeof samples) => [...samples[tier]].sort((a, b) => a - b)[1];

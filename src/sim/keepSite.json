@@ -10,5 +10,6 @@
     {"col":15,"row":13}, {"col":15,"row":4}, {"col":13,"row":7}, {"col":22,"row":7},
     {"col":25,"row":5}, {"col":29,"row":9}, {"col":26,"row":10},
     {"col":23,"row":13}, {"col":22,"row":10}, {"col":19,"row":12}
-  ]
+  ],
+  "highSites": [{"col":15,"row":13}, {"col":15,"row":4}, {"col":13,"row":7}, {"col":22,"row":7}]
 }

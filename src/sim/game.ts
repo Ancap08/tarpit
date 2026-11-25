@@ -26,8 +26,7 @@
 //      resolved, pay guard kills as special kills and remove broken or
 //      expired blockers. Held survivors resume moving next tick. Both
 //      slow timers count down.
-//   2. Remove enemies at or past the exit; each costs its livesCost (1, or
-//      5 for the boss, milestone 23).
+//   2. Remove enemies at or past the exit. Each costs its livesCost.
 //      Lives <= 0 -> phase 'lost' at once, nothing else happens this tick.
 //   2b. Zones (milestone 30, zonesStep), oldest first: every live enemy
 //      within a zone's radius (flyers included) gets, from a Tar Barrel
@@ -42,9 +41,9 @@
 //      their bounty. A burn applied in step 4 first does damage on the next
 //      tick.
 //   4. Towers fire (combat.ts fireTowers), in cellKey order. Each tower
-//      counts its cooldown down by 1 if above 0; at 0 with a target in range
-//      (and not inside a Mortar's minimum range) it fires and its cooldown
-//      becomes round(60 / fireRate). Dead enemies are removed and pay
+//      advances its cooldown by 1 (2 during Last stand) if above 0. A ready
+//      tower with a target in range fires and adds round(60 / fireRate) to
+//      its cooldown. Dead enemies are removed and pay
 //      their bounty before the next tower acts, so a later tower never
 //      targets an enemy killed this tick. A new slow first affects movement
 //      on the next tick.
@@ -56,8 +55,8 @@
 //      clear bonus and go to 'setup' (or 'won' after the last wave, unless
 //      the game is endless, milestone 26).
 //
-// Towers only act during wave ticks; in 'setup' cooldowns stay where they
-// are, but guard lifetimes still count down. Build, upgrade and sell (actions.ts) happen between ticks, and so
+// Towers only act during wave ticks. In setup, cooldowns and Last stand
+// hold, but guard lifetimes count down. Builds, upgrades, sales and repairs happen between ticks, and so
 // does useSpecial (milestone 25b): its damage, slow and burn apply at once
 // and its kills are removed and paid before the next tick; a Tar Barrel or
 // Fire Arrows also leaves a zone (milestone 30). Each new wave restores an
@@ -79,7 +78,8 @@ import { BOON_OFFER_WAVES, boonScale, boonOptions } from './boons';
 import { burnEnemies, fireTowers, PACK_INTERVAL_TICKS, removeDead } from './combat';
 import { ACT_TWO_HP_GROWTH, DEFAULT_DIFFICULTY, DIFFICULTY_DEFS, campaignHpFactor, enemyMaxHp, type Difficulty } from './difficulty';
 import { ENEMY_STATS, isBoss } from './enemies';
-import { CAMPAIGN_START_LIVES, type LevelDef } from './levelTypes';
+import { createGate, LAST_STAND_TICKS } from './gate';
+import { CAMPAIGN_START_LIVES, type GateDef, type LevelDef } from './levelTypes';
 import { pathLength, resolveMap, type MapId } from './map';
 import { applyBurn, applySpecialSlow, enemyPosition } from './combat';
 import { SPECIAL_DEFS, ZONE_LINGER_TICKS, refillAtWaveStart, tarLingerTicks } from './specials';
@@ -104,6 +104,8 @@ export interface CreateGameOptions {
   map?: MapId | MapDef;
   /** Campaign rules take precedence over Free play map and difficulty. */
   level?: LevelDef;
+  /** Gate rules for a private exhibition, or supplied by the campaign level. */
+  gate?: GateDef;
 }
 
 export function createGame(options: CreateGameOptions = {}): GameState {
@@ -115,9 +117,12 @@ export function createGame(options: CreateGameOptions = {}): GameState {
   )) throw new RangeError(`Invalid reward waves in level ${level.id}`);
   const difficulty = level ? DEFAULT_DIFFICULTY : options.difficulty ?? DEFAULT_DIFFICULTY;
   const def = DIFFICULTY_DEFS[difficulty];
+  const map = resolveMap(level?.map ?? options.map);
+  const gate = level ? level.gate : options.gate;
   return {
-    map: resolveMap(level?.map ?? options.map),
+    map,
     ...(level ? { level } : {}),
+    ...(gate ? { gate: createGate(map, gate) } : {}),
     ...(level?.taxes || level?.feat ? { towersBuilt: 0 } : {}),
     ...(level?.feat?.kind === 'noLeaks' ? { leaks: 0 } : {}),
     difficulty,
@@ -299,7 +304,14 @@ export function tick(state: GameState): void {
     return;
   }
 
-  const guardsStruck = moveEnemies(state.enemies, state.events, state.blockers, 1 + (state.level?.taxes?.forcedMarch ?? 0));
+  const { gate } = state;
+  const standingGate = gate && gate.hp > 0 ? gate : undefined;
+  const blockers = standingGate ? [...state.blockers, standingGate] : state.blockers;
+  const guardsStruck = moveEnemies(state.enemies, state.events, blockers, 1 + (state.level?.taxes?.forcedMarch ?? 0));
+  if (standingGate?.hp === 0 && !standingGate.fallen) {
+    standingGate.fallen = true;
+    standingGate.lastStandTicksLeft = LAST_STAND_TICKS;
+  }
   if (guardsStruck) removeDead(state, 'special');
   ageBlockers(state);
   removeExitedEnemies(state);
@@ -311,6 +323,7 @@ export function tick(state: GameState): void {
   zonesStep(state);
   burnEnemies(state);
   fireTowers(state);
+  if (gate && gate.lastStandTicksLeft > 0) gate.lastStandTicksLeft -= 1;
   spawnDueEnemies(state);
   state.waveTick += 1;
   state.tick += 1;

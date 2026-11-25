@@ -1,4 +1,5 @@
 import { boonScale, type BoonId } from './boons';
+import { sameCell } from './grid';
 import type { LevelDef } from './levelTypes';
 import { TICKS_PER_SECOND } from './time';
 import type { GameState, Tower, TowerDef, TowerLevel, TowerLevelStats, TowerType, UpgradePath } from './types';
@@ -160,6 +161,18 @@ export function towerStats(tower: Pick<Tower, 'type' | 'upgraded' | 'path'>, hel
     variants.set(cut, adjusted);
   }
   return adjusted;
+}
+
+export const HIGH_GROUND_RANGE = 1.1;
+
+export function towerStatsAt(
+  state: Pick<GameState, 'boons' | 'level' | 'map'>,
+  tower: Pick<Tower, 'cell' | 'type' | 'upgraded' | 'path'>,
+): TowerLevelStats {
+  const stats = towerStats(tower, state.boons, state.level);
+  return state.map.highSites?.some(cell => sameCell(cell, tower.cell))
+    ? { ...stats, range: stats.range * HIGH_GROUND_RANGE }
+    : stats;
 }
 
 function statsWithBoons(tower: Pick<Tower, 'type' | 'upgraded' | 'path'>, held?: readonly BoonId[]): TowerLevelStats {

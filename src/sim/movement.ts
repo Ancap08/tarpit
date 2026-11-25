@@ -3,10 +3,14 @@ import { FEATHERS } from './feathers';
 import { effectiveSlow, ENEMY_STATS, isBoss } from './enemies';
 import type { GameEvent } from './events';
 import { TICKS_PER_SECOND } from './time';
-import type { Blocker, Enemy, Guard } from './types';
+import type { Blocker, Enemy, Gate, Guard } from './types';
 
 function isGuard(blocker: Blocker | undefined): blocker is Guard {
   return blocker !== undefined && 'kind' in blocker && blocker.kind === 'guard';
+}
+
+function isGate(blocker: Blocker): blocker is Gate {
+  return 'kind' in blocker && blocker.kind === 'gate';
 }
 
 /** Find the first live blocker crossed in this step, regardless of input order. */
@@ -68,7 +72,7 @@ export function moveEnemies(enemies: Enemy[], events: GameEvent[], blockers?: re
     if (blocker && attacks) {
       enemy.distance = blocker.distance;
       attacks.set(blocker, (attacks.get(blocker) ?? 0) + stats.blockerDps);
-      events.push({
+      if (!isGate(blocker)) events.push({
         kind: 'blockerHit', enemyId: enemy.id, x: blocker.x, y: blocker.y, damage: stats.blockerDps / TICKS_PER_SECOND,
         ...(guard ? { guardId: guard.id } : {}),
       });
@@ -111,7 +115,7 @@ export function moveEnemies(enemies: Enemy[], events: GameEvent[], blockers?: re
       blocker.hp = 0;
       if (isGuard(blocker)) {
         events.push({ kind: 'guardDown', guardId: blocker.id, x: blocker.x, y: blocker.y, angle: blocker.angle });
-      } else {
+      } else if (!isGate(blocker)) {
         events.push({ kind: 'blockerBreak', x: blocker.x, y: blocker.y, angle: blocker.angle });
       }
     }

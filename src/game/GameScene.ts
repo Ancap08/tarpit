@@ -141,7 +141,8 @@ import {
   startWave,
   tick,
   towerAt,
-  towerStats,
+  towerStatsAt,
+  repairGate,
   undoUpgrade,
   availableSpecials,
   upgradeTower,
@@ -685,6 +686,11 @@ export class GameScene extends Phaser.Scene {
     this.bannerMain = bannerText(bannerTop + BANNER_MAIN_Y, `${AIM_BANNER.mainPx}px`, TEXT.aimBanner);
     this.bannerHint = bannerText(bannerTop + 34, `${AIM_BANNER.hintPx}px`, TEXT.aimHint);
     this.hud = new Hud(this, {
+      onRepair: this.state.gate ? () => {
+        if (this.paused || this.state.pendingBoon) return;
+        repairGate(this.state);
+        this.redraw();
+      } : undefined,
       // Milestone 25c: mid-wave, Start Wave reads "Call next  +N" and calls the next wave.
       onStartWave: () => (callEarlyStatus(this.state).ok ? this.callNextWave() : this.startWave()),
       onPause: () => this.setPaused(true),
@@ -743,6 +749,8 @@ export class GameScene extends Phaser.Scene {
       this.press = null;
       this.aimPress = null;
       if (this.state.pendingBoon || this.held.contains(x, y)) return;
+      const repair = this.hud.repairRect;
+      if (repair && contains(repair, x, y)) return;
       if (this.layout.onMap(x, y) && performance.now() < this.mapBlockedUntil) return;
       this.held.dismiss();
       if (contains(this.hud.rects().gold, x, y)) this.goldTap();
@@ -1820,7 +1828,9 @@ export class GameScene extends Phaser.Scene {
     this.syncEndScreen();
     this.redrawUi();
     const banner = this.aimBanner();
-    this.hud.update(this.state, this.speed, this.pick, { menuOpen: this.specialMenuOpen, aiming: this.aiming, banner }, this.autoTick ? this.clock.nowMs : undefined);
+    this.hud.update(this.state, this.speed, this.pick, {
+      menuOpen: this.specialMenuOpen, aiming: this.aiming, banner, paused: this.paused,
+    }, this.autoTick ? this.clock.nowMs : undefined);
     this.moments.draw(this.animationTime);
     this.reward.update(this.paused ? null : this.state.pendingBoon);
     this.held.update(this.state.boons);
@@ -1930,7 +1940,7 @@ export class GameScene extends Phaser.Scene {
     this.drawnRange = null;
     const selected = this.panel.cell === null ? undefined : towerAt(this.state, this.panel.cell);
     if (selected) {
-      this.rangeCircles(selected.cell, towerStats(selected, this.state.boons, this.state.level));
+      this.rangeCircles(selected.cell, towerStatsAt(this.state, selected));
       const s = cellCenter(selected.cell);
       g.lineStyle(3, COLORS.selectRing, 1);
       g.strokeCircle(s.x, s.y, 22);
@@ -1944,7 +1954,9 @@ export class GameScene extends Phaser.Scene {
       const upgraded = moved?.upgraded ?? false;
       const angle = this.aim.angle(moved ? moved.cell : hover);
       if (hoverBuildable) {
-        this.rangeCircles(hover, towerStats(moved ?? { type: ghostType, upgraded: false }, this.state.boons, this.state.level));
+        this.rangeCircles(hover, towerStatsAt(this.state, {
+          type: ghostType, upgraded: moved?.upgraded ?? false, path: moved?.path, cell: hover,
+        }));
         if (this.painted) this.painted.drawGhost(ghostType, cellCenter(hover), GHOST_ALPHA);
         drawTowerShape(g, this.painted ? null : ghostType, cellCenter(hover), angle, upgraded, GHOST_ALPHA, 0, this.layout, moved?.path);
       } else if (drag !== null) {

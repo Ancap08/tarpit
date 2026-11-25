@@ -3,6 +3,7 @@
 import { barricadePlacement, guardsPlacement } from './blockers';
 import { BOONS, type BoonId } from './boons';
 import { ENEMY_STATS, isBoss } from './enemies';
+import { repairStatus } from './gate';
 import { tick } from './game';
 import { buildableCells, cellCenter, cellFromKey, cellKey } from './grid';
 import { applyAction, densestCluster, trailCellOrder, type BuildAction, type HeadlessStepResult, type SpecialAction } from './headless';
@@ -10,7 +11,7 @@ import { pathLength, positionAlongPath } from './map';
 import { BIG_ENEMIES, POLICY_CHECK_TICKS, POLICY_MIN_HITS, chooseCrowdSpecial, chooseFeatherBarrel, policyCandidates } from './specialPolicy';
 import { availableSpecials, specialRadius, ordinaryRechargeTicks, spendSpecialCharge, type SpecialType } from './specials';
 import { TICKS_PER_SECOND } from './time';
-import { TOWER_DEFS, TOWER_PATHS, allowedTowers, atTowerCap, towerBuildCost, maxTowerLevel, towerLevel, towerStats } from './towers';
+import { TOWER_DEFS, TOWER_PATHS, allowedTowers, atTowerCap, towerBuildCost, maxTowerLevel, towerLevel, towerStatsAt } from './towers';
 import type { GameState, MapDef, Point, TowerLevelStats, TowerType, UpgradePath } from './types';
 import { nextWavePreview } from './waves';
 
@@ -23,6 +24,8 @@ const SETUP_RESERVE = 30;
 export interface BotPolicy {
   /** Spend a barrel turn and its charge, without applying its effects (C2 control). */
   leaveBarrelUnused?: boolean;
+  /** Consider one repair before shopping in each setup. */
+  repair?(state: GameState): boolean;
   purchase(state: GameState): BuildAction | undefined;
   /** Maximum number of upgrade purchases per setup, if limited. */
   upgradesPerSetup?: number;
@@ -123,7 +126,7 @@ function goodPurchase(state: GameState, rotate = false, buildLimit = Infinity, b
     const tower = occupied.get(key);
     if (!tower) continue;
     counts.set(tower.type, (counts.get(tower.type) ?? 0) + 1);
-    const stats = towerStats(tower, state.boons, state.level);
+    const stats = towerStatsAt(state, tower);
     const power = towerPower(tower.type, stats, profile);
     for (const [index, distance] of distances.entries()) {
       if (!inRange(distance, stats)) continue;
@@ -174,7 +177,7 @@ function goodPurchase(state: GameState, rotate = false, buildLimit = Infinity, b
         if (buildOnly && type !== buildOnly) continue;
         const cost = towerBuildCost(state, type);
         if (cost > budget) continue;
-        const stats = towerStats({ type, upgraded: false }, state.boons, state.level);
+        const stats = towerStatsAt(state, { cell, type, upgraded: false });
         const variety = 1 + (counts.get(type) ?? 0) * 0.10;
         const first = !counts.has(type);
         const support = first && occupied.size > 1;
@@ -197,12 +200,12 @@ function goodPurchase(state: GameState, rotate = false, buildLimit = Infinity, b
     }
     const level = towerLevel(tower);
     if (buildOnly || level >= limit) continue;
-    const previous = towerStats(tower, state.boons, state.level);
+    const previous = towerStatsAt(state, tower);
     const cost = level === 1 ? TOWER_DEFS[tower.type].upgradeCost : TOWER_PATHS[tower.type].cost;
     if (cost > budget) continue;
     const paths = level === 1 ? [undefined] : PATHS;
     for (const path of paths) {
-      const stats = towerStats({ type: tower.type, upgraded: true, path }, state.boons, state.level);
+      const stats = towerStatsAt(state, { cell, type: tower.type, upgraded: true, path });
       const score = benefit(tower.type, stats, distances, previous) / cost;
       if (score > bestScore) {
         bestScore = score;
@@ -221,9 +224,8 @@ function goodPurchase(state: GameState, rotate = false, buildLimit = Infinity, b
 function goodReward(state: GameState): BoonId | undefined {
   const offer = state.pendingBoon;
   if (!offer) return undefined;
-  const held = state.boons;
   const artillery = state.towers.filter((tower) => tower.type === 'mortar' || tower.type === 'cannon').length;
-  const skills = state.towers.map((tower) => towerStats(tower, held, state.level));
+  const skills = state.towers.map((tower) => towerStatsAt(state, tower));
   const available = availableSpecials({ level: state.level, wave: state.wave + 1 });
   const powers: Record<BoonId, number> = {
     longBarrels: artillery * 2,
@@ -265,10 +267,10 @@ function chooseSpecial(state: GameState, lastZone: SpecialType | undefined, poin
       if (approaching < POLICY_MIN_HITS) continue;
       const coverage = state.towers.filter((tower) => {
         const center = cellCenter(tower.cell);
-        return inRange(Math.hypot(center.x - point.x, center.y - point.y), towerStats(tower, state.boons, state.level));
+        return inRange(Math.hypot(center.x - point.x, center.y - point.y), towerStatsAt(state, tower));
       });
       if (!coverage.length) continue;
-      const splash = coverage.some((tower) => towerStats(tower, state.boons, state.level).splashRadius > 0);
+      const splash = coverage.some((tower) => towerStatsAt(state, tower).splashRadius > 0);
       const score = approaching + Number(splash);
       if (score > bestScore) {
         best = { type: 'special', special, ...point, atWaveTick: state.waveTick };
@@ -279,7 +281,20 @@ function chooseSpecial(state: GameState, lastZone: SpecialType | undefined, poin
   return best;
 }
 
-export const botGood: BotPolicy = { purchase: goodPurchase, purchaseTicks: POLICY_CHECK_TICKS, reward: goodReward, special: goodSpecial };
+function shouldRepair(state: GameState, fraction: number, reserve: number): boolean {
+  const { gate } = state;
+  if (!gate || gate.hp > gate.maxHp * fraction) return false;
+  const repair = repairStatus(state);
+  return repair.ok && state.gold - repair.cost >= reserve;
+}
+
+export const botGood: BotPolicy = {
+  purchase: goodPurchase,
+  purchaseTicks: POLICY_CHECK_TICKS,
+  reward: goodReward,
+  special: goodSpecial,
+  repair: state => shouldRepair(state, 0.6, 70),
+};
 
 // Open with damage, then put a Tar Pit where Good's defense benefits most.
 // Save for its Feathers upgrade. Any further Tar Pits also take path B.
@@ -386,6 +401,7 @@ export const botPerson: BotPolicy = {
   purchaseTicks: PERSON_LOOK_TICKS,
   reward: goodReward,
   special: personSpecial,
+  repair: state => shouldRepair(state, 0.3, 0),
 };
 
 /** Keep the ordinary player's aim, timing and purchases while favoring feathers. */
@@ -449,6 +465,7 @@ export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity,
     if (state.phase === 'setup') {
       const reward = bot.reward(state);
       if (reward && !apply({ type: 'pickBoon', boon: reward })) break;
+      if (state.gate && bot.repair?.(state) && !apply({ type: 'repairGate' })) break;
       let upgrades = 0;
       for (let action = bot.purchase(state); action; action = bot.purchase(state)) {
         if (action.type === 'upgrade' && upgrades >= (bot.upgradesPerSetup ?? Infinity)) break;

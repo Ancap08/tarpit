@@ -77,6 +77,7 @@ import { COLORS, FONT, HUD_FONT, TEXT } from './palette';
 import { BossBar } from './ui/bossBar';
 import { BuildBar } from './ui/buildBar';
 import { Button } from './ui/button';
+import { GateHud } from './ui/gateHud';
 import { PORTRAIT_STACK, portraitRow2, STACK_SIZE, stripAimText, type StackSize } from './ui/geometry';
 import {
   LANDSCAPE,
@@ -239,6 +240,7 @@ export function specialRecharge(state: GameState): { progress: number; seconds: 
 
 /** What GameScene shows of the specials (milestone 25b): the popup and the special being aimed. */
 export interface HudSpecial {
+  paused?: boolean;
   menuOpen: boolean;
   aiming: SpecialType | null;
   /** 32b follow-up: the aim banner's words while aiming; portrait shows them in the strip. */
@@ -247,6 +249,7 @@ export interface HudSpecial {
 
 
 export interface HudHandlers {
+  onRepair?: () => void;
   /** Start Wave was pressed: starts the wave in setup, or calls the next one early (milestone 25c). */
   onStartWave: () => void;
   onPause: () => void;
@@ -383,6 +386,7 @@ export class Hud {
   private pipKey = '';
   private readonly bar: BuildBar;
   private readonly bossBar: BossBar;
+  private readonly gate?: GateHud;
   private readonly pauseAction: HTMLButtonElement;
   private readonly pauseIcon: Phaser.GameObjects.Graphics;
   private readonly pauseButton: Button;
@@ -463,6 +467,7 @@ export class Hud {
     this.specialMenu = new SpecialMenu(scene, m.menu.left, m.menu.top, handlers.onSpecialPick, layout.map.y, m.menu.size, m.menu.font);
     this.bar = new BuildBar(scene, m.barTop, handlers.onPick, layout, painted);
     this.bossBar = new BossBar(scene, layout);
+    if (handlers.onRepair) this.gate = new GateHud(scene, layout, handlers.onRepair);
     this.muteButton = new MuteButton(scene, m.mute);
     this.pauseButton = new Button(scene, m.pause, m.portrait ? '' : PAUSE_TEXT.button, handlers.onPause, {
       fontSize: '18px', labelY: 57, sound: null,
@@ -638,6 +643,11 @@ export class Hud {
     this.specialMenu.update(special.menuOpen && ready ? availableSpecials(state) : [], !!state.level?.featherBarrels);
     this.bar.update(state, pick);
     this.bossBar.update(state);
+    this.gate?.update(state, special.paused ?? false);
+  }
+
+  get repairRect(): Rect | undefined {
+    return this.gate?.repairRect;
   }
 
   /** The special popup's box while open, else null (milestone 25b). */
@@ -675,6 +685,7 @@ export class Hud {
       special: { ...this.specialButton.rect },
       ...this.bar.rects(),
       ...this.specialMenu.rects(),
+      ...this.gate?.rects(),
     };
   }
 }

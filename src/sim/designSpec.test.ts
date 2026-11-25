@@ -11,6 +11,7 @@ import { BOONS } from './boons';
 import { PACK_INTERVAL_TICKS, PACK_SIZE } from './combat';
 import { ENEMY_STATS, isBoss } from './enemies';
 import { FEATHERS } from './feathers';
+import { LAST_STAND_FIRE_RATE, LAST_STAND_TICKS } from './gate';
 import { createGame, lastSpawnTick } from './game';
 import { buildableCells } from './grid';
 import { LEVELS } from './levels';
@@ -19,9 +20,10 @@ import { BAND_RULES, GATE_LIMITS, TAX_RANGES } from './checkLevel';
 import { botGood, botPerson, botBeginner, botGoodFeat, runBot } from './bots';
 import { levelStars } from './campaignProgress';
 import { MAPS, pathLength, type MapId } from './map';
+import { createKeep } from './oldKeep';
 import { BARREL_RECHARGE_TICKS, SPECIAL_DEFS, SPECIAL_RECHARGE_TICKS, ZONE_LINGER_TICKS, type SpecialType } from './specials';
 import { POLICY_CHECK_TICKS, POLICY_MIN_HITS, POLICY_POINT_SPACING } from './specialPolicy';
-import { TOWER_DEFS, TOWER_PATHS } from './towers';
+import { HIGH_GROUND_RANGE, TOWER_DEFS, TOWER_PATHS } from './towers';
 import type { EnemyType, TowerLevelStats, TowerType } from './types';
 import { ENDLESS_BASE_WAVES, ENDLESS_HP_GROWTH, ENDLESS_START_HP, endlessCycle, LAST_WAVE, waveDef, WAVES } from './waves';
 import { EXPECTED_MATRIX } from './balance.suite';
@@ -35,6 +37,13 @@ import { LEVEL_NAMES, MAP_NAMES as MAP_LABELS, PATH_NAMES, pathDescription } fro
 import { PATH_MARKS } from '../game/draw/towers';
 
 const md = readFileSync(new URL('../../docs/DESIGN.md', import.meta.url), 'utf8');
+
+it('locks the Siege gate numbers to the spec', () => {
+  const gate = createKeep().gate!;
+  expect(table('Siege gate', 'Rule').map(([, value]) => Number(value))).toEqual([
+    gate.maxHp, gate.repairHp, gate.repairCost, gate.yardLength, LAST_STAND_TICKS, LAST_STAND_FIRE_RATE, HIGH_GROUND_RANGE,
+  ]);
+});
 
 /** The body of the `## heading` section, up to the next `## `. */
 function section(heading: string): string {
