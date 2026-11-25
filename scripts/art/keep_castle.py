@@ -1,6 +1,8 @@
 """Headless Blender: /Applications/Blender.app/Contents/MacOS/Blender -b --python-exit-code 1 -P scripts/art/keep_castle.py
 
-Model the Old Keep as a painted miniature. Two perspective cameras share the gate's registration, including a second exposure under a lightning key. No source imagery.
+Model the Old Keep as a painted miniature. Two perspective cameras share the gate's
+registration, including a second exposure under a lightning key. Encode both plate
+sizes from each render. No source imagery.
 """
 import json
 import math
@@ -967,10 +969,13 @@ def run():
                     shutil.copyfile(path,output/path.name)
                     continue
                 webp=path.with_suffix(".webp")
-                subprocess.run([shutil.which("cwebp") or "/opt/homebrew/bin/cwebp",
-                                "-quiet","-q","87","-alpha_q","95",
-                                str(path),"-o",str(webp)],check=True)
+                encoder=[shutil.which("cwebp") or "/opt/homebrew/bin/cwebp",
+                         "-quiet","-q","87","-alpha_q","95"]
+                subprocess.run([*encoder,str(path),"-o",str(webp)],check=True)
                 shutil.copyfile(webp,output/webp.name)
+                subprocess.run([*encoder,"-resize",
+                                str(size[0]//2),str(size[1]//2),str(path),
+                                "-o",str(output/f"{name}{suffix}-half.webp")],check=True)
     registration_file=(output/"projection.json" if preview else HERE.parents[1]/"src/game/keep/projection.json")
     registration_file.write_text(json.dumps(registration,indent=2)+"\n")
 

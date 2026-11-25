@@ -82,9 +82,13 @@ export class PaintedSkin {
     this.scene.children.moveTo(zones, this.scene.children.getIndex(this.ground) + 1);
   }
 
-  pose<T extends Image | Sprite>(obj: T, name: PaintedName, frame: number): T {
+  /** Kept separate from UI icons, which show the original paint on every field. */
+  worldTexture?: (key: string) => string;
+
+  pose<T extends Image | Sprite>(obj: T, name: PaintedName, frame: number, world = true): T {
     const sheet = this.assets.sheets[name];
-    if (obj.texture.key !== sheet.key) obj.setTexture(sheet.key, frame);
+    const key = world ? this.worldTexture?.(sheet.key) ?? sheet.key : sheet.key;
+    if (obj.texture.key !== key) obj.setTexture(key, frame);
     else if (Number(obj.frame.name) !== frame) obj.setFrame(frame);
     obj.setOrigin(sheet.anchor[0] / sheet.frameSize[0], sheet.anchor[1] / sheet.frameSize[1]);
     obj.setScale(1 / this.assets.density);
@@ -163,7 +167,8 @@ export class PaintedSkin {
     const [left, top, right, bottom] = sheet.bodyBounds![TOWER_PREVIEW_FRAME];
     const [width, height] = sheet.frameSize;
     const scale = Math.min(maxWidth / (right - left), maxHeight / (bottom - top));
-    return this.image(name, TOWER_PREVIEW_FRAME)
+    const icon = this.scene.add.image(0, 0, sheet.key, TOWER_PREVIEW_FRAME);
+    return this.pose(icon, name, TOWER_PREVIEW_FRAME, false)
       .setOrigin((left + right) / (2 * width), (top + bottom) / (2 * height))
       .setScale(scale);
   }

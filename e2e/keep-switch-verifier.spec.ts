@@ -5,6 +5,7 @@
 // checked for leftovers.
 import { expect, test, type Page } from '@playwright/test';
 import { waitForGame } from './painted';
+import { waitForFirstScreen, waitForTitle } from './title';
 
 const SAVED = {
   'tarpit.best': '{"v":1,"best":{"meadow":{"normal":2}}}',
@@ -64,17 +65,59 @@ test('title, level map, Free play and a campaign level never ask for a keep file
   expect(await storage(page)).toBe(before);
 });
 
-test('a plate that fails to load drops back to the ordinary title, not a broken level', async ({ browser }) => {
-  test.setTimeout(90_000);
-  // Page routes do not see requests made by the service worker, so block it.
-  const context = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 960, height: 580 } });
-  const page = await context.newPage();
-  await page.route(/\/assets\/keep\/sky\.webp/, route => route.abort());
-  await page.goto('/?keep=1');
-  await page.waitForFunction(() => window.__tarpit?.titleReady?.() && !!window.__tarpit.uiRects()['title:freePlay'], null, { timeout: 30_000 });
-  expect(await page.evaluate(() => window.__tarpit!.game.scene.isActive('game'))).toBe(false);
-  expect(await page.evaluate(() => document.querySelectorAll('div[aria-hidden=true]').length)).toBe(0);
-  await context.close();
+for (const [asset, pattern] of [
+  ['a plate', '**/assets/keep/sky-half.webp'],
+  ['the glow', '**/assets/keep/glow-half.webp'],
+  ['the keep chunk', '**/assets/keep/oldKeep-*.js'],
+] as const) {
+  test(`blocking ${asset} shows the keep error and a way to the title`, async ({ page }) => {
+    const failedRequest = page.waitForEvent('requestfailed', request => request.url().includes('/assets/keep/'));
+    await page.route(pattern, route => route.abort());
+    await page.goto('/?keep=1&test=1', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('status')).toHaveText('The Old Keep could not load.');
+    expect(await failedRequest).toBeTruthy();
+    expect(await page.evaluate(() => window.__tarpit!.game.scene.isActive('game'))).toBe(false);
+    await page.getByRole('button', { name: 'Back to title' }).click();
+    await waitForFirstScreen(page, { showTips: true, showStory: true });
+    expect(await page.evaluate(() => document.querySelectorAll('#game [aria-hidden=true]').length)).toBe(0);
+  });
+}
+
+test('an offline first keep visit shows the keep error from the installed game', async ({ page, context }) => {
+  await page.goto('/');
+  await waitForFirstScreen(page);
+  await page.evaluate(() => navigator.serviceWorker.ready.then(() => true));
+  await page.waitForFunction(() => !!navigator.serviceWorker.controller);
+  await context.setOffline(true);
+  try {
+    await page.goto('/?keep=1');
+    await expect(page.getByRole('status')).toHaveText('The Old Keep could not load.');
+    await page.getByRole('button', { name: 'Back to title' }).click();
+    await waitForFirstScreen(page, { showTips: true, showStory: true });
+  } finally {
+    await context.setOffline(false);
+  }
+});
+
+test('loading reports completed files and a stalled keep file times out', async ({ page }) => {
+  test.setTimeout(60_000);
+  let release!: () => void;
+  const stalled = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/assets/keep/gate-wide-half.webp', async route => {
+    await stalled;
+    await route.abort().catch(() => undefined);
+  });
+  try {
+    await page.goto('/?keep=1&test=1', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByText('Loading the Old Keep…')).toBeVisible();
+    await page.waitForFunction(() => {
+      const progress = document.querySelector<HTMLProgressElement>('#keep-status progress');
+      return !!progress && progress.value > 0 && progress.value < 1;
+    });
+    await expect(page.getByRole('status')).toHaveText('The Old Keep could not load.', { timeout: 40_000 });
+  } finally {
+    release();
+  }
 });
 
 test('losing, Play again and leaving the keep change no saved data and leave Free play clean', async ({ page }) => {
@@ -83,6 +126,10 @@ test('losing, Play again and leaving the keep change no saved data and leave Fre
   await page.goto('/?keep=1&perf=1');
   await waitForGame(page);
   const before = await storage(page);
+  expect(await page.evaluate(() => window.__tarpit!.audio().muted)).toBe(false);
+  await tapRect(page, 'mute');
+  expect(await page.evaluate(() => window.__tarpit!.audio().muted)).toBe(true);
+  expect(await storage(page)).toBe(before);
   const lose = async () => {
     await page.evaluate(() => {
       const s = window.__tarpit!.game.scene.getScene('game') as unknown as { state: { lives: number }; startWave(): void };
@@ -95,13 +142,14 @@ test('losing, Play again and leaving the keep change no saved data and leave Fre
   await tapRect(page, 'playAgain');
   await page.waitForFunction(() => window.__tarpit!.keep !== undefined && (window.__tarpit!.game.scene.getScene('game') as unknown as { state: { lives: number } }).state.lives === 20 && !window.__tarpit!.uiRects()['playAgain'], null, { timeout: 30_000 });
   expect(await page.evaluate(() => document.querySelectorAll('div[aria-hidden=true]').length)).toBe(1);
+  expect(await page.evaluate(() => window.__tarpit!.audio().muted)).toBe(true);
   await lose();
   await tapRect(page, 'menu');
   await page.waitForFunction(() => window.__tarpit?.titleReady?.() && !!window.__tarpit.uiRects()['title:freePlay'], null, { timeout: 30_000 });
   expect(await storage(page)).toBe(before);
   expect(await page.evaluate(() => document.querySelectorAll('div[aria-hidden=true]').length)).toBe(0);
-  await tapRect(page, 'title:freePlay');
-  await page.waitForFunction(() => !!window.__tarpit!.uiRects()['title:play']);
+  expect(await page.evaluate(() => window.__tarpit!.audio().muted)).toBe(false);
+  await waitForTitle(page);
   await tapRect(page, 'title:play');
   await waitForGame(page);
   expect(await page.evaluate(() => (window.__tarpit!.game.scene.getScene('game') as unknown as { state: { map: { id: string } } }).state.map.id)).toBe('meadow');

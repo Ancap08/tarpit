@@ -210,6 +210,7 @@ export class Effects {
     /** Milestone 32b: world-space drawing goes on Graphics the scene placed with it; particles and text are placed through it. */
     private readonly layout: Layout,
     private readonly clock: GameClock,
+    private readonly mapBackground: string | number = COLORS.grass,
   ) {
     this.projectiles = new Array<Projectile | null>(CAPS.projectiles).fill(null);
     this.impacts = new Array<Impact | null>(CAPS.impacts).fill(null);
@@ -527,7 +528,7 @@ export class Effects {
     const m = this.layout.map;
     const W = this.layout.width;
     const H = this.layout.height;
-    cam.setViewport(m.x, m.y, m.width, m.height).setScroll(m.x, m.y).setBackgroundColor(COLORS.grass);
+    cam.setViewport(m.x, m.y, m.width, m.height).setScroll(m.x, m.y).setBackgroundColor(this.mapBackground);
     this.mapScroll = { x: m.x, y: m.y };
     for (const band of [
       { y: 0, h: m.y },

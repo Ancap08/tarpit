@@ -89,17 +89,18 @@ export function drawFittings(g: Graphics, at: Locate, t: number, tier: Detail) {
 }
 
 /** Branch endpoints stay fixed throughout a discharge. A subsequent storm uses the other bank. */
-export function drawFork(g: Graphics, width: number, height: number, strength: number, side: number) {
-  g.clear();
-  if (strength === 0) return;
+export function paintFork(ctx: CanvasRenderingContext2D, width: number, height: number, side: number) {
   const draw = (points: number[][], weight: number, color: number, alpha: number) => {
-    g.lineStyle(weight,color,strength*alpha).beginPath();
+    ctx.lineWidth = weight;
+    ctx.strokeStyle = '#' + color.toString(16).padStart(6, '0');
+    ctx.globalAlpha = alpha;
+    ctx.beginPath();
     points.forEach(([u,v],i) => {
       const x=(side ? 1-u : u)*width, y=v*height;
-      if (i===0) g.moveTo(x,y);
-      else g.lineTo(x,y);
+      if (i===0) ctx.moveTo(x,y);
+      else ctx.lineTo(x,y);
     });
-    g.strokePath();
+    ctx.stroke();
   };
   const spine=[[.76,-.01],[.752,.053],[.774,.093],[.745,.139],[.757,.144],[.711,.208],
     [.721,.21],[.674,.27],[.69,.267],[.642,.355],[.65,.35],[.616,.418]];

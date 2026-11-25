@@ -11379,3 +11379,62 @@ Checked `12fcab3` against a clean export of `655a658`.
 - Full run: lint, typecheck, 2,869 unit tests in 133 files, build, size
   (3,291,554 bytes keep art, site 7,078,820), assets (248 rows), and
   1,208 browser tests passed with 8 skipped.
+
+## 2026-11-24: milestone 51, preparing the Old Keep for phones
+
+The Keep selects one layout and one set of eleven plates. The half-size
+portrait set transfers 748,100 bytes and decodes to 35,978,656 bytes of
+RGBA. The half-size wide set transfers 651,972 bytes and decodes to
+31,432,096 bytes. The previous load decoded 248,608,384 bytes for either
+layout. The art scripts reproduce the original WebPs byte for byte.
+Both sizes together occupy 4,559,412 bytes.
+
+The parchment status panel appears from the cached or network page. It
+counts completed files and gives an explicit return to the title after a
+failed request or a 30-second deadline. The earlier mute state returns
+when the player leaves, including after changing it and replaying the Keep.
+
+In the 40-Goblin, four-tower phone trace, hiding the original Phaser
+scenery layer cut high-tier main-thread occupancy from 70.4% to 30.8%
+at native speed and from 99.7% to 42.2% under 4× CPU throttling.
+Hiding the two surrounding canvases on their own left 69.0% and 91.8%
+busy. Skipping the dusk pass on its own left 70.4% and 97.8% busy.
+The large per-frame draws dominated, so the new panorama caches the
+registered exposures and moves them behind the battle canvas.
+Low detail flattens the still scenery and caches its stationary fittings.
+Battle sprites select their dusk texture directly, and the governor
+discards the first eight frame samples.
+
+[Phone](docs/review/m51/keep-390x844.png) ·
+[Physical-pixel crop](docs/review/m51/keep-phone-zoom.png) ·
+[Full and half-size plate comparison](docs/review/m51/keep-phone-full-vs-half.png) ·
+[Loading](docs/review/m51/keep-loading.png) ·
+[Failure](docs/review/m51/keep-load-failed.png)
+
+At 390 × 844 and DPR 3, a cold Chromium load with the service worker
+blocked took 9.47 s and transferred 1,709,113 bytes. The original
+load took 22.37 s and transferred 4,251,649 bytes under the same
+Fast 3G profile (200 kB/s down, 150 ms latency). The old glow and
+chunk aborts returned to the title in a bounded replay. A deliberately
+stalled file now produces the error at the deadline.
+
+| Tier | Native before | Native after | 4× before | 4× after |
+| --- | ---: | ---: | ---: | ---: |
+| High | 70.42% | 44.52% | 99.72% | 74.30% |
+| Medium | 80.99% | 39.22% | 98.63% | 70.88% |
+| Low | 81.74% | 39.16% | 95.56% | 53.41% |
+
+These are five-second samples of Chromium's main-thread task duration
+with SwiftShader, after a 1.6-second warm-up. The three tiers held a
+16.7 ms median frame interval at both CPU speeds. Run
+`PW_PORT=4373 node --experimental-strip-types scripts/art/m51Frames.ts`
+after building and add `M51_CPU=4` for the throttled run. An unpinned
+idle phone sample remained on high after 3.3 seconds.
+Fine tracery is slightly softer in the half-size study. The silhouette,
+lighting and gate details hold up at the normal phone size.
+
+The three-project browser run passed 1,216 cases with eight skipped.
+All 2,869 unit tests, lint, typecheck, build, asset and size checks passed.
+Both simulation streams matched main byte for byte. The switch-off
+comparison matched 36 frozen canvas and state pairs and 18 request
+inventories against main. Phone measurements used emulation.

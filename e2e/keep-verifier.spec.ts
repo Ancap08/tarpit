@@ -129,7 +129,7 @@ test('a wall crew keeps its footing and dusk lighting when the phone turns', asy
   };
   await expectCrew();
   await page.setViewportSize({width:1024,height:768});
-  await page.waitForFunction(() => window.__tarpit?.game.canvas.width === 960);
+  await page.waitForFunction(() => window.__tarpit?.keep?.() && window.__tarpit.game.canvas.width === 960);
   await settle(page);
   await expectCrew();
 });

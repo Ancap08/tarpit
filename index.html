@@ -51,6 +51,36 @@
         font: 20px Georgia, serif;
         pointer-events: none;
       }
+      #keep-status:not([hidden]) {
+        position: fixed;
+        inset: 0;
+        z-index: 2;
+        display: grid;
+        place-items: center;
+        background: repeating-linear-gradient(0deg, #382318 0 38px, #2b1b14 40px 42px);
+        color: #352216;
+        font: bold 18px Georgia, serif;
+      }
+      #keep-status > div {
+        box-sizing: border-box;
+        width: min(340px, 90vw);
+        padding: 20px 16px;
+        text-align: center;
+        background: #f1dfb5;
+        border: 5px double #b68a48;
+        box-shadow: 0 6px 18px #16100c;
+      }
+      #keep-status p { margin: 0 0 16px; }
+      #keep-status progress { width: 86%; accent-color: #254a57; }
+      #keep-status button {
+        min-height: 44px;
+        padding: 8px 18px;
+        background: #422919;
+        border: 2px solid #b68a48;
+        color: #f1dfb5;
+        font: inherit;
+        cursor: pointer;
+      }
       html,
       body,
       #game,
@@ -78,6 +108,34 @@
   <body>
     <div id="loading" role="status">%LOADING_TEXT%</div>
     <div id="game"></div>
+    <section id="keep-status" data-failure="%KEEP_FAILED_TEXT%" data-limit="%KEEP_LOAD_LIMIT_MS%" hidden>
+      <div>
+        <p role="status">%KEEP_LOADING_TEXT%</p>
+        <progress aria-label="%KEEP_LOADING_TEXT%" value="0" max="1"></progress>
+        <button type="button" hidden>%KEEP_BACK_TEXT%</button>
+      </div>
+    </section>
+    <script>
+      if (new URLSearchParams(location.search).get('keep') === '1') {
+        document.getElementById('loading').remove();
+        const panel = document.getElementById('keep-status');
+        panel.hidden = false;
+        panel.setAttribute('data-booting', '');
+        setTimeout(() => {
+          if (!panel.hasAttribute('data-booting')) return;
+          panel.querySelector('p').textContent = panel.dataset.failure;
+          panel.querySelector('progress').hidden = true;
+          const back = panel.querySelector('button');
+          back.hidden = false;
+          back.onclick = () => {
+            const title = new URL(location.href);
+            title.searchParams.delete('keep');
+            location.replace(title);
+          };
+          back.focus();
+        }, Math.max(0, Number(panel.dataset.limit) - performance.now()));
+      }
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

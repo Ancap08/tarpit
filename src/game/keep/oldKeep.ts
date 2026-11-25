@@ -1,36 +1,96 @@
 // All scenery and its texture URLs belong to the hidden visit.
 import Phaser from 'phaser';
-import type { MapDef } from '../../sim';
+import type { MapDef, Point } from '../../sim';
 import type { Layout } from '../layout';
+import { keepPlateSet, type Plate } from './plates';
 import type { GameScene } from '../GameScene';
 import type { GameClock } from '../loop';
 import { SHOWPIECE_DETAIL } from '../names';
 import { KeepSurround } from './surround';
 import { KeepLight } from './stoneLight';
-import { drawFittings, drawFork, type Landmark } from './keepMotion';
+import { drawFittings, type Landmark } from './keepMotion';
 import projection from './projection.json';
 import type { DetailGovernor, Detail } from '../showpiece/governor';
 
 export { createKeep } from '../../sim/oldKeep';
 
-const plates = ['sky','drift','portrait','landscape','far','crown','gate','lightning','mist','glow','plinth','far-wide','crown-wide','gate-wide','lightning-wide','road-wide','wings'] as const;
-type Plate = typeof plates[number];
 type Image = Phaser.GameObjects.Image;
 const textureKey = (name: Plate) => 'keep:' + name;
+const MAGNIFIER_KEY = 'keep:magnifier';
 
-export async function loadKeep(scene: Phaser.Scene): Promise<boolean> {
+export function currentKeepPlateSet(game: Phaser.Game, portrait: boolean) {
+  return keepPlateSet(portrait, Math.ceil(game.canvas.getBoundingClientRect().width * devicePixelRatio));
+}
+
+export interface KeepAssets {
+  id: string;
+  panorama(layout: Layout, gate: Point, size: { width: number; height: number }, foot: number[]): KeepSurround;
+  release(): void;
+}
+
+export async function loadKeep(game: Phaser.Game, portrait: boolean, signal: AbortSignal,
+    onProgress: (fraction: number) => void): Promise<KeepAssets> {
+  const set = currentKeepPlateSet(game, portrait);
+  const images = new Map<Plate, HTMLImageElement>();
+  const installed: Plate[] = [];
+  let surround: KeepSurround | undefined;
+  const release = () => {
+    surround?.destroy();
+    surround = undefined;
+    for (const name of installed.splice(0)) game.textures.remove(textureKey(name));
+    for (const image of images.values()) image.removeAttribute('src');
+    images.clear();
+  };
   try {
-    await Promise.all(plates.map(async name => {
-      const key = textureKey(name);
-      if (scene.textures.exists(key)) return;
+    let completed = 0;
+    await Promise.all(set.files.map(async ({ name, file }) => {
+      const response = await fetch(import.meta.env.BASE_URL + 'assets/keep/' + file, { signal });
+      if (!response.ok) throw new Error(`Keep plate returned ${response.status}`);
+      const blob = await response.blob();
+      signal.throwIfAborted();
+      const url = URL.createObjectURL(blob);
       const image = new window.Image();
-      image.src = import.meta.env.BASE_URL + 'assets/keep/' + name + '.webp';
-      await image.decode();
-      if (!scene.textures.exists(key)) scene.textures.addImage(key,image)?.setFilter(Phaser.Textures.FilterMode.LINEAR);
+      images.set(name, image);
+      const cancel = () => image.removeAttribute('src');
+      signal.addEventListener('abort', cancel, { once: true });
+      try {
+        image.src = url;
+        await image.decode();
+        onProgress(++completed / set.files.length);
+      } finally {
+        signal.removeEventListener('abort', cancel);
+        URL.revokeObjectURL(url);
+      }
     }));
-    return true;
-  } catch {
-    return false;
+    signal.throwIfAborted();
+    // Only the small effects go into Phaser. The large plates are painted
+    // once into the panorama's cropped canvas layers.
+    for (const name of ['mist', 'glow', 'plinth'] as const) {
+      const image = images.get(name)!;
+      const texture = game.textures.addImage(textureKey(name), image);
+      if (!texture) throw new Error(`Could not install keep plate ${name}`);
+      installed.push(name);
+      texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
+    return {
+      id: set.id,
+      release,
+      panorama(layout, gate, size, foot) {
+        if (surround) return surround;
+        surround = new KeepSurround(game.canvas, layout, name => images.get(name)!, gate, size, foot);
+        // The static canvases now own the pixels. Retain only the Phaser sources
+        // which the battle canvas still draws (and can re-upload on context restore).
+        for (const [name, image] of images) {
+          if (installed.includes(name)) continue;
+          image.removeAttribute('src');
+          images.delete(name);
+        }
+        return surround;
+      },
+    };
+  } catch (error) {
+    release();
+    throw error;
   }
 }
 
@@ -48,16 +108,12 @@ export class KeepView {
   private readonly surround: KeepSurround;
   private readonly fieldLight: Phaser.GameObjects.Container;
   private readonly reflection: Phaser.GameObjects.Graphics;
-  private readonly fork: Phaser.GameObjects.Graphics;
   private readonly spill: Image[];
   private readonly scenery: Phaser.GameObjects.Container;
-  private readonly castle: Image[];
-  private readonly clouds: Image[];
   private readonly fog: Image[];
   private readonly lights: Image[];
   private readonly banners: Phaser.GameObjects.Graphics;
   private readonly rain: Phaser.GameObjects.Graphics;
-  private readonly skyFlash: Phaser.GameObjects.Rectangle;
   private readonly gate: { x: number; y: number };
   private readonly castleW: number;
   private readonly castleH: number;
@@ -72,23 +128,26 @@ export class KeepView {
   private opening = 0;
   private lightning = 0;
   private label?: HTMLOutputElement;
+  private magnifier?: Image;
   private labelTier = -1;
+  private lastTier = -1;
 
   constructor(private readonly scene: GameScene, private readonly layout: Layout, map: MapDef,
-      private readonly clock: GameClock, private readonly frozen: boolean, Governor: typeof DetailGovernor) {
+      private readonly clock: GameClock, private readonly frozen: boolean, Governor: typeof DetailGovernor, assets: KeepAssets) {
     const query = new URLSearchParams(location.search);
     const perf = query.get('perf') === '1';
     const pin = perf ? query.get('keepTier') : null;
     this.quality = new Governor(pin !== null && /^[012]$/.test(pin) ? Number(pin) as Detail : undefined);
+    this.quality.resetWindow(8);
     this.stillLightning = frozen && query.get('keepLightning') === '1';
-    const { x, y, width, height } = layout.map;
+    const { x, y } = layout.map;
     const gate = layout.toScreen(map.path[map.path.length-2]);
     this.gate = {x:gate.x-x,y:gate.y-y};
     this.castleW = layout.turned ? 820 : 1250;
     this.castleH = layout.turned ? 660 : 335;
     this.anchors = layout.turned ? projection.portrait : projection.landscape;
     this.light = new KeepLight(scene.textures);
-    this.surround = new KeepSurround(scene.game.canvas,layout,scene.textures,this.gate,
+    this.surround = assets.panorama(layout,this.gate,
       {width:this.castleW,height:this.castleH},this.anchors.foot);
     this.fieldLight = scene.add.container(x,y);
     this.reflection = scene.add.graphics();
@@ -102,21 +161,6 @@ export class KeepView {
       this.scenery.add(im);
       return im;
     };
-    const skyline = this.gate.y + 30;
-    add('sky').setDisplaySize(width,skyline);
-    this.clouds = Array.from({length:2},() => add('drift').setOrigin(.5));
-    this.skyFlash = scene.add.rectangle(0,0,width,skyline,0xd2ddff).setOrigin(0);
-    this.scenery.add(this.skyFlash);
-    this.fork = scene.add.graphics();
-    this.scenery.add(this.fork);
-    add(layout.turned ? 'portrait' : 'landscape').setDisplaySize(width,height);
-    const exposures = layout.turned
-      ? ['far','crown','gate','lightning'] as const
-      : ['far-wide','crown-wide','gate-wide','lightning-wide'] as const;
-    const foot = this.anchors.foot;
-    this.castle = exposures.map(name => add(name).setDisplaySize(this.castleW,this.castleH)
-      .setOrigin(foot[0]/1280,foot[1]/960).setPosition(this.gate.x,this.gate.y));
-    if (!layout.turned) add('road-wide').setPosition(512,0).setDisplaySize(448,480);
     const lamps = ['torchL','torchR','brazier-1_0','brazier1_0','brazier-1_1','brazier1_1',
       'brazier-1_2','brazier1_2','rose'] as const;
     this.lights = lamps.map((key,i) => {
@@ -153,6 +197,8 @@ export class KeepView {
   };
 
   frame(interacting = false): void {
+    const camera = this.scene.cameras.main;
+    this.surround.scroll(camera.x - camera.scrollX, camera.y - camera.scrollY);
     if (this.clock.paused && this.previous !== -Infinity) return;
     const ms = this.clock.nowMs;
     if (this.lastFrame !== ms) this.quality.sample(ms);
@@ -171,20 +217,8 @@ export class KeepView {
     this.fieldLight.setScale(1+push).setPosition(this.layout.map.x-this.gate.x*push,this.layout.map.y-8*push);
     this.lightning = this.stillLightning ? 1 : calm ? 0 : lightningAt(ms);
     if (this.lightning < .013) this.lightning = 0;
-    this.surround.update(push,this.lightning);
-    const parallax = tier > 0 && !calm ? Math.sin(t*.19) : 0;
-    this.castle.forEach((im,i) => {
-      im.x = this.gate.x + (2-Math.min(i,2)) * (parallax*.7+this.opening*1.2);
-      im.y = this.gate.y + (2-Math.min(i,2))*this.opening*5;
-    });
-    this.castle[3].setVisible(this.lightning>0).setAlpha(this.lightning);
-    this.skyFlash.setVisible(this.lightning>0).setAlpha(this.lightning*.55);
+    this.surround.update(push, this.lightning, Math.floor((ms+7300)/15700)%2, this.opening, t, tier, calm);
     const {width,height} = this.layout.map;
-    this.clouds.forEach((im,i) => {
-      im.setVisible(tier>=1 && (i===0 || tier===2));
-      if (im.visible) im.setPosition(width*(i ? .8 : .18) + Math.sin(t*.088+i)*width*.18,20+i*50+this.opening*8)
-        .setDisplaySize(width*(i ? .64 : .85),i ? 90 : 120).setAlpha(i ? .33 : .52);
-    });
     this.fog.forEach((im,i) => {
       im.setVisible(i===0 || tier===2 || (tier===1 && i===1));
       if (im.visible) im.setPosition(width*(.14+i*.31) + Math.sin(t*.12+i*2.6)*width*.12,
@@ -195,8 +229,23 @@ export class KeepView {
       const pulse = .64+Math.sin(t*(i<2 ? 9.4 : 3.4)+i)*.13+Math.sin(t*17.1+i*2.8)*.075;
       im.setVisible(i<2 || tier>0).setAlpha(pulse*(i<2 ? .9 : .56));
     });
-    drawFittings(this.banners,this.at,tier===0 ? 0 : t,tier);
-    drawFork(this.fork,width,this.gate.y,this.lightning,Math.floor((ms+7300)/15700)%2);
+    if (tier === 0) {
+      if (this.lastTier !== tier) {
+        this.surround.stillFittings(surface => {
+          drawFittings(this.banners, this.at, 0, 0);
+          this.banners.generateTexture(surface);
+          this.banners.clear();
+        });
+        this.banners.setVisible(false);
+      }
+    } else {
+      if (this.lastTier !== tier) {
+        this.surround.stillFittings();
+        this.banners.setVisible(true);
+      }
+      drawFittings(this.banners, this.at, t, tier);
+    }
+    this.lastTier = tier;
     const reflection = this.reflection.clear();
     if (this.lightning > 0) {
       reflection.fillStyle(0xb8d4ff,.22*this.lightning).fillRect(0,0,width,height);
@@ -225,6 +274,22 @@ export class KeepView {
     }
   }
 
+  showMagnifiedGround(): void {
+    if (!this.magnifier) {
+      const still = this.surround.stillSurface();
+      const texture = this.scene.textures.addCanvas(MAGNIFIER_KEY, still)!;
+      texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
+      this.magnifier = this.scene.add.image(parseFloat(still.style.left), parseFloat(still.style.top), texture).setOrigin(0);
+      this.layer.addAt(this.magnifier, 0);
+      this.scene.cameras.main.ignore(this.magnifier);
+    }
+    this.magnifier.setVisible(true);
+  }
+
+  hideMagnifiedGround(): void {
+    this.magnifier?.setVisible(false);
+  }
+
   snapshot() {
     return { tier:this.quality.tier, timeMs:this.frozen || this.reduced.matches ? 0 : this.clock.nowMs,
       lightning:this.lightning, opening:this.opening };
@@ -235,6 +300,6 @@ export class KeepView {
   destroy(): void {
     this.label?.remove();
     this.light.destroy();
-    this.surround.destroy();
+    if (this.magnifier) this.scene.textures.remove(MAGNIFIER_KEY);
   }
 }

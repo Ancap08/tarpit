@@ -1,5 +1,6 @@
 """Paint the Old Keep's two approach plates, storm and small atmospheric flats.
 Run with python3 and Pillow. Coordinates on the plates are the actual board.
+Encode both plate sizes from the original paintings.
 """
 import json
 import math
@@ -813,6 +814,10 @@ def save(im,name,quality):
     path=OUT/(name+'.webp')
     im.save(path,'WEBP',quality=quality,method=6)
     print(name,im.size,path.stat().st_size)
+    half=im.resize((im.width//2,im.height//2),Image.Resampling.LANCZOS)
+    half_path=OUT/(name+'-half.webp')
+    half.save(half_path,'WEBP',quality=quality,method=6)
+    print(name+'-half',half.size,half_path.stat().st_size)
 
 
 if __name__=='__main__':

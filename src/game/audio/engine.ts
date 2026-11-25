@@ -60,7 +60,7 @@ export class SoundEngine {
   private paused = false;
   private muted: boolean;
   /** A hidden exhibition keeps mute changes in this visit. */
-  sessionMute = false;
+  private savedMute?: boolean;
   private ctx: AudioContext | null = null;
   private bus: ReturnType<typeof masterChain> | null = null;
   private readonly mixer = new Mixer();
@@ -188,8 +188,24 @@ export class SoundEngine {
   /** Mute or unmute at once and store the choice; unmuting plays the tap sound. */
   setMuted(muted: boolean): void {
     if (muted === this.muted) return;
+    if (this.savedMute === undefined) this.store.set(muted);
+    this.applyMute(muted);
+    if (!muted) this.play('tap');
+  }
+
+  beginSessionMute(): void {
+    this.savedMute ??= this.muted;
+  }
+
+  endSessionMute(): void {
+    if (this.savedMute === undefined) return;
+    const muted = this.savedMute;
+    this.savedMute = undefined;
+    if (this.muted !== muted) this.applyMute(muted);
+  }
+
+  private applyMute(muted: boolean): void {
     this.muted = muted;
-    if (!this.sessionMute) this.store.set(muted);
     const ctx = this.ctx;
     if (ctx !== null && this.bus !== null) {
       if (muted) this.stopAll();
@@ -197,7 +213,6 @@ export class SoundEngine {
       this.bus.mute.gain.setTargetAtTime(muted ? 0 : 1, ctx.currentTime, 0.005);
     }
     this.notify();
-    if (!muted) this.play('tap');
   }
 
   toggleMute(): void {

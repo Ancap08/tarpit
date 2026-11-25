@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
-import { TITLE_TEXT } from './src/game/names.ts';
+import { KEEP_TEXT, TITLE_TEXT } from './src/game/names.ts';
+import { KEEP_LOAD_LIMIT_MS } from './src/game/keep/status.ts';
 import { swEnabled, writeServiceWorker } from './scripts/sw-build.ts';
 import { KEEP_ASSET_DIR, PAINTED_ASSET_DIR, SHOWPIECE_ASSET_DIR } from './src/sw/rules.ts';
 
@@ -55,5 +56,12 @@ export default defineConfig({
     __TARPIT_SW__: JSON.stringify(swEnabled()),
     'import.meta.env.LOADING_TEXT': JSON.stringify(TITLE_TEXT.loading),
   },
-  plugins: [serviceWorker()],
+  plugins: [{
+    name: 'keep-status-copy',
+    transformIndexHtml: html => html
+      .replaceAll('%KEEP_LOADING_TEXT%', KEEP_TEXT.loading)
+      .replace('%KEEP_BACK_TEXT%', KEEP_TEXT.back)
+      .replace('%KEEP_FAILED_TEXT%', KEEP_TEXT.failed)
+      .replace('%KEEP_LOAD_LIMIT_MS%', String(KEEP_LOAD_LIMIT_MS)),
+  }, serviceWorker()],
 });

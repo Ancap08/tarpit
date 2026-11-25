@@ -2,6 +2,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { keepPlateSet } from './plates';
 
 const DIR = join(process.cwd(), 'public/assets/keep');
 const files = readdirSync(DIR).filter(f => f.endsWith('.webp')).sort();
@@ -23,22 +24,35 @@ describe('Old Keep art budget', () => {
     expect(bytes).toBeLessThan(8_000_000);
   });
 
-  it('keeps the pixels a phone must hold in memory under 256 MB', () => {
-    // loadKeep() decodes every plate into a texture whatever the orientation.
-    // At 4 bytes a pixel this is the GPU cost (and a second, evictable, decoded
-    // copy sits in the image element). 248.6 MB on 2026-11-24; do not grow it.
-    const pixelBytes = files.reduce((sum, f) => { const s = size(f); return sum + s.width * s.height * 4; }, 0);
-    expect(pixelBytes).toBeLessThan(256_000_000);
-    for (const f of files) {
-      const s = size(f);
-      expect(Math.max(s.width, s.height), f).toBeLessThanOrEqual(4096); // older iPhones' texture limit
+  it('caps a DPR 3 phone at 60 MB and keeps the older iPhone texture limit', () => {
+    const portrait = keepPlateSet(true, 390 * 3);
+    const wide = keepPlateSet(false, Math.floor(390 * 960 / 580 * 3));
+    for (const [set, opposite] of [[portrait, 'landscape'], [wide, 'portrait']] as const) {
+      expect(set.files).toHaveLength(11);
+      expect(set.files.every(({ file }) => file.endsWith('-half.webp'))).toBe(true);
+      expect(set.files.some(({ name }) => name === opposite)).toBe(false);
+      const bytes = set.files.reduce((sum, { file }) => {
+        const { width, height } = size(file);
+        return sum + width * height * 4;
+      }, 0);
+      expect(bytes).toBeLessThanOrEqual(60_000_000);
+    }
+    for (const file of files) {
+      const { width, height } = size(file);
+      expect(Math.max(width, height), file).toBeLessThanOrEqual(4096);
+      if (!file.endsWith('-half.webp')) {
+        expect(size(file.replace('.webp', '-half.webp')), file).toEqual({ width: width / 2, height: height / 2 });
+      }
     }
   });
 
-  it('loads exactly the plates on disk, no more and no fewer', () => {
-    const source = readFileSync(join(process.cwd(), 'src/game/keep/oldKeep.ts'), 'utf8');
-    const list = /const plates = \[([^\]]+)\]/.exec(source)![1].match(/'([^']+)'/g)!.map(s => s.slice(1, -1));
-    expect(list.map(n => n + '.webp').sort()).toEqual(files);
+  it('loads exactly the plates on disk, with one orientation and one resolution per visit', () => {
+    const sets = [keepPlateSet(true, 1170), keepPlateSet(false, 1920),
+      keepPlateSet(true, 1281), keepPlateSet(false, 2049)];
+    for (const set of sets) expect(set.files).toHaveLength(11);
+    expect([...new Set(sets.flatMap(set => set.files.map(({ file }) => file)))].sort()).toEqual(files);
+    expect(sets[2].files.some(({ file }) => file === 'portrait.webp')).toBe(true);
+    expect(sets[3].files.some(({ file }) => file === 'landscape.webp')).toBe(true);
   });
 });
 

@@ -65,6 +65,7 @@ import { PORTRAIT_TITLE, titleRects, type TitleGeometry } from './ui/geometry';
 import { MuteButton } from './ui/muteButton';
 import { LOOKS, LookStore, paintedDensity, type Look } from './skin/look';
 import { loadPainted, type PaintedAssets } from './skin/loading';
+import { duringKeepLoad } from './keep/status';
 
 /** Menu buttons: 42 px tall like every touch target (44.8 px on an iPad in landscape). */
 export const MENU_BUTTON_H = 42;
@@ -157,6 +158,7 @@ export interface GameStartData {
   painted?: PaintedAssets;
   paintedFallback?: boolean;
   keep?: typeof import('./keep/oldKeep');
+  keepAssets?: import('./keep/oldKeep').KeepAssets;
   showpiece?: typeof import('./showpiece/showpiece').Showpiece;
 }
 
@@ -581,20 +583,38 @@ export class TitleScene extends Phaser.Scene {
 
   private async startKeep(): Promise<void> {
     const density = paintedDensity(this.game.canvas.getBoundingClientRect().width / this.scale.gameSize.width, window.devicePixelRatio);
-    const abort = new AbortController();
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => abort.abort());
-    try {
-      const [keep, painted] = await Promise.all([
-        import('./keep/oldKeep').then(async module => {
-          if (!await module.loadKeep(this)) throw new Error('Old Keep artwork unavailable');
-          return module;
+    const data = await duringKeepLoad(async (signal, update) => {
+      let plates = 0, sprites = 0, script = 0;
+      const progress = () => update((script + plates * 11 + sprites * 3) / 15);
+      const [loaded, painted] = await Promise.all([
+        import('./keep/oldKeep').then(async keep => {
+          signal.throwIfAborted();
+          script = 1;
+          progress();
+          const keepAssets = await keep.loadKeep(this.game, currentLayout().turned, signal, fraction => {
+            plates = fraction;
+            progress();
+          });
+          if (signal.aborted) {
+            keepAssets.release();
+            signal.throwIfAborted();
+          }
+          signal.addEventListener('abort', keepAssets.release, { once: true });
+          return { keep, keepAssets };
         }),
-        loadPainted(this.textures, DEFAULT_MAP, density, () => {}, abort.signal),
+        loadPainted(this.textures, DEFAULT_MAP, density, fraction => {
+          sprites = fraction;
+          progress();
+        }, signal, { keep: true }).then(painted => {
+          if (!painted) throw new Error('Keep pieces unavailable');
+          sprites = 1;
+          progress();
+          return painted;
+        }),
       ]);
-      if (!abort.signal.aborted) this.scene.start('game', { keep, painted, difficulty: DEFAULT_DIFFICULTY } satisfies GameStartData);
-    } catch {
-      if (!abort.signal.aborted) this.scene.restart({ screen: 'first' });
-    }
+      return { ...loaded, painted, difficulty: DEFAULT_DIFFICULTY } satisfies GameStartData;
+    }, () => this.scene.restart({ screen: 'first' }));
+    if (data) this.scene.start('game', data);
   }
 
   private startGame(data: GameStartData): void {

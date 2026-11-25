@@ -113,6 +113,7 @@
 // which keeps it if it beats the stored best for this map and level.
 
 import Phaser from 'phaser';
+import { duringKeepLoad, finishKeepLoad } from './keep/status';
 import { panel, THEME } from './ui/theme';
 import {
   buildTower,
@@ -510,6 +511,8 @@ export class GameScene extends Phaser.Scene {
   private paintedAssets?: PaintedAssets;
   private keepModule?: GameStartData['keep'];
   private keep?: import('./keep/oldKeep').KeepView;
+  private keepAssets?: GameStartData['keepAssets'];
+  private keepLoading = false;
   private showpieceType?: GameStartData['showpiece'];
   private showpiece?: import('./showpiece/showpiece').Showpiece;
   private paintedFallback = false;
@@ -526,6 +529,7 @@ export class GameScene extends Phaser.Scene {
     this.paintedAssets = data?.painted;
     this.showpieceType = data?.showpiece;
     this.keepModule = data?.keep;
+    this.keepAssets = data?.keepAssets;
     this.paintedFallback = data?.paintedFallback ?? false;
   }
 
@@ -534,7 +538,7 @@ export class GameScene extends Phaser.Scene {
    * the game. layoutSwitch.ts calls this after it resized the canvas.
    */
   relayout(): void {
-    if (!this.dynamic) return;
+    if (!this.dynamic || this.keepLoading) return;
     // Follow-up (verifier): requests coalesce. The game to carry is refreshed on every
     // request and kept until the one queued restart's create() takes it; that create()
     // reads the newest layout, so a burst of resizes ends on the window's final shape.
@@ -546,11 +550,32 @@ export class GameScene extends Phaser.Scene {
     const data: GameStartData = {
       difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, showpiece: this.showpieceType, keep: this.keepModule,
       paintedFallback: this.paintedFallback,
+      keepAssets: this.keepAssets?.id === this.keepModule?.currentKeepPlateSet(this.game, currentLayout().turned).id ? this.keepAssets : undefined,
     };
+    this.keepAssets = data.keepAssets;
     this.scene.restart(data);
   }
 
   create(): void {
+    if (this.keepModule) {
+      if (this.keepAssets?.id !== this.keepModule.currentKeepPlateSet(this.game, currentLayout().turned).id) {
+        this.keepAssets?.release();
+        this.keepAssets = undefined;
+        this.keepLoading = true;
+        const module = this.keepModule;
+        void duringKeepLoad((signal, progress) => module.loadKeep(this.game, currentLayout().turned, signal, progress), () => this.toMenu())
+          .then(assets => {
+            if (!assets) return;
+            this.keepAssets = assets;
+            this.create();
+          });
+        return;
+      }
+      this.keepLoading = false;
+      this.events.once(Phaser.Scenes.Events.RENDER, finishKeepLoad);
+    }
+    if (this.keepModule) this.cameras.main.setBackgroundColor('rgba(0,0,0,0)');
+    else if (this.game.config.transparent) this.cameras.main.setBackgroundColor('#111418');
     // Only a relayout's restart resumes; Play again, the title and a first start begin a new game.
     const resume = this.restartPending ? this.resume : null;
     this.restartPending = false;
@@ -605,21 +630,29 @@ export class GameScene extends Phaser.Scene {
     this.ground = world();
     this.painted?.placeGround(this.ground);
     if (this.keepModule) {
-      sound.sessionMute = true;
+      sound.beginSessionMute();
+      const assets = this.keepAssets!;
+      const refitKeep = () => {
+        if (this.keepAssets?.id !== this.keepModule?.currentKeepPlateSet(this.game, currentLayout().turned).id) this.relayout();
+      };
+      this.scale.on(Phaser.Scale.Events.RESIZE, refitKeep);
       this.town.layer.setVisible(false);
-      this.keep = new this.keepModule.KeepView(this, this.layout, this.state.map, this.clock, !this.autoTick, DetailGovernor);
+      this.keep = new this.keepModule.KeepView(this, this.layout, this.state.map, this.clock, !this.autoTick, DetailGovernor, assets);
+      if (this.painted) this.painted.worldTexture = this.keep.light.key;
       this.children.moveBelow(this.keep.layer, this.ground);
       this.events.once('shutdown', () => {
-        sound.sessionMute = false;
+        this.scale.off(Phaser.Scale.Events.RESIZE, refitKeep);
         this.keep?.destroy();
         this.keep = undefined;
+        if (this.keepAssets !== assets) assets.release();
       });
     }
     this.overlay = world();
     this.dynamic = world();
     this.enemySprites = new EnemySprites(this, isTestMode(), this.layout, this.painted, this.clock);
     this.shotFx = world();
-    this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx), this.layout, this.clock) : null;
+    this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx), this.layout, this.clock,
+      this.keep ? 'rgba(0,0,0,0)' : undefined) : null;
     if (this.showpieceType && this.paintedAssets) {
       // Put the entire town, including its sack and flag, under the pasture daylight.
       this.children.moveBelow(this.town.layer, this.ground);
@@ -1414,7 +1447,7 @@ export class GameScene extends Phaser.Scene {
     this.leaving = true;
     this.restartPending = false;
     this.resume = null;
-    const data: GameStartData = { difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, showpiece: this.showpieceType, keep: this.keepModule, paintedFallback: this.paintedFallback };
+    const data: GameStartData = { difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, showpiece: this.showpieceType, keep: this.keepModule, keepAssets: this.keepAssets, paintedFallback: this.paintedFallback };
     this.scene.restart(data);
   }
 
@@ -1435,10 +1468,16 @@ export class GameScene extends Phaser.Scene {
     this.leaving = true;
     this.restartPending = false;
     this.resume = null;
+    if (this.keepModule) {
+      sound.endSessionMute();
+      this.keepAssets = undefined; // The view releases its set when Phaser shuts it down.
+      this.keepLoading = false;
+    }
     this.scene.start('title', destination);
   }
 
   update(_time: number, delta: number): void {
+    if (this.keepLoading) return;
     // Self-check (32b follow-up): a scene drawn for another layout than the window's rebuilds.
     if (this.layout.kind !== currentLayout().kind && !this.leaving) {
       this.relayout();
@@ -1741,7 +1780,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   redraw(): void {
-    if (!this.dynamic) return;
+    if (!this.dynamic || this.keepLoading) return;
     this.keep?.frame(this.pick !== null || this.press !== null || this.aiming !== null || this.specialMenuOpen);
     this.showpiece?.draw(this.state, this.pick !== null || this.press?.active === true,
       !this.press?.active && !this.aimPress?.active && !this.panel?.cell && !this.state.pendingBoon && !this.specialMenuOpen && !this.held?.tooltip);
@@ -1769,7 +1808,6 @@ export class GameScene extends Phaser.Scene {
     if (fx) fx.draw(this.shotFx, this.painted);
     else this.shots.draw(this.shotFx, this.painted);
     this.painted?.endEffects();
-    if (this.keep && this.painted) this.keep.light.apply(this.painted);
     this.specialFx.draw(this.shotFx);
     this.barricadeFx.drawWall(this.shotFx, blocker, this.layout, motion);
     this.barricadeFx.drawCrash(this.shotFx, this.layout, motion);
@@ -2027,7 +2065,8 @@ export class GameScene extends Phaser.Scene {
       const frame = this.add.graphics().setDepth(1000);
       const cam = this.cameras.add(box.x, box.y, box.width, box.height, false, 'magnifier');
       cam.inputEnabled = false;
-      cam.setZoom(MAGNIFIER_ZOOM).setBackgroundColor(COLORS.grass);
+      cam.setZoom(MAGNIFIER_ZOOM).setBackgroundColor(this.keep ? '#111418' : COLORS.grass);
+      this.keep?.showMagnifiedGround();
       cam.ignore([frame, this.bannerBg, this.bannerMain, this.bannerHint]);
       this.mag = { cam, frame, box, centre };
     }
@@ -2048,6 +2087,7 @@ export class GameScene extends Phaser.Scene {
     if (this.mag === null) return;
     this.cameras.remove(this.mag.cam);
     this.mag.frame.destroy();
+    this.keep?.hideMagnifiedGround();
     this.mag = null;
   }
 

@@ -157,6 +157,31 @@ file, `src/sim/keepSite.json`, with the miniature renderer. The stair foot is at
 (576, 296). Collectors climb the steps to the gate threshold at (551, 272). The wall-walk sites are (15, 13) and (15, 4) in portrait and
 (13, 7) and (22, 7) in landscape. The same towers and path survive rotation.
 
+The Keep loads eleven plates for the fitted layout. The fitted canvas
+width in CSS pixels multiplied by device pixel ratio selects half-size
+plates up to and including 1,280 physical pixels in portrait or 2,048 in
+landscape. Wider canvases use the original exposures. Turning the device
+or crossing the resolution threshold disposes of the old panorama,
+decoded sources and Phaser textures before downloading the replacement.
+The battle clock holds during the swap.
+
+The load panel tracks decoded plates, the painted pieces and the Keep
+script. The opening attempt has 30 seconds from navigation and an art
+swap has 30 seconds from its start. A failed or expired attempt shows
+“The Old Keep could not load.” with “Back to title”. This also applies
+when the installed game opens the Keep offline without its files. The
+Keep's mute changes last through rotation and replay. The earlier mute
+setting returns when the player leaves for the title.
+
+The panorama caches the sky, ground, stone exposures and storm exposures
+behind the battle canvas. At low detail a single cached still combines
+the sky, ground and castle between flashes after the opening drift.
+The details update every 15 ms on high, 32 ms on medium or 96 ms on low.
+Low detail holds the fittings still, keeps one road fog strip and the two
+gate blooms, and skips the moving cloud veils and rain. At scene startup
+the governor ignores the first eight frame samples so the initial
+composite and texture upload stay outside the measurement window.
+
 | Wave | Groups (enemy, count, seconds between spawns, start in seconds) |
 | --- | --- |
 | 1 | Goblin, 12, 0.85, 0 |

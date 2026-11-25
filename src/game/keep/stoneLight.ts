@@ -1,18 +1,17 @@
 // Relight the existing painted poses, including their hit frames. A derived sheet
 // keeps the same anchors and alpha silhouette on both Canvas and WebGL.
 import Phaser from 'phaser';
-import type { PaintedSkin } from '../skin/painted';
-
-type Piece = Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
 
 export class KeepLight {
   private readonly variants = new Map<string, Phaser.Textures.Texture>();
 
   constructor(private readonly textures: Phaser.Textures.TextureManager) {}
 
-  private dusk(source: Phaser.Textures.Texture): Phaser.Textures.Texture {
-    const cached = this.variants.get(source.key);
-    if (cached) return cached;
+  readonly key = (key: string): string => {
+    if (key.startsWith('painted:harpy-shadow:')) return key;
+    const cached = this.variants.get(key);
+    if (cached) return cached.key;
+    const source = this.textures.get(key);
     const image = source.source[0].image as HTMLCanvasElement;
     const canvas = document.createElement('canvas');
     canvas.width = image.width;
@@ -43,20 +42,8 @@ export class KeepLight {
       if (frame.name !== '__BASE') texture.add(frame.name, 0, frame.cutX, frame.cutY, frame.cutWidth, frame.cutHeight);
     }
     this.variants.set(source.key, texture);
-    return texture;
-  }
-
-  apply(skin: PaintedSkin) {
-    for (const layer of [skin.standing, skin.air, skin.effects]) {
-      for (const object of layer.list) {
-        const piece = object as Piece;
-        if (piece.visible && piece.texture?.key.startsWith('painted:')) {
-          const texture = this.dusk(piece.texture);
-          piece.setFrame(texture.get(piece.frame.name), false, false);
-        }
-      }
-    }
-  }
+    return texture.key;
+  };
 
   destroy() {
     for (const { key } of this.variants.values()) this.textures.remove(key);
