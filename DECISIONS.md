@@ -1889,3 +1889,26 @@ can change it; "Kyle" means Kyle decided.
   - **The castle's tier-cost test fails 2 times in 10 under parallel load**
     and passes 10 in 10 alone. It is to run on its own, after the rest.
   Sent to Sol at high as one fix pass before part a goes to CI.
+- **An outside creative review (Claude Opus), asked for by Kyle** ("another
+  angle ... normal advice and off the wall suggestions"), returned eight
+  pieces of advice, twelve wild ideas, a pitch for version 2 and one change
+  to the plan. Its sharpest observation: on a phone the keep takes the top
+  45% of the screen and does nothing, while the fight is small in the
+  bottom half.
+- **Kyle took the coordinator's recommended set** ("Yes get started on
+  those you recommended"): the gate's health shown on the gate; the view
+  settling lower in a wave; which road each group takes; enemies larger at
+  the gate; siege sound; two siege taxes (Quartering, Royal Survey; not
+  Requisition, which is harsh for children); pillow windows; the ram in its
+  small form; mortar shells drawn as notices; the feathered-carriage
+  ending; and a second feat, Not a nail. He is rereading the rest.
+- **Not decided:** whether to build the sortie (opening the gate to send
+  Guards out) before the Captain, as the review argued. Kyle approved the
+  Captain earlier; the question was put to him and is open.
+- **Part b is split in two and part c in two** (coordinator), because the
+  set roughly doubles the rules and the art, and Sol works best on smaller
+  briefs. Sonnet verifies b1 with b2 and c1 with c2, two passes, not four.
+- **One new thing a level** (coordinator): the gate, then windows, then two
+  roads with the Survey, then Quartering, then the ram and the King. The
+  level names, notices and replies are the coordinator's and are in the
+  scope.
