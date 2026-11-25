@@ -20,8 +20,8 @@ await run(async browser => {
         const gl = api.game.canvas.getContext('webgl') ?? api.game.canvas.getContext('webgl2');
         const info = gl?.getExtension('WEBGL_debug_renderer_info');
         const gpu = info ? gl!.getParameter(info.UNMASKED_RENDERER_WEBGL) as string : 'unknown';
-        for (const [col,row,type] of [[11,10,'musketeer'],[15,6,'longbow'],[23,9,'cannon'],[17,10,'tarpit']] as const) {
-          if (!s.build({col,row},type).ok) throw Error('Benchmark tower placement refused');
+        for (const [site,type] of [[4,'musketeer'],[3,'longbow'],[5,'cannon'],[8,'tarpit']] as const) {
+          if (!s.build(s.state.map.buildSites![site],type).ok) throw Error('Benchmark tower placement refused');
         }
         if (!s.spawnHorde(40)) throw Error('Horde refused');
         // The runner adds replacement goblins on the road. Suppress the ordinary

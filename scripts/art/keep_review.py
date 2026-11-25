@@ -1,5 +1,7 @@
-"""Native-resolution castle studies and an inventory of the raw runtime layers."""
+"""Side-by-side phone comparison and inventory of the raw runtime layers."""
+from io import BytesIO
 from pathlib import Path
+from subprocess import check_output
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -12,16 +14,26 @@ def plate(name):
         return image.convert("RGBA")
 
 
-def studies():
-    size = plate("gate").size
-    for name, layers in [("keep-dusk-detail", ["far", "crown", "gate"]),
-                         ("keep-lightning-detail", ["lightning"])]:
-        sky = plate("sky").resize(size, Image.Resampling.LANCZOS)
-        if name == "keep-lightning-detail":
-            sky = Image.blend(sky, Image.new("RGBA", size, "#c3cfdf"), .28)
-        for layer in layers:
-            sky.alpha_composite(plate(layer))
-        sky.convert("RGB").save(OUTPUT / (name + ".jpg"), quality=95, subsampling=0)
+def caption_font(size):
+    try:
+        return ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", size)
+    except OSError:
+        return ImageFont.load_default()
+
+
+def phone_comparison():
+    path = "docs/review/m51/keep-390x844.png"
+    first = check_output(["git", "show", f"a449daa:{path}"], cwd=ROOT)
+    with Image.open(BytesIO(first)) as old, Image.open(ROOT / path) as current:
+        assert old.size == current.size == (390, 844)
+        gutter, caption = 12, 38
+        sheet = Image.new("RGB", (old.width * 2 + gutter, old.height + caption), "#192029")
+        legend = ImageDraw.Draw(sheet)
+        for i, (label, image) in enumerate([("First pass", old), ("Second pass", current)]):
+            x = i * (old.width + gutter)
+            sheet.paste(image, (x, caption))
+            legend.text((x+12, 8), label, font=caption_font(18), fill="#f0ede4")
+        sheet.save(OUTPUT / "keep-phone-comparison.png")
 
 
 def contact():
@@ -29,10 +41,7 @@ def contact():
     tile_w, tile_h = 380, 262
     sheet = Image.new("RGB", (tile_w * 3, tile_h * ((len(names)+2)//3)), "#1c232c")
     draw = ImageDraw.Draw(sheet)
-    try:
-        font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 17)
-    except OSError:
-        font = ImageFont.load_default()
+    font = caption_font(17)
     for i, name in enumerate(names):
         image = plate(name)
         dimensions = image.size
@@ -46,5 +55,5 @@ def contact():
 
 if __name__ == "__main__":
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    studies()
     contact()
+    phone_comparison()
