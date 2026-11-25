@@ -55,6 +55,10 @@ test('a cold install completes without fetching or caching the keep', async ({ p
 
 test('the keep opens directly, stays frozen in test mode and awards no progress', async ({ page }) => {
   test.setTimeout(90_000);
+  const saved = { 'tarpit.best': '{"v":1,"best":{"meadow":{"normal":2}}}' };
+  await page.addInitScript(data => {
+    for (const [key,value] of Object.entries(data)) localStorage.setItem(key,value);
+  }, saved);
   await page.goto('/?keep=1&test=1');
   await waitForGame(page);
   await settle(page);
@@ -63,19 +67,40 @@ test('the keep opens directly, stays frozen in test mode and awards no progress'
     storage: { ...localStorage },
   }));
   expect(initial.lives).toBe(20);
+  expect(initial.storage).toEqual(saved);
+  expect(await page.evaluate(() => window.__tarpit!.audio())).toMatchObject({enabled:false,context:'none',voices:0});
   const frame = await page.locator('canvas').screenshot();
   await settle(page);
   expect((await page.locator('canvas').screenshot()).equals(frame)).toBe(true);
   const result = await page.evaluate(() => {
     const a = window.__tarpit!;
     const s = a.state!();
-    // Let every collector through in each fixed wave.
+    for (const [col,row] of [[11,10],[15,6],[23,9],[17,10]]) {
+      if (!a.buildAt!(col,row,'musketeer').ok) throw Error('Expected a legal marked site');
+    }
     for (let wave = 0; wave < 10 && s.phase === 'setup'; wave++) {
       a.startWave!();
       a.step!(18_000);
     }
     return {phase:s.phase,storage:{...localStorage}};
   });
-  expect(['won','lost']).toContain(result.phase);
+  expect(result.phase).toBe('won');
   expect(result.storage).toEqual(initial.storage);
+});
+
+test('pausing holds the opening and storm at the same instant', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto('/?keep=1&perf=1&renderer=canvas');
+  await waitForGame(page);
+  await page.waitForFunction(() => (window.__tarpit?.keep?.()?.timeMs ?? 0) > 120);
+  const pose = await page.evaluate(() => {
+    const a = window.__tarpit!;
+    a.pause();
+    return a.keep?.();
+  });
+  await settle(page);
+  expect(await page.evaluate(() => window.__tarpit!.paused())).toBe(true);
+  expect(await page.evaluate(() => window.__tarpit!.keep?.())).toEqual(pose);
+  await page.evaluate(() => window.__tarpit!.resume());
+  await page.waitForFunction(time => (window.__tarpit?.keep?.()?.timeMs ?? 0) > time, pose!.timeMs);
 });
