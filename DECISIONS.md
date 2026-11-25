@@ -1989,3 +1989,18 @@ can change it; "Kyle" means Kyle decided.
     repair that silently forfeits Not a nail. New target W16.
   - **The gate's health no longer fits its label at five digits.** Shown
     as a percentage until part c1 draws a bar.
+- **Part b goes to CI with three targets listed as misses, not hidden.**
+  After the fix pass 14 of 17 pass. Fixing the Survey, level 21 and the
+  two traps moved three others: W2 (repair now changes the good bot's
+  score on one level of five, not three), W3 (the good bot loses the gate
+  on level 23 under the Survey that now bites) and W9 (margins under small
+  nudges on levels 22, 24 and 25; a Tar Pits-only trial on level 24 that
+  does not finish wave 2 inside the trial's time limit). `npm test` names
+  exactly these three and fails if the list is wrong in either direction.
+  The coordinator's reasons for stopping here: part b has used about 1.6
+  million Sol tokens over six runs; each pass now trades one target for
+  another; the levels are still behind a switch; and Kyle's own play of
+  them is better evidence than a seventh bot pass. The open targets are
+  revisited after he has played, before Act Three goes on the level map.
+- **To check before Act Three is shown to players:** whether a build of
+  only Tar Pits on level 24 can leave a wave running for many minutes.
