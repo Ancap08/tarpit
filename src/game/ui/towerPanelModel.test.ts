@@ -60,7 +60,7 @@ describe('tower upgrade choices', () => {
         const description = pathDescription(type, path);
         const comparisons = Object.entries(descriptionStats[type][path]) as [keyof TowerLevelStats, ComparisonBand][];
         if (type === 'tarpit' && path === 'B') {
-          expect(description).toBe('Feathers tarred enemies. They run back.');
+          expect(description).toBe('Tarred enemies run back.');
           continue;
         }
         const claimedBand = description.match(/\balmost twice\b|\btwice\b|\bmuch\b/)?.[0] ?? 'more';

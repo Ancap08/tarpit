@@ -1698,6 +1698,23 @@ can change it; "Kyle" means Kyle decided.
   - **Feather marks are small on a phone** and the level 9 tip was cryptic.
     Both sent back to Codex: larger marks and a longer puff, and a tip that
     says what feathers do.
+- **The Feathers card line is "Tarred enemies run back."** (coordinator,
+  after the first CI run on the milestone 49 pull request). The longer line
+  wrapped to three rows on the phone card on Linux with text 6% wider and
+  ran into the title. The new line is the same length as Deep Tar's, which
+  fits. The wide-text check for this card now uses a larger factor on the
+  Mac, so the local run sees what Linux sees.
+- **Correction to the entry above:** the Linux failure was not a third row.
+  Codex showed the description sat 0.23 CSS px under the card title on the
+  Mac, and Linux's taller text bounds closed the gap. With fixed tall
+  metrics every tower's path cards overlapped by 4.8 to 6.1 px on all three
+  layouts, and had since before this milestone. The description is now
+  placed from the measured bottom of the title with at least 2 CSS px clear,
+  and a check covers six towers, both paths, four sizes and four font modes
+  (192 cases; all 16 size-and-mode groups fail on the earlier commit). The
+  shorter line stays because it fits on one row. The coordinator diagnosed
+  from the test's name instead of its failing line; the brief for a CI fix
+  now quotes the failing assertion and its values.
 
 ## 2026-11-24, milestone 50 (the barrel feathers a crowd)
 

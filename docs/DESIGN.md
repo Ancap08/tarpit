@@ -441,7 +441,9 @@ Longbow, Mortar and Fire Pot sell for 59, 98, 77, 49, 133 and 84 gold.
 At level 3 their locked refunds are 119, 196, 154, 98, 266 and 168 gold.
 
 The level-2 panel offers two cards. Each shows the path name, its price
-and the change from the level-2 stats. Both show "Not enough gold" when
+and the change from the level-2 stats. The description starts at least 2 CSS px
+below the path name. The card grows to fit wrapped text and the price stays
+on the title row. Both show "Not enough gold" when
 the tower's owner cannot afford the upgrade. At level 3 the heading shows
 the path name. Undo appears alongside the cards or the final path while
 the latest purchase is refundable. Target and Sell share a row at levels
@@ -458,7 +460,7 @@ Touch targets on the portrait phone measure at least 44 CSS px on both axes.
 | Heavy Shot | A much bigger blast |
 | Quick Loader | Fires twice as fast |
 | Deep Tar | Slows enemies to a crawl |
-| Feathers | Feathers tarred enemies. They run back. |
+| Feathers | Tarred enemies run back. |
 | War Bow | Hits almost twice as hard |
 | Quick Draw | Fires almost twice as fast |
 | Siege Shell | Hits much harder |

@@ -781,7 +781,7 @@ implementer's to tune inside the targets below.
 | Where | Text |
 |---|---|
 | Tar Pit path B, name | Feathers |
-| Tar Pit path B, line | Feathers tarred enemies. They run back. |
+| Tar Pit path B, line | Tarred enemies run back. (First written as "Feathers tarred enemies. They run back.", which overlapped the card title on Linux with wider text.) |
 | One new tip line on the first level that offers path B and has a boss (level 9) | Feathers make tarred enemies run back. Bosses are too proud. (If it does not fit: "Feathers make tarred enemies run. Bosses are too proud.") |
 
 Tone is comic: a puff of feathers, an enemy running the wrong way. Nothing
