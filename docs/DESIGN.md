@@ -2392,68 +2392,75 @@ and earned stars for the current run. No result or tip from these levels
 writes to saved progress. The exhibition and its original numbers remain
 available at `?keep=1` for the art and siege rule checks.
 
-All five stops use Normal HP at scale 1 without growth, 20 starting lives,
-the full level 20 tower and special lists, tier 3, feather barrels and no
-boon offers. The gate sits 275 trail px before the Old Keep exit on each
-route. Its yard is shared on two-road levels. The last stand lasts 360
+All five stops use the Normal difficulty without HP growth, 20 starting
+lives, the full level 20 tower and special lists, tier 3, feather barrels
+and no boon offers. The table gives each level's enemy HP scale. The gate
+starts the yard at the specified trail distance before the exit, on the
+shared stretch when two roads are active. The last stand lasts 360
 combat ticks at 2× fire rate and high ground gives 1.1× maximum range.
 The painted scenes reuse the dusk plates. Dusk has clear weather, night
 storm darkens the sky and uses the existing rain and lightning, and dawn
 warms and lightens the sky.
 
-| Level | Name | Roads | Sky | Gold | Gate HP | Repair HP | Gold per full repair | Third star | Wall-site rule |
-|---:|---|---|---|---:|---:|---:|---:|---|---|
-| 21 | Rent Overdue | east | dusk | 290 | 15000 | 8300 | 49 | Unbroken | — |
-| 22 | Feather Beds | west | dusk | 230 | 3850 | 750 | 46 | Not a nail | — |
-| 23 | Both Roads | both | night storm | 295 | 14500 | 7000 | 54 | Unbroken | Royal Survey at (22, 10) |
-| 24 | Quartering | both | night storm | 290 | 15500 | 6400 | 58 | Not a nail | Quartering, 80 gold at (22, 10) |
-| 25 | The Final Notice | both | dawn | 300 | 14500 | 6300 | 62 | Unbroken | — |
+| Level | Name | Roads | Sky | Gold | HP scale | Gate HP | Yard px | Repair HP | Gold per full repair | Third star | Wall-site rule |
+|---:|---|---|---|---:|---:|---:|---:|---:|---:|---|---|
+| 21 | Rent Overdue | east | dusk | 290 | 1 | 8160 | 275 | 2600 | 90 | Unbroken | — |
+| 22 | Feather Beds | west | dusk | 235 | 1.12 | 4800 | 160 | 1150 | 66 | Not a nail | — |
+| 23 | Both Roads | both | night storm | 275 | 1.08 | 15700 | 330 | 3200 | 86 | Unbroken | Royal Survey at (22, 7) |
+| 24 | Quartering | both | night storm | 285 | 1 | 15800 | 305 | 3000 | 92 | Not a nail | Quartering, 80 gold at (22, 10) |
+| 25 | The Final Notice | both | dawn | 295 | 1.2 | 14900 | 295 | 4300 | 105 | Unbroken | — |
 
 Level 21 has no pillow windows. Level 22 has west windows at
-(540, 325) covering 170–360 trail px and (564, 170) covering 320–510
-trail px. Levels 23–25 extend the first window to 420 px. The Ram keeps
-360 base HP, 30 px/s, 12 bounty, one life on exit and 4 damage/s against
-other blockers. It deals 440 damage/s to the level 25 gate.
+(540, 325) covering 280–510 trail px and (564, 170) covering 425–720
+trail px. Levels 23–25 have west windows at the same screen positions
+covering 170–420 and 320–510 trail px. The Ram keeps 360 base HP, 30 px/s,
+12 bounty, one life on exit and 4 damage/s against other blockers. It
+deals 375 damage/s to the level 25 gate.
 
 Spawn groups are given as road, enemy, count, interval and delay. Both
-timings are in seconds. E is east and W is west.
+timings are in seconds. E is east and W is west. A Harpy flight contains
+four Harpies at 0.2-second intervals. A flight entry gives the number of
+flights, first delay and gap between flight starts. The Next preview sums
+groups of the same enemy type on the same road.
 
 | Level | Wave | Groups |
 |---:|---:|---|
 | 21 | 1 | E Collector, 42, 0.9, 0 |
-| 21 | 2 | E Troll, 8, 5.6, 0 · E Harpy, 14, 3.15, 5 |
-| 21 | 3 | E Redcoat, 43, 0.95, 0 |
-| 21 | 4 | E Hound, 45, 0.95, 0 · E Harpy, 14, 3.15, 8 |
-| 21 | 5 | E Troll, 14, 3.65, 0 · E Collector, 20, 2.4, 7 |
-| 21 | 6 | E Redcoat, 52, 0.85, 0 · E Harpy, 26, 1.83, 0.4 |
-| 22 | 1 | W Collector, 40, 1, 0 |
-| 22 | 2 | W Redcoat, 49, 0.93, 0 · W Harpy, 14, 3.15, 8 |
-| 22 | 3 | W Troll, 9, 6.3, 0 · W Hound, 21, 2.2, 7 |
-| 22 | 4 | W Hound, 43, 0.96, 0 · W Harpy, 28, 1.55, 0 |
-| 22 | 5 | W Redcoat, 46, 0.95, 0 · W Troll, 12, 4.4, 3 |
-| 22 | 6 | W Hound, 52, 0.91, 0 · W Harpy, 49, 1.05, 0 |
+| 21 | 2 | E Troll, 8, 5.6, 0 · E Harpy flights ×8, first 8, every 6.3 |
+| 21 | 3 | E Redcoat, 43, 0.95, 0 · E Harpy flights ×3, first 8, every 8.2 |
+| 21 | 4 | E Hound, 45, 0.95, 0 · E Harpy flights ×8, first 5, every 5.6 |
+| 21 | 5 | E Troll, 10, 3.5, 0 · E Collector, 20, 2.4, 7 · E Harpy flights ×6, first 8, every 7 |
+| 21 | 6 | E Redcoat, 52, 0.85, 0 · E Harpy flights ×10, first 5, every 5.1 |
+| 22 | 1 | W Collector, 28, 1.3, 0 |
+| 22 | 2 | W Redcoat, 34, 1.26, 0 · W Harpy flights ×10, first 5, every 4.2 |
+| 22 | 3 | W Troll, 9, 5.8, 0 · W Hound, 16, 2.8, 8 · W Harpy flights ×8, first 11, every 4.8 |
+| 22 | 4 | W Troll, 6, 4.6, 4 · W Hound, 31, 1.51, 4 · W Harpy, 34, 0.8, 2 |
+| 22 | 5 | W Redcoat, 38, 1.23, 0 · W Troll, 10, 4.8, 3 · W Harpy flights ×5, first 8, every 8.8 |
+| 22 | 6 | W Troll, 4, 0.3, 4 · W Troll, 12, 1.9, 8 · W Redcoat, 22, 1.8, 12 · W Harpy flights ×9, first 7, every 5.35 |
 | 23 | 1 | E Collector, 28, 1.6, 0 · W Collector, 24, 1.9, 2 |
-| 23 | 2 | E Troll, 8, 6.4, 0 · W Redcoat, 37, 1.37, 0 · W Harpy, 15, 3.2, 5 |
-| 23 | 3 | E Redcoat, 31, 1.6, 0 · W Hound, 32, 1.54, 0 |
-| 23 | 4 | E Hound, 30, 1.6, 0 · W Hound, 24, 2.1, 0 · E Harpy, 36, 1.45, 0 |
-| 23 | 5 | E Troll, 13, 4.4, 0 · W Troll, 10, 5.4, 4 |
-| 23 | 6 | E Redcoat, 38, 1.5, 0 · W Redcoat, 33, 1.75, 0 · W Harpy, 41, 1.4, 0 |
+| 23 | 2 | E Troll, 5, 7, 0 · W Redcoat, 26, 1.6, 0 · W Harpy flights ×5, first 9, every 7 |
+| 23 | 3 | E Redcoat, 30, 1.65, 0 · W Troll, 8, 6.1, 0 · E Harpy flights ×9, first 6, every 4.5 |
+| 23 | 4 | E Hound, 30, 1.6, 0 · W Hound, 24, 2.05, 0 · W Harpy flights ×11, first 1, every 4.4 |
+| 23 | 5 | E Troll, 13, 2.7, 0 · W Troll, 13, 2.7, 4 · E Harpy flights ×6, first 9, every 7.2 |
+| 23 | 6 | E Redcoat, 36, 1.46, 0 · W Redcoat, 29, 1.84, 0 · W Harpy flights ×8, first 6, every 6.1 |
 | 24 | 1 | E Collector, 31, 1.5, 0 · W Collector, 24, 1.9, 2 |
-| 24 | 2 | W Troll, 8, 6.4, 0 · E Redcoat, 37, 1.37, 0 · W Harpy, 15, 3.2, 5 |
-| 24 | 3 | W Redcoat, 36, 1.6, 0 · E Hound, 35, 1.56, 0 |
-| 24 | 4 | W Hound, 30, 1.6, 0 · E Hound, 24, 2.1, 0 · W Harpy, 37, 1.45, 0 |
-| 24 | 5 | E Troll, 13, 4.8, 0 · W Troll, 12, 4.9, 3 |
-| 24 | 6 | W Redcoat, 46, 1.45, 0 · E Redcoat, 33, 1.95, 0 · E Harpy, 42, 1.35, 0 |
+| 24 | 2 | W Troll, 6, 7, 0 · E Redcoat, 33, 1.5, 0 · W Harpy flights ×5, first 8, every 8.5 |
+| 24 | 3 | W Redcoat, 35, 1.45, 0 · E Troll, 9, 5.9, 0 · E Harpy flights ×8, first 10, every 5.1 |
+| 24 | 4 | W Hound, 30, 1.6, 0 · E Hound, 24, 2.05, 0 · W Harpy flights ×8, first 3, every 6.1 |
+| 24 | 5 | E Troll, 11, 4, 0 · W Troll, 13, 4, 11 · E Harpy flights ×7, first 6, every 6.8 |
+| 24 | 6 | W Redcoat, 41, 1.35, 0 · E Redcoat, 32, 1.8, 0 · E Harpy flights ×9, first 4, every 5.8 |
 | 25 | 1 | E Collector, 31, 1.5, 0 · W Collector, 26, 1.8, 2 |
-| 25 | 2 | E Troll, 9, 6.1, 0 · W Redcoat, 39, 1.4, 0 · W Harpy, 15, 3.2, 5 |
-| 25 | 3 | E Redcoat, 36, 1.7, 0 · W Hound, 35, 1.6, 0 |
-| 25 | 4 | E Hound, 32, 1.6, 0 · W Hound, 27, 2.1, 0 · E Harpy, 39, 1.45, 0 |
-| 25 | 5 | E Troll, 13, 4.8, 0 · W Troll, 12, 5.2, 3 |
-| 25 | 6 | W Ram, 1, 0, 13 · E Redcoat, 29, 1.6, 0 · W Redcoat, 23, 2, 0 · W Harpy, 34, 1.6, 0 · E Harpy, 18, 2.8, 8 · E King, 1, 0, 51 |
+| 25 | 2 | E Troll, 7, 6.4, 0 · W Redcoat, 34, 1.51, 0 · W Harpy flights ×5, first 8, every 8 |
+| 25 | 3 | E Redcoat, 32, 1.58, 0 · W Troll, 9, 5.8, 0 · E Harpy flights ×5, first 8, every 8.5 |
+| 25 | 4 | E Hound, 30, 1.6, 0 · W Hound, 25, 2.05, 0 · W Harpy flights ×8, first 4, every 6.1 |
+| 25 | 5 | E Troll, 10, 4.8, 0 · W Troll, 10, 4.8, 3 · E Harpy flights ×6, first 10, every 8 |
+| 25 | 6 | W Ram, 1, 0, 12 · E Redcoat, 28, 1.8, 0 · W Redcoat, 22, 2.35, 0 · E Harpy flights ×13, first 6, every 4.55 · E King, 1, 0, 24 |
 
 Good and Person value ground coverage one extra time within 24 px of
-a standing gate when they buy towers on these levels. Good pursuing
-Unbroken considers repair at or below 80% HP, keeping 70 gold in reserve.
+a standing gate when they buy towers on these levels. Good gives air
+coverage 4× its usual weight and the first Mortar or Cannon 2.2× its
+unadjusted placement score while the gate stands. Good pursuing Unbroken
+considers repair at or below 80% HP, keeping 70 gold in reserve.
 Ordinary Good and Person keep their existing repair policies. The
 Unbroken and Not a nail trials use the usual two-star line before testing
 the feat.

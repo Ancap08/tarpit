@@ -667,10 +667,10 @@ function campaignTips(touch: boolean): Readonly<Record<number, readonly string[]
     18: [`Place your ${levelTaxWord(18, 'rationing')} towers where their rings overlap.`, 'Upgrade them to keep up with the faster packs.'],
     19: ['Check the shorter ring before you buy.', 'An upgrade costs the usual price.'],
     20: ['Keep bows near the trail to cover Royal Harpies.', 'Save part of each payment for the King.'],
-    21: ['Use high ground to reach farther. The wall is ours.', 'Mend the gate between waves. Keep bows for Royal Harpies.', 'Gate down? Towers fire faster while the yard holds.'],
+    21: ['Use high ground to reach farther. The wall is ours.', 'Mend the gate between waves. Keep bows for Royal Harpies.', 'Gate down? Towers fire double for a moment. Hold the yard.'],
     22: [`${action} a lit window to feather tarred tax collectors.`, 'One pillow per window. Make the King count them.'],
     23: ['We paid for both roads. Put towers on both.', 'The Survey closes one spot. Use the rest of the wall.'],
-    24: ['Pay off the Redcoat in setup to build on his spot.', 'No quarter for free. Check the price before you pay.'],
+    24: ['Pay off the Redcoat in setup to build on his spot.', 'He eats for free. Pay him off only if you need the spot.'],
     25: ['Tar and feather the Ram. Return the notice to sender.', 'Keep towers in reach of the gate for the King.'],
   };
 }

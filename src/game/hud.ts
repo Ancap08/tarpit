@@ -143,15 +143,17 @@ export function previewText(state: GameState): string {
   const groups = nextWavePreview(state);
   if (groups.length === 0) return 'Next: none';
   if (groups.some(group => group.road !== undefined)) {
-    const byRoad = new Map<string, string[]>();
+    const byRoad = new Map<string, Map<EnemyType, number>>();
     for (const group of groups) {
       const road = group.road ?? state.map.mainRoad ?? '';
-      const label = `${group.count} ${ENEMY_SHORT_NAMES[group.type]}`;
-      const entries = byRoad.get(road) ?? [];
-      entries.push(label);
-      byRoad.set(road, entries);
+      const counts = byRoad.get(road) ?? new Map<EnemyType, number>();
+      counts.set(group.type, (counts.get(group.type) ?? 0) + group.count);
+      byRoad.set(road, counts);
     }
-    const labels = [...byRoad].map(([road, entries]) => `${roadName(road)} ${entries.join(', ')}`);
+    const labels = [...byRoad].map(([road, counts]) => {
+      const entries = [...counts].map(([type, count]) => `${count} ${ENEMY_SHORT_NAMES[type]}`);
+      return `${roadName(road)} ${entries.join(', ')}`;
+    });
     return `${SIEGE_TEXT.next} ${labels.join(' · ')}`;
   }
   // Milestone 26: one entry per type, in first-group order, counts summed

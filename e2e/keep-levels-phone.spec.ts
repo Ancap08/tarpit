@@ -30,8 +30,13 @@ for (const level of KEEP_LEVELS) {
     });
     expect(initial.tax).toEqual(level.wallSiteTax);
     await page.evaluate(() => {
+      window.__tarpit!.runBot!('botGood', 1);
+    });
+    const preview = await page.evaluate(() => window.__tarpit!.hudText!().next);
+    const harpies = level.waves[1].groups.filter(group => group.type === 'harpy');
+    expect(preview.match(/\b\d+ Harpy\b/g)).toEqual([`${harpies.reduce((total, group) => total + group.count, 0)} Harpy`]);
+    await page.evaluate(() => {
       const api = window.__tarpit!;
-      api.runBot!('botGood', 1);
       api.startWave!();
       api.step!(16 * 60);
     });

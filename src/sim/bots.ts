@@ -22,6 +22,8 @@ const TRAIL_SAMPLE_SPACING = 24;
 const BLOCK_AHEAD = 50;
 const BLOCK_APPROACH = 140;
 const SETUP_RESERVE = 30;
+const SIEGE_AIR_PRIORITY = 4;
+const SIEGE_FIRST_ARTILLERY_PRIORITY = 2.2;
 
 export interface BotPolicy {
   /** Spend a barrel turn and its charge, without applying its effects (C2 control). */
@@ -134,6 +136,7 @@ function goodPurchase(state: GameState, rotate = false, buildLimit = Infinity, b
   // A collector can sit at the gate longer than it spends in any one
   // stretch of the approach. Give that firing position extra weight.
   const siegeGate = state.level?.keepRoads && !state.gate?.fallen ? state.gate : undefined;
+  const planForSiege = siegeGate !== undefined && !rotate;
   const traffic = new Map<string | undefined, number>();
   if (state.map.otherRoads?.length) {
     for (const group of nextWavePreview(state)) {
@@ -184,7 +187,9 @@ function goodPurchase(state: GameState, rotate = false, buildLimit = Infinity, b
       // Existing concentration helps enemies die before monopolizing fire.
       const groundWeight = 1 + Math.min(0.35, local.ground / 180);
       // Extra anti-air coverage is worth most where little exists.
-      const airWeight = profile.air / (1 + local.air / 50);
+      // Ground units have to stop at the gate. Fliers have only one pass
+      // through the firing rings, and overlapping bows can cover that pass.
+      const airWeight = profile.air * (planForSiege ? SIEGE_AIR_PRIORITY : 1) / (1 + local.air / 50);
       const { road, priority } = samples[index];
       const trafficWeight = state.map.otherRoads?.length ? (traffic.get(road) ?? 0) / mostTraffic : 1;
       const openLane = state.map.otherRoads?.length && local.ground + local.air === 0 ? 2 : 1;
@@ -213,7 +218,11 @@ function goodPurchase(state: GameState, rotate = false, buildLimit = Infinity, b
           || (type === 'mortar' && support && profile.heavy > 0)
           || (type === 'tarpit' && support)
           || (type === 'firepot' && support && counts.has('tarpit'));
-        const score = benefit(type, stats, distances) * (mix ? 2 : 1) / (cost * variety);
+        // A splash tower lets the bows keep firing when walkers stack up.
+        const firstArtillery = planForSiege && (type === 'mortar' || type === 'cannon') &&
+          !counts.has('mortar') && !counts.has('cannon');
+        const priority = firstArtillery ? SIEGE_FIRST_ARTILLERY_PRIORITY : mix ? 2 : 1;
+        const score = benefit(type, stats, distances) * priority / (cost * variety);
         if (rotate && score > 0) {
           const choices = placements.get(type) ?? [];
           choices.push({ score, action: { type: 'build', cell, tower: type } });

@@ -11,6 +11,12 @@ const group = (road: 'east' | 'west') =>
 const e = group('east');
 const a = group('west');
 
+// A flight arrives together, with a gap for the next flight to form.
+function harpyFlights(road: 'east' | 'west', flights: number, first: number, gap: number): GroupDef[] {
+  const spawn = group(road);
+  return Array.from({ length: flights }, (_, index) => spawn('harpy', 4, 0.2, first + index * gap));
+}
+
 export interface KeepLevel extends LevelDef {
   readonly map: 'keep';
   readonly gate: GateDef;
@@ -22,75 +28,84 @@ export interface KeepLevel extends LevelDef {
 const kit = { map: 'keep', featherBarrels: true, allowedTowers: allTowers,
   maxTowerLevel: 3, allowedSpecials: allSpecials, hpScale: 1, hpGrowthStart: null, rewardWaves: [] } as const;
 
-const westWindows = [
-  { position: { x: 540, y: 325 }, road: 'west', from: 170, to: 360 },
+const twoRoadWindows = [
+  { position: { x: 540, y: 325 }, road: 'west', from: 170, to: 420 },
   { position: { x: 564, y: 170 }, road: 'west', from: 320, to: 510 },
 ] as const;
-const twoRoadWindows = [{ ...westWindows[0], to: 420 }, westWindows[1]] as const;
+const featherBedsWindows = [
+  { position: { x: 540, y: 325 }, road: 'west', from: 280, to: 510 },
+  { position: { x: 564, y: 170 }, road: 'west', from: 425, to: 720 },
+] as const;
 
 export const KEEP_LEVELS: readonly KeepLevel[] = [
   {
     ...kit, id: 21, keepRoads: 'east', keepSky: 'dusk', feat: { kind: 'unbroken' },
-    startGold: 290, gate: { maxHp: 15000, repairHp: 8300, repairCost: 49, yardLength: 275 },
+    startGold: 290, gate: { maxHp: 8160, repairHp: 2600, repairCost: 90, yardLength: 275 },
     waves: [
       w(e('goblin', 42, 0.9)),
-      w(e('troll', 8, 5.6), e('harpy', 14, 3.15, 5)),
-      w(e('shieldbearer', 43, 0.95)),
-      w(e('wolf', 45, 0.95), e('harpy', 14, 3.15, 8)),
-      w(e('troll', 14, 3.65), e('goblin', 20, 2.4, 7)),
-      w(e('shieldbearer', 52, 0.85), e('harpy', 26, 1.83, 0.4)),
+      w(e('troll', 8, 5.6), ...harpyFlights('east', 8, 8, 6.3)),
+      w(e('shieldbearer', 43, 0.95), ...harpyFlights('east', 3, 8, 8.2)),
+      w(e('wolf', 45, 0.95), ...harpyFlights('east', 8, 5, 5.6)),
+      w(e('troll', 10, 3.5), e('goblin', 20, 2.4, 7), ...harpyFlights('east', 6, 8, 7)),
+      w(e('shieldbearer', 52, 0.85), ...harpyFlights('east', 10, 5, 5.1)),
     ],
   },
   {
-    ...kit, id: 22, keepRoads: 'west', keepSky: 'dusk', feat: { kind: 'noRepairs' },
-    startGold: 230, gate: { maxHp: 3850, repairHp: 750, repairCost: 46, yardLength: 275 },
-    windows: westWindows,
+    ...kit, hpScale: 1.12, id: 22, keepRoads: 'west', keepSky: 'dusk', feat: { kind: 'noRepairs' },
+    startGold: 235, gate: { maxHp: 4800, repairHp: 1150, repairCost: 66, yardLength: 160 },
+    windows: featherBedsWindows,
     waves: [
-      w(a('goblin', 40, 1)),
-      w(a('shieldbearer', 49, 0.93), a('harpy', 14, 3.15, 8)),
-      w(a('troll', 9, 6.3), a('wolf', 21, 2.2, 7)),
-      w(a('wolf', 43, 0.96), a('harpy', 28, 1.55)),
-      w(a('shieldbearer', 46, 0.95), a('troll', 12, 4.4, 3)),
-      w(a('wolf', 52, 0.91), a('harpy', 49, 1.05)),
+      w(a('goblin', 28, 1.3)),
+      w(a('shieldbearer', 34, 1.26), ...harpyFlights('west', 10, 5, 4.2)),
+      w(a('troll', 9, 5.8), a('wolf', 16, 2.8, 8), ...harpyFlights('west', 8, 11, 4.8)),
+      w(a('troll', 6, 4.6, 4), a('wolf', 31, 1.51, 4), a('harpy', 34, 0.8, 2)),
+      w(a('shieldbearer', 38, 1.23), a('troll', 10, 4.8, 3), ...harpyFlights('west', 5, 8, 8.8)),
+      w(a('troll', 4, 0.3, 4), a('troll', 12, 1.9, 8), a('shieldbearer', 22, 1.8, 12), ...harpyFlights('west', 9, 7, 5.35)),
     ],
   },
   {
-    ...kit, id: 23, keepRoads: 'both', keepSky: 'night storm', feat: { kind: 'unbroken' },
-    startGold: 295, gate: { maxHp: 14500, repairHp: 7000, repairCost: 54, yardLength: 275 },
-    windows: twoRoadWindows, wallSiteTax: { kind: 'royalSurvey', site: { col: 22, row: 10 } },
+    ...kit, hpScale: 1.08, id: 23, keepRoads: 'both', keepSky: 'night storm', feat: { kind: 'unbroken' },
+    startGold: 275, gate: { maxHp: 15700, repairHp: 3200, repairCost: 86, yardLength: 330 },
+    windows: twoRoadWindows, wallSiteTax: { kind: 'royalSurvey', site: { col: 22, row: 7 } },
     waves: [
       w(e('goblin', 28, 1.6), a('goblin', 24, 1.9, 2)),
-      w(e('troll', 8, 6.4), a('shieldbearer', 37, 1.37), a('harpy', 15, 3.2, 5)),
-      w(e('shieldbearer', 31, 1.6), a('wolf', 32, 1.54)),
-      w(e('wolf', 30, 1.6), a('wolf', 24, 2.1), e('harpy', 36, 1.45)),
-      w(e('troll', 13, 4.4), a('troll', 10, 5.4, 4)),
-      w(e('shieldbearer', 38, 1.5), a('shieldbearer', 33, 1.75), a('harpy', 41, 1.4)),
+      w(e('troll', 5, 7), a('shieldbearer', 26, 1.6), ...harpyFlights('west', 5, 9, 7)),
+      w(e('shieldbearer', 30, 1.65), a('troll', 8, 6.1), ...harpyFlights('east', 9, 6, 4.5)),
+      w(e('wolf', 30, 1.6), a('wolf', 24, 2.05), ...harpyFlights('west', 11, 1, 4.4)),
+      w(e('troll', 13, 2.7), a('troll', 13, 2.7, 4), ...harpyFlights('east', 6, 9, 7.2)),
+      w(e('shieldbearer', 36, 1.46), a('shieldbearer', 29, 1.84), ...harpyFlights('west', 8, 6, 6.1)),
     ],
   },
   {
     ...kit, id: 24, keepRoads: 'both', keepSky: 'night storm', feat: { kind: 'noRepairs' },
-    startGold: 290, gate: { maxHp: 15500, repairHp: 6400, repairCost: 58, yardLength: 275 },
+    startGold: 285, gate: { maxHp: 15800, repairHp: 3000, repairCost: 92, yardLength: 305 },
     windows: twoRoadWindows, wallSiteTax: { kind: 'quartering', site: { col: 22, row: 10 }, price: 80 },
     waves: [
       w(e('goblin', 31, 1.5), a('goblin', 24, 1.9, 2)),
-      w(a('troll', 8, 6.4), e('shieldbearer', 37, 1.37), a('harpy', 15, 3.2, 5)),
-      w(a('shieldbearer', 36, 1.6), e('wolf', 35, 1.56)),
-      w(a('wolf', 30, 1.6), e('wolf', 24, 2.1), a('harpy', 37, 1.45)),
-      w(e('troll', 13, 4.8), a('troll', 12, 4.9, 3)),
-      w(a('shieldbearer', 46, 1.45), e('shieldbearer', 33, 1.95), e('harpy', 42, 1.35)),
+      w(a('troll', 6, 7), e('shieldbearer', 33, 1.5), ...harpyFlights('west', 5, 8, 8.5)),
+      w(a('shieldbearer', 35, 1.45), e('troll', 9, 5.9), ...harpyFlights('east', 8, 10, 5.1)),
+      w(a('wolf', 30, 1.6), e('wolf', 24, 2.05), ...harpyFlights('west', 8, 3, 6.1)),
+      w(e('troll', 11, 4), a('troll', 13, 4, 11), ...harpyFlights('east', 7, 6, 6.8)),
+      w(a('shieldbearer', 41, 1.35), e('shieldbearer', 32, 1.8), ...harpyFlights('east', 9, 4, 5.8)),
     ],
   },
   {
-    ...kit, id: 25, keepRoads: 'both', keepSky: 'dawn', feat: { kind: 'unbroken' },
-    startGold: 300, gate: { maxHp: 14500, repairHp: 6300, repairCost: 62, yardLength: 275, ramGateDps: 440 },
+    ...kit, hpScale: 1.2, id: 25, keepRoads: 'both', keepSky: 'dawn', feat: { kind: 'unbroken' },
+    startGold: 295, gate: { maxHp: 14900, repairHp: 4300, repairCost: 105, yardLength: 295, ramGateDps: 375 },
     windows: twoRoadWindows, endingBoss: 'grumblemaw',
     waves: [
       w(e('goblin', 31, 1.5), a('goblin', 26, 1.8, 2)),
-      w(e('troll', 9, 6.1), a('shieldbearer', 39, 1.4), a('harpy', 15, 3.2, 5)),
-      w(e('shieldbearer', 36, 1.7), a('wolf', 35, 1.6)),
-      w(e('wolf', 32, 1.6), a('wolf', 27, 2.1), e('harpy', 39, 1.45)),
-      w(e('troll', 13, 4.8), a('troll', 12, 5.2, 3)),
-      w(a('ram', 1, 0, 13), e('shieldbearer', 29, 1.6), a('shieldbearer', 23, 2), a('harpy', 34, 1.6), e('harpy', 18, 2.8, 8), e('grumblemaw', 1, 0, 51)),
+      w(e('troll', 7, 6.4), a('shieldbearer', 34, 1.51), ...harpyFlights('west', 5, 8, 8)),
+      w(e('shieldbearer', 32, 1.58), a('troll', 9, 5.8), ...harpyFlights('east', 5, 8, 8.5)),
+      w(e('wolf', 30, 1.6), a('wolf', 25, 2.05), ...harpyFlights('west', 8, 4, 6.1)),
+      w(e('troll', 10, 4.8), a('troll', 10, 4.8, 3), ...harpyFlights('east', 6, 10, 8)),
+      w(
+        a('ram', 1, 0, 12),
+        e('shieldbearer', 28, 1.8),
+        a('shieldbearer', 22, 2.35),
+        ...harpyFlights('east', 13, 6, 4.55),
+        e('grumblemaw', 1, 0, 24),
+      ),
     ],
   },
 ];
