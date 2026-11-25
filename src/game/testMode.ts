@@ -174,6 +174,7 @@ export function installGlobal(game: Phaser.Game): void {
   const displayed = (p: { x: number; y: number }) => showpieceVisit && game.scene.isActive('game')
     ? (game.scene.getScene('game') as GameScene).displayedMapPoint(p) : p;
   const always = {
+    ...(new URLSearchParams(location.search).get('keep') === '1' ? { keep: () => activeGame()?.keepState() ?? null } : {}),
     ...(showpieceVisit ? { showpiece: () => game.scene.isActive('game') ? (game.scene.getScene('game') as GameScene).showpieceState() : null } : {}),
     paused: () => activeGame()?.paused ?? false,
     pause: () => activeGame()?.setPaused(true),
@@ -331,6 +332,7 @@ export function installGlobal(game: Phaser.Game): void {
     runScript: (name, untilWave, boons) => {
       const gameScene = scene();
       if (gameScene.paused) return gameScene.state.phase;
+      if (gameScene.mapId === 'keep') throw new Error('Free play scripts require a Free play map');
       const script = SCRIPTS[name](gameScene.state.difficulty, gameScene.mapId, boons);
       return runScript(gameScene, script, untilWave);
     },

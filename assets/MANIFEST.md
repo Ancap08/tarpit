@@ -234,3 +234,52 @@ the checker looks for it.
 | `docs/art/showpiece/phone-dusk.jpg` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 phone dusk capture |
 | `docs/art/showpiece/phone-morning.jpg` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 phone morning capture |
 | `docs/art/showpiece/phone.mp4` | `scripts/art/m47Media.ts` | Tarpit agents | MIT | Campaign level 1 phone recording |
+| `public/assets/keep/crown-wide-half.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Half-size plate. Belfry, observatory and inhabited ward in wide perspective |
+| `public/assets/keep/crown-half.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Half-size plate. Belfry, observatory and inhabited ward |
+| `public/assets/keep/drift-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Wind-driven scud |
+| `public/assets/keep/far-wide-half.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Half-size plate. Rear ward and spires in wide perspective |
+| `public/assets/keep/far-half.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Half-size plate. Rear ward and spires |
+| `public/assets/keep/gate-wide-half.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Half-size plate. Vaulted passage, curtain wall and gun decks in wide perspective |
+| `public/assets/keep/gate-half.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Half-size plate. Vaulted passage, curtain wall and gun decks |
+| `public/assets/keep/glow-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Torch and brazier light spill |
+| `public/assets/keep/landscape-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Wide crag, ravine and ruined crossing |
+| `public/assets/keep/lightning-wide-half.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Half-size plate. Whole-model lightning exposure in wide perspective |
+| `public/assets/keep/lightning-half.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Half-size plate. Whole-model lightning exposure |
+| `public/assets/keep/mist-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Road fog |
+| `public/assets/keep/plinth-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Marked stone tower footprint |
+| `public/assets/keep/portrait-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Portrait crag, ravine and gate approach |
+| `public/assets/keep/road-wide-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Raised wide approach, barbican and stairs |
+| `public/assets/keep/sky-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Storm shelf and western light shafts |
+| `public/assets/keep/wings-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Portrait scenery beyond the playable field |
+| `public/assets/keep/crown-wide.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Belfry, observatory and inhabited ward in wide perspective |
+| `public/assets/keep/crown.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Belfry, observatory and inhabited ward |
+| `public/assets/keep/drift.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Wind-driven scud |
+| `public/assets/keep/far-wide.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Rear ward and spires in wide perspective |
+| `public/assets/keep/far.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Rear ward and spires |
+| `public/assets/keep/gate-wide.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Vaulted passage, curtain wall and gun decks in wide perspective |
+| `public/assets/keep/gate.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Vaulted passage, curtain wall and gun decks |
+| `public/assets/keep/glow.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Torch and brazier light spill |
+| `public/assets/keep/landscape.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Wide crag, ravine and ruined crossing |
+| `public/assets/keep/lightning-wide.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Whole-model lightning exposure in wide perspective |
+| `public/assets/keep/lightning.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Whole-model lightning exposure |
+| `public/assets/keep/mist.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Road fog |
+| `public/assets/keep/plinth.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Marked stone tower footprint |
+| `public/assets/keep/portrait.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Portrait crag, ravine and gate approach |
+| `public/assets/keep/road-wide.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Raised wide approach, barbican and stairs |
+| `public/assets/keep/sky.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Storm shelf and western light shafts |
+| `public/assets/keep/wings.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Portrait scenery beyond the playable field |
+| `docs/review/m51/keep-1024x768.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Production game capture |
+| `docs/review/m51/keep-390x664.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Production game capture |
+| `docs/review/m51/keep-390x844.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Production game capture |
+| `docs/review/m51/keep-960x580.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Production game capture |
+| `docs/review/m51/keep-dusk-detail.jpg` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Native-scale runtime study |
+| `docs/review/m51/keep-layers.jpg` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Native-scale runtime study |
+| `docs/review/m51/keep-lightning-detail.jpg` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Native-scale runtime study |
+| `docs/review/m51/keep-phone.mp4` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Production game capture |
+| `docs/review/m51/keep-390x664-midwave.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Short-phone mid-wave readability |
+| `docs/review/m51/keep-phone-comparison.png` | `scripts/art/keep_review.py` | Tarpit agents | MIT | Registered first and second phone captures |
+| `docs/review/m51/keep-phone-zoom.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Magnified phone scene |
+| `docs/review/m51/keep-phone-full-vs-half.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Phone-size crop with full source on the left and half-size source on the right |
+| `docs/review/m51/keep-loading.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Phone loading progress with one plate pending |
+| `docs/review/m51/keep-load-failed.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Phone recovery screen after a blocked glow request |
+| `docs/review/m51/keep-wall-defence.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Production game capture |

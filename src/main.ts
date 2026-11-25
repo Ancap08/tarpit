@@ -12,7 +12,9 @@ import { sound } from './game/audio/engine';
 // stay live). e2e/live.spec.ts uses it so its tick-rate checks do not depend
 // on GPU availability: headless Chromium without a GPU renders WebGL in
 // software at a few frames a second.
-const forceCanvas = new URLSearchParams(window.location.search).get('renderer') === 'canvas';
+const query = new URLSearchParams(window.location.search);
+const forceCanvas = query.get('renderer') === 'canvas';
+const keep = query.get('keep') === '1';
 
 void loadFonts().then(startGame);
 
@@ -33,7 +35,8 @@ function startGame(): void {
     // layoutSwitch.ts changes the size when the window's shape changes.
     width: currentLayout().width,
     height: currentLayout().height,
-    backgroundColor: '#111418',
+    transparent: keep,
+    backgroundColor: keep ? 'rgba(0,0,0,0)' : '#111418',
     // FIT keeps the canvas whole and letterboxes the rest of the
     // screen; Phaser re-fits on resize and orientation changes. All game and
     // test coordinates stay in canvas space (see canvasToPage in testMode.ts).

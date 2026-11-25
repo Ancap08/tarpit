@@ -29,6 +29,8 @@ export interface MapDef {
   height: number;
   /** Polyline from spawn (first point) to exit (last point). */
   path: readonly Point[];
+  /** When present, only marked sites accept towers. */
+  buildSites?: readonly Cell[];
   /**
    * Drawn map features off the path (the exit cottage). No cell whose 32 px
    * square overlaps one is buildable. Optional: test maps leave it out.
@@ -281,6 +283,8 @@ export interface GameState {
   difficulty: Difficulty;
   /** The finite campaign rules, when playing a level. */
   level?: LevelDef;
+  /** A finite exhibition outside campaign progression and Free play. */
+  fixedWaves?: readonly WaveDef[];
   /** Successful constructions, including sold towers, on levels with taxes or feats. */
   towersBuilt?: number;
   /** Number of collectors that exited on a no-leaks level, including bosses. */

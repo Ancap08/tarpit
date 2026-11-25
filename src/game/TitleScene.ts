@@ -65,6 +65,7 @@ import { PORTRAIT_TITLE, titleRects, type TitleGeometry } from './ui/geometry';
 import { MuteButton } from './ui/muteButton';
 import { LOOKS, LookStore, paintedDensity, type Look } from './skin/look';
 import { loadPainted, type PaintedAssets } from './skin/loading';
+import { duringKeepLoad } from './keep/status';
 
 /** Menu buttons: 42 px tall like every touch target (44.8 px on an iPad in landscape). */
 export const MENU_BUTTON_H = 42;
@@ -156,6 +157,8 @@ export interface GameStartData {
   map?: MapId;
   painted?: PaintedAssets;
   paintedFallback?: boolean;
+  keep?: typeof import('./keep/oldKeep');
+  keepAssets?: import('./keep/oldKeep').KeepAssets;
   showpiece?: typeof import('./showpiece/showpiece').Showpiece;
 }
 
@@ -190,6 +193,7 @@ export class TitleScene extends Phaser.Scene {
   private muteButton: MuteButton | null = null;
   private bestLine: Phaser.GameObjects.Text | null = null;
   private starting = false;
+  private enterKeep = new URLSearchParams(window.location.search).get('keep') === '1';
   /** True from the first render after create(); see "Ready" above. */
   private ready = false;
 
@@ -268,6 +272,12 @@ export class TitleScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(COLORS.titleBg);
     this.restartPending = false;
     this.starting = this.progress !== null;
+    if (this.enterKeep) {
+      this.enterKeep = false;
+      this.starting = true;
+      void this.startKeep();
+      return;
+    }
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       if (this.restartPending) return;
       this.paintedLoad?.abort();
@@ -569,6 +579,42 @@ export class TitleScene extends Phaser.Scene {
     this.refreshPicks();
     this.refreshLook();
     this.startGame({ difficulty: level, map });
+  }
+
+  private async startKeep(): Promise<void> {
+    const density = paintedDensity(this.game.canvas.getBoundingClientRect().width / this.scale.gameSize.width, window.devicePixelRatio);
+    const data = await duringKeepLoad(async (signal, update) => {
+      let plates = 0, sprites = 0, script = 0;
+      const progress = () => update((script + plates * 11 + sprites * 3) / 15);
+      const [loaded, painted] = await Promise.all([
+        import('./keep/oldKeep').then(async keep => {
+          signal.throwIfAborted();
+          script = 1;
+          progress();
+          const keepAssets = await keep.loadKeep(this.game, currentLayout().turned, signal, fraction => {
+            plates = fraction;
+            progress();
+          });
+          if (signal.aborted) {
+            keepAssets.release();
+            signal.throwIfAborted();
+          }
+          signal.addEventListener('abort', keepAssets.release, { once: true });
+          return { keep, keepAssets };
+        }),
+        loadPainted(this.textures, DEFAULT_MAP, density, fraction => {
+          sprites = fraction;
+          progress();
+        }, signal, { keep: true }).then(painted => {
+          if (!painted) throw new Error('Keep pieces unavailable');
+          sprites = 1;
+          progress();
+          return painted;
+        }),
+      ]);
+      return { ...loaded, painted, difficulty: DEFAULT_DIFFICULTY } satisfies GameStartData;
+    }, () => this.scene.restart({ screen: 'first' }));
+    if (data) this.scene.start('game', data);
   }
 
   private startGame(data: GameStartData): void {

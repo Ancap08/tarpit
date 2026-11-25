@@ -5,6 +5,7 @@
 
 /** How long the page (and manifest, icons) may take before the cached copy is served. */
 export const PAGE_TIMEOUT_MS = 3000;
+export const KEEP_ASSET_DIR = 'assets/keep/';
 export const SHOWPIECE_ASSET_DIR = 'assets/showpiece/';
 export const PAINTED_ASSET_DIR = 'assets/painted/';
 

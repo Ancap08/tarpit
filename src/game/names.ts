@@ -77,6 +77,13 @@ export const DIFFICULTY_LABELS: Readonly<Record<Difficulty, string>> = {
 };
 
 /** Map names (milestone 27): the title menu's thumbnails and the best-score line. */
+export const OLD_KEEP_NAME = 'Old Keep';
+export const KEEP_TEXT = {
+  loading: 'Loading the Old Keep…',
+  failed: 'The Old Keep could not load.',
+  back: 'Back to title',
+} as const;
+
 export const MAP_NAMES: Readonly<Record<MapId, string>> = {
   meadow: 'Meadow',
   switchback: 'Switchback',

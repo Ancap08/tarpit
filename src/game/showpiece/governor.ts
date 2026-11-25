@@ -12,7 +12,7 @@ export class DetailGovernor {
   private nextUpgradeAt = 0;
   private cooldownMs = 30_000;
 
-  constructor(private readonly pinned?: Detail) {
+  constructor(private readonly pinned?: Detail, private readonly options: { medium?: boolean } = {}) {
     this.tier = pinned ?? 2;
   }
 
@@ -37,11 +37,11 @@ export class DetailGovernor {
     this.headroomMs = mean < 17.5 ? this.headroomMs + this.elapsed : 0;
     this.elapsed = this.frames = 0;
     if (mean > 20 && this.tier > 0) {
-      this.tier = this.tier === 2 ? 1 : 0;
+      this.tier = this.tier === 2 && this.options.medium !== false ? 1 : 0;
       this.nextUpgradeAt = now + this.cooldownMs;
       this.cooldownMs *= 2;
     } else if (this.tier < 2 && now >= this.nextUpgradeAt && this.headroomMs >= 10_000) {
-      this.tier = this.tier === 0 ? 1 : 2;
+      this.tier = this.tier === 0 && this.options.medium !== false ? 1 : 2;
       this.headroomMs = 0;
     }
   }

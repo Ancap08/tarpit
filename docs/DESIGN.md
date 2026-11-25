@@ -148,6 +148,54 @@ Buildable counts are of the 450 cells.
   strokes) and the cave at the spawn. The upright town is a separate layer
   on the refused cells beside the exit.
 
+### The Old Keep (hidden look spike)
+
+The separate `?keep=1` exhibition opens directly on a Normal field with
+20 lives and 240 gold. It uses the ordinary tower prices, upgrades, enemy
+stats and wave-clear bonus. Its ten tower sites and road share one coordinate
+file, `src/sim/keepSite.json`, with the miniature renderer. The stair foot is at
+(576, 296). Collectors climb the steps to the gate threshold at (551, 272). The wall-walk sites are (15, 13) and (15, 4) in portrait and
+(13, 7) and (22, 7) in landscape. The same towers and path survive rotation.
+
+The Keep loads eleven plates for the fitted layout. The fitted canvas
+width in CSS pixels multiplied by device pixel ratio selects half-size
+plates up to and including 1,280 physical pixels in portrait or 2,048 in
+landscape. Wider canvases use the original exposures. Turning the device
+or crossing the resolution threshold disposes of the old panorama,
+decoded sources and Phaser textures before downloading the replacement.
+The battle clock holds during the swap.
+
+The load panel tracks decoded plates, the painted pieces and the Keep
+script. The opening attempt has 30 seconds from navigation and an art
+swap has 30 seconds from its start. A failed or expired attempt shows
+“The Old Keep could not load.” with “Back to title”. This also applies
+when the installed game opens the Keep offline without its files. The
+Keep's mute changes last through rotation and replay. The earlier mute
+setting returns when the player leaves for the title.
+
+The panorama caches the sky, ground, stone exposures and storm exposures
+behind the battle canvas. At low detail a single cached still combines
+the sky, ground and castle between flashes after the opening drift.
+The Keep has two detail tiers. High (2) updates every 15 ms. Low (0)
+updates every 96 ms, holds the fittings still, keeps one road fog strip
+and the two gate blooms, and skips the moving cloud veils and rain.
+With `?perf=1`, `keepTier=2` or `keepTier=0` pins the corresponding tier.
+The governor starts on high and drops directly to low when a 750 ms
+window averages over 20 ms per frame. Recovery to high requires 10
+continuous seconds of windows averaging below 17.5 ms per frame and a
+cooldown of 30 seconds, which doubles after each drop. At scene startup
+the governor ignores the first eight frame samples so the initial
+composite and texture upload stay outside the measurement window.
+
+| Wave | Groups (enemy, count, seconds between spawns, start in seconds) |
+| --- | --- |
+| 1 | Goblin, 12, 0.85, 0 |
+| 2 | Wolf, 10, 0.9, 0 · Shieldbearer, 5, 1.7, 3 |
+| 3 | Goblin, 16, 0.6, 0 · Troll, 4, 2.8, 2 · Harpy, 6, 1.3, 4 |
+
+Clearing wave 3 ends the exhibition. Replay starts fresh. The map is absent
+from the campaign, Free play, balance runs and progress stores.
+
 ## Economy and lives
 
 - Each kill pays the enemy's bounty. Clearing a wave pays a 25 gold bonus.

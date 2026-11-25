@@ -122,22 +122,23 @@ export function waveDef(n: number): WaveDef {
   return def;
 }
 
-export function lastWave(state: Pick<GameState, 'level'>): number {
-  return state.level?.waves.length ?? LAST_WAVE;
+export function lastWave(state: Pick<GameState, 'level' | 'fixedWaves'>): number {
+  return state.level?.waves.length ?? state.fixedWaves?.length ?? LAST_WAVE;
 }
 
 /**
  * Whether a wave follows the current one (milestone 26): always in an
  * endless game, otherwise until the last wave of the table.
  */
-export function hasNextWave(state: Pick<GameState, 'wave' | 'endless' | 'level'>): boolean {
+export function hasNextWave(state: Pick<GameState, 'wave' | 'endless' | 'level' | 'fixedWaves'>): boolean {
   return (!state.level && state.endless) || state.wave < lastWave(state);
 }
 
-export function gameWaveDef(state: Pick<GameState, 'level'>, wave: number): WaveDef {
-  if (!state.level) return waveDef(wave);
-  const def = state.level.waves[wave - 1];
-  if (!def) throw new RangeError(`No wave ${wave} in level ${state.level.id}`);
+export function gameWaveDef(state: Pick<GameState, 'level' | 'fixedWaves'>, wave: number): WaveDef {
+  const waves = state.level?.waves ?? state.fixedWaves;
+  if (!waves) return waveDef(wave);
+  const def = waves[wave - 1];
+  if (!def) throw new RangeError(`No wave ${wave} in ${state.level ? `level ${state.level.id}` : 'exhibition'}`);
   return def;
 }
 

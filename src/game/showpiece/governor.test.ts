@@ -2,8 +2,7 @@ import { expect, it } from 'vitest';
 import { GameClock } from '../loop';
 import { DetailGovernor } from './governor';
 
-function trace() {
-  const quality = new DetailGovernor();
+function trace(quality = new DetailGovernor()) {
   let now = 0;
   quality.sample(now);
   const frames = (count: number, gap: number) => {
@@ -12,13 +11,17 @@ function trace() {
   return { quality, frames };
 }
 
-it('waits at least 30 seconds to restore detail and doubles the wait after another drop', () => {
-  const { quality, frames } = trace();
+it.each([true, false])('keeps the recovery cooldown with medium enabled: %s', medium => {
+  const { quality, frames } = trace(new DetailGovernor(undefined, { medium }));
+  const lower = medium ? 1 : 0;
+  expect(quality.tier).toBe(2);
   for (const cooldown of [30_000, 60_000]) {
-    frames(25, 30);
-    expect(quality.tier).toBe(1);
+    frames(24, 30);
+    expect(quality.tier).toBe(2);
+    frames(1, 30);
+    expect(quality.tier).toBe(lower);
     frames(cooldown / 15 - 1, 15);
-    expect(quality.tier).toBe(1);
+    expect(quality.tier).toBe(lower);
     frames(1, 15);
     expect(quality.tier).toBe(2);
   }

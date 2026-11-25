@@ -113,6 +113,7 @@
 // which keeps it if it beats the stored best for this map and level.
 
 import Phaser from 'phaser';
+import { duringKeepLoad, finishKeepLoad } from './keep/status';
 import { panel, THEME } from './ui/theme';
 import {
   buildTower,
@@ -203,6 +204,7 @@ import {
   pastDragThreshold,
   type Rect,
 } from './input';
+import { DetailGovernor } from './showpiece/governor';
 import { LANDSCAPE, TAXED_PORTRAIT, type Layout, type LayoutKind } from './layout';
 import { COLORS, FONT, TEXT } from './palette';
 import { currentLayout } from './layoutSwitch';
@@ -263,7 +265,7 @@ export interface UiState {
   /** True when the last pointer input was a touch. */
   isTouch: boolean;
   /** The map this game is played on (milestone 27). */
-  map: MapId;
+  map: MapId | 'keep';
   /** Milestone 32b: the layout the scene is drawn in. */
   layout: LayoutKind;
   /** Milestone 32b follow-up: the touch lift in canvas px (48 in landscape; 48 CSS px on screen in portrait). */
@@ -507,6 +509,10 @@ export class GameScene extends Phaser.Scene {
   /** Milestone 34: the map's ground, growth and moving things. */
   private living: LivingMap | PaintedSkin | null = null;
   private paintedAssets?: PaintedAssets;
+  private keepModule?: GameStartData['keep'];
+  private keep?: import('./keep/oldKeep').KeepView;
+  private keepAssets?: GameStartData['keepAssets'];
+  private keepLoading = false;
   private showpieceType?: GameStartData['showpiece'];
   private showpiece?: import('./showpiece/showpiece').Showpiece;
   private paintedFallback = false;
@@ -522,6 +528,8 @@ export class GameScene extends Phaser.Scene {
     this.currentMap = this.campaignLevel?.map ?? data?.map ?? DEFAULT_MAP;
     this.paintedAssets = data?.painted;
     this.showpieceType = data?.showpiece;
+    this.keepModule = data?.keep;
+    this.keepAssets = data?.keepAssets;
     this.paintedFallback = data?.paintedFallback ?? false;
   }
 
@@ -530,7 +538,7 @@ export class GameScene extends Phaser.Scene {
    * the game. layoutSwitch.ts calls this after it resized the canvas.
    */
   relayout(): void {
-    if (!this.dynamic) return;
+    if (!this.dynamic || this.keepLoading) return;
     // Follow-up (verifier): requests coalesce. The game to carry is refreshed on every
     // request and kept until the one queued restart's create() takes it; that create()
     // reads the newest layout, so a burst of resizes ends on the window's final shape.
@@ -540,19 +548,40 @@ export class GameScene extends Phaser.Scene {
     if (this.restartPending) return;
     this.restartPending = true;
     const data: GameStartData = {
-      difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, showpiece: this.showpieceType,
+      difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, showpiece: this.showpieceType, keep: this.keepModule,
       paintedFallback: this.paintedFallback,
+      keepAssets: this.keepAssets?.id === this.keepModule?.currentKeepPlateSet(this.game, currentLayout().turned).id ? this.keepAssets : undefined,
     };
+    this.keepAssets = data.keepAssets;
     this.scene.restart(data);
   }
 
   create(): void {
+    if (this.keepModule) {
+      if (this.keepAssets?.id !== this.keepModule.currentKeepPlateSet(this.game, currentLayout().turned).id) {
+        this.keepAssets?.release();
+        this.keepAssets = undefined;
+        this.keepLoading = true;
+        const module = this.keepModule;
+        void duringKeepLoad((signal, progress) => module.loadKeep(this.game, currentLayout().turned, signal, progress), () => this.toMenu())
+          .then(assets => {
+            if (!assets) return;
+            this.keepAssets = assets;
+            this.create();
+          });
+        return;
+      }
+      this.keepLoading = false;
+      this.events.once(Phaser.Scenes.Events.RENDER, finishKeepLoad);
+    }
+    if (this.keepModule) this.cameras.main.setBackgroundColor('rgba(0,0,0,0)');
+    else if (this.game.config.transparent) this.cameras.main.setBackgroundColor('#111418');
     // Only a relayout's restart resumes; Play again, the title and a first start begin a new game.
     const resume = this.restartPending ? this.resume : null;
     this.restartPending = false;
     this.leaving = false;
     this.resume = null;
-    this.state = resume?.state ?? createGame({ difficulty: this.difficulty, map: this.currentMap, level: this.campaignLevel });
+    this.state = resume?.state ?? this.keepModule?.createKeep() ?? createGame({ difficulty: this.difficulty, map: this.currentMap, level: this.campaignLevel });
     const base = currentLayout();
     this.layout = base.turned && this.state.level?.taxes ? TAXED_PORTRAIT : base;
     if (this.scale.height !== this.layout.height) this.scale.setGameSize(this.layout.width, this.layout.height);
@@ -595,16 +624,35 @@ export class GameScene extends Phaser.Scene {
     // Milestone 32b: world-space layers take the layout's transform (placeWorld); the rest is placed through it.
     const world = () => this.layout.placeWorld(this.add.graphics());
     // Milestone 34: the living map (decor/livingMap.ts): the baked ground, trees and bushes, and the moving things, under everything else.
-    this.painted = this.paintedAssets ? new PaintedSkin(this, this.paintedAssets, this.layout, this.state.map, isTestMode(), this.clock) : undefined;
-    this.living = this.painted ?? new LivingMap(this, this.state.map, this.layout, isTestMode(), this.clock);
+    this.painted = this.paintedAssets ? new PaintedSkin(this, this.paintedAssets, this.layout, this.state.map, isTestMode(), this.clock, !this.keepModule) : undefined;
+    this.living = this.painted ?? (this.keepModule ? null : new LivingMap(this, this.state.map, this.layout, isTestMode(), this.clock));
     this.town = new Town(this, this.state.map, this.layout, isTestMode(), this.painted);
     this.ground = world();
     this.painted?.placeGround(this.ground);
+    if (this.keepModule) {
+      sound.beginSessionMute();
+      const assets = this.keepAssets!;
+      const refitKeep = () => {
+        if (this.keepAssets?.id !== this.keepModule?.currentKeepPlateSet(this.game, currentLayout().turned).id) this.relayout();
+      };
+      this.scale.on(Phaser.Scale.Events.RESIZE, refitKeep);
+      this.town.layer.setVisible(false);
+      this.keep = new this.keepModule.KeepView(this, this.layout, this.state.map, this.clock, !this.autoTick, DetailGovernor, assets);
+      if (this.painted) this.painted.worldTexture = this.keep.light.key;
+      this.children.moveBelow(this.keep.layer, this.ground);
+      this.events.once('shutdown', () => {
+        this.scale.off(Phaser.Scale.Events.RESIZE, refitKeep);
+        this.keep?.destroy();
+        this.keep = undefined;
+        if (this.keepAssets !== assets) assets.release();
+      });
+    }
     this.overlay = world();
     this.dynamic = world();
     this.enemySprites = new EnemySprites(this, isTestMode(), this.layout, this.painted, this.clock);
     this.shotFx = world();
-    this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx), this.layout, this.clock) : null;
+    this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx), this.layout, this.clock,
+      this.keep ? 'rgba(0,0,0,0)' : undefined) : null;
     if (this.showpieceType && this.paintedAssets) {
       // Put the entire town, including its sack and flag, under the pasture daylight.
       this.children.moveBelow(this.town.layer, this.ground);
@@ -645,7 +693,7 @@ export class GameScene extends Phaser.Scene {
       onPick: (type) => this.togglePick(type),
       onSpecial: () => this.onSpecialButton(),
       onSpecialPick: (type) => this.selectSpecial(type),
-    }, this.layout, this.painted, !!this.showpiece);
+    }, this.layout, this.painted, this.pauseOnResult);
     this.panel = new TowerPanel(this, this.layout, {
       onUpgrade: (path) => {
         if (this.panel.cell !== null) this.upgrade(this.panel.cell, path);
@@ -781,7 +829,7 @@ export class GameScene extends Phaser.Scene {
       if (handled.has(key)) return;
       handled.add(key);
       if (key.repeat || key.altKey || key.ctrlKey || key.metaKey) return;
-      if ((key.key.toLowerCase() === 'p' && (!this.endScreen.handleKey || this.showpiece)) || (this.paused && key.key === 'Escape')) {
+      if ((key.key.toLowerCase() === 'p' && (!this.endScreen.handleKey || this.pauseOnResult)) || (this.paused && key.key === 'Escape')) {
         this.setPaused(!this.paused);
         return;
       }
@@ -801,12 +849,16 @@ export class GameScene extends Phaser.Scene {
     return this.autoTick ? this.clock.nowMs : this.frozenMs;
   }
 
+  private get pauseOnResult(): boolean {
+    return !!(this.keep || this.showpiece);
+  }
+
   get paused(): boolean {
     return this.clock.paused;
   }
 
   setPaused(paused: boolean): void {
-    if (paused === this.paused || this.leaving || !this.pausePanel || (!this.showpiece && endKind(this.state))) return;
+    if (paused === this.paused || this.leaving || !this.pausePanel || (!this.pauseOnResult && endKind(this.state))) return;
     this.clock.paused = paused;
     this.time.paused = paused;
     sound.setPaused(paused);
@@ -822,6 +874,7 @@ export class GameScene extends Phaser.Scene {
       this.freezePlay();
     } else {
       this.showpiece?.resumed();
+      this.keep?.resumed();
       // Discard the tween manager's wall time since its last running frame.
       this.tweens.getDelta(true);
       this.tweens.resumeAll();
@@ -1292,7 +1345,7 @@ export class GameScene extends Phaser.Scene {
         this.mag === null
           ? null
           : { x: this.mag.box.x, y: this.mag.box.y, width: this.mag.box.width, height: this.mag.box.height, side: this.mag.box.side, top: this.mag.box.top, centre: { ...this.mag.centre } },
-      map: this.currentMap,
+      map: this.mapId,
       pick: this.pick,
       hoverCell: this.hoverCell,
       armedCell: this.armed,
@@ -1384,8 +1437,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** The map this game runs on (milestone 27). */
-  get mapId(): MapId {
-    return this.currentMap;
+  get mapId(): MapId | 'keep' {
+    return this.keepModule ? 'keep' : this.currentMap;
   }
 
   /** Start a brand-new game in a fresh scene, on the same level and map. */
@@ -1394,14 +1447,14 @@ export class GameScene extends Phaser.Scene {
     this.leaving = true;
     this.restartPending = false;
     this.resume = null;
-    const data: GameStartData = { difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, showpiece: this.showpieceType, paintedFallback: this.paintedFallback };
+    const data: GameStartData = { difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, showpiece: this.showpieceType, keep: this.keepModule, keepAssets: this.keepAssets, paintedFallback: this.paintedFallback };
     this.scene.restart(data);
   }
 
   /** Back to the title menu (milestone 25), which still shows the level and (milestone 27) map just played. */
   toMenu(): void {
     if (this.openEnding(false)) return;
-    this.leaveForTitle({ screen: this.state.level ? 'levelMap' : 'freePlay' });
+    this.leaveForTitle({ screen: this.keepModule ? 'first' : this.state.level ? 'levelMap' : 'freePlay' });
   }
 
   private openEnding(replayLevel: boolean): boolean {
@@ -1410,15 +1463,21 @@ export class GameScene extends Phaser.Scene {
     return true;
   }
 
-  private leaveForTitle(destination: { screen: 'levelMap' | 'freePlay' | 'levelCard' | 'ending'; levelId?: number; replayLevel?: boolean }): void {
+  private leaveForTitle(destination: { screen: 'first' | 'levelMap' | 'freePlay' | 'levelCard' | 'ending'; levelId?: number; replayLevel?: boolean }): void {
     if (this.leaving) return;
     this.leaving = true;
     this.restartPending = false;
     this.resume = null;
+    if (this.keepModule) {
+      sound.endSessionMute();
+      this.keepAssets = undefined; // The view releases its set when Phaser shuts it down.
+      this.keepLoading = false;
+    }
     this.scene.start('title', destination);
   }
 
   update(_time: number, delta: number): void {
+    if (this.keepLoading) return;
     // Self-check (32b follow-up): a scene drawn for another layout than the window's rebuilds.
     if (this.layout.kind !== currentLayout().kind && !this.leaving) {
       this.relayout();
@@ -1481,6 +1540,7 @@ export class GameScene extends Phaser.Scene {
    * run too.
    */
   private recordScore(): void {
+    if (this.keepModule) return;
     const cleared = wavesCleared(this.state);
     if (cleared <= this.recordedCleared) return;
     this.recordedCleared = cleared;
@@ -1517,7 +1577,7 @@ export class GameScene extends Phaser.Scene {
       }
       if (event.kind !== 'exit') continue;
       const spot = this.enemySprites.spot(event.enemyId);
-      if (spot) this.town.sacks.release(ENEMY_STATS[spot.type].livesCost, this.animationTime);
+      if (spot && !this.keepModule) this.town.sacks.release(ENEMY_STATS[spot.type].livesCost, this.animationTime);
     }
     if (puff) sound.play('impact.feathers');
     this.barricadeFx.onEvents(events);
@@ -1559,6 +1619,8 @@ export class GameScene extends Phaser.Scene {
   towerAngle(cell: Cell): number | null {
     return this.fx?.towerAngle(cell) ?? null;
   }
+
+  keepState() { return this.keep?.snapshot() ?? null; }
 
   showpieceState() { return this.showpiece?.snapshot() ?? null; }
 
@@ -1718,12 +1780,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   redraw(): void {
-    if (!this.dynamic) return;
+    if (!this.dynamic || this.keepLoading) return;
+    this.keep?.frame(this.pick !== null || this.press !== null || this.aiming !== null || this.specialMenuOpen);
     this.showpiece?.draw(this.state, this.pick !== null || this.press?.active === true,
       !this.press?.active && !this.aimPress?.active && !this.panel?.cell && !this.state.pendingBoon && !this.specialMenuOpen && !this.held?.tooltip);
     this.aim.prune(this.state);
     // Milestone 34: growth on a tower's cell hides; all of it fades while a tower is being placed (a pick or a drag).
-    this.town.update(this.state, this.animationTime);
+    if (!this.keepModule) this.town.update(this.state, this.animationTime);
     this.living?.update(this.state, this.pick !== null || this.press?.active === true);
     this.ground.clear();
     this.specialFx.drawGround(this.ground, this.state);
@@ -2002,7 +2065,8 @@ export class GameScene extends Phaser.Scene {
       const frame = this.add.graphics().setDepth(1000);
       const cam = this.cameras.add(box.x, box.y, box.width, box.height, false, 'magnifier');
       cam.inputEnabled = false;
-      cam.setZoom(MAGNIFIER_ZOOM).setBackgroundColor(COLORS.grass);
+      cam.setZoom(MAGNIFIER_ZOOM).setBackgroundColor(this.keep ? '#111418' : COLORS.grass);
+      this.keep?.showMagnifiedGround();
       cam.ignore([frame, this.bannerBg, this.bannerMain, this.bannerHint]);
       this.mag = { cam, frame, box, centre };
     }
@@ -2023,6 +2087,7 @@ export class GameScene extends Phaser.Scene {
     if (this.mag === null) return;
     this.cameras.remove(this.mag.cam);
     this.mag.frame.destroy();
+    this.keep?.hideMagnifiedGround();
     this.mag = null;
   }
 

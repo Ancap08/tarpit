@@ -175,6 +175,7 @@ function registerSheets(textures: Phaser.Textures.TextureManager, atlas: HTMLIma
 export async function loadPainted(
   textures: Phaser.Textures.TextureManager, map: MapId, displayDensity: PaintedDensity,
   onProgress: (progress: number) => void, cancellation: AbortSignal,
+  options?: { keep: true },
 ): Promise<PaintedAssets | undefined> {
   if (cancellation.aborted) return undefined;
   const existing = loaded.get(textures);
@@ -197,7 +198,7 @@ export async function loadPainted(
   let probeTimer: ReturnType<typeof setTimeout> | undefined;
   const registered: string[] = [];
   try {
-    await Promise.race([waitForWorkerControl(), aborted]);
+    if (!options?.keep) await Promise.race([waitForWorkerControl(), aborted]);
     signal.throwIfAborted();
     let density = displayDensity;
     let probe: Promise<HTMLImageElement> | undefined;

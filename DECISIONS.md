@@ -1788,3 +1788,73 @@ can change it; "Kyle" means Kyle decided.
     already tarred them before this milestone. Left as is.
   - Stale records (README's "every special refills in 20 s", DEVLOG's
     retune table) sent back with the wording change.
+
+## 2026-11-24, Act Three and milestone 51 (the Old Keep, a look spike)
+
+- **A third act of new levels: the Siege.** Decided by Kyle ("Yes, let's
+  start with act 3. The Hero looks right and the wall as you proposed it is
+  fine for now."). New power goes into new levels, after feather barrels
+  failed 12 of 20 tuned levels until they were confined.
+- **The castle's look is to be grand, not modest,** even if it is out of
+  place beside the rest (Kyle). His two reference images are mood only; the
+  castle is our own design.
+- **A full "defend from behind the wall" mode is the candidate for version
+  2** (Kyle raised it and asked whether to save it; coordinator's advice,
+  which he accepted by choosing the order: build the castle and as much of
+  that feel as today's rules allow in Act Three, and let it show whether
+  version 2 should be the wall game).
+- **Castle first** (Kyle: "Yes, castle first"): a look spike before any
+  rule depends on the art.
+- **Coordinator told Kyle what the pipeline can and cannot do:** dense
+  detail and motion from Blender scripts, not the fidelity of concept art.
+  If it falls short, a painted or generated backdrop would change the rule
+  on where art may come from, and that is Kyle's decision then.
+- **Coordinator's assumptions, stated to Kyle:** the fortress is the
+  town's refuge; the tone stays right for children.
+- **First pass of the Old Keep judged by the coordinator: a good model, not
+  yet grand.** It is a detailed, well-lit castle (spires, rose window,
+  clock, buttresses, portcullis) and every limit held (0.89 MB of art
+  against 8 MB; 16.7 ms frames at every tier). Against Kyle's words it
+  falls short in five ways: it is small on the phone and reads as a toy on
+  a lawn; a Toll Troll is nearly as tall as the gate; it sits on flat
+  ground with no crag, ravine or wall running off the screen; the sky is
+  calm; and the enemies and towers are lit for daylight in a dusk scene. A
+  second pass is ordered on those points before Kyle is asked for a
+  verdict. Kyle was sent the first-pass stills and recording as they are.
+- **No Astra until Kyle's usage resets, about three days from 2026-11-24**
+  (Kyle: "Astra is now being billed at higher rate so we can use them when
+  the usage resets"). Agreed for that time, on the coordinator's proposal:
+  builds go to `gpt-6.2-sol` at high, in smaller briefs than Astra took
+  (rule, then levels and tuning, then screens and art, each checked before
+  the next); fixes and small items stay on Sol at high; if Sol stops twice
+  on the same piece or misses the same target twice, that piece goes to
+  Claude Opus at medium; Claude Sonnet at medium verifies everything; the
+  coordinator (Fable) plans and reviews and writes no game code. When Opus
+  builds, the automated Codex review on the pull request is the cross-check
+  from the other provider. Sol has not done Blender art on this project:
+  it gets one small art item first, and larger castle changes wait or go to
+  Opus if the quality drops. The earlier rule (Astra at medium for bigger
+  builds, Astra at low as the fallback) returns when Kyle says so.
+- **Verifier (Sonnet) on the Old Keep: fix first.** Safe behind its switch
+  (174 bot runs and the sim output identical to main; no keep request with
+  the switch off; saved data untouched; both art scripts reproduce every
+  plate byte for byte). Three things before Kyle opens it on a phone:
+  - **Memory.** All 17 plates for both orientations are decoded at once,
+    248.6 MB at 4 bytes a pixel, of which a portrait phone needs 143.9 MB.
+    On an iPhone with 2 to 3 GB that risks the browser being killed.
+  - **Loading.** About 4.5 MB on a first visit, 21 seconds on a slow
+    connection with a blank dark canvas, and a silent drop to the title if
+    a plate fails.
+  - **The 16.7 ms frame time is a cap, not headroom.** The main thread is
+    70 to 80% busy at native speed and 93 to 98% at a quarter speed, about
+    twice an ordinary painted map, and the quality tiers barely change it.
+    The implementer's numbers were right and the conclusion drawn from
+    them (by the coordinator too) was not.
+  Sent to Sol at high as the first job under the no-Astra rule; it includes
+  a half-size set of plates from the art scripts, which is also Sol's first
+  art item on this project.
+- **The Old Keep has two quality tiers, high and low** (Sol's choice of the
+  smaller fix, accepted by the coordinator). CI showed the medium tier
+  costing more than high on Linux, twice. Low is 22 to 31% cheaper than
+  high on both machines, and the test now asks for at least 10% in the
+  same run.
