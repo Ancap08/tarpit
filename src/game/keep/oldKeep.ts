@@ -114,8 +114,6 @@ export class KeepView {
     }
     this.rain = scene.add.graphics();
     this.scenery.add(this.rain);
-    scene.input.on('pointerdown',this.dismiss,this);
-    scene.input.keyboard?.on('keydown',this.dismiss,this);
     if (perf) {
       this.label = document.createElement('output');
       this.label.style.cssText = 'position:fixed;right:2px;top:2px;color:white;background:#19211ee6;font:11px monospace;padding:2px 4px;pointer-events:none';
@@ -126,10 +124,6 @@ export class KeepView {
 
   private native(x: number, y: number) {
     return { x:this.gate.x+(x-640)*this.castleW/1280, y:this.gate.y+(y-934)*this.castleH/960 };
-  }
-
-  private dismiss(): void {
-    if (!this.clock.paused) this.finishedOpening = true;
   }
 
   private hangBanners(t: number): void {
@@ -149,14 +143,14 @@ export class KeepView {
     });
   }
 
-  frame(): void {
+  frame(interacting = false): void {
     if (this.clock.paused && this.previous !== -Infinity) return;
     const ms = this.clock.nowMs;
     if (this.lastFrame !== ms) this.quality.sample(ms);
     this.lastFrame = ms;
     const tier = this.quality.tier;
     const calm = this.frozen || this.reduced.matches;
-    if (this.scene.state.towers.length || this.scene.state.wave > 0) this.finishedOpening = true;
+    if (interacting || this.scene.state.towers.length || this.scene.state.wave > 0) this.finishedOpening = true;
     const opening = calm || this.finishedOpening ? 0 : Math.max(0,1-ms/3600);
     if (calm === this.lastCalm && (calm || (ms-this.previous < [96,32,15][tier] && !(this.opening && !opening)))) return;
     this.lastCalm = calm;
@@ -215,8 +209,6 @@ export class KeepView {
   resumed(): void { this.quality.resetWindow(2); }
 
   destroy(): void {
-    this.scene.input.off('pointerdown',this.dismiss,this);
-    this.scene.input.keyboard?.off('keydown',this.dismiss,this);
     this.label?.remove();
   }
 }

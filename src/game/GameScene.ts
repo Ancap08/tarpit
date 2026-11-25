@@ -1742,7 +1742,7 @@ export class GameScene extends Phaser.Scene {
 
   redraw(): void {
     if (!this.dynamic) return;
-    this.keep?.frame();
+    this.keep?.frame(this.pick !== null || this.press !== null || this.aiming !== null || this.specialMenuOpen);
     this.showpiece?.draw(this.state, this.pick !== null || this.press?.active === true,
       !this.press?.active && !this.aimPress?.active && !this.panel?.cell && !this.state.pendingBoon && !this.specialMenuOpen && !this.held?.tooltip);
     this.aim.prune(this.state);
