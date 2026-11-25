@@ -305,11 +305,14 @@ test('session reset brings back normal story and tips, once per screen, without 
   expect(await uiKeys(page)).toContain('title:tips');
 });
 
+// Linux draws the bundled font about 2.6% wider than macOS before scaling.
+const wideFactor = process.platform === 'darwin' ? 1.09 : 1.06;
+
 for (const font of ['normal', 'tall fallback', 'tall Caslon', 'wide'] as const) {
   test(`owner mark and page fit in ${font} font mode`, async ({ page }, info) => {
     if (font === 'tall fallback') await useTallFontMetrics(page);
     if (font === 'tall Caslon') await useTallFontMetrics(page, false);
-    if (font === 'wide') await useWideFontMetrics(page);
+    if (font === 'wide') await useWideFontMetrics(page, wideFactor);
     const viewports = info.project.name === 'phone' ? [{ width: 390, height: 664 }, { width: 390, height: 844 }] : [page.viewportSize()!];
     for (const { width, height } of viewports) {
       await test.step(`${width}x${height}`, async () => {
@@ -357,10 +360,12 @@ async function checkFit(page: Page, controls: Record<string, string>) {
     expect(box.br.y - box.tl.y, box.key).toBeGreaterThanOrEqual(44);
     const label = boxes.text.find(label => label.text === box.text);
     expect(label, box.key).toBeDefined();
-    expect(label!.x, box.key).toBeGreaterThanOrEqual(box.x + 4);
-    expect(label!.x + label!.width, box.key).toBeLessThanOrEqual(box.x + box.width - 4);
-    expect(label!.y, box.key).toBeGreaterThanOrEqual(box.y + 4);
-    expect(label!.y + label!.height, box.key).toBeLessThanOrEqual(box.y + box.height - 4);
+    // The 2 px outline straddles the box bounds. Leave 4 px inside the outline.
+    const inset = 1 + 4;
+    expect(label!.x, box.key).toBeGreaterThanOrEqual(box.x + inset);
+    expect(label!.x + label!.width, box.key).toBeLessThanOrEqual(box.x + box.width - inset);
+    expect(label!.y, box.key).toBeGreaterThanOrEqual(box.y + inset);
+    expect(label!.y + label!.height, box.key).toBeLessThanOrEqual(box.y + box.height - inset);
     for (const other of boxes.text.filter(text => text !== label)) {
       expect(overlapping(box, other), `${box.key} overlaps ${other.text}`).toBe(false);
     }

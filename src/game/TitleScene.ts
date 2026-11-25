@@ -507,7 +507,7 @@ export class TitleScene extends Phaser.Scene {
       const keys = ['campaign', 'freePlay'];
       if (ownerMode) {
         this.action('title:owner', portrait ? { x: cx - 64, y: 728, width: 128, height: 80 }
-          : { x: 14, y: 14, width: 98, height: 44 }, OWNER_TEXT.mark, toOwner, 21);
+          : { x: 14, y: 14, width: 98, height: 46 }, OWNER_TEXT.mark, toOwner, 21);
         keys.push('owner');
       }
       this.bindMenuKeys(keys);

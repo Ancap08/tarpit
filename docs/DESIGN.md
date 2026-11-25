@@ -2640,6 +2640,10 @@ regular win on that level. A regular win always records its own pass, even
 if it earns fewer stars than the owner best.
 
 Owner's page opens the three broadsides, both act closes, both campaign
-endings and all 25 sets of tips. Opening and leaving a preview does not mark
-it seen. The session control starts fresh in-memory seen records for both
+endings and all 25 sets of tips. The broadside buttons read “Act 1 broadside”,
+“Act 2 broadside” and “Act 3 broadside”. Every button label, including the
+title's Owner mark, leaves at least 4 canvas px inside the outer outline in
+normal, tall and wide font modes. Opening and leaving a preview does not mark
+it seen. The Owner mark and Back to title button are 46 canvas px tall in
+landscape. The session control starts fresh in-memory seen records for both
 broadsides and tips. Repeat visits use those records until the page reloads.

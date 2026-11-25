@@ -526,9 +526,9 @@ export const STORY_TEXT = {
 export const OWNER_TEXT = {
   mark: 'Owner',
   title: "Owner's page",
-  opening: 'Act One broadside',
-  secondAct: 'Act Two broadside',
-  thirdAct: 'Act Three broadside',
+  opening: 'Act 1 broadside',
+  secondAct: 'Act 2 broadside',
+  thirdAct: 'Act 3 broadside',
   firstClose: 'Level 10 close',
   ending: 'Level 20 ending',
   secondClose: 'Act Two close',

@@ -206,7 +206,7 @@ export function drawOwnerPage(scene: Phaser.Scene, portrait: boolean, levels: re
   levels.forEach(({ id }, index) => button(`owner:tips:${id}`,
     grid(index, 5, portrait ? 432 : 580, portrait ? 590 : 285, portrait ? 80 : 44, portrait ? 8 : 4),
     String(id), () => tips(id), portrait ? 24 : 20));
-  button('back', row(portrait ? 1055 : 524, portrait ? 250 : 208, portrait ? 82 : 44), OWNER_TEXT.back, back, 21);
+  button('back', row(portrait ? 1055 : 524, portrait ? 250 : 208, portrait ? 82 : 46), OWNER_TEXT.back, back, 21);
   return keys;
 }
 
