@@ -11457,3 +11457,51 @@ the medians of three 80-frame samples per tier in the same run at 4×
 CPU throttle. Low must cost at least 10% less per frame than high. The
 old Linux samples for these two tiers would pass, with reductions of
 27.3% and 21.8%. The earlier tables record their respective three-tier builds.
+
+## Milestone 52a: Old Keep gate trials
+
+Good and Person played the three existing Old Keep waves with the same
+240 opening gold, wall-walk bonus, repair rules and enemy stats. Only
+starting and maximum gate HP varied. Stars below apply the Act Three
+scoring, including Unbroken, to the result for comparison. The exhibition
+itself awards no campaign stars.
+
+| Starting gate HP | Bot | Stars | Lives | Lowest gate HP | Repairs | Repair gold | Last stand |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| 240 (half) | Good | 2 | 17 | 0 | 0 | 0 | Yes |
+| 240 (half) | Person | 2 | 17 | 0 | 0 | 0 | Yes |
+| 480 | Good | 2 | 17 | 0 | 0 | 0 | Yes |
+| 480 | Person | 2 | 17 | 0 | 0 | 0 | Yes |
+| 960 (double) | Good | 2 | 17 | 0 | 0 | 0 | Yes |
+| 960 (double) | Person | 2 | 17 | 0 | 0 | 0 | Yes |
+
+Both bots started wave 3 at full gate HP. The first gate damage occurred
+in the last wave, so no run had a setup in which to buy a repair.
+This schedule can demonstrate a breach. To test the value of Repair in
+part b, make some gate damage survivable before a later setup.
+
+The first portrait capture showed the gate plaque overlapping the wave
+unlock banner. The plaque now ends above the banner. The browser check
+exercises that position with the boss bar also visible. The six captures
+in [the review folder](docs/review/m52a/) show damage, Last stand and
+Repair on phone and desktop.
+
+W8 passed against a clean archive of `origin/main` at `a36cdd85`.
+`npm run sim` exited zero on both builds and the output matched byte for
+byte. Nine bot policies across 20 campaign levels and nine Free play
+map/difficulty combinations produced matching hashes of all 261
+serialized runs, including terminal state and action log. The Person
+mean stayed 15.33 lives in Act One and 13.80 in Act Two, with one extra
+life at the handover and a maximum drop of two lives between consecutive
+Act Two stops.
+
+All 2,890 unit tests passed. Each of 24 deliberately broken builds failed
+its focused assertion. The three-project browser run had 1,231 passes,
+eight skips and one failure in the existing Old Keep performance check.
+With six workers the 4× CPU low-tier median was 16.13 ms per frame versus
+13.35 ms for high. The same check passed with one worker on the candidate
+(8.26 versus 11.63 ms) and the clean export (8.18 versus 11.30 ms).
+
+All 78 screenshots from the five existing baseline specs matched the
+clean export byte for byte. The Keep switch comparison also matched
+36 frozen canvas and state pairs and 18 cold request inventories.
