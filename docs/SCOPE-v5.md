@@ -1169,6 +1169,63 @@ naming your town; lightning on a posted timetable; a level where lives are
 gold; the repair price shown in tower terms. Kyle is rereading the full
 list and may add from it.
 
+## Milestone 53: the owner's link
+
+Kyle (2026-11-25): "let's do the owner link so I can test out whatever I
+want when I want." He was stuck on level 16 and could not see Act Three's
+map, cards, broadside or ending, which need level 20 won.
+
+- Opening the game once with `?owner=1` turns owner mode on for that
+  device and it stays on (also in the installed home-screen app) until
+  `?owner=0`. A small "Owner" mark shows on the title so it is never
+  mistaken for a normal game.
+- In owner mode every level, 1 to 25, is open on the level map, and Act
+  Three is shown. Play is normal; stars and feats earned are saved as
+  usual.
+- Owner mode never writes an unlock: turning it off shows exactly the
+  progress really earned, and Act Three hides again unless `?act3=1`.
+- An owner page (from the "Owner" mark) to see things again without
+  replaying to reach them: each act's broadside, the level 10 and level 20
+  closes, the campaign ending, and each level's tips; and to reset "seen"
+  flags for the session only.
+- With owner mode off, nothing a player can reach changes, and the
+  switch-off check in CI covers it.
+
+Not in this milestone: changing levels, balance or look; anything a
+player without the link can see.
+
+## Milestone 54: three directions for a fresher look (mock-ups only)
+
+Kyle (2026-11-25), after a brief look at the levels: "it looks like clunky
+and old, can we start on making it smoother and like new age-ish? I'm not
+sure what to call it but let me know what you think we should do about the
+look."
+
+No game code changes. Three directions are shown as pictures on a real
+level, so Kyle can choose by eye before anything is rebuilt:
+
+| Direction | The idea |
+|---|---|
+| A. Clean | Modern mobile: rounded shapes, soft translucent dark panels, a clean sans type, icons before words, thin lines, no wood or parchment |
+| B. Fine print | The 1776 identity kept but refined: cream paper and ink, hairline rules, generous space, a smooth serif, rounded cards, soft shadows; period flavour without the heavy frames |
+| C. Bold | Bright and playful for children: big rounded buttons, chunky icons, strong colour, bouncy shapes |
+
+Each direction shows the same four screens at 390x844 and one at 960x580:
+a level mid-wave with the HUD and build bar; the tower upgrade panel; a
+level card; and a result. Each also restyles the small things that date
+the look most (tower spots, health bars, range rings, the special button,
+number labels) and shows one tower and two enemies redrawn at higher
+resolution with smoother shading beside the current ones. A short note per
+direction says what it would cost to build and what it would do to
+readability on a phone.
+
+What stills cannot show, described in words for each direction: how
+things would move (easing, panel transitions, hits, counters).
+
+After Kyle picks: a look spike on one level behind a switch, as the
+showpiece and the Old Keep were done, before anything is restyled across
+the game.
+
 ## Later milestones (order agreed, detail to come)
 
 | # | Milestone | Idea |

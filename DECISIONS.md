@@ -2060,3 +2060,24 @@ can change it; "Kyle" means Kyle decided.
   fixed it: the art is kept through a restart in place and freed on return
   to the title. Thirty restart cases now run in the browser suite. The
   memory saving is unchanged. No test restarted a siege level before this.
+
+## 2026-11-25, the owner's link and a fresher look
+
+- **An owner's link** (Kyle: "so I can test out whatever I want when I
+  want"). He had not got past level 16 and so had seen none of Act Three's
+  screens. Coordinator's choices: it sticks on the device until turned
+  off, shows a mark so it is not mistaken for a normal game, never writes
+  an unlock, and has a page to see story screens again.
+- **Kyle finds the levels "clunky and old" and wants them "smoother and
+  like new age-ish".** He asked what the coordinator thinks and whether to
+  wait until he has played. Coordinator's advice: do not restyle the game
+  on a description; show three directions as pictures on a real level
+  first (cheap, no game code), let him pick by eye, then spike the chosen
+  one on a single level behind a switch, as the castle was done. The
+  owner's link goes first so he can see everything.
+- **What the coordinator thinks dates the look** (opinion, to be tested
+  against the mock-ups): heavy wood and parchment frames and boxy buttons;
+  small text labels where an icon would do; sprites drawn at a low
+  resolution for a modern phone and in two clashing styles (bright cartoon
+  troops against the gothic keep); stiff motion with no easing or impact;
+  grey oval tower spots and thin health bars.
