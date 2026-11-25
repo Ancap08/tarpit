@@ -1,5 +1,6 @@
 import type Phaser from 'phaser';
 import { positionAlongPath, roadPath, type GameState, type Point } from '../../sim';
+import type { Rect } from '../input';
 import type { Layout } from '../layout';
 import { GameClock } from '../loop';
 import { SIEGE_TEXT } from '../names';
@@ -14,8 +15,10 @@ const FRAMES: Record<string, [number, number, number, number]> = {
   tar: [584, 520, 32, 44],
 };
 
-export function loadSiegeActors(scene: Phaser.Scene): void {
-  if (!scene.textures.exists(ATLAS)) {
+export function loadSiegeActors(scene: Phaser.Scene, needed: boolean): void {
+  const loaded = scene.textures.exists(ATLAS);
+  if (!needed && loaded) scene.textures.remove(ATLAS);
+  if (needed && !loaded) {
     scene.load.image(ATLAS, import.meta.env.BASE_URL + 'assets/act3/siege-actors.webp');
   }
 }
@@ -195,15 +198,25 @@ function ageOfEmpty(room: Bedroom, nowMs: number, animate: boolean): 'lit' | 'em
   return Math.floor(age / 90) % 2 === 0 ? 'emptyLeft' : 'emptyRight';
 }
 
+const PORTRAIT_ENDING = 'siege:ending-portrait';
+
+export function loadSiegeEnding(scene: Phaser.Scene): void {
+  if (!scene.textures.exists(PORTRAIT_ENDING)) {
+    scene.load.image(PORTRAIT_ENDING, import.meta.env.BASE_URL + 'assets/act3/siege-ending-portrait.webp');
+  }
+  scene.events.once('shutdown', () => scene.textures.remove(PORTRAIT_ENDING));
+}
+
 /** A moving illustration under the campaign ending copy. */
-export function drawSiegeCarriage(scene: Phaser.Scene, portrait: boolean, frozen: boolean): void {
+export function drawSiegeCarriage(scene: Phaser.Scene, frame: Rect, portrait: boolean, frozen: boolean): void {
   if (!atlasReady(scene)) return;
-  const cx = scene.scale.width / 2;
-  const width = portrait ? 416 : 620;
-  const height = portrait ? 166 : 165;
-  const y = portrait ? 827 : 379;
-  scene.add.rectangle(cx, y, width + 6, height + 6, 0x664633);
-  prop(scene, 'dawn').setPosition(cx, y).setDisplaySize(width, height);
+  const { width, height } = frame;
+  const cx = frame.x + width / 2;
+  const y = frame.y + height / 2;
+  scene.add.rectangle(cx, y, width + 6, height + 6, 0x664633).setName('siege-carriage-frame');
+  const background = portrait && scene.textures.exists(PORTRAIT_ENDING)
+    ? scene.add.image(cx, y, PORTRAIT_ENDING) : prop(scene, 'dawn').setPosition(cx, y);
+  background.setDisplaySize(width, height);
   const coach = prop(scene, 'coach');
   const wheels = [prop(scene, 'wheel'), prop(scene, 'wheel')];
   const feathers = Array.from({ length: 6 }, () => prop(scene, 'feather'));
@@ -214,7 +227,7 @@ export function drawSiegeCarriage(scene: Phaser.Scene, portrait: boolean, frozen
     const t = animated ? Math.min(1, clock.nowMs / 7200) : .17;
     // Hold the carriage on the far bend after the one visible journey.
     const ease = t * (2 - t);
-    const size = Math.min(1.45, width / 454) * (1.34 - ease * .67);
+    const size = Math.min(1.82, width / 382) * (1.34 - ease * .67);
     const x = cx - width * .15 + ease * width * .32;
     const uneven = animated ? Math.sin(ease * 54) * (1 - t) * 1.7 : 0;
     const cy = y + height * (.26 - ease * .11) - size * 21 + uneven;

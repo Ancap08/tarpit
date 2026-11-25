@@ -6,6 +6,9 @@ import { defineConfig, devices } from '@playwright/test';
  */
 const PORT = Number(process.env.PW_PORT ?? 4173);
 
+/** Release checks shared on desktop and both touch projects. */
+const SHARED_SPECS = [/act-three-off\.spec\.ts$/];
+
 /** Specs that run only in the phone project (milestone 32b): files ending -phone.spec.ts. */
 const PHONE_SPECS = [/-phone\.spec\.ts$/];
 
@@ -46,7 +49,7 @@ export default defineConfig({
       // iPad landscape (milestone 14): the canvas fits at 1024 / 960 with
       // letterboxing above and below; specs map canvas points to the page
       // with window.__tarpit.canvasToPage() and tap with page.touchscreen.
-      testMatch: TABLET_SPECS,
+      testMatch: [...TABLET_SPECS, ...SHARED_SPECS],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1024, height: 768 },
@@ -62,7 +65,7 @@ export default defineConfig({
       // 844 / 1194; specs map map points with cellToPage() and worldToPage()
       // and buttons with uiRects() and canvasToPage(). perf.spec.ts runs its
       // packed case here too.
-      testMatch: [...PHONE_SPECS, /perf\.spec\.ts$/],
+      testMatch: [...PHONE_SPECS, ...SHARED_SPECS, /perf\.spec\.ts$/],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 390, height: 844 },

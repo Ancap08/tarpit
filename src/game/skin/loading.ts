@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ENEMY_STATS, MAP_HEIGHT, MAP_WIDTH, type EnemyType, type MapId } from '../../sim';
+import { ENEMY_STATS, MAP_HEIGHT, MAP_WIDTH, type EnemyType, type LevelDef, type MapId } from '../../sim';
 import { enemyArt } from './frames';
 import { waitForWorkerControl } from '../../sw/register';
 import type { PaintedDensity } from './look';
@@ -15,6 +15,9 @@ export type PaintedName = keyof typeof FRAME_COUNTS;
 
 const enemySheets = new Set<PaintedName>((Object.keys(ENEMY_STATS) as EnemyType[]).map(enemyArt));
 const SHEET_NAMES = Object.keys(FRAME_COUNTS) as PaintedName[];
+const WORLD_SCENERY = new Set<PaintedName>([
+  'cave', 'cottage', 'town', 'sack', 'royal-hoist', 'tossed-hat', 'oak', 'spruce', 'birch', 'bush', 'berry-bush',
+]);
 const ART = import.meta.glob<string>('../../../assets/art-painted/packed/*.{webp,json}', {
   eager: true,
   import: 'default',
@@ -37,13 +40,21 @@ export interface PaintedSheet {
 
 export interface PaintedAssets {
   density: PaintedDensity;
-  groundKey: string;
-  sheets: Readonly<Record<PaintedName, PaintedSheet>>;
+  groundKey?: string;
+  sheets: Readonly<Partial<Record<PaintedName, PaintedSheet>>>;
 }
 
 const loaded = new WeakMap<Phaser.Textures.TextureManager, Map<PaintedDensity, PaintedAssets['sheets']>>();
 const LOAD_TIMEOUT_MS = 25_000;
 const PROBE_TIMEOUT_MS = 2_000;
+
+/** Switch between the full painted fields and the keep's battle pieces. */
+export function releasePaintedTextures(textures: Phaser.Textures.TextureManager): void {
+  loaded.delete(textures);
+  for (const key of textures.getTextureKeys()) {
+    if (key.startsWith('painted:') || key.startsWith('showpiece:pasture:')) textures.remove(key);
+  }
+}
 
 function assetUrl(name: MapId | 'shared', density: PaintedDensity, extension: 'webp' | 'json'): string {
   return ART[`../../../assets/art-painted/packed/${name}-${density}x.${extension}`];
@@ -65,8 +76,9 @@ function slowConnection(): boolean | undefined {
 
 // A high-density phone may have warmed either set online. Reuse a complete
 // cached set offline, even if its current connection hints have changed.
-async function offlineDensity(map: MapId): Promise<PaintedDensity> {
-  const urls = [assetUrl(map, 2, 'webp'), assetUrl('shared', 2, 'webp'), assetUrl('shared', 2, 'json')];
+async function offlineDensity(map?: MapId): Promise<PaintedDensity> {
+  const urls = [assetUrl('shared', 2, 'webp'), assetUrl('shared', 2, 'json')];
+  if (map) urls.push(assetUrl(map, 2, 'webp'));
   const matches = await Promise.all(urls.map(url => caches.match(url, { ignoreVary: true })));
   return matches.every(Boolean) ? 2 : 1;
 }
@@ -136,16 +148,16 @@ function validateSheet(
 // Each logical sheet keeps its own Phaser texture and numeric frames. Splitting
 // the decoded atlas once avoids uploading a full atlas per logical texture.
 function registerSheets(textures: Phaser.Textures.TextureManager, atlas: HTMLImageElement, layout: unknown,
-  density: PaintedDensity, registered: string[]): PaintedAssets['sheets'] {
+  density: PaintedDensity, registered: string[], names = SHEET_NAMES): PaintedAssets['sheets'] {
   if (!layout || typeof layout !== 'object') throw new Error('Invalid painted atlas layout');
-  const sheets = SHEET_NAMES.map(name => validateSheet(name, `painted:${name}:${density}x`,
+  const sheets = names.map(name => validateSheet(name, `painted:${name}:${density}x`,
     (layout as Record<string, unknown>)[name], atlas));
   for (const [index, sheet] of sheets.entries()) {
     const [width, height] = sheet.frameSize;
     const canvas = document.createElement('canvas');
     canvas.width = width * sheet.columns;
     const sheetHeight = height * sheet.rows;
-    const hasHitFrames = enemySheets.has(SHEET_NAMES[index]);
+    const hasHitFrames = enemySheets.has(names[index]);
     canvas.height = hasHitFrames ? 2 * sheetHeight : sheetHeight;
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Could not unpack painted atlas');
@@ -169,16 +181,17 @@ function registerSheets(textures: Phaser.Textures.TextureManager, atlas: HTMLIma
       if (hasHitFrames) texture.add(sheet.frames + frame, 0, x, y + sheetHeight, width, height);
     }
   }
-  return Object.fromEntries(SHEET_NAMES.map((name, index) => [name, sheets[index]])) as Record<PaintedName, PaintedSheet>;
+  return Object.fromEntries(names.map((name, index) => [name, sheets[index]]));
 }
 
 export async function loadPainted(
   textures: Phaser.Textures.TextureManager, map: MapId, displayDensity: PaintedDensity,
   onProgress: (progress: number) => void, cancellation: AbortSignal,
-  options?: { keep: true },
+  options?: { keep: true; siege?: LevelDef },
 ): Promise<PaintedAssets | undefined> {
   if (cancellation.aborted) return undefined;
-  const existing = loaded.get(textures);
+  const siege = options?.siege;
+  const existing = siege ? undefined : loaded.get(textures);
   function cached(density: PaintedDensity): PaintedAssets | undefined {
     const groundKey = `painted:${map}:${density}x`;
     const sheets = existing?.get(density);
@@ -207,11 +220,11 @@ export async function loadPainted(
     if (displayDensity === 2) {
       const slow = slowConnection();
       if (!navigator.onLine && typeof caches !== 'undefined') {
-        density = await Promise.race([offlineDensity(map), aborted]);
+        density = await Promise.race([offlineDensity(siege ? undefined : map), aborted]);
       } else if (slow) {
         density = 1;
       } else if (slow === undefined && !existing?.has(2)) {
-        probe = loadImage(map, 1);
+        probe = loadImage(siege ? 'shared' : map, 1);
         density = await Promise.race([aborted, probe.then(() => 2 as const),
           new Promise<1>(resolve => { probeTimer = setTimeout(() => resolve(1), PROBE_TIMEOUT_MS); })]);
         clearTimeout(probeTimer);
@@ -220,19 +233,27 @@ export async function loadPainted(
     const ready = cached(density);
     if (ready) return ready;
     const shared = existing?.get(density);
-    const total = shared ? 1 : 3;
+    const total = siege ? 2 : shared ? 1 : 3;
     let complete = 0;
     const mark = <T>(value: T): T => {
       if (!signal.aborted) onProgress(++complete / total);
       return value;
     };
     const [ground, atlas, layout] = await Promise.race([aborted, Promise.all([
-      (density === 1 && probe ? probe : loadImage(map, density)).then(mark),
-      shared ? undefined : loadImage('shared', density).then(mark),
+      siege ? undefined : (density === 1 && probe ? probe : loadImage(map, density)).then(mark),
+      shared ? undefined : (siege && density === 1 && probe ? probe : loadImage('shared', density)).then(mark),
       shared ? undefined : getAsset(assetUrl('shared', density, 'json'), signal).then(r => r.json()).then(mark),
     ])]);
     signal.throwIfAborted();
-    if (ground.naturalWidth !== MAP_WIDTH * density || ground.naturalHeight !== MAP_HEIGHT * density) {
+    if (siege) {
+      const roster = new Set<PaintedName>(siege.waves.flatMap(wave => wave.groups.map(group => enemyArt(group.type))));
+      if (siege.endingBoss === 'grumblemaw') roster.add('wolf');
+      const pieces = SHEET_NAMES.filter(name => !WORLD_SCENERY.has(name) && (!enemySheets.has(name) || roster.has(name)));
+      const sheets = registerSheets(textures, atlas!, layout, density, registered, pieces);
+      atlas!.removeAttribute('src');
+      return { density, sheets };
+    }
+    if (!ground || ground.naturalWidth !== MAP_WIDTH * density || ground.naturalHeight !== MAP_HEIGHT * density) {
       throw new Error(`Invalid painted ground dimensions: ${map}`);
     }
     const sheets = shared ?? registerSheets(textures, atlas!, layout, density, registered);

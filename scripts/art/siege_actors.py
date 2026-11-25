@@ -17,16 +17,18 @@ DARK = '#2f2b38'
 
 
 class Brush:
-    def __init__(self, width, height):
+    def __init__(self, width, height, y_scale=1):
+        self.y_scale = y_scale
+        height = round(height * y_scale)
         self.image = Image.new('RGBA', (width * PAINT, height * PAINT))
         self.draw = ImageDraw.Draw(self.image)
         self.size = (width * DENSITY, height * DENSITY)
 
     def coords(self, points):
-        return [tuple(round(x * PAINT) for x in p) for p in points]
+        return [(round(x * PAINT), round(y * PAINT * self.y_scale)) for x, y in points]
 
     def box(self, box):
-        return [round(x * PAINT) for x in box]
+        return [round(n * PAINT * (self.y_scale if i % 2 else 1)) for i, n in enumerate(box)]
 
     def fill(self, points, color, outline=None, width=1):
         self.draw.polygon(self.coords(points), fill=color, outline=outline, width=max(1, round(width * PAINT)))
@@ -270,8 +272,8 @@ def draw_survey():
     return b
 
 
-def draw_dawn():
-    b = Brush(384, 92)
+def draw_dawn(y_scale=1):
+    b = Brush(384, 92, y_scale)
     r = random.Random(52)
     # Two colored washes cross on the horizon, with inked crags and an old keep.
     top = ImageColor.getrgb('#405c73')
@@ -282,7 +284,7 @@ def draw_dawn():
     for x,y,w in [(150, 18, 65), (299, 10, 67), (273, 30, 43), (347, 29, 45), (68, 13, 39)]:
         b.fill([(x, y+3), (x+w*.2, y+1), (x+w*.45, y+1), (x+w*.56, y-1),
                 (x+w*.83, y), (x+w, y+2), (x+w*.48, y+4)], '#caa9a1')
-    b.oval((299, 20, 331, 53), '#ffe4aa')
+    b.oval((299, 36.5 - 16.5 / y_scale, 331, 36.5 + 16.5 / y_scale), '#ffe4aa')
     b.fill([(0, 44), (32, 33), (51, 36), (78, 30), (99, 39), (127, 39), (144, 43), (168, 34),
             (192, 41), (220, 38), (260, 46), (285, 44), (306, 51), (336, 43), (359, 46), (384, 43),
             (384, 72), (0, 66)], '#8f7e80')
@@ -423,3 +425,7 @@ drop.paste(584, 520)
 
 OUT.parent.mkdir(parents=True, exist_ok=True)
 ATLAS.save(OUT, 'WEBP', quality=92, method=6, exact=True)
+
+# Keep the sun and coach at their native proportions on the taller phone print.
+draw_dawn(3).image.resize((576, 414), Image.Resampling.LANCZOS).convert('RGB').save(
+    OUT.with_name('siege-ending-portrait.webp'), quality=92, method=6)

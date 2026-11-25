@@ -74,6 +74,7 @@ export class BarricadeEffects {
       for (const type of Object.keys(RING_RADIUS) as EnemyType[]) {
         if (type === 'ram') continue;
         const sheet = painted.assets.sheets[enemyArt(type)];
+        if (!sheet) continue;
         const centres = sheet.bodyBounds!.map(([l, t, r, b]) => ({
           x: ((l + r) / 2 - sheet.anchor[0]) / painted.assets.density,
           y: ((t + b) / 2 - sheet.anchor[1]) / painted.assets.density,

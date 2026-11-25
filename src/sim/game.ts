@@ -310,7 +310,7 @@ export function tick(state: GameState): void {
   const { gate } = state;
   const standingGate = gate && gate.hp > 0 ? gate : undefined;
   const blockers = standingGate ? [...state.blockers, standingGate] : state.blockers;
-  const guardsStruck = moveEnemies(state.enemies, state.events, blockers, 1 + (state.level?.taxes?.forcedMarch ?? 0), state.map.otherRoads?.length ? state.map : undefined);
+  const guardsStruck = moveEnemies(state.enemies, state.events, blockers, 1 + (state.level?.taxes?.forcedMarch ?? 0), state.map.otherRoads?.length ? state.map : undefined, Boolean(state.level?.keepRoads));
   if (standingGate?.hp === 0 && !standingGate.fallen) {
     standingGate.fallen = true;
     standingGate.lastStandTicksLeft = LAST_STAND_TICKS;

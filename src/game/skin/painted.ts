@@ -32,7 +32,7 @@ export class PaintedSkin {
   readonly standing: Phaser.GameObjects.Layer;
   readonly air: Phaser.GameObjects.Layer;
   readonly shadows: Phaser.GameObjects.Layer;
-  private readonly ground: Image;
+  private readonly ground?: Image;
   private readonly cave?: Image;
   private readonly reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   private drawnTime = Number.NaN;
@@ -54,7 +54,10 @@ export class PaintedSkin {
     private readonly clock: GameClock,
     scenery = true,
   ) {
-    this.ground = layout.placeWorld(scene.add.image(0, 0, assets.groundKey, 0).setOrigin(0).setScale(1 / assets.density));
+    if (assets.groundKey) {
+      this.ground = layout.placeWorld(scene.add.image(0, 0, assets.groundKey, 0).setOrigin(0).setScale(1 / assets.density));
+      this.ground.setVisible(scenery);
+    }
     this.shadows = scene.add.layer();
     this.standing = scene.add.layer();
     this.air = scene.add.layer();
@@ -66,7 +69,6 @@ export class PaintedSkin {
       return image;
     };
     const spawn = map.path[0];
-    this.ground.setVisible(scenery);
     if (scenery) this.cave = place('cave', { x: spawn.x + 22, y: spawn.y }, layout.turned ? 1 : 0);
     this.growth = (scenery ? decorFor(map).growth : []).map(g => {
       const name = growthArt(g);
@@ -75,20 +77,26 @@ export class PaintedSkin {
   }
 
   placeTown(layer: Phaser.GameObjects.Container): void {
-    this.scene.children.moveTo(layer, this.scene.children.getIndex(this.ground) + 1);
+    if (this.ground) this.scene.children.moveTo(layer, this.scene.children.getIndex(this.ground) + 1);
   }
 
   /** Put zones over the board, and under its shadows and standing pieces. */
   placeGround(zones: Phaser.GameObjects.Graphics): void {
-    this.scene.children.moveTo(zones, this.scene.children.getIndex(this.ground) + 1);
+    this.scene.children.moveTo(zones, this.ground ? this.scene.children.getIndex(this.ground) + 1 : 0);
   }
 
   /** Kept separate from UI icons, which show the original paint on every field. */
   worldTexture?: (key: string) => string;
   siegeNotices = false;
 
-  pose<T extends Image | Sprite>(obj: T, name: PaintedName, frame: number, world = true): T {
+  sheet(name: PaintedName) {
     const sheet = this.assets.sheets[name];
+    if (!sheet) throw new Error(`Painted sheet is missing: ${name}`);
+    return sheet;
+  }
+
+  pose<T extends Image | Sprite>(obj: T, name: PaintedName, frame: number, world = true): T {
+    const sheet = this.sheet(name);
     const key = world ? this.worldTexture?.(sheet.key) ?? sheet.key : sheet.key;
     if (obj.texture.key !== key) obj.setTexture(key, frame);
     else if (Number(obj.frame.name) !== frame) obj.setFrame(frame);
@@ -98,7 +106,7 @@ export class PaintedSkin {
   }
 
   image(name: PaintedName, frame = 0): Image {
-    return this.pose(this.scene.add.image(0, 0, this.assets.sheets[name].key, frame), name, frame);
+    return this.pose(this.scene.add.image(0, 0, this.sheet(name).key, frame), name, frame);
   }
 
   update(state: GameState, placing: boolean): void {
@@ -165,7 +173,7 @@ export class PaintedSkin {
 
   towerIcon(type: TowerType, maxWidth: number, maxHeight: number): Image {
     const name = towerArt(type);
-    const sheet = this.assets.sheets[name];
+    const sheet = this.sheet(name);
     const [left, top, right, bottom] = sheet.bodyBounds![TOWER_PREVIEW_FRAME];
     const [width, height] = sheet.frameSize;
     const scale = Math.min(maxWidth / (right - left), maxHeight / (bottom - top));

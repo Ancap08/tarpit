@@ -6,6 +6,8 @@ import { commonRoadStart, distanceOnRoad, roadProgress } from './roads';
 import { TICKS_PER_SECOND } from './time';
 import type { Blocker, Enemy, Gate, Guard, MapDef } from './types';
 
+export const MAX_SIEGE_CONTACT_TICKS = 60 * TICKS_PER_SECOND;
+
 function isGuard(blocker: Blocker | undefined): blocker is Guard {
   return blocker !== undefined && 'kind' in blocker && blocker.kind === 'guard';
 }
@@ -36,7 +38,7 @@ function contactBetween(blockers: readonly Blocker[], enemy: Enemy, to: number, 
 }
 
 /** Resolve every contact before any damage, allowing both sides to deal a lethal blow. */
-export function moveEnemies(enemies: Enemy[], events: GameEvent[], blockers?: readonly Blocker[], speedFactor = 1, map?: MapDef): boolean {
+export function moveEnemies(enemies: Enemy[], events: GameEvent[], blockers?: readonly Blocker[], speedFactor = 1, map?: MapDef, siege = false): boolean {
   const attacks = blockers?.length ? new Map<Blocker, number>() : undefined;
   let guardTargets: Map<Guard, { enemy: Enemy; arrival: number }> | undefined;
   // Compare simultaneous movement along the trail, including walkers that
@@ -77,7 +79,16 @@ export function moveEnemies(enemies: Enemy[], events: GameEvent[], blockers?: re
       enemy.distance = contact.distance;
       const ramDps = isGate(blocker) && enemy.type === 'ram' ? blocker.ramGateDps : undefined;
       const dps = isGate(blocker) ? ramDps ?? stats.gateDps ?? stats.blockerDps : stats.blockerDps;
-      attacks.set(blocker, (attacks.get(blocker) ?? 0) + dps);
+      let totalDps = (attacks.get(blocker) ?? 0) + dps;
+      if (siege) {
+        enemy.blockedTicks = Math.min(MAX_SIEGE_CONTACT_TICKS, (enemy.blockedTicks ?? 0) + 1);
+        // Keep the same contact and break order, even if a barricade was
+        // replaced or an early call restarted the wave clock.
+        if (enemy.blockedTicks === MAX_SIEGE_CONTACT_TICKS) {
+          totalDps = Math.max(totalDps, blocker.hp * TICKS_PER_SECOND);
+        }
+      }
+      attacks.set(blocker, totalDps);
       if (!isGate(blocker)) events.push({
         kind: 'blockerHit', enemyId: enemy.id, x: blocker.x, y: blocker.y, damage: stats.blockerDps / TICKS_PER_SECOND,
         ...(guard ? { guardId: guard.id } : {}),

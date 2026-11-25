@@ -818,6 +818,11 @@ gate. A feathered enemy can run back from the gate and stops hitting it
 on every retreat or flinch tick.
 Wave clear waits for gate attackers along with every other live enemy.
 Calling early leaves them in play and goes straight into the next wave.
+On levels 21 to 25, a walker that has spent 3,600 combat ticks (60 seconds)
+attacking blockers overruns the blocker it contacts. Contact time carries
+across replacements, retreats and early calls. Slows and flinches do not
+advance it unless the walker is attacking. The blocker still holds the
+walker on the breaking tick. A gate overrun starts Last stand as usual.
 
 Repair is a setup action. A purchase adds one step up to full HP.
 The price is the full step price multiplied by the fraction of the step
@@ -2493,15 +2498,27 @@ at low. Dusk keeps its scud and clear weather. A strike replaces the castle
 exposure with a hard key and throws spire shadows across the paving.
 Dawn uses the cold sky plate and a lighter grade, with neither rain
 nor lightning. The art inventory is capped at 10 MB, and the decoded
-plate set on a phone is capped at 60 MB.
+plate set on a phone is capped at 60 MB. The phone memory check also
+counts retained Phaser image and canvas sources and the panorama canvases
+at 390 × 844, DPR 3. Combat poses are included after drawing the level's
+roster. Entering the siege drops any previously loaded Painted and
+Showpiece textures and installs only the Painted combat sheets needed for
+the level. The keep's own plates replace the ordinary ground and town. Card
+thumbnails load only on keep cards. The actor atlas loads for windows,
+wall-site taxes and the ending.
 
 Night lifts the character, tower and shot plates and adds an upper and
 side rim. Ground crowds use 35 fixed ID-based slots around the sill
-and in the yard. The formation grows across the last 82 road px, with
+and in the yard. Seven columns narrow at the rim of five ranks, spaced
+14 px apart. Rendered feet are within 40 px of their rule positions.
+The formation grows across the last 82 road px, with
 up to 1.48× scale about the feet, and settles to 1.28× over the first
 75 px in the yard. The Ram uses a central approach and up to 1.26×.
 Preview tethers show the real road positions while aiming or viewing
-reach. Wounded enemies carry short bars near their own heads.
+reach. The Powder Keg, Tar Barrel and Fire Arrows mark which enemies are
+inside their landing radius with filled dots and show hollow dots for
+misses. Preview and cast use the same distance from each enemy's rule
+position. Wounded enemies carry short bars near their own heads.
 
 A usable bedroom window glows and carries a feather. A successful tap
 tips a pot, shakes a pillow from 370 ms and closes the shutters at
@@ -2511,9 +2528,16 @@ ordinary road interval. An empty tap shakes the townsperson's head for
 Ram's wood wheels follow the distance it travels, including retreat,
 and its thrust coincides with the knock. Mortar shots retain their arc
 and carry a 34 px wide notice tile. The ending illustration moves the
-tarred carriage along the dawn road over 7,200 ms below the existing
-ending words. Test mode holds static poses and reduced motion removes
-the new animation.
+tarred carriage along the dawn road over 7,200 ms below the ending words.
+Its print is 430 × up to 306 px in portrait and 810 × up to 236 px in
+landscape. Its height fits between the actual copy and Continue. The
+portrait print uses a taller dawn painting. Test mode holds static poses
+and reduced motion removes the new animation.
+
+Level cards use painted 2:1 thumbnails of the keep and its open roads.
+The same 160 px portrait and 178 px landscape card widths fit either the
+single sheet or its Map notes page. The dusk prints show only the east
+or west road. The night storm and dawn prints show both approaches.
 
 | Level | Name | Roads | Sky | Gold | HP scale | Gate HP | Yard px | Repair HP | Gold per full repair | Third star | Wall-site rule |
 |---:|---|---|---|---:|---:|---:|---:|---:|---:|---|---|

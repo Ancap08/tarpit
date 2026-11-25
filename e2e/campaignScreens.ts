@@ -79,6 +79,13 @@ export async function checkSpacing(page: Page) {
       const { x, y, width, height } = picture.getBounds();
       boxes.push({ key: picture.name, owner: '', button: false, x, y, width, height });
     }
+    if (t.scene() === 'title') {
+      for (const object of t.game.scene.getScene('title').children.list) {
+        if (object.name !== 'keep-thumbnail' && object.name !== 'siege-carriage-frame') continue;
+        const { x, y, width, height } = (object as Phaser.GameObjects.Image).getBounds();
+        boxes.push({ key: object.name, owner: '', button: false, x, y, width, height });
+      }
+    }
     const { width, height } = t.game.canvas;
     for (const box of boxes) {
       if (box.x < 0 || box.y < 0 || box.x + box.width > width || box.y + box.height > height)

@@ -266,10 +266,7 @@ export function useSpecial(state: GameState, type: SpecialType, point: Point): S
   }
   const def = SPECIAL_DEFS[type];
   const radius = specialRadius(type, state.boons);
-  const inside = state.enemies.filter((enemy) => {
-    const p = enemyPosition(enemy, state.map);
-    return Math.hypot(p.x - x, p.y - y) <= radius;
-  });
+  const inside = areaSpecialTargets(state, point, radius);
   const zoneType = type === 'tarBarrel' || type === 'fireArrows' ? type : undefined;
   const zoneId = zoneType !== undefined && def.zoneTicks > 0 ? state.nextZoneId : undefined;
   state.events.push({ kind: 'special', type, x, y, radius, hits: inside.length, ...(zoneId === undefined ? {} : { zoneId }) });
@@ -290,6 +287,14 @@ export function useSpecial(state: GameState, type: SpecialType, point: Point): S
   const before = state.enemies.length;
   removeDead(state, 'special');
   return { ok: true, hits: inside.length, kills: before - state.enemies.length, gold: state.gold };
+}
+
+/** The landing targets, shared by the cast and its aim preview. */
+export function areaSpecialTargets(state: Pick<GameState, 'enemies' | 'map'>, point: Point, radius: number) {
+  return state.enemies.filter(enemy => {
+    const p = enemyPosition(enemy, state.map);
+    return Math.hypot(p.x - point.x, p.y - point.y) <= radius;
+  });
 }
 
 /** Gold the cheat grants (milestone 30). */
