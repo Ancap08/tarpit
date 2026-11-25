@@ -22,7 +22,8 @@
 
 import { enemyPosition } from './combat';
 import { isBoss } from './enemies';
-import { pathLength, positionAlongPath } from './map';
+import { positionAlongPath } from './map';
+import { roadIds, roadLength, roadPath } from './roads';
 import { isSpecialUnlocked, specialRadius, type SpecialType } from './specials';
 import type { EnemyType, GameState, MapDef, Point } from './types';
 
@@ -64,16 +65,21 @@ export function policyCandidates(map: MapDef): readonly Point[] {
   let points = candidateCache.get(map);
   if (!points) {
     const out: Point[] = [];
-    const length = pathLength(map);
-    for (let d = POLICY_POINT_SPACING; d < length; d += POLICY_POINT_SPACING) out.push(positionAlongPath(map, d));
-    points = out.reverse();
+    for (const road of roadIds(map)) {
+      const candidates: Point[] = [];
+      const length = roadLength(map, road);
+      const path = roadPath(map, road);
+      for (let d = POLICY_POINT_SPACING; d < length; d += POLICY_POINT_SPACING) candidates.push(positionAlongPath(path, d));
+      out.push(...candidates.reverse());
+    }
+    points = out;
     candidateCache.set(map, points);
   }
   return points;
 }
 
 /** Enemy types the policy counts as big (rule 1). */
-export const BIG_ENEMIES: ReadonlySet<EnemyType> = new Set<EnemyType>(['troll', 'boss', 'grumblemaw']);
+export const BIG_ENEMIES: ReadonlySet<EnemyType> = new Set<EnemyType>(['troll', 'boss', 'grumblemaw', 'ram']);
 
 const allowed = (type: SpecialType, wave: number, options: PolicyOptions): boolean => type !== options.forbid && (options.allow?.includes(type) ?? isSpecialUnlocked(type, wave));
 

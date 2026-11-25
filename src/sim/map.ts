@@ -1,3 +1,4 @@
+import keepSite from './keepSite.json' with { type: 'json' };
 import type { MapDef, Point, Rect, TrailPoint } from './types';
 
 /** Every map is 960 x 480 px (a 30 x 15 grid of 32 px cells). */
@@ -17,6 +18,9 @@ export function cottageFor(exit: Point): Rect {
 
 /** The maps players can pick (milestone 27). */
 export type MapId = 'meadow' | 'switchback' | 'riverbend';
+export type LevelMapId = MapId | 'keep';
+
+const keepMap: MapDef = { id: 'keep', width: MAP_WIDTH, height: MAP_HEIGHT, ...keepSite };
 
 /** Map ids in title-screen order. */
 export const MAP_IDS: readonly MapId[] = ['meadow', 'switchback', 'riverbend'];
@@ -87,8 +91,9 @@ export function isMapId(value: unknown): value is MapId {
 }
 
 /** The map with this id, or the map itself when given one (a test may pass its own MapDef). */
-export function resolveMap(map: MapId | MapDef | undefined): MapDef {
+export function resolveMap(map: LevelMapId | MapDef | undefined): MapDef {
   if (map === undefined) return MAPS[DEFAULT_MAP];
+  if (map === 'keep') return keepMap;
   return typeof map === 'string' ? MAPS[map] : map;
 }
 

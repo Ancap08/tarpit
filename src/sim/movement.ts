@@ -2,8 +2,9 @@ import { KILL_EPSILON } from './combat';
 import { FEATHERS } from './feathers';
 import { effectiveSlow, ENEMY_STATS, isBoss } from './enemies';
 import type { GameEvent } from './events';
+import { commonRoadStart, distanceOnRoad, roadProgress } from './roads';
 import { TICKS_PER_SECOND } from './time';
-import type { Blocker, Enemy, Gate, Guard } from './types';
+import type { Blocker, Enemy, Gate, Guard, MapDef } from './types';
 
 function isGuard(blocker: Blocker | undefined): blocker is Guard {
   return blocker !== undefined && 'kind' in blocker && blocker.kind === 'guard';
@@ -14,32 +15,34 @@ function isGate(blocker: Blocker): blocker is Gate {
 }
 
 /** Find the first live blocker crossed in this step, regardless of input order. */
-function contactBetween(blockers: readonly Blocker[], from: number, to: number): Blocker | undefined {
+function contactBetween(blockers: readonly Blocker[], enemy: Enemy, to: number, map?: MapDef):
+  { blocker: Blocker; distance: number } | undefined {
   // A guard offset along the trail and a wall projected onto it can reach
   // the same point through different floating-point operations.
   const tolerance = 1e-10;
-  let first: Blocker | undefined;
+  let first: { blocker: Blocker; distance: number } | undefined;
   for (const blocker of blockers) {
     if (blocker.hp <= 0) continue;
     const guard = isGuard(blocker);
     const padding = guard ? tolerance : 0;
-    if (blocker.distance < from - padding || blocker.distance > to + padding) continue;
-    if (!first || blocker.distance < first.distance - tolerance
-      || (Math.abs(blocker.distance - first.distance) <= tolerance && isGuard(first) && !guard)) {
-      first = blocker;
+    const distance = map ? distanceOnRoad(map, enemy.road, blocker) : blocker.distance;
+    if (distance === undefined || distance < enemy.distance - padding || distance > to + padding) continue;
+    if (!first || distance < first.distance - tolerance
+      || (Math.abs(distance - first.distance) <= tolerance && isGuard(first.blocker) && !guard)) {
+      first = { blocker, distance };
     }
   }
   return first;
 }
 
 /** Resolve every contact before any damage, allowing both sides to deal a lethal blow. */
-export function moveEnemies(enemies: Enemy[], events: GameEvent[], blockers?: readonly Blocker[], speedFactor = 1): boolean {
+export function moveEnemies(enemies: Enemy[], events: GameEvent[], blockers?: readonly Blocker[], speedFactor = 1, map?: MapDef): boolean {
   const attacks = blockers?.length ? new Map<Blocker, number>() : undefined;
   let guardTargets: Map<Guard, { enemy: Enemy; arrival: number }> | undefined;
   // Compare simultaneous movement along the trail, including walkers that
   // step across a runner between ticks. The input order cannot affect a pass.
   const starts = enemies.some((enemy) => (enemy.runTicksLeft ?? 0) > 0)
-    ? enemies.map((enemy) => ({ distance: enemy.distance, running: (enemy.runTicksLeft ?? 0) > 0 })) : undefined;
+    ? enemies.map((enemy) => ({ distance: map ? roadProgress(map, enemy) : enemy.distance, running: (enemy.runTicksLeft ?? 0) > 0 })) : undefined;
   for (const enemy of enemies) {
     const stats = ENEMY_STATS[enemy.type];
     const runTicks = enemy.runTicksLeft ?? 0;
@@ -53,8 +56,9 @@ export function moveEnemies(enemies: Enemy[], events: GameEvent[], blockers?: re
     } else {
       next += (stats.speed * speedFactor * (1 - effectiveSlow(enemy))) / TICKS_PER_SECOND;
     }
-    const blocker = blockers?.length && runTicks === 0 && flinchTicks === 0 && !stats.flying
-      ? contactBetween(blockers, enemy.distance, next) : undefined;
+    const contact = blockers?.length && runTicks === 0 && flinchTicks === 0 && !stats.flying
+      ? contactBetween(blockers, enemy, next, map) : undefined;
+    const blocker = contact?.blocker;
     const guard = isGuard(blocker) ? blocker : undefined;
     if (guard) {
       if (enemy.guardContact?.guardId !== guard.id) {
@@ -69,9 +73,10 @@ export function moveEnemies(enemies: Enemy[], events: GameEvent[], blockers?: re
     } else if (enemy.guardContact) {
       delete enemy.guardContact;
     }
-    if (blocker && attacks) {
-      enemy.distance = blocker.distance;
-      attacks.set(blocker, (attacks.get(blocker) ?? 0) + stats.blockerDps);
+    if (contact && blocker && attacks) {
+      enemy.distance = contact.distance;
+      const dps = isGate(blocker) ? stats.gateDps ?? stats.blockerDps : stats.blockerDps;
+      attacks.set(blocker, (attacks.get(blocker) ?? 0) + dps);
       if (!isGate(blocker)) events.push({
         kind: 'blockerHit', enemyId: enemy.id, x: blocker.x, y: blocker.y, damage: stats.blockerDps / TICKS_PER_SECOND,
         ...(guard ? { guardId: guard.id } : {}),
@@ -92,12 +97,15 @@ export function moveEnemies(enemies: Enemy[], events: GameEvent[], blockers?: re
   if (starts) {
     for (let i = 0; i < enemies.length; i++) {
       const runner = enemies[i];
-      if (!starts[i].running || runner.distance >= starts[i].distance) continue;
+      const runnerEnd = map ? roadProgress(map, runner) : runner.distance;
+      if (!starts[i].running || runnerEnd >= starts[i].distance) continue;
       for (let j = 0; j < enemies.length; j++) {
         const other = enemies[j];
-        if (i !== j && other.flinchTicksLeft === undefined && !isBoss(other)
-          && starts[i].distance >= starts[j].distance && runner.distance <= other.distance
-          && (starts[i].distance > starts[j].distance || runner.distance < other.distance)) {
+        if (i === j || other.flinchTicksLeft !== undefined || isBoss(other)) continue;
+        const otherEnd = map ? roadProgress(map, other) : other.distance;
+        if (map && Math.min(starts[i].distance, otherEnd) < commonRoadStart(map, runner.road, other.road)) continue;
+        if (starts[i].distance >= starts[j].distance && runnerEnd <= otherEnd
+          && (starts[i].distance > starts[j].distance || runnerEnd < otherEnd)) {
           other.flinchTicksLeft = FEATHERS.flinchTicks;
         }
       }

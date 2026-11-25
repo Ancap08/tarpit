@@ -80,6 +80,7 @@ const ENEMY_NAMES: Record<string, EnemyType> = {
   'Grumblefoot (boss)': 'boss',
   Grumblemaw: 'grumblemaw',
   'Grumblemaw (boss)': 'grumblemaw',
+  'The Final Notice': 'ram',
 };
 const TOWER_NAMES: Record<string, TowerType> = {
   Musketeer: 'musketeer',

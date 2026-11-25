@@ -96,12 +96,14 @@ export function unlockedSpecials(wave: number): SpecialType[] {
   return SPECIAL_TYPES.filter((type) => isSpecialUnlocked(type, wave));
 }
 
-type SpecialRules = Pick<GameState, 'level' | 'wave'> & Partial<Pick<GameState, 'cheated'>>;
+type SpecialRules = Pick<GameState, 'level' | 'wave'> & Partial<Pick<GameState, 'cheated' | 'fixedSpecialUnlocks'>>;
 
 /** A campaign grants its list on wave 1; the cheat adds the normal wave unlocks. */
 export function specialAllowed(state: SpecialRules, type: SpecialType): boolean {
   if (state.level?.allowedSpecials.includes(type)) return state.wave >= 1;
-  return (!state.level || state.cheated === true) && isSpecialUnlocked(type, state.wave);
+  const fixedUnlock = state.fixedSpecialUnlocks?.[type];
+  return (!state.level || state.cheated === true) &&
+    (fixedUnlock === undefined ? isSpecialUnlocked(type, state.wave) : state.wave >= fixedUnlock);
 }
 
 export function availableSpecials(state: SpecialRules): SpecialType[] {

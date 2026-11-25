@@ -62,6 +62,8 @@ import {
 import { BOONS, type BoonId } from './boons';
 import type { Difficulty } from './difficulty';
 import { repairGate } from './gate';
+import { payQuartering, shakeWindow } from './siege';
+import { roadIds, roadPath } from './roads';
 import { callNextWave, continueEndless, createGame, startWave, tick, wavesCleared, type CallNextWaveResult, type StartWaveResult } from './game';
 import { enemyPosition } from './combat';
 import { isSpecialUnlocked, type SpecialType } from './specials';
@@ -130,6 +132,8 @@ export type TimedAction = SpecialAction | CallEarlyAction | ClusterSpecialAction
 export type HeadlessAction =
   | { type: 'startWave' }
   | { type: 'repairGate' }
+  | { type: 'payQuartering' }
+  | { type: 'shakeWindow'; index: number }
   | { type: 'pickBoon'; boon: BoonId }
   /** Tick until the current wave ends (phase leaves 'wave') or `maxTicks` pass. */
   | { type: 'runUntilWaveEnds'; maxTicks: number }
@@ -140,6 +144,8 @@ export type HeadlessAction =
 export type HeadlessStepResult =
   | { action: 'startWave'; result: StartWaveResult }
   | { action: 'repairGate'; result: ReturnType<typeof repairGate> }
+  | { action: 'payQuartering'; result: ReturnType<typeof payQuartering> }
+  | { action: 'shakeWindow'; index: number; result: ReturnType<typeof shakeWindow> }
   | { action: 'pickBoon'; boon: BoonId; result: ReturnType<typeof pickBoon> }
   | { action: 'runUntilWaveEnds'; ticks: number }
   | { action: 'build'; cell: Cell; result: BuildResult }
@@ -166,6 +172,10 @@ export function applyAction(state: GameState, action: HeadlessAction): HeadlessS
       return { action: 'pickBoon', boon: action.boon, result: pickBoon(state, action.boon) };
     case 'startWave':
       return { action: 'startWave', result: startWave(state) };
+    case 'payQuartering':
+      return { action: 'payQuartering', result: payQuartering(state) };
+    case 'shakeWindow':
+      return { action: 'shakeWindow', index: action.index, result: shakeWindow(state, action.index) };
     case 'repairGate':
       return { action: 'repairGate', result: repairGate(state) };
     case 'runUntilWaveEnds': {
@@ -564,18 +574,19 @@ export const TRAIL_REACH = 72;
 export function trailCellOrder(map: MapDef): readonly Cell[] {
   const known = trailCache.get(map);
   if (known) return known;
-  const order = walkTrail(map);
+  const used = new Set<number>();
+  const order = roadIds(map).flatMap(id => walkTrail(roadPath(map, id), map, used));
   trailCache.set(map, order);
   return order;
 }
 
 /** Take one nearest unused buildable cell at each trail step. */
-function walkTrail(map: MapDef, used = new Set<number>()): Cell[] {
+function walkTrail(path: MapDef, map = path, used = new Set<number>()): Cell[] {
   const mask = buildableCells(map);
   const order: Cell[] = [];
-  const total = pathLength(map);
+  const total = pathLength(path);
   for (let d = TRAIL_STEP; d <= total; d += TRAIL_STEP) {
-    const p = positionAlongPath(map, d);
+    const p = positionAlongPath(path, d);
     let best: { key: number; dist: number } | undefined;
     mask.forEach((ok, key) => {
       if (!ok || used.has(key)) return;
@@ -608,7 +619,7 @@ function extendedTrailCellOrder(map: MapDef): readonly Cell[] {
   if (known) return known;
   const order = [...trailCellOrder(map)];
   const used = new Set(order.map(cellKey));
-  for (let pass = walkTrail(map, used); pass.length > 0; pass = walkTrail(map, used)) {
+  for (let pass = walkTrail(map, map, used); pass.length > 0; pass = walkTrail(map, map, used)) {
     order.push(...pass);
   }
   extendedTrailCache.set(map, order);

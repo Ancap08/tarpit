@@ -5,9 +5,11 @@ import { BOONS, type BoonId } from './boons';
 import { ENEMY_STATS, isBoss } from './enemies';
 import { repairStatus } from './gate';
 import { tick } from './game';
-import { buildableCells, cellCenter, cellFromKey, cellKey } from './grid';
+import { buildableCells, cellCenter, cellFromKey, cellKey, isWallSiteClosed, sameCell } from './grid';
 import { applyAction, densestCluster, trailCellOrder, type BuildAction, type HeadlessStepResult, type SpecialAction } from './headless';
-import { pathLength, positionAlongPath } from './map';
+import { positionAlongPath } from './map';
+import { distanceOnRoad, roadIds, roadLength, roadPath } from './roads';
+import { quarteringStatus, windowTargets } from './siege';
 import { BIG_ENEMIES, POLICY_CHECK_TICKS, POLICY_MIN_HITS, chooseCrowdSpecial, chooseFeatherBarrel, policyCandidates } from './specialPolicy';
 import { availableSpecials, specialRadius, ordinaryRechargeTicks, spendSpecialCharge, type SpecialType } from './specials';
 import { TICKS_PER_SECOND } from './time';
@@ -24,6 +26,10 @@ const SETUP_RESERVE = 30;
 export interface BotPolicy {
   /** Spend a barrel turn and its charge, without applying its effects (C2 control). */
   leaveBarrelUnused?: boolean;
+  /** Consider freeing a useful tower site before shopping. */
+  quartering?(state: GameState): boolean;
+  /** Pick one worthwhile lit window this tick. */
+  window?(state: GameState): number | undefined;
   /** Consider one repair before shopping in each setup. */
   repair?(state: GameState): boolean;
   purchase(state: GameState): BuildAction | undefined;
@@ -53,7 +59,7 @@ export const botBeginner: BotPolicy = {
     if (state.phase !== 'setup' || state.pendingBoon) return undefined;
     const tower = [...allowedTowers(state)].sort((a, b) => TOWER_DEFS[a].cost - TOWER_DEFS[b].cost)[0];
     if (tower && !atTowerCap(state) && towerBuildCost(state, tower) <= state.gold) {
-      const cell = trailCellOrder(state.map).find((cell) => !state.towers.some((t) => cellKey(t.cell) === cellKey(cell)));
+      const cell = trailCellOrder(state.map).find((cell) => !isWallSiteClosed(state, cell) && !state.towers.some((t) => cellKey(t.cell) === cellKey(cell)));
       if (cell) return { type: 'build', tower, cell };
     }
     const limit = maxTowerLevel(state);
@@ -70,7 +76,7 @@ export const botBeginner: BotPolicy = {
 };
 
 interface TrailGeometry {
-  samples: readonly Point[];
+  samples: readonly { point: Point; road?: string; priority: number }[];
   cells: readonly { key: number; distances: readonly number[] }[];
 }
 const trailCache = new WeakMap<MapDef, TrailGeometry>();
@@ -78,12 +84,17 @@ const trailCache = new WeakMap<MapDef, TrailGeometry>();
 function trailGeometry(map: MapDef): TrailGeometry {
   const known = trailCache.get(map);
   if (known) return known;
-  const samples = Array.from({ length: Math.ceil(pathLength(map) / TRAIL_SAMPLE_SPACING) },
-    (_, index) => positionAlongPath(map, index * TRAIL_SAMPLE_SPACING));
+  const samples = roadIds(map).flatMap(road => {
+    const count = Math.ceil(roadLength(map, road) / TRAIL_SAMPLE_SPACING);
+    const path = roadPath(map, road);
+    return Array.from({ length: count }, (_, index) => ({
+      point: positionAlongPath(path, index * TRAIL_SAMPLE_SPACING), road, priority: 1.2 - 0.4 * index / count,
+    }));
+  });
   const cells = buildableCells(map).flatMap((open, key) => {
     if (!open) return [];
     const center = cellCenter(cellFromKey(key));
-    return [{ key, distances: samples.map((p) => Math.hypot(p.x - center.x, p.y - center.y)) }];
+    return [{ key, distances: samples.map(({ point }) => Math.hypot(point.x - center.x, point.y - center.y)) }];
   });
   const geometry = { samples, cells };
   trailCache.set(map, geometry);
@@ -119,6 +130,14 @@ function goodPurchase(state: GameState, rotate = false, buildLimit = Infinity, b
   const save = state.wave > 0 && state.level?.taxes?.frozenPurse === undefined;
   const budget = state.gold - (save ? SETUP_RESERVE : 0);
   const profile = threats(state);
+  const traffic = new Map<string | undefined, number>();
+  if (state.map.otherRoads?.length) {
+    for (const group of nextWavePreview(state)) {
+      const road = group.road ?? state.map.mainRoad;
+      traffic.set(road, (traffic.get(road) ?? 0) + group.count);
+    }
+  }
+  const mostTraffic = Math.max(1, ...traffic.values());
   const defense = samples.map(() => ({ ground: 0, air: 0, burn: 0, slow: 0 }));
   const occupied = new Map(state.towers.map((tower) => [cellKey(tower.cell), tower]));
   const counts = new Map<TowerType, number>();
@@ -162,7 +181,10 @@ function goodPurchase(state: GameState, rotate = false, buildLimit = Infinity, b
       const groundWeight = 1 + Math.min(0.35, local.ground / 180);
       // Extra anti-air coverage is worth most where little exists.
       const airWeight = profile.air / (1 + local.air / 50);
-      value += (groundGain * groundWeight + airGain * airWeight) * (1.2 - 0.4 * index / samples.length);
+      const { road, priority } = samples[index];
+      const trafficWeight = state.map.otherRoads?.length ? (traffic.get(road) ?? 0) / mostTraffic : 1;
+      const openLane = state.map.otherRoads?.length && local.ground + local.air === 0 ? 2 : 1;
+      value += (groundGain * groundWeight + airGain * airWeight) * priority * trafficWeight * openLane;
     }
     return value;
   }
@@ -173,6 +195,7 @@ function goodPurchase(state: GameState, rotate = false, buildLimit = Infinity, b
     const cell = cellFromKey(key);
     const tower = occupied.get(key);
     if (!tower) {
+      if (isWallSiteClosed(state, cell)) continue;
       for (const type of allowed) {
         if (buildOnly && type !== buildOnly) continue;
         const cost = towerBuildCost(state, type);
@@ -262,8 +285,10 @@ function chooseSpecial(state: GameState, lastZone: SpecialType | undefined, poin
     for (const point of points) {
       const placement = special === 'barricade' ? barricadePlacement(state.map, point) : guardsPlacement(state.map, point);
       if (!placement.ok) continue;
-      const approaching = ground.filter((enemy) => placement.point.distance - enemy.distance >= BLOCK_AHEAD
-        && placement.point.distance - enemy.distance <= BLOCK_APPROACH).length;
+      const approaching = ground.filter(enemy => {
+        const distance = distanceOnRoad(state.map, enemy.road, placement.point);
+        return distance !== undefined && distance - enemy.distance >= BLOCK_AHEAD && distance - enemy.distance <= BLOCK_APPROACH;
+      }).length;
       if (approaching < POLICY_MIN_HITS) continue;
       const coverage = state.towers.filter((tower) => {
         const center = cellCenter(tower.cell);
@@ -288,12 +313,34 @@ function shouldRepair(state: GameState, fraction: number, reserve: number): bool
   return repair.ok && state.gold - repair.cost >= reserve;
 }
 
+function shouldPayQuartering(state: GameState, reserve: number): boolean {
+  const quote = quarteringStatus(state);
+  if (!quote.ok || state.pendingBoon) return false;
+  const action = goodPurchase({ ...state, gold: state.gold - quote.cost - reserve, wallSiteTax: undefined });
+  return action?.type === 'build' && sameCell(action.cell, state.wallSiteTax!.site);
+}
+
+function chooseWindow(state: GameState, minimum: number, ramWeight: number): number | undefined {
+  let best: number | undefined;
+  let score = minimum - 1;
+  for (const [index] of state.windows?.entries() ?? []) {
+    const value = windowTargets(state, index).reduce((n, enemy) => n + (enemy.type === 'ram' ? ramWeight : 1), 0);
+    if (value > score) {
+      score = value;
+      best = index;
+    }
+  }
+  return best;
+}
+
 export const botGood: BotPolicy = {
   purchase: goodPurchase,
   purchaseTicks: POLICY_CHECK_TICKS,
   reward: goodReward,
   special: goodSpecial,
-  repair: state => shouldRepair(state, 0.6, 70),
+  repair: state => (state.level?.feat ?? state.fixedFeat)?.kind !== 'noRepairs' && shouldRepair(state, 0.6, 70),
+  quartering: state => shouldPayQuartering(state, 0),
+  window: state => state.waveTick % POLICY_CHECK_TICKS === 0 ? chooseWindow(state, 3, 3) : undefined,
 };
 
 // Open with damage, then put a Tar Pit where Good's defense benefits most.
@@ -402,6 +449,8 @@ export const botPerson: BotPolicy = {
   reward: goodReward,
   special: personSpecial,
   repair: state => shouldRepair(state, 0.3, 0),
+  quartering: state => state.towers.length > 0 && shouldPayQuartering(state, SETUP_RESERVE),
+  window: state => state.waveTick % PERSON_LOOK_TICKS === PERSON_REACTION_TICKS ? chooseWindow(state, 4, 2) : undefined,
 };
 
 /** Keep the ordinary player's aim, timing and purchases while favoring feathers. */
@@ -466,6 +515,7 @@ export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity,
       const reward = bot.reward(state);
       if (reward && !apply({ type: 'pickBoon', boon: reward })) break;
       if (state.gate && bot.repair?.(state) && !apply({ type: 'repairGate' })) break;
+      if (state.wallSiteTax && bot.quartering?.(state) && !apply({ type: 'payQuartering' })) break;
       let upgrades = 0;
       for (let action = bot.purchase(state); action; action = bot.purchase(state)) {
         if (action.type === 'upgrade' && upgrades >= (bot.upgradesPerSetup ?? Infinity)) break;
@@ -483,7 +533,13 @@ export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity,
       if (state.tick >= endTick) break;
       if (state.phase === 'setup' && !apply({ type: 'startWave' })) break;
     }
-    const special = bot.special(state, lastZone);
+    const window = state.windows ? bot.window?.(state) : undefined;
+    if (window !== undefined) {
+      const step = applyAction(state, { type: 'shakeWindow', index: window });
+      log.push(step);
+      if (step.action === 'shakeWindow' && step.result.ok) feathered += step.result.hits;
+    }
+    const special = window === undefined ? bot.special(state, lastZone) : undefined;
     const eventsBeforeCast = state.events.length;
     if (special?.special === 'tarBarrel' && bot.leaveBarrelUnused) {
       spendSpecialCharge(state, 'tarBarrel');

@@ -10,6 +10,7 @@ import { callNextWave, createGame, startWave, tick } from './game';
 import { LEVELS } from './levels';
 import { pathLength, positionAlongPath } from './map';
 import { createKeep } from './oldKeep';
+import { payQuartering } from './siege';
 import { towerStatsAt } from './towers';
 import type { Enemy, EnemyType, GameState, MapDef } from './types';
 import { gameWaveDef } from './waves';
@@ -283,6 +284,8 @@ describe('the siege gate', () => {
   it('the Old Keep wall-walk covers the whole yard and Last stand saves more lives there', () => {
     const state = createKeep();
     const gate = state.gate!;
+    state.gold += 35; // Preserve the gate trial’s original tower budget after the new site fee.
+    expect(payQuartering(state).ok).toBe(true);
     for (const site of state.map.highSites!) expect(buildTower(state, site, 'longbow').ok).toBe(true);
     for (const site of [{ col: 22, row: 7 }, { col: 15, row: 13 }]) expect(upgradeTower(state, site).ok).toBe(true);
     for (let i = 0; i <= gate.yardLength; i++) {

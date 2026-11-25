@@ -2,6 +2,7 @@
 // 30 x 15 grid of 32 px cells. A tower stands on one cell; its range and its
 // shots are measured from the cell centre.
 
+import { roadIds, roadPath } from './roads';
 import type { GameState, MapDef, Point, Rect } from './types';
 
 export const GRID_COLS = 30;
@@ -63,7 +64,7 @@ function segmentT(p: Point, a: Point, b: Point): number {
  * how far along the path (from the spawn) it lies. On a tie between
  * segments, the one nearer the spawn wins.
  */
-export function nearestPathPoint(point: Point, map: MapDef): { distance: number; along: number } {
+function nearestOnRoad(point: Point, map: MapDef): { distance: number; along: number } {
   let best = { distance: Infinity, along: 0 };
   let start = 0;
   for (let i = 1; i < map.path.length; i++) {
@@ -74,6 +75,15 @@ export function nearestPathPoint(point: Point, map: MapDef): { distance: number;
     const d = Math.hypot(a.x + (b.x - a.x) * t - point.x, a.y + (b.y - a.y) * t - point.y);
     if (d < best.distance) best = { distance: d, along: start + len * t };
     start += len;
+  }
+  return best;
+}
+
+export function nearestPathPoint(point: Point, map: MapDef): { distance: number; along: number; road?: string } {
+  let best: { distance: number; along: number; road?: string } = nearestOnRoad(point, map);
+  if (map.otherRoads?.length) for (const id of roadIds(map).slice(1)) {
+    const candidate = nearestOnRoad(point, roadPath(map, id));
+    if (candidate.distance < best.distance) best = { ...candidate, road: id };
   }
   return best;
 }
@@ -150,5 +160,10 @@ export function isBuildableTerrain(cell: Cell, map: MapDef): boolean {
 
 /** True when a tower may be built on `cell` now: buildable terrain on the game's map, and free. */
 export function isBuildable(state: GameState, cell: Cell): boolean {
-  return isBuildableTerrain(cell, state.map) && !state.towers.some((t) => sameCell(t.cell, cell));
+  return isBuildableTerrain(cell, state.map) && !isWallSiteClosed(state, cell) && !state.towers.some((t) => sameCell(t.cell, cell));
+}
+
+/** Quartered and surveyed sites share the same placement refusal. */
+export function isWallSiteClosed(state: GameState, cell: Cell): boolean {
+  return state.wallSiteTax !== undefined && sameCell(state.wallSiteTax.site, cell);
 }

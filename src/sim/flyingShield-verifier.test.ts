@@ -25,7 +25,7 @@ const B: Cell = { col: 2, row: 5 };
 // Arena hp: the milestone 22 values, fixed so the arithmetic below stays as
 // written; no rule probed here depends on an enemy's full hp (milestone 25c
 // lowered ENEMY_STATS).
-const ARENA_HP: Record<EnemyType, number> = { goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000, grumblemaw: 5600 };
+const ARENA_HP: Record<EnemyType, number> = { goblin: 30, wolf: 28, troll: 700, harpy: 40, shieldbearer: 120, boss: 4000, grumblemaw: 5600, ram: 360 };
 
 function enemy(id: number, type: EnemyType, distance: number, hp = ARENA_HP[type]): Enemy {
   return { id, type, hp, distance, slow: 0, slowTicksLeft: 0, burnDps: 0, burnTicksLeft: 0 };

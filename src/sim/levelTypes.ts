@@ -1,6 +1,7 @@
-import type { MapId } from './map';
+import type { LevelMapId } from './map';
+import type { Cell } from './grid';
 import type { SpecialType } from './specials';
-import type { TowerLevel, TowerType, WaveDef } from './types';
+import type { Point, TowerLevel, TowerType, WaveDef } from './types';
 
 export const CAMPAIGN_START_LIVES = 20;
 export const TWO_STAR_LIVES = 12;
@@ -20,6 +21,7 @@ export type LevelFeat =
   | { readonly kind: 'noLeaks' }
   | { readonly kind: 'noSpecials' }
   | { readonly kind: 'unbroken' }
+  | { readonly kind: 'noRepairs' }
   | { readonly kind: 'maxTowers'; readonly limit: number };
 
 export interface GateDef {
@@ -30,13 +32,30 @@ export interface GateDef {
   readonly yardLength: number;
 }
 
-export interface LevelDef {
+export interface PillowWindowDef {
+  readonly position: Point;
+  readonly road?: string;
+  /** Inclusive distances along this road, in trail pixels from its entrance. */
+  readonly from: number;
+  readonly to: number;
+}
+
+export type WallSiteTax =
+  | { readonly kind: 'quartering'; readonly site: Cell; readonly price: number }
+  | { readonly kind: 'royalSurvey'; readonly site: Cell };
+
+export interface SiegeDef {
+  readonly windows?: readonly PillowWindowDef[];
+  readonly wallSiteTax?: WallSiteTax;
+}
+
+export interface LevelDef extends SiegeDef {
   readonly gate?: GateDef;
   readonly featherBarrels?: boolean;
   readonly taxes?: LevelTaxes;
   readonly feat?: LevelFeat;
   readonly id: number;
-  readonly map: MapId;
+  readonly map: LevelMapId;
   readonly endingBoss?: 'boss' | 'grumblemaw';
   readonly waves: readonly WaveDef[];
   readonly startGold: number;

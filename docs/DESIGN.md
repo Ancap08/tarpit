@@ -152,7 +152,7 @@ Buildable counts are of the 450 cells.
 
 The separate `?keep=1` exhibition opens directly on a Normal field with
 20 lives and 240 gold. It uses the ordinary tower prices, upgrades, enemy
-stats and wave-clear bonus. Its ten tower sites and road share one coordinate
+stats and wave-clear bonus. Its ten tower sites and roads share one coordinate
 file, `src/sim/keepSite.json`, with the miniature renderer. The stair foot is at
 (576, 296). Collectors climb the steps to the road's end at the painted
 threshold (551, 272). The siege gate blocks the lower bend of the approach
@@ -189,12 +189,13 @@ cooldown of 30 seconds, which doubles after each drop. At scene startup
 the governor ignores the first eight frame samples so the initial
 composite and texture upload stay outside the measurement window.
 
-| Wave | Groups (enemy, count, seconds between spawns, start in seconds) |
+| Wave | Groups (road, enemy, count, seconds between spawns, start in seconds) |
 | --- | --- |
-| 1 | Goblin, 12, 0.85, 0 |
-| 2 | Wolf, 10, 0.9, 0 · Shieldbearer, 5, 1.7, 3 |
-| 3 | Goblin, 16, 0.6, 0 · Troll, 4, 2.8, 2 · Harpy, 6, 1.3, 4 |
+| 1 | East Goblin, 6, 0.85, 0 · West Goblin, 6, 0.85, 0 |
+| 2 | West Wolf, 10, 0.9, 0 · East Shieldbearer, 5, 1.7, 3 |
+| 3 | West Goblin, 16, 0.6, 0 · East Troll, 4, 2.8, 2 · East Harpy, 6, 1.3, 4 · West Ram, 1, 0, 1 |
 
+The exhibition opens the Tar Barrel on wave 2 and Guards on wave 3.
 Clearing wave 3 ends the exhibition. Replay starts fresh. The map is absent
 from the campaign, Free play, balance runs and progress stores. Its four
 wall-walk sites are high, and its gate uses the Old Keep values below.
@@ -302,6 +303,7 @@ every level; every Normal number in this file is the base number.
 | Shieldbearer | 53 | 70 | 84 |
 | Grumblefoot (boss) | 3000 | 4000 | 4800 |
 | Grumblemaw (boss) | 4200 | 5600 | 6720 |
+| The Final Notice | 270 | 360 | 432 |
 
 **Hard hp rule (waves 1–10).** No ordinary enemy's Hard hp sits 1 or 2 points above
 a multiple
@@ -351,6 +353,7 @@ beside it that returns to the title; the win screen also has [Keep going].
 | Shieldbearer | 70 | 45 | 5 | 1 | 12 | shield |
 | Assessor Grumblefoot | 4000 | 25 | 150 | 5 | 300 | boss; slows capped at 30% |
 | Grumblemaw | 5600 | 14 | 75 | 10 | 400 | boss; slows capped at 30% |
+| The Final Notice | 360 | 30 | 12 | 1 | 4 | 180 damage per second to the siege gate |
 
 - **Flying.** A Harpy flies over the path. Tar Pit, Cannon and Mortar never
   target it, and a Cannon or Mortar splash skips it even when it is inside
@@ -843,6 +846,80 @@ gate HP rounded up, Repair with the actual gold price in setup for a
 damaged standing gate, and Gate fallen with Last stand! for the duration
 of the bonus. At full HP the disabled Repair control has no price.
 
+## Converging roads and siege rules
+
+Each road uses its own distance from its entrance. An alternate approach
+joins a waypoint of the map's main road and follows its suffix to the same
+exit. A gate must stand on the common stretch. A group without a road name
+uses the main road. A Grumblemaw pack starts at the same entrance as the
+caller, even if its caller dies. Early calls preserve the road of each enemy
+already on the field. Preview data keeps each group's road, in wave order.
+The plain Next preview groups the entries under their road names.
+
+- **Targeting.** First has the least trail distance left to the exit. Last
+  has the most. Strongest compares current HP, then uses First. Every
+  remaining tie goes to the lowest enemy id. The Feathers Tar Pit keeps
+  its preference for unfeathered enemies. Eligibility and reach are tested
+  at real map positions, including the Mortar's minimum range. Build
+  clearance uses the nearest centreline on any road.
+- **Blockers.** Snap to the nearest centreline on any road. Ties use map
+  road order, then segment order. Existing snap and end clearances use
+  the selected road. Guards stand at the usual spacing toward the selected
+  entrance. Each blocker can hold enemies from its own approach or from
+  any road sharing the point it occupies. This applies to each guard
+  separately if a squad straddles the join. All ground enemies at the
+  gate attack the same HP pool. Flyers and runners pass as before.
+- **Runners.** A feathered enemy reverses along its own route, uses its own
+  entrance at the fork, and may flinch enemies from either road when passing
+  them on the shared stretch. Enemies still on different approaches do not
+  pass one another. The entrance stops the retreat as before.
+- **Specials and previews.** Area effects and splash count each enemy once
+  by its actual position and radius. The build reach display uses the same
+  circles and ground/air rules as before. Blocker previews use the same
+  cross-road snap and squad positions as the cast.
+- **Leaks and wave end.** Each enemy costs its usual lives only when it
+  reaches the exit on its own road. Both roads must finish all their spawns
+  and clear their live enemies before a wave can end.
+
+| Old Keep 52b1 data | Starting value |
+| --- | --- |
+| Western approach, in map pixels | (564, 480), (584, 435), (610, 444), (664, 473), (719, 475), (790, 478) |
+| Join, main path waypoint index 7 (zero-based) | (800, 416) |
+| West window position and inclusive coverage from the western entrance | (540, 325), 160–390 trail px |
+| East window position and inclusive coverage from the eastern entrance | (564, 170), 290–520 trail px |
+| Quartering price and site | 35 gold at column 13, row 7 |
+| Royal Survey site (hidden `?keep=1&survey=1` variant) | Column 13, row 7 |
+| Window touch area | 116 × 80 canvas px |
+| Wall-site marker touch area | 136 × 80 canvas px |
+
+A lit window can be shaken during combat once in the entire level, even
+if the stretch is empty. It affects live, tarred, unfeathered non-bosses
+on the indicated stretch, including enemies from another road after the
+join if the stretch extends there. It uses the barrel's 63 moving ticks
+and the usual 16-tick flinch for enemies a runner passes. Windows have
+separate uses and spend no special charge or gold. A used window goes dark.
+
+A level may have one wall-site tax. Quartering and Royal Survey refuse
+builds and tower moves onto that site. Quartering can be paid off during
+setup, including before wave one, for exactly the listed price, once.
+Survey stays in force for the level. A new play starts with its level's
+site rules and lit windows. The Ram takes tar, burn and feathers normally.
+An exit costs one life. Its 180 gate damage per second is four times the
+Troll's, with 4 damage per second against Guards or a Barricade.
+
+**Not a nail** uses the standard feat threshold of 12 lives in a win.
+A successful Repair purchase forfeits the feat, including a partial
+repair. Failed purchases, Quartering and a fallen gate do not forfeit
+it. The hidden exhibition shows the result at a win and saves no stars
+or progress.
+
+Part c2 can paint the west branch up to the join and reuse the shared road,
+position window light and feather effects at the two window anchors, and
+align gate art to the existing gate line and yard. The scroll on wheels,
+branch trace, gate line and wall-site markers are plain controls or
+placeholders.
+
+
 ## Gold cheat
 
 `grantCheatGold(state)` adds 500 gold (`CHEAT_GOLD`), sets `state.cheated`
@@ -1317,6 +1394,24 @@ the same Ending at level 10 keeps that receipt. Level 20 still shows
 “Campaign complete!” and goes straight to the chosen destination. A denied
 write falls back to the current session. Rotation preserves the page and
 the destination.
+
+### Act One notices and replies
+
+| Level | The King's notice | The town's reply |
+|---|---|---|
+| Opening | Hear ye. By order of King Grumblemaw, all gold in this town now belongs to the Crown. Collectors are on their way. | We counted it. It's ours. |
+| 1 | A tax on doors. Collectors will call at yours. | We kept the doors. And the gold. |
+| 2 | A tax on wheels, carts and anything that rolls. | Our cannonballs roll. Collect those. |
+| 3 | A tax on running. The Hounds will show you how. | They ran. Slowly. Sorry about the tar. |
+| 4 | A tax on firewood, payable to the Redcoats at once. | We burned it ourselves, thanks. |
+| 5 | A tax on the sky. The Royal Harpies own it now. | The sky is still free. Mind the feathers. |
+| 6 | A toll on this road: one Troll per traveller. | Toll paid. In mortar shells. |
+| 7 | A tax on standing still. Move along, all of you. | We built a wall. It stood very still. |
+| 8 | A tax on neighbours helping neighbours. | The neighbours say no. |
+| 9 | The Assessor will now count your gold. Personally. | He lost count. |
+| 10 | Enough. The King is coming for the lot. | (the ending) |
+| Ending | | The King went home with empty pockets. The gold stayed where it was earned. Taxation is theft. |
+| Any loss | The Crown thanks you for your contribution. | |
 
 ## Showpiece (experimental)
 
@@ -2042,6 +2137,23 @@ keep their previous meaning and the best result wins.
   the gate is at or below 60% HP and the purchase leaves at least 70 gold.
   **Person** buys one before shopping at or below 30% HP when it can pay.
   **Beginner** never repairs. All three follow the setup-only repair rule.
+- With named approaches **Good** and **Person** sample each road at the
+  existing 24 px spacing. They weight samples by each road's next-wave
+  count divided by the busiest road's count, doubling the value of samples
+  that lack damage coverage. Shared ground can cover both roads. Person
+  keeps the three-site rotation. Beginner walks in map road order and
+  skips closed sites.
+- Good checks windows every 30 wave ticks, shaking the one with the highest
+  score of at least 3. Each eligible enemy scores 1, with a Ram worth 3.
+  Person looks 90 ticks into each 180-tick interval and needs a score of 4,
+  with a Ram worth 2. Ties use window order. A window use replaces that
+  tick's ordinary special decision.
+- Before shopping Good pays Quartering if the newly open site would be
+  its best affordable build after payment. Person runs the same check
+  with 30 extra gold held back and at least one tower already standing.
+  Beginner neither shakes windows nor pays Quartering. Good forgoes
+  repairs when playing for Not a nail; Person keeps its usual repair rule.
+
 
 In Normal Free play, Good must win or lose on each map the same way as
 comboBuild. Both win on all three maps. Good finishes with 20 lives on each.

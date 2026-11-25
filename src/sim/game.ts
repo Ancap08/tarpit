@@ -79,8 +79,9 @@ import { burnEnemies, fireTowers, PACK_INTERVAL_TICKS, removeDead } from './comb
 import { ACT_TWO_HP_GROWTH, DEFAULT_DIFFICULTY, DIFFICULTY_DEFS, campaignHpFactor, enemyMaxHp, type Difficulty } from './difficulty';
 import { ENEMY_STATS, isBoss } from './enemies';
 import { createGate, LAST_STAND_TICKS } from './gate';
-import { CAMPAIGN_START_LIVES, type GateDef, type LevelDef } from './levelTypes';
-import { pathLength, resolveMap, type MapId } from './map';
+import { CAMPAIGN_START_LIVES, type GateDef, type LevelDef, type SiegeDef } from './levelTypes';
+import { pathLength, resolveMap, type LevelMapId } from './map';
+import { roadLength } from './roads';
 import { applyBurn, applySpecialSlow, enemyPosition } from './combat';
 import { SPECIAL_DEFS, ZONE_LINGER_TICKS, refillAtWaveStart, tarLingerTicks } from './specials';
 import { secondsToTicks, TICKS_PER_SECOND } from './time';
@@ -97,11 +98,11 @@ export const EARLY_CALL_GRACE_SECONDS = 20;
 /** Call early: the most the early bonus pays. */
 export const EARLY_CALL_MAX_BONUS = 20;
 
-export interface CreateGameOptions {
+export interface CreateGameOptions extends SiegeDef {
   /** Difficulty level (milestone 25); Normal when left out. */
   difficulty?: Difficulty;
   /** The map (milestone 27): a MAPS id, or a test's own MapDef; Meadow when left out. */
-  map?: MapId | MapDef;
+  map?: LevelMapId | MapDef;
   /** Campaign rules take precedence over Free play map and difficulty. */
   level?: LevelDef;
   /** Gate rules for a private exhibition, or supplied by the campaign level. */
@@ -118,11 +119,13 @@ export function createGame(options: CreateGameOptions = {}): GameState {
   const difficulty = level ? DEFAULT_DIFFICULTY : options.difficulty ?? DEFAULT_DIFFICULTY;
   const def = DIFFICULTY_DEFS[difficulty];
   const map = resolveMap(level?.map ?? options.map);
-  const gate = level ? level.gate : options.gate;
+  const { gate, windows, wallSiteTax } = level ?? options;
   return {
     map,
     ...(level ? { level } : {}),
     ...(gate ? { gate: createGate(map, gate) } : {}),
+    ...(windows?.length ? { windows: windows.map(window => ({ ...window, used: false })) } : {}),
+    ...(wallSiteTax ? { wallSiteTax } : {}),
     ...(level?.taxes || level?.feat ? { towersBuilt: 0 } : {}),
     ...(level?.feat?.kind === 'noLeaks' ? { leaks: 0 } : {}),
     difficulty,
@@ -307,7 +310,7 @@ export function tick(state: GameState): void {
   const { gate } = state;
   const standingGate = gate && gate.hp > 0 ? gate : undefined;
   const blockers = standingGate ? [...state.blockers, standingGate] : state.blockers;
-  const guardsStruck = moveEnemies(state.enemies, state.events, blockers, 1 + (state.level?.taxes?.forcedMarch ?? 0));
+  const guardsStruck = moveEnemies(state.enemies, state.events, blockers, 1 + (state.level?.taxes?.forcedMarch ?? 0), state.map.otherRoads?.length ? state.map : undefined);
   if (standingGate?.hp === 0 && !standingGate.fallen) {
     standingGate.fallen = true;
     standingGate.lastStandTicksLeft = LAST_STAND_TICKS;
@@ -392,7 +395,7 @@ function removeExitedEnemies(state: GameState): void {
   const exit = pathLength(state.map);
   let kept = 0;
   for (const e of state.enemies) {
-    if (e.distance < exit) {
+    if (e.distance < (e.road === undefined ? exit : roadLength(state.map, e.road))) {
       state.enemies[kept++] = e;
       continue;
     }
@@ -408,20 +411,20 @@ function spawnDueEnemies(state: GameState): void {
   const def = gameWaveDef(state, state.wave);
   def.groups.forEach((group, gi) => {
     for (let index = state.spawnedPerGroup[gi]; index < group.count && spawnTick(group, index) === state.waveTick; index++) {
-      spawnEnemy(state, group.type, def.hpMultiplier);
+      spawnEnemy(state, group.type, def.hpMultiplier, group.road);
       state.spawnedPerGroup[gi] = index + 1;
     }
   });
   for (const pack of state.packs) {
     if (pack.nextTick !== state.waveTick) continue;
-    spawnEnemy(state, 'wolf', def.hpMultiplier);
+    spawnEnemy(state, 'wolf', def.hpMultiplier, pack.road);
     pack.remaining -= 1;
     pack.nextTick += PACK_INTERVAL_TICKS;
   }
   if (state.packs.length) state.packs = state.packs.filter((p) => p.remaining > 0);
 }
 
-function spawnEnemy(state: GameState, type: EnemyType, multiplier?: number): void {
+function spawnEnemy(state: GameState, type: EnemyType, multiplier?: number, road?: string): void {
   const level = state.level;
   const growth = level?.hpGrowthStart == null ? 0 : Math.max(0, state.wave - level.hpGrowthStart + 1);
   const scale = level
@@ -433,6 +436,7 @@ function spawnEnemy(state: GameState, type: EnemyType, multiplier?: number): voi
   const enemy = {
     id, type, hp, distance: 0, slow: 0, slowTicksLeft: 0, specialSlow: 0, specialSlowTicksLeft: 0,
     burnDps: 0, burnTicksLeft: 0,
+    ...(road === undefined ? {} : { road }),
     ...(factor === 1 ? {} : { maxHp: hp }),
   };
   state.enemies.push(enemy);

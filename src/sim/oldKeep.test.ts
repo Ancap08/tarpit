@@ -22,7 +22,7 @@ describe('Old Keep exhibition', () => {
     const state = createKeep();
     expect(state).toMatchObject({ lives: 20, gold: 240, wave: 0, phase: 'setup' });
     expect(lastWave(state)).toBe(3);
-    expect(nextWavePreview(state)).toEqual([{ type: 'goblin', count: 12 }]);
+    expect(nextWavePreview(state)).toEqual([{ type: 'goblin', count: 6, road: 'east' }, { type: 'goblin', count: 6, road: 'west' }]);
     for (const [col, row] of [[15, 4], [22, 7], [26, 10], [22, 10]]) {
       expect(buildTower(state, { col, row }, 'musketeer').ok).toBe(true);
     }

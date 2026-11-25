@@ -132,13 +132,13 @@ function validTaxesAndFeat(level: LevelDef): boolean {
   const keys = taxKinds(level);
   if (keys.length > 2 || !keys.every(key => validTax(level, key))) return false;
   const feat = level.feat;
-  return !feat || feat.kind === 'noLeaks' || feat.kind === 'noSpecials' ||
+  return !feat || feat.kind === 'noLeaks' || feat.kind === 'noSpecials' || feat.kind === 'noRepairs' ||
     (feat.kind === 'unbroken' && level.gate !== undefined) ||
     (feat.kind === 'maxTowers' && whole(feat.limit, 0));
 }
 
 function validLevel(level: LevelDef): boolean {
-  return whole(level.id, 1) && MAP_IDS.includes(level.map) && validTaxesAndFeat(level) &&
+  return whole(level.id, 1) && MAP_IDS.some(id => id === level.map) && validTaxesAndFeat(level) &&
     whole(level.startGold, ...GATE_LIMITS.startGold) &&
     Number.isFinite(level.hpScale) && level.hpScale >= GATE_LIMITS.hpScale[0] && level.hpScale <= GATE_LIMITS.hpScale[1] &&
     (level.hpGrowthStart === null || whole(level.hpGrowthStart, 1, level.waves.length)) &&

@@ -14,6 +14,7 @@ export const ENEMY_STATS: Readonly<Record<EnemyType, EnemyStats>> = {
   goblin: { blockerDps: 6, hp: 23, speed: 60, bounty: 2, flying: false, shield: false, livesCost: 1 },
   wolf: { blockerDps: 8, hp: 20, speed: 120, bounty: 2, flying: false, shield: false, livesCost: 1 },
   troll: { blockerDps: 45, hp: 950, speed: 35, bounty: 8, flying: false, shield: false, livesCost: 1 },
+  ram: { blockerDps: 4, gateDps: 180, hp: 360, speed: 30, bounty: 12, flying: false, shield: false, livesCost: 1 },
   harpy: { blockerDps: 0, hp: 36, speed: 90, bounty: 3, flying: true, shield: false, livesCost: 1 },
   shieldbearer: { blockerDps: 12, hp: 70, speed: 45, bounty: 5, flying: false, shield: true, livesCost: 1 },
   // Grumblemaw closes wave 20 and costs 10 lives if he escapes.
