@@ -301,3 +301,20 @@ the checker looks for it.
 | `docs/review/m51/keep-loading.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Phone loading progress with one plate pending |
 | `docs/review/m51/keep-load-failed.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Phone recovery screen after a blocked glow request |
 | `docs/review/m51/keep-wall-defence.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Production game capture |
+| `docs/review/m52c2a/1024x768-level-23.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/390x664-level-23.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/390x664-outer-gate-midwave.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/390x844-before.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/390x844-level-21.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/390x844-level-22.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/390x844-level-23.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/390x844-level-24.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/390x844-level-25.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/390x844-lightning.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/390x844-outer-gate-midwave.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/960x580-level-23.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/gate-cracked.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/gate-open.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/gate-sound.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/gate-splintered.jpg` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2a/level-23-phone.mp4` | `scripts/art/m52c2aMedia.ts` | Tarpit agents | MIT | Production siege capture |

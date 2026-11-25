@@ -122,7 +122,8 @@ async function cost(build: string, candidate: boolean) {
         requestAnimationFrame(frame);
       }), count);
       for (const tier of [2, 0]) {
-        await page.goto(origin + '/?keep=23&perf=1&keepTier=' + tier + (candidate ? '&act3=1' : ''));
+        const actThree = candidate || process.argv.includes('--same-act3') ? '&act3=1' : '';
+        await page.goto(origin + '/?keep=23&perf=1&keepTier=' + tier + actThree);
         await page.waitForFunction(() => window.__tarpit?.keep?.());
         const gate = await page.evaluate(() => {
           const s = window.__tarpit!.game.scene.getScene('game') as GameScene;
