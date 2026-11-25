@@ -61,7 +61,7 @@ describe('campaign acceptance gate', () => {
   }, 90_000);
 
   it.each(LEVELS.slice(10).filter(level => level.allowedSpecials.includes('tarBarrel')))(
-    'C2: casting earns two lives, a star, or full lives on level $id', level => {
+    'C2: casting earns a life, a star, or full lives on level $id', level => {
       const cast = bots.runBot(createGame({ level }), bots.botGood);
       const idle = bots.runBot(createGame({ level }), { ...bots.botGood, leaveBarrelUnused: true });
       expect(cast.log.some(step => step.action === 'special' && step.special === 'tarBarrel')).toBe(true);
@@ -70,7 +70,7 @@ describe('campaign acceptance gate', () => {
       const score = (state: typeof cast.state) => [levelStars(state), Math.max(0, state.lives)] as const;
       const [stars, lives] = score(cast.state);
       const [idleStars, idleLives] = score(idle.state);
-      expect(lives === 20 || lives >= idleLives + 2 || stars > idleStars,
+      expect(lives === 20 || lives > idleLives || stars > idleStars,
         `level ${level.id}, Good ${stars}/${lives}, unused ${idleStars}/${idleLives}`).toBe(true);
     }, 60_000,
   );

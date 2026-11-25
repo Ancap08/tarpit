@@ -122,6 +122,8 @@ type WaveChange = {
 const waveChanges: readonly WaveChange[] = [
   { id: 11, wave: 6, group: 1, from: { count: 21 }, to: { count: 19 } },
   { id: 12, wave: 1, group: 1, from: { interval: 1.15 }, to: { interval: 1.265 } },
+  { id: 12, wave: 6, group: 1, from: { interval: 0.8 }, to: { interval: 0.79 } },
+  { id: 12, wave: 6, group: 2, from: { count: 21 }, to: { count: 22 } },
   { id: 13, wave: 3, group: 2, from: { count: 39 }, to: { count: 34 } },
   { id: 13, wave: 5, group: 1, from: { count: 15 }, to: { count: 13 } },
   { id: 17, wave: 2, group: 1, from: { count: 30 }, to: { count: 27 } },
@@ -129,6 +131,7 @@ const waveChanges: readonly WaveChange[] = [
   { id: 19, wave: 2, group: 2, from: { interval: 1.08 }, to: { interval: 1.2312 } },
   { id: 19, wave: 3, group: 1, from: { interval: 1.75 }, to: { interval: 1.61 } },
   { id: 20, wave: 2, group: 2, from: { type: 'harpy' }, to: { type: 'goblin' } },
+  { id: 20, wave: 6, group: 1, from: { interval: 3 }, to: { interval: 2.85 } },
 ];
 
 it('C7: every changed level number is accounted for', () => {

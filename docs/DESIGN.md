@@ -1912,7 +1912,9 @@ are exempt. Saved stars keep their previous meaning and the best result wins.
 
 - **Unused barrel turns.** The Act Two control plays as Good. At each barrel
   opportunity it spends the charge and advances the alternating turn without
-  creating a zone, slowing enemies or feathering them.
+  creating a zone, slowing enemies or feathering them. C2 requires Good to
+  finish with at least one more life or one more star than this control, or
+  to finish with all 20 lives.
 
 - **Feathers-forced Good and Person** keep the ordinary player’s shopping,
   cast opportunities and aim grid. Each buys Feathers whenever it buys a Tar
@@ -2025,7 +2027,7 @@ Stars/lives give each bot’s highest award and surviving lives. Time counts Goo
 | 9 | The King's Assessor | Riverbend | 7 | 535 | 255 | 1 | 6 | 3 | 5 | 3/20 | 3/20 | 0/0 | 7.57 | 17 | 42 |
 | 10 | Last Light | Meadow | 7 | 633 | 280 | 0.925 | 5 | 3 | 5 | 2/16 | 2/13 | 0/0 | 8.89 | 19 | 36 |
 | 11 | Window Money | Riverbend | 6 | 324 | 245 | 0.91 | — | 3 | 1 | 2/20 | 2/14 | 0/0 | 5.91 | 22 | 21 |
-| 12 | The Quickstep | Switchback | 7 | 466 | 269 | 1.14 | — | 3 | 1 | 2/18 | 2/15 | 0/0 | 6.79 | 29 | 38 |
+| 12 | The Quickstep | Switchback | 7 | 467 | 269 | 1.14 | — | 3 | 1 | 2/17 | 2/13 | 0/0 | 6.97 | 29 | 38 |
 | 13 | Eight Bells | Riverbend | 7 | 312 | 285 | 0.85 | — | 3 | 1 | 3/20 | 2/15 | 0/0 | 5.56 | 14 | 31 |
 | 14 | Short Measure | Meadow | 6 | 331 | 240 | 0.93 | — | 3 | — | 3/20 | 2/14 | 0/0 | 5.52 | 25 | 27 |
 | 15 | Pay Day | Riverbend | 6 | 285 | 255 | 1.08 | — | 3 | 2 | 2/14 | 2/13 | 0/0 | 5.81 | 9 | 40 |
@@ -2036,7 +2038,7 @@ Stars/lives give each bot’s highest award and surviving lives. Time counts Goo
 | 20 | The Last Writ | Riverbend | 8 | 509 | 270 | 0.925 | — | 3 | — | 2/13 | 2/13 | 0/0 | 8.91 | 12 | 53 |
 
 Good clears the first ten stops in 72.70 combat minutes, with a 4.00-life
-mean drop. Across all twenty stops Good takes 134.29 combat minutes.
+mean drop. Across all twenty stops Good takes 134.47 combat minutes.
 Mean surviving lives drop from 18.00 on levels 1–6 to 15.00 on levels 15–20.
 
 The Act Two feather-barrel retune uses the following wave groups.
@@ -2046,6 +2048,8 @@ Intervals are seconds between consecutive enemies in one group.
 |---:|---:|---:|---|---:|---:|
 | 11 | 6 | 1 | Troll | 19 | 1.05 |
 | 12 | 1 | 1 | Shieldbearer | 38 | 1.265 |
+| 12 | 6 | 1 | Shieldbearer | 68 | 0.79 |
+| 12 | 6 | 2 | Troll | 22 | 1.7 |
 | 13 | 3 | 2 | Harpy | 34 | 1.21 |
 | 13 | 5 | 1 | Troll | 13 | 2.1 |
 | 17 | 2 | 1 | Harpy | 27 | 1 |
@@ -2053,6 +2057,7 @@ Intervals are seconds between consecutive enemies in one group.
 | 19 | 2 | 2 | Harpy | 43 | 1.2312 |
 | 19 | 3 | 1 | Troll | 11 | 1.61 |
 | 20 | 2 | 2 | Goblin | 24 | 2.22 |
+| 20 | 6 | 1 | Troll | 5 | 2.85 |
 
 Fractions below are shares of the base price, speed or range. The purse pays
 gold, the delay counts seconds at 1×, and the cap counts towers standing.
@@ -2060,7 +2065,7 @@ gold, the delay counts seconds at 1×, and the cap counts towers standing.
 | Stop | Window Tax | Frozen Purse | Forced March | Curfew | No Loitering | Rationing | Feat | Build limit | Feat Good |
 |---:|---:|---:|---:|---:|---:|---:|---|---:|---|
 | 11 | 0.085 | — | — | — | — | — | noSpecials | — | 3/17 |
-| 12 | — | — | 0.2 | — | — | — | maxTowers | 5 | 3/13 |
+| 12 | — | — | 0.2 | — | — | — | maxTowers | 5 | 3/12 |
 | 13 | — | — | — | — | 8 | — | noLeaks | — | 3/20 |
 | 14 | — | — | — | 0.15 | — | — | noLeaks | — | 3/20 |
 | 15 | — | 80 | — | — | — | — | noSpecials | — | 3/12 |
@@ -2068,7 +2073,7 @@ gold, the delay counts seconds at 1×, and the cap counts towers standing.
 | 17 | — | — | — | 0.2 | 8 | — | maxTowers | 2 | 3/17 |
 | 18 | — | — | 0.18 | — | — | 3 | noSpecials | — | 3/12 |
 | 19 | 0.05 | — | — | 0.1 | — | — | maxTowers | 5 | 3/13 |
-| 20 | — | 80 | — | 0.2 | — | — | noSpecials | — | 3/13 |
+| 20 | — | 80 | — | 0.2 | — | — | noSpecials | — | 3/12 |
 
 Pack Trail builds up from three-Goblin ranks to groups of six. Heavy Feet ends with a column of 20 Trolls, which Mortars can hit on Riverbend beyond the reach of the installed short-range towers. Hold the Bend has the most spawns. Stand Fast combines shielded ground formations with air pressure. The King's Assessor sends upgraded towers against Trolls and a shielded escort before Grumblefoot. Last Light closes with Grumblemaw.
 

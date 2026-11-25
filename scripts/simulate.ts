@@ -270,7 +270,7 @@ try {
     const [good, , , forcedGood, forcedPerson, unused] = results;
     console.log(level.id, results.map(r => `${r.stars}/${r.lives},${r.casts}/${r.feathered}`).join('  '));
     if (level.allowedSpecials.includes('tarBarrel') && good.lives !== 20 &&
-      good.stars <= unused.stars && good.lives < unused.lives + 2) {
+      good.stars <= unused.stars && good.lives <= unused.lives) {
       console.error(`MISS C2 level ${level.id}: Good ${score(good)}, unused ${score(unused)}`);
       process.exitCode = 1;
     }

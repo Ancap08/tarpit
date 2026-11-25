@@ -137,7 +137,7 @@ describe('docs/DESIGN.md matches the code', () => {
 
   it('matches the Act Two wave groups listed for the feather-barrel retune', () => {
     const rows = table('Levels and campaign', 'Level');
-    expect(rows).toHaveLength(9);
+    expect(rows).toHaveLength(12);
     for (const [id, wave, group, enemy, count, interval] of rows) {
       const level = LEVELS[Number(id) - 1];
       expect(level.featherBarrels).toBe(true);
