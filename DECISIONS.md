@@ -1853,3 +1853,8 @@ can change it; "Kyle" means Kyle decided.
   Sent to Sol at high as the first job under the no-Astra rule; it includes
   a half-size set of plates from the art scripts, which is also Sol's first
   art item on this project.
+- **The Old Keep has two quality tiers, high and low** (Sol's choice of the
+  smaller fix, accepted by the coordinator). CI showed the medium tier
+  costing more than high on Linux, twice. Low is 22 to 31% cheaper than
+  high on both machines, and the test now asks for at least 10% in the
+  same run.
