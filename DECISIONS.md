@@ -1944,3 +1944,20 @@ can change it; "Kyle" means Kyle decided.
   must cost about what it saves.
 - **Tips for levels 21 to 25:** Sol's drafts accepted with two changed by
   the coordinator (the last-stand tip and the second Quartering tip).
+- **Second Act Three pass: 10 of 14 targets, thresholds held.** The
+  person-like bot now averages 11.2 lives (Act Two 13.8). Still open: the
+  windows change no score on level 22 (W10), the Royal Survey costs
+  nothing (W12), one undefended-road case on level 24 (W6), and in W9 a
+  single tower type clears level 21 with three stars and the finale ends
+  on 20 lives against a ceiling of 16.
+- **Two rules change, by the coordinator, because level numbers could not
+  fix them:** a pillow window tars and feathers everything on its stretch,
+  as a feather barrel does (seven tarred enemies across two windows was
+  never going to matter); and the Royal Survey may close more than one
+  wall spot. Both keep the idea Kyle chose.
+- **Fallback, decided in advance:** if every other target closes and the
+  only miss left is a single tower type clearing level 21, that level is
+  exempt from the one-tower rule as the act's teaching level, as levels 1
+  to 10 are. Not to be used for any other level.
+- **Part b has used about 980,000 Sol tokens over three runs** (403,056,
+  260,628 and 316,666) before this one.

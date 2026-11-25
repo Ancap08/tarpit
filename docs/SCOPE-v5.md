@@ -1045,17 +1045,20 @@ those you recommended"):
 
 - **Pillow windows.** On levels that have them, the keep's lit windows are
   the townsfolk's bedrooms. Tap a window during a wave and a feather pillow
-  is shaken out: every tarred enemy on the stretch of road below it is
-  feathered, by the usual rule (once per enemy, never a boss). Each window
-  works once in the level and then goes dark.
+  is shaken out, after a pot of tar: every enemy on the stretch of road
+  below it is tarred and feathered, by the usual rule (once per enemy,
+  never a boss), as a feather barrel does. Each window works once in the
+  level and then goes dark. (First written as "every tarred enemy"; two
+  windows then feathered seven enemies and changed no score.)
 - **The Final Notice.** One new enemy: a battering ram in the shape of a
   giant rolled tax notice. Slow, and it does heavy damage to the gate and
   little else. It can be tarred and feathered like any walker, and when
   feathered it rolls back down the road.
 - **Two siege taxes,** in the King's voice, at most one on a level:
   **Quartering** (a Redcoat is billeted on one wall spot, which cannot be
-  built on until the player pays him off) and **Royal Survey** (one wall
-  spot named on the card is closed for the whole level).
+  built on until the player pays him off) and **Royal Survey** (the wall
+  spots named on the card, one or more, are closed for the whole level;
+  first written as one spot, which the good bot simply built around).
 - **Which road.** Before each wave the player is shown which road each
   group will take.
 
@@ -1094,7 +1097,7 @@ quartering. No real people, parties or flags. The first versions of these
 lines (milder) are in the git history.
 
 Rule lines on the card ("In force", built from level data where they hold
-a number): `Royal Survey: one wall spot is closed.` and
+a number): `Royal Survey: N wall spots are closed.` (N from level data; `one wall spot is` when N is 1) and
 `Quartering: a Redcoat holds a wall spot until paid NN gold.` The town's
 line where windows exist: `Town's answer: tap a lit window for feathers.`
 Feat lines: `Third star, Unbroken: win with the gate standing.` and
