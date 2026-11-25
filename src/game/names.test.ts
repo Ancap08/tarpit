@@ -23,13 +23,13 @@ describe('the King’s collectors', () => {
   it('keeps the compact HUD labels and Guard names in their approved forms', () => {
     expect(ENEMY_SHORT_NAMES).toEqual({
       goblin: 'Collector', wolf: 'Hound', shieldbearer: 'Redcoat', harpy: 'Harpy',
-      troll: 'Toll Troll', boss: 'Grumblefoot', grumblemaw: 'Grumblemaw',
+      troll: 'Toll Troll', boss: 'Grumblefoot', grumblemaw: 'Grumblemaw', ram: 'Ram',
     });
     expect(GUARD_NAMES).toEqual(['Axeman', 'Swordsman', 'Archer', 'Captain']);
   });
 
   it('prints the notice and reply for each of the ten levels exactly as commissioned', () => {
-    const scope = readFileSync('docs/SCOPE-v5.md', 'utf8').split('## Milestone 46:')[1].split('## Milestone 47:')[0];
+    const scope = readFileSync('docs/DESIGN.md', 'utf8').split('### Act One notices and replies')[1].split('\n##')[0];
     const rows = [...scope.matchAll(/^\| (Opening|Ending|Any loss|\d+) \|(.*?)\|(.*?)\|$/gm)]
       .map(([, id, notice, reply]) => [id, notice.trim(), reply.trim()]);
     expect(Object.keys(LEVEL_STORY).slice(0, 10)).toEqual(rows.filter(([id]) => /^\d+$/.test(id)).map(([id]) => id));
@@ -53,7 +53,7 @@ describe('the King’s collectors', () => {
       expect(reply.trim().length).toBeGreaterThan(0);
       const feat = level.feat!;
       expect(levelFeatText(feat)).toContain({
-        noLeaks: 'Not a penny', noSpecials: 'Bare hands', maxTowers: 'Few hands', unbroken: 'Unbroken',
+        noLeaks: 'Not a penny', noSpecials: 'Bare hands', maxTowers: 'Few hands', unbroken: 'Unbroken', noRepairs: 'Not a nail',
       }[feat.kind]);
       if (feat.kind === 'maxTowers') expect(levelFeatText(feat)).toContain(String(feat.limit));
     }

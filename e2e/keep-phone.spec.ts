@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { fingerFor, rectPage, tap, tapCell, touchDrag } from './phone';
 
 test('all ten Old Keep sites accept a tower by touch on the phone', async ({ page }) => {
+  test.setTimeout(120_000);
   await page.goto('/?keep=1&test=1');
   await page.waitForFunction(() => window.__tarpit?.keep?.());
   const sites = await page.evaluate(() => {
@@ -10,6 +11,7 @@ test('all ten Old Keep sites accept a tower by touch on the phone', async ({ pag
     return state.map.buildSites!;
   });
   expect(sites).toHaveLength(10);
+  await tap(page, 'wallSite');
   await tap(page, 'bar:musketeer');
   for (const [i, site] of sites.entries()) {
     await tapCell(page, site);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildTower, moveTower, useSpecial } from './actions';
 import { barricadePlacement, guardsPlacement } from './blockers';
-import { botBeginner, botGood, botPerson, runBot } from './bots';
+import { botBeginner, botGood, botGoodFeat, botPerson, botPersonFeat, runBot } from './bots';
 import { levelStars } from './campaignProgress';
 import { applyBurn, applySpecialSlow, enemyPosition, findTarget, fireTowers } from './combat';
 import { ENEMY_STATS } from './enemies';
@@ -345,12 +345,14 @@ describe('siege bot choices', () => {
     expect(runBot(state, botPerson, 1, 1).log[0]).toEqual({ action: 'shakeWindow', index: 0, result: { ok: true, hits: 3 } });
   });
 
-  it('Good forgoes a repair for Not a nail while Person can still buy it', () => {
+  it('both bots can repair ordinarily and forgo repairs when pursuing Not a nail', () => {
     const state = createGame({ level: { ...LEVELS[0], gate, feat: { kind: 'noRepairs' } } });
     state.gate!.hp = 100;
     state.gold = 200;
-    expect(botGood.repair!(state)).toBe(false);
+    expect(botGood.repair!(state)).toBe(true);
     expect(botPerson.repair!(state)).toBe(true);
+    expect(botGoodFeat.repair!(state)).toBe(false);
+    expect(botPersonFeat.repair!(state)).toBe(false);
   });
 
   it('repeats identical state, action log, and counters for both Keep variants', () => {

@@ -3,7 +3,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { TitleScene } from '../src/game/TitleScene';
 import type { TarpitTestApi } from '../src/game/testGlobal';
-import { LEVELS, MAPS, buildableCells, cellFromKey, positionAlongPath, type LevelDef, type TowerType } from '../src/sim';
+import { LEVELS, resolveMap, buildableCells, cellFromKey, positionAlongPath, type LevelDef, type TowerType } from '../src/sim';
 import { api, mapPress, press } from './campaign';
 import { waitForFirstScreen } from './title';
 
@@ -19,7 +19,7 @@ async function open(page: Page, level: LevelDef) {
     const game = t.game.scene.getScene('game');
     return new Promise<void>(resolve => {
       game.events.once('create', resolve);
-      (t.game.scene.getScene('title') as TitleScene)['startGame']({ level, map: level.map, difficulty: 'normal' });
+      (t.game.scene.getScene('title') as TitleScene)['startGame']({ level, map: level.map === 'keep' ? undefined : level.map, difficulty: 'normal' });
     });
   }, level);
 }
@@ -39,7 +39,7 @@ const plaques = (page: Page) => page.evaluate(types => {
   }));
 }, TYPES) as Promise<Record<TowerType, number[]>>;
 
-const cellsOf = (level: LevelDef) => buildableCells(MAPS[level.map]).flatMap((ok, key) => (ok ? [cellFromKey(key)] : []));
+const cellsOf = (level: LevelDef) => buildableCells(resolveMap(level.map)).flatMap((ok, key) => (ok ? [cellFromKey(key)] : []));
 
 export function taxVerifierSuite(touch: boolean) {
   test('Window Tax: every plaque equals the hand price and the gold taken, for 8 builds with sells between', async ({ page }) => {
@@ -70,7 +70,7 @@ export function taxVerifierSuite(touch: boolean) {
     test.setTimeout(120_000);
     const troll = { groups: [{ type: 'troll', count: 1, interval: 1, delay: 0 }] } as const;
     const level: LevelDef = { ...LEVELS[13], startGold: 1000, hpScale: 1, waves: [troll, troll], rewardWaves: [], taxes: { curfew: 0.15 } };
-    const mid = positionAlongPath(MAPS[level.map], 400);
+    const mid = positionAlongPath(resolveMap(level.map), 400);
     const cell = cellsOf(level).map(c => ({ c, d: Math.hypot(c.col * 32 + 16 - mid.x, c.row * 32 + 16 - mid.y) })).sort((a, b) => a.d - b.d)[0].c;
     for (const type of TYPES) {
       await open(page, level);

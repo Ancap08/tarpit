@@ -2146,13 +2146,14 @@ keep their previous meaning and the best result wins.
 - Good checks windows every 30 wave ticks, shaking the one with the highest
   score of at least 3. Each eligible enemy scores 1, with a Ram worth 3.
   Person looks 90 ticks into each 180-tick interval and needs a score of 4,
-  with a Ram worth 2. Ties use window order. A window use replaces that
-  tick's ordinary special decision.
+  with a Ram worth 2. Ties use window order. Shaking a window and spending
+  the ordinary special charge are independent decisions.
 - Before shopping Good pays Quartering if the newly open site would be
   its best affordable build after payment. Person runs the same check
   with 30 extra gold held back and at least one tower already standing.
-  Beginner neither shakes windows nor pays Quartering. Good forgoes
-  repairs when playing for Not a nail; Person keeps its usual repair rule.
+  Beginner neither shakes windows nor pays Quartering. Good and Person
+  forgo repairs when explicitly playing for Not a nail. Their ordinary
+  policies keep the usual repair thresholds.
 
 
 In Normal Free play, Good must win or lose on each map the same way as

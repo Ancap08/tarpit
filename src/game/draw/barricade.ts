@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import { isFlying, positionAlongPath, type EnemyType, type GameEvent, type GameState, type Point } from '../../sim';
+import { distanceOnRoad, isFlying, positionAlongPath, roadPath, type EnemyType, type GameEvent, type GameState, type Point, type TrailPoint } from '../../sim';
 import { knockPx } from '../fx/fxMath';
 import { fontPx, type Layout } from '../layout';
 import { heldCountText } from '../names';
@@ -72,6 +72,7 @@ export class BarricadeEffects {
       this.paintedWall = layout.placeWorld(scene.add.graphics());
       painted.standing.add(this.paintedWall);
       for (const type of Object.keys(RING_RADIUS) as EnemyType[]) {
+        if (type === 'ram') continue;
         const sheet = painted.assets.sheets[enemyArt(type)];
         const centres = sheet.bodyBounds!.map(([l, t, r, b]) => ({
           x: ((l + r) / 2 - sheet.anchor[0]) / painted.assets.density,
@@ -112,19 +113,26 @@ export class BarricadeEffects {
   /** Render anchors for stopped walkers. All combat still uses their simulation coordinates. */
   stoppedPositions(state: GameState, motion: boolean): BlockedPositions | undefined {
     const wall = state.blockers.find((b) => b.kind === 'barricade');
-    if (!wall) return undefined;
+    const gate = state.map.otherRoads?.length && state.gate && !state.gate.fallen ? state.gate : undefined;
+    if (!wall && !gate) return undefined;
     const stopped = new Map<number, BlockedPosition>();
-    const held = state.enemies.filter(e => !isFlying(e) && e.distance === wall.distance);
+    if (gate) this.arrangeHeld(state, gate, false, stopped);
+    if (wall) this.arrangeHeld(state, wall, motion, stopped);
+    return stopped;
+  }
+
+  private arrangeHeld(state: GameState, wall: TrailPoint, motion: boolean, stopped: Map<number, BlockedPosition>): void {
+    const held = state.enemies.filter(e => !isFlying(e) && e.distance === distanceOnRoad(state.map, e.road, wall));
     held.sort((a, b) => RING_RADIUS[b.type] - RING_RADIUS[a.type]);
     const wallY = this.layout.toScreen(wall).y;
     // In Painted the pile sorts with neighbouring pieces at the front rank's feet.
-    const pileY = this.paintedWall ? this.layout.toScreen(positionAlongPath(state.map, wall.distance - 12)).y : wallY;
+    const pileY = this.paintedWall ? this.layout.toScreen(positionAlongPath(roadPath(state.map, wall.road), wall.distance - 12)).y : wallY;
     for (const [i, enemy] of held.entries()) {
       // Fill the three front places first. Extra walkers share the rear rank.
       const side = CROWD_COLUMNS[i % CROWD_COLUMNS.length];
       const lunge = motion ? 7 * this.strike(enemy.id) : 0;
-      const distance = wall.distance - (i < CROWD_COLUMNS.length ? 12 : 28) + lunge;
-      const rank = positionAlongPath(state.map, distance);
+      const distance = enemy.distance - (i < CROWD_COLUMNS.length ? 12 : 28) + lunge;
+      const rank = positionAlongPath(roadPath(state.map, enemy.road), distance);
       const angle = Math.atan2(wall.y - rank.y, wall.x - rank.x);
       const foot = acrossBarricade({ ...rank, angle }, side);
       // Bound the visible centre, including boss lift and room for hit recoil.
@@ -146,7 +154,6 @@ export class BarricadeEffects {
       const anchor = this.layout.offset(foot, 0, Math.max(0, lift - roomForLift));
       stopped.set(enemy.id, { ...anchor, distance, lunge, depth: wallY + RING_RADIUS[enemy.type] });
     }
-    return stopped;
   }
 
   private strike(id: number): number {

@@ -125,3 +125,10 @@ describe('campaign result', () => {
     expect(campaignResultText(state, {})).toMatchObject({ complete: '', nextId: null });
   });
 });
+
+it('reports the Old Keep feat on the win paper without campaign stars', () => {
+  const state = { ...createGame(), fixedFeat: { kind: 'noRepairs' as const }, phase: 'won' as const, lives: 12 };
+  expect(endScreenText('won', state).lines.at(-1)).toBe('Earned: Not a nail.');
+  state.boughtRepair = true;
+  expect(endScreenText('won', state).lines.at(-1)).toBe('Missed Not a nail: win without a repair.');
+});

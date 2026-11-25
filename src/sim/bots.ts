@@ -338,7 +338,7 @@ export const botGood: BotPolicy = {
   purchaseTicks: POLICY_CHECK_TICKS,
   reward: goodReward,
   special: goodSpecial,
-  repair: state => (state.level?.feat ?? state.fixedFeat)?.kind !== 'noRepairs' && shouldRepair(state, 0.6, 70),
+  repair: state => shouldRepair(state, 0.6, 70),
   quartering: state => shouldPayQuartering(state, 0),
   window: state => state.waveTick % POLICY_CHECK_TICKS === 0 ? chooseWindow(state, 3, 3) : undefined,
 };
@@ -486,6 +486,9 @@ function pursueFeat(player: BotPolicy, rotatePlacements: boolean): BotPolicy {
     special(state, lastZone) {
       return state.level?.feat?.kind === 'noSpecials' ? undefined : player.special(state, lastZone);
     },
+    repair(state) {
+      return (state.level?.feat ?? state.fixedFeat)?.kind !== 'noRepairs' && (player.repair?.(state) ?? false);
+    },
   };
 }
 
@@ -539,7 +542,7 @@ export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity,
       log.push(step);
       if (step.action === 'shakeWindow' && step.result.ok) feathered += step.result.hits;
     }
-    const special = window === undefined ? bot.special(state, lastZone) : undefined;
+    const special = bot.special(state, lastZone);
     const eventsBeforeCast = state.events.length;
     if (special?.special === 'tarBarrel' && bot.leaveBarrelUnused) {
       spendSpecialCharge(state, 'tarBarrel');

@@ -42,9 +42,10 @@ describe('milestone 44a verifier: no stale enemy names a player can read', () =>
     expect(stale).toEqual([]);
   });
 
-  it('keeps each compact name a recognisable part of its full name, except the unprefixed Harpy and Toll Troll', () => {
+  it('keeps each compact name a recognisable part of its full name, with the approved Ram name as the exception', () => {
     for (const type of Object.keys(ENEMY_NAMES) as (keyof typeof ENEMY_NAMES)[]) {
-      expect(ENEMY_NAMES[type], type).toContain(ENEMY_SHORT_NAMES[type]);
+      if (type === 'ram') expect([ENEMY_NAMES[type], ENEMY_SHORT_NAMES[type]]).toEqual(['The Final Notice', 'Ram']);
+      else expect(ENEMY_NAMES[type], type).toContain(ENEMY_SHORT_NAMES[type]);
     }
   });
 });

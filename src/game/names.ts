@@ -22,6 +22,7 @@ export const ENEMY_NAMES: Readonly<Record<EnemyType, string>> = {
   shieldbearer: 'Redcoat Shieldbearer',
   boss: BOSS_NAME,
   grumblemaw: GRUMBLEMAW_NAME,
+  ram: 'The Final Notice',
 };
 
 /** Compact names for the HUD's counted list and its uncounted boss suffix. */
@@ -33,6 +34,7 @@ export const ENEMY_SHORT_NAMES: Readonly<Record<EnemyType, string>> = {
   shieldbearer: 'Redcoat',
   boss: 'Grumblefoot',
   grumblemaw: 'Grumblemaw',
+  ram: 'Ram',
 };
 
 export const GUARD_NAMES = ['Axeman', 'Swordsman', 'Archer', 'Captain'] as const;
@@ -84,7 +86,8 @@ export const KEEP_TEXT = {
   back: 'Back to title',
 } as const;
 
-export const MAP_NAMES: Readonly<Record<MapId, string>> = {
+export const MAP_NAMES: Readonly<Record<MapId | 'keep', string>> = {
+  keep: OLD_KEEP_NAME,
   meadow: 'Meadow',
   switchback: 'Switchback',
   riverbend: 'Riverbend',
@@ -582,7 +585,7 @@ export const GATE_TEXT = {
 };
 
 const featNames: Record<LevelFeat['kind'], string> = {
-  noLeaks: 'Not a penny', noSpecials: 'Bare hands', maxTowers: 'Few hands', unbroken: 'Unbroken',
+  noLeaks: 'Not a penny', noSpecials: 'Bare hands', maxTowers: 'Few hands', unbroken: 'Unbroken', noRepairs: 'Not a nail',
 };
 
 function featMeaning(feat: LevelFeat): string {
@@ -590,6 +593,7 @@ function featMeaning(feat: LevelFeat): string {
     case 'noLeaks': return 'let no collector through.';
     case 'noSpecials': return 'win without using a special.';
     case 'maxTowers': return `build at most ${feat.limit} towers in all.`;
+    case 'noRepairs': return 'win without a repair.';
     case 'unbroken': return 'win with the gate standing.';
   }
 }
@@ -616,6 +620,7 @@ function thirdStarTip(id: number): string {
     case 'maxTowers': return `Once you build ${feat.limit} towers, upgrade them for the third star.`;
     case 'noSpecials': return 'Leave specials unused for the third star.';
     case 'noLeaks': return 'Guard every exit for the third star.';
+    case 'noRepairs': return 'Win without buying a repair for the third star.';
     case 'unbroken': return 'Keep the gate standing for the third star.';
   }
 }
@@ -656,3 +661,18 @@ export const levelTips = (id: number, touch: boolean): readonly string[] => (tou
 
 /** Hidden Meadow benchmark readout, ordered from lowest to highest detail. */
 export const SHOWPIECE_DETAIL = ['Detail · Low', 'Detail · Medium', 'Detail · High'] as const;
+
+const ROAD_NAMES: Readonly<Record<string, string>> = { east: 'East', west: 'West' };
+
+export function roadName(id: string): string {
+  return ROAD_NAMES[id] ?? id;
+}
+
+export const SIEGE_TEXT = {
+  next: 'Next:',
+  window: 'Window',
+  spentWindow: 'Spent',
+  quartering: 'Quartered',
+  survey: 'Surveyed',
+  pay: (gold: number) => `Pay ${gold}`,
+} as const;

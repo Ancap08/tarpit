@@ -3,7 +3,7 @@ import type { Layout } from '../layout';
 import type { EnemyType, Point, TowerType } from '../../sim';
 
 export const towerArt = (type: TowerType) => type === 'tarpit' ? 'tar-pit' : type === 'firepot' ? 'fire-pot' : type;
-export const enemyArt = (type: EnemyType) => type === 'boss' ? 'grumblefoot' : type;
+export const enemyArt = (type: EnemyType) => type === 'boss' ? 'grumblefoot' : type === 'ram' ? 'troll' : type;
 
 /** Southeast, fixed in screen space for the build bar and placement ghost. */
 export const TOWER_PREVIEW_FRAME = 6;

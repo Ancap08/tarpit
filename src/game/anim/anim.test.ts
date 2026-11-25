@@ -52,7 +52,7 @@ describe('facing', () => {
   it('on a leftward segment every sprite shows a left-facing frame: own left frames, or right frames mirrored', () => {
     const facing = facingAt(MAPS.switchback, 560 + 96 + 100, 1);
     expect(facing).toBe('left');
-    for (const type of Object.keys(ENEMY_STATS) as EnemyType[]) {
+    for (const type of Object.keys(SHEETS) as (keyof typeof SHEETS)[]) {
       const left = SHEETS[type].walk.left;
       const right = SHEETS[type].walk.right;
       // Either distinct left frames (not mirrored) or the right frames mirrored. Never right frames unmirrored.

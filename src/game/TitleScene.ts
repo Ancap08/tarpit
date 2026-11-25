@@ -349,7 +349,7 @@ export class TitleScene extends Phaser.Scene {
     }
     if ((this.page === 'levelCard' || this.page === 'levelTips') && this.card) {
       const level = this.card;
-      const start = () => this.startGame({ difficulty: DEFAULT_DIFFICULTY, map: level.map, level });
+      const start = () => this.startGame({ difficulty: DEFAULT_DIFFICULTY, map: level.map === 'keep' ? DEFAULT_MAP : level.map, level });
       const toCard = () => this.visit('levelCard', level.id);
       if (this.page === 'levelTips') {
         // Play activates on pointerup, so the opening press has already ended.
