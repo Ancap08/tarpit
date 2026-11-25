@@ -4,6 +4,7 @@
 // moved (fires at 1488 and 1668, no longer 1752), so the frame moved from
 // tick 1754 to 1490 (2 ticks after a Mortar shot, as before). Milestone 25c:
 // the Mortar fires at 1386, 1566 and 1746; the frame is tick 1748.
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { buildTower, upgradeTower } from './actions';
 import { createGame, startWave, tick } from './game';
@@ -36,5 +37,9 @@ describe('new-towers frame, sim side', () => {
     ]);
     const sb = s.enemies.filter((e) => e.slowTicksLeft > 0 && (e.burnTicksLeft ?? 0) > 0);
     expect(sb.map((e) => e.id)).toEqual([13]);
+    // R7: the complete frame state from d517ac8, including shots and events.
+    expect(createHash('sha256').update(JSON.stringify(s)).digest('hex')).toBe(
+      '997f85eec33b8ea6014f603ba7604a3ed4e202a00ca15fad2b90e09293256330',
+    );
   });
 });

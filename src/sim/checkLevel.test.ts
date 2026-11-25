@@ -41,6 +41,26 @@ describe('campaign acceptance gate', () => {
     }
   });
 
+  it('R6 accepts three extra lives, rejects four, and rejects a third star even inside the life limit', () => {
+    for (const [good, feathers, acceptable] of [[12, 15, true], [12, 16, false], [17, 18, false], [18, 20, true]] as const) {
+      stubBots((_, policy) => policy === bots.botFeathers ? feathers : good);
+      expect(checkLevel(fresh(), late).failed.includes('R6')).toBe(!acceptable);
+    }
+  });
+
+  it('uses the barrel where offered and feathers enemies only on levels with path B', () => {
+    const result = checkCampaign(LEVELS, CAMPAIGN_CONTEXTS);
+    for (const [i, row] of result.levels.entries()) {
+      const level = LEVELS[i];
+      const use = row.feathers!.featherUse!;
+      const tower = level.maxTowerLevel === 3 && level.allowedTowers.includes('tarpit');
+      const barrel = level.allowedSpecials.includes('tarBarrel');
+      expect(use.pathBTowers > 0, `level ${level.id} path B`).toBe(tower);
+      expect(use.barrelCasts > 0, `level ${level.id} barrel`).toBe(barrel);
+      expect(use.feathered > 0, `level ${level.id} enemies feathered`).toBe(tower);
+    }
+  }, 120_000);
+
   it('rechecks the historical twelve-level candidates against the new margins', () => {
     const standFast = LEVELS[7];
     const lastLight = LEVELS[9];

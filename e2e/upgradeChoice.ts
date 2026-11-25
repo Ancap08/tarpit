@@ -3,12 +3,13 @@ import type { UiState } from '../src/game/GameScene';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { TowerType } from '../src/sim/types';
 import { api, mapPress, openCampaign, press } from './campaign';
+import { useTallFontMetrics, useWideFontMetrics } from './campaignFont';
 import { cellPage, fingerFor, touchDrag } from './phone';
 
 export const choices = [
   ['musketeer', 'Sharpshooter', 'Volley'],
   ['cannon', 'Heavy Shot', 'Quick Loader'],
-  ['tarpit', 'Deep Tar', 'Wide Tar'],
+  ['tarpit', 'Deep Tar', 'Feathers'],
   ['longbow', 'War Bow', 'Quick Draw'],
   ['mortar', 'Siege Shell', 'Wide Burst'],
   ['firepot', 'Inferno', 'Lasting Flames'],
@@ -64,8 +65,9 @@ async function expectCardLayout(page: Page, choices: UiState['pathChoices']) {
           box.centerY >= rect.y && box.centerY <= rect.y + rect.height;
       }).map((o) => {
         const b = o.getBounds();
-        return { text: o.text, fits: b.left >= rect.x && b.right <= rect.x + rect.width &&
-          b.top >= rect.y && b.bottom <= rect.y + rect.height };
+        const fits = b.left >= rect.x && b.right <= rect.x + rect.width &&
+          b.top >= rect.y && b.bottom <= rect.y + rect.height;
+        return { text: o.text, fits, top: t.canvasToPage(0, b.top).y, bottom: t.canvasToPage(0, b.bottom).y };
       });
       return { width: rect.width * scale, height: rect.height * scale, labels, choice: choices[index] };
     }) };
@@ -78,6 +80,14 @@ async function expectCardLayout(page: Page, choices: UiState['pathChoices']) {
     const expected = [name, String(price), description];
     if (disabledReason) expected.push(disabledReason);
     expect(labels.map((label) => label.text)).toEqual(expect.arrayContaining(expected));
+    const title = labels.find(label => label.text === name)!;
+    const caption = labels.find(label => label.text === description)!;
+    const gap = caption.top - title.bottom;
+    expect(gap, name + ' title to description (CSS px)').toBeGreaterThanOrEqual(2);
+    if (disabledReason) {
+      const reason = labels.find(label => label.text === disabledReason)!;
+      expect(reason.top, name + ' affordability message').toBeGreaterThanOrEqual(caption.bottom);
+    }
     for (const label of labels) expect(label.fits, label.text).toBe(true);
   }
   for (const [index, [name, rect]] of panel.entries()) {
@@ -114,7 +124,33 @@ const markPixels = (page: Page) => page.evaluate(({ col, row }) => {
   return { gold: gold * scale ** 2, cyan: cyan * scale ** 2 };
 }, cell);
 
+export function pathCardSpacingChecks(touch: boolean) {
+  for (const mode of ['normal', 'fixed Caslon', 'fixed fallback', 'wide']) {
+    test(`path card spacing with ${mode} text`, async ({ page }) => {
+      if (mode.startsWith('fixed')) await useTallFontMetrics(page, mode === 'fixed fallback');
+      if (mode === 'wide') await useWideFontMetrics(page, process.platform === 'darwin' ? 1.09 : 1.06);
+      await openCampaign(page, touch);
+      for (const [type, a, b] of choices) {
+        const built = await page.evaluate(({ col, row, type }) => {
+          const t = window.__tarpit as TarpitTestApi;
+          t.state().gold = 1000;
+          const upgraded = t.buildAt(col, row, type).ok && t.upgradeAt(col, row).ok;
+          t.state().gold = 0;
+          return upgraded;
+        }, { ...cell, type });
+        expect(built, type).toBe(true);
+        await mapPress(page, cell.col, cell.row, touch);
+        const options = await api(page, t => t.ui().pathChoices);
+        expect(options.map(option => option.name)).toEqual([a, b]);
+        await expectCardLayout(page, options);
+        await press(page, 'panel:sell', touch);
+      }
+    });
+  }
+}
+
 export function upgradeChoiceChecks(touch: boolean) {
+  pathCardSpacingChecks(touch);
   for (const [type, a, b] of choices) {
     test(`${type}: both paths can be bought once, differ on the board, and undo restores level 2`, async ({ page }) => {
       await upgradedTower(page, touch, type);

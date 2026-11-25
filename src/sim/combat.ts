@@ -12,6 +12,7 @@
 
 import { enemyMaxHp } from './difficulty';
 import { cappedSlow, ENEMY_STATS, isBoss, isFlying, isTarred, shotDamage } from './enemies';
+import { featherEnemy } from './feathers';
 import { cellCenter, sameCell, type Cell } from './grid';
 import { pathLength, positionAlongPath } from './map';
 import { secondsToTicks, TICKS_PER_SECOND } from './time';
@@ -108,6 +109,7 @@ function chooseTarget(state: GameState, tower: Tower, enemies: readonly Enemy[],
   const mask = positions ? reachMask(state.map, tower, range, positions.section, from) : -1;
   if (positions && !(positions.occupied & mask)) return undefined;
   const mode = tower.targeting ?? 'first';
+  const choosesFeathers = tower.type === 'tarpit' && tower.path === 'B';
   const groundOnly = GROUND_ONLY.has(tower.type);
   let best: Enemy | undefined;
   for (let i = 0; i < enemies.length; i++) {
@@ -115,7 +117,11 @@ function chooseTarget(state: GameState, tower: Tower, enemies: readonly Enemy[],
     const enemy = enemies[i];
     if (isDead(enemy) || (groundOnly && isFlying(enemy))) continue;
     // A less preferred candidate cannot replace a target already in range.
-    if (best && !preferred(mode, enemy, best)) continue;
+    if (best) {
+      if (choosesFeathers && best.feathered !== enemy.feathered) {
+        if (enemy.feathered) continue;
+      } else if (!preferred(mode, enemy, best)) continue;
+    }
     const position = positions ? positions.points[i] : enemyPosition(enemy, state.map);
     const dx = Math.abs(from.x - position.x);
     const dy = Math.abs(from.y - position.y);
@@ -268,7 +274,8 @@ function towerStep(state: GameState, tower: Tower, enemies: readonly Enemy[], po
   } else {
     hit(target);
   }
-  if (stats.slow > 0 && !isDead(target)) {
+  const feathered = tower.type === 'tarpit' && tower.path === 'B' && !isDead(target) && featherEnemy(state, target);
+  if (stats.slow > 0 && !isDead(target) && !feathered) {
     const ticks = secondsToTicks(stats.slowDuration);
     const applied = applySlow(target, stats.slow, ticks);
     if (applied !== null) state.events.push({ kind: 'slowed', enemyId: target.id, slow: applied, ticks });

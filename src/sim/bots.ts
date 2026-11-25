@@ -2,13 +2,13 @@
 // the HUD. Fight decisions look at enemies already on the map.
 import { barricadePlacement, guardsPlacement } from './blockers';
 import { BOONS, boonScale, type BoonId } from './boons';
-import { ENEMY_STATS } from './enemies';
+import { ENEMY_STATS, isBoss } from './enemies';
 import { tick } from './game';
 import { buildableCells, cellCenter, cellFromKey, cellKey } from './grid';
-import { applyAction, trailCellOrder, type BuildAction, type HeadlessStepResult, type SpecialAction } from './headless';
+import { applyAction, densestCluster, trailCellOrder, type BuildAction, type HeadlessStepResult, type SpecialAction } from './headless';
 import { pathLength, positionAlongPath } from './map';
 import { BIG_ENEMIES, POLICY_CHECK_TICKS, POLICY_MIN_HITS, chooseCrowdSpecial, policyCandidates } from './specialPolicy';
-import { availableSpecials, SPECIAL_RECHARGE_TICKS, type SpecialType } from './specials';
+import { availableSpecials, specialRadius, SPECIAL_RECHARGE_TICKS, type SpecialType } from './specials';
 import { TICKS_PER_SECOND } from './time';
 import { TOWER_DEFS, TOWER_PATHS, allowedTowers, atTowerCap, towerBuildCost, maxTowerLevel, towerLevel, towerStats } from './towers';
 import type { GameState, MapDef, Point, TowerLevelStats, TowerType, UpgradePath } from './types';
@@ -31,6 +31,8 @@ export interface BotPolicy {
 }
 
 export interface BotRun {
+  /** Successful featherings from path B shots during this bot’s trial. */
+  feathered?: number;
   peakAlive: number;
   waveOneLives: number;
   setupTicks: number;
@@ -105,7 +107,7 @@ function towerPower(type: TowerType, stats: TowerLevelStats, profile: ReturnType
   return { ground: direct * splash, air: air ? direct : 0, burn: stats.burnDps, slow: stats.slow };
 }
 
-function goodPurchase(state: GameState, rotate = false, buildLimit = Infinity): BuildAction | undefined {
+function goodPurchase(state: GameState, rotate = false, buildLimit = Infinity, buildOnly?: TowerType): BuildAction | undefined {
   if (state.phase !== 'setup' || state.pendingBoon) return undefined;
   const { cells, samples } = trailGeometry(state.map);
   // With a sealed purse the next income arrives only after surviving the wave.
@@ -167,6 +169,7 @@ function goodPurchase(state: GameState, rotate = false, buildLimit = Infinity): 
     const tower = occupied.get(key);
     if (!tower) {
       for (const type of allowed) {
+        if (buildOnly && type !== buildOnly) continue;
         const cost = towerBuildCost(state, type);
         if (cost > budget) continue;
         const stats = towerStats({ type, upgraded: false }, state.boons, state.level);
@@ -191,7 +194,7 @@ function goodPurchase(state: GameState, rotate = false, buildLimit = Infinity): 
       continue;
     }
     const level = towerLevel(tower);
-    if (level >= limit) continue;
+    if (buildOnly || level >= limit) continue;
     const previous = towerStats(tower, state.boons, state.level);
     const cost = level === 1 ? TOWER_DEFS[tower.type].upgradeCost : TOWER_PATHS[tower.type].cost;
     if (cost > budget) continue;
@@ -275,6 +278,47 @@ function chooseSpecial(state: GameState, lastZone: SpecialType | undefined, poin
 }
 
 export const botGood: BotPolicy = { purchase: goodPurchase, purchaseTicks: POLICY_CHECK_TICKS, reward: goodReward, special: goodSpecial };
+
+// Open with damage, then put a Tar Pit where Good's defense benefits most.
+// Save for its Feathers upgrade. Any further Tar Pits also take path B.
+export const botFeathers: BotPolicy = {
+  ...botGood,
+  purchase(state) {
+    if (state.phase !== 'setup' || state.pendingBoon) return undefined;
+    if (maxTowerLevel(state) === 3 && allowedTowers(state).includes('tarpit')) {
+      const pits = state.towers.filter(tower => tower.type === 'tarpit');
+      const damageOpening = state.towers.filter(tower => tower.type !== 'tarpit' && tower.upgraded).length >= 2;
+      const lastPermit = state.level?.taxes?.rationing === state.towers.length + 1;
+      const next = pits.find(tower => !tower.path);
+      if (damageOpening && next) {
+        const cost = next.upgraded ? TOWER_PATHS.tarpit.cost : TOWER_DEFS.tarpit.upgradeCost;
+        if (state.gold < cost) return undefined;
+        return next.upgraded ? { type: 'upgrade', cell: next.cell, path: 'B' } : { type: 'upgrade', cell: next.cell };
+      }
+      if (!pits.length && (damageOpening || lastPermit) && !atTowerCap(state)) {
+        return goodPurchase(state, false, Infinity, 'tarpit');
+      }
+    }
+    const action = botGood.purchase(state);
+    if (action?.type === 'upgrade' && action.path &&
+        state.towers.some(t => t.type === 'tarpit' && cellKey(t.cell) === cellKey(action.cell))) {
+      return { ...action, path: 'B' };
+    }
+    return action;
+  },
+  special(state, lastZone) {
+    if (state.phase !== 'wave' || state.specialCharges <= 0 ||
+      state.lastSpecialTick === state.tick || state.waveTick % POLICY_CHECK_TICKS !== 0) return undefined;
+    if (availableSpecials(state).includes('tarBarrel')) {
+      const enemies = state.enemies.filter(enemy => !enemy.feathered && !isBoss(enemy));
+      const crowd = densestCluster({ ...state, enemies }, specialRadius('tarBarrel', state.boons));
+      if (crowd && crowd.ids.length >= POLICY_MIN_HITS) {
+        return { type: 'special', special: 'tarBarrel', ...crowd.centroid, atWaveTick: state.waveTick };
+      }
+    }
+    return botGood.special(state, lastZone);
+  },
+};
 
 export const PERSON_LOOK_TICKS = 3 * TICKS_PER_SECOND;
 export const PERSON_REACTION_TICKS = 1.5 * TICKS_PER_SECOND;
@@ -362,6 +406,7 @@ export const botPersonFeat = pursueFeat(botPerson, true);
 /** Run to a terminal state or stop between waves at the optional wave cap. */
 export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity, maxTicks = 60 * 60 * TICKS_PER_SECOND): BotRun {
   const log: HeadlessStepResult[] = [];
+  let feathered = 0;
   function apply(action: Parameters<typeof applyAction>[1]): boolean {
     const step = applyAction(state, action);
     log.push(step);
@@ -402,8 +447,11 @@ export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity,
       lastZone = special.special;
     }
     tick(state);
+    if (bot === botFeathers) {
+      for (const event of state.events) if (event.kind === 'feathered') feathered++;
+    }
     if (state.wave === 1) waveOneLives = state.lives;
     peakAlive = Math.max(peakAlive, state.enemies.length);
   }
-  return { state, log, peakAlive, waveOneLives, setupTicks, refused: log.filter((step) => 'result' in step && !step.result.ok).length };
+  return { state, log, ...(bot === botFeathers && { feathered }), peakAlive, waveOneLives, setupTicks, refused: log.filter((step) => 'result' in step && !step.result.ok).length };
 }

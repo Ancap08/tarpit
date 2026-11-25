@@ -14,7 +14,11 @@
 //
 // Order of work inside one wave tick (move, exit, zones, burn, combat,
 // spawn, counters, clear check):
-//   1. Move live enemies by speed / 60 times (1 - effectiveSlow): the
+//   1. A feathered runner moves backward at its own walking speed, stopping
+//      at the entrance. A flinch holds position. A runner crossing an
+//      enemy triggers its one flinch for subsequent ticks. Neither fights
+//      blockers during those movements. Other enemies move forward
+//      by speed / 60 times Forced March and (1 - effectiveSlow): the
 //      stronger of the active tower slow and the active special slow
 //      (milestone 25c), boss cap applied. Walking enemies stop on contact
 //      with the first blocker and damage it. Each contacted guard strikes

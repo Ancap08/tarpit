@@ -26,8 +26,9 @@ const server = await createServer({
 });
 
 try {
-  // M39 K1: the pre-Barricade report from main, excluding npm's launcher banner.
-  const expected = 'ba27661ca58b79742b7311e37c3a721bab1dd119afcc89257547c0c5ce1808c3';
+  // Free play report through the matrix, excluding npm's launcher banner.
+  // Milestone 49 re-locks the path B runs against the original balance windows.
+  const expected = '0474f58c24e06d371fab9c9123ba1a8cd72f8bd9bd82fab4b259f7f86239195b';
   const report = createHash('sha256');
   function print(message: string): void {
     const line = message + '\n';
@@ -222,13 +223,14 @@ try {
   function printLevel(row: Gate.LevelCheck, index: number): void {
     const level = LEVELS[index];
     console.log([level.id, level.waves.length, row.good?.spawned ?? '—', level.startGold, level.hpScale,
-      score(row.good), score(row.person), score(row.beginner), score(row.noSpecials), row.openingCount, row.good ? minutes(row.good.tick) : '—', row.good?.peakAlive ?? '—',
+      score(row.good), score(row.person), score(row.beginner), score(row.feathers), row.feathers?.featherUse?.pathBTowers ?? '—',
+      row.feathers?.featherUse?.barrelCasts ?? '—', row.feathers?.featherUse?.feathered ?? '—', score(row.noSpecials), row.openingCount, row.good ? minutes(row.good.tick) : '—', row.good?.peakAlive ?? '—',
       row.ok ? 'pass' : row.failed.join(',')].join('  '));
   }
   console.log('\nCampaign gate (stars/lives)');
-  console.log('id  waves  enemies  gold  HP scale  Good  Person  Beginner  Person(no specials)  wave 1  minutes  peak alive  gate');
+  console.log('id  waves  enemies  gold  HP scale  Good  Person  Beginner  Feathers  path B pits  barrels  enemies feathered  Person(no specials)  wave 1  minutes  peak alive  gate');
   firstAct.levels.forEach(printLevel);
-  console.log(`Campaign: ${minutes(firstAct.totalTicks)} minutes. ${firstAct.ok ? 'P1–P2 and L1–L8 pass' : 'MISS ' + firstAct.failed.join(', ')}`);
+  console.log(`Campaign: ${minutes(firstAct.totalTicks)} minutes. ${firstAct.ok ? 'P1–P2, L1–L8 and R6 pass' : 'MISS ' + firstAct.failed.join(', ')}`);
 
   const campaign = checkCampaign(LEVELS, CAMPAIGN_CONTEXTS);
   console.log('\nSecond act (stars/lives)');
@@ -252,7 +254,7 @@ try {
     const { previousMean, secondMean, handover, largestDrop } = campaign.stepUp;
     console.log(`S1 Person mean ${previousMean.toFixed(2)} to ${secondMean.toFixed(2)}, handover ${handover}, largest drop ${largestDrop} lives.`);
   }
-  console.log(`Twenty levels: ${minutes(campaign.totalTicks)} minutes. ${campaign.ok ? 'P1–P2, L1–L8, T1–T3, F1–F3, V1 and S1 pass' : 'MISS ' + campaign.failed.join(', ')}`);
+  console.log(`Twenty levels: ${minutes(campaign.totalTicks)} minutes. ${campaign.ok ? 'P1–P2, L1–L8, T1–T3, F1–F3, V1, S1 and R6 pass' : 'MISS ' + campaign.failed.join(', ')}`);
   if (!firstAct.ok || !campaign.ok) process.exitCode = 1;
 } finally {
   await server.close();

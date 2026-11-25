@@ -172,7 +172,8 @@ describe('level 3 combat on each of the twelve paths', () => {
       expect(state.enemies[3].hp).toBe(500);
     }
     expect(target.slow).toBe(slow);
-    expect(target.slowTicksLeft).toBe(slow ? 120 : 0);
+    const slowTicks = path === 'B' ? 153 : 120;
+    expect(target.slowTicksLeft).toBe(slow ? slowTicks : 0);
     expect(target.burnDps ?? 0).toBe(dps);
     expect(target.burnTicksLeft ?? 0).toBe(duration);
     if (dps) {

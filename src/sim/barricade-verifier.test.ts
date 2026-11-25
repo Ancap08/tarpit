@@ -359,7 +359,7 @@ describe('K3 placement regressions', () => {
   // First best completed point on each 48 px grid. npm run sim checks every point.
   it.each([
     ['meadow', 'normal', 448, 'won', 4], ['meadow', 'hard', 64, 'lost', -3],
-    ['switchback', 'normal', 448, 'won', 3], ['switchback', 'hard', 208, 'lost', 0],
+    ['switchback', 'normal', 784, 'won', 1], ['switchback', 'hard', 208, 'lost', 0],
     ['riverbend', 'normal', 400, 'won', 0], ['riverbend', 'hard', 64, 'lost', -1],
   ] as const)('%s %s at trail distance %i', (map, level, distance, phase, expectedGain) => {
     const baseline = balanceRun('comboBuild', map, level);

@@ -119,6 +119,11 @@ export interface Enemy {
   maxHp?: number;
   /** Grumblemaw thresholds already called, after surviving a hit. */
   packCalls?: number;
+  /** These marks appear only after the corresponding effect happens. */
+  feathered?: true;
+  runTicksLeft?: number;
+  /** Zero after the one flinch has finished. */
+  flinchTicksLeft?: number;
   /** The guard this walker reached, and that guard's lifetime remaining on arrival. */
   guardContact?: { guardId: number; arrivedWithTicksLeft: number };
 }

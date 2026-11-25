@@ -88,7 +88,7 @@ export const TOWER_PATHS: Readonly<Record<TowerType, { cost: number } & Record<U
   tarpit: {
     cost: 110,
     A: { ...PLAIN, range: 105, damage: 3, fireRate: 2, slow: 0.78, slowDuration: 2 },
-    B: { ...PLAIN, range: 145, damage: 3, fireRate: 2, slow: 0.64, slowDuration: 2 },
+    B: { ...PLAIN, range: 145, damage: 3, fireRate: 2, slow: 0.64, slowDuration: 2.55 },
   },
   longbow: {
     cost: 70,

@@ -28,6 +28,7 @@ export type GameEvent =
   /** A slow was applied (an ignored weaker slow emits nothing). */
   | { kind: 'slowed'; enemyId: number; slow: number; ticks: number }
   | { kind: 'kill'; enemyId: number; enemyType: EnemyType; bounty: number; cause: KillCause }
+  | { kind: 'feathered'; enemyId: number; x: number; y: number }
   /** The enemy reached the exit and cost its livesCost (1, or 5 for the boss). */
   | { kind: 'exit'; enemyId: number }
   /** The boss spawned (milestone 23); follows its 'spawn' event. */

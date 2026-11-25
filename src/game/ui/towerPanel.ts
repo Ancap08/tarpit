@@ -42,6 +42,7 @@ export class TowerPanel {
   private readonly sell: Button;
   private readonly target: Button;
   private readonly closeButton: Button;
+  private readonly pathTitleY: number;
   private readonly pathButtons: Record<UpgradePath, Button>;
   private readonly allButtons: Button[];
   private readonly titleText: Phaser.GameObjects.Text;
@@ -67,10 +68,11 @@ export class TowerPanel {
     this.sell = new Button(scene, rect, PANEL_TEXT.sell, handlers.onSell, { fontSize: f(16), right: '', labelInset: 6 });
     this.target = new Button(scene, rect, targetingButtonText('first'), () => handlers.onTarget(nextMode(this.mode)), { fontSize: f(13) });
     this.closeButton = new Button(scene, rect, '×', handlers.onClose, { fontSize: portrait ? '30px' : '24px' });
+    this.pathTitleY = portrait ? 20 : 15;
     const pathButton = (path: UpgradePath) => new Button(scene, rect, '', () => handlers.onUpgrade(path), {
       right: '',
       fontSize: portrait ? '22px' : '17px',
-      labelY: portrait ? 20 : 14,
+      labelY: this.pathTitleY,
       sound: null,
     });
     this.pathButtons = { A: pathButton('A'), B: pathButton('B') };
@@ -83,8 +85,9 @@ export class TowerPanel {
     this.titleText = caption(portrait ? '22px' : '17px', ink, 'bold');
     this.killsText = caption(f(14), ink, 'bold');
     const pathCaption = () => ({
-      description: caption(portrait ? '20px' : '15px', TEXT.button),
-      reason: caption(portrait ? '20px' : '14px', TEXT.buttonDisabled),
+      description: caption(portrait ? '20px' : '15px', TEXT.button).setOrigin(0).setWordWrapCallback((line, label) =>
+        label.basicWordWrap(line.replace('. ', '.\n'), label.context, label.style.wordWrapWidth ?? Infinity)),
+      reason: caption(portrait ? '20px' : '14px', TEXT.buttonDisabled).setOrigin(0),
     });
     this.pathText = { A: pathCaption(), B: pathCaption() };
   }
@@ -150,8 +153,21 @@ export class TowerPanel {
     const scale = portrait || this.scene.sys.game.device.input.touch
       ? Math.max(this.scene.scale.displayScale.x, this.scene.scale.displayScale.y)
       : 0;
-    const { close, rowHeight, pathHeight, header, width, height, buttonWidth } =
+    const { close, rowHeight, pathHeight, header, width, height: baseHeight, buttonWidth } =
       towerPanelSize(this.layout, level, rows.length, paths.length, scale);
+    // Both headings use the same type. Measure it before placing the wrapped captions.
+    const captionGap = 2 * this.scene.scale.displayScale.y;
+    const titleHeight = this.pathButtons.A.labelObjects[0].height;
+    const descriptionTop = Math.ceil(this.pathTitleY + titleHeight / 2 + captionGap);
+    const extraHeight = { A: 0, B: 0 };
+    for (const choice of paths) {
+      const { description, reason } = this.pathText[choice.path];
+      if (description.style.wordWrapWidth !== buttonWidth - 20) description.setWordWrapWidth(buttonWidth - 20);
+      if (description.text !== choice.description) description.setText(choice.description);
+      const contentHeight = descriptionTop + description.height + reason.getTextMetrics().fontSize + 2 * captionGap;
+      extraHeight[choice.path] = Math.max(0, Math.ceil(contentHeight) - pathHeight);
+    }
+    const height = baseHeight + extraHeight.A + extraHeight.B;
     if (this.placed?.width !== width || this.placed.height !== height) {
       const location = placeBeside(this.layout.cellCenter(this.at), width, height, state.map, this.layout);
       this.placed = { ...location, width, height };
@@ -175,7 +191,7 @@ export class TowerPanel {
     const split = level > 1 ? Math.round(innerWidth * 0.43) : 0;
     let top = y + STACK_PAD + header;
     for (const { key, button, path } of rows) {
-      const h = path ? pathHeight : rowHeight;
+      const h = path ? pathHeight + extraHeight[path.path] : rowHeight;
       const isSell = split > 0 && key === 'sell';
       const isTarget = split > 0 && key === 'target';
       button.setSize(isSell ? split : isTarget ? innerWidth - split - STACK_GAP : buttonWidth, h);
@@ -183,12 +199,11 @@ export class TowerPanel {
       if (path) {
         const { description, reason } = this.pathText[path.path];
         const hint = path.disabledReason ?? '';
-        if (description.text !== path.description) description.setText(path.description);
         const color = button.isEnabled ? TEXT.button : TEXT.buttonDisabled;
         if (description.style.color !== color) description.setColor(color);
         if (reason.text !== hint) reason.setText(hint);
-        description.setPosition(left + 10, top + (portrait ? 46 : 35));
-        reason.setPosition(left + 10, top + (portrait ? 73 : 54));
+        description.setPosition(left + 10, top + descriptionTop);
+        reason.setPosition(left + 10, description.y + description.height + captionGap);
       }
       if (!isSell) top += h + STACK_GAP;
     }

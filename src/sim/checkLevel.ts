@@ -2,7 +2,7 @@
 import { maxIn3s } from './balanceTargets';
 import { BOON_OFFER_WAVES } from './boons';
 import { levelStars } from './campaignProgress';
-import { botBeginner, botGood, botGoodFeat, botPerson, botPersonFeat, runBot, type BotPolicy } from './bots';
+import { botBeginner, botFeathers, botGood, botGoodFeat, botPerson, botPersonFeat, runBot, type BotPolicy } from './bots';
 import { ENEMY_STATS } from './enemies';
 import { createGame, spawnTick } from './game';
 import { CAMPAIGN_START_LIVES, TWO_STAR_LIVES, type LevelDef, type TaxKind } from './levelTypes';
@@ -12,7 +12,7 @@ import { TICKS_PER_SECOND } from './time';
 import { TOWER_DEFS } from './towers';
 import type { EnemyType, GameState, TowerLevel, TowerType } from './types';
 
-type GateLabel = 'P1' | 'P2' | 'L1' | 'L1m' | 'L2' | 'L3' | 'L4' | 'L5' | 'L6' | 'L7' | 'L8' | 'T1' | 'T2' | 'T3' | 'F1' | 'F2' | 'F3' | 'V1' | 'S1';
+type GateLabel = 'P1' | 'P2' | 'L1' | 'L1m' | 'L2' | 'L3' | 'L4' | 'L5' | 'L6' | 'L7' | 'L8' | 'T1' | 'T2' | 'T3' | 'F1' | 'F2' | 'F3' | 'V1' | 'S1' | 'R6';
 
 export type LevelFeature =
   | { readonly towers: readonly TowerType[] }
@@ -43,6 +43,7 @@ export interface LevelScore {
   readonly tick: number;
   readonly stars: 0 | 1 | 2 | 3;
   readonly refused: number;
+  readonly featherUse?: { pathBTowers: number; barrelCasts: number; feathered: number };
 }
 
 export interface LevelCheck {
@@ -50,6 +51,7 @@ export interface LevelCheck {
   failed: readonly GateLabel[];
   good?: LevelScore;
   beginner?: LevelScore;
+  feathers?: LevelScore;
   forbidden?: LevelScore;
   person?: LevelScore;
   noSpecials?: LevelScore;
@@ -95,7 +97,7 @@ export const GATE_LIMITS = {
   lastSpawnSeconds: 90, peakAlive: 40, openingCount: 60, closingCount: 20,
   maxPersonDeficit: 6, goodFeatureLives: 2, personFeatureLives: 1, meanLivesDrop: 3,
   taxBiteLives: 3, featSpecialLives: 3, featExtraBuilds: 3, singleTowerMaxStars: 1,
-  twoStarHeadroom: 1, priorStops: 3, actMeanDrop: 1.5, maxPersonCliff: 5,
+  twoStarHeadroom: 1, priorStops: 3, actMeanDrop: 1.5, maxPersonCliff: 5, maxFeatherAdvantage: 3,
   featureHp: [0.98, 1.02], featureGold: [-10, 10], sensitivityHp: [0.95, 1.05], sensitivityGold: [0.85, 1.15],
 } as const;
 
@@ -210,15 +212,20 @@ function measure(level: LevelDef, variant: LevelDef, policy: BotPolicy): LevelSc
     if (policy === botGoodFeat) policy = botGood;
     if (policy === botPersonFeat) policy = botPerson;
   }
-  const bot = [botGood, botPerson, botBeginner, botGoodFeat, botPersonFeat].indexOf(policy);
+  const bot = [botGood, botPerson, botBeginner, botGoodFeat, botPersonFeat, botFeathers].indexOf(policy);
   const variantKey = bot + JSON.stringify(variant);
   const previous = cached.results.get(variantKey);
   if (previous) return previous;
-  const { state, refused, peakAlive, waveOneLives, setupTicks } = runBot(createGame({ level: variant }), policy, Infinity, 2 * GATE_LIMITS.levelMinutes[1] * MINUTE);
+  const { state, log, refused, peakAlive, waveOneLives, setupTicks, feathered } = runBot(createGame({ level: variant }), policy, Infinity, 2 * GATE_LIMITS.levelMinutes[1] * MINUTE);
   const { phase } = state;
   const tick = state.tick - setupTicks;
   const lives = Math.max(0, state.lives);
-  const result = { phase, lives, towersBuilt: state.towersBuilt ?? state.towers.length, tick, refused, peakAlive, waveOneLives, spawned: state.nextEnemyId, stars: levelStars(state) };
+  const featherUse = policy === botFeathers ? {
+    pathBTowers: state.towers.filter(tower => tower.type === 'tarpit' && tower.path === 'B').length,
+    barrelCasts: log.filter(step => step.action === 'special' && step.special === 'tarBarrel' && step.result.ok).length,
+    feathered: feathered ?? 0,
+  } : undefined;
+  const result = { ...(featherUse && { featherUse }), phase, lives, towersBuilt: state.towersBuilt ?? state.towers.length, tick, refused, peakAlive, waveOneLives, spawned: state.nextEnemyId, stars: levelStars(state) };
   cached.results.set(variantKey, result);
   return result;
 }
@@ -262,6 +269,9 @@ export function checkLevel(level: LevelDef, context: LevelContext): LevelCheck {
   const good = measure(level, level, botGood);
   const person = measure(level, level, botPerson);
   const beginner = measure(level, level, botBeginner);
+  const feathers = measure(level, level, botFeathers);
+  if (feathers.lives - good.lives > GATE_LIMITS.maxFeatherAdvantage ||
+      (feathers.stars === 3 && good.stars !== 3)) failed.add('R6');
   const noSpecials = measure(level, { ...level, allowedSpecials: [] }, botPerson);
   if (person.stars < personMin || good.lives - person.lives > GATE_LIMITS.maxPersonDeficit) failed.add('P1');
   if (needsNoSpecials && noSpecials.stars === 0) failed.add('P2');
@@ -273,7 +283,7 @@ export function checkLevel(level: LevelDef, context: LevelContext): LevelCheck {
   if (context.introducesTax && (taxes.length !== 1 || taxes[0] !== context.introducesTax)) failed.add('T3');
   const feature = context.introduces;
   const featureTrials: FeatureTrial[] = [];
-  const runs = [good, person, beginner, noSpecials];
+  const runs = [good, person, beginner, feathers, noSpecials];
   const featTrials: { variant: string; good: LevelScore }[] = [];
   const featPerson = level.feat ? measure(level, level, botPersonFeat) : undefined;
   if (featPerson) {
@@ -362,7 +372,7 @@ export function checkLevel(level: LevelDef, context: LevelContext): LevelCheck {
   }
   if (!runs.every(finished)) failed.add('L7');
   if (context.band === 'finale' && !whole(good.lives, ...GATE_LIMITS.finaleLives)) failed.add('L8');
-  return { ...structure, ok: failed.size === 0, failed: [...failed], good, beginner, person, noSpecials,
+  return { ...structure, ok: failed.size === 0, failed: [...failed], good, beginner, person, feathers, noSpecials,
     forbidden: featureTrials[0]?.goodWithout, featureTrials, taxTrials, featGood: featTrials[0]?.good, featPerson, featTrials, singleTowerTrials, sensitivity };
 }
 

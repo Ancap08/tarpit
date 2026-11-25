@@ -43,6 +43,7 @@ import { bobOffset, DEATH_MS, burnPulse, FLAME_EVERY, HIT_FLASH_MS, Particles, s
 import { awayFrom, deathPuff, KNOCK_MS, knockPx, knockShare } from '../fx/fxMath';
 import { enemyArt, walkFrame } from '../skin/frames';
 import type { PaintedSkin } from '../skin/painted';
+import { FeatherTrail, makePlumage } from '../draw/feathers';
 import { facingAt } from './facing';
 import type { Layout } from '../layout';
 import { COLORS } from '../palette';
@@ -86,6 +87,8 @@ const TURN_MS = 100;
 interface View {
   turn?: { previous: Phaser.GameObjects.Image; facing: Facing; start: number };
   sprite: Phaser.GameObjects.Sprite;
+  plumage?: Phaser.GameObjects.Image;
+  trail?: FeatherTrail;
   shadow?: Phaser.GameObjects.Image;
   crown: Phaser.GameObjects.Graphics | null;
   /** The Shieldbearer's shield mark, drawn in front of the sprite; null for other types. */
@@ -151,6 +154,8 @@ export class EnemySprites {
   private readonly bossLayer: Phaser.GameObjects.Layer;
   /** Flyers' layer, above the labels (setAirLayer); the walkers' layer until set. */
   private airLayer: Phaser.GameObjects.Layer;
+  private readonly featherLayer: Phaser.GameObjects.Layer;
+  private readonly spareTrails: FeatherTrail[] = [];
   private readonly particles: Particles | null;
 
   /** `layout` (milestone 32b) places every sprite on the screen and turns its facing with the map. */
@@ -165,6 +170,8 @@ export class EnemySprites {
     this.layer = painted?.standing ?? scene.add.layer();
     this.bossLayer = painted?.standing ?? scene.add.layer();
     this.airLayer = this.layer;
+    // Over the standing pieces and tar rings in all three looks, below shots and hp.
+    this.featherLayer = scene.add.layer();
     this.particles = frozen ? null : new Particles(scene);
   }
 
@@ -210,6 +217,7 @@ export class EnemySprites {
   doom(id: number): void {
     const v = this.views.get(id);
     if (v && !v.dying && !v.doomed) {
+      this.stopTrail(v);
       v.doomed = true;
       v.doomedAt = this.clock.nowMs;
     }
@@ -223,7 +231,11 @@ export class EnemySprites {
   /** Actual upper body edge after bob and knock, in canvas pixels. */
   paintedBar(id: number): PaintedBody | undefined {
     const v = this.views.get(id);
-    if (!this.painted || !v) return;
+    if (v) return this.paintedBarForView(v);
+  }
+
+  private paintedBarForView(v: View): PaintedBody | undefined {
+    if (!this.painted) return;
     const { density, sheets } = this.painted.assets;
     const sheet = sheets[enemyArt(v.type)];
     const bounds = sheet.bodyBounds?.[Number(v.sprite.frame.name) % sheet.frames];
@@ -256,6 +268,8 @@ export class EnemySprites {
     if (this.painted) v.sprite.setFrame(Number(v.sprite.frame.name) % this.painted.assets.sheets[enemyArt(v.type)].frames);
     if (!this.painted && dead !== undefined) v.sprite.setFrame(dead);
     v.sprite.clearTint().setBlendMode(Phaser.BlendModes.NORMAL);
+    this.stopTrail(v);
+    v.plumage?.setVisible(false);
     v.shadow?.setVisible(false);
     v.crown?.setVisible(false);
     v.shield?.setVisible(false);
@@ -277,6 +291,8 @@ export class EnemySprites {
     this.scene.tweens.killTweensOf(v.sprite);
     v.turn?.previous.destroy();
     v.sprite.destroy();
+    this.stopTrail(v);
+    v.plumage?.destroy();
     v.shadow?.destroy();
     v.crown?.destroy();
     v.shield?.destroy();
@@ -315,12 +331,13 @@ export class EnemySprites {
   private walkOn(v: View, map: MapDef, timeScale: number): void {
     if (v.stepPx === 0) return; // A walker killed against the wall stays there until the shot lands.
     const ticks = ((this.clock.nowMs - v.doomedAt) / (1000 / 60)) * timeScale;
-    const distance = v.distance + v.stepPx * ticks;
+    const distance = Math.max(0, v.distance + v.stepPx * ticks);
     const { x, y } = this.layout.toScreen(positionAlongPath(map, distance));
     v.shadow?.setPosition(x, y);
     const lift = this.lift(v.type);
     v.sprite.setPosition(x, y - lift).setDepth(y);
     if (this.painted) this.setFacing(v, facingAt(map, distance, v.stepPx, this.layout), false, distance);
+    this.placePlumage(v);
     v.sprite.anims.timeScale = timeScale;
     v.crown?.setPosition(v.sprite.x, v.sprite.y - 41).setDepth(y + 1);
     v.shield?.setPosition(x + SHIELD_DX, y + SHIELD_DY).setDepth(y + 0.5);
@@ -392,6 +409,7 @@ export class EnemySprites {
 
   /** Pixels this enemy moved on its last tick. */
   private step(enemy: Enemy): number {
+    if (enemy.runTicksLeft) return -ENEMY_STATS[enemy.type].speed / 60;
     const slow = effectiveSlow(enemy);
     return (ENEMY_STATS[enemy.type].speed * (1 - slow)) / 60;
   }
@@ -430,6 +448,22 @@ export class EnemySprites {
     else v.sprite.anims.play(walkAnimKey(v.type, facing), true);
   }
 
+  private stopTrail(v: View): void {
+    if (!v.trail) return;
+    v.trail.clear();
+    this.spareTrails.push(v.trail);
+    v.trail = undefined;
+  }
+
+  private placePlumage(v: View): void {
+    if (!v.plumage) return;
+    const body = this.paintedBarForView(v);
+    const side = v.facing === 'left' ? 1 : -1;
+    v.plumage.setFlipX(side === -1)
+      .setPosition((body?.x ?? v.sprite.x) + side * 3, body ? body.y + body.height * 0.56 : v.sprite.y - 2)
+      .setAngle(v.sprite.angle);
+  }
+
   private update(v: View, enemy: Enemy, map: MapDef, timeScale: number, stoppedAt?: BlockedPosition): void {
     const { x, y } = this.layout.toScreen(stoppedAt ?? enemyPosition(enemy, map));
     v.blockerLunge = stoppedAt?.lunge ?? 0;
@@ -462,9 +496,22 @@ export class EnemySprites {
     }
     this.setFacing(v, facingAt(map, stoppedAt?.distance ?? enemy.distance, this.step(enemy), this.layout), false, enemy.distance);
     v.shadow?.setPosition(x, y);
-    v.sprite.anims.timeScale = stoppedAt ? 0 : timeScale;
+    const flinching = !!enemy.flinchTicksLeft;
+    v.sprite.anims.timeScale = stoppedAt || flinching ? 0 : timeScale;
+    v.sprite.setAngle(flinching ? (v.facing === 'left' ? 15 : -15) : 0);
+    if (enemy.feathered && !v.plumage) {
+      const scale = (this.layout.turned ? 1.28 : 1) * (v.type === 'troll' ? 1.2 : 1);
+      v.plumage = makePlumage(this.scene, this.featherLayer, scale);
+    }
+    this.placePlumage(v);
+    if (v.plumage && !this.frozen && enemy.runTicksLeft) {
+      v.trail ??= this.spareTrails.pop() ?? new FeatherTrail(this.scene, this.featherLayer);
+      v.trail.draw(v.plumage.x, v.plumage.y, v.facing, this.clock.nowMs);
+    } else if (v.trail) {
+      this.stopTrail(v);
+    }
     v.distance = enemy.distance;
-    v.stepPx = stoppedAt ? 0 : this.step(enemy);
+    v.stepPx = stoppedAt || flinching ? 0 : this.step(enemy);
     v.burning = (enemy.burnTicksLeft ?? 0) > 0;
     v.slowed = isTarred(enemy);
     v.redraws += 1;

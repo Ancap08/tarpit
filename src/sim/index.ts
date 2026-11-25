@@ -5,6 +5,7 @@ export * from './events';
 export * from './map';
 export * from './grid';
 export * from './enemies';
+export { FEATHERS } from './feathers';
 export * from './difficulty';
 export * from './waves';
 export * from './game';

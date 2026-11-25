@@ -1641,3 +1641,77 @@ can change it; "Kyle" means Kyle decided.
 - **Known, not fixed:** in the untaxed phone HUD with text 6% wider, the wave
   counter overlaps the cheat mark on a cheated win, and "Special" and "Last
   wave" shrink but stay above 11 px. Linux CI passes these today.
+
+## 2026-11-24, milestone 49 (tar and feathers)
+
+- **The tar fix becomes "tar and feathers", not a numbers-only change.**
+  Decided by Kyle ("Yes, tar and feathers") from a list of ideas the
+  coordinator put to him. It replaces part 48d.
+- **Shape of the rule** (coordinator, under Kyle's "I trust you" for detail
+  calls): the Tar Pit's second path becomes Feathers and the Tar Barrel tars
+  and feathers what it lands on; a feathered enemy runs back once in its
+  life; bosses never run; enemies it passes flinch once. Words are in
+  `docs/SCOPE-v5.md`.
+- **Level data and Free play target windows are off limits for this
+  milestone.** If the gate cannot pass by tuning tar and feather numbers,
+  the implementer stops and reports. Reason: milestone 48's first build met
+  weak targets by moving the wrong levers.
+- **A feather-leaning bot is added to the gate (R6)** because the existing
+  bots rarely pick path B or the barrel, so the gate could pass while a
+  person who uses feathers walks through the levels.
+- **Target R2 was wrong and is replaced by R2a, R2b and R2c** (coordinator).
+  Codex measured first and stopped: R2 needed 17 and 20 lives on Meadow and
+  Riverbend where the Free play window allows 15. The new targets ask that
+  the barrel is worth casting, that the standard run is no worse, and that
+  the barrel is the best zone special on at least one map. The window stays.
+- **Known and left:** Fire Arrows on every turn beats the Free play window on
+  Meadow and Riverbend (17 and 20 lives). It was hidden because the standard
+  policy alternates the two zone specials. A Fire Arrows change is a
+  balance decision for Kyle, outside this milestone.
+- **Feathers come from the Tar Pit's second path only; the Tar Barrel is
+  left exactly as it is** (coordinator, after the first build). The barrel
+  version failed 12 of 20 levels at the campaign gate with level data
+  unchanged, and the numbers that came closest cut the run to 10 px. Leaving
+  the barrel alone keeps every existing bot run byte for byte, so the levels
+  Kyle has played do not move. This is less than what the coordinator
+  described to Kyle ("the Tar Barrel now tars and feathers what it lands
+  on"); he is told, and asked whether he wants the crowd version with a
+  level retune.
+- **Correction to what Kyle was told about the barrel:** it is not useless.
+  Casting it is worth 4, 3 and 4 lives over leaving its turn unused. It
+  loses only to Fire Arrows used every turn.
+- **A floor on the effect (R8)** so tuning cannot shrink it out of sight
+  again: at least one second of running at the enemy's own pace.
+- **Verifier (Sonnet): merge.** Runs without a Feathers pit are byte for
+  byte unchanged (280 runs rebuilt independently); every target's test was
+  made to fail by a wrong change. Findings and what was done:
+  - **The fairness guard (R6) was weaker than it read.** The gate's feather
+    bot loses outright on five levels. Measured honestly, the person-like
+    bot with its Tar Pits on Feathers ends 4 lives above the good bot on
+    level 16 (18 against 14) and gains 2 to 4 lives on levels 11 and 12; it
+    wins no extra star, and the good bot gains nothing. Accepted by the
+    coordinator: the upgrade helps an ordinary player a little and hands out
+    no star. The verifier's test pins the 4-life figure so it cannot grow
+    unseen. Kyle's play decides whether act two is now too easy.
+  - **Feathers is the weaker path in 5 of 6 Free play comparisons** and
+    wins one by 2 lives. R1 passes, thinly. Left as is.
+  - **Feather marks are small on a phone** and the level 9 tip was cryptic.
+    Both sent back to Codex: larger marks and a longer puff, and a tip that
+    says what feathers do.
+- **The Feathers card line is "Tarred enemies run back."** (coordinator,
+  after the first CI run on the milestone 49 pull request). The longer line
+  wrapped to three rows on the phone card on Linux with text 6% wider and
+  ran into the title. The new line is the same length as Deep Tar's, which
+  fits. The wide-text check for this card now uses a larger factor on the
+  Mac, so the local run sees what Linux sees.
+- **Correction to the entry above:** the Linux failure was not a third row.
+  Codex showed the description sat 0.23 CSS px under the card title on the
+  Mac, and Linux's taller text bounds closed the gap. With fixed tall
+  metrics every tower's path cards overlapped by 4.8 to 6.1 px on all three
+  layouts, and had since before this milestone. The description is now
+  placed from the measured bottom of the title with at least 2 CSS px clear,
+  and a check covers six towers, both paths, four sizes and four font modes
+  (192 cases; all 16 size-and-mode groups fail on the earlier commit). The
+  shorter line stays because it fits on one row. The coordinator diagnosed
+  from the test's name instead of its failing line; the brief for a CI fix
+  now quotes the failing assertion and its values.
