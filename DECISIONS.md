@@ -1724,3 +1724,14 @@ can change it; "Kyle" means Kyle decided.
   power at the source and move fewer of the levels Kyle has played. Codex
   proposed opening level 8's waves instead; not taken yet, because the
   first act's waves are the last thing to move.
+- **Feather barrels are an Act Two rule only.** Decided by Kyle: "We'll keep
+  it act two for now, if we decide that it should be done later then we can
+  group it in with other items at that time if it makes sense to." Levels 1
+  to 10 and Free play stay exactly as they are; a Free play rebalance for
+  feather barrels everywhere is deferred, not planned.
+- **It is level data, shown on the card as the town's answer** (coordinator).
+  Players already learn a level's rules from its card in Act Two, so a
+  barrel that does more there is stated the same way the taxes are.
+- **The coordinator's two openings Codex proposed (level 10's Troll
+  interval, a Free play group's timing) are not taken.** With the rule
+  confined to Act Two neither is needed.
