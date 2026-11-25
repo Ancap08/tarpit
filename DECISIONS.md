@@ -2081,3 +2081,15 @@ can change it; "Kyle" means Kyle decided.
   resolution for a modern phone and in two clashing styles (bright cartoon
   troops against the gothic keep); stiff motion with no easing or impact;
   grey oval tower spots and thin health bars.
+- **Kyle chose the look: A and B together, menus and buttons first, then
+  characters and towers** ("Yes, let's do the A and B you mentioned, start
+  with the buttons and menus and then move into the characters and
+  towers"). He chose before the pictures reached him; they were sent as he
+  replied, and he was asked to say if they change his mind.
+- **The mix** (coordinator; the mock-ups' author recommended the same
+  without being told): A's clean dark panels while playing, B's paper and
+  ink for cards, results and the other reading screens.
+- **Built behind `?ui=new`** and made the default only when Kyle has tried
+  it on his phone; the old interface is kept until then.
+- **No font or icon set is downloaded.** The in-level type is the
+  device's own sans; icons are drawn by the project's code.
