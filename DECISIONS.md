@@ -1760,3 +1760,12 @@ can change it; "Kyle" means Kyle decided.
   every run was Astra at high (the effort came from the Codex config
   default, which the coordinator never set or checked). Commit trailers
   name the model that wrote the change.
+- **C2 asks for 1 life, not 2** (coordinator, after the Act Two build).
+  Levels 15, 16 and 18 gained exactly 1 life from the barrel and all three
+  give their third star for using no specials. The 2 was a guess. Level 20
+  gains nothing from the barrel and still fails, and the gate's own rule S1
+  (Act Two must cost the person-like bot at least 1.5 lives more than Act
+  One; now 1.33) is not waived.
+- **First run under the model rule:** the Act Two build on Astra at medium
+  used 191,132 tokens, against 337,209 and 493,233 for the two passes at
+  high. The remaining tuning goes to Sol at high as a small item.

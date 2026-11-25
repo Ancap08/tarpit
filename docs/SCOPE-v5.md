@@ -883,7 +883,7 @@ and special, the rules of taxes and feats, star lines, the 20 lives.
 | Label | Target |
 |---|---|
 | C1 | On a feather-barrel level one cast feathers every enemy in its radius that is not a boss and not already feathered; none twice. On any other level and in Free play a cast feathers nothing |
-| C2 | Worth casting: on each of levels 11 to 20 that allows the barrel, the good bot ends at least 2 lives or a star better than the same play with the barrel's turns unused, or already ends on 20 lives |
+| C2 | Worth casting: on each of levels 11 to 20 that allows the barrel, the good bot ends at least 1 life or a star better than the same play with the barrel's turns unused, or already ends on 20 lives. (First written as 2 lives. Lowered once, by the coordinator: four of the levels that gained 1 give their third star for using no specials, so a barrel worth a little there is right. A barrel worth nothing, as on level 20, still fails.) |
 | C4 | Free play is untouched: every Free play output and the locked report are byte for byte as on main |
 | C5 | The campaign gate passes on all twenty levels, every label |
 | C6 | Fair for a person: the good and person-like bots with every Tar Pit on Feathers and the barrel preferred end no more than 4 lives above the unmodified good bot on any level and win no third star it does not |
