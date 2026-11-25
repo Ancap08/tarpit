@@ -168,7 +168,7 @@ def field(p,horizon):
 def burn(p,turned):
     """A stream undercuts the keep's bedrock and passes under the gate bridge."""
     r=p.rng
-    controls=([(0,486),(68,473),(135,444),(201,447),(263,439),(320,420),(418,416),(480,398)]
+    controls=([(0,486),(68,495),(135,456),(201,447),(263,439),(320,420),(418,416),(480,398)]
               if turned else [(0,384),(78,365),(118,338),(233,325),(329,295),(434,284),(510,246),(608,217),(707,200),(770,171)])
     points=[]
     for (x1,y1),(x2,y2) in zip(controls,controls[1:]):
@@ -198,7 +198,7 @@ def burn(p,turned):
 
 def waylights(p,turned):
     """Little copper lanterns on cut-stone mileposts give the road a human scale."""
-    for x,y in ([(286,837),(85,660),(258,526)] if turned else [(844,183),(713,352),(587,303)]):
+    for x,y in ([(271,849),(73,693),(252,532)] if turned else [(862,192),(713,352),(578,303)]):
         p.poly([(x-6,y+1),(x-6,y-4),(x-3,y-6),(x+6,y-5),(x+7,y),(x+3,y+2)],'#555f64')
         p.poly([(x-3,y-5),(x-2,y-22),(x+2,y-23),(x+3,y-5)],'#59646a')
         p.line([(x-2,y-20),(x-3,y-5)],'#969794',1)
