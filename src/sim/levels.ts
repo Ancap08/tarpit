@@ -170,7 +170,7 @@ export const LEVELS: readonly LevelDef[] = [
   },
   {
     featherBarrels: true,
-    id: 12, map: 'switchback', startGold: 265, hpScale: 1.14, hpGrowthStart: null,
+    id: 12, map: 'switchback', startGold: 269, hpScale: 1.14, hpGrowthStart: null,
     allowedTowers: allTowers, maxTowerLevel: 3, allowedSpecials: allSpecials, rewardWaves: [1],
     taxes: { forcedMarch: 0.2 }, feat: { kind: 'maxTowers', limit: 5 },
     waves: [

@@ -107,7 +107,7 @@ const definitions = [
 ] as const;
 
 const goldChanges = [
-  { id: 12, from: 260, to: 265 },
+  { id: 12, from: 260, to: 269 },
   { id: 18, from: 260, to: 275 },
   { id: 20, from: 245, to: 270 },
 ];

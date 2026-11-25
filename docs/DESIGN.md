@@ -2025,7 +2025,7 @@ Stars/lives give each bot’s highest award and surviving lives. Time counts Goo
 | 9 | The King's Assessor | Riverbend | 7 | 535 | 255 | 1 | 6 | 3 | 5 | 3/20 | 3/20 | 0/0 | 7.57 | 17 | 42 |
 | 10 | Last Light | Meadow | 7 | 633 | 280 | 0.925 | 5 | 3 | 5 | 2/16 | 2/13 | 0/0 | 8.89 | 19 | 36 |
 | 11 | Window Money | Riverbend | 6 | 324 | 245 | 0.91 | — | 3 | 1 | 2/20 | 2/14 | 0/0 | 5.91 | 22 | 21 |
-| 12 | The Quickstep | Switchback | 7 | 466 | 265 | 1.14 | — | 3 | 1 | 2/18 | 2/15 | 0/0 | 6.79 | 29 | 38 |
+| 12 | The Quickstep | Switchback | 7 | 466 | 269 | 1.14 | — | 3 | 1 | 2/18 | 2/15 | 0/0 | 6.79 | 29 | 38 |
 | 13 | Eight Bells | Riverbend | 7 | 312 | 285 | 0.85 | — | 3 | 1 | 3/20 | 2/15 | 0/0 | 5.56 | 14 | 31 |
 | 14 | Short Measure | Meadow | 6 | 331 | 240 | 0.93 | — | 3 | — | 3/20 | 2/14 | 0/0 | 5.52 | 25 | 27 |
 | 15 | Pay Day | Riverbend | 6 | 285 | 255 | 1.08 | — | 3 | 2 | 2/14 | 2/13 | 0/0 | 5.81 | 9 | 40 |
@@ -2036,7 +2036,7 @@ Stars/lives give each bot’s highest award and surviving lives. Time counts Goo
 | 20 | The Last Writ | Riverbend | 8 | 509 | 270 | 0.925 | — | 3 | — | 2/13 | 2/13 | 0/0 | 8.91 | 12 | 53 |
 
 Good clears the first ten stops in 72.70 combat minutes, with a 4.00-life
-mean drop. Across all twenty stops Good takes 134.28 combat minutes.
+mean drop. Across all twenty stops Good takes 134.29 combat minutes.
 Mean surviving lives drop from 18.00 on levels 1–6 to 15.00 on levels 15–20.
 
 The Act Two feather-barrel retune uses the following wave groups.
