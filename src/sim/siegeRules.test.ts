@@ -188,17 +188,17 @@ describe('siege actions', () => {
     expect(state.enemies.filter(e => e.runTicksLeft).map(e => [e.id, e.runTicksLeft])).toEqual([[1, 63], [2, 63], [7, 63], [9, 63]]);
     expect(state.enemies.filter(e => e.specialSlowTicksLeft).map(e => e.id)).toEqual([1, 2, 7, 9]);
     state.windows.push({ ...state.windows[0], used: false });
-    expect(shakeWindow(state, 1)).toEqual({ ok: true, hits: 0 });
+    expect(shakeWindow(state, 1)).toEqual({ ok: false, reason: 'empty-window' });
     expect(state.windows[0].used).toBe(true);
     expect(shakeWindow(state, 0)).toEqual({ ok: false, reason: 'spent-window' });
     expect([state.gold, state.specialCharges, state.zones.length]).toEqual([100, 1, 0]);
   });
 
-  it('spends an empty window independently and lights both windows on replay', () => {
+  it('leaves an empty window lit and lights both windows on replay', () => {
     const keep = createKeep();
     startWave(keep);
-    expect(shakeWindow(keep, 0)).toEqual({ ok: true, hits: 0 });
-    expect(keep.windows?.map(w => w.used)).toEqual([true, false]);
+    expect(shakeWindow(keep, 0)).toEqual({ ok: false, reason: 'empty-window' });
+    expect(keep.windows?.map(w => w.used)).toEqual([false, false]);
     expect(createKeep().windows?.map(w => w.used)).toEqual([false, false]);
   });
 

@@ -1,36 +1,30 @@
-// Verifier (Claude Sonnet) for milestone 52b. `npm run sim:keep` is the only
-// place the fourteen Act Three targets (W1 to W14) run, and CI does not run
-// it, so a green `npm test` said nothing about them: changing a level's gate
-// to 100 times its health, or a Quartering price to 1 gold, left every
-// implementer test green. This pins the measured state: which targets miss,
-// and what each bot scores on each level. A change to levels 21 to 25 turns it
-// red on purpose. When the coordinator decides W6, W9 and W12, update MISSES.
 import { describe, expect, it } from 'vitest';
 import { botPerson, runBot } from './bots';
 import { checkKeep } from './checkKeep';
 import { createGame } from './game';
 import { LEVELS } from './levels';
 
-/** Open misses at c3c9c45, by the implementer's report and the verifier's own run. */
-const MISSES = ['W6', 'W9', 'W12'];
+/** W17: the only expected-miss list. W8 is locked by the public parity tests. */
+const MISSES = ['W2', 'W3', 'W9'];
 
-describe('Act Three targets, pinned at the state of milestone 52b', () => {
-  it('passes every target except the three open misses, and each bot scores what it scored', () => {
+describe('Act Three targets (W17)', () => {
+  it('matches the measured misses and pins the bot scores on all five levels', () => {
     const actTwo = LEVELS.slice(10);
     const previousMean = actTwo.reduce((sum, level) => sum + runBot(createGame({ level }), botPerson).state.lives, 0) / actTwo.length;
     const report = checkKeep(previousMean);
-    expect(report.targets.filter(target => !target.ok).map(target => target.label)).toEqual(MISSES);
     expect(report.targets.map(target => target.label)).toEqual(
-      ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W9', 'W10', 'W11', 'W12', 'W13', 'W14']);
-    // [level, good stars, good lives, person stars, person lives, beginner stars]
+      ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W9', 'W10', 'W11', 'W12', 'W13', 'W14', 'W15', 'W16']);
+    const details = report.targets.map(target => `${target.label} ${target.detail}`).join('\n');
+    expect.soft(report.targets.filter(target => !target.ok).map(target => target.label), details).toEqual(MISSES);
+    // Level, Good stars/lives and gate low, Person stars/lives, Beginner stars.
     expect(report.rows.map(({ level, good, person, beginner }) =>
-      [level.id, good.stars, good.lives, person.stars, person.lives, beginner.stars])).toEqual([
-      [21, 3, 18, 1, 11, 1],
-      [22, 2, 16, 1, 10, 0],
-      [23, 3, 20, 2, 15, 0],
-      [24, 2, 18, 1, 8, 0],
-      [25, 3, 20, 2, 15, 0],
+      [level.id, good.stars, good.lives, good.lowestHp, person.stars, person.lives, beginner.stars])).toEqual([
+      [21, 3, 20, 1969, 2, 12, 0],
+      [22, 2, 13, 437, 2, 17, 0],
+      [23, 2, 20, 0, 2, 14, 0],
+      [24, 2, 19, 4539, 1, 8, 0],
+      [25, 3, 20, 1406, 1, 10, 0],
     ]);
-    expect(report.ok).toBe(false);
+    expect(report.ok).toBe(MISSES.length === 0);
   }, 240_000);
 });

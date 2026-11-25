@@ -15,7 +15,7 @@ test('touch Repair at 390 × 844 charges the displayed top-up price', async ({ p
     api.state!().gold = 0;
     api.step!(0);
   });
-  const repair = page.getByRole('button', { name: 'Repair 1', exact: true });
+  const repair = page.getByRole('button', { name: 'Repair 1. Costs the third star', exact: true });
   await expect(repair).toBeDisabled();
   await checkLabel(page, 'repair', 'Repair 1');
   await page.evaluate(() => {

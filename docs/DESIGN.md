@@ -842,9 +842,10 @@ and cooldowns. Last stand can start once per run.
 A tower on a marked high site multiplies its maximum range by 1.1 after
 boons and Curfew. Minimum range and all other tower stats are unchanged.
 The bonus follows the site when a tower moves. During play the HUD shows
-gate HP rounded up, Repair with the actual gold price in setup for a
-damaged standing gate, and Gate fallen with Last stand! for the duration
-of the bonus. At full HP the disabled Repair control has no price.
+gate health rounded to a whole percentage, Repair with the actual gold
+price in setup for a damaged standing gate, and Gate fallen with Last
+stand! for the duration of the bonus. At full HP the disabled Repair
+control has no price.
 
 ## Converging roads and siege rules
 
@@ -892,8 +893,9 @@ The plain Next preview groups the entries under their road names.
 | Window touch area | 116 × 80 canvas px |
 | Wall-site marker touch area | 136 × 80 canvas px |
 
-A lit window can be shaken during combat once in the entire level, even
-if the stretch is empty. It tars and feathers live, unfeathered non-bosses
+A lit window can be shaken during combat once in the entire level. A tap
+without an eligible enemy keeps it lit and shows “No targets” for 1.5
+seconds of combat. It tars and feathers live, unfeathered non-bosses
 on the indicated stretch, including enemies from another road after the
 join if the stretch extends there. It applies the barrel's direct tar
 slow and 63 moving ticks of retreat, with the usual 16-tick flinch for
@@ -914,8 +916,10 @@ Troll's, with 4 damage per second against Guards or a Barricade.
 **Not a nail** uses the standard feat threshold of 12 lives in a win.
 A successful Repair purchase forfeits the feat, including a partial
 repair. Failed purchases, Quartering and a fallen gate do not forfeit
-it. The hidden exhibition shows the result at a win and saves no stars
-or progress.
+it. The Repair control adds “Costs the third star” before the first
+successful repair. The control is 212 canvas px wide in portrait and
+176 in landscape, with the warning on its own line. The hidden
+exhibition shows the result at a win and saves no stars or progress.
 
 Part c2 can paint the west branch up to the join and reuse the shared road,
 position window light and feather effects at the two window anchors, and
@@ -2409,11 +2413,11 @@ warms and lightens the sky.
 
 | Level | Name | Roads | Sky | Gold | HP scale | Gate HP | Yard px | Repair HP | Gold per full repair | Third star | Wall-site rule |
 |---:|---|---|---|---:|---:|---:|---:|---:|---:|---|---|
-| 21 | Rent Overdue | east | dusk | 290 | 1 | 8160 | 275 | 2600 | 90 | Unbroken | — |
-| 22 | Feather Beds | west | dusk | 232 | 1.12 | 4700 | 160 | 1150 | 66 | Not a nail | — |
-| 23 | Both Roads | both | night storm | 275 | 1.08 | 16900 | 330 | 3700 | 72 | Unbroken | Royal Survey at (22, 7) and (23, 13) |
-| 24 | Quartering | both | night storm | 285 | 1 | 16200 | 290 | 4200 | 80 | Not a nail | Quartering, 80 gold at (22, 10) |
-| 25 | The Final Notice | both | dawn | 295 | 1.25 | 16100 | 295 | 4300 | 105 | Unbroken | — |
+| 21 | Rent Overdue | east | dusk | 295 | 1 | 9580 | 275 | 2600 | 90 | Unbroken | — |
+| 22 | Feather Beds | west | dusk | 240 | 1.12 | 4800 | 160 | 1900 | 66 | Not a nail | — |
+| 23 | Both Roads | both | night storm | 275 | 1.08 | 16900 | 330 | 3700 | 72 | Unbroken | Royal Survey at (13, 7) and (23, 13) |
+| 24 | Quartering | both | night storm | 285 | 1 | 21000 | 290 | 4200 | 80 | Not a nail | Quartering, 80 gold at (22, 10) |
+| 25 | The Final Notice | both | dawn | 295 | 1.25 | 16900 | 295 | 4300 | 105 | Unbroken | — |
 
 Level 21 has no pillow windows. Level 22 has west windows at
 (540, 325) covering 572–620 trail px and (564, 170) covering 690–751
@@ -2432,31 +2436,31 @@ groups of the same enemy type on the same road.
 | Level | Wave | Groups |
 |---:|---:|---|
 | 21 | 1 | E Collector, 42, 0.9, 0 |
-| 21 | 2 | E Troll, 8, 5.6, 0 · E Harpy flights ×8, first 8, every 6.3 |
+| 21 | 2 | E Troll, 8, 5.6, 0 · E Harpy, 16, 2.2, 0 |
 | 21 | 3 | E Redcoat, 43, 0.95, 0 · E Harpy flights ×3, first 8, every 8.2 |
 | 21 | 4 | E Hound, 45, 0.95, 0 · E Harpy flights ×8, first 5, every 5.6 |
-| 21 | 5 | E Troll, 10, 3.5, 0 · E Collector, 20, 2.4, 7 · E Harpy flights ×6, first 8, every 7 |
-| 21 | 6 | E Redcoat, 52, 0.85, 0 · E Harpy flights ×10, first 5, every 5.1 |
+| 21 | 5 | E Troll, 14, 3.5, 0 · E Collector, 20, 2.4, 7 · E Harpy flights ×6, first 8, every 7 |
+| 21 | 6 | E Redcoat, 52, 0.85, 0 · E Troll, 10, 1.2, 43 · E Harpy flights ×10, first 5, every 5.1 |
 | 22 | 1 | W Collector, 28, 1.3, 0 |
 | 22 | 2 | W Redcoat, 34, 1.26, 0 · W Harpy flights ×9, first 7, every 4.45 |
 | 22 | 3 | W Troll, 9, 5.8, 0 · W Hound, 16, 2.8, 8 · W Harpy flights ×8, first 11, every 4.8 |
 | 22 | 4 | W Troll, 6, 4.6, 4 · W Hound, 31, 1.51, 4 · W Harpy, 34, 0.8, 2 |
 | 22 | 5 | W Redcoat, 38, 1.23, 0 · W Troll, 10, 4.8, 3 · W Harpy flights ×5, first 8, every 8.8 |
-| 22 | 6 | W Troll, 6, 0.3, 4 · W Troll, 13, 1.75, 8 · W Redcoat, 22, 1.8, 12 · W Harpy flights ×9, first 7, every 5.35 |
+| 22 | 6 | W Troll, 6, 0.3, 4 · W Troll, 14, 1.75, 8 · W Redcoat, 22, 1.8, 12 · W Harpy flights ×9, first 7, every 5.35 |
 | 23 | 1 | E Collector, 28, 1.6, 0 · W Collector, 24, 1.9, 2 |
 | 23 | 2 | E Troll, 5, 7, 0 · W Redcoat, 26, 1.6, 0 · W Harpy flights ×8, first 7, every 5.1 |
 | 23 | 3 | E Redcoat, 30, 1.65, 0 · W Troll, 8, 6.1, 0 · E Harpy flights ×9, first 6, every 4.5 |
 | 23 | 4 | E Hound, 30, 1.6, 0 · W Hound, 24, 2.05, 0 · W Harpy flights ×11, first 1, every 4.4 |
-| 23 | 5 | E Troll, 13, 2.7, 0 · W Troll, 13, 2.7, 4 · E Harpy flights ×6, first 9, every 7.2 |
+| 23 | 5 | E Troll, 15, 2.7, 0 · W Troll, 14, 2.7, 4 · E Harpy flights ×6, first 9, every 7.2 |
 | 23 | 6 | E Redcoat, 36, 1.46, 0 · W Redcoat, 29, 1.84, 0 · W Harpy flights ×8, first 6, every 6.1 |
 | 24 | 1 | E Collector, 31, 1.5, 0 · W Collector, 24, 1.9, 2 |
-| 24 | 2 | W Troll, 6, 7, 0 · E Redcoat, 33, 1.5, 0 · W Harpy flights ×4, first 14, every 8.3 |
+| 24 | 2 | W Troll, 6, 7, 0 · E Redcoat, 33, 1.5, 0 · W Harpy flights ×4, first 16, every 8.3 |
 | 24 | 3 | W Redcoat, 35, 1.45, 0 · E Troll, 9, 5.9, 0 · E Harpy flights ×8, first 10, every 5.1 |
 | 24 | 4 | W Hound, 30, 1.6, 0 · E Hound, 24, 2.05, 0 · W Harpy flights ×8, first 3, every 6.1 |
 | 24 | 5 | E Troll, 11, 4, 0 · W Troll, 15, 3.9, 9 · E Harpy flights ×7, first 6, every 6.8 |
-| 24 | 6 | W Redcoat, 41, 1.35, 0 · E Redcoat, 32, 1.8, 0 · W Troll, 5, 3.8, 3 · E Harpy flights ×9, first 4, every 5.8 |
+| 24 | 6 | W Redcoat, 41, 1.55, 0 · E Redcoat, 32, 1.8, 0 · W Troll, 24, 1.75, 9 · E Harpy flights ×9, first 4, every 5.8 |
 | 25 | 1 | E Collector, 31, 1.5, 0 · W Collector, 26, 1.8, 2 |
-| 25 | 2 | E Troll, 7, 6.4, 0 · W Redcoat, 34, 1.51, 0 · W Harpy flights ×5, first 7, every 8 |
+| 25 | 2 | E Troll, 7, 6.4, 0 · W Redcoat, 34, 1.51, 0 · W Harpy, 28, 1.08, 4 |
 | 25 | 3 | E Redcoat, 32, 1.58, 0 · W Troll, 9, 5.8, 0 · E Harpy flights ×7, first 6, every 7.3 |
 | 25 | 4 | E Hound, 30, 1.6, 0 · W Hound, 25, 2.05, 0 · W Harpy flights ×8, first 4, every 6.1 |
 | 25 | 5 | E Troll, 10, 4.8, 0 · W Troll, 10, 4.8, 3 · E Harpy flights ×6, first 10, every 8 |
@@ -2471,13 +2475,23 @@ Ordinary Good and Person keep their existing repair policies. The
 Unbroken and Not a nail trials use the usual two-star line before testing
 the feat.
 
-Run `npm run sim:keep` for W1–W7 and W9–W14. It reports the actual
-outcomes of the control runs and exits nonzero on a miss. The standard
-simulation report still measures the shipped public campaign and Free
-play. The Act Three gate reuses the late and finale rules. W5 and W13
+Run `npm run sim:keep` for W1–W7 and W9–W16. It reports the actual
+outcomes of the control runs and exits nonzero on a miss. The unit suite
+runs these targets with the expected misses listed in
+`src/sim/checkKeep-verifier.test.ts` and checks W8 against the public
+reference runs. The standard simulation report measures the shipped
+public campaign and Free play. The Act Three gate reuses the late and
+finale rules. Good holds between 5% and 30% minimum gate health in the
+finale. Person must win with at least eight lives at nominal and at each
+of the four L1m nudges. All five levels retain the L6 sensitivity trials.
+The one-tower limit applies to levels 22–25. W5 and W13
 apply Act Three's Person feat limits. W6 limits the bot's tower sites,
 special aims and windows to the defended approach using the nearest
 pre-join centreline. Both approaches and their shared yard remain live.
+Each one-road trial must lose the gate, lose a star or cost Good at
+least six lives. W12 compares stars and lives with and without each tax.
 The W11 control isolates the finale's real Ram group on the same board
 with one base Fire Pot at (22, 10). Its second run casts a barrel within
-10 trail px of reaching the gate.
+10 trail px of reaching the gate. W15 requires Person to earn two stars
+on level 21 and lose at most four lives in any wave. W16 compares
+Person's lives with and without repair on levels 22 and 24.

@@ -593,8 +593,10 @@ export const LEVEL_NEW: Readonly<Record<number, string>> = {
 };
 
 export const GATE_TEXT = {
-  health: (hp: number, max: number) => `Gate ${Math.ceil(hp)} / ${max}`,
+  health: (hp: number, max: number) => `Gate ${Math.round(hp * 100 / max)}%`,
   repair: (cost?: number) => cost === undefined ? 'Repair' : `Repair ${cost}`,
+  repairWarning: (feat: LevelFeat | undefined, boughtRepair: boolean | undefined) =>
+    feat?.kind === 'noRepairs' && !boughtRepair ? 'Costs the third star' : '',
   lastStand: 'Last stand!',
   fallen: 'Gate fallen',
 };
@@ -691,6 +693,7 @@ export function roadName(id: string): string {
 export const SIEGE_TEXT = {
   next: 'Next:',
   window: 'Window',
+  emptyWindow: 'No targets',
   spentWindow: 'Spent',
   quartering: 'Quartered',
   survey: 'Surveyed',

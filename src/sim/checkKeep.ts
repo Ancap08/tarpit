@@ -12,12 +12,13 @@ import { TWO_STAR_LIVES, type LevelDef } from './levelTypes';
 import { LEVELS } from './levels';
 import { projectOntoTrail, resolveMap } from './map';
 import { distanceOnRoad, roadIds } from './roads';
+import { shakeWindow } from './siege';
 import { TICKS_PER_SECOND } from './time';
 import { TOWER_DEFS } from './towers';
 import type { GameState, MapDef, Point } from './types';
 
 type Road = 'east' | 'west';
-type Label = 'W1' | 'W2' | 'W3' | 'W4' | 'W5' | 'W6' | 'W7' | 'W9' | 'W10' | 'W11' | 'W12' | 'W13' | 'W14';
+type Label = 'W1' | 'W2' | 'W3' | 'W4' | 'W5' | 'W6' | 'W7' | 'W9' | 'W10' | 'W11' | 'W12' | 'W13' | 'W14' | 'W15' | 'W16';
 const RUN_LIMIT = 18 * 60 * TICKS_PER_SECOND;
 
 function score(level: LevelDef, policy: BotPolicy, adjust?: (state: GameState) => void) {
@@ -31,6 +32,7 @@ function score(level: LevelDef, policy: BotPolicy, adjust?: (state: GameState) =
     windows: run.log.flatMap(step => step.action === 'shakeWindow' && step.result.ok ? [step.result.hits] : []),
     paid: run.log.some(step => step.action === 'payQuartering' && step.result.ok),
     livesLostWithGate: run.siege?.livesLostWithGate ?? 0,
+    livesLostByWave: run.siege?.livesLostByWave ?? [],
     terminal: run.refused === 0 && (state.phase === 'won' || state.phase === 'lost'),
   };
 }
@@ -166,21 +168,33 @@ export function checkKeep(previousPersonMean: number) {
   const unbroken = rows.filter(({ level }) => level.feat.kind === 'unbroken');
   add('W5', unbroken.every(({ featGood }) => featGood.stars === 3) && unbroken.filter(({ featPerson }) => featPerson.stars === 3).length <= 2,
     unbroken.map(({ level, featGood, featPerson }) => `${level.id} Good ${result(featGood)}; Person ${result(featPerson)}`).join(' | '));
-  each('W6', rows.filter(({ level }) => level.keepRoads === 'both').map(({ level }) => {
+  each('W6', rows.filter(({ level }) => level.keepRoads === 'both').map(({ level, good }) => {
     const east = singleRoadControl(level, 'east');
     const west = singleRoadControl(level, 'west');
-    return { id: level.id, ok: falls(east) && falls(west), text: `east only ${result(east)}; west only ${result(west)}` };
+    const roadMatters = (control: Score) => falls(control) || worse(control, good, 6);
+    return { id: level.id, ok: roadMatters(east) && roadMatters(west),
+      text: `both ${result(good)}; east only ${result(east)}; west only ${result(west)}` };
   }));
   const personMean = rows.reduce((sum, { person }) => sum + person.lives, 0) / rows.length;
   add('W7', previousPersonMean - personMean >= 1.5 && rows.every(({ person }) => person.terminal),
     `Person mean ${previousPersonMean.toFixed(2)} to ${personMean.toFixed(2)} lives`);
 
-  each('W9', rows.map(({ level }) => {
-    const review = checkLevel(level, { band: level.endingBoss ? 'finale' : 'late', introduces: null });
+  each('W9', rows.map(({ level }, index) => {
+    const review = checkLevel(level, {
+      band: level.endingBoss ? 'finale' : 'late', introduces: null, siegeTeachingLevel: index === 0,
+    });
     const singles = review.singleTowerTrials?.filter(({ good }) => good.stars >= 2)
       .map(({ tower, good }) => `${tower} ${good.stars}/${good.lives}`);
-    const finale = level.endingBoss && review.good && `Good ends on ${review.good.lives} lives`;
-    const info = [review.failed.join(', '), review.scheduleIssue && JSON.stringify(review.scheduleIssue), singles?.join(', '), finale]
+    const finale = level.endingBoss && review.good &&
+      `Good gate low ${(100 * (review.good.lowestGateHp ?? 0) / level.gate.maxHp).toFixed(1)}%`;
+    const nudges = review.siegeMargin?.map(({ variant, good, person }) =>
+      `${variant} ${good.stars}/${good.lives} vs ${person.stars}/${person.lives}`);
+    const feats = review.featTrials?.map(({ variant, good }) => `${variant} ${good.stars}/${good.lives}`);
+    const sensitivity = review.failed.includes('L6') && review.sensitivity?.map(({ variant, good, person }) =>
+      `${variant} ${good.stars}/${good.lives} vs ${person.stars}/${person.lives}`);
+    const info = [review.failed.join(', '), review.scheduleIssue && JSON.stringify(review.scheduleIssue), singles?.join(', '), finale,
+      nudges?.length && `Good vs Person nudges ${nudges.join(', ')}`, feats?.length && `Good feat ${feats.join(', ')}`,
+      sensitivity && `Good vs Person sensitivity ${sensitivity.join(', ')}`]
       .filter(Boolean).join(' / ');
     return { id: level.id, ok: review.ok, text: info || 'existing level rules pass' };
   }));
@@ -208,5 +222,22 @@ export function checkKeep(previousPersonMean: number) {
       sites.every(site => isBuildableTerrain(site, state.map));
     return { id: level.id, ok: introductionMatches(level, index) && validSite, text: `${level.keepRoads}, ${level.keepSky}, windows ${level.windows?.length ?? 0}, ${level.wallSiteTax?.kind ?? 'no tax'}, ${level.feat.kind}` };
   }));
+  const [rent] = rows;
+  add('W15', wins(rent.person) && rent.person.stars >= 2 && rent.person.livesLostByWave.every(loss => loss <= 4),
+    `Person ${result(rent.person)}; lives lost by wave: ${rent.person.livesLostByWave.join(', ')}`);
+  const emptyWindows = rows.filter(({ level }) => level.windows?.length).every(({ level }) => {
+    const state = createGame({ level });
+    startWave(state);
+    const attempt = shakeWindow(state, 0);
+    return !attempt.ok && attempt.reason === 'empty-window' && !state.windows![0].used;
+  });
+  const repairChoices = noNails.map(({ level, person }) => {
+    const noRepair = score(level, { ...botPerson, repair: undefined });
+    return { id: level.id, ok: wins(person) && noRepair.terminal && person.lives > noRepair.lives,
+      text: `with repair ${result(person)}; no repair ${result(noRepair)}` };
+  });
+  add('W16', emptyWindows && repairChoices.every(choice => choice.ok),
+    `Empty windows stay lit: ${emptyWindows}; ` +
+    repairChoices.map(choice => `${choice.ok ? 'ok' : 'MISS'} ${choice.id}: ${choice.text}`).join(' | '));
   return { ok: targets.every(target => target.ok), targets, rows };
 }

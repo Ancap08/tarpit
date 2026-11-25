@@ -41,13 +41,16 @@ describe('pillow windows and the feather barrel on one crowd (Feather Beds)', ()
     expect(state.events.filter(event => event.kind === 'feathered')).toHaveLength(2);
   });
 
-  it('a barrel then a window leaves nothing for the window, which is still spent', () => {
+  it('a barrel leaves the window lit until an eligible enemy arrives', () => {
     const state = inWave(beds, [walker(1, 'west', 580), walker(2, 'west', 600)]);
     const { x, y } = enemyPosition(state.enemies[0], state.map);
     expect(useSpecial(state, 'tarBarrel', { x, y })).toMatchObject({ ok: true, hits: 2 });
     expect(windowTargets(state, 0)).toEqual([]);
-    expect(shakeWindow(state, 0)).toEqual({ ok: true, hits: 0 });
-    expect(state.windows![0].used).toBe(true);
+    const afterBarrel = structuredClone(state);
+    expect(shakeWindow(state, 0)).toEqual({ ok: false, reason: 'empty-window' });
+    expect(state).toEqual(afterBarrel);
+    state.enemies.push(walker(3, 'west', 590));
+    expect(shakeWindow(state, 0)).toEqual({ ok: true, hits: 1 });
     expect(shakeWindow(state, 0)).toEqual({ ok: false, reason: 'spent-window' });
   });
 
@@ -66,8 +69,8 @@ describe('pillow windows and the feather barrel on one crowd (Feather Beds)', ()
     expect(shakeWindow(state, 5)).toEqual({ ok: false, reason: 'not-in-wave' });
     startWave(state);
     expect(shakeWindow(state, 5)).toEqual({ ok: false, reason: 'no-window' });
-    expect(shakeWindow(state, 0)).toEqual({ ok: true, hits: 0 });
-    expect(state.windows!.map(window => window.used)).toEqual([true, false]);
+    expect(shakeWindow(state, 0)).toEqual({ ok: false, reason: 'empty-window' });
+    expect(state.windows!.map(window => window.used)).toEqual([false, false]);
   });
 });
 

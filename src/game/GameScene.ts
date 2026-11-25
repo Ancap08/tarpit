@@ -712,7 +712,10 @@ export class GameScene extends Phaser.Scene {
     this.siegeControls = this.state.windows || this.state.wallSiteTax
       ? new SiegeControls(this, this.layout, this.state, index => {
         if (this.paused || this.state.pendingBoon || this.state.phase !== 'wave') return;
-        shakeWindow(this.state, index);
+        const attempt = shakeWindow(this.state, index);
+        if (!attempt.ok && attempt.reason === 'empty-window') {
+          this.siegeControls?.showEmptyWindow(index, this.state.tick);
+        }
         this.takeEvents();
         this.redraw();
       }, () => {

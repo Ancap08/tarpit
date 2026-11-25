@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import { quarteringStatus, type GameState, type Point, type Rect } from '../../sim';
+import { quarteringStatus, TICKS_PER_SECOND, type GameState, type Point, type Rect } from '../../sim';
 import type { Layout } from '../layout';
 import { SIEGE_TEXT } from '../names';
 import { Button } from './button';
@@ -8,6 +8,7 @@ import { Button } from './button';
 export class SiegeControls {
   private readonly windows: Button[];
   private readonly sites: Button[];
+  private emptyWindow?: { index: number; until: number };
 
   constructor(scene: Phaser.Scene, layout: Layout, state: GameState, shake: (index: number) => void, pay: () => void) {
     const center = (p: Point, width: number, height: number): Rect =>
@@ -28,12 +29,18 @@ export class SiegeControls {
     });
   }
 
+  showEmptyWindow(index: number, tick: number): void {
+    this.emptyWindow = { index, until: tick + 1.5 * TICKS_PER_SECOND };
+  }
+
   update(state: GameState, covered: boolean): void {
     const shown = !covered && (state.phase === 'setup' || state.phase === 'wave');
     for (const [index, button] of this.windows.entries()) {
       const used = state.windows![index].used;
+      const empty = state.phase === 'wave' && this.emptyWindow?.index === index && state.tick < this.emptyWindow.until;
       button.setShown(shown);
-      button.set(used ? SIEGE_TEXT.spentWindow : SIEGE_TEXT.window, !used);
+      button.setFontSize(empty && !used ? '17px' : '22px');
+      button.set(used ? SIEGE_TEXT.spentWindow : empty ? SIEGE_TEXT.emptyWindow : SIEGE_TEXT.window, !used);
       button.setPicked(!used);
     }
     const tax = state.wallSiteTax;

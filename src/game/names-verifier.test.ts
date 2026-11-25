@@ -2,7 +2,17 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { ENEMY_NAMES, ENEMY_SHORT_NAMES } from './names';
+import { KEEP_LEVELS } from '../sim/keepLevels';
+import { ENEMY_NAMES, ENEMY_SHORT_NAMES, GATE_TEXT } from './names';
+
+it('W16 warns about the first repair only on the Not a nail levels', () => {
+  for (const level of KEEP_LEVELS) {
+    expect(GATE_TEXT.repairWarning(level.feat, undefined)).toBe(
+      [22, 24].includes(level.id) ? 'Costs the third star' : '',
+    );
+    expect(GATE_TEXT.repairWarning(level.feat, true)).toBe('');
+  }
+});
 
 // Milestone 44a verifier: the guard in names.test.ts reads only names.ts. These
 // tests widen it to every string a player could read from src/game and README.md.

@@ -52,7 +52,7 @@ export interface BotRun {
   state: GameState;
   log: HeadlessStepResult[];
   refused: number;
-  siege?: { lowestHp: number; livesLostWithGate: number };
+  siege?: { lowestHp: number; livesLostWithGate: number; livesLostByWave: number[] };
 }
 
 // Fills trail cells with the cheapest allowed tower, then makes one fallback upgrade.
@@ -527,7 +527,7 @@ export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity,
   let waveOneLives = state.lives;
   let setupTicks = 0;
   const siege = state.level?.keepRoads && state.gate
-    ? { lowestHp: state.gate.hp, livesLostWithGate: 0 } : undefined;
+    ? { lowestHp: state.gate.hp, livesLostWithGate: 0, livesLostByWave: [] as number[] } : undefined;
   // Run the same clock on both sides of a tax trial, including the untaxed
   // control. Earlier campaigns and Free play retain their original setup.
   const paced = Boolean(state.level?.feat || state.level?.taxes);
@@ -582,7 +582,10 @@ export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity,
     tick(state);
     if (siege && state.gate) {
       siege.lowestHp = Math.min(siege.lowestHp, state.gate.hp);
-      if (state.gate.hp > 0) siege.livesLostWithGate += lives - state.lives;
+      const lost = lives - state.lives;
+      if (state.gate.hp > 0) siege.livesLostWithGate += lost;
+      const index = state.wave - 1;
+      siege.livesLostByWave[index] = (siege.livesLostByWave[index] ?? 0) + lost;
     }
     if (bot === botFeathers) {
       for (const event of state.events) if (event.kind === 'feathered') feathered++;

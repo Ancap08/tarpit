@@ -30,6 +30,22 @@ for (const level of KEEP_LEVELS) {
       gateHp: level.gate.maxHp, windows: level.windows?.length ?? 0,
     });
     expect(initial.tax).toEqual(level.wallSiteTax);
+    if (level.id === 22) {
+      await page.evaluate(() => {
+        const api = window.__tarpit!;
+        api.state!().gate!.hp -= api.state!().level!.gate!.repairHp;
+        api.step!(0);
+      });
+      const repair = page.getByRole('button', { name: `Repair ${level.gate.repairCost}. Costs the third star` });
+      await expect(repair).toBeEnabled();
+      await checkLabel(page, 'repair', 'Costs the third star');
+      await capture(page, 'level-22-repair-warning');
+      await page.evaluate(() => {
+        const api = window.__tarpit!;
+        api.state!().gate!.hp = api.state!().gate!.maxHp;
+        api.step!(0);
+      });
+    }
     if (initial.tax?.kind === 'royalSurvey') {
       for (const [index, site] of initial.tax.sites.entries()) {
         const key = index === 0 ? 'wallSite' : `wallSite:${index}`;
@@ -74,6 +90,7 @@ test('the actual finale groups put the Ram at the gate and the King in the yard'
   const king = finale.groups.find(group => group.type === 'grumblemaw')!;
   const contactTick = (type: typeof ram | typeof king) =>
     Math.ceil(60 * (type.delay + distanceOnRoad(map, type.road, gate!)! / ENEMY_STATS[type.type].speed)) + 2;
+  const ramAtGate = contactTick(ram) + 60;
   await page.goto('/?test=1&keep=25');
   await waitForGame(page);
   await page.evaluate(({ advance, groups }) => {
@@ -84,7 +101,7 @@ test('the actual finale groups put the Ram at the gate and the King in the yard'
     // Stage the two named groups from the finale without the escort.
     state.spawnedPerGroup = groups.map(group => ['ram', 'grumblemaw'].includes(group.type) ? 0 : group.count);
     api.step!(advance);
-  }, { advance: contactTick(ram), groups: finale.groups });
+  }, { advance: ramAtGate, groups: finale.groups });
   const atGate = await page.evaluate(() => {
     const state = window.__tarpit!.state!();
     return { ram: state.enemies.some(enemy => enemy.type === 'ram'), damaged: state.gate!.hp < state.gate!.maxHp, fallen: state.gate!.fallen };
@@ -95,7 +112,7 @@ test('the actual finale groups put the Ram at the gate and the King in the yard'
     const api = window.__tarpit!;
     api.state!().gate!.hp = 1;
     api.step!(advance);
-  }, contactTick(king) - contactTick(ram) + 45);
+  }, contactTick(king) - ramAtGate + 45);
   const kingsDistance = await page.evaluate(() => window.__tarpit!.state!().enemies.find(enemy => enemy.type === 'grumblemaw')?.distance);
   expect(kingsDistance).toBeGreaterThan(distanceOnRoad(map, king.road, gate!)!);
   expect(await page.evaluate(() => window.__tarpit!.state!().gate!.fallen)).toBe(true);

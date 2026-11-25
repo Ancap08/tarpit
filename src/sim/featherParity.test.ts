@@ -24,6 +24,20 @@ const firstAct = [
   '66ee640e5c0eb5fd423a70dd84202b2e753e156d5c9b50f26d44d08f06405902',
 ] as const;
 
+// W8 reference runs from the part-a merge (aacf7de), with state and logs.
+const secondAct = [
+  '1fbf04691e7e3c3a3c0acab155a4ee8c4de0d0790a7b97a62545431d49683009',
+  '9ee42ed7ffffd42bfbbac4d4251f70914c98cc77ded4452c0580fbb0eb6c2474',
+  'f8e41c6fa758cbc8e01bed0a30d4f2f031c175830a4d3f876d5887c6a555408b',
+  'be470c09e07ba9a7af3a75c0e25a328297bda9023f40346183f79504b1b0c13e',
+  '92484c551a27285ed6a053e72acd3c6cd766b6ad14fc1afd1fe538d988ae81ea',
+  '71c3b4463a00b1482a68ca7d8629433506375a56e827a8db79ff2a6024f35bc9',
+  '6d645371ac7ca34a88a97a3702fff5c9459c328942fa5783018f36d61e77e718',
+  '15cdcf0fe8e4e931ac710f7b8b16a574a7ed6e60434a009ceaa448f087c87492',
+  '169a5bccf38a9d6c35dcf5de0810d0afc3fdf869c11719d5eda39054d2bff9d4',
+  '7dc04c233450d7a1066879c99c4c8a8e319c2d5b4d80cf678784fede66020c14',
+] as const;
+
 // The two new policy wrappers run against main's engine with the same purchases and aim.
 const firstActForced = [
   '1b5268d132c020044ff5f7edbed5ee6dce976db4cf975a379a59f555ebba2cce',
@@ -64,6 +78,11 @@ it.each(LEVELS.slice(0, 10))('C7: all six main bots and both forced policies on 
   expect(digest(runs)).toBe(firstAct[level.id - 1]);
   const forced = forcedPlayers.map(bot => runBot(createGame({ level }), bot));
   expect(digest(forced)).toBe(firstActForced[level.id - 1]);
+}, 60_000);
+
+it.each(LEVELS.slice(10))('W8: all six main bots on level $id match byte for byte', level => {
+  const runs = players.map(bot => runBot(createGame({ level }), bot));
+  expect(digest(runs)).toBe(secondAct[level.id - 11]);
 }, 60_000);
 
 describe.each(freePlay)('C4: Free play on $map', ({ map, bots, forced, matrix }) => {

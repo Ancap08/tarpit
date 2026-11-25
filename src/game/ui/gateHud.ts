@@ -11,6 +11,7 @@ export class GateHud {
   private readonly status: Phaser.GameObjects.Text;
   private readonly lastStand: Phaser.GameObjects.Text;
   private readonly repair: Button;
+  private readonly warning: Phaser.GameObjects.Text;
   private readonly repairAction: HTMLButtonElement;
 
   constructor(scene: Phaser.Scene, layout: Layout, onRepair: () => void) {
@@ -34,12 +35,17 @@ export class GateHud {
     this.lastStand = scene.add.text(x + width / 2, y + height * 0.75, GATE_TEXT.lastStand, style)
       .setOrigin(0.5).setColor(TEXT.livesFlash).setVisible(false);
     this.repair = new Button(scene, {
-      x: x + width + 4, y: y + height - repairHeight, width: portrait ? 152 : 122, height: repairHeight,
+      x: x + width + 4, y: y + height - repairHeight, width: portrait ? 212 : 176, height: repairHeight,
     }, '', onRepair, {
       fontSize: `${size}px`,
     });
     this.repair.labelObjects[0].setStyle({ metrics: style.metrics });
     this.repair.setShown(false);
+    const rect = this.repair.rect;
+    const warningSize = portrait ? 20 : 16;
+    this.warning = scene.add.text(rect.x + rect.width / 2, rect.y + rect.height * 0.71, '', {
+      ...style, fontSize: `${warningSize}px`, metrics: { ascent: warningSize, descent: 5, fontSize: warningSize + 5 },
+    }).setOrigin(0.5).setVisible(false);
 
     this.repairAction = document.createElement('button');
     this.repairAction.className = 'repair-action';
@@ -77,10 +83,19 @@ export class GateHud {
     this.lastStand.setVisible(active);
     const quote = repairStatus(state);
     const repair = GATE_TEXT.repair(quote.cost);
+    const warning = GATE_TEXT.repairWarning(state.level?.feat ?? state.fixedFeat, state.boughtRepair);
     const enabled = !state.pendingBoon && !paused && quote.ok;
     this.repair.set(repair, enabled);
+    const rect = this.repair.rect;
+    this.repair.labelObjects[0].setY(rect.y + rect.height * (warning ? 0.32 : 0.5));
+    if (this.warning.text !== warning) {
+      this.warning.setText(warning);
+      this.warning.setScale(warning ? Math.min(1, (rect.width - 12) / this.warning.width) : 1, 1);
+    }
+    this.warning.setVisible(setup && !!warning);
     this.repairAction.disabled = !enabled;
-    if (this.repairAction.textContent !== repair) this.repairAction.textContent = repair;
+    const accessibleLabel = warning ? `${repair}. ${warning}` : repair;
+    if (this.repairAction.textContent !== accessibleLabel) this.repairAction.textContent = accessibleLabel;
     this.repairAction.hidden = !setup;
     this.repair.setShown(setup);
   }

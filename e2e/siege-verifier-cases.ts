@@ -4,6 +4,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { KEEP_LEVELS } from '../src/sim/keepLevels';
 import { useTallFontMetrics, useWideFontMetrics } from './campaignFont';
+import { checkLabel } from './hudButtonLabels';
 import { waitForGame } from './painted';
 import { cellPage, rects, rectPage, rectPageSize, toPage } from './phone';
 
@@ -14,11 +15,11 @@ async function capture(page: Page, name: string) {
     await page.screenshot({ path: `${captureDir}/${width}x${height}-${name}.png`, scale: 'css' });
   }
 }
-const modes = ['normal', 'wide', 'fixed fallback'] as const;
+const modes = ['normal', 'wide', 'fixed Caslon', 'fixed fallback'] as const;
 
 async function open(page: Page, id: number, mode: (typeof modes)[number]) {
   if (mode === 'wide') await useWideFontMetrics(page, process.platform === 'darwin' ? 1.09 : 1.06);
-  if (mode === 'fixed fallback') await useTallFontMetrics(page, true);
+  if (mode.startsWith('fixed')) await useTallFontMetrics(page, mode === 'fixed fallback');
   await page.goto(`/?test=1&keep=${id}`);
   await waitForGame(page);
   await page.waitForFunction(() => window.__tarpit!.state?.()?.level !== undefined);
@@ -92,27 +93,22 @@ export function siegeVerifierCases(touch: boolean, heights: readonly (number | u
       for (const road of roads) expect(next, 'preview names the road').toContain(road === 'east' ? 'East' : 'West');
       if (roads.size === 1) expect(next).not.toContain(roads.has('east') ? 'West' : 'East');
       const texts = await visibleTexts(page);
-      for (const t of texts.filter(text => text.size > 0 && !/^Gate \d/.test(text.text))) {
+      expect(texts.some(t => t.text === 'Gate 100%')).toBe(true);
+      await checkLabel(page, 'gate', 'Gate 100%');
+      const warning = texts.find(t => t.text === 'Costs the third star');
+      expect(!!warning).toBe(level.feat.kind === 'noRepairs');
+      if (warning) {
+        const r = all.repair;
+        expect(warning.left).toBeGreaterThanOrEqual(r.x);
+        expect(warning.right).toBeLessThanOrEqual(r.x + r.width);
+        expect(warning.top).toBeGreaterThanOrEqual(r.y);
+        expect(warning.bottom).toBeLessThanOrEqual(r.y + r.height);
+      }
+      for (const t of texts.filter(text => text.size > 0)) {
         expect(t.left, t.text).toBeGreaterThanOrEqual(-1);
         expect(t.right, t.text).toBeLessThanOrEqual(canvas.width + 1);
       }
       await capture(page, `level-${level.id}-${mode.replace(' ', '-')}-setup`);
-    });
-  }
-
-  // Known miss, written to fail until fixed: with the fixed fallback font metrics the five-digit
-  // gate label of levels 23 to 25 starts 13 to 14 canvas px left of the canvas (3 px with wide
-  // metrics on the 960 px canvas). When the label is fitted this test goes red: delete test.fail.
-  for (const level of KEEP_LEVELS.filter(({ gate }) => gate.maxHp >= 10_000)) {
-    test(`level ${level.id}: five-digit gate label stays on the canvas (fixed fallback)`, async ({ page }) => {
-      test.fail(true, 'Gate NNNNN / NNNNN overflows the canvas edge in fixed fallback metrics');
-      test.setTimeout(150_000);
-      await open(page, level.id, 'fixed fallback');
-      const width = await page.evaluate(() => window.__tarpit!.game.scale.width);
-      const gate = (await visibleTexts(page)).find(text => /^Gate \d/.test(text.text));
-      expect(gate, 'a gate label is shown').toBeDefined();
-      expect(gate!.left).toBeGreaterThanOrEqual(-1);
-      expect(gate!.right).toBeLessThanOrEqual(width + 1);
     });
   }
 
@@ -122,18 +118,24 @@ export function siegeVerifierCases(touch: boolean, heights: readonly (number | u
       await open(page, level.id, 'normal');
       // Repair in setup: tap the control and the gate gains exactly one step for the posted price.
       await page.evaluate(() => {
-        const state = window.__tarpit!.state!();
+        const api = window.__tarpit!;
+        const state = api.state!();
         state.gate!.hp = Math.floor(state.gate!.maxHp / 2);
         state.gold = 1000;
+        api.step!(0);
       });
       const repairKey = Object.keys(await rects(page)).find(key => /repair/i.test(key));
       expect(repairKey, 'a Repair control exists in setup').toBeDefined();
+      const warn = 'Costs the third star';
+      expect((await visibleTexts(page)).some(t => t.text === warn)).toBe(level.feat.kind === 'noRepairs');
       const before = await page.evaluate(() => { const s = window.__tarpit!.state!(); return [s.gate!.hp, s.gold]; });
       await press(page, repairKey!, touch);
       const after = await page.evaluate(() => { const s = window.__tarpit!.state!(); return { hp: s.gate!.hp, gold: s.gold, bought: s.boughtRepair ?? false }; });
       expect(after.hp - before[0]).toBe(level.gate.repairHp);
       expect(before[1] - after.gold).toBe(level.gate.repairCost);
       expect(after.bought).toBe(true);
+      expect((await visibleTexts(page)).some(t => t.text === warn)).toBe(false);
+      expect(await page.locator('.repair-action').textContent()).not.toContain(warn);
 
       const tax = level.wallSiteTax;
       if (tax?.kind === 'quartering') {
@@ -153,14 +155,17 @@ export function siegeVerifierCases(touch: boolean, heights: readonly (number | u
         }
       }
 
-      // A window does nothing in setup, then shakes once in a wave and goes dark.
+      // An empty tap stays lit, then the same window shakes once an enemy arrives.
       if (level.windows?.length) {
         await press(page, 'window:0', touch);
         expect(await page.evaluate(() => window.__tarpit!.state!().windows![0].used)).toBe(false);
+        await page.evaluate(() => window.__tarpit!.startWave!());
+        await press(page, 'window:0', touch);
+        expect(await page.evaluate(() => window.__tarpit!.state!().windows![0].used)).toBe(false);
+        expect((await visibleTexts(page)).some(t => t.text === 'No targets')).toBe(true);
         const window0 = level.windows[0];
         await page.evaluate(({ road, from }) => {
           const api = window.__tarpit!;
-          api.startWave!();
           const state = api.state!();
           state.spawnedPerGroup = state.level!.waves[0].groups.map(group => group.count);
           state.enemies = [0, 1, 2].map(id => ({ id, road, distance: from + 2 + id, hp: 23, type: 'goblin' as const, slow: 0, slowTicksLeft: 0 }));

@@ -16,12 +16,13 @@ export function windowTargets(state: GameState, index: number): Enemy[] {
 }
 
 export function shakeWindow(state: GameState, index: number):
-  { ok: true; hits: number } | { ok: false; reason: 'not-in-wave' | 'no-window' | 'spent-window' } {
+  { ok: true; hits: number } | { ok: false; reason: 'not-in-wave' | 'no-window' | 'spent-window' | 'empty-window' } {
   if (state.phase !== 'wave') return { ok: false, reason: 'not-in-wave' };
   const window = state.windows?.[index];
   if (!window) return { ok: false, reason: 'no-window' };
   if (window.used) return { ok: false, reason: 'spent-window' };
   const targets = windowTargets(state, index);
+  if (!targets.length) return { ok: false, reason: 'empty-window' };
   const slowTicks = tarLingerTicks(state.boons);
   for (const enemy of targets) {
     const slow = applySpecialSlow(enemy, SPECIAL_DEFS.tarBarrel.slow, slowTicks);
