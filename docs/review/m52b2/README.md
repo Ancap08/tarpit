@@ -1,7 +1,8 @@
 # Milestone 52b2 review
 
-This record describes the first pass. The selected table and current
-evidence are in the [second-pass review](second-pass/README.md).
+The phone captures below show the verification fix pass. The
+[second-pass review](second-pass/README.md) and
+[third-pass review](third-pass/README.md) record the earlier tuning.
 
 Open `?keep=21` through `?keep=25` to play the corresponding level
 directly. The level map and saved campaign stop at level 20. A private
@@ -12,15 +13,17 @@ exhibition remains available at `?keep=1` for the earlier rule and art checks.
 
 These are CSS-pixel captures at 390 × 844 from the production build.
 The first five use wave 2 of the actual level. Good plays the first
-wave, then the browser advances wave 2 by 16 seconds. The two finale
-captures stage the actual Ram and King spawn groups without their
-escort. For the yard shot the test reduces the gate to 1 HP before
-advancing the simulation through the breach.
+wave, then the browser advances wave 2 by 16 seconds. The Repair shot
+shows level 22 in setup with one repair step of damage staged. The two
+finale captures stage the actual Ram and King spawn groups without
+their escort. The Ram hits the gate for one second before its capture.
+For the yard shot the test reduces the gate to 1 HP before advancing
+the simulation through the breach.
 
 | Level | Scene |
 | --- | --- |
 | 21 Rent Overdue | [Wave 2](390x844-level-21-wave-2.png) |
-| 22 Feather Beds | [Wave 2](390x844-level-22-wave-2.png) |
+| 22 Feather Beds | [Wave 2](390x844-level-22-wave-2.png) · [Repair warning](390x844-level-22-repair-warning.png) |
 | 23 Both Roads | [Wave 2](390x844-level-23-wave-2.png) |
 | 24 Quartering | [Wave 2](390x844-level-24-wave-2.png) |
 | 25 The Final Notice | [Wave 2](390x844-level-25-wave-2.png) · [Ram at the gate](390x844-level-25-ram-at-gate.png) · [King in the yard](390x844-level-25-king-in-yard.png) |
@@ -29,6 +32,53 @@ The west branch and gate line use the plain siege trace. The existing
 plates still contain the painted east road on the west-only stop.
 The painted gatehouse and the rule's gate line are visibly separate.
 Part c2 owns the art alignment.
+
+## Verification fix pass
+
+Level 21's Person run finishes on 12 lives, losing four each in waves 2
+and 5. Good keeps 1,969 gate HP, earns Unbroken at all four small
+nudges, and loses the gate when repair is disabled. On levels 22 and 24,
+Person finishes with 17 and 8 lives with repair, or 12 and 6 without it.
+The five nominal Person runs average 12.20 lives against Act Two's
+13.80.
+
+The Royal Survey sweep played all 45 pairs of the ten sites. Nineteen
+pairs let Person earn two stars, and eighteen of those cost Good a
+star. Good's control without a Survey was 3 stars and 20 lives.
+The five rows below tie at 2 stars and 20 lives for Good. The selected
+pair keeps Person at two stars on 14 lives and clears both Pillow
+Window controls. The pair using (15, 4) with (23, 13) gives the same
+scores and covers a Window in each tested layout.
+
+| First site | Second site | Good stars/lives | Person stars/lives |
+|---|---|---|---|
+| **(13, 7)** | **(23, 13)** | **2/20** | **2/14** |
+| (15, 4) | (23, 13) | 2/20 | 2/14 |
+| (15, 13) | (22, 7) | 2/20 | 2/20 |
+| (15, 13) | (23, 13) | 2/20 | 2/20 |
+| (15, 13) | (22, 10) | 2/20 | 2/19 |
+
+The Act Three target test names the expected misses in
+[`checkKeep-verifier.test.ts`](../../../src/sim/checkKeep-verifier.test.ts)
+and compares the entire list on every `npm test` run. W8 is covered by
+the public parity tests and the browser walkthrough.
+
+The complete unit run passed 2,982 tests across 140 files. In isolated
+copies, the short pay-off, the one-gold fee and the hundredfold level 21
+gate each made a test fail. The public comparison matched 309 full run
+records, 473 simulation output lines and 24 campaign images against
+`aacf7de`. Both public simulation runs exited zero.
+
+The one full Playwright sweep passed 1,341 tests and skipped eight. Its
+16 failures all found the overlap at (15, 4). The 142-case siege rerun
+passed on all three projects with the selected pair, and the isolated
+Old Keep cost case passed. Lint, typecheck, the 268-row asset check,
+build and size checks passed. The production build is 8,376,279 bytes.
+
+## Original tuning record
+
+The observations below describe the first pass before the second,
+third and verification passes.
 
 ## Tuning gate
 
