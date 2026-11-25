@@ -249,7 +249,16 @@ the checker looks for it.
 | `public/assets/keep/plinth-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Marked stone tower footprint |
 | `public/assets/keep/portrait-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Portrait crag, ravine and gate approach |
 | `public/assets/keep/road-wide-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Raised wide approach, barbican and stairs |
+| `public/assets/keep/siege-blockade-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Stone and timber road closure |
+| `public/assets/keep/siege-east-deck-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Thin eastern road deck at the curtain wall |
+| `public/assets/keep/siege-gates-half.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Half-size plate. Barbican and four gate conditions |
+| `public/assets/keep/siege-portrait-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Converging roads, ravine and terraced yard in portrait |
+| `public/assets/keep/siege-wide-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Converging roads, ravine and terraced yard in landscape |
+| `public/assets/keep/sky-dawn-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Cold dawn and first light |
 | `public/assets/keep/sky-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Storm shelf and western light shafts |
+| `public/assets/keep/sky-night-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Night storm sky |
+| `public/assets/keep/strike-half.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Half-size plate. Hard lightning key on the keep in portrait |
+| `public/assets/keep/strike-wide-half.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Half-size plate. Hard lightning key on the keep in landscape |
 | `public/assets/keep/wings-half.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Half-size plate. Portrait scenery beyond the playable field |
 | `public/assets/keep/crown-wide.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Belfry, observatory and inhabited ward in wide perspective |
 | `public/assets/keep/crown.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Belfry, observatory and inhabited ward |
@@ -266,7 +275,16 @@ the checker looks for it.
 | `public/assets/keep/plinth.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Marked stone tower footprint |
 | `public/assets/keep/portrait.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Portrait crag, ravine and gate approach |
 | `public/assets/keep/road-wide.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Raised wide approach, barbican and stairs |
+| `public/assets/keep/siege-blockade.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Stone and timber road closure |
+| `public/assets/keep/siege-east-deck.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Thin eastern road deck at the curtain wall |
+| `public/assets/keep/siege-gates.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Barbican and four gate conditions |
+| `public/assets/keep/siege-portrait.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Converging roads, ravine and terraced yard in portrait |
+| `public/assets/keep/siege-wide.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Converging roads, ravine and terraced yard in landscape |
+| `public/assets/keep/sky-dawn.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Cold dawn and first light |
+| `public/assets/keep/sky-night.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Night storm sky |
 | `public/assets/keep/sky.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Storm shelf and western light shafts |
+| `public/assets/keep/strike-wide.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Hard lightning key on the keep in landscape |
+| `public/assets/keep/strike.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Hard lightning key on the keep in portrait |
 | `public/assets/keep/wings.webp` | `scripts/art/keep_weather.py` | Tarpit agents | MIT | Portrait scenery beyond the playable field |
 | `docs/review/m51/keep-1024x768.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Production game capture |
 | `docs/review/m51/keep-390x664.png` | `scripts/art/m51Media.ts` | Tarpit agents | MIT | Production game capture |

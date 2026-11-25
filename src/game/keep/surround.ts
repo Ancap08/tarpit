@@ -17,9 +17,10 @@ export class KeepSurround {
   private readonly observer: ResizeObserver;
   private readonly sky: HTMLCanvasElement;
   private readonly ground: HTMLCanvasElement;
+  private readonly litGround?: HTMLCanvasElement;
   private readonly castle: HTMLCanvasElement[];
   private readonly road?: HTMLCanvasElement;
-  private readonly storm: HTMLCanvasElement;
+  private readonly storm?: HTMLCanvasElement;
   private readonly bolts: HTMLCanvasElement[];
   private readonly skyFlash: HTMLDivElement;
   private readonly clouds: HTMLCanvasElement[];
@@ -36,7 +37,7 @@ export class KeepSurround {
 
   constructor(canvas: HTMLCanvasElement, private readonly layout: Layout,
       image: ImageSource, gate: Point,
-      size: {width:number;height:number}, foot: number[], weather?: KeepSky) {
+      size: {width:number;height:number}, foot: number[], private readonly weather?: KeepSky) {
     const host = canvas.parentElement!;
     this.backdrop.ariaHidden = 'true';
     this.backdrop.style.cssText = 'position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:-1;background:linear-gradient(#0a1421,#232637 67%,#171a20 87%,#15151a)';
@@ -48,35 +49,44 @@ export class KeepSurround {
     const { width, height } = layout.map;
     this.inset = layout.turned ? WING : 0;
     const skyline = gate.y + 30;
-    this.sky = this.paint(0, -HEADROOM, width, skyline + HEADROOM, ctx => {
-      const sky = image('sky');
-      if (weather === 'dawn') ctx.filter = 'brightness(1.5) sepia(.32)';
-      if (weather === 'night storm') ctx.filter = 'brightness(.74) saturate(.8)';
+    const skyInset = weather ? this.inset : 0;
+    const skyWidth = width + skyInset * 2;
+    const grade = weather === 'night storm' ? 'brightness(.76) contrast(1.08) saturate(1.13)'
+      : weather === 'dawn' ? 'brightness(1.12) contrast(1.02) saturate(.88)' : 'none';
+    this.sky = this.paint(-skyInset, -HEADROOM, skyWidth, skyline + HEADROOM, ctx => {
+      const sky = image(weather === 'dawn' ? 'sky-dawn' : weather === 'night storm' ? 'sky-night' : 'sky');
       if (!layout.turned) {
         ctx.save();
         ctx.scale(1, -1);
-        ctx.drawImage(sky, 0, 0, width, skyline);
+        ctx.drawImage(sky, -skyInset, 0, skyWidth, skyline);
         ctx.restore();
       }
-      ctx.drawImage(sky, 0, 0, width, skyline);
+      ctx.drawImage(sky, -skyInset, 0, skyWidth, skyline);
     });
+    const strikes = !weather || weather === 'night storm';
 
     const cloudMask = document.createElement('div');
     cloudMask.style.cssText = `position:absolute;width:${width}px;height:${skyline}px;overflow:hidden`;
     this.camera.append(cloudMask);
-    this.clouds = [0, 1].map(i => {
+    this.clouds = (weather === 'dawn' ? [] : [0, 1]).map(i => {
       const w = Math.round(width * (i ? .64 : .85)), h = i ? 90 : 120;
       const cloud = this.paint(0, 0, w, h, ctx => ctx.drawImage(image('drift'), 0, 0, w, h), cloudMask);
       cloud.style.opacity = i ? '.33' : '.52';
       return cloud;
     });
     this.skyFlash = document.createElement('div');
-    this.skyFlash.style.cssText = `position:absolute;top:0;left:0;width:${width}px;height:${skyline}px;background:#d2ddff;visibility:hidden`;
+    this.skyFlash.style.cssText = `position:absolute;top:0;left:${-skyInset}px;width:${skyWidth}px;height:${skyline}px;background:${weather ? 'radial-gradient(ellipse at 24% 10%,#9dbcf9,transparent 76%)' : '#d2ddff'};visibility:hidden`;
     this.camera.append(this.skyFlash);
-    this.bolts = [0, 1].map(side => this.paint(0, 0, width, Math.ceil(gate.y / 2), ctx => paintFork(ctx, width, gate.y, side)));
+    this.bolts = (strikes ? [0, 1] : []).map(side =>
+      this.paint(0, 0, width, Math.ceil(gate.y / 2), ctx => paintFork(ctx, width, gate.y, side)));
     this.bolts.forEach(bolt => { bolt.hidden = true; });
 
     this.ground = this.paint(-this.inset, 0, width + this.inset * 2, height, ctx => {
+      if (weather) {
+        ctx.filter = grade;
+        ctx.drawImage(image(layout.turned ? 'siege-portrait' : 'siege-wide'), -this.inset, 0, width + this.inset * 2, height);
+        return;
+      }
       ctx.drawImage(image(layout.turned ? 'portrait' : 'landscape'), 0, 0, width, height);
       if (layout.turned) {
         const wings = image('wings'), half = wings.naturalWidth / 2;
@@ -84,18 +94,60 @@ export class KeepSurround {
         ctx.drawImage(wings, half, 0, half, wings.naturalHeight, width, 0, WING, height);
       }
     });
+    if (weather === 'night storm') {
+      const left = -this.inset, span = width + this.inset * 2;
+      this.litGround = this.paint(left, 0, span, height, ctx => {
+        ctx.drawImage(this.ground, left, 0);
+        ctx.globalCompositeOperation = 'source-atop';
+        const falloff = ctx.createLinearGradient(0, gate.y - 36, 38, gate.y + height * .35);
+        falloff.addColorStop(0, '#8ab9ff00');
+        falloff.addColorStop(.18, '#aacdff70');
+        falloff.addColorStop(.55, '#8db5fb35');
+        falloff.addColorStop(1, '#8db5fb00');
+        ctx.fillStyle = falloff;
+        ctx.fillRect(left, 0, span, height);
+        const shade = ctx.createLinearGradient(0, gate.y - 9, 46, gate.y + height * .28);
+        shade.addColorStop(0, '#080f1de0');
+        shade.addColorStop(.65, '#080f1db5');
+        shade.addColorStop(1, '#080f1d00');
+        ctx.fillStyle = shade;
+        // The crown, two main spires and the wall pinnacles reach across the terrace.
+        for (const [offset, breadth, length] of [[-.24, 12, 63], [-.154, 20, 112], [-.075, 18, 93],
+          [-.011, 23, 142], [.076, 16, 108], [.166, 12, 86], [.223, 10, 69]]) {
+          const x = gate.x + offset * size.width, y = gate.y + offset * 62;
+          const reach = length * (layout.turned ? 1.24 : .87);
+          ctx.beginPath();
+          ctx.moveTo(x - breadth / 2, y - 8);
+          ctx.lineTo(x + breadth / 2, y - 8);
+          ctx.lineTo(x + reach * .68, y + reach * .69);
+          ctx.lineTo(x + reach * .89, y + reach);
+          ctx.lineTo(x + reach * .57, y + reach * .74);
+          ctx.fill();
+        }
+      });
+      this.litGround.hidden = true;
+    }
     const x = gate.x - size.width * foot[0] / 1280, y = gate.y - size.height * foot[1] / 960;
     const top = Math.max(-HEADROOM, Math.floor(y));
     const names = layout.turned
-      ? ['far', 'crown', 'gate', 'lightning'] as const
-      : ['far-wide', 'crown-wide', 'gate-wide', 'lightning-wide'] as const;
-    const castle = names.map(name => this.paint(-this.inset, top, width + this.inset * 2,
-      Math.ceil(y + size.height) - top, ctx => ctx.drawImage(image(name), x, y, size.width, size.height)));
-    this.castle = castle.slice(0, 3);
-    this.storm = castle[3];
-    this.storm.hidden = true;
+      ? ['far', 'crown', 'gate'] as const
+      : ['far-wide', 'crown-wide', 'gate-wide'] as const;
+    const architecture = (name: Plate, filter: string) => this.paint(-this.inset, top, width + this.inset * 2,
+      Math.ceil(y + size.height) - top, ctx => {
+        ctx.filter = filter;
+        ctx.drawImage(image(name), x, y, size.width, size.height);
+      });
+    this.castle = names.map(name => architecture(name, grade));
+    if (strikes) {
+      const strike = weather ? 'strike' : 'lightning';
+      this.storm = architecture(layout.turned ? strike : `${strike}-wide`, 'none');
+      this.storm.hidden = true;
+    }
     if (!layout.turned) {
-      this.road = this.paint(512, 0, 448, 480, ctx => ctx.drawImage(image('road-wide'), 512, 0, 448, 480));
+      this.road = weather ? this.paint(832, 96, 128, 224, ctx => {
+        ctx.filter = grade;
+        ctx.drawImage(image('siege-east-deck'), 832, 96, 128, 224);
+      }) : this.paint(512, 0, 448, 480, ctx => ctx.drawImage(image('road-wide'), 512, 0, 448, 480));
     }
 
     const fit = () => {
@@ -191,9 +243,15 @@ export class KeepSurround {
       this.lastFlash = flash;
       this.lastSide = side;
       this.skyFlash.style.visibility = flash > 0 ? '' : 'hidden';
-      this.skyFlash.style.opacity = String(flash * .55);
-      this.storm.hidden = flash === 0;
-      this.storm.style.opacity = String(flash);
+      this.skyFlash.style.opacity = String(flash * (this.weather ? .29 : .55));
+      if (this.storm) {
+        this.storm.hidden = flash === 0;
+        this.storm.style.opacity = String(flash);
+      }
+      if (this.litGround) {
+        this.litGround.hidden = flash === 0;
+        this.litGround.style.opacity = String(flash);
+      }
       this.bolts.forEach((bolt, i) => {
         bolt.hidden = flash === 0 || i !== side;
         bolt.style.opacity = String(flash);

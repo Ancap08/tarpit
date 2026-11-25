@@ -567,7 +567,7 @@ export class GameScene extends Phaser.Scene {
     const data: GameStartData = {
       difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, showpiece: this.showpieceType, keep: this.keepModule, campaignKeep: this.campaignKeep,
       paintedFallback: this.paintedFallback,
-      keepAssets: this.keepAssets?.id === this.keepModule?.currentKeepPlateSet(this.game, currentLayout().turned).id ? this.keepAssets : undefined,
+      keepAssets: this.keepAssets?.id === this.keepModule?.currentKeepPlateSet(this.game, currentLayout().turned, this.campaignLevel).id ? this.keepAssets : undefined,
     };
     this.keepAssets = data.keepAssets;
     this.scene.restart(data);
@@ -575,12 +575,12 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     if (this.keepModule) {
-      if (this.keepAssets?.id !== this.keepModule.currentKeepPlateSet(this.game, currentLayout().turned).id) {
+      if (this.keepAssets?.id !== this.keepModule.currentKeepPlateSet(this.game, currentLayout().turned, this.campaignLevel).id) {
         this.keepAssets?.release();
         this.keepAssets = undefined;
         this.keepLoading = true;
         const module = this.keepModule;
-        void duringKeepLoad((signal, progress) => module.loadKeep(this.game, currentLayout().turned, signal, progress), () => this.toMenu())
+        void duringKeepLoad((signal, progress) => module.loadKeep(this.game, currentLayout().turned, signal, progress, this.campaignLevel), () => this.toMenu())
           .then(assets => {
             if (!assets) return;
             this.keepAssets = assets;
@@ -653,7 +653,7 @@ export class GameScene extends Phaser.Scene {
       sound.beginSessionMute();
       const assets = this.keepAssets!;
       const refitKeep = () => {
-        if (this.keepAssets?.id !== this.keepModule?.currentKeepPlateSet(this.game, currentLayout().turned).id) this.relayout();
+        if (this.keepAssets?.id !== this.keepModule?.currentKeepPlateSet(this.game, currentLayout().turned, this.campaignLevel).id) this.relayout();
       };
       this.scale.on(Phaser.Scale.Events.RESIZE, refitKeep);
       this.town.layer.setVisible(false);
@@ -666,11 +666,6 @@ export class GameScene extends Phaser.Scene {
         this.keep = undefined;
         if (this.keepAssets !== assets) assets.release();
       });
-    }
-    if (this.siegeScreens) {
-      const branches = world();
-      drawSiegeRoads(branches, this.state);
-      this.children.moveBelow(branches, this.ground);
     }
     this.overlay = world();
     this.dynamic = world();
@@ -1851,8 +1846,10 @@ export class GameScene extends Phaser.Scene {
     if (!this.keepModule) this.town.update(this.state, this.animationTime);
     this.living?.update(this.state, this.pick !== null || this.press?.active === true);
     this.ground.clear();
-    if (!this.siegeScreens) drawSiegeRoads(this.ground, this.state);
-    if (this.state.map.id === 'keep') drawGateMarker(this.ground, this.state.gate);
+    if (this.state.map.id === 'keep') {
+      if (!this.keep?.outerGate) drawSiegeRoads(this.ground, this.state);
+      drawGateMarker(this.ground, this.state.gate, this.layout, this.keep?.outerGate);
+    }
     this.specialFx.drawGround(this.ground, this.state);
     const g = this.dynamic;
     g.clear();

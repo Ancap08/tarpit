@@ -26,8 +26,9 @@ if (!existsSync(dist)) {
 const files = walk(dist).sort((a, b) => b.bytes - a.bytes);
 const keepArt = files.filter(file => file.path.startsWith('assets/keep/') && !file.path.endsWith('.js'))
   .reduce((sum, file) => sum + file.bytes, 0);
-console.log(`check:size: Old Keep art ${keepArt} bytes of 8000000`);
-if (keepArt > 8_000_000) process.exitCode = 1;
+const keepBudget = 10_000_000;
+console.log(`check:size: Old Keep art ${keepArt} bytes of ${keepBudget}`);
+if (keepArt > keepBudget) process.exitCode = 1;
 const total = files.reduce((s, f) => s + f.bytes, 0);
 console.log(`check:size: dist/ is ${mb(total)} (${total} bytes) in ${files.length} files; budget ${mb(SIZE_BUDGET_BYTES)}`);
 console.log('Largest files:');

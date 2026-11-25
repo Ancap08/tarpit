@@ -618,7 +618,7 @@ export class TitleScene extends Phaser.Scene {
           const keepAssets = await keep.loadKeep(this.game, currentLayout().turned, signal, fraction => {
             plates = fraction;
             progress();
-          });
+          }, level);
           if (signal.aborted) {
             keepAssets.release();
             signal.throwIfAborted();

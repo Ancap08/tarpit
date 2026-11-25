@@ -2424,8 +2424,16 @@ road. The Gate panel measures health with a bar. Repair shows the
 current gold quote and the first-repair feat warning on Not a nail
 levels. A breach shows Gate fallen and a whole-second countdown rounded
 up for the remaining Last stand ticks. Windows and wall-site markers
-stay aligned with their world positions. The gate marker reads the
-simulation's position, angle and condition for the painted gate pass.
+stay aligned with their world positions. In portrait leaders join the
+Survey plaques to their plinths. The lower plaque sits 60 canvas px below
+its plinth before camera scaling, and the upper plaque sits 106 px right.
+The west sign on the west-only level stands beside
+the road at canvas x = 204, clamped to fit. Both leave the barbican visible.
+The outer gate's sill follows the simulation's position. Its timber is
+sound above two-thirds health, cracked with a sagging bar down to one-third,
+splintered with a slipping banner at one-third or below, and open at zero.
+Repair uses the same thresholds as damage, so the rebuilt timber shows the
+result of a step.
 
 On portrait screens the camera preserves road width and expands the
 vertical view from 1.15× in setup to 1.50× in battle over 1,500 ms on
@@ -2435,7 +2443,9 @@ cached panorama follows the camera with a CSS transform. The portrait
 castle plate fits a 730 × 475 box for this view. The HUD uses a fixed
 camera, with 108 × 80 window and 132 × 80 wall-site targets anchored
 through the live projection. Landscape keeps its fixed view and uses
-108 × 52 and 132 × 54 targets. Test mode and reduced motion hold the
+108 × 52 and 132 × 54 targets. In landscape the castle fits a 1,150 × 312
+box. An eastern deck passes in front of the curtain where the road wraps
+around it. Test mode and reduced motion hold the
 setup framing. The settle replaces the old opening drift and camera
 shakes on these portrait levels.
 
@@ -2445,9 +2455,17 @@ and no boon offers. The table gives each level's enemy HP scale. The gate
 starts the yard at the specified trail distance before the exit, on the
 shared stretch when two roads are active. The last stand lasts 360
 combat ticks at 2× fire rate and high ground gives 1.1× maximum range.
-The painted scenes reuse the dusk plates. Dusk has clear weather, night
-storm darkens the sky and uses the existing rain and lightning, and dawn
-warms and lightens the sky.
+Both approaches are painted from the keep's road coordinates. A timber
+brace and rockfall close the unused branch on levels 21 and 22. The
+yard's paved terraces rise from the barbican to the original stairs.
+The scene loads one layout's ground and castle, one sky and the shared
+door states. Night casts a darker grade across the same stone, runs the
+lightning cycle at 1.45×, and has 114 rain streaks at high detail and 28
+at low. Dusk keeps its scud and clear weather. A strike replaces the castle
+exposure with a hard key and throws spire shadows across the paving.
+Dawn uses the cold sky plate and a lighter grade, with neither rain
+nor lightning. The art inventory is capped at 10 MB, and the decoded
+plate set on a phone is capped at 60 MB.
 
 | Level | Name | Roads | Sky | Gold | HP scale | Gate HP | Yard px | Repair HP | Gold per full repair | Third star | Wall-site rule |
 |---:|---|---|---|---:|---:|---:|---:|---:|---:|---|---|

@@ -64,7 +64,11 @@ export class RoadBanners {
       const h = heading.height + (counts.text ? counts.height : 0) + (westPhone ? 8 : 15);
       const w = Math.max(heading.width, counts.width) + 22;
       const westWide = !this.layout.turned && road === 'west';
-      const left = westWide ? p.x - w - 86 : p.x - w / 2;
+      // The west-only siege has its gate farther up this road. Put the
+      // sign beside the approach to keep its timber and sill visible.
+      const besideGate = westPhone && state.level?.keepRoads === 'west';
+      const left = besideGate ? 204
+        : westWide ? p.x - w - 86 : p.x - w / 2;
       const x = Math.max(8, Math.min(this.layout.width - w - 8, left));
       // The west road comes in at the side. Leave room above it for the
       // window and keep the long east preview above the lower control bar.
@@ -75,6 +79,9 @@ export class RoadBanners {
       board.clear();
       if (westWide) {
         board.lineStyle(2, THEME.brass).lineBetween(x + w, y + h - 2, p.x, p.y - 4);
+      } else if (besideGate) {
+        const mid = y + h / 2;
+        board.fillStyle(THEME.brass).fillTriangle(x, mid - 5, x - 10, mid, x, mid + 5);
       } else if (this.layout.turned && road === 'west') {
         board.lineStyle(2, THEME.brass).lineBetween(x + 8, y, p.x + 3, p.y);
       }

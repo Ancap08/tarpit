@@ -8,7 +8,7 @@ import { Button } from './button';
 export class SiegeControls {
   private readonly windows: Button[];
   private readonly sites: Button[];
-  private readonly anchors: { button: Button; point: Point }[] = [];
+  private readonly anchors: { button: Button; point: Point; leader?: { site: Point; line: Phaser.GameObjects.Graphics } }[] = [];
   private projection?: number;
   private emptyWindow?: { index: number; until: number };
 
@@ -29,11 +29,17 @@ export class SiegeControls {
     const tax = state.wallSiteTax;
     const sites = tax?.kind === 'royalSurvey' ? tax.sites : tax ? [tax.site] : [];
     this.sites = sites.map(site => {
-      const point = layout.cellCenter(site);
+      const cell = layout.cellCenter(site);
+      // The survey still binds the original cell. Leaders leave the door
+      // and the health plaque legible while the portrait camera settles.
+      const survey = layout.turned && state.level?.keepRoads === 'both' && tax?.kind === 'royalSurvey';
+      const offset = !survey ? { x: 0, y: 0 } : site.row === 13 ? { x: 0, y: 60 } : { x: 106, y: 0 };
+      const point = { x: cell.x + offset.x, y: cell.y + offset.y };
       const rect = center(point, framed ? 132 : 136, framed && !layout.turned ? 54 : 80);
       const x = Math.max(0, Math.min(rect.x, scene.scale.width - rect.width));
       const button = make({ ...rect, x }, pay);
-      this.anchors.push({ button, point });
+      const leader = survey ? { site: cell, line: scene.add.graphics() } : undefined;
+      this.anchors.push({ button, point, leader });
       return button;
     });
   }
@@ -43,12 +49,18 @@ export class SiegeControls {
   }
 
   update(state: GameState, covered: boolean, scale = 1, project = (p: Point) => p): void {
-    if (this.framed && scale !== this.projection) {
+    if (scale !== this.projection) {
       this.projection = scale;
-      for (const { button, point } of this.anchors) {
+      for (const { button, point, leader } of this.anchors) {
         const p = project(point);
         const { x, height } = button.rect;
-        button.moveTo(x, p.y - height / 2);
+        if (this.framed) button.moveTo(x, p.y - height / 2);
+        if (leader) {
+          const site = project(leader.site);
+          leader.line.clear().lineStyle(1.4, 0xc3aa77, .84);
+          if (point.x === site.x) leader.line.lineBetween(site.x, site.y + 9 * scale, site.x, button.rect.y);
+          else leader.line.lineBetween(site.x + 12, site.y, button.rect.x, site.y);
+        }
       }
     }
     const shown = !covered && (state.phase === 'setup' || state.phase === 'wave');
@@ -68,6 +80,7 @@ export class SiegeControls {
       site.set(text, quarteringStatus(state).ok);
       if (this.framed) site.setPicked(quarteringStatus(state).ok);
     }
+    for (const { leader } of this.anchors) leader?.line.setVisible(shown && !!tax);
   }
 
   rects(): Record<string, Rect> {

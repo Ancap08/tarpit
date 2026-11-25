@@ -3,9 +3,11 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { keepPlateSet } from './plates';
+import type { KeepSky } from '../../sim/levelTypes';
 
 const DIR = join(process.cwd(), 'public/assets/keep');
 const files = readdirSync(DIR).filter(f => f.endsWith('.webp')).sort();
+const skies: KeepSky[] = ['dusk', 'night storm', 'dawn'];
 
 function size(file: string): { width: number; height: number } {
   const d = readFileSync(join(DIR, file));
@@ -19,18 +21,17 @@ function size(file: string): { width: number; height: number } {
 }
 
 describe('Old Keep art budget', () => {
-  it('stays under the 8 MB art limit on disk', () => {
+  it('stays under the 10 MB art limit on disk', () => {
     const bytes = files.reduce((sum, f) => sum + readFileSync(join(DIR, f)).length, 0);
-    expect(bytes).toBeLessThan(8_000_000);
+    expect(bytes).toBeLessThanOrEqual(10_000_000);
   });
 
   it('caps a DPR 3 phone at 60 MB and keeps the older iPhone texture limit', () => {
-    const portrait = keepPlateSet(true, 390 * 3);
-    const wide = keepPlateSet(false, Math.floor(390 * 960 / 580 * 3));
-    for (const [set, opposite] of [[portrait, 'landscape'], [wide, 'portrait']] as const) {
-      expect(set.files).toHaveLength(11);
+    for (const weather of [undefined, ...skies]) for (const turned of [true, false]) {
+      const set = keepPlateSet(turned, turned ? 390 * 3 : Math.floor(390 * 960 / 580 * 3), weather, weather === 'dusk');
+      const opposite = turned ? ['landscape', 'siege-wide', 'gate-wide'] : ['portrait', 'siege-portrait', 'gate'];
       expect(set.files.every(({ file }) => file.endsWith('-half.webp'))).toBe(true);
-      expect(set.files.some(({ name }) => name === opposite)).toBe(false);
+      expect(set.files.some(({ name }) => opposite.includes(name))).toBe(false);
       const bytes = set.files.reduce((sum, { file }) => {
         const { width, height } = size(file);
         return sum + width * height * 4;
@@ -50,9 +51,19 @@ describe('Old Keep art budget', () => {
     const sets = [keepPlateSet(true, 1170), keepPlateSet(false, 1920),
       keepPlateSet(true, 1281), keepPlateSet(false, 2049)];
     for (const set of sets) expect(set.files).toHaveLength(11);
-    expect([...new Set(sets.flatMap(set => set.files.map(({ file }) => file)))].sort()).toEqual(files);
     expect(sets[2].files.some(({ file }) => file === 'portrait.webp')).toBe(true);
     expect(sets[3].files.some(({ file }) => file === 'landscape.webp')).toBe(true);
+    for (const weather of skies) {
+      const variants = [keepPlateSet(true, 1170, weather, weather === 'dusk'), keepPlateSet(false, 1920, weather, weather === 'dusk'),
+        keepPlateSet(true, 1281, weather, weather === 'dusk'), keepPlateSet(false, 2049, weather, weather === 'dusk')];
+      for (const { files } of variants) {
+        expect(files.filter(({ name }) => name.startsWith('sky'))).toHaveLength(1);
+        expect(files.some(({ name }) => name.startsWith('strike'))).toBe(weather === 'night storm');
+        expect(files.some(({ name }) => name === 'drift')).toBe(weather !== 'dawn');
+      }
+      sets.push(...variants);
+    }
+    expect([...new Set(sets.flatMap(set => set.files.map(({ file }) => file)))].sort()).toEqual(files);
   });
 });
 

@@ -10,8 +10,9 @@ import { KeepSurround } from './surround';
 import { KeepLight } from './stoneLight';
 import { drawFittings, type Landmark } from './keepMotion';
 import projection from './projection.json';
+import keepSite from '../../sim/keepSite.json';
 import type { DetailGovernor } from '../showpiece/governor';
-import type { KeepSky } from '../../sim/levelTypes';
+import type { KeepSky, LevelDef } from '../../sim/levelTypes';
 
 export { createKeep } from '../../sim/oldKeep';
 
@@ -19,8 +20,9 @@ type Image = Phaser.GameObjects.Image;
 const textureKey = (name: Plate) => 'keep:' + name;
 const MAGNIFIER_KEY = 'keep:magnifier';
 
-export function currentKeepPlateSet(game: Phaser.Game, portrait: boolean) {
-  return keepPlateSet(portrait, Math.ceil(game.canvas.getBoundingClientRect().width * devicePixelRatio));
+export function currentKeepPlateSet(game: Phaser.Game, portrait: boolean, level?: LevelDef) {
+  const closedRoad = level?.keepRoads === 'east' || level?.keepRoads === 'west';
+  return keepPlateSet(portrait, Math.ceil(game.canvas.getBoundingClientRect().width * devicePixelRatio), level?.keepSky, closedRoad);
 }
 
 export interface KeepAssets {
@@ -30,8 +32,8 @@ export interface KeepAssets {
 }
 
 export async function loadKeep(game: Phaser.Game, portrait: boolean, signal: AbortSignal,
-    onProgress: (fraction: number) => void): Promise<KeepAssets> {
-  const set = currentKeepPlateSet(game, portrait);
+    onProgress: (fraction: number) => void, level?: LevelDef): Promise<KeepAssets> {
+  const set = currentKeepPlateSet(game, portrait, level);
   const images = new Map<Plate, HTMLImageElement>();
   const installed: Plate[] = [];
   let surround: KeepSurround | undefined;
@@ -66,12 +68,19 @@ export async function loadKeep(game: Phaser.Game, portrait: boolean, signal: Abo
     signal.throwIfAborted();
     // Only the small effects go into Phaser. The large plates are painted
     // once into the panorama's cropped canvas layers.
-    for (const name of ['mist', 'glow', 'plinth'] as const) {
+    const textures: Plate[] = ['mist', 'glow', 'plinth'];
+    if (images.has('siege-gates')) textures.push('siege-gates');
+    if (images.has('siege-blockade')) textures.push('siege-blockade');
+    for (const name of textures) {
       const image = images.get(name)!;
       const texture = game.textures.addImage(textureKey(name), image);
       if (!texture) throw new Error(`Could not install keep plate ${name}`);
       installed.push(name);
       texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
+      if (name === 'siege-gates') {
+        const w = image.naturalWidth / 2, h = image.naturalHeight / 2;
+        for (let i = 0; i < 4; i++) texture.add(String(i), 0, (i % 2) * w, Math.floor(i / 2) * h, w, h);
+      }
     }
     return {
       id: set.id,
@@ -115,6 +124,7 @@ export class KeepView {
   private readonly lights: Image[];
   private readonly banners: Phaser.GameObjects.Graphics;
   private readonly rain: Phaser.GameObjects.Graphics;
+  readonly outerGate?: Image;
   private readonly gate: { x: number; y: number };
   private readonly castleW: number;
   private readonly castleH: number;
@@ -142,15 +152,16 @@ export class KeepView {
     this.quality = new Governor(pin === '0' ? 0 : pin === '2' ? 2 : undefined, { medium: false });
     this.quality.resetWindow(8);
     this.stillLightning = frozen && query.get('keepLightning') === '1';
+    const weather = scene.state.level?.keepSky;
     const { x, y } = layout.map;
     const gate = layout.toScreen(map.path[map.path.length-2]);
     this.gate = {x:gate.x-x,y:gate.y-y};
-    this.castleW = layout.turned ? framed ? 730 : 820 : 1250;
-    this.castleH = layout.turned ? framed ? 475 : 660 : 335;
+    this.castleW = layout.turned ? framed ? 730 : 820 : weather ? 1150 : 1250;
+    this.castleH = layout.turned ? framed ? 475 : 660 : weather ? 312 : 335;
     this.anchors = layout.turned ? projection.portrait : projection.landscape;
     this.light = new KeepLight(scene.textures);
     this.surround = assets.panorama(layout,this.gate,
-      {width:this.castleW,height:this.castleH},this.anchors.foot, scene.state.level?.keepSky);
+      {width:this.castleW,height:this.castleH},this.anchors.foot, weather);
     this.fieldLight = scene.add.container(x,y);
     this.reflection = scene.add.graphics();
     this.fieldLight.add(this.reflection);
@@ -158,6 +169,21 @@ export class KeepView {
     this.layer = scene.add.container(x,y);
     this.scenery = scene.add.container(0,0);
     this.layer.add(this.scenery);
+    if (weather) {
+      this.outerGate = scene.add.image(0, 0, textureKey('siege-gates'), '0')
+        .setOrigin(.5, 78 / 96).setDisplaySize(128, 96);
+      if (weather === 'night storm') this.outerGate.setTint(0xc8d4e5);
+      this.layer.addAt(this.outerGate, 0);
+      const roads = scene.state.level?.keepRoads;
+      const closed = roads === 'east' ? keepSite.otherRoads[0].approach[2]
+        : roads === 'west' ? keepSite.path[6] : undefined;
+      if (closed) {
+        const point = layout.toScreen(closed);
+        const barricade = scene.add.image(point.x - x, point.y - y, textureKey('siege-blockade'))
+          .setOrigin(.5, 78 / 96).setDisplaySize(128, 96);
+        this.layer.addAt(barricade, 0);
+      }
+    }
     const add = (name: Plate): Image => {
       const im = scene.add.image(0,0,textureKey(name)).setOrigin(0);
       this.scenery.add(im);
@@ -221,10 +247,14 @@ export class KeepView {
     this.scenery.setScale(1+push).setPosition(-this.gate.x*push,-8*push);
     this.fieldLight.setScale(1+push).setPosition(this.layout.map.x-this.gate.x*push,this.layout.map.y-8*push);
     const sky = this.scene.state.level?.keepSky;
-    const storm = sky === undefined || sky === 'night storm';
-    this.lightning = this.stillLightning ? 1 : calm || !storm ? 0 : lightningAt(ms);
+    const night = sky === 'night storm';
+    const rain = sky === undefined || night;
+    const stormCycle = night ? ms * 1.45 : ms;
+    this.lightning = !rain ? 0 : this.stillLightning ? 1 : calm ? 0 : lightningAt(stormCycle);
     if (this.lightning < .013) this.lightning = 0;
-    this.surround.update(push, this.lightning, Math.floor((ms+7300)/15700)%2, this.opening, t, high, calm);
+    // The siege strike plate lights the left face from one fixed ridge.
+    const flashSide = sky ? 1 : Math.floor((ms+7300)/15700)%2;
+    this.surround.update(push, this.lightning, flashSide, this.opening, t, high, calm);
     const {width,height} = this.layout.map;
     this.fog.forEach((im,i) => {
       im.setVisible(i===0 || high);
@@ -250,13 +280,12 @@ export class KeepView {
         this.surround.stillFittings();
         this.banners.setVisible(true);
       }
-      drawFittings(this.banners, this.at, t, true);
+      drawFittings(this.banners, this.at, t, true, rain);
     }
     this.lastTier = tier;
     const reflection = this.reflection.clear();
-    if (this.lightning > 0) {
+    if (this.lightning > 0 && !sky) {
       reflection.fillStyle(0xb8d4ff,.22*this.lightning).fillRect(0,0,width,height);
-      // The flash comes from the ridge. Pinnacles cast oblique shadows over wet shale.
       for (let i=0;i<7;i++) {
         const px = this.gate.x + (i-3)*this.castleW*.087;
         const py = this.gate.y + Math.cos(i*2.7)*7;
@@ -266,9 +295,10 @@ export class KeepView {
     }
     this.spill.forEach((lamp,i) => lamp.setAlpha(.19+Math.sin(t*5.1+i)*.034));
     this.rain.clear();
-    if (!calm && high && storm) {
-      this.rain.lineStyle(.8,0xb7c7dd,.30+this.lightning*.4).beginPath();
-      for (let i=0;i<76;i++) {
+    if (!calm && rain && (high || night)) {
+      this.rain.lineStyle(.8,0xb7c7dd,(night ? .32 : .30)+this.lightning*.4).beginPath();
+      const drops = night ? high ? 114 : 28 : 76;
+      for (let i=0;i<drops;i++) {
         const y=(i*133.7+t*(242+i%4*30))%height;
         const x=((i*79.3-t*(47+i%4*6))%width+width)%width;
         this.rain.moveTo(x,y).lineTo(x-3.8,y+12+i%7);
