@@ -1716,7 +1716,7 @@ can change it; "Kyle" means Kyle decided.
   from the test's name instead of its failing line; the brief for a CI fix
   now quotes the failing assertion and its values.
 
-## 2026-11-24, milestone 50 (the barrel feathers a crowd)
+## 2026-11-24, milestone 50 (the barrel feathers a crowd; became the town's answer, Act Two only)
 
 - **The Tar Barrel feathers whole crowds and the levels are retuned to fit.**
   Decided by Kyle ("Yes, retune levels"), after being told the crowd version
@@ -1769,3 +1769,22 @@ can change it; "Kyle" means Kyle decided.
 - **First run under the model rule:** the Act Two build on Astra at medium
   used 191,132 tokens, against 337,209 and 493,233 for the two passes at
   high. The remaining tuning goes to Sol at high as a small item.
+- **Verifier (Sonnet): merge.** It rebuilt 116 runs on levels 1 to 10 and in
+  Free play against main: all identical. Nine wrong changes each turned a
+  test red. Findings and what was done:
+  - **The feather barrel punishes a player who casts it at every chance.**
+    The specials share one charge and a feather barrel holds it for 51
+    seconds. Casting it whenever a special is ready, the person-like bot
+    loses levels 12 and 19 and drops a star on 13, 17 and 18; the good bot
+    loses 19. Swapping only the zone specials' turns for it loses no level.
+    The cost was invisible before the cast. Decided by the coordinator: say
+    it where the player chooses, with the number built from the data, in
+    the barrel's line and in a second tip. The rule itself stays; a big
+    move that has to be spent with care is the intended shape.
+  - **The Act Two difficulty step (S1) passes by one life** (1.53 against
+    1.5) and fails under a 2% health nudge on one level. Accepted as it
+    stands; any later change to levels 11 to 20 must re-check it first.
+  - **A feather barrel reaches Royal Harpies**, which no Tar Pit can. It
+    already tarred them before this milestone. Left as is.
+  - Stale records (README's "every special refills in 20 s", DEVLOG's
+    retune table) sent back with the wording change.

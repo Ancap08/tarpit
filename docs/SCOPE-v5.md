@@ -862,7 +862,8 @@ with other items at that time."
 | Where | Text |
 |---|---|
 | Level card, levels with feather barrels, in the town's blue | Town's answer: Tar Barrels feather crowds. |
-| Tar Barrel's line on those levels | Tar and feathers. Enemies caught run back. |
+| Tar Barrel's line on those levels | Feathers a crowd. Next special in 51s. (The number is built from the wait in the data. First written as "Tar and feathers. Enemies caught run back.", which hid the cost.) |
+| Second tip line on the first Act Two level that allows the barrel | After a feather barrel, specials take 51s to return. (Number from the data.) |
 | Tip on the first Act Two level that allows the barrel | Drop a Tar Barrel on a crowd and they run back. |
 | Tar Barrel's line and the level 5 tip everywhere else | Unchanged |
 
