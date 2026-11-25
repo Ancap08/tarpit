@@ -323,3 +323,29 @@ the checker looks for it.
 | `public/assets/keep/siege-barbican.webp` | `scripts/art/keep_castle.py` | Tarpit agents | MIT | Joined barbican and its four damage conditions |
 | `public/assets/keep/siege-machines-half.webp` | `scripts/art/siege_machines.py` | Tarpit agents | MIT | Half-size notice ram and shell, repair crew and falling timber |
 | `public/assets/keep/siege-machines.webp` | `scripts/art/siege_machines.py` | Tarpit agents | MIT | Notice ram and shell, repair crew and falling timber |
+| `docs/review/m52c2b/390x664-gate-crowd-dawn.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x664-gate-crowd-dusk.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x664-gate-crowd-night.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-barbican-and-toll-troll.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-ending.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-gate-crowd-dawn.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-gate-crowd-dusk.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-gate-crowd-night.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-gate-falling.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-gate-repair.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-gate-shudder.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-last-stand.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-notice-shell.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-quartering-before.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-quartering-departing.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-quartering-paid.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-ram-arriving.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-ram-at-gate.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-ram-feathered.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-royal-survey.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-window-lit.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-window-mid-shake.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/390x844-window-spent.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/960x580-ending.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52c2b/ram-and-the-king.mp4` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege recording |
+| `docs/review/m52c2b/window-on-the-gate-crowd.mp4` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege recording |

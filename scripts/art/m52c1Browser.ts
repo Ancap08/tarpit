@@ -87,6 +87,28 @@ async function isolation(build: string) {
           } finally { await context.close(); }
         }
       }
+      if (process.argv.includes('--direct-keep')) for (const level of [21, 22, 23, 24, 25]) {
+        const context = await browser.newContext(profile);
+        try {
+          const page = await context.newPage();
+          const plates: string[] = [];
+          page.on('request', request => {
+            const path = new URL(request.url()).pathname;
+            if (/\/assets\/(keep|act3)\/.*\.webp$/.test(path)) plates.push(path);
+          });
+          await page.goto(origin + '/?test=1&keep=' + level + '&act3=0');
+          await page.waitForFunction(() => window.__tarpit?.keep?.());
+          await page.locator('#keep-status').waitFor({ state: 'hidden' });
+          const setup = hash(await page.screenshot({ scale: 'css' }));
+          await page.evaluate(() => {
+            window.__tarpit!.startWave!();
+            window.__tarpit!.step!(480);
+          });
+          const battle = hash(await page.screenshot({ scale: 'css' }));
+          const state = await page.evaluate(() => JSON.stringify(window.__tarpit!.state!()));
+          rows.push({ viewport: profile.viewport, level, setup, battle, state, plates: plates.sort() });
+        } finally { await context.close(); }
+      }
     }
   });
   return rows;
@@ -163,14 +185,88 @@ async function cost(build: string, candidate: boolean) {
   });
 }
 
+async function crowdedWindowCost(build: string, candidate: boolean) {
+  await visit(build, async browser => {
+    const context = await browser.newContext(phone);
+    try {
+      const page = await context.newPage();
+      const cdp = await context.newCDPSession(page);
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+      await cdp.send('Performance.enable');
+      const busy = async () => (await cdp.send('Performance.getMetrics')).metrics.find(m => m.name === 'TaskDuration')!.value;
+      for (const tier of [2, 0]) {
+        const samples: number[] = [];
+        const cadence: number[] = [];
+        for (let i = 0; i < 3; i++) {
+          await page.goto(origin + '/?keep=23&act3=1&perf=1&keepTier=' + tier);
+          await page.waitForFunction(() => window.__tarpit?.keep?.());
+          const sill = await page.evaluate(() => {
+            const s = window.__tarpit!.game.scene.getScene('game') as GameScene;
+            s.spawnHorde(30);
+            const { gate, map, enemies } = s.state;
+            const west = map.otherRoads![0];
+            const length = (points: readonly { x: number; y: number }[]) =>
+              points.slice(1).reduce((sum, to, n) => sum + Math.hypot(to.x - points[n].x, to.y - points[n].y), 0);
+            const road = gate!.distance - length(map.path.slice(0, west.joinIndex + 1))
+              + length([...west.approach, map.path[west.joinIndex]]);
+            for (const enemy of enemies) {
+              enemy.road = west.id;
+              enemy.distance = road;
+            }
+            s.state.spawnedPerGroup = s.state.level!.waves[0].groups.map(group => group.count);
+            s.redraw();
+            return road;
+          });
+          await page.waitForFunction(() => {
+            const s = window.__tarpit!.game.scene.getScene('game') as GameScene;
+            return s.cameras.main.zoomY === 1.5;
+          });
+          await page.evaluate(sill => {
+            const s = (window.__tarpit!.game.scene.getScene('game') as GameScene).state;
+            if (s.enemies.length !== 30 || s.enemies.some(e => Math.abs(e.distance - sill) > 1e-8)) {
+              throw Error('Crowd must be held on the window stretch');
+            }
+            const recording: number[] = [];
+            (window as Window & { intervals?: number[] }).intervals = recording;
+            let before: number | undefined;
+            function frame(now: number) {
+              if (before !== undefined) recording.push(now - before);
+              before = now;
+              if (recording.length < 80) requestAnimationFrame(frame);
+            }
+            requestAnimationFrame(frame);
+          }, sill);
+          const start = await busy();
+          await press(page, 'window:1', true);
+          await page.waitForFunction(() => (window as Window & { intervals?: number[] }).intervals?.length === 80);
+          const intervals = await page.evaluate(() => {
+            const s = (window.__tarpit!.game.scene.getScene('game') as GameScene).state;
+            if (!s.windows![1].used || s.enemies.filter(e => e.feathered).length !== 30) throw Error('Window missed the crowd');
+            return (window as Window & { intervals?: number[] }).intervals!;
+          });
+          samples.push((await busy() - start) * 1000 / intervals.length);
+          cadence.push(...intervals);
+        }
+        const sorted = [...cadence].sort((a, b) => a - b);
+        console.log(JSON.stringify({ candidate, crowd: 30, tier, median: [...samples].sort((a, b) => a - b)[1], samples,
+          frameP95Ms: sorted[Math.ceil(.95 * sorted.length) - 1], framesOver25Ms: cadence.filter(ms => ms > 25).length }));
+      }
+    } finally { await context.close(); }
+  });
+}
+
 const base = process.argv[3];
 assert.ok(base, 'Pass a built baseline directory');
 if (mode === 'cost') {
   await cost(base, false);
   if (process.argv.includes('--compare')) await cost('dist', true);
+} else if (mode === 'crowd') {
+  await crowdedWindowCost(base, false);
+  await crowdedWindowCost('dist', true);
 } else {
   const before = await isolation(base);
   const after = await isolation('dist');
   for (const [index, result] of after.entries()) assert.deepEqual(result, before[index], `Switch-off mismatch in scenario ${index + 1}`);
   console.log('144 switch-off canvas hashes, 36 sim states, 18 progress and story records, and 18 cold request inventories match.');
+  if (process.argv.includes('--direct-keep')) console.log('20 direct Keep setup and battle screenshot hashes, 10 sim states and 10 plate inventories match.');
 }
