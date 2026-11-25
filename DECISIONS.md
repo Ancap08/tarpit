@@ -2014,3 +2014,21 @@ can change it; "Kyle" means Kyle decided.
 - **Story lines for Act Three** written by the coordinator in the voice
   Kyle asked for; with Act Three open, the campaign's ending moves from
   level 20 to level 25.
+- **Verifier (Sonnet) on part c: merge behind the switch.** Proved: 96 bot
+  runs, the sim output and 18 browser sessions identical to main with the
+  switch off; a save written with Act Three on loads safely with it off,
+  keeps its stars and shows the old two-act game; every tap target sits
+  where it is drawn through the view move; sound obeys mute, pause, test
+  mode and the switch and leaks no audio nodes over ten minutes; all new
+  art reproduces from its scripts byte for byte. Fourteen wrong changes:
+  eleven caught by the implementer's tests, one by a test the verifier
+  added, two harmless.
+- **Before Act Three is opened to players** (the verifier's list, accepted):
+  a switch-off browser comparison must run in CI (today it lives in a
+  script CI does not call); the fanned-out crowd is drawn up to 97 px from
+  its true place, more than a Powder Keg's 90 px reach, so a keg aimed at
+  the edge of the drawn crowd misses the stack; decoded images on a phone
+  are about 70 MB with the ordinary painted atlases counted (the 60 MB cap
+  counted the keep's plates only), to be checked on a real phone; the
+  level cards' map thumbnail is a placeholder; and nobody has heard the
+  sound. Kyle's play of the levels comes first.
