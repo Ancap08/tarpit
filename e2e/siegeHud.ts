@@ -4,9 +4,9 @@ import type { GameScene } from '../src/game/GameScene';
 import { checkLabel } from './hudButtonLabels';
 import { rectPage, rectPageSize } from './phone';
 
-async function checkGateLabels(page: Page, labels: string[], repair = false) {
+async function checkGateLabels(page: Page, labels: string[], repair?: string) {
   for (const label of labels) await checkLabel(page, 'gate', label);
-  if (repair) await checkLabel(page, 'repair', 'Repair 30');
+  if (repair) await checkLabel(page, 'repair', repair);
   const boxes = await page.evaluate(() => {
     const api = window.__tarpit!;
     const canvas = api.game.canvas.getBoundingClientRect().toJSON() as DOMRect;
@@ -62,7 +62,7 @@ export function siegeHudCases(heights: readonly (number | undefined)[]) {
       await page.goto('/?keep=1&test=1');
       await page.waitForFunction(() => window.__tarpit?.keep?.() && !!window.__tarpit.uiRects().gate, null, { timeout: 40_000 });
       const repair = page.getByRole('button', { name: 'Repair 30', exact: true });
-      await expect(repair).toBeDisabled();
+      await expect(page.getByRole('button', { name: 'Repair', exact: true })).toBeDisabled();
       await page.evaluate(() => {
         const api = window.__tarpit!;
         api.state!().gate!.hp = 312;
@@ -76,7 +76,7 @@ export function siegeHudCases(heights: readonly (number | undefined)[]) {
         api.step!(0);
       });
       await expect(repair).toBeEnabled();
-      await checkGateLabels(page, ['Gate 312 / 480'], true);
+      await checkGateLabels(page, ['Gate 312 / 480'], 'Repair 30');
       const r = await rectPage(page, 'repair');
       if (info.project.name === 'chromium' && metrics === 'normal') {
         await repair.focus();

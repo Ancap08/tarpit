@@ -26,8 +26,7 @@
 //      resolved, pay guard kills as special kills and remove broken or
 //      expired blockers. Held survivors resume moving next tick. Both
 //      slow timers count down.
-//   2. Remove enemies at or past the exit, apart from walkers held by the
-//      gate this tick. Each exiting enemy costs its livesCost.
+//   2. Remove enemies at or past the exit. Each costs its livesCost.
 //      Lives <= 0 -> phase 'lost' at once, nothing else happens this tick.
 //   2b. Zones (milestone 30, zonesStep), oldest first: every live enemy
 //      within a zone's radius (flyers included) gets, from a Tar Barrel
@@ -315,7 +314,7 @@ export function tick(state: GameState): void {
   }
   if (guardsStruck) removeDead(state, 'special');
   ageBlockers(state);
-  removeExitedEnemies(state, standingGate !== undefined);
+  removeExitedEnemies(state);
   if (state.lives <= 0) {
     state.phase = 'lost';
     state.events.push({ kind: 'lost' });
@@ -389,11 +388,11 @@ export function applyZone(state: GameState, zone: Pick<GameState['zones'][number
   }
 }
 
-function removeExitedEnemies(state: GameState, gateHeld: boolean): void {
+function removeExitedEnemies(state: GameState): void {
   const exit = pathLength(state.map);
   let kept = 0;
   for (const e of state.enemies) {
-    if (e.distance < exit || (gateHeld && e.distance === exit && !ENEMY_STATS[e.type].flying)) {
+    if (e.distance < exit) {
       state.enemies[kept++] = e;
       continue;
     }

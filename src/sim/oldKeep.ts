@@ -6,7 +6,7 @@ import site from './keepSite.json';
 import type { GameState, MapDef, WaveDef } from './types';
 
 const keep: MapDef = { id: 'keep', width: MAP_WIDTH, height: MAP_HEIGHT, ...site };
-const gate: GateDef = { maxHp: 480, repairCost: 30, repairHp: 160 };
+const gate: GateDef = { maxHp: 480, repairCost: 30, repairHp: 160, yardLength: 360 };
 const waves: readonly WaveDef[] = [
   { groups: [{ type: 'goblin', count: 12, interval: 0.85, delay: 0 }] },
   { groups: [

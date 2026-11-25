@@ -18,7 +18,7 @@ describe('Old Keep exhibition', () => {
     expect(buildableCells(map).flatMap((open, index) => open ? [index] : [])).toEqual(sites);
   });
 
-  it('plays through its three fixed waves with ordinary towers and ends at the gate', () => {
+  it('plays through its three fixed waves with ordinary towers', () => {
     const state = createKeep();
     expect(state).toMatchObject({ lives: 20, gold: 240, wave: 0, phase: 'setup' });
     expect(lastWave(state)).toBe(3);

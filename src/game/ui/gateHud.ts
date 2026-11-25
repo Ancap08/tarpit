@@ -75,8 +75,9 @@ export class GateHud {
     this.status.setY(top + panelHeight * (active ? 0.25 : 0.5)).setVisible(shown);
     this.backing.setPosition(x, top).setSize(width, panelHeight).setVisible(shown);
     this.lastStand.setVisible(active);
-    const repair = GATE_TEXT.repair(gate.repairCost);
-    const enabled = !state.pendingBoon && !paused && repairStatus(state).ok;
+    const quote = repairStatus(state);
+    const repair = GATE_TEXT.repair(quote.cost);
+    const enabled = !state.pendingBoon && !paused && quote.ok;
     this.repair.set(repair, enabled);
     this.repairAction.disabled = !enabled;
     if (this.repairAction.textContent !== repair) this.repairAction.textContent = repair;

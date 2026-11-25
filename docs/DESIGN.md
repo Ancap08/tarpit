@@ -154,7 +154,9 @@ The separate `?keep=1` exhibition opens directly on a Normal field with
 20 lives and 240 gold. It uses the ordinary tower prices, upgrades, enemy
 stats and wave-clear bonus. Its ten tower sites and road share one coordinate
 file, `src/sim/keepSite.json`, with the miniature renderer. The stair foot is at
-(576, 296). Collectors climb the steps to the gate threshold at (551, 272). The wall-walk sites are (15, 13) and (15, 4) in portrait and
+(576, 296). Collectors climb the steps to the road's end at the painted
+threshold (551, 272). The siege gate blocks the lower bend of the approach
+near (762, 366). The wall-walk sites are (15, 13) and (15, 4) in portrait and
 (13, 7) and (22, 7) in landscape. The same towers and path survive rotation.
 
 The Keep loads eleven plates for the fitted layout. The fitted canvas
@@ -686,7 +688,7 @@ Reloading starts a new run.
   the blocker continues. Harpies fly over it. Target order, burn, slow,
   tower hits, kill credit and bounty all use the usual rules at that position.
   A temporary blocker cannot be placed at the exit. A level's gate is a
-  permanent blocker there, with the contact and exit rules below.
+  permanent blocker before the exit, with the contact and yard rules below.
 - **Powder Keg.** 60 damage to each enemy inside, shields ignored. No zone.
 - **Zones.** The Tar Barrel and Fire Arrows act on the enemies inside at
   once and leave a zone at the point (`state.zones`, each with an id, its
@@ -782,40 +784,50 @@ Reloading starts a new run.
 
 ## Siege gate
 
-A level can supply gate maximum HP, repair cost and repair HP. The hidden
-Old Keep exhibition supplies the same data without joining the campaign.
+A level can supply gate maximum HP, the full repair step and price, and
+the length of the yard. The hidden Old Keep exhibition supplies the same
+data without joining the campaign.
 
 | Rule | Value |
 | --- | --- |
 | Old Keep starting and maximum gate HP | 480 |
 | Old Keep HP restored per purchase | 160 |
-| Old Keep gold per purchase | 30 |
+| Old Keep gold per full repair step | 30 |
+| Old Keep yard length in trail pixels | 360 |
 | Last stand duration in wave ticks | 360 |
 | Last stand fire rate multiplier | 2 |
 | High ground maximum range multiplier | 1.1 |
 
-The gate stands at the end of the road. Ground enemies stop on contact and
+The gate stands one yard length before the end of the road. Ground enemies stop on contact and
 stack at the same point. Every attacker contributes its blocker damage per
 second divided by 60, as listed under Enemies. Goblins deal 6/s, Wolves 8/s,
 Shieldbearers 12/s, Trolls 45/s, Assessor Grumblefoot 300/s and King
 Grumblemaw 400/s. A walker still approaching deals no damage until its
 own step reaches the gate. Royal Harpies fly over without dealing gate
-damage and pay their usual life cost.
+damage, cross the yard and cost a life at the exit.
 
-The nearest Barricade or Guard intercepts walkers ahead of the gate. Both
-keep their normal placement clearances and contact rules. Neither can
-displace a walker already at the gate. Tar slows the approach and leaves
-contact damage unchanged. Burn, doubled on tarred enemies as usual, and
-tower fire still affect enemies at the gate. A feathered enemy can run
-back from the gate and stops hitting it on every retreat or flinch tick.
+The first live blocker reached intercepts walkers. Specials, including
+Barricades and Guards, can be placed in the yard even while the gate
+stands, using their normal targeting and placement rules. Tar slows
+the approach and leaves contact damage unchanged. Burn, doubled on
+tarred enemies as usual, and tower fire still affect enemies at the
+gate. A feathered enemy can run back from the gate and stops hitting it
+on every retreat or flinch tick.
 Wave clear waits for gate attackers along with every other live enemy.
 Calling early leaves them in play and goes straight into the next wave.
 
-Repair is a setup action. Each purchase spends the full price and adds one
-step, capped at full HP. A full or fallen gate refuses the action. The
-first tick that reduces the gate to zero still holds every walker that
-reaches it. Beginning the next tick, walkers exit at their normal life
-cost, including the bosses. A fallen gate stays fallen for the level.
+Repair is a setup action. A purchase adds one step up to full HP.
+The price is the full step price multiplied by the fraction of the step
+restored, rounded up to whole gold with a minimum of 1. A full or fallen
+gate refuses the action.
+
+The first tick that reduces the gate to zero still holds every walker that
+reaches it. From the next tick, the held walkers and those arriving later
+walk the yard and cost their usual lives at the road's end. Towers,
+specials, blockers, slows, burns and feathers work there as on the rest
+of the road. A retreat follows the same road backwards and can cross the
+breach within its usual running time. A fallen gate stays fallen for the
+level.
 
 The first breaking tick starts Last stand before towers fire. On that tick
 and the following 359 combat ticks, every tower advances its cooldown by
@@ -827,8 +839,9 @@ and cooldowns. Last stand can start once per run.
 A tower on a marked high site multiplies its maximum range by 1.1 after
 boons and Curfew. Minimum range and all other tower stats are unchanged.
 The bonus follows the site when a tower moves. During play the HUD shows
-gate HP rounded up, Repair and its gold price in setup while the gate
-stands, and Gate fallen with Last stand! for the duration of the bonus.
+gate HP rounded up, Repair with the actual gold price in setup for a
+damaged standing gate, and Gate fallen with Last stand! for the duration
+of the bonus. At full HP the disabled Repair control has no price.
 
 ## Gold cheat
 
@@ -1024,7 +1037,7 @@ remove broken blockers, then remove guards whose last lifetime tick has
 elapsed. Their lifetime also counts down on setup ticks and freezes at
 the win or loss screen. They can advance again on the next tick. Both slow
 timers count down as usual; (2) enemies at the exit are removed and
-cost their lives, except walkers held by a gate in step 1 (at 0 lives the game is lost at once and nothing else
+cost their lives (at 0 lives the game is lost at once and nothing else
 happens that tick); (2b) each zone, oldest first, slows or burns the live
 enemies inside it for the linger duration, then counts down and is
 removed at 0;

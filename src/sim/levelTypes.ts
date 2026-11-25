@@ -26,6 +26,8 @@ export interface GateDef {
   readonly maxHp: number;
   readonly repairCost: number;
   readonly repairHp: number;
+  /** Trail pixels from the gate to the exit. */
+  readonly yardLength: number;
 }
 
 export interface LevelDef {

@@ -11,6 +11,7 @@ import { LEVELS } from './levels';
 import { createKeep } from './oldKeep';
 import { shotCooldown, TOWER_DEFS, towerStats, towerStatsAt } from './towers';
 import type { Enemy, EnemyType, GameState, MapDef, TowerType } from './types';
+import { gameWaveDef } from './waves';
 
 const LINE: MapDef = {
   id: 'siege-verifier', width: 960, height: 480,
@@ -18,7 +19,8 @@ const LINE: MapDef = {
   highSites: [{ col: 27, row: 4 }],
 };
 const FLAT: MapDef = { ...LINE, highSites: undefined };
-const GATE = { maxHp: 480, repairCost: 30, repairHp: 160 };
+const GATE = { maxHp: 480, repairCost: 30, repairHp: 160, yardLength: 360 };
+const GATE_LINE = 960 - GATE.yardLength;
 const WAVE = { groups: [{ type: 'goblin', count: 1, delay: 0, interval: 1 }] } as const;
 
 function arena(gate = GATE, map: MapDef = LINE) {
@@ -26,49 +28,61 @@ function arena(gate = GATE, map: MapDef = LINE) {
   return { ...state, gate: state.gate!, fixedWaves: [WAVE, WAVE, WAVE, WAVE, WAVE] };
 }
 
-function walker(type: EnemyType, id: number, distance = 960, hp = 1_000_000): Enemy {
+function walker(type: EnemyType, id: number, distance = GATE_LINE, hp = 1_000_000): Enemy {
   return { type, id, distance, hp, slow: 0, slowTicksLeft: 0 };
 }
 
 function begin(state: GameState, enemies: Enemy[]) {
   expect(startWave(state).ok).toBe(true);
-  state.spawnedPerGroup.fill(1);
+  state.spawnedPerGroup = gameWaveDef(state, state.wave).groups.map(group => group.count);
   state.waveTick = 1;
   state.enemies = enemies;
 }
 
 describe('verifier: the gate under a crowd', () => {
-  it('adds a 30-goblin stack linearly, holds all of it on the breaking tick, then the next tick costs 30 lives', () => {
-    const state = arena({ ...GATE, maxHp: 4 });
-    begin(state, Array.from({ length: 30 }, (_, i) => walker('goblin', i)));
+  it('holds 30 goblins through the breach and charges every leak after exactly six seconds without towers', () => {
+    const state = createKeep();
+    const gate = state.gate!;
+    gate.hp = 4;
+    begin(state, Array.from({ length: 30 }, (_, i) => walker('goblin', i, gate.distance)));
     tick(state);
     // 30 goblins x 6 per second / 60 = 3 per tick.
-    expect(state.gate.hp).toBeCloseTo(1, 9);
+    expect(gate.hp).toBeCloseTo(1, 9);
     tick(state);
-    expect(state.gate.hp).toBe(0);
-    expect(state.gate.fallen).toBe(true);
+    expect(gate.hp).toBe(0);
+    expect(gate.fallen).toBe(true);
     expect(state.lives, 'nobody leaks on the tick that breaks it').toBe(20);
     expect(state.enemies).toHaveLength(30);
     tick(state);
-    expect(state.phase, 'the whole stack leaks together').toBe('lost');
-    expect(state.lives).toBeLessThanOrEqual(0);
+    expect(state.enemies.map(e => e.distance)).toEqual(Array(30).fill(gate.distance + 1));
+    expect(state.lives).toBe(20);
+    for (let i = 1; i < 359; i++) tick(state);
+    expect(state.lives).toBe(20);
+    tick(state);
+    expect(state.phase).toBe('lost');
+    expect(state.lives).toBe(-10);
+    expect(state.events.filter(e => e.kind === 'exit')).toHaveLength(30);
   });
 
   it('holds a walker that reaches the gate on the breaking tick, but not one that arrives a tick later', () => {
     const state = arena({ ...GATE, maxHp: 0.05 });
-    begin(state, [walker('goblin', 0), walker('goblin', 1, 959), walker('goblin', 2, 958)]);
+    begin(state, [walker('goblin', 0), walker('goblin', 1, GATE_LINE - 1), walker('goblin', 2, GATE_LINE - 2)]);
     tick(state);
     expect(state.gate.hp).toBe(0);
     expect(state.lives).toBe(20);
-    expect(state.enemies.map(e => e.distance)).toEqual([960, 960, 959]);
+    expect(state.enemies.map(e => e.distance)).toEqual([GATE_LINE, GATE_LINE, GATE_LINE - 1]);
     tick(state);
-    expect(state.lives, 'all three leak by the second tick').toBe(17);
+    expect(state.enemies.map(e => e.distance)).toEqual([GATE_LINE + 1, GATE_LINE + 1, GATE_LINE]);
+    for (let i = 1; i < 360; i++) tick(state);
+    expect(state.lives).toBe(18);
+    tick(state);
+    expect(state.lives).toBe(17);
     expect(state.enemies).toHaveLength(0);
   });
 
   it('cannot be lost by ground enemies while it stands, but flyers alone can lose the level', () => {
     const ground = arena();
-    begin(ground, Array.from({ length: 5 }, (_, i) => walker('goblin', i, 900)));
+    begin(ground, Array.from({ length: 5 }, (_, i) => walker('goblin', i, GATE_LINE - 60)));
     for (let i = 0; i < 600; i++) tick(ground);
     expect(ground.lives).toBe(20);
     expect(ground.gate.hp).toBeLessThan(480);
@@ -81,16 +95,19 @@ describe('verifier: the gate under a crowd', () => {
     expect(sky.gate.fallen).toBe(false);
   });
 
-  it('bounds a stall: one goblin that nothing shoots ends the wave exactly when the gate falls and then leaks', () => {
+  it('bounds a stall: one goblin breaks the gate and clears the wave by walking the yard', () => {
     const state = arena();
-    begin(state, [walker('goblin', 0, 959)]);
-    let ticks = 0;
-    while (state.phase === 'wave' && ticks < 20_000) { tick(state); ticks++; }
-    // 480 hp at 0.1 per tick: the breaking tick is tick 4801 (arrival tick already hits), the leak the next.
-    expect(ticks).toBe(4801);
+    begin(state, [walker('goblin', 0, GATE_LINE - 1)]);
+    for (let i = 0; i < 4799; i++) tick(state);
+    expect(state.gate.hp).toBeCloseTo(0.1, 9);
+    tick(state);
+    expect(state.gate.hp).toBe(0);
+    for (let i = 0; i < 359; i++) tick(state);
+    expect(state.lives).toBe(20);
+    tick(state);
     expect(state.lives).toBe(19);
     expect(state.phase).toBe('setup');
-    expect(state.gate.lastStandTicksLeft, 'setup keeps the time that the wave did not use').toBe(358);
+    expect(state.gate.lastStandTicksLeft).toBe(0);
   });
 });
 
@@ -149,11 +166,11 @@ describe('verifier: Last stand', () => {
 });
 
 describe('verifier: repair', () => {
-  it('charges the full price for a one-point top-up, stops at full, and cannot be spammed past the cap', () => {
+  it('charges one gold for a one-point top-up, stops at full, and cannot be spammed past the cap', () => {
     const state = arena();
     state.gate.hp = 479;
     state.gold = 1000;
-    expect(repairGate(state)).toEqual({ ok: true, cost: 30, hp: 480, gold: 970 });
+    expect(repairGate(state)).toEqual({ ok: true, cost: 1, hp: 480, gold: 999 });
     expect(repairGate(state)).toEqual({ ok: false, reason: 'gate-full' });
     state.gate.hp = 1;
     let paid = 0;
@@ -163,7 +180,7 @@ describe('verifier: repair', () => {
     }
     expect(paid).toBe(90);
     expect(state.gate.hp).toBe(480);
-    expect(state.gold).toBe(880);
+    expect(state.gold).toBe(909);
   });
 
   it('refuses after a win or loss and while a wave is on', () => {
@@ -202,7 +219,7 @@ describe('verifier: feathers at the gate', () => {
     let back = 0;
     for (let i = 0; i < 400; i++) {
       tick(state);
-      if (state.enemies.every(e => e.distance < 960)) { back++; awayHp.push(state.gate.hp); }
+      if (state.enemies.every(e => e.distance < GATE_LINE)) { back++; awayHp.push(state.gate.hp); }
       if (back > 0 && state.gate.hp < hp) break;
     }
     expect(back).toBeGreaterThan(80);
@@ -267,7 +284,7 @@ describe('verifier: bots and the Old Keep', () => {
     expect(person.log.filter(s => s.action === 'repairGate')).toHaveLength(1);
   });
 
-  it('explains the measurement table: three Trolls arrive together, so only a gate of thousands of points survives them', () => {
+  it('still breaches the regular Old Keep gate in a bot run and holds a much stronger gate', () => {
     const outcome = (maxHp: number) => {
       const state = createKeep();
       state.gate!.maxHp = maxHp;
@@ -275,9 +292,7 @@ describe('verifier: bots and the Old Keep', () => {
       const run = runBot(state, botGood);
       return { lives: run.state.lives, fallen: run.state.gate!.fallen, hp: run.state.gate!.hp, repairs: run.log.filter(s => s.action === 'repairGate').length };
     };
-    for (const maxHp of [240, 480, 960]) expect(outcome(maxHp), `hp ${maxHp}`).toMatchObject({ lives: 17, fallen: true, repairs: 0 });
-    // Only about double again begins to matter, and still not enough to hold.
-    expect(outcome(1920)).toMatchObject({ lives: 18, fallen: true, repairs: 0 });
+    expect(outcome(480)).toMatchObject({ fallen: true, hp: 0, repairs: 0 });
     expect(outcome(100_000)).toMatchObject({ lives: 20, fallen: false });
   }, 120_000);
 

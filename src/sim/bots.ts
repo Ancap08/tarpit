@@ -283,7 +283,9 @@ function chooseSpecial(state: GameState, lastZone: SpecialType | undefined, poin
 
 function shouldRepair(state: GameState, fraction: number, reserve: number): boolean {
   const { gate } = state;
-  return !!gate && gate.hp <= gate.maxHp * fraction && state.gold - gate.repairCost >= reserve && repairStatus(state).ok;
+  if (!gate || gate.hp > gate.maxHp * fraction) return false;
+  const repair = repairStatus(state);
+  return repair.ok && state.gold - repair.cost >= reserve;
 }
 
 export const botGood: BotPolicy = {

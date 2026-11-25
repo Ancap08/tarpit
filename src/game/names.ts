@@ -576,7 +576,7 @@ export const LEVEL_NEW: Readonly<Record<number, string>> = {
 
 export const GATE_TEXT = {
   health: (hp: number, max: number) => `Gate ${Math.ceil(hp)} / ${max}`,
-  repair: (cost: number) => `Repair ${cost}`,
+  repair: (cost?: number) => cost === undefined ? 'Repair' : `Repair ${cost}`,
   lastStand: 'Last stand!',
   fallen: 'Gate fallen',
 };

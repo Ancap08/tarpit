@@ -41,7 +41,7 @@ const md = readFileSync(new URL('../../docs/DESIGN.md', import.meta.url), 'utf8'
 it('locks the Siege gate numbers to the spec', () => {
   const gate = createKeep().gate!;
   expect(table('Siege gate', 'Rule').map(([, value]) => Number(value))).toEqual([
-    gate.maxHp, gate.repairHp, gate.repairCost, LAST_STAND_TICKS, LAST_STAND_FIRE_RATE, HIGH_GROUND_RANGE,
+    gate.maxHp, gate.repairHp, gate.repairCost, gate.yardLength, LAST_STAND_TICKS, LAST_STAND_FIRE_RATE, HIGH_GROUND_RANGE,
   ]);
 });
 

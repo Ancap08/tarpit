@@ -270,7 +270,7 @@ export interface Guard extends Blocker {
   ticksLeft: number;
 }
 
-export interface Gate extends Blocker, Pick<GateDef, 'repairCost' | 'repairHp'> {
+export interface Gate extends Blocker, Omit<GateDef, 'maxHp'> {
   kind: 'gate';
   fallen: boolean;
   lastStandTicksLeft: number;
