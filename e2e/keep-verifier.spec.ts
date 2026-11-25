@@ -75,6 +75,7 @@ test('the keep opens directly, stays frozen in test mode and awards no progress'
   const result = await page.evaluate(() => {
     const a = window.__tarpit!;
     const s = a.state!();
+    a.setMuted(!a.audio().muted);
     for (const [col,row] of [[11,10],[15,6],[23,9],[17,10]]) {
       if (!a.buildAt!(col,row,'musketeer').ok) throw Error('Expected a legal marked site');
     }
@@ -93,14 +94,13 @@ test('pausing holds the opening and storm at the same instant', async ({ page })
   await page.goto('/?keep=1&perf=1&renderer=canvas');
   await waitForGame(page);
   await page.waitForFunction(() => (window.__tarpit?.keep?.()?.timeMs ?? 0) > 120);
-  const pose = await page.evaluate(() => {
-    const a = window.__tarpit!;
-    a.pause();
-    return a.keep?.();
-  });
+  await page.keyboard.press('p');
+  const pose = await page.evaluate(() => window.__tarpit!.keep?.());
+  expect(pose!.opening).toBeGreaterThan(0);
   await settle(page);
   expect(await page.evaluate(() => window.__tarpit!.paused())).toBe(true);
   expect(await page.evaluate(() => window.__tarpit!.keep?.())).toEqual(pose);
-  await page.evaluate(() => window.__tarpit!.resume());
+  await page.keyboard.press('p');
   await page.waitForFunction(time => (window.__tarpit?.keep?.()?.timeMs ?? 0) > time, pose!.timeMs);
+  expect(await page.evaluate(() => window.__tarpit!.keep?.()?.opening)).toBeGreaterThan(0);
 });
