@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 import { TITLE_TEXT } from './src/game/names.ts';
 import { swEnabled, writeServiceWorker } from './scripts/sw-build.ts';
-import { PAINTED_ASSET_DIR, SHOWPIECE_ASSET_DIR } from './src/sw/rules.ts';
+import { KEEP_ASSET_DIR, PAINTED_ASSET_DIR, SHOWPIECE_ASSET_DIR } from './src/sw/rules.ts';
 
 /** After a production build, write sw.js for it (milestone 32a, scripts/sw-build.ts). */
 function serviceWorker(): Plugin {
@@ -33,8 +33,11 @@ export default defineConfig({
     chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
-        chunkFileNames: chunk => chunk.name === 'showpiece'
-          ? `${SHOWPIECE_ASSET_DIR}[name]-[hash].js` : 'assets/[name]-[hash].js',
+        chunkFileNames: chunk => {
+          if (chunk.name === 'oldKeep') return KEEP_ASSET_DIR + '[name]-[hash].js';
+          if (chunk.name === 'showpiece') return SHOWPIECE_ASSET_DIR + '[name]-[hash].js';
+          return 'assets/[name]-[hash].js';
+        },
         assetFileNames: ({ originalFileNames }) => {
           if (originalFileNames.some(path => path.startsWith('assets/art-showpiece/')))
             return `${SHOWPIECE_ASSET_DIR}[name]-[hash][extname]`;
