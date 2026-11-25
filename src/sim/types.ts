@@ -129,6 +129,8 @@ export interface Enemy {
    * the difficulty-scaled base gives the same maximum.
    */
   maxHp?: number;
+  /** Act Three combat ticks spent attacking any blocker. */
+  blockedTicks?: number;
   /** Grumblemaw thresholds already called, after surviving a hit. */
   packCalls?: number;
   /** These marks appear only after the corresponding effect happens. */

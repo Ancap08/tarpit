@@ -118,6 +118,7 @@ import { broadsideStore } from './seenTips';
 import { duringKeepLoad, finishKeepLoad } from './keep/status';
 import { panel, THEME } from './ui/theme';
 import {
+  areaSpecialTargets,
   buildTower,
   callEarlyStatus,
   callNextWave,
@@ -221,7 +222,7 @@ import { COLORS, FONT, TEXT } from './palette';
 import { currentLayout } from './layoutSwitch';
 import { isPerfMode, isTestMode } from './testMode';
 import { PaintedSkin, type PaintedState } from './skin/painted';
-import type { PaintedAssets } from './skin/loading';
+import { releasePaintedTextures, type PaintedAssets } from './skin/loading';
 import type { GameStartData as TitleStartData } from './TitleScene';
 import { GameClock } from './loop';
 import { PausePanel } from './ui/pausePanel';
@@ -653,7 +654,7 @@ export class GameScene extends Phaser.Scene {
     // Milestone 34: the living map (decor/livingMap.ts): the baked ground, trees and bushes, and the moving things, under everything else.
     this.painted = this.paintedAssets ? new PaintedSkin(this, this.paintedAssets, this.layout, this.state.map, isTestMode(), this.clock, !this.keepModule) : undefined;
     this.living = this.painted ?? (this.keepModule ? null : new LivingMap(this, this.state.map, this.layout, isTestMode(), this.clock));
-    this.town = new Town(this, this.state.map, this.layout, isTestMode(), this.painted);
+    this.town = new Town(this, this.state.map, this.layout, isTestMode(), this.siegeScreens ? undefined : this.painted);
     this.ground = world();
     this.painted?.placeGround(this.ground);
     if (this.keepModule) {
@@ -1536,6 +1537,10 @@ export class GameScene extends Phaser.Scene {
     this.leaving = true;
     this.restartPending = false;
     this.resume = null;
+    // The title loads its own sheets. An in-place restart reuses this set.
+    if (this.actThree && this.campaignLevel?.map === 'keep') {
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => releasePaintedTextures(this.textures));
+    }
     if (this.keepModule) {
       if (destination.screen !== 'siegeEnding') sound.endSessionMute();
       this.keepAssets = undefined; // The view releases its set when Phaser shuts it down.
@@ -1898,6 +1903,14 @@ export class GameScene extends Phaser.Scene {
     this.bars.clear();
     if (this.siegeScreens && (this.aiming !== null || this.panel.cell !== null || this.pick !== null)) {
       this.enemySprites.drawSiegeFeet(this.bars);
+    }
+    const aimAt = this.siegeScreens && this.aimCentre();
+    if (aimAt && this.aiming !== null) {
+      const radius = specialRadius(this.aiming, this.state.boons);
+      if (radius > 0) {
+        const targets = areaSpecialTargets(this.state, this.layout.toWorld(aimAt), radius);
+        this.enemySprites.drawSpecialTargets(this.bars, this.state.enemies, new Set(targets.map(enemy => enemy.id)));
+      }
     }
     this.featherPuffs.draw(this.bars, this.clock.nowMs);
     drawHpBars(this.bars, this.state, this.layout, stopped, this.painted ? id => this.enemySprites.paintedBar(id) : undefined, this.siegeScreens);

@@ -153,20 +153,12 @@ describe('the drawn crowd at the gate', () => {
     expect(siegeStance(state, { ...enemy, distance: sill - 200 })).toBeUndefined();
   });
 
-  it('draws a stacked crowd at most about 97 px from the true contact point, as large as the keg radius', () => {
+  it('keeps all 35 slots distinct and within 40 px of the true contact point', () => {
     const state = createKeep(true);
     const sill = distanceOnRoad(state.map, 'west', state.gate!)!;
-    const offsets = Array.from({ length: 35 }, (_, id) =>
-      siegeStance(state, { id, type: 'goblin', road: 'west', distance: sill, hp: 10, slow: 0, slowTicksLeft: 0 })!)
-      .map(s => Math.hypot(s.x, s.y));
-    // 35 distinct slots: the whole fan is used, and its far corner lies beyond a keg's 90 px reach.
-    expect(Math.max(...offsets)).toBeGreaterThan(90);
-    expect(Math.min(...offsets)).toBeLessThan(15);
-    // The centroid of the drawn crowd is well inside that reach, so aiming at the mass still hits the stack.
     const all = Array.from({ length: 35 }, (_, id) =>
       siegeStance(state, { id, type: 'goblin', road: 'west', distance: sill, hp: 10, slow: 0, slowTicksLeft: 0 })!);
-    const cx = all.reduce((a, s) => a + s.x, 0) / 35;
-    const cy = all.reduce((a, s) => a + s.y, 0) / 35;
-    expect(Math.hypot(cx, cy)).toBeLessThan(45);
+    expect(new Set(all.map(({ x, y }) => `${x}:${y}`)).size).toBe(35);
+    expect(Math.max(...all.map(({ x, y }) => Math.hypot(x, y)))).toBeLessThanOrEqual(40);
   });
 });

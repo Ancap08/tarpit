@@ -1,6 +1,7 @@
 import type Phaser from 'phaser';
 import { resolveMap, type LevelDef } from '../../sim';
 import { drawMapThumbnail } from '../draw/map';
+import { drawKeepThumbnail } from '../draw/keepThumbnail';
 import { drawSiegeCarriage } from '../draw/siegeActors';
 import { CAMPAIGN_TEXT, cardFeatText, levelTaxLines, siegeRuleLines, LEVEL_NAMES, LEVEL_NEW, LEVEL_STORY, STORY_TEXT, levelTips, tipsHeading, MAP_NAMES, TITLE_TEXT, levelNumberText } from '../names';
 import type { Broadside } from '../seenTips';
@@ -146,23 +147,32 @@ export function drawStoryBroadside(
   const g = scene.add.graphics();
   broadside(g, width, height);
   const notice = which !== 'ending' && which !== 'siegeEnding';
-  const mastheadY = portrait ? 205 : 92;
+  const mastheadY = siegeScene ? (portrait ? 154 : 64) : (portrait ? 205 : 92);
   const heading = label(scene, cx, mastheadY, notice ? STORY_TEXT.openingTitle : STORY_TEXT.endingTitle,
     portrait ? 36 : 42, ink);
   rule(g, cx, mastheadY - heading.height / 2 - 12, portrait ? 324 : 560);
   rule(g, cx, mastheadY + heading.height / 2 + 12, portrait ? 324 : 560);
   const body = which === 'ending' ? STORY_TEXT.ending : which === 'siegeEnding' ? STORY_TEXT.siegeEnding
     : which === 'thirdAct' ? STORY_TEXT.thirdActNotice : which === 'secondAct' ? STORY_TEXT.secondActNotice : STORY_TEXT.openingNotice;
-  label(scene, cx, portrait ? 464 : 221, body, portrait ? 30 : 28, ink, portrait ? 376 : 736, false);
+  const copy = label(scene, cx, portrait ? 464 : 221, body, portrait ? 30 : 28, ink, portrait ? 376 : siegeScene ? 780 : 736, false);
+  if (siegeScene) copy.setY(mastheadY + heading.height / 2 + (portrait ? 54 : 28) + copy.height / 2);
   if (notice) {
     const replyText = which === 'thirdAct' ? STORY_TEXT.thirdActReply : which === 'secondAct' ? STORY_TEXT.secondActReply : STORY_TEXT.openingReply;
     const reply = label(scene, cx, portrait ? 701 : 336, replyText, portrait ? 23 : 24, TEXT.button, portrait ? 362 : 760);
     ribbon(g, cx, reply.y, reply.width + 28, reply.height + 10);
   }
-  if (siegeScene) drawSiegeCarriage(scene, portrait, frozen);
+  const continueY = siegeScene ? (portrait ? 1041 : 506) : (portrait ? 977 : 474);
+  if (siegeScene) {
+    const top = copy.getBounds().bottom + (portrait ? 36 : 12);
+    const bottom = continueY - (portrait ? 42 : 11);
+    const artWidth = portrait ? 430 : 810;
+    const artHeight = Math.min(portrait ? 306 : 236, bottom - top);
+    drawSiegeCarriage(scene, { x: cx - artWidth / 2, y: (top + bottom - artHeight) / 2, width: artWidth, height: artHeight },
+      portrait, frozen);
+  }
   else town(g, cx, portrait ? 893 : 431);
   const w = portrait ? 246 : 196;
-  return action('title:continue', { x: cx - w / 2, y: portrait ? 977 : 474, width: w, height: portrait ? 82 : 58 },
+  return action('title:continue', { x: cx - w / 2, y: continueY, width: w, height: portrait ? 82 : 58 },
     STORY_TEXT.continue, proceed, 26);
 }
 
@@ -256,7 +266,8 @@ function drawTaxCard(
     const x = paged ? cx : noteX;
     const notesTop = notesOnly ? top : portrait ? bodyTop + rulesHeight + 22 : bodyTop;
     let y = notesTop + (printBottom - notesTop - (mapWidth / 2 + 13 + mapName.height + twist.height)) / 2;
-    drawMapThumbnail(g, resolveMap(level.map, level.keepRoads), x - mapWidth / 2, y, mapWidth, mapWidth / 2);
+    if (siege) drawKeepThumbnail(scene, level, x, y, mapWidth);
+    else drawMapThumbnail(g, resolveMap(level.map), x - mapWidth / 2, y, mapWidth, mapWidth / 2);
     g.lineStyle(1, THEME.ink).strokeRect(x - mapWidth / 2, y, mapWidth, mapWidth / 2);
     y += mapWidth / 2 + 5;
     mapName.setY(y + mapName.height / 2);

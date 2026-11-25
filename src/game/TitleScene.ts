@@ -49,7 +49,8 @@ import Phaser from 'phaser';
 import { DEFAULT_DIFFICULTY, DEFAULT_MAP, DIFFICULTIES, LEVELS, MAP_IDS, MAPS, type Difficulty, type MapId, type LevelDef } from '../sim';
 import { loadEnemySheets } from './anim/enemySprites';
 import { drawMapThumbnail } from './draw/map';
-import { loadSiegeActors } from './draw/siegeActors';
+import { loadKeepThumbnails } from './draw/keepThumbnail';
+import { loadSiegeActors, loadSiegeEnding } from './draw/siegeActors';
 import { sound } from './audio/engine';
 import type { Rect } from './input';
 import { highScores } from './highScore';
@@ -66,7 +67,7 @@ import { menuKeys } from './ui/menuKeys';
 import { PORTRAIT_TITLE, titleRects, type TitleGeometry } from './ui/geometry';
 import { MuteButton } from './ui/muteButton';
 import { LOOKS, LookStore, paintedDensity, type Look } from './skin/look';
-import { loadPainted, type PaintedAssets } from './skin/loading';
+import { loadPainted, releasePaintedTextures, type PaintedAssets } from './skin/loading';
 import { duringKeepLoad } from './keep/status';
 import { actThreeEnabled, keepSelection } from './keep/switch';
 import { isTestMode } from './testMode';
@@ -210,7 +211,12 @@ export class TitleScene extends Phaser.Scene {
   /** Enemy sprite sheets load once at boot, so GameScene (and its restarts) start with them. */
   preload(): void {
     loadEnemySheets(this);
-    if (this.actThree) loadSiegeActors(this);
+    if (this.actThree) {
+      const level = this.enterKeep?.level ?? this.card;
+      loadSiegeActors(this, this.page === 'siegeEnding' || !!(level?.windows?.length || level?.wallSiteTax));
+      if (this.page === 'levelCard' && this.card?.map === 'keep') loadKeepThumbnails(this);
+      if (this.page === 'siegeEnding' && currentLayout().turned) loadSiegeEnding(this);
+    }
   }
 
   /** Milestone 32b: rebuild the menu for the window's new layout, keeping the picks (layoutSwitch.ts). */
@@ -616,6 +622,8 @@ export class TitleScene extends Phaser.Scene {
 
   private async startKeep(level?: LevelDef, campaignKeep = false): Promise<void> {
     const density = paintedDensity(this.game.canvas.getBoundingClientRect().width / this.scale.gameSize.width, window.devicePixelRatio);
+    const siege = this.actThree && level ? level : undefined;
+    if (siege) releasePaintedTextures(this.textures);
     const data = await duringKeepLoad(async (signal, update) => {
       let plates = 0, sprites = 0, script = 0;
       const progress = () => update((script + plates * 11 + sprites * 3) / 15);
@@ -638,8 +646,9 @@ export class TitleScene extends Phaser.Scene {
         loadPainted(this.textures, DEFAULT_MAP, density, fraction => {
           sprites = fraction;
           progress();
-        }, signal, { keep: true }).then(painted => {
+        }, signal, { keep: true, siege }).then(painted => {
           if (!painted) throw new Error('Keep pieces unavailable');
+          if (siege) signal.addEventListener('abort', () => releasePaintedTextures(this.textures), { once: true });
           sprites = 1;
           progress();
           return painted;

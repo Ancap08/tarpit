@@ -69,6 +69,13 @@ async function checkPrint(page: Page) {
   for (const label of print) expect(label.size, label.text + ' CSS size').toBeGreaterThanOrEqual(11);
 }
 
+async function expectThumbnail(page: Page, frame: number) {
+  expect(await page.evaluate(() => {
+    const image = window.__tarpit!.game.scene.getScene('title').children.getByName('keep-thumbnail') as Phaser.GameObjects.Image;
+    return image && [image.texture.key, Number(image.frame.name), image.displayWidth / image.displayHeight];
+  })).toEqual(['siege:thumbnails', frame, 2]);
+}
+
 async function inspectField(page: Page) {
   const { boxes, labels, sites, size, fit, next } = await page.evaluate(() => {
     const t = window.__tarpit!;
@@ -155,10 +162,12 @@ export function actThreeFit(viewports: { width: number; height: number }[], touc
             ]));
             await checkPrint(page);
             if ([21, 23, 25].includes(level.id)) await capture(`card-${level.id}`);
+            const frame = [0, 1, 2, 2, 3][level.id - 21];
             if (await api(page, t => !!t.uiRects()['title:cardPage'])) {
               await press(page, 'title:cardPage', touch);
               await onScreen(page, 'levelCard');
               expect(await words(page)).toContain('Old Keep');
+              await expectThumbnail(page, frame);
               await checkPrint(page);
               if (level.id === 23) {
                 if (fonts === 'tall fallback' && viewport.width === 390 && viewport.height === 664) {
@@ -168,7 +177,10 @@ export function actThreeFit(viewports: { width: number; height: number }[], touc
               }
               await press(page, 'title:cardPage', touch);
               await onScreen(page, 'levelCard');
-            } else expect(await words(page)).toContain('Old Keep');
+            } else {
+              expect(await words(page)).toContain('Old Keep');
+              await expectThumbnail(page, frame);
+            }
             await api(page, t => t.setTipsEnabled(true));
             await press(page, 'title:play', touch);
             await onScreen(page, 'levelTips');
@@ -252,6 +264,12 @@ export function actThreeFit(viewports: { width: number; height: number }[], touc
                 await press(page, 'playAgain', touch);
                 await onScreen(page, 'siegeEnding');
                 expect(await words(page)).toContain(STORY_TEXT.siegeEnding);
+                const picture = await page.evaluate(() => {
+                  const art = window.__tarpit!.game.scene.getScene('title').children.getByName('siege-carriage-frame') as Phaser.GameObjects.Rectangle;
+                  return art && { width: art.width, height: art.height };
+                });
+                expect(picture?.width).toBeGreaterThan(viewport.width === 390 ? 416 : 620);
+                expect(picture?.height).toBeGreaterThan(viewport.width === 390 ? 166 : 165);
                 await checkPrint(page);
                 await capture('ending');
                 await press(page, 'title:continue', touch);

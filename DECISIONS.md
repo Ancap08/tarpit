@@ -2032,3 +2032,31 @@ can change it; "Kyle" means Kyle decided.
   counted the keep's plates only), to be checked on a real phone; the
   level cards' map thumbnail is a placeholder; and nobody has heard the
   sound. Kyle's play of the levels comes first.
+- **Part c is merged and deployed behind `?act3=1`** (pull request 62, CI
+  green, no review findings).
+- **Pre-opening fixes that did not need Kyle (Sol):** a switch-off browser
+  check that CI runs; the gate crowd's fan-out capped at 40 px so a keg
+  aimed at the drawn crowd hits it (the crowd is tighter and reads less as
+  separate enemies: the price of an honest aim); painted map thumbnails
+  on the Act Three cards; a larger ending picture; and decoded images on a
+  phone down from about 70 MB to at most 55 MB on an Act Three level by
+  freeing art those levels never draw.
+- **A real rule fault was found and fixed on levels 21 to 25:** a player
+  could keep a lone enemy blocked for ever by replacing a Barricade, and a
+  Mortar-only build left a wave running for 21 minutes. A walker now
+  overruns the blocker it is fighting after 60 seconds of contact in all.
+  The coordinator had the wrong build in mind (Tar Pits only); Sol found
+  the right one. **The same stall exists on levels 1 to 20 and in Free
+  play, where it is left alone** because those must stay byte for byte;
+  it is a candidate for the Free play rebalance if that ever happens.
+- This fix pass was not verified by a second model. CI runs the level
+  targets and the full browser suite.
+- **The automated review on pull request 63 caught a real bug after CI was
+  green,** and the coordinator's chain stopped before merging because of
+  it. The memory change freed painted art on leaving an Act Three level; a
+  restart (Play again after a win or a loss, or from the pause menu) then
+  drew with freed art, and the Musketeer's build icon came up as a missing
+  texture. Sol reproduced it on the pushed commit, in all three looks, and
+  fixed it: the art is kept through a restart in place and freed on return
+  to the title. Thirty restart cases now run in the browser suite. The
+  memory saving is unchanged. No test restarted a siege level before this.

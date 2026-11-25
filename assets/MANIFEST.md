@@ -349,3 +349,15 @@ the checker looks for it.
 | `docs/review/m52c2b/960x580-ending.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
 | `docs/review/m52c2b/ram-and-the-king.mp4` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege recording |
 | `docs/review/m52c2b/window-on-the-gate-crowd.mp4` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege recording |
+| `public/assets/act3/keep-thumbnails.webp` | `scripts/art/keep_thumbnails.py` | Tarpit agents | MIT | Painted Old Keep card thumbnails |
+| `public/assets/act3/siege-ending-portrait.webp` | `scripts/art/siege_actors.py` | Tarpit agents | MIT | Portrait dawn road for the carriage ending |
+| `docs/review/m52d/390x844-card-21.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52d/390x844-card-22.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52d/390x844-card-23.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52d/390x844-card-24.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52d/390x844-card-25.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52d/390x844-ending.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52d/390x844-gate-crowd-dawn.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52d/390x844-gate-crowd-dusk.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52d/390x844-gate-crowd-night.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `docs/review/m52d/960x580-ending.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |

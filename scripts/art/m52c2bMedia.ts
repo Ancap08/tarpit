@@ -9,7 +9,8 @@ import type { EnemyType, TowerType } from '../../src/sim/types.ts';
 import { landscape, origin, phone, press, run } from './m47Browser.ts';
 import { waitForFirstScreen } from '../../e2e/title.ts';
 
-const output = 'docs/review/m52c2b';
+const m52d = process.argv.includes('--m52d');
+const output = m52d ? 'docs/review/m52d' : 'docs/review/m52c2b';
 const short = { ...phone, viewport: { width: 390, height: 664 } };
 const videoMs = 12_000;
 type Profile = typeof phone | typeof landscape | typeof short;
@@ -260,7 +261,9 @@ async function ending(page: Page): Promise<void> {
   await waitForFirstScreen(page, { showStory: true });
   const touch = page.viewportSize()!.width < 480;
   await press(page, 'title:campaign', touch);
+  await page.waitForFunction(() => window.__tarpit?.screen?.() === 'levelMap' && window.__tarpit.titleReady());
   await press(page, 'title:stop:25', touch);
+  await page.waitForFunction(() => window.__tarpit?.screen?.() === 'levelCard' && window.__tarpit.titleReady());
   await press(page, 'title:play', touch);
   await page.waitForFunction(() => window.__tarpit?.screen?.() === 'game');
   await page.evaluate(() => {
@@ -273,6 +276,30 @@ async function ending(page: Page): Promise<void> {
   await press(page, 'menu', touch);
   await page.waitForFunction(() => window.__tarpit?.screen?.() === 'siegeEnding' && window.__tarpit.titleReady());
   await still(page, 'ending');
+}
+
+async function cards(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const wins = Object.fromEntries(Array.from({ length: 24 }, (_, i) => [i + 1, 3]));
+    localStorage.setItem('tarpit.campaign', JSON.stringify({ v: 2, stars: wins }));
+    localStorage.setItem('tarpit.seenBroadsides', '["opening","secondAct"]');
+    localStorage.setItem('tarpit.seenSiegeBroadsides', '["thirdAct"]');
+  });
+  await page.goto(origin + '/?act3=1&test=1');
+  await waitForFirstScreen(page, { showStory: true });
+  await press(page, 'title:campaign', true);
+  for (let level = 21; level <= 25; level++) {
+    await page.waitForFunction(() => window.__tarpit?.screen?.() === 'levelMap' && window.__tarpit.titleReady());
+    await press(page, 'title:stop:' + level, true);
+    await page.waitForFunction(() => window.__tarpit?.screen?.() === 'levelCard' && window.__tarpit.titleReady());
+    if (await page.evaluate(() => !!window.__tarpit!.uiRects()['title:cardPage'])) {
+      await press(page, 'title:cardPage', true);
+    }
+    await page.waitForFunction(() => window.__tarpit?.titleReady() &&
+      !!window.__tarpit.game.scene.getScene('title').children.getByName('keep-thumbnail'));
+    await still(page, 'card-' + level);
+    await press(page, 'title:back', true);
+  }
 }
 
 async function film(browser: Browser, level: number, name: string, stage: (page: Page) => Promise<void>): Promise<void> {
@@ -300,6 +327,17 @@ async function film(browser: Browser, level: number, name: string, stage: (page:
 
 await mkdir(output, { recursive: true });
 await run(async browser => {
+  if (m52d) {
+    await withPage(browser, phone, async page => {
+      await skyCrowd(page, 22, 'dusk');
+      await skyCrowd(page, 23, 'night');
+      await skyCrowd(page, 25, 'dawn');
+    });
+    await withPage(browser, phone, cards);
+    await withPage(browser, phone, ending);
+    await withPage(browser, landscape, ending);
+    return;
+  }
   if (!process.argv.includes('--films-only')) {
     await withPage(browser, phone, async page => {
       await open(page, 22);

@@ -49,7 +49,7 @@ import type { Layout } from '../layout';
 import { COLORS } from '../palette';
 import type { GameClock } from '../loop';
 import { FACINGS, SHEETS, walkAnimKey, WALK_FPS, type Facing } from './sheets';
-import { siegeStance, type SiegeStance } from '../draw/siegeFormation';
+import { capSiegeOffset, siegeStance, type SiegeStance } from '../draw/siegeFormation';
 import { RAM_ORIGIN_Y, RAM_SIZE, SIEGE_MACHINE_KEY, ramPose } from '../draw/siegeMachines';
 import { ramAtGate } from '../keep/siegeTiming';
 
@@ -252,9 +252,8 @@ export class EnemySprites {
       const height = v.sprite.displayHeight * .74;
       return { x: v.sprite.x, y: v.sprite.y - height, height, width: v.sprite.displayWidth * .83, depth: v.sprite.depth };
     }
-    const { sheets } = this.painted.assets;
     const scale = v.sprite.scaleX;
-    const sheet = sheets[enemyArt(v.type)];
+    const sheet = this.painted.sheet(enemyArt(v.type));
     const bounds = sheet.bodyBounds?.[Number(v.sprite.frame.name) % sheet.frames];
     if (bounds) return { x: v.sprite.x + ((bounds[0] + bounds[2]) / 2 - sheet.anchor[0]) * scale,
       y: v.sprite.y + (bounds[1] - sheet.anchor[1]) * scale,
@@ -282,7 +281,7 @@ export class EnemySprites {
     v.sprite.setAlpha(1);
     v.sprite.anims.stop();
     const dead = v.type === 'ram' ? undefined : SHEETS[v.type].deadFrame;
-    if (this.painted && v.type !== 'ram') v.sprite.setFrame(Number(v.sprite.frame.name) % this.painted.assets.sheets[enemyArt(v.type)].frames);
+    if (this.painted && v.type !== 'ram') v.sprite.setFrame(Number(v.sprite.frame.name) % this.painted.sheet(enemyArt(v.type)).frames);
     if (!this.painted && dead !== undefined) v.sprite.setFrame(dead);
     v.sprite.clearTint().setBlendMode(Phaser.BlendModes.NORMAL);
     this.stopTrail(v);
@@ -366,6 +365,22 @@ export class EnemySprites {
     }
   }
 
+  /** Mark each visible actor with the landing result at its simulation point. */
+  drawSpecialTargets(g: Phaser.GameObjects.Graphics, enemies: readonly Enemy[], targets: ReadonlySet<number>): void {
+    for (const enemy of enemies) {
+      const view = this.views.get(enemy.id);
+      if (!view || view.dying || view.doomed) continue;
+      const { x, y } = view.sprite;
+      if (targets.has(enemy.id)) {
+        g.fillStyle(0x20232a, .96).fillCircle(x, y, 5);
+        g.fillStyle(0xffedb1).fillCircle(x, y, 3);
+      } else {
+        g.lineStyle(2, 0x20232a, .85).strokeCircle(x, y, 4);
+        g.lineStyle(1, 0xe7dfc6, .75).strokeCircle(x, y, 4);
+      }
+    }
+  }
+
   /** A doomed sprite walks on along the trail at its last speed until its shot lands (play only). */
   private walkOn(v: View, map: MapDef, timeScale: number): void {
     if (v.stepPx === 0) return; // A walker killed against the wall stays there until the shot lands.
@@ -405,7 +420,7 @@ export class EnemySprites {
     const stats = ENEMY_STATS[enemy.type];
     const art = enemyArt(enemy.type);
     const sprite = !sheet ? this.ramSprite() : this.painted
-      ? this.painted.pose(this.scene.add.sprite(0, 0, this.painted.assets.sheets[art].key, 0), art, 0)
+      ? this.painted.pose(this.scene.add.sprite(0, 0, this.painted.sheet(art).key, 0), art, 0)
       : this.scene.add.sprite(0, 0, sheet.key, sheet.walk.right.frames[0]).setScale(sheet.scale);
     const shadow = this.painted && stats.flying ? this.painted.image('harpy-shadow') : undefined;
     if (shadow) this.painted!.shadows.add(shadow);
@@ -481,7 +496,7 @@ export class EnemySprites {
     }
     if (this.painted) {
       const now = this.clock.nowMs;
-      const hitOffset = this.isHit(v) ? this.painted.assets.sheets[enemyArt(v.type)].frames : 0;
+      const hitOffset = this.isHit(v) ? this.painted.sheet(enemyArt(v.type)).frames : 0;
       if (!force && !this.frozen && !v.flying && facing !== v.facing) {
         const previous = v.turn?.previous ?? this.painted.image(enemyArt(v.type));
         this.layer.add(previous);
@@ -550,11 +565,14 @@ export class EnemySprites {
     const lift = this.siege && v.type === 'ram' ? 0 : this.lift(v.type);
     const bob = v.flying && !this.frozen ? bobOffset(this.clock.nowMs, enemy.id) : 0;
     if (v.knockAt >= 0 && this.clock.nowMs - v.knockAt >= KNOCK_MS) v.knockAt = -1;
-    if (v.knockAt >= 0) {
-      const k = knockShare(this.clock.nowMs - v.knockAt);
-      v.sprite.setPosition(x + v.knockX * k, y - lift + bob + v.knockY * k);
+    const recoil = v.knockAt >= 0 ? knockShare(this.clock.nowMs - v.knockAt) : 0;
+    const drawX = recoil ? x + v.knockX * recoil : x;
+    const drawY = recoil ? y - lift + bob + v.knockY * recoil : y - lift + bob;
+    if (stance) {
+      const offset = capSiegeOffset(drawX - foot.x, drawY - foot.y);
+      v.sprite.setPosition(foot.x + offset.x, foot.y + offset.y);
     } else {
-      v.sprite.setPosition(x, y - lift + bob);
+      v.sprite.setPosition(drawX, drawY);
     }
     // A Classic boss normally stands above the walkers. At a guard, put all
     // parts of its sprite in the formation so the nearer combatant draws last.
