@@ -178,17 +178,20 @@ describe('siege actions', () => {
       walker(9, 'west', 100, 'ram'),
     ]);
     state.windows = [{ position: { x: 10, y: 10 }, road: 'west', from: 90, to: 110, used: false }];
-    for (const enemy of state.enemies) if (enemy.id !== 6) enemy.slowTicksLeft = 20;
-    state.enemies[6].feathered = true;
+    for (const enemy of state.enemies) if (enemy.id !== 7) enemy.slowTicksLeft = 20;
+    state.enemies.find(e => e.id === 6)!.feathered = true;
     state.phase = 'setup';
     expect(shakeWindow(state, 0)).toEqual({ ok: false, reason: 'not-in-wave' });
     expect(state.windows[0].used).toBe(false);
     state.phase = 'wave';
-    expect(shakeWindow(state, 0)).toEqual({ ok: true, hits: 3 });
-    expect(state.enemies.filter(e => e.runTicksLeft).map(e => [e.id, e.runTicksLeft])).toEqual([[1, 63], [2, 63], [9, 63]]);
+    expect(shakeWindow(state, 0)).toEqual({ ok: true, hits: 4 });
+    expect(state.enemies.filter(e => e.runTicksLeft).map(e => [e.id, e.runTicksLeft])).toEqual([[1, 63], [2, 63], [7, 63], [9, 63]]);
+    expect(state.enemies.filter(e => e.specialSlowTicksLeft).map(e => e.id)).toEqual([1, 2, 7, 9]);
+    state.windows.push({ ...state.windows[0], used: false });
+    expect(shakeWindow(state, 1)).toEqual({ ok: true, hits: 0 });
     expect(state.windows[0].used).toBe(true);
     expect(shakeWindow(state, 0)).toEqual({ ok: false, reason: 'spent-window' });
-    expect([state.gold, state.specialCharges]).toEqual([100, 1]);
+    expect([state.gold, state.specialCharges, state.zones.length]).toEqual([100, 1, 0]);
   });
 
   it('spends an empty window independently and lights both windows on replay', () => {
@@ -248,14 +251,20 @@ describe('siege actions', () => {
 
   it('Royal Survey stays closed across payment attempts and wave transitions', () => {
     const state = createKeep(true);
-    const site = { col: 13, row: 7 };
+    const sites = [{ col: 13, row: 7 }, { col: 15, row: 13 }] as const;
+    const open = { col: 22, row: 7 };
+    state.wallSiteTax = { kind: 'royalSurvey', sites };
     expect(payQuartering(state)).toEqual({ ok: false, reason: 'no-quartering' });
-    expect(buildTower(state, site, 'musketeer').ok).toBe(false);
-    startWave(state);
-    expect(buildTower(state, site, 'musketeer').ok).toBe(false);
-    state.phase = 'setup';
-    expect(buildTower(state, site, 'musketeer').ok).toBe(false);
     expect([state.gold, state.wallSiteTax?.kind]).toEqual([240, 'royalSurvey']);
+    expect(buildTower(state, open, 'musketeer').ok).toBe(true);
+    for (const site of sites) {
+      expect(buildTower(state, site, 'musketeer')).toEqual({ ok: false, reason: 'not-buildable' });
+      expect(moveTower(state, open, site)).toEqual({ ok: false, reason: 'not-buildable' });
+    }
+    startWave(state);
+    for (const site of sites) expect(buildTower(state, site, 'musketeer').ok).toBe(false);
+    state.phase = 'setup';
+    for (const site of sites) expect(buildTower(state, site, 'musketeer').ok).toBe(false);
   });
 
   it('Not a nail counts exactly one successful purchase, even a one-gold repair', () => {
@@ -303,7 +312,7 @@ describe('siege bot choices', () => {
     expect(botBeginner.purchase(state)).toMatchObject({ type: 'build', cell: eastSite });
     buildTower(state, eastSite, 'musketeer');
     expect(botBeginner.purchase(state)).toMatchObject({ type: 'build', cell: westSite });
-    state.wallSiteTax = { kind: 'royalSurvey', site: westSite };
+    state.wallSiteTax = { kind: 'royalSurvey', sites: [westSite] };
     expect(botBeginner.purchase(state)?.type).toBe('upgrade');
   });
 
@@ -329,12 +338,10 @@ describe('siege bot choices', () => {
   it('Good uses a window for a Ram alone, Person waits for enough and a reaction tick, Beginner leaves it lit', () => {
     const ram = walker(0, 'west', 90, 'ram');
     const state = battle([ram]);
-    ram.slowTicksLeft = 10;
     state.windows = [{ position: { x: 0, y: 0 }, road: 'west', from: 64, to: 100, used: false }];
     expect(botGood.window!(state)).toBe(0);
     expect(botPerson.window!(state)).toBeUndefined();
     const crowd = [walker(1, 'west', 80), walker(2, 'west', 84)];
-    for (const enemy of crowd) enemy.slowTicksLeft = 10;
     state.enemies.push(...crowd);
     state.waveTick = 89;
     expect(botGood.window!(state)).toBeUndefined();

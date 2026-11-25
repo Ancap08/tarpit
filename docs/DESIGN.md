@@ -893,14 +893,18 @@ The plain Next preview groups the entries under their road names.
 | Wall-site marker touch area | 136 × 80 canvas px |
 
 A lit window can be shaken during combat once in the entire level, even
-if the stretch is empty. It affects live, tarred, unfeathered non-bosses
+if the stretch is empty. It tars and feathers live, unfeathered non-bosses
 on the indicated stretch, including enemies from another road after the
-join if the stretch extends there. It uses the barrel's 63 moving ticks
-and the usual 16-tick flinch for enemies a runner passes. Windows have
+join if the stretch extends there. It applies the barrel's direct tar
+slow and 63 moving ticks of retreat, with the usual 16-tick flinch for
+enemies a runner passes. It leaves no tar zone. Windows have
 separate uses and spend no special charge or gold. A used window goes dark.
 
-A level may have one wall-site tax. Quartering and Royal Survey refuse
-builds and tower moves onto that site. Quartering can be paid off during
+A level may have one wall-site tax. Quartering closes one site and Royal
+Survey closes one or more sites listed in level data. Both refuse
+builds and tower moves onto the affected sites. The Survey card uses
+“one wall spot is closed” for one site and the numeric count for more.
+Quartering can be paid off during
 setup, including before wave one, for exactly the listed price, once.
 Survey stays in force for the level. A new play starts with its level's
 site rules and lit windows. The Ram takes tar, burn and feathers normally.
@@ -2144,7 +2148,8 @@ keep their previous meaning and the best result wins.
   keeps the three-site rotation. Beginner walks in map road order and
   skips closed sites.
 - Good checks windows every 30 wave ticks, shaking the one with the highest
-  score of at least 3. Each eligible enemy scores 1, with a Ram worth 3.
+  score of at least 3. Dry and tarred enemies use the same eligibility
+  rule. Each eligible enemy scores 1, with a Ram worth 3.
   Person looks 90 ticks into each 180-tick interval and needs a score of 4,
   with a Ram worth 2. Ties use window order. Shaking a window and spending
   the ordinary special charge are independent decisions.
@@ -2405,15 +2410,16 @@ warms and lightens the sky.
 | Level | Name | Roads | Sky | Gold | HP scale | Gate HP | Yard px | Repair HP | Gold per full repair | Third star | Wall-site rule |
 |---:|---|---|---|---:|---:|---:|---:|---:|---:|---|---|
 | 21 | Rent Overdue | east | dusk | 290 | 1 | 8160 | 275 | 2600 | 90 | Unbroken | — |
-| 22 | Feather Beds | west | dusk | 235 | 1.12 | 4800 | 160 | 1150 | 66 | Not a nail | — |
-| 23 | Both Roads | both | night storm | 275 | 1.08 | 15700 | 330 | 3200 | 86 | Unbroken | Royal Survey at (22, 7) |
-| 24 | Quartering | both | night storm | 285 | 1 | 15800 | 305 | 3000 | 92 | Not a nail | Quartering, 80 gold at (22, 10) |
-| 25 | The Final Notice | both | dawn | 295 | 1.2 | 14900 | 295 | 4300 | 105 | Unbroken | — |
+| 22 | Feather Beds | west | dusk | 232 | 1.12 | 4700 | 160 | 1150 | 66 | Not a nail | — |
+| 23 | Both Roads | both | night storm | 275 | 1.08 | 16900 | 330 | 3700 | 72 | Unbroken | Royal Survey at (22, 7) and (23, 13) |
+| 24 | Quartering | both | night storm | 285 | 1 | 16200 | 290 | 4200 | 80 | Not a nail | Quartering, 80 gold at (22, 10) |
+| 25 | The Final Notice | both | dawn | 295 | 1.25 | 16100 | 295 | 4300 | 105 | Unbroken | — |
 
 Level 21 has no pillow windows. Level 22 has west windows at
-(540, 325) covering 280–510 trail px and (564, 170) covering 425–720
-trail px. Levels 23–25 have west windows at the same screen positions
-covering 170–420 and 320–510 trail px. The Ram keeps 360 base HP, 30 px/s,
+(540, 325) covering 572–620 trail px and (564, 170) covering 690–751
+trail px. Levels 23 and 25 have west windows at the same screen positions
+covering 170–420 and 320–510 trail px. Level 24 covers 443–472 and
+510–605 trail px. The Ram keeps 360 base HP, 30 px/s,
 12 bounty, one life on exit and 4 damage/s against other blockers. It
 deals 375 damage/s to the level 25 gate.
 
@@ -2432,26 +2438,26 @@ groups of the same enemy type on the same road.
 | 21 | 5 | E Troll, 10, 3.5, 0 · E Collector, 20, 2.4, 7 · E Harpy flights ×6, first 8, every 7 |
 | 21 | 6 | E Redcoat, 52, 0.85, 0 · E Harpy flights ×10, first 5, every 5.1 |
 | 22 | 1 | W Collector, 28, 1.3, 0 |
-| 22 | 2 | W Redcoat, 34, 1.26, 0 · W Harpy flights ×10, first 5, every 4.2 |
+| 22 | 2 | W Redcoat, 34, 1.26, 0 · W Harpy flights ×9, first 7, every 4.45 |
 | 22 | 3 | W Troll, 9, 5.8, 0 · W Hound, 16, 2.8, 8 · W Harpy flights ×8, first 11, every 4.8 |
 | 22 | 4 | W Troll, 6, 4.6, 4 · W Hound, 31, 1.51, 4 · W Harpy, 34, 0.8, 2 |
 | 22 | 5 | W Redcoat, 38, 1.23, 0 · W Troll, 10, 4.8, 3 · W Harpy flights ×5, first 8, every 8.8 |
-| 22 | 6 | W Troll, 4, 0.3, 4 · W Troll, 12, 1.9, 8 · W Redcoat, 22, 1.8, 12 · W Harpy flights ×9, first 7, every 5.35 |
+| 22 | 6 | W Troll, 6, 0.3, 4 · W Troll, 13, 1.75, 8 · W Redcoat, 22, 1.8, 12 · W Harpy flights ×9, first 7, every 5.35 |
 | 23 | 1 | E Collector, 28, 1.6, 0 · W Collector, 24, 1.9, 2 |
-| 23 | 2 | E Troll, 5, 7, 0 · W Redcoat, 26, 1.6, 0 · W Harpy flights ×5, first 9, every 7 |
+| 23 | 2 | E Troll, 5, 7, 0 · W Redcoat, 26, 1.6, 0 · W Harpy flights ×8, first 7, every 5.1 |
 | 23 | 3 | E Redcoat, 30, 1.65, 0 · W Troll, 8, 6.1, 0 · E Harpy flights ×9, first 6, every 4.5 |
 | 23 | 4 | E Hound, 30, 1.6, 0 · W Hound, 24, 2.05, 0 · W Harpy flights ×11, first 1, every 4.4 |
 | 23 | 5 | E Troll, 13, 2.7, 0 · W Troll, 13, 2.7, 4 · E Harpy flights ×6, first 9, every 7.2 |
 | 23 | 6 | E Redcoat, 36, 1.46, 0 · W Redcoat, 29, 1.84, 0 · W Harpy flights ×8, first 6, every 6.1 |
 | 24 | 1 | E Collector, 31, 1.5, 0 · W Collector, 24, 1.9, 2 |
-| 24 | 2 | W Troll, 6, 7, 0 · E Redcoat, 33, 1.5, 0 · W Harpy flights ×5, first 8, every 8.5 |
+| 24 | 2 | W Troll, 6, 7, 0 · E Redcoat, 33, 1.5, 0 · W Harpy flights ×4, first 14, every 8.3 |
 | 24 | 3 | W Redcoat, 35, 1.45, 0 · E Troll, 9, 5.9, 0 · E Harpy flights ×8, first 10, every 5.1 |
 | 24 | 4 | W Hound, 30, 1.6, 0 · E Hound, 24, 2.05, 0 · W Harpy flights ×8, first 3, every 6.1 |
-| 24 | 5 | E Troll, 11, 4, 0 · W Troll, 13, 4, 11 · E Harpy flights ×7, first 6, every 6.8 |
-| 24 | 6 | W Redcoat, 41, 1.35, 0 · E Redcoat, 32, 1.8, 0 · E Harpy flights ×9, first 4, every 5.8 |
+| 24 | 5 | E Troll, 11, 4, 0 · W Troll, 15, 3.9, 9 · E Harpy flights ×7, first 6, every 6.8 |
+| 24 | 6 | W Redcoat, 41, 1.35, 0 · E Redcoat, 32, 1.8, 0 · W Troll, 5, 3.8, 3 · E Harpy flights ×9, first 4, every 5.8 |
 | 25 | 1 | E Collector, 31, 1.5, 0 · W Collector, 26, 1.8, 2 |
-| 25 | 2 | E Troll, 7, 6.4, 0 · W Redcoat, 34, 1.51, 0 · W Harpy flights ×5, first 8, every 8 |
-| 25 | 3 | E Redcoat, 32, 1.58, 0 · W Troll, 9, 5.8, 0 · E Harpy flights ×5, first 8, every 8.5 |
+| 25 | 2 | E Troll, 7, 6.4, 0 · W Redcoat, 34, 1.51, 0 · W Harpy flights ×5, first 7, every 8 |
+| 25 | 3 | E Redcoat, 32, 1.58, 0 · W Troll, 9, 5.8, 0 · E Harpy flights ×7, first 6, every 7.3 |
 | 25 | 4 | E Hound, 30, 1.6, 0 · W Hound, 25, 2.05, 0 · W Harpy flights ×8, first 4, every 6.1 |
 | 25 | 5 | E Troll, 10, 4.8, 0 · W Troll, 10, 4.8, 3 · E Harpy flights ×6, first 10, every 8 |
 | 25 | 6 | W Ram, 1, 0, 12 · E Redcoat, 28, 1.8, 0 · W Redcoat, 22, 2.35, 0 · E Harpy flights ×13, first 6, every 4.55 · E King, 1, 0, 24 |

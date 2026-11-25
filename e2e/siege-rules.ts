@@ -10,7 +10,8 @@ const captureDir = process.env.PW_SIEGE_REVIEW_DIR;
 const keep = createKeep();
 const gate = keep.gate!;
 const westGate = distanceOnRoad(keep.map, 'west', gate)!;
-const taxSite = keep.wallSiteTax!.site;
+const tax = keep.wallSiteTax!;
+const taxSite = tax.kind === 'quartering' ? tax.site : tax.sites[0];
 
 function enemy(id: number, road: string, distance: number, hp = 23): Enemy {
   return { id, road, distance, hp, type: 'goblin', slow: 0, slowTicksLeft: 0 };
@@ -103,7 +104,7 @@ export function siegeRuleCases(heights: readonly (number | undefined)[], touch: 
       expect(await page.evaluate(() => [window.__tarpit!.state!().gold, window.__tarpit!.uiRects().wallSite])).toEqual([205, undefined]);
       expect(await page.evaluate(({ col, row }) => window.__tarpit!.buildAt!(col, row, 'musketeer').ok, taxSite)).toBe(true);
 
-      const west = [230, 248, 266, 284, 302].map((d, id) => ({ ...enemy(id, 'west', d), slow: 0.5, slowTicksLeft: 120 }));
+      const west = [230, 248, 266, 284, 302].map((d, id) => enemy(id, 'west', d));
       await seedWave(page, [...west, enemy(5, 'east', 364)]);
       await checkField(page, 'Next: West 16 Collector, 1 Ram · East 4 Toll Troll, 6 Harpy');
       if (metrics === 'normal') await capture(page, 'window-lit');

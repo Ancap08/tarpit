@@ -16,7 +16,8 @@ describe('private Act Three words and route', () => {
     expect(LEVEL_NAMES[level.id].name).toBe(cells(levels, level.id)[0]);
     expect(words).toContain(`\`${cardFeatText(level.feat)}\``);
     for (const line of siegeRuleLines(level)) {
-      const template = level.wallSiteTax?.kind === 'quartering' ? line.replace(` ${level.wallSiteTax.price} gold`, ' NN gold') : line;
+      const template = line.replace(/^Royal Survey: (?:one wall spot is|\d+ wall spots are) closed\.$/, 'Royal Survey: N wall spots are closed.')
+        .replace(/^(Quartering: .+ until paid) \d+ gold\.$/, '$1 NN gold.');
       expect(words).toContain(`\`${template}\``);
     }
     for (const touch of [false, true]) {
@@ -26,6 +27,15 @@ describe('private Act Three words and route', () => {
       expect(Math.max(...tips.map(tip => tip.length))).toBeLessThanOrEqual(61);
     }
     expect(keepSelection(`?keep=${level.id}`)?.level).toBe(level);
+  });
+
+  it('uses the site count on the Survey card and has the exact window tips', () => {
+    const site = { col: 22, row: 7 };
+    const second = { col: 22, row: 10 };
+    expect(siegeRuleLines({ wallSiteTax: { kind: 'royalSurvey', sites: [site] } })).toEqual(['Royal Survey: one wall spot is closed.']);
+    expect(siegeRuleLines({ wallSiteTax: { kind: 'royalSurvey', sites: [site, second] } })).toEqual(['Royal Survey: 2 wall spots are closed.']);
+    expect(levelTips(22, true)[0]).toBe('Tap a lit window: tar and feathers on the crowd below.');
+    expect(levelTips(22, false)[0]).toBe('Click a lit window: tar and feathers on the crowd below.');
   });
 
   it('only accepts exact private level ids and the existing exhibition switch', () => {

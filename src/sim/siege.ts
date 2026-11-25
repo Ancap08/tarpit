@@ -1,14 +1,15 @@
-import { isDead } from './combat';
-import { isBoss, isTarred } from './enemies';
+import { applySpecialSlow, isDead } from './combat';
+import { isBoss } from './enemies';
 import { FEATHERS, featherEnemy } from './feathers';
 import { distanceOnRoad } from './roads';
+import { SPECIAL_DEFS, tarLingerTicks } from './specials';
 import type { Enemy, GameState } from './types';
 
 export function windowTargets(state: GameState, index: number): Enemy[] {
   const window = state.windows?.[index];
   if (state.phase !== 'wave' || !window || window.used) return [];
   return state.enemies.filter(enemy => {
-    if (isDead(enemy) || enemy.feathered || isBoss(enemy) || !isTarred(enemy)) return false;
+    if (isDead(enemy) || enemy.feathered || isBoss(enemy)) return false;
     const distance = distanceOnRoad(state.map, window.road, enemy);
     return distance !== undefined && distance >= window.from - 1e-10 && distance <= window.to + 1e-10;
   });
@@ -21,7 +22,12 @@ export function shakeWindow(state: GameState, index: number):
   if (!window) return { ok: false, reason: 'no-window' };
   if (window.used) return { ok: false, reason: 'spent-window' };
   const targets = windowTargets(state, index);
-  for (const enemy of targets) featherEnemy(state, enemy, FEATHERS.barrelRunTicks);
+  const slowTicks = tarLingerTicks(state.boons);
+  for (const enemy of targets) {
+    const slow = applySpecialSlow(enemy, SPECIAL_DEFS.tarBarrel.slow, slowTicks);
+    if (slow !== null) state.events.push({ kind: 'slowed', enemyId: enemy.id, slow, ticks: slowTicks });
+    featherEnemy(state, enemy, FEATHERS.barrelRunTicks);
+  }
   window.used = true;
   return { ok: true, hits: targets.length };
 }

@@ -165,5 +165,7 @@ export function isBuildable(state: GameState, cell: Cell): boolean {
 
 /** Quartered and surveyed sites share the same placement refusal. */
 export function isWallSiteClosed(state: GameState, cell: Cell): boolean {
-  return state.wallSiteTax !== undefined && sameCell(state.wallSiteTax.site, cell);
+  const tax = state.wallSiteTax;
+  if (!tax) return false;
+  return tax.kind === 'quartering' ? sameCell(tax.site, cell) : tax.sites.some(site => sameCell(site, cell));
 }

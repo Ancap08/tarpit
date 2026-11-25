@@ -668,8 +668,8 @@ function campaignTips(touch: boolean): Readonly<Record<number, readonly string[]
     19: ['Check the shorter ring before you buy.', 'An upgrade costs the usual price.'],
     20: ['Keep bows near the trail to cover Royal Harpies.', 'Save part of each payment for the King.'],
     21: ['Use high ground to reach farther. The wall is ours.', 'Mend the gate between waves. Keep bows for Royal Harpies.', 'Gate down? Towers fire double for a moment. Hold the yard.'],
-    22: [`${action} a lit window to feather tarred tax collectors.`, 'One pillow per window. Make the King count them.'],
-    23: ['We paid for both roads. Put towers on both.', 'The Survey closes one spot. Use the rest of the wall.'],
+    22: [`${action} a lit window: tar and feathers on the crowd below.`, 'One pillow per window. Make the King count them.'],
+    23: ['We paid for both roads. Put towers on both.', 'The Survey closes wall spots. Use the open spots.'],
     24: ['Pay off the Redcoat in setup to build on his spot.', 'He eats for free. Pay him off only if you need the spot.'],
     25: ['Tar and feather the Ram. Return the notice to sender.', 'Keep towers in reach of the gate for the King.'],
   };
@@ -700,7 +700,10 @@ export const SIEGE_TEXT = {
 export function siegeRuleLines(level: Pick<LevelDef, 'wallSiteTax' | 'windows'>): string[] {
   const lines: string[] = [];
   const tax = level.wallSiteTax;
-  if (tax?.kind === 'royalSurvey') lines.push('Royal Survey: one wall spot is closed.');
+  if (tax?.kind === 'royalSurvey') {
+    const count = tax.sites.length;
+    lines.push(`Royal Survey: ${count === 1 ? 'one wall spot is' : `${count} wall spots are`} closed.`);
+  }
   if (tax?.kind === 'quartering') lines.push(`Quartering: a Redcoat holds a wall spot until paid ${tax.price} gold.`);
   if (level.windows?.length) lines.push("Town's answer: tap a lit window for feathers.");
   return lines;

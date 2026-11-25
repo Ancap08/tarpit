@@ -10,7 +10,7 @@ const windows: readonly PillowWindowDef[] = [
 ];
 const site = { col: 13, row: 7 };
 const quartering: WallSiteTax = { kind: 'quartering', site, price: 35 };
-const survey: WallSiteTax = { kind: 'royalSurvey', site };
+const survey: WallSiteTax = { kind: 'royalSurvey', sites: [site] };
 const waves: readonly WaveDef[] = [
   { groups: [
     { type: 'goblin', count: 6, interval: 0.85, delay: 0, road: 'east' },

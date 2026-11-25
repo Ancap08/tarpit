@@ -4,6 +4,7 @@ import { ENEMY_STATS } from '../src/sim/enemies';
 import { KEEP_LEVELS } from '../src/sim/keepLevels';
 import { distanceOnRoad } from '../src/sim/roads';
 import { LEVEL_STORY } from '../src/game/names';
+import { checkLabel } from './hudButtonLabels';
 import { waitForGame } from './painted';
 import { rectPage } from './phone';
 import { waitForTitle } from './title';
@@ -29,6 +30,17 @@ for (const level of KEEP_LEVELS) {
       gateHp: level.gate.maxHp, windows: level.windows?.length ?? 0,
     });
     expect(initial.tax).toEqual(level.wallSiteTax);
+    if (initial.tax?.kind === 'royalSurvey') {
+      for (const [index, site] of initial.tax.sites.entries()) {
+        const key = index === 0 ? 'wallSite' : `wallSite:${index}`;
+        await checkLabel(page, key, 'Surveyed');
+        const pos = await rectPage(page, key);
+        await page.touchscreen.tap(pos.x, pos.y);
+        expect(await page.evaluate(({ col, row }) => [
+          window.__tarpit!.buildAt!(col, row, 'musketeer').ok, window.__tarpit!.state!().gold,
+        ], site)).toEqual([false, initial.gold]);
+      }
+    }
     await page.evaluate(() => {
       window.__tarpit!.runBot!('botGood', 1);
     });

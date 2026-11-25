@@ -328,16 +328,18 @@ function shouldRepair(state: GameState, fraction: number, reserve: number): bool
 }
 
 function shouldPayQuartering(state: GameState, reserve: number): boolean {
+  const tax = state.wallSiteTax;
   const quote = quarteringStatus(state);
-  if (!quote.ok || state.pendingBoon) return false;
+  if (tax?.kind !== 'quartering' || !quote.ok || state.pendingBoon) return false;
   const action = goodPurchase({ ...state, gold: state.gold - quote.cost - reserve, wallSiteTax: undefined });
-  return action?.type === 'build' && sameCell(action.cell, state.wallSiteTax!.site);
+  return action?.type === 'build' && sameCell(action.cell, tax.site);
 }
 
 function chooseWindow(state: GameState, minimum: number, ramWeight: number): number | undefined {
   let best: number | undefined;
   let score = minimum - 1;
   for (const [index] of state.windows?.entries() ?? []) {
+    // Windows bring their own tar, so dry enemies count toward the crowd.
     const value = windowTargets(state, index).reduce((n, enemy) => n + (enemy.type === 'ram' ? ramWeight : 1), 0);
     if (value > score) {
       score = value;

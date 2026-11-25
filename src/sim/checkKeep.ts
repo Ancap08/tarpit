@@ -6,7 +6,7 @@ import { checkLevel } from './checkLevel';
 import { canTarget, enemyPosition } from './combat';
 import { createGame, startWave, tick } from './game';
 import { repairGate } from './gate';
-import { cellCenter, isBuildableTerrain } from './grid';
+import { cellCenter, cellKey, isBuildableTerrain } from './grid';
 import { KEEP_LEVELS } from './keepLevels';
 import { TWO_STAR_LIVES, type LevelDef } from './levelTypes';
 import { LEVELS } from './levels';
@@ -179,7 +179,9 @@ export function checkKeep(previousPersonMean: number) {
     const review = checkLevel(level, { band: level.endingBoss ? 'finale' : 'late', introduces: null });
     const singles = review.singleTowerTrials?.filter(({ good }) => good.stars >= 2)
       .map(({ tower, good }) => `${tower} ${good.stars}/${good.lives}`);
-    const info = [review.failed.join(', '), review.scheduleIssue && JSON.stringify(review.scheduleIssue), singles?.join(', ')].filter(Boolean).join(' / ');
+    const finale = level.endingBoss && review.good && `Good ends on ${review.good.lives} lives`;
+    const info = [review.failed.join(', '), review.scheduleIssue && JSON.stringify(review.scheduleIssue), singles?.join(', '), finale]
+      .filter(Boolean).join(' / ');
     return { id: level.id, ok: review.ok, text: info || 'existing level rules pass' };
   }));
   const beds = rows[1];
@@ -200,8 +202,10 @@ export function checkKeep(previousPersonMean: number) {
     noNails.map(({ level, featGood, featPerson }) => `${level.id} Good ${result(featGood)}; Person ${result(featPerson)}`).join(' | ') + `; repair forfeits: ${forfeits}`);
   each('W14', rows.map(({ level }, index) => {
     const state = createGame({ level });
-    const site = state.wallSiteTax?.site;
-    const validSite = !site || isBuildableTerrain(site, state.map);
+    const tax = state.wallSiteTax;
+    const sites = tax?.kind === 'royalSurvey' ? tax.sites : tax ? [tax.site] : [];
+    const validSite = (!tax || sites.length > 0) && new Set(sites.map(cellKey)).size === sites.length &&
+      sites.every(site => isBuildableTerrain(site, state.map));
     return { id: level.id, ok: introductionMatches(level, index) && validSite, text: `${level.keepRoads}, ${level.keepSky}, windows ${level.windows?.length ?? 0}, ${level.wallSiteTax?.kind ?? 'no tax'}, ${level.feat.kind}` };
   }));
   return { ok: targets.every(target => target.ok), targets, rows };

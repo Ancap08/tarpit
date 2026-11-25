@@ -46,7 +46,7 @@ export interface PillowWindowDef {
 
 export type WallSiteTax =
   | { readonly kind: 'quartering'; readonly site: Cell; readonly price: number }
-  | { readonly kind: 'royalSurvey'; readonly site: Cell };
+  | { readonly kind: 'royalSurvey'; readonly sites: readonly [Cell, ...Cell[]] };
 
 export interface SiegeDef {
   readonly windows?: readonly PillowWindowDef[];

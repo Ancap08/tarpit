@@ -7,7 +7,7 @@ import { Button } from './button';
 /** Plain field controls while the painted siege pieces are being prepared. */
 export class SiegeControls {
   private readonly windows: Button[];
-  private readonly site?: Button;
+  private readonly sites: Button[];
 
   constructor(scene: Phaser.Scene, layout: Layout, state: GameState, shake: (index: number) => void, pay: () => void) {
     const center = (p: Point, width: number, height: number): Rect =>
@@ -19,9 +19,9 @@ export class SiegeControls {
     };
     this.windows = (state.windows ?? []).map((window, index) =>
       make(center(layout.toScreen(window.position), 116, 80), () => shake(index)));
-    if (state.wallSiteTax) {
-      this.site = make(center(layout.cellCenter(state.wallSiteTax.site), 136, 80), pay);
-    }
+    const tax = state.wallSiteTax;
+    const sites = tax?.kind === 'royalSurvey' ? tax.sites : tax ? [tax.site] : [];
+    this.sites = sites.map(site => make(center(layout.cellCenter(site), 136, 80), pay));
   }
 
   update(state: GameState, covered: boolean): void {
@@ -32,19 +32,19 @@ export class SiegeControls {
       button.set(used ? SIEGE_TEXT.spentWindow : SIEGE_TEXT.window, !used);
       button.setPicked(!used);
     }
-    if (this.site) {
-      const tax = state.wallSiteTax;
-      this.site.setShown(shown && !!tax);
-      const text = tax?.kind === 'quartering'
-        ? `${SIEGE_TEXT.quartering}\n${SIEGE_TEXT.pay(tax.price)}` : SIEGE_TEXT.survey;
-      this.site.set(text, quarteringStatus(state).ok);
+    const tax = state.wallSiteTax;
+    const text = tax?.kind === 'quartering'
+      ? `${SIEGE_TEXT.quartering}\n${SIEGE_TEXT.pay(tax.price)}` : SIEGE_TEXT.survey;
+    for (const site of this.sites) {
+      site.setShown(shown && !!tax);
+      site.set(text, quarteringStatus(state).ok);
     }
   }
 
   rects(): Record<string, Rect> {
     return Object.fromEntries([
       ...this.windows.map((button, index) => [`window:${index}`, button] as const),
-      ...(this.site ? [['wallSite', this.site] as const] : []),
+      ...this.sites.map((button, index) => [index ? `wallSite:${index}` : 'wallSite', button] as const),
     ].filter(([, button]) => button.labelObjects[0].visible).map(([key, button]) => [key, button.rect]));
   }
 }
