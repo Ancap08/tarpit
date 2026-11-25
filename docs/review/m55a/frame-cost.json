@@ -4,62 +4,45 @@
     "width": 390,
     "height": 844
   },
+  "deviceScaleFactor": 3,
+  "medians": [
+    {
+      "look": "classic",
+      "off": 7.780888888888889,
+      "on": 6.552227777777778,
+      "changePercent": -15.790755126520805
+    },
+    {
+      "look": "painted",
+      "off": 8.057666666666668,
+      "on": 7.776433333333332,
+      "changePercent": -3.4902577255616074
+    }
+  ],
   "raw": [
     {
-      "look": "painted",
+      "look": "classic",
       "switched": false,
-      "frames": 181,
-      "enemies": 40,
-      "ticks": 181,
-      "mainMsPerFrame": 14.622939226519339
-    },
-    {
-      "look": "painted",
-      "switched": true,
-      "frames": 177,
-      "enemies": 40,
-      "ticks": 178,
-      "mainMsPerFrame": 13.945429378531072
-    },
-    {
-      "look": "painted",
-      "switched": true,
-      "frames": 182,
-      "enemies": 40,
-      "ticks": 182,
-      "mainMsPerFrame": 12.994763736263737
-    },
-    {
-      "look": "painted",
-      "switched": false,
-      "frames": 178,
+      "frames": 175,
       "enemies": 40,
       "ticks": 180,
-      "mainMsPerFrame": 13.895977528089887
-    },
-    {
-      "look": "classic",
-      "switched": false,
-      "frames": 155,
-      "enemies": 40,
-      "ticks": 178,
-      "mainMsPerFrame": 17.24521935483871
+      "mainMsPerFrame": 8.624365714285712
     },
     {
       "look": "classic",
       "switched": true,
-      "frames": 179,
+      "frames": 180,
       "enemies": 40,
-      "ticks": 179,
-      "mainMsPerFrame": 13.611614525139665
+      "ticks": 180,
+      "mainMsPerFrame": 6.552227777777778
     },
     {
       "look": "classic",
       "switched": true,
-      "frames": 169,
+      "frames": 180,
       "enemies": 40,
-      "ticks": 175,
-      "mainMsPerFrame": 15.30844970414201
+      "ticks": 180,
+      "mainMsPerFrame": 6.653466666666666
     },
     {
       "look": "classic",
@@ -67,39 +50,71 @@
       "frames": 180,
       "enemies": 40,
       "ticks": 180,
-      "mainMsPerFrame": 8.590216666666667
+      "mainMsPerFrame": 7.780888888888889
     },
     {
-      "look": "showpiece",
+      "look": "classic",
       "switched": false,
-      "frames": 171,
+      "frames": 180,
       "enemies": 40,
-      "ticks": 173,
-      "mainMsPerFrame": 16.384397660818713
+      "ticks": 180,
+      "mainMsPerFrame": 7.774494444444445
     },
     {
-      "look": "showpiece",
+      "look": "classic",
       "switched": true,
-      "frames": 124,
+      "frames": 180,
       "enemies": 40,
-      "ticks": 137,
-      "mainMsPerFrame": 24.614217741935484
+      "ticks": 180,
+      "mainMsPerFrame": 6.4788000000000014
     },
     {
-      "look": "showpiece",
-      "switched": true,
-      "frames": 176,
-      "enemies": 40,
-      "ticks": 176,
-      "mainMsPerFrame": 15.0359375
-    },
-    {
-      "look": "showpiece",
+      "look": "painted",
       "switched": false,
-      "frames": 141,
+      "frames": 180,
       "enemies": 40,
-      "ticks": 149,
-      "mainMsPerFrame": 21.272063829787232
+      "ticks": 180,
+      "mainMsPerFrame": 8.057666666666668
+    },
+    {
+      "look": "painted",
+      "switched": true,
+      "frames": 177,
+      "enemies": 40,
+      "ticks": 177,
+      "mainMsPerFrame": 8.478203389830508
+    },
+    {
+      "look": "painted",
+      "switched": true,
+      "frames": 180,
+      "enemies": 40,
+      "ticks": 180,
+      "mainMsPerFrame": 7.776433333333332
+    },
+    {
+      "look": "painted",
+      "switched": false,
+      "frames": 175,
+      "enemies": 40,
+      "ticks": 175,
+      "mainMsPerFrame": 9.105319999999999
+    },
+    {
+      "look": "painted",
+      "switched": false,
+      "frames": 181,
+      "enemies": 40,
+      "ticks": 181,
+      "mainMsPerFrame": 7.420005524861878
+    },
+    {
+      "look": "painted",
+      "switched": true,
+      "frames": 180,
+      "enemies": 40,
+      "ticks": 180,
+      "mainMsPerFrame": 6.6562777777777775
     }
   ]
 }
