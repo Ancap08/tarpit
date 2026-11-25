@@ -11,6 +11,7 @@ import { KeepLight } from './stoneLight';
 import { drawFittings, type Landmark } from './keepMotion';
 import projection from './projection.json';
 import type { DetailGovernor } from '../showpiece/governor';
+import type { KeepSky } from '../../sim/levelTypes';
 
 export { createKeep } from '../../sim/oldKeep';
 
@@ -24,7 +25,7 @@ export function currentKeepPlateSet(game: Phaser.Game, portrait: boolean) {
 
 export interface KeepAssets {
   id: string;
-  panorama(layout: Layout, gate: Point, size: { width: number; height: number }, foot: number[]): KeepSurround;
+  panorama(layout: Layout, gate: Point, size: { width: number; height: number }, foot: number[], sky?: KeepSky): KeepSurround;
   release(): void;
 }
 
@@ -75,9 +76,9 @@ export async function loadKeep(game: Phaser.Game, portrait: boolean, signal: Abo
     return {
       id: set.id,
       release,
-      panorama(layout, gate, size, foot) {
+      panorama(layout, gate, size, foot, sky) {
         if (surround) return surround;
-        surround = new KeepSurround(game.canvas, layout, name => images.get(name)!, gate, size, foot);
+        surround = new KeepSurround(game.canvas, layout, name => images.get(name)!, gate, size, foot, sky);
         // The static canvases now own the pixels. Retain only the Phaser sources
         // which the battle canvas still draws (and can re-upload on context restore).
         for (const [name, image] of images) {
@@ -148,7 +149,7 @@ export class KeepView {
     this.anchors = layout.turned ? projection.portrait : projection.landscape;
     this.light = new KeepLight(scene.textures);
     this.surround = assets.panorama(layout,this.gate,
-      {width:this.castleW,height:this.castleH},this.anchors.foot);
+      {width:this.castleW,height:this.castleH},this.anchors.foot, scene.state.level?.keepSky);
     this.fieldLight = scene.add.container(x,y);
     this.reflection = scene.add.graphics();
     this.fieldLight.add(this.reflection);
@@ -216,7 +217,9 @@ export class KeepView {
     const push = this.opening * .22;
     this.scenery.setScale(1+push).setPosition(-this.gate.x*push,-8*push);
     this.fieldLight.setScale(1+push).setPosition(this.layout.map.x-this.gate.x*push,this.layout.map.y-8*push);
-    this.lightning = this.stillLightning ? 1 : calm ? 0 : lightningAt(ms);
+    const sky = this.scene.state.level?.keepSky;
+    const storm = sky === undefined || sky === 'night storm';
+    this.lightning = this.stillLightning ? 1 : calm || !storm ? 0 : lightningAt(ms);
     if (this.lightning < .013) this.lightning = 0;
     this.surround.update(push, this.lightning, Math.floor((ms+7300)/15700)%2, this.opening, t, high, calm);
     const {width,height} = this.layout.map;
@@ -260,7 +263,7 @@ export class KeepView {
     }
     this.spill.forEach((lamp,i) => lamp.setAlpha(.19+Math.sin(t*5.1+i)*.034));
     this.rain.clear();
-    if (!calm && high) {
+    if (!calm && high && storm) {
       this.rain.lineStyle(.8,0xb7c7dd,.30+this.lightning*.4).beginPath();
       for (let i=0;i<76;i++) {
         const y=(i*133.7+t*(242+i%4*30))%height;

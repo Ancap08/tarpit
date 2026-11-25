@@ -21,11 +21,11 @@ const bowsAndGuns = ['musketeer', 'longbow'] as const;
 const artillery = [...bowsAndGuns, 'cannon'] as const;
 const slow = [...artillery, 'tarpit'] as const;
 const burn = [...slow, 'firepot'] as const;
-const allTowers = [...burn, 'mortar'] as const;
+export const allTowers = [...burn, 'mortar'] as const;
 const keg = ['keg'] as const;
 const barrel = [...keg, 'tarBarrel'] as const;
 const wall = [...barrel, 'barricade'] as const;
-const allSpecials = [...wall, 'guards', 'fireArrows'] as const;
+export const allSpecials = [...wall, 'guards', 'fireArrows'] as const;
 
 export const LEVELS: readonly (LevelDef & { map: MapId })[] = [
   {

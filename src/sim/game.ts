@@ -118,7 +118,7 @@ export function createGame(options: CreateGameOptions = {}): GameState {
   )) throw new RangeError(`Invalid reward waves in level ${level.id}`);
   const difficulty = level ? DEFAULT_DIFFICULTY : options.difficulty ?? DEFAULT_DIFFICULTY;
   const def = DIFFICULTY_DEFS[difficulty];
-  const map = resolveMap(level?.map ?? options.map);
+  const map = resolveMap(level?.map ?? options.map, level?.keepRoads);
   const { gate, windows, wallSiteTax } = level ?? options;
   return {
     map,

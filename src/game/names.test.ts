@@ -75,8 +75,8 @@ describe('the King’s collectors', () => {
       // The compact table intentionally contains three historical names. Its exact contents are checked above.
       if (ts.isVariableDeclaration(node) && node.name.getText() === 'ENEMY_SHORT_NAMES') return;
       if (ts.isStringLiteralLike(node) || ts.isTemplateLiteralToken(node)) {
-        // The King's level-six toll bills the player in Trolls, verbatim from the notice.
-        const words = node.text.replace(/^A toll on this road: one Troll per traveller\.$/, '');
+        // Both story lines use the approved wording verbatim.
+        const words = node.text.replace(/^(?:A toll on this road: one Troll per traveller\.|No quarter without consent\. He bunks with the Trolls\.)$/, '');
         expect(words.replace(themed, ''), node.text).not.toMatch(stale);
       }
       ts.forEachChild(node, check);

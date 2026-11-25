@@ -589,7 +589,9 @@ export class GameScene extends Phaser.Scene {
     this.restartPending = false;
     this.leaving = false;
     this.resume = null;
-    this.state = resume?.state ?? this.keepModule?.createKeep(new URLSearchParams(location.search).get('survey') === '1') ?? createGame({ difficulty: this.difficulty, map: this.currentMap, level: this.campaignLevel });
+    this.state = resume?.state ?? (this.keepModule && !this.campaignLevel
+      ? this.keepModule.createKeep(new URLSearchParams(location.search).get('survey') === '1')
+      : createGame({ difficulty: this.difficulty, map: this.currentMap, level: this.campaignLevel }));
     const base = currentLayout();
     this.layout = base.turned && this.state.level?.taxes ? TAXED_PORTRAIT : base;
     if (this.scale.height !== this.layout.height) this.scale.setGameSize(this.layout.width, this.layout.height);

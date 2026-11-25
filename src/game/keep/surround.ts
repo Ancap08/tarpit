@@ -1,4 +1,5 @@
 import type { Point } from '../../sim';
+import type { KeepSky } from '../../sim/levelTypes';
 import type { Layout } from '../layout';
 import { paintFork } from './keepMotion';
 import type { Plate } from './plates';
@@ -34,7 +35,7 @@ export class KeepSurround {
 
   constructor(canvas: HTMLCanvasElement, private readonly layout: Layout,
       image: ImageSource, gate: Point,
-      size: {width:number;height:number}, foot: number[]) {
+      size: {width:number;height:number}, foot: number[], weather?: KeepSky) {
     const host = canvas.parentElement!;
     this.backdrop.ariaHidden = 'true';
     this.backdrop.style.cssText = 'position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:-1;background:linear-gradient(#0a1421,#232637 67%,#171a20 87%,#15151a)';
@@ -48,6 +49,8 @@ export class KeepSurround {
     const skyline = gate.y + 30;
     this.sky = this.paint(0, -HEADROOM, width, skyline + HEADROOM, ctx => {
       const sky = image('sky');
+      if (weather === 'dawn') ctx.filter = 'brightness(1.5) sepia(.32)';
+      if (weather === 'night storm') ctx.filter = 'brightness(.74) saturate(.8)';
       if (!layout.turned) {
         ctx.save();
         ctx.scale(1, -1);

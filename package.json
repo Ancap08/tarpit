@@ -19,7 +19,8 @@
     "sounds": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/render-sounds.ts",
     "demo": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/record-demo.ts",
     "check:assets": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-asset-manifest.ts",
-    "check:size": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-size-budget.ts"
+    "check:size": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-size-budget.ts",
+    "sim:keep": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/simulate-keep.ts"
   },
   "dependencies": {
     "phaser": "^3.90.0"

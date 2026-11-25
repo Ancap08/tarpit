@@ -30,7 +30,11 @@ export interface GateDef {
   readonly repairHp: number;
   /** Trail pixels from the gate to the exit. */
   readonly yardLength: number;
+  readonly ramGateDps?: number;
 }
+
+export type KeepRoads = 'east' | 'west' | 'both';
+export type KeepSky = 'dusk' | 'night storm' | 'dawn';
 
 export interface PillowWindowDef {
   readonly position: Point;
@@ -51,6 +55,8 @@ export interface SiegeDef {
 
 export interface LevelDef extends SiegeDef {
   readonly gate?: GateDef;
+  readonly keepRoads?: KeepRoads;
+  readonly keepSky?: KeepSky;
   readonly featherBarrels?: boolean;
   readonly taxes?: LevelTaxes;
   readonly feat?: LevelFeat;

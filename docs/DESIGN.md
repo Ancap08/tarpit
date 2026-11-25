@@ -2383,3 +2383,87 @@ back. The first screen opens on Campaign, the map on the next unwon open
 stop, the card on Play, and the result on its first button. On the map the
 arrow keys visit open stops. Right from stop 10 crosses to 11 once unlocked.
 Left from 11 returns to 10. Rotating keeps the focused stop.
+## Private Act Three
+
+Levels 21–25 are separate from the public campaign list. `?keep=21` through
+`?keep=25` open the selected level directly. A win shows that level's reply
+and earned stars for the current run. No result or tip from these levels
+writes to saved progress. The exhibition and its original numbers remain
+available at `?keep=1` for the art and siege rule checks.
+
+All five stops use Normal HP at scale 1 without growth, 20 starting lives,
+the full level 20 tower and special lists, tier 3, feather barrels and no
+boon offers. The gate sits 275 trail px before the Old Keep exit on each
+route. Its yard is shared on two-road levels. The last stand lasts 360
+combat ticks at 2× fire rate and high ground gives 1.1× maximum range.
+The painted scenes reuse the dusk plates. Dusk has clear weather, night
+storm darkens the sky and uses the existing rain and lightning, and dawn
+warms and lightens the sky.
+
+| Level | Name | Roads | Sky | Gold | Gate HP | Repair HP | Gold per full repair | Third star | Wall-site rule |
+|---:|---|---|---|---:|---:|---:|---:|---|---|
+| 21 | Rent Overdue | east | dusk | 290 | 15000 | 8300 | 49 | Unbroken | — |
+| 22 | Feather Beds | west | dusk | 230 | 3850 | 750 | 46 | Not a nail | — |
+| 23 | Both Roads | both | night storm | 295 | 14500 | 7000 | 54 | Unbroken | Royal Survey at (22, 10) |
+| 24 | Quartering | both | night storm | 290 | 15500 | 6400 | 58 | Not a nail | Quartering, 80 gold at (22, 10) |
+| 25 | The Final Notice | both | dawn | 300 | 14500 | 6300 | 62 | Unbroken | — |
+
+Level 21 has no pillow windows. Level 22 has west windows at
+(540, 325) covering 170–360 trail px and (564, 170) covering 320–510
+trail px. Levels 23–25 extend the first window to 420 px. The Ram keeps
+360 base HP, 30 px/s, 12 bounty, one life on exit and 4 damage/s against
+other blockers. It deals 440 damage/s to the level 25 gate.
+
+Spawn groups are given as road, enemy, count, interval and delay. Both
+timings are in seconds. E is east and W is west.
+
+| Level | Wave | Groups |
+|---:|---:|---|
+| 21 | 1 | E Collector, 42, 0.9, 0 |
+| 21 | 2 | E Troll, 8, 5.6, 0 · E Harpy, 14, 3.15, 5 |
+| 21 | 3 | E Redcoat, 43, 0.95, 0 |
+| 21 | 4 | E Hound, 45, 0.95, 0 · E Harpy, 14, 3.15, 8 |
+| 21 | 5 | E Troll, 14, 3.65, 0 · E Collector, 20, 2.4, 7 |
+| 21 | 6 | E Redcoat, 52, 0.85, 0 · E Harpy, 26, 1.83, 0.4 |
+| 22 | 1 | W Collector, 40, 1, 0 |
+| 22 | 2 | W Redcoat, 49, 0.93, 0 · W Harpy, 14, 3.15, 8 |
+| 22 | 3 | W Troll, 9, 6.3, 0 · W Hound, 21, 2.2, 7 |
+| 22 | 4 | W Hound, 43, 0.96, 0 · W Harpy, 28, 1.55, 0 |
+| 22 | 5 | W Redcoat, 46, 0.95, 0 · W Troll, 12, 4.4, 3 |
+| 22 | 6 | W Hound, 52, 0.91, 0 · W Harpy, 49, 1.05, 0 |
+| 23 | 1 | E Collector, 28, 1.6, 0 · W Collector, 24, 1.9, 2 |
+| 23 | 2 | E Troll, 8, 6.4, 0 · W Redcoat, 37, 1.37, 0 · W Harpy, 15, 3.2, 5 |
+| 23 | 3 | E Redcoat, 31, 1.6, 0 · W Hound, 32, 1.54, 0 |
+| 23 | 4 | E Hound, 30, 1.6, 0 · W Hound, 24, 2.1, 0 · E Harpy, 36, 1.45, 0 |
+| 23 | 5 | E Troll, 13, 4.4, 0 · W Troll, 10, 5.4, 4 |
+| 23 | 6 | E Redcoat, 38, 1.5, 0 · W Redcoat, 33, 1.75, 0 · W Harpy, 41, 1.4, 0 |
+| 24 | 1 | E Collector, 31, 1.5, 0 · W Collector, 24, 1.9, 2 |
+| 24 | 2 | W Troll, 8, 6.4, 0 · E Redcoat, 37, 1.37, 0 · W Harpy, 15, 3.2, 5 |
+| 24 | 3 | W Redcoat, 36, 1.6, 0 · E Hound, 35, 1.56, 0 |
+| 24 | 4 | W Hound, 30, 1.6, 0 · E Hound, 24, 2.1, 0 · W Harpy, 37, 1.45, 0 |
+| 24 | 5 | E Troll, 13, 4.8, 0 · W Troll, 12, 4.9, 3 |
+| 24 | 6 | W Redcoat, 46, 1.45, 0 · E Redcoat, 33, 1.95, 0 · E Harpy, 42, 1.35, 0 |
+| 25 | 1 | E Collector, 31, 1.5, 0 · W Collector, 26, 1.8, 2 |
+| 25 | 2 | E Troll, 9, 6.1, 0 · W Redcoat, 39, 1.4, 0 · W Harpy, 15, 3.2, 5 |
+| 25 | 3 | E Redcoat, 36, 1.7, 0 · W Hound, 35, 1.6, 0 |
+| 25 | 4 | E Hound, 32, 1.6, 0 · W Hound, 27, 2.1, 0 · E Harpy, 39, 1.45, 0 |
+| 25 | 5 | E Troll, 13, 4.8, 0 · W Troll, 12, 5.2, 3 |
+| 25 | 6 | W Ram, 1, 0, 13 · E Redcoat, 29, 1.6, 0 · W Redcoat, 23, 2, 0 · W Harpy, 34, 1.6, 0 · E Harpy, 18, 2.8, 8 · E King, 1, 0, 51 |
+
+Good and Person value ground coverage one extra time within 24 px of
+a standing gate when they buy towers on these levels. Good pursuing
+Unbroken considers repair at or below 80% HP, keeping 70 gold in reserve.
+Ordinary Good and Person keep their existing repair policies. The
+Unbroken and Not a nail trials use the usual two-star line before testing
+the feat.
+
+Run `npm run sim:keep` for W1–W7 and W9–W14. It reports the actual
+outcomes of the control runs and exits nonzero on a miss. The standard
+simulation report still measures the shipped public campaign and Free
+play. The Act Three gate reuses the late and finale rules. W5 and W13
+apply Act Three's Person feat limits. W6 limits the bot's tower sites,
+special aims and windows to the defended approach using the nearest
+pre-join centreline. Both approaches and their shared yard remain live.
+The W11 control isolates the finale's real Ram group on the same board
+with one base Fire Pot at (22, 10). Its second run casts a barrel within
+10 trail px of reaching the gate.

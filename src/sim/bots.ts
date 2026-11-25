@@ -50,6 +50,7 @@ export interface BotRun {
   state: GameState;
   log: HeadlessStepResult[];
   refused: number;
+  siege?: { lowestHp: number; livesLostWithGate: number };
 }
 
 // Fills trail cells with the cheapest allowed tower, then makes one fallback upgrade.
@@ -130,6 +131,9 @@ function goodPurchase(state: GameState, rotate = false, buildLimit = Infinity, b
   const save = state.wave > 0 && state.level?.taxes?.frozenPurse === undefined;
   const budget = state.gold - (save ? SETUP_RESERVE : 0);
   const profile = threats(state);
+  // A collector can sit at the gate longer than it spends in any one
+  // stretch of the approach. Give that firing position extra weight.
+  const siegeGate = state.level?.keepRoads && !state.gate?.fallen ? state.gate : undefined;
   const traffic = new Map<string | undefined, number>();
   if (state.map.otherRoads?.length) {
     for (const group of nextWavePreview(state)) {
@@ -184,7 +188,8 @@ function goodPurchase(state: GameState, rotate = false, buildLimit = Infinity, b
       const { road, priority } = samples[index];
       const trafficWeight = state.map.otherRoads?.length ? (traffic.get(road) ?? 0) / mostTraffic : 1;
       const openLane = state.map.otherRoads?.length && local.ground + local.air === 0 ? 2 : 1;
-      value += (groundGain * groundWeight + airGain * airWeight) * priority * trafficWeight * openLane;
+      const gateWeight = siegeGate && Math.hypot(samples[index].point.x - siegeGate.x, samples[index].point.y - siegeGate.y) <= TRAIL_SAMPLE_SPACING ? 2 : 1;
+      value += (groundGain * groundWeight * gateWeight + airGain * airWeight) * priority * trafficWeight * openLane;
     }
     return value;
   }
@@ -487,7 +492,9 @@ function pursueFeat(player: BotPolicy, rotatePlacements: boolean): BotPolicy {
       return state.level?.feat?.kind === 'noSpecials' ? undefined : player.special(state, lastZone);
     },
     repair(state) {
-      return (state.level?.feat ?? state.fixedFeat)?.kind !== 'noRepairs' && (player.repair?.(state) ?? false);
+      const feat = state.level?.feat ?? state.fixedFeat;
+      if (feat?.kind === 'unbroken' && state.level?.keepRoads && !rotatePlacements) return shouldRepair(state, 0.8, 70);
+      return feat?.kind !== 'noRepairs' && (player.repair?.(state) ?? false);
     },
   };
 }
@@ -508,6 +515,8 @@ export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity,
   let peakAlive = state.enemies.length;
   let waveOneLives = state.lives;
   let setupTicks = 0;
+  const siege = state.level?.keepRoads && state.gate
+    ? { lowestHp: state.gate.hp, livesLostWithGate: 0 } : undefined;
   // Run the same clock on both sides of a tax trial, including the untaxed
   // control. Earlier campaigns and Free play retain their original setup.
   const paced = Boolean(state.level?.feat || state.level?.taxes);
@@ -558,12 +567,17 @@ export function runBot(state: GameState, bot: BotPolicy, throughWave = Infinity,
         }
       }
     }
+    const lives = state.lives;
     tick(state);
+    if (siege && state.gate) {
+      siege.lowestHp = Math.min(siege.lowestHp, state.gate.hp);
+      if (state.gate.hp > 0) siege.livesLostWithGate += lives - state.lives;
+    }
     if (bot === botFeathers) {
       for (const event of state.events) if (event.kind === 'feathered') feathered++;
     }
     if (state.wave === 1) waveOneLives = state.lives;
     peakAlive = Math.max(peakAlive, state.enemies.length);
   }
-  return { state, log, ...(bot === botFeathers && { feathered }), peakAlive, waveOneLives, setupTicks, refused: log.filter((step) => 'result' in step && !step.result.ok).length };
+  return { state, log, ...(bot === botFeathers && { feathered }), ...(siege && { siege }), peakAlive, waveOneLives, setupTicks, refused: log.filter((step) => 'result' in step && !step.result.ok).length };
 }

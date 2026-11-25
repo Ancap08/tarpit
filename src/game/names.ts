@@ -497,6 +497,11 @@ export const LEVEL_NAMES: Readonly<Record<number, { name: string; twist: string 
   18: { name: `${capitalized(levelTaxWord(18, 'rationing'))} at the Gate`, twist: `Give ${levelTaxWord(18, 'rationing')} towers time to stop a faster column.` },
   19: { name: 'The Sash Levy', twist: 'Choose the site before paying for the windows.' },
   20: { name: 'The Last Writ', twist: 'Hold the river until the King arrives.' },
+  21: { name: 'Rent Overdue', twist: 'Hold the east road at the gate.' },
+  22: { name: 'Feather Beds', twist: 'Shake out pillows over the west road.' },
+  23: { name: 'Both Roads', twist: 'Defend both roads from the open wall spots.' },
+  24: { name: 'Quartering', twist: 'Decide whether the wall spot is worth the gold.' },
+  25: { name: ENEMY_NAMES.ram, twist: 'Send the Ram back before the King arrives.' },
 };
 
 const endingLead = 'The King went home with empty pockets.';
@@ -541,6 +546,11 @@ export const LEVEL_STORY: Readonly<Record<number, { notice: string; reply: strin
   ...Object.fromEntries(secondAct.map(level => [
     level.id, { notice: secondActNotice(level), reply: secondActReplies[level.id] },
   ])),
+  21: { notice: "You hide in my grandfather's keep. The rent is overdue. So is the tax on the rent.", reply: 'We never signed the lease.' },
+  22: { notice: 'I hear you sleep soundly in there. Sleep is now taxed, by the hour.', reply: 'No vote, no tax. Have some feathers.' },
+  23: { notice: 'Who built those roads? I did, with your gold. My surveyor has condemned your wall.', reply: 'We paid for the roads. Walk home on them.' },
+  24: { notice: 'A soldier of mine will lodge on your wall. Feed him, and thank me for it.', reply: 'No quarter without consent. He bunks with the Trolls.' },
+  25: { notice: 'Final notice. Pay what you owe for the privilege of being ruled.', reply: 'Taxation is theft. Returned to sender.' },
 };
 
 export const CAMPAIGN_TEXT = {
@@ -575,6 +585,11 @@ export const LEVEL_NEW: Readonly<Record<number, string>> = {
   ...Object.fromEntries(secondAct.map(level => [level.id,
     (Object.keys(TAX_NAMES) as TaxKind[]).filter(key => level.taxes![key] !== undefined).map(key => TAX_NAMES[key]).join(' and '),
   ])),
+  21: 'Gate, Repair, Last stand and high ground',
+  22: 'Pillow windows',
+  23: 'Two roads and Royal Survey',
+  24: 'Quartering',
+  25: 'The Final Notice',
 };
 
 export const GATE_TEXT = {
@@ -652,6 +667,11 @@ function campaignTips(touch: boolean): Readonly<Record<number, readonly string[]
     18: [`Place your ${levelTaxWord(18, 'rationing')} towers where their rings overlap.`, 'Upgrade them to keep up with the faster packs.'],
     19: ['Check the shorter ring before you buy.', 'An upgrade costs the usual price.'],
     20: ['Keep bows near the trail to cover Royal Harpies.', 'Save part of each payment for the King.'],
+    21: ['Use high ground to reach farther. The wall is ours.', 'Mend the gate between waves. Keep bows for Royal Harpies.', 'Gate down? Towers fire faster while the yard holds.'],
+    22: [`${action} a lit window to feather tarred tax collectors.`, 'One pillow per window. Make the King count them.'],
+    23: ['We paid for both roads. Put towers on both.', 'The Survey closes one spot. Use the rest of the wall.'],
+    24: ['Pay off the Redcoat in setup to build on his spot.', 'No quarter for free. Check the price before you pay.'],
+    25: ['Tar and feather the Ram. Return the notice to sender.', 'Keep towers in reach of the gate for the King.'],
   };
 }
 
@@ -676,3 +696,12 @@ export const SIEGE_TEXT = {
   survey: 'Surveyed',
   pay: (gold: number) => `Pay ${gold}`,
 } as const;
+
+export function siegeRuleLines(level: Pick<LevelDef, 'wallSiteTax' | 'windows'>): string[] {
+  const lines: string[] = [];
+  const tax = level.wallSiteTax;
+  if (tax?.kind === 'royalSurvey') lines.push('Royal Survey: one wall spot is closed.');
+  if (tax?.kind === 'quartering') lines.push(`Quartering: a Redcoat holds a wall spot until paid ${tax.price} gold.`);
+  if (level.windows?.length) lines.push("Town's answer: tap a lit window for feathers.");
+  return lines;
+}

@@ -1,5 +1,6 @@
 import keepSite from './keepSite.json' with { type: 'json' };
 import type { MapDef, Point, Rect, TrailPoint } from './types';
+import type { KeepRoads } from './levelTypes';
 
 /** Every map is 960 x 480 px (a 30 x 15 grid of 32 px cells). */
 export const MAP_WIDTH = 960;
@@ -20,7 +21,11 @@ export function cottageFor(exit: Point): Rect {
 export type MapId = 'meadow' | 'switchback' | 'riverbend';
 export type LevelMapId = MapId | 'keep';
 
+const { otherRoads, ...keepGround } = keepSite;
 const keepMap: MapDef = { id: 'keep', width: MAP_WIDTH, height: MAP_HEIGHT, ...keepSite };
+const eastKeep: MapDef = { id: 'keep', width: MAP_WIDTH, height: MAP_HEIGHT, ...keepGround };
+const [west] = otherRoads;
+const westKeep: MapDef = { ...eastKeep, mainRoad: west.id, path: [...west.approach, ...keepMap.path.slice(west.joinIndex)] };
 
 /** Map ids in title-screen order. */
 export const MAP_IDS: readonly MapId[] = ['meadow', 'switchback', 'riverbend'];
@@ -91,9 +96,9 @@ export function isMapId(value: unknown): value is MapId {
 }
 
 /** The map with this id, or the map itself when given one (a test may pass its own MapDef). */
-export function resolveMap(map: LevelMapId | MapDef | undefined): MapDef {
+export function resolveMap(map: LevelMapId | MapDef | undefined, keepRoads?: KeepRoads): MapDef {
   if (map === undefined) return MAPS[DEFAULT_MAP];
-  if (map === 'keep') return keepMap;
+  if (map === 'keep') return keepRoads === 'east' ? eastKeep : keepRoads === 'west' ? westKeep : keepMap;
   return typeof map === 'string' ? MAPS[map] : map;
 }
 

@@ -6,7 +6,8 @@ import { botBeginner, botFeathers, botGood, botGoodFeat, botPerson, botPersonFea
 import { ENEMY_STATS } from './enemies';
 import { createGame, spawnTick } from './game';
 import { CAMPAIGN_START_LIVES, TWO_STAR_LIVES, type LevelDef, type TaxKind } from './levelTypes';
-import { MAP_IDS } from './map';
+import { MAP_IDS, resolveMap } from './map';
+import { commonRoadStart, roadIds, roadLength } from './roads';
 import { SPECIAL_DEFS, type SpecialType } from './specials';
 import { TICKS_PER_SECOND } from './time';
 import { TOWER_DEFS } from './towers';
@@ -138,7 +139,16 @@ function validTaxesAndFeat(level: LevelDef): boolean {
 }
 
 function validLevel(level: LevelDef): boolean {
-  return whole(level.id, 1) && MAP_IDS.some(id => id === level.map) && validTaxesAndFeat(level) &&
+  const keep = level.map === 'keep';
+  const map = keep && resolveMap(level.map, level.keepRoads);
+  const gate = level.gate;
+  const validMap = map ? !!gate && !!level.keepRoads && !!level.keepSky &&
+    whole(gate.maxHp, 1) && whole(gate.repairHp, 1, gate.maxHp) && whole(gate.repairCost, 1) &&
+    whole(gate.yardLength, 1, Math.floor(roadLength(map))) && roadIds(map).every(road =>
+      commonRoadStart(map, undefined, road) <= roadLength(map) - gate.yardLength) &&
+    level.waves.every(wave => wave.groups.every(group => group.road !== undefined && roadIds(map).includes(group.road))) :
+    MAP_IDS.some(id => id === level.map);
+  return whole(level.id, 1) && validMap && validTaxesAndFeat(level) &&
     whole(level.startGold, ...GATE_LIMITS.startGold) &&
     Number.isFinite(level.hpScale) && level.hpScale >= GATE_LIMITS.hpScale[0] && level.hpScale <= GATE_LIMITS.hpScale[1] &&
     (level.hpGrowthStart === null || whole(level.hpGrowthStart, 1, level.waves.length)) &&
@@ -290,7 +300,8 @@ export function checkLevel(level: LevelDef, context: LevelContext): LevelCheck {
   if (featPerson) {
     runs.push(featPerson);
     if (beginner.stars === 3) failed.add('F1');
-    if (person.stars === 3 || featPerson.stars === 3) failed.add('F2');
+    // Act Three judges the number of Person feats across the act in W5/W13.
+    if (!level.keepRoads && (person.stars === 3 || featPerson.stars === 3)) failed.add('F2');
     if (level.feat?.kind === 'noSpecials' && person.lives - featPerson.lives < GATE_LIMITS.featSpecialLives) failed.add('F3');
     if (level.feat?.kind === 'maxTowers' && person.towersBuilt - level.feat.limit < GATE_LIMITS.featExtraBuilds) failed.add('F3');
   }

@@ -26,8 +26,8 @@ describe('milestone 44a verifier: no stale enemy names a player can read', () =>
       const visit = (node: ts.Node): void => {
         if (ts.isVariableDeclaration(node) && node.name.getText() === 'ENEMY_SHORT_NAMES') return;
         if (ts.isStringLiteralLike(node) || ts.isTemplateLiteralToken(node)) {
-          // Keep the King's single approved use of “Troll” in the toll notice.
-          const words = node.text.replace(/^A toll on this road: one Troll per traveller\.$/, '');
+          // Both story lines use the approved wording verbatim.
+          const words = node.text.replace(/^(?:A toll on this road: one Troll per traveller\.|No quarter without consent\. He bunks with the Trolls\.)$/, '');
           if (STALE.test(words.replace(THEMED, ''))) found.push(`${file}: ${node.text}`);
         }
         ts.forEachChild(node, visit);

@@ -75,7 +75,8 @@ export function moveEnemies(enemies: Enemy[], events: GameEvent[], blockers?: re
     }
     if (contact && blocker && attacks) {
       enemy.distance = contact.distance;
-      const dps = isGate(blocker) ? stats.gateDps ?? stats.blockerDps : stats.blockerDps;
+      const ramDps = isGate(blocker) && enemy.type === 'ram' ? blocker.ramGateDps : undefined;
+      const dps = isGate(blocker) ? ramDps ?? stats.gateDps ?? stats.blockerDps : stats.blockerDps;
       attacks.set(blocker, (attacks.get(blocker) ?? 0) + dps);
       if (!isGate(blocker)) events.push({
         kind: 'blockerHit', enemyId: enemy.id, x: blocker.x, y: blocker.y, damage: stats.blockerDps / TICKS_PER_SECOND,
