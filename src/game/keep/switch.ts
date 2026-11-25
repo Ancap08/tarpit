@@ -8,6 +8,6 @@ export function keepSelection(search: string) {
 }
 
 /** Campaign access is independent of the direct links used to test the keep. */
-export function actThreeEnabled(search: string): boolean {
-  return new URLSearchParams(search).get('act3') === '1';
+export function actThreeEnabled(search: string, owner: boolean): boolean {
+  return owner || new URLSearchParams(search).get('act3') === '1';
 }

@@ -54,11 +54,11 @@ import { loadSiegeActors, loadSiegeEnding } from './draw/siegeActors';
 import { sound } from './audio/engine';
 import type { Rect } from './input';
 import { highScores } from './highScore';
-import { tipsFor, seenBroadsides, broadsideStore, type Broadside } from './seenTips';
+import { tipsFor, seenBroadsides, broadsideStore, resetStoryForSession, type Broadside } from './seenTips';
 import { campaignProgress } from './campaignProgress';
 import { ACT_ONE_LAST_LEVEL, ACT_TWO_LAST_LEVEL, campaignLevels, campaignOpen, campaignStops, levelAct, openingAct, type CampaignAct, type CampaignStop } from './ui/campaignMap';
-import { drawCampaignMap, drawLevelCard, drawLevelTips, drawStoryBroadside } from './ui/campaignScreens';
-import { CAMPAIGN_TEXT, lockedLevelText, bestScoreText, DIFFICULTY_LABELS, MAP_NAMES, paintedLoadingText, STORY_TEXT, TITLE_TEXT } from './names';
+import { drawCampaignMap, drawLevelCard, drawLevelTips, drawOwnerClose, drawOwnerPage, drawStoryBroadside } from './ui/campaignScreens';
+import { CAMPAIGN_TEXT, lockedLevelText, bestScoreText, DIFFICULTY_LABELS, MAP_NAMES, OWNER_TEXT, paintedLoadingText, STORY_TEXT, TITLE_TEXT } from './names';
 import { COLORS, FONT, TEXT } from './palette';
 import { currentLayout } from './layoutSwitch';
 import { broadside, ink, ribbon, rule, town } from './ui/theme';
@@ -70,6 +70,7 @@ import { LOOKS, LookStore, paintedDensity, type Look } from './skin/look';
 import { loadPainted, releasePaintedTextures, type PaintedAssets } from './skin/loading';
 import { duringKeepLoad } from './keep/status';
 import { actThreeEnabled, keepSelection } from './keep/switch';
+import { ownerMode } from './ownerMode';
 import { isTestMode } from './testMode';
 
 /** Menu buttons: 42 px tall like every touch target (44.8 px on an iPad in landscape). */
@@ -133,8 +134,8 @@ const LANDSCAPE_TITLE: TitleGeometry = {
   promptWrap: 0,
 };
 
-export type TitleScreen = 'first' | 'freePlay' | 'levelMap' | 'levelCard' | 'levelTips' | Broadside;
-interface TitleVisit { screen?: TitleScreen; levelId?: number; replayLevel?: boolean; act?: CampaignAct; focusId?: number }
+export type TitleScreen = 'first' | 'freePlay' | 'levelMap' | 'levelCard' | 'levelTips' | 'owner' | 'ownerClose' | Broadside;
+interface TitleVisit { screen?: TitleScreen; levelId?: number; replayLevel?: boolean; act?: CampaignAct; focusId?: number; ownerPreview?: boolean }
 
 export interface TitleUiState {
   screen: TitleScreen;
@@ -173,6 +174,7 @@ export class TitleScene extends Phaser.Scene {
   private card?: LevelDef;
   private replayTips = false;
   private replayLevel = false;
+  private ownerPreview = false;
   private touchTips = false;
   private tipsAcceptAt = 0;
   tipsEnabled = true;
@@ -199,7 +201,7 @@ export class TitleScene extends Phaser.Scene {
   private muteButton: MuteButton | null = null;
   private bestLine: Phaser.GameObjects.Text | null = null;
   private starting = false;
-  private readonly actThree = actThreeEnabled(window.location.search);
+  private readonly actThree = actThreeEnabled(window.location.search, ownerMode);
   private enterKeep = keepSelection(window.location.search);
   /** True from the first render after create(); see "Ready" above. */
   private ready = false;
@@ -222,7 +224,7 @@ export class TitleScene extends Phaser.Scene {
   /** Milestone 32b: rebuild the menu for the window's new layout, keeping the picks (layoutSwitch.ts). */
   relayout(): void {
     const focusId = this.mapStops.find(stop => this.campaignButtons.get(`title:stop:${stop.id}`)?.isPicked)?.id;
-    this.restartVisit({ screen: this.page, levelId: this.card?.id, replayLevel: this.replayLevel, act: this.act, focusId });
+    this.restartVisit({ screen: this.page, levelId: this.card?.id, replayLevel: this.replayLevel, act: this.act, focusId, ownerPreview: this.ownerPreview });
   }
 
   refreshProgress(): void {
@@ -235,6 +237,7 @@ export class TitleScene extends Phaser.Scene {
   init(visit?: TitleVisit): void {
     if (!this.restartPending) this.lockedMessage = null;
     this.page = visit?.screen ?? 'first';
+    this.ownerPreview = ownerMode && !!visit?.ownerPreview;
     this.replayLevel = (this.page === 'ending' || this.page === 'siegeEnding') && !!visit?.replayLevel;
     this.focusId = visit?.focusId;
     if (this.card?.id !== visit?.levelId) this.scouting = false;
@@ -246,7 +249,7 @@ export class TitleScene extends Phaser.Scene {
       if (this.act > 1) {
         const first = this.act === 2 ? ACT_ONE_LAST_LEVEL + 1 : ACT_TWO_LAST_LEVEL + 1;
         const broadside = this.act === 2 ? 'secondAct' : 'thirdAct';
-        if (!campaignOpen(progress, first, this.actThree)) {
+        if (!campaignOpen(progress, first, this.actThree, ownerMode)) {
           this.act = this.act === 2 ? 1 : openingAct(progress, this.actThree);
           this.page = 'levelMap';
           this.card = undefined;
@@ -263,10 +266,10 @@ export class TitleScene extends Phaser.Scene {
     this.scene.restart(visit);
   }
 
-  private visit(screen: TitleScreen, levelId?: number, act?: CampaignAct, focusId?: number): void {
+  private visit(screen: TitleScreen, levelId?: number, act?: CampaignAct, focusId?: number, ownerPreview = false): void {
     if (this.starting || this.restartPending) return;
     this.lockedMessage = null;
-    this.restartVisit({ screen, levelId, act, focusId });
+    this.restartVisit({ screen, levelId, act, focusId, ownerPreview });
   }
 
   private action = (key: string, rect: Rect, text: string, click: () => void, size = 22): Button => {
@@ -316,15 +319,36 @@ export class TitleScene extends Phaser.Scene {
     this.lockLabel = undefined;
     this.mapStops = [];
     const portrait = currentLayout().kind === 'portrait';
+    const toOwner = () => this.visit('owner');
+
+    if (this.page === 'owner') {
+      const keys = drawOwnerPage(this, portrait, campaignLevels(this.actThree), this.action, which => {
+        if (which === 'firstClose' || which === 'secondClose') {
+          this.visit('ownerClose', which === 'firstClose' ? ACT_ONE_LAST_LEVEL : ACT_TWO_LAST_LEVEL, undefined, undefined, true);
+        } else this.visit(which, undefined, undefined, undefined, true);
+      }, id => {
+        this.touchTips = this.input.activePointer.wasTouch;
+        this.tipsAcceptAt = performance.now() + 400;
+        this.visit('levelTips', id, undefined, undefined, true);
+      }, resetStoryForSession, () => this.visit('first'));
+      this.bindMenuKeys(keys);
+      return;
+    }
+    if (this.page === 'ownerClose' && this.card) {
+      drawOwnerClose(this, portrait, this.card.id, this.action, toOwner);
+      this.bindMenuKeys(['back']);
+      return;
+    }
 
     if (this.page === 'opening' || this.page === 'secondAct' || this.page === 'thirdAct' || this.page === 'ending' || this.page === 'siegeEnding') {
       const which = this.page;
-      this.events.once(Phaser.Scenes.Events.RENDER, () => {
+      if (!this.ownerPreview) this.events.once(Phaser.Scenes.Events.RENDER, () => {
         const store = broadsideStore(which);
         if (which === 'siegeEnding' && !store.has(which)) sound.playSiege('siege.ending', this.actThree);
         store.mark(which);
       });
       const proceed = () => {
+        if (this.ownerPreview) return toOwner();
         if (which === 'siegeEnding') sound.endSessionMute();
         if (which === 'ending' && this.replayLevel) {
           const level = LEVELS[LEVELS.length - 1];
@@ -335,7 +359,7 @@ export class TitleScene extends Phaser.Scene {
           this.visit('levelCard', this.card.id);
         } else this.visit('levelMap', undefined, which === 'secondAct' ? 2 : which === 'thirdAct' ? 3 : undefined, this.focusId);
       };
-      this.playButton = drawStoryBroadside(this, portrait, which, this.action, proceed, this.actThree && which === 'siegeEnding', isTestMode());
+      this.playButton = drawStoryBroadside(this, portrait, which, this.action, proceed, this.actThree && which === 'siegeEnding', isTestMode() || this.ownerPreview);
       this.bindMenuKeys(['continue']);
       this.input.keyboard?.on('keydown-ESC', proceed);
       if (this.progress !== null) this.refreshLoading();
@@ -343,13 +367,13 @@ export class TitleScene extends Phaser.Scene {
     }
     if (this.page === 'levelMap') {
       const progress = campaignProgress.table();
-      this.mapStops = campaignStops(portrait, progress, this.act, this.actThree);
-      const secondActOpen = campaignOpen(progress, ACT_ONE_LAST_LEVEL + 1, this.actThree);
+      this.mapStops = campaignStops(portrait, progress, this.act, this.actThree, ownerMode ? campaignProgress.table(true) : undefined);
+      const secondActOpen = campaignOpen(progress, ACT_ONE_LAST_LEVEL + 1, this.actThree, ownerMode);
       const showLock = (id: number) => {
         this.lockedMessage = lockedLevelText(id);
         this.lockLabel?.setText(this.lockedMessage);
       };
-      const thirdActOpen = this.actThree && campaignOpen(progress, ACT_TWO_LAST_LEVEL + 1, true);
+      const thirdActOpen = this.actThree && campaignOpen(progress, ACT_TWO_LAST_LEVEL + 1, this.actThree, ownerMode);
       const switchAct = (act: CampaignAct) => {
         if (act === 2 && !secondActOpen) showLock(ACT_ONE_LAST_LEVEL);
         else if (act === 3 && !thirdActOpen) showLock(ACT_TWO_LAST_LEVEL);
@@ -385,6 +409,8 @@ export class TitleScene extends Phaser.Scene {
       const seenTips = tipsFor(level.id);
       const toCard = () => this.visit('levelCard', level.id);
       if (this.page === 'levelTips') {
+        const review = this.replayTips || this.ownerPreview;
+        const leave = this.ownerPreview ? toOwner : toCard;
         // Play activates on pointerup, so the opening press has already ended.
         // A press that begins during the guard must stay ignored on release.
         const delay = this.tipsAcceptAt - performance.now();
@@ -394,12 +420,12 @@ export class TitleScene extends Phaser.Scene {
         }
         this.playButton = drawLevelTips(this, portrait, level, this.touchTips, this.action, () => {
           if (!this.input.enabled) return;
-          if (this.replayTips) return toCard();
+          if (review) return leave();
           seenTips.mark(level.id);
           start();
-        }, this.replayTips ? undefined : toCard);
-        this.bindMenuKeys(this.replayTips ? ['gotIt'] : ['back', 'gotIt'], this.replayTips ? 0 : 1);
-        if (this.replayTips) this.input.keyboard?.on('keydown-ESC', toCard);
+        }, review ? undefined : toCard);
+        this.bindMenuKeys(review ? ['gotIt'] : ['back', 'gotIt'], review ? 0 : 1);
+        if (review) this.input.keyboard?.on('keydown-ESC', leave);
       } else {
         const seen = seenTips.has(level.id);
         const showTips = (replay: boolean) => {
@@ -409,7 +435,7 @@ export class TitleScene extends Phaser.Scene {
           this.visit('levelTips', level.id);
         };
         const review = seen ? () => showTips(true) : undefined;
-        this.playButton = drawLevelCard(this, portrait, level, campaignProgress.table()[level.id] ?? 0, this.action,
+        this.playButton = drawLevelCard(this, portrait, level, campaignProgress.table(ownerMode)[level.id] ?? 0, this.action,
           () => this.tipsEnabled && !seen ? showTips(false) : start(), () => this.visit('levelMap', undefined, this.act), review,
           this.scouting, () => {
             this.scouting = !this.scouting;
@@ -478,7 +504,13 @@ export class TitleScene extends Phaser.Scene {
         width: w, height: h }, CAMPAIGN_TEXT.campaign, () => this.visit(seenBroadsides.has('opening') ? 'levelMap' : 'opening'), 32);
       this.action('title:freePlay', { x: portrait ? cx - w / 2 : cx + 12, y: portrait ? 584 : 286,
         width: w, height: h }, CAMPAIGN_TEXT.freePlay, () => this.visit('freePlay'), 32);
-      this.bindMenuKeys(['campaign', 'freePlay']);
+      const keys = ['campaign', 'freePlay'];
+      if (ownerMode) {
+        this.action('title:owner', portrait ? { x: cx - 64, y: 728, width: 128, height: 80 }
+          : { x: 14, y: 14, width: 98, height: 44 }, OWNER_TEXT.mark, toOwner, 21);
+        keys.push('owner');
+      }
+      this.bindMenuKeys(keys);
       this.refreshLook();
       return;
     }

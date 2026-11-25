@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { CAMPAIGN_END, STORY_TEXT } from '../src/game/names';
+import { CAMPAIGN_END, OWNER_TEXT, STORY_TEXT } from '../src/game/names';
 import type { GameScene } from '../src/game/GameScene';
 import { press, visibleTexts } from './campaign';
 import { waitForFirstScreen } from './title';
+import { OWNER_MODE_KEY } from '../src/game/ownerMode';
 
 const save = {
   'tarpit.campaign': JSON.stringify({ v: 2, stars: Object.fromEntries(
@@ -43,6 +44,18 @@ test('Act Three stays private across level 20 and service worker installation', 
   const saved = () => page.evaluate(keys => Object.fromEntries(keys.map(key => [key, localStorage.getItem(key)])),
     Object.keys(save));
   const keys = () => page.evaluate(() => Object.keys(window.__tarpit!.uiRects()));
+  const expectOwnerOff = async () => {
+    expect(await page.evaluate(key => localStorage.getItem(key), OWNER_MODE_KEY)).toBeNull();
+    expect(await keys()).not.toContain('title:owner');
+    expect(await page.evaluate(mark => window.__tarpit!.game.scene.getScene('title').children.list.some(child =>
+      child.type === 'Text' && (child as Phaser.GameObjects.Text).text === mark), OWNER_TEXT.mark)).toBe(false);
+  };
+  await expectOwnerOff();
+  const campaignWrites: string[] = [];
+  const client = await context.newCDPSession(page);
+  await client.send('DOMStorage.enable');
+  client.on('DOMStorage.domStorageItemUpdated', ({ key }) => { if (key === 'tarpit.campaign') campaignWrites.push(key); });
+  client.on('DOMStorage.domStorageItemAdded', ({ key }) => { if (key === 'tarpit.campaign') campaignWrites.push(key); });
   const levelStops = async () => (await keys()).filter(key => key.startsWith('title:stop:'));
   await press(page, 'title:campaign', touch);
   await expect.poll(levelStops).toEqual(stops(11));
@@ -82,6 +95,8 @@ test('Act Three stays private across level 20 and service worker installation', 
   await press(page, 'title:back', touch);
   await waitForFirstScreen(page, { showTips: true, showStory: true });
 
+  await expectOwnerOff();
+  expect(campaignWrites).toEqual([]);
   expect(await saved()).toEqual({ ...save, 'tarpit.seenBroadsides': '["opening","secondAct","ending"]' });
   const cached = await page.evaluate(async () => (await Promise.all((await caches.keys()).map(async name =>
     (await (await caches.open(name)).keys()).map(request => new URL(request.url).pathname),

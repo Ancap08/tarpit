@@ -9,6 +9,7 @@ export type Broadside = 'opening' | 'secondAct' | 'thirdAct' | 'ending' | 'siege
 
 class SeenStore<T extends number | string> {
   private unsaved = new Set<T>();
+  private session?: Set<T>;
 
   constructor(
     private readonly key: string, private readonly allowed: readonly T[],
@@ -29,10 +30,18 @@ class SeenStore<T extends number | string> {
   }
 
   has(id: T): boolean {
-    return this.read().has(id);
+    return (this.session ?? this.read()).has(id);
+  }
+
+  resetForSession(): void {
+    this.session = new Set<T>();
   }
 
   mark(id: T): void {
+    if (this.session) {
+      this.session.add(id);
+      return;
+    }
     const seen = this.read();
     seen.add(id);
     this.unsaved.add(id);
@@ -67,6 +76,10 @@ export const seenTips = new SeenTipsStore(() => window.localStorage);
 const siegeTips = new SeenStore('tarpit.seenSiegeTips', KEEP_LEVELS.map(level => level.id), () => window.localStorage);
 const siegeBroadsides = new SeenStore<Broadside>('tarpit.seenSiegeBroadsides',
   ['thirdAct', 'siegeEnding'], () => window.localStorage);
+
+export function resetStoryForSession(): void {
+  for (const store of [seenBroadsides, siegeBroadsides, seenTips, siegeTips]) store.resetForSession();
+}
 
 export const tipsFor = (level: number) => level > LEVELS.length ? siegeTips : seenTips;
 export const broadsideStore = (which: Broadside) =>
