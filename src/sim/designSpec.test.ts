@@ -135,6 +135,19 @@ describe('docs/DESIGN.md matches the code', () => {
     expect(table('Levels and campaign', 'ID').map(row => Number(row[0]))).toEqual(LEVELS.map(level => level.id));
   });
 
+  it('matches the Act Two wave groups listed for the feather-barrel retune', () => {
+    const rows = table('Levels and campaign', 'Level');
+    expect(rows).toHaveLength(9);
+    for (const [id, wave, group, enemy, count, interval] of rows) {
+      const level = LEVELS[Number(id) - 1];
+      expect(level.featherBarrels).toBe(true);
+      expect(level.waves[Number(wave) - 1].groups[Number(group) - 1],
+        `level ${id}, wave ${wave}, group ${group}`).toMatchObject({
+        type: ENEMY_NAMES[enemy], count: Number(count), interval: Number(interval),
+      });
+    }
+  });
+
   it.each(LEVELS)('campaign level $id matches its printed rules and measured outcomes', level => {
     const row = table('Levels and campaign', 'ID').find(row => Number(row[0]) === level.id);
     const [good, person, beginner] = [botGood, botPerson, botBeginner].map(bot => runBot(createGame({ level }), bot));

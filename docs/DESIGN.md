@@ -2039,6 +2039,21 @@ Good clears the first ten stops in 72.70 combat minutes, with a 4.00-life
 mean drop. Across all twenty stops Good takes 134.28 combat minutes.
 Mean surviving lives drop from 18.00 on levels 1–6 to 15.00 on levels 15–20.
 
+The Act Two feather-barrel retune uses the following wave groups.
+Intervals are seconds between consecutive enemies in one group.
+
+| Level | Wave | Group | Enemies | Count | Interval |
+|---:|---:|---:|---|---:|---:|
+| 11 | 6 | 1 | Troll | 19 | 1.05 |
+| 12 | 1 | 1 | Shieldbearer | 38 | 1.265 |
+| 13 | 3 | 2 | Harpy | 34 | 1.21 |
+| 13 | 5 | 1 | Troll | 13 | 2.1 |
+| 17 | 2 | 1 | Harpy | 27 | 1 |
+| 17 | 5 | 2 | Goblin | 36 | 1.25 |
+| 19 | 2 | 2 | Harpy | 43 | 1.2312 |
+| 19 | 3 | 1 | Troll | 11 | 1.61 |
+| 20 | 2 | 2 | Goblin | 24 | 2.22 |
+
 Fractions below are shares of the base price, speed or range. The purse pays
 gold, the delay counts seconds at 1×, and the cap counts towers standing.
 
