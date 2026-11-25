@@ -1096,6 +1096,21 @@ the town is dry and unbowed; consent, votes, who paid for the roads, no
 quartering. No real people, parties or flags. The first versions of these
 lines (milder) are in the git history.
 
+Story lines for the act (coordinator, same voice):
+
+| Where | Text |
+|---|---|
+| Level 20's close, once Act Three is open (it replaces the campaign ending there) | He will be back, and he is bringing the army. |
+| Act Three broadside, the King | No more notices. The King marches on your town with his whole army. |
+| Act Three broadside, the town | We moved to the Old Keep. The tea went in the moat. |
+| The campaign ending, after level 25 | The King rode home in a tarred and feathered carriage, unpaid. The town kept its gold and opened a market with no stamps. Taxation is theft. |
+| Act names | Act Three, Act III |
+| Road names in the wave banner | East road, West road |
+
+**Act Three stays behind a switch (`?act3=1`) until Kyle has played it and
+says to open it.** With the switch off, the level map, level 20's ending
+and saved progress are exactly as they are today.
+
 Rule lines on the card ("In force", built from level data where they hold
 a number): `Royal Survey: N wall spots are closed.` (N from level data; `one wall spot is` when N is 1) and
 `Quartering: a Redcoat holds a wall spot until paid NN gold.` The town's

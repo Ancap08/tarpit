@@ -2004,3 +2004,13 @@ can change it; "Kyle" means Kyle decided.
   revisited after he has played, before Act Three goes on the level map.
 - **To check before Act Three is shown to players:** whether a build of
   only Tar Pits on level 24 can leave a wave running for many minutes.
+- **Part b is merged and deployed, hidden** (pull request 61, CI green on
+  the full suite, no review findings). Levels 21 to 25 play at `?keep=21`
+  to `?keep=25`.
+- **Part c1 starts without waiting for Kyle's play** (coordinator): the
+  screens do not depend on the tuning. Act Three's screens are built
+  behind a switch, `?act3=1`, and are not opened to players until Kyle has
+  played the levels and the three open targets are settled.
+- **Story lines for Act Three** written by the coordinator in the voice
+  Kyle asked for; with Act Three open, the campaign's ending moves from
+  level 20 to level 25.
