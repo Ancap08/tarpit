@@ -21,7 +21,11 @@ export class SiegeControls {
       make(center(layout.toScreen(window.position), 116, 80), () => shake(index)));
     const tax = state.wallSiteTax;
     const sites = tax?.kind === 'royalSurvey' ? tax.sites : tax ? [tax.site] : [];
-    this.sites = sites.map(site => make(center(layout.cellCenter(site), 136, 80), pay));
+    this.sites = sites.map(site => {
+      const rect = center(layout.cellCenter(site), 136, 80);
+      const x = Math.max(0, Math.min(rect.x, scene.scale.width - rect.width));
+      return make({ ...rect, x }, pay);
+    });
   }
 
   update(state: GameState, covered: boolean): void {

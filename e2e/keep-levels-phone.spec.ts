@@ -33,6 +33,11 @@ for (const level of KEEP_LEVELS) {
     if (initial.tax?.kind === 'royalSurvey') {
       for (const [index, site] of initial.tax.sites.entries()) {
         const key = index === 0 ? 'wallSite' : `wallSite:${index}`;
+        expect(await page.evaluate(key => {
+          const api = window.__tarpit!;
+          const rect = api.uiRects()[key];
+          return rect.x >= 0 && rect.x + rect.width <= api.game.scale.width;
+        }, key)).toBe(true);
         await checkLabel(page, key, 'Surveyed');
         const pos = await rectPage(page, key);
         await page.touchscreen.tap(pos.x, pos.y);
