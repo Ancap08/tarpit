@@ -915,6 +915,97 @@ A Fire Arrows change; new towers, enemies, maps or levels; the hero; the
 castle wall; the Daily Writ; turncoats; gold-stealing collectors; a level
 editor.
 
+## Act Three: the Siege (direction, Kyle, 2026-11-24)
+
+Kyle agreed a third act of new levels in which the town holds an old
+fortress: a castle wall as the last defence, then a hero the player moves.
+Acts One and Two and Free play stay as they are. His words on the look:
+"The look should be the opposite of modest, I would like for this to be a
+grand, in depth, high quality aspect of the game. It will be out of place,
+and ... if I have to concede quality for this aspect then that's ok". He
+showed two reference images for the general idea only: a towering gothic
+castle, spires on spires, a storm sky, lit windows.
+
+Agreed in outline:
+
+- **The wall:** a gate at the town end with health; enemies stop and hit
+  it; gold repairs it between waves; when it falls every tower fires faster
+  for a short time, once, and after that leaks cost lives as today.
+- **The hero:** the Captain. Tap him, tap the road; he walks there, blocks
+  and fights, and returns after a wait if he falls. One ability on a timer.
+  No levelling or gear at first; built so other heroes can follow.
+- **Behind the wall:** Kyle's larger idea is "almost another game, where
+  you defend from behind the wall, and use weapons that stay behind the
+  wall and come out in front of the wall". Act Three carries as much of
+  that as the present rules allow (tower spots on the battlements, the
+  Captain and Guards coming out of the gate, roads meeting at the gate) and
+  is the prototype for it. **A full wall-defence mode is the candidate for
+  version 2,** not built here.
+- **Order:** the castle's look first, then the wall rule and the first
+  siege levels, then the Captain.
+
+Coordinator's assumptions, Kyle told and free to change: the fortress is
+the town's refuge, not the King's castle; the tone stays right for
+children (storm and drama, no horror).
+
+## Milestone 51: the Old Keep (a look spike)
+
+One Act Three map with the full castle, for Kyle to judge on his phone
+before any rule depends on it. Art is the largest risk in Act Three and the
+part Kyle cares most about.
+
+### What is built
+
+- A new map, **the Old Keep**, reached only by a hidden switch
+  (`?keep=1`, straight into the level). It is not on the level map, not in
+  Free play, saves no stars or progress, and is outside every balance and
+  gate measure.
+- It plays with today's rules: a road climbing to the gate, a short fixed
+  list of waves from existing enemies, existing towers on marked spots
+  (some on the wall-walk, as a hint of what comes), 20 lives. No wall
+  health, no hero, no new rule of any kind.
+- **The castle is the point.** Our own design from the mood Kyle showed,
+  not a copy of any existing castle, game or picture: a gothic keep with
+  many spires at different depths, buttresses, tall lit windows, a
+  gatehouse with a portcullis, a curtain wall with battlements, stairs or
+  a bridge to the gate. Made by Blender scripts in `scripts/art/`, like the
+  rest of the painted art.
+- **Depth and motion:** layers that shift against each other as the view
+  moves; a dusk storm sky with drifting cloud; lightning that lights the
+  castle for a moment; windows and torches that flicker; banners that
+  move; fog low on the road; embers or rain. A slow drift of the view at
+  the start, from the spires down to the road.
+- **Portrait first.** At 390x844 the castle fills the top of the screen
+  and the road climbs to it. On tablet and desktop it must also compose
+  well; the phone decides.
+
+### Limits
+
+- With the switch off, nothing changes: no pixel, no request, no byte of
+  any sim output. The keep's art loads only when the switch is on.
+- The keep's art is at most 8 MB; the built site stays under its 20 MB
+  budget.
+- It holds the frame rate: the showpiece's quality governor (or the same
+  idea) drops effects before frames. Numbers reported at phone size with
+  `?perf=1`, with 40 enemies on the road.
+- All motion on the pausable clock; frozen and silent under `?test=1`.
+- Only own-script art, listed in `assets/MANIFEST.md`. No downloaded or
+  generated images.
+- Tone: grand and stormy. No skulls, gore or horror.
+
+### Evidence
+
+Stills at 390x844, 390x664, tablet and desktop, with the road and HUD in
+frame; close-ups of the keep; a lightning frame; and a screen recording of
+about 15 seconds on the phone size. A table of what the governor drops
+and the frame times.
+
+### Not in this milestone
+
+The wall rule, repair, the last stand, converging roads, the Captain, Act
+Three levels on the level map, story text, sound, any change to Acts One
+and Two or Free play.
+
 ## Later milestones (order agreed, detail to come)
 
 | # | Milestone | Idea |

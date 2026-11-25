@@ -1788,3 +1788,26 @@ can change it; "Kyle" means Kyle decided.
     already tarred them before this milestone. Left as is.
   - Stale records (README's "every special refills in 20 s", DEVLOG's
     retune table) sent back with the wording change.
+
+## 2026-11-24, Act Three and milestone 51 (the Old Keep, a look spike)
+
+- **A third act of new levels: the Siege.** Decided by Kyle ("Yes, let's
+  start with act 3. The Hero looks right and the wall as you proposed it is
+  fine for now."). New power goes into new levels, after feather barrels
+  failed 12 of 20 tuned levels until they were confined.
+- **The castle's look is to be grand, not modest,** even if it is out of
+  place beside the rest (Kyle). His two reference images are mood only; the
+  castle is our own design.
+- **A full "defend from behind the wall" mode is the candidate for version
+  2** (Kyle raised it and asked whether to save it; coordinator's advice,
+  which he accepted by choosing the order: build the castle and as much of
+  that feel as today's rules allow in Act Three, and let it show whether
+  version 2 should be the wall game).
+- **Castle first** (Kyle: "Yes, castle first"): a look spike before any
+  rule depends on the art.
+- **Coordinator told Kyle what the pipeline can and cannot do:** dense
+  detail and motion from Blender scripts, not the fidelity of concept art.
+  If it falls short, a painted or generated backdrop would change the rule
+  on where art may come from, and that is Kyle's decision then.
+- **Coordinator's assumptions, stated to Kyle:** the fortress is the
+  town's refuge; the tone stays right for children.
