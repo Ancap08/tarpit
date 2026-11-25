@@ -1008,8 +1008,7 @@ and Two or Free play.
 
 ## Milestone 52: the wall (Act Three, the first siege levels)
 
-**Draft for Kyle's review. Nothing in this section is built until he
-agrees it.** The castle of milestone 51 becomes a place the player defends.
+Approved by Kyle on 2026-11-25 ("Approve, start"). The castle of milestone 51 becomes a place the player defends.
 Built in three parts, each checked before the next, by `gpt-6.2-sol` while
 Astra is paused.
 

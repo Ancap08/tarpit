@@ -1858,3 +1858,16 @@ can change it; "Kyle" means Kyle decided.
   costing more than high on Linux, twice. Low is 22 to 31% cheaper than
   high on both machines, and the test now asks for at least 10% in the
   same run.
+
+## 2026-11-25, milestone 52 (the wall)
+
+- **The wall milestone's scope is approved as drafted.** Kyle: "Approve,
+  start". He was told four choices in it were the coordinator's and could
+  be overruled: flyers ignore the gate, a fallen gate cannot be rebuilt in
+  that level, the third star in Act Three is "Unbroken", and five levels to
+  start. He overruled none.
+- **Built in three parts by Sol at high, each verified by Sonnet** before
+  the next starts, under the no-Astra rule.
+- **Kyle had not yet reported on the Old Keep on his phone when this
+  started.** Part a is rules only and does not depend on the castle's look;
+  the art part (52c) waits for his verdict.
