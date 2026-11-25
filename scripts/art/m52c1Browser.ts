@@ -43,6 +43,12 @@ async function isolation(build: string) {
             await press(page, 'title:campaign');
             await ready(page, 'levelMap');
             frames.push(await frame());
+            await press(page, 'title:act');
+            await ready(page, 'levelMap');
+            assert.equal(await page.evaluate(() => window.__tarpit!.levelStops!()[0].id), 1);
+            frames.push(await frame());
+            await press(page, 'title:act');
+            await ready(page, 'levelMap');
             await press(page, 'title:stop:20');
             await ready(page, 'levelCard');
             frames.push(await frame());
@@ -165,5 +171,5 @@ if (mode === 'cost') {
   const before = await isolation(base);
   const after = await isolation('dist');
   for (const [index, result] of after.entries()) assert.deepEqual(result, before[index], `Switch-off mismatch in scenario ${index + 1}`);
-  console.log('126 switch-off canvas hashes, 36 sim states, 18 progress and story records, and 18 cold request inventories match.');
+  console.log('144 switch-off canvas hashes, 36 sim states, 18 progress and story records, and 18 cold request inventories match.');
 }

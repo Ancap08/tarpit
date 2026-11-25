@@ -2430,7 +2430,7 @@ simulation's position, angle and condition for the painted gate pass.
 On portrait screens the camera preserves road width and expands the
 vertical view from 1.15× in setup to 1.50× in battle over 1,500 ms on
 the game's pausable clock. It returns over the same duration between
-waves. The east mouth stays 24 canvas px above the build bar. The
+waves. The east mouth stays 24 canvas px above the map's lower edge. The
 cached panorama follows the camera with a CSS transform. The portrait
 castle plate fits a 730 × 475 box for this view. The HUD uses a fixed
 camera, with 108 × 80 window and 132 × 80 wall-site targets anchored
