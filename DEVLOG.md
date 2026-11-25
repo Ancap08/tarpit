@@ -11505,3 +11505,35 @@ With six workers the 4× CPU low-tier median was 16.13 ms per frame versus
 All 78 screenshots from the five existing baseline specs matched the
 clean export byte for byte. The Keep switch comparison also matched
 36 frozen canvas and state pairs and 18 cold request inventories.
+
+## Verifier (Claude Sonnet): milestone 52a, the gate rule
+
+W8 holds. A clean export of `a36cdd8` and the candidate gave identical
+hashes (final state, action log, counters) for 261 runs: nine bot policies
+on levels 1 to 20 (180) and on Free play, three maps by three difficulties
+(81). `npm run sim` output was identical (479 lines). Only `bots`, `combat`,
+`game`, `gate` (new), `headless`, `index`, `keepSite.json`, `levelTypes`,
+`movement`, `oldKeep`, `towers`, `types`, `campaignProgress`, `checkLevel` and tests
+changed under `src/sim`. Read: with no gate the fire-rate step is `-= 1`
+and the carry term `min(0, cooldown)` is 0 because cooldown is never
+negative (only `actions.ts` and `combat.ts` write it); the gate blocker,
+exit-hold and Last stand decrement are all behind `state.gate`; high ground
+needs `map.highSites`, which only the Keep has. Changing the fire rate to 2
+with no gate fails 392 unit tests.
+
+The "gate falls whatever its health" table is right. At the last wave three
+Trolls (45/s each) arrive unkilled and strip 480 points in about 4 s; 960 in
+about 7 s. Towers do not kill them in that window, and all three then leak.
+Lives are 17 at 240, 480 and 960; 1920 gives 18; only about 5,200 points
+(100,000 tested) saves the level. Waves 1 and 2 never reach the gate, so no
+setup has damage to repair and no bot repairs. For part b: gate health and
+the repair step need to be in the thousands to matter, and a breaking tick
+sends every walker held at the gate out on the next tick, so a stack of N
+costs N lives (a 30-goblin stack ends the game in two ticks).
+
+Repair at 479 of 480 charges the full 30 and the control does not say so.
+Keep-cost test: 10 of 10 alone (low/high 0.70 to 0.77, limit 0.90); 2 of 10
+inside a full phone-project run (first samples ran 1.5 to 2 times slow). A note
+is in the spec. Added `siege-verifier.test.ts` (16 tests) and
+`siegeVerifier.ts` with three specs (every Keep site with a panel open, tips
+on, three font modes; pause; switch off).

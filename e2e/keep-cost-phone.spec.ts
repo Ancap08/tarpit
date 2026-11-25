@@ -1,3 +1,7 @@
+// Verifier note (milestone 52a): alone this passes 10 of 10 (low/high ratio 0.70 to 0.77,
+// limit 0.90). Inside a full phone-project run with parallel workers it failed 2 of 10 and
+// the first sample or two ran 1.5x to 2x slow while the other workers were busy, so the
+// low/high medians crossed. Run it serially after the other specs, or take more samples.
 import { expect, test } from '@playwright/test';
 import type { GameScene } from '../src/game/GameScene';
 
