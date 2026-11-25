@@ -1752,3 +1752,11 @@ can change it; "Kyle" means Kyle decided.
 - **The coordinator's two openings Codex proposed (level 10's Troll
   interval, a Free play group's timing) are not taken.** With the rule
   confined to Act Two neither is needed.
+- **Which Codex model does what** (Kyle, 2026-11-24): bigger builds run on
+  `gpt-6.2-astra` at medium reasoning effort; fixes and other small items
+  run on `gpt-6.2-sol` at high; if Sol cannot do a small item, Astra at low
+  ("light"). Reason, in Kyle's words: Astra "is a waste at higher levels"
+  and was "running through a week of usage for a basic game". Until now
+  every run was Astra at high (the effort came from the Codex config
+  default, which the coordinator never set or checked). Commit trailers
+  name the model that wrote the change.
