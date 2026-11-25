@@ -53,7 +53,7 @@ describe('the King’s collectors', () => {
       expect(reply.trim().length).toBeGreaterThan(0);
       const feat = level.feat!;
       expect(levelFeatText(feat)).toContain({
-        noLeaks: 'Not a penny', noSpecials: 'Bare hands', maxTowers: 'Few hands',
+        noLeaks: 'Not a penny', noSpecials: 'Bare hands', maxTowers: 'Few hands', unbroken: 'Unbroken',
       }[feat.kind]);
       if (feat.kind === 'maxTowers') expect(levelFeatText(feat)).toContain(String(feat.limit));
     }

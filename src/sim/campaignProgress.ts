@@ -8,7 +8,7 @@ export type CampaignProgress = Partial<Record<number, Stars>>;
 
 const PROGRESS_VERSION = 2;
 
-type LevelResult = Pick<GameState, 'level' | 'lives' | 'phase' | 'cheated' | 'towersBuilt' | 'leaks' | 'lastSpecialTick'>;
+type LevelResult = Pick<GameState, 'level' | 'lives' | 'phase' | 'cheated' | 'towersBuilt' | 'leaks' | 'lastSpecialTick' | 'gate'>;
 
 export function levelStars(state: LevelResult): Stars {
   if (!state.level || state.cheated || state.phase !== 'won' || state.lives <= 0) return 0;
@@ -18,6 +18,7 @@ export function levelStars(state: LevelResult): Stars {
   switch (feat.kind) {
     case 'noLeaks': return state.leaks === 0 ? 3 : 2;
     case 'noSpecials': return state.lastSpecialTick === undefined ? 3 : 2;
+    case 'unbroken': return state.gate && state.gate.hp > 0 && !state.gate.fallen ? 3 : 2;
     case 'maxTowers': return state.towersBuilt !== undefined && state.towersBuilt <= feat.limit ? 3 : 2;
   }
 }

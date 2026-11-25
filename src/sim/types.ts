@@ -1,7 +1,7 @@
 // Data shapes for the simulation. Pure data: no classes, no methods.
 
 import type { BoonId, BoonOffer } from './boons';
-import type { LevelDef } from './levelTypes';
+import type { GateDef, LevelDef } from './levelTypes';
 import type { Difficulty } from './difficulty';
 import type { GameEvent } from './events';
 import type { Cell } from './grid';
@@ -31,6 +31,8 @@ export interface MapDef {
   path: readonly Point[];
   /** When present, only marked sites accept towers. */
   buildSites?: readonly Cell[];
+  /** Marked wall-walk cells: range changes as a tower moves onto or off one. */
+  highSites?: readonly Cell[];
   /**
    * Drawn map features off the path (the exit cottage). No cell whose 32 px
    * square overlaps one is buildable. Optional: test maps leave it out.
@@ -268,6 +270,12 @@ export interface Guard extends Blocker {
   ticksLeft: number;
 }
 
+export interface Gate extends Blocker, Pick<GateDef, 'repairCost' | 'repairHp'> {
+  kind: 'gate';
+  fallen: boolean;
+  lastStandTicksLeft: number;
+}
+
 export type TrailBlocker = Barricade | Guard;
 
 export interface GameState {
@@ -283,6 +291,7 @@ export interface GameState {
   difficulty: Difficulty;
   /** The finite campaign rules, when playing a level. */
   level?: LevelDef;
+  gate?: Gate;
   /** A finite exhibition outside campaign progression and Free play. */
   fixedWaves?: readonly WaveDef[];
   /** Successful constructions, including sold towers, on levels with taxes or feats. */

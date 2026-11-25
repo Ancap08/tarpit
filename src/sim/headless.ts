@@ -61,6 +61,7 @@ import {
 } from './actions';
 import { BOONS, type BoonId } from './boons';
 import type { Difficulty } from './difficulty';
+import { repairGate } from './gate';
 import { callNextWave, continueEndless, createGame, startWave, tick, wavesCleared, type CallNextWaveResult, type StartWaveResult } from './game';
 import { enemyPosition } from './combat';
 import { isSpecialUnlocked, type SpecialType } from './specials';
@@ -128,6 +129,7 @@ export type TimedAction = SpecialAction | CallEarlyAction | ClusterSpecialAction
 
 export type HeadlessAction =
   | { type: 'startWave' }
+  | { type: 'repairGate' }
   | { type: 'pickBoon'; boon: BoonId }
   /** Tick until the current wave ends (phase leaves 'wave') or `maxTicks` pass. */
   | { type: 'runUntilWaveEnds'; maxTicks: number }
@@ -137,6 +139,7 @@ export type HeadlessAction =
 
 export type HeadlessStepResult =
   | { action: 'startWave'; result: StartWaveResult }
+  | { action: 'repairGate'; result: ReturnType<typeof repairGate> }
   | { action: 'pickBoon'; boon: BoonId; result: ReturnType<typeof pickBoon> }
   | { action: 'runUntilWaveEnds'; ticks: number }
   | { action: 'build'; cell: Cell; result: BuildResult }
@@ -163,6 +166,8 @@ export function applyAction(state: GameState, action: HeadlessAction): HeadlessS
       return { action: 'pickBoon', boon: action.boon, result: pickBoon(state, action.boon) };
     case 'startWave':
       return { action: 'startWave', result: startWave(state) };
+    case 'repairGate':
+      return { action: 'repairGate', result: repairGate(state) };
     case 'runUntilWaveEnds': {
       let ticks = 0;
       while (state.phase === 'wave' && ticks < action.maxTicks) {

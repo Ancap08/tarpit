@@ -574,13 +574,23 @@ export const LEVEL_NEW: Readonly<Record<number, string>> = {
   ])),
 };
 
-const featNames: Record<LevelFeat['kind'], string> = { noLeaks: 'Not a penny', noSpecials: 'Bare hands', maxTowers: 'Few hands' };
+export const GATE_TEXT = {
+  health: (hp: number, max: number) => `Gate ${Math.ceil(hp)} / ${max}`,
+  repair: (cost: number) => `Repair ${cost}`,
+  lastStand: 'Last stand!',
+  fallen: 'Gate fallen',
+};
+
+const featNames: Record<LevelFeat['kind'], string> = {
+  noLeaks: 'Not a penny', noSpecials: 'Bare hands', maxTowers: 'Few hands', unbroken: 'Unbroken',
+};
 
 function featMeaning(feat: LevelFeat): string {
   switch (feat.kind) {
     case 'noLeaks': return 'let no collector through.';
     case 'noSpecials': return 'win without using a special.';
     case 'maxTowers': return `build at most ${feat.limit} towers in all.`;
+    case 'unbroken': return 'win with the gate standing.';
   }
 }
 
@@ -606,6 +616,7 @@ function thirdStarTip(id: number): string {
     case 'maxTowers': return `Once you build ${feat.limit} towers, upgrade them for the third star.`;
     case 'noSpecials': return 'Leave specials unused for the third star.';
     case 'noLeaks': return 'Guard every exit for the third star.';
+    case 'unbroken': return 'Keep the gate standing for the third star.';
   }
 }
 

@@ -133,6 +133,7 @@ function validTaxesAndFeat(level: LevelDef): boolean {
   if (keys.length > 2 || !keys.every(key => validTax(level, key))) return false;
   const feat = level.feat;
   return !feat || feat.kind === 'noLeaks' || feat.kind === 'noSpecials' ||
+    (feat.kind === 'unbroken' && level.gate !== undefined) ||
     (feat.kind === 'maxTowers' && whole(feat.limit, 0));
 }
 

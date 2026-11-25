@@ -13,10 +13,11 @@
 import { enemyMaxHp } from './difficulty';
 import { cappedSlow, ENEMY_STATS, isBoss, isFlying, isTarred, shotDamage } from './enemies';
 import { featherEnemy } from './feathers';
+import { LAST_STAND_FIRE_RATE } from './gate';
 import { cellCenter, sameCell, type Cell } from './grid';
 import { pathLength, positionAlongPath } from './map';
 import { secondsToTicks, TICKS_PER_SECOND } from './time';
-import { shotCooldown, towerStats } from './towers';
+import { shotCooldown, towerStatsAt } from './towers';
 import type { KillCause } from './events';
 import type { Enemy, GameState, MapDef, Point, Shot, TargetingMode, Tower, TowerType } from './types';
 
@@ -105,7 +106,7 @@ interface EnemyPositions {
 
 function chooseTarget(state: GameState, tower: Tower, enemies: readonly Enemy[], positions?: EnemyPositions): Enemy | undefined {
   const from = towerPosition(tower);
-  const { range, minRange } = towerStats(tower, state.boons, state.level);
+  const { range, minRange } = towerStatsAt(state, tower);
   const mask = positions ? reachMask(state.map, tower, range, positions.section, from) : -1;
   if (positions && !(positions.occupied & mask)) return undefined;
   const mode = tower.targeting ?? 'first';
@@ -244,13 +245,16 @@ function burnOwnerTower(state: GameState, enemy: Enemy): Tower | undefined {
   return state.towers.find((t) => sameCell(t.cell, owner));
 }
 
-/** One tower's step: count down, then fire if ready and a target is in range. */
-function towerStep(state: GameState, tower: Tower, enemies: readonly Enemy[], positions: EnemyPositions): void {
-  if (tower.cooldownTicks > 0) tower.cooldownTicks -= 1;
+/** Count down, then fire if ready and a target is in range. */
+function towerStep(state: GameState, tower: Tower, enemies: readonly Enemy[], positions: EnemyPositions, rate: number): void {
+  if (tower.cooldownTicks > 0) tower.cooldownTicks -= rate;
   if (tower.cooldownTicks > 0) return;
   const target = chooseTarget(state, tower, enemies, positions);
-  if (!target) return;
-  const stats = towerStats(tower, state.boons, state.level);
+  if (!target) {
+    if (tower.cooldownTicks < 0) tower.cooldownTicks = 0;
+    return;
+  }
+  const stats = towerStatsAt(state, tower);
   const shot: Shot = {
     cell: { col: tower.cell.col, row: tower.cell.row },
     tower: tower.type,
@@ -284,7 +288,9 @@ function towerStep(state: GameState, tower: Tower, enemies: readonly Enemy[], po
   if (stats.burnDps > 0 && !isDead(target) && !isFlying(target)) {
     applyBurn(target, stats.burnDps, secondsToTicks(stats.burnDuration), tower.cell);
   }
-  tower.cooldownTicks = shotCooldown(stats);
+  // Keep any spare cooldown progress so odd cooldowns also average exactly
+  // twice the normal rate under Last stand.
+  tower.cooldownTicks = shotCooldown(stats) + Math.min(0, tower.cooldownTicks);
   removeDead(state, 'shot', tower);
 }
 
@@ -305,7 +311,8 @@ export function fireTowers(state: GameState): void {
     positions.bits.push(bit);
     positions.points.push(enemyPosition(enemy, state.map));
   }
-  for (const tower of state.towers) towerStep(state, tower, enemies, positions);
+  const rate = (state.gate?.lastStandTicksLeft ?? 0) > 0 ? LAST_STAND_FIRE_RATE : 1;
+  for (const tower of state.towers) towerStep(state, tower, enemies, positions, rate);
 }
 
 export const PACK_SIZE = 8;

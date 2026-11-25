@@ -1,10 +1,12 @@
 // Private board data. The title and balance runners enumerate only MAP_IDS.
 import { createGame } from './game';
+import type { GateDef } from './levelTypes';
 import { MAP_HEIGHT, MAP_WIDTH } from './map';
 import site from './keepSite.json';
 import type { GameState, MapDef, WaveDef } from './types';
 
 const keep: MapDef = { id: 'keep', width: MAP_WIDTH, height: MAP_HEIGHT, ...site };
+const gate: GateDef = { maxHp: 480, repairCost: 30, repairHp: 160 };
 const waves: readonly WaveDef[] = [
   { groups: [{ type: 'goblin', count: 12, interval: 0.85, delay: 0 }] },
   { groups: [
@@ -19,5 +21,5 @@ const waves: readonly WaveDef[] = [
 ];
 
 export function createKeep(): GameState {
-  return { ...createGame({ map: keep }), fixedWaves: waves, gold: 240 };
+  return { ...createGame({ map: keep, gate }), fixedWaves: waves, gold: 240 };
 }

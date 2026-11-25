@@ -19,9 +19,17 @@ export type TaxKind = keyof LevelTaxes;
 export type LevelFeat =
   | { readonly kind: 'noLeaks' }
   | { readonly kind: 'noSpecials' }
+  | { readonly kind: 'unbroken' }
   | { readonly kind: 'maxTowers'; readonly limit: number };
 
+export interface GateDef {
+  readonly maxHp: number;
+  readonly repairCost: number;
+  readonly repairHp: number;
+}
+
 export interface LevelDef {
+  readonly gate?: GateDef;
   readonly featherBarrels?: boolean;
   readonly taxes?: LevelTaxes;
   readonly feat?: LevelFeat;
