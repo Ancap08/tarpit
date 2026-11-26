@@ -91,7 +91,7 @@ export class PausePanel {
           this.confirming = true;
           this.buttons[1].set(PAUSE_TEXT.confirm, true);
         }
-      }, options),
+      }, printed && !portrait ? { ...options, paperGrow: gap - 4 } : options),
       new Button(scene, rect(2), campaign ? CAMPAIGN_END.map : END_TEXT.menu, actions.onMenu, options),
     ];
     for (const b of this.buttons) b.setDepth(depth + 1);

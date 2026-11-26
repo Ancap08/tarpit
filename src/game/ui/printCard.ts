@@ -12,6 +12,7 @@ import type { Rect } from '../input';
 import { levelAct } from './campaignMap';
 import type { Button, ButtonOptions } from './button';
 import { PRINT, glyph, line, motionClock, rounded, sheet, textMetrics, type Icon } from './newTheme';
+import { fitPaperText, paperPadding } from './paperText';
 import { drawStarRow } from './starRow';
 
 export type CardAction = (key: string, rect: Rect, label: string, click: () => void, size?: number, options?: ButtonOptions) => Button;
@@ -74,7 +75,7 @@ export function drawPrintedCard(
     return button;
   };
   const buttonH = portrait ? 84 : 50;
-  make('back', { x: page.x, y: portrait ? 3 : 6, width: portrait ? 128 : 112, height: buttonH }, CAMPAIGN_TEXT.back, back, { icon: 'back', bare: true });
+  make('back', { x: page.x, y: portrait ? 3 : 6, width: portrait ? 128 : 112, height: buttonH }, CAMPAIGN_TEXT.back, back, { icon: 'back', bare: true, paperGrow: 8 });
   const act = [CAMPAIGN_TEXT.actOne, CAMPAIGN_TEXT.actTwo, CAMPAIGN_TEXT.actThree][levelAct(level.id) - 1];
   const bodySize = portrait ? 23 : 17;
   const col = (text: string, size = bodySize, wrap = measure, color: string = PRINT.ink, style?: string) => {
@@ -109,7 +110,8 @@ export function drawPrintedCard(
   const keep = level.map === 'keep';
   const gap = portrait ? 17 : keep ? 6 : 9;
   const inset = portrait ? 61 : 44;
-  const tagPad = portrait ? 13 : 10;
+  const { x: tagPadX, y: tagPadY } = paperPadding(scene);
+  const tagPad = Math.ceil(Math.max(tagPadX, tagPadY));
   const tileSize = portrait ? 43 : 31;
   const rules: { title?: string; description: string; icon: Icon; feat?: boolean }[] = keep ? [
     { title: CAMPAIGN_TEXT.inForce, description: CAMPAIGN_TEXT.gateRule, icon: 'crown' },
@@ -127,6 +129,7 @@ export function drawPrintedCard(
       .setOrigin(0, 0).setAlign('left') : undefined;
     const detail = col(rule.description, bodySize, ruleW - inset, PRINT.muted).setOrigin(0, 0).setAlign('left');
     const tag = rule.feat ? col(CAMPAIGN_TEXT.thirdStar, portrait ? 22 : 13, ruleW - inset, PRINT.muted).setOrigin(0, .5) : undefined;
+    if (tag) fitPaperText([tag], portrait ? 22 : 13, () => tag.width + 2 * tagPad <= ruleW - inset);
     const tagHeight = tag ? tag.height + 2 * tagPad : 0;
     const tagBelow = !!(tag && heading && heading.width + tag.width + 2 * tagPad + 8 > ruleW - inset);
     const headingHeight = heading ? (tagBelow ? heading.height + 4 + tagHeight : Math.max(heading.height, tagHeight)) + 2 : 0;
@@ -206,7 +209,7 @@ export function drawPrintedCard(
   if (paged) {
     // The short page gives Map notes an entire target above the foot.
     make('cardPage', { x: page.x + (portrait ? 8 : 154), y: portrait ? turnY : foot, width: portrait ? 192 : 172, height: buttonH },
-      scouting ? CAMPAIGN_TEXT.notice : CAMPAIGN_TEXT.mapNotes, turnPage, { icon: 'map' });
+      scouting ? CAMPAIGN_TEXT.notice : CAMPAIGN_TEXT.mapNotes, turnPage, { icon: 'map', paperGrow: 8 });
   }
   const playButton = make('play', { x: right - playWidth, y: foot, width: playWidth, height: buttonH }, TITLE_TEXT.play, play,
     { primary: true, icon: 'play' });

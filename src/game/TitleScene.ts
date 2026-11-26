@@ -596,20 +596,24 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private preparePaper(portrait: boolean): void {
+    const normal = currentLayout();
+    const width = portrait ? printedPortraitWidth(this.scale.parentSize) : this.scale.width;
     if (portrait) {
-      const normal = currentLayout();
-      const width = printedPortraitWidth(this.scale.parentSize);
       if (this.scale.width !== width) this.scale.setGameSize(width, normal.height);
-      const refit = () => {
-        if (currentLayout().turned && printedPortraitWidth(this.scale.parentSize) !== width) this.relayout();
-      };
-      this.scale.on('resize', refit);
-      this.events.once('shutdown', () => {
-        this.scale.off('resize', refit);
-        if (!this.restartPending && this.scale.width === width && this.scale.height === normal.height)
-          this.scale.setGameSize(normal.width, normal.height);
-      });
     }
+    const { x, y } = this.scale.displayScale;
+    const refit = () => {
+      const display = this.scale.displayScale;
+      const sheetUsesScale = this.page === 'levelCard' || this.page === 'levelMap';
+      if (portrait && currentLayout().turned && printedPortraitWidth(this.scale.parentSize) !== width ||
+        sheetUsesScale && (display.x !== x || display.y !== y)) this.relayout();
+    };
+    this.scale.on('resize', refit);
+    this.events.once('shutdown', () => {
+      this.scale.off('resize', refit);
+      if (portrait && !this.restartPending && this.scale.width === width && this.scale.height === normal.height)
+        this.scale.setGameSize(normal.width, normal.height);
+    });
     useInterface(this, 'paper', () => this.time.now);
     this.cameras.main.setBackgroundColor(PRINT.ground);
   }

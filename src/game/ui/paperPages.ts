@@ -14,6 +14,7 @@ import { ownerStories, type OwnerStory } from './campaignScreens';
 import { layPaper } from './devicePixels';
 import { MuteButton } from './muteButton';
 import { PRINT, glyph, line, motionClock, rounded, sheet, type Icon } from './newTheme';
+import { fitPaperText, paperLabelRoom, paperPadding } from './paperText';
 import { printedText, type CardAction } from './printCard';
 import { drawStarRow } from './starRow';
 
@@ -68,14 +69,12 @@ class PaperPage {
   back(click: () => void, text: string = CAMPAIGN_TEXT.back): Button {
     const width = text === CAMPAIGN_TEXT.back ? (this.portrait ? 111 : 112) : (this.portrait ? 240 : 168);
     return this.action('title:back', { x: this.x, y: this.navY, width, height: this.tap }, text, click,
-      this.portrait ? 23 : 16, { bare: true, icon: 'back' });
+      this.portrait ? 23 : 16, { bare: true, icon: 'back', paperGrow: 8 });
   }
 
   button(key: string, rect: Rect, text: string, click: () => void, options?: ButtonOptions, size = this.size): Button {
-    const button = this.action(`title:${key}`, rect, text, click, size, options);
-    const label = button.labelObjects[0];
-    if (text) label.setWordWrapWidth(rect.width - (options?.icon ? 58 : 20));
-    return button;
+    const paperWrapWidth = rect.width - (options?.icon ? 58 : 20);
+    return this.action(`title:${key}`, rect, text, click, size, { paperGrow: 2, paperWrapWidth, ...options });
   }
 
   row(index: number, count: number, y: number, height = this.tap, inset = this.pad, gap = this.gap): Rect {
@@ -177,18 +176,21 @@ export function drawPaperTitle(scene: Scene, portrait: boolean, first: boolean, 
   const settingsY = p.navY;
   const optionW = portrait ? 124 : 101;
   const settingsGap = portrait ? 4 : 8;
+  const navWidth = first ? choose.owner ? 121 : 0 : 111;
+  const navRoom = navWidth ? navWidth + 8 : 0;
+  const optionSlot = portrait ? Math.min(140, Math.floor((p.width - navRoom - p.tap - 3 * settingsGap) / 2)) : optionW;
+  const room = Math.max(0, (optionSlot - optionW) / 2);
   const mute = new MuteButton(scene, { x: p.x + p.width - p.tap, y: settingsY, width: p.tap, height: p.tap });
-  const lookX = p.x + p.width - p.tap - 2 * (optionW + settingsGap);
+  const lookX = p.x + p.width - p.tap - 2 * (optionSlot + settingsGap);
   const lookLabel = p.label(TITLE_TEXT.look, portrait ? p.inner < 500 ? 20 : 23 : 16, 76, PRINT.muted);
   const lookCaptionX = lookX - settingsGap - lookLabel.width / 2;
-  const navWidth = first ? choose.owner ? 121 : 0 : 111;
-  if (portrait && lookCaptionX - lookLabel.width / 2 < p.x + navWidth + settingsGap) {
-    p.place(lookLabel, settingsY + p.tap + settingsGap, lookX + optionW + settingsGap / 2);
+  if (portrait && lookCaptionX - lookLabel.width / 2 < p.x + navRoom + settingsGap) {
+    p.place(lookLabel, settingsY + p.tap + settingsGap, lookX + optionSlot + settingsGap / 2);
   } else p.place(lookLabel, settingsY + (p.tap - lookLabel.height) / 2, lookCaptionX);
   const looks = new Map<Look, Button>();
   LOOKS.forEach((look, i) => looks.set(look, action(`title:look:${look}`, {
-    x: lookX + i * (optionW + settingsGap), y: settingsY, width: optionW, height: p.tap,
-  }, TITLE_TEXT[look], () => choose.look(look), portrait ? 22 : 16)));
+    x: lookX + i * (optionSlot + settingsGap) + room, y: settingsY, width: Math.min(optionW, optionSlot), height: p.tap,
+  }, TITLE_TEXT[look], () => choose.look(look), portrait ? 22 : 16, { paperGrow: room })));
 
   const levels = new Map<Difficulty, Button>();
   const maps = new Map<MapId, Button>();
@@ -201,7 +203,7 @@ export function drawPaperTitle(scene: Scene, portrait: boolean, first: boolean, 
   if (first) {
     if (choose.owner) {
       action('title:owner', { x: p.x, y: settingsY, width: portrait ? navWidth : 100, height: p.tap },
-        OWNER_TEXT.mark, choose.owner, portrait ? 23 : 16, { bare: true });
+        OWNER_TEXT.mark, choose.owner, portrait ? 23 : 16, { bare: true, paperGrow: 8 });
     }
     const story = p.label(TITLE_TEXT.story, portrait ? 25 : 18, p.inner, PRINT.muted);
     const pictureH = portrait ? 196 : 120;
@@ -330,7 +332,11 @@ export function drawPaperMap(
     button.setPicked(stop.next);
     const number = p.label(String(stop.id), portrait ? 33 : 24, tileW,
       stop.next ? '#fff9eb' : stop.open ? PRINT.ink : PRINT.muted, 'bold');
-    p.place(number, y - (portrait ? 39 : 24), x + (stop.open ? 0 : 10));
+    fitPaperText([number], portrait ? 33 : 24, () => {
+      p.place(number, Math.max(y - (portrait ? 39 : 24), stop.rect.y + paperPadding(scene).y), x + (stop.open ? 0 : 10));
+      const room = paperLabelRoom(number, stop.rect);
+      return room.x >= 0 && room.y >= -1e-7;
+    });
     if (!stop.open) glyph(scene.add.graphics(), 'lock', x - (stop.id < 10 ? 16 : 24), number.y + number.height / 2, portrait ? 20 : 16, 0x64705d);
     drawStarRow(scene, x, y + (portrait ? 22 : 18), stop.stars, portrait ? 22 : 16,
       stop.next ? '#ede2be' : stop.open ? '#a36a36' : '#81765e', stop.feat);

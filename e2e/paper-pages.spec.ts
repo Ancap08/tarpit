@@ -10,7 +10,8 @@ import { NEW_PHONE_VIEWPORTS } from './newInterface';
 import { waitForFirstScreen } from './title';
 
 type PaperPane = 'title' | 'pause' | 'fallback' | 'result';
-type Clearance = { key: string; text: string; px: number };
+type Clearance = { key: string; text: string; px: number; labelWidth: number; controlWidth: number; size: number };
+const sweepFactors = [1.00, 1.03, 1.06, 1.09, 1.12];
 
 async function reportPaperClearance(info: TestInfo, detail: string, items: Clearance[]) {
   items.sort((a, b) => a.px - b.px);
@@ -20,7 +21,7 @@ async function reportPaperClearance(info: TestInfo, detail: string, items: Clear
   await info.attach(`Paper clearances ${detail}`, { body: JSON.stringify(items), contentType: 'application/json' });
 }
 
-async function checkDomPaper(page: Page, info: TestInfo, name: string, pairs: [key: string, label: Locator, sheet: Locator][]) {
+async function checkDomPaper(page: Page, info: TestInfo, name: string, pairs: [key: string, label: Locator, sheet: Locator][], factor = platformWideFactor) {
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
   const items = await Promise.all(pairs.map(async ([key, label, sheet]) => {
     const outer = (await sheet.boundingBox())!;
@@ -31,8 +32,9 @@ async function checkDomPaper(page: Page, info: TestInfo, name: string, pairs: [k
       const extra = (factor - 1) * bounds.width / 2;
       const px = Math.min(bounds.left - outer.x - extra, outer.x + outer.width - bounds.right - extra,
         bounds.top - outer.y, outer.y + outer.height - bounds.bottom) - 5;
-      return { key, text: element.textContent!.trim(), px };
-    }, { key, outer, factor: platformWideFactor });
+      return { key, text: element.textContent!.trim(), px, labelWidth: bounds.width + 2 * extra,
+        controlWidth: outer.width, size: parseFloat(getComputedStyle(element).fontSize) };
+    }, { key, outer, factor });
   }));
   const { width, height } = page.viewportSize()!;
   const detail = `${width}×${height} ${name}`;
@@ -61,11 +63,11 @@ async function checkPaper(page: Page, info: TestInfo, margin: boolean, pane: Pap
     const overlap = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
       a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
     const viewport = { x: 0, y: 0, width, height };
-    const measure = (key: string, control: Rect, text: string, box: Phaser.Geom.Rectangle) => {
+    const measure = (key: string, control: Rect, text: string, box: Phaser.Geom.Rectangle, size: number) => {
       // Keep the existing five canvas-unit inset, then require four CSS pixels beyond it.
       const px = Math.min((box.left - control.x - 5) / sx, (control.x + control.width - box.right - 5) / sx,
         (box.top - control.y - 5) / sy, (control.y + control.height - box.bottom - 5) / sy);
-      clearances.push({ key, text, px });
+      clearances.push({ key, text, px, labelWidth: box.width / sx, controlWidth: control.width / sx, size });
       if (margin ? px < 4 : !fits(box, control, 5)) problems.push(`${text} clears ${key} inset by ${px.toFixed(3)} CSS px`);
     };
     for (const [i, [key, box]] of rects.entries()) {
@@ -78,9 +80,9 @@ async function checkPaper(page: Page, info: TestInfo, margin: boolean, pane: Pap
       const box = label.getBounds();
       const size = parseFloat(String(label.style.fontSize)) / sy;
       const chip = label.getData('paper-chip') as Rect | undefined;
-      if (chip) measure('chip', { ...chip, x: label.x + chip.x, y: label.y + chip.y }, text, box);
+      if (chip) measure('chip', { ...chip, x: label.x + chip.x, y: label.y + chip.y }, text, box, size);
       for (const [key, button] of rects) {
-        if (overlap(box, button)) measure(key, button, text, box);
+        if (overlap(box, button)) measure(key, button, text, box, size);
       }
       if (pane === 'result') continue;
       if (!fits(box, viewport, 5)) problems.push(`${text} outside print area`);
@@ -98,11 +100,13 @@ async function checkPaper(page: Page, info: TestInfo, margin: boolean, pane: Pap
   expect.soft(issues, detail).toEqual([]);
 }
 
-for (const metrics of ['normal', 'fixed Caslon', 'fixed fallback', 'wide Caslon'] as const) {
-  test(`paper pages have usable type and spacing with ${metrics}`, async ({ page, hasTouch }, info) => {
+for (const metrics of ['normal', 'fixed Caslon', 'fixed fallback', 'wide Caslon', ...sweepFactors] as const) {
+  const wide = metrics === 'wide Caslon' || typeof metrics === 'number';
+  const description = typeof metrics === 'number' ? `Caslon width sweep ${metrics.toFixed(2)}` : metrics;
+  test(`paper pages have usable type and spacing with ${description}`, async ({ page, hasTouch }, info) => {
     test.setTimeout(150_000);
-    if (metrics.startsWith('fixed')) await useTallFontMetrics(page, metrics === 'fixed fallback');
-    if (metrics === 'wide Caslon') await useWideFontMetrics(page, platformWideFactor, CASLON);
+    if (metrics === 'fixed Caslon' || metrics === 'fixed fallback') await useTallFontMetrics(page, metrics === 'fixed fallback');
+    if (wide) await useWideFontMetrics(page, typeof metrics === 'number' ? metrics : platformWideFactor, CASLON);
     await page.addInitScript(() => {
       localStorage.setItem('tarpit.best', JSON.stringify({ v: 1, best: { switchback: { normal: Number.MAX_SAFE_INTEGER, hard: 7 } } }));
       localStorage.setItem('tarpit.seenBroadsides', '["opening","secondAct","ending"]');
@@ -110,7 +114,7 @@ for (const metrics of ['normal', 'fixed Caslon', 'fixed fallback', 'wide Caslon'
       localStorage.setItem('tarpit.seenTips', '[1]');
     });
     const click = (key: string) => press(page, key, hasTouch);
-    const check = (pane?: PaperPane, name?: string) => checkPaper(page, info, metrics === 'wide Caslon', pane, name);
+    const check = (pane?: PaperPane, name?: string) => checkPaper(page, info, wide, pane, name);
     for (const viewport of info.project.name === 'phone' ? NEW_PHONE_VIEWPORTS : [page.viewportSize()!]) {
       await test.step(`${viewport.width}×${viewport.height}`, async () => {
         await page.setViewportSize(viewport);
@@ -146,10 +150,25 @@ for (const metrics of ['normal', 'fixed Caslon', 'fixed fallback', 'wide Caslon'
         await page.keyboard.press('p');
         await click('pause:menu');
         await onScreen(page, 'freePlay');
+        if (typeof metrics === 'number') {
+          for (const phase of ['won', 'lost'] as const) {
+            await click('title:play');
+            await onScreen(page, 'game');
+            await page.evaluate(phase => {
+              const t = window.__tarpit!;
+              Object.assign(t.state!(), { phase, lives: phase === 'won' ? 12 : 0 });
+              t.step!(0);
+            }, phase);
+            await onScreen(page, 'result');
+            await check('result', `Free play ${phase} result`);
+            await click('menu');
+            await onScreen(page, 'freePlay');
+          }
+        }
         await click('title:back');
         await onScreen(page, 'first');
 
-        if (metrics === 'wide Caslon') {
+        if (wide) {
           await page.goto('/?test=1&ui=new&owner=0&act3=1');
           await waitForFirstScreen(page);
           await click('title:campaign');
@@ -164,7 +183,7 @@ for (const metrics of ['normal', 'fixed Caslon', 'fixed fallback', 'wide Caslon'
           await click(`title:act:${act}`);
           await onScreen(page, 'levelMap');
           await check('title', `Level map, Act ${act}`);
-          if (metrics !== 'wide Caslon') continue;
+          if (!wide) continue;
           const stops = await api(page, t => t.levelStops().map(stop => stop.id));
           for (const id of stops) {
             await click(`title:stop:${id}`);
@@ -210,7 +229,7 @@ for (const metrics of ['normal', 'fixed Caslon', 'fixed fallback', 'wide Caslon'
           await onScreen(page, 'owner');
         }
 
-        if (metrics === 'wide Caslon') {
+        if (wide) {
           for (const [id, phase] of [[1, 'won'], [1, 'lost'], [10, 'won'], [20, 'won'], [25, 'won'], [25, 'lost']] as const) {
             if (id === 25) {
               await page.goto('/?test=1&ui=new&keep=25');
@@ -237,9 +256,34 @@ for (const metrics of ['normal', 'fixed Caslon', 'fixed fallback', 'wide Caslon'
   });
 }
 
-test('boot, Painted progress and fallback, and Keep failure keep their recovery routes on paper', async ({ page, hasTouch }, info) => {
+test('Caslon width sweep reproduces the Linux restart width at 960×580', async ({ page }) => {
+  test.skip(test.info().project.name !== 'chromium', 'The regression was on the desktop canvas.');
+  await page.addInitScript(({ family, confirm }) => {
+    const measure = CanvasRenderingContext2D.prototype.measureText;
+    CanvasRenderingContext2D.prototype.measureText = function (text) {
+      const metrics = measure.call(this, text);
+      if (text === confirm && this.font.includes(family)) {
+        const size = Number(/([\d.]+)px/.exec(this.font)![1]);
+        // PR 69's 3.861 CSS px gap with a 184-unit control implies a 165-unit label at 18 px.
+        Object.defineProperty(metrics, 'width', { value: 165 * size / 18 });
+      }
+      return metrics;
+    };
+  }, { family: CASLON, confirm: PAUSE_TEXT.confirm });
+  await page.goto('/?test=1&ui=new');
+  await waitForFirstScreen(page);
+  await press(page, 'title:freePlay');
+  await onScreen(page, 'freePlay');
+  await press(page, 'title:play');
+  await onScreen(page, 'game');
+  await page.keyboard.press('p');
+  await press(page, 'pause:restart');
+  await checkPaper(page, test.info(), true, 'pause', 'Confirm restart (Linux width)');
+});
+
+for (const factor of [undefined, ...sweepFactors]) test(`boot, Painted progress and fallback, and Keep failure keep their recovery routes on paper${factor === undefined ? '' : ` at ${factor.toFixed(2)}`}`, async ({ page, hasTouch }, info) => {
   test.setTimeout(90_000);
-  await useWideFontMetrics(page, platformWideFactor, CASLON);
+  await useWideFontMetrics(page, factor ?? platformWideFactor, CASLON);
   for (const viewport of info.project.name === 'phone' ? NEW_PHONE_VIEWPORTS : [page.viewportSize()!]) {
     await page.setViewportSize(viewport);
     let resume!: () => void;
@@ -253,7 +297,7 @@ test('boot, Painted progress and fallback, and Keep failure keep their recovery 
     await expect(page.locator('#loading')).toHaveText(TITLE_TEXT.loading);
     const loading = page.locator('#loading > span');
     await expect(loading).toHaveCSS('border-radius', '12px');
-    await checkDomPaper(page, info, 'Boot loading', [['loading', loading, loading]]);
+    await checkDomPaper(page, info, 'Boot loading', [['loading', loading, loading]], factor);
     resume();
     await waitForFirstScreen(page);
 
@@ -287,12 +331,12 @@ test('boot, Painted progress and fallback, and Keep failure keep their recovery 
     const keepSheet = page.locator('#keep-status > div');
     const status = keepSheet.locator('p');
     await expect(keepSheet).toBeVisible();
-    await checkDomPaper(page, info, 'Keep loading', [['status', status, keepSheet]]);
+    await checkDomPaper(page, info, 'Keep loading', [['status', status, keepSheet]], factor);
     failKeep();
     const back = page.getByRole('button', { name: 'Back to title' });
     await expect(back).toBeFocused();
     expect((await back.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    await checkDomPaper(page, info, 'Keep failure', [['status', status, keepSheet], ['back', back, back]]);
+    await checkDomPaper(page, info, 'Keep failure', [['status', status, keepSheet], ['back', back, back]], factor);
     await back.click();
     await waitForFirstScreen(page);
     await page.unroute(keepArt);

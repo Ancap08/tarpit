@@ -77,14 +77,19 @@ Caslon Text and drawn icons. Portrait menu buttons use an 84-unit target
 on the 1194-unit sheet. The level-map stops use a 120 × 104-unit target
 (about 66 × 57 CSS px at 390 × 656). Back occupies the upper left on
 pages with a Back action. Reading sheets put Continue or Got it below
-the copy. Paper button labels and chips leave at least 4 CSS px on each
-side beyond a five-unit inset with the shared Caslon width margin. The
-portrait Free play map row uses a 6-unit side inset and 8-unit gaps.
-Portrait look buttons are 124 units wide with 4-unit gaps. Their caption
-sits below the row when the navigation needs the space. The Owner button
-is 121 units wide in portrait. Landscape pause buttons are 184 units wide
-so the confirmation fits the same row. Desktop map numbers sit 24 units
-above the stop centre. Printed menus settle over 220 ms with fixed input bounds.
+the copy. Canvas paper controls measure the rendered Caslon bounds at layout
+time and leave 6 CSS px on every side beyond a five-unit inset. A button can
+grow into the horizontal space reserved by its layout. If the slot still
+cannot fit the label, its type goes down in one-unit steps to a 12 CSS px
+floor. Chips size to their measured labels. The browser check requires 4 CSS
+px beyond the inset, leaving 2 CSS px for measurement and rounding variance.
+The HTML recovery button uses 11 CSS px of padding. The portrait Free play
+map row starts with a 6-unit side inset and 8-unit gaps. Portrait look buttons
+prefer 124 units each and have up to 140 units per slot with a 4-unit gap.
+Their caption sits below the row when the navigation needs the space. The
+landscape pause buttons start at 184 units and Restart may use up to eight
+units of each adjacent gap. Map numbers keep their clearance from the top of
+each stop. Printed menus settle over 220 ms with fixed input bounds.
 Test mode and reduced-motion preferences keep the sheets still.
 
 ## Space and time

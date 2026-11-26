@@ -14,6 +14,7 @@ import type { Rect } from '../input';
 import { COLORS, FONT, HUD_FONT, TEXT } from '../palette';
 import { DeviceTextFit, textInset, textSlot } from './deviceText';
 import { CLEAN, PRINT, battleFont, battleWeight, controlPaint, glyph, motionClock, rounded, skinFor, textMetrics, type ControlPaint, type Icon, type Skin } from './newTheme';
+import { fitPaperText, paperLabelRoom, paperPadding } from './paperText';
 
 /** Emitted on the scene input plugin when a pause cancels any unfinished click. */
 export const CANCEL_UI_PRESS = 'cancel-ui-press';
@@ -45,6 +46,10 @@ export interface ButtonOptions {
   grouped?: boolean;
   semibold?: boolean;
   wrap?: boolean;
+  /** Horizontal room the paper layout can spare on each side of the preferred slot. */
+  paperGrow?: number;
+  /** Preserve a paper label's existing multiline layout within this width. */
+  paperWrapWidth?: number;
 }
 
 export class Button {
@@ -66,6 +71,10 @@ export class Button {
   private labelsFit = true;
   private priceFits = false;
   private preferredSize: number;
+  private readonly paperGrow: number;
+  private paperWidth: number;
+  private paperFitDirty = true;
+  private paperPressRoom = 0;
   private coinLabelWidth = 0;
   private icon?: Icon;
   private readonly iconY?: number;
@@ -89,6 +98,8 @@ export class Button {
       onClick();
     };
     this.r = { ...rect };
+    this.paperWidth = rect.width;
+    this.paperGrow = options.paperGrow ?? 0;
     this.onHover = options.onHover;
     this.labelY = options.labelY;
     this.bare = options.bare ?? false;
@@ -113,6 +124,7 @@ export class Button {
       fontFamily: this.skin === 'paper' ? FONT : this.skin === 'battle' ? battleFont() : HUD_FONT,
       fontSize: size, fontStyle: this.skin === 'battle' ? battleWeight(options.semibold ?? false, 'bold') : 'bold', color: TEXT.button,
       ...(this.skin === 'legacy' ? {} : { metrics: textMetrics(parseFloat(size)) }),
+      ...(this.skin === 'paper' && options.paperWrapWidth ? { wordWrap: { width: options.paperWrapWidth } } : {}),
     };
     this.box = scene.add.rectangle(0, 0, rect.width, rect.height, COLORS.button).setOrigin(0, 0);
     this.trim = scene.add.graphics();
@@ -126,6 +138,14 @@ export class Button {
     }
     this.moveTo(rect.x, rect.y);
     this.refresh();
+    if (this.skin === 'paper') {
+      const resize = () => {
+        this.paperFitDirty = true;
+        if (this.shown) this.refresh();
+      };
+      scene.scale.on('resize', resize);
+      this.box.once(Phaser.GameObjects.Events.DESTROY, () => scene.scale.off('resize', resize));
+    }
 
     scene.input.on(CANCEL_UI_PRESS, () => {
       this.pressed = false;
@@ -192,6 +212,10 @@ export class Button {
     }
     if (this.enabled !== enabled) {
       this.enabled = enabled;
+      if (this.skin === 'paper') this.paperFitDirty ||= changed || rightChanged;
+      this.refresh();
+    } else if (this.skin === 'paper' && (changed || rightChanged)) {
+      this.paperFitDirty = true;
       this.refresh();
     } else if ((changed || (this.textFit && rightChanged)) && (this.icon || this.priceFallback)) this.refresh();
     else if (this.textFit && (changed || rightChanged)) this.fitText();
@@ -200,10 +224,11 @@ export class Button {
 
   /** Change the label size (both labels), e.g. for a longer label in the same slot. */
   setFontSize(size: string): void {
-    if (this.textFit) {
+    if (this.textFit || this.skin === 'paper') {
       const preferred = parseFloat(size);
       if (preferred !== this.preferredSize) {
         this.preferredSize = preferred;
+        this.paperFitDirty = true;
         this.refresh();
       }
       return;
@@ -232,7 +257,9 @@ export class Button {
   }
 
   setSize(width: number, height: number): void {
-    if (this.r.width === width && this.r.height === height) return;
+    if ((this.skin === 'paper' ? this.paperWidth : this.r.width) === width && this.r.height === height) return;
+    this.paperWidth = width;
+    this.paperFitDirty = true;
     this.r.width = width;
     this.r.height = height;
     this.box.setSize(width, height);
@@ -247,12 +274,14 @@ export class Button {
   setLabelCenter(y: number | undefined): void {
     if (y === this.labelY) return;
     this.labelY = y;
+    this.paperFitDirty = true;
     this.refresh();
   }
 
   setIcon(icon: Icon | undefined): void {
     if (icon === this.icon) return;
     this.icon = icon;
+    this.paperFitDirty = true;
     this.positionLabels();
     this.refresh();
   }
@@ -301,7 +330,12 @@ export class Button {
   private positionLabels(): void {
     const { x, y } = this.r;
     const shift = this.skin !== 'legacy' && this.icon ? Math.min(this.rightLabel ? 24 : 13, this.r.width * .075) : 0;
-    const mid = y + this.offsetY + (this.labelY ?? this.r.height / 2);
+    let mid = this.labelY ?? this.r.height / 2;
+    if (this.skin === 'paper' && this.labelY !== undefined) {
+      const edge = paperPadding(this.label.scene).y + this.label.height / 2;
+      mid = Math.max(edge, Math.min(mid, this.r.height - edge));
+    }
+    mid += y + this.offsetY;
     if (this.rightLabel) {
       const inset = this.upgradeRow ? this.labelInset : this.labelInset + shift;
       this.label.setPosition(x + inset, mid);
@@ -333,6 +367,35 @@ export class Button {
       this.priceFits = this.rightLabel.width <= width && this.rightLabel.height <= price.height;
     }
     this.showLabels();
+  }
+
+  private fitPaper(): void {
+    this.paperFitDirty = false;
+    const labels = this.labelObjects.filter(label => label.text);
+    const center = this.r.x + this.r.width / 2;
+    const place = (growth: number) => {
+      this.r.width = this.paperWidth + 2 * growth;
+      this.r.x = center - this.r.width / 2;
+      this.positionLabels();
+      const rect = { ...this.r, y: this.r.y + this.offsetY };
+      const room = labels.map(label => paperLabelRoom(label, rect));
+      const x = Math.min(...room.map(room => room.x));
+      const y = Math.min(...room.map(room => room.y));
+      // Leave clearance when the pressed edge moves in and the text moves down.
+      this.paperPressRoom = Math.max(0, Math.min(x, y / 2));
+      return { x, y };
+    };
+    if (!labels.length) place(0);
+    else fitPaperText(labels, this.preferredSize, () => {
+      let { x, y } = place(0);
+      if (x < 0 && this.paperGrow) {
+        // An icon's offset can grow by .075 per added unit of width.
+        const growth = Math.min(this.paperGrow, Math.ceil(-x / (this.icon ? .85 : 1)));
+        ({ x, y } = place(growth));
+      }
+      return x >= -1e-7 && y >= -1e-7;
+    });
+    this.box.setPosition(this.r.x, this.r.y).setSize(this.r.width, this.r.height);
   }
 
   static fitGroup(fitter: DeviceTextFit, buttons: Button[]): void {
@@ -408,9 +471,10 @@ export class Button {
 
   private refreshModern(available: boolean): void {
     const paper = this.skin === 'paper';
+    if (paper && this.paperFitDirty) this.fitPaper();
     const active = this.primary && available;
     const down = this.pressed && available;
-    const compress = down && this.clock ? 2 : 0;
+    const compress = down && this.clock ? paper ? Math.min(2, this.paperPressRoom) : 2 : 0;
     const { x, y, width, height } = this.r;
     this.positionLabels();
     if (this.textFit && this.shown) this.fitText();
