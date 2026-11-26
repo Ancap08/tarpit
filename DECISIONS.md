@@ -2235,3 +2235,25 @@ can change it; "Kyle" means Kyle decided.
   owner's page, pause, loading and failure states, all on paper. Sol's
   walk also found and restyled the Old Keep's cards, results and three
   keyboard badges. No wording changed. 483,247 Sol tokens.
+- **Sharper pieces merged and deployed behind the switch** (pull request
+  68). CI green on the fixed build and the automated review found nothing
+  on it.
+- **Act Three's controls restyled (55b2)** and a 4 px clearance rule for
+  paper controls, after "Confirm restart" and "Switchback" overflowed
+  under wide Caslon on Linux in pull request 67. That pull request was
+  closed as superseded; its work ships in the combined one.
+- **Pieces and interface merged into one branch and checked together.**
+  Four files conflicted. The coordinator resolved this record; Sol
+  resolved three code files under one rule: main's art and loading, the
+  interface branch's layout and pages. Switch off matched main on all 78
+  screenshots. To keep the Old Keep within its 70 MB cap with both
+  features on, Sol made the keep share one field buffer and trimmed the
+  panorama's transparent padding; the peak is 68.46 MB on level 25 and
+  49.13 MB on ordinary levels. 356,184 Sol tokens.
+- **The price on the mint Upgrade button could not be read** (1.04 to 1
+  against its fill). The coordinator saw it in the merged captures; it was
+  already live behind the switch and no test looked at contrast. Fixed in
+  the shared button (now 11.65 to 1) with a check that reads each button
+  state's text and fill from the built game and requires 4.5 to 1 for
+  enabled text. The check failed on the old build and passes on 80
+  combinations now. 163,562 Sol tokens.
