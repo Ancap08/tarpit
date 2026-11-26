@@ -9,11 +9,13 @@ import { waitForFirstScreen, waitForTitle } from '../../e2e/title.ts';
 import type { SiegeView } from '../../src/game/keep/siegeView.ts';
 import type { GameScene } from '../../src/game/GameScene.ts';
 import type { TowerType } from '../../src/sim/types.ts';
-import { origin, phone, press, run } from './m47Browser.ts';
+import { origin as previewOrigin, phone, press, run } from './m47Browser.ts';
 
 const scratch = resolve(process.argv[2]);
 const mode = process.argv[3];
 assert.equal(process.env.PW_PORT, '4373');
+const reuse = process.argv.includes('--reuse-preview');
+const origin = reuse ? 'http://localhost:4373' : previewOrigin;
 
 async function enter(page: Page, level: number, query: string) {
   const keep = level >= 21;
@@ -376,7 +378,7 @@ function work(browser: Browser) {
   if (mode === 'lifecycle') return verifyLifecycle(browser);
   return audit(browser);
 }
-if (process.argv.includes('--reuse-preview')) {
+if (reuse) {
   const browser = await chromium.launch();
   try { await work(browser); } finally { await browser.close(); }
 } else {
