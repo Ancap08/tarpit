@@ -5,6 +5,7 @@ import { paintFork } from './keepMotion';
 import type { Plate } from './plates';
 
 const WING = 120;
+const CLEAN_WING = 168;
 const HEADROOM = 120;
 type ImageSource = (plate: Plate) => HTMLImageElement;
 
@@ -15,6 +16,7 @@ export class KeepSurround {
   private readonly frame = document.createElement('div');
   private readonly camera = document.createElement('div');
   private readonly observer: ResizeObserver;
+  private readonly fit: () => void;
   private readonly sky: HTMLCanvasElement;
   private readonly ground: HTMLCanvasElement;
   private readonly litGround?: HTMLCanvasElement;
@@ -35,7 +37,7 @@ export class KeepSurround {
   private stillActive = false;
   private readonly inset: number;
 
-  constructor(canvas: HTMLCanvasElement, private readonly layout: Layout,
+  constructor(canvas: HTMLCanvasElement, private layout: Layout,
       image: ImageSource, gate: Point,
       size: {width:number;height:number}, foot: number[], private readonly weather?: KeepSky) {
     const host = canvas.parentElement!;
@@ -47,7 +49,10 @@ export class KeepSurround {
     this.backdrop.append(this.frame);
     host.insertBefore(this.backdrop, canvas);
     const { width, height } = layout.map;
-    this.inset = layout.turned ? WING : 0;
+    const wing = layout.turned ? WING : 0;
+    // The wider Clean canvas needs more scenery at the edges. Preserve
+    // the original width of the painted routes and extend the rock beyond them.
+    this.inset = layout.turned && layout.map.x > 0 ? CLEAN_WING : wing;
     const skyline = gate.y + 30;
     const skyInset = weather ? this.inset : 0;
     const skyWidth = width + skyInset * 2;
@@ -84,7 +89,18 @@ export class KeepSurround {
     this.ground = this.paint(-this.inset, 0, width + this.inset * 2, height, ctx => {
       if (weather) {
         ctx.filter = grade;
-        ctx.drawImage(image(layout.turned ? 'siege-portrait' : 'siege-wide'), -this.inset, 0, width + this.inset * 2, height);
+        ctx.drawImage(image(layout.turned ? 'siege-portrait' : 'siege-wide'), -wing, 0, width + wing * 2, height);
+        const extra = this.inset - wing;
+        if (extra) {
+          ctx.filter = 'none';
+          for (const [edge, source] of [[-wing, extra], [width + wing, width + this.inset + wing - extra]]) {
+            ctx.save();
+            ctx.translate(edge, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(ctx.canvas, source, 0, extra, height, edge < 0 ? 0 : -extra, 0, extra, height);
+            ctx.restore();
+          }
+        }
         return;
       }
       ctx.drawImage(image(layout.turned ? 'portrait' : 'landscape'), 0, 0, width, height);
@@ -150,17 +166,22 @@ export class KeepSurround {
       }) : this.paint(512, 0, 448, 480, ctx => ctx.drawImage(image('road-wide'), 512, 0, 448, 480));
     }
 
-    const fit = () => {
+    this.fit = () => {
       const r = canvas.getBoundingClientRect(), parent = host.getBoundingClientRect();
-      const scale = r.width / layout.width;
-      this.frame.style.left = (r.left - parent.left) + 'px';
-      this.frame.style.top = (r.top - parent.top + layout.map.y * scale) + 'px';
+      const scale = r.width / this.layout.width;
+      this.frame.style.left = (r.left - parent.left + this.layout.map.x * scale) + 'px';
+      this.frame.style.top = (r.top - parent.top + this.layout.map.y * scale) + 'px';
       this.frame.style.scale = String(scale);
     };
-    fit();
-    this.observer = new ResizeObserver(fit);
+    this.fit();
+    this.observer = new ResizeObserver(this.fit);
     this.observer.observe(canvas);
     this.observer.observe(host);
+  }
+
+  refit(layout: Layout): void {
+    this.layout = layout;
+    this.fit();
   }
 
   private paint(x: number, y: number, width: number, height: number,

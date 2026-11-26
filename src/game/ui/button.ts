@@ -250,7 +250,7 @@ export class Button {
     this.refresh();
   }
 
-  setIcon(icon: Icon): void {
+  setIcon(icon: Icon | undefined): void {
     if (icon === this.icon) return;
     this.icon = icon;
     this.positionLabels();
@@ -446,7 +446,7 @@ export class Button {
         const label = this.labelsFit ? this.label.text : '';
         const size = this.iconSize();
         const iconX = label ? this.rightLabel ? x + this.labelInset / 1.3 : x + (width - this.label.width) / 2 - size * .35 : x + width / 2;
-        glyph(paint, this.icon, iconX, y + offset + (this.iconY ?? height / 2) + compress, size, Number.parseInt(color.slice(1), 16));
+        glyph(paint, this.icon, iconX, y + offset + (this.iconY ?? this.labelY ?? height / 2) + compress, size, Number.parseInt(color.slice(1), 16));
       }
     }
     if (this.shown) this.chrome?.finish(this.offsetY);

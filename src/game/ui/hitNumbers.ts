@@ -14,7 +14,8 @@ export class HitNumbers {
   private readonly fitter = new DeviceTextFit();
   private readonly motion: boolean;
 
-  constructor(private readonly scene: Phaser.Scene, private readonly now: () => number, private readonly layout: Layout) {
+  constructor(private readonly scene: Phaser.Scene, private readonly now: () => number, private readonly layout: Layout,
+    private readonly place?: (label: Phaser.GameObjects.Text) => void) {
     this.flashes = scene.add.graphics().setName('clean-hit-numbers');
     this.motion = !!motionClock(scene);
   }
@@ -25,6 +26,7 @@ export class HitNumbers {
     if (!mark && this.labels.length < LIMIT) {
       const text = sans(this.scene, 0, 0, '', this.layout.turned ? 23 : 14, CLEAN.gold, true).setOrigin(0, .5)
         .setStroke('#162626', 5);
+      this.place?.(text);
       mark = { text, point, at };
       this.labels.push(mark);
     }

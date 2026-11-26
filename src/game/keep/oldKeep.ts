@@ -94,7 +94,10 @@ export async function loadKeep(game: Phaser.Game, portrait: boolean, signal: Abo
       id: set.id,
       release,
       panorama(layout, gate, size, foot, sky) {
-        if (surround) return surround;
+        if (surround) {
+          surround.refit(layout);
+          return surround;
+        }
         surround = new KeepSurround(game.canvas, layout, name => images.get(name)!, gate, size, foot, sky);
         // The static canvases now own the pixels. Retain only the Phaser sources
         // which the battle canvas still draws (and can re-upload on context restore).

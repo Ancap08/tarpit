@@ -4,6 +4,7 @@ import type { Rect } from '../input';
 import type { Layout } from '../layout';
 import { GameClock } from '../loop';
 import { SIEGE_TEXT } from '../names';
+import { skinFor } from '../ui/newTheme';
 
 const ATLAS = 'siege:actors';
 const FRAMES: Record<string, [number, number, number, number]> = {
@@ -75,9 +76,11 @@ export class SiegeActors {
   private departAt = -Infinity;
   private billeted: boolean;
   private readonly reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+  private readonly clean: boolean;
 
   constructor(scene: Phaser.Scene, private readonly layout: Layout, state: GameState, private readonly frozen: boolean) {
     const tax = state.wallSiteTax;
+    this.clean = skinFor(scene) === 'battle';
     this.billeted = tax?.kind === 'quartering';
     if (!atlasReady(scene)) return;
     for (const window of state.windows ?? []) {
@@ -144,7 +147,7 @@ export class SiegeActors {
         .setAlpha(.8 + pulse * .2);
       if (room.frame.frame.name !== frame) room.frame.setFrame(frame);
       room.frame.setVisible(shown).setPosition(x + wag, y);
-      room.badge.setVisible(shown && !room.used).setPosition(x + 32, y + 18 - pulse * 2)
+      room.badge.setVisible(!this.clean && shown && !room.used).setPosition(x + 32, y + 18 - pulse * 2)
         .setScale(.50 + pulse * .05);
       for (const p of room.particles) {
         const t = shown && animate ? (age - p.starts) / p.duration : Infinity;

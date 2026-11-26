@@ -219,7 +219,7 @@ export class TitleScene extends Phaser.Scene {
   /** Enemy sprite sheets load once at boot, so GameScene (and its restarts) start with them. */
   preload(): void {
     loadEnemySheets(this);
-    if (this.actThree) {
+    if (this.actThree || newInterface() && this.enterKeep?.level) {
       const level = this.enterKeep?.level ?? this.card;
       loadSiegeActors(this, this.page === 'siegeEnding' || !!(level?.windows?.length || level?.wallSiteTax));
       if (this.page === 'levelCard' && this.card?.map === 'keep') loadKeepThumbnails(this);
@@ -720,7 +720,7 @@ export class TitleScene extends Phaser.Scene {
 
   private async startKeep(level?: LevelDef, campaignKeep = false): Promise<void> {
     const density = paintedDensity(this.game.canvas.getBoundingClientRect().width / this.scale.gameSize.width, window.devicePixelRatio);
-    const siege = this.actThree && level ? level : undefined;
+    const siege = this.actThree || newInterface() ? level : undefined;
     if (siege) releasePaintedTextures(this.textures);
     const data = await duringKeepLoad(async (signal, update) => {
       let plates = 0, sprites = 0, script = 0;
@@ -733,7 +733,7 @@ export class TitleScene extends Phaser.Scene {
           const keepAssets = await keep.loadKeep(this.game, currentLayout().turned, signal, fraction => {
             plates = fraction;
             progress();
-          }, level, this.actThree);
+          }, level, !!siege);
           if (signal.aborted) {
             keepAssets.release();
             signal.throwIfAborted();

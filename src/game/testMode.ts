@@ -173,10 +173,12 @@ function canvasToPage(game: Phaser.Game, x: number, y: number): { x: number; y: 
 export function installGlobal(game: Phaser.Game): void {
   const showpieceVisit = new URLSearchParams(location.search).get('look') === 'showpiece';
   const activeGame = () => game.scene.isActive('game') ? game.scene.getScene('game') as GameScene : null;
-  const reframed = showpieceVisit || actThreeEnabled(location.search, ownerMode);
+  const selection = keepSelection(location.search);
+  const cleanSiege = selection?.level && new URLSearchParams(location.search).get('ui') === 'new';
+  const reframed = showpieceVisit || actThreeEnabled(location.search, ownerMode) || cleanSiege;
   const displayed = (p: { x: number; y: number }) => reframed ? activeGame()?.displayedMapPoint(p) ?? p : p;
   const always = {
-    ...(keepSelection(location.search) ? { keep: () => activeGame()?.keepState() ?? null } : {}),
+    ...(selection ? { keep: () => activeGame()?.keepState() ?? null } : {}),
     ...(showpieceVisit ? { showpiece: () => game.scene.isActive('game') ? (game.scene.getScene('game') as GameScene).showpieceState() : null } : {}),
     paused: () => activeGame()?.paused ?? false,
     pause: () => activeGame()?.setPaused(true),

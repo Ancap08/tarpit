@@ -53,7 +53,7 @@ class DeviceUi {
   private dirty = true;
   private wasMultiCamera = false;
 
-  constructor(scene: Phaser.Scene, private readonly paper: boolean) {
+  constructor(scene: Phaser.Scene, private readonly paper: boolean, inkCamera?: string) {
     const { game, scale, renderer } = scene;
     this.painter = createRenderer(game, this.overlay);
     this.overlay.setAttribute('aria-hidden', 'true');
@@ -102,7 +102,7 @@ class DeviceUi {
 
     const render = renderer.render;
     const begin = () => {
-      const multi = scene.cameras.cameras.length > 1;
+      const multi = !inkCamera && scene.cameras.cameras.some(camera => camera !== scene.cameras.main && camera.name !== 'magnifier');
       if (multi || this.wasMultiCamera) this.clear();
       if (multi || this.wasMultiCamera) this.dirty = true;
       this.wasMultiCamera = multi;
@@ -114,13 +114,15 @@ class DeviceUi {
         return;
       }
       this.world.length = this.ink.length = 0;
+      const drawInk = inkCamera ? camera.name === inkCamera : camera.name !== 'magnifier';
       for (const child of children) {
-        if (paper || this.objects.has(child)) this.ink.push(child as Object2D);
+        if (drawInk && (paper || this.objects.has(child))) this.ink.push(child as Object2D);
+        else if (camera.name === 'magnifier' && this.objects.has(child)) continue;
         else this.world.push(child);
       }
       if (fitWorld) fitWorld.draw(camera, () => render.call(renderer, owner, this.world, camera));
       else render.call(renderer, owner, this.world, camera);
-      if (camera.name !== 'magnifier') this.paint(camera);
+      if (drawInk) this.paint(camera);
     };
 
     scene.events.once('shutdown', () => {
@@ -178,7 +180,7 @@ class DeviceUi {
       redraw ||= stack.length !== index;
       stack.length = index;
     }
-    if (!redraw) {
+    if (!redraw && !this.wasMultiCamera) {
       // Keep the ordering for hit testing when the retained image is reused.
       for (const object of this.ink) camera.addToRenderList(object);
       return;
@@ -297,6 +299,6 @@ function fitBattleBuffer(scene: Phaser.Scene) {
   };
 }
 
-export function useDevicePixels(scene: Phaser.Scene, paper: boolean): void {
-  active.set(scene, new DeviceUi(scene, paper));
+export function useDevicePixels(scene: Phaser.Scene, paper: boolean, inkCamera?: string): void {
+  active.set(scene, new DeviceUi(scene, paper, inkCamera));
 }

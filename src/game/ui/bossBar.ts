@@ -10,7 +10,7 @@ import type Phaser from 'phaser';
 import { enemyMaxHp, isBoss, type GameState, type Point } from '../../sim';
 import { panel, THEME } from './theme';
 import { ENEMY_NAMES, ENEMY_SHORT_NAMES } from '../names';
-import { LANDSCAPE, TAXED_PORTRAIT, type Layout } from '../layout';
+import { CLEAN_SIEGE_PHONE_HEADER, LANDSCAPE, TAXED_PORTRAIT, type Layout } from '../layout';
 import type { Rect } from '../input';
 import { CLEAN, battleFont, battleWeight, interLoaded, rounded, skinFor, textMetrics } from './newTheme';
 import { DeviceTextFit, minimumTextSize, textInset, textSlot } from './deviceText';
@@ -101,10 +101,15 @@ export class BossBar {
   private plate?: Rect;
   private nameScale = 0;
 
-  constructor(scene: Phaser.Scene, layout: Layout = LANDSCAPE, spawn: Point = { x: 0, y: 240 }) {
+  constructor(scene: Phaser.Scene, layout: Layout = LANDSCAPE, spawn: Point = { x: 0, y: 240 }, siege = false) {
     this.clean = skinFor(scene) === 'battle';
     const modern = this.clean;
     const geo = modern ? cleanBossBarGeometry(layout, spawn) : bossBarGeometry(layout);
+    if (modern && siege && layout.turned) {
+      geo.bar.x = layout.width - geo.bar.width - 12;
+      geo.bar.y += CLEAN_SIEGE_PHONE_HEADER - layout.map.y;
+      geo.pill.y += CLEAN_SIEGE_PHONE_HEADER - layout.map.y;
+    }
     const { bar: BOSS_BAR, pill: BOSS_PILL } = geo;
     this.geo = geo;
     this.g = scene.add.graphics();

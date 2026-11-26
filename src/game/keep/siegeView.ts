@@ -6,6 +6,7 @@ const SETUP_SCALE = 1.15;
 const BATTLE_SCALE = 1.50;
 const SETTLE_MS = 1500;
 const ROAD_FOOT_INSET = 24;
+export const SIEGE_HUD_CAMERA = 'siege-hud';
 
 /** The portrait view opens on the keep, then makes more room for the crag
  * below it. Preserve the width of both approaches and keep their foot in
@@ -23,7 +24,7 @@ export class SiegeView {
   constructor(scene: Phaser.Scene, private readonly layout: Layout, world: Phaser.GameObjects.GameObject[],
     private readonly frozen: boolean, phase: Phase, rebuilding: boolean) {
     this.field = scene.cameras.main.setOrigin(0);
-    this.overlay = scene.cameras.add(0, 0, layout.width, layout.height, false, 'siege-hud');
+    this.overlay = scene.cameras.add(0, 0, layout.width, layout.height, false, SIEGE_HUD_CAMERA);
     this.overlay.ignore(world);
     const moving = new Set(world);
     this.fix(scene.children.list.filter(object => !moving.has(object)));
@@ -35,6 +36,10 @@ export class SiegeView {
 
   fix(objects: Phaser.GameObjects.GameObject[]): void {
     this.field.ignore(objects);
+  }
+
+  fieldOnly(object: Phaser.GameObjects.GameObject): void {
+    this.overlay.ignore(object);
   }
 
   hideFixedFrom(camera: Phaser.Cameras.Scene2D.Camera, objects: Phaser.GameObjects.GameObject[]): void {

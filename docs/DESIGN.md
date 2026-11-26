@@ -1739,10 +1739,10 @@ drawn and where touches land differ.
 
 ### Clean and Fine print preview
 
-`?ui=new` selects Clean in ordinary levels and Fine print on their level
-cards and results. The landscape frame measures 960 × 676, including a
+`?ui=new` selects Clean while playing and Fine print on level cards
+and results. The ordinary landscape frame measures 960 × 676, including a
 96-unit header above the 960 × 480 map and a 100-unit dock below it.
-The portrait frame is 1314 units tall, or 1344 with taxes, and at
+The ordinary portrait frame is 1313 units tall, or 1343 with taxes, and at
 least 560 units wide. It follows the fitted viewport aspect ratio. The
 480 × 960 board keeps its 1:1 projection and sits below a 140-unit
 header, or a 170-unit header with the tax row. Both HUD bands stay
@@ -1757,8 +1757,18 @@ The phone header has a shared title and icon row, inline stat captions
 and 26-unit values beside the wave pips, and up to two lines of preview.
 Taxed levels get a dedicated tax row with the permit tally at its right.
 The portrait build tiles are 110 units tall. A 4-unit gutter separates
-them from the 92-unit action row. All dock controls, Mute, Pause and the
+them from the 91-unit action row. All dock controls, Mute, Pause and the
 94-unit Build confirmation meet the 44 CSS px minimum at 390 × 656.
+
+On the Act Three levels, portrait uses a 202-unit header over the upper
+scenery, a map origin at 130 and a fitted height of 1303 units. The
+landscape header grows to 116 units, for a 960 × 696 frame. The gate
+readout has a percentage, a bar and a separate Repair control in setup.
+The Last stand countdown uses that readout while the bell and tower
+effects remain at the gate. Setup banners sit beside the road approaches.
+Window badges, Survey marks and the Quartering pay button follow the
+painted objects through the view move. The fixed camera draws the
+battlefield controls at device resolution.
 
 Clean loads the bundled Latin variable Inter face from its own origin
 only with `?ui=new`. It waits alongside Caslon at boot for up to one second.
@@ -1773,7 +1783,10 @@ from the shared width budget before it is split among six tiles. Names use
 within 64 × 46 units, centred 26 units from the tile top. A lock sits
 on a badge beside the portrait. Gold prices show available towers and
 warm pink prices show unaffordable towers. Tower spots have a light
-2.1-unit edge over a shaded outline and translucent centre. The portrait
+2.1-unit edge over a shaded outline and translucent centre. Placed towers
+use a 36 × 17 soft shadow at 26% opacity, with a thin ring for upgraded
+and movable towers. The selection outline and upgrade markers remain.
+The portrait
 path-B badge uses 3.6-unit-radius dots so the pair stays distinct. The phone
 boss name uses 21 units or the floor. Its plate uses
 265 to 310 units according to the space beside the cave. The level-three
