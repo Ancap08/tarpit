@@ -1840,6 +1840,8 @@ height above the title and 6 extra header units in landscape. A portrait
 drawer with two upgrade choices uses 438 units at the board edge to
 clear the selected tower. Other portrait drawers use 456 units. Sell
 receives 46% of the inner width and Target can wrap onto two lines.
+Mint buttons draw right-hand values in the same dark ink as their labels.
+Enabled dark buttons use gold for right-hand values.
 
 Clean measures the type in the canvas text objects it draws. With the device
 font, the role starts at its design size and uses one shared size that fits

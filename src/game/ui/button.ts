@@ -452,7 +452,7 @@ export class Button {
     if (this.shown) this.chrome?.finish(this.offsetY);
     if (this.label.style.color !== color) this.label.setColor(color);
     this.label.setY(this.downwardY(this.label, this.label.y, compress));
-    const priceColor = !paper && available ? CLEAN.gold : color;
+    const priceColor = !paper && available && !active ? CLEAN.gold : color;
     if (this.rightLabel && this.rightLabel.style.color !== priceColor) this.rightLabel.setColor(priceColor);
     if (this.rightLabel) this.rightLabel.setY(this.downwardY(this.rightLabel, this.rightLabel.y, compress));
   }
