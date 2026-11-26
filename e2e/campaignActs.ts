@@ -1,7 +1,7 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { LEVELS, type CampaignProgress } from '../src/sim';
 import {
-  CAMPAIGN_TEXT, LEVEL_NAMES, LEVEL_STORY, STORY_TEXT, cardFeatText, featResultText, levelTaxLines, levelTips, taxStatusText,
+  CAMPAIGN_TEXT, LEVEL_NAMES, LEVEL_STORY, STORY_TEXT, cardFeatText, featResultText, levelTaxLines, levelTaxRows, levelFeatRow, levelTips, taxStatusText,
 } from '../src/game/names';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { api, press } from './campaign';
@@ -49,10 +49,14 @@ async function finish(page: Page, usedSpecial = false) {
 async function readCard(page: Page, id: number) {
   await onScreen(page, 'levelCard');
   const level = LEVELS[id - 1];
-  expect(await words(page)).toEqual(expect.arrayContaining([
-    LEVEL_STORY[id].notice, CAMPAIGN_TEXT.inForce, ...levelTaxLines(level.taxes!),
-    cardFeatText(level.feat!), CAMPAIGN_TEXT.bestStars,
-  ]));
+  const modern = new URL(page.url()).searchParams.get('ui') === 'new';
+  const copy = await words(page);
+  const rules = modern
+    ? [...levelTaxRows(level.taxes!).flatMap(({ title, description }) => [title, description]),
+      ...Object.values(levelFeatRow(level.feat!)), CAMPAIGN_TEXT.thirdStar]
+    : [CAMPAIGN_TEXT.inForce, ...levelTaxLines(level.taxes!), cardFeatText(level.feat!)];
+  expect(copy).toEqual(expect.arrayContaining([LEVEL_STORY[id].notice, ...rules, CAMPAIGN_TEXT.bestStars]));
+  if (modern) expect(copy).not.toContain(CAMPAIGN_TEXT.inForce);
   const answer = await api(page, t => {
     const node = t.game.scene.getScene('title').children.list.find(o => o.type === 'Text' &&
       (o as Phaser.GameObjects.Text).visible && (o as Phaser.GameObjects.Text).text === "Town's answer: Tar Barrels feather crowds.");
@@ -62,7 +66,8 @@ async function readCard(page: Page, id: number) {
       portrait: t.layout() === 'portrait' };
   });
   expect(answer, `C10: town's answer on level ${id}`).toMatchObject({
-    color: '#254a57', fontSize: answer?.portrait ? '26px' : '21px', scale: 1,
+    color: modern ? '#234b40' : '#254a57',
+    fontSize: answer?.portrait ? modern ? '23px' : '26px' : modern ? '17px' : '21px', scale: 1,
   });
   await checkSpacing(page);
 }

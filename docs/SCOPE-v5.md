@@ -1226,6 +1226,56 @@ After Kyle picks: a look spike on one level behind a switch, as the
 showpiece and the Old Keep were done, before anything is restyled across
 the game.
 
+## Milestone 55: a new interface, behind a switch
+
+Kyle chose from the milestone 54 directions (2026-11-25): "let's do the A
+and B you mentioned, start with the buttons and menus and then move into
+the characters and towers." The mix, proposed by the coordinator and
+reached independently by the mock-ups' author: **A (Clean) while you
+fight, B (Fine print) when you read.**
+
+- **In a level, A:** the status block, taxes and preview, the build bar,
+  the tower panel, the special and wave controls in soft dark panels with
+  rounded shapes, a plain sans type from the device (no font is
+  downloaded), and icons beside short labels. Tower spots, health bars,
+  range rings and hit numbers restyled to match.
+- **On paper, B:** level cards, results, and later the level map,
+  broadsides, tips and the title, on cream paper with ink, hairline rules,
+  rounded cards and the Caslon type the game already has. This is where
+  the King's notices live.
+- **It moves:** panels arrive and settle, buttons answer a touch, a hit
+  flashes and lifts its number, gold and lives roll to their new values.
+  Nothing shifts the layout. All of it on the pausable clock in a level,
+  still under `?test=1`, and reduced for players who ask for less motion.
+- **Behind `?ui=new`** until Kyle approves it on his phone. With the
+  switch off every pixel is as it is today. The old interface is removed
+  only on Kyle's word.
+
+### Parts
+
+| Part | What |
+|---|---|
+| 55a | In a level (Acts One and Two and Free play, all three looks): everything in the first two mock-up screens. Plus the level card and the result screen. Phone, tablet and desktop |
+| 55b | The rest: the title, the level map, tips, broadsides and endings, the owner's page, pause and settings; and Act Three's own controls (gate, repair, road banners, windows, taxes) |
+| 55c | Verification by Sonnet, Kyle's phone, then the new interface becomes the default and the old one goes |
+
+After this milestone: characters and towers redrawn at a modern phone's
+sharpness (the milestone 54 comparison sheet), as Kyle ordered them.
+
+### Rules that carry over
+
+Every existing check on the interface also runs with the switch on, for
+the screens a part covers: the 11 CSS px minimum label size with its
+margin, touch targets of at least 44 px, containment, overlaps, the
+fixed-metrics and wide-text modes, tips naming controls by the labels
+shown. Icons are drawn by the project's own code or scripts; no icon set
+or font is downloaded. Frame cost is no worse than today's.
+
+### Not in this milestone
+
+Any change to rules, levels or balance; new sprites (next milestone);
+direction C.
+
 ## Later milestones (order agreed, detail to come)
 
 | # | Milestone | Idea |

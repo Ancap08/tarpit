@@ -112,7 +112,7 @@ export function checkManifest(files: string[], rows: ManifestRow[], scripts: Rea
     if (kind === null) problems.push(`${f}: license "${row.license}" is not allowed`);
     if (kind === 'ofl') {
       const licenseFile = /License file: ([^; ]+)/.exec(row.notes)?.[1];
-      if (!licenseFile || !checked.includes(licenseFile) || !licenseFile.endsWith('/OFL.txt'))
+      if (!licenseFile || !checked.includes(licenseFile) || !/\/OFL(?:-[^/]+)?\.txt$/.test(licenseFile))
         problems.push(`${f}: OFL needs its bundled license file`);
       const digest = /SHA-256: ([0-9a-f]{64})\b/.exec(row.notes)?.[1];
       if (!digest || digest !== hashes.get(f)) problems.push(`${f}: SHA-256 missing or different from manifest`);

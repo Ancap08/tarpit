@@ -1,3 +1,4 @@
+import { CLEAN } from '../ui/newTheme';
 // Enemies: since milestone 16 the bodies are sprites (anim/enemySprites.ts).
 // This file draws what goes with them: a soft ground shadow under each flyer
 // (milestone 22), a tar ring when slowed (flyers too since milestone 25b) and an orange
@@ -143,7 +144,7 @@ function drawBar(g: Phaser.GameObjects.Graphics, left: number, top: number, frac
 }
 
 function paintedBars(g: Phaser.GameObjects.Graphics, state: GameState, layout: Layout,
-  bodyTop: (id: number) => PaintedBody | undefined, siege: boolean): void {
+  bodyTop: (id: number) => PaintedBody | undefined, siege: boolean, clean = false): void {
   if (siege) {
     // A gate crowd can occupy one simulated point. Keep each small hurt
     // bar at its actor's head instead of stacking bars up the whole screen.
@@ -178,15 +179,17 @@ function paintedBars(g: Phaser.GameObjects.Graphics, state: GameState, layout: L
       front.y <= body.y + body.height / 2 && front.y + front.height >= body.y + body.height / 2)) continue;
     const left = Math.max(1, Math.min(layout.width - BAR_WIDTH - 1, Math.round(body.x - BAR_WIDTH / 2)));
     const top = freeTop(left, Math.round(body.y - BAR_GAP - BAR_HEIGHT - 1), placed, layout.map.y);
-    drawBar(g, left, top, Math.max(0, enemy.hp) / maxHp);
+    const fraction = Math.max(0, enemy.hp) / maxHp;
+    if (clean) cleanHealth(g, left, top, BAR_WIDTH, fraction);
+    else drawBar(g, left, top, fraction);
     placed.push({ left, top });
   }
 }
 
 /** Hp bars for hurt enemies, drawn over the sprites. Not for the boss: the HUD boss bar shows his. */
 export function drawHpBars(g: Phaser.GameObjects.Graphics, state: GameState, layout: Layout = LANDSCAPE,
-  stopped?: BlockedPositions, bodyTop?: (id: number) => PaintedBody | undefined, siege = false): void {
-  if (bodyTop) return paintedBars(g, state, layout, bodyTop, siege);
+  stopped?: BlockedPositions, bodyTop?: (id: number) => PaintedBody | undefined, siege = false, clean = false): void {
+  if (bodyTop) return paintedBars(g, state, layout, bodyTop, siege, clean);
   // `g` is screen-space (milestone 32b): a bar stays level above its sprite in any layout.
   for (const enemy of state.enemies) {
     // Full hp on this level (milestone 25): Easy and Hard scale it; an
@@ -201,10 +204,20 @@ export function drawHpBars(g: Phaser.GameObjects.Graphics, state: GameState, lay
       const above = held ? RING_RADIUS[enemy.type] + 1 : spriteHalfHeight(enemy.type) + BAR_GAP + BAR_HEIGHT + 1;
       const left = Math.round(x - width / 2);
       const top = Math.round(y - spriteLift(enemy.type) - above);
+      if (clean) {
+        cleanHealth(g, left, top, width, fraction);
+        continue;
+      }
       g.fillStyle(COLORS.hpBorder, 1);
       g.fillRect(left - 1, top - 1, width + 2, BAR_HEIGHT + 2);
       g.fillStyle(hpColor(fraction), 1);
       g.fillRect(left, top, Math.max(1, Math.round(width * fraction)), BAR_HEIGHT);
     }
   }
+}
+
+function cleanHealth(g: Phaser.GameObjects.Graphics, left: number, top: number, width: number, fraction: number): void {
+  g.fillStyle(CLEAN.ground).fillRect(left - 1, top - 1, width + 2, 7);
+  g.fillStyle(fraction < .4 ? CLEAN.rose : CLEAN.mint)
+    .fillRect(left + 1, top + 1, Math.max(2, (width - 2) * fraction), 3);
 }

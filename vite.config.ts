@@ -4,7 +4,7 @@ import { defineConfig, type Plugin } from 'vite';
 import { KEEP_TEXT, TITLE_TEXT } from './src/game/names.ts';
 import { KEEP_LOAD_LIMIT_MS } from './src/game/keep/status.ts';
 import { swEnabled, writeServiceWorker } from './scripts/sw-build.ts';
-import { KEEP_ASSET_DIR, PAINTED_ASSET_DIR, SHOWPIECE_ASSET_DIR } from './src/sw/rules.ts';
+import { INTER_LICENSE_PATH, KEEP_ASSET_DIR, PAINTED_ASSET_DIR, SHOWPIECE_ASSET_DIR } from './src/sw/rules.ts';
 
 /** After a production build, write sw.js for it (milestone 32a, scripts/sw-build.ts). */
 function serviceWorker(): Plugin {
@@ -17,6 +17,7 @@ function serviceWorker(): Plugin {
     },
     generateBundle() {
       this.emitFile({ type: 'asset', fileName: 'assets/fonts/OFL.txt', source: readFileSync('assets/fonts/OFL.txt') });
+      this.emitFile({ type: 'asset', fileName: INTER_LICENSE_PATH, source: readFileSync(INTER_LICENSE_PATH) });
     },
     async closeBundle(error?: Error) {
       if (error) return;

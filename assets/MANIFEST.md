@@ -3,8 +3,8 @@
 Every file under `assets/`, `docs/art/` and `public/icons/` is listed here
 with its source, author and license. Third-party art uses CC0 or CC-BY
 with a credit line in Notes (`Credit: ...`) as specified in docs/SCOPE-v3.md.
-Repo-generated work carries MIT. Libre Caslon Text carries SIL OFL
-1.1. Its rows pin each downloaded file by SHA-256 and name the bundled license.
+Repo-generated work carries MIT. Libre Caslon Text and Inter carry SIL OFL
+1.1. Their rows pin each file by SHA-256 and name the bundled license.
 `npm run check:assets` (scripts/check-asset-manifest.ts) fails CI if a file
 is missing from the table, carries another license, or a row points at no
 file. Markdown files (this manifest, `docs/art/INVENTORY.md`) are project
@@ -203,6 +203,8 @@ the checker looks for it.
 | `assets/fonts/OFL.txt` | https://github.com/google/fonts/blob/main/ofl/librecaslontext/OFL.txt | The Libre Caslon Text Project Authors | SIL OFL 1.1 | License file: assets/fonts/OFL.txt; SHA-256: a294245c822c5aa9fd9a9f3189418e99415428be5fecadf797793d5d8f6a3ad3 |
 | `assets/fonts/LibreCaslonText-Bold-latin.woff2` | https://fonts.gstatic.com/s/librecaslontext/v5/DdT578IGsGw1aF1JU10PUbTvNNaDMfID8vdkPx6esdPs.woff2 | The Libre Caslon Text Project Authors | SIL OFL 1.1 | License file: assets/fonts/OFL.txt; SHA-256: 7dc7dc90fb6e140dcdfbfd85aae2bab1f368a448be129fecb953a8290501cef8 |
 | `assets/fonts/LibreCaslonText-Regular-latin.woff2` | https://fonts.gstatic.com/s/librecaslontext/v5/DdT878IGsGw1aF1JU10PUbTvNNaDMfq41-JJHRO0.woff2 | The Libre Caslon Text Project Authors | SIL OFL 1.1 | License file: assets/fonts/OFL.txt; SHA-256: 1471d8a9f22ba5c42c597c2dc582030297027d3e4c3b59a55aec81678f80485b |
+| `assets/fonts/OFL-Inter.txt` | https://raw.githubusercontent.com/rsms/inter/master/LICENSE.txt | Copyright 2016 The Inter Project Authors | SIL OFL 1.1 | License file: assets/fonts/OFL-Inter.txt; 4,380 bytes; SHA-256: 262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a |
+| `assets/fonts/Inter-Latin-Variable.woff2` | https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2 | Copyright 2016 The Inter Project Authors | SIL OFL 1.1 | License file: assets/fonts/OFL-Inter.txt; Latin-subset variable font; 48,432 bytes; SHA-256: c940764593d0fe5d596be327ca7558855e018039fb78509aa21921fd3644c3e4 |
 | `assets/art-painted/town-1x.png` | `scripts/art/town.py` | Tarpit agents | MIT | Original painted exit miniatures in two layouts |
 | `assets/art-painted/town-1x.json` | `scripts/art/town.py` | Tarpit agents | MIT | Centered frame layout |
 | `assets/art-painted/town-2x.png` | `scripts/art/town.py` | Tarpit agents | MIT | Original painted exit miniatures in two layouts |

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { loadFonts } from './game/fonts';
+import { cacheInter, loadFonts } from './game/fonts';
 import { GameScene } from './game/GameScene';
 import { currentLayout, installLayoutSwitch, refit } from './game/layoutSwitch';
 import { installPageLock } from './game/pageLock';
@@ -7,6 +7,8 @@ import { registerServiceWorker } from './sw/register';
 import { installGlobal, isTestMode } from './game/testMode';
 import { TitleScene } from './game/TitleScene';
 import { sound } from './game/audio/engine';
+import { useUiCanvasRenderer } from './game/ui/devicePixels';
+import { newInterface } from './game/ui/newTheme';
 import { actThreeEnabled, keepSelection } from './game/keep/switch';
 import { ownerMode } from './game/ownerMode';
 
@@ -18,7 +20,14 @@ const query = new URLSearchParams(window.location.search);
 const forceCanvas = query.get('renderer') === 'canvas';
 const keep = !!keepSelection(window.location.search) || actThreeEnabled(window.location.search, ownerMode);
 
-void loadFonts().then(startGame);
+useUiCanvasRenderer((game, canvas) => new Phaser.Renderer.Canvas.CanvasRenderer({
+  canvas,
+  config: { ...game.config, context: null, transparent: true },
+  events: new Phaser.Events.EventEmitter(),
+  textures: new Phaser.Events.EventEmitter(),
+} as unknown as Phaser.Game));
+
+void loadFonts(newInterface()).then(startGame);
 
 function startGame(): void {
   document.getElementById('loading')?.remove();
@@ -60,4 +69,5 @@ function startGame(): void {
   // Milestone 33: gesture, visibility and M key listeners; silent in test mode.
   sound.install({ enabled: !isTestMode() });
   registerServiceWorker();
+  void cacheInter();
 }

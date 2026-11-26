@@ -11,8 +11,8 @@
 //   particles, banners) are placed with toScreen().
 // - Pointer input goes through cellAt(), toWorld() and onMap().
 //
-// Landscape is the identity: the map fills x 0..960, y 0..480 and every
-// conversion returns its input, so the landscape frames do not move.
+// Legacy landscape is the identity. Clean landscape translates the map
+// below its header while keeping the same world dimensions.
 
 import { CELL, GRID_COLS, GRID_ROWS, MAP_HEIGHT, MAP_WIDTH, type Cell, type Point, type Rect } from '../sim';
 
@@ -52,13 +52,13 @@ export class Layout {
 
   /** World point to canvas point. */
   toScreen(p: Point): Point {
-    if (!this.turned) return { x: p.x, y: p.y };
+    if (!this.turned) return { x: p.x + this.map.x, y: p.y + this.map.y };
     return { x: this.map.x + MAP_HEIGHT - p.y, y: this.map.y + p.x };
   }
 
   /** Canvas point to world point. */
   toWorld(s: Point): Point {
-    if (!this.turned) return { x: s.x, y: s.y };
+    if (!this.turned) return { x: s.x - this.map.x, y: s.y - this.map.y };
     return { x: s.y - this.map.y, y: MAP_HEIGHT - (s.x - this.map.x) };
   }
 
@@ -83,7 +83,7 @@ export class Layout {
     if (this.turned) {
       g.setPosition(this.map.x + MAP_HEIGHT, this.map.y);
       g.setRotation(Math.PI / 2);
-    }
+    } else if (this.map.x || this.map.y) g.setPosition(this.map.x, this.map.y);
     return g;
   }
 
@@ -176,3 +176,16 @@ export function layoutFor(width: number, height: number): Layout {
 export function fontPx(layout: Layout, px: number): string {
   return `${layout.kind === 'portrait' ? Math.max(px, PORTRAIT_MIN_FONT) : px}px`;
 }
+
+/** The Clean dock fits six 44 CSS px controls at 390 × 664, with the
+ * original 1:1 world projection and the whole road clear of the controls. */
+export function cleanPortrait(parent: { width: number; height: number }): Layout {
+  const height = 1388;
+  const width = Math.max(560, Math.floor(height * parent.width / Math.max(1, parent.height)));
+  return new Layout('portrait', { width, height }, { ...PORTRAIT.map, x: (width - MAP_HEIGHT) / 2, y: 230 });
+}
+
+/** A separate landscape header keeps controls clear of the painted board and every build cell. */
+export const CLEAN_LANDSCAPE = new Layout(
+  'landscape', { width: 960, height: 676 }, { ...LANDSCAPE.map, y: 96 },
+);

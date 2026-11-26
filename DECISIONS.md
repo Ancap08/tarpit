@@ -2081,3 +2081,77 @@ can change it; "Kyle" means Kyle decided.
   resolution for a modern phone and in two clashing styles (bright cartoon
   troops against the gothic keep); stiff motion with no easing or impact;
   grey oval tower spots and thin health bars.
+- **Kyle chose the look: A and B together, menus and buttons first, then
+  characters and towers** ("Yes, let's do the A and B you mentioned, start
+  with the buttons and menus and then move into the characters and
+  towers"). He chose before the pictures reached him; they were sent as he
+  replied, and he was asked to say if they change his mind.
+- **The mix** (coordinator; the mock-ups' author recommended the same
+  without being told): A's clean dark panels while playing, B's paper and
+  ink for cards, results and the other reading screens.
+- **Built behind `?ui=new`** and made the default only when Kyle has tried
+  it on his phone; the old interface is kept until then.
+- **No font or icon set is downloaded.** The in-level type is the
+  device's own sans; icons are drawn by the project's code.
+- **First build of the new interface (55a) judged by the coordinator: the
+  right language, short of the mock-ups.** Beside its mock-up the real
+  status block has no hierarchy (gold, lives and wave run together in one
+  small line where the mock-up gives each a large number); the build bar
+  swapped the towers' own art and names for flat line icons, which is
+  harder to read, not easier; text drawn on the canvas is soft where the
+  mock-ups are crisp; the card's rule rows are cramped; and the frame cost
+  was measured while two other jobs ran on the machine and may be worse
+  than today's. A second pass is ordered on those points. Kyle was sent
+  the side-by-sides and recordings as they are. Sol's run used 548,523
+  tokens, the largest so far.
+- **Wide-text tests for any new screen use the larger factor on the Mac**
+  (1.09 against 1.06 elsewhere), from the first brief, after the same
+  Linux-only label failure hit the Feathers card, the taxed HUD and the
+  owner's page in turn.
+- **Second pass of the new interface accepted for a trial behind the
+  switch.** Text is drawn at the phone's real pixel density; the status
+  block has the mock-up's three large numbers; the build bar shows each
+  tower's own art and name; the level card has proper rule rows; tower
+  spots are light outlines. Measured on a quiet machine, three runs each,
+  it is no slower than today's interface (Classic 7.78 to 6.55 ms a frame,
+  Painted 8.06 to 7.78). Still different from the mock-ups: the board
+  keeps side margins on a phone, and the tower drawer can cover a stretch
+  of road while it is open. Two Sol runs, about 1.12 million tokens.
+- **The owner's link and the new interface were built side by side and
+  conflicted on the title screen.** The coordinator's merge chain stopped
+  before pushing. The two document conflicts were the coordinator's to
+  resolve (main's side held nothing this branch lacked); the code conflict
+  went to Sol, who also tested the two switches together for the first
+  time: the title, the owner's page, all 25 stops, a new-style card and
+  result, and entry to level 21, on three screen sizes, no errors.
+- **CI failed the new interface on one label, and the cause was the
+  typeface.** "Musketeer" in the build bar ran 1.6 px outside its plaque
+  on Linux. Play used the device's own sans, which the coordinator chose
+  to avoid a download, so every in-level label depended on a font the
+  game does not pick. Sol made every label group fit by construction
+  (measure, shrink together, never under the minimum, a defined fallback)
+  and added a stress test with the font 15% wider and 10% narrower. That
+  test showed the tower names disappear at 390x844 with a font 15% wider.
+- **Inter is bundled for the new in-level interface.** Decided by Kyle
+  ("Yes, bundle one", then "Yes, download" after being shown the files,
+  source and sizes). One Latin-subset variable file, 48,432 bytes, from
+  `fonts.gstatic.com/s/inter/v20/`, SHA-256
+  `c940764593d0fe5d596be327ca7558855e018039fb78509aa21921fd3644c3e4`, and
+  its licence text (SIL Open Font License 1.1, The Inter Project Authors),
+  4,380 bytes, from the Inter project's repository, SHA-256
+  `262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a`.
+  Downloaded by the coordinator into its own folder and checked; nothing
+  was run from it. The earlier line "No font or icon set is downloaded" is
+  superseded for this one font. Icons are still drawn in code.
+- **The font stress test repeated an old mistake, and the coordinator
+  asked for it.** It blocked Inter and widened each machine's own sans by
+  15%, so it hid different labels on the Mac and on Linux. Split in two:
+  with Inter blocked, only what must hold for any font (containment,
+  overlaps, minimum size, a usable control); with Inter loaded and its
+  measured widths scaled, which labels show. Sol reproduced the Linux
+  failure locally by mapping the fallback to a monospace face at 1.3
+  times.
+- **The fallback hid something the player needs.** With a very wide font
+  the sell control lost its word and its refund and showed a blank
+  button. It now keeps the refund with a trash icon; Pause keeps its
+  two-bar icon.

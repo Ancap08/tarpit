@@ -3,7 +3,7 @@ import type { TitleUiState } from '../src/game/TitleScene';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { CAMPAIGN_TEXT, LEVEL_NAMES, LEVEL_STORY, levelTips, STORY_TEXT, TITLE_TEXT } from '../src/game/names';
 import { api, press } from './campaign';
-import { paintedAsset, settle } from './painted';
+import { settle } from './painted';
 import { useTallFontMetrics } from './campaignFont';
 import { waitForFirstScreen } from './title';
 
@@ -86,7 +86,7 @@ export async function checkSpacing(page: Page) {
         boxes.push({ key: object.name, owner: '', button: false, x, y, width, height });
       }
     }
-    const { width, height } = t.game.canvas;
+    const { width, height } = t.game.scale;
     for (const box of boxes) {
       if (box.x < 0 || box.y < 0 || box.x + box.width > width || box.y + box.height > height)
         throw new Error(`Outside ${width}x${height}: ${box.key}`);
@@ -337,9 +337,10 @@ export function campaignScreenSuite(touch: boolean) {
   });
 
   test('Painted campaign level loads its art and falls back when a file fails', async ({ page }) => {
+    const gameplayAsset = /\/assets\/painted\/shared-[12]x[^/]+\.webp$/;
     for (const fallback of [false, true]) {
       let failureInjected = false;
-      if (fallback) await page.route(paintedAsset, (route) => {
+      if (fallback) await page.route(gameplayAsset, (route) => {
         if (failureInjected) return route.continue();
         failureInjected = true;
         return route.abort();

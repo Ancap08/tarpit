@@ -1728,6 +1728,96 @@ drawn and where touches land differ.
   A boss banner continues from the time at which it paused. The tips and
   ordinary result screens keep their own controls and ignore P.
 
+### Clean and Fine print preview
+
+`?ui=new` selects Clean in ordinary levels and Fine print on their level
+cards and results. The landscape frame measures 960 × 676, including a
+96-unit header above the 960 × 480 map and a 100-unit dock below it.
+The portrait frame is 1388 units tall and at least 560 units wide. Its
+width follows the fitted viewport, with the 480 × 960 map centred at
+y = 230. The map keeps its 1:1 projection. The status header and control
+dock sit outside the map at every supported size.
+
+Gold, Lives and Wave use fixed columns with 38-unit portrait numerals in
+Inter, 40 in the device font, and 29 in landscape. The tax and Next text share a row on
+phone when they fit. A longer preview wraps independently below the
+tax. The six build targets show the current look's tower portraits,
+names, prices and availability. Portrait build and wave controls are
+94 units tall and at least 44 CSS px at 390 × 664. Mute and Pause sit in
+the status block. The original same-cell second tap still builds, and
+the armed preview also offers a 94-unit-tall Build button with the same
+44 CSS px minimum at 390 × 664.
+
+Clean loads the bundled Latin variable Inter face from its own origin
+only with `?ui=new`. It waits alongside Caslon at boot for up to one second.
+If Inter fails or misses the deadline, the session keeps the device sans.
+Inter uses weight 400 for labels and 600 for names and numerals. At a given
+viewport each Inter text role uses its design size or the readability floor,
+whichever is larger. The start and call labels share 25 units in portrait
+and 15 in landscape. In portrait the Musketeer tile gets 12 extra units
+from the shared width budget before it is split among six tiles. Names use
+18.5 units or the floor, centred 48 units below the tile top. Prices use
+25 units at 75.5 units from the tile top. Tower art is centred 18 units
+from the tile top and Painted portraits use a 36-unit height. The phone
+permit tally sits 19.5 units from the tile top with a 1-unit stroke. The phone
+boss name uses 22 units or the floor. Its plate uses
+265 to 310 units according to the space beside the cave. The level-three
+tower drawer prints the path name as its title and the level in the metadata.
+The cap notice uses its own metadata line. The drawer reserves that line's
+height above the title and 6 extra header units in landscape. A portrait
+drawer with two upgrade choices uses 438 units at the board edge to
+clear the selected tower. Other portrait drawers use 456 units. Sell
+receives 46% of the inner width and Target can wrap onto two lines.
+
+Clean measures the type in the canvas text objects it draws. With the device
+font, the role starts at its design size and uses one shared size that fits
+all its labels as the text or its slot changes. The floor is
+11 CSS px plus the 0.1 CSS px legibility margin. Labels leave at least
+2 CSS px inside their panels. The fit uses whole layout units down to
+the floor, which is rounded up to a hundredth of a layout unit. Wrapped
+text must fit both dimensions. The compact portrait preview uses tighter
+line spacing when the second line needs it.
+
+| Text role | When it cannot fit at the floor |
+| --- | --- |
+| Six build names | Omit the whole name row. Keep the tower portraits, prices and hit targets. |
+| Six build prices and permit tally | Omit the price row or tally respectively. Keep portraits, availability and the tax readout. |
+| Stat captions and stat values | Keep the three icons and wave pips. Omit the affected caption or value row as a group. |
+| Level name, taxes, wave preview and cheat mark | Omit the affected line. The tax icon remains when the tax text is omitted. |
+| Wave, Special, Ready, Speed, Pause, Build and special-menu controls | Omit the affected label or menu label group. Keep its hit target and any existing icon. The barrel caption can be omitted independently. |
+| Tower drawer title, metadata and upgrade heading | Omit the affected line. The tower portrait and drawer controls remain. |
+| Tower actions, upgrade choices, descriptions and disabled reasons | Omit the affected pair or group. Keep its hit targets, icons and disabled states. |
+| Sell or Remove and its refund | Replace the word with a trash icon and keep the refund whenever the amount fits beside it. |
+| Boss name and HP | Try the short boss name at a readable size, then omit it if needed. The health bar remains if the numbers cannot fit. |
+| Aim, loading and event banners | Omit the affected heading or detail line. |
+| Reward title, card names, descriptions, shortcut keys and held-reward tooltip | Omit the affected group or line. Keep the reward icons and hit targets. |
+| Floating hit, gold and boss-bounty numbers | Keep the numbers within the map. Omit the affected group if it cannot fit. |
+
+Inter and device-font checks exercise the four supported test viewports.
+The shared wide-text checks for Inter and Caslon use 1.09 on macOS and
+1.06 elsewhere. Every Clean label must show with Inter at its shipped
+width and at the shared margin. The stress runs check containment, overlap,
+readability, uniform sizes within each visible group, usable controls and
+the sell refund. They run with Inter advances 15% wider and 10% narrower,
+with an extra 2.6% advance on macOS to match Linux. With Inter blocked,
+the same checks run at the device font's normal width, at 15% wider and
+at 10% narrower. A separate blocked run maps the device sans to monospace
+and widens its advances by 30%. The wide Inter run records hidden text in
+the test report.
+
+The game fits the portrait world buffer within the area of 480 × 1032
+pixels and composites the interface on a separate canvas fitted to the
+physical device pixels.
+Text textures match the interface canvas density and draw from snapped
+anchors. Unchanged interface frames reuse the painted layer.
+
+Paper cards use the bundled Libre Caslon. The portrait card has a
+520-unit width, and short two-tax cards use Map notes to turn the sheet.
+The panel glides over 210 ms, paper settles over 240 ms, gold and lives
+change over 145 ms and prices over 130 ms. Live damage numbers rise for
+up to 470 ms. Battle motion uses the pausable clock. Frozen views draw
+the settled geometry and reduced-motion play skips transitions.
+
 ## Touch and phones
 
 Milestone 35 (`src/game/pageLock.ts`, `src/game/touchAssist.ts`). Mouse
@@ -1851,7 +1941,10 @@ only and never under `?test=1` or `?perf=1`. Cache rules:
   tab asking for the previous build's file) goes to the network, and its
   answer is returned as it is; a 2xx answer is kept. Painted art is
   fetched this way at the density in use and is then available offline
-  for that density in this build.
+  for that density in this build. Inter uses this same on-demand route
+  after an opted-in visit. If its initial request precedes worker control,
+  the page primes the worker from the HTTP cache once claimed. Inter and
+  its separate licence are excluded from the install precache.
 - Other files in scope (manifest, icons): as the page, with their own
   cached copies as the fallback.
 - Anything else (not GET, another origin, outside the scope, `sw.js`) is

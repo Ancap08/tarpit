@@ -8,6 +8,7 @@ import type Phaser from 'phaser';
 import { sound } from '../audio/engine';
 import type { Rect } from '../input';
 import { Button } from './button';
+import { skinFor } from './newTheme';
 
 /** The speaker's colour: the button text's cream (TEXT.button). */
 const ICON = 0xfff4dc;
@@ -18,7 +19,7 @@ export class MuteButton {
   private readonly icon: Phaser.GameObjects.Graphics;
 
   constructor(scene: Phaser.Scene, rect: Rect) {
-    this.button = new Button(scene, rect, '', () => sound.toggleMute(), { sound: null });
+    this.button = new Button(scene, rect, '', () => sound.toggleMute(), { sound: null, bare: skinFor(scene) === 'battle' });
     this.icon = scene.add.graphics();
     const off = sound.onChange(() => this.draw());
     scene.events.once('shutdown', off);
@@ -37,6 +38,10 @@ export class MuteButton {
 
   /** The speaker: a box and a cone, then two arcs (on) or a cross (muted). */
   private draw(): void {
+    if (skinFor(this.icon.scene) === 'battle') {
+      this.button.setIcon(sound.isMuted ? 'muted' : 'audio');
+      return;
+    }
     const g = this.icon.clear();
     const r = this.bounds;
     const s = Math.min(r.width, r.height) / 42;

@@ -9,6 +9,8 @@ export const KEEP_ASSET_DIR = 'assets/keep/';
 export const ACT_THREE_ASSET_DIR = 'assets/act3/';
 export const SHOWPIECE_ASSET_DIR = 'assets/showpiece/';
 export const PAINTED_ASSET_DIR = 'assets/painted/';
+export const INTER_ASSET_PREFIX = 'assets/fonts/Inter-Latin-Variable-';
+export const INTER_LICENSE_PATH = 'assets/fonts/OFL-Inter.txt';
 
 /**
  * Cache Storage is shared by the whole origin (on GitHub Pages, every

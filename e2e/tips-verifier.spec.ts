@@ -2,9 +2,11 @@ import { expect, test } from '@playwright/test';
 import type { TarpitTestApi } from '../src/game/testGlobal';
 import { api } from './campaign';
 import { tipsVerifierSuite } from './tipsVerifier';
+import { newInterfaceChecks } from './newInterface';
 import { waitForFirstScreen } from './title';
 
 tipsVerifierSuite(false);
+newInterfaceChecks(() => tipsVerifierSuite(false));
 
 for (const [wave, hint] of [[3, 'Barricade unlocked'], [6, 'Guards unlocked']] as const) {
   for (const { level, cheat, allowed } of [

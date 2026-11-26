@@ -7,14 +7,20 @@ import { COLORS, FONT, TEXT } from '../palette';
 import { ink, panel, THEME } from './theme';
 import { CANCEL_UI_PRESS } from './button';
 import { drawBoonIcon } from './boonIcons';
+import { CLEAN, battleFont, battleWeight, rounded, skinFor, textMetrics } from './newTheme';
 import { heldBoonLayout, rewardLayout } from './boonLayout';
+import { DeviceTextFit, textSlot } from './deviceText';
 
 const HELD_DEPTH = 5;
 const REWARD_DEPTH = 7;
 const DETAIL_MS = 2800;
 
 function label(scene: Phaser.Scene, px: number, color: string, bold = false): Phaser.GameObjects.Text {
-  return scene.add.text(0, 0, '', { fontFamily: FONT, fontSize: `${px}px`, color, fontStyle: bold ? 'bold' : 'normal' });
+  const clean = skinFor(scene) === 'battle';
+  return scene.add.text(0, 0, '', { fontFamily: clean ? battleFont() : FONT, fontSize: `${px}px`,
+    color: clean ? CLEAN.ink : color, fontStyle: clean ? battleWeight(bold) : bold ? 'bold' : 'normal',
+    ...(clean ? { metrics: textMetrics(px) } : {}),
+  });
 }
 
 /** A fixed set of reward choices over the map. GameScene owns selection and the simulation. */
@@ -24,10 +30,17 @@ export class BoonReward {
   private readonly geo: ReturnType<typeof rewardLayout>;
   private readonly cards: { card: Phaser.GameObjects.Rectangle; icon: Phaser.GameObjects.Graphics; name: Phaser.GameObjects.Text; effect: Phaser.GameObjects.Text }[];
   private offer: BoonOffer | null = null;
+  private readonly clean: boolean;
+  private readonly titleFit = new DeviceTextFit();
+  private readonly nameFit = new DeviceTextFit();
+  private readonly effectFit = new DeviceTextFit();
+  private readonly keyFit = new DeviceTextFit();
+  private readonly keys: { text: Phaser.GameObjects.Text; box: Rect }[] = [];
 
   constructor(scene: Phaser.Scene, layout: Layout, onPick: (id: BoonId) => void) {
+    const clean = this.clean = skinFor(scene) === 'battle';
     const m = layout.map;
-    this.geo = rewardLayout(layout);
+    this.geo = rewardLayout(layout, clean);
     this.view = scene.add.container(0, 0).setDepth(REWARD_DEPTH).setVisible(false);
     const veil = scene.add.rectangle(m.x, m.y, m.width, m.height, COLORS.endVeil, 0.8).setOrigin(0);
     this.title = label(scene, 30, TEXT.hud, true).setOrigin(0.5).setPosition(this.geo.title.x, this.geo.title.y);
@@ -38,11 +51,17 @@ export class BoonReward {
       const card = scene.add.rectangle(r.x, r.y, r.width, r.height, THEME.paper).setOrigin(0)
         .setStrokeStyle(2, COLORS.menuEdge).setInteractive({ useHandCursor: true });
       const print = scene.add.graphics();
-      panel(print, r);
+      const paint = (state: 'normal' | 'hover' | 'press' = 'normal') => {
+        print.clear();
+        if (clean) rounded(print, r, state === 'press' ? 0x2b5051 : state === 'hover' ? CLEAN.raised : CLEAN.panel);
+        else panel(print, r, state === 'press' ? COLORS.rewardPressed : state === 'hover' ? COLORS.rewardHover : THEME.paper);
+      };
+      if (clean) card.setFillStyle(0, 0).setStrokeStyle();
+      paint();
       const centerX = r.x + g.x;
       const centerY = r.y + g.y;
-      const tile = scene.add.circle(centerX, centerY, 19 * g.scale, COLORS.button)
-        .setStrokeStyle(1.5, COLORS.menuEdge);
+      const tile = scene.add.circle(centerX, centerY, 19 * g.scale, clean ? CLEAN.raised : COLORS.button)
+        .setStrokeStyle(1.5, clean ? CLEAN.edge : COLORS.menuEdge);
       const icon = scene.add.graphics().setPosition(centerX, centerY).setScale(g.scale);
       const name = label(scene, n.font, ink, true).setOrigin(origin, 0.5).setPosition(r.x + n.x, r.y + n.y);
       const effect = label(scene, d.font, ink).setOrigin(origin, 0.5).setPosition(r.x + d.x, r.y + d.y)
@@ -54,30 +73,36 @@ export class BoonReward {
         const keycap = scene.add.rectangle(keyX, keyY, 23, 23, COLORS.hudBar).setStrokeStyle(1, COLORS.menuEdge);
         const key = label(scene, 14, TEXT.hud, true).setOrigin(0.5).setPosition(keyX, keyY).setText(REWARD_KEYS[i]);
         this.view.add([keycap, key]);
+        if (clean) this.keys.push({ text: key, box: { x: keyX - 11.5, y: keyY - 11.5, width: 23, height: 23 } });
       }
       let pressed = false;
       scene.input.on(CANCEL_UI_PRESS, () => { pressed = false; });
-      card.on('pointerover', () => panel(print.clear(), r, COLORS.rewardHover));
+      card.on('pointerover', () => paint('hover'));
       card.on('pointerout', () => {
         pressed = false;
-        panel(print.clear(), r);
+        paint();
       });
       card.on('pointerdown', (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
         event.stopPropagation();
         pressed = true;
-        panel(print.clear(), r, COLORS.rewardPressed);
+        paint('press');
       });
       card.on('pointerup', (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
         event.stopPropagation();
         const id = this.offer?.options[i];
         const pick = pressed && id !== undefined;
         pressed = false;
-        panel(print.clear(), r);
+        paint();
         if (pick) onPick(id);
       });
       if (card.input) card.input.enabled = false;
       return { card, icon, name, effect };
     });
+    if (clean) {
+      const fit = () => { if (this.offer) this.fitLabels(); };
+      scene.scale.on('resize', fit);
+      scene.events.once('shutdown', () => scene.scale.off('resize', fit));
+    }
   }
 
   update(offer: BoonOffer | null | undefined): void {
@@ -97,6 +122,28 @@ export class BoonReward {
       name.setText(BOON_NAMES[id]);
       effect.setText(boonDescription(id));
     });
+    if (this.clean) this.fitLabels();
+  }
+
+  private fitLabels(): void {
+    const { geo, cards } = this;
+    const first = geo.cards[0];
+    const last = geo.cards[geo.cards.length - 1];
+    this.title.setVisible(this.titleFit.fit(30, [textSlot(this.title,
+      { x: first.x, y: first.y - 84, width: last.x + last.width - first.x, height: 84 }, true)]));
+    const divider = geo.name.y + (geo.name.font + 3) / 2;
+    const namesFit = this.nameFit.fit(geo.name.font, cards.map(({ name }, i) =>
+      textSlot(name, geo.cards[i])));
+    const effectsFit = this.effectFit.fit(geo.description.font, cards.map(({ effect }, i) => {
+      const box = geo.cards[i];
+      return textSlot(effect, { ...box, y: box.y + divider, height: box.height - divider }, true);
+    }));
+    const keysFit = this.keyFit.fit(14, this.keys.map(({ text, box }) => textSlot(text, box)));
+    for (const { name, effect } of cards) {
+      name.setVisible(namesFit);
+      effect.setVisible(effectsFit);
+    }
+    for (const { text } of this.keys) text.setVisible(keysFit);
   }
 
   rects(): Record<string, Rect> {
@@ -107,22 +154,34 @@ export class BoonReward {
 /** Held boons stay in the HUD. Hover or tap an icon to briefly see its effect. */
 export class HeldBoons {
   private geo: ReturnType<typeof heldBoonLayout>;
-  private readonly icons: { view: Phaser.GameObjects.Container; icon: Phaser.GameObjects.Graphics; box: Phaser.GameObjects.Rectangle }[];
+  private readonly icons: { view: Phaser.GameObjects.Container; icon: Phaser.GameObjects.Graphics; box: Phaser.GameObjects.Rectangle; backing?: Phaser.GameObjects.Graphics }[];
   private readonly detail: Phaser.GameObjects.Container;
   private readonly name: Phaser.GameObjects.Text;
   private readonly effect: Phaser.GameObjects.Text;
   private ids: readonly BoonId[] = [];
+  private readonly clean: boolean;
   private hovered: BoonId | null = null;
   private tapped: BoonId | null = null;
   private timer: Phaser.Time.TimerEvent | null = null;
+  private readonly nameFit = new DeviceTextFit();
+  private readonly effectFit = new DeviceTextFit();
+  private readonly detailBacking: Phaser.GameObjects.Graphics;
+  private readonly detailHeight: number;
 
   constructor(private readonly scene: Phaser.Scene, private readonly layout: Layout) {
-    this.geo = heldBoonLayout(layout, scene.scale.parentSize);
+    this.clean = skinFor(scene) === 'battle';
+    this.geo = heldBoonLayout(layout, scene.scale.parentSize, this.clean);
     this.icons = this.geo.slots.map((r, i) => {
       const view = scene.add.container(r.x, r.y).setDepth(HELD_DEPTH).setVisible(false);
       const box = scene.add.rectangle(0, 0, r.width, r.height, COLORS.button).setOrigin(0)
         .setStrokeStyle(1.5, COLORS.menuEdge).setInteractive({ useHandCursor: true });
       const icon = scene.add.graphics().setPosition(r.width / 2, r.height / 2).setScale(r.width / 46);
+      const backing = this.clean ? scene.add.graphics() : undefined;
+      if (backing) {
+        box.setFillStyle(0, 0).setStrokeStyle();
+        rounded(backing, { ...r, x: 0, y: 0 }, CLEAN.raised);
+        view.add(backing);
+      }
       view.add([box, icon]);
       if (box.input) box.input.enabled = false;
       let pressed = false;
@@ -156,13 +215,15 @@ export class HeldBoons {
         this.refresh();
         this.startTimer(scene);
       });
-      return { view, icon, box };
+      return { view, icon, box, backing };
     });
     const r = this.geo.tooltip;
-    const bg = scene.add.graphics();
-    panel(bg, { ...r, x: 0, y: 0 });
-    this.name = label(scene, 20, ink, true).setOrigin(0, 0.5).setPosition(14, r.height * 0.3);
-    this.effect = label(scene, this.geo.descriptionFont, ink).setOrigin(0, 0.5).setPosition(14, r.height * 0.68)
+    this.detailHeight = r.height;
+    const bg = this.detailBacking = scene.add.graphics();
+    if (this.clean) rounded(bg, { ...r, x: 0, y: 0 });
+    else panel(bg, { ...r, x: 0, y: 0 });
+    this.name = label(scene, this.clean && layout.turned ? 24 : 20, ink, true).setOrigin(0, 0.5).setPosition(14, r.height * 0.3);
+    this.effect = label(scene, this.clean && layout.turned ? 23 : this.geo.descriptionFont, ink).setOrigin(0, 0.5).setPosition(14, r.height * 0.68)
       .setWordWrapWidth(r.width - 28, true);
     this.detail = scene.add.container(r.x, r.y, [bg, this.name, this.effect]).setDepth(HELD_DEPTH).setVisible(false);
     scene.scale.on('resize', this.fit, this);
@@ -217,16 +278,18 @@ export class HeldBoons {
   private fit(): void {
     const scale = this.scene.scale;
     if (scale.height !== this.layout.height) return;
-    const geo = heldBoonLayout(this.layout, scale.parentSize);
+    const geo = heldBoonLayout(this.layout, scale.parentSize, this.clean);
     this.geo = geo;
-    this.icons.forEach(({ view, icon, box }, i) => {
+    this.icons.forEach(({ view, icon, box, backing }, i) => {
       const r = geo.slots[i];
       view.setPosition(r.x, r.y);
       box.setSize(r.width, r.height);
+      if (backing) rounded(backing.clear(), { ...r, x: 0, y: 0 }, CLEAN.raised);
       icon.setPosition(r.width / 2, r.height / 2).setScale(r.width / 46);
     });
     const width = this.ids.length > 0 ? geo.canvasWidth : this.layout.width;
     if (scale.width !== width) scale.setGameSize(width, this.layout.height);
+    if (this.clean && this.tooltip !== null) this.refresh();
   }
 
   private startTimer(scene: Phaser.Scene): void {
@@ -238,6 +301,7 @@ export class HeldBoons {
     const id = this.tooltip;
     this.detail.setVisible(id !== null);
     for (const [i, { box }] of this.icons.entries()) {
+      if (this.clean) continue;
       const active = id !== null && id === this.ids[i];
       box.setFillStyle(active ? COLORS.buttonHover : COLORS.button)
         .setStrokeStyle(1.5, active ? COLORS.buttonEdgePicked : COLORS.menuEdge);
@@ -245,5 +309,20 @@ export class HeldBoons {
     if (id === null) return;
     this.name.setText(BOON_NAMES[id]);
     this.effect.setText(boonDescription(id));
+    if (this.clean) {
+      const { width } = this.geo.tooltip;
+      const height = this.detailHeight;
+      const preferred = this.layout.turned ? 23 : this.geo.descriptionFont;
+      const top = Math.ceil(Math.max(height * .68 - (preferred + 3) / 2, this.name.y + (this.layout.turned ? 15 : 12)));
+      this.name.setVisible(this.nameFit.fit(this.layout.turned ? 24 : 20,
+        [textSlot(this.name, { x: 0, y: 0, width, height })]));
+      this.effect.setOrigin(0).setY(top);
+      const showEffect = this.effectFit.fit(preferred,
+        [textSlot(this.effect, { x: 0, y: 0, width: width - 10, height: height + 36 }, true)]);
+      this.effect.setVisible(showEffect);
+      const box = { ...this.geo.tooltip, height: Math.max(height, showEffect ? top + this.effect.height + 6 : 0) };
+      this.geo.tooltip.height = box.height;
+      rounded(this.detailBacking.clear(), { ...box, x: 0, y: 0 });
+    }
   }
 }

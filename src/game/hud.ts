@@ -54,9 +54,12 @@ import type { Rect } from './input';
 import type { PaintedSkin } from './skin/painted';
 import {
   BOON_PENDING_TEXT,
+  CAMPAIGN_TEXT,
+  PANEL_TEXT,
   BOON_WAVE_TEXT,
   BOSS_WAVE_NEXT_TEXT,
   LAST_WAVE_TEXT,
+  LEVEL_NAMES,
   autoWaveText,
   taxStatusText,
   callEarlyLabel,
@@ -71,7 +74,7 @@ import {
   SPECIAL_BUTTON_TEXT,
   speedLabel,
   START_WAVE_TEXT,
-  waveCounterText,
+  waveCounterText, waveNumberText, HUD_STAT_LABELS,
 } from './names';
 import { COLORS, FONT, HUD_FONT, TEXT } from './palette';
 import { BossBar } from './ui/bossBar';
@@ -90,6 +93,9 @@ import {
 } from './layout';
 import { SpecialMenu } from './ui/specialMenu';
 import { MuteButton } from './ui/muteButton';
+import { BakedPaint, CLEAN, battleFont, battleWeight, glyph, roundPoints, rounded, sans, skinFor, textMetrics } from './ui/newTheme';
+import { DeviceTextFit, minimumTextSize, textInset, textSlot } from './ui/deviceText';
+import { CleanReadouts, cleanHudMetrics, statColumns } from './ui/cleanHud';
 
 export type { Rect };
 
@@ -410,16 +416,42 @@ export class Hud {
   /** The Lives readout's left edge now (portrait: after the gold), for the exit shake. */
   private livesX = LIVES_X;
   private siegeExpanded?: boolean;
+  private readonly clean?: CleanReadouts;
+  private modernTag = '';
+  private previewMemo?: { wave: number; endless: boolean; level: GameState['level']; waves: GameState['fixedWaves']; text: string };
+  private readonly readyState?: Phaser.GameObjects.Text;
+  private readonly taxGlyph?: Phaser.GameObjects.Graphics;
+  private readonly taxFit = new DeviceTextFit();
+  private readonly previewFit = new DeviceTextFit();
+  private readonly cheatFit = new DeviceTextFit();
+  private readonly readyFit = new DeviceTextFit();
 
-  constructor(scene: Phaser.Scene, handlers: HudHandlers, private readonly layout: Layout = LANDSCAPE, painted?: PaintedSkin, private readonly pauseOnResult = false, private readonly siegeScreens = false) {
-    const m = { ...hudMetrics(layout) };
+  constructor(scene: Phaser.Scene, handlers: HudHandlers, private readonly layout: Layout = LANDSCAPE, painted?: PaintedSkin, private readonly pauseOnResult = false, private readonly siegeScreens = false, spawn?: { x: number; y: number }) {
+    const modern = skinFor(scene) === 'battle';
+    const m = modern ? cleanHudMetrics(layout, hudMetrics(layout)) : { ...hudMetrics(layout) };
     if (this.siegeScreens && m.portrait) m.statY = 20;
     this.m = m;
     const counter = scene.add.graphics();
+    const backing = modern ? new BakedPaint(scene, counter) : undefined;
+    if (backing) backing.begin(m.bands[0]);
     for (const [i, band] of m.bands.entries()) {
       if (this.siegeScreens && m.portrait && i === 0) {
         this.siegeCounter = scene.add.graphics();
         this.drawSiegeCounter(false);
+        continue;
+      }
+      if (modern) {
+        if (i === 0) rounded(counter, band, CLEAN.panel, CLEAN.edge, 22);
+        else {
+          const dock = new BakedPaint(scene, scene.add.graphics());
+          const g = dock.begin(band);
+          g.fillStyle(CLEAN.ground).fillRect(band.x, band.y, band.width, band.height);
+          rounded(g, m.portrait
+            ? { x: 2, y: m.barTop - 2, width: layout.width - 4, height: 96 }
+            : { x: 12, y: m.barTop - 2, width: 595, height: 69 });
+          dock.image.setName('clean-dock');
+          dock.finish();
+        }
         continue;
       }
       panel(counter, band, THEME.wood);
@@ -434,18 +466,23 @@ export class Hud {
       scene.add.rectangle(l.x, l.y, l.width, l.height, COLORS.hudLine).setOrigin(0, 0);
     }
 
+    if (modern) {
+      this.clean = new CleanReadouts(scene, m, counter);
+      backing!.image.setName('clean-status');
+      backing!.finish();
+    }
     const stat = (x: number, size = m.statSize, color: string = TEXT.hud) =>
-      scene.add.text(x, m.statY, '', { fontFamily: FONT, fontSize: size, fontStyle: 'bold', color }).setOrigin(0, 0.5);
+      scene.add.text(x, m.statY, '', { fontFamily: modern ? battleFont() : FONT, fontSize: size, fontStyle: modern ? battleWeight(true) : 'bold', color }).setOrigin(0, 0.5);
     const fixedStat = (x: number, size: number, color: string) => {
       const descent = Math.ceil(size / 5);
-      const height = size + descent;
+      const height = modern ? size + 3 : size + descent;
       return scene.add.text(x, m.statY, '', {
-        fontFamily: HUD_FONT, fontSize: size, fontStyle: 'bold', color, fixedHeight: height,
-        metrics: { ascent: size, descent, fontSize: height },
+        fontFamily: modern ? battleFont() : HUD_FONT, fontSize: size, fontStyle: modern ? battleWeight(true) : 'bold', color, fixedHeight: height,
+        metrics: modern ? textMetrics(size) : { ascent: size, descent, fontSize: height },
       }).setOrigin(0, 0.5);
     };
     const statSize = Number.parseInt(m.statSize, 10);
-    if (!m.portrait) coin(counter, 13, m.statY, 5);
+    if (!modern && !m.portrait) coin(counter, 13, m.statY, 5);
     this.gold = fixedStat(m.goldX, statSize, TEXT.hud);
     this.lives = fixedStat(LIVES_X, statSize, TEXT.hud);
     this.wave = fixedStat(238, statSize, TEXT.hud);
@@ -457,19 +494,40 @@ export class Hud {
       ? stat(m.preview.x, m.statSize, TEXT.hudDim).setY(m.preview.y).setOrigin(0, m.preview.originY).setWordWrapWidth(m.preview.width, true)
       : stat(PREVIEW_X, `${PREVIEW_SIZE}px`, TEXT.hudDim).setWordWrapWidth(PREVIEW_WIDTH, true);
     this.next.setName('wave-preview');
+    if (modern) {
+      const [, livesX, waveX] = statColumns(m);
+      this.gold.setColor(CLEAN.gold);
+      this.lives.setX(livesX).setColor(CLEAN.ink);
+      this.wave.setX(waveX).setColor(CLEAN.ink);
+      this.tag.setVisible(false);
+      const size = m.portrait ? 26 : 14;
+      this.taxLine.setPosition(m.preview.x + (m.portrait ? 25 : 17), m.bands[0].y + (m.portrait ? 139 : 16))
+        .setOrigin(0).setStyle({ fontSize: size, color: CLEAN.subdued, metrics: textMetrics(size), fontStyle: battleWeight(false) })
+        .setFixedSize(0, 0).setWordWrapWidth(m.preview.width - (m.portrait ? 25 : 17));
+      this.next.setPosition(m.preview.x, m.preview.y).setOrigin(0).setWordWrapWidth(m.preview.width)
+        .setStyle({ fontSize: m.portrait ? 24 : 14, metrics: textMetrics(m.portrait ? 24 : 14), color: CLEAN.subdued, fontStyle: battleWeight(false) });
+    }
 
     // The Special label is left-aligned (an empty right label) so the pip fits on its right.
     this.specialButton = new Button(scene, m.special, SPECIAL_BUTTON_TEXT, handlers.onSpecial, {
       fontSize: m.specialFont,
       labelInset: m.portrait ? 4 : undefined,
-      right: '',
+      right: modern ? undefined : '',
+      icon: modern ? 'bolt' : undefined,
     });
     // The recharge fill sits over the button's box and under its label.
+    const sb = m.special;
+    if (modern) {
+      this.readyState = sans(scene, sb.x + sb.width / 2 + 14, sb.y + sb.height * .72,
+        PANEL_TEXT.ready, m.portrait ? 25 : 14, '#aaf1d9', true).setOrigin(.5).setVisible(false);
+      this.taxGlyph = scene.add.graphics().setVisible(false);
+      glyph(this.taxGlyph, 'window', m.preview.x + 5, this.taxLine.y + (m.portrait ? 13 : 7), m.portrait ? 21 : 14, CLEAN.rose);
+    }
     this.rechargeFill = scene.add.graphics();
     scene.children.moveBelow(this.rechargeFill, this.specialButton.labelObjects[0]);
     this.pip = scene.add.graphics();
     this.cheatMark = scene.add
-      .text(m.cheat.x, m.cheat.y, CHEAT_MARK, { fontFamily: FONT, fontSize: m.cheat.size, fontStyle: 'bold', color: TEXT.cheatMark })
+      .text(m.cheat.x, m.cheat.y, CHEAT_MARK, { fontFamily: modern ? battleFont() : FONT, fontSize: m.cheat.size, fontStyle: modern ? battleWeight(false, 'bold') : 'bold', color: modern ? '#ffb0a7' : TEXT.cheatMark, ...(modern ? { metrics: textMetrics(parseInt(m.cheat.size)) } : {}) })
       .setOrigin(m.cheat.originX, 0.5)
       .setVisible(false);
     if (layout === TAXED_PORTRAIT) {
@@ -477,7 +535,9 @@ export class Hud {
       this.next.setStyle({ metrics: { ascent: 18, descent: 6, fontSize: 24 } });
     }
     // Milestone 33: Start Wave's own sound is the horn (or Call next's), so its click plays no tap.
-    this.startButton = new Button(scene, m.start, START_WAVE_TEXT, handlers.onStartWave, m.portrait ? { fontSize: m.startFont, sound: null } : { sound: null });
+    this.startButton = new Button(scene, m.start, START_WAVE_TEXT, handlers.onStartWave,
+      modern ? { fontSize: m.startFont, primary: true, icon: 'play', sound: null }
+        : m.portrait ? { fontSize: m.startFont, sound: null } : { sound: null });
     if (m.portrait) {
       // Stack the boss warning by word and give the taxed last-wave notice the same room.
       const wrapWidth = m.start.width - 6;
@@ -489,18 +549,19 @@ export class Hud {
           return label.advancedWordWrap(text, label.context, wrapWidth);
         });
     }
-    this.speedButton = new Button(scene, m.speed, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress, fontSize: m.portrait ? m.startFont : undefined });
+    this.speedButton = new Button(scene, m.speed, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress, semibold: true, fontSize: modern && m.portrait ? '26px' : modern || m.portrait ? m.startFont : undefined });
     this.specialMenu = new SpecialMenu(scene, m.menu.left, m.menu.top, handlers.onSpecialPick, layout.map.y, m.menu.size, m.menu.font);
     this.bar = new BuildBar(scene, m.barTop, handlers.onPick, layout, painted);
-    this.bossBar = new BossBar(scene, layout);
+    this.bossBar = new BossBar(scene, layout, spawn);
     if (handlers.onRepair) this.gate = new GateHud(scene, layout, handlers.onRepair, siegeScreens);
     this.muteButton = new MuteButton(scene, m.mute);
     this.pauseButton = new Button(scene, m.pause, m.portrait ? '' : PAUSE_TEXT.button, handlers.onPause, {
-      fontSize: '18px', labelY: 57, sound: null,
+      bare: modern, fontSize: modern ? '14px' : '18px', labelY: modern ? 34 : 57, sound: null,
     });
     this.pauseIcon = scene.add.graphics().fillStyle(COLORS.buttonEdgePicked);
     const iconHeight = m.portrait ? 26 : 21;
-    for (const x of [-11, 4]) this.pauseIcon.fillRect(x, 0, 7, iconHeight);
+    if (modern) glyph(this.pauseIcon, 'pause', 0, m.portrait ? 13 : 4, m.portrait ? 37 : 20, 0xe2f5ee);
+    else for (const x of [-11, 4]) this.pauseIcon.fillRect(x, 0, 7, iconHeight);
     // Put the native accessibility target over the plaque. Phaser handles pointer input.
     this.pauseAction = document.createElement('button');
     this.pauseAction.textContent = PAUSE_TEXT.button;
@@ -509,7 +570,7 @@ export class Hud {
     scene.game.canvas.after(this.pauseAction);
     const fitControls = () => {
       const { canvasBounds: b, displayScale: s } = scene.scale;
-      if (m.portrait) {
+      if (m.portrait && !modern) {
         const row = portraitRow2(1 / Math.max(s.x, s.y), layout);
         if (row.pause.width !== m.pause.width) {
           Object.assign(m, row);
@@ -521,7 +582,7 @@ export class Hud {
         }
       }
       this.pauseIcon.setPosition(m.pause.x + m.pause.width / 2,
-        m.pause.y + (m.portrait ? (m.pause.height - iconHeight) / 2 : 16));
+        m.pause.y + (modern && !m.portrait ? 10 : m.portrait ? (m.pause.height - iconHeight) / 2 : 16));
       Object.assign(this.pauseAction.style, {
         left: (b.x + m.pause.x / s.x) + 'px', top: (b.y + m.pause.y / s.y) + 'px',
         width: (m.pause.width / s.x) + 'px', height: (m.pause.height / s.y) + 'px',
@@ -549,6 +610,7 @@ export class Hud {
    * Lives number in red; `dx` shakes it sideways by that many px.
    */
   livesFx(flash: number, dx: number): void {
+    if (this.clean) return;
     this.lives.setColor(flash > 0 ? TEXT.livesFlash : TEXT.hud).setX(this.livesX + dx);
   }
 
@@ -558,24 +620,34 @@ export class Hud {
     const set = (t: Phaser.GameObjects.Text, s: string) => {
       if (t.text !== s) t.setText(s);
     };
-    set(this.gold, `Gold ${state.gold}`);
+    const count = (label: Phaser.GameObjects.Text, value: string) => this.clean ? this.clean.count(label, value) : set(label, value);
+    count(this.gold, this.clean ? String(state.gold) : `${HUD_STAT_LABELS[0]} ${state.gold}`);
     this.cheatMark.setVisible(state.cheated);
+    if (this.clean && m.portrait && state.cheated) this.cheatMark.setY(this.taxLine.y + 13.5);
     // The sim lets lives go below 0 (the boss's exit costs 5); the HUD shows 0.
-    set(this.lives, `Lives ${Math.max(0, state.lives)}`);
-    set(this.wave, waveCounterText(state.wave, state.endless, lastWave(state)));
+    count(this.lives, this.clean ? String(Math.max(0, state.lives)) : `${HUD_STAT_LABELS[1]} ${Math.max(0, state.lives)}`);
+    set(this.wave, (this.clean ? waveNumberText : waveCounterText)(state.wave, state.endless, lastWave(state)));
     const tag = state.map.id === 'keep' ? OLD_KEEP_NAME : state.level ? levelNumberText(state.level.id) : difficultyTag(state.difficulty);
-    set(this.tag, tag);
+    if (this.clean) {
+      this.modernTag = tag;
+      this.clean.title(state.level ? tag : CAMPAIGN_TEXT.freePlay, state.level ? LEVEL_NAMES[state.level.id]?.name ?? '' : tag);
+      this.clean.waves(state.wave, state.endless ? 0 : lastWave(state));
+    } else set(this.tag, tag);
     // The build bar carries the permit count. On a cheated portrait run, keep
     // this line for the tax names and the mark that the run cannot earn stars.
-    const namesOnly = this.layout === TAXED_PORTRAIT && state.cheated;
+    const namesOnly = (this.clean && m.portrait || this.layout === TAXED_PORTRAIT) && state.cheated;
     const taxes = taxStatusText(state.level?.taxes, namesOnly ? undefined : state.towers.length);
     set(this.taxLine, taxes);
     this.taxLine.setVisible(!!taxes);
-    if (taxes && !m.portrait) {
+    this.taxGlyph?.setVisible(!!taxes);
+    if (taxes && !m.portrait && !this.clean) {
       const room = this.tag.x - this.taxLine.x - 4;
       this.taxLine.setScale(Math.min(1, room / this.taxLine.width), 1);
     }
-    if (m.portrait) {
+    if (this.clean) {
+      this.clean.fitStats([this.gold, this.lives, this.wave]);
+      this.fitTaxRow(!!taxes, state.cheated);
+    } else if (m.portrait) {
       // One row: each stat starts after the one before it; the cheat mark is right-aligned.
       const dx = this.lives.x - this.livesX;
       const used = this.gold.x + this.gold.width + this.lives.width + this.wave.width + this.tag.width;
@@ -597,14 +669,16 @@ export class Hud {
     // After a loss there is no next wave to play, so the preview goes blank.
     const aimText = m.portrait && special.aiming !== null && special.banner ? stripAimText(special.banner) : null;
     this.drawSiegeCounter(aimText !== null);
-    const preview = aimText ?? (state.phase === 'lost' || this.siegeScreens ? '' : previewText(state));
+    const preview = aimText ?? (state.phase === 'lost' || this.siegeScreens ? '' : this.clean ? this.cleanPreview(state) : previewText(state));
     if (this.next.text !== preview) {
       const siege = !!state.map.otherRoads?.length;
       const previewX = siege && !m.portrait ? 328 : m.preview.x;
       const previewY = siege && m.portrait ? m.preview.y + 2 : m.preview.y;
       const width = m.preview.width + m.preview.x - previewX;
       this.next.setPosition(previewX, previewY);
-      if (this.layout === TAXED_PORTRAIT) {
+      if (this.clean) {
+        this.next.setText(preview);
+      } else if (this.layout === TAXED_PORTRAIT) {
         this.next.setText(preview).setColor(aimText === null ? TEXT.hudDim : TEXT.aimBanner);
       } else if (m.portrait) {
         this.next.setWordWrapWidth(width, true).setText(preview).setColor(aimText === null ? TEXT.hudDim : TEXT.aimBanner);
@@ -629,6 +703,7 @@ export class Hud {
         this.next.setScale(Math.min(1, width / this.next.width), Math.min(1, BUTTON_H / this.next.height));
       }
     }
+    if (this.clean) this.fitCleanPreview(!!taxes, state.cheated);
     const call = callEarlyStatus(state);
     let reason: string | null = null;
     if (state.pendingBoon) reason = BOON_PENDING_TEXT;
@@ -640,12 +715,15 @@ export class Hud {
     else if (state.autoWaveTicks !== undefined)
       this.startButton.set(autoWaveText(Math.ceil(state.autoWaveTicks / TICKS_PER_SECOND)), canStartWave(state));
     else this.startButton.set(START_WAVE_TEXT, canStartWave(state));
+    if (this.clean) this.startButton.setIcon(call.ok ? 'next' : 'play');
     const label = this.startButton.labelObjects[0];
     // A two-digit call bonus in the fallback face uses all but one pixel at either edge.
     const availableWidth = m.start.width - (this.layout === TAXED_PORTRAIT ? 2 : 4);
     const fitX = Math.min(1, availableWidth / label.width);
     const fitY = Math.min(1, (m.start.height - 2) / label.height);
-    if (this.layout === TAXED_PORTRAIT) label.setScale(Math.min(fitX, fitY));
+    if (this.clean) {
+      // The dock reserves a separate line for the bonus.
+    } else if (this.layout === TAXED_PORTRAIT) label.setScale(Math.min(fitX, fitY));
     else label.setScale(fitX, fitY);
     // Once the game is over the speed toggle is inert (greyed, ignores clicks).
     const playable = state.phase !== 'won' && state.phase !== 'lost';
@@ -659,18 +737,24 @@ export class Hud {
     const recharge = specialRecharge(state);
     // Milestone 30 follow-up: while the charge refills the label is the countdown ("Wait 15s").
     this.specialButton.set(recharge ? rechargeText(state.specialRechargeTicks, TICKS_PER_SECOND, m.portrait) : SPECIAL_BUTTON_TEXT, ready);
-    if (m.portrait) {
+    if (m.portrait && !this.clean) {
       const specialLabel = this.specialButton.labelObjects[0];
       // On the taxed plaque the label can use the space up to the status dot.
       const reserved = this.layout === TAXED_PORTRAIT ? 4 + 10 + PIP_RADIUS : 24;
       const fit = Math.min(1, (m.special.width - (recharge ? 7 : reserved)) / specialLabel.width);
       specialLabel.setScale(fit, this.layout === TAXED_PORTRAIT ? fit : 1);
     }
+    if (this.readyState) {
+      const { x, y, width, height } = m.special;
+      this.readyState.setVisible(ready && this.readyFit.fit(m.portrait ? 25 : 14,
+        [textSlot(this.readyState, { x, y: y + height * .5, width, height: height * .5 })]));
+      this.specialButton.setLabelCenter(m.special.height * (ready ? .38 : .5));
+    }
     this.specialButton.setPicked(ready && (special.menuOpen || special.aiming !== null));
     // The fill grows in whole pixels, so it redraws at most once per pixel.
     const sb = m.special;
     const fillWidth = recharge ? Math.round(sb.width * recharge.progress) : 0;
-    const pulse = ready && nowMs !== undefined ? Math.round(4 * (1 + Math.sin(nowMs / 160))) : 0;
+    const pulse = !this.clean && ready && nowMs !== undefined ? Math.round(4 * (1 + Math.sin(nowMs / 160))) : 0;
     const key = `${ready}:${recharge ? fillWidth : -1}:${pulse}`;
     if (this.pipKey !== key) {
       this.pipKey = key;
@@ -678,7 +762,13 @@ export class Hud {
       const cy = sb.y + sb.height / 2;
       this.pip.clear();
       this.rechargeFill.clear();
-      if (ready) {
+      if (this.clean) {
+        if (ready) this.pip.lineStyle(1.5, CLEAN.mint).strokePoints(roundPoints({
+          x: sb.x + 2, y: sb.y + 2, width: sb.width - 4, height: sb.height - 4,
+        }, 15), true);
+        if (recharge && fillWidth > 8) this.pip.fillStyle(CLEAN.mint, .7)
+          .fillRect(sb.x + 4, sb.y + sb.height - 6, Math.min(sb.width - 8, fillWidth - 8), 3);
+      } else if (ready) {
         this.pip.fillStyle(COLORS.specialPip, 1).fillCircle(cx, cy, PIP_RADIUS);
         // The pulse: a ring round the pip, growing and fading (play only).
         if (pulse > 0) this.pip.lineStyle(2, COLORS.specialPip, 1 - pulse / 9).strokeCircle(cx, cy, PIP_RADIUS + pulse);
@@ -692,6 +782,46 @@ export class Hud {
     this.gate?.update(state, special.paused ?? false);
   }
 
+  private fitTaxRow(taxed: boolean, cheated: boolean): void {
+    const m = this.m;
+    const head = m.bands[0];
+    const cheatBox = m.portrait ? head : { ...head, x: 636, width: head.x + head.width - 636, y: 64, height: head.y + head.height - 64 };
+    const showCheat = cheated && this.cheatFit.fit(parseInt(m.cheat.size), [textSlot(this.cheatMark, cheatBox)]);
+    this.cheatMark.setVisible(showCheat);
+    if (!taxed) return;
+    const right = m.portrait && showCheat ? this.cheatMark.x - this.cheatMark.width : m.preview.x + m.preview.width;
+    const area = { x: m.preview.x, y: head.y, width: right - m.preview.x, height: m.preview.y - head.y + (m.portrait ? textInset(this.taxLine) : 0) };
+    this.taxLine.setVisible(this.taxFit.fit(m.portrait ? 26 : 14, [textSlot(this.taxLine, area, true)]));
+  }
+
+  private fitCleanPreview(taxed: boolean, cheated: boolean): void {
+    const m = this.m;
+    const { x, y, width } = m.preview;
+    const head = m.bands[0];
+    const area = { x: head.x, y: head.y, width: x + width - head.x, height: head.height };
+    this.next.setPosition(x, y);
+    if (m.portrait) {
+      const line = Math.max(24, minimumTextSize(this.next)) + 3;
+      const spacing = Math.min(0, Math.floor(head.y + head.height - y - textInset(this.next) - 2 * line));
+      if (this.next.lineSpacing !== spacing) this.next.setLineSpacing(spacing);
+    }
+    const fits = this.previewFit.fit(m.portrait ? 24 : 14, [textSlot(this.next, area, true)]);
+    this.next.setVisible(fits);
+    if (fits && m.portrait && taxed && !cheated && this.next.height <= this.next.getTextMetrics().fontSize &&
+        this.taxLine.x + this.taxLine.width + 16 <= x + width - this.next.width) {
+      this.next.setPosition(x + width - this.next.width, this.taxLine.y);
+    }
+  }
+
+  private cleanPreview(state: GameState): string {
+    const cached = this.previewMemo;
+    if (cached?.wave === state.wave && cached.endless === state.endless &&
+        cached.level === state.level && cached.waves === state.fixedWaves) return cached.text;
+    const text = previewText(state);
+    this.previewMemo = { wave: state.wave, endless: state.endless, level: state.level, waves: state.fixedWaves, text };
+    return text;
+  }
+
   get repairRect(): Rect | undefined {
     return this.gate?.repairRect;
   }
@@ -703,16 +833,16 @@ export class Hud {
 
   strings(): HudStrings {
     return {
-      gold: this.gold.text,
-      lives: this.lives.text,
-      wave: this.wave.text,
+      gold: this.clean ? `${HUD_STAT_LABELS[0]} ${this.gold.text}` : this.gold.text,
+      lives: this.clean ? `${HUD_STAT_LABELS[1]} ${this.lives.text}` : this.lives.text,
+      wave: this.clean ? `${HUD_STAT_LABELS[2]} ${this.wave.text}` : this.wave.text,
       next: this.next.text,
       startWave: this.startButton.text,
       special: this.specialButton.text,
       cheat: this.cheatMark.visible ? CHEAT_MARK : '',
       speed: this.speedButton.text,
       boss: this.bossBar.label(),
-      difficulty: this.tag.text,
+      difficulty: this.clean ? this.modernTag : this.tag.text,
     };
   }
 

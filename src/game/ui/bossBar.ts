@@ -7,10 +7,13 @@
 // it (y 4 to 22) inside the canvas.
 
 import type Phaser from 'phaser';
-import { enemyMaxHp, isBoss, type GameState } from '../../sim';
+import { enemyMaxHp, isBoss, type GameState, type Point } from '../../sim';
 import { panel, THEME } from './theme';
-import { ENEMY_NAMES } from '../names';
+import { ENEMY_NAMES, ENEMY_SHORT_NAMES } from '../names';
 import { LANDSCAPE, TAXED_PORTRAIT, type Layout } from '../layout';
+import type { Rect } from '../input';
+import { CLEAN, battleFont, battleWeight, interLoaded, rounded, skinFor, textMetrics } from './newTheme';
+import { DeviceTextFit, minimumTextSize, textInset, textSlot } from './deviceText';
 import { COLORS, FONT, HUD_FONT, TEXT } from '../palette';
 
 export const BOSS_BAR = { x: 330, y: 24, width: 300, height: 14 } as const;
@@ -45,6 +48,24 @@ export function bossBarGeometry(layout: Layout): BossBarGeometry {
   };
 }
 
+/** On a turned board the cave enters from the top. Give the boss its own
+ * short plate on whichever side of that entrance has more open ground. */
+export function cleanBossBarGeometry(layout: Layout, spawn: Point): BossBarGeometry {
+  const phone = layout.turned;
+  const entrance = layout.toScreen(spawn);
+  const room = Math.max(entrance.x, layout.width - entrance.x) - 40;
+  const width = phone ? (interLoaded ? Math.max(265, Math.min(310, room)) : 265) : 310;
+  const x = phone
+    ? entrance.x < layout.width / 2 ? Math.min(layout.width - width - 5, entrance.x + 35) : Math.max(5, entrance.x - 35 - width)
+    : (layout.width - width) / 2;
+  return {
+    bar: { x, y: layout.map.y + (phone ? 40 : 38), width, height: phone ? 28 : 22 },
+    pill: { y: layout.map.y + 6, height: phone ? 34 : 32, padX: 9 },
+    nameSize: phone ? (interLoaded ? 22 : 25) : 15,
+    hpSize: phone ? 24 : 14,
+  };
+}
+
 export interface BossBarInfo {
   name: string;
   /** "4000 / 4000": hp rounded up, so a live boss never shows 0. */
@@ -73,25 +94,35 @@ export class BossBar {
   private readonly hp: Phaser.GameObjects.Text;
   private info: BossBarInfo | null = null;
   private readonly geo: BossBarGeometry;
+  private readonly clean: boolean;
+  private paintKey = '';
+  private readonly nameFit = new DeviceTextFit();
+  private readonly hpFit = new DeviceTextFit();
+  private plate?: Rect;
+  private nameScale = 0;
 
-  constructor(scene: Phaser.Scene, layout: Layout = LANDSCAPE) {
-    const geo = bossBarGeometry(layout);
+  constructor(scene: Phaser.Scene, layout: Layout = LANDSCAPE, spawn: Point = { x: 0, y: 240 }) {
+    this.clean = skinFor(scene) === 'battle';
+    const modern = this.clean;
+    const geo = modern ? cleanBossBarGeometry(layout, spawn) : bossBarGeometry(layout);
     const { bar: BOSS_BAR, pill: BOSS_PILL } = geo;
     this.geo = geo;
     this.g = scene.add.graphics();
     this.name = scene.add
       .text(BOSS_BAR.x + BOSS_PILL.padX, BOSS_PILL.y + BOSS_PILL.height / 2, '', {
-        fontFamily: FONT,
+        fontFamily: modern ? battleFont() : FONT,
+        ...(modern ? { metrics: textMetrics(geo.nameSize) } : {}),
         fontSize: `${geo.nameSize}px`,
-        fontStyle: 'bold',
+        fontStyle: modern ? battleWeight(true) : 'bold',
         color: TEXT.bossName,
       })
       .setOrigin(0, 0.5);
     this.hp = scene.add
       .text(BOSS_BAR.x + BOSS_BAR.width - 4, BOSS_BAR.y + BOSS_BAR.height / 2, '', {
-        fontFamily: HUD_FONT,
+        fontFamily: modern ? battleFont() : HUD_FONT,
+        ...(modern ? { metrics: textMetrics(geo.hpSize) } : {}),
         fontSize: `${geo.hpSize}px`,
-        fontStyle: 'bold',
+        fontStyle: modern ? battleWeight(true) : 'bold',
         color: TEXT.bossHp,
       })
       .setOrigin(1, 0.5);
@@ -111,22 +142,61 @@ export class BossBar {
 
   update(state: GameState): void {
     const info = bossBarInfo(state);
+    const previousName = this.info?.name;
     this.info = info;
     if (info === null) {
       this.setVisible(false);
       return;
     }
-    if (this.name.text !== info.name) {
+    if (!this.clean && this.name.text !== info.name) {
       this.name.setText(info.name);
       this.name.setScale(Math.min(1, this.geo.pill.height / this.name.height));
     }
     if (this.hp.text !== info.hpText) {
       this.hp.setText(info.hpText);
-      this.hp.setScale(Math.min(1, this.geo.bar.height / this.hp.height));
+      if (!this.clean) this.hp.setScale(Math.min(1, this.geo.bar.height / this.hp.height));
     }
     const { x, y, width, height } = this.geo.bar;
     const BOSS_PILL = this.geo.pill;
     const g = this.g;
+    if (this.clean) {
+      const pad = textInset(this.hp);
+      // Expand the plate around the existing anchors when a short display
+      // has too little vertical room for the minimum CSS font and its gutter.
+      const minHeight = (size: number) => Math.max(size, minimumTextSize(this.hp)) + 3 + 2 * pad;
+      const grow = Math.max(0, Math.ceil(minHeight(this.geo.hpSize) - height));
+      const pillGrow = Math.max(0, Math.ceil(minHeight(this.geo.nameSize) - BOSS_PILL.height));
+      const panelTop = BOSS_PILL.y - pillGrow / 2;
+      const nameBox = { x, y: panelTop, width, height: BOSS_PILL.height + pillGrow };
+      const hpBox = { x: x + 24, y: y - grow / 2, width: width - 24, height: height + grow };
+      this.hp.setX(x + width - Math.max(4, pad));
+      if (info.name !== previousName || pad !== this.nameScale) {
+        this.nameScale = pad;
+        this.name.setText(info.name);
+        const slot = textSlot(this.name, nameBox);
+        let fits = this.nameFit.fit(this.geo.nameSize, [slot]);
+        if (!fits) {
+          this.name.setText(ENEMY_SHORT_NAMES[state.enemies.find(isBoss)!.type]);
+          fits = this.nameFit.fit(this.geo.nameSize, [slot]);
+        }
+        this.name.setVisible(fits);
+      }
+      const showHp = this.hpFit.fit(this.geo.hpSize, [textSlot(this.hp, hpBox)]);
+      const fill = Math.round(width * info.fraction);
+      const key = `${info.name}:${fill}:${showHp ? this.hp.width : 0}:${grow}:${pillGrow}`;
+      if (key !== this.paintKey) {
+        this.paintKey = key;
+        g.clear();
+        this.plate = { x, y: panelTop, width, height: y + height + grow / 2 - panelTop };
+        rounded(g, this.plate, CLEAN.panel, CLEAN.edge, 12);
+        const length = Math.max(12, width - (showHp ? this.hp.width : 0) - 25);
+        g.fillStyle(CLEAN.raised).fillRoundedRect(x + 9, y + height / 2 - 3, length, 6, 3);
+        if (fill > 0) g.fillStyle(CLEAN.rose).fillRoundedRect(x + 9, y + height / 2 - 3, Math.max(2, length * info.fraction), 6, 3);
+      }
+      this.g.setVisible(true);
+      this.hp.setVisible(showHp);
+      return;
+    }
     g.clear();
     // Name pill, sized to the name.
     panel(g, { x, y: BOSS_PILL.y, width: Math.ceil(this.name.displayWidth) + 2 * BOSS_PILL.padX, height: BOSS_PILL.height }, THEME.red);

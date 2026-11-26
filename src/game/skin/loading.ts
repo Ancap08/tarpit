@@ -60,6 +60,11 @@ function assetUrl(name: MapId | 'shared', density: PaintedDensity, extension: 'w
   return ART[`../../../assets/art-painted/packed/${name}-${density}x.${extension}`];
 }
 
+/** The small painted ground plate also serves as the printed scouting map. */
+export function mapPlateUrl(map: MapId): string {
+  return assetUrl(map, 1, 'webp');
+}
+
 interface ConnectionHints {
   effectiveType?: string;
   downlink?: number;

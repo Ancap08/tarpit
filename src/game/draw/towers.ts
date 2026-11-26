@@ -9,6 +9,7 @@
 import type Phaser from 'phaser';
 import { CELL, cellCenter, cellKey, nearestPathPoint, positionAlongPath, roadPath, type Cell, type GameState, type MapDef, type Point, type Tower, type TowerType, type UpgradePath } from '../../sim';
 import { LANDSCAPE, type Layout } from '../layout';
+import { CLEAN, roundPoints } from '../ui/newTheme';
 import { COLORS } from '../palette';
 
 export const PATH_MARKS = {
@@ -189,21 +190,27 @@ export function drawTowerShape(
       break;
   }
 
-  if (path) {
-    const { centerX: x, centerY: y, radius } = PATH_MARKS;
-    const center = at(x, y);
-    g.fillStyle(COLORS.towerPathEdge, alpha).fillCircle(center.x, center.y, radius);
-    const mark = PATH_MARKS[path];
-    g.fillStyle(mark.color, alpha);
-    if (mark.shape === 'diamond') {
-      const half = mark.halfSize;
-      const [top, right, bottom, left] = [at(x, y - half), at(x + half, y), at(x, y + half), at(x - half, y)];
-      g.fillTriangle(top.x, top.y, right.x, right.y, bottom.x, bottom.y)
-        .fillTriangle(top.x, top.y, bottom.x, bottom.y, left.x, left.y);
-    } else {
-      const [left, right] = [at(x - mark.offset, y), at(x + mark.offset, y)];
-      g.fillCircle(left.x, left.y, mark.radius).fillCircle(right.x, right.y, mark.radius);
-    }
+  if (path) drawTowerPathBadge(g, p, layout, path, alpha);
+}
+
+/** The branch badge sits upright above the tower's own silhouette. */
+export function drawTowerPathBadge(
+  g: Phaser.GameObjects.Graphics, p: Point, layout: Layout, path: UpgradePath, alpha: number,
+): void {
+  const at = (dx: number, dy: number) => layout.offset(p, dx, dy);
+  const { centerX: x, centerY: y, radius } = PATH_MARKS;
+  const center = at(x, y);
+  g.fillStyle(COLORS.towerPathEdge, alpha).fillCircle(center.x, center.y, radius);
+  const mark = PATH_MARKS[path];
+  g.fillStyle(mark.color, alpha);
+  if (mark.shape === 'diamond') {
+    const half = mark.halfSize;
+    const [top, right, bottom, left] = [at(x, y - half), at(x + half, y), at(x, y + half), at(x - half, y)];
+    g.fillTriangle(top.x, top.y, right.x, right.y, bottom.x, bottom.y)
+      .fillTriangle(top.x, top.y, bottom.x, bottom.y, left.x, left.y);
+  } else {
+    const [left, right] = [at(x - mark.offset, y), at(x + mark.offset, y)];
+    g.fillCircle(left.x, left.y, mark.radius).fillCircle(right.x, right.y, mark.radius);
   }
 }
 
@@ -276,14 +283,22 @@ export function drawTowers(
   pose?: (cell: Cell, type: TowerType) => TowerPose,
   layout: Layout = LANDSCAPE,
   body?: (tower: Tower, p: Point, pose: TowerPose, alpha: number) => void,
+  clean = false,
 ): void {
   for (const tower of state.towers) {
     const dim = dimmed !== null && dimmed.col === tower.cell.col && dimmed.row === tower.cell.row;
-    if (!tower.locked) drawUnlockedOutline(g, tower.cell, dim ? DRAG_ORIGIN_ALPHA : 0.9);
+    if (!clean && !tower.locked) drawUnlockedOutline(g, tower.cell, dim ? DRAG_ORIGIN_ALPHA : 0.9);
     const p = cellCenter(tower.cell);
     const stance = pose?.(tower.cell, tower.type) ?? { angle: aim.angle(tower.cell), scale: 1, recoil: 0 };
     const alpha = dim ? DRAG_ORIGIN_ALPHA : 1;
+    if (clean) {
+      const foot = layout.offset(p, 0, 7);
+      const { w, h } = layout.ellipse(38, 24);
+      const points = roundPoints({ x: foot.x - w / 2, y: foot.y - h / 2, width: w, height: h }, 8);
+      g.fillStyle(CLEAN.ground, .66 * alpha).fillPoints(points, true);
+      g.lineStyle(tower.locked ? 1 : 2, tower.upgraded ? 0xffda92 : CLEAN.mint, alpha).strokePoints(points, true);
+    }
     body?.(tower, p, stance, alpha);
-    drawTowerScaled(g, body ? null : tower.type, p, stance, tower.upgraded, alpha, layout, tower.path);
+    drawTowerScaled(g, body ? null : tower.type, p, stance, tower.upgraded && !clean, alpha, layout, clean ? undefined : tower.path);
   }
 }
