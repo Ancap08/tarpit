@@ -2186,3 +2186,21 @@ can change it; "Kyle" means Kyle decided.
   Frame cost fell (Painted 10.05 to 8.32 ms a frame). Sol's full browser
   run crossed a rebuild and had 23 failures that all passed on rerun; CI
   is the clean full run. 518,467 Sol tokens.
+- **The polish pass is merged and deployed behind the switch** (pull
+  request 66, CI green first time). The automated review's one finding,
+  that an implementation commit changed the coordinator's records, was
+  checked per commit and was wrong: the record commits are the
+  coordinator's with the Claude trailer; the implementer's touch neither
+  file. Answered on the pull request with the evidence, then merged.
+- **Sharper pieces built; the finish is Kyle's to pick.** Every tower,
+  enemy, boss and Guard re-rendered from the same models; decoded art on a
+  phone fell on ordinary levels (36 to about 30 MB) by loading each
+  level's roster only. The re-render dropped the dark outline today's
+  sprites have, which nobody asked for, so three finishes were made as
+  pictures: A Soft, B Inked, C Lifted. The coordinator and Sol both prefer
+  B. Nothing ships until he chooses.
+- **The remaining pages restyled (55b1):** title, Free play choices, the
+  level map's three sheets, tips, broadsides, closes and endings, the
+  owner's page, pause, loading and failure states, all on paper. Sol's
+  walk also found and restyled the Old Keep's cards, results and three
+  keyboard badges. No wording changed. 483,247 Sol tokens.
