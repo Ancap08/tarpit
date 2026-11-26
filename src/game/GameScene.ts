@@ -2360,12 +2360,12 @@ export class GameScene extends Phaser.Scene {
     }
     const box = placeMagnifier(this.layout.map, this.siegeView?.displayed(finger) ?? finger, this.siegeView?.displayed(target) ?? target, this.mag?.box.side ?? null);
     const centre = magnifierCentre(this.layout.map, target);
+    this.keep?.showMagnifiedGround(centre);
     if (this.mag === null) {
       const frame = this.add.graphics().setDepth(1000);
       const cam = this.cameras.add(box.x, box.y, box.width, box.height, false, 'magnifier');
       cam.inputEnabled = false;
       cam.setZoom(MAGNIFIER_ZOOM).setBackgroundColor(this.keep ? '#111418' : COLORS.grass);
-      this.keep?.showMagnifiedGround();
       this.siegeView?.fix([frame]);
       this.siegeView?.hideFixedFrom(cam, this.children.list);
       cam.ignore([frame, this.bannerBg, this.bannerMain, this.bannerHint]);

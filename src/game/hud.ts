@@ -94,7 +94,7 @@ import {
 } from './layout';
 import { SpecialMenu } from './ui/specialMenu';
 import { MuteButton } from './ui/muteButton';
-import { BakedPaint, CLEAN, battleFont, battleWeight, glyph, roundPoints, rounded, sans, skinFor, textMetrics } from './ui/newTheme';
+import { CLEAN, battleFont, battleWeight, controlPaint, glyph, roundPoints, rounded, sans, skinFor, textMetrics } from './ui/newTheme';
 import { DeviceTextFit, minimumTextSize, textInset, textSlot } from './ui/deviceText';
 import { CleanReadouts, PHONE_TOP_CONTROL_CENTER, cleanHudMetrics, permitSlot, statColumns } from './ui/cleanHud';
 
@@ -435,7 +435,7 @@ export class Hud {
     if (this.siegeScreens && m.portrait && !modern) m.statY = 20;
     this.m = m;
     const counter = scene.add.graphics();
-    const backing = modern ? new BakedPaint(scene, counter) : undefined;
+    const backing = modern ? controlPaint(scene, counter) : undefined;
     if (backing) backing.begin(m.bands[0]);
     for (const [i, band] of m.bands.entries()) {
       if (this.siegeScreens && !modern && m.portrait && i === 0) {
@@ -446,7 +446,7 @@ export class Hud {
       if (modern) {
         if (i === 0) rounded(counter, band, CLEAN.panel, CLEAN.edge, 22);
         else {
-          const dock = new BakedPaint(scene, scene.add.graphics());
+          const dock = controlPaint(scene, scene.add.graphics());
           const g = dock.begin(band);
           g.fillStyle(CLEAN.ground).fillRect(band.x, band.y, band.width, band.height);
           rounded(g, m.portrait

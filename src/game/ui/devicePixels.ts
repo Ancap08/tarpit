@@ -22,6 +22,10 @@ export function uiDensity(scene: Phaser.Scene) {
   return active.get(scene)?.density ?? logical;
 }
 
+export function hasFixedUiCamera(scene: Phaser.Scene): boolean {
+  return !!active.get(scene)?.inkCamera;
+}
+
 export function uiObject<T extends Phaser.GameObjects.GameObject>(object: T): T {
   active.get(object.scene)?.include(object);
   return object;
@@ -54,7 +58,7 @@ class DeviceUi {
   private dirty = true;
   private wasMultiCamera = false;
 
-  constructor(scene: Phaser.Scene, private readonly paper: boolean, inkCamera?: string) {
+  constructor(scene: Phaser.Scene, private readonly paper: boolean, readonly inkCamera?: string) {
     const { game, scale, renderer } = scene;
     this.painter = createRenderer(game, this.overlay);
     this.overlay.setAttribute('aria-hidden', 'true');

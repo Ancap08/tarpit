@@ -16,7 +16,7 @@ import { makeLock } from './lock';
 import { BAR_TYPES, canPick } from './buildBarModel';
 import { Button } from './button';
 import { DeviceTextFit, minimumTextSize, textSlot } from './deviceText';
-import { BakedPaint, CLEAN, battleFont, battleWeight, glyph, interLoaded, rounded, skinFor, textMetrics } from './newTheme';
+import { CLEAN, battleFont, battleWeight, controlPaint, glyph, interLoaded, rounded, skinFor, textMetrics, type ControlPaint } from './newTheme';
 
 /** Keep the six full-size landscape plaques inside the pause column. */
 export const BAR_BUTTON_WIDTH = 132;
@@ -55,7 +55,7 @@ export class BuildBar {
   private compact = false;
   private readonly clean: boolean;
   private readonly names?: Phaser.GameObjects.Text[];
-  private readonly icons?: BakedPaint;
+  private readonly icons?: ControlPaint;
   private readonly portraits?: Phaser.GameObjects.Image[];
   private readonly nameFit = new DeviceTextFit();
   private readonly priceFit = new DeviceTextFit();
@@ -102,7 +102,7 @@ export class BuildBar {
       });
     }
     if (this.clean) {
-      this.icons = new BakedPaint(scene, scene.add.graphics());
+      this.icons = controlPaint(scene, scene.add.graphics());
       this.icons.image.setName('clean-build-icons');
       const nameSize = this.nameSize(scene);
       this.names = BAR_TYPES.map((type, i) =>

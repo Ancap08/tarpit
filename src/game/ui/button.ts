@@ -13,7 +13,7 @@ import type { SoundName } from '../audio/recipes';
 import type { Rect } from '../input';
 import { COLORS, FONT, HUD_FONT, TEXT } from '../palette';
 import { DeviceTextFit, textInset, textSlot } from './deviceText';
-import { BakedPaint, CLEAN, PRINT, battleFont, battleWeight, glyph, motionClock, rounded, skinFor, textMetrics, type Icon, type Skin } from './newTheme';
+import { CLEAN, PRINT, battleFont, battleWeight, controlPaint, glyph, motionClock, rounded, skinFor, textMetrics, type ControlPaint, type Icon, type Skin } from './newTheme';
 
 /** Emitted on the scene input plugin when a pause cancels any unfinished click. */
 export const CANCEL_UI_PRESS = 'cancel-ui-press';
@@ -50,7 +50,7 @@ export interface ButtonOptions {
 export class Button {
   private readonly box: Phaser.GameObjects.Rectangle;
   private readonly trim: Phaser.GameObjects.Graphics;
-  private readonly chrome?: BakedPaint;
+  private readonly chrome?: ControlPaint;
   private readonly label: Phaser.GameObjects.Text;
   private readonly rightLabel: Phaser.GameObjects.Text | null;
   private readonly onHover?: (over: boolean) => void;
@@ -116,7 +116,7 @@ export class Button {
     };
     this.box = scene.add.rectangle(0, 0, rect.width, rect.height, COLORS.button).setOrigin(0, 0);
     this.trim = scene.add.graphics();
-    if (this.skin !== 'legacy' && !this.bare) this.chrome = new BakedPaint(scene, this.trim);
+    if (this.skin !== 'legacy' && !this.bare) this.chrome = controlPaint(scene, this.trim);
     if (options.right === undefined) {
       this.label = scene.add.text(0, 0, text, style).setOrigin(0.5).setAlign('center');
       this.rightLabel = null;

@@ -1807,7 +1807,10 @@ The Last stand countdown uses that readout while the bell and tower
 effects remain at the gate. Setup banners sit beside the road approaches.
 Window badges, Survey marks and the Quartering pay button follow the
 painted objects through the view move. The fixed camera draws the
-battlefield controls at device resolution. The gate, Repair, road signs,
+battlefield controls into a retained device-resolution overlay. Portrait
+Keep controls draw their chrome directly into that overlay. The panorama
+uses its existing layers with transparent padding trimmed and composites
+only the area visible through the magnifier. The gate, Repair, road signs,
 window badges and pay control leave at least 4 CSS px around their text
 with the shared Inter width margin.
 

@@ -14,6 +14,7 @@ import keepSite from '../../sim/keepSite.json';
 import type { DetailGovernor } from '../showpiece/governor';
 import type { KeepSky, LevelDef } from '../../sim/levelTypes';
 import { BARBICAN_SIZE, SIEGE_MACHINE_FRAMES } from '../draw/siegeMachines';
+import { MAGNIFIER_SIZE, MAGNIFIER_ZOOM } from '../touchAssist';
 import gateEffects from '../../../assets/art-painted/sharp/gate-effects.webp?url&no-inline';
 import gateEffectsHalf from '../../../assets/art-painted/sharp/gate-effects-half.webp?url&no-inline';
 
@@ -335,14 +336,25 @@ export class KeepView {
     }
   }
 
-  showMagnifiedGround(): void {
+  showMagnifiedGround(centre: Point): void {
+    const half = MAGNIFIER_SIZE / MAGNIFIER_ZOOM / 2;
+    const size = half * 2 + 3;
+    const still = this.surround.stillSurface({
+      // Include a thin sampling border around the camera's visible pixels.
+      x: Math.floor(centre.x - this.layout.map.x - half) - 1,
+      y: Math.floor(centre.y - this.layout.map.y - half) - 1,
+      width: size, height: size,
+    });
+    const x = parseFloat(still.style.left), y = parseFloat(still.style.top);
     if (!this.magnifier) {
-      const still = this.surround.stillSurface();
       const texture = this.scene.textures.addCanvas(MAGNIFIER_KEY, still)!;
       texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
-      this.magnifier = this.scene.add.image(parseFloat(still.style.left), parseFloat(still.style.top), texture).setOrigin(0);
+      this.magnifier = this.scene.add.image(x, y, texture).setOrigin(0);
       this.layer.addAt(this.magnifier, 0);
       this.scene.cameras.main.ignore(this.magnifier);
+    } else if (this.magnifier.x !== x || this.magnifier.y !== y) {
+      (this.magnifier.texture as Phaser.Textures.CanvasTexture).refresh();
+      this.magnifier.setPosition(x, y);
     }
     this.magnifier.setVisible(true);
   }

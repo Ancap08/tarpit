@@ -2,7 +2,7 @@ import type Phaser from 'phaser';
 import type { Rect } from '../input';
 import { INTER } from '../palette';
 import { isTestMode } from '../testMode';
-import { invalidateUi, uiDensity, useDevicePixels } from './devicePixels';
+import { hasFixedUiCamera, invalidateUi, uiDensity, useDevicePixels } from './devicePixels';
 
 const DEVICE_SANS = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
@@ -166,6 +166,18 @@ export class BakedPaint {
     this.image.setPosition(Math.round(this.bounds.x * this.densityX) / this.densityX,
       Math.round((this.bounds.y + offset) * this.densityY) / this.densityY);
   }
+}
+
+export type ControlPaint = Pick<BakedPaint, 'begin' | 'finish' | 'shift'> & {
+  image: BakedPaint['image'] | Graphics;
+};
+
+/** The fixed Keep overlay already retains its pixels. Draw control chrome
+ * into that overlay without a second device-resolution copy per control. */
+export function controlPaint(scene: Scene, ink: Graphics): ControlPaint {
+  if (!hasFixedUiCamera(scene)) return new BakedPaint(scene, ink);
+  const shift = (offset: number) => { ink.setY(offset); };
+  return { image: ink, begin: () => ink.clear(), finish: (offset = 0) => shift(offset), shift };
 }
 
 /** Stable line boxes even on platforms that report unusually tall glyph bounds. */
