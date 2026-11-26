@@ -1745,7 +1745,8 @@ tax. The six build targets show the current look's tower portraits,
 names, prices and availability. Portrait build and wave controls are
 94 units tall and at least 44 CSS px at 390 × 664. Mute and Pause sit in
 the status block. The original same-cell second tap still builds, and
-the armed preview also offers a Build button.
+the armed preview also offers a 94-unit-tall Build button with the same
+44 CSS px minimum at 390 × 664.
 
 Clean loads the bundled Latin variable Inter face from its own origin
 only with `?ui=new`. It waits alongside Caslon at boot for up to one second.
@@ -1794,12 +1795,15 @@ line spacing when the second line needs it.
 
 Inter and device-font checks exercise the four supported test viewports.
 The shared wide-text checks for Inter and Caslon use 1.09 on macOS and
-1.06 elsewhere. The Clean font stress test checks label visibility at Inter
-advances 15% wider and 10% narrower, with an extra 2.6% advance on macOS
-to match Linux. With Inter blocked, the same 15% and −10% stress checks
-check only containment, overlap, readability, group consistency and
-the controls that remain. A separate blocked run maps the device sans
-to monospace and widens its advances by 30%.
+1.06 elsewhere. Every Clean label must show with Inter at its shipped
+width and at the shared margin. The stress runs check containment, overlap,
+readability, uniform sizes within each visible group, usable controls and
+the sell refund. They run with Inter advances 15% wider and 10% narrower,
+with an extra 2.6% advance on macOS to match Linux. With Inter blocked,
+the same checks run at the device font's normal width, at 15% wider and
+at 10% narrower. A separate blocked run maps the device sans to monospace
+and widens its advances by 30%. The wide Inter run records hidden text in
+the test report.
 
 The game fits the portrait world buffer within the area of 480 × 1032
 pixels and composites the interface on a separate canvas fitted to the

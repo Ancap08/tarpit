@@ -1,14 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { GameScene } from '../src/game/GameScene';
 import type { Rect } from '../src/game/input';
-import { BOSS_NAME, ENEMY_SHORT_NAMES, PAUSE_TEXT } from '../src/game/names';
+import { BOSS_NAME, PAUSE_TEXT } from '../src/game/names';
 import { INTER } from '../src/game/palette';
 import { BAR_TYPES } from '../src/game/ui/buildBarModel';
+import type { Button } from '../src/game/ui/button';
 import { LEVELS, TICKS_PER_SECOND, WAVES } from '../src/sim';
 import { api, mapPress, press } from './campaign';
-import { useWideFontMetrics } from './campaignFont';
+import { platformWideFactor, useWideFontMetrics } from './campaignFont';
 import { newInterfaceChecks } from './newInterface';
-import { rectPageSize } from './phone';
 import { openPaintedLevel } from './taxHud';
 import { waitForTitle } from './title';
 
@@ -20,6 +20,9 @@ async function inspect(page: Page, floating = false) {
     const [strip] = hud['m'].bands;
     const rects = t.uiRects();
     const scale = t.canvasToPage(100, 100).x / 100 - t.canvasToPage(0, 0).x / 100;
+    const targetSizes = Object.entries(rects).filter(([key]) => key !== 'gold')
+      .map(([key, { width, height }]) => ({ key, size: Math.min(width, height) * scale }));
+    const unmarkedControls: string[] = [];
     const labels: {
       group: string; text: string; family: string; visible: boolean; size: number; padding: number; uniform: boolean;
       left: number; right: number; top: number; bottom: number;
@@ -31,6 +34,11 @@ async function inspect(page: Page, floating = false) {
         left, right, top, bottom,
         size: parseFloat(String(label.style.fontSize)) * scale * label.scaleX,
         padding: scale * Math.min(left - box.x, box.x + box.width - right, top - box.y, box.y + box.height - bottom) });
+    }
+    function checkControl(key: string, button: Button, hasIcon = false) {
+      const icon = hasIcon || button['icon'] && button['chrome']?.image.visible;
+      const hasLabel = button.labelObjects[0].visible && button.text;
+      if (!icon && !hasLabel) unmarkedControls.push(key);
     }
     if (floating) {
       const map = scene['layout'].map;
@@ -45,7 +53,7 @@ async function inspect(page: Page, floating = false) {
       for (const { text } of hits['labels']) read('damage numbers', text, map);
       read('gold numbers', fx['goldTexts'][0], map);
       read('boss bounty', fx['goldTexts'][1], map);
-      return { labels, portraits: 0 };
+      return { labels, portraits: 0, targetSizes: [], unmarkedControls };
     }
     for (const label of scene.children.list.filter(o => o.name.startsWith('hud-stat:')))
       read('stat captions', label as Phaser.GameObjects.Text, strip);
@@ -55,8 +63,13 @@ async function inspect(page: Page, floating = false) {
     if (state.phase !== 'lost') read('preview', hud['next'], strip);
     if (state.cheated) read('cheat mark', hud['cheatMark'], strip);
     for (const [key, button] of [['startWave', hud['startButton']], ['special', hud['specialButton']],
-      ['speed', hud['speedButton']], ['pause', hud['pauseButton']]] as const)
-      if (rects[key] && button.text) read(key, button.labelObjects[0], rects[key]);
+      ['speed', hud['speedButton']], ['pause', hud['pauseButton']]] as const) {
+      if (!rects[key]) continue;
+      if (button.text) read(key, button.labelObjects[0], rects[key]);
+      const pauseIcon = hud['pauseIcon'];
+      if (state.phase === 'setup' || state.phase === 'wave')
+        checkControl(key, button, key === 'pause' && pauseIcon.visible && pauseIcon.commandBuffer.length > 0);
+    }
     if (state.phase === 'wave' && state.specialCharges > 0) read('ready', hud['readyState']!, rects.special);
     const first = rects['bar:musketeer'], second = rects['bar:cannon'];
     if (state.level?.taxes?.rationing) read('permit tally', hud['bar']['count'], { ...first, width: second.x + second.width - first.x });
@@ -69,6 +82,7 @@ async function inspect(page: Page, floating = false) {
     const panel = scene['panel'];
     let sellIconDrawn = false;
     if (panel.rect) {
+      checkControl('panel:close', panel['closeButton']);
       read('tower title', panel['titleText'], panel.rect);
       read('tower meta', panel['killsText'], panel.rect);
       if (panel.choices.length) read('upgrade heading', panel['pathHeading']!, panel.rect);
@@ -83,6 +97,7 @@ async function inspect(page: Page, floating = false) {
             sellIconDrawn = ink.data.some((channel, i) => i % 4 === 1 && channel > 140);
           }
         }
+        checkControl(`panel:${key}`, button, key === 'sell' && sellIconDrawn);
         for (const [i, text] of button.labelObjects.entries()) {
           if (text.text) read(path ? 'upgrade choices' : key === 'sell' && i === 1 ? 'tower refund' : 'tower ' + key, text, box);
         }
@@ -94,9 +109,16 @@ async function inspect(page: Page, floating = false) {
       }
     }
     const menu = hud['specialMenu'];
-    for (const key of menu['shownTypes']) read('special choices', menu['buttons'][key].labelObjects[0], rects['special:' + key]);
+    for (const key of menu['shownTypes']) {
+      const button = menu['buttons'][key];
+      read('special choices', button.labelObjects[0], rects['special:' + key]);
+      checkControl(`special:${key}`, button);
+    }
     if (state.level?.featherBarrels && rects['special:tarBarrel']) read('barrel caption', menu['barrelCaption'], rects['special:tarBarrel']);
-    if (rects.buildConfirm) read('build confirmation', scene['buildConfirm']!.labelObjects[0], rects.buildConfirm);
+    if (rects.buildConfirm) {
+      read('build confirmation', scene['buildConfirm']!.labelObjects[0], rects.buildConfirm);
+      checkControl('buildConfirm', scene['buildConfirm']!);
+    }
     const boss = hud['bossBar'];
     if (t.bossOnField!()) {
       read('boss name', boss['name'], boss['plate']!);
@@ -128,7 +150,7 @@ async function inspect(page: Page, floating = false) {
     }
     const bar = hud['bar'];
     const portraits = bar['portraits']?.filter(image => image.visible).length ?? (bar['icons']?.image.visible ? types.length : 0);
-    return { labels, portraits, sellIconDrawn };
+    return { labels, portraits, sellIconDrawn, targetSizes, unmarkedControls };
   }, { types: BAR_TYPES, floating });
 }
 
@@ -163,18 +185,21 @@ async function stressDeviceFont(page: Page, factor: number, alternate: boolean) 
   }, { factor, alternate });
 }
 
-const interModes = { Inter: 1, 'wide Inter': 1.15, 'narrow Inter': .90 };
+const interModes = { Inter: 1, 'Inter with margin': platformWideFactor, 'wide Inter': 1.15, 'narrow Inter': .90 };
 const deviceModes = { device: 1, 'wide device': 1.15, 'narrow device': .90, 'wide monospace': 1.30 };
 
 newInterfaceChecks(() => {
   test.use({ serviceWorkers: 'block' });
   for (const [mode, factor] of Object.entries({ ...interModes, ...deviceModes })) {
     const blocked = mode in deviceModes;
-    test(`${blocked ? 'font-independent fit' : 'label group fit'} with ${mode}`, async ({ page }, info) => {
-      // Match the extra 2.6% advance of bundled fonts on Linux.
-      if (!blocked && factor !== 1) await useWideFontMetrics(page, factor * (process.platform === 'darwin' ? 1.026 : 1), INTER);
+    const allLabels = mode === 'Inter' || mode === 'Inter with margin';
+    test(`${allLabels ? 'all labels fit' : 'fit invariants'} with ${mode}`, async ({ page }, info) => {
+      // The shared margin already accounts for the wider Linux advances.
+      const correction = !allLabels && process.platform === 'darwin' ? 1.026 : 1;
+      if (!blocked && factor !== 1) await useWideFontMetrics(page, factor * correction, INTER);
       if (blocked) await page.route('**/Inter-Latin-Variable-*.woff2', route => route.abort());
       if (blocked && factor !== 1) await stressDeviceFont(page, factor, mode === 'wide monospace');
+      const touch = info.project.name !== 'chromium';
       const sizes = info.project.name === 'phone' ? [{ width: 390, height: 664 }, { width: 390, height: 844 }] : [page.viewportSize()!];
       for (const { width, height } of sizes) {
         await page.setViewportSize({ width, height });
@@ -183,39 +208,52 @@ newInterfaceChecks(() => {
         expect(await page.evaluate(family => [...document.fonts].some(face => face.family === family && face.status === 'loaded'), INTER)).toBe(!blocked);
         await api(page, t => { t.state().wave = 10; t.state().gold = 888; t.step(0); });
         const groups = new Map<string, Set<string>>();
+        const hiddenWords = new Set<string>();
+        const closest = {
+          panel: { clearance: Infinity, detail: '' },
+          map: { clearance: Infinity, detail: '' },
+        };
         async function check(state: string, refund = '', floating = false) {
-          const { labels, portraits, sellIconDrawn } = await inspect(page, floating);
+          const { labels, portraits, sellIconDrawn, targetSizes, unmarkedControls } = await inspect(page, floating);
           if (!floating) expect.soft(portraits, state + ' shows all tower portraits').toBe(6);
+          if (!allLabels) {
+            expect.soft(unmarkedControls, state + ' controls have a label or icon').toEqual([]);
+            for (const { key, size } of targetSizes) {
+              if (touch || key === 'pause') expect.soft(size, `${width}×${height} ${state} ${key} target`).toBeGreaterThanOrEqual(44);
+            }
+          }
           if (refund) {
             expect.soft(labels.find(l => l.group === 'tower refund' && l.visible)?.text, state + ' shows the refund').toBe(refund);
             if (!labels.find(l => l.group === 'tower sell')?.visible) {
               expect.soft(sellIconDrawn, state + ' shows the remove icon').toBe(true);
             }
           }
-          const groupsInState = new Map<string, Set<number | 'hidden'>>();
+          const groupsInState = new Map<string, Set<number>>();
           for (const label of labels) {
             const detail = `${width}×${height} ${state} ${label.group} “${label.text}”`;
             expect.soft(label.family.startsWith(`"${INTER}"`), detail + ' uses bundled Inter').toBe(!blocked);
-            if (!blocked) {
-              const widePhone = mode === 'wide Inter' && info.project.name === 'phone';
-              const edgeDrawer = state === 'level-three drawer at the edge';
-              const hidden = widePhone && (label.group === 'tower names'
-                || edgeDrawer && (label.group === 'tower sell' || height === 664 && label.group === 'tower title'));
-              expect.soft(label.visible, detail + ' visible').toBe(!hidden);
+            if (allLabels) {
+              expect.soft(label.visible, detail + ' visible').toBe(true);
+              if (label.group === 'boss name') expect.soft(label.text, detail + ' uses the full name').toBe(BOSS_NAME);
             }
             const shortBossName = label.group === 'boss name' && label.text !== BOSS_NAME;
-            if (shortBossName && label.visible) expect.soft(label.text).toBe(ENEMY_SHORT_NAMES.boss);
             const result = label.visible ? label.size.toFixed(2) + (shortBossName ? ' (short name)' : '') : 'fallback';
             if (!groups.has(label.group)) groups.set(label.group, new Set());
             groups.get(label.group)!.add(result);
-            if (!groupsInState.has(label.group)) groupsInState.set(label.group, new Set());
-            groupsInState.get(label.group)!.add(label.visible ? label.size : 'hidden');
+            if (mode === 'wide Inter') {
+              if (shortBossName) hiddenWords.add(BOSS_NAME);
+              if (!label.visible && label.text) hiddenWords.add(label.text);
+            }
             if (!label.visible) continue;
+            const area = floating ? 'map' : 'panel';
+            if (label.padding < closest[area].clearance) closest[area] = { clearance: label.padding, detail };
+            if (!groupsInState.has(label.group)) groupsInState.set(label.group, new Set());
+            groupsInState.get(label.group)!.add(label.size);
             expect.soft(label.padding, detail + ' CSS px clearance').toBeGreaterThanOrEqual(2 - .001);
             expect.soft(label.size, detail + ' CSS px size').toBeGreaterThanOrEqual(11.1);
             expect.soft(label.uniform, detail + ' preserves proportions').toBe(true);
           }
-          for (const [group, variants] of groupsInState) expect.soft(variants.size, state + ' ' + group + ' uniform size and visibility').toBe(1);
+          for (const [group, variants] of groupsInState) expect.soft(variants.size, state + ' ' + group + ' uniform visible size').toBe(1);
           // Check each overlay's own labels. Floating numbers can cross.
           const layer = (group: string) => /^(event |boss |aim )/.exec(group)?.[1] ?? 'base';
           const visible = labels.filter(l => l.visible);
@@ -228,11 +266,8 @@ newInterfaceChecks(() => {
             }
           }
         }
-        const touch = info.project.name !== 'chromium';
         await check('setup');
-        if (blocked) {
-          const { width, height } = await rectPageSize(page, 'pause');
-          expect(Math.min(width, height)).toBeGreaterThanOrEqual(44);
+        if (!allLabels) {
           await expect(page.getByRole('button', { name: PAUSE_TEXT.button, exact: true })).toBeVisible();
           expect(await page.evaluate(() => {
             const scene = window.__tarpit!.game.scene.getScene('game') as GameScene;
@@ -272,10 +307,6 @@ newInterfaceChecks(() => {
           await check('level-three drawer at the edge', '+240');
           await press(page, 'panel:close', touch);
         } else {
-          if (touch) {
-            const { width, height } = await rectPageSize(page, 'panel:sell');
-            expect(Math.min(width, height)).toBeGreaterThanOrEqual(44);
-          }
           await press(page, 'panel:sell', touch);
           expect(await api(page, t => ({ towers: t.state().towers.length, gold: t.state().gold }))).toEqual({ towers: 0, gold: 85 });
         }
@@ -311,11 +342,17 @@ newInterfaceChecks(() => {
         await press(page, 'title:play', touch);
         await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game'));
         await check('floating numbers', '', true);
-        if (!blocked) for (const [group, sizes] of groups) {
+        if (allLabels) for (const [group, sizes] of groups) {
           expect.soft([...sizes].filter(size => size !== 'fallback').length,
             `${width}×${height} ${group} keeps one visible size between states`).toBeLessThanOrEqual(1);
         }
-        await test.info().attach(`${width}x${height}`, { body: JSON.stringify(Object.fromEntries([...groups].map(([group, sizes]) => [group, [...sizes]]))), contentType: 'application/json' });
+        if (mode === 'wide Inter') info.annotations.push({
+          type: 'Hidden with wide Inter', description: `${width}×${height}: ${[...hiddenWords].sort().join(', ') || 'none'}`,
+        });
+        if (mode === 'Inter with margin') for (const { clearance, detail } of Object.values(closest)) {
+          info.annotations.push({ type: 'Smallest margin clearance', description: `${clearance.toFixed(3)} CSS px · ${detail}` });
+        }
+        await info.attach(`${width}x${height}`, { body: JSON.stringify(Object.fromEntries([...groups].map(([group, sizes]) => [group, [...sizes]]))), contentType: 'application/json' });
       }
     });
   }

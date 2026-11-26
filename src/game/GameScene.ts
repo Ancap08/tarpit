@@ -834,7 +834,7 @@ export class GameScene extends Phaser.Scene {
         if (this.panel.cell !== null) this.setTargeting(this.panel.cell, next);
       },
     }, this.painted);
-    this.buildConfirm = clean ? new Button(this, { x: 0, y: 0, width: 170, height: 91 }, PANEL_TEXT.build,
+    this.buildConfirm = clean ? new Button(this, { x: 0, y: 0, width: 170, height: 94 }, PANEL_TEXT.build,
       () => {
         const type = this.pick, cell = this.armed;
         if (!type || !cell || this.paused) return;
