@@ -647,7 +647,7 @@ export class Hud {
     // The build bar carries the permit count. On a cheated portrait run, keep
     // this line for the tax names and the mark that the run cannot earn stars.
     const namesOnly = (this.clean && m.portrait || this.layout === TAXED_PORTRAIT) && state.cheated;
-    const siegeRule = this.featLine && state.level ? siegeRuleLines(state.level)[0] ?? '' : '';
+    const siegeRule = this.featLine ? siegeRuleLines(state)[0] ?? CAMPAIGN_TEXT.gateRule : '';
     const taxes = this.featLine ? siegeRule : taxStatusText(state.level?.taxes, namesOnly ? undefined : state.towers.length);
     set(this.taxLine, taxes);
     this.taxLine.setVisible(!!taxes);

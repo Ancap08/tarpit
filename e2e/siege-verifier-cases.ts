@@ -165,6 +165,7 @@ export function siegeVerifierCases(touch: boolean, heights: readonly (number | u
       if (clean) {
         const roads = level.keepRoads === 'both' ? ['east', 'west'] : [level.keepRoads];
         expect(Object.keys(all).filter(key => key.startsWith('road:')).sort()).toEqual(roads.map(road => `road:${road}`).sort());
+        if (checkCopy && level.id === 21) expect(texts.some(t => t.text === 'The gate holds walkers. Repair it between waves.')).toBe(true);
         for (let wave = 0; wave < level.waves.length; wave++) {
           const issues = await checkCleanSetup(page, wave, checkCopy);
           expect(issues, `level ${level.id}, wave ${wave + 1}`).toEqual([]);
@@ -209,6 +210,11 @@ export function siegeVerifierCases(touch: boolean, heights: readonly (number | u
         expect(await page.evaluate(() => window.__tarpit!.state!().gold)).toBe(500 - tax.price);
         expect(await page.evaluate(() => window.__tarpit!.uiRects().wallSite)).toBeUndefined();
         expect(await page.evaluate(({ col, row }) => window.__tarpit!.buildAt!(col, row, 'musketeer').ok, site)).toBe(true);
+        if (clean) {
+          const texts = await visibleTexts(page);
+          expect(texts.some(t => t.text === "Town's answer: tap a lit window for feathers.")).toBe(true);
+          expect(texts.some(t => t.text.startsWith('Quartering:'))).toBe(false);
+        }
       }
       if (tax?.kind === 'royalSurvey') {
         const gold = await page.evaluate(() => window.__tarpit!.state!().gold);
