@@ -183,7 +183,7 @@ def add_contact(bpy, kind):
     links.new(mix.outputs[0], output.inputs["Surface"])
 
 
-def render_cells(kind):
+def render_cells(kind, scratch=SCRATCH, style=None, actor_resolution=192, prop_resolution=DENSITY):
     import bpy
     from mathutils import Vector
     import render
@@ -193,7 +193,7 @@ def render_cells(kind):
     lamp = bpy.data.objects["Daylight key"]
     lamp.location = (-5, 3, 7)
     lamp.rotation_euler = (-lamp.location).to_track_quat("-Z", "Y").to_euler()
-    material = render.factory("painted")
+    material = style(scene) if style else render.factory("painted")
     roots = {}
     vertices = {}
     base_yaws = {}
@@ -213,11 +213,11 @@ def render_cells(kind):
                 child.hide_render = True
 
     actor = kind in ACTORS
-    resolution = 192 if actor else DENSITY
+    resolution = actor_resolution if actor else prop_resolution
     elevation = TOWER_ELEVATION if kind in TOWERS else ELEVATION
     tilt = math.radians(90 - elevation)
     meta = frame_metadata(kind, cols, frames, vertices, resolution, tilt)
-    folder = SCRATCH / kind
+    folder = scratch / kind
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "layout.json").write_text(json.dumps(meta))
     if not actor:

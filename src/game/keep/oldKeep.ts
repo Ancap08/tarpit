@@ -14,6 +14,8 @@ import keepSite from '../../sim/keepSite.json';
 import type { DetailGovernor } from '../showpiece/governor';
 import type { KeepSky, LevelDef } from '../../sim/levelTypes';
 import { BARBICAN_SIZE, SIEGE_MACHINE_FRAMES } from '../draw/siegeMachines';
+import gateEffects from '../../../assets/art-painted/sharp/gate-effects.webp?url&no-inline';
+import gateEffectsHalf from '../../../assets/art-painted/sharp/gate-effects-half.webp?url&no-inline';
 
 export { createKeep } from '../../sim/oldKeep';
 
@@ -35,7 +37,7 @@ export interface KeepAssets {
 }
 
 export async function loadKeep(game: Phaser.Game, portrait: boolean, signal: AbortSignal,
-    onProgress: (fraction: number) => void, level?: LevelDef, actThree = false): Promise<KeepAssets> {
+    onProgress: (fraction: number) => void, level?: LevelDef, actThree = false, sharp = false): Promise<KeepAssets> {
   const set = currentKeepPlateSet(game, portrait, level, actThree);
   const images = new Map<Plate, HTMLImageElement>();
   const installed: Plate[] = [];
@@ -50,22 +52,25 @@ export async function loadKeep(game: Phaser.Game, portrait: boolean, signal: Abo
   try {
     let completed = 0;
     await Promise.all(set.files.map(async ({ name, file }) => {
-      const response = await fetch(import.meta.env.BASE_URL + 'assets/keep/' + file, { signal });
+      const url = sharp && name === 'siege-machines'
+        ? file.endsWith('-half.webp') ? gateEffectsHalf : gateEffects
+        : import.meta.env.BASE_URL + 'assets/keep/' + file;
+      const response = await fetch(url, { signal });
       if (!response.ok) throw new Error(`Keep plate returned ${response.status}`);
       const blob = await response.blob();
       signal.throwIfAborted();
-      const url = URL.createObjectURL(blob);
+      const objectUrl = URL.createObjectURL(blob);
       const image = new window.Image();
       images.set(name, image);
       const cancel = () => image.removeAttribute('src');
       signal.addEventListener('abort', cancel, { once: true });
       try {
-        image.src = url;
+        image.src = objectUrl;
         await image.decode();
         onProgress(++completed / set.files.length);
       } finally {
         signal.removeEventListener('abort', cancel);
-        URL.revokeObjectURL(url);
+        URL.revokeObjectURL(objectUrl);
       }
     }));
     signal.throwIfAborted();
@@ -86,8 +91,13 @@ export async function loadKeep(game: Phaser.Game, portrait: boolean, signal: Abo
         for (let i = 0; i < 4; i++) texture.add(String(i), 0, (i % 2) * w, Math.floor(i / 2) * h, w, h);
       }
       if (name === 'siege-machines') {
-        const w = image.naturalWidth / 4, h = image.naturalHeight / 2;
-        for (const [i, frame] of SIEGE_MACHINE_FRAMES.entries()) texture.add(frame, 0, (i % 4) * w, Math.floor(i / 4) * h, w, h);
+        if (sharp) {
+          const w = image.naturalWidth / 3, h = image.naturalHeight;
+          for (const [i, frame] of SIEGE_MACHINE_FRAMES.slice(5).entries()) texture.add(frame, 0, i * w, 0, w, h);
+        } else {
+          const w = image.naturalWidth / 4, h = image.naturalHeight / 2;
+          for (const [i, frame] of SIEGE_MACHINE_FRAMES.entries()) texture.add(frame, 0, (i % 4) * w, Math.floor(i / 4) * h, w, h);
+        }
       }
     }
     return {

@@ -798,10 +798,7 @@ function drawProjectile(g: Phaser.GameObjects.Graphics, p: Projectile, t: number
   // World-space drawing (milestone 32b): arcs rise up the screen, and shadows sit below them, flat on the screen.
   const up = layout.up;
   const a = arcPosition(p.from, p.to, t, p.height, up);
-  if (painted) {
-    painted.projectile(p.tower, a, a.angle);
-    return;
-  }
+  if (painted?.projectile(p.tower, a, a.angle)) return;
   const shadow = (w: number, h: number, alpha: number) => {
     const at = layout.offset({ x: a.groundX, y: a.groundY }, 0, 3);
     const size = layout.ellipse(w, h);

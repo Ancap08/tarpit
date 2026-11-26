@@ -54,10 +54,7 @@ export class ShotEffects {
       const a = ticksLeft / LIFETIME[shot.tower];
       const { to } = shot;
       const from = muzzle(shot);
-      if (painted) {
-        painted.frozenShot(shot.tower, from, to, 1 - a);
-        continue;
-      }
+      if (painted?.frozenShot(shot.tower, from, to, 1 - a)) continue;
       switch (shot.tower) {
         case 'musketeer':
           g.lineStyle(2.5, COLORS.musketTracer, a);

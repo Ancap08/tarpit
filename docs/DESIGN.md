@@ -1290,6 +1290,19 @@ The title screen offers Classic and Painted. Painted is the default for a fresh 
   Packed art loads on demand. A cold start requests three painted files, or four when it probes
   the 1× ground before loading 2×. On Meadow the 1× target is under five seconds at 1.6 Mbps down
   and 150 ms latency.
+- With `?ui=new`, Painted and Showpiece load trimmed, smoothly shaded pieces
+  for the level's roster. The same tower models cover all levels and both
+  upgrade paths. Enemies keep their 16 walk poses and the four Guards keep
+  their 32 idle and strike poses. Locked tower buttons use one preview pose
+  each. Opening the kit with the gold cheat fetches the added poses and shots.
+  Ordinary fields use 2 source pixels per game pixel. At the Old Keep,
+  towers and flyers use 3 and ground enemies and Guards use 4. The Keep ram has a 360 × 240 source cell and its mortar notice a
+  120 × 80 cell. The Painted field can draw up to the screen's fitted pixel
+  density, within those 2× and 3× field limits. The Keep's battle camera
+  and front ranks can enlarge the pieces further. The retained decoded art
+  targets are 60,000,000 bytes on ordinary phone levels and 70,000,000 on
+  Act Three. Changing levels releases the pieces. An in-place restart
+  reuses them. The worker caches requested files for repeat play offline.
 - All three grounds use the same trail width and simulation path. Meadow
   has flowering pasture, Switchback has a pale trail with a dark cut edge through dry grass and low shale shelves,
   and Riverbend has reed-lined water and a timber deck on its upper trail.

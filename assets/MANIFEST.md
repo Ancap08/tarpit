@@ -363,3 +363,56 @@ the checker looks for it.
 | `docs/review/m52d/390x844-gate-crowd-dusk.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
 | `docs/review/m52d/390x844-gate-crowd-night.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
 | `docs/review/m52d/960x580-ending.jpg` | `scripts/art/m52c2bMedia.ts` | Tarpit agents | MIT | Production siege capture |
+| `assets/art-painted/sharp/arrow-2x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/arrow-3x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/cannon-2x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/cannon-3x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/cannonball-2x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/cannonball-3x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/fire-pot-2x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/fire-pot-3x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/flame-2x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/flame-3x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/gate-effects-half.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Keep repair and debris frames extracted from the half atlas |
+| `assets/art-painted/sharp/gate-effects.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Keep repair and debris frames extracted from the full atlas |
+| `assets/art-painted/sharp/goblin-2x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/goblin-4x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/grumblefoot-2x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/grumblefoot-4x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/grumblemaw-2x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/grumblemaw-4x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/guard-4x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/harpy-2x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/harpy-3x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/harpy-shadow-2x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/layout.json` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed frames, original logical bodies and pivots |
+| `assets/art-painted/sharp/longbow-2x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/longbow-3x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/mortar-2x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/mortar-3x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/mortar-shell-2x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/mortar-shell-3x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/musketeer-2x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/musketeer-3x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/notice-keep.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Keep mortar notice at 120 × 80 source pixels |
+| `assets/art-painted/sharp/ram-keep.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | All four shipped ram poses at 360 × 240 source pixels |
+| `assets/art-painted/sharp/scenery.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Scenery-only extraction from the shipped 2× pack |
+| `assets/art-painted/sharp/shieldbearer-2x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/shieldbearer-4x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/tar-glob-2x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/tar-glob-3x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/tar-pit-2x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/tar-pit-3x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/tower-icons.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Southeast portraits for locked towers and the Keep |
+| `assets/art-painted/sharp/troll-2x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/troll-4x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/wolf-2x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `assets/art-painted/sharp/wolf-4x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed smooth render for the optional Painted roster |
+| `docs/review/m56/mid-wave-390x656.webp` | `scripts/art/m56-sheets.py` | Tarpit agents | MIT | Milestone 56 phone comparison |
+| `docs/review/m56/mid-wave-390x844.webp` | `scripts/art/m56-sheets.py` | Tarpit agents | MIT | Milestone 56 phone comparison |
+| `docs/review/m56/old-keep-390x844.webp` | `scripts/art/m56-sheets.py` | Tarpit agents | MIT | Milestone 56 phone comparison |
+| `docs/review/m56/piece-ram.png` | `scripts/art/m56-sheets.py` | Tarpit agents | MIT | Milestone 56 phone comparison |
+| `docs/review/m56/pieces-bosses.png` | `scripts/art/m56-sheets.py` | Tarpit agents | MIT | Milestone 56 phone comparison |
+| `docs/review/m56/pieces-enemies.png` | `scripts/art/m56-sheets.py` | Tarpit agents | MIT | Milestone 56 phone comparison |
+| `docs/review/m56/pieces-guards.png` | `scripts/art/m56-sheets.py` | Tarpit agents | MIT | Milestone 56 phone comparison |
+| `docs/review/m56/pieces-towers.png` | `scripts/art/m56-sheets.py` | Tarpit agents | MIT | Milestone 56 phone comparison |
