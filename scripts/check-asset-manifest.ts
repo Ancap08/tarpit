@@ -1,5 +1,5 @@
 // `npm run check:assets`: every file under assets/, docs/art/ and
-// public/icons/ must be listed in assets/MANIFEST.md with a CC0 or CC-BY
+// public/icons/ must be listed in the asset manifest with a CC0 or CC-BY
 // license (CC-BY with a credit line), or MIT when a script in this repo drew
 // it (the project's own work, milestone 32a). See docs/SCOPE-v3.md, "Hard rules". The matching logic is
 // pure (checkManifest, parseManifest) and tested in
@@ -99,13 +99,13 @@ export function checkManifest(files: string[], rows: ManifestRow[], scripts: Rea
   const checked = files.filter((f) => CHECKED_DIRS.some((d) => f.startsWith(d)) && !isIgnored(f)).sort();
   const byPath = new Map<string, ManifestRow>();
   for (const row of rows) {
-    if (byPath.has(row.path)) problems.push(`${row.path}: listed twice in assets/MANIFEST.md`);
+    if (byPath.has(row.path)) problems.push(`${row.path}: listed twice in the asset manifests`);
     byPath.set(row.path, row);
   }
   for (const f of checked) {
     const row = byPath.get(f);
     if (!row) {
-      problems.push(`${f}: not listed in assets/MANIFEST.md (add a row with its source, author and license)`);
+      problems.push(`${f}: not listed in an asset manifest (add a row with its source, author and license)`);
       continue;
     }
     const kind = licenseKind(row.license);
@@ -125,7 +125,7 @@ export function checkManifest(files: string[], rows: ManifestRow[], scripts: Rea
   }
   const present = new Set(checked);
   for (const row of rows) {
-    if (!present.has(row.path)) problems.push(`${row.path}: listed in assets/MANIFEST.md but no such file`);
+    if (!present.has(row.path)) problems.push(`${row.path}: listed in an asset manifest but no such file`);
   }
   return problems;
 }
@@ -145,6 +145,9 @@ function main(): void {
     process.exit(1);
   }
   const rows = parseManifest(readFileSync(manifestPath, 'utf8'));
+  // Keep the options' provenance beside the review-only images.
+  const reviewManifest = join(root, 'docs', 'review', 'm56', 'options', 'MANIFEST.md');
+  if (existsSync(reviewManifest)) rows.push(...parseManifest(readFileSync(reviewManifest, 'utf8')));
   const files = CHECKED_DIRS.flatMap((d) => walk(root, join(root, d)));
   const scripts = walk(root, join(root, 'scripts')).filter((path) => lstatSync(join(root, path)).isFile());
   const oflPaths = new Set(rows.filter((row) => licenseKind(row.license) === 'ofl').map((row) => row.path));
@@ -153,7 +156,7 @@ function main(): void {
   ));
   const problems = checkManifest(files, rows, new Set(scripts), hashes);
   if (problems.length > 0) {
-    console.error(`check:assets: ${problems.length} problem(s) with assets/MANIFEST.md:`);
+    console.error(`check:assets: ${problems.length} problem(s) with the asset manifests:`);
     for (const p of problems) console.error(`  - ${p}`);
     process.exit(1);
   }

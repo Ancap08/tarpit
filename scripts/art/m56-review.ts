@@ -1,4 +1,4 @@
-// PW_PORT=4373 node --experimental-strip-types scripts/art/m56-review.ts SCRATCH <baseline|review|perf|perf-paired|download|lifecycle>
+// PW_PORT=4373 node --experimental-strip-types scripts/art/m56-review.ts SCRATCH <baseline|review|perf|perf-paired|download|lifecycle|options>
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
@@ -384,7 +384,11 @@ async function download(browser: Browser) {
 
 if (mode === 'baseline') process.chdir(scratch);
 const measuring = mode === 'perf' || mode === 'perf-paired';
-function work(browser: Browser) {
+async function work(browser: Browser) {
+  if (mode === 'options') {
+    const { captureOptions } = await import('./m56-options.ts');
+    return captureOptions(browser, scratch, enter, fixture);
+  }
   if (measuring) return perf(browser);
   if (mode === 'download') return download(browser);
   if (mode === 'lifecycle') return verifyLifecycle(browser);
