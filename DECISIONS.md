@@ -2176,3 +2176,8 @@ can change it; "Kyle" means Kyle decided.
   of 300,000 to 400,000.** Kyle was told before more was spent. Order
   from here: the polish list, the remaining pages, and the sharper pieces
   in a second folder at the same time.
+- **The pieces' finish is C, Lifted.** Decided by Kyle ("C Lifted") from
+  three pictures on the same fight. A soft dark rim and a clearer ground
+  shadow with a little more contrast; no hard outline. The coordinator and
+  Sol had both preferred B (Inked) for telling pieces apart in a crowd;
+  Kyle's eye decides. The crowd at the gate is the place to watch.
