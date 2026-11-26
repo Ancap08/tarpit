@@ -2,7 +2,7 @@ import type Phaser from 'phaser';
 import type { Rect } from '../input';
 import { INTER } from '../palette';
 import { isTestMode } from '../testMode';
-import { invalidateUi, uiDensity, useDevicePixels } from './devicePixels';
+import { hasFixedUiCamera, invalidateUi, uiBounds, uiDensity, useDevicePixels } from './devicePixels';
 
 const DEVICE_SANS = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
@@ -43,10 +43,10 @@ export function newInterface(): boolean {
   return typeof location !== 'undefined' && new URLSearchParams(location.search).get('ui') === 'new';
 }
 
-export function useInterface(scene: Scene, skin: Skin, now: () => number): void {
+export function useInterface(scene: Scene, skin: Skin, now: () => number, inkCamera?: string): void {
   const motion = !isTestMode() && !matchMedia('(prefers-reduced-motion: reduce)').matches;
   skins.set(scene, { skin, now, motion });
-  useDevicePixels(scene, skin === 'paper');
+  useDevicePixels(scene, skin === 'paper', inkCamera);
   const previous = document.body.style.backgroundColor;
   document.body.style.backgroundColor = skin === 'battle' ? '#0b1e20' : '#eee7d5';
   scene.events.once('shutdown', () => {
@@ -158,7 +158,7 @@ export class BakedPaint {
     ink.setScale(this.densityX, this.densityY).generateTexture(this.key, width, height).setScale(1);
     this.image.setDisplaySize(width / this.densityX, height / this.densityY);
     this.shift(this.offset);
-    invalidateUi(scene);
+    invalidateUi(this.image);
   }
 
   shift(offset: number): void {
@@ -166,6 +166,22 @@ export class BakedPaint {
     this.image.setPosition(Math.round(this.bounds.x * this.densityX) / this.densityX,
       Math.round((this.bounds.y + offset) * this.densityY) / this.densityY);
   }
+}
+
+export type ControlPaint = Pick<BakedPaint, 'begin' | 'finish' | 'shift'> & {
+  image: BakedPaint['image'] | Graphics;
+};
+
+/** The fixed Keep overlay already retains its pixels. Draw control chrome
+ * into that overlay without a second device-resolution copy per control. */
+export function controlPaint(scene: Scene, ink: Graphics): ControlPaint {
+  if (!hasFixedUiCamera(scene)) return new BakedPaint(scene, ink);
+  let bounds: Rect;
+  const shift = (offset: number) => {
+    ink.setY(offset);
+    uiBounds(ink, { ...bounds, y: bounds.y + offset });
+  };
+  return { image: ink, begin: rect => { bounds = rect; return ink.clear(); }, finish: (offset = 0) => shift(offset), shift };
 }
 
 /** Stable line boxes even on platforms that report unusually tall glyph bounds. */
@@ -193,6 +209,7 @@ const paths = {
   wave: [[-10, -2, -7, -2, -3, -5, 0, -5, 4, -2, 7, -2, 10, -4], [-10, 5, -7, 5, -3, 2, 0, 2, 4, 5, 7, 5, 10, 3]],
   pause: [[-3, -7, -3, 7], [3, -7, 3, 7]],
   bolt: [[2, -10, -7, 2, -1, 2, -2, 10, 7, -2, 1, -2, 2, -10]],
+  clock: [[0, -6, 0, 0, 4, 3]],
   next: [[-7, -7, 2, 0, -7, 7, -7, -7], [6, -7, 6, 7]],
   play: [[-5, -7, 6, 0, -5, 7, -5, -7]],
   close: [[-6, -6, 6, 6], [6, -6, -6, 6]],
@@ -203,6 +220,8 @@ const paths = {
   target: [[0, -11, 0, -6], [0, 6, 0, 11], [-11, 0, -6, 0], [6, 0, 11, 0]],
   crown: [[-9, -6, -6, 5, 6, 5, 9, -6, 4, -2, 0, -8, -4, -2, -9, -6], [-6, 9, 6, 9]],
   window: [[-6, -9, 6, -9, 6, 9, -6, 9, -6, -9], [0, -9, 0, 9], [-6, 0, 6, 0]],
+  gate: [[-9, 8, -9, -7, -5, -7, -5, -4, -2, -4, -2, -7, 2, -7, 2, -4, 5, -4, 5, -7, 9, -7, 9, 8], [-4, 8, -4, 2, 0, -1, 4, 2, 4, 8]],
+  repair: [[-7, 8, 4, -3], [-6, -6, -1, -10, 9, 0, 5, 4, -6, -6]],
   sparkle: [[0, -10, 3, -3, 10, 0, 3, 3, 0, 10, -3, 3, -10, 0, -3, -3, 0, -10]],
   lock: [[-7, -1, 7, -1, 7, 9, -7, 9, -7, -1], [-4, -1, -4, -6, 0, -9, 4, -6, 4, -1]],
   map: [[-9, -5, -3, -8, 3, -5, 9, -8, 9, 6, 3, 9, -3, 6, -9, 9, -9, -5], [-3, -8, -3, 6], [3, -5, 3, 9]],
@@ -218,6 +237,7 @@ export function glyph(g: Graphics, icon: Icon, x: number, y: number, size: numbe
   const s = size / 24;
   g.lineStyle(1.8 * s, color, alpha);
   if (icon === 'coin') g.strokeEllipse(x, y, 18 * s, 18 * s, 18);
+  if (icon === 'clock') g.strokeEllipse(x, y, 19 * s, 19 * s, 18);
   if (icon === 'target') g.strokeEllipse(x, y, 14 * s, 14 * s, 14).strokeEllipse(x, y, 4 * s, 4 * s, 8);
   for (const points of paths[icon]) {
     g.beginPath().moveTo(x + points[0] * s, y + points[1] * s);

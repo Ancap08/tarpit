@@ -5,14 +5,15 @@
 // The menu only reports clicks; GameScene owns whether it is open.
 
 import type Phaser from 'phaser';
+import { uiBounds } from './devicePixels';
 import { SPECIAL_TYPES, type SpecialType } from '../../sim';
 import type { Rect } from '../input';
 import { SPECIAL_NAMES, TAR_BARREL_DESCRIPTION } from '../names';
 import { panel, THEME } from './theme';
-import { rounded, skinFor } from './newTheme';
+import { CLEAN, rounded, skinFor, textMetrics } from './newTheme';
 import { Button } from './button';
 import { STACK_SIZE, type StackSize } from './geometry';
-import { DeviceTextFit, textInset, textSlot } from './deviceText';
+import { DeviceTextFit, minimumTextSize, textInset, textSlot } from './deviceText';
 
 const PAD = 6;
 const GAP = 4;
@@ -28,6 +29,7 @@ export class SpecialMenu {
   private readonly barrelCaption: Phaser.GameObjects.Text;
   private buttonH = 0;
   private columns = 1;
+  private captionSpace = 0;
   private readonly namesFit = new DeviceTextFit();
   private readonly captionFit = new DeviceTextFit();
   private readonly clean: boolean;
@@ -52,7 +54,7 @@ export class SpecialMenu {
     this.buttons = { keg: make('keg'), tarBarrel: make('tarBarrel'), fireArrows: make('fireArrows'), barricade: make('barricade'), guards: make('guards') };
     this.barrelCaption = scene.add.text(0, 0, TAR_BARREL_DESCRIPTION, {
       fontFamily: this.buttons.tarBarrel.labelObjects[0].style.fontFamily, fontSize,
-      color: this.buttons.tarBarrel.labelObjects[0].style.color, align: 'center',
+      color: this.clean ? CLEAN.subdued : this.buttons.tarBarrel.labelObjects[0].style.color, align: 'center',
     }).setOrigin(0.5, 0).setVisible(false);
     for (const b of Object.values(this.buttons)) b.setShown(false);
   }
@@ -71,21 +73,27 @@ export class SpecialMenu {
     const cardWidth = barrel < 0 ? this.size.buttonW : this.size.buttonW + 100;
     this.barrelCaption.setVisible(barrel >= 0);
     const captionWidth = cardWidth - (this.clean ? Math.max(16, 2 * textInset(this.barrelCaption)) : 16);
+    const captionSize = Math.max(parseFloat(this.fontSize) - 1, minimumTextSize(this.barrelCaption));
+    if (this.clean && barrel >= 0 && parseFloat(String(this.barrelCaption.style.fontSize)) !== captionSize) {
+      this.barrelCaption.setStyle({ fontSize: captionSize, metrics: textMetrics(captionSize) });
+    }
     if (barrel >= 0 && this.barrelCaption.style.wordWrapWidth !== captionWidth)
-      this.barrelCaption.setWordWrapWidth(captionWidth);
-    const extra = barrel >= 0 ? this.barrelCaption.height + 4 : 0;
+      this.barrelCaption.setWordWrapWidth(captionWidth, this.clean);
+    const extra = barrel >= 0 ? this.barrelCaption.height + (this.clean ? 9 : 4) : 0;
     // Keep full-size targets on squat screens by splitting the new five-item menu.
     const fullRows = Math.max(1, Math.floor((room - extra + GAP) / (fullHeight + GAP)));
     const maxColumns = Math.floor((this.scene.scale.width - 2 * PAD + GAP) / (cardWidth + GAP));
     const columns = types.includes('guards') ? Math.min(maxColumns, Math.max(1, Math.ceil(types.length / fullRows))) : 1;
     const rows = Math.ceil(types.length / columns);
     const buttonH = rows === 0 ? 0 : Math.min(Math.floor((room - extra - (rows - 1) * GAP) / rows), fullHeight);
-    if (buttonH === this.buttonH && columns === this.columns && types.length === this.shownTypes.length && types.every((t, i) => t === this.shownTypes[i])) {
+    if (buttonH === this.buttonH && columns === this.columns && extra === this.captionSpace &&
+        types.length === this.shownTypes.length && types.every((t, i) => t === this.shownTypes[i])) {
       if (this.clean && types.length) this.fitText(types, barrel);
       return;
     }
     this.buttonH = buttonH;
     this.columns = columns;
+    this.captionSpace = extra;
     this.shownTypes = [...types];
     if (types.length === 0) {
       this.box = null;
@@ -99,8 +107,10 @@ export class SpecialMenu {
     const left = Math.min(this.left, this.scene.scale.width - width);
     this.box = { x: left, y: top, width, height };
     this.backing.clear().setVisible(true);
-    if (skinFor(this.scene) === 'battle') rounded(this.backing, this.box);
-    else panel(this.backing, this.box, THEME.paper);
+    if (this.clean) {
+      uiBounds(this.backing, this.box);
+      rounded(this.backing, this.box);
+    } else panel(this.backing, this.box, THEME.paper);
     for (const type of SPECIAL_TYPES) {
       const i = types.indexOf(type);
       const b = this.buttons[type];
@@ -115,7 +125,7 @@ export class SpecialMenu {
         b.setShown(true);
         if (i === barrel) {
           b.labelObjects[0].setY(rowY + buttonH / 2);
-          this.barrelCaption.setPosition(x + cardWidth / 2, rowY + buttonH - 3);
+          this.barrelCaption.setPosition(x + cardWidth / 2, rowY + buttonH - (this.clean ? 0 : 3));
         }
       }
     }
@@ -128,7 +138,7 @@ export class SpecialMenu {
     const box = this.buttons.tarBarrel.rect;
     const slot = textSlot(this.barrelCaption, box, true);
     slot.width = Math.min(slot.width, box.width - 16);
-    this.barrelCaption.setVisible(this.captionFit.fit(parseFloat(this.fontSize), [slot]));
+    this.barrelCaption.setVisible(this.captionFit.fit(parseFloat(this.fontSize) - 1, [slot]));
   }
 
   /** `special:<type>` for each listed special while open. */

@@ -1,12 +1,41 @@
-import type { Point } from '../../sim';
+import type { Point, Rect } from '../../sim';
 import type { KeepSky } from '../../sim/levelTypes';
 import type { Layout } from '../layout';
 import { paintFork } from './keepMotion';
 import type { Plate } from './plates';
 
 const WING = 120;
+const CLEAN_WING = 168;
 const HEADROOM = 120;
 type ImageSource = (plate: Plate) => HTMLImageElement;
+
+/** Crop transparent padding while keeping a pixel for scaled edge sampling. */
+function trimAlpha(sheet: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
+  const { width, height } = sheet;
+  const pixels = ctx.getImageData(0, 0, width, height).data;
+  let left = width, top = height, right = -1, bottom = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (!pixels[(y * width + x) * 4 + 3]) continue;
+      left = Math.min(left, x);
+      top = Math.min(top, y);
+      right = Math.max(right, x);
+      bottom = y;
+    }
+  }
+  if (right < 0) return { sheet, left: 0, top: 0 };
+  left = Math.max(0, left - 1);
+  top = Math.max(0, top - 1);
+  const w = Math.min(width, right + 2) - left;
+  const h = Math.min(height, bottom + 2) - top;
+  if (w === width && h === height) return { sheet, left: 0, top: 0 };
+  const crop = document.createElement('canvas');
+  crop.width = w;
+  crop.height = h;
+  crop.getContext('2d')!.drawImage(sheet, left, top, w, h, 0, 0, w, h);
+  sheet.width = sheet.height = 0;
+  return { sheet: crop, left, top };
+}
 
 /** Static exposures are rasterized once. The compositor moves the finished
  * layers behind the transparent battle canvas, including past its side edges. */
@@ -15,6 +44,7 @@ export class KeepSurround {
   private readonly frame = document.createElement('div');
   private readonly camera = document.createElement('div');
   private readonly observer: ResizeObserver;
+  private readonly fit: () => void;
   private readonly sky: HTMLCanvasElement;
   private readonly ground: HTMLCanvasElement;
   private readonly litGround?: HTMLCanvasElement;
@@ -34,8 +64,9 @@ export class KeepSurround {
   private lastScaleY = 1;
   private stillActive = false;
   private readonly inset: number;
+  private readonly widerPortrait: boolean;
 
-  constructor(canvas: HTMLCanvasElement, private readonly layout: Layout,
+  constructor(canvas: HTMLCanvasElement, private layout: Layout,
       image: ImageSource, gate: Point,
       size: {width:number;height:number}, foot: number[], private readonly weather?: KeepSky) {
     const host = canvas.parentElement!;
@@ -47,7 +78,11 @@ export class KeepSurround {
     this.backdrop.append(this.frame);
     host.insertBefore(this.backdrop, canvas);
     const { width, height } = layout.map;
-    this.inset = layout.turned ? WING : 0;
+    const wing = layout.turned ? WING : 0;
+    // The wider Clean canvas needs more scenery at the edges. Preserve
+    // the original width of the painted routes and extend the rock beyond them.
+    this.widerPortrait = layout.turned && layout.map.x > 0;
+    this.inset = this.widerPortrait ? CLEAN_WING : wing;
     const skyline = gate.y + 30;
     const skyInset = weather ? this.inset : 0;
     const skyWidth = width + skyInset * 2;
@@ -62,7 +97,7 @@ export class KeepSurround {
         ctx.restore();
       }
       ctx.drawImage(sky, -skyInset, 0, skyWidth, skyline);
-    });
+    }, this.camera, this.widerPortrait);
     const strikes = !weather || weather === 'night storm';
 
     const cloudMask = document.createElement('div');
@@ -84,7 +119,18 @@ export class KeepSurround {
     this.ground = this.paint(-this.inset, 0, width + this.inset * 2, height, ctx => {
       if (weather) {
         ctx.filter = grade;
-        ctx.drawImage(image(layout.turned ? 'siege-portrait' : 'siege-wide'), -this.inset, 0, width + this.inset * 2, height);
+        ctx.drawImage(image(layout.turned ? 'siege-portrait' : 'siege-wide'), -wing, 0, width + wing * 2, height);
+        const extra = this.inset - wing;
+        if (extra) {
+          ctx.filter = 'none';
+          for (const [edge, source] of [[-wing, extra], [width + wing, width + this.inset + wing - extra]]) {
+            ctx.save();
+            ctx.translate(edge, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(ctx.canvas, source, 0, extra, height, edge < 0 ? 0 : -extra, 0, extra, height);
+            ctx.restore();
+          }
+        }
         return;
       }
       ctx.drawImage(image(layout.turned ? 'portrait' : 'landscape'), 0, 0, width, height);
@@ -93,11 +139,11 @@ export class KeepSurround {
         ctx.drawImage(wings, 0, 0, half, wings.naturalHeight, -WING, 0, WING, height);
         ctx.drawImage(wings, half, 0, half, wings.naturalHeight, width, 0, WING, height);
       }
-    });
+    }, this.camera, this.widerPortrait);
     if (weather === 'night storm') {
       const left = -this.inset, span = width + this.inset * 2;
       this.litGround = this.paint(left, 0, span, height, ctx => {
-        ctx.drawImage(this.ground, left, 0);
+        ctx.drawImage(this.ground, parseFloat(this.ground.style.left), parseFloat(this.ground.style.top));
         ctx.globalCompositeOperation = 'source-atop';
         const falloff = ctx.createLinearGradient(0, gate.y - 36, 38, gate.y + height * .35);
         falloff.addColorStop(0, '#8ab9ff00');
@@ -124,7 +170,7 @@ export class KeepSurround {
           ctx.lineTo(x + reach * .57, y + reach * .74);
           ctx.fill();
         }
-      });
+      }, this.camera, this.widerPortrait);
       this.litGround.hidden = true;
     }
     const x = gate.x - size.width * foot[0] / 1280, y = gate.y - size.height * foot[1] / 960;
@@ -136,7 +182,7 @@ export class KeepSurround {
       Math.ceil(y + size.height) - top, ctx => {
         ctx.filter = filter;
         ctx.drawImage(image(name), x, y, size.width, size.height);
-      });
+      }, this.camera, this.widerPortrait);
     this.castle = names.map(name => architecture(name, grade));
     if (strikes) {
       const strike = weather ? 'strike' : 'lightning';
@@ -150,50 +196,67 @@ export class KeepSurround {
       }) : this.paint(512, 0, 448, 480, ctx => ctx.drawImage(image('road-wide'), 512, 0, 448, 480));
     }
 
-    const fit = () => {
+    this.fit = () => {
       const r = canvas.getBoundingClientRect(), parent = host.getBoundingClientRect();
-      const scale = r.width / layout.width;
-      this.frame.style.left = (r.left - parent.left) + 'px';
-      this.frame.style.top = (r.top - parent.top + layout.map.y * scale) + 'px';
+      const scale = r.width / this.layout.width;
+      this.frame.style.left = (r.left - parent.left + this.layout.map.x * scale) + 'px';
+      this.frame.style.top = (r.top - parent.top + this.layout.map.y * scale) + 'px';
       this.frame.style.scale = String(scale);
     };
-    fit();
-    this.observer = new ResizeObserver(fit);
+    this.fit();
+    this.observer = new ResizeObserver(this.fit);
     this.observer.observe(canvas);
     this.observer.observe(host);
   }
 
+  refit(layout: Layout): void {
+    this.layout = layout;
+    this.fit();
+  }
+
   private paint(x: number, y: number, width: number, height: number,
-      draw: (ctx: CanvasRenderingContext2D) => void, parent = this.camera): HTMLCanvasElement {
+      draw: (ctx: CanvasRenderingContext2D) => void, parent = this.camera, trim = false): HTMLCanvasElement {
     const sheet = document.createElement('canvas');
     sheet.width = width;
     sheet.height = height;
-    sheet.style.cssText = `position:absolute;left:${x}px;top:${y}px`;
     const ctx = sheet.getContext('2d')!;
     ctx.translate(-x, -y);
     draw(ctx);
-    parent.append(sheet);
-    return sheet;
+    const result = trim ? trimAlpha(sheet, ctx) : { sheet, left: 0, top: 0 };
+    result.sheet.style.cssText = `position:absolute;left:${x + result.left}px;top:${y + result.top}px`;
+    parent.append(result.sheet);
+    return result.sheet;
   }
 
   stillFittings(draw?: (surface: HTMLCanvasElement) => void): void {
     if (draw && !this.fittings) {
       const { width, height } = this.layout.map;
-      this.fittings = this.paint(0, 0, width, height, ctx => draw(ctx.canvas));
+      this.fittings = this.paint(0, 0, width, height, ctx => draw(ctx.canvas), this.camera, this.widerPortrait);
       this.fittings.style.zIndex = '1';
     }
     if (this.fittings) this.fittings.hidden = !draw;
   }
 
-  stillSurface(): HTMLCanvasElement {
+  stillSurface(lens?: Rect): HTMLCanvasElement {
+    const crop = this.widerPortrait ? lens : undefined;
+    const paint = (ctx: CanvasRenderingContext2D) => {
+      for (const layer of [this.sky, this.ground, ...this.castle, this.road]) {
+        if (layer) ctx.drawImage(layer, parseFloat(layer.style.left), parseFloat(layer.style.top));
+      }
+    };
     if (!this.still) {
       const { width, height } = this.layout.map;
-      this.still = this.paint(-this.inset, -HEADROOM, width + this.inset * 2, height + HEADROOM, ctx => {
-        for (const layer of [this.sky, this.ground, ...this.castle, this.road]) {
-          if (layer) ctx.drawImage(layer, parseFloat(layer.style.left), parseFloat(layer.style.top));
-        }
-      });
+      const bounds = crop ?? { x: -this.inset, y: -HEADROOM, width: width + this.inset * 2, height: height + HEADROOM };
+      this.still = this.paint(bounds.x, bounds.y, bounds.width, bounds.height, paint);
       this.still.hidden = !this.stillActive;
+    } else if (crop && (parseFloat(this.still.style.left) !== crop.x || parseFloat(this.still.style.top) !== crop.y)) {
+      const ctx = this.still.getContext('2d')!;
+      ctx.resetTransform();
+      ctx.clearRect(0, 0, this.still.width, this.still.height);
+      ctx.translate(-crop.x, -crop.y);
+      paint(ctx);
+      this.still.style.left = crop.x + 'px';
+      this.still.style.top = crop.y + 'px';
     }
     return this.still;
   }
@@ -221,7 +284,7 @@ export class KeepSurround {
   }
 
   update(push: number, flash: number, side: number, opening: number, t: number, high: boolean, calm: boolean): void {
-    this.setStill(!high && !opening && flash === 0);
+    if (!this.widerPortrait) this.setStill(!high && !opening && flash === 0);
     if (push !== this.lastPush) {
       this.lastPush = push;
       this.camera.style.transform = push ? `scale(${1 + push})` : '';

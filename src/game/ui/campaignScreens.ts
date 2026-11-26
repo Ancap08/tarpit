@@ -176,8 +176,8 @@ export function drawStoryBroadside(
     STORY_TEXT.continue, proceed, 26);
 }
 
-const ownerStories = ['opening', 'secondAct', 'thirdAct', 'firstClose', 'ending', 'secondClose', 'siegeEnding'] as const;
-type OwnerStory = (typeof ownerStories)[number];
+export const ownerStories = ['opening', 'secondAct', 'thirdAct', 'firstClose', 'ending', 'secondClose', 'siegeEnding'] as const;
+export type OwnerStory = (typeof ownerStories)[number];
 
 export function drawOwnerPage(scene: Phaser.Scene, portrait: boolean, levels: readonly LevelDef[], action: Action,
   story: (which: OwnerStory) => void, tips: (id: number) => void, reset: () => void, back: () => void): string[] {

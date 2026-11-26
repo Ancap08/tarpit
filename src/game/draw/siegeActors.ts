@@ -4,6 +4,7 @@ import type { Rect } from '../input';
 import type { Layout } from '../layout';
 import { GameClock } from '../loop';
 import { SIEGE_TEXT } from '../names';
+import { skinFor, textMetrics } from '../ui/newTheme';
 
 const ATLAS = 'siege:actors';
 const FRAMES: Record<string, [number, number, number, number]> = {
@@ -75,9 +76,11 @@ export class SiegeActors {
   private departAt = -Infinity;
   private billeted: boolean;
   private readonly reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+  private readonly clean: boolean;
 
   constructor(scene: Phaser.Scene, private readonly layout: Layout, state: GameState, private readonly frozen: boolean) {
     const tax = state.wallSiteTax;
+    this.clean = skinFor(scene) === 'battle';
     this.billeted = tax?.kind === 'quartering';
     if (!atlasReady(scene)) return;
     for (const window of state.windows ?? []) {
@@ -104,10 +107,13 @@ export class SiegeActors {
     if (tax?.kind === 'royalSurvey') {
       for (const site of tax.sites) {
         const stakes = prop(scene, 'survey').setScale(.54, .5);
-        const board = scene.add.text(0, 0, SIEGE_TEXT.condemned, {
+        const style: Phaser.Types.GameObjects.Text.TextStyle = {
           fontFamily: 'monospace', fontSize: '17px', fontStyle: 'bold', color: '#281c20',
           metrics: { ascent: 15, descent: 3, fontSize: 18 },
-        }).setOrigin(.5);
+        };
+        // The lettering belongs to the painted board, under open panels.
+        const board = (this.clean ? scene.make.text({ text: SIEGE_TEXT.condemned, style }, true)
+          : scene.add.text(0, 0, SIEGE_TEXT.condemned, style)).setOrigin(.5);
         this.surveys.push({ stakes, board, anchor: layout.cellCenter(site) });
       }
     }
@@ -125,7 +131,7 @@ export class SiegeActors {
     if (room) room.emptyAt = nowMs;
   }
 
-  update(state: GameState, nowMs: number, project: Projection = identity, shown = true): void {
+  update(state: GameState, nowMs: number, project: Projection = identity, shown = true, gateHud?: Rect): void {
     const animate = !this.frozen && !this.reduced.matches;
     for (const [index, room] of this.rooms.entries()) {
       if (state.windows?.[index]?.used && !room.used) {
@@ -144,7 +150,7 @@ export class SiegeActors {
         .setAlpha(.8 + pulse * .2);
       if (room.frame.frame.name !== frame) room.frame.setFrame(frame);
       room.frame.setVisible(shown).setPosition(x + wag, y);
-      room.badge.setVisible(shown && !room.used).setPosition(x + 32, y + 18 - pulse * 2)
+      room.badge.setVisible(!this.clean && shown && !room.used).setPosition(x + 32, y + 18 - pulse * 2)
         .setScale(.50 + pulse * .05);
       for (const p of room.particles) {
         const t = shown && animate ? (age - p.starts) / p.duration : Infinity;
@@ -162,9 +168,24 @@ export class SiegeActors {
     }
     for (const { stakes, board, anchor } of this.surveys) {
       const { x, y } = project(anchor);
-      const center = Math.max(53, Math.min(stakes.scene.scale.width - 53, x));
       // Keep the upper board below the Gate plaque in the settled portrait view.
       const sign = this.layout.turned ? Math.max(240, y) : y;
+      if (this.clean) {
+        const size = Math.max(17, Math.ceil(11.25 * board.scene.scale.displayScale.y));
+        if (parseFloat(String(board.style.fontSize)) !== size) board.setStyle({ fontSize: size, metrics: textMetrics(size) });
+        const width = Math.max(108, board.width + 16);
+        const scaleY = .5 * size / 17;
+        const boardY = sign - 8 - 24 * scaleY;
+        // The portrait camera can bring the upper sign alongside the fixed Gate plate.
+        const besideGate = gateHud && boardY - board.height / 2 < gateHud.y + gateHud.height
+          && boardY + board.height / 2 > gateHud.y && x + width / 2 > gateHud.x;
+        const left = besideGate ? gateHud.x + gateHud.width + 4 : 0;
+        const center = Math.max(left + width / 2, Math.min(stakes.scene.scale.width - width / 2, x));
+        stakes.setVisible(shown).setPosition(center, sign - 8).setScale(width / 200, scaleY);
+        board.setVisible(shown).setPosition(center, boardY);
+        continue;
+      }
+      const center = Math.max(53, Math.min(stakes.scene.scale.width - 53, x));
       stakes.setVisible(shown).setPosition(center, sign - 4);
       board.setVisible(shown).setPosition(center, sign - 16);
     }
@@ -208,12 +229,12 @@ export function loadSiegeEnding(scene: Phaser.Scene): void {
 }
 
 /** A moving illustration under the campaign ending copy. */
-export function drawSiegeCarriage(scene: Phaser.Scene, frame: Rect, portrait: boolean, frozen: boolean): void {
+export function drawSiegeCarriage(scene: Phaser.Scene, frame: Rect, portrait: boolean, frozen: boolean, printed = false): void {
   if (!atlasReady(scene)) return;
   const { width, height } = frame;
   const cx = frame.x + width / 2;
   const y = frame.y + height / 2;
-  scene.add.rectangle(cx, y, width + 6, height + 6, 0x664633).setName('siege-carriage-frame');
+  scene.add.rectangle(cx, y, width + 6, height + 6, 0x664633).setName('siege-carriage-frame').setVisible(!printed);
   const background = portrait && scene.textures.exists(PORTRAIT_ENDING)
     ? scene.add.image(cx, y, PORTRAIT_ENDING) : prop(scene, 'dawn').setPosition(cx, y);
   background.setDisplaySize(width, height);

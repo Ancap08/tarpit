@@ -16,7 +16,7 @@ import { townCondition } from '../decor/townCondition';
 import { townPortrait } from './townPortrait';
 import { menuKeys } from './menuKeys';
 import { CAMPAIGN_END, END_TEXT, LEVEL_NAMES, STORY_TEXT, levelNumberText } from '../names';
-import { PRINT, glyph, line, motionClock, rounded, sheet, skinFor, textMetrics } from './newTheme';
+import { PRINT, glyph, line, motionClock, newInterface, rounded, sheet, skinFor, textMetrics } from './newTheme';
 import { uiObject } from './devicePixels';
 import { printedText } from './printCard';
 import { endScreenText, type CampaignResult, type EndKind } from './endText';
@@ -70,7 +70,7 @@ export class EndScreen {
 
   /** `layout` (milestone 32b): the veil covers its map box and the panel is centred on it. */
   constructor(scene: Phaser.Scene, private readonly board: Layout, onPlayAgain: () => void, onMenu: () => void, onKeepGoing: () => void, salute?: Phaser.GameObjects.Layer) {
-    this.printed = skinFor(scene) === 'battle';
+    this.printed = newInterface();
     this.clock = this.printed ? motionClock(scene) : undefined;
     const MAP_AREA = this.printed ? { x: 0, y: 0, width: board.width, height: board.height } : board.map;
     const cx = MAP_AREA.x + MAP_AREA.width / 2;
@@ -83,7 +83,7 @@ export class EndScreen {
 
     this.veil = scene.add
       .rectangle(MAP_AREA.x, MAP_AREA.y, MAP_AREA.width, MAP_AREA.height, this.printed ? 0xc8b99a : COLORS.endVeil, this.printed ? (salute ? .975 : 1) : .38)
-      .setOrigin(0, 0);
+      .setOrigin(0, 0).setName('result-veil');
     if (salute) {
       // The evening salute shines through the open field around the paper.
       // Keep the panel, labels and every control above it.
@@ -200,7 +200,7 @@ export class EndScreen {
     }
     this.title.setColor(kind === 'won' ? ink : TEXT.paperDefeat);
     if (this.printed) {
-      document.body.style.backgroundColor = '#c8b99a';
+      if (skinFor(this.title.scene) === 'battle') document.body.style.backgroundColor = '#c8b99a';
       this.printLayout(state);
     }
     else this.layout();
@@ -209,7 +209,7 @@ export class EndScreen {
 
   /** Hide the screen (milestone 26: after Keep going); a later show() works again. */
   hide(): void {
-    if (this.printed) document.body.style.backgroundColor = '#0b1e20';
+    if (skinFor(this.title.scene) === 'battle') document.body.style.backgroundColor = '#0b1e20';
     this.folio?.destroy();
     this.folio = undefined;
     this.arrival = undefined;
@@ -272,7 +272,7 @@ export class EndScreen {
     const headline = pad + (this.folio ? this.folio.height + 2 * gap : 0) + this.title.height + gap + (stars ? stars + gap : 0);
     const body = phone ? photoH + gap + rowsH : Math.max(photoH, rowsH);
     const reply = (this.story.text ? this.story.height + gap : 0) + (this.close ? this.close.height + gap : 0);
-    const tapH = phone ? Math.max(89, Math.ceil(44 * scene.scale.displayScale.y)) : 49;
+    const tapH = Math.max(phone ? 89 : 52, Math.ceil(44 * scene.scale.displayScale.y));
     const actions = phone && this.hasAdvance ? 2 * tapH + gap : tapH;
     const height = headline + body + reply + actions + gap + pad;
     const y = this.cy - height / 2;

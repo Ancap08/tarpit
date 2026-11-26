@@ -1,9 +1,12 @@
 import type Phaser from 'phaser';
+import { uiBounds } from './devicePixels';
 import { nextWavePreview, roadIds, roadPath, type EnemyType, type GameState, type Point, type Rect } from '../../sim';
 import type { Layout } from '../layout';
 import { SIEGE_TEXT } from '../names';
 import { HUD_FONT, TEXT } from '../palette';
 import { panel, THEME } from './theme';
+import { minimumTextSize } from './deviceText';
+import { CLEAN, glyph, rounded, sans, skinFor, textMetrics } from './newTheme';
 
 interface Banner {
   road: string;
@@ -19,12 +22,17 @@ export class RoadBanners {
   private readonly signs: Banner[];
   private last?: string;
   private previousScale = 0;
+  private previousDisplayScale = 0;
+  private readonly clean: boolean;
 
-  constructor(scene: Phaser.Scene, private readonly layout: Layout, state: GameState) {
-    const text = (name: string, size: number, bold = false) => scene.add.text(0, 0, '', {
+  constructor(private readonly scene: Phaser.Scene, private readonly layout: Layout, state: GameState) {
+    const clean = this.clean = skinFor(scene) === 'battle';
+    const text = (name: string, size: number, bold = false) => (clean
+      ? sans(scene, 0, 0, '', size, bold ? CLEAN.ink : CLEAN.subdued, bold)
+      : scene.add.text(0, 0, '', {
       fontFamily: HUD_FONT, fontSize: size, fontStyle: bold ? 'bold' : 'normal', color: TEXT.button, align: 'center',
       metrics: { ascent: size, descent: 5, fontSize: size + 5 },
-    }).setOrigin(0.5, 0).setName(name).setDepth(1);
+    })).setOrigin(clean ? 0 : 0.5, 0).setName(name).setDepth(1);
     this.signs = roadIds(state.map).filter((id): id is string => id !== undefined).map(road => ({
       road,
       mouth: layout.toScreen(roadPath(state.map, road).path[0]),
@@ -38,21 +46,23 @@ export class RoadBanners {
   update(state: GameState, covered: boolean, scale = 1, project = (p: Point) => p): void {
     const show = state.phase === 'setup' && !covered;
     const key = show ? String(state.wave) : '';
-    if (key === this.last && (key === '' || scale === this.previousScale)) return;
+    const displayScale = this.clean ? this.scene.scale.displayScale.y : 0;
+    if (key === this.last && (key === '' || scale === this.previousScale && displayScale === this.previousDisplayScale)) return;
     const change = key !== this.last;
     this.last = key;
     this.previousScale = scale;
+    this.previousDisplayScale = displayScale;
     const groups = show && change ? nextWavePreview(state) : [];
     for (const sign of this.signs) {
       const { heading, counts, board, road, mouth } = sign;
       const westPhone = this.layout.turned && road === 'west';
       if (change && show) {
-        if (westPhone) counts.setWordWrapWidth(this.layout.width - 42);
+        if (westPhone && !this.clean) counts.setWordWrapWidth(this.layout.width - 42);
         const tally = new Map<EnemyType, number>();
         for (const g of groups) if ((g.road ?? state.map.mainRoad) === road) {
           tally.set(g.type, (tally.get(g.type) ?? 0) + g.count);
         }
-        counts.setText([...tally].map(([type, count]) => SIEGE_TEXT.roadCount(count, type)).join(westPhone ? ' · ' : '\n'));
+        counts.setText([...tally].map(([type, count]) => SIEGE_TEXT.roadCount(count, type)).join(westPhone && !this.clean ? ' · ' : '\n'));
       }
       heading.setVisible(show);
       counts.setVisible(show && !!counts.text);
@@ -61,6 +71,10 @@ export class RoadBanners {
       if (!show) continue;
 
       const p = project(mouth);
+      if (this.clean) {
+        this.drawClean(sign, p);
+        continue;
+      }
       const h = heading.height + (counts.text ? counts.height : 0) + (westPhone ? 8 : 15);
       const w = Math.max(heading.width, counts.width) + 22;
       const westWide = !this.layout.turned && road === 'west';
@@ -89,6 +103,34 @@ export class RoadBanners {
       heading.setPosition(x + w / 2, y + (westPhone ? 4 : 6));
       counts.setPosition(heading.x, heading.y + heading.height + (westPhone ? 0 : 2));
     }
+  }
+
+  private drawClean(sign: Banner, p: Point): void {
+    const { heading, counts, board, road } = sign;
+    const phone = this.layout.turned;
+    const west = road === 'west';
+    const pad = phone ? 14 : 10;
+    const size = Math.max(phone ? 24 : 15, minimumTextSize(heading));
+    for (const label of [heading, counts]) if (parseFloat(String(label.style.fontSize)) !== size) {
+      label.setStyle({ fontSize: size, metrics: textMetrics(size) });
+    }
+    const iconSpace = size + 3;
+    const w = Math.max(heading.width + iconSpace, counts.width) + 2 * pad;
+    const h = heading.height + (counts.text ? counts.height + 4 : 0) + 2 * pad;
+    const foot = this.layout.map.y + this.layout.map.height;
+    const left = phone ? west ? p.x - 94 : p.x + 34
+      : west ? p.x - w - 107 : p.x - w - 30;
+    const x = Math.max(12, Math.min(this.layout.width - w - 12, left));
+    const eastInset = x - p.x < 29 ? 128 : 47;
+    const y = phone ? west ? p.y - h - 100 : foot - h - eastInset
+      : west ? foot - h - 12 : p.y - h - 18;
+    sign.rect = { x, y, width: w, height: h };
+    const paint = board.clear();
+    uiBounds(board, sign.rect);
+    rounded(paint, sign.rect);
+    glyph(paint, west ? 'back' : 'arrow', x + pad + size / 2, y + pad + heading.height / 2, size, CLEAN.mint);
+    heading.setPosition(x + pad + iconSpace, y + pad);
+    counts.setPosition(x + pad, y + pad + heading.height + 4);
   }
 
   rects(): Record<string, Rect> {

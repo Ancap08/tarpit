@@ -1,3 +1,4 @@
-import { featherBarrelLabels } from './feathers';
+import { cleanFeatherBarrelLabels, featherBarrelLabels } from './feathers';
 
 featherBarrelLabels(true);
+cleanFeatherBarrelLabels(true);

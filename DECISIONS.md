@@ -2186,6 +2186,19 @@ can change it; "Kyle" means Kyle decided.
   Frame cost fell (Painted 10.05 to 8.32 ms a frame). Sol's full browser
   run crossed a rebuild and had 23 failures that all passed on rerun; CI
   is the clean full run. 518,467 Sol tokens.
+- **The polish pass is merged and deployed behind the switch** (pull
+  request 66, CI green first time). The automated review's one finding,
+  that an implementation commit changed the coordinator's records, was
+  checked per commit and was wrong: the record commits are the
+  coordinator's with the Claude trailer; the implementer's touch neither
+  file. Answered on the pull request with the evidence, then merged.
+- **Sharper pieces built; the finish is Kyle's to pick.** Every tower,
+  enemy, boss and Guard re-rendered from the same models; decoded art on a
+  phone fell on ordinary levels (36 to about 30 MB) by loading each
+  level's roster only. The re-render dropped the dark outline today's
+  sprites have, which nobody asked for, so three finishes were made as
+  pictures: A Soft, B Inked, C Lifted. The coordinator and Sol both prefer
+  B. Nothing ships until he chooses.
 - **The pieces' finish is C, Lifted.** Decided by Kyle ("C Lifted") from
   three pictures on the same fight. A soft dark rim and a clearer ground
   shadow with a little more contrast; no hard outline. The coordinator and
@@ -2217,3 +2230,98 @@ can change it; "Kyle" means Kyle decided.
   derives everything a level can ask the art loader for from the game's
   own data and fails if any is missing, and made a missing sheet draw a
   plain stand-in instead of throwing.
+- **The remaining pages restyled (55b1):** title, Free play choices, the
+  level map's three sheets, tips, broadsides, closes and endings, the
+  owner's page, pause, loading and failure states, all on paper. Sol's
+  walk also found and restyled the Old Keep's cards, results and three
+  keyboard badges. No wording changed. 483,247 Sol tokens.
+- **Sharper pieces merged and deployed behind the switch** (pull request
+  68). CI green on the fixed build and the automated review found nothing
+  on it.
+- **Act Three's controls restyled (55b2)** and a 4 px clearance rule for
+  paper controls, after "Confirm restart" and "Switchback" overflowed
+  under wide Caslon on Linux in pull request 67. That pull request was
+  closed as superseded; its work ships in the combined one.
+- **Pieces and interface merged into one branch and checked together.**
+  Four files conflicted. The coordinator resolved this record; Sol
+  resolved three code files under one rule: main's art and loading, the
+  interface branch's layout and pages. Switch off matched main on all 78
+  screenshots. To keep the Old Keep within its 70 MB cap with both
+  features on, Sol made the keep share one field buffer and trimmed the
+  panorama's transparent padding; the peak is 68.46 MB on level 25 and
+  49.13 MB on ordinary levels. 356,184 Sol tokens.
+- **The price on the mint Upgrade button could not be read** (1.04 to 1
+  against its fill). The coordinator saw it in the merged captures; it was
+  already live behind the switch and no test looked at contrast. Fixed in
+  the shared button (now 11.65 to 1) with a check that reads each button
+  state's text and fill from the built game and requires 4.5 to 1 for
+  enabled text. The check failed on the old build and passes on 80
+  combinations now. 163,562 Sol tokens.
+- **"Confirm restart" failed its 4 px clearance on Linux a second time**
+  (3.861 px, pull request 69, the only failure in 2,208). The earlier fix
+  had widened the pause buttons by a fixed amount that suited what the Mac
+  draws. Linux draws this Caslon label about 6% wider than the Mac does at
+  the same setting, more than the 2.6% the wide-text factors assume, so a
+  Mac run could not see it. Paper controls now measure their own label at
+  layout time and guarantee 6 px, growing into spare room first and
+  stepping the label down (floor 12 px) only if they must; the test still
+  demands 4. A sweep of five widths at four screen sizes was added, with a
+  case calibrated to the width CI reported, which reproduced the exact
+  failure on the old build. The sweep also found "Act 1 broadside" at
+  3.533 px on a tall phone at the widest setting. 240,186 Sol tokens.
+
+## 2026-11-26, the verifier's pass over the new interface (milestone 55c)
+
+- **Verified by Claude Sonnet at medium, a different model from the
+  builder.** It worked from the branch, not from the builder's reports,
+  and added tests of its own. The automatic merge of pull request 69 was
+  stopped by the coordinator when its findings arrived.
+- **What held:** the switch off is untouched (96 screenshots identical to
+  main, no saved data changed, no new asset requested); text contrast
+  across 23,736 samples; a full play-through by touch at 390x656; the art
+  memory caps; and five of five tests failed when the game was broken the
+  way each is meant to catch.
+- **Frame cost: the verifier and the builder were both right, on
+  different graphics.** The verifier measured 7.5 ms a frame with the
+  switch off and 20.4 with it on, under software graphics (Chromium's
+  default in tests). The records' 3.36 against 4.82 were taken on the
+  Mac's graphics chip. Sol reproduced both on one build: 7.8 against 21.0
+  under software, 1.15 against 1.62 on the chip. Main measured the same as
+  the branch, so the merge had not made it worse. The coordinator had
+  recorded the earlier figures without saying which graphics they used;
+  every frame figure from now on names the renderer.
+- **The cause that could be fixed:** floating damage numbers made the
+  whole interface layer clear and redraw on every frame of a fight. It now
+  redraws only the patch that changed (0.33% of the layer on average). On
+  the chip the new interface costs 0.26 ms a frame more than the old and
+  drops no frames. Under software graphics it is 18.1 ms against 7.8 and
+  still drops frames; what remains is the battle picture at device
+  resolution, about eight times the pixels, and closing it would soften
+  the Lifted art. **Not decided:** whether that is acceptable for the
+  default. The coordinator recommends accepting it, since Kyle's players
+  have graphics chips. Kyle decides before the switch becomes the default.
+- **A real memory leak, already live behind the switch.** Every visit to a
+  level, restart or change of look left one device-size canvas alive,
+  about 12 MB each (15, 27, 39, 51 MB over four visits). Fixed: flat at
+  3.4 MB. The verifier's leak test now runs in CI. No earlier check looked
+  at what a scene leaves behind after it closes.
+- **The new interface holds about 24 MB of canvas** (battle picture and
+  interface layer) where the old holds 2.4 MB; this is outside the art
+  caps. With art, about 70 MB on level 20 and 91 MB on level 25, against
+  38 and 37 MB with the switch off. Recorded, not changed.
+- **Seven smaller defects, six fixed and one needing no change:** Free
+  play map names half hidden under their thumbnails on desktop and tablet
+  (the paper check now fails when art covers a label); the reward picker
+  and other veils dimming only the board's strip on a phone; a bright
+  square behind the mute button on pause; the CONDEMNED sign at 8.55 px on
+  a short phone (now 11.57); road banners registered as tap targets with
+  no action (they are previews, so no longer targets); the tower panel
+  covering the gate status and Repair on desktop at the Old Keep. Lives
+  below zero in the simulation already showed as 0.
+- **The verifier deleted scratch files by wildcard in the coordinator's
+  temporary folder and killed a waiting job with a pattern kill.** Nothing
+  in the repository was touched and nothing needed was lost. Briefs now
+  say: delete only files you created, by name, and stop only processes you
+  started, by pid.
+- Tokens: Sonnet 428,092; Sol 369,591 for the frame cost and leak, 421,371
+  for the defects.

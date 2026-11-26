@@ -1,12 +1,15 @@
 // Verifier (Claude Sonnet) for milestone 52b: the real Act Three levels
 // (?keep=21 to ?keep=25) at the sizes of each project. Plain controls only:
 // judge that they can be seen, hit and understood, not that they are pretty.
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { KEEP_LEVELS } from '../src/sim/keepLevels';
-import { useTallFontMetrics, useWideFontMetrics } from './campaignFont';
+import { platformWideFactor, useTallFontMetrics, useWideFontMetrics } from './campaignFont';
 import { checkLabel } from './hudButtonLabels';
 import { waitForGame } from './painted';
 import { cellPage, rects, rectPage, rectPageSize, toPage } from './phone';
+import { INTER } from '../src/game/palette';
+import type { GameScene } from '../src/game/GameScene';
+import type { Point, Rect } from '../src/sim';
 
 const captureDir = process.env.PW_SIEGE_VERIFIER_DIR;
 async function capture(page: Page, name: string) {
@@ -17,10 +20,11 @@ async function capture(page: Page, name: string) {
 }
 const modes = ['normal', 'wide', 'fixed Caslon', 'fixed fallback'] as const;
 
-async function open(page: Page, id: number, mode: (typeof modes)[number]) {
-  if (mode === 'wide') await useWideFontMetrics(page, process.platform === 'darwin' ? 1.09 : 1.06);
+async function open(page: Page, id: number, mode: (typeof modes)[number] | 'stretched', clean: boolean) {
+  if (mode === 'wide') await useWideFontMetrics(page, platformWideFactor, clean ? INTER : undefined);
+  if (mode === 'stretched') await useWideFontMetrics(page, 1.15, INTER);
   if (mode.startsWith('fixed')) await useTallFontMetrics(page, mode === 'fixed fallback');
-  await page.goto(`/?test=1&keep=${id}`);
+  await page.goto(`/?test=1&keep=${id}${clean ? '&ui=new' : ''}`);
   await waitForGame(page);
   await page.waitForFunction(() => window.__tarpit!.state?.()?.level !== undefined);
 }
@@ -46,12 +50,105 @@ async function visibleTexts(page: Page) {
   });
 }
 
-export function siegeVerifierCases(touch: boolean, heights: readonly (number | undefined)[]) {
-  for (const height of heights) for (const mode of modes) for (const level of KEEP_LEVELS) {
-    test(`level ${level.id}: siege controls are seen, hit and understood at ${height ?? 'project size'} (${mode})`, async ({ page }) => {
+async function siegeClearances(page: Page) {
+  return page.evaluate(() => {
+    const api = window.__tarpit!;
+    const scene = api.game.scene.getScene('game') as GameScene;
+    const hud = scene['hud']['gate']!;
+    const controls = scene['siegeControls'];
+    const rects = api.uiRects();
+    const { x, y } = api.game.scale.displayScale;
+    const items: { key: string; text: string; px: number }[] = [];
+    const measure = (key: string, label: Phaser.GameObjects.Text, rect: Rect) => {
+      const b = label.getBounds();
+      const px = label.visible && label.text ? Math.min((b.left - rect.x) / x, (rect.x + rect.width - b.right) / x,
+        (b.top - rect.y) / y, (rect.y + rect.height - b.bottom) / y) : -1;
+      items.push({ key, text: label.text, px });
+    };
+    measure('gate', hud['status'], rects.gate);
+    if (api.state!().gate!.lastStandTicksLeft > 0) measure('gate', hud['lastStand'], rects.gate);
+    if (rects.repair) {
+      measure('repair', hud['repair'].labelObjects[0], rects.repair);
+      if (hud['warning'].text) measure('repair', hud['warning'], rects.repair);
+    }
+    for (const sign of scene['roadBanners']?.['signs'] ?? []) if (sign.rect) {
+      const key = `road:${sign.road}`;
+      measure(key, sign.heading, sign.rect);
+      if (sign.counts.text) measure(key, sign.counts, sign.rect);
+    }
+    for (const [i, button] of controls?.['windows'].entries() ?? []) {
+      const plate = controls!['badges'][i].plate;
+      if (!plate.visible) continue;
+      const rect = button.rect;
+      measure(`window:${i}`, button.labelObjects[0], { ...rect, y: plate.y, height: rect.y + rect.height - plate.y });
+    }
+    const pay = controls?.['sites'][0];
+    if (pay && api.state!().wallSiteTax?.kind === 'quartering') measure('wallSite', pay.labelObjects[0], pay.rect);
+    return items;
+  });
+}
+
+function reportSiegeClearance(info: TestInfo, detail: string, items: Awaited<ReturnType<typeof siegeClearances>>) {
+  items.sort((a, b) => a.px - b.px);
+  const { key, text, px } = items[0];
+  info.annotations.push({ type: 'Siege clearance', description: `${detail} · ${text} (${key}) · ${px.toFixed(3)} CSS px` });
+  expect.soft(items.filter(item => item.px < 4), detail).toEqual([]);
+}
+
+async function checkCleanSetup(page: Page, wave: number, checkCopy: boolean) {
+  return page.evaluate(({ wave, checkCopy }) => {
+    const api = window.__tarpit!;
+    const scene = api.game.scene.getScene('game') as GameScene;
+    const state = api.state!();
+    state.wave = wave;
+    api.step!(0);
+    const rects = Object.entries({ ...api.uiRects(), ...scene['roadBanners']?.rects() });
+    const layout = scene.boardLayout;
+    const problems: string[] = [];
+    const contains = ({ x, y }: Point, r: Rect, pad = 0) =>
+      x > r.x - pad && x < r.x + r.width + pad && y > r.y - pad && y < r.y + r.height + pad;
+    const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+    const display = (p: Point) => scene['siegeView']?.displayed(p) ?? p;
+    const gate = display(layout.toScreen(state.gate!));
+    const polylines = [state.map.path, ...(state.map.otherRoads ?? []).map(road => road.approach)]
+      .map(path => path.map(p => display(layout.toScreen(p))));
+    for (const [key, rect] of rects) {
+      if (key !== 'gate' && key !== 'repair' && !key.startsWith('road:') &&
+          !(key === 'wallSite' && state.wallSiteTax?.kind === 'quartering')) continue;
+      if (contains(gate, rect, 12)) problems.push(`${key} covers the gate`);
+      for (const [other, r] of rects) if (key !== other && overlaps(rect, r)) problems.push(`${key} overlaps ${other}`);
+      for (const path of polylines) for (let i = 1; i < path.length; i++) {
+        const a = path[i - 1], b = path[i];
+        const parts = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 6);
+        for (let j = 0; j <= parts; j++) {
+          const p = { x: a.x + (b.x - a.x) * j / parts, y: a.y + (b.y - a.y) * j / parts };
+          if (contains(p, rect, 10)) {
+            problems.push(`${key} covers an approach`);
+            break;
+          }
+        }
+      }
+    }
+    const scale = api.game.canvas.getBoundingClientRect().width / layout.width;
+    const labels = scene.children.list.filter((o): o is Phaser.GameObjects.Text => o.type === 'Text' &&
+      (/^(road:|gate-)/.test(o.name) || ['wave-preview', 'hud-level-name', 'active-taxes', 'siege-feat'].includes(o.name)));
+    for (const label of labels) {
+      if (!label.text) continue;
+      if (checkCopy && !label.visible && label.name !== 'gate-last-stand') problems.push(`${label.name} hides ${label.text}`);
+      if (label.visible && parseFloat(String(label.style.fontSize)) * scale < 11.08) problems.push(`${label.name} below 11 CSS px`);
+    }
+    return problems;
+  }, { wave, checkCopy });
+}
+
+export function siegeVerifierCases(touch: boolean, heights: readonly (number | undefined)[], clean = false) {
+  const metrics = clean ? [...modes, 'stretched'] as const : modes;
+  for (const height of heights) for (const mode of metrics) for (const level of KEEP_LEVELS) {
+    test(`level ${level.id}: siege controls are seen, hit and understood at ${height ?? 'project size'} (${mode})`, async ({ page }, info) => {
       test.setTimeout(150_000);
       if (height) await page.setViewportSize({ width: 390, height });
-      await open(page, level.id, mode);
+      await open(page, level.id, mode, clean);
+      const checkCopy = !clean || mode === 'normal' || mode === 'wide';
       const all = await rects(page);
       const canvas = await page.evaluate(() => ({ width: window.__tarpit!.game.scale.width, height: window.__tarpit!.game.scale.height }));
       const siege = Object.entries(all).filter(([key]) => key.startsWith('window:') || key.startsWith('wallSite'));
@@ -93,10 +190,12 @@ export function siegeVerifierCases(touch: boolean, heights: readonly (number | u
       for (const road of roads) expect(next, 'preview names the road').toContain(road === 'east' ? 'East' : 'West');
       if (roads.size === 1) expect(next).not.toContain(roads.has('east') ? 'West' : 'East');
       const texts = await visibleTexts(page);
-      expect(texts.some(t => t.text === 'Gate 100%')).toBe(true);
-      await checkLabel(page, 'gate', 'Gate 100%');
+      if (checkCopy) {
+        expect(texts.some(t => t.text === 'Gate 100%')).toBe(true);
+        await checkLabel(page, 'gate', 'Gate 100%');
+      }
       const warning = texts.find(t => t.text === 'Costs the third star');
-      expect(!!warning).toBe(level.feat.kind === 'noRepairs');
+      if (checkCopy) expect(!!warning).toBe(level.feat.kind === 'noRepairs');
       if (warning) {
         const r = all.repair;
         expect(warning.left).toBeGreaterThanOrEqual(r.x);
@@ -108,14 +207,32 @@ export function siegeVerifierCases(touch: boolean, heights: readonly (number | u
         expect(t.left, t.text).toBeGreaterThanOrEqual(-1);
         expect(t.right, t.text).toBeLessThanOrEqual(canvas.width + 1);
       }
+      if (clean) {
+        const roads = level.keepRoads === 'both' ? ['east', 'west'] : [level.keepRoads];
+        const banners = await page.evaluate(() => {
+          const scene = window.__tarpit!.game.scene.getScene('game') as GameScene;
+          return Object.keys(scene['roadBanners']!.rects()).sort();
+        });
+        expect(banners).toEqual(roads.map(road => `road:${road}`).sort());
+        if (checkCopy && level.id === 21) expect(texts.some(t => t.text === 'The gate holds walkers. Repair it between waves.')).toBe(true);
+        const clearances: Awaited<ReturnType<typeof siegeClearances>> = [];
+        for (let wave = 0; wave < level.waves.length; wave++) {
+          const issues = await checkCleanSetup(page, wave, checkCopy);
+          expect(issues, `level ${level.id}, wave ${wave + 1}`).toEqual([]);
+          if (mode === 'wide') clearances.push(...await siegeClearances(page));
+        }
+        if (mode === 'wide') reportSiegeClearance(info, `level ${level.id} setup previews`, clearances);
+      }
       await capture(page, `level-${level.id}-${mode.replace(' ', '-')}-setup`);
     });
   }
 
-  for (const level of KEEP_LEVELS) {
-    test(`level ${level.id}: windows, pay-off, Survey and Repair work by ${touch ? 'touch' : 'mouse'}`, async ({ page }) => {
+  for (const height of clean ? heights : [undefined]) for (const level of KEEP_LEVELS) {
+    test(`level ${level.id}: windows, pay-off, Survey and Repair work by ${touch ? 'touch' : 'mouse'}${height ? ` at ${height}px` : ''}`, async ({ page }, info) => {
       test.setTimeout(150_000);
-      await open(page, level.id, 'normal');
+      if (height) await page.setViewportSize({ width: 390, height });
+      await open(page, level.id, clean ? 'wide' : 'normal', clean);
+      const clearances: Awaited<ReturnType<typeof siegeClearances>> = [];
       // Repair in setup: tap the control and the gate gains exactly one step for the posted price.
       await page.evaluate(() => {
         const api = window.__tarpit!;
@@ -129,6 +246,10 @@ export function siegeVerifierCases(touch: boolean, heights: readonly (number | u
       const warn = 'Costs the third star';
       expect((await visibleTexts(page)).some(t => t.text === warn)).toBe(level.feat.kind === 'noRepairs');
       const before = await page.evaluate(() => { const s = window.__tarpit!.state!(); return [s.gate!.hp, s.gold]; });
+      if (clean) {
+        await checkLabel(page, 'repair', `Repair ${level.gate.repairCost}`);
+        clearances.push(...await siegeClearances(page));
+      }
       await press(page, repairKey!, touch);
       const after = await page.evaluate(() => { const s = window.__tarpit!.state!(); return { hp: s.gate!.hp, gold: s.gold, bought: s.boughtRepair ?? false }; });
       expect(after.hp - before[0]).toBe(level.gate.repairHp);
@@ -146,6 +267,11 @@ export function siegeVerifierCases(touch: boolean, heights: readonly (number | u
         expect(await page.evaluate(() => window.__tarpit!.state!().gold)).toBe(500 - tax.price);
         expect(await page.evaluate(() => window.__tarpit!.uiRects().wallSite)).toBeUndefined();
         expect(await page.evaluate(({ col, row }) => window.__tarpit!.buildAt!(col, row, 'musketeer').ok, site)).toBe(true);
+        if (clean) {
+          const texts = await visibleTexts(page);
+          expect(texts.some(t => t.text === "Town's answer: tap a lit window for feathers.")).toBe(true);
+          expect(texts.some(t => t.text.startsWith('Quartering:'))).toBe(false);
+        }
       }
       if (tax?.kind === 'royalSurvey') {
         const gold = await page.evaluate(() => window.__tarpit!.state!().gold);
@@ -163,6 +289,7 @@ export function siegeVerifierCases(touch: boolean, heights: readonly (number | u
         await press(page, 'window:0', touch);
         expect(await page.evaluate(() => window.__tarpit!.state!().windows![0].used)).toBe(false);
         expect((await visibleTexts(page)).some(t => t.text === 'No targets')).toBe(true);
+        if (clean) clearances.push(...await siegeClearances(page));
         const window0 = level.windows[0];
         await page.evaluate(({ road, from }) => {
           const api = window.__tarpit!;
@@ -183,11 +310,47 @@ export function siegeVerifierCases(touch: boolean, heights: readonly (number | u
         await press(page, 'window:0', touch);
         expect(await page.evaluate(() => window.__tarpit!.state!().enemies.filter(e => e.feathered).length)).toBe(3);
         expect((await visibleTexts(page)).some(t => t.text === 'Spent')).toBe(true);
+        if (clean) clearances.push(...await siegeClearances(page));
         await capture(page, `level-${level.id}-window-spent`);
       }
+      if (clean) reportSiegeClearance(info, `level ${level.id} actions`, clearances);
     });
   }
 
+  if (clean) {
+    for (const height of heights) test(`Repair quotes its price and the breach shows the last stand countdown (${height ?? 'project size'})`, async ({ page }, info) => {
+      if (height) await page.setViewportSize({ width: 390, height });
+      await open(page, 25, 'wide', true);
+      await page.evaluate(() => {
+        const api = window.__tarpit!;
+        const state = api.state!();
+        state.gate!.hp = Math.floor(state.gate!.maxHp / 2);
+        state.gold = state.level!.gate!.repairCost - 1;
+        api.step!(0);
+      });
+      await expect(page.getByRole('button', { name: 'Repair 105', exact: true })).toBeDisabled();
+      await checkLabel(page, 'repair', 'Repair 105');
+      reportSiegeClearance(info, 'Repair unavailable', await siegeClearances(page));
+      await page.evaluate(() => {
+        const api = window.__tarpit!;
+        const state = api.state!();
+        state.wave = 5;
+        api.startWave!();
+        state.gate!.hp = 1;
+        state.enemies = [{ id: 900, type: 'grumblemaw', road: 'east', hp: 10000,
+          distance: state.gate!.distance, slow: 0, slowTicksLeft: 0 }];
+        api.step!(1);
+      });
+      await checkLabel(page, 'gate', 'Gate fallen');
+      await checkLabel(page, 'gate', 'Last stand! 6s');
+      reportSiegeClearance(info, 'Last stand', await siegeClearances(page));
+      await expect(page.getByRole('button', { name: 'Repair 105', exact: true })).toHaveCount(0);
+      await page.evaluate(() => window.__tarpit!.step!(360));
+      expect((await visibleTexts(page)).some(o => o.text.startsWith('Last stand!'))).toBe(false);
+      await checkLabel(page, 'gate', 'Gate fallen');
+    });
+    return;
+  }
   test('the Act Three switch leaves ordinary play alone', async ({ page }) => {
     test.setTimeout(120_000);
     await page.addInitScript(() => localStorage.setItem('tarpit.campaign', '{"v":2,"stars":{"1":3,"2":2}}'));

@@ -21,9 +21,12 @@ for (const ui of ['', '&ui=old', '&ui=new']) {
     await page.goto('/?test=1' + ui);
     await waitForFirstScreen(page);
     expect(await drawn()).toEqual([]);
-    await expect(page.locator('canvas[data-interface-ink]')).toHaveCount(0);
+    const paperPage = () => api(page, t => t.game.scene.getScene('title').children.list.some(object => object.name === 'paper-page'));
+    expect(await paperPage()).toBe(active);
+    await expect(page.locator('canvas[data-interface-ink]')).toHaveCount(active ? 1 : 0);
     await press(page, 'title:campaign');
     await onScreen(page, 'levelMap');
+    expect(await paperPage()).toBe(active);
     await press(page, 'title:stop:1');
     await onScreen(page, 'levelCard');
     expect(await drawn()).toEqual(active ? ['clean-printed-card'] : []);

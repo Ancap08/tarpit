@@ -300,6 +300,33 @@ test('map revisits and five restarts keep the right sky and a stable decoded foo
   }
 });
 
+test('the Lifted Keep finale fits the phone art budget with the siege interface and magnifier', async ({ page }, info) => {
+  test.skip(info.project.name !== 'phone', 'Measures retained art at 390 × 844, DPR 3.');
+  await page.goto('/?test=1&keep=25&act3=1&ui=new');
+  await readyGame(page, 25);
+  const setup = await decodedBytes(page);
+  await combat(page);
+  await checkTextures(page);
+  const battle = await decodedBytes(page);
+  const tiles = await page.evaluate(() => {
+    const scene = window.__tarpit!.game.scene.getScene('game') as GameScene;
+    const keep = scene['keep']!;
+    const view = scene.boardLayout;
+    const shots = [];
+    for (const point of scene.state.map.path.slice(-3, -1)) {
+      keep.showMagnifiedGround(view.toScreen(point));
+      const tile = scene.textures.get('keep:magnifier').getSourceImage() as HTMLCanvasElement;
+      shots.push(tile.toDataURL());
+    }
+    return shots;
+  });
+  expect(tiles[0]).not.toEqual(tiles[1]);
+  expect(await api(page, t => t.painted().sprites.some(sprite => sprite.key === 'painted:sharp:fallback'))).toBe(false);
+  const magnifier = await decodedBytes(page);
+  console.log('[Lifted finale decoded RGBA bytes]', JSON.stringify({ setup, battle, magnifier }));
+  expect(Math.max(setup, battle, magnifier)).toBeLessThanOrEqual(70_000_000);
+});
+
 test('Showpiece pasture is released on siege entry and comes back on the ordinary level', async ({ page, hasTouch }) => {
   await open(page, hasTouch, 'showpiece');
   await enter(page, hasTouch, 1);

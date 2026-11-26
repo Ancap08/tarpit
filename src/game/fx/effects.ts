@@ -46,7 +46,7 @@ import { deathSound } from '../audio/recipes';
 import { STEP_MS, type GameClock } from '../loop';
 import { goldGainText } from '../names';
 import { Moments } from './moments';
-import type { Layout } from '../layout';
+import { cleanBattlefield, type Layout } from '../layout';
 import { COLORS, HUD_FONT, TEXT } from '../palette';
 import { CLEAN, battleFont, battleWeight, skinFor } from '../ui/newTheme';
 import { DeviceTextFit, placeFloatingText, textInset } from '../ui/deviceText';
@@ -270,7 +270,7 @@ export class Effects {
   private moments!: Moments;
 
   createOverlays(): Moments {
-    this.veil = this.scene.add.graphics();
+    this.veil = this.scene.add.graphics().setName('boss-veil').setVisible(!this.clean);
     for (let i = 0; i < CAPS.goldLabels; i++) {
       this.goldTexts.push(
         this.scene.add
@@ -281,6 +281,10 @@ export class Effects {
     }
     this.moments = new Moments(this.scene, this.layout, this.map);
     return this.moments;
+  }
+
+  get screenVeil(): Phaser.GameObjects.Graphics {
+    return this.veil;
   }
 
   /** A particle burst of `n` at world point `p`, moved (dx, dy) on the screen. */
@@ -536,7 +540,7 @@ export class Effects {
     this.savedBg = cam.backgroundColor.rgba;
     // Milestone 32b: the map's box shakes; each HUD band beside it (below in
     // landscape, above and below in portrait) gets its own still camera.
-    const m = this.layout.map;
+    const m = this.clean ? cleanBattlefield(this.layout, this.settledCamera) : this.layout.map;
     const W = this.layout.width;
     const H = this.layout.height;
     cam.setViewport(m.x, m.y, m.width, m.height).setScroll(m.x, m.y).setBackgroundColor(this.mapBackground);
@@ -741,12 +745,22 @@ export class Effects {
   /** The veil (boss darkening, boss flash), the banner and the Lives flash. */
   private drawOverlays(): void {
     const v = this.veil;
-    v.clear();
     const dark = darkenAlpha(this.realMs - this.darkenAt);
-    const m = this.layout.map;
-    if (dark > 0) v.fillStyle(COLORS.darken, dark).fillRect(m.x, m.y, m.width, m.height);
     const flash = flashFade(this.realMs - this.flashAt, BOSS_FLASH_MS);
-    if (flash > 0) v.fillStyle(0xffffff, 0.5 * flash).fillRect(m.x, m.y, m.width, m.height);
+    const visible = dark > 0 || flash > 0;
+    if (!this.clean || visible || v.visible) {
+      const m = this.clean ? cleanBattlefield(this.layout, this.settledCamera) : this.layout.map;
+      v.clear();
+      if (dark > 0) v.fillStyle(COLORS.darken, dark).fillRect(m.x, m.y, m.width, m.height);
+      if (flash > 0) v.fillStyle(0xffffff, 0.5 * flash).fillRect(m.x, m.y, m.width, m.height);
+      if (this.clean) {
+        v.setVisible(visible);
+        if (!this.settledCamera) {
+          const camera = this.scene.cameras.main;
+          v.setPosition(camera.scrollX - camera.x, camera.scrollY - camera.y);
+        }
+      }
+    }
 
     const since = this.realMs - this.exitAt;
     const lf = flashFade(since, EXIT_FLASH_MS);

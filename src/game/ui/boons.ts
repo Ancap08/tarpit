@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import type { BoonId, BoonOffer, Rect } from '../../sim';
 import { contains } from '../input';
-import type { Layout } from '../layout';
+import { cleanBattlefield, type Layout } from '../layout';
 import { BOON_NAMES, REWARD_KEYS, boonDescription, rewardTitle } from '../names';
 import { COLORS, FONT, TEXT } from '../palette';
 import { ink, panel, THEME } from './theme';
@@ -37,12 +37,12 @@ export class BoonReward {
   private readonly keyFit = new DeviceTextFit();
   private readonly keys: { text: Phaser.GameObjects.Text; box: Rect }[] = [];
 
-  constructor(scene: Phaser.Scene, layout: Layout, onPick: (id: BoonId) => void) {
+  constructor(scene: Phaser.Scene, layout: Layout, onPick: (id: BoonId) => void, siege = false) {
     const clean = this.clean = skinFor(scene) === 'battle';
-    const m = layout.map;
+    const m = clean ? cleanBattlefield(layout, siege) : layout.map;
     this.geo = rewardLayout(layout, clean);
     this.view = scene.add.container(0, 0).setDepth(REWARD_DEPTH).setVisible(false);
-    const veil = scene.add.rectangle(m.x, m.y, m.width, m.height, COLORS.endVeil, 0.8).setOrigin(0);
+    const veil = scene.add.rectangle(m.x, m.y, m.width, m.height, COLORS.endVeil, 0.8).setOrigin(0).setName('reward-veil');
     this.title = label(scene, 30, TEXT.hud, true).setOrigin(0.5).setPosition(this.geo.title.x, this.geo.title.y);
     this.view.add([veil, this.title]);
     const origin = layout.kind === 'portrait' ? 0 : 0.5;
@@ -70,10 +70,17 @@ export class BoonReward {
       if (layout.kind === 'landscape') {
         const keyX = r.x + 22;
         const keyY = r.y + 22;
-        const keycap = scene.add.rectangle(keyX, keyY, 23, 23, COLORS.hudBar).setStrokeStyle(1, COLORS.menuEdge);
+        const box = { x: keyX - 11.5, y: keyY - 11.5, width: 23, height: 23 };
         const key = label(scene, 14, TEXT.hud, true).setOrigin(0.5).setPosition(keyX, keyY).setText(REWARD_KEYS[i]);
-        this.view.add([keycap, key]);
-        if (clean) this.keys.push({ text: key, box: { x: keyX - 11.5, y: keyY - 11.5, width: 23, height: 23 } });
+        if (clean) {
+          const keycap = scene.add.graphics();
+          rounded(keycap, box, CLEAN.raised, CLEAN.edge, 5);
+          this.view.add(keycap);
+          this.keys.push({ text: key, box });
+        } else {
+          this.view.add(scene.add.rectangle(keyX, keyY, box.width, box.height, COLORS.hudBar).setStrokeStyle(1, COLORS.menuEdge));
+        }
+        this.view.add(key);
       }
       let pressed = false;
       scene.input.on(CANCEL_UI_PRESS, () => { pressed = false; });

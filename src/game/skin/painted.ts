@@ -17,6 +17,18 @@ import { PAINTED_SHOTS } from './sharp';
 type Image = Phaser.GameObjects.Image;
 type Sprite = Phaser.GameObjects.Sprite;
 
+export type TowerIcon = (type: TowerType, maxWidth: number, maxHeight: number) => Image;
+
+export function makeTowerIcon(scene: Phaser.Scene, sheet: PaintedSheet, maxWidth: number, maxHeight: number): Image {
+  const frame = sheet.frames === 1 ? 0 : TOWER_PREVIEW_FRAME;
+  const [left, top, right, bottom] = sheet.bodyBounds![frame];
+  const [width, height] = sheet.frameSize;
+  const scale = Math.min(maxWidth / (right - left), maxHeight / (bottom - top));
+  return scene.add.image(0, 0, sheet.key, frame)
+    .setOrigin((left + right) / (2 * width), (top + bottom) / (2 * height))
+    .setScale(scale);
+}
+
 const FALLBACK: PaintedSheet = {
   key: 'painted:sharp:fallback', frameSize: [16, 24], anchor: [8, 22], density: 1,
   frames: 1, bodyBounds: [[2, 2, 14, 22]],
@@ -227,18 +239,11 @@ export class PaintedSkin {
       .setPosition(screen.x, screen.y).setAlpha(alpha).setDepth(footDepth(p, this.layout)).setVisible(true);
   }
 
-  towerIcon(type: TowerType, maxWidth: number, maxHeight: number): Image {
+  towerIcon: TowerIcon = (type, maxWidth, maxHeight) => {
     const name = towerArt(type);
     const sheet = this.installed(this.assets.sharp?.icons[name]) ?? this.sheet(name);
-    const frame = sheet.frames === 1 ? 0 : TOWER_PREVIEW_FRAME;
-    const [left, top, right, bottom] = sheet.bodyBounds![frame];
-    const [width, height] = sheet.frameSize;
-    const scale = Math.min(maxWidth / (right - left), maxHeight / (bottom - top));
-    const icon = this.scene.add.image(0, 0, sheet.key, frame);
-    return this.pose(icon, name, frame, false, sheet)
-      .setOrigin((left + right) / (2 * width), (top + bottom) / (2 * height))
-      .setScale(scale);
-  }
+    return makeTowerIcon(this.scene, sheet, maxWidth, maxHeight);
+  };
 
   beginEffects(): void { this.used = 0; }
 

@@ -90,7 +90,7 @@ async function inspect(page: Page, floating = false) {
         const box = rects['panel:' + key];
         if (key === 'sell' && !button.labelObjects[0].visible) {
           const image = button['chrome']?.image;
-          const tile = image?.texture.getSourceImage();
+          const tile = image && 'texture' in image ? image.texture.getSourceImage() : undefined;
           if (image?.visible && tile instanceof HTMLCanvasElement) {
             // Look for the pale glyph inside the left half of the baked button.
             const ink = tile.getContext('2d')!.getImageData(tile.width * .04, tile.height * .25, tile.width * .31, tile.height * .5);

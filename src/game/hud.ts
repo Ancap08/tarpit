@@ -51,7 +51,7 @@ import {
   type TowerType,
 } from '../sim';
 import type { Rect } from './input';
-import type { PaintedSkin } from './skin/painted';
+import type { TowerIcon } from './skin/painted';
 import {
   BOON_PENDING_TEXT,
   CAMPAIGN_TEXT,
@@ -68,7 +68,7 @@ import {
   blockedWaveLabel,
   CHEAT_MARK,
   DIFFICULTY_LABELS,
-  ENEMY_SHORT_NAMES, roadName, SIEGE_TEXT,
+  ENEMY_SHORT_NAMES, roadName, SIEGE_TEXT, siegeRuleLines, cardFeatText,
   rechargeText,
   PAUSE_TEXT,
   SPECIAL_BUTTON_TEXT,
@@ -93,8 +93,9 @@ import {
   type Layout,
 } from './layout';
 import { SpecialMenu } from './ui/specialMenu';
+import { uiBounds } from './ui/devicePixels';
 import { MuteButton } from './ui/muteButton';
-import { BakedPaint, CLEAN, battleFont, battleWeight, glyph, roundPoints, rounded, sans, skinFor, textMetrics } from './ui/newTheme';
+import { CLEAN, battleFont, battleWeight, controlPaint, glyph, roundPoints, rounded, sans, skinFor, textMetrics } from './ui/newTheme';
 import { DeviceTextFit, minimumTextSize, textInset, textSlot } from './ui/deviceText';
 import { CleanReadouts, PHONE_TOP_CONTROL_CENTER, cleanHudMetrics, permitSlot, statColumns } from './ui/cleanHud';
 
@@ -426,17 +427,19 @@ export class Hud {
   private readonly previewFit = new DeviceTextFit();
   private readonly cheatFit = new DeviceTextFit();
   private readonly readyFit = new DeviceTextFit();
+  private readonly featFit = new DeviceTextFit();
+  private readonly featLine?: Phaser.GameObjects.Text;
 
-  constructor(scene: Phaser.Scene, handlers: HudHandlers, private readonly layout: Layout = LANDSCAPE, painted?: PaintedSkin, private readonly pauseOnResult = false, private readonly siegeScreens = false, spawn?: { x: number; y: number }) {
+  constructor(scene: Phaser.Scene, handlers: HudHandlers, private readonly layout: Layout = LANDSCAPE, towerIcon?: TowerIcon, private readonly pauseOnResult = false, private readonly siegeScreens = false, spawn?: { x: number; y: number }) {
     const modern = skinFor(scene) === 'battle';
-    const m = modern ? cleanHudMetrics(layout, hudMetrics(layout)) : { ...hudMetrics(layout) };
-    if (this.siegeScreens && m.portrait) m.statY = 20;
+    const m = modern ? cleanHudMetrics(layout, hudMetrics(layout), siegeScreens) : { ...hudMetrics(layout) };
+    if (this.siegeScreens && m.portrait && !modern) m.statY = 20;
     this.m = m;
     const counter = scene.add.graphics();
-    const backing = modern ? new BakedPaint(scene, counter) : undefined;
+    const backing = modern ? controlPaint(scene, counter) : undefined;
     if (backing) backing.begin(m.bands[0]);
     for (const [i, band] of m.bands.entries()) {
-      if (this.siegeScreens && m.portrait && i === 0) {
+      if (this.siegeScreens && !modern && m.portrait && i === 0) {
         this.siegeCounter = scene.add.graphics();
         this.drawSiegeCounter(false);
         continue;
@@ -444,7 +447,7 @@ export class Hud {
       if (modern) {
         if (i === 0) rounded(counter, band, CLEAN.panel, CLEAN.edge, 22);
         else {
-          const dock = new BakedPaint(scene, scene.add.graphics());
+          const dock = controlPaint(scene, scene.add.graphics());
           const g = dock.begin(band);
           g.fillStyle(CLEAN.ground).fillRect(band.x, band.y, band.width, band.height);
           rounded(g, m.portrait
@@ -507,6 +510,15 @@ export class Hud {
         .setFixedSize(0, 0).setWordWrapWidth(m.preview.width - (m.portrait ? 25 : 17));
       this.next.setPosition(m.preview.x, m.preview.y).setOrigin(0).setWordWrapWidth(m.preview.width)
         .setStyle({ fontSize: m.portrait ? 24 : 14, metrics: textMetrics(m.portrait ? 24 : 14), color: CLEAN.subdued, fontStyle: battleWeight(false) });
+      if (siegeScreens) {
+        // Preview above the rules on a phone. The desktop puts the rules alongside the crest and stats.
+        this.taxLine.setPosition(m.preview.x + (m.portrait ? 28 : 18), m.portrait ? 137 : 10);
+        this.featLine = sans(scene, m.portrait ? m.preview.x + 28 : 33, m.portrait ? 165 : 92, '',
+          m.portrait ? 22 : 14, CLEAN.gold).setName('siege-feat').setVisible(false);
+        glyph(counter, 'sparkle', this.featLine.x - (m.portrait ? 18 : 11), this.featLine.y + (m.portrait ? 13 : 8),
+          m.portrait ? 20 : 14, 0xffda92);
+        this.next.setWordWrapWidth(m.preview.width, true);
+      }
     }
 
     // The Special label is left-aligned (an empty right label) so the pip fits on its right.
@@ -527,6 +539,10 @@ export class Hud {
     this.rechargeFill = scene.add.graphics();
     scene.children.moveBelow(this.rechargeFill, this.specialButton.labelObjects[0]);
     this.pip = scene.add.graphics();
+    if (modern) {
+      uiBounds(this.pip, m.special);
+      uiBounds(this.rechargeFill, m.special);
+    }
     this.cheatMark = scene.add
       .text(m.cheat.x, m.cheat.y, CHEAT_MARK, { fontFamily: modern ? battleFont() : FONT, fontSize: m.cheat.size, fontStyle: modern ? battleWeight(false, 'bold') : 'bold', color: modern ? '#ffb0a7' : TEXT.cheatMark, ...(modern ? { metrics: textMetrics(parseInt(m.cheat.size)) } : {}) })
       .setOrigin(m.cheat.originX, 0.5)
@@ -552,8 +568,8 @@ export class Hud {
     }
     this.speedButton = new Button(scene, m.speed, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress, semibold: true, fontSize: modern && m.portrait ? '26px' : modern || m.portrait ? m.startFont : undefined });
     this.specialMenu = new SpecialMenu(scene, m.menu.left, m.menu.top, handlers.onSpecialPick, layout.map.y, m.menu.size, m.menu.font);
-    this.bar = new BuildBar(scene, m.barTop, handlers.onPick, layout, painted, modern && m.portrait ? permitSlot(m) : undefined);
-    this.bossBar = new BossBar(scene, layout, spawn);
+    this.bar = new BuildBar(scene, m.barTop, handlers.onPick, layout, towerIcon, modern && m.portrait ? permitSlot(m) : undefined);
+    this.bossBar = new BossBar(scene, layout, spawn, siegeScreens);
     if (handlers.onRepair) this.gate = new GateHud(scene, layout, handlers.onRepair, siegeScreens);
     this.muteButton = new MuteButton(scene, m.mute, modern && m.portrait ? PHONE_TOP_CONTROL_CENTER : undefined);
     this.pauseButton = new Button(scene, m.pause, m.portrait ? '' : PAUSE_TEXT.button, handlers.onPause, {
@@ -561,6 +577,7 @@ export class Hud {
     });
     this.pauseIcon = scene.add.graphics().fillStyle(COLORS.buttonEdgePicked);
     const iconHeight = m.portrait ? 26 : 21;
+    if (modern) uiBounds(this.pauseIcon, m.pause);
     if (modern) glyph(this.pauseIcon, 'pause', 0, m.portrait ? 0 : 4, m.portrait ? 29 : 20, 0xe2f5ee);
     else for (const x of [-11, 4]) this.pauseIcon.fillRect(x, 0, 7, iconHeight);
     // Put the native accessibility target over the plaque. Phaser handles pointer input.
@@ -627,7 +644,7 @@ export class Hud {
     // The sim lets lives go below 0 (the boss's exit costs 5); the HUD shows 0.
     count(this.lives, this.clean ? String(Math.max(0, state.lives)) : `${HUD_STAT_LABELS[1]} ${Math.max(0, state.lives)}`);
     set(this.wave, (this.clean ? waveNumberText : waveCounterText)(state.wave, state.endless, lastWave(state)));
-    const tag = state.map.id === 'keep' ? OLD_KEEP_NAME : state.level ? levelNumberText(state.level.id) : difficultyTag(state.difficulty);
+    const tag = state.map.id === 'keep' && !this.clean ? OLD_KEEP_NAME : state.level ? levelNumberText(state.level.id) : difficultyTag(state.difficulty);
     if (this.clean) {
       this.modernTag = tag;
       this.clean.title(state.level ? tag : CAMPAIGN_TEXT.freePlay, state.level ? LEVEL_NAMES[state.level.id]?.name ?? '' : tag);
@@ -636,7 +653,8 @@ export class Hud {
     // The build bar carries the permit count. On a cheated portrait run, keep
     // this line for the tax names and the mark that the run cannot earn stars.
     const namesOnly = (this.clean && m.portrait || this.layout === TAXED_PORTRAIT) && state.cheated;
-    const taxes = taxStatusText(state.level?.taxes, namesOnly ? undefined : state.towers.length);
+    const siegeRule = this.featLine ? siegeRuleLines(state)[0] ?? CAMPAIGN_TEXT.gateRule : '';
+    const taxes = this.featLine ? siegeRule : taxStatusText(state.level?.taxes, namesOnly ? undefined : state.towers.length);
     set(this.taxLine, taxes);
     this.taxLine.setVisible(!!taxes);
     this.taxGlyph?.setVisible(!!taxes);
@@ -646,7 +664,8 @@ export class Hud {
     }
     if (this.clean) {
       this.clean.fitStats([this.gold, this.lives, this.wave]);
-      this.fitTaxRow(!!taxes, state.cheated, state.level?.taxes?.rationing !== undefined);
+      if (this.featLine && state.level) this.fitSiegeRows(state, !!taxes);
+      else this.fitTaxRow(!!taxes, state.cheated, state.level?.taxes?.rationing !== undefined);
     } else if (m.portrait) {
       // One row: each stat starts after the one before it; the cheat mark is right-aligned.
       const dx = this.lives.x - this.livesX;
@@ -669,7 +688,7 @@ export class Hud {
     // After a loss there is no next wave to play, so the preview goes blank.
     const aimText = m.portrait && special.aiming !== null && special.banner ? stripAimText(special.banner) : null;
     this.drawSiegeCounter(aimText !== null);
-    const preview = aimText ?? (state.phase === 'lost' || this.siegeScreens ? '' : this.clean ? this.cleanPreview(state) : previewText(state));
+    const preview = aimText ?? (state.phase === 'lost' || this.siegeScreens && !this.clean ? '' : this.clean ? this.cleanPreview(state) : previewText(state));
     if (this.next.text !== preview) {
       const siege = !!state.map.otherRoads?.length;
       const previewX = siege && !m.portrait ? 328 : m.preview.x;
@@ -737,6 +756,7 @@ export class Hud {
     const recharge = specialRecharge(state);
     // Milestone 30 follow-up: while the charge refills the label is the countdown ("Wait 15s").
     this.specialButton.set(recharge ? rechargeText(state.specialRechargeTicks, TICKS_PER_SECOND, m.portrait) : SPECIAL_BUTTON_TEXT, ready);
+    if (this.clean) this.specialButton.setIcon(recharge && state.barrelRecharge ? 'clock' : 'bolt');
     if (m.portrait && !this.clean) {
       const specialLabel = this.specialButton.labelObjects[0];
       // On the taxed plaque the label can use the space up to the status dot.
@@ -794,17 +814,38 @@ export class Hud {
     this.taxLine.setVisible(this.taxFit.fit(m.portrait ? 25 : 14, [textSlot(this.taxLine, area, true)]));
   }
 
+  private fitSiegeRows(state: GameState, taxed: boolean): void {
+    const m = this.m;
+    const head = m.bands[0];
+    const feat = this.featLine!;
+    if (state.level?.feat) {
+      const text = cardFeatText(state.level.feat);
+      if (feat.text !== text) feat.setText(text);
+    }
+    const right = head.x + head.width - 15;
+    const featRight = m.portrait ? state.cheated ? this.cheatMark.x - this.cheatMark.width - 8 : right : m.preview.x - 4;
+    const ruleArea = { ...head, width: (m.portrait ? right : m.mute.x - 10) - head.x,
+      height: (m.portrait ? feat.y : m.preview.y) - head.y + textInset(this.taxLine) };
+    const featArea = { ...head, width: featRight - head.x };
+    this.taxLine.setVisible(taxed && this.taxFit.fit(m.portrait ? 17.25 : 14, [textSlot(this.taxLine, ruleArea, true)]));
+    feat.setVisible(!!feat.text && this.featFit.fit(m.portrait ? 20 : 14, [textSlot(feat, featArea, true)]));
+    this.cheatMark.setVisible(state.cheated &&
+      this.cheatFit.fit(parseInt(m.cheat.size), [textSlot(this.cheatMark, head)]));
+  }
+
   private fitCleanPreview(cheated: boolean): void {
     const m = this.m;
     const { x, y, width } = m.preview;
     const head = m.bands[0];
-    const right = m.portrait && cheated && this.cheatMark.visible
+    const right = !this.featLine && m.portrait && cheated && this.cheatMark.visible
       ? this.cheatMark.x - this.cheatMark.width - 8 : x + width;
-    const area = { x: head.x, y: head.y, width: right - head.x, height: head.height };
+    const area = { x: head.x, y: head.y, width: right - head.x,
+      height: this.featLine && m.portrait ? this.taxLine.y - head.y + textInset(this.next) : head.height };
     this.next.setPosition(x, y);
     if (m.portrait) {
       const line = Math.max(24, minimumTextSize(this.next)) + 3;
-      const spacing = Math.min(0, Math.floor(head.y + head.height - y - textInset(this.next) - 2 * line));
+      const spacing = Math.min(this.featLine ? -1 : 0,
+        Math.floor(head.y + head.height - y - textInset(this.next) - 2 * line));
       if (this.next.lineSpacing !== spacing) this.next.setLineSpacing(spacing);
     }
     const fits = this.previewFit.fit(m.portrait ? 24 : 14, [textSlot(this.next, area, true)]);
@@ -823,6 +864,14 @@ export class Hud {
 
   get repairRect(): Rect | undefined {
     return this.gate?.repairRect;
+  }
+
+  setMuteDepth(depth: number): void {
+    this.muteButton.setDepth(depth);
+  }
+
+  siegeRects(): Record<string, Rect> {
+    return this.gate?.rects() ?? {};
   }
 
   /** The special popup's box while open, else null (milestone 25b). */
@@ -860,7 +909,7 @@ export class Hud {
       special: { ...this.specialButton.rect },
       ...this.bar.rects(),
       ...this.specialMenu.rects(),
-      ...this.gate?.rects(),
+      ...this.siegeRects(),
     };
   }
 }

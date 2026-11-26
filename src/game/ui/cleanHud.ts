@@ -1,26 +1,28 @@
 import type Phaser from 'phaser';
 import type { HudMetrics } from '../hud';
-import { CLEAN_ACTION_H, CLEAN_BUILD_H, CLEAN_DOCK_GAP, type Layout } from '../layout';
+import { CLEAN_ACTION_H, CLEAN_BUILD_H, CLEAN_DOCK_GAP, CLEAN_HEADER_INSET, cleanBattlefield, type Layout } from '../layout';
 import { HUD_STAT_LABELS } from '../names';
 import { CLEAN, glyph, interLoaded, line, motionClock, sans } from './newTheme';
 import { DeviceTextFit, textInset, textSlot } from './deviceText';
+import { uiBounds } from './devicePixels';
 
 const PHONE_PAD = 15;
 const PHONE_CAPTION = 21;
 const PHONE_TITLE = 23;
 export const PHONE_TOP_CONTROL_CENTER = 27;
 
-export function cleanHudMetrics(layout: Layout, base: HudMetrics): HudMetrics {
+export function cleanHudMetrics(layout: Layout, base: HudMetrics, siege = false): HudMetrics {
   const phone = layout.turned;
   const dockY = layout.map.y + layout.map.height;
   const barTop = dockY + (phone ? CLEAN_DOCK_GAP : 23);
   const controlsY = phone ? barTop + CLEAN_BUILD_H + CLEAN_DOCK_GAP : barTop;
   const height = phone ? CLEAN_ACTION_H : 65;
-  const head = { x: 8, y: 4, width: layout.width - 16, height: layout.map.y - 8 };
+  const headerBottom = cleanBattlefield(layout, siege).y;
+  const head = { x: 8, y: CLEAN_HEADER_INSET, width: layout.width - 16, height: headerBottom - CLEAN_HEADER_INSET };
   const gutter = phone ? PHONE_PAD : 12;
   const buttons = phone ? CLEAN_ACTION_H : 53;
   const controlsX = head.x + head.width - 2 * buttons - (phone ? PHONE_PAD : 6);
-  const previewY = layout.map.y - 57;
+  const previewY = siege ? 83 : layout.map.y - 57;
   const [gold] = phoneColumns(head);
   const phoneControls = (fraction: number) => Math.floor(layout.width * fraction);
   const specialW = phoneControls(.31);
@@ -35,8 +37,9 @@ export function cleanHudMetrics(layout: Layout, base: HudMetrics): HudMetrics {
     gold: phone ? { x: gold.left, y: head.y + 43, width: gold.width, height: 38 }
       : { x: head.x + 5, y: head.y + 29, width: 121, height: 45 },
     preview: phone ? { x: head.x + gutter, y: previewY, width: head.width - 2 * gutter, originY: 0 }
-      : { x: 399, y: head.y + 43, width: 226, originY: 0 },
-    cheat: { x: phone ? head.x + head.width - gutter : 933, y: phone ? previewY + 13 : head.y + 73, size: phone ? '21px' : '14px', originX: 1 },
+      : { x: 399, y: head.y + (siege ? 49 : 43), width: siege ? controlsX - 407 : 226, originY: 0 },
+    cheat: { x: phone ? head.x + head.width - gutter : 933, y: siege ? phone ? 180 : 96 : phone ? previewY + 13 : head.y + 73,
+      size: phone ? '21px' : '14px', originX: 1 },
     mute: { x: controlsX, y: head.y + (phone ? 3 : 6), width: buttons, height: buttons },
     pause: { x: controlsX + buttons, y: head.y + (phone ? 3 : 6), width: buttons, height: buttons },
     special: { x: phone ? 8 : 618, y: controlsY, width: phone ? specialW : 133, height },
@@ -97,6 +100,7 @@ export class CleanReadouts {
     this.name = sans(scene, nameX, y + (phone ? 3 + PHONE_TOP_CONTROL_CENTER : 6), '', phone ? PHONE_TITLE : 14, phone ? CLEAN.ink : CLEAN.subdued, true, 'normal')
       .setOrigin(0, phone ? .5 : 0).setWordWrapWidth(phone ? m.mute.x - nameX - 10 : 355).setName('hud-level-name');
     this.pips = scene.add.graphics();
+    uiBounds(this.pips, m.bands[0]);
     const small = phone ? PHONE_CAPTION : 14;
     const labelY = phone ? m.statY : y + 29;
     const columns = phoneColumns(m.bands[0]);

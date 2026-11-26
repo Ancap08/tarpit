@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { ENEMY_STATS, MAP_HEIGHT, MAP_WIDTH, type EnemyType, type GameState, type LevelDef, type MapId } from '../../sim';
 import { enemyArt } from './frames';
 import { waitForWorkerControl } from '../../sw/register';
-import { loadSharpArt, type SharpArt } from './sharp';
+import { loadSharpArt, loadSharpIcons, type SharpArt } from './sharp';
 import type { PaintedDensity } from './look';
 
 const FRAME_COUNTS = {
@@ -43,6 +43,11 @@ export interface PaintedAssets {
   groundKey?: string;
   sharp?: SharpArt & { release: () => void };
   sheets: Readonly<Partial<Record<PaintedName, PaintedSheet>>>;
+}
+
+export interface ClassicTowerIcons {
+  sheets: SharpArt['icons'];
+  release: () => void;
 }
 
 const loaded = new WeakMap<Phaser.Textures.TextureManager, Map<PaintedDensity, PaintedAssets['sheets']>>();
@@ -101,6 +106,35 @@ async function getAsset(url: string, signal: AbortSignal): Promise<Response> {
   const response = await fetch(url, { signal });
   if (!response.ok) throw new Error(`Painted asset returned ${response.status}`);
   return response;
+}
+
+export async function loadClassicTowerIcons(textures: Phaser.Textures.TextureManager,
+  cancellation: AbortSignal): Promise<ClassicTowerIcons | undefined> {
+  if (cancellation.aborted) return undefined;
+  const controller = new AbortController();
+  const cancel = () => controller.abort();
+  cancellation.addEventListener('abort', cancel, { once: true });
+  const timer = setTimeout(cancel, LOAD_TIMEOUT_MS);
+  const { signal } = controller;
+  const registered: string[] = [];
+  try {
+    const sheets = await loadSharpIcons(textures, url => getAsset(url, signal).then(response => decodeImage(response, signal)),
+      signal, registered);
+    return { sheets, release: releaseInstalled(textures, registered) };
+  } catch {
+    for (const key of registered) textures.remove(key);
+    return undefined;
+  } finally {
+    clearTimeout(timer);
+    cancellation.removeEventListener('abort', cancel);
+  }
+}
+
+function releaseInstalled(textures: Phaser.Textures.TextureManager, keys: string[]): () => void {
+  const installed = keys.map(key => textures.get(key));
+  return () => {
+    for (const texture of installed) if (textures.get(texture.key) === texture) textures.remove(texture.key);
+  };
 }
 
 async function decodeImage(response: Response, signal: AbortSignal): Promise<HTMLImageElement> {
@@ -241,10 +275,7 @@ export async function loadPainted(
       signal.throwIfAborted();
       if (groundKey && ground) registerGround(textures, map, density, groundKey, ground, registered);
       onProgress(1);
-      const installed = registered.map(key => textures.get(key));
-      const release = () => {
-        for (const texture of installed) if (textures.get(texture.key) === texture) textures.remove(texture.key);
-      };
+      const release = releaseInstalled(textures, registered);
       return { density, groundKey, sheets: sharp.sheets, sharp: { ...sharp, release } };
     }
     let density = displayDensity;

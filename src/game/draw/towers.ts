@@ -9,7 +9,7 @@
 import type Phaser from 'phaser';
 import { CELL, cellCenter, cellKey, nearestPathPoint, positionAlongPath, roadPath, type Cell, type GameState, type MapDef, type Point, type Tower, type TowerType, type UpgradePath } from '../../sim';
 import { LANDSCAPE, type Layout } from '../layout';
-import { CLEAN, roundPoints } from '../ui/newTheme';
+import { CLEAN } from '../ui/newTheme';
 import { COLORS } from '../palette';
 
 export const PATH_MARKS = {
@@ -293,11 +293,13 @@ export function drawTowers(
     const stance = pose?.(tower.cell, tower.type) ?? { angle: aim.angle(tower.cell), scale: 1, recoil: 0 };
     const alpha = dim ? DRAG_ORIGIN_ALPHA : 1;
     if (clean) {
-      const foot = layout.offset(p, 0, 7);
-      const { w, h } = layout.ellipse(38, 24);
-      const points = roundPoints({ x: foot.x - w / 2, y: foot.y - h / 2, width: w, height: h }, 8);
-      g.fillStyle(CLEAN.ground, .66 * alpha).fillPoints(points, true);
-      g.lineStyle(tower.locked ? 1 : 2, tower.upgraded ? 0xffda92 : CLEAN.mint, alpha).strokePoints(points, true);
+      const foot = layout.offset(p, 0, 8);
+      const shadow = layout.ellipse(36, 17);
+      g.fillStyle(CLEAN.ground, .26 * alpha).fillEllipse(foot.x, foot.y, shadow.w, shadow.h, 16);
+      if (tower.upgraded || !tower.locked) {
+        g.lineStyle(tower.upgraded ? 1.4 : 1, tower.upgraded ? 0xffda92 : CLEAN.mint, .85 * alpha)
+          .strokeEllipse(foot.x, foot.y, shadow.w, shadow.h, 16);
+      }
     }
     body?.(tower, p, stance, alpha);
     drawTowerScaled(g, body ? null : tower.type, p, stance, tower.upgraded && !clean, alpha, layout, clean ? undefined : tower.path);

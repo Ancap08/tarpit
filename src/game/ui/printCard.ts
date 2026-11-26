@@ -1,9 +1,10 @@
 import type Phaser from 'phaser';
 import { resolveMap, type LevelDef } from '../../sim';
+import { drawKeepThumbnail } from '../draw/keepThumbnail';
 import { drawMapThumbnail } from '../draw/map';
 import {
   CAMPAIGN_TEXT, LEVEL_NAMES, LEVEL_NEW, LEVEL_STORY, MAP_NAMES, TITLE_TEXT,
-  levelFeatRow, levelNumberText, levelTaxRows,
+  cardFeatText, levelFeatRow, levelNumberText, levelTaxRows, siegeRuleLines,
 } from '../names';
 import { FONT } from '../palette';
 import { scoutingMap } from '../skin/scoutingMap';
@@ -11,6 +12,7 @@ import type { Rect } from '../input';
 import { levelAct } from './campaignMap';
 import type { Button, ButtonOptions } from './button';
 import { PRINT, glyph, line, motionClock, rounded, sheet, textMetrics, type Icon } from './newTheme';
+import { fitPaperText, paperPadding } from './paperText';
 import { drawStarRow } from './starRow';
 
 export type CardAction = (key: string, rect: Rect, label: string, click: () => void, size?: number, options?: ButtonOptions) => Button;
@@ -24,9 +26,14 @@ export function printedText(scene: Phaser.Scene, text: string, size: number, wid
 }
 
 function mapPrint(scene: Phaser.Scene, level: LevelDef, rect: Rect, caption: Phaser.GameObjects.Text) {
-  if (level.map === 'keep') return;
   const frame = scene.add.graphics();
   rounded(frame, { ...rect, height: rect.height + caption.height + 12 }, PRINT.inset, PRINT.edge, 8);
+  caption.setPosition(rect.x + rect.width / 2 + 8, rect.y + rect.height + 6).setDepth(1);
+  glyph(frame, 'map', caption.x - caption.width / 2 - 15, caption.y + caption.height / 2, 15, PRINT.green);
+  if (level.map === 'keep') {
+    const picture = drawKeepThumbnail(scene, level, rect.x + rect.width / 2, rect.y + 2, rect.width - 8);
+    return [frame, picture, caption];
+  }
   const fallback = scene.add.graphics();
   const map = resolveMap(level.map);
   drawMapThumbnail(fallback, map, rect.x + 4, rect.y + 4, rect.width - 8, rect.height - 4);
@@ -43,8 +50,6 @@ function mapPrint(scene: Phaser.Scene, level: LevelDef, rect: Rect, caption: Pha
     controller.abort();
     if (scene.textures.exists(key)) scene.textures.remove(key);
   });
-  caption.setPosition(rect.x + rect.width / 2 + 8, rect.y + rect.height + 6).setDepth(1);
-  glyph(frame, 'map', caption.x - caption.width / 2 - 15, caption.y + caption.height / 2, 15, PRINT.green);
   return [frame, fallback, plate, caption];
 }
 
@@ -70,8 +75,8 @@ export function drawPrintedCard(
     return button;
   };
   const buttonH = portrait ? 84 : 50;
-  make('back', { x: page.x, y: portrait ? 3 : 6, width: portrait ? 128 : 112, height: buttonH }, CAMPAIGN_TEXT.back, back, { icon: 'back', bare: true });
-  const act = levelAct(level.id) === 1 ? CAMPAIGN_TEXT.actOne : CAMPAIGN_TEXT.actTwo;
+  make('back', { x: page.x, y: portrait ? 3 : 6, width: portrait ? 128 : 112, height: buttonH }, CAMPAIGN_TEXT.back, back, { icon: 'back', bare: true, paperGrow: 8 });
+  const act = [CAMPAIGN_TEXT.actOne, CAMPAIGN_TEXT.actTwo, CAMPAIGN_TEXT.actThree][levelAct(level.id) - 1];
   const bodySize = portrait ? 23 : 17;
   const col = (text: string, size = bodySize, wrap = measure, color: string = PRINT.ink, style?: string) => {
     const label = printedText(scene, text, size, wrap, color, style);
@@ -102,10 +107,17 @@ export function drawPrintedCard(
   const rulesX = portrait ? left : left + artW + 22;
   const artLabel = col(MAP_NAMES[level.map], bodySize, artW, PRINT.ink, 'bold');
   const note = col(words.twist, bodySize, artW, PRINT.muted);
-  const gap = portrait ? 17 : 9;
+  const keep = level.map === 'keep';
+  const gap = portrait ? 17 : keep ? 6 : 9;
   const inset = portrait ? 61 : 44;
+  const { x: tagPadX, y: tagPadY } = paperPadding(scene);
+  const tagPad = Math.ceil(Math.max(tagPadX, tagPadY));
   const tileSize = portrait ? 43 : 31;
-  const rules: { title: string; description: string; icon: Icon; feat?: boolean }[] = level.feat
+  const rules: { title?: string; description: string; icon: Icon; feat?: boolean }[] = keep ? [
+    { title: CAMPAIGN_TEXT.inForce, description: CAMPAIGN_TEXT.gateRule, icon: 'crown' },
+    ...siegeRuleLines(level).map(description => ({ description, icon: 'window' as const })),
+    { description: cardFeatText(level.feat!), icon: 'sparkle' },
+  ] : level.feat
     ? [
       ...levelTaxRows(level.taxes ?? {}).map(({ kind, title, description }) => ({
         title, description, icon: kind === 'windowTax' ? 'window' as const : 'crown' as const,
@@ -113,19 +125,23 @@ export function drawPrintedCard(
       { ...levelFeatRow(level.feat), icon: 'sparkle', feat: true },
     ] : [{ title: CAMPAIGN_TEXT.newThisLevel, description: LEVEL_NEW[level.id], icon: 'sparkle' }];
   const rows = rules.map(rule => {
-    const heading = col(rule.title, portrait ? 28 : 20, ruleW - inset, PRINT.ink, 'bold').setOrigin(0, 0).setAlign('left');
+    const heading = rule.title ? col(rule.title, portrait ? 28 : 20, ruleW - inset, PRINT.ink, 'bold')
+      .setOrigin(0, 0).setAlign('left') : undefined;
     const detail = col(rule.description, bodySize, ruleW - inset, PRINT.muted).setOrigin(0, 0).setAlign('left');
     const tag = rule.feat ? col(CAMPAIGN_TEXT.thirdStar, portrait ? 22 : 13, ruleW - inset, PRINT.muted).setOrigin(0, .5) : undefined;
-    const tagHeight = tag && heading.width + tag.width + 22 > ruleW - inset ? tag.height + 6 : 0;
-    const height = Math.max(tileSize, heading.height + tagHeight + detail.height + 2) + 2 * gap;
-    return { ...rule, heading, detail, tag, tagHeight, height };
+    if (tag) fitPaperText([tag], portrait ? 22 : 13, () => tag.width + 2 * tagPad <= ruleW - inset);
+    const tagHeight = tag ? tag.height + 2 * tagPad : 0;
+    const tagBelow = !!(tag && heading && heading.width + tag.width + 2 * tagPad + 8 > ruleW - inset);
+    const headingHeight = heading ? (tagBelow ? heading.height + 4 + tagHeight : Math.max(heading.height, tagHeight)) + 2 : 0;
+    const height = Math.max(tileSize, headingHeight + detail.height) + 2 * gap;
+    return { ...rule, heading, headingHeight, detail, tag, tagBelow, tagHeight, height };
   });
   const answer = level.featherBarrels ? col(CAMPAIGN_TEXT.townAnswer, bodySize, ruleW - 46, '#234b40') : undefined;
   const rulesH = rows.reduce((sum, row) => sum + row.height, 0) + (answer ? gap + answer.height : 0);
   const notesH = artH + artLabel.height + note.height + 12 + 2 * gap;
   const short = scene.scale.parentSize.height < 700;
   const crowded = top + rulesH + notesH > page.y + page.height - 10;
-  const paged = scouting || portrait && (crowded || short && Object.keys(level.taxes ?? {}).length > 1);
+  const paged = scouting || portrait && (crowded || short && (keep || Object.keys(level.taxes ?? {}).length > 1));
   const notesFirst = !paged || scouting;
   const contentTop = paged && scouting ? title.y + title.height + gap : top;
   const contentH = (notesFirst ? notesH : 0) + (paged && scouting ? 0 : rulesH);
@@ -149,21 +165,23 @@ export function drawPrintedCard(
   if (!(paged && scouting)) {
     let y = top + (portrait && notesFirst ? notesH : 0);
     for (const row of rows) {
-      const { heading, detail, icon, tag, tagHeight, height } = row;
+      const { heading, headingHeight, detail, icon, tag, tagBelow, tagHeight, height } = row;
       line(art, rulesX, y, ruleW);
-      heading.setPosition(rulesX + inset, y + gap);
-      detail.setPosition(heading.x, heading.y + heading.height + 2 + tagHeight);
+      heading?.setPosition(rulesX + inset, y + gap + (tagBelow || !heading ? 0 : Math.max(0, (tagHeight - heading.height) / 2)));
+      detail.setPosition(rulesX + inset, y + gap + headingHeight);
       const tile = { x: rulesX + 2, y: y + gap + 2, width: tileSize, height: tileSize };
       const warm = icon === 'window' || icon === 'crown';
       const tileColor = warm ? 0xf2e1d2 : 0xe1eadb;
       rounded(art, tile, tileColor, tileColor, portrait ? 11 : 8);
       glyph(art, icon, tile.x + tileSize / 2, tile.y + tileSize / 2, tileSize * .68, warm ? 0x953c34 : PRINT.green);
-      if (tag) {
-        const tagX = tagHeight ? heading.x + 5 : heading.x + heading.width + 13;
-        const tagY = tagHeight ? heading.y + heading.height + tag.height / 2 + 2 : heading.y + heading.height / 2;
+      if (tag && heading) {
+        const tagX = (tagBelow ? heading.x : heading.x + heading.width + 8) + tagPad;
+        const tagY = tagBelow ? heading.y + heading.height + 4 + tagHeight / 2 : y + gap + tagHeight / 2;
         tag.setPosition(tagX, tagY);
-        rounded(art, { x: tagX - 5, y: tagY - tag.height / 2, width: tag.width + 10, height: tag.height },
-          0xf0ecdb, 0xd4d9c3, 6);
+        // Keep the chip's painted bounds local to its label as the sheet moves.
+        const chip = { x: -tagPad, y: -tagHeight / 2, width: tag.width + 2 * tagPad, height: tagHeight };
+        rounded(art, { ...chip, x: tagX + chip.x, y: tagY + chip.y }, 0xf0ecdb, 0xd4d9c3, 6);
+        tag.setData('paper-chip', chip);
       }
       y += height;
     }
@@ -174,7 +192,7 @@ export function drawPrintedCard(
     }
   } else {
     for (const { heading, detail, tag } of rows) {
-      heading.setVisible(false);
+      heading?.setVisible(false);
       detail.setVisible(false);
       tag?.setVisible(false);
     }
@@ -190,8 +208,8 @@ export function drawPrintedCard(
   if (tips) make('tips', { x: right - playWidth - (portrait ? 104 : 114), y: foot, width: portrait ? 98 : 106, height: buttonH }, CAMPAIGN_TEXT.tips, tips);
   if (paged) {
     // The short page gives Map notes an entire target above the foot.
-    make('cardPage', { x: page.x + (portrait ? 8 : 154), y: portrait ? turnY : foot, width: 172, height: buttonH },
-      scouting ? CAMPAIGN_TEXT.notice : CAMPAIGN_TEXT.mapNotes, turnPage, { icon: 'map' });
+    make('cardPage', { x: page.x + (portrait ? 8 : 154), y: portrait ? turnY : foot, width: portrait ? 192 : 172, height: buttonH },
+      scouting ? CAMPAIGN_TEXT.notice : CAMPAIGN_TEXT.mapNotes, turnPage, { icon: 'map', paperGrow: 8 });
   }
   const playButton = make('play', { x: right - playWidth, y: foot, width: playWidth, height: buttonH }, TITLE_TEXT.play, play,
     { primary: true, icon: 'play' });

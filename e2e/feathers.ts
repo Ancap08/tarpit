@@ -181,3 +181,38 @@ export function featherBarrelLabels(touch: boolean, phone = false) {
     });
   }
 }
+
+export function cleanFeatherBarrelLabels(touch: boolean, phone = false) {
+  for (const height of phone ? [656, 664, 844] : [undefined]) {
+    for (const mode of ['normal', 'wide', 'fixed fallback'] as const) {
+      test(`Clean feather barrel menu and charge at ${height ?? 'project size'} (${mode})`, async ({ page }) => {
+        if (height) await page.setViewportSize({ width: 390, height });
+        if (mode === 'wide') await useWideFontMetrics(page, wideFactor, 'Inter');
+        if (mode === 'fixed fallback') await useTallFontMetrics(page, true);
+        for (const id of [14, 23]) {
+          if (id === 14) {
+            await page.goto('/?test=1&ui=new&look=painted');
+            await waitForFirstScreen(page);
+            await page.evaluate(() => window.__tarpit!.startLevel!(14));
+          } else {
+            await page.goto('/?test=1&ui=new&keep=23');
+          }
+          await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game') && !!window.__tarpit.state!().level);
+          await api(page, t => {
+            t.state().wave = 3;
+            t.startWave();
+          });
+          await press(page, 'special', touch);
+          if (mode !== 'fixed fallback') {
+            await checkLabel(page, 'special:tarBarrel', 'Tar Barrel');
+            await checkLabel(page, 'special:tarBarrel', 'Feathers a crowd. Next special in 51s.');
+          }
+          await press(page, 'special:tarBarrel', touch);
+          await mapPress(page, id === 14 ? 1 : 25, 7, touch);
+          expect(await api(page, t => t.state().specialRechargeTicks)).toBe(BARREL_RECHARGE_TICKS);
+          if (mode !== 'fixed fallback') await checkLabel(page, 'special', phone ? '51s' : 'Wait 51s');
+        }
+      });
+    }
+  }
+}

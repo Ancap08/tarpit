@@ -71,6 +71,30 @@ and difficulty, from the beginning. Level map returns to the campaign
 road. Menu returns to the Free play picker. Mute still works on the HUD
 and from M.
 
+With `?ui=new`, the title and Free play picker, campaign sheets, tips,
+story pages, Owner's page, pause and load notices use cream paper, Libre
+Caslon Text and drawn icons. Portrait menu buttons use an 84-unit target
+on the 1194-unit sheet. The level-map stops use a 120 × 104-unit target
+(about 66 × 57 CSS px at 390 × 656). Back occupies the upper left on
+pages with a Back action. Reading sheets put Continue or Got it below
+the copy. Canvas paper controls measure the rendered Caslon bounds at layout
+time and leave 6 CSS px on every side beyond a five-unit inset. A button can
+grow into the horizontal space reserved by its layout. If the slot still
+cannot fit the label, its type goes down in one-unit steps to a 12 CSS px
+floor. Chips size to their measured labels. The browser check requires 4 CSS
+px beyond the inset, leaving 2 CSS px for measurement and rounding variance.
+The HTML recovery button uses 11 CSS px of padding. The portrait Free play
+map row starts with a 6-unit side inset and 8-unit gaps. The landscape map
+cards are 117 units high. Thumbnails keep their 2:1 aspect ratio and fit
+above the measured map name with the same five-unit inset and 6 CSS px
+clearance as the paper controls. Portrait look buttons
+prefer 124 units each and have up to 140 units per slot with a 4-unit gap.
+Their caption sits below the row when the navigation needs the space. The
+landscape pause buttons start at 184 units and Restart may use up to eight
+units of each adjacent gap. Map numbers keep their clearance from the top of
+each stop. Printed menus settle over 220 ms with fixed input bounds.
+Test mode and reduced-motion preferences keep the sheets still.
+
 ## Space and time
 
 - The canvas is 960 x 580 px. The map uses the top 960 x 480; the HUD uses
@@ -1295,7 +1319,10 @@ The title screen offers Classic and Painted. Painted is the default for a fresh 
   upgrade paths. Enemies keep their 16 walk poses and the four Guards keep
   their 32 idle and strike poses. The Guard sheet loads before play wherever
   normal or gold-cheat rules can grant Guards. Locked tower buttons use one
-  preview pose each. Opening the kit with the gold cheat fetches the added
+  preview pose each. The new Classic dock and tower panel load only those
+  single Lifted preview poses and keep the Classic battlefield. The new
+  Old Keep interface uses Lifted pieces for either Look setting. Opening
+  the kit with the gold cheat fetches the added
   poses and shots. A missing sheet during play draws a plain substitute
   and logs one warning per sheet name for the visit.
   Ordinary fields use 2 source pixels per game pixel. At the Old Keep,
@@ -1759,10 +1786,10 @@ drawn and where touches land differ.
 
 ### Clean and Fine print preview
 
-`?ui=new` selects Clean in ordinary levels and Fine print on their level
-cards and results. The landscape frame measures 960 × 676, including a
+`?ui=new` selects Clean while playing and Fine print on level cards
+and results. The ordinary landscape frame measures 960 × 676, including a
 96-unit header above the 960 × 480 map and a 100-unit dock below it.
-The portrait frame is 1314 units tall, or 1344 with taxes, and at
+The ordinary portrait frame is 1313 units tall, or 1343 with taxes, and at
 least 560 units wide. It follows the fitted viewport aspect ratio. The
 480 × 960 board keeps its 1:1 projection and sits below a 140-unit
 header, or a 170-unit header with the tax row. Both HUD bands stay
@@ -1777,8 +1804,23 @@ The phone header has a shared title and icon row, inline stat captions
 and 26-unit values beside the wave pips, and up to two lines of preview.
 Taxed levels get a dedicated tax row with the permit tally at its right.
 The portrait build tiles are 110 units tall. A 4-unit gutter separates
-them from the 92-unit action row. All dock controls, Mute, Pause and the
+them from the 91-unit action row. All dock controls, Mute, Pause and the
 94-unit Build confirmation meet the 44 CSS px minimum at 390 × 656.
+
+On the Act Three levels, portrait uses a 202-unit header over the upper
+scenery, a map origin at 130 and a fitted height of 1303 units. The
+landscape header grows to 116 units, for a 960 × 696 frame. The gate
+readout has a percentage, a bar and a separate Repair control in setup.
+The Last stand countdown uses that readout while the bell and tower
+effects remain at the gate. Setup banners sit beside the road approaches.
+Window badges, Survey marks and the Quartering pay button follow the
+painted objects through the view move. The fixed camera draws the
+battlefield controls into a retained device-resolution overlay. Portrait
+Keep controls draw their chrome directly into that overlay. The panorama
+uses its existing layers with transparent padding trimmed and composites
+only the area visible through the magnifier. The gate, Repair, road signs,
+window badges and pay control leave at least 4 CSS px around their text
+with the shared Inter width margin.
 
 Clean loads the bundled Latin variable Inter face from its own origin
 only with `?ui=new`. It waits alongside Caslon at boot for up to one second.
@@ -1793,7 +1835,10 @@ from the shared width budget before it is split among six tiles. Names use
 within 64 × 46 units, centred 26 units from the tile top. A lock sits
 on a badge beside the portrait. Gold prices show available towers and
 warm pink prices show unaffordable towers. Tower spots have a light
-2.1-unit edge over a shaded outline and translucent centre. The portrait
+2.1-unit edge over a shaded outline and translucent centre. Placed towers
+use a 36 × 17 soft shadow at 26% opacity, with a thin ring for upgraded
+and movable towers. The selection outline and upgrade markers remain.
+The portrait
 path-B badge uses 3.6-unit-radius dots so the pair stays distinct. The phone
 boss name uses 21 units or the floor. Its plate uses
 265 to 310 units according to the space beside the cave. The level-three
@@ -1803,6 +1848,8 @@ height above the title and 6 extra header units in landscape. A portrait
 drawer with two upgrade choices uses 438 units at the board edge to
 clear the selected tower. Other portrait drawers use 456 units. Sell
 receives 46% of the inner width and Target can wrap onto two lines.
+Mint buttons draw right-hand values in the same dark ink as their labels.
+Enabled dark buttons use gold for right-hand values.
 
 Clean measures the type in the canvas text objects it draws. With the device
 font, the role starts at its design size and uses one shared size that fits
@@ -1846,12 +1893,28 @@ physical device pixels.
 Text textures match the interface canvas density and draw from snapped
 anchors. Unchanged interface frames reuse the painted layer.
 
+Reward and boss veils cover the full-width field between the header and
+dock, including the ground alongside the board. Pause dims the whole view
+and draws the mute icon above the shade. The result uses the full view.
+Old Keep road banners preview the next groups and have no tap action.
+Royal Survey signs use at least 17 canvas units and round up from 11.25
+CSS px when the fit requires more. Their painted boards grow to fit the
+lettering and stay beside the Gate plate when the portrait view settles into
+battle. The Old Keep tower drawer clears the Gate and last stand readouts,
+Repair, the window controls and Quartering by four canvas units. It uses a
+narrower portrait drawer alongside Quartering. When the full 17-unit slide
+cannot clear the controls, the drawer opens in place. A tall drawer can use
+the lower dock area when the field has no clear space for it.
+
 Paper cards use the bundled Libre Caslon. On phones the paper fits the
 page width with a 23-unit inset on either side. The sheet and action bar
 follow the measured content. The scouting illustration uses the actual
 map, entrance, town and growth art. Short two-tax cards can turn over
-to Map notes. The result uses a paper backdrop with measured
-content and a level folio.
+to Map notes, whose portrait control is 192 units wide. The third-star
+chip has 13 units of padding in portrait and 10 in landscape. Dense Keep
+cards use 6-unit rule gaps in landscape. The result uses a paper backdrop
+with measured content and a level folio. Its landscape buttons grow from
+52 units when the fitted view needs more height to reach 44 CSS px.
 The panel glides over 210 ms, paper settles over 240 ms, gold and lives
 change over 145 ms and prices over 130 ms. Live damage numbers rise for
 up to 470 ms. Battle motion uses the pausable clock. Frozen views draw

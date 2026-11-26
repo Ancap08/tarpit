@@ -1,10 +1,10 @@
-import { uiObject } from '../ui/devicePixels';
+import { uiBounds, uiObject } from '../ui/devicePixels';
 import { panel, THEME } from '../ui/theme';
 import type Phaser from 'phaser';
 import type { Rect } from '../input';
 import { ACT_ONE_LAST_WAVE, SPECIAL_DEFS, specialAllowed, type GameState, type GameEvent, type MapDef } from '../../sim';
 import { sound } from '../audio/engine';
-import { fontPx, type Layout } from '../layout';
+import { CLEAN_SIEGE_PHONE_HEADER, fontPx, type Layout } from '../layout';
 import { ACT_TWO_TEXT, BARRICADE_UNLOCKED, BARRICADE_UNLOCK_HINT, BOON_NAMES, BOSS_BANNER_SUB, GRUMBLEMAW_SUB, GUARDS_UNLOCKED, GUARDS_UNLOCK_HINT, ENEMY_NAMES, PACK_CALL_TEXT, REWARD_PICKED_TEXT, waveStartBanner, waveClearBanner, bonusGoldText } from '../names';
 import { COLORS, FONT, TEXT } from '../palette';
 import { battleFont, battleWeight, rounded, skinFor, textMetrics } from '../ui/newTheme';
@@ -146,7 +146,8 @@ export class Moments {
         this.bannerSub.setVisible(false);
       } else {
         const b = cur.banner;
-        const y = this.layout.map.y + (b.big ? 200 : 150);
+        const top = this.clean && this.map.id === 'keep' && this.layout.turned ? CLEAN_SIEGE_PHONE_HEADER : this.layout.map.y;
+        const y = top + (b.big ? 200 : 150);
         const size = b.big ? 44 : 30;
         this.bannerText.setText(b.text);
         if (!this.clean) this.bannerText.setFontSize(size);
@@ -177,12 +178,13 @@ export class Moments {
           this.bannerSub.setY(Math.max(y + (b.big ? 36 : 28), headingBottom + 2 + this.bannerSub.displayHeight / 2));
         }
         const w = Math.max(this.bannerText.visible ? this.bannerText.displayWidth : 0, this.bannerSub.visible ? this.bannerSub.displayWidth : 0) + 2 * TEXT_PAD_X;
-        const top = Math.min(y - 30, y - (this.bannerText.visible ? this.bannerText.displayHeight / 2 : 0) - 4);
+        const panelTop = Math.min(y - 30, y - (this.bannerText.visible ? this.bannerText.displayHeight / 2 : 0) - 4);
         const contentBottom = this.bannerSub.visible ? this.bannerSub.y + this.bannerSub.displayHeight / 2 : headingBottom;
         const bottom = Math.max(y - 30 + (b.sub === '' ? 52 : b.big ? 100 : 84), contentBottom + 4);
-        const rect = { x: this.bannerX - w / 2, y: top, width: w, height: bottom - top };
+        const rect = { x: this.bannerX - w / 2, y: panelTop, width: w, height: bottom - panelTop };
         if (this.clean) {
           this.plate = rect;
+          uiBounds(this.bannerBg, rect);
           rounded(this.bannerBg, this.plate);
         }
         else panel(this.bannerBg, rect, b.big ? THEME.red : THEME.blue);

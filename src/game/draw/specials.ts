@@ -85,6 +85,7 @@ export class SpecialEffects {
     private readonly frozen: boolean,
     private readonly layout: Layout = LANDSCAPE,
     private readonly painted = false,
+    private readonly placeLabel?: (label: Phaser.GameObjects.Text) => void,
   ) {}
 
   /** A special landed: its `special` event. */
@@ -110,6 +111,7 @@ export class SpecialEffects {
       })
       .setOrigin(0.5, 1)
       .setDepth(5);
+    this.placeLabel?.(text);
     const half = text.width / 2 + 6;
     const y0 = Math.max(map.y + text.height + 24, p.y - 6);
     text.setPosition(Math.max(map.x + half, Math.min(map.x + map.width - half, p.x)), y0);

@@ -178,12 +178,22 @@ export function fontPx(layout: Layout, px: number): string {
 }
 
 export const CLEAN_BUILD_H = 110;
-export const CLEAN_ACTION_H = 92;
+export const CLEAN_ACTION_H = 91;
 export const CLEAN_DOCK_GAP = 4;
+export const CLEAN_HEADER_INSET = 4;
+export const CLEAN_SIEGE_PHONE_HEADER = 202;
+
+/** The full-width terrain between the header and the dock, including the side scenery. */
+export function cleanBattlefield(layout: Layout, siege: boolean) {
+  const y = (siege && layout.turned ? CLEAN_SIEGE_PHONE_HEADER : layout.map.y) - CLEAN_HEADER_INSET;
+  return { x: 0, y, width: layout.width, height: layout.map.y + layout.map.height - y };
+}
 
 /** Keep the board's projection and reserve a separate line when taxes are active. */
-export function cleanPortrait(parent: { width: number; height: number }, taxed: boolean): Layout {
-  const top = taxed ? 170 : 140;
+export function cleanPortrait(parent: { width: number; height: number }, taxed: boolean, siege = false): Layout {
+  // The upper portion of the Keep view is scenery. The status can use
+  // that space while the gate, approaches and build sites stay below it.
+  const top = siege ? 130 : taxed ? 170 : 140;
   const height = top + MAP_WIDTH + CLEAN_BUILD_H + CLEAN_ACTION_H + 3 * CLEAN_DOCK_GAP;
   const width = Math.max(560, Math.ceil(height * parent.width / Math.max(1, parent.height)));
   return new Layout('portrait', { width, height }, { ...PORTRAIT.map, x: (width - MAP_HEIGHT) / 2, y: top });
@@ -197,4 +207,8 @@ export function printedPortraitWidth(parent: { width: number; height: number }):
 /** A separate landscape header keeps controls clear of the painted board and every build cell. */
 export const CLEAN_LANDSCAPE = new Layout(
   'landscape', { width: 960, height: 676 }, { ...LANDSCAPE.map, y: 96 },
+);
+
+export const CLEAN_SIEGE_LANDSCAPE = new Layout(
+  'landscape', { width: 960, height: 696 }, { ...LANDSCAPE.map, y: 116 },
 );

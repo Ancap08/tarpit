@@ -1,0 +1,471 @@
+{
+  "revisions": {
+    "main": "b19d281",
+    "before": "83738c8",
+    "after": "6d39820"
+  },
+  "usage": "Each memory value is decoded RGBA width × height × 4, in decimal MB. No GPU or driver copies, nor heap overhead. Active level samples are setup snapshots at 390 × 844 DPR 3, with the Painted look.",
+  "retention": "Four forced GC calls before counting connected and detached HTML canvases through WeakRef. Classic title-to-level-1 returns, in-place pause restarts of level 1, four level-23 returns, and level-1 returns after Classic/Painted/Classic/Painted selections on the live title. \"ink\" counts detached interface canvases.",
+  "retainer": "Phaser.GameObjects.Graphics.TargetCamera.renderList → destroyed Graphics → wrapped clear closure → DeviceUi → overlay. The last GameScene also held destroyed bannerMain → wrapped updateText → DeviceUi → overlay.",
+  "retentionAndActiveMemory": {
+    "origin/main": {
+      "roundtripOn": [
+        {
+          "mb": 12.351952,
+          "ink": 1
+        },
+        {
+          "mb": 24.187672,
+          "ink": 2
+        },
+        {
+          "mb": 36.023392,
+          "ink": 3
+        },
+        {
+          "mb": 47.859112,
+          "ink": 4
+        }
+      ],
+      "roundtripOff": [
+        {
+          "mb": 0.516072,
+          "ink": 0
+        },
+        {
+          "mb": 0.516072,
+          "ink": 0
+        },
+        {
+          "mb": 0.516072,
+          "ink": 0
+        },
+        {
+          "mb": 0.516072,
+          "ink": 0
+        }
+      ]
+    },
+    "before": {
+      "roundtripOn": [
+        {
+          "mb": 15.21706,
+          "ink": 1
+        },
+        {
+          "mb": 27.06214,
+          "ink": 2
+        },
+        {
+          "mb": 38.90722,
+          "ink": 3
+        },
+        {
+          "mb": 50.7523,
+          "ink": 4
+        }
+      ],
+      "roundtripOff": [
+        {
+          "mb": 0.516072,
+          "ink": 0
+        },
+        {
+          "mb": 0.516072,
+          "ink": 0
+        },
+        {
+          "mb": 0.516072,
+          "ink": 0
+        },
+        {
+          "mb": 0.516072,
+          "ink": 0
+        }
+      ],
+      "restart": [
+        {
+          "mb": 37.328656,
+          "ink": 2
+        },
+        {
+          "mb": 49.173736,
+          "ink": 3
+        },
+        {
+          "mb": 61.018816,
+          "ink": 4
+        },
+        {
+          "mb": 72.863896,
+          "ink": 5
+        }
+      ],
+      "keep": [
+        {
+          "mb": 14.91152,
+          "ink": 1
+        },
+        {
+          "mb": 14.91152,
+          "ink": 1
+        },
+        {
+          "mb": 14.91152,
+          "ink": 1
+        },
+        {
+          "mb": 14.91152,
+          "ink": 1
+        }
+      ],
+      "looks": [
+        {
+          "mb": 15.21706,
+          "ink": 1
+        },
+        {
+          "mb": 27.06214,
+          "ink": 2
+        },
+        {
+          "mb": 38.90722,
+          "ink": 3
+        },
+        {
+          "mb": 50.7523,
+          "ink": 4
+        }
+      ],
+      "memory20Off": {
+        "battle": {
+          "width": 480,
+          "height": 1232,
+          "mb": 2.36544
+        },
+        "overlay": null,
+        "artMb": 35.922996,
+        "totalMb": 38.288436
+      },
+      "memory20On": {
+        "battle": {
+          "width": 1170,
+          "height": 2530,
+          "mb": 11.8404
+        },
+        "overlay": {
+          "width": 1170,
+          "height": 2530,
+          "mb": 11.8404
+        },
+        "artMb": 46.68802,
+        "totalMb": 70.36882
+      },
+      "memory25Off": {
+        "battle": {
+          "width": 480,
+          "height": 1194,
+          "mb": 2.29248
+        },
+        "overlay": null,
+        "artMb": 34.27324,
+        "totalMb": 36.56572
+      },
+      "memory25On": {
+        "battle": {
+          "width": 1170,
+          "height": 2528,
+          "mb": 11.83104
+        },
+        "overlay": {
+          "width": 1170,
+          "height": 2528,
+          "mb": 11.83104
+        },
+        "artMb": 67.672316,
+        "totalMb": 91.334396
+      }
+    },
+    "after": {
+      "roundtripOn": [
+        {
+          "mb": 3.37198,
+          "ink": 0
+        },
+        {
+          "mb": 3.37198,
+          "ink": 0
+        },
+        {
+          "mb": 3.37198,
+          "ink": 0
+        },
+        {
+          "mb": 3.37198,
+          "ink": 0
+        }
+      ],
+      "roundtripOff": [
+        {
+          "mb": 0.516072,
+          "ink": 0
+        },
+        {
+          "mb": 0.516072,
+          "ink": 0
+        },
+        {
+          "mb": 0.516072,
+          "ink": 0
+        },
+        {
+          "mb": 0.516072,
+          "ink": 0
+        }
+      ],
+      "restart": [
+        {
+          "mb": 15.173272,
+          "ink": 0
+        },
+        {
+          "mb": 15.173272,
+          "ink": 0
+        },
+        {
+          "mb": 15.173272,
+          "ink": 0
+        },
+        {
+          "mb": 15.173272,
+          "ink": 0
+        }
+      ],
+      "keep": [
+        {
+          "mb": 3.08048,
+          "ink": 0
+        },
+        {
+          "mb": 3.08048,
+          "ink": 0
+        },
+        {
+          "mb": 3.08048,
+          "ink": 0
+        },
+        {
+          "mb": 3.08048,
+          "ink": 0
+        }
+      ],
+      "looks": [
+        {
+          "mb": 3.37198,
+          "ink": 0
+        },
+        {
+          "mb": 3.37198,
+          "ink": 0
+        },
+        {
+          "mb": 3.37198,
+          "ink": 0
+        },
+        {
+          "mb": 3.37198,
+          "ink": 0
+        }
+      ],
+      "memory20Off": {
+        "battle": {
+          "width": 480,
+          "height": 1232,
+          "mb": 2.36544
+        },
+        "overlay": null,
+        "artMb": 35.922996,
+        "totalMb": 38.288436
+      },
+      "memory20On": {
+        "battle": {
+          "width": 1170,
+          "height": 2530,
+          "mb": 11.8404
+        },
+        "overlay": {
+          "width": 1170,
+          "height": 2530,
+          "mb": 11.8404
+        },
+        "artMb": 46.68802,
+        "totalMb": 70.36882
+      },
+      "memory25Off": {
+        "battle": {
+          "width": 480,
+          "height": 1194,
+          "mb": 2.29248
+        },
+        "overlay": null,
+        "artMb": 34.27324,
+        "totalMb": 36.56572
+      },
+      "memory25On": {
+        "battle": {
+          "width": 1170,
+          "height": 2528,
+          "mb": 11.83104
+        },
+        "overlay": {
+          "width": 1170,
+          "height": 2528,
+          "mb": 11.83104
+        },
+        "artMb": 67.672316,
+        "totalMb": 91.334396
+      }
+    }
+  },
+  "liveRepaints": {
+    "pre": {
+      "counts": {
+        "clearRect": 60,
+        "drawImage": 2979,
+        "fillRect": 1260,
+        "stroke": 360
+      },
+      "areas": [
+        "[0,0,1170,1967]"
+      ],
+      "cleared": {},
+      "text": {
+        " −25     at initialize.setText (http://localhost:4573/assets/sim-DrHt2x7V.js:29:51)     at zh.hit (http://localhost:4573/assets/index-DHm_cKxf.js:3:58399)": 7,
+        "      at initialize.update (http://localhost:4573/assets/sim-DrHt2x7V.js:31:8143)     at initialize.setStroke (http://localhost:4573/assets/sim-DrHt2x7V.js:31:9600)": 4
+      },
+      "tracedFrames": 60
+    },
+    "after": {
+      "counts": {
+        "clearRect": 60,
+        "drawImage": 459,
+        "fillRect": 0,
+        "stroke": 180
+      },
+      "areas": [
+        "[818,381,59,86]",
+        "[818,380,59,86]",
+        "[818,378,59,87]",
+        "[818,377,59,86]",
+        "[818,376,59,86]",
+        "[818,376,59,85]",
+        "[818,404,59,98]",
+        "[818,403,59,99]",
+        "[818,402,59,99]",
+        "[818,400,59,100]",
+        "[818,399,59,99]",
+        "[818,398,59,99]",
+        "[818,396,59,100]",
+        "[818,395,59,99]",
+        "[818,394,59,116]",
+        "[818,392,59,118]",
+        "[818,391,59,117]",
+        "[818,390,59,117]",
+        "[818,388,59,118]",
+        "[818,388,59,116]",
+        "[818,430,59,73]",
+        "[818,429,59,73]",
+        "[818,427,59,73]",
+        "[818,426,59,73]",
+        "[818,425,59,73]",
+        "[818,423,59,73]",
+        "[818,422,59,73]",
+        "[818,421,59,73]",
+        "[818,420,59,72]",
+        "[818,418,59,73]",
+        "[818,417,59,73]",
+        "[818,416,59,72]",
+        "[818,414,79,121]",
+        "[818,413,79,122]",
+        "[818,412,79,121]",
+        "[818,412,79,120]",
+        "[818,417,79,123]",
+        "[818,416,79,124]",
+        "[817,415,80,127]",
+        "[817,413,80,129]",
+        "[817,412,80,129]",
+        "[817,411,80,128]",
+        "[817,409,80,129]",
+        "[817,408,80,129]",
+        "[817,407,80,128]",
+        "[817,405,80,129]",
+        "[817,404,80,129]",
+        "[817,403,80,128]",
+        "[817,401,80,129]",
+        "[817,400,80,129]",
+        "[817,399,80,128]",
+        "[817,397,80,129]",
+        "[817,396,80,129]",
+        "[817,395,80,128]",
+        "[817,393,80,129]",
+        "[817,392,80,129]",
+        "[817,391,80,128]",
+        "[817,389,80,129]",
+        "[817,388,80,129]",
+        "[817,387,80,128]"
+      ],
+      "cleared": {},
+      "text": {
+        " −25     at initialize.setText (http://localhost:4573/assets/sim-DrHt2x7V.js:29:51)     at Hh.hit (http://localhost:4573/assets/index-Be9luwJ6.js:3:58617)": 7,
+        "      at initialize.update (http://localhost:4573/assets/sim-DrHt2x7V.js:31:8143)     at initialize.setStroke (http://localhost:4573/assets/sim-DrHt2x7V.js:31:9600)": 4
+      },
+      "tracedFrames": 60
+    }
+  },
+  "deterministicRepaintTest": {
+    "before": {
+      "idle": {
+        "any": 0,
+        "hud": 0,
+        "full": 0,
+        "states": 1
+      },
+      "held": {
+        "any": 21,
+        "hud": 21,
+        "full": 21,
+        "states": 1
+      },
+      "changing": {
+        "any": 3,
+        "hud": 3,
+        "full": 3,
+        "states": 4
+      }
+    },
+    "after": {
+      "idle": {
+        "any": 0,
+        "hud": 0,
+        "full": 0,
+        "states": 1
+      },
+      "held": {
+        "any": 21,
+        "hud": 0,
+        "full": 0,
+        "states": 1
+      },
+      "changing": {
+        "any": 3,
+        "hud": 3,
+        "full": 0,
+        "states": 4
+      }
+    }
+  },
+  "preFixAssertions": {
+    "leak": "expect(received).toBeLessThanOrEqual(expected)\n\nExpected: <= 1\nReceived:    4",
+    "repaint": "Error: unchanged HUD frames repainted while damage numbers animate\n\nexpect(received).toBe(expected) // Object.is equality\n\nExpected: 0\nReceived: 21"
+  }
+}
