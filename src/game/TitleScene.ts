@@ -72,7 +72,7 @@ import { menuKeys } from './ui/menuKeys';
 import { PORTRAIT_TITLE, titleRects, type TitleGeometry } from './ui/geometry';
 import { MuteButton } from './ui/muteButton';
 import { LOOKS, LookStore, paintedDensity, type Look } from './skin/look';
-import { loadPainted, releasePaintedTextures, type PaintedAssets } from './skin/loading';
+import { loadClassicTowerIcons, loadPainted, releasePaintedTextures, type ClassicTowerIcons, type PaintedAssets } from './skin/loading';
 import { duringKeepLoad } from './keep/status';
 import { actThreeEnabled, keepSelection } from './keep/switch';
 import { ownerMode } from './ownerMode';
@@ -168,6 +168,7 @@ export interface GameStartData {
   /** The map (milestone 27); Meadow when left out. */
   map?: MapId;
   painted?: PaintedAssets;
+  classicTowerIcons?: ClassicTowerIcons;
   paintedFallback?: boolean;
   keep?: typeof import('./keep/oldKeep');
   keepAssets?: import('./keep/oldKeep').KeepAssets;
@@ -721,7 +722,7 @@ export class TitleScene extends Phaser.Scene {
   private async startKeep(level?: LevelDef, campaignKeep = false): Promise<void> {
     const density = paintedDensity(this.game.canvas.getBoundingClientRect().width / this.scale.gameSize.width, window.devicePixelRatio);
     const siege = this.actThree || newInterface() ? level : undefined;
-    const sharp = newInterface() && this.lookStore.get() === 'painted';
+    const sharp = newInterface();
     if (siege || sharp) releasePaintedTextures(this.textures);
     const data = await duringKeepLoad(async (signal, update) => {
       let plates = 0, sprites = 0, script = 0;
@@ -735,7 +736,7 @@ export class TitleScene extends Phaser.Scene {
           const keepAssets = await keep.loadKeep(this.game, currentLayout().turned, signal, fraction => {
             plates = fraction;
             progress();
-          }, level, !!siege, sharp);
+          }, level, this.actThree || !!siege, sharp);
           if (signal.aborted) {
             keepAssets.release();
             signal.throwIfAborted();
@@ -766,7 +767,8 @@ export class TitleScene extends Phaser.Scene {
     if (this.starting || this.restartPending) return;
     this.starting = true;
     if (this.lookStore.get() !== 'painted') {
-      this.scene.start('game', data);
+      if (newInterface()) void this.startClassic(data);
+      else this.scene.start('game', data);
       return;
     }
     const sharp = newInterface();
@@ -807,6 +809,21 @@ export class TitleScene extends Phaser.Scene {
       this.progress = null;
       this.scene.start('game', { ...data, painted, showpiece, paintedFallback: !painted });
     });
+  }
+
+  private async startClassic(data: GameStartData): Promise<void> {
+    const request = new AbortController();
+    this.paintedLoad = request;
+    this.progress = 0;
+    this.refreshLoading();
+    const classicTowerIcons = await loadClassicTowerIcons(this.textures, request.signal);
+    if (this.paintedLoad !== request) {
+      classicTowerIcons?.release();
+      return;
+    }
+    this.paintedLoad = undefined;
+    this.progress = null;
+    this.scene.start('game', { ...data, classicTowerIcons });
   }
 
   uiState(): TitleUiState {

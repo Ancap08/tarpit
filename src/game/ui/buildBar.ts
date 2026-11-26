@@ -8,7 +8,7 @@ import { TOWER_DEFS, towerBuildCost, allowedTowers, type GameState, type TowerTy
 import type { Rect } from '../input';
 import { drawTowerShape } from '../draw/towers';
 import { CLEAN_BUILD_H, LANDSCAPE, TAXED_PORTRAIT, type Layout } from '../layout';
-import type { PaintedSkin } from '../skin/painted';
+import type { TowerIcon } from '../skin/painted';
 import { portraitBarRects } from './geometry';
 import { TOWER_NAMES, towerCountText } from '../names';
 import { HUD_FONT, TEXT } from '../palette';
@@ -61,7 +61,7 @@ export class BuildBar {
   private readonly priceFit = new DeviceTextFit();
   private readonly tallyFit = new DeviceTextFit();
 
-  constructor(scene: Phaser.Scene, top: number, onClick: (type: TowerType) => void, private readonly layout: Layout = LANDSCAPE, painted?: PaintedSkin, private readonly permitBox?: Rect) {
+  constructor(scene: Phaser.Scene, top: number, onClick: (type: TowerType) => void, private readonly layout: Layout = LANDSCAPE, towerIcon?: TowerIcon, private readonly permitBox?: Rect) {
     const portrait = layout.kind === 'portrait';
     this.clean = skinFor(scene) === 'battle';
     const gap = 4;
@@ -87,10 +87,10 @@ export class BuildBar {
         : portrait
         ? new Button(scene, rects[i], String(TOWER_DEFS[type].cost), () => onClick(type), { fontSize: `${priceSize}px`, labelY: COST_Y })
         : new Button(scene, rects[i], TOWER_NAMES[type], () => onClick(type), {
-          fontSize: painted ? '14px' : '16px',
+          fontSize: towerIcon ? '14px' : '16px',
           right: String(TOWER_DEFS[type].cost),
           labelInset: 6,
-          labelY: painted ? PAINTED_WIDE_LABEL_Y : undefined,
+          labelY: towerIcon ? PAINTED_WIDE_LABEL_Y : undefined,
         }),
     );
     if (portrait && !this.clean) {
@@ -109,12 +109,12 @@ export class BuildBar {
         scene.add.text(rects[i].x + rects[i].width / 2, top + (portrait ? CLEAN_NAME_Y : 33), TOWER_NAMES[type], {
           fontFamily: battleFont(), fontSize: nameSize, fontStyle: battleWeight(true, 'normal'), color: CLEAN.subdued, metrics: textMetrics(nameSize),
         }).setOrigin(.5).setName(`bar-name:${type}`));
-      this.portraits = painted ? BAR_TYPES.map(type => painted.towerIcon(type, portrait ? 64 : 40, portrait ? 46 : 24)) : undefined;
+      this.portraits = towerIcon ? BAR_TYPES.map(type => towerIcon(type, portrait ? 64 : 40, portrait ? 46 : 24)) : undefined;
       if (portrait && this.portraits) scene.children.bringToTop(this.icons.image);
-    } else if (painted) {
+    } else if (towerIcon) {
       this.paintedIcons = BAR_TYPES.map((type, i) => {
         const r = rects[i];
-        return painted.towerIcon(type, portrait ? 46 : 32, portrait ? 38 : 22)
+        return towerIcon(type, portrait ? 46 : 32, portrait ? 38 : 22)
           .setPosition(r.x + r.width / 2, r.y + (portrait ? ICON_Y : PAINTED_WIDE_ICON_Y));
       });
     } else if (portrait) {

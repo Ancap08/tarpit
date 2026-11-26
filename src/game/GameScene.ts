@@ -231,8 +231,9 @@ import { COLORS, FONT, TEXT } from './palette';
 import { currentLayout } from './layoutSwitch';
 import { isPerfMode, isTestMode } from './testMode';
 import { fitKeepPieces, setFieldArtDensity } from './skin/fieldBuffer';
-import { PaintedSkin, type PaintedState } from './skin/painted';
-import { releasePaintedTextures, type PaintedAssets } from './skin/loading';
+import { makeTowerIcon, PaintedSkin, type PaintedState, type TowerIcon } from './skin/painted';
+import { towerArt } from './skin/frames';
+import { releasePaintedTextures, type ClassicTowerIcons, type PaintedAssets } from './skin/loading';
 import type { GameStartData as TitleStartData } from './TitleScene';
 import { GameClock } from './loop';
 import { PausePanel } from './ui/pausePanel';
@@ -543,6 +544,7 @@ export class GameScene extends Phaser.Scene {
   /** Milestone 34: the map's ground, growth and moving things. */
   private living: LivingMap | PaintedSkin | null = null;
   private paintedAssets?: PaintedAssets;
+  private classicTowerIcons?: ClassicTowerIcons;
   private keepModule?: GameStartData['keep'];
   private keep?: import('./keep/oldKeep').KeepView;
   private keepAssets?: GameStartData['keepAssets'];
@@ -569,6 +571,7 @@ export class GameScene extends Phaser.Scene {
     const levelMap = this.campaignLevel?.map;
     this.currentMap = (levelMap === 'keep' ? undefined : levelMap) ?? data?.map ?? DEFAULT_MAP;
     this.paintedAssets = data?.painted;
+    this.classicTowerIcons = data?.classicTowerIcons;
     this.showpieceType = data?.showpiece;
     this.keepModule = data?.keep;
     this.campaignKeep = data?.campaignKeep ?? false;
@@ -592,9 +595,9 @@ export class GameScene extends Phaser.Scene {
     if (this.restartPending) return;
     this.restartPending = true;
     const data: GameStartData = {
-      difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, showpiece: this.showpieceType, keep: this.keepModule, campaignKeep: this.campaignKeep,
+      difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, classicTowerIcons: this.classicTowerIcons, showpiece: this.showpieceType, keep: this.keepModule, campaignKeep: this.campaignKeep,
       paintedFallback: this.paintedFallback,
-      keepAssets: this.keepAssets?.id === this.keepModule?.currentKeepPlateSet(this.game, currentLayout().turned, this.campaignLevel, this.siegeScreens).id ? this.keepAssets : undefined,
+      keepAssets: this.keepAssets?.id === this.keepModule?.currentKeepPlateSet(this.game, currentLayout().turned, this.campaignLevel, this.actThree || this.siegeScreens).id ? this.keepAssets : undefined,
     };
     this.keepAssets = data.keepAssets;
     this.scene.restart(data);
@@ -602,12 +605,12 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     if (this.keepModule) {
-      if (this.keepAssets?.id !== this.keepModule.currentKeepPlateSet(this.game, currentLayout().turned, this.campaignLevel, this.siegeScreens).id) {
+      if (this.keepAssets?.id !== this.keepModule.currentKeepPlateSet(this.game, currentLayout().turned, this.campaignLevel, this.actThree || this.siegeScreens).id) {
         this.keepAssets?.release();
         this.keepAssets = undefined;
         this.keepLoading = true;
         const module = this.keepModule;
-        void duringKeepLoad((signal, progress) => module.loadKeep(this.game, currentLayout().turned, signal, progress, this.campaignLevel, this.siegeScreens, !!this.paintedAssets?.sharp), () => this.toMenu())
+        void duringKeepLoad((signal, progress) => module.loadKeep(this.game, currentLayout().turned, signal, progress, this.campaignLevel, this.actThree || this.siegeScreens, !!this.paintedAssets?.sharp), () => this.toMenu())
           .then(assets => {
             if (!assets) return;
             this.keepAssets = assets;
@@ -703,7 +706,7 @@ export class GameScene extends Phaser.Scene {
       sound.beginSessionMute();
       const assets = this.keepAssets!;
       const refitKeep = () => {
-        if (this.keepAssets?.id !== this.keepModule?.currentKeepPlateSet(this.game, currentLayout().turned, this.campaignLevel, this.siegeScreens).id) this.relayout();
+        if (this.keepAssets?.id !== this.keepModule?.currentKeepPlateSet(this.game, currentLayout().turned, this.campaignLevel, this.actThree || this.siegeScreens).id) this.relayout();
       };
       this.scale.on(Phaser.Scale.Events.RESIZE, refitKeep);
       this.town.layer.setVisible(false);
@@ -788,6 +791,10 @@ export class GameScene extends Phaser.Scene {
     // Portrait (32b follow-up) shows the aim instruction in the status strip instead (Hud).
     this.bannerMain = bannerText(bannerTop + BANNER_MAIN_Y, `${AIM_BANNER.mainPx}px`, TEXT.aimBanner, true);
     this.bannerHint = bannerText(bannerTop + 34, `${AIM_BANNER.hintPx}px`, TEXT.aimHint, false);
+    const classicIcons = this.classicTowerIcons;
+    const towerIcon: TowerIcon | undefined = classicIcons
+      ? (type, width, height) => makeTowerIcon(this, classicIcons.sheets[towerArt(type)]!, width, height)
+      : this.painted?.towerIcon;
     this.hud = new Hud(this, {
       onRepair: this.state.gate ? () => {
         if (this.paused || this.state.pendingBoon) return;
@@ -803,7 +810,7 @@ export class GameScene extends Phaser.Scene {
       onPick: (type) => this.togglePick(type),
       onSpecial: () => this.onSpecialButton(),
       onSpecialPick: (type) => this.selectSpecial(type),
-    }, this.layout, this.painted, this.pauseOnResult, this.siegeScreens, this.state.map.path[0]);
+    }, this.layout, towerIcon, this.pauseOnResult, this.siegeScreens, this.state.map.path[0]);
     this.roadBanners = this.siegeScreens ? new RoadBanners(this, this.layout, this.state) : undefined;
     const actorsStart = this.children.length;
     this.siegeActors = this.siegeScreens && (this.state.windows || this.state.wallSiteTax)
@@ -847,7 +854,7 @@ export class GameScene extends Phaser.Scene {
       onTarget: (next) => {
         if (this.panel.cell !== null) this.setTargeting(this.panel.cell, next);
       },
-    }, this.painted);
+    }, towerIcon);
     this.buildConfirm = clean ? new Button(this, { x: 0, y: 0, width: 170, height: 94 }, PANEL_TEXT.build,
       () => {
         const type = this.pick, cell = this.armed;
@@ -1609,7 +1616,7 @@ export class GameScene extends Phaser.Scene {
     this.leaving = true;
     this.restartPending = false;
     this.resume = null;
-    const data: GameStartData = { difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, showpiece: this.showpieceType, keep: this.keepModule, campaignKeep: this.campaignKeep, keepAssets: this.keepAssets, paintedFallback: this.paintedFallback };
+    const data: GameStartData = { difficulty: this.state.difficulty, level: this.state.level, map: this.currentMap, painted: this.paintedAssets, classicTowerIcons: this.classicTowerIcons, showpiece: this.showpieceType, keep: this.keepModule, campaignKeep: this.campaignKeep, keepAssets: this.keepAssets, paintedFallback: this.paintedFallback };
     this.scene.restart(data);
   }
 
@@ -1632,6 +1639,7 @@ export class GameScene extends Phaser.Scene {
     this.restartPending = false;
     this.resume = null;
     // The title loads its own sheets. An in-place restart reuses this set.
+    if (this.classicTowerIcons) this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.classicTowerIcons.release);
     if (this.siegeScreens || this.paintedAssets?.sharp) {
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => releasePaintedTextures(this.textures));
     }

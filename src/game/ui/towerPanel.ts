@@ -19,7 +19,7 @@ import { FONT, TEXT } from '../palette';
 import { CLEAN, battleFont, battleWeight, interLoaded, motionClock, rounded, skinFor, textMetrics } from './newTheme';
 import { uiObject } from './devicePixels';
 import { drawTowerShape } from '../draw/towers';
-import type { PaintedSkin } from '../skin/painted';
+import type { TowerIcon } from '../skin/painted';
 import { ink, THEME } from './theme';
 import { Button } from './button';
 import { STACK_GAP, STACK_PAD } from './geometry';
@@ -78,7 +78,7 @@ export class TowerPanel {
     private readonly scene: Phaser.Scene,
     private readonly layout: Layout,
     handlers: TowerPanelHandlers,
-    private readonly painted?: PaintedSkin,
+    private readonly towerIcon?: TowerIcon,
   ) {
     this.clean = skinFor(scene) === 'battle';
     this.clock = motionClock(scene);
@@ -90,7 +90,7 @@ export class TowerPanel {
     if (this.clean) {
       this.paper = scene.add.graphics().setName('clean-tower-panel').setVisible(false);
       this.illustration = scene.add.graphics().setVisible(false);
-      if (painted) this.portraits = new Map();
+      if (towerIcon) this.portraits = new Map();
     }
     this.upgrade = new Button(scene, rect, PANEL_TEXT.upgrade, () => handlers.onUpgrade(), { fontSize: f(16), right: '', primary: this.clean });
     this.undo = new Button(scene, rect, PANEL_TEXT.undoUpgrade, handlers.onUndoUpgrade, { fontSize: f(14), right: '' });
@@ -282,7 +282,7 @@ export class TowerPanel {
         const tile = { x: left, y: y + 24, width: portrait ? 71 : 54, height: portrait ? 62 : 48 };
         const art = this.illustration!.clear();
         rounded(art, tile, CLEAN.raised, CLEAN.raised, 13);
-        if (!this.painted) drawTowerShape(art, tower.type,
+        if (!this.towerIcon) drawTowerShape(art, tower.type,
           { x: tile.x + tile.width / 2, y: tile.y + tile.height / 2 }, -Math.PI / 2, level > 1);
       }
       this.paper.setY(offset).setVisible(true);
@@ -291,7 +291,7 @@ export class TowerPanel {
         this.portrait?.setVisible(false);
         let image = this.portraits.get(tower.type);
         if (!image) {
-          image = uiObject(this.painted!.towerIcon(tower.type, portrait ? 61 : 46, portrait ? 51 : 40));
+          image = uiObject(this.towerIcon!(tower.type, portrait ? 61 : 46, portrait ? 51 : 40));
           this.scene.children.moveAbove(image, this.illustration!);
           this.portraits.set(tower.type, image);
         }

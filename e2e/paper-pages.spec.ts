@@ -259,7 +259,7 @@ test('boot, Painted progress and fallback, and Keep failure keep their recovery 
 
     let fail!: () => void;
     const painted = new Promise<void>(resolve => { fail = resolve; });
-    const atlas = /\/assets\/painted\/shared-[12]x[^/]*\.webp$/;
+    const atlas = /\/assets\/painted\/musketeer-2x[^/]*\.webp$/;
     await page.route(atlas, async route => {
       await painted;
       await route.abort();

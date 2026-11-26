@@ -113,15 +113,30 @@ async function loadSheets(
   return result;
 }
 
+async function loadCatalogue(signal: AbortSignal): Promise<Record<string, Entry>> {
+  const response = await fetch(layoutUrl, { signal });
+  if (!response.ok) throw new Error(`Sharp painted layout returned ${response.status}`);
+  return response.json();
+}
+
+function iconEntries(towers: readonly TowerType[]): Map<PaintedName, string> {
+  return new Map(towers.map(type => [towerArt(type), `${towerArt(type)}-icon`]));
+}
+
+export async function loadSharpIcons(textures: Phaser.Textures.TextureManager, loadImage: LoadImage,
+  signal: AbortSignal, registered: string[]): Promise<Sheets> {
+  const catalogue = await loadCatalogue(signal);
+  return loadSheets(textures, catalogue, iconEntries(allowedTowers({ cheated: true })),
+    new Set(), loadImage, signal, registered, () => {});
+}
+
 export async function loadSharpArt(
   textures: Phaser.Textures.TextureManager, level: LevelDef | undefined, keep: boolean, siege: boolean,
   fixed: Pick<GameState, 'fixedWaves' | 'fixedSpecialUnlocks'> | undefined,
   loadImage: LoadImage, signal: AbortSignal, registered: string[], onProgress: (fraction: number) => void,
   loadExtra: (url: string, signal: AbortSignal) => Promise<HTMLImageElement>,
 ): Promise<SharpArt> {
-  const response = await fetch(layoutUrl, { signal });
-  if (!response.ok) throw new Error(`Sharp painted layout returned ${response.status}`);
-  const catalogue: Record<string, Entry> = await response.json();
+  const catalogue = await loadCatalogue(signal);
   const density = keep ? 3 : 2;
   const moonlit = keep && siege && level?.keepSky === 'night storm';
   const open = allowedTowers({ level, cheated: false });
@@ -151,7 +166,7 @@ export async function loadSharpArt(
   if (!siege) for (const scenery of SCENERY) {
     if (!keep || ['town', 'sack', 'royal-hoist', 'tossed-hat'].includes(scenery)) entries.set(scenery, scenery);
   }
-  const icons = new Map<PaintedName, string>((keep ? all : locked).map(type => [towerArt(type), `${towerArt(type)}-icon`]));
+  const icons = iconEntries(keep ? all : locked);
   const total = new Set([...entries.values(), ...icons.values()].map(id => catalogue[id].atlas)).size;
   let complete = 0;
   const mark = () => onProgress(++complete / total);

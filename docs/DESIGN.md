@@ -1311,7 +1311,10 @@ The title screen offers Classic and Painted. Painted is the default for a fresh 
   upgrade paths. Enemies keep their 16 walk poses and the four Guards keep
   their 32 idle and strike poses. The Guard sheet loads before play wherever
   normal or gold-cheat rules can grant Guards. Locked tower buttons use one
-  preview pose each. Opening the kit with the gold cheat fetches the added
+  preview pose each. The new Classic dock and tower panel load only those
+  single Lifted preview poses and keep the Classic battlefield. The new
+  Old Keep interface uses Lifted pieces for either Look setting. Opening
+  the kit with the gold cheat fetches the added
   poses and shots. A missing sheet during play draws a plain substitute
   and logs one warning per sheet name for the visit.
   Ordinary fields use 2 source pixels per game pixel. At the Old Keep,

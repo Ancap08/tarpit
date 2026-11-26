@@ -51,7 +51,7 @@ import {
   type TowerType,
 } from '../sim';
 import type { Rect } from './input';
-import type { PaintedSkin } from './skin/painted';
+import type { TowerIcon } from './skin/painted';
 import {
   BOON_PENDING_TEXT,
   CAMPAIGN_TEXT,
@@ -429,7 +429,7 @@ export class Hud {
   private readonly featFit = new DeviceTextFit();
   private readonly featLine?: Phaser.GameObjects.Text;
 
-  constructor(scene: Phaser.Scene, handlers: HudHandlers, private readonly layout: Layout = LANDSCAPE, painted?: PaintedSkin, private readonly pauseOnResult = false, private readonly siegeScreens = false, spawn?: { x: number; y: number }) {
+  constructor(scene: Phaser.Scene, handlers: HudHandlers, private readonly layout: Layout = LANDSCAPE, towerIcon?: TowerIcon, private readonly pauseOnResult = false, private readonly siegeScreens = false, spawn?: { x: number; y: number }) {
     const modern = skinFor(scene) === 'battle';
     const m = modern ? cleanHudMetrics(layout, hudMetrics(layout), siegeScreens) : { ...hudMetrics(layout) };
     if (this.siegeScreens && m.portrait && !modern) m.statY = 20;
@@ -563,7 +563,7 @@ export class Hud {
     }
     this.speedButton = new Button(scene, m.speed, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress, semibold: true, fontSize: modern && m.portrait ? '26px' : modern || m.portrait ? m.startFont : undefined });
     this.specialMenu = new SpecialMenu(scene, m.menu.left, m.menu.top, handlers.onSpecialPick, layout.map.y, m.menu.size, m.menu.font);
-    this.bar = new BuildBar(scene, m.barTop, handlers.onPick, layout, painted, modern && m.portrait ? permitSlot(m) : undefined);
+    this.bar = new BuildBar(scene, m.barTop, handlers.onPick, layout, towerIcon, modern && m.portrait ? permitSlot(m) : undefined);
     this.bossBar = new BossBar(scene, layout, spawn, siegeScreens);
     if (handlers.onRepair) this.gate = new GateHud(scene, layout, handlers.onRepair, siegeScreens);
     this.muteButton = new MuteButton(scene, m.mute, modern && m.portrait ? PHONE_TOP_CONTROL_CENTER : undefined);
