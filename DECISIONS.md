@@ -2257,3 +2257,15 @@ can change it; "Kyle" means Kyle decided.
   state's text and fill from the built game and requires 4.5 to 1 for
   enabled text. The check failed on the old build and passes on 80
   combinations now. 163,562 Sol tokens.
+- **"Confirm restart" failed its 4 px clearance on Linux a second time**
+  (3.861 px, pull request 69, the only failure in 2,208). The earlier fix
+  had widened the pause buttons by a fixed amount that suited what the Mac
+  draws. Linux draws this Caslon label about 6% wider than the Mac does at
+  the same setting, more than the 2.6% the wide-text factors assume, so a
+  Mac run could not see it. Paper controls now measure their own label at
+  layout time and guarantee 6 px, growing into spare room first and
+  stepping the label down (floor 12 px) only if they must; the test still
+  demands 4. A sweep of five widths at four screen sizes was added, with a
+  case calibrated to the width CI reported, which reproduced the exact
+  failure on the old build. The sweep also found "Act 1 broadside" at
+  3.533 px on a tall phone at the widest setting. 240,186 Sol tokens.
