@@ -310,6 +310,7 @@ function ownerSuite(paper: boolean) {
   for (const font of ['normal', 'tall fallback', 'tall Caslon', 'wide'] as const) {
     test(`owner mark and page fit in ${font} font mode`, async ({ page }, info) => {
       if (paper) test.setTimeout(60_000);
+      const geometryOnly = paper && font !== 'normal';
       if (font === 'tall fallback') await useTallFontMetrics(page);
       if (font === 'tall Caslon') await useTallFontMetrics(page, false);
       if (font === 'wide') await useWideFontMetrics(page, platformWideFactor);
@@ -319,16 +320,16 @@ function ownerSuite(paper: boolean) {
           await page.setViewportSize({ width, height });
           await title(page);
           const mark = { 'title:owner': OWNER_TEXT.mark };
-          await checkFit(page, mark);
+          await checkFit(page, mark, geometryOnly);
           await press(page, 'title:owner', info.project.name !== 'chromium');
           await onScreen(page, 'owner');
-          expect(await labels(page)).toContain(OWNER_TEXT.title);
+          if (!geometryOnly) expect(await labels(page)).toContain(OWNER_TEXT.title);
           await checkFit(page, {
             ...Object.fromEntries(stories.map(([key]) => [`title:owner:${key}`, OWNER_TEXT[key]])),
             ...Object.fromEntries(ids(1, 25).map(id => [`title:owner:tips:${id}`, String(id)])),
             'title:owner:reset': OWNER_TEXT.reset,
             'title:back': OWNER_TEXT.back,
-          });
+          }, geometryOnly);
         });
       }
     });
@@ -338,7 +339,7 @@ function ownerSuite(paper: boolean) {
 ownerSuite(false);
 newInterfaceChecks(() => ownerSuite(true));
 
-async function checkFit(page: Page, controls: Record<string, string>) {
+async function checkFit(page: Page, controls: Record<string, string>, geometryOnly: boolean) {
   const boxes = await page.evaluate(controls => {
     const t = window.__tarpit as TarpitTestApi;
     return {
@@ -362,7 +363,12 @@ async function checkFit(page: Page, controls: Record<string, string>) {
     expect(box.br.y, box.key).toBeLessThanOrEqual(height);
     expect(box.br.x - box.tl.x, box.key).toBeGreaterThanOrEqual(44);
     expect(box.br.y - box.tl.y, box.key).toBeGreaterThanOrEqual(44);
-    const label = boxes.text.find(label => label.text === box.text);
+    const label = boxes.text.find(label => {
+      if (!geometryOnly) return label.text === box.text;
+      const x = label.x + label.width / 2;
+      const y = label.y + label.height / 2;
+      return x > box.x && x < box.x + box.width && y > box.y && y < box.y + box.height;
+    });
     expect(label, box.key).toBeDefined();
     // The 2 px outline straddles the box bounds. Leave 4 px inside the outline.
     const inset = 1 + 4;

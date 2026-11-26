@@ -70,10 +70,17 @@ export class BoonReward {
       if (layout.kind === 'landscape') {
         const keyX = r.x + 22;
         const keyY = r.y + 22;
-        const keycap = scene.add.rectangle(keyX, keyY, 23, 23, COLORS.hudBar).setStrokeStyle(1, COLORS.menuEdge);
+        const box = { x: keyX - 11.5, y: keyY - 11.5, width: 23, height: 23 };
         const key = label(scene, 14, TEXT.hud, true).setOrigin(0.5).setPosition(keyX, keyY).setText(REWARD_KEYS[i]);
-        this.view.add([keycap, key]);
-        if (clean) this.keys.push({ text: key, box: { x: keyX - 11.5, y: keyY - 11.5, width: 23, height: 23 } });
+        if (clean) {
+          const keycap = scene.add.graphics();
+          rounded(keycap, box, CLEAN.raised, CLEAN.edge, 5);
+          this.view.add(keycap);
+          this.keys.push({ text: key, box });
+        } else {
+          this.view.add(scene.add.rectangle(keyX, keyY, box.width, box.height, COLORS.hudBar).setStrokeStyle(1, COLORS.menuEdge));
+        }
+        this.view.add(key);
       }
       let pressed = false;
       scene.input.on(CANCEL_UI_PRESS, () => { pressed = false; });
