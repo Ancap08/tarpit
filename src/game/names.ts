@@ -116,6 +116,7 @@ export function paintedLoadingText(progress: number, compact = false): string {
 }
 
 export const PAINTED_FALLBACK = 'Painted art could not load. Playing Classic.';
+export const paintedSheetMissing = (name: string): string => `Painted sheet is missing: ${name}`;
 
 export const PAUSE_TEXT = {
   button: 'Pause', title: 'Paused', resume: 'Resume', restart: 'Restart', confirm: 'Confirm restart',

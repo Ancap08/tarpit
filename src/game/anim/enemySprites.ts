@@ -42,7 +42,7 @@ import { effectiveSlow, ENEMY_STATS, enemyPosition, isBoss, isTarred, positionAl
 import { bobOffset, DEATH_MS, burnPulse, FLAME_EVERY, HIT_FLASH_MS, Particles, statusTint, TINT } from './effects';
 import { awayFrom, deathPuff, KNOCK_MS, knockPx, knockShare } from '../fx/fxMath';
 import { enemyArt, walkFrame } from '../skin/frames';
-import type { PaintedSkin } from '../skin/painted';
+import { paintedFrame, type PaintedSkin } from '../skin/painted';
 import { FeatherTrail, makePlumage } from '../draw/feathers';
 import { facingAt } from './facing';
 import type { Layout } from '../layout';
@@ -121,6 +121,7 @@ interface View {
   redraws: number;
   blockerLunge: number;
   nativeScale: number;
+  ramScaleY?: number;
   trueFoot?: Point;
   ramContact?: number;
   ramApproach?: Point;
@@ -399,7 +400,8 @@ export class EnemySprites {
 
   private ramSprite(): Phaser.GameObjects.Sprite {
     if (this.siege) {
-      return this.scene.add.sprite(0, 0, SIEGE_MACHINE_KEY, 'ram0')
+      const sharp = this.painted?.assets.sharp && this.painted.sheet('ram');
+      return this.scene.add.sprite(0, 0, sharp ? sharp.key : SIEGE_MACHINE_KEY, sharp ? 0 : 'ram0')
         .setOrigin(.5, RAM_ORIGIN_Y).setDisplaySize(RAM_SIZE.width, RAM_SIZE.height);
     }
     const key = 'siege-ram';
@@ -475,6 +477,7 @@ export class EnemySprites {
       redraws: 0,
       blockerLunge: 0,
       nativeScale: sprite.scaleX,
+      ramScaleY: enemy.type === 'ram' && this.painted?.assets.sharp ? sprite.scaleY : undefined,
     };
     this.views.set(enemy.id, view);
     this.setFacing(view, facingAt(roadPath(map, enemy.road), enemy.distance, this.step(enemy), this.layout), true);
@@ -510,11 +513,12 @@ export class EnemySprites {
           v.turn = undefined;
         } else {
           v.turn.previous.setPosition(v.sprite.x, v.sprite.y).setDepth(v.sprite.depth)
-            .setFrame(hitOffset + walkFrame(v.turn.facing, distance, false)).setScale(v.sprite.scaleX).setAlpha(1 - fade);
+            .setFrame(paintedFrame(v.turn.previous.texture, hitOffset + walkFrame(v.turn.facing, distance, false)))
+            .setScale(v.sprite.scaleX).setAlpha(1 - fade);
         }
       }
       v.facing = facing;
-      const index = hitOffset + walkFrame(facing, distance, this.frozen);
+      const index = paintedFrame(v.sprite.texture, hitOffset + walkFrame(facing, distance, this.frozen));
       if (Number(v.sprite.frame.name) !== index) v.sprite.setFrame(index);
       return;
     }
@@ -557,7 +561,8 @@ export class EnemySprites {
         scale: stance?.scale ?? 1,
         approach: v.ramApproach ?? { x: 0, y: 0 },
       });
-      v.sprite.setFrame(ram.frame).setScale(v.nativeScale * ram.scaleX, v.nativeScale * ram.scaleY);
+      v.sprite.setFrame(paintedFrame(v.sprite.texture, this.painted?.assets.sharp ? Number(ram.frame.slice(-1)) : ram.frame))
+        .setScale(v.nativeScale * ram.scaleX, (v.ramScaleY ?? v.nativeScale) * ram.scaleY);
       x += ram.dx;
       y += ram.dy;
     }

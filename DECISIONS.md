@@ -2186,3 +2186,34 @@ can change it; "Kyle" means Kyle decided.
   Frame cost fell (Painted 10.05 to 8.32 ms a frame). Sol's full browser
   run crossed a rebuild and had 23 failures that all passed on rerun; CI
   is the clean full run. 518,467 Sol tokens.
+- **The pieces' finish is C, Lifted.** Decided by Kyle ("C Lifted") from
+  three pictures on the same fight. A soft dark rim and a clearer ground
+  shadow with a little more contrast; no hard outline. The coordinator and
+  Sol had both preferred B (Inked) for telling pieces apart in a crowd;
+  Kyle's eye decides. The crowd at the gate is the place to watch.
+- **Lifted finish applied to every sharper piece** and to the dock and
+  panel pictures. Decoded art on a phone: 25 to 44 MB on ordinary levels,
+  51 to 68 MB on the Old Keep's five (caps 60 and 70); the King's Old Keep
+  atlas was reduced from 4 to 3.25 times to fit. The sharper set is 5.63
+  MB and the built site 17.3 MB of its 20 MB budget, while both sets ship.
+- **The new interface costs more processor time than the old, and the
+  coordinator's "no slower" rule was not met.** At 390x656 with 40
+  enemies under a 4x throttle: 3.36 ms a frame with the switch off, 4.82
+  with it on and today's sprites, 4.77 with the Lifted set. The sprites
+  cost nothing; the interface costs about 1.4 ms. Frames still arrive at
+  60 a second. Earlier figures that showed the new interface as cheaper
+  compared two builds of the new interface, not new against old. Accepted
+  for the trial behind the switch; to be cut or accepted knowingly before
+  it becomes the default.
+- **A crowd still merges at the Old Keep gate at night** in the Lifted
+  finish: front ranks and shield edges read, the deepest bodies do not.
+  Kyle chose this finish knowing the trade-off was the thing to watch.
+- **The automated review caught a third real bug after CI was green.**
+  Loading each level's own pieces had left the Guards' sharper art out of
+  every level but the Old Keep's, so sending Guards out on level 8 onward,
+  or in Free play from wave 6, would have thrown and broken the battle's
+  drawing. The coordinator confirmed it in the code before acting. Sol
+  reproduced it in a browser test, fixed the roster, added a check that
+  derives everything a level can ask the art loader for from the game's
+  own data and fails if any is missing, and made a missing sheet draw a
+  plain stand-in instead of throwing.

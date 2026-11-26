@@ -230,6 +230,7 @@ import { LANDSCAPE, CLEAN_LANDSCAPE, cleanPortrait, TAXED_PORTRAIT, type Layout,
 import { COLORS, FONT, TEXT } from './palette';
 import { currentLayout } from './layoutSwitch';
 import { isPerfMode, isTestMode } from './testMode';
+import { fitKeepPieces, setFieldArtDensity } from './skin/fieldBuffer';
 import { PaintedSkin, type PaintedState } from './skin/painted';
 import { releasePaintedTextures, type PaintedAssets } from './skin/loading';
 import type { GameStartData as TitleStartData } from './TitleScene';
@@ -605,7 +606,7 @@ export class GameScene extends Phaser.Scene {
         this.keepAssets = undefined;
         this.keepLoading = true;
         const module = this.keepModule;
-        void duringKeepLoad((signal, progress) => module.loadKeep(this.game, currentLayout().turned, signal, progress, this.campaignLevel, this.actThree), () => this.toMenu())
+        void duringKeepLoad((signal, progress) => module.loadKeep(this.game, currentLayout().turned, signal, progress, this.campaignLevel, this.actThree, !!this.paintedAssets?.sharp), () => this.toMenu())
           .then(assets => {
             if (!assets) return;
             this.keepAssets = assets;
@@ -632,6 +633,7 @@ export class GameScene extends Phaser.Scene {
     this.layout = clean ? (base.turned ? cleanPortrait(this.scale.parentSize, !!this.state.level?.taxes) : CLEAN_LANDSCAPE)
       : base.turned && this.state.level?.taxes ? TAXED_PORTRAIT : base;
     this.clean = clean;
+    setFieldArtDensity(this, this.paintedAssets?.sharp ? this.keepModule ? 3 : 2 : undefined);
     if (clean) {
       useInterface(this, 'battle', () => this.clock.nowMs);
       if (this.layout.turned) {
@@ -642,6 +644,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
     if (this.scale.width !== this.layout.width || this.scale.height !== this.layout.height) this.scale.setGameSize(this.layout.width, this.layout.height);
+    if (this.keepModule && this.paintedAssets?.sharp) fitKeepPieces(this);
     if (!resume) this.mapBlockedUntil = 0;
     this.recordedCleared = resume?.recordedCleared ?? 0;
     this.speed = 1;
@@ -683,6 +686,7 @@ export class GameScene extends Phaser.Scene {
     const world = () => this.layout.placeWorld(this.add.graphics());
     // Milestone 34: the living map (decor/livingMap.ts): the baked ground, trees and bushes, and the moving things, under everything else.
     this.painted = this.paintedAssets ? new PaintedSkin(this, this.paintedAssets, this.layout, this.state.map, isTestMode(), this.clock, !this.keepModule, clean) : undefined;
+    if (this.state.cheated) this.painted?.unlockTowers();
     this.living = this.painted ?? (this.keepModule ? null : new LivingMap(this, this.state.map, this.layout, isTestMode(), this.clock, clean));
     this.town = new Town(this, this.state.map, this.layout, isTestMode(), this.siegeScreens ? undefined : this.painted);
     this.ground = world();
@@ -1368,6 +1372,7 @@ export class GameScene extends Phaser.Scene {
   cheatGold(): PlayAction<ReturnType<typeof grantCheatGold>> {
     if (this.paused) return PAUSED;
     const result = grantCheatGold(this.state);
+    if (result.ok) this.painted?.unlockTowers();
     this.takeEvents();
     this.redraw();
     return result;
@@ -1615,7 +1620,7 @@ export class GameScene extends Phaser.Scene {
     this.restartPending = false;
     this.resume = null;
     // The title loads its own sheets. An in-place restart reuses this set.
-    if (this.actThree && this.campaignLevel?.map === 'keep') {
+    if (this.paintedAssets?.sharp || this.actThree && this.campaignLevel?.map === 'keep') {
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => releasePaintedTextures(this.textures));
     }
     if (this.keepModule) {

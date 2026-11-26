@@ -51,10 +51,10 @@ def seal(p, x, y, r):
             "#ffe29c", None)
 
 
-def parchment(p, y, ram):
+def parchment(p, y, ram, *, lifted=False):
     # Rim furthest from the light and the loose corner cast distinct shadows.
     p.shape([(15,y-2),(77,y-7),(88,y+1),(87,y+19),(79,y+24),(18,y+28),(9,y+22),(8,y+6)],
-            "#986139", INK, 1.75)
+            "#986139", "#986139" if lifted else INK, 1.75)
     p.shape([(12,y+2),(76,y-4),(82,y-1),(82,y+16),(73,y+21),(17,y+26),(11,y+20)],
             PAPER, "#ad784e", 1)
     p.shape([(14,y+3),(75,y-2),(78,y+2),(78,y+6),(13,y+12),(11,y+8)], BRIGHT, None)
@@ -90,19 +90,20 @@ def wagon_wheel(p, x, y, rx, ry, phase):
     p.oval(x-.55,y-.6,1.15,1.15,RIVET,None)
 
 
-def ram(p, frame):
+def ram(p, frame, *, lifted=False):
     # A high trestle and brass rail hold the scroll above the running gear.
-    p.oval(47,51,41,7,"#181820",None)
-    p.oval(46,52.6,37,6,(28,25,34,108),None)
-    p.shape([(12,39),(74,34),(88,38),(86,46),(15,52),(7,47)],"#4b3b36",INK,1.45)
-    p.shape([(8,40),(14,44),(86,36),(88,39),(85,43),(15,48),(8,45)],"#986853",INK,1.15)
+    if not lifted:
+        p.oval(47,51,41,7,"#181820",None)
+        p.oval(46,52.6,37,6,(28,25,34,108),None)
+    p.shape([(12,39),(74,34),(88,38),(86,46),(15,52),(7,47)],"#4b3b36","#4b3b36" if lifted else INK,1.45)
+    p.shape([(8,40),(14,44),(86,36),(88,39),(85,43),(15,48),(8,45)],"#986853","#986853" if lifted else INK,1.15)
     p.line([(15,44),(83,38)],"#e0a471",1.2)
     for x,y in ((26,41),(65,38)):
         p.line([(x-7,y+2),(x+7,y-19),(x+13,y-1)],INK,5.6)
         p.line([(x-7,y+2),(x+7,y-19),(x+13,y-1)],WOOD,3.9)
         p.line([(x-8,y+1),(x+6,y-18)],GOLD,1)
         p.oval(x+1,y-6,1.4,1.4,RIVET,None)
-    parchment(p,10+(frame%2)*.65,True)
+    parchment(p,10+(frame%2)*.65,True,lifted=lifted)
     for x,y in ((23,45.5),(73,45)):
         wagon_wheel(p,x,y,9.4,10.3,frame*math.pi/12)
     p.oval(14,42,1.5,1.1,RIVET,None)
