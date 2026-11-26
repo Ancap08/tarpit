@@ -34,7 +34,7 @@ The tall phone adds room around the title and notices while the map uses the hei
 
 ## Other reachable screens
 
-The Keep [level card](656-keep-card.png), its [Map notes reverse](656-keep-notes.png), and [Keep results](656-keep-result.png) used the earlier paper-and-wood treatment. They now use the printed card and result. Free play's win and loss screens and the Act One and Two results already used the printed result. Reward choice, held boons, upgrade choice, special targeting and the other battle pop-ups were checked through the existing Clean interface flows. The Keep battlefield's legacy HUD, gate, repair, road banners, windows, taxes and last stand are part of the next pass.
+The Keep [level card](656-keep-card.png), its [Map notes reverse](656-keep-notes.png), and [Keep results](656-keep-result.png) used the earlier paper-and-wood treatment. They now use the printed card and result. Free play's win and loss screens and the Act One and Two results already used the printed result. The [landscape reward choices](desktop-reward-keys.png) kept three wooden number badges after 55a. They now use the dark battle treatment. The reward cards, held boons, upgrade choice, special targeting and other battle pop-ups were already in the Clean interface. The Keep battlefield's legacy HUD, gate, repair, road banners, windows, taxes and last stand are part of the next pass.
 
 [Pause in the Keep](656-keep-pause.png) uses the same paper panel over the narrower Keep board. Pause already confirmed Restart. Its Level map and Menu actions continue directly to their destinations. Look and mute are the available settings.
 
