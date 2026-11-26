@@ -2208,3 +2208,12 @@ can change it; "Kyle" means Kyle decided.
 - **A crowd still merges at the Old Keep gate at night** in the Lifted
   finish: front ranks and shield edges read, the deepest bodies do not.
   Kyle chose this finish knowing the trade-off was the thing to watch.
+- **The automated review caught a third real bug after CI was green.**
+  Loading each level's own pieces had left the Guards' sharper art out of
+  every level but the Old Keep's, so sending Guards out on level 8 onward,
+  or in Free play from wave 6, would have thrown and broken the battle's
+  drawing. The coordinator confirmed it in the code before acting. Sol
+  reproduced it in a browser test, fixed the roster, added a check that
+  derives everything a level can ask the art loader for from the game's
+  own data and fails if any is missing, and made a missing sheet draw a
+  plain stand-in instead of throwing.
