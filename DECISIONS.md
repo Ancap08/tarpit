@@ -2143,3 +2143,15 @@ can change it; "Kyle" means Kyle decided.
   Downloaded by the coordinator into its own folder and checked; nothing
   was run from it. The earlier line "No font or icon set is downloaded" is
   superseded for this one font. Icons are still drawn in code.
+- **The font stress test repeated an old mistake, and the coordinator
+  asked for it.** It blocked Inter and widened each machine's own sans by
+  15%, so it hid different labels on the Mac and on Linux. Split in two:
+  with Inter blocked, only what must hold for any font (containment,
+  overlaps, minimum size, a usable control); with Inter loaded and its
+  measured widths scaled, which labels show. Sol reproduced the Linux
+  failure locally by mapping the fallback to a monospace face at 1.3
+  times.
+- **The fallback hid something the player needs.** With a very wide font
+  the sell control lost its word and its refund and showed a blank
+  button. It now keeps the refund with a trash icon; Pause keeps its
+  two-bar icon.
