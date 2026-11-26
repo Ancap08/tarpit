@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import { uiBounds } from './devicePixels';
 import { repairStatus, TICKS_PER_SECOND, type GameState, type Rect } from '../../sim';
 import { CLEAN_SIEGE_PHONE_HEADER, type Layout } from '../layout';
 import { GATE_TEXT } from '../names';
@@ -38,6 +39,7 @@ export class GateHud {
     this.bounds = { x, y, width, height };
     if (clean) {
       this.plate = scene.add.graphics();
+      uiBounds(this.plate, this.bounds);
       rounded(this.plate, this.bounds);
       glyph(this.plate, 'gate', x + (portrait ? 31 : 24), y + height * .3, portrait ? 31 : 23, CLEAN.mint);
     } else {
@@ -45,6 +47,7 @@ export class GateHud {
       this.backing.setStrokeStyle(1, COLORS.bossBarEdge);
     }
     if (siege) this.health = scene.add.graphics().setName('gate-health');
+    if (clean && this.health) uiBounds(this.health, this.bounds);
     const size = this.size = clean ? portrait ? 27 : 17 : portrait ? 22 : 20;
     const style = {
       fontFamily: HUD_FONT, fontSize: `${size}px`, fontStyle: 'bold', color: TEXT.hud,

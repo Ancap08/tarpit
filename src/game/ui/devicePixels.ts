@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import type { Rect } from '../input';
 import { fitBattleBuffer } from '../skin/fieldBuffer';
 
 type CanvasRenderer = Phaser.Renderer.Canvas.CanvasRenderer;
@@ -6,9 +7,27 @@ type Camera = Phaser.Cameras.Scene2D.Camera;
 type Matrix = Phaser.GameObjects.Components.TransformMatrix;
 type Object2D = Phaser.GameObjects.GameObject & {
   alpha: number; x: number; y: number; scaleX: number; scaleY: number; rotation: number;
+  depth: number; width?: number; height?: number; displayOriginX?: number; displayOriginY?: number;
+  mask?: Phaser.Display.Masks.BitmapMask | Phaser.Display.Masks.GeometryMask;
   frame?: Phaser.Textures.Frame;
+  getBounds?(): Rect;
   renderCanvas(renderer: CanvasRenderer, source: Object2D, camera: Camera): void;
 };
+type InkState = {
+  x: number; y: number; scaleX: number; scaleY: number; rotation: number; alpha: number; depth: number;
+  width?: number; height?: number; originX?: number; originY?: number; frame?: Phaser.Textures.Frame;
+  bounds?: Rect | null; index: number; pass: number;
+};
+
+function intersects(a: Rect, b: Rect): boolean {
+  return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+}
+
+function join(a: Rect, b: Rect): Rect {
+  const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
+  return { x, y, width: Math.max(a.x + a.width, b.x + b.width) - x,
+    height: Math.max(a.y + a.height, b.y + b.height) - y };
+}
 
 type CanvasFactory = (game: Phaser.Game, canvas: HTMLCanvasElement) => CanvasRenderer;
 let createRenderer: CanvasFactory;
@@ -31,8 +50,13 @@ export function uiObject<T extends Phaser.GameObjects.GameObject>(object: T): T 
   return object;
 }
 
-export function invalidateUi(scene: Phaser.Scene): void {
-  active.get(scene)?.invalidate();
+export function invalidateUi(object: Phaser.GameObjects.GameObject): void {
+  active.get(object.scene)?.invalidate(object);
+}
+
+/** Scene coordinates for Graphics, which do not expose Phaser's getBounds. */
+export function uiBounds(object: Phaser.GameObjects.Graphics, bounds: Rect): void {
+  active.get(object.scene)?.setBounds(object, bounds);
 }
 
 /** Animate the finished print on the compositor. Phaser's hit boxes stay put. */
@@ -54,7 +78,11 @@ class DeviceUi {
   private readonly painter: CanvasRenderer;
   private readonly world: Phaser.GameObjects.GameObject[] = [];
   private readonly ink: Object2D[] = [];
-  private readonly previous: unknown[] = [];
+  private readonly previous = new Map<Object2D, InkState>();
+  private readonly edits = new Set<Phaser.GameObjects.GameObject>();
+  private readonly graphicBounds = new WeakMap<Phaser.GameObjects.Graphics, Rect>();
+  private pass = 0;
+  private cameraState: number[] = [];
   private dirty = true;
   private wasMultiCamera = false;
 
@@ -102,7 +130,7 @@ class DeviceUi {
         this.labels.delete(label);
       });
       label.updateText = () => {
-        this.dirty = true;
+        this.invalidate(label);
         return update.call(label);
       };
       return uiObject(label);
@@ -154,7 +182,7 @@ class DeviceUi {
   include(object: Phaser.GameObjects.GameObject): void {
     if (this.objects.has(object)) return;
     this.objects.add(object);
-    this.dirty = true;
+    if (this.paper) this.dirty = true;
     if (object.type === 'Graphics') {
       const graphics = object as Phaser.GameObjects.Graphics;
       const clear = graphics.clear;
@@ -162,47 +190,116 @@ class DeviceUi {
       // render list. Restore the method so those objects cannot retain ink.
       graphics.once('destroy', () => { graphics.clear = clear; });
       graphics.clear = () => {
-        this.dirty = true;
+        this.invalidate(graphics);
         return clear.call(graphics);
       };
     }
   }
 
-  invalidate(): void {
-    this.dirty = true;
+  invalidate(object: Phaser.GameObjects.GameObject): void {
+    while (object.parentContainer) object = object.parentContainer;
+    this.edits.add(object);
+  }
+
+  setBounds(object: Phaser.GameObjects.Graphics, bounds: Rect): void {
+    this.graphicBounds.set(object, bounds);
+    this.invalidate(object);
+  }
+
+  private boundsOf(object: Object2D, offsetX: number, offsetY: number): Rect | null | undefined {
+    let bounds: Rect | undefined;
+    if (object.type === 'Graphics') {
+      const graphic = object as unknown as Phaser.GameObjects.Graphics;
+      if (graphic.commandBuffer.length === 0) return null;
+      bounds = this.graphicBounds.get(graphic);
+    } else if (object.type !== 'Container' && object.type !== 'Layer' && !object.mask) {
+      bounds = object.getBounds?.();
+    }
+    if (!bounds) return undefined;
+    const { x: sx, y: sy } = this.density;
+    // Leave room for the half-pixel snap of text and antialiased edges.
+    const x = Math.max(0, Math.floor((bounds.x + offsetX) * sx) - 2);
+    const y = Math.max(0, Math.floor((bounds.y + offsetY) * sy) - 2);
+    const right = Math.min(this.overlay.width, Math.ceil((bounds.x + offsetX + bounds.width) * sx) + 2);
+    const bottom = Math.min(this.overlay.height, Math.ceil((bounds.y + offsetY + bounds.height) * sy) + 2);
+    return right > x && bottom > y ? { x, y, width: right - x, height: bottom - y } : null;
   }
 
   private clear(): void {
     this.painter.gameContext.clearRect(0, 0, this.overlay.width, this.overlay.height);
   }
 
-  private paint(camera: Camera): void {
-    const stack = this.previous;
-    let index = 0, redraw = this.dirty;
-    const track = (value: unknown) => {
-      if (stack[index] !== value) redraw = true;
-      stack[index++] = value;
-    };
-    if (!this.wasMultiCamera) {
-      for (const object of this.ink) {
-        track(object); track(object.x); track(object.y); track(object.alpha);
-        track(object.rotation); track(object.scaleX); track(object.scaleY); track(object.frame);
+  /** Retain the original draw order, including overlap between damage and panels. */
+  private changedRegions(camera: Camera): Rect[] | undefined {
+    const { matrix } = camera as Camera & { matrix: Matrix };
+    const view = [matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f, camera.scrollX, camera.scrollY, camera.alpha];
+    const reset = this.dirty || view.some((value, i) => value !== this.cameraState[i]);
+    let full = reset;
+    this.cameraState = view;
+    const local = !this.paper && !camera.scrollX && !camera.scrollY && matrix.a === 1 && matrix.d === 1 && !matrix.b && !matrix.c;
+    const regions: Rect[] = [];
+    const add = (bounds: Rect | null | undefined) => {
+      if (full || bounds === null) return;
+      if (!bounds || !local) { full = true; return; }
+      for (let i = regions.length - 1; i >= 0; i--) {
+        if (!intersects(regions[i], bounds)) continue;
+        bounds = join(regions[i], bounds);
+        regions.splice(i, 1);
+        i = regions.length;
       }
-      redraw ||= stack.length !== index;
-      stack.length = index;
+      regions.push(bounds);
+    };
+    const pass = ++this.pass;
+    let previousIndex = -1;
+    for (const [index, object] of this.ink.entries()) {
+      const old = this.previous.get(object);
+      const { x, y, alpha, depth, rotation, scaleX, scaleY, frame, width, height,
+        displayOriginX: originX, displayOriginY: originY } = object;
+      if (old) {
+        if (old.index < previousIndex) add(old.bounds);
+        previousIndex = Math.max(previousIndex, old.index);
+        if (!reset && !this.edits.has(object) && old.x === x && old.y === y && old.alpha === alpha && old.depth === depth &&
+          old.rotation === rotation && old.scaleX === scaleX && old.scaleY === scaleY && old.frame === frame &&
+          old.width === width && old.height === height && old.originX === originX && old.originY === originY) {
+          old.index = index;
+          old.pass = pass;
+          continue;
+        }
+        add(old.bounds);
+      }
+      const bounds = local ? this.boundsOf(object, matrix.e, matrix.f) : undefined;
+      this.previous.set(object, { x, y, scaleX, scaleY, rotation, alpha, depth, frame, width, height, originX, originY, bounds, index, pass });
+      add(bounds);
     }
-    if (!redraw && !this.wasMultiCamera) {
+    for (const [object, state] of this.previous) {
+      if (state.pass === pass) continue;
+      add(state.bounds);
+      this.previous.delete(object);
+    }
+    return full ? undefined : regions;
+  }
+
+  private paint(camera: Camera): void {
+    const regions = this.wasMultiCamera ? undefined : this.changedRegions(camera);
+    this.edits.clear();
+    if (regions?.length === 0) {
       // Keep the ordering for hit testing when the retained image is reused.
       for (const object of this.ink) camera.addToRenderList(object);
       return;
     }
-    if (!this.wasMultiCamera) this.clear();
     const ctx = this.painter.gameContext;
+    if (regions) {
+      for (const { x, y, width, height } of regions) ctx.clearRect(x, y, width, height);
+    } else if (!this.wasMultiCamera) this.clear();
     const { x: sx, y: sy } = this.density;
     const { matrix } = camera as Camera & { matrix: Matrix };
     const { a, b, c, d, e, f } = matrix;
     ctx.save();
-    if (this.wasMultiCamera) {
+    if (regions) {
+      ctx.beginPath();
+      for (const { x, y, width, height } of regions) ctx.rect(x, y, width, height);
+      ctx.clip();
+    } else if (this.wasMultiCamera) {
       ctx.beginPath();
       ctx.rect(Math.round(camera.x * sx), Math.round(camera.y * sy),
         Math.round(camera.width * sx), Math.round(camera.height * sy));
@@ -217,6 +314,11 @@ class DeviceUi {
     const round = camera.roundPixels, roundPosition = rounding.renderRoundPixels;
     camera.roundPixels = rounding.renderRoundPixels = false;
     for (const object of this.ink) {
+      const bounds = this.previous.get(object)?.bounds;
+      if (regions && (bounds === null || bounds && !regions.some(region => intersects(bounds, region)))) {
+        camera.addToRenderList(object);
+        continue;
+      }
       if (object.type !== 'Text' || camera.zoom !== 1) object.renderCanvas(this.painter, object, camera);
       else {
         const label = object as unknown as Phaser.GameObjects.Text;

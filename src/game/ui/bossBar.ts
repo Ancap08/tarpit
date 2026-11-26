@@ -7,6 +7,7 @@
 // it (y 4 to 22) inside the canvas.
 
 import type Phaser from 'phaser';
+import { uiBounds } from './devicePixels';
 import { enemyMaxHp, isBoss, type GameState, type Point } from '../../sim';
 import { panel, THEME } from './theme';
 import { ENEMY_NAMES, ENEMY_SHORT_NAMES } from '../names';
@@ -193,6 +194,7 @@ export class BossBar {
         this.paintKey = key;
         g.clear();
         this.plate = { x, y: panelTop, width, height: y + height + grow / 2 - panelTop };
+        uiBounds(g, this.plate);
         rounded(g, this.plate, CLEAN.panel, CLEAN.edge, 12);
         const length = Math.max(12, width - (showHp ? this.hp.width : 0) - 25);
         g.fillStyle(CLEAN.raised).fillRoundedRect(x + 9, y + height / 2 - 3, length, 6, 3);

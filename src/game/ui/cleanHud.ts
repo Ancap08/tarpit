@@ -4,6 +4,7 @@ import { CLEAN_ACTION_H, CLEAN_BUILD_H, CLEAN_DOCK_GAP, CLEAN_SIEGE_PHONE_HEADER
 import { HUD_STAT_LABELS } from '../names';
 import { CLEAN, glyph, interLoaded, line, motionClock, sans } from './newTheme';
 import { DeviceTextFit, textInset, textSlot } from './deviceText';
+import { uiBounds } from './devicePixels';
 
 const PHONE_PAD = 15;
 const PHONE_CAPTION = 21;
@@ -99,6 +100,7 @@ export class CleanReadouts {
     this.name = sans(scene, nameX, y + (phone ? 3 + PHONE_TOP_CONTROL_CENTER : 6), '', phone ? PHONE_TITLE : 14, phone ? CLEAN.ink : CLEAN.subdued, true, 'normal')
       .setOrigin(0, phone ? .5 : 0).setWordWrapWidth(phone ? m.mute.x - nameX - 10 : 355).setName('hud-level-name');
     this.pips = scene.add.graphics();
+    uiBounds(this.pips, m.bands[0]);
     const small = phone ? PHONE_CAPTION : 14;
     const labelY = phone ? m.statY : y + 29;
     const columns = phoneColumns(m.bands[0]);

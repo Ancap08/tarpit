@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import { uiBounds } from './devicePixels';
 import { nextWavePreview, roadIds, roadPath, type EnemyType, type GameState, type Point, type Rect } from '../../sim';
 import type { Layout } from '../layout';
 import { SIEGE_TEXT } from '../names';
@@ -125,6 +126,7 @@ export class RoadBanners {
       : west ? foot - h - 12 : p.y - h - 18;
     sign.rect = { x, y, width: w, height: h };
     const paint = board.clear();
+    uiBounds(board, sign.rect);
     rounded(paint, sign.rect);
     glyph(paint, west ? 'back' : 'arrow', x + pad + size / 2, y + pad + heading.height / 2, size, CLEAN.mint);
     heading.setPosition(x + pad + iconSpace, y + pad);

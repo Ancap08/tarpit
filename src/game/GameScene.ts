@@ -210,7 +210,7 @@ import { callEarlyInfo, CHEAT_TAPS, CHEAT_WINDOW_MS, Hud, specialReady, specialR
 import { Button } from './ui/button';
 import { PANEL_TEXT } from './names';
 import { HitNumbers } from './ui/hitNumbers';
-import { uiObject } from './ui/devicePixels';
+import { uiBounds, uiObject } from './ui/devicePixels';
 import { BakedPaint, CLEAN, PRINT, battleFont, battleWeight, newInterface, roundPoints, rounded, skinFor, textMetrics, useInterface } from './ui/newTheme';
 import { DeviceTextFit, textSlot } from './ui/deviceText';
 import { AIM_BANNER, aimBannerText, BARRICADE_AIM_REASONS, PAINTED_FALLBACK, REWARD_KEYS } from './names';
@@ -650,6 +650,7 @@ export class GameScene extends Phaser.Scene {
         const matte = uiObject(this.add.graphics()).fillStyle(CLEAN.ground);
         const w = this.layout.width;
         matte.fillRect(0, 0, w, y);
+        uiBounds(matte, { x: 0, y: 0, width: w, height: y });
       }
     }
     if (this.scale.width !== this.layout.width || this.scale.height !== this.layout.height) this.scale.setGameSize(this.layout.width, this.layout.height);
@@ -751,6 +752,7 @@ export class GameScene extends Phaser.Scene {
     this.enemySprites = new EnemySprites(this, isTestMode(), this.layout, this.painted, this.clock, this.siegeScreens);
     this.shotFx = world();
     this.towerBadges = clean ? uiObject(world()) : undefined;
+    if (this.towerBadges) uiBounds(this.towerBadges, this.layout.map);
     this.badgeKey = '';
     this.hitNumbers = clean ? new HitNumbers(this, () => this.animationTime, this.layout, placeFieldLabel) : undefined;
     this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx), this.layout, this.clock,
@@ -2086,6 +2088,7 @@ export class GameScene extends Phaser.Scene {
         const y = map.y + BANNER_Y;
         this.bannerMain.setY(y + height / 2);
         this.bannerRect = { x: this.bannerX - width / 2, y, width, height };
+        uiBounds(this.bannerBg, this.bannerRect);
         rounded(this.bannerBg, this.bannerRect, PRINT.sheet, PRINT.edge, 12);
         return;
       }
@@ -2114,6 +2117,7 @@ export class GameScene extends Phaser.Scene {
         const rect = { x: this.bannerX - w / 2, y: top, width: w, height: h };
         if (clean) {
           this.bannerRect = rect;
+          uiBounds(this.bannerBg, rect);
           rounded(this.bannerBg, this.bannerRect);
         }
         else panel(this.bannerBg, rect, THEME.wood);

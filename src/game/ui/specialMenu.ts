@@ -5,6 +5,7 @@
 // The menu only reports clicks; GameScene owns whether it is open.
 
 import type Phaser from 'phaser';
+import { uiBounds } from './devicePixels';
 import { SPECIAL_TYPES, type SpecialType } from '../../sim';
 import type { Rect } from '../input';
 import { SPECIAL_NAMES, TAR_BARREL_DESCRIPTION } from '../names';
@@ -106,8 +107,10 @@ export class SpecialMenu {
     const left = Math.min(this.left, this.scene.scale.width - width);
     this.box = { x: left, y: top, width, height };
     this.backing.clear().setVisible(true);
-    if (skinFor(this.scene) === 'battle') rounded(this.backing, this.box);
-    else panel(this.backing, this.box, THEME.paper);
+    if (this.clean) {
+      uiBounds(this.backing, this.box);
+      rounded(this.backing, this.box);
+    } else panel(this.backing, this.box, THEME.paper);
     for (const type of SPECIAL_TYPES) {
       const i = types.indexOf(type);
       const b = this.buttons[type];

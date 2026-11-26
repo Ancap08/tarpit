@@ -1,4 +1,4 @@
-import { uiObject } from '../ui/devicePixels';
+import { uiBounds, uiObject } from '../ui/devicePixels';
 import { panel, THEME } from '../ui/theme';
 import type Phaser from 'phaser';
 import type { Rect } from '../input';
@@ -184,6 +184,7 @@ export class Moments {
         const rect = { x: this.bannerX - w / 2, y: panelTop, width: w, height: bottom - panelTop };
         if (this.clean) {
           this.plate = rect;
+          uiBounds(this.bannerBg, rect);
           rounded(this.bannerBg, this.plate);
         }
         else panel(this.bannerBg, rect, b.big ? THEME.red : THEME.blue);

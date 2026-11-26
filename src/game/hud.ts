@@ -93,6 +93,7 @@ import {
   type Layout,
 } from './layout';
 import { SpecialMenu } from './ui/specialMenu';
+import { uiBounds } from './ui/devicePixels';
 import { MuteButton } from './ui/muteButton';
 import { CLEAN, battleFont, battleWeight, controlPaint, glyph, roundPoints, rounded, sans, skinFor, textMetrics } from './ui/newTheme';
 import { DeviceTextFit, minimumTextSize, textInset, textSlot } from './ui/deviceText';
@@ -538,6 +539,10 @@ export class Hud {
     this.rechargeFill = scene.add.graphics();
     scene.children.moveBelow(this.rechargeFill, this.specialButton.labelObjects[0]);
     this.pip = scene.add.graphics();
+    if (modern) {
+      uiBounds(this.pip, m.special);
+      uiBounds(this.rechargeFill, m.special);
+    }
     this.cheatMark = scene.add
       .text(m.cheat.x, m.cheat.y, CHEAT_MARK, { fontFamily: modern ? battleFont() : FONT, fontSize: m.cheat.size, fontStyle: modern ? battleWeight(false, 'bold') : 'bold', color: modern ? '#ffb0a7' : TEXT.cheatMark, ...(modern ? { metrics: textMetrics(parseInt(m.cheat.size)) } : {}) })
       .setOrigin(m.cheat.originX, 0.5)
@@ -572,6 +577,7 @@ export class Hud {
     });
     this.pauseIcon = scene.add.graphics().fillStyle(COLORS.buttonEdgePicked);
     const iconHeight = m.portrait ? 26 : 21;
+    if (modern) uiBounds(this.pauseIcon, m.pause);
     if (modern) glyph(this.pauseIcon, 'pause', 0, m.portrait ? 0 : 4, m.portrait ? 29 : 20, 0xe2f5ee);
     else for (const x of [-11, 4]) this.pauseIcon.fillRect(x, 0, 7, iconHeight);
     // Put the native accessibility target over the plaque. Phaser handles pointer input.

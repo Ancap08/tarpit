@@ -2,7 +2,7 @@ import type Phaser from 'phaser';
 import type { Rect } from '../input';
 import { INTER } from '../palette';
 import { isTestMode } from '../testMode';
-import { hasFixedUiCamera, invalidateUi, uiDensity, useDevicePixels } from './devicePixels';
+import { hasFixedUiCamera, invalidateUi, uiBounds, uiDensity, useDevicePixels } from './devicePixels';
 
 const DEVICE_SANS = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
@@ -158,7 +158,7 @@ export class BakedPaint {
     ink.setScale(this.densityX, this.densityY).generateTexture(this.key, width, height).setScale(1);
     this.image.setDisplaySize(width / this.densityX, height / this.densityY);
     this.shift(this.offset);
-    invalidateUi(scene);
+    invalidateUi(this.image);
   }
 
   shift(offset: number): void {
@@ -176,8 +176,12 @@ export type ControlPaint = Pick<BakedPaint, 'begin' | 'finish' | 'shift'> & {
  * into that overlay without a second device-resolution copy per control. */
 export function controlPaint(scene: Scene, ink: Graphics): ControlPaint {
   if (!hasFixedUiCamera(scene)) return new BakedPaint(scene, ink);
-  const shift = (offset: number) => { ink.setY(offset); };
-  return { image: ink, begin: () => ink.clear(), finish: (offset = 0) => shift(offset), shift };
+  let bounds: Rect;
+  const shift = (offset: number) => {
+    ink.setY(offset);
+    uiBounds(ink, { ...bounds, y: bounds.y + offset });
+  };
+  return { image: ink, begin: rect => { bounds = rect; return ink.clear(); }, finish: (offset = 0) => shift(offset), shift };
 }
 
 /** Stable line boxes even on platforms that report unusually tall glyph bounds. */
