@@ -1786,15 +1786,20 @@ line spacing when the second line needs it.
 | Wave, Special, Ready, Speed, Pause, Build and special-menu controls | Omit the affected label or menu label group. Keep its hit target and any existing icon. The barrel caption can be omitted independently. |
 | Tower drawer title, metadata and upgrade heading | Omit the affected line. The tower portrait and drawer controls remain. |
 | Tower actions, upgrade choices, descriptions and disabled reasons | Omit the affected pair or group. Keep its hit targets, icons and disabled states. |
+| Sell or Remove and its refund | Replace the word with a trash icon and keep the refund whenever the amount fits beside it. |
 | Boss name and HP | Try the short boss name at a readable size, then omit it if needed. The health bar remains if the numbers cannot fit. |
 | Aim, loading and event banners | Omit the affected heading or detail line. |
 | Reward title, card names, descriptions, shortcut keys and held-reward tooltip | Omit the affected group or line. Keep the reward icons and hit targets. |
 | Floating hit, gold and boss-bounty numbers | Keep the numbers within the map. Omit the affected group if it cannot fit. |
 
 Inter and device-font checks exercise the four supported test viewports.
-The wide-text checks for Inter and Caslon use 1.09 on macOS and 1.06
-elsewhere. With Inter blocked, the device-font checks also simulate advances
-15% wider and 10% narrower.
+The shared wide-text checks for Inter and Caslon use 1.09 on macOS and
+1.06 elsewhere. The Clean font stress test checks label visibility at Inter
+advances 15% wider and 10% narrower, with an extra 2.6% advance on macOS
+to match Linux. With Inter blocked, the same 15% and −10% stress checks
+check only containment, overlap, readability, group consistency and
+the controls that remain. A separate blocked run maps the device sans
+to monospace and widens its advances by 30%.
 
 The game fits the portrait world buffer within the area of 480 × 1032
 pixels and composites the interface on a separate canvas fitted to the

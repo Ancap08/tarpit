@@ -94,7 +94,9 @@ export class TowerPanel {
     }
     this.upgrade = new Button(scene, rect, PANEL_TEXT.upgrade, () => handlers.onUpgrade(), { fontSize: f(16), right: '', primary: this.clean });
     this.undo = new Button(scene, rect, PANEL_TEXT.undoUpgrade, handlers.onUndoUpgrade, { fontSize: f(14), right: '' });
-    this.sell = new Button(scene, rect, PANEL_TEXT.sell, handlers.onSell, { fontSize: f(16), right: '', labelInset: 6 });
+    this.sell = new Button(scene, rect, PANEL_TEXT.sell, handlers.onSell, {
+      fontSize: f(16), right: '', labelInset: 6, priceFallback: this.clean ? 'remove' : undefined,
+    });
     this.target = new Button(scene, rect, targetingButtonText('first'), () => handlers.onTarget(nextMode(this.mode)), {
       fontSize: f(this.clean ? 14 : 13), icon: this.clean ? 'target' : undefined,
       wrap: this.clean && interLoaded && portrait,

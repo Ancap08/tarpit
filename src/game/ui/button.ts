@@ -37,6 +37,8 @@ export interface ButtonOptions {
   skin?: Skin;
   primary?: boolean;
   icon?: Icon;
+  /** If the pair does not fit, keep a fitting price beside this action icon. */
+  priceFallback?: Icon;
   upgradeRow?: boolean;
   /** The owning row fits these labels together with their peers. */
   grouped?: boolean;
@@ -59,7 +61,9 @@ export class Button {
   private readonly upgradeRow: boolean;
   private readonly wrap: boolean;
   private readonly textFit?: DeviceTextFit;
+  private readonly priceFallback?: Icon;
   private labelsFit = true;
+  private priceFits = false;
   private preferredSize: number;
   private coinLabelWidth = 0;
   private icon?: Icon;
@@ -92,6 +96,7 @@ export class Button {
     this.upgradeRow = options.upgradeRow ?? false;
     this.wrap = options.wrap ?? false;
     this.icon = options.icon;
+    this.priceFallback = options.priceFallback;
     if (this.skin !== 'legacy') this.clock = motionClock(scene);
     const size = options.fontSize ?? '18px';
     this.preferredSize = parseFloat(size);
@@ -185,7 +190,7 @@ export class Button {
     if (this.enabled !== enabled) {
       this.enabled = enabled;
       this.refresh();
-    } else if ((changed || (this.textFit && rightChanged)) && this.icon) this.refresh();
+    } else if ((changed || (this.textFit && rightChanged)) && (this.icon || this.priceFallback)) this.refresh();
     else if (this.textFit && (changed || rightChanged)) this.fitText();
     this.updateRoll();
   }
@@ -315,7 +320,15 @@ export class Button {
   }
 
   private fitText(): void {
-    this.labelsFit = this.textFit!.fit(this.preferredSize, this.slots());
+    const slots = this.slots();
+    this.labelsFit = this.textFit!.fit(this.preferredSize, slots);
+    this.priceFits = false;
+    if (!this.labelsFit && this.priceFallback && this.rightLabel) {
+      const [, price] = slots;
+      const iconRight = this.r.x + this.labelInset + this.iconSize();
+      const width = Math.min(price.width, this.rightLabel.x - iconRight - textInset(this.rightLabel));
+      this.priceFits = this.rightLabel.width <= width && this.rightLabel.height <= price.height;
+    }
     this.showLabels();
   }
 
@@ -332,7 +345,11 @@ export class Button {
 
   private showLabels(): void {
     this.label.setVisible(this.shown && this.labelsFit);
-    this.rightLabel?.setVisible(this.shown && this.labelsFit);
+    this.rightLabel?.setVisible(this.shown && (this.labelsFit || this.priceFits));
+  }
+
+  private iconSize(): number {
+    return Math.min(28, this.r.height * .48);
   }
 
   private downwardY(label: Phaser.GameObjects.Text, middle: number, down: number): number {
@@ -418,9 +435,13 @@ export class Button {
           const coinX = x + width - 12 - this.rightLabel.width - 12;
           glyph(paint, 'coin', coinX, y + offset + (this.labelY ?? height / 2), 19, 0xffda92);
         }
+      } else if (!this.labelsFit && this.priceFallback) {
+        const size = this.iconSize();
+        glyph(paint, this.priceFallback, x + this.labelInset + size / 2, y + offset + height / 2 + compress,
+          size, Number.parseInt(color.slice(1), 16));
       } else if (this.icon) {
         const label = this.labelsFit ? this.label.text : '';
-        const size = Math.min(28, height * .48);
+        const size = this.iconSize();
         const iconX = label ? this.rightLabel ? x + this.labelInset / 1.3 : x + (width - this.label.width) / 2 - size * .35 : x + width / 2;
         glyph(paint, this.icon, iconX, y + offset + height / 2 + compress, size, Number.parseInt(color.slice(1), 16));
       }
