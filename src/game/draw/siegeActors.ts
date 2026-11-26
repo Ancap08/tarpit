@@ -107,10 +107,13 @@ export class SiegeActors {
     if (tax?.kind === 'royalSurvey') {
       for (const site of tax.sites) {
         const stakes = prop(scene, 'survey').setScale(.54, .5);
-        const board = scene.add.text(0, 0, SIEGE_TEXT.condemned, {
+        const style: Phaser.Types.GameObjects.Text.TextStyle = {
           fontFamily: 'monospace', fontSize: '17px', fontStyle: 'bold', color: '#281c20',
           metrics: { ascent: 15, descent: 3, fontSize: 18 },
-        }).setOrigin(.5);
+        };
+        // The lettering belongs to the painted board, under open panels.
+        const board = (this.clean ? scene.make.text({ text: SIEGE_TEXT.condemned, style }, true)
+          : scene.add.text(0, 0, SIEGE_TEXT.condemned, style)).setOrigin(.5);
         this.surveys.push({ stakes, board, anchor: layout.cellCenter(site) });
       }
     }

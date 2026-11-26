@@ -654,7 +654,9 @@ export class GameScene extends Phaser.Scene {
     this.clock = resume?.clock ?? new GameClock();
     this.siegeAudio = this.siegeScreens && this.autoTick ? resume?.siegeAudio ?? new SiegeAudio(true, true) : undefined;
     this.shots = new ShotEffects();
-    this.specialFx = new SpecialEffects(this, isTestMode(), this.layout, !!this.paintedAssets);
+    const placeFieldLabel = (label: Phaser.GameObjects.Text) => this.siegeView?.fieldOnly(label);
+    this.specialFx = new SpecialEffects(this, isTestMode(), this.layout, !!this.paintedAssets,
+      clean && this.siegeScreens ? placeFieldLabel : undefined);
     this.speedPress = null;
     this.speedHoldLost = false;
     this.goldTaps = [];
@@ -743,8 +745,7 @@ export class GameScene extends Phaser.Scene {
     this.shotFx = world();
     this.towerBadges = clean ? uiObject(world()) : undefined;
     this.badgeKey = '';
-    this.hitNumbers = clean ? new HitNumbers(this, () => this.animationTime, this.layout,
-      label => this.siegeView?.fieldOnly(label)) : undefined;
+    this.hitNumbers = clean ? new HitNumbers(this, () => this.animationTime, this.layout, placeFieldLabel) : undefined;
     this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx), this.layout, this.clock,
       this.keep ? 'rgba(0,0,0,0)' : clean ? CLEAN.ground : undefined, this.siegeScreens && this.layout.turned,
       this.hitNumbers ? (point, damage) => this.hitNumbers?.hit(point, damage) : undefined) : null;
