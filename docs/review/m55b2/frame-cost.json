@@ -1,0 +1,178 @@
+{
+  "cpuThrottle": 4,
+  "viewport": {
+    "width": 390,
+    "height": 656
+  },
+  "deviceScaleFactor": 3,
+  "level": 23,
+  "keepTier": 2,
+  "preflight": [
+    "CPU usage: 13.98% user, 15.40% sys, 70.61% idle ",
+    "CPU usage: 17.52% user, 9.21% sys, 73.26% idle "
+  ],
+  "medians": [
+    {
+      "scenario": "40 on the road",
+      "off": 9.836006410256411,
+      "on": 9.978363057324843,
+      "changePercent": 1.4473012839844257,
+      "offFrameInterval": 16.667307692460525,
+      "onFrameInterval": 16.669230769268978
+    },
+    {
+      "scenario": "30 held at the gate, window fired",
+      "off": 11.938033783783785,
+      "on": 11.298243589743588,
+      "changePercent": -5.359259369070191,
+      "offFrameInterval": 17.221192053019607,
+      "onFrameInterval": 16.724358974358974
+    }
+  ],
+  "raw": [
+    {
+      "scenario": "40 on the road",
+      "switched": false,
+      "frames": 156,
+      "milliseconds": 2600.0999999940395,
+      "ticks": 156,
+      "enemies": 40,
+      "held": 17,
+      "fired": false,
+      "renderer": "WebGL",
+      "mainMsPerFrame": 9.750333333333332
+    },
+    {
+      "scenario": "40 on the road",
+      "switched": true,
+      "frames": 157,
+      "milliseconds": 2609.9000000059605,
+      "ticks": 157,
+      "enemies": 40,
+      "held": 17,
+      "fired": false,
+      "renderer": "WebGL",
+      "mainMsPerFrame": 9.978363057324843
+    },
+    {
+      "scenario": "40 on the road",
+      "switched": true,
+      "frames": 156,
+      "milliseconds": 2600.699999988079,
+      "ticks": 156,
+      "enemies": 40,
+      "held": 17,
+      "fired": false,
+      "renderer": "WebGL",
+      "mainMsPerFrame": 10.069192307692306
+    },
+    {
+      "scenario": "40 on the road",
+      "switched": false,
+      "frames": 156,
+      "milliseconds": 2600.100000023842,
+      "ticks": 156,
+      "enemies": 40,
+      "held": 17,
+      "fired": false,
+      "renderer": "WebGL",
+      "mainMsPerFrame": 9.838910256410257
+    },
+    {
+      "scenario": "40 on the road",
+      "switched": false,
+      "frames": 156,
+      "milliseconds": 2600.699999988079,
+      "ticks": 156,
+      "enemies": 40,
+      "held": 17,
+      "fired": false,
+      "renderer": "WebGL",
+      "mainMsPerFrame": 9.836006410256411
+    },
+    {
+      "scenario": "40 on the road",
+      "switched": true,
+      "frames": 156,
+      "milliseconds": 2600.4000000059605,
+      "ticks": 156,
+      "enemies": 40,
+      "held": 17,
+      "fired": false,
+      "renderer": "WebGL",
+      "mainMsPerFrame": 9.735910256410257
+    },
+    {
+      "scenario": "30 held at the gate, window fired",
+      "switched": false,
+      "frames": 148,
+      "milliseconds": 2600.2999999821186,
+      "ticks": 148,
+      "enemies": 36,
+      "held": 30,
+      "fired": true,
+      "renderer": "WebGL",
+      "mainMsPerFrame": 11.938033783783785
+    },
+    {
+      "scenario": "30 held at the gate, window fired",
+      "switched": true,
+      "frames": 156,
+      "milliseconds": 2609,
+      "ticks": 156,
+      "enemies": 36,
+      "held": 30,
+      "fired": true,
+      "renderer": "WebGL",
+      "mainMsPerFrame": 11.24348076923077
+    },
+    {
+      "scenario": "30 held at the gate, window fired",
+      "switched": true,
+      "frames": 156,
+      "milliseconds": 2600.0999999940395,
+      "ticks": 156,
+      "enemies": 36,
+      "held": 30,
+      "fired": true,
+      "renderer": "WebGL",
+      "mainMsPerFrame": 11.298243589743588
+    },
+    {
+      "scenario": "30 held at the gate, window fired",
+      "switched": false,
+      "frames": 156,
+      "milliseconds": 2600.4000000059605,
+      "ticks": 156,
+      "enemies": 36,
+      "held": 30,
+      "fired": true,
+      "renderer": "WebGL",
+      "mainMsPerFrame": 11.536660256410256
+    },
+    {
+      "scenario": "30 held at the gate, window fired",
+      "switched": false,
+      "frames": 151,
+      "milliseconds": 2600.4000000059605,
+      "ticks": 156,
+      "enemies": 36,
+      "held": 30,
+      "fired": true,
+      "renderer": "WebGL",
+      "mainMsPerFrame": 12.662622516556294
+    },
+    {
+      "scenario": "30 held at the gate, window fired",
+      "switched": true,
+      "frames": 154,
+      "milliseconds": 2600.5,
+      "ticks": 155,
+      "enemies": 36,
+      "held": 30,
+      "fired": true,
+      "renderer": "WebGL",
+      "mainMsPerFrame": 12.028636363636364
+    }
+  ]
+}
