@@ -1763,9 +1763,10 @@ boss name uses 22 units or the floor. Its plate uses
 265 to 310 units according to the space beside the cave. The level-three
 tower drawer prints the path name as its title and the level in the metadata.
 The cap notice uses its own metadata line. The drawer reserves that line's
-height above the title and 6 extra header units in landscape. In portrait,
-the drawer keeps its full 456-unit width at the board edge. Sell receives
-45% of the inner width and Target can wrap onto two lines.
+height above the title and 6 extra header units in landscape. A portrait
+drawer with two upgrade choices uses 438 units at the board edge to
+clear the selected tower. Other portrait drawers use 456 units. Sell
+receives 46% of the inner width and Target can wrap onto two lines.
 
 Clean measures the type in the canvas text objects it draws. With the device
 font, the role starts at its design size and uses one shared size that fits

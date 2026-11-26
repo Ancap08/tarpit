@@ -214,7 +214,9 @@ export class TowerPanel {
     const edge = centre.x < map.x + 38 ? -1 : centre.x > map.x + map.width - 38 ? 1 : 0;
     const atCap = !!state.level && level >= maxTowerLevel(state);
     const separateCap = this.clean && interLoaded && atCap;
-    const width = this.clean ? (portrait ? (edge && !interLoaded ? 418 : 456) : 382) : legacy.width;
+    // A tall upgrade choice drawer may sit beside the selected edge tower.
+    const edgeWidth = interLoaded ? (paths.length ? 438 : 456) : 418;
+    const width = this.clean ? (portrait ? (edge ? edgeWidth : 456) : 382) : legacy.width;
     const close = this.clean ? Math.max(45, legacy.close) : legacy.close;
     const rowHeight = this.clean ? Math.max(45, legacy.rowHeight) : legacy.rowHeight;
     const pathHeight = this.clean ? Math.max(rowHeight, portrait ? 104 : 80) : legacy.pathHeight;
@@ -325,7 +327,7 @@ export class TowerPanel {
 
     // Below Close, Sell and Target can share the panel's full inner width.
     const innerWidth = width - 2 * pad;
-    const sellShare = this.clean && interLoaded && portrait ? 0.45 : 0.43;
+    const sellShare = this.clean && interLoaded && portrait ? 0.46 : 0.43;
     const split = this.clean || level > 1 ? Math.round(innerWidth * sellShare) : 0;
     let top = y + pad + header;
     for (const { key, button, path } of rows) {
