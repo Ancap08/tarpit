@@ -96,8 +96,11 @@ class DeviceUi {
     scene.add.text = (x, y, value, style) => {
       const label = factory.call(scene.add, x, y, value, { ...style, resolution: this.density.x });
       this.labels.add(label);
-      label.once('destroy', () => this.labels.delete(label));
       const update = label.updateText;
+      label.once('destroy', () => {
+        label.updateText = update;
+        this.labels.delete(label);
+      });
       label.updateText = () => {
         this.dirty = true;
         return update.call(label);
@@ -155,6 +158,9 @@ class DeviceUi {
     if (object.type === 'Graphics') {
       const graphics = object as Phaser.GameObjects.Graphics;
       const clear = graphics.clear;
+      // Phaser's texture-baking camera can keep destroyed Graphics in its
+      // render list. Restore the method so those objects cannot retain ink.
+      graphics.once('destroy', () => { graphics.clear = clear; });
       graphics.clear = () => {
         this.dirty = true;
         return clear.call(graphics);

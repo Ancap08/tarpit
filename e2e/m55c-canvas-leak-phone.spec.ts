@@ -5,11 +5,6 @@ import { waitForFirstScreen } from './title';
 
 // Milestone 55c verifier: leaving a level for the title and entering again must
 // not leave the previous scene's device-resolution overlay canvas alive.
-// Measured on this build (390x844, DPR 3, ?ui=new, 4 gc rounds before each
-// count): detached interface canvases alive 1, 2, 3, 4 after visits 1 to 4
-// (about 11.8 MB each: 15.8, 27.6, 39.5, 51.3 MB of detached canvas); with the
-// switch off the figure stays at 0.4 MB.
-const known = process.env.M55C_STRICT ? test : test.fixme;
 test.use({ launchOptions: { args: ['--js-flags=--expose-gc'] } });
 
 async function visit(page: import('@playwright/test').Page, ui: boolean) {
@@ -50,9 +45,9 @@ async function visit(page: import('@playwright/test').Page, ui: boolean) {
   return samples;
 }
 
-known('returning from a level to the title does not accumulate overlay canvases (switch on)', async ({ page }) => {
+test('returning from a level to the title releases each overlay canvas (switch on)', async ({ page }) => {
   const samples = await visit(page, true);
-  expect(samples.at(-1)!.ink, JSON.stringify(samples)).toBeLessThanOrEqual(1);
+  expect(samples.map(sample => sample.ink), JSON.stringify(samples)).toEqual([0, 0, 0, 0]);
   expect(samples.at(-1)!.mb - samples[0].mb, JSON.stringify(samples)).toBeLessThan(2);
 });
 
