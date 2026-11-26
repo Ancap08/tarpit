@@ -1,4 +1,4 @@
-// PW_PORT=4573 node --experimental-strip-types scripts/art/m55a-review.ts <scratch> [stills|recordings|cost]
+// PW_PORT=4573 node --experimental-strip-types scripts/art/m55a-review.ts <scratch> [stills|recordings|cost|inter]
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -6,6 +6,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { spawnSync } from 'node:child_process';
 import type { Browser, Page } from '@playwright/test';
 import type { GameScene } from '../../src/game/GameScene.ts';
+import { INTER } from '../../src/game/palette.ts';
 import { waitForFirstScreen } from '../../e2e/title.ts';
 import { landscape, origin, phone, press, run, start } from './m47Browser.ts';
 
@@ -104,8 +105,9 @@ async function result(page: Page, win: boolean) {
     o.name.startsWith('town-picture:') && (o as Phaser.GameObjects.Image).texture.key.startsWith('town-portrait-')));
 }
 
-async function stills(browser: Browser) {
+async function stills(browser: Browser, interRefresh = false) {
   for (const device of ['phone', 'desktop', 'tablet'] as const) {
+    if (interRefresh && device === 'tablet') continue;
     const page = await browser.newPage(modes[device]);
     const touch = device !== 'desktop';
     try {
@@ -114,12 +116,13 @@ async function stills(browser: Browser) {
       await play(page, touch);
       await mockBattle(page);
       await capture(page, `battle-${device}`);
-      if (device === 'desktop') await capture(page, 'riverbend-road-desktop');
+      if (device === 'desktop' && !interRefresh) await capture(page, 'riverbend-road-desktop');
       if (device === 'phone') {
         await tapCell(page, 7, 10, touch);
         await capture(page, 'upgrade-phone');
         await result(page, true);
         await capture(page, 'result-win-phone');
+        if (interRefresh) continue;
         await page.reload();
         await waitForFirstScreen(page);
         await page.evaluate(() => window.__tarpit!.startLevel!(11));
@@ -129,6 +132,18 @@ async function stills(browser: Browser) {
     } finally { await page.close(); }
   }
 
+  if (!interRefresh) await additionalStills(browser);
+  for (const [mock, actual] of [
+    ['a-clean-01-mid-wave', 'battle-phone'], ['a-clean-01-mid-wave-wide', 'battle-desktop'],
+    ['a-clean-02-upgrade', 'upgrade-phone'], ['b-fine-print-03-level-card', 'card-phone'],
+    ['b-fine-print-04-result', 'result-win-phone'],
+  ]) {
+    ffmpeg(['-i', `docs/review/m54/${mock}.png`, '-i', join(destination, actual + '.png'), '-filter_complex',
+      '[0:v][1:v]hstack', '-frames:v', '1', join(destination, 'compare-' + actual + '.png')]);
+  }
+}
+
+async function additionalStills(browser: Browser) {
   for (const look of ['classic', 'painted', 'showpiece']) {
     const page = await browser.newPage(modes.phone);
     try {
@@ -206,13 +221,72 @@ async function stills(browser: Browser) {
     await capture(phonePage, 'free-play-boss-held-boon');
   } finally { await phonePage.close(); }
 
-  for (const [mock, actual] of [
-    ['a-clean-01-mid-wave', 'battle-phone'], ['a-clean-01-mid-wave-wide', 'battle-desktop'],
-    ['a-clean-02-upgrade', 'upgrade-phone'], ['b-fine-print-03-level-card', 'card-phone'],
-    ['b-fine-print-04-result', 'result-win-phone'],
-  ]) {
-    ffmpeg(['-i', `docs/review/m54/${mock}.png`, '-i', join(destination, actual + '.png'), '-filter_complex',
-      '[0:v][1:v]hstack', '-frames:v', '1', join(destination, 'compare-' + actual + '.png')]);
+}
+
+async function fontComparison(browser: Browser) {
+  const frames = [];
+  for (const loaded of [false, true]) {
+    const page = await browser.newPage({ ...phone, serviceWorkers: 'block' });
+    try {
+      if (!loaded) await page.route('**/Inter-Latin-Variable-*.woff2', route => route.abort());
+      await card(page, 11, true);
+      await play(page, true);
+      await mockBattle(page);
+      const detail = await page.evaluate(async font => {
+        const t = window.__tarpit!;
+        await new Promise<void>(resolve => t.game.events.once('postrender', resolve));
+        const scene = t.game.scene.getScene('game') as GameScene;
+        const [head] = scene['hud']['m'].bands;
+        const build = t.uiRects()['bar:musketeer'];
+        const stats = scene.children.getByName('hud-stat:0') as Phaser.GameObjects.Text;
+        const crop = ({ y, height }: { y: number; height: number }) => {
+          const dpr = devicePixelRatio;
+          const top = Math.max(0, Math.floor((t.canvasToPage(0, y).y - 3) * dpr));
+          const bottom = Math.ceil((t.canvasToPage(0, y + height).y + 3) * dpr);
+          return { top, height: bottom - top };
+        };
+        return { usingInter: stats.style.fontFamily.includes(font), status: crop(head), build: crop(build) };
+      }, INTER);
+      assert.equal(detail.usingInter, loaded);
+      const png = await page.screenshot({ scale: 'device' });
+      frames.push({ ...detail, data: png.toString('base64'), label: loaded ? 'Inter' : 'Device sans' });
+    } finally { await page.close(); }
+  }
+
+  const page = await browser.newPage();
+  try {
+    const png = await page.evaluate(async frames => {
+      const padding = 24, header = 52, width = 390, height = 844, nativeWidth = 3 * width;
+      const canvas = document.createElement('canvas');
+      canvas.width = width + nativeWidth + 3 * padding;
+      canvas.height = 2 * (height + header + padding) + padding;
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = '#111b1c';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      for (const [i, frame] of frames.entries()) {
+        const image = new Image();
+        image.src = 'data:image/png;base64,' + frame.data;
+        await image.decode();
+        const rowTop = padding + i * (height + header + padding);
+        const imageTop = rowTop + header, detailX = width + 2 * padding;
+        ctx.font = '600 30px system-ui';
+        ctx.fillStyle = '#effcf8';
+        ctx.fillText(frame.label, padding, rowTop + 32);
+        ctx.drawImage(image, padding, imageTop, width, height);
+        let top = imageTop + Math.floor((height - frame.status.height - frame.build.height - 100) / 2);
+        for (const [label, crop] of [['Status block · 3×', frame.status], ['Build bar · 3×', frame.build]] as const) {
+          ctx.font = '500 24px system-ui';
+          ctx.fillStyle = '#b9d4ce';
+          ctx.fillText(label, detailX, top + 28);
+          ctx.drawImage(image, 0, crop.top, nativeWidth, crop.height, detailX, top + 40, nativeWidth, crop.height);
+          top += crop.height + 60;
+        }
+      }
+      return canvas.toDataURL().split(',')[1];
+    }, frames);
+    await writeFile(join(destination, 'compare-font-phone.png'), Buffer.from(png, 'base64'));
+  } finally {
+    await page.close();
   }
 }
 
@@ -334,6 +408,11 @@ async function cost(browser: Browser) {
 await run(async browser => {
   if (process.argv[3] === 'cost') await cost(browser);
   else if (process.argv[3] === 'recordings') await recordings(browser);
+  else if (process.argv[3] === 'inter') {
+    await stills(browser, true);
+    await fontComparison(browser);
+    await recordings(browser);
+  }
   else {
     await stills(browser);
     if (process.argv[3] !== 'stills') await recordings(browser);
