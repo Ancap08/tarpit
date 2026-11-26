@@ -1,6 +1,6 @@
 # Lifted pieces
 
-Lifted is the Painted and Showpiece art behind `?ui=new`. All six towers retain their 16 bearings, original footprints and existing markers for both upgrade paths. The seven enemy and boss models retain their 16 walk poses. The four Guards retain all 32 idle and strike poses. The pack includes all four ram poses, five projectile models and the Keep mortar notice. The tower dock and panel draw the baked southeast pose from the same art used on the board.
+Lifted is the Painted and Showpiece art behind `?ui=new`. All six towers retain their 16 bearings, original footprints and existing markers for both upgrade paths. The seven enemy and boss models retain their 16 walk poses. The four Guards retain all 32 idle and strike poses. The pack includes all four ram poses, five projectile models and the Keep mortar notice. The tower dock and panel draw the baked southeast pose from the same art used on the board. The Keep's dock retains neutral preview lighting. Its battlefield uses the level's dusk or moonlit palette.
 
 ## Phone comparisons
 
@@ -69,6 +69,8 @@ Each sample rendered 180 frames and advanced 180 ticks. Lifted was within 0.06 m
 ## Verification and reproduction
 
 The production-browser audit compares against the fetched main revision after the iPhone polish. It matched 30 frozen screenshot hashes, 15 state hashes, and 15 request and texture inventories. It also checked the sharp roster and memory limits, locked tower icons, the gold cheat’s on-demand poses, restart and texture release. The dock and open tower panel used the same live Musketeer texture frame. The geometry audit checked 57 logical sheets, 506 frame placements and all 19 moonlit variants.
+
+Lint, typecheck, build, size and the 441-row manifest passed. Vitest passed 3,013 tests in 144 files. The simulation output matched byte for byte. The full Playwright command completed on one unchanged build, with 865 desktop, 385 tablet and 678 phone passes, including the two separately scheduled Keep cost cases. Eight cases were skipped.
 
 [Blender and Pillow packer](../../../scripts/art/m56-pieces.py) · [Lifted finish](../../../scripts/art/m56_finish.py) · [Browser captures and audits](../../../scripts/art/m56-review.ts) · [Comparison sheet generator](../../../scripts/art/m56-sheets.py)
 
