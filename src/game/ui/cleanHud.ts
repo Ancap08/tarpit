@@ -1,6 +1,6 @@
 import type Phaser from 'phaser';
 import type { HudMetrics } from '../hud';
-import { CLEAN_ACTION_H, CLEAN_BUILD_H, CLEAN_DOCK_GAP, CLEAN_SIEGE_PHONE_HEADER, type Layout } from '../layout';
+import { CLEAN_ACTION_H, CLEAN_BUILD_H, CLEAN_DOCK_GAP, CLEAN_HEADER_INSET, cleanBattlefield, type Layout } from '../layout';
 import { HUD_STAT_LABELS } from '../names';
 import { CLEAN, glyph, interLoaded, line, motionClock, sans } from './newTheme';
 import { DeviceTextFit, textInset, textSlot } from './deviceText';
@@ -17,8 +17,8 @@ export function cleanHudMetrics(layout: Layout, base: HudMetrics, siege = false)
   const barTop = dockY + (phone ? CLEAN_DOCK_GAP : 23);
   const controlsY = phone ? barTop + CLEAN_BUILD_H + CLEAN_DOCK_GAP : barTop;
   const height = phone ? CLEAN_ACTION_H : 65;
-  const headerBottom = siege && phone ? CLEAN_SIEGE_PHONE_HEADER : layout.map.y;
-  const head = { x: 8, y: 4, width: layout.width - 16, height: headerBottom - 8 };
+  const headerBottom = cleanBattlefield(layout, siege).y;
+  const head = { x: 8, y: CLEAN_HEADER_INSET, width: layout.width - 16, height: headerBottom - CLEAN_HEADER_INSET };
   const gutter = phone ? PHONE_PAD : 12;
   const buttons = phone ? CLEAN_ACTION_H : 53;
   const controlsX = head.x + head.width - 2 * buttons - (phone ? PHONE_PAD : 6);

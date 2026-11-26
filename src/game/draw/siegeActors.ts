@@ -4,7 +4,7 @@ import type { Rect } from '../input';
 import type { Layout } from '../layout';
 import { GameClock } from '../loop';
 import { SIEGE_TEXT } from '../names';
-import { skinFor } from '../ui/newTheme';
+import { skinFor, textMetrics } from '../ui/newTheme';
 
 const ATLAS = 'siege:actors';
 const FRAMES: Record<string, [number, number, number, number]> = {
@@ -131,7 +131,7 @@ export class SiegeActors {
     if (room) room.emptyAt = nowMs;
   }
 
-  update(state: GameState, nowMs: number, project: Projection = identity, shown = true): void {
+  update(state: GameState, nowMs: number, project: Projection = identity, shown = true, gateHud?: Rect): void {
     const animate = !this.frozen && !this.reduced.matches;
     for (const [index, room] of this.rooms.entries()) {
       if (state.windows?.[index]?.used && !room.used) {
@@ -168,9 +168,24 @@ export class SiegeActors {
     }
     for (const { stakes, board, anchor } of this.surveys) {
       const { x, y } = project(anchor);
-      const center = Math.max(53, Math.min(stakes.scene.scale.width - 53, x));
       // Keep the upper board below the Gate plaque in the settled portrait view.
       const sign = this.layout.turned ? Math.max(240, y) : y;
+      if (this.clean) {
+        const size = Math.max(17, Math.ceil(11.25 * board.scene.scale.displayScale.y));
+        if (parseFloat(String(board.style.fontSize)) !== size) board.setStyle({ fontSize: size, metrics: textMetrics(size) });
+        const width = Math.max(108, board.width + 16);
+        const scaleY = .5 * size / 17;
+        const boardY = sign - 8 - 24 * scaleY;
+        // The portrait camera can bring the upper sign alongside the fixed Gate plate.
+        const besideGate = gateHud && boardY - board.height / 2 < gateHud.y + gateHud.height
+          && boardY + board.height / 2 > gateHud.y && x + width / 2 > gateHud.x;
+        const left = besideGate ? gateHud.x + gateHud.width + 4 : 0;
+        const center = Math.max(left + width / 2, Math.min(stakes.scene.scale.width - width / 2, x));
+        stakes.setVisible(shown).setPosition(center, sign - 8).setScale(width / 200, scaleY);
+        board.setVisible(shown).setPosition(center, boardY);
+        continue;
+      }
+      const center = Math.max(53, Math.min(stakes.scene.scale.width - 53, x));
       stakes.setVisible(shown).setPosition(center, sign - 4);
       board.setVisible(shown).setPosition(center, sign - 16);
     }

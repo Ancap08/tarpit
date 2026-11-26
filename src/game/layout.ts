@@ -180,7 +180,14 @@ export function fontPx(layout: Layout, px: number): string {
 export const CLEAN_BUILD_H = 110;
 export const CLEAN_ACTION_H = 91;
 export const CLEAN_DOCK_GAP = 4;
+export const CLEAN_HEADER_INSET = 4;
 export const CLEAN_SIEGE_PHONE_HEADER = 202;
+
+/** The full-width terrain between the header and the dock, including the side scenery. */
+export function cleanBattlefield(layout: Layout, siege: boolean) {
+  const y = (siege && layout.turned ? CLEAN_SIEGE_PHONE_HEADER : layout.map.y) - CLEAN_HEADER_INSET;
+  return { x: 0, y, width: layout.width, height: layout.map.y + layout.map.height - y };
+}
 
 /** Keep the board's projection and reserve a separate line when taxes are active. */
 export function cleanPortrait(parent: { width: number; height: number }, taxed: boolean, siege = false): Layout {

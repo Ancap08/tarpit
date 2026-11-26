@@ -11,16 +11,12 @@ import { onScreen } from './campaignScreens';
 //   - every registered target is at least 44 CSS px in its smaller side,
 //   - every text has 4.5:1 against the pixels actually behind it
 //     (18.66 px bold or 24 px and over: 3:1).
-// Cases the build currently fails are test.fixme with the measured values;
-// run with M55C_STRICT=1 to see them fail.
-
-const known = process.env.M55C_STRICT ? test : test.fixme;
 test.use({ viewport: { width: 390, height: 656 } });
 
 const sizeFloor = 11;
 const targetFloor = 44;
 
-async function audit(page: Page, decoder: Page, name: string, options: { skipTargets?: string[]; skipTexts?: RegExp } = {}) {
+async function audit(page: Page, decoder: Page, name: string, options: { skipTexts?: RegExp } = {}) {
   const { texts, targets } = await collectTexts(page);
   const dpr = await page.evaluate(() => window.devicePixelRatio);
   const measured = await measureContrast(page, decoder, texts, dpr);
@@ -31,7 +27,7 @@ async function audit(page: Page, decoder: Page, name: string, options: { skipTar
     return t.contrast! < (large ? 3 : 4.5);
   }).map(t => `${t.text} ${t.contrast!.toFixed(2)}:1 at ${t.fs.toFixed(1)}px`);
   const tight = Object.entries(targets)
-    .filter(([key]) => key !== 'gold' && !options.skipTargets?.some(skip => key.startsWith(skip)))
+    .filter(([key]) => key !== 'gold')
     .filter(([, r]) => Math.min(r.w, r.h) < targetFloor - 0.05)
     .map(([key, r]) => `${key} ${r.w.toFixed(1)}x${r.h.toFixed(1)}`);
   expect.soft(small, `${name}: text under ${sizeFloor} CSS px`).toEqual([]);
@@ -102,37 +98,32 @@ for (const id of [1, 11, 20]) {
 }
 
 for (const id of [21, 22, 24, 25]) {
-  test(`Old Keep level ${id}: type and contrast at 390x656 (road banners excluded, see below)`, async ({ page, context }) => {
+  test(`Old Keep level ${id}: type, targets and contrast at 390x656`, async ({ page, context }) => {
     const decoder = context.pages().find(p => p !== page)!;
     await decoder.goto('about:blank');
     await page.goto(`/?test=1&ui=new&keep=${id}`);
     await onScreen(page, 'game');
     await page.waitForTimeout(1500);
-    await audit(page, decoder, `keep ${id} setup`, { skipTargets: ['road:'] });
+    await audit(page, decoder, `keep ${id} setup`);
   });
 }
 
-// Measured on this build (docs/review/m55c): the Royal Survey's "CONDEMNED" sign text is drawn at 8.55 CSS px at 390x656 (10.99 at 390x844).
-known('Old Keep level 23: the CONDEMNED sign text is at least 11 CSS px at 390x656', async ({ page, context }) => {
+test('Old Keep level 23: the CONDEMNED sign text is at least 11 CSS px at 390x656', async ({ page, context }) => {
   const decoder = context.pages().find(p => p !== page)!;
   await decoder.goto('about:blank');
   await page.goto('/?test=1&ui=new&keep=23');
   await onScreen(page, 'game');
   await page.waitForTimeout(1500);
-  await audit(page, decoder, 'keep 23 setup', { skipTargets: ['road:'] });
+  await audit(page, decoder, 'keep 23 setup');
 });
 
-// Measured: road:east 82.5 to 84.5 x 43.3 and road:west 87.1 x 43.3 CSS px on levels 21 to 25 at 390x656.
-known('Old Keep road banners are at least 44 CSS px tall at 390x656', async ({ page }) => {
-  for (const id of [21, 23, 25]) {
+test('Old Keep road banners show the approaching groups without tap targets', async ({ page }) => {
+  for (const id of [21, 22, 23, 24, 25]) {
     await page.goto(`/?test=1&ui=new&keep=${id}`);
     await onScreen(page, 'game');
-    await page.waitForTimeout(1200);
-    const { targets } = await collectTexts(page);
-    const banners = Object.entries(targets).filter(([key]) => key.startsWith('road:')).map(([key, r]) => `${key} ${r.w.toFixed(1)}x${r.h.toFixed(1)}`);
-    expect(banners.length).toBeGreaterThan(0);
-    for (const [key, r] of Object.entries(targets).filter(([k]) => k.startsWith('road:'))) {
-      expect(Math.min(r.w, r.h), `level ${id} ${key}`).toBeGreaterThanOrEqual(targetFloor);
-    }
+    const { texts, targets } = await collectTexts(page);
+    const headings = texts.filter(({ text }) => /^(East|West) road$/.test(text)).map(({ text }) => text);
+    expect(headings).toEqual(id === 21 ? ['East road'] : id === 22 ? ['West road'] : ['East road', 'West road']);
+    expect(Object.keys(targets).filter(key => key.startsWith('road:'))).toEqual([]);
   }
 });

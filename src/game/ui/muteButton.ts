@@ -30,6 +30,11 @@ export class MuteButton {
     return this.button.rect;
   }
 
+  setDepth(depth: number): void {
+    this.button.setDepth(depth);
+    this.icon.setDepth(depth);
+  }
+
   setRect(rect: Rect): void {
     this.button.setSize(rect.width, rect.height);
     this.button.moveTo(rect.x, rect.y);

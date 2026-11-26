@@ -238,7 +238,7 @@ export function drawPaperTitle(scene: Scene, portrait: boolean, first: boolean, 
     const mapCaption = p.label(TITLE_TEXT.map, p.size, p.inner, PRINT.ink, 'bold');
     const prompt = p.label(TITLE_TEXT.prompt, portrait ? 22 : 14, p.inner, PRINT.muted);
     best = p.label('', portrait ? 23 : 15, p.inner, PRINT.muted);
-    const mapH = portrait ? 154 : 99;
+    const mapH = portrait ? 154 : 117;
     const mapNameSize = portrait ? p.inner < 500 ? 20 : 23 : 16;
     const start = portrait ? p.tap + 4 * p.gap : p.tap + 2 * p.gap;
     const headingBottom = p.place(subtitle, p.place(title, start + p.pad) + p.gap / 2);
@@ -255,9 +255,11 @@ export function drawPaperTitle(scene: Scene, portrait: boolean, first: boolean, 
       }, mapNameSize);
       maps.set(choice, map);
       const art = scene.add.graphics();
-      const maxWidth = rect.width - 2 * p.gap;
+      const thumbTop = rect.y + p.gap;
+      const labelTop = map.labelObjects[0].getBounds().top;
+      const maxWidth = Math.min(rect.width - 2 * p.gap, 2 * (labelTop - paperPadding(scene).y - thumbTop));
       const thumbW = Math.min(maxWidth, portrait ? 166 : 144);
-      drawMapThumbnail(art, MAPS[choice], rect.x + (rect.width - thumbW) / 2, rect.y + p.gap, thumbW, thumbW / 2);
+      drawMapThumbnail(art, MAPS[choice], rect.x + (rect.width - thumbW) / 2, thumbTop, thumbW, thumbW / 2);
     });
     const scoreY = y + mapH + p.gap;
     best.setOrigin(.5).setPosition(p.cx, scoreY + (portrait ? 27 : 12));

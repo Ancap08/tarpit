@@ -784,8 +784,11 @@ export class GameScene extends Phaser.Scene {
     this.aimCross = world();
     this.siegeGate = this.siegeScreens ? new SiegeGateEffects(this, this.layout, !this.autoTick, resume?.gateHistory) : undefined;
     const fixed = this.siegeScreens && this.layout.turned ? [...this.moments.screenObjects, ...this.siegeGate!.fixed] : undefined;
+    const fixedVeil = clean && fixed && this.fx?.screenVeil;
+    if (fixedVeil) fixed!.push(fixedVeil);
     const field = fixed ? this.children.list.filter(object => !fixed.includes(object)) : undefined;
     const fieldObjects = clean ? new Set(this.children.list) : undefined;
+    if (fixedVeil) fieldObjects?.delete(fixedVeil);
     this.bannerBg = this.add.graphics().setDepth(4);
     const bannerTop = this.layout.map.y + BANNER_Y;
     const bannerText = (y: number, size: string, color: string, heading: boolean) =>
@@ -867,7 +870,7 @@ export class GameScene extends Phaser.Scene {
       }, { fontSize: this.layout.turned ? '24px' : '16px', primary: true }) : undefined;
     this.buildConfirm?.setShown(false);
     this.held = new HeldBoons(this, this.layout);
-    this.reward = new BoonReward(this, this.layout, (id) => this.pickBoon(id));
+    this.reward = new BoonReward(this, this.layout, (id) => this.pickBoon(id), this.siegeScreens);
     this.endScreen = new EndScreen(
       this,
       this.layout,
@@ -883,6 +886,7 @@ export class GameScene extends Phaser.Scene {
 
     this.pausePanel = new PausePanel(this, this.layout, !!this.state.level, {
       muteBounds: () => this.hud.rects().mute,
+      setMuteDepth: depth => this.hud.setMuteDepth(depth),
       onResume: () => this.setPaused(false),
       onRestart: () => this.playAgain(),
       onMenu: () => this.toMenu(),
@@ -1595,7 +1599,7 @@ export class GameScene extends Phaser.Scene {
   /** Every clickable rectangle by name: HUD and bar buttons, the open panel's buttons, and `playAgain` and `menu`. */
   uiRects(): Record<string, Rect> {
     if (this.paused) return { mute: this.hud.rects().mute, ...this.pausePanel.rects() };
-    return { ...this.hud.rects(), ...this.siegeControls?.rects(), ...this.roadBanners?.rects(), ...this.reward.rects(), ...this.held.rects(), ...this.panel.rects(), ...(this.buildConfirm && this.armed ? { buildConfirm: this.buildConfirm.rect } : {}), ...this.endScreen.rects() };
+    return { ...this.hud.rects(), ...this.siegeControls?.rects(), ...(!this.clean && this.roadBanners?.rects()), ...this.reward.rects(), ...this.held.rects(), ...this.panel.rects(), ...(this.buildConfirm && this.armed ? { buildConfirm: this.buildConfirm.rect } : {}), ...this.endScreen.rects() };
   }
 
   /** The end screen showing, or null. */
@@ -2037,10 +2041,24 @@ export class GameScene extends Phaser.Scene {
       menuOpen: this.specialMenuOpen, aiming: this.aiming, banner, paused: this.paused,
     }, this.autoTick ? this.clock.nowMs : undefined);
     this.moments.draw(this.animationTime);
-    const covered = this.paused || !!this.state.pendingBoon || this.panel.rect !== null || this.aiming !== null || this.specialMenuOpen;
+    const hasSiegeDrawer = this.clean && this.siegeScreens;
+    const { gate, repair } = hasSiegeDrawer ? this.hud.siegeRects() : {};
+    const modal = this.paused || !!this.state.pendingBoon || this.aiming !== null || this.specialMenuOpen;
+    const covered = modal || this.panel.cell !== null;
     this.siegeActors?.update(this.state, this.clock.nowMs, project ?? (p => p),
-      this.state.phase === 'setup' || this.state.phase === 'wave');
-    this.siegeControls?.update(this.state, covered, this.siegeView?.verticalScale, this.siegeView?.displayed);
+      this.state.phase === 'setup' || this.state.phase === 'wave', this.layout.turned ? gate : undefined);
+    this.siegeControls?.update(this.state, hasSiegeDrawer ? modal : covered, this.siegeView?.verticalScale, this.siegeView?.displayed);
+    if (hasSiegeDrawer && this.panel.cell !== null) {
+      const siege = this.siegeControls?.rects() ?? {};
+      const quartering = this.state.wallSiteTax?.kind === 'quartering' ? siege.wallSite : undefined;
+      const reserved = Object.entries(siege)
+        .filter(([key]) => key.startsWith('window:'))
+        .map(([, rect]) => rect);
+      if (gate) reserved.push(gate);
+      if (repair) reserved.push(repair);
+      if (quartering) reserved.push(quartering);
+      this.panel.update(this.state, { reserved, quartering });
+    }
     this.roadBanners?.update(this.state, covered, this.siegeView?.verticalScale, this.siegeView?.displayed);
     this.reward.update(this.paused ? null : this.state.pendingBoon);
     this.held.update(this.state.boons);
@@ -2164,7 +2182,7 @@ export class GameScene extends Phaser.Scene {
     if (this.pick !== null && !canPick(this.state, this.pick)) this.pick = null;
     // Aiming and the popup end once no special can be used (charge spent, wave over).
     if (!specialReady(this.state) || (this.aiming !== null && !availableSpecials(this.state).includes(this.aiming))) this.cancelSpecial();
-    this.panel.update(this.state);
+    if (!this.clean || !this.siegeScreens) this.panel.update(this.state);
     // A drag whose source went away (gold spent elsewhere, the tower sold or
     // locked by a test hook) ends without acting.
     const d = this.press;

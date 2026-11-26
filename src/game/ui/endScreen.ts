@@ -83,7 +83,7 @@ export class EndScreen {
 
     this.veil = scene.add
       .rectangle(MAP_AREA.x, MAP_AREA.y, MAP_AREA.width, MAP_AREA.height, this.printed ? 0xc8b99a : COLORS.endVeil, this.printed ? (salute ? .975 : 1) : .38)
-      .setOrigin(0, 0);
+      .setOrigin(0, 0).setName('result-veil');
     if (salute) {
       // The evening salute shines through the open field around the paper.
       // Keep the panel, labels and every control above it.

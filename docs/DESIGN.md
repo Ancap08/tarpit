@@ -84,7 +84,10 @@ cannot fit the label, its type goes down in one-unit steps to a 12 CSS px
 floor. Chips size to their measured labels. The browser check requires 4 CSS
 px beyond the inset, leaving 2 CSS px for measurement and rounding variance.
 The HTML recovery button uses 11 CSS px of padding. The portrait Free play
-map row starts with a 6-unit side inset and 8-unit gaps. Portrait look buttons
+map row starts with a 6-unit side inset and 8-unit gaps. The landscape map
+cards are 117 units high. Thumbnails keep their 2:1 aspect ratio and fit
+above the measured map name with the same five-unit inset and 6 CSS px
+clearance as the paper controls. Portrait look buttons
 prefer 124 units each and have up to 140 units per slot with a 4-unit gap.
 Their caption sits below the row when the navigation needs the space. The
 landscape pause buttons start at 184 units and Restart may use up to eight
@@ -1889,6 +1892,19 @@ pixels and composites the interface on a separate canvas fitted to the
 physical device pixels.
 Text textures match the interface canvas density and draw from snapped
 anchors. Unchanged interface frames reuse the painted layer.
+
+Reward and boss veils cover the full-width field between the header and
+dock, including the ground alongside the board. Pause dims the whole view
+and draws the mute icon above the shade. The result uses the full view.
+Old Keep road banners preview the next groups and have no tap action.
+Royal Survey signs use at least 17 canvas units and round up from 11.25
+CSS px when the fit requires more. Their painted boards grow to fit the
+lettering and stay beside the Gate plate when the portrait view settles into
+battle. The Old Keep tower drawer clears the Gate and last stand readouts,
+Repair, the window controls and Quartering by four canvas units. It uses a
+narrower portrait drawer alongside Quartering. When the full 17-unit slide
+cannot clear the controls, the drawer opens in place. A tall drawer can use
+the lower dock area when the field has no clear space for it.
 
 Paper cards use the bundled Libre Caslon. On phones the paper fits the
 page width with a 23-unit inset on either side. The sheet and action bar

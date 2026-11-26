@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import type { BoonId, BoonOffer, Rect } from '../../sim';
 import { contains } from '../input';
-import type { Layout } from '../layout';
+import { cleanBattlefield, type Layout } from '../layout';
 import { BOON_NAMES, REWARD_KEYS, boonDescription, rewardTitle } from '../names';
 import { COLORS, FONT, TEXT } from '../palette';
 import { ink, panel, THEME } from './theme';
@@ -37,12 +37,12 @@ export class BoonReward {
   private readonly keyFit = new DeviceTextFit();
   private readonly keys: { text: Phaser.GameObjects.Text; box: Rect }[] = [];
 
-  constructor(scene: Phaser.Scene, layout: Layout, onPick: (id: BoonId) => void) {
+  constructor(scene: Phaser.Scene, layout: Layout, onPick: (id: BoonId) => void, siege = false) {
     const clean = this.clean = skinFor(scene) === 'battle';
-    const m = layout.map;
+    const m = clean ? cleanBattlefield(layout, siege) : layout.map;
     this.geo = rewardLayout(layout, clean);
     this.view = scene.add.container(0, 0).setDepth(REWARD_DEPTH).setVisible(false);
-    const veil = scene.add.rectangle(m.x, m.y, m.width, m.height, COLORS.endVeil, 0.8).setOrigin(0);
+    const veil = scene.add.rectangle(m.x, m.y, m.width, m.height, COLORS.endVeil, 0.8).setOrigin(0).setName('reward-veil');
     this.title = label(scene, 30, TEXT.hud, true).setOrigin(0.5).setPosition(this.geo.title.x, this.geo.title.y);
     this.view.add([veil, this.title]);
     const origin = layout.kind === 'portrait' ? 0 : 0.5;

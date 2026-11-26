@@ -866,6 +866,14 @@ export class Hud {
     return this.gate?.repairRect;
   }
 
+  setMuteDepth(depth: number): void {
+    this.muteButton.setDepth(depth);
+  }
+
+  siegeRects(): Record<string, Rect> {
+    return this.gate?.rects() ?? {};
+  }
+
   /** The special popup's box while open, else null (milestone 25b). */
   get specialMenuRect(): Rect | null {
     return this.specialMenu.rect;
@@ -901,7 +909,7 @@ export class Hud {
       special: { ...this.specialButton.rect },
       ...this.bar.rects(),
       ...this.specialMenu.rects(),
-      ...this.gate?.rects(),
+      ...this.siegeRects(),
     };
   }
 }

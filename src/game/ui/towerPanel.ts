@@ -9,11 +9,12 @@ import {
   towerUndoValue,
   type Cell,
   type GameState,
+  type Point,
   type TargetingMode,
   type UpgradePath,
 } from '../../sim';
 import { placeBeside, type Rect } from '../input';
-import { fontPx, type Layout } from '../layout';
+import { cleanBattlefield, fontPx, type Layout } from '../layout';
 import { killsLabel, PANEL_TEXT, PATH_NAMES, TOWER_NAMES, targetingButtonText, towerPanelTitle } from '../names';
 import { FONT, TEXT } from '../palette';
 import { CLEAN, battleFont, battleWeight, interLoaded, motionClock, rounded, skinFor, textMetrics } from './newTheme';
@@ -38,6 +39,40 @@ interface Row {
   key: string;
   button: Button;
   path?: PathChoice;
+}
+
+const ARRIVAL_OFFSET = 17;
+
+/** Use the nearest position whose swept bounds clear every fixed control. */
+function clearSiegeControls(preferred: Rect, field: Rect, controls: Rect[], travel: number): Rect | undefined {
+  const gap = 4;
+  const { width, height } = preferred;
+  const minX = field.x + gap, maxX = field.x + field.width - width - gap;
+  const minY = field.y + gap, maxY = field.y + field.height - height - travel - gap;
+  if (maxX < minX || maxY < minY) return undefined;
+  const x = Math.max(minX, Math.min(maxX, preferred.x));
+  const y = Math.max(minY, Math.min(maxY, preferred.y));
+  const blocked = (left: number, top: number) => controls.some(r =>
+    left < r.x + r.width + gap && left + width + gap > r.x &&
+    top < r.y + r.height + gap && top + height + travel + gap > r.y);
+  if (!blocked(x, y)) return { x, y, width, height };
+  const xs = [x], ys = [y];
+  for (const control of controls) {
+    xs.push(control.x - width - gap, control.x + control.width + gap);
+    ys.push(control.y - height - travel - gap, control.y + control.height + gap);
+  }
+  let best: Point | undefined;
+  let distance = Infinity;
+  for (const left of xs) for (const top of ys) {
+    if (left < minX || left > maxX || top < minY || top > maxY) continue;
+    if (blocked(left, top)) continue;
+    const candidateDistance = (left - x) ** 2 + (top - y) ** 2;
+    if (candidateDistance < distance) {
+      best = { x: left, y: top };
+      distance = candidateDistance;
+    }
+  }
+  return best && { ...best, width, height };
 }
 
 export class TowerPanel {
@@ -174,7 +209,7 @@ export class TowerPanel {
   }
 
   /** Refresh affordability, and refit the panel when its rows or display scale change. */
-  update(state: GameState): void {
+  update(state: GameState, siegeControls?: { reserved: Rect[]; quartering?: Rect }): void {
     if (this.at === null) return;
     const tower = towerAt(state, this.at);
     if (!tower) return;
@@ -218,7 +253,10 @@ export class TowerPanel {
     const separateCap = this.clean && interLoaded && atCap;
     // A tall upgrade choice drawer may sit beside the selected edge tower.
     const edgeWidth = interLoaded ? (paths.length ? 438 : 456) : 418;
-    const width = this.clean ? (portrait ? (edge ? edgeWidth : 456) : 382) : legacy.width;
+    const normalWidth = this.clean ? (portrait ? (edge ? edgeWidth : 456) : 382) : legacy.width;
+    // Quartering leaves a clear lane on the left of the portrait field.
+    const width = portrait && siegeControls?.quartering
+      ? Math.min(normalWidth, siegeControls.quartering.x - 8) : normalWidth;
     const close = this.clean ? Math.max(45, legacy.close) : legacy.close;
     const rowHeight = this.clean ? Math.max(45, legacy.rowHeight) : legacy.rowHeight;
     const pathHeight = this.clean ? Math.max(rowHeight, portrait ? 104 : 80) : legacy.pathHeight;
@@ -267,11 +305,23 @@ export class TowerPanel {
         : placeBeside(centre, width, height, state.map, this.layout);
       this.placed = { ...location, width, height };
       if (!this.clean) this.backing.setPosition(location.x, location.y).setSize(width, height).setVisible(true);
-
+    }
+    let travel = ARRIVAL_OFFSET;
+    if (siegeControls) {
+      const { reserved } = siegeControls;
+      const field = cleanBattlefield(this.layout, true);
+      const roomy = { ...field, height: this.layout.height - field.y };
+      const place = clearSiegeControls(this.placed, field, reserved, travel);
+      if (place) this.placed = place;
+      else {
+        travel = 0;
+        this.placed = clearSiegeControls(this.placed, field, reserved, travel)
+          ?? clearSiegeControls(this.placed, roomy, reserved, travel) ?? this.placed;
+      }
     }
     const { x, y } = this.placed;
     const left = x + pad;
-    const offset = this.clean ? 17 * (1 - this.arrival) ** 3 : 0;
+    const offset = this.clean ? travel * (1 - this.arrival) ** 3 : 0;
     if (this.paper) {
       const key = `${x}:${y}:${width}:${height}:${tower.type}:${level}`;
       if (this.paintKey !== key) {

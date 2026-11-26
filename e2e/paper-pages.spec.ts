@@ -52,7 +52,10 @@ async function checkPaper(page: Page, info: TestInfo, margin: boolean, pane: Pap
       return key.startsWith(pane === 'pause' ? 'pause:' : 'title:');
     });
     const depth = { title: 0, pause: 21, fallback: 4, result: 11 }[pane];
-    const labels = (t.game.scene.getScene(pane === 'title' ? 'title' : 'game').children.list)
+    const scene = t.game.scene.getScene(pane === 'title' ? 'title' : 'game');
+    const objects = [...scene.children.list].sort((a, b) =>
+      (a as Phaser.GameObjects.Text).depth - (b as Phaser.GameObjects.Text).depth);
+    const labels = objects
       .filter((node): node is Phaser.GameObjects.Text => node.type === 'Text')
       .filter(node => node.visible && node.text && (pane === 'title' || node.depth === depth));
     const problems: string[] = [];
@@ -63,6 +66,40 @@ async function checkPaper(page: Page, info: TestInfo, margin: boolean, pane: Pap
     const overlap = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
       a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
     const viewport = { x: 0, y: 0, width, height };
+    // Replay the actual foreground into a transparent patch the size of the label.
+    // This sees opaque pixels from Graphics as well as images, and allows
+    // transparent parts of an illustration to cross a label's bounding box.
+    type CanvasObject = Phaser.GameObjects.GameObject & {
+      getBounds?: () => Rect;
+      renderCanvas?: (renderer: Phaser.Renderer.Canvas.CanvasRenderer, source: CanvasObject,
+        camera: Phaser.Cameras.Scene2D.Camera) => void;
+    };
+    const camera = scene.cameras.getCamera('siege-hud') ?? scene.cameras.main;
+    const renderer = Object.create(scene.game.renderer) as Phaser.Renderer.Canvas.CanvasRenderer;
+    const sample = Object.create(camera) as typeof camera & { matrix: Phaser.GameObjects.Components.TransformMatrix };
+    const Matrix = sample.matrix.constructor as new () => typeof sample.matrix;
+    sample.matrix = new Matrix();
+    sample.addToRenderList = () => {};
+    const patch = document.createElement('canvas');
+    const context = patch.getContext('2d', { willReadFrequently: true })!;
+    renderer.currentContext = context;
+    const covered = (label: Phaser.GameObjects.Text, box: Phaser.Geom.Rectangle) => {
+      const foreground = objects.slice(objects.indexOf(label) + 1).filter((object: CanvasObject) =>
+        object.type !== 'Text' && object.willRender(camera) && object.renderCanvas &&
+        (!object.getBounds || overlap(box, object.getBounds()))) as CanvasObject[];
+      if (!foreground.length) return false;
+      const x = Math.floor(box.left), y = Math.floor(box.top);
+      patch.width = Math.max(1, Math.ceil(box.right) - x);
+      patch.height = Math.max(1, Math.ceil(box.bottom) - y);
+      sample.matrix.setTransform(1, 0, 0, 1, -x, -y);
+      (label as CanvasObject).renderCanvas!(renderer, label, sample);
+      const ink = context.getImageData(0, 0, patch.width, patch.height).data;
+      context.clearRect(0, 0, patch.width, patch.height);
+      for (const object of foreground) object.renderCanvas!(renderer, object, sample);
+      const cover = context.getImageData(0, 0, patch.width, patch.height).data;
+      for (let alpha = 3; alpha < ink.length; alpha += 4) if (ink[alpha] >= 128 && cover[alpha] >= 128) return true;
+      return false;
+    };
     const measure = (key: string, control: Rect, text: string, box: Phaser.Geom.Rectangle, size: number) => {
       // Keep the existing five canvas-unit inset, then require four CSS pixels beyond it.
       const px = Math.min((box.left - control.x - 5) / sx, (control.x + control.width - box.right - 5) / sx,
@@ -84,6 +121,7 @@ async function checkPaper(page: Page, info: TestInfo, margin: boolean, pane: Pap
       for (const [key, button] of rects) {
         if (overlap(box, button)) measure(key, button, text, box, size);
       }
+      if (covered(label, box)) problems.push(`${text} is covered by art on the paper page`);
       if (pane === 'result') continue;
       if (!fits(box, viewport, 5)) problems.push(`${text} outside print area`);
       if (size < 12) problems.push(`${text} at ${size.toFixed(2)} CSS px`);

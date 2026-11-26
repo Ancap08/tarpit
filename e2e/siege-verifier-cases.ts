@@ -102,7 +102,7 @@ async function checkCleanSetup(page: Page, wave: number, checkCopy: boolean) {
     const state = api.state!();
     state.wave = wave;
     api.step!(0);
-    const rects = Object.entries(api.uiRects());
+    const rects = Object.entries({ ...api.uiRects(), ...scene['roadBanners']?.rects() });
     const layout = scene.boardLayout;
     const problems: string[] = [];
     const contains = ({ x, y }: Point, r: Rect, pad = 0) =>
@@ -209,7 +209,11 @@ export function siegeVerifierCases(touch: boolean, heights: readonly (number | u
       }
       if (clean) {
         const roads = level.keepRoads === 'both' ? ['east', 'west'] : [level.keepRoads];
-        expect(Object.keys(all).filter(key => key.startsWith('road:')).sort()).toEqual(roads.map(road => `road:${road}`).sort());
+        const banners = await page.evaluate(() => {
+          const scene = window.__tarpit!.game.scene.getScene('game') as GameScene;
+          return Object.keys(scene['roadBanners']!.rects()).sort();
+        });
+        expect(banners).toEqual(roads.map(road => `road:${road}`).sort());
         if (checkCopy && level.id === 21) expect(texts.some(t => t.text === 'The gate holds walkers. Repair it between waves.')).toBe(true);
         const clearances: Awaited<ReturnType<typeof siegeClearances>> = [];
         for (let wave = 0; wave < level.waves.length; wave++) {

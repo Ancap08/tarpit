@@ -10,6 +10,7 @@ import { PRINT, line, newInterface, sheet, textMetrics } from './newTheme';
 
 interface Actions {
   muteBounds(): Rect;
+  setMuteDepth(depth: number): void;
   onResume(): void;
   onRestart(): void;
   onMenu(): void;
@@ -21,15 +22,17 @@ export class PausePanel {
   private readonly paper: Phaser.GameObjects.Graphics;
   private readonly title: Phaser.GameObjects.Text;
   private readonly buttons: Button[];
+  private readonly liftMute?: (shown: boolean) => void;
   private navigate?: (event: KeyboardEvent) => void;
   private confirming = false;
 
   constructor(private readonly scene: Phaser.Scene, layout: Layout, campaign: boolean, actions: Actions) {
     const depth = 20; // Above reward cards, held boons and the boss banner.
+    const printed = newInterface();
+    if (printed) this.liftMute = shown => actions.setMuteDepth(shown ? depth + 1 : 0);
     let mute = actions.muteBounds();
-    this.shade = scene.add.graphics().setDepth(depth);
-    // The scene's input layer can include a rail to the right of the map. Leave
-    // a hole for the real mute button, including after a same-layout refit.
+    this.shade = scene.add.graphics().setDepth(depth).setName('pause-veil');
+    // The blocker exempts mute and the pause controls, including after a refit.
     this.blocker = scene.add.zone(0, 0, 1, 1).setOrigin(0).setDepth(depth)
       .setInteractive(new Phaser.Geom.Rectangle(), (_area: unknown, x: number, y: number) =>
         !contains(mute, x, y) && !this.buttons.some(button => contains(button.rect, x, y)));
@@ -37,18 +40,20 @@ export class PausePanel {
       mute = actions.muteBounds();
       const { width, height } = scene.scale;
       this.blocker.setSize(width, height);
-      const right = mute.x + mute.width, bottom = mute.y + mute.height;
-      this.shade.clear().fillStyle(COLORS.endVeil, 0.66)
-        .fillRect(0, 0, width, mute.y)
-        .fillRect(0, bottom, width, height - bottom)
-        .fillRect(0, mute.y, mute.x, mute.height)
-        .fillRect(right, mute.y, width - right, mute.height);
+      const shade = this.shade.clear().fillStyle(COLORS.endVeil, 0.66);
+      if (printed) shade.fillRect(0, 0, width, height);
+      else {
+        const right = mute.x + mute.width, bottom = mute.y + mute.height;
+        shade.fillRect(0, 0, width, mute.y)
+          .fillRect(0, bottom, width, height - bottom)
+          .fillRect(0, mute.y, mute.x, mute.height)
+          .fillRect(right, mute.y, width - right, mute.height);
+      }
     };
     fitShade();
     scene.scale.on('resize', fitShade);
     scene.events.once('shutdown', () => scene.scale.off('resize', fitShade));
 
-    const printed = newInterface();
     const portrait = layout.turned;
     const cx = printed ? layout.width / 2 : layout.map.x + layout.map.width / 2;
     const cy = printed ? layout.height / 2 : layout.map.y + layout.map.height / 2;
@@ -100,6 +105,7 @@ export class PausePanel {
 
   setShown(shown: boolean): void {
     if (shown) this.scene.input.emit(CANCEL_UI_PRESS);
+    this.liftMute?.(shown);
     this.confirming = false;
     this.buttons[1].set(PAUSE_TEXT.restart, true);
     this.navigate = shown ? menuKeys(this.buttons, 0) : undefined;
