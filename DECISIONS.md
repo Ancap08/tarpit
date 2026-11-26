@@ -2124,3 +2124,22 @@ can change it; "Kyle" means Kyle decided.
   went to Sol, who also tested the two switches together for the first
   time: the title, the owner's page, all 25 stops, a new-style card and
   result, and entry to level 21, on three screen sizes, no errors.
+- **CI failed the new interface on one label, and the cause was the
+  typeface.** "Musketeer" in the build bar ran 1.6 px outside its plaque
+  on Linux. Play used the device's own sans, which the coordinator chose
+  to avoid a download, so every in-level label depended on a font the
+  game does not pick. Sol made every label group fit by construction
+  (measure, shrink together, never under the minimum, a defined fallback)
+  and added a stress test with the font 15% wider and 10% narrower. That
+  test showed the tower names disappear at 390x844 with a font 15% wider.
+- **Inter is bundled for the new in-level interface.** Decided by Kyle
+  ("Yes, bundle one", then "Yes, download" after being shown the files,
+  source and sizes). One Latin-subset variable file, 48,432 bytes, from
+  `fonts.gstatic.com/s/inter/v20/`, SHA-256
+  `c940764593d0fe5d596be327ca7558855e018039fb78509aa21921fd3644c3e4`, and
+  its licence text (SIL Open Font License 1.1, The Inter Project Authors),
+  4,380 bytes, from the Inter project's repository, SHA-256
+  `262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a`.
+  Downloaded by the coordinator into its own folder and checked; nothing
+  was run from it. The earlier line "No font or icon set is downloaded" is
+  superseded for this one font. Icons are still drawn in code.
