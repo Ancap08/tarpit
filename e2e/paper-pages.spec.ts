@@ -17,7 +17,7 @@ async function checkPaper(page: Page, pane: 'title' | 'pause' | 'fallback' = 'ti
     const labels = (t.game.scene.getScene(pane === 'title' ? 'title' : 'game').children.list)
       .filter((node): node is Phaser.GameObjects.Text => node.type === 'Text')
       .filter(node => node.visible && node.text && (pane === 'title' || node.depth === (pane === 'pause' ? 21 : 4)))
-      .map(node => ({ box: node.getBounds(), size: parseFloat(node.style.fontSize), text: node.text }));
+      .map(node => ({ box: node.getBounds(), size: parseFloat(String(node.style.fontSize)), text: node.text }));
     const problems: string[] = [];
     const fits = (a: { x: number; y: number; width: number; height: number }, b: typeof a, pad = 0) =>
       a.x >= b.x + pad - .03 && a.y >= b.y + pad - .03 &&
@@ -152,7 +152,7 @@ test('boot, Painted progress and fallback, and Keep failure keep their recovery 
   await onScreen(page, 'freePlay');
   await press(page, 'title:look:painted', hasTouch);
   await press(page, 'title:play', hasTouch);
-  await page.waitForFunction(() => window.__tarpit?.ui<TitleUiState>().loading !== null);
+  await page.waitForFunction(() => window.__tarpit?.ui?.<TitleUiState>().loading !== null);
   await checkPaper(page);
   fail();
   await onScreen(page, 'game');
