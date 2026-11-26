@@ -78,8 +78,8 @@ describe('checkManifest', () => {
     expect(checkManifest(['assets/a.png'], [row('assets/a.png', 'CC-BY 4.0', 'Credit: Jane Doe, opengameart.org')])).toEqual([]);
   });
 
-  it('requires the bundled OFL and the pinned hash for every font file', () => {
-    const license = 'assets/fonts/OFL.txt';
+  it.each(['OFL.txt', 'OFL-Inter.txt'])('requires the bundled %s and pinned font hashes', name => {
+    const license = `assets/fonts/${name}`;
     const font = 'assets/fonts/a.woff2';
     const digest = 'a'.repeat(64);
     const rows = [font, license].map((path) => row(path, 'SIL OFL 1.1', `License file: ${license}; SHA-256: ${digest}`));

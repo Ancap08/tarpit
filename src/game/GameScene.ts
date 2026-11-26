@@ -211,7 +211,7 @@ import { Button } from './ui/button';
 import { PANEL_TEXT } from './names';
 import { HitNumbers } from './ui/hitNumbers';
 import { uiObject } from './ui/devicePixels';
-import { BakedPaint, CLEAN, SANS, newInterface, roundPoints, rounded, skinFor, textMetrics, useInterface } from './ui/newTheme';
+import { BakedPaint, CLEAN, battleFont, battleWeight, newInterface, roundPoints, rounded, skinFor, textMetrics, useInterface } from './ui/newTheme';
 import { DeviceTextFit, textSlot } from './ui/deviceText';
 import { AIM_BANNER, aimBannerText, BARRICADE_AIM_REASONS, PAINTED_FALLBACK, REWARD_KEYS } from './names';
 import {
@@ -773,11 +773,11 @@ export class GameScene extends Phaser.Scene {
     const fieldObjects = clean ? new Set(this.children.list) : undefined;
     this.bannerBg = this.add.graphics().setDepth(4);
     const bannerTop = this.layout.map.y + BANNER_Y;
-    const bannerText = (y: number, size: string, color: string) =>
-      this.add.text(this.bannerX, y, '', { fontFamily: clean ? SANS : FONT, fontSize: size, fontStyle: 'bold', color, ...(clean ? { metrics: textMetrics(parseInt(size)) } : {}) }).setOrigin(0.5, 0.5).setAlign('center').setDepth(4);
+    const bannerText = (y: number, size: string, color: string, heading: boolean) =>
+      this.add.text(this.bannerX, y, '', { fontFamily: clean ? battleFont() : FONT, fontSize: size, fontStyle: clean ? battleWeight(heading, 'bold') : 'bold', color, ...(clean ? { metrics: textMetrics(parseInt(size)) } : {}) }).setOrigin(0.5, 0.5).setAlign('center').setDepth(4);
     // Portrait (32b follow-up) shows the aim instruction in the status strip instead (Hud).
-    this.bannerMain = bannerText(bannerTop + BANNER_MAIN_Y, `${AIM_BANNER.mainPx}px`, TEXT.aimBanner);
-    this.bannerHint = bannerText(bannerTop + 34, `${AIM_BANNER.hintPx}px`, TEXT.aimHint);
+    this.bannerMain = bannerText(bannerTop + BANNER_MAIN_Y, `${AIM_BANNER.mainPx}px`, TEXT.aimBanner, true);
+    this.bannerHint = bannerText(bannerTop + 34, `${AIM_BANNER.hintPx}px`, TEXT.aimHint, false);
     this.hud = new Hud(this, {
       onRepair: this.state.gate ? () => {
         if (this.paused || this.state.pendingBoon) return;

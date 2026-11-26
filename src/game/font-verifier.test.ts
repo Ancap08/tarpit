@@ -8,6 +8,8 @@ import { describe, expect, it } from 'vitest';
 const HASHES: Record<string, string> = {
   'LibreCaslonText-Regular-latin.woff2': '1471d8a9f22ba5c42c597c2dc582030297027d3e4c3b59a55aec81678f80485b',
   'LibreCaslonText-Bold-latin.woff2': '7dc7dc90fb6e140dcdfbfd85aae2bab1f368a448be129fecb953a8290501cef8',
+  'Inter-Latin-Variable.woff2': 'c940764593d0fe5d596be327ca7558855e018039fb78509aa21921fd3644c3e4',
+  'OFL-Inter.txt': '262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a',
 };
 const TAGS = 'cmap head hhea hmtx maxp name OS/2 post cvt  fpgm glyf loca prep CFF  VORG EBDT EBLC gasp hdmx kern LTSH PCLT VDMX vhea vmtx BASE GDEF GPOS GSUB'.split(/ (?=\S)/);
 
@@ -51,16 +53,20 @@ function cmap(file: string): Set<number> {
 }
 
 describe('bundled font (44c verifier)', () => {
-  it('assets/fonts holds only the two WOFF2 files and the licence, with the manifest hashes', () => {
+  it('assets/fonts holds only the approved fonts and licences, with the manifest hashes', () => {
     expect(readdirSync('assets/fonts').sort()).toEqual([...Object.keys(HASHES), 'OFL.txt'].sort());
     for (const [name, hash] of Object.entries(HASHES)) {
       expect(createHash('sha256').update(readFileSync(`assets/fonts/${name}`)).digest('hex'), name).toBe(hash);
     }
   });
 
-  it('the README credits the font and the licence file is the OFL', () => {
+  it('the README credits the fonts and their licence files are the OFL', () => {
     expect(readFileSync('README.md', 'utf8')).toContain('Libre Caslon Text');
     expect(readFileSync('assets/fonts/OFL.txt', 'utf8')).toContain('SIL OPEN FONT LICENSE Version 1.1');
+    expect(readFileSync('README.md', 'utf8')).toContain('The Inter Project Authors');
+    const interLicense = readFileSync('assets/fonts/OFL-Inter.txt', 'utf8');
+    expect(interLicense).toContain('Copyright (c) 2016 The Inter Project Authors');
+    expect(interLicense).toContain('SIL OPEN FONT LICENSE Version 1.1');
   });
 
   it('both weights cover every printable character in game strings', () => {

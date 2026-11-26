@@ -7,7 +7,7 @@ import { sound } from '../audio/engine';
 import { fontPx, type Layout } from '../layout';
 import { ACT_TWO_TEXT, BARRICADE_UNLOCKED, BARRICADE_UNLOCK_HINT, BOON_NAMES, BOSS_BANNER_SUB, GRUMBLEMAW_SUB, GUARDS_UNLOCKED, GUARDS_UNLOCK_HINT, ENEMY_NAMES, PACK_CALL_TEXT, REWARD_PICKED_TEXT, waveStartBanner, waveClearBanner, bonusGoldText } from '../names';
 import { COLORS, FONT, TEXT } from '../palette';
-import { SANS, rounded, skinFor, textMetrics } from '../ui/newTheme';
+import { battleFont, battleWeight, rounded, skinFor, textMetrics } from '../ui/newTheme';
 import { DeviceTextFit, textSlot } from '../ui/deviceText';
 import { BannerQueue } from './fxMath';
 
@@ -38,12 +38,12 @@ export class Moments {
     this.bannerBg = this.scene.add.graphics();
     if (clean) uiObject(this.bannerBg);
     this.bannerText = this.scene.add
-      .text(this.bannerX, 0, '', { fontFamily: clean ? SANS : FONT, fontSize: '30px', fontStyle: 'bold', color: TEXT.waveBanner })
+      .text(this.bannerX, 0, '', { fontFamily: clean ? battleFont() : FONT, fontSize: '30px', fontStyle: clean ? battleWeight(true) : 'bold', color: TEXT.waveBanner })
       .setOrigin(0.5, 0.5)
       .setVisible(false);
     this.bannerSub = this.scene.add
-      .text(this.bannerX, 0, '', { fontFamily: clean ? SANS : FONT, fontSize: clean && layout.turned ? '24px' : fontPx(this.layout, 17),
-        ...(clean ? { metrics: textMetrics(layout.turned ? 24 : 17) } : {}), fontStyle: 'bold', color: TEXT.waveBannerSub })
+      .text(this.bannerX, 0, '', { fontFamily: clean ? battleFont() : FONT, fontSize: clean && layout.turned ? '24px' : fontPx(this.layout, 17),
+        ...(clean ? { metrics: textMetrics(layout.turned ? 24 : 17) } : {}), fontStyle: clean ? battleWeight(false, 'bold') : 'bold', color: TEXT.waveBannerSub })
       .setOrigin(0.5, 0.5)
       .setVisible(false);
     if (clean) {

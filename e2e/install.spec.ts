@@ -7,6 +7,7 @@ import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { writeServiceWorker } from '../scripts/sw-build.ts';
+import { INTER } from '../src/game/palette';
 import { waitForTitle } from './title';
 
 // Milestone 32a: install to the home screen and play offline.
@@ -31,6 +32,7 @@ const MIME: Record<string, string> = {
   '.png': 'image/png',
   '.webmanifest': 'application/manifest+json',
   '.json': 'application/json',
+  '.woff2': 'font/woff2',
 };
 
 /** A static server for `site.dir` mounted at `mount` (plus fixed `extra` files by path) ('/' or '/tarpit/'); `site.dir` may change between requests. */
@@ -170,6 +172,48 @@ test.describe('install and offline, base /', () => {
     expect(await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.scope)).toBe(
       new URL('/', page.url()).href,
     );
+  });
+
+  test('a switch-off install neither requests nor caches Inter', async ({ page }) => {
+    const requests: string[] = [];
+    page.context().on('request', request => {
+      if (request.url().includes('/Inter-Latin-Variable-')) requests.push(request.url());
+    });
+    await page.goto('/');
+    const [cache] = await waitForWorker(page);
+    await playStarts(page);
+    const fontFiles = await page.evaluate(async name =>
+      (await (await caches.open(name)).keys()).map(request => new URL(request.url).pathname), cache);
+    expect(fontFiles.filter(path => path.includes('/LibreCaslonText-'))).toHaveLength(2);
+    expect(fontFiles.filter(path => path.includes('/Inter-Latin-Variable-'))).toEqual([]);
+    expect(requests).toEqual([]);
+  });
+
+  test('the first opted-in visit caches Inter for a fresh offline launch', async ({ page, context }) => {
+    const server = await serve({ dir: join(ROOT, 'dist') }, '/');
+    const url = `${server.origin}/?ui=new`;
+    try {
+      const cached = page.waitForResponse(res => res.fromServiceWorker() && res.url().includes('/Inter-Latin-Variable-'));
+      await page.goto(url);
+      const [cache] = await waitForWorker(page);
+      await playStarts(page);
+      expect((await cached).ok()).toBe(true);
+      expect(await page.evaluate(async name =>
+        (await (await caches.open(name)).keys()).filter(request => request.url.includes('/Inter-Latin-Variable-')).length, cache)).toBe(1);
+      await page.close();
+      await context.setOffline(true);
+      const offline = await context.newPage();
+      const response = offline.waitForResponse(res => res.url().includes('/Inter-Latin-Variable-'));
+      await offline.goto(url);
+      await playStarts(offline);
+      expect((await response).fromServiceWorker()).toBe(true);
+      expect(await offline.evaluate(family => [...document.fonts]
+        .filter(face => face.family === family && face.status === 'loaded').map(face => face.weight), INTER)).toEqual(['100 900']);
+      await offline.close();
+    } finally {
+      await context.setOffline(false);
+      await server.close();
+    }
   });
 
   test('no service worker under ?test=1 or ?perf=1', async ({ page }) => {

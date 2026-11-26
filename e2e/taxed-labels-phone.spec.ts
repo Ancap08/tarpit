@@ -189,8 +189,7 @@ function matrix() {
           const normal = await exerciseHud(page, level, mode === 'fixed fallback');
           if (mode !== 'wide text') return;
 
-          await useWideFontMetrics(page, hasNewInterface(page) ? platformWideFactor : undefined,
-            hasNewInterface(page) ? 'Caslon' : undefined);
+          await useWideFontMetrics(page, hasNewInterface(page) ? platformWideFactor : undefined);
           const wide = await exerciseHud(page, level, false);
           for (const [state, labels] of wide.entries()) {
             const reference = normal[state];

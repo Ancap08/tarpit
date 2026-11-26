@@ -7,7 +7,7 @@ import { COLORS, FONT, TEXT } from '../palette';
 import { ink, panel, THEME } from './theme';
 import { CANCEL_UI_PRESS } from './button';
 import { drawBoonIcon } from './boonIcons';
-import { CLEAN, SANS, rounded, skinFor, textMetrics } from './newTheme';
+import { CLEAN, battleFont, battleWeight, rounded, skinFor, textMetrics } from './newTheme';
 import { heldBoonLayout, rewardLayout } from './boonLayout';
 import { DeviceTextFit, textSlot } from './deviceText';
 
@@ -17,8 +17,8 @@ const DETAIL_MS = 2800;
 
 function label(scene: Phaser.Scene, px: number, color: string, bold = false): Phaser.GameObjects.Text {
   const clean = skinFor(scene) === 'battle';
-  return scene.add.text(0, 0, '', { fontFamily: clean ? SANS : FONT, fontSize: `${px}px`,
-    color: clean ? CLEAN.ink : color, fontStyle: bold ? 'bold' : 'normal',
+  return scene.add.text(0, 0, '', { fontFamily: clean ? battleFont() : FONT, fontSize: `${px}px`,
+    color: clean ? CLEAN.ink : color, fontStyle: clean ? battleWeight(bold) : bold ? 'bold' : 'normal',
     ...(clean ? { metrics: textMetrics(px) } : {}),
   });
 }

@@ -93,7 +93,7 @@ import {
 } from './layout';
 import { SpecialMenu } from './ui/specialMenu';
 import { MuteButton } from './ui/muteButton';
-import { BakedPaint, CLEAN, SANS, glyph, roundPoints, rounded, sans, skinFor, textMetrics } from './ui/newTheme';
+import { BakedPaint, CLEAN, battleFont, battleWeight, glyph, roundPoints, rounded, sans, skinFor, textMetrics } from './ui/newTheme';
 import { DeviceTextFit, minimumTextSize, textInset, textSlot } from './ui/deviceText';
 import { CleanReadouts, cleanHudMetrics, statColumns } from './ui/cleanHud';
 
@@ -472,12 +472,12 @@ export class Hud {
       backing!.finish();
     }
     const stat = (x: number, size = m.statSize, color: string = TEXT.hud) =>
-      scene.add.text(x, m.statY, '', { fontFamily: modern ? SANS : FONT, fontSize: size, fontStyle: 'bold', color }).setOrigin(0, 0.5);
+      scene.add.text(x, m.statY, '', { fontFamily: modern ? battleFont() : FONT, fontSize: size, fontStyle: modern ? battleWeight(true) : 'bold', color }).setOrigin(0, 0.5);
     const fixedStat = (x: number, size: number, color: string) => {
       const descent = Math.ceil(size / 5);
       const height = modern ? size + 3 : size + descent;
       return scene.add.text(x, m.statY, '', {
-        fontFamily: modern ? SANS : HUD_FONT, fontSize: size, fontStyle: 'bold', color, fixedHeight: height,
+        fontFamily: modern ? battleFont() : HUD_FONT, fontSize: size, fontStyle: modern ? battleWeight(true) : 'bold', color, fixedHeight: height,
         metrics: modern ? textMetrics(size) : { ascent: size, descent, fontSize: height },
       }).setOrigin(0, 0.5);
     };
@@ -502,10 +502,10 @@ export class Hud {
       this.tag.setVisible(false);
       const size = m.portrait ? 26 : 14;
       this.taxLine.setPosition(m.preview.x + (m.portrait ? 25 : 17), m.bands[0].y + (m.portrait ? 139 : 16))
-        .setOrigin(0).setStyle({ fontSize: size, color: CLEAN.subdued, metrics: textMetrics(size), fontStyle: 'normal' })
+        .setOrigin(0).setStyle({ fontSize: size, color: CLEAN.subdued, metrics: textMetrics(size), fontStyle: battleWeight(false) })
         .setFixedSize(0, 0).setWordWrapWidth(m.preview.width - (m.portrait ? 25 : 17));
       this.next.setPosition(m.preview.x, m.preview.y).setOrigin(0).setWordWrapWidth(m.preview.width)
-        .setStyle({ fontSize: m.portrait ? 24 : 14, metrics: textMetrics(m.portrait ? 24 : 14), color: CLEAN.subdued, fontStyle: 'normal' });
+        .setStyle({ fontSize: m.portrait ? 24 : 14, metrics: textMetrics(m.portrait ? 24 : 14), color: CLEAN.subdued, fontStyle: battleWeight(false) });
     }
 
     // The Special label is left-aligned (an empty right label) so the pip fits on its right.
@@ -527,7 +527,7 @@ export class Hud {
     scene.children.moveBelow(this.rechargeFill, this.specialButton.labelObjects[0]);
     this.pip = scene.add.graphics();
     this.cheatMark = scene.add
-      .text(m.cheat.x, m.cheat.y, CHEAT_MARK, { fontFamily: modern ? SANS : FONT, fontSize: m.cheat.size, fontStyle: 'bold', color: modern ? '#ffb0a7' : TEXT.cheatMark, ...(modern ? { metrics: textMetrics(parseInt(m.cheat.size)) } : {}) })
+      .text(m.cheat.x, m.cheat.y, CHEAT_MARK, { fontFamily: modern ? battleFont() : FONT, fontSize: m.cheat.size, fontStyle: modern ? battleWeight(false, 'bold') : 'bold', color: modern ? '#ffb0a7' : TEXT.cheatMark, ...(modern ? { metrics: textMetrics(parseInt(m.cheat.size)) } : {}) })
       .setOrigin(m.cheat.originX, 0.5)
       .setVisible(false);
     if (layout === TAXED_PORTRAIT) {
@@ -549,7 +549,7 @@ export class Hud {
           return label.advancedWordWrap(text, label.context, wrapWidth);
         });
     }
-    this.speedButton = new Button(scene, m.speed, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress, fontSize: modern && m.portrait ? '26px' : modern || m.portrait ? m.startFont : undefined });
+    this.speedButton = new Button(scene, m.speed, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress, semibold: true, fontSize: modern && m.portrait ? '26px' : modern || m.portrait ? m.startFont : undefined });
     this.specialMenu = new SpecialMenu(scene, m.menu.left, m.menu.top, handlers.onSpecialPick, layout.map.y, m.menu.size, m.menu.font);
     this.bar = new BuildBar(scene, m.barTop, handlers.onPick, layout, painted);
     this.bossBar = new BossBar(scene, layout, spawn);

@@ -14,16 +14,16 @@ import {
 } from '../../sim';
 import { placeBeside, type Rect } from '../input';
 import { fontPx, type Layout } from '../layout';
-import { killsLabel, PANEL_TEXT, TOWER_NAMES, targetingButtonText, towerPanelTitle } from '../names';
+import { killsLabel, PANEL_TEXT, PATH_NAMES, TOWER_NAMES, targetingButtonText, towerPanelTitle } from '../names';
 import { FONT, TEXT } from '../palette';
-import { CLEAN, SANS, motionClock, rounded, skinFor, textMetrics } from './newTheme';
+import { CLEAN, battleFont, battleWeight, interLoaded, motionClock, rounded, skinFor, textMetrics } from './newTheme';
 import { uiObject } from './devicePixels';
 import { drawTowerShape } from '../draw/towers';
 import type { PaintedSkin } from '../skin/painted';
 import { ink, THEME } from './theme';
 import { Button } from './button';
 import { STACK_GAP, STACK_PAD } from './geometry';
-import { DeviceTextFit, textInset, textSlot } from './deviceText';
+import { DeviceTextFit, minimumTextSize, textInset, textSlot } from './deviceText';
 import { getPathChoices, towerPanelSize, UPGRADE_PATHS, type PathChoice } from './towerPanelModel';
 
 export interface TowerPanelHandlers {
@@ -97,6 +97,7 @@ export class TowerPanel {
     this.sell = new Button(scene, rect, PANEL_TEXT.sell, handlers.onSell, { fontSize: f(16), right: '', labelInset: 6 });
     this.target = new Button(scene, rect, targetingButtonText('first'), () => handlers.onTarget(nextMode(this.mode)), {
       fontSize: f(this.clean ? 14 : 13), icon: this.clean ? 'target' : undefined,
+      wrap: this.clean && interLoaded && portrait,
     });
     this.closeButton = new Button(scene, rect, this.clean ? '' : '×', handlers.onClose, {
       fontSize: portrait ? '30px' : '24px', icon: this.clean ? 'close' : undefined,
@@ -107,7 +108,7 @@ export class TowerPanel {
       fontSize: portrait ? (this.clean ? '26px' : '22px') : '17px',
       icon: this.clean ? path === 'A' ? 'target' : 'volley' : undefined,
       upgradeRow: this.clean,
-      grouped: this.clean,
+      grouped: this.clean, semibold: true,
       labelInset: this.clean ? (portrait ? 72 : 58) : undefined,
       labelY: this.pathTitleY,
       sound: null,
@@ -116,14 +117,14 @@ export class TowerPanel {
     this.allButtons = [this.upgrade, this.undo, this.sell, this.target, this.closeButton, this.pathButtons.A, this.pathButtons.B];
     for (const button of this.allButtons) button.setShown(false);
 
-    const caption = (size: string, color: string, fontStyle = 'normal') => scene.add.text(0, 0, '', {
-      fontFamily: this.clean ? SANS : FONT, fontSize: size, color, fontStyle,
+    const caption = (size: string, color: string, bold = false, semibold = bold) => scene.add.text(0, 0, '', {
+      fontFamily: this.clean ? battleFont() : FONT, fontSize: size, color, fontStyle: this.clean ? battleWeight(semibold, bold ? 'bold' : 'normal') : bold ? 'bold' : 'normal',
       ...(this.clean ? { metrics: textMetrics(parseFloat(size)) } : {}),
     }).setOrigin(0, 0.5).setVisible(false);
     this.titleText = caption(portrait ? (this.clean ? '29px' : '22px') : this.clean ? '23px' : '17px',
-      this.clean ? CLEAN.ink : ink, 'bold');
-    if (this.clean) this.pathHeading = caption(f(14), CLEAN.subdued, 'bold').setText(PANEL_TEXT.chooseUpgrade);
-    this.killsText = caption(f(14), this.clean ? CLEAN.subdued : ink, 'bold');
+      this.clean ? CLEAN.ink : ink, true);
+    if (this.clean) this.pathHeading = caption(f(14), CLEAN.subdued, true, false).setText(PANEL_TEXT.chooseUpgrade);
+    this.killsText = caption(f(14), this.clean ? CLEAN.subdued : ink, true, false);
     const pathCaption = () => ({
       description: caption(portrait ? (this.clean ? '23px' : '20px') : '15px', this.clean ? CLEAN.subdued : TEXT.button).setOrigin(0).setWordWrapCallback((line, label) =>
         label.basicWordWrap(line.replace('. ', '.\n'), label.context, label.style.wordWrapWidth ?? Infinity)),
@@ -211,11 +212,16 @@ export class TowerPanel {
     const map = this.layout.map;
     const centre = this.layout.cellCenter(this.at);
     const edge = centre.x < map.x + 38 ? -1 : centre.x > map.x + map.width - 38 ? 1 : 0;
-    const width = this.clean ? (portrait ? edge ? 418 : 456 : 382) : legacy.width;
+    const atCap = !!state.level && level >= maxTowerLevel(state);
+    const separateCap = this.clean && interLoaded && atCap;
+    const width = this.clean ? (portrait ? (edge && !interLoaded ? 418 : 456) : 382) : legacy.width;
     const close = this.clean ? Math.max(45, legacy.close) : legacy.close;
     const rowHeight = this.clean ? Math.max(45, legacy.rowHeight) : legacy.rowHeight;
     const pathHeight = this.clean ? Math.max(rowHeight, portrait ? 104 : 80) : legacy.pathHeight;
-    const header = this.clean ? (portrait ? 104 : 79) + (paths.length ? 34 : 0) : legacy.header;
+    const metaSize = portrait ? 24 : 14;
+    const capLine = separateCap ? textMetrics(Math.max(metaSize, minimumTextSize(this.killsText))).fontSize : 0;
+    const titleAreaHeight = portrait ? 104 : 79 + (separateCap ? 6 : 0);
+    const header = this.clean ? titleAreaHeight + (paths.length ? 34 : 0) : legacy.header;
     const buttonWidth = this.clean ? width - 2 * pad : legacy.buttonWidth;
     const rowCount = this.clean ? rows.length - 1 : rows.length - (level > 1 ? 1 : 0);
     const baseHeight = this.clean ? 2 * pad + header + (rowCount - 1) * rowGap
@@ -297,26 +303,30 @@ export class TowerPanel {
     this.closeButton.setShown(true);
 
     this.currentTitle = level > 1 ? towerPanelTitle(tower.type, level, tower.path) : null;
-    const title = this.clean && level < 3 ? TOWER_NAMES[tower.type] : towerPanelTitle(tower.type, level, tower.path);
+    const name = tower.path ? PATH_NAMES[tower.type][tower.path] : TOWER_NAMES[tower.type];
+    const title = this.clean && (level < 3 || interLoaded) ? name : towerPanelTitle(tower.type, level, tower.path);
     if (this.titleText.text !== title) this.titleText.setText(title);
     const titleX = this.clean ? left + (portrait ? 82 : 65) : left;
-    this.titleText.setPosition(titleX, y + pad + (this.clean ? 49 : portrait ? 13 : 9) + offset).setVisible(this.clean || level > 1);
+    this.titleText.setPosition(titleX, y + pad + (this.clean ? 49 + capLine : portrait ? 13 : 9) + offset)
+      .setVisible(this.clean || level > 1);
     const titleWidth = width - (titleX - x) - close - pad - 5;
-    const kills = killsLabel(tower.kills ?? 0, !!state.level && level >= maxTowerLevel(state));
+    const kills = killsLabel(tower.kills ?? 0, atCap, separateCap ? '\n' : undefined);
     const meta = this.clean ? PANEL_TEXT.towerMeta(level, kills) : kills;
     if (this.killsText.text !== meta) this.killsText.setText(meta);
-    this.killsText.setPosition(titleX, y + pad + (this.clean ? 19 : level > 1 ? (portrait ? 39 : 29) : header / 2 - 2) + offset).setVisible(true);
+    this.killsText.setPosition(titleX, y + pad + (this.clean ? 19 + capLine / 2 : level > 1 ? (portrait ? 39 : 29) : header / 2 - 2) + offset)
+      .setVisible(true);
     if (this.clean) {
-      const area = { x, y: y + offset, width: titleX - x + titleWidth, height: pad + (portrait ? 104 : 79) };
-      const top = this.killsText.y + (portrait ? 13.5 : 8.5) - textInset(this.titleText);
+      const area = { x, y: y + offset, width: titleX - x + titleWidth, height: pad + titleAreaHeight };
+      const top = this.killsText.y + (portrait ? 13.5 : 8.5) + capLine / 2 - textInset(this.titleText);
       const titleBox = { ...area, y: top, height: y + offset + area.height - top };
       this.titleText.setVisible(this.titleFit.fit(portrait ? 29 : 23, [textSlot(this.titleText, titleBox, true)]));
-      this.killsText.setVisible(this.metaFit.fit(portrait ? 24 : 14, [textSlot(this.killsText, area)]));
+      this.killsText.setVisible(this.metaFit.fit(metaSize, [textSlot(this.killsText, area)]));
     }
 
     // Below Close, Sell and Target can share the panel's full inner width.
     const innerWidth = width - 2 * pad;
-    const split = this.clean ? Math.round(innerWidth * 0.43) : level > 1 ? Math.round(innerWidth * 0.43) : 0;
+    const sellShare = this.clean && interLoaded && portrait ? 0.45 : 0.43;
+    const split = this.clean || level > 1 ? Math.round(innerWidth * sellShare) : 0;
     let top = y + pad + header;
     for (const { key, button, path } of rows) {
       const h = path ? pathHeight + extraHeight[path.path] : rowHeight;

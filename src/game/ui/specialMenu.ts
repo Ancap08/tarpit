@@ -47,7 +47,7 @@ export class SpecialMenu {
     this.backing = scene.add.graphics().setVisible(false);
     const make = (type: SpecialType) =>
       new Button(scene, { x: 0, y: 0, width: size.buttonW, height: size.buttonH }, SPECIAL_NAMES[type], () => onPick(type), {
-        fontSize, grouped: this.clean,
+        fontSize, grouped: this.clean, semibold: true,
       });
     this.buttons = { keg: make('keg'), tarBarrel: make('tarBarrel'), fireArrows: make('fireArrows'), barricade: make('barricade'), guards: make('guards') };
     this.barrelCaption = scene.add.text(0, 0, TAR_BARREL_DESCRIPTION, {

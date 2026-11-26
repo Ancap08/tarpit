@@ -48,7 +48,7 @@ import { goldGainText } from '../names';
 import { Moments } from './moments';
 import type { Layout } from '../layout';
 import { COLORS, HUD_FONT, TEXT } from '../palette';
-import { CLEAN, SANS, skinFor } from '../ui/newTheme';
+import { CLEAN, battleFont, battleWeight, skinFor } from '../ui/newTheme';
 import { DeviceTextFit, placeFloatingText, textInset } from '../ui/deviceText';
 import { Aim, drawTowerScaled, MUZZLE, type TowerPose } from '../draw/towers';
 import {
@@ -274,7 +274,7 @@ export class Effects {
     for (let i = 0; i < CAPS.goldLabels; i++) {
       this.goldTexts.push(
         this.scene.add
-          .text(0, 0, '', { fontFamily: this.clean ? SANS : HUD_FONT, fontSize: this.clean && this.layout.turned ? '23px' : '15px', fontStyle: 'bold', color: this.clean ? CLEAN.gold : TEXT.goldGain, stroke: TEXT.fxStroke, strokeThickness: 3 })
+          .text(0, 0, '', { fontFamily: this.clean ? battleFont() : HUD_FONT, fontSize: this.clean && this.layout.turned ? '23px' : '15px', fontStyle: this.clean ? battleWeight(true) : 'bold', color: this.clean ? CLEAN.gold : TEXT.goldGain, stroke: TEXT.fxStroke, strokeThickness: 3 })
           .setOrigin(0.5, 1)
           .setVisible(false),
       );

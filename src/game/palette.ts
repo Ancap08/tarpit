@@ -2,6 +2,7 @@
 // Graphics; CSS strings are for Text objects.
 
 export const CASLON = 'Libre Caslon Text';
+export const INTER = 'Inter';
 export const HUD_CASLON = 'Tarpit HUD Caslon';
 export const FONT = `"${CASLON}", "Courier New", monospace`;
 export const HUD_FONT = `"${HUD_CASLON}", "Courier New", monospace`;

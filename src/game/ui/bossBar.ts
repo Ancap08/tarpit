@@ -12,7 +12,7 @@ import { panel, THEME } from './theme';
 import { ENEMY_NAMES, ENEMY_SHORT_NAMES } from '../names';
 import { LANDSCAPE, TAXED_PORTRAIT, type Layout } from '../layout';
 import type { Rect } from '../input';
-import { CLEAN, SANS, rounded, skinFor, textMetrics } from './newTheme';
+import { CLEAN, battleFont, battleWeight, interLoaded, rounded, skinFor, textMetrics } from './newTheme';
 import { DeviceTextFit, minimumTextSize, textInset, textSlot } from './deviceText';
 import { COLORS, FONT, HUD_FONT, TEXT } from '../palette';
 
@@ -52,15 +52,16 @@ export function bossBarGeometry(layout: Layout): BossBarGeometry {
  * short plate on whichever side of that entrance has more open ground. */
 export function cleanBossBarGeometry(layout: Layout, spawn: Point): BossBarGeometry {
   const phone = layout.turned;
-  const width = phone ? 265 : 310;
   const entrance = layout.toScreen(spawn);
+  const room = Math.max(entrance.x, layout.width - entrance.x) - 40;
+  const width = phone ? (interLoaded ? Math.max(265, Math.min(310, room)) : 265) : 310;
   const x = phone
     ? entrance.x < layout.width / 2 ? Math.min(layout.width - width - 5, entrance.x + 35) : Math.max(5, entrance.x - 35 - width)
     : (layout.width - width) / 2;
   return {
     bar: { x, y: layout.map.y + (phone ? 40 : 38), width, height: phone ? 28 : 22 },
     pill: { y: layout.map.y + 6, height: phone ? 34 : 32, padX: 9 },
-    nameSize: phone ? 25 : 15,
+    nameSize: phone ? (interLoaded ? 22 : 25) : 15,
     hpSize: phone ? 24 : 14,
   };
 }
@@ -109,19 +110,19 @@ export class BossBar {
     this.g = scene.add.graphics();
     this.name = scene.add
       .text(BOSS_BAR.x + BOSS_PILL.padX, BOSS_PILL.y + BOSS_PILL.height / 2, '', {
-        fontFamily: modern ? SANS : FONT,
+        fontFamily: modern ? battleFont() : FONT,
         ...(modern ? { metrics: textMetrics(geo.nameSize) } : {}),
         fontSize: `${geo.nameSize}px`,
-        fontStyle: 'bold',
+        fontStyle: modern ? battleWeight(true) : 'bold',
         color: TEXT.bossName,
       })
       .setOrigin(0, 0.5);
     this.hp = scene.add
       .text(BOSS_BAR.x + BOSS_BAR.width - 4, BOSS_BAR.y + BOSS_BAR.height / 2, '', {
-        fontFamily: modern ? SANS : HUD_FONT,
+        fontFamily: modern ? battleFont() : HUD_FONT,
         ...(modern ? { metrics: textMetrics(geo.hpSize) } : {}),
         fontSize: `${geo.hpSize}px`,
-        fontStyle: 'bold',
+        fontStyle: modern ? battleWeight(true) : 'bold',
         color: TEXT.bossHp,
       })
       .setOrigin(1, 0.5);

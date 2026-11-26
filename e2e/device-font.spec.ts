@@ -2,9 +2,11 @@ import { expect, test, type Page } from '@playwright/test';
 import type { GameScene } from '../src/game/GameScene';
 import type { Rect } from '../src/game/input';
 import { BOSS_NAME, ENEMY_SHORT_NAMES } from '../src/game/names';
+import { INTER } from '../src/game/palette';
 import { BAR_TYPES } from '../src/game/ui/buildBarModel';
 import { LEVELS, TICKS_PER_SECOND, WAVES } from '../src/sim';
 import { api, mapPress, press } from './campaign';
+import { platformWideFactor, useWideFontMetrics } from './campaignFont';
 import { newInterfaceChecks } from './newInterface';
 import { openPaintedLevel } from './taxHud';
 import { waitForTitle } from './title';
@@ -17,11 +19,11 @@ async function inspect(page: Page, floating = false) {
     const [strip] = hud['m'].bands;
     const rects = t.uiRects();
     const scale = t.canvasToPage(100, 100).x / 100 - t.canvasToPage(0, 0).x / 100;
-    const labels: { group: string; text: string; visible: boolean; size: number; padding: number; uniform: boolean }[] = [];
+    const labels: { group: string; text: string; family: string; visible: boolean; size: number; padding: number; uniform: boolean }[] = [];
     const state = scene.state;
     function read(group: string, label: Phaser.GameObjects.Text, box: Rect) {
       const { left, right, top, bottom } = label.getBounds();
-      labels.push({ group, text: label.text, visible: label.visible && !!label.text, uniform: label.scaleX === label.scaleY,
+      labels.push({ group, text: label.text, family: label.style.fontFamily, visible: label.visible && !!label.text, uniform: label.scaleX === label.scaleY,
         size: parseFloat(String(label.style.fontSize)) * scale * label.scaleX,
         padding: scale * Math.min(left - box.x, box.x + box.width - right, top - box.y, box.y + box.height - bottom) });
     }
@@ -59,7 +61,7 @@ async function inspect(page: Page, floating = false) {
     for (const [i, type] of types.entries()) {
       const label = scene.children.getByName('bar-name:' + type) as Phaser.GameObjects.Text;
       const plaque = rects['bar:' + type];
-      context.font = `${floor}px ${label.style.fontFamily}`;
+      context.font = `${label.style.fontStyle} ${floor}px ${label.style.fontFamily}`;
       nameFits &&= Math.ceil(context.measureText(label.text).width) * scale <= plaque.width * scale - 4;
       read('tower names', label, plaque);
       read('tower prices', hud['bar']['buttons'][i].labelObjects[0], plaque);
@@ -119,9 +121,13 @@ async function inspect(page: Page, floating = false) {
 }
 
 newInterfaceChecks(() => {
-  for (const factor of [1, 1.15, .90]) {
-    test(`device font fit at ${factor}×`, async ({ page }, info) => {
-      if (factor !== 1) await page.addInitScript(factor => {
+  test.use({ serviceWorkers: 'block' });
+  for (const mode of ['Inter', 'wide Inter', 'device', 'wide device', 'narrow device'] as const) {
+    test(`label group fit with ${mode}`, async ({ page }, info) => {
+      const blocked = mode.endsWith('device');
+      if (mode === 'wide Inter') await useWideFontMetrics(page, platformWideFactor, INTER);
+      if (blocked) await page.route('**/Inter-Latin-Variable-*.woff2', route => route.abort());
+      if (mode === 'wide device' || mode === 'narrow device') await page.addInitScript(factor => {
         const context = CanvasRenderingContext2D.prototype;
         const measure = context.measureText;
         context.measureText = function (text) {
@@ -141,12 +147,13 @@ newInterfaceChecks(() => {
             this.restore();
           };
         }
-      }, factor);
+      }, mode === 'wide device' ? 1.15 : .90);
       const sizes = info.project.name === 'phone' ? [{ width: 390, height: 664 }, { width: 390, height: 844 }] : [page.viewportSize()!];
       for (const { width, height } of sizes) {
         await page.setViewportSize({ width, height });
         const level = LEVELS.find(l => l.taxes?.rationing && Object.keys(l.taxes).length === 2)!;
         await openPaintedLevel(page, { ...level, waves: [...WAVES, WAVES[7], WAVES[9]], rewardWaves: [] });
+        expect(await page.evaluate(family => [...document.fonts].some(face => face.family === family && face.status === 'loaded'), INTER)).toBe(!blocked);
         await api(page, t => { t.state().wave = 10; t.state().gold = 888; t.step(0); });
         const groups = new Map<string, Set<string>>();
         async function check(state: string, floating = false) {
@@ -155,7 +162,8 @@ newInterfaceChecks(() => {
           const sizes = new Map<string, Set<number>>();
           for (const label of labels) {
             const detail = `${width}×${height} ${state} ${label.group} “${label.text}”`;
-            const shouldShow = label.group !== 'tower names' || nameFits;
+            expect.soft(label.family.startsWith(`"${INTER}"`), detail + ' uses bundled Inter').toBe(!blocked);
+            const shouldShow = !blocked || label.group !== 'tower names' || nameFits;
             expect.soft(label.visible, detail + ' visible').toBe(shouldShow);
             if (!groups.has(label.group)) groups.set(label.group, new Set());
             const shortBossName = label.group === 'boss name' && label.text !== BOSS_NAME;
@@ -185,6 +193,20 @@ newInterfaceChecks(() => {
         await api(page, t => { t.state().gold = 0; t.step(0); });
         expect(await api(page, t => t.ui().pathChoices.length)).toBe(2);
         await check('upgrade drawer');
+        if (!blocked) {
+          await press(page, 'panel:close', touch);
+          expect(await api(page, t => {
+            t.state().gold = 888;
+            return t.buildAt(7, 0, 'firepot').ok && t.upgradeAt(7, 0).ok;
+          })).toBe(true);
+          await mapPress(page, 7, 0, touch);
+          await press(page, 'panel:path:B', touch);
+          expect(await api(page, t => t.state().towers.find(tower => tower.type === 'firepot')?.path)).toBe('B');
+          await press(page, 'panel:target', touch);
+          await press(page, 'panel:target', touch);
+          expect(await api(page, t => t.state().towers.find(tower => tower.type === 'firepot')?.targeting)).toBe('strongest');
+          await check('level-three drawer at the edge');
+        }
         await press(page, 'panel:close', touch);
         await api(page, t => { t.state().wave = 9; t.startWave(); t.step(1); });
         await press(page, 'special', touch);
@@ -218,6 +240,9 @@ newInterfaceChecks(() => {
         await press(page, 'title:play', touch);
         await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game'));
         await check('floating numbers', true);
+        if (!blocked) for (const [group, sizes] of groups) {
+          expect.soft([...sizes], `${width}×${height} ${group} keeps one size between states`).toHaveLength(1);
+        }
         await test.info().attach(`${width}x${height}`, { body: JSON.stringify(Object.fromEntries([...groups].map(([group, sizes]) => [group, [...sizes]]))), contentType: 'application/json' });
       }
     });

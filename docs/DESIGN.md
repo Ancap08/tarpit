@@ -1738,8 +1738,8 @@ width follows the fitted viewport, with the 480 × 960 map centred at
 y = 230. The map keeps its 1:1 projection. The status header and control
 dock sit outside the map at every supported size.
 
-Gold, Lives and Wave use fixed columns with 40-unit portrait numerals
-and 29-unit landscape numerals. The tax and Next text share a row on
+Gold, Lives and Wave use fixed columns with 38-unit portrait numerals in
+Inter, 40 in the device font, and 29 in landscape. The tax and Next text share a row on
 phone when they fit. A longer preview wraps independently below the
 tax. The six build targets show the current look's tower portraits,
 names, prices and availability. Portrait build and wave controls are
@@ -1747,9 +1747,29 @@ names, prices and availability. Portrait build and wave controls are
 the status block. The original same-cell second tap still builds, and
 the armed preview also offers a Build button.
 
-Clean measures its device sans in the same canvas text objects it draws.
-Each text role starts at its design size. As the text or its slot changes,
-the role uses one shared size that fits all its labels. The floor is
+Clean loads the bundled Latin variable Inter face from its own origin
+only with `?ui=new`. It waits alongside Caslon at boot for up to one second.
+If Inter fails or misses the deadline, the session keeps the device sans.
+Inter uses weight 400 for labels and 600 for names and numerals. At a given
+viewport each Inter text role uses its design size or the readability floor,
+whichever is larger. The start and call labels share 25 units in portrait
+and 15 in landscape. In portrait the Musketeer tile gets 12 extra units
+from the shared width budget before it is split among six tiles. Names use
+18.5 units or the floor, centred 48 units below the tile top. Prices use
+25 units at 75.5 units from the tile top. Tower art is centred 18 units
+from the tile top and Painted portraits use a 36-unit height. The phone
+permit tally sits 19.5 units from the tile top with a 1-unit stroke. The phone
+boss name uses 22 units or the floor. Its plate uses
+265 to 310 units according to the space beside the cave. The level-three
+tower drawer prints the path name as its title and the level in the metadata.
+The cap notice uses its own metadata line. The drawer reserves that line's
+height above the title and 6 extra header units in landscape. In portrait,
+the drawer keeps its full 456-unit width at the board edge. Sell receives
+45% of the inner width and Target can wrap onto two lines.
+
+Clean measures the type in the canvas text objects it draws. With the device
+font, the role starts at its design size and uses one shared size that fits
+all its labels as the text or its slot changes. The floor is
 11 CSS px plus the 0.1 CSS px legibility margin. Labels leave at least
 2 CSS px inside their panels. The fit uses whole layout units down to
 the floor, which is rounded up to a hundredth of a layout unit. Wrapped
@@ -1770,9 +1790,10 @@ line spacing when the second line needs it.
 | Reward title, card names, descriptions, shortcut keys and held-reward tooltip | Omit the affected group or line. Keep the reward icons and hit targets. |
 | Floating hit, gold and boss-bounty numbers | Keep the numbers within the map. Omit the affected group if it cannot fit. |
 
-Device-font checks exercise the native advances and simulated advances
-15% wider and 10% narrower at the four supported test viewports. The
-Caslon wide-text check retains the 1.09 factor on macOS and 1.06 elsewhere.
+Inter and device-font checks exercise the four supported test viewports.
+The wide-text checks for Inter and Caslon use 1.09 on macOS and 1.06
+elsewhere. With Inter blocked, the device-font checks also simulate advances
+15% wider and 10% narrower.
 
 The game fits the portrait world buffer within the area of 480 × 1032
 pixels and composites the interface on a separate canvas fitted to the
@@ -1910,7 +1931,10 @@ only and never under `?test=1` or `?perf=1`. Cache rules:
   tab asking for the previous build's file) goes to the network, and its
   answer is returned as it is; a 2xx answer is kept. Painted art is
   fetched this way at the density in use and is then available offline
-  for that density in this build.
+  for that density in this build. Inter uses this same on-demand route
+  after an opted-in visit. If its initial request precedes worker control,
+  the page primes the worker from the HTTP cache once claimed. Inter and
+  its separate licence are excluded from the install precache.
 - Other files in scope (manifest, icons): as the page, with their own
   cached copies as the fallback.
 - Anything else (not GET, another origin, outside the scope, `sw.js`) is

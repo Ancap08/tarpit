@@ -1,6 +1,6 @@
 import type Phaser from 'phaser';
 import type { Rect } from '../input';
-import { textMetrics } from './newTheme';
+import { interLoaded, textMetrics } from './newTheme';
 
 type Text = Phaser.GameObjects.Text;
 type Slot = { label: Text; width: number; height: number; wrap?: boolean; alongside?: Text };
@@ -38,7 +38,7 @@ export function placeFloatingText(label: Text, box: Rect, x: number, y: number):
   );
 }
 
-/** Fit peers at one real font size. Owners decide what remains when a group cannot fit. */
+/** Keep Inter at the designed size. Fit device-font peers together down to the floor. */
 export class DeviceTextFit {
   private previous?: { preferred: number; floor: number; slots: Slot[]; text: string[]; wrapWidth: number[]; fits: boolean };
 
@@ -53,8 +53,10 @@ export class DeviceTextFit {
         (label.style.wordWrapWidth ?? 0) === prev.wrapWidth[i],
     )) return prev.fits;
 
+    const target = Math.max(floor, preferred);
+    const smallest = interLoaded ? target : floor;
     let fits = false;
-    for (let size = Math.max(floor, preferred); ; size = Math.max(floor, size - 1)) {
+    for (let size = target; ; size = Math.max(smallest, size - 1)) {
       for (const { label, width, wrap } of slots) {
         if (parseFloat(String(label.style.fontSize)) !== size) label.setStyle({ fontSize: size, metrics: textMetrics(size) });
         if (wrap && label.style.wordWrapWidth !== Math.max(1, width)) {
@@ -63,7 +65,7 @@ export class DeviceTextFit {
       }
       fits = slots.every(({ label, width, height, alongside }) => !label.text ||
         label.width + (alongside?.text ? alongside.width : 0) <= width && label.height <= height);
-      if (fits || size === floor) break;
+      if (fits || size === smallest) break;
     }
     this.previous = { preferred, floor, slots, text: slots.map(s => s.label.text),
       wrapWidth: slots.map(s => s.label.style.wordWrapWidth ?? 0), fits };

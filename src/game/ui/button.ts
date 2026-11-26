@@ -13,7 +13,7 @@ import type { SoundName } from '../audio/recipes';
 import type { Rect } from '../input';
 import { COLORS, FONT, HUD_FONT, TEXT } from '../palette';
 import { DeviceTextFit, textInset, textSlot } from './deviceText';
-import { BakedPaint, CLEAN, PRINT, SANS, glyph, motionClock, rounded, skinFor, textMetrics, type Icon, type Skin } from './newTheme';
+import { BakedPaint, CLEAN, PRINT, battleFont, battleWeight, glyph, motionClock, rounded, skinFor, textMetrics, type Icon, type Skin } from './newTheme';
 
 /** Emitted on the scene input plugin when a pause cancels any unfinished click. */
 export const CANCEL_UI_PRESS = 'cancel-ui-press';
@@ -40,6 +40,8 @@ export interface ButtonOptions {
   upgradeRow?: boolean;
   /** The owning row fits these labels together with their peers. */
   grouped?: boolean;
+  semibold?: boolean;
+  wrap?: boolean;
 }
 
 export class Button {
@@ -55,6 +57,7 @@ export class Button {
   private readonly skin: Skin;
   private readonly primary: boolean;
   private readonly upgradeRow: boolean;
+  private readonly wrap: boolean;
   private readonly textFit?: DeviceTextFit;
   private labelsFit = true;
   private preferredSize: number;
@@ -87,6 +90,7 @@ export class Button {
     this.skin = options.skin ?? skinFor(scene);
     this.primary = options.primary ?? false;
     this.upgradeRow = options.upgradeRow ?? false;
+    this.wrap = options.wrap ?? false;
     this.icon = options.icon;
     if (this.skin !== 'legacy') this.clock = motionClock(scene);
     const size = options.fontSize ?? '18px';
@@ -98,8 +102,8 @@ export class Button {
       scene.events.once('shutdown', () => scene.scale.off('resize', resize));
     }
     const style = {
-      fontFamily: this.skin === 'paper' ? FONT : this.skin === 'battle' ? SANS : HUD_FONT,
-      fontSize: size, fontStyle: 'bold', color: TEXT.button,
+      fontFamily: this.skin === 'paper' ? FONT : this.skin === 'battle' ? battleFont() : HUD_FONT,
+      fontSize: size, fontStyle: this.skin === 'battle' ? battleWeight(options.semibold ?? false, 'bold') : 'bold', color: TEXT.button,
       ...(this.skin === 'legacy' ? {} : { metrics: textMetrics(parseFloat(size)) }),
     };
     this.box = scene.add.rectangle(0, 0, rect.width, rect.height, COLORS.button).setOrigin(0, 0);
@@ -110,7 +114,7 @@ export class Button {
       this.rightLabel = null;
     } else {
       this.label = scene.add.text(0, 0, text, style).setOrigin(0, 0.5);
-      this.rightLabel = scene.add.text(0, 0, options.right, style).setOrigin(1, 0.5);
+      this.rightLabel = scene.add.text(0, 0, options.right, this.skin === 'battle' ? { ...style, fontStyle: battleWeight(true) } : style).setOrigin(1, 0.5);
     }
     this.moveTo(rect.x, rect.y);
     this.refresh();
@@ -302,7 +306,7 @@ export class Button {
   private slots() {
     const box = { ...this.r, y: this.r.y + this.offsetY };
     const mid = box.y + (this.labelY ?? box.height / 2);
-    const left = textSlot(this.label, box, false, mid);
+    const left = textSlot(this.label, box, this.wrap, mid);
     if (!this.rightLabel) return [left];
     const right = textSlot(this.rightLabel, box, false, mid);
     left.width = Math.min(left.width, this.rightLabel.x - this.label.x - (this.upgradeRow ? 29 : 2 * textInset(this.label)));

@@ -1,9 +1,26 @@
 import type Phaser from 'phaser';
 import type { Rect } from '../input';
+import { INTER } from '../palette';
 import { isTestMode } from '../testMode';
 import { invalidateUi, uiDensity, useDevicePixels } from './devicePixels';
 
-export const SANS = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+const DEVICE_SANS = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+
+export let interLoaded = false;
+
+/** Set before Phaser creates its first scene, after the face is registered. */
+export function useInterFont(): void {
+  interLoaded = true;
+}
+
+export function battleFont(): string {
+  return interLoaded ? `"${INTER}", ${DEVICE_SANS}` : DEVICE_SANS;
+}
+
+/** Keep the device font's original weight when Inter misses the boot deadline. */
+export function battleWeight(semibold: boolean, fallback = semibold ? 'bold' : 'normal'): string {
+  return interLoaded ? (semibold ? '600' : '400') : fallback;
+}
 export const CLEAN = {
   ground: 0x0b1e20, panel: 0x11292b, raised: 0x1c3437, edge: 0x557773,
   mint: 0xaaf1d9, mintDark: '#102b28', ink: '#effcf8', subdued: '#b9d4ce',
@@ -157,9 +174,9 @@ export function textMetrics(size: number) {
   return { ascent, descent: size + 3 - ascent, fontSize: size + 3 };
 }
 
-export function sans(scene: Scene, x: number, y: number, text: string, size: number, color: string = CLEAN.ink, bold = false): Text {
+export function sans(scene: Scene, x: number, y: number, text: string, size: number, color: string = CLEAN.ink, bold = false, fallback?: string): Text {
   return scene.add.text(x, y, text, {
-    fontFamily: SANS, fontSize: size, color, fontStyle: bold ? 'bold' : 'normal', metrics: textMetrics(size),
+    fontFamily: battleFont(), fontSize: size, color, fontStyle: battleWeight(bold, fallback), metrics: textMetrics(size),
   });
 }
 

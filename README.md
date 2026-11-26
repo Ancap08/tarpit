@@ -358,6 +358,8 @@ question. No dates are set.
 
 Libre Caslon Text Regular and Bold by the Libre Caslon Text Project Authors, distributed through Google Fonts under the [SIL Open Font License 1.1](assets/fonts/OFL.txt). The game serves both fonts locally.
 
+Inter by The Inter Project Authors, copyright 2016, distributed through Google Fonts under the [SIL Open Font License 1.1](assets/fonts/OFL-Inter.txt). The game serves the Latin variable font locally for the preview interface.
+
 Classic placeholder enemy sprites: [Ninja Adventure](https://pixel-boy.itch.io/ninja-adventure-asset-pack)
 by Pixel-boy and AAA, CC0 (attribution appreciated, not required). Painted art is generated in Blender by this project. Every
 asset file and its license is listed in [assets/MANIFEST.md](assets/MANIFEST.md).

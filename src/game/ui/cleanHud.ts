@@ -2,7 +2,7 @@ import type Phaser from 'phaser';
 import type { HudMetrics } from '../hud';
 import type { Layout } from '../layout';
 import { HUD_STAT_LABELS } from '../names';
-import { CLEAN, glyph, line, motionClock, sans } from './newTheme';
+import { CLEAN, glyph, interLoaded, line, motionClock, sans } from './newTheme';
 import { DeviceTextFit, textInset, textSlot } from './deviceText';
 
 export function cleanHudMetrics(layout: Layout, base: HudMetrics): HudMetrics {
@@ -24,7 +24,7 @@ export function cleanHudMetrics(layout: Layout, base: HudMetrics): HudMetrics {
     bands: [head, { x: 0, y: dockY, width: layout.width, height: layout.height - dockY }],
     lines: [],
     statY: head.y + (phone ? 110 : 66),
-    statSize: phone ? '40px' : '29px',
+    statSize: phone ? (interLoaded ? '38px' : '40px') : '29px',
     goldX: head.x + gutter,
     gold: { x: head.x + 5, y: head.y + (phone ? 58 : 29), width: phone ? head.width * .24 : 121, height: phone ? 78 : 45 },
     preview: phone ? { x: head.x + gutter, y: head.y + 168, width: head.width - 2 * gutter, originY: 0 }
@@ -37,7 +37,7 @@ export function cleanHudMetrics(layout: Layout, base: HudMetrics): HudMetrics {
     speed: { x: phone ? speedX : 904, y: controlsY, width: phone ? 94 : 54, height },
     specialFont: phone ? '25px' : '15px',
     startFont: phone ? '25px' : '15px',
-    callFont: phone ? '24px' : '14px',
+    callFont: interLoaded ? (phone ? '25px' : '15px') : phone ? '24px' : '14px',
     menu: { left: phone ? 10 : 618, top: dockY, size: base.menu.size, font: phone ? '25px' : '16px' },
     barTop,
   };
@@ -64,7 +64,7 @@ export class CleanReadouts {
     this.clock = motionClock(scene);
     const phone = m.portrait;
     const { y, x, width } = m.bands[0];
-    this.name = sans(scene, m.goldX, y + (phone ? 4 : 6), '', phone ? 25 : 14, CLEAN.subdued)
+    this.name = sans(scene, m.goldX, y + (phone ? 4 : 6), '', phone ? 25 : 14, CLEAN.subdued, true, 'normal')
       .setWordWrapWidth(phone ? m.mute.x - m.goldX - 10 : 355).setName('hud-level-name');
     this.pips = scene.add.graphics();
     const small = phone ? 24 : 14;
