@@ -30,16 +30,32 @@ def caption(draw, x, y, text, size=22, *, bold=False, center=False, color=INK):
 
 
 def frame(kind, i, density):
-    entry = NEW[f'{kind}-{density}x' if kind != 'ram' else 'ram-keep']
+    entry = NEW[f'{kind}-keep' if kind in ('ram', 'notice') else f'{kind}-{density}x']
     with Image.open(ART / 'sharp' / (entry['atlas'] + '.webp')) as image:
         x, y, w, h, dx, dy = entry['regions'][i]
         sharp = Image.new('RGBA', entry['frameSize'])
         sharp.paste(image.crop((x, y, x + w, y + h)), (dx, dy))
-    if kind == 'ram':
+    if kind in ('ram', 'notice'):
+        display = 88 if kind == 'ram' else 34
+        col = i if kind == 'ram' else 0
+        row = 0 if kind == 'ram' else 1
         with Image.open(ROOT / 'public/assets/keep/siege-machines-half.webp') as image:
-            legacy = image.crop((96 * i, 0, 96 * (i + 1), 64)).convert('RGBA')
-        return legacy, sharp, 96 / 88, sharp.width / 88
+            legacy = image.crop((96 * col, 64 * row, 96 * (col + 1), 64 * (row + 1))).convert('RGBA')
+        return legacy, sharp, 96 / display, sharp.width / display
     legacy = next(image for j, image in enumerate(PACKER['shipped_frames'](OLD, STOCK[kind])) if i == j)
+    if kind == 'guard':
+        from m56_finish import keep_light
+
+        legacy = keep_light(legacy, False)
+    if kind == 'harpy':
+        old_shadow, new_shadow, _, _ = frame('harpy-shadow', 0, 2)
+        for sprite, sprite_at, shadow, shadow_at in (
+                (legacy, STOCK[kind]['anchor'], old_shadow, STOCK['harpy-shadow']['anchor']),
+                (sharp, entry['anchor'], new_shadow, NEW['harpy-shadow-2x']['anchor'])):
+            ground = Image.new('RGBA', sprite.size)
+            ground.alpha_composite(shadow, (sprite_at[0] - shadow_at[0], sprite_at[1] - shadow_at[1] + 6))
+            ground.alpha_composite(sprite)
+            sprite.paste(ground)
     return legacy, sharp, 2, entry['density']
 
 
@@ -79,7 +95,7 @@ def pieces(filename, title, note, subjects, *, keep=False, columns=3):
         draw.rounded_rectangle((x, y, x + width, y + height), 16, fill=PAPER)
         caption(draw, x + 15, y + 16, label, 21, bold=True)
         split = y + 71 + first
-        for i, (name, (phone, enlarged)) in enumerate(zip(('Today', 'Sharper'), pairs)):
+        for i, (name, (phone, enlarged)) in enumerate(zip(('Today', 'Lifted'), pairs)):
             mid = x + width * (1 + 2*i) // 4
             caption(draw, mid, y + 49, name, 17, bold=True, center=True, color=MUTED)
             for top, bottom, sprite in ((y + 71, split, phone), (split + 29, y + height - 25, enlarged)):
@@ -87,48 +103,71 @@ def pieces(filename, title, note, subjects, *, keep=False, columns=3):
                 left = mid - sprite.width//2
                 at = (top + bottom - sprite.height)//2
                 sheet.paste(sprite, (left, at), sprite)
-            caption(draw, mid, split + 6, 'Phone pixels above  ·  2.4× below', 13, center=True, color=MUTED)
+            caption(draw, mid, split + 6, 'Phone above  ·  2.4× below', 13, center=True, color=MUTED)
     sheet.save(OUT / (filename + '.png'), optimize=True)
 
 
-def crop(image, point, width, height, lift=0):
+def crop(image, point, width, height, lift=0, shift=0):
     x, y = [round(3 * point[k]) for k in ('x', 'y')]
-    left = max(0, min(image.width - width, x - width//2))
+    left = max(0, min(image.width - width, x - width//2 + shift))
     top = max(0, min(image.height - height, y - height//2 - lift))
     return image.crop((left, top, left + width, top + height)).resize((3*width, 3*height),
                                                                       Image.Resampling.NEAREST)
 
 
-def battle(level, height, filename, title):
+def battle(name, height, title):
+    filename = f'{name}-390x{height}'
     sides = []
     for switch in ('off', 'on'):
-        name = f'{level}-{height}-painted-{switch}'
-        shot = Image.open(SCRATCH / (name + '.png')).convert('RGB')
-        pos = json.loads((SCRATCH / (name + '.json')).read_text())
-        if level == 25:
-            detail = [crop(shot, pos['gate'], 380, 330, 105)]
+        stem = f'{filename}-{switch}'
+        shot = Image.open(SCRATCH / (stem + '.png')).convert('RGB')
+        pos = json.loads((SCRATCH / (stem + '.json')).read_text())
+        if name in ('old-keep', 'night-option', 'dusk-road'):
+            detail = [('Gate crowd' if name != 'dusk-road' else 'Road at the sill',
+                       crop(shot, pos['gate'], 380, 334, 64))]
+        elif name == 'grass-day':
+            detail = [('Grass and road', crop(shot, pos['crowd'], 355, 235))]
         else:
             pair = {k: (pos['a'][k] + pos['b'][k]) / 2 for k in ('x', 'y')}
-            detail = [crop(shot, pos['crowd'], 330, 177, 48), crop(shot, pair, 350, 425, 28)]
+            detail = [('Crowd', crop(shot, pos['crowd'], 350, 185, 48, shift=-122)),
+                      ('Musketeer and Cannon', crop(shot, pair, 385, 460, 28))]
         sides.append((shot, detail))
     margin = 24
     w, h = sides[0][0].size
-    sheet = Image.new('RGB', (2*w + 3*margin, h + sum(pic.height for pic in sides[0][1])
+    sheet = Image.new('RGB', (2*w + 3*margin, h + sum(pic.height for _, pic in sides[0][1])
                              + 185 + 54 * len(sides[0][1])), BG)
     draw = ImageDraw.Draw(sheet)
     caption(draw, margin, 20, title, 46, bold=True)
     caption(draw, margin, 79, f'390 × {height} CSS px  ·  DPR 3  ·  Same battle state in both captures', 27, color=MUTED)
     for i, (shot, detail) in enumerate(sides):
         x = margin + i * (margin + w)
-        caption(draw, x, 135, ('Switch off  ·  Today', 'Switch on  ·  Sharper')[i], 30, bold=True)
+        caption(draw, x, 135, ('Switch off  ·  Today', 'Switch on  ·  Lifted')[i], 30, bold=True)
         sheet.paste(shot, (x, 177))
         y = 177 + h
-        for j, pic in enumerate(detail):
-            caption(draw, x, y + 13, ('Gate crowd' if level == 25 else ('Crowd' if j == 0 else 'Two towers')) + '  ·  3× crop',
-                    25, bold=True)
+        for label, pic in detail:
+            caption(draw, x, y + 13, label + '  ·  3× crop', 25, bold=True)
             sheet.paste(pic, (x, y + 54))
             y += 54 + pic.height
     sheet.save(OUT / (filename + '.webp'), lossless=True, quality=85, method=4)
+
+
+def portraits():
+    image = Image.open(SCRATCH / 'portraits.png').convert('RGB')
+    pos = json.loads((SCRATCH / 'portraits.json').read_text())
+    mid = dict(x=195, y=pos['dock']['y'])
+    dock = crop(image, mid, 1170, 146)
+    dock = dock.resize((1755, 219), Image.Resampling.NEAREST)
+    panel = crop(image, pos['panel'], 126, 152)
+    sheet = Image.new('RGB', (1815, 2360), BG)
+    draw = ImageDraw.Draw(sheet)
+    caption(draw, 30, 25, 'Lifted in the dock and tower panel', 46, bold=True)
+    caption(draw, 30, 81, 'Window Money  ·  390 × 656 CSS px  ·  DPR 3', 27, color=MUTED)
+    sheet.paste(image, (30, 118))
+    caption(draw, 1232, 131, 'Musketeer panel portrait  ·  3× crop', 25, bold=True)
+    sheet.paste(panel, (1232, 175))
+    caption(draw, 30, 2100, 'Six dock pictures  ·  1.5× crop', 25, bold=True)
+    sheet.paste(dock, (30, 2132))
+    sheet.save(OUT / 'portraits-390x656.webp', lossless=True, quality=85, method=4)
 
 
 OUT.mkdir(parents=True, exist_ok=True)
@@ -144,12 +183,19 @@ pieces('pieces-bosses', 'The two bosses',
        'Matched poses and footprints at 390 × 844, DPR 3.', [('grumblefoot', 'Assessor Grumblefoot', 8),
         ('grumblemaw', 'King Grumblemaw', 8)], columns=2)
 pieces('pieces-guards', 'The Old Keep squad',
-       'Shown at the settled battle scale on a 390 × 844 phone, DPR 3.',
+       'Dusk lighting at the settled battle scale on a 390 × 844 phone, DPR 3.',
        [('guard', 'Axeman', 2), ('guard', 'Swordsman', 10), ('guard', 'Archer', 18),
         ('guard', 'Captain', 26)], keep=True, columns=2)
 pieces('piece-ram', 'The siege ram',
        'Shown at its gate approach size on a 390 × 844 phone, DPR 3.', [('ram', 'Siege Ram', 0)],
        keep=True, columns=1)
+pieces('pieces-shots', 'The painted shots',
+       'Matched shots at 390 × 844, DPR 3.',
+       [('arrow', 'Arrow', 0), ('cannonball', 'Cannonball', 0), ('mortar-shell', 'Mortar shell', 0),
+        ('tar-glob', 'Tar glob', 0), ('flame', 'Flame', 0), ('notice', 'Keep mortar notice', 0)])
 for height in (656, 844):
-    battle(11, height, f'mid-wave-390x{height}', 'Window Money  /  Mid-wave')
-battle(25, 844, 'old-keep-390x844', 'The King’s Last Notice  /  Gate crowd')
+    battle('mid-wave', height, 'Window Money  /  Mid-wave')
+    battle('old-keep', height, 'Old Keep at night  /  30 held against the gate')
+battle('grass-day', 656, 'Meadow by day  /  Free play')
+battle('dusk-road', 656, 'Old Keep at dusk  /  The west road')
+portraits()

@@ -1,4 +1,4 @@
-// PW_PORT=4373 node --experimental-strip-types scripts/art/m56-review.ts SCRATCH <baseline|review|perf|perf-paired|download|lifecycle|options>
+// PW_PORT=4373 node --experimental-strip-types scripts/art/m56-review.ts SCRATCH <baseline|review|shots|perf|download|lifecycle|options>
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
@@ -17,7 +17,7 @@ assert.equal(process.env.PW_PORT, '4373');
 const reuse = process.argv.includes('--reuse-preview');
 const origin = reuse ? 'http://localhost:4373' : previewOrigin;
 
-async function enter(page: Page, level: number, query: string) {
+async function enter(page: Page, level: number, query: string, beforePlay = () => {}) {
   const keep = level >= 21;
   if (level && !keep) {
     await page.addInitScript(() => {
@@ -26,9 +26,11 @@ async function enter(page: Page, level: number, query: string) {
       localStorage.setItem('tarpit.seenBroadsides', '["opening","secondAct","ending"]');
     });
   }
+  if (keep) beforePlay();
   await page.goto(origin + '/?' + query + (keep ? '&act3=1&keep=' + level : ''));
   if (!level) {
     await waitForTitle(page);
+    beforePlay();
     await press(page, 'title:play', true);
   } else if (!keep) {
     await waitForFirstScreen(page);
@@ -40,13 +42,14 @@ async function enter(page: Page, level: number, query: string) {
     }
     await press(page, 'title:stop:' + level, true);
     await page.waitForFunction(() => window.__tarpit?.screen?.() === 'levelCard' && window.__tarpit.titleReady());
+    beforePlay();
     await press(page, 'title:play', true);
   }
   await page.waitForFunction(() => window.__tarpit?.game.scene.isActive('game') && !!window.__tarpit.uiRects().startWave);
 }
 
-async function fixture(page: Page) {
-  return page.evaluate(() => {
+async function fixture(page: Page, staging: 'standard' | 'held' | 'grass' = 'standard') {
+  return page.evaluate(staging => {
     const api = window.__tarpit!;
     const scene = api.game.scene.getScene('game') as GameScene;
     const state = api.state!();
@@ -54,7 +57,21 @@ async function fixture(page: Page) {
     function assertActive() {
       if (!api.painted!().active && !location.search.includes('look=classic')) throw new Error('Painted fell back');
     }
-    if (state.level?.id === 11) {
+    if (staging === 'grass') {
+      state.gold = 1000;
+      for (const kind of ['musketeer', 'cannon', 'longbow', 'firepot'] as const) {
+        let placed = false;
+        for (let col = 7; col <= 14 && !placed; col++) placed = api.buildAt!(col, 7, kind).ok;
+        if (!placed) throw new Error('Could not build ' + kind);
+      }
+      state.wave = 2;
+      api.startWave!();
+      const types = ['goblin', 'shieldbearer', 'wolf', 'harpy', 'troll', 'goblin', 'shieldbearer'] as const;
+      for (let id = 0; id < 24; id++) {
+        state.enemies.push({ id, type: types[id % types.length], hp: id % 6 === 0 ? 45 : 70, maxHp: 70,
+          slow: 0, slowTicksLeft: 0, distance: 320 + id * 13 });
+      }
+    } else if (state.level?.id === 11) {
       state.gold = 1000;
       for (const [col, row, kind, path] of [[7, 10, 'musketeer', 'A'], [11, 7, 'cannon', 'B'],
         [14, 1, 'longbow'], [22, 8, 'firepot'], [25, 10, 'mortar']] as const) {
@@ -84,8 +101,9 @@ async function fixture(page: Page) {
       const roads = [{ id: state.map.mainRoad, path: state.map.path },
         ...(state.map.otherRoads ?? []).map(road => ({ id: road.id,
           path: [...road.approach, ...state.map.path.slice(road.joinIndex)] }))];
-      for (let id = 0; id < 18; id++) {
-        const type = types[id % types.length];
+      const walkers = ['shieldbearer', 'goblin', 'troll', 'shieldbearer', 'wolf', 'shieldbearer'] as const;
+      for (let id = 0; id < (staging === 'held' ? 30 : 18); id++) {
+        const type = staging === 'held' ? walkers[id % walkers.length] : types[id % types.length];
         if (id >= types.length && (type === 'ram' || type === 'grumblemaw')) continue;
         const road = roads[id % roads.length];
         if (!road) throw new Error('Missing road');
@@ -95,8 +113,9 @@ async function fixture(page: Page) {
           return sum + Math.hypot(b.x - a.x, b.y - a.y);
         }, 0);
         const gap = type === 'ram' ? 9 : type === 'grumblemaw' ? 71 : 4 + id * 4;
-        state.enemies.push({ id, type, road: road.id, hp: 980, slow: 0, slowTicksLeft: 0,
-          distance: length - state.gate.yardLength - gap });
+        const distance = staging === 'held' ? state.gate.distance : length - state.gate.yardLength - gap;
+        state.enemies.push({ id, type, road: staging === 'held' ? state.gate.road : road.id,
+          hp: 980, slow: 0, slowTicksLeft: 0, distance });
       }
       if (!scene.useSpecialAt('guards', state.gate.x, state.gate.y).ok) throw new Error('Could not place the squad');
       // Keep the simulated tick frozen and settle the real battle camera.
@@ -121,7 +140,65 @@ async function fixture(page: Page) {
     const crowd = at ? api.canvasToPage(at.x, at.y) : api.worldToPage(420, 260);
     const gate = state.gate ? api.worldToPage(state.gate.x, state.gate.y) : null;
     return { a, b, crowd, gate, towers: state.towers.length, enemies: state.enemies.length };
-  });
+  }, staging);
+}
+
+async function shots(browser: Browser) {
+  const cases = [
+    [11, 656, 'mid-wave', 'standard'], [11, 844, 'mid-wave', 'standard'],
+    [0, 656, 'grass-day', 'grass'], [22, 656, 'dusk-road', 'standard'],
+    [24, 656, 'night-option', 'standard'],
+    [24, 656, 'old-keep', 'held'], [24, 844, 'old-keep', 'held'],
+  ] as const;
+  for (const [level, height, name, staging] of cases) {
+    let offState = '';
+    for (const ui of [false, true]) {
+      const context = await browser.newContext({ ...phone, viewport: { width: 390, height } });
+      try {
+        const page = await context.newPage();
+        const errors: string[] = [];
+        page.on('pageerror', error => errors.push(String(error)));
+        await enter(page, level, 'test=1&look=painted' + (ui ? '&ui=new' : ''));
+        const positions = await fixture(page, staging);
+        const state = await page.evaluate(() => JSON.stringify(window.__tarpit!.state!()));
+        if (ui) assert.equal(state, offState);
+        else offState = state;
+        if (staging === 'held') {
+          assert.equal(positions.enemies, 30);
+          assert.equal(await page.evaluate(() => {
+            const state = window.__tarpit!.state!();
+            return state.enemies.filter(enemy => enemy.distance === state.gate!.distance &&
+              enemy.road === state.gate!.road).length;
+          }), 30);
+        }
+        const stem = join(scratch, `${name}-390x${height}-${ui ? 'on' : 'off'}`);
+        await page.screenshot({ scale: 'device', path: stem + '.png' });
+        await writeFile(stem + '.json', JSON.stringify(positions));
+        if (name === 'mid-wave' && height === 656 && ui) {
+          await page.touchscreen.tap(positions.a.x, positions.a.y);
+          await page.waitForFunction(() => !!window.__tarpit?.uiRects()['panel:close']);
+          const samples = await page.evaluate(() => {
+            const api = window.__tarpit!;
+            const scene = api.game.scene.getScene('game') as GameScene;
+            const images = scene.children.list.filter(object => object.type === 'Image') as Phaser.GameObjects.Image[];
+            const bar = api.uiRects()['bar:musketeer'];
+            const samePose = images.filter(image => image.visible && image.texture.key === 'painted:sharp:musketeer-2x' &&
+              Number(image.frame.name) === 6);
+            const dock = samePose.find(image => Math.abs(image.x - (bar.x + bar.width / 2)) < bar.width / 2 &&
+              image.y >= bar.y && image.y <= bar.y + bar.height);
+            const panel = samePose.find(image => image !== dock && image.displayHeight > 0);
+            if (!dock || !panel || dock.frame !== panel.frame) throw new Error('Dock and panel use different pose art');
+            const point = (image: Phaser.GameObjects.Image) => api.canvasToPage(image.x, image.y);
+            return { dock: point(dock), panel: point(panel) };
+          });
+          await page.screenshot({ scale: 'device', path: join(scratch, 'portraits.png') });
+          await writeFile(join(scratch, 'portraits.json'), JSON.stringify(samples));
+        }
+        assert.deepEqual(errors, []);
+        console.log(JSON.stringify({ name, level, height, ui, ...positions }));
+      } finally { await context.close(); }
+    }
+  }
 }
 
 async function retained(page: Page) {
@@ -167,7 +244,8 @@ async function inspect(browser: Browser, level: number, height: number, look: st
         requests.push(url.pathname.replace(/-[\w-]{8}\.(js|webp|woff2|png)$/, '.$1'));
       }
     });
-    await enter(page, level, `test=1&look=${look}${ui ? '&ui=new' : ''}`);
+    let loadingFrom = 0;
+    await enter(page, level, `test=1&look=${look}${ui ? '&ui=new' : ''}`, () => { loadingFrom = requests.length; });
     const setup = await retained(page);
     const setupPixels = capture ? digest(await page.screenshot({ scale: 'device' })) : '';
     const positions = await fixture(page);
@@ -176,7 +254,8 @@ async function inspect(browser: Browser, level: number, height: number, look: st
     assert.deepEqual(errors, []);
     if (ui && look !== 'classic') {
       assert.ok(roster.keys.some(key => key.startsWith('painted:sharp:')));
-      assert.ok(!requests.some(path => /shared-[12]x\.webp/.test(path)), requests.join('\n'));
+      const battleRequests = requests.slice(loadingFrom);
+      assert.ok(!battleRequests.some(path => /shared-[12]x\.webp/.test(path)), battleRequests.join('\n'));
       assert.ok(roster.total <= (level >= 21 ? 70_000_000 : 60_000_000), JSON.stringify(roster.groups));
     }
     let wavePixels = '';
@@ -259,76 +338,72 @@ async function verifyLifecycle(browser: Browser) {
 }
 
 async function perf(browser: Browser) {
-  for (const height of [844, 656]) {
-    const paired = mode === 'perf-paired';
-    const combinations = [
-      { stock: true, ui: false }, { stock: false, ui: true },
-      { stock: true, ui: true }, { stock: false, ui: false },
-    ];
-    const cases = paired ? [...combinations, ...combinations.slice().reverse(), ...combinations]
-      : [false, true, true, false, false, true].map(ui => ({ stock: false, ui }));
-    for (const { stock, ui } of cases) {
-      const context = await browser.newContext({ ...phone, viewport: { width: 390, height } });
-      try {
-        if (stock) await context.route(origin + '/**', route => {
-          const pathname = new URL(route.request().url()).pathname;
-          return route.fulfill({ path: join(scratch, 'dist', pathname === '/' ? '/index.html' : pathname) });
-        });
-        const page = await context.newPage();
-        await enter(page, 0, 'perf=1&look=painted' + (ui ? '&ui=new' : ''));
-        const cdp = await context.newCDPSession(page);
-        await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
-        await page.evaluate(() => {
-          const game = window.__tarpit!.game;
-          const scene = game.scene.getScene('game') as GameScene;
-          if (!scene.paintedState().active) throw new Error('Painted fell back');
-          scene.state.gold = scene.state.lives = 1e6;
-          const types: TowerType[] = ['musketeer', 'cannon', 'tarpit', 'longbow', 'mortar', 'firepot'];
-          let count = 0;
-          for (let row = 1; row < 15 && count < 12; row += 2) {
-            for (let col = 1; col < 30 && count < 12; col += 2) {
-              if (scene.build({ row, col }, types[count % types.length]).ok) count++;
-            }
+  const height = 656;
+  const order = ['off', 'stock', 'lifted', 'lifted', 'stock', 'off', 'stock', 'off', 'lifted'] as const;
+  for (const variant of order) {
+    const ui = variant !== 'off';
+    const context = await browser.newContext({ ...phone, viewport: { width: 390, height } });
+    try {
+      if (variant === 'stock') await context.route(origin + '/**', route => {
+        const pathname = new URL(route.request().url()).pathname;
+        return route.fulfill({ path: join(scratch, 'stock/dist', pathname === '/' ? '/index.html' : pathname) });
+      });
+      const page = await context.newPage();
+      await enter(page, 0, 'perf=1&look=painted' + (ui ? '&ui=new' : ''));
+      const cdp = await context.newCDPSession(page);
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+      await page.evaluate(variant => {
+        const game = window.__tarpit!.game;
+        const scene = game.scene.getScene('game') as GameScene;
+        if (!scene.paintedState().active) throw new Error('Painted fell back');
+        const sharp = Object.keys(game.textures.list).some(key => key.startsWith('painted:sharp:'));
+        if (sharp !== (variant === 'lifted')) throw new Error('Wrong benchmark sprite set');
+        scene.state.gold = scene.state.lives = 1e6;
+        const types: TowerType[] = ['musketeer', 'cannon', 'tarpit', 'longbow', 'mortar', 'firepot'];
+        let count = 0;
+        for (let row = 1; row < 15 && count < 12; row += 2) {
+          for (let col = 1; col < 30 && count < 12; col += 2) {
+            if (scene.build({ row, col }, types[count % types.length]).ok) count++;
           }
-          if (count !== 12 || !scene.spawnHorde(40, 245)) throw new Error('Perf fixture incomplete');
-          scene.state.spawnedPerGroup.fill(99_999);
-          for (const enemy of scene.state.enemies) enemy.hp = enemy.maxHp = 1e6;
-        });
-        await cdp.send('Performance.enable');
-        await delay(900);
-        const metric = async () => (await cdp.send('Performance.getMetrics')).metrics.find(m => m.name === 'TaskDuration')!.value;
-        const before = await metric();
-        const result = await page.evaluate(() => new Promise<{
-          frames: number; enemies: number; ticks: number; frameMedian: number; frameP95: number; renderer: string; canvas: number[];
-        }>(resolve => {
-          const game = window.__tarpit!.game;
-          const scene = game.scene.getScene('game') as GameScene;
-          const intervals: number[] = [];
-          let last = performance.now();
-          const tick0 = scene.state.tick;
-          const frame = () => {
-            const now = performance.now();
-            intervals.push(now - last);
-            last = now;
-          };
-          game.events.on('postrender', frame);
-          setTimeout(() => {
-            game.events.off('postrender', frame);
-            const gl = (game.renderer as Phaser.Renderer.WebGL.WebGLRenderer).gl;
-            const info = gl?.getExtension('WEBGL_debug_renderer_info');
-            const sorted = intervals.slice(1).sort((a, b) => a - b);
-            resolve({ frames: intervals.length, enemies: scene.state.enemies.length, ticks: scene.state.tick - tick0,
-              frameMedian: sorted[Math.floor(sorted.length * .5)], frameP95: sorted[Math.floor(sorted.length * .95)],
-              renderer: gl && info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : gl ? 'WebGL' : 'Canvas',
-              canvas: [game.canvas.width, game.canvas.height] });
-          }, 3000);
-        }));
-        const elapsed = await metric() - before;
-        assert.equal(result.enemies, 40);
-        assert.ok(result.frames > 30);
-        console.log(JSON.stringify({ build: stock ? 'stock' : 'sharp', height, ui, mainMsPerFrame: elapsed * 1000 / result.frames, ...result }));
-      } finally { await context.close(); }
-    }
+        }
+        if (count !== 12 || !scene.spawnHorde(40, 245)) throw new Error('Perf fixture incomplete');
+        scene.state.spawnedPerGroup.fill(99_999);
+        for (const enemy of scene.state.enemies) enemy.hp = enemy.maxHp = 1e6;
+      }, variant);
+      await cdp.send('Performance.enable');
+      await delay(900);
+      const metric = async () => (await cdp.send('Performance.getMetrics')).metrics.find(m => m.name === 'TaskDuration')!.value;
+      const before = await metric();
+      const result = await page.evaluate(() => new Promise<{
+        frames: number; enemies: number; ticks: number; frameMedian: number; frameP95: number; renderer: string; canvas: number[];
+      }>(resolve => {
+        const game = window.__tarpit!.game;
+        const scene = game.scene.getScene('game') as GameScene;
+        const intervals: number[] = [];
+        let last = performance.now();
+        const tick0 = scene.state.tick;
+        const frame = () => {
+          const now = performance.now();
+          intervals.push(now - last);
+          last = now;
+        };
+        game.events.on('postrender', frame);
+        setTimeout(() => {
+          game.events.off('postrender', frame);
+          const gl = (game.renderer as Phaser.Renderer.WebGL.WebGLRenderer).gl;
+          const info = gl?.getExtension('WEBGL_debug_renderer_info');
+          const sorted = intervals.slice(1).sort((a, b) => a - b);
+          resolve({ frames: intervals.length, enemies: scene.state.enemies.length, ticks: scene.state.tick - tick0,
+            frameMedian: sorted[Math.floor(sorted.length * .5)], frameP95: sorted[Math.floor(sorted.length * .95)],
+            renderer: gl && info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : gl ? 'WebGL' : 'Canvas',
+            canvas: [game.canvas.width, game.canvas.height] });
+        }, 3000);
+      }));
+      const elapsed = await metric() - before;
+      assert.equal(result.enemies, 40);
+      assert.ok(result.frames > 30);
+      console.log(JSON.stringify({ variant, height, ui, mainMsPerFrame: elapsed * 1000 / result.frames, ...result }));
+    } finally { await context.close(); }
   }
 }
 
@@ -382,14 +457,15 @@ async function download(browser: Browser) {
   }
 }
 
-if (mode === 'baseline') process.chdir(scratch);
-const measuring = mode === 'perf' || mode === 'perf-paired';
+if (mode === 'baseline') process.chdir(join(scratch, 'baseline'));
+const measuring = mode === 'perf';
 async function work(browser: Browser) {
   if (mode === 'options') {
     const { captureOptions } = await import('./m56-options.ts');
     return captureOptions(browser, scratch, enter, fixture);
   }
   if (measuring) return perf(browser);
+  if (mode === 'shots') return shots(browser);
   if (mode === 'download') return download(browser);
   if (mode === 'lifecycle') return verifyLifecycle(browser);
   return audit(browser);

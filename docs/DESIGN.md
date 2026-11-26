@@ -1290,19 +1290,32 @@ The title screen offers Classic and Painted. Painted is the default for a fresh 
   Packed art loads on demand. A cold start requests three painted files, or four when it probes
   the 1× ground before loading 2×. On Meadow the 1× target is under five seconds at 1.6 Mbps down
   and 150 ms latency.
-- With `?ui=new`, Painted and Showpiece load trimmed, smoothly shaded pieces
-  for the level's roster. The same tower models cover all levels and both
+- With `?ui=new`, Painted and Showpiece load trimmed, smoothly shaded Lifted
+  pieces for the level's roster. The same tower models cover all levels and both
   upgrade paths. Enemies keep their 16 walk poses and the four Guards keep
   their 32 idle and strike poses. Locked tower buttons use one preview pose
   each. Opening the kit with the gold cheat fetches the added poses and shots.
   Ordinary fields use 2 source pixels per game pixel. At the Old Keep,
-  towers and flyers use 3 and ground enemies and Guards use 4. The Keep ram has a 360 × 240 source cell and its mortar notice a
+  towers and flyers use 3 and ground enemies and Guards use 4, with
+  King Grumblemaw at 3.25 to keep the finale within memory. The Keep ram has a 360 × 240 source cell and its mortar notice a
   120 × 80 cell. The Painted field can draw up to the screen's fitted pixel
   density, within those 2× and 3× field limits. The Keep's battle camera
   and front ranks can enlarge the pieces further. The retained decoded art
   targets are 60,000,000 bytes on ordinary phone levels and 70,000,000 on
   Act Three. Changing levels releases the pieces. An in-place restart
   reuses them. The worker caches requested files for repeat play offline.
+- Lifted adjusts each body channel by `0.16 × (luma − 103) + 2` on the
+  0–255 scale. The dark feather is #201b19. Towers and shots use a 1.12
+  game-pixel dilation, 0.88 px Gaussian blur and 66% opacity multiplier.
+  Enemy, Guard and ram bodies use 1.18 px, 0.78 px and 72%, plus up to
+  4 channel values in the interior and up to 21 subtracted through a
+  0.8 px inner feather. The ground ellipse uses a 1.45 px blur, with
+  source alpha 108 for towers and 122 for walkers, Guards and the ram.
+  Its width and depth are 38 × 8 px for towers, 18 to 52 × 6 px for
+  walkers and Guards, and 72 × 10 px for the ram. The Harpy shadow uses
+  0.85 px dilation, 0.5 px blur and a 1.85× alpha multiplier. Dusk and
+  moonlit packs light the body before adding the dark feather. The dock
+  and tower panel use the same southeast pose from the finished art.
 - All three grounds use the same trail width and simulation path. Meadow
   has flowering pasture, Switchback has a pale trail with a dark cut edge through dry grass and low shale shelves,
   and Riverbend has reed-lined water and a timber deck on its upper trail.

@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
 import { allowedTowers, WAVES, type LevelDef, type TowerType, type WaveDef } from '../../sim';
-import { lightKeepPixels } from '../keep/stoneLight';
 import { enemyArt, towerArt } from './frames';
 import type { PaintedAssets, PaintedName } from './loading';
 import layoutUrl from '../../../assets/art-painted/sharp/layout.json?url&no-inline';
@@ -16,6 +15,7 @@ export const PAINTED_SHOTS = {
 
 interface Entry {
   atlas: string;
+  moonAtlas?: string;
   density: number;
   frameSize: number[];
   anchor: number[];
@@ -40,7 +40,7 @@ function towerEntries(towers: readonly TowerType[], density: number, siege: bool
 }
 
 function register(
-  textures: Phaser.Textures.TextureManager, atlas: HTMLImageElement, entry: Entry, key: string, hit: boolean, moonlit?: boolean,
+  textures: Phaser.Textures.TextureManager, atlas: HTMLImageElement, entry: Entry, key: string, hit: boolean,
 ): Sheet {
   // Shared scenery and icon packs become small logical textures. A piece
   // gets one tightly packed texture, including its source-atop hit flash.
@@ -68,7 +68,6 @@ function register(
     ctx.fillStyle = 'rgba(255,255,255,0.28)';
     ctx.fillRect(0, height, width, height);
   }
-  if (moonlit !== undefined) lightKeepPixels(ctx, moonlit);
   const texture = textures.create(key, canvas);
   if (!texture) throw new Error(`Could not register ${key}`);
   texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
@@ -92,7 +91,8 @@ async function loadSheets(
   const result: Sheets = {};
   const byAtlas = new Map<string, [PaintedName, string][]>();
   for (const [name, id] of entries) {
-    const atlas = catalogue[id].atlas;
+    const entry = catalogue[id];
+    const atlas = moonlit ? entry.moonAtlas ?? entry.atlas : entry.atlas;
     if (!byAtlas.has(atlas)) byAtlas.set(atlas, []);
     byAtlas.get(atlas)!.push([name, id]);
   }
@@ -102,8 +102,7 @@ async function loadSheets(
       signal.throwIfAborted();
       for (const [name, id] of group) {
         const key = `painted:sharp:${id}`;
-        result[name] = register(textures, image, catalogue[id], key, hit.has(name),
-          name === 'harpy-shadow' || name === 'ram' || name === 'notice' ? undefined : moonlit);
+        result[name] = register(textures, image, catalogue[id], key, hit.has(name));
         registered.push(key);
       }
       mark();
@@ -124,7 +123,7 @@ export async function loadSharpArt(
   if (!response.ok) throw new Error(`Sharp painted layout returned ${response.status}`);
   const catalogue: Record<string, Entry> = await response.json();
   const density = keep ? 3 : 2;
-  const moonlit = keep ? siege && level?.keepSky === 'night storm' : undefined;
+  const moonlit = keep && siege && level?.keepSky === 'night storm';
   const open = allowedTowers({ level, cheated: false });
   const all = allowedTowers({ cheated: true });
   const locked = all.filter(type => !open.includes(type));
@@ -137,7 +136,7 @@ export async function loadSharpArt(
       entries.set('ram', 'ram-keep');
     } else {
       const name = enemyArt(type);
-      const enemyDensity = keep && type !== 'harpy' ? 4 : density;
+      const enemyDensity = keep && type !== 'harpy' ? type === 'grumblemaw' ? 3.25 : 4 : density;
       entries.set(name, `${name}-${enemyDensity}x`);
       hits.add(name);
     }

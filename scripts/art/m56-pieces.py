@@ -59,12 +59,16 @@ def shipped_frames(atlas, sheet):
         yield atlas.crop((left, top, left + width, top + height))
 
 
-def rendered_frames(scratch, kind, sheet, old, density):
+def rendered_frames(scratch, kind, sheet, old, density, border):
     from PIL import Image, ImageDraw
+    from m56_finish import flight_shadow, keep_light, lifted
 
     def fit(value):
         return round(value * density / 2)
 
+    crowd = kind in poses.ENEMIES or kind == 'guard'
+    contacts = {'goblin': 18, 'wolf': 27, 'shieldbearer': 28, 'troll': 44,
+                'grumblefoot': 50, 'grumblemaw': 52, 'guard': 21}
     for i, (label, original) in enumerate(zip(sheet['frameOrder'], old)):
         with Image.open(scratch / kind / f'{label}.png') as source:
             alpha = source.getchannel('A')
@@ -75,8 +79,8 @@ def rendered_frames(scratch, kind, sheet, old, density):
             if kind not in poses.ACTORS:
                 raw = alpha.getbbox()
             body = source.crop(raw).resize((right - left, bottom - top), Image.Resampling.LANCZOS)
-        frame = Image.new('RGBA', tuple(map(fit, sheet['frameSize'])))
-        ax, ay = map(fit, sheet['anchor'])
+        frame = Image.new('RGBA', tuple(fit(n) + 2 * border for n in sheet['frameSize']))
+        ax, ay = (fit(n) + border for n in sheet['anchor'])
         if kind in poses.TOWERS:
             # Keep the same base, drawn at the target density with smooth edges.
             base = Image.new('RGBA', (frame.width * 2, frame.height * 2))
@@ -98,11 +102,25 @@ def rendered_frames(scratch, kind, sheet, old, density):
                            for y in range(h) for x in range(w)])
             shadow.putalpha(alpha)
             frame.paste(shadow, (ax - w//2, ay - h//2))
-        frame.alpha_composite(body, (left, top))
-        yield frame
+        body_at = (left + border, top + border)
+        if kind == 'harpy-shadow':
+            frame.alpha_composite(body, body_at)
+            yield flight_shadow(frame, density), None
+            continue
+        old_contact = None
+        if kind in poses.CONTACT_WIDTH:
+            old_contact, frame = frame, Image.new('RGBA', frame.size)
+        frame.alpha_composite(body, body_at)
+        contact = ((19, 4, 108) if kind in poses.TOWERS else
+                   (contacts[kind] / 2, 3, 122) if kind in contacts else None)
+        moon = lifted(keep_light(frame, True), density, (ax, ay), contact=contact,
+                      old_contact=old_contact, crowd=crowd) if density > 2 else None
+        if density > 2:
+            frame = keep_light(frame, False)
+        yield lifted(frame, density, (ax, ay), contact=contact, old_contact=old_contact, crowd=crowd), moon
 
 
-def write_pack(name, entries, layout, quality=88):
+def write_pack(name, entries, layout, quality=88, trim_border=0):
     from PIL import Image
 
     # Pack wide-first into shelves. A one-pixel clear gutter keeps adjacent
@@ -122,7 +140,7 @@ def write_pack(name, entries, layout, quality=88):
     for kind, i, offset, image in sorted(tiles, key=lambda tile: -tile[-1].height):
         if x + image.width + 1 > width:
             x, y, row = 1, y + row, 0
-        layout[kind]['regions'][i] = [x, y, image.width, image.height, *offset]
+        layout[kind]['regions'][i] = [x, y, image.width, image.height, *(n - trim_border for n in offset)]
         coordinates.append((image, x, y))
         right = max(right, x + image.width + 1)
         x += image.width + 2
@@ -132,6 +150,57 @@ def write_pack(name, entries, layout, quality=88):
         atlas.paste(image, (x, y))
     atlas.save(OUT / f'{name}.webp', quality=quality, method=6, lossless=name == 'scenery')
     print(f'{name}: {atlas.width} × {atlas.height}, {len(tiles)} frames, {atlas.width * atlas.height * 4:,} RGBA bytes')
+
+
+def pack_machines(catalogue):
+    from PIL import Image
+    from m56_finish import lifted
+
+    # Finish the established machine silhouettes without clipping their
+    # feather to the cell. Their trim offsets preserve the display geometry.
+    machines = runpy.run_path(str(HERE / 'siege_machines.py'))
+    for name, draw in (('ram-keep', lambda p, i: machines['ram'](p, i, lifted=True)),
+                       ('notice-keep', lambda p, _: machines['parchment'](p, 14, False, lifted=True))):
+        ram = name == 'ram-keep'
+        width, height = size = (360, 240) if ram else (120, 80)
+        density = width / (88 if ram else 34)
+        border = math.ceil(density * 5)
+        anchor = (width // 2, round(height * .84) if ram else height // 2)
+        padded_anchor = tuple(n + border for n in anchor)
+        frames = []
+        for i in range(4 if ram else 1):
+            drawing = machines['Drawing']()
+            draw(drawing, i)
+            source = Image.new('RGBA', (width + 2 * border, height + 2 * border))
+            source.paste(drawing.image.resize(size, Image.Resampling.LANCZOS), (border, border))
+            frames.append(lifted(source, density, padded_anchor,
+                                 contact=(36, 5, 122) if ram else None, crowd=ram))
+        write_pack(name, [(name, {'density': 3, 'frameSize': size, 'anchor': anchor}, frames)],
+                   catalogue, trim_border=border)
+
+
+def geometry(sheet, density, border=0):
+    meta = {'density': density, 'frameSize': [round(v * density / 2) + 2 * border for v in sheet['frameSize']],
+            'anchor': [round(v * density / 2) + border for v in sheet['anchor']]}
+    if 'bodyBounds' in sheet:
+        meta['bodyBounds'] = [[round(v * density / 2) + border for v in box] for box in sheet['bodyBounds']]
+    return meta
+
+
+def pack_piece(scratch, catalogue, kind, sheet, old, density):
+    border = math.ceil(density * 5)
+    pairs = list(rendered_frames(scratch, kind, sheet, old, density, border))
+    frames, moon = map(list, zip(*pairs))
+    meta = geometry(sheet, density, border)
+    name = f'{kind}-{density:g}x'
+    write_pack(name, [(name, meta, frames)], catalogue)
+    if moon[0] is not None:
+        variant = {}
+        write_pack(name + '-moon', [(name, meta, moon)], variant)
+        if variant[name]['regions'] != catalogue[name]['regions']:
+            raise ValueError(f'{name}: Keep lighting changed the frame geometry')
+        catalogue[name]['moonAtlas'] = variant[name]['atlas']
+    return meta, frames
 
 
 def pack(scratch):
@@ -144,18 +213,15 @@ def pack(scratch):
     catalogue = {}
     previews = []
 
-    def geometry(sheet, density):
-        meta = {'density': density, 'frameSize': [v * density // 2 for v in sheet['frameSize']],
-                'anchor': [v * density // 2 for v in sheet['anchor']]}
-        if 'bodyBounds' in sheet:
-            meta['bodyBounds'] = [[round(v * density / 2) for v in box] for box in sheet['bodyBounds']]
-        return meta
-
     for kind in PIECES:
         sheet = original[kind]
         old = list(shipped_frames(atlas, sheet))
         if kind == 'guard':
             tiers = (4,)
+        elif kind == 'grumblemaw':
+            # His much larger cell, doubled for the hit frames, sets the
+            # finale's memory ceiling. Keep full density on the rest of the cast.
+            tiers = (2, 3.25)
         elif kind in poses.ENEMIES and kind != 'harpy':
             tiers = (2, 4)
         elif kind == 'harpy-shadow':
@@ -163,35 +229,21 @@ def pack(scratch):
         else:
             tiers = (2, 3)
         for density in tiers:
-            frames = list(rendered_frames(scratch, kind, sheet, old, density))
-            meta = geometry(sheet, density)
-            name = f'{kind}-{density}x'
-            write_pack(name, [(name, meta, frames)], catalogue)
+            meta, frames = pack_piece(scratch, catalogue, kind, sheet, old, density)
             if density == 2 and kind in poses.TOWERS:
                 previews.append((f'{kind}-icon', dict(meta, bodyBounds=[meta['bodyBounds'][PREVIEW]]),
                                  [frames[PREVIEW]]))
     write_pack('tower-icons', previews, catalogue)
     scenery = [(kind, geometry(original[kind], 2), list(shipped_frames(atlas, original[kind]))) for kind in SCENERY]
     write_pack('scenery', scenery, catalogue)
-    # The original ram and notice are painted by code. Reuse those exact
-    # paths at a higher output density and retain their established origins.
-    machines = runpy.run_path(str(HERE / 'siege_machines.py'))
-    for name, draw in (('ram-keep', lambda p, i: machines['ram'](p, i)),
-                       ('notice-keep', lambda p, _: machines['parchment'](p, 14, False))):
-        size = (360, 240) if name == 'ram-keep' else (120, 80)
-        frames = []
-        for i in range(4 if name == 'ram-keep' else 1):
-            drawing = machines['Drawing']()
-            draw(drawing, i)
-            frames.append(drawing.image.resize(size, Image.Resampling.LANCZOS))
-        write_pack(name, [(name, {'density': 3, 'frameSize': size, 'anchor': [n // 2 for n in size]}, frames)], catalogue)
+    pack_machines(catalogue)
     for suffix in ('', '-half'):
         source = OUT.parents[2] / f'public/assets/keep/siege-machines{suffix}.webp'
         with Image.open(source) as image:
             w, h = image.width // 4, image.height // 2
             image.crop((w, h, w * 4, h * 2)).save(
                 OUT / f'gate-effects{suffix}.webp', lossless=True, method=6)
-    (OUT / 'layout.json').write_text(json.dumps(catalogue, separators=(',', ':')) + '\n')
+    (OUT / 'layout.json').write_text(json.dumps(catalogue, sort_keys=True, separators=(',', ':')) + '\n')
 
 
 if __name__ == '__main__':

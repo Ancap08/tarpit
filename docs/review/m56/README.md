@@ -1,119 +1,75 @@
-# Sharper painted pieces
+# Lifted pieces
 
-## Comparisons
+Lifted is the Painted and Showpiece art behind `?ui=new`. All six towers retain their 16 bearings, original footprints and existing markers for both upgrade paths. The seven enemy and boss models retain their 16 walk poses. The four Guards retain all 32 idle and strike poses. The pack includes all four ram poses, five projectile models and the Keep mortar notice. The tower dock and panel draw the baked southeast pose from the same art used on the board.
 
-The sprite sheets show matched poses at the same size in physical pixels on a 390 × 844 phone at DPR 3. The lower rows enlarge each pose 2.4×.
+## Phone comparisons
 
-- [All six tower models](pieces-towers.png)
-- [Collectors, Hounds, Redcoats, Harpies and Trolls](pieces-enemies.png)
-- [Assessor Grumblefoot and King Grumblemaw](pieces-bosses.png)
-- [The four Guards](pieces-guards.png)
-- [The siege ram](piece-ram.png)
+The sprite sheets use 390 × 844 at DPR 3 and show each matched pose at actual phone pixel scale and 2.4×. The battlefield pairs show the same game state with the switch off and on, with 3× crops.
 
-The battles replay the same test fixture with the switch off and on. The ordinary battles show the existing new-interface framing on the right. The 3× crops enlarge pixels from the full device-pixel screenshots.
+- [Six towers](pieces-towers.png) · [Five regular enemies](pieces-enemies.png) · [Two bosses](pieces-bosses.png) · [Four Guards](pieces-guards.png) · [Ram](piece-ram.png) · [Shots](pieces-shots.png)
+- [Window Money at 390 × 656](mid-wave-390x656.webp) · [390 × 844](mid-wave-390x844.webp)
+- [Meadow by day at 390 × 656](grass-day-390x656.webp) · [Old Keep west road at dusk at 390 × 656](dusk-road-390x656.webp)
+- [Old Keep at night, 30 held, at 390 × 656](old-keep-390x656.webp) · [390 × 844](old-keep-390x844.webp)
+- [Dock and open tower panel at 390 × 656](portraits-390x656.webp)
+- [Option C reference sheets](options/README.md)
 
-- [Window Money at 390 × 656](mid-wave-390x656.webp)
-- [Window Money at 390 × 844](mid-wave-390x844.webp)
-- [The Old Keep gate at 390 × 844](old-keep-390x844.webp)
+The deeper ground shadows show up most on Meadow and in the Window Money swatches. At dusk the rim and inner shading help separate the exposed armor, Harpy wings and Troll shoulders. The concentrated road groups still overlap. At the night gate, the shield edges and forward ranks remain visible with 30 walkers held on the sill. The deepest bodies form one mass behind the front rank, and the foot shadows have little contrast against the wet stone.
 
-The difference is visible on a normal phone screen in the shields, the Harpies' wing edges and the Musketeer's barrel. The Keep crowd benefits most from cleaner edges. The broader light leaves the colours a little softer, and the missing heavy ink edge makes some pale pieces less bold against grass. The gain is worth the measured memory on the review builds.
+I compared the live art with the original Option C sheets and the same 18-enemy night fixture. The night palette and soft edge are close to the mock-up. The live troop rims are slightly denser, and their inner edges have a small value step. The tower and Harpy-shadow settings match Option C. Window Money shows main's wider ground and larger dock, so its screen positions differ from the mock-up. The ram and Keep notice soften the original outer stroke while keeping the marks on the wood and parchment.
 
-## Sampling
+## Baked finish
 
-Blender rendered the existing six tower models, seven enemies including both bosses, four Guard roles and five projectile models. The art keeps 16 bearings per tower, four walk poses in each of four directions per enemy, and two poses in each of four directions for each Guard. Every tower level and path uses the same model and pivot. The ram's four poses and the Keep mortar notice use the established code-drawn paths. The frame catalogue preserves the logical canvas and ground anchor while packing only the visible parts.
-
-| Field | Physical samples per game pixel on the 390-wide phone | Source samples per game pixel |
+| Setting | Option C | Shipped Lifted |
 |---|---|---|
-| Ordinary, 656 px high | 1.42 | 2 |
-| Ordinary, 844 px high | 1.82 | 2 |
-| Old Keep, 656 px high | 1.65 across, 2.47 vertically in battle, up to 3.66 vertically in the front rank | 3 for towers, flyers and most shots. 4 for ground enemies and Guards. |
-| Old Keep, 844 px high | 2.12 across, 3.18 vertically in battle, up to 4.71 vertically in the front rank | Same source set. At the largest stretch, the ground enemy art supplies about 85% of the vertical samples. |
+| Rim color | `#201b19` | Same |
+| Tower and shot dilation, Gaussian blur, opacity multiplier | 1.12 game px, 0.88 px, 66% | Same |
+| Enemy, Guard and ram dilation, Gaussian blur, opacity multiplier | 1.12 game px, 0.88 px, 66% | 1.18 game px, 0.78 px, 72% |
+| Body contrast on the 0–255 channel scale | Add `0.16 × (luma − 103) + 2` | Same, plus up to +4 in the crowd interior and up to −21 through its 0.8 px inner feather |
+| Ground shadow | 108/255 source alpha, 1.45 px blur | Towers 108/255. Walkers, Guards and ram 122/255. Same blur. |
+| Source ellipse | Towers 38 × 8 game px. Walkers and Guards 18–52 × 6. | Same, plus 72 × 10 for the ram |
+| Flying shadow | 0.85 px expansion, 0.5 px blur, 1.85× alpha | Same |
 
-The ram cell is 360 × 240 px for an 88-game-pixel width. The notice cell is 120 × 80 px for a 34-game-pixel width. Ordinary 2× sampling covers settled pieces on both phones. A short tower upgrade bounce can briefly need 2.19 samples per game pixel at 844 px high.
+The earlier Soft pack had no outer feather or extra contrast. Its ground-contact shadow peaked at 56/255 wherever a piece had one. Lifted layers its ellipse with that contact shadow below the body. Dusk and moonlight color the body before the dark feather is painted, as in the mock-up. The game loads only the applicable Keep palette and generates its usual hit frames on load. The finish uses the existing sprite draws.
 
-<details>
-<summary>Source cell sizes in pixels</summary>
+Ordinary fields retain 2 source samples per game pixel. At the Keep, towers, flyers and conventional shots use 3×, and Guards and regular ground enemies use 4×. King Grumblemaw uses 3.25× instead of the earlier 4× at the Keep. This puts the finale under 70 MB while preserving the rest of the roster at its previous density. It supplies 89% of the most stretched 390 × 656 front-rank samples and 69% at 390 × 844. Those figures are 3.25 / 3.66 and 3.25 / 4.71 respectively.
 
-| Piece | Ordinary | Old Keep |
+## Decoded art and site size
+
+Decimal MB. The audit counted unique retained Phaser image and canvas sources and the Keep’s panorama canvases, at four bytes per pixel. The separate render buffers are outside these figures.
+
+| Visit | Switch off | Lifted |
 |---|---:|---:|
-| Musketeer | 124 × 98 | 186 × 147 |
-| Cannon | 108 × 98 | 162 × 147 |
-| Tar Pit | 92 × 98 | 138 × 147 |
-| Longbow | 100 × 98 | 150 × 147 |
-| Mortar | 108 × 98 | 162 × 147 |
-| Fire Pot | 84 × 98 | 126 × 147 |
-| Goblin Collector | 104 × 100 | 208 × 200 |
-| Revenue Hound | 116 × 100 | 232 × 200 |
-| Redcoat Shieldbearer | 112 × 100 | 224 × 200 |
-| Royal Harpy | 92 × 100 | 138 × 150 |
-| Toll Troll | 152 × 140 | 304 × 280 |
-| Assessor Grumblefoot | 216 × 200 | 432 × 400 |
-| King Grumblemaw | 220 × 218 | 440 × 436 |
-| Guards | — | 360 × 200 |
-| Arrow | 28 × 42 | 42 × 63 |
-| Cannonball | 34 × 32 | 51 × 48 |
-| Mortar shell | 38 × 40 | 57 × 60 |
-| Tar glob | 32 × 38 | 48 × 57 |
-| Flame | 30 × 36 | 45 × 54 |
-| Harpy shadow | 56 × 40 | 56 × 40 |
-| Ram | — | 360 × 240 |
-| Mortar notice | — | 120 × 80 |
+| First Watch, 844 | 35.87 | 25.18 |
+| Act One finale, 844 | 35.89 | 38.59 |
+| Window Money, 656 | 35.99 | 34.98 |
+| Window Money, 844 | 35.99 | 37.33 |
+| Act Two finale, 844 | 35.94 | 43.53 |
+| Free play, 844 | 35.86 | 43.29 |
+| Showpiece Free play, 844 | 38.43 | 45.86 |
+| Old Keep 21, 844 | 40.21 | 50.90 |
+| Old Keep 22, 844 | 43.01 | 53.70 |
+| Old Keep 23, 844 | 48.07 | 58.76 |
+| Old Keep 24, 844 | 48.08 | 58.77 |
+| Old Keep 25, 656 and 844 | 54.82 | 68.12 |
 
-</details>
-
-## Decoded art
-
-Figures use decimal MB. The browser audit counts width × height × four bytes for each unique retained Phaser texture source and the Keep art canvases after drawing the fixture. The renderer has its own backing buffers.
-
-| Visit | Switch off | Switch on |
-|---|---:|---:|
-| First Watch, 844 | 35.87 MB | 22.11 MB |
-| Act One finale, 844 | 35.89 MB | 33.80 MB |
-| Window Money, 656 | 35.99 MB | 29.80 MB |
-| Window Money, 844 | 35.99 MB | 32.73 MB |
-| Act Two finale, 844 | 35.94 MB | 38.32 MB |
-| Free play, 844 | 35.86 MB | 38.10 MB |
-| Showpiece Free play, 844 | 38.43 MB | 40.67 MB |
-| Old Keep 21, 844 | 40.21 MB | 43.12 MB |
-| Old Keep 22, 844 | 43.01 MB | 45.93 MB |
-| Old Keep 23, 844 | 48.07 MB | 50.99 MB |
-| Old Keep 24, 844 | 48.08 MB | 51.00 MB |
-| Old Keep 25, 656 and 844 | 54.82 MB | 65.50 MB |
-
-Both phone limits hold. The finale leaves 4.50 MB within the 70 MB budget. Ordinary fields load the level's roster and shots, with one still for each locked tower button. The gold cheat fetches the additional bearings and shots. The Keep lights the loaded frames in place, including the hit poses, and keeps only the small unlit tower portraits for the build bar.
-
-## Cold download
-
-The generated sharp set is 3,201,808 bytes across 45 files, including the ordinary and Keep variants, frame data and the scenery and siege effect packs. The built site is 14,909,038 bytes. The figures below sum unique response bodies from a fresh browser, including the service worker's precache and the selected visit's on-demand requests. HTTP compression and headers can change wire totals.
-
-| Fresh visit | Switch off | Switch on | Sharp files within switch-on total |
-|---|---:|---:|---:|
-| Title before Play | | 1,786,134 B | 0 B |
-| First Watch | | 2,455,130 B | 512,952 B |
-| Free play on Meadow | 2,865,652 B | 3,072,178 B | 1,181,914 B |
-| Showpiece Free play | | 3,175,726 B | 1,181,914 B |
-| Old Keep 25 | 3,457,620 B | 4,224,390 B | 1,765,548 B |
-
-The warmed sharp Free play visit also reopened offline.
+The sharper set is 5,631,371 bytes across 64 files. It includes the piece atlases, 19 moonlit alternates, layout, scenery and Keep siege-effect packs. The full site is 17,344,630 bytes. The level card may fetch its 1× terrain/scenery preview before Play. The Lifted battle loads its roster without fetching the shared stock sprite atlas.
 
 ## Frame cost
 
-Chromium using ANGLE Metal on the M4, with a phone viewport at DPR 3, 40 enemies, 12 towers and CDP CPU throttling at 4×. Each number is the median across three three-second samples. The two builds and switch states were interleaved. Process inspection showed no concurrent test suites or builds. Chromium processes from the previous measurement were exiting at the start.
+390 × 656, DPR 3, 40 enemies, 12 towers, and 4× Chromium CPU throttle on the Mac M4 with ANGLE Metal. Each row is the median of three interleaved three-second samples. A process check found no competing tests, renders or builds. Desktop apps and window services were active. The stock-sprites case used a temporary build of the merged checkout with only the ordinary sharp-art selection forced off, retaining the polished interface.
 
-| Viewport | Stock off, main ms/frame | Stock on, main ms/frame | This branch off, main ms/frame | This branch on, main ms/frame | This branch off → on, frame median | This branch off → on, frame p95 |
-|---|---:|---:|---:|---:|---:|---:|
-| 390 × 844 | 2.92 | 4.45 | 3.08 | 4.42 | 16.60 → 16.70 ms | 18.00 → 18.40 ms |
-| 390 × 656 | 3.29 | 4.41 | 2.49 | 4.46 | 16.70 → 16.60 ms | 17.90 → 18.90 ms |
+| Condition | Main-thread task ms/frame | Frame interval median | Frame interval p95 |
+|---|---:|---:|---:|
+| Switch off | 3.36 | 16.60 ms | 18.20 ms |
+| Switch on, today’s sprites | 4.82 | 16.70 ms | 18.60 ms |
+| Switch on, Lifted | 4.77 | 16.70 ms | 18.40 ms |
 
-The full switch costs more main-thread time than stock off at both heights. The stock build already showed a switch cost, and the switched builds are within 0.05 ms per frame of each other. All conditions delivered about 60 fps. The strict off-to-on main-thread target remains open.
+Each sample rendered 180 frames and advanced 180 ticks. Lifted was within 0.06 ms of the switched stock sprites. The combined switch still uses 1.41 ms more main-thread time per frame than off, so the strict off-to-on cost target remains open.
 
-## Verification
+## Verification and reproduction
 
-- Lint, type check, build, size and the 401-row asset manifest passed. The pack audit checked 57 logical sheets and 506 trimmed frame placements.
-- Vitest passed 3,013 tests across 144 files. The follow-up asset, frame and look tests passed 96 cases. The simulation output matched the stock run byte for byte.
-- The production-browser isolation audit matched 30 frozen screenshot hashes, 15 simulation hashes and 15 request and texture inventories. It included stock Painted, Showpiece and Classic. The sharp-path audit exercised both phone heights, all five Act Three levels, the gold cheat, texture release, a restart and offline replay.
-- The three-project Playwright pass recorded 1,775 passes, nine skips and three failures. The failure-injection test had been routing the stock atlas URL. Its updated checks passed all six stock and sharp cases across Chromium, tablet and phone. The third failure was the viewport timing threshold under concurrent tests. It passed in isolation. Both Keep cost tests passed separately.
+The production-browser audit compares against the fetched main revision after the iPhone polish. It matched 30 frozen screenshot hashes, 15 state hashes, and 15 request and texture inventories. It also checked the sharp roster and memory limits, locked tower icons, the gold cheat’s on-demand poses, restart and texture release. The dock and open tower panel used the same live Musketeer texture frame. The geometry audit checked 57 logical sheets, 506 frame placements and all 19 moonlit variants.
 
-## Reproducing the review
+[Blender and Pillow packer](../../../scripts/art/m56-pieces.py) · [Lifted finish](../../../scripts/art/m56_finish.py) · [Browser captures and audits](../../../scripts/art/m56-review.ts) · [Comparison sheet generator](../../../scripts/art/m56-sheets.py)
 
-The raw renders and browser captures use a temporary directory. The Blender and Pillow stages are in [m56-pieces.py](../../../scripts/art/m56-pieces.py). The browser audit, download and frame measurements are in [m56-review.ts](../../../scripts/art/m56-review.ts). The comparison generator is [m56-sheets.py](../../../scripts/art/m56-sheets.py). The isolation run compares against the brief commit, `1b7664d`.
+Use a temporary folder for the Blender poses and audit captures. The browser script expects a build of the fetched main revision under its `baseline` subfolder for isolation, and the merged stock-sprites comparison build under `stock/dist` for timing. The archived Option C composites were built from the Soft atlases at commit `c8a91c6`.
