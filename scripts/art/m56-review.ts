@@ -1,4 +1,4 @@
-// PW_PORT=4373 node --experimental-strip-types scripts/art/m56-review.ts SCRATCH <baseline|review|perf|download>
+// PW_PORT=4373 node --experimental-strip-types scripts/art/m56-review.ts SCRATCH <baseline|review|perf|perf-paired|download|lifecycle>
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
@@ -260,9 +260,20 @@ async function verifyLifecycle(browser: Browser) {
 
 async function perf(browser: Browser) {
   for (const height of [844, 656]) {
-    for (const ui of [false, true, true, false, false, true]) {
+    const paired = mode === 'perf-paired';
+    const combinations = [
+      { stock: true, ui: false }, { stock: false, ui: true },
+      { stock: true, ui: true }, { stock: false, ui: false },
+    ];
+    const cases = paired ? [...combinations, ...combinations.slice().reverse(), ...combinations]
+      : [false, true, true, false, false, true].map(ui => ({ stock: false, ui }));
+    for (const { stock, ui } of cases) {
       const context = await browser.newContext({ ...phone, viewport: { width: 390, height } });
       try {
+        if (stock) await context.route(origin + '/**', route => {
+          const pathname = new URL(route.request().url()).pathname;
+          return route.fulfill({ path: join(scratch, 'dist', pathname === '/' ? '/index.html' : pathname) });
+        });
         const page = await context.newPage();
         await enter(page, 0, 'perf=1&look=painted' + (ui ? '&ui=new' : ''));
         const cdp = await context.newCDPSession(page);
@@ -315,7 +326,7 @@ async function perf(browser: Browser) {
         const elapsed = await metric() - before;
         assert.equal(result.enemies, 40);
         assert.ok(result.frames > 30);
-        console.log(JSON.stringify({ height, ui, mainMsPerFrame: elapsed * 1000 / result.frames, ...result }));
+        console.log(JSON.stringify({ build: stock ? 'stock' : 'sharp', height, ui, mainMsPerFrame: elapsed * 1000 / result.frames, ...result }));
       } finally { await context.close(); }
     }
   }
@@ -372,8 +383,9 @@ async function download(browser: Browser) {
 }
 
 if (mode === 'baseline') process.chdir(scratch);
+const measuring = mode === 'perf' || mode === 'perf-paired';
 function work(browser: Browser) {
-  if (mode === 'perf') return perf(browser);
+  if (measuring) return perf(browser);
   if (mode === 'download') return download(browser);
   if (mode === 'lifecycle') return verifyLifecycle(browser);
   return audit(browser);
@@ -382,5 +394,5 @@ if (reuse) {
   const browser = await chromium.launch();
   try { await work(browser); } finally { await browser.close(); }
 } else {
-  await run(work, mode === 'perf' ? { args: ['--enable-gpu', '--use-angle=metal'] } : {});
+  await run(work, measuring ? { args: ['--enable-gpu', '--use-angle=metal'] } : {});
 }
