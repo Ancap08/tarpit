@@ -9,6 +9,7 @@ import { CANCEL_UI_PRESS } from './button';
 import { drawBoonIcon } from './boonIcons';
 import { CLEAN, SANS, rounded, skinFor, textMetrics } from './newTheme';
 import { heldBoonLayout, rewardLayout } from './boonLayout';
+import { DeviceTextFit, textSlot } from './deviceText';
 
 const HELD_DEPTH = 5;
 const REWARD_DEPTH = 7;
@@ -29,9 +30,15 @@ export class BoonReward {
   private readonly geo: ReturnType<typeof rewardLayout>;
   private readonly cards: { card: Phaser.GameObjects.Rectangle; icon: Phaser.GameObjects.Graphics; name: Phaser.GameObjects.Text; effect: Phaser.GameObjects.Text }[];
   private offer: BoonOffer | null = null;
+  private readonly clean: boolean;
+  private readonly titleFit = new DeviceTextFit();
+  private readonly nameFit = new DeviceTextFit();
+  private readonly effectFit = new DeviceTextFit();
+  private readonly keyFit = new DeviceTextFit();
+  private readonly keys: { text: Phaser.GameObjects.Text; box: Rect }[] = [];
 
   constructor(scene: Phaser.Scene, layout: Layout, onPick: (id: BoonId) => void) {
-    const clean = skinFor(scene) === 'battle';
+    const clean = this.clean = skinFor(scene) === 'battle';
     const m = layout.map;
     this.geo = rewardLayout(layout, clean);
     this.view = scene.add.container(0, 0).setDepth(REWARD_DEPTH).setVisible(false);
@@ -66,6 +73,7 @@ export class BoonReward {
         const keycap = scene.add.rectangle(keyX, keyY, 23, 23, COLORS.hudBar).setStrokeStyle(1, COLORS.menuEdge);
         const key = label(scene, 14, TEXT.hud, true).setOrigin(0.5).setPosition(keyX, keyY).setText(REWARD_KEYS[i]);
         this.view.add([keycap, key]);
+        if (clean) this.keys.push({ text: key, box: { x: keyX - 11.5, y: keyY - 11.5, width: 23, height: 23 } });
       }
       let pressed = false;
       scene.input.on(CANCEL_UI_PRESS, () => { pressed = false; });
@@ -90,6 +98,11 @@ export class BoonReward {
       if (card.input) card.input.enabled = false;
       return { card, icon, name, effect };
     });
+    if (clean) {
+      const fit = () => { if (this.offer) this.fitLabels(); };
+      scene.scale.on('resize', fit);
+      scene.events.once('shutdown', () => scene.scale.off('resize', fit));
+    }
   }
 
   update(offer: BoonOffer | null | undefined): void {
@@ -109,6 +122,28 @@ export class BoonReward {
       name.setText(BOON_NAMES[id]);
       effect.setText(boonDescription(id));
     });
+    if (this.clean) this.fitLabels();
+  }
+
+  private fitLabels(): void {
+    const { geo, cards } = this;
+    const first = geo.cards[0];
+    const last = geo.cards[geo.cards.length - 1];
+    this.title.setVisible(this.titleFit.fit(30, [textSlot(this.title,
+      { x: first.x, y: first.y - 84, width: last.x + last.width - first.x, height: 84 }, true)]));
+    const divider = geo.name.y + (geo.name.font + 3) / 2;
+    const namesFit = this.nameFit.fit(geo.name.font, cards.map(({ name }, i) =>
+      textSlot(name, geo.cards[i])));
+    const effectsFit = this.effectFit.fit(geo.description.font, cards.map(({ effect }, i) => {
+      const box = geo.cards[i];
+      return textSlot(effect, { ...box, y: box.y + divider, height: box.height - divider }, true);
+    }));
+    const keysFit = this.keyFit.fit(14, this.keys.map(({ text, box }) => textSlot(text, box)));
+    for (const { name, effect } of cards) {
+      name.setVisible(namesFit);
+      effect.setVisible(effectsFit);
+    }
+    for (const { text } of this.keys) text.setVisible(keysFit);
   }
 
   rects(): Record<string, Rect> {
@@ -128,6 +163,10 @@ export class HeldBoons {
   private hovered: BoonId | null = null;
   private tapped: BoonId | null = null;
   private timer: Phaser.Time.TimerEvent | null = null;
+  private readonly nameFit = new DeviceTextFit();
+  private readonly effectFit = new DeviceTextFit();
+  private readonly detailBacking: Phaser.GameObjects.Graphics;
+  private readonly detailHeight: number;
 
   constructor(private readonly scene: Phaser.Scene, private readonly layout: Layout) {
     this.clean = skinFor(scene) === 'battle';
@@ -179,7 +218,8 @@ export class HeldBoons {
       return { view, icon, box, backing };
     });
     const r = this.geo.tooltip;
-    const bg = scene.add.graphics();
+    this.detailHeight = r.height;
+    const bg = this.detailBacking = scene.add.graphics();
     if (this.clean) rounded(bg, { ...r, x: 0, y: 0 });
     else panel(bg, { ...r, x: 0, y: 0 });
     this.name = label(scene, this.clean && layout.turned ? 24 : 20, ink, true).setOrigin(0, 0.5).setPosition(14, r.height * 0.3);
@@ -249,6 +289,7 @@ export class HeldBoons {
     });
     const width = this.ids.length > 0 ? geo.canvasWidth : this.layout.width;
     if (scale.width !== width) scale.setGameSize(width, this.layout.height);
+    if (this.clean && this.tooltip !== null) this.refresh();
   }
 
   private startTimer(scene: Phaser.Scene): void {
@@ -268,5 +309,20 @@ export class HeldBoons {
     if (id === null) return;
     this.name.setText(BOON_NAMES[id]);
     this.effect.setText(boonDescription(id));
+    if (this.clean) {
+      const { width } = this.geo.tooltip;
+      const height = this.detailHeight;
+      const preferred = this.layout.turned ? 23 : this.geo.descriptionFont;
+      const top = Math.ceil(Math.max(height * .68 - (preferred + 3) / 2, this.name.y + (this.layout.turned ? 15 : 12)));
+      this.name.setVisible(this.nameFit.fit(this.layout.turned ? 24 : 20,
+        [textSlot(this.name, { x: 0, y: 0, width, height })]));
+      this.effect.setOrigin(0).setY(top);
+      const showEffect = this.effectFit.fit(preferred,
+        [textSlot(this.effect, { x: 0, y: 0, width: width - 10, height: height + 36 }, true)]);
+      this.effect.setVisible(showEffect);
+      const box = { ...this.geo.tooltip, height: Math.max(height, showEffect ? top + this.effect.height + 6 : 0) };
+      this.geo.tooltip.height = box.height;
+      rounded(this.detailBacking.clear(), { ...box, x: 0, y: 0 });
+    }
   }
 }

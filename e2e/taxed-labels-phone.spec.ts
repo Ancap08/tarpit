@@ -81,8 +81,9 @@ async function checkHud(page: Page, level: LevelDef, phase: Phase, preview: stri
       .map(label => label.text);
     const overlaps: string[] = [];
     for (const [i, { id, bounds: a }] of labels.entries()) {
-      for (const { id: other, bounds: b } of labels.slice(i + 1))
-        if (a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y)
+      if (!labels[i].visible) continue;
+      for (const { id: other, bounds: b, visible } of labels.slice(i + 1))
+        if (visible && a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y)
           overlaps.push(id + ' / ' + other);
     }
     // Both painted bands must fit the actual canvas and leave the battlefield clear.
@@ -115,8 +116,10 @@ async function checkHud(page: Page, level: LevelDef, phase: Phase, preview: stri
   expect(snapshot.unmeasured, phase + ' unchecked text in HUD bands').toEqual([]);
   expect(snapshot.overlaps, phase + ' overlapping HUD labels').toEqual([]);
   const height = page.viewportSize()!.height;
+  if (modern) expect(new Set(snapshot.labels.filter(l => l.id.startsWith('tower-name:')).map(l => l.visible)).size).toBe(1);
   for (const label of snapshot.labels) {
     const detail = phase + ' ' + label.id + ' “' + label.text + '”';
+    if (modern && !label.visible && label.id.startsWith('tower-name:')) continue;
     expect.soft(label.visible && !!label.text, detail + ' visible').toBe(true);
     expect.soft(label.padding, detail + ' inside its panel or plaque').toBeGreaterThanOrEqual(0);
     expect.soft(label.uniform, detail + ' keeps glyph proportions').toBe(true);
@@ -186,7 +189,8 @@ function matrix() {
           const normal = await exerciseHud(page, level, mode === 'fixed fallback');
           if (mode !== 'wide text') return;
 
-          await useWideFontMetrics(page, hasNewInterface(page) ? platformWideFactor : undefined);
+          await useWideFontMetrics(page, hasNewInterface(page) ? platformWideFactor : undefined,
+            hasNewInterface(page) ? 'Caslon' : undefined);
           const wide = await exerciseHud(page, level, false);
           for (const [state, labels] of wide.entries()) {
             const reference = normal[state];

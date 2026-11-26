@@ -120,7 +120,7 @@ function hudButtonCases(look: 'painted' | 'classic' | 'showpiece', fresh: boolea
   }
   for (const mode of ['Caslon', 'fallback', 'tall Caslon', 'tall fallback', 'wide text']) {
     test('HUD button labels fit with ' + mode, async ({ page }, info) => {
-      if (mode === 'wide text') await useWideFontMetrics(page, fresh ? platformWideFactor : undefined);
+      if (mode === 'wide text') await useWideFontMetrics(page, fresh ? platformWideFactor : undefined, fresh ? 'Caslon' : undefined);
       if (mode.startsWith('tall')) await useTallFontMetrics(page, mode === 'tall fallback');
       else if (mode === 'fallback') await page.route('**/*.woff2', route => route.abort());
       const sizes = info.project.name === 'phone' ? [{ width: 390, height: 844 }, { width: 390, height: 664 }] : [page.viewportSize()!];

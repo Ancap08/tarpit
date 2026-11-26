@@ -1747,6 +1747,33 @@ names, prices and availability. Portrait build and wave controls are
 the status block. The original same-cell second tap still builds, and
 the armed preview also offers a Build button.
 
+Clean measures its device sans in the same canvas text objects it draws.
+Each text role starts at its design size. As the text or its slot changes,
+the role uses one shared size that fits all its labels. The floor is
+11 CSS px plus the 0.1 CSS px legibility margin. Labels leave at least
+2 CSS px inside their panels. The fit uses whole layout units down to
+the floor, which is rounded up to a hundredth of a layout unit. Wrapped
+text must fit both dimensions. The compact portrait preview uses tighter
+line spacing when the second line needs it.
+
+| Text role | When it cannot fit at the floor |
+| --- | --- |
+| Six build names | Omit the whole name row. Keep the tower portraits, prices and hit targets. |
+| Six build prices and permit tally | Omit the price row or tally respectively. Keep portraits, availability and the tax readout. |
+| Stat captions and stat values | Keep the three icons and wave pips. Omit the affected caption or value row as a group. |
+| Level name, taxes, wave preview and cheat mark | Omit the affected line. The tax icon remains when the tax text is omitted. |
+| Wave, Special, Ready, Speed, Pause, Build and special-menu controls | Omit the affected label or menu label group. Keep its hit target and any existing icon. The barrel caption can be omitted independently. |
+| Tower drawer title, metadata and upgrade heading | Omit the affected line. The tower portrait and drawer controls remain. |
+| Tower actions, upgrade choices, descriptions and disabled reasons | Omit the affected pair or group. Keep its hit targets, icons and disabled states. |
+| Boss name and HP | Try the short boss name at a readable size, then omit it if needed. The health bar remains if the numbers cannot fit. |
+| Aim, loading and event banners | Omit the affected heading or detail line. |
+| Reward title, card names, descriptions, shortcut keys and held-reward tooltip | Omit the affected group or line. Keep the reward icons and hit targets. |
+| Floating hit, gold and boss-bounty numbers | Keep the numbers within the map. Omit the affected group if it cannot fit. |
+
+Device-font checks exercise the native advances and simulated advances
+15% wider and 10% narrower at the four supported test viewports. The
+Caslon wide-text check retains the 1.09 factor on macOS and 1.06 elsewhere.
+
 The game fits the portrait world buffer within the area of 480 × 1032
 pixels and composites the interface on a separate canvas fitted to the
 physical device pixels.

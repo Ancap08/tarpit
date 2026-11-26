@@ -12,6 +12,7 @@ import { sound } from '../audio/engine';
 import type { SoundName } from '../audio/recipes';
 import type { Rect } from '../input';
 import { COLORS, FONT, HUD_FONT, TEXT } from '../palette';
+import { DeviceTextFit, textInset, textSlot } from './deviceText';
 import { BakedPaint, CLEAN, PRINT, SANS, glyph, motionClock, rounded, skinFor, textMetrics, type Icon, type Skin } from './newTheme';
 
 /** Emitted on the scene input plugin when a pause cancels any unfinished click. */
@@ -37,6 +38,8 @@ export interface ButtonOptions {
   primary?: boolean;
   icon?: Icon;
   upgradeRow?: boolean;
+  /** The owning row fits these labels together with their peers. */
+  grouped?: boolean;
 }
 
 export class Button {
@@ -52,6 +55,10 @@ export class Button {
   private readonly skin: Skin;
   private readonly primary: boolean;
   private readonly upgradeRow: boolean;
+  private readonly textFit?: DeviceTextFit;
+  private labelsFit = true;
+  private preferredSize: number;
+  private coinLabelWidth = 0;
   private icon?: Icon;
   private offsetY = 0;
   private readonly clock?: () => number;
@@ -83,6 +90,13 @@ export class Button {
     this.icon = options.icon;
     if (this.skin !== 'legacy') this.clock = motionClock(scene);
     const size = options.fontSize ?? '18px';
+    this.preferredSize = parseFloat(size);
+    if (this.skin === 'battle' && !options.grouped) {
+      this.textFit = new DeviceTextFit();
+      const resize = () => { if (this.shown) this.refresh(); };
+      scene.scale.on('resize', resize);
+      scene.events.once('shutdown', () => scene.scale.off('resize', resize));
+    }
     const style = {
       fontFamily: this.skin === 'paper' ? FONT : this.skin === 'battle' ? SANS : HUD_FONT,
       fontSize: size, fontStyle: 'bold', color: TEXT.button,
@@ -155,6 +169,7 @@ export class Button {
   /** Update the label(s) and whether the button responds to clicks. */
   set(text: string, enabled: boolean, right?: string): void {
     const changed = this.label.text !== text;
+    const rightChanged = !!this.rightLabel && right !== undefined && this.rightLabel.text !== right;
     if (changed) {
       if (this.clock && /^\d+$/.test(text) && this.label.text) this.rollAt = this.clock();
       this.label.setText(text);
@@ -166,12 +181,21 @@ export class Button {
     if (this.enabled !== enabled) {
       this.enabled = enabled;
       this.refresh();
-    } else if (changed && this.icon) this.refresh();
+    } else if ((changed || (this.textFit && rightChanged)) && this.icon) this.refresh();
+    else if (this.textFit && (changed || rightChanged)) this.fitText();
     this.updateRoll();
   }
 
   /** Change the label size (both labels), e.g. for a longer label in the same slot. */
   setFontSize(size: string): void {
+    if (this.textFit) {
+      const preferred = parseFloat(size);
+      if (preferred !== this.preferredSize) {
+        this.preferredSize = preferred;
+        this.refresh();
+      }
+      return;
+    }
     for (const t of [this.label, this.rightLabel]) {
       if (t && t.style.fontSize !== size) {
         if (this.skin === 'legacy') t.setFontSize(size);
@@ -208,7 +232,7 @@ export class Button {
     this.moveTo(this.r.x, this.r.y);
   }
 
-  setLabelCenter(y: number): void {
+  setLabelCenter(y: number | undefined): void {
     if (y === this.labelY) return;
     this.labelY = y;
     this.refresh();
@@ -237,7 +261,7 @@ export class Button {
     const label = this.rightLabel ?? this.label;
     label.setAlpha(.5 + .5 * progress);
     const middle = this.r.y + this.offsetY + (this.labelY ?? this.r.height / 2);
-    label.setY(middle + (this.pressed && this.enabled ? 2 : 0) + 3 * (1 - progress));
+    label.setY(this.downwardY(label, middle, (this.pressed && this.enabled ? 2 : 0) + 3 * (1 - progress)));
     if (progress === 1) this.rollAt = -Infinity;
   }
 
@@ -275,6 +299,44 @@ export class Button {
     }
   }
 
+  private slots() {
+    const box = { ...this.r, y: this.r.y + this.offsetY };
+    const mid = box.y + (this.labelY ?? box.height / 2);
+    const left = textSlot(this.label, box, false, mid);
+    if (!this.rightLabel) return [left];
+    const right = textSlot(this.rightLabel, box, false, mid);
+    left.width = Math.min(left.width, this.rightLabel.x - this.label.x - (this.upgradeRow ? 29 : 2 * textInset(this.label)));
+    left.alongside = this.rightLabel;
+    return [left, right];
+  }
+
+  private fitText(): void {
+    this.labelsFit = this.textFit!.fit(this.preferredSize, this.slots());
+    this.showLabels();
+  }
+
+  static fitGroup(fitter: DeviceTextFit, buttons: Button[]): void {
+    if (!buttons.length) return;
+    const fits = fitter.fit(buttons[0].preferredSize, buttons.flatMap(button => button.slots()));
+    for (const button of buttons) {
+      const changed = button.labelsFit !== fits;
+      button.labelsFit = fits;
+      button.showLabels();
+      if (button.icon && (changed || button.upgradeRow && button.coinLabelWidth !== button.rightLabel?.width)) button.refresh();
+    }
+  }
+
+  private showLabels(): void {
+    this.label.setVisible(this.shown && this.labelsFit);
+    this.rightLabel?.setVisible(this.shown && this.labelsFit);
+  }
+
+  private downwardY(label: Phaser.GameObjects.Text, middle: number, down: number): number {
+    if (this.skin !== 'battle' || !down) return middle + down;
+    return Math.max(middle, Math.min(middle + down,
+      this.r.y + this.offsetY + this.r.height - textInset(label) - label.height * (1 - label.originY)));
+  }
+
   setDepth(depth: number): void {
     for (const object of [this.box, this.trim, this.chrome?.image, this.label, this.rightLabel]) object?.setDepth(depth);
   }
@@ -283,6 +345,7 @@ export class Button {
     if (this.shown === shown) return;
     this.shown = shown;
     for (const o of [this.box, this.trim, this.chrome?.image, this.label, this.rightLabel]) o?.setVisible(shown);
+    this.showLabels();
     if (this.box.input) this.box.input.enabled = shown;
     if (!shown) {
       // A hidden button gets no pointerout, so clear hover and press here.
@@ -325,6 +388,8 @@ export class Button {
     const down = this.pressed && available;
     const compress = down && this.clock ? 2 : 0;
     const { x, y, width, height } = this.r;
+    this.positionLabels();
+    if (this.textFit && this.shown) this.fitText();
     const fill = paper
       ? active ? (down ? 0x16372f : PRINT.green) : this.picked || this.hover ? PRINT.inset : PRINT.sheet
       : !available ? CLEAN.panel : active ? (down ? 0x7bc7b1 : CLEAN.mint)
@@ -344,21 +409,23 @@ export class Button {
         const tileX = x + 9, tileY = y + offset + height / 2 - tile / 2;
         rounded(paint, { x: tileX, y: tileY, width: tile, height: tile }, 0x274c47, 0x3f6861, 9);
         glyph(paint, this.icon, tileX + tile / 2, tileY + tile / 2, tile * .56, CLEAN.mint);
-        const coinX = x + width - 12 - this.rightLabel.width - 12;
-        glyph(paint, 'coin', coinX, y + offset + (this.labelY ?? height / 2), 19, 0xffda92);
+        if (this.labelsFit) {
+          this.coinLabelWidth = this.rightLabel.width;
+          const coinX = x + width - 12 - this.rightLabel.width - 12;
+          glyph(paint, 'coin', coinX, y + offset + (this.labelY ?? height / 2), 19, 0xffda92);
+        }
       } else if (this.icon) {
-        const label = this.label.text;
+        const label = this.labelsFit ? this.label.text : '';
         const size = Math.min(28, height * .48);
         const iconX = label ? this.rightLabel ? x + this.labelInset / 1.3 : x + (width - this.label.width) / 2 - size * .35 : x + width / 2;
         glyph(paint, this.icon, iconX, y + offset + height / 2 + compress, size, Number.parseInt(color.slice(1), 16));
       }
     }
     if (this.shown) this.chrome?.finish(this.offsetY);
-    this.positionLabels();
     if (this.label.style.color !== color) this.label.setColor(color);
-    this.label.setY(this.label.y + compress);
+    this.label.setY(this.downwardY(this.label, this.label.y, compress));
     const priceColor = !paper && available ? CLEAN.gold : color;
     if (this.rightLabel && this.rightLabel.style.color !== priceColor) this.rightLabel.setColor(priceColor);
-    if (this.rightLabel) this.rightLabel.setY(this.rightLabel.y + compress);
+    if (this.rightLabel) this.rightLabel.setY(this.downwardY(this.rightLabel, this.rightLabel.y, compress));
   }
 }

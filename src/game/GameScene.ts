@@ -212,6 +212,7 @@ import { PANEL_TEXT } from './names';
 import { HitNumbers } from './ui/hitNumbers';
 import { uiObject } from './ui/devicePixels';
 import { BakedPaint, CLEAN, SANS, newInterface, roundPoints, rounded, skinFor, textMetrics, useInterface } from './ui/newTheme';
+import { DeviceTextFit, textSlot } from './ui/deviceText';
 import { AIM_BANNER, aimBannerText, BARRICADE_AIM_REASONS, PAINTED_FALLBACK, REWARD_KEYS } from './names';
 import {
   cellAt,
@@ -452,6 +453,10 @@ export class GameScene extends Phaser.Scene {
   private badgeKey = '';
   private hitNumbers?: HitNumbers;
   private buildConfirm?: Button;
+  private readonly bannerMainFit = new DeviceTextFit();
+  private readonly bannerHintFit = new DeviceTextFit();
+  private bannerFitScale = 0;
+  private bannerRect?: Rect;
   private pausePanel!: PausePanel;
   private readonly autoPause = !isTestMode() || new URLSearchParams(window.location.search).get('autoPause') === '1';
   private dynamic!: Phaser.GameObjects.Graphics;
@@ -734,7 +739,7 @@ export class GameScene extends Phaser.Scene {
     this.shotFx = world();
     this.towerBadges = clean ? uiObject(world()) : undefined;
     this.badgeKey = '';
-    this.hitNumbers = clean ? new HitNumbers(this, () => this.animationTime, this.layout.turned) : undefined;
+    this.hitNumbers = clean ? new HitNumbers(this, () => this.animationTime, this.layout) : undefined;
     this.fx = this.autoTick ? new Effects(this, this.enemySprites, this.state.map, (flash, dx) => this.hud.livesFx(flash, dx), this.layout, this.clock,
       this.keep ? 'rgba(0,0,0,0)' : clean ? CLEAN.ground : undefined, this.siegeScreens && this.layout.turned,
       this.hitNumbers ? (point, damage) => this.hitNumbers?.hit(point, damage) : undefined) : null;
@@ -2036,18 +2041,37 @@ export class GameScene extends Phaser.Scene {
     const text = this.layout.kind === 'portrait' ? null : this.aimBanner();
     const showFallback = this.paintedFallback && this.state.wave === 0 && this.aiming === null;
     const main = text?.main ?? (showFallback ? PAINTED_FALLBACK : '');
-    if (this.bannerMain.text !== main || this.bannerHint.text !== (text?.hint ?? '')) {
-      this.bannerMain.setWordWrapWidth(showFallback ? this.layout.map.width - 2 * AIM_BANNER.padX : 0);
+    const clean = skinFor(this) === 'battle';
+    const scale = this.scale.displayScale.y;
+    if (this.bannerMain.text !== main || this.bannerHint.text !== (text?.hint ?? '') || (clean && scale !== this.bannerFitScale)) {
+      this.bannerFitScale = scale;
+      if (!clean) this.bannerMain.setWordWrapWidth(showFallback ? this.layout.map.width - 2 * AIM_BANNER.padX : 0);
       this.bannerMain.setText(main);
       this.bannerHint.setText(text?.hint ?? '');
       this.bannerBg.clear();
-      if (main) {
-        const w = Math.max(this.bannerMain.width, this.bannerHint.width) + AIM_BANNER.padX;
+      this.bannerRect = undefined;
+      if (clean) {
+        const map = this.layout.map;
+        const top = map.y + BANNER_Y;
+        const area = { x: map.x + AIM_BANNER.padX, y: top, width: map.width - 2 * AIM_BANNER.padX, height: BANNER_H };
+        this.bannerMain.setY(top + BANNER_MAIN_Y);
+        const mainSlot = textSlot(this.bannerMain, area, true);
+        if (showFallback) mainSlot.height = 3 * (Math.max(AIM_BANNER.mainPx, 24) + 3);
+        this.bannerMain.setVisible(!!main && this.bannerMainFit.fit(AIM_BANNER.mainPx, [mainSlot]));
+        this.bannerHint.setVisible(!!text?.hint && this.bannerHintFit.fit(AIM_BANNER.hintPx,
+          [textSlot(this.bannerHint, area, true)]));
+      }
+      if (main && (!clean || this.bannerMain.visible || this.bannerHint.visible)) {
+        const w = Math.max(!clean || this.bannerMain.visible ? this.bannerMain.width : 0,
+          !clean || this.bannerHint.visible ? this.bannerHint.width : 0) + AIM_BANNER.padX;
         const top = this.layout.map.y + BANNER_Y;
         const h = showFallback ? this.bannerMain.height + BANNER_MAIN_Y : BANNER_H;
         this.bannerMain.setY(top + (showFallback ? h / 2 : BANNER_MAIN_Y));
         const rect = { x: this.bannerX - w / 2, y: top, width: w, height: h };
-        if (skinFor(this) === 'battle') rounded(this.bannerBg, rect);
+        if (clean) {
+          this.bannerRect = rect;
+          rounded(this.bannerBg, this.bannerRect);
+        }
         else panel(this.bannerBg, rect, THEME.wood);
         if (text !== null) {
           this.bannerBg.fillStyle(SPECIAL_COLORS[this.aiming!]).fillCircle(this.bannerX - w / 2 + 6, top + h / 2, 3);

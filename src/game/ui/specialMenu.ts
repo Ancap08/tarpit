@@ -12,6 +12,7 @@ import { panel, THEME } from './theme';
 import { rounded, skinFor } from './newTheme';
 import { Button } from './button';
 import { STACK_SIZE, type StackSize } from './geometry';
+import { DeviceTextFit, textInset, textSlot } from './deviceText';
 
 const PAD = 6;
 const GAP = 4;
@@ -27,6 +28,9 @@ export class SpecialMenu {
   private readonly barrelCaption: Phaser.GameObjects.Text;
   private buttonH = 0;
   private columns = 1;
+  private readonly namesFit = new DeviceTextFit();
+  private readonly captionFit = new DeviceTextFit();
+  private readonly clean: boolean;
 
   /** `left` is the popup's left edge; `hudTop` the y it sits above. */
   constructor(
@@ -37,12 +41,13 @@ export class SpecialMenu {
     private readonly mapTop: number,
     /** Milestone 32b: portrait passes larger buttons and text. */
     private readonly size: StackSize = STACK_SIZE,
-    fontSize = '16px',
+    private readonly fontSize = '16px',
   ) {
+    this.clean = skinFor(scene) === 'battle';
     this.backing = scene.add.graphics().setVisible(false);
     const make = (type: SpecialType) =>
       new Button(scene, { x: 0, y: 0, width: size.buttonW, height: size.buttonH }, SPECIAL_NAMES[type], () => onPick(type), {
-        fontSize,
+        fontSize, grouped: this.clean,
       });
     this.buttons = { keg: make('keg'), tarBarrel: make('tarBarrel'), fireArrows: make('fireArrows'), barricade: make('barricade'), guards: make('guards') };
     this.barrelCaption = scene.add.text(0, 0, TAR_BARREL_DESCRIPTION, {
@@ -65,8 +70,9 @@ export class SpecialMenu {
     // The barrel card carries an instruction below its name, in the menu's normal type.
     const cardWidth = barrel < 0 ? this.size.buttonW : this.size.buttonW + 100;
     this.barrelCaption.setVisible(barrel >= 0);
-    if (barrel >= 0 && this.barrelCaption.style.wordWrapWidth !== cardWidth - 16)
-      this.barrelCaption.setWordWrapWidth(cardWidth - 16);
+    const captionWidth = cardWidth - (this.clean ? Math.max(16, 2 * textInset(this.barrelCaption)) : 16);
+    if (barrel >= 0 && this.barrelCaption.style.wordWrapWidth !== captionWidth)
+      this.barrelCaption.setWordWrapWidth(captionWidth);
     const extra = barrel >= 0 ? this.barrelCaption.height + 4 : 0;
     // Keep full-size targets on squat screens by splitting the new five-item menu.
     const fullRows = Math.max(1, Math.floor((room - extra + GAP) / (fullHeight + GAP)));
@@ -74,7 +80,10 @@ export class SpecialMenu {
     const columns = types.includes('guards') ? Math.min(maxColumns, Math.max(1, Math.ceil(types.length / fullRows))) : 1;
     const rows = Math.ceil(types.length / columns);
     const buttonH = rows === 0 ? 0 : Math.min(Math.floor((room - extra - (rows - 1) * GAP) / rows), fullHeight);
-    if (buttonH === this.buttonH && columns === this.columns && types.length === this.shownTypes.length && types.every((t, i) => t === this.shownTypes[i])) return;
+    if (buttonH === this.buttonH && columns === this.columns && types.length === this.shownTypes.length && types.every((t, i) => t === this.shownTypes[i])) {
+      if (this.clean && types.length) this.fitText(types, barrel);
+      return;
+    }
     this.buttonH = buttonH;
     this.columns = columns;
     this.shownTypes = [...types];
@@ -102,6 +111,7 @@ export class SpecialMenu {
         const x = left + PAD + (i % columns) * (cardWidth + GAP);
         b.setSize(cardWidth, buttonH + (row === Math.floor(barrel / columns) ? extra : 0));
         b.moveTo(x, rowY);
+        if (this.clean) b.setLabelCenter(i === barrel ? buttonH / 2 : undefined);
         b.setShown(true);
         if (i === barrel) {
           b.labelObjects[0].setY(rowY + buttonH / 2);
@@ -109,6 +119,16 @@ export class SpecialMenu {
         }
       }
     }
+    if (this.clean) this.fitText(types, barrel);
+  }
+
+  private fitText(types: readonly SpecialType[], barrel: number): void {
+    Button.fitGroup(this.namesFit, types.map(type => this.buttons[type]));
+    if (barrel < 0) return;
+    const box = this.buttons.tarBarrel.rect;
+    const slot = textSlot(this.barrelCaption, box, true);
+    slot.width = Math.min(slot.width, box.width - 16);
+    this.barrelCaption.setVisible(this.captionFit.fit(parseFloat(this.fontSize), [slot]));
   }
 
   /** `special:<type>` for each listed special while open. */

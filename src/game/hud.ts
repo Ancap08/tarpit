@@ -94,6 +94,7 @@ import {
 import { SpecialMenu } from './ui/specialMenu';
 import { MuteButton } from './ui/muteButton';
 import { BakedPaint, CLEAN, SANS, glyph, roundPoints, rounded, sans, skinFor, textMetrics } from './ui/newTheme';
+import { DeviceTextFit, minimumTextSize, textInset, textSlot } from './ui/deviceText';
 import { CleanReadouts, cleanHudMetrics, statColumns } from './ui/cleanHud';
 
 export type { Rect };
@@ -420,6 +421,10 @@ export class Hud {
   private previewMemo?: { wave: number; endless: boolean; level: GameState['level']; waves: GameState['fixedWaves']; text: string };
   private readonly readyState?: Phaser.GameObjects.Text;
   private readonly taxGlyph?: Phaser.GameObjects.Graphics;
+  private readonly taxFit = new DeviceTextFit();
+  private readonly previewFit = new DeviceTextFit();
+  private readonly cheatFit = new DeviceTextFit();
+  private readonly readyFit = new DeviceTextFit();
 
   constructor(scene: Phaser.Scene, handlers: HudHandlers, private readonly layout: Layout = LANDSCAPE, painted?: PaintedSkin, private readonly pauseOnResult = false, private readonly siegeScreens = false, spawn?: { x: number; y: number }) {
     const modern = skinFor(scene) === 'battle';
@@ -618,7 +623,7 @@ export class Hud {
     const count = (label: Phaser.GameObjects.Text, value: string) => this.clean ? this.clean.count(label, value) : set(label, value);
     count(this.gold, this.clean ? String(state.gold) : `${HUD_STAT_LABELS[0]} ${state.gold}`);
     this.cheatMark.setVisible(state.cheated);
-    if (this.clean && m.portrait && state.cheated) this.cheatMark.setY(this.taxLine.y + this.cheatMark.height / 2);
+    if (this.clean && m.portrait && state.cheated) this.cheatMark.setY(this.taxLine.y + 13.5);
     // The sim lets lives go below 0 (the boss's exit costs 5); the HUD shows 0.
     count(this.lives, this.clean ? String(Math.max(0, state.lives)) : `${HUD_STAT_LABELS[1]} ${Math.max(0, state.lives)}`);
     set(this.wave, (this.clean ? waveNumberText : waveCounterText)(state.wave, state.endless, lastWave(state)));
@@ -640,7 +645,8 @@ export class Hud {
       this.taxLine.setScale(Math.min(1, room / this.taxLine.width), 1);
     }
     if (this.clean) {
-      // Clean readouts keep fixed columns while values change.
+      this.clean.fitStats([this.gold, this.lives, this.wave]);
+      this.fitTaxRow(!!taxes, state.cheated);
     } else if (m.portrait) {
       // One row: each stat starts after the one before it; the cheat mark is right-aligned.
       const dx = this.lives.x - this.livesX;
@@ -697,12 +703,7 @@ export class Hud {
         this.next.setScale(Math.min(1, width / this.next.width), Math.min(1, BUTTON_H / this.next.height));
       }
     }
-    if (this.clean && m.portrait) {
-      const right = m.preview.x + m.preview.width;
-      const canShare = !!taxes && !state.cheated && this.next.height <= this.next.getTextMetrics().fontSize
-        && this.taxLine.x + this.taxLine.width + 16 <= right - this.next.width;
-      this.next.setPosition(canShare ? right - this.next.width : m.preview.x, canShare ? this.taxLine.y : m.preview.y);
-    }
+    if (this.clean) this.fitCleanPreview(!!taxes, state.cheated);
     const call = callEarlyStatus(state);
     let reason: string | null = null;
     if (state.pendingBoon) reason = BOON_PENDING_TEXT;
@@ -744,7 +745,9 @@ export class Hud {
       specialLabel.setScale(fit, this.layout === TAXED_PORTRAIT ? fit : 1);
     }
     if (this.readyState) {
-      this.readyState.setVisible(ready);
+      const { x, y, width, height } = m.special;
+      this.readyState.setVisible(ready && this.readyFit.fit(m.portrait ? 25 : 14,
+        [textSlot(this.readyState, { x, y: y + height * .5, width, height: height * .5 })]));
       this.specialButton.setLabelCenter(m.special.height * (ready ? .38 : .5));
     }
     this.specialButton.setPicked(ready && (special.menuOpen || special.aiming !== null));
@@ -777,6 +780,37 @@ export class Hud {
     this.bar.update(state, pick);
     this.bossBar.update(state);
     this.gate?.update(state, special.paused ?? false);
+  }
+
+  private fitTaxRow(taxed: boolean, cheated: boolean): void {
+    const m = this.m;
+    const head = m.bands[0];
+    const cheatBox = m.portrait ? head : { ...head, x: 636, width: head.x + head.width - 636, y: 64, height: head.y + head.height - 64 };
+    const showCheat = cheated && this.cheatFit.fit(parseInt(m.cheat.size), [textSlot(this.cheatMark, cheatBox)]);
+    this.cheatMark.setVisible(showCheat);
+    if (!taxed) return;
+    const right = m.portrait && showCheat ? this.cheatMark.x - this.cheatMark.width : m.preview.x + m.preview.width;
+    const area = { x: m.preview.x, y: head.y, width: right - m.preview.x, height: m.preview.y - head.y + (m.portrait ? textInset(this.taxLine) : 0) };
+    this.taxLine.setVisible(this.taxFit.fit(m.portrait ? 26 : 14, [textSlot(this.taxLine, area, true)]));
+  }
+
+  private fitCleanPreview(taxed: boolean, cheated: boolean): void {
+    const m = this.m;
+    const { x, y, width } = m.preview;
+    const head = m.bands[0];
+    const area = { x: head.x, y: head.y, width: x + width - head.x, height: head.height };
+    this.next.setPosition(x, y);
+    if (m.portrait) {
+      const line = Math.max(24, minimumTextSize(this.next)) + 3;
+      const spacing = Math.min(0, Math.floor(head.y + head.height - y - textInset(this.next) - 2 * line));
+      if (this.next.lineSpacing !== spacing) this.next.setLineSpacing(spacing);
+    }
+    const fits = this.previewFit.fit(m.portrait ? 24 : 14, [textSlot(this.next, area, true)]);
+    this.next.setVisible(fits);
+    if (fits && m.portrait && taxed && !cheated && this.next.height <= this.next.getTextMetrics().fontSize &&
+        this.taxLine.x + this.taxLine.width + 16 <= x + width - this.next.width) {
+      this.next.setPosition(x + width - this.next.width, this.taxLine.y);
+    }
   }
 
   private cleanPreview(state: GameState): string {

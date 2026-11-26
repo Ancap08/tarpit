@@ -3,6 +3,7 @@ import type { HudMetrics } from '../hud';
 import type { Layout } from '../layout';
 import { HUD_STAT_LABELS } from '../names';
 import { CLEAN, glyph, line, motionClock, sans } from './newTheme';
+import { DeviceTextFit, textInset, textSlot } from './deviceText';
 
 export function cleanHudMetrics(layout: Layout, base: HudMetrics): HudMetrics {
   const phone = layout.turned;
@@ -49,6 +50,10 @@ export function statColumns(m: HudMetrics): number[] {
 
 export class CleanReadouts {
   private readonly name: Phaser.GameObjects.Text;
+  private readonly captions: Phaser.GameObjects.Text[];
+  private readonly nameFit = new DeviceTextFit();
+  private readonly captionFit = new DeviceTextFit();
+  private readonly valueFit = new DeviceTextFit();
   private readonly pips: Phaser.GameObjects.Graphics;
   private readonly clock?: () => number;
   private readonly rolls = new Map<Phaser.GameObjects.Text, number>();
@@ -64,16 +69,16 @@ export class CleanReadouts {
     this.pips = scene.add.graphics();
     const small = phone ? 24 : 14;
     const labelY = y + (phone ? 58 : 29);
-    statColumns(m).forEach((left, i) => {
+    this.captions = statColumns(m).map((left, i) => {
       const icon = (['coin', 'heart', 'wave'] as const)[i];
       const color = ([0xffda92, CLEAN.rose, CLEAN.mint] as const)[i];
       const shift = phone ? 28 : 16;
       glyph(paint, icon, left + shift * .32, labelY + small / 2 + 1, small * .95, color);
-      sans(scene, left + shift, labelY, HUD_STAT_LABELS[i], small, CLEAN.subdued).setName(`hud-stat:${i}`);
       if (i > 0) {
         const divider = left - (phone ? 12 : 8);
         paint.lineStyle(1, CLEAN.edge).lineBetween(divider, labelY, divider, m.statY + (phone ? 17 : 13));
       }
+      return sans(scene, left + shift, labelY, HUD_STAT_LABELS[i], small, CLEAN.subdued).setName(`hud-stat:${i}`);
     });
     if (phone) line(paint, m.goldX, y + 137, x + width - m.goldX - 19, CLEAN.edge);
     else paint.lineStyle(1, CLEAN.edge).lineBetween(380, y + 12, 380, y + 77);
@@ -82,6 +87,31 @@ export class CleanReadouts {
   title(level: string, name: string): void {
     const full = name ? `${level} · ${name}` : level;
     if (this.name.text !== full) this.name.setText(full);
+    const { m, name: label } = this;
+    const head = m.bands[0];
+    label.setY(head.y + Math.max(m.portrait ? 4 : 6, textInset(label)));
+    const right = m.portrait ? m.mute.x - 8 : 380;
+    const box = { ...head, width: right - head.x, height: m.portrait ? 58 : 29 };
+    label.setVisible(this.nameFit.fit(m.portrait ? 25 : 14, [textSlot(label, box, true)]));
+  }
+
+  fitStats(values: Phaser.GameObjects.Text[]): void {
+    const { m, captions } = this;
+    const head = m.bands[0];
+    const columns = statColumns(m);
+    const left = [head.x, columns[1] - (m.portrait ? 12 : 8), columns[2] - (m.portrait ? 12 : 8)];
+    const right = [...left.slice(1), m.portrait ? head.x + head.width : 380];
+    const captionBottom = m.statY - (m.portrait ? 19 : 16);
+    const valueBottom = head.y + (m.portrait ? 137 : 88);
+    const slots = (labels: Phaser.GameObjects.Text[], y: number, bottom: number, anchor?: number) => labels.map((label, i) =>
+      textSlot(label, { x: left[i], y, width: right[i] - left[i], height: bottom - y }, false, anchor));
+    const showCaptions = this.captionFit.fit(m.portrait ? 24 : 14, slots(captions, head.y, captionBottom));
+    const showValues = this.valueFit.fit(parseInt(m.statSize), slots(values, captionBottom - 9, valueBottom, m.statY));
+    for (const label of captions) label.setVisible(showCaptions);
+    for (const label of values) {
+      label.setVisible(showValues);
+      label.setY(Math.min(label.y, valueBottom - textInset(label) - label.height / 2));
+    }
   }
 
   count(label: Phaser.GameObjects.Text, value: string): void {

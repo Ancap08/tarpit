@@ -15,6 +15,7 @@ import { HUD_FONT, TEXT } from '../palette';
 import { makeLock } from './lock';
 import { BAR_TYPES, canPick } from './buildBarModel';
 import { Button } from './button';
+import { DeviceTextFit, textSlot } from './deviceText';
 import { BakedPaint, CLEAN, SANS, glyph, skinFor, textMetrics } from './newTheme';
 
 /** Keep the six full-size landscape plaques inside the pause column. */
@@ -53,6 +54,9 @@ export class BuildBar {
   private readonly names?: Phaser.GameObjects.Text[];
   private readonly icons?: BakedPaint;
   private readonly portraits?: Phaser.GameObjects.Image[];
+  private readonly nameFit = new DeviceTextFit();
+  private readonly priceFit = new DeviceTextFit();
+  private readonly tallyFit = new DeviceTextFit();
 
   constructor(scene: Phaser.Scene, top: number, onClick: (type: TowerType) => void, private readonly layout: Layout = LANDSCAPE, painted?: PaintedSkin) {
     const portrait = layout.kind === 'portrait';
@@ -67,7 +71,7 @@ export class BuildBar {
     this.buttons = BAR_TYPES.map((type, i) =>
       this.clean
         ? new Button(scene, rects[i], String(TOWER_DEFS[type].cost), () => onClick(type), {
-          fontSize: portrait ? '26px' : '15px', labelY: portrait ? 78 : 53,
+          fontSize: portrait ? '26px' : '15px', labelY: portrait ? 76 : 53, grouped: true,
         })
         : portrait
         ? new Button(scene, rects[i], String(TOWER_DEFS[type].cost), () => onClick(type), { fontSize: `${priceSize}px`, labelY: COST_Y })
@@ -89,7 +93,7 @@ export class BuildBar {
     if (this.clean) {
       this.icons = new BakedPaint(scene, scene.add.graphics());
       this.icons.image.setName('clean-build-icons');
-      const nameSize = portrait ? Math.max(scene.scale.parentSize.height >= 800 ? 20 : 23, Math.ceil(11.15 * scene.scale.displayScale.x)) : 14;
+      const nameSize = this.nameSize(scene);
       this.names = BAR_TYPES.map((type, i) =>
         scene.add.text(rects[i].x + rects[i].width / 2, top + (portrait ? 49 : 33), TOWER_NAMES[type], {
           fontFamily: SANS, fontSize: nameSize, color: CLEAN.subdued, metrics: textMetrics(nameSize),
@@ -107,9 +111,9 @@ export class BuildBar {
     const countSize = this.clean ? (portrait ? 26 : 14) : layout === TAXED_PORTRAIT ? 23 : portrait ? 22 : 14;
     this.count = scene.add.text(0, 0, '', {
       fontFamily: this.clean ? SANS : HUD_FONT, fontSize: countSize, fontStyle: 'bold', color: TEXT.hud,
-      fixedHeight: countSize + 4, metrics: { ascent: countSize, descent: 4, fontSize: countSize + 4 },
+      ...(this.clean ? { color: CLEAN.subdued, stroke: '#11292b', strokeThickness: 2, metrics: textMetrics(countSize) }
+        : { fixedHeight: countSize + 4, metrics: { ascent: countSize, descent: 4, fontSize: countSize + 4 } }),
     }).setOrigin(0.5).setName('build-bar-count').setVisible(false);
-    if (this.clean) this.count.setColor(CLEAN.subdued).setStroke('#11292b', 5);
     this.locks = BAR_TYPES.map(type => makeLock(scene)
       .setName(`bar-lock:${type}`).setScale(portrait ? 1 : 0.7).setVisible(false));
   }
@@ -221,13 +225,26 @@ export class BuildBar {
       if (locked) glyph(g, 'lock', r.x + r.width - 13, r.y + 13, portrait ? 20 : 15, 0xc4ded6);
     }
     if (redraw) this.icons!.finish();
+    const names = this.names!;
+    const showNames = this.nameFit.fit(this.nameSize(names[0].scene), names.map((label, i) => textSlot(label, this.buttons[i].rect)));
+    for (const label of names) label.setVisible(showNames);
+    Button.fitGroup(this.priceFit, this.buttons);
     this.count.setVisible(cap !== undefined);
     if (cap !== undefined) {
       const first = this.buttons[0].rect;
       const label = towerCountText(state.towers.length, cap);
       if (this.count.text !== label) this.count.setText(label);
-      this.count.setPosition(first.x + first.width + 1, first.y + (portrait ? 15 : 10));
+      const second = this.buttons[1].rect;
+      const size = portrait ? 26 : 14;
+      this.count.setPosition(first.x + first.width + 1, first.y + (portrait ? 20 : 13));
+      const area = { ...first, width: second.x + second.width - first.x, height: portrait ? 40 : 26 };
+      this.count.setVisible(this.tallyFit.fit(size, [textSlot(this.count, area)]));
     }
+  }
+
+  private nameSize(scene: Phaser.Scene): number {
+    if (!this.layout.turned) return 14;
+    return Math.max(scene.scale.parentSize.height >= 800 ? 20 : 23, Math.ceil(11.15 * scene.scale.displayScale.x));
   }
 
   /** Button rectangles keyed `bar:<type>`. */

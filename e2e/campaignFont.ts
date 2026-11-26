@@ -26,13 +26,13 @@ export async function useTallFontMetrics(page: Page, fallback = true) {
 }
 
 /** Vary every measured advance while preserving the browser's other font metrics. */
-export async function useWideFontMetrics(page: Page, factor = 1.06) {
-  await page.addInitScript(factor => {
+export async function useWideFontMetrics(page: Page, factor = 1.06, family?: string) {
+  await page.addInitScript(({ factor, family }) => {
     const measure = CanvasRenderingContext2D.prototype.measureText;
     CanvasRenderingContext2D.prototype.measureText = function (text) {
       const metrics = measure.call(this, text);
-      Object.defineProperty(metrics, 'width', { value: metrics.width * factor });
+      if (!family || this.font.includes(family)) Object.defineProperty(metrics, 'width', { value: metrics.width * factor });
       return metrics;
     };
-  }, factor);
+  }, { factor, family });
 }

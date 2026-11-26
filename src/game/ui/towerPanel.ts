@@ -23,6 +23,7 @@ import type { PaintedSkin } from '../skin/painted';
 import { ink, THEME } from './theme';
 import { Button } from './button';
 import { STACK_GAP, STACK_PAD } from './geometry';
+import { DeviceTextFit, textInset, textSlot } from './deviceText';
 import { getPathChoices, towerPanelSize, UPGRADE_PATHS, type PathChoice } from './towerPanelModel';
 
 export interface TowerPanelHandlers {
@@ -66,6 +67,12 @@ export class TowerPanel {
   private openedAt = -Infinity;
   private paintKey = '';
   private currentTitle: string | null = null;
+  private readonly titleFit = new DeviceTextFit();
+  private readonly metaFit = new DeviceTextFit();
+  private readonly headingFit = new DeviceTextFit();
+  private readonly pathFit = new DeviceTextFit();
+  private readonly descriptionFit = new DeviceTextFit();
+  private readonly reasonFit = new DeviceTextFit();
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -100,6 +107,7 @@ export class TowerPanel {
       fontSize: portrait ? (this.clean ? '26px' : '22px') : '17px',
       icon: this.clean ? path === 'A' ? 'target' : 'volley' : undefined,
       upgradeRow: this.clean,
+      grouped: this.clean,
       labelInset: this.clean ? (portrait ? 72 : 58) : undefined,
       labelY: this.pathTitleY,
       sound: null,
@@ -214,16 +222,27 @@ export class TowerPanel {
       + (rowCount - paths.length) * rowHeight + paths.length * pathHeight : legacy.height;
     // Both headings use the same type. Measure it before placing the wrapped captions.
     const captionGap = (this.clean ? 2.25 : 2) * this.scene.scale.displayScale.y;
-    const titleHeight = this.pathButtons.A.labelObjects[0].height;
+    const titleHeight = this.clean ? (portrait ? 29 : 20) : this.pathButtons.A.labelObjects[0].height;
     const descriptionTop = Math.ceil(this.pathTitleY + titleHeight / 2 + captionGap);
     const extraHeight = { A: 0, B: 0 };
+    const wrap = buttonWidth - (this.clean ? (portrait ? 83 : 69) : 20);
+    const captionSize = portrait ? 23 : 15;
+    const reasonSize = portrait ? 23 : 14;
     for (const choice of paths) {
       const { description, reason } = this.pathText[choice.path];
-      const wrap = buttonWidth - (this.clean ? (portrait ? 83 : 69) : 20);
-      if (description.style.wordWrapWidth !== wrap) description.setWordWrapWidth(wrap);
+      if (!this.clean && description.style.wordWrapWidth !== wrap) description.setWordWrapWidth(wrap);
       if (description.text !== choice.description) description.setText(choice.description);
-      const contentHeight = descriptionTop + description.height +
-        (!this.clean || choice.disabledReason ? reason.getTextMetrics().fontSize + captionGap : 0) + captionGap;
+      if (this.clean && reason.text !== (choice.disabledReason ?? '')) reason.setText(choice.disabledReason ?? '');
+    }
+    const showDescriptions = !this.clean || this.descriptionFit.fit(captionSize, paths.map(({ path }) =>
+      ({ label: this.pathText[path].description, width: wrap, height: 3 * (captionSize + 4), wrap: true })));
+    const showReasons = !this.clean || this.reasonFit.fit(reasonSize, paths.map(({ path }) =>
+      ({ label: this.pathText[path].reason, width: wrap, height: 2 * (reasonSize + 4), wrap: true })));
+    for (const choice of paths) {
+      const { description, reason } = this.pathText[choice.path];
+      const reasonHeight = this.clean ? showReasons && choice.disabledReason ? reason.height + captionGap : 0
+        : reason.getTextMetrics().fontSize + captionGap;
+      const contentHeight = descriptionTop + (showDescriptions ? description.height : 0) + reasonHeight + captionGap;
       extraHeight[choice.path] = Math.max(0, Math.ceil(contentHeight) - pathHeight);
     }
     const height = baseHeight + extraHeight.A + extraHeight.B;
@@ -268,7 +287,9 @@ export class TowerPanel {
         }
         this.portrait = image.setPosition(left + (portrait ? 35.5 : 27), y + offset + (portrait ? 55 : 48)).setVisible(true);
       }
-      this.pathHeading!.setPosition(left + 4, y + offset + pad + header - 17).setVisible(paths.length > 0);
+      this.pathHeading!.setPosition(left + 4, y + offset + pad + header - 17);
+      this.pathHeading!.setVisible(paths.length > 0 && this.headingFit.fit(portrait ? 24 : 14,
+        [textSlot(this.pathHeading!, { x, y: y + offset, width, height: pad + header + textInset(this.pathHeading!) })]));
     }
     this.closeButton.setSize(close, close);
     this.closeButton.moveTo(x + width - pad - close, y + pad);
@@ -281,11 +302,17 @@ export class TowerPanel {
     const titleX = this.clean ? left + (portrait ? 82 : 65) : left;
     this.titleText.setPosition(titleX, y + pad + (this.clean ? 49 : portrait ? 13 : 9) + offset).setVisible(this.clean || level > 1);
     const titleWidth = width - (titleX - x) - close - pad - 5;
-    if (this.clean && this.titleText.style.wordWrapWidth !== titleWidth) this.titleText.setWordWrapWidth(titleWidth);
     const kills = killsLabel(tower.kills ?? 0, !!state.level && level >= maxTowerLevel(state));
     const meta = this.clean ? PANEL_TEXT.towerMeta(level, kills) : kills;
     if (this.killsText.text !== meta) this.killsText.setText(meta);
     this.killsText.setPosition(titleX, y + pad + (this.clean ? 19 : level > 1 ? (portrait ? 39 : 29) : header / 2 - 2) + offset).setVisible(true);
+    if (this.clean) {
+      const area = { x, y: y + offset, width: titleX - x + titleWidth, height: pad + (portrait ? 104 : 79) };
+      const top = this.killsText.y + (portrait ? 13.5 : 8.5) - textInset(this.titleText);
+      const titleBox = { ...area, y: top, height: y + offset + area.height - top };
+      this.titleText.setVisible(this.titleFit.fit(portrait ? 29 : 23, [textSlot(this.titleText, titleBox, true)]));
+      this.killsText.setVisible(this.metaFit.fit(portrait ? 24 : 14, [textSlot(this.killsText, area)]));
+    }
 
     // Below Close, Sell and Target can share the panel's full inner width.
     const innerWidth = width - 2 * pad;
@@ -306,16 +333,17 @@ export class TowerPanel {
         if (description.style.color !== color) description.setColor(color);
         if (reason.text !== hint) reason.setText(hint);
         description.setPosition(left + (this.clean ? (portrait ? 72 : 58) : 10), top + descriptionTop + offset);
-        reason.setPosition(left + (this.clean ? (portrait ? 72 : 58) : 10), description.y + description.height + captionGap);
+        reason.setPosition(left + (this.clean ? (portrait ? 72 : 58) : 10), description.y + (showDescriptions ? description.height : 0) + captionGap);
       }
       if (!isFirst) top += h + rowGap;
     }
     for (const b of this.allButtons) b.setShown(b === this.closeButton || rows.some((row) => row.button === b));
+    if (this.clean) Button.fitGroup(this.pathFit, paths.map(choice => this.pathButtons[choice.path]));
     for (const path of UPGRADE_PATHS) {
       const choice = rows.find((row) => row.path?.path === path)?.path;
       const { description, reason } = this.pathText[path];
-      description.setVisible(choice !== undefined);
-      reason.setVisible(choice !== undefined && choice.disabledReason !== null);
+      description.setVisible(choice !== undefined && showDescriptions);
+      reason.setVisible(choice !== undefined && choice.disabledReason !== null && showReasons);
     }
   }
 
