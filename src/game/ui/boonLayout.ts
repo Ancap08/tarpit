@@ -1,4 +1,4 @@
-import type { Rect } from '../../sim';
+import { CELL, type Rect } from '../../sim';
 import type { Layout } from '../layout';
 
 const COUNT = 3;
@@ -42,12 +42,15 @@ export function heldBoonLayout(layout: Layout, parent: Size, clean = false) {
   const fittedTarget = Math.ceil(target * Math.max(layout.height / parent.height, layout.width / parent.width));
   const mapRight = layout.map.x + layout.map.width;
   const margin = layout.width - mapRight;
-  const inMargin = clean && portrait && margin >= fittedTarget + 4;
+  // A narrow Clean gutter can borrow the outer edge of the first cell.
+  // The reward target stays clear of the cell centre and the road, and the
+  // board and HUD keep their scale when the player earns the reward.
+  const inMargin = clean && portrait && margin + CELL / 2 - 4 >= fittedTarget + gap;
   const size = inRow ? clean ? fittedTarget : 46 : inMargin ? fittedTarget : Math.ceil(Math.max(
     target * layout.height / Math.max(1, parent.height),
     target * (layout.width + 2 * gap) / Math.max(1, parent.width - target),
   ));
-  const left = inRow ? (clean ? 637 : 678) : inMargin ? mapRight + (margin - size) / 2 : layout.width + gap;
+  const left = inRow ? (clean ? 637 : 678) : inMargin ? Math.min(mapRight + (margin - size) / 2, layout.width - size - gap) : layout.width + gap;
   const top = inRow ? (clean ? 16 : 531) : inMargin ? layout.map.y + gap : portrait ? gap : layout.height - COUNT * (size + gap);
   return {
     canvasWidth: inRow || inMargin ? layout.width : layout.width + size + 2 * gap,

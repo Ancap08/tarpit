@@ -1,8 +1,8 @@
 import { taxVerifierSuite } from './taxVerifier';
-import { newInterfaceChecks } from './newInterface';
+import { newInterfacePhoneChecks } from './newInterface';
 
 taxVerifierSuite(true);
 
-newInterfaceChecks(() => {
+newInterfacePhoneChecks(() => {
   taxVerifierSuite(true);
 });

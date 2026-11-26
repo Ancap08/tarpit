@@ -61,7 +61,7 @@ export function cleanBossBarGeometry(layout: Layout, spawn: Point): BossBarGeome
   return {
     bar: { x, y: layout.map.y + (phone ? 40 : 38), width, height: phone ? 28 : 22 },
     pill: { y: layout.map.y + 6, height: phone ? 34 : 32, padX: 9 },
-    nameSize: phone ? (interLoaded ? 22 : 25) : 15,
+    nameSize: phone ? (interLoaded ? 21 : 25) : 15,
     hpSize: phone ? 24 : 14,
   };
 }

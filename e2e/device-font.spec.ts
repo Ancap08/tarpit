@@ -8,7 +8,7 @@ import type { Button } from '../src/game/ui/button';
 import { LEVELS, TICKS_PER_SECOND, WAVES } from '../src/sim';
 import { api, mapPress, press } from './campaign';
 import { platformWideFactor, useWideFontMetrics } from './campaignFont';
-import { newInterfaceChecks } from './newInterface';
+import { NEW_PHONE_VIEWPORTS, newInterfaceChecks } from './newInterface';
 import { openPaintedLevel } from './taxHud';
 import { waitForTitle } from './title';
 
@@ -72,7 +72,7 @@ async function inspect(page: Page, floating = false) {
     }
     if (state.phase === 'wave' && state.specialCharges > 0) read('ready', hud['readyState']!, rects.special);
     const first = rects['bar:musketeer'], second = rects['bar:cannon'];
-    if (state.level?.taxes?.rationing) read('permit tally', hud['bar']['count'], { ...first, width: second.x + second.width - first.x });
+    if (state.level?.taxes?.rationing) read('permit tally', hud['bar']['count'], hud['bar']['permitBox'] ?? { ...first, width: second.x + second.width - first.x });
     for (const [i, type] of types.entries()) {
       const label = scene.children.getByName('bar-name:' + type) as Phaser.GameObjects.Text;
       const plaque = rects['bar:' + type];
@@ -194,13 +194,14 @@ newInterfaceChecks(() => {
     const blocked = mode in deviceModes;
     const allLabels = mode === 'Inter' || mode === 'Inter with margin';
     test(`${allLabels ? 'all labels fit' : 'fit invariants'} with ${mode}`, async ({ page }, info) => {
+      test.setTimeout(90_000);
       // The shared margin already accounts for the wider Linux advances.
       const correction = !allLabels && process.platform === 'darwin' ? 1.026 : 1;
       if (!blocked && factor !== 1) await useWideFontMetrics(page, factor * correction, INTER);
       if (blocked) await page.route('**/Inter-Latin-Variable-*.woff2', route => route.abort());
       if (blocked && factor !== 1) await stressDeviceFont(page, factor, mode === 'wide monospace');
       const touch = info.project.name !== 'chromium';
-      const sizes = info.project.name === 'phone' ? [{ width: 390, height: 664 }, { width: 390, height: 844 }] : [page.viewportSize()!];
+      const sizes = info.project.name === 'phone' ? NEW_PHONE_VIEWPORTS : [page.viewportSize()!];
       for (const { width, height } of sizes) {
         await page.setViewportSize({ width, height });
         const level = LEVELS.find(l => l.taxes?.rationing && Object.keys(l.taxes).length === 2)!;

@@ -195,7 +195,7 @@ export function drawTowerShape(
 
 /** The branch badge sits upright above the tower's own silhouette. */
 export function drawTowerPathBadge(
-  g: Phaser.GameObjects.Graphics, p: Point, layout: Layout, path: UpgradePath, alpha: number,
+  g: Phaser.GameObjects.Graphics, p: Point, layout: Layout, path: UpgradePath, alpha: number, largerDots = false,
 ): void {
   const at = (dx: number, dy: number) => layout.offset(p, dx, dy);
   const { centerX: x, centerY: y, radius } = PATH_MARKS;
@@ -210,7 +210,8 @@ export function drawTowerPathBadge(
       .fillTriangle(top.x, top.y, bottom.x, bottom.y, left.x, left.y);
   } else {
     const [left, right] = [at(x - mark.offset, y), at(x + mark.offset, y)];
-    g.fillCircle(left.x, left.y, mark.radius).fillCircle(right.x, right.y, mark.radius);
+    const dot = largerDots ? 3.6 : mark.radius;
+    g.fillCircle(left.x, left.y, dot).fillCircle(right.x, right.y, dot);
   }
 }
 

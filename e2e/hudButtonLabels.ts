@@ -7,7 +7,7 @@ import { TOWER_NAMES, callEarlyLabel } from '../src/game/names';
 import { api, postSpawn } from './campaign';
 import { platformWideFactor, useTallFontMetrics, useWideFontMetrics } from './campaignFont';
 import { waitForFirstScreen } from './title';
-import { hasNewInterface, newInterfaceChecks } from './newInterface';
+import { NEW_PHONE_HEIGHTS, NEW_PHONE_VIEWPORTS, hasNewInterface, newInterfaceChecks } from './newInterface';
 
 export async function checkLabel(page: Page, key: string, text: string) {
   const label = await page.evaluate(({ key, text }) => {
@@ -31,7 +31,7 @@ export async function checkLabel(page: Page, key: string, text: string) {
   const description = page.viewportSize()!.height + 'px ' + key + ' ' + text;
   test.info().annotations.push({ type: 'font', description: description + ' ' + label!.css.toFixed(2) });
   let minimumCss = 12;
-  if (page.viewportSize()!.height === 664) {
+  if (page.viewportSize()!.height <= 664) {
     if (key.startsWith('special:')) minimumCss = 11.1;
     if (key === 'special' || key === 'startWave') minimumCss = 11;
   }
@@ -60,7 +60,7 @@ function hudButtonCases(look: 'painted' | 'classic' | 'showpiece', fresh: boolea
     expect(await api(page, t => !!t.showpiece?.())).toBe(look === 'showpiece');
   }
 
-  for (const height of [844, 664]) {
+  for (const height of fresh ? NEW_PHONE_HEIGHTS : [844, 664]) {
     for (const mode of ['normal', 'fixed Caslon', 'fixed fallback']) {
       test(`phone HUD fits the game frame at 390x${height} (${mode})`, async ({ page }) => {
         if (mode !== 'normal') await useTallFontMetrics(page, mode === 'fixed fallback');
@@ -95,7 +95,7 @@ function hudButtonCases(look: 'painted' | 'classic' | 'showpiece', fresh: boolea
         const modern = hasNewInterface(page);
         expect(bottom).toHaveLength(5);
         expect.soft(Math.abs(bottom[0].left - towers[0].left), 'left row edges').toBeLessThanOrEqual(1);
-        expect.soft(Math.abs(bottom[4].right - towers[5].right), 'right row edges').toBeLessThanOrEqual(1);
+        expect.soft(Math.abs((modern ? bottom.find(r => r.name === 'speed')! : bottom[4]).right - towers[5].right), 'right row edges').toBeLessThanOrEqual(1);
         for (const r of [...towers, ...bottom]) {
           const minimum = modern || height === 844 || r.name === 'pause' ? 44 : 38.9;
           expect.soft(Math.min(r.right - r.left, r.bottom - r.top), r.name + ' tap size').toBeGreaterThanOrEqual(minimum);
@@ -120,10 +120,11 @@ function hudButtonCases(look: 'painted' | 'classic' | 'showpiece', fresh: boolea
   }
   for (const mode of ['Caslon', 'fallback', 'tall Caslon', 'tall fallback', 'wide text']) {
     test('HUD button labels fit with ' + mode, async ({ page }, info) => {
+      if (fresh && info.project.name === 'phone') test.setTimeout(75_000);
       if (mode === 'wide text') await useWideFontMetrics(page, fresh ? platformWideFactor : undefined);
       if (mode.startsWith('tall')) await useTallFontMetrics(page, mode === 'tall fallback');
       else if (mode === 'fallback') await page.route('**/*.woff2', route => route.abort());
-      const sizes = info.project.name === 'phone' ? [{ width: 390, height: 844 }, { width: 390, height: 664 }] : [page.viewportSize()!];
+      const sizes = info.project.name === 'phone' ? fresh ? NEW_PHONE_VIEWPORTS : [{ width: 390, height: 844 }, { width: 390, height: 664 }] : [page.viewportSize()!];
       for (const viewport of sizes) {
         await page.setViewportSize(viewport);
         await startMeadow(page);

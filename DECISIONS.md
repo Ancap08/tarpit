@@ -2176,6 +2176,16 @@ can change it; "Kyle" means Kyle decided.
   of 300,000 to 400,000.** Kyle was told before more was spent. Order
   from here: the polish list, the remaining pages, and the sharper pieces
   in a second folder at the same time.
+- **Polish pass accepted for Kyle's phone.** At 390 by 656 the ground now
+  runs to both edges of the screen in every look, the top panel is one
+  compact block with even spacing, the dock's tower pictures grew from
+  about 17 to 23 CSS px, tower spots are easier to find, and the level
+  card went from about 274 to 365 px wide, sized to its content, with the
+  real map art. The playable board itself grew only from 227 to 239 px:
+  the map's shape and the two panels leave little more at that height.
+  Frame cost fell (Painted 10.05 to 8.32 ms a frame). Sol's full browser
+  run crossed a rebuild and had 23 failures that all passed on rerun; CI
+  is the clean full run. 518,467 Sol tokens.
 - **The pieces' finish is C, Lifted.** Decided by Kyle ("C Lifted") from
   three pictures on the same fight. A soft dark rim and a clearer ground
   shadow with a little more contrast; no hard outline. The coordinator and

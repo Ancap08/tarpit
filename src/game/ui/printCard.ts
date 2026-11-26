@@ -6,7 +6,7 @@ import {
   levelFeatRow, levelNumberText, levelTaxRows,
 } from '../names';
 import { FONT } from '../palette';
-import { mapPlateUrl } from '../skin/loading';
+import { scoutingMap } from '../skin/scoutingMap';
 import type { Rect } from '../input';
 import { levelAct } from './campaignMap';
 import type { Button, ButtonOptions } from './button';
@@ -28,19 +28,19 @@ function mapPrint(scene: Phaser.Scene, level: LevelDef, rect: Rect, caption: Pha
   const frame = scene.add.graphics();
   rounded(frame, { ...rect, height: rect.height + caption.height + 12 }, PRINT.inset, PRINT.edge, 8);
   const fallback = scene.add.graphics();
-  drawMapThumbnail(fallback, resolveMap(level.map), rect.x + 4, rect.y + 4, rect.width - 8, rect.height - 4);
-  const url = mapPlateUrl(level.map);
-  const image = new Image();
-  image.src = url;
+  const map = resolveMap(level.map);
+  drawMapThumbnail(fallback, map, rect.x + 4, rect.y + 4, rect.width - 8, rect.height - 4);
+  const controller = new AbortController();
   const key = `clean-card-map:${level.map}`;
   const plate = scene.add.image(rect.x + 4, rect.y + 4, '__DEFAULT').setOrigin(0).setVisible(false);
-  void image.decode().then(() => {
+  void scoutingMap(map, level.map, controller.signal).then(canvas => {
     if (!plate.scene) return;
-    if (!scene.textures.exists(key)) scene.textures.addImage(key, image);
+    scene.textures.addCanvas(key, canvas);
     plate.setTexture(key).setDisplaySize(rect.width - 8, rect.height - 4).setVisible(true);
     fallback.setVisible(false);
   }, () => {}); // The ink thumbnail stays visible offline.
   plate.once('destroy', () => {
+    controller.abort();
     if (scene.textures.exists(key)) scene.textures.remove(key);
   });
   caption.setPosition(rect.x + rect.width / 2 + 8, rect.y + rect.height + 6).setDepth(1);
@@ -54,15 +54,15 @@ export function drawPrintedCard(
 ): Button {
   const { width, height } = scene.scale;
   const cx = width / 2;
-  const foot = portrait ? height - 102 : height - 72;
-  const page = portrait ? { x: 11, y: 92, width: width - 22, height: foot - 102 }
-    : { x: 104, y: 65, width: width - 208, height: foot - 75 };
+  const maxFoot = portrait ? height - 102 : height - 72;
+  const page = portrait ? { x: 23, y: 92, width: width - 46, height: maxFoot - 102 }
+    : { x: 104, y: 65, width: width - 208, height: maxFoot - 75 };
   const left = page.x + (portrait ? 20 : 24);
   const measure = page.width - 2 * (left - page.x);
-  const art = scene.add.graphics().setName('clean-printed-card');
+  const paper = scene.add.graphics().setName('clean-printed-card');
+  const art = scene.add.graphics();
   scene.cameras.main.setBackgroundColor(PRINT.ground);
-  sheet(art, page);
-  const layout: (Phaser.GameObjects.Graphics | Phaser.GameObjects.Text | Phaser.GameObjects.Container | Phaser.GameObjects.Image)[] = [art];
+  const layout: (Phaser.GameObjects.Graphics | Phaser.GameObjects.Text | Phaser.GameObjects.Container | Phaser.GameObjects.Image)[] = [paper, art];
   const buttons: Button[] = [];
   const make = (key: string, rect: Rect, text: string, click: () => void, options?: ButtonOptions) => {
     const button = action(`title:${key}`, rect, text, click, portrait ? 23 : 16, options);
@@ -70,7 +70,7 @@ export function drawPrintedCard(
     return button;
   };
   const buttonH = portrait ? 84 : 50;
-  make('back', { x: page.x, y: portrait ? 3 : 6, width: portrait ? 128 : 112, height: buttonH }, CAMPAIGN_TEXT.back, back, { icon: 'back' });
+  make('back', { x: page.x, y: portrait ? 3 : 6, width: portrait ? 128 : 112, height: buttonH }, CAMPAIGN_TEXT.back, back, { icon: 'back', bare: true });
   const act = levelAct(level.id) === 1 ? CAMPAIGN_TEXT.actOne : CAMPAIGN_TEXT.actTwo;
   const bodySize = portrait ? 23 : 17;
   const col = (text: string, size = bodySize, wrap = measure, color: string = PRINT.ink, style?: string) => {
@@ -79,12 +79,14 @@ export function drawPrintedCard(
     return label;
   };
   const label = col(levelNumberText(level.id), portrait ? 22 : 16);
-  label.setPosition(page.x + page.width - label.width / 2 - 4, portrait ? 31 : 24);
+  label.setPosition(page.x + page.width - label.width / 2 - 4, portrait ? 34 : 24);
   const actLabel = col(act, portrait ? 22 : 16, measure, PRINT.muted);
   actLabel.setPosition(label.x - label.width / 2 - actLabel.width / 2 - 15, label.y);
-  art.fillStyle(PRINT.green).fillCircle(label.x - label.width / 2 - 7, label.y + label.height / 2, 1.6);
-  const sealY = page.y + (portrait ? 52 : 28);
-  const radius = portrait ? 25 : 17;
+  const navInk = scene.add.graphics();
+  layout.push(navInk);
+  navInk.fillStyle(PRINT.green).fillCircle(label.x - label.width / 2 - 7, label.y + label.height / 2, 1.6);
+  const sealY = page.y + (portrait ? 48 : 28);
+  const radius = portrait ? 24 : 17;
   art.fillStyle(0xe1c2a6).fillCircle(cx, sealY, radius).fillStyle(0x953c34).fillCircle(cx, sealY, radius - 4);
   glyph(art, 'crown', cx, sealY, radius + 2, 0xfff9eb);
 
@@ -100,7 +102,7 @@ export function drawPrintedCard(
   const rulesX = portrait ? left : left + artW + 22;
   const artLabel = col(MAP_NAMES[level.map], bodySize, artW, PRINT.ink, 'bold');
   const note = col(words.twist, bodySize, artW, PRINT.muted);
-  const gap = portrait ? 15 : 9;
+  const gap = portrait ? 17 : 9;
   const inset = portrait ? 61 : 44;
   const tileSize = portrait ? 43 : 31;
   const rules: { title: string; description: string; icon: Icon; feat?: boolean }[] = level.feat
@@ -125,14 +127,24 @@ export function drawPrintedCard(
   const crowded = top + rulesH + notesH > page.y + page.height - 10;
   const paged = scouting || portrait && (crowded || short && Object.keys(level.taxes ?? {}).length > 1);
   const notesFirst = !paged || scouting;
+  const contentTop = paged && scouting ? title.y + title.height + gap : top;
+  const contentH = (notesFirst ? notesH : 0) + (paged && scouting ? 0 : rulesH);
+  if (portrait) {
+    const maxBottom = maxFoot - (paged ? buttonH + 22 : 12);
+    page.height = Math.min(maxBottom, contentTop + contentH + gap) - page.y;
+  }
+  sheet(paper, page);
+  const pageBottom = page.y + page.height;
+  const turnY = pageBottom + 12;
+  const foot = portrait ? (paged ? turnY + buttonH + 10 : pageBottom + 12) : maxFoot;
   notice.setVisible(!paged || !scouting);
   artLabel.setVisible(notesFirst);
   note.setVisible(notesFirst);
 
   if (notesFirst) {
-    const picture = mapPrint(scene, level, { x: left, y: top, width: artW, height: artH }, artLabel);
+    const picture = mapPrint(scene, level, { x: left, y: contentTop, width: artW, height: artH }, artLabel);
     if (picture) layout.push(...picture.filter(object => object !== artLabel));
-    note.setPosition(left + artW / 2, top + artH + artLabel.height + 12 + gap);
+    note.setPosition(left + artW / 2, contentTop + artH + artLabel.height + 12 + gap);
   }
   if (!(paged && scouting)) {
     let y = top + (portrait && notesFirst ? notesH : 0);
@@ -170,20 +182,28 @@ export function drawPrintedCard(
   }
 
   const best = col(CAMPAIGN_TEXT.bestStars, portrait ? 22 : 15);
-  best.setOrigin(0, 0).setPosition(page.x + 4, foot + 4);
+  best.setOrigin(0, 0).setPosition(page.x + 4, foot + (buttonH - best.height - 32) / 2);
   const starSize = portrait ? 27 : 22;
-  layout.push(drawStarRow(scene, best.x + starSize * 1.52, foot + best.height + 19, stars, starSize, '#a36a36', !!level.feat));
+  layout.push(drawStarRow(scene, best.x + starSize * 1.52, best.y + best.height + 17, stars, starSize, '#a36a36', !!level.feat));
   const playWidth = portrait ? 205 : 192;
   const right = page.x + page.width;
   if (tips) make('tips', { x: right - playWidth - (portrait ? 104 : 114), y: foot, width: portrait ? 98 : 106, height: buttonH }, CAMPAIGN_TEXT.tips, tips);
   if (paged) {
     // The short page gives Map notes an entire target above the foot.
-    make('cardPage', { x: page.x + (portrait ? 8 : 154), y: portrait ? foot - 94 : foot, width: 172, height: buttonH },
+    make('cardPage', { x: page.x + (portrait ? 8 : 154), y: portrait ? turnY : foot, width: 172, height: buttonH },
       scouting ? CAMPAIGN_TEXT.notice : CAMPAIGN_TEXT.mapNotes, turnPage, { icon: 'map' });
   }
   const playButton = make('play', { x: right - playWidth, y: foot, width: playWidth, height: buttonH }, TITLE_TEXT.play, play,
     { primary: true, icon: 'play' });
 
+  if (portrait) {
+    const offset = Math.max(0, Math.min(54, (height - foot - buttonH - 18) / 3));
+    paper.setY(offset);
+    for (const object of layout.slice(layout.indexOf(title))) object.setY(object.y + offset);
+    // The header separator belongs to the navigation, so draw it independently of the sheet.
+    art.setY(offset);
+    for (const button of buttons.slice(1)) button.moveTo(button.rect.x, button.rect.y + offset);
+  }
   if (motionClock(scene)) {
     const origins = layout.map(object => object.y);
     const apply = (offset: number) => {

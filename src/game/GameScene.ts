@@ -630,19 +630,17 @@ export class GameScene extends Phaser.Scene {
     const base = currentLayout();
     this.siegeView = undefined;
     const clean = newInterface() && this.state.map.id !== 'keep';
-    this.layout = clean ? (base.turned ? cleanPortrait(this.scale.parentSize) : CLEAN_LANDSCAPE)
+    this.layout = clean ? (base.turned ? cleanPortrait(this.scale.parentSize, !!this.state.level?.taxes) : CLEAN_LANDSCAPE)
       : base.turned && this.state.level?.taxes ? TAXED_PORTRAIT : base;
     this.clean = clean;
     setFieldArtDensity(this, this.paintedAssets?.sharp ? this.keepModule ? 3 : 2 : undefined);
     if (clean) {
       useInterface(this, 'battle', () => this.clock.nowMs);
       if (this.layout.turned) {
-        const { x, y, width, height } = this.layout.map;
+        const { y } = this.layout.map;
         const matte = uiObject(this.add.graphics()).fillStyle(CLEAN.ground);
         const w = this.layout.width;
         matte.fillRect(0, 0, w, y);
-        matte.fillRect(0, y, x, height);
-        matte.fillRect(x + width, y, w - x - width, height);
       }
     }
     if (this.scale.width !== this.layout.width || this.scale.height !== this.layout.height) this.scale.setGameSize(this.layout.width, this.layout.height);
@@ -687,9 +685,9 @@ export class GameScene extends Phaser.Scene {
     // Milestone 32b: world-space layers take the layout's transform (placeWorld); the rest is placed through it.
     const world = () => this.layout.placeWorld(this.add.graphics());
     // Milestone 34: the living map (decor/livingMap.ts): the baked ground, trees and bushes, and the moving things, under everything else.
-    this.painted = this.paintedAssets ? new PaintedSkin(this, this.paintedAssets, this.layout, this.state.map, isTestMode(), this.clock, !this.keepModule) : undefined;
+    this.painted = this.paintedAssets ? new PaintedSkin(this, this.paintedAssets, this.layout, this.state.map, isTestMode(), this.clock, !this.keepModule, clean) : undefined;
     if (this.state.cheated) this.painted?.unlockTowers();
-    this.living = this.painted ?? (this.keepModule ? null : new LivingMap(this, this.state.map, this.layout, isTestMode(), this.clock));
+    this.living = this.painted ?? (this.keepModule ? null : new LivingMap(this, this.state.map, this.layout, isTestMode(), this.clock, clean));
     this.town = new Town(this, this.state.map, this.layout, isTestMode(), this.siegeScreens ? undefined : this.painted);
     this.ground = world();
     this.painted?.placeGround(this.ground);
@@ -717,14 +715,14 @@ export class GameScene extends Phaser.Scene {
     }
     if (clean) {
       const plate = new BakedPaint(this, this.add.graphics());
-      const square = { x: 0, y: 0, width: 18, height: 18 };
+      const square = { x: 0, y: 0, width: 24, height: 24 };
       const spots = plate.begin(square);
-      const points = roundPoints(square, 5);
-      // A soft outer edge keeps the light outline visible against sunlit
-      // grass as well as the showpiece's dusk plate.
-      spots.lineStyle(2.5, CLEAN.ground, .42).strokePoints(points, true);
-      spots.lineStyle(1.2, CLEAN.mint, .78).strokePoints(points, true);
-      spots.fillStyle(CLEAN.mint, .68).fillCircle(9, 9, 1.15);
+      const points = roundPoints({ x: 2, y: 2, width: 20, height: 20 }, 5);
+      // A translucent centre and two-tone edge read on both bright grass and dusk.
+      spots.fillStyle(CLEAN.ground, .24).fillPoints(points, true);
+      spots.lineStyle(3.8, CLEAN.ground, .74).strokePoints(points, true);
+      spots.lineStyle(2.1, 0xd5f6dd, .95).strokePoints(points, true);
+      spots.fillStyle(0xd5f6dd, .95).fillCircle(12, 12, 1.7);
       plate.finish();
       plate.image.setVisible(false);
       const sites = buildableCells(this.state.map);
@@ -959,7 +957,7 @@ export class GameScene extends Phaser.Scene {
     document.addEventListener('visibilitychange', hidden);
     const refitClean = () => {
       if (this.clean && this.layout.turned && currentLayout().turned &&
-        cleanPortrait(this.scale.parentSize).width !== this.layout.width) this.relayout();
+        cleanPortrait(this.scale.parentSize, !!this.state.level?.taxes).width !== this.layout.width) this.relayout();
     };
     if (clean) this.scale.on('resize', refitClean);
     this.events.once('shutdown', () => {
@@ -2109,7 +2107,8 @@ export class GameScene extends Phaser.Scene {
     this.badgeKey = key;
     ink.clear();
     for (const { cell, path } of marks) {
-      if (path) drawTowerPathBadge(ink, cellCenter(cell), this.layout, path, moving !== null && sameCell(cell, moving) ? DRAG_ORIGIN_ALPHA : 1);
+      if (path) drawTowerPathBadge(ink, cellCenter(cell), this.layout, path,
+        moving !== null && sameCell(cell, moving) ? DRAG_ORIGIN_ALPHA : 1, this.layout.turned);
     }
   }
 

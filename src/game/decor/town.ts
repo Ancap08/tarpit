@@ -11,7 +11,7 @@ import { TOWN_CONDITIONS, townCondition, type TownCondition } from './townCondit
 type Graphics = Phaser.GameObjects.Graphics;
 
 /** The last two columns above the road contain the four refused landmark cells on every map. */
-function townBounds(map: MapDef, layout: Layout): Rect {
+export function townBounds(map: MapDef, layout: Layout): Rect {
   const exit = map.path[map.path.length - 1];
   const center = layout.toScreen({ x: exit.x - 32, y: exit.y - 43 });
   const width = layout.turned ? 42 : 62;

@@ -61,9 +61,16 @@ function assetUrl(name: MapId | 'shared', density: PaintedDensity, extension: 'w
   return ART[`../../../assets/art-painted/packed/${name}-${density}x.${extension}`];
 }
 
-/** The small painted ground plate also serves as the printed scouting map. */
-export function mapPlateUrl(map: MapId): string {
-  return assetUrl(map, 1, 'webp');
+/** Read the 1× scouting art without registering the battle's sprite textures. */
+export async function loadScoutingArt(map: MapId, signal: AbortSignal) {
+  const names = ['cave', 'town', 'oak', 'spruce', 'birch', 'bush', 'berry-bush'] as const;
+  const [ground, atlas, layout] = await Promise.all([
+    getAsset(assetUrl(map, 1, 'webp'), signal).then(r => decodeImage(r, signal)),
+    getAsset(assetUrl('shared', 1, 'webp'), signal).then(r => decodeImage(r, signal)),
+    getAsset(assetUrl('shared', 1, 'json'), signal).then(r => r.json()),
+  ]);
+  const sheets = new Map<PaintedName, PaintedSheet>(names.map(name => [name, validateSheet(name, name, layout[name], atlas)]));
+  return { ground, atlas, sheets };
 }
 
 interface ConnectionHints {

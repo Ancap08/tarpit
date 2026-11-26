@@ -1,3 +1,4 @@
+import { extendPortraitGround } from '../draw/groundFringe';
 import Phaser from 'phaser';
 import { cellKey, type Tower, type GameState, type MapDef, type Point, type TowerType } from '../../sim';
 import { blinking, STILL_T } from '../decor/motion';
@@ -21,7 +22,7 @@ export interface PaintedState {
   sprites: { key: string; frame: number; x: number; y: number; visible: boolean }[];
 }
 
-function growthArt(g: Growth): PaintedName {
+export function growthArt(g: Growth): PaintedName {
   if (g.kind === 'bush') return g.variant === 1 ? 'bush' : 'berry-bush';
   if (g.shape === 'conifer') return 'spruce';
   if (g.shape === 'sapling') return 'birch';
@@ -53,9 +54,12 @@ export class PaintedSkin {
     private readonly testMode: boolean,
     private readonly clock: GameClock,
     scenery = true,
+    extendGround = false,
   ) {
     if (assets.groundKey) {
-      this.ground = layout.placeWorld(scene.add.image(0, 0, assets.groundKey, 0).setOrigin(0).setScale(1 / assets.density));
+      this.ground = extendGround && layout.turned
+        ? extendPortraitGround(scene, layout, scene.textures.get(assets.groundKey).getSourceImage() as HTMLImageElement, assets.density)
+        : layout.placeWorld(scene.add.image(0, 0, assets.groundKey, 0).setOrigin(0).setScale(1 / assets.density));
       this.ground.setVisible(scenery);
     }
     this.shadows = scene.add.layer();

@@ -112,15 +112,28 @@ const markPixels = (page: Page) => page.evaluate(({ col, row }) => {
   const y = Math.round((point.y - origin.y) / scale);
   const board = t.game.scale;
   const source = t.game.canvas;
+  const ink = document.querySelector<HTMLCanvasElement>('canvas[data-interface-ink]');
+  if (ink) {
+    // The Clean badge is painted on the native-pixel HUD. Count its entire
+    // mark there, away from the gold ring on the separate world canvas.
+    const sx = ink.width / board.width, sy = ink.height / board.height;
+    const left = Math.floor((x + 2) * sx), top = Math.floor((y - 18) * sy);
+    const right = Math.ceil((x + 19) * sx), bottom = Math.ceil((y - 1) * sy);
+    const data = ink.getContext('2d')!.getImageData(left, top, right - left, bottom - top).data;
+    let gold = 0, cyan = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i] === 242 && data[i + 1] === 201 && data[i + 2] === 76) gold++;
+      if (data[i] === 118 && data[i + 1] === 230 && data[i + 2] === 232) cyan++;
+    }
+    const cssArea = scale ** 2 / (sx * sy);
+    return { gold: gold * cssArea, cyan: cyan * cssArea };
+  }
   const pixels = document.createElement('canvas');
   pixels.width = pixels.height = 17;
   const ctx = pixels.getContext('2d')!;
   ctx.imageSmoothingEnabled = false;
-  const ink = document.querySelector<HTMLCanvasElement>('canvas[data-interface-ink]');
-  for (const layer of ink ? [source, ink] : [source]) {
-    const sx = layer.width / board.width, sy = layer.height / board.height;
-    ctx.drawImage(layer, (x + 2) * sx, (y - 18) * sy, 17 * sx, 17 * sy, 0, 0, 17, 17);
-  }
+  const sx = source.width / board.width, sy = source.height / board.height;
+  ctx.drawImage(source, (x + 2) * sx, (y - 18) * sy, 17 * sx, 17 * sy, 0, 0, 17, 17);
   const data = ctx.getImageData(0, 0, 17, 17).data;
   let gold = 0;
   let cyan = 0;
