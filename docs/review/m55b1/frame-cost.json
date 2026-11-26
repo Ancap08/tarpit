@@ -10,15 +10,15 @@
       "part": 1,
       "variant": "old",
       "title": {
-        "msPerFrame": 0.236,
-        "medianIntervalMs": 16.6,
-        "longestFrameIntervalMs": 17.5,
+        "msPerFrame": 0.321,
+        "medianIntervalMs": 16.8,
+        "longestFrameIntervalMs": 17.1,
         "entryAnimations": 0
       },
       "map": {
-        "msPerFrame": 0.471,
-        "medianIntervalMs": 16.7,
-        "longestFrameIntervalMs": 17.4,
+        "msPerFrame": 0.657,
+        "medianIntervalMs": 16.8,
+        "longestFrameIntervalMs": 17.5,
         "entryAnimations": 0
       }
     },
@@ -26,82 +26,82 @@
       "part": 1,
       "variant": "new",
       "title": {
-        "msPerFrame": 0.136,
+        "msPerFrame": 0.107,
+        "medianIntervalMs": 16.6,
+        "longestFrameIntervalMs": 17.1,
+        "entryAnimations": 1
+      },
+      "map": {
+        "msPerFrame": 0.164,
+        "medianIntervalMs": 16.6,
+        "longestFrameIntervalMs": 17.1,
+        "entryAnimations": 1
+      }
+    },
+    {
+      "part": 2,
+      "variant": "new",
+      "title": {
+        "msPerFrame": 0.114,
+        "medianIntervalMs": 17,
+        "longestFrameIntervalMs": 17.4,
+        "entryAnimations": 1
+      },
+      "map": {
+        "msPerFrame": 0.157,
+        "medianIntervalMs": 17,
+        "longestFrameIntervalMs": 17.5,
+        "entryAnimations": 1
+      }
+    },
+    {
+      "part": 2,
+      "variant": "old",
+      "title": {
+        "msPerFrame": 0.257,
+        "medianIntervalMs": 16.8,
+        "longestFrameIntervalMs": 17.2,
+        "entryAnimations": 0
+      },
+      "map": {
+        "msPerFrame": 0.607,
+        "medianIntervalMs": 16.6,
+        "longestFrameIntervalMs": 17.3,
+        "entryAnimations": 0
+      }
+    },
+    {
+      "part": 3,
+      "variant": "old",
+      "title": {
+        "msPerFrame": 0.257,
+        "medianIntervalMs": 16.6,
+        "longestFrameIntervalMs": 17.5,
+        "entryAnimations": 0
+      },
+      "map": {
+        "msPerFrame": 0.55,
+        "medianIntervalMs": 16.6,
+        "longestFrameIntervalMs": 17.5,
+        "entryAnimations": 0
+      }
+    },
+    {
+      "part": 3,
+      "variant": "new",
+      "title": {
+        "msPerFrame": 0.093,
         "medianIntervalMs": 16.7,
         "longestFrameIntervalMs": 17.5,
         "entryAnimations": 1
       },
       "map": {
-        "msPerFrame": 0.114,
+        "msPerFrame": 0.193,
         "medianIntervalMs": 16.6,
-        "longestFrameIntervalMs": 17.7,
-        "entryAnimations": 1
-      }
-    },
-    {
-      "part": 2,
-      "variant": "new",
-      "title": {
-        "msPerFrame": 0.121,
-        "medianIntervalMs": 16.6,
-        "longestFrameIntervalMs": 17.2,
-        "entryAnimations": 1
-      },
-      "map": {
-        "msPerFrame": 0.114,
-        "medianIntervalMs": 16.6,
-        "longestFrameIntervalMs": 17.2,
-        "entryAnimations": 1
-      }
-    },
-    {
-      "part": 2,
-      "variant": "old",
-      "title": {
-        "msPerFrame": 0.229,
-        "medianIntervalMs": 16.6,
-        "longestFrameIntervalMs": 16.9,
-        "entryAnimations": 0
-      },
-      "map": {
-        "msPerFrame": 0.371,
-        "medianIntervalMs": 16.7,
-        "longestFrameIntervalMs": 17.2,
-        "entryAnimations": 0
-      }
-    },
-    {
-      "part": 3,
-      "variant": "old",
-      "title": {
-        "msPerFrame": 0.243,
-        "medianIntervalMs": 16.4,
-        "longestFrameIntervalMs": 17.7,
-        "entryAnimations": 0
-      },
-      "map": {
-        "msPerFrame": 0.5,
-        "medianIntervalMs": 16.6,
-        "longestFrameIntervalMs": 17.4,
-        "entryAnimations": 0
-      }
-    },
-    {
-      "part": 3,
-      "variant": "new",
-      "title": {
-        "msPerFrame": 0.107,
-        "medianIntervalMs": 16.9,
-        "longestFrameIntervalMs": 17.3,
-        "entryAnimations": 1
-      },
-      "map": {
-        "msPerFrame": 0.121,
-        "medianIntervalMs": 16.5,
         "longestFrameIntervalMs": 17.3,
         "entryAnimations": 1
       }
     }
   ],
-  "environment": "Apple silicon Mac. Browser and unit checks were active during the alternating runs."
+  "environment": "Apple silicon Mac. Samples ran after the browser, unit and simulation checks ended."
 }

@@ -42,4 +42,12 @@ Phone text geometry was checked in WebKit at all three phone heights with the bu
 
 ## Frame cost
 
-Three alternating samples at 390 × 656, DPR 3, with motion enabled in Chromium's Canvas renderer. The median of the run averages fell from 0.236 to 0.121 ms per frame on the title and from 0.471 to 0.114 ms on the level map. Median frame intervals were 16.4–16.9 ms across runs. This measures Phaser's main-thread step and render work during entry. The browser compositor and physical iPhone are outside the measurement. [Sample data](frame-cost.json)
+Three alternating samples at 390 × 656, DPR 3, with motion enabled in Chromium's Canvas renderer. The median of the run averages fell from 0.257 to 0.107 ms per frame on the title and from 0.607 to 0.164 ms on the level map. Median frame intervals were 16.6–17.0 ms across runs. This measures Phaser's main-thread step and render work during entry. The browser compositor and physical iPhone are outside the measurement. [Sample data](frame-cost.json)
+
+## Verification
+
+- Lint, typecheck, asset manifest, production build and size checks passed. The build was 11.17 MiB against a 20 MiB budget.
+- The unit run passed 2,942 tests. Concurrent runs caused timeouts in 21 tests and prevented another 50 from running. All 71 passed in targeted reruns with two workers and longer default time budgets.
+- The simulation passed its balance targets and both public campaign gates.
+- The uninterrupted Playwright run on port 4573 passed 1,992 tests across Chromium, tablet and phone. Eight configured skips remained. The two sequential Keep cost cases passed. An earlier run was stopped after a verification script rebuilt its served bundle. The completed run used one build, verified by SHA-256 before and after.
+- Eight supplemental WebKit tests passed against the same build. The switch-off isolation spec passed. Linux screenshot baseline comparisons are disabled on this macOS run.
