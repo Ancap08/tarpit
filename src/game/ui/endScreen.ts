@@ -272,7 +272,7 @@ export class EndScreen {
     const headline = pad + (this.folio ? this.folio.height + 2 * gap : 0) + this.title.height + gap + (stars ? stars + gap : 0);
     const body = phone ? photoH + gap + rowsH : Math.max(photoH, rowsH);
     const reply = (this.story.text ? this.story.height + gap : 0) + (this.close ? this.close.height + gap : 0);
-    const tapH = phone ? Math.max(89, Math.ceil(44 * scene.scale.displayScale.y)) : 52;
+    const tapH = Math.max(phone ? 89 : 52, Math.ceil(44 * scene.scale.displayScale.y));
     const actions = phone && this.hasAdvance ? 2 * tapH + gap : tapH;
     const height = headline + body + reply + actions + gap + pad;
     const y = this.cy - height / 2;

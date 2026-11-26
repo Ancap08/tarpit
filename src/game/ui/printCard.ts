@@ -106,10 +106,11 @@ export function drawPrintedCard(
   const rulesX = portrait ? left : left + artW + 22;
   const artLabel = col(MAP_NAMES[level.map], bodySize, artW, PRINT.ink, 'bold');
   const note = col(words.twist, bodySize, artW, PRINT.muted);
-  const gap = portrait ? 17 : 9;
-  const inset = portrait ? 61 : 44;
-  const tileSize = portrait ? 43 : 31;
   const keep = level.map === 'keep';
+  const gap = portrait ? 17 : keep ? 6 : 9;
+  const inset = portrait ? 61 : 44;
+  const tagPad = portrait ? 13 : 10;
+  const tileSize = portrait ? 43 : 31;
   const rules: { title?: string; description: string; icon: Icon; feat?: boolean }[] = keep ? [
     { title: CAMPAIGN_TEXT.inForce, description: CAMPAIGN_TEXT.gateRule, icon: 'crown' },
     ...siegeRuleLines(level).map(description => ({ description, icon: 'window' as const })),
@@ -126,9 +127,11 @@ export function drawPrintedCard(
       .setOrigin(0, 0).setAlign('left') : undefined;
     const detail = col(rule.description, bodySize, ruleW - inset, PRINT.muted).setOrigin(0, 0).setAlign('left');
     const tag = rule.feat ? col(CAMPAIGN_TEXT.thirdStar, portrait ? 22 : 13, ruleW - inset, PRINT.muted).setOrigin(0, .5) : undefined;
-    const tagHeight = tag && heading && heading.width + tag.width + 22 > ruleW - inset ? tag.height + 6 : 0;
-    const height = Math.max(tileSize, (heading ? heading.height + 2 : 0) + tagHeight + detail.height) + 2 * gap;
-    return { ...rule, heading, detail, tag, tagHeight, height };
+    const tagHeight = tag ? tag.height + 2 * tagPad : 0;
+    const tagBelow = !!(tag && heading && heading.width + tag.width + 2 * tagPad + 8 > ruleW - inset);
+    const headingHeight = heading ? (tagBelow ? heading.height + 4 + tagHeight : Math.max(heading.height, tagHeight)) + 2 : 0;
+    const height = Math.max(tileSize, headingHeight + detail.height) + 2 * gap;
+    return { ...rule, heading, headingHeight, detail, tag, tagBelow, tagHeight, height };
   });
   const answer = level.featherBarrels ? col(CAMPAIGN_TEXT.townAnswer, bodySize, ruleW - 46, '#234b40') : undefined;
   const rulesH = rows.reduce((sum, row) => sum + row.height, 0) + (answer ? gap + answer.height : 0);
@@ -159,21 +162,23 @@ export function drawPrintedCard(
   if (!(paged && scouting)) {
     let y = top + (portrait && notesFirst ? notesH : 0);
     for (const row of rows) {
-      const { heading, detail, icon, tag, tagHeight, height } = row;
+      const { heading, headingHeight, detail, icon, tag, tagBelow, tagHeight, height } = row;
       line(art, rulesX, y, ruleW);
-      heading?.setPosition(rulesX + inset, y + gap);
-      detail.setPosition(rulesX + inset, y + gap + (heading ? heading.height + 2 : 0) + tagHeight);
+      heading?.setPosition(rulesX + inset, y + gap + (tagBelow || !heading ? 0 : Math.max(0, (tagHeight - heading.height) / 2)));
+      detail.setPosition(rulesX + inset, y + gap + headingHeight);
       const tile = { x: rulesX + 2, y: y + gap + 2, width: tileSize, height: tileSize };
       const warm = icon === 'window' || icon === 'crown';
       const tileColor = warm ? 0xf2e1d2 : 0xe1eadb;
       rounded(art, tile, tileColor, tileColor, portrait ? 11 : 8);
       glyph(art, icon, tile.x + tileSize / 2, tile.y + tileSize / 2, tileSize * .68, warm ? 0x953c34 : PRINT.green);
       if (tag && heading) {
-        const tagX = tagHeight ? heading.x + 5 : heading.x + heading.width + 13;
-        const tagY = tagHeight ? heading.y + heading.height + tag.height / 2 + 2 : heading.y + heading.height / 2;
+        const tagX = (tagBelow ? heading.x : heading.x + heading.width + 8) + tagPad;
+        const tagY = tagBelow ? heading.y + heading.height + 4 + tagHeight / 2 : y + gap + tagHeight / 2;
         tag.setPosition(tagX, tagY);
-        rounded(art, { x: tagX - 5, y: tagY - tag.height / 2, width: tag.width + 10, height: tag.height },
-          0xf0ecdb, 0xd4d9c3, 6);
+        // Keep the chip's painted bounds local to its label as the sheet moves.
+        const chip = { x: -tagPad, y: -tagHeight / 2, width: tag.width + 2 * tagPad, height: tagHeight };
+        rounded(art, { ...chip, x: tagX + chip.x, y: tagY + chip.y }, 0xf0ecdb, 0xd4d9c3, 6);
+        tag.setData('paper-chip', chip);
       }
       y += height;
     }
@@ -200,7 +205,7 @@ export function drawPrintedCard(
   if (tips) make('tips', { x: right - playWidth - (portrait ? 104 : 114), y: foot, width: portrait ? 98 : 106, height: buttonH }, CAMPAIGN_TEXT.tips, tips);
   if (paged) {
     // The short page gives Map notes an entire target above the foot.
-    make('cardPage', { x: page.x + (portrait ? 8 : 154), y: portrait ? turnY : foot, width: 172, height: buttonH },
+    make('cardPage', { x: page.x + (portrait ? 8 : 154), y: portrait ? turnY : foot, width: portrait ? 192 : 172, height: buttonH },
       scouting ? CAMPAIGN_TEXT.notice : CAMPAIGN_TEXT.mapNotes, turnPage, { icon: 'map' });
   }
   const playButton = make('play', { x: right - playWidth, y: foot, width: playWidth, height: buttonH }, TITLE_TEXT.play, play,

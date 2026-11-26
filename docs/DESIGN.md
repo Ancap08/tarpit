@@ -77,7 +77,14 @@ Caslon Text and drawn icons. Portrait menu buttons use an 84-unit target
 on the 1194-unit sheet. The level-map stops use a 120 × 104-unit target
 (about 66 × 57 CSS px at 390 × 656). Back occupies the upper left on
 pages with a Back action. Reading sheets put Continue or Got it below
-the copy. Printed menus settle over 220 ms with fixed input bounds.
+the copy. Paper button labels and chips leave at least 4 CSS px on each
+side beyond a five-unit inset with the shared Caslon width margin. The
+portrait Free play map row uses a 6-unit side inset and 8-unit gaps.
+Portrait look buttons are 124 units wide with 4-unit gaps. Their caption
+sits below the row when the navigation needs the space. The Owner button
+is 121 units wide in portrait. Landscape pause buttons are 184 units wide
+so the confirmation fits the same row. Desktop map numbers sit 24 units
+above the stop centre. Printed menus settle over 220 ms with fixed input bounds.
 Test mode and reduced-motion preferences keep the sheets still.
 
 ## Space and time
@@ -1768,7 +1775,9 @@ The Last stand countdown uses that readout while the bell and tower
 effects remain at the gate. Setup banners sit beside the road approaches.
 Window badges, Survey marks and the Quartering pay button follow the
 painted objects through the view move. The fixed camera draws the
-battlefield controls at device resolution.
+battlefield controls at device resolution. The gate, Repair, road signs,
+window badges and pay control leave at least 4 CSS px around their text
+with the shared Inter width margin.
 
 Clean loads the bundled Latin variable Inter face from its own origin
 only with `?ui=new`. It waits alongside Caslon at boot for up to one second.
@@ -1843,8 +1852,11 @@ Paper cards use the bundled Libre Caslon. On phones the paper fits the
 page width with a 23-unit inset on either side. The sheet and action bar
 follow the measured content. The scouting illustration uses the actual
 map, entrance, town and growth art. Short two-tax cards can turn over
-to Map notes. The result uses a paper backdrop with measured
-content and a level folio.
+to Map notes, whose portrait control is 192 units wide. The third-star
+chip has 13 units of padding in portrait and 10 in landscape. Dense Keep
+cards use 6-unit rule gaps in landscape. The result uses a paper backdrop
+with measured content and a level folio. Its landscape buttons grow from
+52 units when the fitted view needs more height to reach 44 CSS px.
 The panel glides over 210 ms, paper settles over 240 ms, gold and lives
 change over 145 ms and prices over 130 ms. Live damage numbers rise for
 up to 470 ms. Battle motion uses the pausable clock. Frozen views draw

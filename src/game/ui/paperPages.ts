@@ -78,9 +78,9 @@ class PaperPage {
     return button;
   }
 
-  row(index: number, count: number, y: number, height = this.tap): Rect {
-    const width = (this.inner - (count - 1) * this.gap) / count;
-    return { x: this.left + index * (width + this.gap), y, width, height };
+  row(index: number, count: number, y: number, height = this.tap, inset = this.pad, gap = this.gap): Rect {
+    const width = (this.width - 2 * inset - (count - 1) * gap) / count;
+    return { x: this.x + inset + index * (width + gap), y, width, height };
   }
 
   center(height: number, top = this.pad): number {
@@ -175,12 +175,16 @@ interface TitleActions {
 export function drawPaperTitle(scene: Scene, portrait: boolean, first: boolean, action: CardAction, choose: TitleActions) {
   const p = new PaperPage(scene, portrait, action, first ? 712 : 736);
   const settingsY = p.navY;
-  const optionW = portrait ? 114 : 101;
-  const settingsGap = 8;
+  const optionW = portrait ? 124 : 101;
+  const settingsGap = portrait ? 4 : 8;
   const mute = new MuteButton(scene, { x: p.x + p.width - p.tap, y: settingsY, width: p.tap, height: p.tap });
   const lookX = p.x + p.width - p.tap - 2 * (optionW + settingsGap);
   const lookLabel = p.label(TITLE_TEXT.look, portrait ? p.inner < 500 ? 20 : 23 : 16, 76, PRINT.muted);
-  p.place(lookLabel, settingsY + (p.tap - lookLabel.height) / 2, lookX - settingsGap - lookLabel.width / 2);
+  const lookCaptionX = lookX - settingsGap - lookLabel.width / 2;
+  const navWidth = first ? choose.owner ? 121 : 0 : 111;
+  if (portrait && lookCaptionX - lookLabel.width / 2 < p.x + navWidth + settingsGap) {
+    p.place(lookLabel, settingsY + p.tap + settingsGap, lookX + optionW + settingsGap / 2);
+  } else p.place(lookLabel, settingsY + (p.tap - lookLabel.height) / 2, lookCaptionX);
   const looks = new Map<Look, Button>();
   LOOKS.forEach((look, i) => looks.set(look, action(`title:look:${look}`, {
     x: lookX + i * (optionW + settingsGap), y: settingsY, width: optionW, height: p.tap,
@@ -196,7 +200,7 @@ export function drawPaperTitle(scene: Scene, portrait: boolean, first: boolean, 
 
   if (first) {
     if (choose.owner) {
-      action('title:owner', { x: p.x, y: settingsY, width: portrait ? 111 : 100, height: p.tap },
+      action('title:owner', { x: p.x, y: settingsY, width: portrait ? navWidth : 100, height: p.tap },
         OWNER_TEXT.mark, choose.owner, portrait ? 23 : 16, { bare: true });
     }
     const story = p.label(TITLE_TEXT.story, portrait ? 25 : 18, p.inner, PRINT.muted);
@@ -243,7 +247,7 @@ export function drawPaperTitle(scene: Scene, portrait: boolean, first: boolean, 
     });
     y = p.place(mapCaption, y + p.tap + 2 * p.gap) + p.gap;
     MAP_IDS.forEach((choice, i) => {
-      const rect = p.row(i, 3, y, mapH);
+      const rect = portrait ? p.row(i, 3, y, mapH, 6, 8) : p.row(i, 3, y, mapH);
       const map = p.button(`map:${choice}`, rect, MAP_NAMES[choice], () => choose.map(choice), {
         labelY: mapH - (portrait ? 28 : 20),
       }, mapNameSize);
@@ -326,7 +330,7 @@ export function drawPaperMap(
     button.setPicked(stop.next);
     const number = p.label(String(stop.id), portrait ? 33 : 24, tileW,
       stop.next ? '#fff9eb' : stop.open ? PRINT.ink : PRINT.muted, 'bold');
-    p.place(number, y - (portrait ? 39 : 29), x + (stop.open ? 0 : 10));
+    p.place(number, y - (portrait ? 39 : 24), x + (stop.open ? 0 : 10));
     if (!stop.open) glyph(scene.add.graphics(), 'lock', x - (stop.id < 10 ? 16 : 24), number.y + number.height / 2, portrait ? 20 : 16, 0x64705d);
     drawStarRow(scene, x, y + (portrait ? 22 : 18), stop.stars, portrait ? 22 : 16,
       stop.next ? '#ede2be' : stop.open ? '#a36a36' : '#81765e', stop.feat);

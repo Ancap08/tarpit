@@ -57,7 +57,7 @@ export class PausePanel {
       fontFamily: FONT, fontSize: titleSize + 'px', fontStyle: printed ? 'normal' : 'bold', color: printed ? PRINT.ink : ink,
       ...(printed ? { metrics: textMetrics(titleSize) } : {}),
     }).setOrigin(0.5, 0).setDepth(depth + 1);
-    const buttonW = printed ? portrait ? Math.min(layout.width - 102, 520) : 174 : portrait ? 260 : 166;
+    const buttonW = printed ? portrait ? Math.min(layout.width - 102, 520) : 184 : portrait ? 260 : 166;
     const buttonH = printed ? portrait ? Math.max(88, Math.ceil(45 * scene.scale.displayScale.y)) : 56 : portrait ? 80 : 56;
     const gap = 12;
     const pad = printed ? portrait ? 24 : 20 : 22;
