@@ -83,6 +83,7 @@ import { Button } from './ui/button';
 import { GateHud } from './ui/gateHud';
 import { PORTRAIT_STACK, portraitRow2, STACK_SIZE, stripAimText, type StackSize } from './ui/geometry';
 import {
+  CLEAN_BUILD_H,
   LANDSCAPE,
   PORTRAIT,
   PORTRAIT_GAP,
@@ -95,7 +96,7 @@ import { SpecialMenu } from './ui/specialMenu';
 import { MuteButton } from './ui/muteButton';
 import { BakedPaint, CLEAN, battleFont, battleWeight, glyph, roundPoints, rounded, sans, skinFor, textMetrics } from './ui/newTheme';
 import { DeviceTextFit, minimumTextSize, textInset, textSlot } from './ui/deviceText';
-import { CleanReadouts, cleanHudMetrics, statColumns } from './ui/cleanHud';
+import { CleanReadouts, PHONE_TOP_CONTROL_CENTER, cleanHudMetrics, permitSlot, statColumns } from './ui/cleanHud';
 
 export type { Rect };
 
@@ -447,7 +448,7 @@ export class Hud {
           const g = dock.begin(band);
           g.fillStyle(CLEAN.ground).fillRect(band.x, band.y, band.width, band.height);
           rounded(g, m.portrait
-            ? { x: 2, y: m.barTop - 2, width: layout.width - 4, height: 96 }
+            ? { x: 4, y: m.barTop - 2, width: layout.width - 8, height: CLEAN_BUILD_H + 2 }
             : { x: 12, y: m.barTop - 2, width: 595, height: 69 });
           dock.image.setName('clean-dock');
           dock.finish();
@@ -500,8 +501,8 @@ export class Hud {
       this.lives.setX(livesX).setColor(CLEAN.ink);
       this.wave.setX(waveX).setColor(CLEAN.ink);
       this.tag.setVisible(false);
-      const size = m.portrait ? 26 : 14;
-      this.taxLine.setPosition(m.preview.x + (m.portrait ? 25 : 17), m.bands[0].y + (m.portrait ? 139 : 16))
+      const size = m.portrait ? 25 : 14;
+      this.taxLine.setPosition(m.preview.x + (m.portrait ? 25 : 17), m.portrait ? m.preview.y - 30 : m.bands[0].y + 16)
         .setOrigin(0).setStyle({ fontSize: size, color: CLEAN.subdued, metrics: textMetrics(size), fontStyle: battleWeight(false) })
         .setFixedSize(0, 0).setWordWrapWidth(m.preview.width - (m.portrait ? 25 : 17));
       this.next.setPosition(m.preview.x, m.preview.y).setOrigin(0).setWordWrapWidth(m.preview.width)
@@ -521,7 +522,7 @@ export class Hud {
       this.readyState = sans(scene, sb.x + sb.width / 2 + 14, sb.y + sb.height * .72,
         PANEL_TEXT.ready, m.portrait ? 25 : 14, '#aaf1d9', true).setOrigin(.5).setVisible(false);
       this.taxGlyph = scene.add.graphics().setVisible(false);
-      glyph(this.taxGlyph, 'window', m.preview.x + 5, this.taxLine.y + (m.portrait ? 13 : 7), m.portrait ? 21 : 14, CLEAN.rose);
+      glyph(this.taxGlyph, 'window', m.preview.x + 8, this.taxLine.y + (m.portrait ? 12 : 7), m.portrait ? 21 : 14, CLEAN.rose);
     }
     this.rechargeFill = scene.add.graphics();
     scene.children.moveBelow(this.rechargeFill, this.specialButton.labelObjects[0]);
@@ -551,16 +552,16 @@ export class Hud {
     }
     this.speedButton = new Button(scene, m.speed, '1x', handlers.onToggleSpeed, { onPress: handlers.onSpeedPress, semibold: true, fontSize: modern && m.portrait ? '26px' : modern || m.portrait ? m.startFont : undefined });
     this.specialMenu = new SpecialMenu(scene, m.menu.left, m.menu.top, handlers.onSpecialPick, layout.map.y, m.menu.size, m.menu.font);
-    this.bar = new BuildBar(scene, m.barTop, handlers.onPick, layout, painted);
+    this.bar = new BuildBar(scene, m.barTop, handlers.onPick, layout, painted, modern && m.portrait ? permitSlot(m) : undefined);
     this.bossBar = new BossBar(scene, layout, spawn);
     if (handlers.onRepair) this.gate = new GateHud(scene, layout, handlers.onRepair, siegeScreens);
-    this.muteButton = new MuteButton(scene, m.mute);
+    this.muteButton = new MuteButton(scene, m.mute, modern && m.portrait ? PHONE_TOP_CONTROL_CENTER : undefined);
     this.pauseButton = new Button(scene, m.pause, m.portrait ? '' : PAUSE_TEXT.button, handlers.onPause, {
       bare: modern, fontSize: modern ? '14px' : '18px', labelY: modern ? 34 : 57, sound: null,
     });
     this.pauseIcon = scene.add.graphics().fillStyle(COLORS.buttonEdgePicked);
     const iconHeight = m.portrait ? 26 : 21;
-    if (modern) glyph(this.pauseIcon, 'pause', 0, m.portrait ? 13 : 4, m.portrait ? 37 : 20, 0xe2f5ee);
+    if (modern) glyph(this.pauseIcon, 'pause', 0, m.portrait ? 0 : 4, m.portrait ? 29 : 20, 0xe2f5ee);
     else for (const x of [-11, 4]) this.pauseIcon.fillRect(x, 0, 7, iconHeight);
     // Put the native accessibility target over the plaque. Phaser handles pointer input.
     this.pauseAction = document.createElement('button');
@@ -582,7 +583,7 @@ export class Hud {
         }
       }
       this.pauseIcon.setPosition(m.pause.x + m.pause.width / 2,
-        m.pause.y + (modern && !m.portrait ? 10 : m.portrait ? (m.pause.height - iconHeight) / 2 : 16));
+        m.pause.y + (modern ? m.portrait ? PHONE_TOP_CONTROL_CENTER : 10 : m.portrait ? (m.pause.height - iconHeight) / 2 : 16));
       Object.assign(this.pauseAction.style, {
         left: (b.x + m.pause.x / s.x) + 'px', top: (b.y + m.pause.y / s.y) + 'px',
         width: (m.pause.width / s.x) + 'px', height: (m.pause.height / s.y) + 'px',
@@ -623,7 +624,6 @@ export class Hud {
     const count = (label: Phaser.GameObjects.Text, value: string) => this.clean ? this.clean.count(label, value) : set(label, value);
     count(this.gold, this.clean ? String(state.gold) : `${HUD_STAT_LABELS[0]} ${state.gold}`);
     this.cheatMark.setVisible(state.cheated);
-    if (this.clean && m.portrait && state.cheated) this.cheatMark.setY(this.taxLine.y + 13.5);
     // The sim lets lives go below 0 (the boss's exit costs 5); the HUD shows 0.
     count(this.lives, this.clean ? String(Math.max(0, state.lives)) : `${HUD_STAT_LABELS[1]} ${Math.max(0, state.lives)}`);
     set(this.wave, (this.clean ? waveNumberText : waveCounterText)(state.wave, state.endless, lastWave(state)));
@@ -646,7 +646,7 @@ export class Hud {
     }
     if (this.clean) {
       this.clean.fitStats([this.gold, this.lives, this.wave]);
-      this.fitTaxRow(!!taxes, state.cheated);
+      this.fitTaxRow(!!taxes, state.cheated, state.level?.taxes?.rationing !== undefined);
     } else if (m.portrait) {
       // One row: each stat starts after the one before it; the cheat mark is right-aligned.
       const dx = this.lives.x - this.livesX;
@@ -703,7 +703,7 @@ export class Hud {
         this.next.setScale(Math.min(1, width / this.next.width), Math.min(1, BUTTON_H / this.next.height));
       }
     }
-    if (this.clean) this.fitCleanPreview(!!taxes, state.cheated);
+    if (this.clean) this.fitCleanPreview(state.cheated);
     const call = callEarlyStatus(state);
     let reason: string | null = null;
     if (state.pendingBoon) reason = BOON_PENDING_TEXT;
@@ -782,23 +782,25 @@ export class Hud {
     this.gate?.update(state, special.paused ?? false);
   }
 
-  private fitTaxRow(taxed: boolean, cheated: boolean): void {
+  private fitTaxRow(taxed: boolean, cheated: boolean, rationed: boolean): void {
     const m = this.m;
     const head = m.bands[0];
     const cheatBox = m.portrait ? head : { ...head, x: 636, width: head.x + head.width - 636, y: 64, height: head.y + head.height - 64 };
     const showCheat = cheated && this.cheatFit.fit(parseInt(m.cheat.size), [textSlot(this.cheatMark, cheatBox)]);
     this.cheatMark.setVisible(showCheat);
     if (!taxed) return;
-    const right = m.portrait && showCheat ? this.cheatMark.x - this.cheatMark.width : m.preview.x + m.preview.width;
+    const right = m.portrait && rationed ? permitSlot(m).x : m.preview.x + m.preview.width;
     const area = { x: m.preview.x, y: head.y, width: right - m.preview.x, height: m.preview.y - head.y + (m.portrait ? textInset(this.taxLine) : 0) };
-    this.taxLine.setVisible(this.taxFit.fit(m.portrait ? 26 : 14, [textSlot(this.taxLine, area, true)]));
+    this.taxLine.setVisible(this.taxFit.fit(m.portrait ? 25 : 14, [textSlot(this.taxLine, area, true)]));
   }
 
-  private fitCleanPreview(taxed: boolean, cheated: boolean): void {
+  private fitCleanPreview(cheated: boolean): void {
     const m = this.m;
     const { x, y, width } = m.preview;
     const head = m.bands[0];
-    const area = { x: head.x, y: head.y, width: x + width - head.x, height: head.height };
+    const right = m.portrait && cheated && this.cheatMark.visible
+      ? this.cheatMark.x - this.cheatMark.width - 8 : x + width;
+    const area = { x: head.x, y: head.y, width: right - head.x, height: head.height };
     this.next.setPosition(x, y);
     if (m.portrait) {
       const line = Math.max(24, minimumTextSize(this.next)) + 3;
@@ -807,10 +809,7 @@ export class Hud {
     }
     const fits = this.previewFit.fit(m.portrait ? 24 : 14, [textSlot(this.next, area, true)]);
     this.next.setVisible(fits);
-    if (fits && m.portrait && taxed && !cheated && this.next.height <= this.next.getTextMetrics().fontSize &&
-        this.taxLine.x + this.taxLine.width + 16 <= x + width - this.next.width) {
-      this.next.setPosition(x + width - this.next.width, this.taxLine.y);
-    }
+
   }
 
   private cleanPreview(state: GameState): string {

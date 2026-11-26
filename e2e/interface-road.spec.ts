@@ -2,9 +2,10 @@ import { expect, test } from '@playwright/test';
 import type { GameScene } from '../src/game/GameScene';
 import { PATH_WIDTH } from '../src/game/draw/map';
 import { MAP_IDS } from '../src/sim';
+import { NEW_PHONE_VIEWPORTS } from './newInterface';
 import { waitForFirstScreen } from './title';
 
-for (const [width, height] of [[390, 664], [390, 844], [1024, 768], [960, 580]]) {
+for (const { width, height } of [...NEW_PHONE_VIEWPORTS, { width: 1024, height: 768 }, { width: 960, height: 580 }]) {
   for (const map of MAP_IDS) {
     test(`Clean battle HUD clears the entire road on ${map} at ${width}×${height}`, async ({ page }) => {
       await page.setViewportSize({ width, height });

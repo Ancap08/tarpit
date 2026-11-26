@@ -177,12 +177,21 @@ export function fontPx(layout: Layout, px: number): string {
   return `${layout.kind === 'portrait' ? Math.max(px, PORTRAIT_MIN_FONT) : px}px`;
 }
 
-/** The Clean dock fits six 44 CSS px controls at 390 × 664, with the
- * original 1:1 world projection and the whole road clear of the controls. */
-export function cleanPortrait(parent: { width: number; height: number }): Layout {
-  const height = 1388;
-  const width = Math.max(560, Math.floor(height * parent.width / Math.max(1, parent.height)));
-  return new Layout('portrait', { width, height }, { ...PORTRAIT.map, x: (width - MAP_HEIGHT) / 2, y: 230 });
+export const CLEAN_BUILD_H = 110;
+export const CLEAN_ACTION_H = 92;
+export const CLEAN_DOCK_GAP = 4;
+
+/** Keep the board's projection and reserve a separate line when taxes are active. */
+export function cleanPortrait(parent: { width: number; height: number }, taxed: boolean): Layout {
+  const top = taxed ? 170 : 140;
+  const height = top + MAP_WIDTH + CLEAN_BUILD_H + CLEAN_ACTION_H + 3 * CLEAN_DOCK_GAP;
+  const width = Math.max(560, Math.ceil(height * parent.width / Math.max(1, parent.height)));
+  return new Layout('portrait', { width, height }, { ...PORTRAIT.map, x: (width - MAP_HEIGHT) / 2, y: top });
+}
+
+/** Paper uses the full width of the visible portrait page at its existing type scale. */
+export function printedPortraitWidth(parent: { width: number; height: number }): number {
+  return Math.max(520, Math.ceil(PORTRAIT_HEIGHT * parent.width / Math.max(1, parent.height)));
 }
 
 /** A separate landscape header keeps controls clear of the painted board and every build cell. */

@@ -37,6 +37,7 @@ export interface ButtonOptions {
   skin?: Skin;
   primary?: boolean;
   icon?: Icon;
+  iconY?: number;
   /** If the pair does not fit, keep a fitting price beside this action icon. */
   priceFallback?: Icon;
   upgradeRow?: boolean;
@@ -67,6 +68,7 @@ export class Button {
   private preferredSize: number;
   private coinLabelWidth = 0;
   private icon?: Icon;
+  private readonly iconY?: number;
   private offsetY = 0;
   private readonly clock?: () => number;
   private rollAt = -Infinity;
@@ -96,6 +98,7 @@ export class Button {
     this.upgradeRow = options.upgradeRow ?? false;
     this.wrap = options.wrap ?? false;
     this.icon = options.icon;
+    this.iconY = options.iconY;
     this.priceFallback = options.priceFallback;
     if (this.skin !== 'legacy') this.clock = motionClock(scene);
     const size = options.fontSize ?? '18px';
@@ -424,7 +427,7 @@ export class Button {
       const paint = this.chrome ? this.chrome.begin(this.r) : this.trim.clear();
       const offset = this.chrome ? 0 : this.offsetY;
       const edge = paper ? active ? PRINT.green : PRINT.edge : this.picked ? CLEAN.mint : CLEAN.edge;
-      if (!this.bare) rounded(paint, { x: x + compress, y: y + offset + compress, width: width - 2 * compress, height: height - 2 * compress }, fill, edge, paper ? 12 : 16);
+      if (!this.bare || paper && (this.picked || this.hover || down)) rounded(paint, { x: x + compress, y: y + offset + compress, width: width - 2 * compress, height: height - 2 * compress }, fill, edge, paper ? 12 : 16);
       if (this.upgradeRow && this.icon && this.rightLabel) {
         const tile = this.labelInset - 20;
         const tileX = x + 9, tileY = y + offset + height / 2 - tile / 2;
@@ -443,7 +446,7 @@ export class Button {
         const label = this.labelsFit ? this.label.text : '';
         const size = this.iconSize();
         const iconX = label ? this.rightLabel ? x + this.labelInset / 1.3 : x + (width - this.label.width) / 2 - size * .35 : x + width / 2;
-        glyph(paint, this.icon, iconX, y + offset + height / 2 + compress, size, Number.parseInt(color.slice(1), 16));
+        glyph(paint, this.icon, iconX, y + offset + (this.iconY ?? height / 2) + compress, size, Number.parseInt(color.slice(1), 16));
       }
     }
     if (this.shown) this.chrome?.finish(this.offsetY);

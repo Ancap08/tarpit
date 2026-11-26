@@ -1,8 +1,8 @@
 import { tipsVerifierSuite } from './tipsVerifier';
-import { newInterfaceChecks } from './newInterface';
+import { newInterfacePhoneChecks } from './newInterface';
 
 tipsVerifierSuite(true);
 
-newInterfaceChecks(() => {
+newInterfacePhoneChecks(() => {
   tipsVerifierSuite(true);
 });

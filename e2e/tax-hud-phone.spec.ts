@@ -1,10 +1,10 @@
 import { shortPhoneTaxHudSuite, taxHudSuite } from './taxHud';
-import { newInterfaceChecks } from './newInterface';
+import { newInterfacePhoneChecks } from './newInterface';
 
 taxHudSuite(true);
 shortPhoneTaxHudSuite();
 
-newInterfaceChecks(() => {
+newInterfacePhoneChecks(height => {
   taxHudSuite(true);
-  shortPhoneTaxHudSuite();
+  shortPhoneTaxHudSuite(height);
 });

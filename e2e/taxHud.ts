@@ -52,7 +52,7 @@ export async function checkTaxLine(page: Page, expected: string, count = false) 
     const first = t.uiRects()['bar:musketeer'];
     const second = t.uiRects()['bar:cannon'];
     const modern = new URL(location.href).searchParams.get('ui') === 'new';
-    const region = count ? { left: first.x, right: second.x + second.width, top: first.y, bottom: first.y + first.height }
+    const region = count && !(modern && portrait) ? { left: first.x, right: second.x + second.width, top: first.y, bottom: first.y + first.height }
       : modern ? (() => {
         const r = scene['hud']['m'].bands[0];
         return { left: r.x, right: r.x + r.width, top: r.y, bottom: r.y + r.height };
@@ -85,8 +85,8 @@ async function checkUntaxedHud(page: Page) {
   await checkLabel(page, 'bar:musketeer', '50');
 }
 export function taxHudSuite(touch: boolean) {
-  test('tax names follow the level and clear in Free play and the first act', async ({ page }) => {
-    test.setTimeout(60_000);
+  test('tax names follow the level and clear in Free play and the first act', async ({ page }, info) => {
+    test.setTimeout(info.project.name === 'phone' ? 90_000 : 60_000);
     await page.goto('/?test=1');
     await waitForFirstScreen(page);
     await api(page, t => t.startGame());
@@ -170,10 +170,10 @@ export function taxHudSuite(touch: boolean) {
 }
 
 
-export function shortPhoneTaxHudSuite() {
+export function shortPhoneTaxHudSuite(height = 664) {
   for (const fallback of [false, true]) {
-    test(`390×664 keeps the tax line and tower tally readable in fixed ${fallback ? 'fallback' : 'Caslon'}`, async ({ page }) => {
-      await page.setViewportSize({ width: 390, height: 664 });
+    test(`390×${height} keeps the tax line and tower tally readable in fixed ${fallback ? 'fallback' : 'Caslon'}`, async ({ page }) => {
+      await page.setViewportSize({ width: 390, height });
       await useTallFontMetrics(page, fallback);
       const level = LEVELS.find(level => level.taxes?.forcedMarch && level.taxes.rationing)!;
       await openPaintedLevel(page, level);

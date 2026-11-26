@@ -1,5 +1,5 @@
 import { campaignActSuite } from './campaignActs';
-import { newInterfaceChecks } from './newInterface';
+import { newInterfacePhoneChecks } from './newInterface';
 import { campaignScreenSuite, campaignScreenshotSuite } from './campaignScreens';
 
 campaignScreenSuite(true);
@@ -7,7 +7,7 @@ campaignScreenshotSuite(true);
 
 campaignActSuite(true, true);
 
-newInterfaceChecks(() => {
+newInterfacePhoneChecks(height => {
   campaignScreenSuite(true);
-  campaignActSuite(true, true);
+  campaignActSuite(true, true, height);
 });

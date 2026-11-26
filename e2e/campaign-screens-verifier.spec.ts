@@ -4,7 +4,7 @@ import { api, press } from './campaign';
 import { useTallFontMetrics } from './campaignFont';
 import { onScreen, rotate } from './campaignScreens';
 import { waitForFirstScreen } from './title';
-import { newInterfaceChecks } from './newInterface';
+import { NEW_PHONE_HEIGHTS, newInterfaceChecks } from './newInterface';
 
 // Milestone 48c verifier: cases that pin what the verifier found. Each real-time
 // case has its own limit, sized for a CI runner about four times slower than the Mac.
@@ -16,7 +16,7 @@ const starRows = (page: Page) => api(page, t => t.game.scene.getScene(t.scene())
   .map(node => ((node as Phaser.GameObjects.Container).list as Phaser.GameObjects.Star[])
     .map(star => ({ points: star.points, filled: star.isFilled }))));
 
-function checkCardsAndResults() {
+function checkCardsAndResults(modern = false) {
   for (const { id, stars, lives, points } of [
     { id: 1, stars: 3, lives: 20, points: 5 },
     { id: 11, stars: 1, lives: 1, points: 4 },
@@ -69,7 +69,7 @@ function checkCardsAndResults() {
     expect(await starRows(page)).toEqual([]);
   });
 
-  for (const height of [844, 664]) {
+  for (const height of modern ? NEW_PHONE_HEIGHTS : [844, 664]) {
     test(`the next-wave preview stays readable beside a tax line at 390x${height}`, async ({ page }) => {
       test.setTimeout(60_000);
       await page.setViewportSize({ width: 390, height });
@@ -83,7 +83,7 @@ function checkCardsAndResults() {
         const next = scene.children.list.find(n => n.type === 'Text' && (n as Phaser.GameObjects.Text).text.startsWith('Next:')) as Phaser.GameObjects.Text;
         return parseFloat(String(next.style.fontSize)) * Math.min(next.scaleX, next.scaleY) * scale;
       });
-      expect(css).toBeGreaterThanOrEqual(height === 664 ? 11.1 : 12);
+      expect(css).toBeGreaterThanOrEqual(height <= 664 ? 11.1 : 12);
     });
   }
 
@@ -129,4 +129,4 @@ function checkCardsAndResults() {
 }
 
 checkCardsAndResults();
-newInterfaceChecks(checkCardsAndResults);
+newInterfaceChecks(() => checkCardsAndResults(true));

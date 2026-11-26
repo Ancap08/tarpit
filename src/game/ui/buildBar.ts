@@ -7,7 +7,7 @@ import type Phaser from 'phaser';
 import { TOWER_DEFS, towerBuildCost, allowedTowers, type GameState, type TowerType } from '../../sim';
 import type { Rect } from '../input';
 import { drawTowerShape } from '../draw/towers';
-import { LANDSCAPE, TAXED_PORTRAIT, type Layout } from '../layout';
+import { CLEAN_BUILD_H, LANDSCAPE, TAXED_PORTRAIT, type Layout } from '../layout';
 import type { PaintedSkin } from '../skin/painted';
 import { portraitBarRects } from './geometry';
 import { TOWER_NAMES, towerCountText } from '../names';
@@ -16,7 +16,7 @@ import { makeLock } from './lock';
 import { BAR_TYPES, canPick } from './buildBarModel';
 import { Button } from './button';
 import { DeviceTextFit, minimumTextSize, textSlot } from './deviceText';
-import { BakedPaint, CLEAN, battleFont, battleWeight, glyph, interLoaded, skinFor, textMetrics } from './newTheme';
+import { BakedPaint, CLEAN, battleFont, battleWeight, glyph, interLoaded, rounded, skinFor, textMetrics } from './newTheme';
 
 /** Keep the six full-size landscape plaques inside the pause column. */
 export const BAR_BUTTON_WIDTH = 132;
@@ -34,6 +34,9 @@ const ICON_Y = 27;
 const COST_Y = 56;
 const PAINTED_WIDE_ICON_Y = 12;
 const PAINTED_WIDE_LABEL_Y = 30;
+const CLEAN_ART_Y = 26;
+const CLEAN_NAME_Y = 62;
+const CLEAN_PRICE_Y = 91;
 
 /** The bar's button rectangles for `layout`, in BAR_TYPES order. */
 export function barRects(layout: Layout, top: number): Rect[] {
@@ -58,23 +61,28 @@ export class BuildBar {
   private readonly priceFit = new DeviceTextFit();
   private readonly tallyFit = new DeviceTextFit();
 
-  constructor(scene: Phaser.Scene, top: number, onClick: (type: TowerType) => void, private readonly layout: Layout = LANDSCAPE, painted?: PaintedSkin) {
+  constructor(scene: Phaser.Scene, top: number, onClick: (type: TowerType) => void, private readonly layout: Layout = LANDSCAPE, painted?: PaintedSkin, private readonly permitBox?: Rect) {
     const portrait = layout.kind === 'portrait';
     this.clean = skinFor(scene) === 'battle';
-    const gap = portrait ? 4 : 5;
-    // Musketeer is the widest name. Give it extra room without changing dock width or gaps.
-    const extraNameWidth = interLoaded && portrait ? 12 : 0;
-    const buttonWidth = (layout.width - 10 - 5 * gap - extraNameWidth) / BAR_TYPES.length;
-    const rects = this.clean ? BAR_TYPES.map((_, i) => ({
-      x: portrait ? 5 + i * (buttonWidth + gap) + (i > 0 ? extraNameWidth : 0) : 16 + i * 98, y: top,
-      width: portrait ? buttonWidth + (i === 0 ? extraNameWidth : 0) : 93, height: portrait ? 94 : 65,
-    })) : barRects(layout, top);
+    const gap = 4;
+    // The two longest names need more of the shared width at the Inter margin.
+    const nameRoom = BAR_TYPES.map(type => interLoaded && portrait
+      ? type === 'musketeer' ? 22 : type === 'longbow' ? 12 : 0 : 0);
+    const extraWidth = nameRoom.reduce<number>((sum, width) => sum + width, 0);
+    const buttonWidth = (layout.width - 16 - 5 * gap - extraWidth) / BAR_TYPES.length;
+    let nextX = 8;
+    const rects = this.clean ? BAR_TYPES.map((_, i) => {
+      const width = portrait ? buttonWidth + nameRoom[i] : 93;
+      const x = portrait ? nextX : 16 + i * 98;
+      nextX += width + gap;
+      return { x, y: top, width, height: portrait ? CLEAN_BUILD_H : 65 };
+    }) : barRects(layout, top);
     const priceSize = layout === TAXED_PORTRAIT ? 21 : 20;
     this.buttons = BAR_TYPES.map((type, i) =>
       this.clean
         ? new Button(scene, rects[i], String(TOWER_DEFS[type].cost), () => onClick(type), {
-          fontSize: portrait ? (interLoaded ? '25px' : '26px') : '15px',
-          labelY: portrait ? (interLoaded ? 75.5 : 76) : 53, grouped: true, semibold: true,
+          fontSize: portrait ? '25px' : '15px',
+          labelY: portrait ? CLEAN_PRICE_Y : 53, grouped: true, semibold: true,
         })
         : portrait
         ? new Button(scene, rects[i], String(TOWER_DEFS[type].cost), () => onClick(type), { fontSize: `${priceSize}px`, labelY: COST_Y })
@@ -98,10 +106,11 @@ export class BuildBar {
       this.icons.image.setName('clean-build-icons');
       const nameSize = this.nameSize(scene);
       this.names = BAR_TYPES.map((type, i) =>
-        scene.add.text(rects[i].x + rects[i].width / 2, top + (portrait ? (interLoaded ? 48 : 49) : 33), TOWER_NAMES[type], {
+        scene.add.text(rects[i].x + rects[i].width / 2, top + (portrait ? CLEAN_NAME_Y : 33), TOWER_NAMES[type], {
           fontFamily: battleFont(), fontSize: nameSize, fontStyle: battleWeight(true, 'normal'), color: CLEAN.subdued, metrics: textMetrics(nameSize),
         }).setOrigin(.5).setName(`bar-name:${type}`));
-      this.portraits = painted ? BAR_TYPES.map(type => painted.towerIcon(type, portrait ? 54 : 40, portrait ? (interLoaded ? 36 : 32) : 24)) : undefined;
+      this.portraits = painted ? BAR_TYPES.map(type => painted.towerIcon(type, portrait ? 64 : 40, portrait ? 46 : 24)) : undefined;
+      if (portrait && this.portraits) scene.children.bringToTop(this.icons.image);
     } else if (painted) {
       this.paintedIcons = BAR_TYPES.map((type, i) => {
         const r = rects[i];
@@ -196,36 +205,46 @@ export class BuildBar {
     const cap = state.level?.taxes?.rationing;
     const open = allowedTowers(state);
     const flags = BAR_TYPES.map(type => ({ enabled: canPick(state, type), locked: !open.includes(type) }));
-    const key = flags.map(f => f.locked ? 'L' : f.enabled ? '1' : '0').join('') + (cap !== undefined ? 't' : '');
+    const key = flags.map(f => f.locked ? 'L' : f.enabled ? '1' : '0').join('') + (cap !== undefined && !this.permitBox ? 't' : '');
     const redraw = key !== this.iconKey;
     const portrait = this.layout.turned;
     const top = this.buttons[0].rect.y;
-    const paint = redraw ? this.icons!.begin({ x: 0, y: top, width: this.layout.width, height: portrait ? 95 : 66 }) : null;
+    const paint = redraw ? this.icons!.begin({ x: 0, y: top, width: this.layout.width, height: portrait ? CLEAN_BUILD_H + 1 : 66 }) : null;
     if (redraw) this.iconKey = key;
     for (const [i, type] of BAR_TYPES.entries()) {
       const b = this.buttons[i];
       const { enabled, locked } = flags[i];
-      b.set(String(towerBuildCost(state, type)), enabled);
+      const cost = towerBuildCost(state, type);
+      b.set(String(cost), enabled);
       b.setPicked(pick === type);
+      if (portrait) {
+        const price = b.labelObjects[0];
+        const priceColor = enabled ? CLEAN.gold : !locked && cost > state.gold ? '#ffb5a0' : CLEAN.subdued;
+        if (price.style.color !== priceColor) price.setColor(priceColor);
+      }
       if (!redraw) continue;
       const label = this.names![i];
       const color = enabled ? CLEAN.ink : CLEAN.subdued;
       if (label.style.color !== color) label.setColor(color);
       const r = b.rect;
-      const away = cap !== undefined && i < 2 ? (i === 0 ? -1 : 1) * 22 : 0;
-      const x = r.x + r.width / 2 + away;
-      const y = r.y + (portrait ? (interLoaded ? 18 : 21) : 13);
+      const away = !this.permitBox && cap !== undefined && i < 2 ? (i === 0 ? -1 : 1) * 22 : 0;
+      const x = r.x + r.width / 2 + away - (portrait && locked && !away ? 6 : 0);
+      const y = r.y + (portrait ? CLEAN_ART_Y : 13);
       const g = paint!;
       const alpha = locked ? .38 : enabled ? 1 : .62;
       const image = this.portraits?.[i];
       if (image) image.setPosition(x, y).setAlpha(alpha);
       else {
-        const scale = portrait ? .98 : .68;
+        const scale = portrait ? 1.18 : .68;
         g.save().translateCanvas(x, y).scaleCanvas(scale, scale);
         drawTowerShape(g, type, { x: 0, y: 0 }, -Math.PI / 2, false, alpha);
         g.restore();
       }
-      if (locked) glyph(g, 'lock', r.x + r.width - 13, r.y + 13, portrait ? 20 : 15, 0xc4ded6);
+      if (locked && portrait) {
+        const badge = { x: r.x + r.width - 35, y: r.y + 14, width: 29, height: 29 };
+        rounded(g, badge, CLEAN.ground, CLEAN.edge, 9);
+        glyph(g, 'lock', badge.x + badge.width / 2, badge.y + badge.height / 2, 18, 0xe0eee6);
+      } else if (locked) glyph(g, 'lock', r.x + r.width - 13, r.y + 13, 15, 0xc4ded6);
     }
     if (redraw) this.icons!.finish();
     const names = this.names!;
@@ -238,10 +257,11 @@ export class BuildBar {
       const label = towerCountText(state.towers.length, cap);
       if (this.count.text !== label) this.count.setText(label);
       const second = this.buttons[1].rect;
-      const size = portrait ? 26 : 14;
-      this.count.setPosition(first.x + first.width + 1, first.y + (portrait ? (interLoaded ? 19.5 : 20) : 13));
-      const area = { ...first, width: second.x + second.width - first.x, height: portrait ? 40 : 26 };
-      this.count.setVisible(this.tallyFit.fit(size, [textSlot(this.count, area)]));
+      const box = this.permitBox;
+      if (box) this.count.setOrigin(1, .5).setPosition(box.x + box.width - 5, box.y + box.height / 2);
+      else this.count.setPosition(first.x + first.width + 1, first.y + 13);
+      const area = box ?? { ...first, width: second.x + second.width - first.x, height: 26 };
+      this.count.setVisible(this.tallyFit.fit(portrait ? 25 : 14, [textSlot(this.count, area)]));
     }
   }
 

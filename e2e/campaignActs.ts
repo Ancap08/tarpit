@@ -98,7 +98,7 @@ export async function checkSize(page: Page) {
   expect(issues).toEqual([]);
 }
 
-export function campaignActSuite(touch: boolean, phone = false) {
+export function campaignActSuite(touch: boolean, phone = false, phoneHeight?: number) {
   test('the two roads, first visit, feat awards and the last writ', async ({ page }, info) => {
     test.setTimeout(180_000);
     const click = (key: string) => press(page, key, touch);
@@ -251,7 +251,7 @@ export function campaignActSuite(touch: boolean, phone = false) {
 
   test('painted loading progress fits the second-act Play button', async ({ page }) => {
     test.setTimeout(90_000);
-    if (phone) await page.setViewportSize({ width: 390, height: 664 });
+    if (phone && phoneHeight === undefined) await page.setViewportSize({ width: 390, height: 664 });
     await useTallFontMetrics(page);
     await page.goto('/?test=1&look=painted');
     await waitForFirstScreen(page);
@@ -278,7 +278,7 @@ export function campaignActSuite(touch: boolean, phone = false) {
     expect(await api(page, t => t.painted().active)).toBe(true);
   });
 
-  for (const height of phone ? [844, 664] : [0]) {
+  for (const height of phoneHeight !== undefined ? [phoneHeight] : phone ? [844, 664] : [0]) {
     if (height) test(`C10: every Act Two notice fits with wide text at 390x${height}`, async ({ page }) => {
       test.setTimeout(90_000);
       await page.setViewportSize({ width: 390, height });

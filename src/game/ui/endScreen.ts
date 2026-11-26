@@ -82,7 +82,7 @@ export class EndScreen {
     const buttonFont = board === TAXED_PORTRAIT ? '23px' : '22px';
 
     this.veil = scene.add
-      .rectangle(MAP_AREA.x, MAP_AREA.y, MAP_AREA.width, MAP_AREA.height, this.printed ? 0xc8b99a : COLORS.endVeil, this.printed ? .975 : .38)
+      .rectangle(MAP_AREA.x, MAP_AREA.y, MAP_AREA.width, MAP_AREA.height, this.printed ? 0xc8b99a : COLORS.endVeil, this.printed ? (salute ? .975 : 1) : .38)
       .setOrigin(0, 0);
     if (salute) {
       // The evening salute shines through the open field around the paper.
@@ -238,11 +238,11 @@ export class EndScreen {
   /** Lay the sheet over the field. Offsets affect only the rendered objects. */
   private printLayout(state: GameState): void {
     const phone = this.portrait;
-    const width = phone ? Math.min(this.cx * 2 - 48, 670) : 720;
+    const width = phone ? Math.min(this.cx * 2 - 46, 730) : 720;
     const x = this.cx - width / 2;
     const pad = phone ? 25 : 22;
     const inner = width - 2 * pad;
-    const gap = phone ? 16 : 9;
+    const gap = phone ? 14 : 9;
     const tall = phone ? 26 : 16;
     const scene = this.title.scene;
     const picture = this.picture!;
@@ -251,7 +251,7 @@ export class EndScreen {
     const paperLabel = (label: Phaser.GameObjects.Text, px: number, wrap: number, color: string, fontStyle = 'normal') =>
       label.setStyle({ color, fontSize: px, fontStyle, align: 'center', metrics: textMetrics(px), wordWrap: { width: wrap }, lineSpacing: 0 })
         .setOrigin(.5, 0).setDepth(11);
-    const titleSize = phone ? this.shown === 'won' ? 98 : 70 : 55;
+    const titleSize = phone ? this.shown === 'won' ? 86 : 66 : 55;
     paperLabel(this.title, titleSize, inner, this.shown === 'won' ? PRINT.ink : PRINT.red);
     // Caslon's display-size descenders extend beyond the small-label line box.
     this.title.setPadding(0, 0, 0, Math.ceil(titleSize * .12));
@@ -267,14 +267,14 @@ export class EndScreen {
     this.starRow?.setDepth(11).setScale(phone ? 2.04 : 1.3);
     const stars = this.starRow?.getBounds().height ?? 0;
     const photoW = phone ? inner : 306;
-    const photoH = photoW / 2 + (phone ? 12 : 0);
+    const photoH = photoW / 2 + (phone ? 4 : 0);
     const rowsH = details.reduce((sum, row) => sum + row.height + gap, 0);
     const headline = pad + (this.folio ? this.folio.height + 2 * gap : 0) + this.title.height + gap + (stars ? stars + gap : 0);
     const body = phone ? photoH + gap + rowsH : Math.max(photoH, rowsH);
     const reply = (this.story.text ? this.story.height + gap : 0) + (this.close ? this.close.height + gap : 0);
     const tapH = phone ? Math.max(89, Math.ceil(44 * scene.scale.displayScale.y)) : 49;
     const actions = phone && this.hasAdvance ? 2 * tapH + gap : tapH;
-    const height = headline + body + reply + actions + gap + 2 * pad;
+    const height = headline + body + reply + actions + gap + pad;
     const y = this.cy - height / 2;
     const g = this.panel.clear();
     sheet(g, { x, y, width, height });
