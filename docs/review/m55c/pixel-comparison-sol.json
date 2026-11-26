@@ -1,0 +1,840 @@
+{
+  "switchOff": {
+    "main": "b19d281",
+    "after": "6d39820",
+    "identicalPngs": 78,
+    "sha256": {
+      "tablet/visual-tablet.spec.ts/tablet-map-wave0.png": "eeaff40380ad7c20bc7d45d2523463b91672167af343372692f5232a1df68f29",
+      "chromium/campaign-screens.spec.ts/card.png": "dc5f68893185bfc56c337740727b53632d45296f78b070480a48cf10c0d22b9f",
+      "chromium/campaign-screens.spec.ts/map-mixed.png": "c81991bf4fd035632c3df43250a35931b9a3fcecd226fb6614a6fa8c19d62745",
+      "chromium/campaign-screens.spec.ts/result-loss.png": "c464deb4ec869d2b54f3f30cd38e7337d2844d5c96d81c48da46900b12f4409a",
+      "chromium/campaign-screens.spec.ts/result-win.png": "b2b15198b0abff51d533cb0e23a86233cca3c9ecdb8bf695e6c452ed24d4ec34",
+      "chromium/campaign-screens.spec.ts/map-fresh.png": "a50a985956e67af967dd552d45269936488bcaac780e4924a5513bde63609621",
+      "chromium/campaign-screens.spec.ts/first.png": "ab711a52c24ecf888352008aa78bcff18ae5bb208936cd99341c0e1968a093e2",
+      "chromium/visual.spec.ts/won.png": "15713c807ba96bb9e2d775a86c7f835ffd32314bafd21906caee59345e61febf",
+      "chromium/visual.spec.ts/map-riverbend-midwave.png": "25816da39ad0eceddfd0163fe2f6a7e9a8ae5d84a967526315f6fc42e5826103",
+      "chromium/visual.spec.ts/new-towers.png": "571fe943a1bb46a6f5f1d07b839b6c24035c5aa0e8708287023bcef92c7a0bf1",
+      "chromium/visual.spec.ts/enemies.png": "b353a89cfe70fadfbae1a5888872e04c66584911013db9d9b00e06e601100cc1",
+      "chromium/visual.spec.ts/special-aim.png": "2e2ffb9e6441db4e25e6d240621720ea198d8de879d0b56f96039dae31b045c5",
+      "chromium/visual.spec.ts/special-fired.png": "375690338d147bce64450d25b0670bc3f22555ab90a61d5e3238550cd9ea807b",
+      "chromium/visual.spec.ts/upgrade-choice.png": "d083007775be1f06371c8fec44d03ce1faddf6cb0c0faaf0b967e6224f36977e",
+      "chromium/visual.spec.ts/placing.png": "d85163b6d72c909d64db29c77612ee2d1d756747f3ef5f48dfbde48ebaf900fe",
+      "chromium/visual.spec.ts/title.png": "b18444d595fabb8f5cd8bf4031f131c649f4751ff41367849805da10ab180306",
+      "chromium/visual.spec.ts/map-wave0.png": "b05e5890839de77bccaf9a53a5d5d10bd02d55764e3ec8d6d2ff107d9de62519",
+      "chromium/visual.spec.ts/boon-icons.png": "6f7373a4ae8f38f20f17a8a14259985362d4bc5a06d6faf42f369af2cc2b2f25",
+      "chromium/visual.spec.ts/title-best.png": "a74e297d368d9ac0a8a8dce9c96ea2c9bcf4397ca294452ade74d680f1985a2b",
+      "chromium/visual.spec.ts/guards-holding.png": "564253041767643679d7ae5d1278326722c8786ae6c9209a091a7efa76a88758",
+      "chromium/visual.spec.ts/barricade-holding.png": "2a6ff05d9512527f01631b817248af381f36ca87c4826f8345192b2387f53b5f",
+      "chromium/visual.spec.ts/boon-pick.png": "de296fb083dfafe6257b25d0dee206343df16f3f294dafecb05de142d96ebce2",
+      "chromium/visual.spec.ts/boss.png": "886fb232d6c2ddf66e67e6af11e9c2111869a6435d5ac51ec30693ca06216220",
+      "chromium/visual.spec.ts/harpies.png": "a7add4073547fa1e910bd45e7cd5c3488fc95e5ba0183719bf212ab2aaed69ee",
+      "chromium/visual.spec.ts/tower-selected.png": "3fc9a8f0a63b68c030c3ad7e3907bfbd98e5f544cdcf3eaa2bc8fa117a668dcc",
+      "chromium/visual.spec.ts/special-recharging.png": "07780f7e5a69889a6151705c34cee842dda3667061669b3fa78829467d89059f",
+      "chromium/visual.spec.ts/painted-placing.png": "e5fb0ce9d4814afbc130c5eaa208f796d969e890f152285f5176931059384724",
+      "chromium/visual.spec.ts/lost.png": "83a4de358dc8cc3a76e0c47c8b8d62bda93fac32219b450bc4c7ed2699fe4d69",
+      "chromium/visual.spec.ts/title-hard.png": "c9b1a910ae90dbd617c851f5148193f57adbf54943ca2a8ed5a24b4b23fe0e66",
+      "chromium/visual.spec.ts/endless-hud.png": "638182da065164c21130ce7bc3ec665395477e95d17bbfe6e1eb5af560b6eca5",
+      "chromium/visual.spec.ts/reward-pick-wave10.png": "1aaabb86f2bf159cedc596fd412d7a3fbe9a4cf39a44a7757da4d619784abcf4",
+      "chromium/visual.spec.ts/special-fire-zone.png": "ff14e9eb562a6cd7d82a11335fcf75c86f085930bfb3265ae57457e157811c96",
+      "chromium/visual.spec.ts/pack-call.png": "8d3faed8c577999d876584fa9c06221bb33ef8b1006125fd6cf9e1414dd11f28",
+      "chromium/visual.spec.ts/painted-midwave.png": "bffbf2ace341ac94d9e2a39e7c0853713d6b8d1366b5168547047653ce33674c",
+      "chromium/visual.spec.ts/map-riverbend-wave0.png": "acbeab0c9b59d3558cf1144803e33836889e26d7be945b05da687acd3eff2a9c",
+      "chromium/visual.spec.ts/act2.png": "94e558b4b29c60d4a0b98575a7ed9216b48bae737049c906d9a436ed989a3ab2",
+      "chromium/visual.spec.ts/riverbend-placing-invalid.png": "85572a1aa96d58c19cef6a49e12423ca5d1e0cf059d1b3766d433495f58d066c",
+      "chromium/visual.spec.ts/map-switchback-midwave.png": "d96477a38035996322562c13d94ccd6c08b45499bbfe22d0711e02556fcc54e4",
+      "chromium/visual.spec.ts/placing-invalid.png": "915aed06781f2127ede5a8515f545de919d46b8b51e3031f1f6db4b7f6e76d04",
+      "chromium/visual.spec.ts/towers-level3.png": "783a9002db1d6037e90d27c73aed9c65f57005c436880d72ea746b0146001d2c",
+      "chromium/visual.spec.ts/special-tar-zone.png": "05f4b97a77208aece61491ece4162565471576f9b45f6d0dbb047c4a48f65594",
+      "chromium/visual.spec.ts/guards-aim.png": "6c370c474b8e4481ceffe2cadb2162bdc91bb9b00abd6a29f78682d6eff321c0",
+      "chromium/visual.spec.ts/painted-guards-holding.png": "2e3a2ad251a6120808e5b0456837b4304b1bc1c924aa65ca425199ddd5638478",
+      "chromium/visual.spec.ts/m37-midwave.png": "2bba90320dcdb4c40fd21fcca2e5da6066a522d88b62ca53aa94f2ce94aeff76",
+      "chromium/visual.spec.ts/grumblemaw.png": "f040e6bf8fc11c10c3c334c309ee235ec81474477fea1b23fc43035a0887987b",
+      "chromium/visual.spec.ts/mid-wave.png": "fd625833de0018960b32199ed9d32c4894e420a5e0a0eabe27a34be42f9bca5e",
+      "chromium/visual.spec.ts/painted-meadow-wave0.png": "0904181d4100ffae21464dabf4ea164021e1724a393ed187392319f221c22391",
+      "chromium/visual.spec.ts/planning.png": "d91f6898f67a2af55d33bcd2006f592d7c5e27910dd5cd8f446349bb93e5bc04",
+      "chromium/visual.spec.ts/barricade-aim.png": "a5a8fbad7f7312fa79f6d91de67e072d779184f6e57a110ae259a45a8a9da9fd",
+      "chromium/visual.spec.ts/map-switchback-wave0.png": "8b94c836151a2cda948b614042ddcc61f0934a199de5b743c60e00bdc4bf7177",
+      "chromium/visual.spec.ts/painted-boss.png": "cfbd3337a854323a4f7adb6dcecb34a1bb7bd236b588552f3018c4ca6d5cbff7",
+      "phone/visual-phone.spec.ts/phone-painted-midwave.png": "378f4238d5ae78932a9a00e2fba8bed44af032b0b6829fe368b9a8612effad5e",
+      "phone/visual-phone.spec.ts/phone-lost.png": "36a1a0b2ae616746c2fa5552cd65d82326e21a05bb1a6f1665a157e3cbae95fa",
+      "phone/visual-phone.spec.ts/phone-title.png": "25d0da8e55eeadada461c3c1723515504cbb8c48fd35735e399299773e7ad22f",
+      "phone/visual-phone.spec.ts/phone-boss.png": "f31fe180c3cb27cc47ec5c83118fdcf55020f2974b02f57ef2e21e9f42905927",
+      "phone/visual-phone.spec.ts/phone-tar-zone.png": "30843439db74bb02ba123984c593dc293f0008cde86f03a978938cba8e84f77d",
+      "phone/visual-phone.spec.ts/phone-upgrade-choice.png": "451129387b2366f3b63130b34346df65929d19a02910146996a854761d3ced12",
+      "phone/visual-phone.spec.ts/phone-guards-holding.png": "42f2d365580b6c935ca41fb691188c0d07fd428d6189db2235e9f8d3d80ce34c",
+      "phone/visual-phone.spec.ts/phone-boon-pick.png": "452a1e46743d8d7d5973911ffe2d7d57a122144c61f6c4b703dfe6b5ec14ba72",
+      "phone/visual-phone.spec.ts/phone-boon-icons.png": "6425a519596d3866c8d451ca98122c3ae31ac30c581042e6b74565d260cb881c",
+      "phone/visual-phone.spec.ts/phone-switchback-wave0.png": "e0de205eec027659ca88bff850963c06b230bd82134c1f043ec239191b30aa78",
+      "phone/visual-phone.spec.ts/phone-aim.png": "f494b26c7378b2a2c4ced864534ac7368ddf9ae02a383eec40f96b26107a6ade",
+      "phone/visual-phone.spec.ts/phone-placing.png": "d6ad73e5c7c271dda01291f690e1d59e43a6ef9a68513da0df7e8f4c7f10ba77",
+      "phone/visual-phone.spec.ts/phone-won.png": "fffd707c98582dad78003d121c2c10da65e04cf5c518933f33864c31bd2cb82e",
+      "phone/visual-phone.spec.ts/phone-panel.png": "b08fb79b4a98c215a143dae0a0a0d89c897f852225440661d7f68d450c5de229",
+      "phone/visual-phone.spec.ts/phone-meadow-wave0.png": "4534fe3c0e91621876049a7adbddf5e75f20aa25b763c69be9aff0fa65434ec5",
+      "phone/visual-phone.spec.ts/phone-midwave.png": "dac3a9d50105aee7a794c803617dff0cc4b206ada97938f445e5570bb2c24eed",
+      "phone/visual-phone.spec.ts/phone-grumblemaw.png": "375a6eb2b6849d17c86e0cabeeff803b85dd3836fc47c129e1ec03f79370f8b2",
+      "phone/visual-phone.spec.ts/phone-snap.png": "7b967c1f64c74e4802b5c320ef55e99200c04adac7d96ac55c425edb3f9ef22c",
+      "phone/visual-phone.spec.ts/phone-riverbend-wave0.png": "ed5ea9448ade07ac4d912b51620b71b9c24398af9876823a9fd09d281af19109",
+      "phone/visual-phone.spec.ts/phone-magnifier.png": "55264ff6c0e9e3c63fcaf194430fd65300479d00b0dfcf2d770816f67634f04c",
+      "phone/visual-phone.spec.ts/phone-barricade-holding.png": "b37fd1aefe4112545a815fbbc1a21e8b9233ed99e589a5e18a0bca41be4b5c99",
+      "phone/campaign-screens-phone.spec.ts/card.png": "d0feb894950b012d09df7f5d56a05b6325f0d04223af19430db3eb76a66b6c27",
+      "phone/campaign-screens-phone.spec.ts/map-mixed.png": "e4ce7bd3f6e482996cddda0de0a00a4d808c0ce588c1e7dcffb3eb78545a469b",
+      "phone/campaign-screens-phone.spec.ts/result-loss.png": "78e92a4fa7710214dad4f684aab725112a80aed3420e99d63548c2fe58a1c090",
+      "phone/campaign-screens-phone.spec.ts/result-win.png": "85df850e8e384dd67e8b690ef071cac8ded435321826aea1286d6497b813aea1",
+      "phone/campaign-screens-phone.spec.ts/map-fresh.png": "9a2dcf1677d002ea64e92e1d355ee23c14dd43fc727df85ea5e27bd654a58e37",
+      "phone/campaign-screens-phone.spec.ts/first.png": "822fd6fa311d9a653a4f0bce61da314c7865b53f57cec7ec736e0333c77a4d72"
+    },
+    "captureNotes": "The first parallel capture differed for guards-holding.png (609 pixels). A one-worker recapture of origin/main matched the branch capture exactly. The isolated branch test also passed. The remaining 77 pairs matched on the first capture."
+  },
+  "switchOn": {
+    "before": "83738c8",
+    "after": "6d39820",
+    "viewportCss": [
+      390,
+      656
+    ],
+    "dpr": 3,
+    "conditions": "Painted campaign levels 20 and 25 at setup, after changing the readouts and starting a wave, with a damage number, and after its expiry.",
+    "textCrops": {
+      "20-status-title": {
+        "deviceRectInPanelCrop": [
+          32,
+          27,
+          482,
+          68
+        ],
+        "dimensions": [
+          450,
+          41
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null
+      },
+      "20-status-gold": {
+        "deviceRectInPanelCrop": [
+          68,
+          77,
+          246,
+          117
+        ],
+        "dimensions": [
+          178,
+          40
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null
+      },
+      "20-status-lives": {
+        "deviceRectInPanelCrop": [
+          394,
+          77,
+          545,
+          117
+        ],
+        "dimensions": [
+          151,
+          40
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null
+      },
+      "20-status-wave": {
+        "deviceRectInPanelCrop": [
+          656,
+          77,
+          833,
+          117
+        ],
+        "dimensions": [
+          177,
+          40
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null
+      },
+      "20-status-preview": {
+        "deviceRectInPanelCrop": [
+          32,
+          161,
+          553,
+          206
+        ],
+        "dimensions": [
+          521,
+          45
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null
+      },
+      "20-dock-musketeer": {
+        "deviceRectInPanelCrop": [
+          30,
+          84,
+          204,
+          160
+        ],
+        "dimensions": [
+          174,
+          76
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null
+      },
+      "20-dock-special": {
+        "deviceRectInPanelCrop": [
+          146,
+          207,
+          279,
+          297
+        ],
+        "dimensions": [
+          133,
+          90
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null
+      },
+      "20-dock-next": {
+        "deviceRectInPanelCrop": [
+          641,
+          200,
+          801,
+          289
+        ],
+        "dimensions": [
+          160,
+          89
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null
+      },
+      "20-dock-speed": {
+        "deviceRectInPanelCrop": [
+          1068,
+          220,
+          1123,
+          272
+        ],
+        "dimensions": [
+          55,
+          52
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null
+      },
+      "25-status-title": {
+        "deviceRectInPanelCrop": [
+          32,
+          27,
+          482,
+          68
+        ],
+        "dimensions": [
+          450,
+          41
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null
+      },
+      "25-status-gold": {
+        "deviceRectInPanelCrop": [
+          68,
+          77,
+          246,
+          117
+        ],
+        "dimensions": [
+          178,
+          40
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null
+      },
+      "25-status-lives": {
+        "deviceRectInPanelCrop": [
+          394,
+          77,
+          545,
+          117
+        ],
+        "dimensions": [
+          151,
+          40
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null
+      },
+      "25-status-wave": {
+        "deviceRectInPanelCrop": [
+          656,
+          77,
+          833,
+          117
+        ],
+        "dimensions": [
+          177,
+          40
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null
+      },
+      "25-status-preview": {
+        "deviceRectInPanelCrop": [
+          33,
+          127,
+          904,
+          163
+        ],
+        "dimensions": [
+          871,
+          36
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null
+      },
+      "25-dock-musketeer": {
+        "deviceRectInPanelCrop": [
+          30,
+          84,
+          204,
+          160
+        ],
+        "dimensions": [
+          174,
+          76
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null
+      },
+      "25-dock-special": {
+        "deviceRectInPanelCrop": [
+          146,
+          207,
+          279,
+          297
+        ],
+        "dimensions": [
+          133,
+          90
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null
+      },
+      "25-dock-next": {
+        "deviceRectInPanelCrop": [
+          641,
+          200,
+          801,
+          289
+        ],
+        "dimensions": [
+          160,
+          89
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null
+      },
+      "25-dock-speed": {
+        "deviceRectInPanelCrop": [
+          1068,
+          220,
+          1123,
+          272
+        ],
+        "dimensions": [
+          55,
+          52
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null
+      }
+    },
+    "panelAndCombatCrops": {
+      "20-setup-status": {
+        "cssClip": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 82
+        },
+        "dimensions": [
+          1170,
+          246
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null,
+        "beforePngSha256": "4f81e7d6f6d1ee0d84fb8f0744434ffd1df430fd5577add1f26dbb49c1b5b041",
+        "afterPngSha256": "4f81e7d6f6d1ee0d84fb8f0744434ffd1df430fd5577add1f26dbb49c1b5b041"
+      },
+      "20-setup-dock": {
+        "cssClip": {
+          "x": 0,
+          "y": 551,
+          "width": 390,
+          "height": 105
+        },
+        "dimensions": [
+          1170,
+          315
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null,
+        "beforePngSha256": "4744123a0409dae6c269b326050067bf9302e598f1ef3248a0d0f8f736bf4a62",
+        "afterPngSha256": "4744123a0409dae6c269b326050067bf9302e598f1ef3248a0d0f8f736bf4a62"
+      },
+      "20-setup-combat": {
+        "cssClip": {
+          "x": 100,
+          "y": 250,
+          "width": 195,
+          "height": 115
+        },
+        "dimensions": [
+          585,
+          345
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null,
+        "beforePngSha256": "caa8be7605c485b9ab255eb3b07e9c1b7ed5f79e304974f305d441c50a38ebce",
+        "afterPngSha256": "caa8be7605c485b9ab255eb3b07e9c1b7ed5f79e304974f305d441c50a38ebce"
+      },
+      "20-changed-status": {
+        "cssClip": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 82
+        },
+        "dimensions": [
+          1170,
+          246
+        ],
+        "changedPixels": 306,
+        "maxChannelDelta": 21,
+        "differenceBounds": [
+          37,
+          38,
+          1115,
+          151
+        ],
+        "beforePngSha256": "9bf845c8023ea2024768e96c031ad380782f23a06e9de59bac97169e030656c0",
+        "afterPngSha256": "a7f639ee353f6b8278c6b18dbfac308bd9995388ff5d63cccf53bdeea1daeb33"
+      },
+      "20-changed-dock": {
+        "cssClip": {
+          "x": 0,
+          "y": 551,
+          "width": 390,
+          "height": 105
+        },
+        "dimensions": [
+          1170,
+          315
+        ],
+        "changedPixels": 452,
+        "maxChannelDelta": 4,
+        "differenceBounds": [
+          14,
+          183,
+          373,
+          308
+        ],
+        "beforePngSha256": "743e472f5d889ee534b9b596182fdaf1f47a490196dbc6b096c8fb554428828a",
+        "afterPngSha256": "5e6a3e065476d88ef426e3bd25120fb20bf7693fdfa3809b9801271113bb252a"
+      },
+      "20-changed-combat": {
+        "cssClip": {
+          "x": 100,
+          "y": 250,
+          "width": 195,
+          "height": 115
+        },
+        "dimensions": [
+          585,
+          345
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null,
+        "beforePngSha256": "caa8be7605c485b9ab255eb3b07e9c1b7ed5f79e304974f305d441c50a38ebce",
+        "afterPngSha256": "caa8be7605c485b9ab255eb3b07e9c1b7ed5f79e304974f305d441c50a38ebce"
+      },
+      "20-damage-status": {
+        "cssClip": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 82
+        },
+        "dimensions": [
+          1170,
+          246
+        ],
+        "changedPixels": 306,
+        "maxChannelDelta": 21,
+        "differenceBounds": [
+          37,
+          38,
+          1115,
+          151
+        ],
+        "beforePngSha256": "9bf845c8023ea2024768e96c031ad380782f23a06e9de59bac97169e030656c0",
+        "afterPngSha256": "a7f639ee353f6b8278c6b18dbfac308bd9995388ff5d63cccf53bdeea1daeb33"
+      },
+      "20-damage-dock": {
+        "cssClip": {
+          "x": 0,
+          "y": 551,
+          "width": 390,
+          "height": 105
+        },
+        "dimensions": [
+          1170,
+          315
+        ],
+        "changedPixels": 452,
+        "maxChannelDelta": 4,
+        "differenceBounds": [
+          14,
+          183,
+          373,
+          308
+        ],
+        "beforePngSha256": "743e472f5d889ee534b9b596182fdaf1f47a490196dbc6b096c8fb554428828a",
+        "afterPngSha256": "5e6a3e065476d88ef426e3bd25120fb20bf7693fdfa3809b9801271113bb252a"
+      },
+      "20-damage-combat": {
+        "cssClip": {
+          "x": 100,
+          "y": 250,
+          "width": 195,
+          "height": 115
+        },
+        "dimensions": [
+          585,
+          345
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null,
+        "beforePngSha256": "caa8be7605c485b9ab255eb3b07e9c1b7ed5f79e304974f305d441c50a38ebce",
+        "afterPngSha256": "caa8be7605c485b9ab255eb3b07e9c1b7ed5f79e304974f305d441c50a38ebce"
+      },
+      "20-expired-status": {
+        "cssClip": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 82
+        },
+        "dimensions": [
+          1170,
+          246
+        ],
+        "changedPixels": 306,
+        "maxChannelDelta": 21,
+        "differenceBounds": [
+          37,
+          38,
+          1115,
+          151
+        ],
+        "beforePngSha256": "9bf845c8023ea2024768e96c031ad380782f23a06e9de59bac97169e030656c0",
+        "afterPngSha256": "a7f639ee353f6b8278c6b18dbfac308bd9995388ff5d63cccf53bdeea1daeb33"
+      },
+      "20-expired-dock": {
+        "cssClip": {
+          "x": 0,
+          "y": 551,
+          "width": 390,
+          "height": 105
+        },
+        "dimensions": [
+          1170,
+          315
+        ],
+        "changedPixels": 452,
+        "maxChannelDelta": 4,
+        "differenceBounds": [
+          14,
+          183,
+          373,
+          308
+        ],
+        "beforePngSha256": "743e472f5d889ee534b9b596182fdaf1f47a490196dbc6b096c8fb554428828a",
+        "afterPngSha256": "5e6a3e065476d88ef426e3bd25120fb20bf7693fdfa3809b9801271113bb252a"
+      },
+      "20-expired-combat": {
+        "cssClip": {
+          "x": 100,
+          "y": 250,
+          "width": 195,
+          "height": 115
+        },
+        "dimensions": [
+          585,
+          345
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null,
+        "beforePngSha256": "caa8be7605c485b9ab255eb3b07e9c1b7ed5f79e304974f305d441c50a38ebce",
+        "afterPngSha256": "caa8be7605c485b9ab255eb3b07e9c1b7ed5f79e304974f305d441c50a38ebce"
+      },
+      "25-setup-status": {
+        "cssClip": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 65
+        },
+        "dimensions": [
+          1170,
+          195
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null,
+        "beforePngSha256": "36cd76999aefcf1ac44cc1bc78fe0d3df3069baaa624a7ffd55e0793939c152b",
+        "afterPngSha256": "36cd76999aefcf1ac44cc1bc78fe0d3df3069baaa624a7ffd55e0793939c152b"
+      },
+      "25-setup-dock": {
+        "cssClip": {
+          "x": 0,
+          "y": 548,
+          "width": 390,
+          "height": 108
+        },
+        "dimensions": [
+          1170,
+          324
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null,
+        "beforePngSha256": "a9003e2f1d965317604d6d30587a6a498ebb4adf210db1e3717e1d56f19d7379",
+        "afterPngSha256": "a9003e2f1d965317604d6d30587a6a498ebb4adf210db1e3717e1d56f19d7379"
+      },
+      "25-setup-combat": {
+        "cssClip": {
+          "x": 100,
+          "y": 250,
+          "width": 195,
+          "height": 115
+        },
+        "dimensions": [
+          585,
+          345
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null,
+        "beforePngSha256": "cadf31fcfd0ccd9483d6156280f92a767ea40345d39a6aab4bb399846e98aa89",
+        "afterPngSha256": "cadf31fcfd0ccd9483d6156280f92a767ea40345d39a6aab4bb399846e98aa89"
+      },
+      "25-changed-status": {
+        "cssClip": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 65
+        },
+        "dimensions": [
+          1170,
+          195
+        ],
+        "changedPixels": 1082,
+        "maxChannelDelta": 27,
+        "differenceBounds": [
+          12,
+          10,
+          1160,
+          195
+        ],
+        "beforePngSha256": "300a59bc57eedc6e931bfcbc85c50963f2a6fb522a977aa74adfd4d4578cacce",
+        "afterPngSha256": "d32cea059822363ea69a1344ec4c968ee44ca03d7f4d860aebf5d98346717b95"
+      },
+      "25-changed-dock": {
+        "cssClip": {
+          "x": 0,
+          "y": 548,
+          "width": 390,
+          "height": 108
+        },
+        "dimensions": [
+          1170,
+          324
+        ],
+        "changedPixels": 1311,
+        "maxChannelDelta": 20,
+        "differenceBounds": [
+          12,
+          183,
+          1015,
+          317
+        ],
+        "beforePngSha256": "4535c39fbf6646c369288652ff8b89940b3d76e77e4bfe9cc8b1257b42ee6c1f",
+        "afterPngSha256": "2a5a081d159b271101dad67f21025f3a67f60895e959e43cefe79287ef33c45d"
+      },
+      "25-changed-combat": {
+        "cssClip": {
+          "x": 100,
+          "y": 250,
+          "width": 195,
+          "height": 115
+        },
+        "dimensions": [
+          585,
+          345
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null,
+        "beforePngSha256": "ec9c6ff85ada437d375f76491a2d39457d299a8c44ac3a9e768c753cdf4675d9",
+        "afterPngSha256": "ec9c6ff85ada437d375f76491a2d39457d299a8c44ac3a9e768c753cdf4675d9"
+      },
+      "25-damage-status": {
+        "cssClip": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 65
+        },
+        "dimensions": [
+          1170,
+          195
+        ],
+        "changedPixels": 1082,
+        "maxChannelDelta": 27,
+        "differenceBounds": [
+          12,
+          10,
+          1160,
+          195
+        ],
+        "beforePngSha256": "300a59bc57eedc6e931bfcbc85c50963f2a6fb522a977aa74adfd4d4578cacce",
+        "afterPngSha256": "d32cea059822363ea69a1344ec4c968ee44ca03d7f4d860aebf5d98346717b95"
+      },
+      "25-damage-dock": {
+        "cssClip": {
+          "x": 0,
+          "y": 548,
+          "width": 390,
+          "height": 108
+        },
+        "dimensions": [
+          1170,
+          324
+        ],
+        "changedPixels": 1311,
+        "maxChannelDelta": 20,
+        "differenceBounds": [
+          12,
+          183,
+          1015,
+          317
+        ],
+        "beforePngSha256": "4535c39fbf6646c369288652ff8b89940b3d76e77e4bfe9cc8b1257b42ee6c1f",
+        "afterPngSha256": "2a5a081d159b271101dad67f21025f3a67f60895e959e43cefe79287ef33c45d"
+      },
+      "25-damage-combat": {
+        "cssClip": {
+          "x": 100,
+          "y": 250,
+          "width": 195,
+          "height": 115
+        },
+        "dimensions": [
+          585,
+          345
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null,
+        "beforePngSha256": "ec9c6ff85ada437d375f76491a2d39457d299a8c44ac3a9e768c753cdf4675d9",
+        "afterPngSha256": "ec9c6ff85ada437d375f76491a2d39457d299a8c44ac3a9e768c753cdf4675d9"
+      },
+      "25-expired-status": {
+        "cssClip": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 65
+        },
+        "dimensions": [
+          1170,
+          195
+        ],
+        "changedPixels": 1082,
+        "maxChannelDelta": 27,
+        "differenceBounds": [
+          12,
+          10,
+          1160,
+          195
+        ],
+        "beforePngSha256": "300a59bc57eedc6e931bfcbc85c50963f2a6fb522a977aa74adfd4d4578cacce",
+        "afterPngSha256": "d32cea059822363ea69a1344ec4c968ee44ca03d7f4d860aebf5d98346717b95"
+      },
+      "25-expired-dock": {
+        "cssClip": {
+          "x": 0,
+          "y": 548,
+          "width": 390,
+          "height": 108
+        },
+        "dimensions": [
+          1170,
+          324
+        ],
+        "changedPixels": 1311,
+        "maxChannelDelta": 20,
+        "differenceBounds": [
+          12,
+          183,
+          1015,
+          317
+        ],
+        "beforePngSha256": "4535c39fbf6646c369288652ff8b89940b3d76e77e4bfe9cc8b1257b42ee6c1f",
+        "afterPngSha256": "2a5a081d159b271101dad67f21025f3a67f60895e959e43cefe79287ef33c45d"
+      },
+      "25-expired-combat": {
+        "cssClip": {
+          "x": 100,
+          "y": 250,
+          "width": 195,
+          "height": 115
+        },
+        "dimensions": [
+          585,
+          345
+        ],
+        "changedPixels": 0,
+        "maxChannelDelta": 0,
+        "differenceBounds": null,
+        "beforePngSha256": "ec9c6ff85ada437d375f76491a2d39457d299a8c44ac3a9e768c753cdf4675d9",
+        "afterPngSha256": "ec9c6ff85ada437d375f76491a2d39457d299a8c44ac3a9e768c753cdf4675d9"
+      }
+    }
+  }
+}
