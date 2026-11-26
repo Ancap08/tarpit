@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ENEMY_STATS, MAP_HEIGHT, MAP_WIDTH, type EnemyType, type LevelDef, type MapId, type WaveDef } from '../../sim';
+import { ENEMY_STATS, MAP_HEIGHT, MAP_WIDTH, type EnemyType, type GameState, type LevelDef, type MapId } from '../../sim';
 import { enemyArt } from './frames';
 import { waitForWorkerControl } from '../../sw/register';
 import { loadSharpArt, type SharpArt } from './sharp';
@@ -201,7 +201,7 @@ function registerSheets(textures: Phaser.Textures.TextureManager, atlas: HTMLIma
 export async function loadPainted(
   textures: Phaser.Textures.TextureManager, map: MapId, displayDensity: PaintedDensity,
   onProgress: (progress: number) => void, cancellation: AbortSignal,
-  options?: { keep?: true; siege?: LevelDef; sharp?: true; level?: LevelDef; waves?: readonly WaveDef[] },
+  options?: { keep?: true; siege?: LevelDef; sharp?: true; level?: LevelDef; fixed?: Pick<GameState, 'fixedWaves' | 'fixedSpecialUnlocks'> },
 ): Promise<PaintedAssets | undefined> {
   if (cancellation.aborted) return undefined;
   const siege = options?.siege;
@@ -234,7 +234,7 @@ export async function loadPainted(
       const load = (url: string, signal: AbortSignal) => getAsset(url, signal).then(r => decodeImage(r, signal));
       const groundKey = options.keep ? undefined : `painted:${map}:${density}x`;
       const [sharp, ground] = await Promise.race([aborted, Promise.all([
-        loadSharpArt(textures, options.level ?? siege, !!options.keep, !!siege, options.waves, url => load(url, signal),
+        loadSharpArt(textures, options.level ?? siege, !!options.keep, !!siege, options.fixed, url => load(url, signal),
           signal, registered, p => onProgress(p * .9), load),
         groundKey ? load(assetUrl(map, density, 'webp'), signal) : undefined,
       ])]);

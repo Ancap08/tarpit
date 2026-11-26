@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { allowedTowers, WAVES, type LevelDef, type TowerType, type WaveDef } from '../../sim';
+import { allowedTowers, specialAllowed, WAVES, type GameState, type LevelDef, type TowerType } from '../../sim';
 import { enemyArt, towerArt } from './frames';
 import type { PaintedAssets, PaintedName } from './loading';
 import layoutUrl from '../../../assets/art-painted/sharp/layout.json?url&no-inline';
@@ -115,7 +115,7 @@ async function loadSheets(
 
 export async function loadSharpArt(
   textures: Phaser.Textures.TextureManager, level: LevelDef | undefined, keep: boolean, siege: boolean,
-  waves: readonly WaveDef[] | undefined,
+  fixed: Pick<GameState, 'fixedWaves' | 'fixedSpecialUnlocks'> | undefined,
   loadImage: LoadImage, signal: AbortSignal, registered: string[], onProgress: (fraction: number) => void,
   loadExtra: (url: string, signal: AbortSignal) => Promise<HTMLImageElement>,
 ): Promise<SharpArt> {
@@ -128,7 +128,8 @@ export async function loadSharpArt(
   const all = allowedTowers({ cheated: true });
   const locked = all.filter(type => !open.includes(type));
   const entries = towerEntries(open, density, siege);
-  const enemies = new Set((waves ?? level?.waves ?? WAVES).flatMap(wave => wave.groups.map(group => group.type)));
+  const waves = level?.waves ?? fixed?.fixedWaves ?? WAVES;
+  const enemies = new Set(waves.flatMap(wave => wave.groups.map(group => group.type)));
   if (enemies.has('grumblemaw')) enemies.add('wolf');
   const hits = new Set<PaintedName>();
   for (const type of enemies) {
@@ -142,7 +143,11 @@ export async function loadSharpArt(
     }
   }
   if (enemies.has('harpy')) entries.set('harpy-shadow', 'harpy-shadow-2x');
-  if (keep && (!level || level.allowedSpecials.includes('guards'))) entries.set('guard', 'guard-4x');
+  // A cheat can make Guards usable on the same tick. Have their sheet ready
+  // even on a level that grants them only through the normal wave unlock.
+  if (specialAllowed({ level, wave: waves.length, cheated: true, fixedSpecialUnlocks: fixed?.fixedSpecialUnlocks }, 'guards')) {
+    entries.set('guard', keep ? 'guard-4x' : 'guard-2x');
+  }
   if (!siege) for (const scenery of SCENERY) {
     if (!keep || ['town', 'sack', 'royal-hoist', 'tossed-hat'].includes(scenery)) entries.set(scenery, scenery);
   }

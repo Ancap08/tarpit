@@ -703,11 +703,11 @@ export class TitleScene extends Phaser.Scene {
           return { keep, keepAssets };
         }),
         (async () => {
-          const waves = sharp && !level ? (await module).createKeep().fixedWaves : undefined;
+          const fixed = sharp && !level ? (await module).createKeep() : undefined;
           const painted = await loadPainted(this.textures, DEFAULT_MAP, density, fraction => {
             sprites = fraction;
             progress();
-          }, signal, { keep: true, siege, ...(sharp ? { sharp: true, level, waves } as const : {}) });
+          }, signal, { keep: true, siege, ...(sharp ? { sharp: true, level, fixed } as const : {}) });
           if (!painted) throw new Error('Keep pieces unavailable');
           if (painted.sharp) signal.addEventListener('abort', painted.sharp.release, { once: true });
           else if (siege) signal.addEventListener('abort', () => releasePaintedTextures(this.textures), { once: true });

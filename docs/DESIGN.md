@@ -1293,8 +1293,11 @@ The title screen offers Classic and Painted. Painted is the default for a fresh 
 - With `?ui=new`, Painted and Showpiece load trimmed, smoothly shaded Lifted
   pieces for the level's roster. The same tower models cover all levels and both
   upgrade paths. Enemies keep their 16 walk poses and the four Guards keep
-  their 32 idle and strike poses. Locked tower buttons use one preview pose
-  each. Opening the kit with the gold cheat fetches the added poses and shots.
+  their 32 idle and strike poses. The Guard sheet loads before play wherever
+  normal or gold-cheat rules can grant Guards. Locked tower buttons use one
+  preview pose each. Opening the kit with the gold cheat fetches the added
+  poses and shots. A missing sheet during play draws a plain substitute
+  and logs one warning per sheet name for the visit.
   Ordinary fields use 2 source pixels per game pixel. At the Old Keep,
   towers and flyers use 3 and ground enemies and Guards use 4, with
   King Grumblemaw at 3.25 to keep the finale within memory. The Keep ram has a 360 × 240 source cell and its mortar notice a

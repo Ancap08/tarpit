@@ -74,4 +74,31 @@ Lint, typecheck, build, size and the 441-row manifest passed. Vitest passed 3,01
 
 [Blender and Pillow packer](../../../scripts/art/m56-pieces.py) · [Lifted finish](../../../scripts/art/m56_finish.py) · [Browser captures and audits](../../../scripts/art/m56-review.ts) · [Comparison sheet generator](../../../scripts/art/m56-sheets.py)
 
+## Guard roster review fix
+
+The pushed build threw when Guards deployed on level 8, on all three Free play maps at wave 6, in Showpiece, and on level 1 after the gold cheat. The roster audit failed on all 30 ordinary visits and passed on the seven Keep visits. Guards were the only missing sheet it found. The audit stages game data and observes the real skin calls, including the King's pack spawns, each tower path and the cheat's added kit.
+
+Ordinary fields now load the 2× Guard sheet whenever the normal or cheat unlock can be reached. The Keep uses its existing 4× sheet. The new atlas has 32 poses and retains 1.12 MB decoded. A browser fault test removes the Guard texture and Goblin sheet entry. The battle draws plain pieces, advances 90 ticks and warns once per missing sheet.
+
+### Phone with four Guards deployed
+
+Retained decoded art in decimal MB, using the same source accounting as above. First Watch includes the cheat's extra tower and shot sheets.
+
+| Visit | Height (CSS px) | MB |
+|---|---:|---:|
+| First Watch, gold cheat | 844 | 28.96 |
+| Campaign level 8 | 844 | 33.30 |
+| Act One finale | 844 | 39.69 |
+| Window Money | 656 / 844 | 36.10 / 38.44 |
+| Act Two finale | 844 | 44.63 |
+| Free play | 844 | 44.76 |
+| Showpiece Free play | 844 | 47.33 |
+| Old Keep 21 / 22 | 844 | 50.90 / 53.70 |
+| Old Keep 23 / 24 | 844 | 58.76 / 58.77 |
+| Old Keep 25 | 656 / 844 | 68.12 / 68.12 |
+
+At 390 × 656 and DPR 3, the 40-enemy, 12-tower fixture with four Guards took 1.85 ms per frame with the switch off, 3.09 ms with the switched interface and stock sprites, and 3.04 ms with Lifted. These are the medians of three interleaved runs on Chromium with 4× CPU throttling and ANGLE Metal. Lifted's median frame interval was 16.60 ms and its p95 was 18.40 ms.
+
+The switch-off audit matched 30 pixel hashes, 15 state hashes and 15 texture and request inventories against the pushed build. The browser audit supports `guards` and `perf-guards` to repeat the measurements.
+
 Use a temporary folder for the Blender poses and audit captures. The browser script expects a build of the fetched main revision under its `baseline` subfolder for isolation, and the merged stock-sprites comparison build under `stock/dist` for timing. The archived Option C composites were built from the Soft atlases at commit `c8a91c6`.

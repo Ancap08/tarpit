@@ -1,4 +1,4 @@
-// PW_PORT=4373 node --experimental-strip-types scripts/art/m56-review.ts SCRATCH <baseline|review|shots|perf|download|lifecycle|options>
+// PW_PORT=4373 node --experimental-strip-types scripts/art/m56-review.ts SCRATCH <baseline|review|shots|perf|guards|perf-guards|download|lifecycle|options>
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
@@ -337,7 +337,54 @@ async function verifyLifecycle(browser: Browser) {
   console.log('Locked icon only, on-demand unlock, in-place restart and release on leaving passed.');
 }
 
-async function perf(browser: Browser) {
+async function withGuards(browser: Browser) {
+  const cases = [
+    [1, 844, 'painted'], [8, 844, 'painted'], [10, 844, 'painted'],
+    [11, 656, 'painted'], [11, 844, 'painted'], [20, 844, 'painted'],
+    [0, 844, 'painted'], [0, 844, 'showpiece'],
+    [21, 844, 'painted'], [22, 844, 'painted'], [23, 844, 'painted'], [24, 844, 'painted'],
+    [25, 656, 'painted'], [25, 844, 'painted'],
+  ] as const;
+  for (const [level, height, look] of cases) {
+    const context = await browser.newContext({ ...phone, viewport: { width: 390, height } });
+    try {
+      const page = await context.newPage();
+      const errors: string[] = [];
+      page.on('pageerror', error => errors.push(error.message));
+      await enter(page, level, `test=1&look=${look}&ui=new`);
+      await fixture(page);
+      const guards = await page.evaluate(async () => {
+        const scene = window.__tarpit!.game.scene.getScene('game') as GameScene;
+        const state = scene.state;
+        if (!state.gate) {
+          if (!state.level || state.level.id === 1) {
+            if (state.level) {
+              if (!scene.cheatGold().ok) throw new Error('Could not unlock the First Watch kit');
+              await (scene as unknown as { painted: { unlock?: Promise<void> } }).painted.unlock;
+            }
+            // The measurement starts on the first ordinary wave that grants Guards.
+            state.wave = 5;
+          } else {
+            state.wave = 0;
+          }
+          state.phase = 'setup';
+          state.specialRechargeTicks = 0;
+          const { x, y } = state.map.path[1];
+          if (!scene.startWave().ok || !scene.useSpecialAt('guards', x, y).ok) throw new Error('Could not deploy Guards');
+        }
+        return scene.uiState().special.guards.map(guard => guard.texture);
+      });
+      assert.deepEqual(guards, Array(4).fill(`painted:sharp:guard-${level >= 21 ? 4 : 2}x`));
+      assert.deepEqual(errors, []);
+      const { total, groups } = await retained(page);
+      const cap = level >= 21 ? 70_000_000 : 60_000_000;
+      assert.ok(total <= cap, JSON.stringify({ level, height, look, total, groups, cap }));
+      console.log(JSON.stringify({ level, height, look, guards: guards.length, total, groups, cap }));
+    } finally { await context.close(); }
+  }
+}
+
+async function perf(browser: Browser, guards: boolean) {
   const height = 656;
   const order = ['off', 'stock', 'lifted', 'lifted', 'stock', 'off', 'stock', 'off', 'lifted'] as const;
   for (const variant of order) {
@@ -352,7 +399,7 @@ async function perf(browser: Browser) {
       await enter(page, 0, 'perf=1&look=painted' + (ui ? '&ui=new' : ''));
       const cdp = await context.newCDPSession(page);
       await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
-      await page.evaluate(variant => {
+      await page.evaluate(({ variant, guards }) => {
         const game = window.__tarpit!.game;
         const scene = game.scene.getScene('game') as GameScene;
         if (!scene.paintedState().active) throw new Error('Painted fell back');
@@ -366,16 +413,18 @@ async function perf(browser: Browser) {
             if (scene.build({ row, col }, types[count % types.length]).ok) count++;
           }
         }
+        if (guards) scene.state.wave = 5;
         if (count !== 12 || !scene.spawnHorde(40, 245)) throw new Error('Perf fixture incomplete');
         scene.state.spawnedPerGroup.fill(99_999);
         for (const enemy of scene.state.enemies) enemy.hp = enemy.maxHp = 1e6;
-      }, variant);
+        if (guards && !scene.useSpecialAt('guards', 860, 192).ok) throw new Error('Perf squad did not deploy');
+      }, { variant, guards });
       await cdp.send('Performance.enable');
       await delay(900);
       const metric = async () => (await cdp.send('Performance.getMetrics')).metrics.find(m => m.name === 'TaskDuration')!.value;
       const before = await metric();
       const result = await page.evaluate(() => new Promise<{
-        frames: number; enemies: number; ticks: number; frameMedian: number; frameP95: number; renderer: string; canvas: number[];
+        frames: number; guards: number; enemies: number; ticks: number; frameMedian: number; frameP95: number; renderer: string; canvas: number[];
       }>(resolve => {
         const game = window.__tarpit!.game;
         const scene = game.scene.getScene('game') as GameScene;
@@ -393,7 +442,8 @@ async function perf(browser: Browser) {
           const gl = (game.renderer as Phaser.Renderer.WebGL.WebGLRenderer).gl;
           const info = gl?.getExtension('WEBGL_debug_renderer_info');
           const sorted = intervals.slice(1).sort((a, b) => a - b);
-          resolve({ frames: intervals.length, enemies: scene.state.enemies.length, ticks: scene.state.tick - tick0,
+          resolve({ frames: intervals.length, guards: scene.uiState().special.guards.filter(guard => guard.texture).length,
+            enemies: scene.state.enemies.length, ticks: scene.state.tick - tick0,
             frameMedian: sorted[Math.floor(sorted.length * .5)], frameP95: sorted[Math.floor(sorted.length * .95)],
             renderer: gl && info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : gl ? 'WebGL' : 'Canvas',
             canvas: [game.canvas.width, game.canvas.height] });
@@ -401,6 +451,7 @@ async function perf(browser: Browser) {
       }));
       const elapsed = await metric() - before;
       assert.equal(result.enemies, 40);
+      if (guards) assert.equal(result.guards, 4);
       assert.ok(result.frames > 30);
       console.log(JSON.stringify({ variant, height, ui, mainMsPerFrame: elapsed * 1000 / result.frames, ...result }));
     } finally { await context.close(); }
@@ -458,13 +509,14 @@ async function download(browser: Browser) {
 }
 
 if (mode === 'baseline') process.chdir(join(scratch, 'baseline'));
-const measuring = mode === 'perf';
+const measuring = mode === 'perf' || mode === 'perf-guards';
 async function work(browser: Browser) {
   if (mode === 'options') {
     const { captureOptions } = await import('./m56-options.ts');
     return captureOptions(browser, scratch, enter, fixture);
   }
-  if (measuring) return perf(browser);
+  if (measuring) return perf(browser, mode === 'perf-guards');
+  if (mode === 'guards') return withGuards(browser);
   if (mode === 'shots') return shots(browser);
   if (mode === 'download') return download(browser);
   if (mode === 'lifecycle') return verifyLifecycle(browser);

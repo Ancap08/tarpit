@@ -217,7 +217,7 @@ def pack(scratch):
         sheet = original[kind]
         old = list(shipped_frames(atlas, sheet))
         if kind == 'guard':
-            tiers = (4,)
+            tiers = (2, 4)
         elif kind == 'grumblemaw':
             # His much larger cell, doubled for the hit frames, sets the
             # finale's memory ceiling. Keep full density on the rest of the cast.

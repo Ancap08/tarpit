@@ -42,7 +42,7 @@ import { effectiveSlow, ENEMY_STATS, enemyPosition, isBoss, isTarred, positionAl
 import { bobOffset, DEATH_MS, burnPulse, FLAME_EVERY, HIT_FLASH_MS, Particles, statusTint, TINT } from './effects';
 import { awayFrom, deathPuff, KNOCK_MS, knockPx, knockShare } from '../fx/fxMath';
 import { enemyArt, walkFrame } from '../skin/frames';
-import type { PaintedSkin } from '../skin/painted';
+import { paintedFrame, type PaintedSkin } from '../skin/painted';
 import { FeatherTrail, makePlumage } from '../draw/feathers';
 import { facingAt } from './facing';
 import type { Layout } from '../layout';
@@ -513,11 +513,12 @@ export class EnemySprites {
           v.turn = undefined;
         } else {
           v.turn.previous.setPosition(v.sprite.x, v.sprite.y).setDepth(v.sprite.depth)
-            .setFrame(hitOffset + walkFrame(v.turn.facing, distance, false)).setScale(v.sprite.scaleX).setAlpha(1 - fade);
+            .setFrame(paintedFrame(v.turn.previous.texture, hitOffset + walkFrame(v.turn.facing, distance, false)))
+            .setScale(v.sprite.scaleX).setAlpha(1 - fade);
         }
       }
       v.facing = facing;
-      const index = hitOffset + walkFrame(facing, distance, this.frozen);
+      const index = paintedFrame(v.sprite.texture, hitOffset + walkFrame(facing, distance, this.frozen));
       if (Number(v.sprite.frame.name) !== index) v.sprite.setFrame(index);
       return;
     }
@@ -560,7 +561,7 @@ export class EnemySprites {
         scale: stance?.scale ?? 1,
         approach: v.ramApproach ?? { x: 0, y: 0 },
       });
-      v.sprite.setFrame(this.painted?.assets.sharp ? Number(ram.frame.slice(-1)) : ram.frame)
+      v.sprite.setFrame(paintedFrame(v.sprite.texture, this.painted?.assets.sharp ? Number(ram.frame.slice(-1)) : ram.frame))
         .setScale(v.nativeScale * ram.scaleX, (v.ramScaleY ?? v.nativeScale) * ram.scaleY);
       x += ram.dx;
       y += ram.dy;

@@ -389,6 +389,7 @@ the checker looks for it.
 | `assets/art-painted/sharp/grumblemaw-2x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed Lifted pose for the optional Painted roster |
 | `assets/art-painted/sharp/grumblemaw-3.25x-moon.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Moonlit Lifted pose for the optional Old Keep roster |
 | `assets/art-painted/sharp/grumblemaw-3.25x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed Lifted pose for the optional Painted roster |
+| `assets/art-painted/sharp/guard-2x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed Lifted Guard poses for ordinary fields |
 | `assets/art-painted/sharp/guard-4x-moon.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Moonlit Lifted pose for the optional Old Keep roster |
 | `assets/art-painted/sharp/guard-4x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed Lifted pose for the optional Painted roster |
 | `assets/art-painted/sharp/harpy-2x.webp` | `scripts/art/m56-pieces.py` | Tarpit agents | MIT | Trimmed Lifted pose for the optional Painted roster |

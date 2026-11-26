@@ -8,13 +8,24 @@ import type { TowerPose } from '../draw/towers';
 import { arcHeight, arcPosition } from '../fx/fxMath';
 import type { Layout } from '../layout';
 import type { GameClock } from '../loop';
+import { paintedSheetMissing } from '../names';
 import { bearingFrame, footDepth, TOWER_PREVIEW_FRAME, towerArt } from './frames';
-import type { PaintedAssets, PaintedName } from './loading';
+import type { PaintedAssets, PaintedName, PaintedSheet } from './loading';
 import { NOTICE_WIDTH, SIEGE_MACHINE_KEY } from '../draw/siegeMachines';
 import { PAINTED_SHOTS } from './sharp';
 
 type Image = Phaser.GameObjects.Image;
 type Sprite = Phaser.GameObjects.Sprite;
+
+const FALLBACK: PaintedSheet = {
+  key: 'painted:sharp:fallback', frameSize: [16, 24], anchor: [8, 22], density: 1,
+  frames: 1, bodyBounds: [[2, 2, 14, 22]],
+};
+const reported = new Set<PaintedName>();
+
+export function paintedFrame<T extends string | number>(texture: Phaser.Textures.Texture, frame: T): T | 0 {
+  return texture.key === FALLBACK.key ? 0 : frame;
+}
 
 export interface PaintedState {
   active: boolean;
@@ -105,10 +116,36 @@ export class PaintedSkin {
     });
   }
 
-  sheet(name: PaintedName) {
-    const sheet = this.assets.sheets[name] ?? this.assets.sharp?.icons[name];
-    if (!sheet) throw new Error(`Painted sheet is missing: ${name}`);
-    return sheet;
+  private installed(sheet: PaintedSheet | undefined): PaintedSheet | undefined {
+    return sheet && this.scene.textures.exists(sheet.key) ? sheet : undefined;
+  }
+
+  private reportMissing(name: PaintedName): void {
+    if (reported.has(name)) return;
+    reported.add(name);
+    console.warn(paintedSheetMissing(name));
+  }
+
+  sheet(name: PaintedName): PaintedSheet {
+    const sheet = this.installed(this.assets.sheets[name]) ?? this.installed(this.assets.sharp?.icons[name]);
+    if (sheet) return sheet;
+    this.reportMissing(name);
+    const { textures } = this.scene;
+    if (!textures.exists(FALLBACK.key)) {
+      const [width, height] = FALLBACK.frameSize;
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ink = canvas.getContext('2d');
+      if (ink) {
+        ink.fillStyle = '#423a35';
+        ink.fillRect(2, 2, 12, 20);
+        ink.fillStyle = '#c6b9a6';
+        ink.fillRect(3, 3, 10, 18);
+      }
+      textures.create(FALLBACK.key, canvas)?.add(0, 0, 0, 0, width, height);
+    }
+    return FALLBACK;
   }
 
   pose<T extends Image | Sprite>(obj: T, name: PaintedName, frame: number, world = true,
@@ -123,14 +160,15 @@ export class PaintedSkin {
   }
 
   image(name: PaintedName, frame = 0): Image {
-    return this.pose(this.scene.add.image(0, 0, this.sheet(name).key, 0), name, frame);
+    const sheet = this.sheet(name);
+    return this.pose(this.scene.add.image(0, 0, sheet.key, 0), name, frame, true, sheet);
   }
 
   update(state: GameState, placing: boolean): void {
     const t = this.testMode || this.reducedMotion.matches ? STILL_T : this.clock.nowMs;
     if (t !== this.drawnTime) {
       this.drawnTime = t;
-      this.cave?.setFrame((this.layout.turned ? 1 : 0) + (blinking(t) ? 2 : 0));
+      if (this.cave) this.cave.setFrame(paintedFrame(this.cave.texture, (this.layout.turned ? 1 : 0) + (blinking(t) ? 2 : 0)));
 
     }
     const occupied = new Set(state.towers.map(t => cellKey(t.cell)));
@@ -191,7 +229,7 @@ export class PaintedSkin {
 
   towerIcon(type: TowerType, maxWidth: number, maxHeight: number): Image {
     const name = towerArt(type);
-    const sheet = this.assets.sharp?.icons[name] ?? this.sheet(name);
+    const sheet = this.installed(this.assets.sharp?.icons[name]) ?? this.sheet(name);
     const frame = sheet.frames === 1 ? 0 : TOWER_PREVIEW_FRAME;
     const [left, top, right, bottom] = sheet.bodyBounds![frame];
     const [width, height] = sheet.frameSize;
@@ -225,7 +263,12 @@ export class PaintedSkin {
     const p = this.layout.toScreen(position);
     const notice = type === 'mortar' && this.siegeNotices;
     const name = notice && this.assets.sharp ? 'notice' : PAINTED_SHOTS[type];
-    if (!this.assets.sheets[name]) return false; // A cheat has just opened a locked tower.
+    if (!this.installed(this.assets.sheets[name])) {
+      // The caller already has a plain tracer. A pending cheat download is
+      // expected, but a sheet still missing after it finishes is diagnostic.
+      if (this.assets.sharp && !this.unlock) this.reportMissing(name);
+      return false;
+    }
     const image = this.effect(name).setPosition(p.x, p.y);
     if (notice) {
       if (!this.assets.sharp) image.setTexture(SIEGE_MACHINE_KEY, 'notice');
