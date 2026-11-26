@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import { fitBattleBuffer } from '../skin/fieldBuffer';
 
 type CanvasRenderer = Phaser.Renderer.Canvas.CanvasRenderer;
 type Camera = Phaser.Cameras.Scene2D.Camera;
@@ -225,78 +226,6 @@ class DeviceUi {
     ctx.restore();
     this.dirty = false;
   }
-}
-
-/**
- * The portrait frame has more space for the controls than the legacy game.
- * Keep the map buffer within a fixed pixel budget. Phaser cameras, the input
- * transform and the high-density interface all retain the logical layout.
- */
-function fitBattleBuffer(scene: Phaser.Scene) {
-  const { renderer, game, scale } = scene;
-  const { canvas } = game;
-  const grid = { x: 1, y: 1 };
-  const webgl = 'gl' in renderer ? renderer : undefined;
-  const painter = 'gameContext' in renderer ? renderer : undefined;
-  const push = webgl?.pushScissor;
-  const viewport = () => {
-    if (!webgl || grid.x === 1 && grid.y === 1) return;
-    const { gl } = webgl;
-    (webgl as { drawingBufferHeight: number }).drawingBufferHeight = gl.drawingBufferHeight;
-    gl.viewport(0, 0, canvas.width, canvas.height);
-    gl.scissor(0, 0, canvas.width, canvas.height);
-  };
-  if (webgl && push) {
-    webgl.on('prerenderclear', viewport);
-    webgl.on('prerender', viewport);
-    webgl.pushScissor = function (x, y, width, height, buffer) {
-      if (!this.currentFramebuffer && (grid.x !== 1 || grid.y !== 1)) {
-        const left = Math.round(x * grid.x), top = Math.round(y * grid.y);
-        return push.call(this, left, top, Math.round((x + width) * grid.x) - left,
-          Math.round((y + height) * grid.y) - top, this.drawingBufferHeight);
-      }
-      return push.call(this, x, y, width, height, buffer);
-    };
-  }
-  return {
-    fit() {
-      // Keep at least one world sample per fitted CSS pixel on supported
-      // phones. Leave the wider landscape maps at their native size.
-      const factor = scale.height > scale.width
-        ? Math.min(1, Math.sqrt((480 * 1032) / (scale.width * scale.height))) : 1;
-      const width = Math.round(scale.width * factor), height = Math.round(scale.height * factor);
-      if (canvas.width !== width) canvas.width = width;
-      if (canvas.height !== height) canvas.height = height;
-      grid.x = width / scale.width;
-      grid.y = height / scale.height;
-    },
-    draw(camera: Camera, draw: () => void) {
-      if (webgl || !painter || grid.x === 1 && grid.y === 1) {
-        draw();
-        return;
-      }
-      const ctx = painter.gameContext;
-      const { matrix } = camera as Camera & { matrix: Matrix };
-      const { a, b, c, d, e, f } = matrix;
-      ctx.save();
-      ctx.scale(grid.x, grid.y);
-      matrix.setTransform(a * grid.x, b * grid.y, c * grid.x, d * grid.y, e * grid.x, f * grid.y);
-      draw();
-      matrix.setTransform(a, b, c, d, e, f);
-      ctx.restore();
-    },
-    dispose() {
-      if (webgl && push) {
-        webgl.off('prerenderclear', viewport);
-        webgl.off('prerender', viewport);
-        webgl.pushScissor = push;
-      }
-      if (canvas.width === scale.baseSize.width && canvas.height === scale.baseSize.height) return;
-      canvas.width = scale.baseSize.width;
-      canvas.height = scale.baseSize.height;
-      renderer.resize(scale.baseSize.width, scale.baseSize.height);
-    },
-  };
 }
 
 export function useDevicePixels(scene: Phaser.Scene, paper: boolean, inkCamera?: string): void {

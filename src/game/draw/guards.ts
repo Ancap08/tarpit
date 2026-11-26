@@ -195,7 +195,7 @@ export class GuardEffects {
       texture = image.texture.key;
       frame = Number(image.frame.name);
       const sheet = this.painted.sheet('guard');
-      barLift = Math.ceil((sheet.anchor[1] - sheet.bodyBounds![frame][1]) / this.painted.assets.density) + BAR_HEIGHT + 3;
+      barLift = Math.ceil((sheet.anchor[1] - sheet.bodyBounds![frame][1]) / (sheet.density ?? this.painted.assets.density)) + BAR_HEIGHT + 3;
     } else {
       soldier((obj as Graphics).clear(), ORIGIN, facing, pose, motion ? t : 0, motion, guard.id % 2 === 0);
     }

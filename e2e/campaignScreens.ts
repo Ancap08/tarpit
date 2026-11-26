@@ -337,7 +337,9 @@ export function campaignScreenSuite(touch: boolean) {
   });
 
   test('Painted campaign level loads its art and falls back when a file fails', async ({ page }) => {
-    const gameplayAsset = /\/assets\/painted\/shared-[12]x[^/]+\.webp$/;
+    // First Watch loads the Goblin sheet with the sharper roster and the
+    // shared atlas with the stock look. Exercise the fallback in both.
+    const gameplayAsset = /\/assets\/painted\/(?:shared-[12]x|goblin-2x)-[^/]+\.webp$/;
     for (const fallback of [false, true]) {
       let failureInjected = false;
       await page.goto('/?test=1&look=painted');

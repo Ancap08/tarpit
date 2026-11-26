@@ -8,13 +8,24 @@ import type { TowerPose } from '../draw/towers';
 import { arcHeight, arcPosition } from '../fx/fxMath';
 import type { Layout } from '../layout';
 import type { GameClock } from '../loop';
+import { paintedSheetMissing } from '../names';
 import { bearingFrame, footDepth, TOWER_PREVIEW_FRAME, towerArt } from './frames';
-import type { PaintedAssets, PaintedName } from './loading';
-import { SIEGE_MACHINE_KEY } from '../draw/siegeMachines';
+import type { PaintedAssets, PaintedName, PaintedSheet } from './loading';
+import { NOTICE_WIDTH, SIEGE_MACHINE_KEY } from '../draw/siegeMachines';
+import { PAINTED_SHOTS } from './sharp';
 
 type Image = Phaser.GameObjects.Image;
 type Sprite = Phaser.GameObjects.Sprite;
-const shots = { musketeer: 'cannonball', cannon: 'cannonball', mortar: 'mortar-shell', tarpit: 'tar-glob', longbow: 'arrow', firepot: 'flame' } as const;
+
+const FALLBACK: PaintedSheet = {
+  key: 'painted:sharp:fallback', frameSize: [16, 24], anchor: [8, 22], density: 1,
+  frames: 1, bodyBounds: [[2, 2, 14, 22]],
+};
+const reported = new Set<PaintedName>();
+
+export function paintedFrame<T extends string | number>(texture: Phaser.Textures.Texture, frame: T): T | 0 {
+  return texture.key === FALLBACK.key ? 0 : frame;
+}
 
 export interface PaintedState {
   active: boolean;
@@ -93,31 +104,71 @@ export class PaintedSkin {
   worldTexture?: (key: string) => string;
   siegeNotices = false;
 
-  sheet(name: PaintedName) {
-    const sheet = this.assets.sheets[name];
-    if (!sheet) throw new Error(`Painted sheet is missing: ${name}`);
-    return sheet;
+  private unlock?: Promise<void>;
+  unlockTowers(): void {
+    if (this.unlock || !this.assets.sharp?.onDemand) return;
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    this.scene.events.once('shutdown', abort);
+    this.unlock = this.assets.sharp.onDemand(controller.signal).finally(() => {
+      this.scene.events.off('shutdown', abort);
+      this.unlock = undefined;
+    });
   }
 
-  pose<T extends Image | Sprite>(obj: T, name: PaintedName, frame: number, world = true): T {
-    const sheet = this.sheet(name);
+  private installed(sheet: PaintedSheet | undefined): PaintedSheet | undefined {
+    return sheet && this.scene.textures.exists(sheet.key) ? sheet : undefined;
+  }
+
+  private reportMissing(name: PaintedName): void {
+    if (reported.has(name)) return;
+    reported.add(name);
+    console.warn(paintedSheetMissing(name));
+  }
+
+  sheet(name: PaintedName): PaintedSheet {
+    const sheet = this.installed(this.assets.sheets[name]) ?? this.installed(this.assets.sharp?.icons[name]);
+    if (sheet) return sheet;
+    this.reportMissing(name);
+    const { textures } = this.scene;
+    if (!textures.exists(FALLBACK.key)) {
+      const [width, height] = FALLBACK.frameSize;
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ink = canvas.getContext('2d');
+      if (ink) {
+        ink.fillStyle = '#423a35';
+        ink.fillRect(2, 2, 12, 20);
+        ink.fillStyle = '#c6b9a6';
+        ink.fillRect(3, 3, 10, 18);
+      }
+      textures.create(FALLBACK.key, canvas)?.add(0, 0, 0, 0, width, height);
+    }
+    return FALLBACK;
+  }
+
+  pose<T extends Image | Sprite>(obj: T, name: PaintedName, frame: number, world = true,
+    sheet = this.sheet(name)): T {
+    if (sheet.frames === 1) frame = 0;
     const key = world ? this.worldTexture?.(sheet.key) ?? sheet.key : sheet.key;
     if (obj.texture.key !== key) obj.setTexture(key, frame);
     else if (Number(obj.frame.name) !== frame) obj.setFrame(frame);
     obj.setOrigin(sheet.anchor[0] / sheet.frameSize[0], sheet.anchor[1] / sheet.frameSize[1]);
-    obj.setScale(1 / this.assets.density);
+    obj.setScale(1 / (sheet.density ?? this.assets.density));
     return obj;
   }
 
   image(name: PaintedName, frame = 0): Image {
-    return this.pose(this.scene.add.image(0, 0, this.sheet(name).key, frame), name, frame);
+    const sheet = this.sheet(name);
+    return this.pose(this.scene.add.image(0, 0, sheet.key, 0), name, frame, true, sheet);
   }
 
   update(state: GameState, placing: boolean): void {
     const t = this.testMode || this.reducedMotion.matches ? STILL_T : this.clock.nowMs;
     if (t !== this.drawnTime) {
       this.drawnTime = t;
-      this.cave?.setFrame((this.layout.turned ? 1 : 0) + (blinking(t) ? 2 : 0));
+      if (this.cave) this.cave.setFrame(paintedFrame(this.cave.texture, (this.layout.turned ? 1 : 0) + (blinking(t) ? 2 : 0)));
 
     }
     const occupied = new Set(state.towers.map(t => cellKey(t.cell)));
@@ -147,9 +198,10 @@ export class PaintedSkin {
   private towerPiece(image: Image, type: TowerType, p: Point, pose: TowerPose, alpha: number): void {
     const screen = this.layout.toScreen(p);
     const dir = this.layout.screenDir(Math.cos(pose.angle), Math.sin(pose.angle));
-    this.pose(image, towerArt(type), bearingFrame(pose.angle, this.layout))
+    const art = towerArt(type);
+    this.pose(image, art, bearingFrame(pose.angle, this.layout))
       .setPosition(screen.x - dir.x * pose.recoil, screen.y - dir.y * pose.recoil)
-      .setScale(pose.scale / this.assets.density).setAlpha(alpha).setDepth(footDepth(p, this.layout));
+      .setScale(pose.scale / (this.sheet(art).density ?? this.assets.density)).setAlpha(alpha).setDepth(footDepth(p, this.layout));
   }
 
   readonly towerBody = (tower: Tower, p: Point, pose: TowerPose, alpha: number): void => {
@@ -177,12 +229,13 @@ export class PaintedSkin {
 
   towerIcon(type: TowerType, maxWidth: number, maxHeight: number): Image {
     const name = towerArt(type);
-    const sheet = this.sheet(name);
-    const [left, top, right, bottom] = sheet.bodyBounds![TOWER_PREVIEW_FRAME];
+    const sheet = this.installed(this.assets.sharp?.icons[name]) ?? this.sheet(name);
+    const frame = sheet.frames === 1 ? 0 : TOWER_PREVIEW_FRAME;
+    const [left, top, right, bottom] = sheet.bodyBounds![frame];
     const [width, height] = sheet.frameSize;
     const scale = Math.min(maxWidth / (right - left), maxHeight / (bottom - top));
-    const icon = this.scene.add.image(0, 0, sheet.key, TOWER_PREVIEW_FRAME);
-    return this.pose(icon, name, TOWER_PREVIEW_FRAME, false)
+    const icon = this.scene.add.image(0, 0, sheet.key, frame);
+    return this.pose(icon, name, frame, false, sheet)
       .setOrigin((left + right) / (2 * width), (top + bottom) / (2 * height))
       .setScale(scale);
   }
@@ -200,21 +253,30 @@ export class PaintedSkin {
     return this.pose(image, name, 0).setVisible(true).setRotation(0);
   }
 
-  frozenShot(type: TowerType, from: Point, to: Point, progress: number): void {
+  frozenShot(type: TowerType, from: Point, to: Point, progress: number): boolean {
     const height = arcHeight(type, Math.hypot(to.x - from.x, to.y - from.y));
     const p = arcPosition(from, to, progress, height, this.layout.up);
-    this.projectile(type, p, p.angle);
+    return this.projectile(type, p, p.angle);
   }
 
-  projectile(type: TowerType, position: Point, angle: number): void {
+  projectile(type: TowerType, position: Point, angle: number): boolean {
     const p = this.layout.toScreen(position);
-    const image = this.effect(shots[type]).setPosition(p.x, p.y);
-    if (type === 'mortar' && this.siegeNotices) {
-      image.setTexture(SIEGE_MACHINE_KEY, 'notice').setOrigin(.5).setDisplaySize(34, 34 * 2 / 3)
+    const notice = type === 'mortar' && this.siegeNotices;
+    const name = notice && this.assets.sharp ? 'notice' : PAINTED_SHOTS[type];
+    if (!this.installed(this.assets.sheets[name])) {
+      // The caller already has a plain tracer. A pending cheat download is
+      // expected, but a sheet still missing after it finishes is diagnostic.
+      if (this.assets.sharp && !this.unlock) this.reportMissing(name);
+      return false;
+    }
+    const image = this.effect(name).setPosition(p.x, p.y);
+    if (notice) {
+      if (!this.assets.sharp) image.setTexture(SIEGE_MACHINE_KEY, 'notice');
+      image.setOrigin(.5).setDisplaySize(NOTICE_WIDTH, NOTICE_WIDTH * 2 / 3)
         .setRotation(angle + (this.layout.turned ? Math.PI / 2 : 0));
-      return;
     }
     if (type === 'longbow' || type === 'firepot') image.setRotation(angle + (this.layout.turned ? Math.PI : Math.PI / 2));
+    return true;
   }
 
   sold(type: TowerType, p: Point, pose: TowerPose): void {

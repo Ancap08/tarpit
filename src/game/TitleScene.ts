@@ -721,19 +721,21 @@ export class TitleScene extends Phaser.Scene {
   private async startKeep(level?: LevelDef, campaignKeep = false): Promise<void> {
     const density = paintedDensity(this.game.canvas.getBoundingClientRect().width / this.scale.gameSize.width, window.devicePixelRatio);
     const siege = this.actThree || newInterface() ? level : undefined;
-    if (siege) releasePaintedTextures(this.textures);
+    const sharp = newInterface() && this.lookStore.get() === 'painted';
+    if (siege || sharp) releasePaintedTextures(this.textures);
     const data = await duringKeepLoad(async (signal, update) => {
       let plates = 0, sprites = 0, script = 0;
       const progress = () => update((script + plates * 11 + sprites * 3) / 15);
+      const module = import('./keep/oldKeep');
       const [loaded, painted] = await Promise.all([
-        import('./keep/oldKeep').then(async keep => {
+        module.then(async keep => {
           signal.throwIfAborted();
           script = 1;
           progress();
           const keepAssets = await keep.loadKeep(this.game, currentLayout().turned, signal, fraction => {
             plates = fraction;
             progress();
-          }, level, !!siege);
+          }, level, !!siege, sharp);
           if (signal.aborted) {
             keepAssets.release();
             signal.throwIfAborted();
@@ -741,16 +743,19 @@ export class TitleScene extends Phaser.Scene {
           signal.addEventListener('abort', keepAssets.release, { once: true });
           return { keep, keepAssets };
         }),
-        loadPainted(this.textures, DEFAULT_MAP, density, fraction => {
-          sprites = fraction;
-          progress();
-        }, signal, { keep: true, siege }).then(painted => {
+        (async () => {
+          const fixed = sharp && !level ? (await module).createKeep() : undefined;
+          const painted = await loadPainted(this.textures, DEFAULT_MAP, density, fraction => {
+            sprites = fraction;
+            progress();
+          }, signal, { keep: true, siege, ...(sharp ? { sharp: true, level, fixed } as const : {}) });
           if (!painted) throw new Error('Keep pieces unavailable');
-          if (siege) signal.addEventListener('abort', () => releasePaintedTextures(this.textures), { once: true });
+          if (painted.sharp) signal.addEventListener('abort', painted.sharp.release, { once: true });
+          else if (siege) signal.addEventListener('abort', () => releasePaintedTextures(this.textures), { once: true });
           sprites = 1;
           progress();
           return painted;
-        }),
+        })(),
       ]);
       return { ...loaded, painted, difficulty: DEFAULT_DIFFICULTY, level, campaignKeep } satisfies GameStartData;
     }, () => this.scene.restart({ screen: 'first' }));
@@ -764,6 +769,8 @@ export class TitleScene extends Phaser.Scene {
       this.scene.start('game', data);
       return;
     }
+    const sharp = newInterface();
+    if (sharp) releasePaintedTextures(this.textures);
     const request = new AbortController();
     this.paintedLoad = request;
     this.progress = 0;
@@ -773,7 +780,7 @@ export class TitleScene extends Phaser.Scene {
     void loadPainted(this.textures, data.map ?? DEFAULT_MAP, density, (progress) => {
       this.progress = progress;
       this.refreshLoading();
-    }, request.signal).then(async (painted) => {
+    }, request.signal, sharp ? { sharp: true, level: data.level } : undefined).then(async (painted) => {
       let showpiece: GameStartData['showpiece'];
       if (painted && this.lookStore.showpieceRequested && (data.map ?? DEFAULT_MAP) === 'meadow' && (!data.level || data.level.id === 1)) {
         // Bound both the optional code fetch and art decode. A broken
@@ -792,7 +799,10 @@ export class TitleScene extends Phaser.Scene {
         } catch { /* The complete Painted scene is already ready. */ }
         finally { clearTimeout(timer); }
       }
-      if (this.paintedLoad !== request) return;
+      if (this.paintedLoad !== request) {
+        painted?.sharp?.release();
+        return;
+      }
       this.paintedLoad = undefined;
       this.progress = null;
       this.scene.start('game', { ...data, painted, showpiece, paintedFallback: !painted });
