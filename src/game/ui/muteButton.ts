@@ -19,7 +19,7 @@ export class MuteButton {
   private readonly icon: Phaser.GameObjects.Graphics;
 
   constructor(scene: Phaser.Scene, rect: Rect, iconY?: number) {
-    this.button = new Button(scene, rect, '', () => sound.toggleMute(), { sound: null, bare: skinFor(scene) === 'battle', iconY });
+    this.button = new Button(scene, rect, '', () => sound.toggleMute(), { sound: null, bare: skinFor(scene) !== 'legacy', iconY });
     this.icon = scene.add.graphics();
     const off = sound.onChange(() => this.draw());
     scene.events.once('shutdown', off);
@@ -38,7 +38,7 @@ export class MuteButton {
 
   /** The speaker: a box and a cone, then two arcs (on) or a cross (muted). */
   private draw(): void {
-    if (skinFor(this.icon.scene) === 'battle') {
+    if (skinFor(this.icon.scene) !== 'legacy') {
       this.button.setIcon(sound.isMuted ? 'muted' : 'audio');
       return;
     }

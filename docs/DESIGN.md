@@ -71,6 +71,15 @@ and difficulty, from the beginning. Level map returns to the campaign
 road. Menu returns to the Free play picker. Mute still works on the HUD
 and from M.
 
+With `?ui=new`, the title and Free play picker, campaign sheets, tips,
+story pages, Owner's page, pause and load notices use cream paper, Libre
+Caslon Text and drawn icons. Portrait menu buttons use an 84-unit target
+on the 1194-unit sheet. The level-map stops use a 120 × 104-unit target
+(about 66 × 57 CSS px at 390 × 656). Back occupies the upper left on
+pages with a Back action. Reading sheets put Continue or Got it below
+the copy. Printed menus settle over 220 ms with fixed input bounds.
+Test mode and reduced-motion preferences keep the sheets still.
+
 ## Space and time
 
 - The canvas is 960 x 580 px. The map uses the top 960 x 480; the HUD uses

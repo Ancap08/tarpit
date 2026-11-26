@@ -1,5 +1,6 @@
 import { drawPrintedCard } from './ui/printCard';
-import { newInterface, skinFor, useInterface } from './ui/newTheme';
+import { drawPaperClose, drawPaperMap, drawPaperOwner, drawPaperStory, drawPaperTips, drawPaperTitle } from './ui/paperPages';
+import { PRINT, newInterface, skinFor, useInterface } from './ui/newTheme';
 import type { ButtonOptions } from './ui/button';
 // Title menu (milestone 25): the title and subtitle, a "Difficulty" row of
 // three buttons (Normal preselected, the pick highlighted like the build
@@ -311,6 +312,7 @@ export class TitleScene extends Phaser.Scene {
     this.ready = false;
     this.events.once(Phaser.Scenes.Events.RENDER, () => {
       this.ready = true;
+      if (newInterface()) document.getElementById('loading')?.remove();
     });
 
     this.campaignButtons.clear();
@@ -325,9 +327,11 @@ export class TitleScene extends Phaser.Scene {
     this.mapStops = [];
     const portrait = currentLayout().kind === 'portrait';
     const toOwner = () => this.visit('owner');
+    const printed = newInterface();
+    if (printed) this.preparePaper(portrait);
 
     if (this.page === 'owner') {
-      const keys = drawOwnerPage(this, portrait, campaignLevels(this.actThree), this.action, which => {
+      const keys = (printed ? drawPaperOwner : drawOwnerPage)(this, portrait, campaignLevels(this.actThree), this.action, which => {
         if (which === 'firstClose' || which === 'secondClose') {
           this.visit('ownerClose', which === 'firstClose' ? ACT_ONE_LAST_LEVEL : ACT_TWO_LAST_LEVEL, undefined, undefined, true);
         } else this.visit(which, undefined, undefined, undefined, true);
@@ -340,7 +344,7 @@ export class TitleScene extends Phaser.Scene {
       return;
     }
     if (this.page === 'ownerClose' && this.card) {
-      drawOwnerClose(this, portrait, this.card.id, this.action, toOwner);
+      (printed ? drawPaperClose : drawOwnerClose)(this, portrait, this.card.id, this.action, toOwner);
       this.bindMenuKeys(['back']);
       return;
     }
@@ -364,7 +368,9 @@ export class TitleScene extends Phaser.Scene {
           this.visit('levelCard', this.card.id);
         } else this.visit('levelMap', undefined, which === 'secondAct' ? 2 : which === 'thirdAct' ? 3 : undefined, this.focusId);
       };
-      this.playButton = drawStoryBroadside(this, portrait, which, this.action, proceed, this.actThree && which === 'siegeEnding', isTestMode() || this.ownerPreview);
+      const frozen = isTestMode() || this.ownerPreview;
+      this.playButton = printed ? drawPaperStory(this, portrait, which, this.action, proceed, frozen)
+        : drawStoryBroadside(this, portrait, which, this.action, proceed, this.actThree && which === 'siegeEnding', frozen);
       this.bindMenuKeys(['continue']);
       this.input.keyboard?.on('keydown-ESC', proceed);
       if (this.progress !== null) this.refreshLoading();
@@ -384,7 +390,7 @@ export class TitleScene extends Phaser.Scene {
         else if (act === 3 && !thirdActOpen) showLock(ACT_TWO_LAST_LEVEL);
         else if (act !== this.act) this.visit('levelMap', undefined, act);
       };
-      this.lockLabel = drawCampaignMap(this, portrait, this.mapStops, this.lockedMessage, this.act, secondActOpen, this.action, stop => {
+      this.lockLabel = (printed ? drawPaperMap : drawCampaignMap)(this, portrait, this.mapStops, this.lockedMessage, this.act, secondActOpen, this.action, stop => {
         if (stop.open) this.visit('levelCard', stop.id);
         else {
           const next = this.mapStops.find(candidate => candidate.next);
@@ -423,7 +429,7 @@ export class TitleScene extends Phaser.Scene {
           this.input.enabled = false;
           this.time.delayedCall(delay, () => { this.input.enabled = true; });
         }
-        this.playButton = drawLevelTips(this, portrait, level, this.touchTips, this.action, () => {
+        this.playButton = (printed ? drawPaperTips : drawLevelTips)(this, portrait, level, this.touchTips, this.action, () => {
           if (!this.input.enabled) return;
           if (review) return leave();
           seenTips.mark(level.id);
@@ -435,30 +441,12 @@ export class TitleScene extends Phaser.Scene {
         const seen = seenTips.has(level.id);
         const showTips = (replay: boolean) => {
           this.replayTips = replay;
-          this.tipsPlayRect = !replay && portrait && skinFor(this) === 'paper' ? this.playButton?.rect : undefined;
+          this.tipsPlayRect = !replay && printed ? this.playButton?.rect : undefined;
           this.touchTips = this.input.activePointer.wasTouch;
           this.tipsAcceptAt = performance.now() + 400;
           this.visit('levelTips', level.id);
         };
         const review = seen ? () => showTips(true) : undefined;
-        const printed = level.map !== 'keep' && newInterface();
-        if (printed) {
-          useInterface(this, 'paper', () => this.time.now);
-          if (portrait) {
-            const normal = currentLayout();
-            const width = printedPortraitWidth(this.scale.parentSize);
-            this.scale.setGameSize(width, normal.height);
-            const refitCard = () => {
-              if (currentLayout().turned && printedPortraitWidth(this.scale.parentSize) !== width) this.relayout();
-            };
-            this.scale.on('resize', refitCard);
-            this.events.once('shutdown', () => {
-              this.scale.off('resize', refitCard);
-              if (this.scale.width === width && this.scale.height === normal.height)
-                this.scale.setGameSize(normal.width, normal.height);
-            });
-          }
-        }
         this.playButton = (printed ? drawPrintedCard : drawLevelCard)(this, portrait, level, campaignProgress.table(ownerMode)[level.id] ?? 0, this.action,
           () => this.tipsEnabled && !seen ? showTips(false) : start(), () => this.visit('levelMap', undefined, this.act), review,
           this.scouting, () => {
@@ -471,6 +459,10 @@ export class TitleScene extends Phaser.Scene {
         this.bindMenuKeys(actions, actions.indexOf('play'));
       }
       this.refreshLoading();
+      return;
+    }
+    if (printed) {
+      this.createPaperMenu(portrait, toOwner);
       return;
     }
     const first = this.page === 'first';
@@ -510,17 +502,6 @@ export class TitleScene extends Phaser.Scene {
       this.lookButtons.set(look, button);
     });
 
-    // Phaser re-runs its whole key queue on every DOM key event and clears it
-    // only once per frame, so two presses inside one frame (a fast typist, or
-    // Playwright) re-emit the first keydown. Handle each DOM event once.
-    const seen = new WeakSet<KeyboardEvent>();
-    const once = (f: () => void) => (e: KeyboardEvent) => {
-      if (seen.has(e)) return;
-      seen.add(e);
-      f();
-    };
-    const kb = this.input.keyboard;
-    kb?.on('keydown-L', once(() => this.selectLook(this.lookStore.get() === 'classic' ? 'painted' : 'classic')));
     if (this.page === 'first') {
       const w = portrait ? 330 : 264;
       const h = portrait ? 106 : 84;
@@ -528,13 +509,11 @@ export class TitleScene extends Phaser.Scene {
         width: w, height: h }, CAMPAIGN_TEXT.campaign, () => this.visit(seenBroadsides.has('opening') ? 'levelMap' : 'opening'), 32);
       this.action('title:freePlay', { x: portrait ? cx - w / 2 : cx + 12, y: portrait ? 584 : 286,
         width: w, height: h }, CAMPAIGN_TEXT.freePlay, () => this.visit('freePlay'), 32);
-      const keys = ['campaign', 'freePlay'];
       if (ownerMode) {
         this.action('title:owner', portrait ? { x: cx - 64, y: 728, width: 128, height: 80 }
           : { x: 14, y: 14, width: 98, height: 46 }, OWNER_TEXT.mark, toOwner, 21);
-        keys.push('owner');
       }
-      this.bindMenuKeys(keys);
+      this.bindTitleKeys(true);
       this.refreshLook();
       return;
     }
@@ -587,6 +566,25 @@ export class TitleScene extends Phaser.Scene {
     this.refreshPicks();
     this.refreshLook();
     this.refreshLoading();
+    this.bindTitleKeys(false);
+  }
+
+  private bindTitleKeys(first: boolean): void {
+    // Phaser re-runs its whole key queue on every DOM key event and clears it
+    // only once per frame, so two presses inside one frame (a fast typist, or
+    // Playwright) re-emit the first keydown. Handle each DOM event once.
+    const seen = new WeakSet<KeyboardEvent>();
+    const once = (f: () => void) => (e: KeyboardEvent) => {
+      if (seen.has(e)) return;
+      seen.add(e);
+      f();
+    };
+    const kb = this.input.keyboard;
+    kb?.on('keydown-L', once(() => this.selectLook(this.lookStore.get() === 'classic' ? 'painted' : 'classic')));
+    if (first) {
+      this.bindMenuKeys(ownerMode ? ['campaign', 'freePlay', 'owner'] : ['campaign', 'freePlay']);
+      return;
+    }
     kb?.on('keydown-ESC', once(() => this.visit('first')));
     kb?.on('keydown-LEFT', once(() => this.move(-1)));
     kb?.on('keydown-RIGHT', once(() => this.move(1)));
@@ -594,6 +592,49 @@ export class TitleScene extends Phaser.Scene {
     kb?.on('keydown-DOWN', once(() => this.moveMap(1)));
     kb?.on('keydown-ENTER', once(() => this.play()));
     kb?.on('keydown-SPACE', once(() => this.play()));
+  }
+
+  private preparePaper(portrait: boolean): void {
+    if (portrait) {
+      const normal = currentLayout();
+      const width = printedPortraitWidth(this.scale.parentSize);
+      if (this.scale.width !== width) this.scale.setGameSize(width, normal.height);
+      const refit = () => {
+        if (currentLayout().turned && printedPortraitWidth(this.scale.parentSize) !== width) this.relayout();
+      };
+      this.scale.on('resize', refit);
+      this.events.once('shutdown', () => {
+        this.scale.off('resize', refit);
+        if (!this.restartPending && this.scale.width === width && this.scale.height === normal.height)
+          this.scale.setGameSize(normal.width, normal.height);
+      });
+    }
+    useInterface(this, 'paper', () => this.time.now);
+    this.cameras.main.setBackgroundColor(PRINT.ground);
+  }
+
+  private createPaperMenu(portrait: boolean, toOwner: () => void): void {
+    const first = this.page === 'first';
+    const menu = drawPaperTitle(this, portrait, first, this.action, {
+      campaign: () => this.visit(seenBroadsides.has('opening') ? 'levelMap' : 'opening'),
+      freePlay: () => this.visit('freePlay'),
+      owner: ownerMode ? toOwner : undefined,
+      back: () => this.visit('first'),
+      play: () => this.play(),
+      difficulty: choice => this.select(choice),
+      map: choice => this.selectMap(choice),
+      look: choice => this.selectLook(choice),
+    });
+    this.levelButtons = menu.levels;
+    this.mapButtons = menu.maps;
+    this.lookButtons = menu.looks;
+    this.muteButton = menu.mute;
+    this.bestLine = menu.best ?? null;
+    this.playButton = menu.play ?? null;
+    this.refreshPicks();
+    this.refreshLook();
+    this.refreshLoading();
+    this.bindTitleKeys(first);
   }
 
   /** Select a level (highlighting its button); does not start the game. */
@@ -637,7 +678,7 @@ export class TitleScene extends Phaser.Scene {
       this.playButton.labelObjects[0].setWordWrapWidth(progress === null ? 0 : this.playButton.rect.width - 12);
     }
     const compact = this.page === 'levelCard' && !!this.card?.feat;
-    const loadingFont = portrait ? (compact ? '22px' : '20px') : '16px';
+    const loadingFont = portrait ? (printed || compact ? '22px' : '20px') : '16px';
     this.playButton?.setFontSize(progress === null ? playFont : loadingFont);
     const idleText = this.page === 'ending' ? STORY_TEXT.continue : this.page === 'levelTips' ? CAMPAIGN_TEXT.gotIt : TITLE_TEXT.play;
     this.playButton?.set(progress === null ? idleText : paintedLoadingText(progress, compact), progress === null);

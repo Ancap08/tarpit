@@ -211,7 +211,7 @@ import { Button } from './ui/button';
 import { PANEL_TEXT } from './names';
 import { HitNumbers } from './ui/hitNumbers';
 import { uiObject } from './ui/devicePixels';
-import { BakedPaint, CLEAN, battleFont, battleWeight, newInterface, roundPoints, rounded, skinFor, textMetrics, useInterface } from './ui/newTheme';
+import { BakedPaint, CLEAN, PRINT, battleFont, battleWeight, newInterface, roundPoints, rounded, skinFor, textMetrics, useInterface } from './ui/newTheme';
 import { DeviceTextFit, textSlot } from './ui/deviceText';
 import { AIM_BANNER, aimBannerText, BARRICADE_AIM_REASONS, PAINTED_FALLBACK, REWARD_KEYS } from './names';
 import {
@@ -2048,13 +2048,34 @@ export class GameScene extends Phaser.Scene {
       this.bannerHint.setText(text?.hint ?? '');
       this.bannerBg.clear();
       this.bannerRect = undefined;
+      if (clean && showFallback) {
+        const map = this.layout.map;
+        const pad = this.layout.turned ? 22 : 14;
+        const size = this.layout.turned ? 26 : 17;
+        this.bannerMain.setStyle({
+          fontFamily: FONT, fontSize: size, fontStyle: 'normal', metrics: textMetrics(size), color: PRINT.ink,
+        }).setWordWrapWidth(map.width - 4 * pad).setVisible(true);
+        this.bannerHint.setVisible(false);
+        const width = this.bannerMain.width + 2 * pad;
+        const height = this.bannerMain.height + pad;
+        const y = map.y + BANNER_Y;
+        this.bannerMain.setY(y + height / 2);
+        this.bannerRect = { x: this.bannerX - width / 2, y, width, height };
+        rounded(this.bannerBg, this.bannerRect, PRINT.sheet, PRINT.edge, 12);
+        return;
+      }
       if (clean) {
+        if (this.bannerMain.style.fontFamily === FONT) {
+          this.bannerMain.setStyle({
+            fontFamily: battleFont(), fontSize: AIM_BANNER.mainPx, fontStyle: battleWeight(true, 'bold'),
+            metrics: textMetrics(AIM_BANNER.mainPx), color: TEXT.aimBanner,
+          }).setWordWrapWidth(0);
+        }
         const map = this.layout.map;
         const top = map.y + BANNER_Y;
         const area = { x: map.x + AIM_BANNER.padX, y: top, width: map.width - 2 * AIM_BANNER.padX, height: BANNER_H };
         this.bannerMain.setY(top + BANNER_MAIN_Y);
         const mainSlot = textSlot(this.bannerMain, area, true);
-        if (showFallback) mainSlot.height = 3 * (Math.max(AIM_BANNER.mainPx, 24) + 3);
         this.bannerMain.setVisible(!!main && this.bannerMainFit.fit(AIM_BANNER.mainPx, [mainSlot]));
         this.bannerHint.setVisible(!!text?.hint && this.bannerHintFit.fit(AIM_BANNER.hintPx,
           [textSlot(this.bannerHint, area, true)]));

@@ -415,10 +415,10 @@ export class Button {
     this.positionLabels();
     if (this.textFit && this.shown) this.fitText();
     const fill = paper
-      ? active ? (down ? 0x16372f : PRINT.green) : this.picked || this.hover ? PRINT.inset : PRINT.sheet
+      ? active ? (down ? 0x16372f : PRINT.green) : !available ? 0xf0eadd : this.picked || this.hover ? PRINT.inset : PRINT.sheet
       : !available ? CLEAN.panel : active ? (down ? 0x7bc7b1 : CLEAN.mint)
         : this.picked || this.hover || down ? 0x2b4949 : CLEAN.raised;
-    const color = paper ? active ? '#fff9eb' : PRINT.ink
+    const color = paper ? active ? '#fff9eb' : available ? PRINT.ink : PRINT.muted
       : active ? CLEAN.mintDark : available ? CLEAN.ink : CLEAN.subdued;
     this.box.setFillStyle();
     this.trim.setVisible(!this.chrome && this.shown && !!this.icon);
@@ -426,7 +426,7 @@ export class Button {
     if (this.shown) {
       const paint = this.chrome ? this.chrome.begin(this.r) : this.trim.clear();
       const offset = this.chrome ? 0 : this.offsetY;
-      const edge = paper ? active ? PRINT.green : PRINT.edge : this.picked ? CLEAN.mint : CLEAN.edge;
+      const edge = paper ? active || this.picked && available ? PRINT.green : PRINT.edge : this.picked ? CLEAN.mint : CLEAN.edge;
       if (!this.bare || paper && (this.picked || this.hover || down)) rounded(paint, { x: x + compress, y: y + offset + compress, width: width - 2 * compress, height: height - 2 * compress }, fill, edge, paper ? 12 : 16);
       if (this.upgradeRow && this.icon && this.rightLabel) {
         const tile = this.labelInset - 20;

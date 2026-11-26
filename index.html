@@ -81,6 +81,57 @@
         font: inherit;
         cursor: pointer;
       }
+      [data-paper-ui] #loading,
+      [data-paper-ui] #keep-status:not([hidden]) {
+        z-index: 2;
+        background: #eee7d5;
+        color: #242b24;
+        font: 18px "Libre Caslon Text", Georgia, serif;
+      }
+      [data-paper-ui] #loading > span,
+      [data-paper-ui] #keep-status > div {
+        box-sizing: border-box;
+        width: min(365px, calc(100vw - 32px));
+        padding: 28px 20px;
+        border: 1px solid #c5af92;
+        border-radius: 12px;
+        background: #fff9eb;
+        text-align: center;
+        box-shadow: 0 6px 16px #30271a16;
+      }
+      [data-paper-ui] #loading > span::before {
+        content: "";
+        display: block;
+        width: 34px;
+        height: 3px;
+        border-radius: 2px;
+        margin: 0 auto 16px;
+        background: #953c34;
+      }
+      [data-paper-ui] #keep-status p { margin: 0 0 16px; }
+      [data-paper-ui] #keep-status progress {
+        width: 100%;
+        accent-color: #234b40;
+      }
+      [data-paper-ui] #keep-status button {
+        min-height: 46px;
+        width: 100%;
+        background: #234b40;
+        border: 1px solid #234b40;
+        border-radius: 8px;
+        color: #fff9eb;
+      }
+      [data-paper-ui] #keep-status button:focus-visible { outline: 2px solid #953c34; outline-offset: 3px; }
+      @media (prefers-reduced-motion: no-preference) {
+        [data-paper-ui="motion"] #loading > span,
+        [data-paper-ui="motion"] #keep-status:not([hidden]) > div {
+          animation: lay-sheet 220ms cubic-bezier(.2,.65,.3,1) both;
+        }
+      }
+      @keyframes lay-sheet {
+        from { transform: translateY(7px); }
+        to { transform: translateY(0); }
+      }
       html,
       body,
       #game,
@@ -106,7 +157,7 @@
     </style>
   </head>
   <body>
-    <div id="loading" role="status">%LOADING_TEXT%</div>
+    <div id="loading" role="status"><span>%LOADING_TEXT%</span></div>
     <div id="game"></div>
     <section id="keep-status" data-failure="%KEEP_FAILED_TEXT%" data-limit="%KEEP_LOAD_LIMIT_MS%" hidden>
       <div>
@@ -116,7 +167,9 @@
       </div>
     </section>
     <script>
-      if (new URLSearchParams(location.search).get('keep') === '1') {
+      const query = new URLSearchParams(location.search);
+      if (query.get('ui') === 'new') document.documentElement.dataset.paperUi = query.get('test') === '1' ? 'still' : 'motion';
+      if (query.get('keep') === '1') {
         document.getElementById('loading').remove();
         const panel = document.getElementById('keep-status');
         panel.hidden = false;

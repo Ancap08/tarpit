@@ -6,6 +6,7 @@ import { COLORS, FONT } from '../palette';
 import { Button, CANCEL_UI_PRESS } from './button';
 import { menuKeys } from './menuKeys';
 import { ink, panel, rule } from './theme';
+import { PRINT, line, newInterface, sheet, textMetrics } from './newTheme';
 
 interface Actions {
   muteBounds(): Rect;
@@ -47,32 +48,43 @@ export class PausePanel {
     scene.scale.on('resize', fitShade);
     scene.events.once('shutdown', () => scene.scale.off('resize', fitShade));
 
-    const cx = layout.map.x + layout.map.width / 2;
-    const cy = layout.map.y + layout.map.height / 2;
-    this.title = scene.add.text(cx, 0, PAUSE_TEXT.title, {
-      fontFamily: FONT, fontSize: '36px', fontStyle: 'bold', color: ink,
-    }).setOrigin(0.5, 0).setDepth(depth + 1);
+    const printed = newInterface();
     const portrait = layout.turned;
-    const buttonW = portrait ? 260 : 166;
-    const buttonH = portrait ? 80 : 56;
+    const cx = printed ? layout.width / 2 : layout.map.x + layout.map.width / 2;
+    const cy = printed ? layout.height / 2 : layout.map.y + layout.map.height / 2;
+    const titleSize = printed ? portrait ? 53 : 40 : 36;
+    this.title = scene.add.text(cx, 0, PAUSE_TEXT.title, {
+      fontFamily: FONT, fontSize: titleSize + 'px', fontStyle: printed ? 'normal' : 'bold', color: printed ? PRINT.ink : ink,
+      ...(printed ? { metrics: textMetrics(titleSize) } : {}),
+    }).setOrigin(0.5, 0).setDepth(depth + 1);
+    const buttonW = printed ? portrait ? Math.min(layout.width - 102, 520) : 174 : portrait ? 260 : 166;
+    const buttonH = printed ? portrait ? Math.max(88, Math.ceil(45 * scene.scale.displayScale.y)) : 56 : portrait ? 80 : 56;
     const gap = 12;
-    const pad = 22;
-    const width = portrait ? 328 : 3 * buttonW + 2 * (gap + pad);
-    const height = pad * 2 + this.title.height + 22 + (portrait ? 3 * buttonH + 2 * gap : buttonH);
+    const pad = printed ? portrait ? 24 : 20 : 22;
+    const separation = printed ? 2 * gap : 22;
+    const width = portrait ? printed ? buttonW + 2 * pad : 328 : 3 * buttonW + 2 * (gap + pad);
+    const height = pad * 2 + this.title.height + separation + (portrait ? 3 * buttonH + 2 * gap : buttonH);
     const top = cy - height / 2, left = cx - width / 2;
     this.paper = scene.add.graphics().setDepth(depth);
-    panel(this.paper, { x: left, y: top, width, height });
+    if (printed) {
+      sheet(this.paper, { x: left, y: top, width, height });
+      line(this.paper, left + pad, top + pad + this.title.height + gap, width - 2 * pad);
+    } else {
+      panel(this.paper, { x: left, y: top, width, height });
+      rule(this.paper, cx, top + pad + this.title.height + 8, 110);
+    }
     this.title.setY(top + pad);
-    rule(this.paper, cx, top + pad + this.title.height + 8, 110);
-    const buttonTop = top + pad + this.title.height + 22;
+    const buttonTop = top + pad + this.title.height + separation;
     const rect = (i: number): Rect => ({
       x: portrait ? cx - buttonW / 2 : left + pad + i * (buttonW + gap),
       y: buttonTop + (portrait ? i * (buttonH + gap) : 0),
       width: buttonW, height: buttonH,
     });
-    const options = { skin: 'legacy' as const, fontSize: portrait ? '22px' : '18px', sound: null };
+    const options = { skin: printed ? 'paper' as const : 'legacy' as const,
+      fontSize: portrait ? printed ? '26px' : '22px' : '18px', sound: null };
     this.buttons = [
-      new Button(scene, rect(0), PAUSE_TEXT.resume, actions.onResume, options),
+      new Button(scene, rect(0), PAUSE_TEXT.resume, actions.onResume,
+        { ...options, ...(printed ? { primary: true, icon: 'play' } as const : {}) }),
       new Button(scene, rect(1), PAUSE_TEXT.restart, () => {
         if (this.confirming) actions.onRestart();
         else {

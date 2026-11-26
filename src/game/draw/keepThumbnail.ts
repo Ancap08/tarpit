@@ -12,10 +12,10 @@ export function loadKeepThumbnails(scene: Phaser.Scene): void {
   scene.events.once('shutdown', () => scene.textures.remove(KEY));
 }
 
-export function drawKeepThumbnail(scene: Phaser.Scene, level: LevelDef, x: number, y: number, width: number): void {
+export function drawKeepThumbnail(scene: Phaser.Scene, level: LevelDef, x: number, y: number, width: number) {
   const atlas = scene.textures.get(KEY);
   const frame = level.keepSky === 'dawn' ? 3 : level.keepSky === 'night storm' ? 2 : level.keepRoads === 'west' ? 1 : 0;
   const name = String(frame);
   if (!atlas.has(name)) atlas.add(name, 0, frame % 2 * WIDTH, Math.floor(frame / 2) * HEIGHT, WIDTH, HEIGHT);
-  scene.add.image(x, y, KEY, name).setName('keep-thumbnail').setOrigin(.5, 0).setDisplaySize(width, width / 2);
+  return scene.add.image(x, y, KEY, name).setName('keep-thumbnail').setOrigin(.5, 0).setDisplaySize(width, width / 2);
 }

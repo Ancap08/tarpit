@@ -208,12 +208,12 @@ export function loadSiegeEnding(scene: Phaser.Scene): void {
 }
 
 /** A moving illustration under the campaign ending copy. */
-export function drawSiegeCarriage(scene: Phaser.Scene, frame: Rect, portrait: boolean, frozen: boolean): void {
+export function drawSiegeCarriage(scene: Phaser.Scene, frame: Rect, portrait: boolean, frozen: boolean, printed = false): void {
   if (!atlasReady(scene)) return;
   const { width, height } = frame;
   const cx = frame.x + width / 2;
   const y = frame.y + height / 2;
-  scene.add.rectangle(cx, y, width + 6, height + 6, 0x664633).setName('siege-carriage-frame');
+  scene.add.rectangle(cx, y, width + 6, height + 6, 0x664633).setName('siege-carriage-frame').setVisible(!printed);
   const background = portrait && scene.textures.exists(PORTRAIT_ENDING)
     ? scene.add.image(cx, y, PORTRAIT_ENDING) : prop(scene, 'dawn').setPosition(cx, y);
   background.setDisplaySize(width, height);

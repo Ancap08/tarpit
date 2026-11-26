@@ -30,6 +30,11 @@ export function invalidateUi(scene: Phaser.Scene): void {
   active.get(scene)?.invalidate();
 }
 
+/** Animate the finished print on the compositor. Phaser's hit boxes stay put. */
+export function layPaper(scene: Phaser.Scene, offset: number): void {
+  active.get(scene)?.layPaper(offset);
+}
+
 /**
  * Phaser still owns the display list, input, camera clips and source
  * textures. Send the interface's objects through its Canvas renderer on a
@@ -126,6 +131,13 @@ class DeviceUi {
       scene.add.text = factory;
       this.overlay.remove();
       active.delete(scene);
+    });
+  }
+
+  layPaper(offset: number): void {
+    const cssOffset = offset * this.density.y / (window.devicePixelRatio || 1);
+    this.overlay.animate([{ transform: `translateY(${cssOffset}px)` }, { transform: 'translateY(0)' }], {
+      duration: 220, easing: 'cubic-bezier(.2,.65,.3,1)',
     });
   }
 
