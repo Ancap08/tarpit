@@ -2269,3 +2269,59 @@ can change it; "Kyle" means Kyle decided.
   case calibrated to the width CI reported, which reproduced the exact
   failure on the old build. The sweep also found "Act 1 broadside" at
   3.533 px on a tall phone at the widest setting. 240,186 Sol tokens.
+
+## 2026-11-26, the verifier's pass over the new interface (milestone 55c)
+
+- **Verified by Claude Sonnet at medium, a different model from the
+  builder.** It worked from the branch, not from the builder's reports,
+  and added tests of its own. The automatic merge of pull request 69 was
+  stopped by the coordinator when its findings arrived.
+- **What held:** the switch off is untouched (96 screenshots identical to
+  main, no saved data changed, no new asset requested); text contrast
+  across 23,736 samples; a full play-through by touch at 390x656; the art
+  memory caps; and five of five tests failed when the game was broken the
+  way each is meant to catch.
+- **Frame cost: the verifier and the builder were both right, on
+  different graphics.** The verifier measured 7.5 ms a frame with the
+  switch off and 20.4 with it on, under software graphics (Chromium's
+  default in tests). The records' 3.36 against 4.82 were taken on the
+  Mac's graphics chip. Sol reproduced both on one build: 7.8 against 21.0
+  under software, 1.15 against 1.62 on the chip. Main measured the same as
+  the branch, so the merge had not made it worse. The coordinator had
+  recorded the earlier figures without saying which graphics they used;
+  every frame figure from now on names the renderer.
+- **The cause that could be fixed:** floating damage numbers made the
+  whole interface layer clear and redraw on every frame of a fight. It now
+  redraws only the patch that changed (0.33% of the layer on average). On
+  the chip the new interface costs 0.26 ms a frame more than the old and
+  drops no frames. Under software graphics it is 18.1 ms against 7.8 and
+  still drops frames; what remains is the battle picture at device
+  resolution, about eight times the pixels, and closing it would soften
+  the Lifted art. **Not decided:** whether that is acceptable for the
+  default. The coordinator recommends accepting it, since Kyle's players
+  have graphics chips. Kyle decides before the switch becomes the default.
+- **A real memory leak, already live behind the switch.** Every visit to a
+  level, restart or change of look left one device-size canvas alive,
+  about 12 MB each (15, 27, 39, 51 MB over four visits). Fixed: flat at
+  3.4 MB. The verifier's leak test now runs in CI. No earlier check looked
+  at what a scene leaves behind after it closes.
+- **The new interface holds about 24 MB of canvas** (battle picture and
+  interface layer) where the old holds 2.4 MB; this is outside the art
+  caps. With art, about 70 MB on level 20 and 91 MB on level 25, against
+  38 and 37 MB with the switch off. Recorded, not changed.
+- **Seven smaller defects, six fixed and one needing no change:** Free
+  play map names half hidden under their thumbnails on desktop and tablet
+  (the paper check now fails when art covers a label); the reward picker
+  and other veils dimming only the board's strip on a phone; a bright
+  square behind the mute button on pause; the CONDEMNED sign at 8.55 px on
+  a short phone (now 11.57); road banners registered as tap targets with
+  no action (they are previews, so no longer targets); the tower panel
+  covering the gate status and Repair on desktop at the Old Keep. Lives
+  below zero in the simulation already showed as 0.
+- **The verifier deleted scratch files by wildcard in the coordinator's
+  temporary folder and killed a waiting job with a pattern kill.** Nothing
+  in the repository was touched and nothing needed was lost. Briefs now
+  say: delete only files you created, by name, and stop only processes you
+  started, by pid.
+- Tokens: Sonnet 428,092; Sol 369,591 for the frame cost and leak, 421,371
+  for the defects.
