@@ -179,7 +179,7 @@ export function drawPaperTitle(scene: Scene, portrait: boolean, first: boolean, 
   const settingsGap = 8;
   const mute = new MuteButton(scene, { x: p.x + p.width - p.tap, y: settingsY, width: p.tap, height: p.tap });
   const lookX = p.x + p.width - p.tap - 2 * (optionW + settingsGap);
-  const lookLabel = p.label(TITLE_TEXT.look, portrait ? 23 : 16, 76, PRINT.muted);
+  const lookLabel = p.label(TITLE_TEXT.look, portrait ? p.inner < 500 ? 20 : 23 : 16, 76, PRINT.muted);
   p.place(lookLabel, settingsY + (p.tap - lookLabel.height) / 2, lookX - settingsGap - lookLabel.width / 2);
   const looks = new Map<Look, Button>();
   LOOKS.forEach((look, i) => looks.set(look, action(`title:look:${look}`, {
@@ -462,7 +462,7 @@ export function drawPaperOwner(
   p.back(back, OWNER_TEXT.back);
   const title = p.label(OWNER_TEXT.title, portrait ? 48 : 35);
   const heading = p.label(CAMPAIGN_TEXT.tips, portrait ? 28 : 20, p.inner, PRINT.ink, 'bold');
-  const top = p.tap + (portrait ? p.gap : 0);
+  const top = p.tap + (portrait ? p.gap / 2 : 0);
   const y = p.place(title, top + (portrait ? p.pad : p.gap)) + p.gap;
   line(p.ink, p.left, y, p.inner);
   const keys: string[] = [];
@@ -475,18 +475,17 @@ export function drawPaperOwner(
   const storyY = y + p.gap;
   ownerStories.forEach((which, i) => button(`owner:${which}`,
     p.row(i % columns, columns, storyY + Math.floor(i / columns) * step), OWNER_TEXT[which], () => story(which)));
-  if (portrait) button('owner:reset', p.row(1, 2, storyY + 3 * step), OWNER_TEXT.reset, reset);
   const storyBottom = storyY + Math.ceil(ownerStories.length / columns) * step;
   const tipsY = p.place(heading, storyBottom) + p.gap;
   // Landscape uses nine columns so the story previews and numbered tips fit on one sheet.
   const tipColumns = portrait ? 5 : 9;
   const tipH = portrait ? p.tap : 45;
-  const tipStep = tipH + p.gap;
+  const tipStep = tipH + 8;
   levels.forEach(({ id }, i) => button(`owner:tips:${id}`,
     p.row(i % tipColumns, tipColumns, tipsY + Math.floor(i / tipColumns) * tipStep, tipH), String(id), () => tips(id)));
   const tipsBottom = tipsY + Math.ceil(levels.length / tipColumns) * tipStep;
-  if (!portrait) button('owner:reset', p.row(0, 1, tipsBottom), OWNER_TEXT.reset, reset);
-  p.panel(top, tipsBottom + (portrait ? p.gap : p.tap + p.gap) - top);
+  button('owner:reset', p.row(0, 1, tipsBottom), OWNER_TEXT.reset, reset);
+  p.panel(top, tipsBottom + p.tap + p.gap - top);
   p.arrive();
   return [...keys, 'back'];
 }
