@@ -1262,6 +1262,46 @@ fight, B (Fine print) when you read.**
 After this milestone: characters and towers redrawn at a modern phone's
 sharpness (the milestone 54 comparison sheet), as Kyle ordered them.
 
+### After Kyle's first look on his iPhone (2026-11-26)
+
+Kyle: "it's a great start although I feel like each aspect of it needs a
+bit of improving ... some of it needs a slight adjustment for spacing ...
+I like the direction ... continue restyling the rest of the pages, make
+the adjustments and if it needs a decision then tell me what our options
+are visually." He sent three screenshots from Safari. The coordinator's
+reading of them, as the polish list (part 55a3, before 55b):
+
+- **Safari's real screen is short.** With its bars showing, the page is
+  about 390 by 656 CSS px, not 390 by 844. Every phone check also runs at
+  that size, and the look is tuned for it first.
+- **The board is small and letterboxed:** about 227 px wide of 390, with a
+  dark band down each side. The ground is to run to the screen's edges
+  (painted terrain beyond the playable board, no dark bands), and the
+  status block and dock are to be compact enough at this height that the
+  board is clearly larger than it is now.
+- **The status block's spacing:** the level name touches the panel's top
+  edge; mute and pause float between rows; the wave dots are lost in a
+  corner. One even padding, a clear top row (name, mute, pause), the three
+  numbers, the preview.
+- **The dock:** the towers' pictures are tiny and clipped at the top of
+  their cards. Larger pictures, names that read, the lock and the price
+  placed with care.
+- **Tower spots** are now too faint to find on the grass.
+- **The level card** is narrow with half of it empty on a level with few
+  rules, its map picture is bare (no town, no trees), and the Back button
+  is a heavy box beside a light caption. A wider card that sizes to its
+  content or uses the room, the real map art, and a lighter Back.
+
+### Sharper pieces (Kyle: "slight upgrade now")
+
+Kyle: "the one change we do need is how the pieces look, that needs a bit
+of an upgrade ... I lean slight upgrade now but don't want to get bogged
+down by that." Slight means: the same towers and enemies, the same poses,
+rendered from the existing models at a phone's real sharpness with
+smoother shading, as milestone 54's comparison sheet showed. No redesign,
+no new animation. Behind `?ui=new` with the rest. Decoded art on a phone
+stays within budget.
+
 ### Rules that carry over
 
 Every existing check on the interface also runs with the switch on, for

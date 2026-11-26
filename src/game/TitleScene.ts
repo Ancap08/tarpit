@@ -64,6 +64,7 @@ import { drawCampaignMap, drawLevelCard, drawLevelTips, drawOwnerClose, drawOwne
 import { CAMPAIGN_TEXT, lockedLevelText, bestScoreText, DIFFICULTY_LABELS, MAP_NAMES, OWNER_TEXT, paintedLoadingText, STORY_TEXT, TITLE_TEXT } from './names';
 import { COLORS, FONT, TEXT } from './palette';
 import { currentLayout } from './layoutSwitch';
+import { printedPortraitWidth } from './layout';
 import { broadside, ink, ribbon, rule, town } from './ui/theme';
 import { Button } from './ui/button';
 import { menuKeys } from './ui/menuKeys';
@@ -175,6 +176,7 @@ export interface GameStartData {
 export class TitleScene extends Phaser.Scene {
   private page: TitleScreen = 'first';
   private card?: LevelDef;
+  private tipsPlayRect?: { y: number; height: number };
   private replayTips = false;
   private replayLevel = false;
   private ownerPreview = false;
@@ -426,13 +428,14 @@ export class TitleScene extends Phaser.Scene {
           if (review) return leave();
           seenTips.mark(level.id);
           start();
-        }, review ? undefined : toCard);
+        }, review ? undefined : toCard, this.tipsPlayRect);
         this.bindMenuKeys(review ? ['gotIt'] : ['back', 'gotIt'], review ? 0 : 1);
         if (review) this.input.keyboard?.on('keydown-ESC', leave);
       } else {
         const seen = seenTips.has(level.id);
         const showTips = (replay: boolean) => {
           this.replayTips = replay;
+          this.tipsPlayRect = !replay && portrait && skinFor(this) === 'paper' ? this.playButton?.rect : undefined;
           this.touchTips = this.input.activePointer.wasTouch;
           this.tipsAcceptAt = performance.now() + 400;
           this.visit('levelTips', level.id);
@@ -443,9 +446,15 @@ export class TitleScene extends Phaser.Scene {
           useInterface(this, 'paper', () => this.time.now);
           if (portrait) {
             const normal = currentLayout();
-            this.scale.setGameSize(520, normal.height);
+            const width = printedPortraitWidth(this.scale.parentSize);
+            this.scale.setGameSize(width, normal.height);
+            const refitCard = () => {
+              if (currentLayout().turned && printedPortraitWidth(this.scale.parentSize) !== width) this.relayout();
+            };
+            this.scale.on('resize', refitCard);
             this.events.once('shutdown', () => {
-              if (this.scale.width === 520 && this.scale.height === normal.height)
+              this.scale.off('resize', refitCard);
+              if (this.scale.width === width && this.scale.height === normal.height)
                 this.scale.setGameSize(normal.width, normal.height);
             });
           }

@@ -1,40 +1,47 @@
 import type Phaser from 'phaser';
 import type { HudMetrics } from '../hud';
-import type { Layout } from '../layout';
+import { CLEAN_ACTION_H, CLEAN_BUILD_H, CLEAN_DOCK_GAP, type Layout } from '../layout';
 import { HUD_STAT_LABELS } from '../names';
 import { CLEAN, glyph, interLoaded, line, motionClock, sans } from './newTheme';
 import { DeviceTextFit, textInset, textSlot } from './deviceText';
 
+const PHONE_PAD = 15;
+const PHONE_CAPTION = 21;
+const PHONE_TITLE = 23;
+export const PHONE_TOP_CONTROL_CENTER = 27;
+
 export function cleanHudMetrics(layout: Layout, base: HudMetrics): HudMetrics {
   const phone = layout.turned;
   const dockY = layout.map.y + layout.map.height;
-  const barTop = dockY + (phone ? 3 : 23);
-  const controlsY = phone ? barTop + 98 : barTop;
-  const height = phone ? 94 : 65;
-  const head = phone ? { x: 12, y: 4, width: layout.width - 24, height: layout.map.y - 7 }
-    : { x: 8, y: 4, width: layout.width - 16, height: layout.map.y - 8 };
-  const gutter = phone ? 19 : 12;
-  const buttons = phone ? 94 : 53;
-  const controlsX = head.x + head.width - 2 * buttons - 6;
+  const barTop = dockY + (phone ? CLEAN_DOCK_GAP : 23);
+  const controlsY = phone ? barTop + CLEAN_BUILD_H + CLEAN_DOCK_GAP : barTop;
+  const height = phone ? CLEAN_ACTION_H : 65;
+  const head = { x: 8, y: 4, width: layout.width - 16, height: layout.map.y - 8 };
+  const gutter = phone ? PHONE_PAD : 12;
+  const buttons = phone ? CLEAN_ACTION_H : 53;
+  const controlsX = head.x + head.width - 2 * buttons - (phone ? PHONE_PAD : 6);
+  const previewY = layout.map.y - 57;
+  const [gold] = phoneColumns(head);
   const phoneControls = (fraction: number) => Math.floor(layout.width * fraction);
   const specialW = phoneControls(.31);
-  const speedX = layout.width - 99;
+  const speedX = layout.width - CLEAN_ACTION_H - 8;
   return {
     ...base,
     bands: [head, { x: 0, y: dockY, width: layout.width, height: layout.height - dockY }],
     lines: [],
-    statY: head.y + (phone ? 110 : 66),
-    statSize: phone ? (interLoaded ? '38px' : '40px') : '29px',
-    goldX: head.x + gutter,
-    gold: { x: head.x + 5, y: head.y + (phone ? 58 : 29), width: phone ? head.width * .24 : 121, height: phone ? 78 : 45 },
-    preview: phone ? { x: head.x + gutter, y: head.y + 168, width: head.width - 2 * gutter, originY: 0 }
+    statY: head.y + (phone ? 63 : 66),
+    statSize: phone ? '26px' : '29px',
+    goldX: phone ? gold.valueX : head.x + gutter,
+    gold: phone ? { x: gold.left, y: head.y + 43, width: gold.width, height: 38 }
+      : { x: head.x + 5, y: head.y + 29, width: 121, height: 45 },
+    preview: phone ? { x: head.x + gutter, y: previewY, width: head.width - 2 * gutter, originY: 0 }
       : { x: 399, y: head.y + 43, width: 226, originY: 0 },
-    cheat: { x: phone ? head.x + head.width - gutter : 933, y: head.y + (phone ? 153 : 73), size: phone ? '24px' : '14px', originX: 1 },
+    cheat: { x: phone ? head.x + head.width - gutter : 933, y: phone ? previewY + 13 : head.y + 73, size: phone ? '21px' : '14px', originX: 1 },
     mute: { x: controlsX, y: head.y + (phone ? 3 : 6), width: buttons, height: buttons },
     pause: { x: controlsX + buttons, y: head.y + (phone ? 3 : 6), width: buttons, height: buttons },
-    special: { x: phone ? 5 : 618, y: controlsY, width: phone ? specialW : 133, height },
-    start: { x: phone ? specialW + 11 : 757, y: controlsY, width: phone ? speedX - specialW - 16 : 141, height },
-    speed: { x: phone ? speedX : 904, y: controlsY, width: phone ? 94 : 54, height },
+    special: { x: phone ? 8 : 618, y: controlsY, width: phone ? specialW : 133, height },
+    start: { x: phone ? specialW + 13 : 757, y: controlsY, width: phone ? speedX - specialW - 18 : 141, height },
+    speed: { x: phone ? speedX : 904, y: controlsY, width: phone ? CLEAN_ACTION_H : 54, height },
     specialFont: phone ? '25px' : '15px',
     startFont: phone ? '25px' : '15px',
     callFont: interLoaded ? (phone ? '25px' : '15px') : phone ? '24px' : '14px',
@@ -43,8 +50,30 @@ export function cleanHudMetrics(layout: Layout, base: HudMetrics): HudMetrics {
   };
 }
 
+function phoneColumns(head: HudMetrics['bands'][number]) {
+  const measure = head.width - 2 * PHONE_PAD;
+  let left = head.x + PHONE_PAD;
+  return [
+    { share: .30, offset: 88 },
+    { share: .24, offset: 90 },
+    { share: .32, offset: 96 },
+  ].map(({ share, offset }) => {
+    const width = Math.floor(measure * share);
+    const column = { left, width, valueX: left + offset };
+    left += width;
+    return column;
+  });
+}
+
+/** Right-hand slot of the tax row, shared by the tax line and permit tally. */
+export function permitSlot(m: HudMetrics): HudMetrics['bands'][number] {
+  const width = 164;
+  return { x: m.preview.x + m.preview.width - width, y: m.preview.y - 36, width, height: 40 };
+}
+
 export function statColumns(m: HudMetrics): number[] {
-  const width = m.portrait ? Math.min(m.bands[0].width, 505) : 355;
+  if (m.portrait) return phoneColumns(m.bands[0]).map(column => column.valueX);
+  const width = 355;
   return [m.goldX, m.goldX + Math.floor(width * .30), m.goldX + Math.floor(width * .60)];
 }
 
@@ -64,23 +93,27 @@ export class CleanReadouts {
     this.clock = motionClock(scene);
     const phone = m.portrait;
     const { y, x, width } = m.bands[0];
-    this.name = sans(scene, m.goldX, y + (phone ? 4 : 6), '', phone ? 25 : 14, CLEAN.subdued, true, 'normal')
-      .setWordWrapWidth(phone ? m.mute.x - m.goldX - 10 : 355).setName('hud-level-name');
+    const nameX = phone ? x + PHONE_PAD : m.goldX;
+    this.name = sans(scene, nameX, y + (phone ? 3 + PHONE_TOP_CONTROL_CENTER : 6), '', phone ? PHONE_TITLE : 14, phone ? CLEAN.ink : CLEAN.subdued, true, 'normal')
+      .setOrigin(0, phone ? .5 : 0).setWordWrapWidth(phone ? m.mute.x - nameX - 10 : 355).setName('hud-level-name');
     this.pips = scene.add.graphics();
-    const small = phone ? 24 : 14;
-    const labelY = y + (phone ? 58 : 29);
-    this.captions = statColumns(m).map((left, i) => {
+    const small = phone ? PHONE_CAPTION : 14;
+    const labelY = phone ? m.statY : y + 29;
+    const columns = phoneColumns(m.bands[0]);
+    this.captions = statColumns(m).map((valueX, i) => {
       const icon = (['coin', 'heart', 'wave'] as const)[i];
       const color = ([0xffda92, CLEAN.rose, CLEAN.mint] as const)[i];
-      const shift = phone ? 28 : 16;
-      glyph(paint, icon, left + shift * .32, labelY + small / 2 + 1, small * .95, color);
+      const left = phone ? columns[i].left : valueX;
+      const shift = phone ? 24 : 16;
+      glyph(paint, icon, left + shift * .35, labelY + (phone ? 0 : small / 2 + 1), small * .95, color);
       if (i > 0) {
-        const divider = left - (phone ? 12 : 8);
-        paint.lineStyle(1, CLEAN.edge).lineBetween(divider, labelY, divider, m.statY + (phone ? 17 : 13));
+        const divider = left - (phone ? 10 : 8);
+        paint.lineStyle(1, CLEAN.edge).lineBetween(divider, labelY - (phone ? 13 : 0), divider, m.statY + 13);
       }
-      return sans(scene, left + shift, labelY, HUD_STAT_LABELS[i], small, CLEAN.subdued).setName(`hud-stat:${i}`);
+      return sans(scene, left + shift, labelY, HUD_STAT_LABELS[i], small, CLEAN.subdued)
+        .setOrigin(0, phone ? .5 : 0).setName(`hud-stat:${i}`);
     });
-    if (phone) line(paint, m.goldX, y + 137, x + width - m.goldX - 19, CLEAN.edge);
+    if (phone) line(paint, x + PHONE_PAD, m.statY + 15, width - 2 * PHONE_PAD, CLEAN.edge);
     else paint.lineStyle(1, CLEAN.edge).lineBetween(380, y + 12, 380, y + 77);
   }
 
@@ -89,23 +122,40 @@ export class CleanReadouts {
     if (this.name.text !== full) this.name.setText(full);
     const { m, name: label } = this;
     const head = m.bands[0];
-    label.setY(head.y + Math.max(m.portrait ? 4 : 6, textInset(label)));
+    if (!m.portrait) label.setY(head.y + Math.max(6, textInset(label)));
     const right = m.portrait ? m.mute.x - 8 : 380;
-    const box = { ...head, width: right - head.x, height: m.portrait ? 58 : 29 };
-    label.setVisible(this.nameFit.fit(m.portrait ? 25 : 14, [textSlot(label, box, true)]));
+    const height = m.portrait ? m.statY - head.y - 15 : 29;
+    const box = { ...head, width: right - head.x, height };
+    label.setVisible(this.nameFit.fit(m.portrait ? PHONE_TITLE : 14, [textSlot(label, box, true)]));
   }
 
   fitStats(values: Phaser.GameObjects.Text[]): void {
     const { m, captions } = this;
     const head = m.bands[0];
+    if (m.portrait) {
+      const columns = phoneColumns(head);
+      const captionSlots = captions.map((label, i) => {
+        const { left, valueX } = columns[i];
+        return textSlot(label, { x: left, y: m.statY - 23, width: valueX - left + 1, height: 46 });
+      });
+      const valueSlots = values.map((label, i) => {
+        const { left, width, valueX } = columns[i];
+        return textSlot(label, { x: valueX - 7, y: m.statY - 20, width: left + width - valueX + 5, height: 40 }, false, m.statY);
+      });
+      const showCaptions = this.captionFit.fit(PHONE_CAPTION, captionSlots);
+      const showValues = this.valueFit.fit(parseInt(m.statSize), valueSlots);
+      captions.forEach(label => label.setVisible(showCaptions));
+      values.forEach(label => label.setVisible(showValues));
+      return;
+    }
     const columns = statColumns(m);
-    const left = [head.x, columns[1] - (m.portrait ? 12 : 8), columns[2] - (m.portrait ? 12 : 8)];
-    const right = [...left.slice(1), m.portrait ? head.x + head.width : 380];
-    const captionBottom = m.statY - (m.portrait ? 19 : 16);
-    const valueBottom = head.y + (m.portrait ? 137 : 88);
+    const left = [head.x, columns[1] - 8, columns[2] - 8];
+    const right = [...left.slice(1), 380];
+    const captionBottom = m.statY - 16;
+    const valueBottom = head.y + 88;
     const slots = (labels: Phaser.GameObjects.Text[], y: number, bottom: number, anchor?: number) => labels.map((label, i) =>
       textSlot(label, { x: left[i], y, width: right[i] - left[i], height: bottom - y }, false, anchor));
-    const showCaptions = this.captionFit.fit(m.portrait ? 24 : 14, slots(captions, head.y, captionBottom));
+    const showCaptions = this.captionFit.fit(14, slots(captions, head.y, captionBottom));
     const showValues = this.valueFit.fit(parseInt(m.statSize), slots(values, captionBottom - 9, valueBottom, m.statY));
     for (const label of captions) label.setVisible(showCaptions);
     for (const label of values) {
@@ -123,7 +173,7 @@ export class CleanReadouts {
     const started = this.rolls.get(label);
     if (started === undefined || now === undefined) return;
     const t = Math.min(1, (now - started) / 145);
-    label.setY(this.m.statY + 5 * (1 - t)).setAlpha(.55 + .45 * t);
+    label.setY(this.m.statY + (this.m.portrait ? 2 : 5) * (1 - t)).setAlpha(.55 + .45 * t);
     if (t === 1) this.rolls.delete(label);
   }
 
@@ -135,12 +185,14 @@ export class CleanReadouts {
     if (!total) return;
     const { x, y, width } = this.m.bands[0];
     const phone = this.m.portrait;
-    const pitch = Math.min(phone ? 16 : 8, ((phone ? x + width - 15 : 367) - statColumns(this.m)[2]) / total);
-    const left = phone && total <= 8 ? x + width - 18 - pitch * total : statColumns(this.m)[2];
+    const stat = statColumns(this.m)[2];
+    const waveColumn = phoneColumns(this.m.bands[0])[2];
+    const left = phone ? waveColumn.left + waveColumn.width + 4 : stat;
+    const pitch = Math.min(phone ? 17 : 8, ((phone ? x + width - PHONE_PAD : 367) - left) / total);
     for (let i = 0; i < total; i++) {
-      const color = i + 1 < current ? 0x64998d : i + 1 === current ? CLEAN.mint : 0x365653;
-      if (phone && total <= 8) this.pips.fillStyle(color).fillCircle(left + i * pitch + 4, y + 119, 3.6);
-      else this.pips.fillStyle(color).fillRect(left + i * pitch, y + (phone ? 132 : 83), pitch - 2, phone ? 3 : 2);
+      const color = i + 1 < current ? 0x64998d : i + 1 === current ? CLEAN.mint : phone ? 0x5c7b72 : 0x365653;
+      if (phone && total <= 8) this.pips.fillStyle(color).fillCircle(left + (i + .5) * pitch, this.m.statY, Math.min(4.6, pitch * .34));
+      else this.pips.fillStyle(color).fillRect(left + i * pitch, phone ? this.m.statY - 2 : y + 83, pitch - 2, phone ? 4 : 2);
     }
   }
 }

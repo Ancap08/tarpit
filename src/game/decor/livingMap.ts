@@ -1,3 +1,4 @@
+import { extendPortraitGround } from '../draw/groundFringe';
 // Milestone 34 (a living map): the map's ground, what grows on it and the
 // few things that move, in one object GameScene creates first, so all of it
 // draws under the zones, the placement highlight, towers, enemies, shots,
@@ -167,7 +168,7 @@ function makeTextures(scene: Phaser.Scene): void {
 
 export class LivingMap {
   readonly decor: Decor;
-  private readonly ground: Phaser.GameObjects.RenderTexture;
+  readonly ground: Phaser.GameObjects.RenderTexture | Phaser.GameObjects.Image;
   private readonly water: Phaser.GameObjects.Graphics | null;
   /** Swaying tufts and the cave's eyes (world-space). */
   private readonly low: Phaser.GameObjects.Graphics;
@@ -189,14 +190,24 @@ export class LivingMap {
     /** Test mode: everything holds the fixed frame and no puffs. */
     private readonly testMode: boolean,
     private readonly clock: GameClock,
+    extendGround = false,
   ) {
     this.decor = decorFor(map);
     makeTextures(scene);
     // The ground, baked once.
     const g = scene.make.graphics({}, false);
     drawMap(g, map, this.decor);
-    this.ground = layout.placeWorld(scene.add.renderTexture(0, 0, map.width, map.height).setOrigin(0, 0));
-    this.ground.draw(g, 0, 0);
+    if (extendGround && layout.turned) {
+      const canvas = document.createElement('canvas');
+      canvas.width = map.width;
+      canvas.height = map.height;
+      g.generateTexture(canvas, map.width, map.height);
+      this.ground = extendPortraitGround(scene, layout, canvas, 1);
+    } else {
+      const ground = layout.placeWorld(scene.add.renderTexture(0, 0, map.width, map.height).setOrigin(0, 0));
+      this.ground = ground;
+      ground.draw(g, 0, 0);
+    }
     g.destroy();
     this.water = (map.water ?? []).length > 0 ? layout.placeWorld(scene.add.graphics()) : null;
     this.low = layout.placeWorld(scene.add.graphics());

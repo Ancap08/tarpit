@@ -1,3 +1,3 @@
 import { themeSuite } from './theme';
 
-themeSuite(true);
+themeSuite(true, true);

@@ -407,7 +407,7 @@ export function drawLevelCard(
 
 export function drawLevelTips(
   scene: Phaser.Scene, portrait: boolean, level: LevelDef, touch: boolean,
-  action: Action, accept: () => void, back?: () => void,
+  action: Action, accept: () => void, back?: () => void, previousPlay?: Pick<Rect, 'y' | 'height'>,
 ): Button {
   const cx = scene.scale.width / 2;
   const panel = portrait ? { x: 18, y: 148, width: 444, height: 852 } : { x: 72, y: 42, width: 816, height: 486 };
@@ -419,6 +419,9 @@ export function drawLevelTips(
   const lines = levelTips(level.id, touch).map(line => label(scene, cx, 0, line, portrait ? 28 : 26, ink, panel.width - 52, false));
   const width = portrait ? 180 : 200;
   const rect = { x: back ? cx + 8 : cx - width / 2, y: portrait ? 804 : 402, width, height: portrait ? 82 : 58 };
+  if (portrait && back && previousPlay && rect.y < previousPlay.y + previousPlay.height && previousPlay.y < rect.y + rect.height) {
+    rect.y = previousPlay.y - rect.height - 12;
+  }
   if (back) action('title:back', { ...rect, x: cx - width - 8 }, CAMPAIGN_TEXT.back, back);
   const top = heading.y + heading.height / 2;
   const gap = (rect.y - top - lines.reduce((height, line) => height + line.height, 0)) / (lines.length + 1);

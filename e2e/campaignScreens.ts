@@ -340,17 +340,23 @@ export function campaignScreenSuite(touch: boolean) {
     const gameplayAsset = /\/assets\/painted\/shared-[12]x[^/]+\.webp$/;
     for (const fallback of [false, true]) {
       let failureInjected = false;
-      if (fallback) await page.route(gameplayAsset, (route) => {
-        if (failureInjected) return route.continue();
-        failureInjected = true;
-        return route.abort();
-      });
       await page.goto('/?test=1&look=painted');
       await waitForFirstScreen(page);
       await press(page, 'title:campaign', touch);
       await onScreen(page, 'levelMap');
       await press(page, 'title:stop:1', touch);
       await onScreen(page, 'levelCard');
+
+      if (new URL(page.url()).searchParams.get('ui') === 'new') {
+        // Let the card finish fetching its own scenery before faulting the Play load.
+        await page.waitForFunction(() => window.__tarpit!.game.scene.getScene('title').children.list.some(node =>
+          node.type === 'Image' && (node as Phaser.GameObjects.Image).texture.key.startsWith('clean-card-map:')));
+      }
+      if (fallback) await page.route(gameplayAsset, (route) => {
+        if (failureInjected) return route.continue();
+        failureInjected = true;
+        return route.abort();
+      });
       await press(page, 'title:play', touch);
       await onScreen(page, 'game');
       expect(await api(page, (t) => t.painted().active)).toBe(!fallback);

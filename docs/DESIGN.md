@@ -1733,20 +1733,23 @@ drawn and where touches land differ.
 `?ui=new` selects Clean in ordinary levels and Fine print on their level
 cards and results. The landscape frame measures 960 × 676, including a
 96-unit header above the 960 × 480 map and a 100-unit dock below it.
-The portrait frame is 1388 units tall and at least 560 units wide. Its
-width follows the fitted viewport, with the 480 × 960 map centred at
-y = 230. The map keeps its 1:1 projection. The status header and control
-dock sit outside the map at every supported size.
+The portrait frame is 1314 units tall, or 1344 with taxes, and at
+least 560 units wide. It follows the fitted viewport aspect ratio. The
+480 × 960 board keeps its 1:1 projection and sits below a 140-unit
+header, or a 170-unit header with the tax row. Both HUD bands stay
+outside it. One baked ground texture extends across the portrait
+gutters using the two outer terrain cells on each side, with a shade
+that grows toward the edge. The continuation has no road or build
+cells. Riverbend's river mouth continues into the gutter. A held reward
+fits in the side gutter, borrowing up to 12 units of the outer cell
+when needed to keep the board and the HUD at their original scale.
 
-Gold, Lives and Wave use fixed columns with 38-unit portrait numerals in
-Inter, 40 in the device font, and 29 in landscape. The tax and Next text share a row on
-phone when they fit. A longer preview wraps independently below the
-tax. The six build targets show the current look's tower portraits,
-names, prices and availability. Portrait build and wave controls are
-94 units tall and at least 44 CSS px at 390 × 664. Mute and Pause sit in
-the status block. The original same-cell second tap still builds, and
-the armed preview also offers a 94-unit-tall Build button with the same
-44 CSS px minimum at 390 × 664.
+The phone header has a shared title and icon row, inline stat captions
+and 26-unit values beside the wave pips, and up to two lines of preview.
+Taxed levels get a dedicated tax row with the permit tally at its right.
+The portrait build tiles are 110 units tall. A 4-unit gutter separates
+them from the 92-unit action row. All dock controls, Mute, Pause and the
+94-unit Build confirmation meet the 44 CSS px minimum at 390 × 656.
 
 Clean loads the bundled Latin variable Inter face from its own origin
 only with `?ui=new`. It waits alongside Caslon at boot for up to one second.
@@ -1754,13 +1757,16 @@ If Inter fails or misses the deadline, the session keeps the device sans.
 Inter uses weight 400 for labels and 600 for names and numerals. At a given
 viewport each Inter text role uses its design size or the readability floor,
 whichever is larger. The start and call labels share 25 units in portrait
-and 15 in landscape. In portrait the Musketeer tile gets 12 extra units
+and 15 in landscape. In portrait the Musketeer and Longbow tiles get 22 and 12 extra units
 from the shared width budget before it is split among six tiles. Names use
-18.5 units or the floor, centred 48 units below the tile top. Prices use
-25 units at 75.5 units from the tile top. Tower art is centred 18 units
-from the tile top and Painted portraits use a 36-unit height. The phone
-permit tally sits 19.5 units from the tile top with a 1-unit stroke. The phone
-boss name uses 22 units or the floor. Its plate uses
+18.5 units or the floor, centred 62 units below the tile top. Prices use
+25 units or the floor at 91 units from the top. Painted portraits fit
+within 64 × 46 units, centred 26 units from the tile top. A lock sits
+on a badge beside the portrait. Gold prices show available towers and
+warm pink prices show unaffordable towers. Tower spots have a light
+2.1-unit edge over a shaded outline and translucent centre. The portrait
+path-B badge uses 3.6-unit-radius dots so the pair stays distinct. The phone
+boss name uses 21 units or the floor. Its plate uses
 265 to 310 units according to the space beside the cave. The level-three
 tower drawer prints the path name as its title and the level in the metadata.
 The cap notice uses its own metadata line. The drawer reserves that line's
@@ -1793,7 +1799,7 @@ line spacing when the second line needs it.
 | Reward title, card names, descriptions, shortcut keys and held-reward tooltip | Omit the affected group or line. Keep the reward icons and hit targets. |
 | Floating hit, gold and boss-bounty numbers | Keep the numbers within the map. Omit the affected group if it cannot fit. |
 
-Inter and device-font checks exercise the four supported test viewports.
+Inter and device-font checks exercise the five supported test viewports, including 390 × 656, 390 × 664 and 390 × 844 on phone.
 The shared wide-text checks for Inter and Caslon use 1.09 on macOS and
 1.06 elsewhere. Every Clean label must show with Inter at its shipped
 width and at the shared margin. The stress runs check containment, overlap,
@@ -1811,8 +1817,12 @@ physical device pixels.
 Text textures match the interface canvas density and draw from snapped
 anchors. Unchanged interface frames reuse the painted layer.
 
-Paper cards use the bundled Libre Caslon. The portrait card has a
-520-unit width, and short two-tax cards use Map notes to turn the sheet.
+Paper cards use the bundled Libre Caslon. On phones the paper fits the
+page width with a 23-unit inset on either side. The sheet and action bar
+follow the measured content. The scouting illustration uses the actual
+map, entrance, town and growth art. Short two-tax cards can turn over
+to Map notes. The result uses a paper backdrop with measured
+content and a level folio.
 The panel glides over 210 ms, paper settles over 240 ms, gold and lives
 change over 145 ms and prices over 130 ms. Live damage numbers rise for
 up to 470 ms. Battle motion uses the pausable clock. Frozen views draw

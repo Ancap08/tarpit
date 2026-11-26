@@ -2155,3 +2155,34 @@ can change it; "Kyle" means Kyle decided.
   the sell control lost its word and its refund and showed a blank
   button. It now keeps the refund with a trash icon; Pause keeps its
   two-bar icon.
+
+## 2026-11-26, the new interface after Kyle's first look
+
+- **Kyle likes the direction and wants each part improved,** mostly
+  spacing, and "the pieces" (towers and enemies) given "a slight upgrade
+  now" without getting bogged down. He said to continue restyling the
+  remaining pages and to bring him decisions as pictures of the options.
+- **The coordinator turned his three Safari screenshots into a list,**
+  since he said he could not name what was off: the page in Safari is
+  about 390 by 656, shorter than anything the mock-ups were drawn for;
+  the board is 227 px wide with dark bands beside it; the status block's
+  spacing is uneven; the dock's tower pictures are tiny and clipped; tower
+  spots are too faint; the level card is narrow and half empty. The list
+  is in the scope.
+- **Safari renders Inter's weights correctly** (the numerals are visibly
+  bolder than the labels in his screenshots). That was the one thing
+  unverified at merge.
+- **The first part cost about 2.4 million Sol tokens against an estimate
+  of 300,000 to 400,000.** Kyle was told before more was spent. Order
+  from here: the polish list, the remaining pages, and the sharper pieces
+  in a second folder at the same time.
+- **Polish pass accepted for Kyle's phone.** At 390 by 656 the ground now
+  runs to both edges of the screen in every look, the top panel is one
+  compact block with even spacing, the dock's tower pictures grew from
+  about 17 to 23 CSS px, tower spots are easier to find, and the level
+  card went from about 274 to 365 px wide, sized to its content, with the
+  real map art. The playable board itself grew only from 227 to 239 px:
+  the map's shape and the two panels leave little more at that height.
+  Frame cost fell (Painted 10.05 to 8.32 ms a frame). Sol's full browser
+  run crossed a rebuild and had 23 failures that all passed on rerun; CI
+  is the clean full run. 518,467 Sol tokens.

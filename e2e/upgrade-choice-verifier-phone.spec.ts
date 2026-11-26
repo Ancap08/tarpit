@@ -1,8 +1,8 @@
 import { verifierChecks } from './upgradeChoiceVerifier';
-import { newInterfaceChecks } from './newInterface';
+import { newInterfacePhoneChecks } from './newInterface';
 
 verifierChecks(true);
 
-newInterfaceChecks(() => {
+newInterfacePhoneChecks(() => {
   verifierChecks(true);
 });

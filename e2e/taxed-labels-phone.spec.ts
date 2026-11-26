@@ -8,7 +8,7 @@ import { api, press } from './campaign';
 import { checkSize } from './campaignActs';
 import { platformWideFactor, useTallFontMetrics, useWideFontMetrics } from './campaignFont';
 import { openPaintedLevel } from './taxHud';
-import { hasNewInterface, newInterfaceChecks } from './newInterface';
+import { NEW_PHONE_HEIGHTS, hasNewInterface, newInterfaceChecks } from './newInterface';
 
 // Free play 8 lists five troop types; 10 has the longest boss preview. Put both
 // after wave ten so the real HUD must also fit a two-digit wave and level number.
@@ -64,7 +64,7 @@ async function checkHud(page: Page, level: LevelDef, phase: Phase, preview: stri
     hud['bar']['buttons'].forEach((button, i) => read('bar:' + types[i], button.labelObjects[0], button.rect));
     if (t.state!().level?.taxes?.rationing) {
       const first = rects['bar:musketeer'], second = rects['bar:cannon'];
-      read('tally', hud['bar']['count'], { ...first, width: second.x + second.width - first.x });
+      read('tally', hud['bar']['count'], hud['bar']['permitBox'] ?? { ...first, width: second.x + second.width - first.x });
     }
     if (t.bossOnField!()) {
       const boss = hud['bossBar'];
@@ -91,7 +91,7 @@ async function checkHud(page: Page, level: LevelDef, phase: Phase, preview: stri
     const canvas = { x: 0, y: 0, width: t.game.scale.width, height: t.game.scale.height };
     const framePadding = Math.min(inset(strip, canvas), inset(controls, canvas),
       layout.map.y - strip.y - strip.height, controls.y - layout.map.y - layout.map.height,
-      ...labels.filter(l => l.id.startsWith('bar:') || ['special', 'speed', 'startWave', 'tally'].includes(l.id))
+      ...labels.filter(l => l.id.startsWith('bar:') || (['special', 'speed', 'startWave'].includes(l.id) || l.id === 'tally' && !modern))
         .map(l => inset(l.bounds, controls)));
     const s = t.state!();
     return { labels, unmeasured, overlaps, framePadding, waveLines: hud['startButton'].labelObjects[0].getWrappedText(),
@@ -178,8 +178,9 @@ async function exerciseHud(page: Page, level: LevelDef, fallback: boolean) {
   return states;
 }
 
-function matrix() {
-  for (const height of [844, 664]) {
+function matrix(modern = false) {
+  const heights = modern ? NEW_PHONE_HEIGHTS : [844, 664];
+  for (const height of heights) {
     for (const mode of ['normal', 'fixed Caslon', 'fixed fallback', 'wide text']) {
       for (const level of levels) {
         test(`taxed HUD labels fit at 390x${height} (${mode}, ${Object.keys(level.taxes!).length} taxes)`, async ({ page }) => {
@@ -204,23 +205,25 @@ function matrix() {
     }
   }
 
-  test('a long aim instruction fits the taxed strip with the fallback face', async ({ page }) => {
-    await useTallFontMetrics(page, true);
-    await page.setViewportSize({ width: 390, height: 664 });
-    const level = levels[1];
-    await openPaintedLevel(page, level);
-    await api(page, t => { t.startWave(); t.step(1); });
-    for (const touch of [true, false]) {
-      await press(page, 'special', touch);
-      await press(page, 'special:fireArrows', touch);
-      const aim = await api(page, t => t.hudText().next);
-      expect(aim).toContain('Fire Arrows');
-      await checkHud(page, level, 'wave', aim);
-      await press(page, 'special', touch);
-      expect(await api(page, t => t.hudText().next)).toMatch(/^Next:/);
-    }
-  });
+  for (const height of modern ? heights : [664]) {
+    test(`a long aim instruction fits the taxed strip with the fallback face at 390×${height}`, async ({ page }) => {
+      await useTallFontMetrics(page, true);
+      await page.setViewportSize({ width: 390, height });
+      const level = levels[1];
+      await openPaintedLevel(page, level);
+      await api(page, t => { t.startWave(); t.step(1); });
+      for (const touch of [true, false]) {
+        await press(page, 'special', touch);
+        await press(page, 'special:fireArrows', touch);
+        const aim = await api(page, t => t.hudText().next);
+        expect(aim).toContain('Fire Arrows');
+        await checkHud(page, level, 'wave', aim);
+        await press(page, 'special', touch);
+        expect(await api(page, t => t.hudText().next)).toMatch(/^Next:/);
+      }
+    });
+  }
 }
 
 matrix();
-newInterfaceChecks(matrix);
+newInterfaceChecks(() => matrix(true));
