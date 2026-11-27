@@ -26,12 +26,16 @@ export function rentGateCrowd(state: GameState): Enemy[] {
     .sort((a, b) => a.id - b.id) : [];
 }
 
-const frontRanks = [[34, -20], [28, 27], [-22, 32]] as const;
+type Rank = readonly [number, number];
+const frontRanks = [[34, -16], [28, 27], [-22, 32]] as const;
+const shieldRanks = [frontRanks[0], frontRanks[2]];
+const houndRanks = [[36, 15], [-26, 29]] as const;
+const trollRanks = [[6, 36]] as const;
 
-export function rentStance(state: GameState, layout: Layout, enemy: Enemy, slot: number): SiegeStance {
+export function rentStance(state: GameState, layout: Layout, enemy: Enemy, rank?: Rank): SiegeStance {
   const gate = state.gate!;
-  if (slot >= 0) {
-    const [x, y] = frontRanks[slot];
+  if (rank) {
+    const [x, y] = rank;
     const side = -Math.sign(layout.screenDir(Math.cos(gate.angle), Math.sin(gate.angle)).x);
     return { ...capSiegeOffset(side * x, y), scale: 1.48 };
   }
@@ -39,10 +43,14 @@ export function rentStance(state: GameState, layout: Layout, enemy: Enemy, slot:
   return { x: 0, y: 0, scale: 1.32 + .16 * Math.max(0, 1 - distance / 48) };
 }
 
-export function rentVisibleRanks(crowd: readonly Enemy[]): number {
+export function rentGateRanks(crowd: readonly Enemy[]): readonly Rank[] {
   const front = crowd.slice(0, 3);
-  if (front.some(enemy => enemy.type === 'troll')) return 1;
-  return front.some(enemy => enemy.type === 'shieldbearer') ? 2 : 3;
+  // A wide silhouette needs its own rank. Lower poses put the whole
+  // miniature within the Keg's radius at the unchanged rule position.
+  if (front.some(enemy => enemy.type === 'troll')) return trollRanks;
+  if (front.some(enemy => enemy.type === 'wolf')) return houndRanks;
+  if (front.some(enemy => enemy.type === 'shieldbearer')) return shieldRanks;
+  return frontRanks;
 }
 
 /** Offsets are canvas pixels. This only poses the actors. The road position

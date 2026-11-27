@@ -251,13 +251,32 @@ export function rentOverdueSuite(width: number, height: number, touch: boolean) 
             const api = window.__tarpit as TarpitTestApi;
             const scene = api.game.scene.getScene('game') as GameScene;
             const sprites = scene['enemySprites'];
+            const sill = scene.boardLayout.toScreen(scene.state.gate!);
+            const pagePoint = (x: number, y: number) => {
+              const world = scene.boardLayout.toWorld({ x, y });
+              return api.worldToPage(world.x, world.y);
+            };
             return ids.flatMap(id => {
               const v = sprites['views'].get(id)!;
               if (!v.sprite.visible) return [];
               const { x, y, height } = sprites.paintedBar(id)!;
-              const foot = scene.boardLayout.toWorld(v.sprite);
-              const body = scene.boardLayout.toWorld({ x, y: y + height * .5 });
-              return [api.worldToPage(foot.x, foot.y), api.worldToPage(body.x, body.y)];
+              const sprite = v.sprite, f = sprite.frame;
+              const canvas = document.createElement('canvas');
+              canvas.width = f.cutWidth;
+              canvas.height = f.cutHeight;
+              const ctx = canvas.getContext('2d')!;
+              ctx.drawImage(f.source.image as CanvasImageSource, f.cutX, f.cutY, f.cutWidth, f.cutHeight,
+                0, 0, f.cutWidth, f.cutHeight);
+              const pixels = ctx.getImageData(0, 0, f.cutWidth, f.cutHeight).data;
+              let edge = { x, y, distance: 0 };
+              for (let pixel = 0; pixel < f.cutWidth * f.cutHeight; pixel++) {
+                if (pixels[pixel * 4 + 3] < 128) continue;
+                const px = sprite.x + (f.x + pixel % f.cutWidth - sprite.displayOriginX) * sprite.scaleX;
+                const py = sprite.y + (f.y + Math.floor(pixel / f.cutWidth) - sprite.displayOriginY) * sprite.scaleY;
+                const distance = Math.hypot(px - sill.x, py - sill.y);
+                if (distance > edge.distance) edge = { x: px, y: py, distance };
+              }
+              return [pagePoint(sprite.x, sprite.y), pagePoint(x, y + height * .5), pagePoint(edge.x, edge.y)];
             });
           }, held.map(e => e.id));
           const point = target < 0
@@ -272,7 +291,7 @@ export function rentOverdueSuite(width: number, height: number, touch: boolean) 
         }
         const trueSill = await aim(-1);
         expect(trueSill.targets).toHaveLength(trueSill.held);
-        expect(trueSill.aims).toBeGreaterThanOrEqual(4);
+        expect(trueSill.aims).toBeGreaterThanOrEqual(6);
         for (let slot = 0; slot < trueSill.aims; slot++) {
           expect((await aim(slot)).targets, `Held kills at visible aim point ${slot}`).toEqual(trueSill.targets);
         }

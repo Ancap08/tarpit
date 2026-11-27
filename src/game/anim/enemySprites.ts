@@ -49,7 +49,7 @@ import type { Layout } from '../layout';
 import { COLORS } from '../palette';
 import type { GameClock } from '../loop';
 import { FACINGS, SHEETS, walkAnimKey, WALK_FPS, type Facing } from './sheets';
-import { capSiegeOffset, rentGateCrowd, rentStance, rentVisibleRanks, siegeStance, type SiegeStance } from '../draw/siegeFormation';
+import { capSiegeOffset, rentGateCrowd, rentGateRanks, rentStance, siegeStance, type SiegeStance } from '../draw/siegeFormation';
 import { RAM_ORIGIN_Y, RAM_SIZE, SIEGE_MACHINE_KEY, ramPose } from '../draw/siegeMachines';
 import { ramAtGate } from '../keep/siegeTiming';
 
@@ -334,7 +334,7 @@ export class EnemySprites {
     const live = new Set<number>();
     const crowd = this.rentOverdue ? rentGateCrowd(state) : undefined;
     this.heldAtRentGate = crowd?.length ?? 0;
-    const representatives = crowd ? rentVisibleRanks(crowd) : 0;
+    const ranks = crowd ? rentGateRanks(crowd) : [];
     for (const enemy of state.enemies) {
       live.add(enemy.id);
       const view = this.views.get(enemy.id) ?? this.create(enemy, state.map);
@@ -342,7 +342,7 @@ export class EnemySprites {
       let stance: SiegeStance | undefined;
       if (crowd) {
         const slot = crowd.indexOf(enemy);
-        const visible = slot < representatives;
+        const visible = slot < ranks.length;
         view.sprite.setVisible(visible);
         view.shadow?.setVisible(visible);
         view.plumage?.setVisible(visible);
@@ -355,8 +355,7 @@ export class EnemySprites {
           this.stopTrail(view);
           continue;
         }
-        const rank = representatives === 2 && slot === 1 ? 2 : slot;
-        stance = !position && !view.flying ? rentStance(state, this.layout, enemy, rank) : undefined;
+        stance = !position && !view.flying ? rentStance(state, this.layout, enemy, ranks[slot]) : undefined;
       } else if (this.siege && !position) {
         stance = siegeStance(state, enemy);
       }
