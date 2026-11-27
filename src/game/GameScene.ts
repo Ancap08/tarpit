@@ -202,6 +202,7 @@ import { Aim, DRAG_ORIGIN_ALPHA, drawTowerShape, drawTowerPathBadge, drawTowers 
 import { campaignProgress } from './campaignProgress';
 import { highScores } from './highScore';
 import { SIEGE_HUD_CAMERA, SiegeView } from './keep/siegeView';
+import { RentHeldBadge } from './keep/rentHeldBadge';
 import { RoadBanners } from './ui/roadBanners';
 import { SiegeControls } from './ui/siegeControls';
 import { drawGateMarker, drawSiegeRoads, SiegeGateEffects, type GateHistory } from './draw/siege';
@@ -473,6 +474,7 @@ export class GameScene extends Phaser.Scene {
   private hud!: Hud;
   private siegeControls?: SiegeControls;
   private siegeView?: SiegeView;
+  private rentHeldBadge?: RentHeldBadge;
   private roadBanners?: RoadBanners;
   private reward!: BoonReward;
   private mapBlockedUntil = 0;
@@ -635,6 +637,7 @@ export class GameScene extends Phaser.Scene {
       ? this.keepModule.createKeep(new URLSearchParams(location.search).get('survey') === '1')
       : createGame({ difficulty: this.difficulty, map: this.currentMap, level: this.campaignLevel }));
     const base = currentLayout();
+    const rentOverdue = this.state.level?.id === 21;
     this.siegeView = undefined;
     const clean = this.modernInterface && (this.state.map.id !== 'keep' || this.siegeScreens);
     this.layout = clean ? (base.turned ? cleanPortrait(this.scale.parentSize, !!this.state.level?.taxes, this.siegeScreens)
@@ -749,7 +752,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.overlay = world();
     this.dynamic = world();
-    this.enemySprites = new EnemySprites(this, isTestMode(), this.layout, this.painted, this.clock, this.siegeScreens);
+    this.enemySprites = new EnemySprites(this, isTestMode(), this.layout, this.painted, this.clock, this.siegeScreens, rentOverdue);
     this.shotFx = world();
     this.towerBadges = clean ? uiObject(world()) : undefined;
     if (this.towerBadges) uiBounds(this.towerBadges, this.layout.map);
@@ -771,6 +774,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.guardFx = new GuardEffects(this, this.layout, this.enemySprites.layer, this.painted);
     this.bars = this.add.graphics();
+    this.rentHeldBadge = rentOverdue && this.state.gate ? new RentHeldBadge(this, this.layout, this.state.gate) : undefined;
     this.barricadeFx = new BarricadeEffects(this, this.layout, this.painted);
     this.labels = new TowerLabels(this, this.layout);
     // Flyers (Harpies) draw above every walker and label, below the HUD.
@@ -897,7 +901,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (field) {
-      this.siegeView = new SiegeView(this, this.layout, field, !this.autoTick, this.state.phase, !!resume);
+      this.siegeView = new SiegeView(this, this.layout, field, !this.autoTick, this.state.phase, !!resume, rentOverdue);
     }
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (this.paused) return;
@@ -2005,6 +2009,7 @@ export class GameScene extends Phaser.Scene {
     drawStatusRings(g, this.state, this.layout, stopped);
     if (!this.painted) drawShadows(g, this.state, this.layout, stopped);
     this.enemySprites.sync(this.state, this.speed, stopped);
+    this.rentHeldBadge?.update(this.enemySprites.heldAtRentGate);
     this.shotFx.clear();
     this.painted?.beginEffects();
     if (fx) fx.draw(this.shotFx, this.painted);

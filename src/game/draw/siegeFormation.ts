@@ -1,4 +1,5 @@
 import { distanceOnRoad, isFlying, type Enemy, type GameState, type Point } from '../../sim';
+import type { Layout } from '../layout';
 
 export interface SiegeStance extends Point {
   scale: number;
@@ -14,6 +15,34 @@ export function capSiegeOffset(x: number, y: number): Point {
   const distance = Math.hypot(x, y);
   const scale = distance > SIEGE_DRAW_CAP ? SIEGE_DRAW_CAP / distance : 1;
   return { x: x * scale, y: y * scale };
+}
+
+/** Rent Overdue has one inbound road. Paint a few representatives of the
+ * contact there, and count the whole group at its unchanged rule position. */
+export function rentGateCrowd(state: GameState): Enemy[] {
+  const { gate } = state;
+  return gate && !gate.fallen ? state.enemies
+    .filter(enemy => enemy.distance === gate.distance && !isFlying(enemy))
+    .sort((a, b) => a.id - b.id) : [];
+}
+
+const frontRanks = [[34, -20], [28, 27], [-22, 32]] as const;
+
+export function rentStance(state: GameState, layout: Layout, enemy: Enemy, slot: number): SiegeStance {
+  const gate = state.gate!;
+  if (slot >= 0) {
+    const [x, y] = frontRanks[slot];
+    const side = -Math.sign(layout.screenDir(Math.cos(gate.angle), Math.sin(gate.angle)).x);
+    return { ...capSiegeOffset(side * x, y), scale: 1.48 };
+  }
+  const distance = Math.abs(enemy.distance - gate.distance);
+  return { x: 0, y: 0, scale: 1.32 + .16 * Math.max(0, 1 - distance / 48) };
+}
+
+export function rentVisibleRanks(crowd: readonly Enemy[]): number {
+  const front = crowd.slice(0, 3);
+  if (front.some(enemy => enemy.type === 'troll')) return 1;
+  return front.some(enemy => enemy.type === 'shieldbearer') ? 2 : 3;
 }
 
 /** Offsets are canvas pixels. This only poses the actors. The road position

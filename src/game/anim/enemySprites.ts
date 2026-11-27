@@ -49,7 +49,7 @@ import type { Layout } from '../layout';
 import { COLORS } from '../palette';
 import type { GameClock } from '../loop';
 import { FACINGS, SHEETS, walkAnimKey, WALK_FPS, type Facing } from './sheets';
-import { capSiegeOffset, siegeStance, type SiegeStance } from '../draw/siegeFormation';
+import { capSiegeOffset, rentGateCrowd, rentStance, rentVisibleRanks, siegeStance, type SiegeStance } from '../draw/siegeFormation';
 import { RAM_ORIGIN_Y, RAM_SIZE, SIEGE_MACHINE_KEY, ramPose } from '../draw/siegeMachines';
 import { ramAtGate } from '../keep/siegeTiming';
 
@@ -167,6 +167,7 @@ export class EnemySprites {
   private readonly spareTrails: FeatherTrail[] = [];
   private readonly particles: Particles | null;
   private readonly reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+  heldAtRentGate = 0;
 
   /** `layout` (milestone 32b) places every sprite on the screen and turns its facing with the map. */
   constructor(
@@ -176,6 +177,7 @@ export class EnemySprites {
     private readonly painted: PaintedSkin | undefined,
     private readonly clock: GameClock,
     private readonly siege = false,
+    private readonly rentOverdue = false,
   ) {
     if (!painted) ensureAnims(scene);
     this.layer = painted?.standing ?? scene.add.layer();
@@ -243,7 +245,7 @@ export class EnemySprites {
   /** Actual upper body edge after bob and knock, in canvas pixels. */
   paintedBar(id: number): PaintedBody | undefined {
     const v = this.views.get(id);
-    if (v) return this.paintedBarForView(v);
+    if (v?.sprite.visible) return this.paintedBarForView(v);
   }
 
   private paintedBarForView(v: View): PaintedBody | undefined {
@@ -272,7 +274,7 @@ export class EnemySprites {
   kill(id: number): void {
     const v = this.views.get(id);
     if (!v || v.dying) return;
-    if (this.frozen) {
+    if (this.frozen || !v.sprite.visible) {
       this.remove(id);
       return;
     }
@@ -330,11 +332,34 @@ export class EnemySprites {
   /** Match the sprites to the live enemies: create, move, face, animate and tint. */
   sync(state: GameState, timeScale: number, stopped?: BlockedPositions): void {
     const live = new Set<number>();
+    const crowd = this.rentOverdue ? rentGateCrowd(state) : undefined;
+    this.heldAtRentGate = crowd?.length ?? 0;
+    const representatives = crowd ? rentVisibleRanks(crowd) : 0;
     for (const enemy of state.enemies) {
       live.add(enemy.id);
       const view = this.views.get(enemy.id) ?? this.create(enemy, state.map);
       const position = stopped?.get(enemy.id);
-      const stance = this.siege && !position ? siegeStance(state, enemy) : undefined;
+      let stance: SiegeStance | undefined;
+      if (crowd) {
+        const slot = crowd.indexOf(enemy);
+        const visible = slot < representatives;
+        view.sprite.setVisible(visible);
+        view.shadow?.setVisible(visible);
+        view.plumage?.setVisible(visible);
+        view.turn?.previous.setVisible(visible);
+        if (!visible) {
+          const p = this.layout.toScreen(state.gate!);
+          view.sprite.setPosition(p.x, p.y);
+          view.trueFoot = undefined;
+          view.stepPx = 0;
+          this.stopTrail(view);
+          continue;
+        }
+        const rank = representatives === 2 && slot === 1 ? 2 : slot;
+        stance = !position && !view.flying ? rentStance(state, this.layout, enemy, rank) : undefined;
+      } else if (this.siege && !position) {
+        stance = siegeStance(state, enemy);
+      }
       if (this.siege && enemy.type === 'ram') {
         const contact = state.gate && ramAtGate(enemy, state.map, state.gate);
         view.ramContact = contact ? view.ramContact ?? this.clock.nowMs : undefined;
@@ -370,7 +395,7 @@ export class EnemySprites {
   drawSpecialTargets(g: Phaser.GameObjects.Graphics, enemies: readonly Enemy[], targets: ReadonlySet<number>): void {
     for (const enemy of enemies) {
       const view = this.views.get(enemy.id);
-      if (!view || view.dying || view.doomed) continue;
+      if (!view?.sprite.visible || view.dying || view.doomed) continue;
       const { x, y } = view.sprite;
       if (targets.has(enemy.id)) {
         g.fillStyle(0x20232a, .96).fillCircle(x, y, 5);
@@ -424,7 +449,8 @@ export class EnemySprites {
     const sprite = !sheet ? this.ramSprite() : this.painted
       ? this.painted.pose(this.scene.add.sprite(0, 0, this.painted.sheet(art).key, 0), art, 0)
       : this.scene.add.sprite(0, 0, sheet.key, sheet.walk.right.frames[0]).setScale(sheet.scale);
-    const shadow = this.painted && stats.flying ? this.painted.image('harpy-shadow') : undefined;
+    const shadow = this.painted && (stats.flying || this.rentOverdue) ? this.painted.image('harpy-shadow') : undefined;
+    if (this.rentOverdue && shadow && !stats.flying) shadow.setDisplaySize(28, 12).setAlpha(.9);
     if (shadow) this.painted!.shadows.add(shadow);
     const layer = stats.flying ? this.airLayer : isBoss(enemy) ? this.bossLayer : this.layer;
     layer.add(sprite);
@@ -551,8 +577,8 @@ export class EnemySprites {
     const foot = this.layout.toScreen(stoppedAt ?? enemyPosition(enemy, map));
     let x = foot.x + (stance?.x ?? 0);
     let y = foot.y + (stance?.y ?? 0);
-    v.trueFoot = stance ? foot : undefined;
-    if (this.siege) v.sprite.setScale(v.nativeScale * (stance?.scale ?? 1));
+    v.trueFoot = stance && (!this.rentOverdue || stance.x || stance.y) ? foot : undefined;
+    if (this.siege || this.rentOverdue) v.sprite.setScale(v.nativeScale * (stance?.scale ?? 1));
     if (this.siege && v.type === 'ram') {
       const ram = ramPose({
         contactAgeMs: v.ramContact === undefined ? undefined : this.clock.nowMs - v.ramContact,
@@ -598,7 +624,12 @@ export class EnemySprites {
       v.shield.setDepth(depth + 0.5);
     }
     this.setFacing(v, facingAt(roadPath(map, enemy.road), stoppedAt?.distance ?? enemy.distance, this.step(enemy), this.layout), false, enemy.distance);
-    v.shadow?.setPosition(x, y);
+    if (this.rentOverdue && !v.flying) {
+      const scale = stance?.scale ?? 1;
+      v.shadow?.setPosition(v.sprite.x + 2, v.sprite.y + 2).setDisplaySize(23 * scale, 10 * scale);
+    } else {
+      v.shadow?.setPosition(x, y);
+    }
     const flinching = !!enemy.flinchTicksLeft;
     v.sprite.anims.timeScale = stoppedAt || flinching ? 0 : timeScale;
     v.sprite.setAngle(flinching ? (v.facing === 'left' ? 15 : -15) : 0);

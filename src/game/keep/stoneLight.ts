@@ -5,7 +5,8 @@ import Phaser from 'phaser';
 export class KeepLight {
   private readonly variants = new Map<string, Phaser.Textures.Texture>();
 
-  constructor(private readonly textures: Phaser.Textures.TextureManager, private readonly moonlit = false) {}
+  constructor(private readonly textures: Phaser.Textures.TextureManager, private readonly moonlit = false,
+      private readonly rentOverdue = false) {}
 
   readonly key = (key: string): string => {
     if (key.startsWith('painted:harpy-shadow:') || key.startsWith('painted:sharp:')) return key;
@@ -18,7 +19,11 @@ export class KeepLight {
     canvas.height = image.height;
     const ctx = canvas.getContext('2d')!;
     ctx.drawImage(image, 0, 0);
-    lightKeepPixels(ctx, this.moonlit);
+    if (this.rentOverdue && /^painted:(goblin|wolf|shieldbearer|troll|harpy):/.test(key)) {
+      inkRentEnemy(ctx, 2);
+    } else {
+      lightKeepPixels(ctx, this.moonlit);
+    }
     const texture = this.textures.create((this.moonlit ? 'keep:moon:' : 'keep:dusk:') + source.key, canvas)!;
     texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
     for (const frame of Object.values(source.frames)) {
@@ -32,6 +37,36 @@ export class KeepLight {
     for (const { key } of this.variants.values()) this.textures.remove(key);
     this.variants.clear();
   }
+}
+
+/** Keep the same poses and anchors. A dark contour goes inside the existing
+ * alpha silhouette, so neither frames nor decoded sheets need extra padding. */
+export function inkRentEnemy(ctx: CanvasRenderingContext2D, density: number): void {
+  const { width, height } = ctx.canvas;
+  const pixels = ctx.getImageData(0, 0, width, height);
+  const rgba = pixels.data;
+  const inset = Math.max(1, Math.round(density * 1.25));
+  const span = width * 4 * inset;
+  const step = inset * 4;
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    const i = (y * width + x) * 4;
+    if (!rgba[i + 3]) continue;
+    const edge = Math.min(x >= inset ? rgba[i - step + 3] : 0,
+      x + inset < width ? rgba[i + step + 3] : 0,
+      y >= inset ? rgba[i - span + 3] : 0,
+      y + inset < height ? rgba[i + span + 3] : 0);
+    if (edge < 95) {
+      rgba[i] = 30;
+      rgba[i + 1] = 29;
+      rgba[i + 2] = 24;
+    } else {
+      const value = .24 * rgba[i] + .63 * rgba[i + 1] + .13 * rgba[i + 2];
+      rgba[i] = rgba[i] * .49 + value * .16 + 17;
+      rgba[i + 1] = rgba[i + 1] * .47 + value * .15 + 12;
+      rgba[i + 2] = rgba[i + 2] * .46 + value * .12 + 7;
+    }
+  }
+  ctx.putImageData(pixels, 0, 0);
 }
 
 /** Relight a sheet in place before registering it with Phaser. */

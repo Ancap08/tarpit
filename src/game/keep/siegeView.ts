@@ -22,13 +22,13 @@ export class SiegeView {
   private started = 0;
 
   constructor(scene: Phaser.Scene, private readonly layout: Layout, world: Phaser.GameObjects.GameObject[],
-    private readonly frozen: boolean, phase: Phase, rebuilding: boolean) {
+    private readonly frozen: boolean, phase: Phase, rebuilding: boolean, private readonly steadyField = false) {
     this.field = scene.cameras.main.setOrigin(0);
     this.overlay = scene.cameras.add(0, 0, layout.width, layout.height, false, SIEGE_HUD_CAMERA);
     this.overlay.ignore(world);
     const moving = new Set(world);
     this.fix(scene.children.list.filter(object => !moving.has(object)));
-    if (rebuilding && !this.frozen && !this.reduced.matches && phase === 'wave') {
+    if (rebuilding && !this.frozen && !this.reduced.matches && !this.steadyField && phase === 'wave') {
       this.from = this.to = BATTLE_SCALE;
     }
     this.apply(this.to);
@@ -47,6 +47,7 @@ export class SiegeView {
   }
 
   update(phase: Phase, time: number): void {
+    if (this.steadyField) return;
     const target = this.frozen || this.reduced.matches ? SETUP_SCALE
       : phase === 'wave' ? BATTLE_SCALE : phase === 'setup' ? SETUP_SCALE : this.to;
     if (target !== this.to) {

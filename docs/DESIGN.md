@@ -2716,6 +2716,18 @@ inside their landing radius with filled dots and show hollow dots for
 misses. Preview and cast use the same distance from each enemy's rule
 position. Wounded enemies carry short bars near their own heads.
 
+Level 21 uses a distant Keep behind the ridge and a continuous foreground
+road and yard. The four high sites have raised stone platforms and gold
+sockets, and the six ground sites have green sockets. The portrait
+camera holds at the existing 1.15× setup projection through the wave so
+the ridge, ground and sites stay in view. The gate keeps its rule point
+and damage thresholds. Walkers use 1.32× scale on the road, growing to
+1.48× near the sill. Up to three held walkers stand in front of the gate
+within the existing 40 px cap. The held count includes every walker
+stopped at the sill. Aim previews and casts still use the rule positions.
+The presentation of levels 22 to 25 uses the preceding siege art and
+formation.
+
 A usable bedroom window glows and carries a feather. A successful tap
 tips a pot, shakes a pillow from 370 ms and closes the shutters at
 1,250 ms. Six tar drops and twelve feathers land along that window's
