@@ -1376,8 +1376,24 @@ interface, and wave 1 at the gate at 1280x800. A short note per direction
 says what it would cost to build, what it does to the art memory caps, and
 what it gives up.
 
-After Kyle picks: the chosen direction on level 21 behind a switch, then
-levels 22 to 25.
+### Kyle chose A before the pictures were made (2026-11-27)
+
+"Yes I agree let's go with A." He played with the new interface. The
+three-direction pictures were stopped; B and C are not drawn.
+
+- **Pictures of A only, at two strengths,** because how far to push the
+  castle back is cheap to try in a picture and costly to try in the game
+  (every castle plate is rendered again). A1: the castle about half its
+  size, high on the screen, hazed. A2: the castle as a dark skyline band.
+  The coordinator picks the strength, a detail inside the agreed
+  direction, and sends Kyle the pictures; the build does not wait.
+- **Then A is built on level 21,** with the four board-reading fixes, and
+  after Kyle has played it, on levels 22 to 25. No second switch: Act
+  Three is already hidden from players behind `?act3=1` and the owner's
+  link, and a switch would double every check on these levels. The old
+  look stays in Git.
+- Rules, roads, tower sites, waves, wording and sound do not change.
+  Levels 1 to 20 stay pixel-identical. The art caps hold.
 
 ## Later milestones (order agreed, detail to come)
 

@@ -2443,3 +2443,13 @@ can change it; "Kyle" means Kyle decided.
   description):** three directions as pictures of level 21, no game code,
   for Kyle to choose by eye. Scope: milestone 58.
 - **Not decided:** the direction. Kyle's, from the pictures.
+- **Kyle chose A, castle behind, before any picture was made:** "Yes I
+  agree let's go with A." He played with the new interface. The
+  coordinator stopped the three-direction run about ten minutes in; B and
+  C are not drawn.
+- **Decided (coordinator):** pictures of A at two strengths first, since
+  the amount is cheap to try in a picture and costly in the game; the
+  coordinator picks the strength and the build follows without waiting
+  for Kyle. A is built directly on levels 21 to 25 with no second switch,
+  because Act Three is already hidden from players and a switch would
+  double every check there.
