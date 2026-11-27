@@ -3,6 +3,9 @@
 Model the Old Keep as a painted miniature. Two perspective cameras share the gate's
 registration, including a second exposure under a lightning key. Encode both plate
 sizes from each render. No source imagery.
+
+Use -- --footing [directory] to render the gate and exhibition lightning plates
+alone, and add --siege-strike for the campaign's hard-key exposure.
 """
 import json
 import math
@@ -556,6 +559,23 @@ def escarpment(x1,x2):
         x=x1+(x2-x1)*j/round((x2-x1)/.52)
         y=-2.96+(abs(x)-2.07)*(.121 if x<0 else .254)
         stations.append((x,y,rng.uniform(-.26,.18),rng.uniform(-.28,.23),rng.uniform(-.6,.15)))
+    # Give the fractured outer face one solid heel. The individual plates
+    # of shale still break the surface, but the crag cannot show between
+    # the buttresses. Low, sloping toes carry the rock out to the ground.
+    heel=[]
+    for x,y,dx,dz,bottom in stations:
+        toe=-1.97+.15*math.sin(x*1.55)+bottom*.26
+        toe-=max(0,min(.16,(-x-9)*.028))
+        heel.append(((x,y+.06,-.51+dz*.24),
+                     (x+dx*.38,y-.33,-1.22+dz*.42),
+                     (x+dx*.38,y-.64,toe+.15),
+                     (x+dx*.30,y-.72,toe-.09)))
+    for j,(a,b) in enumerate(zip(heel,heel[1:])):
+        for k in range(len(a)-1):
+            v=[a[k],b[k],b[k+1],a[k+1]]
+            tones=("rock","shale","shale-light") if k<2 else ("rock","shale-toe","shale-toe")
+            poly(v,[(0,2,1)],tones[(j+k)%3])
+            poly(v,[(0,3,2)],tones[(j+2*k+1)%3])
     for side in range(len(stations)-1):
         contours=[]
         for x,y,dx,dz,bottom in stations[side:side+2]:
@@ -823,6 +843,7 @@ def stone_palette():
     for name,swatch in {
         "stone":"526070","slate":"475565","ash":"62707D","lichen":"536165",
         "trim":"7C8993","bone":"A2AEB3","rock":"464855","wood":"472E2D",
+        "shale":"5C5B66","shale-light":"696675","shale-toe":"343B49",
         "verdigris":"20434D","shingle":"2B414F","deep":"273446","patina":"528184",
         "bronze":"9E7841","iron":"161B23","passage":"211B21","ink":"242A38","gold":"DBA755","blue":"347FC1",
     }.items():
@@ -1059,9 +1080,11 @@ def run():
     render.light("Lightning",(9,-7,18),(0,0,4),1.25,17000,(.58,.80,1))
     bolt=bpy.data.objects["Lightning"]
     args=sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else []
-    strike=bool(args and args[0]=="--siege-strike")
-    preview=bool(args[1:] if strike else args)
-    output=Path(args[-1]) if preview else OUT
+    strike="--siege-strike" in args
+    footing="--footing" in args
+    directories=[arg for arg in args if not arg.startswith("--")]
+    preview=bool(directories) and not footing
+    output=Path(directories[-1]) if directories else OUT
     if strike:
         for obj in scene.objects:
             if obj.type=="LIGHT" and obj!=bolt:
@@ -1141,7 +1164,12 @@ def run():
                 u,v=projected((xx,yy,zz))
                 points[label]=[round(u*1280,1),round(v*960,1)]
                 print(label,*points[label],flush=True)
-            exposures=("lightning",) if strike else (("lightning","composite") if preview else ("far","crown","gate","lightning"))
+            if strike:
+                exposures=("lightning",)
+            elif footing:
+                exposures=("gate","lightning")
+            else:
+                exposures=("lightning","composite") if preview else ("far","crown","gate","lightning")
             for name in exposures:
                 for part,objects in plates.items():
                     for obj in objects:
@@ -1162,7 +1190,7 @@ def run():
                     continue
                 write_webp(path,output,size)
     registration_file=(output/"projection.json" if preview else HERE.parents[1]/"src/game/keep/projection.json")
-    if not strike:
+    if not strike and not footing:
         registration_file.write_text(json.dumps(registration,indent=2)+"\n")
 
 
