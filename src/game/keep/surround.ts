@@ -214,10 +214,18 @@ export class KeepSurround {
 
     this.fit = () => {
       const r = canvas.getBoundingClientRect(), parent = host.getBoundingClientRect();
-      const scale = r.width / this.layout.width;
-      this.frame.style.left = (r.left - parent.left + this.layout.map.x * scale) + 'px';
-      this.frame.style.top = (r.top - parent.top + this.layout.map.y * scale) + 'px';
-      this.frame.style.scale = String(scale);
+      const scaleX = r.width / this.layout.width;
+      if (weather && this.layout.turned) {
+        // FIT rounds the CSS dimensions independently.
+        const scaleY = r.height / this.layout.height;
+        const left = r.left - parent.left + this.layout.map.x * scaleX;
+        const top = r.top - parent.top + this.layout.map.y * scaleY;
+        this.frame.style.transform = `matrix(${scaleX},0,0,${scaleY},${left},${top})`;
+      } else {
+        this.frame.style.left = (r.left - parent.left + this.layout.map.x * scaleX) + 'px';
+        this.frame.style.top = (r.top - parent.top + this.layout.map.y * scaleX) + 'px';
+        this.frame.style.scale = String(scaleX);
+      }
     };
     this.fit();
     this.observer = new ResizeObserver(this.fit);

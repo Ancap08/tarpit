@@ -145,6 +145,7 @@ export class KeepView {
   private readonly reflection: Phaser.GameObjects.Graphics;
   private readonly spill: Image[];
   private readonly barbicanSpill: Image[];
+  private readonly followsPortraitCamera: boolean;
   private readonly scenery: Phaser.GameObjects.Container;
   private readonly fog: Image[];
   private readonly lights: Image[];
@@ -207,6 +208,8 @@ export class KeepView {
     this.light = new KeepLight(scene.textures, siegeArt && weather === 'night storm');
     this.surround = assets.panorama(layout,this.gate,
       {width:this.castleW,height:this.castleH},this.anchors.foot, weather, footing);
+    this.followsPortraitCamera = !!footing && layout.turned;
+    if (this.followsPortraitCamera) scene.game.renderer.on(Phaser.Renderer.Events.POST_RENDER, this.alignGround, this);
     this.fieldLight = scene.add.container(x,y);
     this.reflection = scene.add.graphics();
     this.fieldLight.add(this.reflection);
@@ -276,11 +279,22 @@ export class KeepView {
     return { x:this.gate.x+(u-fx)*this.castleW/1280, y:this.gate.y+(v-fy)*this.castleH/960 };
   };
 
-  frame(interacting = false): void {
+  private alignGround(): void {
     const camera = this.scene.cameras.main;
-    const scaleY = camera.zoomY;
-    const y = camera.y + (this.layout.map.y - camera.scrollY) * scaleY - this.layout.map.y;
-    this.surround.scroll(camera.x - camera.scrollX, y, scaleY);
+    const { x, y } = this.layout.map;
+    const { a, d, e, f } = (camera as typeof camera & { matrix: Phaser.GameObjects.Components.TransformMatrix }).matrix;
+    // The renderer has snapped the scroll and restored the logical matrix
+    // after drawing into the battle buffer.
+    this.surround.scroll(e + (x - camera.scrollX) * a - x, f + (y - camera.scrollY) * d - y, d);
+  }
+
+  frame(interacting = false): void {
+    if (!this.followsPortraitCamera) {
+      const camera = this.scene.cameras.main;
+      const scaleY = camera.zoomY;
+      const y = camera.y + (this.layout.map.y - camera.scrollY) * scaleY - this.layout.map.y;
+      this.surround.scroll(camera.x - camera.scrollX, y, scaleY);
+    }
     if (this.clock.paused && this.previous !== -Infinity) return;
     const ms = this.clock.nowMs;
     if (this.lastFrame !== ms) this.quality.sample(ms);
@@ -401,6 +415,7 @@ export class KeepView {
   resumed(): void { this.quality.resetWindow(2); }
 
   destroy(): void {
+    if (this.followsPortraitCamera) this.scene.game.renderer.off(Phaser.Renderer.Events.POST_RENDER, this.alignGround, this);
     this.label?.remove();
     this.light.destroy();
     if (this.magnifier) this.scene.textures.remove(MAGNIFIER_KEY);
