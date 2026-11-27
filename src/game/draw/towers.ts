@@ -285,6 +285,7 @@ export function drawTowers(
   layout: Layout = LANDSCAPE,
   body?: (tower: Tower, p: Point, pose: TowerPose, alpha: number) => void,
   clean = false,
+  customBases = false,
 ): void {
   for (const tower of state.towers) {
     const dim = dimmed !== null && dimmed.col === tower.cell.col && dimmed.row === tower.cell.row;
@@ -292,7 +293,7 @@ export function drawTowers(
     const p = cellCenter(tower.cell);
     const stance = pose?.(tower.cell, tower.type) ?? { angle: aim.angle(tower.cell), scale: 1, recoil: 0 };
     const alpha = dim ? DRAG_ORIGIN_ALPHA : 1;
-    if (clean) {
+    if (clean && !customBases) {
       const foot = layout.offset(p, 0, 8);
       const shadow = layout.ellipse(36, 17);
       g.fillStyle(CLEAN.ground, .26 * alpha).fillEllipse(foot.x, foot.y, shadow.w, shadow.h, 16);

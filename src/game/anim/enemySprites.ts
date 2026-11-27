@@ -124,6 +124,7 @@ interface View {
   ramScaleY?: number;
   trueFoot?: Point;
   rentFlightSlot?: number;
+  rentShadowScale?: number;
   ramContact?: number;
   ramApproach?: Point;
 }
@@ -345,13 +346,19 @@ export class EnemySprites {
       if (this.rentOverdue) {
         const rank = crowd && rentGateRank(crowd, enemy);
         const visible = !!rank || !crowd || !inRentGateBand(state.gate!.distance, enemy);
-        view.sprite.setVisible(visible);
-        view.shadow?.setVisible(visible);
-        view.plumage?.setVisible(visible);
-        view.turn?.previous.setVisible(visible);
+        const changed = view.sprite.visible !== visible;
+        if (changed) {
+          view.sprite.setVisible(visible);
+          view.shadow?.setVisible(visible);
+          view.plumage?.setVisible(visible);
+          view.turn?.previous.setVisible(visible);
+        }
         if (!visible) {
-          const p = this.layout.toScreen(enemyPosition(enemy, state.map));
-          view.sprite.setPosition(p.x, p.y);
+          if (changed || view.distance !== enemy.distance) {
+            const p = this.layout.toScreen(enemyPosition(enemy, state.map));
+            view.sprite.setPosition(p.x, p.y);
+            view.distance = enemy.distance;
+          }
           view.trueFoot = undefined;
           view.stepPx = 0;
           this.stopTrail(view);
@@ -632,10 +639,15 @@ export class EnemySprites {
     this.setFacing(v, facingAt(roadPath(map, enemy.road), stoppedAt?.distance ?? enemy.distance, this.step(enemy), this.layout), false, enemy.distance);
     if (this.rentOverdue && !v.flying) {
       const scale = stance?.scale ?? 1;
-      v.shadow?.setPosition(v.sprite.x + 2, v.sprite.y + 2).setDisplaySize(23 * scale, 10 * scale);
+      v.shadow?.setPosition(v.sprite.x + 2, v.sprite.y + 2);
+      if (v.rentShadowScale !== scale) {
+        v.shadow?.setDisplaySize(23 * scale, 10 * scale);
+        v.rentShadowScale = scale;
+      }
+    } else if (this.rentOverdue && v.flying) {
+      v.shadow?.setPosition(foot.x, foot.y);
     } else {
-      const shadow = this.rentOverdue && v.flying ? foot : { x, y };
-      v.shadow?.setPosition(shadow.x, shadow.y);
+      v.shadow?.setPosition(x, y);
     }
     const flinching = !!enemy.flinchTicksLeft;
     v.sprite.anims.timeScale = stoppedAt || flinching ? 0 : timeScale;

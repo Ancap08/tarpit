@@ -2001,7 +2001,7 @@ export class GameScene extends Phaser.Scene {
     const fx = this.fx;
     fx?.update(this.state);
     const pose = fx ? (cell: Cell, type: TowerType) => fx.towerPose(cell, type) : undefined;
-    drawTowers(g, this.state, this.aim, moving, pose, this.layout, this.painted?.towerBody, this.clean);
+    drawTowers(g, this.state, this.aim, moving, pose, this.layout, this.painted?.towerBody, this.clean, !!this.rentHeldBadge);
     this.drawTowerBadges(moving);
     const blocker = this.state.blockers.find((b) => b.kind === 'barricade') ?? null;
     const motion = this.barricadeMotion;
