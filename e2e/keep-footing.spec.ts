@@ -76,11 +76,13 @@ async function footingPixels(page: Page, route: number[][]) {
     // Walk the full corridor in short overlapping patches. A few dark
     // mortar joints are normal, but a whole patch of shadow or rock is a gap.
     let darkest = Infinity;
+    const paving: [number, number][] = [];
     for (let i = 1; i < route.length; i++) {
       const [ax, ay] = route[i - 1], [bx, by] = route[i];
       const count = Math.ceil(Math.hypot(bx - ax, by - ay) / 3);
       for (let n = 0; n <= count; n++) {
         const x = Math.round(ax + (bx - ax) * n / count), y = Math.round(ay + (by - ay) * n / count);
+        paving.push([x, y]);
         let stone = 0;
         for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
           if (luminance(x + dx, y + dy) >= 59) stone++;
@@ -88,17 +90,34 @@ async function footingPixels(page: Page, route: number[][]) {
         darkest = Math.min(darkest, stone / 49);
       }
     }
-    return darkest;
+    // The slab read as an uninterrupted dark upper edge over lighter ground.
+    // Measure across both shoulders, allowing for a slight diagonal.
+    const canvas = scene.game.canvas.getBoundingClientRect();
+    const scaleX = canvas.width / scene.boardLayout.width;
+    const scaleY = canvas.height / scene.boardLayout.height * scene.cameras.main.zoomY;
+    let straight = 0;
+    for (let y = 14; y <= 32; y++) for (const slope of [-.12, 0, .12]) {
+      let run = 0;
+      for (let x = -116; x <= 116; x++) {
+        const edge = y + Math.round(slope * x);
+        // The kerb is a continuous feature of the road, outside the rock.
+        const onRoad = paving.some(([u, v]) => (u - x) ** 2 + (v - edge) ** 2 <= 22 ** 2);
+        run = !onRoad && edge >= 12 && luminance(x, edge + 3) - luminance(x, edge - 2) >= 10 ? run + 1 : 0;
+        straight = Math.max(straight, run * Math.hypot(scaleX, slope * scaleY));
+      }
+    }
+    return { darkest, straight };
   }, route);
 }
 
 for (const { name, width, height } of views) {
   for (const level of levels) for (const ui of ['new', 'old']) {
-    test(`level ${level} ${name}, ${ui} interface: the inbound paving reaches the sill`, async ({ page }) => {
+    test(`level ${level} ${name}, ${ui} interface: the inbound paving reaches the sill over broken rock`, async ({ page }) => {
       await page.setViewportSize({ width, height });
       await openKeep(page, level, true, ui);
-      const darkest = await footingPixels(page, approaches[name][level]);
-      expect(darkest, 'Continuous visible paving from the inbound road to the sill').toBeGreaterThanOrEqual(.45);
+      const { darkest, straight } = await footingPixels(page, approaches[name][level]);
+      expect.soft(darkest, 'Continuous visible paving from the inbound road to the sill').toBeGreaterThanOrEqual(.45);
+      expect(straight, 'Longest straight edge under the gatehouse (CSS px)').toBeLessThanOrEqual(33);
     });
   }
 }

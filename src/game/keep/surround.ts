@@ -201,10 +201,10 @@ export class KeepSurround {
       // The wide wall and the east deck can overlap the outer gate. Seat
       // its threshold above both, still beneath the Phaser battle actors.
       const { sill, approach } = footing.gate;
-      const left = Math.floor(Math.min(sill.x - 124, approach.x - 26));
-      const right = Math.ceil(Math.max(sill.x + 124, approach.x + 26));
+      const left = Math.floor(Math.min(sill.x - 139, approach.x - 26));
+      const right = Math.ceil(Math.max(sill.x + 139, approach.x + 26));
       const upper = Math.floor(Math.min(sill.y - 23, approach.y - 26));
-      const lower = Math.ceil(Math.max(sill.y + 48, approach.y + 26));
+      const lower = Math.ceil(Math.max(sill.y + 54, approach.y + 26));
       this.gateBed = this.paint(left, upper, right - left, lower - upper,
         ctx => paintGateFooting(ctx, footing.gate, weather), this.camera, true);
       this.gateBed.style.transformOrigin =

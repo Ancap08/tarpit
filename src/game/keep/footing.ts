@@ -39,6 +39,44 @@ function polygon(ctx: CanvasRenderingContext2D, points: Point[], fill: string): 
 
 type Stone = (light: number, rock?: boolean) => string;
 
+function paintAbutments(ctx: CanvasRenderingContext2D, gate: GateFooting, stone: Stone): void {
+  const { sill, expanded } = gate;
+  const scale = expanded ? 1 : .57;
+  ctx.save();
+  ctx.translate(sill.x, sill.y);
+  ctx.scale(scale, scale);
+  // Each curtain tail bears on a separate outcrop. Loose shale continues
+  // below it, in the same sloping strata as the painted crag.
+  groundWash(ctx, -65, 13, 72, 28, ['#11141edb', '#171a255c', '#171a2500']);
+  groundWash(ctx, 65, 14, 73, 30, ['#10151fd2', '#171a2557', '#171a2500']);
+  const ledges = [
+    [-111, 18, 27, 17], [-90, 24, 36, 27], [-67, 28, 34, 27], [-47, 23, 27, 22], [-24, 21, 20, 15],
+    [114, 21, 30, 23], [94, 26, 36, 26], [68, 21, 32, 24], [45, 22, 33, 24], [22, 22, 22, 15],
+    [-106, 25, 17, 10], [-91, 37, 19, 13], [-71, 40, 22, 12], [-52, 32, 22, 18], [-31, 27, 14, 8],
+    [104, 35, 18, 11], [78, 30, 16, 7], [61, 28, 22, 13], [34, 33, 15, 9],
+    [-93, 43, 11, 7], [-83, 38, 13, 13], [-72, 39, 15, 12], [-66, 45, 14, 8], [-48, 40, 11, 5],
+    [90, 44, 11, 8], [70, 36, 13, 9], [84, 35, 17, 13], [99, 40, 15, 10],
+  ];
+  if (gate.wrapsShoulder) ledges.push([-78, 33, 19, 13]);
+  ledges.forEach(([x, y, w, h], i) => {
+    const variance = Math.sin(i * 3.1 + sill.x * .11);
+    const shape = (u: number, v: number) => ({ x: x + u * w + variance * 3, y: y + (v - u * .17) * h + variance * 3 });
+    const a = shape(-.57, -.14), b = shape(-.38, -.67), c = shape(.14, -.80);
+    const d = shape(.45, -.59), e = shape(.54, -.16), f = shape(.33, .05);
+    const g = shape(.08, .40), heel = shape(-.37, .25), ridge = shape(.04, -.30);
+    const shade = 54 + (i * 17 % 15) + variance * 5;
+    polygon(ctx, [a, b, c, d, e, f, g, heel], stone(shade - 13, true));
+    polygon(ctx, [a, b, c, d, ridge], stone(shade + 6, true));
+    polygon(ctx, [d, e, f, g, ridge], stone(shade - 4, true));
+    polygon(ctx, [b, shape(-.14, -.72), c, shape(-.12, -.66)], stone(shade + 17, true));
+    polygon(ctx, [shape(-.48, .06), shape(-.10, -.06), shape(.14, -.18), shape(-.07, .02)], stone(shade + 2, true));
+    polygon(ctx, [shape(-.15, -.57), shape(-.03, -.47), shape(.18, -.54), shape(.01, -.41)], stone(shade - 3, true));
+  });
+  groundWash(ctx, -65, 5, 61, 11, ['#101621bb', '#14182348', '#14182300']);
+  groundWash(ctx, 64, 7, 64, 11, ['#101621bb', '#14182348', '#14182300']);
+  ctx.restore();
+}
+
 /** Join the arch to the road where its paving emerges from behind the gate. */
 export function paintGateFooting(ctx: CanvasRenderingContext2D, gate: GateFooting, weather: KeepSky): void {
   const { sill, approach, farther, expanded, portrait, wrapsShoulder } = gate;
@@ -48,20 +86,7 @@ export function paintGateFooting(ctx: CanvasRenderingContext2D, gate: GateFootin
     return rock ? `rgb(${tone(0)},${tone(1)},${tone(10)})` : `rgb(${tone(0)},${tone(4)},${tone(15)})`;
   };
   const face = { x: sill.x - (expanded ? 2 : 7), y: sill.y + (expanded ? 5 : 3) };
-  const half = expanded ? 112 : 64;
-  // The wings and the two projecting drums have different contact depths.
-  groundWash(ctx, sill.x, face.y + 3, half + 9, 17, ['#0b101ab2', '#10172270', '#10172200']);
-  for (const side of [-1, 1]) {
-    const shoulder = sill.x + side * half * .67;
-    const edge = (u: number, v: number): Point => ({ x: shoulder + u * half * side, y: face.y + v });
-    // Rock under the curtain tails gives the towers a bearing even when
-    // the registered sill straddles the edge of the ravine.
-    polygon(ctx, [edge(-.33, -3), edge(.32, 1), edge(.28, 10), edge(.13, 15),
-      edge(-.04, 19), edge(-.24, 14), edge(-.37, 8)], stone(41));
-    polygon(ctx, [edge(-.24, 3), edge(-.04, 5), edge(.13, 15), edge(-.04, 19), edge(-.24, 14)], stone(55));
-    polygon(ctx, [edge(-.04, 5), edge(.22, 3), edge(.28, 10), edge(.13, 15)], stone(47));
-    groundWash(ctx, shoulder, face.y + 5, half * .44, 13, ['#080f1acb', '#11182456', '#11182400']);
-  }
+  paintAbutments(ctx, gate, stone);
 
   const side = Math.sign(approach.x - sill.x);
   const front = { x: face.x + (portrait ? side * 13 : 2), y: face.y + (portrait ? 33 : 31) };
