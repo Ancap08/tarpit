@@ -246,110 +246,114 @@ export function paintRentGround(ctx: Context, layout: Layout, map: MapDef, inset
   pave(ctx, route, RENT_ROAD_WIDTH, false);
   yardArch(ctx, route.at(-1)!, route.at(-2)!);
   for (const cell of map.highSites ?? []) {
+    if (cell.col === 22 && cell.row === 7) continue; // The gate paints this roof.
     const p = layout.cellCenter(cell);
     outwork(ctx, { x: p.x - layout.map.x, y: p.y - layout.map.y });
   }
   ctx.restore();
 }
 
+/** Each projection has its own near tower and far post. Both meet the
+ * same sill and use the original cell centre for the roof socket. */
 export function paintRentGate(ctx: Context, layout: Layout, gate: Gate, map: MapDef, damage: number): void {
   const { width, sill } = RENT_GATE;
+  const contact = layout.toScreen(gate);
+  const high = map.highSites!.find(cell => cell.col === 22 && cell.row === 7)!;
+  const roof = layout.cellCenter(high);
+  const rx = roof.x - contact.x, ry = roof.y - contact.y;
+  const portrait = layout.turned;
   const approach = layout.screenDir(Math.cos(gate.angle), Math.sin(gate.angle));
-  const slope = -approach.x * .37 * Math.sign(approach.y);
+  const slope = -approach.x * .30 * Math.sign(approach.y);
+  const left = portrait ? -25 : 1;
+  const right = portrait ? 34 : 62;
+  const middle = (left + right) / 2;
+  const peak = -89;
   ctx.translate(width / 2, sill);
   ctx.save();
   ctx.transform(1, slope, 0, 1, 0, 0);
-  ctx.fillStyle = '#333b3690';
-  ctx.beginPath();
-  ctx.ellipse(3, 3, 72, 13, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // A straight sill across the approach, with visible top and side faces.
-  const roof = (left: number, right: number, y: number) => polygon(ctx, '#b8b39b',
-    [[left, y], [right, y], [right - 8, y - 10], [left - 8, y - 10]]);
-  const pier = (left: number, right: number) => {
-    polygon(ctx, '#575c50', [[right, -104], [right + 8, -114], [right + 8, -10], [right, 0]]);
-    ctx.fillStyle = '#777968';
-    ctx.fillRect(left, -104, right - left, 104);
-    ctx.fillStyle = '#9d9d86';
-    ctx.fillRect(left, -100, 4, 98);
-    ctx.fillStyle = '#a6a48c';
-    ctx.fillRect(left - 2, -106, right - left + 4, 10);
-    polygon(ctx, '#b8b39b', [[left - 2, -106], [right + 2, -106], [right + 10, -116], [left + 6, -116]]);
-    ctx.strokeStyle = '#53594f';
-    ctx.lineWidth = 1.5;
-    for (let y = -88, row = 0; y < 0; y += 14, row++) {
-      ctx.beginPath();
-      ctx.moveTo(left, y);
-      ctx.lineTo(right, y);
-      ctx.moveTo(left + (row % 2 ? 9 : 16), y);
-      ctx.lineTo(left + (row % 2 ? 9 : 16), y + 14);
-      ctx.stroke();
-    }
-    ctx.fillStyle = '#b6ad96';
-    ctx.fillRect(left - 2, -8, right - left + 3, 8);
+  const opening = () => {
+    ctx.beginPath();
+    ctx.moveTo(left, 2);
+    ctx.lineTo(left, -56);
+    ctx.bezierCurveTo(left, -76, middle - 11, peak, middle, peak);
+    ctx.bezierCurveTo(middle + 13, peak, right, -76, right, -56);
+    ctx.lineTo(right, 2);
+    ctx.closePath();
   };
 
-  ctx.fillStyle = '#55594c';
-  ctx.fillRect(-51, -98, 102, 96);
-  roof(-51, 51, -98);
-  ctx.fillStyle = '#272b25';
-  ctx.beginPath();
-  ctx.moveTo(-33, 0);
-  ctx.lineTo(-33, -63);
-  ctx.quadraticCurveTo(-33, -91, 0, -94);
-  ctx.quadraticCurveTo(33, -91, 33, -63);
-  ctx.lineTo(33, 0);
-  ctx.fill();
+  // The arch keeps a clear hole over the existing road when the leaves fall.
+  ctx.fillStyle = '#575d50';
+  ctx.fillRect(left - 9, peak - 9, right - left + 18, 101);
+  polygon(ctx, '#b1b19a', [[left - 9, peak - 9], [right + 9, peak - 9], [right + 5, peak - 16], [left - 13, peak - 16]]);
+  opening();
   ctx.save();
   ctx.clip();
-  ctx.fillStyle = damage === 3 ? '#9f9477' : '#604632';
-  ctx.fillRect(-33, -94, 66, 94);
   if (damage < 3) {
-    for (let x = -31, i = 0; x < 33; x += 8, i++) {
+    ctx.fillStyle = '#604632';
+    ctx.fillRect(left, peak, right - left, -peak + 2);
+    for (let x = left + 2, i = 0; x < right; x += 8, i++) {
       ctx.fillStyle = i % 2 ? '#8c633f' : '#775538';
-      ctx.fillRect(x, -94, 7, 92);
+      ctx.fillRect(x, peak, 7, -peak + 2);
     }
     ctx.fillStyle = '#393b33';
-    ctx.fillRect(-33, -60, 66, 6);
-    polygon(ctx, '#373b33', [[-33, -31], [33, -31 - 5 * damage], [33, -25 - 5 * damage], [-33, -25]]);
+    ctx.fillRect(left, -54, right - left, 6);
+    polygon(ctx, '#373b33', [[left, -29], [right, -29 - 5 * damage], [right, -23 - 5 * damage], [left, -23]]);
     ctx.fillStyle = '#c0a477';
-    for (const x of [-28, -15, 0, 15, 28]) ctx.fillRect(x, -58, 2.5, 2.5);
+    for (let x = left + 5; x < right; x += 13) ctx.fillRect(x, -52, 2.5, 2.5);
+    if (damage >= 1) polygon(ctx, '#292b25', [[middle - 6, -86], [middle - 1, -62], [middle - 8, -48],
+      [middle - 2, -27], [middle - 9, -44], [middle - 12, -49], [middle - 5, -63]]);
+    if (damage === 2) polygon(ctx, '#31332b', [[middle + 6, 2], [middle + 14, -23], [middle + 21, -12], [right, -33], [right, 2]]);
+  } else {
+    ctx.fillStyle = '#9f9477';
+    ctx.fillRect(left, peak, right - left, -peak + 2);
+    polygon(ctx, '#292b25', [[middle - 6, -86], [middle - 1, -62], [middle - 8, -48],
+      [middle - 2, -27], [middle - 9, -44], [middle - 12, -49], [middle - 5, -63]]);
   }
-  if (damage >= 1) polygon(ctx, '#292b25', [[-6, -89], [-1, -64], [-8, -50], [-2, -29],
-    [-9, -46], [-12, -51], [-5, -65]]);
-  if (damage === 2) polygon(ctx, '#31332b', [[6, 0], [14, -23], [21, -12], [32, -33], [33, 0]]);
   ctx.restore();
-  ctx.strokeStyle = '#aba58b';
+  ctx.strokeStyle = '#b6af97';
   ctx.lineWidth = 5;
+  // Stroke the jambs and curved header, leaving the sill open.
   ctx.beginPath();
-  ctx.moveTo(-34, -4);
-  ctx.lineTo(-34, -63);
-  ctx.quadraticCurveTo(-34, -91, 0, -95);
-  ctx.quadraticCurveTo(34, -91, 34, -63);
-  ctx.lineTo(34, -4);
+  ctx.moveTo(left, -1);
+  ctx.lineTo(left, -56);
+  ctx.bezierCurveTo(left, -76, middle - 11, peak, middle, peak);
+  ctx.bezierCurveTo(middle + 13, peak, right, -76, right, -56);
+  ctx.lineTo(right, -1);
   ctx.stroke();
-  pier(-62, -37);
-  pier(37, 62);
-  ctx.fillStyle = '#273d3b';
-  ctx.fillRect(-55, -90, 10, 29);
-  ctx.fillRect(45, -90, 10, 29);
-  ctx.fillStyle = '#9ab7a1';
-  ctx.fillRect(-52, -85, 4, 10);
-  ctx.fillRect(48, -85, 4, 10);
+
   ctx.restore();
-  // A near wall-walk outwork crosses the face in this projection. Paint
-  // only the part interrupted by the gate; the rest is already in the field.
-  const contact = layout.toScreen(gate);
-  ctx.globalCompositeOperation = 'source-atop';
-  for (const cell of map.highSites ?? []) {
-    const at = layout.cellCenter(cell);
-    const x = at.x - contact.x, y = at.y - contact.y;
-    if (Math.abs(x) >= width / 2 || y <= -sill || y >= 30) continue;
-    const side = Math.sign(x);
-    polygon(ctx, '#646656', [[x + side * 13, y + 4], [x + side * 38, y + 4],
-      [x + side * 43, y + 32], [x + side * 32, y + 30]]);
-    outwork(ctx, { x, y });
+
+  // Keep the far pier's foot behind the ground socket in portrait.
+  const fx = portrait ? left - 12 : right + 6;
+  const foot = portrait ? -37 : -16;
+  polygon(ctx, '#565e51', [[fx - 9, -99], [fx + 7, -105], [fx + 12, foot - 7], [fx + 4, foot + 2], [fx - 10, foot - 1]]);
+  polygon(ctx, '#838671', [[fx - 10, -97], [fx + 4, -100], [fx + 4, foot + 2], [fx - 10, foot - 1]]);
+  polygon(ctx, '#b9b69c', [[fx - 13, -101], [fx + 7, -105], [fx + 11, -99], [fx - 10, -95]]);
+  for (let y = -90; y < foot - 5; y += 13) polygon(ctx, '#6a6e5d',
+    [[fx - 10, y], [fx + 4, y - 1], [fx + 4, y + 1], [fx - 10, y + 2]]);
+
+  ctx.clearRect(rx - 17, ry - 28, 34, 17);
+  if (portrait) {
+    const socket = layout.cellCenter({ col: 22, row: 10 });
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.beginPath();
+    ctx.ellipse(socket.x - contact.x, socket.y - contact.y, 18, 13, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
-  ctx.globalCompositeOperation = 'source-over';
+
+  // The socket is centred on the cap itself. There is no second plinth on
+  // the ground and the wall beside the cap reads as one connected building.
+  ctx.fillStyle = '#343c30a0';
+  ctx.beginPath();
+  ctx.ellipse(rx + 2, ry + 28, 26, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  polygon(ctx, '#616758', [[rx - 21, ry + 2], [rx + 21, ry + 2], [rx + 19, ry + 26], [rx - 18, ry + 29]]);
+  polygon(ctx, '#82836e', [[rx - 21, ry + 2], [rx + 9, ry + 6], [rx + 8, ry + 29], [rx - 18, ry + 31]]);
+  for (const y of [14, 23]) polygon(ctx, '#555c50',
+    [[rx - 19, ry + y], [rx + 8, ry + y + 1], [rx + 20, ry + y - 2],
+      [rx + 20, ry + y], [rx + 8, ry + y + 3], [rx - 19, ry + y + 2]]);
+  polygon(ctx, '#b6af93', [[rx - 25, ry + 1], [rx - 14, ry - 10], [rx + 15, ry - 10],
+    [rx + 24, ry - 1], [rx + 16, ry + 11], [rx - 17, ry + 12]]);
 }
