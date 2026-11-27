@@ -286,6 +286,11 @@ export function paintRentGate(ctx: Context, layout: Layout, gate: Gate, map: Map
   ctx.fillRect(left - 9, peak - 9, right - left + 18, 101);
   polygon(ctx, '#b1b19a', [[left - 9, peak - 9], [right + 9, peak - 9], [right + 5, peak - 16], [left - 13, peak - 16]]);
   opening();
+  if (damage === 3) {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+  }
   ctx.save();
   ctx.clip();
   if (damage < 3) {
@@ -304,10 +309,11 @@ export function paintRentGate(ctx: Context, layout: Layout, gate: Gate, map: Map
       [middle - 2, -27], [middle - 9, -44], [middle - 12, -49], [middle - 5, -63]]);
     if (damage === 2) polygon(ctx, '#31332b', [[middle + 6, 2], [middle + 14, -23], [middle + 21, -12], [right, -33], [right, 2]]);
   } else {
-    ctx.fillStyle = '#9f9477';
-    ctx.fillRect(left, peak, right - left, -peak + 2);
-    polygon(ctx, '#292b25', [[middle - 6, -86], [middle - 1, -62], [middle - 8, -48],
-      [middle - 2, -27], [middle - 9, -44], [middle - 12, -49], [middle - 5, -63]]);
+    const shade = ctx.createLinearGradient(0, peak, 0, -53);
+    shade.addColorStop(0, '#29302ee0');
+    shade.addColorStop(1, '#29302e00');
+    ctx.fillStyle = shade;
+    ctx.fillRect(left, peak, right - left, -peak);
   }
   ctx.restore();
   ctx.strokeStyle = '#b6af97';
@@ -321,6 +327,13 @@ export function paintRentGate(ctx: Context, layout: Layout, gate: Gate, map: Map
   ctx.lineTo(right, -1);
   ctx.stroke();
 
+  if (damage === 3) {
+    // Broken leaves lie flat by the jambs. The pale middle of the road is exposed.
+    polygon(ctx, '#453a2d', [[left - 3, 2], [left + 15, 8], [left + 9, 25], [left - 12, 16]]);
+    polygon(ctx, '#8b6744', [[left - 3, 2], [left + 10, 7], [left + 3, 21], [left - 10, 15]]);
+    polygon(ctx, '#604732', [[right - 10, 6], [right + 4, -1], [right + 12, 11], [right + 3, 18]]);
+    polygon(ctx, '#9d784f', [[right - 7, 5], [right + 4, -1], [right + 10, 7], [right + 2, 12]]);
+  }
   ctx.restore();
 
   // Keep the far pier's foot behind the ground socket in portrait.

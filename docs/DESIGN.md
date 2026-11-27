@@ -2722,7 +2722,8 @@ gold socket sits on the gate's near tower. The far pier clears the
 adjacent green socket. The six ground sites retain their positions. The portrait
 camera holds at the existing 1.15× setup projection through the wave so
 the ridge, ground and sites stay in view. The gate keeps its rule point
-and damage thresholds. Walkers use 1.32× scale on the road, growing to
+and damage thresholds. The fallen leaves lie broken at the sill
+and the opening shows the existing road through the arch. Walkers use 1.32× scale on the road, growing to
 1.48× near the sill. Up to three held walkers stand in front of the gate
 within the existing 40 px cap. The held count includes every walker
 stopped at the sill. Aim previews and casts still use the rule positions.
