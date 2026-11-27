@@ -1,6 +1,7 @@
 import type { Point, Rect } from '../../sim';
 import type { KeepSky } from '../../sim/levelTypes';
 import type { Layout } from '../layout';
+import { paintGateFooting, type GateFooting } from './footing';
 import { paintFork } from './keepMotion';
 import type { Plate } from './plates';
 
@@ -50,6 +51,7 @@ export class KeepSurround {
   private readonly litGround?: HTMLCanvasElement;
   private readonly castle: HTMLCanvasElement[];
   private readonly road?: HTMLCanvasElement;
+  private readonly gateBed?: HTMLCanvasElement;
   private readonly storm?: HTMLCanvasElement;
   private readonly bolts: HTMLCanvasElement[];
   private readonly skyFlash: HTMLDivElement;
@@ -68,7 +70,7 @@ export class KeepSurround {
 
   constructor(canvas: HTMLCanvasElement, private layout: Layout,
       image: ImageSource, gate: Point,
-      size: {width:number;height:number}, foot: number[], private readonly weather?: KeepSky) {
+      size: {width:number;height:number}, foot: number[], private readonly weather?: KeepSky, footing?: GateFooting) {
     const host = canvas.parentElement!;
     this.backdrop.ariaHidden = 'true';
     this.backdrop.style.cssText = 'position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:-1;background:linear-gradient(#0a1421,#232637 67%,#171a20 87%,#15151a)';
@@ -195,13 +197,34 @@ export class KeepSurround {
         ctx.drawImage(image('siege-east-deck'), 832, 96, 128, 224);
       }) : this.paint(512, 0, 448, 480, ctx => ctx.drawImage(image('road-wide'), 512, 0, 448, 480));
     }
+    if (weather && footing) {
+      // The wide wall and the east deck can overlap the outer gate. Seat
+      // its threshold above both, still beneath the Phaser battle actors.
+      const { sill, approach } = footing;
+      const left = Math.floor(Math.min(sill.x - 139, approach.x - 26));
+      const right = Math.ceil(Math.max(sill.x + 139, approach.x + 26));
+      const upper = Math.floor(Math.min(sill.y - 23, approach.y - 26));
+      const lower = Math.ceil(Math.max(sill.y + 54, approach.y + 26));
+      this.gateBed = this.paint(left, upper, right - left, lower - upper,
+        ctx => paintGateFooting(ctx, footing, weather), this.camera, true);
+      this.gateBed.style.transformOrigin =
+        `${gate.x - parseFloat(this.gateBed.style.left)}px ${8 - parseFloat(this.gateBed.style.top)}px`;
+    }
 
     this.fit = () => {
       const r = canvas.getBoundingClientRect(), parent = host.getBoundingClientRect();
-      const scale = r.width / this.layout.width;
-      this.frame.style.left = (r.left - parent.left + this.layout.map.x * scale) + 'px';
-      this.frame.style.top = (r.top - parent.top + this.layout.map.y * scale) + 'px';
-      this.frame.style.scale = String(scale);
+      const scaleX = r.width / this.layout.width;
+      if (weather && this.layout.turned) {
+        // FIT rounds the CSS dimensions independently.
+        const scaleY = r.height / this.layout.height;
+        const left = r.left - parent.left + this.layout.map.x * scaleX;
+        const top = r.top - parent.top + this.layout.map.y * scaleY;
+        this.frame.style.transform = `matrix(${scaleX},0,0,${scaleY},${left},${top})`;
+      } else {
+        this.frame.style.left = (r.left - parent.left + this.layout.map.x * scaleX) + 'px';
+        this.frame.style.top = (r.top - parent.top + this.layout.map.y * scaleX) + 'px';
+        this.frame.style.scale = String(scaleX);
+      }
     };
     this.fit();
     this.observer = new ResizeObserver(this.fit);
@@ -240,7 +263,7 @@ export class KeepSurround {
   stillSurface(lens?: Rect): HTMLCanvasElement {
     const crop = this.widerPortrait ? lens : undefined;
     const paint = (ctx: CanvasRenderingContext2D) => {
-      for (const layer of [this.sky, this.ground, ...this.castle, this.road]) {
+      for (const layer of [this.sky, this.ground, ...this.castle, this.road, this.gateBed]) {
         if (layer) ctx.drawImage(layer, parseFloat(layer.style.left), parseFloat(layer.style.top));
       }
     };
@@ -265,7 +288,7 @@ export class KeepSurround {
     if (this.stillActive === still) return;
     this.stillActive = still;
     if (still) this.stillSurface();
-    for (const layer of [this.sky, this.ground, ...this.castle, this.road]) {
+    for (const layer of [this.sky, this.ground, ...this.castle, this.road, this.gateBed]) {
       if (layer) layer.hidden = still;
     }
     if (this.still) this.still.hidden = !still;
@@ -288,6 +311,8 @@ export class KeepSurround {
     if (push !== this.lastPush) {
       this.lastPush = push;
       this.camera.style.transform = push ? `scale(${1 + push})` : '';
+      // The sill sprite is fixed during the existing opening push.
+      if (this.gateBed) this.gateBed.style.transform = push ? `scale(${1 / (1 + push)})` : '';
     }
     const parallax = high && !calm ? Math.sin(t * .19) : 0;
     if (!this.stillActive) this.castle.slice(0, 2).forEach((layer, i) => {

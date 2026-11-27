@@ -1316,6 +1316,31 @@ or font is downloaded. Frame cost is no worse than today's.
 Any change to rules, levels or balance; new sprites (next milestone);
 direction C.
 
+## Milestone 57: seat the Old Keep in its ground
+
+Kyle, playing levels 21 on (2026-11-26): the castle "looks kind of stuck",
+confirmed as pasted on. The castle and gatehouse are modelled and lit in
+Blender; the crag and roads are painted flat; nothing joins them.
+
+In scope, art and its layering only, on levels 21 to 25, both orientations,
+both interfaces:
+
+- The castle stands on rock that belongs to the ground: no see-through
+  band, no base cut off in mid-air.
+- The gatehouse stands on the road, with the road visibly entering it.
+- Contact shadow under the castle and gatehouse; warm light from the
+  windows, torches and braziers falls on the ground beside them.
+- The ground near the castle is shaded so the two ways of drawing meet
+  gradually, not at a line.
+
+Not in scope: the board, roads' positions, tower sites, the castle's
+design, wording, the interface, rules, sound, motion in the castle. No new
+tools. Art caps (60 MB, 70 MB at the Old Keep) and the 20 MB size budget
+hold.
+
+Evidence: before and after pictures of levels 21 to 25, wide and portrait;
+memory peaks; the full checks. Kyle judges the pictures.
+
 ## Later milestones (order agreed, detail to come)
 
 | # | Milestone | Idea |

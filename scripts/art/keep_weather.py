@@ -6,6 +6,7 @@ import json
 import math
 import random
 import sys
+from statistics import median
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageOps, ImageFilter, ImageChops
 
@@ -895,7 +896,61 @@ def siege_yard(p,foot,paths,sites,turned):
             p.line([(x-2,y-13),(x+1,y-18),(x+2,y-13)],'#ffe0a0',1.6)
 
 
-def siege_ground(turned):
+def castle_contact(p, foot, turned, plates):
+    """Project the rendered rock toe over the painting, at the game's scale."""
+    layout = 'portrait' if turned else 'landscape'
+    plate = 'gate' if turned else 'gate-wide'
+    width, height = (730, 475) if turned else (1150, 312)
+    anchor = json.loads((ROOT / 'src/game/keep/projection.json').read_text())[layout]['foot']
+    left = foot[0] - width * anchor[0] / 1280
+    top = foot[1] - height * anchor[1] / 960
+    with Image.open(plates / f'{plate}.webp') as image:
+        alpha = image.getchannel('A').resize((width, height), Image.Resampling.BILINEAR)
+    toes = []
+    for x in range(max(0, math.ceil(left)), min(p.w, math.floor(left + width))):
+        column = alpha.crop((int(x - left), 0, int(x - left) + 1, height))
+        opaque = column.point(lambda value: 255 if value > 207 else 0).getbbox()
+        if opaque:
+            toes.append((x, top + opaque[3]))
+    return [(x, median([y for _, y in toes[max(0, i-3):i+4]])) for i, (x, _) in enumerate(toes)]
+
+
+def seat_castle(p, toes):
+    """Let the rock's lower folds continue into wet shale and loose talus."""
+    mask = Image.new('L', p.image.size)
+    draw = ImageDraw.Draw(mask)
+    for depth, opacity in [(66,20), (48,34), (30,53), (18,82), (9,118)]:
+        draw.polygon(p.xy([(x,y-23) for x,y in toes] + [(x,y+depth) for x,y in reversed(toes)]), fill=opacity)
+    mask = mask.filter(ImageFilter.GaussianBlur(7*S))
+    damp = ImageOps.colorize(ImageOps.grayscale(p.image), (16,23,34), (131,126,137))
+    p.image.paste(damp, mask=mask)
+
+    # Keep the nearer facets broad and leave gaps of painted ground between
+    # them. The same slate grays turn gradually back into the ravine palette.
+    flakes = Plate((p.w,p.h))
+    r = flakes.rng
+    for i in range(0,len(toes),17):
+        x,y = toes[i]
+        for reach, length, height, light in [(4,29,15,0), (14,24,11,8), (26,14,7,13)]:
+            xx=x+r.uniform(-8,8)
+            yy=y+reach+r.uniform(-3,5)
+            rock(flakes,xx,yy,r.uniform(.6,1.35)*length,height,colour((40,45,55),light+r.uniform(-9,9)))
+    rgba = flakes.image
+    soft = rgba.filter(ImageFilter.GaussianBlur(.58*S))
+    p.image.alpha_composite(Image.blend(rgba,soft,.72))
+
+
+def wall_shadow(p, toes):
+    """Darkest where the wall meets the rock, softer across the landing."""
+    shade = Image.new('L',p.image.size)
+    draw = ImageDraw.Draw(shade)
+    for reach, strength in [(22,44), (12,87), (6,158)]:
+        draw.polygon(p.xy([(x,y-9) for x,y in toes]+[(x+2,y+reach) for x,y in reversed(toes)]),fill=strength)
+    shade = shade.filter(ImageFilter.GaussianBlur(3.2*S))
+    p.image.paste((15,21,31,255),mask=shade)
+
+
+def siege_ground(turned, castle_plates=OUT):
     # Portrait includes the margins on the same plate so west-road paving can
     # straddle the display edge without an obvious seam against the canyon.
     p=Plate((720,960) if turned else (960,480))
@@ -922,6 +977,8 @@ def siege_ground(turned):
             broken_ward(p,x,y,w,h)
             wreck(p,x+w+13,y+6,1.18)
             bent_tree(p,x+w-4,y-9,63)
+    toes = castle_contact(p,foot,turned,castle_plates)
+    seat_castle(p,toes)
     # The two decks join as one surface. In wide view the eastern span is a
     # low, open causeway, with the curtain wall visible between its piers.
     causeway(p,west[1:],24 if turned else 16)
@@ -929,6 +986,7 @@ def siege_ground(turned):
     causeway(p,east[-6:-1],28 if turned else 18)
     road(p,west,stairs=False,warm=False)
     road(p,east)
+    wall_shadow(p,toes)
     lamps=( [(400,930),(311,830),(329,704),(183,653),(135,734),(275,579),(431,776)]
             if turned else [(903,184),(925,357),(810,448),(588,460),(677,439),(701,323),(635,347)] )
     for x,y in lamps:
@@ -1034,6 +1092,12 @@ def save(im,name,quality):
 if __name__=='__main__':
     if '--gate-atlas' in sys.argv:
         gate_atlas(sys.argv[2:-1],sys.argv[-1])
+    elif '--footing' in sys.argv:
+        if len(sys.argv) > 2:
+            OUT = Path(sys.argv[2])
+            OUT.mkdir(parents=True,exist_ok=True)
+        siege_ground(True, OUT)
+        siege_ground(False, OUT)
     else:
         OUT.mkdir(parents=True,exist_ok=True)
         if '--siege' not in sys.argv:

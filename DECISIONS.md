@@ -2325,3 +2325,88 @@ can change it; "Kyle" means Kyle decided.
   started, by pid.
 - Tokens: Sonnet 428,092; Sol 369,591 for the frame cost and leak, 421,371
   for the defects.
+
+## 2026-11-26, the castle looks pasted on (milestone 57)
+
+- **Kyle, playing the newer levels:** "the castle looks kind of stuck all
+  throughout the beginning". Asked which he meant, he chose "Pasted on".
+- **Observed (coordinator, level 21 on the live site, 1280x800 and phone):**
+  the gatehouse sits on a dark shape over the road with no road entering
+  it; the castle's base fades into a see-through band above the crag; the
+  castle is a lit Blender model and the ground is flat painting, and they
+  meet at a line; no light from the castle reaches the ground. The same
+  with the new interface off.
+- **Decided (coordinator, a detail call inside the agreed look):** seat the
+  castle and gatehouse in the ground first (footing, contact shadow, light
+  spill, shading at the join). This is needed whichever way the two styles
+  are later reconciled.
+- **Not decided:** whether the ground should be remade in the castle's
+  modelled style. That is a direction for Kyle, to be shown as pictures
+  after he has seen the seated castle.
+- **Part 1 result (Sol, `5a3673c`, `a09c42f`):** the castle wall's
+  see-through footing is closed with a solid rock heel in the model; rock,
+  talus and a wall shadow are painted into the ground plates; ground light
+  follows the windows and braziers and is absent in the lightning
+  exposure; a small runtime "apron" joins the gatehouse sill to the road.
+  Levels 1 to 20 are pixel-identical. Level 25 retained art went from
+  68.46 to 68.52 MB of 70. Frame cost 2.80 ms before, 2.85 ms after, with
+  the interface off (Chromium WebGL, ANGLE Metal, Apple M4). Full browser
+  run 2,296 passed, 12 skipped.
+- **Verifier (Sonnet): ship with fixes.** The wall footing holds on all
+  five levels. Six defects at the gatehouse: on level 22 wide the road
+  does not reach the gatehouse; on level 21 wide the rock under it ends in
+  a straight edge about 220 px long; with the camera live the apron is
+  drawn about 145 px away from the gate for about a second on levels 21,
+  23 and 25; in portrait a wave start leaves it 3 to 4 px off; the new
+  checks cover level 21 only and pass where the road is broken; the light
+  pools sit 120 to 250 px below their lamps.
+- **Coordinator's read:** a real but modest gain. The gatehouse still
+  looks placed and the two drawing styles still differ.
+- **Part 2 (the six defects) was interrupted.** Kyle's Mac ran out of disk
+  space (111 MB free of 228 GB) and the implementer exited with code 101,
+  leaving uncommitted edits in four files. They pass the type check and
+  are otherwise unjudged. With Kyle's approval the coordinator deleted the
+  Tarpit scratch files in `/tmp` (about 360 MB), by name. The rerun waits
+  for a few GB of free space.
+- **A session token appeared in the implementer's tool output** from a
+  process listing. It is in no commit or picture. Briefs now say: do not
+  print process listings with full command lines or environment variables.
+- Tokens: Sol 413,427 for part 1 (part 2 unknown, it crashed); Sonnet
+  212,142.
+- **Part 2 result (Sol, `384234b` to `4da1048`, six commits), after two
+  outside stops.** The first run died when the disk filled; the second was
+  cut off by a restart of the Mac. With Kyle's approval the coordinator
+  cleared about 4.9 GB of regenerable caches before the second run. The
+  third run finished. Road setts now run from the exposed road into the
+  arch on levels 21 to 25 in both orientations; the rock under the
+  gatehouse is broken ledges (longest hard edge 24.2 CSS px, was 109 to
+  127 on level 21); in portrait the ground follows the rendered camera, so
+  the apron stays on the sill through a wave start (0.000 px, was 0.73 to
+  1.00); three street pools sit at bollard feet and two under the gate
+  lamps, none in the lightning exposure. The opening push-in moves what it
+  moved before. Level 25 retained art 68.52 to 68.56 MB of 70.
+- **Verifier (Sonnet): ship.** Full browser run on `4da1048`: 2,350
+  passed, 12 skipped, 0 failed, then the 2 keep-cost tests passed. Lint,
+  type check and 3,013 unit tests pass. Sixteen frozen pictures of levels
+  1, 7, 13 and 20 are pixel-identical to the previous tip.
+- **Defect 3 (apron 145 px from the gate for a second) is unexplained.**
+  Neither Sol nor the second verifier could reproduce it, on the new code
+  or the old; both read 0.01 px or less in every frame. The first
+  verifier's method was lost with the scratch files. It is recorded as not
+  reproduced, not as fixed. The ten tests added for it pass on the old
+  code too, so they guard against a future break only.
+- **The straight-edge check was narrowed after it failed.** Sol's one full
+  run failed it on level 24 wide, old interface (Expected <= 33, Received
+  34.9); `4da1048` narrowed the scan from 5 px to 3 px. The verifier
+  looked at 2x and 4x: a soft shadow, not an edge. The check still fails
+  on the old level 21 slab but is a weak guard on levels 23 and 24 wide,
+  where the old code reads 25 to 38; the paving check covers those.
+- **Coordinator's read:** the gatehouse is seated. It is still a modelled
+  object on painted ground; on level 22 wide the new paving fan is lighter
+  and larger-blocked than the road it joins. Whether to remake the ground
+  in the castle's style remains Kyle's call.
+- **Scratch folders do not survive a restart.** The brief and the second
+  run's log were lost with one. Briefs now say: commit each fix as its own
+  check passes.
+- Tokens: Sol 309,047 for the finishing run (the two stopped runs
+  unknown); Sonnet 182,149.

@@ -1,12 +1,14 @@
 // All scenery and its texture URLs belong to the hidden visit.
 import Phaser from 'phaser';
 import type { MapDef, Point } from '../../sim';
+import { trailPointAt } from '../../sim/map';
 import type { Layout } from '../layout';
 import { keepPlateSet, type Plate } from './plates';
 import type { GameScene } from '../GameScene';
 import type { GameClock } from '../loop';
 import { SHOWPIECE_DETAIL } from '../names';
 import { KeepSurround } from './surround';
+import type { GateFooting } from './footing';
 import { KeepLight } from './stoneLight';
 import { drawFittings, type Landmark } from './keepMotion';
 import projection from './projection.json';
@@ -33,7 +35,8 @@ export function currentKeepPlateSet(game: Phaser.Game, portrait: boolean, level?
 
 export interface KeepAssets {
   id: string;
-  panorama(layout: Layout, gate: Point, size: { width: number; height: number }, foot: number[], sky?: KeepSky): KeepSurround;
+  panorama(layout: Layout, gate: Point, size: { width: number; height: number }, foot: number[],
+    sky?: KeepSky, footing?: GateFooting): KeepSurround;
   release(): void;
 }
 
@@ -104,12 +107,12 @@ export async function loadKeep(game: Phaser.Game, portrait: boolean, signal: Abo
     return {
       id: set.id,
       release,
-      panorama(layout, gate, size, foot, sky) {
+      panorama(layout, gate, size, foot, sky, footing) {
         if (surround) {
           surround.refit(layout);
           return surround;
         }
-        surround = new KeepSurround(game.canvas, layout, name => images.get(name)!, gate, size, foot, sky);
+        surround = new KeepSurround(game.canvas, layout, name => images.get(name)!, gate, size, foot, sky, footing);
         // The static canvases now own the pixels. Retain only the Phaser sources
         // which the battle canvas still draws (and can re-upload on context restore).
         for (const [name, image] of images) {
@@ -141,6 +144,8 @@ export class KeepView {
   private readonly fieldLight: Phaser.GameObjects.Container;
   private readonly reflection: Phaser.GameObjects.Graphics;
   private readonly spill: Image[];
+  private readonly barbicanSpill: Image[];
+  private readonly followsPortraitCamera: boolean;
   private readonly scenery: Phaser.GameObjects.Container;
   private readonly fog: Image[];
   private readonly lights: Image[];
@@ -182,9 +187,27 @@ export class KeepView {
     this.castleW = layout.turned ? framed ? 730 : 820 : weather ? 1150 : 1250;
     this.castleH = layout.turned ? framed ? 475 : 660 : weather ? 312 : 335;
     this.anchors = layout.turned ? projection.portrait : projection.landscape;
+    const lamps = ['torchL','torchR','brazier-1_0','brazier1_0','brazier-1_1','brazier1_1',
+      'brazier-1_2','brazier1_2','rose'] as const;
+    const blocker = scene.state.gate;
+    const local = (point: Point) => {
+      const screen = layout.toScreen(point);
+      return { x: screen.x - x, y: screen.y - y };
+    };
+    // The painted approach comes into view again beyond the gate's wing.
+    // The west-only layout rounds the outside of the curtain on wide screens.
+    const wrapsShoulder = !layout.turned && scene.state.level?.keepRoads === 'west';
+    const approachDistance = wrapsShoulder ? 233 : layout.turned ? 143 : 114;
+    const footing: GateFooting | undefined = weather && blocker ? {
+      sill: local(blocker), expanded: siegeArt, portrait: layout.turned, wrapsShoulder,
+      approach: local(trailPointAt(map, blocker.distance - approachDistance)),
+      farther: local(trailPointAt(map, blocker.distance - approachDistance - 10)),
+    } : undefined;
     this.light = new KeepLight(scene.textures, siegeArt && weather === 'night storm');
     this.surround = assets.panorama(layout,this.gate,
-      {width:this.castleW,height:this.castleH},this.anchors.foot, weather);
+      {width:this.castleW,height:this.castleH},this.anchors.foot, weather, footing);
+    this.followsPortraitCamera = !!footing && layout.turned;
+    if (this.followsPortraitCamera) scene.game.renderer.on(Phaser.Renderer.Events.POST_RENDER, this.alignGround, this);
     this.fieldLight = scene.add.container(x,y);
     this.reflection = scene.add.graphics();
     this.fieldLight.add(this.reflection);
@@ -214,19 +237,31 @@ export class KeepView {
       this.scenery.add(im);
       return im;
     };
-    const lamps = ['torchL','torchR','brazier-1_0','brazier1_0','brazier-1_1','brazier1_1',
-      'brazier-1_2','brazier1_2','rose'] as const;
     this.lights = lamps.map((key,i) => {
       const pos = this.at(key);
       return add('glow').setOrigin(.5).setPosition(pos.x,pos.y)
         .setDisplaySize(i<2 ? 41 : 28,i<2 ? 55 : 34);
     });
-    const posts = layout.turned ? [[315,936],[155,796],[210,694]] : [[927,173],[855,393],[714,301]];
-    this.spill = [...posts, [this.gate.x,this.gate.y-8]].map(([px,py],i) => {
-      const im = scene.add.image(px,py-10,textureKey('glow')).setOrigin(.5).setDisplaySize(i===3 ? 93 : 53,39);
+    const exhibitionLights = layout.turned ? [[315,936],[155,796],[210,694]] : [[927,173],[855,393],[714,301]];
+    // Feet of the low bollards in the siege ground painting. The portrait
+    // plate includes a 120px wing before its map origin.
+    const siegeLights = layout.turned ? [[209,704],[63,653],[280,930]] : [[701,323],[635,347],[903,184]];
+    const groundLights = weather ? siegeLights : [...exhibitionLights, [this.gate.x,this.gate.y-8]];
+    this.spill = groundLights.map(([px,py],i) => {
+      const im = scene.add.image(px, weather ? py : py-10, textureKey('glow')).setOrigin(.5)
+        .setDisplaySize(i===3 ? 93 : 53, weather ? 22 : 39);
       this.fieldLight.add(im);
       return im;
     });
+    // The high curtain braziers and windows light the stone they stand in.
+    // At the barbican, the low braziers and window light reach the apron.
+    this.barbicanSpill = footing ? [-1, 1].map(side => {
+      const { sill, expanded } = footing;
+      const lamp = scene.add.image(sill.x + side * (expanded ? 29 : 23), sill.y + (expanded ? 9 : 5),
+        textureKey('glow')).setDisplaySize(63, 24).setTint(0xffca99);
+      this.layer.addAt(lamp, this.layer.getIndex(this.outerGate!));
+      return lamp;
+    }) : [];
     this.banners = scene.add.graphics();
     this.scenery.add(this.banners);
     this.fog = Array.from({length:3},() => add('mist').setOrigin(.5));
@@ -249,11 +284,22 @@ export class KeepView {
     return { x:this.gate.x+(u-fx)*this.castleW/1280, y:this.gate.y+(v-fy)*this.castleH/960 };
   };
 
-  frame(interacting = false): void {
+  private alignGround(): void {
     const camera = this.scene.cameras.main;
-    const scaleY = camera.zoomY;
-    const y = camera.y + (this.layout.map.y - camera.scrollY) * scaleY - this.layout.map.y;
-    this.surround.scroll(camera.x - camera.scrollX, y, scaleY);
+    const { x, y } = this.layout.map;
+    const { a, d, e, f } = (camera as typeof camera & { matrix: Phaser.GameObjects.Components.TransformMatrix }).matrix;
+    // The renderer has snapped the scroll and restored the logical matrix
+    // after drawing into the battle buffer.
+    this.surround.scroll(e + (x - camera.scrollX) * a - x, f + (y - camera.scrollY) * d - y, d);
+  }
+
+  frame(interacting = false): void {
+    if (!this.followsPortraitCamera) {
+      const camera = this.scene.cameras.main;
+      const scaleY = camera.zoomY;
+      const y = camera.y + (this.layout.map.y - camera.scrollY) * scaleY - this.layout.map.y;
+      this.surround.scroll(camera.x - camera.scrollX, y, scaleY);
+    }
     if (this.clock.paused && this.previous !== -Infinity) return;
     const ms = this.clock.nowMs;
     if (this.lastFrame !== ms) this.quality.sample(ms);
@@ -283,9 +329,10 @@ export class KeepView {
     const {width,height} = this.layout.map;
     this.fog.forEach((im,i) => {
       im.setVisible(i===0 || high);
+      const drift = sky ? (this.layout.turned ? 55 : 33) : 4;
       if (im.visible) im.setPosition(width*(.14+i*.31) + Math.sin(t*.12+i*2.6)*width*.12,
-        this.gate.y+4+i*height*.16+Math.sin(t*.28+i)*2)
-        .setDisplaySize(width*(i===0 ? 1.04 : .74),i===0 ? 48 : 28).setAlpha(i===0 ? .47 : .31);
+        this.gate.y+drift+i*height*.16+Math.sin(t*.28+i)*2)
+        .setDisplaySize(width*(i===0 ? 1.04 : .74),i===0 ? 48 : 28).setAlpha(i===0 ? sky ? .26 : .47 : .31);
     });
     this.lights.forEach((im,i) => {
       const pulse = .64+Math.sin(t*(i<2 ? 9.4 : 3.4)+i)*.13+Math.sin(t*17.1+i*2.8)*.075;
@@ -318,7 +365,9 @@ export class KeepView {
         reflection.fillStyle(0x172438,.31*this.lightning).fillTriangle(px-7,py,px+10,py,px-reach,py+reach*.57);
       }
     }
-    this.spill.forEach((lamp,i) => lamp.setAlpha(.19+Math.sin(t*5.1+i)*.034));
+    const warm = sky ? 1 - this.lightning : 1;
+    this.spill.forEach((lamp,i) => lamp.setAlpha((.19+Math.sin(t*5.1+i)*.034) * warm));
+    this.barbicanSpill.forEach(lamp => lamp.setAlpha(.65 * warm));
     this.rain.clear();
     if (!calm && rain && (high || night)) {
       this.rain.lineStyle(.8,0xb7c7dd,(night ? .32 : .30)+this.lightning*.4).beginPath();
@@ -371,6 +420,7 @@ export class KeepView {
   resumed(): void { this.quality.resetWindow(2); }
 
   destroy(): void {
+    if (this.followsPortraitCamera) this.scene.game.renderer.off(Phaser.Renderer.Events.POST_RENDER, this.alignGround, this);
     this.label?.remove();
     this.light.destroy();
     if (this.magnifier) this.scene.textures.remove(MAGNIFIER_KEY);
