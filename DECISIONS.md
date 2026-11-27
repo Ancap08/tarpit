@@ -2479,3 +2479,46 @@ can change it; "Kyle" means Kyle decided.
 - A2 is not built: it gives up the castle and reads no better.
 - Tokens: Sol 235,351 for the pictures (the stopped three-direction run
   unknown).
+- **The build (Sol, `5331fbb` to `ea72bbf`).** Level 21 only. The castle
+  is cropped and hazed behind a ridge; the ground, paving, raised sites
+  and yard arch are painted by code from the board's geometry; the gate is
+  a wooden door across the road with four damage states; ground spots are
+  green rings and wall-walk spots are gold on stone; enemies carry a
+  contour and a shadow; the portrait camera holds at 1.15x in battle
+  where it climbed to 1.5x. `src/sim` is untouched.
+- **Verifier (Sonnet): ready after fixes.** Full browser run 2,350
+  passed, 12 skipped, 0 failed; levels 1, 10, 20, 22 to 25 and Free play
+  byte-identical in its own captures; the Powder Keg hit what it appeared
+  to hit in 27 trials; the count was right in every case. Found: walkers
+  arriving behind the held block still covered 31 to 40% of the gate (the
+  implementer's overlap check looked at the held sprites only); in wave 3
+  towers beside the road could not be told from enemies; two build spots
+  sat on the gate's posts; the fallen gate read as a cracked door; bare
+  grass on half the wide board and a third of the tall phone.
+- **Fix pass (Sol, `02271cb` to `b544d09`).** Walkers within 40 px of the
+  held place join the block and the count, and the block stands beside
+  the door: at least 90.1% of the door stays visible at the worst moment
+  of waves 1 to 3. Towers stand on pale stone bases with a mint rim and
+  draw above enemies. The gate's right tower carries the gold spot and its
+  left pier clears the ground spot. The fallen gate lies open. Trees,
+  field walls, tents and a cart fill the bare grass. 32 new checks, all
+  failing on `ea72bbf`. Sol's full run on `b544d09`: 2,382 passed, 12
+  skipped, 0 failed.
+- **Enemy size (Sol's sweep, accepted by the coordinator):** the
+  coordinator asked for "as large as the road allows". Measured, that is
+  1.16x on the open road and 1.23x for Shieldbearers in the dense
+  formation; at 1.24x wave 6 overlaps by more than a quarter. Trolls are
+  drawn at 0.93x and 0.80x, smaller than on other levels.
+- **The fix pass was not verified by a second model.** The coordinator
+  captured the game at 390x656 and 1280x800 and saw the door clear, the
+  count shown and the scenery in place. CI runs the full suite. Kyle's
+  play is the check that matters.
+- **Figures that do not agree, not resolved:** the build report gave
+  level 21 frame cost as 3.87 to 1.03 ms and old-interface retained art as
+  9.94 MB; the fix report gives 9.04 to 9.25 ms and 31.44 MB. Different
+  fixtures, not stated. Both are under the caps.
+- **Known, older than this change:** two build spots and the Repair
+  button on a phone held sideways have tap areas under 44 px.
+- **The red disc** the verifier saw is the existing life-loss flash.
+- Tokens: Sol 433,058 for the build and 431,193 for the fixes; Sonnet
+  191,587.
