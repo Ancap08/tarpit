@@ -49,7 +49,7 @@ import type { Layout } from '../layout';
 import { COLORS } from '../palette';
 import type { GameClock } from '../loop';
 import { FACINGS, SHEETS, walkAnimKey, WALK_FPS, type Facing } from './sheets';
-import { capSiegeOffset, rentGateCrowd, rentGateRanks, rentStance, siegeStance, type SiegeStance } from '../draw/siegeFormation';
+import { capSiegeOffset, inRentGateBand, rentFlightStance, rentGateCrowd, rentGateRank, rentStance, siegeStance, type SiegeStance } from '../draw/siegeFormation';
 import { RAM_ORIGIN_Y, RAM_SIZE, SIEGE_MACHINE_KEY, ramPose } from '../draw/siegeMachines';
 import { ramAtGate } from '../keep/siegeTiming';
 
@@ -123,6 +123,7 @@ interface View {
   nativeScale: number;
   ramScaleY?: number;
   trueFoot?: Point;
+  rentFlightSlot?: number;
   ramContact?: number;
   ramApproach?: Point;
 }
@@ -167,7 +168,8 @@ export class EnemySprites {
   private readonly spareTrails: FeatherTrail[] = [];
   private readonly particles: Particles | null;
   private readonly reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
-  heldAtRentGate = 0;
+  representedAtRentGate = 0;
+  private rentFlightSlots = 0;
 
   /** `layout` (milestone 32b) places every sprite on the screen and turns its facing with the map. */
   constructor(
@@ -333,29 +335,33 @@ export class EnemySprites {
   sync(state: GameState, timeScale: number, stopped?: BlockedPositions): void {
     const live = new Set<number>();
     const crowd = this.rentOverdue ? rentGateCrowd(state) : undefined;
-    this.heldAtRentGate = crowd?.length ?? 0;
-    const ranks = crowd ? rentGateRanks(crowd) : [];
+    this.representedAtRentGate = crowd?.count ?? 0;
     for (const enemy of state.enemies) {
       live.add(enemy.id);
       const view = this.views.get(enemy.id) ?? this.create(enemy, state.map);
       const position = stopped?.get(enemy.id);
       let stance: SiegeStance | undefined;
-      if (crowd) {
-        const slot = crowd.indexOf(enemy);
-        const visible = slot < ranks.length;
+      if (this.rentOverdue) {
+        const rank = crowd && rentGateRank(crowd, enemy);
+        const visible = !!rank || !crowd || !inRentGateBand(state.gate!.distance, enemy);
         view.sprite.setVisible(visible);
         view.shadow?.setVisible(visible);
         view.plumage?.setVisible(visible);
         view.turn?.previous.setVisible(visible);
         if (!visible) {
-          const p = this.layout.toScreen(state.gate!);
+          const p = this.layout.toScreen(enemyPosition(enemy, state.map));
           view.sprite.setPosition(p.x, p.y);
           view.trueFoot = undefined;
           view.stepPx = 0;
           this.stopTrail(view);
           continue;
         }
-        stance = !position && !view.flying ? rentStance(state, this.layout, enemy, ranks[slot]) : undefined;
+        if (view.flying) {
+          view.rentFlightSlot ??= this.rentFlightSlots++;
+          stance = rentFlightStance(state, this.layout, enemy, view.rentFlightSlot);
+        } else if (!position) {
+          stance = rentStance(state, this.layout, enemy, rank);
+        }
       } else if (this.siege && !position) {
         stance = siegeStance(state, enemy);
       }
@@ -598,7 +604,7 @@ export class EnemySprites {
     const recoil = v.knockAt >= 0 ? knockShare(this.clock.nowMs - v.knockAt) : 0;
     const drawX = recoil ? x + v.knockX * recoil : x;
     const drawY = recoil ? y - lift + bob + v.knockY * recoil : y - lift + bob;
-    if (stance) {
+    if (stance && !(this.rentOverdue && v.flying)) {
       const offset = capSiegeOffset(drawX - foot.x, drawY - foot.y);
       v.sprite.setPosition(foot.x + offset.x, foot.y + offset.y);
     } else {
@@ -627,7 +633,8 @@ export class EnemySprites {
       const scale = stance?.scale ?? 1;
       v.shadow?.setPosition(v.sprite.x + 2, v.sprite.y + 2).setDisplaySize(23 * scale, 10 * scale);
     } else {
-      v.shadow?.setPosition(x, y);
+      const shadow = this.rentOverdue && v.flying ? foot : { x, y };
+      v.shadow?.setPosition(shadow.x, shadow.y);
     }
     const flinching = !!enemy.flinchTicksLeft;
     v.sprite.anims.timeScale = stoppedAt || flinching ? 0 : timeScale;

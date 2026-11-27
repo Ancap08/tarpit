@@ -1,4 +1,4 @@
-import { distanceOnRoad, isFlying, type Enemy, type GameState, type Point } from '../../sim';
+import { distanceOnRoad, isFlying, positionAlongPath, type Enemy, type GameState, type Point } from '../../sim';
 import type { Layout } from '../layout';
 
 export interface SiegeStance extends Point {
@@ -17,40 +17,72 @@ export function capSiegeOffset(x: number, y: number): Point {
   return { x: x * scale, y: y * scale };
 }
 
-/** Rent Overdue has one inbound road. Paint a few representatives of the
- * contact there, and count the whole group at its unchanged rule position. */
-export function rentGateCrowd(state: GameState): Enemy[] {
-  const { gate } = state;
-  return gate && !gate.fallen ? state.enemies
-    .filter(enemy => enemy.distance === gate.distance && !isFlying(enemy))
-    .sort((a, b) => a.id - b.id) : [];
+type Rank = readonly [number, number];
+const frontRanks = [[35, 17], [12, 38]] as const;
+const trollRank = [30, 26] as const;
+const RENT_WALK_SCALE = 1.16;
+
+export interface RentGateCrowd {
+  count: number;
+  first?: Enemy;
+  second?: Enemy;
 }
 
-type Rank = readonly [number, number];
-const frontRanks = [[34, -16], [28, 27], [-22, 32]] as const;
-const shieldRanks = [frontRanks[0], frontRanks[2]];
-const houndRanks = [[36, 15], [-26, 29]] as const;
-const trollRanks = [[6, 36]] as const;
+export function inRentGateBand(gateDistance: number, enemy: Enemy): boolean {
+  return Math.abs(enemy.distance - gateDistance) <= SIEGE_DRAW_CAP && !isFlying(enemy);
+}
+
+/** Only genuinely held walkers can stand in for the group. Near arrivals
+ * add to its count while every member keeps its own simulation position. */
+export function rentGateCrowd(state: GameState): RentGateCrowd | undefined {
+  const { gate } = state;
+  if (!gate || gate.fallen) return;
+  const group: RentGateCrowd = { count: 0 };
+  for (const enemy of state.enemies) {
+    if (!inRentGateBand(gate.distance, enemy)) continue;
+    group.count++;
+    if (enemy.distance !== gate.distance) continue;
+    if (!group.first) group.first = enemy;
+    else if (!group.second && group.first.type !== 'troll') group.second = enemy;
+  }
+  if (group.first) return group;
+}
+
+export function rentGateRank(crowd: RentGateCrowd, enemy: Enemy): Rank | undefined {
+  if (crowd.first === enemy) return enemy.type === 'troll' ? trollRank : frontRanks[0];
+  if (crowd.second === enemy) return frontRanks[1];
+}
 
 export function rentStance(state: GameState, layout: Layout, enemy: Enemy, rank?: Rank): SiegeStance {
   const gate = state.gate!;
   if (rank) {
     const [x, y] = rank;
-    const side = -Math.sign(layout.screenDir(Math.cos(gate.angle), Math.sin(gate.angle)).x);
-    return { ...capSiegeOffset(side * x, y), scale: 1.48 };
+    const side = layout.turned ? 1 : -1;
+    const scale = enemy.type === 'troll' ? .79 : enemy.type === 'shieldbearer' ? .87 : 1.1;
+    return { ...capSiegeOffset(side * x, y), scale };
   }
-  const distance = Math.abs(enemy.distance - gate.distance);
-  return { x: 0, y: 0, scale: 1.32 + .16 * Math.max(0, 1 - distance / 48) };
+  const distance = gate.distance - enemy.distance;
+  const atGate = !gate.fallen && distance >= 0 ? Math.max(0, 1 - Math.abs(distance - 40) / 100) : 0;
+  const bypass = (layout.turned ? -1 : 1) * 23 * atGate;
+  return { x: bypass, y: 0, scale: enemy.type === 'troll' ? .93 : RENT_WALK_SCALE };
 }
 
-export function rentGateRanks(crowd: readonly Enemy[]): readonly Rank[] {
-  const front = crowd.slice(0, 3);
-  // A wide silhouette needs its own rank. Lower poses put the whole
-  // miniature within the Keg's radius at the unchanged rule position.
-  if (front.some(enemy => enemy.type === 'troll')) return trollRanks;
-  if (front.some(enemy => enemy.type === 'wolf')) return houndRanks;
-  if (front.some(enemy => enemy.type === 'shieldbearer')) return shieldRanks;
-  return frontRanks;
+export function rentFlightStance(state: GameState, layout: Layout, enemy: Enemy, slot: number): SiegeStance {
+  const gate = state.gate!;
+  const progress = enemy.distance - gate.distance;
+  const rank = state.wave === 2 ? 0 : slot % 4;
+  const climb = Math.max(0, Math.min(1, (progress + 510) / 310, (285 - progress) / 135));
+  const loft = climb * climb * (3 - 2 * climb);
+  const sill = layout.toScreen(gate);
+  const foot = layout.toScreen(positionAlongPath(state.map, enemy.distance));
+  const altitude = sill.y - foot.y - 136 - Math.floor(rank / 2) * 32;
+  const lane = state.wave === 2 ? 0 : rank % 2 ? 24 : -24;
+  // In portrait the lower road folds immediately back under the gate.
+  // Climb from its open flank before crossing over the top of the arch.
+  const flank = layout.turned ? Math.max(0, Math.min(1, (progress + 600) / 130, (-148 - progress) / 68)) : 0;
+  const bend = flank * flank * (3 - 2 * flank);
+  const x = lane + Math.max(0, sill.x + 149 - foot.x) * bend;
+  return { x, y: Math.min(-12, altitude) * loft - 12 * (1 - loft), scale: .91 };
 }
 
 /** Offsets are canvas pixels. This only poses the actors. The road position

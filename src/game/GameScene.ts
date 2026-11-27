@@ -2009,7 +2009,7 @@ export class GameScene extends Phaser.Scene {
     drawStatusRings(g, this.state, this.layout, stopped);
     if (!this.painted) drawShadows(g, this.state, this.layout, stopped);
     this.enemySprites.sync(this.state, this.speed, stopped);
-    this.rentHeldBadge?.update(this.enemySprites.heldAtRentGate);
+    this.rentHeldBadge?.update(this.enemySprites.representedAtRentGate);
     this.shotFx.clear();
     this.painted?.beginEffects();
     if (fx) fx.draw(this.shotFx, this.painted);

@@ -2726,10 +2726,12 @@ adjacent green socket. The six ground sites retain their positions. The portrait
 camera holds at the existing 1.15× setup projection through the wave so
 the ridge, ground and sites stay in view. The gate keeps its rule point
 and damage thresholds. The fallen leaves lie broken at the sill
-and the opening shows the existing road through the arch. Walkers use 1.32× scale on the road, growing to
-1.48× near the sill. Up to three held walkers stand in front of the gate
-within the existing 40 px cap. The held count includes every walker
-stopped at the sill. Aim previews and casts still use the rule positions.
+and the opening shows the existing road through the arch. One or two
+held walkers stand below and beside the door, within the 40 px draw cap.
+Their badge also counts the approaching walkers within 40 trail px of
+the sill. Ground walkers on the approach veer clear of that group.
+Harpies fly above the arch, with ground shadows and aim tethers on
+their rule positions. All aim previews and casts use the rule positions.
 The presentation of levels 22 to 25 uses the preceding siege art and
 formation.
 
