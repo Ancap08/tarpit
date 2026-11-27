@@ -1,4 +1,4 @@
-import { distanceOnRoad, isFlying, positionAlongPath, type Enemy, type GameState, type Point } from '../../sim';
+import { distanceOnRoad, enemyPosition, isFlying, positionAlongPath, type Enemy, type GameState, type Point } from '../../sim';
 import type { Layout } from '../layout';
 
 export interface SiegeStance extends Point {
@@ -21,6 +21,7 @@ type Rank = readonly [number, number];
 const frontRanks = [[35, 17], [12, 38]] as const;
 const trollRank = [30, 26] as const;
 const RENT_WALK_SCALE = 1.16;
+const RENT_PACKED_SHIELD_SCALE = 1.23;
 
 export interface RentGateCrowd {
   count: number;
@@ -65,6 +66,54 @@ export function rentStance(state: GameState, layout: Layout, enemy: Enemy, rank?
   const atGate = !gate.fallen && distance >= 0 ? Math.max(0, 1 - Math.abs(distance - 40) / 100) : 0;
   const bypass = (layout.turned ? -1 : 1) * 23 * atGate;
   return { x: bypass, y: 0, scale: enemy.type === 'troll' ? .93 : RENT_WALK_SCALE };
+}
+
+/** Leave room for the two mixed-speed columns in the late waves. Space
+ * the upright bodies on the screen because road spacing alone disappears
+ * when different speeds or the hairpin bring two feet together. */
+export function rentRoadSpacing(state: GameState, layout: Layout): Map<number, SiegeStance> | undefined {
+  if (state.wave < 3 || state.enemies.length < 2 || !state.gate) return;
+  const gate = state.gate;
+  if (!gate.fallen && state.wave < 5) return;
+  const walkers = state.enemies.filter(enemy => !isFlying(enemy) && (gate.fallen || gate.distance - enemy.distance > 140));
+  const bodies = walkers.map(enemy => {
+    const foot = layout.toScreen(enemyPosition(enemy, state.map));
+    const troll = enemy.type === 'troll';
+    let dx = 0, dy = 0;
+    if (state.wave >= 5) {
+      const before = positionAlongPath(state.map, enemy.distance - 18);
+      const after = positionAlongPath(state.map, enemy.distance + 18);
+      const dir = layout.screenDir(after.x - before.x, after.y - before.y);
+      const lane = (troll ? -10 : 10) / (Math.hypot(dir.x, dir.y) || 1);
+      dx = -dir.y * lane;
+      dy = dir.x * lane;
+    }
+    const radius = troll ? 25 : 23;
+    const scale = troll ? .8 : enemy.type === 'shieldbearer' ? RENT_PACKED_SHIELD_SCALE : RENT_WALK_SCALE;
+    return { enemy, radius, scale, x: foot.x, y: foot.y - radius, dx, dy };
+  });
+  for (let pass = 0; pass < 6; pass++) {
+    for (let i = 0; i < bodies.length; i++) for (let j = i + 1; j < bodies.length; j++) {
+      const a = bodies[i], b = bodies[j];
+      const gap = a.radius + b.radius;
+      const x = b.x + b.dx - a.x - a.dx;
+      const y = b.y + b.dy - a.y - a.dy;
+      if (Math.abs(x) >= gap || Math.abs(y) >= gap) continue;
+      const length = Math.hypot(x, y);
+      if (!length || length >= gap) continue;
+      const push = (gap - length) * .51 / length;
+      a.dx -= x * push;
+      a.dy -= y * push;
+      b.dx += x * push;
+      b.dy += y * push;
+    }
+    for (const b of bodies) {
+      const offset = capSiegeOffset(b.dx, b.dy);
+      b.dx = offset.x;
+      b.dy = offset.y;
+    }
+  }
+  return new Map(bodies.map(b => [b.enemy.id, { x: b.dx, y: b.dy, scale: b.scale }]));
 }
 
 export function rentFlightStance(state: GameState, layout: Layout, enemy: Enemy, slot: number): SiegeStance {

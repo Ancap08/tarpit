@@ -2731,7 +2731,14 @@ held walkers stand below and beside the door, within the 40 px draw cap.
 Their badge also counts the approaching walkers within 40 trail px of
 the sill. Ground walkers on the approach veer clear of that group.
 Harpies fly above the arch, with ground shadows and aim tethers on
-their rule positions. All aim previews and casts use the rule positions.
+their rule positions. Road walkers use a 1.16× scale, with trolls at
+0.93×. The denser mixed-speed stretches space the drawn bodies within
+the same 40 px cap. In those stretches shieldbearers use 1.23× and
+trolls use 0.80×. Gate representatives use 1.10× for Collectors and
+Hounds, 0.87× for Redcoats and 0.79× for Toll Trolls. Harpies use 0.91×.
+Built towers stand on pale stone bases with mint rims above the road
+crowd. Their nominal body height is 66 canvas px. All aim previews and
+casts use the rule positions.
 The presentation of levels 22 to 25 uses the preceding siege art and
 formation.
 

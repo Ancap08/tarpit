@@ -9,6 +9,7 @@ import { arcHeight, arcPosition } from '../fx/fxMath';
 import type { Layout } from '../layout';
 import type { GameClock } from '../loop';
 import { paintedSheetMissing } from '../names';
+import { CLEAN } from '../ui/newTheme';
 import { bearingFrame, footDepth, TOWER_PREVIEW_FRAME, towerArt } from './frames';
 import type { PaintedAssets, PaintedName, PaintedSheet } from './loading';
 import { NOTICE_WIDTH, SIEGE_MACHINE_KEY } from '../draw/siegeMachines';
@@ -62,6 +63,8 @@ export class PaintedSkin {
   private drawnTime = Number.NaN;
   private readonly growth: { g: Growth; image: Image }[];
   private readonly towers = new Map<number, Image>();
+  private readonly rentTowerLayer?: Phaser.GameObjects.Layer;
+  private readonly rentTowerBases = new Map<number, Phaser.GameObjects.Graphics>();
   readonly effects: Phaser.GameObjects.Layer;
   private readonly pieces: Image[] = [];
   private used = 0;
@@ -78,6 +81,7 @@ export class PaintedSkin {
     private readonly clock: GameClock,
     scenery = true,
     extendGround = false,
+    rentOverdue = false,
   ) {
     if (assets.groundKey) {
       this.ground = extendGround && layout.turned
@@ -88,6 +92,7 @@ export class PaintedSkin {
     this.shadows = scene.add.layer();
     this.standing = scene.add.layer();
     this.air = scene.add.layer();
+    if (rentOverdue) this.rentTowerLayer = scene.add.layer();
     this.effects = scene.add.layer();
     const place = (name: PaintedName, world: Point, frame = 0) => {
       const p = layout.toScreen(world);
@@ -188,6 +193,8 @@ export class PaintedSkin {
       if (occupied.has(id)) continue;
       image.destroy();
       this.towers.delete(id);
+      this.rentTowerBases.get(id)?.destroy();
+      this.rentTowerBases.delete(id);
     }
     this.hidden = new Set(hiddenGrowth(this.growth.map(v => v.g), state.towers.map(t => t.cell)));
     this.alpha = placing ? PLACING_ALPHA : 1;
@@ -221,10 +228,26 @@ export class PaintedSkin {
     let image = this.towers.get(id);
     if (!image) {
       image = this.image(towerArt(tower.type));
-      this.standing.add(image);
+      (this.rentTowerLayer ?? this.standing).add(image);
       this.towers.set(id, image);
     }
     this.towerPiece(image, tower.type, p, pose, alpha);
+    if (this.rentTowerLayer) {
+      const bounds = this.sheet(towerArt(tower.type)).bodyBounds?.[Number(image.frame.name)];
+      if (bounds) image.setScale(66 * pose.scale / (bounds[3] - bounds[1]));
+      let base = this.rentTowerBases.get(id);
+      if (!base) {
+        const foot = this.layout.toScreen(p);
+        base = this.scene.add.graphics().setPosition(foot.x, foot.y).setDepth(foot.y - 1);
+        base.fillStyle(0x324237, .68).fillEllipse(1, 6, 47, 26, 24);
+        base.fillStyle(0x748273).fillEllipse(0, 4, 45, 22, 24);
+        base.fillStyle(0xdedbc0).fillEllipse(0, 0, 43, 20, 24);
+        base.lineStyle(2.5, CLEAN.mint).strokeEllipse(0, 0, 42, 19, 24);
+        this.rentTowerLayer.add(base);
+        this.rentTowerBases.set(id, base);
+      }
+      base.setAlpha(alpha);
+    }
   };
 
   clearGhost(): void { this.ghost?.setVisible(false); }
@@ -293,7 +316,7 @@ export class PaintedSkin {
   }
 
   state(): PaintedState {
-    const objects = [this.ground, ...this.standing.list, ...this.shadows.list, ...this.air.list, ...this.effects.list];
+    const objects = [this.ground, ...this.standing.list, ...this.shadows.list, ...this.air.list, ...(this.rentTowerLayer?.list ?? []), ...this.effects.list];
     return { active: true, density: this.assets.density, sprites: objects.flatMap(obj => {
       if (!(obj instanceof Phaser.GameObjects.Image || obj instanceof Phaser.GameObjects.Sprite)) return [];
       return [{ key: obj.texture.key, frame: Number(obj.frame.name), x: obj.x, y: obj.y, visible: obj.visible }];

@@ -49,7 +49,7 @@ import type { Layout } from '../layout';
 import { COLORS } from '../palette';
 import type { GameClock } from '../loop';
 import { FACINGS, SHEETS, walkAnimKey, WALK_FPS, type Facing } from './sheets';
-import { capSiegeOffset, inRentGateBand, rentFlightStance, rentGateCrowd, rentGateRank, rentStance, siegeStance, type SiegeStance } from '../draw/siegeFormation';
+import { capSiegeOffset, inRentGateBand, rentFlightStance, rentGateCrowd, rentGateRank, rentRoadSpacing, rentStance, siegeStance, type SiegeStance } from '../draw/siegeFormation';
 import { RAM_ORIGIN_Y, RAM_SIZE, SIEGE_MACHINE_KEY, ramPose } from '../draw/siegeMachines';
 import { ramAtGate } from '../keep/siegeTiming';
 
@@ -336,6 +336,7 @@ export class EnemySprites {
     const live = new Set<number>();
     const crowd = this.rentOverdue ? rentGateCrowd(state) : undefined;
     this.representedAtRentGate = crowd?.count ?? 0;
+    const roadSpacing = this.rentOverdue ? rentRoadSpacing(state, this.layout) : undefined;
     for (const enemy of state.enemies) {
       live.add(enemy.id);
       const view = this.views.get(enemy.id) ?? this.create(enemy, state.map);
@@ -360,7 +361,7 @@ export class EnemySprites {
           view.rentFlightSlot ??= this.rentFlightSlots++;
           stance = rentFlightStance(state, this.layout, enemy, view.rentFlightSlot);
         } else if (!position) {
-          stance = rentStance(state, this.layout, enemy, rank);
+          stance = roadSpacing?.get(enemy.id) ?? rentStance(state, this.layout, enemy, rank);
         }
       } else if (this.siege && !position) {
         stance = siegeStance(state, enemy);

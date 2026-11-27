@@ -4,6 +4,7 @@ import type { TarpitTestApi } from '../src/game/testGlobal';
 import type { GameScene } from '../src/game/GameScene';
 import { distanceOnRoad, isFlying, trailPointAt } from '../src/sim';
 import { mapPress, press } from './campaign';
+import { measureGateSockets, measureRentBattle } from './rent-battle-measure';
 
 export async function openRentOverdue(page: Page, ui: string) {
   await page.goto(`/?test=1&owner=1&keep=21&ui=${ui}`);
@@ -91,11 +92,11 @@ async function measureField(page: Page) {
     const gateSource = sourceOf(gate);
     const door = surface(gateSource.w, gateSource.h);
     door.drawImage(gateSource.image, gateSource.x, gateSource.y, gateSource.w, gateSource.h, 0, 0, gateSource.w, gateSource.h);
-    const strip = door.getImageData(Math.floor(gateSource.w / 2) - 3, 0, 6, gateSource.h).data;
+    const rgba = door.getImageData(0, 0, gateSource.w, gateSource.h).data;
     const woodRows: number[] = [];
-    for (let i = 0; i < strip.length; i += 4) {
-      const [r, g, b, a] = strip.subarray(i, i + 4);
-      if (a >= 225 && r > g * 1.12 && r > b * 1.32) woodRows.push(Math.floor(i / 24));
+    for (let i = 0; i < rgba.length; i += 4) {
+      const [r, g, b, a] = rgba.subarray(i, i + 4);
+      if (a >= 225 && r > g * 1.12 && r > b * 1.32) woodRows.push(Math.floor(i / (gateSource.w * 4)));
     }
     const doorHeight = (Math.max(...woodRows) - Math.min(...woodRows) + 1) * gate.scaleY;
 
@@ -104,7 +105,7 @@ async function measureField(page: Page) {
     const { enemies, gate: sill } = scene.state;
     const held = enemies.filter(e => e.type !== 'harpy' && e.distance === sill!.distance);
     const views = scene['enemySprites']['views'];
-    const road = enemies.filter(e => !held.includes(e)).map(enemy => {
+    const road = enemies.filter(e => e.type === 'harpy' || Math.abs(e.distance - sill!.distance) > 40).map(enemy => {
       const sprite = views.get(enemy.id)!.sprite;
       const art = sourceOf(sprite);
       const pose = surface(art.w, art.h);
@@ -118,6 +119,7 @@ async function measureField(page: Page) {
       return { id: enemy.id, visible: sprite.visible,
         contrast: contrast(light / alpha, patch(board, sprite.x - layout.map.x, sprite.y - layout.map.y, 9).light) };
     });
+    const grouped = enemies.filter(e => e.type !== 'harpy' && Math.abs(e.distance - sill!.distance) <= 40);
     const visible = held.filter(e => views.get(e.id)?.sprite.visible);
     const centre = layout.toScreen(sill!);
     const drawn = visible.map(enemy => {
@@ -143,7 +145,7 @@ async function measureField(page: Page) {
       number: Phaser.GameObjects.Text; badge: Phaser.GameObjects.Container;
     } | undefined);
     return {
-      spots, road, held: held.length, visible: visible.length, worstOverlap,
+      spots, road, held: held.length, grouped: grouped.length, visible: visible.length, worstOverlap,
       count: badge?.badge.visible ? badge.number.text : null,
       offset: Math.max(...drawn.map(e => e.offset)),
       castleArea: architecture.count / terrain.count, castleContrast: architecture.rms, boardContrast: terrain.rms,
@@ -156,6 +158,43 @@ export function rentOverdueSuite(width: number, height: number, touch: boolean) 
   for (const ui of ['new', 'old']) {
     test.describe(`Level 21 at ${width}×${height}, ${ui} interface`, () => {
       test.use({ viewport: { width, height } });
+      for (const wave of [1, 2, 3]) {
+        test(`wave ${wave} leaves the full-health gate door readable`, async ({ page }) => {
+          await openRentOverdue(page, ui);
+          const reading = await page.evaluate(measureRentBattle, { wave, fallen: false, towers: false, animated: true });
+          console.log(JSON.stringify(reading));
+          expect.soft(reading.doorCover, 'At least 80% of the gate door remains visible').toBeLessThanOrEqual(.2);
+          expect.soft(reading.gatePair, 'No two enemy silhouettes within 110 px of the sill overlap by more than 20%').toBeLessThanOrEqual(.2);
+          expect.soft(reading.countMatches, 'The gate badge counts held enemies and approaching walkers within 40 px').toBe(true);
+          expect(reading.sawArrivals).toBe(true);
+          expect(reading.maxFeet).toBeLessThanOrEqual(40.000001);
+        });
+
+        test(`wave ${wave} separates the six towers from the walkers`, async ({ page }) => {
+          await openRentOverdue(page, ui);
+          const reading = await page.evaluate(measureRentBattle, { wave, fallen: true, towers: true, animated: true });
+          console.log(JSON.stringify(reading));
+          expect.soft(reading.roadPair, 'No two road walkers overlap by more than 25% of either silhouette').toBeLessThanOrEqual(.25);
+          expect.soft(reading.towerCover, 'Enemies hide at most one third of any tower body').toBeLessThanOrEqual(1 / 3);
+          expect(reading.sizeRatio, 'Every tower stands at least as tall as nearby walkers').toBeGreaterThanOrEqual(1);
+        });
+      }
+
+      test('the densest Rent Overdue wave keeps the walking ranks separate', async ({ page }) => {
+        await openRentOverdue(page, ui);
+        const reading = await page.evaluate(measureRentBattle, { wave: 6, fallen: true, towers: false, animated: true });
+        console.log(JSON.stringify(reading));
+        expect(reading.roadPair, 'No two road walkers overlap by more than 25% in wave 6').toBeLessThanOrEqual(.25);
+      });
+
+      test('the two gate sockets sit on the tower roof and on clear ground', async ({ page }) => {
+        await openRentOverdue(page, ui);
+        const { groundIntrusion, highAbove, highSupport } = await page.evaluate(measureGateSockets);
+        expect.soft(groundIntrusion, 'Gate masonry does not cross the green ground socket').toBe(0);
+        expect.soft(highAbove, 'No gate masonry or timber sticks up behind the gold socket').toBe(0);
+        expect(highSupport, 'The gold socket stands on a masonry tower').toBeGreaterThan(30);
+      });
+
       test('the sockets, road enemies, held crowd, castle and gate are readable', async ({ page }) => {
         await openRentOverdue(page, ui);
         const m = await measureField(page);
@@ -167,7 +206,7 @@ export function rentOverdueSuite(width: number, height: number, touch: boolean) 
         expect(m.held).toBeGreaterThan(3);
         expect.soft(m.visible, 'At least two separate enemies represent a full wave 1 gate crowd').toBeGreaterThanOrEqual(2);
         expect.soft(m.worstOverlap, 'No two drawn held enemies overlap by more than one fifth of either silhouette').toBeLessThanOrEqual(.2);
-        expect.soft(m.count, 'The icon displays the number of enemies actually held at the gate').toBe(String(m.held));
+        expect.soft(m.count, 'The icon displays the number of enemies represented by the formation').toBe(String(m.grouped));
         expect.soft(m.offset, 'Every drawn held foot stays within 40 px of the simulation point').toBeLessThanOrEqual(40);
         expect.soft(m.castleArea, 'The visible castle occupies at most one quarter of the painted board').toBeLessThanOrEqual(.25);
         expect.soft(m.castleContrast, 'The castle has lower RMS luminance contrast than the board').toBeLessThan(m.boardContrast);
@@ -242,11 +281,13 @@ export function rentOverdueSuite(width: number, height: number, touch: boolean) 
           const enemies = await page.evaluate(() => {
             const api = window.__tarpit as TarpitTestApi;
             api.startWave();
-            api.step(1450);
+            api.step(1472);
             return api.state().enemies;
           });
           const state = await page.evaluate(() => ({ gate: window.__tarpit!.state!().gate!, map: window.__tarpit!.state!().map }));
           const held = enemies.filter(e => !isFlying(e) && e.distance === distanceOnRoad(state.map, e.road, state.gate));
+          const grouped = enemies.filter(e => !isFlying(e) &&
+            Math.abs(e.distance - distanceOnRoad(state.map, e.road, state.gate)!) <= 40);
           const visible = await page.evaluate(ids => {
             const api = window.__tarpit as TarpitTestApi;
             const scene = api.game.scene.getScene('game') as GameScene;
@@ -287,10 +328,12 @@ export function rentOverdueSuite(width: number, height: number, touch: boolean) 
           if (touch) await page.touchscreen.tap(point.x, point.y);
           else await page.mouse.click(point.x, point.y);
           const survivors = await page.evaluate(() => window.__tarpit!.state!().enemies.map(e => e.id));
-          return { targets: held.filter(e => !survivors.includes(e.id)).map(e => e.id), held: held.length, aims: visible.length };
+          return { targets: grouped.filter(e => !survivors.includes(e.id)).map(e => e.id),
+            total: grouped.length, arrived: held.length, aims: visible.length };
         }
         const trueSill = await aim(-1);
-        expect(trueSill.targets).toHaveLength(trueSill.held);
+        expect(trueSill.targets).toHaveLength(trueSill.total);
+        expect(trueSill.total).toBeGreaterThan(trueSill.arrived);
         expect(trueSill.aims).toBeGreaterThanOrEqual(6);
         for (let slot = 0; slot < trueSill.aims; slot++) {
           expect((await aim(slot)).targets, `Held kills at visible aim point ${slot}`).toEqual(trueSill.targets);

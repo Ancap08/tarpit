@@ -700,7 +700,7 @@ export class GameScene extends Phaser.Scene {
     // Milestone 32b: world-space layers take the layout's transform (placeWorld); the rest is placed through it.
     const world = () => this.layout.placeWorld(this.add.graphics());
     // Milestone 34: the living map (decor/livingMap.ts): the baked ground, trees and bushes, and the moving things, under everything else.
-    this.painted = this.paintedAssets ? new PaintedSkin(this, this.paintedAssets, this.layout, this.state.map, isTestMode(), this.clock, !this.keepModule, clean) : undefined;
+    this.painted = this.paintedAssets ? new PaintedSkin(this, this.paintedAssets, this.layout, this.state.map, isTestMode(), this.clock, !this.keepModule, clean, rentOverdue) : undefined;
     if (this.state.cheated) this.painted?.unlockTowers();
     this.living = this.painted ?? (this.keepModule ? null : new LivingMap(this, this.state.map, this.layout, isTestMode(), this.clock, clean));
     this.town = new Town(this, this.state.map, this.layout, isTestMode(), this.siegeScreens ? undefined : this.painted);
