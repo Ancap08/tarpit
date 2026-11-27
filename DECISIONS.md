@@ -2343,3 +2343,33 @@ can change it; "Kyle" means Kyle decided.
 - **Not decided:** whether the ground should be remade in the castle's
   modelled style. That is a direction for Kyle, to be shown as pictures
   after he has seen the seated castle.
+- **Part 1 result (Sol, `5a3673c`, `a09c42f`):** the castle wall's
+  see-through footing is closed with a solid rock heel in the model; rock,
+  talus and a wall shadow are painted into the ground plates; ground light
+  follows the windows and braziers and is absent in the lightning
+  exposure; a small runtime "apron" joins the gatehouse sill to the road.
+  Levels 1 to 20 are pixel-identical. Level 25 retained art went from
+  68.46 to 68.52 MB of 70. Frame cost 2.80 ms before, 2.85 ms after, with
+  the interface off (Chromium WebGL, ANGLE Metal, Apple M4). Full browser
+  run 2,296 passed, 12 skipped.
+- **Verifier (Sonnet): ship with fixes.** The wall footing holds on all
+  five levels. Six defects at the gatehouse: on level 22 wide the road
+  does not reach the gatehouse; on level 21 wide the rock under it ends in
+  a straight edge about 220 px long; with the camera live the apron is
+  drawn about 145 px away from the gate for about a second on levels 21,
+  23 and 25; in portrait a wave start leaves it 3 to 4 px off; the new
+  checks cover level 21 only and pass where the road is broken; the light
+  pools sit 120 to 250 px below their lamps.
+- **Coordinator's read:** a real but modest gain. The gatehouse still
+  looks placed and the two drawing styles still differ.
+- **Part 2 (the six defects) was interrupted.** Kyle's Mac ran out of disk
+  space (111 MB free of 228 GB) and the implementer exited with code 101,
+  leaving uncommitted edits in four files. They pass the type check and
+  are otherwise unjudged. With Kyle's approval the coordinator deleted the
+  Tarpit scratch files in `/tmp` (about 360 MB), by name. The rerun waits
+  for a few GB of free space.
+- **A session token appeared in the implementer's tool output** from a
+  process listing. It is in no commit or picture. Briefs now say: do not
+  print process listings with full command lines or environment variables.
+- Tokens: Sol 413,427 for part 1 (part 2 unknown, it crashed); Sonnet
+  212,142.
