@@ -2373,3 +2373,40 @@ can change it; "Kyle" means Kyle decided.
   print process listings with full command lines or environment variables.
 - Tokens: Sol 413,427 for part 1 (part 2 unknown, it crashed); Sonnet
   212,142.
+- **Part 2 result (Sol, `384234b` to `4da1048`, six commits), after two
+  outside stops.** The first run died when the disk filled; the second was
+  cut off by a restart of the Mac. With Kyle's approval the coordinator
+  cleared about 4.9 GB of regenerable caches before the second run. The
+  third run finished. Road setts now run from the exposed road into the
+  arch on levels 21 to 25 in both orientations; the rock under the
+  gatehouse is broken ledges (longest hard edge 24.2 CSS px, was 109 to
+  127 on level 21); in portrait the ground follows the rendered camera, so
+  the apron stays on the sill through a wave start (0.000 px, was 0.73 to
+  1.00); three street pools sit at bollard feet and two under the gate
+  lamps, none in the lightning exposure. The opening push-in moves what it
+  moved before. Level 25 retained art 68.52 to 68.56 MB of 70.
+- **Verifier (Sonnet): ship.** Full browser run on `4da1048`: 2,350
+  passed, 12 skipped, 0 failed, then the 2 keep-cost tests passed. Lint,
+  type check and 3,013 unit tests pass. Sixteen frozen pictures of levels
+  1, 7, 13 and 20 are pixel-identical to the previous tip.
+- **Defect 3 (apron 145 px from the gate for a second) is unexplained.**
+  Neither Sol nor the second verifier could reproduce it, on the new code
+  or the old; both read 0.01 px or less in every frame. The first
+  verifier's method was lost with the scratch files. It is recorded as not
+  reproduced, not as fixed. The ten tests added for it pass on the old
+  code too, so they guard against a future break only.
+- **The straight-edge check was narrowed after it failed.** Sol's one full
+  run failed it on level 24 wide, old interface (Expected <= 33, Received
+  34.9); `4da1048` narrowed the scan from 5 px to 3 px. The verifier
+  looked at 2x and 4x: a soft shadow, not an edge. The check still fails
+  on the old level 21 slab but is a weak guard on levels 23 and 24 wide,
+  where the old code reads 25 to 38; the paving check covers those.
+- **Coordinator's read:** the gatehouse is seated. It is still a modelled
+  object on painted ground; on level 22 wide the new paving fan is lighter
+  and larger-blocked than the road it joins. Whether to remake the ground
+  in the castle's style remains Kyle's call.
+- **Scratch folders do not survive a restart.** The brief and the second
+  run's log were lost with one. Briefs now say: commit each fix as its own
+  check passes.
+- Tokens: Sol 309,047 for the finishing run (the two stopped runs
+  unknown); Sonnet 182,149.
