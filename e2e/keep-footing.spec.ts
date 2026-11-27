@@ -29,26 +29,79 @@ for (const { name, width, height, x, depth } of views) {
   });
 }
 
-test('the east approach remains visible below the barbican sill in landscape', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 800 });
-  await openKeep(page, 21);
-  const paved = await page.evaluate(() => {
-    const scene = window.__tarpit!.game.scene.getScene('game') as GameScene;
-    const keep = scene['keep']!, sill = keep.outerGate!;
-    // Sample the uncovered strip just in front of the visual threshold.
-    // Include the wall and deck in the composite: either can mask a road
-    // that appears correctly aligned when the ground plate is viewed alone.
-    const surface = keep['surround'].stillSurface();
-    const pixels = surface.getContext('2d')!.getImageData(
-      Math.round(sill.x - parseFloat(surface.style.left)) - 8,
-      Math.round(sill.y - parseFloat(surface.style.top)) + 14, 18, 7).data;
-    return pixels.filter((red, i) => i % 4 === 0 &&
-      .2126 * red + .7152 * pixels[i + 1] + .0722 * pixels[i + 2] >= 65).length / 126;
-  });
-  expect(paved, 'Visible paving spans the approach lip beneath the arch').toBeGreaterThanOrEqual(.65);
-});
-
+// Visual landmarks in the board-local image. These start at the door and
+// continue past the apron into the original paving, including level 22's
+// approach from the opposite side. The sprite is part of the sample.
 const levels = [21, 22, 23, 24, 25] as const;
+const approaches = {
+  landscape: {
+    21: [[-2, 12], [8, 23], [23, 40], [25, 60], [28, 86], [43, 104]],
+    22: [[-2, 12], [10, 17], [25, 21], [46, 25], [68, 27], [90, 33], [110, 43], [129, 60]],
+    23: [[-2, 12], [-2, 28], [2, 44], [15, 58], [28, 71], [51, 81]],
+    24: [[-2, 12], [6, 23], [14, 40], [15, 58], [21, 79], [40, 100]],
+    25: [[-2, 12], [6, 23], [11, 41], [10, 58], [21, 79], [39, 100]],
+  },
+  portrait: {
+    21: [[-2, 12], [-14, 22], [-33, 32], [-55, 34], [-76, 35], [-96, 42], [-116, 55]],
+    22: [[-2, 12], [12, 23], [30, 33], [48, 42], [57, 57], [54, 77], [36, 93]],
+    23: [[-2, 12], [-16, 22], [-36, 28], [-55, 33], [-72, 42], [-82, 62], [-85, 80]],
+    24: [[-2, 12], [-15, 22], [-34, 28], [-54, 29], [-76, 32], [-95, 44], [-113, 56]],
+    25: [[-2, 12], [-15, 22], [-35, 27], [-55, 25], [-74, 27], [-93, 37], [-110, 58]],
+  },
+};
+
+async function footingPixels(page: Page, route: number[][]) {
+  return page.evaluate(route => {
+    const scene = window.__tarpit!.game.scene.getScene('game') as GameScene;
+    const keep = scene['keep']!, gate = keep.outerGate!, surround = keep['surround'];
+    const sillX = 130, sillY = 22;
+    const sample = document.createElement('canvas');
+    sample.width = 270;
+    sample.height = 160;
+    const ctx = sample.getContext('2d')!;
+    ctx.translate(sillX - gate.x, sillY - gate.y);
+    for (const layer of [surround['ground'], ...surround['castle'], surround['road'], surround['gateBed']]) {
+      if (layer) ctx.drawImage(layer, parseFloat(layer.style.left), parseFloat(layer.style.top));
+    }
+    const frame = gate.frame;
+    ctx.drawImage(frame.source.image as HTMLImageElement, frame.cutX, frame.cutY, frame.cutWidth, frame.cutHeight,
+      gate.x - gate.displayWidth * gate.originX, gate.y - gate.displayHeight * gate.originY,
+      gate.displayWidth, gate.displayHeight);
+
+    const { data } = ctx.getImageData(0, 0, sample.width, sample.height);
+    const luminance = (x: number, y: number) => {
+      const i = ((sillY + y) * sample.width + sillX + x) * 4;
+      return .2126 * data[i] + .7152 * data[i + 1] + .0722 * data[i + 2];
+    };
+    // Walk the full corridor in short overlapping patches. A few dark
+    // mortar joints are normal, but a whole patch of shadow or rock is a gap.
+    let darkest = Infinity;
+    for (let i = 1; i < route.length; i++) {
+      const [ax, ay] = route[i - 1], [bx, by] = route[i];
+      const count = Math.ceil(Math.hypot(bx - ax, by - ay) / 3);
+      for (let n = 0; n <= count; n++) {
+        const x = Math.round(ax + (bx - ax) * n / count), y = Math.round(ay + (by - ay) * n / count);
+        let stone = 0;
+        for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
+          if (luminance(x + dx, y + dy) >= 59) stone++;
+        }
+        darkest = Math.min(darkest, stone / 49);
+      }
+    }
+    return darkest;
+  }, route);
+}
+
+for (const { name, width, height } of views) {
+  for (const level of levels) for (const ui of ['new', 'old']) {
+    test(`level ${level} ${name}, ${ui} interface: the inbound paving reaches the sill`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await openKeep(page, level, true, ui);
+      const darkest = await footingPixels(page, approaches[name][level]);
+      expect(darkest, 'Continuous visible paving from the inbound road to the sill').toBeGreaterThanOrEqual(.45);
+    });
+  }
+}
 
 interface FootingTrace {
   worstBed: number;

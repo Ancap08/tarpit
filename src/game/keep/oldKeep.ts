@@ -194,10 +194,14 @@ export class KeepView {
       const screen = layout.toScreen(point);
       return { x: screen.x - x, y: screen.y - y };
     };
+    // The painted approach comes into view again beyond the gate's wing.
+    // The west-only layout rounds the outside of the curtain on wide screens.
+    const wrapsShoulder = !layout.turned && scene.state.level?.keepRoads === 'west';
+    const approachDistance = wrapsShoulder ? 233 : layout.turned ? 143 : 114;
     const footing: KeepFooting | undefined = weather && blocker ? {
-      gate: { sill: local(blocker), expanded: siegeArt,
-        approach: local(trailPointAt(map, blocker.distance - 51)),
-        farther: local(trailPointAt(map, blocker.distance - 70)) },
+      gate: { sill: local(blocker), expanded: siegeArt, portrait: layout.turned, wrapsShoulder,
+        approach: local(trailPointAt(map, blocker.distance - approachDistance)),
+        farther: local(trailPointAt(map, blocker.distance - approachDistance - 10)) },
       lamps: [
         ...lamps.slice(0, -1).map(key => ({
           point: this.at(key), strength: key.startsWith('torch') ? 'torch' as const : 'brazier' as const,
