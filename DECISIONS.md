@@ -2453,3 +2453,29 @@ can change it; "Kyle" means Kyle decided.
   for Kyle. A is built directly on levels 21 to 25 with no second switch,
   because Act Three is already hidden from players and a switch would
   double every check there.
+- **Pictures of A at two strengths (Sol, `ef742d6`, `8c14dcf`),** in
+  `docs/review/m58`. No game code changed.
+- **Decided (coordinator): build A1, with five corrections** read from the
+  pictures against level 20 on the same phone, which Kyle reads without
+  trouble:
+  - The ground in the pictures is an empty olive haze. It is to be solid
+    ground with a definite colour and a little detail, as clear as level
+    20's grass. The dusk belongs in the sky and the castle, not as fog
+    over the board.
+  - Enemies came out at about 18 px on a phone, against about 40 px on
+    level 20 and about 25 px on level 21 today. They are to be no smaller
+    than today and as large as the road allows.
+  - The gatehouse came out smaller than a tower spot. The gate is the
+    level's main rule; it is to be a sturdy gate across the road, clearly
+    larger than an enemy.
+  - On a phone the castle is nearly invisible. A little larger and
+    clearer than A1 there, still plainly behind the board.
+  - The queue of enemies down the road cannot be built as drawn. Held
+    enemies all stand at the gate in the simulation, and an earlier
+    decision caps how far they may be drawn from their true place at 40 px
+    so that an aimed Powder Keg hits what it appears to hit. Within that
+    cap: a small block of separate enemies at the gate and a count of how
+    many are held.
+- A2 is not built: it gives up the castle and reads no better.
+- Tokens: Sol 235,351 for the pictures (the stopped three-direction run
+  unknown).
