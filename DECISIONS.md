@@ -2410,3 +2410,36 @@ can change it; "Kyle" means Kyle decided.
   check passes.
 - Tokens: Sol 309,047 for the finishing run (the two stopped runs
   unknown); Sonnet 182,149.
+
+## 2026-11-27, Kyle plays level 21 (milestone 58)
+
+- **Kyle, after playing level 21 on his phone with milestone 57 live:**
+  "I'm only able to place the weapons in certain places and it's not
+  obvious what to do. It will confuse others, so we need to make the path
+  easier to place the towers and easier to see the enemies. The castle
+  also still looks bad, I'm not sure how to describe it but it looks like
+  a photoshopped picture is pasted on another photo, and then it looks
+  like the enemies are just sitting stuck in front of the bad picture of
+  the castle, so all around isn't that great."
+- **Observed (coordinator, level 21 at 390x656 and 1280x800, both
+  interfaces, before the first wave and with wave 1 at the gate):**
+  - The castle is drawn from the side, at eye level, in bright warm
+    light. The ground is drawn from above, dark and soft. They meet at a
+    line across the middle of the screen. Two cameras and two lights.
+  - The castle fills about the top half of the board and is the brightest
+    thing on it. The road and the play are a short dark strip below it.
+  - Tower spots are small dark-teal marks on dark ground; three sit on
+    the castle itself. Nothing marks them as places to build.
+  - Enemies are purple and grey on purple-grey ground.
+  - The crowd held at the gate is about twenty sprites overlapped in a
+    stack that covers the gatehouse. Each enemy is as tall as the
+    gatehouse, and the gatehouse is a fraction of the castle's size.
+- **Coordinator's read:** milestone 57 treated a symptom. The join at the
+  castle's foot was the visible seam of a larger disagreement, and no
+  footing closes it. The coordinator chose the footing as "needed
+  whichever way the styles are reconciled"; it was, but it was not what
+  Kyle was seeing.
+- **Decided (coordinator, by the project's own rule of not restyling on a
+  description):** three directions as pictures of level 21, no game code,
+  for Kyle to choose by eye. Scope: milestone 58.
+- **Not decided:** the direction. Kyle's, from the pictures.
