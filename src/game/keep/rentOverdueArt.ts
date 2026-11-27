@@ -266,6 +266,22 @@ function tent(ctx: Context, x: number, y: number, w: number): void {
   ctx.stroke();
 }
 
+function ridgeTrees(ctx: Context, edge: readonly (readonly [number, number])[]): void {
+  for (let i = 1; i < edge.length; i++) {
+    const [left, top] = edge[i - 1], [right, bottom] = edge[i];
+    for (const t of [.18, .31, .52, .77, .85]) {
+      const x = left + (right - left) * t;
+      const y = top + (bottom - top) * t;
+      const height = 8 + (i * 17 + Math.floor(t * 100)) % 16;
+      if (t === .52) {
+        polygon(ctx, '#737c6c', [[x - 12, y + 4], [x - 5, y - 6], [x + 4, y - 10], [x + 11, y + 3]]);
+      } else if (t !== .31 || i % 3) {
+        tree(ctx, x, y + 6, height, true);
+      }
+    }
+  }
+}
+
 function paintRentFields(ctx: Context, layout: Layout): void {
   // The camp and old field boundaries occupy the slope west of the road.
   // These world anchors keep the same scenery on the board when it turns.
@@ -346,6 +362,7 @@ export function paintRentGround(ctx: Context, layout: Layout, map: MapDef, inset
     outwork(ctx, { x: p.x - layout.map.x, y: p.y - layout.map.y });
   }
   ctx.restore();
+  ridgeTrees(ctx, edge);
 }
 
 /** Each projection has its own near tower and far post. Both meet the

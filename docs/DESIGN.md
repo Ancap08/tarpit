@@ -2718,7 +2718,8 @@ position. Wounded enemies carry short bars near their own heads.
 
 Level 21 uses a distant Keep behind the ridge and a continuous foreground
 road and yard. Low-contrast field walls, trees, a cart and tents sit
-off the roads and sockets. The landscape East road sign sits west of
+off the roads and sockets. Small trees and rock break the ridge line
+where it meets the sky. The landscape East road sign sits west of
 the entrance. Three high sites stand on stone platforms and the fourth
 gold socket sits on the gate's near tower. The far pier clears the
 adjacent green socket. The six ground sites retain their positions. The portrait
