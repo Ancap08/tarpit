@@ -2325,3 +2325,21 @@ can change it; "Kyle" means Kyle decided.
   started, by pid.
 - Tokens: Sonnet 428,092; Sol 369,591 for the frame cost and leak, 421,371
   for the defects.
+
+## 2026-11-26, the castle looks pasted on (milestone 57)
+
+- **Kyle, playing the newer levels:** "the castle looks kind of stuck all
+  throughout the beginning". Asked which he meant, he chose "Pasted on".
+- **Observed (coordinator, level 21 on the live site, 1280x800 and phone):**
+  the gatehouse sits on a dark shape over the road with no road entering
+  it; the castle's base fades into a see-through band above the crag; the
+  castle is a lit Blender model and the ground is flat painting, and they
+  meet at a line; no light from the castle reaches the ground. The same
+  with the new interface off.
+- **Decided (coordinator, a detail call inside the agreed look):** seat the
+  castle and gatehouse in the ground first (footing, contact shadow, light
+  spill, shading at the join). This is needed whichever way the two styles
+  are later reconciled.
+- **Not decided:** whether the ground should be remade in the castle's
+  modelled style. That is a direction for Kyle, to be shown as pictures
+  after he has seen the seated castle.
