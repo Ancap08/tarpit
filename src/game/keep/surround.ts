@@ -1,7 +1,7 @@
 import type { Point, Rect } from '../../sim';
 import type { KeepSky } from '../../sim/levelTypes';
 import type { Layout } from '../layout';
-import { groundWash, paintGateFooting, type KeepFooting } from './footing';
+import { paintGateFooting, type GateFooting } from './footing';
 import { paintFork } from './keepMotion';
 import type { Plate } from './plates';
 
@@ -70,7 +70,7 @@ export class KeepSurround {
 
   constructor(canvas: HTMLCanvasElement, private layout: Layout,
       image: ImageSource, gate: Point,
-      size: {width:number;height:number}, foot: number[], private readonly weather?: KeepSky, footing?: KeepFooting) {
+      size: {width:number;height:number}, foot: number[], private readonly weather?: KeepSky, footing?: GateFooting) {
     const host = canvas.parentElement!;
     this.backdrop.ariaHidden = 'true';
     this.backdrop.style.cssText = 'position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:-1;background:linear-gradient(#0a1421,#232637 67%,#171a20 87%,#15151a)';
@@ -200,18 +200,15 @@ export class KeepSurround {
     if (weather && footing) {
       // The wide wall and the east deck can overlap the outer gate. Seat
       // its threshold above both, still beneath the Phaser battle actors.
-      const { sill, approach } = footing.gate;
+      const { sill, approach } = footing;
       const left = Math.floor(Math.min(sill.x - 139, approach.x - 26));
       const right = Math.ceil(Math.max(sill.x + 139, approach.x + 26));
       const upper = Math.floor(Math.min(sill.y - 23, approach.y - 26));
       const lower = Math.ceil(Math.max(sill.y + 54, approach.y + 26));
       this.gateBed = this.paint(left, upper, right - left, lower - upper,
-        ctx => paintGateFooting(ctx, footing.gate, weather), this.camera, true);
+        ctx => paintGateFooting(ctx, footing, weather), this.camera, true);
       this.gateBed.style.transformOrigin =
         `${gate.x - parseFloat(this.gateBed.style.left)}px ${8 - parseFloat(this.gateBed.style.top)}px`;
-      // The lightning exposure was made from the neutral ground above. Add
-      // the practical pools only to the normal exposure, over its texture.
-      this.lightCastleGround(footing.lamps);
     }
 
     this.fit = () => {
@@ -233,31 +230,6 @@ export class KeepSurround {
     this.observer = new ResizeObserver(this.fit);
     this.observer.observe(canvas);
     this.observer.observe(host);
-  }
-
-  private lightCastleGround(lamps: KeepFooting['lamps']): void {
-    const wall = this.castle[2], pixels = wall.getContext('2d')!;
-    const wallLeft = parseFloat(wall.style.left), wallTop = parseFloat(wall.style.top);
-    const ground = this.ground.getContext('2d')!;
-    // The trimmed canvas owns its own origin rather than the untrimmed
-    // context translation left by paint().
-    ground.save();
-    ground.setTransform(1, 0, 0, 1, -parseFloat(this.ground.style.left), -parseFloat(this.ground.style.top));
-    ground.globalCompositeOperation = 'source-atop';
-    for (const { point, strength } of lamps) {
-      const col = Math.round(point.x - wallLeft);
-      if (col < 0 || col >= wall.width) continue;
-      const strip = pixels.getImageData(col, 0, 1, wall.height).data;
-      let toe = wall.height - 1;
-      while (toe > point.y - wallTop && strip[toe * 4 + 3] < 225) toe--;
-      if (toe <= point.y - wallTop) continue;
-      const torch = strength === 'torch', window = strength === 'window';
-      const warm = torch ? '#e0aa7374' : window ? '#bf914c36' : '#de9d615f';
-      const edge = torch ? '#b5794138' : window ? '#b5794116' : '#b5794120';
-      groundWash(ground, point.x, wallTop + toe + (torch ? 13 : 8),
-        torch ? 58 : window ? 41 : 43, torch ? 26 : 19, [warm, edge, '#b5794100']);
-    }
-    ground.restore();
   }
 
   refit(layout: Layout): void {

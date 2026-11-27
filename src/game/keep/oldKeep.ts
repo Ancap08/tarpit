@@ -8,7 +8,7 @@ import type { GameScene } from '../GameScene';
 import type { GameClock } from '../loop';
 import { SHOWPIECE_DETAIL } from '../names';
 import { KeepSurround } from './surround';
-import type { KeepFooting } from './footing';
+import type { GateFooting } from './footing';
 import { KeepLight } from './stoneLight';
 import { drawFittings, type Landmark } from './keepMotion';
 import projection from './projection.json';
@@ -36,7 +36,7 @@ export function currentKeepPlateSet(game: Phaser.Game, portrait: boolean, level?
 export interface KeepAssets {
   id: string;
   panorama(layout: Layout, gate: Point, size: { width: number; height: number }, foot: number[],
-    sky?: KeepSky, footing?: KeepFooting): KeepSurround;
+    sky?: KeepSky, footing?: GateFooting): KeepSurround;
   release(): void;
 }
 
@@ -198,16 +198,10 @@ export class KeepView {
     // The west-only layout rounds the outside of the curtain on wide screens.
     const wrapsShoulder = !layout.turned && scene.state.level?.keepRoads === 'west';
     const approachDistance = wrapsShoulder ? 233 : layout.turned ? 143 : 114;
-    const footing: KeepFooting | undefined = weather && blocker ? {
-      gate: { sill: local(blocker), expanded: siegeArt, portrait: layout.turned, wrapsShoulder,
-        approach: local(trailPointAt(map, blocker.distance - approachDistance)),
-        farther: local(trailPointAt(map, blocker.distance - approachDistance - 10)) },
-      lamps: [
-        ...lamps.slice(0, -1).map(key => ({
-          point: this.at(key), strength: key.startsWith('torch') ? 'torch' as const : 'brazier' as const,
-        })),
-        ...(['westWindow', 'eastWindow'] as const).map(key => ({ point: this.at(key), strength: 'window' as const })),
-      ],
+    const footing: GateFooting | undefined = weather && blocker ? {
+      sill: local(blocker), expanded: siegeArt, portrait: layout.turned, wrapsShoulder,
+      approach: local(trailPointAt(map, blocker.distance - approachDistance)),
+      farther: local(trailPointAt(map, blocker.distance - approachDistance - 10)),
     } : undefined;
     this.light = new KeepLight(scene.textures, siegeArt && weather === 'night storm');
     this.surround = assets.panorama(layout,this.gate,
@@ -248,16 +242,23 @@ export class KeepView {
       return add('glow').setOrigin(.5).setPosition(pos.x,pos.y)
         .setDisplaySize(i<2 ? 41 : 28,i<2 ? 55 : 34);
     });
-    const posts = layout.turned ? [[315,936],[155,796],[210,694]] : [[927,173],[855,393],[714,301]];
-    this.spill = [...posts, [this.gate.x,this.gate.y-8]].map(([px,py],i) => {
-      const im = scene.add.image(px,py-10,textureKey('glow')).setOrigin(.5).setDisplaySize(i===3 ? 93 : 53,39);
+    const exhibitionLights = layout.turned ? [[315,936],[155,796],[210,694]] : [[927,173],[855,393],[714,301]];
+    // Feet of the low bollards in the siege ground painting. The portrait
+    // plate includes a 120px wing before its map origin.
+    const siegeLights = layout.turned ? [[209,704],[63,653],[280,930]] : [[701,323],[635,347],[903,184]];
+    const groundLights = weather ? siegeLights : [...exhibitionLights, [this.gate.x,this.gate.y-8]];
+    this.spill = groundLights.map(([px,py],i) => {
+      const im = scene.add.image(px, weather ? py : py-10, textureKey('glow')).setOrigin(.5)
+        .setDisplaySize(i===3 ? 93 : 53, weather ? 22 : 39);
       this.fieldLight.add(im);
       return im;
     });
+    // The high curtain braziers and windows light the stone they stand in.
+    // At the barbican, the low braziers and window light reach the apron.
     this.barbicanSpill = footing ? [-1, 1].map(side => {
-      const { sill, expanded } = footing.gate;
-      const lamp = scene.add.image(sill.x + side * (expanded ? 28 : 23), sill.y + (expanded ? 14 : 9),
-        textureKey('glow')).setDisplaySize(95, 36).setTint(0xffca99);
+      const { sill, expanded } = footing;
+      const lamp = scene.add.image(sill.x + side * (expanded ? 29 : 23), sill.y + (expanded ? 9 : 5),
+        textureKey('glow')).setDisplaySize(63, 24).setTint(0xffca99);
       this.layer.addAt(lamp, this.layer.getIndex(this.outerGate!));
       return lamp;
     }) : [];

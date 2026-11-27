@@ -10,13 +10,8 @@ export interface GateFooting {
   wrapsShoulder: boolean;
 }
 
-export interface KeepFooting {
-  gate: GateFooting;
-  lamps: { point: Point; strength: 'torch' | 'brazier' | 'window' }[];
-}
-
 /** An elliptical wash over the ground. Light shows the grain underneath. */
-export function groundWash(ctx: CanvasRenderingContext2D, x: number, y: number,
+function groundWash(ctx: CanvasRenderingContext2D, x: number, y: number,
     width: number, height: number, stops: string[]): void {
   ctx.save();
   ctx.translate(x, y);

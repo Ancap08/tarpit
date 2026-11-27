@@ -235,3 +235,31 @@ test('leaving the portrait keep removes its camera listener', async ({ page }) =
   });
   expect(removed).toBe(true);
 });
+
+for (const { name, width, height } of views) for (const lightning of [false, true]) {
+  test(`the ${name} siege ${lightning ? 'drops ground pools in lightning' : 'lights the ground immediately below low lamps'}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto(`/?test=1&ui=new&owner=1&keep=23&keepLightning=${Number(lightning)}`);
+    await page.waitForFunction(() => !!window.__tarpit?.keep?.());
+    const result = await page.evaluate(() => {
+      const keep = (window.__tarpit!.game.scene.getScene('game') as GameScene)['keep']!;
+      const gate = keep.outerGate!;
+      // Lamp feet read from the ground plate, in map-local coordinates.
+      const lampFeet = innerWidth < innerHeight
+        ? [[280,930],[191,830],[209,704],[63,653],[15,734],[155,579],[311,776]]
+        : [[903,184],[925,357],[810,448],[588,460],[677,439],[701,323],[635,347]];
+      return {
+        streetOffsets: keep['spill'].map(pool => Math.min(...lampFeet.map(([x,y]) => Math.hypot(pool.x - x, pool.y - y)))),
+        gateOffsets: keep['barbicanSpill'].map(pool => Math.hypot(pool.x - gate.x - 29 * Math.sign(pool.x - gate.x),
+          pool.y - gate.y - 9)),
+        alpha: [...keep['spill'], ...keep['barbicanSpill']].map(pool => pool.alpha),
+        exposure: !keep['surround']['litGround']!.hidden,
+      };
+    });
+    expect(Math.max(...result.streetOffsets), 'Each street pool touches a painted bollard foot').toBeLessThanOrEqual(2);
+    expect(Math.max(...result.gateOffsets), 'Each gate pool touches a barbican brazier foot').toBeLessThanOrEqual(2);
+    expect(result.exposure).toBe(lightning);
+    expect(result.alpha).toHaveLength(5);
+    expect(result.alpha.every(value => lightning ? value === 0 : value > 0)).toBe(true);
+  });
+}
