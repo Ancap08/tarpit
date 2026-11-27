@@ -211,6 +211,100 @@ function yardArch(ctx: Context, end: Point, approach: Point): void {
   ctx.restore();
 }
 
+function groundShadow(ctx: Context, x: number, y: number, w: number, h: number): void {
+  ctx.fillStyle = '#47584330';
+  ctx.beginPath();
+  ctx.ellipse(x + 5, y + 3, w, h, .08, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function tree(ctx: Context, x: number, y: number, size: number, distant = false): void {
+  if (!distant) groundShadow(ctx, x, y, size * .64, size * .24);
+  ctx.fillStyle = distant ? '#636f63' : '#656d4f';
+  ctx.fillRect(x - size * .045, y - size * .67, size * .09, size * .67);
+  const boughs = [[-.29, -.65, .31], [.16, -.66, .37], [-.04, -.96, .34], [.33, -.82, .24]] as const;
+  for (const [dx, dy, r] of boughs) {
+    ctx.fillStyle = distant ? '#647365' : '#657953';
+    ctx.beginPath();
+    ctx.ellipse(x + dx * size, y + dy * size, r * size, r * size * .87, -.24, 0, Math.PI * 2);
+    ctx.fill();
+    if (distant) continue;
+    ctx.fillStyle = '#819068';
+    ctx.beginPath();
+    ctx.ellipse(x + (dx - .045) * size, y + (dy - .075) * size, r * size * .72, r * size * .58, -.24, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function fieldWall(ctx: Context, x: number, y: number, length: number, angle: number): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  for (let at = -length / 2, i = 0; at < length / 2 - 6; at += 13, i++) {
+    if (i % 7 === 5) continue;
+    const rise = i % 3;
+    polygon(ctx, '#637051', [[at - 2, 4], [at, -3 - rise], [at + 10, -5], [at + 13, 0],
+      [at + 12, 7], [at, 8]]);
+    polygon(ctx, '#96977a', [[at, -3 - rise], [at + 9, -5], [at + 13, 0], [at + 2, 3]]);
+    polygon(ctx, '#777d60', [[at + 2, 3], [at + 13, 0], [at + 12, 6], [at + 1, 7]]);
+  }
+  ctx.restore();
+}
+
+function tent(ctx: Context, x: number, y: number, w: number): void {
+  groundShadow(ctx, x, y, w * .6, w * .24);
+  const half = w / 2;
+  polygon(ctx, '#9a9470', [[x - half, y], [x - 3, y - w * .52], [x + w * .39, y - w * .44], [x + half, y - 2]]);
+  polygon(ctx, '#7c7959', [[x - half, y], [x - 3, y - w * .52], [x + half * .48, y + w * .12]]);
+  polygon(ctx, '#5f654b', [[x - 10, y + 1], [x - 4, y - w * .34], [x + 5, y + 3]]);
+  ctx.strokeStyle = '#656d50';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x - half - 5, y + 5);
+  ctx.lineTo(x - 3, y - w * .52);
+  ctx.lineTo(x + half + 7, y + 2);
+  ctx.stroke();
+}
+
+function paintRentFields(ctx: Context, layout: Layout): void {
+  // The camp and old field boundaries occupy the slope west of the road.
+  // These world anchors keep the same scenery on the board when it turns.
+  const local = (x: number, y: number) => rentLocal(layout, { x, y });
+  for (const [x, y, span, angle] of [[120, 219, 124, -.18], [216, 277, 100, .23],
+    [397, 371, 167, -.19], [490, 181, 123, -.21], [496, 446, 76, .22]]) {
+    const p = local(x, y);
+    fieldWall(ctx, p.x, p.y, span, angle + (layout.turned ? Math.PI / 2 : 0));
+  }
+  for (const [x, y, size] of [[51, 184, 31], [71, 192, 22], [165, 194, 32], [191, 199, 25],
+    [259, 298, 39], [285, 291, 27], [319, 360, 37], [337, 363, 26],
+    [451, 143, 32], [469, 152, 21], [548, 425, 26], [517, 464, 21],
+    [444, 351, 31], [461, 352, 20], [550, 177, 23]]) {
+    const p = local(x, y);
+    tree(ctx, p.x, p.y, layout.turned ? size * .81 : size);
+  }
+  for (const [x, y, w] of [[372, 302, 55], [498, 241, 44], [496, 300, 49], [364, 243, 36]]) {
+    const p = local(x, y);
+    tent(ctx, p.x, p.y, layout.turned ? w * .83 : w);
+  }
+  const cart = local(455, 308);
+  groundShadow(ctx, cart.x, cart.y, 19, 8);
+  polygon(ctx, '#767657', [[cart.x - 13, cart.y - 8], [cart.x + 10, cart.y - 10], [cart.x + 14, cart.y + 2],
+    [cart.x - 12, cart.y + 4]]);
+  polygon(ctx, '#a29570', [[cart.x - 12, cart.y - 7], [cart.x + 10, cart.y - 10], [cart.x + 11, cart.y - 4],
+    [cart.x - 10, cart.y - 1]]);
+  ctx.strokeStyle = '#61684f';
+  ctx.lineWidth = 2;
+  for (const x of [cart.x - 8, cart.x + 9]) {
+    ctx.beginPath();
+    ctx.arc(x, cart.y + 4, 4, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.moveTo(cart.x + 13, cart.y - 3);
+  ctx.lineTo(cart.x + 24, cart.y - 2);
+  ctx.stroke();
+}
+
 export function paintRentGround(ctx: Context, layout: Layout, map: MapDef, inset: number, weather: KeepSky): void {
   const { width, height } = layout.map;
   const horizon = rentHorizon(layout.turned);
@@ -237,6 +331,7 @@ export function paintRentGround(ctx: Context, layout: Layout, map: MapDef, inset
       [[ax, ay], [x, y], [x + 22, y + 19], [ax + 13, ay + 33]]);
   }
   soilDetail(ctx, -inset, horizon + 14, span, height - horizon);
+  paintRentFields(ctx, layout);
   const local = (point: Point) => rentLocal(layout, point);
   const branch = keepSite.otherRoads[0];
   pave(ctx, [...branch.approach, keepSite.path[branch.joinIndex]].map(local), 43, true);

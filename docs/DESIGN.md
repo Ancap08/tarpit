@@ -2717,7 +2717,9 @@ misses. Preview and cast use the same distance from each enemy's rule
 position. Wounded enemies carry short bars near their own heads.
 
 Level 21 uses a distant Keep behind the ridge and a continuous foreground
-road and yard. Three high sites stand on stone platforms and the fourth
+road and yard. Low-contrast field walls, trees, a cart and tents sit
+off the roads and sockets. The landscape East road sign sits west of
+the entrance. Three high sites stand on stone platforms and the fourth
 gold socket sits on the gate's near tower. The far pier clears the
 adjacent green socket. The six ground sites retain their positions. The portrait
 camera holds at the existing 1.15× setup projection through the wave so
