@@ -90,8 +90,8 @@ async function footingPixels(page: Page, route: number[][]) {
         darkest = Math.min(darkest, stone / 49);
       }
     }
-    // The slab read as an uninterrupted dark upper edge over lighter ground.
-    // Measure across both shoulders, allowing for a slight diagonal.
+    // The slab ended in a hard lip. Scan both shoulders over three pixels
+    // so the softer contact shadow does not count as a straight edge.
     const canvas = scene.game.canvas.getBoundingClientRect();
     const scaleX = canvas.width / scene.boardLayout.width;
     const scaleY = canvas.height / scene.boardLayout.height * scene.cameras.main.zoomY;
@@ -102,7 +102,7 @@ async function footingPixels(page: Page, route: number[][]) {
         const edge = y + Math.round(slope * x);
         // The kerb is a continuous feature of the road, outside the rock.
         const onRoad = paving.some(([u, v]) => (u - x) ** 2 + (v - edge) ** 2 <= 22 ** 2);
-        run = !onRoad && edge >= 12 && luminance(x, edge + 3) - luminance(x, edge - 2) >= 10 ? run + 1 : 0;
+        run = !onRoad && edge >= 12 && luminance(x, edge + 2) - luminance(x, edge - 1) >= 10 ? run + 1 : 0;
         straight = Math.max(straight, run * Math.hypot(scaleX, slope * scaleY));
       }
     }
