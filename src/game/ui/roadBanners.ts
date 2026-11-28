@@ -24,9 +24,11 @@ export class RoadBanners {
   private previousScale = 0;
   private previousDisplayScale = 0;
   private readonly clean: boolean;
+  private readonly rentOverdueWide: boolean;
 
   constructor(private readonly scene: Phaser.Scene, private readonly layout: Layout, state: GameState) {
     const clean = this.clean = skinFor(scene) === 'battle';
+    this.rentOverdueWide = state.level?.id === 21 && !layout.turned;
     const text = (name: string, size: number, bold = false) => (clean
       ? sans(scene, 0, 0, '', size, bold ? CLEAN.ink : CLEAN.subdued, bold)
       : scene.add.text(0, 0, '', {
@@ -82,7 +84,7 @@ export class RoadBanners {
       // sign beside the approach to keep its timber and sill visible.
       const besideGate = westPhone && state.level?.keepRoads === 'west';
       const left = besideGate ? 204
-        : westWide ? p.x - w - 86 : p.x - w / 2;
+        : westWide ? p.x - w - 86 : this.rentOverdueWide ? p.x - w - 106 : p.x - w / 2;
       const x = Math.max(8, Math.min(this.layout.width - w - 8, left));
       // The west road comes in at the side. Leave room above it for the
       // window and keep the long east preview above the lower control bar.
@@ -119,7 +121,7 @@ export class RoadBanners {
     const h = heading.height + (counts.text ? counts.height + 4 : 0) + 2 * pad;
     const foot = this.layout.map.y + this.layout.map.height;
     const left = phone ? west ? p.x - 94 : p.x + 34
-      : west ? p.x - w - 107 : p.x - w - 30;
+      : west ? p.x - w - 107 : p.x - w - (this.rentOverdueWide ? 106 : 30);
     const x = Math.max(12, Math.min(this.layout.width - w - 12, left));
     const eastInset = x - p.x < 29 ? 128 : 47;
     const y = phone ? west ? p.y - h - 100 : foot - h - eastInset

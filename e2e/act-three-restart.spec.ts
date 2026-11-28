@@ -174,19 +174,21 @@ const decodedBytes = (page: Page) => page.evaluate(() => {
 });
 
 async function field(page: Page, actThree = true, look: Look = 'painted') {
-  const { keep, painted, showpiece, actors, keys } = await api(page, t => ({
+  const { keep, painted, showpiece, actors, keys, rentOverdue } = await api(page, t => ({
     keep: t.state().map.id === 'keep', painted: t.painted().active,
     showpiece: !!t.showpiece?.(), actors: !!(t.state().windows || t.state().wallSiteTax),
     keys: t.game.textures.getTextureKeys(),
+    rentOverdue: t.state().level?.id === 21,
   }));
   expect(painted).toBe(keep || look !== 'classic');
   expect(showpiece).toBe(!keep && look === 'showpiece');
   expect(keys.some(key => key.startsWith('showpiece:pasture:'))).toBe(!keep && look === 'showpiece');
   expect(keys.includes('siege:actors')).toBe(keep && actThree && actors);
   if (keep) {
-    expect(keys).toEqual(expect.arrayContaining(['keep:mist', 'keep:glow', 'keep:plinth']));
+    expect(keys).toEqual(expect.arrayContaining(rentOverdue
+      ? ['keep:rent-gate', 'keep:siege-blockade'] : ['keep:mist', 'keep:glow', 'keep:plinth']));
     await expect(page.locator('#game [aria-hidden=true] canvas').first()).toBeVisible();
-    expect(await page.locator('#game [aria-hidden=true] canvas').count()).toBeGreaterThan(3);
+    expect(await page.locator('#game [aria-hidden=true] canvas').count()).toBeGreaterThanOrEqual(rentOverdue ? 3 : 4);
   } else {
     await expect(page.locator('#game [aria-hidden=true] canvas')).toHaveCount(0);
     if (painted) expect(keys.some(key => key.startsWith('painted:meadow:'))).toBe(true);

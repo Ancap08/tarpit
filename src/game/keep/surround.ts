@@ -1,9 +1,10 @@
-import type { Point, Rect } from '../../sim';
+import type { MapDef, Point, Rect } from '../../sim';
 import type { KeepSky } from '../../sim/levelTypes';
 import type { Layout } from '../layout';
 import { paintGateFooting, type GateFooting } from './footing';
 import { paintFork } from './keepMotion';
 import type { Plate } from './plates';
+import { paintRentCastle, paintRentGround, paintRentSky, rentCastleBox, rentHorizon } from './rentOverdueArt';
 
 const WING = 120;
 const CLEAN_WING = 168;
@@ -70,7 +71,8 @@ export class KeepSurround {
 
   constructor(canvas: HTMLCanvasElement, private layout: Layout,
       image: ImageSource, gate: Point,
-      size: {width:number;height:number}, foot: number[], private readonly weather?: KeepSky, footing?: GateFooting) {
+      size: {width:number;height:number}, foot: number[], private readonly weather?: KeepSky, footing?: GateFooting,
+      private readonly rentMap?: MapDef) {
     const host = canvas.parentElement!;
     this.backdrop.ariaHidden = 'true';
     this.backdrop.style.cssText = 'position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:-1;background:linear-gradient(#0a1421,#232637 67%,#171a20 87%,#15151a)';
@@ -85,12 +87,16 @@ export class KeepSurround {
     // the original width of the painted routes and extend the rock beyond them.
     this.widerPortrait = layout.turned && layout.map.x > 0;
     this.inset = this.widerPortrait ? CLEAN_WING : wing;
-    const skyline = gate.y + 30;
+    const skyline = rentMap ? rentHorizon(layout.turned) + 20 : gate.y + 30;
     const skyInset = weather ? this.inset : 0;
     const skyWidth = width + skyInset * 2;
     const grade = weather === 'night storm' ? 'brightness(.76) contrast(1.08) saturate(1.13)'
       : weather === 'dawn' ? 'brightness(1.12) contrast(1.02) saturate(.88)' : 'none';
     this.sky = this.paint(-skyInset, -HEADROOM, skyWidth, skyline + HEADROOM, ctx => {
+      if (rentMap) {
+        paintRentSky(ctx, image, layout.turned, skyInset, weather!);
+        return;
+      }
       const sky = image(weather === 'dawn' ? 'sky-dawn' : weather === 'night storm' ? 'sky-night' : 'sky');
       if (!layout.turned) {
         ctx.save();
@@ -105,7 +111,7 @@ export class KeepSurround {
     const cloudMask = document.createElement('div');
     cloudMask.style.cssText = `position:absolute;width:${width}px;height:${skyline}px;overflow:hidden`;
     this.camera.append(cloudMask);
-    this.clouds = (weather === 'dawn' ? [] : [0, 1]).map(i => {
+    this.clouds = (rentMap || weather === 'dawn' ? [] : [0, 1]).map(i => {
       const w = Math.round(width * (i ? .64 : .85)), h = i ? 90 : 120;
       const cloud = this.paint(0, 0, w, h, ctx => ctx.drawImage(image('drift'), 0, 0, w, h), cloudMask);
       cloud.style.opacity = i ? '.33' : '.52';
@@ -118,7 +124,12 @@ export class KeepSurround {
       this.paint(0, 0, width, Math.ceil(gate.y / 2), ctx => paintFork(ctx, width, gate.y, side)));
     this.bolts.forEach(bolt => { bolt.hidden = true; });
 
-    this.ground = this.paint(-this.inset, 0, width + this.inset * 2, height, ctx => {
+    const groundTop = rentMap ? rentHorizon(layout.turned) - 55 : 0;
+    this.ground = this.paint(-this.inset, groundTop, width + this.inset * 2, height - groundTop, ctx => {
+      if (rentMap) {
+        paintRentGround(ctx, layout, rentMap, this.inset, weather!);
+        return;
+      }
       if (weather) {
         ctx.filter = grade;
         ctx.drawImage(image(layout.turned ? 'siege-portrait' : 'siege-wide'), -wing, 0, width + wing * 2, height);
@@ -142,7 +153,7 @@ export class KeepSurround {
         ctx.drawImage(wings, half, 0, half, wings.naturalHeight, width, 0, WING, height);
       }
     }, this.camera, this.widerPortrait);
-    if (weather === 'night storm') {
+    if (weather === 'night storm' && !rentMap) {
       const left = -this.inset, span = width + this.inset * 2;
       this.litGround = this.paint(left, 0, span, height, ctx => {
         ctx.drawImage(this.ground, parseFloat(this.ground.style.left), parseFloat(this.ground.style.top));
@@ -185,13 +196,20 @@ export class KeepSurround {
         ctx.filter = filter;
         ctx.drawImage(image(name), x, y, size.width, size.height);
       }, this.camera, this.widerPortrait);
-    this.castle = names.map(name => architecture(name, grade));
+    const rentCastle = (flash: boolean) => {
+      const { x, y, width, height } = rentCastleBox(layout.turned);
+      const layer = this.paint(x, y, width, height,
+        ctx => paintRentCastle(ctx, image, layout.turned, weather!, flash), this.camera, true);
+      this.camera.insertBefore(layer, this.ground);
+      return layer;
+    };
+    this.castle = rentMap ? [rentCastle(false)] : names.map(name => architecture(name, grade));
     if (strikes) {
       const strike = weather ? 'strike' : 'lightning';
-      this.storm = architecture(layout.turned ? strike : `${strike}-wide`, 'none');
+      this.storm = rentMap ? rentCastle(true) : architecture(layout.turned ? strike : `${strike}-wide`, 'none');
       this.storm.hidden = true;
     }
-    if (!layout.turned) {
+    if (!layout.turned && !rentMap) {
       this.road = weather ? this.paint(832, 96, 128, 224, ctx => {
         ctx.filter = grade;
         ctx.drawImage(image('siege-east-deck'), 832, 96, 128, 224);
@@ -261,9 +279,11 @@ export class KeepSurround {
   }
 
   stillSurface(lens?: Rect): HTMLCanvasElement {
-    const crop = this.widerPortrait ? lens : undefined;
+    const crop = this.widerPortrait || this.rentMap ? lens : undefined;
     const paint = (ctx: CanvasRenderingContext2D) => {
-      for (const layer of [this.sky, this.ground, ...this.castle, this.road, this.gateBed]) {
+      const layers = this.rentMap ? [this.sky, ...this.castle, this.ground]
+        : [this.sky, this.ground, ...this.castle, this.road, this.gateBed];
+      for (const layer of layers) {
         if (layer) ctx.drawImage(layer, parseFloat(layer.style.left), parseFloat(layer.style.top));
       }
     };
@@ -307,7 +327,7 @@ export class KeepSurround {
   }
 
   update(push: number, flash: number, side: number, opening: number, t: number, high: boolean, calm: boolean): void {
-    if (!this.widerPortrait) this.setStill(!high && !opening && flash === 0);
+    if (!this.rentMap && !this.widerPortrait) this.setStill(!high && !opening && flash === 0);
     if (push !== this.lastPush) {
       this.lastPush = push;
       this.camera.style.transform = push ? `scale(${1 + push})` : '';
@@ -315,7 +335,7 @@ export class KeepSurround {
       if (this.gateBed) this.gateBed.style.transform = push ? `scale(${1 / (1 + push)})` : '';
     }
     const parallax = high && !calm ? Math.sin(t * .19) : 0;
-    if (!this.stillActive) this.castle.slice(0, 2).forEach((layer, i) => {
+    if (!this.rentMap && !this.stillActive) this.castle.slice(0, 2).forEach((layer, i) => {
       const depth = 2 - i;
       layer.style.translate = `${depth * (parallax * .7 + opening * 1.2)}px ${depth * opening * 5}px`;
     });

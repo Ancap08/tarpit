@@ -2716,6 +2716,32 @@ inside their landing radius with filled dots and show hollow dots for
 misses. Preview and cast use the same distance from each enemy's rule
 position. Wounded enemies carry short bars near their own heads.
 
+Level 21 uses a distant Keep behind the ridge and a continuous foreground
+road and yard. Low-contrast field walls, trees, a cart and tents sit
+off the roads and sockets. Small trees and rock break the ridge line
+where it meets the sky. The landscape East road sign sits west of
+the entrance. Three high sites stand on stone platforms and the fourth
+gold socket sits on the gate's near tower. The far pier clears the
+adjacent green socket. The six ground sites retain their positions. The portrait
+camera holds at the existing 1.15× setup projection through the wave so
+the ridge, ground and sites stay in view. The gate keeps its rule point
+and damage thresholds. The fallen leaves lie broken at the sill
+and the opening shows the existing road through the arch. One or two
+held walkers stand below and beside the door, within the 40 px draw cap.
+Their badge also counts the approaching walkers within 40 trail px of
+the sill. Ground walkers on the approach veer clear of that group.
+Harpies fly above the arch, with ground shadows and aim tethers on
+their rule positions. Road walkers use a 1.16× scale, with trolls at
+0.93×. The denser mixed-speed stretches space the drawn bodies within
+the same 40 px cap. In those stretches shieldbearers use 1.23× and
+trolls use 0.80×. Gate representatives use 1.10× for Collectors and
+Hounds, 0.87× for Redcoats and 0.79× for Toll Trolls. Harpies use 0.91×.
+Built towers stand on pale stone bases with mint rims above the road
+crowd. Their nominal body height is 66 canvas px. All aim previews and
+casts use the rule positions.
+The presentation of levels 22 to 25 uses the preceding siege art and
+formation.
+
 A usable bedroom window glows and carries a feather. A successful tap
 tips a pot, shakes a pillow from 370 ms and closes the shutters at
 1,250 ms. Six tar drops and twelve feathers land along that window's

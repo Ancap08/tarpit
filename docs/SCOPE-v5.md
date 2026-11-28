@@ -1341,6 +1341,60 @@ hold.
 Evidence: before and after pictures of levels 21 to 25, wide and portrait;
 memory peaks; the full checks. Kyle judges the pictures.
 
+## Milestone 58: Act Three is hard to read (mock-ups only)
+
+Kyle, after playing level 21 on his phone (2026-11-27): "I'm only able to
+place the weapons in certain places and it's not obvious what to do. It
+will confuse others, so we need to make the path easier to place the
+towers and easier to see the enemies. The castle also still looks bad ...
+it looks like a photoshopped picture is pasted on another photo, and then
+it looks like the enemies are just sitting stuck in front of the bad
+picture of the castle."
+
+No game code changes. Three directions are shown as pictures of level 21,
+so Kyle can choose by eye before anything is rebuilt:
+
+| Direction | The idea |
+|---|---|
+| A. Castle behind | The castle becomes distant scenery: smaller, higher, hazed and darker. The ground takes most of the screen and is calmer and lighter, so the road, the spots and the enemies are what the eye finds |
+| B. One view | The keep redrawn from the board's own overhead angle in the ground's painted style, as the maps of levels 1 to 20 are: a wall across the top with the gate in it. One picture, one light |
+| C. Relit | The castle kept as it is. The ground relit to agree with it: the same warm light, shadows the castle casts on the ground, the same sharpness and contrast |
+
+Every direction also shows the same fixes for reading the board:
+
+- Tower spots that say "build here" before the first tower is placed, and
+  spots on the wall-walk that read as different from spots on the ground.
+- Enemies that stand out from the ground (a rim or outline, a shadow
+  under each) at a size that agrees with the gatehouse.
+- The crowd held at the gate drawn so it reads as a queue of separate
+  enemies, not a stack.
+- The gatehouse at a size and angle that agree with what stands around it.
+
+Each direction shows three pictures beside today's: level 21 before the
+first wave and with wave 1 held at the gate, both at 390x656 with the new
+interface, and wave 1 at the gate at 1280x800. A short note per direction
+says what it would cost to build, what it does to the art memory caps, and
+what it gives up.
+
+### Kyle chose A before the pictures were made (2026-11-27)
+
+"Yes I agree let's go with A." He played with the new interface. The
+three-direction pictures were stopped; B and C are not drawn.
+
+- **Pictures of A only, at two strengths,** because how far to push the
+  castle back is cheap to try in a picture and costly to try in the game
+  (every castle plate is rendered again). A1: the castle about half its
+  size, high on the screen, hazed. A2: the castle as a dark skyline band.
+  The coordinator picks the strength, a detail inside the agreed
+  direction, and sends Kyle the pictures; the build does not wait.
+- **Then A is built on level 21,** with the four board-reading fixes, and
+  after Kyle has played it, on levels 22 to 25. No second switch: Act
+  Three is already hidden from players behind `?act3=1` and the owner's
+  link, and a switch would double every check on these levels. The old
+  look stays in Git.
+- Rules, roads, tower sites, waves, wording and sound do not change.
+  Levels 1 to 20 stay pixel-identical. The art caps hold.
+
 ## Later milestones (order agreed, detail to come)
 
 | # | Milestone | Idea |

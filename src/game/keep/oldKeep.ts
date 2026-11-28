@@ -17,6 +17,8 @@ import type { DetailGovernor } from '../showpiece/governor';
 import type { KeepSky, LevelDef } from '../../sim/levelTypes';
 import { BARBICAN_SIZE, SIEGE_MACHINE_FRAMES } from '../draw/siegeMachines';
 import { MAGNIFIER_SIZE, MAGNIFIER_ZOOM } from '../touchAssist';
+import { paintRentGate, RENT_GATE, RENT_GATE_TEXTURE } from './rentOverdueArt';
+import { RentBuildSites } from './rentBuildSites';
 import gateEffects from '../../../assets/art-painted/sharp/gate-effects.webp?url&no-inline';
 import gateEffectsHalf from '../../../assets/art-painted/sharp/gate-effects-half.webp?url&no-inline';
 
@@ -30,13 +32,13 @@ export function currentKeepPlateSet(game: Phaser.Game, portrait: boolean, level?
   const closedRoad = level?.keepRoads === 'east' || level?.keepRoads === 'west';
   const phone = Math.min(window.innerWidth, window.innerHeight) <= 600;
   return keepPlateSet(portrait, Math.ceil(game.canvas.getBoundingClientRect().width * devicePixelRatio),
-    level?.keepSky, closedRoad, actThree, phone);
+    level?.keepSky, closedRoad, actThree, phone, level?.id === 21);
 }
 
 export interface KeepAssets {
   id: string;
   panorama(layout: Layout, gate: Point, size: { width: number; height: number }, foot: number[],
-    sky?: KeepSky, footing?: GateFooting): KeepSurround;
+    sky?: KeepSky, footing?: GateFooting, rentMap?: MapDef): KeepSurround;
   release(): void;
 }
 
@@ -45,11 +47,13 @@ export async function loadKeep(game: Phaser.Game, portrait: boolean, signal: Abo
   const set = currentKeepPlateSet(game, portrait, level, actThree);
   const images = new Map<Plate, HTMLImageElement>();
   const installed: Plate[] = [];
+  const rentOverdue = level?.id === 21;
   let surround: KeepSurround | undefined;
   const release = () => {
     surround?.destroy();
     surround = undefined;
     for (const name of installed.splice(0)) game.textures.remove(textureKey(name));
+    if (rentOverdue && game.textures.exists(RENT_GATE_TEXTURE)) game.textures.remove(RENT_GATE_TEXTURE);
     for (const image of images.values()) image.removeAttribute('src');
     images.clear();
   };
@@ -80,9 +84,10 @@ export async function loadKeep(game: Phaser.Game, portrait: boolean, signal: Abo
     signal.throwIfAborted();
     // Only the small effects go into Phaser. The large plates are painted
     // once into the panorama's cropped canvas layers.
-    const textures: Plate[] = ['mist', 'glow', 'plinth'];
+    const textures: Plate[] = rentOverdue ? [] : ['mist', 'glow', 'plinth'];
     if (images.has('siege-gates')) textures.push('siege-gates');
-    if (images.has('siege-barbican')) textures.push('siege-barbican', 'siege-machines');
+    if (images.has('siege-barbican')) textures.push('siege-barbican');
+    if (images.has('siege-machines')) textures.push('siege-machines');
     if (images.has('siege-blockade')) textures.push('siege-blockade');
     for (const name of textures) {
       const image = images.get(name)!;
@@ -107,12 +112,12 @@ export async function loadKeep(game: Phaser.Game, portrait: boolean, signal: Abo
     return {
       id: set.id,
       release,
-      panorama(layout, gate, size, foot, sky, footing) {
+      panorama(layout, gate, size, foot, sky, footing, rentMap) {
         if (surround) {
           surround.refit(layout);
           return surround;
         }
-        surround = new KeepSurround(game.canvas, layout, name => images.get(name)!, gate, size, foot, sky, footing);
+        surround = new KeepSurround(game.canvas, layout, name => images.get(name)!, gate, size, foot, sky, footing, rentMap);
         // The static canvases now own the pixels. Retain only the Phaser sources
         // which the battle canvas still draws (and can re-upload on context restore).
         for (const [name, image] of images) {
@@ -151,6 +156,8 @@ export class KeepView {
   private readonly lights: Image[];
   private readonly banners: Phaser.GameObjects.Graphics;
   private readonly rain: Phaser.GameObjects.Graphics;
+  private readonly rentOverdue: boolean;
+  private readonly rentSites?: RentBuildSites;
   readonly outerGate?: Image;
   private readonly gate: { x: number; y: number };
   private readonly castleW: number;
@@ -173,7 +180,8 @@ export class KeepView {
   constructor(private readonly scene: GameScene, private readonly layout: Layout, map: MapDef,
       private readonly clock: GameClock, private readonly frozen: boolean, Governor: typeof DetailGovernor, assets: KeepAssets,
       framed = false, siegeArt = false) {
-    this.finishedOpening = framed;
+    this.rentOverdue = scene.state.level?.id === 21;
+    this.finishedOpening = framed || this.rentOverdue;
     const query = new URLSearchParams(location.search);
     const perf = query.get('perf') === '1';
     const pin = perf ? query.get('keepTier') : null;
@@ -198,15 +206,15 @@ export class KeepView {
     // The west-only layout rounds the outside of the curtain on wide screens.
     const wrapsShoulder = !layout.turned && scene.state.level?.keepRoads === 'west';
     const approachDistance = wrapsShoulder ? 233 : layout.turned ? 143 : 114;
-    const footing: GateFooting | undefined = weather && blocker ? {
+    const footing: GateFooting | undefined = weather && blocker && !this.rentOverdue ? {
       sill: local(blocker), expanded: siegeArt, portrait: layout.turned, wrapsShoulder,
       approach: local(trailPointAt(map, blocker.distance - approachDistance)),
       farther: local(trailPointAt(map, blocker.distance - approachDistance - 10)),
     } : undefined;
-    this.light = new KeepLight(scene.textures, siegeArt && weather === 'night storm');
+    this.light = new KeepLight(scene.textures, siegeArt && weather === 'night storm', this.rentOverdue);
     this.surround = assets.panorama(layout,this.gate,
-      {width:this.castleW,height:this.castleH},this.anchors.foot, weather, footing);
-    this.followsPortraitCamera = !!footing && layout.turned;
+      {width:this.castleW,height:this.castleH},this.anchors.foot, weather, footing, this.rentOverdue ? map : undefined);
+    this.followsPortraitCamera = (!!footing || this.rentOverdue) && layout.turned;
     if (this.followsPortraitCamera) scene.game.renderer.on(Phaser.Renderer.Events.POST_RENDER, this.alignGround, this);
     this.fieldLight = scene.add.container(x,y);
     this.reflection = scene.add.graphics();
@@ -215,20 +223,45 @@ export class KeepView {
     this.layer = scene.add.container(x,y);
     this.scenery = scene.add.container(0,0);
     this.layer.add(this.scenery);
-    if (weather) {
-      this.outerGate = siegeArt
-        ? scene.add.image(0, 0, textureKey('siege-barbican'), '0').setOrigin(.5, BARBICAN_SIZE.sillY / BARBICAN_SIZE.height)
-          .setDisplaySize(BARBICAN_SIZE.width, BARBICAN_SIZE.height)
-        : scene.add.image(0, 0, textureKey('siege-gates'), '0').setOrigin(.5, 78 / 96).setDisplaySize(128, 96);
-      if (weather === 'night storm') this.outerGate.setTint(siegeArt ? 0xddeafa : 0xc8d4e5);
+    if (this.rentOverdue && blocker) {
+      const { width, height, sill } = RENT_GATE;
+      if (!scene.textures.exists(RENT_GATE_TEXTURE)) {
+        const texture = scene.textures.createCanvas(RENT_GATE_TEXTURE, width * 2, height * 2)!;
+        const ctx = texture.getContext();
+        for (let stage = 0; stage < 4; stage++) {
+          const x = stage % 2 * width, y = Math.floor(stage / 2) * height;
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(x, y, width, height);
+          ctx.clip();
+          ctx.translate(x, y);
+          paintRentGate(ctx, layout, blocker, map, stage);
+          ctx.restore();
+          texture.add(String(stage), 0, x, y, width, height);
+        }
+        texture.refresh();
+        texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
+      }
+      this.outerGate = scene.add.image(0, 0, RENT_GATE_TEXTURE, '0').setOrigin(.5, sill / height);
       this.layer.addAt(this.outerGate, 0);
+      this.rentSites = new RentBuildSites(scene, layout, this.layer);
+    }
+    if (weather) {
+      if (!this.outerGate) {
+        this.outerGate = siegeArt
+          ? scene.add.image(0, 0, textureKey('siege-barbican'), '0').setOrigin(.5, BARBICAN_SIZE.sillY / BARBICAN_SIZE.height)
+            .setDisplaySize(BARBICAN_SIZE.width, BARBICAN_SIZE.height)
+          : scene.add.image(0, 0, textureKey('siege-gates'), '0').setOrigin(.5, 78 / 96).setDisplaySize(128, 96);
+        if (weather === 'night storm') this.outerGate.setTint(siegeArt ? 0xddeafa : 0xc8d4e5);
+        this.layer.addAt(this.outerGate, 0);
+      }
       const roads = scene.state.level?.keepRoads;
       const closed = roads === 'east' ? keepSite.otherRoads[0].approach[2]
         : roads === 'west' ? keepSite.path[6] : undefined;
       if (closed) {
         const point = layout.toScreen(closed);
         const barricade = scene.add.image(point.x - x, point.y - y, textureKey('siege-blockade'))
-          .setOrigin(.5, 78 / 96).setDisplaySize(128, 96);
+          .setOrigin(.5, 78 / 96).setDisplaySize(this.rentOverdue ? 76 : 128, this.rentOverdue ? 57 : 96);
         this.layer.addAt(barricade, 0);
       }
     }
@@ -237,7 +270,7 @@ export class KeepView {
       this.scenery.add(im);
       return im;
     };
-    this.lights = lamps.map((key,i) => {
+    this.lights = this.rentOverdue ? [] : lamps.map((key,i) => {
       const pos = this.at(key);
       return add('glow').setOrigin(.5).setPosition(pos.x,pos.y)
         .setDisplaySize(i<2 ? 41 : 28,i<2 ? 55 : 34);
@@ -246,7 +279,7 @@ export class KeepView {
     // Feet of the low bollards in the siege ground painting. The portrait
     // plate includes a 120px wing before its map origin.
     const siegeLights = layout.turned ? [[209,704],[63,653],[280,930]] : [[701,323],[635,347],[903,184]];
-    const groundLights = weather ? siegeLights : [...exhibitionLights, [this.gate.x,this.gate.y-8]];
+    const groundLights = this.rentOverdue ? [] : weather ? siegeLights : [...exhibitionLights, [this.gate.x,this.gate.y-8]];
     this.spill = groundLights.map(([px,py],i) => {
       const im = scene.add.image(px, weather ? py : py-10, textureKey('glow')).setOrigin(.5)
         .setDisplaySize(i===3 ? 93 : 53, weather ? 22 : 39);
@@ -264,8 +297,8 @@ export class KeepView {
     }) : [];
     this.banners = scene.add.graphics();
     this.scenery.add(this.banners);
-    this.fog = Array.from({length:3},() => add('mist').setOrigin(.5));
-    for (const cell of map.buildSites ?? []) {
+    this.fog = this.rentOverdue ? [] : Array.from({length:3},() => add('mist').setOrigin(.5));
+    for (const cell of this.rentOverdue ? [] : map.buildSites ?? []) {
       const c = layout.cellCenter(cell);
       add('plinth').setPosition(c.x-x,c.y-y).setOrigin(.5).setDisplaySize(32,25);
     }
@@ -294,6 +327,7 @@ export class KeepView {
   }
 
   frame(interacting = false): void {
+    this.rentSites?.update(this.scene.state);
     if (!this.followsPortraitCamera) {
       const camera = this.scene.cameras.main;
       const scaleY = camera.zoomY;
@@ -338,22 +372,7 @@ export class KeepView {
       const pulse = .64+Math.sin(t*(i<2 ? 9.4 : 3.4)+i)*.13+Math.sin(t*17.1+i*2.8)*.075;
       im.setVisible(i<2 || high).setAlpha(pulse*(i<2 ? .9 : .56));
     });
-    if (!high) {
-      if (this.lastTier !== tier) {
-        this.surround.stillFittings(surface => {
-          drawFittings(this.banners, this.at, 0, false);
-          this.banners.generateTexture(surface);
-          this.banners.clear();
-        });
-        this.banners.setVisible(false);
-      }
-    } else {
-      if (this.lastTier !== tier) {
-        this.surround.stillFittings();
-        this.banners.setVisible(true);
-      }
-      drawFittings(this.banners, this.at, t, true, rain);
-    }
+    if (!this.rentOverdue) this.updateFittings(high, tier, t, rain);
     this.lastTier = tier;
     const reflection = this.reflection.clear();
     if (this.lightning > 0 && !sky) {
@@ -382,6 +401,25 @@ export class KeepView {
     if (this.label && this.labelTier !== tier) {
       this.label.textContent = SHOWPIECE_DETAIL[tier];
       this.labelTier = tier;
+    }
+  }
+
+  private updateFittings(high: boolean, tier: number, t: number, rain: boolean): void {
+    if (!high) {
+      if (this.lastTier !== tier) {
+        this.surround.stillFittings(surface => {
+          drawFittings(this.banners, this.at, 0, false);
+          this.banners.generateTexture(surface);
+          this.banners.clear();
+        });
+        this.banners.setVisible(false);
+      }
+    } else {
+      if (this.lastTier !== tier) {
+        this.surround.stillFittings();
+        this.banners.setVisible(true);
+      }
+      drawFittings(this.banners, this.at, t, true, rain);
     }
   }
 

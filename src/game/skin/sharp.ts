@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { allowedTowers, specialAllowed, WAVES, type GameState, type LevelDef, type TowerType } from '../../sim';
 import { enemyArt, towerArt } from './frames';
 import type { PaintedAssets, PaintedName } from './loading';
+import { inkRentEnemy } from '../keep/stoneLight';
 import layoutUrl from '../../../assets/art-painted/sharp/layout.json?url&no-inline';
 
 const IMAGES = import.meta.glob<string>('../../../assets/art-painted/sharp/*.webp', {
@@ -40,7 +41,7 @@ function towerEntries(towers: readonly TowerType[], density: number, siege: bool
 }
 
 function register(
-  textures: Phaser.Textures.TextureManager, atlas: HTMLImageElement, entry: Entry, key: string, hit: boolean,
+  textures: Phaser.Textures.TextureManager, atlas: HTMLImageElement, entry: Entry, key: string, hit: boolean, rentOverdue: boolean,
 ): Sheet {
   // Shared scenery and icon packs become small logical textures. A piece
   // gets one tightly packed texture, including its source-atop hit flash.
@@ -63,6 +64,7 @@ function register(
     ctx.drawImage(atlas, left, top, width, height, 0, 0, width, height);
   }
   if (hit) {
+    if (rentOverdue) inkRentEnemy(ctx, entry.density);
     ctx.drawImage(canvas, 0, 0, width, height, 0, height, width, height);
     ctx.globalCompositeOperation = 'source-atop';
     ctx.fillStyle = 'rgba(255,255,255,0.28)';
@@ -86,7 +88,7 @@ function register(
 async function loadSheets(
   textures: Phaser.Textures.TextureManager, catalogue: Record<string, Entry>,
   entries: Map<PaintedName, string>, hit: ReadonlySet<PaintedName>,
-  loadImage: LoadImage, signal: AbortSignal, registered: string[], mark: () => void, moonlit?: boolean,
+  loadImage: LoadImage, signal: AbortSignal, registered: string[], mark: () => void, moonlit = false, rentOverdue = false,
 ): Promise<Sheets> {
   const result: Sheets = {};
   const byAtlas = new Map<string, [PaintedName, string][]>();
@@ -102,7 +104,7 @@ async function loadSheets(
       signal.throwIfAborted();
       for (const [name, id] of group) {
         const key = `painted:sharp:${id}`;
-        result[name] = register(textures, image, catalogue[id], key, hit.has(name));
+        result[name] = register(textures, image, catalogue[id], key, hit.has(name), rentOverdue);
         registered.push(key);
       }
       mark();
@@ -171,7 +173,7 @@ export async function loadSharpArt(
   let complete = 0;
   const mark = () => onProgress(++complete / total);
   const [sheets, previews] = await Promise.all([
-    loadSheets(textures, catalogue, entries, hits, loadImage, signal, registered, mark, moonlit),
+    loadSheets(textures, catalogue, entries, hits, loadImage, signal, registered, mark, moonlit, level?.id === 21),
     loadSheets(textures, catalogue, icons, new Set(), loadImage, signal, registered, mark),
   ]);
   return {

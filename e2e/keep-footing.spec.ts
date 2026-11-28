@@ -8,41 +8,23 @@ async function openKeep(page: Page, level: number, still = true, ui = 'new'): Pr
 }
 
 const views = [
-  { name: 'landscape', width: 1280, height: 800, x: 44, depth: 8 },
-  { name: 'portrait', width: 390, height: 844, x: 12, depth: 16 },
+  { name: 'landscape', width: 1280, height: 800 },
+  { name: 'portrait', width: 390, height: 844 },
 ] as const;
-
-for (const { name, width, height, x, depth } of views) {
-  test(`the ${name} curtain has solid rock between the outer buttresses`, async ({ page }) => {
-    await page.setViewportSize({ width, height });
-    await openKeep(page, 21);
-    const alpha = await page.evaluate(({ x, depth }) => {
-      const scene = window.__tarpit!.game.scene.getScene('game') as GameScene;
-      const keep = scene['keep']!;
-      const wall = keep['surround']['castle'][2];
-      const pixels = wall.getContext('2d')!.getImageData(
-        Math.round(x - parseFloat(wall.style.left)) - 2,
-        Math.round(keep['gate'].y + depth - parseFloat(wall.style.top)) - 2, 5, 5).data;
-      return Math.min(...pixels.filter((_, i) => i % 4 === 3));
-    }, { x, depth });
-    expect(alpha, 'Rock between the buttress feet occludes the crag').toBeGreaterThanOrEqual(250);
-  });
-}
 
 // Visual landmarks in the board-local image. These start at the door and
 // continue past the apron into the original paving, including level 22's
-// approach from the opposite side. The sprite is part of the sample.
-const levels = [21, 22, 23, 24, 25] as const;
+// approach from the opposite side. The sprite is part of the sample. Level
+// 21 has one continuous board from approach to sill (rent-overdue.ts).
+const levels = [22, 23, 24, 25] as const;
 const approaches = {
   landscape: {
-    21: [[-2, 12], [8, 23], [23, 40], [25, 60], [28, 86], [43, 104]],
     22: [[-2, 12], [10, 17], [25, 21], [46, 25], [68, 27], [90, 33], [110, 43], [129, 60]],
     23: [[-2, 12], [-2, 28], [2, 44], [15, 58], [28, 71], [51, 81]],
     24: [[-2, 12], [6, 23], [14, 40], [15, 58], [21, 79], [40, 100]],
     25: [[-2, 12], [6, 23], [11, 41], [10, 58], [21, 79], [39, 100]],
   },
   portrait: {
-    21: [[-2, 12], [-14, 22], [-33, 32], [-55, 34], [-76, 35], [-96, 42], [-116, 55]],
     22: [[-2, 12], [12, 23], [30, 33], [48, 42], [57, 57], [54, 77], [36, 93]],
     23: [[-2, 12], [-16, 22], [-36, 28], [-55, 33], [-72, 42], [-82, 62], [-85, 80]],
     24: [[-2, 12], [-15, 22], [-34, 28], [-54, 29], [-76, 32], [-95, 44], [-113, 56]],
